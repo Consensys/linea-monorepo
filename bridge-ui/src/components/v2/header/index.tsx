@@ -4,7 +4,7 @@ import { DesktopNavigation } from "./desktop-navigation";
 import { MobileNavigation } from "./mobile-navigation";
 import LineaBridgeLogo from "@/assets/logos/linea-bridge.svg";
 import { MENUS } from "./data";
-import { Theme } from "@/types";
+import { Theme } from "@/types/ui";
 
 const Header = ({ theme = Theme.default }: { theme?: Theme }) => {
   return (

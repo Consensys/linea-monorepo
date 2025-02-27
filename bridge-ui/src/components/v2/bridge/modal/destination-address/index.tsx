@@ -1,7 +1,7 @@
 import Modal from "@/components/v2/modal";
 import styles from "./destination-address.module.scss";
 import Button from "@/components/v2/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import clsx from "clsx";
 import XCircleIcon from "@/assets/icons/x-circle.svg";
 import { useFormContext } from "react-hook-form";

@@ -1,18 +1,12 @@
 import { useAccount, useReadContract } from "wagmi";
 import { erc20Abi } from "viem";
 import { useChainStore } from "@/stores/chainStore";
+import { useSelectedToken } from "./useSelectedToken";
 
 const useAllowance = () => {
-  // Wagmi
   const { address } = useAccount();
-
-  // Context
-  const { token, networkLayer, tokenBridgeAddress, fromChain } = useChainStore((state) => ({
-    token: state.token,
-    networkLayer: state.networkLayer,
-    tokenBridgeAddress: state.tokenBridgeAddress,
-    fromChain: state.fromChain,
-  }));
+  const token = useSelectedToken();
+  const fromChain = useChainStore.useFromChain();
 
   const {
     data: allowance,
@@ -21,12 +15,12 @@ const useAllowance = () => {
   } = useReadContract({
     abi: erc20Abi,
     functionName: "allowance",
-    args: [address ?? "0x", tokenBridgeAddress ?? "0x"],
-    address: token?.[networkLayer] ?? "0x",
+    args: [address ?? "0x", fromChain?.tokenBridgeAddress ?? "0x"],
+    address: token?.[fromChain.layer] ?? "0x",
     query: {
-      enabled: !!token && !!address && !!networkLayer && !!tokenBridgeAddress,
+      enabled: !!token && !!address && !!fromChain,
     },
-    chainId: fromChain?.id,
+    chainId: fromChain.id,
   });
 
   return { allowance, queryKey, refetchAllowance: refetch };

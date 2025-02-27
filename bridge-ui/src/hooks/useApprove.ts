@@ -7,18 +7,15 @@ import ERC20Abi from "@/abis/ERC20.json";
 import { wagmiConfig } from "@/config";
 import { useQueryClient } from "@tanstack/react-query";
 import { useChainStore } from "@/stores/chainStore";
+import { useSelectedToken } from "./useSelectedToken";
 
 const useApprove = () => {
   const [hash, setHash] = useState<Address | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const { token, networkLayer, fromChain } = useChainStore((state) => ({
-    token: state.token,
-    networkLayer: state.networkLayer,
-    fromChain: state.fromChain,
-  }));
-
+  const token = useSelectedToken();
+  const fromChain = useChainStore.useFromChain();
   const { address } = useAccount();
 
   const queryClient = useQueryClient();
@@ -29,8 +26,7 @@ const useApprove = () => {
     if (blockNumber && blockNumber % 5n === 0n) {
       queryClient.invalidateQueries({ queryKey });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blockNumber, queryClient]);
+  }, [blockNumber, queryClient, queryKey]);
 
   const writeApprove = useCallback(
     async (amount: bigint, spender: Address | null) => {
@@ -45,7 +41,7 @@ const useApprove = () => {
         return;
       }
 
-      const tokenAddress = token[networkLayer];
+      const tokenAddress = token[fromChain.layer];
       if (!tokenAddress) {
         return;
       }
@@ -67,7 +63,7 @@ const useApprove = () => {
 
       setIsLoading(false);
     },
-    [token, networkLayer],
+    [token, fromChain.layer],
   );
 
   const estimateApprove = useCallback(
@@ -81,9 +77,7 @@ const useApprove = () => {
         }
 
         const publicClient = getPublicClient(wagmiConfig, {
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          //@ts-ignore
-          chainId: fromChain?.id,
+          chainId: fromChain.id,
         });
 
         if (!publicClient) {
@@ -93,7 +87,7 @@ const useApprove = () => {
         const estimatedGasFee = await publicClient.estimateContractGas({
           abi: ERC20Abi,
           functionName: "approve",
-          address: token[networkLayer] ?? "0x",
+          address: token[fromChain.layer] ?? "0x",
           args: [_spender, _amount],
           account: address,
         });
@@ -104,7 +98,7 @@ const useApprove = () => {
         return;
       }
     },
-    [address, token, feeData, networkLayer, fromChain],
+    [address, token, feeData, fromChain.id, fromChain.layer],
   );
 
   return {

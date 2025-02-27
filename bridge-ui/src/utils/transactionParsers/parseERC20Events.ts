@@ -1,6 +1,6 @@
 import { Chain, PublicClient, decodeAbiParameters, getAddress } from "viem";
 import log from "loglevel";
-import { NetworkTokens, NetworkType } from "@/config/config";
+import { NetworkTokens } from "@/config/config";
 import { ERC20Event, ERC20V2Event } from "@/models";
 import { fetchTokenInfo } from "@/services";
 import { TransactionHistory } from "@/models/history";
@@ -12,16 +12,7 @@ const parseERC20Events = async (
   fromChain: Chain,
   toChain: Chain,
   storedTokens: NetworkTokens,
-  networkType: NetworkType,
 ) => {
-  if (
-    networkType !== NetworkType.MAINNET &&
-    networkType !== NetworkType.SEPOLIA &&
-    networkType !== NetworkType.UNKNOWN
-  ) {
-    throw new Error("Invalid network type");
-  }
-
   const history = await Promise.all(
     events.map(async (event) => {
       if (!event.args.token) {
@@ -34,7 +25,7 @@ const parseERC20Events = async (
 
       // Token list may change, skip old tokens
       if (!token) {
-        token = await fetchTokenInfo(tokenAddress, networkType, fromChain);
+        token = await fetchTokenInfo(tokenAddress, fromChain);
         if (!token) {
           log.warn("Token not found");
           return null;

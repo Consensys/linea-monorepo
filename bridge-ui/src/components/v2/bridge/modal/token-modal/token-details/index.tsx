@@ -4,12 +4,13 @@ import React, { useEffect } from "react";
 import Image from "next/image";
 import { FieldValues, UseFormClearErrors, UseFormSetValue } from "react-hook-form";
 import { useBlockNumber } from "wagmi";
-import { config } from "@/config";
 import { formatBalance } from "@/utils/format";
-import { NetworkLayer, NetworkType, TokenInfo, TokenType } from "@/config/config";
-import { useChainStore } from "@/stores/chainStore";
+import { TokenInfo, TokenType } from "@/config/config";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import styles from "./token-details.module.scss";
+import { useTokenStore } from "@/stores/tokenStoreProvider";
+import { useChainStore } from "@/stores/chainStore";
+import { CurrencyOption } from "@/stores/configStore";
 
 interface TokenDetailsProps {
   token: TokenInfo;
@@ -17,18 +18,24 @@ interface TokenDetailsProps {
   setValue: UseFormSetValue<FieldValues>;
   clearErrors: UseFormClearErrors<FieldValues>;
   tokenPrice?: number;
+  currency: CurrencyOption;
 }
 
-export default function TokenDetails({ token, onTokenClick, setValue, clearErrors, tokenPrice }: TokenDetailsProps) {
-  const networkLayer = useChainStore.useNetworkLayer();
-  const networkType = useChainStore.useNetworkType();
-  const setToken = useChainStore.useSetToken();
-  const setTokenBridgeAddress = useChainStore.useSetTokenBridgeAddress();
+export default function TokenDetails({
+  token,
+  onTokenClick,
+  setValue,
+  clearErrors,
+  tokenPrice,
+  currency,
+}: TokenDetailsProps) {
+  const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
+  const fromChain = useChainStore.useFromChain();
 
-  const tokenNotFromCurrentLayer = !token[networkLayer] && token.type !== TokenType.ETH;
+  const tokenNotFromCurrentLayer = fromChain?.layer && !token[fromChain?.layer] && token.type !== TokenType.ETH;
 
   const { data: blockNumber } = useBlockNumber({ watch: true });
-  const { balance, refetch } = useTokenBalance(token[networkLayer], token?.decimals);
+  const { balance, refetch } = useTokenBalance(token[fromChain.layer], token?.decimals);
 
   useEffect(() => {
     if (blockNumber && blockNumber % 5n === 0n) {
@@ -43,20 +50,11 @@ export default function TokenDetails({ token, onTokenClick, setValue, clearError
       type="button"
       disabled={tokenNotFromCurrentLayer}
       onClick={() => {
-        if (networkLayer !== NetworkLayer.UNKNOWN && token && networkType !== NetworkType.WRONG_NETWORK) {
-          setValue("amount", "");
-          clearErrors("amount");
-          setToken(token);
-          switch (token.type) {
-            case TokenType.USDC:
-              setTokenBridgeAddress(config.networks[networkType][networkLayer].usdcBridgeAddress);
-              break;
-            default:
-              setTokenBridgeAddress(config.networks[networkType][networkLayer].tokenBridgeAddress);
-              break;
-          }
-          onTokenClick(token);
-        }
+        setValue("amount", "");
+        clearErrors("amount");
+        setSelectedToken(token);
+        setValue("token", token);
+        onTokenClick(token);
       }}
     >
       <div className={styles["left"]}>
@@ -75,7 +73,7 @@ export default function TokenDetails({ token, onTokenClick, setValue, clearError
             <p className={styles["price"]}>
               {(tokenPrice * Number(balance)).toLocaleString("en-US", {
                 style: "currency",
-                currency: "USD",
+                currency: currency.label,
                 maximumFractionDigits: 4,
               })}
             </p>

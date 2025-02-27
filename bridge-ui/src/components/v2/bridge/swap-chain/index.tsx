@@ -4,9 +4,11 @@ import styles from "./swap-chain.module.scss";
 import { useChainStore } from "@/stores/chainStore";
 import { useFormContext } from "react-hook-form";
 import { BridgeForm } from "@/models";
+import { useIsLoggedIn } from "@/lib/dynamic";
 
 export default function SwapChain() {
   const switchChainInStore = useChainStore.useSwitchChain();
+  const isLoggedIn = useIsLoggedIn();
   const { reset } = useFormContext<BridgeForm>();
 
   return (
@@ -19,6 +21,7 @@ export default function SwapChain() {
           switchChainInStore();
           reset();
         }}
+        disabled={!isLoggedIn}
       >
         <ArrowRightIcon className={styles["arrow-icon"]} />
       </button>

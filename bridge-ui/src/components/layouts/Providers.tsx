@@ -7,12 +7,18 @@ type ProvidersProps = {
   children: JSX.Element;
 };
 
-export async function Providers({ children }: ProvidersProps) {
+async function getTokenStoreInitialState() {
   const tokensList = await getTokenConfig();
+
+  return { tokensList, selectedToken: tokensList.MAINNET[0] };
+}
+
+export async function Providers({ children }: ProvidersProps) {
+  const tokensStoreInitialState = await getTokenStoreInitialState();
 
   return (
     <Web3Provider>
-      <TokenStoreProvider initialState={{ tokensList }}>
+      <TokenStoreProvider initialState={tokensStoreInitialState}>
         <ModalProvider>{children}</ModalProvider>
       </TokenStoreProvider>
     </Web3Provider>

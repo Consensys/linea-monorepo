@@ -3,13 +3,12 @@ import log from "loglevel";
 import { simulateContract, writeContract } from "@wagmi/core";
 import { zeroAddress } from "viem";
 import MessageService from "@/abis/MessageService.json";
-import { config, wagmiConfig } from "@/config";
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
 import { TransactionHistory } from "@/models/history";
-import { getChainNetworkLayer, getChainNetworkType } from "@/utils/chainsUtil";
 import { useAccount } from "wagmi";
 import { Transaction } from "@/models";
+import { config } from "@/lib/wagmi";
 
 export interface MessageWithStatus {
   status: OnChainMessageStatus;
@@ -48,22 +47,16 @@ const useClaimTransaction = () => {
       setError(null);
       setIsLoading(true);
 
-      // Get the right message Service address depending on the transaction
-      const txNetworkLayer = getChainNetworkLayer(tx.toChain);
-      const txNetworkType = getChainNetworkType(tx.toChain);
-
-      if (address && txNetworkLayer && txNetworkType) {
+      if (address) {
         try {
           const { messageSender, destination, calldata, fee, messageNonce, value, proof } = message;
 
-          const messageServiceAddress = config.networks[txNetworkType][txNetworkLayer].messageServiceAddress;
-          if (messageServiceAddress === null) {
-            return;
-          }
+          const messageServiceAddress = tx.toChain.messageServiceAddress;
+
           let writeConfig;
           if (!proof) {
             // Claiming using old message service
-            writeConfig = await simulateContract(wagmiConfig, {
+            writeConfig = await simulateContract(config, {
               address: messageServiceAddress,
               abi: MessageService.abi,
               functionName: "claimMessage",
@@ -84,7 +77,7 @@ const useClaimTransaction = () => {
               proof: proof.proof,
               value,
             };
-            writeConfig = await simulateContract(wagmiConfig, {
+            writeConfig = await simulateContract(config, {
               address: messageServiceAddress,
               abi: MessageService.abi,
               functionName: "claimMessageWithProof",
@@ -93,7 +86,7 @@ const useClaimTransaction = () => {
             });
           }
 
-          const hash = await writeContract(wagmiConfig, writeConfig.request);
+          const hash = await writeContract(config, writeConfig.request);
 
           setTransaction({
             txHash: hash,

@@ -1,40 +1,49 @@
-import { NetworkLayer, NetworkType } from "@/config";
-import { linea, mainnet, Chain, sepolia, lineaSepolia } from "viem/chains";
+import { config } from "@/config";
+import { SupportedChainId } from "@/lib/wagmi";
+import { Chain, ChainLayer } from "@/types";
+import { linea, mainnet, Chain as ViemChain, sepolia, lineaSepolia } from "viem/chains";
 
-export const getChainNetworkLayer = (chain: Chain) => {
-  switch (chain.id) {
+export const generateChain = (chain: ViemChain): Chain => {
+  return {
+    id: chain.id as SupportedChainId,
+    name: chain.id !== lineaSepolia.id ? chain.name : "Linea Sepolia",
+    iconPath: config.chains[chain.id].iconPath,
+    nativeCurrency: chain.nativeCurrency,
+    blockExplorers: chain.blockExplorers,
+    testnet: chain.testnet,
+    layer: getChainNetworkLayer(chain.id),
+    messageServiceAddress: config.chains[chain.id].messageServiceAddress,
+    tokenBridgeAddress: config.chains[chain.id].tokenBridgeAddress,
+    gasLimitSurplus: config.chains[chain.id].gasLimitSurplus,
+    profitMargin: config.chains[chain.id].profitMargin,
+  };
+};
+
+export const generateChains = (chains: ViemChain[]): Chain[] => {
+  return chains.map(generateChain);
+};
+
+export const getChainNetworkLayer = (chainId: number) => {
+  switch (chainId) {
     case linea.id:
     case lineaSepolia.id:
-      return NetworkLayer.L2;
+      return ChainLayer.L2;
     case mainnet.id:
     case sepolia.id:
-      return NetworkLayer.L1;
+      return ChainLayer.L1;
+    default:
+      throw new Error(`Unsupported chain id: ${chainId}`);
   }
-
-  return;
 };
 
 export const getChainNetworkLayerByChainId = (chainId: number) => {
   switch (chainId) {
     case linea.id:
     case lineaSepolia.id:
-      return NetworkLayer.L2;
+      return ChainLayer.L2;
     case mainnet.id:
     case sepolia.id:
-      return NetworkLayer.L1;
-  }
-
-  return;
-};
-
-export const getChainNetworkType = (chain: Chain) => {
-  switch (chain.id) {
-    case linea.id:
-    case mainnet.id:
-      return NetworkType.MAINNET;
-    case lineaSepolia.id:
-    case sepolia.id:
-      return NetworkType.SEPOLIA;
+      return ChainLayer.L1;
   }
 
   return;

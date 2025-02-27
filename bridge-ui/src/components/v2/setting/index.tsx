@@ -6,12 +6,18 @@ import ToggleSwitch from "@/components/v2/ui/toggle-switch";
 import { useEffect, useRef, useState } from "react";
 import CurrencyDropdown from "@/components/v2/bridge/currency-dropdown";
 import { useConfigStore } from "@/stores/configStore";
+import { useChainStore } from "@/stores/chainStore";
+import { useChains } from "@/hooks/useChains";
+import { ChainLayer } from "@/types";
 
 export default function Setting() {
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [isDropdownVisible, setDropdownVisible] = useState<boolean>(false);
   const setShowTestnet = useConfigStore.useSetShowTestnet();
   const showTestnet = useConfigStore.useShowTestnet();
+  const chains = useChains();
+  const setFromChain = useChainStore.useSetFromChain();
+  const setToChain = useChainStore.useSetToChain();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -29,6 +35,16 @@ export default function Setting() {
   const toggleDropdown = () => {
     setDropdownVisible((prev) => !prev);
   };
+
+  useEffect(() => {
+    if (!showTestnet) {
+      setFromChain(chains.find((c) => !c.testnet && c.layer === ChainLayer.L1));
+      setToChain(chains.find((c) => !c.testnet && c.layer === ChainLayer.L2));
+    } else {
+      setFromChain(chains.find((c) => c.testnet && c.layer === ChainLayer.L1));
+      setToChain(chains.find((c) => c.testnet && c.layer === ChainLayer.L2));
+    }
+  }, [showTestnet]);
 
   return (
     <div className={styles["wrapper"]}>

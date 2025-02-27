@@ -2,23 +2,53 @@ import Image from "next/image";
 import styles from "./to-chain.module.scss";
 import SelectNetwork from "@/components/v2/bridge/modal/select-network";
 import { useState } from "react";
+import { useChainStore } from "@/stores/chainStore";
+import { useChains } from "@/hooks/useChains";
+import { Chain } from "@/types";
+import { useIsLoggedIn } from "@/lib/dynamic";
 
 export default function ToChain() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const chains = useChains();
+
+  const fromChain = useChainStore.useFromChain();
+  const toChain = useChainStore.useToChain();
+
+  const setFromChain = useChainStore.useSetFromChain();
+  const setToChain = useChainStore.useSetToChain();
+  const isLoggedIn = useIsLoggedIn();
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
+  const handleSelectNetwork = (chain: Chain) => {
+    if (chain.id === fromChain?.id) return;
+    setToChain(chain);
+
+    if (chain.testnet) {
+      setFromChain(chains.find((c: Chain) => c.testnet && c.layer !== chain.layer));
+    } else {
+      setFromChain(chains.find((c: Chain) => !c.testnet && c.layer !== chain.layer));
+    }
+  };
+
   return (
     <>
-      <button onClick={openModal} className={styles["to"]} type="button">
+      <button onClick={openModal} className={styles["to"]} type="button" disabled={!isLoggedIn}>
         <div className={styles["name"]}>To</div>
         <div className={styles["info"]}>
-          <Image src="/images/logo/linea-rounded.svg" width="40" height="40" alt="eth" />
-          <div className={styles["info-value"]}>Ethereum</div>
+          {toChain?.iconPath && (
+            <Image src={toChain.iconPath} width="40" height="40" alt={toChain.nativeCurrency.symbol} />
+          )}
+          <div className={styles["info-value"]}>{toChain?.name}</div>
         </div>
       </button>
-      <SelectNetwork isModalOpen={isModalOpen} onCloseModal={closeModal} />
+      <SelectNetwork
+        isModalOpen={isModalOpen}
+        onCloseModal={closeModal}
+        networks={chains}
+        onClick={handleSelectNetwork}
+      />
     </>
   );
 }

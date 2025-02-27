@@ -2,9 +2,10 @@ import log from "loglevel";
 import { Address } from "viem";
 import { GetTokenReturnType, getToken } from "@wagmi/core";
 import { sepolia, linea, mainnet, lineaSepolia, Chain } from "viem/chains";
-import { NetworkTokens, NetworkType, TokenInfo, TokenType, wagmiConfig } from "@/config";
+import { NetworkTokens, TokenInfo, TokenType, wagmiConfig } from "@/config";
 import { Token } from "@/models/token";
 import { defaultTokensConfig } from "@/stores/tokenStore";
+import { SupportedCurrencies } from "@/stores/configStore";
 
 interface CoinGeckoToken {
   id: string;
@@ -24,6 +25,7 @@ enum NetworkTypes {
 }
 
 export const CANONICAL_BRIDGED_TYPE = "canonical-bridge";
+export const NATIVE_TYPE = "native";
 export const USDC_TYPE = "USDC";
 
 export async function fetchERC20Image(name: string) {
@@ -73,16 +75,12 @@ export async function fetchERC20Image(name: string) {
   }
 }
 
-export async function fetchTokenInfo(
-  tokenAddress: Address,
-  networkType: NetworkType,
-  fromChain?: Chain,
-): Promise<TokenInfo | undefined> {
+export async function fetchTokenInfo(tokenAddress: Address, fromChain?: Chain): Promise<TokenInfo | undefined> {
   let erc20: GetTokenReturnType | undefined;
   let chainFound;
 
   if (!chainFound) {
-    const chains: Chain[] = networkType === NetworkType.SEPOLIA ? [lineaSepolia, sepolia] : [linea, mainnet];
+    const chains: Chain[] = fromChain?.testnet ? [lineaSepolia, sepolia] : [linea, mainnet];
 
     // Put the fromChain arg at the begining to take it as priority
     if (fromChain) chains.unshift(fromChain);
@@ -123,7 +121,6 @@ export async function fetchTokenInfo(
       L2: !L1Token ? tokenAddress : null,
       image,
       type: TokenType.ERC20,
-      UNKNOWN: null,
       isDefault: false,
     };
   } catch (err) {
@@ -144,7 +141,10 @@ export async function getTokens(networkTypes: NetworkTypes): Promise<Token[]> {
     const data = await response.json();
     const tokens = data.tokens;
     const bridgedTokens = tokens.filter(
-      (token: Token) => token.tokenType.includes(CANONICAL_BRIDGED_TYPE) || token.symbol === USDC_TYPE,
+      (token: Token) =>
+        token.tokenType.includes(CANONICAL_BRIDGED_TYPE) ||
+        token.tokenType.includes(NATIVE_TYPE) ||
+        token.symbol === USDC_TYPE,
     );
     return bridgedTokens;
   } catch (error) {
@@ -155,21 +155,23 @@ export async function getTokens(networkTypes: NetworkTypes): Promise<Token[]> {
 
 export async function fetchTokenPrices(
   tokenAddresses: Address[],
+  currency: SupportedCurrencies,
   chainId?: number,
-): Promise<Record<string, { usd: number }>> {
+): Promise<Record<string, number>> {
   if (!chainId) {
     return {};
   }
 
   const response = await fetch(
-    `https://price.api.cx.metamask.io/v2/chains/${chainId}/spot-prices?tokenAddresses=${tokenAddresses.join(",")}&vsCurrency=usd`,
+    `https://price.api.cx.metamask.io/v2/chains/${chainId}/spot-prices?tokenAddresses=${tokenAddresses.join(",")}&vsCurrency=${currency}`,
   );
   if (!response.ok) {
     throw new Error("Error in getTokenPrices");
   }
 
-  const data = await response.json();
-  return data;
+  const data: Record<string, Record<SupportedCurrencies, number>> = await response.json();
+
+  return Object.fromEntries(Object.entries(data).map(([address, value]) => [address, value[currency]]));
 }
 
 export async function validateTokenURI(url: string): Promise<string> {
@@ -193,7 +195,6 @@ export async function formatToken(token: Token): Promise<TokenInfo> {
     type: tokenType,
     L1: token?.extension?.rootAddress ?? null,
     L2: token.address,
-    UNKNOWN: null,
     image: logoURI,
     isDefault: true,
   };

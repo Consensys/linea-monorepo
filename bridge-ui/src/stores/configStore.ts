@@ -4,8 +4,10 @@ import { config } from "@/config";
 
 import { createJSONStorage, persist } from "zustand/middleware";
 
+export type SupportedCurrencies = "usd" | "eur";
+
 export type CurrencyOption = {
-  value: string;
+  value: SupportedCurrencies;
   label: string;
   flag: string;
 };
@@ -51,7 +53,7 @@ const useConfigStoreBase = create<ConfigStore>()(
     }),
     {
       name: "config-storage",
-      version: parseInt(config.storage.minVersion),
+      version: config.storage.minVersion,
       storage: createJSONStorage(() => localStorage),
       migrate: () => {
         return defaultInitState;

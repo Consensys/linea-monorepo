@@ -32,11 +32,11 @@ export function ReceivedAmount({ receivedAmount }: ReceivedAmountProps) {
             <span className="label-text flex items-center">
               {receivedAmount &&
               parseFloat(receivedAmount) > 0 &&
-              tokenPrices?.[tokenAddress.toLowerCase()]?.usd &&
-              tokenPrices?.[tokenAddress.toLowerCase()]?.usd > 0 ? (
+              tokenPrices?.[tokenAddress.toLowerCase()] &&
+              tokenPrices?.[tokenAddress.toLowerCase()] > 0 ? (
                 <>
                   <PiApproximateEqualsBold />
-                  {(Number(receivedAmount) * tokenPrices?.[tokenAddress.toLowerCase()]?.usd).toLocaleString("en-US", {
+                  {(Number(receivedAmount) * tokenPrices?.[tokenAddress.toLowerCase()]).toLocaleString("en-US", {
                     style: "currency",
                     currency: "USD",
                     maximumFractionDigits: 4,

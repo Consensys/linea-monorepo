@@ -1,5 +1,4 @@
 import Image from "next/image";
-import { useChainStore } from "@/stores/chainStore";
 import { useAccount } from "wagmi";
 import TokenModal from "@/components/v2/bridge/modal/token-modal";
 import { Button } from "@/components/ui";
@@ -7,11 +6,13 @@ import CaretDownIcon from "@/assets/icons/caret-down.svg";
 import styles from "./token-list.module.scss";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
+import { useSelectedToken } from "@/hooks/useSelectedToken";
 
 export default function TokenList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const token = useChainStore.useToken();
+  const token = useSelectedToken();
+
   const { isConnected } = useAccount();
   const { setValue, clearErrors } = useFormContext();
 

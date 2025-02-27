@@ -1,22 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { isAddress, getAddress, Address, zeroAddress } from "viem";
-import { NetworkType, TokenInfo, TokenType } from "@/config/config";
-import { useERC20Storage, useTokenFetch } from "@/hooks";
+import { TokenInfo, TokenType } from "@/config/config";
 import { safeGetAddress } from "@/utils/format";
 import { useChainStore } from "@/stores/chainStore";
-import { useTokenStore } from "@/stores/tokenStoreProvider";
-import { fetchTokenInfo } from "@/services";
 import { FieldValues, UseFormClearErrors, UseFormSetValue } from "react-hook-form";
 import useTokenPrices from "@/hooks/useTokenPrices";
 import { isEmptyObject } from "@/utils/utils";
-import useDebounce from "@/hooks/useDebounce";
 import Modal from "@/components/v2/modal";
 import SearchIcon from "@/assets/icons/search.svg";
 import styles from "./token-modal.module.scss";
 import TokenDetails from "./token-details";
 import { useDevice } from "@/hooks/useDevice";
+import { useTokens } from "@/hooks/useTokens";
+import { useTokenStore } from "@/stores/tokenStoreProvider";
+import { useConfigStore } from "@/stores/configStore";
 
 interface TokenModalProps {
   setValue: UseFormSetValue<FieldValues>;
@@ -26,115 +25,70 @@ interface TokenModalProps {
 }
 
 export default function TokenModal({ setValue, clearErrors, isModalOpen, onCloseModal }: TokenModalProps) {
-  const tokensList = useTokenStore((state) => state.tokensList);
-  const [filteredTokens, setFilteredTokens] = useState<TokenInfo[]>([]);
-  const [searchTokenIsNew, setSearchTokenIsNew] = useState<boolean>(false);
-  const { fillMissingTokenAddress } = useTokenFetch();
+  const tokensList = useTokens();
+  const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
+  const fromChain = useChainStore.useFromChain();
+  const currency = useConfigStore((state) => state.currency);
   const { isMobile } = useDevice();
 
-  // Context
-  const networkType = useChainStore.useNetworkType();
-  const networkLayer = useChainStore.useNetworkLayer();
-  const fromChain = useChainStore.useFromChain();
-
-  const { updateOrInsertUserTokenList } = useERC20Storage();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data } = useTokenPrices(
-    useMemo(
-      () =>
-        filteredTokens.map((token) =>
-          token.name === "Ether" ? zeroAddress : (safeGetAddress(token[networkLayer]) as Address),
-        ),
-      [filteredTokens, networkLayer],
-    ),
-    fromChain?.id,
+  const filteredTokens = useMemo(() => {
+    if (!searchQuery) return tokensList;
+    const query = searchQuery.toLowerCase();
+
+    return tokensList.filter((token: TokenInfo) => {
+      const tokenAddress = fromChain?.layer ? token[fromChain.layer] : undefined;
+      return (
+        (tokenAddress || token.type === TokenType.ETH) &&
+        (token.name.toLowerCase().includes(query) ||
+          token.symbol.toLowerCase().includes(query) ||
+          (tokenAddress && safeGetAddress(tokenAddress)?.toLowerCase().includes(query)))
+      );
+    });
+  }, [tokensList, searchQuery, fromChain?.layer]);
+
+  const tokenAddresses = useMemo(
+    () =>
+      filteredTokens.map((token) => {
+        if (token.name === "Ether") return zeroAddress;
+        const tokenAddress = fromChain?.layer ? safeGetAddress(token[fromChain.layer]) : null;
+        return (tokenAddress ?? zeroAddress) as Address;
+      }),
+    [filteredTokens, fromChain?.layer],
   );
 
-  const debouncedSearchQuery = useDebounce(searchQuery, 300);
-
-  const handleTokenSearch = useCallback(
-    async (query: string) => {
-      let found = false;
-
-      if (networkType === NetworkType.SEPOLIA || networkType === NetworkType.MAINNET) {
-        const currentNetworkTokens = tokensList?.[networkType] || [];
-
-        // Filter tokens based on the search query
-        const filtered = currentNetworkTokens.filter(
-          (token: TokenInfo) =>
-            (token[networkLayer] || token.type === TokenType.ETH) &&
-            (token.name.toLowerCase().includes(query) ||
-              token.symbol.toLowerCase().includes(query) ||
-              safeGetAddress(token[networkLayer])?.toLowerCase().includes(query)),
-        );
-
-        if (filtered.length > 0) {
-          found = true;
-          setFilteredTokens(filtered);
-          setSearchTokenIsNew(false);
-        } else if (isAddress(query)) {
-          // Fetch token info from the contract if the query is a valid address
-          const newToken = await fetchTokenInfo(query, networkType, fromChain);
-          if (newToken) {
-            await fillMissingTokenAddress(newToken);
-            found = true;
-            setFilteredTokens([newToken]);
-            setSearchTokenIsNew(true);
-          } else {
-            setSearchTokenIsNew(false);
-          }
-        } else {
-          setSearchTokenIsNew(false);
-        }
-      }
-
-      if (!found) {
-        setFilteredTokens([]);
-      }
-    },
-    [networkType, networkLayer, tokensList, fromChain, fillMissingTokenAddress],
-  );
+  const { data } = useTokenPrices(tokenAddresses, fromChain?.id);
 
   const handleTokenClick = useCallback(
     (token: TokenInfo) => {
-      if (searchTokenIsNew && token[networkLayer]) {
-        updateOrInsertUserTokenList(token, networkType);
-      }
-      setSearchTokenIsNew(false);
+      setSelectedToken(token);
       onCloseModal();
     },
-    [searchTokenIsNew, networkLayer, updateOrInsertUserTokenList, networkType],
+    [onCloseModal],
   );
 
   const getTokenPrice = useCallback(
     (token: TokenInfo): number | undefined => {
-      if (networkType === NetworkType.MAINNET && !isEmptyObject(data)) {
-        const tokenAddress = (safeGetAddress(token[networkLayer]) || zeroAddress).toLowerCase();
-        return data[tokenAddress]?.usd;
+      if (fromChain && !fromChain.testnet && !isEmptyObject(data)) {
+        const tokenAddress = (safeGetAddress(token[fromChain.layer]) || zeroAddress).toLowerCase();
+        return data[tokenAddress];
       }
       return undefined;
     },
-    [networkType, networkLayer, data],
+    [data, fromChain],
   );
 
-  const normalizeInput = (input: string): string => {
+  const normalizeInput = useCallback((input: string): string => {
     return isAddress(input) ? getAddress(input) : input.toLowerCase();
-  };
+  }, []);
 
-  useEffect(() => {
-    if (debouncedSearchQuery.trim() === "") {
-      if (networkType === NetworkType.SEPOLIA || networkType === NetworkType.MAINNET) {
-        setFilteredTokens(tokensList[networkType]);
-        setSearchTokenIsNew(false);
-        return;
-      }
-      setFilteredTokens([]);
-      setSearchTokenIsNew(false);
-      return;
-    }
-    handleTokenSearch(debouncedSearchQuery);
-  }, [debouncedSearchQuery, handleTokenSearch, networkType, tokensList]);
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearchQuery(normalizeInput(e.target.value));
+    },
+    [normalizeInput],
+  );
 
   return (
     <Modal title="Select a token" isOpen={isModalOpen} onClose={onCloseModal} isDrawer={isMobile}>
@@ -144,7 +98,7 @@ export default function TokenModal({ setValue, clearErrors, isModalOpen, onClose
           <input
             type="text"
             placeholder="Search by token name, symbol or address"
-            onChange={({ target: { value } }) => setSearchQuery(normalizeInput(value))}
+            onChange={handleSearchChange}
             value={searchQuery}
           />
         </div>
@@ -159,13 +113,14 @@ export default function TokenModal({ setValue, clearErrors, isModalOpen, onClose
                   setValue={setValue}
                   clearErrors={clearErrors}
                   tokenPrice={getTokenPrice(token)}
+                  currency={currency}
                 />
               );
             })
           ) : (
-            <p className="pl-7 text-error">
-              Sorry, there are no results for that term. Please enter a valid token name or address.
-            </p>
+            <div className={styles["not-found"]}>
+              <p>Sorry, there are no results for that term. Please enter a valid token name or address.</p>
+            </div>
           )}
         </div>
       </div>

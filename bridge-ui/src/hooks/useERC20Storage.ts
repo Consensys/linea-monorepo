@@ -1,12 +1,11 @@
 import { useCallback } from "react";
-import { NetworkType, TokenInfo, TokenType } from "@/config/config";
+import { TokenInfo, TokenType } from "@/config/config";
 import { safeGetAddress } from "@/utils/format";
 import { useTokenStore } from "@/stores/tokenStoreProvider";
 import { shallow } from "zustand/vanilla/shallow";
 
 const useERC20Storage = () => {
   const tokensList = useTokenStore((state) => state.tokensList);
-  const upsertToken = useTokenStore((state) => state.upsertToken);
 
   const getStoredToken = useCallback(
     (token: TokenInfo, networkType: NetworkType) => {

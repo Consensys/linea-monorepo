@@ -13,7 +13,6 @@ export const wagmiAdapter = new WagmiAdapter({
   projectId: config.walletConnectId,
   multiInjectedProviderDiscovery: true,
   ssr: true,
-
   batch: {
     multicall: true,
   },

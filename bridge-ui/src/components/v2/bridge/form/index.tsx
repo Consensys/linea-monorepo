@@ -11,28 +11,29 @@ import styles from "./bridge-form.module.scss";
 import { Submit } from "@/components/v2/bridge/submit";
 import TransactionPaperIcon from "@/assets/icons/transaction-paper.svg";
 import Setting from "@/components/v2/setting";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { DestinationAddress } from "../destination-address";
 import Button from "../../ui/button";
 import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
 import { FormProvider, useForm } from "react-hook-form";
 import { BridgeForm as BridgeFormModel } from "@/models";
-import { useTokenStore } from "@/stores/tokenStoreProvider";
-import { BridgeType, TokenType } from "@/config/config";
+import { BridgeType } from "@/config/config";
+import { useTokens } from "@/hooks/useTokens";
 import { useChainStore } from "@/stores/chainStore";
+import { ChainLayer } from "@/types";
 
 export default function BridgeForm() {
   const { isConnected } = useAccount();
-  const token = useChainStore.useToken();
   const [isDestinationAddressOpen, setIsDestinationAddressOpen] = useState(false);
   const setIsTransactionHistoryOpen = useNativeBridgeNavigationStore.useSetIsTransactionHistoryOpen();
   const setIsBridgeOpen = useNativeBridgeNavigationStore.useSetIsBridgeOpen();
-  const configContextValue = useTokenStore((state) => state.tokensList);
+  const tokens = useTokens();
+  const fromChain = useChainStore.useFromChain();
 
   const methods = useForm<BridgeFormModel>({
     defaultValues: {
-      token: configContextValue?.UNKNOWN[0],
-      claim: token?.type === TokenType.ETH ? "auto" : "manual",
+      token: tokens[0],
+      claim: fromChain?.layer === ChainLayer.L1 ? "auto" : "manual",
       amount: "",
       minFees: 0n,
       gasFees: 0n,

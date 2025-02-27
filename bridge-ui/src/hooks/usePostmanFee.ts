@@ -1,13 +1,14 @@
 import { useCallback, useEffect } from "react";
 import { useAccount, useBlockNumber, useEstimateFeesPerGas, useReadContract } from "wagmi";
 import { Address, encodeAbiParameters, encodeFunctionData, keccak256, parseUnits, zeroAddress } from "viem";
-import { config, NetworkLayer, TokenType, wagmiConfig } from "@/config";
+import { TokenType, wagmiConfig } from "@/config";
 import { useChainStore } from "@/stores/chainStore";
 import { getPublicClient } from "@wagmi/core";
 import { useQueryClient } from "@tanstack/react-query";
-import USDCBridge from "@/abis/USDCBridge.json";
 import TokenBridge from "@/abis/TokenBridge.json";
 import MessageService from "@/abis/MessageService.json";
+import { ChainLayer } from "@/types";
+import { useSelectedToken } from "./useSelectedToken";
 
 function computeMessageHash(
   from: Address,
@@ -47,20 +48,15 @@ function computeMessageStorageSlot(messageHash: `0x${string}`) {
 }
 
 type UsePostmanFeeProps = {
-  currentLayer: NetworkLayer;
   claimingType?: string;
 };
 
-const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
+const usePostmanFee = ({ claimingType }: UsePostmanFeeProps) => {
   const { address } = useAccount();
 
-  const token = useChainStore((state) => state.token);
-  const toChain = useChainStore((state) => state.toChain);
-  const fromChain = useChainStore((state) => state.fromChain);
-  const fromMessageServiceAddress = useChainStore((state) => state.messageServiceAddress);
-  const tokenBridgeAddress = useChainStore((state) => state.tokenBridgeAddress);
-
-  const networkType = useChainStore((state) => state.networkType);
+  const token = useSelectedToken();
+  const toChain = useChainStore.useToChain();
+  const fromChain = useChainStore.useFromChain();
 
   const queryClient = useQueryClient();
   const { data: blockNumber } = useBlockNumber({ watch: true });
@@ -74,23 +70,26 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
   }, [blockNumber, queryClient]);
 
   const { data: nextMessageNumber } = useReadContract({
-    address: fromMessageServiceAddress ?? "0x",
+    address: fromChain.messageServiceAddress,
     abi: MessageService.abi,
     functionName: "nextMessageNumber",
     chainId: fromChain?.id,
     query: {
       enabled:
-        !!fromChain?.id && !!fromMessageServiceAddress && currentLayer === NetworkLayer.L1 && claimingType === "auto",
+        !!fromChain?.id &&
+        !!fromChain.messageServiceAddress &&
+        fromChain.layer === ChainLayer.L1 &&
+        claimingType === "auto",
     },
   });
 
   const calculatePostmanFee = useCallback(
     async (amount: string, recipient?: Address): Promise<bigint> => {
-      if (!address || !tokenBridgeAddress || !token || !nextMessageNumber) {
+      if (!address || !fromChain.tokenBridgeAddress || !token || !nextMessageNumber) {
         return 0n;
       }
 
-      if (currentLayer !== NetworkLayer.L1) {
+      if (fromChain.layer !== ChainLayer.L1) {
         return 0n;
       }
 
@@ -107,9 +106,8 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
           return 0n;
         }
 
-        const toMessageServiceAddress = config.networks[networkType][NetworkLayer.L2].messageServiceAddress;
-        const toUSDCBridgeAddress = config.networks[networkType][NetworkLayer.L2].usdcBridgeAddress;
-        const toTokenBridgeAddress = config.networks[networkType][NetworkLayer.L2].tokenBridgeAddress;
+        const toMessageServiceAddress = toChain.messageServiceAddress;
+        const toTokenBridgeAddress = toChain.tokenBridgeAddress;
 
         const amountBigInt = parseUnits(amount, token.decimals);
         const toAddress = recipient || address;
@@ -120,52 +118,7 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
           return 0n;
         }
 
-        if (token.type === TokenType.USDC) {
-          const encodedData = encodeFunctionData({
-            abi: USDCBridge.abi,
-            functionName: "receiveFromOtherLayer",
-            args: [toAddress, amountBigInt],
-          });
-
-          const messageHash = computeMessageHash(
-            tokenBridgeAddress,
-            toUSDCBridgeAddress,
-            0n,
-            0n,
-            nextMessageNumber as bigint,
-            encodedData,
-          );
-
-          const storageSlot = computeMessageStorageSlot(messageHash);
-
-          estimatedGasFee = await destinationChainPublicClient.estimateContractGas({
-            abi: MessageService.abi,
-            functionName: "claimMessage",
-            address: toMessageServiceAddress,
-            args: [
-              tokenBridgeAddress,
-              toUSDCBridgeAddress,
-              0n,
-              0n,
-              zeroAddress,
-              encodedData,
-              nextMessageNumber as bigint,
-            ],
-            value: 0n,
-            account: address,
-            stateOverride: [
-              {
-                address: toMessageServiceAddress,
-                stateDiff: [
-                  {
-                    slot: storageSlot,
-                    value: "0x0000000000000000000000000000000000000000000000000000000000000001",
-                  },
-                ],
-              },
-            ],
-          });
-        } else if (token.type === TokenType.ERC20) {
+        if (token.type === TokenType.ERC20) {
           const originChainPublicClient = getPublicClient(wagmiConfig, {
             chainId: fromChain?.id,
           });
@@ -176,13 +129,13 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
 
           const nativeToken = (await originChainPublicClient.readContract({
             account: address,
-            address: tokenBridgeAddress,
+            address: fromChain.tokenBridgeAddress,
             abi: TokenBridge.abi,
             functionName: "bridgedToNativeToken",
-            args: [token[currentLayer]],
+            args: [token[fromChain.layer]],
           })) as Address;
 
-          let tokenAddress = token[currentLayer];
+          let tokenAddress = token[fromChain.layer];
           let chainId = fromChain?.id;
           let tokenMetadata = encodeAbiParameters(
             [
@@ -206,7 +159,7 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
           });
 
           const messageHash = computeMessageHash(
-            tokenBridgeAddress,
+            fromChain.tokenBridgeAddress,
             toTokenBridgeAddress,
             0n,
             0n,
@@ -221,7 +174,7 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
             functionName: "claimMessage",
             address: toMessageServiceAddress,
             args: [
-              tokenBridgeAddress,
+              fromChain.tokenBridgeAddress,
               toTokenBridgeAddress,
               0n,
               0n,
@@ -278,17 +231,13 @@ const usePostmanFee = ({ currentLayer, claimingType }: UsePostmanFeeProps) => {
           return 0n;
         }
 
-        return (
-          feeData.gasPrice *
-          (estimatedGasFee + config.networks[networkType].gasLimitSurplus) *
-          config.networks[networkType].profitMargin
-        );
+        return feeData.gasPrice * (estimatedGasFee + fromChain.gasLimitSurplus) * fromChain.profitMargin;
       } catch (error) {
         console.error(error);
         return 0n;
       }
     },
-    [address, currentLayer, nextMessageNumber, feeData?.gasPrice, networkType, toChain?.id, token, tokenBridgeAddress],
+    [address, fromChain.layer, nextMessageNumber, feeData?.gasPrice, toChain?.id, token, fromChain.tokenBridgeAddress],
   );
 
   return { calculatePostmanFee };

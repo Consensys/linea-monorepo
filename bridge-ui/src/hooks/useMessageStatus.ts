@@ -1,41 +1,38 @@
 import { useCallback } from "react";
 import { OnChainMessageStatus } from "@consensys/linea-sdk";
 import useLineaSDK from "./useLineaSDK";
-import { config, NetworkLayer } from "@/config";
 import { MessageWithStatus } from "./useClaimTransaction";
 import { useChainStore } from "@/stores/chainStore";
+import { ChainLayer } from "@/types";
 
 const useMessageStatus = () => {
   const { lineaSDK, lineaSDKContracts } = useLineaSDK();
 
-  const networkType = useChainStore((state) => state.networkType);
+  const fromChain = useChainStore.useFromChain();
+  const toChain = useChainStore.useToChain();
 
   const getMessagesByTransactionHash = useCallback(
-    async (transactionHash: string, networkLayer: NetworkLayer) => {
-      if (!lineaSDKContracts || networkLayer === NetworkLayer.UNKNOWN) {
-        return;
-      }
-      return await lineaSDKContracts[networkLayer]?.getMessagesByTransactionHash(transactionHash);
+    async (transactionHash: string) => {
+      return await lineaSDKContracts[fromChain.layer]?.getMessagesByTransactionHash(transactionHash);
     },
-    [lineaSDKContracts],
+    [lineaSDKContracts, fromChain.layer],
   );
 
   const getMessageStatuses = useCallback(
-    async (transactionHash: string, networkLayer: NetworkLayer) => {
-      if (!lineaSDKContracts || networkLayer === NetworkLayer.UNKNOWN) {
-        return;
-      }
-
-      const messages = await getMessagesByTransactionHash(transactionHash, networkLayer);
+    async (transactionHash: string) => {
+      const messages = await getMessagesByTransactionHash(transactionHash);
 
       const messagesWithStatuses: Array<MessageWithStatus> = [];
       if (messages && messages.length > 0) {
-        const otherLayer = networkLayer === NetworkLayer.L1 ? NetworkLayer.L2 : NetworkLayer.L1;
+        const otherLayer = toChain.layer;
 
         const promises = messages.map(async (message) => {
+          const l1Chain = fromChain.layer === ChainLayer.L1 ? fromChain : toChain;
+          const l2Chain = fromChain.layer === ChainLayer.L2 ? fromChain : toChain;
+
           const l1ClaimingService = lineaSDK?.getL1ClaimingService(
-            config.networks[networkType].L1.messageServiceAddress,
-            config.networks[networkType].L2.messageServiceAddress,
+            l1Chain.messageServiceAddress,
+            l2Chain.messageServiceAddress,
           );
           let status: OnChainMessageStatus;
           let claimingTransactionHash;
@@ -43,7 +40,7 @@ const useMessageStatus = () => {
           // which requires the proof linked to this message
           let proof;
 
-          if (otherLayer === NetworkLayer.L1) {
+          if (otherLayer === ChainLayer.L1) {
             // Message from L2 to L1
             status = (await l1ClaimingService?.getMessageStatus(message.messageHash)) || OnChainMessageStatus.UNKNOWN;
 
@@ -93,7 +90,7 @@ const useMessageStatus = () => {
 
       return messagesWithStatuses;
     },
-    [lineaSDKContracts, getMessagesByTransactionHash, lineaSDK, networkType],
+    [lineaSDKContracts, getMessagesByTransactionHash, lineaSDK, fromChain, toChain],
   );
 
   return { getMessageStatuses };

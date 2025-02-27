@@ -3,6 +3,7 @@ import { formatEther, parseEther, parseUnits } from "viem";
 import { TokenType } from "@/config";
 import { useGasEstimation, useApprove, useMinimumFee, useExecutionFee } from "@/hooks";
 import { useChainStore } from "@/stores/chainStore";
+import { useSelectedToken } from "./useSelectedToken";
 
 type UseReceivedAmountProps = {
   amount: string;
@@ -13,12 +14,8 @@ type UseReceivedAmountProps = {
 export function useReceivedAmount({ amount, enoughAllowance, claim }: UseReceivedAmountProps) {
   const [estimatedGasFee, setEstimatedGasFee] = useState<bigint>(0n);
 
-  const { token, tokenBridgeAddress, networkLayer } = useChainStore((state) => ({
-    token: state.token,
-    tokenBridgeAddress: state.tokenBridgeAddress,
-    networkLayer: state.networkLayer,
-    networkType: state.networkType,
-  }));
+  const token = useSelectedToken();
+  const fromChain = useChainStore.useFromChain();
 
   const { minimumFee } = useMinimumFee();
   const { estimateGasBridge } = useGasEstimation();
@@ -27,7 +24,7 @@ export function useReceivedAmount({ amount, enoughAllowance, claim }: UseReceive
   const executionFee = useExecutionFee({
     token,
     claim,
-    networkLayer,
+    networkLayer: fromChain?.layer,
     minimumFee,
   });
 
@@ -42,14 +39,23 @@ export function useReceivedAmount({ amount, enoughAllowance, claim }: UseReceive
       if (enoughAllowance) {
         calculatedGasFee = (await estimateGasBridge(amount, minimumFee)) || 0n;
       } else {
-        calculatedGasFee = (await estimateApprove(parseUnits(amount, token.decimals), tokenBridgeAddress)) || 0n;
+        calculatedGasFee =
+          (await estimateApprove(parseUnits(amount, token.decimals), fromChain?.tokenBridgeAddress || null)) || 0n;
       }
 
       setEstimatedGasFee(calculatedGasFee);
     };
 
     estimate();
-  }, [amount, minimumFee, enoughAllowance, tokenBridgeAddress, estimateGasBridge, estimateApprove, token?.decimals]);
+  }, [
+    amount,
+    minimumFee,
+    enoughAllowance,
+    estimateGasBridge,
+    estimateApprove,
+    token.decimals,
+    fromChain?.tokenBridgeAddress,
+  ]);
 
   const totalReceived = useMemo(() => {
     if (!amount || !token?.decimals) {

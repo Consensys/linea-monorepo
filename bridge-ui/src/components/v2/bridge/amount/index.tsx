@@ -1,31 +1,33 @@
 import { ChangeEvent, useCallback, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { useFormContext } from "react-hook-form";
-import { parseUnits, zeroAddress } from "viem";
-
-import { NetworkType, TokenType } from "@/config";
+import { parseUnits } from "viem";
+import { TokenType } from "@/config";
+import { useIsLoggedIn } from "@/lib/dynamic";
 import useTokenPrices from "@/hooks/useTokenPrices";
 import { useChainStore } from "@/stores/chainStore";
 
 import styles from "./amount.module.scss";
+import { useSelectedToken } from "@/hooks/useSelectedToken";
+import { useConfigStore } from "@/stores/configStore";
 
 const AMOUNT_REGEX = "^[0-9]*[.,]?[0-9]*$";
 const MAX_AMOUNT_CHAR = 20;
 
 export function Amount() {
-  const token = useChainStore.useToken();
+  const token = useSelectedToken();
+  const currency = useConfigStore((state) => state.currency);
   const fromChain = useChainStore.useFromChain();
-  const networkLayer = useChainStore.useNetworkLayer();
-  const networkType = useChainStore.useNetworkType();
-  const tokenAddress = token?.[networkLayer] || zeroAddress;
+  const tokenAddress = token[fromChain.layer];
 
   const { address } = useAccount();
+  const isLoggedIn = useIsLoggedIn();
 
   const { setValue, getValues, setError, clearErrors, trigger, watch } = useFormContext();
   const watchBalance = watch("balance");
   const [amount, gasFees, minFees] = getValues(["amount", "gasFees", "minFees"]);
 
-  const { data: tokenPrices } = useTokenPrices([tokenAddress], fromChain?.id);
+  const { data: tokenPrices } = useTokenPrices([tokenAddress], fromChain.id);
 
   const compareAmountBalance = useCallback(
     (_amount: string) => {
@@ -109,6 +111,7 @@ export function Amount() {
     <div className={styles["amount"]}>
       <p className={styles.title}>Send</p>
       <input
+        disabled={!isLoggedIn}
         id="amount-input"
         type="text"
         autoCorrect="off"
@@ -121,15 +124,13 @@ export function Amount() {
         pattern={AMOUNT_REGEX}
         placeholder="0"
       />
-      {networkType === NetworkType.MAINNET && (
+      {!fromChain?.testnet && (
         <span className={styles["calculated-value"]}>
-          {amount &&
-          tokenPrices?.[tokenAddress.toLowerCase()]?.usd &&
-          tokenPrices?.[tokenAddress.toLowerCase()]?.usd > 0 ? (
+          {amount && tokenPrices?.[tokenAddress.toLowerCase()] && tokenPrices?.[tokenAddress.toLowerCase()] > 0 ? (
             <>
-              {(Number(amount) * tokenPrices?.[tokenAddress.toLowerCase()]?.usd).toLocaleString("en-US", {
+              {(Number(amount) * tokenPrices?.[tokenAddress.toLowerCase()]).toLocaleString("en-US", {
                 style: "currency",
-                currency: "USD",
+                currency: currency.label,
                 maximumFractionDigits: 4,
               })}
             </>

@@ -1,7 +1,7 @@
 import { useAccount } from "wagmi";
 import { getPublicClient } from "@wagmi/core";
-import { Chain, PublicClient } from "viem";
-import { wagmiConfig, ConfigManager, NetworkLayer, NetworkType } from "@/config";
+import { PublicClient } from "viem";
+import { wagmiConfig } from "@/config";
 import {
   eventERC20,
   eventERC20V2,
@@ -20,6 +20,7 @@ import { getChainNetworkLayer } from "@/utils/chainsUtil";
 import { useTokenStore } from "@/stores/tokenStoreProvider";
 import useMessageStatus from "./useMessageStatus";
 import useTokenFetch from "./useTokenFetch";
+import { Chain, ChainLayer } from "@/types";
 
 const useFetchBridgeTransactions = () => {
   // Wagmi
@@ -42,8 +43,8 @@ const useFetchBridgeTransactions = () => {
     }
 
     const [l1TxHistory, l2TxHistory] = await Promise.all([
-      fetchBridgeEvents(l1Chain, l2Chain, l1FromBlockNumber, networkType, NetworkLayer.L1, transactions),
-      fetchBridgeEvents(l2Chain, l1Chain, l2FromBlockNumber, networkType, NetworkLayer.L2, transactions),
+      fetchBridgeEvents(l1Chain, l2Chain, l1FromBlockNumber, networkType, ChainLayer.L1, transactions),
+      fetchBridgeEvents(l2Chain, l1Chain, l2FromBlockNumber, networkType, ChainLayer.L2, transactions),
     ]);
 
     const newTransactions = [...(l1TxHistory ?? []), ...(l2TxHistory ?? [])];
@@ -75,8 +76,8 @@ const useFetchBridgeTransactions = () => {
       }
 
       const txHash = transaction.transactionHash;
-      const fromLayer = getChainNetworkLayer(transaction.fromChain);
-      const toLayer = getChainNetworkLayer(transaction.toChain);
+      const fromLayer = getChainNetworkLayer(transaction.fromChain.id);
+      const toLayer = getChainNetworkLayer(transaction.toChain.id);
       if (fromLayer && toLayer) {
         // Update message status and the token address on the destination for ERC20s
         const fromLayerToken = transaction.token[fromLayer];
@@ -110,7 +111,7 @@ const useFetchBridgeTransactions = () => {
     toChain: Chain,
     fromBlock: bigint,
     networkType: NetworkType,
-    networkLayer: NetworkLayer,
+    networkLayer: ChainLayer,
     transactions: TransactionHistory[],
   ) => {
     const client = getPublicClient(wagmiConfig, {
@@ -121,7 +122,7 @@ const useFetchBridgeTransactions = () => {
       return;
     }
 
-    if (networkLayer !== NetworkLayer.L1 && networkLayer !== NetworkLayer.L2) {
+    if (networkLayer !== ChainLayer.L1 && networkLayer !== ChainLayer.L2) {
       return;
     }
 
@@ -143,11 +144,9 @@ const useFetchBridgeTransactions = () => {
     fromChain: Chain,
     toChain: Chain,
     fromBlock: bigint,
-    networkType: NetworkType,
-    networkLayer: NetworkLayer,
     existingTransactions: TransactionHistory[],
   ) => {
-    const messageServiceAddress = await ConfigManager.getMessageServiceAddress(networkType, networkLayer);
+    const messageServiceAddress = fromChain.messageServiceAddress;
     const [ethLogsForSender, ethLogsForRecipient] = await Promise.all([<Promise<ETHEvent[]>>client.getLogs({
         event: eventETH,
         fromBlock,
@@ -187,11 +186,9 @@ const useFetchBridgeTransactions = () => {
     fromChain: Chain,
     toChain: Chain,
     fromBlock: bigint,
-    networkType: NetworkType,
-    networkLayer: NetworkLayer,
     existingTransactions: TransactionHistory[],
   ) => {
-    const tokenBridgeAddress = await ConfigManager.getTokenBridgeAddress(networkType, networkLayer);
+    const tokenBridgeAddress = fromChain.tokenBridgeAddress;
     const [erc20Logs, erc20V2LogsForSender, erc20V2LogsForRecipient] = await Promise.all([
       <Promise<ERC20Event[]>>client.getLogs({
         event: eventERC20,

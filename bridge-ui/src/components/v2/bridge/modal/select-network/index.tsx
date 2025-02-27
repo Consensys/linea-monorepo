@@ -1,33 +1,29 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import SearchIcon from "@/assets/icons/search.svg";
 import Modal from "@/components/v2/modal";
 import { useDevice } from "@/hooks/useDevice";
-import { useState } from "react";
 import NetworkDetails from "./network-details";
 import styles from "./select-network.module.scss";
+import { Chain } from "@/types";
 
 interface Props {
+  networks: Chain[];
   isModalOpen: boolean;
   onCloseModal: () => void;
+  onClick: (chain: Chain) => void;
 }
 
-const ListNetwork = [
-  {
-    name: "Ethereum",
-    image: "/images/logo/ethereum-rounded.svg",
-  },
-  {
-    name: "Linea",
-    image: "/images/logo/linea-mainnet.svg",
-  },
-];
-
-export default function SelectNetwork({ isModalOpen, onCloseModal }: Props) {
-  const [filteredNetworks, setFilteredNetworks] = useState(ListNetwork);
+export default function SelectNetwork({ isModalOpen, onCloseModal, onClick, networks }: Props) {
   const { isMobile } = useDevice();
-
   const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredNetworks = useMemo(() => {
+    if (!searchQuery) return networks;
+    const query = searchQuery.toLowerCase();
+    return networks.filter((network) => network.name.toLowerCase().startsWith(query));
+  }, [networks, searchQuery]);
 
   return (
     <Modal title="Select a network" isOpen={isModalOpen} onClose={onCloseModal} isDrawer={isMobile}>
@@ -42,14 +38,24 @@ export default function SelectNetwork({ isModalOpen, onCloseModal }: Props) {
           />
         </div>
         <div className={styles["list-network"]}>
-          {filteredNetworks.length > 0 ? (
+          {filteredNetworks && filteredNetworks.length > 0 ? (
             filteredNetworks.map((network, index: number) => {
               return (
-                <NetworkDetails key={index} name={network.name} onClickNetwork={onCloseModal} image={network.image} />
+                <NetworkDetails
+                  key={index}
+                  name={network.name}
+                  onClickNetwork={() => {
+                    onClick(network);
+                    onCloseModal();
+                  }}
+                  image={network.iconPath}
+                />
               );
             })
           ) : (
-            <p>No networks found</p>
+            <div className={styles["not-found"]}>
+              <p>No networks found</p>
+            </div>
           )}
         </div>
       </div>

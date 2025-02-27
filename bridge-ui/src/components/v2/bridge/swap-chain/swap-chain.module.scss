@@ -18,6 +18,10 @@
   &:hover {
     background-color: var(--v2-color-icterine);
   }
+
+  &:disabled {
+    background-color: var(--v2-color-smoke);
+  }
 }
 
 .arrow-icon {

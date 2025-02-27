@@ -2,7 +2,7 @@
 
 import Header from "../v2/header";
 import { useInitialiseChain } from "@/hooks";
-import { Theme } from "@/types";
+import { Theme } from "@/types/ui";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";

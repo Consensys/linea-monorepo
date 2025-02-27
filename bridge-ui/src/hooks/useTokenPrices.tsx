@@ -2,18 +2,21 @@ import { useQuery } from "@tanstack/react-query";
 import { Address } from "viem";
 import { fetchTokenPrices } from "@/services/tokenService";
 import log from "loglevel";
+import { useConfigStore } from "@/stores/configStore";
 
 type UseTokenPrices = {
-  data: Record<string, { usd: number }>;
+  data: Record<string, number>;
   isLoading: boolean;
   refetch: () => void;
   error: Error | null;
 };
 
 export default function useTokenPrices(tokenAddresses: Address[], chainId?: number): UseTokenPrices {
+  const currency = useConfigStore((state) => state.currency);
+
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["tokenPrices", tokenAddresses, chainId],
-    queryFn: () => fetchTokenPrices(tokenAddresses, chainId),
+    queryFn: () => fetchTokenPrices(tokenAddresses, currency.value, chainId),
     enabled: !!chainId && tokenAddresses.length > 0 && [1, 59144].includes(chainId),
   });
 

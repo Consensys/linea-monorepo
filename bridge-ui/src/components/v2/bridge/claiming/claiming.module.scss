@@ -2,7 +2,7 @@
   margin-top: 0.625rem;
   background-color: var(--v2-color-smoke);
   border-radius: 0.625rem;
-  padding: 0.625rem;
+  padding: 1rem;
   transition: box-shadow 0.25s ease-in-out;
 
   &:hover {
@@ -44,82 +44,6 @@
   display: flex;
   gap: 0.5rem;
   margin: 1rem 0;
-
-  .crypto {
-    font-size: 1.5rem;
-    font-weight: 500;
-    margin-bottom: 0.25rem;
-  }
-  .amount {
-    font-size: 0.75rem;
-    color: var(--v2-color-darker-gray);
-    font-family: var(--font-atyp-text);
-  }
-}
-
-.estimate {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  font-family: var(--font-atyp-text);
-
-  svg {
-    width: 0.75rem;
-    height: 0.75rem;
-  }
-
-  .time {
-    display: flex;
-    gap: 0.25rem;
-    align-items: center;
-    cursor: pointer;
-    color: var(--v2-color-darker-gray);
-    font-size: inherit;
-    font-weight: 500;
-
-    span {
-      color: var(--v2-color-black);
-    }
-  }
-
-  .manual {
-    color: var(--v2-color-dark-red);
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    cursor: pointer;
-    font-size: inherit;
-  }
-
-  .gas-fees,
-  .no-fees {
-    display: flex;
-    gap: 0.25rem;
-    align-items: center;
-    color: var(--v2-color-darker-gray);
-    cursor: pointer;
-    font-size: inherit;
-
-    img {
-      width: 0.75rem;
-      height: 0.75rem;
-      border-radius: 50%;
-    }
-
-    .estimate-crypto {
-      font-weight: 500;
-    }
-  }
-
-  .no-fees {
-    cursor: initial;
-
-    .text {
-      color: var(--v2-color-indigo);
-      font-weight: 500;
-    }
-  }
 }
 
 .bottom {

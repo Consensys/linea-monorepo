@@ -1,14 +1,14 @@
 import { useFormContext } from "react-hook-form";
 import { parseUnits } from "viem";
 import { useAccount, useBalance } from "wagmi";
-import { NetworkLayer } from "@/config";
-import { useBridge } from "@/hooks";
+// import { useBridge } from "@/hooks";
 import { useChainStore } from "@/stores/chainStore";
 import Button from "@/components/v2/ui/button";
 import WalletIcon from "@/assets/icons/wallet.svg";
 import DestinationAddress from "@/components/v2/bridge/modal/destination-address";
 import { MouseEventHandler, useState } from "react";
 import styles from "./submit.module.scss";
+import { useSelectedToken } from "@/hooks/useSelectedToken";
 
 type Props = {
   disabled?: boolean;
@@ -25,17 +25,14 @@ export function Submit({ disabled = false, setIsDestinationAddressOpen }: Props)
   const [watchAmount, watchAllowance, watchClaim, watchBalance] = watch(["amount", "allowance", "claim", "balance"]);
 
   // Context
-  const token = useChainStore.useToken();
-  const toChainId = useChainStore.useToChain()?.id;
-  const networkLayer = useChainStore.useNetworkLayer();
+  const token = useSelectedToken();
+  const toChainId = useChainStore.useToChain().id;
 
   // Wagmi
-  const { bridgeEnabled } = useBridge();
+  // const { bridgeEnabled } = useBridge();
   const { address } = useAccount();
   const { data: destinationChainBalance } = useBalance({
     address,
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     chainId: toChainId,
     query: {
       enabled: !!address && !!toChainId,
@@ -43,7 +40,7 @@ export function Submit({ disabled = false, setIsDestinationAddressOpen }: Props)
   });
 
   const originChainBalanceTooLow =
-    token !== null &&
+    token &&
     (errors?.amount?.message !== undefined ||
       parseUnits(watchBalance, token.decimals) < parseUnits(watchAmount, token.decimals));
 

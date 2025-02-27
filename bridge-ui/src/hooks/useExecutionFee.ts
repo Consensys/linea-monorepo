@@ -1,25 +1,26 @@
 import { useState, useEffect, useCallback } from "react";
 import { useBlockNumber, useEstimateFeesPerGas } from "wagmi";
-import { NetworkLayer, TokenInfo } from "@/config";
+import { useFormContext } from "react-hook-form";
+import { TokenInfo } from "@/config";
 import { useQueryClient } from "@tanstack/react-query";
 import { useChainStore } from "@/stores/chainStore";
 import usePostmanFee from "./usePostmanFee";
-import { useFormContext } from "react-hook-form";
+import { ChainLayer } from "@/types";
 
 type useExecutionFeeProps = {
   token: TokenInfo | null;
   claim: string | undefined;
-  networkLayer: NetworkLayer;
+  networkLayer: ChainLayer;
   minimumFee: bigint;
 };
 
 const useExecutionFee = ({ token, claim, networkLayer, minimumFee }: useExecutionFeeProps) => {
   const [minFees, setMinFees] = useState<bigint>(0n);
-  const toChain = useChainStore((state) => state.toChain);
+  const toChain = useChainStore.useToChain();
   const queryClient = useQueryClient();
   const { data: blockNumber } = useBlockNumber({ watch: true });
   const { data: feeData, queryKey } = useEstimateFeesPerGas({ chainId: toChain?.id, type: "legacy" });
-  const { calculatePostmanFee } = usePostmanFee({ currentLayer: networkLayer, claimingType: claim });
+  const { calculatePostmanFee } = usePostmanFee({ claimingType: claim });
 
   const { watch } = useFormContext();
 
@@ -33,12 +34,12 @@ const useExecutionFee = ({ token, claim, networkLayer, minimumFee }: useExecutio
       gasPrice,
     }: {
       claim: string | undefined;
-      networkLayer: NetworkLayer | undefined;
+      networkLayer: ChainLayer;
       minimumFee: bigint;
       gasPrice: bigint | undefined;
     }): Promise<bigint | undefined> => {
-      const isL1 = networkLayer === NetworkLayer.L1;
-      const isL2 = networkLayer === NetworkLayer.L2;
+      const isL1 = networkLayer === ChainLayer.L1;
+      const isL2 = networkLayer === ChainLayer.L2;
       const isAutoClaim = claim === "auto";
       const isManualClaim = claim === "manual";
 

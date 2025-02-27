@@ -6,17 +6,18 @@ import { useFormContext } from "react-hook-form";
 import { useChainStore } from "@/stores/chainStore";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import styles from "./balance.module.scss";
+import { useSelectedToken } from "@/hooks/useSelectedToken";
 
 export function Balance() {
   // Context
-  const token = useChainStore.useToken();
-  const networkLayer = useChainStore.useNetworkLayer();
+  const token = useSelectedToken();
+  const fromChain = useChainStore.useFromChain();
 
-  const tokenAddress = token?.[networkLayer];
+  const tokenAddress = fromChain && token?.[fromChain.layer];
   // Wagmi
   const queryClient = useQueryClient();
   const { data: blockNumber } = useBlockNumber({ watch: true });
-  const { balance, queryKey } = useTokenBalance(tokenAddress, token?.decimals);
+  const { balance, queryKey } = useTokenBalance(tokenAddress, token.decimals);
 
   // Form
   const { setValue } = useFormContext();

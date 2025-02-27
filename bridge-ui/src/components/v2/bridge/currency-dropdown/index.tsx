@@ -1,13 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import CaretDownIcon from "@/assets/icons/caret-down.svg";
 import styles from "./currency-dropdown.module.scss";
-import { useConfigStore } from "@/stores/configStore";
-
-type CurrencyOption = {
-  value: string;
-  label: string;
-  flag: string;
-};
+import { CurrencyOption, useConfigStore } from "@/stores/configStore";
 
 type Props = {
   disabled?: boolean;

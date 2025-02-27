@@ -4,7 +4,7 @@ import { useChainStore } from "@/stores/chainStore";
 
 export function useTokenBalance(tokenAddress: `0x${string}` | null | undefined, tokenDecimals = 18) {
   const { address } = useAccount();
-  const fromChain = useChainStore((state) => state.fromChain);
+  const fromChain = useChainStore.useFromChain();
 
   const ethBalance = useBalance({
     chainId: fromChain?.id,
