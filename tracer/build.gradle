@@ -1,7 +1,7 @@
 
 buildscript {
   ext {
-    besuIdentifier = "linea-besu-${besuVersion}"
+    besuIdentifier = "besu-${besuVersion}"
     besuFilename = "${besuIdentifier}.tar.gz"
     besuUrl = "${distributionBaseUrl}${besuVersion}/${besuFilename}"
     besuPluginsIdentifier = "${distributionIdentifier}-${version}"

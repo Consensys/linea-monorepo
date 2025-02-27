@@ -17,6 +17,7 @@ repositories {
   maven {
     url "https://artifacts.consensys.net/public/linea-besu/maven/"
     content { includeGroupByRegex('io\\.consensys\\..*') }
+    content { includeGroupByRegex('org\\.hyperledger\\..*') }
   }
   maven {
     url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'

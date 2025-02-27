@@ -58,7 +58,7 @@ public class ExecutionEnvironment {
   public static final String CORSET_VALIDATION_RESULT = "Corset validation result: ";
 
   static GenesisConfig GENESIS_CONFIG =
-      GenesisConfig.fromSource(GenesisConfig.class.getResource("/linea.json"));
+      GenesisConfig.fromSource(ExecutionEnvironment.class.getResource("/linea.json"));
 
   static final BlockHeaderBuilder DEFAULT_BLOCK_HEADER_BUILDER =
       BlockHeaderBuilder.createDefault()
