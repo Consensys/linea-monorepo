@@ -39,13 +39,10 @@ contract TokenBridge is
   using SafeERC20Upgradeable for IERC20Upgradeable;
 
   /// @dev This is the ABI version and not the reinitialize version.
-  string public constant CONTRACT_VERSION = "1.0";
+  string public constant CONTRACT_VERSION = "1.1";
 
   /// @notice Role used for setting the message service address.
   bytes32 public constant SET_MESSAGE_SERVICE_ROLE = keccak256("SET_MESSAGE_SERVICE_ROLE");
-
-  /// @notice Role used for setting the remote token bridge address.
-  bytes32 public constant SET_REMOTE_TOKENBRIDGE_ROLE = keccak256("SET_REMOTE_TOKENBRIDGE_ROLE");
 
   /// @notice Role used for setting a reserved token address.
   bytes32 public constant SET_RESERVED_TOKEN_ROLE = keccak256("SET_RESERVED_TOKEN_ROLE");
@@ -153,9 +150,9 @@ contract TokenBridge is
     nonZeroChainId(_initializationData.targetChainId)
     initializer
   {
-    __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
-    __MessageServiceBase_init(_initializationData.messageService);
     __ReentrancyGuard_init();
+    __MessageServiceBase_init(_initializationData.messageService);
+    __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
 
     if (_initializationData.defaultAdmin == address(0)) {
       revert ZeroAddressNotAllowed();
@@ -171,6 +168,7 @@ contract TokenBridge is
 
     tokenBeacon = _initializationData.tokenBeacon;
     if (_initializationData.sourceChainId == _initializationData.targetChainId) revert SourceChainSameAsTargetChain();
+    _setRemoteSender(_initializationData.remoteSender);
     sourceChainId = _initializationData.sourceChainId;
     targetChainId = _initializationData.targetChainId;
 
@@ -184,38 +182,6 @@ contract TokenBridge is
         ++i;
       }
     }
-  }
-
-  /**
-   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings.
-   * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-   * @param _defaultAdmin The default admin account's address.
-   * @param _roleAddresses The list of addresses and roles to assign permissions to.
-   * @param _pauseTypeRoles The list of pause types to associate with roles.
-   * @param _unpauseTypeRoles The list of unpause types to associate with roles.
-   */
-  function reinitializePauseTypesAndPermissions(
-    address _defaultAdmin,
-    RoleAddress[] calldata _roleAddresses,
-    PauseTypeRole[] calldata _pauseTypeRoles,
-    PauseTypeRole[] calldata _unpauseTypeRoles
-  ) external reinitializer(2) {
-    if (_defaultAdmin == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
-    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
-
-    assembly {
-      /// @dev Wiping the storage slot 101 of _owner as it is replaced by AccessControl and there is now the ERC165 __gap in its place.
-      sstore(101, 0)
-      /// @dev Wiping the storage slot 213 of _status as it is replaced by ReentrancyGuardUpgradeable at slot 1.
-      sstore(213, 0)
-    }
-
-    __ReentrancyGuard_init();
-    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
-    __Permissions_init(_roleAddresses);
   }
 
   /**
@@ -320,7 +286,7 @@ contract TokenBridge is
    * @param _nativeToken The address of the token on its native chain.
    * @param _amount The amount of the token to be received.
    * @param _recipient The address that will receive the tokens.
-   * @param _chainId The token's origin layer chaindId
+   * @param _chainId The token's origin layer chainId
    * @param _tokenMetadata Additional data used to deploy the bridged token if it
    *   doesn't exist already.
    */
@@ -417,17 +383,6 @@ contract TokenBridge is
   }
 
   /**
-   * @dev Sets the address of the remote token bridge. Can only be called once.
-   * @dev SET_REMOTE_TOKENBRIDGE_ROLE is required to execute.
-   * @param _remoteTokenBridge The address of the remote token bridge to be set.
-   */
-  function setRemoteTokenBridge(address _remoteTokenBridge) external onlyRole(SET_REMOTE_TOKENBRIDGE_ROLE) {
-    if (remoteSender != EMPTY) revert RemoteTokenBridgeAlreadySet(remoteSender);
-    _setRemoteSender(_remoteTokenBridge);
-    emit RemoteTokenBridgeSet(_remoteTokenBridge, msg.sender);
-  }
-
-  /**
    * @dev Deploy a new EC20 contract for bridged token using a beacon proxy pattern.
    *   To adapt to future requirements, Linea can update the implementation of
    *   all (existing and future) contracts by updating the beacon. This update is
@@ -483,7 +438,7 @@ contract TokenBridge is
 
   /**
    * @dev Linea can set a custom ERC-20 contract for specific ERC-20.
-   *   For security purpose, Linea can only call this function if the token has
+   *   For security purposes, Linea can only call this function if the token has
    *   not been bridged yet.
    * @dev SET_CUSTOM_CONTRACT_ROLE is required to execute.
    * @param _nativeToken The address of the token on the source chain.
