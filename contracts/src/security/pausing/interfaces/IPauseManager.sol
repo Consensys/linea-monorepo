@@ -119,7 +119,7 @@ interface IPauseManager {
   /**
    * @notice Pauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
-   * @dev Requires the role mapped in pauseTypeRoles for the pauseType.
+   * @dev Requires the role mapped in `_pauseTypeRoles` for the pauseType.
    * @dev Non-SECURITY_COUNCIL_ROLE can only pause after cooldown has passed.
    * @dev SECURITY_COUNCIL_ROLE can pause without cooldown or expiry restrictions.
    * @param _pauseType The pause type value.
@@ -129,7 +129,7 @@ interface IPauseManager {
   /**
    * @notice Unpauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
-   * @dev Requires the role mapped in unPauseTypeRoles for the pauseType.
+   * @dev Requires the role mapped in `_unPauseTypeRoles` for the pauseType.
    * @dev SECURITY_COUNCIL_ROLE unpause will reset the cooldown.
    * @param _pauseType The pause type value.
    */
@@ -154,7 +154,7 @@ interface IPauseManager {
    * @notice Update the pause type role mapping.
    * @dev Throws if UNUSED pause type is used.
    * @dev Throws if role not different.
-   * @dev PAUSE_ALL_ROLE role is required to execute this function.
+   * @dev SECURITY_COUNCIL_ROLE role is required to execute this function.
    * @param _pauseType The pause type value to update.
    * @param _newRole The role to update to.
    */
@@ -164,7 +164,7 @@ interface IPauseManager {
    * @notice Update the unpause type role mapping.
    * @dev Throws if UNUSED pause type is used.
    * @dev Throws if role not different.
-   * @dev UNPAUSE_ALL_ROLE role is required to execute this function.
+   * @dev SECURITY_COUNCIL_ROLE role is required to execute this function.
    * @param _pauseType The pause type value to update.
    * @param _newRole The role to update to.
    */
