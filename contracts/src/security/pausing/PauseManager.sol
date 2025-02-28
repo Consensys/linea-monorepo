@@ -154,9 +154,8 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     if (hasRole(SECURITY_COUNCIL_ROLE, _msgSender())) {
       pauseExpiry = type(uint256).max;
     } else {
-      uint256 cooldownEnd = pauseExpiry + COOLDOWN_DURATION;
-      if (block.timestamp < cooldownEnd) {
-        revert PauseUnavailableDueToCooldown(cooldownEnd);
+      if (block.timestamp < pauseExpiry + COOLDOWN_DURATION) {
+        revert PauseUnavailableDueToCooldown(pauseExpiry + COOLDOWN_DURATION);
       }
       pauseExpiry = block.timestamp + PAUSE_DURATION;
     }
