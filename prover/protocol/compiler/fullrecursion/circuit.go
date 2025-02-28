@@ -20,7 +20,7 @@ type gnarkCircuit struct {
 	X              frontend.Variable   `gnark:",public"`
 	Ys             []frontend.Variable `gnark:",public"`
 	Pubs           []frontend.Variable `gnark:",public"`
-	WizardVerifier *wizard.WizardVerifierCircuit
+	WizardVerifier wizard.GnarkRuntime
 	comp           *wizard.CompiledIOP `gnark:"-"`
 	ctx            *fullRecursionCtx   `gnark:"-"`
 	withoutGkr     bool                `gnark:"-"`
@@ -66,7 +66,7 @@ func allocateGnarkCircuit(comp *wizard.CompiledIOP, ctx *fullRecursionCtx) *gnar
 
 func (c *gnarkCircuit) Define(api frontend.API) error {
 
-	w := c.WizardVerifier
+	w := c.WizardVerifier.(*wizard.WizardVerifierCircuit)
 
 	if c.withoutGkr {
 		w.FS = fiatshamir.NewGnarkFiatShamir(api, nil)
@@ -116,7 +116,7 @@ func (c *gnarkCircuit) generateAllRandomCoins(api frontend.API) {
 
 	var (
 		ctx = c.ctx
-		w   = c.WizardVerifier
+		w   = c.WizardVerifier.(*wizard.WizardVerifierCircuit)
 	)
 
 	w.FS.SetState([]frontend.Variable{c.InitialFsState})
@@ -129,6 +129,11 @@ func (c *gnarkCircuit) generateAllRandomCoins(api frontend.API) {
 
 			toUpdateFS := ctx.Columns[currRound-1]
 			for _, msg := range toUpdateFS {
+
+				if c.comp.Columns.IsExplicitlyExcludedFromProverFS(msg.GetColID()) {
+					continue
+				}
+
 				val := w.GetColumn(msg.GetColID())
 				w.FS.UpdateVec(val)
 			}
@@ -222,24 +227,9 @@ func AssignGnarkCircuit(ctx *fullRecursionCtx, comp *wizard.CompiledIOP, run *wi
 	return c
 }
 
-// WitnessAssign is an implementation of the [plonk.WitnessAssigner] and is used to
-// generate the assignment of the fullRecursion circuit.
-type WitnessAssigner fullRecursionCtx
+func (ctx *fullRecursionCtx) getWitness(run *wizard.ProverRuntime) (private, public witness.Witness, err error) {
 
-func (w WitnessAssigner) NumEffWitnesses(_ *wizard.ProverRuntime) int {
-	return 1
-}
-
-func (w WitnessAssigner) Assign(run *wizard.ProverRuntime, i int) (private, public witness.Witness, err error) {
-
-	if i > 0 {
-		panic("only a single witness for the full-recursion")
-	}
-
-	var (
-		ctx        = fullRecursionCtx(w)
-		assignment = AssignGnarkCircuit(&ctx, w.Comp, run)
-	)
+	assignment := AssignGnarkCircuit(ctx, ctx.Comp, run)
 
 	witness, err := frontend.NewWitness(assignment, ecc.BLS12_377.ScalarField())
 	if err != nil {

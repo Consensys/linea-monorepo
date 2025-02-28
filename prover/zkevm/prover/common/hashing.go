@@ -4,10 +4,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -34,7 +34,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols []ifaces.Column) (ifaces.Column,
 			InputCols:          inputCols,
 			IntermediateHashes: make([]ifaces.Column, len(inputCols)),
 		}
-		round     = wizardutils.MaxRound(inputCols...)
+		round     = column.MaxRound(inputCols...)
 		ctxID     = len(comp.ListCommitments())
 		numRows   = ifaces.AssertSameLength(inputCols...)
 		prevState = verifiercol.NewConstantCol(field.Zero(), numRows)

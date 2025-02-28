@@ -111,6 +111,7 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 		metadata = board.ListVariableMetadata()
 		inputs   = make([]smartvectors.SmartVector, len(metadata))
 		length   = ExprIsOnSameLengthHandles(&board)
+		v        field.Element
 	)
 
 	// Attempt to recover the size of the
@@ -119,7 +120,7 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 		case ifaces.Column:
 			inputs[i] = m.GetColAssignment(run)
 		case coin.Info:
-			v := run.GetRandomCoinField(m.Name)
+			v = run.GetRandomCoinField(m.Name)
 			inputs[i] = smartvectors.NewConstant(v, length)
 		case ifaces.Accessor:
 			v := m.GetVal(run)
@@ -187,4 +188,13 @@ func RandLinCombColAssignment(run ifaces.Runtime, coinVal field.Element, hs []if
 		x.Mul(&x, &coinVal)
 	}
 	return witnessCollapsed
+}
+
+// maximal round of declaration for a list of commitment
+func MaxRound(handles ...ifaces.Column) int {
+	res := 0
+	for _, handle := range handles {
+		res = utils.Max(res, handle.Round())
+	}
+	return res
 }

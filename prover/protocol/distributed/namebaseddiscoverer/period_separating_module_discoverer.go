@@ -1,13 +1,11 @@
-package namebaseddiscoverer
+package discoverer
 
 import (
 	"strings"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -55,11 +53,6 @@ func periodSeparator(name string) string {
 	return name[:index]
 }
 
-// NbModules returns the number of modules
-func (p *PeriodSeperatingModuleDiscoverer) NbModules() int {
-	return len(p.modules)
-}
-
 // ModuleList returns the list of module names
 func (p *PeriodSeperatingModuleDiscoverer) ModuleList() []ModuleName {
 	moduleNames := make([]ModuleName, 0, len(p.modules))
@@ -67,6 +60,10 @@ func (p *PeriodSeperatingModuleDiscoverer) ModuleList() []ModuleName {
 		moduleNames = append(moduleNames, moduleName)
 	}
 	return moduleNames
+}
+
+func (p *PeriodSeperatingModuleDiscoverer) ListColumns(modulaName ModuleName) []ifaces.Column {
+	return p.modules[modulaName]
 }
 
 // FindModule finds the module name for a given column
@@ -89,50 +86,103 @@ func (p *PeriodSeperatingModuleDiscoverer) QueryIsInModule(ifaces.Query, ModuleN
 
 // ColumnIsInModule checks that the given column is inside the given module.
 func (p *PeriodSeperatingModuleDiscoverer) ColumnIsInModule(col ifaces.Column, name ModuleName) bool {
+	colID := col.GetColID()
+	if shifted, ok := col.(column.Shifted); ok {
+		colID = shifted.Parent.GetColID()
+	}
 	for _, c := range p.modules[name] {
-		if c.GetColID() == col.GetColID() {
+		if c.GetColID() == colID {
 			return true
 		}
 	}
 	return false
 }
 
-//	ExpressionIsInModule checks that all the columns  (except verifiercol) in the expression are from the given module.
+func (p *PeriodSeperatingModuleDiscoverer) HasModule(col ifaces.Column) (ModuleName, bool) {
+	for moduleName, columns := range p.modules {
+		for _, c := range columns {
+			if c == col {
+				return moduleName, true
+			}
+		}
+	}
+	return "", false
+}
+
+//	ExpressionIsInModule checks if any column, from the expression,
 //
-// It does not check the presence of the coins and other metadata in the module.
+// is assigned to the given module. If so, it return true.
 func (p *PeriodSeperatingModuleDiscoverer) ExpressionIsInModule(expr *symbolic.Expression, name ModuleName) bool {
 	var (
-		board    = expr.Board()
-		metadata = board.ListVariableMetadata()
-		b        = true
-		nCols    = 0
+		cols = distributed.ListColumnsFromExpr(expr, true)
 	)
 
-	// by contradiction, if there is no metadata it belongs to the module.
-	if len(metadata) == 0 {
+	// by contradiction, if there is no column it belongs to the module.
+	if len(cols) == 0 {
 		return true
 	}
 
-	for _, m := range metadata {
-		switch v := m.(type) {
-		case ifaces.Column:
-			if _, ok := v.(verifiercol.VerifierCol); !ok {
-				if !p.ColumnIsInModule(v, name) {
-					b = b && false
-				}
-				nCols++
+	for _, col := range cols {
+
+		// verifer column can be common among modules (since they have the same ID),
+		//so they are not good for decision making.
+		if !distributed.IsVerifierColumn(col) {
+
+			if p.ColumnIsInModule(col, name) {
+				return true
 			}
-			// The expression can involve random coins
-		case coin.Info, variables.X, variables.PeriodicSample, ifaces.Accessor:
-			// Do nothing
-		default:
-			utils.Panic("unknown type %T", metadata)
+
 		}
 	}
 
-	if nCols == 0 {
-		panic("could not find any column in the expression")
-	} else {
-		return b
+	return false
+
+}
+
+// ExpressionIsInModule checks if any column, from the given slice, is assigned to the given module. If so, it return true.
+func (p *PeriodSeperatingModuleDiscoverer) SliceIsInModule(cols []ifaces.Column, name ModuleName) bool {
+
+	// by contradiction, if there is no column it belongs to the module.
+	if len(cols) == 0 {
+		return true
 	}
+
+	for _, col := range cols {
+
+		if !distributed.IsVerifierColumn(col) {
+			if p.ColumnIsInModule(col, name) {
+				return true
+			}
+		}
+
+	}
+
+	return false
+
+}
+
+// UpdateDiscoverer assign all the unassigned columns, from the given expression, to the given module.
+// if a column is already assigned to a different module, it panics.
+func (p *PeriodSeperatingModuleDiscoverer) UpdateDiscoverer(cols []ifaces.Column, name ModuleName) {
+
+	for _, col := range cols {
+
+		// sanity check; panic if the column is already in a different module
+		if actualModule, ok := p.HasModule(col); ok {
+			if actualModule != name {
+				if !distributed.IsVerifierColumn(col) {
+					utils.Panic("column %v is from module %v and not from the given module %v",
+						col.GetColID(), actualModule, name)
+				}
+			}
+		}
+
+		// assign the column to the module, if the column is not assigned to any module.
+		if !p.ColumnIsInModule(col, name) {
+			p.modules[name] = append(p.modules[name], col)
+
+		}
+
+	}
+
 }

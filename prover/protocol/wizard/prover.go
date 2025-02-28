@@ -158,29 +158,7 @@ type ProverRuntime struct {
 // when the specified protocol is complicated and involves multiple multi-rounds
 // sub-protocols that runs independently.
 func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
-
-	runtime := RunProver(c, highLevelprover)
-
-	/*
-		Pass all the prover message columns as part of the proof
-	*/
-	messages := collection.NewMapping[ifaces.ColID, ifaces.ColAssignment]()
-
-	for _, name := range runtime.Spec.Columns.AllKeysProof() {
-		messageValue := runtime.Columns.MustGet(name)
-		messages.InsertNew(name, messageValue)
-	}
-
-	// And also the public inputs
-	for _, name := range runtime.Spec.Columns.AllKeysPublicInput() {
-		messageValue := runtime.Columns.MustGet(name)
-		messages.InsertNew(name, messageValue)
-	}
-
-	return Proof{
-		Messages:      messages,
-		QueriesParams: runtime.QueriesParams,
-	}
+	return RunProver(c, highLevelprover).ExtractProof()
 }
 
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
@@ -207,6 +185,22 @@ func RunProver(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
 	return &runtime
 }
 
+// RunProverUntilRound runs the prover until the specified round
+func RunProverUntilRound(c *CompiledIOP, highLevelprover ProverStep, round int) *ProverRuntime {
+
+	runtime := c.createProver()
+
+	highLevelprover(&runtime)
+	runtime.runProverSteps()
+
+	for runtime.currRound+1 < round {
+		runtime.goNextRound()
+		runtime.runProverSteps()
+	}
+
+	return &runtime
+}
+
 // ProveOnlyFirstRound computes the first round of the prover and returns the
 // resulting ProverRuntime containing all the generated assignments.
 func ProverOnlyFirstRound(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
@@ -218,12 +212,43 @@ func ProverOnlyFirstRound(c *CompiledIOP, highLevelprover ProverStep) *ProverRun
 	//
 	highLevelprover(&runtime)
 
-	// Then, run the compiled prover steps. This will only run thoses of the
+	// Then, run the compiled prover steps. This will only run those of the
 	// first round.
 	//
 	runtime.runProverSteps()
 
 	return &runtime
+}
+
+// ExtractProof extracts the proof from a [ProverRuntime]. If the runtime has
+// been obtained via a [RunProverUntilRound], then it may be the case that
+// some columns have not been assigned at all. Those won't be included in the
+// returned proof.
+func (run *ProverRuntime) ExtractProof() Proof {
+	messages := collection.NewMapping[ifaces.ColID, ifaces.ColAssignment]()
+
+	for _, name := range run.Spec.Columns.AllKeysProof() {
+
+		cols := run.Spec.Columns.GetHandle(name)
+		if run.currRound < cols.Round() {
+			continue
+		}
+
+		messageValue := run.Columns.MustGet(name)
+		messages.InsertNew(name, messageValue)
+	}
+
+	queriesParams := collection.NewMapping[ifaces.QueryID, ifaces.QueryParams]()
+	for round := 0; round <= run.currRound; round++ {
+		for _, name := range run.Spec.QueriesParams.AllKeysAt(round) {
+			queriesParams.InsertNew(name, run.QueriesParams.MustGet(name))
+		}
+	}
+
+	return Proof{
+		Messages:      messages,
+		QueriesParams: queriesParams,
+	}
 }
 
 // NumRounds returns the total number of rounds in the corresponding WizardIOP.
@@ -244,7 +269,7 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Create a new fresh FS state and bootstrap it
 	fs := fiatshamir.NewMiMCFiatShamir()
-	fs.Update(c.fiatShamirSetup)
+	fs.Update(c.FiatShamirSetup)
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{
@@ -366,7 +391,12 @@ func (run ProverRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element {
 // before doing this call. Will also trigger the "goNextRound" logic if
 // appropriate.
 func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
-	return run.getRandomCoinGeneric(name, coin.Field).(field.Element)
+	mycoin := run.Spec.Coins.Data(name)
+
+	if mycoin.Type == 0 {
+		return run.getRandomCoinGeneric(name, coin.Field).(field.Element)
+	}
+	return run.getRandomCoinGeneric(name, coin.FieldFromSeed).(field.Element)
 }
 
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin. The
@@ -511,27 +541,6 @@ func (run *ProverRuntime) goNextRound() {
 
 	initialState := run.FS.State()
 
-	/*
-		Make sure all issued random coin have been "consumed" by all the prover
-		steps, in the round we are closing. An error occuring here is more likely
-		an error in the compiler than an error from the user because it is not
-		responsible for setting the coin. Thus, this is more a sanity check.
-	*/
-	toBeConsumed := run.Spec.Coins.AllKeysAt(run.currRound)
-	run.Coins.MustExists(toBeConsumed...)
-
-	/*
-		We do not make this check for the columns, the reason is that we delete
-		the columns that we do not use anymore.
-	*/
-
-	/*
-		Then, make sure all the query parameters have been set
-		during the rounds we are closing
-	*/
-	toBeParametrized := run.Spec.QueriesParams.AllKeysAt(run.currRound)
-	run.QueriesParams.MustExists(toBeParametrized...)
-
 	if !run.Spec.DummyCompiled {
 
 		/*
@@ -540,20 +549,17 @@ func (run *ProverRuntime) goNextRound() {
 			FS using the last round of the prover because he is always
 			the last one to "talk" in the protocol.
 		*/
-		msgsToFS := run.Spec.Columns.AllKeysProofsOrIgnoredButKeptInProverTranscript(run.currRound)
+		msgsToFS := run.Spec.Columns.AllKeysInProverTranscript(run.currRound)
 		for _, msgName := range msgsToFS {
-			instance := run.GetMessage(msgName)
-			run.FS.UpdateSV(instance)
-		}
 
-		/*
-			Make sure that all messages have been written and use them
-			to update the FS state.  Note that we do not need to update
-			FS using the last round of the prover because he is always
-			the last one to "talk" in the protocol.
-		*/
-		msgsToFS = run.Spec.Columns.AllKeysPublicInputAt(run.currRound)
-		for _, msgName := range msgsToFS {
+			if run.Spec.Columns.IsExplicitlyExcludedFromProverFS(msgName) {
+				continue
+			}
+
+			if run.Spec.Precomputed.Exists(msgName) {
+				continue
+			}
+
 			instance := run.GetMessage(msgName)
 			run.FS.UpdateSV(instance)
 		}
@@ -583,10 +589,28 @@ func (run *ProverRuntime) goNextRound() {
 		a next round.
 	*/
 	toCompute := run.Spec.Coins.AllKeysAt(run.currRound)
-	for _, coin := range toCompute {
-		info := run.Spec.Coins.Data(coin)
-		value := info.Sample(run.FS)
-		run.Coins.InsertNew(coin, value)
+
+	for _, myCoin := range toCompute {
+
+		var (
+			info  = run.Spec.Coins.Data(myCoin)
+			value interface{}
+		)
+
+		if run.Spec.Coins.IsSkippedFromProverTranscript(info.Name) {
+			continue
+		}
+
+		if info.Type == coin.FieldFromSeed {
+			// if it is of type FromSeed, sample a coin based on the seed
+			if seed, ok := run.ParentRuntime.Coins.MustGet("SEED").(field.Element); ok {
+				value = info.Sample(run.FS, seed)
+			}
+		} else {
+			// otherwise sample based on the transcript.
+			value = info.Sample(run.FS)
+		}
+		run.Coins.InsertNew(myCoin, value)
 	}
 
 	finalState := run.FS.State()
@@ -805,5 +829,28 @@ func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Elemen
 
 	// Adds it to the assignments
 	params := query.NewGrandProductParams(y)
+	run.QueriesParams.InsertNew(name, params)
+}
+
+// AssignDistributedProjection assigns the value horner(A, fA) if A
+// is in the module, horner(B, fB)^{-1} if B is in the module, and
+// horner(A, fA) * horner(B, fB)^{-1} if both are in the module.
+// The function will panic if:
+//   - the parameters were already assigned
+//   - the specified query is not registered
+//   - the assignment round is incorrect
+func (run *ProverRuntime) AssignDistributedProjection(name ifaces.QueryID, distributedProjectionParam query.DistributedProjectionParams) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewDistributedProjectionParams(distributedProjectionParam.ScaledHorner,
+		distributedProjectionParam.HashCumSumOnePrev,
+		distributedProjectionParam.HashCumSumOneCurr)
 	run.QueriesParams.InsertNew(name, params)
 }

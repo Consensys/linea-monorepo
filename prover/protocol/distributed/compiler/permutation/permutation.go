@@ -71,7 +71,7 @@ func NewPermutationIntoGrandProductCtx(
 	}
 
 	/*
-	   Handles the lookups and permutations checks
+	   Handles the permutations checks
 	*/
 	for round := 0; round < numRounds; round++ {
 		queries := initialComp.QueriesNoParams.AllKeysAt(round)

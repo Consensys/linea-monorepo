@@ -24,7 +24,7 @@ type verifierForSize struct {
 }
 
 // Run implements [wizard.VerifierAction]
-func (v *verifierForSize) Run(run *wizard.VerifierRuntime) error {
+func (v *verifierForSize) Run(run wizard.Runtime) error {
 
 	var (
 		// ys stores the list of all the inner-product openings
@@ -59,7 +59,7 @@ func (v *verifierForSize) Run(run *wizard.VerifierRuntime) error {
 }
 
 // RunGnark implements the [wizard.VerifierAction] interface
-func (v *verifierForSize) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+func (v *verifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		// ys stores the list of all the inner-product openings

@@ -24,4 +24,4 @@ The package optionally offers optimization when,
     implemented directly using [bigrange.BigRange] which has less overheads
     than in-circuit range-checks.
 */
-package plonk
+package plonkinternal

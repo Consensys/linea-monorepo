@@ -3,6 +3,7 @@ package fullrecursion
 import (
 	"fmt"
 
+	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -43,7 +44,12 @@ type ResetFsActions struct {
 }
 
 func (c CircuitAssignment) Run(run *wizard.ProverRuntime) {
-	c.PlonkInWizard.ProverAction.Run(run, WitnessAssigner(c))
+	ctx := fullRecursionCtx(c)
+	wit, _, err := ctx.getWitness(run)
+	if err != nil {
+		panic(err)
+	}
+	c.PlonkInWizard.ProverAction.Run(run, []witness.Witness{wit})
 }
 
 func (c ReplacementAssignment) Run(run *wizard.ProverRuntime) {
@@ -73,11 +79,11 @@ func (c LocalOpeningAssignment) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-func (c *ConsistencyCheck) Run(run *wizard.VerifierRuntime) error {
+func (c *ConsistencyCheck) Run(run wizard.Runtime) error {
 
 	var (
 		initialFsCirc = run.GetLocalPointEvalParams(c.LocalOpenings[0].ID).Y
-		initialFsRt   = run.FiatShamirHistory[c.FirstRound+1][0][0]
+		initialFsRt   = run.FsHistory()[c.FirstRound+1][0][0]
 		piCursor      = 2
 	)
 
@@ -131,11 +137,11 @@ func (c *ConsistencyCheck) Run(run *wizard.VerifierRuntime) error {
 	return nil
 }
 
-func (c *ConsistencyCheck) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+func (c *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		initialFsCirc = run.GetLocalPointEvalParams(c.LocalOpenings[0].ID).Y
-		initialFsRt   = run.FiatShamirHistory[c.FirstRound+1][0][0]
+		initialFsRt   = run.FsHistory()[c.FirstRound+1][0][0]
 		piCursor      = 2
 	)
 
@@ -187,15 +193,15 @@ func (c *ConsistencyCheck) IsSkipped() bool {
 	return c.isSkipped
 }
 
-func (r *ResetFsActions) Run(run *wizard.VerifierRuntime) error {
+func (r *ResetFsActions) Run(run wizard.Runtime) error {
 	finalFsCirc := run.GetLocalPointEvalParams(r.LocalOpenings[1].ID).Y
-	run.FS.SetState([]field.Element{finalFsCirc})
+	run.Fs().SetState([]field.Element{finalFsCirc})
 	return nil
 }
 
-func (r *ResetFsActions) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
+func (r *ResetFsActions) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	finalFsCirc := run.GetLocalPointEvalParams(r.LocalOpenings[1].ID).Y
-	run.FS.SetState([]frontend.Variable{finalFsCirc})
+	run.Fs().SetState([]frontend.Variable{finalFsCirc})
 }
 
 func (r *ResetFsActions) Skip() {
