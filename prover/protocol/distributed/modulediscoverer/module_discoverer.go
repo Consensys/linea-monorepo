@@ -386,10 +386,19 @@ func (disc *Discoverer) ColumnIsInModule(col ifaces.Column, name ModuleName) boo
 }
 
 func (disc *Discoverer) UpdateDiscoverer(columns []ifaces.Column, name ModuleName) {
-	for _, col := range columns {
-		if _, exists := disc.columnsToModule[col]; !exists {
-			disc.columnsToModule[col] = name
+	// Find the module corresponding to the given name
+	var targetModule *Module
+	for _, module := range disc.modules {
+		if module.moduleName == name {
+			targetModule = module
+			break
 		}
+	}
+
+	// If the module is found, add the columns
+	if targetModule != nil {
+		disc.AddColumnsToModule(targetModule, columns)
+		disc.assignModule(name, columns)
 	}
 }
 
