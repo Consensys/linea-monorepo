@@ -523,6 +523,17 @@ describe("PauseManager", () => {
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
     });
 
+    // Should not revert due to overflow from `pauseExpiryTimestamp + COOLDOWN_DURATION`, but due to custom error.
+    it("after pause with SECURITY_COUNCIL_ROLE, should not be able to pause with a non-SECURITY_COUNCIL_ROLE", async () => {
+      await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
+      await expectRevertWithCustomError(
+        pauseManager,
+        pauseManager.connect(pauseManagerAccount).pauseByType(L1_L2_PAUSE_TYPE),
+        "PauseUnavailableDueToCooldown",
+        [ethers.MaxUint256],
+      );
+    });
+
     it("should set pauseExpiryTimestamp to an unreachable timestamp if pause enacted by SECURITY_COUNCIL_ROLE", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
       expect(await pauseManager.pauseExpiryTimestamp()).to.equal(
