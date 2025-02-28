@@ -8,6 +8,7 @@ import (
 	fr381 "github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark/constraint"
 	"github.com/consensys/gnark/frontend"
+	v0 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0"
 	v1 "github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v1"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob"
 )
@@ -24,6 +25,8 @@ func Assign(blobData []byte, dictStore dictionary.Store, eip4844Enabled bool, x 
 	switch vsn {
 	case 1:
 		return v1.Assign(blobData, dictStore, eip4844Enabled, x, y)
+	case 0:
+		return v0.Assign(blobData, dictStore, eip4844Enabled, x, y)
 	}
 	err = fmt.Errorf("decompression circuit assignment : unsupported blob version %d", vsn)
 	return

@@ -7,6 +7,7 @@ type CircuitID string
 const (
 	ExecutionCircuitID                  CircuitID = "execution"
 	ExecutionLargeCircuitID             CircuitID = "execution-large"
+	BlobDecompressionV0CircuitID        CircuitID = "blob-decompression-v0"
 	BlobDecompressionV1CircuitID        CircuitID = "blob-decompression-v1"
 	AggregationCircuitID                CircuitID = "aggregation"
 	EmulationCircuitID                  CircuitID = "emulation"
