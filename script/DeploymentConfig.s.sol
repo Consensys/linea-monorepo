@@ -13,6 +13,7 @@ contract DeploymentConfig is Script {
     struct NetworkConfig {
         address deployer;
         address stakingToken;
+        address currentImplProxy;
     }
 
     NetworkConfig public activeNetworkConfig;
@@ -21,6 +22,9 @@ contract DeploymentConfig is Script {
 
     // solhint-disable-next-line var-name-mixedcase
     address internal SNT_ADDRESS_SEPOLIA = 0xE452027cdEF746c7Cd3DB31CB700428b16cD8E51;
+
+    // solhint-disable-next-line var-name-mixedcase
+    address internal STAKING_MANAGER_PROXY_ADDRESS_SEPOLIA = 0xD302Bd9F60c5192e46258028a2F3b4B2B846F61F;
 
     constructor(address _broadcaster) {
         if (_broadcaster == address(0)) revert DeploymentConfig_InvalidDeployerAddress();
@@ -36,11 +40,15 @@ contract DeploymentConfig is Script {
 
     function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory) {
         MockToken stakingToken = new MockToken("Staking Token", "ST");
-        return NetworkConfig({ deployer: deployer, stakingToken: address(stakingToken) });
+        return NetworkConfig({ deployer: deployer, stakingToken: address(stakingToken), currentImplProxy: address(0) });
     }
 
     function getSepoliaConfig() public view returns (NetworkConfig memory) {
-        return NetworkConfig({ deployer: deployer, stakingToken: SNT_ADDRESS_SEPOLIA });
+        return NetworkConfig({
+            deployer: deployer,
+            stakingToken: SNT_ADDRESS_SEPOLIA,
+            currentImplProxy: STAKING_MANAGER_PROXY_ADDRESS_SEPOLIA
+        });
     }
 
     // This function is a hack to have it excluded by `forge coverage` until

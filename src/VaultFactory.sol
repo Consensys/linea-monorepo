@@ -26,18 +26,26 @@ import { StakeVault } from "./StakeVault.sol";
 contract VaultFactory is Ownable {
     /// @notice Emitted when the provided `StakeManager` address is zero.
     error VaultFactory__InvalidStakeManagerAddress();
-
     /// @notice Emitted when a new vault is created.
+
     event VaultCreated(address indexed vault, address indexed owner);
     /// @notice Emitted when the `StakeManager` contract address is changed.
     event StakeManagerAddressChanged(address indexed newStakeManagerAddress);
     /// @notice Emitted when the `StakeVault` implementation contract address is changed.
     event VaultImplementationChanged(address indexed newVaultImplementation);
 
+    /*//////////////////////////////////////////////////////////////////////////
+                                  STATE VARIABLES
+    //////////////////////////////////////////////////////////////////////////*/
+
     /// @dev Address of the `StakeManager` contract instance.
     address public stakeManager;
     /// @dev Address of the `StakeVault` implementation contract.
     address public vaultImplementation;
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                     CONSTRUCTOR
+    //////////////////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Creates a new `VaultFactory` contract.
@@ -53,6 +61,10 @@ contract VaultFactory is Ownable {
         stakeManager = _stakeManager;
         vaultImplementation = _vaultImplementation;
     }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                           USER-FACING FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Sets the `StakeManager` contract address.

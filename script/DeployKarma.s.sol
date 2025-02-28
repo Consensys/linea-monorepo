@@ -9,7 +9,7 @@ import { Karma } from "../src/Karma.sol";
 contract DeployKarmaScript is BaseScript {
     function run() public returns (Karma) {
         DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
-        (address deployer,) = deploymentConfig.activeNetworkConfig();
+        (address deployer,,) = deploymentConfig.activeNetworkConfig();
 
         vm.startBroadcast(deployer);
         address karma = address(new Karma());

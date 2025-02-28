@@ -5,9 +5,16 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 import { BaseScript } from "./Base.s.sol";
 import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
 import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
+import { DeploymentConfig } from "./DeploymentConfig.s.sol";
 
 contract UpgradeRewardsStreamerMPScript is BaseScript {
-    function run(address admin, IStakeManagerProxy currentImplProxy) public {
+    function run() public returns (address) {
+        DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
+        (address deployer,, address currentImplProxy) = deploymentConfig.activeNetworkConfig();
+        return runWithAdminAndProxy(deployer, IStakeManagerProxy(currentImplProxy));
+    }
+
+    function runWithAdminAndProxy(address admin, IStakeManagerProxy currentImplProxy) public returns (address) {
         address deployer = broadcaster;
         if (admin != address(0)) {
             deployer = admin;
@@ -18,5 +25,6 @@ contract UpgradeRewardsStreamerMPScript is BaseScript {
         bytes memory initializeData;
         UUPSUpgradeable(address(currentImplProxy)).upgradeToAndCall(nextImpl, initializeData);
         vm.stopBroadcast();
+        return nextImpl;
     }
 }

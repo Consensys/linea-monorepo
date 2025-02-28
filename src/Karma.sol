@@ -14,6 +14,17 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
 contract Karma is ERC20, Ownable2Step {
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    error Karma__TransfersNotAllowed();
+    error Karma__MintAllowanceExceeded();
+    error Karma__DistributorAlreadyAdded();
+    error Karma__UnknownDistributor();
+
+    event RewardDistributorAdded(address distributor);
+
+    /*//////////////////////////////////////////////////////////////////////////
+                                  STATE VARIABLES
+    //////////////////////////////////////////////////////////////////////////*/
+
     /// @notice The name of the token
     string public constant NAME = "Karma";
     /// @notice The symbol of the token
@@ -26,14 +37,15 @@ contract Karma is ERC20, Ownable2Step {
     /// @notice Mapping of reward distributor to allocation
     mapping(address distributor => uint256 allocation) public rewardDistributorAllocations;
 
-    error Karma__TransfersNotAllowed();
-    error Karma__MintAllowanceExceeded();
-    error Karma__DistributorAlreadyAdded();
-    error Karma__UnknownDistributor();
-
-    event RewardDistributorAdded(address distributor);
+    /*//////////////////////////////////////////////////////////////////////////
+                                     CONSTRUCTOR
+    //////////////////////////////////////////////////////////////////////////*/
 
     constructor() ERC20(NAME, SYMBOL) Ownable(msg.sender) { }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                           USER-FACING FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Adds a reward distributor to the set of reward distributors.
@@ -82,27 +94,6 @@ contract Karma is ERC20, Ownable2Step {
     }
 
     /**
-     * @notice Returns the reward distributors.
-     * @return The reward distributors.
-     */
-    function getRewardDistributors() external view returns (address[] memory) {
-        return rewardDistributors.values();
-    }
-
-    function _totalSupply() public view returns (uint256) {
-        return super.totalSupply() + _externalSupply();
-    }
-
-    /**
-     * @notice Returns the total supply of the token.
-     * @dev The total supply is the sum of the token supply and the external supply.
-     * @return The total supply of the token.
-     */
-    function totalSupply() public view override returns (uint256) {
-        return _totalSupply();
-    }
-
-    /**
      * @notice Mints tokens to an account.
      * @dev Only the owner can mint tokens.
      * @dev The amount minted must not exceed the mint allowance.
@@ -117,6 +108,26 @@ contract Karma is ERC20, Ownable2Step {
         _mint(account, amount);
     }
 
+    function transfer(address, uint256) public pure override returns (bool) {
+        revert Karma__TransfersNotAllowed();
+    }
+
+    function approve(address, uint256) public pure override returns (bool) {
+        revert Karma__TransfersNotAllowed();
+    }
+
+    function transferFrom(address, address, uint256) public pure override returns (bool) {
+        revert Karma__TransfersNotAllowed();
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                           INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
+
+    function _totalSupply() internal view returns (uint256) {
+        return super.totalSupply() + _externalSupply();
+    }
+
     function _mintAllowance() internal view returns (uint256) {
         uint256 maxSupply = _externalSupply() * 3;
         uint256 fullTotalSupply = _totalSupply();
@@ -125,15 +136,6 @@ contract Karma is ERC20, Ownable2Step {
         }
 
         return maxSupply - fullTotalSupply;
-    }
-
-    /**
-     * @notice Returns the mint allowance.
-     * @dev The mint allowance is the difference between the external supply and the total supply.
-     * @return The mint allowance.
-     */
-    function mintAllowance() public view returns (uint256) {
-        return _mintAllowance();
     }
 
     /**
@@ -153,8 +155,37 @@ contract Karma is ERC20, Ownable2Step {
 
             externalSupply += supply;
         }
-
         return externalSupply;
+    }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                           VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
+
+    /**
+     * @notice Returns the total supply of the token.
+     * @dev The total supply is the sum of the token supply and the external supply.
+     * @return The total supply of the token.
+     */
+    function totalSupply() public view override returns (uint256) {
+        return _totalSupply();
+    }
+
+    /**
+     * @notice Returns the reward distributors.
+     * @return The reward distributors.
+     */
+    function getRewardDistributors() external view returns (address[] memory) {
+        return rewardDistributors.values();
+    }
+
+    /**
+     * @notice Returns the mint allowance.
+     * @dev The mint allowance is the difference between the external supply and the total supply.
+     * @return The mint allowance.
+     */
+    function mintAllowance() public view returns (uint256) {
+        return _mintAllowance();
     }
 
     /**
@@ -172,18 +203,6 @@ contract Karma is ERC20, Ownable2Step {
         }
 
         return super.balanceOf(account) + externalBalance;
-    }
-
-    function transfer(address, uint256) public pure override returns (bool) {
-        revert Karma__TransfersNotAllowed();
-    }
-
-    function approve(address, uint256) public pure override returns (bool) {
-        revert Karma__TransfersNotAllowed();
-    }
-
-    function transferFrom(address, address, uint256) public pure override returns (bool) {
-        revert Karma__TransfersNotAllowed();
     }
 
     function allowance(address, address) public pure override returns (uint256) {

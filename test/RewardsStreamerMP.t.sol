@@ -41,7 +41,7 @@ contract RewardsStreamerMPTest is StakeMath, Test {
         (RewardsStreamerMP stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) =
             deployment.run();
 
-        (address _deployer, address _stakingToken) = deploymentConfig.activeNetworkConfig();
+        (address _deployer, address _stakingToken,) = deploymentConfig.activeNetworkConfig();
 
         streamer = stakeManager;
         stakingToken = MockToken(_stakingToken);
@@ -169,7 +169,7 @@ contract RewardsStreamerMPTest is StakeMath, Test {
 
     function _upgradeStakeManager() internal {
         UpgradeRewardsStreamerMPScript upgrade = new UpgradeRewardsStreamerMPScript();
-        upgrade.run(admin, IStakeManagerProxy(address(streamer)));
+        upgrade.runWithAdminAndProxy(admin, IStakeManagerProxy(address(streamer)));
     }
 
     function _setRewards(uint256 amount, uint256 period) internal {

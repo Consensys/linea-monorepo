@@ -34,6 +34,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     /// @notice Emitted when migration failed
     error StakeVault__MigrationFailed();
 
+    /*//////////////////////////////////////////////////////////////////////////
+                                  STATE VARIABLES
+    //////////////////////////////////////////////////////////////////////////*/
+
     /// @notice Staking token - must be set immutable due to codehash check in StakeManager
     IERC20 public immutable STAKING_TOKEN;
     /// @notice Stake manager proxy contract
@@ -55,6 +59,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         _;
     }
 
+    /*//////////////////////////////////////////////////////////////////////////
+                                     CONSTRUCTOR
+    //////////////////////////////////////////////////////////////////////////*/
+
     /**
      * @notice Initializes the contract with the staking token address.
      * @dev The staking token address is immutable and cannot be changed after deployment.
@@ -65,6 +73,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         STAKING_TOKEN = token;
         _disableInitializers();
     }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                           USER-FACING FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Initializes the contract with the owner and the stake manager.
@@ -94,14 +106,6 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      */
     function register() public {
         stakeManager.registerVault();
-    }
-
-    /**
-     * @notice Returns the address of the current owner.
-     * @return The address of the owner.
-     */
-    function owner() public view override(OwnableUpgradeable, IStakeVault) returns (address) {
-        return super.owner();
     }
 
     /**
@@ -202,6 +206,21 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     }
 
     /**
+     * @notice Migrate all funds to a new vault.
+     * @dev This function is only callable by the owner.
+     * @dev This function is only callable if the current stake manager is trusted.
+     * @dev Reverts when the stake manager reverts or the funds can't be transferred.
+     * @param migrateTo The address of the new vault.
+     */
+    function migrateToVault(address migrateTo) external onlyOwner onlyTrustedStakeManager {
+        stakeManager.migrateToVault(migrateTo);
+        bool success = STAKING_TOKEN.transfer(migrateTo, STAKING_TOKEN.balanceOf(address(this)));
+        if (!success) {
+            revert StakeVault__MigrationFailed();
+        }
+    }
+
+    /**
      * @notice Withdraw tokens from the contract.
      * @dev This function is only callable by the owner.
      * @dev Only withdraws excess staking token amounts.
@@ -245,6 +264,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         }
         return _token.balanceOf(address(this));
     }
+
+    /*//////////////////////////////////////////////////////////////////////////
+                           INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
 
     /**
      * @notice Stakes tokens for a specified time.
@@ -291,14 +314,6 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     }
 
     /**
-     * @notice Returns the amount of tokens staked by the vault.
-     * @return The amount of tokens staked.
-     */
-    function amountStaked() public view returns (uint256) {
-        return stakeManager.getStakedBalance(address(this));
-    }
-
-    /**
      * @notice Allows vaults to exit the system in case of emergency or the system is rigged.
      * @param _destination The address to receive the funds.
      * @dev This function tries to read `IStakeManager.emergencyModeEnabeled()` to check if an
@@ -328,18 +343,23 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         return stakeManagerImplementationAddress == stakeManager.implementation();
     }
 
+    /*//////////////////////////////////////////////////////////////////////////
+                           VIEW FUNCTIONS
+    //////////////////////////////////////////////////////////////////////////*/
+
     /**
-     * @notice Migrate all funds to a new vault.
-     * @dev This function is only callable by the owner.
-     * @dev This function is only callable if the current stake manager is trusted.
-     * @dev Reverts when the stake manager reverts or the funds can't be transferred.
-     * @param migrateTo The address of the new vault.
+     * @notice Returns the address of the current owner.
+     * @return The address of the owner.
      */
-    function migrateToVault(address migrateTo) external onlyOwner onlyTrustedStakeManager {
-        stakeManager.migrateToVault(migrateTo);
-        bool success = STAKING_TOKEN.transfer(migrateTo, STAKING_TOKEN.balanceOf(address(this)));
-        if (!success) {
-            revert StakeVault__MigrationFailed();
-        }
+    function owner() public view override(OwnableUpgradeable, IStakeVault) returns (address) {
+        return super.owner();
+    }
+
+    /**
+     * @notice Returns the amount of tokens staked by the vault.
+     * @return The amount of tokens staked.
+     */
+    function amountStaked() public view returns (uint256) {
+        return stakeManager.getStakedBalance(address(this));
     }
 }
