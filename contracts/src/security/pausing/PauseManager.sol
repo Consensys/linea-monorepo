@@ -21,8 +21,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   /// @dev However the SECURITY_COUNCIL_ROLE will enable bypassing pause expiration and cooldown limitations.
   bytes32 public constant SECURITY_COUNCIL_ROLE = keccak256("SECURITY_COUNCIL_ROLE");
 
-  /// @notice Duration of pauses, after which pauses will expire.
-  /// @dev Pauses enacted by the SECURITY_COUNCIL_ROLE do not have a limited duration.
+  /// @notice Duration of pauses, after which pauses will expire (except by the SECURITY_COUNCIL_ROLE).
   uint256 public constant PAUSE_DURATION = 72 hours;
 
   /// @notice Duration of cooldown period after a pause expires, during which no pauses (except by the SECURITY_COUNCIL_ROLE role) can be enacted.
