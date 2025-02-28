@@ -16,9 +16,10 @@
 package maru.e2e
 
 import java.math.BigInteger
+import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility.await
+import org.awaitility.kotlin.await
 import org.web3j.crypto.Credentials
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.methods.response.EthSendTransaction
@@ -39,7 +40,7 @@ object TestEnvironment {
       "gethSnapServer" to gethSnapServerL2Client,
       "besuFollower" to besuFollowerL2Client,
     )
-  val transactionManager =
+  private val transactionManager =
     let {
       val credentials =
         Credentials.create("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae")
@@ -54,17 +55,19 @@ object TestEnvironment {
   }
 
   fun EthSendTransaction.waitForInclusion() {
-    await().untilAsserted {
-      val lastTransaction =
-        sequencerL2Client
-          .ethGetTransactionByHash(transactionHash)
-          .send()
-          .transaction
-          .get()
-      assertThat(lastTransaction.blockNumberRaw)
-        .withFailMessage("Transaction $transactionHash wasn't included!")
-        .isNotNull()
-    }
+    await
+      .timeout(30, TimeUnit.SECONDS)
+      .untilAsserted {
+        val lastTransaction =
+          sequencerL2Client
+            .ethGetTransactionByHash(transactionHash)
+            .send()
+            .transaction
+            .get()
+        assertThat(lastTransaction.blockNumberRaw)
+          .withFailMessage("Transaction $transactionHash wasn't included!")
+          .isNotNull()
+      }
   }
 
   private fun buildL2Client(rpcUrl: String): Web3j = buildWeb3Client(rpcUrl)

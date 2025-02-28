@@ -18,9 +18,9 @@ package maru.testutils
 import java.io.File
 import maru.app.MaruApp
 import maru.app.MaruAppCli.Companion.loadConfig
-import maru.app.config.JsonFriendlyForksSchedule
-import maru.app.config.MaruConfigDtoToml
-import maru.app.config.Utils
+import maru.config.MaruConfigDtoToml
+import maru.config.Utils
+import maru.consensus.config.JsonFriendlyForksSchedule
 
 object MaruFactory {
   private fun buildMaruConfigString(

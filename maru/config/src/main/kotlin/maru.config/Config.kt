@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app.config
+package maru.config
 
 import java.net.URL
 import kotlin.time.Duration

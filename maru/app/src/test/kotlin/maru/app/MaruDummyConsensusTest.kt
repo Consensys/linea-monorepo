@@ -19,14 +19,16 @@ import java.math.BigInteger
 import maru.testutils.MaruFactory
 import maru.testutils.TransactionsHelper
 import maru.testutils.besu.BesuFactory
-import maru.testutils.besu.BesuFactory.copyTestBesu
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
+import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNodeRunner
+import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
+import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -34,7 +36,13 @@ import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
 
 class MaruDummyConsensusTest {
-  private var cluster = Cluster(NetConditions(NetTransactions()))
+  private val besuNodeRunner: BesuNodeRunner = ThreadBesuNodeRunner()
+  private var cluster =
+    Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      besuNodeRunner,
+    )
   private lateinit var besuNode: BesuNode
   private lateinit var maruNode: MaruApp
   private lateinit var transactionsHelper: TransactionsHelper
@@ -44,7 +52,6 @@ class MaruDummyConsensusTest {
   fun setUp() {
     transactionsHelper = TransactionsHelper()
     besuNode = BesuFactory.buildTestBesu()
-    System.setProperty("acctests.runBesuAsProcess", "true")
     cluster = Cluster(NetConditions(NetTransactions()))
 
     cluster.start(besuNode)
@@ -89,9 +96,8 @@ class MaruDummyConsensusTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
     cluster.stop()
-
-    val besuNode = copyTestBesu(besuNode)
     cluster.start(besuNode)
+
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }

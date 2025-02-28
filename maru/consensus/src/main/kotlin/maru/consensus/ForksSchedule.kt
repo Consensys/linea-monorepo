@@ -18,13 +18,11 @@ package maru.consensus
 import java.util.NavigableSet
 import java.util.TreeSet
 
-interface ConsensusConfiguration {
-  val feeRecipient: ByteArray
-}
+interface ConsensusConfig
 
 data class ForkSpec(
   val blockNumber: ULong,
-  val configuration: ConsensusConfiguration,
+  val configuration: ConsensusConfig,
 )
 
 class ForksSchedule(
@@ -40,7 +38,7 @@ class ForksSchedule(
       newForks
     }
 
-  fun getForkByNumber(blockNumber: ULong): ConsensusConfiguration {
+  fun getForkByNumber(blockNumber: ULong): ConsensusConfig {
     for (f in forks) {
       if (blockNumber >= f.blockNumber) {
         return f.configuration

@@ -25,6 +25,7 @@ import maru.core.BeaconState
 import maru.core.ExecutionPayload
 import maru.core.Seal
 import maru.core.Validator
+import maru.executionlayer.manager.BlockMetadata
 
 object DataGenerators {
   fun randomBeaconState(number: ULong): BeaconState {
@@ -80,5 +81,12 @@ object DataGenerators {
       baseFeePerGas = BigInteger.valueOf(Random.nextLong(0, Long.MAX_VALUE)),
       blockHash = Random.nextBytes(32),
       transactions = emptyList(),
+    )
+
+  fun randomBlockMetadata(number: ULong): BlockMetadata =
+    BlockMetadata(
+      number,
+      blockHash = Random.nextBytes(32),
+      unixTimestamp = Random.nextLong(0, Long.MAX_VALUE),
     )
 }

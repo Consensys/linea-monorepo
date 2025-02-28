@@ -16,7 +16,6 @@
 package maru.testutils
 
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
-import org.hyperledger.besu.tests.acceptance.dsl.account.AccountExt
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.eth.EthConditions
@@ -30,7 +29,7 @@ class TransactionsHelper {
   private val accountTransactions = AccountTransactions(accounts)
   val ethConditions = EthConditions(ethTransactions)
   private val whaleAccount =
-    AccountExt.createByPrivateKey(
+    Account.fromPrivateKey(
       ethTransactions,
       "Whale",
       "0x3a4ff6d22d7502ef2452368165422861c01a0f72f851793b372b87888dc3c453",

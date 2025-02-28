@@ -16,7 +16,11 @@
 package maru.testutils.besu
 
 import java.util.Optional
-import org.hyperledger.besu.ethereum.api.jsonrpc.JsonRpcConfiguration
+import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueSegmentIdentifier
+import org.hyperledger.besu.plugin.services.storage.KeyValueStorageFactory
+import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBKeyValueStorageFactory
+import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBMetricsFactory
+import org.hyperledger.besu.plugin.services.storage.rocksdb.configuration.RocksDBCLIOptions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeFactory
@@ -25,38 +29,28 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 object BesuFactory {
   private val cancunGenesis = "/e2e/config/el_cancun.json"
 
-  fun buildTestBesu(): BesuNode = BesuNodeFactory().createExecutionEngineGenesisNode("test node", cancunGenesis)
-
-  fun copyTestBesu(besuNode: BesuNode): BesuNode {
-    val genesisFile = GenesisConfigurationFactory.readGenesisFile(cancunGenesis)
-
-    val jsonRpcConfiguration = JsonRpcConfiguration.createDefault()
-    jsonRpcConfiguration.isEnabled = true
-    jsonRpcConfiguration.port = besuNode.configuration.jsonRpcPort.get()
-    jsonRpcConfiguration.setHostsAllowlist(listOf("*"))
-
-    val engineApiConfiguration = JsonRpcConfiguration.createEngineDefault()
-    engineApiConfiguration.isEnabled = true
-    engineApiConfiguration.port = besuNode.configuration.engineJsonRpcPort.get()
-    engineApiConfiguration.isAuthenticationEnabled = false
-    engineApiConfiguration.setHostsAllowlist(listOf("*"))
-
-    val nodeConfiguration =
-      BesuNodeConfigurationBuilder()
-        .name("test node")
+  fun buildTestBesu(): BesuNode =
+    BesuNodeFactory().createMinerNode(
+      "miner",
+    ) { builder: BesuNodeConfigurationBuilder ->
+      val genesisFile = GenesisConfigurationFactory.readGenesisFile(cancunGenesis)
+      val persistentStorageFactory: KeyValueStorageFactory =
+        RocksDBKeyValueStorageFactory(
+          RocksDBCLIOptions.create()::toDomainObject,
+          KeyValueSegmentIdentifier.entries,
+          RocksDBMetricsFactory.PUBLIC_ROCKS_DB_METRICS,
+        )
+      builder
+        .storageImplementation(persistentStorageFactory)
         .genesisConfigProvider {
           Optional.of(
             genesisFile,
           )
-        }.jsonRpcConfiguration(jsonRpcConfiguration)
-        .devMode(false)
+        }.devMode(false)
         .bootnodeEligible(false)
-        .miningEnabled()
         .jsonRpcTxPool()
-        .engineJsonRpcConfiguration(engineApiConfiguration)
+        .engineRpcEnabled(true)
         .jsonRpcDebug()
-        .dataPath(besuNode.homeDirectory())
-        .build()
-    return BesuNodeFactory().create(nodeConfiguration)
-  }
+      builder
+    }
 }

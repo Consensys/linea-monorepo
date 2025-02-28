@@ -1,0 +1,13 @@
+{
+  "config": {
+    "0": {
+      "type": "delegated",
+      "pollPeriodMillis": 1000
+    },
+    "6": {
+      "type": "dummy",
+      "blockTimeMillis": 6000,
+      "feeRecipient": "0x0000000000000000000000000000000000000000"
+    }
+  }
+}

@@ -90,7 +90,7 @@ dependencyManagement {
 
     dependency 'org.assertj:assertj-core:3.26.3'
 
-    dependency 'org.awaitility:awaitility:4.2.2'
+    dependency 'org.awaitility:awaitility-kotlin:4.2.2'
 
     dependencySet(group: 'org.bouncycastle', version: '1.77') {
       entry 'bcpkix-jdk18on'
@@ -142,9 +142,13 @@ dependencyManagement {
       entry 'log4j-slf4j2-impl'
     }
 
+    def besuVersion = "25.2.0"
+
     imports {
-      mavenBom "org.hyperledger.besu:bom:25.1.0"
+      mavenBom "org.hyperledger.besu:bom:$besuVersion"
     }
+
+    dependency "org.hyperledger.besu.internal:plugins-rocksdb:$besuVersion"
 
     imports {
       mavenBom "org.slf4j:slf4j-bom:2.0.16"
