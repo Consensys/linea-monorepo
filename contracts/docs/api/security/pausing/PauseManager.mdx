@@ -44,15 +44,15 @@ Duration of cooldown after a pause expires, during which no pauses (except by th
 
 _This prevents indefinite pause chaining by a non-SECURITY_COUNCIL_ROLE._
 
-### pauseExpiry
+### pauseExpiryTimestamp
 
 ```solidity
-uint256 pauseExpiry
+uint256 pauseExpiryTimestamp
 ```
 
 Unix timestamp of pause expiry.
 
-_pauseExpiry applies to all pause types. Pausing with one pause type blocks other pause types from being enacted (unless the SECURITY_COUNCIL_ROLE is used).
+_pauseExpiryTimestamp applies to all pause types. Pausing with one pause type blocks other pause types from being enacted (unless the SECURITY_COUNCIL_ROLE is used).
 This prevents indefinite pause chaining by a non-SECURITY_COUNCIL_ROLE._
 
 ### onlyUsedPausedTypes
