@@ -41,7 +41,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
 
   /// @notice Unix timestamp of pause expiry.
   /// @dev pauseExpiry applies to all pause types. Pausing with one pause type blocks other pause types from being enacted (unless the SECURITY_COUNCIL_ROLE is used).
-  /// @dev This prevents indefinite pause chaining by non security council roles.
+  /// @dev This prevents indefinite pause chaining by a non-SECURITY_COUNCIL_ROLE.
   uint256 public pauseExpiry;
 
   /// @dev Total contract storage is 12 slots with the gap below.
