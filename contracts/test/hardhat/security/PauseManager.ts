@@ -525,7 +525,9 @@ describe("PauseManager", () => {
 
     it("should set pauseExpiryTimestamp to an unreachable timestamp if pause enacted by SECURITY_COUNCIL_ROLE", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
-      expect(await pauseManager.pauseExpiryTimestamp()).to.equal(ethers.MaxUint256);
+      expect(await pauseManager.pauseExpiryTimestamp()).to.equal(
+        ethers.MaxUint256 - (await pauseManager.COOLDOWN_DURATION()),
+      );
     });
 
     it("Should be unable to unPauseDueToExpiry after pause with SECURITY_COUNCIL_ROLE", async () => {
@@ -555,7 +557,9 @@ describe("PauseManager", () => {
     it("should not reset the pause cooldown when unpause contract with non-SECURITY_COUNCIL_ROLE", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
       await unPauseByType(GENERAL_PAUSE_TYPE, pauseManagerAccount);
-      expect(await pauseManager.pauseExpiryTimestamp()).to.equal(ethers.MaxUint256);
+      expect(await pauseManager.pauseExpiryTimestamp()).to.equal(
+        ethers.MaxUint256 - (await pauseManager.COOLDOWN_DURATION()),
+      );
     });
 
     it("after unpause contract with SECURITY_COUNCIL_ROLE, any pause should be possible", async () => {
