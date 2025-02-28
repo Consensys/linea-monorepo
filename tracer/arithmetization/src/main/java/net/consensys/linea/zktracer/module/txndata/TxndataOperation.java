@@ -15,26 +15,26 @@
 
 package net.consensys.linea.zktracer.module.txndata;
 
+import static net.consensys.linea.zktracer.Trace.EIP2681_MAX_NONCE;
+import static net.consensys.linea.zktracer.Trace.MAX_REFUND_QUOTIENT;
+import static net.consensys.linea.zktracer.Trace.RLP_RCPT_SUBPHASE_ID_CUMUL_GAS;
+import static net.consensys.linea.zktracer.Trace.RLP_RCPT_SUBPHASE_ID_STATUS_CODE;
+import static net.consensys.linea.zktracer.Trace.RLP_RCPT_SUBPHASE_ID_TYPE;
+import static net.consensys.linea.zktracer.Trace.Txndata.COMMON_RLP_TXN_PHASE_NUMBER_0;
+import static net.consensys.linea.zktracer.Trace.Txndata.COMMON_RLP_TXN_PHASE_NUMBER_1;
+import static net.consensys.linea.zktracer.Trace.Txndata.COMMON_RLP_TXN_PHASE_NUMBER_2;
+import static net.consensys.linea.zktracer.Trace.Txndata.COMMON_RLP_TXN_PHASE_NUMBER_3;
+import static net.consensys.linea.zktracer.Trace.Txndata.COMMON_RLP_TXN_PHASE_NUMBER_4;
+import static net.consensys.linea.zktracer.Trace.Txndata.COMMON_RLP_TXN_PHASE_NUMBER_5;
+import static net.consensys.linea.zktracer.Trace.Txndata.NB_ROWS_TYPE_0;
+import static net.consensys.linea.zktracer.Trace.Txndata.NB_ROWS_TYPE_1;
+import static net.consensys.linea.zktracer.Trace.Txndata.NB_ROWS_TYPE_2;
+import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_0_RLP_TXN_PHASE_NUMBER_6;
+import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_1_RLP_TXN_PHASE_NUMBER_6;
+import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_1_RLP_TXN_PHASE_NUMBER_7;
+import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_2_RLP_TXN_PHASE_NUMBER_6;
+import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_2_RLP_TXN_PHASE_NUMBER_7;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
-import static net.consensys.linea.zktracer.module.txndata.Trace.COMMON_RLP_TXN_PHASE_NUMBER_0;
-import static net.consensys.linea.zktracer.module.txndata.Trace.COMMON_RLP_TXN_PHASE_NUMBER_1;
-import static net.consensys.linea.zktracer.module.txndata.Trace.COMMON_RLP_TXN_PHASE_NUMBER_2;
-import static net.consensys.linea.zktracer.module.txndata.Trace.COMMON_RLP_TXN_PHASE_NUMBER_3;
-import static net.consensys.linea.zktracer.module.txndata.Trace.COMMON_RLP_TXN_PHASE_NUMBER_4;
-import static net.consensys.linea.zktracer.module.txndata.Trace.COMMON_RLP_TXN_PHASE_NUMBER_5;
-import static net.consensys.linea.zktracer.module.txndata.Trace.EIP2681_MAX_NONCE;
-import static net.consensys.linea.zktracer.module.txndata.Trace.MAX_REFUND_QUOTIENT;
-import static net.consensys.linea.zktracer.module.txndata.Trace.NB_ROWS_TYPE_0;
-import static net.consensys.linea.zktracer.module.txndata.Trace.NB_ROWS_TYPE_1;
-import static net.consensys.linea.zktracer.module.txndata.Trace.NB_ROWS_TYPE_2;
-import static net.consensys.linea.zktracer.module.txndata.Trace.RLP_RCPT_SUBPHASE_ID_CUMUL_GAS;
-import static net.consensys.linea.zktracer.module.txndata.Trace.RLP_RCPT_SUBPHASE_ID_STATUS_CODE;
-import static net.consensys.linea.zktracer.module.txndata.Trace.RLP_RCPT_SUBPHASE_ID_TYPE;
-import static net.consensys.linea.zktracer.module.txndata.Trace.TYPE_0_RLP_TXN_PHASE_NUMBER_6;
-import static net.consensys.linea.zktracer.module.txndata.Trace.TYPE_1_RLP_TXN_PHASE_NUMBER_6;
-import static net.consensys.linea.zktracer.module.txndata.Trace.TYPE_1_RLP_TXN_PHASE_NUMBER_7;
-import static net.consensys.linea.zktracer.module.txndata.Trace.TYPE_2_RLP_TXN_PHASE_NUMBER_6;
-import static net.consensys.linea.zktracer.module.txndata.Trace.TYPE_2_RLP_TXN_PHASE_NUMBER_7;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -47,6 +47,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import lombok.Getter;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -64,7 +65,7 @@ public class TxndataOperation extends ModuleOperation {
   @Getter public final TransactionProcessingMetadata tx;
   private final Address coinbaseAddress;
 
-  private static final Bytes EIP_2681_MAX_NONCE = Bytes.minimalBytes(EIP2681_MAX_NONCE);
+  private static final Bytes EIP_2681_MAX_NONCE = bigIntegerToBytes(EIP2681_MAX_NONCE);
   private static final int N_ROWS_TX_MAX =
       Math.max(Math.max(NB_ROWS_TYPE_0, NB_ROWS_TYPE_1), NB_ROWS_TYPE_2);
   private static final int NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST = 7;
@@ -319,7 +320,7 @@ public class TxndataOperation extends ModuleOperation {
     };
   }
 
-  public void traceTx(Trace trace, BlockSnapshot block, int absTxNumMax) {
+  public void traceTx(Trace.Txndata trace, BlockSnapshot block, int absTxNumMax) {
 
     this.setRlptxnValues();
     this.setRlptxrcptValues();

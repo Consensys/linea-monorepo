@@ -15,11 +15,12 @@
 
 package net.consensys.linea.zktracer.module.add;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -75,7 +76,7 @@ public final class AddOperation extends ModuleOperation {
             - 1);
   }
 
-  void trace(int stamp, Trace trace) {
+  void trace(int stamp, Trace.Add trace) {
     final Bytes16 arg1Hi = Bytes16.wrap(arg1.slice(0, 16));
     final Bytes16 arg1Lo = Bytes16.wrap(arg1.slice(16));
     final Bytes16 arg2Hi = Bytes16.wrap(arg2.slice(0, 16));

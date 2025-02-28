@@ -21,7 +21,7 @@ import java.util.List;
 import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 
 /**
@@ -100,7 +100,7 @@ public class TraceSections {
    *
    * @param hubTrace where to materialize the trace
    */
-  public void commit(Trace hubTrace) {
+  public void commit(Trace.Hub hubTrace) {
     for (TraceSection opSection : this.trace) {
       opSection.seal();
       opSection.trace(hubTrace);

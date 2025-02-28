@@ -18,7 +18,7 @@ package net.consensys.linea.zktracer.module.limits;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 
 @RequiredArgsConstructor
@@ -42,7 +42,7 @@ public class L2L1Logs implements Module {
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
+  public List<Trace.ColumnHeader> columnHeaders() {
     return null;
   }
 }

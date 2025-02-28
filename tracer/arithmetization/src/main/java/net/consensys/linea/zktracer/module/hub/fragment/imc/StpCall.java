@@ -16,12 +16,12 @@
 package net.consensys.linea.zktracer.module.hub.fragment.imc;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_CALL_STIPEND;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_CALL_VALUE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_COLD_ACCOUNT_ACCESS;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_CREATE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_NEW_ACCOUNT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_WARM_ACCESS;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_CALL_STIPEND;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_CALL_VALUE;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_COLD_ACCOUNT_ACCESS;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_CREATE;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_NEW_ACCOUNT;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_WARM_ACCESS;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 import static net.consensys.linea.zktracer.types.EWord.ZERO;
 
@@ -31,8 +31,8 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
@@ -151,7 +151,7 @@ public class StpCall implements TraceSubFragment {
   }
 
   @Override
-  public Trace trace(Trace trace) {
+  public Trace.Hub trace(Trace.Hub trace) {
     return trace
         .pMiscStpFlag(true)
         .pMiscStpInstruction(opCode.unsignedByteValue())

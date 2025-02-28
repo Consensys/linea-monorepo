@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.module.shf;
 
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGEMO;
 import static net.consensys.linea.zktracer.module.Util.byteBits;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,6 +26,7 @@ import java.util.List;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.Bytes16;
@@ -136,7 +137,7 @@ final class ShfOperation extends ModuleOperation {
     return this.isOneLineInstruction ? 1 : LLARGE;
   }
 
-  public void trace(Trace trace, int stamp) {
+  public void trace(Trace.Shf trace, int stamp) {
     this.compute();
 
     for (int i = 0; i < this.maxCt(); i++) {

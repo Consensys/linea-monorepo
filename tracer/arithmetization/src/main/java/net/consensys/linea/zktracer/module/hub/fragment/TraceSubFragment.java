@@ -15,15 +15,15 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.state.State;
 
 public interface TraceSubFragment {
-  default Trace trace(Trace trace) {
+  default Trace.Hub trace(Trace.Hub trace) {
     return trace;
   }
 
-  default Trace trace(Trace trace, State hubState) {
+  default Trace.Hub trace(Trace.Hub trace, State hubState) {
     return trace(trace);
   }
 }

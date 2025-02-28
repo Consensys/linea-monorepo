@@ -19,8 +19,6 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup-environment
-        with:
-          rust-corset: true
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -82,8 +80,6 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup-environment
-        with:
-          rust-corset: true
 
       - name: Publish Java artifacts
         run: ./gradlew publish

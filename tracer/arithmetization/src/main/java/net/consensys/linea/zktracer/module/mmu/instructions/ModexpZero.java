@@ -15,14 +15,14 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_VANISHES;
-import static net.consensys.linea.zktracer.module.mmu.Trace.NB_MICRO_ROWS_TOT_MODEXP_ZERO;
+import static net.consensys.linea.zktracer.Trace.MMIO_INST_LIMB_VANISHES;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_MICRO_ROWS_TOT_MODEXP_ZERO;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_PP_ROWS_MODEXP_ZERO;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.module.mmu.Trace;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
 import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
@@ -35,8 +35,8 @@ public class ModexpZero implements MmuInstruction {
   private final List<MmuWcpCallRecord> wcpCallRecords;
 
   public ModexpZero() {
-    this.eucCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_MODEXP_ZERO);
-    this.wcpCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_MODEXP_ZERO);
+    this.eucCallRecords = new ArrayList<>(NB_PP_ROWS_MODEXP_ZERO);
+    this.wcpCallRecords = new ArrayList<>(NB_PP_ROWS_MODEXP_ZERO);
   }
 
   @Override

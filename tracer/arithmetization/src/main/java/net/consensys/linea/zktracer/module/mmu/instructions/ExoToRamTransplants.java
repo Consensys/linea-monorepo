@@ -15,9 +15,9 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TRANSPLANT;
-import static net.consensys.linea.zktracer.module.mmu.Trace.NB_PP_ROWS_EXO_TO_RAM_TRANSPLANTS;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.MMIO_INST_LIMB_TO_RAM_TRANSPLANT;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_PP_ROWS_EXO_TO_RAM_TRANSPLANTS;
 
 import java.util.ArrayList;
 import java.util.List;

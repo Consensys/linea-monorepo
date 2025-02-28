@@ -15,10 +15,9 @@
 
 package net.consensys.linea.zktracer.container.module;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Address;
@@ -67,9 +66,9 @@ public interface Module {
 
   int lineCount();
 
-  List<ColumnHeader> columnsHeaders();
+  List<Trace.ColumnHeader> columnHeaders();
 
-  default void commit(List<MappedByteBuffer> buffers) {
+  default void commit(Trace trace) {
     throw new UnsupportedOperationException();
   }
 }

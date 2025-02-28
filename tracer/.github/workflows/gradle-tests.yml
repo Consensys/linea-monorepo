@@ -32,8 +32,6 @@ jobs:
 
       - name: Setup Environment
         uses: ./.github/actions/setup-environment
-        with:
-          rust-corset: true
 
       - name: Set up GCC
         uses: egor-tensin/setup-gcc@v1
@@ -120,7 +118,7 @@ jobs:
           go-corset: true
 
       - name: Run replay tests
-        run: GOMEMLIMIT=26GiB ./gradlew :arithmetization:fastReplayTests
+        run: GOMEMLIMIT=26GiB ./gradlew -Dblockchain=OldLinea :arithmetization:fastReplayTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           REPLAY_TESTS_PARALLELISM: 4

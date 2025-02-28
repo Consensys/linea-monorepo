@@ -16,7 +16,7 @@ package net.consensys.linea.zktracer.module.hub.fragment.scenario;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 
 public class CreateScenarioFragment implements TraceFragment {
@@ -69,7 +69,7 @@ public class CreateScenarioFragment implements TraceFragment {
   }
 
   @Override
-  public Trace trace(Trace trace) {
+  public Trace.Hub trace(Trace.Hub trace) {
     return trace
         .peekAtScenario(true)
         // CREATE scenarios

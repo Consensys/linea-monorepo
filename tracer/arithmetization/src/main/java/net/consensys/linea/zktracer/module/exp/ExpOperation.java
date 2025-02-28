@@ -18,16 +18,17 @@ package net.consensys.linea.zktracer.module.exp;
 import static com.google.common.base.Preconditions.*;
 import static com.google.common.math.BigIntegerMath.log2;
 import static java.lang.Math.min;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_ISZERO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_LT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXP_INST_EXPLOG;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXP_INST_MODEXPLOG;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEPO;
-import static net.consensys.linea.zktracer.module.exp.Trace.CT_MAX_CMPTN_EXP_LOG;
-import static net.consensys.linea.zktracer.module.exp.Trace.CT_MAX_CMPTN_MODEXP_LOG;
-import static net.consensys.linea.zktracer.module.exp.Trace.CT_MAX_PRPRC_EXP_LOG;
-import static net.consensys.linea.zktracer.module.exp.Trace.CT_MAX_PRPRC_MODEXP_LOG;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_ISZERO;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_LT;
+import static net.consensys.linea.zktracer.Trace.EXP_INST_EXPLOG;
+import static net.consensys.linea.zktracer.Trace.EXP_INST_MODEXPLOG;
+import static net.consensys.linea.zktracer.Trace.Exp.CT_MAX_CMPTN_EXP_LOG;
+import static net.consensys.linea.zktracer.Trace.Exp.CT_MAX_CMPTN_MODEXP_LOG;
+import static net.consensys.linea.zktracer.Trace.Exp.CT_MAX_PRPRC_EXP_LOG;
+import static net.consensys.linea.zktracer.Trace.Exp.CT_MAX_PRPRC_MODEXP_LOG;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_EXP_BYTE;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGEPO;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 
@@ -37,8 +38,8 @@ import java.math.RoundingMode;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExplogExpCall;
@@ -90,7 +91,7 @@ public class ExpOperation extends ModuleOperation {
 
       // Extract inputs
       EWord exponent = EWord.of(hub.messageFrame().getStackItem(1));
-      long dynCost = (long) GlobalConstants.GAS_CONST_G_EXP_BYTE * exponent.byteLength();
+      long dynCost = (long) GAS_CONST_G_EXP_BYTE * exponent.byteLength();
 
       // Fill expCall
       explogExpCall.exponent(exponent);
@@ -246,7 +247,7 @@ public class ExpOperation extends ModuleOperation {
     pPreprocessingWcpRes[3] = trimAccIsZero;
   }
 
-  final void traceComputation(int stamp, Trace trace) {
+  final void traceComputation(int stamp, Trace.Exp trace) {
     boolean tanzb;
     short pComputationTanzbAcc = 0; // Paired with Tanzb
     boolean manzb;
@@ -293,7 +294,7 @@ public class ExpOperation extends ModuleOperation {
     }
   }
 
-  final void traceMacro(int stamp, Trace trace) {
+  final void traceMacro(int stamp, Trace.Exp trace) {
     // We assume CT_MAX_MACRO_EXP_LOG = CT_MAX_MACRO_MODEXP_LOG = 0;
     trace
         .macro(true)
@@ -311,7 +312,7 @@ public class ExpOperation extends ModuleOperation {
         .fillAndValidateRow();
   }
 
-  final void tracePreprocessing(int stamp, Trace trace) {
+  final void tracePreprocessing(int stamp, Trace.Exp trace) {
     short maxCt = (short) (isExpLog() ? CT_MAX_PRPRC_EXP_LOG : CT_MAX_PRPRC_MODEXP_LOG);
     for (short i = 0; i < maxCt + 1; i++) {
       trace

@@ -15,10 +15,10 @@
 package net.consensys.linea.zktracer.instructionprocessing.createTests.failure;
 
 import static net.consensys.linea.testing.ToyTransaction.ToyTransactionBuilder;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.instructionprocessing.createTests.trivial.RootLevel.salt01;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.keyPair;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.userAccount;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 

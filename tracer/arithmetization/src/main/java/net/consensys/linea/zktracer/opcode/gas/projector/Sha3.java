@@ -18,7 +18,7 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
+import net.consensys.linea.zktracer.Trace;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 public final class Sha3 extends GasProjection {
@@ -36,7 +36,7 @@ public final class Sha3 extends GasProjection {
 
   @Override
   public long staticGas() {
-    return GlobalConstants.GAS_CONST_G_KECCAK_256;
+    return Trace.GAS_CONST_G_KECCAK_256;
   }
 
   @Override
@@ -51,7 +51,7 @@ public final class Sha3 extends GasProjection {
 
   @Override
   public long linearPerWord() {
-    return linearCost(GlobalConstants.GAS_CONST_G_KECCAK_256_WORD, this.length, 32);
+    return linearCost(Trace.GAS_CONST_G_KECCAK_256_WORD, this.length, 32);
   }
 
   @Override

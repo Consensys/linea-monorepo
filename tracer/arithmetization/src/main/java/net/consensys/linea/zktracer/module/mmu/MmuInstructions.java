@@ -15,18 +15,18 @@
 
 package net.consensys.linea.zktracer.module.mmu;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_ANY_TO_RAM_WITH_PADDING;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_BLAKE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_EXO_TO_RAM_TRANSPLANTS;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_INVALID_CODE_PREFIX;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MLOAD;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MODEXP_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MODEXP_ZERO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MSTORE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_MSTORE8;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_EXO_WITH_PADDING;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RAM_TO_RAM_SANS_PADDING;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMU_INST_RIGHT_PADDED_WORD_EXTRACTION;
+import static net.consensys.linea.zktracer.Trace.MMU_INST_ANY_TO_RAM_WITH_PADDING;
+import static net.consensys.linea.zktracer.Trace.MMU_INST_BLAKE;
+import static net.consensys.linea.zktracer.Trace.MMU_INST_EXO_TO_RAM_TRANSPLANTS;
+import static net.consensys.linea.zktracer.Trace.MMU_INST_INVALID_CODE_PREFIX;
+import static net.consensys.linea.zktracer.Trace.MMU_INST_MLOAD;
+import static net.consensys.linea.zktracer.Trace.MMU_INST_MODEXP_DATA;
+import static net.consensys.linea.zktracer.Trace.MMU_INST_MODEXP_ZERO;
+import static net.consensys.linea.zktracer.Trace.MMU_INST_MSTORE;
+import static net.consensys.linea.zktracer.Trace.MMU_INST_MSTORE8;
+import static net.consensys.linea.zktracer.Trace.MMU_INST_RAM_TO_EXO_WITH_PADDING;
+import static net.consensys.linea.zktracer.Trace.MMU_INST_RAM_TO_RAM_SANS_PADDING;
+import static net.consensys.linea.zktracer.Trace.MMU_INST_RIGHT_PADDED_WORD_EXTRACTION;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;

@@ -31,7 +31,6 @@ apply from: rootProject.file("gradle/tests.gradle")
 apply from: rootProject.file("gradle/build-aliases.gradle")
 apply from: rootProject.file("gradle/check-licenses.gradle")
 apply from: rootProject.file("gradle/lint.gradle")
-apply from: rootProject.file("gradle/trace-files.gradle")
 
 dependencies {
   implementation "${besuArtifactGroup}:besu-datatypes"

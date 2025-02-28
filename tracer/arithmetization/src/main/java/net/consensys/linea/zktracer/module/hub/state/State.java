@@ -22,10 +22,10 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.container.stacked.StackedList;
 import net.consensys.linea.zktracer.module.hub.HubProcessingPhase;
-import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
 import net.consensys.linea.zktracer.module.hub.state.State.HubTransactionState.Stamps;
 import net.consensys.linea.zktracer.types.EWord;
@@ -122,7 +122,7 @@ public class State {
    * @param hubTrace the trace builder to write to
    * @return the trace builder
    */
-  public Trace commit(Trace hubTrace) {
+  public Trace.Hub commit(Trace.Hub hubTrace) {
     for (HubTransactionState state : state.getAll()) {
       state.traceSections().commit(hubTrace);
     }

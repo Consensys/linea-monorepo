@@ -15,13 +15,14 @@
 
 package net.consensys.linea.zktracer.module.blockhash;
 
-import static net.consensys.linea.zktracer.module.blockhash.Trace.BLOCKHASH_DEPTH;
-import static net.consensys.linea.zktracer.module.blockhash.Trace.nROWS_PRPRC;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
+import static net.consensys.linea.zktracer.Trace.*;
+import static net.consensys.linea.zktracer.Trace.Blockhash.BLOCKHASH_DEPTH;
+import static net.consensys.linea.zktracer.Trace.Blockhash.nROWS_PRPRC;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
@@ -88,7 +89,7 @@ public class BlockhashOperation extends ModuleOperation {
     return BLOCKHASH_DEPTH;
   }
 
-  public void traceMacro(Trace trace, final Bytes32 blockhashVal) {
+  public void traceMacro(Trace.Blockhash trace, final Bytes32 blockhashVal) {
     trace
         .iomf(true)
         .macro(true)
@@ -105,7 +106,7 @@ public class BlockhashOperation extends ModuleOperation {
         .fillAndValidateRow();
   }
 
-  public void tracePreprocessing(Trace trace) {
+  public void tracePreprocessing(Trace.Blockhash trace) {
     for (int ct = 0; ct < nROWS_PRPRC; ct++) {
       trace
           .iomf(true)

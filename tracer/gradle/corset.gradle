@@ -16,16 +16,24 @@ tasks.register('corsetExists') {
     doLast {
         def result = exec{
             ignoreExitValue = true
-            commandLine "corset", "-V"
+            commandLine "go-corset", "--version"
         }
         if (result.getExitValue() != 0){
-            throw new GradleException('Corset not found!')
+            throw new GradleException('go-corset not found!')
         }
     }
 }
 
 // Allowing overriding the default zkevm.bin file.
 def ZKEVM_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm.bin"
+// Allowing overriding the default zkevm.bin file.
+def ZKEVM_OLD_REPLAY_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm_for_old_replay_tests.bin"
+// Allowing overriding the default zkevm.bin file.
+def ZKEVM_REFTESTS_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm_for_reference_tests.bin"
+// Specify where the trace file should be generated.
+def TRACE_FILE = "arithmetization/src/main/java/net/consensys/linea/zktracer/Trace.java"
+// Specify package to use for trace file
+def TRACE_PKG = "net.consensys.linea.zktracer"
 
 tasks.register('buildZkevmBin', Exec) {
     workingDir "${project.rootDir}/linea-constraints/"
@@ -50,9 +58,6 @@ tasks.register('buildZkevmBin', Exec) {
     }
 }
 
-// Allowing overriding the default zkevm.bin file.
-def ZKEVM_OLD_REPLAY_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm_for_old_replay_tests.bin"
-
 tasks.register('buildOldReplayTestsZkevmBin', Exec) {
     workingDir "${project.rootDir}/linea-constraints/"
     // Sanity check executing this makes sense.
@@ -60,8 +65,8 @@ tasks.register('buildOldReplayTestsZkevmBin', Exec) {
         // sanity check target chain
         def chain = System.getProperty('blockchain')
         // note: null indicates the default (which is Linea).
-        if(chain != null && chain != "Linea") {
-            println("*** incorrect target chain (expected 'Linea' was '" + chain + "')\n\n")
+        if(chain != null && chain != "OldLinea") {
+            println("*** incorrect target chain (expected 'OldLinea' was '" + chain + "')\n\n")
             assert false
         }
     }
@@ -73,9 +78,6 @@ tasks.register('buildOldReplayTestsZkevmBin', Exec) {
         return standardOutput.toString()
     }
 }
-
-// Allowing overriding the default zkevm.bin file.
-def ZKEVM_REFTESTS_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm_for_reference_tests.bin"
 
 tasks.register('buildReferenceTestsZkevmBin', Exec) {
     workingDir "${project.rootDir}/linea-constraints/"
@@ -96,4 +98,37 @@ tasks.register('buildReferenceTestsZkevmBin', Exec) {
     ext.output = {
         return standardOutput.toString()
     }
+}
+
+// Task which generates the Trace.java file using go-corset.
+tasks.register('buildTracer', Exec) {
+    group "Trace files generation"
+
+    def chain = System.getProperty('blockchain')
+    def zkevmBin = ZKEVM_BIN
+    def traceJava = getRootProject().file(TRACE_FILE)    
+    // Conditional dependsOn
+    if (chain == null) {
+        print("No chain provided, building for Linea\n")
+        dependsOn 'buildZkevmBin'
+    } else if (chain == "Linea") {
+        print("Building for Linea\n")
+        dependsOn 'buildZkevmBin'
+    } else if (chain == "Ethereum") {
+        print("Building for Ethereum\n")
+        dependsOn 'buildReferenceTestsZkevmBin'
+        zkevmBin = ZKEVM_REFTESTS_BIN
+    } else if (chain == "OldLinea") {
+        print("Building for Old Linea\n")
+        dependsOn 'buildOldReplayTestsZkevmBin'
+        zkevmBin = ZKEVM_OLD_REPLAY_BIN
+    } else {
+        // Force build failure if unknown chain.
+        println("*** unknown target chain.  Try '-Dblockchain=Linea' or '-Dblockchain=Ethereum'\n\n")
+        assert false
+    }
+    // Configure full path to zkevm.bin
+    zkevmBin = getRootProject().file('linea-constraints/' + zkevmBin)
+    // Run go-corset generation
+    commandLine 'go-corset','generate','-p',TRACE_PKG,'-o',traceJava,zkevmBin
 }

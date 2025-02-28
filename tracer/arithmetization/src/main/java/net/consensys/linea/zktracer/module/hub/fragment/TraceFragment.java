@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragment;
 
 /**
@@ -23,5 +23,5 @@ import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragment;
  * each line, or a perspective-specific fragment.
  */
 public interface TraceFragment {
-  Trace trace(Trace trace);
+  Trace.Hub trace(Trace.Hub trace);
 }

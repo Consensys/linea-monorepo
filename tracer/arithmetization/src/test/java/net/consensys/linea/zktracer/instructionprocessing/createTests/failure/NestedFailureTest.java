@@ -14,12 +14,12 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.createTests.failure;
 
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.callCaller;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.identity.Tests.fullCodeCopyOf;
 import static net.consensys.linea.zktracer.instructionprocessing.createTests.trivial.RootLevel.salt02;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.keyPair;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoOpCodeSmcs.userAccount;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import java.util.List;

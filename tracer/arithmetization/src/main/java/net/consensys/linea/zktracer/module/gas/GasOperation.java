@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.module.gas;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_LT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WCP_INST_LEQ;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_LT;
+import static net.consensys.linea.zktracer.Trace.WCP_INST_LEQ;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Utils.initArray;
 
@@ -25,6 +25,7 @@ import java.math.BigInteger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -83,7 +84,7 @@ public class GasOperation extends ModuleOperation {
     return ctMax + 1;
   }
 
-  public void trace(Trace trace) {
+  public void trace(Trace.Gas trace) {
     for (short i = 0; i < ctMax + 1; i++) {
       trace
           .inputsAndOutputsAreMeaningful(true)

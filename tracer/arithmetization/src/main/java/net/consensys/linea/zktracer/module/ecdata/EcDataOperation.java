@@ -16,37 +16,37 @@
 package net.consensys.linea.zktracer.module.ecdata;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.Trace.Ecdata.CT_MAX_LARGE_POINT;
+import static net.consensys.linea.zktracer.Trace.Ecdata.CT_MAX_SMALL_POINT;
+import static net.consensys.linea.zktracer.Trace.Ecdata.INDEX_MAX_ECADD_DATA;
+import static net.consensys.linea.zktracer.Trace.Ecdata.INDEX_MAX_ECADD_RESULT;
+import static net.consensys.linea.zktracer.Trace.Ecdata.INDEX_MAX_ECMUL_DATA;
+import static net.consensys.linea.zktracer.Trace.Ecdata.INDEX_MAX_ECMUL_RESULT;
+import static net.consensys.linea.zktracer.Trace.Ecdata.INDEX_MAX_ECPAIRING_DATA_MIN;
+import static net.consensys.linea.zktracer.Trace.Ecdata.INDEX_MAX_ECPAIRING_RESULT;
+import static net.consensys.linea.zktracer.Trace.Ecdata.INDEX_MAX_ECRECOVER_DATA;
+import static net.consensys.linea.zktracer.Trace.Ecdata.INDEX_MAX_ECRECOVER_RESULT;
+import static net.consensys.linea.zktracer.Trace.Ecdata.P_BN_HI;
+import static net.consensys.linea.zktracer.Trace.Ecdata.P_BN_LO;
+import static net.consensys.linea.zktracer.Trace.Ecdata.SECP256K1N_HI;
+import static net.consensys.linea.zktracer.Trace.Ecdata.SECP256K1N_LO;
+import static net.consensys.linea.zktracer.Trace.Ecdata.TOTAL_SIZE_ECADD_DATA;
+import static net.consensys.linea.zktracer.Trace.Ecdata.TOTAL_SIZE_ECADD_RESULT;
+import static net.consensys.linea.zktracer.Trace.Ecdata.TOTAL_SIZE_ECMUL_DATA;
+import static net.consensys.linea.zktracer.Trace.Ecdata.TOTAL_SIZE_ECMUL_RESULT;
+import static net.consensys.linea.zktracer.Trace.Ecdata.TOTAL_SIZE_ECPAIRING_DATA_MIN;
+import static net.consensys.linea.zktracer.Trace.Ecdata.TOTAL_SIZE_ECPAIRING_RESULT;
+import static net.consensys.linea.zktracer.Trace.Ecdata.TOTAL_SIZE_ECRECOVER_DATA;
+import static net.consensys.linea.zktracer.Trace.Ecdata.TOTAL_SIZE_ECRECOVER_RESULT;
+import static net.consensys.linea.zktracer.Trace.PHASE_ECADD_DATA;
+import static net.consensys.linea.zktracer.Trace.PHASE_ECADD_RESULT;
+import static net.consensys.linea.zktracer.Trace.PHASE_ECMUL_DATA;
+import static net.consensys.linea.zktracer.Trace.PHASE_ECMUL_RESULT;
+import static net.consensys.linea.zktracer.Trace.PHASE_ECPAIRING_DATA;
+import static net.consensys.linea.zktracer.Trace.PHASE_ECPAIRING_RESULT;
+import static net.consensys.linea.zktracer.Trace.PHASE_ECRECOVER_DATA;
+import static net.consensys.linea.zktracer.Trace.PHASE_ECRECOVER_RESULT;
 import static net.consensys.linea.zktracer.module.Util.rightPaddedSlice;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECADD_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECADD_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECMUL_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECMUL_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECPAIRING_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECPAIRING_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECRECOVER_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_ECRECOVER_RESULT;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.CT_MAX_LARGE_POINT;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.CT_MAX_SMALL_POINT;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.INDEX_MAX_ECADD_DATA;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.INDEX_MAX_ECADD_RESULT;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.INDEX_MAX_ECMUL_DATA;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.INDEX_MAX_ECMUL_RESULT;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.INDEX_MAX_ECPAIRING_DATA_MIN;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.INDEX_MAX_ECPAIRING_RESULT;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.INDEX_MAX_ECRECOVER_DATA;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.INDEX_MAX_ECRECOVER_RESULT;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.P_BN_HI;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.P_BN_LO;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.SECP256K1N_HI;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.SECP256K1N_LO;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECADD_DATA;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECADD_RESULT;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECMUL_DATA;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECMUL_RESULT;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECPAIRING_DATA_MIN;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECPAIRING_RESULT;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECRECOVER_DATA;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.TOTAL_SIZE_ECRECOVER_RESULT;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.*;
 import static net.consensys.linea.zktracer.types.Containers.repeat;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
@@ -55,6 +55,7 @@ import java.util.List;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.ext.Ext;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment;
@@ -619,7 +620,7 @@ public class EcDataOperation extends ModuleOperation {
     // circuitSelectorG2Membership are set in the trace method
   }
 
-  void trace(Trace trace, final int stamp, final long previousId) {
+  void trace(Trace.Ecdata trace, final int stamp, final long previousId) {
     final Bytes deltaByte =
         leftPadTo(Bytes.minimalBytes(id - previousId - 1), nBYTES_OF_DELTA_BYTES);
 

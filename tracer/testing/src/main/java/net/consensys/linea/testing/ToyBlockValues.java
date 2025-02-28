@@ -15,9 +15,9 @@
 
 package net.consensys.linea.testing;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_BASE_FEE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_BLOCK_GAS_LIMIT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_DIFFICULTY;
+import static net.consensys.linea.zktracer.Trace.LINEA_BASE_FEE;
+import static net.consensys.linea.zktracer.Trace.LINEA_BLOCK_GAS_LIMIT;
+import static net.consensys.linea.zktracer.Trace.LINEA_DIFFICULTY;
 
 import java.util.Optional;
 

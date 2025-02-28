@@ -25,5 +25,4 @@ allprojects {
   apply from: rootProject.file('gradle/common-dependencies.gradle')
   apply from: rootProject.file("gradle/lint.gradle")
   apply from: rootProject.file("gradle/tests.gradle")
-  apply from: rootProject.file("gradle/trace-files.gradle")
 }

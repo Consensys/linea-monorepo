@@ -17,11 +17,10 @@ package net.consensys.linea.zktracer.module.logdata;
 
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxnRcpt;
@@ -61,11 +60,6 @@ public class LogData implements Module {
     return lineCounter.lineCount();
   }
 
-  @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(lineCount());
-  }
-
   private int lineCountForLogData(RlpTxrcptOperation tx) {
     int txRowSize = 0;
     if (tx.logs().isEmpty()) {
@@ -83,9 +77,12 @@ public class LogData implements Module {
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Logdata.headers(this.lineCount());
+  }
 
+  @Override
+  public void commit(Trace trace) {
     int absLogNumMax = 0;
     for (RlpTxrcptOperation tx : rlpTxnRcpt.operations().getAll()) {
       absLogNumMax += tx.logs().size();
@@ -97,16 +94,16 @@ public class LogData implements Module {
         for (Log log : tx.logs()) {
           absLogNum += 1;
           if (log.getData().isEmpty()) {
-            traceLogWoData(absLogNum, absLogNumMax, trace);
+            traceLogWoData(absLogNum, absLogNumMax, trace.logdata);
           } else {
-            traceLog(log, absLogNum, absLogNumMax, trace);
+            traceLog(log, absLogNum, absLogNumMax, trace.logdata);
           }
         }
       }
     }
   }
 
-  public void traceLogWoData(final int absLogNum, final int absLogNumMax, Trace trace) {
+  public void traceLogWoData(final int absLogNum, final int absLogNumMax, Trace.Logdata trace) {
     trace
         .absLogNumMax(absLogNumMax)
         .absLogNum(absLogNum)
@@ -119,7 +116,8 @@ public class LogData implements Module {
         .validateRow();
   }
 
-  public void traceLog(final Log log, final int absLogNum, final int absLogNumMax, Trace trace) {
+  public void traceLog(
+      final Log log, final int absLogNum, final int absLogNumMax, Trace.Logdata trace) {
     final int indexMax = indexMax(log);
     final Bytes dataPadded = rightPadTo(log.getData(), (indexMax + 1) * 16);
     final int lastLimbSize = (log.getData().size() % 16 == 0) ? 16 : log.getData().size() % 16;

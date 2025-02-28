@@ -19,7 +19,7 @@ the License for the
 package net.consensys.linea.zktracer.module.mmu;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
+import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.module.mmio.MmioData.lineCountOfMmioInstruction;
 import static net.consensys.linea.zktracer.types.Bytecodes.readBytes;
 import static net.consensys.linea.zktracer.types.Bytecodes.readLimb;
@@ -31,6 +31,7 @@ import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
@@ -88,7 +89,7 @@ public class MmuOperation extends ModuleOperation {
     return mmioLineCount;
   }
 
-  int trace(final int mmuStamp, final int mmioStamp, Trace trace) {
+  int trace(final int mmuStamp, final int mmioStamp, Trace.Mmu trace) {
     setInstructionFlag();
     traceMacroRow(mmuStamp, mmioStamp, trace);
     tracePreprocessingRows(mmuData, mmuStamp, mmioStamp, trace);
@@ -164,7 +165,7 @@ public class MmuOperation extends ModuleOperation {
     }
   }
 
-  private void traceFillMmuInstructionFlag(Trace trace) {
+  private void traceFillMmuInstructionFlag(Trace.Mmu trace) {
     trace
         .isMload(isMload)
         .isMstore(isMstore)
@@ -181,7 +182,7 @@ public class MmuOperation extends ModuleOperation {
         .isBlake(isBlake);
   }
 
-  private void traceOutAndBin(Trace trace) {
+  private void traceOutAndBin(Trace.Mmu trace) {
     final MmuOutAndBinValues mmuOutAndBinRecord = mmuData.outAndBinValues();
 
     trace
@@ -197,7 +198,7 @@ public class MmuOperation extends ModuleOperation {
         .bin5(mmuOutAndBinRecord.bin5());
   }
 
-  private void traceMacroRow(final long mmuStamp, final long mmioStamp, Trace trace) {
+  private void traceMacroRow(final long mmuStamp, final long mmioStamp, Trace.Mmu trace) {
     traceFillMmuInstructionFlag(trace);
     traceOutAndBin(trace);
 
@@ -232,7 +233,7 @@ public class MmuOperation extends ModuleOperation {
   }
 
   private void tracePreprocessingRows(
-      final MmuData mmuData, final long mmuStamp, final long mmioStamp, Trace trace) {
+      final MmuData mmuData, final long mmuStamp, final long mmioStamp, Trace.Mmu trace) {
 
     for (int i = 1; i <= mmuData().numberMmuPreprocessingRows(); i++) {
       traceFillMmuInstructionFlag(trace);
@@ -324,7 +325,7 @@ public class MmuOperation extends ModuleOperation {
     return output;
   }
 
-  private int traceMicroRows(final long mmuStamp, int mmioStamp, Trace trace) {
+  private int traceMicroRows(final long mmuStamp, int mmioStamp, Trace.Mmu trace) {
     final List<RowTypeRecord> rowType = generateRowTypeList();
     final HubToMmuValues mmuHubInput = mmuData.hubToMmuValues();
 

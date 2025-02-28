@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.trm;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.module.trm.Trm.MAX_CT;
 import static net.consensys.linea.zktracer.module.trm.Trm.PIVOT_BIT_FLIPS_TO_TRUE;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
@@ -28,6 +28,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -40,7 +41,7 @@ import org.hyperledger.besu.datatypes.Address;
 public class TrmOperation extends ModuleOperation {
   @EqualsAndHashCode.Include @Getter private final EWord rawAddress;
 
-  void trace(Trace trace, final int stamp) {
+  void trace(Trace.Trm trace, final int stamp) {
     final Bytes trmHiBytes =
         leftPadTo(this.rawAddress.hi().slice(PIVOT_BIT_FLIPS_TO_TRUE, 4), LLARGE);
     final long trmHi = trmHiBytes.slice(PIVOT_BIT_FLIPS_TO_TRUE, 4).toLong();

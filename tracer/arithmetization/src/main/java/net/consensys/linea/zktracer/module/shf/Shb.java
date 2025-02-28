@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.shf;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

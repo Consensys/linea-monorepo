@@ -15,12 +15,13 @@
 
 package net.consensys.linea.zktracer.module.ext;
 
+import static net.consensys.linea.zktracer.Trace.MMEDIUM;
 import static net.consensys.linea.zktracer.module.Util.boolToInt;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMEDIUM;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.bytestheta.BytesArray;
@@ -145,7 +146,7 @@ public class ExtOperation extends ModuleOperation {
     return UInt256.valueOf(boolToInt(overflowI[1]) + 2L * boolToInt(overflowI[2]));
   }
 
-  void trace(Trace trace, int stamp) {
+  void trace(Trace.Ext trace, int stamp) {
     this.setup();
 
     for (int i = 0; i < this.numberOfRows(); i++) {

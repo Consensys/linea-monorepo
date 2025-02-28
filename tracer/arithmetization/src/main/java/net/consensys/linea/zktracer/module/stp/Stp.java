@@ -18,13 +18,12 @@ package net.consensys.linea.zktracer.module.stp;
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.types.Conversions.longToBytes32;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.StpCall;
@@ -78,17 +77,15 @@ public class Stp implements OperationSetModule<StpOperation> {
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Stp.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
-
+  public void commit(Trace trace) {
     int stamp = 0;
     for (StpOperation operation : operations.sortOperations(new StpOperationComparator())) {
-      operation.trace(trace, ++stamp);
+      operation.trace(trace.stp, ++stamp);
     }
   }
 }

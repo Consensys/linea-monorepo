@@ -14,11 +14,14 @@
  */
 package net.consensys.linea.zktracer.module.hub.fragment;
 
-import static net.consensys.linea.zktracer.module.hub.Trace.*;
+import static net.consensys.linea.zktracer.Trace.*;
+import static net.consensys.linea.zktracer.Trace.Hub.DOM_SUB_STAMP_OFFSET___REVERT;
+import static net.consensys.linea.zktracer.Trace.Hub.DOM_SUB_STAMP_OFFSET___SELFDESTRUCT;
+import static net.consensys.linea.zktracer.Trace.Hub.MULTIPLIER___DOM_SUB_STAMPS;
 
 import lombok.RequiredArgsConstructor;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.Trace;
 
 @RequiredArgsConstructor
 public class DomSubStampsSubFragment implements TraceSubFragment {
@@ -97,7 +100,7 @@ public class DomSubStampsSubFragment implements TraceSubFragment {
   }
 
   @Override
-  public Trace trace(Trace trace) {
+  public Trace.Hub trace(Trace.Hub trace) {
     return trace.domStamp(this.domStamp()).subStamp(this.subStamp());
   }
 }

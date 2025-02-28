@@ -15,14 +15,13 @@
 
 package net.consensys.linea.zktracer.module.txndata;
 
-import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.euc.Euc;
@@ -89,18 +88,16 @@ public class TxnData implements OperationListModule<TxndataOperation> {
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Txndata.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
-
+  public void commit(Trace trace) {
     final int absTxNumMax = operations.size();
 
     for (TxndataOperation tx : operations.getAll()) {
-      tx.traceTx(trace, blocks.get(tx.getTx().getRelativeBlockNumber() - 1), absTxNumMax);
+      tx.traceTx(trace.txndata, blocks.get(tx.getTx().getRelativeBlockNumber() - 1), absTxNumMax);
     }
   }
 }

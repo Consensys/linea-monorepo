@@ -15,7 +15,11 @@
 
 package net.consensys.linea.zktracer.module.rlptxrcpt;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA;
+import static net.consensys.linea.zktracer.Trace.RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA;
+import static net.consensys.linea.zktracer.Trace.Rlptxrcpt.SUBPHASE_ID_WEIGHT_DEPTH;
+import static net.consensys.linea.zktracer.Trace.Rlptxrcpt.SUBPHASE_ID_WEIGHT_IS_OD;
+import static net.consensys.linea.zktracer.Trace.Rlptxrcpt.SUBPHASE_ID_WEIGHT_IS_OT;
+import static net.consensys.linea.zktracer.Trace.Rlptxrcpt.SUBPHASE_ID_WEIGHT_IS_PREFIX;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToInt;
 
 import java.math.BigInteger;
@@ -95,10 +99,10 @@ class RlpTxrcptColumns {
 
   public int getPhaseId() {
     return this.phase
-        + Trace.SUBPHASE_ID_WEIGHT_IS_PREFIX * booleanToInt(this.isPrefix)
-        + Trace.SUBPHASE_ID_WEIGHT_IS_OT * booleanToInt(this.isTopic)
-        + Trace.SUBPHASE_ID_WEIGHT_IS_OD * booleanToInt(this.isData)
-        + Trace.SUBPHASE_ID_WEIGHT_DEPTH * booleanToInt(this.depth1)
+        + SUBPHASE_ID_WEIGHT_IS_PREFIX * booleanToInt(this.isPrefix)
+        + SUBPHASE_ID_WEIGHT_IS_OT * booleanToInt(this.isTopic)
+        + SUBPHASE_ID_WEIGHT_IS_OD * booleanToInt(this.isData)
+        + SUBPHASE_ID_WEIGHT_DEPTH * booleanToInt(this.depth1)
         + RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA * booleanToInt(this.isTopic) * this.indexLocal;
   }
 }

@@ -141,7 +141,9 @@ tasks.test.configure {
 
 tasks.register("fastReplayTests", Test) {
   dependsOn(buildOldReplayTestsZkevmBin)
-
+    // Record zkevm.bin for CorsetValidator
+    environment.put("ZKEVM_BIN", System.getenv("ZKEVM_BIN") ?: "zkevm_for_old_replay_tests.bin")
+    //
   if (System.getenv().containsKey("REPLAY_TESTS_PARALLELISM")) {
     systemProperty("junit.jupiter.execution.parallel.enabled", true)
     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
@@ -251,3 +253,8 @@ tasks.register("jacocoUnitFastReplayWeeklyNightlyReferenceBlockchainAndStateTest
   sourceSets project(":arithmetization").sourceSets.main
   executionData fileTree(project.rootDir.absolutePath).include("**/build/jacoco/*.exec")
 }
+
+// Configure default build task to require the tracer is built first.
+// This only makes sense for projects which need the tracer.
+compileJava.dependsOn 'buildTracer'
+

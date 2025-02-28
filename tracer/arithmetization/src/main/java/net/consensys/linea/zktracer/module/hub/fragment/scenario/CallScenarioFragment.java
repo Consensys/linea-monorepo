@@ -19,7 +19,7 @@ import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CallScen
 
 import lombok.Getter;
 import lombok.Setter;
-import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 
 public class CallScenarioFragment implements TraceFragment {
@@ -98,7 +98,7 @@ public class CallScenarioFragment implements TraceFragment {
     }
   }
 
-  public Trace trace(Trace trace) {
+  public Trace.Hub trace(Trace.Hub trace) {
     checkArgument(
         scenario.noLongerUndefined(),
         "Final " + CallScenario.class.getSimpleName() + ", " + scenario + ", is still undefined");

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.txndata;
 
-import static net.consensys.linea.zktracer.module.txndata.Trace.RLP_TXN_PHASE_S;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_S;
 
 import lombok.Builder;
 import org.apache.tuweni.bytes.Bytes;

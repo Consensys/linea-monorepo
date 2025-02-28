@@ -16,13 +16,12 @@
 package net.consensys.linea.zktracer.module.gas;
 
 import java.math.BigInteger;
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -51,11 +50,6 @@ public class Gas implements OperationSetModule<GasOperation>, PostOpcodeDefer {
     return "GAS";
   }
 
-  @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
-  }
-
   public void call(GasParameters gasParameters, Hub hub, CommonFragmentValues commonValues) {
     this.commonValues = commonValues;
     this.gasParameters = gasParameters;
@@ -63,10 +57,14 @@ public class Gas implements OperationSetModule<GasOperation>, PostOpcodeDefer {
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Gas.headers(this.lineCount());
+  }
+
+  @Override
+  public void commit(Trace trace) {
     for (GasOperation gasOperation : operations.sortOperations(new GasOperationComparator())) {
-      gasOperation.trace(trace);
+      gasOperation.trace(trace.gas);
     }
   }
 

@@ -18,8 +18,8 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.state.State;
@@ -63,7 +63,7 @@ public class MxpCall implements TraceSubFragment {
     return !this.mxpx && !this.size2.isZero();
   }
 
-  public Trace trace(Trace trace, State hubState) {
+  public Trace.Hub trace(Trace.Hub trace, State hubState) {
     hubState.incrementMxpStamp();
     return trace
         .pMiscMxpFlag(true)

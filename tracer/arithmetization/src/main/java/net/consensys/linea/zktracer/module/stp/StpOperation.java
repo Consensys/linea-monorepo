@@ -22,6 +22,7 @@ import java.math.BigInteger;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.StpCall;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -75,7 +76,7 @@ public final class StpOperation extends ModuleOperation {
     return this.getGDiff() - this.getGDiffOver64();
   }
 
-  void trace(Trace trace, int stamp) {
+  void trace(Trace.Stp trace, int stamp) {
     if (stpCall.opCode().isCreate()) {
       this.traceCreate(trace, stamp);
     } else {
@@ -83,7 +84,7 @@ public final class StpOperation extends ModuleOperation {
     }
   }
 
-  private void traceCreate(Trace trace, int stamp) {
+  private void traceCreate(Trace.Stp trace, int stamp) {
     final int ctMax = this.maxCt();
     final long gasOopkt = stpCall.outOfGasException() ? 0 : this.get63of64GDiff();
 
@@ -139,7 +140,7 @@ public final class StpOperation extends ModuleOperation {
     }
   }
 
-  private void traceCall(Trace trace, int stamp) {
+  private void traceCall(Trace.Stp trace, int stamp) {
     final int ctMax = this.maxCt();
     for (int ct = 0; ct <= ctMax; ct++) {
       trace

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
+import static net.consensys.linea.zktracer.Trace.*;
 
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.account.Account;

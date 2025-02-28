@@ -29,8 +29,8 @@ import java.util.function.Function;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.common.CommonFragmentValues;
 import net.consensys.linea.zktracer.module.hub.signals.AbortingConditions;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
@@ -175,37 +175,37 @@ public final class StackFragment implements TraceFragment {
   }
 
   @Override
-  public Trace trace(Trace trace) {
+  public Trace.Hub trace(Trace.Hub trace) {
 
-    final List<Function<Bytes, Trace>> valHiTracers =
+    final List<Function<Bytes, Trace.Hub>> valHiTracers =
         List.of(
             trace::pStackStackItemValueHi1,
             trace::pStackStackItemValueHi2,
             trace::pStackStackItemValueHi3,
             trace::pStackStackItemValueHi4);
 
-    final List<Function<Bytes, Trace>> valLoTracers =
+    final List<Function<Bytes, Trace.Hub>> valLoTracers =
         List.of(
             trace::pStackStackItemValueLo1,
             trace::pStackStackItemValueLo2,
             trace::pStackStackItemValueLo3,
             trace::pStackStackItemValueLo4);
 
-    final List<Function<Boolean, Trace>> popTracers =
+    final List<Function<Boolean, Trace.Hub>> popTracers =
         List.of(
             trace::pStackStackItemPop1,
             trace::pStackStackItemPop2,
             trace::pStackStackItemPop3,
             trace::pStackStackItemPop4);
 
-    final List<Function<Short, Trace>> heightTracers =
+    final List<Function<Short, Trace.Hub>> heightTracers =
         List.of(
             trace::pStackStackItemHeight1,
             trace::pStackStackItemHeight2,
             trace::pStackStackItemHeight3,
             trace::pStackStackItemHeight4);
 
-    final List<Function<Integer, Trace>> stampTracers =
+    final List<Function<Integer, Trace.Hub>> stampTracers =
         List.of(
             trace::pStackStackItemStamp1,
             trace::pStackStackItemStamp2,

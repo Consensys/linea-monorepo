@@ -18,10 +18,7 @@ package net.consensys.linea.zktracer;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.math.BigInteger;
-import java.nio.MappedByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -111,33 +108,16 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     maybeThrowTracingExceptions();
 
     final List<Module> modules = hub.getModulesToTrace();
-    final List<ColumnHeader> traceMap =
-        modules.stream().flatMap(m -> m.columnsHeaders().stream()).toList();
-    final int headerSize = traceMap.stream().mapToInt(ColumnHeader::headerSize).sum() + 4;
+    final List<Trace.ColumnHeader> headers =
+        modules.stream().flatMap(m -> m.columnHeaders().stream()).toList();
 
     try (RandomAccessFile file = new RandomAccessFile(filename.toString(), "rw")) {
-      file.setLength(traceMap.stream().mapToLong(ColumnHeader::cumulatedSize).sum());
-      final MappedByteBuffer header =
-          file.getChannel().map(FileChannel.MapMode.READ_WRITE, 0, headerSize);
-
-      header.putInt(traceMap.size());
-      for (ColumnHeader h : traceMap) {
-        final String name = h.name();
-        header.putShort((short) name.length());
-        header.put(name.getBytes());
-        header.put((byte) h.bytesPerElement());
-        header.putInt(h.length());
-      }
-      long offset = headerSize;
+      Trace trace = Trace.of(file, headers, new byte[0]);
+      // Commit each module
       for (Module m : modules) {
-        final List<MappedByteBuffer> buffers = new ArrayList<>();
-        for (ColumnHeader columnHeader : m.columnsHeaders()) {
-          final int columnLength = columnHeader.dataSize();
-          buffers.add(file.getChannel().map(FileChannel.MapMode.READ_WRITE, offset, columnLength));
-          offset += columnLength;
-        }
-        m.commit(buffers);
+        m.commit(trace);
       }
+      // Close the file
       file.getChannel().force(false);
     } catch (IOException e) {
       log.error("Error while writing to the file {}", filename);

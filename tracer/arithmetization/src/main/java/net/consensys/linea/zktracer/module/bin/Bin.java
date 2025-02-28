@@ -17,13 +17,12 @@ package net.consensys.linea.zktracer.module.bin;
 
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
@@ -65,17 +64,15 @@ public class Bin implements OperationSetModule<BinOperation> {
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
-
-    int stamp = 0;
-    for (BinOperation op : operations.sortOperations(new BinOperationComparator())) {
-      op.traceBinOperation(++stamp, trace);
-    }
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Bin.headers(this.lineCount());
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+  public void commit(Trace trace) {
+    int stamp = 0;
+    for (BinOperation op : operations.sortOperations(new BinOperationComparator())) {
+      op.traceBinOperation(++stamp, trace.bin);
+    }
   }
 }

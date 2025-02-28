@@ -16,30 +16,30 @@
 package net.consensys.linea.zktracer.module.rlptxn;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_TX_DATA_NONZERO;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_TX_DATA_ZERO;
+import static net.consensys.linea.zktracer.Trace.LINEA_MAX_NUMBER_OF_TRANSACTIONS_IN_BATCH;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_INT_LONG;
+import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_INT_SHORT;
+import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_LIST_LONG;
+import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_LIST_SHORT;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_ACCESS_LIST;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_BETA;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_CHAIN_ID;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_DATA;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_GAS_LIMIT;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_GAS_PRICE;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_MAX_FEE_PER_GAS;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_NONCE;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_R;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_RLP_PREFIX;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_S;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_TO;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_VALUE;
+import static net.consensys.linea.zktracer.Trace.RLP_TXN_PHASE_Y;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_TX_DATA_NONZERO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_TX_DATA_ZERO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_MAX_NUMBER_OF_TRANSACTIONS_IN_BATCH;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_INT_LONG;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_INT_SHORT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_LIST_LONG;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_LIST_SHORT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_ACCESS_LIST;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_BETA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_CHAIN_ID;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_GAS_LIMIT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_GAS_PRICE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_MAX_FEE_PER_GAS;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_MAX_PRIORITY_FEE_PER_GAS;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_NONCE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_R;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_RLP_PREFIX;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_S;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_TO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_VALUE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_TXN_PHASE_Y;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.innerRlpSize;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
@@ -53,7 +53,6 @@ import static org.hyperledger.besu.ethereum.core.encoding.EncodingContext.BLOCK_
 import static org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder.encodeOpaqueBytes;
 
 import java.math.BigInteger;
-import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -61,7 +60,7 @@ import java.util.Optional;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
@@ -126,7 +125,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     }
   }
 
-  public void traceOperation(RlpTxnOperation operation, int absTxNum, Trace trace) {
+  public void traceOperation(RlpTxnOperation operation, int absTxNum, Trace.Rlptxn trace) {
     // Create the local row storage and specify transaction constant columns
     RlpTxnColumnsValue traceValue = new RlpTxnColumnsValue();
     traceValue.resetDataHiLo();
@@ -311,7 +310,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
   }
 
   // Define each phase's constraints
-  private void handlePhaseGlobalRlpPrefix(RlpTxnColumnsValue traceValue, Trace trace) {
+  private void handlePhaseGlobalRlpPrefix(RlpTxnColumnsValue traceValue, Trace.Rlptxn trace) {
     int phase = RLP_TXN_PHASE_RLP_PREFIX;
     // First, trace the Type prefix of the transaction
     traceValue.partialReset(phase, 1, true, true);
@@ -355,7 +354,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
   }
 
   private void handlePhaseInteger(
-      RlpTxnColumnsValue traceValue, int phase, BigInteger input, int nbstep, Trace trace) {
+      RlpTxnColumnsValue traceValue, int phase, BigInteger input, int nbstep, Trace.Rlptxn trace) {
     if (input.equals(BigInteger.ZERO)) {
       traceZeroInt(traceValue, phase, true, true, false, true, trace);
     } else {
@@ -363,7 +362,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     }
   }
 
-  private void handlePhaseTo(RlpTxnColumnsValue traceValue, Transaction tx, Trace trace) {
+  private void handlePhaseTo(RlpTxnColumnsValue traceValue, Transaction tx, Trace.Rlptxn trace) {
     int phase = RLP_TXN_PHASE_TO;
     boolean lt = true;
     boolean lx = true;
@@ -375,7 +374,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     }
   }
 
-  private void handlePhaseData(RlpTxnColumnsValue traceValue, Transaction tx, Trace trace) {
+  private void handlePhaseData(RlpTxnColumnsValue traceValue, Transaction tx, Trace.Rlptxn trace) {
     final int phase = RLP_TXN_PHASE_DATA;
     final boolean lt = true;
     final boolean lx = true;
@@ -473,7 +472,8 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     traceValue.indexData = 0;
   }
 
-  private void handlePhaseAccessList(RlpTxnColumnsValue traceValue, Transaction tx, Trace trace) {
+  private void handlePhaseAccessList(
+      RlpTxnColumnsValue traceValue, Transaction tx, Trace.Rlptxn trace) {
     int phase = RLP_TXN_PHASE_ACCESS_LIST;
     boolean lt = true;
     boolean lx = true;
@@ -588,7 +588,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     }
   }
 
-  private void handlePhaseBeta(RlpTxnColumnsValue traceValue, Transaction tx, Trace trace) {
+  private void handlePhaseBeta(RlpTxnColumnsValue traceValue, Transaction tx, Trace.Rlptxn trace) {
     final int phase = RLP_TXN_PHASE_BETA;
     final BigInteger V = tx.getV();
     checkArgument(bigIntegerToBytes(V).size() <= 8, "V is longer than 8 bytes");
@@ -624,7 +624,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
     }
   }
 
-  private void handlePhaseY(RlpTxnColumnsValue traceValue, Transaction tx, Trace trace) {
+  private void handlePhaseY(RlpTxnColumnsValue traceValue, Transaction tx, Trace.Rlptxn trace) {
     traceValue.partialReset(RLP_TXN_PHASE_Y, 1, true, false);
     traceValue.input1 = bigIntegerToBytes(tx.getYParity());
     traceValue.limbConstructed = true;
@@ -649,7 +649,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
       boolean depth2,
       boolean endPhase,
       RlpTxnColumnsValue traceValue,
-      Trace trace) {
+      Trace.Rlptxn trace) {
     int lengthSize = bigIntegerToBytes(BigInteger.valueOf(length)).size();
 
     ByteCountAndPowerOutput byteCountingOutput = byteCounting(lengthSize, 8);
@@ -727,7 +727,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
       boolean endPhase,
       boolean onlyPrefix,
       RlpTxnColumnsValue traceValue,
-      Trace trace) {
+      Trace.Rlptxn trace) {
 
     traceValue.partialReset(phase, nStep, lt, lx);
     traceValue.isPrefix = isPrefix;
@@ -775,7 +775,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
   }
 
   private void handle32BytesInteger(
-      RlpTxnColumnsValue traceValue, int phase, BigInteger input, Trace trace) {
+      RlpTxnColumnsValue traceValue, int phase, BigInteger input, Trace.Rlptxn trace) {
     traceValue.partialReset(phase, LLARGE, true, false);
     if (input.equals(BigInteger.ZERO)) {
       // Trivial case
@@ -853,7 +853,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
   }
 
   private void handleAddress(
-      RlpTxnColumnsValue traceValue, int phase, Address address, Trace trace) {
+      RlpTxnColumnsValue traceValue, int phase, Address address, Trace.Rlptxn trace) {
     boolean lt = true;
     boolean lx = true;
     traceValue.partialReset(phase, LLARGE, lt, lx);
@@ -894,7 +894,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
   }
 
   private void handleStorageKey(
-      RlpTxnColumnsValue traceValue, boolean end_phase, Bytes32 storage_key, Trace trace) {
+      RlpTxnColumnsValue traceValue, boolean end_phase, Bytes32 storage_key, Trace.Rlptxn trace) {
     traceValue.partialReset(RLP_TXN_PHASE_ACCESS_LIST, LLARGE, true, true);
     traceValue.depth1 = true;
     traceValue.depth2 = true;
@@ -1033,7 +1033,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
       boolean lx,
       boolean isPrefix,
       boolean phaseEnd,
-      Trace trace) {
+      Trace.Rlptxn trace) {
     traceValue.partialReset(phase, 1, lt, lx);
     traceValue.limbConstructed = true;
     traceValue.limb = BYTES_PREFIX_SHORT_INT;
@@ -1052,7 +1052,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
       boolean depth1,
       boolean depth2,
       boolean phaseEnd,
-      Trace trace) {
+      Trace.Rlptxn trace) {
     traceValue.partialReset(phase, 1, lt, lx);
     traceValue.limbConstructed = true;
     traceValue.limb = BYTES_PREFIX_SHORT_LIST;
@@ -1065,7 +1065,7 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
   }
 
   // Define the Tracer
-  private void traceRow(RlpTxnColumnsValue traceValue, Trace builder) {
+  private void traceRow(RlpTxnColumnsValue traceValue, Trace.Rlptxn builder) {
     // Decrements RLP_BYTESIZE
     if (traceValue.phase != RLP_TXN_PHASE_RLP_PREFIX) {
       if (traceValue.limbConstructed && traceValue.lt) {
@@ -1197,16 +1197,15 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Rlptxn.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
+  public void commit(Trace trace) {
     int absTxNum = 0;
     for (RlpTxnOperation op : operations.getAll()) {
-      traceOperation(op, ++absTxNum, trace);
+      traceOperation(op, ++absTxNum, trace.rlptxn);
     }
   }
 }

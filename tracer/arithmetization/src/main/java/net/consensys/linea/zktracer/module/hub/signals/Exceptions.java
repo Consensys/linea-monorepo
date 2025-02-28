@@ -15,15 +15,15 @@
 
 package net.consensys.linea.zktracer.module.hub.signals;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP_3541_MARKER;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MAX_CODE_SIZE;
+import static net.consensys.linea.zktracer.Trace.EIP_3541_MARKER;
+import static net.consensys.linea.zktracer.Trace.MAX_CODE_SIZE;
 import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.getOpCode;
 import static org.hyperledger.besu.evm.internal.Words.clampedToInt;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.util.function.Consumer;
 
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
@@ -193,8 +193,7 @@ public class Exceptions {
   }
 
   private static boolean isOutOfSStore(MessageFrame frame, OpCode opCode) {
-    return opCode == OpCode.SSTORE
-        && frame.getRemainingGas() <= GlobalConstants.GAS_CONST_G_CALL_STIPEND;
+    return opCode == OpCode.SSTORE && frame.getRemainingGas() <= Trace.GAS_CONST_G_CALL_STIPEND;
   }
 
   private static boolean isInvalidCodePrefix(MessageFrame frame) {

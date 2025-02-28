@@ -90,7 +90,7 @@ public class GoCorsetValidator extends AbstractExecutable {
       return new Result(true, traceFile.toFile(), outcome.output());
     }
     // Tool is not active
-    log.debug("(inactive)");
+    log.debug("go-corset (inactive)");
     return null;
   }
 

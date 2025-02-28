@@ -16,12 +16,13 @@
 package net.consensys.linea.zktracer.module.mxp;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_MEMORY;
+import static net.consensys.linea.zktracer.Trace.Mxp.CT_MAX_NON_TRIVIAL;
+import static net.consensys.linea.zktracer.Trace.Mxp.CT_MAX_NON_TRIVIAL_BUT_MXPX;
+import static net.consensys.linea.zktracer.Trace.Mxp.CT_MAX_TRIVIAL;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE_MO;
 import static net.consensys.linea.zktracer.module.Util.max;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE_MO;
-import static net.consensys.linea.zktracer.module.mxp.Trace.CT_MAX_NON_TRIVIAL;
-import static net.consensys.linea.zktracer.module.mxp.Trace.CT_MAX_NON_TRIVIAL_BUT_MXPX;
-import static net.consensys.linea.zktracer.module.mxp.Trace.CT_MAX_TRIVIAL;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
 import static org.hyperledger.besu.evm.internal.Words.clampedMultiply;
@@ -30,8 +31,8 @@ import java.math.BigInteger;
 import java.util.Arrays;
 
 import lombok.Getter;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -310,7 +311,7 @@ public class MxpOperation extends ModuleOperation {
             ? clampedMultiply(length / 512, length)
             : lengthSquare / 512;
 
-    return clampedAdd(clampedMultiply(GlobalConstants.GAS_CONST_G_MEMORY, length), base);
+    return clampedAdd(clampedMultiply(GAS_CONST_G_MEMORY, length), base);
   }
 
   private long getLinCost(OpCodeData opCodeData, long sizeInBytes) {
@@ -537,7 +538,7 @@ public class MxpOperation extends ModuleOperation {
     return getQuadCost() + getEffectiveLinCost();
   }
 
-  final void trace(int stamp, Trace trace) {
+  final void trace(int stamp, Trace.Mxp trace) {
     this.compute();
 
     Bytes32 acc1Bytes32 = Bytes32.leftPad(bigIntegerToBytes(this.getAcc1()));

@@ -15,13 +15,12 @@
 
 package net.consensys.linea.zktracer.module.blake2fmodexpdata;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
@@ -49,11 +48,6 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
     return "BLAKE_MODEXP_DATA";
   }
 
-  @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
-  }
-
   public void callModexp(final ModexpMetadata modexpMetaData, final int operationID) {
     operations.add(new BlakeModexpDataOperation(modexpMetaData, operationID));
     modexpEffectiveCall.addPrecompileLimit(1);
@@ -73,11 +67,15 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    Trace trace = new Trace(buffers);
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Blake2fmodexpdata.headers(this.lineCount());
+  }
+
+  @Override
+  public void commit(Trace trace) {
     int stamp = 0;
     for (BlakeModexpDataOperation o : operations.getAll()) {
-      o.trace(trace, ++stamp);
+      o.trace(trace.blake2fmodexpdata, ++stamp);
     }
   }
 }

@@ -15,8 +15,8 @@
 
 package net.consensys.linea.testing;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_BASE_FEE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_CHAIN_ID;
+import static net.consensys.linea.zktracer.Trace.LINEA_BASE_FEE;
+import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
 
 import java.math.BigInteger;
 import java.util.*;

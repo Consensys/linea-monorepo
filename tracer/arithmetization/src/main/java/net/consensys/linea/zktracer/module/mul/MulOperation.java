@@ -15,11 +15,11 @@
 
 package net.consensys.linea.zktracer.module.mul;
 
+import static net.consensys.linea.zktracer.Trace.MMEDIUM;
 import static net.consensys.linea.zktracer.module.Util.boolToByte;
 import static net.consensys.linea.zktracer.module.Util.byteBits;
 import static net.consensys.linea.zktracer.module.Util.getBit;
 import static net.consensys.linea.zktracer.module.Util.getOverflow;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMEDIUM;
 
 import java.lang.reflect.Array;
 import java.math.BigInteger;
@@ -28,6 +28,7 @@ import java.util.Arrays;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.container.ModuleOperation;
@@ -400,7 +401,7 @@ public class MulOperation extends ModuleOperation {
     return isOneLineInstruction() ? 1 : MMEDIUM;
   }
 
-  void trace(Trace trace, int stamp) {
+  void trace(Trace.Mul trace, int stamp) {
     switch (this.getRegime()) {
       case EXPONENT_ZERO_RESULT -> this.traceSubOp(trace, stamp);
 
@@ -420,7 +421,7 @@ public class MulOperation extends ModuleOperation {
     }
   }
 
-  private void traceSubOp(Trace trace, int stamp) {
+  private void traceSubOp(Trace.Mul trace, int stamp) {
     for (int i = 0; i < this.numberOfRows(); i++) {
       trace
           .mulStamp(stamp)

@@ -15,28 +15,29 @@
 
 package net.consensys.linea.zktracer.module.blake2fmodexpdata;
 
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.INDEX_MAX_BLAKE_DATA;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.INDEX_MAX_BLAKE_PARAMS;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.INDEX_MAX_BLAKE_RESULT;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.INDEX_MAX_MODEXP;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.INDEX_MAX_MODEXP_BASE;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.INDEX_MAX_MODEXP_EXPONENT;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.INDEX_MAX_MODEXP_MODULUS;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.Trace.INDEX_MAX_MODEXP_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_PARAMS;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_BLAKE_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_BASE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_EXPONENT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_MODULUS;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_MODEXP_RESULT;
+import static net.consensys.linea.zktracer.Trace.Blake2fmodexpdata.INDEX_MAX_BLAKE_DATA;
+import static net.consensys.linea.zktracer.Trace.Blake2fmodexpdata.INDEX_MAX_BLAKE_PARAMS;
+import static net.consensys.linea.zktracer.Trace.Blake2fmodexpdata.INDEX_MAX_BLAKE_RESULT;
+import static net.consensys.linea.zktracer.Trace.Blake2fmodexpdata.INDEX_MAX_MODEXP;
+import static net.consensys.linea.zktracer.Trace.Blake2fmodexpdata.INDEX_MAX_MODEXP_BASE;
+import static net.consensys.linea.zktracer.Trace.Blake2fmodexpdata.INDEX_MAX_MODEXP_EXPONENT;
+import static net.consensys.linea.zktracer.Trace.Blake2fmodexpdata.INDEX_MAX_MODEXP_MODULUS;
+import static net.consensys.linea.zktracer.Trace.Blake2fmodexpdata.INDEX_MAX_MODEXP_RESULT;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.PHASE_BLAKE_DATA;
+import static net.consensys.linea.zktracer.Trace.PHASE_BLAKE_PARAMS;
+import static net.consensys.linea.zktracer.Trace.PHASE_BLAKE_RESULT;
+import static net.consensys.linea.zktracer.Trace.PHASE_MODEXP_BASE;
+import static net.consensys.linea.zktracer.Trace.PHASE_MODEXP_EXPONENT;
+import static net.consensys.linea.zktracer.Trace.PHASE_MODEXP_MODULUS;
+import static net.consensys.linea.zktracer.Trace.PHASE_MODEXP_RESULT;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 
 import java.util.Optional;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -82,7 +83,7 @@ public class BlakeModexpDataOperation extends ModuleOperation {
         : BLAKE2f_COMPONENTS_LINE_COUNT;
   }
 
-  void trace(Trace trace, final int stamp) {
+  void trace(Trace.Blake2fmodexpdata trace, final int stamp) {
     final UnsignedByte stampByte = UnsignedByte.of(stamp);
 
     if (modexpMetaData.isPresent()) {
@@ -100,7 +101,7 @@ public class BlakeModexpDataOperation extends ModuleOperation {
     }
   }
 
-  private void traceData(Trace trace, UnsignedByte stamp) {
+  private void traceData(Trace.Blake2fmodexpdata trace, UnsignedByte stamp) {
     final Bytes input = blake2fComponents.get().getHashInput();
     for (int index = 0; index <= INDEX_MAX_BLAKE_DATA; index++) {
       commonTrace(trace, stamp, index, input, INDEX_MAX_BLAKE_DATA);
@@ -108,7 +109,7 @@ public class BlakeModexpDataOperation extends ModuleOperation {
     }
   }
 
-  private void traceParameter(Trace trace, UnsignedByte stamp) {
+  private void traceParameter(Trace.Blake2fmodexpdata trace, UnsignedByte stamp) {
     // r
     commonTrace(
         trace, stamp, 0, leftPadTo(blake2fComponents.get().r(), LLARGE), INDEX_MAX_BLAKE_PARAMS);
@@ -124,7 +125,7 @@ public class BlakeModexpDataOperation extends ModuleOperation {
     trace.phase(UnsignedByte.of(PHASE_BLAKE_PARAMS)).isBlakeParams(true).fillAndValidateRow();
   }
 
-  private void traceBlakeResult(Trace trace, UnsignedByte stamp) {
+  private void traceBlakeResult(Trace.Blake2fmodexpdata trace, UnsignedByte stamp) {
     final Bytes hash = computeBlake2fResult();
     for (int index = 0; index <= INDEX_MAX_BLAKE_RESULT; index++) {
       commonTrace(trace, stamp, index, hash, INDEX_MAX_BLAKE_RESULT);
@@ -132,7 +133,7 @@ public class BlakeModexpDataOperation extends ModuleOperation {
     }
   }
 
-  private void traceBase(Trace trace, final UnsignedByte stamp) {
+  private void traceBase(Trace.Blake2fmodexpdata trace, final UnsignedByte stamp) {
     final Bytes input = leftPadTo(modexpMetaData.get().base(), MODEXP_COMPONENT_BYTE_SIZE);
     for (int index = 0; index <= INDEX_MAX_MODEXP_BASE; index++) {
       commonTrace(trace, stamp, index, input, INDEX_MAX_MODEXP_BASE);
@@ -140,7 +141,7 @@ public class BlakeModexpDataOperation extends ModuleOperation {
     }
   }
 
-  private void traceExponent(Trace trace, final UnsignedByte stamp) {
+  private void traceExponent(Trace.Blake2fmodexpdata trace, final UnsignedByte stamp) {
     final Bytes input = leftPadTo(modexpMetaData.get().exp(), MODEXP_COMPONENT_BYTE_SIZE);
     for (int index = 0; index <= INDEX_MAX_MODEXP_EXPONENT; index++) {
       commonTrace(trace, stamp, index, input, INDEX_MAX_MODEXP_EXPONENT);
@@ -151,7 +152,7 @@ public class BlakeModexpDataOperation extends ModuleOperation {
     }
   }
 
-  private void traceModulus(Trace trace, final UnsignedByte stamp) {
+  private void traceModulus(Trace.Blake2fmodexpdata trace, final UnsignedByte stamp) {
     final Bytes input = leftPadTo(modexpMetaData.get().mod(), MODEXP_COMPONENT_BYTE_SIZE);
     for (int index = 0; index <= INDEX_MAX_MODEXP_MODULUS; index++) {
       commonTrace(trace, stamp, index, input, INDEX_MAX_MODEXP_MODULUS);
@@ -159,7 +160,7 @@ public class BlakeModexpDataOperation extends ModuleOperation {
     }
   }
 
-  private void traceModexpResult(Trace trace, final UnsignedByte stamp) {
+  private void traceModexpResult(Trace.Blake2fmodexpdata trace, final UnsignedByte stamp) {
     final Bytes input = leftPadTo(modexpMetaData.get().rawResult(), MODEXP_COMPONENT_BYTE_SIZE);
     for (int index = 0; index <= INDEX_MAX_MODEXP_RESULT; index++) {
       commonTrace(trace, stamp, index, input, INDEX_MAX_MODEXP_RESULT);
@@ -167,7 +168,8 @@ public class BlakeModexpDataOperation extends ModuleOperation {
     }
   }
 
-  private void commonTrace(Trace trace, UnsignedByte stamp, int index, Bytes input, int indexMax) {
+  private void commonTrace(
+      Trace.Blake2fmodexpdata trace, UnsignedByte stamp, int index, Bytes input, int indexMax) {
     trace
         .stamp(stamp.toInteger())
         .id(id)
