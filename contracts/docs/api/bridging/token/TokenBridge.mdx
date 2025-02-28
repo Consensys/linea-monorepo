@@ -18,14 +18,6 @@ bytes32 SET_MESSAGE_SERVICE_ROLE
 
 Role used for setting the message service address.
 
-### SET_REMOTE_TOKENBRIDGE_ROLE
-
-```solidity
-bytes32 SET_REMOTE_TOKENBRIDGE_ROLE
-```
-
-Role used for setting the remote token bridge address.
-
 ### SET_RESERVED_TOKEN_ROLE
 
 ```solidity
@@ -204,25 +196,6 @@ _Contract will be used as proxy implementation._
 | ---- | ---- | ----------- |
 | _initializationData | struct ITokenBridge.InitializationData | The initial data used for initializing the TokenBridge contract. |
 
-### reinitializePauseTypesAndPermissions
-
-```solidity
-function reinitializePauseTypesAndPermissions(address _defaultAdmin, struct IPermissionsManager.RoleAddress[] _roleAddresses, struct IPauseManager.PauseTypeRole[] _pauseTypeRoles, struct IPauseManager.PauseTypeRole[] _unpauseTypeRoles) external
-```
-
-Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings.
-
-_This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin._
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| _defaultAdmin | address | The default admin account's address. |
-| _roleAddresses | struct IPermissionsManager.RoleAddress[] | The list of addresses and roles to assign permissions to. |
-| _pauseTypeRoles | struct IPauseManager.PauseTypeRole[] | The list of pause types to associate with roles. |
-| _unpauseTypeRoles | struct IPauseManager.PauseTypeRole[] | The list of unpause types to associate with roles. |
-
 ### bridgeToken
 
 ```solidity
@@ -295,7 +268,7 @@ _It can only be called from the Message Service. To finalize the bridging
 | _nativeToken | address | The address of the token on its native chain. |
 | _amount | uint256 | The amount of the token to be received. |
 | _recipient | address | The address that will receive the tokens. |
-| _chainId | uint256 | The token's origin layer chaindId |
+| _chainId | uint256 | The token's origin layer chainId |
 | _tokenMetadata | bytes | Additional data used to deploy the bridged token if it   doesn't exist already. |
 
 ### setMessageService
@@ -344,21 +317,6 @@ _Change the status of tokens to DEPLOYED. New bridge transaction will not
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | _nativeTokens | address[] | Array of native tokens for which the DEPLOYED status must be set. |
-
-### setRemoteTokenBridge
-
-```solidity
-function setRemoteTokenBridge(address _remoteTokenBridge) external
-```
-
-_Sets the address of the remote token bridge. Can only be called once.
-SET_REMOTE_TOKENBRIDGE_ROLE is required to execute._
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| _remoteTokenBridge | address | The address of the remote token bridge to be set. |
 
 ### deployBridgedToken
 
@@ -427,7 +385,7 @@ function setCustomContract(address _nativeToken, address _targetContract) extern
 ```
 
 _Linea can set a custom ERC-20 contract for specific ERC-20.
-  For security purpose, Linea can only call this function if the token has
+  For security purposes, Linea can only call this function if the token has
   not been bridged yet.
 SET_CUSTOM_CONTRACT_ROLE is required to execute._
 
