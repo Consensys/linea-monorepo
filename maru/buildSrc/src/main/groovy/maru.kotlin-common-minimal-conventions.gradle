@@ -35,7 +35,7 @@ dependencies {
   // TODO: org.mockito.kotlin:mockito-kotlin uses org.mockito:mockito-core:4.5.1,
   // check later on if this may raise incompatibilities
   testImplementation 'org.mockito.kotlin:mockito-kotlin'
-  testImplementation 'org.awaitility:awaitility'
+  testImplementation 'org.awaitility:awaitility-kotlin'
   //</testing>
 }
 

@@ -15,6 +15,7 @@
  */
 package maru.consensus.dummy
 
+import maru.consensus.NewBlockHandler
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -25,13 +26,12 @@ import org.hyperledger.besu.consensus.common.bft.events.NewChainHead
 import org.hyperledger.besu.consensus.common.bft.events.RoundExpiry
 import org.hyperledger.besu.consensus.common.bft.statemachine.BftEventHandler
 import org.hyperledger.besu.ethereum.blockcreation.BlockCreator
-import org.hyperledger.besu.ethereum.core.Block
 
 class DummyConsensusEventHandler(
   private val executionLayerManager: ExecutionLayerManager,
   private val blockCreator: BlockCreator,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
-  private val onNewBlock: (Block) -> Unit,
+  private val onNewBlock: NewBlockHandler,
 ) : BftEventHandler {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -61,7 +61,7 @@ class DummyConsensusEventHandler(
           null,
         )
       log.debug("Block creation timings {}", blockCreationResult.blockCreationTimings)
-      blockCreationResult.block?.also(onNewBlock)
+      blockCreationResult.block?.also(onNewBlock::handleNewBlock)
     } else {
       log.trace(
         "Block timer event discarded as it is not for current block height " +

@@ -13,12 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app.config
+package maru.config
 
 import com.sksamuel.hoplite.Secret
+import fromHexToByteArray
 import java.net.URI
 import kotlin.time.Duration.Companion.milliseconds
-import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -90,7 +90,7 @@ class HopliteFriendlinessTest {
             ),
           dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
           p2pConfig = P2P(port = 3322u),
-          validator = Validator(validatorKey = Bytes.fromHexString("0xdead").toArray()),
+          validator = Validator(validatorKey = "0xdead".fromHexToByteArray()),
         ),
       )
   }

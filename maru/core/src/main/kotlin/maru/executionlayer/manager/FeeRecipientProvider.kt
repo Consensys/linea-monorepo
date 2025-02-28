@@ -13,14 +13,8 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.dummy
+package maru.executionlayer.manager
 
-class BlockTimer(
-  val forksSchedule: ForksSchedule<DummyConsensusConfig>,
-) {
-  fun start() {
-  }
-
-  fun cancel() {
-  }
+fun interface FeeRecipientProvider {
+  fun getFeeRecipient(blockNumber: ULong): ByteArray
 }

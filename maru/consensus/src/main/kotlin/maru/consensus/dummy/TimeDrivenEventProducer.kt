@@ -49,7 +49,6 @@ class TimeDrivenEventProducer(
   override fun start() {
     if (currentTask == null) {
       SafeFuture.runAsync {
-        // For the first ever tick EL will need some time to prepare a block in any case, thus forcing delay
         handleTick()
       }
     } else {
@@ -81,7 +80,7 @@ class TimeDrivenEventProducer(
       }
 
       else -> {
-        log.warn("Next fork isn't a Dummy Consensus one. Stopping ${this.javaClass.name}")
+        log.warn("Next fork isn't a Dummy Consensus one. Stopping {}", this.javaClass.name)
       }
     }
   }
@@ -107,13 +106,14 @@ class TimeDrivenEventProducer(
               {
                 val consensusRoundIdentifier =
                   ConsensusRoundIdentifier(nextBlockNumber.toLong(), nextBlockNumber.toInt())
+                log.debug("Triggering an event for round {}", consensusRoundIdentifier)
                 eventHandler.handleBlockTimerExpiry(BlockTimerExpiry(consensusRoundIdentifier))
-                handleTick()
               },
               executor,
-            ).thenApply { },
-        ).whenException {
+            ),
+        ).handleException {
           log.error(it.message, it)
+        }.thenApply {
           handleTick()
         }
   }

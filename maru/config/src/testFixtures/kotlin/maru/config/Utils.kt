@@ -13,13 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-import java.util.HexFormat
+package maru.config
 
-fun ByteArray.encodeHex(prefix: Boolean = true): String {
-  val hexStr = HexFormat.of().formatHex(this)
-  if (prefix) {
-    return "0x$hexStr"
-  } else {
-    return hexStr
-  }
+import com.sksamuel.hoplite.ConfigLoaderBuilder
+import com.sksamuel.hoplite.ExperimentalHoplite
+import com.sksamuel.hoplite.toml.TomlPropertySource
+
+@OptIn(ExperimentalHoplite::class)
+object Utils {
+  inline fun <reified T : Any> parseTomlConfig(toml: String): T =
+    ConfigLoaderBuilder
+      .default()
+      .withExplicitSealedTypes()
+      .addSource(TomlPropertySource(toml))
+      .build()
+      .loadConfigOrThrow<T>()
 }

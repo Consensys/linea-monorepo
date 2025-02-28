@@ -13,10 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.dummy
+import java.util.HexFormat
 
-import java.util.NavigableSet
+fun ByteArray.encodeHex(prefix: Boolean = true): String {
+  val hexStr = HexFormat.of().formatHex(this)
+  return if (prefix) {
+    "0x$hexStr"
+  } else {
+    hexStr
+  }
+}
 
-class ForksSchedule<F>(
-  forks: NavigableSet<F>,
-)
+fun String.fromHexToByteArray(): ByteArray = HexFormat.of().parseHex(removePrefix("0x"))

@@ -13,62 +13,72 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app.config
+package maru.consensus.config
 
+import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ExperimentalHoplite
+import com.sksamuel.hoplite.json.JsonPropertySource
+import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.dummy.DummyConsensusConfig
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalHoplite::class)
-class JsonFriendlinessTest {
+class JsonFriendlyForksScheduleTest {
+  private val genesisConfig =
+    """
+    {
+      "config": {
+        "0": {
+          "type": "dummy",
+          "blockTimeMillis": 1000,
+          "feeRecipient": "0x0000000000000000000000000000000000000000"
+        },
+        "2": {
+          "type": "delegated",
+          "pollPeriodMillis": 2000
+        }
+      }
+    }
+    """.trimIndent()
+
   @Test
   fun genesisFileIsParseable() {
     val config =
-      Utils.parseJsonConfig<JsonFriendlyForksSchedule>(
-        """
-        {
-          "config": {
-            "0": {
-              "type": "dummy",
-              "blockTimeMillis": 1000,
-              "feeRecipient": "0x0000000000000000000000000000000000000000"
-            }
-          }
-        }
-        """.trimIndent(),
+      parseJsonConfig<JsonFriendlyForksSchedule>(
+        genesisConfig,
       )
-    val expectedObject =
+    val expectedDummyConsensusMap =
       mapOf(
         "type" to "dummy",
         "blockTimeMillis" to "1000",
         "feeRecipient" to "0x0000000000000000000000000000000000000000",
       )
+    val expectedDelegatedConsensusMap =
+      mapOf(
+        "type" to "delegated",
+        "pollPeriodMillis" to "2000",
+      )
     assertThat(config).isEqualTo(
-      JsonFriendlyForksSchedule(mapOf("0" to expectedObject)),
+      JsonFriendlyForksSchedule(
+        mapOf(
+          "0" to expectedDummyConsensusMap,
+          "2" to expectedDelegatedConsensusMap,
+        ),
+      ),
     )
   }
 
   @Test
   fun genesisFileIsConvertableToDomain() {
     val config =
-      Utils
-        .parseJsonConfig<JsonFriendlyForksSchedule>(
-          """
-          {
-            "config": {
-              "0": {
-                "type": "dummy",
-                "blockTimeMillis": 1000,
-                "feeRecipient": "0x0000000000000000000000000000000000000000"
-              }
-            }
-          }
-          """.trimIndent(),
-        ).domainFriendly()
+      parseJsonConfig<JsonFriendlyForksSchedule>(
+        genesisConfig,
+      ).domainFriendly()
     assertThat(config).isEqualTo(
       ForksSchedule(
         setOf(
@@ -79,8 +89,22 @@ class JsonFriendlinessTest {
               feeRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
             ),
           ),
+          ForkSpec(
+            2u,
+            ElDelegatedConsensus.Config(
+              pollPeriod = 2000.milliseconds,
+            ),
+          ),
         ),
       ),
     )
   }
+
+  inline fun <reified T : Any> parseJsonConfig(json: String): T =
+    ConfigLoaderBuilder
+      .default()
+      .withExplicitSealedTypes()
+      .addSource(JsonPropertySource(json))
+      .build()
+      .loadConfigOrThrow<T>()
 }

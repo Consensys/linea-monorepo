@@ -39,7 +39,7 @@ object NoopValidator : ExecutionPayloadValidator {
 
 class JsonRpcExecutionLayerManager private constructor(
   private val executionLayerClient: ExecutionLayerClient,
-  private val feeRecipientProvider: (ULong) -> ByteArray,
+  private val feeRecipientProvider: FeeRecipientProvider,
   currentBlockMetadata: BlockMetadata,
   private val payloadValidator: ExecutionPayloadValidator,
 ) : ExecutionLayerManager {
@@ -48,7 +48,7 @@ class JsonRpcExecutionLayerManager private constructor(
   companion object {
     fun create(
       executionLayerClient: ExecutionLayerClient,
-      feeRecipientProvider: (ULong) -> ByteArray,
+      feeRecipientProvider: FeeRecipientProvider,
       payloadValidator: ExecutionPayloadValidator,
     ): SafeFuture<JsonRpcExecutionLayerManager> =
       executionLayerClient.getLatestBlockMetadata().thenApply {
@@ -85,7 +85,7 @@ class JsonRpcExecutionLayerManager private constructor(
     )
 
   private fun getNextFeeRecipient(): Bytes20 =
-    Bytes20(Bytes.wrap(feeRecipientProvider(latestBlockMetadata().blockNumber + 1u)))
+    Bytes20(Bytes.wrap(feeRecipientProvider.getFeeRecipient(latestBlockMetadata().blockNumber + 1u)))
 
   override fun setHeadAndStartBlockBuilding(
     headHash: ByteArray,

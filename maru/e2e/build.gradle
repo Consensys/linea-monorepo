@@ -6,6 +6,10 @@ plugins {
 }
 
 dependencies {
+  implementation project(":app")
+  implementation project(":consensus")
+  implementation project(":config")
+
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:time"
   implementation "tech.pegasys.teku.internal:bytes"
@@ -21,8 +25,13 @@ dependencies {
 
   implementation ("org.web3j:core")
 
-  testImplementation('com.palantir.docker.compose:docker-compose-rule-junit4')
-  testImplementation('com.palantir.docker.compose:docker-compose-junit-jupiter')
+  implementation "com.sksamuel.hoplite:hoplite-toml"
+  implementation "com.sksamuel.hoplite:hoplite-json"
+  implementation "com.sksamuel.hoplite:hoplite-core"
+
+  implementation('com.palantir.docker.compose:docker-compose-rule-junit4')
+  implementation('com.palantir.docker.compose:docker-compose-junit-jupiter')
+  implementation "org.hyperledger.besu.internal:dsl"
 }
 
 sourceSets {

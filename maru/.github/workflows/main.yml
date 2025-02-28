@@ -8,7 +8,7 @@ on:
 
 jobs:
   filter-commit-changes:
-    runs-on: [self-hosted, ubuntu-20.04, X64, small]
+    runs-on: [gha-runner-scale-set-ubuntu-22.04-amd64-small]
     name: Filter commit changes
     outputs:
       consensus-client: ${{ steps.filter.outputs.consensus-client }}

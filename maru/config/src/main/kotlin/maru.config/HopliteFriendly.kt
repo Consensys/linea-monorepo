@@ -13,16 +13,16 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app.config
+package maru.config
 
 import com.sksamuel.hoplite.Masked
+import fromHexToByteArray
 import kotlin.time.Duration
-import org.apache.tuweni.bytes.Bytes
 
 data class ValidatorDtoToml(
   val validatorKey: Masked,
 ) {
-  fun domainFriendly(): Validator = Validator(Bytes.fromHexString(validatorKey.value).toArray())
+  fun domainFriendly(): Validator = Validator(validatorKey.value.fromHexToByteArray())
 }
 
 data class DummyConsensusOptionsDtoToml(
