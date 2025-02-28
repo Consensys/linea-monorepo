@@ -395,9 +395,12 @@ func (ss *Module) csIsStorage(comp *wizard.CompiledIOP) {
 func (ss *Module) csBatchNumber(comp *wizard.CompiledIOP) {
 
 	comp.InsertLocal(
-		0,
-		"STATE_SUMMARY_BATCH_NUMER_START_FROM_ZERO",
-		sym.NewVariable(ss.BatchNumber),
+		1,
+		"STATE_SUMMARY_BATCH_NUMBER_START_FROM_ONE",
+		sym.Sub(
+			ss.BatchNumber,
+			1,
+		),
 	)
 
 	isZeroWhenInactive(comp, ss.BatchNumber, ss.IsActive)

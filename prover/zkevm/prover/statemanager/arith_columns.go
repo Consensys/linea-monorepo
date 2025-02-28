@@ -178,11 +178,13 @@ func assignHubAddresses(run *wizard.ProverRuntime) {
 			newBytes := make([]byte, field.Bytes)
 			// set the high part
 			for j := 0; j < 4; j++ {
-				newBytes[j] = bytesHi[16+j]
+				newBytes[12+j] = bytesHi[32-(4-j)]
 			}
+			// set the low part
 			for j := 4; j < 20; j++ {
-				newBytes[j] = bytesLo[16+(j-4)]
+				newBytes[12+j] = bytesLo[16+(j-4)]
 			}
+			newVect[i].SetBytes(newBytes)
 		}
 		run.AssignColumn(
 			ifaces.ColID(fmt.Sprintf("HUB_%s_PROVER_SIDE_ADDRESS_IDENTIFIER", domainName)),
