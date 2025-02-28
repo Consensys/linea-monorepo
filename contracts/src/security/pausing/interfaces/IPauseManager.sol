@@ -130,7 +130,7 @@ interface IPauseManager {
    * @notice Unpauses functionality by specific type.
    * @dev Throws if UNUSED pause type is used.
    * @dev Requires the role mapped in `_unPauseTypeRoles` for the pauseType.
-   * @dev SECURITY_COUNCIL_ROLE unpause will reset the cooldown.
+   * @dev SECURITY_COUNCIL_ROLE unpause will reset the cooldown, enabling non-SECURITY_COUNCIL_ROLE pausing.
    * @param _pauseType The pause type value.
    */
   function unPauseByType(PauseType _pauseType) external;
