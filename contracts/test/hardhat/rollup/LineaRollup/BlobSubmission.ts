@@ -11,6 +11,15 @@ import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-
 import secondCompressedDataContent from "../../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
 
+import { TestLineaRollup } from "contracts/typechain-types";
+import {
+  deployLineaRollupFixture,
+  deployRevertingVerifier,
+  expectSuccessfulFinalize,
+  getAccountsFixture,
+  getWalletForIndex,
+  sendBlobTransaction,
+} from "../helpers";
 import {
   GENERAL_PAUSE_TYPE,
   HASH_ZERO,
@@ -28,15 +37,6 @@ import {
   generateBlobParentShnarfData,
   expectEventDirectFromReceiptData,
 } from "../../common/helpers";
-import {
-  deployLineaRollupFixture,
-  deployRevertingVerifier,
-  expectSuccessfulFinalize,
-  getAccountsFixture,
-  getWalletForIndex,
-  sendBlobTransaction,
-} from "../helpers";
-import { TestLineaRollup } from "../../../../typechain-types";
 
 describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   let lineaRollup: TestLineaRollup;

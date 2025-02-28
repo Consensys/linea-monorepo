@@ -1,6 +1,11 @@
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers } from "hardhat";
-import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
+
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
+
+import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
+import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
+import { getAccountsFixture, getRoleAddressesFixture } from "./";
 import {
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   FALLBACK_OPERATOR_ADDRESS,
@@ -9,9 +14,6 @@ import {
   ONE_DAY_IN_SECONDS,
 } from "../../common/constants";
 import { deployUpgradableFromFactory } from "../../common/deployment";
-import { CallForwardingProxy, TestLineaRollup } from "../../../../typechain-types";
-import { getAccountsFixture, getRoleAddressesFixture } from "./";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 
 export async function deployRevertingVerifier(scenario: bigint): Promise<string> {
   const revertingVerifierFactory = await ethers.getContractFactory("RevertingVerifier");

@@ -1,6 +1,6 @@
+import { HDNodeWallet, Wallet } from "ethers";
 import { config, ethers } from "hardhat";
 import { HardhatNetworkHDAccountsConfig } from "hardhat/types";
-import { HDNodeWallet, Wallet } from "ethers";
 
 export const getWalletForIndex = (index: number) => {
   const accounts = config.networks.hardhat.accounts as HardhatNetworkHDAccountsConfig;

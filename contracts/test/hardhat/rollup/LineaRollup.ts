@@ -9,6 +9,16 @@ import firstCompressedDataContent from "../_testData/compressedData/blocks-1-46.
 import secondCompressedDataContent from "../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-155.json";
 
+import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
+import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
+import {
+  deployCallForwardingProxy,
+  deployLineaRollupFixture,
+  expectSuccessfulFinalizeViaCallForwarder,
+  getAccountsFixture,
+  getRoleAddressesFixture,
+  sendBlobTransactionViaCallForwarder,
+} from "./helpers";
 import {
   ADDRESS_ZERO,
   FALLBACK_OPERATOR_ADDRESS,
@@ -44,16 +54,6 @@ import {
   calculateLastFinalizedState,
 } from "../common/helpers";
 import { CalldataSubmissionData } from "../common/types";
-import {
-  deployCallForwardingProxy,
-  deployLineaRollupFixture,
-  expectSuccessfulFinalizeViaCallForwarder,
-  getAccountsFixture,
-  getRoleAddressesFixture,
-  sendBlobTransactionViaCallForwarder,
-} from "./helpers";
-import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
-import { CallForwardingProxy, TestLineaRollup } from "../../../typechain-types";
 
 kzg.loadTrustedSetup(`${__dirname}/../_testData/trusted_setup.txt`);
 

@@ -8,11 +8,11 @@
 
  */
 
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers } from "hardhat";
-import { OPERATOR_ROLE } from "../../common/constants";
 import { LINEA_ROLLUP_ROLES } from "contracts/common/constants";
 import { generateRoleAssignments } from "contracts/common/helpers";
-import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
+import { OPERATOR_ROLE } from "../../common/constants";
 
 // Use in `loadFixture(getAccountsFixture))` and not as a standalone function.
 // This will ensure that the same return values will be retrieved across all invocations.

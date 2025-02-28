@@ -2,6 +2,8 @@ import { expect } from "chai";
 import { BaseContract, Contract, Transaction } from "ethers";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+
+import { TestLineaRollup } from "contracts/typechain-types";
 import { getWalletForIndex } from "./";
 import { HASH_ZERO, TEST_PUBLIC_VERIFIER_INDEX } from "../../common/constants";
 import {
@@ -11,7 +13,6 @@ import {
   generateKeccak256,
 } from "../../common/helpers";
 import { ShnarfDataGenerator } from "../../common/types";
-import { TestLineaRollup } from "../../../../typechain-types";
 
 export async function expectSuccessfulFinalize(
   lineaRollup: TestLineaRollup,

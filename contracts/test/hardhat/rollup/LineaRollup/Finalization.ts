@@ -6,12 +6,23 @@ import { ethers } from "hardhat";
 
 import aggregatedProof1To81 from "../../_testData/compressedData/multipleProofs/aggregatedProof-1-81.json";
 import aggregatedProof82To153 from "../../_testData/compressedData/multipleProofs/aggregatedProof-82-153.json";
+import betaV1FinalizationData from "../../_testData/betaV1/proof/7027059-7042723-d2221f5035e3dcbbc46e8a6130fef34fdec33c252b7d31fb8afa6848660260ba-getZkAggregatedProof.json";
 import calldataAggregatedProof1To155 from "../../_testData/compressedData/aggregatedProof-1-155.json";
 import secondCompressedDataContent from "../../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
 import fourthMultipleCompressedDataContent from "../../_testData/compressedData/multipleProofs/blocks-120-153.json";
-import betaV1FinalizationData from "../../_testData/betaV1/proof/7027059-7042723-d2221f5035e3dcbbc46e8a6130fef34fdec33c252b7d31fb8afa6848660260ba-getZkAggregatedProof.json";
 
+import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
+import { TestLineaRollup } from "contracts/typechain-types";
+import {
+  deployPlonkVerifierSepoliaFull,
+  expectSuccessfulFinalize,
+  getAccountsFixture,
+  getBetaV1BlobFiles,
+  getRoleAddressesFixture,
+  deployLineaRollupFixture,
+  sendBlobTransactionFromFile,
+} from "./../helpers";
 import {
   FALLBACK_OPERATOR_ADDRESS,
   GENERAL_PAUSE_TYPE,
@@ -41,17 +52,6 @@ import {
   generateParentAndExpectedShnarfForMulitpleIndex,
   generateParentShnarfData,
 } from "../../common/helpers";
-import {
-  deployPlonkVerifierSepoliaFull,
-  expectSuccessfulFinalize,
-  getAccountsFixture,
-  getBetaV1BlobFiles,
-  getRoleAddressesFixture,
-  deployLineaRollupFixture,
-  sendBlobTransactionFromFile,
-} from "./../helpers";
-import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
-import { TestLineaRollup } from "../../../../typechain-types";
 
 describe("Linea Rollup contract: Finalization", () => {
   let lineaRollup: TestLineaRollup;
