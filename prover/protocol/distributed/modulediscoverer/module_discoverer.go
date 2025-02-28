@@ -154,14 +154,13 @@ func (disc *Discoverer) CreateModule(columns []ifaces.Column) *Module {
 	for _, col := range columns {
 		module.ds.parent[col] = col
 		module.ds.rank[col] = 0
-		fmt.Println("Assigned parent for column:", col)
 	}
 	for i := 0; i < len(columns); i++ {
 		for j := i + 1; j < len(columns); j++ {
 			module.ds.Union(columns[i], columns[j])
 		}
 	}
-	fmt.Println("Final parent map for module:", module.moduleName, module.ds.parent)
+
 	disc.moduleNames = append(disc.moduleNames, module.moduleName)
 	disc.modules = append(disc.modules, module)
 	return module
@@ -352,9 +351,7 @@ func (disc *Discoverer) ModuleOf(col ifaces.Column) ModuleName {
 // HasOverlap checks if a module shares at least one column with a set of columns.
 func HasOverlap(module *Module, columns []ifaces.Column) bool {
 	for _, col := range columns {
-		fmt.Println("Checking column:", col, "against module:", module.moduleName)
 		if _, exists := module.ds.parent[col]; exists {
-			fmt.Println("Overlap found between:", col, "and module:", module.moduleName)
 			return true
 		}
 	}
