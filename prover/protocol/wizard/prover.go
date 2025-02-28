@@ -567,17 +567,6 @@ func (run *ProverRuntime) goNextRound() {
 		run.Coins.InsertNew(myCoin, value)
 	}
 
-	if run.Spec.FiatShamirHooksPostSampling.Len() > run.currRound {
-		fsHooks := run.Spec.FiatShamirHooksPostSampling.MustGet(run.currRound)
-		for i := range fsHooks {
-			if fsHooks[i].IsSkipped() {
-				continue
-			}
-
-			fsHooks[i].Run(run)
-		}
-	}
-
 	finalState := run.FS.State()
 
 	run.FiatShamirHistory[run.currRound] = [2][]field.Element{

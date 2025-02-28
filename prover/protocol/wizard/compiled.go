@@ -84,12 +84,6 @@ type CompiledIOP struct {
 	// of the provided values and some other external values.
 	FiatShamirHooksPreSampling collection.VecVec[VerifierAction]
 
-	// FiatShamirHooksPostSampling is an action that is run during the FS sampling. Compared
-	// to a normal verifier action it has the possibility to interact with the
-	// Fiat-Shamir state. And it is run before every verifier actions
-	// taking place in the round but after sampling all the random coins.
-	FiatShamirHooksPostSampling collection.VecVec[VerifierAction]
-
 	// Precomputed stores the assignments of all the Precomputed and VerifierKey
 	// polynomials. It is assigned directly when registering a precomputed
 	// column.

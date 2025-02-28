@@ -380,16 +380,6 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 		value := cn.SampleGnark(c.FS, seed[0])
 		c.Coins.InsertNew(coinName, value)
 	}
-
-	if c.Spec.FiatShamirHooksPostSampling.Len() > currRound {
-		fsHooks := c.Spec.FiatShamirHooksPostSampling.MustGet(currRound)
-		for i := range fsHooks {
-			if fsHooks[i].IsSkipped() {
-				continue
-			}
-			fsHooks[i].RunGnark(api, c)
-		}
-	}
 }
 
 // GetRandomCoinField returns the preassigned value of a random coin as

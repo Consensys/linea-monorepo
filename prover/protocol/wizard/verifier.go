@@ -238,17 +238,6 @@ func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 		value := info.Sample(run.FS, seed)
 		run.Coins.InsertNew(myCoin, value)
 	}
-
-	if run.Spec.FiatShamirHooksPostSampling.Len() > currRound {
-		fsHooks := run.Spec.FiatShamirHooksPostSampling.MustGet(currRound)
-		for i := range fsHooks {
-			if fsHooks[i].IsSkipped() {
-				continue
-			}
-
-			fsHooks[i].Run(run)
-		}
-	}
 }
 
 // GetRandomCoinField returns a field element random. The coin should be issued

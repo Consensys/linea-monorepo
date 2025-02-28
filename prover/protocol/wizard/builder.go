@@ -323,13 +323,4 @@ func (comp *CompiledIOP) EqualizeRounds(numRounds int) {
 		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the FiatShamirHooksPreSampling. %v", numRounds, comp.FiatShamirHooksPreSampling.Len(), helpMsg)
 	}
 	comp.FiatShamirHooksPreSampling.Reserve(numRounds)
-
-	/*
-		Check and reserve for the FiatShamirHooksPostSampling
-	*/
-	if comp.FiatShamirHooksPostSampling.Len() > numRounds {
-		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the FiatShamirHooksPostSampling. %v", numRounds, comp.FiatShamirHooksPostSampling.Len(), helpMsg)
-	}
-	comp.FiatShamirHooksPostSampling.Reserve(numRounds)
-
 }
