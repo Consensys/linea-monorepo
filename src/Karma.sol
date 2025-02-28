@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import { Ownable, Ownable2Step } from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 import { IRewardDistributor } from "./interfaces/IRewardDistributor.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
@@ -11,7 +13,7 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
  * @notice This contract allows for setting rewards for reward distributors.
  * @dev Implementation of the Karma token
  */
-contract Karma is ERC20, Ownable2Step {
+contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     error Karma__TransfersNotAllowed();
@@ -41,7 +43,19 @@ contract Karma is ERC20, Ownable2Step {
                                      CONSTRUCTOR
     //////////////////////////////////////////////////////////////////////////*/
 
-    constructor() ERC20(NAME, SYMBOL) Ownable(msg.sender) { }
+    constructor() {
+        _disableInitializers();
+    }
+
+    /**
+     * @notice Initializes the contract with the provided owner.
+     * @param _owner Address of the owner of the contract.
+     */
+    function initialize(address _owner) public initializer {
+        __ERC20_init(NAME, SYMBOL);
+        __Ownable_init(_owner);
+        __UUPSUpgradeable_init();
+    }
 
     /*//////////////////////////////////////////////////////////////////////////
                            USER-FACING FUNCTIONS
@@ -156,6 +170,14 @@ contract Karma is ERC20, Ownable2Step {
             externalSupply += supply;
         }
         return externalSupply;
+    }
+
+    /**
+     * @notice Authorizes contract upgrades via UUPS.
+     * @dev This function is only callable by the owner.
+     */
+    function _authorizeUpgrade(address) internal view override {
+        _checkOwner();
     }
 
     /*//////////////////////////////////////////////////////////////////////////

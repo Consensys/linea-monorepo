@@ -47,7 +47,7 @@ contract RewardsStreamerMPTest is StakeMath, Test {
         stakingToken = MockToken(_stakingToken);
         vaultFactory = _vaultFactory;
         admin = _deployer;
-        karma = karmaDeployment.run();
+        (karma,) = karmaDeployment.run();
 
         // set up reward distribution
         vm.startPrank(admin);

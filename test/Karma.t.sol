@@ -2,6 +2,8 @@
 pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
+import { DeployKarmaScript } from "../script/DeployKarma.s.sol";
+import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 import { Karma } from "../src/Karma.sol";
 import { KarmaDistributorMock } from "./mocks/KarmaDistributorMock.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
@@ -9,7 +11,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 contract KarmaTest is Test {
     Karma public karma;
 
-    address public owner = makeAddr("owner");
+    address public owner;
     address public alice = makeAddr("alice");
     address public bob = makeAddr("bob");
 
@@ -17,17 +19,19 @@ contract KarmaTest is Test {
     KarmaDistributorMock public distributor2;
 
     function setUp() public virtual {
-        vm.prank(owner);
-        karma = new Karma();
+        DeployKarmaScript karmaDeployment = new DeployKarmaScript();
+        (Karma _karma, DeploymentConfig deploymentConfig) = karmaDeployment.run();
+        karma = _karma;
+        (address deployer,,) = deploymentConfig.activeNetworkConfig();
+        owner = deployer;
 
         distributor1 = new KarmaDistributorMock();
         distributor2 = new KarmaDistributorMock();
 
-        vm.prank(owner);
+        vm.startBroadcast(owner);
         karma.addRewardDistributor(address(distributor1));
-
-        vm.prank(owner);
         karma.addRewardDistributor(address(distributor2));
+        vm.stopBroadcast();
     }
 
     function testAddKarmaDistributorOnlyOwner() public {
@@ -145,29 +149,23 @@ contract KarmaTest is Test {
     }
 }
 
-contract KarmaOwnershipTest is Test {
-    Karma xpToken;
-
-    address owner = makeAddr("owner");
-    address alice = makeAddr("alice");
-
-    function setUp() public {
-        vm.prank(owner);
-        xpToken = new Karma();
+contract KarmaOwnershipTest is KarmaTest {
+    function setUp() public override {
+        super.setUp();
     }
 
     function testInitialOwner() public view {
-        assertEq(xpToken.owner(), owner);
+        assertEq(karma.owner(), owner);
     }
 
     function testOwnershipTransfer() public {
         vm.prank(owner);
-        xpToken.transferOwnership(alice);
-        assertEq(xpToken.owner(), owner);
+        karma.transferOwnership(alice);
+        assertEq(karma.owner(), owner);
 
         vm.prank(alice);
-        xpToken.acceptOwnership();
-        assertEq(xpToken.owner(), alice);
+        karma.acceptOwnership();
+        assertEq(karma.owner(), alice);
     }
 }
 
