@@ -23,7 +23,8 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   /// @notice Duration of pauses, after which pauses will expire (except by the SECURITY_COUNCIL_ROLE).
   uint256 public constant PAUSE_DURATION = 72 hours;
 
-  /// @notice Duration of cooldown period after a pause expires, during which no pauses (except by the SECURITY_COUNCIL_ROLE role) can be enacted.
+  /// @notice Duration of cooldown after a pause expires, during which no pauses (except by the SECURITY_COUNCIL_ROLE) can be enacted.
+  /// @dev This prevents indefinite pause chaining by non security council roles.
   uint256 public constant COOLDOWN_DURATION = 24 hours;
 
   // @dev DEPRECATED. USE _pauseTypeStatusesBitMap INSTEAD
