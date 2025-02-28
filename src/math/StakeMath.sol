@@ -12,9 +12,7 @@ import { MultiplierPointMath } from "./MultiplierPointMath.sol";
 abstract contract StakeMath is MultiplierPointMath {
     error StakeMath__FundsLocked();
     error StakeMath__InvalidLockingPeriod();
-    error StakeMath__StakeIsTooLow();
     error StakeMath__InsufficientBalance();
-    error StakeMath__AccrueTimeNotReached();
     error StakeMath__AbsoluteMaxMPOverflow();
 
     event StakeMathTest(uint256 lockTime);
