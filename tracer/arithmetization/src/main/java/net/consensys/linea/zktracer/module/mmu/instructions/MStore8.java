@@ -15,9 +15,11 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_ONE_TARGET;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGEMO;
+import static net.consensys.linea.zktracer.Trace.MMIO_INST_LIMB_TO_RAM_ONE_TARGET;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_MICRO_ROWS_TOT_MSTORE_EIGHT;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_PP_ROWS_MSTORE8;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +27,6 @@ import java.util.List;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.euc.EucOperation;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.module.mmu.Trace;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
 import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
@@ -43,8 +44,8 @@ public class MStore8 implements MmuInstruction {
 
   public MStore8(Euc euc) {
     this.euc = euc;
-    this.eucCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_MSTORE8);
-    this.wcpCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_MSTORE8);
+    this.eucCallRecords = new ArrayList<>(NB_PP_ROWS_MSTORE8);
+    this.wcpCallRecords = new ArrayList<>(NB_PP_ROWS_MSTORE8);
   }
 
   @Override
@@ -75,7 +76,7 @@ public class MStore8 implements MmuInstruction {
     mmuData.outAndBinValues(MmuOutAndBinValues.DEFAULT); // all 0
 
     mmuData.totalLeftZeroesInitials(0);
-    mmuData.totalNonTrivialInitials(Trace.NB_MICRO_ROWS_TOT_MSTORE_EIGHT);
+    mmuData.totalNonTrivialInitials(NB_MICRO_ROWS_TOT_MSTORE_EIGHT);
     mmuData.totalRightZeroesInitials(0);
 
     return mmuData;

@@ -22,8 +22,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.Either;
 import net.consensys.linea.zktracer.types.MemoryRange;
@@ -86,7 +86,7 @@ public class ContextFragment implements TraceFragment {
   }
 
   @Override
-  public Trace trace(Trace trace) {
+  public Trace.Hub trace(Trace.Hub trace) {
     final CallFrame callFrame = getCallFrame();
 
     final Address address = callFrame.accountAddress();

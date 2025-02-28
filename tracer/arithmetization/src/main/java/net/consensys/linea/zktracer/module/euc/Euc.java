@@ -18,13 +18,12 @@ package net.consensys.linea.zktracer.module.euc;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
 import java.math.BigInteger;
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
@@ -69,15 +68,14 @@ public class Euc implements OperationSetModule<EucOperation> {
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Euc.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
+  public void commit(Trace trace) {
     for (EucOperation eucOperation : operations.sortOperations(new EucOperationComparator())) {
-      eucOperation.trace(trace);
+      eucOperation.trace(trace.euc);
     }
   }
 

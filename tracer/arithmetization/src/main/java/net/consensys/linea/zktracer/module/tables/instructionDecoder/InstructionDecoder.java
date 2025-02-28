@@ -15,12 +15,9 @@
 
 package net.consensys.linea.zktracer.module.tables.instructionDecoder;
 
-import static net.consensys.linea.zktracer.module.tables.instructionDecoder.Trace.headers;
-
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -30,7 +27,7 @@ import net.consensys.linea.zktracer.opcode.gas.MxpType;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 
 public final class InstructionDecoder implements Module {
-  private static void traceFamily(OpCodeData op, Trace trace) {
+  private static void traceFamily(OpCodeData op, Trace.Instdecoder trace) {
     trace
         .familyAdd(op.instructionFamily() == InstructionFamily.ADD)
         .familyMod(op.instructionFamily() == InstructionFamily.MOD)
@@ -59,7 +56,7 @@ public final class InstructionDecoder implements Module {
         .familyInvalid(op.instructionFamily() == InstructionFamily.INVALID);
   }
 
-  private static void traceStackSettings(OpCodeData op, Trace trace) {
+  private static void traceStackSettings(OpCodeData op, Trace.Instdecoder trace) {
     trace
         .alpha(UnsignedByte.of(op.stackSettings().alpha()))
         .delta(UnsignedByte.of(op.stackSettings().delta()))
@@ -72,7 +69,7 @@ public final class InstructionDecoder implements Module {
         .flag4(op.stackSettings().flag4());
   }
 
-  private static void traceBillingSettings(OpCodeData op, Trace trace) {
+  private static void traceBillingSettings(OpCodeData op, Trace.Instdecoder trace) {
     trace
         .billingPerWord(
             UnsignedByte.of(
@@ -109,21 +106,20 @@ public final class InstructionDecoder implements Module {
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Instdecoder.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    Trace trace = new Trace(buffers);
-
+  public void commit(Trace trace) {
     for (int i = 0; i < 256; i++) {
       final OpCodeData op = OpCode.of(i).getData();
 
-      traceFamily(op, trace);
-      traceStackSettings(op, trace);
-      traceBillingSettings(op, trace);
+      traceFamily(op, trace.instdecoder);
+      traceStackSettings(op, trace.instdecoder);
+      traceBillingSettings(op, trace.instdecoder);
       trace
+          .instdecoder
           .opcode(UnsignedByte.of(i))
           .isPush(op.isPush())
           .isJumpdest(op.isJumpDest())

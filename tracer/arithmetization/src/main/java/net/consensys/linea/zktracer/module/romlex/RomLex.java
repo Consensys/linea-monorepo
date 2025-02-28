@@ -16,20 +16,19 @@
 package net.consensys.linea.zktracer.module.romlex;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.getOpCode;
 import static net.consensys.linea.zktracer.types.AddressUtils.getDeploymentAddress;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 
-import java.nio.MappedByteBuffer;
 import java.util.*;
 
 import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -254,7 +253,7 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
       final RomOperation operation,
       final int cfi,
       final int codeFragmentIndexInfinity,
-      Trace trace) {
+      Trace.Romlex trace) {
     final Hash codeHash =
         operation.metadata().underDeployment() ? Hash.EMPTY : Hash.hash(operation.byteCode());
     trace
@@ -295,19 +294,17 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Romlex.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-
-    final Trace trace = new Trace(buffers);
+  public void commit(Trace trace) {
     final int codeFragmentIndexInfinity = operations.size();
 
     int cfi = 0;
     for (RomOperation operation : sortedOperations) {
-      traceOperation(operation, ++cfi, codeFragmentIndexInfinity, trace);
+      traceOperation(operation, ++cfi, codeFragmentIndexInfinity, trace.romlex);
     }
   }
 }

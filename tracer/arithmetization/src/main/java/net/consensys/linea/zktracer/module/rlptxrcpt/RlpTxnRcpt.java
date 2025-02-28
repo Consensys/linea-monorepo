@@ -15,12 +15,12 @@
 
 package net.consensys.linea.zktracer.module.rlptxrcpt;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LINEA_MAX_NUMBER_OF_TRANSACTIONS_IN_BATCH;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_INT_LONG;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_INT_SHORT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_LIST_LONG;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.RLP_PREFIX_LIST_SHORT;
+import static net.consensys.linea.zktracer.Trace.LINEA_MAX_NUMBER_OF_TRANSACTIONS_IN_BATCH;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_INT_LONG;
+import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_INT_SHORT;
+import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_LIST_LONG;
+import static net.consensys.linea.zktracer.Trace.RLP_PREFIX_LIST_SHORT;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.byteCounting;
 import static net.consensys.linea.zktracer.module.rlputils.Pattern.outerRlpSize;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -29,14 +29,13 @@ import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import java.math.BigInteger;
-import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.function.Function;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
@@ -77,7 +76,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
   }
 
   public void traceOperation(
-      final RlpTxrcptOperation chunk, int absTxNum, int absLogNumMax, Trace trace) {
+      final RlpTxrcptOperation chunk, int absTxNum, int absLogNumMax, Trace.Rlptxrcpt trace) {
     RlpTxrcptColumns traceValue = new RlpTxrcptColumns();
     traceValue.txrcptSize = txRcptSize(chunk);
     traceValue.absTxNum = absTxNum;
@@ -99,7 +98,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
     phase5(traceValue, chunk.logs(), trace);
   }
 
-  private void phase1(RlpTxrcptColumns traceValue, TransactionType txType, Trace trace) {
+  private void phase1(RlpTxrcptColumns traceValue, TransactionType txType, Trace.Rlptxrcpt trace) {
     final int phase = 1;
     // byte TYPE concatenation
     traceValue.partialReset(phase, 1);
@@ -121,7 +120,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
         phase, traceValue.txrcptSize, true, false, false, false, true, false, 0, traceValue, trace);
   }
 
-  private void phase2(RlpTxrcptColumns traceValue, Boolean status, Trace trace) {
+  private void phase2(RlpTxrcptColumns traceValue, Boolean status, Trace.Rlptxrcpt trace) {
     final int phase = 2;
     traceValue.partialReset(phase, 1);
     traceValue.limbConstructed = true;
@@ -140,7 +139,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
     traceRow(traceValue, trace);
   }
 
-  private void phase3(RlpTxrcptColumns traceValue, Long cumulativeGasUsed, Trace trace) {
+  private void phase3(RlpTxrcptColumns traceValue, Long cumulativeGasUsed, Trace.Rlptxrcpt trace) {
     final int phase = 3;
     if (cumulativeGasUsed == 0) {
       throw new IllegalStateException("Cumulative Gas Used can't be 0");
@@ -157,7 +156,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
     }
   }
 
-  private void phase4(RlpTxrcptColumns traceValue, List<Log> logList, Trace trace) {
+  private void phase4(RlpTxrcptColumns traceValue, List<Log> logList, Trace.Rlptxrcpt trace) {
     final int phase = 4;
     // RLP prefix
     traceValue.partialReset(phase, 1);
@@ -235,7 +234,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
     traceValue.indexLocal = 0;
   }
 
-  private void phase5(RlpTxrcptColumns traceValue, List<Log> logList, Trace trace) {
+  private void phase5(RlpTxrcptColumns traceValue, List<Log> logList, Trace.Rlptxrcpt trace) {
     final int phase = 5;
     // Trivial case, there are no log entries.
     if (logList.isEmpty()) {
@@ -455,7 +454,11 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
   }
 
   private void traceEmptyList(
-      RlpTxrcptColumns traceValue, int phase, boolean isPrefix, boolean endPhase, Trace trace) {
+      RlpTxrcptColumns traceValue,
+      int phase,
+      boolean isPrefix,
+      boolean endPhase,
+      Trace.Rlptxrcpt trace) {
     traceValue.partialReset(phase, 1);
     traceValue.limbConstructed = true;
     traceValue.limb = BYTES_RLP_LIST_SHORT;
@@ -476,7 +479,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
       boolean writeInput2,
       int valueInput2,
       RlpTxrcptColumns traceValue,
-      Trace trace) {
+      Trace.Rlptxrcpt trace) {
     int lengthSize =
         Bytes.ofUnsignedLong(length).size()
             - Bytes.ofUnsignedLong(length).numberOfLeadingZeroBytes();
@@ -562,7 +565,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
       boolean writeInput2,
       int valueInput2,
       RlpTxrcptColumns traceValue,
-      Trace trace) {
+      Trace.Rlptxrcpt trace) {
 
     final Bytes inputBytes = bigIntegerToBytes(BigInteger.valueOf(input));
 
@@ -626,7 +629,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
     }
   }
 
-  private void traceRow(RlpTxrcptColumns traceValue, Trace trace) {
+  private void traceRow(RlpTxrcptColumns traceValue, Trace.Rlptxrcpt trace) {
     // Decrements sizes
     if (traceValue.limbConstructed) {
       if (traceValue.phase != 1) {
@@ -680,7 +683,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
         .nStep(traceValue.nStep)
         .phaseId(traceValue.getPhaseId());
 
-    List<Function<Boolean, Trace>> phaseColumns =
+    List<Function<Boolean, Trace.Rlptxrcpt>> phaseColumns =
         List.of(trace::phase1, trace::phase2, trace::phase3, trace::phase4, trace::phase5);
 
     for (int i = 0; i < phaseColumns.size(); i++) {
@@ -761,14 +764,12 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Rlptxrcpt.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
-
+  public void commit(Trace trace) {
     int absLogNumMax = 0;
     for (RlpTxrcptOperation op : operations.getAll()) {
       absLogNumMax += op.logs().size();
@@ -776,7 +777,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
 
     int absTxNum = 0;
     for (RlpTxrcptOperation op : operations.getAll()) {
-      traceOperation(op, ++absTxNum, absLogNumMax, trace);
+      traceOperation(op, ++absTxNum, absLogNumMax, trace.rlptxrcpt);
     }
   }
 }

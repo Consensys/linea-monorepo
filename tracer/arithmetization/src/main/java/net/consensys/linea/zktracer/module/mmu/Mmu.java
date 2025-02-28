@@ -17,13 +17,12 @@ package net.consensys.linea.zktracer.module.mmu;
 
 import static com.google.common.base.Preconditions.checkState;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.euc.Euc;
@@ -47,14 +46,12 @@ public class Mmu implements OperationListModule<MmuOperation> {
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Mmu.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
-
+  public void commit(Trace trace) {
     int mmuStamp = 0;
     int mmioStamp = 0;
 
@@ -63,7 +60,7 @@ public class Mmu implements OperationListModule<MmuOperation> {
       mmuOperation.getCFI();
       mmuOperation.fillLimb();
 
-      mmioStamp = mmuOperation.trace(++mmuStamp, mmioStamp, trace);
+      mmioStamp = mmuOperation.trace(++mmuStamp, mmioStamp, trace.mmu);
     }
   }
 

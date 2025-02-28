@@ -15,14 +15,13 @@
 
 package net.consensys.linea.zktracer.module.ecdata;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 import java.util.Set;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.ext.Ext;
@@ -66,17 +65,16 @@ public class EcData implements OperationListModule<EcDataOperation> {
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Ecdata.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
+  public void commit(Trace trace) {
     int stamp = 0;
     long previousId = 0;
     for (EcDataOperation op : operations.getAll()) {
-      op.trace(trace, ++stamp, previousId);
+      op.trace(trace.ecdata, ++stamp, previousId);
       previousId = op.id();
     }
   }

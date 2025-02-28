@@ -16,10 +16,10 @@
 package net.consensys.linea.zktracer.module.hub.fragment.imc.mmu;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.Trace.*;
+import static net.consensys.linea.zktracer.Trace.Ecdata.*;
 import static net.consensys.linea.zktracer.module.Util.rightPaddedSlice;
 import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.*;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
-import static net.consensys.linea.zktracer.module.ecdata.Trace.*;
 import static net.consensys.linea.zktracer.module.hub.Hub.newIdentifierFromStamp;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_RIPEMD_160;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_SHA2_256;
@@ -28,7 +28,7 @@ import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata
 import static net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata.MBS_MIN_OFFSET;
 import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.extractContiguousLimbsFromMemory;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
-import static net.consensys.linea.zktracer.types.Conversions.unsignedIntToBytes;
+import static net.consensys.linea.zktracer.types.Conversions.longToBytes;
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
@@ -38,8 +38,8 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.opcode.*;
@@ -380,7 +380,7 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
       return new MmuCall(hub, MMU_INST_MSTORE)
           .targetId(subsection.exoModuleOperationId())
           .targetOffset(EWord.ZERO)
-          .limb1(isShaTwo ? bigIntegerToBytes(EMPTY_SHA2_HI) : unsignedIntToBytes(EMPTY_RIPEMD_HI))
+          .limb1(isShaTwo ? bigIntegerToBytes(EMPTY_SHA2_HI) : longToBytes(EMPTY_RIPEMD_HI))
           .limb2(isShaTwo ? bigIntegerToBytes(EMPTY_SHA2_LO) : bigIntegerToBytes(EMPTY_RIPEMD_LO));
     } else {
       return new MmuCall(hub, MMU_INST_EXO_TO_RAM_TRANSPLANTS)
@@ -783,7 +783,7 @@ public class MmuCall implements TraceSubFragment, EndTransactionDefer {
   }
 
   @Override
-  public Trace trace(Trace trace, State hubState) {
+  public Trace.Hub trace(Trace.Hub trace, State hubState) {
     hubState.incrementMmuStamp();
     return trace
         .pMiscMmuFlag(true)

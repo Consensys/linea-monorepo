@@ -15,14 +15,15 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEPO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_VANISHES;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
-import static net.consensys.linea.zktracer.module.mmu.Trace.NB_MICRO_ROWS_TOT_RIGHT_PADDED_WORD_EXTRACTION;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGEPO;
+import static net.consensys.linea.zktracer.Trace.MMIO_INST_LIMB_VANISHES;
+import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
+import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_MICRO_ROWS_TOT_RIGHT_PADDED_WORD_EXTRACTION;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_PP_ROWS_RIGHT_PADDED_WORD_EXTRACTION;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.types.Conversions.*;
 
 import java.math.BigInteger;
@@ -32,7 +33,6 @@ import java.util.List;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.euc.EucOperation;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.module.mmu.Trace;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
 import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
@@ -64,8 +64,8 @@ public class RightPaddedWordExtraction implements MmuInstruction {
   public RightPaddedWordExtraction(Euc euc, Wcp wcp) {
     this.euc = euc;
     this.wcp = wcp;
-    this.eucCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_RIGHT_PADDED_WORD_EXTRACTION);
-    this.wcpCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_RIGHT_PADDED_WORD_EXTRACTION);
+    this.eucCallRecords = new ArrayList<>(NB_PP_ROWS_RIGHT_PADDED_WORD_EXTRACTION);
+    this.wcpCallRecords = new ArrayList<>(NB_PP_ROWS_RIGHT_PADDED_WORD_EXTRACTION);
   }
 
   @Override

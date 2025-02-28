@@ -16,8 +16,8 @@
 package net.consensys.linea.zktracer.module.mod;
 
 import static com.google.common.base.Preconditions.checkElementIndex;
+import static net.consensys.linea.zktracer.Trace.MMEDIUM;
 import static net.consensys.linea.zktracer.module.Util.byteBits;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMEDIUM;
 
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -25,6 +25,7 @@ import java.util.Arrays;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.bytestheta.BaseTheta;
 import net.consensys.linea.zktracer.container.ModuleOperation;
@@ -216,7 +217,7 @@ public class ModOperation extends ModuleOperation {
     return oli ? 1 : MMEDIUM;
   }
 
-  public void trace(Trace trace, int stamp) {
+  public void trace(Trace.Mod trace, int stamp) {
     this.compute();
 
     for (short ct = 0; ct < this.numberOfRows(); ct++) {

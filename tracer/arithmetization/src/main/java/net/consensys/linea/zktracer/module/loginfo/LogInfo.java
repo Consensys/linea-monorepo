@@ -15,13 +15,17 @@
 
 package net.consensys.linea.zktracer.module.loginfo;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_LOG0;
+import static net.consensys.linea.zktracer.Trace.RLP_RCPT_SUBPHASE_ID_ADDR;
+import static net.consensys.linea.zktracer.Trace.RLP_RCPT_SUBPHASE_ID_DATA_SIZE;
+import static net.consensys.linea.zktracer.Trace.RLP_RCPT_SUBPHASE_ID_NO_LOG_ENTRY;
+import static net.consensys.linea.zktracer.Trace.RLP_RCPT_SUBPHASE_ID_TOPIC_BASE;
+import static net.consensys.linea.zktracer.Trace.RLP_RCPT_SUBPHASE_ID_TOPIC_DELTA;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.module.rlptxrcpt.RlpTxnRcpt;
@@ -64,14 +68,12 @@ public class LogInfo implements Module {
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Loginfo.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
-
+  public void commit(Trace trace) {
     int absLogNumMax = 0;
     for (RlpTxrcptOperation tx : rlpTxnRcpt.operations().getAll()) {
       absLogNumMax += tx.logs().size();
@@ -82,11 +84,11 @@ public class LogInfo implements Module {
     for (RlpTxrcptOperation tx : rlpTxnRcpt.operations().getAll()) {
       absTxNum += 1;
       if (tx.logs().isEmpty()) {
-        traceTxWoLog(absTxNum, absLogNum, absLogNumMax, trace);
+        traceTxWoLog(absTxNum, absLogNum, absLogNumMax, trace.loginfo);
       } else {
         for (Log log : tx.logs()) {
           absLogNum += 1;
-          traceLog(log, absTxNum, absLogNum, absLogNumMax, trace);
+          traceLog(log, absTxNum, absLogNum, absLogNumMax, trace.loginfo);
         }
       }
     }
@@ -105,7 +107,7 @@ public class LogInfo implements Module {
   }
 
   public void traceTxWoLog(
-      final int absTxNum, final int absLogNum, final int absLogNumMax, Trace trace) {
+      final int absTxNum, final int absLogNum, final int absLogNumMax, Trace.Loginfo trace) {
     trace
         .absTxnNumMax(rlpTxnRcpt.operations().size())
         .absTxnNum(absTxNum)
@@ -138,7 +140,11 @@ public class LogInfo implements Module {
   }
 
   public void traceLog(
-      final Log log, final int absTxNum, final int absLogNum, final int absLogNumMax, Trace trace) {
+      final Log log,
+      final int absTxNum,
+      final int absLogNum,
+      final int absLogNumMax,
+      Trace.Loginfo trace) {
     final int ctMax = ctMax(log);
     final int nbTopic = log.getTopics().size();
     final Bytes32 topic1 = nbTopic >= 1 ? log.getTopics().get(0) : Bytes32.ZERO;

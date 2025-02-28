@@ -15,14 +15,13 @@
 
 package net.consensys.linea.zktracer.module.exp;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -45,24 +44,22 @@ public class Exp implements OperationSetModule<ExpOperation> {
     return "EXP";
   }
 
-  @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
-  }
-
   public void call(ExpCall expCall) {
     operations.add(new ExpOperation(expCall, wcp, hub));
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Exp.headers(this.lineCount());
+  }
 
+  @Override
+  public void commit(Trace trace) {
     int stamp = 0;
     for (ExpOperation expOp : operations.sortOperations(new ExpOperationComparator())) {
-      expOp.traceComputation(++stamp, trace);
-      expOp.traceMacro(stamp, trace);
-      expOp.tracePreprocessing(stamp, trace);
+      expOp.traceComputation(++stamp, trace.exp);
+      expOp.traceMacro(stamp, trace.exp);
+      expOp.tracePreprocessing(stamp, trace.exp);
     }
   }
 }

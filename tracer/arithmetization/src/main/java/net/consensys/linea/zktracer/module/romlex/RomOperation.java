@@ -15,22 +15,22 @@
 
 package net.consensys.linea.zktracer.module.romlex;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_INVALID;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_JUMPDEST;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_PUSH1;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_PUSH32;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE_MO;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_INVALID;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_JUMPDEST;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_PUSH1;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_PUSH32;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGEMO;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE_MO;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
-import net.consensys.linea.zktracer.module.rom.Trace;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -46,7 +46,7 @@ public final class RomOperation extends ModuleOperation {
   @Getter @EqualsAndHashCode.Include private final ContractMetadata metadata;
   private final Bytes byteCode;
 
-  public void trace(Trace trace, int cfi, int cfiInfty) {
+  public void trace(Trace.Rom trace, int cfi, int cfiInfty) {
     // WARN this is the tracing used by the ROM, not by the ROMLEX
     final int chunkRowSize = this.lineCount();
     final int codeSize = this.byteCode().size();

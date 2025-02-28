@@ -15,23 +15,23 @@
 
 package net.consensys.linea.zktracer.precompiles;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_BLAKE2_PER_ROUND;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_ECADD;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_ECMUL;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_ECPAIRING;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_ECPAIRING_PAIR;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_ECRECOVER;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_IDENTITY;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_IDENTITY_WORD;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_MODEXP;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_RIPEMD;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_RIPEMD_WORD;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_SHA2;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_SHA2_WORD;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PRC_ECPAIRING_SIZE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE_MO;
-import static net.consensys.linea.zktracer.module.oob.Trace.G_QUADDIVISOR;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_BLAKE2_PER_ROUND;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECADD;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECMUL;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECPAIRING;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECPAIRING_PAIR;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_ECRECOVER;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_IDENTITY;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_IDENTITY_WORD;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_MODEXP;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_RIPEMD;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_RIPEMD_WORD;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_SHA2;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_SHA2_WORD;
+import static net.consensys.linea.zktracer.Trace.Oob.G_QUADDIVISOR;
+import static net.consensys.linea.zktracer.Trace.PRC_ECPAIRING_SIZE;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE_MO;
 import static org.hyperledger.besu.datatypes.Address.*;
 
 import org.hyperledger.besu.datatypes.Address;

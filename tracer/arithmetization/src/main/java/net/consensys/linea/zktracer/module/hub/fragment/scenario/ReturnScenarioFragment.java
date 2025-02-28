@@ -18,7 +18,7 @@ import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.ReturnScenarioFragment.ReturnScenario.*;
 
 import lombok.Setter;
-import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 
 @Setter
@@ -42,7 +42,7 @@ public class ReturnScenarioFragment implements TraceFragment {
   }
 
   @Override
-  public Trace trace(Trace trace) {
+  public Trace.Hub trace(Trace.Hub trace) {
     checkArgument(!scenario.equals(UNDEFINED));
     return trace
         .peekAtScenario(true)

@@ -15,12 +15,12 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EIP_3541_MARKER;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
-import static net.consensys.linea.zktracer.module.mmu.Trace.NB_MICRO_ROWS_TOT_INVALID_CODE_PREFIX;
-import static net.consensys.linea.zktracer.module.mmu.Trace.NB_PP_ROWS_INVALID_CODE_PREFIX;
+import static net.consensys.linea.zktracer.Trace.EIP_3541_MARKER;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGEMO;
+import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_LIMB_ONE_SOURCE;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_MICRO_ROWS_TOT_INVALID_CODE_PREFIX;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_PP_ROWS_INVALID_CODE_PREFIX;
 
 import java.util.ArrayList;
 import java.util.List;

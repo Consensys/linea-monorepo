@@ -15,9 +15,11 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_LIMB_TRANSPLANT;
+import static net.consensys.linea.zktracer.Trace.MMIO_INST_RAM_TO_LIMB_TWO_SOURCE;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_MICRO_ROWS_TOT_MLOAD;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_PP_ROWS_MLOAD;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +27,6 @@ import java.util.List;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.euc.EucOperation;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.module.mmu.Trace;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
 import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
@@ -48,8 +49,8 @@ public class MLoad implements MmuInstruction {
   public MLoad(Euc euc, Wcp wcp) {
     this.euc = euc;
     this.wcp = wcp;
-    this.eucCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_MLOAD);
-    this.wcpCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_MLOAD);
+    this.eucCallRecords = new ArrayList<>(NB_PP_ROWS_MLOAD);
+    this.wcpCallRecords = new ArrayList<>(NB_PP_ROWS_MLOAD);
   }
 
   public MmuData preProcess(MmuData mmuData) {
@@ -80,7 +81,7 @@ public class MLoad implements MmuInstruction {
     mmuData.outAndBinValues(MmuOutAndBinValues.DEFAULT);
 
     mmuData.totalLeftZeroesInitials(0);
-    mmuData.totalNonTrivialInitials(Trace.NB_MICRO_ROWS_TOT_MLOAD);
+    mmuData.totalNonTrivialInitials(NB_MICRO_ROWS_TOT_MLOAD);
     mmuData.totalRightZeroesInitials(0);
 
     return mmuData;

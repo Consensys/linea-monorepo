@@ -20,7 +20,7 @@ import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC
 
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
@@ -54,7 +54,7 @@ public final class CommonFragment implements TraceFragment {
     return Exceptions.none(commonFragmentValues.exceptions);
   }
 
-  public Trace trace(Trace trace) {
+  public Trace.Hub trace(Trace.Hub trace) {
     final CallFrame frame = commonFragmentValues.callFrame;
     final TransactionProcessingMetadata tx = commonFragmentValues.txMetadata;
     final boolean isExec = commonFragmentValues.hubProcessingPhase == TX_EXEC;

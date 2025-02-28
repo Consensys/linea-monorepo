@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob;
 
 import lombok.RequiredArgsConstructor;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
 
 /** This interface defines the API required to execute a call to the OOB module. */
@@ -28,6 +29,5 @@ public abstract class OobCall implements TraceSubFragment {
     return oobInstruction.getValue();
   }
 
-  public abstract net.consensys.linea.zktracer.module.oob.Trace trace(
-      net.consensys.linea.zktracer.module.oob.Trace trace);
+  public abstract Trace.Oob trace(Trace.Oob trace);
 }

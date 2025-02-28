@@ -5,14 +5,10 @@ inputs:
     description: 'Enable ability to ssh into session'
     required: false
     default: false
-  rust-corset:
-    description: 'Setup Rust Corset'
-    required: false
-    default: false
   go-corset:
     description: 'Setup Go Corset'
     required: false
-    default: false
+    default: true
   github-token:
     description: 'Github token (needed for downloading corset)'
     required: false
@@ -36,12 +32,6 @@ runs:
         with:
           java-version: 21
           distribution: temurin
-
-      - name: Setup Rust Corset
-        if: ${{ inputs.rust-corset == 'true' }}
-        uses: ./.github/actions/setup-rust-corset
-        with:
-          github-token: ${{ inputs.github-token }}
 
       - name: Setup Go Corset
         if: ${{ inputs.go-corset == 'true' }}

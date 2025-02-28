@@ -15,7 +15,7 @@
 
 package net.consensys.linea.testing;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
+import static net.consensys.linea.zktracer.Trace.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;

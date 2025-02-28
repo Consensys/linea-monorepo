@@ -25,11 +25,10 @@ import static net.consensys.linea.zktracer.module.wcp.WcpOperation.SGTbv;
 import static net.consensys.linea.zktracer.module.wcp.WcpOperation.SLTbv;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
@@ -132,19 +131,17 @@ public class Wcp implements Module {
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Wcp.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
-
+  public void commit(Trace trace) {
     int stamp = 0;
     final WcpOperationComparator comparator = new WcpOperationComparator();
     for (ModuleOperationStackedSet<WcpOperation> operationsSet : operations) {
       for (WcpOperation operation : operationsSet.sortOperations(comparator)) {
-        operation.trace(trace, ++stamp);
+        operation.trace(trace.wcp, ++stamp);
       }
     }
   }

@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.module.rlpaddr;
 
-import static net.consensys.linea.zktracer.module.rlpaddr.Trace.MAX_CT_CREATE;
-import static net.consensys.linea.zktracer.module.rlpaddr.Trace.MAX_CT_CREATE2;
+import static net.consensys.linea.zktracer.Trace.Rlpaddr.MAX_CT_CREATE;
+import static net.consensys.linea.zktracer.Trace.Rlpaddr.MAX_CT_CREATE2;
 
 import java.math.BigInteger;
 

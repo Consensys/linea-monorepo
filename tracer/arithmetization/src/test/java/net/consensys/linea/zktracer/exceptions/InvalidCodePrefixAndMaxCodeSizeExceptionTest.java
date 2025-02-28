@@ -15,10 +15,10 @@
 package net.consensys.linea.zktracer.exceptions;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MAX_CODE_SIZE;
+import static net.consensys.linea.zktracer.Trace.EIP_3541_MARKER;
+import static net.consensys.linea.zktracer.Trace.MAX_CODE_SIZE;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.INVALID_CODE_PREFIX;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.MAX_CODE_SIZE_EXCEPTION;
-import static net.consensys.linea.zktracer.module.txndata.Trace.EIP_3541_MARKER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;

@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode.gas;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
+import static net.consensys.linea.zktracer.Trace.*;
 
 import lombok.RequiredArgsConstructor;
 

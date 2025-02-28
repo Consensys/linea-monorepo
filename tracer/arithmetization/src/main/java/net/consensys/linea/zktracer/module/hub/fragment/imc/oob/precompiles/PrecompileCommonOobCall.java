@@ -22,7 +22,7 @@ import java.math.BigInteger;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction;
 
@@ -53,8 +53,7 @@ public class PrecompileCommonOobCall extends OobCall {
   }
 
   @Override
-  public net.consensys.linea.zktracer.module.oob.Trace trace(
-      net.consensys.linea.zktracer.module.oob.Trace trace) {
+  public Trace.Oob trace(Trace.Oob trace) {
     return trace
         .data1(bigIntegerToBytes(calleeGas))
         .data2(bigIntegerToBytes(cds))
@@ -68,7 +67,7 @@ public class PrecompileCommonOobCall extends OobCall {
   }
 
   @Override
-  public Trace trace(Trace trace) {
+  public Trace.Hub trace(Trace.Hub trace) {
     return trace
         .pMiscOobFlag(true)
         .pMiscOobInst(oobInstructionValue())

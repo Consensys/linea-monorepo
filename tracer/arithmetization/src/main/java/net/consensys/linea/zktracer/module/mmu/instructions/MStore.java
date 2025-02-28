@@ -15,9 +15,11 @@
 
 package net.consensys.linea.zktracer.module.mmu.instructions;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TRANSPLANT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.MMIO_INST_LIMB_TO_RAM_TWO_TARGET;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.MMIO_INST_LIMB_TO_RAM_TRANSPLANT;
+import static net.consensys.linea.zktracer.Trace.MMIO_INST_LIMB_TO_RAM_TWO_TARGET;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_MICRO_ROWS_TOT_MSTORE;
+import static net.consensys.linea.zktracer.Trace.Mmu.NB_PP_ROWS_MSTORE;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +27,6 @@ import java.util.List;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.euc.EucOperation;
 import net.consensys.linea.zktracer.module.mmu.MmuData;
-import net.consensys.linea.zktracer.module.mmu.Trace;
 import net.consensys.linea.zktracer.module.mmu.values.HubToMmuValues;
 import net.consensys.linea.zktracer.module.mmu.values.MmuEucCallRecord;
 import net.consensys.linea.zktracer.module.mmu.values.MmuOutAndBinValues;
@@ -48,8 +49,8 @@ public class MStore implements MmuInstruction {
   public MStore(Euc euc, Wcp wcp) {
     this.euc = euc;
     this.wcp = wcp;
-    this.eucCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_MSTORE);
-    this.wcpCallRecords = new ArrayList<>(Trace.NB_PP_ROWS_MSTORE);
+    this.eucCallRecords = new ArrayList<>(NB_PP_ROWS_MSTORE);
+    this.wcpCallRecords = new ArrayList<>(NB_PP_ROWS_MSTORE);
   }
 
   @Override
@@ -90,7 +91,7 @@ public class MStore implements MmuInstruction {
     mmuData.outAndBinValues(MmuOutAndBinValues.builder().build()); // all 0
 
     mmuData.totalLeftZeroesInitials(0);
-    mmuData.totalNonTrivialInitials(Trace.NB_MICRO_ROWS_TOT_MSTORE);
+    mmuData.totalNonTrivialInitials(NB_MICRO_ROWS_TOT_MSTORE);
     mmuData.totalRightZeroesInitials(0);
 
     return mmuData;

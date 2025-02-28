@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.module.rlptxn;
 
+import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
 
 import java.math.BigInteger;
 

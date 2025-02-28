@@ -15,12 +15,12 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.exp;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EXP_INST_EXPLOG;
+import static net.consensys.linea.zktracer.Trace.EXP_INST_EXPLOG;
 
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -48,7 +48,7 @@ public class ExplogExpCall implements ExpCall {
   }
 
   @Override
-  public Trace trace(Trace trace) {
+  public Trace.Hub trace(Trace.Hub trace) {
     return trace
         .pMiscExpFlag(true)
         .pMiscExpInst(EXP_INST_EXPLOG)

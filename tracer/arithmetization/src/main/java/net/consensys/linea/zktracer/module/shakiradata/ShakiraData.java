@@ -15,15 +15,14 @@
 
 package net.consensys.linea.zktracer.module.shakiradata;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
 
-import java.nio.MappedByteBuffer;
 import java.util.List;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.limits.Keccak;
@@ -56,11 +55,6 @@ public class ShakiraData implements OperationListModule<ShakiraDataOperation> {
     return operations.lineCount();
   }
 
-  @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
-  }
-
   public void call(final ShakiraDataOperation operation) {
     operations.add(operation);
 
@@ -78,12 +72,15 @@ public class ShakiraData implements OperationListModule<ShakiraDataOperation> {
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Shakiradata.headers(this.lineCount());
+  }
 
+  @Override
+  public void commit(Trace trace) {
     int stamp = 0;
     for (ShakiraDataOperation operation : operations.getAll()) {
-      operation.trace(trace, ++stamp);
+      operation.trace(trace.shakiradata, ++stamp);
     }
   }
 

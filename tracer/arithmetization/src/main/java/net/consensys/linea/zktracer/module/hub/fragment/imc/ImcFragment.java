@@ -18,8 +18,8 @@ package net.consensys.linea.zktracer.module.hub.fragment.imc;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.Trace;
 import net.consensys.linea.zktracer.module.hub.defer.ContextEntryDefer;
 import net.consensys.linea.zktracer.module.hub.defer.ContextReEntryDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
@@ -135,7 +135,7 @@ public class ImcFragment implements TraceFragment, ContextReEntryDefer, ContextE
   }
 
   @Override
-  public Trace trace(Trace trace) {
+  public Trace.Hub trace(Trace.Hub trace) {
     trace.peekAtMiscellaneous(true);
 
     for (TraceSubFragment subFragment : moduleCalls) {

@@ -18,7 +18,7 @@ package net.consensys.linea.zktracer.module.mmu.values;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
@@ -37,11 +37,11 @@ public class MmuWcpCallRecord {
   private boolean result;
 
   public static MmuWcpCallRecordBuilder instLtBuilder() {
-    return builder().instruction(UnsignedByte.of(GlobalConstants.EVM_INST_LT));
+    return builder().instruction(UnsignedByte.of(Trace.EVM_INST_LT));
   }
 
   public static MmuWcpCallRecordBuilder instEqBuilder() {
-    return builder().instruction(UnsignedByte.of(GlobalConstants.EVM_INST_EQ));
+    return builder().instruction(UnsignedByte.of(Trace.EVM_INST_EQ));
   }
 
   public static MmuWcpCallRecordBuilder instIsZeroBuilder() {

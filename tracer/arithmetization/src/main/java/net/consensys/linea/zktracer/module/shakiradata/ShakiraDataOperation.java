@@ -15,26 +15,27 @@
 
 package net.consensys.linea.zktracer.module.shakiradata;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_KECCAK_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_KECCAK_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_RIPEMD_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_RIPEMD_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_SHA2_DATA;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.PHASE_SHA2_RESULT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGEMO;
+import static net.consensys.linea.zktracer.Trace.PHASE_KECCAK_DATA;
+import static net.consensys.linea.zktracer.Trace.PHASE_KECCAK_RESULT;
+import static net.consensys.linea.zktracer.Trace.PHASE_RIPEMD_DATA;
+import static net.consensys.linea.zktracer.Trace.PHASE_RIPEMD_RESULT;
+import static net.consensys.linea.zktracer.Trace.PHASE_SHA2_DATA;
+import static net.consensys.linea.zktracer.Trace.PHASE_SHA2_RESULT;
+import static net.consensys.linea.zktracer.Trace.Shakiradata.INDEX_MAX_RESULT;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.module.hub.Hub.newIdentifierFromStamp;
 import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.KECCAK;
 import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.RIPEMD;
 import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.SHA256;
-import static net.consensys.linea.zktracer.module.shakiradata.Trace.INDEX_MAX_RESULT;
 import static net.consensys.linea.zktracer.types.Conversions.bytesToHex;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 import static org.hyperledger.besu.crypto.Hash.keccak256;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
@@ -85,12 +86,12 @@ public class ShakiraDataOperation extends ModuleOperation {
     return indexMaxData + 1 + INDEX_MAX_RESULT + 1;
   }
 
-  void trace(Trace trace, final int stamp) {
+  void trace(Trace.Shakiradata trace, final int stamp) {
     traceData(trace, stamp);
     traceResult(trace, stamp);
   }
 
-  private void traceData(Trace trace, final int stamp) {
+  private void traceData(Trace.Shakiradata trace, final int stamp) {
     final boolean isShaData = hashType == SHA256;
     final boolean isKecData = hashType == KECCAK;
     final boolean isRipData = hashType == RIPEMD;
@@ -129,7 +130,7 @@ public class ShakiraDataOperation extends ModuleOperation {
     }
   }
 
-  private void traceResult(Trace trace, final int stamp) {
+  private void traceResult(Trace.Shakiradata trace, final int stamp) {
     final boolean isShaResult = hashType == SHA256;
     final boolean isKecResult = hashType == KECCAK;
     final boolean isRipResult = hashType == RIPEMD;

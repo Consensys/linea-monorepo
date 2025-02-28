@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.module.bin;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGEMO;
 import static net.consensys.linea.zktracer.types.Utils.bitDecomposition;
 
 import java.util.ArrayList;
@@ -27,6 +27,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.bytestheta.BaseBytes;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -190,7 +191,7 @@ public class BinOperation extends ModuleOperation {
     return (opCode == OpCode.BYTE || opCode == OpCode.SIGNEXTEND) && ctMax == 0;
   }
 
-  public void traceBinOperation(int stamp, Trace trace) {
+  public void traceBinOperation(int stamp, Trace.Bin trace) {
     this.compute();
 
     final int length = isTrivialOperation() ? LLARGE : ctMax + 1;

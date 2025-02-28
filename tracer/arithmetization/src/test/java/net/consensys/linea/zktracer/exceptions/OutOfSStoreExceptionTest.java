@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,9 +33,9 @@ public class OutOfSStoreExceptionTest {
   @ValueSource(
       longs = {
         0,
-        GlobalConstants.GAS_CONST_G_CALL_STIPEND - 1,
-        GlobalConstants.GAS_CONST_G_CALL_STIPEND,
-        GlobalConstants.GAS_CONST_G_CALL_STIPEND + 1
+        Trace.GAS_CONST_G_CALL_STIPEND - 1,
+        Trace.GAS_CONST_G_CALL_STIPEND,
+        Trace.GAS_CONST_G_CALL_STIPEND + 1
       })
   void outOfSStoreExceptionTest(long remainingGasAfterPushes) {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
@@ -45,7 +45,7 @@ public class OutOfSStoreExceptionTest {
     bytecodeRunner.run(21000L + 3L + 3L + remainingGasAfterPushes);
     // 21000L is the intrinsic gas cost of a transaction and 3L is the gas cost of PUSH1
 
-    if (remainingGasAfterPushes <= GlobalConstants.GAS_CONST_G_CALL_STIPEND) {
+    if (remainingGasAfterPushes <= Trace.GAS_CONST_G_CALL_STIPEND) {
       assertEquals(
           OUT_OF_SSTORE,
           bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());

@@ -21,7 +21,7 @@ import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.state.State;
@@ -41,7 +41,7 @@ public final class StorageFragment implements TraceFragment {
   private final int blockNumber;
   private final StorageFragmentPurpose purpose; // for debugging purposes
 
-  public Trace trace(Trace trace) {
+  public Trace.Hub trace(Trace.Hub trace) {
     domSubStampsSubFragment.trace(trace);
 
     return trace

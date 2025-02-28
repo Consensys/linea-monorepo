@@ -15,8 +15,8 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_CONST_G_COPY;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_COPY;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import lombok.extern.slf4j.Slf4j;

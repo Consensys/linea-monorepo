@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.module.blockhash;
 
 import static net.consensys.linea.zktracer.MultiBlockUtils.multiBlocksTest;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.BLOCKHASH_MAX_HISTORY;
+import static net.consensys.linea.zktracer.Trace.BLOCKHASH_MAX_HISTORY;
 
 import java.util.Collections;
 import java.util.List;

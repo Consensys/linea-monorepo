@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.types;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
+import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 

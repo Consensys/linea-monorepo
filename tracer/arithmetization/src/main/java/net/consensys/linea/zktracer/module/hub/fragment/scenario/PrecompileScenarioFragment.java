@@ -24,8 +24,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
-import net.consensys.linea.zktracer.module.hub.Trace;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection.PrecompileSubsection;
 import org.apache.tuweni.bytes.Bytes;
@@ -76,28 +75,28 @@ public class PrecompileScenarioFragment implements TraceFragment {
 
     private static final Map<PrecompileFlag, Integer> DATA_PHASE_MAP =
         Map.of(
-            PRC_ECRECOVER, GlobalConstants.PHASE_ECRECOVER_DATA,
-            PRC_SHA2_256, GlobalConstants.PHASE_SHA2_DATA,
-            PRC_RIPEMD_160, GlobalConstants.PHASE_RIPEMD_DATA,
+            PRC_ECRECOVER, Trace.PHASE_ECRECOVER_DATA,
+            PRC_SHA2_256, Trace.PHASE_SHA2_DATA,
+            PRC_RIPEMD_160, Trace.PHASE_RIPEMD_DATA,
             // IDENTITY not supported
             // MODEXP not supported
-            PRC_ECADD, GlobalConstants.PHASE_ECADD_DATA,
-            PRC_ECMUL, GlobalConstants.PHASE_ECMUL_DATA,
-            PRC_ECPAIRING, GlobalConstants.PHASE_ECPAIRING_DATA
+            PRC_ECADD, Trace.PHASE_ECADD_DATA,
+            PRC_ECMUL, Trace.PHASE_ECMUL_DATA,
+            PRC_ECPAIRING, Trace.PHASE_ECPAIRING_DATA
             // BLAKE2f not supported
             );
 
     private static final Map<PrecompileFlag, Integer> RESULT_PHASE_MAP =
         Map.of(
-            PRC_ECRECOVER, GlobalConstants.PHASE_ECRECOVER_RESULT,
-            PRC_SHA2_256, GlobalConstants.PHASE_SHA2_RESULT,
-            PRC_RIPEMD_160, GlobalConstants.PHASE_RIPEMD_RESULT,
+            PRC_ECRECOVER, Trace.PHASE_ECRECOVER_RESULT,
+            PRC_SHA2_256, Trace.PHASE_SHA2_RESULT,
+            PRC_RIPEMD_160, Trace.PHASE_RIPEMD_RESULT,
             // IDENTITY not supported
-            PRC_MODEXP, GlobalConstants.PHASE_MODEXP_RESULT,
-            PRC_ECADD, GlobalConstants.PHASE_ECADD_RESULT,
-            PRC_ECMUL, GlobalConstants.PHASE_ECMUL_RESULT,
-            PRC_ECPAIRING, GlobalConstants.PHASE_ECPAIRING_RESULT,
-            PRC_BLAKE2F, GlobalConstants.PHASE_BLAKE_RESULT);
+            PRC_MODEXP, Trace.PHASE_MODEXP_RESULT,
+            PRC_ECADD, Trace.PHASE_ECADD_RESULT,
+            PRC_ECMUL, Trace.PHASE_ECMUL_RESULT,
+            PRC_ECPAIRING, Trace.PHASE_ECPAIRING_RESULT,
+            PRC_BLAKE2F, Trace.PHASE_BLAKE_RESULT);
 
     public static PrecompileFlag addressToPrecompileFlag(Address precompileAddress) {
       if (!ADDRESS_TO_FLAG_MAP.containsKey(precompileAddress)) {
@@ -152,8 +151,8 @@ public class PrecompileScenarioFragment implements TraceFragment {
   }
 
   @Override
-  public Trace trace(Trace trace) {
-    return trace
+  public Trace.Hub trace(Trace.Hub trace) {
+    trace
         .peekAtScenario(true)
         // // Precompile scenarios
         ////////////////////
@@ -165,7 +164,7 @@ public class PrecompileScenarioFragment implements TraceFragment {
         .pScenarioPrcEcadd(flag == PRC_ECADD)
         .pScenarioPrcEcmul(flag == PRC_ECMUL)
         .pScenarioPrcEcpairing(flag == PRC_ECPAIRING)
-        .pScenarioPrcBlake2F(flag == PRC_BLAKE2F)
+        .pScenarioPrcBlake2f(flag == PRC_BLAKE2F)
         .pScenarioPrcSuccessCallerWillRevert(scenario == PRC_SUCCESS_WILL_REVERT)
         .pScenarioPrcSuccessCallerWontRevert(scenario == PRC_SUCCESS_WONT_REVERT)
         .pScenarioPrcFailureKnownToHub(scenario == PRC_FAILURE_KNOWN_TO_HUB)
@@ -177,5 +176,6 @@ public class PrecompileScenarioFragment implements TraceFragment {
         .pScenarioPrcCds(precompileSubSection.callDataSize())
         .pScenarioPrcRao(precompileSubSection.returnAtOffset())
         .pScenarioPrcRac(precompileSubSection.returnAtCapacity());
+    return trace;
   }
 }

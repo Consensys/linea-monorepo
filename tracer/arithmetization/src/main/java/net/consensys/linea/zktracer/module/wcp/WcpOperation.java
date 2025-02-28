@@ -15,17 +15,17 @@
 
 package net.consensys.linea.zktracer.module.wcp;
 
+import static net.consensys.linea.zktracer.Trace.EVM_INST_EQ;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_GT;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_ISZERO;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_LT;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_SGT;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_SLT;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGEMO;
+import static net.consensys.linea.zktracer.Trace.WCP_INST_GEQ;
+import static net.consensys.linea.zktracer.Trace.WCP_INST_LEQ;
 import static net.consensys.linea.zktracer.module.Util.byteBits;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_EQ;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_GT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_ISZERO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_LT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_SGT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_SLT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGEMO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WCP_INST_GEQ;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WCP_INST_LEQ;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.reallyToSignedBigInteger;
 
@@ -39,6 +39,7 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.types.Bytes16;
 import net.consensys.linea.zktracer.types.UnsignedByte;
@@ -155,7 +156,7 @@ public class WcpOperation extends ModuleOperation {
         : Bytes16.leftPad(bigIntegerToBytes(arg2.subtract(arg1)));
   }
 
-  void trace(Trace trace, int stamp) {
+  void trace(Trace.Wcp trace, int stamp) {
     this.compute();
 
     final boolean resLo = this.resLo;

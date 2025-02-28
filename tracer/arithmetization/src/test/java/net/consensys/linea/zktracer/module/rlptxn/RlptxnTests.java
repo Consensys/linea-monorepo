@@ -16,7 +16,7 @@
 package net.consensys.linea.zktracer.module.rlptxn;
 
 import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.CHAIN_ID;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WORD_SIZE;
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static org.hyperledger.besu.datatypes.TransactionType.*;

@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
@@ -53,7 +54,7 @@ public class EucOperation extends ModuleOperation {
         : quotient;
   }
 
-  void trace(Trace trace) {
+  void trace(Trace.Euc trace) {
     final Bytes divisor = leftPadTo(this.divisor, this.ctMax + 1);
     final Bytes quotient = leftPadTo(this.quotient, this.ctMax + 1);
     final Bytes remainder = leftPadTo(this.remainder, this.ctMax + 1);

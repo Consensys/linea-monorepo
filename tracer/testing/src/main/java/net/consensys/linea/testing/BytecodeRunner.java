@@ -16,7 +16,7 @@
 package net.consensys.linea.testing;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.*;
+import static net.consensys.linea.zktracer.Trace.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,8 +25,8 @@ import java.util.function.Consumer;
 
 import lombok.Setter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.ZkTracer;
-import net.consensys.linea.zktracer.module.constants.GlobalConstants;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
@@ -66,12 +66,12 @@ public final class BytecodeRunner {
 
   // Default run method
   public void run() {
-    this.run(Wei.fromEth(1), (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT, List.of(), Bytes.EMPTY);
+    this.run(Wei.fromEth(1), (long) Trace.LINEA_BLOCK_GAS_LIMIT, List.of(), Bytes.EMPTY);
   }
 
   // Ad-hoc senderBalance
   public void run(Wei senderBalance) {
-    this.run(senderBalance, (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT, List.of(), Bytes.EMPTY);
+    this.run(senderBalance, (long) Trace.LINEA_BLOCK_GAS_LIMIT, List.of(), Bytes.EMPTY);
   }
 
   // Ad-hoc gasLimit
@@ -86,11 +86,7 @@ public final class BytecodeRunner {
 
   // Ad-hoc accounts
   public void run(List<ToyAccount> additionalAccounts) {
-    this.run(
-        Wei.fromEth(1),
-        (long) GlobalConstants.LINEA_BLOCK_GAS_LIMIT,
-        additionalAccounts,
-        Bytes.EMPTY);
+    this.run(Wei.fromEth(1), (long) Trace.LINEA_BLOCK_GAS_LIMIT, additionalAccounts, Bytes.EMPTY);
   }
 
   // Ad-hoc gasLimit and accounts

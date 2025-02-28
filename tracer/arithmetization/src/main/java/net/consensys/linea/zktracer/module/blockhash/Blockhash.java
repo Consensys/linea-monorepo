@@ -15,17 +15,16 @@
 
 package net.consensys.linea.zktracer.module.blockhash;
 
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
-import java.nio.MappedByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -101,8 +100,8 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
 
   /**
    * Operations are sorted wrt blockhashArg and the wcp module is called accordingly. We must call
-   * the WCP module before calling {@link #commit(List<MappedByteBuffer>)} as the headers sizes must
-   * be computed with the final list of operations ready.
+   * the WCP module before calling {@link #commit(Trace)} as the headers sizes must be computed with
+   * the final list of operations ready.
    */
   @Override
   public void traceEndConflation(WorldView state) {
@@ -116,21 +115,19 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Blockhash.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
-
+  public void commit(Trace trace) {
     for (BlockhashOperation op : sortedOperations) {
       final Bytes32 blockhashVal =
           op.blockhashRes() == Bytes32.ZERO
               ? this.blockHashMap.getOrDefault(op.blockhashArg(), Bytes32.ZERO)
               : op.blockhashRes();
-      op.traceMacro(trace, blockhashVal);
-      op.tracePreprocessing(trace);
+      op.traceMacro(trace.blockhash, blockhashVal);
+      op.tracePreprocessing(trace.blockhash);
     }
   }
 }

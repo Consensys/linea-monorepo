@@ -16,14 +16,23 @@
 package net.consensys.linea.zktracer.module.blockdata;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static net.consensys.linea.zktracer.module.blockdata.Trace.*;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_GT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_ISZERO;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.EVM_INST_LT;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.GAS_LIMIT_ADJUSTMENT_FACTOR;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.LLARGE;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WCP_INST_GEQ;
-import static net.consensys.linea.zktracer.module.constants.GlobalConstants.WCP_INST_LEQ;
+import static net.consensys.linea.zktracer.Trace.Blockdata.GAS_LIMIT_MAXIMUM;
+import static net.consensys.linea.zktracer.Trace.Blockdata.GAS_LIMIT_MINIMUM;
+import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_BF;
+import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_CB;
+import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_DEPTH;
+import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_DF;
+import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_GL;
+import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_ID;
+import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_NB;
+import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_TS;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_GT;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_ISZERO;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_LT;
+import static net.consensys.linea.zktracer.Trace.GAS_LIMIT_ADJUSTMENT_FACTOR;
+import static net.consensys.linea.zktracer.Trace.LLARGE;
+import static net.consensys.linea.zktracer.Trace.WCP_INST_GEQ;
+import static net.consensys.linea.zktracer.Trace.WCP_INST_LEQ;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import java.math.BigInteger;
@@ -31,6 +40,7 @@ import java.util.Arrays;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -179,7 +189,7 @@ public class BlockdataOperation extends ModuleOperation {
 
     // row i + 1
     // comparison to maximum
-    wcpCallToLEQ(1, data, EWord.of(Bytes.ofUnsignedLong(GAS_LIMIT_MAXIMUM)));
+    wcpCallToLEQ(1, data, EWord.of(GAS_LIMIT_MAXIMUM));
 
     if (!firstBlockInConflation) {
       final EWord prevGasLimit = EWord.of(prevBlockHeader.getGasLimit());
@@ -211,7 +221,7 @@ public class BlockdataOperation extends ModuleOperation {
     return ctMax;
   }
 
-  public void trace(Trace trace) {
+  public void trace(Trace.Blockdata trace) {
     for (short ct = 0; ct < ctMax; ct++) {
       trace
           .iomf(true)

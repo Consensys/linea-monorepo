@@ -16,12 +16,12 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.Trace.Hub.MULTIPLIER___STACK_STAMP;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_FINL;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_INIT;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_SKIP;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_WARM;
-import static net.consensys.linea.zktracer.module.hub.Trace.MULTIPLIER___STACK_STAMP;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.RETURN;
 import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
@@ -29,7 +29,6 @@ import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress
 import static org.hyperledger.besu.evm.frame.MessageFrame.Type.*;
 
 import java.math.BigInteger;
-import java.nio.MappedByteBuffer;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -39,7 +38,7 @@ import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.ColumnHeader;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.bin.Bin;
@@ -168,14 +167,13 @@ public class Hub implements Module {
   }
 
   @Override
-  public List<ColumnHeader> columnsHeaders() {
-    return Trace.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders() {
+    return Trace.Hub.headers(this.lineCount());
   }
 
   @Override
-  public void commit(List<MappedByteBuffer> buffers) {
-    final Trace trace = new Trace(buffers);
-    state.commit(trace);
+  public void commit(Trace trace) {
+    state.commit(trace.hub);
   }
 
   @Override
