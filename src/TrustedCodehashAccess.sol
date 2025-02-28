@@ -14,6 +14,8 @@ import { ITrustedCodehashAccess } from "./interfaces/ITrustedCodehashAccess.sol"
 abstract contract TrustedCodehashAccess is ITrustedCodehashAccess, OwnableUpgradeable {
     /// @notice Whidelisted codehashes.
     mapping(bytes32 codehash => bool permission) private trustedCodehashes;
+    /// @notice Gap for upgrade safety.
+    uint256[10] private __gap;
 
     /**
      * @notice Restricts access based on the codehash of the caller.
