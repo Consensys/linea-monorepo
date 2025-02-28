@@ -216,10 +216,10 @@ SECURITY_COUNCIL_ROLE unpause will reset the cooldown._
 | ---- | ---- | ----------- |
 | _pauseType | enum IPauseManager.PauseType | The pause type value. |
 
-### unPauseDueToExpiry
+### unPauseByExpiredType
 
 ```solidity
-function unPauseDueToExpiry(enum IPauseManager.PauseType _pauseType) external
+function unPauseByExpiredType(enum IPauseManager.PauseType _pauseType) external
 ```
 
 Unpauses a specific pause type when the pause has expired.

@@ -141,7 +141,7 @@ interface IPauseManager {
    * @dev Throws if UNUSED pause type is used, or the pause expiry period has not passed.
    * @param _pauseType The pause type value.
    */
-  function unPauseDueToExpiry(PauseType _pauseType) external;
+  function unPauseByExpiredType(PauseType _pauseType) external;
 
   /**
    * @notice Check if a pause type is enabled.

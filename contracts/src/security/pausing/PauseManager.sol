@@ -193,7 +193,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
    * @dev Throws if UNUSED pause type is used, or the pause expiry period has not passed.
    * @param _pauseType The pause type value.
    */
-  function unPauseDueToExpiry(
+  function unPauseByExpiredType(
     PauseType _pauseType
   ) external onlyUsedPausedTypes(_pauseType) {
     if (!isPaused(_pauseType)) {
