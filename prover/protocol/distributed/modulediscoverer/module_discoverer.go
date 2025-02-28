@@ -35,91 +35,6 @@ type ModuleDiscoverer interface {
 	ListColumns(ModuleName) []ifaces.Column
 }
 
-// DisjointSet represents a union-find data structure, which efficiently groups elements (columns)
-// into disjoint sets (modules). It supports fast union and find operations with path compression.
-type DisjointSet struct {
-	parent map[ifaces.Column]ifaces.Column // Maps a column to its representative parent.
-	rank   map[ifaces.Column]int           // Stores the rank (tree depth) for optimization.
-}
-
-// NewDisjointSet initializes a new DisjointSet with empty mappings.
-func NewDisjointSet() *DisjointSet {
-	return &DisjointSet{
-		parent: make(map[ifaces.Column]ifaces.Column),
-		rank:   make(map[ifaces.Column]int),
-	}
-}
-
-// Find returns the representative (root) of a column using path compression for optimization.
-// Path compression ensures that the structure remains nearly flat, reducing the time complexity to O(α(n)),
-// where α(n) is the inverse Ackermann function, which is nearly constant in practice.
-//
-// Example:
-// Suppose we have the following sets:
-//
-//	A -> B -> C (C is the root)
-//	D -> E -> F (F is the root)
-//
-// Calling Find(A) will compress the path so that:
-//
-//	A -> C
-//	B -> C
-//	C remains the root
-//
-// Similarly, calling Find(D) will compress the path so that:
-//
-//	D -> F
-//	E -> F
-//	F remains the root
-func (ds *DisjointSet) Find(col ifaces.Column) ifaces.Column {
-	if _, exists := ds.parent[col]; !exists {
-		ds.parent[col] = col
-		ds.rank[col] = 0
-	}
-	if ds.parent[col] != col {
-		ds.parent[col] = ds.Find(ds.parent[col])
-	}
-	return ds.parent[col]
-}
-
-// Union merges two sets by linking the root of one to the root of another, optimizing with rank.
-// The smaller tree is always attached to the larger tree to keep the depth minimal.
-//
-// Time Complexity: O(α(n)) (nearly constant due to path compression and union by rank).
-//
-// Example:
-// Suppose we have:
-//
-//	Set 1: A -> B (B is the root)
-//	Set 2: C -> D (D is the root)
-//
-// Calling Union(A, C) will merge the sets:
-//
-//	If B has a higher rank than D:
-//	    D -> B
-//	    C -> D -> B
-//	If D has a higher rank than B:
-//	    B -> D
-//	    A -> B -> D
-//	If B and D have equal rank:
-//	    D -> B (or B -> D)
-//	    Rank of the new root increases by 1
-func (ds *DisjointSet) Union(col1, col2 ifaces.Column) {
-	root1 := ds.Find(col1)
-	root2 := ds.Find(col2)
-
-	if root1 != root2 {
-		if ds.rank[root1] > ds.rank[root2] {
-			ds.parent[root2] = root1
-		} else if ds.rank[root1] < ds.rank[root2] {
-			ds.parent[root1] = root2
-		} else {
-			ds.parent[root2] = root1
-			ds.rank[root1]++
-		}
-	}
-}
-
 // Module represents a set of columns grouped by constraints.
 type Module struct {
 	moduleName ModuleName
@@ -143,69 +58,6 @@ func NewDiscoverer() *Discoverer {
 		moduleNames:     []ModuleName{},
 		columnsToModule: make(map[ifaces.Column]ModuleName),
 	}
-}
-
-// CreateModule initializes a new module with a disjoint set and populates it with columns.
-func (disc *Discoverer) CreateModule(columns []ifaces.Column) *Module {
-	module := &Module{
-		moduleName: ModuleName(fmt.Sprintf("Module_%d", len(disc.modules))),
-		ds:         NewDisjointSet(),
-	}
-	for _, col := range columns {
-		module.ds.parent[col] = col
-		module.ds.rank[col] = 0
-	}
-	for i := 0; i < len(columns); i++ {
-		for j := i + 1; j < len(columns); j++ {
-			module.ds.Union(columns[i], columns[j])
-		}
-	}
-
-	disc.moduleNames = append(disc.moduleNames, module.moduleName)
-	disc.modules = append(disc.modules, module)
-	return module
-}
-
-// MergeModules merges a list of overlapping modules into a single module.
-func (disc *Discoverer) MergeModules(modules []*Module, moduleCandidates *[]*Module) *Module {
-	if len(modules) == 0 {
-		return nil
-	}
-
-	// Select the first module as the base
-	mergedModule := modules[0]
-
-	// Merge all remaining modules into the base
-	for _, module := range modules[1:] {
-		for col := range module.ds.parent {
-			mergedModule.ds.Union(mergedModule.ds.Find(col), col)
-		}
-
-		// Remove merged module from moduleCandidates
-		*moduleCandidates = removeModule(*moduleCandidates, module)
-	}
-
-	return mergedModule
-}
-
-// AddColumnsToModule adds columns to an existing module.
-func (disc *Discoverer) AddColumnsToModule(module *Module, columns []ifaces.Column) {
-	for _, col := range columns {
-		module.ds.parent[col] = col
-		module.ds.rank[col] = 0
-		module.ds.Union(module.ds.Find(columns[0]), col) // Union with the first column
-	}
-}
-
-// Helper function to remove a module from the slice
-func removeModule(modules []*Module, target *Module) []*Module {
-	var updatedModules []*Module
-	for _, mod := range modules {
-		if mod != target {
-			updatedModules = append(updatedModules, mod)
-		}
-	}
-	return updatedModules
 }
 
 // Analyze processes columns and assigns them to modules.
@@ -299,6 +151,86 @@ func (disc *Discoverer) Analyze(comp *wizard.CompiledIOP) {
 	}
 }
 
+// CreateModule initializes a new module with a disjoint set and populates it with columns.
+func (disc *Discoverer) CreateModule(columns []ifaces.Column) *Module {
+	module := &Module{
+		moduleName: ModuleName(fmt.Sprintf("Module_%d", len(disc.modules))),
+		ds:         NewDisjointSet(),
+	}
+	for _, col := range columns {
+		module.ds.parent[col] = col
+		module.ds.rank[col] = 0
+	}
+	for i := 0; i < len(columns); i++ {
+		for j := i + 1; j < len(columns); j++ {
+			module.ds.Union(columns[i], columns[j])
+		}
+	}
+
+	disc.moduleNames = append(disc.moduleNames, module.moduleName)
+	disc.modules = append(disc.modules, module)
+	return module
+}
+
+// MergeModules merges a list of overlapping modules into a single module.
+func (disc *Discoverer) MergeModules(modules []*Module, moduleCandidates *[]*Module) *Module {
+	if len(modules) == 0 {
+		return nil
+	}
+
+	// Select the first module as the base
+	mergedModule := modules[0]
+
+	// Merge all remaining modules into the base
+	for _, module := range modules[1:] {
+		for col := range module.ds.parent {
+			mergedModule.ds.Union(mergedModule.ds.Find(col), col)
+		}
+
+		// Remove merged module from moduleCandidates
+		*moduleCandidates = removeModule(*moduleCandidates, module)
+	}
+
+	return mergedModule
+}
+
+// AddColumnsToModule adds columns to an existing module.
+func (disc *Discoverer) AddColumnsToModule(module *Module, columns []ifaces.Column) {
+	for _, col := range columns {
+		module.ds.parent[col] = col
+		module.ds.rank[col] = 0
+		module.ds.Union(module.ds.Find(columns[0]), col) // Union with the first column
+	}
+}
+
+// Helper function to remove a module from the slice
+func removeModule(modules []*Module, target *Module) []*Module {
+	var updatedModules []*Module
+	for _, mod := range modules {
+		if mod != target {
+			updatedModules = append(updatedModules, mod)
+		}
+	}
+	return updatedModules
+}
+
+// assignModule assigns a module name to a set of columns.
+func (disc *Discoverer) assignModule(moduleName ModuleName, columns []ifaces.Column) {
+	for _, col := range columns {
+		disc.columnsToModule[col] = moduleName
+	}
+}
+
+// HasOverlap checks if a module shares at least one column with a set of columns.
+func HasOverlap(module *Module, columns []ifaces.Column) bool {
+	for _, col := range columns {
+		if _, exists := module.ds.parent[col]; exists {
+			return true
+		}
+	}
+	return false
+}
+
 // getColumnsFromQuery extracts columns from a global constraint query.
 func getColumnsFromQuery(q ifaces.Query) []ifaces.Column {
 	gc, ok := q.(query.GlobalConstraint)
@@ -316,13 +248,6 @@ func getColumnsFromQuery(q ifaces.Query) []ifaces.Column {
 	}
 
 	return columns
-}
-
-// assignModule assigns a module name to a set of columns.
-func (disc *Discoverer) assignModule(moduleName ModuleName, columns []ifaces.Column) {
-	for _, col := range columns {
-		disc.columnsToModule[col] = moduleName
-	}
 }
 
 // NewSizeOf returns the size (length) of a column.
@@ -346,16 +271,6 @@ func (disc *Discoverer) ModuleOf(col ifaces.Column) ModuleName {
 		return moduleName
 	}
 	return ""
-}
-
-// HasOverlap checks if a module shares at least one column with a set of columns.
-func HasOverlap(module *Module, columns []ifaces.Column) bool {
-	for _, col := range columns {
-		if _, exists := module.ds.parent[col]; exists {
-			return true
-		}
-	}
-	return false
 }
 
 func (disc *Discoverer) QueryIsInModule(query ifaces.Query, name ModuleName) bool {
@@ -419,4 +334,89 @@ func (disc *Discoverer) NbModules() int {
 	disc.mutex.Lock()
 	defer disc.mutex.Unlock()
 	return len(disc.moduleNames)
+}
+
+// DisjointSet represents a union-find data structure, which efficiently groups elements (columns)
+// into disjoint sets (modules). It supports fast union and find operations with path compression.
+type DisjointSet struct {
+	parent map[ifaces.Column]ifaces.Column // Maps a column to its representative parent.
+	rank   map[ifaces.Column]int           // Stores the rank (tree depth) for optimization.
+}
+
+// NewDisjointSet initializes a new DisjointSet with empty mappings.
+func NewDisjointSet() *DisjointSet {
+	return &DisjointSet{
+		parent: make(map[ifaces.Column]ifaces.Column),
+		rank:   make(map[ifaces.Column]int),
+	}
+}
+
+// Find returns the representative (root) of a column using path compression for optimization.
+// Path compression ensures that the structure remains nearly flat, reducing the time complexity to O(α(n)),
+// where α(n) is the inverse Ackermann function, which is nearly constant in practice.
+//
+// Example:
+// Suppose we have the following sets:
+//
+//	A -> B -> C (C is the root)
+//	D -> E -> F (F is the root)
+//
+// Calling Find(A) will compress the path so that:
+//
+//	A -> C
+//	B -> C
+//	C remains the root
+//
+// Similarly, calling Find(D) will compress the path so that:
+//
+//	D -> F
+//	E -> F
+//	F remains the root
+func (ds *DisjointSet) Find(col ifaces.Column) ifaces.Column {
+	if _, exists := ds.parent[col]; !exists {
+		ds.parent[col] = col
+		ds.rank[col] = 0
+	}
+	if ds.parent[col] != col {
+		ds.parent[col] = ds.Find(ds.parent[col])
+	}
+	return ds.parent[col]
+}
+
+// Union merges two sets by linking the root of one to the root of another, optimizing with rank.
+// The smaller tree is always attached to the larger tree to keep the depth minimal.
+//
+// Time Complexity: O(α(n)) (nearly constant due to path compression and union by rank).
+//
+// Example:
+// Suppose we have:
+//
+//	Set 1: A -> B (B is the root)
+//	Set 2: C -> D (D is the root)
+//
+// Calling Union(A, C) will merge the sets:
+//
+//	If B has a higher rank than D:
+//	    D -> B
+//	    C -> D -> B
+//	If D has a higher rank than B:
+//	    B -> D
+//	    A -> B -> D
+//	If B and D have equal rank:
+//	    D -> B (or B -> D)
+//	    Rank of the new root increases by 1
+func (ds *DisjointSet) Union(col1, col2 ifaces.Column) {
+	root1 := ds.Find(col1)
+	root2 := ds.Find(col2)
+
+	if root1 != root2 {
+		if ds.rank[root1] > ds.rank[root2] {
+			ds.parent[root2] = root1
+		} else if ds.rank[root1] < ds.rank[root2] {
+			ds.parent[root1] = root2
+		} else {
+			ds.parent[root2] = root1
+			ds.rank[root1]++
+		}
+	}
 }
