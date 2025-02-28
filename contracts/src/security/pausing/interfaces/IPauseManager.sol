@@ -102,7 +102,7 @@ interface IPauseManager {
   error IsNotPaused(PauseType pauseType);
 
   /**
-   * @dev Thrown when pausing is attempted during the cooldown period.
+   * @dev Thrown when pausing is attempted during the cooldown period by a non security council role.
    */
   error PauseUnavailableDueToCooldown(uint256 cooldownEnd);
 
