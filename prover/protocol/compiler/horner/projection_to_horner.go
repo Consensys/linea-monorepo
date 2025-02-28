@@ -56,6 +56,8 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 			continue
 		}
 
+		comp.QueriesNoParams.MarkAsIgnored(qName)
+
 		qRound := comp.QueriesNoParams.Round(qName)
 		round = max(round, qRound+1)
 

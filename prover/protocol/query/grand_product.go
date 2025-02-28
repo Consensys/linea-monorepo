@@ -126,6 +126,7 @@ func (g GrandProduct) Compute(run ifaces.Runtime) field.Element {
 // Check verifies the satisfaction of the GrandProduct query using the provided runtime.
 // It calculates the product of numerators and denominators, and checks
 // if prod(Numerators) == Prod(Denominators)*ParamY, and returns an error if the condition is not satisfied.
+// The function also returns an error if the denominator contains a zero.
 //
 // Parameters:
 // - run: The runtime interface providing access to the query parameter for query verification.
@@ -138,6 +139,18 @@ func (g GrandProduct) Check(run ifaces.Runtime) error {
 		params     = run.GetParams(g.ID).(GrandProductParams)
 		actualProd = g.Compute(run)
 	)
+
+	for size := range g.Inputs {
+		input := g.Inputs[size]
+		for i := range input.Denominators {
+			denominator := column.EvalExprColumn(run, input.Denominators[i].Board()).IntoRegVecSaveAlloc()
+			for k := range denominator {
+				if denominator[k].IsZero() {
+					return fmt.Errorf("the grand product query %v is not satisfied, (size=%v, denominator n°%v) denominator[%v] is zero", g.ID, size, i, k)
+				}
+			}
+		}
+	}
 
 	if actualProd != params.Y {
 		return fmt.Errorf("the grand product query %v is not satisfied, actualProd = %v, param.Y = %v", g.ID, actualProd, params.Y)

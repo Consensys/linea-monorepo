@@ -10,7 +10,7 @@ import (
 // PermutationTestcase represents a permutation relationship and and its assignment.
 // The instances are used to generate testcases.
 type PermutationTestcase struct {
-	Name         string
+	NameStr      string
 	A            [][]smartvectors.SmartVector
 	B            [][]smartvectors.SmartVector
 	MustFailFlag bool
@@ -22,7 +22,7 @@ type PermutationTestcase struct {
 var ListOfPermutationTestcasePositive = []*PermutationTestcase{
 
 	{
-		Name: "positive/1234",
+		NameStr: "positive/1234",
 		A: [][]smartvectors.SmartVector{
 			{
 				smartvectors.ForTest(1, 2, 3, 4),
@@ -36,7 +36,7 @@ var ListOfPermutationTestcasePositive = []*PermutationTestcase{
 	},
 
 	{
-		Name: "positive/1234-multi-column",
+		NameStr: "positive/1234-multi-column",
 		A: [][]smartvectors.SmartVector{
 			{
 				smartvectors.ForTest(1, 2, 3, 4),
@@ -52,16 +52,18 @@ var ListOfPermutationTestcasePositive = []*PermutationTestcase{
 	},
 
 	{
-		Name: "positive/1234-split",
+		NameStr: "positive/1234-split",
 		A: [][]smartvectors.SmartVector{
 			{
-				smartvectors.ForTest(1, 2, 3, 4),
-				smartvectors.ForTest(5, 6, 7, 8),
+				smartvectors.ForTest(1, 2, 3, 4, 9, 10, 11, 12),
+			},
+			{
+				smartvectors.ForTest(5, 6, 7, 8, 13, 14, 15, 16),
 			},
 		},
 		B: [][]smartvectors.SmartVector{
 			{
-				smartvectors.ForTest(4, 2, 3, 1, 8, 6, 7, 5),
+				smartvectors.ForTest(4, 2, 3, 1, 8, 6, 7, 5, 9, 10, 11, 12, 13, 14, 15, 16),
 			},
 		},
 	},
@@ -72,7 +74,7 @@ var ListOfPermutationTestcasePositive = []*PermutationTestcase{
 var ListOfPermutationTestcaseNegative = []*PermutationTestcase{
 
 	{
-		Name: "negative/1234/missing-1",
+		NameStr: "negative/1234/missing-1",
 		A: [][]smartvectors.SmartVector{
 			{
 				smartvectors.ForTest(2, 2, 3, 4),
@@ -87,7 +89,7 @@ var ListOfPermutationTestcaseNegative = []*PermutationTestcase{
 	},
 
 	{
-		Name: "negative/1234-multi-column/missing-first-row",
+		NameStr: "negative/1234-multi-column/missing-first-row",
 		A: [][]smartvectors.SmartVector{
 			{
 				smartvectors.ForTest(2, 2, 3, 4),
@@ -104,10 +106,12 @@ var ListOfPermutationTestcaseNegative = []*PermutationTestcase{
 	},
 
 	{
-		Name: "negative/1234-split/missing-first-pos",
+		NameStr: "negative/1234-split/missing-first-pos",
 		A: [][]smartvectors.SmartVector{
 			{
 				smartvectors.ForTest(1, 2, 3, 4),
+			},
+			{
 				smartvectors.ForTest(5, 6, 7, 8),
 			},
 		},
@@ -132,7 +136,7 @@ func (p *PermutationTestcase) Define(comp *wizard.CompiledIOP) {
 		for j := range p.A[i] {
 			a[i][j] = comp.InsertCommit(
 				0,
-				formatName[ifaces.ColID]("Permutation", p.Name, "A", i, j),
+				formatName[ifaces.ColID]("Permutation", p.NameStr, "A", i, j),
 				p.A[i][j].Len(),
 			)
 		}
@@ -143,7 +147,7 @@ func (p *PermutationTestcase) Define(comp *wizard.CompiledIOP) {
 		for j := range p.B[i] {
 			b[i][j] = comp.InsertCommit(
 				0,
-				formatName[ifaces.ColID]("Permutation", p.Name, "B", i, j),
+				formatName[ifaces.ColID]("Permutation", p.NameStr, "B", i, j),
 				p.B[i][j].Len(),
 			)
 		}
@@ -152,7 +156,7 @@ func (p *PermutationTestcase) Define(comp *wizard.CompiledIOP) {
 	p.Q = query.Permutation{
 		A:  a,
 		B:  b,
-		ID: formatName[ifaces.QueryID]("Permutation", p.Name),
+		ID: formatName[ifaces.QueryID]("Permutation", p.NameStr),
 	}
 
 	comp.QueriesNoParams.AddToRound(0, p.Q.ID, p.Q)
@@ -163,7 +167,7 @@ func (p *PermutationTestcase) Assign(run *wizard.ProverRuntime) {
 	for i := range p.A {
 		for j := range p.A[i] {
 			run.AssignColumn(
-				formatName[ifaces.ColID]("Permutation", p.Name, "A", i, j),
+				formatName[ifaces.ColID]("Permutation", p.NameStr, "A", i, j),
 				p.A[i][j],
 			)
 		}
@@ -172,9 +176,13 @@ func (p *PermutationTestcase) Assign(run *wizard.ProverRuntime) {
 	for i := range p.B {
 		for j := range p.B[i] {
 			run.AssignColumn(
-				formatName[ifaces.ColID]("Permutation", p.Name, "B", i, j),
+				formatName[ifaces.ColID]("Permutation", p.NameStr, "B", i, j),
 				p.B[i][j],
 			)
 		}
 	}
 }
+
+func (p *PermutationTestcase) MustFail() bool { return p.MustFailFlag }
+
+func (p *PermutationTestcase) Name() string { return p.NameStr }

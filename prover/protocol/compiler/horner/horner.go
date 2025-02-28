@@ -77,8 +77,9 @@ func CompileHorner(comp *wizard.CompiledIOP) {
 			continue
 		}
 
-		compileHornerQuery(comp, q)
 		comp.QueriesParams.MarkAsIgnored(qNames[i])
+
+		compileHornerQuery(comp, q)
 	}
 }
 

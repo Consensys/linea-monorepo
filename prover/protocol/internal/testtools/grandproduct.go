@@ -13,8 +13,8 @@ import (
 // sum relationship defined in it and the assignment of its columns
 // (which may be valid or not).
 type GrandProductTestcase struct {
-	// Name is the the name of the test-case
-	Name string
+	// NameStr is the the name of the test-case
+	NameStr string
 	// Numerators stores the list of the numerators for every pair
 	Numerators []smartvectors.SmartVector
 	// Denominators stores the list of the denominators for every pair
@@ -34,7 +34,7 @@ type GrandProductTestcase struct {
 var ListOfGrandProductTestcasePositive = []*GrandProductTestcase{
 
 	{
-		Name: "positive/zeroes",
+		NameStr: "positive/zeroes",
 		Numerators: []smartvectors.SmartVector{
 			smartvectors.NewConstant(field.Zero(), 8),
 		},
@@ -45,7 +45,7 @@ var ListOfGrandProductTestcasePositive = []*GrandProductTestcase{
 	},
 
 	{
-		Name: "positive/ones",
+		NameStr: "positive/ones",
 		Numerators: []smartvectors.SmartVector{
 			smartvectors.NewConstant(field.One(), 8),
 		},
@@ -56,7 +56,7 @@ var ListOfGrandProductTestcasePositive = []*GrandProductTestcase{
 	},
 
 	{
-		Name: "positive/randoms",
+		NameStr: "positive/randoms",
 		Numerators: []smartvectors.SmartVector{
 			RandomVec(8),
 		},
@@ -66,7 +66,7 @@ var ListOfGrandProductTestcasePositive = []*GrandProductTestcase{
 	},
 
 	{
-		Name: "positive/has-one-zero",
+		NameStr: "positive/has-one-zero",
 		Numerators: []smartvectors.SmartVector{
 			smartvectors.ForTest(1, 0, 2, 3),
 		},
@@ -77,7 +77,7 @@ var ListOfGrandProductTestcasePositive = []*GrandProductTestcase{
 	},
 
 	{
-		Name: "positive/one-size-cancel-the-other",
+		NameStr: "positive/one-size-cancel-the-other",
 		Numerators: []smartvectors.SmartVector{
 			RandomFromSeed(8, 1),
 			RandomFromSeed(8, 2),
@@ -95,7 +95,7 @@ var ListOfGrandProductTestcasePositive = []*GrandProductTestcase{
 var ListOfGrandProductTestcaseNegative = []*GrandProductTestcase{
 
 	{
-		Name: "negative/zeroes-in-denominator",
+		NameStr: "negative/zeroes-in-denominator",
 		Numerators: []smartvectors.SmartVector{
 			RandomFromSeed(8, 1),
 			RandomFromSeed(8, 2),
@@ -108,7 +108,7 @@ var ListOfGrandProductTestcaseNegative = []*GrandProductTestcase{
 	},
 
 	{
-		Name: "negative/zeroes-in-denominator-swapped",
+		NameStr: "negative/zeroes-in-denominator-swapped",
 		Numerators: []smartvectors.SmartVector{
 			RandomFromSeed(8, 1),
 			RandomFromSeed(8, 2),
@@ -121,7 +121,7 @@ var ListOfGrandProductTestcaseNegative = []*GrandProductTestcase{
 	},
 
 	{
-		Name: "negative/zeroes-in-denominator-only-one-pos",
+		NameStr: "negative/zeroes-in-denominator-only-one-pos",
 		Numerators: []smartvectors.SmartVector{
 			RandomFromSeed(8, 1),
 			RandomFromSeed(8, 2),
@@ -134,7 +134,7 @@ var ListOfGrandProductTestcaseNegative = []*GrandProductTestcase{
 	},
 
 	{
-		Name: "negative/random-result",
+		NameStr: "negative/random-result",
 		Numerators: []smartvectors.SmartVector{
 			RandomVec(8),
 		},
@@ -161,13 +161,13 @@ func (t *GrandProductTestcase) Define(comp *wizard.CompiledIOP) {
 
 		numerators[i] = comp.InsertCommit(
 			0,
-			formatName[ifaces.ColID]("GrandProduct", t.Name, "Numerator", i),
+			formatName[ifaces.ColID]("GrandProduct", t.NameStr, "Numerator", i),
 			t.Numerators[i].Len(),
 		)
 
 		denominators[i] = comp.InsertCommit(
 			0,
-			formatName[ifaces.ColID]("GrandProduct", t.Name, "Denominator", i),
+			formatName[ifaces.ColID]("GrandProduct", t.NameStr, "Denominator", i),
 			t.Denominators[i].Len(),
 		)
 
@@ -185,7 +185,7 @@ func (t *GrandProductTestcase) Define(comp *wizard.CompiledIOP) {
 
 	t.Q = comp.InsertGrandProduct(
 		0,
-		formatName[ifaces.QueryID]("GrandProduct", t.Name),
+		formatName[ifaces.QueryID]("GrandProduct", t.NameStr),
 		queryInputs,
 	)
 }
@@ -195,12 +195,12 @@ func (t *GrandProductTestcase) Assign(run *wizard.ProverRuntime) {
 	for i := range t.Numerators {
 
 		run.AssignColumn(
-			formatName[ifaces.ColID]("GrandProduct", t.Name, "Numerator", i),
+			formatName[ifaces.ColID]("GrandProduct", t.NameStr, "Numerator", i),
 			t.Numerators[i],
 		)
 
 		run.AssignColumn(
-			formatName[ifaces.ColID]("GrandProduct", t.Name, "Denominator", i),
+			formatName[ifaces.ColID]("GrandProduct", t.NameStr, "Denominator", i),
 			t.Denominators[i],
 		)
 	}
@@ -215,4 +215,8 @@ func (t *GrandProductTestcase) Assign(run *wizard.ProverRuntime) {
 
 func (t *GrandProductTestcase) MustFail() bool {
 	return t.MustFailFlag
+}
+
+func (t *GrandProductTestcase) Name() string {
+	return t.NameStr
 }

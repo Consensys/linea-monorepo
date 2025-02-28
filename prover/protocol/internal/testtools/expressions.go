@@ -11,19 +11,24 @@ import (
 )
 
 var (
-	columnA = column.Natural{ID: "A"}
-	columnB = column.Natural{ID: "B"}
-	columnC = column.Natural{ID: "C"}
+	// _comp is just a placeholder to allow [columnA, columnB, columnC]
+	// to have a space to be defined in. Without it, it would be impossible
+	// to do anything with the columns: shifting or calling String() would
+	// panic.
+	_comp   = wizard.NewCompiledIOP()
+	columnA = _comp.InsertColumn(0, "A", 8, column.Committed)
+	columnB = _comp.InsertColumn(0, "B", 8, column.Committed)
+	columnC = _comp.InsertColumn(0, "C", 8, column.Committed)
 
-	coinCoin = coin.Info{Name: "Coin", Type: coin.Field, Round: 1}
+	coinCoin = coin.Info{Name: "coin", Type: coin.Field, Round: 1}
 )
 
 // ExpressionTestcase can be used to generate a global constraint
 // or a local constraint testcase.
 type ExpressionTestcase struct {
 
-	// Name is the name of the testcase
-	Name string
+	// NameStr is the name of the testcase
+	NameStr string
 
 	// Expr is an expression that can be dependent on either
 	// columnA, columnB, ... columnE or coinCoin. The coinstraints
@@ -49,10 +54,10 @@ type ExpressionTestcase struct {
 
 // ListOfGlobalTestcasePositive is a list of global constraints testcases
 // that are expected to pass.
-var ListOfGlobalTestcasePositive = []ExpressionTestcase{
+var ListOfGlobalTestcasePositive = []*ExpressionTestcase{
 
 	{
-		Name: "positive/fibonacci",
+		NameStr: "positive/fibonacci",
 		Expr: sym.Sub(
 			columnA,
 			column.Shift(columnA, -1),
@@ -64,7 +69,7 @@ var ListOfGlobalTestcasePositive = []ExpressionTestcase{
 	},
 
 	{
-		Name: "positive/geometric-progression",
+		NameStr: "positive/geometric-progression",
 		Expr: sym.Sub(
 			columnA,
 			sym.Mul(
@@ -78,7 +83,7 @@ var ListOfGlobalTestcasePositive = []ExpressionTestcase{
 	},
 
 	{
-		Name: "positive/random-linear-combination",
+		NameStr: "positive/random-linear-combination",
 		Expr: sym.NewPolyEval(
 			sym.NewVariable(coinCoin),
 			[]*sym.Expression{
@@ -95,15 +100,15 @@ var ListOfGlobalTestcasePositive = []ExpressionTestcase{
 	},
 
 	{
-		Name: "positive/conditional-counter",
+		NameStr: "positive/conditional-counter",
 		Expr: sym.Sub(
 			columnA,
 			sym.Mul(
-				columnB,
+				sym.Sub(1, columnB),
 				column.Shift(columnA, -1),
 			),
 			sym.Mul(
-				sym.Sub(1, columnB),
+				columnB,
 				sym.Add(column.Shift(columnA, -1), 1),
 			),
 		),
@@ -114,7 +119,7 @@ var ListOfGlobalTestcasePositive = []ExpressionTestcase{
 	},
 
 	{
-		Name: "positive/pythagorean-triplet",
+		NameStr: "positive/pythagorean-triplet",
 		Expr: sym.Sub(
 			sym.Mul(columnA, columnA),
 			sym.Mul(columnB, columnB),
@@ -131,10 +136,10 @@ var ListOfGlobalTestcasePositive = []ExpressionTestcase{
 // ListOfLocalTestcasePositive is a list of global constraints testcases
 // that are expected to pass. They are essentially, the global constraints
 // written in sych a way that the corresponding local-constraint works.
-var ListOfLocalTestcasePositive = []ExpressionTestcase{
+var ListOfLocalTestcasePositive = []*ExpressionTestcase{
 
 	{
-		Name: "positive/fibonacci",
+		NameStr: "positive/fibonacci",
 		Expr: sym.Sub(
 			column.Shift(columnA, 2),
 			column.Shift(columnA, 1),
@@ -147,7 +152,7 @@ var ListOfLocalTestcasePositive = []ExpressionTestcase{
 	},
 
 	{
-		Name: "positive/geometric-progression",
+		NameStr: "positive/geometric-progression",
 		Expr: sym.Sub(
 			column.Shift(columnA, 1),
 			sym.Mul(2, columnA),
@@ -159,7 +164,7 @@ var ListOfLocalTestcasePositive = []ExpressionTestcase{
 	},
 
 	{
-		Name: "positive/random-linear-combination",
+		NameStr: "positive/random-linear-combination",
 		Expr: sym.NewPolyEval(
 			sym.NewVariable(coinCoin),
 			[]*sym.Expression{
@@ -177,7 +182,7 @@ var ListOfLocalTestcasePositive = []ExpressionTestcase{
 	},
 
 	{
-		Name: "positive/conditional-counter",
+		NameStr: "positive/conditional-counter",
 		Expr: sym.Sub(
 			column.Shift(columnA, 1),
 			sym.Mul(
@@ -199,10 +204,10 @@ var ListOfLocalTestcasePositive = []ExpressionTestcase{
 
 // ListOfGlobalTestcaseNegative is a list of global constraints testcases
 // that are expected to pass.
-var ListOfGlobalTestcaseNegative = []ExpressionTestcase{
+var ListOfGlobalTestcaseNegative = []*ExpressionTestcase{
 
 	{
-		Name: "negative/fibonacci/wrong-last-value",
+		NameStr: "negative/fibonacci/wrong-last-value",
 		Expr: sym.Sub(
 			columnA,
 			column.Shift(columnA, -1),
@@ -215,7 +220,7 @@ var ListOfGlobalTestcaseNegative = []ExpressionTestcase{
 	},
 
 	{
-		Name: "negative/fibonacci/wrong-first-value",
+		NameStr: "negative/fibonacci/wrong-first-value",
 		Expr: sym.Sub(
 			columnA,
 			column.Shift(columnA, -1),
@@ -228,7 +233,7 @@ var ListOfGlobalTestcaseNegative = []ExpressionTestcase{
 	},
 
 	{
-		Name: "negative/fibonacci/full-random",
+		NameStr: "negative/fibonacci/full-random",
 		Expr: sym.Sub(
 			columnA,
 			column.Shift(columnA, -1),
@@ -241,7 +246,7 @@ var ListOfGlobalTestcaseNegative = []ExpressionTestcase{
 	},
 
 	{
-		Name: "negative/geometric-progression/wrong-coeff",
+		NameStr: "negative/geometric-progression/wrong-coeff",
 		Expr: sym.Sub(
 			columnA,
 			sym.Mul(
@@ -256,7 +261,7 @@ var ListOfGlobalTestcaseNegative = []ExpressionTestcase{
 	},
 
 	{
-		Name: "negative/geometric-progression/wrong-first-value",
+		NameStr: "negative/geometric-progression/wrong-first-value",
 		Expr: sym.Sub(
 			columnA,
 			sym.Mul(
@@ -271,7 +276,7 @@ var ListOfGlobalTestcaseNegative = []ExpressionTestcase{
 	},
 
 	{
-		Name: "negative/random-linear-combination/first-value-is-bad",
+		NameStr: "negative/random-linear-combination/first-value-is-bad",
 		Expr: sym.NewPolyEval(
 			sym.NewVariable(coinCoin),
 			[]*sym.Expression{
@@ -289,7 +294,7 @@ var ListOfGlobalTestcaseNegative = []ExpressionTestcase{
 	},
 
 	{
-		Name: "negative/conditional-counter/skip-2",
+		NameStr: "negative/conditional-counter/skip-2",
 		Expr: sym.Sub(
 			columnA,
 			sym.Mul(
@@ -327,7 +332,7 @@ func (etc *ExpressionTestcase) Define(comp *wizard.CompiledIOP) {
 			// the root col is more of less a column that does not belong
 			// to the compiled IOP. The real one is the one has a prefix.
 			rootCol := column.RootParents(m)[0]
-			realName := formatName[ifaces.ColID]("Column", etc.Name, rootCol.GetColID())
+			realName := formatName[ifaces.ColID]("Column", etc.NameStr, rootCol.GetColID())
 
 			// Save the registration if the column has already been reached.
 			if comp.Columns.Exists(realName) {
@@ -370,7 +375,7 @@ func (etc *ExpressionTestcase) Define(comp *wizard.CompiledIOP) {
 		case column.Natural:
 			return sym.NewVariable(translationMap[c.GetColID()])
 		case column.Shifted:
-			return sym.NewVariable(column.Shift(translationMap[c.GetColID()], c.Offset))
+			return sym.NewVariable(column.Shift(translationMap[c.Parent.GetColID()], c.Offset))
 		default:
 			return e
 		}
@@ -379,7 +384,7 @@ func (etc *ExpressionTestcase) Define(comp *wizard.CompiledIOP) {
 	if etc.IsLocalConstraint {
 		etc.Query = comp.InsertLocal(
 			round,
-			formatName[ifaces.QueryID]("Local", etc.Name, "Query"),
+			formatName[ifaces.QueryID]("Local", etc.NameStr, "Query"),
 			expr,
 		)
 		return
@@ -387,17 +392,21 @@ func (etc *ExpressionTestcase) Define(comp *wizard.CompiledIOP) {
 
 	etc.Query = comp.InsertGlobal(
 		round,
-		formatName[ifaces.QueryID]("Global", etc.Name, "Query"),
+		formatName[ifaces.QueryID]("Global", etc.NameStr, "Query"),
 		expr,
 	)
 }
 
 func (etc *ExpressionTestcase) Assign(run *wizard.ProverRuntime) {
 	for colID, vector := range etc.Columns {
-		run.AssignColumn(formatName[ifaces.ColID]("Column", etc.Name, colID), vector)
+		run.AssignColumn(formatName[ifaces.ColID]("Column", etc.NameStr, colID), vector)
 	}
 }
 
 func (etc *ExpressionTestcase) MustFail() bool {
 	return etc.MustFailFlag
+}
+
+func (etc *ExpressionTestcase) Name() string {
+	return etc.NameStr
 }

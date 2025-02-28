@@ -47,7 +47,7 @@ func RandomFromSeed(size int, seed int64) smartvectors.SmartVector {
 
 // OnesAt returns a vector of size "size" with ones at the positions
 // given in "positions".
-func OnesAt(size int, positions ...int) smartvectors.SmartVector {
+func OnesAt(size int, positions []int) smartvectors.SmartVector {
 	res := make([]field.Element, size)
 	for _, pos := range positions {
 		res[pos] = field.One()
@@ -64,18 +64,31 @@ func Counting(size int) smartvectors.SmartVector {
 	return smartvectors.NewRegular(res)
 }
 
-// CountingAt returns a vector of size "size" with values 0, 1, 2, ...
-// such that the value increments on the positions indicated by "position"
-func CountingAt(size int, positions ...int) smartvectors.SmartVector {
-	res := make([]field.Element, size)
-	for i, pos := range positions {
-		res[pos] = field.NewElement(uint64(i))
-	}
+// CountingAt returns a smartvector for size n, are starting from "init" and
+// incrementing by 1 at the given indices. The indices must be sorted in
+// ascending order.
+func CountingAt(size int, init int, at []int) smartvectors.SmartVector {
+
+	var (
+		res      = make([]field.Element, size)
+		cursorAt = 0
+		one      = field.One()
+	)
+
 	for i := range res {
-		if i > 0 && res[i].IsZero() {
+
+		if i == 0 {
+			res[i] = field.NewElement(uint64(init))
+		} else {
 			res[i] = res[i-1]
 		}
+
+		if cursorAt < len(at) && i == at[cursorAt] {
+			res[i].Add(&res[i], &one)
+			cursorAt++
+		}
 	}
+
 	return smartvectors.NewRegular(res)
 }
 
