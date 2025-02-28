@@ -152,16 +152,16 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     }
     
     unchecked {
-    if (hasRole(SECURITY_COUNCIL_ROLE, _msgSender())) {
-      pauseExpiryTimestamp = type(uint256).max - COOLDOWN_DURATION;
-    } else {
-      if (block.timestamp < pauseExpiryTimestamp + COOLDOWN_DURATION) {
-        revert PauseUnavailableDueToCooldown(pauseExpiryTimestamp + COOLDOWN_DURATION);
+      if (hasRole(SECURITY_COUNCIL_ROLE, _msgSender())) {
+        pauseExpiryTimestamp = type(uint256).max - COOLDOWN_DURATION;
+      } else {
+        if (block.timestamp < pauseExpiryTimestamp + COOLDOWN_DURATION) {
+          revert PauseUnavailableDueToCooldown(pauseExpiryTimestamp + COOLDOWN_DURATION);
+        }
+        pauseExpiryTimestamp = block.timestamp + PAUSE_DURATION;
       }
-      pauseExpiryTimestamp = block.timestamp + PAUSE_DURATION;
     }
-    }
-    
+
     _pauseTypeStatusesBitMap |= 1 << uint256(_pauseType);
     emit Paused(_msgSender(), _pauseType);
   }
