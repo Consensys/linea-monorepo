@@ -410,7 +410,7 @@ describe("PauseManager", () => {
 
       it("Should not allow other types to pause if one is already paused", async () => {
         await pauseByType(L1_L2_PAUSE_TYPE);
-        const expectedCooldown = (await pauseManager.pauseExpiry()) + (await pauseManager.COOLDOWN_DURATION());
+        const expectedCooldown = (await pauseManager.pauseExpiryTimestamp()) + (await pauseManager.COOLDOWN_DURATION());
         await expectRevertWithCustomError(
           pauseManager,
           pauseManager.connect(pauseManagerAccount).pauseByType(L2_L1_PAUSE_TYPE),
@@ -459,10 +459,12 @@ describe("PauseManager", () => {
   });
 
   describe("Pausing/unpausing with expiry and cooldown:", () => {
-    it("Pause should set pauseExpiry to a time in the future", async () => {
+    it("Pause should set pauseExpiryTimestamp to a time in the future", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE);
       const lastBlockTimestamp = await getLastBlockTimestamp();
-      expect(await pauseManager.pauseExpiry()).to.equal(lastBlockTimestamp + (await pauseManager.PAUSE_DURATION()));
+      expect(await pauseManager.pauseExpiryTimestamp()).to.equal(
+        lastBlockTimestamp + (await pauseManager.PAUSE_DURATION()),
+      );
     });
 
     it("unPauseDueToExpiry should fail after pause, if pause has not expired", async () => {
@@ -471,7 +473,7 @@ describe("PauseManager", () => {
         pauseManager,
         pauseManager.connect(pauseManagerAccount).unPauseDueToExpiry(GENERAL_PAUSE_TYPE),
         "PauseNotExpired",
-        [await pauseManager.pauseExpiry()],
+        [await pauseManager.pauseExpiryTimestamp()],
       );
     });
 
@@ -482,12 +484,12 @@ describe("PauseManager", () => {
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.false;
     });
 
-    it("unPauseDueToExpiry should not change the pauseExpiry", async () => {
+    it("unPauseDueToExpiry should not change the pauseExpiryTimestamp", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE);
-      const beforePauseExpiry = await pauseManager.pauseExpiry();
+      const beforePauseExpiry = await pauseManager.pauseExpiryTimestamp();
       await setFutureTimestampForNextBlock(await pauseManager.PAUSE_DURATION());
       await unPauseDueToExpiry(GENERAL_PAUSE_TYPE, nonManager);
-      const afterPauseExpiry = await pauseManager.pauseExpiry();
+      const afterPauseExpiry = await pauseManager.pauseExpiryTimestamp();
       expect(beforePauseExpiry).to.equal(afterPauseExpiry);
     });
 
@@ -495,7 +497,7 @@ describe("PauseManager", () => {
       await pauseByType(GENERAL_PAUSE_TYPE);
       await setFutureTimestampForNextBlock(await pauseManager.PAUSE_DURATION());
       await unPauseDueToExpiry(GENERAL_PAUSE_TYPE, nonManager);
-      const expectedCooldown = (await pauseManager.pauseExpiry()) + (await pauseManager.COOLDOWN_DURATION());
+      const expectedCooldown = (await pauseManager.pauseExpiryTimestamp()) + (await pauseManager.COOLDOWN_DURATION());
       await expectRevertWithCustomError(
         pauseManager,
         pauseManager.connect(pauseManagerAccount).pauseByType(GENERAL_PAUSE_TYPE),
@@ -521,9 +523,9 @@ describe("PauseManager", () => {
       expect(await pauseManager.isPaused(GENERAL_PAUSE_TYPE)).to.be.true;
     });
 
-    it("should set pauseExpiry to an unreachable timestamp if pause enacted by SECURITY_COUNCIL_ROLE", async () => {
+    it("should set pauseExpiryTimestamp to an unreachable timestamp if pause enacted by SECURITY_COUNCIL_ROLE", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
-      expect(await pauseManager.pauseExpiry()).to.equal(ethers.MaxUint256);
+      expect(await pauseManager.pauseExpiryTimestamp()).to.equal(ethers.MaxUint256);
     });
 
     it("Should be unable to unPauseDueToExpiry after pause with SECURITY_COUNCIL_ROLE", async () => {
@@ -535,7 +537,7 @@ describe("PauseManager", () => {
         pauseManager,
         pauseManager.connect(pauseManagerAccount).unPauseDueToExpiry(GENERAL_PAUSE_TYPE),
         "PauseNotExpired",
-        [await pauseManager.pauseExpiry()],
+        [await pauseManager.pauseExpiryTimestamp()],
       );
       // Assert that we have passed expected pause expiry
       expect(await getLastBlockTimestamp()).to.be.above(expectedPauseExpiry);
@@ -545,7 +547,7 @@ describe("PauseManager", () => {
       await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
       const unPauseBlockTimestamp = await setFutureTimestampForNextBlock();
       await unPauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
-      expect(await pauseManager.pauseExpiry()).to.equal(
+      expect(await pauseManager.pauseExpiryTimestamp()).to.equal(
         unPauseBlockTimestamp - (await pauseManager.COOLDOWN_DURATION()),
       );
     });
@@ -553,7 +555,7 @@ describe("PauseManager", () => {
     it("should not reset the pause cooldown when unpause contract with non-SECURITY_COUNCIL_ROLE", async () => {
       await pauseByType(GENERAL_PAUSE_TYPE, securityCouncil);
       await unPauseByType(GENERAL_PAUSE_TYPE, pauseManagerAccount);
-      expect(await pauseManager.pauseExpiry()).to.equal(ethers.MaxUint256);
+      expect(await pauseManager.pauseExpiryTimestamp()).to.equal(ethers.MaxUint256);
     });
 
     it("after unpause contract with SECURITY_COUNCIL_ROLE, any pause should be possible", async () => {

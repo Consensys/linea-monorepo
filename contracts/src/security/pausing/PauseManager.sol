@@ -40,9 +40,9 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
   mapping(PauseType unPauseType => bytes32 role) private _unPauseTypeRoles;
 
   /// @notice Unix timestamp of pause expiry.
-  /// @dev pauseExpiry applies to all pause types. Pausing with one pause type blocks other pause types from being enacted (unless the SECURITY_COUNCIL_ROLE is used).
+  /// @dev pauseExpiryTimestamp applies to all pause types. Pausing with one pause type blocks other pause types from being enacted (unless the SECURITY_COUNCIL_ROLE is used).
   /// @dev This prevents indefinite pause chaining by a non-SECURITY_COUNCIL_ROLE.
-  uint256 public pauseExpiry;
+  uint256 public pauseExpiryTimestamp;
 
   /// @dev Total contract storage is 12 slots with the gap below.
   /// @dev Keep 6 free storage slots for future implementation updates to avoid storage collision.
@@ -152,12 +152,12 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     }
     
     if (hasRole(SECURITY_COUNCIL_ROLE, _msgSender())) {
-      pauseExpiry = type(uint256).max;
+      pauseExpiryTimestamp = type(uint256).max;
     } else {
-      if (block.timestamp < pauseExpiry + COOLDOWN_DURATION) {
-        revert PauseUnavailableDueToCooldown(pauseExpiry + COOLDOWN_DURATION);
+      if (block.timestamp < pauseExpiryTimestamp + COOLDOWN_DURATION) {
+        revert PauseUnavailableDueToCooldown(pauseExpiryTimestamp + COOLDOWN_DURATION);
       }
-      unchecked { pauseExpiry = block.timestamp + PAUSE_DURATION; }
+      unchecked { pauseExpiryTimestamp = block.timestamp + PAUSE_DURATION; }
     }
     _pauseTypeStatusesBitMap |= 1 << uint256(_pauseType);
     emit Paused(_msgSender(), _pauseType);
@@ -178,7 +178,7 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     }
 
     if (hasRole(SECURITY_COUNCIL_ROLE, _msgSender())) {
-      pauseExpiry = block.timestamp - COOLDOWN_DURATION;
+      pauseExpiryTimestamp = block.timestamp - COOLDOWN_DURATION;
     }
     _pauseTypeStatusesBitMap &= ~(1 << uint256(_pauseType));
     emit UnPaused(_msgSender(), _pauseType);
@@ -196,8 +196,8 @@ abstract contract PauseManager is IPauseManager, AccessControlUpgradeable {
     if (!isPaused(_pauseType)) {
       revert IsNotPaused(_pauseType);
     }
-    if (block.timestamp < pauseExpiry) {
-      revert PauseNotExpired(pauseExpiry);
+    if (block.timestamp < pauseExpiryTimestamp) {
+      revert PauseNotExpired(pauseExpiryTimestamp);
     }
 
     _pauseTypeStatusesBitMap &= ~(1 << uint256(_pauseType));
