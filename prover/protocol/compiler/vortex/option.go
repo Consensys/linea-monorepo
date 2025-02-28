@@ -45,3 +45,17 @@ func PremarkAsSelfRecursed() VortexOp {
 		ctx.IsSelfrecursed = true
 	}
 }
+
+// AddMerkleRootToPublicInputs tells the compiler to additionally adds
+// a merkle root to the public inputs of the comp. This is useful for
+// the distributed prover. The name argument is used to set the Name
+// field of the public-input.
+func AddMerkleRootToPublicInputs(name string, round int) VortexOp {
+	return func(ctx *Ctx) {
+		ctx.AddMerkleRootToPublicInputs = struct {
+			Enabled bool
+			Name    string
+			Round   int
+		}{Enabled: true, Name: name, Round: round}
+	}
+}

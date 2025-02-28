@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -200,6 +201,25 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		newGlobalCs := moduleGL.Wiop.QueriesNoParams.Data(globalCs.ID).(query.GlobalConstraint)
 		moduleGL.CompleteGlobalCs(newGlobalCs)
 	}
+
+	for i := range moduleInput.PublicInputs {
+
+		pubInputAcc := accessors.NewConstant(field.Zero())
+
+		if moduleInput.PublicInputs[i].Acc != nil {
+			pubInputAcc = moduleGL.TranslateAccessor(moduleInput.PublicInputs[i].Acc)
+		}
+
+		moduleGL.Wiop.InsertPublicInput(
+			moduleInput.PublicInputs[i].Name,
+			pubInputAcc,
+		)
+	}
+
+	moduleGL.Wiop.InsertPublicInput(constants.IsFirstPublicInput, accessors.NewFromPublicColumn(moduleGL.IsFirst, 0))
+	moduleGL.Wiop.InsertPublicInput(constants.IsLastPublicInput, accessors.NewFromPublicColumn(moduleGL.IsLast, 0))
+	moduleGL.Wiop.InsertPublicInput(constants.GlobalProviderPublicInput, accessors.NewFromPublicColumn(moduleGL.SentValuesGlobalHash, 0))
+	moduleGL.Wiop.InsertPublicInput(constants.GlobalReceiverPublicInput, accessors.NewFromPublicColumn(moduleGL.ReceivedValuesGlobalHash, 0))
 
 	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignSendReceiveGlobal{ModuleGL: moduleGL})
 	moduleGL.Wiop.RegisterVerifierAction(1, &ModuleGLCheckSendReceiveGlobal{ModuleGL: moduleGL})

@@ -72,6 +72,13 @@ type FilteredModuleInputs struct {
 	// in the original compiled-IOP mapping to their assignment.
 	ColumnsPrecomputed map[ifaces.ColID]ifaces.ColAssignment
 
+	// PublicInputs lists the public-inputs of the in-bound original
+	// compiled-IOP. The vector is a list of accessor and has one
+	// entry for EVERY public-input of the input module. However, the
+	// positions corresponding to public-inputs that are not related
+	// to the said module are replaced with 'nil'.
+	PublicInputs []wizard.PublicInput
+
 	// Disc is the module discoverer used to determine the module's
 	// scope
 	Disc ModuleDiscoverer
@@ -237,6 +244,24 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 		default:
 			utils.Panic("unexpected type of query: type=%T name=%v", q, qName)
 		}
+	}
+
+	for i := range comp.PublicInputs {
+
+		originalPublicInput := comp.PublicInputs[i]
+		resolvedModule := ModuleOfAccessor(mf.Disc, originalPublicInput.Acc)
+		resolvedModule.MustBeResolved()
+
+		newPublicInputs := wizard.PublicInput{
+			Name: originalPublicInput.Name,
+			Acc:  originalPublicInput.Acc,
+		}
+
+		if resolvedModule != mf.Module {
+			newPublicInputs.Acc = nil
+		}
+
+		fmi.PublicInputs = append(fmi.PublicInputs, newPublicInputs)
 	}
 
 	return fmi
