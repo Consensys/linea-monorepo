@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 type ModuleName string
@@ -23,9 +22,17 @@ type ModuleDiscoverer interface {
 	// NewSizeOf returns the split-size of a column in the module.
 	NewSizeOf(col ifaces.Column) int
 
-	ExpressionIsInModule(*symbolic.Expression, ModuleName) bool
 	QueryIsInModule(ifaces.Query, ModuleName) bool
+	// it return true if it can find any column from the given slice in the module
+	SliceIsInModule([]ifaces.Column, ModuleName) bool
+	// it checks if the given column is in the given module
 	ColumnIsInModule(col ifaces.Column, name ModuleName) bool
+	// it adds all the unassigned columns in the slice to the given module.
+	UpdateDiscoverer([]ifaces.Column, ModuleName)
+	// it return the module associated with the column, if it is already captured
+	HasModule(col ifaces.Column) (ModuleName, bool)
+	// return the columns from the module
+	ListColumns(ModuleName) []ifaces.Column
 }
 
 // DisjointSet represents a union-find data structure, which efficiently groups elements (columns)
@@ -352,6 +359,53 @@ func HasOverlap(module *Module, columns []ifaces.Column) bool {
 		}
 	}
 	return false
+}
+
+func (disc *Discoverer) QueryIsInModule(query ifaces.Query, name ModuleName) bool {
+	// Extract columns from the query
+	columns := getColumnsFromQuery(query)
+
+	// Check if any of the columns belong to the module
+	return disc.SliceIsInModule(columns, name)
+}
+
+func (disc *Discoverer) SliceIsInModule(columns []ifaces.Column, name ModuleName) bool {
+	for _, col := range columns {
+		if disc.ColumnIsInModule(col, name) {
+			return true
+		}
+	}
+	return false
+}
+
+func (disc *Discoverer) ColumnIsInModule(col ifaces.Column, name ModuleName) bool {
+	if moduleName, exists := disc.columnsToModule[col]; exists {
+		return moduleName == name
+	}
+	return false
+}
+
+func (disc *Discoverer) UpdateDiscoverer(columns []ifaces.Column, name ModuleName) {
+	for _, col := range columns {
+		if _, exists := disc.columnsToModule[col]; !exists {
+			disc.columnsToModule[col] = name
+		}
+	}
+}
+
+func (disc *Discoverer) HasModule(col ifaces.Column) (ModuleName, bool) {
+	moduleName, exists := disc.columnsToModule[col]
+	return moduleName, exists
+}
+
+func (disc *Discoverer) ListColumns(name ModuleName) []ifaces.Column {
+	var columns []ifaces.Column
+	for col, moduleName := range disc.columnsToModule {
+		if moduleName == name {
+			columns = append(columns, col)
+		}
+	}
+	return columns
 }
 
 // NbModules returns the total number of discovered modules.
