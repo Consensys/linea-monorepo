@@ -283,7 +283,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		default:
 			utils.Panic("unexpected query: type=%T name=%v", q, qName)
 
-		case query.LocalOpening, query.Range:
+		case query.Range:
 			// The query is expected but no grouping required.
 
 		case query.GlobalConstraint:
@@ -304,8 +304,45 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 			nbConstraintsOfPlonkCirc = utils.NextPowerOfTwo(countConstraintsOfPlonkCirc(q))
 			nbInstancesOfPlonkCirc = q.GetMaxNbCircuitInstances()
 			nbInstancesOfPlonkQuery = 1
+		}
+
+		for _, columns := range toGroup {
+			moduleCandidates = disc.GroupColumns(
+				columns,
+				moduleCandidates,
+				nbConstraintsOfPlonkCirc,
+				nbInstancesOfPlonkCirc,
+				nbInstancesOfPlonkQuery,
+			)
+		}
+	}
+
+	for _, qName := range comp.QueriesParams.AllUnignoredKeys() {
+
+		var (
+			// toGroup lists sets of columns who need to be grouped.
+			toGroup = [][]column.Natural{}
+
+			// nbConstraintsOfPlonkCirc tells if there are Plonk-in-Wizard overheads
+			// associated with the modules columns. And how many constraints there
+			// are.
+			nbConstraintsOfPlonkCirc = 0
+			nbInstancesOfPlonkCirc   = 0
+			nbInstancesOfPlonkQuery  = 0
+		)
+
+		switch q := comp.QueriesParams.Data(qName).(type) {
+
+		default:
+			utils.Panic("unexpected query: type=%T name=%v", q, qName)
+
+		case query.LocalOpening:
+			// Nothing to do
 
 		case query.LogDerivativeSum:
+
+			fmt.Printf("[Analyze] found LogDerivativeSum: %v\n", q)
+
 			sizes := utils.SortedKeysOf(q.Inputs, func(a, b int) bool { return a < b })
 			for _, size := range sizes {
 				inpForSize := q.Inputs[size]
@@ -314,6 +351,11 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 					colDens := wizardutils.ColumnsOfExpression(inpForSize.Denominator[i])
 					toGroup = append(toGroup, rootsOfColumns(colNums))
 					toGroup = append(toGroup, rootsOfColumns(colDens))
+
+					numNames := make([]ifaces.ColID, len(colNums))
+					for i := range colNums {
+						numNames[i] = colNums[i].GetColID()
+					}
 				}
 			}
 
