@@ -341,8 +341,6 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		case query.LogDerivativeSum:
 
-			fmt.Printf("[Analyze] found LogDerivativeSum: %v\n", q)
-
 			sizes := utils.SortedKeysOf(q.Inputs, func(a, b int) bool { return a < b })
 			for _, size := range sizes {
 				inpForSize := q.Inputs[size]
