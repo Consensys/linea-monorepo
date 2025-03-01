@@ -10,6 +10,7 @@ import (
 	"io"
 	"math"
 	"math/big"
+	"math/bits"
 	"os"
 	"reflect"
 	"strconv"
@@ -19,21 +20,15 @@ import (
 	"golang.org/x/exp/constraints"
 )
 
-/*
-	All * standard * functions that we manually implement
-*/
-
-// Return true if n is a power of two
 func IsPowerOfTwo[T ~int](n T) bool {
 	return n&(n-1) == 0 && n > 0
 }
 
 func Abs(a int) int {
-	mask := a >> (strconv.IntSize - 1) // made up of the sign bit
-	return (a ^ mask) - mask           // if mask is 0, then a ^ 0 - 0 = a. if mask is -1, then a ^ -1 - (-1) = -a - 1 - (-1) = -a
+	mask := a >> (strconv.IntSize - 1)
+	return (a ^ mask) - mask
 }
 
-// DivCeil for int a, b
 func DivCeil(a, b int) int {
 	res := a / b
 	if b*res < a {
@@ -42,8 +37,10 @@ func DivCeil(a, b int) int {
 	return res
 }
 
-// DivExact for int a, b. Panics if b does not divide a exactly.
 func DivExact(a, b int) int {
+	if b == 0 {
+		Panic("division by zero")
+	}
 	res := a / b
 	if res*b != a {
 		Panic("inexact division %d/%d", a, b)
@@ -51,10 +48,7 @@ func DivExact(a, b int) int {
 	return res
 }
 
-// Iterates the function on all the given arguments and return an error
-// if one is not equal to the first one. Panics if given an empty array.
 func AllReturnEqual[T, U any](fs func(T) U, args []T) (U, error) {
-
 	if len(args) < 1 {
 		Panic("Empty list of slice")
 	}
@@ -62,43 +56,25 @@ func AllReturnEqual[T, U any](fs func(T) U, args []T) (U, error) {
 	first := fs(args[0])
 
 	for _, arg := range args[1:] {
-		curr := fs(arg)
-		if !reflect.DeepEqual(first, curr) {
+		if curr := fs(arg); !reflect.DeepEqual(first, curr) {
 			return first, fmt.Errorf("mismatch between %v %v, got %v != %v",
 				args[0], arg, first, curr,
 			)
 		}
 	}
-
 	return first, nil
 }
 
-/*
-NextPowerOfTwo returns the next power of two for the given number.
-It returns the number itself if it's a power of two. As an edge case,
-zero returns zero.
-
-Taken from :
-https://github.com/protolambda/zrnt/blob/v0.13.2/eth2/util/math/math_util.go#L58
-The function panics if the input is more than  2**62 as this causes overflow
-*/
 func NextPowerOfTwo[T ~int64 | ~uint64 | ~uintptr | ~int | ~uint](in T) T {
 	if in < 0 || uint64(in) > 1<<62 {
 		panic("input out of range")
 	}
-	v := in
-	v--
-	v |= v >> (1 << 0)
-	v |= v >> (1 << 1)
-	v |= v >> (1 << 2)
-	v |= v >> (1 << 3)
-	v |= v >> (1 << 4)
-	v |= v >> (1 << 5)
-	v++
-	return v
+	if in == 0 {
+		return 1
+	}
+	return 1 << (bits.Len64(uint64(in-1)))
 }
 
-// PositiveMod returns the positive modulus
 func PositiveMod[T ~int](a, n T) T {
 	res := a % n
 	if res < 0 {
@@ -107,97 +83,74 @@ func PositiveMod[T ~int](a, n T) T {
 	return res
 }
 
-// Join joins a set of slices by appending them into a new array. It can also
-// be used to flatten a double array.
 func Join[T any](ts ...[]T) []T {
-	res := []T{}
+	total := 0
+	for _, t := range ts {
+		total += len(t)
+	}
+	res := make([]T, 0, total)
 	for _, t := range ts {
 		res = append(res, t...)
 	}
 	return res
 }
 
-// Log2Floor computes the floored value of Log2
 func Log2Floor(a int) int {
-	res := 0
-	for i := a; i > 1; i = i >> 1 {
-		res++
-	}
-	return res
+	return bits.Len(uint(a)) - 1
 }
 
-// Log2Ceil computes the ceiled value of Log2
 func Log2Ceil(a int) int {
 	floor := Log2Floor(a)
 	if a != 1<<floor {
-		floor++
+		return floor + 1
 	}
 	return floor
 }
 
-// GCD calculates GCD of a and b by Euclidian algorithm.
 func GCD[T ~int](a, b T) T {
-	for a != b {
-		if a > b {
-			a -= b
-		} else {
-			b -= a
-		}
+	for b != 0 {
+		a, b = b, a%b
 	}
-
 	return a
 }
 
-// Returns a SHA256 checksum of the given asset.
-// TODO @gbotrel merge with Digest
-// Sha2SumHexOf returns a SHA256 checksum of the given asset.
 func Sha2SumHexOf(w io.WriterTo) string {
 	hasher := sha256.New()
-	w.WriteTo(hasher)
-	res := hasher.Sum(nil)
-	return HexEncodeToString(res)
+	if _, err := w.WriteTo(hasher); err != nil {
+		Panic("hash write error: %v", err)
+	}
+	return HexEncodeToString(hasher.Sum(nil))
 }
 
-// Digest computes the SHA256 Digest of the contents of file and prepends a "0x"
-// byte to it. Callers are responsible for closing the file. The reliance on
-// SHA256 is motivated by the fact that we use the sum checksum for the verifier
-// key to identify which verifier contract to use.
 func Digest(src io.Reader) (string, error) {
 	h := sha256.New()
 	if _, err := io.Copy(h, src); err != nil {
 		return "", fmt.Errorf("copy into hasher: %w", err)
 	}
-
 	return "0x" + hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// RightPadWith copies `s` and returns a vector padded up to length `n` using
-// `padWith` as a filling value. The function panics if len(s) < n and returns
-// a copy of s if len(s) == n.
 func RightPadWith[T any](s []T, n int, padWith T) []T {
 	if len(s) > n {
 		panic("input slice longer than desired padded length")
 	}
-	res := append(make([]T, 0, n), s...)
-	for len(res) < n {
-		res = append(res, padWith)
+	res := make([]T, n)
+	copy(res, s)
+	for i := len(s); i < n; i++ {
+		res[i] = padWith
 	}
 	return res
 }
 
-// RightPad copies `s` and returns a vector padded up to length `n`.
-// The padding value is T's default.
-// The padding value. The function panics if len(s) > n and returns a copy of s if len(s) == n.
 func RightPad[T any](s []T, n int) []T {
 	var padWith T
 	return RightPadWith(s, n, padWith)
 }
 
-// RepeatSlice returns the concatenation of `s` with itself `n` times
 func RepeatSlice[T any](s []T, n int) []T {
-	res := make([]T, 0, n*len(s))
+	res := make([]T, n*len(s))
 	for i := 0; i < n; i++ {
-		res = append(res, s...)
+		copy(res[i*len(s):], s)
 	}
 	return res
 }
@@ -205,6 +158,9 @@ func RepeatSlice[T any](s []T, n int) []T {
 func BigsToBytes(ins []*big.Int) []byte {
 	res := make([]byte, len(ins))
 	for i := range ins {
+		if !ins[i].IsUint64() || ins[i].Uint64() > 0xFF {
+			panic("value exceeds byte size")
+		}
 		res[i] = byte(ins[i].Uint64())
 	}
 	return res
@@ -214,25 +170,21 @@ func BigsToInts(ints []*big.Int) []int {
 	res := make([]int, len(ints))
 	for i := range ints {
 		u := ints[i].Uint64()
-		res[i] = int(u) // #nosec G115 - check below
-		if !ints[i].IsUint64() || uint64(res[i]) != u {
+		if !ints[i].IsUint64() || u > math.MaxInt {
 			panic("overflow")
 		}
+		res[i] = int(u)
 	}
 	return res
 }
 
-// ToInt converts a uint, uint64 or int64 to an int, panicking on overflow.
-// Due to its use of generics, it is inefficient to use in loops than run a "cryptographic" number of iterations. Use type-specific functions in such cases.
 func ToInt[T ~uint | ~uint64 | ~int64](i T) int {
 	if i > math.MaxInt {
 		panic("overflow")
 	}
-	return int(i) // #nosec G115 -- Checked for overflow
+	return int(i)
 }
 
-// ToUint64 converts a signed integer into a uint64, panicking on negative values.
-// Due to its use of generics, it is inefficient to use in loops than run a "cryptographic" number of iterations. Use type-specific functions in such cases.
 func ToUint64[T constraints.Signed](i T) uint64 {
 	if i < 0 {
 		panic("negative")
@@ -244,17 +196,20 @@ func ToUint16[T ~int | ~uint](i T) uint16 {
 	if i < 0 || i > math.MaxUint16 {
 		panic("out of range")
 	}
-	return uint16(i) // #nosec G115 -- Checked for overflow
+	return uint16(i)
 }
 
 func ToVariableSlice[X any](s []X) []frontend.Variable {
 	res := make([]frontend.Variable, len(s))
-	Copy(res, s)
+	for i := range s {
+		res[i] = s[i]
+	}
 	return res
 }
 
 func countInts[I constraints.Integer](s []I) []I {
-	counts := make([]I, Max(s...)+1)
+	maxVal := Max(s...)
+	counts := make([]I, maxVal+1)
 	for _, x := range s {
 		counts[x]++
 	}
@@ -268,13 +223,17 @@ func Partition[T any, I constraints.Integer](s []T, index []I) [][]T {
 	if len(s) == 0 {
 		return nil
 	}
-	partitions := make([][]T, Max(index...)+1)
+	
+	maxIdx := Max(index...)
+	partitions := make([][]T, maxIdx+1)
 	counts := countInts(index)
+	
 	for i := range partitions {
 		partitions[i] = make([]T, 0, counts[i])
 	}
-	for i := range s {
-		partitions[index[i]] = append(partitions[index[i]], s[i])
+	
+	for i, v := range s {
+		partitions[index[i]] = append(partitions[index[i]], v)
 	}
 	return partitions
 }
@@ -291,16 +250,13 @@ func RangeSlice[T constraints.Integer](length int, startingPoints ...T) []T {
 		startingPoints = []T{0}
 	}
 	res := make([]T, length*len(startingPoints))
-	for i := range startingPoints {
-		FillRange(res[i*length:(i+1)*length], startingPoints[i])
+	for i, start := range startingPoints {
+		base := i * length
+		for j := 0; j < length; j++ {
+			res[base+j] = start + T(j)
+		}
 	}
 	return res
-}
-
-func FillRange[T constraints.Integer](dst []T, start T) {
-	for l := range dst {
-		dst[l] = T(l) + start
-	}
 }
 
 func ReadFromJSON(path string, v interface{}) error {
@@ -317,8 +273,11 @@ func WriteToJSON(path string, v interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	return json.NewEncoder(f).Encode(v)
+	err = json.NewEncoder(f).Encode(v)
+	if closeErr := f.Close(); closeErr != nil && err == nil {
+		err = fmt.Errorf("close error: %w", closeErr)
+	}
+	return err
 }
 
 func WriterstoEqual(expected, actual io.WriterTo) error {
@@ -334,81 +293,33 @@ func WriterstoEqual(expected, actual io.WriterTo) error {
 	return BytesEqual(ab, bb.Bytes())
 }
 
-// BytesEqual between byte slices a,b
-// a readable error message would show in case of inequality
-// TODO error options: block size, check forwards or backwards etc
 func BytesEqual(expected, actual []byte) error {
 	if bytes.Equal(expected, actual) {
-		return nil // equality fast path
+		return nil
 	}
 
 	l := min(len(expected), len(actual))
-
 	failure := 0
-	for failure < l {
-		if expected[failure] != actual[failure] {
-			break
-		}
+	
+	for failure < l && expected[failure] == actual[failure] {
 		failure++
 	}
 
-	if len(expected) == len(actual) && failure == l {
-		panic("bytes.Equal returned false, but could not find a mismatch")
-	}
-
-	// there is a mismatch
 	var sb strings.Builder
-
-	const (
-		radius    = 40
-		blockSize = 32
-	)
-
-	printCentered := func(b []byte) {
-
-		for i := max(failure-radius, 0); i <= failure+radius; i++ {
-			if i%blockSize == 0 && i != failure-radius {
-				sb.WriteString("  ")
-			}
-			if i >= 0 && i < len(b) {
-				sb.WriteString(hex.EncodeToString([]byte{b[i]})) // inefficient, but this whole error printing sub-procedure will not be run more than once
-			} else {
-				sb.WriteString("  ")
-			}
-		}
-	}
+	const radius = 40
 
 	sb.WriteString(fmt.Sprintf("mismatch starting at byte %d\n", failure))
 
-	sb.WriteString("expected: ")
-	printCentered(expected)
-	sb.WriteString("\n")
-
-	sb.WriteString("actual:   ")
-	printCentered(actual)
-	sb.WriteString("\n")
-
-	sb.WriteString("          ")
-	for i := max(failure-radius, 0); i <= failure+radius; {
-		if i%blockSize == 0 && i != failure-radius {
-			s := strconv.Itoa(i)
-			sb.WriteString("  ")
-			sb.WriteString(s)
-			i += len(s) / 2
-			if len(s)%2 != 0 {
-				sb.WriteString(" ")
-				i++
-			}
-		} else {
-			if i == failure {
-				sb.WriteString("^^")
-			} else {
-				sb.WriteString("  ")
-			}
-			i++
+	printHex := func(b []byte) {
+		for i := max(failure-radius, 0); i < min(failure+radius, len(b)); i++ {
+			fmt.Fprintf(&sb, "%02x", b[i])
 		}
 	}
 
+	sb.WriteString("expected: ")
+	printHex(expected)
+	sb.WriteString("\nactual:   ")
+	printHex(actual)
 	sb.WriteString("\n")
 
 	return &BytesEqualError{
@@ -436,7 +347,7 @@ func ReadFromFile(path string, to io.ReaderFrom) error {
 }
 
 func WriteToFile(path string, from io.WriterTo) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600) // TODO @Tabaie option for permissions?
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
 	}
