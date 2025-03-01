@@ -112,9 +112,8 @@ class SaveRejectedTransactionRequestHandlerV1(
       }
       if (parsingResult is Err) {
         return Future.succeededFuture(parsingResult)
-      } else {
-        parsingResult.get()!!
       }
+      parsingResult.get() ?: throw IllegalStateException("Unexpected null result after parsing")
     } catch (e: Exception) {
       return Future.succeededFuture(
         Err(
@@ -151,7 +150,8 @@ class GetTransactionExclusionStatusRequestHandlerV1(
         "The given request params list should have one argument"
       )
     }
-    return ArgumentParser.getTxHashInRawBytes(requestListParams[0].toString())
+    val param = requestListParams[0] ?: throw IllegalArgumentException("Transaction hash cannot be null")
+    return ArgumentParser.getTxHashInRawBytes(param.toString())
   }
 
   override fun invoke(
