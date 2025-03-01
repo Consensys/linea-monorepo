@@ -4,7 +4,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 type ModuleName = string
@@ -23,28 +22,6 @@ type DistributedWizard struct {
 type DistributedModule struct {
 	LookupPermProj *wizard.CompiledIOP
 	GlobalLocal    *wizard.CompiledIOP
-}
-
-// ModuleDiscoverer a set of methods responsible for the horizontal splittings (i.e., splitting to modules)
-type ModuleDiscoverer interface {
-	// Analyze is responsible for letting the module discoverer compute how to
-	// group best the columns into modules.
-	Analyze(comp *wizard.CompiledIOP)
-	ModuleList() []ModuleName
-	FindModule(col ifaces.Column) ModuleName
-	// given a query and a module name it checks if the query is inside the module
-	ExpressionIsInModule(*symbolic.Expression, ModuleName) bool
-	QueryIsInModule(ifaces.Query, ModuleName) bool
-	// it return true if it can find any column from the given slice in the module
-	SliceIsInModule([]ifaces.Column, ModuleName) bool
-	// it checks if the given column is in the given module
-	ColumnIsInModule(col ifaces.Column, name ModuleName) bool
-	// it adds all the unassigned columns in the slice to the given module.
-	UpdateDiscoverer([]ifaces.Column, ModuleName)
-	// it return the module associated with the column, if it is already captured
-	HasModule(col ifaces.Column) (ModuleName, bool)
-	// return the columns from the module
-	ListColumns(ModuleName) []ifaces.Column
 }
 
 // This transforms the initial wizard. So it is not really the initial
