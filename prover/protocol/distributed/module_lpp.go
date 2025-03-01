@@ -7,9 +7,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -26,6 +30,10 @@ type ModuleLPP struct {
 	// to generate the module.
 	definitionInput *FilteredModuleInputs
 
+	// InitialFiatShamirState is the state at which to start the FiatShamir
+	// computation
+	InitialFiatShamirState ifaces.Column
+
 	// N0Hash is the hash of the N0 positions for the Horner queries
 	N0Hash ifaces.Column
 
@@ -40,6 +48,12 @@ type ModuleLPP struct {
 
 	// Horner is the translated horner query in the module
 	Horner query.Horner
+}
+
+// SetInitialFSHash sets the initial FiatShamir state
+type SetInitialFSHash struct {
+	ModuleLPP
+	skipped bool
 }
 
 // AssignLPPQueries is a [wizard.ProverAction] responsible for assigning the LPP
@@ -84,9 +98,10 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *M
 			Wiop: builder.CompiledIOP,
 			Disc: moduleInput.Disc,
 		},
-		definitionInput: moduleInput,
-		N0Hash:          builder.InsertProof(1, "LPP_N0_HASH", 1),
-		N1Hash:          builder.InsertProof(1, "LPP_N1_HASH", 1),
+		definitionInput:        moduleInput,
+		N0Hash:                 builder.InsertProof(1, "LPP_N0_HASH", 1),
+		N1Hash:                 builder.InsertProof(1, "LPP_N1_HASH", 1),
+		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 1),
 	}
 
 	for _, col := range moduleInput.Columns {
@@ -112,8 +127,13 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *M
 	moduleLPP.GrandProduct = moduleLPP.InsertGrandProduct(1, ifaces.QueryID("MAIN_GRANDPRODUCT"), moduleInput.GrandProductArgs)
 	moduleLPP.Horner = moduleLPP.InsertHorner(1, ifaces.QueryID("MAIN_HORNER"), moduleInput.HornerArgs)
 
+	moduleLPP.Wiop.InsertPublicInput(constants.LogDerivativeSumPublicInput, accessors.NewLogDerivSumAccessor(moduleLPP.LogDerivativeSum))
+	moduleLPP.Wiop.InsertPublicInput(constants.GrandProductPublicInput, accessors.NewGrandProductAccessor(moduleLPP.GrandProduct))
+	moduleLPP.Wiop.InsertPublicInput(constants.HornerPublicInput, accessors.NewFromHornerAccessorFinalValue(&moduleLPP.Horner))
+
 	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
 	moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})
+	moduleLPP.Wiop.FiatShamirHooksPreSampling.AppendToInner(1, &SetInitialFSHash{ModuleLPP: *moduleLPP})
 
 	return moduleLPP
 }
@@ -158,6 +178,48 @@ func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitness) {
 
 		run.AssignColumn(colName, colWitness)
 		delete(witness.Columns, colName)
+	}
+}
+
+// addCoinFromExpression scans the metadata of the expression looking
+// for coins and adds them to the [ModuleLPP] as [coin.FieldFromSeed].
+func (m *ModuleLPP) addCoinFromExpression(expr *symbolic.Expression) {
+
+	var (
+		board    = expr.Board()
+		metadata = board.ListVariableMetadata()
+	)
+
+	for i := range metadata {
+
+		switch meta := metadata[i].(type) {
+
+		case coin.Info:
+
+			m.InsertCoin(meta.Name, meta.Round)
+			return
+
+		case ifaces.Accessor:
+
+			m.addCoinFromAccessor(meta)
+			return
+		}
+	}
+}
+
+func (m *ModuleLPP) addCoinFromAccessor(acce ifaces.Accessor) {
+
+	switch a := acce.(type) {
+
+	case *accessors.FromExprAccessor:
+
+		m.addCoinFromExpression(a.Expr)
+		return
+
+	case *accessors.FromCoinAccessor:
+
+		m.InsertCoin(a.Info.Name, a.Info.Round)
+		return
 	}
 }
 
@@ -231,6 +293,25 @@ func (a *CheckNxHash) Skip() {
 }
 
 func (a *CheckNxHash) IsSkipped() bool {
+	return a.skipped
+}
+
+func (a *SetInitialFSHash) Run(run wizard.Runtime) error {
+	state := a.InitialFiatShamirState.GetColAssignment(run).Get(0)
+	run.Fs().SetState([]field.Element{state})
+	return nil
+}
+
+func (a *SetInitialFSHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	state := a.InitialFiatShamirState.GetColAssignmentGnark(run)[0]
+	run.Fs().SetState([]frontend.Variable{state})
+}
+
+func (a *SetInitialFSHash) Skip() {
+	a.skipped = true
+}
+
+func (a *SetInitialFSHash) IsSkipped() bool {
 	return a.skipped
 }
 

@@ -168,7 +168,7 @@ func (mt *moduleTranslator) InsertPlonkInWizard(oldQuery *query.PlonkInWizard) *
 
 // InsertLogDerivative inserts a new LogDerivative query in the target compiled IOP
 // by translating all the related columns
-func (mt *moduleTranslator) InsertLogDerivative(
+func (mt *ModuleLPP) InsertLogDerivative(
 	round int,
 	id ifaces.QueryID,
 	logDerivativeArgs [][2]*symbolic.Expression,
@@ -188,6 +188,9 @@ func (mt *moduleTranslator) InsertLogDerivative(
 			size = NewSizeOfList(mt.Disc, num, den)
 		)
 
+		mt.addCoinFromExpression(num)
+		mt.addCoinFromExpression(den)
+
 		if _, hasSize := res.Inputs[size]; !hasSize {
 			res.Inputs[size] = &query.LogDerivativeSumInput{
 				Size: size,
@@ -204,7 +207,7 @@ func (mt *moduleTranslator) InsertLogDerivative(
 
 // InsertGrandProduct inserts a new GrandProduct query in the target compiled IOP
 // by translating all the related columns
-func (mt *moduleTranslator) InsertGrandProduct(
+func (mt *ModuleLPP) InsertGrandProduct(
 	round int,
 	id ifaces.QueryID,
 	args [][2]*symbolic.Expression,
@@ -223,6 +226,9 @@ func (mt *moduleTranslator) InsertGrandProduct(
 			size = NewSizeOfList(mt.Disc, num, den)
 		)
 
+		mt.addCoinFromExpression(num)
+		mt.addCoinFromExpression(den)
+
 		if _, hasSize := res.Inputs[size]; !hasSize {
 			res.Inputs[size] = &query.GrandProductInput{
 				Size: size,
@@ -239,7 +245,7 @@ func (mt *moduleTranslator) InsertGrandProduct(
 
 // InsertHorner inserts a new Horner query in the target compiled IOP
 // by translating all the related columns
-func (mt *moduleTranslator) InsertHorner(
+func (mt *ModuleLPP) InsertHorner(
 	round int,
 	id ifaces.QueryID,
 	parts []query.HornerPart,
@@ -259,8 +265,26 @@ func (mt *moduleTranslator) InsertHorner(
 			X:            mt.TranslateAccessor(oldPart.X),
 		}
 
+		mt.addCoinFromExpression(newPart.Coefficient)
+		mt.addCoinFromAccessor(newPart.X)
+
 		res.Parts = append(res.Parts, newPart)
 	}
 
 	return mt.Wiop.InsertHornerQuery(res.Round, res.ID, res.Parts)
+}
+
+func (mt *moduleTranslator) InsertCoin(name coin.Name, round int) {
+
+	if mt.Wiop.Coins.Exists(name) {
+		return
+	}
+
+	newInfo := coin.Info{
+		Name:  name,
+		Type:  coin.FieldFromSeed,
+		Round: round,
+	}
+
+	mt.Wiop.Coins.AddToRound(round, name, newInfo)
 }
