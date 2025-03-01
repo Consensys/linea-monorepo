@@ -331,7 +331,7 @@ func (etc *ExpressionTestcase) Define(comp *wizard.CompiledIOP) {
 		case ifaces.Column:
 			// the root col is more of less a column that does not belong
 			// to the compiled IOP. The real one is the one has a prefix.
-			rootCol := column.RootParents(m)[0]
+			rootCol := column.RootParents(m)
 			realName := formatName[ifaces.ColID]("Column", etc.NameStr, rootCol.GetColID())
 
 			// Save the registration if the column has already been reached.

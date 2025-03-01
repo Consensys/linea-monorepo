@@ -283,7 +283,7 @@ func (ctx *stitchingContext) stitchGroup(s Alliance) {
 
 // it checks if the column belongs to a stitching.
 func isColEligibleStitching(stitchings MultiSummary, col ifaces.Column) bool {
-	natural := column.RootParents(col)[0]
+	natural := column.RootParents(col)
 	_, found := stitchings[col.Round()].BySubCol[natural.GetColID()]
 	return found
 }

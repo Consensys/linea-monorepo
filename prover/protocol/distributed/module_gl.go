@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -21,9 +20,12 @@ import (
 )
 
 const (
-	moduleGLReceiveGlobalKey = "RECEIVE_GLOBAL"
-	moduleGLSendGlobalKey    = "SEND_GLOBAL"
-	moduleWitnessKey         = "MODULE_WITNESS"
+	moduleGLReceiveGlobalKey  = "RECEIVE_GLOBAL"
+	moduleGLSendGlobalKey     = "SEND_GLOBAL"
+	globalProviderPublicInput = "GLOBAL_PROVIDER_PUBLIC_INPUT"
+	globalReceiverPublicInput = "GLOBAL_RECEIVER_PUBLIC_INPUT"
+	isFirstPublicInput        = "IS_FIRST_PUBLIC_INPUT"
+	isLastPublicInput         = "IS_LAST_PUBLIC_INPUT"
 )
 
 // ModuleGL is a compilation structure holding the central informations
@@ -216,10 +218,10 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		)
 	}
 
-	moduleGL.Wiop.InsertPublicInput(constants.IsFirstPublicInput, accessors.NewFromPublicColumn(moduleGL.IsFirst, 0))
-	moduleGL.Wiop.InsertPublicInput(constants.IsLastPublicInput, accessors.NewFromPublicColumn(moduleGL.IsLast, 0))
-	moduleGL.Wiop.InsertPublicInput(constants.GlobalProviderPublicInput, accessors.NewFromPublicColumn(moduleGL.SentValuesGlobalHash, 0))
-	moduleGL.Wiop.InsertPublicInput(constants.GlobalReceiverPublicInput, accessors.NewFromPublicColumn(moduleGL.ReceivedValuesGlobalHash, 0))
+	moduleGL.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewFromPublicColumn(moduleGL.IsFirst, 0))
+	moduleGL.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewFromPublicColumn(moduleGL.IsLast, 0))
+	moduleGL.Wiop.InsertPublicInput(globalProviderPublicInput, accessors.NewFromPublicColumn(moduleGL.SentValuesGlobalHash, 0))
+	moduleGL.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewFromPublicColumn(moduleGL.ReceivedValuesGlobalHash, 0))
 
 	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignSendReceiveGlobal{ModuleGL: moduleGL})
 	moduleGL.Wiop.RegisterVerifierAction(1, &ModuleGLCheckSendReceiveGlobal{ModuleGL: moduleGL})
@@ -318,7 +320,7 @@ func (m *ModuleGL) InsertGlobal(q query.GlobalConstraint) query.GlobalConstraint
 
 		var (
 			colOffset = column.StackOffsets(col)
-			rootCol   = column.RootParents(col)[0]
+			rootCol   = column.RootParents(col)
 		)
 
 		for i := colOffset; i < offsetRange.Max; i++ {
@@ -421,7 +423,7 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 				var (
 					colOffset = column.StackOffsets(col)
 					shfPos    = row + colOffset
-					rootCol   = column.RootParents(col)[0]
+					rootCol   = column.RootParents(col)
 				)
 
 				if shfPos < 0 {

@@ -1,6 +1,7 @@
 package plonkinternal
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -108,13 +109,11 @@ func createCtx(
 		opt(&ctx)
 	}
 
-	// Build the trace and track it in the context
-	gnarkBuilder, rcGetter := newExternalRangeChecker(comp, ctx.RangeCheck.AddGateForRangeCheck)
-
 	logrus.Debugf("Plonk in Wizard (%v) compiling the circuit", name)
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circuit)
+
+	ccs, rcGetter, err := CompileCircuit(ctx.Plonk.Circuit, ctx.RangeCheck.AddGateForRangeCheck)
 	if err != nil {
-		utils.Panic("error compiling the circuit with name `%v` : %v", name, err)
+		utils.Panic("error compiling circuit name=%v : %v", name, err)
 	}
 
 	logrus.Debugf(
@@ -122,9 +121,9 @@ func createCtx(
 		ccs.GetNbConstraints(), ccs.GetNbInternalVariables(),
 	)
 
-	ctx.Plonk.RcGetter = rcGetter // Pass the range-check getter
-	ctx.Plonk.SPR = ccs.(*cs.SparseR1CS)
+	ctx.Plonk.SPR = ccs
 	ctx.Plonk.Domain = fft.NewDomain(uint64(ctx.DomainSize()))
+	ctx.Plonk.RcGetter = rcGetter // Pass the range-check getter
 
 	logrus.Debugf("Plonk in Wizard (%v) build trace", name)
 	ctx.Plonk.Trace = plonkBLS12_377.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
@@ -134,6 +133,21 @@ func createCtx(
 
 	logrus.Debugf("Plonk in Wizard (%v) done", name)
 	return ctx
+}
+
+// CompileCircuit compiles the circuit and returns the compiled
+// constraints system.
+func CompileCircuit(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func() [][2]int, error) {
+
+	// Build the trace and track it in the context
+	gnarkBuilder, rcGetter := newExternalRangeChecker(addGates)
+
+	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
+	if err != nil {
+		return nil, nil, errors.New("error compiling the circuit with name")
+	}
+
+	return ccsIface.(*cs.SparseR1CS), rcGetter, err
 }
 
 // Return the size of the domain

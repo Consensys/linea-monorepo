@@ -103,7 +103,7 @@ func (ctx splitterContext) LocalGlobalConstraints() {
 
 // it checks if a column registered in the compiler has the proper size and state for splitting.
 func isColEligibleSplitting(splittings MultiSummary, col ifaces.Column) bool {
-	natural := column.RootParents(col)[0]
+	natural := column.RootParents(col)
 	_, found := splittings[col.Round()].ByBigCol[natural.GetColID()]
 	return found
 }

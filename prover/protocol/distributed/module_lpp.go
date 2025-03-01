@@ -9,12 +9,17 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed/constants"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+)
+
+var (
+	logDerivativeSumPublicInput = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
+	grandProductPublicInput     = "GRAND_PRODUCT_PUBLIC_INPUT"
+	hornerPublicInput           = "HORNER_PUBLIC_INPUT"
 )
 
 // ModuleLPP is a compilation structure holding the central informations
@@ -127,9 +132,9 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *M
 	moduleLPP.GrandProduct = moduleLPP.InsertGrandProduct(1, ifaces.QueryID("MAIN_GRANDPRODUCT"), moduleInput.GrandProductArgs)
 	moduleLPP.Horner = moduleLPP.InsertHorner(1, ifaces.QueryID("MAIN_HORNER"), moduleInput.HornerArgs)
 
-	moduleLPP.Wiop.InsertPublicInput(constants.LogDerivativeSumPublicInput, accessors.NewLogDerivSumAccessor(moduleLPP.LogDerivativeSum))
-	moduleLPP.Wiop.InsertPublicInput(constants.GrandProductPublicInput, accessors.NewGrandProductAccessor(moduleLPP.GrandProduct))
-	moduleLPP.Wiop.InsertPublicInput(constants.HornerPublicInput, accessors.NewFromHornerAccessorFinalValue(&moduleLPP.Horner))
+	moduleLPP.Wiop.InsertPublicInput(logDerivativeSumPublicInput, accessors.NewLogDerivSumAccessor(moduleLPP.LogDerivativeSum))
+	moduleLPP.Wiop.InsertPublicInput(grandProductPublicInput, accessors.NewGrandProductAccessor(moduleLPP.GrandProduct))
+	moduleLPP.Wiop.InsertPublicInput(hornerPublicInput, accessors.NewFromHornerAccessorFinalValue(&moduleLPP.Horner))
 
 	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
 	moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})

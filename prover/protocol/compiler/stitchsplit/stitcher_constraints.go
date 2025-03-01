@@ -184,7 +184,7 @@ func getStitchingCol(ctx stitchingContext, col ifaces.Column, option ...int) ifa
 	case column.Shifted:
 		// Shift the stitching column by the right position
 		offset := column.StackOffsets(col)
-		col = column.RootParents(col)[0]
+		col = column.RootParents(col)
 		res := getStitchingCol(ctx, col, offset)
 		return res
 

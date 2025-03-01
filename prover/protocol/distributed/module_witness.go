@@ -9,6 +9,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+var (
+	// moduleWitnessKey is the key used to store the witness of a module
+	// in the [wizard.ProverRuntime.State]
+	moduleWitnessKey = "MODULE_WITNESS"
+)
+
 // ModuleWitness is a structure collecting the witness of a module. And
 // stores all the informations that are necessary to build the witness.
 type ModuleWitness struct {
@@ -207,7 +213,7 @@ func (mw *ModuleWitness) NextReceivedValuesGlobal(moduleGL *ModuleGL) []field.El
 	for i, loc := range moduleGL.SentValuesGlobal {
 
 		var (
-			col = column.RootParents(loc.Pol)[0]
+			col = column.RootParents(loc.Pol)
 			pos = column.StackOffsets(loc.Pol)
 		)
 

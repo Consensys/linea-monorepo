@@ -86,7 +86,7 @@ func IsExprEligible(
 		// reminder: [verifiercol.VerifierCol] , [column.Natural] and [column.Shifted]
 		// all implement [ifaces.Column]
 		case ifaces.Column: // it is a Committed, Precomputed or verifierCol
-			natural := column.RootParents(m)[0]
+			natural := column.RootParents(m)
 			switch natural.(type) {
 			case column.Natural: // then it is not a verifiercol
 				allAreVeriferCol = false
