@@ -5,8 +5,8 @@ import (
 	"errors"
 	"github.com/consensys/gnark-crypto/ecc/bls12-381/fr"
 	"github.com/consensys/gnark-crypto/hash"
+	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/encode"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v0/compress"
 	"os"
 )
 
