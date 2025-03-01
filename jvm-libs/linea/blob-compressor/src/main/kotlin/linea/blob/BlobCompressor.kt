@@ -1,6 +1,6 @@
 package linea.blob
 
-import net.consensys.encodeHex
+import linea.kotlin.encodeHex
 import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.blob.GoNativeBlobCompressor
 import net.consensys.linea.blob.GoNativeBlobCompressorFactory
@@ -23,6 +23,12 @@ interface BlobCompressor {
   fun startNewBatch()
   fun getCompressedData(): ByteArray
   fun reset()
+
+  fun getCompressedDataAndReset(): ByteArray {
+    val compressedData = getCompressedData()
+    reset()
+    return compressedData
+  }
 
   data class AppendResult(
     // returns false if last chunk would go over dataLimit. Does  not append last block.

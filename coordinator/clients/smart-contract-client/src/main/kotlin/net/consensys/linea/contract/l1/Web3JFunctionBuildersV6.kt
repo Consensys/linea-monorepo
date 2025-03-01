@@ -2,7 +2,7 @@ package net.consensys.linea.contract.l1
 
 import build.linea.contract.LineaRollupV6
 import build.linea.contract.l1.LineaContractVersion
-import net.consensys.toBigInteger
+import linea.kotlin.toBigInteger
 import net.consensys.zkevm.domain.BlobRecord
 import net.consensys.zkevm.domain.ProofToFinalize
 import org.web3j.abi.TypeReference
@@ -20,7 +20,6 @@ internal fun buildSubmitBlobsFunction(
   blobs: List<BlobRecord>
 ): Function {
   return when (version) {
-    LineaContractVersion.V5 -> buildSubmitBlobsFunction(blobs)
     LineaContractVersion.V6 -> buildSubmitBlobsFunctionV6(blobs)
   }
 }
@@ -63,21 +62,10 @@ fun buildFinalizeBlocksFunction(
   version: LineaContractVersion,
   aggregationProof: ProofToFinalize,
   aggregationLastBlob: BlobRecord,
-  parentShnarf: ByteArray,
   parentL1RollingHash: ByteArray,
   parentL1RollingHashMessageNumber: Long
 ): Function {
   when (version) {
-    LineaContractVersion.V5 -> {
-      return buildFinalizeBlobsFunction(
-        aggregationProof,
-        aggregationLastBlob,
-        parentShnarf,
-        parentL1RollingHash,
-        parentL1RollingHashMessageNumber
-      )
-    }
-
     LineaContractVersion.V6 -> {
       return buildFinalizeBlockFunctionV6(
         aggregationProof,

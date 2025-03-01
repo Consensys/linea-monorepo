@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ArrayNode
 import io.vertx.core.Vertx
 import linea.encoding.BlockRLPEncoder
-import net.consensys.encodeHex
+import linea.kotlin.encodeHex
+import linea.kotlin.toBigInteger
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.toBigInteger
 import net.consensys.zkevm.coordinator.clients.BatchExecutionProofRequestV1
 import net.consensys.zkevm.coordinator.clients.BatchExecutionProofResponse
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
@@ -57,7 +57,7 @@ internal class ExecutionProofRequestDataDecorator(
 
     return SafeFuture.collectAll(bridgeLogsSfList.stream())
       .thenCombine(
-        getBlockStateRootHash(request.blocks.first().number.toULong() - 1UL)
+        getBlockStateRootHash(request.blocks.first().number - 1UL)
       ) { blocksAndBridgeLogs, previousKeccakStateRootHash ->
         BatchExecutionProofRequestDto(
           zkParentStateRootHash = request.type2StateData.zkParentStateRootHash.encodeHex(),

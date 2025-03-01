@@ -1,78 +1,12 @@
 package net.consensys.zkevm.ethereum
 
 import build.linea.contract.l1.LineaContractVersion
-import net.consensys.linea.async.toSafeFuture
-import net.consensys.linea.testing.filesystem.getPathTo
-import org.apache.logging.log4j.LogManager
+import linea.testing.CommandResult
+import linea.testing.Runner
+import org.hyperledger.besu.datatypes.Address
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.io.BufferedReader
-import java.io.File
-import java.io.InputStreamReader
 import java.util.regex.Matcher
 import java.util.regex.Pattern
-
-data class CommandResult(
-  val exitCode: Int,
-  val stdOut: List<String>,
-  val stdErr: List<String>
-)
-
-fun executeCommand(
-  command: String,
-  envVars: Map<String, String> = emptyMap(),
-  executionDir: File = getPathTo("Makefile").parent.toFile()
-): SafeFuture<CommandResult> {
-  val log = LogManager.getLogger("net.consensys.zkevm.ethereum.CommandExecutor")
-  val processBuilder = ProcessBuilder("/bin/sh", "-c", command)
-  processBuilder.directory(executionDir)
-
-  // Set environment variables
-  val env = processBuilder.environment()
-  for ((key, value) in envVars) {
-    env[key] = value
-  }
-
-  val process = processBuilder.start()
-  val stdOutReader = BufferedReader(InputStreamReader(process.inputStream))
-  val stdErrorReader = BufferedReader(InputStreamReader(process.errorStream))
-
-  // Read the standard output
-  log.debug(
-    "going to execute command: dir='{}', command='{}', envVars={} commandProcessId={} processInfo={}",
-    executionDir,
-    command,
-    envVars,
-    process.pid(),
-    process.info()
-  )
-  process.waitFor(60, java.util.concurrent.TimeUnit.SECONDS)
-  val futureResult = process
-    .onExit()
-    .thenApply { processResult ->
-      val stdOutLines = stdOutReader.lines().toList()
-      val stdErrLines = stdErrorReader.lines().toList()
-      log.debug(
-        "command finished: dir='{}', command='{}', exitCode={} envVars={} processId={} threadId={}",
-        executionDir,
-        command,
-        processResult.exitValue(),
-        envVars,
-        ProcessHandle.current().pid(),
-        Thread.currentThread().threadId()
-      )
-      log.debug(
-        "stdout: {}",
-        stdOutLines.joinToString("\n")
-      )
-      log.debug(
-        "stderr: {}",
-        stdErrLines.joinToString("\n")
-      )
-      CommandResult(processResult.exitValue(), stdOutLines, stdErrLines)
-    }
-
-  return futureResult.toSafeFuture()
-}
 
 internal val lineaRollupAddressPattern = Pattern.compile(
   "^contract=LineaRollup(?:.*)? deployed: address=(0x[0-9a-fA-F]{40}) blockNumber=(\\d+)"
@@ -90,7 +24,7 @@ fun getDeployedAddress(
   commandResult: CommandResult,
   addressPattern: Pattern
 ): DeployedContract {
-  val lines = commandResult.stdOut.toList().asReversed()
+  val lines = commandResult.stdOutLines.toList().asReversed()
   return getDeployedAddress(lines, addressPattern)
 }
 
@@ -103,7 +37,13 @@ fun getDeployedAddress(
     ?.let { addressPattern.matcher(it).also { it.find() } }
 
   return matcher
-    ?.let { DeployedContract(it.group(1), it.group(2).toLong()) }
+    ?.let {
+      val address = it.group(1)
+      val deploymentBlockNumber = it.group(2).toLong()
+      // validated address was correctly parsed
+      Address.fromHexString(address)
+      DeployedContract(address, deploymentBlockNumber)
+    }
     ?: throw IllegalStateException("Couldn't extract contract address. Expecting pattern: $addressPattern")
 }
 
@@ -112,7 +52,7 @@ private fun deployContract(
   env: Map<String, String> = emptyMap(),
   addressPattern: Pattern
 ): SafeFuture<DeployedContract> {
-  return executeCommand(
+  return Runner.executeCommand(
     command = command,
     envVars = env
   )
@@ -122,8 +62,8 @@ private fun deployContract(
         throw IllegalStateException(
           "Command $command failed: " +
             "\nexitCode=${result.exitCode} " +
-            "\nSTD_OUT: \n${result.stdOut.joinToString("\n")}" +
-            "\nSTD_ERROR: \n${result.stdErr.joinToString("\n")}"
+            "\nSTD_OUT: \n${result.stdOutStr}" +
+            "\nSTD_ERROR: \n${result.stdErrStr}"
         )
       } else {
         runCatching { getDeployedAddress(result, addressPattern) }
@@ -144,7 +84,6 @@ fun makeDeployLineaRollup(
   )
   deploymentPrivateKey?.let { env["DEPLOYMENT_PRIVATE_KEY"] = it }
   val command = when (contractVersion) {
-    LineaContractVersion.V5 -> "make deploy-linea-rollup-v5"
     LineaContractVersion.V6 -> "make deploy-linea-rollup-v6"
     else -> throw IllegalArgumentException("Unsupported contract version: $contractVersion")
   }
@@ -174,9 +113,9 @@ fun makeDeployL2MessageService(
 
 fun logCommand(commandResult: CommandResult) {
   println("stdout:")
-  commandResult.stdOut.forEach { println(it) }
+  println(commandResult.stdOutStr)
   println("stderr:")
-  commandResult.stdErr.forEach { println(it) }
+  println(commandResult.stdErrStr)
   println("exit code: ${commandResult.exitCode}")
 }
 
@@ -185,7 +124,7 @@ fun main() {
     makeDeployLineaRollup(
       L1AccountManager.generateAccount().privateKey,
       listOf("03dfa322A95039BB679771346Ee2dBfEa0e2B773"),
-      LineaContractVersion.V5
+      LineaContractVersion.V6
     ),
     makeDeployL2MessageService(
       L2AccountManager.generateAccount().privateKey,

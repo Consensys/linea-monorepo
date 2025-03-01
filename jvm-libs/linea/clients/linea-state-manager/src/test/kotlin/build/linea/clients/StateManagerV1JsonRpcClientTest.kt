@@ -1,6 +1,5 @@
 package build.linea.clients
 
-import build.linea.domain.BlockInterval
 import com.fasterxml.jackson.databind.node.ArrayNode
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.github.michaelbull.result.Err
@@ -13,12 +12,15 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration.options
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
-import net.consensys.decodeHex
-import net.consensys.fromHexString
+import linea.domain.BlockInterval
+import linea.kotlin.decodeHex
+import linea.kotlin.fromHexString
 import net.consensys.linea.async.get
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
+import net.consensys.linea.metrics.MetricsFacade
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.testing.filesystem.findPathTo
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -54,8 +56,9 @@ class StateManagerV1JsonRpcClientTest {
     wiremock = WireMockServer(options().dynamicPort())
     wiremock.start()
     meterRegistry = SimpleMeterRegistry()
+    val metricsFacade: MetricsFacade = MicrometerMetricsFacade(registry = meterRegistry, "linea")
     stateManagerClient = StateManagerV1JsonRpcClient.create(
-      rpcClientFactory = VertxHttpJsonRpcClientFactory(vertx, meterRegistry),
+      rpcClientFactory = VertxHttpJsonRpcClientFactory(vertx, metricsFacade),
       endpoints = listOf(URI(wiremock.baseUrl())),
       maxInflightRequestsPerClient = 1u,
       requestRetry = RequestRetryConfig(

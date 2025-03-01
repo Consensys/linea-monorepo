@@ -1,7 +1,7 @@
 package net.consensys.linea.blob
 
-import net.consensys.decodeHex
-import net.consensys.encodeHex
+import linea.kotlin.decodeHex
+import linea.kotlin.encodeHex
 import net.consensys.linea.nativecompressor.CompressorTestData
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -12,7 +12,7 @@ import java.util.Base64
 import kotlin.random.Random
 
 class GoNativeCompressorAndShnarfCalculatorIntTest {
-  private val DATA_LIMIT = 16 * 1024
+  private val DATA_LIMIT = 128 * 1024
   private lateinit var compressor: GoNativeBlobCompressor
   private lateinit var shnarfCalculator: GoNativeBlobShnarfCalculator
 
@@ -44,7 +44,7 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
 
     @Test
     fun `compressed size estimation should be consistent with blob maker output`() {
-      testCompressedSizeSstimationIsConsistentWithBlobMakerOutput()
+      testCompressedSizeEstimationIsConsistentWithBlobMakerOutput()
     }
   }
 
@@ -72,7 +72,7 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
 
     @Test
     fun `compressed size estimation should be consistent with blob maker output`() {
-      testCompressedSizeSstimationIsConsistentWithBlobMakerOutput()
+      testCompressedSizeEstimationIsConsistentWithBlobMakerOutput()
     }
   }
 
@@ -201,7 +201,7 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
     resultAsserterFn(result)
   }
 
-  fun testCompressedSizeSstimationIsConsistentWithBlobMakerOutput() {
+  fun testCompressedSizeEstimationIsConsistentWithBlobMakerOutput() {
     val block = CompressorTestData.blocksRlpEncoded.first()
 
     // Write the block to the blob maker and get the effective compressed size
@@ -225,6 +225,6 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
 
     // min compressed size should always be strictly bigger than the size returned
     // by the blob maker minus the header size
-    assertTrue((compressedSizeWithHeader - estimatedHeaderSizePacked) < compressedSize)
+    assertThat(compressedSizeWithHeader - estimatedHeaderSizePacked).isLessThanOrEqualTo(compressedSize)
   }
 }

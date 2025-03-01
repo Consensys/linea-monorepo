@@ -395,9 +395,12 @@ func (ss *Module) csIsStorage(comp *wizard.CompiledIOP) {
 func (ss *Module) csBatchNumber(comp *wizard.CompiledIOP) {
 
 	comp.InsertLocal(
-		0,
-		"STATE_SUMMARY_BATCH_NUMER_START_FROM_ZERO",
-		sym.NewVariable(ss.BatchNumber),
+		1,
+		"STATE_SUMMARY_BATCH_NUMBER_START_FROM_ONE",
+		sym.Sub(
+			ss.BatchNumber,
+			1,
+		),
 	)
 
 	isZeroWhenInactive(comp, ss.BatchNumber, ss.IsActive)
@@ -535,8 +538,8 @@ func (ss *Module) csAccountNew(comp *wizard.CompiledIOP) {
 	mustHaveDefaultWhenNotExists(ss.Account.Final.Balance, 0)
 	mustHaveDefaultWhenNotExists(ss.Account.Final.CodeSize, 0)
 	mustHaveDefaultWhenNotExists(ss.Account.Final.MiMCCodeHash, 0)
-	mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Hi, "0xc5d2460186f7233c927e7db2dcc703c0")
-	mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Lo, "0xe500b653ca82273b7bfad8045d85a470")
+	mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Hi, 0)
+	mustHaveDefaultWhenNotExists(ss.Account.Final.KeccakCodeHash.Lo, 0)
 
 	comp.InsertGlobal(
 		0,
@@ -598,8 +601,8 @@ func (ss *Module) csAccountOld(comp *wizard.CompiledIOP) {
 	mustHaveDefaultWhenNotExists(ss.Account.Initial.CodeSize, 0)
 	mustHaveDefaultWhenNotExists(ss.Account.Initial.MiMCCodeHash, 0)
 	mustHaveDefaultWhenNotExists(ss.Account.Initial.StorageRoot, 0)
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Hi, "0xc5d2460186f7233c927e7db2dcc703c0")
-	mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Lo, "0xe500b653ca82273b7bfad8045d85a470")
+	mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Hi, 0)
+	mustHaveDefaultWhenNotExists(ss.Account.Initial.KeccakCodeHash.Lo, 0)
 
 }
 

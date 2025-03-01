@@ -1,18 +1,25 @@
 package net.consensys.zkevm.domain
 
-import build.linea.domain.BlockIntervals
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import linea.domain.BlockIntervals
+import linea.kotlin.setFirstByteToZero
+import linea.kotlin.trimToSecondPrecision
 import net.consensys.linea.blob.ShnarfCalculatorVersion
-import net.consensys.setFirstByteToZero
-import net.consensys.trimToSecondPrecision
+import net.consensys.linea.metrics.MetricsFacade
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.zkevm.coordinator.clients.BlobCompressionProof
 import net.consensys.zkevm.domain.Constants.LINEA_BLOCK_INTERVAL
 import net.consensys.zkevm.ethereum.coordination.blob.BlobShnarfCalculator
 import net.consensys.zkevm.ethereum.coordination.blob.GoBackedBlobShnarfCalculator
 import kotlin.random.Random
 
-private val shnarfCalculator: BlobShnarfCalculator = GoBackedBlobShnarfCalculator(ShnarfCalculatorVersion.V0_1_0)
+private val meterRegistry = SimpleMeterRegistry()
+private val metricsFacade: MetricsFacade =
+  MicrometerMetricsFacade(registry = meterRegistry, metricsPrefix = "linea")
+private val shnarfCalculator: BlobShnarfCalculator =
+  GoBackedBlobShnarfCalculator(version = ShnarfCalculatorVersion.V0_1_0, metricsFacade = metricsFacade)
 
 fun createBlobRecord(
   startBlockNumber: ULong? = null,

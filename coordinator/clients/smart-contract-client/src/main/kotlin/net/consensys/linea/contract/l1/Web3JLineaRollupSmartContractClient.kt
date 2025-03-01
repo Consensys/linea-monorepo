@@ -1,14 +1,14 @@
 package net.consensys.linea.contract.l1
 
-import build.linea.contract.LineaRollupV5
+import build.linea.contract.LineaRollupV6
 import build.linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
+import linea.kotlin.toULong
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.Web3JContractAsyncHelper
 import net.consensys.linea.contract.throwExceptionIfJsonRpcErrorReturned
 import net.consensys.linea.contract.toWeb3JTxBlob
 import net.consensys.linea.web3j.SmartContractErrors
 import net.consensys.linea.web3j.informativeEthCall
-import net.consensys.toULong
 import net.consensys.zkevm.coordinator.clients.smartcontract.BlockAndNonce
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.BlobRecord
@@ -37,7 +37,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
       contractGasProvider,
       smartContractErrors
     ),
-  private val web3jLineaClient: LineaRollupV5 = LineaRollupEnhancedWrapper(
+  private val web3jLineaClient: LineaRollupV6 = LineaRollupEnhancedWrapper(
     contractAddress,
     web3j,
     asyncTransactionManager,
@@ -155,7 +155,6 @@ class Web3JLineaRollupSmartContractClient internal constructor(
           version,
           aggregation,
           aggregationLastBlob,
-          parentShnarf,
           parentL1RollingHash,
           parentL1RollingHashMessageNumber
         )
@@ -180,7 +179,6 @@ class Web3JLineaRollupSmartContractClient internal constructor(
           version,
           aggregation,
           aggregationLastBlob,
-          parentShnarf,
           parentL1RollingHash,
           parentL1RollingHashMessageNumber
         )
