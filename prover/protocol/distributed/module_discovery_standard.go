@@ -260,6 +260,8 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 	disc.mutex.Lock()
 	defer disc.mutex.Unlock()
 
+	disc.columnsToModule = make(map[ifaces.Column]ModuleName)
+
 	moduleCandidates := []*QueryBasedModule{}
 
 	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
