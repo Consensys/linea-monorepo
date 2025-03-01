@@ -2,13 +2,14 @@ package testtools
 
 import (
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-var rng = rand.New(rand.NewSource(0))
+var rng = rand.New(utils.NewRandSource(0))
 
 // RandomVec returns a random vector of size "size".
 func RandomVec(size int) smartvectors.SmartVector {
@@ -30,7 +31,7 @@ func RandomMatrix(rows, cols int) []smartvectors.SmartVector {
 func RandBinary(size int) smartvectors.SmartVector {
 	res := make([]field.Element, size)
 	for i := range res {
-		if rng.Intn(2) == 0 {
+		if rng.IntN(2) == 0 {
 			res[i] = field.One()
 		}
 	}
@@ -41,7 +42,7 @@ func RandBinary(size int) smartvectors.SmartVector {
 // seed. This can be used to ensure that the same vector is generated
 // through several calls.
 func RandomFromSeed(size int, seed int64) smartvectors.SmartVector {
-	rng := rand.New(rand.NewSource(seed))
+	rng := rand.New(utils.NewRandSource(seed))
 	return smartvectors.PseudoRand(rng, size)
 }
 
@@ -138,7 +139,7 @@ func XorTable(nbits int) []smartvectors.SmartVector {
 func RandomSmallNumbers(size, max int) smartvectors.SmartVector {
 	res := make([]field.Element, size)
 	for i := range res {
-		res[i] = field.NewElement(uint64(rng.Intn(max)))
+		res[i] = field.NewElement(uint64(rng.IntN(max)))
 	}
 	return smartvectors.NewRegular(res)
 }

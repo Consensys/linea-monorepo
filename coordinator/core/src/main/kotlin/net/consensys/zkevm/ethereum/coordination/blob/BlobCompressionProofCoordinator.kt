@@ -1,11 +1,11 @@
 package net.consensys.zkevm.ethereum.coordination.blob
 
-import build.linea.domain.BlockInterval
-import build.linea.domain.BlockIntervals
-import build.linea.domain.toBlockIntervalsString
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
+import linea.domain.BlockInterval
+import linea.domain.BlockIntervals
+import linea.domain.toBlockIntervalsString
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.zkevm.LongRunningService
@@ -38,18 +38,29 @@ class BlobCompressionProofCoordinator(
   private val blobsToHandle = LinkedBlockingDeque<Blob>(defaultQueueCapacity)
   private var timerId: Long? = null
   private lateinit var blobPollingAction: Handler<Long>
+
   private val blobsCounter = metricsFacade.createCounter(
-    LineaMetricsCategory.BLOB,
-    "counter",
-    "New blobs arriving to blob compression proof coordinator"
+    category = LineaMetricsCategory.BLOB,
+    name = "counter",
+    description = "New blobs arriving to blob compression proof coordinator"
+  )
+  private val blobSizeInBlocksHistogram = metricsFacade.createHistogram(
+    category = LineaMetricsCategory.BLOB,
+    name = "blocks.size",
+    description = "Number of blocks in each blob"
+  )
+  private val blobSizeInBatchesHistogram = metricsFacade.createHistogram(
+    category = LineaMetricsCategory.BLOB,
+    name = "batches.size",
+    description = "Number of batches in each blob"
   )
 
   init {
     metricsFacade.createGauge(
-      LineaMetricsCategory.BLOB,
-      "compression.queue.size",
-      "Size of blob compression proving queue",
-      { blobsToHandle.size }
+      category = LineaMetricsCategory.BLOB,
+      name = "compression.queue.size",
+      description = "Size of blob compression proving queue",
+      measurementSupplier = { blobsToHandle.size }
     )
   }
 
@@ -167,6 +178,8 @@ class BlobCompressionProofCoordinator(
       blobsToHandle.size,
       blob.conflations.toBlockIntervalsString()
     )
+    blobSizeInBlocksHistogram.record(blob.blocksRange.count().toDouble())
+    blobSizeInBatchesHistogram.record(blob.conflations.size.toDouble())
     blobsToHandle.put(blob)
     log.trace("Blob was added to the handling queue {}", blob)
     return SafeFuture.completedFuture(Unit)

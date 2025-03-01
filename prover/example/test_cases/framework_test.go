@@ -14,7 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -66,7 +66,7 @@ var (
 		innerproduct.Compile,
 	}
 	ARITHMETICS = compilationSuite{
-		splitter.SplitColumns(8),
+		stitchsplit.Splitter(8),
 		localcs.Compile,
 		globalcs.Compile,
 	}
@@ -110,7 +110,7 @@ Returns an assignment from a wizard proof
 */
 func GetAssignment(comp *wizard.CompiledIOP, proof wizard.Proof) *SimpleTestGnarkCircuit {
 	return &SimpleTestGnarkCircuit{
-		C: *wizard.AssignVerifierCircuit(comp, proof),
+		C: *wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
 	}
 }
 

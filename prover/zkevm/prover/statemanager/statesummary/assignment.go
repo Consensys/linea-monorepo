@@ -42,7 +42,8 @@ func (ss *Module) Assign(run *wizard.ProverRuntime, traces [][]statemanager.Deco
 	}
 
 	for batchNumber, ts := range traces {
-		assignmentBuilder.pushBlockTraces(batchNumber, ts)
+		// +1 is to harmonize with the HUB block numbering, which starts from 1
+		assignmentBuilder.pushBlockTraces(batchNumber+1, ts)
 	}
 
 	assignmentBuilder.finalize(run)

@@ -24,8 +24,10 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.junit5.VertxExtension
-import net.consensys.decodeHex
+import linea.kotlin.decodeHex
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponseException
+import net.consensys.linea.metrics.MetricsFacade
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -37,6 +39,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
 import java.net.ConnectException
 import java.net.URI
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutionException
 import java.util.function.Predicate
 import kotlin.time.Duration
@@ -97,7 +100,8 @@ class JsonRpcV2ClientImplTest {
   fun beforeEach(vertx: Vertx) {
     this.vertx = vertx
     this.meterRegistry = SimpleMeterRegistry()
-    this.factory = VertxHttpJsonRpcClientFactory(vertx, meterRegistry)
+    val metricsFacade: MetricsFacade = MicrometerMetricsFacade(registry = meterRegistry, "linea")
+    this.factory = VertxHttpJsonRpcClientFactory(vertx, metricsFacade)
     this.client = createClientAndSetupWireMockServer()
   }
 
@@ -506,7 +510,7 @@ class JsonRpcV2ClientImplTest {
       // stop the server to simulate connection error
       wiremock.stop()
 
-      val retryPredicateCalls = mutableListOf<Result<String?, Throwable>>()
+      val retryPredicateCalls = CopyOnWriteArrayList<Result<String?, Throwable>>()
 
       val reqFuture = client.makeRequest(
         method = "someMethod",

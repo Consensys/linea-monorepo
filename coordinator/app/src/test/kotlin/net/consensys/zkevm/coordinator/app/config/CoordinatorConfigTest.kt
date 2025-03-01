@@ -4,7 +4,7 @@ import com.github.michaelbull.result.getError
 import com.sksamuel.hoplite.Masked
 import linea.coordinator.config.loadConfigs
 import linea.coordinator.config.loadConfigsOrError
-import net.consensys.linea.BlockParameter
+import linea.domain.BlockParameter
 import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.ExtraDataV1UpdaterImpl
@@ -209,7 +209,7 @@ class CoordinatorConfigTest {
       blockRangeLoopLimit = 500U,
       _ethFeeHistoryEndpoint = null,
       _genesisStateRootHash = "0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c6f59b214dcecd",
-      _genesisShnarfV5 = "0x47452a1b9ebadfe02bdd02f580fa1eba17680d57eec968a591644d05d78ee84f"
+      _genesisShnarfV6 = "0x47452a1b9ebadfe02bdd02f580fa1eba17680d57eec968a591644d05d78ee84f"
     )
 
     private val l2Config = L2Config(
@@ -280,7 +280,6 @@ class CoordinatorConfigTest {
         feeHistoryBlockCount = 50U,
         feeHistoryRewardPercentile = 15.0
       ),
-      jsonRpcPricingPropagationEnabled = true,
       legacy = L2NetworkGasPricingService.LegacyGasPricingCalculatorConfig(
         legacyGasPricingCalculatorBounds = BoundableFeeCalculator.Config(
           feeUpperBound = 10_000_000_000.0,

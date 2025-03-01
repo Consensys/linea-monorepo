@@ -1,10 +1,9 @@
 package build.linea.contract.l1
 
-import net.consensys.linea.BlockParameter
+import linea.domain.BlockParameter
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 enum class LineaContractVersion : Comparable<LineaContractVersion> {
-  V5, // "EIP4844 multiple blobs per tx support - version in all networks"
   V6 // more efficient data submission and new events for state recovery
 }
 
