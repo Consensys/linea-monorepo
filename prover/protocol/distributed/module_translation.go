@@ -158,10 +158,6 @@ func (mt *moduleTranslator) InsertPlonkInWizard(oldQuery *query.PlonkInWizard) *
 		PlonkOptions: oldQuery.PlonkOptions,
 	}
 
-	if oldQuery.CircuitMask != nil {
-		newQuery.CircuitMask = mt.TranslateColumn(oldQuery.CircuitMask, newQuery.Data.Size())
-	}
-
 	mt.Wiop.InsertPlonkInWizard(newQuery)
 	return newQuery
 }

@@ -231,9 +231,6 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 
 		case *query.PlonkInWizard:
 			items := []ifaces.Column{q.Selector, q.Data}
-			if q.CircuitMask != nil {
-				items = append(items, q.CircuitMask)
-			}
 			resolvedModule := ModuleOfList(mf.Disc, items...)
 			resolvedModule.MustBeResolved()
 			if resolvedModule != mf.Module {

@@ -19,8 +19,8 @@ import (
 // queries (for global, local, plonk, log-derivative, grand-product and horner
 // queries).
 type StandardModuleDiscoverer struct {
-	// targetWeight is the target weight for each module.
-	targetWeight    int
+	// TargetWeight is the target weight for each module.
+	TargetWeight    int
 	modules         []*StandardModule
 	columnsToModule map[ifaces.Column]ModuleName
 	columnsToSize   map[ifaces.Column]int
@@ -100,8 +100,8 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		var (
 			moduleNext = modulesQBased[i]
-			distPrev   = disc.targetWeight - currWeightSum
-			distNext   = currWeightSum + moduleNext.Weight(0) - disc.targetWeight
+			distPrev   = disc.TargetWeight - currWeightSum
+			distNext   = currWeightSum + moduleNext.Weight(0) - disc.TargetWeight
 		)
 
 		if distNext > distPrev {
@@ -156,8 +156,8 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 				currWeight += groups[i][j].Weight(numRow)
 			}
 
-			currDist := utils.Abs(currWeight - disc.targetWeight)
-			bestDist := utils.Abs(bestWeight - disc.targetWeight)
+			currDist := utils.Abs(currWeight - disc.TargetWeight)
+			bestDist := utils.Abs(bestWeight - disc.TargetWeight)
 
 			if currDist < bestDist {
 				bestReduction = reduction
@@ -295,7 +295,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		case *query.PlonkInWizard:
 			// Note: [q.CircuitMask] might be "nil" and it is ok. This is the reason
 			// why we need that [column.RootsOf] filters out 'nil' inputs.
-			cols := []ifaces.Column{q.Selector, q.Data, q.CircuitMask}
+			cols := []ifaces.Column{q.Selector, q.Data}
 			toGroup = append(toGroup, rootsOfColumns(cols))
 			// Since there is only one possible option, we know that it can
 			// only be a range-check.

@@ -707,17 +707,6 @@ func (c *CompiledIOP) InsertPlonkInWizard(q *query.PlonkInWizard) {
 		utils.Panic("the circuit has secret variables, found %v", nbSecret)
 	}
 
-	if q.CircuitMask != nil && !c.Precomputed.Exists(q.CircuitMask.GetColID()) {
-		utils.Panic("circuit mask %v not registered as a precomputed column", q.CircuitMask.GetColID())
-	}
-
-	if q.CircuitMask != nil {
-		mask := c.Precomputed.MustGet(q.CircuitMask.GetColID())
-		if err := q.CheckMask(mask); err != nil {
-			utils.Panic("provided mask is improper: %v", err)
-		}
-	}
-
 	c.QueriesNoParams.AddToRound(round, q.ID, q)
 }
 
