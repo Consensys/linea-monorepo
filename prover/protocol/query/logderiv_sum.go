@@ -138,8 +138,5 @@ func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
 
 // Test that global sum is correct
 func (r LogDerivativeSum) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
-	/*params := run.GetParams(r.ID).(GnarkLogDerivSumParams)
-	actualY := TBD
-	api.AssertIsEqual(params.Y, actualY)
-	*/
+	panic("unexpected call")
 }
