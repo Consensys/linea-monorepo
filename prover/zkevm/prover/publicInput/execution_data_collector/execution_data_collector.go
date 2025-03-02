@@ -3,7 +3,6 @@ package execution_data_collector
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -11,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	arith "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/arith_struct"
 	fetch "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/fetchers_arithmetization"
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
@@ -208,8 +208,8 @@ type ExecutionDataCollector struct {
 }
 
 // NewExecutionDataCollector instantiates an ExecutionDataCollector with unconstrained columns.
-func NewExecutionDataCollector(comp *wizard.CompiledIOP, name string, size int) ExecutionDataCollector {
-	res := ExecutionDataCollector{
+func NewExecutionDataCollector(comp *wizard.CompiledIOP, name string, size int) *ExecutionDataCollector {
+	return &ExecutionDataCollector{
 		BlockID:                util.CreateCol(name, "BLOCK_ID", size, comp),
 		AbsTxID:                util.CreateCol(name, "ABS_TX_ID", size, comp),
 		AbsTxIDMax:             util.CreateCol(name, "ABS_TX_ID_MAX", size, comp),
@@ -232,9 +232,8 @@ func NewExecutionDataCollector(comp *wizard.CompiledIOP, name string, size int) 
 		HashNum:                util.CreateCol(name, "HASH_NUM", size, comp),
 		EndOfRlpSegment:        util.CreateCol(name, "END_OF_RLP_SEGMENT", size, comp),
 		TotalBytesCounter:      util.CreateCol(name, "TOTAL_BYTES_COUNTER", size, comp),
-		FinalTotalBytesCounter: util.CreateCol(name, "FINAL_TOTAL_BYTES_COUNTER", 1, comp),
+		FinalTotalBytesCounter: util.CreateCol(name, "FINAL_TOTAL_BYTES_COUNTER", size, comp),
 	}
-	return res
 }
 
 // GetSummarySize estimates a necessary upper bound on the ExecutionDataCollector columns
@@ -788,7 +787,7 @@ func DefineNumberOfBytesConstraints(comp *wizard.CompiledIOP, edc *ExecutionData
 func ProjectionQueries(comp *wizard.CompiledIOP,
 	edc *ExecutionDataCollector,
 	name string,
-	timestamps fetch.TimestampFetcher,
+	timestamps *fetch.TimestampFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher) {
@@ -1042,12 +1041,9 @@ func DefineTotalBytesCounterConstraints(comp *wizard.CompiledIOP, edc *Execution
 		),
 	)
 
-	// set the FinalTotalBytesCounter as public for accessors
-	comp.Columns.SetStatus(edc.FinalTotalBytesCounter.GetColID(), column.Proof)
-	// get accessors
-	accessor := accessors.NewFromPublicColumn(edc.FinalTotalBytesCounter, 0)
 	// enforce that FinalTotalBytesCounter contains the last value of TotalBytesCounter on the active part.
-	util.CheckLastELemConsistency(comp, edc.IsActive, edc.TotalBytesCounter, accessor, name)
+	util.CheckLastELemConsistency(comp, edc.IsActive, edc.TotalBytesCounter, edc.FinalTotalBytesCounter, name)
+	commonconstraints.MustBeConstant(comp, edc.FinalTotalBytesCounter)
 }
 
 // DefineCounterConstraints enforces counter constraints for BlockId, AbsTxId and Ct.
@@ -1195,7 +1191,7 @@ func DefineIsActiveConstraints(comp *wizard.CompiledIOP, edc *ExecutionDataColle
 func DefineExecutionDataCollector(comp *wizard.CompiledIOP,
 	edc *ExecutionDataCollector,
 	name string,
-	timestamps fetch.TimestampFetcher,
+	timestamps *fetch.TimestampFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher) {
@@ -1243,8 +1239,8 @@ func DefineExecutionDataCollector(comp *wizard.CompiledIOP,
 // the arithmetizationfetchers fetch.TimestampFetcher, fetch.BlockTxnMetadata,
 // fetch.TxnDataFetcher, and fetch.RlpTxnFetcher.
 func AssignExecutionDataCollector(run *wizard.ProverRuntime,
-	edc ExecutionDataCollector,
-	timestamps fetch.TimestampFetcher,
+	edc *ExecutionDataCollector,
+	timestamps *fetch.TimestampFetcher,
 	metadata fetch.BlockTxnMetadata,
 	txnData fetch.TxnDataFetcher,
 	rlp fetch.RlpTxnFetcher,
@@ -1371,7 +1367,7 @@ func AssignExecutionDataCollector(run *wizard.ProverRuntime,
 
 // AssignExecutionDataColumns uses the helper struct ExecutionDataCollectorVectors to assign the columns of
 // the ExecutionDataCollector
-func AssignExecutionDataColumns(run *wizard.ProverRuntime, edc ExecutionDataCollector, vect *ExecutionDataCollectorVectors) {
+func AssignExecutionDataColumns(run *wizard.ProverRuntime, edc *ExecutionDataCollector, vect *ExecutionDataCollectorVectors) {
 	run.AssignColumn(edc.BlockID.GetColID(), smartvectors.NewRegular(vect.BlockID))
 	run.AssignColumn(edc.AbsTxID.GetColID(), smartvectors.NewRegular(vect.AbsTxID))
 	run.AssignColumn(edc.Limb.GetColID(), smartvectors.NewRegular(vect.Limb))
@@ -1394,5 +1390,5 @@ func AssignExecutionDataColumns(run *wizard.ProverRuntime, edc ExecutionDataColl
 	run.AssignColumn(edc.FirstAbsTxIDBlock.GetColID(), smartvectors.NewRegular(vect.FirstAbsTxIDBlock))
 	run.AssignColumn(edc.LastAbsTxIDBlock.GetColID(), smartvectors.NewRegular(vect.LastAbsTxIDBlock))
 	run.AssignColumn(edc.TotalBytesCounter.GetColID(), smartvectors.NewRegular(vect.TotalBytesCounter))
-	run.AssignColumn(edc.FinalTotalBytesCounter.GetColID(), smartvectors.NewRegular([]field.Element{vect.FinalTotalBytesCounter}))
+	run.AssignColumn(edc.FinalTotalBytesCounter.GetColID(), smartvectors.NewConstant(vect.FinalTotalBytesCounter, len(vect.BlockID)))
 }

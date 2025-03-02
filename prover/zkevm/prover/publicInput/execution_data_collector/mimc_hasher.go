@@ -4,12 +4,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
 
@@ -32,21 +32,21 @@ type MIMCHasher struct {
 
 func NewMIMCHasher(comp *wizard.CompiledIOP, inputData, inputIsActive ifaces.Column, name string) *MIMCHasher {
 	size := 2 * inputData.Size()
-	res := &MIMCHasher{
+	return &MIMCHasher{
 		inputData:     inputData,
 		inputIsActive: inputIsActive,
 		data:          util.CreateCol(name, "DATA", size, comp),
 		isActive:      util.CreateCol(name, "ACTIVE", size, comp),
 		hash:          util.CreateCol(name, "HASH", size, comp),
-		HashFinal:     util.CreateCol(name, "HASH_FINAL", 1, comp),
+		HashFinal:     util.CreateCol(name, "HASH_FINAL", size, comp),
 		state:         util.CreateCol(name, "STATE", size, comp),
 		isData:        util.CreateCol(name, "IS_DATA", size, comp),
 		canBeData:     comp.InsertPrecomputed(ifaces.ColIDf("%s_%s", name, "CAN_BE_DATA"), computeCanBeData(size)),
 	}
-	return res
 }
 
 func DefineHashFilterConstraints(comp *wizard.CompiledIOP, hasher *MIMCHasher, name string) {
+
 	// we require that isActive is binary in DefineIndicatorsMustBeBinary
 	// require that the isActive filter only contains 1s followed by 0s
 	comp.InsertGlobal(
@@ -113,11 +113,9 @@ func (hasher *MIMCHasher) DefineHasher(comp *wizard.CompiledIOP, name string) {
 	// state, the current state column, is initially zero
 	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "INTER_LOCAL"), ifaces.ColumnAsVariable(hasher.state))
 
-	// prepare accessors for HashFinal
-	comp.Columns.SetStatus(hasher.HashFinal.GetColID(), column.Proof)
-	accHashFinal := accessors.NewFromPublicColumn(hasher.HashFinal, 0)
 	// constrain HashFinal
-	util.CheckLastELemConsistency(comp, hasher.isActive, hasher.hash, accHashFinal, name)
+	commonconstraints.MustBeConstant(comp, hasher.HashFinal)
+	util.CheckLastELemConsistency(comp, hasher.isActive, hasher.hash, hasher.HashFinal, name)
 
 	// constraint isActive
 	DefineHashFilterConstraints(comp, hasher, name)
@@ -210,8 +208,7 @@ func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 	run.AssignColumn(hasher.data.GetColID(), smartvectors.NewRegular(data))
 	run.AssignColumn(hasher.isActive.GetColID(), smartvectors.NewRegular(isActive))
 	run.AssignColumn(hasher.isData.GetColID(), smartvectors.NewRegular(isData))
-	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewRegular([]field.Element{finalHash}))
-
+	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewConstant(finalHash, size))
 }
 
 func computeCanBeData(size int) smartvectors.SmartVector {

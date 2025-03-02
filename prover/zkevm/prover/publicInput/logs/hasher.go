@@ -4,12 +4,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
-	publicInput "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
+	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
+	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
 
 // LogHasher is used to MiMC-hash the data in LogMessages. Using a zero initial stata,
@@ -36,13 +36,12 @@ type LogHasher struct {
 
 // NewLogHasher returns a new LogHasher with initialized columns that are not constrained.
 func NewLogHasher(comp *wizard.CompiledIOP, size int, name string) LogHasher {
-	res := LogHasher{
-		hashFirst:  publicInput.CreateCol(name, "HASH_FIRST", size, comp),
-		hashSecond: publicInput.CreateCol(name, "HASH_SECOND", size, comp),
-		inter:      publicInput.CreateCol(name, "INTER", size, comp),
-		HashFinal:  publicInput.CreateCol(name, "HASH_FINAL", 1, comp),
+	return LogHasher{
+		hashFirst:  util.CreateCol(name, "HASH_FIRST", size, comp),
+		hashSecond: util.CreateCol(name, "HASH_SECOND", size, comp),
+		inter:      util.CreateCol(name, "INTER", size, comp),
+		HashFinal:  util.CreateCol(name, "HASH_FINAL", size, comp),
 	}
-	return res
 }
 
 // DefineHasher specifies the constraints of the LogHasher with respect to the ExtractedData fetched from the arithmetization
@@ -62,12 +61,9 @@ func DefineHasher(comp *wizard.CompiledIOP, hasher LogHasher, name string, fetch
 	// inter, the old state column, is initially zero
 	comp.InsertLocal(0, ifaces.QueryIDf("%s_%s", name, "INTER_LOCAL"), ifaces.ColumnAsVariable(hasher.inter))
 
-	// set the RollingSelector columns as public in order to get accessors
-	comp.Columns.SetStatus(hasher.HashFinal.GetColID(), column.Proof)
-
 	// constrain HashFinal
-	accessHashFinal := accessors.NewFromPublicColumn(hasher.HashFinal, 0)
-	publicInput.CheckLastELemConsistency(comp, fetched.filterFetched, hasher.hashSecond, accessHashFinal, name)
+	commonconstraints.MustBeConstant(comp, hasher.HashFinal)
+	util.CheckLastELemConsistency(comp, fetched.filterFetched, hasher.hashSecond, hasher.HashFinal, name)
 }
 
 // AssignHasher assigns the data in the LogHasher using the ExtractedData fetched from the arithmetization
@@ -107,5 +103,5 @@ func AssignHasher(run *wizard.ProverRuntime, hasher LogHasher, fetched Extracted
 	run.AssignColumn(hasher.hashFirst.GetColID(), smartvectors.NewRegular(hashFirst))
 	run.AssignColumn(hasher.hashSecond.GetColID(), smartvectors.NewRegular(hashSecond))
 	run.AssignColumn(hasher.inter.GetColID(), smartvectors.NewRegular(inter))
-	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewRegular([]field.Element{hashFinal}))
+	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewConstant(hashFinal, size))
 }
