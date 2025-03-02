@@ -19,8 +19,7 @@ func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
 	// The test is to make sure that this function returns
 	disc.Analyze(zkevm.WizardIOP)
 
-	csvFile := files.MustOverwrite("modules-query-based.csv")
-	fmt.Fprintf(csvFile, "%v, %v, %v, %v\n", "column", "size-old", "size-new", "module")
+	mapSize := map[ModuleName]int{}
 
 	allCols := zkevm.WizardIOP.Columns.AllKeys()
 	for _, colName := range allCols {
@@ -40,7 +39,17 @@ func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
 			t.Errorf("new-size of %v is 0", colName)
 		}
 
-		fmt.Fprintf(csvFile, "%v, %v, %v, %v\n", colName, oldSize, newSize, module)
+		if oldSize != newSize {
+			t.Errorf("new-size of %v is %v but expected %v", colName, newSize, oldSize)
+		}
+
+		if _, ok := mapSize[module]; !ok {
+			mapSize[module] = oldSize
+		}
+
+		if mapSize[module] != oldSize {
+			t.Errorf("size of %v is %v but expected %v", module, oldSize, mapSize[module])
+		}
 	}
 
 }
