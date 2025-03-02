@@ -11,10 +11,8 @@ import (
 	"github.com/consensys/go-corset/pkg/binfile"
 	"github.com/consensys/go-corset/pkg/corset"
 	"github.com/consensys/go-corset/pkg/mir"
-	"github.com/consensys/go-corset/pkg/schema"
 	"github.com/consensys/go-corset/pkg/trace"
 	"github.com/consensys/go-corset/pkg/trace/lt"
-	"github.com/sirupsen/logrus"
 )
 
 const TraceOverflowExitCode = 77
@@ -54,29 +52,32 @@ func ReadZkevmBin(optConfig *mir.OptimisationConfig) (schema *air.Schema, metada
 	// Extract schema
 	hirSchema := &binf.Schema
 	// Attempt to extract metadata from bin file.
-	metadata, err = binf.Header.GetMetaData()
+	if metadata, err = binf.Header.GetMetaData(); metadata == nil {
+		return nil, nil, errors.New("missing metatdata from 'zkevm.bin' file")
+	}
 	// This performs the corset compilation
 	return hirSchema.LowerToMir().LowerToAir(*optConfig), metadata, err
 }
 
-func ReadLtTraces(f io.ReadCloser, sch *air.Schema) (trace.Trace, error) {
+// ReadLtTraces reads a given LT trace file which contains (unexpanded) column
+// data, and additionally extracts the metadata map from the zkevm.bin file. The
+// metadata contains information which can be used to cross-check the zkevm.bin
+// file, such as the git commit of the enclosing repository when it was built.
+func ReadLtTraces(f io.ReadCloser, sch *air.Schema) (rawColumns []trace.RawColumn, metadata map[string]string, err error) {
+	var traceFile lt.TraceFile
 
 	defer f.Close()
-
+	// Read the trace file, including any metadata embedded within.
 	readBytes, err := io.ReadAll(f)
 	if err != nil {
-		return nil, fmt.Errorf("failed reading the file: %w", err)
+		return nil, nil, fmt.Errorf("failed reading the file: %w", err)
+	} else if err = traceFile.UnmarshalBinary(readBytes); err != nil {
+		return nil, nil, fmt.Errorf("failed parsing the bytes of the raw trace '.lt' file: %w", err)
 	}
-
-	rawTraces, err := lt.FromBytes(readBytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed parsing the bytes of the raw trace '.lt' file: %w", err)
+	// Attempt to extract metadata from trace file.
+	if metadata, err = traceFile.Header.GetMetaData(); metadata == nil {
+		return nil, nil, errors.New("missing metatdata from '.lt' file")
 	}
-
-	expTraces, errs := schema.NewTraceBuilder(sch).Build(rawTraces)
-	if len(errs) > 0 {
-		logrus.Warnf("corset expansion gave the following errors: %v", errors.Join(errs...).Error())
-	}
-
-	return expTraces, nil
+	// Done
+	return traceFile.Columns, metadata, nil
 }
