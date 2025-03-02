@@ -2,8 +2,10 @@ package statemanager
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
@@ -49,10 +51,6 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 	if !comp.Columns.Exists("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER") {
 		comp.InsertCommit(0,
 			"HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER",
-			size,
-		)
-		comp.InsertCommit(0,
-			"HUB_acp_PROVER_SIDE_ZERO_COLUMN",
 			size,
 		)
 	}
@@ -111,26 +109,22 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 			"HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER",
 			size,
 		)
-		comp.InsertCommit(0,
-			"HUB_scp_PROVER_SIDE_ZERO_COLUMN",
-			size,
-		)
 	}
 
 	res := statesummary.HubColumnSet{
 		Address:             comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
 		AddressHI:           comp.Columns.GetHandle("hub.scp_ADDRESS_HI"),
 		AddressLO:           comp.Columns.GetHandle("hub.scp_ADDRESS_LO"),
-		Nonce:               comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		NonceNew:            comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		CodeHashHI:          comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		CodeHashLO:          comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		CodeHashHINew:       comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		CodeHashLONew:       comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		CodeSizeOld:         comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		CodeSizeNew:         comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		BalanceOld:          comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		BalanceNew:          comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
+		Nonce:               verifiercol.NewConstantCol(field.Zero(), size),
+		NonceNew:            verifiercol.NewConstantCol(field.Zero(), size),
+		CodeHashHI:          verifiercol.NewConstantCol(field.Zero(), size),
+		CodeHashLO:          verifiercol.NewConstantCol(field.Zero(), size),
+		CodeHashHINew:       verifiercol.NewConstantCol(field.Zero(), size),
+		CodeHashLONew:       verifiercol.NewConstantCol(field.Zero(), size),
+		CodeSizeOld:         verifiercol.NewConstantCol(field.Zero(), size),
+		CodeSizeNew:         verifiercol.NewConstantCol(field.Zero(), size),
+		BalanceOld:          verifiercol.NewConstantCol(field.Zero(), size),
+		BalanceNew:          verifiercol.NewConstantCol(field.Zero(), size),
 		KeyHI:               comp.Columns.GetHandle("hub.scp_STORAGE_KEY_HI"),
 		KeyLO:               comp.Columns.GetHandle("hub.scp_STORAGE_KEY_LO"),
 		ValueHICurr:         comp.Columns.GetHandle("hub.scp_VALUE_CURR_HI"),
@@ -140,16 +134,16 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		DeploymentNumber:    comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
 		DeploymentNumberInf: comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
 		BlockNumber:         comp.Columns.GetHandle("hub.scp_REL_BLK_NUM"),
-		Exists:              comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		ExistsNew:           comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		PeekAtAccount:       comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
+		Exists:              verifiercol.NewConstantCol(field.Zero(), size),
+		ExistsNew:           verifiercol.NewConstantCol(field.Zero(), size),
+		PeekAtAccount:       verifiercol.NewConstantCol(field.Zero(), size),
 		PeekAtStorage:       comp.Columns.GetHandle("hub.scp_PEEK_AT_STORAGE"),
-		FirstAOC:            comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		LastAOC:             comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
+		FirstAOC:            verifiercol.NewConstantCol(field.Zero(), size),
+		LastAOC:             verifiercol.NewConstantCol(field.Zero(), size),
 		FirstKOC:            comp.Columns.GetHandle("hub.scp_FIRST_IN_CNF"),
 		LastKOC:             comp.Columns.GetHandle("hub.scp_FINAL_IN_CNF"),
-		FirstAOCBlock:       comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		LastAOCBlock:        comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
+		FirstAOCBlock:       verifiercol.NewConstantCol(field.Zero(), size),
+		LastAOCBlock:        verifiercol.NewConstantCol(field.Zero(), size),
 		FirstKOCBlock:       comp.Columns.GetHandle("hub.scp_FIRST_IN_BLK"),
 		LastKOCBlock:        comp.Columns.GetHandle("hub.scp_FINAL_IN_BLK"),
 		MinDeplBlock:        comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
