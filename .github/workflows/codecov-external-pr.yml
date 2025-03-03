@@ -5,10 +5,12 @@ on:
     workflows: [Smart contracts test, coordinator-testing]
     types:
       - completed
+  workflow_call:
+
 
 jobs:
   upload-codecov-report:
-    if: github.event.pull_request.head.repo.full_name != 'Consensys/linea-monorepo'
+    if: github.event.pull_request.head.repo.full_name == 'Consensys/linea-monorepo'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: upload-codecov-report
     env:
