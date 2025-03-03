@@ -1,0 +1,36 @@
+name: Codecov coverage report upload for PRs from external forks
+
+on:
+  workflow_run:
+    workflows: [coordinator-testing]
+    types:
+      - completed
+
+jobs:
+  upload-codecov-report:
+    if: github.event.pull_request.head.repo.full_name != 'Consensys/linea-monorepo'
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    name: upload-codecov-report
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Compute and save COMMIT_TAG
+        run: |
+          echo COMMIT_TAG=$(git rev-parse --short "$GITHUB_SHA") >> $GITHUB_ENV
+      - name: Download Jacoco test coverage report (from coordinator-testing.yml)
+        uses: actions/download-artifact@v4
+        with:
+          name: jacocoRootReport-${{ env.COMMIT_TAG }}.xml
+          path: |
+            ${{ github.workspace }}/jacocoRootReport.xml
+      - uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          files: ${{ github.workspace }}/jacocoRootReport.xml
+          flags: kotlin
+          os: linux
+          name: codecov-coordinator
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
