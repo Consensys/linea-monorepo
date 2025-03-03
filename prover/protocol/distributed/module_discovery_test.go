@@ -65,8 +65,6 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 	// The test is to make sure that this function returns
 	disc.Analyze(zkevm.WizardIOP)
 
-	t.Fail()
-
 	allCols := zkevm.WizardIOP.Columns.AllKeys()
 	for _, colName := range allCols {
 		col := zkevm.WizardIOP.Columns.GetHandle(colName)
