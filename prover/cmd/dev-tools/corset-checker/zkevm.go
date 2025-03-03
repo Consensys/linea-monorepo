@@ -9,11 +9,12 @@ import (
 
 var globalArith *arithmetization.Arithmetization
 
-func MakeDefine(cfg *config.Config, optConfig *mir.OptimisationConfig) wizard.DefineFunc {
+func MakeDefine(cfg *config.Config, optConfig *mir.OptimisationConfig, relaxed bool) wizard.DefineFunc {
 	return func(build *wizard.Builder) {
 		globalArith = arithmetization.NewArithmetization(build, arithmetization.Settings{
 			Limits:            &cfg.TracesLimits,
 			OptimisationLevel: optConfig,
+			RelaxedMode:       relaxed,
 		})
 
 	}

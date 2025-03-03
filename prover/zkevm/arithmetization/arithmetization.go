@@ -16,6 +16,11 @@ import (
 // Settings specifies the parameters for the arithmetization part of the zkEVM.
 type Settings struct {
 	Limits *config.TracesLimits
+	// RelaxedMode disables the strong compatibility check.  Specifically, it
+	// does not require the constraints and the trace file to have both
+	// originated from the same commit.  By default, relaxed mode should not be
+	// used (i.e. this field should normally be false).
+	RelaxedMode bool
 	// OptimisationLevel determines the optimisation level which go-corset will
 	// apply when compiling the zkevm.bin file to AIR constraints.  If in doubt,
 	// use mir.DEFAULT_OPTIMISATION_LEVEL.
@@ -55,26 +60,26 @@ func NewArithmetization(builder *wizard.Builder, settings Settings) *Arithmetiza
 
 // Assign the arithmetization related columns. Namely, it will open the file
 // specified in the witness object, call corset and assign the prover runtime
-// columns.
-//
-// and then expands that column data according to the given schema.   The
-// expansion process is about filling in computed columns with concrete values,
-// such for determining multiplicative inverses, etc.
+// columns. As part of the assignment processs, the original trace is expanded
+// according to the given schema.  The expansion process is about filling in
+// computed columns with concrete values, such for determining multiplicative
+// inverses, etc.
 func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	traceF := files.MustRead(traceFile)
 	// Parse trace file and extract raw column data.
 	rawColumns, metadata, errT := ReadLtTraces(traceF, a.Schema)
 	if errT != nil {
 		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
-	}
-	// Compatibility check between zkevm.bin and trace file.
-	if zkevmBinCommit, ok := a.Metadata["commit"]; !ok {
-		panic("missing constraints commit metadata in 'zkevm.bin'")
-	} else if traceFileCommit, ok := metadata["commit"]; !ok {
-		panic("missing constraints commit metadata in '.lt' file")
-	} else if zkevmBinCommit != traceFileCommit {
-		msg := fmt.Sprintf("zkevm.bin (commit %s) incompatible with trace file (commit %s)", zkevmBinCommit, traceFileCommit)
-		panic(msg)
+	} else if !a.Settings.RelaxedMode {
+		// Compatibility check between zkevm.bin and trace file.
+		if zkevmBinCommit, ok := a.Metadata["commit"]; !ok {
+			panic("missing constraints commit metadata in 'zkevm.bin'")
+		} else if traceFileCommit, ok := metadata["commit"]; !ok {
+			panic("missing constraints commit metadata in '.lt' file")
+		} else if zkevmBinCommit != traceFileCommit {
+			msg := fmt.Sprintf("zkevm.bin incompatible with trace file (commit %s vs %s)", zkevmBinCommit, traceFileCommit)
+			panic(msg)
+		}
 	}
 	// Perform trace expansion
 	expandedTrace, errs := schema.NewTraceBuilder(a.Schema).Build(rawColumns)
