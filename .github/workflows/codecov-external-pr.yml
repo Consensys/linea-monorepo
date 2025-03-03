@@ -5,6 +5,8 @@ on:
     workflows: [Smart contracts test, coordinator-testing]
     types:
       - completed
+  workflow_call:
+
 
 jobs:
   upload-codecov-report:
