@@ -192,7 +192,7 @@ jobs:
 
   codecov-test:
     needs: [ testing ]
-    uses: .github/workflows/codecov-external-pr.yml
+    uses: ./.github/workflows/codecov-external-pr.yml
     secrets: inherit
 
   run-e2e-tests-geth-tracing:
