@@ -237,7 +237,7 @@ public class BlockdataOperation extends ModuleOperation {
           .inst(UnsignedByte.of(opCode.byteValue()))
           .coinbaseHi(coinbaseAddress.slice(0, 4).toLong())
           .coinbaseLo(coinbaseAddress.slice(4, LLARGE))
-          .blockGasLimit(blockHeader.getGasLimit())
+          .blockGasLimit(Bytes.ofUnsignedLong(blockHeader.getGasLimit()))
           .basefee(
               Bytes.ofUnsignedLong(blockHeader.getBaseFee().get().getAsBigInteger().longValue()))
           .firstBlockNumber(firstBlockNumber)
