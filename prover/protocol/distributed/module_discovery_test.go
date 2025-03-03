@@ -2,6 +2,8 @@ package experiment
 
 import (
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 )
 
 func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
@@ -24,8 +26,9 @@ func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
 
 		var (
 			oldSize = col.Size()
-			newSize = disc.NewSizeOf(col)
-			module  = disc.ModuleOf(col)
+			nat     = col.(column.Natural)
+			newSize = disc.NewSizeOf(nat)
+			module  = disc.ModuleOf(nat)
 		)
 
 		if module == "" {
@@ -49,6 +52,28 @@ func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
 		}
 	}
 
+	for _, col := range zkevm.WizardIOP.Columns.AllKeys() {
+
+		var (
+			nat     = zkevm.WizardIOP.Columns.GetHandle(col).(column.Natural)
+			modules = []ModuleName{}
+		)
+
+		for i := range disc.modules {
+			mod := disc.modules[i]
+			if _, ok := mod.ds.parent[nat]; ok {
+				modules = append(modules, mod.moduleName)
+			}
+		}
+
+		if len(modules) == 0 {
+			t.Errorf("could not match any module for %v", col)
+		}
+
+		if len(modules) > 1 {
+			t.Errorf("could match more than one module for %v: %v", col, modules)
+		}
+	}
 }
 
 func TestStandardDiscoveryOnZkEVM(t *testing.T) {
@@ -70,8 +95,9 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 		col := zkevm.WizardIOP.Columns.GetHandle(colName)
 
 		var (
-			newSize = disc.NewSizeOf(col)
-			module  = disc.ModuleOf(col)
+			nat     = col.(column.Natural)
+			newSize = disc.NewSizeOf(nat)
+			module  = disc.ModuleOf(nat)
 		)
 
 		if module == "" {
@@ -80,6 +106,31 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 
 		if newSize == 0 {
 			t.Errorf("new-size of %v is 0", colName)
+		}
+	}
+
+	for _, col := range zkevm.WizardIOP.Columns.AllKeys() {
+
+		var (
+			nat     = zkevm.WizardIOP.Columns.GetHandle(col).(column.Natural)
+			modules = []ModuleName{}
+		)
+
+		for i := range disc.modules {
+			mod := disc.modules[i]
+			for k := range mod.subModules {
+				if _, ok := mod.subModules[k].ds.parent[nat]; ok {
+					modules = append(modules, mod.moduleName)
+				}
+			}
+		}
+
+		if len(modules) == 0 {
+			t.Errorf("could not match any module for %v", col)
+		}
+
+		if len(modules) > 1 {
+			t.Errorf("could match more than one module for %v: %v", col, modules)
 		}
 	}
 }

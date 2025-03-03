@@ -207,13 +207,33 @@ func (disc *StandardModuleDiscoverer) ModuleList() []ModuleName {
 	return modulesNames
 }
 
+// NumColumnOf counts the number of columns found for the current module
+func (disc *StandardModuleDiscoverer) NumColumnOf(moduleName ModuleName) int {
+
+	for i := range disc.modules {
+
+		if disc.modules[i].moduleName != moduleName {
+			continue
+		}
+
+		res := 0
+		for j := range disc.modules[i].subModules {
+			res += disc.modules[i].subModules[j].NumColumn()
+		}
+		return res
+	}
+
+	utils.Panic("module not found")
+	return 0
+}
+
 // ModuleOf returns the module name for a given column“
-func (disc *StandardModuleDiscoverer) ModuleOf(col ifaces.Column) ModuleName {
+func (disc *StandardModuleDiscoverer) ModuleOf(col column.Natural) ModuleName {
 	return disc.columnsToModule[col]
 }
 
 // NewSizeOf returns the size (length) of a column.
-func (disc *StandardModuleDiscoverer) NewSizeOf(col ifaces.Column) int {
+func (disc *StandardModuleDiscoverer) NewSizeOf(col column.Natural) int {
 	return disc.columnsToSize[col]
 }
 
@@ -355,13 +375,8 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 				for i := range inpForSize.Numerator {
 					colNums := wizardutils.ColumnsOfExpression(inpForSize.Numerator[i])
 					colDens := wizardutils.ColumnsOfExpression(inpForSize.Denominator[i])
-					toGroup = append(toGroup, rootsOfColumns(colNums))
-					toGroup = append(toGroup, rootsOfColumns(colDens))
-
-					numNames := make([]ifaces.ColID, len(colNums))
-					for i := range colNums {
-						numNames[i] = colNums[i].GetColID()
-					}
+					rootNums, rootDens := rootsOfColumns(colNums), rootsOfColumns(colDens)
+					toGroup = append(toGroup, append(rootNums, rootDens...))
 				}
 			}
 
@@ -372,8 +387,8 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 				for i := range inpForSize.Numerators {
 					colNums := wizardutils.ColumnsOfExpression(inpForSize.Numerators[i])
 					colDens := wizardutils.ColumnsOfExpression(inpForSize.Denominators[i])
-					toGroup = append(toGroup, rootsOfColumns(colNums))
-					toGroup = append(toGroup, rootsOfColumns(colDens))
+					rootNums, rootDens := rootsOfColumns(colNums), rootsOfColumns(colDens)
+					toGroup = append(toGroup, append(rootNums, rootDens...))
 				}
 			}
 
@@ -395,10 +410,22 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		}
 	}
 
+	// Remove empty modules
+	disc.RemoveNils()
+
 	// Assign final module names after all processing
-	for _, module := range moduleCandidates {
+	for _, module := range disc.modules {
 		for col := range module.ds.parent {
 			disc.columnsToModule[col] = module.moduleName
+		}
+	}
+}
+
+// RemoveNils remove the empty modules from the list of modules.
+func (disc *QueryBasedModuleDiscoverer) RemoveNils() {
+	for i := len(disc.modules) - 1; i >= 0; i-- {
+		if len(disc.modules[i].ds.parent) == 0 {
+			disc.modules = append(disc.modules[:i], disc.modules[i+1:]...)
 		}
 	}
 }
@@ -425,7 +452,7 @@ func (disc *QueryBasedModuleDiscoverer) CreateModule(columns []column.Natural) *
 }
 
 // MergeModules merges a list of overlapping modules into a single module.
-func (disc *QueryBasedModuleDiscoverer) MergeModules(modules []*QueryBasedModule, moduleCandidates *[]*QueryBasedModule) *QueryBasedModule {
+func (disc *QueryBasedModuleDiscoverer) MergeModules(modules []*QueryBasedModule, moduleCandidates []*QueryBasedModule) *QueryBasedModule {
 	if len(modules) == 0 {
 		return nil
 	}
@@ -444,8 +471,8 @@ func (disc *QueryBasedModuleDiscoverer) MergeModules(modules []*QueryBasedModule
 		mergedModule.nbInstancesOfPlonkCirc += module.nbInstancesOfPlonkCirc
 		mergedModule.nbInstancesOfPlonkQuery += module.nbInstancesOfPlonkQuery
 
-		// Remove merged module from moduleCandidates
-		*moduleCandidates = removeModule(*moduleCandidates, module)
+		// nilifying the module ensures it can no longer be matched for anything
+		module.Nilify()
 	}
 
 	return mergedModule
@@ -484,7 +511,7 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 	// Merge if necessary
 	if len(overlappingModules) > 0 {
 
-		assignedModule = disc.MergeModules(overlappingModules, &moduleCandidates)
+		assignedModule = disc.MergeModules(overlappingModules, moduleCandidates)
 		assignedModule.nbConstraintsOfPlonkCirc += nbConstraintsOfPlonkCirc
 		assignedModule.nbInstancesOfPlonkCirc += nbInstancesOfPlonkCirc
 		assignedModule.nbInstancesOfPlonkQuery += nbInstancesOfPlonkQuery
@@ -502,15 +529,14 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 	return moduleCandidates
 }
 
-// Helper function to remove a module from the slice
-func removeModule(modules []*QueryBasedModule, target *QueryBasedModule) []*QueryBasedModule {
-	var updatedModules []*QueryBasedModule
-	for _, mod := range modules {
-		if mod != target {
-			updatedModules = append(updatedModules, mod)
-		}
-	}
-	return updatedModules
+// Nilify a module. It empties its maps and sets its size to 0.
+func (module *QueryBasedModule) Nilify() {
+	module.ds.parent = map[column.Natural]column.Natural{}
+	module.ds.rank = map[column.Natural]int{}
+	module.size = 0
+	module.nbConstraintsOfPlonkCirc = 0
+	module.nbInstancesOfPlonkCirc = 0
+	module.nbInstancesOfPlonkQuery = 0
 }
 
 // HasOverlap checks if a module shares at least one column with a set of columns.
@@ -575,7 +601,7 @@ func (module *QueryBasedModule) NumColumn() int {
 }
 
 // NewSizeOf returns the size (length) of a column.
-func (disc *QueryBasedModuleDiscoverer) NewSizeOf(col ifaces.Column) int {
+func (disc *QueryBasedModuleDiscoverer) NewSizeOf(col column.Natural) int {
 	return col.Size()
 }
 
@@ -587,7 +613,7 @@ func (disc *QueryBasedModuleDiscoverer) ModuleList() []ModuleName {
 }
 
 // ModuleOf returns the module name for a given column.
-func (disc *QueryBasedModuleDiscoverer) ModuleOf(col ifaces.Column) ModuleName {
+func (disc *QueryBasedModuleDiscoverer) ModuleOf(col column.Natural) ModuleName {
 	disc.mutex.Lock()
 	defer disc.mutex.Unlock()
 

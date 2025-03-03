@@ -40,9 +40,9 @@ type ModuleDiscoverer interface {
 	// implementation is required to work using **only** the name of the column
 	// to find the result so the user can pass either columns from the original
 	// (unsplit) compiled-IOP or from a particular segment.
-	ModuleOf(col *column.Natural) ModuleName
+	ModuleOf(col column.Natural) ModuleName
 	// NewSizeOf returns the split-size of a column in the module.
-	NewSizeOf(col ifaces.Column) int
+	NewSizeOf(col column.Natural) int
 }
 
 // ExpressionIsInModule is a helper function that returns the module of a [symbolic.Expression]
@@ -70,7 +70,8 @@ func NewSizeOfExpr(disc ModuleDiscoverer, expr *symbolic.Expression) int {
 
 	for _, m := range metadata {
 		if c, ok := m.(ifaces.Column); ok {
-			cSize := disc.NewSizeOf(c)
+
+			cSize := NewSizeOfColumn(disc, c)
 
 			if cSize == 0 {
 				continue
@@ -82,7 +83,7 @@ func NewSizeOfExpr(disc ModuleDiscoverer, expr *symbolic.Expression) int {
 			}
 
 			if cSize != newSize {
-				utils.Panic("inconsistenct size: col=%v has-size=%v but expected=%v", c.GetColID(), disc.NewSizeOf(c), newSize)
+				utils.Panic("inconsistenct size: col=%v has-size=%v but expected=%v", c.GetColID(), cSize, newSize)
 			}
 		}
 	}
@@ -97,7 +98,7 @@ func ModuleOfColumn(disc ModuleDiscoverer, col ifaces.Column) ModuleName {
 	switch c := col.(type) {
 
 	case column.Natural:
-		return disc.ModuleOf(&c)
+		return disc.ModuleOf(c)
 
 	case column.Shifted:
 		return ModuleOfColumn(disc, c.Parent)
@@ -213,7 +214,7 @@ func NewSizeOfList[T any](disc ModuleDiscoverer, items ...T) int {
 
 	res := 0
 
-	for i, item_ := range items {
+	for _, item_ := range items {
 
 		sizeOfItem := 0
 
@@ -226,7 +227,7 @@ func NewSizeOfList[T any](disc ModuleDiscoverer, items ...T) int {
 			utils.Panic("unexpected type %T", item)
 		}
 
-		if i == 0 {
+		if res == 0 {
 			res = sizeOfItem
 		}
 
@@ -242,10 +243,10 @@ func NewSizeOfList[T any](disc ModuleDiscoverer, items ...T) int {
 // and throws a panic if it is not.
 func (m ModuleName) MustBeResolved() {
 	if m == AnyModule {
-		utils.Panic("could not resolve module of numerator or denominator, both are AnyModule")
+		utils.Panic("could not resolve module: AnyModule")
 	}
 
 	if m == NoModuleFound {
-		utils.Panic("could not resolve module of numerator or denominator, one is NoModuleFound")
+		utils.Panic("could not resolve module: NoModuleFound")
 	}
 }
