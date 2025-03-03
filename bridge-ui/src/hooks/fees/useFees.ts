@@ -1,35 +1,32 @@
 import { useMemo, useCallback } from "react";
 import { useAccount } from "wagmi";
-import { formatEther, parseUnits, zeroAddress } from "viem";
-import { useFormContext } from "react-hook-form";
+import { formatEther, zeroAddress } from "viem";
 import useGasFees from "./useGasFees";
 import { useChainStore } from "@/stores/chainStore";
 import useMinimumFee from "./useMinimumFee";
-import { BridgeForm } from "@/models";
 import useBridgingFee from "./useBridgingFee";
 import useTokenPrices from "../useTokenPrices";
-import { useConfigStore } from "@/stores/configStore";
+import { useFormStore } from "@/stores/formStoreProvider";
 
 const useFees = () => {
   const { address } = useAccount();
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
-  const currency = useConfigStore.useCurrency();
   const { minimumFee } = useMinimumFee();
 
   const { data: tokenPrices } = useTokenPrices([zeroAddress], fromChain.id);
 
-  const { watch } = useFormContext<BridgeForm>();
-  const [claim, token, destinationAddress, amount] = watch(["claim", "token", "destinationAddress", "amount"]);
-
-  const parsedAmount = useMemo(() => parseUnits(amount, token.decimals), [amount, token.decimals]);
+  const claim = useFormStore((state) => state.claim);
+  const token = useFormStore((state) => state.token);
+  const recipient = useFormStore((state) => state.recipient);
+  const amount = useFormStore((state) => state.amount);
 
   const gasFeesResult = useGasFees({
     address,
     fromChain,
     token,
-    recipient: destinationAddress,
-    amount: parsedAmount,
+    recipient,
+    amount: amount ?? 0n,
     minimumFee,
   });
 
@@ -37,8 +34,8 @@ const useFees = () => {
     account: address,
     token,
     claimingType: claim,
-    amount: parsedAmount,
-    recipient: destinationAddress,
+    amount: amount ?? 0n,
+    recipient,
   });
 
   const getFiatValue = useCallback(
@@ -68,7 +65,7 @@ const useFees = () => {
       }
     }
     return feesArray;
-  }, [claim, gasFeesResult?.gasFees, bridgingFees, fromChain.name, toChain.name, tokenPrices, getFiatValue]);
+  }, [claim, gasFeesResult?.gasFees, bridgingFees, fromChain.name, toChain.name, getFiatValue]);
 
   const totalFees = useMemo(() => {
     const totalFeeBigInt = fees.reduce<bigint>((acc, fee) => acc + fee.fee, 0n);
@@ -77,7 +74,7 @@ const useFees = () => {
       fees: totalFeeBigInt,
       fiatValue: totalFiat > 0 ? totalFiat : null,
     };
-  }, [fees, currency.label]);
+  }, [fees]);
 
   return {
     fees,

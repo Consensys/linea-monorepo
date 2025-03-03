@@ -14,5 +14,5 @@ export function useTokens(): TokenInfo[] {
       return tokensList.SEPOLIA;
     }
     return tokensList.MAINNET;
-  }, [fromChain?.id]);
+  }, [fromChain, tokensList.MAINNET, tokensList.SEPOLIA]);
 }

@@ -1,5 +1,5 @@
 import { useAccount, useBalance, useReadContract } from "wagmi";
-import { erc20Abi, formatUnits } from "viem";
+import { erc20Abi } from "viem";
 import { useChainStore } from "@/stores/chainStore";
 import { TokenInfo } from "@/config";
 import { isEth } from "@/utils/tokens";
@@ -33,7 +33,7 @@ export function useTokenBalance(token: TokenInfo) {
   const queryKey = ethBalance.queryKey || erc20Balance.queryKey;
 
   return {
-    balance: formatUnits(balance || 0n, token.decimals),
+    balance: balance || 0n,
     isError,
     isLoading,
     queryKey,

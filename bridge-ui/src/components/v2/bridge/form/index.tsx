@@ -15,11 +15,10 @@ import { useEffect, useState } from "react";
 import { DestinationAddress } from "../destination-address";
 import Button from "../../ui/button";
 import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
-import { useFormContext } from "react-hook-form";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { useChainStore } from "@/stores/chainStore";
 import { ChainLayer } from "@/types";
-import { BridgeForm as BridgeFormModel } from "@/models";
+import { useFormStore } from "@/stores/formStoreProvider";
 
 export default function BridgeForm() {
   const [isDestinationAddressOpen, setIsDestinationAddressOpen] = useState(false);
@@ -28,8 +27,10 @@ export default function BridgeForm() {
 
   const { isConnected, address } = useAccount();
   const fromChain = useChainStore.useFromChain();
-  const { watch, setValue } = useFormContext<BridgeFormModel>();
-  const token = watch("token");
+  const token = useFormStore((state) => state.token);
+  const setRecipient = useFormStore((state) => state.setRecipient);
+  const setBalance = useFormStore((state) => state.setBalance);
+  const setClaim = useFormStore((state) => state.setClaim);
   const { balance, refetch } = useTokenBalance(token);
 
   useWatchBlockNumber({
@@ -41,63 +42,61 @@ export default function BridgeForm() {
   });
 
   useEffect(() => {
-    setValue("balance", balance);
+    setBalance(balance);
     if (address) {
-      setValue("destinationAddress", address);
+      setRecipient(address);
     }
 
     if (fromChain.layer === ChainLayer.L2) {
-      setValue("claim", "manual");
+      setClaim("manual");
     }
-  }, [balance, address, setValue]);
+  }, [balance, address, fromChain.layer, setBalance, setRecipient, setClaim]);
 
   return (
     <>
-      <form>
-        <div className={styles["form-wrapper"]}>
-          <div className={styles.headline}>
-            <div className={styles["action"]}>
-              <Button
-                variant="link"
-                onClick={() => {
-                  setIsBridgeOpen(false);
-                  setIsTransactionHistoryOpen(true);
-                }}
-              >
-                <TransactionPaperIcon className={styles["transaction-icon"]} />
-              </Button>
-              <Setting />
-            </div>
+      <div className={styles["form-wrapper"]}>
+        <div className={styles.headline}>
+          <div className={styles["action"]}>
+            <Button
+              variant="link"
+              onClick={() => {
+                setIsBridgeOpen(false);
+                setIsTransactionHistoryOpen(true);
+              }}
+            >
+              <TransactionPaperIcon className={styles["transaction-icon"]} />
+            </Button>
+            <Setting />
           </div>
-          <div className={styles["exchange"]}>
-            <FromChain />
-            <div className={styles["swap-chain-container"]}>
-              <SwapChain />
-            </div>
-            <ToChain />
-          </div>
-          <div className={styles["amount-wrapper"]}>
-            <Amount />
-            <div className={styles["right"]}>
-              <TokenList />
-            </div>
-          </div>
-          <Claiming />
-          {isDestinationAddressOpen && (
-            <div className={styles["destination-address-wrapper"]}>
-              <DestinationAddress />
-            </div>
-          )}
-          <div className={styles["connect-btn-wrapper"]}>
-            {isConnected ? (
-              <Submit setIsDestinationAddressOpen={() => setIsDestinationAddressOpen((prev) => !prev)} />
-            ) : (
-              <ConnectButton fullWidth text={"Connect wallet"} />
-            )}
-          </div>
-          <FaqHelp isMobile />
         </div>
-      </form>
+        <div className={styles["exchange"]}>
+          <FromChain />
+          <div className={styles["swap-chain-container"]}>
+            <SwapChain />
+          </div>
+          <ToChain />
+        </div>
+        <div className={styles["amount-wrapper"]}>
+          <Amount />
+          <div className={styles["right"]}>
+            <TokenList />
+          </div>
+        </div>
+        <Claiming />
+        {isDestinationAddressOpen && (
+          <div className={styles["destination-address-wrapper"]}>
+            <DestinationAddress />
+          </div>
+        )}
+        <div className={styles["connect-btn-wrapper"]}>
+          {isConnected ? (
+            <Submit setIsDestinationAddressOpen={() => setIsDestinationAddressOpen((prev) => !prev)} />
+          ) : (
+            <ConnectButton fullWidth text={"Connect wallet"} />
+          )}
+        </div>
+        <FaqHelp isMobile />
+      </div>
       <FaqHelp />
     </>
   );

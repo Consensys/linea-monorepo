@@ -1,5 +1,4 @@
 import styles from "./no-transaction.module.scss";
-import Link from "next/link";
 import TransactionCircleIcon from "@/assets/icons/transaction-circle.svg";
 import Button from "@/components/v2/ui/button";
 import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";

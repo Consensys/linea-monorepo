@@ -1,16 +1,14 @@
-import { BridgeForm } from "@/models";
 import BridgeTwoLogo from "@/components/v2/bridge/bridge-two-logo";
 import styles from "./claiming.module.scss";
 import SettingIcon from "@/assets/icons/setting.svg";
 import { useEffect, useState } from "react";
-import { useFormContext } from "react-hook-form";
 import AdvancedSettings from "@/components/v2/bridge/modal/advanced-settings";
 import Skeleton from "@/components/v2/bridge/claiming/skeleton";
 import { BridgeType } from "@/config/config";
 import { useChainStore } from "@/stores/chainStore";
 import ReceivedAmount from "./received-amount";
 import Fees from "./fees";
-import { parseUnits } from "viem";
+import { useFormStore } from "@/stores/formStoreProvider";
 
 export type BridgeModeOption = {
   value: BridgeType;
@@ -21,16 +19,14 @@ export type BridgeModeOption = {
 export default function Claiming() {
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
-  const { watch, formState } = useFormContext<BridgeForm>();
 
   const [loading, setLoading] = useState<boolean>(false);
   const [showAdvancedSettingsModal, setShowAdvancedSettingsModal] = useState<boolean>(false);
 
-  const [amount, balance, token] = watch(["amount", "balance", "token"]);
+  const amount = useFormStore((state) => state.amount);
+  const balance = useFormStore((state) => state.balance);
 
-  const originChainBalanceTooLow =
-    formState.errors?.amount?.message !== undefined ||
-    parseUnits(balance, token.decimals) < parseUnits(amount, token.decimals);
+  const originChainBalanceTooLow = amount && balance < amount;
 
   useEffect(() => {
     setLoading(true);
@@ -41,7 +37,7 @@ export default function Claiming() {
     return () => clearTimeout(timeout);
   }, [amount]);
 
-  if (!amount || parseFloat(amount) <= 0) return null;
+  if (!amount || amount <= 0n) return null;
   if (originChainBalanceTooLow) return null;
 
   return (

@@ -2,39 +2,31 @@
 
 import React from "react";
 import Image from "next/image";
-import { FieldValues, UseFormClearErrors, useFormContext, UseFormSetValue } from "react-hook-form";
-import { formatBalance } from "@/utils/format";
 import { TokenInfo } from "@/config/config";
 import styles from "./token-details.module.scss";
 import { useTokenStore } from "@/stores/tokenStoreProvider";
 import { useChainStore } from "@/stores/chainStore";
 import { CurrencyOption } from "@/stores/configStore";
 import { isEth } from "@/utils/tokens";
+import { useTokenBalance } from "@/hooks/useTokenBalance";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { formatUnits } from "viem";
 
 interface TokenDetailsProps {
   token: TokenInfo;
   onTokenClick: (token: TokenInfo) => void;
-  setValue: UseFormSetValue<FieldValues>;
-  clearErrors: UseFormClearErrors<FieldValues>;
   tokenPrice?: number;
   currency: CurrencyOption;
 }
 
-export default function TokenDetails({
-  token,
-  onTokenClick,
-  setValue,
-  clearErrors,
-  tokenPrice,
-  currency,
-}: TokenDetailsProps) {
+export default function TokenDetails({ token, onTokenClick, tokenPrice, currency }: TokenDetailsProps) {
   const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
   const fromChain = useChainStore.useFromChain();
+  const { balance } = useTokenBalance(token);
+  const setToken = useFormStore((state) => state.setToken);
+  const setAmount = useFormStore((state) => state.setAmount);
 
   const tokenNotFromCurrentLayer = fromChain?.layer && !token[fromChain?.layer] && !isEth(token);
-
-  const { watch } = useFormContext();
-  const balance = watch("balance");
 
   return (
     <button
@@ -43,10 +35,9 @@ export default function TokenDetails({
       type="button"
       disabled={tokenNotFromCurrentLayer}
       onClick={() => {
-        setValue("amount", "");
-        clearErrors("amount");
+        setAmount(0n);
         setSelectedToken(token);
-        setValue("token", token);
+        setToken(token);
         onTokenClick(token);
       }}
     >
@@ -60,7 +51,7 @@ export default function TokenDetails({
       {!tokenNotFromCurrentLayer && (
         <div className={styles.rìght}>
           <p className={styles["balance"]}>
-            {formatBalance(balance)} {token.symbol}
+            {formatUnits(balance, token.decimals)} {token.symbol}
           </p>
           {tokenPrice ? (
             <p className={styles["price"]}>

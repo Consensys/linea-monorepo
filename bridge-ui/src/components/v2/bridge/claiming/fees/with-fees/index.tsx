@@ -2,13 +2,12 @@ import Image from "next/image";
 import styles from "./with-fees.module.scss";
 import { useState } from "react";
 import { BridgeType } from "@/config/config";
-import { useFormContext } from "react-hook-form";
-import { BridgeForm } from "@/models";
 import GasFees from "../../../modal/gas-fees";
 import AcrossFees from "../../../modal/across-fees";
 import { formatUnits } from "viem";
 import useFees from "@/hooks/fees/useFees";
 import { useConfigStore } from "@/stores/configStore";
+import { useFormStore } from "@/stores/formStoreProvider";
 
 type Props = {
   iconPath: string;
@@ -19,8 +18,8 @@ export default function WithFees({ iconPath }: Props) {
   const [showAcrossFeesModal, setShowAcrossFeesModal] = useState<boolean>(false);
   const currency = useConfigStore.useCurrency();
 
-  const { watch } = useFormContext<BridgeForm>();
-  const [mode, token] = watch(["mode", "token"]);
+  const mode = useFormStore((state) => state.mode);
+  const token = useFormStore((state) => state.token);
 
   const { total, fees } = useFees();
 

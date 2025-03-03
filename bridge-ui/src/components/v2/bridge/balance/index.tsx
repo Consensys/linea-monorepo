@@ -2,10 +2,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useBlockNumber } from "wagmi";
 import { formatBalance } from "@/utils/format";
-import { useFormContext } from "react-hook-form";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import styles from "./balance.module.scss";
 import { useSelectedToken } from "@/hooks/useSelectedToken";
+import { useFormStore } from "@/stores/formStoreProvider";
 
 export function Balance() {
   // Context
@@ -17,11 +17,11 @@ export function Balance() {
   const { balance, queryKey } = useTokenBalance(token);
 
   // Form
-  const { setValue } = useFormContext();
+  const setBalance = useFormStore((state) => state.setBalance);
 
   useEffect(() => {
-    setValue("balance", balance);
-  }, [balance, setValue, token?.decimals]);
+    setBalance(balance);
+  }, [balance, setBalance, token?.decimals]);
 
   useEffect(() => {
     if (blockNumber && blockNumber % 5n === 0n) {
@@ -31,7 +31,7 @@ export function Balance() {
 
   return (
     <div className={styles.balance}>
-      <span>{balance && `${formatBalance(balance)} ${token?.symbol}`} available</span>
+      <span>{balance && `${formatBalance(balance.toString())} ${token?.symbol}`} available</span>
     </div>
   );
 }

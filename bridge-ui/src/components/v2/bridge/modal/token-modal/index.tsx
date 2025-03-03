@@ -2,7 +2,6 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { isAddress, getAddress, Address, zeroAddress } from "viem";
-import { FieldValues, UseFormClearErrors, UseFormSetValue } from "react-hook-form";
 import { TokenInfo } from "@/config/config";
 import { safeGetAddress } from "@/utils/format";
 import { useChainStore } from "@/stores/chainStore";
@@ -19,13 +18,11 @@ import { useConfigStore } from "@/stores/configStore";
 import { isEth } from "@/utils/tokens";
 
 interface TokenModalProps {
-  setValue: UseFormSetValue<FieldValues>;
-  clearErrors: UseFormClearErrors<FieldValues>;
   isModalOpen: boolean;
   onCloseModal: () => void;
 }
 
-export default function TokenModal({ setValue, clearErrors, isModalOpen, onCloseModal }: TokenModalProps) {
+export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProps) {
   const tokensList = useTokens();
   const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
   const fromChain = useChainStore.useFromChain();
@@ -66,7 +63,7 @@ export default function TokenModal({ setValue, clearErrors, isModalOpen, onClose
       setSelectedToken(token);
       onCloseModal();
     },
-    [onCloseModal],
+    [onCloseModal, setSelectedToken],
   );
 
   const getTokenPrice = useCallback(
@@ -111,8 +108,6 @@ export default function TokenModal({ setValue, clearErrors, isModalOpen, onClose
                   token={token}
                   onTokenClick={handleTokenClick}
                   key={`token-details-${index}`}
-                  setValue={setValue}
-                  clearErrors={clearErrors}
                   tokenPrice={getTokenPrice(token)}
                   currency={currency}
                 />

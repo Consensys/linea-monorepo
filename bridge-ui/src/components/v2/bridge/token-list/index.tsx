@@ -5,14 +5,14 @@ import { Button } from "@/components/ui";
 import CaretDownIcon from "@/assets/icons/caret-down.svg";
 import styles from "./token-list.module.scss";
 import { useState } from "react";
-import { useFormContext } from "react-hook-form";
+import { useFormStore } from "@/stores/formStoreProvider";
 
 export default function TokenList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { isConnected } = useAccount();
-  const { setValue, clearErrors, watch } = useFormContext();
-  const token = watch("token");
+
+  const token = useFormStore((state) => state.token);
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
@@ -26,7 +26,7 @@ export default function TokenList() {
           <CaretDownIcon className={styles["arrow-down-icon"]} />
         </Button>
       )}
-      <TokenModal setValue={setValue} clearErrors={clearErrors} isModalOpen={isModalOpen} onCloseModal={closeModal} />
+      <TokenModal isModalOpen={isModalOpen} onCloseModal={closeModal} />
     </div>
   );
 }

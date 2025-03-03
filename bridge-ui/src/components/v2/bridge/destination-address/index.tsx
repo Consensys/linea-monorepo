@@ -1,38 +1,39 @@
-import { useEffect } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import clsx from "clsx";
-import { isAddress } from "viem";
-import { useFormContext } from "react-hook-form";
 import styles from "./destination-address.module.scss";
 import XCircleIcon from "@/assets/icons/x-circle.svg";
+import { useFormStore } from "@/stores/formStoreProvider";
+import { isAddress } from "viem";
 
 export function DestinationAddress() {
   const { address } = useAccount();
-  const { register, formState, setError, clearErrors, watch, setValue } = useFormContext();
-  const { errors } = formState;
 
-  const watchDestinationAddress = watch("destinationAddress");
-
-  useEffect(() => {
-    if (address) {
-      setValue("destinationAddress", address);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address]);
+  const recipient = useFormStore((state) => state.recipient);
+  const setRecipient = useFormStore((state) => state.setRecipient);
+  const [inputValue, setInputValue] = useState(recipient);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (watchDestinationAddress && !isAddress(watchDestinationAddress)) {
-      setError("destinationAddress", {
-        type: "custom",
-        message: "Invalid address",
-      });
+    if (inputValue && !isAddress(inputValue)) {
+      setError("Invalid address");
     } else {
-      clearErrors("destinationAddress");
+      setError(null);
     }
-  }, [watchDestinationAddress, setError, clearErrors]);
+  }, [inputValue]);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setInputValue(() => e.target.value as `0x${string}`);
+    if (isAddress(e.target.value)) {
+      setRecipient(e.target.value);
+    }
+  };
 
   const handleResetInput = () => {
-    setValue("destinationAddress", address);
+    if (address) {
+      setInputValue(address);
+      setRecipient(address);
+    }
   };
 
   return (
@@ -42,28 +43,24 @@ export function DestinationAddress() {
         <input
           type="text"
           id="address"
-          autoCorrect="off"
-          autoComplete="off"
-          spellCheck="false"
+          required
           maxLength={42}
-          {...register("destinationAddress", {
-            validate: (value) => !value || isAddress(value) || "Invalid address",
-          })}
+          value={inputValue}
+          pattern="^0x[a-fA-F0-9]{40}$"
+          onChange={handleChange}
         />
 
         <button
           type="button"
           className={clsx(styles.reset, {
-            [styles["show"]]: watchDestinationAddress && watchDestinationAddress !== address,
+            [styles["show"]]: inputValue !== address,
           })}
           onClick={handleResetInput}
         >
           <XCircleIcon />
         </button>
       </div>
-      {errors.destinationAddress && (
-        <p className={styles["message-text"]}>{errors.destinationAddress.message?.toString()}</p>
-      )}
+      {error && <p className={styles["message-text"]}>{error.toString()}</p>}
     </div>
   );
 }

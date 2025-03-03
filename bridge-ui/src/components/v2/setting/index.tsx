@@ -9,7 +9,7 @@ import { useConfigStore } from "@/stores/configStore";
 import { useChainStore } from "@/stores/chainStore";
 import { useChains } from "@/hooks/useChains";
 import { ChainLayer } from "@/types";
-import { useFormContext } from "react-hook-form";
+import { useFormStore } from "@/stores/formStoreProvider";
 
 export default function Setting() {
   const dropdownRef = useRef<HTMLDivElement | null>(null);
@@ -19,7 +19,7 @@ export default function Setting() {
   const chains = useChains();
   const setFromChain = useChainStore.useSetFromChain();
   const setToChain = useChainStore.useSetToChain();
-  const { reset } = useFormContext();
+  const resetForm = useFormStore((state) => state.resetForm);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -46,7 +46,7 @@ export default function Setting() {
       setFromChain(chains.find((c) => c.testnet && c.layer === ChainLayer.L1));
       setToChain(chains.find((c) => c.testnet && c.layer === ChainLayer.L2));
     }
-    reset();
+    resetForm();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTestnet]);
 

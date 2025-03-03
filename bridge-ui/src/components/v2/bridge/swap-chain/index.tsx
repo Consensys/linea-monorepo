@@ -2,14 +2,13 @@ import Tooltip from "@/components/v2/ui/tooltip";
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
 import styles from "./swap-chain.module.scss";
 import { useChainStore } from "@/stores/chainStore";
-import { useFormContext } from "react-hook-form";
-import { BridgeForm } from "@/models";
 import { useIsLoggedIn } from "@/lib/dynamic";
+import { useFormStore } from "@/stores/formStoreProvider";
 
 export default function SwapChain() {
   const switchChainInStore = useChainStore.useSwitchChain();
   const isLoggedIn = useIsLoggedIn();
-  const { reset } = useFormContext<BridgeForm>();
+  const resetForm = useFormStore((state) => state.resetForm);
 
   return (
     <Tooltip text="Switch chains" position="top">
@@ -19,7 +18,7 @@ export default function SwapChain() {
           e.preventDefault();
           e.currentTarget.classList.toggle(styles["rotate-360"]);
           switchChainInStore();
-          reset();
+          resetForm();
         }}
         disabled={!isLoggedIn}
       >

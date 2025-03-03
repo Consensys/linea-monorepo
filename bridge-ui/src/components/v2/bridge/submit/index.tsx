@@ -1,42 +1,23 @@
-import { useFormContext } from "react-hook-form";
-import { parseUnits } from "viem";
-// import { useBridge } from "@/hooks";
 import Button from "@/components/v2/ui/button";
 import WalletIcon from "@/assets/icons/wallet.svg";
-import DestinationAddress from "@/components/v2/bridge/modal/destination-address";
-import { MouseEventHandler, useState } from "react";
+import { MouseEventHandler } from "react";
 import styles from "./submit.module.scss";
+import { useFormStore } from "@/stores/formStoreProvider";
 
 type Props = {
   setIsDestinationAddressOpen: MouseEventHandler<HTMLButtonElement>;
 };
 
 export function Submit({ setIsDestinationAddressOpen }: Props) {
-  const [showChangeAddressModal, setShowChangeAddressModal] = useState<boolean>(false);
+  const amount = useFormStore((state) => state.amount);
+  const balance = useFormStore((state) => state.balance);
 
-  // Form
-  const { watch, formState } = useFormContext();
-  const { errors } = formState;
+  const originChainBalanceTooLow = amount && balance < amount;
 
-  const [watchAmount, balance, token] = watch(["amount", "balance", "token"]);
+  const disabled = originChainBalanceTooLow || !amount || amount <= 0n;
 
-  // const { bridgeEnabled } = useBridge();
-
-  const originChainBalanceTooLow =
-    errors?.amount?.message !== undefined ||
-    parseUnits(balance, token.decimals) < parseUnits(watchAmount, token.decimals);
-
-  const disabled = originChainBalanceTooLow || !watchAmount;
-
-  const buttonText = !watchAmount
-    ? "Enter an amount"
-    : originChainBalanceTooLow
-      ? "Insufficient funds"
-      : "Review Bridge";
-
-  const handleCloseModal = () => {
-    setShowChangeAddressModal(false);
-  };
+  const buttonText =
+    !amount || amount <= 0n ? "Enter an amount" : originChainBalanceTooLow ? "Insufficient funds" : "Review Bridge";
 
   return (
     <div className={styles.container}>
@@ -46,11 +27,6 @@ export function Submit({ setIsDestinationAddressOpen }: Props) {
       <button type="button" className={styles["wallet-icon"]} onClick={setIsDestinationAddressOpen}>
         <WalletIcon />
       </button>
-      <DestinationAddress
-        isModalOpen={showChangeAddressModal}
-        onCloseModal={handleCloseModal}
-        defaultAddress="0xE9493bF17dyhxzkD23dE93F17hdyh73"
-      />
     </div>
   );
 }

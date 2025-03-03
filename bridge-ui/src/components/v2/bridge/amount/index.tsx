@@ -1,77 +1,100 @@
-import { ChangeEvent, useEffect } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
-import { useFormContext } from "react-hook-form";
+import { formatUnits, parseUnits } from "viem";
 import { useIsLoggedIn } from "@/lib/dynamic";
 import useTokenPrices from "@/hooks/useTokenPrices";
 import { useChainStore } from "@/stores/chainStore";
 import styles from "./amount.module.scss";
 import { useConfigStore } from "@/stores/configStore";
+import { useFormStore } from "@/stores/formStoreProvider";
 
-const AMOUNT_REGEX = "^[0-9]*[.,]?[0-9]*$";
+const AMOUNT_REGEX = /^[0-9]*[.,]?[0-9]*$/;
 const MAX_AMOUNT_CHAR = 20;
 
 export function Amount() {
   const currency = useConfigStore((state) => state.currency);
   const fromChain = useChainStore.useFromChain();
-
   const { address } = useAccount();
   const isLoggedIn = useIsLoggedIn();
 
-  const { setValue, getValues, trigger } = useFormContext();
-  const [amount, token] = getValues(["amount", "token"]);
+  const amount = useFormStore((state) => state.amount);
+  const token = useFormStore((state) => state.token);
+  const setAmount = useFormStore((state) => state.setAmount);
+
   const tokenAddress = token[fromChain.layer];
 
   const { data: tokenPrices } = useTokenPrices([tokenAddress], fromChain.id);
 
+  const [inputValue, setInputValue] = useState(amount ? formatUnits(amount, token.decimals) : "");
+
+  useEffect(() => {
+    setInputValue(amount ? formatUnits(amount, token.decimals) : "");
+  }, [amount, token.decimals]);
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     const { key } = event;
-
-    // Allow control keys, numeric keys, decimal point (if not already present), +, -, and arrow keys
     const allowedKeys = ["Backspace", "Tab", "ArrowLeft", "ArrowRight", "Delete"];
+    const decimalSeparators = [".", ","];
 
-    if (/[0-9]/.test(key) && !amount.includes(".") && amount[0] === "0") {
-      event.preventDefault();
-      return;
-    }
-    if (
-      !(
-        /[0-9]/.test(key) ||
-        allowedKeys.includes(key) ||
-        (key === "." && !amount.includes(".")) ||
-        (key === "," && !amount.includes(","))
-      )
-    ) {
-      event.preventDefault();
-    }
-  };
-
-  const checkAmountHandler = (e: ChangeEvent<HTMLInputElement>) => {
-    // Replace minus
-    const amount = e.target.value.replace(/,/g, ".");
-
-    if (!token) {
-      return;
-    }
-
-    if (new RegExp(AMOUNT_REGEX).test(amount) || amount === "") {
-      // Limit max char
-      if (amount.length > MAX_AMOUNT_CHAR) {
-        setValue("amount", amount.substring(0, MAX_AMOUNT_CHAR));
-      } else {
-        setValue("amount", amount);
+    // If the key pressed is a decimal separator, allow it only if none is already present.
+    if (decimalSeparators.includes(key)) {
+      if (decimalSeparators.some((sep) => inputValue.includes(sep))) {
+        event.preventDefault();
       }
+      return;
+    }
+    // Otherwise, allow digits and allowed control keys.
+    if (!(/[0-9]/.test(key) || allowedKeys.includes(key))) {
+      event.preventDefault();
+    }
+  };
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    let newValue = e.target.value;
+
+    newValue = newValue.replace(/[,;]/g, ".");
+
+    if (newValue.length > MAX_AMOUNT_CHAR) {
+      newValue = newValue.substring(0, MAX_AMOUNT_CHAR);
+    }
+
+    if (newValue.length > 1 && newValue[0] === "0" && newValue[1] !== ".") {
+      newValue = newValue.replace(/^0+/, "");
+      if (newValue === "") newValue = "0";
+    }
+
+    if (!AMOUNT_REGEX.test(newValue)) {
+      return;
+    }
+
+    setInputValue(newValue);
+
+    if (newValue.endsWith(".")) {
+      return;
+    }
+
+    try {
+      const parsed = parseUnits(newValue, token.decimals);
+      setAmount(parsed);
+    } catch (error) {
+      console.error("Error parsing amount:", error);
     }
   };
 
   useEffect(() => {
-    if (amount) {
-      trigger(["amount"]);
-    }
-  }, [amount, trigger]);
+    setAmount(0n);
+  }, [address, setAmount]);
 
-  useEffect(() => {
-    setValue("amount", "");
-  }, [address, setValue]);
+  const formattedAmount = amount ? formatUnits(amount, token.decimals) : "";
+  const tokenPrice = tokenPrices?.[tokenAddress.toLowerCase()];
+  const calculatedValue =
+    tokenPrice && tokenPrice > 0
+      ? (Number(formattedAmount) * tokenPrice).toLocaleString("en-US", {
+          style: "currency",
+          currency: currency.label,
+          maximumFractionDigits: 4,
+        })
+      : "";
 
   return (
     <div className={styles["amount"]}>
@@ -84,27 +107,13 @@ export function Amount() {
         autoComplete="off"
         spellCheck="false"
         inputMode="decimal"
-        value={amount}
+        value={inputValue}
         onKeyDown={handleKeyDown}
-        onChange={checkAmountHandler}
-        pattern={AMOUNT_REGEX}
+        onChange={handleChange}
+        pattern={AMOUNT_REGEX.source}
         placeholder="0"
       />
-      {!fromChain?.testnet && (
-        <span className={styles["calculated-value"]}>
-          {amount && tokenPrices?.[tokenAddress.toLowerCase()] && tokenPrices?.[tokenAddress.toLowerCase()] > 0 ? (
-            <>
-              {(Number(amount) * tokenPrices?.[tokenAddress.toLowerCase()]).toLocaleString("en-US", {
-                style: "currency",
-                currency: currency.label,
-                maximumFractionDigits: 4,
-              })}
-            </>
-          ) : (
-            ""
-          )}
-        </span>
-      )}
+      {!fromChain?.testnet && <span className={styles["calculated-value"]}>{calculatedValue}</span>}
     </div>
   );
 }
