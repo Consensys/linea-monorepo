@@ -37,7 +37,7 @@ public final class RipemdBlocks implements CountingOnlyModule {
   }
 
   @Override
-  public void addPrecompileLimit(final int count) {
+  public void updateTally(final int count) {
     final int blockCount = numberOfRipemd160locks(count);
     counts.add(blockCount);
   }

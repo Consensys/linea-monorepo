@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.precompileLimits;
+package net.consensys.linea.zktracer.module.limits.precompileLimits;
 
 import static java.lang.Integer.MAX_VALUE;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -28,12 +28,12 @@ public class ModexpIllegalOperationTests {
     final ZkTracer state = new ZkTracer();
     final ModexpEffectiveCall countingOnlyModule = state.getHub().modexpEffectiveCall();
 
-    countingOnlyModule.addPrecompileLimit(1);
+    countingOnlyModule.updateTally(1);
 
-    countingOnlyModule.addPrecompileLimit(MAX_VALUE);
+    countingOnlyModule.updateTally(MAX_VALUE);
     assertThat(countingOnlyModule.lineCount()).isEqualTo(MAX_VALUE);
 
-    countingOnlyModule.addPrecompileLimit(MAX_VALUE);
+    countingOnlyModule.updateTally(MAX_VALUE);
     assertThat(countingOnlyModule.lineCount()).isEqualTo(MAX_VALUE);
 
     countingOnlyModule.popTransactionBundle();
@@ -45,12 +45,12 @@ public class ModexpIllegalOperationTests {
     final ZkTracer state = new ZkTracer();
     final ModexpEffectiveCall countingOnlyModule = state.getHub().modexpEffectiveCall();
 
-    countingOnlyModule.addPrecompileLimit(1);
+    countingOnlyModule.updateTally(1);
 
-    countingOnlyModule.addPrecompileLimit(MAX_VALUE);
+    countingOnlyModule.updateTally(MAX_VALUE);
     assertThat(countingOnlyModule.lineCount()).isEqualTo(MAX_VALUE);
 
-    countingOnlyModule.addPrecompileLimit(1);
+    countingOnlyModule.updateTally(1);
     assertThat(countingOnlyModule.lineCount()).isEqualTo(MAX_VALUE);
 
     countingOnlyModule.popTransactionBundle();
@@ -62,10 +62,10 @@ public class ModexpIllegalOperationTests {
     final ZkTracer state = new ZkTracer();
     final ModexpEffectiveCall countingOnlyModule = state.getHub().modexpEffectiveCall();
 
-    countingOnlyModule.addPrecompileLimit(MAX_VALUE);
+    countingOnlyModule.updateTally(MAX_VALUE);
     assertThat(countingOnlyModule.lineCount()).isEqualTo(MAX_VALUE);
 
-    countingOnlyModule.addPrecompileLimit(MAX_VALUE);
+    countingOnlyModule.updateTally(MAX_VALUE);
     assertThat(countingOnlyModule.lineCount()).isEqualTo(MAX_VALUE);
 
     countingOnlyModule.popTransactionBundle();

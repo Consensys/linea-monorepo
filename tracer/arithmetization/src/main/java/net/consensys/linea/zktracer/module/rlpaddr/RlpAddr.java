@@ -41,6 +41,7 @@ import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.limits.Keccak;
 import net.consensys.linea.zktracer.module.rlputils.ByteCountAndPowerOutput;
 import net.consensys.linea.zktracer.module.trm.Trm;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -68,6 +69,7 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
 
   private final Hub hub;
   private final Trm trm;
+  private final Keccak keccak;
 
   @Override
   public String moduleKey() {
@@ -83,7 +85,7 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
       final Bytes32 rawTo = getCreateRawAddress(senderAddress, nonce);
       final RlpAddrOperation operation =
           new RlpAddrOperation(
-              rawTo, OpCode.CREATE, longToUnsignedBigInteger(nonce), senderAddress);
+              keccak, rawTo, OpCode.CREATE, longToUnsignedBigInteger(nonce), senderAddress);
       operations.add(operation);
       trm.callTrimming(rawTo);
     }
@@ -95,6 +97,7 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
     final Bytes32 rawCreateAddress = getCreateRawAddress(frame);
     final RlpAddrOperation operation =
         new RlpAddrOperation(
+            keccak,
             rawCreateAddress,
             OpCode.CREATE,
             longToUnsignedBigInteger(frame.getWorldUpdater().get(currentAddress).getNonce()),
@@ -108,6 +111,7 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
     final Bytes32 rawCreate2Address = getCreate2RawAddress(currentAddress, salt, hash);
     final RlpAddrOperation operation =
         new RlpAddrOperation(
+            keccak,
             rawCreate2Address,
             OpCode.CREATE2,
             currentAddress,
@@ -181,8 +185,8 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
   private void traceCreate(int stamp, RlpAddrOperation chunk, Trace.Rlpaddr trace) {
     final BigInteger nonce = chunk.nonce();
 
-    Bytes nonceShifted = leftPadTo(bigIntegerToBytes(nonce), recipe1NbRows);
-    Boolean tinyNonZeroNonce = true;
+    final Bytes nonceShifted = leftPadTo(bigIntegerToBytes(nonce), recipe1NbRows);
+    boolean tinyNonZeroNonce = true;
     if (nonce.compareTo(BigInteger.ZERO) == 0 || nonce.compareTo(BigInteger.valueOf(128)) >= 0) {
       tinyNonZeroNonce = false;
     }

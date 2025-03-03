@@ -45,4 +45,18 @@ public class Utils {
         .op(staticCall ? OpCode.STATICCALL : OpCode.CALL)
         .compile();
   }
+
+  public static Bytes delegateCall(Address address) {
+    return newProgram()
+        .immediate(POPULATE_MEMORY)
+        .push(0) // retSize
+        .push(0) // retOffset
+        .op(OpCode.MSIZE) // arg size
+        .push(0) // argOffset
+        .push(1) // value
+        .push(address) // address
+        .push(100000) // gas
+        .op(OpCode.DELEGATECALL)
+        .compile();
+  }
 }

@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.precompileLimits;
+package net.consensys.linea.zktracer.module.limits.precompileLimits;
 
 import static java.lang.Integer.MAX_VALUE;
 import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.BLAKE2f_R_SIZE;
