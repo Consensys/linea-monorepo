@@ -405,8 +405,16 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 // CreateModule initializes a new module with a disjoint set and populates it with columns.
 func (disc *QueryBasedModuleDiscoverer) CreateModule(columns []column.Natural) *QueryBasedModule {
+
+	var colID ifaces.ColID
+	if len(columns) > 0 {
+		colID = columns[0].GetColID()
+	} else {
+		colID = "default" // columns is empty
+	}
+
 	module := &QueryBasedModule{
-		moduleName: ModuleName(fmt.Sprintf("Module_%d", len(disc.modules))),
+		moduleName: ModuleName(fmt.Sprintf("Module_%d_%s", len(disc.modules), colID)),
 		ds:         NewDisjointSet[column.Natural](),
 	}
 	for _, col := range columns {
