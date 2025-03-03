@@ -2,15 +2,16 @@ name: Codecov coverage report upload for PRs from external forks
 
 on:
   workflow_run:
-    workflows: [coordinator-testing]
+    # If you look in "Actions" in the Github UI, the 'coordinator-testing' workflow has no runs
+    workflows: [main]
     types:
       - completed
 
 jobs:
-  upload-codecov-report:
+  upload-codecov-report-coordinator:
     if: github.event.pull_request.head.repo.full_name != 'Consensys/linea-monorepo'
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    name: upload-codecov-report
+    name: upload-codecov-report-coordinator
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:

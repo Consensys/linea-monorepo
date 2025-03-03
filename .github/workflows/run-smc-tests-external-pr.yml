@@ -1,4 +1,4 @@
-name: Codecov coverage report upload for PRs from external forks
+name: Codecov coverage report (Smart contract tests) upload for PRs from external forks
 
 on:
   workflow_run:
