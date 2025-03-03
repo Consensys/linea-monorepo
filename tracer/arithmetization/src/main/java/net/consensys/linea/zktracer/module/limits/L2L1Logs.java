@@ -15,15 +15,18 @@
 
 package net.consensys.linea.zktracer.module.limits;
 
-import java.util.List;
+import static com.google.common.base.Preconditions.checkArgument;
 
-import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.container.module.Module;
+import lombok.Getter;
+import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.container.module.CountingOnlyModule;
+import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 
-@RequiredArgsConstructor
-public class L2L1Logs implements Module {
-  private final L2Block l2Block;
+public final class L2L1Logs implements CountingOnlyModule {
+
+  @Getter
+  @Accessors(fluent = true)
+  private final CountOnlyOperation counts = new CountOnlyOperation();
 
   @Override
   public String moduleKey() {
@@ -31,18 +34,8 @@ public class L2L1Logs implements Module {
   }
 
   @Override
-  public void commitTransactionBundle() {}
-
-  @Override
-  public void popTransactionBundle() {}
-
-  @Override
-  public int lineCount() {
-    return l2Block.l2l1LogsCount();
-  }
-
-  @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return null;
+  public void updateTally(final int numberEffectiveCall) {
+    checkArgument(numberEffectiveCall == 1, "can't add more than one l2l1Log event at a time");
+    counts.add(numberEffectiveCall);
   }
 }

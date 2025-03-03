@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT;
 import static net.consensys.linea.zktracer.Trace.Hub.MULTIPLIER___STACK_STAMP;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_FINL;
@@ -207,7 +208,7 @@ public class Hub implements Module {
   private final RlpTxnRcpt rlpTxnRcpt = new RlpTxnRcpt();
   private final LogInfo logInfo = new LogInfo(rlpTxnRcpt);
   private final LogData logData = new LogData(rlpTxnRcpt);
-  @Getter private final RlpAddr rlpAddr = new RlpAddr(this, trm);
+  @Getter private final RlpAddr rlpAddr;
 
   // modules triggered by sub-fragments of the MISCELLANEOUS / IMC perspective
   @Getter private final Mxp mxp = new Mxp();
@@ -220,8 +221,7 @@ public class Hub implements Module {
    * Those modules are not traced, we just compute the number of calls to those
    * precompile to meet the prover limits
    */
-  private final Keccak keccak;
-
+  @Getter private final Keccak keccak;
   private final Sha256Blocks sha256Blocks = new Sha256Blocks();
 
   private final EcAddEffectiveCall ecAddEffectiveCall = new EcAddEffectiveCall();
@@ -255,7 +255,9 @@ public class Hub implements Module {
         modexpEffectiveCall,
         ripemdBlocks,
         blakeEffectiveCall,
-        blakeRounds);
+        blakeRounds,
+        l2Block,
+        l2L1Logs);
   }
 
   /*
@@ -280,8 +282,8 @@ public class Hub implements Module {
           ecPairingMillerLoops,
           ecPairingFinalExponentiations);
 
-  private final L2Block l2Block;
-  private final L2L1Logs l2L1Logs;
+  @Getter private final L2Block l2Block;
+  @Getter private final L2L1Logs l2L1Logs;
 
   /** list of module than can be modified during execution */
   private final List<Module> modules;
@@ -379,10 +381,14 @@ public class Hub implements Module {
 
   public Hub(final Address l2l1ContractAddress, final Bytes l2l1Topic, final BigInteger chainId) {
     checkState(chainId.signum() >= 0);
-    l2Block = new L2Block(l2l1ContractAddress, LogTopic.of(l2l1Topic));
-    l2L1Logs = new L2L1Logs(l2Block);
+    if (l2l1ContractAddress.equals(TEST_DEFAULT.contract())) {
+      log.info("WARN: Using default testing L2L1 contract address");
+    }
+    l2L1Logs = new L2L1Logs();
+    l2Block = new L2Block(l2L1Logs, l2l1ContractAddress, LogTopic.of(l2l1Topic));
     keccak = new Keccak(ecRecoverEffectiveCall, l2Block);
     shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
+    rlpAddr = new RlpAddr(this, trm, keccak);
     blockdata = new Blockdata(wcp, euc, txnData, EWord.of(chainId));
     mmu = new Mmu(euc, wcp);
     mmio = new Mmio(mmu);

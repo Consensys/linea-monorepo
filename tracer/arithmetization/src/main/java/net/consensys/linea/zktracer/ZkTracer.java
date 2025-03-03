@@ -75,17 +75,16 @@ public class ZkTracer implements ConflationAwareOperationTracer {
 
   public ZkTracer() {
     this(
-        LineaL1L2BridgeSharedConfiguration.EMPTY,
+        LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT,
         Bytes.fromHexString("c0ffee").toUnsignedBigInteger());
   }
 
   public ZkTracer(BigInteger nonnegativeChainId) {
-    this(LineaL1L2BridgeSharedConfiguration.EMPTY, nonnegativeChainId);
+    this(LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT, nonnegativeChainId);
   }
 
   public ZkTracer(
       final LineaL1L2BridgeSharedConfiguration bridgeConfiguration, BigInteger chainId) {
-    ;
     this.hub = new Hub(bridgeConfiguration.contract(), bridgeConfiguration.topic(), chainId);
     for (Module m : this.hub.getModulesToCount()) {
       if (!spillings.containsKey(m.moduleKey())) {

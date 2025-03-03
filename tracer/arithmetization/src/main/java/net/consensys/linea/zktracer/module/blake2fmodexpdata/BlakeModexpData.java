@@ -50,13 +50,13 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
 
   public void callModexp(final ModexpMetadata modexpMetaData, final int operationID) {
     operations.add(new BlakeModexpDataOperation(modexpMetaData, operationID));
-    modexpEffectiveCall.addPrecompileLimit(1);
+    modexpEffectiveCall.updateTally(1);
     callWcpForIdCheck(operationID);
   }
 
   public void callBlake(final BlakeComponents blakeComponents, final int operationID) {
     operations.add(new BlakeModexpDataOperation(blakeComponents, operationID));
-    blakeEffectiveCall.addPrecompileLimit(1);
+    blakeEffectiveCall.updateTally(1);
     blakeRounds.addPrecompileLimit(blakeComponents.r());
     callWcpForIdCheck(operationID);
   }

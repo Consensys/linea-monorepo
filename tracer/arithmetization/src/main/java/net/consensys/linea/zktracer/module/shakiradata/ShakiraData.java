@@ -64,9 +64,9 @@ public class ShakiraData implements OperationListModule<ShakiraDataOperation> {
     wcp.callLEQ(operation.lastNBytes(), LLARGE);
 
     switch (operation.hashType()) {
-      case SHA256 -> sha256Blocks.addPrecompileLimit(operation.inputSize());
-      case KECCAK -> keccak.addPrecompileLimit(operation.inputSize());
-      case RIPEMD -> ripemdBlocks.addPrecompileLimit(operation.inputSize());
+      case SHA256 -> sha256Blocks.updateTally(operation.inputSize());
+      case KECCAK -> keccak.updateTally(operation.inputSize());
+      case RIPEMD -> ripemdBlocks.updateTally(operation.inputSize());
       default -> throw new IllegalArgumentException("Precompile type not supported by SHAKIRA");
     }
   }

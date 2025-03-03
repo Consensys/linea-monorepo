@@ -25,6 +25,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.container.ModuleOperation;
+import net.consensys.linea.zktracer.module.limits.Keccak;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
@@ -42,12 +43,16 @@ public final class RlpAddrOperation extends ModuleOperation {
   private final Bytes32 keccak;
 
   // CREATE operation
-  public RlpAddrOperation(Bytes32 rawDepAddress, OpCode opCode, BigInteger nonce, Address address) {
+  public RlpAddrOperation(
+      Keccak keccak, Bytes32 rawDepAddress, OpCode opCode, BigInteger nonce, Address address) {
     this(rawDepAddress, opCode, nonce, address, Bytes32.ZERO, Bytes32.ZERO);
+    // We hash RLP (Address + nonce) which is at most 1 + (1+20) + (1+8) = 31 bytes
+    keccak.updateTally(31);
   }
 
   // CREATE2 operation
   public RlpAddrOperation(
+      Keccak keccak,
       Bytes32 rawHash,
       OpCode opCode,
       Address address,
@@ -55,6 +60,8 @@ public final class RlpAddrOperation extends ModuleOperation {
       Bytes32 kec,
       BigInteger nonce) {
     this(rawHash, opCode, nonce, address, salt, kec);
+    // We hash (0xFF + Address + SALT + KECCAK256(initcode)) which is 1+20+32+32 = 85 bytes
+    keccak.updateTally(85);
   }
 
   @Override
