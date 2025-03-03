@@ -1,0 +1,1726 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="390" onload="init(evt)" viewBox="0 0 1200 390" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+
+		// use GET parameters to restore a flamegraphs state.
+		var params = get_params();
+		if (params.x && params.y)
+			zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+                if (params.s) search(params.s);
+	}
+
+	// event listeners
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom(true);
+			zoom(target);
+			if (!document.querySelector('.parent')) {
+				// we have basically done a clearzoom so clear the url
+				var params = get_params();
+				if (params.x) delete params.x;
+				if (params.y) delete params.y;
+				history.replaceState(null, null, parse_params(params));
+				unzoombtn.classList.add("hide");
+				return;
+			}
+
+			// set parameters for zoom state
+			var el = target.querySelector("rect");
+			if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+				var params = get_params()
+				params.x = el.attributes._orig_x.value;
+				params.y = el.attributes.y.value;
+				history.replaceState(null, null, parse_params(params));
+			}
+		}
+		else if (e.target.id == "unzoom") clearzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+		else if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function get_params() {
+		var params = {};
+		var paramsarr = window.location.search.substr(1).split('&');
+		for (var i = 0; i < paramsarr.length; ++i) {
+			var tmp = paramsarr[i].split("=");
+			if (!tmp[0] || !tmp[1]) continue;
+			params[tmp[0]]  = decodeURIComponent(tmp[1]);
+		}
+		return params;
+	}
+	function parse_params(params) {
+		var uri = "?";
+		for (var key in params) {
+			uri += key + '=' + encodeURIComponent(params[key]) + '&';
+		}
+		if (uri.slice(-1) == "&")
+			uri = uri.substring(0, uri.length - 1);
+		if (uri == '?')
+			uri = window.location.href.split('?')[0];
+		return uri;
+	}
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		var sl = t.getSubStringLength(0, txt.length);
+		// check if only whitespace or if we can fit the entire string into width w
+		if (/^ *$/.test(txt) || sl < w)
+			return;
+
+		// this isn't perfect, but gives a good starting point
+		// and avoids calling getSubStringLength too often
+		var start = Math.floor((w/sl) * txt.length);
+		for (var x = start; x > 0; x = x-2) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom(dont_update_text) {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			if(!dont_update_text) update_text(el[i]);
+		}
+		search();
+	}
+	function clearzoom() {
+		unzoom();
+
+		// remove zoom state
+		var params = get_params();
+		if (params.x) delete params.x;
+		if (params.y) delete params.y;
+		history.replaceState(null, null, parse_params(params));
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+		var params = get_params();
+		delete params.s;
+		history.replaceState(null, null, parse_params(params));
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) search(term);
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (term) currentSearchTerm = term;
+		if (currentSearchTerm === null) return;
+
+		var re = new RegExp(currentSearchTerm, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+		var params = get_params();
+		params.s = currentSearchTerm;
+		history.replaceState(null, null, parse_params(params));
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="390.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >Flame Graph</text>
+<text id="details" x="10.00" y="373" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="ignorecase" x="1174.00" y="24" >ic</text>
+<text id="matched" x="1090.00" y="373" > </text>
+<g id="frames">
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.limbDecompose (9,166 samples, 0.71%)</title><rect x="974.5" y="293" width="8.4" height="15.0" fill="rgb(244,179,42)" rx="2" ry="2" />
+<text  x="977.50" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (632 samples, 0.05%)</title><rect x="25.7" y="149" width="0.6" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="28.69" y="159.5" ></text>
+</g>
+<g >
+<title>runtime.memmove (141 samples, 0.01%)</title><rect x="1182.7" y="293" width="0.1" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="1185.66" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/common/smartvectors.(*Regular).WriteInSlice (1,266 samples, 0.10%)</title><rect x="135.5" y="261" width="1.2" height="15.0" fill="rgb(212,36,8)" rx="2" ry="2" />
+<text  x="138.50" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Square (32,121 samples, 2.50%)</title><rect x="176.5" y="261" width="29.5" height="15.0" fill="rgb(215,48,11)" rx="2" ry="2" />
+<text  x="179.49" y="271.5" >gi..</text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (119 samples, 0.01%)</title><rect x="136.7" y="181" width="0.1" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="139.72" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.deductAssistCredit (198 samples, 0.02%)</title><rect x="72.7" y="277" width="0.1" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="75.66" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc.(*digest).checksum (43,936 samples, 3.42%)</title><rect x="169.3" y="277" width="40.4" height="15.0" fill="rgb(254,225,53)" rx="2" ry="2" />
+<text  x="172.35" y="287.5" >git..</text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/utils/parallel.Execute.func1 (215,842 samples, 16.81%)</title><rect x="73.1" y="325" width="198.3" height="15.0" fill="rgb(251,216,51)" rx="2" ry="2" />
+<text  x="76.07" y="335.5" >github.com/consensys/linea..</text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (1,381 samples, 0.11%)</title><rect x="26.8" y="181" width="1.2" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="29.75" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.mcall (5,765 samples, 0.45%)</title><rect x="1184.4" y="325" width="5.3" height="15.0" fill="rgb(213,40,9)" rx="2" ry="2" />
+<text  x="1187.41" y="335.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (4,238 samples, 0.33%)</title><rect x="60.5" y="229" width="3.9" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="63.51" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/common/smartvectors.(*PaddedCircularWindow).WriteInSlice (1,158 samples, 0.09%)</title><rect x="134.4" y="261" width="1.1" height="15.0" fill="rgb(206,8,2)" rx="2" ry="2" />
+<text  x="137.44" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (25,749 samples, 2.00%)</title><rect x="1056.7" y="277" width="23.6" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1059.68" y="287.5" >g..</text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc.(*digest).Write (1,120 samples, 0.09%)</title><rect x="209.7" y="293" width="1.1" height="15.0" fill="rgb(222,82,19)" rx="2" ry="2" />
+<text  x="212.74" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.gcDrainMarkWorkerIdle (192 samples, 0.01%)</title><rect x="1184.2" y="293" width="0.2" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="1187.20" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.kerDITNP_256 (135 samples, 0.01%)</title><rect x="24.7" y="133" width="0.1" height="15.0" fill="rgb(239,158,37)" rx="2" ry="2" />
+<text  x="27.68" y="143.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/utils/parallel.Execute (431 samples, 0.03%)</title><rect x="70.2" y="293" width="0.4" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="73.17" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (10,124 samples, 0.79%)</title><rect x="1040.4" y="277" width="9.3" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1043.43" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.partialFFT_11 (219 samples, 0.02%)</title><rect x="1037.7" y="293" width="0.2" height="15.0" fill="rgb(213,38,9)" rx="2" ry="2" />
+<text  x="1040.66" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (10,821 samples, 0.84%)</title><rect x="42.7" y="229" width="9.9" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="45.68" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (2,519 samples, 0.20%)</title><rect x="39.4" y="213" width="2.4" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="42.44" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/vortex.(*Params).rsEncode (101,853 samples, 7.93%)</title><rect x="75.6" y="293" width="93.6" height="15.0" fill="rgb(207,11,2)" rx="2" ry="2" />
+<text  x="78.65" y="303.5" >github.com/..</text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.partialFFT_14 (706 samples, 0.05%)</title><rect x="1049.7" y="293" width="0.7" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="1052.73" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.futex (428 samples, 0.03%)</title><rect x="1188.7" y="229" width="0.4" height="15.0" fill="rgb(237,150,35)" rx="2" ry="2" />
+<text  x="1191.68" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.park_m (644 samples, 0.05%)</title><rect x="1189.1" y="309" width="0.6" height="15.0" fill="rgb(233,132,31)" rx="2" ry="2" />
+<text  x="1192.11" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.lock2 (118 samples, 0.01%)</title><rect x="71.5" y="277" width="0.1" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="74.52" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.findRunnable (2,663 samples, 0.21%)</title><rect x="1185.6" y="277" width="2.4" height="15.0" fill="rgb(219,64,15)" rx="2" ry="2" />
+<text  x="1188.57" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.kerDITNP_256 (1,073 samples, 0.08%)</title><rect x="25.7" y="181" width="0.9" height="15.0" fill="rgb(239,158,37)" rx="2" ry="2" />
+<text  x="28.66" y="191.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.partialFFT_8 (36,499 samples, 2.84%)</title><rect x="1144.7" y="293" width="33.5" height="15.0" fill="rgb(234,136,32)" rx="2" ry="2" />
+<text  x="1147.69" y="303.5" >gi..</text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/state-management/smt.BuildComplete.func1 (1,429 samples, 0.11%)</title><rect x="74.3" y="309" width="1.3" height="15.0" fill="rgb(210,25,6)" rx="2" ry="2" />
+<text  x="77.33" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (16,561 samples, 1.29%)</title><rect x="255.7" y="277" width="15.2" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="258.67" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (247 samples, 0.02%)</title><rect x="136.7" y="229" width="0.2" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="139.72" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (1,428 samples, 0.11%)</title><rect x="68.9" y="293" width="1.3" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="71.86" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (28,885 samples, 2.25%)</title><rect x="1151.7" y="277" width="26.5" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1154.69" y="287.5" >g..</text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Bytes (11,240 samples, 0.88%)</title><rect x="283.6" y="293" width="10.3" height="15.0" fill="rgb(250,208,49)" rx="2" ry="2" />
+<text  x="286.55" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (112 samples, 0.01%)</title><rect x="136.7" y="165" width="0.1" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="139.72" y="175.5" ></text>
+</g>
+<g >
+<title>runtime.runqgrab (649 samples, 0.05%)</title><rect x="1187.3" y="229" width="0.6" height="15.0" fill="rgb(235,138,33)" rx="2" ry="2" />
+<text  x="1190.26" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (350 samples, 0.03%)</title><rect x="114.1" y="229" width="0.3" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.08" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (40,716 samples, 3.17%)</title><rect x="21.7" y="261" width="37.4" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="24.70" y="271.5" >git..</text>
+</g>
+<g >
+<title>runtime.lockWithRank (163 samples, 0.01%)</title><rect x="1186.7" y="261" width="0.2" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="1189.71" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (245 samples, 0.02%)</title><rect x="1182.4" y="277" width="0.3" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="1185.43" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointersChunked (18,842 samples, 1.47%)</title><rect x="151.9" y="245" width="17.3" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="154.91" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.gcAssistAlloc.func1 (184 samples, 0.01%)</title><rect x="72.7" y="229" width="0.1" height="15.0" fill="rgb(247,197,47)" rx="2" ry="2" />
+<text  x="75.68" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (9,935 samples, 0.77%)</title><rect x="24.0" y="229" width="9.1" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="26.99" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.newproc.func1 (222 samples, 0.02%)</title><rect x="70.3" y="245" width="0.2" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="73.29" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.zeroize (4,235 samples, 0.33%)</title><rect x="1178.2" y="293" width="3.9" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="1181.23" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (740,834 samples, 57.68%)</title><rect x="293.9" y="293" width="680.6" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="296.88" y="303.5" >github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul</text>
+</g>
+<g >
+<title>runtime.futexwakeup (165 samples, 0.01%)</title><rect x="1187.9" y="229" width="0.1" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="1190.86" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointersChunked (147 samples, 0.01%)</title><rect x="1182.5" y="261" width="0.2" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="1185.52" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (418 samples, 0.03%)</title><rect x="28.4" y="165" width="0.4" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="31.43" y="175.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc.(*digest).Sum (1,336 samples, 0.10%)</title><rect x="74.3" y="277" width="1.3" height="15.0" fill="rgb(205,1,0)" rx="2" ry="2" />
+<text  x="77.34" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.(*gcWork).balance (166 samples, 0.01%)</title><rect x="1183.3" y="261" width="0.1" height="15.0" fill="rgb(239,158,37)" rx="2" ry="2" />
+<text  x="1186.29" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (164 samples, 0.01%)</title><rect x="136.7" y="213" width="0.2" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="139.72" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.duffzero (338 samples, 0.03%)</title><rect x="1182.1" y="293" width="0.3" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1185.12" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.partialFFT_1 (857 samples, 0.07%)</title><rect x="1036.9" y="293" width="0.8" height="15.0" fill="rgb(229,114,27)" rx="2" ry="2" />
+<text  x="1039.87" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.(*lfstack).pop (750 samples, 0.06%)</title><rect x="1186.0" y="261" width="0.7" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1188.98" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.lockWithRank (113 samples, 0.01%)</title><rect x="1189.8" y="293" width="0.1" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="1192.82" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (175 samples, 0.01%)</title><rect x="114.1" y="101" width="0.2" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.09" y="111.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.partialFFT_15 (32,616 samples, 2.54%)</title><rect x="1050.4" y="293" width="29.9" height="15.0" fill="rgb(237,149,35)" rx="2" ry="2" />
+<text  x="1053.38" y="303.5" >gi..</text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (1,623 samples, 0.13%)</title><rect x="21.7" y="229" width="1.5" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="24.74" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (593 samples, 0.05%)</title><rect x="70.9" y="293" width="0.6" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="73.95" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.goexit0 (5,049 samples, 0.39%)</title><rect x="1184.4" y="309" width="4.7" height="15.0" fill="rgb(231,122,29)" rx="2" ry="2" />
+<text  x="1187.43" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (58,421 samples, 4.55%)</title><rect x="15.2" y="293" width="53.7" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="18.19" y="303.5" >githu..</text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.kerDITNP_256 (307 samples, 0.02%)</title><rect x="24.8" y="149" width="0.3" height="15.0" fill="rgb(239,158,37)" rx="2" ry="2" />
+<text  x="27.81" y="159.5" ></text>
+</g>
+<g >
+<title>runtime.casgstatus (110 samples, 0.01%)</title><rect x="1185.4" y="261" width="0.1" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="1188.45" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft.ditFFT (376 samples, 0.03%)</title><rect x="73.7" y="245" width="0.3" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="76.66" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.TransversalHash.func1 (992,043 samples, 77.24%)</title><rect x="271.4" y="309" width="911.4" height="15.0" fill="rgb(233,129,30)" rx="2" ry="2" />
+<text  x="274.37" y="319.5" >github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.TransversalHash.func1</text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (63,829 samples, 4.97%)</title><rect x="12.1" y="309" width="58.6" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="15.08" y="319.5" >github..</text>
+</g>
+<g >
+<title>all (1,284,385 samples, 100%)</title><rect x="10.0" y="341" width="1180.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="13.00" y="351.5" ></text>
+</g>
+<g >
+<title>runtime.lock2 (113 samples, 0.01%)</title><rect x="1189.8" y="277" width="0.1" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="1192.82" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).smallerThanModulus (11,463 samples, 0.89%)</title><rect x="1026.3" y="277" width="10.6" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1029.32" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.memmove (4,138 samples, 0.32%)</title><rect x="1178.3" y="277" width="3.8" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="1181.31" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.scanobject (528 samples, 0.04%)</title><rect x="1183.7" y="261" width="0.5" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="1186.71" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.systemstack (222 samples, 0.02%)</title><rect x="70.3" y="261" width="0.2" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="73.29" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.kerDITNP_256 (18,129 samples, 1.41%)</title><rect x="42.4" y="245" width="16.6" height="15.0" fill="rgb(239,158,37)" rx="2" ry="2" />
+<text  x="45.39" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (2,033 samples, 0.16%)</title><rect x="65.2" y="245" width="1.9" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="68.22" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (125 samples, 0.01%)</title><rect x="72.9" y="293" width="0.1" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="75.87" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (262 samples, 0.02%)</title><rect x="74.1" y="261" width="0.2" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="77.06" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (7,550 samples, 0.59%)</title><rect x="169.6" y="245" width="6.9" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="172.56" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.newproc (590 samples, 0.05%)</title><rect x="71.8" y="293" width="0.5" height="15.0" fill="rgb(231,119,28)" rx="2" ry="2" />
+<text  x="74.75" y="303.5" ></text>
+</g>
+<g >
+<title>sync/atomic.(*Uint64).Add (210 samples, 0.02%)</title><rect x="271.2" y="293" width="0.2" height="15.0" fill="rgb(247,195,46)" rx="2" ry="2" />
+<text  x="274.18" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/utils/parallel.Execute (184 samples, 0.01%)</title><rect x="68.6" y="277" width="0.2" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="71.62" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/utils/parallel.Execute (141 samples, 0.01%)</title><rect x="114.4" y="229" width="0.1" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="117.40" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.(*Domain).FFT (495 samples, 0.04%)</title><rect x="114.1" y="261" width="0.4" height="15.0" fill="rgb(206,9,2)" rx="2" ry="2" />
+<text  x="117.08" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.systemstack (130 samples, 0.01%)</title><rect x="137.0" y="197" width="0.1" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="139.95" y="207.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (131 samples, 0.01%)</title><rect x="209.9" y="261" width="0.1" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="212.86" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (1,142 samples, 0.09%)</title><rect x="67.6" y="261" width="1.0" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="70.58" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.partialFFT_3 (762 samples, 0.06%)</title><rect x="1084.0" y="293" width="0.7" height="15.0" fill="rgb(216,54,13)" rx="2" ry="2" />
+<text  x="1087.01" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.newproc (130 samples, 0.01%)</title><rect x="137.0" y="213" width="0.1" height="15.0" fill="rgb(231,119,28)" rx="2" ry="2" />
+<text  x="139.95" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.newproc1 (132 samples, 0.01%)</title><rect x="70.3" y="229" width="0.2" height="15.0" fill="rgb(214,43,10)" rx="2" ry="2" />
+<text  x="73.33" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (173 samples, 0.01%)</title><rect x="28.8" y="213" width="0.2" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="31.82" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (31,537 samples, 2.46%)</title><rect x="177.0" y="245" width="29.0" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="180.03" y="255.5" >gi..</text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (1,173 samples, 0.09%)</title><rect x="32.0" y="197" width="1.0" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="34.96" y="207.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (590 samples, 0.05%)</title><rect x="28.3" y="181" width="0.5" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="31.27" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.newproc.func1 (127 samples, 0.01%)</title><rect x="114.4" y="181" width="0.1" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="117.41" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.(*gList).pop (128 samples, 0.01%)</title><rect x="71.9" y="229" width="0.1" height="15.0" fill="rgb(246,191,45)" rx="2" ry="2" />
+<text  x="74.86" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.goready (137 samples, 0.01%)</title><rect x="271.0" y="245" width="0.2" height="15.0" fill="rgb(253,224,53)" rx="2" ry="2" />
+<text  x="274.05" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (543 samples, 0.04%)</title><rect x="1049.9" y="277" width="0.5" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1052.88" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.pMask.read (122 samples, 0.01%)</title><rect x="1186.9" y="261" width="0.1" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="1189.89" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (197 samples, 0.02%)</title><rect x="114.1" y="133" width="0.2" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.08" y="143.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (596 samples, 0.05%)</title><rect x="1084.2" y="277" width="0.5" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1087.17" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (3,294 samples, 0.26%)</title><rect x="12.2" y="277" width="3.0" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="15.16" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.gcAssistAlloc1 (184 samples, 0.01%)</title><rect x="72.7" y="213" width="0.1" height="15.0" fill="rgb(209,22,5)" rx="2" ry="2" />
+<text  x="75.68" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.systemstack (586 samples, 0.05%)</title><rect x="71.8" y="277" width="0.5" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="74.76" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.bitReverseNaive (15,620 samples, 1.22%)</title><rect x="137.1" y="245" width="14.4" height="15.0" fill="rgb(208,17,4)" rx="2" ry="2" />
+<text  x="140.10" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (273 samples, 0.02%)</title><rect x="28.0" y="181" width="0.3" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="31.02" y="191.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.kerDITNP_256 (2,279 samples, 0.18%)</title><rect x="26.7" y="197" width="2.1" height="15.0" fill="rgb(239,158,37)" rx="2" ry="2" />
+<text  x="29.72" y="207.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (477 samples, 0.04%)</title><rect x="41.9" y="229" width="0.5" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="44.95" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (453 samples, 0.04%)</title><rect x="210.8" y="277" width="0.4" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="213.79" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.memmove (30,820 samples, 2.40%)</title><rect x="85.8" y="245" width="28.3" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="88.77" y="255.5" >r..</text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft.(*Domain).FFTInverse (839 samples, 0.07%)</title><rect x="73.5" y="293" width="0.8" height="15.0" fill="rgb(243,174,41)" rx="2" ry="2" />
+<text  x="76.54" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.(*gcControllerState).findRunnableGCWorker (110 samples, 0.01%)</title><rect x="1185.9" y="261" width="0.1" height="15.0" fill="rgb(224,87,20)" rx="2" ry="2" />
+<text  x="1188.87" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (403 samples, 0.03%)</title><rect x="24.0" y="213" width="0.4" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="27.00" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).fromMont (8,552 samples, 0.67%)</title><rect x="285.0" y="277" width="7.8" height="15.0" fill="rgb(212,32,7)" rx="2" ry="2" />
+<text  x="287.98" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (3,372 samples, 0.26%)</title><rect x="12.1" y="293" width="3.1" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="15.09" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.usleep (130 samples, 0.01%)</title><rect x="1187.7" y="213" width="0.2" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="1190.74" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.systemstack (127 samples, 0.01%)</title><rect x="114.4" y="197" width="0.1" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="117.41" y="207.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (267 samples, 0.02%)</title><rect x="114.1" y="213" width="0.2" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.08" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.kerDITNP_256 (4,427 samples, 0.34%)</title><rect x="29.0" y="213" width="4.0" height="15.0" fill="rgb(239,158,37)" rx="2" ry="2" />
+<text  x="31.98" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/common/smartvectors.(*Regular).WriteInSlice (30,821 samples, 2.40%)</title><rect x="85.8" y="261" width="28.3" height="15.0" fill="rgb(212,36,8)" rx="2" ry="2" />
+<text  x="88.77" y="271.5" >g..</text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/common/smartvectors.FFT (49,640 samples, 3.86%)</title><rect x="85.8" y="277" width="45.6" height="15.0" fill="rgb(236,144,34)" rx="2" ry="2" />
+<text  x="88.76" y="287.5" >gith..</text>
+</g>
+<g >
+<title>runtime.futexsleep (449 samples, 0.03%)</title><rect x="1188.1" y="245" width="0.4" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1191.09" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.BitReverse (16,021 samples, 1.25%)</title><rect x="137.1" y="277" width="14.7" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="140.10" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (3,731 samples, 0.29%)</title><rect x="15.2" y="277" width="3.4" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="18.20" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (4,307 samples, 0.34%)</title><rect x="60.4" y="245" width="4.0" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="63.44" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (673 samples, 0.05%)</title><rect x="41.8" y="245" width="0.6" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="44.77" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (68,652 samples, 5.35%)</title><rect x="10.0" y="325" width="63.1" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="13.00" y="335.5" >github..</text>
+</g>
+<g >
+<title>runtime.memmove (11,007 samples, 0.86%)</title><rect x="75.6" y="261" width="10.2" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="78.65" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (817 samples, 0.06%)</title><rect x="23.2" y="229" width="0.8" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="26.24" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.systemstack (137 samples, 0.01%)</title><rect x="271.0" y="229" width="0.2" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="274.05" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (1,357 samples, 0.11%)</title><rect x="26.8" y="165" width="1.2" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="29.78" y="175.5" ></text>
+</g>
+<g >
+<title>sync.(*WaitGroup).Add (296 samples, 0.02%)</title><rect x="270.9" y="293" width="0.3" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="273.91" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.markroot (110 samples, 0.01%)</title><rect x="1184.3" y="261" width="0.1" height="15.0" fill="rgb(251,212,50)" rx="2" ry="2" />
+<text  x="1187.26" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (18,939 samples, 1.47%)</title><rect x="151.8" y="261" width="17.4" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="154.82" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.bigEndian.PutElement (1,130 samples, 0.09%)</title><rect x="292.8" y="277" width="1.1" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="295.84" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.markroot (244 samples, 0.02%)</title><rect x="1183.5" y="261" width="0.2" height="15.0" fill="rgb(251,212,50)" rx="2" ry="2" />
+<text  x="1186.49" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft.ditFFT (278 samples, 0.02%)</title><rect x="73.7" y="229" width="0.3" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="76.73" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.gdestroy (273 samples, 0.02%)</title><rect x="1184.5" y="293" width="0.2" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="1187.49" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.newproc.func1 (586 samples, 0.05%)</title><rect x="71.8" y="261" width="0.5" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="74.76" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (44,013 samples, 3.43%)</title><rect x="211.8" y="277" width="40.5" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="214.82" y="287.5" >git..</text>
+</g>
+<g >
+<title>runtime.gcDrainN (184 samples, 0.01%)</title><rect x="72.7" y="197" width="0.1" height="15.0" fill="rgb(229,112,26)" rx="2" ry="2" />
+<text  x="75.68" y="207.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (660 samples, 0.05%)</title><rect x="1144.1" y="277" width="0.6" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1147.09" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (162 samples, 0.01%)</title><rect x="114.1" y="85" width="0.1" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.10" y="95.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (192 samples, 0.01%)</title><rect x="114.1" y="117" width="0.2" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.08" y="127.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.mulModAcc (58,721 samples, 4.57%)</title><rect x="982.9" y="293" width="54.0" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="985.93" y="303.5" >githu..</text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (646 samples, 0.05%)</title><rect x="25.7" y="165" width="0.6" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="28.68" y="175.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (328 samples, 0.03%)</title><rect x="25.1" y="133" width="0.3" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="28.14" y="143.5" ></text>
+</g>
+<g >
+<title>runtime.newobject (500 samples, 0.04%)</title><rect x="210.8" y="293" width="0.4" height="15.0" fill="rgb(221,75,18)" rx="2" ry="2" />
+<text  x="213.78" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.newobject (144 samples, 0.01%)</title><rect x="72.9" y="309" width="0.1" height="15.0" fill="rgb(221,75,18)" rx="2" ry="2" />
+<text  x="75.87" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (3,256 samples, 0.25%)</title><rect x="18.7" y="245" width="3.0" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="21.71" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/state-management/smt.hashLR (1,393 samples, 0.11%)</title><rect x="74.3" y="293" width="1.3" height="15.0" fill="rgb(238,155,37)" rx="2" ry="2" />
+<text  x="77.34" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (207 samples, 0.02%)</title><rect x="24.4" y="181" width="0.2" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="27.37" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.growslice (811 samples, 0.06%)</title><rect x="210.0" y="277" width="0.8" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="213.03" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.gcDrainMarkWorkerDedicated (1,213 samples, 0.09%)</title><rect x="1183.1" y="293" width="1.1" height="15.0" fill="rgb(206,5,1)" rx="2" ry="2" />
+<text  x="1186.09" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.partialFFT_12 (12,919 samples, 1.01%)</title><rect x="1037.9" y="293" width="11.8" height="15.0" fill="rgb(206,8,2)" rx="2" ry="2" />
+<text  x="1040.86" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (209 samples, 0.02%)</title><rect x="114.1" y="181" width="0.2" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.08" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.futex (165 samples, 0.01%)</title><rect x="1187.9" y="213" width="0.1" height="15.0" fill="rgb(237,150,35)" rx="2" ry="2" />
+<text  x="1190.86" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (205 samples, 0.02%)</title><rect x="114.1" y="165" width="0.2" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.08" y="175.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (2,264 samples, 0.18%)</title><rect x="24.6" y="197" width="2.0" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="27.56" y="207.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (52,871 samples, 4.12%)</title><rect x="18.6" y="277" width="48.6" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="21.63" y="287.5" >gith..</text>
+</g>
+<g >
+<title>runtime.newproc1 (344 samples, 0.03%)</title><rect x="71.8" y="245" width="0.3" height="15.0" fill="rgb(214,43,10)" rx="2" ry="2" />
+<text  x="74.83" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (240 samples, 0.02%)</title><rect x="74.3" y="229" width="0.3" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="77.35" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (964 samples, 0.08%)</title><rect x="74.6" y="229" width="0.9" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="77.59" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (891 samples, 0.07%)</title><rect x="64.4" y="245" width="0.8" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="67.40" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft.ditFFT (477 samples, 0.04%)</title><rect x="73.6" y="261" width="0.4" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="76.60" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (495 samples, 0.04%)</title><rect x="114.1" y="245" width="0.4" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.08" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.futex (130 samples, 0.01%)</title><rect x="1186.7" y="213" width="0.1" height="15.0" fill="rgb(237,150,35)" rx="2" ry="2" />
+<text  x="1189.72" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Add (1,980 samples, 0.15%)</title><rect x="207.1" y="245" width="1.8" height="15.0" fill="rgb(241,166,39)" rx="2" ry="2" />
+<text  x="210.08" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (132 samples, 0.01%)</title><rect x="209.9" y="277" width="0.1" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="212.86" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointers (147 samples, 0.01%)</title><rect x="1182.5" y="245" width="0.2" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="1185.52" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (810 samples, 0.06%)</title><rect x="23.2" y="213" width="0.8" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="26.24" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (226 samples, 0.02%)</title><rect x="72.6" y="293" width="0.3" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="75.65" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (131 samples, 0.01%)</title><rect x="136.7" y="197" width="0.1" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="139.72" y="207.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/vortex.(*Params).hashSisHash.func1 (45,723 samples, 3.56%)</title><rect x="169.2" y="309" width="42.0" height="15.0" fill="rgb(242,173,41)" rx="2" ry="2" />
+<text  x="172.23" y="319.5" >git..</text>
+</g>
+<g >
+<title>runtime.findRunnable (402 samples, 0.03%)</title><rect x="1189.3" y="277" width="0.4" height="15.0" fill="rgb(219,64,15)" rx="2" ry="2" />
+<text  x="1192.29" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.readyWithTime.goready.func1 (137 samples, 0.01%)</title><rect x="271.0" y="213" width="0.2" height="15.0" fill="rgb(246,188,45)" rx="2" ry="2" />
+<text  x="274.05" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (110 samples, 0.01%)</title><rect x="25.5" y="133" width="0.1" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="28.52" y="143.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointers (18,840 samples, 1.47%)</title><rect x="151.9" y="229" width="17.3" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="154.91" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (125 samples, 0.01%)</title><rect x="114.1" y="53" width="0.1" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.12" y="63.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (3,665 samples, 0.29%)</title><rect x="15.3" y="261" width="3.3" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="18.26" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.partialFFT_4 (47,233 samples, 3.68%)</title><rect x="1084.7" y="293" width="43.4" height="15.0" fill="rgb(210,25,5)" rx="2" ry="2" />
+<text  x="1087.71" y="303.5" >gith..</text>
+</g>
+<g >
+<title>internal/runtime/atomic.(*Int32).Add (118 samples, 0.01%)</title><rect x="1185.2" y="277" width="0.1" height="15.0" fill="rgb(207,12,2)" rx="2" ry="2" />
+<text  x="1188.19" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (1,546 samples, 0.12%)</title><rect x="67.2" y="277" width="1.4" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="70.20" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.unlockWithRank (442 samples, 0.03%)</title><rect x="1188.7" y="277" width="0.4" height="15.0" fill="rgb(247,197,47)" rx="2" ry="2" />
+<text  x="1191.66" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (7,638 samples, 0.59%)</title><rect x="169.5" y="261" width="7.0" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="172.48" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (267 samples, 0.02%)</title><rect x="33.2" y="213" width="0.2" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="36.19" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (5,433 samples, 0.42%)</title><rect x="33.6" y="213" width="5.0" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="36.59" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.partialFFT_1 (3,169 samples, 0.25%)</title><rect x="1080.3" y="293" width="3.0" height="15.0" fill="rgb(229,114,27)" rx="2" ry="2" />
+<text  x="1083.35" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.lockWithRank (118 samples, 0.01%)</title><rect x="71.5" y="293" width="0.1" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="74.52" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (349 samples, 0.03%)</title><rect x="33.1" y="229" width="0.3" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="36.12" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.TransversalHash.func2 (862 samples, 0.07%)</title><rect x="73.5" y="309" width="0.8" height="15.0" fill="rgb(226,99,23)" rx="2" ry="2" />
+<text  x="76.54" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointersChunked (18,165 samples, 1.41%)</title><rect x="114.7" y="229" width="16.7" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="117.68" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointers (581 samples, 0.05%)</title><rect x="210.2" y="261" width="0.5" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="213.21" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (20,285 samples, 1.58%)</title><rect x="252.3" y="293" width="18.6" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="255.25" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (714,253 samples, 55.61%)</title><rect x="318.3" y="277" width="656.2" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="321.29" y="287.5" >github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul</text>
+</g>
+<g >
+<title>runtime.unlockWithRank (167 samples, 0.01%)</title><rect x="1187.9" y="261" width="0.1" height="15.0" fill="rgb(247,197,47)" rx="2" ry="2" />
+<text  x="1190.86" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.kerDITNP_256 (125 samples, 0.01%)</title><rect x="114.1" y="37" width="0.1" height="15.0" fill="rgb(239,158,37)" rx="2" ry="2" />
+<text  x="117.12" y="47.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (18,297 samples, 1.42%)</title><rect x="114.6" y="245" width="16.8" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="117.56" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.makeslice (18,298 samples, 1.42%)</title><rect x="114.6" y="261" width="16.8" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="117.56" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.(*Domain).FFTInverse (446 samples, 0.03%)</title><rect x="136.7" y="261" width="0.4" height="15.0" fill="rgb(228,107,25)" rx="2" ry="2" />
+<text  x="139.67" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (242 samples, 0.02%)</title><rect x="74.3" y="245" width="0.3" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="77.35" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.stealWork (904 samples, 0.07%)</title><rect x="1187.0" y="261" width="0.9" height="15.0" fill="rgb(253,224,53)" rx="2" ry="2" />
+<text  x="1190.02" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (462 samples, 0.04%)</title><rect x="24.7" y="165" width="0.4" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="27.67" y="175.5" ></text>
+</g>
+<g >
+<title>runtime.markroot.func1 (235 samples, 0.02%)</title><rect x="1183.5" y="245" width="0.2" height="15.0" fill="rgb(222,80,19)" rx="2" ry="2" />
+<text  x="1186.49" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.unlock2 (167 samples, 0.01%)</title><rect x="1187.9" y="245" width="0.1" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="1190.86" y="255.5" ></text>
+</g>
+<g >
+<title>sync.(*WaitGroup).Done (508 samples, 0.04%)</title><rect x="270.9" y="309" width="0.5" height="15.0" fill="rgb(222,82,19)" rx="2" ry="2" />
+<text  x="273.91" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (1,658 samples, 0.13%)</title><rect x="21.7" y="245" width="1.5" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="24.71" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/utils/parallel.Execute (1,000 samples, 0.08%)</title><rect x="71.5" y="309" width="0.9" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="74.49" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT.func1 (64,931 samples, 5.06%)</title><rect x="211.2" y="309" width="59.7" height="15.0" fill="rgb(222,80,19)" rx="2" ry="2" />
+<text  x="214.24" y="319.5" >github..</text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (37,365 samples, 2.91%)</title><rect x="1093.8" y="277" width="34.3" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1096.77" y="287.5" >gi..</text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (222 samples, 0.02%)</title><rect x="114.1" y="197" width="0.2" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.08" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointers (18,163 samples, 1.41%)</title><rect x="114.7" y="213" width="16.7" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="117.68" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.kerDITNP_256 (559 samples, 0.04%)</title><rect x="25.1" y="165" width="0.5" height="15.0" fill="rgb(239,158,37)" rx="2" ry="2" />
+<text  x="28.11" y="175.5" ></text>
+</g>
+<g >
+<title>runtime.findObject (128 samples, 0.01%)</title><rect x="1184.0" y="245" width="0.2" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="1187.03" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.lock2 (579 samples, 0.05%)</title><rect x="1188.0" y="261" width="0.5" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="1191.02" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (5,306 samples, 0.41%)</title><rect x="33.7" y="197" width="4.9" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="36.70" y="207.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (1,053 samples, 0.08%)</title><rect x="69.2" y="277" width="1.0" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="72.21" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.futexwakeup (428 samples, 0.03%)</title><rect x="1188.7" y="245" width="0.4" height="15.0" fill="rgb(219,66,15)" rx="2" ry="2" />
+<text  x="1191.68" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (1,477 samples, 0.11%)</title><rect x="65.7" y="229" width="1.4" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="68.73" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (256 samples, 0.02%)</title><rect x="74.1" y="245" width="0.2" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="77.07" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.futexsleep (130 samples, 0.01%)</title><rect x="1186.7" y="229" width="0.1" height="15.0" fill="rgb(218,63,15)" rx="2" ry="2" />
+<text  x="1189.72" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcache).nextFree (183 samples, 0.01%)</title><rect x="210.0" y="245" width="0.2" height="15.0" fill="rgb(222,80,19)" rx="2" ry="2" />
+<text  x="213.03" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc.(*digest).checksum (1,332 samples, 0.10%)</title><rect x="74.3" y="261" width="1.3" height="15.0" fill="rgb(254,225,53)" rx="2" ry="2" />
+<text  x="77.34" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft.ditFFT (557 samples, 0.04%)</title><rect x="73.5" y="277" width="0.6" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="76.55" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (3,340 samples, 0.26%)</title><rect x="131.4" y="261" width="3.0" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="134.37" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.schedule (4,707 samples, 0.37%)</title><rect x="1184.7" y="293" width="4.4" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="1187.75" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (13,365 samples, 1.04%)</title><rect x="1131.5" y="277" width="12.3" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1134.53" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/utils/parallel/pool.ExecutePoolChunky.func1 (992,050 samples, 77.24%)</title><rect x="271.4" y="325" width="911.4" height="15.0" fill="rgb(250,209,50)" rx="2" ry="2" />
+<text  x="274.37" y="335.5" >github.com/consensys/linea-monorepo/prover/utils/parallel/pool.ExecutePoolChunky.func1</text>
+</g>
+<g >
+<title>encoding/binary.bigEndian.PutUint64 (628 samples, 0.05%)</title><rect x="284.4" y="277" width="0.6" height="15.0" fill="rgb(240,163,39)" rx="2" ry="2" />
+<text  x="287.41" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (199 samples, 0.02%)</title><rect x="114.1" y="149" width="0.2" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.08" y="159.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.partialFFT_7 (870 samples, 0.07%)</title><rect x="1143.9" y="293" width="0.8" height="15.0" fill="rgb(241,165,39)" rx="2" ry="2" />
+<text  x="1146.89" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (3,168 samples, 0.25%)</title><rect x="1080.3" y="277" width="3.0" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1083.35" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Add (24,310 samples, 1.89%)</title><rect x="1004.0" y="277" width="22.3" height="15.0" fill="rgb(241,166,39)" rx="2" ry="2" />
+<text  x="1006.99" y="287.5" >g..</text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (156 samples, 0.01%)</title><rect x="25.5" y="149" width="0.1" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="28.48" y="159.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.kerDITNP_256 (9,050 samples, 0.70%)</title><rect x="33.4" y="229" width="8.4" height="15.0" fill="rgb(239,158,37)" rx="2" ry="2" />
+<text  x="36.44" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.gopreempt_m (256 samples, 0.02%)</title><rect x="1189.7" y="309" width="0.2" height="15.0" fill="rgb(237,148,35)" rx="2" ry="2" />
+<text  x="1192.71" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (163 samples, 0.01%)</title><rect x="24.8" y="117" width="0.2" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="27.82" y="127.5" ></text>
+</g>
+<g >
+<title>runtime.scanstack (188 samples, 0.01%)</title><rect x="1183.5" y="229" width="0.2" height="15.0" fill="rgb(210,23,5)" rx="2" ry="2" />
+<text  x="1186.50" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (3,327 samples, 0.26%)</title><rect x="18.6" y="261" width="3.1" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="21.65" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (135 samples, 0.01%)</title><rect x="24.7" y="149" width="0.1" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="27.68" y="159.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (149 samples, 0.01%)</title><rect x="1037.7" y="277" width="0.2" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1040.73" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.goschedImpl (112 samples, 0.01%)</title><rect x="1189.7" y="293" width="0.1" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="1192.72" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (392 samples, 0.03%)</title><rect x="24.0" y="197" width="0.4" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="27.01" y="207.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Bytes (241 samples, 0.02%)</title><rect x="73.3" y="309" width="0.2" height="15.0" fill="rgb(250,208,49)" rx="2" ry="2" />
+<text  x="76.32" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Square (983 samples, 0.08%)</title><rect x="74.6" y="245" width="0.9" height="15.0" fill="rgb(215,48,11)" rx="2" ry="2" />
+<text  x="77.57" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/vortex.(*Params).encodeRows.func1 (101,864 samples, 7.93%)</title><rect x="75.6" y="309" width="93.6" height="15.0" fill="rgb(243,175,42)" rx="2" ry="2" />
+<text  x="78.64" y="319.5" >github.com/..</text>
+</g>
+<g >
+<title>runtime.memclrNoHeapPointers (306 samples, 0.02%)</title><rect x="210.9" y="261" width="0.3" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="213.92" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.gcDrain (192 samples, 0.01%)</title><rect x="1184.2" y="277" width="0.2" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="1187.20" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.kerDITNP_256 (7,354 samples, 0.57%)</title><rect x="60.3" y="261" width="6.8" height="15.0" fill="rgb(239,158,37)" rx="2" ry="2" />
+<text  x="63.33" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.systemstack (184 samples, 0.01%)</title><rect x="72.7" y="245" width="0.1" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="75.68" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.futex (449 samples, 0.03%)</title><rect x="1188.1" y="229" width="0.4" height="15.0" fill="rgb(237,150,35)" rx="2" ry="2" />
+<text  x="1191.09" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.makeslice (250 samples, 0.02%)</title><rect x="1182.4" y="293" width="0.3" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="1185.43" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).smallerThanModulus (880 samples, 0.07%)</title><rect x="208.9" y="245" width="0.8" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="211.90" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (5,151 samples, 0.40%)</title><rect x="54.3" y="229" width="4.7" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="57.31" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.makechan (243 samples, 0.02%)</title><rect x="72.6" y="309" width="0.3" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="75.64" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/common/smartvectors.(*Regular).WriteInSlice (11,007 samples, 0.86%)</title><rect x="75.6" y="277" width="10.2" height="15.0" fill="rgb(212,36,8)" rx="2" ry="2" />
+<text  x="78.65" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (1,002 samples, 0.08%)</title><rect x="59.4" y="245" width="0.9" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="62.41" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.ready (136 samples, 0.01%)</title><rect x="271.0" y="197" width="0.2" height="15.0" fill="rgb(236,143,34)" rx="2" ry="2" />
+<text  x="274.05" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.gcDrain (1,213 samples, 0.09%)</title><rect x="1183.1" y="277" width="1.1" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="1186.09" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc.(*digest).encrypt (4,016 samples, 0.31%)</title><rect x="206.0" y="261" width="3.7" height="15.0" fill="rgb(207,13,3)" rx="2" ry="2" />
+<text  x="209.02" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.makeslice (18,939 samples, 1.47%)</title><rect x="151.8" y="277" width="17.4" height="15.0" fill="rgb(244,180,43)" rx="2" ry="2" />
+<text  x="154.82" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (1,328 samples, 0.10%)</title><rect x="59.1" y="261" width="1.2" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="62.11" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (1,832 samples, 0.14%)</title><rect x="52.6" y="229" width="1.7" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="55.63" y="239.5" ></text>
+</g>
+<g >
+<title>runtime.newproc.func1 (130 samples, 0.01%)</title><rect x="137.0" y="181" width="0.1" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="139.95" y="191.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (3,031 samples, 0.24%)</title><rect x="131.7" y="245" width="2.7" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="134.65" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.schedule (615 samples, 0.05%)</title><rect x="1189.1" y="293" width="0.6" height="15.0" fill="rgb(220,72,17)" rx="2" ry="2" />
+<text  x="1192.13" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (144 samples, 0.01%)</title><rect x="114.1" y="69" width="0.1" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="117.11" y="79.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (2,643 samples, 0.21%)</title><rect x="29.1" y="181" width="2.4" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="32.12" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.newproc (127 samples, 0.01%)</title><rect x="114.4" y="213" width="0.1" height="15.0" fill="rgb(231,119,28)" rx="2" ry="2" />
+<text  x="117.41" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.semrelease1 (237 samples, 0.02%)</title><rect x="271.0" y="261" width="0.2" height="15.0" fill="rgb(252,218,52)" rx="2" ry="2" />
+<text  x="273.96" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/common/smartvectors.FFTInverse (6,241 samples, 0.49%)</title><rect x="131.4" y="277" width="5.7" height="15.0" fill="rgb(207,12,2)" rx="2" ry="2" />
+<text  x="134.37" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.fromMont (8,329 samples, 0.65%)</title><rect x="285.2" y="261" width="7.6" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="288.19" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (20,173 samples, 1.57%)</title><rect x="23.2" y="245" width="18.6" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="26.23" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.mallocgc (199 samples, 0.02%)</title><rect x="210.0" y="261" width="0.2" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="213.03" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.bitReverseCobra (16,021 samples, 1.25%)</title><rect x="137.1" y="261" width="14.7" height="15.0" fill="rgb(236,144,34)" rx="2" ry="2" />
+<text  x="140.10" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (229 samples, 0.02%)</title><rect x="26.4" y="149" width="0.2" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="29.43" y="159.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.partialFFT_2 (824 samples, 0.06%)</title><rect x="1083.3" y="293" width="0.7" height="15.0" fill="rgb(223,84,20)" rx="2" ry="2" />
+<text  x="1086.26" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.runqsteal (714 samples, 0.06%)</title><rect x="1187.2" y="245" width="0.7" height="15.0" fill="rgb(227,104,24)" rx="2" ry="2" />
+<text  x="1190.20" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (44,622 samples, 3.47%)</title><rect x="211.3" y="293" width="41.0" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="214.26" y="303.5" >git..</text>
+</g>
+<g >
+<title>math/bits.Reverse64 (401 samples, 0.03%)</title><rect x="151.5" y="245" width="0.3" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="154.45" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.memmove (1,266 samples, 0.10%)</title><rect x="135.5" y="245" width="1.2" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="138.50" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (167 samples, 0.01%)</title><rect x="24.8" y="133" width="0.2" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="27.82" y="143.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc.(*digest).Sum (43,975 samples, 3.42%)</title><rect x="169.3" y="293" width="40.4" height="15.0" fill="rgb(205,1,0)" rx="2" ry="2" />
+<text  x="172.34" y="303.5" >git..</text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (2,218 samples, 0.17%)</title><rect x="10.0" y="293" width="2.1" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="13.05" y="303.5" ></text>
+</g>
+<g >
+<title>runtime.(*lfstack).pop (125 samples, 0.01%)</title><rect x="1183.5" y="181" width="0.1" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1186.51" y="191.5" ></text>
+</g>
+<g >
+<title>runtime.(*stackScanState).addObject (128 samples, 0.01%)</title><rect x="1183.5" y="197" width="0.1" height="15.0" fill="rgb(223,83,20)" rx="2" ry="2" />
+<text  x="1186.51" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.(*lfstack).pop (241 samples, 0.02%)</title><rect x="1189.4" y="261" width="0.2" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1192.35" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.newproc (225 samples, 0.02%)</title><rect x="70.3" y="277" width="0.2" height="15.0" fill="rgb(231,119,28)" rx="2" ry="2" />
+<text  x="73.29" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.scanframeworker (180 samples, 0.01%)</title><rect x="1183.5" y="213" width="0.2" height="15.0" fill="rgb(228,110,26)" rx="2" ry="2" />
+<text  x="1186.51" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (128 samples, 0.01%)</title><rect x="28.9" y="197" width="0.1" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="31.86" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.gcBgMarkWorker (1,475 samples, 0.11%)</title><rect x="1183.0" y="325" width="1.4" height="15.0" fill="rgb(235,140,33)" rx="2" ry="2" />
+<text  x="1186.03" y="335.5" ></text>
+</g>
+<g >
+<title>runtime.systemstack (1,409 samples, 0.11%)</title><rect x="1183.1" y="309" width="1.3" height="15.0" fill="rgb(206,6,1)" rx="2" ry="2" />
+<text  x="1186.09" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.gcAssistAlloc (185 samples, 0.01%)</title><rect x="72.7" y="261" width="0.1" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="75.67" y="271.5" ></text>
+</g>
+<g >
+<title>runtime.morestack (259 samples, 0.02%)</title><rect x="1189.7" y="325" width="0.2" height="15.0" fill="rgb(219,67,16)" rx="2" ry="2" />
+<text  x="1192.71" y="335.5" ></text>
+</g>
+<g >
+<title>sync.runtime_Semrelease (289 samples, 0.02%)</title><rect x="270.9" y="277" width="0.3" height="15.0" fill="rgb(237,148,35)" rx="2" ry="2" />
+<text  x="273.91" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (458 samples, 0.04%)</title><rect x="31.5" y="197" width="0.5" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="34.54" y="207.5" ></text>
+</g>
+<g >
+<title>runtime.lock2 (163 samples, 0.01%)</title><rect x="1186.7" y="245" width="0.2" height="15.0" fill="rgb(210,27,6)" rx="2" ry="2" />
+<text  x="1189.71" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (306 samples, 0.02%)</title><rect x="26.4" y="165" width="0.2" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="29.36" y="175.5" ></text>
+</g>
+<g >
+<title>runtime.wakep (111 samples, 0.01%)</title><rect x="72.2" y="245" width="0.1" height="15.0" fill="rgb(216,54,13)" rx="2" ry="2" />
+<text  x="75.19" y="255.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft.ditFFT (192 samples, 0.01%)</title><rect x="73.8" y="213" width="0.2" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="76.79" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.mul (10,626 samples, 0.83%)</title><rect x="42.9" y="213" width="9.7" height="15.0" fill="rgb(249,204,48)" rx="2" ry="2" />
+<text  x="45.86" y="223.5" ></text>
+</g>
+<g >
+<title>runtime.newobject (136 samples, 0.01%)</title><rect x="71.6" y="293" width="0.2" height="15.0" fill="rgb(221,75,18)" rx="2" ry="2" />
+<text  x="74.63" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (388 samples, 0.03%)</title><rect x="136.7" y="245" width="0.4" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="139.72" y="255.5" ></text>
+</g>
+<g >
+<title>runtime.lockWithRank (579 samples, 0.05%)</title><rect x="1188.0" y="277" width="0.5" height="15.0" fill="rgb(214,42,10)" rx="2" ry="2" />
+<text  x="1191.02" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (1,794 samples, 0.14%)</title><rect x="40.0" y="197" width="1.7" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="43.02" y="207.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (337 samples, 0.03%)</title><rect x="25.1" y="149" width="0.3" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="28.13" y="159.5" ></text>
+</g>
+<g >
+<title>runtime.(*mcache).refill (182 samples, 0.01%)</title><rect x="210.0" y="229" width="0.2" height="15.0" fill="rgb(232,124,29)" rx="2" ry="2" />
+<text  x="213.03" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (933 samples, 0.07%)</title><rect x="38.6" y="213" width="0.8" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="41.58" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16.partialFFT_5 (17,091 samples, 1.33%)</title><rect x="1128.1" y="293" width="15.7" height="15.0" fill="rgb(253,225,53)" rx="2" ry="2" />
+<text  x="1131.11" y="303.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (867 samples, 0.07%)</title><rect x="32.2" y="181" width="0.8" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="35.25" y="191.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (2,706 samples, 0.21%)</title><rect x="29.1" y="197" width="2.4" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="32.06" y="207.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.innerDITWithTwiddles (836 samples, 0.07%)</title><rect x="70.7" y="309" width="0.8" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="73.73" y="319.5" ></text>
+</g>
+<g >
+<title>runtime.unlock2 (442 samples, 0.03%)</title><rect x="1188.7" y="261" width="0.4" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="1191.66" y="271.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (210 samples, 0.02%)</title><rect x="24.4" y="197" width="0.2" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="27.37" y="207.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.(*Element).Mul (2,256 samples, 0.18%)</title><rect x="10.0" y="309" width="2.1" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="13.01" y="319.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (1,070 samples, 0.08%)</title><rect x="24.6" y="181" width="1.0" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="27.64" y="191.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/utils/parallel.Execute (137 samples, 0.01%)</title><rect x="136.9" y="229" width="0.2" height="15.0" fill="rgb(230,117,28)" rx="2" ry="2" />
+<text  x="139.95" y="239.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (3,739 samples, 0.29%)</title><rect x="55.6" y="213" width="3.4" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="58.61" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/linea-monorepo/prover/maths/fft.ditFFT (4,843 samples, 0.38%)</title><rect x="24.4" y="213" width="4.4" height="15.0" fill="rgb(250,211,50)" rx="2" ry="2" />
+<text  x="27.37" y="223.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/ecc/bls12-377/fr.Butterfly (624 samples, 0.05%)</title><rect x="1083.4" y="277" width="0.6" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="1086.44" y="287.5" ></text>
+</g>
+<g >
+<title>github.com/consensys/gnark-crypto/internal/parallel.Execute (268 samples, 0.02%)</title><rect x="74.1" y="277" width="0.2" height="15.0" fill="rgb(240,162,38)" rx="2" ry="2" />
+<text  x="77.06" y="287.5" ></text>
+</g>
+<g >
+<title>runtime.execute (182 samples, 0.01%)</title><rect x="1185.4" y="277" width="0.2" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="1188.40" y="287.5" ></text>
+</g>
+</g>
+</svg>

@@ -15,85 +15,74 @@ func (ctx *mimcCtx) assign(run *wizard.ProverRuntime) {
 		oldState = ctx.oldStates.GetColAssignment(run).IntoRegVecSaveAlloc()
 		blocks   = ctx.blocks.GetColAssignment(run).IntoRegVecSaveAlloc()
 
-		// Initialize slices to hold intermediate results and intermediatePow4
-		// The first entry is left empty for consistency with ctx.intermediateResult
-		// We don't need to assign it because it is assigned already.
-		intermediateRes  = make([][]field.Element, len(ctx.intermediateResult))
-		intermediatePow4 = make([][]field.Element, len(ctx.intermediateResult))
+		// Initialize slices for intermediate results and powers
+		intermediatePrevRes  = make([]field.Element, len(oldState))
+		intermediateCurrRes  = make([]field.Element, len(oldState))
+		intermediatePrevPow4 = make([]field.Element, len(oldState))
+		intermediateCurrPow4 = make([]field.Element, len(oldState))
 	)
 
-	// Initialize intermediateRes and intermediatePow4 with correct lengths
+	// Set initial intermediate result as the blocks
+	copy(intermediatePrevRes, blocks)
 
-	// TODO: @srinathLN7 =>  Possible memory optimization ideas:
-	// Compute inplace - Can we use a single working slice and update it in-place for each round, avoiding the need for
-	// multiple large allocations? Only viable if the algo. does not require all intermediate results to be retained and
-	// check downstream code (e.g., constraints or proof generation) to ensure in-place updates are compatible
-
-	for i := range intermediateRes {
-		// For each intermediate result, create a slice of field.Elements with length numRows
-		intermediateRes[i] = make([]field.Element, len(oldState))
-		intermediatePow4[i] = make([]field.Element, len(oldState))
-	}
-
-	// Set the initial intermediate res as the block itself
-	intermediateRes[0] = blocks
-
-	// Compute intermediate values for each round
+	// Compute and assign intermediate values for each round
 	for i := range ctx.intermediateResult {
-		computeIntermediateValues(i, oldState, intermediateRes, intermediatePow4)
+		computeIntermediateValues(i, oldState, intermediatePrevRes, intermediateCurrRes, intermediatePrevPow4, intermediateCurrPow4)
 
-	}
-
-	// Assign columns
-	for i := range ctx.intermediateResult {
-		// Assign computed values to the runtime
-		if i > 0 {
-			// Skip the first intermediate result
-			// Recall that the first intermediate res is the block itself
+		// Assign computed values with independent copies
+		if i == 0 {
+			// Round 0: Assign intermediatePow4[0] using intermediatePrevPow4
+			run.AssignColumn(
+				ctx.intermediatePow4[0].GetColID(),
+				smartvectors.NewRegular(append([]field.Element{}, intermediatePrevPow4...)),
+			)
+		} else {
+			// Rounds i > 0: Assign intermediateResult[i] and intermediatePow4[i]
 			run.AssignColumn(
 				ctx.intermediateResult[i].GetColID(),
-				smartvectors.NewRegular(intermediateRes[i]),
+				smartvectors.NewRegular(append([]field.Element{}, intermediateCurrRes...)),
+			)
+			run.AssignColumn(
+				ctx.intermediatePow4[i].GetColID(),
+				smartvectors.NewRegular(append([]field.Element{}, intermediateCurrPow4...)),
 			)
 		}
 
-		// Assign intermediatePow4 to the runtime
-		run.AssignColumn(
-			ctx.intermediatePow4[i].GetColID(),
-			smartvectors.NewRegular(intermediatePow4[i]),
-		)
+		// Swap slices for the next round (after round 0)
+		if i > 0 {
+			intermediatePrevRes, intermediateCurrRes = intermediateCurrRes, intermediatePrevRes
+			intermediatePrevPow4, intermediateCurrPow4 = intermediateCurrPow4, intermediatePrevPow4
+		}
 	}
-
 }
 
 // computeIntermediateValues computes intermediate values for the given round
-func computeIntermediateValues(round int, oldState []field.Element, intermediateRes, intermediatePow4 [][]field.Element) {
+func computeIntermediateValues(round int, oldState []field.Element, intermediatePrevRes, intermediateCurrRes, intermediatePrevPow4, intermediateCurrPow4 []field.Element) {
 	parallel.Execute(len(oldState), func(start, stop int) {
 		for k := start; k < stop; k++ {
 			if round == 0 {
 				// For the first round, compute initial intermediatePow4
-				tmp := intermediateRes[0][k]
+				tmp := intermediatePrevRes[k]
 				tmp.Add(&tmp, &mimc.Constants[0]).Add(&tmp, &oldState[k])
-				intermediatePow4[0][k].Square(&tmp).Square(&intermediatePow4[0][k])
+				intermediatePrevPow4[k].Square(&tmp).Square(&intermediatePrevPow4[k])
 			} else {
 				// For subsequent rounds, compute intermediate values based on previous results
 				ark := mimc.Constants[round-1]
 				nextArk := mimc.Constants[round]
 
-				tmp := intermediatePow4[round-1][k]
+				tmp := intermediatePrevPow4[k]
 				tmp.Square(&tmp).Square(&tmp)
 
 				// Compute intermediate result using previous result and oldState
-				intermediateRes[round][k] = intermediateRes[round-1][k]
-				intermediateRes[round][k].Add(&intermediateRes[round][k], &ark).Add(&intermediateRes[round][k], &oldState[k])
-				intermediateRes[round][k].Mul(&intermediateRes[round][k], &tmp)
+				intermediateCurrRes[k].Add(&intermediatePrevRes[k], &ark).Add(&intermediateCurrRes[k], &oldState[k])
+				intermediateCurrRes[k].Mul(&intermediateCurrRes[k], &tmp)
 
 				// Compute intermediatePow4
-				tmp = intermediateRes[round][k]
+				tmp = intermediateCurrRes[k]
 				tmp.Add(&tmp, &nextArk).Add(&tmp, &oldState[k])
 				tmp.Square(&tmp).Square(&tmp)
-				intermediatePow4[round][k] = tmp
+				intermediateCurrPow4[k] = tmp
 			}
 		}
 	})
-
 }
