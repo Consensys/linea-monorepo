@@ -190,15 +190,6 @@ jobs:
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
     secrets: inherit
 
-  smc-test:
-    uses: ./.github/workflows/run-smc-tests.yml
-    secrets: inherit
-
-  codecov-test:
-    needs: [ testing, smc-test ]
-    uses: ./.github/workflows/codecov-external-pr.yml
-    secrets: inherit
-
   run-e2e-tests-geth-tracing:
     needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, filter-commit-changes ]
     # Make this execute for has-changes-requiring-build == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml

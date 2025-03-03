@@ -1,31 +1,30 @@
 name: Smart contracts test
 
 on:
-  workflow_call:
-  # pull_request:
-  #   paths:
-  #     - '.github/workflows/run-smc-tests.yml'
-  #     - 'contracts/**'
-  #     - 'testdata/**'
-  #     - 'prover/**'
-  #     - '!contracts/**/*.md'
-  #     - '!contracts/**/*.mdx'
-  #     - '!testdata/**/*.md'
-  #     - '!prover/**/*.md'
-  #     - '!**/docs/**'
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - '.github/workflows/run-smc-tests.yml'
-  #     - 'contracts/**'
-  #     - 'testdata/**'
-  #     - 'prover/**'
-  #     - '!contracts/**/*.md'
-  #     - '!contracts/**/*.mdx'
-  #     - '!testdata/**/*.md'
-  #     - '!prover/**/*.md'
-  #     - '!**/docs/**'
+  pull_request:
+    paths:
+      - '.github/workflows/run-smc-tests.yml'
+      - 'contracts/**'
+      - 'testdata/**'
+      - 'prover/**'
+      - '!contracts/**/*.md'
+      - '!contracts/**/*.mdx'
+      - '!testdata/**/*.md'
+      - '!prover/**/*.md'
+      - '!**/docs/**'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/run-smc-tests.yml'
+      - 'contracts/**'
+      - 'testdata/**'
+      - 'prover/**'
+      - '!contracts/**/*.md'
+      - '!contracts/**/*.mdx'
+      - '!testdata/**/*.md'
+      - '!prover/**/*.md'
+      - '!**/docs/**'
 
 env:
   GOPROXY: "https://proxy.golang.org"
@@ -86,17 +85,17 @@ jobs:
           path: |
             ./contracts/coverage/coverage-final.json
 
-      # - name: Upload coverage to Codecov
-      #   if: ${{ env.CODECOV_TOKEN != '' }}
-      #   uses: codecov/codecov-action@v5
-      #   with:
-      #     fail_ci_if_error: true
-      #     files: ./contracts/coverage/coverage-final.json
-      #     flags: hardhat
-      #     os: linux
-      #     name: codecov-contracts
-      #     verbose: true
-      #     token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage to Codecov
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          files: ./contracts/coverage/coverage-final.json
+          flags: hardhat
+          os: linux
+          name: codecov-contracts
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   solidity-format-check:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
