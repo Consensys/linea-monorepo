@@ -59,7 +59,7 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 	var (
 		zkevm = GetZkEVM()
 		disc  = &StandardModuleDiscoverer{
-			TargetWeight: 1 << 27,
+			TargetWeight: 1 << 28,
 		}
 	)
 
@@ -67,6 +67,13 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 
 	// The test is to make sure that this function returns
 	disc.Analyze(zkevm.WizardIOP)
+
+	t.Fail()
+
+	modules := disc.ModuleList()
+	for i := range modules {
+		fmt.Printf("module %v: weight: %v\n", disc.modules[i].moduleName, disc.modules[i].Weight())
+	}
 
 	csvFile := files.MustOverwrite("modules.csv")
 	fmt.Fprintf(csvFile, "%v, %v, %v, %v\n", "column", "size-old", "size-new", "module")

@@ -2,6 +2,7 @@ package experiment
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"sync"
 
@@ -100,14 +101,21 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		var (
 			moduleNext = modulesQBased[i]
-			distPrev   = disc.TargetWeight - currWeightSum
-			distNext   = currWeightSum + moduleNext.Weight(0) - disc.TargetWeight
+			weightNext = moduleNext.Weight(0)
+			distPrev   = utils.Abs(disc.TargetWeight - currWeightSum)
+			distNext   = utils.Abs(disc.TargetWeight - currWeightSum - weightNext)
 		)
+
+		if weightNext == 0 {
+			continue
+		}
 
 		if distNext > distPrev {
 			groups = append(groups, []*QueryBasedModule{})
+			currWeightSum = 0
 		}
 
+		currWeightSum += weightNext
 		groups[len(groups)-1] = append(groups[len(groups)-1], moduleNext)
 	}
 
@@ -126,7 +134,7 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		weightTotalInitial := 0
 		// maxNumRows is the number of rows of the "shallowest" submodule of in
 		// group[i]
-		minNumRows := 1
+		minNumRows := math.MaxInt
 
 		// initializes the newSizes using the number of rows from the initial
 		// comp.
@@ -524,6 +532,7 @@ func (module *QueryBasedModule) Weight(withNumRow int) int {
 
 	var (
 		numRow             = module.NumRow()
+		numCol             = module.NumColumn()
 		numOfPlonkInstance = module.nbInstancesOfPlonkCirc
 	)
 
@@ -536,7 +545,17 @@ func (module *QueryBasedModule) Weight(withNumRow int) int {
 	// of having Plonk in wizards in the module.
 	plonkCost := (4*numOfPlonkInstance + 11*module.nbInstancesOfPlonkQuery) * module.nbConstraintsOfPlonkCirc
 
-	return module.size*numRow + plonkCost
+	return numCol*numRow + plonkCost
+}
+
+// Weight returns the total weight of the module
+func (module *StandardModule) Weight() int {
+	weight := 0
+	for i := range module.subModules {
+		numRow := module.newSizes[i]
+		weight += module.subModules[i].Weight(numRow)
+	}
+	return weight
 }
 
 // NumRow returns the number of rows for the module
@@ -547,7 +566,7 @@ func (module *QueryBasedModule) NumRow() int {
 			break
 		}
 	}
-	return 0
+	return module.size
 }
 
 // NumColumn returns the number of columns for the module
