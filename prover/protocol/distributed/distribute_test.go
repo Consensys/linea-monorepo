@@ -1,10 +1,25 @@
 package experiment
 
 import (
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
+
+// TestDistribute attempts to run and compile the distributed protocol.
+func TestDistribute(t *testing.T) {
+
+	var (
+		zkevm = GetZkEVM()
+		disc  = &StandardModuleDiscoverer{
+			TargetWeight: 1 << 28,
+		}
+		_ = Distribute(zkevm.WizardIOP, disc)
+	)
+
+}
 
 // GetZKEVM returns a [zkevm.ZkEvm] with its trace limits inflated so that it
 // can be used as input for the package functions. The zkevm is returned
