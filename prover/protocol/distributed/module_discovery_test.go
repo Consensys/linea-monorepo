@@ -1,10 +1,7 @@
 package experiment
 
 import (
-	"fmt"
 	"testing"
-
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 )
 
 func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
@@ -70,20 +67,11 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 
 	t.Fail()
 
-	modules := disc.ModuleList()
-	for i := range modules {
-		fmt.Printf("module %v: weight: %v\n", disc.modules[i].moduleName, disc.modules[i].Weight())
-	}
-
-	csvFile := files.MustOverwrite("modules.csv")
-	fmt.Fprintf(csvFile, "%v, %v, %v, %v\n", "column", "size-old", "size-new", "module")
-
 	allCols := zkevm.WizardIOP.Columns.AllKeys()
 	for _, colName := range allCols {
 		col := zkevm.WizardIOP.Columns.GetHandle(colName)
 
 		var (
-			oldSize = col.Size()
 			newSize = disc.NewSizeOf(col)
 			module  = disc.ModuleOf(col)
 		)
@@ -95,7 +83,5 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 		if newSize == 0 {
 			t.Errorf("new-size of %v is 0", colName)
 		}
-
-		fmt.Fprintf(csvFile, "%v, %v, %v, %v\n", colName, oldSize, newSize, module)
 	}
 }
