@@ -128,13 +128,68 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *M
 		}
 	}
 
-	moduleLPP.LogDerivativeSum = moduleLPP.InsertLogDerivative(1, ifaces.QueryID("MAIN_LOGDERIVATIVE"), moduleInput.LogDerivativeArgs)
-	moduleLPP.GrandProduct = moduleLPP.InsertGrandProduct(1, ifaces.QueryID("MAIN_GRANDPRODUCT"), moduleInput.GrandProductArgs)
-	moduleLPP.Horner = moduleLPP.InsertHorner(1, ifaces.QueryID("MAIN_HORNER"), moduleInput.HornerArgs)
+	if len(moduleInput.LogDerivativeArgs) > 0 {
 
-	moduleLPP.Wiop.InsertPublicInput(logDerivativeSumPublicInput, accessors.NewLogDerivSumAccessor(moduleLPP.LogDerivativeSum))
-	moduleLPP.Wiop.InsertPublicInput(grandProductPublicInput, accessors.NewGrandProductAccessor(moduleLPP.GrandProduct))
-	moduleLPP.Wiop.InsertPublicInput(hornerPublicInput, accessors.NewFromHornerAccessorFinalValue(&moduleLPP.Horner))
+		moduleLPP.LogDerivativeSum = moduleLPP.InsertLogDerivative(
+			1,
+			ifaces.QueryID("MAIN_LOGDERIVATIVE"),
+			moduleInput.LogDerivativeArgs,
+		)
+
+		moduleLPP.Wiop.InsertPublicInput(
+			logDerivativeSumPublicInput,
+			accessors.NewLogDerivSumAccessor(moduleLPP.LogDerivativeSum),
+		)
+
+	} else {
+
+		moduleLPP.Wiop.InsertPublicInput(
+			logDerivativeSumPublicInput,
+			accessors.NewConstant(field.Zero()),
+		)
+	}
+
+	if len(moduleInput.GrandProductArgs) > 0 {
+
+		moduleLPP.GrandProduct = moduleLPP.InsertGrandProduct(
+			1,
+			ifaces.QueryID("MAIN_GRANDPRODUCT"),
+			moduleInput.GrandProductArgs,
+		)
+
+		moduleLPP.Wiop.InsertPublicInput(
+			grandProductPublicInput,
+			accessors.NewGrandProductAccessor(moduleLPP.GrandProduct),
+		)
+
+	} else {
+
+		moduleLPP.Wiop.InsertPublicInput(
+			grandProductPublicInput,
+			accessors.NewConstant(field.One()),
+		)
+	}
+
+	if len(moduleInput.HornerArgs) > 0 {
+
+		moduleLPP.Horner = moduleLPP.InsertHorner(
+			1,
+			ifaces.QueryID("MAIN_HORNER"),
+			moduleInput.HornerArgs,
+		)
+
+		moduleLPP.Wiop.InsertPublicInput(
+			hornerPublicInput,
+			accessors.NewFromHornerAccessorFinalValue(&moduleLPP.Horner),
+		)
+
+	} else {
+
+		moduleLPP.Wiop.InsertPublicInput(
+			hornerPublicInput,
+			accessors.NewConstant(field.Zero()),
+		)
+	}
 
 	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
 	moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})

@@ -105,10 +105,11 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 		// fmt is as in filterModuleInputs. This is the return of the
 		// function.
 		fmi = FilteredModuleInputs{
-			ModuleName:    mf.Module,
-			ColumnsLPPSet: map[ifaces.ColID]struct{}{},
-			ColumnsSet:    map[ifaces.ColID]struct{}{},
-			Disc:          mf.Disc,
+			ModuleName:         mf.Module,
+			ColumnsLPPSet:      map[ifaces.ColID]struct{}{},
+			ColumnsSet:         map[ifaces.ColID]struct{}{},
+			Disc:               mf.Disc,
+			ColumnsPrecomputed: map[ifaces.ColID]ifaces.ColAssignment{},
 		}
 
 		// columnNames lists the columns in comp.
@@ -118,8 +119,10 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 	)
 
 	for _, columnName := range columnNames {
+
 		col := comp.Columns.GetHandle(columnName)
-		resolvedModule := mf.Disc.ModuleOf(col.(*column.Natural))
+		resolvedModule := ModuleOfColumn(mf.Disc, col)
+
 		if col.Round() != 0 {
 			utils.Panic("all the columns must have a round of 0, colName=%v round=%v", columnName, col.Round())
 		}
@@ -158,8 +161,9 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 			for i := range args {
 				for j := range args[i] {
 					cols := wizardutils.ColumnsOfExpression(args[i][j])
-					for _, col := range cols {
-						fmi.addColumnLPP(col)
+					roots := column.RootsOf(cols, true)
+					for _, root := range roots {
+						fmi.addColumnLPP(root)
 					}
 				}
 			}
@@ -173,8 +177,9 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 			for i := range args {
 				for j := range args[i] {
 					cols := wizardutils.ColumnsOfExpression(args[i][j])
-					for _, col := range cols {
-						fmi.addColumnLPP(col)
+					roots := column.RootsOf(cols, true)
+					for _, root := range roots {
+						fmi.addColumnLPP(root)
 					}
 				}
 			}
@@ -187,10 +192,11 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 			args := mf.FilterHornerParts(q)
 			for i := range args {
 				cols := wizardutils.ColumnsOfExpression(args[i].Coefficient)
-				for _, col := range cols {
-					fmi.addColumnLPP(col)
+				cols = append(cols, args[i].Selector)
+				roots := column.RootsOf(cols, true)
+				for _, root := range roots {
+					fmi.addColumnLPP(root)
 				}
-				fmi.addColumnLPP(args[i].Selector)
 			}
 			fmi.HornerArgs = args
 
@@ -293,12 +299,15 @@ func (m *FilteredModuleInputs) addColumn(col ifaces.Column) bool {
 }
 
 // addLPP adds a column to the LPP part of the module and returns if
-// the column was already present or not.
+// the column was already present or not. The function will skip and
+// return false if called on a [verifiercol.ConstCol] column. If the
+// column is neither a [verifiercol.ConstCol] nor a [column.Natural],
+// the function will panic.
 func (m *FilteredModuleInputs) addColumnLPP(col ifaces.Column) bool {
 
 	nat, isNat := col.(column.Natural)
 	if !isNat {
-		utils.Panic("expected a [%T], got [%T]", column.Natural{}, col)
+		utils.Panic("expected a [%T], got [%T]. name=%v", column.Natural{}, col, col.GetColID())
 	}
 
 	if _, ok := m.ColumnsLPPSet[col.GetColID()]; ok {

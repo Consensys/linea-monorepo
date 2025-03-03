@@ -86,7 +86,7 @@ func CheckLastELemConsistency(comp *wizard.CompiledIOP, isActive ifaces.Column, 
 			column.Shift(isActive, -1),
 			sym.Sub(
 				column.Shift(parentCol, -1),
-				acc,
+				column.Shift(acc, -1),
 			),
 		),
 	)

@@ -108,10 +108,10 @@ func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *TimestampFe
 		sym.Mul(
 			column.Shift(fetcher.FilterFetched, -1),
 			sym.Sub(
-				fetcher.LastBlockID,
+				column.Shift(fetcher.LastBlockID, -1),
 				sym.Add(
 					column.Shift(fetcher.RelBlock, -1),
-					fetcher.FirstBlockID,
+					column.Shift(fetcher.FirstBlockID, -1),
 					-1,
 				),
 			),
@@ -167,7 +167,7 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 		0,
 		ifaces.QueryIDf("%s_%s", name, "LAST_LOCAL"),
 		sym.Sub(
-			fetcher.Last,
+			column.Shift(fetcher.Last, -1),
 			column.Shift(bdc.DataLo, TimestampOffset),
 		),
 	)

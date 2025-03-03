@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
-	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -57,7 +56,10 @@ func (mt *moduleTranslator) TranslateColumn(col ifaces.Column, sizeHint int) ifa
 	case column.Natural:
 		return mt.Wiop.Columns.GetHandle(c.ID)
 	case column.Shifted:
-		return mt.TranslateColumn(c.Parent, sizeHint)
+		return column.Shifted{
+			Parent: mt.TranslateColumn(c.Parent, sizeHint),
+			Offset: c.Offset,
+		}
 	case verifiercol.ConstCol:
 		return verifiercol.NewConstantCol(c.F, sizeHint)
 	default:
@@ -73,38 +75,38 @@ func (mt *moduleTranslator) TranslateExpression(expr *symbolic.Expression) *symb
 
 	sizeHint := NewSizeOfExpr(mt.Disc, expr)
 
-	return expr.ReconstructBottomUp(func(e *symbolic.Expression, children []*symbolic.Expression) *symbolic.Expression {
-
-		switch op := e.Operator.(type) {
-		case symbolic.Variable:
-			switch m := op.Metadata.(type) {
-			case ifaces.Accessor:
-				newAcc := mt.TranslateAccessor(m)
-				return symbolic.NewVariable(newAcc)
-			case ifaces.Column:
-				newCol := mt.TranslateColumn(m, sizeHint)
-				return symbolic.NewVariable(newCol)
-			case coin.Info:
-				newCoin := mt.TranslateCoin(m)
-				return symbolic.NewVariable(newCoin)
-			case variables.X, variables.PeriodicSample:
-				return e
+	return expr.ReconstructBottomUpSingleThreaded(
+		func(e *symbolic.Expression, children []*symbolic.Expression) *symbolic.Expression {
+			switch op := e.Operator.(type) {
+			case symbolic.Variable:
+				switch m := op.Metadata.(type) {
+				case ifaces.Accessor:
+					newAcc := mt.TranslateAccessor(m)
+					return symbolic.NewVariable(newAcc)
+				case ifaces.Column:
+					newCol := mt.TranslateColumn(m, sizeHint)
+					return symbolic.NewVariable(newCol)
+				case coin.Info:
+					newCoin := mt.TranslateCoin(m)
+					return symbolic.NewVariable(newCoin)
+				default:
+					return e.SameWithNewChildren(children)
+				}
+			default:
+				return e.SameWithNewChildren(children)
 			}
-		case symbolic.Constant:
-			return e
-		case symbolic.LinComb, symbolic.Product, symbolic.PolyEval:
-			return e.SameWithNewChildren(children)
-		}
-
-		return e
-	})
+		},
+	)
 }
 
 // TranslateCoin returns the equivalent coin from the new module.
-// The function looks for a coin with the same name and panics if
-// the coin was not found.
-func (mt *moduleTranslator) TranslateCoin(coin coin.Info) coin.Info {
-	return mt.Wiop.Coins.Data(coin.Name)
+// The function looks for a coin with the same name and inserts it
+// as a [coin.FieldFromSeed] if it is not found.
+func (mt *moduleTranslator) TranslateCoin(info coin.Info) coin.Info {
+	if !mt.Wiop.Coins.Exists(info.Name) {
+		mt.Wiop.InsertCoin(1, info.Name, coin.FieldFromSeed)
+	}
+	return mt.Wiop.Coins.Data(info.Name)
 }
 
 // TranslateAccessor returns an equivalent from the new module.
@@ -210,8 +212,9 @@ func (mt *ModuleLPP) InsertGrandProduct(
 ) query.GrandProduct {
 
 	res := query.GrandProduct{
-		ID:    id,
-		Round: round,
+		ID:     id,
+		Round:  round,
+		Inputs: make(map[int]*query.GrandProductInput),
 	}
 
 	for _, numDenPair := range args {

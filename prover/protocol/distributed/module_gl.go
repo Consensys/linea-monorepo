@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -22,7 +23,7 @@ import (
 const (
 	moduleGLReceiveGlobalKey  = "RECEIVE_GLOBAL"
 	moduleGLSendGlobalKey     = "SEND_GLOBAL"
-	globalProviderPublicInput = "GLOBAL_PROVIDER_PUBLIC_INPUT"
+	globalSenderPublicInput   = "GLOBAL_PROVIDER_PUBLIC_INPUT"
 	globalReceiverPublicInput = "GLOBAL_RECEIVER_PUBLIC_INPUT"
 	isFirstPublicInput        = "IS_FIRST_PUBLIC_INPUT"
 	isLastPublicInput         = "IS_LAST_PUBLIC_INPUT"
@@ -172,6 +173,12 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		}
 	}
 
+	// As the columns of the GL and the LPP modules are split between two round although
+	// there is no random coins in the GL module, we need to add at least one dummy coin
+	// otherwise the compiler will throw an error stating that we have several rounds for
+	// the columns and the queries but not for the coins.
+	_ = moduleGL.Wiop.InsertCoin(1, "DUMMY_GL_COIN", coin.Field)
+
 	for _, globalCs := range moduleInput.GlobalConstraints {
 		moduleGL.InsertGlobal(*globalCs)
 	}
@@ -220,8 +227,14 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 
 	moduleGL.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewFromPublicColumn(moduleGL.IsFirst, 0))
 	moduleGL.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewFromPublicColumn(moduleGL.IsLast, 0))
-	moduleGL.Wiop.InsertPublicInput(globalProviderPublicInput, accessors.NewFromPublicColumn(moduleGL.SentValuesGlobalHash, 0))
-	moduleGL.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewFromPublicColumn(moduleGL.ReceivedValuesGlobalHash, 0))
+
+	if len(moduleGL.ReceivedValuesGlobalMap) > 0 {
+		moduleGL.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewFromPublicColumn(moduleGL.SentValuesGlobalHash, 0))
+		moduleGL.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewFromPublicColumn(moduleGL.ReceivedValuesGlobalHash, 0))
+	} else {
+		moduleGL.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewConstant(field.Zero()))
+		moduleGL.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
+	}
 
 	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignSendReceiveGlobal{ModuleGL: moduleGL})
 	moduleGL.Wiop.RegisterVerifierAction(1, &ModuleGLCheckSendReceiveGlobal{ModuleGL: moduleGL})
@@ -365,7 +378,7 @@ func (m *ModuleGL) InsertLocal(q query.LocalConstraint) query.LocalConstraint {
 	// But doing that, would harm the "limitless" feature so it should be avoided
 	// at all costs.
 	if offsetRange.Min < 0 && offsetRange.Max >= 0 {
-		utils.Panic("local constraint has both negative and positive offsets, min=%v max=%v", offsetRange.Min, offsetRange.Max)
+		utils.Panic("local constraint has both negative and positive offsets, min=%v max=%v name=%v", offsetRange.Min, offsetRange.Max, q.ID)
 	}
 
 	if offsetRange.Min < 0 {
@@ -413,7 +426,7 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 				}
 
 				if cnst, isConst := col.(verifiercol.ConstCol); isConst {
-					return sym.NewConstant(cnst)
+					return sym.NewConstant(cnst.F)
 				}
 
 				if _, isVCol := col.(verifiercol.ConstCol); isVCol {
@@ -499,6 +512,10 @@ func (m *ModuleGL) getReceivedValueGlobal(col ifaces.Column, pos int) ifaces.Acc
 // and verifier action needed to assign these columns.
 func (m *ModuleGL) processSendAndReceiveGlobal() {
 
+	if len(m.ReceivedValuesGlobalMap) == 0 {
+		return
+	}
+
 	// The columns are inserted at round 1 because we want it to store informations
 	// about potentially either GL or LPP columns.
 	m.SentValuesGlobalHash = m.Wiop.InsertProof(1, ifaces.ColID("SENT_VALUES_GLOBAL_HASH"), 1)
@@ -536,6 +553,10 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 //
 // The function also assigns the [SentValueGlobal] local openings.
 func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
+
+	if len(a.ReceivedValuesGlobalMap) == 0 {
+		return
+	}
 
 	hashSend := field.Element{}
 	for i := range a.SentValuesGlobal {
@@ -579,6 +600,10 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 // [ModuleGL.ReceivedValuesGlobalHash].
 func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 
+	if len(a.ReceivedValuesGlobalMap) == 0 {
+		return nil
+	}
+
 	var (
 		sendGlobalHash   = a.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
 		hashSendComputed = field.Element{}
@@ -621,6 +646,10 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 // checks the values of [ModuleGL.SentValuesGlobalHash] and
 // [ModuleGL.ReceivedValuesGlobalHash].
 func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+
+	if len(a.ReceivedValuesGlobalMap) == 0 {
+		return
+	}
 
 	var (
 		sendGlobalHash   = a.SentValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
