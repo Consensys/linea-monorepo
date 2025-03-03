@@ -1,21 +1,20 @@
 import { Address, getAddress } from "viem";
 import { configSchema, Config } from "./config.schema";
 
+export enum BridgeProvider {
+  NATIVE = "NATIVE",
+  CCTP = "CCTP",
+}
+
 export interface TokenInfo {
   name: string;
   symbol: string;
   decimals: number;
-  type: TokenType;
   L1: Address;
   L2: Address;
   image: string;
   isDefault: boolean;
-}
-
-export enum TokenType {
-  ETH,
-  USDC,
-  ERC20,
+  bridgeProvider: BridgeProvider;
 }
 
 export enum BridgeType {

@@ -1,16 +1,15 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React from "react";
 import Image from "next/image";
-import { FieldValues, UseFormClearErrors, UseFormSetValue } from "react-hook-form";
-import { useBlockNumber } from "wagmi";
+import { FieldValues, UseFormClearErrors, useFormContext, UseFormSetValue } from "react-hook-form";
 import { formatBalance } from "@/utils/format";
-import { TokenInfo, TokenType } from "@/config/config";
-import { useTokenBalance } from "@/hooks/useTokenBalance";
+import { TokenInfo } from "@/config/config";
 import styles from "./token-details.module.scss";
 import { useTokenStore } from "@/stores/tokenStoreProvider";
 import { useChainStore } from "@/stores/chainStore";
 import { CurrencyOption } from "@/stores/configStore";
+import { isEth } from "@/utils/tokens";
 
 interface TokenDetailsProps {
   token: TokenInfo;
@@ -32,16 +31,10 @@ export default function TokenDetails({
   const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
   const fromChain = useChainStore.useFromChain();
 
-  const tokenNotFromCurrentLayer = fromChain?.layer && !token[fromChain?.layer] && token.type !== TokenType.ETH;
+  const tokenNotFromCurrentLayer = fromChain?.layer && !token[fromChain?.layer] && !isEth(token);
 
-  const { data: blockNumber } = useBlockNumber({ watch: true });
-  const { balance, refetch } = useTokenBalance(token[fromChain.layer], token?.decimals);
-
-  useEffect(() => {
-    if (blockNumber && blockNumber % 5n === 0n) {
-      refetch();
-    }
-  }, [blockNumber, refetch]);
+  const { watch } = useFormContext();
+  const balance = watch("balance");
 
   return (
     <button

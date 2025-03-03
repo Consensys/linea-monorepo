@@ -5,7 +5,7 @@ export type BridgeForm = {
   amount: string;
   balance: string;
   submit: string;
-  claim: string;
+  claim: "auto" | "manual";
   minFees: bigint;
   token: TokenInfo;
   bridgingAllowed: boolean;

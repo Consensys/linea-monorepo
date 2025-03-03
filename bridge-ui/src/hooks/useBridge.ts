@@ -11,7 +11,7 @@ import { BridgeError, BridgeErrors, Transaction } from "@/models";
 import { FieldErrors, FieldValues } from "react-hook-form";
 import { wagmiConfig } from "@/config";
 import { useChainStore } from "@/stores/chainStore";
-import useMinimumFee from "./useMinimumFee";
+import useMinimumFee from "./fees/useMinimumFee";
 import { isEmptyObject } from "@/utils/utils";
 
 type UseBridge = {

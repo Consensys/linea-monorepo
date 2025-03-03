@@ -1,6 +1,7 @@
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
-import { NetworkTokens, TokenInfo, TokenType } from "@/config";
+import { NetworkTokens, TokenInfo } from "@/config";
+import { BridgeProvider } from "@/config/config";
 
 export const defaultTokensConfig: NetworkTokens = {
   MAINNET: [
@@ -8,11 +9,11 @@ export const defaultTokensConfig: NetworkTokens = {
       name: "Ether",
       symbol: "ETH",
       decimals: 18,
-      type: TokenType.ETH,
       L1: "0x0000000000000000000000000000000000000000",
       L2: "0x0000000000000000000000000000000000000000",
       image: "https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png",
       isDefault: true,
+      bridgeProvider: BridgeProvider.NATIVE,
     },
   ],
   SEPOLIA: [
@@ -20,11 +21,11 @@ export const defaultTokensConfig: NetworkTokens = {
       name: "Ether",
       symbol: "ETH",
       decimals: 18,
-      type: TokenType.ETH,
       L1: "0x0000000000000000000000000000000000000000",
       L2: "0x0000000000000000000000000000000000000000",
       image: "https://s2.coinmarketcap.com/static/img/coins/64x64/1027.png",
       isDefault: true,
+      bridgeProvider: BridgeProvider.NATIVE,
     },
   ],
 };

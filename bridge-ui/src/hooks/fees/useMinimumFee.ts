@@ -13,9 +13,9 @@ const useMinimumFee = () => {
     address: fromChain.messageServiceAddress,
     abi: MessageService.abi,
     functionName: "minimumFeeInWei",
-    chainId: fromChain?.id,
+    chainId: fromChain.id,
     query: {
-      enabled: !!fromChain.messageServiceAddress && !!fromChain?.id && !!isL2Network,
+      enabled: !!isL2Network,
     },
   });
 

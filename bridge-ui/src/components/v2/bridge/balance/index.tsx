@@ -3,7 +3,6 @@ import { useEffect } from "react";
 import { useBlockNumber } from "wagmi";
 import { formatBalance } from "@/utils/format";
 import { useFormContext } from "react-hook-form";
-import { useChainStore } from "@/stores/chainStore";
 import { useTokenBalance } from "@/hooks/useTokenBalance";
 import styles from "./balance.module.scss";
 import { useSelectedToken } from "@/hooks/useSelectedToken";
@@ -11,13 +10,11 @@ import { useSelectedToken } from "@/hooks/useSelectedToken";
 export function Balance() {
   // Context
   const token = useSelectedToken();
-  const fromChain = useChainStore.useFromChain();
 
-  const tokenAddress = fromChain && token?.[fromChain.layer];
   // Wagmi
   const queryClient = useQueryClient();
   const { data: blockNumber } = useBlockNumber({ watch: true });
-  const { balance, queryKey } = useTokenBalance(tokenAddress, token.decimals);
+  const { balance, queryKey } = useTokenBalance(token);
 
   // Form
   const { setValue } = useFormContext();

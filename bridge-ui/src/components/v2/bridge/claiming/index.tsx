@@ -10,6 +10,7 @@ import { BridgeType } from "@/config/config";
 import { useChainStore } from "@/stores/chainStore";
 import ReceivedAmount from "./received-amount";
 import Fees from "./fees";
+import { parseUnits } from "viem";
 
 export type BridgeModeOption = {
   value: BridgeType;
@@ -20,12 +21,16 @@ export type BridgeModeOption = {
 export default function Claiming() {
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
-  const { watch, setValue } = useFormContext<BridgeForm>();
+  const { watch, formState } = useFormContext<BridgeForm>();
 
   const [loading, setLoading] = useState<boolean>(false);
   const [showAdvancedSettingsModal, setShowAdvancedSettingsModal] = useState<boolean>(false);
 
-  const [amount, mode] = watch(["amount", "mode"]);
+  const [amount, balance, token] = watch(["amount", "balance", "token"]);
+
+  const originChainBalanceTooLow =
+    formState.errors?.amount?.message !== undefined ||
+    parseUnits(balance, token.decimals) < parseUnits(amount, token.decimals);
 
   useEffect(() => {
     setLoading(true);
@@ -36,7 +41,8 @@ export default function Claiming() {
     return () => clearTimeout(timeout);
   }, [amount]);
 
-  if (!amount) return null;
+  if (!amount || parseFloat(amount) <= 0) return null;
+  if (originChainBalanceTooLow) return null;
 
   return (
     <div className={styles["wrapper"]}>
@@ -63,14 +69,6 @@ export default function Claiming() {
             <ReceivedAmount />
           </div>
           <Fees />
-          {mode === BridgeType.NATIVE ? (
-            <div className={styles.bottom}>
-              Can&apos;t wait?{" "}
-              <button type="button" onClick={() => setValue("mode", BridgeType.ACROSS)}>
-                Speed up
-              </button>
-            </div>
-          ) : null}
         </div>
       )}
       <AdvancedSettings

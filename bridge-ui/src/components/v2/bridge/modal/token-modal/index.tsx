@@ -2,10 +2,10 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { isAddress, getAddress, Address, zeroAddress } from "viem";
-import { TokenInfo, TokenType } from "@/config/config";
+import { FieldValues, UseFormClearErrors, UseFormSetValue } from "react-hook-form";
+import { TokenInfo } from "@/config/config";
 import { safeGetAddress } from "@/utils/format";
 import { useChainStore } from "@/stores/chainStore";
-import { FieldValues, UseFormClearErrors, UseFormSetValue } from "react-hook-form";
 import useTokenPrices from "@/hooks/useTokenPrices";
 import { isEmptyObject } from "@/utils/utils";
 import Modal from "@/components/v2/modal";
@@ -16,6 +16,7 @@ import { useDevice } from "@/hooks/useDevice";
 import { useTokens } from "@/hooks/useTokens";
 import { useTokenStore } from "@/stores/tokenStoreProvider";
 import { useConfigStore } from "@/stores/configStore";
+import { isEth } from "@/utils/tokens";
 
 interface TokenModalProps {
   setValue: UseFormSetValue<FieldValues>;
@@ -40,7 +41,7 @@ export default function TokenModal({ setValue, clearErrors, isModalOpen, onClose
     return tokensList.filter((token: TokenInfo) => {
       const tokenAddress = fromChain?.layer ? token[fromChain.layer] : undefined;
       return (
-        (tokenAddress || token.type === TokenType.ETH) &&
+        (tokenAddress || isEth(token)) &&
         (token.name.toLowerCase().includes(query) ||
           token.symbol.toLowerCase().includes(query) ||
           (tokenAddress && safeGetAddress(tokenAddress)?.toLowerCase().includes(query)))

@@ -6,6 +6,7 @@ import { NetworkTokens, TokenInfo, TokenType, wagmiConfig } from "@/config";
 import { Token } from "@/models/token";
 import { defaultTokensConfig } from "@/stores/tokenStore";
 import { SupportedCurrencies } from "@/stores/configStore";
+import { BridgeProvider } from "@/config/config";
 
 interface CoinGeckoToken {
   id: string;
@@ -184,7 +185,7 @@ export async function validateTokenURI(url: string): Promise<string> {
 }
 
 export async function formatToken(token: Token): Promise<TokenInfo> {
-  const tokenType = token.symbol === USDC_TYPE ? TokenType.USDC : TokenType.ERC20;
+  const bridgeProvider = token.symbol === USDC_TYPE ? BridgeProvider.CCTP : BridgeProvider.NATIVE;
 
   const logoURI = await validateTokenURI(token.logoURI);
 
@@ -192,11 +193,11 @@ export async function formatToken(token: Token): Promise<TokenInfo> {
     name: token.name,
     symbol: token.symbol,
     decimals: token.decimals,
-    type: tokenType,
     L1: token?.extension?.rootAddress ?? null,
     L2: token.address,
     image: logoURI,
     isDefault: true,
+    bridgeProvider,
   };
 }
 

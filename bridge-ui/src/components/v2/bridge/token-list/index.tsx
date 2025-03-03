@@ -6,15 +6,13 @@ import CaretDownIcon from "@/assets/icons/caret-down.svg";
 import styles from "./token-list.module.scss";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
-import { useSelectedToken } from "@/hooks/useSelectedToken";
 
 export default function TokenList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const token = useSelectedToken();
-
   const { isConnected } = useAccount();
-  const { setValue, clearErrors } = useFormContext();
+  const { setValue, clearErrors, watch } = useFormContext();
+  const token = watch("token");
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);

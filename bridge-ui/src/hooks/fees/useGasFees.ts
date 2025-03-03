@@ -1,0 +1,76 @@
+import { Address, encodeFunctionData } from "viem";
+import { TokenInfo } from "@/config";
+import TokenBridge from "@/abis/TokenBridge.json";
+import MessageService from "@/abis/MessageService.json";
+import { Chain } from "@/types";
+import useFeeData from "./useFeeData";
+import { useEstimateGas } from "wagmi";
+import { isEth } from "@/utils/tokens";
+
+type UseGasFeesProps = {
+  address?: Address;
+  recipient: Address;
+  token: TokenInfo;
+  fromChain: Chain;
+  amount: bigint;
+  minimumFee: bigint;
+};
+
+const useGasFees = ({ address, recipient, amount, token, fromChain, minimumFee }: UseGasFeesProps) => {
+  const { feeData } = useFeeData(fromChain.id);
+
+  const isEther = isEth(token);
+
+  const eth = useEstimateGas({
+    chainId: fromChain.id,
+    account: address,
+    value: minimumFee + amount,
+    to: fromChain.messageServiceAddress,
+    data: encodeFunctionData({
+      abi: MessageService.abi,
+      functionName: "sendMessage",
+      args: [recipient, minimumFee, "0x"],
+    }),
+    query: {
+      enabled: !!isEther && !!(amount > 0n) && !!address && !!recipient,
+    },
+  });
+
+  const erc20 = useEstimateGas({
+    chainId: fromChain.id,
+    account: address,
+    value: minimumFee,
+    to: fromChain.tokenBridgeAddress,
+    data: encodeFunctionData({
+      abi: TokenBridge.abi,
+      functionName: "bridgeToken",
+      args: [token[fromChain.layer], amount, recipient],
+    }),
+    query: {
+      enabled: !isEther && !!(amount > 0n) && !!address && !!recipient,
+    },
+  });
+
+  const isError = eth.isError || erc20.isError;
+  const isLoading = eth.isLoading || erc20.isLoading;
+  const gasLimit = isEther ? eth.data : erc20.data;
+
+  if (isLoading) {
+    return null;
+  }
+
+  return {
+    gasFees: gasLimit && feeData ? gasLimit * feeData : null,
+    isError,
+    isLoading,
+    refetch: () => {
+      if (isEth(token)) {
+        eth.refetch();
+      } else {
+        erc20.refetch();
+      }
+    },
+  };
+};
+
+export default useGasFees;

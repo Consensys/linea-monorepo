@@ -19,20 +19,16 @@ export default function ReceivedAmount() {
       <p className={styles.crypto}>
         {amount} {token.symbol}
       </p>
-      <p className={styles.amount}>
-        {tokenPrices?.[token[fromChain.layer].toLowerCase()] &&
-        tokenPrices?.[token[fromChain.layer].toLowerCase()] > 0 ? (
-          <>
+      {tokenPrices?.[token[fromChain.layer].toLowerCase()] &&
+        tokenPrices?.[token[fromChain.layer].toLowerCase()] > 0 && (
+          <p className={styles.amount}>
             {(Number(amount) * tokenPrices?.[token[fromChain.layer].toLowerCase()]).toLocaleString("en-US", {
               style: "currency",
               currency: currency.label,
               maximumFractionDigits: 4,
             })}
-          </>
-        ) : (
-          ""
+          </p>
         )}
-      </p>
     </div>
   );
 }

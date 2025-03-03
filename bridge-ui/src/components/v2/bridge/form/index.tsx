@@ -1,7 +1,7 @@
 import ConnectButton from "@/components/v2/connect-button";
 import FaqHelp from "@/components/v2/bridge/faq-help";
 import TokenList from "@/components/v2/bridge/token-list";
-import { useAccount } from "wagmi";
+import { useAccount, useWatchBlockNumber } from "wagmi";
 import { Amount } from "@/components/v2/bridge/amount";
 import SwapChain from "@/components/v2/bridge/swap-chain";
 import FromChain from "@/components/v2/bridge/from-chain";
@@ -11,40 +11,48 @@ import styles from "./bridge-form.module.scss";
 import { Submit } from "@/components/v2/bridge/submit";
 import TransactionPaperIcon from "@/assets/icons/transaction-paper.svg";
 import Setting from "@/components/v2/setting";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DestinationAddress } from "../destination-address";
 import Button from "../../ui/button";
 import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
-import { FormProvider, useForm } from "react-hook-form";
-import { BridgeForm as BridgeFormModel } from "@/models";
-import { BridgeType } from "@/config/config";
-import { useTokens } from "@/hooks/useTokens";
+import { useFormContext } from "react-hook-form";
+import { useTokenBalance } from "@/hooks/useTokenBalance";
 import { useChainStore } from "@/stores/chainStore";
 import { ChainLayer } from "@/types";
+import { BridgeForm as BridgeFormModel } from "@/models";
 
 export default function BridgeForm() {
-  const { isConnected } = useAccount();
   const [isDestinationAddressOpen, setIsDestinationAddressOpen] = useState(false);
   const setIsTransactionHistoryOpen = useNativeBridgeNavigationStore.useSetIsTransactionHistoryOpen();
   const setIsBridgeOpen = useNativeBridgeNavigationStore.useSetIsBridgeOpen();
-  const tokens = useTokens();
-  const fromChain = useChainStore.useFromChain();
 
-  const methods = useForm<BridgeFormModel>({
-    defaultValues: {
-      token: tokens[0],
-      claim: fromChain?.layer === ChainLayer.L1 ? "auto" : "manual",
-      amount: "",
-      minFees: 0n,
-      gasFees: 0n,
-      bridgingAllowed: false,
-      balance: "0",
-      mode: BridgeType.NATIVE,
+  const { isConnected, address } = useAccount();
+  const fromChain = useChainStore.useFromChain();
+  const { watch, setValue } = useFormContext<BridgeFormModel>();
+  const token = watch("token");
+  const { balance, refetch } = useTokenBalance(token);
+
+  useWatchBlockNumber({
+    onBlockNumber() {
+      refetch();
     },
+    poll: true,
+    pollingInterval: 20_000,
   });
 
+  useEffect(() => {
+    setValue("balance", balance);
+    if (address) {
+      setValue("destinationAddress", address);
+    }
+
+    if (fromChain.layer === ChainLayer.L2) {
+      setValue("claim", "manual");
+    }
+  }, [balance, address, setValue]);
+
   return (
-    <FormProvider {...methods}>
+    <>
       <form>
         <div className={styles["form-wrapper"]}>
           <div className={styles.headline}>
@@ -91,6 +99,6 @@ export default function BridgeForm() {
         </div>
       </form>
       <FaqHelp />
-    </FormProvider>
+    </>
   );
 }

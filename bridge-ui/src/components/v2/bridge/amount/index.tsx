@@ -1,57 +1,27 @@
-import { ChangeEvent, useCallback, useEffect } from "react";
+import { ChangeEvent, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { useFormContext } from "react-hook-form";
-import { parseUnits } from "viem";
-import { TokenType } from "@/config";
 import { useIsLoggedIn } from "@/lib/dynamic";
 import useTokenPrices from "@/hooks/useTokenPrices";
 import { useChainStore } from "@/stores/chainStore";
-
 import styles from "./amount.module.scss";
-import { useSelectedToken } from "@/hooks/useSelectedToken";
 import { useConfigStore } from "@/stores/configStore";
 
 const AMOUNT_REGEX = "^[0-9]*[.,]?[0-9]*$";
 const MAX_AMOUNT_CHAR = 20;
 
 export function Amount() {
-  const token = useSelectedToken();
   const currency = useConfigStore((state) => state.currency);
   const fromChain = useChainStore.useFromChain();
-  const tokenAddress = token[fromChain.layer];
 
   const { address } = useAccount();
   const isLoggedIn = useIsLoggedIn();
 
-  const { setValue, getValues, setError, clearErrors, trigger, watch } = useFormContext();
-  const watchBalance = watch("balance");
-  const [amount, gasFees, minFees] = getValues(["amount", "gasFees", "minFees"]);
+  const { setValue, getValues, trigger } = useFormContext();
+  const [amount, token] = getValues(["amount", "token"]);
+  const tokenAddress = token[fromChain.layer];
 
   const { data: tokenPrices } = useTokenPrices([tokenAddress], fromChain.id);
-
-  const compareAmountBalance = useCallback(
-    (_amount: string) => {
-      if (!token) {
-        return;
-      }
-      const amountToCompare =
-        token.type === TokenType.ETH
-          ? parseUnits(_amount, token.decimals) + gasFees + minFees
-          : parseUnits(_amount, token.decimals);
-
-      const balanceToCompare = parseUnits(watchBalance, token.decimals);
-
-      if (amountToCompare > balanceToCompare) {
-        setError("amount", {
-          type: "custom",
-          message: "Not enough funds (Incl fees)",
-        });
-      } else {
-        clearErrors("amount");
-      }
-    },
-    [token, gasFees, minFees, clearErrors, setError, watchBalance],
-  );
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     const { key } = event;
@@ -91,21 +61,17 @@ export function Amount() {
         setValue("amount", amount);
       }
     }
-    compareAmountBalance(amount);
   };
 
   useEffect(() => {
     if (amount) {
       trigger(["amount"]);
-      compareAmountBalance(amount);
     }
-  }, [amount, trigger, compareAmountBalance]);
+  }, [amount, trigger]);
 
-  // Detect when changing account
   useEffect(() => {
     setValue("amount", "");
-    clearErrors("amount");
-  }, [address, setValue, clearErrors]);
+  }, [address, setValue]);
 
   return (
     <div className={styles["amount"]}>
