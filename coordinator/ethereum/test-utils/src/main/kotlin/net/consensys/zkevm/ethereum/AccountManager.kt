@@ -3,11 +3,11 @@ package net.consensys.zkevm.ethereum
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.datetime.Clock
+import linea.kotlin.toULong
 import linea.web3j.waitForTxReceipt
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.jsonrpc.JsonRpcErrorResponseException
 import net.consensys.linea.testing.filesystem.getPathTo
-import net.consensys.toULong
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
@@ -229,7 +229,7 @@ object L1AccountManager : AccountManager by WhaleBasedAccountManager(
 
 object L2AccountManager : AccountManager by WhaleBasedAccountManager(
   web3jClient = Web3jClientManager.l2Client,
-  genesisFile = getPathTo(System.getProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis-PoA.json")),
+  genesisFile = getPathTo(System.getProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis-PoA-geth.json")),
   log = LogManager.getLogger(L2AccountManager::class.java)
 )
 

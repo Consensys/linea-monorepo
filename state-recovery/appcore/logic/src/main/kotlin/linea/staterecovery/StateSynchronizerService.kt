@@ -1,11 +1,10 @@
 package linea.staterecovery
 
-import build.linea.domain.EthLogEvent
 import io.vertx.core.Vertx
-import net.consensys.encodeHex
-import net.consensys.linea.BlockNumberAndHash
-import net.consensys.linea.BlockParameter
-import net.consensys.linea.CommonDomainFunctions
+import linea.domain.BlockParameter
+import linea.domain.CommonDomainFunctions
+import linea.kotlin.encodeHex
+import linea.staterecovery.datafetching.SubmissionsFetchingTask
 import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -14,6 +13,7 @@ import kotlin.time.Duration
 
 class StateSynchronizerService(
   private val vertx: Vertx,
+  private val l1EarliestBlockWithFinalizationThatSupportRecovery: BlockParameter,
   private val elClient: ExecutionLayerClient,
   private val submissionEventsClient: LineaRollupSubmissionEventsClient,
   private val blobsFetcher: BlobFetcher,
@@ -21,132 +21,143 @@ class StateSynchronizerService(
   private val blobDecompressor: BlobDecompressorAndDeserializer,
   private val blockImporterAndStateVerifier: BlockImporterAndStateVerifier,
   private val pollingInterval: Duration,
+  private val debugForceSyncStopBlockNumber: ULong?,
   private val log: Logger = LogManager.getLogger(StateSynchronizerService::class.java)
 ) : PeriodicPollingService(
   vertx = vertx,
   log = log,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds
 ) {
-  private data class DataSubmittedEventAndBlobs(
-    val ethLogEvent: EthLogEvent<DataSubmittedV3>,
-    val blobs: List<ByteArray>
-  )
-
-  var lastSuccessfullyProcessedFinalization: EthLogEvent<DataFinalizedV3>? = null
   var stateRootMismatchFound: Boolean = false
     private set(value) {
       field = value
     }
+  lateinit var blobsFetcherTask: SubmissionsFetchingTask
 
-  private fun findNextFinalization(): SafeFuture<EthLogEvent<DataFinalizedV3>?> {
-    return if (lastSuccessfullyProcessedFinalization != null) {
-      submissionEventsClient
-        .findDataFinalizedEventByStartBlockNumber(
-          l2StartBlockNumberInclusive = lastSuccessfullyProcessedFinalization!!.event.endBlockNumber + 1UL
+  @get:Synchronized
+  @set:Synchronized
+  private var lookbackHashesInitalized = false
+
+  override fun start(): SafeFuture<Unit> {
+    log.debug("starting L1 -> ExecutionLayer state importer service")
+    return this.elClient
+      .lineaGetStateRecoveryStatus()
+      .thenCompose { status ->
+        val l2StartBlockNumberToFetchInclusive = startBlockToFetchFromL1(
+          headBlockNumber = status.headBlockNumber,
+          recoveryStartBlockNumber = status.stateRecoverStartBlockNumber,
+          lookbackWindow = 256UL
         )
-    } else {
-      elClient.getBlockNumberAndHash(blockParameter = BlockParameter.Tag.LATEST)
-        .thenCompose { headBlock ->
-          // 1st, assuming head matches a prev finalization,
-          val nextBlockToImport = headBlock.number + 1UL
-          submissionEventsClient
-            .findDataFinalizedEventByStartBlockNumber(l2StartBlockNumberInclusive = nextBlockToImport)
-            .thenCompose { finalizationEvent ->
-              if (finalizationEvent != null) {
-                SafeFuture.completedFuture(finalizationEvent)
-              } else {
-                // 2nd: otherwise, local head may be in between, let's find corresponding finalization
-                submissionEventsClient
-                  .findDataFinalizedEventContainingBlock(l2BlockNumber = nextBlockToImport)
-              }
-            }
-        }
-    }
+
+        this.blobsFetcherTask = SubmissionsFetchingTask(
+          vertx = vertx,
+          l1EarliestBlockWithFinalizationThatSupportRecovery = l1EarliestBlockWithFinalizationThatSupportRecovery,
+          l1PollingInterval = pollingInterval,
+          l2StartBlockNumberToFetchInclusive = l2StartBlockNumberToFetchInclusive,
+          submissionEventsClient = submissionEventsClient,
+          blobsFetcher = blobsFetcher,
+          transactionDetailsClient = transactionDetailsClient,
+          blobDecompressor = blobDecompressor,
+          submissionEventsQueueLimit = 10,
+          compressedBlobsQueueLimit = 10,
+          targetDecompressedBlobsQueueLimit = 10,
+          debugForceSyncStopBlockNumber = debugForceSyncStopBlockNumber
+        )
+        blobsFetcherTask.start()
+      }
+      .thenCompose { initLookbackHashes() }
+      .thenCompose { super.start() }
+      .whenException {
+        log.error("failed to start L1 -> ExecutionLayer state importer service", it)
+      }.whenSuccess {
+        log.debug("started L1 -> ExecutionLayer state importer service")
+      }
   }
 
-  override fun action(): SafeFuture<Any?> {
+  override fun action(): SafeFuture<*> {
     if (stateRootMismatchFound) {
-      return SafeFuture.failedFuture(IllegalStateException("state root mismatch found cannot continue"))
+      return SafeFuture.failedFuture<Unit>(IllegalStateException("state root mismatch found cannot continue"))
     }
 
-    return findNextFinalization()
-      .thenCompose { nextFinalization ->
-        if (nextFinalization == null) {
-          // nothing to do for now
-          SafeFuture.completedFuture(null)
-        } else {
-          submissionEventsClient
-            .findDataSubmittedV3EventsUntilNextFinalization(
-              l2StartBlockNumberInclusive = nextFinalization.event.startBlockNumber
-            )
-        }
-      }
-      .thenCompose { submissionEvents ->
-        if (submissionEvents == null) {
-          SafeFuture.completedFuture("No new events")
-        } else {
-          getBlobsForEvents(submissionEvents.dataSubmittedEvents)
-            .thenCompose { dataSubmissionsWithBlobs ->
-              updateNodeWithBlobsAndVerifyState(dataSubmissionsWithBlobs, submissionEvents.dataFinalizedEvent.event)
-            }
-            .thenApply {
-              lastSuccessfullyProcessedFinalization = submissionEvents.dataFinalizedEvent
-            }
-        }
-      }
+    return importNextFinalizationAvailable()
   }
 
-  private fun getBlobsForEvents(
-    events: List<EthLogEvent<DataSubmittedV3>>
-  ): SafeFuture<List<DataSubmittedEventAndBlobs>> {
-    return SafeFuture.collectAll(
-      events
-        .map { dataSubmittedEvent ->
-          transactionDetailsClient
-            .getBlobVersionedHashesByTransactionHash(dataSubmittedEvent.log.transactionHash)
-            .thenCompose(blobsFetcher::fetchBlobsByHash)
-            .thenApply { blobs -> DataSubmittedEventAndBlobs(dataSubmittedEvent, blobs) }
-        }.stream()
+  fun initLookbackHashes(): SafeFuture<Unit> {
+    if (lookbackHashesInitalized) {
+      return SafeFuture.completedFuture(Unit)
+    }
+    val loobackHasheFetcher = LookBackBlockHashesFetcher(
+      vertx = vertx,
+      elClient = elClient,
+      submissionsFetcher = blobsFetcherTask
     )
-  }
 
-  private fun updateNodeWithBlobsAndVerifyState(
-    dataSubmissions: List<DataSubmittedEventAndBlobs>,
-    dataFinalizedV3: DataFinalizedV3
-  ): SafeFuture<BlockNumberAndHash> {
-    return blobDecompressor
-      .decompress(
-        startBlockNumber = dataFinalizedV3.startBlockNumber,
-        blobs = dataSubmissions.flatMap { it.blobs }
-      )
-      .thenCompose(this::filterOutBlocksAlreadyImported)
-      .thenCompose { decompressedBlocks: List<BlockFromL1RecoveredData> ->
-        val blockInterval = CommonDomainFunctions.blockIntervalString(
-          decompressedBlocks.first().header.blockNumber,
-          decompressedBlocks.last().header.blockNumber
-        )
-        log.debug("importing blocks={} from finalization={}", blockInterval, dataFinalizedV3.intervalString())
-        blockImporterAndStateVerifier
-          .importBlocks(decompressedBlocks)
-          .thenCompose { importResult ->
-            log.debug("imported blocks={}", dataFinalizedV3.intervalString())
-            assertStateMatches(importResult, dataFinalizedV3)
-          }
-          .thenApply {
-            BlockNumberAndHash(
-              number = decompressedBlocks.last().header.blockNumber,
-              hash = decompressedBlocks.last().header.blockHash
-            )
-          }
+    return this.elClient
+      .lineaGetStateRecoveryStatus()
+      .thenCompose(loobackHasheFetcher::getLookBackHashes)
+      .thenApply { lookbackHashes ->
+        elClient.addLookbackHashes(lookbackHashes)
+        lookbackHashesInitalized = true
       }
   }
 
-  private fun filterOutBlocksAlreadyImported(
+  private fun importNextFinalizationAvailable(): SafeFuture<*> {
+    val nexFinalization = blobsFetcherTask
+      .peekNextFinalizationReadyToImport()
+      ?: run {
+        log.trace("no finalization ready to import")
+        return SafeFuture.completedFuture(Unit)
+      }
+
+    return filterOutBlocksAlreadyImportedAndBeyondStopSync(nexFinalization.data)
+      .thenCompose { blocksToImport ->
+        if (blocksToImport.isEmpty()) {
+          log.debug(
+            "no blocks to import for finalization={}",
+            nexFinalization.submissionEvents.dataFinalizedEvent.event
+          )
+          return@thenCompose SafeFuture.completedFuture(Unit)
+        }
+
+        importBlocksAndAssertStateroot(
+          decompressedBlocksToImport = blocksToImport,
+          dataFinalizedV3 = nexFinalization.submissionEvents.dataFinalizedEvent.event
+        )
+      }
+      .thenPeek {
+        blobsFetcherTask.pruneQueueForElementsUpToInclusive(
+          nexFinalization.submissionEvents.dataFinalizedEvent.event.endBlockNumber
+        )
+      }
+  }
+
+  private fun importBlocksAndAssertStateroot(
+    decompressedBlocksToImport: List<BlockFromL1RecoveredData>,
+    dataFinalizedV3: DataFinalizedV3
+  ): SafeFuture<Unit> {
+    val blockInterval = CommonDomainFunctions.blockIntervalString(
+      decompressedBlocksToImport.first().header.blockNumber,
+      decompressedBlocksToImport.last().header.blockNumber
+    )
+    log.debug("importing blocks={} from finalization={}", blockInterval, dataFinalizedV3.intervalString())
+    return blockImporterAndStateVerifier
+      .importBlocks(decompressedBlocksToImport)
+      .thenCompose { importResult ->
+        log.debug("imported blocks={}", dataFinalizedV3.intervalString())
+        assertStateMatches(importResult, dataFinalizedV3)
+      }
+  }
+
+  private fun filterOutBlocksAlreadyImportedAndBeyondStopSync(
     blocks: List<BlockFromL1RecoveredData>
   ): SafeFuture<List<BlockFromL1RecoveredData>> {
     return elClient.getBlockNumberAndHash(blockParameter = BlockParameter.Tag.LATEST)
       .thenApply { headBlock ->
-        blocks.dropWhile { it.header.blockNumber <= headBlock.number }
+        var filteredBlocks = blocks.dropWhile { it.header.blockNumber <= headBlock.number }
+        if (debugForceSyncStopBlockNumber != null) {
+          filteredBlocks = filteredBlocks.takeWhile { it.header.blockNumber <= debugForceSyncStopBlockNumber }
+        }
+        filteredBlocks
       }
   }
 
@@ -154,26 +165,37 @@ class StateSynchronizerService(
     importResult: ImportResult,
     finalizedV3: DataFinalizedV3
   ): SafeFuture<Unit> {
-    return if (importResult.zkStateRootHash.contentEquals(finalizedV3.finalStateRootHash)) {
+    if (importResult.blockNumber != finalizedV3.endBlockNumber) {
       log.info(
-        "state recovered up to block={} zkStateRootHash={} finalization={}",
+        "cannot compare stateroot: last imported block={} finalization={} debugForceSyncStopBlockNumber={}",
         importResult.blockNumber,
-        importResult.zkStateRootHash.encodeHex(),
-        finalizedV3.intervalString()
+        finalizedV3.intervalString(),
+        debugForceSyncStopBlockNumber
       )
-      SafeFuture.completedFuture(Unit)
+      if (importResult.blockNumber == debugForceSyncStopBlockNumber) {
+        // this means debugForceSyncStopBlockNumber was set and we stopped before reaching the target block
+        // so just stop the service
+        this.stop()
+      }
+    } else if (importResult.zkStateRootHash.contentEquals(finalizedV3.finalStateRootHash)) {
+      log.info(
+        "state recovered up to finalization={} zkStateRootHash={}",
+        finalizedV3.intervalString(),
+        importResult.zkStateRootHash.encodeHex()
+      )
     } else {
       log.error(
         "stopping data recovery from L1, stateRootHash mismatch: " +
-          "finalization={} recoveredStateRootHash={} expected block={} to have l1 proven stateRootHash={}",
+          "finalization={} recovered block={} yielded recoveredStateRootHash={} expected to have " +
+          "l1 proven stateRootHash={}",
         finalizedV3.intervalString(),
-        finalizedV3.finalStateRootHash.encodeHex(),
+        importResult.blockNumber,
         importResult.zkStateRootHash.encodeHex(),
-        finalizedV3.endBlockNumber
+        finalizedV3.finalStateRootHash.encodeHex()
       )
       stateRootMismatchFound = true
       this.stop()
-      SafeFuture.completedFuture(Unit)
     }
+    return SafeFuture.completedFuture(Unit)
   }
 }

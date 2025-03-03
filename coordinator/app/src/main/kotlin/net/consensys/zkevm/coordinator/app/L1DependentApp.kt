@@ -7,8 +7,9 @@ import build.linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import build.linea.web3j.Web3JLogsClient
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
+import linea.domain.BlockNumberAndHash
 import linea.encoding.BlockRLPEncoder
-import net.consensys.linea.BlockNumberAndHash
+import linea.web3j.createWeb3jHttpClient
 import net.consensys.linea.blob.ShnarfCalculatorVersion
 import net.consensys.linea.contract.Web3JL2MessageService
 import net.consensys.linea.contract.Web3JL2MessageServiceLogsClient
@@ -37,7 +38,6 @@ import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.web3j.ExtendedWeb3JImpl
 import net.consensys.linea.web3j.SmartContractErrors
 import net.consensys.linea.web3j.Web3jBlobExtended
-import net.consensys.linea.web3j.okHttpClientBuilder
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
@@ -106,7 +106,6 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.http.HttpService
-import org.web3j.utils.Async
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
@@ -148,21 +147,20 @@ class L1DependentApp(
     l2Web3jClient,
     smartContractErrors
   )
-  private val l1Web3jClient = Web3j.build(
-    HttpService(
-      configs.l1.rpcEndpoint.toString(),
-      okHttpClientBuilder(LogManager.getLogger("clients.l1")).build()
-    ),
-    1000,
-    Async.defaultExecutorService()
+  private val l1Web3jClient = createWeb3jHttpClient(
+    rpcUrl = configs.l1.rpcEndpoint.toString(),
+    log = LogManager.getLogger("clients.l1.eth-api"),
+    pollingInterval = 1.seconds
+
   )
   private val l1Web3jService = Web3jBlobExtended(HttpService(configs.l1.ethFeeHistoryEndpoint.toString()))
-  private val l2ZkTracesWeb3jClient: Web3j =
-    Web3j.build(
-      HttpService(configs.zkTraces.ethApi.toString()),
-      1000,
-      Async.defaultExecutorService()
-    )
+  private val l2ZkTracesWeb3jClient: Web3j = createWeb3jHttpClient(
+    rpcUrl = configs.zkTraces.ethApi.toString(),
+    log = LogManager.getLogger("clients.l2.eth-api.tracer-node"),
+    pollingInterval = 1.seconds,
+    requestResponseLogLevel = org.apache.logging.log4j.Level.TRACE,
+    failuresLogLevel = org.apache.logging.log4j.Level.DEBUG
+  )
 
   private val l1ChainId = l1Web3jClient.ethChainId().send().chainId.toLong()
 
@@ -401,6 +399,7 @@ class L1DependentApp(
     GlobalBlobAwareConflationCalculator(
       conflationCalculator = globalCalculator,
       blobCalculator = compressedBlobCalculator,
+      metricsFacade = metricsFacade,
       batchesLimit = batchesLimit
     )
   }
@@ -440,13 +439,14 @@ class L1DependentApp(
       ),
       contractGasProvider = primaryOrFallbackGasProvider,
       web3jClient = l1Web3jClient,
-      smartContractErrors = smartContractErrors
+      smartContractErrors = smartContractErrors,
+      useEthEstimateGas = configs.blobSubmission.useEthEstimateGas
     )
   }
 
   private val genesisStateProvider = GenesisStateProvider(
     configs.l1.genesisStateRootHash,
-    configs.l1.genesisShnarfV5
+    configs.l1.genesisShnarfV6
   )
 
   private val blobCompressionProofCoordinator = run {
@@ -527,44 +527,48 @@ class L1DependentApp(
 
   private val latestBlobSubmittedBlockNumberTracker = LatestBlobSubmittedBlockNumberTracker(0UL)
   private val blobSubmissionCoordinator = run {
-    metricsFacade.createGauge(
-      category = LineaMetricsCategory.BLOB,
-      name = "highest.submitted.on.l1",
-      description = "Highest submitted blob end block number on l1",
-      measurementSupplier = { latestBlobSubmittedBlockNumberTracker.get() }
-    )
+    if (!configs.blobSubmission.enabled) {
+      DisabledLongRunningService
+    } else {
+      metricsFacade.createGauge(
+        category = LineaMetricsCategory.BLOB,
+        name = "highest.submitted.on.l1",
+        description = "Highest submitted blob end block number on l1",
+        measurementSupplier = { latestBlobSubmittedBlockNumberTracker.get() }
+      )
 
-    val blobSubmissionDelayHistogram = metricsFacade.createHistogram(
-      category = LineaMetricsCategory.BLOB,
-      name = "submission.delay",
-      description = "Delay between blob submission and end block timestamps",
-      baseUnit = "seconds"
-    )
+      val blobSubmissionDelayHistogram = metricsFacade.createHistogram(
+        category = LineaMetricsCategory.BLOB,
+        name = "submission.delay",
+        description = "Delay between blob submission and end block timestamps",
+        baseUnit = "seconds"
+      )
 
-    val blobSubmittedEventConsumers: Map<Consumer<BlobSubmittedEvent>, String> = mapOf(
-      Consumer<BlobSubmittedEvent> { blobSubmission ->
-        latestBlobSubmittedBlockNumberTracker(blobSubmission)
-      } to "Submitted Blob Tracker Consumer",
-      Consumer<BlobSubmittedEvent> { blobSubmission ->
-        blobSubmissionDelayHistogram.record(blobSubmission.getSubmissionDelay().toDouble())
-      } to "Blob Submission Delay Consumer"
-    )
+      val blobSubmittedEventConsumers: Map<Consumer<BlobSubmittedEvent>, String> = mapOf(
+        Consumer<BlobSubmittedEvent> { blobSubmission ->
+          latestBlobSubmittedBlockNumberTracker(blobSubmission)
+        } to "Submitted Blob Tracker Consumer",
+        Consumer<BlobSubmittedEvent> { blobSubmission ->
+          blobSubmissionDelayHistogram.record(blobSubmission.getSubmissionDelay().toDouble())
+        } to "Blob Submission Delay Consumer"
+      )
 
-    BlobSubmissionCoordinator.create(
-      config = BlobSubmissionCoordinator.Config(
-        configs.blobSubmission.dbPollingInterval.toKotlinDuration(),
-        configs.blobSubmission.proofSubmissionDelay.toKotlinDuration(),
-        configs.blobSubmission.maxBlobsToSubmitPerTick.toUInt()
-      ),
-      blobsRepository = blobsRepository,
-      aggregationsRepository = aggregationsRepository,
-      lineaSmartContractClient = lineaSmartContractClientForDataSubmission,
-      gasPriceCapProvider = gasPriceCapProviderForDataSubmission,
-      alreadySubmittedBlobsFilter = alreadySubmittedBlobsFilter,
-      blobSubmittedEventDispatcher = EventDispatcher(blobSubmittedEventConsumers),
-      vertx = vertx,
-      clock = Clock.System
-    )
+      BlobSubmissionCoordinator.create(
+        config = BlobSubmissionCoordinator.Config(
+          configs.blobSubmission.dbPollingInterval.toKotlinDuration(),
+          configs.blobSubmission.proofSubmissionDelay.toKotlinDuration(),
+          configs.blobSubmission.maxBlobsToSubmitPerTick.toUInt()
+        ),
+        blobsRepository = blobsRepository,
+        aggregationsRepository = aggregationsRepository,
+        lineaSmartContractClient = lineaSmartContractClientForDataSubmission,
+        gasPriceCapProvider = gasPriceCapProviderForDataSubmission,
+        alreadySubmittedBlobsFilter = alreadySubmittedBlobsFilter,
+        blobSubmittedEventDispatcher = EventDispatcher(blobSubmittedEventConsumers),
+        vertx = vertx,
+        clock = Clock.System
+      )
+    }
   }
 
   private val proofAggregationCoordinatorService: LongRunningService = run {
@@ -657,7 +661,8 @@ class L1DependentApp(
         transactionManager = finalizationTransactionManager,
         contractGasProvider = primaryOrFallbackGasProvider,
         web3jClient = l1Web3jClient,
-        smartContractErrors = smartContractErrors
+        smartContractErrors = smartContractErrors,
+        useEthEstimateGas = configs.aggregationFinalization.useEthEstimateGas
       )
 
       val latestFinalizationSubmittedBlockNumberTracker = LatestFinalizationSubmittedBlockNumberTracker(0UL)
@@ -824,15 +829,15 @@ class L1DependentApp(
       )
       val executionProverClient: ExecutionProverClientV2 = proverClientFactory.executionProverClient(
         tracesVersion = configs.traces.rawExecutionTracesVersion,
-        stateManagerVersion = configs.stateManager.version,
-        l2MessageServiceLogsClient = l2MessageServiceLogsClient,
-        l2Web3jClient = l2Web3jClient
+        stateManagerVersion = configs.stateManager.version
       )
 
       val proofGeneratingConflationHandlerImpl = ProofGeneratingConflationHandlerImpl(
         tracesProductionCoordinator = TracesConflationCoordinatorImpl(tracesConflationClient, zkStateClient),
         zkProofProductionCoordinator = ZkProofCreationCoordinatorImpl(
-          executionProverClient = executionProverClient
+          executionProverClient = executionProverClient,
+          l2MessageServiceLogsClient = l2MessageServiceLogsClient,
+          l2Web3jClient = l2Web3jClient
         ),
         batchProofHandler = batchProofHandler,
         vertx = vertx,
