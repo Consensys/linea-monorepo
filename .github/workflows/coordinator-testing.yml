@@ -71,14 +71,14 @@ jobs:
           if-no-files-found: error
           path: |
             ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
-      # - name: Upload coverage to Codecov
-      #   if: ${{ env.CODECOV_TOKEN != '' }}
-      #   uses: codecov/codecov-action@v5
-      #   with:
-      #     fail_ci_if_error: true
-      #     files: ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
-      #     flags: kotlin
-      #     os: linux
-      #     name: codecov-coordinator
-      #     verbose: true
-      #     token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage to Codecov
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          files: ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
+          flags: kotlin
+          os: linux
+          name: codecov-coordinator
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
