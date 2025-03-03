@@ -1,7 +1,6 @@
 package profiling
 
 import (
-	"fmt"
 	"os"
 	"path"
 	"runtime"
@@ -16,9 +15,7 @@ import (
 // PerformanceLog captures performance metrics
 type PerformanceLog struct {
 	Description string
-
-	ProfilePath    string
-	FlameGraphPath string
+	ProfilePath string
 
 	StartTime time.Time
 	StopTime  time.Time
@@ -51,15 +48,13 @@ type performanceMonitor struct {
 // StartPerformanceMonitor initializes and starts performance monitoring
 // and samples at the specified sampleRate. If flame graph is not needed
 // then empty string value may be passed
-func StartPerformanceMonitor(description string, sampleRate time.Duration, profilePath, flameGraphPath string) (*performanceMonitor, error) {
+func StartPerformanceMonitor(description string, sampleRate time.Duration, profilePath string) (*performanceMonitor, error) {
 
 	m := &performanceMonitor{
 		log: &PerformanceLog{
-			Description:    description,
-			ProfilePath:    profilePath,
-			FlameGraphPath: flameGraphPath,
-
-			StartTime: time.Now(),
+			Description: description,
+			ProfilePath: profilePath,
+			StartTime:   time.Now(),
 		},
 		stopChan: make(chan struct{}),
 	}
@@ -86,12 +81,6 @@ func StartPerformanceMonitor(description string, sampleRate time.Duration, profi
 		}
 	}
 
-	if flameGraphPath != "" {
-		if err := os.MkdirAll(flameGraphPath, 0755); err != nil {
-			return nil, err
-		}
-	}
-
 	// Start sampling every `sampleRate`
 	go m.sample(sampleRate)
 	return m, nil
@@ -107,12 +96,6 @@ func (m *performanceMonitor) Stop() (*PerformanceLog, error) {
 		pprof.StopCPUProfile()
 		m.log.cpuProfile.Close()
 
-		// Generate Flame graph for CPU
-		if m.log.FlameGraphPath != "" {
-			if err := m.log.generateFlameGraph("cpu-profile.pb.gz", "cpu-flamegraph.svg"); err != nil {
-				return nil, fmt.Errorf("failed to generate CPU flame graph: %v", err)
-			}
-		}
 	}
 
 	// Write memory profile
@@ -120,12 +103,6 @@ func (m *performanceMonitor) Stop() (*PerformanceLog, error) {
 		pprof.WriteHeapProfile(m.log.memProfile)
 		m.log.memProfile.Close()
 
-		// Generate Flame graph for Memory
-		if m.log.FlameGraphPath != "" {
-			if err := m.log.generateFlameGraph("mem-profile.pb.gz", "mem-flamegraph.svg"); err != nil {
-				return nil, fmt.Errorf("failed to generate Memory flame graph: %v", err)
-			}
-		}
 	}
 
 	m.calculateStats()
@@ -139,7 +116,6 @@ func (m *performanceMonitor) sample(sampleRate time.Duration) {
 	defer ticker.Stop()
 
 	var maxUsage float64 = float64(runtime.NumCPU()) * 100
-
 	var memStats runtime.MemStats
 	for {
 		select {

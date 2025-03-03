@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+
 	"strconv"
 	"sync"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/exp/slices"
 )
 
 // ProverStep represents an operation to be performed by the prover of a
@@ -174,14 +176,18 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 
 	// Initial prover step
 
-	runtime.runWithPerformanceMonitor(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
+	//runtime.runWithPerformanceMonitor(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
+	runtime.runProverSteps()
 
 	for runtime.currRound+1 < runtime.NumRounds() {
 		// Next round
-		runtime.runWithPerformanceMonitor(fmt.Sprintf("next-after-round%d", runtime.currRound), runtime.goNextRound)
+		// runtime.runWithPerformanceMonitor(fmt.Sprintf("next-after-round%d", runtime.currRound), runtime.goNextRound)
+		runtime.goNextRound()
 
 		// Prover steps for the next round
-		runtime.runWithPerformanceMonitor(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
+
+		// runtime.runWithPerformanceMonitor(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
+		runtime.runProverSteps()
 	}
 
 	/*
@@ -590,6 +596,7 @@ func (run *ProverRuntime) runProverSteps() {
 		namePrefix := fmt.Sprintf("prover-round%d-step%d", run.currRound, idx)
 		run.runWithPerformanceMonitor(namePrefix, step)
 
+		//step(run)
 	}
 }
 
@@ -740,25 +747,19 @@ func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 
 // runWithPerformanceMonitor: runs the `action` with the performance monitor
 func (runtime *ProverRuntime) runWithPerformanceMonitor(name string, action any) {
+	var profilingPath string
 
-	// Profiling params
-
-	// profilingPath := "./protocol/wizard/performance/profiling"
-	// flameGraphPath := "./protocol/wizard/performance/flame-graphs"
-
-	// Disable profiling and flamegraph temp.
-	profilingPath, flameGraphPath := "", ""
-
-	sampleDuration := 1 * time.Second
+	// Generate profiling only for these steps
+	if slices.Contains(shortListedSteps, name) {
+		profilingPath = "./protocol/wizard/performance/profiling"
+	}
 
 	if profilingPath != "" {
 		profilingPath = path.Join(profilingPath, name)
 	}
-	if flameGraphPath != "" {
-		flameGraphPath = path.Join(flameGraphPath, name)
-	}
 
-	monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, profilingPath, flameGraphPath)
+	sampleDuration := 1 * time.Second
+	monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, profilingPath)
 	if err != nil {
 		panic("error setting up performance monitor for " + name)
 	}
@@ -775,11 +776,10 @@ func (runtime *ProverRuntime) runWithPerformanceMonitor(name string, action any)
 
 	perfLog, err := monitor.Stop()
 	if err != nil {
-		panic("error retrieving performance log for " + name)
+		logrus.Panicf("error:%s encountered while retrieving performance log for:%s", err.Error(), name)
 	}
 
-	// Disable printing metrics temp.
-	// perfLog.PrintMetrics()
+	perfLog.PrintMetrics()
 
 	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
 }
@@ -835,3 +835,12 @@ func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
 	logrus.Infof("Finished writing to the csv file. Took %s", time.Since(startTime).String())
 	return nil
 }
+
+// Temp. shortlisted steps
+var (
+	shortListedSteps = []string{
+		"prover-round0-step614",
+		// "prover-steps-round0", "prover-round1-step71",
+		// "prover-round1-step72", "prover-round1-step73", "prover-steps-round1",
+	}
+)

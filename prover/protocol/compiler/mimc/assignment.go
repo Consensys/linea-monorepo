@@ -23,6 +23,12 @@ func (ctx *mimcCtx) assign(run *wizard.ProverRuntime) {
 	)
 
 	// Initialize intermediateRes and intermediatePow4 with correct lengths
+
+	// TODO: @srinathLN7 =>  Possible memory optimization ideas:
+	// Compute inplace - Can we use a single working slice and update it in-place for each round, avoiding the need for
+	// multiple large allocations? Only viable if the algo. does not require all intermediate results to be retained and
+	// check downstream code (e.g., constraints or proof generation) to ensure in-place updates are compatible
+
 	for i := range intermediateRes {
 		// For each intermediate result, create a slice of field.Elements with length numRows
 		intermediateRes[i] = make([]field.Element, len(oldState))
@@ -35,6 +41,7 @@ func (ctx *mimcCtx) assign(run *wizard.ProverRuntime) {
 	// Compute intermediate values for each round
 	for i := range ctx.intermediateResult {
 		computeIntermediateValues(i, oldState, intermediateRes, intermediatePow4)
+
 	}
 
 	// Assign columns
