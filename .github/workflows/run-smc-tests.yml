@@ -85,17 +85,17 @@ jobs:
           path: |
             ./contracts/coverage/coverage-final.json
 
-      # - name: Upload coverage to Codecov
-      #   if: ${{ env.CODECOV_TOKEN != '' }}
-      #   uses: codecov/codecov-action@v5
-      #   with:
-      #     fail_ci_if_error: true
-      #     files: ./contracts/coverage/coverage-final.json
-      #     flags: hardhat
-      #     os: linux
-      #     name: codecov-contracts
-      #     verbose: true
-      #     token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage to Codecov
+        if: ${{ env.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          files: ./contracts/coverage/coverage-final.json
+          flags: hardhat
+          os: linux
+          name: codecov-contracts
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   solidity-format-check:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
