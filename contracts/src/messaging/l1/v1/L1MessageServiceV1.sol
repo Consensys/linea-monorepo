@@ -46,12 +46,7 @@ abstract contract L1MessageServiceV1 is
    * @param _to The recipient of the message and gas refund.
    * @param _calldata The calldata of the message.
    */
-  modifier distributeFees(
-    uint256 _feeInWei,
-    address _to,
-    bytes calldata _calldata,
-    address _feeRecipient
-  ) {
+  modifier distributeFees(uint256 _feeInWei, address _to, bytes calldata _calldata, address _feeRecipient) {
     //pre-execution
     uint256 startingGas = gasleft();
     _;
@@ -138,7 +133,7 @@ abstract contract L1MessageServiceV1 is
       }
     }
 
-    TRANSIENT_MESSAGE_SENDER =  DEFAULT_MESSAGE_SENDER_TRANSIENT_VALUE;
+    TRANSIENT_MESSAGE_SENDER = DEFAULT_MESSAGE_SENDER_TRANSIENT_VALUE;
 
     emit MessageClaimed(messageHash);
   }
