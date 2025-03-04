@@ -1,7 +1,33 @@
-# Rewards Streaming
+# Staking Protocol [![Github Actions][gha-badge]][gha] [![Codecov][codecov-badge]][codecov] [![Foundry][foundry-badge]][foundry]
 
-- [Rewards Streamer](#rewards-streamer)
-- [Rewards Streamer with Multiplier Points](#rewards-streamer-with-multiplier-points)
+[gha]: https://github.com/vacp2p/staking-reward-streamer/actions
+[gha-badge]: https://github.com/vacp2p/staking-reward-streamer/actions/workflows/test.yml/badge.svg
+[codecov]: https://codecov.io/gh/vacp2p/staking-reward-streamer
+[codecov-badge]: https://codecov.io/gh/vacp2p/staking-reward-streamer/graph/badge.svg
+[foundry]: https://getfoundry.sh/
+[foundry-badge]: https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg
+
+Smart contracts for staking and rewards distribution using Karma token.
+
+This projects implements smart contracts that are used by Status to distribute rewards to users who stake their tokens.
+
+# Deployments
+
+| **Contract**                | **Address**                                                                                                                                   | **Snapshot**                                                                                                      |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| **Sepolia**                 |                                                                                                                                               |                                                                                                                   |
+| StakeManager      | [`0x223532449d4cceBD432043aDb1CA0af642A2b3e0`](https://sepolia.etherscan.io/address/0x223532449d4cceBD432043aDb1CA0af642A2b3e0#code)                       | [`aa3442b`](https://github.com/status-im/communities-contracts/commit/aa3442b)   |
+| StakeManagerProxy | [`0x2B862e47E4743D929Da90998f1Ec2465DA184Dad`](https://sepolia.etherscan.io/address/0x2B862e47E4743D929Da90998f1Ec2465DA184Dad)                       | [`aa3442b`](https://github.com/status-im/communities-contracts/commit/aa3442b)   |
+| VaultFactory | [`0x899da2e9f6C8fbA95d9F1dD5a0C984F2435ab8e0`](https://sepolia.etherscan.io/address/0x899da2e9f6C8fbA95d9F1dD5a0C984F2435ab8e0)                       | [`aa3442b`](https://github.com/status-im/communities-contracts/commit/aa3442b)   |
+| Karma | [`0x1e1Be9175AA9f135Fe986Ef9b43421F6685c65FA`](https://sepolia.etherscan.io/address/0x1e1be9175aa9f135fe986ef9b43421f6685c65fa#readContract)                       | [`aa3442b`](https://github.com/status-im/communities-contracts/commit/aa3442b)   |
+| KarmaProxy | [`0x2eE435C111C1c04d1698870f3300B77F5c7f30Eb`](https://sepolia.etherscan.io/address/0x2eE435C111C1c04d1698870f3300B77F5c7f30Eb)                       | [`aa3442b`](https://github.com/status-im/communities-contracts/commit/aa3442b)   |
+| **Status Network Sepolia**                 |                                                                                                                                               |                                                                                                                   |
+| StakeManager      | [`0xE452027cdEF746c7Cd3DB31CB700428b16cD8E51`](https://sepoliascan.status.network/address/0xE452027cdEF746c7Cd3DB31CB700428b16cD8E51)                       | [`aa1addb`](https://github.com/vacp2p/staking-reward-streamer/commit/aa1addbfcd240f7e64050ffc4eba8399e40617a5)   |
+| StakeManagerProxy | [`0x785e6c5af58FB26F4a0E43e0cF254af10EaEe0f1`](https://sepoliascan.status.network/address/0x785e6c5af58FB26F4a0E43e0cF254af10EaEe0f1?tab=txs)                       | [`aa1addb`](https://github.com/vacp2p/staking-reward-streamer/commit/aa1addbfcd240f7e64050ffc4eba8399e40617a5)   |
+| VaultFactory | [`0xf7b6EC76aCa97b395dc48f7A2861aD810B34b52e`](https://sepoliascan.status.network/address/0xf7b6EC76aCa97b395dc48f7A2861aD810B34b52e)                       | [`aa1addb`](https://github.com/vacp2p/staking-reward-streamer/commit/aa1addbfcd240f7e64050ffc4eba8399e40617a5)   |
+| Karma | [`0x0936792b0efa243a5Ddff7035E84749E5a54FA9c`](https://sepoliascan.status.network/address/0x0936792b0efa243a5Ddff7035E84749E5a54FA9c)                       | [`aa1addb`](https://github.com/vacp2p/staking-reward-streamer/commit/aa1addbfcd240f7e64050ffc4eba8399e40617a5)   |
+| KarmaProxy | [`0x59510D0b235c75d7bCAEb66A420e9bb0edC976AE`](https://sepoliascan.status.network/address/0x59510D0b235c75d7bCAEb66A420e9bb0edC976AE)                       | [`aa1addb`](https://github.com/vacp2p/staking-reward-streamer/commit/aa1addbfcd240f7e64050ffc4eba8399e40617a5)   |
+| KarmaNFT | [`0x1E9E85e91deF9a9aCf1d6F2888033180e4673d57`](https://sepoliascan.status.network/address/0x1E9E85e91deF9a9aCf1d6F2888033180e4673d57?tab=contract)                       | [`aa1addb`](https://github.com/vacp2p/staking-reward-streamer/commit/aa1addbfcd240f7e64050ffc4eba8399e40617a5)   |
 
 ## Rewards Streamer
 
