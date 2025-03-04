@@ -23,19 +23,17 @@ import java.io.File
 import java.math.BigInteger
 import java.nio.file.Path
 import java.util.Optional
-import java.util.UUID
-import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.e2e.Mappers.executionPayloadV3FromBlock
+import maru.e2e.TestEnvironment.createWeb3jClient
 import maru.e2e.TestEnvironment.waitForInclusion
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
-import org.junit.Ignore
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Disabled
@@ -46,11 +44,8 @@ import org.web3j.protocol.core.methods.response.EthBlock
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 
 class CliqueToPosTest {
@@ -80,32 +75,45 @@ class CliqueToPosTest {
   }
 
   private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
-  private val jwtConfig =
-    JwtConfig.createIfNeeded(
-      true,
-      Optional.of("../docker/geth/jwt"),
-      Optional.of(UUID.randomUUID().toString()),
-      Path("/tmp"),
-    )
   private val besuFollowerExecutionEngineClient = createExecutionClient("http://localhost:9550")
-  private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", jwtConfig)
-  private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", jwtConfig)
+  private val nethermindFollowerExecutionEngineClient =
+    createExecutionClient(
+      "http://localhost:10550",
+      TestEnvironment.jwtConfig,
+    )
+  private val erigonFollowerExecutionEngineClient =
+    createExecutionClient(
+      "http://localhost:11551",
+      TestEnvironment.jwtConfig,
+    )
+  private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", TestEnvironment.jwtConfig)
+  private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", TestEnvironment.jwtConfig)
   private val gethSnapServerExecutionEngineClient =
-    createExecutionClient("http://localhost:8581", jwtConfig)
-  private val gethExecutuionEngineClients =
+    createExecutionClient("http://localhost:8581", TestEnvironment.jwtConfig)
+  private val gethExecutionEngineClients =
     mapOf(
-      "geth1" to geth1ExecutionEngineClient,
-      "geth2" to geth2ExecutionEngineClient,
-      "gethSnapServer" to gethSnapServerExecutionEngineClient,
+      "follower-geth" to geth1ExecutionEngineClient,
+      "follower-geth-2" to geth2ExecutionEngineClient,
+      "follower-geth-snap-server" to gethSnapServerExecutionEngineClient,
     )
   private val followerExecutionEngineClients =
-    mapOf("besu" to besuFollowerExecutionEngineClient) + gethExecutuionEngineClients
+    mapOf(
+      "follower-besu" to besuFollowerExecutionEngineClient,
+      "follower-erigon" to erigonFollowerExecutionEngineClient,
+      "follower-nethermind" to nethermindFollowerExecutionEngineClient,
+    ) + gethExecutionEngineClients
 
   @Test
   fun networkCanBeSwitched() {
     sealPreMergeBlocks()
     everyoneArePeered()
     val newBlockTimestamp = UInt64.valueOf(parseCancunTimestamp())
+
+    val preMergeBlock =
+      TestEnvironment.sequencerL2Client
+        .ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false)
+        .send()
+    val lastPreMergeBlockHash = preMergeBlock.block.hash
 
     await
       .timeout(1.minutes.toJavaDuration())
@@ -119,15 +127,8 @@ class CliqueToPosTest {
         assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
       }
 
-    waitForAllBlockHeightsToMatch()
-
-    val preMergeBlock =
-      TestEnvironment.sequencerL2Client
-        .ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false)
-        .send()
-    val lastPreMergeBlockHash = preMergeBlock.block.hash
-
     fcuFollowersToBlockHash(lastPreMergeBlockHash)
+    waitForAllBlockHeightsToMatch()
 
     log.info("Marked last pre merge block as finalized")
 
@@ -148,13 +149,14 @@ class CliqueToPosTest {
     sendNewPayloadToFollowers(getNewPayloadFromLastBlockNumber)
     fcuFollowersToBlockHash(blockHash)
     val postPreMergeBlockHash = postMergeBlock.block.hash
-    fcuFollowersToBlockHash(postPreMergeBlockHash)
 
     await.untilAsserted {
+      fcuFollowersToBlockHash(postPreMergeBlockHash)
       waitForAllBlockHeightsToMatch()
     }
   }
 
+  // This is more of a debug method rather than an independent test. Thus disabling it
   @Disabled
   fun runFCU() {
     val headBlockNumber = 6L
@@ -166,7 +168,8 @@ class CliqueToPosTest {
     fcuFollowersToBlockHash(blockHash)
   }
 
-  @Ignore
+  // This is more of a debug method rather than an independent test. Useful to test if a node can sync from scratch
+  @Disabled
   fun fullSync() {
     val target = geth1ExecutionEngineClient
 
@@ -203,23 +206,11 @@ class CliqueToPosTest {
 
   private fun sealPreMergeBlocks() {
     val sequencerBlock = TestEnvironment.sequencerL2Client.ethBlockNumber().send()
-    if (sequencerBlock.blockNumber.compareTo(BigInteger.valueOf(5)) >= 0) {
+    if (sequencerBlock.blockNumber >= BigInteger.valueOf(5)) {
       return
     }
     repeat(5) { TestEnvironment.sendArbitraryTransaction().waitForInclusion() }
   }
-
-  private fun createWeb3jClient(
-    eeEndpoint: String,
-    jwtConfig: Optional<JwtConfig>,
-  ): Web3JClient =
-    Web3jClientBuilder()
-      .timeout(1.minutes.toJavaDuration())
-      .endpoint(eeEndpoint)
-      .jwtConfigOpt(jwtConfig)
-      .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
-      .executionClientEventsPublisher {}
-      .build()
 
   private fun createExecutionClient(
     eeEndpoint: String,
@@ -234,7 +225,6 @@ class CliqueToPosTest {
       }
 
     blockHeights.forEach { log.info("${it.first} block height is ${it.second.get().blockNumber}") }
-    log.info("")
   }
 
   private fun waitForAllBlockHeightsToMatch() {
@@ -243,8 +233,12 @@ class CliqueToPosTest {
     await.untilAsserted {
       val blockHeights =
         TestEnvironment.followerClients.entries
-          .map { entry -> entry.key to SafeFuture.of(entry.value.ethBlockNumber().sendAsync()) }
-          .map { it.first to it.second.get() }
+          .map { entry ->
+            entry.key to
+              SafeFuture.of(
+                entry.value.ethBlockNumber().sendAsync(),
+              )
+          }.map { it.first to it.second.get() }
 
       blockHeights.forEach {
         assertThat(it.second.blockNumber)
@@ -258,28 +252,31 @@ class CliqueToPosTest {
 
   private fun everyoneArePeered() {
     log.info("Call add peer on all nodes and wait for peering to happen.")
-    await
-      .pollInterval(1.seconds.toJavaDuration())
-      .timeout(1.minutes.toJavaDuration())
-      .untilAsserted {
-        TestEnvironment.followerClients.forEach {
+    await.pollInterval(1.seconds.toJavaDuration()).timeout(1.minutes.toJavaDuration()).untilAsserted {
+      TestEnvironment.followerClients.forEach {
+        try {
           it.value
             .adminAddPeer(
               "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e2" +
                 "2bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303",
             ).send()
-          val peersResult =
-            it.value
-              .adminPeers()
-              .send()
-              .result
-          val peers = peersResult.size
-          log.info("Peers from node ${it.key}: $peers")
-          assertThat(peers)
-            .withFailMessage("${it.key} isn't peered! Peers: $peersResult")
-            .isGreaterThan(0)
+        } catch (e: Exception) {
+          if (it.key.contains("nethermind")) {
+            log.debug("Nethermind returns response to admin_addPeer that is incompatible with Web3J")
+          } else {
+            throw e
+          }
         }
+        val peersResult =
+          it.value
+            .adminPeers()
+            .send()
+            .result
+        val peers = peersResult.size
+        log.info("Peers from node ${it.key}: $peers")
+        assertThat(peers).withFailMessage("${it.key} isn't peered! Peers: $peersResult").isGreaterThan(0)
       }
+    }
   }
 
   private fun getBlockByNumber(
@@ -296,19 +293,29 @@ class CliqueToPosTest {
   private fun fcuFollowersToBlockHash(blockHash: String) {
     val lastBlockHashBytes = Bytes32.fromHexString(blockHash)
     // Cutting off the merge first
-    val mergeForkChoiceState =
-      ForkChoiceStateV1(lastBlockHashBytes, lastBlockHashBytes, lastBlockHashBytes)
+    val mergeForkChoiceState = ForkChoiceStateV1(lastBlockHashBytes, lastBlockHashBytes, lastBlockHashBytes)
 
     followerExecutionEngineClients.entries
-      .map { it.key to it.value.forkChoiceUpdatedV3(mergeForkChoiceState, Optional.empty()) }
-      .forEach {
+      .map {
+        it.key to
+          it.value.forkChoiceUpdatedV3(
+            mergeForkChoiceState,
+            Optional.empty(),
+          )
+      }.forEach {
         log.info("FCU for block hash $blockHash, node: ${it.first} response: ${it.second.get()}")
       }
   }
 
   private fun sendNewPayloadToFollowers(newPayloadV3: ExecutionPayloadV3) {
     followerExecutionEngineClients.entries
-      .map { it.key to it.value.newPayloadV3(newPayloadV3, emptyList(), Bytes32.ZERO) }
-      .forEach { log.info("New payload for node: ${it.first} response: ${it.second.get()}") }
+      .map {
+        it.key to
+          it.value.newPayloadV3(
+            newPayloadV3,
+            emptyList(),
+            Bytes32.ZERO,
+          )
+      }.forEach { log.info("New payload for node: ${it.first} response: ${it.second.get()}") }
   }
 }

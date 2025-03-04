@@ -6,7 +6,6 @@ networks:
         - subnet: 11.11.11.0/24
 
 services:
-
   initialization:
     image: busybox:latest
     container_name: intialization_using_busybox
@@ -51,7 +50,8 @@ services:
 
   follower-geth:
     depends_on:
-      - sequencer
+      sequencer:
+        condition: service_healthy
     image: ethereum/client-go:release-1.14
     restart: always
     healthcheck:
@@ -65,18 +65,18 @@ services:
     volumes:
       - ./geth:/scripts:ro
       - ./initialization/:/initialization/:ro
-      - ./geth/jwt:/jwt:ro
+      - ./jwt:/jwt:ro
     ports:
       - "8555:8545"
       - "8556:8546"
-      - "8560:8550"
       - "8561:8551"
     networks:
       - linea
 
   follower-geth-2:
     depends_on:
-      - sequencer
+      sequencer:
+        condition: service_healthy
     image: ethereum/client-go:release-1.13
     restart: always
     healthcheck:
@@ -90,18 +90,18 @@ services:
     volumes:
       - ./geth:/scripts:ro
       - ./initialization/:/initialization/:ro
-      - ./geth/jwt:/jwt:ro
+      - ./jwt:/jwt:ro
     ports:
       - "8565:8545"
       - "8566:8546"
-      - "8570:8550"
       - "8571:8551"
     networks:
       - linea
 
   follower-geth-snap-server:
     depends_on:
-      - sequencer
+      sequencer:
+        condition: service_healthy
     image: ethereum/client-go:release-1.13
     restart: always
     healthcheck:
@@ -115,18 +115,18 @@ services:
     volumes:
       - ./geth:/scripts:ro
       - ./initialization/:/initialization/:ro
-      - ./geth/jwt:/jwt:ro
+      - ./jwt:/jwt:ro
     ports:
       - "8575:8545"
       - "8576:8546"
-      - "8580:8550"
       - "8581:8551"
     networks:
       - linea
 
   follower-besu:
     depends_on:
-      - sequencer
+      sequencer:
+        condition: service_healthy
     image: hyperledger/besu:24.10.0
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
@@ -151,5 +151,45 @@ services:
       - "9546:8546"
       - "9550:8550"
       - "9551:8551"
+    networks:
+      - linea
+
+  follower-nethermind:
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    image: nethermindeth/nethermind:clique-merge-fix
+    command: >
+      --configs-dir /config/
+      -c test
+    volumes:
+      - ./initialization/:/initialization/:ro
+      - ./nethermind/:/config/:ro
+      - ./jwt:/nethermind/keystore/jwt-secret:ro
+    ports:
+      - "10545:8545"
+      - "10546:8546"
+      - "10550:8550"
+    networks:
+      - linea
+
+  follower-erigon:
+    depends_on:
+      sequencer:
+        condition: service_healthy
+    image: ethpandaops/erigon:main-7b671790
+    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/initialization/genesis-geth.json", "0x1C9C380",
+                  "/home/erigon" ]
+    environment:
+      BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
+    ports:
+      - "11545:8545"
+      - "11546:8546"
+      - "11551:8551"
+    volumes:
+      # It's ok to mount sub-dirs of "datadir" to different drives
+      - ./jwt:/jwt:ro
+      - ./erigon:/scripts:ro
+      - ./initialization/:/initialization/:ro
     networks:
       - linea
