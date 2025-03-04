@@ -751,7 +751,7 @@ func (runtime *ProverRuntime) runWithPerformanceMonitor(name string, action any)
 
 	// Generate profiling only for these steps
 	if slices.Contains(shortListedSteps, name) {
-		profilingPath = "./protocol/wizard/performance/profiling"
+		profilingPath = "./protocol/wizard/performance-pre-optimize/profiling"
 	}
 
 	if profilingPath != "" {
@@ -779,7 +779,7 @@ func (runtime *ProverRuntime) runWithPerformanceMonitor(name string, action any)
 		logrus.Panicf("error:%s encountered while retrieving performance log for:%s", err.Error(), name)
 	}
 
-	perfLog.PrintMetrics()
+	// perfLog.PrintMetrics()
 
 	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
 }
