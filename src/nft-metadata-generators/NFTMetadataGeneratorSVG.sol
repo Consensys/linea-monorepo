@@ -16,7 +16,7 @@ contract NFTMetadataGeneratorSVG is BaseNFTMetadataGenerator {
     /// @notice SVG image suffix
     string public imageSuffix = "";
 
-    constructor(address nft, string memory _imagePrefix, string memory _imageSuffix) BaseNFTMetadataGenerator(nft) {
+    constructor(string memory _imagePrefix, string memory _imageSuffix) BaseNFTMetadataGenerator() {
         imagePrefix = _imagePrefix;
         imageSuffix = _imageSuffix;
     }

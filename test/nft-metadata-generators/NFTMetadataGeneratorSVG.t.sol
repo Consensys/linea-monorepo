@@ -15,7 +15,7 @@ contract NFTMetadataGeneratorSVGTest is Test {
 
     function setUp() public {
         erc20Token = new MockToken("Test", "TEST");
-        metadataGenerator = new NFTMetadataGeneratorSVG(address(erc20Token), "<svg>", "</svg>");
+        metadataGenerator = new NFTMetadataGeneratorSVG("<svg>", "</svg>");
 
         erc20Token.mint(alice, 10e18);
     }

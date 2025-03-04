@@ -7,7 +7,7 @@ import { BaseNFTMetadataGenerator } from "../../src/nft-metadata-generators/Base
 contract MockMetadataGenerator is BaseNFTMetadataGenerator {
     string private _baseURI;
 
-    constructor(address nft, string memory baseURI) BaseNFTMetadataGenerator(nft) {
+    constructor(string memory baseURI) BaseNFTMetadataGenerator() {
         _baseURI = baseURI;
     }
 

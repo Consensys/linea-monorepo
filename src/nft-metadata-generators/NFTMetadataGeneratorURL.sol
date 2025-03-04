@@ -14,7 +14,7 @@ contract NFTMetadataGeneratorURL is BaseNFTMetadataGenerator {
     /// @notice URL suffix
     string public urlSuffix;
 
-    constructor(address nft, string memory _urlPrefix, string memory _urlSuffix) BaseNFTMetadataGenerator(nft) {
+    constructor(string memory _urlPrefix, string memory _urlSuffix) BaseNFTMetadataGenerator() {
         urlPrefix = _urlPrefix;
         urlSuffix = _urlSuffix;
     }

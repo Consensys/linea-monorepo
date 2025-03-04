@@ -17,7 +17,7 @@ contract KarmaNFTTest is Test {
 
     function setUp() public {
         erc20Token = new MockToken("Test", "TEST");
-        metadataGenerator = new MockMetadataGenerator(address(erc20Token), "https://test.local/");
+        metadataGenerator = new MockMetadataGenerator("https://test.local/");
         nft = new KarmaNFT(address(erc20Token), address(metadataGenerator));
 
         address[1] memory users = [alice];
@@ -42,8 +42,7 @@ contract KarmaNFTTest is Test {
     }
 
     function testSetMetadataGenerator() public {
-        MockMetadataGenerator newMetadataGenerator =
-            new MockMetadataGenerator(address(erc20Token), "https://new-test.local/");
+        MockMetadataGenerator newMetadataGenerator = new MockMetadataGenerator("https://new-test.local/");
 
         nft.setMetadataGenerator(address(newMetadataGenerator));
 
@@ -51,8 +50,7 @@ contract KarmaNFTTest is Test {
     }
 
     function testSetMetadataGeneratorRevert() public {
-        MockMetadataGenerator newMetadataGenerator =
-            new MockMetadataGenerator(address(erc20Token), "https://new-test.local/");
+        MockMetadataGenerator newMetadataGenerator = new MockMetadataGenerator("https://new-test.local/");
 
         vm.prank(alice);
         vm.expectRevert("Ownable: caller is not the owner");

@@ -15,7 +15,7 @@ contract NFTMetadataGeneratorURLTest is Test {
 
     function setUp() public {
         erc20Token = new MockToken("Test", "TEST");
-        metadataGenerator = new NFTMetadataGeneratorURL(address(erc20Token), "http://test.local/images/", ".jpg");
+        metadataGenerator = new NFTMetadataGeneratorURL("http://test.local/images/", ".jpg");
 
         erc20Token.mint(alice, 10e18);
     }
