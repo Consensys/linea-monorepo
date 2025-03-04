@@ -395,7 +395,7 @@ func (ss *Module) csIsStorage(comp *wizard.CompiledIOP) {
 func (ss *Module) csBatchNumber(comp *wizard.CompiledIOP) {
 
 	comp.InsertLocal(
-		1,
+		0,
 		"STATE_SUMMARY_BATCH_NUMBER_START_FROM_ONE",
 		sym.Sub(
 			ss.BatchNumber,

@@ -55,7 +55,7 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 
 	sm.accumulatorSummaryConnector.ConnectToStateSummary(comp, &sm.StateSummary)
 	sm.mimcCodeHash.ConnectToRom(comp, rom(comp), romLex(comp))
-	sm.StateSummary.ConnectToHub(comp, acp(comp), scp(comp))
+	// sm.StateSummary.ConnectToHub(comp, acp(comp), scp(comp))
 	sm.codeHashConsistency = codehashconsistency.NewModule(comp, "CODEHASHCONSISTENCY", &sm.StateSummary, &sm.mimcCodeHash)
 
 	return sm

@@ -71,3 +71,12 @@ func MustBeMutuallyExclusiveBinaryFlags(comp *wizard.CompiledIOP, isActive iface
 		sym.Sub(isActive, flagsAny...),
 	)
 }
+
+// MustBeConstant constrains the current column to be constant.
+func MustBeConstant(comp *wizard.CompiledIOP, c ifaces.Column) {
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("%v_MUST_BE_CONSTANT", c.GetColID()),
+		sym.Sub(c, column.Shift(c, 1)),
+	)
+}

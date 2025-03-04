@@ -186,6 +186,12 @@ func (cm *ComputeMod) defineIsInactive() {
 		return
 	}
 
+	if cm.withOptProofReuseCheck {
+		// In this case, the IsInactive column is computed very
+		// differently from the IsActiveExpanded column.
+		return
+	}
+
 	activeSize := cm.Depth * cm.NumProofs
 
 	cm.Cols.IsInactive = cm.comp.InsertPrecomputed(
@@ -256,26 +262,26 @@ func (cm *ComputeMod) createSugarVar() {
 	cols := cm.Cols
 	sug.NewProof = ifaces.ColumnAsVariable(cols.NewProof)
 
-	switch cm.isFullyActive() {
-	case true:
-		// the columns are replaced directly by some variables
-		sug.EndOfProof = variables.NewPeriodicSample(cm.Depth, 0)
-		sug.IsInactive = symbolic.NewConstant(0)
-	case false:
-		sug.EndOfProof = ifaces.ColumnAsVariable(cols.IsEndOfProof)
-		sug.IsInactive = ifaces.ColumnAsVariable(cols.IsInactive)
-	}
-
-	sug.IsActive = symbolic.Sub(1, sug.IsInactive)
-	sug.NotNewProof = symbolic.Sub(1, sug.NewProof)
-	sug.NotEndOfProof = symbolic.Sub(1, sug.EndOfProof)
-
-	// optional variables for the reuse of Merkle proofs
 	if cm.withOptProofReuseCheck {
 		// new definition of IsActive and IsInactive
 		sug.IsActive = ifaces.ColumnAsVariable(cols.IsActiveExpanded)
 		sug.IsInactive = symbolic.Sub(1, sug.IsActive)
+	} else if cm.isFullyActive() {
+		sug.IsInactive = symbolic.NewConstant(0)
+		sug.IsActive = symbolic.NewConstant(1)
+	} else {
+		sug.IsInactive = ifaces.ColumnAsVariable(cols.IsInactive)
+		sug.IsActive = symbolic.Sub(1, sug.IsInactive)
 	}
+
+	if cm.isFullyActive() {
+		sug.EndOfProof = variables.NewPeriodicSample(cm.Depth, 0)
+	} else {
+		sug.EndOfProof = ifaces.ColumnAsVariable(cols.IsEndOfProof)
+	}
+
+	sug.NotNewProof = symbolic.Sub(1, sug.NewProof)
+	sug.NotEndOfProof = symbolic.Sub(1, sug.EndOfProof)
 }
 
 // Define the query responsible for ensuring that the roots

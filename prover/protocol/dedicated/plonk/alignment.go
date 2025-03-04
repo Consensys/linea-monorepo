@@ -221,7 +221,6 @@ func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *
 			Circuit:      toAlign.Circuit,
 			PlonkOptions: toAlign.PlonkOptions,
 			Selector:     isActive,
-			CircuitMask:  mask,
 			Data:         alignedData,
 		}
 	)

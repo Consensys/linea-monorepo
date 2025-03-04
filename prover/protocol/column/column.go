@@ -33,20 +33,17 @@ func newNatural(name ifaces.ColID, position columnPosition, store *Store) Natura
 	return Natural{ID: name, position: position, store: store}
 }
 
-// RootParents returns the underlying base [Natural] of the current handle. If
-// the provided [Column] `h` is an [Interleaved] or a derivative of an
-// [Interleaved], the function returns the list of all the underlying [Natural]
-// columns.
-func RootParents(h ifaces.Column) []ifaces.Column {
+// RootParents returns the underlying base [Natural] of the current handle.
+func RootParents(h ifaces.Column) ifaces.Column {
 
 	if !h.IsComposite() {
-		return []ifaces.Column{h}
+		return h
 	}
 
 	switch inner := h.(type) {
 	case Natural:
 		// No changes
-		return []ifaces.Column{h}
+		return h
 	case Shifted:
 		return RootParents(inner.Parent)
 	default:
@@ -55,14 +52,47 @@ func RootParents(h ifaces.Column) []ifaces.Column {
 	panic("unreachable")
 }
 
+// RootsOf returns a deduplicated list of [column.Natural] (or
+// [verifiercol.VerifierCol]] underlying the definition of the input columns.
+// If `skipVCol` is true, the function will skip the verifiercol and not
+// the [column.Natural] columns. The function also skips nil columns.
+func RootsOf(cols []ifaces.Column, skipVCol bool) []ifaces.Column {
+
+	var (
+		roots    = make([]ifaces.Column, 0, len(cols))
+		rootSets = make(map[ifaces.ColID]struct{}, len(cols))
+	)
+
+	for i := range cols {
+
+		if cols[i] == nil {
+			continue
+		}
+
+		root := RootParents(cols[i])
+
+		// This clause checks if the root is a verifiercol and if it
+		// should be skipped following "skipVCol". However, testing this
+		// directly would create a circular dependency. So we instead use
+		// [IsComposite] == false and hasType([column.Natural]) == true
+		// to perform the test.
+		_, isNat := root.(Natural)
+		if !isNat && !root.IsComposite() && skipVCol {
+			continue
+		}
+
+		if _, ok := rootSets[root.GetColID()]; ok {
+			continue
+		}
+
+		roots = append(roots, root)
+		rootSets[root.GetColID()] = struct{}{}
+	}
+
+	return roots
+}
+
 // StackOffset sums all the offsets contained in the handle and return the result
-//
-// If `h` is an [Interleaved] or derive from an [Interleaved] column, it will
-// expect that the stacked offset of its parent is zero. (i.e, we should always
-// shift an interleave but never interleave a shift. In practice, this does not
-// cause issues as we do not have that in the arithmetization). This restriction
-// is motivated by the fact that the "offset" would not be defined in this
-// situation.
 func StackOffsets(h ifaces.Column) int {
 
 	if !h.IsComposite() {
@@ -197,4 +227,28 @@ func MaxRound(handles ...ifaces.Column) int {
 		res = utils.Max(res, handle.Round())
 	}
 	return res
+}
+
+// ShiftExpr returns a shifted version of the expression. The function will
+// panic if called with an expression that uses [variables.PeriodicSampling]
+func ShiftExpr(expr *symbolic.Expression, offset int) *symbolic.Expression {
+
+	return expr.ReconstructBottomUp(func(e *symbolic.Expression, children []*symbolic.Expression) (new *symbolic.Expression) {
+
+		vari, isVar := e.Operator.(symbolic.Variable)
+		if !isVar {
+			return e.SameWithNewChildren(children)
+		}
+
+		if _, isPeriodic := vari.Metadata.(variables.PeriodicSample); isPeriodic {
+			panic("unsupported: periodic sampling")
+		}
+
+		col, isCol := vari.Metadata.(ifaces.Column)
+		if !isCol {
+			return e.SameWithNewChildren(children)
+		}
+
+		return symbolic.NewVariable(Shift(col, offset))
+	})
 }
