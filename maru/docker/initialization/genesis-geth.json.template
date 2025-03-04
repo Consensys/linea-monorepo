@@ -160,7 +160,7 @@
       "comment": "L2 postman account",
       "balance": "900000000000000000000020"
     },
-    "0xe537D669CA013d86EBeF1D64e40fC74CADC91987": {
+    "e537D669CA013d86EBeF1D64e40fC74CADC91987": {
       "@WARNING": "FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE",
       "comment": "account 21, can be used as end user",
       "balance": "900000000000000000000021"

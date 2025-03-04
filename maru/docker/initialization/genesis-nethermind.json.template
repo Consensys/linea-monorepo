@@ -1,0 +1,235 @@
+{
+  "name": "Test",
+  "dataDir": "test",
+  "engine": {
+    "clique": {
+      "params": {
+        "period": 1,
+        "epoch": 1
+      }
+    }
+  },
+  "params": {
+    "maximumExtraDataSize": "0xffff",
+    "chainId": "1337",
+
+    "eip150Transition": "0x0",
+    "eip160Transition": "0x0",
+    "eip161abcTransition": "0x0",
+    "eip161dTransition": "0x0",
+    "eip155Transition": "0x0",
+    "eip140Transition": "0x0",
+    "eip211Transition": "0x0",
+    "eip214Transition": "0x0",
+    "eip658Transition": "0x0",
+    "eip145Transition": "0x0",
+    "eip1014Transition": "0x0",
+    "eip1052Transition": "0x0",
+    "eip1283Transition": "0x0",
+    "eip1283DisableTransition": "0x0",
+    "eip152Transition": "0x0",
+    "eip1108Transition": "0x0",
+    "eip1344Transition": "0x0",
+    "eip1884Transition": "0x0",
+    "eip2028Transition": "0x0",
+    "eip2200Transition": "0x0",
+    "eip2565Transition": "0x0",
+    "eip2929Transition": "0x0",
+    "eip2930Transition": "0x0",
+    "eip1559Transition": "0x0",
+    "eip1559FeeCollectorTransition": "0x0",
+    "eip3198Transition": "0x0",
+    "eip3529Transition": "0x0",
+    "eip3541Transition": "0x0",
+
+    "beaconChainGenesisTimestamp": "%SWITCH_TIME%",
+    "eip3651TransitionTimestamp": "%SWITCH_TIME%",
+    "eip3855TransitionTimestamp": "%SWITCH_TIME%",
+    "eip3860TransitionTimestamp": "%SWITCH_TIME%",
+    "eip4895TransitionTimestamp": "%SWITCH_TIME%",
+    "eip1153TransitionTimestamp": "%SWITCH_TIME%",
+    "eip4788TransitionTimestamp": "%SWITCH_TIME%",
+    "eip4844TransitionTimestamp": "%SWITCH_TIME%",
+    "eip5656TransitionTimestamp": "%SWITCH_TIME%",
+    "eip6780TransitionTimestamp": "%SWITCH_TIME%",
+    "terminalTotalDifficulty": "0a"
+  },
+  "genesis": {
+    "seal": {
+      "ethereum": {
+        "nonce": "0x0000000000000000",
+        "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "number": "0x0",
+    "difficulty": "0x1",
+    "author": "0x0000000000000000000000000000000000000000",
+    "timestamp": "0x645580D1",
+    "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "extraData": "0x00000000000000000000000000000000000000000000000000000000000000006d976c9b8ceee705d4fe8699b44e5eb58242f4840000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "baseFeePerGas": "0x7",
+    "gasLimit": "0x1C9C380"
+  },
+  "nodes": ["enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"],
+  "accounts": {
+    "0000000000000000000000000000000000000001": {
+      "builtin": {
+        "name": "ecrecover",
+        "pricing": {
+          "linear": {
+            "base": 3000,
+            "word": 0
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000002": {
+      "builtin": {
+        "name": "sha256",
+        "pricing": {
+          "linear": {
+            "base": 60,
+            "word": 12
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000003": {
+      "builtin": {
+        "name": "ripemd160",
+        "pricing": {
+          "linear": {
+            "base": 600,
+            "word": 120
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000004": {
+      "builtin": {
+        "name": "identity",
+        "pricing": {
+          "linear": {
+            "base": 15,
+            "word": 3
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000005": {
+      "builtin": {
+        "name": "modexp",
+        "pricing": {
+          "modexp": {
+            "divisor": 20
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000006": {
+      "builtin": {
+        "name": "alt_bn128_add",
+        "pricing": {
+          "linear": {
+            "base": 500,
+            "word": 0
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000007": {
+      "builtin": {
+        "name": "alt_bn128_mul",
+        "pricing": {
+          "linear": {
+            "base": 40000,
+            "word": 0
+          }
+        }
+      }
+    },
+    "0000000000000000000000000000000000000008": {
+      "builtin": {
+        "name": "alt_bn128_pairing",
+        "pricing": {
+          "alt_bn128_pairing": {
+            "base": 100000,
+            "pair": 80000
+          }
+        }
+      }
+    },
+    "1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0": {
+      "balance": "0x130EE8E7179044400000"
+    },
+    "fe3b557e8fb62b89f4916b721be55ceb828dbd73": {
+      "balance": "0x130EE8E7179044400001"
+    },
+    "627306090abaB3A6e1400e9345bC60c78a8BEf57": {
+      "balance": "0x130EE8E7179044400002"
+    },
+    "f17f52151EbEF6C7334FAD080c5704D77216b732": {
+      "balance": "0x130EE8E7179044400003"
+    },
+    "6d26dcc30a1693043aefa35ed9171c16da53f275": {
+      "balance": "0x130EE8E7179044400004"
+    },
+    "e00cad48944330a60bbaedfbf2e0ac97e9762a1e": {
+      "balance": "0x130EE8E7179044400005"
+    },
+    "2257ae433e214df824eb2ade79d2b305ca61a4f4": {
+      "balance": "0x130EE8E7179044400006"
+    },
+    "0d4278da2f55cf21a014b7fee0a2cb799ce17ede": {
+      "balance": "0x130EE8E7179044400007"
+    },
+    "994f4c82683f666d13d03a131078f1b94777790c": {
+      "balance": "0x130EE8E7179044400008"
+    },
+    "9d14ef14d4c90436a062efd7dc8354a7ded9712e": {
+      "balance": "0x130EE8E7179044400009"
+    },
+    "29a6b94168f04956c6fd1a2c3fdd1f6f7c468148": {
+      "balance": "0xBE951906EBA2AA80000A"
+    },
+    "dca74800d7ce103a5e6a3f6028ab0963c46e7422": {
+      "balance": "0xBE951906EBA2AA80000B"
+    },
+    "9ad149426800dc9e65754a5ceab6bc1f41cc92a7": {
+      "balance": "0xBE951906EBA2AA80000C"
+    },
+    "b3c150df38e91149e260c3233f3121810d4d2976": {
+      "balance": "0xBE951906EBA2AA80000D"
+    },
+    "42232eab8cfd6b489efe79d3bdcc12f07a9fbac6": {
+      "balance": "0xBE951906EBA2AA80000E"
+    },
+    "30b080749e44112c3e679c5e4117dd2d884ec7da": {
+      "balance": "0xBE951906EBA2AA80000F"
+    },
+    "82f93ea98b24441dc3e0b2413cc1cbb02f33d7e5": {
+      "balance": "0xBE951906EBA2AA800010"
+    },
+    "bae3c3fcd73ccf7755ec8a10664f218ad6bbc775": {
+      "balance": "0xBE951906EBA2AA800011"
+    },
+    "54d450f4d728da50f1271a1700b42657940324aa": {
+      "balance": "0xBE951906EBA2AA800012"
+    },
+    "d42e308fc964b71e18126df469c21b0d7bcb86cc": {
+      "balance": "0xBE951906EBA2AA800013"
+    },
+    "c8c92fe825d8930b9357c006e0af160dfa727a62": {
+      "balance": "0xBE951906EBA2AA800014"
+    },
+    "e537D669CA013d86EBeF1D64e40fC74CADC91987": {
+      "balance": "0xBE951906EBA2AA800015"
+    },
+    "8cdcc370846c9f669489227465f80e6cc4ecd050": {
+      "balance": "0x130EE8E7179044400000"
+    },
+    "d0584d4d37157f7105a4b41ed8ecbdfafdb2547f": {
+      "balance": "0x130EE8E7179044400000"
+    }
+  }
+}
