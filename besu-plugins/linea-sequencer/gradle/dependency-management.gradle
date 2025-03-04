@@ -66,5 +66,7 @@ dependencyManagement {
     // ToDo: remove when fixed in Besu, force version to avoid conflict with previous version
     dependency 'org.apache.logging.log4j:log4j-api:2.24.1'
     dependency 'org.apache.logging.log4j:log4j-core:2.24.1'
+
+    dependency 'org.wiremock:wiremock:3.12.0'
   }
 }

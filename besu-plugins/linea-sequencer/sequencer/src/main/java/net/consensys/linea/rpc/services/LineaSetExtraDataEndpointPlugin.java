@@ -51,4 +51,9 @@ public class LineaSetExtraDataEndpointPlugin extends AbstractLineaRequiredPlugin
     lineaSetExtraDataMethod.init(
         new LineaExtraDataHandler(rpcEndpointService, profitabilityConfiguration()));
   }
+
+  @Override
+  public void doStart() {
+    // no-op
+  }
 }

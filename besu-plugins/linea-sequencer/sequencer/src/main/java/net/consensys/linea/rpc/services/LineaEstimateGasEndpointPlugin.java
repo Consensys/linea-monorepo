@@ -20,6 +20,7 @@ import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.rpc.methods.LineaEstimateGas;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
@@ -67,5 +68,12 @@ public class LineaEstimateGasEndpointPlugin extends AbstractLineaRequiredPlugin 
         profitabilityConfiguration(),
         createLimitModules(tracerConfiguration()),
         l1L2BridgeSharedConfiguration());
+  }
+
+  @Override
+  public void doStart() {
+    if (l1L2BridgeSharedConfiguration().equals(LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT)) {
+      throw new IllegalArgumentException("L1L2 bridge settings have not been defined.");
+    }
   }
 }

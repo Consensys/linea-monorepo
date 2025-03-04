@@ -55,9 +55,7 @@ public class LineaSendBundleEndpointPlugin extends AbstractLineaRequiredPlugin {
    * imported block, in order to update the extra data pricing on every incoming block.
    */
   @Override
-  public void start() {
-    super.start();
-
+  public void doStart() {
     // set the pool
     lineaSendBundleMethod.init(bundlePoolService);
     lineaCancelBundleMethod.init(bundlePoolService);

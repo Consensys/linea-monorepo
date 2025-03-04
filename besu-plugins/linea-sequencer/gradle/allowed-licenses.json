@@ -71,12 +71,12 @@
     },
     {
       "moduleLicense": "CDDL-1.0",
-      "moduleVersion": "3.0.2",
+      "moduleVersion": "3.0.3",
       "moduleName": "org.jupnp:org.jupnp"
     },
     {
       "moduleLicense": "CDDL-1.0",
-      "moduleVersion": "3.0.2",
+      "moduleVersion": "3.0.3",
       "moduleName": "org.jupnp:org.jupnp.support"
     }
   ]

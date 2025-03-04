@@ -15,7 +15,6 @@
 
 package net.consensys.linea.sequencer.txselection;
 
-import static net.consensys.linea.config.LineaTransactionSelectorCliOptions.DEFAULT_MAX_BUNDLE_GAS_PER_BLOCK;
 import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITABILITY;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.createLimitModules;
 
@@ -28,6 +27,7 @@ import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.metrics.HistogramMetrics;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.txselection.selectors.ProfitableTransactionSelector;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
@@ -44,9 +44,6 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
   private TransactionSelectionService transactionSelectionService;
   private Optional<JsonRpcManager> rejectedTxJsonRpcManager = Optional.empty();
 
-  // initialize to the static config default:
-  private long maxBundleGasPerBlock = DEFAULT_MAX_BUNDLE_GAS_PER_BLOCK;
-
   @Override
   public void doRegister(final ServiceManager serviceManager) {
     transactionSelectionService =
@@ -61,14 +58,13 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
   }
 
   @Override
-  public void start() {
-    super.start();
+  public void doStart() {
+    if (l1L2BridgeSharedConfiguration().equals(LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT)) {
+      throw new IllegalArgumentException("L1L2 bridge settings have not been defined.");
+    }
 
     final LineaTransactionSelectorConfiguration txSelectorConfiguration =
         transactionSelectorConfiguration();
-
-    // set maxBundleGasPerBlock
-    maxBundleGasPerBlock = txSelectorConfiguration.maxBundleGasPerBlock();
 
     final LineaRejectedTxReportingConfiguration lineaRejectedTxReportingConfiguration =
         rejectedTxReportingConfiguration();

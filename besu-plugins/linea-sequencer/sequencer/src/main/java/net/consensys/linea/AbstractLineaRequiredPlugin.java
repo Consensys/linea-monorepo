@@ -19,17 +19,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 
+/**
+ * Linea plugins extending this class will halt startup of Besu in case of exception during
+ * registration.
+ *
+ * <p>If that's NOT desired, the plugin should implement {@link BesuPlugin} directly.
+ */
 @Slf4j
 public abstract class AbstractLineaRequiredPlugin extends AbstractLineaSharedPrivateOptionsPlugin {
 
-  /**
-   * Linea plugins extending this class will halt startup of Besu in case of exception during
-   * registration.
-   *
-   * <p>If that's NOT desired, the plugin should implement {@link BesuPlugin} directly.
-   *
-   * @param serviceManager the ServiceManager to be used.
-   */
   @Override
   public void register(final ServiceManager serviceManager) {
     super.register(serviceManager);
@@ -52,4 +50,23 @@ public abstract class AbstractLineaRequiredPlugin extends AbstractLineaSharedPri
    * @param serviceManager the ServiceManager to be used.
    */
   public abstract void doRegister(final ServiceManager serviceManager);
+
+  @Override
+  public void start() {
+    super.start();
+    try {
+      log.info("Starting Linea plugin {}", this.getClass().getName());
+
+      doStart();
+
+    } catch (Exception e) {
+      log.error("Halting Besu startup: exception in plugin startup: ", e);
+      e.printStackTrace();
+      // System.exit will cause besu to exit
+      System.exit(1);
+    }
+  }
+
+  /** Linea plugins can implement this method. Called by {@link BesuPlugin} start method */
+  public abstract void doStart();
 }

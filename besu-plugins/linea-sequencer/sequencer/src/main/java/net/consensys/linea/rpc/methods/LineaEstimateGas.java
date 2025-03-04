@@ -122,11 +122,6 @@ public class LineaEstimateGas {
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
     this.moduleLineCountValidator = new ModuleLineCountValidator(limitsMap);
     this.maxTxGasLimit = UInt256.valueOf(txValidatorConf.maxTxGasLimit());
-
-    if (l1L2BridgeConfiguration.isEmpty()) {
-      log.error("L1L2 bridge settings have not been defined.");
-      System.exit(1);
-    }
   }
 
   public String getNamespace() {

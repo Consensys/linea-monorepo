@@ -77,11 +77,6 @@ public class TraceLineLimitTransactionSelector
         moduleLimits.keySet().stream().collect(Collectors.toMap(Function.identity(), unused -> 0)),
         Map::copyOf);
 
-    if (l1L2BridgeConfiguration.isEmpty()) {
-      log.error("L1L2 bridge settings have not been defined.");
-      System.exit(1);
-    }
-
     this.chainId = chainId;
     this.moduleLimits = moduleLimits;
     this.limitFilePath = tracerConfiguration.moduleLimitsFilePath();

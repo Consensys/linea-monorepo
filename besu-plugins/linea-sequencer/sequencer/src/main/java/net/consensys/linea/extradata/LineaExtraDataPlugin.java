@@ -48,8 +48,7 @@ public class LineaExtraDataPlugin extends AbstractLineaRequiredPlugin {
    * imported block, in order to update the extra data pricing on every incoming block.
    */
   @Override
-  public void start() {
-    super.start();
+  public void doStart() {
     if (profitabilityConfiguration().extraDataPricingEnabled()) {
       final var besuEventsService =
           serviceManager

@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;
 import net.consensys.linea.jsonrpc.JsonRpcManager;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.sequencer.txpoolvalidation.metrics.TransactionPoolProfitabilityMetrics;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.BesuPlugin;
@@ -78,8 +79,10 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
   }
 
   @Override
-  public void start() {
-    super.start();
+  public void doStart() {
+    if (l1L2BridgeSharedConfiguration().equals(LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT)) {
+      throw new IllegalArgumentException("L1L2 bridge settings have not been defined.");
+    }
 
     try (Stream<String> lines =
         Files.lines(
