@@ -35,7 +35,8 @@ abstract contract TrustedCodehashAccess is ITrustedCodehashAccess, OwnableUpgrad
      * @param _initialOwner The address of the owner.
      */
     function __TrustedCodehashAccess_init(address _initialOwner) public onlyInitializing {
-        __Ownable_init(_initialOwner);
+        __Ownable_init();
+        _transferOwnership(_initialOwner);
     }
 
     /**

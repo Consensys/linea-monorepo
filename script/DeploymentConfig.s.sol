@@ -23,6 +23,9 @@ contract DeploymentConfig is Script {
     address internal SNT_ADDRESS_SEPOLIA = 0xE452027cdEF746c7Cd3DB31CB700428b16cD8E51;
 
     // solhint-disable-next-line var-name-mixedcase
+    address internal SNT_ADDRESS_STATUS_NETWORK_SEPOLIA = 0x1C3Ac2a186c6149Ae7Cb4D716eBbD0766E4f898a;
+
+    // solhint-disable-next-line var-name-mixedcase
     address internal STAKING_MANAGER_PROXY_ADDRESS_SEPOLIA = 0xD302Bd9F60c5192e46258028a2F3b4B2B846F61F;
 
     constructor(address _broadcaster) {
@@ -32,6 +35,8 @@ contract DeploymentConfig is Script {
             activeNetworkConfig = getOrCreateAnvilEthConfig();
         } else if (block.chainid == 11_155_111) {
             activeNetworkConfig = getSepoliaConfig();
+        } else if (block.chainid == 1_660_990_954) {
+            activeNetworkConfig = getStatusNetworkSepoliaConfig();
         } else {
             revert DeploymentConfig_NoConfigForChain(block.chainid);
         }
@@ -47,6 +52,14 @@ contract DeploymentConfig is Script {
             deployer: deployer,
             stakingToken: SNT_ADDRESS_SEPOLIA,
             currentImplProxy: STAKING_MANAGER_PROXY_ADDRESS_SEPOLIA
+        });
+    }
+
+    function getStatusNetworkSepoliaConfig() public view returns (NetworkConfig memory) {
+        return NetworkConfig({
+            deployer: deployer,
+            stakingToken: SNT_ADDRESS_STATUS_NETWORK_SEPOLIA,
+            currentImplProxy: address(0)
         });
     }
 

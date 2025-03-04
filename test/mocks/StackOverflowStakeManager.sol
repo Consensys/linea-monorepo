@@ -5,14 +5,8 @@ import { IStakeManager } from "./../../src/interfaces/IStakeManager.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { TrustedCodehashAccess } from "./../../src/TrustedCodehashAccess.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
-contract StackOverflowStakeManager is
-    UUPSUpgradeable,
-    IStakeManager,
-    TrustedCodehashAccess,
-    ReentrancyGuardUpgradeable
-{
+contract StackOverflowStakeManager is UUPSUpgradeable, IStakeManager, TrustedCodehashAccess {
     // solhint-disable-next-line
     IERC20 public STAKING_TOKEN;
 

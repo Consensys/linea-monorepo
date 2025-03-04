@@ -22,8 +22,7 @@ contract UpgradeRewardsStreamerMPScript is BaseScript {
         vm.startBroadcast(deployer);
         // Replace this with actual new version of the contract
         address nextImpl = address(new RewardsStreamerMP());
-        bytes memory initializeData;
-        UUPSUpgradeable(address(currentImplProxy)).upgradeToAndCall(nextImpl, initializeData);
+        UUPSUpgradeable(address(currentImplProxy)).upgradeTo(nextImpl);
         vm.stopBroadcast();
         return nextImpl;
     }

@@ -86,7 +86,8 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @param _stakeManager The address of the StakeManager contract.
      */
     function initialize(address _owner, address _stakeManager) public initializer {
-        __Ownable_init(_owner);
+        __Ownable_init();
+        _transferOwnership(_owner);
         stakeManager = IStakeManagerProxy(_stakeManager);
         stakeManagerImplementationAddress = stakeManager.implementation();
     }

@@ -53,7 +53,8 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
      */
     function initialize(address _owner) public initializer {
         __ERC20_init(NAME, SYMBOL);
-        __Ownable_init(_owner);
+        __Ownable_init();
+        _transferOwnership(_owner);
         __UUPSUpgradeable_init();
     }
 

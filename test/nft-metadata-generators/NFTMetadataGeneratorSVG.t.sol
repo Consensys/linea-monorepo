@@ -56,7 +56,7 @@ contract NFTMetadataGeneratorSVGTest is Test {
 
     function testSetImageStringsRevert() public {
         vm.prank(alice);
-        vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
+        vm.expectRevert("Ownable: caller is not the owner");
         metadataGenerator.setImageStrings("<new-svg>", "</new-svg>");
     }
 }

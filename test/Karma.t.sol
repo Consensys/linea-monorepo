@@ -38,7 +38,7 @@ contract KarmaTest is Test {
         KarmaDistributorMock distributor3 = new KarmaDistributorMock();
 
         vm.prank(alice);
-        vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
+        vm.expectRevert("Ownable: caller is not the owner");
         karma.addRewardDistributor(address(distributor3));
 
         vm.prank(owner);
@@ -53,7 +53,7 @@ contract KarmaTest is Test {
 
     function testRemoveKarmaDistributorOnlyOwner() public {
         vm.prank(alice);
-        vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
+        vm.expectRevert("Ownable: caller is not the owner");
         karma.removeRewardDistributor(address(distributor1));
 
         vm.prank(owner);
@@ -126,7 +126,7 @@ contract KarmaTest is Test {
         assertEq(karma.totalSupply(), 3000 ether);
 
         vm.prank(alice);
-        vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
+        vm.expectRevert("Ownable: caller is not the owner");
         karma.mint(alice, 1000e18);
 
         vm.prank(owner);

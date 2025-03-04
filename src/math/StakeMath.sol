@@ -177,6 +177,6 @@ abstract contract StakeMath is MultiplierPointMath {
      * @param _balance Current balance used to calculate the maximum multiplier points.
      */
     function _estimateLockTime(uint256 _mpMax, uint256 _balance) internal pure returns (uint256 _lockTime) {
-        return Math.mulDiv((_mpMax - _balance) * 100, YEAR, _balance * MP_APY, Math.Rounding.Ceil) - MAX_LOCKUP_PERIOD;
+        return Math.mulDiv((_mpMax - _balance) * 100, YEAR, _balance * MP_APY, Math.Rounding.Up) - MAX_LOCKUP_PERIOD;
     }
 }

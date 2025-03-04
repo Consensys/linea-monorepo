@@ -55,7 +55,7 @@ contract KarmaNFTTest is Test {
             new MockMetadataGenerator(address(erc20Token), "https://new-test.local/");
 
         vm.prank(alice);
-        vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
+        vm.expectRevert("Ownable: caller is not the owner");
         nft.setMetadataGenerator(address(newMetadataGenerator));
     }
 

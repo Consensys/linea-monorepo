@@ -54,12 +54,13 @@ contract VaultFactory is Ownable {
      * @param _stakeManager Address of the `StakeManager` contract instance.
      * @param _vaultImplementation Address of the `StakeVault` implementation contract.
      */
-    constructor(address _owner, address _stakeManager, address _vaultImplementation) Ownable(_owner) {
+    constructor(address _owner, address _stakeManager, address _vaultImplementation) Ownable() {
         if (_stakeManager == address(0)) {
             revert VaultFactory__InvalidStakeManagerAddress();
         }
         stakeManager = _stakeManager;
         vaultImplementation = _vaultImplementation;
+        _transferOwnership(_owner);
     }
 
     /*//////////////////////////////////////////////////////////////////////////

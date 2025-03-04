@@ -46,7 +46,7 @@ contract NFTMetadataGeneratorURLTest is Test {
 
     function testSetBaseURLRevert() public {
         vm.prank(alice);
-        vm.expectPartialRevert(Ownable.OwnableUnauthorizedAccount.selector);
+        vm.expectRevert("Ownable: caller is not the owner");
         metadataGenerator.setURLStrings("http://new-test.local/images/", ".png");
     }
 }

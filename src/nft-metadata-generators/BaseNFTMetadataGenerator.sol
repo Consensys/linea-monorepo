@@ -15,8 +15,9 @@ abstract contract BaseNFTMetadataGenerator is INFTMetadataGenerator, Ownable {
     /// @notice NFT contract address
     address public nft;
 
-    constructor(address _nft) Ownable(msg.sender) {
+    constructor(address _nft) Ownable() {
         nft = _nft;
+        _transferOwnership(msg.sender);
     }
 
     /**

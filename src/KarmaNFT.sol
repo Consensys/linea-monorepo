@@ -27,9 +27,10 @@ contract KarmaNFT is Ownable {
         _;
     }
 
-    constructor(address karmaTokenAddress, address _metadataGenerator) Ownable(msg.sender) {
+    constructor(address karmaTokenAddress, address _metadataGenerator) Ownable() {
         karmaToken = IERC20(karmaTokenAddress);
         metadataGenerator = INFTMetadataGenerator(_metadataGenerator);
+        _transferOwnership(msg.sender);
     }
 
     function setMetadataGenerator(address _metadataGenerator) external onlyOwner {

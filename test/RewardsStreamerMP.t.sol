@@ -1809,7 +1809,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
 
     function test_OnlyOwnerCanEnableEmergencyMode() public {
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
+        vm.expectRevert("Ownable: caller is not the owner");
         streamer.enableEmergencyMode();
     }
 
@@ -2029,7 +2029,7 @@ contract UpgradeTest is RewardsStreamerMPTest {
         address newImpl = address(new RewardsStreamerMP());
         bytes memory initializeData;
         vm.prank(alice);
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, alice));
+        vm.expectRevert("Ownable: caller is not the owner");
         UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
     }
 
@@ -2188,9 +2188,8 @@ contract MaliciousUpgradeTest is RewardsStreamerMPTest {
 
         // upgrade the manager to a malicious one
         address newImpl = address(new StackOverflowStakeManager());
-        bytes memory initializeData;
         vm.prank(admin);
-        UUPSUpgradeable(streamer).upgradeToAndCall(newImpl, initializeData);
+        UUPSUpgradeable(streamer).upgradeTo(newImpl);
 
         // alice leaves system and is able to get funds out, despite malicious manager
         _leave(alice);

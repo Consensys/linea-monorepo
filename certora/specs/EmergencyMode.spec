@@ -20,6 +20,7 @@ definition isInitializerFunction(method f) returns bool = (
 );
 
 definition isUUPSUpgradeableFunction(method f) returns bool = (
+  f.selector == sig:streamer.upgradeTo(address).selector ||
   f.selector == sig:streamer.upgradeToAndCall(address, bytes).selector ||
   f.selector == sig:streamer.__TrustedCodehashAccess_init(address).selector
 );
