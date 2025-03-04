@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/go-corset/pkg/air"
 	"github.com/consensys/go-corset/pkg/mir"
 	"github.com/consensys/go-corset/pkg/schema"
+	"github.com/consensys/go-corset/pkg/util/collection/typed"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -38,7 +39,7 @@ type Arithmetization struct {
 	Schema *air.Schema
 	// Metadata embedded in the zkevm.bin file, as needed to check
 	// compatibility.  Guaranteed non-nil.
-	Metadata map[string]string
+	Metadata typed.Map
 }
 
 // NewArithmetization is the function that declares all the columns and the constraints of
@@ -72,9 +73,9 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
 	} else if !a.Settings.RelaxedMode {
 		// Compatibility check between zkevm.bin and trace file.
-		if zkevmBinCommit, ok := a.Metadata["commit"]; !ok {
+		if zkevmBinCommit, ok := a.Metadata.String("commit"); !ok {
 			panic("missing constraints commit metadata in 'zkevm.bin'")
-		} else if traceFileCommit, ok := metadata["commit"]; !ok {
+		} else if traceFileCommit, ok := metadata.String("commit"); !ok {
 			panic("missing constraints commit metadata in '.lt' file")
 		} else if zkevmBinCommit != traceFileCommit {
 			msg := fmt.Sprintf("zkevm.bin incompatible with trace file (commit %s vs %s)", zkevmBinCommit, traceFileCommit)
