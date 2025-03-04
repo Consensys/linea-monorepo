@@ -5,6 +5,7 @@ on:
     workflows: [main]
     types:
       - completed
+  workflow_call:
 
 jobs:
   filter-commit-changes:
