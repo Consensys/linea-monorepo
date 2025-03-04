@@ -133,4 +133,10 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 			t.Errorf("could match more than one module for %v: %v", col, modules)
 		}
 	}
+
+	t.Logf("totalNumber of columns: %v", len(zkevm.WizardIOP.Columns.AllKeys()))
+
+	for _, mod := range disc.modules {
+		t.Logf("module=%v weight=%v numcol=%v\n", mod.moduleName, mod.Weight(), disc.NumColumnOf(mod.moduleName))
+	}
 }
