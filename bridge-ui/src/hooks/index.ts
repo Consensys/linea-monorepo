@@ -1,6 +1,6 @@
 export { default as useAllowance } from "./useAllowance";
 export { default as useApprove } from "./useApprove";
-export { default as useBridge } from "./useBridge";
+export { default as useBridge } from "./useBridgeOld";
 export { default as useERC20Storage } from "./useERC20Storage";
 export { default as useExecutionFee } from "./useExecutionFee";
 export { default as useFetchAnchoringEvents } from "./useFetchAnchoringEvents";

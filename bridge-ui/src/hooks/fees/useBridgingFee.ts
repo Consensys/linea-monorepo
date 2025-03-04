@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Address } from "viem";
 import { TokenInfo } from "@/config";
 import { useChainStore } from "@/stores/chainStore";
@@ -6,6 +7,7 @@ import useMessageNumber from "../useMessageNumber";
 import useERC20BridgingFee from "./useERC20BridgingFee";
 import useEthBridgingFee from "./useEthBridgingFee";
 import { isEth } from "@/utils/tokens";
+import { useFormStore } from "@/stores/formStoreProvider";
 
 type UseBridgingFeeProps = {
   token: TokenInfo;
@@ -18,6 +20,7 @@ type UseBridgingFeeProps = {
 const useBridgingFee = ({ account, token, claimingType, amount, recipient }: UseBridgingFeeProps) => {
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
+  const setBridgingFees = useFormStore((state) => state.setBridgingFees);
 
   const { feeData } = useFeeData(toChain.id);
   const nextMessageNumber = useMessageNumber({ fromChain, claimingType });
@@ -48,15 +51,24 @@ const useBridgingFee = ({ account, token, claimingType, amount, recipient }: Use
   const isLoading = eth.isLoading || erc20.isLoading;
   const gasLimit = isEth(token) ? eth.data : erc20.data;
 
-  if (isLoading) {
-    return null;
-  }
+  const bridgingFees = useMemo(() => {
+    if (isLoading) {
+      return null;
+    }
 
-  if (isError) {
-    return null;
-  }
+    if (isError) {
+      return null;
+    }
 
-  return gasLimit && feeData ? feeData * (gasLimit + fromChain.gasLimitSurplus) * fromChain.profitMargin : null;
+    if (!gasLimit || !feeData) {
+      return null;
+    }
+    const fees = feeData * (gasLimit + fromChain.gasLimitSurplus) * fromChain.profitMargin;
+    setBridgingFees(fees);
+    return fees;
+  }, [isLoading, isError, gasLimit, feeData, fromChain.gasLimitSurplus, fromChain.profitMargin, setBridgingFees]);
+
+  return bridgingFees;
 };
 
 export default useBridgingFee;

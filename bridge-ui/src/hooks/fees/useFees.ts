@@ -56,6 +56,7 @@ const useFees = () => {
         fee: gasFeesResult.gasFees,
         fiatValue: getFiatValue(gasFeesResult.gasFees),
       });
+
       if (claim === "auto" && bridgingFees) {
         feesArray.push({
           name: `${toChain.name} fee`,
@@ -65,7 +66,7 @@ const useFees = () => {
       }
     }
     return feesArray;
-  }, [claim, gasFeesResult?.gasFees, bridgingFees, fromChain.name, toChain.name, getFiatValue]);
+  }, [gasFeesResult?.gasFees, fromChain.name, getFiatValue, claim, bridgingFees, toChain.name]);
 
   const totalFees = useMemo(() => {
     const totalFeeBigInt = fees.reduce<bigint>((acc, fee) => acc + fee.fee, 0n);

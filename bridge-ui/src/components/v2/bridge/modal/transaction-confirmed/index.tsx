@@ -1,6 +1,8 @@
+import Link from "next/link";
 import Modal from "@/components/v2/modal";
 import styles from "./transaction-confirmed.module.scss";
-import Link from "next/link";
+import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
+import Button from "@/components/v2/ui/button";
 
 type Props = {
   isModalOpen: boolean;
@@ -8,6 +10,8 @@ type Props = {
 };
 
 export default function TransactionConfirmed({ isModalOpen, onCloseModal }: Props) {
+  const setIsTransactionHistoryOpen = useNativeBridgeNavigationStore.useSetIsTransactionHistoryOpen();
+
   return (
     <Modal title="Transaction confirmed!" isOpen={isModalOpen} onClose={onCloseModal} size="lg">
       <div className={styles["modal-inner"]}>
@@ -25,9 +29,16 @@ export default function TransactionConfirmed({ isModalOpen, onCloseModal }: Prop
             See What&apos;s Trending
           </Link>
 
-          <Link className={styles["secondary-btn"]} href="/transactions">
+          <Button
+            variant="link"
+            className={styles["secondary-btn"]}
+            onClick={() => {
+              setIsTransactionHistoryOpen(true);
+              onCloseModal();
+            }}
+          >
             View transactions
-          </Link>
+          </Button>
         </div>
       </div>
     </Modal>
