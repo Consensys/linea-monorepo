@@ -192,7 +192,7 @@ importers:
         version: 1.0.10(hardhat@2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))
       '@nomicfoundation/hardhat-toolbox':
         specifier: 4.0.0
-        version: 4.0.0(olygigo7xomm7hponetaty2q6u)
+        version: 4.0.0(3x25crn6rq43bysciztr5dl6x4)
       '@nomicfoundation/hardhat-verify':
         specifier: 1.1.1
         version: 1.1.1(hardhat@2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))
@@ -262,6 +262,9 @@ importers:
       solhint:
         specifier: 5.0.5
         version: 5.0.5(typescript@5.4.5)
+      solidity-coverage:
+        specifier: 0.8.14
+        version: 0.8.14(hardhat@2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))
       yargs:
         specifier: 17.7.2
         version: 17.7.2
@@ -2898,9 +2901,6 @@ packages:
 
   '@solidity-parser/parser@0.14.5':
     resolution: {integrity: sha512-6dKnHZn7fg/iQATVEzqyUOyEidbn05q7YA2mQ9hC0MMXhhV3/JrsxmFSYZAcr7j1yUP700LLhTruvJ3MiQmjJg==}
-
-  '@solidity-parser/parser@0.18.0':
-    resolution: {integrity: sha512-yfORGUIPgLck41qyN7nbwJRAx17/jAIXCTanHOJZhB6PJ1iAk/84b/xlsVKFSyNyLXIj0dhppoE0+CRws7wlzA==}
 
   '@solidity-parser/parser@0.19.0':
     resolution: {integrity: sha512-RV16k/qIxW/wWc+mLzV3ARyKUaMUTBy9tOLMzFhtNSKYeTAanQ3a5MudJKf/8arIFnA2L27SNjarQKmFg0w/jA==}
@@ -8445,8 +8445,8 @@ packages:
   solidity-ast@0.4.59:
     resolution: {integrity: sha512-I+CX0wrYUN9jDfYtcgWSe+OAowaXy8/1YQy7NS4ni5IBDmIYBq7ZzaP/7QqouLjzZapmQtvGLqCaYgoUWqBo5g==}
 
-  solidity-coverage@0.8.13:
-    resolution: {integrity: sha512-RiBoI+kF94V3Rv0+iwOj3HQVSqNzA9qm/qDP1ZDXK5IX0Cvho1qiz8hAXTsAo6KOIUeP73jfscq0KlLqVxzGWA==}
+  solidity-coverage@0.8.14:
+    resolution: {integrity: sha512-ItAAObe5GaEOp20kXC2BZRnph+9P7Rtoqg2mQc2SXGEHgSDF2wWd1Wxz3ntzQWXkbCtIIGdJT918HG00cObwbA==}
     hasBin: true
     peerDependencies:
       hardhat: ^2.11.0
@@ -12108,7 +12108,7 @@ snapshots:
       ethereumjs-util: 7.1.5
       hardhat: 2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10)
 
-  '@nomicfoundation/hardhat-toolbox@4.0.0(olygigo7xomm7hponetaty2q6u)':
+  '@nomicfoundation/hardhat-toolbox@4.0.0(3x25crn6rq43bysciztr5dl6x4)':
     dependencies:
       '@nomicfoundation/hardhat-chai-matchers': 2.0.8(@nomicfoundation/hardhat-ethers@3.0.5(ethers@6.12.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10)))(chai@4.1.1)(ethers@6.12.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))
       '@nomicfoundation/hardhat-ethers': 3.0.5(ethers@6.12.0(bufferutil@4.0.8)(utf-8-validate@5.0.10))(hardhat@2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))
@@ -12123,7 +12123,7 @@ snapshots:
       ethers: 6.12.0(bufferutil@4.0.8)(utf-8-validate@5.0.10)
       hardhat: 2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10)
       hardhat-gas-reporter: 1.0.10(bufferutil@4.0.8)(hardhat@2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))(utf-8-validate@5.0.10)
-      solidity-coverage: 0.8.13(hardhat@2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))
+      solidity-coverage: 0.8.14(hardhat@2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))
       ts-node: 10.9.2(@types/node@22.7.5)(typescript@5.4.5)
       typechain: 8.3.2(typescript@5.4.5)
       typescript: 5.4.5
@@ -13190,8 +13190,6 @@ snapshots:
   '@solidity-parser/parser@0.14.5':
     dependencies:
       antlr4ts: 0.5.0-alpha.4
-
-  '@solidity-parser/parser@0.18.0': {}
 
   '@solidity-parser/parser@0.19.0': {}
 
@@ -20506,10 +20504,10 @@ snapshots:
 
   solidity-ast@0.4.59: {}
 
-  solidity-coverage@0.8.13(hardhat@2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10)):
+  solidity-coverage@0.8.14(hardhat@2.22.19(bufferutil@4.0.8)(c-kzg@2.1.2)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10)):
     dependencies:
       '@ethersproject/abi': 5.7.0
-      '@solidity-parser/parser': 0.18.0
+      '@solidity-parser/parser': 0.19.0
       chalk: 2.4.2
       death: 1.1.0
       difflib: 0.2.4

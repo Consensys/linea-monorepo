@@ -51,6 +51,7 @@
     "node-gyp": "10.1.0",
     "prettier-plugin-solidity": "1.4.2",
     "solhint": "5.0.5",
+    "solidity-coverage": "0.8.14",
     "yargs": "17.7.2"
   },
   "dependencies": {
