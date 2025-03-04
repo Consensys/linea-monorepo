@@ -14,6 +14,7 @@ jobs:
     name: Filter commit changes
     outputs:
       coordinator: ${{ steps.filter.outputs.coordinator }}
+      smart-contracts: ${{ steps.filter.outputs.smart-contracts }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
