@@ -9,11 +9,11 @@ import { KarmaNFT } from "../src/KarmaNFT.sol";
 import { MockMetadataGenerator } from "./mocks/MockMetadataGenerator.sol";
 
 contract KarmaNFTTest is Test {
-    MockToken erc20Token;
-    MockMetadataGenerator metadataGenerator;
-    KarmaNFT nft;
+    MockToken public erc20Token;
+    MockMetadataGenerator public metadataGenerator;
+    KarmaNFT public nft;
 
-    address alice = makeAddr("alice");
+    address public alice = makeAddr("alice");
 
     function setUp() public {
         erc20Token = new MockToken("Test", "TEST");

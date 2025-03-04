@@ -2199,6 +2199,7 @@ contract MaliciousUpgradeTest is RewardsStreamerMPTest {
     }
 }
 
+// solhint-disable-next-line
 contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
     function setUp() public virtual override {
         super.setUp();

@@ -18,9 +18,11 @@ contract KarmaDistributorMock is IRewardDistributor {
     }
 
     function rewardsBalanceOf(address) external pure override returns (uint256) {
+        // solhint-disable-next-line
         revert("Not implemented");
     }
 
+    // solhint-disable-next-line
     function setReward(uint256, uint256) external pure override { }
 
     function rewardsBalanceOfAccount(address account) external view override returns (uint256) {

@@ -11,6 +11,7 @@ import { IRewardDistributor } from "./interfaces/IRewardDistributor.sol";
 import { TrustedCodehashAccess } from "./TrustedCodehashAccess.sol";
 import { StakeMath } from "./math/StakeMath.sol";
 
+// solhint-disable max-states-count
 /**
  * @title RewardsStreamerMP
  * @notice A contract that manages staking and rewards for multiple vaults.
@@ -40,6 +41,7 @@ contract RewardsStreamerMP is
                                   STATE VARIABLES
     //////////////////////////////////////////////////////////////////////////*/
 
+    // solhint-disable var-name-mixedcase
     /// @notice Token that is staked in the vaults (SNT).
     IERC20 public STAKING_TOKEN;
     /// @notice Scale factor used for rewards calculation.

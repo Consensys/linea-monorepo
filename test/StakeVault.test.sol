@@ -3,7 +3,6 @@ pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
 
-import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 import { DeployRewardsStreamerMPScript } from "../script/DeployRewardsStreamerMP.s.sol";
 import { VaultFactory } from "../src/VaultFactory.sol";
