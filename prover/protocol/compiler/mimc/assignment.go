@@ -1,88 +1,133 @@
 package mimc
 
 import (
+	"sync"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/sirupsen/logrus"
 )
 
-// assign assigns the columns to the prover runtime
+// assign assigns MiMC columns to the prover runtime, optimizing memory with PaddedCircularWindow
 func (ctx *mimcCtx) assign(run *wizard.ProverRuntime) {
-
 	var (
 		oldState = ctx.oldStates.GetColAssignment(run).IntoRegVecSaveAlloc()
 		blocks   = ctx.blocks.GetColAssignment(run).IntoRegVecSaveAlloc()
-
-		// Initialize slices for intermediate results and powers
-		intermediatePrevRes  = make([]field.Element, len(oldState))
-		intermediateCurrRes  = make([]field.Element, len(oldState))
-		intermediatePrevPow4 = make([]field.Element, len(oldState))
-		intermediateCurrPow4 = make([]field.Element, len(oldState))
+		n        = len(ctx.intermediateResult)
 	)
 
-	// Set initial intermediate result as the blocks
-	copy(intermediatePrevRes, blocks)
+	// Count zero pairs (block=0, initState=0) for initial sparsity estimate
+	countZero := countZeroPairs(oldState, blocks)
+	logrus.Infof("Zero pairs: %d out of %d (~%.2f%% sparsity)", countZero, len(oldState), float64(countZero)*100/float64(len(oldState)))
 
-	// Compute and assign intermediate values for each round
-	for i := range ctx.intermediateResult {
-		computeIntermediateValues(i, oldState, intermediatePrevRes, intermediateCurrRes, intermediatePrevPow4, intermediateCurrPow4)
+	// Precompute intermediatePow4[0] with PaddedCircularWindow
+	pow4Round0Full, nonZeroWindowPow4 := precomputePow4Round0(oldState, blocks, countZero)
+	pow4Round0 := createSmartVector(nonZeroWindowPow4, mimc.Constants[0], len(oldState))
+	logrus.Infof("Round 0 pow4 non-zeros: %d, index 0: %v", len(nonZeroWindowPow4), pow4Round0.Get(0))
+	run.AssignColumn(ctx.intermediatePow4[0].GetColID(), pow4Round0)
 
-		// Assign computed values with independent copies
-		if i == 0 {
-			// Round 0: Assign intermediatePow4[0] using intermediatePrevPow4
-			run.AssignColumn(
-				ctx.intermediatePow4[0].GetColID(),
-				smartvectors.NewRegular(append([]field.Element{}, intermediatePrevPow4...)),
-			)
-		} else {
-			// Rounds i > 0: Assign intermediateResult[i] and intermediatePow4[i]
-			run.AssignColumn(
-				ctx.intermediateResult[i].GetColID(),
-				smartvectors.NewRegular(append([]field.Element{}, intermediateCurrRes...)),
-			)
-			run.AssignColumn(
-				ctx.intermediatePow4[i].GetColID(),
-				smartvectors.NewRegular(append([]field.Element{}, intermediateCurrPow4...)),
-			)
-		}
+	// Temporary slices for computation (~1GB total)
+	prevRes := blocks
+	currRes := make([]field.Element, len(oldState))
+	prevPow4 := pow4Round0Full // Full slice for round 1 consistency
+	currPow4 := make([]field.Element, len(oldState))
 
-		// Swap slices for the next round (after round 0)
-		if i > 0 {
-			intermediatePrevRes, intermediateCurrRes = intermediateCurrRes, intermediatePrevRes
-			intermediatePrevPow4, intermediateCurrPow4 = intermediateCurrPow4, intermediatePrevPow4
-		}
+	// Compute and assign for rounds i >= 1
+	for i := 1; i < n; i++ {
+		computeIntermediateValues(i, oldState, prevRes, currRes, prevPow4, currPow4)
+
+		// Convert currRes to SmartVector with dynamic capacity estimate
+		resVector := createSmartVectorFromResults(currRes, countZero, len(oldState), i)
+		logrus.Infof("Round %d res non-zeros: %d, index 0: %v", i, resVector.Len(), resVector.Get(0))
+		run.AssignColumn(ctx.intermediateResult[i].GetColID(), resVector)
+
+		// Convert currPow4 to SmartVector
+		pow4Vector := createSmartVectorFromResults(currPow4, countZero, len(oldState), i)
+		logrus.Infof("Round %d pow4 non-zeros: %d, index 0: %v", i, pow4Vector.Len(), pow4Vector.Get(0))
+		run.AssignColumn(ctx.intermediatePow4[i].GetColID(), pow4Vector)
+
+		// Swap for next round
+		prevRes, currRes = currRes, prevRes
+		prevPow4, currPow4 = currPow4, prevPow4
 	}
 }
 
-// computeIntermediateValues computes intermediate values for the given round
-func computeIntermediateValues(round int, oldState []field.Element, intermediatePrevRes, intermediateCurrRes, intermediatePrevPow4, intermediateCurrPow4 []field.Element) {
+// countZeroPairs counts the number of zero pairs in oldState and blocks
+func countZeroPairs(oldState, blocks []field.Element) int {
+	var countZero int
+	for i := range oldState {
+		if oldState[i].IsZero() && blocks[i].IsZero() {
+			countZero++
+		}
+	}
+	return countZero
+}
+
+// precomputePow4Round0 precomputes the intermediatePow4[0] values
+func precomputePow4Round0(oldState, blocks []field.Element, countZero int) ([]field.Element, []field.Element) {
+	pow4Round0Full := make([]field.Element, len(oldState))
+	nonZeroWindowPow4 := make([]field.Element, 0, len(oldState)-countZero)
+	zeroPairConst := mimc.Constants[0]
+	zeroPairConst.Square(&zeroPairConst).Square(&zeroPairConst)
+	var mu sync.Mutex
 	parallel.Execute(len(oldState), func(start, stop int) {
 		for k := start; k < stop; k++ {
-			if round == 0 {
-				// For the first round, compute initial intermediatePow4
-				tmp := intermediatePrevRes[k]
-				tmp.Add(&tmp, &mimc.Constants[0]).Add(&tmp, &oldState[k])
-				intermediatePrevPow4[k].Square(&tmp).Square(&intermediatePrevPow4[k])
-			} else {
-				// For subsequent rounds, compute intermediate values based on previous results
-				ark := mimc.Constants[round-1]
-				nextArk := mimc.Constants[round]
-
-				tmp := intermediatePrevPow4[k]
-				tmp.Square(&tmp).Square(&tmp)
-
-				// Compute intermediate result using previous result and oldState
-				intermediateCurrRes[k].Add(&intermediatePrevRes[k], &ark).Add(&intermediateCurrRes[k], &oldState[k])
-				intermediateCurrRes[k].Mul(&intermediateCurrRes[k], &tmp)
-
-				// Compute intermediatePow4
-				tmp = intermediateCurrRes[k]
-				tmp.Add(&tmp, &nextArk).Add(&tmp, &oldState[k])
-				tmp.Square(&tmp).Square(&tmp)
-				intermediateCurrPow4[k] = tmp
+			var tmp field.Element
+			tmp.Add(&blocks[k], &mimc.Constants[0]).Add(&tmp, &oldState[k])
+			tmp.Square(&tmp).Square(&tmp)
+			pow4Round0Full[k] = tmp
+			if !blocks[k].IsZero() || !oldState[k].IsZero() {
+				mu.Lock()
+				nonZeroWindowPow4 = append(nonZeroWindowPow4, tmp)
+				mu.Unlock()
 			}
+		}
+	})
+	return pow4Round0Full, nonZeroWindowPow4
+}
+
+// createSmartVector creates a SmartVector from a slice of field.Element
+func createSmartVector(elements []field.Element, paddingVal field.Element, totalLen int) smartvectors.SmartVector {
+	if len(elements) == totalLen {
+		return smartvectors.NewRegular(elements)
+	}
+	return smartvectors.NewPaddedCircularWindow(elements, paddingVal, 0, totalLen)
+}
+
+// createSmartVectorFromResults creates a SmartVector from computation results
+func createSmartVectorFromResults(results []field.Element, countZero, totalLen, round int) smartvectors.SmartVector {
+	expectedNonZeros := totalLen - countZero
+	if round > 1 {
+		expectedNonZeros = totalLen / 2
+	}
+	nonZeroWindow := make([]field.Element, 0, expectedNonZeros)
+	var paddingVal field.Element
+	for _, res := range results {
+		if !res.IsZero() {
+			nonZeroWindow = append(nonZeroWindow, res)
+		}
+	}
+	return createSmartVector(nonZeroWindow, paddingVal, totalLen)
+}
+
+// computeIntermediateValues computes intermediate values for rounds > 0
+func computeIntermediateValues(round int, oldState []field.Element, prevRes, currRes, prevPow4, currPow4 []field.Element) {
+	parallel.Execute(len(oldState), func(start, stop int) {
+		for k := start; k < stop; k++ {
+			ark := mimc.Constants[round-1]
+			nextArk := mimc.Constants[round]
+			tmp := prevPow4[k]
+			tmp.Square(&tmp).Square(&tmp)
+			currRes[k] = prevRes[k]
+			currRes[k].Add(&currRes[k], &ark).Add(&currRes[k], &oldState[k])
+			currRes[k].Mul(&currRes[k], &tmp)
+			tmp = currRes[k]
+			tmp.Add(&tmp, &nextArk).Add(&tmp, &oldState[k])
+			tmp.Square(&tmp).Square(&tmp)
+			currPow4[k] = tmp
 		}
 	})
 }
