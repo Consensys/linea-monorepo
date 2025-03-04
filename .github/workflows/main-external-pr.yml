@@ -8,8 +8,44 @@ on:
       - completed
 
 jobs:
-  upload-codecov-report-coordinator:
+  filter-commit-changes:
     if: github.event.pull_request.head.repo.full_name != 'Consensys/linea-monorepo'
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    name: Filter commit changes
+    outputs:
+      coordinator: ${{ steps.filter.outputs.coordinator }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Filter commit changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.ref }}
+          list-files: "json"
+          filters: |
+            coordinator:
+              - 'coordinator/**'
+              - 'testdata/**'
+              - 'buildSrc/**'
+              - 'jvm-libs/**'
+              - 'gradle/**'
+              - 'build.gradle'
+              - 'gradle.properties'
+              - 'settings.gradle'
+              - '.github/workflows/coordinator-*.yml'
+              - '.github/workflows/build-and-publish.yml'
+              - '.github/workflows/main.yml'
+              - '.github/workflows/reuse-*.yml'
+              - 'config/common/traces-limits-v1.toml'
+              - 'config/common/traces-limits-v2.toml'
+              - 'config/coordinator/**'
+              - 'e2e/**'
+              - 'docker/compose-*.yml'
+
+  upload-codecov-report-coordinator:
+    needs: [ filter-commit-changes ]
+    if: ${{ needs.filter-commit-changes.outputs.coordinator == 'true' }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: upload-codecov-report-coordinator
     env:
