@@ -42,32 +42,32 @@ jobs:
       commit_tag: ${{ inputs.commit_tag }}
     secrets: inherit
 
-  # prover:
-  #   uses: ./.github/workflows/prover-testing.yml
-  #   if: ${{ inputs.prover_changed == 'true' }}
-  #   secrets: inherit
+  prover:
+    uses: ./.github/workflows/prover-testing.yml
+    if: ${{ inputs.prover_changed == 'true' }}
+    secrets: inherit
 
-  # postman:
-  #   uses: ./.github/workflows/postman-testing.yml
-  #   if: ${{ inputs.postman_changed == 'true' }}
-  #   secrets: inherit
+  postman:
+    uses: ./.github/workflows/postman-testing.yml
+    if: ${{ inputs.postman_changed == 'true' }}
+    secrets: inherit
 
-  # traces-api-facade:
-  #   uses: ./.github/workflows/traces-api-facade-testing.yml
-  #   if: ${{ inputs.traces_api_facade_changed == 'true' }}
+  traces-api-facade:
+    uses: ./.github/workflows/traces-api-facade-testing.yml
+    if: ${{ inputs.traces_api_facade_changed == 'true' }}
 
-  # transaction-exclusion-api:
-  #   uses: ./.github/workflows/transaction-exclusion-api-testing.yml
-  #   if: ${{ inputs.transaction_exclusion_api_changed == 'true' }}
-  #   secrets: inherit
+  transaction-exclusion-api:
+    uses: ./.github/workflows/transaction-exclusion-api-testing.yml
+    if: ${{ inputs.transaction_exclusion_api_changed == 'true' }}
+    secrets: inherit
 
-  # staterecovery:
-  #   # needs: [ cache-docker-images ]
-  #   uses: ./.github/workflows/staterecovery-testing.yml
-  #   if: ${{ inputs.staterecovery_changed == 'true' }}
-  #   with:
-  #     commit_tag: ${{ inputs.commit_tag }}
-  #   secrets: inherit
+  staterecovery:
+    # needs: [ cache-docker-images ]
+    uses: ./.github/workflows/staterecovery-testing.yml
+    if: ${{ inputs.staterecovery_changed == 'true' }}
+    with:
+      commit_tag: ${{ inputs.commit_tag }}
+    secrets: inherit
 
   smart-contracts:
     uses: ./.github/workflows/run-smc-tests.yml
