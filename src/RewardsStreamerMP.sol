@@ -3,7 +3,6 @@ pragma solidity ^0.8.26;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { IStakeManager } from "./interfaces/IStakeManager.sol";
@@ -23,7 +22,6 @@ contract RewardsStreamerMP is
     UUPSUpgradeable,
     IStakeManager,
     TrustedCodehashAccess,
-    ReentrancyGuardUpgradeable,
     IRewardDistributor,
     StakeMath
 {
@@ -125,7 +123,6 @@ contract RewardsStreamerMP is
     function initialize(address _owner, address _stakingToken) external initializer {
         __TrustedCodehashAccess_init(_owner);
         __UUPSUpgradeable_init();
-        __ReentrancyGuard_init();
 
         STAKING_TOKEN = IERC20(_stakingToken);
         lastMPUpdatedTime = block.timestamp;
@@ -178,7 +175,6 @@ contract RewardsStreamerMP is
         onlyTrustedCodehash
         onlyNotEmergencyMode
         onlyRegisteredVault
-        nonReentrant
     {
         if (amount == 0) {
             revert StakingManager__AmountCannotBeZero();
@@ -223,13 +219,7 @@ contract RewardsStreamerMP is
      * @dev Only registered vaults are allowed to lock.
      * @param lockPeriod The duration to lock the stake
      */
-    function lock(uint256 lockPeriod)
-        external
-        onlyTrustedCodehash
-        onlyNotEmergencyMode
-        onlyRegisteredVault
-        nonReentrant
-    {
+    function lock(uint256 lockPeriod) external onlyTrustedCodehash onlyNotEmergencyMode onlyRegisteredVault {
         VaultData storage vault = vaultData[msg.sender];
 
         if (vault.lockUntil > 0) {
@@ -269,13 +259,7 @@ contract RewardsStreamerMP is
      * @dev Unstaking reduces accrued MPs proportionally.
      * @param amount The amount of tokens to unstake
      */
-    function unstake(uint256 amount)
-        external
-        onlyTrustedCodehash
-        onlyNotEmergencyMode
-        onlyRegisteredVault
-        nonReentrant
-    {
+    function unstake(uint256 amount) external onlyTrustedCodehash onlyNotEmergencyMode onlyRegisteredVault {
         VaultData storage vault = vaultData[msg.sender];
         _unstake(amount, vault, msg.sender);
         emit Unstaked(msg.sender, amount);
@@ -286,7 +270,7 @@ contract RewardsStreamerMP is
     // @dev This function is protected by whitelisting the codehash of the caller.
     //      This ensures `StakeVault`s will call this function only if they don't
     //      trust the `StakeManager` (e.g. in case of an upgrade).
-    function leave() external onlyTrustedCodehash nonReentrant {
+    function leave() external onlyTrustedCodehash {
         VaultData storage vault = vaultData[msg.sender];
 
         if (vault.stakedBalance > 0) {
