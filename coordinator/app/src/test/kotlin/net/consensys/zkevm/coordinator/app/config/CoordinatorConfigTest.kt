@@ -51,7 +51,6 @@ class CoordinatorConfigTest {
     )
 
     private val zkTracesConfig = ZkTraces(
-      URI("http://traces-node:8545").toURL(),
       Duration.parse("PT1S")
     )
 
@@ -457,7 +456,6 @@ class CoordinatorConfigTest {
 
     val expectedConfig =
       coordinatorConfig.copy(
-        zkTraces = zkTracesConfig.copy(ethApi = URI("http://traces-node-v2:8545").toURL()),
         l2NetworkGasPricingService = l2NetworkGasPricingServiceConfig.copy(
           legacy =
           l2NetworkGasPricingServiceConfig.legacy.copy(
