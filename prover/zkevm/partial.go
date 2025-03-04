@@ -50,6 +50,7 @@ func PartialZkEvm(tl *config.TracesLimits) *ZkEvm {
 			Arithmetization: arithmetization.Settings{
 				Limits:            tl,
 				OptimisationLevel: &mir.DEFAULT_OPTIMISATION_LEVEL,
+				RelaxedMode:       false,
 			},
 			CompilationSuite: partialCompilationSuite,
 			Metadata: wizard.VersionMetadata{

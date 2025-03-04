@@ -17,7 +17,7 @@ import (
 
 func main() {
 
-	cfg, optConfig, traceFile, pErr := getParamsFromCLI()
+	cfg, optConfig, traceFile, relaxed, pErr := getParamsFromCLI()
 	if pErr != nil {
 		fmt.Printf("FATAL\n")
 		fmt.Printf("err = %v\n", pErr)
@@ -33,7 +33,7 @@ func main() {
 	}
 
 	var (
-		comp  = wizard.Compile(MakeDefine(cfg, optConfig), suite...)
+		comp  = wizard.Compile(MakeDefine(cfg, optConfig, relaxed), suite...)
 		proof = wizard.Prove(comp, MakeProver(traceFile))
 		vErr  = wizard.Verify(comp, proof)
 	)
