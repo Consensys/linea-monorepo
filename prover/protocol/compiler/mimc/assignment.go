@@ -29,10 +29,10 @@ func (ctx *mimcCtx) assign(run *wizard.ProverRuntime) {
 	logrus.Infof("Round 0 pow4 non-zeros: %d, index 0: %v", len(nonZeroWindowPow4), pow4Round0.Get(0))
 	run.AssignColumn(ctx.intermediatePow4[0].GetColID(), pow4Round0)
 
-	// Temporary slices for computation (~1GB total)
+	// Temporary slices for computation
 	prevRes := blocks
 	currRes := make([]field.Element, len(oldState))
-	prevPow4 := pow4Round0Full // Full slice for round 1 consistency
+	prevPow4 := pow4Round0Full
 	currPow4 := make([]field.Element, len(oldState))
 
 	// Compute and assign for rounds i >= 1
@@ -40,12 +40,12 @@ func (ctx *mimcCtx) assign(run *wizard.ProverRuntime) {
 		computeIntermediateValues(i, oldState, prevRes, currRes, prevPow4, currPow4)
 
 		// Convert currRes to SmartVector with dynamic capacity estimate
-		resVector := createSmartVectorFromResults(currRes, countZero, len(oldState), i)
+		resVector := createSmartVectorFromResults(currRes, countZero, len(oldState))
 		logrus.Infof("Round %d res non-zeros: %d, index 0: %v", i, resVector.Len(), resVector.Get(0))
 		run.AssignColumn(ctx.intermediateResult[i].GetColID(), resVector)
 
 		// Convert currPow4 to SmartVector
-		pow4Vector := createSmartVectorFromResults(currPow4, countZero, len(oldState), i)
+		pow4Vector := createSmartVectorFromResults(currPow4, countZero, len(oldState))
 		logrus.Infof("Round %d pow4 non-zeros: %d, index 0: %v", i, pow4Vector.Len(), pow4Vector.Get(0))
 		run.AssignColumn(ctx.intermediatePow4[i].GetColID(), pow4Vector)
 
@@ -98,11 +98,8 @@ func createSmartVector(elements []field.Element, paddingVal field.Element, total
 }
 
 // createSmartVectorFromResults creates a SmartVector from computation results
-func createSmartVectorFromResults(results []field.Element, countZero, totalLen, round int) smartvectors.SmartVector {
+func createSmartVectorFromResults(results []field.Element, countZero, totalLen int) smartvectors.SmartVector {
 	expectedNonZeros := totalLen - countZero
-	if round > 1 {
-		expectedNonZeros = totalLen / 2
-	}
 	nonZeroWindow := make([]field.Element, 0, expectedNonZeros)
 	var paddingVal field.Element
 	for _, res := range results {
@@ -114,7 +111,7 @@ func createSmartVectorFromResults(results []field.Element, countZero, totalLen, 
 }
 
 // computeIntermediateValues computes intermediate values for rounds > 0
-func computeIntermediateValues(round int, oldState []field.Element, prevRes, currRes, prevPow4, currPow4 []field.Element) {
+func computeIntermediateValues(round int, oldState, prevRes, currRes, prevPow4, currPow4 []field.Element) {
 	parallel.Execute(len(oldState), func(start, stop int) {
 		for k := start; k < stop; k++ {
 			ark := mimc.Constants[round-1]
