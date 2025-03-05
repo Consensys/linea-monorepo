@@ -6,18 +6,20 @@ import { Base64 } from "@openzeppelin/contracts/utils/Base64.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { MockToken } from "./mocks/MockToken.sol";
 import { KarmaNFT } from "../src/KarmaNFT.sol";
+import { DeployKarmaNFTScript } from "../script/DeployKarmaNFT.s.sol";
+import { INFTMetadataGenerator } from "../src/interfaces/INFTMetadataGenerator.sol";
 import { MockMetadataGenerator } from "./mocks/MockMetadataGenerator.sol";
 
 contract KarmaNFTTest is Test {
     MockToken public erc20Token;
-    MockMetadataGenerator public metadataGenerator;
+    INFTMetadataGenerator public metadataGenerator;
     KarmaNFT public nft;
 
     address public alice = makeAddr("alice");
 
     function setUp() public {
         erc20Token = new MockToken("Test", "TEST");
-        metadataGenerator = new MockMetadataGenerator("https://test.local/");
+        ((nft, metadataGenerator,)) = new DeployKarmaNFTScript().runForTest(address(erc20Token));
         nft = new KarmaNFT(address(erc20Token), address(metadataGenerator));
 
         address[1] memory users = [alice];
@@ -30,7 +32,10 @@ contract KarmaNFTTest is Test {
         return uint256(uint160(addr));
     }
 
-    function testTokenURI() public view {
+    function testTokenURI() public {
+        INFTMetadataGenerator generator = new MockMetadataGenerator("https://test.local/");
+        nft.setMetadataGenerator(address(generator));
+
         bytes memory expectedMetadata = abi.encodePacked(
             "{\"name\":\"KarmaNFT 0x328809bc894f92807417d2dad6b7c998c1afdac6\",",
             // solhint-disable-next-line

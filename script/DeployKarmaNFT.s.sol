@@ -8,14 +8,23 @@ import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy
 
 import { KarmaNFT } from "../src/KarmaNFT.sol";
 import { NFTMetadataGeneratorSVG } from "../src/nft-metadata-generators/NFTMetadataGeneratorSVG.sol";
+import { INFTMetadataGenerator } from "../src/interfaces/INFTMetadataGenerator.sol";
 
 contract DeployKarmaNFTScript is BaseScript {
-    function run() public returns (KarmaNFT, DeploymentConfig) {
-        DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
-        (address deployer,,) = deploymentConfig.activeNetworkConfig();
-
+    function run() public returns (KarmaNFT, INFTMetadataGenerator, DeploymentConfig) {
         address karmaAddress = vm.envAddress("KARMA_ADDRESS");
         require(karmaAddress != address(0), "KARMA_ADDRESS is not set");
+
+        return _run(karmaAddress);
+    }
+
+    function runForTest(address karmaAddress) public returns (KarmaNFT, INFTMetadataGenerator, DeploymentConfig) {
+        return _run(karmaAddress);
+    }
+
+    function _run(address karmaAddress) public returns (KarmaNFT, INFTMetadataGenerator, DeploymentConfig) {
+        DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
+        (address deployer,,) = deploymentConfig.activeNetworkConfig();
 
         vm.startBroadcast(deployer);
 
@@ -27,6 +36,6 @@ contract DeployKarmaNFTScript is BaseScript {
 
         vm.stopBroadcast();
 
-        return (karmaNFT, deploymentConfig);
+        return (karmaNFT, INFTMetadataGenerator(metadataGenerator), deploymentConfig);
     }
 }
