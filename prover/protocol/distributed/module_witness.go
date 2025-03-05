@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -37,6 +38,9 @@ type ModuleWitness struct {
 	// N0 values are the parameters to the Horner queries in the same order
 	// as in the [FilteredModuleInputs.HornerArgs]
 	N0Values []int
+	// InitialFiatShamirState is the initial FiatShamir state to set at
+	// round 1.
+	InitialFiatShamirState field.Element
 }
 
 // SegmentRuntime scans a [wizard.ProverRuntime] and returns a list of
@@ -118,8 +122,9 @@ func SegmentModule(runtime *wizard.ProverRuntime, moduleGL *ModuleGL, moduleLPP 
 func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, moduleName ModuleName) int {
 
 	var (
-		cols            = runtime.Spec.Columns.AllKeys()
-		nbSegmentModule = -1
+		cols                  = runtime.Spec.Columns.AllKeys()
+		nbSegmentModule       = -1
+		colNamesWithOrientErr = []ifaces.ColID{}
 	)
 
 	for _, col := range cols {
@@ -135,11 +140,12 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 			assignment   = col.GetColAssignment(runtime)
 			density      = smartvectors.Density(assignment)
 			_, orientErr = smartvectors.PaddingOrientationOf(assignment)
-			nbSegmentCol = utils.DivCeil(newSize, density)
+			nbSegmentCol = utils.DivCeil(density, newSize)
 		)
 
-		if orientErr != nil {
+		if orientErr != nil && density > 0 {
 			// the column cannot be taken into account for the segmentation
+			colNamesWithOrientErr = append(colNamesWithOrientErr, col.GetColID())
 			continue
 		}
 
@@ -147,7 +153,7 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 	}
 
 	if nbSegmentModule == -1 {
-		utils.Panic("could not resolve the number of segment for module %v", moduleName)
+		utils.Panic("could not resolve the number of segment for module %v. columns with ambiguous orientation error: %v", moduleName, colNamesWithOrientErr)
 	}
 
 	return nbSegmentModule
@@ -192,7 +198,33 @@ func (mw *ModuleWitness) NextN0s(moduleLPP *ModuleLPP) []int {
 
 	for i := range newN0s {
 
-		sel := mw.Columns[args[i].Selector.GetColID()].IntoRegVecSaveAlloc()
+		// Note: the selector might be a non-natural column. Possibly a const-col.
+		selCol := args[i].Selector
+
+		if constCol, isConstCol := selCol.(verifiercol.ConstCol); isConstCol {
+
+			if constCol.F.IsZero() {
+				continue
+			}
+
+			if constCol.F.IsOne() {
+				newN0s[i] += constCol.Size()
+				continue
+			}
+
+			utils.Panic("the selector column has non-zero values: %v", constCol.F.String())
+		}
+
+		// Expectedly, at this point. The column must be a natural column. We can't support
+		// shifted selector columns.
+		_ = selCol.(column.Natural)
+
+		selSV, ok := mw.Columns[selCol.GetColID()]
+		if !ok {
+			utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selCol, mw.ModuleName, mw.ModuleIndex)
+		}
+
+		sel := selSV.IntoRegVecSaveAlloc()
 
 		for j := range sel {
 			if sel[j].IsOne() {
@@ -213,12 +245,14 @@ func (mw *ModuleWitness) NextReceivedValuesGlobal(moduleGL *ModuleGL) []field.El
 	for i, loc := range moduleGL.SentValuesGlobal {
 
 		var (
-			col = column.RootParents(loc.Pol)
-			pos = column.StackOffsets(loc.Pol)
+			col      = column.RootParents(loc.Pol)
+			pos      = column.StackOffsets(loc.Pol)
+			colName  = col.GetColID()
+			smartvec = mw.Columns[colName]
 		)
 
 		pos = utils.PositiveMod(pos, col.Size())
-		newReceivedValuesGlobal[i] = mw.Columns[col.GetColID()].Get(pos)
+		newReceivedValuesGlobal[i] = smartvec.Get(pos)
 	}
 
 	return newReceivedValuesGlobal

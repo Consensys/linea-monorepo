@@ -19,7 +19,9 @@ import (
 var (
 	logDerivativeSumPublicInput = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
 	grandProductPublicInput     = "GRAND_PRODUCT_PUBLIC_INPUT"
-	hornerPublicInput           = "HORNER_PUBLIC_INPUT"
+	hornerPublicInput           = "HORNER_FINAL_RES_PUBLIC_INPUT"
+	hornerN0HashPublicInput     = "HORNER_N0_HASH_PUBLIC_INPUT"
+	hornerN1HashPublicInput     = "HORNER_N1_HASH_PUBLIC_INPUT"
 )
 
 // ModuleLPP is a compilation structure holding the central informations
@@ -104,8 +106,6 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *M
 			Disc: moduleInput.Disc,
 		},
 		definitionInput:        moduleInput,
-		N0Hash:                 builder.InsertProof(1, "LPP_N0_HASH", 1),
-		N1Hash:                 builder.InsertProof(1, "LPP_N1_HASH", 1),
 		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 1),
 	}
 
@@ -178,10 +178,25 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *M
 			moduleInput.HornerArgs,
 		)
 
+		moduleLPP.N0Hash = builder.InsertProof(1, "LPP_N0_HASH", 1)
+		moduleLPP.N1Hash = builder.InsertProof(1, "LPP_N1_HASH", 1)
+
 		moduleLPP.Wiop.InsertPublicInput(
 			hornerPublicInput,
 			accessors.NewFromHornerAccessorFinalValue(&moduleLPP.Horner),
 		)
+
+		moduleLPP.Wiop.InsertPublicInput(
+			hornerN0HashPublicInput,
+			accessors.NewFromPublicColumn(moduleLPP.N0Hash, 0),
+		)
+
+		moduleLPP.Wiop.InsertPublicInput(
+			hornerN1HashPublicInput,
+			accessors.NewFromPublicColumn(moduleLPP.N1Hash, 0),
+		)
+
+		moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})
 
 	} else {
 
@@ -189,13 +204,30 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *M
 			hornerPublicInput,
 			accessors.NewConstant(field.Zero()),
 		)
+
+		moduleLPP.Wiop.InsertPublicInput(
+			hornerN0HashPublicInput,
+			accessors.NewConstant(field.Zero()),
+		)
+
+		moduleLPP.Wiop.InsertPublicInput(
+			hornerN1HashPublicInput,
+			accessors.NewConstant(field.Zero()),
+		)
 	}
 
 	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
-	moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})
 	moduleLPP.Wiop.FiatShamirHooksPreSampling.AppendToInner(1, &SetInitialFSHash{ModuleLPP: *moduleLPP})
 
 	return moduleLPP
+}
+
+// GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
+// the provided [ModuleWitness] argument.
+func (m *ModuleLPP) GetMainProverStep(witness *ModuleWitness) wizard.ProverStep {
+	return func(run *wizard.ProverRuntime) {
+		m.Assign(run, witness)
+	}
 }
 
 // Assign is the entry-point for the assignment of the [ModuleLPP]. It
@@ -214,6 +246,11 @@ func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitness) {
 		columns = m.definitionInput.Columns
 	)
 
+	run.AssignColumn(
+		m.InitialFiatShamirState.GetColID(),
+		smartvectors.NewConstant(witness.InitialFiatShamirState, 1),
+	)
+
 	run.State.InsertNew(moduleWitnessKey, witness)
 
 	for _, col := range columns {
@@ -229,6 +266,10 @@ func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitness) {
 
 		if newCol.Round() != 0 {
 			utils.Panic("expected a column with round 0, got %v, column: %v", newCol.Round(), colName)
+		}
+
+		if m.Wiop.Precomputed.Exists(colName) {
+			continue
 		}
 
 		colWitness, ok := witness.Columns[colName]
@@ -288,16 +329,22 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 	moduleWitness := run.State.MustGet(moduleWitnessKey).(*ModuleWitness)
 	run.State.Del(moduleWitnessKey)
 
-	hornerParams := a.getHornerParams(run, moduleWitness.N0Values)
+	if len(a.definitionInput.HornerArgs) > 0 {
+		hornerParams := a.getHornerParams(run, moduleWitness.N0Values)
+		run.AssignHornerParams(a.Horner.ID, hornerParams)
+		n0Hash, n1Hash := hashNxs(hornerParams, 0), hashNxs(hornerParams, 1)
 
-	run.AssignHornerParams(a.Horner.ID, hornerParams)
-	run.AssignGrandProduct(a.GrandProduct.ID, a.GrandProduct.Compute(run))
-	run.AssignLogDerivSum(a.LogDerivativeSum.ID, a.LogDerivativeSum.Compute(run))
+		run.AssignColumn(a.N0Hash.GetColID(), smartvectors.NewRegular([]field.Element{n0Hash}))
+		run.AssignColumn(a.N1Hash.GetColID(), smartvectors.NewRegular([]field.Element{n1Hash}))
+	}
 
-	n0Hash, n1Hash := hashNxs(hornerParams, 0), hashNxs(hornerParams, 1)
+	if len(a.definitionInput.GrandProductArgs) > 0 {
+		run.AssignGrandProduct(a.GrandProduct.ID, a.GrandProduct.Compute(run))
+	}
 
-	run.AssignColumn(a.N0Hash.GetColID(), smartvectors.NewRegular([]field.Element{n0Hash}))
-	run.AssignColumn(a.N1Hash.GetColID(), smartvectors.NewRegular([]field.Element{n1Hash}))
+	if len(a.definitionInput.LogDerivativeArgs) > 0 {
+		run.AssignLogDerivSum(a.LogDerivativeSum.ID, a.LogDerivativeSum.Compute(run))
+	}
 }
 
 func (m ModuleLPP) getHornerParams(run *wizard.ProverRuntime, n0Values []int) query.HornerParams {

@@ -70,7 +70,10 @@ func (mt *moduleTranslator) TranslateColumn(col ifaces.Column, sizeHint int) ifa
 }
 
 // TranslateExpression returns an expression corresponding to the provided
-// expression but in term of the input module.
+// expression but in term of the input module. When the function encounters
+// a [verifiercol.Constcol] as part of the expression, it converts it into
+// a [symbolic.Constant] directly as this simplifies the later steps in the
+// process and is strictly equivalent.
 func (mt *moduleTranslator) TranslateExpression(expr *symbolic.Expression) *symbolic.Expression {
 
 	sizeHint := NewSizeOfExpr(mt.Disc, expr)
@@ -84,6 +87,15 @@ func (mt *moduleTranslator) TranslateExpression(expr *symbolic.Expression) *symb
 					newAcc := mt.TranslateAccessor(m)
 					return symbolic.NewVariable(newAcc)
 				case ifaces.Column:
+					// When finding a constcol, it is always simpler to
+					// convert it into a constant sub-expression. Also,
+					// it is important to account for the fact that we
+					// can absolutely encounter shifted version of a
+					// constant col.
+					root := column.RootParents(m)
+					if constcol, isconst := root.(verifiercol.ConstCol); isconst {
+						return symbolic.NewConstant(constcol.F)
+					}
 					newCol := mt.TranslateColumn(m, sizeHint)
 					return symbolic.NewVariable(newCol)
 				case coin.Info:

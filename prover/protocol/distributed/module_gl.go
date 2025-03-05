@@ -160,17 +160,23 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 			utils.Panic("cannot translate a column with non-zero round %v", col.Round())
 		}
 
-		_, isLPP := moduleInput.ColumnsLPPSet[col.GetColID()]
-		newRound := 1
+		var (
+			_, isLPP               = moduleInput.ColumnsLPPSet[col.GetColID()]
+			newRound               = 1
+			precompData, isPrecomp = moduleInput.ColumnsPrecomputed[col.GetColID()]
+		)
+
 		if isLPP {
 			newRound = 0
 		}
 
+		if isPrecomp {
+			newRound = 0
+			moduleGL.Wiop.Precomputed.InsertNew(col.ID, precompData)
+		}
+
 		moduleGL.InsertColumn(*col, newRound)
 
-		if data, isPrecomp := moduleInput.ColumnsPrecomputed[col.GetColID()]; isPrecomp {
-			moduleGL.Wiop.Precomputed.InsertNew(col.ID, data)
-		}
 	}
 
 	// As the columns of the GL and the LPP modules are split between two round although
@@ -236,10 +242,19 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		moduleGL.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
 	}
 
+	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignGL{ModuleGL: moduleGL})
 	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignSendReceiveGlobal{ModuleGL: moduleGL})
 	moduleGL.Wiop.RegisterVerifierAction(1, &ModuleGLCheckSendReceiveGlobal{ModuleGL: moduleGL})
 
 	return moduleGL
+}
+
+// GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
+// the provided [ModuleWitness] argument.
+func (m *ModuleGL) GetMainProverStep(witness *ModuleWitness) wizard.ProverStep {
+	return func(run *wizard.ProverRuntime) {
+		m.Assign(run, witness)
+	}
 }
 
 // Assign is the entry-point for the assignment of [ModuleGL]. It
@@ -269,13 +284,15 @@ func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitness) {
 
 		colName := col.GetColID()
 
-		if _, ok := m.definitionInput.ColumnsLPPSet[colName]; ok {
-			// We can't assign LPP columns as they (normally) have already
-			// been assigned at this point.
+		if _, ok := m.definitionInput.ColumnsLPPSet[colName]; !ok {
 			continue
 		}
 
 		newCol := m.Wiop.Columns.GetHandle(colName)
+
+		if m.Wiop.Precomputed.Exists(newCol.GetColID()) {
+			continue
+		}
 
 		if newCol.Round() != 0 {
 			utils.Panic("expected a column with round 0, got %v, column: %v", newCol.Round(), colName)
@@ -559,6 +576,7 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 	}
 
 	hashSend := field.Element{}
+
 	for i := range a.SentValuesGlobal {
 		lo := a.SentValuesGlobal[i]
 		v := lo.Pol.GetColAssignmentAt(run, 0)
@@ -571,8 +589,8 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 		smartvectors.NewConstant(hashSend, 1),
 	)
 
-	rcvData := run.State.MustGet(moduleGLReceiveGlobalKey).([]field.Element)
-	run.State.Del(moduleGLReceiveGlobalKey)
+	witness := run.State.MustGet(moduleWitnessKey).(*ModuleWitness)
+	rcvData := witness.ReceivedValuesGlobal
 
 	if len(rcvData) != len(a.ReceivedValuesGlobalAccs) {
 		utils.Panic("len(rcvData: %v) != len(a.ReceivedValuesGlobalAccs: %v)", len(rcvData), len(a.ReceivedValuesGlobalAccs))
@@ -586,7 +604,7 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 	hashRcv := field.Element{}
 	for i := range rcvData {
 		v := rcvData[i]
-		hashSend = mimc.BlockCompression(hashSend, v)
+		hashRcv = mimc.BlockCompression(hashRcv, v)
 	}
 
 	run.AssignColumn(
@@ -707,6 +725,11 @@ func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
 		}
 
 		newCol := a.Wiop.Columns.GetHandle(colName)
+
+		if a.Wiop.Precomputed.Exists(colName) {
+			// The column has been registered as a precomputed column but is living at round 1
+			continue
+		}
 
 		if newCol.Round() != 1 {
 			utils.Panic("expected a column with round 1, got %v, column: %v", newCol.Round(), colName)
