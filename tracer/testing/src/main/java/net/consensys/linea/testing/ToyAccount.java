@@ -18,6 +18,7 @@ package net.consensys.linea.testing;
 
 import static com.google.common.base.Preconditions.*;
 
+import java.security.KeyPair;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -49,6 +50,7 @@ public class ToyAccount implements MutableAccount {
   private Bytes code;
   private Supplier<Hash> codeHash = Suppliers.memoize(() -> Hash.hash(code));
   final Map<UInt256, UInt256> storage = new HashMap<>();
+  final KeyPair keyPair;
 
   @Builder
   public ToyAccount(
@@ -63,6 +65,7 @@ public class ToyAccount implements MutableAccount {
     this.nonce = nonce;
     this.balance = balance;
     this.code = code == null ? Bytes.EMPTY : code;
+    this.keyPair = null;
   }
 
   @Override
