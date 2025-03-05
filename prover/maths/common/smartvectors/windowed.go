@@ -2,6 +2,7 @@ package smartvectors
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -365,4 +366,14 @@ func (w *PaddedCircularWindow) IntoRegVecSaveAllocExt() []fext.Element {
 		res[i].SetFromBase(&elem)
 	}
 	return res
+}
+
+// PaddingVal returns the padding value of the PaddedCircularWindow.
+func (p *PaddedCircularWindow) PaddingVal() field.Element {
+	return p.paddingVal
+}
+
+// Interval returns the circular interval of the PaddedCircularWindow.
+func (p *PaddedCircularWindow) Interval() CircularInterval {
+	return p.interval()
 }
