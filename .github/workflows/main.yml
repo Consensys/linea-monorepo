@@ -155,10 +155,33 @@ jobs:
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
     secrets: inherit
 
+  testing:
+    needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
+    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
+    uses: ./.github/workflows/testing.yml
+    with:
+      commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
+      coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
+      staterecovery_changed: ${{ needs.filter-commit-changes.outputs.staterecovery }}
+      postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
+      prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
+      traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
+      transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
+    secrets: inherit
+
+  get-e2e-toggle:
+    needs: [ filter-commit-changes ]
+    uses: ./.github/workflows/get-e2e-toggle.yml
+    with:
+      has_changes_requiring_build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
+      contracts_excluding_local_deployment_artifacts: ${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts }}
+      changed_file_count: ${{ needs.filter-commit-changes.outputs.changed-file-count }}
+      contracts_excluding_local_deployment_artifacts_count: ${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts-count }}
+
   manual-docker-build-and-e2e-tests:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
-    if: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
+    needs: [ store-image-name-and-tags, check-and-tag-images, get-e2e-toggle ]
+    if: ${{ needs.get-e2e-toggle.outputs.e2e-toggle == 'true' }}
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     concurrency:
       group: manual-docker-build-and-e2e-tests-${{ github.workflow }}-${{ github.ref }}
@@ -186,31 +209,8 @@ jobs:
       transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
     secrets: inherit
 
-  testing:
-    needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
-    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
-    uses: ./.github/workflows/testing.yml
-    with:
-      commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
-      coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
-      staterecovery_changed: ${{ needs.filter-commit-changes.outputs.staterecovery }}
-      postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
-      prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
-      traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
-      transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
-    secrets: inherit
-
-  get-e2e-toggle:
-    needs: [ filter-commit-changes ]
-    uses: ./.github/workflows/get-e2e-toggle.yml
-    with:
-      has_changes_requiring_build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
-      contracts_excluding_local_deployment_artifacts: ${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts }}
-      changed_file_count: ${{ needs.filter-commit-changes.outputs.changed-file-count }}
-      contracts_excluding_local_deployment_artifacts_count: ${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts-count }}
-
   run-e2e-tests-geth-tracing:
-    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, get-e2e-toggle ]
+    needs: [ store-image-name-and-tags, docker-build, get-e2e-toggle, manual-docker-build-and-e2e-tests ]
     # Make this execute for e2e-toggle == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
     if: ${{ always() && needs.get-e2e-toggle.outputs.e2e-toggle == 'false' || needs.docker-build.result == 'success' }}
     concurrency:
@@ -225,7 +225,7 @@ jobs:
     secrets: inherit
 
   run-e2e-tests:
-    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, get-e2e-toggle ]
+    needs: [ store-image-name-and-tags, docker-build, get-e2e-toggle, manual-docker-build-and-e2e-tests ]
     # Make this execute for e2e-toggle == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
     if: ${{ always() && needs.get-e2e-toggle.outputs.e2e-toggle == 'false' || needs.docker-build.result == 'success' }}
     concurrency:
