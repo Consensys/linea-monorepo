@@ -13,10 +13,6 @@ contract TestLineaRollup is LineaRollup {
     rollingHashes[_messageNumber] = _rollingHash;
   }
 
-  function setLastTimeStamp(uint256 _timestamp) external {
-    currentTimestamp = _timestamp;
-  }
-
   function validateL2ComputedRollingHash(uint256 _rollingHashMessageNumber, bytes32 _rollingHash) external view {
     _validateL2ComputedRollingHash(_rollingHashMessageNumber, _rollingHash);
   }

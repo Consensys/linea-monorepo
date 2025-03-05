@@ -59,9 +59,9 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   mapping(bytes32 dataHash => uint256 endingBlock) public dataEndingBlock;
 
   /// @dev DEPRECATED in favor of currentFinalizedState hash.
-  uint256 public currentL2StoredL1MessageNumber;
+  uint256 private currentL2StoredL1MessageNumber_DEPRECATED;
   /// @dev DEPRECATED in favor of currentFinalizedState hash.
-  bytes32 public currentL2StoredL1RollingHash;
+  bytes32 private currentL2StoredL1RollingHash_DEPRECATED;
 
   /// @notice Contains the most recent finalized shnarf.
   bytes32 public currentFinalizedShnarf;
