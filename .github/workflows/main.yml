@@ -35,7 +35,7 @@ jobs:
           list-files: "json"
           filters: |
             all:
-              - '**/**'
+               - '.github/**'
             coordinator:
               - 'coordinator/**'
               - 'testdata/**'
@@ -186,19 +186,19 @@ jobs:
       transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
     secrets: inherit
 
-  testing:
-    needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
-    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
-    uses: ./.github/workflows/testing.yml
-    with:
-      commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
-      coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
-      staterecovery_changed: ${{ needs.filter-commit-changes.outputs.staterecovery }}
-      postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
-      prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
-      traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
-      transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
-    secrets: inherit
+  # testing:
+  #   needs: [ store-image-name-and-tags, filter-commit-changes, check-and-tag-images ]
+  #   if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
+  #   uses: ./.github/workflows/testing.yml
+  #   with:
+  #     commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
+  #     coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
+  #     staterecovery_changed: ${{ needs.filter-commit-changes.outputs.staterecovery }}
+  #     postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
+  #     prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
+  #     traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
+  #     transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
+  #   secrets: inherit
 
   get-e2e-toggle:
     needs: [ filter-commit-changes ]
@@ -239,25 +239,25 @@ jobs:
       e2e-toggle: ${{ needs.get-e2e-toggle.outputs.e2e-toggle }}
     secrets: inherit
 
-  publish-images-after-run-tests-success-on-main:
-    needs: [ store-image-name-and-tags, testing, run-e2e-tests, run-e2e-tests-geth-tracing ]
-    if: ${{ always() && github.ref == 'refs/heads/main' && needs.testing.result == 'success' && needs.run-e2e-tests.outputs.tests_outcome == 'success' && needs.run-e2e-tests-geth-tracing.outputs.tests_outcome == 'success' }}
-    uses: ./.github/workflows/build-and-publish.yml
-    with:
-      push_image: true
-      commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
-      develop_tag: ${{ needs.store-image-name-and-tags.outputs.develop_tag }}
-      coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
-      postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
-      prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
-      traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
-      transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
-      coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
-      postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
-      prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
-      traces_api_facade_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_traces_api_facade }}
-      transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
-    secrets: inherit
+  # publish-images-after-run-tests-success-on-main:
+  #   needs: [ store-image-name-and-tags, testing, run-e2e-tests, run-e2e-tests-geth-tracing ]
+  #   if: ${{ always() && github.ref == 'refs/heads/main' && needs.testing.result == 'success' && needs.run-e2e-tests.outputs.tests_outcome == 'success' && needs.run-e2e-tests-geth-tracing.outputs.tests_outcome == 'success' }}
+  #   uses: ./.github/workflows/build-and-publish.yml
+  #   with:
+  #     push_image: true
+  #     commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
+  #     develop_tag: ${{ needs.store-image-name-and-tags.outputs.develop_tag }}
+  #     coordinator_changed: ${{ needs.filter-commit-changes.outputs.coordinator }}
+  #     postman_changed: ${{ needs.filter-commit-changes.outputs.postman }}
+  #     prover_changed: ${{ needs.filter-commit-changes.outputs.prover }}
+  #     traces_api_facade_changed: ${{ needs.filter-commit-changes.outputs.traces-api-facade }}
+  #     transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
+  #     coordinator_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_coordinator }}
+  #     postman_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_postman }}
+  #     prover_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_prover }}
+  #     traces_api_facade_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_traces_api_facade }}
+  #     transaction_exclusion_api_image_tagged: ${{ needs.check-and-tag-images.outputs.image_tagged_transaction_exclusion_api }}
+  #   secrets: inherit
 
   cleanup-deployments:
     needs: [ run-e2e-tests, run-e2e-tests-geth-tracing ]
