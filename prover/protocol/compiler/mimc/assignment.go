@@ -11,20 +11,24 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// assign: assigns MiMC columns to the prover runtime, optimizing memory with PaddedCircularWindow
+// assign assigns MiMC columns to the prover runtime, optimizing memory with PaddedCircularWindow
 func (ctx *mimcCtx) assign(run *wizard.ProverRuntime) {
 	var (
 		oldState = ctx.oldStates.GetColAssignment(run).IntoRegVecSaveAlloc()
 		blocks   = ctx.blocks.GetColAssignment(run).IntoRegVecSaveAlloc()
+		n        = len(ctx.intermediateResult)
 	)
+
+	// Precompute padding values for all rounds starting from zeroes
+	resPadding, pow4Padding := computePaddingValues(n, mimc.Constants)
 
 	// Count zero pairs (block=0, initState=0) for initial sparsity estimate
 	countZero := countZeroPairs(oldState, blocks)
 	logrus.Infof("Zero pairs: %d out of %d (~%.2f%% sparsity)", countZero, len(oldState), float64(countZero)*100/float64(len(oldState)))
 
-	// Precompute intermediatePow4[0] with PaddedCircularWindow for Round0 => Special case
+	// Precompute intermediatePow4[0] with PaddedCircularWindow for Round 0
 	prevPow4, nonZeroWindowPow4 := precomputePow4Round0(oldState, blocks, countZero)
-	pow4Round0 := createSmartVector(nonZeroWindowPow4, mimc.Constants[0], len(oldState))
+	pow4Round0 := createSmartVector(nonZeroWindowPow4, pow4Padding[0], 0, len(oldState))
 	logrus.Infof("Round 0 pow4 non-zeros: %d, index 0: %v", len(nonZeroWindowPow4), pow4Round0.Get(0))
 
 	// Round 0 => Special case
@@ -32,21 +36,22 @@ func (ctx *mimcCtx) assign(run *wizard.ProverRuntime) {
 	prevRes := make([]field.Element, len(oldState))
 	copy(prevRes, blocks)
 
+	// Temporary slices for computation
 	currRes := make([]field.Element, len(oldState))
 	currPow4 := make([]field.Element, len(oldState))
 
 	// Compute and assign for rounds > 0
-	for i := 1; i < len(ctx.intermediateResult); i++ {
+	for i := 1; i < n; i++ {
 		computeIntermediateValues(i, oldState, prevRes, currRes, prevPow4, currPow4)
 
-		// Convert currRes to SmartVector with dynamic capacity estimate
-		resVector := createSmartVectorFromResults(currRes, countZero, len(oldState))
-		//logrus.Infof("Round %d res non-zeros: %d, index 0: %v", i, resVector.Len(), resVector.Get(0))
+		// Convert currRes to SmartVector with precomputed padding value
+		resVector := createSmartVectorFromResults(currRes, countZero, len(oldState), i, resPadding[i])
+		// logrus.Infof("Round %d res non-zeros: %d, index 0: %v", i, countNonZeros(currRes), resVector.Get(0))
 		run.AssignColumn(ctx.intermediateResult[i].GetColID(), resVector)
 
-		// Convert currPow4 to SmartVector
-		pow4Vector := createSmartVectorFromResults(currPow4, countZero, len(oldState))
-		//logrus.Infof("Round %d pow4 non-zeros: %d, index 0: %v", i, pow4Vector.Len(), pow4Vector.Get(0))
+		// Convert currPow4 to SmartVector with precomputed padding value
+		pow4Vector := createSmartVectorFromResults(currPow4, countZero, len(oldState), i, pow4Padding[i])
+		// logrus.Infof("Round %d pow4 non-zeros: %d, index 0: %v", i, countNonZeros(currPow4), pow4Vector.Get(0))
 		run.AssignColumn(ctx.intermediatePow4[i].GetColID(), pow4Vector)
 
 		// Swap for next round
@@ -70,8 +75,6 @@ func countZeroPairs(oldState, blocks []field.Element) int {
 func precomputePow4Round0(oldState, blocks []field.Element, countZero int) ([]field.Element, []field.Element) {
 	pow4Round0Full := make([]field.Element, len(oldState))
 	nonZeroWindowPow4 := make([]field.Element, 0, len(oldState)-countZero)
-	zeroPairConst := mimc.Constants[0]
-	zeroPairConst.Square(&zeroPairConst).Square(&zeroPairConst)
 	var mu sync.Mutex
 	parallel.Execute(len(oldState), func(start, stop int) {
 		for k := start; k < stop; k++ {
@@ -89,25 +92,67 @@ func precomputePow4Round0(oldState, blocks []field.Element, countZero int) ([]fi
 	return pow4Round0Full, nonZeroWindowPow4
 }
 
+// computePaddingValues precomputes padding values for all rounds starting from zeroes
+func computePaddingValues(n int, constants []field.Element) ([]field.Element, []field.Element) {
+	resPadding := make([]field.Element, n)
+	pow4Padding := make([]field.Element, n)
+	var zero field.Element // Zero in the field
+
+	// Round 0: Starting with blocks = 0
+	pow4Padding[0].Add(&zero, &constants[0]).Square(&pow4Padding[0]).Square(&pow4Padding[0])
+	// resPadding[0] remains zero, as intermediateRes[0] = blocks = 0
+
+	for i := 1; i < n; i++ {
+		ark := constants[i-1]
+		nextArk := constants[i]
+
+		// Compute resPadding[i] = (resPadding[i-1] + ark + 0) * pow4Padding[i-1]^4
+		var tmp field.Element
+		resPadding[i].Add(&resPadding[i-1], &ark) // +0 is implicit
+		tmp.Square(&pow4Padding[i-1]).Square(&tmp)
+		resPadding[i].Mul(&resPadding[i], &tmp)
+
+		// Compute pow4Padding[i] = (resPadding[i] + nextArk + 0)^4
+		pow4Padding[i].Add(&resPadding[i], &nextArk)
+		pow4Padding[i].Square(&pow4Padding[i]).Square(&pow4Padding[i])
+
+		// logrus.Infof("Round %d padding res: %v, pow4: %v", i, resPadding[i], pow4Padding[i])
+		LogRoundZero := true
+		if LogRoundZero {
+			// logrus.Infof("Round 0 padding res: %v, pow4: %v", resPadding[0], pow4Padding[0])
+			LogRoundZero = false
+		}
+	}
+	return resPadding, pow4Padding
+}
+
 // createSmartVector creates a SmartVector from a slice of field.Element
-func createSmartVector(elements []field.Element, paddingVal field.Element, totalLen int) smartvectors.SmartVector {
+func createSmartVector(elements []field.Element, paddingVal field.Element, offset, totalLen int) smartvectors.SmartVector {
 	if len(elements) == totalLen {
 		return smartvectors.NewRegular(elements)
 	}
-	return smartvectors.NewPaddedCircularWindow(elements, paddingVal, 0, totalLen)
+	logrus.Infof("Creating NewPaddedCircularWindow with offset:%d, paddingVal:%v", offset, paddingVal)
+	return smartvectors.NewPaddedCircularWindow(elements, paddingVal, offset, totalLen)
 }
 
 // createSmartVectorFromResults creates a SmartVector from computation results
-func createSmartVectorFromResults(results []field.Element, countZero, totalLen int) smartvectors.SmartVector {
+func createSmartVectorFromResults(results []field.Element, countZero, totalLen, round int, paddingVal field.Element) smartvectors.SmartVector {
 	expectedNonZeros := totalLen - countZero
+	if round > 1 {
+		expectedNonZeros = totalLen / 2 // Adjust based on observed sparsity decrease
+	}
 	nonZeroWindow := make([]field.Element, 0, expectedNonZeros)
-	var paddingVal field.Element
-	for _, res := range results {
+	var offset int
+	var initialOffset bool
+	for i, res := range results {
 		if !res.IsZero() {
+			if !initialOffset {
+				offset, initialOffset = i, true
+			}
 			nonZeroWindow = append(nonZeroWindow, res)
 		}
 	}
-	return createSmartVector(nonZeroWindow, paddingVal, totalLen)
+	return createSmartVector(nonZeroWindow, paddingVal, offset, totalLen)
 }
 
 // computeIntermediateValues computes intermediate values for rounds > 0
