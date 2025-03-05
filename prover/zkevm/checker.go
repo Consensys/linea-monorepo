@@ -30,9 +30,9 @@ func CheckerZkEvm(tl *config.TracesLimits) *ZkEvm {
 	onceCheckerZkEvm.Do(func() {
 		settings := Settings{
 			Arithmetization: arithmetization.Settings{
-				Limits:            tl,
-				OptimisationLevel: &mir.DEFAULT_OPTIMISATION_LEVEL,
-				RelaxedMode:       false,
+				Limits:                   tl,
+				OptimisationLevel:        &mir.DEFAULT_OPTIMISATION_LEVEL,
+				IgnoreCompatibilityCheck: false,
 			},
 			CompilationSuite: checkerCompilationSuite,
 			Metadata: wizard.VersionMetadata{

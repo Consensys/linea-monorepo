@@ -48,9 +48,9 @@ func PartialZkEvm(tl *config.TracesLimits) *ZkEvm {
 		// modules to verify keccak or the state-manager traces.
 		settings := Settings{
 			Arithmetization: arithmetization.Settings{
-				Limits:            tl,
-				OptimisationLevel: &mir.DEFAULT_OPTIMISATION_LEVEL,
-				RelaxedMode:       false,
+				Limits:                   tl,
+				OptimisationLevel:        &mir.DEFAULT_OPTIMISATION_LEVEL,
+				IgnoreCompatibilityCheck: false,
 			},
 			CompilationSuite: partialCompilationSuite,
 			Metadata: wizard.VersionMetadata{

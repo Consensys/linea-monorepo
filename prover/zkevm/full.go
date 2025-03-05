@@ -128,9 +128,9 @@ func fullZKEVMWithSuite(tl *config.TracesLimits, suite compilationSuite) *ZkEvm 
 	settings := Settings{
 		CompilationSuite: suite,
 		Arithmetization: arithmetization.Settings{
-			Limits:            tl,
-			OptimisationLevel: &mir.DEFAULT_OPTIMISATION_LEVEL,
-			RelaxedMode:       false,
+			Limits:                   tl,
+			OptimisationLevel:        &mir.DEFAULT_OPTIMISATION_LEVEL,
+			IgnoreCompatibilityCheck: false,
 		},
 		Statemanager: statemanager.Settings{
 			AccSettings: accumulator.Settings{

@@ -9,21 +9,21 @@ import (
 )
 
 var (
-	configFPathCLI       string
-	traceFPathCLI        string
-	optimisationLevelCLI uint
-	relaxedMode          bool
+	configFPathCLI           string
+	traceFPathCLI            string
+	optimisationLevelCLI     uint
+	ignoreCompatibilityCheck bool
 )
 
 func init() {
 	flag.StringVar(&configFPathCLI, "config", "", "path to the config file. Only the trace limits are read")
 	flag.StringVar(&traceFPathCLI, "trace-file", "", "path to the `.lt` trace file")
 	flag.UintVar(&optimisationLevelCLI, "opt", 1, "set go-corset optimisation level to apply")
-	flag.BoolVar(&relaxedMode, "relaxed", false, "prevent compatibility check between trace file and constraints.")
+	flag.BoolVar(&ignoreCompatibilityCheck, "ignore-compatibility-check", false, "prevent compatibility check between trace file and constraints.")
 	flag.Parse()
 }
 
-func getParamsFromCLI() (cfg *config.Config, optConfig *mir.OptimisationConfig, traceFPath string, relaxed bool, err error) {
+func getParamsFromCLI() (cfg *config.Config, optConfig *mir.OptimisationConfig, traceFPath string, ignoreCompabibilityCheck bool, err error) {
 	if len(configFPathCLI) == 0 {
 		return nil, nil, "", false, fmt.Errorf("could not find the config path, got %++v", configFPathCLI)
 	}
@@ -42,5 +42,5 @@ func getParamsFromCLI() (cfg *config.Config, optConfig *mir.OptimisationConfig, 
 	// Set optimisation config
 	optConfig = &mir.OPTIMISATION_LEVELS[optimisationLevelCLI]
 	// Done
-	return cfg, optConfig, traceFPathCLI, relaxedMode, nil
+	return cfg, optConfig, traceFPathCLI, ignoreCompatibilityCheck, nil
 }

@@ -17,11 +17,11 @@ import (
 // Settings specifies the parameters for the arithmetization part of the zkEVM.
 type Settings struct {
 	Limits *config.TracesLimits
-	// RelaxedMode disables the strong compatibility check.  Specifically, it
-	// does not require the constraints and the trace file to have both
-	// originated from the same commit.  By default, relaxed mode should not be
-	// used (i.e. this field should normally be false).
-	RelaxedMode bool
+	// IgnoreCompatibilityCheck disables the strong compatibility check.
+	// Specifically, it does not require the constraints and the trace file to
+	// have both originated from the same commit.  By default, the compability
+	// check should be enabled.
+	IgnoreCompatibilityCheck bool
 	// OptimisationLevel determines the optimisation level which go-corset will
 	// apply when compiling the zkevm.bin file to AIR constraints.  If in doubt,
 	// use mir.DEFAULT_OPTIMISATION_LEVEL.
@@ -71,7 +71,7 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	rawColumns, metadata, errT := ReadLtTraces(traceF, a.Schema)
 	if errT != nil {
 		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
-	} else if !a.Settings.RelaxedMode {
+	} else if !a.Settings.IgnoreCompatibilityCheck {
 		// Compatibility check between zkevm.bin and trace file.
 		if zkevmBinCommit, ok := a.Metadata.String("commit"); !ok {
 			panic("missing constraints commit metadata in 'zkevm.bin'")
