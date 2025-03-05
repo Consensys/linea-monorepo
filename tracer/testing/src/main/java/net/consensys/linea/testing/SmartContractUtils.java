@@ -46,7 +46,8 @@ public class SmartContractUtils {
       Iterator<Map.Entry<String, JsonNode>> contracts = jsonRoot.get("contracts").fields();
       while (contracts.hasNext()) {
         Map.Entry<String, JsonNode> contract = contracts.next();
-        if (contract.getKey().contains(contractClass.getSimpleName())) {
+        String contractName = contract.getKey().split(":")[1];
+        if (contractName.equals(contractClass.getSimpleName())) {
           return Bytes.fromHexStringLenient(contract.getValue().get("bin-runtime").asText());
         }
       }
