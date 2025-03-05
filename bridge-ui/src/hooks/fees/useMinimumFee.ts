@@ -21,8 +21,6 @@ const useMinimumFee = () => {
     },
   });
 
-  console.log(data);
-
   useEffect(() => {
     if (!isL2Network) {
       setMinimumFees(0n);

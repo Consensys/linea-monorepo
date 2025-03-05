@@ -36,6 +36,7 @@ const useEthBridgingFee = ({
     nextMessageNumber?.toString(),
     amount?.toString(),
     recipient,
+    claimingType,
   ];
 
   const { data, isLoading, isError, refetch } = useQuery({
@@ -60,6 +61,7 @@ const useEthBridgingFee = ({
         nextMessageNumber,
         fromChain,
         toChain,
+        claimingType,
       }),
   });
 

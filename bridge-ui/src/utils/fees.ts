@@ -14,6 +14,7 @@ interface EstimationParams {
   nextMessageNumber: bigint;
   fromChain: Chain;
   toChain: Chain;
+  claimingType: "auto" | "manual";
 }
 
 /**
@@ -106,7 +107,10 @@ export async function estimateERC20GasFee({
   fromChain,
   toChain,
   token,
+  claimingType,
 }: EstimationParams & { token: TokenInfo }): Promise<bigint> {
+  if (claimingType === "manual") return 0n;
+
   const destinationChainPublicClient = getPublicClient(config, {
     chainId: toChain.id,
   });
@@ -165,7 +169,10 @@ export async function estimateEthGasFee({
   amount,
   nextMessageNumber,
   toChain,
+  claimingType,
 }: EstimationParams): Promise<bigint> {
+  if (claimingType === "manual") return 0n;
+
   const destinationChainPublicClient = getPublicClient(config, {
     chainId: toChain.id,
   });

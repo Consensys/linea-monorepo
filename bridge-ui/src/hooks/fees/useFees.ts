@@ -33,9 +33,9 @@ const useFees = () => {
   const bridgingFees = useBridgingFee({
     account: address,
     token,
-    claimingType: claim,
     amount: amount ?? 0n,
     recipient,
+    claimingType: claim,
   });
 
   const getFiatValue = useCallback(

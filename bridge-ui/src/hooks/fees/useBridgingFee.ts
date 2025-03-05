@@ -52,6 +52,11 @@ const useBridgingFee = ({ account, token, claimingType, amount, recipient }: Use
   const gasLimit = isEth(token) ? eth.data : erc20.data;
 
   const bridgingFees = useMemo(() => {
+    if (claimingType === "manual") {
+      setBridgingFees(0n);
+      return 0n;
+    }
+
     if (isLoading) {
       return null;
     }
@@ -63,10 +68,12 @@ const useBridgingFee = ({ account, token, claimingType, amount, recipient }: Use
     if (!gasLimit || !feeData) {
       return null;
     }
+
     const fees = feeData * (gasLimit + fromChain.gasLimitSurplus) * fromChain.profitMargin;
     setBridgingFees(fees);
     return fees;
-  }, [isLoading, isError, gasLimit, feeData, fromChain.gasLimitSurplus, fromChain.profitMargin, setBridgingFees]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoading, isError, gasLimit, feeData, claimingType]);
 
   return bridgingFees;
 };

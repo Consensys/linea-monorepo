@@ -26,7 +26,7 @@ const useEthBridgeTxArgs = () => {
       !amount ||
       !recipient ||
       (minimumFees === 0n && fromChain.layer === ChainLayer.L2) ||
-      (!bridgingFees && fromChain.layer === ChainLayer.L1) ||
+      ((bridgingFees === null || bridgingFees === undefined) && fromChain.layer === ChainLayer.L1) ||
       (bridgingFees === 0n && claim === "auto") ||
       !isEth(token) ||
       token.bridgeProvider !== BridgeProvider.NATIVE

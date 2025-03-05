@@ -61,6 +61,7 @@ const useERC20BridgingFee = ({
         nextMessageNumber,
         fromChain,
         toChain,
+        claimingType,
       }),
   });
 
