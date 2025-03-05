@@ -208,16 +208,17 @@ jobs:
     steps:
       - name: Evaluate Boolean Logic
         id: eval
+        shell: bash
         run: |
           has_changes_requiring_build=${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
           contracts_excluding_local_deployment_artifacts=${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts }}
-          all_count=${{ needs.filter-commit-changes.outputs.all-count }}
+          changed_file_count=${{ needs.filter-commit-changes.outputs.changed-file-count }}
           contracts_excluding_local_deployment_artifacts_count=${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts_count }}
           RESULT=true
 
           if [[ "$has_changes_requiring_build" == "false" ]]; then
             RESULT=false
-          elif [[ "$contracts_excluding_local_deployment_artifacts" == "true" && "$all_count" == "$contracts_excluding_local_deployment_artifacts_count"]]; then
+          elif [[ "$contracts_excluding_local_deployment_artifacts" == "true" && "$changed_file_count" == "$contracts_excluding_local_deployment_artifacts_count"]]; then
             RESULT=false
           fi
 
