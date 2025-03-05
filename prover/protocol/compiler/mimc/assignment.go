@@ -4,67 +4,142 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-	"github.com/sirupsen/logrus"
 )
 
-// assign assigns the columns to the prover runtime using PaddedCircularWindow
+// assign: Assigns the columns to the prover runtime using PaddedCircularWindow
 func (ctx *mimcCtx) assign(run *wizard.ProverRuntime) {
-	oldStateSV := ctx.oldStates.GetColAssignment(run)
-	blocksSV := ctx.blocks.GetColAssignment(run)
-	n := oldStateSV.Len()
 
-	O, L := identifyActiveWindow(oldStateSV, blocksSV, n)
-	logrus.Infof("After identifying active window 0:%d, L:%d n:%d", O, L, n)
+	var (
+		oldStateSV = ctx.oldStates.GetColAssignment(run)
+		blocksSV   = ctx.blocks.GetColAssignment(run)
+		totalRows  = oldStateSV.Len()
+		numRounds  = len(ctx.intermediateResult)
+	)
 
-	resPad, pow4Pad := precomputePaddingValues(len(ctx.intermediateResult))
-	oldStateWindow, blocksWindow := extractWindowSlices(oldStateSV, blocksSV, O, L)
-	resWindow, pow4Window := computeIntermediateValues(len(ctx.intermediateResult), oldStateWindow, blocksWindow, L)
+	lowIdx, highIdx := identifyActiveWindow(oldStateSV, blocksSV, totalRows)
+	oldStateWindow, blocksWindow := extractWindowSlices(oldStateSV, blocksSV, lowIdx, highIdx)
+	intermediateResWindow, intermediatePow4Window := computeIntermediateValues(numRounds, oldStateWindow, blocksWindow, highIdx)
 
-	assignOptimizedVectors(run, ctx, resWindow, pow4Window, resPad, pow4Pad, O, n)
+	var resPad, pow4Pad []field.Element
+
+	// Precompute padding only when `PaddedCircularWindow` is tobe used
+	// i.e. Whenever there is sparsity in the (oldState, blocks) pair
+	if highIdx != totalRows {
+		resPad, pow4Pad = precomputePaddingValues(numRounds)
+	}
+	assignOptimizedVectors(run, ctx, intermediateResWindow, intermediatePow4Window, resPad, pow4Pad, lowIdx, totalRows)
 }
 
-// identifyActiveWindow finds the smallest window containing all non-zero values
-func identifyActiveWindow(oldStateSV, blocksSV smartvectors.SmartVector, n int) (int, int) {
-	firstNonZero, lastNonZero := n, -1
-	//zero := field.Element{}
-
+// identifyActiveWindow finds the smallest active window scanning through the oldState and blocks
+func identifyActiveWindow(oldStateSV, blocksSV smartvectors.SmartVector, totalRows int) (int, int) {
 	// Convert to regular vectors to scan all elements
-	oldState := smartvectors.IntoRegVec(oldStateSV)
-	blocks := smartvectors.IntoRegVec(blocksSV)
+	var (
+		oldState = smartvectors.IntoRegVec(oldStateSV)
+		blocks   = smartvectors.IntoRegVec(blocksSV)
+	)
 
-	for i := 0; i < n; i++ {
+	// Initialize firstNonZero and lastNonZero indices to default values
+	firstNonZero, lastNonZero := totalRows, -1
+	for i := 0; i < totalRows; i++ {
 		if !oldState[i].IsZero() || !blocks[i].IsZero() {
 			firstNonZero = min(firstNonZero, i)
 			lastNonZero = max(lastNonZero, i)
 		}
 	}
 
-	// Debug input types and window
-	switch oldStateSV.(type) {
-	case *smartvectors.PaddedCircularWindow:
-		logrus.Info("oldStateSV is PaddedCircularWindow")
-	case *smartvectors.Regular:
-		logrus.Info("oldStateSV is Regular")
-	default:
-		logrus.Infof("oldStateSV is %T", oldStateSV)
+	if firstNonZero <= lastNonZero {
+		l := firstNonZero
+		h := lastNonZero - firstNonZero + 1
+		return l, h
 	}
-	switch blocksSV.(type) {
-	case *smartvectors.PaddedCircularWindow:
-		logrus.Info("blocksSV is PaddedCircularWindow")
-	case *smartvectors.Regular:
-		logrus.Info("blocksSV is Regular")
-	default:
-		logrus.Infof("blocksSV is %T", blocksSV)
+	// Default return value when there is no sparsity => This will likely never happen in practice
+	return 0, 1
+}
+
+// computeIntermediateValues computes intermediate values for the window
+func computeIntermediateValues(numRounds int, oldStateWindow, blocksWindow []field.Element, highIdx int) ([][]field.Element, [][]field.Element) {
+	intermediateResWindow := make([][]field.Element, numRounds)
+	intermediatePow4Window := make([][]field.Element, numRounds)
+	for i := range intermediateResWindow {
+		intermediateResWindow[i] = make([]field.Element, highIdx)
+		intermediatePow4Window[i] = make([]field.Element, highIdx)
 	}
 
-	if firstNonZero <= lastNonZero {
-		O := firstNonZero
-		L := lastNonZero - firstNonZero + 1
-		return O, L
+	// Initalize intermediateResWindow to the blocksWindow
+	copy(intermediateResWindow[0], blocksWindow)
+
+	// r => round
+	for r := 0; r < numRounds; r++ {
+		parallel.Execute(highIdx, func(start, stop int) {
+			for k := start; k < stop; k++ {
+				if r == 0 {
+					tmp := intermediateResWindow[0][k]
+					tmp.Add(&tmp, &mimc.Constants[0]).Add(&tmp, &oldStateWindow[k])
+					intermediatePow4Window[0][k].Square(&tmp).Square(&intermediatePow4Window[0][k])
+				} else {
+					// For subsequent rounds, compute intermediate values based on previous results
+					ark := mimc.Constants[r-1]
+					nextArk := mimc.Constants[r]
+
+					tmp := intermediatePow4Window[r-1][k]
+					tmp.Square(&tmp).Square(&tmp)
+
+					// Compute intermediate result using previous result and oldState
+					intermediateResWindow[r][k] = intermediateResWindow[r-1][k]
+					intermediateResWindow[r][k].Add(&intermediateResWindow[r][k], &ark).Add(&intermediateResWindow[r][k], &oldStateWindow[k])
+					intermediateResWindow[r][k].Mul(&intermediateResWindow[r][k], &tmp)
+
+					// Compute intermediatePow4
+					tmp = intermediateResWindow[r][k]
+					tmp.Add(&tmp, &nextArk).Add(&tmp, &oldStateWindow[k])
+					intermediatePow4Window[r][k].Square(&tmp).Square(&intermediatePow4Window[r][k])
+				}
+			}
+		})
 	}
-	return 0, 1 // Minimal window if all zeros
+	return intermediateResWindow, intermediatePow4Window
+}
+
+// assignOptimizedVectors assigns optimized vectors to the prover runtime
+func assignOptimizedVectors(run *wizard.ProverRuntime, ctx *mimcCtx, intermediateResWindow, intermediatePow4Window [][]field.Element, resPad, pow4Pad []field.Element, offset, totalRows int) {
+	for round := range ctx.intermediateResult {
+		windowLen := len(intermediateResWindow[round])
+
+		// Full-length window: use Regular vector
+		isRegSmartVec := windowLen == totalRows
+
+		// Helper function to assign a column with the appropriate smart vector
+		assignColumn := func(colID ifaces.ColID, window []field.Element, padVal field.Element) {
+			if isRegSmartVec {
+				fullVec := make([]field.Element, totalRows)
+				copy(fullVec[offset:offset+windowLen], window)
+				run.AssignColumn(colID, smartvectors.NewRegular(fullVec))
+			} else {
+				// Partial window: use PaddedCircularWindow with lazily evaluated padding
+				run.AssignColumn(colID, smartvectors.NewPaddedCircularWindow(window, padVal, offset, totalRows))
+			}
+		}
+
+		// Determine padding values
+		var resPadVal, pow4PadVal field.Element
+		if resPad != nil && len(resPad) > round {
+			resPadVal = resPad[round]
+		}
+		if pow4Pad != nil && len(pow4Pad) > round {
+			pow4PadVal = pow4Pad[round]
+		}
+
+		// Assign intermediateResult (skip round=0 as it is initialized to the blocks)
+		if round > 0 {
+			assignColumn(ctx.intermediateResult[round].GetColID(), intermediateResWindow[round], resPadVal)
+		}
+
+		// Assign intermediatePow4
+		assignColumn(ctx.intermediatePow4[round].GetColID(), intermediatePow4Window[round], pow4PadVal)
+	}
 }
 
 // precomputePaddingValues precomputes padding values for constant regions
@@ -72,6 +147,7 @@ func precomputePaddingValues(numRounds int) ([]field.Element, []field.Element) {
 	resPad := make([]field.Element, numRounds)
 	pow4Pad := make([]field.Element, numRounds)
 	resPad[0].SetZero()
+
 	var tmp field.Element
 	tmp.Add(&resPad[0], &mimc.Constants[0])
 	pow4Pad[0].Square(&tmp).Square(&pow4Pad[0])
@@ -88,105 +164,10 @@ func precomputePaddingValues(numRounds int) ([]field.Element, []field.Element) {
 }
 
 // extractWindowSlices extracts window slices from the smart vectors
-func extractWindowSlices(oldStateSV, blocksSV smartvectors.SmartVector, O, L int) ([]field.Element, []field.Element) {
-	oldStateWindow := smartvectors.IntoRegVec(oldStateSV)[O : O+L]
-	blocksWindow := smartvectors.IntoRegVec(blocksSV)[O : O+L]
+func extractWindowSlices(oldStateSV, blocksSV smartvectors.SmartVector, l, h int) ([]field.Element, []field.Element) {
+	var (
+		oldStateWindow = smartvectors.IntoRegVec(oldStateSV)[l : l+h]
+		blocksWindow   = smartvectors.IntoRegVec(blocksSV)[l : l+h]
+	)
 	return oldStateWindow, blocksWindow
-}
-
-// computeIntermediateValues computes intermediate values for the window
-func computeIntermediateValues(numRounds int, oldStateWindow, blocksWindow []field.Element, L int) ([][]field.Element, [][]field.Element) {
-	resWindow := make([][]field.Element, numRounds)
-	pow4Window := make([][]field.Element, numRounds)
-	for i := range resWindow {
-		resWindow[i] = make([]field.Element, L)
-		pow4Window[i] = make([]field.Element, L)
-	}
-	copy(resWindow[0], blocksWindow)
-
-	for r := 0; r < numRounds; r++ {
-		parallel.Execute(L, func(start, stop int) {
-			for k := start; k < stop; k++ {
-				if r == 0 {
-					tmp := resWindow[0][k]
-					tmp.Add(&tmp, &mimc.Constants[0]).Add(&tmp, &oldStateWindow[k])
-					pow4Window[0][k].Square(&tmp).Square(&pow4Window[0][k])
-				} else {
-					ark := mimc.Constants[r-1]
-					nextArk := mimc.Constants[r]
-					tmp := pow4Window[r-1][k]
-					tmp.Square(&tmp).Square(&tmp)
-					resWindow[r][k] = resWindow[r-1][k]
-					resWindow[r][k].Add(&resWindow[r][k], &ark).Add(&resWindow[r][k], &oldStateWindow[k])
-					resWindow[r][k].Mul(&resWindow[r][k], &tmp)
-					tmp = resWindow[r][k]
-					tmp.Add(&tmp, &nextArk).Add(&tmp, &oldStateWindow[k])
-					pow4Window[r][k].Square(&tmp).Square(&pow4Window[r][k])
-				}
-			}
-		})
-	}
-
-	return resWindow, pow4Window
-}
-
-// assignOptimizedVectors assigns optimized vectors to the runtime
-func assignOptimizedVectors(run *wizard.ProverRuntime, ctx *mimcCtx, resWindow, pow4Window [][]field.Element, resPad, pow4Pad []field.Element, O, n int) {
-	for i := range ctx.intermediateResult {
-		if i > 0 {
-			L := len(resWindow[i])
-			if L == n {
-				// Full-length window: use Regular vector
-				logrus.Infof("Assigning Regular smart vector for res4 vector in round:%d", i)
-				fullVec := make([]field.Element, n)
-				copy(fullVec[O:O+L], resWindow[i])
-				run.AssignColumn(
-					ctx.intermediateResult[i].GetColID(),
-					smartvectors.NewRegular(fullVec),
-				)
-			} else {
-				// Partial window: use PaddedCircularWindow
-				logrus.Infof("Assigning PaddedCircularWindow smart vector for res4 vector in round:%d", i)
-				run.AssignColumn(
-					ctx.intermediateResult[i].GetColID(),
-					smartvectors.NewPaddedCircularWindow(resWindow[i], resPad[i], O, n),
-				)
-			}
-		}
-
-		L := len(pow4Window[i])
-		if L == n {
-			// Full-length window: use Regular vector
-			logrus.Infof("Assigning Regular smart vector for pow4 vector in round:%d", i)
-			fullVec := make([]field.Element, n)
-			copy(fullVec[O:O+L], pow4Window[i])
-			run.AssignColumn(
-				ctx.intermediatePow4[i].GetColID(),
-				smartvectors.NewRegular(fullVec),
-			)
-		} else {
-			// Partial window: use PaddedCircularWindow
-			logrus.Infof("Assigning PaddedCircularWindow smart vector for pow4 vector in round:%d", i)
-			run.AssignColumn(
-				ctx.intermediatePow4[i].GetColID(),
-				smartvectors.NewPaddedCircularWindow(pow4Window[i], pow4Pad[i], O, n),
-			)
-		}
-	}
-}
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// max returns the maximum of two integers
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
