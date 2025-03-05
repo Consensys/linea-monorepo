@@ -36,6 +36,7 @@ jobs:
           filters: |
             all:
               - '**/**'
+              - '!.github/**'
             coordinator:
               - 'coordinator/**'
               - 'testdata/**'
