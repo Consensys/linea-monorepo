@@ -6,6 +6,7 @@ on:
       has_changes_requiring_build:
         required: true
         type: string
+      # Next 3 variables are required to determine if the only file changes that have occurred are in `/contracts` but not `/contracts/local-deployment-artifacts`
       contracts_excluding_local_deployment_artifacts:
         required: true
         type: string
