@@ -23,7 +23,7 @@ jobs:
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
       has-changes-requiring-build: ${{ steps.exclusion-filter.outputs.has-changes-requiring-build }}
       contracts-excluding-local-deployment-artifacts: ${{ steps.exclusion-filter.outputs.contracts-excluding-local-deployment-artifacts }}
-      contracts-excluding-local-deployment-artifacts-count: ${{ steps.exclusion-filter.outputs.contracts-excluding-local-deployment-artifacts_count }}
+      contracts-excluding-local-deployment-artifacts-count: ${{ steps.exclusion-filter.outputs.contracts-excluding-local-deployment-artifacts-count }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -207,7 +207,7 @@ jobs:
       has_changes_requiring_build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
       contracts_excluding_local_deployment_artifacts: ${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts }}
       changed_file_count: ${{ needs.filter-commit-changes.outputs.changed-file-count }}
-      contracts_excluding_local_deployment_artifacts_count: ${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts_count }}
+      contracts_excluding_local_deployment_artifacts_count: ${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts-count }}
 
   run-e2e-tests-geth-tracing:
     needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, get-e2e-toggle ]
