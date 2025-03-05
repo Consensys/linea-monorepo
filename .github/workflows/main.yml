@@ -14,13 +14,16 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: Filter commit changes
     outputs:
+      changed-file-count: ${{ steps.filter.outputs.all_count }}
       coordinator: ${{ steps.filter.outputs.coordinator }}
       staterecovery: ${{ steps.filter.outputs.staterecovery }}
       postman: ${{ steps.filter.outputs.postman }}
       prover: ${{ steps.filter.outputs.prover }}
       traces-api-facade: ${{ steps.filter.outputs.traces-api-facade }}
       transaction-exclusion-api: ${{ steps.filter.outputs.transaction-exclusion-api }}
-      has-changes-requiring-build: ${{ steps.filter-out.outputs.has-changes-requiring-build }}
+      has-changes-requiring-build: ${{ steps.exclusion-filter.outputs.has-changes-requiring-build }}
+      contracts-excluding-local-deployment-artifacts: ${{ steps.exclusion-filter.outputs.contracts-excluding-local-deployment-artifacts }}
+      contracts-excluding-local-deployment-artifacts-count: ${{ steps.exclusion-filter.outputs.contracts-excluding-local-deployment-artifacts_count }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,6 +34,8 @@ jobs:
           base: ${{ github.ref }}
           list-files: "json"
           filters: |
+            all:
+              - '**/**'
             coordinator:
               - 'coordinator/**'
               - 'testdata/**'
@@ -117,7 +122,7 @@ jobs:
               - 'settings.gradle'
       - name: Filter out commit changes
         uses: dorny/paths-filter@v3
-        id: filter-out
+        id: exclusion-filter
         with:
           base: ${{ github.ref }}
           list-files: "json"
@@ -127,7 +132,12 @@ jobs:
               - '!**/*.mdx'
               - '!**/docs/**'
               - '!docs/**'
-          # Enables us to exclude changes in multiple file types if required
+            contracts-excluding-local-deployment-artifacts:
+              - 'contracts/**'
+              - '!contracts/local-deployments-artifacts/**'
+          # Means that ALL (and not just one) filter patterns must match. In other words applies the 'AND' operator to filter patterns.
+          # The default is 'some', which requires just one filter pattern match and applies the 'OR' operator.
+          # For 'has-changes-requiring-build', it means we have an exclusion list that we can append to.
           predicate-quantifier: 'every'
 
   check-and-tag-images:
@@ -190,10 +200,34 @@ jobs:
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
     secrets: inherit
 
+  get-e2e-toggle:
+    needs: [ filter-commit-changes ]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    outputs:
+      e2e-toggle: ${{ steps.eval.outputs.result }}
+    steps:
+      - name: Evaluate Boolean Logic
+        id: eval
+        run: |
+          has_changes_requiring_build=${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
+          contracts_excluding_local_deployment_artifacts=${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts }}
+          all_count=${{ needs.filter-commit-changes.outputs.all-count }}
+          contracts_excluding_local_deployment_artifacts_count=${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts_count }}
+          RESULT=true
+
+          if [[ "$has_changes_requiring_build" == "false" ]]; then
+            RESULT=false
+          # If the only changes were files in '/contracts', and there were no files in '/contracts/local-deployment-artifacts'
+          elif [[ "$contracts_excluding_local_deployment_artifacts" == "true" && "$all_count" == "$contracts_excluding_local_deployment_artifacts_count"]]; then
+            RESULT=false
+          fi
+
+          echo "result=$RESULT" >> $GITHUB_OUTPUT
+
   run-e2e-tests-geth-tracing:
-    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, filter-commit-changes ]
-    # Make this execute for has-changes-requiring-build == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
-    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'false' || needs.docker-build.result == 'success' }}
+    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, get-e2e-toggle ]
+    # Make this execute for e2e-toggle == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
+    if: ${{ always() && needs.get-e2e-toggle.outputs.e2e-toggle == 'false' || needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-geth-tracing-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -202,13 +236,13 @@ jobs:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       tracing-engine: 'geth'
       e2e-tests-logs-dump: true
-      has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
+      e2e-toggle: ${{ needs.get-e2e-toggle.outputs.e2e-toggle }}
     secrets: inherit
 
   run-e2e-tests:
-    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, filter-commit-changes ]
-    # Make this execute for has-changes-requiring-build == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
-    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'false' || needs.docker-build.result == 'success' }}
+    needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, get-e2e-toggle ]
+    # Make this execute for e2e-toggle == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
+    if: ${{ always() && needs.get-e2e-toggle.outputs.e2e-toggle == 'false' || needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -217,7 +251,7 @@ jobs:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       tracing-engine: 'besu'
       e2e-tests-logs-dump: true
-      has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
+      e2e-toggle: ${{ needs.get-e2e-toggle.outputs.e2e-toggle }}
     secrets: inherit
 
   publish-images-after-run-tests-success-on-main:
