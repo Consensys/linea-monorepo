@@ -222,6 +222,7 @@ jobs:
             RESULT=false
           fi
 
+          echo "result=$RESULT"
           echo "result=$RESULT" >> $GITHUB_OUTPUT
 
   run-e2e-tests-geth-tracing:
