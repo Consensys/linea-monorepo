@@ -222,7 +222,7 @@ jobs:
             E2E_TOGGLE=false
           fi
 
-          echo "e2e_toggle=$E2E_TOGGLE" >> 
+          echo "e2e_toggle=$E2E_TOGGLE"
           echo "e2e_toggle=$E2E_TOGGLE" >> $GITHUB_OUTPUT
 
   run-e2e-tests-geth-tracing:
