@@ -178,77 +178,80 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 
 			_ = oldRoot // TODO golangci-lint thinks oldRoot is otherwise unused, even though it's clearly used in the switch case
 
-			ss.batchNumber.PushInt(batchNumber)
-			ss.account.address.PushAddr(accountAddress)
-			ss.isInitialDeployment.PushBoolean(segID == 0)
-			ss.isFinalDeployment.PushBoolean(segID == len(segment)-1)
-			ss.IsDeleteSegment.PushBoolean(isDeleteSegment)
-			ss.isActive.PushOne()
-			ss.isStorage.PushOne()
-			ss.isEndOfAccountSegment.PushZero()
-			ss.isBeginningOfAccountSegment.PushBoolean(segID == 0 && i == 0)
-			ss.account.initial.pushAll(initialAccount)
-			ss.account.final.pushOverrideStorageRoot(finalAccount, newRoot)
-			ss.worldStateRoot.PushBytes32(initWsRoot)
+			if !seg.storageTraces[i].IsSkipped {
+				// the storage trace is to be kept, and not skipped
+				ss.batchNumber.PushInt(batchNumber)
+				ss.account.address.PushAddr(accountAddress)
+				ss.isInitialDeployment.PushBoolean(segID == 0)
+				ss.isFinalDeployment.PushBoolean(segID == len(segment)-1)
+				ss.IsDeleteSegment.PushBoolean(isDeleteSegment)
+				ss.isActive.PushOne()
+				ss.isStorage.PushOne()
+				ss.isEndOfAccountSegment.PushZero()
+				ss.isBeginningOfAccountSegment.PushBoolean(segID == 0 && i == 0)
+				ss.account.initial.pushAll(initialAccount)
+				ss.account.final.pushOverrideStorageRoot(finalAccount, newRoot)
+				ss.worldStateRoot.PushBytes32(initWsRoot)
 
-			switch t := stoTrace.(type) {
-			case statemanager.ReadZeroTraceST:
-				if isDeleteSegment {
-					/*
-						Special case: the Shomei compactification process automatically sets storage values to zero if the account later gets deleted
-						which might not be the case in the arithmetization
-						in this particular case, for the consistency lookups to work,
-						we fetch and use the last corresponding storage value/block from the arithmetization columns using
-						an ArithmetizationStorageParser
-					*/
-					x := *(&field.Element{}).SetBytes(accountAddress[:])
-					keysAndBlock := KeysAndBlock{
-						address:    x.Bytes(),
-						storageKey: t.Key,
-						block:      batchNumber,
+				switch t := stoTrace.(type) {
+				case statemanager.ReadZeroTraceST:
+					if isDeleteSegment {
+						/*
+							Special case: the Shomei compactification process automatically sets storage values to zero if the account later gets deleted
+							which might not be the case in the arithmetization
+							in this particular case, for the consistency lookups to work,
+							we fetch and use the last corresponding storage value/block from the arithmetization columns using
+							an ArithmetizationStorageParser
+						*/
+						x := *(&field.Element{}).SetBytes(accountAddress[:])
+						keysAndBlock := KeysAndBlock{
+							address:    x.Bytes(),
+							storageKey: t.Key,
+							block:      batchNumber,
+						}
+						arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
+
+						ss.storage.push(t.Key, types.FullBytes32{}, arithStorage)
+						ss.accumulatorStatement.PushReadZero(oldRoot, hash(t.Key))
+					} else {
+						ss.storage.pushOnlyKey(t.Key)
+						ss.accumulatorStatement.PushReadZero(oldRoot, hash(t.Key))
 					}
-					arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
+				case statemanager.ReadNonZeroTraceST:
+					if isDeleteSegment {
+						/*
+							Special case, same motivation and fix as in the case of ReadZeroTraceST
+						*/
+						x := *(&field.Element{}).SetBytes(accountAddress[:])
+						keysAndBlock := KeysAndBlock{
+							address:    x.Bytes(),
+							storageKey: t.Key,
+							block:      batchNumber,
+						}
+						arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
 
-					ss.storage.push(t.Key, types.FullBytes32{}, arithStorage)
-					ss.accumulatorStatement.PushReadZero(oldRoot, hash(t.Key))
-				} else {
-					ss.storage.pushOnlyKey(t.Key)
-					ss.accumulatorStatement.PushReadZero(oldRoot, hash(t.Key))
-				}
-			case statemanager.ReadNonZeroTraceST:
-				if isDeleteSegment {
-					/*
-						Special case, same motivation and fix as in the case of ReadZeroTraceST
-					*/
-					x := *(&field.Element{}).SetBytes(accountAddress[:])
-					keysAndBlock := KeysAndBlock{
-						address:    x.Bytes(),
-						storageKey: t.Key,
-						block:      batchNumber,
+						ss.storage.push(t.Key, t.Value, arithStorage)
+						ss.accumulatorStatement.PushReadNonZero(oldRoot, hash(t.Key), hash(t.Value))
+
+					} else {
+						ss.storage.push(t.Key, t.Value, t.Value)
+						ss.accumulatorStatement.PushReadNonZero(oldRoot, hash(t.Key), hash(t.Value))
 					}
-					arithStorage := ss.arithmetizationStorage.Values[keysAndBlock]
 
-					ss.storage.push(t.Key, t.Value, arithStorage)
-					ss.accumulatorStatement.PushReadNonZero(oldRoot, hash(t.Key), hash(t.Value))
+				case statemanager.InsertionTraceST:
+					ss.storage.pushOnlyNew(t.Key, t.Val)
+					ss.accumulatorStatement.PushInsert(oldRoot, newRoot, hash(t.Key), hash(t.Val))
 
-				} else {
-					ss.storage.push(t.Key, t.Value, t.Value)
-					ss.accumulatorStatement.PushReadNonZero(oldRoot, hash(t.Key), hash(t.Value))
+				case statemanager.UpdateTraceST:
+					ss.storage.push(t.Key, t.OldValue, t.NewValue)
+					ss.accumulatorStatement.PushUpdate(oldRoot, newRoot, hash(t.Key), hash(t.OldValue), hash(t.NewValue))
+
+				case statemanager.DeletionTraceST:
+					ss.storage.pushOnlyOld(t.Key, t.DeletedValue)
+					ss.accumulatorStatement.PushDelete(oldRoot, newRoot, hash(t.Key), hash(t.DeletedValue))
+				default:
+					panic("unknown trace type")
 				}
-
-			case statemanager.InsertionTraceST:
-				ss.storage.pushOnlyNew(t.Key, t.Val)
-				ss.accumulatorStatement.PushInsert(oldRoot, newRoot, hash(t.Key), hash(t.Val))
-
-			case statemanager.UpdateTraceST:
-				ss.storage.push(t.Key, t.OldValue, t.NewValue)
-				ss.accumulatorStatement.PushUpdate(oldRoot, newRoot, hash(t.Key), hash(t.OldValue), hash(t.NewValue))
-
-			case statemanager.DeletionTraceST:
-				ss.storage.pushOnlyOld(t.Key, t.DeletedValue)
-				ss.accumulatorStatement.PushDelete(oldRoot, newRoot, hash(t.Key), hash(t.DeletedValue))
-			default:
-				panic("unknown trace type")
 			}
 		}
 

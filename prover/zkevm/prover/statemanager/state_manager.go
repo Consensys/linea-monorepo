@@ -3,10 +3,12 @@ package statemanager
 import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
+	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulatorsummary"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/codehashconsistency"
@@ -65,6 +67,7 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 // arithmetization columns to be assigned first.
 func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]statemanager.DecodedTrace) {
 	assignHubAddresses(run)
+	addSkipFlags(&shomeiTraces)
 	sm.StateSummary.Assign(run, shomeiTraces)
 	sm.accumulator.Assign(run, utils.Join(shomeiTraces...))
 	sm.accumulatorSummaryConnector.Assign(run)
@@ -103,6 +106,7 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 			sm.StateSummary.Account.Initial.KeccakCodeHash.Lo,
 			sm.StateSummary.BatchNumber,
 			sm.StateSummary.Account.Initial.Exists,
+			sm.StateSummary.Account.Final.Exists,
 			sm.StateSummary.IsInitialDeployment,
 			sm.StateSummary.IsStorage,
 		},
@@ -116,10 +120,103 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 		},
 		[]csvtraces.Option{},
 	)
+
+	csvtraces.FmtCsv(
+		files.MustOverwrite("scparith.csv"),
+		run,
+		[]ifaces.Column{
+			run.Spec.Columns.GetHandle("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
+			run.Spec.Columns.GetHandle("hub.scp_ADDRESS_HI"),
+			run.Spec.Columns.GetHandle("hub.scp_ADDRESS_LO"),
+			run.Spec.Columns.GetHandle("hub.scp_STORAGE_KEY_HI"),
+			run.Spec.Columns.GetHandle("hub.scp_STORAGE_KEY_LO"),
+			run.Spec.Columns.GetHandle("hub.scp_VALUE_CURR_HI"),
+			run.Spec.Columns.GetHandle("hub.scp_VALUE_CURR_LO"),
+			run.Spec.Columns.GetHandle("hub.scp_VALUE_NEXT_HI"),
+			run.Spec.Columns.GetHandle("hub.scp_VALUE_NEXT_LO"),
+			run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
+			run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
+			run.Spec.Columns.GetHandle("hub.scp_REL_BLK_NUM"),
+			run.Spec.Columns.GetHandle("hub.scp_PEEK_AT_STORAGE"),
+			run.Spec.Columns.GetHandle("hub.scp_FIRST_IN_CNF"),
+			run.Spec.Columns.GetHandle("hub.scp_FINAL_IN_CNF"),
+			run.Spec.Columns.GetHandle("hub.scp_FIRST_IN_BLK"),
+			run.Spec.Columns.GetHandle("hub.scp_FINAL_IN_BLK"),
+			run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
+			run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
+		},
+		[]csvtraces.Option{},
+	)
+
+	csvtraces.FmtCsv(
+		files.MustOverwrite("scpss.csv"),
+		run,
+		[]ifaces.Column{
+			sm.StateSummary.Account.Address,
+			sm.StateSummary.Storage.Key.Hi,
+			sm.StateSummary.Storage.Key.Lo,
+			sm.StateSummary.Storage.OldValue.Hi,
+			sm.StateSummary.Storage.OldValue.Lo,
+			sm.StateSummary.Storage.NewValue.Hi,
+			sm.StateSummary.Storage.NewValue.Lo,
+			sm.StateSummary.BatchNumber,
+			sm.StateSummary.IsFinalDeployment,
+			sm.StateSummary.Account.Final.Exists,
+			sm.StateSummary.IsStorage,
+		},
+		[]csvtraces.Option{},
+	)
 }
 
 // stateSummarySize returns the number of rows to give to the state-summary
 // module.
 func (s *Settings) stateSummarySize() int {
 	return utils.NextPowerOfTwo(s.AccSettings.MaxNumProofs)
+}
+
+// addSkipFlags adds skip flags to redundant shomei traces
+func addSkipFlags(shomeiTraces *[][]statemanager.DecodedTrace) {
+	// AddressAndKey is a struct used as a key in order to identify skippable traces
+	// in our maps
+	type AddressAndKey struct {
+		address    types.Bytes32
+		storageKey types.Bytes32
+	}
+	// iterate over all the Shomei blocks
+	for blockNo, vec := range *shomeiTraces {
+		var (
+			curAddress = types.EthAddress{}
+			err        error
+		)
+
+		// instantiate the map for the current block
+		traceMap := make(map[AddressAndKey]int)
+		// now we process the traces themselves
+		for i, trace := range vec {
+			// compute the current address account
+			curAddress, err = trace.GetRelatedAccount()
+			if err != nil {
+				panic(err)
+			}
+			x := *(&field.Element{}).SetBytes(curAddress[:])
+
+			if trace.Location != statemanager.WS_LOCATION {
+				// we have a STORAGE trace
+				// prepare the search key
+				searchKey := AddressAndKey{
+					address:    x.Bytes(),
+					storageKey: trace.Underlying.HKey(statemanager.MIMC_CONFIG),
+				}
+				previousIndex, isFound := traceMap[searchKey]
+				if isFound {
+					// set the previous trace as a skippable trace
+					(*shomeiTraces)[blockNo][previousIndex].IsSkipped = true
+				} else {
+					// when not found, add its index to the map (if a duplicate is found later)
+					// this stored index will be then used to make the current trace skippable
+					traceMap[searchKey] = i
+				}
+			}
+		}
+	}
 }
