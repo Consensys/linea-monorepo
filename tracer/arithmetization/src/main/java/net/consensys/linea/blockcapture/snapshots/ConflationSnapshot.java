@@ -37,6 +37,22 @@ public record ConflationSnapshot(
     List<StorageSnapshot> storage,
     List<BlockHashSnapshot> blockHashes) {
 
+  public long firstBlockNumber() {
+    if (blocks.isEmpty()) {
+      return Long.MAX_VALUE;
+    }
+    // Extract number of first block
+    return blocks.getFirst().header().number();
+  }
+
+  public long lastBlockNumber() {
+    if (blocks.isEmpty()) {
+      return Long.MAX_VALUE;
+    }
+    // Extract number of last block
+    return blocks.getLast().header().number();
+  }
+
   /**
    * Construct a block hash map for any block hashes embedded in this conflation.
    *
