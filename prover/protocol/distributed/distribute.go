@@ -32,10 +32,10 @@ type DistributedWizard struct {
 	Disc ModuleDiscoverer
 }
 
-// Distribute returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
+// DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
 // takes ownership of the input [wizard.CompiledIOP]. And uses disc to design
 // the scope of each module.
-func Distribute(comp *wizard.CompiledIOP, disc ModuleDiscoverer) DistributedWizard {
+func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) DistributedWizard {
 
 	distributedWizard := DistributedWizard{
 		Bootstrapper: precompileInitialWizard(comp),
