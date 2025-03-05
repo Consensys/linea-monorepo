@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/sirupsen/logrus"
 )
 
 // assign assigns the columns to the prover runtime using PaddedCircularWindow
@@ -15,6 +16,8 @@ func (ctx *mimcCtx) assign(run *wizard.ProverRuntime) {
 	n := oldStateSV.Len()
 
 	O, L := identifyActiveWindow(oldStateSV, blocksSV, n)
+	logrus.Infof("After identifying active window 0:%d, L:%d n:%d", O, L, n)
+
 	resPad, pow4Pad := precomputePaddingValues(len(ctx.intermediateResult))
 	oldStateWindow, blocksWindow := extractWindowSlices(oldStateSV, blocksSV, O, L)
 	resWindow, pow4Window := computeIntermediateValues(len(ctx.intermediateResult), oldStateWindow, blocksWindow, L)
@@ -22,43 +25,46 @@ func (ctx *mimcCtx) assign(run *wizard.ProverRuntime) {
 	assignOptimizedVectors(run, ctx, resWindow, pow4Window, resPad, pow4Pad, O, n)
 }
 
-// identifyActiveWindow identifies the active window (non-zero regions)
+// identifyActiveWindow finds the smallest window containing all non-zero values
 func identifyActiveWindow(oldStateSV, blocksSV smartvectors.SmartVector, n int) (int, int) {
-	minO, maxEnd := n, 0
+	firstNonZero, lastNonZero := n, -1
+	//zero := field.Element{}
 
-	// Check oldStateSV
-	if pcw, ok := oldStateSV.(*smartvectors.PaddedCircularWindow); ok {
-		paddingVal := pcw.PaddingVal()
-		if (&paddingVal).IsZero() {
-			window := smartvectors.Window(oldStateSV)
-			// Assuming offset is available or inferred; adjust if you have an Offset() method
-			o := n - len(window) // Default to left-padded assumption
-			end := o + len(window)
-			minO = min(minO, o)
-			maxEnd = max(maxEnd, end)
+	// Convert to regular vectors to scan all elements
+	oldState := smartvectors.IntoRegVec(oldStateSV)
+	blocks := smartvectors.IntoRegVec(blocksSV)
+
+	for i := 0; i < n; i++ {
+		if !oldState[i].IsZero() || !blocks[i].IsZero() {
+			firstNonZero = min(firstNonZero, i)
+			lastNonZero = max(lastNonZero, i)
 		}
 	}
 
-	// Check blocksSV
-	if pcw, ok := blocksSV.(*smartvectors.PaddedCircularWindow); ok {
-		paddingVal := pcw.PaddingVal()
-		if (&paddingVal).IsZero() {
-			window := smartvectors.Window(blocksSV)
-			// Assuming offset is 0 for right-padded; adjust if you have an Offset() method
-			o := 0
-			end := len(window)
-			minO = min(minO, o)
-			maxEnd = max(maxEnd, end)
-		}
+	// Debug input types and window
+	switch oldStateSV.(type) {
+	case *smartvectors.PaddedCircularWindow:
+		logrus.Info("oldStateSV is PaddedCircularWindow")
+	case *smartvectors.Regular:
+		logrus.Info("oldStateSV is Regular")
+	default:
+		logrus.Infof("oldStateSV is %T", oldStateSV)
+	}
+	switch blocksSV.(type) {
+	case *smartvectors.PaddedCircularWindow:
+		logrus.Info("blocksSV is PaddedCircularWindow")
+	case *smartvectors.Regular:
+		logrus.Info("blocksSV is Regular")
+	default:
+		logrus.Infof("blocksSV is %T", blocksSV)
 	}
 
-	if maxEnd > minO {
-		O := minO
-		L := maxEnd - minO
+	if firstNonZero <= lastNonZero {
+		O := firstNonZero
+		L := lastNonZero - firstNonZero + 1
 		return O, L
 	}
-	// Default to full vector if no valid window is found or inputs aren’t optimized
-	return 0, n
+	return 0, 1 // Minimal window if all zeros
 }
 
 // precomputePaddingValues precomputes padding values for constant regions
@@ -131,6 +137,7 @@ func assignOptimizedVectors(run *wizard.ProverRuntime, ctx *mimcCtx, resWindow, 
 			L := len(resWindow[i])
 			if L == n {
 				// Full-length window: use Regular vector
+				logrus.Infof("Assigning Regular smart vector for res4 vector in round:%d", i)
 				fullVec := make([]field.Element, n)
 				copy(fullVec[O:O+L], resWindow[i])
 				run.AssignColumn(
@@ -139,6 +146,7 @@ func assignOptimizedVectors(run *wizard.ProverRuntime, ctx *mimcCtx, resWindow, 
 				)
 			} else {
 				// Partial window: use PaddedCircularWindow
+				logrus.Infof("Assigning PaddedCircularWindow smart vector for res4 vector in round:%d", i)
 				run.AssignColumn(
 					ctx.intermediateResult[i].GetColID(),
 					smartvectors.NewPaddedCircularWindow(resWindow[i], resPad[i], O, n),
@@ -149,6 +157,7 @@ func assignOptimizedVectors(run *wizard.ProverRuntime, ctx *mimcCtx, resWindow, 
 		L := len(pow4Window[i])
 		if L == n {
 			// Full-length window: use Regular vector
+			logrus.Infof("Assigning Regular smart vector for pow4 vector in round:%d", i)
 			fullVec := make([]field.Element, n)
 			copy(fullVec[O:O+L], pow4Window[i])
 			run.AssignColumn(
@@ -157,6 +166,7 @@ func assignOptimizedVectors(run *wizard.ProverRuntime, ctx *mimcCtx, resWindow, 
 			)
 		} else {
 			// Partial window: use PaddedCircularWindow
+			logrus.Infof("Assigning PaddedCircularWindow smart vector for pow4 vector in round:%d", i)
 			run.AssignColumn(
 				ctx.intermediatePow4[i].GetColID(),
 				smartvectors.NewPaddedCircularWindow(pow4Window[i], pow4Pad[i], O, n),

@@ -367,13 +367,3 @@ func (w *PaddedCircularWindow) IntoRegVecSaveAllocExt() []fext.Element {
 	}
 	return res
 }
-
-// PaddingVal returns the padding value of the PaddedCircularWindow.
-func (p *PaddedCircularWindow) PaddingVal() field.Element {
-	return p.paddingVal
-}
-
-// Interval returns the circular interval of the PaddedCircularWindow.
-func (p *PaddedCircularWindow) Interval() CircularInterval {
-	return p.interval()
-}
