@@ -2,26 +2,33 @@ package experiment
 
 import (
 	"encoding/json"
+	"math/rand/v2"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
 // TestDistributeWizard attempts to run and compile the distributed protocol.
 func TestDistributeWizard(t *testing.T) {
 
-	zkevm := GetZkEVM()
-	disc := &StandardModuleDiscoverer{
-		TargetWeight: 1 << 28,
-	}
+	var (
+		rng              = rand.New(utils.NewRandSource(0))
+		sharedRandomness = field.PseudoRand(rng)
+		zkevm            = GetZkEVM()
+		disc             = &StandardModuleDiscoverer{
+			TargetWeight: 1 << 28,
+		}
 
-	// This tests the compilation of the compiled-IOP
-	distWizard := DistributeWizard(zkevm.WizardIOP, disc)
+		// This tests the compilation of the compiled-IOP
+		distWizard = DistributeWizard(zkevm.WizardIOP, disc)
+	)
 
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
 	for i := range distWizard.GLs {
@@ -69,6 +76,8 @@ func TestDistributeWizard(t *testing.T) {
 			moduleName  = witnessGLs[i].ModuleName
 		)
 
+		witnessLPP.InitialFiatShamirState = sharedRandomness
+
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
 
 		if witnessLPP.ModuleName != moduleName || witnessLPP.ModuleIndex != moduleIndex {
@@ -104,7 +113,7 @@ func TestDistributeWizard(t *testing.T) {
 		)
 
 		if verGLErr != nil {
-			t.Fatalf("verifier failed for segment %v, reason=%v", i, verGLErr)
+			t.Errorf("verifier failed for segment %v, reason=%v", i, verGLErr)
 		}
 
 		var (
