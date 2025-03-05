@@ -36,7 +36,9 @@ export default function WithFees({ iconPath }: Props) {
       {total && (
         <button type="button" className={styles["gas-fees"]} onClick={handleShowFees}>
           <Image src={iconPath} width={12} height={12} alt="fee-chain-icon" />
-          <p className={styles["estimate-crypto"]}>{`${formatUnits(total.fees, token.decimals)} ${token.symbol}`}</p>
+          <p
+            className={styles["estimate-crypto"]}
+          >{`${Number(formatUnits(total.fees, token.decimals)).toFixed(8)} ${token.symbol}`}</p>
           {total.fiatValue && (
             <p className={styles["estimate-amount"]}>{`(${total.fiatValue.toLocaleString("en-US", {
               style: "currency",
