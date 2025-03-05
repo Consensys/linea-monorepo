@@ -31,6 +31,10 @@ func NewProjection(
 		sizeB  = inp.FilterB.Size()
 		numCol = len(inp.ColumnA)
 	)
+
+	mustBeNaturalOrVerifierCol(inp.FilterA)
+	mustBeNaturalOrVerifierCol(inp.FilterB)
+
 	if len(inp.ColumnB) != numCol {
 		utils.Panic("A and B must have the same number of columns")
 	}

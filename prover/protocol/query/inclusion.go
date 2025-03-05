@@ -90,6 +90,7 @@ func NewInclusion(
 		// Checks on filters, and the including filter size
 		if includingFilter != nil {
 			includingFilter[frag].MustExists() //check the existence of the filter
+			mustBeNaturalOrVerifierCol(includingFilter[frag])
 
 			if includingFilter[frag].Size() != including[frag][0].Size() {
 				utils.Panic(
@@ -108,6 +109,7 @@ func NewInclusion(
 	// Checks on filters, and the included filter size
 	if includedFilter != nil {
 		includedFilter.MustExists() //check the existence of the filter
+		mustBeNaturalOrVerifierCol(includedFilter)
 
 		if includedFilter.Size() != included[0].Size() {
 			utils.Panic(

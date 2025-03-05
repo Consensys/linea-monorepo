@@ -94,6 +94,8 @@ func NewHorner(round int, id ifaces.QueryID, parts []HornerPart) Horner {
 			size  = column.ExprIsOnSameLengthHandles(&board)
 		)
 
+		mustBeNaturalOrVerifierCol(parts[i].Selector)
+
 		if parts[i].Selector.Size() != size {
 			utils.Panic("Horner part %v has a selector of size %v and a coefficient of size %v", i, parts[i].Selector.Size(), size)
 		}
