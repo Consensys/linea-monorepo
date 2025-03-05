@@ -218,7 +218,7 @@ jobs:
 
           if [[ "$has_changes_requiring_build" == "false" ]]; then
             RESULT=false
-          elif [[ "$contracts_excluding_local_deployment_artifacts" == "true" && "$changed_file_count" == "$contracts_excluding_local_deployment_artifacts_count"]]; then
+          elif [[ "$contracts_excluding_local_deployment_artifacts" == "true" && "$changed_file_count" == "$contracts_excluding_local_deployment_artifacts_count" ]]; then
             RESULT=false
           fi
 
