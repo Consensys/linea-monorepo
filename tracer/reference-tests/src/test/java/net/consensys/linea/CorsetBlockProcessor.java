@@ -28,6 +28,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.BlockProcessingOutputs;
 import org.hyperledger.besu.ethereum.BlockProcessingResult;
+import org.hyperledger.besu.ethereum.ProtocolContext;
 import org.hyperledger.besu.ethereum.chain.Blockchain;
 import org.hyperledger.besu.ethereum.core.BlockBody;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
@@ -70,6 +71,7 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
 
   @Override
   public BlockProcessingResult processBlock(
+      final ProtocolContext protocolContext,
       final Blockchain blockchain,
       final MutableWorldState worldState,
       final BlockHeader blockHeader,
