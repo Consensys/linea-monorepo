@@ -1,24 +1,128 @@
 package experiment
 
 import (
+	"encoding/json"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
-// TestDistribute attempts to run and compile the distributed protocol.
-func TestDistribute(t *testing.T) {
+// TestDistributeWizard attempts to run and compile the distributed protocol.
+func TestDistributeWizard(t *testing.T) {
+
+	zkevm := GetZkEVM()
+	disc := &StandardModuleDiscoverer{
+		TargetWeight: 1 << 28,
+	}
+
+	// This tests the compilation of the compiled-IOP
+	distWizard := DistributeWizard(zkevm.WizardIOP, disc)
+
+	// This applies the dummy.Compiler to all parts of the distributed wizard.
+	for i := range distWizard.GLs {
+		dummy.Compile(distWizard.GLs[i].Wiop)
+		dummy.Compile(distWizard.LPPs[i].Wiop)
+	}
 
 	var (
-		zkevm = GetZkEVM()
-		disc  = &StandardModuleDiscoverer{
-			TargetWeight: 1 << 28,
-		}
-		_ = Distribute(zkevm.WizardIOP, disc)
+		reqFile      = files.MustRead("/home/ubuntu/beta-v2.1-rc1-trace/16303874-16303874-etv0.2.0-stv2.2.2-getZkProof.json")
+		cfgFilePath  = "/home/ubuntu/zkevm-monorepo/prover/config/config-sepolia-full.toml"
+		req          = &execution.Request{}
+		reqDecodeErr = json.NewDecoder(reqFile).Decode(req)
+		cfg, cfgErr  = config.NewConfigFromFileUnchecked(cfgFilePath)
 	)
 
+	if reqDecodeErr != nil {
+		t.Fatalf("could not read the request file: %v", reqDecodeErr)
+	}
+
+	if cfgErr != nil {
+		t.Fatalf("could not read the config file: err=%v, cfg=%++v", cfgErr, cfg)
+	}
+
+	t.Logf("loaded config: %++v", cfg)
+
+	var (
+		witness     = GetZkevmWitness(req, cfg)
+		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
+		proof       = runtimeBoot.ExtractProof()
+		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
+	)
+
+	if verBootErr != nil {
+		t.Fatalf("")
+	}
+
+	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
+
+	for i := range witnessGLs {
+
+		var (
+			witnessGL   = witnessGLs[i]
+			witnessLPP  = witnessLPPs[i]
+			moduleIndex = witnessGLs[i].ModuleIndex
+			moduleName  = witnessGLs[i].ModuleName
+		)
+
+		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
+
+		if witnessLPP.ModuleName != moduleName || witnessLPP.ModuleIndex != moduleIndex {
+			t.Fatalf(
+				"GL and LPP are not aligned LPP[name=%v index=%v] GL[name=%v index=%v]",
+				witnessLPPs[i].ModuleName, witnessLPPs[i].ModuleIndex,
+				witnessGLs[i].ModuleName, witnessGLs[i].ModuleIndex,
+			)
+		}
+
+		var (
+			moduleGL  *ModuleGL
+			moduleLPP *ModuleLPP
+		)
+
+		for k := range distWizard.ModuleNames {
+
+			if distWizard.ModuleNames[k] != witnessGLs[i].ModuleName {
+				continue
+			}
+
+			moduleGL = distWizard.GLs[k]
+			moduleLPP = distWizard.LPPs[k]
+		}
+
+		if moduleGL == nil {
+			t.Fatalf("module does not exists")
+		}
+
+		var (
+			proofGL  = wizard.Prove(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
+			verGLErr = wizard.Verify(moduleGL.Wiop, proofGL)
+		)
+
+		if verGLErr != nil {
+			t.Fatalf("verifier failed for segment %v, reason=%v", i, verGLErr)
+		}
+
+		var (
+			proofLPP  = wizard.Prove(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPPs[i]))
+			verLPPErr = wizard.Verify(moduleLPP.Wiop, proofLPP)
+		)
+
+		if verLPPErr != nil {
+			t.Errorf("verifier failed for segment %v, reason=%v", i, verLPPErr)
+		}
+	}
+}
+
+// GetZkevmWitness returns a [zkevm.Witness]
+func GetZkevmWitness(req *execution.Request, cfg *config.Config) *zkevm.Witness {
+	out := execution.CraftProverOutput(cfg, req)
+	witness := execution.NewWitness(cfg, req, &out)
+	return witness.ZkEVM
 }
 
 // GetZKEVM returns a [zkevm.ZkEvm] with its trace limits inflated so that it
@@ -28,37 +132,37 @@ func GetZkEVM() *zkevm.ZkEvm {
 
 	// This are the config trace-limits from sepolia. All multiplied by 16.
 	traceLimits := config.TracesLimits{
-		Add:                                  1 << 17,
-		Bin:                                  1 << 16,
-		Blake2Fmodexpdata:                    1 << 12,
-		Blockdata:                            1 << 10,
-		Blockhash:                            1 << 10,
-		Ecdata:                               1 << 16,
-		Euc:                                  1 << 14,
-		Exp:                                  1 << 12,
-		Ext:                                  1 << 18,
-		Gas:                                  1 << 14,
-		Hub:                                  1 << 19,
-		Logdata:                              1 << 14,
-		Loginfo:                              1 << 10,
-		Mmio:                                 1 << 19,
-		Mmu:                                  1 << 19,
-		Mod:                                  1 << 15,
-		Mul:                                  1 << 14,
-		Mxp:                                  1 << 17,
-		Oob:                                  1 << 16,
-		Rlpaddr:                              1 << 10,
-		Rlptxn:                               1 << 15,
-		Rlptxrcpt:                            1 << 15,
-		Rom:                                  1 << 20,
-		Romlex:                               1 << 10,
-		Shakiradata:                          1 << 13,
-		Shf:                                  1 << 14,
-		Stp:                                  1 << 12,
-		Trm:                                  1 << 13,
-		Txndata:                              1 << 12,
-		Wcp:                                  1 << 16,
-		Binreftable:                          1 << 18,
+		Add:                                  1 << 19,
+		Bin:                                  1 << 18,
+		Blake2Fmodexpdata:                    1 << 14,
+		Blockdata:                            1 << 12,
+		Blockhash:                            1 << 12,
+		Ecdata:                               1 << 18,
+		Euc:                                  1 << 16,
+		Exp:                                  1 << 14,
+		Ext:                                  1 << 20,
+		Gas:                                  1 << 16,
+		Hub:                                  1 << 21,
+		Logdata:                              1 << 16,
+		Loginfo:                              1 << 12,
+		Mmio:                                 1 << 21,
+		Mmu:                                  1 << 21,
+		Mod:                                  1 << 17,
+		Mul:                                  1 << 16,
+		Mxp:                                  1 << 19,
+		Oob:                                  1 << 18,
+		Rlpaddr:                              1 << 12,
+		Rlptxn:                               1 << 17,
+		Rlptxrcpt:                            1 << 17,
+		Rom:                                  1 << 22,
+		Romlex:                               1 << 12,
+		Shakiradata:                          1 << 15,
+		Shf:                                  1 << 16,
+		Stp:                                  1 << 14,
+		Trm:                                  1 << 15,
+		Txndata:                              1 << 14,
+		Wcp:                                  1 << 18,
+		Binreftable:                          1 << 20,
 		Shfreftable:                          4096,
 		Instdecoder:                          512,
 		PrecompileEcrecoverEffectiveCalls:    500,
