@@ -98,12 +98,12 @@ public class ReplayExecutionEnvironment {
 
   private ZkTracer zkTracer;
 
-  public void checkTracer(String inputFilePath) {
+  public void checkTracer(String inputFilePath, long startBlock, long endBlock) {
     // Generate the output file path based on the input file path
     Path inputPath = Paths.get(inputFilePath);
     String outputFileName = inputPath.getFileName().toString().replace(".json.gz", ".lt");
     Path outputPath = inputPath.getParent().resolve(outputFileName);
-    this.zkTracer.writeToFile(outputPath);
+    this.zkTracer.writeToFile(outputPath, startBlock, endBlock);
     log.info("trace written to `{}`", outputPath);
     // validation is disabled by default for replayBulk
     // assertThat(CORSET_VALIDATOR.validate(outputPath).isValid()).isTrue();
@@ -125,7 +125,12 @@ public class ReplayExecutionEnvironment {
       return;
     }
     this.executeFrom(chainId, conflation);
-    ExecutionEnvironment.checkTracer(zkTracer, CORSET_VALIDATOR, Optional.of(log));
+    ExecutionEnvironment.checkTracer(
+        zkTracer,
+        CORSET_VALIDATOR,
+        Optional.of(log),
+        conflation.firstBlockNumber(),
+        conflation.lastBlockNumber());
   }
 
   public void replay(BigInteger chainId, final Reader replayFile, String inputFilePath) {
@@ -138,12 +143,17 @@ public class ReplayExecutionEnvironment {
       return;
     }
     this.executeFrom(chainId, conflation);
-    this.checkTracer(inputFilePath);
+    this.checkTracer(inputFilePath, conflation.firstBlockNumber(), conflation.lastBlockNumber());
   }
 
   public void replay(BigInteger chainId, ConflationSnapshot conflation) {
     this.executeFrom(chainId, conflation);
-    ExecutionEnvironment.checkTracer(zkTracer, CORSET_VALIDATOR, Optional.of(log));
+    ExecutionEnvironment.checkTracer(
+        zkTracer,
+        CORSET_VALIDATOR,
+        Optional.of(log),
+        conflation.firstBlockNumber(),
+        conflation.lastBlockNumber());
   }
 
   /**

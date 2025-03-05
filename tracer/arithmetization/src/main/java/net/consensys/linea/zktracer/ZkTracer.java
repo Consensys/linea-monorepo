@@ -25,6 +25,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
@@ -73,6 +75,9 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   /** Accumulate all the exceptions that happened at tracing time. */
   @Getter private final List<Exception> tracingExceptions = new FiniteList<>(50);
 
+  // Fields for metadata
+  private final BigInteger chainId;
+
   public ZkTracer() {
     this(
         LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT,
@@ -85,6 +90,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
 
   public ZkTracer(
       final LineaL1L2BridgeSharedConfiguration bridgeConfiguration, BigInteger chainId) {
+    this.chainId = chainId;
     this.hub = new Hub(bridgeConfiguration.contract(), bridgeConfiguration.topic(), chainId);
     for (Module m : this.hub.getModulesToCount()) {
       if (!spillings.containsKey(m.moduleKey())) {
@@ -103,17 +109,32 @@ public class ZkTracer implements ConflationAwareOperationTracer {
         debugLevel.none() ? Optional.empty() : Optional.of(new DebugMode(debugLevel, this.hub));
   }
 
-  public void writeToFile(final Path filename) {
+  public void writeToFile(final Path filename, long startBlock, long endBlock) {
     maybeThrowTracingExceptions();
 
-    final List<Module> modules = hub.getModulesToTrace();
+    final List<Module> modulesToTrace = hub.getModulesToTrace();
     final List<Trace.ColumnHeader> headers =
-        modules.stream().flatMap(m -> m.columnHeaders().stream()).toList();
-
+        modulesToTrace.stream().flatMap(m -> m.columnHeaders().stream()).toList();
+    // Configure metadata
+    final Map<String, Object> metadata = Trace.metadata();
+    metadata.put("chainId", this.chainId.toString());
+    metadata.put("releaseVersion", ZkTracer.class.getPackage().getSpecificationVersion());
+    // include block range
+    final Map<String, String> range = new HashMap<>();
+    range.put("start", Long.toString(startBlock));
+    range.put("end", Long.toString(endBlock));
+    metadata.put("conflation", range);
+    // include line counts
+    final Map<String, String> lineCounts = new HashMap<>();
+    for (Module m : hub.getModulesToCount()) {
+      lineCounts.put(m.moduleKey(), Integer.toString(m.lineCount()));
+    }
+    metadata.put("lineCounts", lineCounts);
+    //
     try (RandomAccessFile file = new RandomAccessFile(filename.toString(), "rw")) {
-      Trace trace = Trace.of(file, headers, new byte[0]);
+      final Trace trace = Trace.of(file, headers, getMetadataBytes(metadata));
       // Commit each module
-      for (Module m : modules) {
+      for (Module m : modulesToTrace) {
         m.commit(trace);
       }
       // Close the file
@@ -316,5 +337,12 @@ public class ZkTracer implements ConflationAwareOperationTracer {
                                             + " not found in spillings.toml"))));
     modulesLineCount.put("BLOCK_TRANSACTIONS", hub.cumulatedTxCount());
     return modulesLineCount;
+  }
+
+  /** Object writer is used for generating JSON byte strings. */
+  private static final ObjectWriter objectWriter = new ObjectMapper().writer();
+
+  public static byte[] getMetadataBytes(Map<String, Object> metadata) throws IOException {
+    return objectWriter.writeValueAsBytes(metadata);
   }
 }

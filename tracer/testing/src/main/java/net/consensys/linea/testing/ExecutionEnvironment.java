@@ -70,13 +70,17 @@ public class ExecutionEnvironment {
           .blockHeaderFunctions(new CliqueBlockHeaderFunctions());
 
   public static void checkTracer(
-      ZkTracer zkTracer, CorsetValidator corsetValidator, Optional<Logger> logger) {
+      ZkTracer zkTracer,
+      CorsetValidator corsetValidator,
+      Optional<Logger> logger,
+      long startBlock,
+      long endBlock) {
     Path traceFilePath = null;
     boolean traceValidated = false;
     try {
       String prefix = constructTestPrefix();
       traceFilePath = Files.createTempFile(prefix, ".lt");
-      zkTracer.writeToFile(traceFilePath);
+      zkTracer.writeToFile(traceFilePath, startBlock, endBlock);
       final Path finalTraceFilePath = traceFilePath;
       logger.ifPresent(log -> log.debug("trace written to {}", finalTraceFilePath));
       CorsetValidator.Result corsetValidationResult = corsetValidator.validate(traceFilePath);

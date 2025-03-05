@@ -54,7 +54,12 @@ public class TraceWriter {
     // Write the trace at the original and final trace file path, but with the suffix .tmp at the
     // end of the file.
     final Path tmpTraceFilePath =
-        writeToTmpFile(tracesOutputDirPath, origTraceFileName + ".", TRACE_TEMP_FILE_EXTENSION);
+        writeToTmpFile(
+            tracesOutputDirPath,
+            origTraceFileName + ".",
+            TRACE_TEMP_FILE_EXTENSION,
+            startBlockNumber,
+            endBlockNumber);
     // After trace writing is complete, rename the file by removing the .tmp prefix, indicating
     // the file is complete and should not be corrupted due to trace writing issues.
     final Path finalizedTraceFilePath =
@@ -63,7 +68,12 @@ public class TraceWriter {
     return finalizedTraceFilePath.toAbsolutePath();
   }
 
-  public Path writeToTmpFile(final Path rootDir, final String prefix, final String suffix) {
+  public Path writeToTmpFile(
+      final Path rootDir,
+      final String prefix,
+      final String suffix,
+      final long startBlockNumber,
+      final long endBlockNumber) {
     Path traceFile;
     try {
       FileAttribute<Set<PosixFilePermission>> perms =
@@ -83,7 +93,7 @@ public class TraceWriter {
       }
     }
 
-    tracer.writeToFile(traceFile);
+    tracer.writeToFile(traceFile, startBlockNumber, endBlockNumber);
 
     return traceFile;
   }

@@ -232,7 +232,14 @@ public class GeneralStateReferenceTestTools {
                   .isEqualTo(expected);
             });
 
-    ExecutionEnvironment.checkTracer(zkTracer, CORSET_VALIDATOR, Optional.of(log));
+    ExecutionEnvironment.checkTracer(
+        zkTracer,
+        CORSET_VALIDATOR,
+        Optional.of(log),
+        // block number for first block
+        blockHeader.getNumber(),
+        // block number for last block
+        blockHeader.getNumber());
   }
 
   private static boolean shouldClearEmptyAccounts(final String eip) {
