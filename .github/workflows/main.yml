@@ -35,7 +35,7 @@ jobs:
           list-files: "json"
           filters: |
             all:
-               - '.github/**'
+               - '!.github/**'
             coordinator:
               - 'coordinator/**'
               - 'testdata/**'
