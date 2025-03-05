@@ -1,0 +1,45 @@
+name: get-e2e-toggle
+
+on:
+  workflow_call:
+    inputs:
+      has_changes_requiring_build:
+        required: true
+        type: string
+      contracts_excluding_local_deployment_artifacts:
+        required: true
+        type: string
+      changed_file_count:
+        required: false
+        type: string
+      contracts_excluding_local_deployment_artifacts_count:
+        required: false
+        type: string
+    outputs:
+      e2e-toggle:
+        value: ${{ jobs.get-e2e-toggle.outputs.e2e_toggle }}
+
+jobs:
+  get-e2e-toggle:
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    outputs:
+      e2e_toggle: ${{ steps.eval.outputs.e2e_toggle }}
+    steps:
+      - name: Evaluate Boolean Logic
+        id: eval
+        shell: bash
+        run: |
+          has_changes_requiring_build=${{ inputs.has_changes_requiring_build }}
+          contracts_excluding_local_deployment_artifacts=${{ inputs.contracts_excluding_local_deployment_artifacts }}
+          changed_file_count=${{ inputs.changed_file_count }}
+          contracts_excluding_local_deployment_artifacts_count=${{ inputs.contracts_excluding_local_deployment_artifacts_count }}
+          E2E_TOGGLE=true
+
+          if [[ "$has_changes_requiring_build" == "false" ]]; then
+            E2E_TOGGLE=false
+          elif [[ "$contracts_excluding_local_deployment_artifacts" == "true" && "$changed_file_count" == "$contracts_excluding_local_deployment_artifacts_count" ]]; then
+            E2E_TOGGLE=false
+          fi
+
+          echo "e2e_toggle=$E2E_TOGGLE"
+          echo "e2e_toggle=$E2E_TOGGLE" >> $GITHUB_OUTPUT

@@ -202,28 +202,12 @@ jobs:
 
   get-e2e-toggle:
     needs: [ filter-commit-changes ]
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    outputs:
-      e2e-toggle: ${{ steps.eval.outputs.e2e_toggle }}
-    steps:
-      - name: Evaluate Boolean Logic
-        id: eval
-        shell: bash
-        run: |
-          has_changes_requiring_build=${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
-          contracts_excluding_local_deployment_artifacts=${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts }}
-          changed_file_count=${{ needs.filter-commit-changes.outputs.changed-file-count }}
-          contracts_excluding_local_deployment_artifacts_count=${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts_count }}
-          E2E_TOGGLE=true
-
-          if [[ "$has_changes_requiring_build" == "false" ]]; then
-            E2E_TOGGLE=false
-          elif [[ "$contracts_excluding_local_deployment_artifacts" == "true" && "$changed_file_count" == "$contracts_excluding_local_deployment_artifacts_count" ]]; then
-            E2E_TOGGLE=false
-          fi
-
-          echo "e2e_toggle=$E2E_TOGGLE"
-          echo "e2e_toggle=$E2E_TOGGLE" >> $GITHUB_OUTPUT
+    uses: ./.github/workflows/get-e2e-toggle.yml
+    with:
+      has_changes_requiring_build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
+      contracts_excluding_local_deployment_artifacts: ${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts }}
+      changed_file_count: ${{ needs.filter-commit-changes.outputs.changed-file-count }}
+      contracts_excluding_local_deployment_artifacts_count: ${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts_count }}
 
   run-e2e-tests-geth-tracing:
     needs: [ store-image-name-and-tags, docker-build, manual-docker-build-and-e2e-tests, get-e2e-toggle ]
