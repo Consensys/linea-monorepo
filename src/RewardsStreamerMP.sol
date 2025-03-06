@@ -224,10 +224,6 @@ contract RewardsStreamerMP is
     function lock(uint256 lockPeriod) external onlyTrustedCodehash onlyNotEmergencyMode onlyRegisteredVault {
         VaultData storage vault = vaultData[msg.sender];
 
-        if (vault.lockUntil > 0) {
-            revert StakingManager__AlreadyLocked();
-        }
-
         if (lockPeriod == 0) {
             revert StakingManager__DurationCannotBeZero();
         }

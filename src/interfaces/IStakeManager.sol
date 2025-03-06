@@ -35,6 +35,7 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     error StakingManager__DurationCannotBeZero();
     /// @notice Emitted when there are insufficient funds to stake.
     error StakingManager__InsufficientBalance();
+    /// @notice Emitted when the reward period has not ended.
     error StakingManager__RewardPeriodNotEnded();
 
     /// @notice Emitted when a vault is registered.

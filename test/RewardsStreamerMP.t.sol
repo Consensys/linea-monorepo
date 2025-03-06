@@ -1721,6 +1721,70 @@ contract LockTest is RewardsStreamerMPTest {
         vault.lock(lockPeriod);
     }
 
+    function test_LockWithPriorLock() public {
+        // Setup - alice stakes 10 tokens without lock
+        uint256 stakeAmount = 10e18;
+        _stake(alice, stakeAmount, 0);
+
+        uint256 initialAccountMP = stakeAmount; // 10e18
+        uint256 initialMaxMP = stakeAmount * streamer.MAX_MULTIPLIER() + stakeAmount; // 50e18
+
+        // Verify initial state
+        checkVault(
+            CheckVaultParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
+                rewardIndex: 0,
+                mpStaked: initialAccountMP,
+                mpAccrued: initialAccountMP,
+                maxMP: initialMaxMP,
+                rewardsAccrued: 0
+            })
+        );
+
+        // Lock for 1 year
+        uint256 lockPeriod = YEAR;
+        uint256 expectedBonusMP = _bonusMP(stakeAmount, lockPeriod);
+
+        _lock(alice, lockPeriod);
+
+        // Check updated state
+        checkVault(
+            CheckVaultParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
+                rewardIndex: 0,
+                mpStaked: initialAccountMP + expectedBonusMP,
+                mpAccrued: initialAccountMP + expectedBonusMP,
+                maxMP: initialMaxMP + expectedBonusMP,
+                rewardsAccrued: 0
+            })
+        );
+
+        expectedBonusMP = _bonusMP(stakeAmount, lockPeriod * 2);
+        // Lock for more one 1 year
+        _lock(alice, lockPeriod);
+
+        // Check updated state
+        checkVault(
+            CheckVaultParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
+                rewardIndex: 0,
+                mpStaked: initialAccountMP + expectedBonusMP,
+                mpAccrued: initialAccountMP + expectedBonusMP,
+                maxMP: initialMaxMP + expectedBonusMP,
+                rewardsAccrued: 0
+            })
+        );
+    }
+
     function test_LockWithoutPriorLock() public {
         // Setup - alice stakes 10 tokens without lock
         uint256 stakeAmount = 10e18;
@@ -1764,6 +1828,78 @@ contract LockTest is RewardsStreamerMPTest {
                 rewardsAccrued: 0
             })
         );
+    }
+
+    function test_LockMultipleTimesExceedMaxLock() public {
+        // Setup - alice stakes 10 tokens without lock
+        uint256 stakeAmount = 10e18;
+
+        _stake(alice, stakeAmount, 0);
+
+        uint256 initialAccountMP = stakeAmount; // 10e18
+        uint256 initialMaxMP = stakeAmount * streamer.MAX_MULTIPLIER() + stakeAmount; // 50e18
+
+        // Verify initial state
+        checkVault(
+            CheckVaultParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
+                rewardIndex: 0,
+                mpStaked: initialAccountMP,
+                mpAccrued: initialAccountMP,
+                maxMP: initialMaxMP,
+                rewardsAccrued: 0
+            })
+        );
+
+        // Lock for 1 year
+        uint256 lockPeriod = 4 * YEAR;
+        uint256 expectedBonusMP = _bonusMP(stakeAmount, lockPeriod);
+
+        _lock(alice, lockPeriod);
+
+        // Check updated state
+        checkVault(
+            CheckVaultParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
+                rewardIndex: 0,
+                mpStaked: initialAccountMP + expectedBonusMP,
+                mpAccrued: initialAccountMP + expectedBonusMP,
+                maxMP: initialMaxMP + expectedBonusMP,
+                rewardsAccrued: 0
+            })
+        );
+
+        // wait for lock year to be over
+        uint256 currentTime = vm.getBlockTimestamp();
+        vm.warp(currentTime + (4 * YEAR));
+
+        streamer.updateGlobalState();
+        streamer.updateVaultMP(vaults[alice]);
+
+        // Check updated state
+        checkVault(
+            CheckVaultParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
+                rewardIndex: 0,
+                mpStaked: initialAccountMP + expectedBonusMP,
+                mpAccrued: initialAccountMP + expectedBonusMP + (initialAccountMP * 4),
+                maxMP: initialMaxMP + expectedBonusMP,
+                rewardsAccrued: 0
+            })
+        );
+
+        // lock for another year should fail as 4 years is the maximum of total lock time
+        vm.expectRevert(StakeMath.StakeMath__AbsoluteMaxMPOverflow.selector);
+        _lock(alice, YEAR);
     }
 
     function test_LockFailsWithNoStake() public {
@@ -2610,6 +2746,12 @@ contract FuzzTests is RewardsStreamerMPTest {
         super._stake(account, amount, lockPeriod);
     }
 
+    function _lock(address account, uint256 lockPeriod) internal {
+        StakeVault vault = StakeVault(vaults[account]);
+        vm.prank(account);
+        vault.lock(lockPeriod);
+    }
+
     function testFuzz_Stake(uint256 stakeAmount, uint256 lockUpPeriod) public {
         vm.assume(stakeAmount > 0 && stakeAmount <= MAX_BALANCE);
         vm.assume(lockUpPeriod == 0 || (lockUpPeriod >= MIN_LOCKUP_PERIOD && lockUpPeriod <= MAX_LOCKUP_PERIOD));
@@ -2617,6 +2759,111 @@ contract FuzzTests is RewardsStreamerMPTest {
         uint256 expectedMaxTotalMP = _maxTotalMP(stakeAmount, lockUpPeriod);
 
         _stake(alice, stakeAmount, lockUpPeriod);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                totalMPStaked: stakeAmount + expectedBonusMP,
+                totalMPAccrued: stakeAmount + expectedBonusMP,
+                totalMaxMP: expectedMaxTotalMP,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0
+            })
+        );
+
+        checkVault(
+            CheckVaultParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
+                rewardIndex: 0,
+                mpStaked: stakeAmount + expectedBonusMP,
+                mpAccrued: stakeAmount + expectedBonusMP,
+                maxMP: expectedMaxTotalMP,
+                rewardsAccrued: 0
+            })
+        );
+    }
+
+    function testFuzz_Lock(uint256 stakeAmount, uint256 lockUpPeriod) public {
+        vm.assume(stakeAmount > 0 && stakeAmount <= MAX_BALANCE);
+        vm.assume(lockUpPeriod >= MIN_LOCKUP_PERIOD && lockUpPeriod <= MAX_LOCKUP_PERIOD);
+        uint256 expectedBonusMP = _bonusMP(stakeAmount, lockUpPeriod);
+        uint256 expectedMaxTotalMP = _maxTotalMP(stakeAmount, lockUpPeriod);
+
+        _stake(alice, stakeAmount, 0);
+        _lock(alice, lockUpPeriod);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                totalMPStaked: stakeAmount + expectedBonusMP,
+                totalMPAccrued: stakeAmount + expectedBonusMP,
+                totalMaxMP: expectedMaxTotalMP,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0
+            })
+        );
+
+        checkVault(
+            CheckVaultParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
+                rewardIndex: 0,
+                mpStaked: stakeAmount + expectedBonusMP,
+                mpAccrued: stakeAmount + expectedBonusMP,
+                maxMP: expectedMaxTotalMP,
+                rewardsAccrued: 0
+            })
+        );
+    }
+
+    function testFuzz_Relock(uint256 stakeAmount, uint256 lockUpPeriod, uint256 lockUpPeriod2) public {
+        stakeAmount = bound(stakeAmount, 1, MAX_BALANCE);
+        lockUpPeriod = lockUpPeriod == 0 ? 0 : bound(lockUpPeriod, MIN_LOCKUP_PERIOD, MAX_LOCKUP_PERIOD);
+        vm.assume(
+            lockUpPeriod2 > 0 && lockUpPeriod2 <= MAX_LOCKUP_PERIOD && lockUpPeriod + lockUpPeriod2 >= MIN_LOCKUP_PERIOD
+                && lockUpPeriod + lockUpPeriod2 <= MAX_LOCKUP_PERIOD
+        );
+        uint256 expectedBonusMP = _bonusMP(stakeAmount, lockUpPeriod);
+        uint256 expectedMaxTotalMP = _maxTotalMP(stakeAmount, lockUpPeriod);
+
+        _stake(alice, stakeAmount, lockUpPeriod);
+
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                totalMPStaked: stakeAmount + expectedBonusMP,
+                totalMPAccrued: stakeAmount + expectedBonusMP,
+                totalMaxMP: expectedMaxTotalMP,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0
+            })
+        );
+
+        checkVault(
+            CheckVaultParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
+                rewardIndex: 0,
+                mpStaked: stakeAmount + expectedBonusMP,
+                mpAccrued: stakeAmount + expectedBonusMP,
+                maxMP: expectedMaxTotalMP,
+                rewardsAccrued: 0
+            })
+        );
+
+        _lock(alice, lockUpPeriod2);
+        expectedBonusMP += _bonusMP(stakeAmount, lockUpPeriod2);
+        expectedMaxTotalMP += _bonusMP(stakeAmount, lockUpPeriod2);
 
         checkStreamer(
             CheckStreamerParams({
@@ -2659,6 +2906,58 @@ contract FuzzTests is RewardsStreamerMPTest {
         vm.warp(currentTime + accruedTime);
         streamer.updateGlobalState();
         streamer.updateVaultMP(vaults[alice]);
+        checkStreamer(
+            CheckStreamerParams({
+                totalStaked: stakeAmount,
+                totalMPStaked: expectedStakedMP,
+                totalMPAccrued: expectedTotalMP,
+                totalMaxMP: expectedMaxTotalMP,
+                stakingBalance: stakeAmount,
+                rewardBalance: 0,
+                rewardIndex: 0
+            })
+        );
+
+        checkVault(
+            CheckVaultParams({
+                account: vaults[alice],
+                rewardBalance: 0,
+                stakedBalance: stakeAmount,
+                vaultBalance: stakeAmount,
+                rewardIndex: 0,
+                mpStaked: expectedStakedMP,
+                mpAccrued: expectedTotalMP,
+                maxMP: expectedMaxTotalMP,
+                rewardsAccrued: 0
+            })
+        );
+    }
+
+    function testFuzz_AccrueMP_Relock(uint256 stakeAmount, uint256 lockUpPeriod2, uint16 accruedTime) public {
+        uint256 lockUpPeriod = MIN_LOCKUP_PERIOD;
+        vm.assume(lockUpPeriod2 <= MAX_LOCKUP_PERIOD);
+        if (accruedTime <= lockUpPeriod) {
+            vm.assume(
+                lockUpPeriod2 > 0 && lockUpPeriod + lockUpPeriod2 - accruedTime >= MIN_LOCKUP_PERIOD
+                    && lockUpPeriod + lockUpPeriod2 - accruedTime <= MAX_LOCKUP_PERIOD
+            );
+        } else {
+            vm.assume(lockUpPeriod2 >= MIN_LOCKUP_PERIOD);
+        }
+        stakeAmount = bound(stakeAmount, MIN_BALANCE, MAX_BALANCE);
+        uint256 expectedMaxTotalMP = _maxTotalMP(stakeAmount, lockUpPeriod);
+        uint256 expectedStakedMP = _initialMP(stakeAmount) + _bonusMP(stakeAmount, lockUpPeriod);
+        uint256 rawTotalMP = expectedStakedMP + _accrueMP(stakeAmount, accruedTime);
+        uint256 expectedTotalMP = Math.min(rawTotalMP, expectedMaxTotalMP);
+
+        _stake(alice, stakeAmount, lockUpPeriod);
+
+        uint256 currentTime = vm.getBlockTimestamp();
+        vm.warp(currentTime + accruedTime);
+        _lock(alice, lockUpPeriod2);
+        expectedTotalMP += _bonusMP(stakeAmount, lockUpPeriod2);
+        expectedStakedMP += _bonusMP(stakeAmount, lockUpPeriod2);
+        expectedMaxTotalMP += _bonusMP(stakeAmount, lockUpPeriod2);
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,

@@ -67,7 +67,7 @@ abstract contract StakeMath is MultiplierPointMath {
         _deltaMpTotal = _initialMP(_increasedAmount) + deltaMpBonus;
         _deltaMpMax = _deltaMpTotal + _accrueMP(_increasedAmount, MAX_MULTIPLIER * YEAR);
 
-        if (_deltaMpMax + _currentMaxMP > MP_MPY_ABSOLUTE * newBalance) {
+        if (_deltaMpMax + _currentMaxMP > _maxAbsoluteTotalMP(newBalance)) {
             revert StakeMath__AbsoluteMaxMPOverflow();
         }
     }
@@ -105,8 +105,7 @@ abstract contract StakeMath is MultiplierPointMath {
         }
 
         _deltaMp = _bonusMP(_balance, _increasedLockSeconds);
-
-        if (_deltaMp + _currentMaxMP > MP_MPY_ABSOLUTE * _balance) {
+        if (_deltaMp + _currentMaxMP > _maxAbsoluteTotalMP(_balance)) {
             revert StakeMath__AbsoluteMaxMPOverflow();
         }
     }
