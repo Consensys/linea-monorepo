@@ -491,7 +491,13 @@ public class BlockchainReferenceTestTools {
 
     zkTracer.traceEndConflation(worldState);
 
-    ExecutionEnvironment.checkTracer(zkTracer, CORSET_VALIDATOR, Optional.of(log));
+    ExecutionEnvironment.checkTracer(
+        zkTracer,
+        CORSET_VALIDATOR,
+        Optional.of(log),
+        // NOTE: just use 0 for start and end block here, since this information is not used.
+        0,
+        0);
     assertThat(blockchain.getChainHeadHash()).isEqualTo(spec.getLastBlockHash());
   }
 
