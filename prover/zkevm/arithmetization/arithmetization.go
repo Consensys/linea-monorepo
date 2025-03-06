@@ -3,6 +3,7 @@ package arithmetization
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/consensys/go-corset/pkg/air"
 	"github.com/consensys/go-corset/pkg/mir"
@@ -69,18 +70,39 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 	traceF := files.MustRead(traceFile)
 	// Parse trace file and extract raw column data.
 	rawColumns, metadata, errT := ReadLtTraces(traceF, a.Schema)
+
+	// Performs a compatibility check by comparing the constraints
+	// commit of zkevm.bin with the constraints commit of the trace file.
+	// Panics if an incompatibility is detected.
+	if *a.Settings.IgnoreCompatibilityCheck == false {
+		var errors []string
+
+		zkevmBinCommit, ok := a.Metadata.String("commit")
+		if !ok {
+			errors = append(errors, "missing constraints commit metadata in 'zkevm.bin'")
+		}
+
+		traceFileCommit, ok := metadata.String("commit")
+		if !ok {
+			errors = append(errors, "missing constraints commit metadata in '.lt' file")
+		}
+
+		// Check commit mismatch
+		if zkevmBinCommit != traceFileCommit {
+			errors = append(errors, fmt.Sprintf(
+				"zkevm.bin incompatible with trace file (commit %s vs %s)",
+				zkevmBinCommit, traceFileCommit,
+			))
+		}
+
+		// Panic only if there are errors
+		if len(errors) > 0 {
+			logrus.Panic("compatibility check failed with error message:\n" + strings.Join(errors, "\n"))
+		}
+	}
+
 	if errT != nil {
 		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
-	} else if !*a.Settings.IgnoreCompatibilityCheck {
-		// Compatibility check between zkevm.bin and trace file.
-		if zkevmBinCommit, ok := a.Metadata.String("commit"); !ok {
-			panic("missing constraints commit metadata in 'zkevm.bin'")
-		} else if traceFileCommit, ok := metadata.String("commit"); !ok {
-			panic("missing constraints commit metadata in '.lt' file")
-		} else if zkevmBinCommit != traceFileCommit {
-			msg := fmt.Sprintf("zkevm.bin incompatible with trace file (commit %s vs %s)", zkevmBinCommit, traceFileCommit)
-			panic(msg)
-		}
 	}
 	// Perform trace expansion
 	expandedTrace, errs := schema.NewTraceBuilder(a.Schema).Build(rawColumns)
