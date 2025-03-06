@@ -19,22 +19,22 @@ func (ctx *mimcCtx) assign(run *wizard.ProverRuntime) {
 		numRounds  = len(ctx.intermediateResult)
 	)
 
-	lowIdx, highIdx := identifyActiveWindow(oldStateSV, blocksSV, totalRows)
-	oldStateWindow, blocksWindow := extractWindowSlices(oldStateSV, blocksSV, lowIdx, highIdx)
-	intermediateResWindow, intermediatePow4Window := computeIntermediateValues(numRounds, oldStateWindow, blocksWindow, highIdx)
+	offset, windowLen := identifyActiveWindow(oldStateSV, blocksSV, totalRows)
+	oldStateWindow, blocksWindow := extractWindowSlices(oldStateSV, blocksSV, offset, windowLen)
+	intermediateResWindow, intermediatePow4Window := computeIntermediateValues(numRounds, oldStateWindow, blocksWindow, windowLen)
 
 	var resPad, pow4Pad []field.Element
 
 	// Precompute padding only when `PaddedCircularWindow` is tobe used
 	// i.e. Whenever there is sparsity in the (oldState, blocks) pair
-	if highIdx != totalRows {
+	if windowLen != totalRows {
 		resPad, pow4Pad = precomputePaddingValues(numRounds)
 	}
-	assignOptimizedVectors(run, ctx, intermediateResWindow, intermediatePow4Window, resPad, pow4Pad, lowIdx, totalRows)
+	assignOptimizedVectors(run, ctx, intermediateResWindow, intermediatePow4Window, resPad, pow4Pad, offset, totalRows)
 }
 
 // identifyActiveWindow finds the smallest active window scanning through the oldState and blocks
-func identifyActiveWindow(oldStateSV, blocksSV smartvectors.SmartVector, totalRows int) (int, int) {
+func identifyActiveWindow(oldStateSV, blocksSV smartvectors.SmartVector, totalRows int) (offset int, windowLen int) {
 	// Convert to regular vectors to scan all elements
 	var (
 		oldState = smartvectors.IntoRegVec(oldStateSV)
@@ -51,21 +51,22 @@ func identifyActiveWindow(oldStateSV, blocksSV smartvectors.SmartVector, totalRo
 	}
 
 	if firstNonZero <= lastNonZero {
-		l := firstNonZero
-		h := lastNonZero - firstNonZero + 1
-		return l, h
+		offset = firstNonZero
+		windowLen = lastNonZero - firstNonZero + 1
+		return offset, windowLen
 	}
-	// Default return value when there is no sparsity => This will likely never happen in practice
+	// Default minimal window when there is no sparsity
+	// This will likely never happen in practice
 	return 0, 1
 }
 
 // computeIntermediateValues computes intermediate values for the window
-func computeIntermediateValues(numRounds int, oldStateWindow, blocksWindow []field.Element, highIdx int) ([][]field.Element, [][]field.Element) {
+func computeIntermediateValues(numRounds int, oldStateWindow, blocksWindow []field.Element, windowLen int) ([][]field.Element, [][]field.Element) {
 	intermediateResWindow := make([][]field.Element, numRounds)
 	intermediatePow4Window := make([][]field.Element, numRounds)
 	for i := range intermediateResWindow {
-		intermediateResWindow[i] = make([]field.Element, highIdx)
-		intermediatePow4Window[i] = make([]field.Element, highIdx)
+		intermediateResWindow[i] = make([]field.Element, windowLen)
+		intermediatePow4Window[i] = make([]field.Element, windowLen)
 	}
 
 	// Initalize intermediateResWindow to the blocksWindow
@@ -73,7 +74,7 @@ func computeIntermediateValues(numRounds int, oldStateWindow, blocksWindow []fie
 
 	// r => round
 	for r := 0; r < numRounds; r++ {
-		parallel.Execute(highIdx, func(start, stop int) {
+		parallel.Execute(windowLen, func(start, stop int) {
 			for k := start; k < stop; k++ {
 				if r == 0 {
 					tmp := intermediateResWindow[0][k]
