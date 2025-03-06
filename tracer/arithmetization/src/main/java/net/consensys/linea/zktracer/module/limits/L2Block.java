@@ -34,15 +34,13 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 @Getter
 @RequiredArgsConstructor
 public class L2Block implements Module {
+  private final BlockTransactions blockTransactions;
   private final L2L1Logs l2l1Logs;
   private final Address l2l1Address;
   private final LogTopic l2l1Topic;
 
   private final short TIMESTAMP_BYTESIZE = 32 / 8;
   private final short NB_TX_IN_BLOCK_BYTESIZE = 16 / 8;
-
-  /** The number of transaction */
-  private final CountOnlyOperation numberOfTransactions = new CountOnlyOperation();
 
   /** The byte size of the RLP-encoded transaction of the conflation */
   private final CountOnlyOperation sizesRlpEncodedTxs = new CountOnlyOperation();
@@ -60,14 +58,12 @@ public class L2Block implements Module {
 
   @Override
   public void commitTransactionBundle() {
-    numberOfTransactions.commitTransactionBundle();
     sizesRlpEncodedTxs.commitTransactionBundle();
     l2l1LogSizes.commitTransactionBundle();
   }
 
   @Override
   public void popTransactionBundle() {
-    numberOfTransactions.popTransactionBundle();
     sizesRlpEncodedTxs.popTransactionBundle();
     l2l1LogSizes.popTransactionBundle();
   }
@@ -79,7 +75,7 @@ public class L2Block implements Module {
 
         // Calculates the data size related to the abi encoding of the list of the
         // from addresses. The field is a simple array of bytes20.
-        + numberOfTransactions.lineCount() * Address.SIZE
+        + blockTransactions.lineCount() * Address.SIZE
 
         // Calculates the data size related to the block
         + nbBlock * (TIMESTAMP_BYTESIZE + Hash.SIZE + NB_TX_IN_BLOCK_BYTESIZE);
@@ -92,8 +88,6 @@ public class L2Block implements Module {
 
   @Override
   public void traceEndTx(TransactionProcessingMetadata tx) {
-    numberOfTransactions.add(1);
-
     for (Log log : tx.getLogs()) {
       if (isL2L1Log(log)) {
         l2l1LogSizes.add(log.getData().size());
