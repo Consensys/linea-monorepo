@@ -17,8 +17,6 @@
     "MergeNetsplitBlock": 6,
     "terminalTotalDifficulty": 10,
     "terminalTotalDifficultyPassed": false,
-    "shanghaiTime": %SWITCH_TIME%,
-    "cancunTime": %SWITCH_TIME%,
     "clique": {
       "period": 1,
       "epoch": 1

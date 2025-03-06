@@ -17,7 +17,7 @@ services:
     depends_on:
       initialization:
         condition: service_completed_successfully
-    image: hyperledger/besu:24.10.0
+    image: hyperledger/besu:25.2.1
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
       interval: 1s
@@ -52,7 +52,7 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: ethereum/client-go:release-1.14
+    image: ethereum/client-go:release-1.15
     restart: always
     healthcheck:
       test: [ "CMD-SHELL", "/scripts/healthcheck.sh" ]
@@ -98,36 +98,11 @@ services:
     networks:
       - linea
 
-  follower-geth-snap-server:
-    depends_on:
-      sequencer:
-        condition: service_healthy
-    image: ethereum/client-go:release-1.13
-    restart: always
-    healthcheck:
-      test: [ "CMD-SHELL", "/scripts/healthcheck.sh" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/initialization/genesis-geth.json", "0x0", "0x1C9C380", "/data" ]
-    environment:
-      BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
-    volumes:
-      - ./geth:/scripts:ro
-      - ./initialization/:/initialization/:ro
-      - ./jwt:/jwt:ro
-    ports:
-      - "8575:8545"
-      - "8576:8546"
-      - "8581:8551"
-    networks:
-      - linea
-
   follower-besu:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: hyperledger/besu:24.10.0
+    image: hyperledger/besu:25.2.1
     healthcheck:
       test: [ "CMD-SHELL", "bash -c \"[ -f /tmp/pid ]\"" ]
       interval: 1s

@@ -22,11 +22,10 @@ import maru.executionlayer.manager.BlockMetadata
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
+import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
-import tech.pegasys.teku.ethereum.executionclient.schema.GetPayloadV3Response
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -155,17 +154,17 @@ class ProtocolStarterTest {
           latestBlockMetadataToReturn,
         )
 
-      override fun getPayload(payloadId: Bytes8): SafeFuture<Response<GetPayloadV3Response>> {
+      override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV1>> {
         TODO("Not yet implemented")
       }
 
-      override fun newPayload(executionPayload: ExecutionPayloadV3): SafeFuture<Response<PayloadStatusV1>> {
+      override fun newPayload(executionPayload: ExecutionPayloadV1): SafeFuture<Response<PayloadStatusV1>> {
         TODO("Not yet implemented")
       }
 
       override fun forkChoiceUpdate(
         forkChoiceState: ForkChoiceStateV1,
-        payloadAttributes: PayloadAttributesV3?,
+        payloadAttributes: PayloadAttributesV1?,
       ): SafeFuture<Response<ForkChoiceUpdatedResult>> {
         TODO("Not yet implemented")
       }

@@ -71,6 +71,19 @@ jobs:
           java-version: 21
       - name: Run e2e tests
         id: run_e2e_tests
-        timeout-minutes: 4
+        timeout-minutes: 6
         run: |
           make run-e2e-test
+      - name: Show e2e tests result
+        if: always()
+        run: |
+          echo "E2E_TESTS_RESULT: ${{ steps.run_e2e_tests.outcome }}"
+
+      - name: Archive debug logs
+        uses: actions/upload-artifact@v4
+        if: ${{ failure() && inputs.e2e-tests-logs-dump }}
+        with:
+          name: end-2-end-debug-logs
+          if-no-files-found: error
+          path: |
+            e2e/docker_logs/**/*

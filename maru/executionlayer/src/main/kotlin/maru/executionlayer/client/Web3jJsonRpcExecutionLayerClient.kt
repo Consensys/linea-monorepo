@@ -19,11 +19,10 @@ import java.util.Optional
 import maru.executionlayer.manager.BlockMetadata
 import org.apache.tuweni.bytes.Bytes32
 import org.web3j.protocol.core.DefaultBlockParameter
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
+import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
-import tech.pegasys.teku.ethereum.executionclient.schema.GetPayloadV3Response
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
@@ -53,15 +52,15 @@ class Web3jJsonRpcExecutionLayerClient(
         )
       }
 
-  override fun getPayload(payloadId: Bytes8): SafeFuture<Response<GetPayloadV3Response>> =
-    web3jEngineClient.getPayloadV3(payloadId)
+  override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV1>> =
+    web3jEngineClient.getPayloadV1(payloadId)
 
-  override fun newPayload(executionPayload: ExecutionPayloadV3): SafeFuture<Response<PayloadStatusV1>> =
-    web3jEngineClient.newPayloadV3(executionPayload, emptyList(), Bytes32.ZERO)
+  override fun newPayload(executionPayload: ExecutionPayloadV1): SafeFuture<Response<PayloadStatusV1>> =
+    web3jEngineClient.newPayloadV1(executionPayload)
 
   override fun forkChoiceUpdate(
     forkChoiceState: ForkChoiceStateV1,
-    payloadAttributes: PayloadAttributesV3?,
+    payloadAttributes: PayloadAttributesV1?,
   ): SafeFuture<Response<ForkChoiceUpdatedResult>> =
-    web3jEngineClient.forkChoiceUpdatedV3(forkChoiceState, Optional.ofNullable(payloadAttributes))
+    web3jEngineClient.forkChoiceUpdatedV1(forkChoiceState, Optional.ofNullable(payloadAttributes))
 }
