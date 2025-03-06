@@ -138,7 +138,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-fast-replay-tests-coverage-report
-          path: arithmetization/build/reports/jacoco/fastReplayTestsReport/**/*
+          path: arithmetization/build/reports/jacoco/jacocoFastReplayTestsReport/**/*
 
       - name: Upload jacoco fast replay tests exec file
         if: always()
