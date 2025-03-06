@@ -3,7 +3,7 @@
 package sha2
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -42,7 +42,8 @@ type Sha2SingleProvider struct {
 
 // NewSha2ZkEvm constructs the Sha2 module as used in Linea's zkEVM.
 func NewSha2ZkEvm(comp *wizard.CompiledIOP, s Settings) *Sha2SingleProvider {
-	return newSha2SingleProvider(comp, Sha2SingleProviderInput{
+
+	sha2ProviderInput := Sha2SingleProviderInput{
 		Settings: s,
 		Provider: generic.GenericByteModule{
 			Data: generic.GenDataModule{
@@ -53,14 +54,24 @@ func NewSha2ZkEvm(comp *wizard.CompiledIOP, s Settings) *Sha2SingleProvider {
 				ToHash:  comp.Columns.GetHandle("shakiradata.IS_SHA2_DATA"),
 			},
 			Info: generic.GenInfoModule{
-				HashNum:  comp.Columns.GetHandle("shakiradata.ID"),
-				HashLo:   comp.Columns.GetHandle("shakiradata.LIMB"),
-				HashHi:   comp.Columns.GetHandle("shakiradata.LIMB"),
-				IsHashLo: column.Shift(comp.Columns.GetHandle("shakiradata.SELECTOR_SHA2_RES_HI"), -1),
+				HashNum: comp.Columns.GetHandle("shakiradata.ID"),
+				HashLo:  comp.Columns.GetHandle("shakiradata.LIMB"),
+				HashHi:  comp.Columns.GetHandle("shakiradata.LIMB"),
+				// Before, we usse to pass column.Shift(IsHashHi, -1) but this does
+				// not work with the prover distribution as the column is used as
+				// a filter for a projection query.
 				IsHashHi: comp.Columns.GetHandle("shakiradata.SELECTOR_SHA2_RES_HI"),
 			},
 		},
-	})
+	}
+
+	sha2ProviderInput.Provider.Info.IsHashLo = dedicated.ManuallyShift(
+		comp,
+		sha2ProviderInput.Provider.Info.IsHashHi,
+		-1,
+	)
+
+	return newSha2SingleProvider(comp, sha2ProviderInput)
 }
 
 // newSha2SingleProvider implements the utilities for proving sha2 hash
@@ -141,6 +152,8 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 
 // It implements [wizard.ProverAction] for sha2.
 func (m *Sha2SingleProvider) Run(run *wizard.ProverRuntime) {
+
+	m.Inputs.Provider.Info.IsHashLo.(dedicated.ManuallyShifted).Assign(run)
 
 	// assign ImportAndPad module
 	m.pa_importPad.Run(run)

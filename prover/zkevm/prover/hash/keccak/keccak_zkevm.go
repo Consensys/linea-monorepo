@@ -6,7 +6,7 @@
 package keccak
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
@@ -78,13 +78,19 @@ func newKeccakZkEvm(comp *wizard.CompiledIOP, settings Settings, providers []gen
 }
 
 func (k *KeccakZkEVM) Run(run *wizard.ProverRuntime) {
+
+	run.Spec.Columns.
+		GetHandle("shakiradata.SELECTOR_KECCAK_RES_LO").(dedicated.ManuallyShifted).
+		Assign(run)
+
 	k.pa_accData.Run(run)
 	k.pa_accInfo.Run(run)
 	k.pa_keccak.Run(run)
 }
 
 func getShakiraArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModule {
-	return generic.GenericByteModule{
+
+	res := generic.GenericByteModule{
 		Data: generic.GenDataModule{
 			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
 			Index:   comp.Columns.GetHandle("shakiradata.INDEX"),
@@ -93,13 +99,19 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModu
 			ToHash:  comp.Columns.GetHandle("shakiradata.IS_KECCAK_DATA"),
 		},
 		Info: generic.GenInfoModule{
-			HashNum:  comp.Columns.GetHandle("shakiradata.ID"),
-			HashLo:   comp.Columns.GetHandle("shakiradata.LIMB"),
-			HashHi:   comp.Columns.GetHandle("shakiradata.LIMB"),
-			IsHashLo: column.Shift(comp.Columns.GetHandle("shakiradata.SELECTOR_KECCAK_RES_HI"), -1),
+			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
+			HashLo:  comp.Columns.GetHandle("shakiradata.LIMB"),
+			HashHi:  comp.Columns.GetHandle("shakiradata.LIMB"),
+			// Before, we usse to pass column.Shift(IsHashHi, -1) but this does
+			// not work with the prover distribution as the column is used as
+			// a filter for a projection query.
 			IsHashHi: comp.Columns.GetHandle("shakiradata.SELECTOR_KECCAK_RES_HI"),
 		},
 	}
+
+	res.Info.IsHashLo = dedicated.ManuallyShift(comp, res.Info.IsHashHi, -1)
+
+	return res
 }
 
 func getRlpAddArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModule {

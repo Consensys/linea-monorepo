@@ -92,6 +92,10 @@ type sha2BlockModule struct {
 	// constraints setting the values of the old state of the hasher.
 	IsEffFirstLaneOfNewHash ifaces.Column
 
+	// IsEffFirstLaneOfNewHashShiftMin2 is a manually shifted version of the
+	// [IsFirstLaneOfNewHash] column with an offset of -2.
+	IsEffFirstLaneOfNewHashShiftMin2 dedicated.ManuallyShifted
+
 	// IsEffLastLaneOfCurrHash is a binary indicator column indicating with a 1
 	// the last row of every hash. It is used to ensure that HashHi and HashLo
 	// are well constructed.
@@ -151,6 +155,8 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 			Limbs:                    declareCommit("LIMBS"),
 		}
 	)
+
+	res.IsEffFirstLaneOfNewHashShiftMin2 = dedicated.ManuallyShift(comp, res.IsEffFirstLaneOfNewHash, -2)
 
 	commonconstraints.MustBeActivationColumns(comp, res.IsActive)
 
@@ -292,10 +298,15 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 
 	comp.InsertProjection(
 		ifaces.QueryIDf("%v_PROJECTION_INPUT", inp.Name),
-		query.ProjectionInput{ColumnA: []ifaces.Column{res.Inputs.IsFirstLaneOfNewHash,
-			res.Inputs.PackedUint32},
-			ColumnB: []ifaces.Column{column.Shift(res.IsEffFirstLaneOfNewHash, -2),
-				res.Limbs},
+		query.ProjectionInput{
+			ColumnA: []ifaces.Column{
+				res.Inputs.IsFirstLaneOfNewHash,
+				res.Inputs.PackedUint32,
+			},
+			ColumnB: []ifaces.Column{
+				res.IsEffFirstLaneOfNewHashShiftMin2,
+				res.Limbs,
+			},
 			FilterA: res.Inputs.Selector,
 			FilterB: res.IsEffBlock})
 
