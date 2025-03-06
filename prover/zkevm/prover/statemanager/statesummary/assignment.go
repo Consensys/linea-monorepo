@@ -124,7 +124,7 @@ func (ss *stateSummaryAssignmentBuilder) pushBlockTraces(batchNumber int, traces
 			// that situation, the account trace is at the beginning of the
 			// segment. When that happens, we want to be sure that the
 			// storage rows and the account segment arise in the same position.
-			if len(subSegment.storageTraces) > 0 {
+			if actualUnskippedLength(subSegment.storageTraces) > 0 {
 				curSegment[len(curSegment)-1].storageTraces = subSegment.storageTraces
 				subSegment = accountSubSegmentWitness{}
 			}
@@ -145,7 +145,7 @@ func (ss *stateSummaryAssignmentBuilder) pushBlockTraces(batchNumber int, traces
 		subSegment.storageTraces = append(subSegment.storageTraces, trace)
 	}
 
-	if len(subSegment.storageTraces) > 0 {
+	if actualUnskippedLength(subSegment.storageTraces) > 0 {
 		curSegment[len(curSegment)-1].storageTraces = subSegment.storageTraces
 	}
 
@@ -169,6 +169,7 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 			panic("could not get the account address")
 		}
 
+		noOfSkippedStorageTraces := 0
 		for i := range seg.storageTraces {
 
 			var (
@@ -188,7 +189,9 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 				ss.isActive.PushOne()
 				ss.isStorage.PushOne()
 				ss.isEndOfAccountSegment.PushZero()
-				ss.isBeginningOfAccountSegment.PushBoolean(segID == 0 && i == 0)
+				ss.isBeginningOfAccountSegment.PushBoolean(
+					segID == 0 && i == firstUnskippedIndex(seg.storageTraces),
+				)
 				ss.account.initial.pushAll(initialAccount)
 				ss.account.final.pushOverrideStorageRoot(finalAccount, newRoot)
 				ss.worldStateRoot.PushBytes32(initWsRoot)
@@ -252,6 +255,9 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 				default:
 					panic("unknown trace type")
 				}
+			} else {
+				// the storage trace is skipped
+				noOfSkippedStorageTraces++
 			}
 		}
 
@@ -263,7 +269,7 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 		ss.isActive.PushOne()
 		ss.isStorage.PushZero()
 		ss.isEndOfAccountSegment.PushBoolean(segID == len(segment)-1)
-		ss.isBeginningOfAccountSegment.PushBoolean(segID == 0 && len(seg.storageTraces) == 0)
+		ss.isBeginningOfAccountSegment.PushBoolean(segID == 0 && actualUnskippedLength(seg.storageTraces) == 0)
 		ss.account.initial.pushAll(initialAccount)
 		ss.account.final.pushAll(finalAccount)
 		ss.worldStateRoot.PushBytes32(finalWsRoot)
@@ -438,4 +444,26 @@ func hash(x io.WriterTo) types.Bytes32 {
 	hasher := mimc.NewMiMC()
 	x.WriteTo(hasher)
 	return types.AsBytes32(hasher.Sum(nil))
+}
+
+// actualUnskippedLength computes the actual number of traces that form the segments
+// meaning it adds up only the unskipped traces
+func actualUnskippedLength(traces []statemanager.DecodedTrace) int {
+	res := 0
+	for _, trace := range traces {
+		if !trace.IsSkipped {
+			res++
+		}
+	}
+	return res
+}
+
+// firstUnskippedIndex returns the index of the first unskipped storage trace.
+func firstUnskippedIndex(traces []statemanager.DecodedTrace) int {
+	for i, trace := range traces {
+		if !trace.IsSkipped {
+			return i
+		}
+	}
+	panic("There are no unskipped storage traces, but that is out of Shomei's expected specifications")
 }
