@@ -77,7 +77,7 @@ func NewZkEVM(
 // Prove assigns and runs the inner-prover of the zkEVM and then, it returns the
 // inner-proof
 func (z *ZkEvm) ProveInner(input *Witness) wizard.Proof {
-	return wizard.Prove(z.WizardIOP, z.prove(input))
+	return wizard.Prove(z.WizardIOP, z.GetMainProverStep(input))
 }
 
 // Verify verifies the inner-proof of the zkEVM
@@ -121,7 +121,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 
 // Returns a prover function for the zkEVM module. The resulting function is
 // aimed to be passed to the wizard.Prove function.
-func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
+func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.ProverStep) {
 	return func(run *wizard.ProverRuntime) {
 
 		// Assigns the arithmetization module. From Corset. Must be done first
