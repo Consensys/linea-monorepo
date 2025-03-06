@@ -99,6 +99,8 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 		if len(errors) > 0 {
 			logrus.Panic("compatibility check failed with error message:\n" + strings.Join(errors, "\n"))
 		}
+	} else {
+		logrus.Info("Skip constraints compatibility check between zkevm.bin and trace file")
 	}
 
 	if errT != nil {
