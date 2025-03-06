@@ -158,8 +158,8 @@ func accountIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 			ss.Account.Initial.Balance,
 			ss.Account.Initial.Nonce,
 			ss.Account.Initial.CodeSize,
-			ss.Account.Initial.KeccakCodeHash.Hi,
-			ss.Account.Initial.KeccakCodeHash.Lo,
+			ss.Account.Initial.ExpectedHubCodeHash.Hi,
+			ss.Account.Initial.ExpectedHubCodeHash.Lo,
 			ss.BatchNumber,
 			ss.Account.Initial.Exists,
 		}
@@ -255,8 +255,26 @@ the corresponding columns in the arithmetization.
 func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubColumnSet) {
 	filterArith := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_ACCOUNT_FINAL_ARITHMETIZATION", smc.AddressHI.Size())
 	filterSummary := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_ACCOUNT_FINAL_SUMMARY", ss.IsStorage.Size())
-	stateSummaryTable := []ifaces.Column{ss.Account.Address, ss.Account.Final.Balance, ss.Account.Final.Nonce, ss.Account.Final.CodeSize, ss.Account.Final.KeccakCodeHash.Hi, ss.Account.Final.KeccakCodeHash.Lo, ss.BatchNumber, ss.Account.Final.Exists}
-	arithTable := []ifaces.Column{smc.Address, smc.BalanceNew, smc.NonceNew, smc.CodeSizeNew, smc.CodeHashHINew, smc.CodeHashLONew, smc.BlockNumber, smc.ExistsNew}
+	stateSummaryTable := []ifaces.Column{
+		ss.Account.Address,
+		ss.Account.Final.Balance,
+		ss.Account.Final.Nonce,
+		ss.Account.Final.CodeSize,
+		ss.Account.Final.ExpectedHubCodeHash.Hi,
+		ss.Account.Final.ExpectedHubCodeHash.Lo,
+		ss.BatchNumber,
+		ss.Account.Final.Exists,
+	}
+	arithTable := []ifaces.Column{
+		smc.Address,
+		smc.BalanceNew,
+		smc.NonceNew,
+		smc.CodeSizeNew,
+		smc.CodeHashHINew,
+		smc.CodeHashLONew,
+		smc.BlockNumber,
+		smc.ExistsNew,
+	}
 
 	comp.InsertInclusionDoubleConditional(0, "LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_FINAL_ACCOUNT", stateSummaryTable, arithTable, filterSummary, filterArith)
 	comp.InsertInclusionDoubleConditional(0, "LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_FINAL_ACCOUNT_REVERSED", arithTable, stateSummaryTable, filterArith, filterSummary)
