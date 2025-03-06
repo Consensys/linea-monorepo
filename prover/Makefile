@@ -26,7 +26,7 @@ GO_CORSET := PATH="${CORSET_ROOT}/bin":$$PATH
 	docker \
 	bin/prover \
 	bin/checker \
-	corset \
+	go-corset \
 	testdata \
 
 
