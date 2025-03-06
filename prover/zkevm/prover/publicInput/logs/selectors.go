@@ -275,21 +275,27 @@ func NewSelectorColumns(comp *wizard.CompiledIOP, lc LogColumns) Selectors {
 
 // Assign values for the selectors
 func (sel Selectors) Assign(run *wizard.ProverRuntime, l2BridgeAddress common.Address) {
+
 	addrHi, addrLo := ConvertAddress(statemanager.Address(l2BridgeAddress))
+	size := sel.L2BridgeAddressColHI.Size()
+
 	// assign the columns that contain the l2 bridge address
-	run.AssignColumn(sel.L2BridgeAddressColHI.GetColID(), smartvectors.NewRegular([]field.Element{addrHi}))
-	run.AssignColumn(sel.L2BridgeAddressColLo.GetColID(), smartvectors.NewRegular([]field.Element{addrLo}))
+	run.AssignColumn(sel.L2BridgeAddressColHI.GetColID(), smartvectors.NewConstant(addrHi, size))
+	run.AssignColumn(sel.L2BridgeAddressColLo.GetColID(), smartvectors.NewConstant(addrLo, size))
+
 	// now we assign the dedicated selectors for counters
 	sel.ComputeSelectorCounter0.Run(run)
 	sel.ComputeSelectorCounter1.Run(run)
 	sel.ComputeSelectorCounter3.Run(run)
 	sel.ComputeSelectorCounter4.Run(run)
 	sel.ComputeSelectorCounter5.Run(run)
+
 	// now we assign the dedicated selectors for the two type of first topic
 	sel.ComputeSelectFirstTopicL2L1Hi.Run(run)
 	sel.ComputeSelectFirstTopicL2L1Lo.Run(run)
 	sel.ComputeSelectFirstTopicRollingHi.Run(run)
 	sel.ComputeSelectFirstTopicRollingLo.Run(run)
+
 	// now we assign the dedicated selectors for the bridge address
 	sel.ComputeSelectorL2BridgeAddressHi.Run(run)
 	sel.ComputeSelectorL2BridgeAddressLo.Run(run)
