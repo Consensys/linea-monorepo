@@ -42,17 +42,7 @@
     "eip3529Transition": "0x0",
     "eip3541Transition": "0x0",
 
-    "beaconChainGenesisTimestamp": "%SWITCH_TIME%",
-    "eip3651TransitionTimestamp": "%SWITCH_TIME%",
-    "eip3855TransitionTimestamp": "%SWITCH_TIME%",
-    "eip3860TransitionTimestamp": "%SWITCH_TIME%",
-    "eip4895TransitionTimestamp": "%SWITCH_TIME%",
-    "eip1153TransitionTimestamp": "%SWITCH_TIME%",
-    "eip4788TransitionTimestamp": "%SWITCH_TIME%",
-    "eip4844TransitionTimestamp": "%SWITCH_TIME%",
-    "eip5656TransitionTimestamp": "%SWITCH_TIME%",
-    "eip6780TransitionTimestamp": "%SWITCH_TIME%",
-    "terminalTotalDifficulty": "0a"
+    "terminalTotalDifficulty": "a"
   },
   "genesis": {
     "seal": {

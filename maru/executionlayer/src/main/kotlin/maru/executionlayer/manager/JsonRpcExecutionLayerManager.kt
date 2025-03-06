@@ -21,9 +21,9 @@ import maru.executionlayer.client.ExecutionLayerClient
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
+import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
@@ -99,12 +99,10 @@ class JsonRpcExecutionLayerManager private constructor(
       nextBlockTimestamp,
     )
     val payloadAttributes =
-      PayloadAttributesV3(
+      PayloadAttributesV1(
         UInt64.fromLongBits(nextBlockTimestamp),
         Bytes32.ZERO,
         getNextFeeRecipient(),
-        emptyList(),
-        Bytes32.ZERO,
       )
     log.debug("Starting block building with payload attributes {}", payloadAttributes)
     return executionLayerClient
@@ -165,8 +163,8 @@ class JsonRpcExecutionLayerManager private constructor(
       .getPayload(Bytes8(Bytes.wrap(payloadId!!)))
       .thenCompose { payloadResponse ->
         if (payloadResponse.isSuccess) {
-          val tekuExecutionPayload = payloadResponse.payload.executionPayload
-          val executionPayload = executionPayloadV3ToDomain(tekuExecutionPayload)
+          val tekuExecutionPayload = payloadResponse.payload
+          val executionPayload = executionPayloadV1ToDomain(tekuExecutionPayload)
           val validationResult = payloadValidator.validate(executionPayload)
 
           if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
@@ -205,24 +203,24 @@ class JsonRpcExecutionLayerManager private constructor(
       }
   }
 
-  private fun executionPayloadV3ToDomain(executionPayloadV3: ExecutionPayloadV3): ExecutionPayload =
+  private fun executionPayloadV1ToDomain(executionPayloadV1: ExecutionPayloadV1): ExecutionPayload =
     ExecutionPayload(
-      parentHash = executionPayloadV3.parentHash.toArray(),
-      feeRecipient = executionPayloadV3.feeRecipient.wrappedBytes.toArray(),
-      stateRoot = executionPayloadV3.stateRoot.toArray(),
-      receiptsRoot = executionPayloadV3.receiptsRoot.toArray(),
-      logsBloom = executionPayloadV3.logsBloom.toArray(),
-      prevRandao = executionPayloadV3.prevRandao.toArray(),
-      blockNumber = executionPayloadV3.blockNumber.longValue().toULong(),
-      gasLimit = executionPayloadV3.gasLimit.longValue().toULong(),
-      gasUsed = executionPayloadV3.gasUsed.longValue().toULong(),
-      timestamp = executionPayloadV3.timestamp.longValue().toULong(),
-      extraData = executionPayloadV3.extraData.toArray(),
+      parentHash = executionPayloadV1.parentHash.toArray(),
+      feeRecipient = executionPayloadV1.feeRecipient.wrappedBytes.toArray(),
+      stateRoot = executionPayloadV1.stateRoot.toArray(),
+      receiptsRoot = executionPayloadV1.receiptsRoot.toArray(),
+      logsBloom = executionPayloadV1.logsBloom.toArray(),
+      prevRandao = executionPayloadV1.prevRandao.toArray(),
+      blockNumber = executionPayloadV1.blockNumber.longValue().toULong(),
+      gasLimit = executionPayloadV1.gasLimit.longValue().toULong(),
+      gasUsed = executionPayloadV1.gasUsed.longValue().toULong(),
+      timestamp = executionPayloadV1.timestamp.longValue().toULong(),
+      extraData = executionPayloadV1.extraData.toArray(),
       // Intentional cropping, UInt256 doesn't fit into ULong
       baseFeePerGas =
-        executionPayloadV3.baseFeePerGas.toBigInteger(),
-      blockHash = executionPayloadV3.blockHash.toArray(),
-      transactions = executionPayloadV3.transactions.map { it.toArray() },
+        executionPayloadV1.baseFeePerGas.toBigInteger(),
+      blockHash = executionPayloadV1.blockHash.toArray(),
+      transactions = executionPayloadV1.transactions.map { it.toArray() },
     )
 
   override fun latestBlockMetadata(): BlockMetadata = latestBlockCache.currentBlockMetadata

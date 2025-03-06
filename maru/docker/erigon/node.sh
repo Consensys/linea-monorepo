@@ -26,7 +26,7 @@ echo "Starting erigon with BOOTNODE enabled on port '30301'"
 exec erigon --datadir $datadir \
  --networkid $networkid \
  --miner.gaslimit $gaslimit \
- --http --http.addr '0.0.0.0' --http.port 8545 --http.corsdomain '*' --http.api 'admin,engine,eth,miner,net,web3,personal,txpool,debug' --http.vhosts="*" \
+ --http --http.addr '0.0.0.0' --http.port 8545 --http.corsdomain '*' --http.api 'admin,engine,eth,net,web3,txpool,debug' --http.vhosts="*" \
  --port 30301 \
  --ethstats "$ETHSTATS_URL" \
  --bootnodes $BOOTNODES \

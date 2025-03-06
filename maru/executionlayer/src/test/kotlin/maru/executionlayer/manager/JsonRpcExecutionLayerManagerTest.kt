@@ -19,7 +19,6 @@ import kotlin.random.Random
 import maru.executionlayer.client.ExecutionLayerClient
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
-import org.apache.tuweni.units.bigints.UInt256
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -32,11 +31,10 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
-import tech.pegasys.teku.ethereum.executionclient.schema.BlobsBundleV1
+import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
-import tech.pegasys.teku.ethereum.executionclient.schema.GetPayloadV3Response
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -95,17 +93,11 @@ class JsonRpcExecutionLayerManagerTest {
 
   private fun mockGetPayloadWithRandomData(
     payloadId: Bytes8,
-    executionPayload: ExecutionPayloadV3,
+    executionPayload: ExecutionPayloadV1,
   ) {
-    val blobsBundle = BlobsBundleV1.fromInternalBlobsBundle(dataStructureUtil.randomBlobsBundle())
     val getPayloadResponse =
       Response(
-        GetPayloadV3Response(
-          /* executionPayload = */ executionPayload,
-          /* blockValue = */ UInt256.ZERO,
-          /* blobsBundle = */ blobsBundle,
-          /* shouldOverrideBuilder = */ false,
-        ),
+        executionPayload,
       )
     whenever(executionLayerClient.getPayload(eq(payloadId)))
       .thenReturn(SafeFuture.completedFuture(getPayloadResponse))
@@ -198,12 +190,10 @@ class JsonRpcExecutionLayerManagerTest {
       },
       argThat { payloadAttributes ->
         payloadAttributes ==
-          PayloadAttributesV3(
+          PayloadAttributesV1(
             UInt64.fromLongBits(nextTimestamp),
             Bytes32.ZERO,
             Bytes20(Bytes.wrap(feeRecipient)),
-            emptyList(),
-            Bytes32.ZERO,
           )
       },
     )

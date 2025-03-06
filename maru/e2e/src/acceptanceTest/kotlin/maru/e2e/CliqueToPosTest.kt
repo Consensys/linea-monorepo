@@ -21,13 +21,14 @@ import com.palantir.docker.compose.configuration.ProjectName
 import com.palantir.docker.compose.connection.waiting.HealthChecks
 import java.io.File
 import java.math.BigInteger
+import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import java.util.Optional
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import maru.e2e.Mappers.executionPayloadV3FromBlock
-import maru.e2e.TestEnvironment.createWeb3jClient
+import maru.e2e.Mappers.executionPayloadV1FromBlock
 import maru.e2e.TestEnvironment.waitForInclusion
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -36,13 +37,15 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.Arguments
+import org.junit.jupiter.params.provider.MethodSource
+import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
-import org.web3j.protocol.core.DefaultBlockParameterName
 import org.web3j.protocol.core.methods.response.EthBlock
-import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
+import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -63,145 +66,211 @@ class CliqueToPosTest {
     @JvmStatic
     fun beforeAll() {
       qbftCluster.before()
-      maru.start()
     }
 
     @AfterAll
     @JvmStatic
     fun afterAll() {
-      qbftCluster.after()
-      maru.stop()
-    }
-  }
-
-  private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
-  private val besuFollowerExecutionEngineClient = createExecutionClient("http://localhost:9550")
-  private val nethermindFollowerExecutionEngineClient =
-    createExecutionClient(
-      "http://localhost:10550",
-      TestEnvironment.jwtConfig,
-    )
-  private val erigonFollowerExecutionEngineClient =
-    createExecutionClient(
-      "http://localhost:11551",
-      TestEnvironment.jwtConfig,
-    )
-  private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", TestEnvironment.jwtConfig)
-  private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", TestEnvironment.jwtConfig)
-  private val gethSnapServerExecutionEngineClient =
-    createExecutionClient("http://localhost:8581", TestEnvironment.jwtConfig)
-  private val gethExecutionEngineClients =
-    mapOf(
-      "follower-geth" to geth1ExecutionEngineClient,
-      "follower-geth-2" to geth2ExecutionEngineClient,
-      "follower-geth-snap-server" to gethSnapServerExecutionEngineClient,
-    )
-  private val followerExecutionEngineClients =
-    mapOf(
-      "follower-besu" to besuFollowerExecutionEngineClient,
-      "follower-erigon" to erigonFollowerExecutionEngineClient,
-      "follower-nethermind" to nethermindFollowerExecutionEngineClient,
-    ) + gethExecutionEngineClients
-
-  @Test
-  fun networkCanBeSwitched() {
-    sealPreMergeBlocks()
-    everyoneArePeered()
-    val newBlockTimestamp = UInt64.valueOf(parseCancunTimestamp())
-
-    val preMergeBlock =
-      TestEnvironment.sequencerL2Client
-        .ethGetBlockByNumber(DefaultBlockParameterName.LATEST, false)
-        .send()
-    val lastPreMergeBlockHash = preMergeBlock.block.hash
-
-    await
-      .timeout(1.minutes.toJavaDuration())
-      .pollInterval(5.seconds.toJavaDuration())
-      .untilAsserted {
-        val unixTimestamp = System.currentTimeMillis() / 1000
-        log.info(
-          "Waiting for Cancun switch {} seconds until the switch ",
-          { newBlockTimestamp.longValue() - unixTimestamp },
+      File("docker_logs").mkdirs()
+      TestEnvironment.allClients.forEach {
+        val containerShortName = it.key
+        val logsInputStream =
+          qbftCluster.dockerExecutable().execute("logs", containerShortNameToFullId(containerShortName)).inputStream
+        Files.copy(
+          logsInputStream,
+          Path.of("docker_logs/$containerShortName.log"),
+          StandardCopyOption.REPLACE_EXISTING,
         )
-        assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
       }
 
-    fcuFollowersToBlockHash(lastPreMergeBlockHash)
-    waitForAllBlockHeightsToMatch()
+      qbftCluster.after()
+    }
+
+    private fun containerShortNameToFullId(containerShortName: String) =
+      "${qbftCluster.projectName().asString()}-$containerShortName-1"
+
+    private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
+
+    @JvmStatic
+    fun followerNodes(): List<Arguments> =
+      TestEnvironment.followerExecutionClientsPostMerge
+        .filter {
+          // Doesn't work just yet
+          !it.key.contains("nethermind")
+        }.map {
+          Arguments.of(it.key, it.value)
+        }
+  }
+
+  @Order(1)
+  @Test
+  fun networkCanBeSwitched() {
+    maru.start()
+    sealPreMergeBlocks()
+    everyoneArePeered()
+    val newBlockTimestamp = UInt64.valueOf(parseSwitchTimestamp())
+
+    await.timeout(1.minutes.toJavaDuration()).pollInterval(5.seconds.toJavaDuration()).untilAsserted {
+      val unixTimestamp = System.currentTimeMillis() / 1000
+      log.info(
+        "Waiting for the switch {} seconds until the switch ",
+        { newBlockTimestamp.longValue() - unixTimestamp },
+      )
+      assertThat(unixTimestamp).isGreaterThan(newBlockTimestamp.longValue())
+    }
 
     log.info("Marked last pre merge block as finalized")
 
     // Next block's content
-    val firstPosBlockTransaction = TestEnvironment.sendArbitraryTransaction()
+    TestEnvironment.sendArbitraryTransaction().waitForInclusion()
 
     log.info("Sequencer has switched to PoS")
 
-    firstPosBlockTransaction.waitForInclusion()
+    TestEnvironment.sendArbitraryTransaction().waitForInclusion()
 
-    val postMergeBlock =
-      TestEnvironment.sequencerL2Client
-        .ethGetBlockByNumber(DefaultBlockParameter.valueOf(BigInteger.valueOf(6)), true)
-        .send()
+    assertNodeBlockHeight(7, TestEnvironment.sequencerL2Client)
+    setAllFollowersHeadToBlockNumber(6)
+    setAllFollowersHeadToBlockNumber(7)
 
-    val blockHash = postMergeBlock.block.hash
-    val getNewPayloadFromLastBlockNumber = executionPayloadV3FromBlock(postMergeBlock.block)
-    sendNewPayloadToFollowers(getNewPayloadFromLastBlockNumber)
-    fcuFollowersToBlockHash(blockHash)
-    val postPreMergeBlockHash = postMergeBlock.block.hash
-
-    await.untilAsserted {
-      fcuFollowersToBlockHash(postPreMergeBlockHash)
-      waitForAllBlockHeightsToMatch()
-    }
+    waitForAllBlockHeightsToMatch()
+    maru.stop()
   }
 
-  // This is more of a debug method rather than an independent test. Thus disabling it
-  @Disabled
-  fun runFCU() {
-    val headBlockNumber = 6L
-    val currentBLock = getBlockByNumber(headBlockNumber, true)
-    val blockHash = currentBLock.hash
+  @Order(2)
+  @ParameterizedTest
+  @MethodSource("followerNodes")
+  fun syncFromScratch(
+    nodeName: String,
+    nodeEngineApiClient: Web3JExecutionEngineClient,
+  ) {
+    val nodeEthereumClient = TestEnvironment.followerClientsPostMerge[nodeName]!!
+    restartNode(nodeName, nodeEthereumClient)
+    log.info("Container $nodeName restarted")
 
-    val getNewPayloadFromLastBlockNumber = executionPayloadV3FromBlock(currentBLock)
-    sendNewPayloadToFollowers(getNewPayloadFromLastBlockNumber)
-    fcuFollowersToBlockHash(blockHash)
-  }
-
-  // This is more of a debug method rather than an independent test. Useful to test if a node can sync from scratch
-  @Disabled
-  fun fullSync() {
-    val target = geth1ExecutionEngineClient
-
-    val lastPreMergeBlockNumber = 5L
-
-    val headBlockNumber = 6L
-    for (blockNumber in lastPreMergeBlockNumber + 1..headBlockNumber) {
-      val block = getBlockByNumber(blockNumber, true)
-
-      val newPayloadV3 = executionPayloadV3FromBlock(block)
-      target.newPayloadV3(newPayloadV3, emptyList(), Bytes32.ZERO).get()
+    if (nodeName.contains("erigon")) {
+      await
+        .pollInterval(1.seconds.toJavaDuration())
+        .timeout(20.seconds.toJavaDuration())
+        .ignoreExceptions()
+        .alias(nodeName)
+        .untilAsserted {
+          assertThat(
+            nodeEthereumClient
+              .ethBlockNumber()
+              .send()
+              .blockNumber
+              .toLong(),
+          ).isEqualTo(5L)
+            .withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
+        }
+      // Erigon doesn't seem to backfill the blocks from head to the switch block
+      sendNewPayloadByBlockNumber(6, nodeEngineApiClient)
     }
 
-    val currentBLock =
-      TestEnvironment.sequencerL2Client
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf(BigInteger.valueOf(headBlockNumber)),
-          false,
-        ).send()
-    val blockHash = currentBLock.block.hash
-
-    val lastBlockHashBytes = Bytes32.fromHexString(blockHash)
-    target.forkChoiceUpdatedV3(
-      ForkChoiceStateV1(lastBlockHashBytes, lastBlockHashBytes, lastBlockHashBytes),
-      Optional.empty(),
-    )
+    await
+      .pollInterval(1.seconds.toJavaDuration())
+      .ignoreExceptions()
+      .timeout(10.seconds.toJavaDuration())
+      .alias(nodeName)
+      .untilAsserted {
+        syncTarget(nodeEngineApiClient, 7)
+        if (nodeName.contains("follower-geth")) {
+          // For some reason it doesn't set latest block correctly, but the block is available
+          val blockByNumber =
+            getBlockByNumber(
+              blockNumber = 7,
+              retreiveTransactions = false,
+              ethClient = nodeEthereumClient,
+            )
+          assertThat(blockByNumber).isNotNull
+        } else {
+          assertNodeBlockHeight(7, nodeEthereumClient)
+        }
+      }
   }
 
-  private fun parseCancunTimestamp(): Long {
+  private fun restartNode(
+    nodeName: String,
+    nodeEthereumClient: Web3j,
+  ) {
+    await
+      .timeout(2.minutes.toJavaDuration())
+      .ignoreExceptions()
+      .untilAsserted {
+        log.debug("Restarting $nodeName")
+        qbftCluster.docker().rm(containerShortNameToFullId(nodeName))
+        qbftCluster.dockerCompose().up()
+        awaitExpectedBlockNumberAfterStartup(nodeName, nodeEthereumClient)
+      }
+  }
+
+  private fun awaitExpectedBlockNumberAfterStartup(
+    nodeName: String,
+    ethereumClient: Web3j,
+  ) {
+    val expectedBlockNumber =
+      when {
+        nodeName.contains("erigon") -> 5L
+        else -> 0L
+      }
+    await
+      .pollInterval(1.seconds.toJavaDuration())
+      .timeout(20.seconds.toJavaDuration())
+      .ignoreExceptions()
+      .alias(nodeName)
+      .untilAsserted {
+        log.debug("Waiting till the node $nodeName is up and synced")
+        assertThat(
+          ethereumClient
+            .ethBlockNumber()
+            .send()
+            .blockNumber
+            .toLong(),
+        ).isEqualTo(expectedBlockNumber)
+          .withFailMessage("Node is unexpectedly synced after restart! Was its state flushed?")
+      }
+  }
+
+  private fun sendNewPayloadByBlockNumber(
+    blockNumber: Long,
+    target: Web3JExecutionEngineClient,
+  ): ExecutionPayloadV1 {
+    val targetBlock = getBlockByNumber(blockNumber = blockNumber, retreiveTransactions = true)!!
+    val blockPayload = executionPayloadV1FromBlock(targetBlock)
+    val newPayloadResult = target.newPayloadV1(blockPayload).get()
+    log.debug("New payload result: {}", newPayloadResult)
+    return blockPayload
+  }
+
+  private fun syncTarget(
+    target: Web3JExecutionEngineClient,
+    headBlockNumber: Long,
+  ) {
+    val headPayload = sendNewPayloadByBlockNumber(headBlockNumber, target)
+
+    val fcuResult =
+      target
+        .forkChoiceUpdatedV1(
+          ForkChoiceStateV1(headPayload.blockHash, headPayload.blockHash, headPayload.blockHash),
+          Optional.empty(),
+        ).get()
+
+    log.debug("Fork choice updated result: {}", fcuResult)
+  }
+
+  private fun setAllFollowersHeadToBlockNumber(blockNumber: Long): String {
+    val postMergeBlock = getBlockByNumber(blockNumber = blockNumber, retreiveTransactions = true)!!
+    val getNewPayloadFromPostMergeBlockNumber = executionPayloadV1FromBlock(postMergeBlock)
+    sendNewPayloadToFollowers(getNewPayloadFromPostMergeBlockNumber)
+    fcuFollowersToBlockHash(postMergeBlock.hash)
+    return postMergeBlock.hash
+  }
+
+  private fun parseSwitchTimestamp(): Long {
     val objectMapper = ObjectMapper()
     val genesisTree = objectMapper.readTree(File("../docker/initialization/genesis-besu.json"))
-    return genesisTree.at("/config/shanghaiTime").asLong()
+    val switchTime = genesisTree.at("/config/shanghaiTime").asLong()
+    return if (switchTime == 0L) System.currentTimeMillis() / 1000 else switchTime
   }
 
   private fun sealPreMergeBlocks() {
@@ -212,19 +281,12 @@ class CliqueToPosTest {
     repeat(5) { TestEnvironment.sendArbitraryTransaction().waitForInclusion() }
   }
 
-  private fun createExecutionClient(
-    eeEndpoint: String,
-    jwtConfig: Optional<JwtConfig> = Optional.empty(),
-  ): Web3JExecutionEngineClient = Web3JExecutionEngineClient(createWeb3jClient(eeEndpoint, jwtConfig))
-
-  @Disabled
-  fun listBlockHeights() {
-    val blockHeights =
-      TestEnvironment.followerClients.entries.map { entry ->
-        entry.key to SafeFuture.of(entry.value.ethBlockNumber().sendAsync())
-      }
-
-    blockHeights.forEach { log.info("${it.first} block height is ${it.second.get().blockNumber}") }
+  private fun assertNodeBlockHeight(
+    expectedBlockNumber: Long,
+    web3j: Web3j,
+  ) {
+    val targetNodeBlockHeight = web3j.ethBlockNumber().send().blockNumber
+    assertThat(targetNodeBlockHeight).isEqualTo(expectedBlockNumber)
   }
 
   private fun waitForAllBlockHeightsToMatch() {
@@ -252,7 +314,7 @@ class CliqueToPosTest {
 
   private fun everyoneArePeered() {
     log.info("Call add peer on all nodes and wait for peering to happen.")
-    await.pollInterval(1.seconds.toJavaDuration()).timeout(1.minutes.toJavaDuration()).untilAsserted {
+    await.timeout(1.minutes.toJavaDuration()).untilAsserted {
       TestEnvironment.followerClients.forEach {
         try {
           it.value
@@ -282,8 +344,9 @@ class CliqueToPosTest {
   private fun getBlockByNumber(
     blockNumber: Long,
     retreiveTransactions: Boolean = false,
-  ): EthBlock.Block =
-    TestEnvironment.sequencerL2Client
+    ethClient: Web3j = TestEnvironment.sequencerL2Client,
+  ): EthBlock.Block? =
+    ethClient
       .ethGetBlockByNumber(
         DefaultBlockParameter.valueOf(BigInteger.valueOf(blockNumber)),
         retreiveTransactions,
@@ -295,10 +358,10 @@ class CliqueToPosTest {
     // Cutting off the merge first
     val mergeForkChoiceState = ForkChoiceStateV1(lastBlockHashBytes, lastBlockHashBytes, lastBlockHashBytes)
 
-    followerExecutionEngineClients.entries
+    TestEnvironment.followerExecutionEngineClients.entries
       .map {
         it.key to
-          it.value.forkChoiceUpdatedV3(
+          it.value.forkChoiceUpdatedV1(
             mergeForkChoiceState,
             Optional.empty(),
           )
@@ -307,14 +370,12 @@ class CliqueToPosTest {
       }
   }
 
-  private fun sendNewPayloadToFollowers(newPayloadV3: ExecutionPayloadV3) {
-    followerExecutionEngineClients.entries
+  private fun sendNewPayloadToFollowers(newPayloadV1: ExecutionPayloadV1) {
+    TestEnvironment.followerExecutionEngineClients.entries
       .map {
         it.key to
-          it.value.newPayloadV3(
-            newPayloadV3,
-            emptyList(),
-            Bytes32.ZERO,
+          it.value.newPayloadV1(
+            newPayloadV1,
           )
       }.forEach { log.info("New payload for node: ${it.first} response: ${it.second.get()}") }
   }
