@@ -33,54 +33,44 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 
-public class NoCFIDuplicateTests {
-
+public class FirstCfiAccountIsZeroTests {
   /**
-   * This test checks that the ROM_LEX doesn't create duplicate of CFI when calling twice the same
-   * contract.
+   * This test checks that the strict lexicographic order of the ROM_LEX is working when the account
+   * with CFI has Address 0, Deployment number 0 and deployment status 0.
    */
   @Test
-  void noCfiDuplicate() {
+  void strictLexOrdering() {
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
         Address.extract(Hash.hash(senderKeyPair.getPublicKey().getEncodedBytes()));
     final ToyAccount senderAccount =
         ToyAccount.builder().balance(Wei.fromEth(0xffff)).nonce(128).address(senderAddress).build();
 
+    // we don't care about the bytecode, we just need a contract with address 0
     final Bytes bytecode =
-        BytecodeCompiler.newProgram().push(256).push(255).op(OpCode.SLT).compile();
+        BytecodeCompiler.newProgram().push(256).push(255).op(OpCode.SAR).compile();
 
     final ToyAccount recipientAccount =
         ToyAccount.builder()
             .balance(Wei.fromEth(0xffff))
-            .nonce(128)
-            .address(Address.fromHexString("0x1234567890"))
+            .nonce(127)
+            .address(Address.ZERO)
             .code(bytecode)
             .build();
 
-    final Transaction tx1 =
+    final Transaction tx =
         ToyTransaction.builder()
             .sender(senderAccount)
             .keyPair(senderKeyPair)
             .value(Wei.of(123))
             .gasLimit(100000L)
             .to(recipientAccount)
-            .build();
-
-    final Transaction tx2 =
-        ToyTransaction.builder()
-            .sender(senderAccount)
-            .keyPair(senderKeyPair)
-            .value(Wei.of(123))
-            .gasLimit(100000L)
-            .to(recipientAccount)
-            .nonce(senderAccount.getNonce() + 1)
             .build();
 
     final ToyExecutionEnvironmentV2 test =
         ToyExecutionEnvironmentV2.builder()
             .accounts(List.of(senderAccount, recipientAccount))
-            .transactions(List.of(tx1, tx2))
+            .transaction(tx)
             .zkTracerValidator(zkTracer -> {})
             .build();
 
