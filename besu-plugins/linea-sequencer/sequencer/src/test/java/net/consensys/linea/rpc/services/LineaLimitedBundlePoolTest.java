@@ -15,6 +15,9 @@
 
 package net.consensys.linea.rpc.services;
 
+import static java.nio.charset.StandardCharsets.US_ASCII;
+import static net.consensys.linea.rpc.services.LineaLimitedBundlePool.BUNDLE_SAVE_FILENAME;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -23,6 +26,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -30,16 +37,35 @@ import java.util.UUID;
 
 import net.consensys.linea.rpc.services.BundlePoolService.TransactionBundle;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.crypto.KeyPair;
+import org.hyperledger.besu.crypto.SECPPrivateKey;
+import org.hyperledger.besu.crypto.SECPPublicKey;
+import org.hyperledger.besu.crypto.SignatureAlgorithm;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.hyperledger.besu.ethereum.core.TransactionTestFixture;
+import org.hyperledger.besu.ethereum.eth.transactions.PendingTransaction;
 import org.hyperledger.besu.plugin.data.AddedBlockContext;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class LineaLimitedBundlePoolTest {
+  private static final KeyPair KEY_PAIR_1 =
+      new KeyPair(
+          SECPPrivateKey.create(BigInteger.valueOf(Long.MAX_VALUE), SignatureAlgorithm.ALGORITHM),
+          SECPPublicKey.create(BigInteger.valueOf(Long.MIN_VALUE), SignatureAlgorithm.ALGORITHM));
 
+  private static final Transaction TX1 =
+      new TransactionTestFixture().nonce(0).gasLimit(21000).createTransaction(KEY_PAIR_1);
+  private static final Transaction TX2 =
+      new TransactionTestFixture().nonce(1).gasLimit(21000).createTransaction(KEY_PAIR_1);
+  private static final Transaction TX3 =
+      new TransactionTestFixture().nonce(2).gasLimit(21000).createTransaction(KEY_PAIR_1);
+
+  @TempDir Path dataDir;
   private LineaLimitedBundlePool pool;
   private BesuEvents eventService;
   private AddedBlockContext addedBlockContext;
@@ -49,7 +75,8 @@ class LineaLimitedBundlePoolTest {
   void setUp() {
     eventService = mock(BesuEvents.class);
     addedBlockContext = mock(AddedBlockContext.class);
-    pool = new LineaLimitedBundlePool(10_000L, eventService); // Max 100 entries, 10 KB size
+    pool =
+        new LineaLimitedBundlePool(dataDir, 10_000L, eventService); // Max 100 entries, 10 KB size
     blockHeader = mock(BlockHeader.class);
   }
 
@@ -193,6 +220,89 @@ class LineaLimitedBundlePoolTest {
 
     // Verify that the old bundle is removed
     assert pool.getBundlesByBlockNumber(oldBlockNumber).isEmpty();
+  }
+
+  @Test
+  void saveToDisk() throws IOException {
+
+    Hash hash1 = Hash.fromHexStringLenient("0x1234");
+    TransactionBundle bundle1 = createBundle(hash1, 1, List.of(TX1, TX2));
+    pool.putOrReplace(hash1, bundle1);
+
+    Hash hash2 = Hash.fromHexStringLenient("0x5678");
+    TransactionBundle bundle2 = createBundle(hash2, 2, List.of(TX3));
+    pool.putOrReplace(hash2, bundle2);
+
+    pool.saveToDisk();
+
+    final var savedLines = Files.readAllLines(dataDir.resolve(BUNDLE_SAVE_FILENAME), US_ASCII);
+    assertThat(savedLines)
+        .containsExactly(
+            "1|1|0x0000000000000000000000000000000000000000000000000000000000001234||||+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7,+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf$",
+            "1|2|0x0000000000000000000000000000000000000000000000000000000000005678||||+E8CghOIglIIgASAggqVoMmdnUf+4fBBE+l/IAxacTZhj5elWnFdplP+s4jg92yyoHUWAGDUZ5Vo6dg3q7e9+PyBAkwlk4Fprh1UFmyQhhjx$");
+  }
+
+  @Test
+  void loadFromDisk() throws IOException {
+    Files.writeString(
+        dataDir.resolve(BUNDLE_SAVE_FILENAME),
+        """
+    1|1|0x0000000000000000000000000000000000000000000000000000000000001234||||+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7,+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf$
+    1|2|0x0000000000000000000000000000000000000000000000000000000000005678||||+E8CghOIglIIgASAggqVoMmdnUf+4fBBE+l/IAxacTZhj5elWnFdplP+s4jg92yyoHUWAGDUZ5Vo6dg3q7e9+PyBAkwlk4Fprh1UFmyQhhjx$
+    """,
+        US_ASCII);
+
+    pool.loadFromDisk();
+
+    Hash hash1 = Hash.fromHexStringLenient("0x1234");
+    TransactionBundle bundle1 = pool.get(hash1);
+
+    assertThat(bundle1.blockNumber()).isEqualTo(1);
+    assertThat(bundle1.bundleIdentifier()).isEqualTo(hash1);
+    assertThat(bundle1.pendingTransactions())
+        .map(PendingTransaction::getTransaction)
+        .map(Transaction::getHash)
+        .containsExactly(TX1.getHash(), TX2.getHash());
+
+    Hash hash2 = Hash.fromHexStringLenient("0x5678");
+
+    TransactionBundle bundle2 = pool.get(hash2);
+
+    assertThat(bundle2.blockNumber()).isEqualTo(2);
+    assertThat(bundle2.bundleIdentifier()).isEqualTo(hash2);
+    assertThat(bundle2.pendingTransactions())
+        .map(PendingTransaction::getTransaction)
+        .map(Transaction::getHash)
+        .containsExactly(TX3.getHash());
+  }
+
+  @Test
+  void partialLoadFromDisk() throws IOException {
+    Files.writeString(
+        dataDir.resolve(BUNDLE_SAVE_FILENAME),
+        """
+    1|1|0x0000000000000000000000000000000000000000000000000000000000001234||||+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7,+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf$
+    1|not a number|0x0000000000000000000000000000000000000000000000000000000000005678||||+E8CghOIglIIgASAggqVoMmdnUf+4fBBE+l/IAxacTZhj5elWnFdplP+s4jg92yyoHUWAGDUZ5Vo6dg3q7e9+PyBAkwlk4Fprh1UFmyQhhjx$
+    """,
+        US_ASCII);
+
+    pool.loadFromDisk();
+
+    assertThat(pool.size()).isEqualTo(1);
+
+    Hash hash1 = Hash.fromHexStringLenient("0x1234");
+    TransactionBundle bundle1 = pool.get(hash1);
+
+    assertThat(bundle1.blockNumber()).isEqualTo(1);
+    assertThat(bundle1.bundleIdentifier()).isEqualTo(hash1);
+    assertThat(bundle1.pendingTransactions())
+        .map(PendingTransaction::getTransaction)
+        .map(Transaction::getHash)
+        .containsExactly(TX1.getHash(), TX2.getHash());
+
+    Hash hash2 = Hash.fromHexStringLenient("0x5678");
+
+    assertThat(pool.get(hash2)).isNull();
   }
 
   private TransactionBundle createBundle(Hash hash, long blockNumber) {

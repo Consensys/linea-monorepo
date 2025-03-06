@@ -214,7 +214,10 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
 
     bundlePoolService =
         new LineaLimitedBundlePool(
-            transactionSelectorConfiguration().maxBundlePoolSizeBytes(), besuEvents);
+            besuConfiguration.getDataPath(),
+            transactionSelectorConfiguration().maxBundlePoolSizeBytes(),
+            besuEvents);
+    bundlePoolService.loadFromDisk();
   }
 
   @Override

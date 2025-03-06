@@ -81,6 +81,7 @@ class LineaTransactionSelectorFactoryTest {
   private LineaTransactionSelectorFactory factory;
 
   @TempDir static Path tempDir;
+  @TempDir Path dataDir;
   static Path lineLimitsConfPath;
 
   @BeforeAll
@@ -109,7 +110,7 @@ class LineaTransactionSelectorFactoryTest {
         new LineaL1L2BridgeSharedConfiguration(BRIDGE_CONTRACT, BRIDGE_LOG_TOPIC);
     mockProfitabilityConfiguration = mock(LineaProfitabilityConfiguration.class);
     mockEvents = mock(BesuEvents.class);
-    bundlePool = spy(new LineaLimitedBundlePool(4096, mockEvents));
+    bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096, mockEvents));
 
     factory =
         new LineaTransactionSelectorFactory(

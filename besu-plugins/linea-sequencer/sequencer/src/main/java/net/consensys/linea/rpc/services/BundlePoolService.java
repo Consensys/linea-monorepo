@@ -14,14 +14,20 @@
  */
 package net.consensys.linea.rpc.services;
 
+import static java.util.stream.Collectors.joining;
+
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 import org.hyperledger.besu.plugin.services.BesuService;
 
 public interface BundlePoolService extends BesuService {
@@ -30,6 +36,9 @@ public interface BundlePoolService extends BesuService {
   @Accessors(fluent = true)
   @Getter
   class TransactionBundle {
+    private static final String FIELD_SEPARATOR = "|";
+    private static final String ITEM_SEPARATOR = ",";
+    private static final String LINE_TERMINATOR = "$";
     private final Hash bundleIdentifier;
     private final List<PendingBundleTx> pendingTransactions;
     private final Long blockNumber;
@@ -52,6 +61,74 @@ public interface BundlePoolService extends BesuService {
       this.revertingTxHashes = revertingTxHashes;
     }
 
+    public String serializeForDisk() {
+      // version=1 | blockNumber | bundleIdentifier | minTimestamp | maxTimestamp |
+      // revertingTxHashes, | txs, $
+      return new StringBuilder("1")
+          .append(FIELD_SEPARATOR)
+          .append(blockNumber)
+          .append(FIELD_SEPARATOR)
+          .append(bundleIdentifier.toHexString())
+          .append(FIELD_SEPARATOR)
+          .append(minTimestamp.map(l -> l + FIELD_SEPARATOR).orElse(FIELD_SEPARATOR))
+          .append(maxTimestamp.map(l -> l + FIELD_SEPARATOR).orElse(FIELD_SEPARATOR))
+          .append(
+              revertingTxHashes
+                  .map(l -> l.stream().map(Hash::toHexString).collect(joining(ITEM_SEPARATOR)))
+                  .orElse(FIELD_SEPARATOR))
+          .append(
+              pendingTransactions.stream()
+                  .map(PendingBundleTx::serializeForDisk)
+                  .collect(joining(ITEM_SEPARATOR)))
+          .append(LINE_TERMINATOR)
+          .toString();
+    }
+
+    public static TransactionBundle restoreFromSerialized(final String str) {
+      if (!str.endsWith(LINE_TERMINATOR)) {
+        throw new IllegalArgumentException(
+            "Unterminated bundle serialization, missing terminal " + LINE_TERMINATOR);
+      }
+
+      final var parts =
+          str.substring(0, str.length() - LINE_TERMINATOR.length())
+              .split(Pattern.quote(FIELD_SEPARATOR));
+      if (!parts[0].equals("1")) {
+        throw new IllegalArgumentException("Unsupported bundle serialization version " + parts[0]);
+      }
+      if (parts.length != 7) {
+        throw new IllegalArgumentException(
+            "Invalid bundle serialization, expected 7 fields but got " + parts.length);
+      }
+
+      final var blockNumber = Long.parseLong(parts[1]);
+      final var bundleIdentifier = Hash.fromHexString(parts[2]);
+      final Optional<Long> minTimestamp =
+          parts[3].isEmpty() ? Optional.empty() : Optional.of(Long.parseLong(parts[3]));
+      final Optional<Long> maxTimestamp =
+          parts[4].isEmpty() ? Optional.empty() : Optional.of(Long.parseLong(parts[4]));
+      final Optional<List<Hash>> revertingTxHashes =
+          parts[5].isEmpty()
+              ? Optional.empty()
+              : Optional.of(
+                  Arrays.stream(parts[5].split(Pattern.quote(ITEM_SEPARATOR)))
+                      .map(Hash::fromHexString)
+                      .toList());
+      final var transactions =
+          Arrays.stream(parts[6].split(Pattern.quote(ITEM_SEPARATOR)))
+              .map(Bytes::fromBase64String)
+              .map(Transaction::readFrom)
+              .toList();
+
+      return new TransactionBundle(
+          bundleIdentifier,
+          transactions,
+          blockNumber,
+          minTimestamp,
+          maxTimestamp,
+          revertingTxHashes);
+    }
+
     /** A pending transaction contained in a bundle. */
     public class PendingBundleTx
         extends org.hyperledger.besu.ethereum.eth.transactions.PendingTransaction.Local {
@@ -71,6 +148,12 @@ public interface BundlePoolService extends BesuService {
       @Override
       public String toTraceLog() {
         return "Bundle tx: " + super.toTraceLog();
+      }
+
+      String serializeForDisk() {
+        final var rlpOutput = new BytesValueRLPOutput();
+        getTransaction().writeTo(rlpOutput);
+        return rlpOutput.encoded().toBase64String();
       }
     }
   }
@@ -146,4 +229,8 @@ public interface BundlePoolService extends BesuService {
    * @return the number of bundles in the pool
    */
   long size();
+
+  void saveToDisk();
+
+  void loadFromDisk();
 }

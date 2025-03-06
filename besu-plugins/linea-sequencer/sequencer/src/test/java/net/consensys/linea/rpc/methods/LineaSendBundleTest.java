@@ -24,6 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,9 +38,10 @@ import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class LineaSendBundleTest {
-
+  @TempDir Path dataDir;
   private LineaSendBundle lineaSendBundle;
   private BesuEvents mockEvents;
   private LineaLimitedBundlePool bundlePool;
@@ -59,7 +61,7 @@ class LineaSendBundleTest {
   @BeforeEach
   void setup() {
     mockEvents = mock(BesuEvents.class);
-    bundlePool = spy(new LineaLimitedBundlePool(4096L, mockEvents));
+    bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096L, mockEvents));
     lineaSendBundle = new LineaSendBundle().init(bundlePool);
   }
 
