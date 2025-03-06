@@ -8,7 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
-	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -125,14 +125,8 @@ func auditInitialWizard(comp *wizard.CompiledIOP) error {
 
 		switch q_ := q.(type) {
 
-		case query.Inclusion:
-			shfted := q_.GetShiftedSelector()
-			if len(shfted) > 0 {
-				err = errors.Join(err, fmt.Errorf("inclusion query %v with shifted selectors %v", qname, shfted))
-			}
-
-		case query.Projection:
-			shfted := q_.GetShiftedSelector()
+		case interface{ GetShiftedRelatedColumns() []ifaces.Column }:
+			shfted := q_.GetShiftedRelatedColumns()
 			if len(shfted) > 0 {
 				err = errors.Join(err, fmt.Errorf("inclusion query %v with shifted selectors %v", qname, shfted))
 			}

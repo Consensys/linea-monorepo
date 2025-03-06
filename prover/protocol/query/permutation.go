@@ -181,3 +181,36 @@ func CheckPermutation(a, b []ifaces.ColAssignment) error {
 func (p Permutation) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an permutation query directly into the circuit")
 }
+
+// GetShiftedRelatedColumns returns the list of the [HornerParts.Selectors]
+// found in the query. This is used to check if the query is compatible with
+// Wizard distribution.
+//
+// Note: the fact that this method is implemented makes [Inclusion] satisfy
+// an anonymous interface that is matched to detect queries that are
+// incompatible with wizard distribution. So we should not rename or remove
+// this implementation without doing the corresponding changes in the
+// distributed package. Otherwise, this will silence the checks that we are
+// doing.
+func (p Permutation) GetShiftedRelatedColumns() []ifaces.Column {
+
+	res := []ifaces.Column{}
+
+	for frag := range p.A {
+		for _, col := range p.A[frag] {
+			if col.IsComposite() {
+				res = append(res, col)
+			}
+		}
+	}
+
+	for frag := range p.B {
+		for _, col := range p.B[frag] {
+			if col.IsComposite() {
+				res = append(res, col)
+			}
+		}
+	}
+
+	return res
+}

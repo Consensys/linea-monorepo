@@ -108,10 +108,17 @@ func (i Projection) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an Projection query directly into the circuit")
 }
 
-// GetShiftedSelector returns the list of the [HornerParts.Selectors] found
+// GetShiftedRelatedColumns returns the list of the [HornerParts.Selectors] found
 // in the query. This is used to check if the query is compatible with
 // Wizard distribution.
-func (p Projection) GetShiftedSelector() []ifaces.Column {
+//
+// Note: the fact that this method is implemented makes [Inclusion] satisfy
+// an anonymous interface that is matched to detect queries that are
+// incompatible with wizard distribution. So we should not rename or remove
+// this implementation without doing the corresponding changes in the
+// distributed package. Otherwise, this will silence the checks that we are
+// doing.
+func (p Projection) GetShiftedRelatedColumns() []ifaces.Column {
 
 	res := []ifaces.Column{}
 
@@ -121,6 +128,18 @@ func (p Projection) GetShiftedSelector() []ifaces.Column {
 
 	if p.Inp.FilterB.IsComposite() {
 		res = append(res, p.Inp.FilterB)
+	}
+
+	for i := range p.Inp.ColumnA {
+		if p.Inp.ColumnA[i].IsComposite() {
+			res = append(res, p.Inp.ColumnA[i])
+		}
+	}
+
+	for i := range p.Inp.ColumnB {
+		if p.Inp.ColumnB[i].IsComposite() {
+			res = append(res, p.Inp.ColumnB[i])
+		}
 	}
 
 	return res

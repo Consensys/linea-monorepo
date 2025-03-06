@@ -227,20 +227,40 @@ func (i Inclusion) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }
 
-// GetShiftedSelector returns the list of the [HornerParts.Selectors] found
-// in the query. This is used to check if the query is compatible with
+// GetShiftedRelatedColumns returns the list of the [HornerParts.Selectors]
+// found in the query. This is used to check if the query is compatible with
 // Wizard distribution.
-func (i Inclusion) GetShiftedSelector() []ifaces.Column {
+//
+// Note: the fact that this method is implemented makes [Inclusion] satisfy
+// an anonymous interface that is matched to detect queries that are
+// incompatible with wizard distribution. So we should not rename or remove
+// this implementation without doing the corresponding changes in the
+// distributed package. Otherwise, this will silence the checks that we are
+// doing.
+func (i Inclusion) GetShiftedRelatedColumns() []ifaces.Column {
 
 	res := []ifaces.Column{}
 
-	if i.IncludedFilter.IsComposite() {
+	if i.IncludedFilter != nil && i.IncludedFilter.IsComposite() {
 		res = append(res, i.IncludedFilter)
 	}
 
-	for _, including := range i.IncludingFilter {
-		if including.IsComposite() {
-			res = append(res, including)
+	for _, included := range i.Included {
+		if included.IsComposite() {
+			res = append(res, included)
+		}
+	}
+
+	for frag := range i.Including {
+
+		if i.IncludingFilter != nil && i.IncludingFilter[frag] != nil && i.IncludingFilter[frag].IsComposite() {
+			res = append(res, i.IncludingFilter[frag])
+		}
+
+		for _, col := range i.Including[frag] {
+			if col.IsComposite() {
+				res = append(res, col)
+			}
 		}
 	}
 
