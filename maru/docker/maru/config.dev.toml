@@ -1,0 +1,13 @@
+[execution-client]
+ethereum-json-rpc-endpoint = "http://sequencer:8545"
+engine-api-json-rpc-endpoint = "http://follower-geth:8555"
+min-time-between-get-payload-attempts=800m
+
+[dummy-consensus-options]
+communication-time-margin=100m
+
+[p2p-config]
+port = 3322
+
+[validator]
+validator-key = "0xdead"

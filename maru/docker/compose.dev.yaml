@@ -1,0 +1,24 @@
+#docker compose -f docker/compose.yml -f docker/compose.dev.overrides.yml
+
+services:
+
+  maru:
+    # ./gradlew :app:installDist
+    # docker build app --build-context=libs=./app/build/install/app/lib/ -t local/maru:latest
+    # command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/path/to/vertx-options.json', '-Dlog4j2.configurationFile=/path/to/log4j2-dev.xml']
+    image: local/maru:latest
+    depends_on:
+      - sequencer
+      - follower-geth
+    command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=*:5005', '-jar', "maru.jar", '--besu-genesis-file', 'configs/genesis-besu.json', '--config', 'configs/config.dev.toml' ]
+    volumes:
+      - ./maru/config.dev.toml:/opt/consensys/maru/configs/config.dev.toml:ro
+      - ./maru/genesis-besu.json:/opt/consensys/maru/configs/genesis-besu.json:ro
+
+    ports:
+      # Attach the IDE's remote java debugger to localhost:5005 to debug maru
+      - "5005:5005"
+
+    networks:
+      - linea
+
