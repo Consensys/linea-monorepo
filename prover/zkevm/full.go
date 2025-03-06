@@ -101,27 +101,27 @@ var (
 // behavior is motivated by the fact that the compilation process takes time
 // and we don't want to spend the compilation time twice, plus in practice we
 // won't need to call it with different configuration parameters.
-func FullZkEvm(tl *config.TracesLimits) *ZkEvm {
+func FullZkEvm(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 	onceFullZkEvm.Do(func() {
 		// Initialize the Full zkEVM arithmetization
-		fullZkEvm = fullZKEVMWithSuite(tl, fullCompilationSuite)
+		fullZkEvm = fullZKEVMWithSuite(tl, fullCompilationSuite, cfg)
 	})
 
 	return fullZkEvm
 }
 
-func FullZkEVMCheckOnly(tl *config.TracesLimits) *ZkEvm {
+func FullZkEVMCheckOnly(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 	onceFullZkEvmCheckOnly.Do(func() {
 		// Initialize the Full zkEVM arithmetization
-		fullZkEvmCheckOnly = fullZKEVMWithSuite(tl, dummyCompilationSuite)
+		fullZkEvmCheckOnly = fullZKEVMWithSuite(tl, dummyCompilationSuite, cfg)
 	})
 
 	return fullZkEvmCheckOnly
 }
 
-func fullZKEVMWithSuite(tl *config.TracesLimits, suite compilationSuite) *ZkEvm {
+func fullZKEVMWithSuite(tl *config.TracesLimits, suite compilationSuite, cfg *config.Config) *ZkEvm {
 
 	// @Alex: only set mandatory parameters here. aka, the one that are not
 	// actually feature-gated.
@@ -130,7 +130,7 @@ func fullZKEVMWithSuite(tl *config.TracesLimits, suite compilationSuite) *ZkEvm 
 		Arithmetization: arithmetization.Settings{
 			Limits:                   tl,
 			OptimisationLevel:        &mir.DEFAULT_OPTIMISATION_LEVEL,
-			IgnoreCompatibilityCheck: false,
+			IgnoreCompatibilityCheck: &cfg.Execution.IgnoreCompatibilityCheck,
 		},
 		Statemanager: statemanager.Settings{
 			AccSettings: accumulator.Settings{
