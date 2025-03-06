@@ -32,9 +32,4 @@ public class Conflation {
       new StackedSet<>(256, 32);
   private final StackedSet<StackHeightCheck> stackHeightChecksForStackOverflows =
       new StackedSet<>(256, 32);
-
-  public int log(LogData logData) {
-    this.logs.add(logData);
-    return this.logs.size() - 1;
-  }
 }

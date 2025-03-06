@@ -179,7 +179,7 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
         checkArgument(length > 0, "callRomLex for RETURN expects positive size");
 
         byteCode = frame.shadowReadMemory(offset, length);
-        Address deploymentAddress = hub.currentFrame().byteCodeAddress();
+        final Address deploymentAddress = hub.currentFrame().byteCodeAddress();
         final ContractMetadata contractMetadata =
             ContractMetadata.make(
                 deploymentAddress, hub.deploymentNumberOf(deploymentAddress), false);
