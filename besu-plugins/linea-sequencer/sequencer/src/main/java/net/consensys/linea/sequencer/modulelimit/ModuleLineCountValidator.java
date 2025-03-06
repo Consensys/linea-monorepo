@@ -83,7 +83,7 @@ public class ModuleLineCountValidator {
       final Integer lineCountLimitForModule = moduleLineCountLimits.get(moduleName);
 
       if (lineCountLimitForModule == null) {
-        log.error("Module '{}' is not defined in the line count limits.", moduleName);
+        log.error("Module '{}' is not defined in limits config.", moduleName);
         return ModuleLimitsValidationResult.moduleNotDefined(moduleName);
       }
 
