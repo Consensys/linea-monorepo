@@ -40,11 +40,7 @@ go-corset:
 ## Build and bundle the go-corset trace-expander dependency
 ##
 zkevm/arithmetization/zkevm.bin: go-corset
-	cd ../constraints && \
-	TAGS=$$(git tag --points-at HEAD) && \
-	echo "$$TAGS" > ../prover/backend/execution/constraints-versions.txt && \
-	$(GO_CORSET) && make zkevm.bin && \
-	mv zkevm.bin ../prover/zkevm/arithmetization
+	cd ../constraints && $(CORSET) make zkevm.bin && mv zkevm.bin ../prover/zkevm/arithmetization
 
 ##
 ## Generate the setup for the execution prover (to be run with S3 access)
