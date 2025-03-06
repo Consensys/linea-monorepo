@@ -25,20 +25,8 @@ contract TestLineaRollup is LineaRollup {
     blobShnarfExists[_shnarf] = 1;
   }
 
-  function setupParentDataShnarf(bytes32 _parentDataHash, bytes32 _shnarf) external {
-    dataShnarfHashes[_parentDataHash] = _shnarf;
-  }
-
   function setLastFinalizedBlock(uint256 _blockNumber) external {
     currentL2BlockNumber = _blockNumber;
-  }
-
-  function setupParentFinalizedStateRoot(bytes32 _parentDataHash, bytes32 _blockStateRoot) external {
-    dataFinalStateRootHashes[_parentDataHash] = _blockStateRoot;
-  }
-
-  function setupStartingBlockForDataHash(bytes32 _dataHash, uint256 _blockNumber) external {
-    dataStartingBlock[_dataHash] = _blockNumber;
   }
 
   function setLastFinalizedShnarf(bytes32 _lastFinalizedShnarf) external {

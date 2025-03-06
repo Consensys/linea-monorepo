@@ -48,15 +48,15 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   uint256 internal constant SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
 
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
-  mapping(bytes32 dataHash => bytes32 finalStateRootHash) public dataFinalStateRootHashes;
+  mapping(bytes32 dataHash => bytes32 finalStateRootHash) private dataFinalStateRootHashes_DEPRECATED;
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
-  mapping(bytes32 dataHash => bytes32 parentHash) public dataParents;
+  mapping(bytes32 dataHash => bytes32 parentHash) private dataParents_DEPRECATED;
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
-  mapping(bytes32 dataHash => bytes32 shnarfHash) public dataShnarfHashes;
+  mapping(bytes32 dataHash => bytes32 shnarfHash) private dataShnarfHashes_DEPRECATED;
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
-  mapping(bytes32 dataHash => uint256 startingBlock) public dataStartingBlock;
+  mapping(bytes32 dataHash => uint256 startingBlock) private dataStartingBlock_DEPRECATED;
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
-  mapping(bytes32 dataHash => uint256 endingBlock) public dataEndingBlock;
+  mapping(bytes32 dataHash => uint256 endingBlock) private dataEndingBlock_DEPRECATED;
 
   /// @dev DEPRECATED in favor of currentFinalizedState hash.
   uint256 private currentL2StoredL1MessageNumber_DEPRECATED;
