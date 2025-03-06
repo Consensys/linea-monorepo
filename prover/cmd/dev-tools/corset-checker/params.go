@@ -9,10 +9,9 @@ import (
 )
 
 var (
-	configFPathCLI           string
-	traceFPathCLI            string
-	optimisationLevelCLI     uint
-	ignoreCompatibilityCheck bool
+	configFPathCLI       string
+	traceFPathCLI        string
+	optimisationLevelCLI uint
 )
 
 func init() {
