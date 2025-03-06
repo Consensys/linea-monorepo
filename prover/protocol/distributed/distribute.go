@@ -1,12 +1,16 @@
 package experiment
 
 import (
+	"errors"
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // DistributedWizard represents a wizard protocol that has undergone a
@@ -36,6 +40,10 @@ type DistributedWizard struct {
 // takes ownership of the input [wizard.CompiledIOP]. And uses disc to design
 // the scope of each module.
 func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) DistributedWizard {
+
+	if err := auditInitialWizard(comp); err != nil {
+		utils.Panic("improper initial wizard for distribution: %v", err)
+	}
 
 	distributedWizard := DistributedWizard{
 		Bootstrapper: precompileInitialWizard(comp),
@@ -85,10 +93,53 @@ func (dist *DistributedWizard) CompileModules(compilers ...func(*wizard.Compiled
 // are removed from the compiled IOP.
 func precompileInitialWizard(comp *wizard.CompiledIOP) *wizard.CompiledIOP {
 	mimc.CompileMiMC(comp)
-	specialqueries.RangeProof(comp)
-	specialqueries.CompileFixedPermutations(comp)
+	// specialqueries.RangeProof(comp)
+	// specialqueries.CompileFixedPermutations(comp)
 	logderivativesum.LookupIntoLogDerivativeSum(comp)
 	permutation.CompileIntoGdProduct(comp)
 	horner.ProjectionToHorner(comp)
 	return comp
+}
+
+// auditInitialWizard scans the initial compiled-IOP and checks if the provided
+// wizard is compatible with the [DistributedWizard]. This includes:
+//
+//   - Absence of precomputed columns in the wizard (except as fixed lookup tables)
+//   - Absence of [verifiercol.VerifierCol] (except [verifiercol.ConstCol]) in all
+//     queries.
+//   - Selectors for Inclusions or Projections must be either [column.Natural] or
+//     [verifiercol.ConstCol]
+func auditInitialWizard(comp *wizard.CompiledIOP) error {
+
+	allPrecomputedColumns := comp.Precomputed.ListAllKeys()
+	var err error
+
+	for _, col := range allPrecomputedColumns {
+		err = errors.Join(err, fmt.Errorf("found precomputed column: %v", col))
+	}
+
+	allGlobalQueries := comp.QueriesNoParams.AllKeys()
+	for _, qname := range allGlobalQueries {
+
+		q := comp.QueriesNoParams.Data(qname)
+
+		switch q_ := q.(type) {
+
+		case query.Inclusion:
+			shfted := q_.GetShiftedSelector()
+			if len(shfted) > 0 {
+				err = errors.Join(err, fmt.Errorf("inclusion query %v with shifted selectors %v", qname, shfted))
+			}
+
+		case query.Projection:
+			shfted := q_.GetShiftedSelector()
+			if len(shfted) > 0 {
+				err = errors.Join(err, fmt.Errorf("inclusion query %v with shifted selectors %v", qname, shfted))
+			}
+		}
+
+		err = errors.Join(err)
+	}
+
+	return err
 }

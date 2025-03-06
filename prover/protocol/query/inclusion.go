@@ -90,7 +90,6 @@ func NewInclusion(
 		// Checks on filters, and the including filter size
 		if includingFilter != nil {
 			includingFilter[frag].MustExists() //check the existence of the filter
-			mustBeNaturalOrVerifierCol(includingFilter[frag])
 
 			if includingFilter[frag].Size() != including[frag][0].Size() {
 				utils.Panic(
@@ -109,7 +108,6 @@ func NewInclusion(
 	// Checks on filters, and the included filter size
 	if includedFilter != nil {
 		includedFilter.MustExists() //check the existence of the filter
-		mustBeNaturalOrVerifierCol(includedFilter)
 
 		if includedFilter.Size() != included[0].Size() {
 			utils.Panic(
@@ -227,4 +225,24 @@ func (r Inclusion) Check(run ifaces.Runtime) error {
 // circuit
 func (i Inclusion) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
+}
+
+// GetShiftedSelector returns the list of the [HornerParts.Selectors] found
+// in the query. This is used to check if the query is compatible with
+// Wizard distribution.
+func (i Inclusion) GetShiftedSelector() []ifaces.Column {
+
+	res := []ifaces.Column{}
+
+	if i.IncludedFilter.IsComposite() {
+		res = append(res, i.IncludedFilter)
+	}
+
+	for _, including := range i.IncludingFilter {
+		if including.IsComposite() {
+			res = append(res, including)
+		}
+	}
+
+	return res
 }

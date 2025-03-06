@@ -32,9 +32,6 @@ func NewProjection(
 		numCol = len(inp.ColumnA)
 	)
 
-	mustBeNaturalOrVerifierCol(inp.FilterA)
-	mustBeNaturalOrVerifierCol(inp.FilterB)
-
 	if len(inp.ColumnB) != numCol {
 		utils.Panic("A and B must have the same number of columns")
 	}
@@ -109,4 +106,22 @@ func (p Projection) Check(run ifaces.Runtime) error {
 // circuit
 func (i Projection) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an Projection query directly into the circuit")
+}
+
+// GetShiftedSelector returns the list of the [HornerParts.Selectors] found
+// in the query. This is used to check if the query is compatible with
+// Wizard distribution.
+func (p Projection) GetShiftedSelector() []ifaces.Column {
+
+	res := []ifaces.Column{}
+
+	if p.Inp.FilterA.IsComposite() {
+		res = append(res, p.Inp.FilterA)
+	}
+
+	if p.Inp.FilterB.IsComposite() {
+		res = append(res, p.Inp.FilterB)
+	}
+
+	return res
 }
