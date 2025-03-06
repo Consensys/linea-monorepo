@@ -17,7 +17,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   using EfficientLeftRightKeccak for *;
 
   /// @notice This is the ABI version and not the reinitialize version.
-  string public constant CONTRACT_VERSION = "6.0";
+  string public constant CONTRACT_VERSION = "6.1";
 
   /// @notice The role required to set/add  proof verifiers by type.
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
