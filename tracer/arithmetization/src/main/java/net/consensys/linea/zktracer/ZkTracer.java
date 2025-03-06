@@ -335,7 +335,6 @@ public class ZkTracer implements ConflationAwareOperationTracer {
                                         "Module "
                                             + m.moduleKey()
                                             + " not found in spillings.toml"))));
-    modulesLineCount.put("BLOCK_TRANSACTIONS", hub.cumulatedTxCount());
     return modulesLineCount;
   }
 

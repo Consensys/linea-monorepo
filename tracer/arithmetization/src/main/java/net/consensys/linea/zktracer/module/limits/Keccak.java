@@ -48,7 +48,7 @@ public class Keccak implements CountingOnlyModule {
 
   @Override
   public int lineCount() {
-    final int txCount = l2Block.numberOfTransactions().lineCount();
+    final int txCount = l2Block.blockTransactions().lineCount();
     final int ecRecoverCount = ecRecoverEffectiveCall.lineCount();
 
     return
