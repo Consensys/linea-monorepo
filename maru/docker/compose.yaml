@@ -152,7 +152,7 @@ services:
     depends_on:
       sequencer:
         condition: service_healthy
-    image: ethpandaops/erigon:main-7b671790
+    image: ethpandaops/erigon:main-8baa373a
     entrypoint: [ "sh", "/scripts/node.sh", "1337", "/initialization/genesis-geth.json", "0x1C9C380",
                   "/home/erigon" ]
     environment:
