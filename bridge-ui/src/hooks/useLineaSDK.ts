@@ -3,7 +3,7 @@ import { LineaSDK, Network } from "@consensys/linea-sdk";
 import { L1MessageServiceContract, L2MessageServiceContract } from "@consensys/linea-sdk/dist/lib/contracts";
 import { useChainStore } from "@/stores/chainStore";
 
-interface LineaSDKContracts {
+export interface LineaSDKContracts {
   L1: L1MessageServiceContract;
   L2: L2MessageServiceContract;
 }

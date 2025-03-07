@@ -2,28 +2,19 @@ import styles from "./list-transaction.module.scss";
 import Transaction from "./item";
 import TransactionDetails from "@/components/v2/transaction/modal/transaction-details";
 import { useState } from "react";
-import { TransactionStatus } from "@/components/transactions/TransactionItem";
-
-export type Transaction = {
-  code: string;
-  value: string;
-  date: string;
-  unit: string;
-  estimatedTime?: string;
-  status: TransactionStatus;
-};
+import { BridgeTransaction } from "@/utils/history";
 
 type Props = {
-  transactions: Transaction[];
+  transactions: BridgeTransaction[];
 };
 
 export default function ListTransaction({ transactions }: Props) {
-  const [currentTransaction, setCurrentTransaction] = useState<Transaction | undefined>(false || undefined);
+  const [currentTransaction, setCurrentTransaction] = useState<BridgeTransaction | undefined>(false || undefined);
   const handleCloseModal = () => {
     setCurrentTransaction(undefined);
   };
-  const handleClickTransaction = (code: string) => {
-    const transaction = transactions.find((t) => t.code === code);
+  const handleClickTransaction = (transactionHash: string) => {
+    const transaction = transactions.find((t) => t.bridgingTx === transactionHash);
     if (transaction) {
       setCurrentTransaction(transaction);
     }
@@ -32,7 +23,7 @@ export default function ListTransaction({ transactions }: Props) {
     <>
       <ul className={styles["list"]}>
         {transactions.map((item, index) => (
-          <Transaction key={`${item.code}-${index}`} onClick={handleClickTransaction} {...item} />
+          <Transaction key={`${item.bridgingTx}-${index}`} onClick={handleClickTransaction} {...item} />
         ))}
       </ul>
       <TransactionDetails

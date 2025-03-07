@@ -32,6 +32,7 @@ const useInitialiseChain = () => {
     return () => {
       unwatch();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chains]);
 };
 

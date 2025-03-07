@@ -38,7 +38,7 @@ export default function BridgeForm() {
       refetch();
     },
     poll: true,
-    pollingInterval: 20_000,
+    pollingInterval: 30_000,
   });
 
   useEffect(() => {

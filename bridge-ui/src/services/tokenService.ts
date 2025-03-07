@@ -25,10 +25,6 @@ enum NetworkTypes {
   SEPOLIA = "SEPOLIA",
 }
 
-export const CANONICAL_BRIDGED_TYPE = "canonical-bridge";
-export const NATIVE_TYPE = "native";
-export const USDC_TYPE = "USDC";
-
 export async function fetchERC20Image(name: string) {
   try {
     if (!name) {
@@ -140,12 +136,10 @@ export async function getTokens(networkTypes: NetworkTypes): Promise<Token[]> {
 
     const response = await fetch(url);
     const data = await response.json();
-    const tokens = data.tokens;
+    const tokens = data.tokens as Token[];
     const bridgedTokens = tokens.filter(
       (token: Token) =>
-        token.tokenType.includes(CANONICAL_BRIDGED_TYPE) ||
-        token.tokenType.includes(NATIVE_TYPE) ||
-        token.symbol === USDC_TYPE,
+        token.tokenType.includes("canonical-bridge") || token.tokenType.includes("native") || token.symbol === "USDC",
     );
     return bridgedTokens;
   } catch (error) {
@@ -185,11 +179,12 @@ export async function validateTokenURI(url: string): Promise<string> {
 }
 
 export async function formatToken(token: Token): Promise<TokenInfo> {
-  const bridgeProvider = token.symbol === USDC_TYPE ? BridgeProvider.CCTP : BridgeProvider.NATIVE;
+  const bridgeProvider = token.symbol === "USDC" ? BridgeProvider.CCTP : BridgeProvider.NATIVE;
 
   const logoURI = await validateTokenURI(token.logoURI);
 
   return {
+    type: token.tokenType,
     name: token.name,
     symbol: token.symbol,
     decimals: token.decimals,

@@ -6,6 +6,7 @@ import { BridgeProvider } from "@/config/config";
 export const defaultTokensConfig: NetworkTokens = {
   MAINNET: [
     {
+      type: "eth",
       name: "Ether",
       symbol: "ETH",
       decimals: 18,
@@ -18,6 +19,7 @@ export const defaultTokensConfig: NetworkTokens = {
   ],
   SEPOLIA: [
     {
+      type: "eth",
       name: "Ether",
       symbol: "ETH",
       decimals: 18,

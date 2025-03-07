@@ -1,32 +1,27 @@
 import { Address, Log } from "viem";
 
-export interface ETHEvent extends Log {
+export interface MessageSentEvent extends Log {
   blockNumber: bigint;
   transactionHash: Address;
   args: {
     _from: Address;
-    _value: bigint;
     _to: Address;
+    _fee: bigint;
+    _value: bigint;
+    _nonce: bigint;
+    _calldata: string;
+    _messageHash: string;
   };
 }
 
-export interface ERC20Event extends Log {
-  blockNumber: bigint;
-  transactionHash: Address;
-  args: {
-    sender: Address;
-    token: Address;
-    amount: bigint;
-  };
-}
-
-export interface ERC20V2Event extends Log {
+export interface BridgingInitiatedV2Event extends Log {
   blockNumber: bigint;
   transactionHash: Address;
   args: {
     sender: Address;
     recipient: Address;
     token: Address;
+    amount: bigint;
   };
 }
 

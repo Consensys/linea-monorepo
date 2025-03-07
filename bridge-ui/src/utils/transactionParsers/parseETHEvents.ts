@@ -1,35 +1,9 @@
-import { Chain, PublicClient } from "viem";
-import log from "loglevel";
-import { NetworkTokens, NetworkType } from "@/config";
+import { PublicClient } from "viem";
 import { ETHEvent } from "@/models";
 import { TransactionHistory } from "@/models/history";
-import { findETHToken } from "./helpers";
+import { Chain } from "@/types";
 
-// Import other dependencies and methods...
-
-const parseETHEvents = async (
-  events: ETHEvent[],
-  client: PublicClient,
-  fromChain: Chain,
-  toChain: Chain,
-  storedTokens: NetworkTokens,
-  networkType: NetworkType,
-) => {
-  if (
-    networkType !== NetworkType.MAINNET &&
-    networkType !== NetworkType.SEPOLIA &&
-    networkType !== NetworkType.UNKNOWN
-  ) {
-    throw new Error("Invalid network type");
-  }
-
-  const token = findETHToken(storedTokens, networkType);
-
-  if (!token) {
-    log.warn("Token not found");
-    return [];
-  }
-
+const parseETHEvents = async (events: ETHEvent[], client: PublicClient, fromChain: Chain, toChain: Chain) => {
   const history = await Promise.all(
     events.map(async (event) => {
       const { timestamp } = await client.getBlock({

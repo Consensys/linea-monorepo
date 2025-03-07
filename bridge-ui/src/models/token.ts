@@ -6,11 +6,13 @@ export interface Extension {
   rootAddress: Address;
 }
 
+export type TokenType = "eth" | "canonical-bridge" | "native" | "external-bridge" | "bridge-reserved";
+
 export interface Token {
   chainId: number;
   chainURI: string;
   tokenId: string;
-  tokenType: string[];
+  tokenType: TokenType[];
   address: Address;
   name: string;
   symbol: string;

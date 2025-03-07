@@ -1,5 +1,6 @@
 import { Address, getAddress } from "viem";
 import { configSchema, Config } from "./config.schema";
+import { TokenType } from "@/models/token";
 
 export enum BridgeProvider {
   NATIVE = "NATIVE",
@@ -7,6 +8,7 @@ export enum BridgeProvider {
 }
 
 export interface TokenInfo {
+  type: TokenType[];
   name: string;
   symbol: string;
   decimals: number;
