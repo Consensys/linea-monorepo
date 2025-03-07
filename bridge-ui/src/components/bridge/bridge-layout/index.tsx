@@ -1,6 +1,6 @@
 "use client";
 
-import { useIsLoggedIn } from "@dynamic-labs/sdk-react-core";
+import { useIsLoggedIn } from "@/lib/dynamic";
 import { useAccount } from "wagmi";
 import Bridge from "../form";
 import TransactionHistory from "../transaction-history";

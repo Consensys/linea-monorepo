@@ -40,6 +40,10 @@ export const cssOverrides = `
     }
   }
 
+  .dynamic-widget-inline-controls .network-switch-control__container--error {
+    border-radius: 1.875rem 0 0 1.875rem;
+  }
+
   .dynamic-widget-inline-controls .network-switch-control__arrow-icon {
     color: white;
   }

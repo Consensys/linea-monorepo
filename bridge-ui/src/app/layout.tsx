@@ -7,7 +7,6 @@ import { Providers } from "@/components/layouts/Providers";
 import { Layout } from "@/components/layouts/Layout";
 import atypFont from "@/assets/fonts/atyp";
 import atypTextFont from "@/assets/fonts/atypText";
-import "react-toastify/dist/ReactToastify.css";
 import "./globals.css";
 import "../scss/app.scss";
 

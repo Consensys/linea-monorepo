@@ -3,7 +3,7 @@
 import styles from "./connect-button.module.scss";
 import clsx from "clsx";
 import Button from "@/components/ui/button";
-import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+import { useDynamicContext } from "@/lib/dynamic";
 
 type ConnectButtonProps = {
   text: string;

@@ -1,13 +1,13 @@
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useAccount, useTransactionReceipt } from "wagmi";
+import { useAccount, useSwitchChain, useTransactionReceipt } from "wagmi";
 import { formatEther, zeroAddress } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 import Modal from "@/components/modal";
 import styles from "./transaction-details.module.scss";
 import Button from "@/components/ui/button";
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
-import { useConfigStore, useChainStore } from "@/stores";
+import { useConfigStore } from "@/stores";
 import { useClaim, useTokenPrices } from "@/hooks";
 import { TransactionStatus } from "@/types";
 import { formatBalance, formatHex, formatTimestamp, BridgeTransaction } from "@/utils";
@@ -19,9 +19,9 @@ type Props = {
 };
 
 export default function TransactionDetails({ transaction, isModalOpen, onCloseModal }: Props) {
-  const { address } = useAccount();
-  const fromChain = useChainStore.useFromChain();
-  const toChain = useChainStore.useToChain();
+  const { chain } = useAccount();
+  const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
+
   const currency = useConfigStore((state) => state.currency);
   const formattedDate = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "MMM, dd, yyyy") : "";
   const formattedTime = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "ppp") : "";
@@ -47,7 +47,7 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
 
   useEffect(() => {
     if (isConfirmed) {
-      queryClient.invalidateQueries({ queryKey: ["transactionHistory", address, fromChain.id, toChain.id] });
+      queryClient.invalidateQueries({ queryKey: ["transactionHistory"], exact: false });
       onCloseModal();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -83,7 +83,28 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
     return initialTransactionFee + claimingTransactionFee;
   }, [initialTransactionReceipt, claimingTransactionReceipt]);
 
+  const buttonText = useMemo(() => {
+    if (isPending || isConfirming) {
+      return "Waiting for confirmation...";
+    }
+
+    if (isSwitchingChain) {
+      return "Switching chain...";
+    }
+
+    if (chain?.id !== transaction?.toChain.id) {
+      return `Switch to ${transaction?.toChain.name}`;
+    }
+
+    return "Claim";
+  }, [isPending, isConfirming, isSwitchingChain, chain?.id, transaction?.toChain.id, transaction?.toChain.name]);
+
   const handleClaim = () => {
+    if (transaction?.toChain.id && chain?.id && chain.id !== transaction?.toChain.id) {
+      switchChain({ chainId: transaction.toChain.id });
+      return;
+    }
+
     if (claim) {
       claim();
     }
@@ -150,8 +171,8 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
           )}
         </ul>
         {transaction?.status === TransactionStatus.READY_TO_CLAIM && (
-          <Button disabled={isPending || isConfirming} onClick={handleClaim} fullWidth>
-            {isPending || isConfirming ? "Waiting for confirmation..." : "Claim"}
+          <Button disabled={isPending || isConfirming || isSwitchingChain} onClick={handleClaim} fullWidth>
+            {buttonText}
           </Button>
         )}
       </div>

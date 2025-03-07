@@ -1,79 +1,80 @@
+import { ChangeEvent, useEffect, useState } from "react";
+import { useAccount } from "wagmi";
+import { isAddress } from "viem";
+import clsx from "clsx";
 import Modal from "@/components/modal";
 import styles from "./destination-address.module.scss";
 import Button from "@/components/ui/button";
-import { useEffect } from "react";
-import clsx from "clsx";
 import XCircleIcon from "@/assets/icons/x-circle.svg";
-import { useFormContext } from "react-hook-form";
-import { isAddress } from "viem";
+import { useFormStore } from "@/stores";
 
 type Props = {
   isModalOpen: boolean;
   onCloseModal: () => void;
-  defaultAddress: string;
 };
 
 const type = "error";
 
-export default function DestinationAddress({ isModalOpen, onCloseModal, defaultAddress }: Props) {
-  const { register, formState, setValue, setError, clearErrors, watch } = useFormContext();
-  const { errors } = formState;
+export default function DestinationAddress({ isModalOpen, onCloseModal }: Props) {
+  const { address } = useAccount();
 
-  const watchRecipient = watch("recipient");
+  const recipient = useFormStore((state) => state.recipient);
+  const setRecipient = useFormStore((state) => state.setRecipient);
+  const [inputValue, setInputValue] = useState(recipient);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (watchRecipient && !isAddress(watchRecipient)) {
-      setError("recipient", {
-        type: "custom",
-        message: "Invalid address",
-      });
+    if (inputValue && !isAddress(inputValue)) {
+      setError("Invalid address");
     } else {
-      clearErrors("recipient");
+      setError(null);
     }
-  }, [watchRecipient, setError, clearErrors]);
+  }, [inputValue]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onCloseModal();
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setInputValue(() => e.target.value as `0x${string}`);
+    if (isAddress(e.target.value)) {
+      setRecipient(e.target.value);
+    }
   };
+
   const handleResetInput = () => {
-    setValue("recipient", defaultAddress);
+    if (address) {
+      setInputValue(address);
+      setRecipient(address);
+    }
   };
 
   return (
     <Modal title="Destination address" isOpen={isModalOpen} onClose={onCloseModal}>
       <div className={clsx(styles["modal-inner"], styles[type])}>
-        <form onSubmit={handleSubmit}>
-          <label htmlFor="address">To address</label>
-          <div className={styles["input-container"]}>
-            <input
-              type="text"
-              id="address"
-              autoCorrect="off"
-              autoComplete="off"
-              spellCheck="false"
-              maxLength={42}
-              {...register("recipient", {
-                validate: (value) => !value || isAddress(value) || "Invalid address",
-              })}
-            />
+        <label htmlFor="address">To address</label>
+        <div className={styles["input-container"]}>
+          <input
+            type="text"
+            id="address"
+            required
+            maxLength={42}
+            value={inputValue}
+            pattern="^0x[a-fA-F0-9]{40}$"
+            onChange={handleChange}
+          />
 
-            <button
-              type="button"
-              className={clsx(styles.reset, {
-                [styles["show"]]: watchRecipient && watchRecipient !== defaultAddress,
-              })}
-              onClick={handleResetInput}
-            >
-              <XCircleIcon />
-            </button>
-          </div>
-          {errors.recipient && <p className={styles["message-text"]}>{errors.recipient.message?.toString()}</p>}
+          <button
+            type="button"
+            className={clsx(styles.reset, {
+              [styles["show"]]: inputValue !== address,
+            })}
+            onClick={handleResetInput}
+          >
+            <XCircleIcon />
+          </button>
+        </div>
+        {error && <p className={styles["message-text"]}>{error.toString()}</p>}
 
-          <Button className={styles["btn-save"]} type="submit" fullWidth>
-            Save
-          </Button>
-        </form>
+        <Button className={styles["btn-save"]} type="submit" fullWidth>
+          Save
+        </Button>
       </div>
     </Modal>
   );

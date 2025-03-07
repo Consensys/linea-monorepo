@@ -1,4 +1,4 @@
-import { DynamicWidget } from "@dynamic-labs/sdk-react-core";
+import { DynamicWidget } from "@/lib/dynamic";
 
 export default function Connect() {
   return <DynamicWidget innerButtonComponent={<>Connect</>} />;

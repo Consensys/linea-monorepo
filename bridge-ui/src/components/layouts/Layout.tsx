@@ -1,12 +1,12 @@
 "use client";
 
-import Image from "next/image";
 import clsx from "clsx";
 import { usePathname } from "next/navigation";
-import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+import { useDynamicContext } from "@/lib/dynamic";
 import Header from "../header";
 import { useInitialiseChain } from "@/hooks";
 import { Theme } from "@/types";
+import Image from "next/image";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { sdkHasLoaded } = useDynamicContext();
@@ -17,7 +17,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   if (!sdkHasLoaded) {
     return (
       <div className="layout">
-        <div className="container-v2"></div>
+        <div className="container-v2">
+          <Header theme={Theme.navy} />
+          <main>{children}</main>
+        </div>
         <div>
           <Image
             className="left-illustration"
@@ -26,6 +29,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             alt="illustration left"
             width={300}
             height={445}
+            priority
           />
           <Image
             className="right-illustration"
@@ -34,6 +38,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             alt="illustration right"
             width={610}
             height={842}
+            priority
           />
           <Image
             className={clsx("mobile-illustration", { hidden: pathname === "/faq" })}
@@ -42,6 +47,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             alt="illustration mobile"
             width={428}
             height={359}
+            priority
           />
         </div>
       </div>

@@ -1,6 +1,6 @@
 import { Address, Log } from "viem";
 
-export interface MessageSentEvent extends Log {
+export type MessageSentEvent = Log & {
   blockNumber: bigint;
   transactionHash: Address;
   args: {
@@ -12,9 +12,9 @@ export interface MessageSentEvent extends Log {
     _calldata: string;
     _messageHash: string;
   };
-}
+};
 
-export interface BridgingInitiatedV2Event extends Log {
+export type BridgingInitiatedV2Event = Log & {
   blockNumber: bigint;
   transactionHash: Address;
   args: {
@@ -23,4 +23,4 @@ export interface BridgingInitiatedV2Event extends Log {
     token: Address;
     amount: bigint;
   };
-}
+};

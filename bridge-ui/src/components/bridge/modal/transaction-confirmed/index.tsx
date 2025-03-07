@@ -3,6 +3,7 @@ import Modal from "@/components/modal";
 import styles from "./transaction-confirmed.module.scss";
 import { useNativeBridgeNavigationStore } from "@/stores";
 import Button from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Props = {
   isModalOpen: boolean;
@@ -11,6 +12,7 @@ type Props = {
 
 export default function TransactionConfirmed({ isModalOpen, onCloseModal }: Props) {
   const setIsTransactionHistoryOpen = useNativeBridgeNavigationStore.useSetIsTransactionHistoryOpen();
+  const queryClient = useQueryClient();
 
   return (
     <Modal title="Transaction confirmed!" isOpen={isModalOpen} onClose={onCloseModal} size="lg">
@@ -34,6 +36,7 @@ export default function TransactionConfirmed({ isModalOpen, onCloseModal }: Prop
             className={styles["secondary-btn"]}
             onClick={() => {
               setIsTransactionHistoryOpen(true);
+              queryClient.invalidateQueries({ queryKey: ["transactionHistory"], exact: false });
               onCloseModal();
             }}
           >

@@ -4,10 +4,9 @@ import { getPublicClient } from "@wagmi/core";
 import { LineaSDK, OnChainMessageStatus } from "@consensys/linea-sdk";
 import { config } from "@/lib/wagmi";
 import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
-import { BridgingInitiatedV2Event, MessageSentEvent } from "@/models";
 import { defaultTokensConfig } from "@/stores";
 import { LineaSDKContracts } from "@/hooks";
-import { Chain, ChainLayer, Token, TransactionStatus } from "@/types";
+import { Chain, ChainLayer, Token, TransactionStatus, BridgingInitiatedV2Event, MessageSentEvent } from "@/types";
 import { eventETH, eventERC20V2 } from "@/utils";
 
 type TransactionHistoryParams = {
