@@ -21,7 +21,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/exp/slices"
 )
 
 // ProverStep represents an operation to be performed by the prover of a
@@ -206,6 +205,7 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 		messages.InsertNew(name, messageValue)
 	}
 
+	// TODO
 	// Write performance logs to CSV
 	if err := runtime.writePerformanceLogsToCSV(); err != nil {
 		utils.Panic("error writing performance logs to CSV: " + err.Error())
@@ -747,16 +747,8 @@ func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 
 // runWithPerformanceMonitor: runs the `action` with the performance monitor
 func (runtime *ProverRuntime) runWithPerformanceMonitor(name string, action any) {
-	var profilingPath string
 
-	// Generate profiling only for these steps
-	if slices.Contains(shortListedSteps, name) {
-		profilingPath = "./protocol/wizard/performance-pre-optimize/profiling"
-	}
-
-	if profilingPath != "" {
-		profilingPath = path.Join(profilingPath, name)
-	}
+	profilingPath = path.Join(profilingPath, name)
 
 	sampleDuration := 1 * time.Second
 	monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, profilingPath)
@@ -779,7 +771,8 @@ func (runtime *ProverRuntime) runWithPerformanceMonitor(name string, action any)
 		logrus.Panicf("error:%s encountered while retrieving performance log for:%s", err.Error(), name)
 	}
 
-	// perfLog.PrintMetrics()
+	// TODO
+	perfLog.PrintMetrics()
 
 	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
 }
@@ -788,7 +781,7 @@ func (runtime *ProverRuntime) runWithPerformanceMonitor(name string, action any)
 // to the csv file located at the specified path
 func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
 
-	csvFilePath := "./protocol/wizard/runtime_performance_logs.csv"
+	// csvFilePath := "./protocol/wizard/runtime_performance_logs.csv"
 	file, err := os.Create(csvFilePath)
 	if err != nil {
 		return err
@@ -835,12 +828,3 @@ func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
 	logrus.Infof("Finished writing to the csv file. Took %s", time.Since(startTime).String())
 	return nil
 }
-
-// Temp. shortlisted steps
-var (
-	shortListedSteps = []string{
-		"prover-round0-step614",
-		// "prover-steps-round0", "prover-round1-step71",
-		// "prover-round1-step72", "prover-round1-step73", "prover-steps-round1",
-	}
-)

@@ -35,6 +35,9 @@ func setDefaultPaths() {
 	viper.SetDefault("execution.requests_root_dir", "/shared/prover-execution")
 	viper.SetDefault("blob_decompression.requests_root_dir", "/shared/prover-compression")
 	viper.SetDefault("aggregation.requests_root_dir", "/shared/prover-aggregation")
+
+	viper.SetDefault("performance_monitor.profile", "all_prover_rounds")
+	viper.SetDefault("performance_monitor.profile_dir", "/shared/prover-execution/profiling")
 }
 
 func setDefaultTracesLimit() {

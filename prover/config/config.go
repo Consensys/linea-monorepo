@@ -2,11 +2,12 @@ package config
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"os"
 	"path"
 	"path/filepath"
 	"text/template"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-playground/validator/v10"
@@ -135,6 +136,8 @@ type Config struct {
 		// MsgSvcContract stores the unique ID of the Service Contract (SC), as a common.Address.
 		MsgSvcContract common.Address `mapstructure:"-"`
 	}
+
+	PerformanceMonitor PerformanceMonitor `mapstructure:"performance_monitor"`
 
 	TracesLimits      TracesLimits `mapstructure:"traces_limits" validate:"required"`
 	TracesLimitsLarge TracesLimits `mapstructure:"traces_limits_large" validate:"required"`
@@ -279,6 +282,13 @@ type PublicInput struct {
 	ChainID          uint64         // duplicate from Config
 	L2MsgServiceAddr common.Address // duplicate from Config
 
+}
+
+type PerformanceMonitor struct {
+	Active         bool   `mapstructure:"active"`
+	DisplayMetrics bool   `mapstructure:"display_metrics"`
+	Profile        string `mapstructure:"profile" validate:"required,dive,oneof=prover_steps prover_rounds all"`
+	ProfileDir     string `mapstructure:"profile_dir"`
 }
 
 // BlobDecompressionDictStore returns a decompression dictionary store
