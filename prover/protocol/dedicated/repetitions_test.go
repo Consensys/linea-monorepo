@@ -92,7 +92,7 @@ func (hbtc *HeartBeatColumnTestcase) Define(comp *wizard.CompiledIOP) {
 		hbtc.Size,
 	)
 
-	hbtc.hb = CreateHeartBeat(comp, hbtc.Period, hbtc.Offset, hbtc.isActive)
+	hbtc.hb = CreateHeartBeat(comp, 0, hbtc.Period, hbtc.Offset, hbtc.isActive)
 }
 
 func (hbtc *HeartBeatColumnTestcase) Assign(run *wizard.ProverRuntime) {

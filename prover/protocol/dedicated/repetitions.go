@@ -34,7 +34,7 @@ type CyclicCounter struct {
 	column.Natural
 	Reset    ifaces.Column
 	Period   int
-	IsActive ifaces.Column
+	IsActive *sym.Expression
 	PAs      []wizard.ProverAction
 }
 
@@ -56,11 +56,11 @@ type RepeatedPattern struct {
 // masked by an [IsActive] column which control it is zero-padded.
 //
 // The function also defines and assign underlying columns
-func CreateHeartBeat(comp *wizard.CompiledIOP, period, offset int, isActive ifaces.Column) *HeartBeatColumn {
+func CreateHeartBeat(comp *wizard.CompiledIOP, round, period, offset int, isActive any) *HeartBeatColumn {
 
 	hb := &HeartBeatColumn{
 		Offset:  offset,
-		Counter: *NewRepetionCounter(comp, period, isActive),
+		Counter: *NewCyclicCounter(comp, round, period, isActive),
 	}
 
 	if offset == -1 || offset == period-1 {
@@ -83,31 +83,39 @@ func (hb HeartBeatColumn) Assign(run *wizard.ProverRuntime) {
 	}
 }
 
-// NewRepetionCounter creates a structured [CyclicCounter]
-func NewRepetionCounter(comp *wizard.CompiledIOP, period int, isActive ifaces.Column) *CyclicCounter {
+// NewCyclicCounter creates a structured [CyclicCounter]
+func NewCyclicCounter(comp *wizard.CompiledIOP, round, period int, isActiveAny any) *CyclicCounter {
 
-	size := isActive.Size()
-	name := fmt.Sprintf("REPETITION_COUNTER_%v_%v", len(comp.Columns.AllKeys()), period)
-
-	rc := &CyclicCounter{
-		IsActive: isActive,
-		Period:   period,
-		Natural:  comp.InsertCommit(0, ifaces.ColID(name+"_COUNTER"), size).(column.Natural),
+	isActive, ok := isActiveAny.(*sym.Expression)
+	if !ok {
+		isActiveCol := isActiveAny.(ifaces.Column)
+		isActive = sym.NewVariable(isActiveCol)
 	}
+
+	var (
+		isActiveBoard = isActive.Board()
+		size          = column.ExprIsOnSameLengthHandles(&isActiveBoard)
+		name          = fmt.Sprintf("CYCLIC_COUNTER_%v_%v", len(comp.Columns.AllKeys()), period)
+		rc            = &CyclicCounter{
+			IsActive: isActive,
+			Period:   period,
+			Natural:  comp.InsertCommit(0, ifaces.ColID(name+"_COUNTER"), size).(column.Natural),
+		}
+	)
 
 	commonconstraints.MustZeroWhenInactive(comp, isActive, rc.Natural)
 
 	comp.InsertLocal(
-		0,
+		round,
 		ifaces.QueryID(name+"_COUNTER_STARTS_AT_ZERO"),
 		sym.NewVariable(rc.Natural),
 	)
 
 	comp.InsertGlobal(
-		0,
+		round,
 		ifaces.QueryID(name+"COUNTER_INCREASES"),
 		sym.Mul(
-			column.Shift(isActive, 1),
+			column.ShiftExpr(isActive, 1),
 			sym.Sub(rc.Natural, period-1),
 			sym.Sub(
 				column.Shift(rc.Natural, 1),
@@ -120,7 +128,7 @@ func NewRepetionCounter(comp *wizard.CompiledIOP, period int, isActive ifaces.Co
 	isEndOfPeriod, cptIsEndOfPeriod := IsZeroMask(comp, sym.Sub(rc.Natural, period-1), isActive)
 
 	comp.InsertGlobal(
-		0,
+		round,
 		ifaces.QueryID(name+"_COUNTER_RESET"),
 		sym.Mul(
 			column.Shift(rc.Natural, 1),
@@ -138,7 +146,8 @@ func NewRepetionCounter(comp *wizard.CompiledIOP, period int, isActive ifaces.Co
 func (rc CyclicCounter) Assign(run *wizard.ProverRuntime) {
 
 	var (
-		isActive = rc.IsActive.GetColAssignment(run).IntoRegVecSaveAlloc()
+		board    = rc.IsActive.Board()
+		isActive = column.EvalExprColumn(run, board).IntoRegVecSaveAlloc()
 		size     = len(isActive)
 		res      = make([]field.Element, size)
 	)
@@ -161,8 +170,9 @@ func (rc CyclicCounter) Assign(run *wizard.ProverRuntime) {
 	}
 }
 
-// NewRepeatedPattern creates a new [RepeatedPattern] column
-func NewRepeatedPattern(comp *wizard.CompiledIOP, pattern []field.Element, isActive ifaces.Column) *RepeatedPattern {
+// NewRepeatedPattern creates a new [RepeatedPattern] column. Any can be either a column or
+// a sym expression.
+func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Element, isActive ifaces.Column) *RepeatedPattern {
 
 	var (
 		size              = isActive.Size()
@@ -177,7 +187,7 @@ func NewRepeatedPattern(comp *wizard.CompiledIOP, pattern []field.Element, isAct
 	}
 
 	res := &RepeatedPattern{
-		Natural: comp.InsertCommit(0, ifaces.ColID(name)+"_NATURAL", size).(column.Natural),
+		Natural: comp.InsertCommit(round, ifaces.ColID(name)+"_NATURAL", size).(column.Natural),
 		Pattern: pattern,
 		PatternPrecomp: comp.InsertPrecomputed(
 			ifaces.ColID(name)+"_PATTERN",
@@ -187,13 +197,13 @@ func NewRepeatedPattern(comp *wizard.CompiledIOP, pattern []field.Element, isAct
 			ifaces.ColID(name)+"_PATTERNPOS",
 			smartvectors.RightPadded(patternPos, field.NewFromString("-1"), patternSizePadded),
 		),
-		Counter: *NewRepetionCounter(comp, period, isActive),
+		Counter: *NewCyclicCounter(comp, round, period, isActive),
 	}
 
 	commonconstraints.MustZeroWhenInactive(comp, isActive, res.Natural)
 
 	comp.InsertInclusionConditionalOnIncluded(
-		0,
+		round,
 		ifaces.QueryID(name)+"_LOOKUP",
 		[]ifaces.Column{
 			res.PatternPosPrecomp,
@@ -212,7 +222,8 @@ func NewRepeatedPattern(comp *wizard.CompiledIOP, pattern []field.Element, isAct
 func (rp RepeatedPattern) Assign(run *wizard.ProverRuntime) {
 
 	var (
-		isActive = rp.Counter.IsActive.GetColAssignment(run).IntoRegVecSaveAlloc()
+		board    = rp.Counter.IsActive.Board()
+		isActive = column.EvalExprColumn(run, board).IntoRegVecSaveAlloc()
 		size     = len(isActive)
 		res      = make([]field.Element, 0, size)
 		period   = len(rp.Pattern)
