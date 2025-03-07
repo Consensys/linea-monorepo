@@ -41,6 +41,11 @@ public class BinRt implements Module {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Binreftable.SPILLAGE;
+  }
+
+  @Override
   public List<Trace.ColumnHeader> columnHeaders() {
     return Trace.Binreftable.headers(this.lineCount());
   }

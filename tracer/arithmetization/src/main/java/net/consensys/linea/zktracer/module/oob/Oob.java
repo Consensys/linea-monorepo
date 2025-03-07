@@ -114,6 +114,11 @@ public class Oob implements OperationSetModule<OobOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Oob.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (OobOperation op : operations.getAll()) {

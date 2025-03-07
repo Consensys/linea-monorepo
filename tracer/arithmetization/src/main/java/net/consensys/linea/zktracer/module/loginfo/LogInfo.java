@@ -68,6 +68,11 @@ public class LogInfo implements Module {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Loginfo.SPILLAGE;
+  }
+
+  @Override
   public List<Trace.ColumnHeader> columnHeaders() {
     return Trace.Loginfo.headers(this.lineCount());
   }

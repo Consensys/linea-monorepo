@@ -60,6 +60,11 @@ public class Mul implements OperationSetModule<MulOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Mul.SPILLAGE;
+  }
+
+  @Override
   public List<Trace.ColumnHeader> columnHeaders() {
     return Trace.Mul.headers(this.lineCount());
   }

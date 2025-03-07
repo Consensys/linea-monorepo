@@ -82,6 +82,11 @@ public class Stp implements OperationSetModule<StpOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Stp.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (StpOperation operation : operations.sortOperations(new StpOperationComparator())) {

@@ -120,6 +120,11 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
   }
 
   @Override
+  public int spillage() {
+    return Trace.Blockhash.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     for (BlockhashOperation op : sortedOperations) {
       final Bytes32 blockhashVal =

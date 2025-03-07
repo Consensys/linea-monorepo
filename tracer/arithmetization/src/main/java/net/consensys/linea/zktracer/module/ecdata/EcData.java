@@ -70,6 +70,11 @@ public class EcData implements OperationListModule<EcDataOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Ecdata.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int stamp = 0;
     long previousId = 0;

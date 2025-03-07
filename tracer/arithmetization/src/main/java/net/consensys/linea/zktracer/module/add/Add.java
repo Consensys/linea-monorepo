@@ -63,6 +63,11 @@ public class Add implements OperationSetModule<AddOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Add.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (AddOperation op : sortOperations(new AddOperationComparator())) {

@@ -36,7 +36,6 @@ import net.consensys.linea.zktracer.module.DebugMode;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.types.FiniteList;
-import net.consensys.linea.zktracer.types.Utils;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
@@ -54,20 +53,6 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 public class ZkTracer implements ConflationAwareOperationTracer {
   /** The {@link GasCalculator} used in this version of the arithmetization */
   public static final GasCalculator gasCalculator = new LondonGasCalculator();
-
-  private static final Map<String, Integer> spillings;
-
-  static {
-    try {
-      // Load spillings configured in src/main/resources/spillings.toml.
-      spillings = Utils.computeSpillings();
-    } catch (final Exception e) {
-      final String errorMsg =
-          "A problem happened during spillings initialization, cause " + e.getCause();
-      log.error(errorMsg);
-      throw new RuntimeException(e);
-    }
-  }
 
   @Getter private final Hub hub;
   private final Optional<DebugMode> debugMode;
@@ -92,12 +77,6 @@ public class ZkTracer implements ConflationAwareOperationTracer {
       final LineaL1L2BridgeSharedConfiguration bridgeConfiguration, BigInteger chainId) {
     this.chainId = chainId;
     this.hub = new Hub(bridgeConfiguration.contract(), bridgeConfiguration.topic(), chainId);
-    for (Module m : this.hub.getModulesToCount()) {
-      if (!spillings.containsKey(m.moduleKey())) {
-        throw new IllegalStateException(
-            "Spilling for module " + m.moduleKey() + " not defined in spillings.toml");
-      }
-    }
     // >>>> CHANGE ME >>>>
     // >>>> CHANGE ME >>>>
     // >>>> CHANGE ME >>>>
@@ -322,19 +301,10 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     maybeThrowTracingExceptions();
     final HashMap<String, Integer> modulesLineCount = new HashMap<>();
 
-    hub.getModulesToCount()
-        .forEach(
-            m ->
-                modulesLineCount.put(
-                    m.moduleKey(),
-                    m.lineCount()
-                        + Optional.ofNullable(spillings.get(m.moduleKey()))
-                            .orElseThrow(
-                                () ->
-                                    new IllegalStateException(
-                                        "Module "
-                                            + m.moduleKey()
-                                            + " not found in spillings.toml"))));
+    for (Module m : hub.getModulesToCount()) {
+      modulesLineCount.put(m.moduleKey(), m.lineCount() + m.spillage());
+    }
+    //
     return modulesLineCount;
   }
 

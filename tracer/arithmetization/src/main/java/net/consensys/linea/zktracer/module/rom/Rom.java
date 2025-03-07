@@ -44,6 +44,11 @@ public class Rom implements Module {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Rom.SPILLAGE;
+  }
+
+  @Override
   public List<Trace.ColumnHeader> columnHeaders() {
     return Trace.Rom.headers(this.lineCount());
   }

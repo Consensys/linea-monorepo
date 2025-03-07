@@ -56,6 +56,11 @@ public class Shf implements OperationSetModule<ShfOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Shf.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (ShfOperation op : operations.sortOperations(new ShfOperationComparator())) {

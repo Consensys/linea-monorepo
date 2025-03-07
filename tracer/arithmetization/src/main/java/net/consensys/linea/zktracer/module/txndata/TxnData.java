@@ -79,6 +79,11 @@ public class TxnData implements OperationListModule<TxndataOperation> {
     return operations.lineCount() + blocks.size();
   }
 
+  @Override
+  public int spillage() {
+    return Trace.Txndata.SPILLAGE;
+  }
+
   public BlockSnapshot currentBlock() {
     return blocks.getLast();
   }

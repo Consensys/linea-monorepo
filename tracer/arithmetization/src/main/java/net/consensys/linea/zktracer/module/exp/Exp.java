@@ -54,6 +54,11 @@ public class Exp implements OperationSetModule<ExpOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Exp.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (ExpOperation expOp : operations.sortOperations(new ExpOperationComparator())) {

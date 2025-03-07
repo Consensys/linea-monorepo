@@ -64,7 +64,23 @@ public interface Module {
    */
   void commitTransactionBundle();
 
+  /**
+   * Report the number of lines in the trace of a given module as it stands. Observe that this does
+   * not include spillage information and, hence, is a lower bound on the number of lines in the
+   * final trace.
+   *
+   * @return
+   */
   int lineCount();
+
+  /**
+   * Report spillage required for a given module. Spillage represents additional lines that will be
+   * added on top of the lineCount to the final trace for the module question. As such, this needs
+   * to be incorporated when determine the final line count for a module.
+   *
+   * @return
+   */
+  int spillage();
 
   List<Trace.ColumnHeader> columnHeaders();
 

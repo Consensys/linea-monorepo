@@ -72,6 +72,11 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
   }
 
   @Override
+  public int spillage() {
+    return Trace.Blake2fmodexpdata.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (BlakeModexpDataOperation o : operations.getAll()) {
