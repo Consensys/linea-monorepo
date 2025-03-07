@@ -55,9 +55,8 @@ func identifyActiveWindow(oldStateSV, blocksSV smartvectors.SmartVector, totalRo
 		windowLen = lastNonZero - firstNonZero + 1
 		return offset, windowLen
 	}
-	// Default minimal window when there is no sparsity
-	// This will likely never happen in practice
-	return 0, 1
+	// Default window => Full window
+	return 0, totalRows
 }
 
 // computeIntermediateValues computes intermediate values for the window
