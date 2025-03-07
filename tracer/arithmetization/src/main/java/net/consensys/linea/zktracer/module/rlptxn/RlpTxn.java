@@ -1202,6 +1202,11 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Rlptxn.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int absTxNum = 0;
     for (RlpTxnOperation op : operations.getAll()) {

@@ -55,6 +55,11 @@ public class ShakiraData implements OperationListModule<ShakiraDataOperation> {
     return operations.lineCount();
   }
 
+  @Override
+  public int spillage() {
+    return Trace.Shakiradata.SPILLAGE;
+  }
+
   public void call(final ShakiraDataOperation operation) {
     operations.add(operation);
 

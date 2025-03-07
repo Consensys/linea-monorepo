@@ -60,6 +60,11 @@ public class LogData implements Module {
     return lineCounter.lineCount();
   }
 
+  @Override
+  public int spillage() {
+    return Trace.Logdata.SPILLAGE;
+  }
+
   private int lineCountForLogData(RlpTxrcptOperation tx) {
     int txRowSize = 0;
     if (tx.logs().isEmpty()) {

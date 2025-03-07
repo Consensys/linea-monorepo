@@ -40,6 +40,11 @@ public record ShfRt() implements Module {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Shfreftable.SPILLAGE;
+  }
+
+  @Override
   public List<Trace.ColumnHeader> columnHeaders() {
     return Trace.Shfreftable.headers(this.lineCount());
   }

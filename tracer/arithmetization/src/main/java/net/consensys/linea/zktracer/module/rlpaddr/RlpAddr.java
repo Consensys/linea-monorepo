@@ -312,6 +312,11 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Rlpaddr.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (RlpAddrOperation op : operations.sortOperations(new RlpAddrOperationComparator())) {

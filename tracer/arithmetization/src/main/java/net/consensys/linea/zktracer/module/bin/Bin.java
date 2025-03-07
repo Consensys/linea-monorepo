@@ -69,6 +69,11 @@ public class Bin implements OperationSetModule<BinOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Bin.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (BinOperation op : operations.sortOperations(new BinOperationComparator())) {

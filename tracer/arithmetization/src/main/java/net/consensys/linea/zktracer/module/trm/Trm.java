@@ -58,6 +58,11 @@ public class Trm implements OperationSetModule<TrmOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Trm.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (TrmOperation operation : operations.sortOperations(new TrmOperationComparator())) {

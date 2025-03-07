@@ -86,6 +86,11 @@ public class Euc implements OperationSetModule<EucOperation> {
         : operations().lineCount() + additionalRows.lineCount();
   }
 
+  @Override
+  public int spillage() {
+    return Trace.Euc.SPILLAGE;
+  }
+
   public EucOperation callEUC(final Bytes dividend, final Bytes divisor) {
     final BigInteger dividendBI = dividend.toUnsignedBigInteger();
     final BigInteger divisorBI = divisor.toUnsignedBigInteger();

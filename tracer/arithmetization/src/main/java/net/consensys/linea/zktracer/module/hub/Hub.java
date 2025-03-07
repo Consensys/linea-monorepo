@@ -183,6 +183,11 @@ public class Hub implements Module {
     return state.lineCounter().lineCount();
   }
 
+  @Override
+  public int spillage() {
+    return Trace.Hub.SPILLAGE;
+  }
+
   /** List of all modules of the ZK-evm */
   // stateless modules
   @Getter private final Wcp wcp = new Wcp();

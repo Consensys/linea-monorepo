@@ -62,6 +62,11 @@ public class Gas implements OperationSetModule<GasOperation>, PostOpcodeDefer {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Gas.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     for (GasOperation gasOperation : operations.sortOperations(new GasOperationComparator())) {
       gasOperation.trace(trace.gas);

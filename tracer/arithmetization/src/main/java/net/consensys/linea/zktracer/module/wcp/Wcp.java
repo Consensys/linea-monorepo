@@ -152,6 +152,11 @@ public class Wcp implements Module {
     return ltOperations.conflationFinished() ? count : count + additionalRows.lineCount();
   }
 
+  @Override
+  public int spillage() {
+    return Trace.Wcp.SPILLAGE;
+  }
+
   public boolean callLT(final Bytes32 arg1, final Bytes32 arg2) {
     ltOperations.add(new WcpOperation(LTbv, arg1, arg2));
     return arg1.compareTo(arg2) < 0;

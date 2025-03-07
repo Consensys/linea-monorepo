@@ -46,6 +46,11 @@ public class Mxp implements OperationListModule<MxpOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Mxp.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (MxpOperation op : operations.getAll()) {

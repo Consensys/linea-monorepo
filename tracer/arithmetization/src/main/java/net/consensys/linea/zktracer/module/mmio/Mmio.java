@@ -76,6 +76,11 @@ public class Mmio implements Module {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Mmio.SPILLAGE;
+  }
+
+  @Override
   public List<Trace.ColumnHeader> columnHeaders() {
     return Trace.Mmio.headers(this.lineCount());
   }

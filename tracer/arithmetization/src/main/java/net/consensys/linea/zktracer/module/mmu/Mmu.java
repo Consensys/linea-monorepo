@@ -51,6 +51,11 @@ public class Mmu implements OperationListModule<MmuOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Mmu.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int mmuStamp = 0;
     int mmioStamp = 0;

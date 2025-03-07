@@ -769,6 +769,11 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Rlptxrcpt.SPILLAGE;
+  }
+
+  @Override
   public void commit(Trace trace) {
     int absLogNumMax = 0;
     for (RlpTxrcptOperation op : operations.getAll()) {

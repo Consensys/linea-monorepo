@@ -288,6 +288,11 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
   }
 
   @Override
+  public int spillage() {
+    return Trace.Romlex.SPILLAGE;
+  }
+
+  @Override
   public void traceEndConflation(final WorldView state) {
     Preconditions.checkArgument(
         operations.conflationFinished(), "Conflation is done before traceEndConflation for RomLex");

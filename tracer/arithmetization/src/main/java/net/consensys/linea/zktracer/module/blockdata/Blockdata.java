@@ -120,6 +120,11 @@ public class Blockdata implements Module {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Blockdata.SPILLAGE;
+  }
+
+  @Override
   public List<Trace.ColumnHeader> columnHeaders() {
     return Trace.Blockdata.headers(this.lineCount());
   }

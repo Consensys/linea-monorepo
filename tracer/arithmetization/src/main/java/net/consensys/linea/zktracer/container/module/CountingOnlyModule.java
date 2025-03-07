@@ -40,6 +40,11 @@ public interface CountingOnlyModule extends Module {
     return counts().lineCount();
   }
 
+  @Override
+  default int spillage() {
+    return 0;
+  }
+
   default void updateTally(final int count) {
     Preconditions.checkArgument(count >= 0, "Must be non-negative");
     counts().add(count);

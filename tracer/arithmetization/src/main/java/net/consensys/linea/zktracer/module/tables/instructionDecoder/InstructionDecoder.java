@@ -106,6 +106,11 @@ public final class InstructionDecoder implements Module {
   }
 
   @Override
+  public int spillage() {
+    return Trace.Instdecoder.SPILLAGE;
+  }
+
+  @Override
   public List<Trace.ColumnHeader> columnHeaders() {
     return Trace.Instdecoder.headers(this.lineCount());
   }
