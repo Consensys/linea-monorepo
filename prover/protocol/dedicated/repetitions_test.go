@@ -14,14 +14,13 @@ import (
 // HeartBeatColumnTestcase is an implementation of the [testtools.Testcase]
 // interface and represents a wizard protocol using [HeartBeatColumn].
 type HeartBeatColumnTestcase struct {
-	name           string
-	Period         int
-	Size           int
-	Offset         int
-	Activity       int
-	TestAutoassign bool
-	isActive       ifaces.Column
-	hb             *HeartBeatColumn
+	name     string
+	Period   int
+	Size     int
+	Offset   int
+	Activity int
+	isActive ifaces.Column
+	hb       *HeartBeatColumn
 }
 
 // ListOfHeartBeatTestcase lists all the relevant testcases for the heart
@@ -35,27 +34,11 @@ var ListOfHeartBeatTestcase = []*HeartBeatColumnTestcase{
 		Activity: 0,
 	},
 	{
-		name:           "full-active/auto",
-		Period:         20,
-		Size:           1 << 8,
-		Offset:         0,
-		Activity:       1 << 8,
-		TestAutoassign: true,
-	},
-	{
 		name:     "empty/no-auto",
 		Period:   20,
 		Size:     1 << 8,
 		Offset:   0,
 		Activity: 0,
-	},
-	{
-		name:           "empty/auto",
-		Period:         20,
-		Size:           1 << 8,
-		Offset:         0,
-		Activity:       0,
-		TestAutoassign: true,
 	},
 	{
 		name:     "less-then-period/no-auto",
@@ -65,27 +48,11 @@ var ListOfHeartBeatTestcase = []*HeartBeatColumnTestcase{
 		Activity: 10,
 	},
 	{
-		name:           "less-then-period/auto",
-		Period:         20,
-		Size:           1 << 8,
-		Offset:         0,
-		Activity:       10,
-		TestAutoassign: true,
-	},
-	{
 		name:     "middle/no-auto",
 		Period:   20,
 		Size:     1 << 8,
 		Offset:   0,
 		Activity: 1 << 7,
-	},
-	{
-		name:           "middle/auto",
-		Period:         20,
-		Size:           1 << 8,
-		Offset:         0,
-		Activity:       1 << 7,
-		TestAutoassign: true,
 	},
 	{
 		name:     "full-active/no-auto",
@@ -95,27 +62,11 @@ var ListOfHeartBeatTestcase = []*HeartBeatColumnTestcase{
 		Activity: 0,
 	},
 	{
-		name:           "full-active/auto",
-		Period:         20,
-		Size:           1 << 8,
-		Offset:         19,
-		Activity:       1 << 8,
-		TestAutoassign: true,
-	},
-	{
 		name:     "empty/no-auto",
 		Period:   20,
 		Size:     1 << 8,
 		Offset:   19,
 		Activity: 0,
-	},
-	{
-		name:           "empty/auto",
-		Period:         20,
-		Size:           1 << 8,
-		Offset:         19,
-		Activity:       0,
-		TestAutoassign: true,
 	},
 	{
 		name:     "less-then-period/no-auto",
@@ -125,27 +76,11 @@ var ListOfHeartBeatTestcase = []*HeartBeatColumnTestcase{
 		Activity: 10,
 	},
 	{
-		name:           "less-then-period/auto",
-		Period:         20,
-		Size:           1 << 8,
-		Offset:         19,
-		Activity:       10,
-		TestAutoassign: true,
-	},
-	{
 		name:     "middle/no-auto",
 		Period:   20,
 		Size:     1 << 8,
 		Offset:   19,
 		Activity: 1 << 7,
-	},
-	{
-		name:           "middle/auto",
-		Period:         20,
-		Size:           1 << 8,
-		Offset:         19,
-		Activity:       1 << 7,
-		TestAutoassign: true,
 	},
 }
 
@@ -168,10 +103,7 @@ func (hbtc *HeartBeatColumnTestcase) Assign(run *wizard.ProverRuntime) {
 	}
 
 	run.AssignColumn(hbtc.isActive.GetColID(), smartvectors.NewRegular(isActive))
-
-	if !hbtc.TestAutoassign {
-		hbtc.hb.Assign(run)
-	}
+	hbtc.hb.Assign(run)
 
 	_ = hbtc.hb.GetColAssignment(run)
 }
