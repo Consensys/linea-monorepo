@@ -3,7 +3,7 @@ import { Address } from "viem";
 import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
 import useClaimTxArgs from "./transaction-args/useClaimTransactionTxArgs";
 import { Chain } from "@/types";
-import { TransactionStatus } from "@/components/transactions/TransactionItem";
+import { TransactionStatus } from "@/types/transaction";
 
 type UseClaimProps = {
   status?: TransactionStatus;

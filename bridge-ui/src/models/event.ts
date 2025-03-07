@@ -24,13 +24,3 @@ export interface BridgingInitiatedV2Event extends Log {
     amount: bigint;
   };
 }
-
-export interface USDCEvent extends Log {
-  blockNumber: bigint;
-  transactionHash: Address;
-  args: {
-    depositor: Address;
-    amount: bigint;
-    to: Address;
-  };
-}

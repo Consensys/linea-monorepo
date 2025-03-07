@@ -1,6 +1,7 @@
 import { config } from "@/config";
 import { SupportedChainId } from "@/lib/wagmi";
 import { Chain, ChainLayer } from "@/types";
+import { Address } from "viem";
 import { linea, mainnet, Chain as ViemChain, sepolia, lineaSepolia } from "viem/chains";
 
 export const generateChain = (chain: ViemChain): Chain => {
@@ -12,8 +13,8 @@ export const generateChain = (chain: ViemChain): Chain => {
     blockExplorers: chain.blockExplorers,
     testnet: chain.testnet,
     layer: getChainNetworkLayer(chain.id),
-    messageServiceAddress: config.chains[chain.id].messageServiceAddress,
-    tokenBridgeAddress: config.chains[chain.id].tokenBridgeAddress,
+    messageServiceAddress: config.chains[chain.id].messageServiceAddress as Address,
+    tokenBridgeAddress: config.chains[chain.id].tokenBridgeAddress as Address,
     gasLimitSurplus: config.chains[chain.id].gasLimitSurplus,
     profitMargin: config.chains[chain.id].profitMargin,
   };
@@ -34,19 +35,6 @@ export const getChainNetworkLayer = (chainId: number) => {
     default:
       throw new Error(`Unsupported chain id: ${chainId}`);
   }
-};
-
-export const getChainNetworkLayerByChainId = (chainId: number) => {
-  switch (chainId) {
-    case linea.id:
-    case lineaSepolia.id:
-      return ChainLayer.L2;
-    case mainnet.id:
-    case sepolia.id:
-      return ChainLayer.L1;
-  }
-
-  return;
 };
 
 export const getChainLogoPath = (chainId: number) => {

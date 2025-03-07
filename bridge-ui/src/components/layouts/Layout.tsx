@@ -1,6 +1,6 @@
 "use client";
 
-import Header from "../v2/header";
+import Header from "../header";
 import { useInitialiseChain } from "@/hooks";
 import { Theme } from "@/types/ui";
 import Image from "next/image";

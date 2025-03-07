@@ -9,8 +9,8 @@ import { BridgingInitiatedV2Event, MessageSentEvent } from "@/models";
 import { Chain, ChainLayer } from "@/types";
 import { TokenInfo } from "@/config";
 import { defaultTokensConfig } from "@/stores/tokenStore";
-import { TransactionStatus } from "@/components/transactions/TransactionItem";
 import { LineaSDKContracts } from "@/hooks/useLineaSDK";
+import { TransactionStatus } from "@/types/transaction";
 
 type TransactionHistoryParams = {
   lineaSDK: LineaSDK;

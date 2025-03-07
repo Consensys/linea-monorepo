@@ -1,129 +1,14 @@
 import log from "loglevel";
 import { Address } from "viem";
-import { GetTokenReturnType, getToken } from "@wagmi/core";
-import { sepolia, linea, mainnet, lineaSepolia, Chain } from "viem/chains";
-import { NetworkTokens, TokenInfo, TokenType, wagmiConfig } from "@/config";
+import { NetworkTokens, TokenInfo } from "@/config";
 import { Token } from "@/models/token";
 import { defaultTokensConfig } from "@/stores/tokenStore";
 import { SupportedCurrencies } from "@/stores/configStore";
 import { BridgeProvider } from "@/config/config";
 
-interface CoinGeckoToken {
-  id: string;
-  symbol: string;
-  name: string;
-}
-
-interface CoinGeckoTokenDetail {
-  image: {
-    small: string;
-  };
-}
-
 enum NetworkTypes {
   MAINNET = "MAINNET",
   SEPOLIA = "SEPOLIA",
-}
-
-export async function fetchERC20Image(name: string) {
-  try {
-    if (!name) {
-      throw new Error("Name is required");
-    }
-
-    const coinsResponse = await fetch("https://api.coingecko.com/api/v3/coins/list");
-
-    if (!coinsResponse.ok) {
-      throw new Error("Error in fetchERC20Image to get coins list");
-    }
-
-    const coinsData: CoinGeckoToken[] = await coinsResponse.json();
-    const coin = coinsData.find((coin: CoinGeckoToken) => coin.name === name);
-
-    if (!coin) {
-      throw new Error("Coin not found");
-    }
-
-    const coinId = coin.id;
-    const coinDataResponse = await fetch(`https://api.coingecko.com/api/v3/coins/${coinId}`);
-
-    if (!coinDataResponse.ok) {
-      throw new Error("Error in fetchERC20Image to get coin data");
-    }
-
-    const coinData: CoinGeckoTokenDetail = await coinDataResponse.json();
-
-    if (!coinData.image.small) {
-      throw new Error("Image not found");
-    }
-
-    const imageUrl = coinData.image.small.split("?")[0];
-    // Test image URL
-    const response = await fetch(imageUrl);
-
-    if (response.status !== 200) {
-      return "/images/logo/noTokenLogo.svg";
-    }
-
-    return imageUrl;
-  } catch (error) {
-    log.warn(error);
-    return "/images/logo/noTokenLogo.svg";
-  }
-}
-
-export async function fetchTokenInfo(tokenAddress: Address, fromChain?: Chain): Promise<TokenInfo | undefined> {
-  let erc20: GetTokenReturnType | undefined;
-  let chainFound;
-
-  if (!chainFound) {
-    const chains: Chain[] = fromChain?.testnet ? [lineaSepolia, sepolia] : [linea, mainnet];
-
-    // Put the fromChain arg at the begining to take it as priority
-    if (fromChain) chains.unshift(fromChain);
-
-    for (const chain of chains) {
-      try {
-        erc20 = await getToken(wagmiConfig, {
-          address: tokenAddress,
-          chainId: chain.id,
-        });
-        if (erc20.name) {
-          // Found the token if no errors with fetchToken
-          chainFound = chain;
-          break;
-        }
-      } catch (err) {
-        continue;
-      }
-    }
-  }
-
-  if (!erc20 || !chainFound || !erc20.name) {
-    return;
-  }
-
-  const L1Token = chainFound.id === mainnet.id || chainFound.id === sepolia.id;
-
-  // Fetch image
-  const name = erc20.name;
-  const image = await fetchERC20Image(name);
-
-  try {
-    return {
-      name,
-      symbol: erc20.symbol!,
-      decimals: erc20.decimals,
-      L1: L1Token ? tokenAddress : null,
-      L2: !L1Token ? tokenAddress : null,
-      image,
-      type: TokenType.ERC20,
-      isDefault: false,
-    };
-  } catch (err) {
-    log.error(err);
-    return;
-  }
 }
 
 export async function getTokens(networkTypes: NetworkTypes): Promise<Token[]> {

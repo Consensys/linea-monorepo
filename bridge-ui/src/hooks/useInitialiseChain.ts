@@ -1,7 +1,7 @@
 import { watchAccount } from "@wagmi/core";
 import { useEffect } from "react";
 import { useChainStore } from "@/stores/chainStore";
-import { config as wagmiConfig } from "@/lib/wagmi";
+import { config } from "@/lib/wagmi";
 import { useChains } from "./useChains";
 import { Chain } from "@/types";
 
@@ -11,7 +11,7 @@ const useInitialiseChain = () => {
   const setToChain = useChainStore.useSetToChain();
 
   useEffect(() => {
-    const unwatch = watchAccount(wagmiConfig, {
+    const unwatch = watchAccount(config, {
       onChange(account) {
         const chain = chains.find((chain: Chain) => chain.id === account?.chain?.id);
 

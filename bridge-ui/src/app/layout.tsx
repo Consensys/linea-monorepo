@@ -1,10 +1,10 @@
 import { Metadata } from "next";
 import Script from "next/script";
+import clsx from "clsx";
 import usabillaBeScript from "@/scripts/usabilla";
 import { gtmScript, gtmNoScript } from "@/scripts/gtm";
 import { Providers } from "@/components/layouts/Providers";
 import { Layout } from "@/components/layouts/Layout";
-import { cn } from "@/utils/cn";
 import atypFont from "@/assets/fonts/atyp";
 import atypTextFont from "@/assets/fonts/atypText";
 import "react-toastify/dist/ReactToastify.css";
@@ -26,7 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <title>{metadata.title?.toString()}</title>
       <meta name="description" content={metadata.description?.toString()} key="desc" />
 
-      <body className={cn(atypFont.variable, atypTextFont.variable, atypFont.className, atypTextFont.className)}>
+      <body className={clsx(atypFont.variable, atypTextFont.variable, atypFont.className, atypTextFont.className)}>
         <noscript dangerouslySetInnerHTML={{ __html: gtmNoScript }} />
 
         <Providers>
