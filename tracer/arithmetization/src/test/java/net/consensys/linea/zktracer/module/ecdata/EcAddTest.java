@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.module.ecdata;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -24,6 +26,7 @@ import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -99,12 +102,14 @@ public class EcAddTest {
             .push(0x80) // retOffset
             .push(0x80) // argSize
             .push(0) // argOffset
-            .push(6) // address
+            .push(Address.ALTBN128_ADD) // address
             .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run();
+
+    assertEquals(1, bytecodeRunner.getHub().ecAddEffectiveCall().lineCount());
   }
 
   @Test
@@ -129,11 +134,14 @@ public class EcAddTest {
             .push(0x80) // retOffset
             .push(0x80) // argSize
             .push(0) // argOffset
-            .push(6) // address
+            .push(Address.ALTBN128_ADD) // address
             .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run();
+
+    // check precompile limits line count
+    assertEquals(1, bytecodeRunner.getHub().ecAddEffectiveCall().lineCount());
   }
 }

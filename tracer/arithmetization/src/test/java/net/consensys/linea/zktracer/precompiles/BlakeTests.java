@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.precompiles;
 
 import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.BLAKE2f_HASH_OUTPUT_SIZE;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
@@ -39,17 +40,25 @@ public class BlakeTests {
             .op(OpCode.CALL)
             .op(OpCode.POP)
             .compile();
-    BytecodeRunner.of(bytecode).run();
+
+    final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
+    bytecodeRunner.run();
+
+    // check precompile limits line count
+    assertEquals(0, bytecodeRunner.getHub().blakeEffectiveCall().lineCount());
+    assertEquals(0, bytecodeRunner.getHub().blakeRounds().lineCount());
   }
 
   @Test
   void basicBlakeTest() {
+    final int round = 10;
+
     final Bytes bytecode =
         BytecodeCompiler.newProgram()
             .push(Bytes.fromHexString("0x0badb077")) // value, some random data to hash
             .push(5) // offset
             .op(OpCode.MSTORE)
-            .push(10) // value = r for Blake call
+            .push(round) // value = r for Blake call
             .push(3) // offset
             .op(OpCode.MSTORE8)
             .push(BLAKE2f_HASH_OUTPUT_SIZE) // return size
@@ -66,7 +75,13 @@ public class BlakeTests {
             .op(OpCode.MLOAD)
             .op(OpCode.STOP)
             .compile();
-    BytecodeRunner.of(bytecode).run();
+
+    final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
+    bytecodeRunner.run();
+
+    // check precompile limits line count
+    assertEquals(1, bytecodeRunner.getHub().blakeEffectiveCall().lineCount());
+    assertEquals(round, bytecodeRunner.getHub().blakeRounds().lineCount());
   }
 
   @Test
@@ -89,7 +104,13 @@ public class BlakeTests {
             .op(OpCode.CALL)
             .op(OpCode.POP)
             .compile();
-    BytecodeRunner.of(bytecode).run();
+
+    final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
+    bytecodeRunner.run();
+
+    // check precompile limits line count
+    assertEquals(0, bytecodeRunner.getHub().blakeEffectiveCall().lineCount());
+    assertEquals(0, bytecodeRunner.getHub().blakeRounds().lineCount());
   }
 
   @Test
@@ -112,6 +133,12 @@ public class BlakeTests {
             .op(OpCode.CALL)
             .op(OpCode.POP)
             .compile();
-    BytecodeRunner.of(bytecode).run();
+
+    final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
+    bytecodeRunner.run();
+
+    // check precompile limits line count
+    assertEquals(0, bytecodeRunner.getHub().blakeEffectiveCall().lineCount());
+    assertEquals(0, bytecodeRunner.getHub().blakeRounds().lineCount());
   }
 }

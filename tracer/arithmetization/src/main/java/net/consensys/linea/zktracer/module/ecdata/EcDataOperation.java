@@ -119,8 +119,8 @@ public class EcDataOperation extends ModuleOperation {
 
   // pairing-specific
   @Getter private final int totalPairings;
-  @Getter private int circuitSelectorEcPairingCounter;
-  @Getter private int circuitSelectorG2MembershipCounter;
+  @Getter private int circuitSelectorEcPairingCounter = 0;
+  @Getter private int circuitSelectorG2MembershipCounter = 0;
 
   private final List<Boolean> notOnG2; // counter-constant
   private final List<Boolean> notOnG2Acc; // counter-constant
@@ -138,7 +138,7 @@ public class EcDataOperation extends ModuleOperation {
     checkArgument(precompileFlag.isEcdataPrecompile(), "invalid EC type");
 
     this.precompileFlag = precompileFlag;
-    int callDataSize = callData.size();
+    final int callDataSize = callData.size();
     checkArgument(
         callDataSize > 0,
         "EcDataOperation should only be called with nonempty call rightPaddedCallData");
@@ -410,10 +410,10 @@ public class EcDataOperation extends ModuleOperation {
 
     // Compute internal checks
     // row i
-    boolean c1MembershipFirstPoint = callToC1Membership(0, pX, pY).getLeft();
+    final boolean c1MembershipFirstPoint = callToC1Membership(0, pX, pY).getLeft();
 
     // row i + 4
-    boolean c1MembershipSecondPoint = callToC1Membership(4, qX, qY).getLeft();
+    final boolean c1MembershipSecondPoint = callToC1Membership(4, qX, qY).getLeft();
 
     // Complete set hurdle
     hurdle.set(INDEX_MAX_ECADD_DATA, c1MembershipFirstPoint && c1MembershipSecondPoint);
@@ -495,7 +495,7 @@ public class EcDataOperation extends ModuleOperation {
 
   void handlePairing() {
     boolean atLeastOneLargePointIsNotInfinity = false;
-    boolean firstLargePointNotInfinity = false;
+    boolean firstLargePointNotAtInfinity = false;
     boolean atLeastOneLargePointIsNotOnG2 = false;
     boolean firstLargePointNotOnG2 = false;
 
@@ -526,16 +526,15 @@ public class EcDataOperation extends ModuleOperation {
 
       // Compute internal checks
       // row i
-      Pair<Boolean, Boolean> callToC1MembershipReturnedValues =
+      final Pair<Boolean, Boolean> callToC1MembershipReturnedValues =
           callToC1Membership(rowsOffset, aX, aY);
-      boolean c1Membership = callToC1MembershipReturnedValues.getLeft();
-      boolean smallPointIsAtInfinity = callToC1MembershipReturnedValues.getRight();
+      final boolean c1Membership = callToC1MembershipReturnedValues.getLeft();
 
       // row i + 4
-      Pair<Boolean, Boolean> callToWellFormedCoordinatesReturnedValues =
+      final Pair<Boolean, Boolean> callToWellFormedCoordinatesReturnedValues =
           callToWellFormedCoordinates(4 + rowsOffset, bXIm, bXRe, bYIm, bYRe);
-      boolean wellFormedCoordinates = callToWellFormedCoordinatesReturnedValues.getLeft();
-      boolean largePointIsAtInfinity = callToWellFormedCoordinatesReturnedValues.getRight();
+      final boolean wellFormedCoordinates = callToWellFormedCoordinatesReturnedValues.getLeft();
+      final boolean largePointIsAtInfinity = callToWellFormedCoordinatesReturnedValues.getRight();
 
       // Check if the large point is on G2
       final Fq2 bX = Fq2.create(bXRe.toUnsignedBigInteger(), bXIm.toUnsignedBigInteger());
@@ -548,13 +547,13 @@ public class EcDataOperation extends ModuleOperation {
       }
 
       // Set isInfinity, overallTrivialPairing, notOnG2, notOnG2Acc
-      for (int i = 0; i <= INDEX_MAX_ECPAIRING_DATA_MIN; i++) {
-        if (!largePointIsAtInfinity && !atLeastOneLargePointIsNotInfinity) {
-          atLeastOneLargePointIsNotInfinity = true;
-          firstLargePointNotInfinity = true;
-        }
+      if (!largePointIsAtInfinity && !atLeastOneLargePointIsNotInfinity) {
+        atLeastOneLargePointIsNotInfinity = true;
+        firstLargePointNotAtInfinity = true;
+      }
 
-        if (firstLargePointNotInfinity) {
+      for (int i = 0; i <= INDEX_MAX_ECPAIRING_DATA_MIN; i++) {
+        if (firstLargePointNotAtInfinity) {
           if (i > CT_MAX_SMALL_POINT) {
             // Transition should happen at the beginning of large point
             overallTrivialPairing.set(i + rowsOffset, false);
@@ -574,8 +573,8 @@ public class EcDataOperation extends ModuleOperation {
         }
       }
 
-      // Set firstLargePointNotInfinity back to false
-      firstLargePointNotInfinity = false;
+      // Set firstLargePointNotAtInfinity back to false
+      firstLargePointNotAtInfinity = false;
 
       // Set firstLargePointNotOnG2 back to false
       firstLargePointNotOnG2 = false;
@@ -586,7 +585,7 @@ public class EcDataOperation extends ModuleOperation {
 
         hurdle.set(INDEX_MAX_ECPAIRING_DATA_MIN, internalChecksPassed);
       } else {
-        boolean prevInternalChecksPassed = internalChecksPassed;
+        final boolean prevInternalChecksPassed = internalChecksPassed;
         internalChecksPassed = c1Membership && wellFormedCoordinates && prevInternalChecksPassed;
 
         hurdle.set(
@@ -596,6 +595,31 @@ public class EcDataOperation extends ModuleOperation {
     }
 
     // This is after all pairings have been processed
+    notOnG2AccMax = internalChecksPassed && notOnG2AccMax;
+
+    // Set counters
+    if (internalChecksPassed) {
+      if (notOnG2AccMax) {
+        circuitSelectorEcPairingCounter = 0;
+        circuitSelectorG2MembershipCounter = 1;
+      } else {
+        if (!isOverallTrivialPairing()) {
+          for (int accPairings = 1; accPairings <= totalPairings; accPairings++) {
+            final int rowsOffset = (accPairings - 1) * (INDEX_MAX_ECPAIRING_DATA_MIN + 1);
+            final boolean smallPointIsAtInfinity = isInfinity.get(rowsOffset);
+            final boolean largePointIsAtInfinity =
+                isInfinity.get(rowsOffset + CT_MAX_SMALL_POINT + 1);
+            if (!largePointIsAtInfinity) {
+              if (!smallPointIsAtInfinity) {
+                circuitSelectorEcPairingCounter++;
+              } else {
+                circuitSelectorG2MembershipCounter++;
+              }
+            }
+          }
+        }
+      }
+    }
 
     // Set result rows
     EWord pairingResult = EWord.ZERO;
@@ -643,24 +667,23 @@ public class EcDataOperation extends ModuleOperation {
       boolean notOnG2AccMax =
           precompileFlag == PRC_ECPAIRING
               && isData
-              && this.notOnG2AccMax
-              && internalChecksPassed; // && conditions is necessary since we want IS_ECPAIRING_DATA
+              && this.notOnG2AccMax; // && conditions is necessary since we want IS_ECPAIRING_DATA
       // = 1
       // && conditions is necessary since we want IS_ECPAIRING_DATA
       // We care about G2 membership only if ICP = 1
       final boolean g2MembershipTestRequired =
-          (notOnG2AccMax
+          isData
+              && (notOnG2AccMax
                   ? isLargePoint && !largePointIsAtInfinity && notOnG2.get(i)
                   : isLargePoint && !largePointIsAtInfinity && smallPointIsAtInfinity)
               && internalChecksPassed;
       final boolean acceptablePairOfPointsForPairingCircuit =
-          precompileFlag == PRC_ECPAIRING
+          isData
+              && precompileFlag == PRC_ECPAIRING
               && successBit
               && !notOnG2AccMax
               && !largePointIsAtInfinity
               && !smallPointIsAtInfinity;
-      circuitSelectorEcPairingCounter += acceptablePairOfPointsForPairingCircuit ? 1 : 0;
-      circuitSelectorG2MembershipCounter += g2MembershipTestRequired ? 1 : 0;
 
       if (precompileFlag != PRC_ECPAIRING || !isData) {
         checkArgument(ct == 0);
@@ -810,5 +833,9 @@ public class EcDataOperation extends ModuleOperation {
     }
 
     return Pair.of(wellFormedCoordinates, bIsPointAtInfinity);
+  }
+
+  boolean isOverallTrivialPairing() {
+    return overallTrivialPairing.get(nRowsData - 1);
   }
 }

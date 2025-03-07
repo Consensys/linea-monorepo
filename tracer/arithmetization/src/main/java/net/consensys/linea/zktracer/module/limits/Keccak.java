@@ -15,7 +15,8 @@
 
 package net.consensys.linea.zktracer.module.limits;
 
-import com.google.common.base.Preconditions;
+import static com.google.common.base.Preconditions.checkState;
+
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
@@ -69,7 +70,7 @@ public class Keccak implements CountingOnlyModule {
 
   public static int numberOfKeccakBloc(final long dataByteLength) {
     final long r = (dataByteLength + KECCAK_BYTE_RATE - 1) / KECCAK_BYTE_RATE;
-    Preconditions.checkState(r < Integer.MAX_VALUE, "demented KECCAK");
+    checkState(r < Integer.MAX_VALUE, "demented KECCAK");
     return (int) r;
   }
 }

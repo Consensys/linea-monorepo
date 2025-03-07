@@ -24,8 +24,6 @@ import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 @Accessors(fluent = true)
 public final class Sha256Blocks implements CountingOnlyModule {
   private final CountOnlyOperation counts = new CountOnlyOperation();
-  private static final int PRECOMPILE_BASE_GAS_FEE = 60;
-  private static final int PRECOMPILE_GAS_FEE_PER_EWORD = 12;
   private static final int SHA256_BLOCKSIZE = 64 * 8;
   // The length of the data to be hashed is 2**64 maximum.
   private static final int SHA256_PADDING_LENGTH = 64;
@@ -42,7 +40,7 @@ public final class Sha256Blocks implements CountingOnlyModule {
     counts.add(blockCount);
   }
 
-  private static int numberOfSha256Blocks(final int dataByteLength) {
+  public static int numberOfSha256Blocks(final int dataByteLength) {
     return (dataByteLength * 8
             + SHA256_NB_PADDED_ONE
             + SHA256_PADDING_LENGTH
