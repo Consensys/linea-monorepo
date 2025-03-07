@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -134,6 +135,8 @@ type ProverRuntime struct {
 	// state.
 	FiatShamirHistory [][2][]field.Element
 
+	PerformanceMonitor *config.PerformanceMonitor
+
 	// PerformanceLogs stores performance metrics for each major operation
 	PerformanceLogs []*profiling.PerformanceLog
 }
@@ -166,27 +169,21 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 		extra-rounds.
 	*/
 
-	// Profile high level prover
-	runtime.runWithPerformanceMonitor("high-level-prover", highLevelprover)
+	runtime.exec("high-level-prover", highLevelprover)
 
 	/*
 		Then, run the compiled prover steps
 	*/
 
 	// Initial prover step
-
-	//runtime.runWithPerformanceMonitor(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
-	runtime.runProverSteps()
+	runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
 
 	for runtime.currRound+1 < runtime.NumRounds() {
 		// Next round
-		// runtime.runWithPerformanceMonitor(fmt.Sprintf("next-after-round%d", runtime.currRound), runtime.goNextRound)
-		runtime.goNextRound()
+		runtime.exec(fmt.Sprintf("next-after-round%d", runtime.currRound), runtime.goNextRound)
 
 		// Prover steps for the next round
-
-		// runtime.runWithPerformanceMonitor(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
-		runtime.runProverSteps()
+		runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
 	}
 
 	/*
@@ -205,10 +202,11 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 		messages.InsertNew(name, messageValue)
 	}
 
-	// TODO
-	// Write performance logs to CSV
-	if err := runtime.writePerformanceLogsToCSV(); err != nil {
-		utils.Panic("error writing performance logs to CSV: " + err.Error())
+	// Write the performance logs to the csv file is the performance monitor is active
+	if runtime.PerformanceMonitor.Active {
+		if err := runtime.writePerformanceLogsToCSV(); err != nil {
+			utils.Panic("error writing performance logs to CSV: " + err.Error())
+		}
 	}
 
 	return Proof{
@@ -239,15 +237,16 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{
-		Spec:              c,
-		Columns:           collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
-		QueriesParams:     collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
-		Coins:             collection.NewMapping[coin.Name, interface{}](),
-		State:             collection.NewMapping[string, interface{}](),
-		FS:                fs,
-		currRound:         0,
-		lock:              &sync.Mutex{},
-		FiatShamirHistory: make([][2][]field.Element, c.NumRounds()),
+		Spec:               c,
+		Columns:            collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
+		QueriesParams:      collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
+		Coins:              collection.NewMapping[coin.Name, interface{}](),
+		State:              collection.NewMapping[string, interface{}](),
+		FS:                 fs,
+		currRound:          0,
+		lock:               &sync.Mutex{},
+		FiatShamirHistory:  make([][2][]field.Element, c.NumRounds()),
+		PerformanceMonitor: profiling.GetMonitorParams(),
 	}
 
 	runtime.FiatShamirHistory[0] = [2][]field.Element{
@@ -594,9 +593,7 @@ func (run *ProverRuntime) runProverSteps() {
 
 		// Profile individual prover steps
 		namePrefix := fmt.Sprintf("prover-round%d-step%d", run.currRound, idx)
-		run.runWithPerformanceMonitor(namePrefix, step)
-
-		//step(run)
+		run.exec(namePrefix, step)
 	}
 }
 
@@ -745,43 +742,44 @@ func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 	return run.QueriesParams.MustGet(name)
 }
 
-// runWithPerformanceMonitor: runs the `action` with the performance monitor
-func (runtime *ProverRuntime) runWithPerformanceMonitor(name string, action any) {
+// exec: executes the `action` with the performance monitor if active
+func (runtime *ProverRuntime) exec(name string, action any) {
 
-	profilingPath = path.Join(profilingPath, name)
-
-	sampleDuration := 1 * time.Second
-	monitor, err := profiling.StartPerformanceMonitor(name, sampleDuration, profilingPath)
-	if err != nil {
-		panic("error setting up performance monitor for " + name)
+	runAction := func() {
+		switch a := action.(type) {
+		case func():
+			a()
+		case ProverStep:
+			a(runtime)
+		default:
+			panic("unsupported action type")
+		}
 	}
 
-	// Run the action
-	switch a := action.(type) {
-	case func():
-		a()
-	case ProverStep:
-		a(runtime)
-	default:
-		panic("unsupported action type")
+	if runtime.PerformanceMonitor.Active {
+		monitor, err := profiling.StartPerformanceMonitor(name, runtime.PerformanceMonitor.SampleDuration, runtime.PerformanceMonitor.ProfileDir)
+		if err != nil {
+			panic("error setting up performance monitor for " + name)
+		}
+
+		runAction()
+
+		perfLog, err := monitor.Stop()
+		if err != nil {
+			logrus.Panicf("error:%s encountered while retrieving performance log for:%s", err.Error(), name)
+		}
+
+		// perfLog.PrintMetrics()
+		runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
+	} else {
+		runAction()
 	}
-
-	perfLog, err := monitor.Stop()
-	if err != nil {
-		logrus.Panicf("error:%s encountered while retrieving performance log for:%s", err.Error(), name)
-	}
-
-	// TODO
-	perfLog.PrintMetrics()
-
-	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
 }
 
 // writePerformanceLogsToCSV: Dumps all the performance logs inside prover runtime
 // to the csv file located at the specified path
 func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
-
-	// csvFilePath := "./protocol/wizard/runtime_performance_logs.csv"
+	csvFilePath := path.Join(runtime.PerformanceMonitor.ProfileDir, "runtime_performance_logs.csv")
 	file, err := os.Create(csvFilePath)
 	if err != nil {
 		return err
