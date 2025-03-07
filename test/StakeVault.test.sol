@@ -48,6 +48,10 @@ contract StakeVaultTest is Test {
         vm.prank(alice);
         stakingToken.approve(address(stakeVault), 10_000e18);
     }
+
+    function testOwner() public view {
+        assertEq(stakeVault.owner(), alice);
+    }
 }
 
 contract StakingTokenTest is StakeVaultTest {
