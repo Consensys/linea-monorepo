@@ -376,6 +376,12 @@ public class CallSection extends TraceSection
               + hubStamp()
               + "\n\tABS_TX_NUM = "
               + hub.txStack().getCurrentAbsNumber()
+              + "\n\tbase byte size = "
+              + ((ModexpSubsection) precompileSubsection).modexpMetaData.bbs().toDecimalString()
+              + "\n\texp byte size = "
+              + ((ModexpSubsection) precompileSubsection).modexpMetaData.ebs().toDecimalString()
+              + "\n\tmod byte size = "
+              + ((ModexpSubsection) precompileSubsection).modexpMetaData.mbs().toDecimalString()
               + "\nTransaction must be popped!");
     }
   }
@@ -462,7 +468,7 @@ public class CallSection extends TraceSection
       case CALL_PRC_UNDEFINED -> {
         scenarioFragment.setScenario(success ? CALL_PRC_SUCCESS_WONT_REVERT : CALL_PRC_FAILURE);
         firstAccountRowsEoaOrPrc(hub);
-        long gasAfterCall = frame.frame().getRemainingGas();
+        final long gasAfterCall = frame.frame().getRemainingGas();
         commonValues.gasNext(gasAfterCall);
         hub.currentFrame().lastValidGasNext(gasAfterCall);
 
