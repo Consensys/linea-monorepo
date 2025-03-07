@@ -1,9 +1,7 @@
-import styles from "./received-amount.module.scss";
-import useTokenPrices from "@/hooks/useTokenPrices";
-import { useChainStore } from "@/stores/chainStore";
-import { useConfigStore } from "@/stores/configStore";
-import { useFormStore } from "@/stores/formStoreProvider";
 import { formatUnits } from "viem";
+import styles from "./received-amount.module.scss";
+import { useTokenPrices } from "@/hooks";
+import { useConfigStore, useChainStore, useFormStore } from "@/stores";
 
 export default function ReceivedAmount() {
   const fromChain = useChainStore.useFromChain();

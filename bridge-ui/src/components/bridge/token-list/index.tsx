@@ -1,11 +1,11 @@
+import { useState } from "react";
 import Image from "next/image";
 import { useAccount } from "wagmi";
 import TokenModal from "@/components/bridge/modal/token-modal";
 import Button from "@/components/ui/button";
 import CaretDownIcon from "@/assets/icons/caret-down.svg";
 import styles from "./token-list.module.scss";
-import { useState } from "react";
-import { useFormStore } from "@/stores/formStoreProvider";
+import { useFormStore } from "@/stores";
 
 export default function TokenList() {
   const [isModalOpen, setIsModalOpen] = useState(false);

@@ -2,8 +2,8 @@ import Image from "next/image";
 import styles from "./from-chain.module.scss";
 import SelectNetwork from "@/components/bridge/modal/select-network";
 import { useState } from "react";
-import { useChainStore } from "@/stores/chainStore";
-import { useChains } from "@/hooks/useChains";
+import { useChainStore } from "@/stores";
+import { useChains } from "@/hooks";
 import { Chain } from "@/types";
 import { useIsLoggedIn } from "@/lib/dynamic";
 

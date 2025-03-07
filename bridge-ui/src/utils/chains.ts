@@ -1,8 +1,8 @@
-import { config } from "@/config";
-import { SupportedChainId } from "@/lib/wagmi";
-import { Chain, ChainLayer } from "@/types";
 import { Address } from "viem";
 import { linea, mainnet, Chain as ViemChain, sepolia, lineaSepolia } from "viem/chains";
+import { SupportedChainId } from "@/lib/wagmi";
+import { config } from "@/config";
+import { Chain, ChainLayer } from "@/types";
 
 export const generateChain = (chain: ViemChain): Chain => {
   return {

@@ -1,9 +1,8 @@
 import Tooltip from "@/components/ui/tooltip";
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
 import styles from "./swap-chain.module.scss";
-import { useChainStore } from "@/stores/chainStore";
 import { useIsLoggedIn } from "@/lib/dynamic";
-import { useFormStore } from "@/stores/formStoreProvider";
+import { useFormStore, useChainStore } from "@/stores";
 
 export default function SwapChain() {
   const switchChainInStore = useChainStore.useSwitchChain();

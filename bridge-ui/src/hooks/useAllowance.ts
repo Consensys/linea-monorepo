@@ -1,8 +1,7 @@
 import { useAccount, useReadContract } from "wagmi";
 import { erc20Abi } from "viem";
-import { useChainStore } from "@/stores/chainStore";
-import { useFormStore } from "@/stores/formStoreProvider";
-import { isEth } from "@/utils/tokens";
+import { useFormStore, useChainStore } from "@/stores";
+import { isEth } from "@/utils";
 
 const useAllowance = () => {
   const { address } = useAccount();

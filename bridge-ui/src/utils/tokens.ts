@@ -1,7 +1,7 @@
-import { TokenInfo } from "@/config";
+import { Token } from "@/types";
 import { isAddress, isAddressEqual, zeroAddress } from "viem";
 
-export const isEth = (token: TokenInfo) => {
+export const isEth = (token: Token) => {
   return (
     isAddress(token.L1) &&
     isAddress(token.L2) &&

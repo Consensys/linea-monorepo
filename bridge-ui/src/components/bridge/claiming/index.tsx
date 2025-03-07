@@ -4,10 +4,9 @@ import SettingIcon from "@/assets/icons/setting.svg";
 import { useEffect, useState } from "react";
 import AdvancedSettings from "@/components/bridge/modal/advanced-settings";
 import Skeleton from "@/components/bridge/claiming/skeleton";
-import { useChainStore } from "@/stores/chainStore";
 import ReceivedAmount from "./received-amount";
 import Fees from "./fees";
-import { useFormStore } from "@/stores/formStoreProvider";
+import { useFormStore, useChainStore } from "@/stores";
 
 export default function Claiming() {
   const fromChain = useChainStore.useFromChain();

@@ -1,33 +1,5 @@
-import { Address, getAddress } from "viem";
+import { getAddress } from "viem";
 import { configSchema, Config } from "./config.schema";
-import { TokenType } from "@/models/token";
-
-export enum BridgeProvider {
-  NATIVE = "NATIVE",
-  CCTP = "CCTP",
-}
-
-export interface TokenInfo {
-  type: TokenType[];
-  name: string;
-  symbol: string;
-  decimals: number;
-  L1: Address;
-  L2: Address;
-  image: string;
-  isDefault: boolean;
-  bridgeProvider: BridgeProvider;
-}
-
-export enum BridgeType {
-  NATIVE = 1,
-  ACROSS = 2,
-}
-
-export type NetworkTokens = {
-  MAINNET: TokenInfo[];
-  SEPOLIA: TokenInfo[];
-};
 
 export const config: Config = {
   chains: {

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { LineaSDK, Network } from "@consensys/linea-sdk";
 import { L1MessageServiceContract, L2MessageServiceContract } from "@consensys/linea-sdk/dist/lib/contracts";
-import { useChainStore } from "@/stores/chainStore";
+import { useChainStore } from "@/stores";
 
 export interface LineaSDKContracts {
   L1: L1MessageServiceContract;

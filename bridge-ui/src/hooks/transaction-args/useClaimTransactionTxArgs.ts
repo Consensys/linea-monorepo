@@ -3,8 +3,7 @@ import { useAccount } from "wagmi";
 import { Address, encodeFunctionData, zeroAddress } from "viem";
 import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
 import MessageService from "@/abis/MessageService.json";
-import { Chain, ChainLayer } from "@/types";
-import { TransactionStatus } from "@/types/transaction";
+import { Chain, ChainLayer, TransactionStatus } from "@/types";
 
 type UseClaimTxArgsProps = {
   status?: TransactionStatus;

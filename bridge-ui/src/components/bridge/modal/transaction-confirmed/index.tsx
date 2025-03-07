@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Modal from "@/components/modal";
 import styles from "./transaction-confirmed.module.scss";
-import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
+import { useNativeBridgeNavigationStore } from "@/stores";
 import Button from "@/components/ui/button";
 
 type Props = {

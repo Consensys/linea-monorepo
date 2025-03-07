@@ -2,11 +2,10 @@ import { useMemo, useCallback } from "react";
 import { useAccount } from "wagmi";
 import { formatEther, zeroAddress } from "viem";
 import useGasFees from "./useGasFees";
-import { useChainStore } from "@/stores/chainStore";
 import useMinimumFee from "./useMinimumFee";
 import useBridgingFee from "./useBridgingFee";
 import useTokenPrices from "../useTokenPrices";
-import { useFormStore } from "@/stores/formStoreProvider";
+import { useFormStore, useChainStore } from "@/stores";
 
 const useFees = () => {
   const { address } = useAccount();

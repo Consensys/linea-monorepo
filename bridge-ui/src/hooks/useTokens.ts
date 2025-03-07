@@ -1,10 +1,8 @@
 import { useMemo } from "react";
-import { TokenInfo } from "@/config";
-import { useTokenStore } from "@/stores/tokenStoreProvider";
-import { useChainStore } from "@/stores/chainStore";
-import { ChainLayer } from "@/types";
+import { useChainStore, useTokenStore } from "@/stores";
+import { ChainLayer, Token } from "@/types";
 
-export function useTokens(): TokenInfo[] {
+const useTokens = (): Token[] => {
   const tokensList = useTokenStore((state) => state.tokensList);
   const fromChain = useChainStore.useFromChain();
 
@@ -24,4 +22,6 @@ export function useTokens(): TokenInfo[] {
 
     return tokensList.MAINNET;
   }, [fromChain, tokensList.MAINNET, tokensList.SEPOLIA]);
-}
+};
+
+export default useTokens;

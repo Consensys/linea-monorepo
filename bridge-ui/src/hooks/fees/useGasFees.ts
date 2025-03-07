@@ -1,16 +1,15 @@
 import { Address, encodeFunctionData } from "viem";
-import { TokenInfo } from "@/config";
+import { useEstimateGas } from "wagmi";
 import TokenBridge from "@/abis/TokenBridge.json";
 import MessageService from "@/abis/MessageService.json";
-import { Chain } from "@/types";
+import { Chain, Token } from "@/types";
 import useFeeData from "./useFeeData";
-import { useEstimateGas } from "wagmi";
-import { isEth } from "@/utils/tokens";
+import { isEth } from "@/utils";
 
 type UseGasFeesProps = {
   address?: Address;
   recipient: Address;
-  token: TokenInfo;
+  token: Token;
   fromChain: Chain;
   amount: bigint;
   minimumFee: bigint;

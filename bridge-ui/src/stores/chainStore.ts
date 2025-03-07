@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { createSelectorHooks, ZustandHookSelectors } from "auto-zustand-selectors-hook";
 import { linea, lineaSepolia, mainnet, sepolia } from "viem/chains";
 import { Chain } from "@/types";
-import { generateChain, generateChains } from "@/utils/chainsUtil";
+import { generateChain, generateChains } from "@/utils";
 
 export type ChainState = {
   chains: Chain[];

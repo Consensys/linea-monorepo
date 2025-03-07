@@ -1,8 +1,8 @@
+import { useState } from "react";
 import styles from "./list-transaction.module.scss";
 import Transaction from "./item";
 import TransactionDetails from "@/components/bridge/transaction-history/modal/transaction-details";
-import { useState } from "react";
-import { BridgeTransaction } from "@/utils/history";
+import { BridgeTransaction } from "@/utils";
 
 type Props = {
   transactions: BridgeTransaction[];

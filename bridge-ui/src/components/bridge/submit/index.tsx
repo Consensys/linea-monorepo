@@ -1,12 +1,11 @@
+import { MouseEventHandler, useEffect, useMemo, useState } from "react";
+import { useChainId, useSwitchChain } from "wagmi";
 import Button from "@/components/ui/button";
 import WalletIcon from "@/assets/icons/wallet.svg";
-import { MouseEventHandler, useEffect, useMemo, useState } from "react";
 import styles from "./submit.module.scss";
-import { useFormStore } from "@/stores/formStoreProvider";
-import useBridge from "@/hooks/useBridge";
+import { useFormStore, useChainStore } from "@/stores";
+import { useBridge } from "@/hooks";
 import TransactionConfirmed from "../modal/transaction-confirmed";
-import { useChainId, useSwitchChain } from "wagmi";
-import { useChainStore } from "@/stores/chainStore";
 
 type Props = {
   setIsDestinationAddressOpen: MouseEventHandler<HTMLButtonElement>;

@@ -1,14 +1,11 @@
 import clsx from "clsx";
+import { formatUnits } from "viem";
 import styles from "./item.module.scss";
-import { formatHex } from "@/utils/format";
 import CheckIcon from "@/assets/icons/check.svg";
 import ClockIcon from "@/assets/icons/clock.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
-import { BridgeTransaction } from "@/utils/history";
-import { formatUnits } from "viem";
-import { getChainLogoPath } from "@/utils/chainsUtil";
-import { formatDate, fromUnixTime } from "date-fns";
-import { TransactionStatus } from "@/types/transaction";
+import { BridgeTransaction, getChainLogoPath, formatHex, formatTimestamp } from "@/utils";
+import { TransactionStatus } from "@/types";
 
 type Props = BridgeTransaction & {
   onClick: (code: string) => void;
@@ -78,7 +75,7 @@ export default function Transaction({
           <span className={styles["code"]} data-original-code={formatedTxHash}>
             {formatedTxHash}
           </span>
-          <span className={styles["date"]}>{formatDate(fromUnixTime(Number(timestamp)), "MMM, dd, yyyy")}</span>
+          <span className={styles["date"]}>{formatTimestamp(Number(timestamp), "MMM, dd, yyyy")}</span>
         </div>
       </div>
       <div className={styles["right"]}>

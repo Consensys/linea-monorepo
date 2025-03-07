@@ -1,16 +1,13 @@
 import { Address } from "viem";
-import { estimateERC20GasFee } from "@/utils/fees";
-import { Chain, ChainLayer } from "@/types";
-import { TokenInfo } from "@/config";
 import { useQuery } from "@tanstack/react-query";
-import { isEth } from "@/utils/tokens";
-import { BridgeProvider } from "@/config/config";
+import { BridgeProvider, Chain, ChainLayer, Token } from "@/types";
+import { estimateERC20GasFee, isEth } from "@/utils";
 
 type UseERC20BridgingFeeProps = {
   account?: Address;
   recipient: Address;
   amount: bigint;
-  token: TokenInfo;
+  token: Token;
   fromChain: Chain;
   toChain: Chain;
   nextMessageNumber: bigint;

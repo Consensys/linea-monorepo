@@ -1,17 +1,14 @@
 import log from "loglevel";
 import { Address } from "viem";
-import { NetworkTokens, TokenInfo } from "@/config";
-import { Token } from "@/models/token";
-import { defaultTokensConfig } from "@/stores/tokenStore";
-import { SupportedCurrencies } from "@/stores/configStore";
-import { BridgeProvider } from "@/config/config";
+import { SupportedCurrencies, defaultTokensConfig } from "@/stores";
+import { GithubTokenListToken, Token, BridgeProvider, NetworkTokens } from "@/types";
 
 enum NetworkTypes {
   MAINNET = "MAINNET",
   SEPOLIA = "SEPOLIA",
 }
 
-export async function getTokens(networkTypes: NetworkTypes): Promise<Token[]> {
+export async function getTokens(networkTypes: NetworkTypes): Promise<GithubTokenListToken[]> {
   try {
     // Fetch the JSON data from the URL.
     let url = process.env.MAINNET_TOKEN_LIST ? (process.env.MAINNET_TOKEN_LIST as string) : "";
@@ -21,9 +18,9 @@ export async function getTokens(networkTypes: NetworkTypes): Promise<Token[]> {
 
     const response = await fetch(url);
     const data = await response.json();
-    const tokens = data.tokens as Token[];
+    const tokens = data.tokens as GithubTokenListToken[];
     const bridgedTokens = tokens.filter(
-      (token: Token) =>
+      (token: GithubTokenListToken) =>
         token.tokenType.includes("canonical-bridge") || token.tokenType.includes("native") || token.symbol === "USDC",
     );
     return bridgedTokens;
@@ -63,7 +60,7 @@ export async function validateTokenURI(url: string): Promise<string> {
   }
 }
 
-export async function formatToken(token: Token): Promise<TokenInfo> {
+export async function formatToken(token: GithubTokenListToken): Promise<Token> {
   const bridgeProvider = token.symbol === "USDC" ? BridgeProvider.CCTP : BridgeProvider.NATIVE;
 
   const logoURI = await validateTokenURI(token.logoURI);
@@ -91,12 +88,14 @@ export async function getTokenConfig(): Promise<NetworkTokens> {
 
   updatedTokensConfig.MAINNET = [
     ...defaultTokensConfig.MAINNET,
-    ...(await Promise.all(mainnetTokens.map(async (token: Token): Promise<TokenInfo> => formatToken(token)))),
+    ...(await Promise.all(
+      mainnetTokens.map(async (token: GithubTokenListToken): Promise<Token> => formatToken(token)),
+    )),
   ];
 
   updatedTokensConfig.SEPOLIA = [
     ...defaultTokensConfig.SEPOLIA,
-    ...(await Promise.all(sepoliaTokens.map((token: Token): Promise<TokenInfo> => formatToken(token)))),
+    ...(await Promise.all(sepoliaTokens.map((token: GithubTokenListToken): Promise<Token> => formatToken(token)))),
   ];
 
   return updatedTokensConfig;

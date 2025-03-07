@@ -1,5 +1,7 @@
-import { useTokenStore } from "@/stores/tokenStoreProvider";
+import { useTokenStore } from "@/stores";
 
-export const useSelectedToken = () => {
+const useSelectedToken = () => {
   return useTokenStore((state) => state.selectedToken);
 };
+
+export default useSelectedToken;

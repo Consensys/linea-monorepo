@@ -1,10 +1,9 @@
 import { zeroAddress, encodeFunctionData, encodeAbiParameters, Address } from "viem";
 import { getPublicClient } from "@wagmi/core";
-import { TokenInfo } from "@/config";
 import TokenBridge from "@/abis/TokenBridge.json";
 import MessageService from "@/abis/MessageService.json";
 import { computeMessageHash, computeMessageStorageSlot } from "./message";
-import { Chain } from "@/types";
+import { Chain, Token } from "@/types";
 import { config } from "@/lib/wagmi";
 
 interface EstimationParams {
@@ -40,7 +39,7 @@ function createStateOverride(messageServiceAddress: Address, storageSlot: `0x${s
 async function prepareERC20TokenParams(
   originChainPublicClient: ReturnType<typeof getPublicClient>,
   address: Address,
-  token: TokenInfo,
+  token: Token,
   fromChain: Chain,
   toChain: Chain,
 ): Promise<{ tokenAddress: Address; chainId: number; tokenMetadata: string }> {
@@ -108,7 +107,7 @@ export async function estimateERC20GasFee({
   toChain,
   token,
   claimingType,
-}: EstimationParams & { token: TokenInfo }): Promise<bigint> {
+}: EstimationParams & { token: Token }): Promise<bigint> {
   if (claimingType === "manual") return 0n;
 
   const destinationChainPublicClient = getPublicClient(config, {

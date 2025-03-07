@@ -1,7 +1,8 @@
+import { useEffect, useState } from "react";
+import { useAccount, useWatchBlockNumber } from "wagmi";
 import ConnectButton from "@/components/connect-button";
 import FaqHelp from "@/components/bridge/faq-help";
 import TokenList from "@/components/bridge/token-list";
-import { useAccount, useWatchBlockNumber } from "wagmi";
 import { Amount } from "@/components/bridge/amount";
 import SwapChain from "@/components/bridge/swap-chain";
 import FromChain from "@/components/bridge/from-chain";
@@ -11,14 +12,11 @@ import styles from "./bridge-form.module.scss";
 import { Submit } from "@/components/bridge/submit";
 import TransactionPaperIcon from "@/assets/icons/transaction-paper.svg";
 import Setting from "@/components/setting";
-import { useEffect, useState } from "react";
 import { DestinationAddress } from "../destination-address";
 import Button from "../../ui/button";
-import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
-import { useTokenBalance } from "@/hooks/useTokenBalance";
-import { useChainStore } from "@/stores/chainStore";
+import { useNativeBridgeNavigationStore, useChainStore, useFormStore } from "@/stores";
+import { useTokenBalance } from "@/hooks";
 import { ChainLayer } from "@/types";
-import { useFormStore } from "@/stores/formStoreProvider";
 
 export default function BridgeForm() {
   const [isDestinationAddressOpen, setIsDestinationAddressOpen] = useState(false);

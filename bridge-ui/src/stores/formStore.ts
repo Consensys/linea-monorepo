@@ -1,12 +1,11 @@
 import { Address } from "viem";
-import { TokenInfo } from "@/config";
-import { BridgeType } from "@/config/config";
 import { defaultTokensConfig } from "./tokenStore";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
+import { BridgeType, Token } from "@/types";
 
 export type FormState = {
-  token: TokenInfo;
+  token: Token;
   recipient: Address;
   amount: bigint | null;
   balance: bigint;
@@ -18,7 +17,7 @@ export type FormState = {
 };
 
 export type FormActions = {
-  setToken: (token: TokenInfo) => void;
+  setToken: (token: Token) => void;
   setRecipient: (recipient: Address) => void;
   setAmount: (amount: bigint) => void;
   setBalance: (balance: bigint) => void;

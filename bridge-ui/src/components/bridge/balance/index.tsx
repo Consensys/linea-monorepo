@@ -1,11 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useBlockNumber } from "wagmi";
-import { formatBalance } from "@/utils/format";
-import { useTokenBalance } from "@/hooks/useTokenBalance";
+import { formatBalance } from "@/utils";
+import { useTokenBalance, useSelectedToken } from "@/hooks";
 import styles from "./balance.module.scss";
-import { useSelectedToken } from "@/hooks/useSelectedToken";
-import { useFormStore } from "@/stores/formStoreProvider";
+import { useFormStore } from "@/stores";
 
 export function Balance() {
   // Context

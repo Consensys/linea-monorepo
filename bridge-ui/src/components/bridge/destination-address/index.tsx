@@ -1,10 +1,10 @@
 import { ChangeEvent, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
+import { isAddress } from "viem";
 import clsx from "clsx";
 import styles from "./destination-address.module.scss";
 import XCircleIcon from "@/assets/icons/x-circle.svg";
-import { useFormStore } from "@/stores/formStoreProvider";
-import { isAddress } from "viem";
+import { useFormStore } from "@/stores";
 
 export function DestinationAddress() {
   const { address } = useAccount();

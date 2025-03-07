@@ -2,8 +2,7 @@ import { useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
 import { Address } from "viem";
 import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
 import useClaimTxArgs from "./transaction-args/useClaimTransactionTxArgs";
-import { Chain } from "@/types";
-import { TransactionStatus } from "@/types/transaction";
+import { Chain, TransactionStatus } from "@/types";
 
 type UseClaimProps = {
   status?: TransactionStatus;

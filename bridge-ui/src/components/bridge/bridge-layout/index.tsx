@@ -3,15 +3,11 @@
 import { useIsLoggedIn } from "@dynamic-labs/sdk-react-core";
 import { useAccount } from "wagmi";
 import Bridge from "../form";
-import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
 import TransactionHistory from "../transaction-history";
 import { supportedChainIds } from "@/lib/wagmi";
-import { useTokens } from "@/hooks/useTokens";
-import { useChainStore } from "@/stores/chainStore";
-import { BridgeType } from "@/config/config";
-import { ChainLayer } from "@/types";
-import { FormStoreProvider } from "@/stores/formStoreProvider";
-import { FormState } from "@/stores/formStore";
+import { useTokens } from "@/hooks";
+import { useChainStore, FormStoreProvider, FormState, useNativeBridgeNavigationStore } from "@/stores";
+import { BridgeType, ChainLayer } from "@/types";
 
 export default function BridgeLayout() {
   const isTransactionHistoryOpen = useNativeBridgeNavigationStore.useIsTransactionHistoryOpen();

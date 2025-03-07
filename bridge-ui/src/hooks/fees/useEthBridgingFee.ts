@@ -1,10 +1,7 @@
 import { Address } from "viem";
-import { Chain, ChainLayer } from "@/types";
-import { estimateEthGasFee } from "@/utils/fees";
-import { TokenInfo } from "@/config";
 import { useQuery } from "@tanstack/react-query";
-import { isEth } from "@/utils/tokens";
-import { BridgeProvider } from "@/config/config";
+import { BridgeProvider, Chain, ChainLayer, Token } from "@/types";
+import { estimateEthGasFee, isEth } from "@/utils";
 
 type UseEthBridgingFeeProps = {
   account?: Address;
@@ -13,7 +10,7 @@ type UseEthBridgingFeeProps = {
   fromChain: Chain;
   toChain: Chain;
   nextMessageNumber: bigint;
-  token: TokenInfo;
+  token: Token;
   claimingType: "auto" | "manual";
 };
 

@@ -1,6 +1,6 @@
 import { formatEther } from "viem";
 import styles from "./gas-fees-list-item.module.scss";
-import { CurrencyOption } from "@/stores/configStore";
+import { CurrencyOption } from "@/stores";
 
 type Props = {
   name: string;

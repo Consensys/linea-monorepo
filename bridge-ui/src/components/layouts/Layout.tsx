@@ -1,12 +1,12 @@
 "use client";
 
+import Image from "next/image";
+import clsx from "clsx";
+import { usePathname } from "next/navigation";
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import Header from "../header";
 import { useInitialiseChain } from "@/hooks";
-import { Theme } from "@/types/ui";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
-import clsx from "clsx";
-import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
+import { Theme } from "@/types";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { sdkHasLoaded } = useDynamicContext();

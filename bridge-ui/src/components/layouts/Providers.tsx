@@ -1,5 +1,5 @@
 import { Web3Provider } from "@/contexts/web3.context";
-import { TokenStoreProvider } from "@/stores/tokenStoreProvider";
+import { TokenStoreProvider } from "@/stores";
 import { getTokenConfig } from "@/services/tokenService";
 
 type ProvidersProps = {

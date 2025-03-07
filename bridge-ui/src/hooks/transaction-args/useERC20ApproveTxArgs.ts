@@ -1,10 +1,9 @@
 import { useAccount } from "wagmi";
 import { encodeFunctionData } from "viem";
-import { useChainStore } from "@/stores/chainStore";
-import { useFormStore } from "@/stores/formStoreProvider";
+import { useFormStore, useChainStore } from "@/stores";
 import ERC20Abi from "@/abis/ERC20.json";
-import { isEth } from "@/utils/tokens";
-import { BridgeProvider } from "@/config/config";
+import { isEth } from "@/utils";
+import { BridgeProvider } from "@/types";
 
 type UseERC20ApproveTxArgsProps = {
   allowance?: bigint;

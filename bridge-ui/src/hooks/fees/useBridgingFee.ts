@@ -1,16 +1,15 @@
 import { useMemo } from "react";
 import { Address } from "viem";
-import { TokenInfo } from "@/config";
-import { useChainStore } from "@/stores/chainStore";
 import useFeeData from "./useFeeData";
 import useMessageNumber from "../useMessageNumber";
 import useERC20BridgingFee from "./useERC20BridgingFee";
 import useEthBridgingFee from "./useEthBridgingFee";
-import { isEth } from "@/utils/tokens";
-import { useFormStore } from "@/stores/formStoreProvider";
+import { useFormStore, useChainStore } from "@/stores";
+import { Token } from "@/types";
+import { isEth } from "@/utils";
 
 type UseBridgingFeeProps = {
-  token: TokenInfo;
+  token: Token;
   account?: Address;
   recipient: Address;
   amount: bigint;

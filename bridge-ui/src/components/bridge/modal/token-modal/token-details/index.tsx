@@ -2,19 +2,16 @@
 
 import React from "react";
 import Image from "next/image";
-import { TokenInfo } from "@/config/config";
 import styles from "./token-details.module.scss";
-import { useTokenStore } from "@/stores/tokenStoreProvider";
-import { useChainStore } from "@/stores/chainStore";
-import { CurrencyOption } from "@/stores/configStore";
-import { isEth } from "@/utils/tokens";
-import { useTokenBalance } from "@/hooks/useTokenBalance";
-import { useFormStore } from "@/stores/formStoreProvider";
+import { useTokenBalance } from "@/hooks";
+import { useFormStore, useTokenStore, useChainStore, CurrencyOption } from "@/stores";
 import { formatUnits } from "viem";
+import { Token } from "@/types";
+import { isEth } from "@/utils";
 
 interface TokenDetailsProps {
-  token: TokenInfo;
-  onTokenClick: (token: TokenInfo) => void;
+  token: Token;
+  onTokenClick: (token: Token) => void;
   tokenPrice?: number;
   currency: CurrencyOption;
 }

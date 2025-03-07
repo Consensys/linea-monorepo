@@ -3,12 +3,12 @@
 import { useAccount } from "wagmi";
 import styles from "./transaction-history.module.scss";
 import ArrowLeftIcon from "@/assets/icons/arrow-left.svg";
-import { useNativeBridgeNavigationStore } from "@/stores/nativeBridgeNavigationStore";
+import { useNativeBridgeNavigationStore } from "@/stores";
 import Button from "../../ui/button";
 import ListTransaction from "./list-transaction";
 import NoTransaction from "./no-transaction";
 import TransactionNotConnected from "./transaction-not-connected";
-import useTransactionHistory from "@/hooks/useTransactionHistory";
+import { useTransactionHistory } from "@/hooks";
 import SkeletonLoader from "./skeleton-loader";
 
 export default function TransactionHistory() {

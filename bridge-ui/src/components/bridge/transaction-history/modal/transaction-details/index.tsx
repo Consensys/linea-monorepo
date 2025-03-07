@@ -2,19 +2,15 @@ import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useAccount, useTransactionReceipt } from "wagmi";
 import { formatEther, zeroAddress } from "viem";
-import { formatDate, fromUnixTime } from "date-fns";
+import { useQueryClient } from "@tanstack/react-query";
 import Modal from "@/components/modal";
 import styles from "./transaction-details.module.scss";
 import Button from "@/components/ui/button";
-import { formatBalance, formatHex } from "@/utils/format";
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
-import { BridgeTransaction } from "@/utils/history";
-import useTokenPrices from "@/hooks/useTokenPrices";
-import { useConfigStore } from "@/stores/configStore";
-import useClaim from "@/hooks/useClaim";
-import { useQueryClient } from "@tanstack/react-query";
-import { useChainStore } from "@/stores/chainStore";
-import { TransactionStatus } from "@/types/transaction";
+import { useConfigStore, useChainStore } from "@/stores";
+import { useClaim, useTokenPrices } from "@/hooks";
+import { TransactionStatus } from "@/types";
+import { formatBalance, formatHex, formatTimestamp, BridgeTransaction } from "@/utils";
 
 type Props = {
   transaction: BridgeTransaction | undefined;
@@ -27,9 +23,8 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
   const currency = useConfigStore((state) => state.currency);
-  const formattedTimestamp = transaction?.timestamp ? fromUnixTime(Number(transaction.timestamp)) : "";
-  const formattedDate = transaction?.timestamp ? formatDate(formattedTimestamp, "MMM, dd, yyyy") : "";
-  const formattedTime = transaction?.timestamp ? formatDate(formattedTimestamp, "ppp") : "";
+  const formattedDate = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "MMM, dd, yyyy") : "";
+  const formattedTime = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "ppp") : "";
 
   const { data: tokensPrices } = useTokenPrices([zeroAddress], transaction?.fromChain.id);
 

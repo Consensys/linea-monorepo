@@ -1,12 +1,10 @@
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { encodeFunctionData } from "viem";
-import { useChainStore } from "@/stores/chainStore";
-import { useFormStore } from "@/stores/formStoreProvider";
+import { useFormStore, useChainStore } from "@/stores";
 import MessageService from "@/abis/MessageService.json";
-import { isEth } from "@/utils/tokens";
-import { BridgeProvider } from "@/config/config";
-import { ChainLayer } from "@/types";
+import { isEth } from "@/utils";
+import { BridgeProvider, ChainLayer } from "@/types";
 
 const useEthBridgeTxArgs = () => {
   const { address } = useAccount();

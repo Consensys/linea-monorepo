@@ -2,11 +2,9 @@ import { ChangeEvent, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { formatUnits, parseUnits } from "viem";
 import { useIsLoggedIn } from "@/lib/dynamic";
-import useTokenPrices from "@/hooks/useTokenPrices";
-import { useChainStore } from "@/stores/chainStore";
+import { useTokenPrices } from "@/hooks";
+import { useChainStore, useConfigStore, useFormStore } from "@/stores";
 import styles from "./amount.module.scss";
-import { useConfigStore } from "@/stores/configStore";
-import { useFormStore } from "@/stores/formStoreProvider";
 
 const AMOUNT_REGEX = /^[0-9]*[.,]?[0-9]*$/;
 const MAX_AMOUNT_CHAR = 20;

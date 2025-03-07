@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Address } from "viem";
-import { fetchTokenPrices } from "@/services/tokenService";
 import log from "loglevel";
-import { useConfigStore } from "@/stores/configStore";
+import { fetchTokenPrices } from "@/services/tokenService";
+import { useConfigStore } from "@/stores";
 
 type UseTokenPrices = {
   data: Record<string, number>;

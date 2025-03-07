@@ -1,13 +1,12 @@
 import Image from "next/image";
+import { formatUnits } from "viem";
 import styles from "./with-fees.module.scss";
 import { useState } from "react";
-import { BridgeType } from "@/config/config";
 import GasFees from "../../../modal/gas-fees";
 import AcrossFees from "../../../modal/across-fees";
-import { formatUnits } from "viem";
-import useFees from "@/hooks/fees/useFees";
-import { useConfigStore } from "@/stores/configStore";
-import { useFormStore } from "@/stores/formStoreProvider";
+import { useFees } from "@/hooks";
+import { useConfigStore, useFormStore } from "@/stores";
+import { BridgeType } from "@/types";
 
 type Props = {
   iconPath: string;

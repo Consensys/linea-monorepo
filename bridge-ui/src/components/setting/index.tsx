@@ -5,11 +5,9 @@ import SettingIcon from "@/assets/icons/setting.svg";
 import ToggleSwitch from "@/components/ui/toggle-switch";
 import { useEffect, useRef, useState } from "react";
 import CurrencyDropdown from "@/components/bridge/currency-dropdown";
-import { useConfigStore } from "@/stores/configStore";
-import { useChainStore } from "@/stores/chainStore";
-import { useChains } from "@/hooks/useChains";
+import { useConfigStore, useChainStore, useFormStore } from "@/stores";
+import { useChains } from "@/hooks";
 import { ChainLayer } from "@/types";
-import { useFormStore } from "@/stores/formStoreProvider";
 
 export default function Setting() {
   const dropdownRef = useRef<HTMLDivElement | null>(null);

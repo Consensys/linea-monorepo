@@ -2,7 +2,7 @@ import { useState } from "react";
 import EstimatedTimeModal from "../../modal/estimated-time";
 import ClockIcon from "@/assets/icons/clock.svg";
 import styles from "./estimated-time.module.scss";
-import { useChainStore } from "@/stores/chainStore";
+import { useChainStore } from "@/stores";
 import { ChainLayer } from "@/types";
 
 export default function EstimatedTime() {

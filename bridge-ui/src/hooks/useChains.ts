@@ -1,8 +1,7 @@
-import { useChainStore } from "@/stores/chainStore";
-import { useConfigStore } from "@/stores/configStore";
 import { useMemo } from "react";
+import { useConfigStore, useChainStore } from "@/stores";
 
-export const useChains = () => {
+const useChains = () => {
   const chains = useChainStore.useChains();
   const testnetsEnabled = useConfigStore.useShowTestnet();
 
@@ -14,3 +13,5 @@ export const useChains = () => {
     return chains.filter((chain) => chain.testnet);
   }, [chains, testnetsEnabled]);
 };
+
+export default useChains;

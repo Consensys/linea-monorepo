@@ -1,16 +1,14 @@
-import { config } from "@/lib/wagmi";
 import { Address } from "viem";
 import { compareAsc, fromUnixTime, subDays } from "date-fns";
 import { getPublicClient } from "@wagmi/core";
 import { LineaSDK, OnChainMessageStatus } from "@consensys/linea-sdk";
+import { config } from "@/lib/wagmi";
 import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
-import { eventETH, eventERC20V2 } from "@/utils/transactionParsers";
 import { BridgingInitiatedV2Event, MessageSentEvent } from "@/models";
-import { Chain, ChainLayer } from "@/types";
-import { TokenInfo } from "@/config";
-import { defaultTokensConfig } from "@/stores/tokenStore";
-import { LineaSDKContracts } from "@/hooks/useLineaSDK";
-import { TransactionStatus } from "@/types/transaction";
+import { defaultTokensConfig } from "@/stores";
+import { LineaSDKContracts } from "@/hooks";
+import { Chain, ChainLayer, Token, TransactionStatus } from "@/types";
+import { eventETH, eventERC20V2 } from "@/utils";
 
 type TransactionHistoryParams = {
   lineaSDK: LineaSDK;
@@ -18,7 +16,7 @@ type TransactionHistoryParams = {
   fromChain: Chain;
   toChain: Chain;
   address: Address;
-  tokens: TokenInfo[];
+  tokens: Token[];
 };
 
 export interface BridgeTransaction {
@@ -27,7 +25,7 @@ export interface BridgeTransaction {
   timestamp: bigint;
   fromChain: Chain;
   toChain: Chain;
-  token: TokenInfo;
+  token: Token;
   message: {
     from: Address;
     to: Address;
@@ -64,7 +62,7 @@ async function fetchBridgeEvents(
   fromChain: Chain,
   toChain: Chain,
   address: Address,
-  tokens: TokenInfo[],
+  tokens: Token[],
 ): Promise<BridgeTransaction[]> {
   const [ethEvents, erc20Events] = await Promise.all([
     fetchETHBridgeEvents(lineaSDK, lineaSDKContracts, address, fromChain, toChain, tokens),
@@ -80,7 +78,7 @@ async function fetchETHBridgeEvents(
   address: Address,
   fromChain: Chain,
   toChain: Chain,
-  tokens: TokenInfo[],
+  tokens: Token[],
 ): Promise<BridgeTransaction[]> {
   const transactionsMap = new Map<string, BridgeTransaction>();
 
@@ -176,7 +174,7 @@ async function fetchERC20BridgeEvents(
   address: Address,
   fromChain: Chain,
   toChain: Chain,
-  tokens: TokenInfo[],
+  tokens: Token[],
 ): Promise<BridgeTransaction[]> {
   const transactionsMap = new Map<string, BridgeTransaction>();
 

@@ -1,8 +1,8 @@
 import { watchAccount } from "@wagmi/core";
 import { useEffect } from "react";
-import { useChainStore } from "@/stores/chainStore";
+import { useChainStore } from "@/stores";
 import { config } from "@/lib/wagmi";
-import { useChains } from "./useChains";
+import useChains from "./useChains";
 import { Chain } from "@/types";
 
 const useInitialiseChain = () => {

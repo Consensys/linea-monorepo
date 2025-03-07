@@ -1,10 +1,10 @@
 import { useAccount, useBalance, useReadContract } from "wagmi";
 import { erc20Abi } from "viem";
-import { useChainStore } from "@/stores/chainStore";
-import { TokenInfo } from "@/config";
-import { isEth } from "@/utils/tokens";
+import { useChainStore } from "@/stores";
+import { isEth } from "@/utils";
+import { Token } from "@/types";
 
-export function useTokenBalance(token: TokenInfo) {
+const useTokenBalance = (token: Token) => {
   const { address } = useAccount();
   const fromChain = useChainStore.useFromChain();
 
@@ -45,4 +45,6 @@ export function useTokenBalance(token: TokenInfo) {
       }
     },
   };
-}
+};
+
+export default useTokenBalance;

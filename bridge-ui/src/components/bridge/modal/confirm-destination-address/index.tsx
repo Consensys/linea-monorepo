@@ -1,8 +1,8 @@
+import Link from "next/link";
 import Modal from "@/components/modal";
 import styles from "./confirm-destination-address.module.scss";
 import Button from "@/components/ui/button";
-import { formatAddress } from "@/utils/format";
-import Link from "next/link";
+import { formatAddress } from "@/utils";
 import UnionIcon from "@/assets/icons/union.svg";
 
 type Props = {
