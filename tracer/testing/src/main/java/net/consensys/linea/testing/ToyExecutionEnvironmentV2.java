@@ -96,6 +96,10 @@ public class ToyExecutionEnvironmentV2 {
     return tracer.getHub();
   }
 
+  public ZkTracer getZkTracer() {
+    return tracer;
+  }
+
   public GeneralStateTestCaseEipSpec buildGeneralStateTestCaseSpec(ProtocolSpec protocolSpec) {
     Map<String, ReferenceTestWorldState.AccountMock> accountMockMap =
         accounts.stream()

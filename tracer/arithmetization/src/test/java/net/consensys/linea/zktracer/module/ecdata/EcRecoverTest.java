@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.ecdata;
 
 import static net.consensys.linea.zktracer.module.ecdata.EcDataOperation.SECP256K1N;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -75,29 +77,26 @@ public class EcRecoverTest {
             .push(0x80) // retOffset
             .push(0x80) // argSize
             .push(0) // argOffset
-            .push(1) // address
+            .push(Address.ECREC) // address
             .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run();
 
-    // Retrieve recoveredAddress, internalChecksPassed, successBit
+    final EcData ecData = bytecodeRunner.getHub().ecData();
+
     // Assert internalChecksPassed and successBit are what expected
-    EcDataOperation ecDataOperation = bytecodeRunner.getHub().ecData().operations().get(0);
-    EWord recoveredAddress =
-        EWord.of(
-            ecDataOperation.limb().get(8).toUnsignedBigInteger(),
-            ecDataOperation.limb().get(9).toUnsignedBigInteger());
+    final EcDataOperation ecDataOperation = ecData.operations().get(0);
     boolean internalChecksPassed = ecDataOperation.internalChecksPassed();
     boolean successBit = ecDataOperation.successBit();
 
     assertEquals(expectedInternalChecksPassed, internalChecksPassed);
     assertEquals(expectedSuccessBit, successBit);
 
-    System.out.println("recoveredAddress: " + recoveredAddress);
-    System.out.println("internalChecksPassed: " + internalChecksPassed);
-    System.out.println("successBit: " + successBit);
+    // Check that the line count is made
+    assertEquals(
+        internalChecksPassed ? 1 : 0, bytecodeRunner.getHub().ecRecoverEffectiveCall().lineCount());
   }
 
   private static Stream<Arguments> ecRecoverSource() {
@@ -258,5 +257,18 @@ public class EcRecoverTest {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run();
+
+    final EcData ecData = bytecodeRunner.getHub().ecData();
+
+    // Assert internalChecksPassed and successBit are what expected
+    final EcDataOperation ecDataOperation = ecData.operations().get(0);
+    boolean internalChecksPassed = ecDataOperation.internalChecksPassed();
+    boolean successBit = ecDataOperation.successBit();
+
+    assertFalse(internalChecksPassed);
+    assertFalse(successBit);
+
+    // Check that the line count is made
+    assertEquals(0, bytecodeRunner.getHub().ecRecoverEffectiveCall().lineCount());
   }
 }

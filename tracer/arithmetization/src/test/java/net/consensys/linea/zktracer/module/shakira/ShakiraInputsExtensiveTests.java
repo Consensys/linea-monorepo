@@ -16,8 +16,10 @@
 package net.consensys.linea.zktracer.module.shakira;
 
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
+import static net.consensys.linea.zktracer.module.limits.precompiles.Sha256Blocks.numberOfSha256Blocks;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +29,7 @@ import java.util.stream.Stream;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
+import net.consensys.linea.zktracer.module.limits.precompiles.Sha256Blocks;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -56,15 +59,22 @@ public class ShakiraInputsExtensiveTests {
   @ParameterizedTest
   @MethodSource("inputs")
   void shakiraInputTesting(final int size, final int offset, final OpCode instruction) {
-    BytecodeRunner.of(
+    final BytecodeRunner bytecodeRunner =
+        BytecodeRunner.of(
             BytecodeCompiler.newProgram()
                 .op(CALLDATASIZE)
                 .push(0)
                 .push(0)
                 .op(CALLDATACOPY)
                 .immediate(instructionSpecificBytecode(size, offset, instruction))
-                .compile())
-        .run();
+                .compile());
+    bytecodeRunner.run();
+
+    // check line Counting if SHA245 PRC is called
+    if (instruction.isCall()) {
+      final Sha256Blocks sha256Blocks = bytecodeRunner.getHub().sha256Blocks();
+      assertEquals(size == 0 ? 0 : numberOfSha256Blocks(size), sha256Blocks.lineCount());
+    }
   }
 
   private Stream<Arguments> inputs() {

@@ -33,8 +33,11 @@ import java.util.stream.Stream;
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
+import net.consensys.linea.zktracer.module.ecdata.EcData;
+import net.consensys.linea.zktracer.module.ecdata.EcDataOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -120,12 +123,14 @@ public class EcPairingTest {
             .push(0) // retOffset
             .push(192) // argSize
             .push(0) // argOffset
-            .push(8) // address
+            .push(Address.ALTBN128_PAIRING) // address
             .push(Bytes.fromHexStringLenient("0xFFFFFFFF")) // gas
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run();
+
+    assertLineCount(bytecodeRunner);
   }
 
   @Test
@@ -165,6 +170,8 @@ public class EcPairingTest {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run();
+
+    assertLineCount(bytecodeRunner);
   }
 
   @ParameterizedTest
@@ -223,6 +230,8 @@ public class EcPairingTest {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run();
+
+    assertLineCount(bytecodeRunner);
 
     // Set arguments for TestWatcher
     EcPairingArgumentsSingleton.getInstance()
@@ -625,6 +634,28 @@ public class EcPairingTest {
             argumentsListToPairingsAsString(successfulNonTrivialPairingTotalPairings4)));
 
     return allPairings.stream();
+  }
+
+  private static void assertLineCount(BytecodeRunner bytecodeRunner) {
+    // Check that the line count is made
+    final EcData ecData = bytecodeRunner.getHub().ecData();
+    final EcDataOperation ecDataOperation = ecData.operations().get(0);
+    final boolean internalChecksPassed = ecDataOperation.internalChecksPassed();
+    final int circuitSelectorEcPairingCounter = ecDataOperation.circuitSelectorEcPairingCounter();
+    final int circuitSelectorG2MembershipCounter =
+        ecDataOperation.circuitSelectorG2MembershipCounter();
+
+    assertEquals(
+        circuitSelectorEcPairingCounter > 0 ? 1 : 0,
+        bytecodeRunner.getHub().ecPairingFinalExponentiations().lineCount());
+
+    assertEquals(
+        internalChecksPassed ? circuitSelectorEcPairingCounter : 0,
+        bytecodeRunner.getHub().ecPairingMillerLoops().lineCount());
+
+    assertEquals(
+        internalChecksPassed ? circuitSelectorG2MembershipCounter : 0,
+        bytecodeRunner.getHub().ecPairingG2MembershipCalls().lineCount());
   }
 
   // Tests for support methods
