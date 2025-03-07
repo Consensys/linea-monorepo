@@ -757,7 +757,8 @@ func (runtime *ProverRuntime) exec(name string, action any) {
 	}
 
 	if runtime.PerformanceMonitor.Active {
-		monitor, err := profiling.StartPerformanceMonitor(name, runtime.PerformanceMonitor.SampleDuration, runtime.PerformanceMonitor.ProfileDir)
+		profilingPath := path.Join(runtime.PerformanceMonitor.ProfileDir, name)
+		monitor, err := profiling.StartPerformanceMonitor(name, runtime.PerformanceMonitor.SampleDuration, profilingPath)
 		if err != nil {
 			panic("error setting up performance monitor for " + name)
 		}

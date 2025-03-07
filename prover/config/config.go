@@ -113,7 +113,7 @@ type Config struct {
 	BlobDecompression          BlobDecompression `mapstructure:"blob_decompression"`
 	Aggregation                Aggregation
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
-	Debug                      Debug
+	Debug                      Debug       `mapstructure:"debug"`
 
 	Layer2 struct {
 		// ChainID stores the ID of the Linea L2 network to consider.
