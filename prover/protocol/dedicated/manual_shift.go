@@ -83,9 +83,11 @@ func (m ManuallyShifted) Assign(run *wizard.ProverRuntime) {
 	}
 
 	if m.Offset > 0 {
-		shiftedVal := append(valVec[:size-m.Offset], make([]field.Element, m.Offset)...)
+		shiftedVal := append(valVec[m.Offset:], make([]field.Element, m.Offset)...)
 		res = smartvectors.NewRegular(shiftedVal)
 	}
+
+	fmt.Printf("Assigning %s (offset=%v) to %s\n", m.ID, m.Offset, res.Pretty())
 
 	run.AssignColumn(m.ID, res)
 }

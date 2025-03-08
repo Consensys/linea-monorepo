@@ -92,7 +92,7 @@ func (rc CyclicCounter) Assign(run *wizard.ProverRuntime) {
 		isActive = column.EvalExprColumn(run, board).IntoRegVecSaveAlloc()
 	}
 
-	for i := range isActive {
+	for i := 0; i < size; i++ {
 
 		if !rc.FullyActive && isActive[i].IsZero() {
 			res = res[:i:i]

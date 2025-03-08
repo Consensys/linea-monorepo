@@ -119,10 +119,12 @@ func (hbtc *HeartBeatColumnTestcase) Name() string {
 func TestHeartBeat(t *testing.T) {
 
 	for _, tc := range ListOfHeartBeatTestcase {
-		testtools.RunTestcase(
-			t,
-			tc,
-			[]func(*wizard.CompiledIOP){dummy.Compile},
-		)
+		t.Run(tc.Name(), func(t *testing.T) {
+			testtools.RunTestcase(
+				t,
+				tc,
+				[]func(*wizard.CompiledIOP){dummy.Compile},
+			)
+		})
 	}
 }
