@@ -9,8 +9,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
-// returns the symbolic expression of a column obtained as a random linear combinations of differents handles
-// without committing to the column itself
+// RandLinCombColSymbolic generates a symbolic expression representing a random
+// linear combination of columns (hs) using a random coin value (x). It converts
+// each column to a symbolic variable and returns a polynomial expression with
+// the coin value and each columns as the variables.
 func RandLinCombColSymbolic(x coin.Info, hs []ifaces.Column) *symbolic.Expression {
 	cols := make([]*symbolic.Expression, len(hs))
 	for c := range cols {
@@ -20,8 +22,13 @@ func RandLinCombColSymbolic(x coin.Info, hs []ifaces.Column) *symbolic.Expressio
 	return expr
 }
 
-// return the runtime assignments of a linear combination column
-// that is computed on the fly from the columns stored in hs
+// RandLinCombColAssignment computes the runtime assignment of a linear combination
+// of columns. It takes a wizard.ProverRuntime, a random coin value, and a slice of
+// columns as input. The function iteratively multiplies each column's assignment
+// by a cumulative product of the coin value and adds the results to a running total,
+// effectively computing a weighted sum of the columns. The weights are powers of the
+// coin value. The function returns the resulting linear combination as a
+// [smartvectors.SmartVector].
 func RandLinCombColAssignment(run *wizard.ProverRuntime, coinVal field.Element, hs []ifaces.Column) smartvectors.SmartVector {
 	var colTableWit smartvectors.SmartVector
 	var witnessCollapsed smartvectors.SmartVector
@@ -33,4 +40,23 @@ func RandLinCombColAssignment(run *wizard.ProverRuntime, coinVal field.Element, 
 		x.Mul(&x, &coinVal)
 	}
 	return witnessCollapsed
+}
+
+// ColumnsOfExpression returns the list of all the columns occuring as variables of
+// the provided expression.
+func ColumnsOfExpression(expr *symbolic.Expression) []ifaces.Column {
+
+	var (
+		board    = expr.Board()
+		metadata = board.ListVariableMetadata()
+		res      []ifaces.Column
+	)
+
+	for i := range metadata {
+		if _, ok := metadata[i].(ifaces.Column); ok {
+			res = append(res, metadata[i].(ifaces.Column))
+		}
+	}
+
+	return res
 }

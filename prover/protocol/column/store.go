@@ -93,7 +93,7 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 // the requested column is a [Natural].
 func (s *Store) GetSize(n ifaces.ColID) int {
 	if s == nil {
-		panic("null pointer here")
+		panic("column with a null pointer to the [Store]")
 	}
 	info := s.info(n)
 	return info.Size

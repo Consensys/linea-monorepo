@@ -1,13 +1,14 @@
 package globalcs
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"math/big"
 	"reflect"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 
 	"github.com/sirupsen/logrus"
 
@@ -135,8 +136,7 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 			}
 
 			var (
-				rootCol          = column.RootParents(col)
-				isShiftOrNatural = len(rootCol) == 1 && rootCol[0].Size() == col.Size()
+				rootCol = column.RootParents(col)
 			)
 
 			// Append the handle (we trust that there are no duplicate of handles
@@ -145,8 +145,8 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 			// does not refer to duplicates of the same variable.
 			ctx.ColumnsForRatio[k] = append(ctx.ColumnsForRatio[k], col)
 
-			if isShiftOrNatural && !uniqueRootsForRatio.Exists(rootCol[0].GetColID()) {
-				ctx.RootsForRatio[k] = append(ctx.RootsForRatio[k], rootCol[0])
+			if !uniqueRootsForRatio.Exists(rootCol.GetColID()) {
+				ctx.RootsForRatio[k] = append(ctx.RootsForRatio[k], rootCol)
 			}
 
 			// Get the name of the
@@ -158,9 +158,9 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 			ctx.AllInvolvedColumns = append(ctx.AllInvolvedColumns, col)
 
 			// If the handle is simply a shift or a natural columns tracks its root
-			if isShiftOrNatural && !allInvolvedRootsSet.Exists(rootCol[0].GetColID()) {
-				allInvolvedRootsSet.Insert(rootCol[0].GetColID())
-				ctx.AllInvolvedRoots = append(ctx.AllInvolvedRoots, rootCol[0])
+			if !allInvolvedRootsSet.Exists(rootCol.GetColID()) {
+				allInvolvedRootsSet.Insert(rootCol.GetColID())
+				ctx.AllInvolvedRoots = append(ctx.AllInvolvedRoots, rootCol)
 			}
 		}
 	}
@@ -240,30 +240,6 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 			coeffs.Store(name, witness)
 		})
 
-		wg.Done()
-	}()
-
-	go func() {
-		ppool.ExecutePoolChunky(len(ctx.AllInvolvedColumns), func(k int) {
-			pol := ctx.AllInvolvedColumns[k]
-
-			// short-path, the column is a shifted column of an already
-			// present columns rule out interleaved and repeated columns.
-			rootCols := column.RootParents(pol)
-			if len(rootCols) == 1 && rootCols[0].Size() == pol.Size() {
-				// It was already processed by the above loop. Go on with the next entry
-				return
-			}
-
-			// normal case for interleaved or repeated columns
-			witness := pol.GetColAssignment(run)
-
-			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
-
-			name := pol.GetColID()
-
-			coeffs.Store(name, witness)
-		})
 		wg.Done()
 	}()
 
@@ -381,47 +357,42 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				pol := handles[k]
 				// short-path, the column is a purely Shifted(Natural) or a Natural
 				// (this excludes repeats and/or interleaved columns)
-				rootCols := column.RootParents(pol)
-				if len(rootCols) == 1 && rootCols[0].Size() == pol.Size() {
+				root := column.RootParents(pol)
+				rootName := root.GetColID()
 
-					root := rootCols[0]
-					name := root.GetColID()
+				reevaledRoot, found := computedReeval.Load(rootName)
 
-					reevaledRoot, found := computedReeval.Load(name)
-
-					if !found {
-						// it is expected to computed in the above loop
-						utils.Panic("did not find the reevaluation of %v", name)
-					}
-
-					// Now, we can reuse a soft-rotation of the smart-vector to save memory
-					if !pol.IsComposite() {
-						// in this case, the right vector was the root so we are done
-						return
-					}
-
-					if shifted, isShifted := pol.(column.Shifted); isShifted {
-						polName := pol.GetColID()
-						res := sv.SoftRotate(reevaledRoot.(sv.SmartVector), shifted.Offset)
-						computedReeval.Store(polName, res)
-						return
-					}
-
+				if !found {
+					// it is expected to computed in the above loop
+					utils.Panic("did not find the reevaluation of %v", rootName)
 				}
 
-				name := pol.GetColID()
-				_, ok := computedReeval.Load(name)
+				// Now, we can reuse a soft-rotation of the smart-vector to save memory
+				if !pol.IsComposite() {
+					// in this case, the right vector was the root so we are done
+					return
+				}
+
+				if shifted, isShifted := pol.(column.Shifted); isShifted {
+					polName := pol.GetColID()
+					res := sv.SoftRotate(reevaledRoot.(sv.SmartVector), shifted.Offset)
+					computedReeval.Store(polName, res)
+					return
+				}
+
+				polName := pol.GetColID()
+				_, ok := computedReeval.Load(polName)
 				if ok {
 					return
 				}
 
-				v, ok := coeffs.Load(name)
+				v, ok := coeffs.Load(polName)
 				if !ok {
-					utils.Panic("handle %v not found in the coeffs\n", name)
+					utils.Panic("handle %v not found in the coeffs\n", polName)
 				}
 
 				res := sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool)
-				computedReeval.Store(name, res)
+				computedReeval.Store(polName, res)
 
 			})
 

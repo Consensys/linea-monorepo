@@ -41,7 +41,6 @@ var _ frontend.Rangechecker = &externalRangeChecker{}
 type externalRangeChecker struct {
 	storeCommitBuilder
 	checked              []frontend.Variable
-	comp                 *wizard.CompiledIOP
 	rcCols               chan [][2]int
 	addGateForRangeCheck bool
 }
@@ -76,7 +75,7 @@ type storeCommitBuilder interface {
 //	// This returns the position of the wires to range-check.
 //	checkedWires := rcGetter()
 //	```
-func newExternalRangeChecker(comp *wizard.CompiledIOP, addGateForRangeCheck bool) (frontend.NewBuilder, func() [][2]int) {
+func newExternalRangeChecker(addGateForRangeCheck bool) (frontend.NewBuilder, func() [][2]int) {
 	rcCols := make(chan [][2]int)
 	return func(field *big.Int, config frontend.CompileConfig) (frontend.Builder, error) {
 			b, err := scs.NewBuilder(field, config)
@@ -89,7 +88,6 @@ func newExternalRangeChecker(comp *wizard.CompiledIOP, addGateForRangeCheck bool
 			}
 			return &externalRangeChecker{
 				storeCommitBuilder:   scb,
-				comp:                 comp,
 				rcCols:               rcCols,
 				addGateForRangeCheck: addGateForRangeCheck,
 			}, nil
