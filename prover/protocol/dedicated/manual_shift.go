@@ -87,8 +87,6 @@ func (m ManuallyShifted) Assign(run *wizard.ProverRuntime) {
 		res = smartvectors.NewRegular(shiftedVal)
 	}
 
-	fmt.Printf("Assigning %s (offset=%v) to %s\n", m.ID, m.Offset, res.Pretty())
-
 	run.AssignColumn(m.ID, res)
 }
 
