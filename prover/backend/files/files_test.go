@@ -19,11 +19,7 @@ const (
 
 func TestCheckFilePath(t *testing.T) {
 	// Create a temporary directory and file for testing.
-	tmpDir, err := os.MkdirTemp("", "testdir")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	tmpFile, err := os.CreateTemp(tmpDir, "testfile")
 	if err != nil {
@@ -68,11 +64,7 @@ func TestCheckFilePath(t *testing.T) {
 
 func TestCheckDirPath(t *testing.T) {
 	// Create a temporary directory and file for testing.
-	tmpDir, err := os.MkdirTemp("", "testdir")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	tmpFile, err := os.CreateTemp(tmpDir, "testfile")
 	if err != nil {
