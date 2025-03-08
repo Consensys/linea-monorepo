@@ -24,9 +24,7 @@ func TestDefine(t *testing.T) {
 			Coins:           wizard.NewRegister[coin.Name, coin.Info](),
 			Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
 		}
-
-		optimizationLevel = mir.DEFAULT_OPTIMISATION_LEVEL
-		schema, _, errBin = ReadZkevmBin(&optimizationLevel)
+		schema, _, errBin = ReadZkevmBin(&mir.DEFAULT_OPTIMISATION_LEVEL)
 		limits            = &config.TracesLimits{}
 		limitRefl         = reflect.ValueOf(limits).Elem()
 	)
