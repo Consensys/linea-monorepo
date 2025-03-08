@@ -1,7 +1,7 @@
 package sha2
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
@@ -67,15 +67,15 @@ type sha2BlockModule struct {
 	// column by the right value gives the appropriate negative offset gives the
 	// equivalent CanBeEndOfInstance. This is used to ensure that the IsActive
 	// column can only transition to 0 at the end of an instance.
-	CanBeBeginningOfInstance ifaces.Column
+	CanBeBeginningOfInstance *dedicated.HeartBeatColumn
 
 	// CanBeBlockOfInstance is a precomputed column indicating with 1s the
 	// position corresponding potentially
-	CanBeBlockOfInstance ifaces.Column
+	CanBeBlockOfInstance *dedicated.RepeatedPattern
 
 	// CanBeEndOfInstance is a precomputed column indicating with 1s the position
 	// corresponding to the end of blocks.
-	CanBeEndOfInstance ifaces.Column
+	CanBeEndOfInstance *dedicated.HeartBeatColumn
 
 	// IsActive is a binary indicator column indicating with a 1 the rows that
 	// are effectively used by the sha2BlockHashing module. This is used as a
@@ -94,7 +94,7 @@ type sha2BlockModule struct {
 
 	// IsEffFirstLaneOfNewHashShiftMin2 is a manually shifted version of the
 	// [IsFirstLaneOfNewHash] column with an offset of -2.
-	IsEffFirstLaneOfNewHashShiftMin2 dedicated.ManuallyShifted
+	IsEffFirstLaneOfNewHashShiftMin2 *dedicated.ManuallyShifted
 
 	// IsEffLastLaneOfCurrHash is a binary indicator column indicating with a 1
 	// the last row of every hash. It is used to ensure that HashHi and HashLo
@@ -131,9 +131,8 @@ type sha2BlockModule struct {
 func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2BlockModule {
 
 	var (
-		canBeBeginning, canBeBlock, canBeEnd = getPrecomputedTables(inp.MaxNbBlockPerCirc * inp.MaxNbCircuit)
-		colSize                              = canBeBeginning.Len()
-		declareCommit                        = func(s string) ifaces.Column {
+		colSize       = utils.NextPowerOfTwo(inp.MaxNbBlockPerCirc * inp.MaxNbCircuit * numRowPerInstance)
+		declareCommit = func(s string) ifaces.Column {
 			return comp.InsertCommit(
 				0,
 				ifaces.ColID(inp.Name+"_"+s),
@@ -142,18 +141,38 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		}
 
 		res = &sha2BlockModule{
-			Inputs:                   inp,
-			CanBeBeginningOfInstance: comp.InsertPrecomputed(ifaces.ColIDf("%v_CAN_BE_BEGINNING_OF_INSTANCE", inp.Name), canBeBeginning),
-			CanBeBlockOfInstance:     comp.InsertPrecomputed(ifaces.ColIDf("%v_CAN_BE_BLOCK_OF_INSTANCE", inp.Name), canBeBlock),
-			CanBeEndOfInstance:       comp.InsertPrecomputed(ifaces.ColIDf("%v_CAN_BE_END_OF_INSTANCE", inp.Name), canBeEnd),
-			IsActive:                 declareCommit("IS_ACTIVE"),
-			IsEffBlock:               declareCommit("IS_EFF_BLOCK"),
-			IsEffFirstLaneOfNewHash:  declareCommit("IS_EFF_FIRST_LANE_OF_NEW_HASH"),
-			IsEffLastLaneOfCurrHash:  declareCommit("IS_EFF_LAST_LANE_OF_CURR_HASH"),
-			HashHi:                   declareCommit("HASH_HI"),
-			HashLo:                   declareCommit("HASH_LO"),
-			Limbs:                    declareCommit("LIMBS"),
+			Inputs:                  inp,
+			IsActive:                declareCommit("IS_ACTIVE"),
+			IsEffBlock:              declareCommit("IS_EFF_BLOCK"),
+			IsEffFirstLaneOfNewHash: declareCommit("IS_EFF_FIRST_LANE_OF_NEW_HASH"),
+			IsEffLastLaneOfCurrHash: declareCommit("IS_EFF_LAST_LANE_OF_CURR_HASH"),
+			HashHi:                  declareCommit("HASH_HI"),
+			HashLo:                  declareCommit("HASH_LO"),
+			Limbs:                   declareCommit("LIMBS"),
 		}
+	)
+
+	res.CanBeBeginningOfInstance = dedicated.CreateHeartBeat(
+		comp,
+		0,
+		numRowPerInstance,
+		0,
+		res.IsActive,
+	)
+
+	res.CanBeEndOfInstance = dedicated.CreateHeartBeat(
+		comp,
+		0,
+		numRowPerInstance,
+		numRowPerInstance-1,
+		res.IsActive,
+	)
+
+	res.CanBeBlockOfInstance = dedicated.NewRepeatedPattern(
+		comp,
+		0,
+		vector.ForTest(0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0),
+		res.IsActive,
 	)
 
 	res.IsEffFirstLaneOfNewHashShiftMin2 = dedicated.ManuallyShift(comp, res.IsEffFirstLaneOfNewHash, -2)
@@ -168,7 +187,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		ifaces.QueryIDf("%v_IS_ACTIVE_FINISH_AFTER_END", inp.Name),
 		sym.Mul(
 			sym.Sub(column.Shift(res.IsActive, -1), res.IsActive),
-			sym.Sub(1, column.Shift(res.CanBeEndOfInstance, -1)),
+			sym.Sub(1, column.Shift(res.CanBeEndOfInstance.Natural, -1)),
 		),
 	)
 
@@ -179,9 +198,9 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		)
 	}
 
-	csIsMasked(res.CanBeBlockOfInstance, res.IsEffBlock)
-	csIsMasked(res.CanBeBeginningOfInstance, res.IsEffFirstLaneOfNewHash) // @alex: Unsure this is even needed.
-	csIsMasked(res.CanBeEndOfInstance, res.IsEffLastLaneOfCurrHash)
+	csIsMasked(res.CanBeBlockOfInstance.Natural, res.IsEffBlock)
+	csIsMasked(res.CanBeBeginningOfInstance.Natural, res.IsEffFirstLaneOfNewHash) // @alex: Unsure this is even needed.
+	csIsMasked(res.CanBeEndOfInstance.Natural, res.IsEffLastLaneOfCurrHash)
 
 	commonconstraints.MustZeroWhenInactive(
 		comp,
@@ -239,7 +258,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		ifaces.QueryIDf("%v_REUSING_PREV_HASHING_STATE_0", inp.Name),
 		sym.Mul(
 			sym.Sub(1, res.IsEffFirstLaneOfNewHash),
-			sym.Mul(res.CanBeBeginningOfInstance, res.IsActive),
+			sym.Mul(res.CanBeBeginningOfInstance.Natural, res.IsActive),
 			sym.Sub(res.Limbs, column.Shift(res.Limbs, -2)),
 		),
 	)
@@ -248,7 +267,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 		ifaces.QueryIDf("%v_REUSING_PREV_HASHING_STATE_1", inp.Name),
 		sym.Mul(
 			sym.Sub(1, res.IsEffFirstLaneOfNewHash),
-			sym.Mul(res.CanBeBeginningOfInstance, res.IsActive),
+			sym.Mul(res.CanBeBeginningOfInstance.Natural, res.IsActive),
 			sym.Sub(column.Shift(res.Limbs, 1), column.Shift(res.Limbs, -1)),
 		),
 	)
@@ -304,7 +323,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 				res.Inputs.PackedUint32,
 			},
 			ColumnB: []ifaces.Column{
-				res.IsEffFirstLaneOfNewHashShiftMin2,
+				res.IsEffFirstLaneOfNewHashShiftMin2.Natural,
 				res.Limbs,
 			},
 			FilterA: res.Inputs.Selector,
@@ -346,32 +365,4 @@ func (sbh *sha2BlockModule) WithCircuit(comp *wizard.CompiledIOP, options ...que
 	)
 
 	return sbh
-}
-
-// getPrecomputedTables computes the assignment to the precomputed tables of
-// the sha2BlockHashing struct.
-func getPrecomputedTables(maxNbBlock int) (canBeBeginning, canBeBlock, canBeEnd smartvectors.SmartVector) {
-
-	var (
-		maxEffLength        = maxNbBlock * numRowPerInstance
-		colSize             = utils.NextPowerOfTwo(maxEffLength)
-		canBeBeginningSlice = make([]field.Element, maxEffLength)
-		canBeEndSlice       = make([]field.Element, maxEffLength)
-		canBeBlockSlice     = make([]field.Element, maxEffLength)
-	)
-
-	for i := 0; i < maxNbBlock; i++ {
-
-		instanceStart := i * numRowPerInstance
-		canBeBeginningSlice[instanceStart].SetOne()
-		canBeEndSlice[instanceStart+numRowPerInstance-1].SetOne()
-
-		for k := 2; k < numRowPerInstance-2; k++ {
-			canBeBlockSlice[instanceStart+k].SetOne()
-		}
-	}
-
-	return smartvectors.RightZeroPadded(canBeBeginningSlice, colSize),
-		smartvectors.RightZeroPadded(canBeBlockSlice, colSize),
-		smartvectors.RightZeroPadded(canBeEndSlice, colSize)
 }

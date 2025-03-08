@@ -334,6 +334,12 @@ func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitness) {
 // filling of the missing rows of the global-constraint.
 func (m *ModuleGL) InsertGlobal(q query.GlobalConstraint) query.GlobalConstraint {
 
+	if q.Name() == "CYCLIC_COUNTER_4514_24_COUNTER_IS_ZERO_WHEN_INACTIVE" {
+		board := q.Expression.Board()
+		meta := board.ListVariableMetadata()
+		fmt.Printf("metadata = %v\n", meta)
+	}
+
 	var (
 		newExpr      = m.TranslateExpression(q.Expression)
 		newExprRound = wizardutils.LastRoundToEval(newExpr)

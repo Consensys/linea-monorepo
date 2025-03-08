@@ -63,7 +63,7 @@ func (mt *moduleTranslator) TranslateColumn(col ifaces.Column, sizeHint int) ifa
 	case verifiercol.ConstCol:
 		return verifiercol.NewConstantCol(c.F, sizeHint)
 	default:
-		utils.Panic("expected type of column: type: %T, name: %v", col, col.GetColID())
+		utils.Panic("unexpected type of column: type: %T, name: %v", col, col.GetColID())
 	}
 
 	return nil

@@ -4,12 +4,15 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -111,17 +114,25 @@ func precompileInitialWizard(comp *wizard.CompiledIOP) *wizard.CompiledIOP {
 //     [verifiercol.ConstCol]
 func auditInitialWizard(comp *wizard.CompiledIOP) error {
 
-	allPrecomputedColumns := comp.Precomputed.ListAllKeys()
 	var err error
 
-	for _, col := range allPrecomputedColumns {
-		err = errors.Join(err, fmt.Errorf("found precomputed column: %v", col))
-	}
-
-	allGlobalQueries := comp.QueriesNoParams.AllKeys()
-	for _, qname := range allGlobalQueries {
+	allQueriesNoParams := comp.QueriesNoParams.AllKeys()
+	for _, qname := range allQueriesNoParams {
 
 		q := comp.QueriesNoParams.Data(qname)
+
+		if glob, isGlob := q.(query.GlobalConstraint); isGlob {
+			var (
+				cols     = wizardutils.ColumnsOfExpression(glob.Expression)
+				rootCols = column.RootsOf(cols, true)
+			)
+
+			for _, col := range rootCols {
+				if comp.Precomputed.Exists(col.GetColID()) {
+					err = errors.Join(err, fmt.Errorf("found precomputed column: %v", col))
+				}
+			}
+		}
 
 		switch q_ := q.(type) {
 

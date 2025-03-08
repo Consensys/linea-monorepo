@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -17,11 +18,12 @@ type MIMCHasher struct {
 	// a typical isActive binary column, provided as an input to the module
 	isActive ifaces.Column
 	// the data to be hashed, this column is provided as an input to the module
-	inputData     ifaces.Column
-	inputIsActive ifaces.Column
-	data          ifaces.Column
-	canBeData     ifaces.Column // 1 1 0 1 0 1 0 1, complete assignment, never stops
-	isData        ifaces.Column //isActive * canBeData
+	inputData      ifaces.Column
+	inputIsActive  ifaces.Column
+	data           ifaces.Column
+	isData         ifaces.Column //isActive * canBeData
+	isDataFirstRow *dedicated.HeartBeatColumn
+	isDataOddRows  *dedicated.HeartBeatColumn
 	// this column stores the MiMC hashes
 	hash ifaces.Column
 	// a constant column that stores the last relevant value of the hash
@@ -32,7 +34,7 @@ type MIMCHasher struct {
 
 func NewMIMCHasher(comp *wizard.CompiledIOP, inputData, inputIsActive ifaces.Column, name string) *MIMCHasher {
 	size := 2 * inputData.Size()
-	return &MIMCHasher{
+	res := &MIMCHasher{
 		inputData:     inputData,
 		inputIsActive: inputIsActive,
 		data:          util.CreateCol(name, "DATA", size, comp),
@@ -41,8 +43,10 @@ func NewMIMCHasher(comp *wizard.CompiledIOP, inputData, inputIsActive ifaces.Col
 		HashFinal:     util.CreateCol(name, "HASH_FINAL", size, comp),
 		state:         util.CreateCol(name, "STATE", size, comp),
 		isData:        util.CreateCol(name, "IS_DATA", size, comp),
-		canBeData:     comp.InsertPrecomputed(ifaces.ColIDf("%s_%s", name, "CAN_BE_DATA"), computeCanBeData(size)),
 	}
+	res.isDataFirstRow = dedicated.CreateHeartBeat(comp, 0, size, 0, res.isActive)
+	res.isDataOddRows = dedicated.CreateHeartBeat(comp, 0, 2, 1, res.isActive)
+	return res
 }
 
 func DefineHashFilterConstraints(comp *wizard.CompiledIOP, hasher *MIMCHasher, name string) {
@@ -67,10 +71,8 @@ func DefineHashFilterConstraints(comp *wizard.CompiledIOP, hasher *MIMCHasher, n
 		ifaces.QueryIDf("%s_IS_DATA", name),
 		sym.Sub(
 			hasher.isData,
-			sym.Mul(
-				hasher.isActive,
-				hasher.canBeData,
-			),
+			hasher.isDataFirstRow.Natural,
+			hasher.isDataOddRows.Natural,
 		),
 	)
 	util.MustBeBinary(comp, hasher.isData)
@@ -209,14 +211,4 @@ func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 	run.AssignColumn(hasher.isActive.GetColID(), smartvectors.NewRegular(isActive))
 	run.AssignColumn(hasher.isData.GetColID(), smartvectors.NewRegular(isData))
 	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewConstant(finalHash, size))
-}
-
-func computeCanBeData(size int) smartvectors.SmartVector {
-	vect := make([]field.Element, size)
-	vect[0].SetOne()
-	vect[1].SetOne()
-	for i := 3; i < len(vect); i += 2 {
-		vect[i].SetOne()
-	}
-	return smartvectors.NewRegular(vect)
 }

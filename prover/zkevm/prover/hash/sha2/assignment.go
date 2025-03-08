@@ -106,6 +106,9 @@ func (sbh *sha2BlockModule) Run(run *wizard.ProverRuntime) {
 	assi.padAndAssign(run)
 
 	sbh.IsEffFirstLaneOfNewHashShiftMin2.Assign(run)
+	sbh.CanBeBeginningOfInstance.Assign(run)
+	sbh.CanBeBlockOfInstance.Assign(run)
+	sbh.CanBeEndOfInstance.Assign(run)
 
 	for i := range sbh.proverActions {
 		sbh.proverActions[i].Run(run)

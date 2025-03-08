@@ -92,7 +92,7 @@ func (c *piChiIota) csAIota(
 
 	two := symbolic.NewConstant(2)
 	three := symbolic.NewConstant(3)
-	d := ifaces.ColumnAsVariable(l.RC).
+	d := ifaces.ColumnAsVariable(l.RC.Natural).
 		Mul(two).
 		Mul(ifaces.ColumnAsVariable(mod.isActive))
 
@@ -175,13 +175,15 @@ func (c *piChiIota) assign(
 	isBlockBaseB ifaces.Column,
 ) {
 
+	lookups.RC.Assign(run)
+
 	// effNumRows is the number of rows that are effectively not padded
 	effNumRows := numKeccakf * keccak.NumRound
 	colSize := c.aIotaBaseB[0][0].Size()
 
 	// Fetch the the values of aPiOut with the assignment for aRho
 	aPiOut := [5][5][]field.Element{}
-	rc := lookups.RC.GetColAssignment(run)
+	rc := lookups.RC.Natural.GetColAssignment(run)
 	base1Clean := lookups.BaseAClean.GetColAssignment(run)
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {

@@ -105,7 +105,7 @@ func (hbtc *HeartBeatColumnTestcase) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn(hbtc.isActive.GetColID(), smartvectors.NewRegular(isActive))
 	hbtc.hb.Assign(run)
 
-	_ = hbtc.hb.GetColAssignment(run)
+	_ = hbtc.hb.Natural.GetColAssignment(run)
 }
 
 func (hbtc *HeartBeatColumnTestcase) MustFail() bool {

@@ -35,7 +35,7 @@ type ManuallyShifted struct {
 
 // ManuallyShift returns a cyclically version of root by offset. See
 // [ManuallyShifted] for more details.
-func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int) ManuallyShifted {
+func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int) *ManuallyShifted {
 
 	var (
 		name = fmt.Sprintf("ManualShift/%v", len(comp.Columns.AllKeys()))
@@ -56,7 +56,7 @@ func ManuallyShift(comp *wizard.CompiledIOP, root ifaces.Column, offset int) Man
 		),
 	)
 
-	return res
+	return &res
 }
 
 // Assign assigns [ManuallyShifted.Natural]

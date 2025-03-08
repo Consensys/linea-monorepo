@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -17,7 +18,7 @@ import (
 // represents a structured column. The structured column pulsates a "1" every
 // "period" rows with the provided offset.
 type HeartBeatColumn struct {
-	column.Natural
+	Natural column.Natural
 	Counter CyclicCounter
 	Offset  int
 	PAs     []wizard.ProverAction
@@ -31,18 +32,20 @@ type HeartBeatColumn struct {
 // The counter is furthermore controlled by an 'isActive' column: the values
 // of the column are forced to zero if isActive=0.
 type CyclicCounter struct {
-	column.Natural
-	Reset    ifaces.Column
-	Period   int
-	IsActive *sym.Expression
-	PAs      []wizard.ProverAction
+	Natural     column.Natural
+	Reset       ifaces.Column
+	Period      int
+	IsActive    *sym.Expression
+	FullyActive bool
+	ColumnSize  int
+	PAs         []wizard.ProverAction
 }
 
 // RepeatedPattern is a column populated with an ever-repeated pattern.
 // The pattern may have a non-zero power of two size. The column is
 // subjected to an "is-active" column.
 type RepeatedPattern struct {
-	column.Natural
+	Natural           column.Natural
 	Pattern           []field.Element
 	Counter           CyclicCounter
 	PatternPrecomp    ifaces.Column
@@ -68,10 +71,20 @@ func CreateHeartBeat(comp *wizard.CompiledIOP, round, period, offset int, isActi
 		return hb
 	}
 
-	res, isNat := IsZeroMask(comp, sym.Sub(hb.Counter, offset), isActive)
+	var (
+		_, isFullyActive, _ = cleanIsActive(isActive)
+		isZero              ifaces.Column
+		cptIsZero           wizard.ProverAction
+	)
 
-	hb.PAs = append(hb.PAs, isNat)
-	hb.Natural = res.(column.Natural)
+	if !isFullyActive {
+		isZero, cptIsZero = IsZeroMask(comp, sym.Sub(hb.Counter.Natural, offset), isActive)
+	} else {
+		isZero, cptIsZero = IsZero(comp, sym.Sub(hb.Counter.Natural, offset))
+	}
+
+	hb.PAs = append(hb.PAs, cptIsZero)
+	hb.Natural = isZero.(column.Natural)
 
 	return hb
 }
@@ -80,93 +93,6 @@ func (hb HeartBeatColumn) Assign(run *wizard.ProverRuntime) {
 	hb.Counter.Assign(run)
 	for _, pa := range hb.PAs {
 		pa.Run(run)
-	}
-}
-
-// NewCyclicCounter creates a structured [CyclicCounter]
-func NewCyclicCounter(comp *wizard.CompiledIOP, round, period int, isActiveAny any) *CyclicCounter {
-
-	isActive, ok := isActiveAny.(*sym.Expression)
-	if !ok {
-		isActiveCol := isActiveAny.(ifaces.Column)
-		isActive = sym.NewVariable(isActiveCol)
-	}
-
-	var (
-		isActiveBoard = isActive.Board()
-		size          = column.ExprIsOnSameLengthHandles(&isActiveBoard)
-		name          = fmt.Sprintf("CYCLIC_COUNTER_%v_%v", len(comp.Columns.AllKeys()), period)
-		rc            = &CyclicCounter{
-			IsActive: isActive,
-			Period:   period,
-			Natural:  comp.InsertCommit(0, ifaces.ColID(name+"_COUNTER"), size).(column.Natural),
-		}
-	)
-
-	commonconstraints.MustZeroWhenInactive(comp, isActive, rc.Natural)
-
-	comp.InsertLocal(
-		round,
-		ifaces.QueryID(name+"_COUNTER_STARTS_AT_ZERO"),
-		sym.NewVariable(rc.Natural),
-	)
-
-	comp.InsertGlobal(
-		round,
-		ifaces.QueryID(name+"COUNTER_INCREASES"),
-		sym.Mul(
-			column.ShiftExpr(isActive, 1),
-			sym.Sub(rc.Natural, period-1),
-			sym.Sub(
-				column.Shift(rc.Natural, 1),
-				rc.Natural,
-				1,
-			),
-		),
-	)
-
-	isEndOfPeriod, cptIsEndOfPeriod := IsZeroMask(comp, sym.Sub(rc.Natural, period-1), isActive)
-
-	comp.InsertGlobal(
-		round,
-		ifaces.QueryID(name+"_COUNTER_RESET"),
-		sym.Mul(
-			column.Shift(rc.Natural, 1),
-			isEndOfPeriod,
-		),
-	)
-
-	rc.PAs = append(rc.PAs, cptIsEndOfPeriod)
-	rc.Reset = isEndOfPeriod
-
-	return rc
-}
-
-// Assign runs the prover steps and assign the CounterColumn
-func (rc CyclicCounter) Assign(run *wizard.ProverRuntime) {
-
-	var (
-		board    = rc.IsActive.Board()
-		isActive = column.EvalExprColumn(run, board).IntoRegVecSaveAlloc()
-		size     = len(isActive)
-		res      = make([]field.Element, size)
-	)
-
-	for i := range isActive {
-
-		if isActive[i].IsZero() {
-			res = res[:i:i]
-			break
-		}
-
-		n := utils.PositiveMod(i, rc.Period)
-		res[i].SetUint64(uint64(n))
-	}
-
-	run.AssignColumn(rc.ID, smartvectors.RightZeroPadded(res, size))
-
-	for i := range rc.PAs {
-		rc.PAs[i].Run(run)
 	}
 }
 
@@ -222,16 +148,31 @@ func NewRepeatedPattern(comp *wizard.CompiledIOP, round int, pattern []field.Ele
 func (rp RepeatedPattern) Assign(run *wizard.ProverRuntime) {
 
 	var (
-		board    = rp.Counter.IsActive.Board()
-		isActive = column.EvalExprColumn(run, board).IntoRegVecSaveAlloc()
-		size     = len(isActive)
-		res      = make([]field.Element, 0, size)
-		period   = len(rp.Pattern)
+		isActive      []field.Element
+		size          = rp.Counter.ColumnSize
+		isFullyActive = rp.Counter.FullyActive
+		res           = make([]field.Element, 0, size)
+		period        = len(rp.Pattern)
 	)
 
-	for i := 0; i < size && isActive[i].IsOne(); i += period {
+	if !isFullyActive {
+		board := rp.Counter.IsActive.Board()
+		isActive = column.EvalExprColumn(run, board).IntoRegVecSaveAlloc()
+	}
+
+	for i := 0; i < size; i += period {
+
+		if !isFullyActive && isActive[i].IsZero() {
+			break
+		}
+
 		for j := range rp.Pattern {
-			if i+j >= size || isActive[i+j].IsZero() {
+
+			if !isFullyActive && isActive[i+j].IsZero() {
+				break
+			}
+
+			if i+j >= size {
 				break
 			}
 
@@ -239,6 +180,32 @@ func (rp RepeatedPattern) Assign(run *wizard.ProverRuntime) {
 		}
 	}
 
-	run.AssignColumn(rp.ID, smartvectors.RightZeroPadded(res, size))
+	run.AssignColumn(rp.Natural.ID, smartvectors.RightZeroPadded(res, size))
 	rp.Counter.Assign(run)
+}
+
+// cleanIsActive analyzes isActive and returns it in the form of
+// an expression. The function also returns a flag [isFullActive]
+// indicating whether the isActive argument resolves into a
+// constant equal to 1. The function returns also the resolved
+// size corresponding to isActive.
+func cleanIsActive(isActiveAny any) (isActive *sym.Expression, fullyActive bool, size int) {
+
+	switch act := isActiveAny.(type) {
+	case *sym.Expression:
+		isActive = act
+		board := act.Board()
+		size = column.ExprIsOnSameLengthHandles(&board)
+	case verifiercol.ConstCol:
+		isActive = sym.NewConstant(act.F)
+		fullyActive = act.F.IsOne()
+		size = act.Size()
+	case ifaces.Column:
+		isActive = sym.NewVariable(act)
+		size = act.Size()
+	default:
+		utils.Panic("unexpected type for isActive: %v\n", isActiveAny)
+	}
+
+	return isActive, fullyActive, size
 }

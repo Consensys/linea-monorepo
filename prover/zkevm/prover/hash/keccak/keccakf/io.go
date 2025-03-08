@@ -90,10 +90,9 @@ func (io *InputOutput) newInput(comp *wizard.CompiledIOP, maxNumKeccakF int,
 	// usePrevIota = 1- (IsFirstBlock[i]+ IsBlockBaseB[i-1])
 	comp.InsertGlobal(0, ifaces.QueryIDf("UsePrevIota_SET_TO_ZERO_OVER_BLOCKS"),
 		sym.Mul(mod.isActive,
-			sym.Sub(lu.UsePrevAIota,
-				sym.Sub(1,
-					sym.Add(io.IsFirstBlock, column.Shift(io.IsBlockBaseB, -1)),
-				),
+			sym.Sub(
+				sym.Add(io.IsFirstBlock, column.Shift(io.IsBlockBaseB, -1)),
+				lu.DontUsePrevAIota.Natural,
 			),
 		),
 	)
@@ -207,7 +206,7 @@ func (io *InputOutput) csNextState(
 			)
 			// for an ongoing permutation or for permutations from the same hash;
 			// impose that the previous aIota in base A should be equal with the state.
-			usePrevIota := sym.Add(column.Shift(io.IsBlockBaseB, -1), lu.UsePrevAIota) // isBlockBaseB[i-1] + UsePrevAIota[i]
+			usePrevIota := sym.Add(column.Shift(io.IsBlockBaseB, -1), sym.Sub(1, lu.DontUsePrevAIota.Natural)) // isBlockBaseB[i-1] + UsePrevAIota[i]
 			comp.InsertGlobal(0, ifaces.QueryIDf("AIOTA_TO_A_%v_%v", x, y),
 				sym.Mul(usePrevIota,
 					sym.Sub(input[x][y], recomposedAIota)),

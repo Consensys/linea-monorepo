@@ -133,7 +133,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 		query.ProjectionInput{ColumnA: []ifaces.Column{cSha2.HashLo},
 			ColumnB: []ifaces.Column{inp.Provider.Info.HashLo},
 			FilterA: cSha2.IsEffFirstLaneOfNewHash,
-			FilterB: inp.Provider.Info.IsHashLo})
+			FilterB: inp.Provider.Info.IsHashLo.(*dedicated.ManuallyShifted).Natural})
 
 	// set the module
 	m := &Sha2SingleProvider{
@@ -153,7 +153,7 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 // It implements [wizard.ProverAction] for sha2.
 func (m *Sha2SingleProvider) Run(run *wizard.ProverRuntime) {
 
-	m.Inputs.Provider.Info.IsHashLo.(dedicated.ManuallyShifted).Assign(run)
+	m.Inputs.Provider.Info.IsHashLo.(*dedicated.ManuallyShifted).Assign(run)
 
 	// assign ImportAndPad module
 	m.pa_importPad.Run(run)

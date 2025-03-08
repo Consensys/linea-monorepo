@@ -37,7 +37,7 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 
 	// Start encoding and measure time
 	encodingStart := time.Now()
-	run := wizard.RunProverUntilRound(z.WizardIOP, z.prove(input), 1)
+	run := wizard.RunProverUntilRound(z.WizardIOP, z.GetMainProverStep(input), 1)
 	firstRoundOnlyDuration := time.Since(encodingStart).Seconds()
 	logrus.Infof("ProverOnlyFirstRound complete, took %.2f seconds", firstRoundOnlyDuration)
 

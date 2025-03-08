@@ -15,6 +15,10 @@ import (
 type KeccakZkEVM struct {
 	Settings *Settings
 
+	// SuppProverSteps is a list of prover steps to be run
+	// by the KeccakZKEvm at the beginning of the assignment.
+	SuppProverSteps []func(*wizard.ProverRuntime)
+
 	// The [wizard.ProverAction] for submodules.
 	pa_accData wizard.ProverAction
 	pa_accInfo wizard.ProverAction
@@ -22,14 +26,21 @@ type KeccakZkEVM struct {
 }
 
 func NewKeccakZkEVM(comp *wizard.CompiledIOP, settings Settings, providersFromEcdsa []generic.GenericByteModule) *KeccakZkEVM {
-	return newKeccakZkEvm(
+
+	shakira, shakiraSupp := getShakiraArithmetization(comp)
+
+	res := newKeccakZkEvm(
 		comp,
 		settings, append(
 			providersFromEcdsa,
-			getShakiraArithmetization(comp),
+			shakira,
 			getRlpAddArithmetization(comp),
 		),
 	)
+
+	res.SuppProverSteps = append(res.SuppProverSteps, shakiraSupp)
+
+	return res
 }
 
 func newKeccakZkEvm(comp *wizard.CompiledIOP, settings Settings, providers []generic.GenericByteModule) *KeccakZkEVM {
@@ -79,16 +90,21 @@ func newKeccakZkEvm(comp *wizard.CompiledIOP, settings Settings, providers []gen
 
 func (k *KeccakZkEVM) Run(run *wizard.ProverRuntime) {
 
-	run.Spec.Columns.
-		GetHandle("shakiradata.SELECTOR_KECCAK_RES_LO").(dedicated.ManuallyShifted).
-		Assign(run)
+	for i := range k.SuppProverSteps {
+		k.SuppProverSteps[i](run)
+	}
 
 	k.pa_accData.Run(run)
 	k.pa_accInfo.Run(run)
 	k.pa_keccak.Run(run)
 }
 
-func getShakiraArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModule {
+// getShakiraArithmetization returns a [generic.GenericByteModule] representing
+// the data to hash using SHA3 in the SHAKIRA module of the arithmetization. The
+// returned module contains an [Info.IsHashLo] that is a column to assign: e.g
+// it does not come from the arithmetization directly but is derived from.
+// The function returns a closure doing the assignment of the defined column.
+func getShakiraArithmetization(comp *wizard.CompiledIOP) (generic.GenericByteModule, func(run *wizard.ProverRuntime)) {
 
 	res := generic.GenericByteModule{
 		Data: generic.GenDataModule{
@@ -109,9 +125,10 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModu
 		},
 	}
 
-	res.Info.IsHashLo = dedicated.ManuallyShift(comp, res.Info.IsHashHi, -1)
+	supp := dedicated.ManuallyShift(comp, res.Info.IsHashHi, -1)
+	res.Info.IsHashLo = supp.Natural
 
-	return res
+	return res, func(run *wizard.ProverRuntime) { supp.Assign(run) }
 }
 
 func getRlpAddArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModule {

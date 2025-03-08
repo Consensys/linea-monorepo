@@ -113,7 +113,7 @@ func ModuleOfColumn(disc ModuleDiscoverer, col ifaces.Column) ModuleName {
 		return ModuleOfColumn(disc, c.Verifiercol)
 
 	default:
-		utils.Panic("expected type of column: %T", col)
+		utils.Panic("unexpected type of column: %T", col)
 	}
 
 	return ""

@@ -51,7 +51,7 @@ type Addresses struct {
 	// be a need to deal with the segment boundaries and it has not been figured out.)
 	// So, to simplify, we create a column directly and leave the business of managing
 	// the boundary values to a global constraint to which the feature is avaiable.
-	isAddressLoEcRec ifaces.Column
+	isAddressLoEcRec *dedicated.ManuallyShifted
 
 	// a column of all 16 indicating that all 16 bytes of public key should be hashed.
 	col16 ifaces.Column
@@ -120,7 +120,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 	comp.InsertProjection(ifaces.QueryIDf("Project_AddressLo_EcRec"),
 		query.ProjectionInput{ColumnA: []ifaces.Column{ecRec.Limb},
 			ColumnB: []ifaces.Column{addr.addressLo},
-			FilterA: addr.isAddressLoEcRec,
+			FilterA: addr.isAddressLoEcRec.Natural,
 			FilterB: addr.isAddressFromEcRec})
 
 	// projection from txn-data to address columns
