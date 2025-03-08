@@ -58,6 +58,9 @@ func thetaTestingModule(
 		return func(run *wizard.ProverRuntime) {
 			*runRet = run
 
+			mod.lookups.RC.Assign(run)
+			mod.lookups.DontUsePrevAIota.Assign(run)
+
 			// Number of permutation used for the current instance
 			numKeccakf := len(traces.KeccakFInps)
 

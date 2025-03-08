@@ -211,4 +211,7 @@ func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
 	run.AssignColumn(hasher.isActive.GetColID(), smartvectors.NewRegular(isActive))
 	run.AssignColumn(hasher.isData.GetColID(), smartvectors.NewRegular(isData))
 	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewConstant(finalHash, size))
+
+	hasher.isDataFirstRow.Assign(run)
+	hasher.isDataOddRows.Assign(run)
 }

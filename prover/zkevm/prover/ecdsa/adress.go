@@ -87,7 +87,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 		hashNum:              createCol("HASH_NUM"),
 	}
 
-	addr.isAddressLoEcRec = dedicated.ManuallyShift(comp, addr.isAddressFromEcRec, -1)
+	addr.isAddressLoEcRec = dedicated.ManuallyShift(comp, addr.isAddressHiEcRec, -1)
 
 	td.csTxnData(comp)
 
