@@ -108,6 +108,21 @@ var ListOfHornerTestcasePositive = []*HornerTestcase{
 		Xs:          []field.Element{field.NewElement(2)},
 		FinalResult: field.NewElement(255),
 	},
+
+	{
+		NameStr:           "positive/12345..7",
+		SignNegativeParts: []bool{false},
+		Coefficients: []smartvectors.SmartVector{
+			smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7),
+		},
+		Selectors: []smartvectors.SmartVector{
+			smartvectors.NewConstant(field.One(), 8),
+		},
+		N0s:         []int{0},
+		N1s:         []int{8},
+		Xs:          []field.Element{field.NewElement(2)},
+		FinalResult: field.NewElement(1538),
+	},
 }
 
 var ListOfHornerTestcaseNegative = []*HornerTestcase{

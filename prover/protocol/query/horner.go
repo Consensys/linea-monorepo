@@ -40,7 +40,8 @@ type HornerPart struct {
 //	 def horner(selector, value, x, n0):
 //			res := 0
 //	 		count := 0
-//			for sel, val in zip(selector, value) {
+//			// iteration in reverse order
+//			for sel, val in zip(selector, value).reverse() {
 //	 	  	if sel {
 //			  		res *= x
 //			   		res += val
@@ -160,7 +161,7 @@ func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, final
 			xN0       = new(field.Element).Exp(x, big.NewInt(int64(n0)))
 		)
 
-		for j := range data {
+		for j := len(data) - 1; j >= 0; j-- {
 			if sel[j].IsOne() {
 				res.Mul(&res, &x)
 				res.Add(&res, &data[j])
