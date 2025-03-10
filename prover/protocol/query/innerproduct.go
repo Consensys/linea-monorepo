@@ -52,9 +52,9 @@ func NewInnerProduct(id ifaces.QueryID, a ifaces.Column, bs ...ifaces.Column) In
 			utils.Panic("Assigned a polynomial ifaces.QueryID with an empty length")
 		}
 
-		if bsSet.Insert(b.GetColID()) {
-			utils.Panic("(query %v) Got a duplicate entry %v in %v\n", id, b, bs)
-		}
+		// Note: we used to check and panic for duplicates in the Horner
+		// query.
+		bsSet.Insert(b.GetColID())
 	}
 
 	return InnerProduct{ID: id, A: a, Bs: bs}
