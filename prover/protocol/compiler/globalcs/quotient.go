@@ -215,35 +215,26 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 		logrus.Infof("global constraints : spent %v ms in gc, total time %v ms", time.Since(tGc), totalTimeGc)
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(2)
+	// Compute once the FFT of the natural columns
+	ppool.ExecutePoolChunky(len(ctx.AllInvolvedRoots), func(k int) {
+		pol := ctx.AllInvolvedRoots[k]
+		name := pol.GetColID()
 
-	go func() {
-		// Compute once the FFT of the natural columns
+		// gets directly a shallow copy in the map of the runtime
+		var witness sv.SmartVector
+		witness, isNatural := run.Columns.TryGet(name)
 
-		ppool.ExecutePoolChunky(len(ctx.AllInvolvedRoots), func(k int) {
-			pol := ctx.AllInvolvedRoots[k]
-			name := pol.GetColID()
+		// can happen if the column is verifier defined. In that case, no
+		// need to protect with a lock. This will not touch run.Columns.
+		if !isNatural {
+			witness = pol.GetColAssignment(run)
+		}
 
-			// gets directly a shallow copy in the map of the runtime
-			var witness sv.SmartVector
-			witness, isNatural := run.Columns.TryGet(name)
+		witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
 
-			// can happen if the column is verifier defined. In that case, no
-			// need to protect with a lock. This will not touch run.Columns.
-			if !isNatural {
-				witness = pol.GetColAssignment(run)
-			}
+		coeffs.Store(name, witness)
+	})
 
-			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
-
-			coeffs.Store(name, witness)
-		})
-
-		wg.Done()
-	}()
-
-	wg.Wait()
 	stopTimer()
 
 	// Take the max quotient degree
