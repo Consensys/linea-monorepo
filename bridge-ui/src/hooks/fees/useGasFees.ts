@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { Address, encodeFunctionData } from "viem";
 import { useEstimateGas } from "wagmi";
 import TokenBridge from "@/abis/TokenBridge.json";
@@ -31,7 +32,7 @@ const useGasFees = ({ address, recipient, amount, token, fromChain, minimumFee }
       args: [recipient, minimumFee, "0x"],
     }),
     query: {
-      enabled: !!isEther && !!(amount > 0n) && !!address && !!recipient,
+      enabled: !!isEther && amount > 0n && !!address && !!recipient,
     },
   });
 
@@ -46,13 +47,21 @@ const useGasFees = ({ address, recipient, amount, token, fromChain, minimumFee }
       args: [token[fromChain.layer], amount, recipient],
     }),
     query: {
-      enabled: !isEther && !!(amount > 0n) && !!address && !!recipient,
+      enabled: !isEther && amount > 0n && !!address && !!recipient,
     },
   });
 
   const isError = eth.isError || erc20.isError;
   const isLoading = eth.isLoading || erc20.isLoading;
   const gasLimit = isEther ? eth.data : erc20.data;
+
+  const refetch = useCallback(() => {
+    if (isEth(token)) {
+      eth.refetch();
+    } else {
+      erc20.refetch();
+    }
+  }, [token, eth, erc20]);
 
   if (isLoading) {
     return null;
@@ -62,13 +71,7 @@ const useGasFees = ({ address, recipient, amount, token, fromChain, minimumFee }
     gasFees: gasLimit && feeData ? gasLimit * feeData : null,
     isError,
     isLoading,
-    refetch: () => {
-      if (isEth(token)) {
-        eth.refetch();
-      } else {
-        erc20.refetch();
-      }
-    },
+    refetch,
   };
 };
 

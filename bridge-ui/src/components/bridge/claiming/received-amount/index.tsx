@@ -19,7 +19,9 @@ export default function ReceivedAmount() {
       {tokenPrices?.[token[fromChain.layer].toLowerCase()] &&
         tokenPrices?.[token[fromChain.layer].toLowerCase()] > 0 && (
           <p className={styles.amount}>
-            {(Number(amount) * tokenPrices?.[token[fromChain.layer].toLowerCase()]).toLocaleString("en-US", {
+            {(
+              Number(formatUnits(amount || 0n, token.decimals)) * tokenPrices?.[token[fromChain.layer].toLowerCase()]
+            ).toLocaleString("en-US", {
               style: "currency",
               currency: currency.label,
               maximumFractionDigits: 4,

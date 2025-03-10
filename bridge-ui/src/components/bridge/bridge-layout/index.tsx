@@ -8,6 +8,7 @@ import { supportedChainIds } from "@/lib/wagmi";
 import { useTokens } from "@/hooks";
 import { useChainStore, FormStoreProvider, FormState, useNativeBridgeNavigationStore } from "@/stores";
 import { BridgeType, ChainLayer } from "@/types";
+import WrongNetwork from "../wrong-network";
 
 export default function BridgeLayout() {
   const isTransactionHistoryOpen = useNativeBridgeNavigationStore.useIsTransactionHistoryOpen();
@@ -17,7 +18,7 @@ export default function BridgeLayout() {
   const fromChain = useChainStore.useFromChain();
 
   if (isLoggedIn && (!chain?.id || !supportedChainIds.includes(chain.id))) {
-    return null;
+    return <WrongNetwork />;
   }
 
   if (isTransactionHistoryOpen) {

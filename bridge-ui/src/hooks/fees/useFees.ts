@@ -13,7 +13,7 @@ const useFees = () => {
   const toChain = useChainStore.useToChain();
   const { minimumFee } = useMinimumFee();
 
-  const { data: tokenPrices } = useTokenPrices([zeroAddress], fromChain.id);
+  const { data: tokenPrices, isLoading: isTokenPricesLoading } = useTokenPrices([zeroAddress], fromChain.id);
 
   const claim = useFormStore((state) => state.claim);
   const token = useFormStore((state) => state.token);
@@ -29,7 +29,7 @@ const useFees = () => {
     minimumFee,
   });
 
-  const bridgingFees = useBridgingFee({
+  const { bridgingFees, isLoading: isBridgingFeeLoading } = useBridgingFee({
     account: address,
     token,
     amount: amount ?? 0n,
@@ -76,9 +76,12 @@ const useFees = () => {
     };
   }, [fees]);
 
+  const isLoading = gasFeesResult?.isLoading || isBridgingFeeLoading || isTokenPricesLoading;
+
   return {
     fees,
     total: totalFees,
+    isLoading,
   };
 };
 

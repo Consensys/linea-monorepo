@@ -11,7 +11,7 @@ export default function Fees() {
   return (
     <>
       <div className={styles.estimate}>
-        {<WithFees iconPath={fromChain.iconPath} />}
+        <WithFees iconPath={fromChain.iconPath} />
         <EstimatedTime />
         {claim === "manual" && <ManualClaim />}
       </div>

@@ -23,12 +23,10 @@ const useMinimumFee = () => {
   useEffect(() => {
     if (!isL2Network) {
       setMinimumFees(0n);
-    } else {
-      if (data) {
-        setMinimumFees(data as bigint);
-      }
+    } else if (data) {
+      setMinimumFees(data as bigint);
     }
-  });
+  }, [data, isL2Network, setMinimumFees]);
 
   return {
     isLoading,

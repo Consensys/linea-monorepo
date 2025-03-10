@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAccount, useWatchBlockNumber } from "wagmi";
+import { useAccount } from "wagmi";
 import ConnectButton from "@/components/connect-button";
 import FaqHelp from "@/components/bridge/faq-help";
 import TokenList from "@/components/bridge/token-list";
@@ -31,13 +31,9 @@ export default function BridgeForm() {
   const setClaim = useFormStore((state) => state.setClaim);
   const { balance, refetch } = useTokenBalance(token);
 
-  useWatchBlockNumber({
-    onBlockNumber() {
-      refetch();
-    },
-    poll: true,
-    pollingInterval: 30_000,
-  });
+  useEffect(() => {
+    refetch();
+  }, [refetch, token]);
 
   useEffect(() => {
     setBalance(balance);

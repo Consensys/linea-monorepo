@@ -3,6 +3,7 @@ import { Address } from "viem";
 import log from "loglevel";
 import { fetchTokenPrices } from "@/services/tokenService";
 import { useConfigStore } from "@/stores";
+import { useMemo } from "react";
 
 type UseTokenPrices = {
   data: Record<string, number>;
@@ -14,16 +15,29 @@ type UseTokenPrices = {
 export default function useTokenPrices(tokenAddresses: Address[], chainId?: number): UseTokenPrices {
   const currency = useConfigStore((state) => state.currency);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const memoizedTokenAddresses = useMemo(() => tokenAddresses, [JSON.stringify(tokenAddresses)]);
+
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["tokenPrices", tokenAddresses, chainId],
-    queryFn: () => fetchTokenPrices(tokenAddresses, currency.value, chainId),
-    enabled: !!chainId && tokenAddresses.length > 0 && [1, 59144].includes(chainId),
+    queryKey: ["tokenPrices", memoizedTokenAddresses.join("-"), chainId],
+    queryFn: () => fetchTokenPrices(memoizedTokenAddresses, currency.value, chainId),
+    enabled: !!chainId && memoizedTokenAddresses.length > 0 && [1, 59144].includes(chainId),
+    refetchOnWindowFocus: false,
   });
 
-  if (isError) {
-    log.error("Error in useTokenPrices", { error });
-    return { data: {}, isLoading, refetch, error };
-  }
+  const result = useMemo(() => {
+    if (isError) {
+      log.error("Error in useTokenPrices", { error });
+      return { data: {}, isLoading, refetch, error };
+    }
 
-  return { data: data || {}, isLoading, refetch, error: error || null };
+    return {
+      data: data || {},
+      isLoading,
+      refetch,
+      error: error || null,
+    };
+  }, [isError, data, isLoading, refetch, error]);
+
+  return result;
 }

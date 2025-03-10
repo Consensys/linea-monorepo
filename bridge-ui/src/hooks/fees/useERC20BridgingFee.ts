@@ -40,15 +40,15 @@ const useERC20BridgingFee = ({
     enabled:
       !!token &&
       !isEth(token) &&
-      !!(token.bridgeProvider === BridgeProvider.NATIVE) &&
-      !!(fromChain.layer === ChainLayer.L1) &&
+      token.bridgeProvider === BridgeProvider.NATIVE &&
+      fromChain.layer === ChainLayer.L1 &&
       !!account &&
       !!fromChain &&
       !!toChain &&
       !!nextMessageNumber &&
       !!amount &&
       !!recipient &&
-      !!(claimingType === "auto"),
+      claimingType === "auto",
     queryFn: async () =>
       await estimateERC20GasFee({
         address: account!,
@@ -62,12 +62,7 @@ const useERC20BridgingFee = ({
       }),
   });
 
-  return {
-    data,
-    isLoading,
-    isError,
-    refetch,
-  };
+  return { data, isLoading, isError, refetch };
 };
 
 export default useERC20BridgingFee;

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import Image from "next/image";
 import styles from "./token-details.module.scss";
 import { useTokenBalance } from "@/hooks";
@@ -23,7 +23,24 @@ export default function TokenDetails({ token, onTokenClick, tokenPrice, currency
   const setToken = useFormStore((state) => state.setToken);
   const setAmount = useFormStore((state) => state.setAmount);
 
-  const tokenNotFromCurrentLayer = fromChain?.layer && !token[fromChain?.layer] && !isEth(token);
+  const chainLayer = fromChain?.layer;
+  const tokenNotFromCurrentLayer = chainLayer && !token[chainLayer] && !isEth(token);
+
+  const formattedBalance = useMemo(() => formatUnits(balance, token.decimals), [balance, token.decimals]);
+
+  const totalValue = useMemo(() => {
+    if (tokenPrice !== undefined) {
+      return tokenPrice * Number(formattedBalance);
+    }
+    return undefined;
+  }, [formattedBalance, tokenPrice]);
+
+  const handleClick = useCallback(() => {
+    setAmount(0n);
+    setSelectedToken(token);
+    setToken(token);
+    onTokenClick(token);
+  }, [setAmount, setSelectedToken, setToken, token, onTokenClick]);
 
   return (
     <button
@@ -31,12 +48,7 @@ export default function TokenDetails({ token, onTokenClick, tokenPrice, currency
       className={styles["token-wrapper"]}
       type="button"
       disabled={tokenNotFromCurrentLayer}
-      onClick={() => {
-        setAmount(0n);
-        setSelectedToken(token);
-        setToken(token);
-        onTokenClick(token);
-      }}
+      onClick={handleClick}
     >
       <div className={styles["left"]}>
         <Image src={token.image} alt={token.name} width={32} height={32} />
@@ -48,17 +60,17 @@ export default function TokenDetails({ token, onTokenClick, tokenPrice, currency
       {!tokenNotFromCurrentLayer && (
         <div className={styles.rìght}>
           <p className={styles["balance"]}>
-            {formatUnits(balance, token.decimals)} {token.symbol}
+            {formattedBalance} {token.symbol}
           </p>
-          {tokenPrice ? (
+          {totalValue !== undefined && (
             <p className={styles["price"]}>
-              {(tokenPrice * Number(balance)).toLocaleString("en-US", {
+              {totalValue.toLocaleString("en-US", {
                 style: "currency",
                 currency: currency.label,
                 maximumFractionDigits: 4,
               })}
             </p>
-          ) : null}
+          )}
         </div>
       )}
       {tokenNotFromCurrentLayer && (

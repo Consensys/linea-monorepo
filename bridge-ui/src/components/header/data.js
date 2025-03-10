@@ -90,13 +90,6 @@ export const MENUS = [
         mobileOnly: true,
       },
       {
-        __id: "3cPGRx3oGMEnLzgw8VUFUJza",
-        __typename: "link",
-        name: "Transactions",
-        label: "Transactions",
-        url: "/transactions",
-      },
-      {
         __id: "6Nafs8i1CnnT6WIaJUqnjezz",
         __typename: "link",
         name: "FAQ",

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { Address } from "viem";
 import useFeeData from "./useFeeData";
 import useMessageNumber from "../useMessageNumber";
@@ -50,31 +50,23 @@ const useBridgingFee = ({ account, token, claimingType, amount, recipient }: Use
   const isLoading = eth.isLoading || erc20.isLoading;
   const gasLimit = isEth(token) ? eth.data : erc20.data;
 
-  const bridgingFees = useMemo(() => {
+  const computedBridgingFees = useMemo(() => {
     if (claimingType === "manual") {
-      setBridgingFees(0n);
       return 0n;
     }
-
-    if (isLoading) {
+    if (isLoading || isError || !gasLimit || !feeData) {
       return null;
     }
+    return feeData * (gasLimit + fromChain.gasLimitSurplus) * fromChain.profitMargin;
+  }, [isLoading, isError, gasLimit, feeData, claimingType, fromChain.gasLimitSurplus, fromChain.profitMargin]);
 
-    if (isError) {
-      return null;
+  useEffect(() => {
+    if (computedBridgingFees !== null) {
+      setBridgingFees(computedBridgingFees);
     }
+  }, [computedBridgingFees, setBridgingFees]);
 
-    if (!gasLimit || !feeData) {
-      return null;
-    }
-
-    const fees = feeData * (gasLimit + fromChain.gasLimitSurplus) * fromChain.profitMargin;
-    setBridgingFees(fees);
-    return fees;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, isError, gasLimit, feeData, claimingType]);
-
-  return bridgingFees;
+  return { bridgingFees: computedBridgingFees, isLoading };
 };
 
 export default useBridgingFee;

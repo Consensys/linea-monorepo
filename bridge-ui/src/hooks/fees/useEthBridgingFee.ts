@@ -41,15 +41,15 @@ const useEthBridgingFee = ({
     enabled:
       !!token &&
       isEth(token) &&
-      !!(token.bridgeProvider === BridgeProvider.NATIVE) &&
-      !!(fromChain.layer === ChainLayer.L1) &&
+      token.bridgeProvider === BridgeProvider.NATIVE &&
+      fromChain.layer === ChainLayer.L1 &&
       !!account &&
       !!fromChain &&
       !!toChain &&
       !!nextMessageNumber &&
       !!amount &&
       !!recipient &&
-      !!(claimingType === "auto"),
+      claimingType === "auto",
     queryFn: async () =>
       await estimateEthGasFee({
         address: account!,

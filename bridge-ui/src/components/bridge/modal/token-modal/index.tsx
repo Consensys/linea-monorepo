@@ -25,32 +25,38 @@ export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProp
 
   const [searchQuery, setSearchQuery] = useState("");
 
+  const chainLayer = fromChain.layer;
+  const chainId = fromChain.id;
+  const isTestnet = fromChain.testnet;
+
   const filteredTokens = useMemo(() => {
     if (!searchQuery) return tokensList;
     const query = searchQuery.toLowerCase();
 
     return tokensList.filter((token: Token) => {
-      const tokenAddress = fromChain?.layer ? token[fromChain.layer] : undefined;
+      const rawAddress = chainLayer ? token[chainLayer] : undefined;
+      const tokenAddress = rawAddress ? safeGetAddress(rawAddress) : undefined;
       return (
         (tokenAddress || isEth(token)) &&
         (token.name.toLowerCase().includes(query) ||
           token.symbol.toLowerCase().includes(query) ||
-          (tokenAddress && safeGetAddress(tokenAddress)?.toLowerCase().includes(query)))
+          (tokenAddress && tokenAddress.toLowerCase().includes(query)))
       );
     });
-  }, [tokensList, searchQuery, fromChain?.layer]);
+  }, [tokensList, searchQuery, chainLayer]);
 
   const tokenAddresses = useMemo(
     () =>
       filteredTokens.map((token) => {
         if (token.name === "Ether") return zeroAddress;
-        const tokenAddress = fromChain?.layer ? safeGetAddress(token[fromChain.layer]) : null;
+        const rawAddress = chainLayer ? token[chainLayer] : null;
+        const tokenAddress = rawAddress ? safeGetAddress(rawAddress) : null;
         return (tokenAddress ?? zeroAddress) as Address;
       }),
-    [filteredTokens, fromChain?.layer],
+    [filteredTokens, chainLayer],
   );
 
-  const { data } = useTokenPrices(tokenAddresses, fromChain?.id);
+  const { data: tokenPrices } = useTokenPrices(tokenAddresses, chainId);
 
   const handleTokenClick = useCallback(
     (token: Token) => {
@@ -62,13 +68,14 @@ export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProp
 
   const getTokenPrice = useCallback(
     (token: Token): number | undefined => {
-      if (fromChain && !fromChain.testnet && !isEmptyObject(data)) {
-        const tokenAddress = (safeGetAddress(token[fromChain.layer]) || zeroAddress).toLowerCase();
-        return data[tokenAddress];
+      if (fromChain && !isTestnet && !isEmptyObject(tokenPrices)) {
+        const rawAddress = token[chainLayer];
+        const tokenAddress = (safeGetAddress(rawAddress) || zeroAddress).toLowerCase();
+        return tokenPrices[tokenAddress];
       }
       return undefined;
     },
-    [data, fromChain],
+    [tokenPrices, fromChain, chainLayer, isTestnet],
   );
 
   const normalizeInput = useCallback((input: string): string => {
@@ -96,17 +103,15 @@ export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProp
         </div>
         <div className={styles["list-token"]}>
           {filteredTokens.length > 0 ? (
-            filteredTokens.map((token: Token, index: number) => {
-              return (
-                <TokenDetails
-                  token={token}
-                  onTokenClick={handleTokenClick}
-                  key={`token-details-${index}`}
-                  tokenPrice={getTokenPrice(token)}
-                  currency={currency}
-                />
-              );
-            })
+            filteredTokens.map((token: Token, index: number) => (
+              <TokenDetails
+                token={token}
+                onTokenClick={handleTokenClick}
+                key={`token-details-${token.symbol}-${index}`}
+                tokenPrice={getTokenPrice(token)}
+                currency={currency}
+              />
+            ))
           ) : (
             <div className={styles["not-found"]}>
               <p>Sorry, there are no results for that term. Please enter a valid token name or address.</p>

@@ -157,7 +157,7 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
               <span className={styles.price}>
                 {tokensPrices[zeroAddress] ? (
                   <span>
-                    {(tokensPrices[zeroAddress] * Number(gasFees)).toLocaleString("en-US", {
+                    {(tokensPrices[zeroAddress] * Number(formatEther(gasFees))).toLocaleString("en-US", {
                       style: "currency",
                       currency: currency.label,
                       maximumFractionDigits: 4,

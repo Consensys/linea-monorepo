@@ -3,7 +3,6 @@ import { formatUnits } from "viem";
 import styles from "./with-fees.module.scss";
 import { useState } from "react";
 import GasFees from "../../../modal/gas-fees";
-import AcrossFees from "../../../modal/across-fees";
 import { useFees } from "@/hooks";
 import { useConfigStore, useFormStore } from "@/stores";
 import { BridgeType } from "@/types";
@@ -14,21 +13,22 @@ type Props = {
 
 export default function WithFees({ iconPath }: Props) {
   const [showGasFeesModal, setShowGasFeesModal] = useState<boolean>(false);
-  const [showAcrossFeesModal, setShowAcrossFeesModal] = useState<boolean>(false);
   const currency = useConfigStore.useCurrency();
 
   const mode = useFormStore((state) => state.mode);
   const token = useFormStore((state) => state.token);
 
-  const { total, fees } = useFees();
+  const { total, fees, isLoading } = useFees();
 
   const handleShowFees = () => {
     if (mode === BridgeType.NATIVE) {
       setShowGasFeesModal(true);
-    } else if (mode === BridgeType.ACROSS) {
-      setShowAcrossFeesModal(true);
     }
   };
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <>
@@ -48,7 +48,6 @@ export default function WithFees({ iconPath }: Props) {
         </button>
       )}
       <GasFees isModalOpen={showGasFeesModal} onCloseModal={() => setShowGasFeesModal(false)} fees={fees} />
-      <AcrossFees isModalOpen={showAcrossFeesModal} onCloseModal={() => setShowAcrossFeesModal(false)} />
     </>
   );
 }
