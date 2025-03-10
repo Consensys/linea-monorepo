@@ -196,7 +196,7 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 		)
 
 		col[len(col)-1].Mul(&selector[len(col)-1], &data[len(col)-1])
-		if col[len(col)-1].IsOne() {
+		if selector[len(col)-1].IsOne() {
 			count++
 		}
 
@@ -218,7 +218,7 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 		}
 
 		if n0+count != params.Parts[i].N1 {
-			fmt.Errorf("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v", params.Parts[i].N1, n0, count)
+			utils.Panic("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v", params.Parts[i].N1, n0, count)
 		}
 
 		run.AssignColumn(a.AccumulatingCols[i].GetColID(), smartvectors.NewRegular(col))
@@ -239,7 +239,7 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 	}
 
 	if res != params.FinalResult {
-		utils.Panic("the horner query is assigned a final result of %v but we recomputed %v\n", res, params.FinalResult)
+		utils.Panic("the horner query %v is assigned a final result of %v but we recomputed %v\n", a.Q.ID, res.String(), params.FinalResult.String())
 	}
 }
 
