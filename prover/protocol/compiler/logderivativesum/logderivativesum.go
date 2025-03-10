@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // compile [query.LogDerivativeSum] query
@@ -36,7 +37,11 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 			proverTasks = make([]proverTaskAtRound, lastRound+1)
 		)
 
-		for _, entry := range zEntries {
+		sizes := utils.SortedKeysOf(zEntries, func(i1, i2 int) bool { return i1 < i2 })
+
+		for _, size := range sizes {
+
+			entry := zEntries[size]
 
 			// get the Numerator and Denominator from the input and prepare their compilation.
 			zC := ZCtx{
