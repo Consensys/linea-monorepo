@@ -2,10 +2,10 @@ using Karma as karma;
 
 methods {
     function owner() external returns (address) envfree;
+    function totalDistributorAllocation() external returns (uint256) envfree;
 }
 
 // TODO:
-// totalDistributorAllocation can only increase
 // totalDistributorAllocation == sum of all distributor allocations
 // sum of external supply <= total supply
 
@@ -43,4 +43,21 @@ rule ownableFuncsOnlyCallableByOwner(method f) {
     bool isReverted = lastReverted;
 
     assert isOwnableFunction(f) && !isOwner => isReverted;
+}
+
+rule totalDistributorAllocationCanOnlyIncrease(method f) filtered { f ->
+     f.selector != sig:karma.upgradeToAndCall(address, bytes).selector
+     && !isERC20TransferFunction(f)
+    } {
+    env e;
+    calldataarg args;
+
+
+    uint256 totalDistributorAllocationBefore = totalDistributorAllocation();
+
+    f(e, args);
+
+    uint256 totalDistributorAllocationAfter = totalDistributorAllocation();
+
+    assert totalDistributorAllocationAfter >= totalDistributorAllocationBefore;
 }
