@@ -743,9 +743,11 @@ func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 }
 
 // exec: executes the `action` with the performance monitor if active
+// exec executes the action, optionally profiling it based on PerformanceMonitor settings.
 func (runtime *ProverRuntime) exec(name string, action any) {
 
-	runAction := func() {
+	// Define helper excute function
+	execute := func() {
 		switch a := action.(type) {
 		case func():
 			a()
@@ -756,25 +758,47 @@ func (runtime *ProverRuntime) exec(name string, action any) {
 		}
 	}
 
-	if runtime.PerformanceMonitor.Active {
-		profilingPath := path.Join(runtime.PerformanceMonitor.ProfileDir, name)
-		monitor, err := profiling.StartPerformanceMonitor(name, runtime.PerformanceMonitor.SampleDuration, profilingPath)
-		if err != nil {
-			panic("error setting up performance monitor for " + name)
-		}
-
-		runAction()
-
-		perfLog, err := monitor.Stop()
-		if err != nil {
-			logrus.Panicf("error:%s encountered while retrieving performance log for:%s", err.Error(), name)
-		}
-
-		// perfLog.PrintMetrics()
-		runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
-	} else {
-		runAction()
+	// If PerformanceMonitor is inactive, just execute the action and return
+	if !runtime.PerformanceMonitor.Active {
+		execute()
+		return
 	}
+
+	// Determine if profiling is needed based on action type and profile setting
+	shouldProfile := false
+	switch runtime.PerformanceMonitor.Profile {
+	case "all":
+		shouldProfile = true
+	case "prover-rounds":
+		shouldProfile = actionIsPlainFunc(action)
+	case "prover-steps":
+		shouldProfile = actionIsProverStep(action)
+	}
+
+	if shouldProfile {
+		runtime.profileAction(name, execute)
+	} else {
+		execute()
+	}
+}
+
+// profileAction profiles the given action and logs the performance metrics.
+func (runtime *ProverRuntime) profileAction(name string, action func()) {
+	profilingPath := path.Join(runtime.PerformanceMonitor.ProfileDir, name)
+	monitor, err := profiling.StartPerformanceMonitor(name, runtime.PerformanceMonitor.SampleDuration, profilingPath)
+	if err != nil {
+		panic("error setting up performance monitor for " + name)
+	}
+
+	action()
+
+	perfLog, err := monitor.Stop()
+	if err != nil {
+		logrus.Panicf("error:%s encountered while retrieving performance log for:%s", err.Error(), name)
+	}
+
+	// perfLog.PrintMetrics()
+	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
 }
 
 // writePerformanceLogsToCSV: Dumps all the performance logs inside prover runtime
@@ -826,4 +850,16 @@ func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
 
 	logrus.Infof("Finished writing to the csv file. Took %s", time.Since(startTime).String())
 	return nil
+}
+
+// actionIsProverRound checks if the action is a plain function such as nextRound or runProverSteps
+func actionIsPlainFunc(action any) bool {
+	_, ok := action.(func())
+	return ok
+}
+
+// actionIsProverStep checks if the action is an individual ProverStep in a specific round or highlevelProver.
+func actionIsProverStep(action any) bool {
+	_, ok := action.(ProverStep)
+	return ok
 }

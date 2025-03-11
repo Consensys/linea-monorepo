@@ -27,6 +27,7 @@ func GetMonitorParams() *config.PerformanceMonitor {
 			Active:         false,
 			SampleDuration: 1 * time.Second,
 			ProfileDir:     "/tmp",
+			Profile:        "prover-rounds",
 		}
 	}
 	return globalMonitorParams

@@ -19,6 +19,7 @@ func setDefaultValues() {
 	viper.SetDefault("debug.tracing", false)
 	viper.SetDefault("debug.performance_monitor.active", false)
 	viper.SetDefault("debug.performance_monitor.sample_duration", 1*time.Second)
+	viper.SetDefault("debug.performance_monitor.profile", "prover-rounds")
 
 	viper.SetDefault("controller.enable_execution", true)
 	viper.SetDefault("controller.enable_blob_decompression", true)
