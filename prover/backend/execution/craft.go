@@ -2,7 +2,6 @@ package execution
 
 import (
 	"bytes"
-	_ "embed"
 	"path"
 
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"

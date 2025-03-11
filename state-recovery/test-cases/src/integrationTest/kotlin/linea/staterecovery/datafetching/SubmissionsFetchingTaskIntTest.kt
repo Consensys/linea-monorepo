@@ -3,6 +3,7 @@ package linea.staterecovery.datafetching
 import build.linea.contract.l1.LineaContractVersion
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
+import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.log4j.configureLoggers
 import linea.staterecovery.BlobDecompressorAndDeserializer
@@ -14,7 +15,6 @@ import linea.staterecovery.LineaSubmissionEventsClientImpl
 import linea.staterecovery.plugin.AppClients
 import linea.staterecovery.plugin.createAppClients
 import linea.web3j.createWeb3jHttpClient
-import net.consensys.linea.BlockParameter
 import net.consensys.linea.blob.BlobDecompressorVersion
 import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
 import net.consensys.linea.testing.submission.AggregationAndBlobs
@@ -65,8 +65,8 @@ class SubmissionsFetchingTaskIntTest {
     aggregationsAndBlobs = loadBlobsAndAggregationsSortedAndGrouped(
       blobsResponsesDir = "$testDataDir/compression/responses",
       aggregationsResponsesDir = "$testDataDir/aggregation/responses",
-      ignoreBlobsWithoutAggregation = true,
-      numberOfAggregations = 7
+      numberOfAggregations = 7,
+      extraBlobsWithoutAggregation = 0
     )
     val rollupDeploymentResult = ContractsManager.get()
       .deployLineaRollup(numberOfOperators = 2, contractVersion = LineaContractVersion.V6).get()
@@ -175,7 +175,7 @@ class SubmissionsFetchingTaskIntTest {
     )
   }
 
-  fun assertSubmissionsAreCorrectlyFetched(
+  private fun assertSubmissionsAreCorrectlyFetched(
     l2StartBlockNumber: ULong,
     debugForceSyncStopBlockNumber: ULong? = null
   ) {

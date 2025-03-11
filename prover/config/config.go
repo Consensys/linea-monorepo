@@ -204,6 +204,12 @@ type Execution struct {
 
 	// ConflatedTracesDir stores the directory where the conflation traces are stored.
 	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
+
+	// IgnoreCompatiblityCheck indicates whether to ignore constaints version checking between
+	// trace files and zkevm.bin constraint files. Specifically, this check ensures that the zkevm.bin file
+	// used within the prover was generated from the same commit of linea-constraints as the generated lt trace file.
+	// Set this to true to disable compatibility checks (default: false).
+	IgnoreCompatibilityCheck bool `mapstructure:"ignore_compatibility_check"`
 }
 
 type BlobDecompression struct {

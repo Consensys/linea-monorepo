@@ -1,6 +1,6 @@
 package net.consensys.linea.testing.submission
 
-import build.linea.domain.BlockInterval
+import linea.domain.BlockInterval
 import linea.web3j.waitForTxReceipt
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.domain.Aggregation
@@ -130,7 +130,6 @@ fun submitBlobsAndAggregationsAndWaitExecution(
       val txHash = contractClientForAggregationSubmission.finalizeBlocks(
         aggregation = aggregation.aggregationProof!!,
         aggregationLastBlob = aggBlobs.last(),
-        parentShnarf = aggBlobs.first().blobCompressionProof!!.prevShnarf,
         parentL1RollingHash = parentAgg?.aggregationProof?.l1RollingHash ?: ByteArray(32),
         parentL1RollingHashMessageNumber = parentAgg?.aggregationProof?.l1RollingHashMessageNumber ?: 0L,
         gasPriceCaps = null
