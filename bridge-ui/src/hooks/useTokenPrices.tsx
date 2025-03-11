@@ -23,6 +23,7 @@ export default function useTokenPrices(tokenAddresses: Address[], chainId?: numb
     queryFn: () => fetchTokenPrices(memoizedTokenAddresses, currency.value, chainId),
     enabled: !!chainId && memoizedTokenAddresses.length > 0 && [1, 59144].includes(chainId),
     refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 5,
   });
 
   const result = useMemo(() => {

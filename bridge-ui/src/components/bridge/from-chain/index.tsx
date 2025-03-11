@@ -24,7 +24,12 @@ export default function FromChain() {
   };
 
   const handleSelectNetwork = (chain: Chain) => {
-    if (chain.id === toChain?.id) return;
+    if (chain.id === toChain?.id) {
+      setToChain(fromChain);
+      setFromChain(chain);
+      return;
+    }
+
     setFromChain(chain);
 
     if (chain.testnet) {

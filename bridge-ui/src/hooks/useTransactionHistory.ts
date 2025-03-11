@@ -17,7 +17,7 @@ const useTransactionHistory = () => {
     queryKey: ["transactionHistory", address, fromChain.id, toChain.id],
     queryFn: () =>
       fetchTransactionsHistory({ lineaSDK, lineaSDKContracts, fromChain, toChain, address: address!, tokens }),
-    staleTime: 1000 * 60,
+    staleTime: 1000 * 60 * 2,
   });
 
   return {

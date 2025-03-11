@@ -22,7 +22,11 @@ export default function ToChain() {
   const closeModal = () => setIsModalOpen(false);
 
   const handleSelectNetwork = (chain: Chain) => {
-    if (chain.id === fromChain?.id) return;
+    if (chain.id === fromChain?.id) {
+      setFromChain(toChain);
+      setToChain(chain);
+      return;
+    }
     setToChain(chain);
 
     if (chain.testnet) {

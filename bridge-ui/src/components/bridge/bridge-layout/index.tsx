@@ -1,6 +1,6 @@
 "use client";
 
-import { useIsLoggedIn } from "@/lib/dynamic";
+import { useDynamicContext, useIsLoggedIn } from "@/lib/dynamic";
 import { useAccount } from "wagmi";
 import Bridge from "../form";
 import TransactionHistory from "../transaction-history";
@@ -9,13 +9,19 @@ import { useTokens } from "@/hooks";
 import { useChainStore, FormStoreProvider, FormState, useNativeBridgeNavigationStore } from "@/stores";
 import { BridgeType, ChainLayer } from "@/types";
 import WrongNetwork from "../wrong-network";
+import BridgeSkeleton from "./skeleton";
 
 export default function BridgeLayout() {
   const isTransactionHistoryOpen = useNativeBridgeNavigationStore.useIsTransactionHistoryOpen();
   const { chain, address } = useAccount();
   const isLoggedIn = useIsLoggedIn();
+  const { sdkHasLoaded } = useDynamicContext();
   const tokens = useTokens();
   const fromChain = useChainStore.useFromChain();
+
+  if (!sdkHasLoaded) {
+    return <BridgeSkeleton />;
+  }
 
   if (isLoggedIn && (!chain?.id || !supportedChainIds.includes(chain.id))) {
     return <WrongNetwork />;

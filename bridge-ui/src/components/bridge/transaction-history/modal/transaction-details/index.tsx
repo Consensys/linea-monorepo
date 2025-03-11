@@ -58,6 +58,8 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
     chainId: transaction?.fromChain.id,
     query: {
       enabled: !!transaction?.bridgingTx && transaction?.status === TransactionStatus.COMPLETED,
+      staleTime: 1000 * 60 * 5,
+      refetchOnMount: false,
     },
   });
 
@@ -66,6 +68,8 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
     chainId: transaction?.toChain.id,
     query: {
       enabled: !!transaction?.claimingTx && transaction?.status === TransactionStatus.COMPLETED,
+      staleTime: 1000 * 60 * 5,
+      refetchOnMount: false,
     },
   });
 
