@@ -743,7 +743,6 @@ func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 }
 
 // exec: executes the `action` with the performance monitor if active
-// exec executes the action, optionally profiling it based on PerformanceMonitor settings.
 func (runtime *ProverRuntime) exec(name string, action any) {
 
 	// Define helper excute function
