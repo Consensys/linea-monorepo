@@ -102,7 +102,7 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
             revert Karma__UnknownDistributor();
         }
 
-        rewardDistributorAllocations[rewardsDistributor] = amount;
+        rewardDistributorAllocations[rewardsDistributor] += amount;
         totalDistributorAllocation += amount;
         IRewardDistributor(rewardsDistributor).setReward(amount, duration);
     }

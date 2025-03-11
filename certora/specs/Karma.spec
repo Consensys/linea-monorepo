@@ -3,11 +3,29 @@ using Karma as karma;
 methods {
     function owner() external returns (address) envfree;
     function totalDistributorAllocation() external returns (uint256) envfree;
+    function _.setReward(uint256, uint256) external => HAVOC_ECF;
 }
 
+persistent ghost mathint sumOfDistributorAllocations {
+    init_state axiom sumOfDistributorAllocations == 0;
+}
+
+hook Sstore rewardDistributorAllocations[KEY address addr] uint256 newValue (uint256 oldValue) {
+    sumOfDistributorAllocations = sumOfDistributorAllocations - oldValue + newValue;
+}
+
+invariant totalDistributorAllocationIsSumOfDistributorAllocations()
+    to_mathint(totalDistributorAllocation()) == sumOfDistributorAllocations
+    filtered {
+        f -> !isUpgradeFunction(f)
+    }
+
 // TODO:
-// totalDistributorAllocation == sum of all distributor allocations
 // sum of external supply <= total supply
+
+definition isUpgradeFunction(method f) returns bool = (
+  f.selector == sig:karma.upgradeToAndCall(address, bytes).selector
+);
 
 definition isERC20TransferFunction(method f) returns bool = (
   f.selector == sig:karma.transfer(address, uint256).selector
@@ -46,7 +64,7 @@ rule ownableFuncsOnlyCallableByOwner(method f) {
 }
 
 rule totalDistributorAllocationCanOnlyIncrease(method f) filtered { f ->
-     f.selector != sig:karma.upgradeToAndCall(address, bytes).selector
+     !isUpgradeFunction(f)
      && !isERC20TransferFunction(f)
     } {
     env e;
