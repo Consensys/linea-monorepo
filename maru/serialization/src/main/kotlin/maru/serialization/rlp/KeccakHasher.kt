@@ -13,20 +13,12 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database
+package maru.serialization.rlp
 
-import maru.core.BeaconState
-import maru.core.SealedBeaconBlock
+import maru.core.Hasher
+import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.datatypes.Hash
 
-interface Updater : AutoCloseable {
-  fun putBeaconState(beaconState: BeaconState): Updater
-
-  fun putSealedBeaconBlock(
-    sealedBeaconBlock: SealedBeaconBlock,
-    beaconBlockRoot: ByteArray,
-  ): Updater
-
-  fun commit(): Unit
-
-  fun rollback(): Unit
+object KeccakHasher : Hasher {
+  override fun hash(serializedBytes: ByteArray): ByteArray = Hash.hash(Bytes.wrap(serializedBytes)).toArray()
 }

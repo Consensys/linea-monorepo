@@ -19,6 +19,7 @@ plugins {
 
 dependencies {
   implementation(project(":core"))
+  implementation(project(":serialization"))
   implementation(project(":config"))
   implementation (project(":jvm-libs:extensions"))
   implementation(project(":executionlayer")) {
@@ -36,6 +37,8 @@ dependencies {
   api("org.hyperledger.besu.internal:blockcreation") {
     because("of the BlockCreator")
   }
+  implementation "org.hyperledger.besu.internal:qbft-core"
+  implementation("org.hyperledger.besu:besu-datatypes")
   implementation("org.hyperledger.besu:evm")
 
   testImplementation(testFixtures(project(":core")))

@@ -16,12 +16,17 @@
 package maru.serialization.rlp
 
 import maru.core.BeaconBlockHeader
+import maru.core.Hasher
+import maru.core.HeaderHashFunction
+import maru.serialization.Serializer
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
 class BeaconBlockHeaderSerializer(
   private val validatorSerializer: ValidatorSerializer,
+  private val hasher: Hasher,
+  private val headerHashFunction: (Serializer<BeaconBlockHeader>, Hasher) -> HeaderHashFunction,
 ) : RLPSerializer<BeaconBlockHeader> {
   override fun writeTo(
     value: BeaconBlockHeader,
@@ -31,9 +36,11 @@ class BeaconBlockHeaderSerializer(
 
     rlpOutput.writeLong(value.number.toLong())
     rlpOutput.writeLong(value.round.toLong())
+    rlpOutput.writeLong(value.timestamp.toLong())
     validatorSerializer.writeTo(value.proposer, rlpOutput)
     rlpOutput.writeBytes(Bytes.wrap(value.parentRoot))
     rlpOutput.writeBytes(Bytes.wrap(value.stateRoot))
+    rlpOutput.writeBytes(Bytes.wrap(value.bodyRoot))
 
     rlpOutput.endList()
   }
@@ -43,18 +50,23 @@ class BeaconBlockHeaderSerializer(
 
     val number = rlpInput.readLong().toULong()
     val round = rlpInput.readLong().toULong()
+    val timestamp = rlpInput.readLong().toULong()
     val proposer = validatorSerializer.readFrom(rlpInput)
     val parentRoot = rlpInput.readBytes().toArray()
     val stateRoot = rlpInput.readBytes().toArray()
+    val bodyRoot = rlpInput.readBytes().toArray()
 
     rlpInput.leaveList()
 
     return BeaconBlockHeader(
       number = number,
       round = round,
+      timestamp = timestamp,
       proposer = proposer,
       parentRoot = parentRoot,
       stateRoot = stateRoot,
+      bodyRoot = bodyRoot,
+      headerHashFunction(this, hasher),
     )
   }
 }

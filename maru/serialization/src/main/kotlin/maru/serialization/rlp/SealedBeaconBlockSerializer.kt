@@ -15,37 +15,36 @@
  */
 package maru.serialization.rlp
 
-import maru.core.BeaconBlockBody
+import maru.core.SealedBeaconBlock
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
-class BeaconBlockBodySerializer(
+class SealedBeaconBlockSerializer(
+  private val beaconBlockSerializer: BeaconBlockSerializer,
   private val sealSerializer: SealSerializer,
-  private val executionPayloadSerializer: ExecutionPayloadSerializer,
-) : RLPSerializer<BeaconBlockBody> {
+) : RLPSerializer<SealedBeaconBlock> {
   override fun writeTo(
-    value: BeaconBlockBody,
+    value: SealedBeaconBlock,
     rlpOutput: RLPOutput,
   ) {
     rlpOutput.startList()
 
-    rlpOutput.writeList(value.prevCommitSeals) { prevBlockSeal, output ->
-      sealSerializer.writeTo(prevBlockSeal, output)
+    beaconBlockSerializer.writeTo(value.beaconBlock, rlpOutput)
+    rlpOutput.writeList(value.commitSeals) { commitSeal, output ->
+      sealSerializer.writeTo(commitSeal, output)
     }
-
-    executionPayloadSerializer.writeTo(value.executionPayload, rlpOutput)
 
     rlpOutput.endList()
   }
 
-  override fun readFrom(rlpInput: RLPInput): BeaconBlockBody {
+  override fun readFrom(rlpInput: RLPInput): SealedBeaconBlock {
     rlpInput.enterList()
 
-    val prevCommitSeals = rlpInput.readList { sealSerializer.readFrom(rlpInput) }
-    val executionPayload = executionPayloadSerializer.readFrom(rlpInput)
+    val beaconBlock = beaconBlockSerializer.readFrom(rlpInput)
+    val commitSeals = rlpInput.readList { sealSerializer.readFrom(rlpInput) }
 
     rlpInput.leaveList()
 
-    return BeaconBlockBody(prevCommitSeals, executionPayload)
+    return SealedBeaconBlock(beaconBlock, commitSeals)
   }
 }

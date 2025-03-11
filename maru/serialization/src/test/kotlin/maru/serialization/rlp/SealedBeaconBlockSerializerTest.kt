@@ -22,32 +22,39 @@ import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.HashUtil
 import maru.core.Seal
+import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.core.ext.DataGenerators.randomExecutionPayload
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
-class BeaconBlockSerializerTest {
+class SealedBeaconBlockSerializerTest {
   private val blockHeaderSerializer =
     BeaconBlockHeaderSerializer(
       validatorSerializer = ValidatorSerializer(),
       hasher = KeccakHasher,
       headerHashFunction = HashUtil::headerHash,
     )
-  private val blockBodySerializer =
+  private val sealSerializer = SealSerializer()
+  private val blockSerializer =
     BeaconBlockSerializer(
       beaconBlockHeaderSerializer =
       blockHeaderSerializer,
       beaconBlockBodySerializer =
         BeaconBlockBodySerializer(
-          sealSerializer = SealSerializer(),
+          sealSerializer = sealSerializer,
           executionPayloadSerializer = ExecutionPayloadSerializer(),
         ),
+    )
+  private val sealedBlockSerializer =
+    SealedBeaconBlockSerializer(
+      beaconBlockSerializer = blockSerializer,
+      sealSerializer = sealSerializer,
     )
 
   @Test
   fun `can serialize and deserialize same value`() {
-    val beaconBLockHeader =
+    val beaconBlockHeader =
       BeaconBlockHeader(
         number = Random.nextULong(),
         round = Random.nextULong(),
@@ -63,14 +70,18 @@ class BeaconBlockSerializerTest {
         prevCommitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
         executionPayload = randomExecutionPayload(),
       )
-    val testValue =
-      BeaconBlock(
-        beaconBlockHeader = beaconBLockHeader,
-        beaconBlockBody = beaconBlockBody,
+    val sealedBlock =
+      SealedBeaconBlock(
+        beaconBlock =
+          BeaconBlock(
+            beaconBlockHeader = beaconBlockHeader,
+            beaconBlockBody = beaconBlockBody,
+          ),
+        commitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
       )
-    val serializedData = blockBodySerializer.serialize(testValue)
-    val deserializedValue = blockBodySerializer.deserialize(serializedData)
+    val serializedData = sealedBlockSerializer.serialize(sealedBlock)
+    val deserializedValue = sealedBlockSerializer.deserialize(serializedData)
 
-    assertThat(deserializedValue).isEqualTo(testValue)
+    assertThat(deserializedValue).isEqualTo(sealedBlock)
   }
 }
