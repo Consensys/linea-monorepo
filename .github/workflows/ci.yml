@@ -139,7 +139,7 @@ jobs:
         with: { java-version: "11", java-package: jre }
 
       - name: Install Certora CLI
-        run: pip3 install certora-cli==7.25.2
+        run: pip3 install certora-cli
 
       - name: Install Solidity
         run: |
@@ -174,4 +174,5 @@ jobs:
         rule:
           - verify:rewards_streamer_mp
           - verify:emergency_mode
+          - verify:mp_less_equal_max_mp
           - verify:karma
