@@ -1,18 +1,18 @@
-# XPToken
+# Karma
 
 ## Overview
 
-The XPToken is an ERC-20 token implementation with a modified supply mechanism that incorporates external reward
-providers. XP tokens are not transferrable, but they can be used as voting power in the Status Network.
+The Karma contract is an ERC-20 token implementation with a modified supply mechanism that incorporates external reward
+distributors. Karma tokens are not transferrable, but they can be used as voting power in the Status Network.
 
 ## Features
 
 - **Minting with Restrictions:**
   - The contract owner (admin) can mint tokens, and their accounting is kept internally.
   - Prevents exceeding a dynamically calculated mint allowance.
-- **Reward Providers Integration:**
-  - Tracks balances and supplies from external reward providers.
-  - Allows addition and removal of reward providers by the owner.
+- **Reward Distributors Integration:**
+  - Tracks balances and supplies from external reward distributors.
+  - Allows addition and removal of reward distributor by the owner.
 - **Non-Transferrable Tokens:**
   - Transfers, approvals, and allowances are disabled.
   - Users can only receive balances from minting or reward distributions.
@@ -21,22 +21,22 @@ providers. XP tokens are not transferrable, but they can be used as voting power
 
 ## Contract Details
 
-- `NAME`: "XP Token"
-- `SYMBOL`: "XP"
+- `NAME`: "Karma"
+- `SYMBOL`: "KARMA"
 
 ### State Variables
 
-- `rewardProviders`: A list of addresses implementing the `IRewardProvider` interface.
+- `rewardDistributors`: A list of addresses implementing the `IRewardDistributor` interface.
 
 ### Errors
 
-- `XPToken__MintAllowanceExceeded`: Raised when minting exceeds the allowed threshold.
-- `XPToken__TransfersNotAllowed`: Raised when a transfer, approval, or transferFrom is attempted.
+- `Karma__MintAllowanceExceeded`: Raised when minting exceeds the allowed threshold.
+- `Karma__TransfersNotAllowed`: Raised when a transfer, approval, or transferFrom is attempted.
 
 ## Supply and Balance Calculation
 
-- **totalSupply()**: Sum of the internal supply and the sum of external supplies from reward providers.
-- **balanceOf(address)**: Internal balance plus the sum of external balances from reward providers.
+- **totalSupply()**: Sum of the internal supply and the sum of external supplies from reward distributors.
+- **balanceOf(address)**: Internal balance plus the sum of external balances from reward distributors.
 
 ## Sources of XP Tokens
 

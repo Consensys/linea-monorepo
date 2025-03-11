@@ -117,18 +117,19 @@ Alice receives 8.2 MP for the 30 days she has staked.
 ### On real-time MP accrual
 
 As mentioned a couple of times above, the more time has elapsed, the more MP are accrued. In fact, MP are increase every
-second and can be monitored in real-time via the smart contracts. Whenever a state changing action is performed by an
-account (eg. staking, unstaking), the accrued MP are updated in storage.
+second and can be monitored in real-time via the smart contracts. Users have to "claim" their accrued MP by calling a
+function on the stake manager contract.
 
-This means that, unless the maximum amount of MP has been reached (more on that below), the AMP amount in storage will
+This means that, unless the maximum amount of MP has been reached (more on that below), the MP amount in storage will
 likely be different from the real-time value.
 
 ### Total MP
 
-Total MP combines both Initial MP and Accrued MP:
+Total MP combines both accrued MP and pending MP. The accrued MP contain the initial MP and the MP accrued over time.
+Pending MP are the ones that have yet to be "claimed" by the user:
 
 $$
-\text{MP}_ \text{Total} = \text{MP}_ \text{Initial} + \text{MP}_ \text{Accrued}
+\text{MP}_ \text{Total} = \text{MP}_ \text{Accrued} + \text{MP}_ \text{Pending}
 $$
 
 This total is used to calculate the user’s share of rewards, which we'll cover in another chapter.
