@@ -13,20 +13,25 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.database
+package maru.core
 
-import maru.core.BeaconState
-import maru.core.SealedBeaconBlock
+data class SealedBeaconBlock(
+  val beaconBlock: BeaconBlock,
+  val commitSeals: List<Seal>,
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (other !is SealedBeaconBlock) return false
 
-interface Updater : AutoCloseable {
-  fun putBeaconState(beaconState: BeaconState): Updater
+    if (commitSeals != other.commitSeals) return false
+    if (beaconBlock != other.beaconBlock) return false
 
-  fun putSealedBeaconBlock(
-    sealedBeaconBlock: SealedBeaconBlock,
-    beaconBlockRoot: ByteArray,
-  ): Updater
+    return true
+  }
 
-  fun commit(): Unit
-
-  fun rollback(): Unit
+  override fun hashCode(): Int {
+    var result = commitSeals.hashCode()
+    result = 31 * result + beaconBlock.hashCode()
+    return result
+  }
 }

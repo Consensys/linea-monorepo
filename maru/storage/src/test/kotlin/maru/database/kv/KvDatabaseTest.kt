@@ -90,7 +90,7 @@ class KvDatabaseTest {
     val randomKey = Random.nextBytes(32)
     createDatabase(databasePath).use { db ->
       assertThat(db.getBeaconState(randomKey)).isNull()
-      assertThat(db.getBeaconBlock(randomKey)).isNull()
+      assertThat(db.getSealedBeaconBlock(randomKey)).isNull()
     }
   }
 
@@ -98,19 +98,24 @@ class KvDatabaseTest {
   fun `test read and write beacon blocks`(
     @TempDir databasePath: Path,
   ) {
-    val testBeaconBlockMap = (1..10).map { Random.nextBytes(32) to DataGenerators.randomBeaconBlock(it.toULong()) }
+    val testBeaconBlockMap =
+      (1..10).map {
+        Random.nextBytes(
+          32,
+        ) to DataGenerators.randomSealedBeaconBlock(it.toULong())
+      }
     createDatabase(databasePath).use { db ->
       testBeaconBlockMap.forEach { (testBeaconBlockRoot, testBeaconBlock) ->
         db.newUpdater().use {
-          it.putBeaconBlock(testBeaconBlock, testBeaconBlockRoot).commit()
+          it.putSealedBeaconBlock(testBeaconBlock, testBeaconBlockRoot).commit()
         }
-        assertThat(db.getBeaconBlock(testBeaconBlockRoot)).isEqualTo(testBeaconBlock)
+        assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot)).isEqualTo(testBeaconBlock)
       }
     }
 
     createDatabase(databasePath).use { db ->
       testBeaconBlockMap.forEach { (testBeaconBlockRoot, testBeaconBlock) ->
-        assertThat(db.getBeaconBlock(testBeaconBlockRoot)).isEqualTo(testBeaconBlock)
+        assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot)).isEqualTo(testBeaconBlock)
       }
     }
   }
@@ -119,19 +124,19 @@ class KvDatabaseTest {
   fun `test repeated write`(
     @TempDir databasePath: Path,
   ) {
-    val testBeaconBlock = DataGenerators.randomBeaconBlock(1uL)
+    val testBeaconBlock = DataGenerators.randomSealedBeaconBlock(1uL)
     val testBeaconBlockRoot = Random.nextBytes(32)
     createDatabase(databasePath).use { db ->
       db.newUpdater().use {
-        it.putBeaconBlock(testBeaconBlock, testBeaconBlockRoot).commit()
+        it.putSealedBeaconBlock(testBeaconBlock, testBeaconBlockRoot).commit()
       }
       db.newUpdater().use {
-        it.putBeaconBlock(testBeaconBlock, testBeaconBlockRoot).commit()
+        it.putSealedBeaconBlock(testBeaconBlock, testBeaconBlockRoot).commit()
       }
     }
 
     createDatabase(databasePath).use { db ->
-      assertThat(db.getBeaconBlock(testBeaconBlockRoot)).isEqualTo(testBeaconBlock)
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot)).isEqualTo(testBeaconBlock)
     }
   }
 
@@ -139,28 +144,28 @@ class KvDatabaseTest {
   fun `test update rollback`(
     @TempDir databasePath: Path,
   ) {
-    val testBeaconBlock1 = DataGenerators.randomBeaconBlock(1uL)
+    val testBeaconBlock1 = DataGenerators.randomSealedBeaconBlock(1uL)
     val testBeaconBlockRoot1 = Random.nextBytes(32)
-    val testBeaconBlock2 = DataGenerators.randomBeaconBlock(2uL)
+    val testBeaconBlock2 = DataGenerators.randomSealedBeaconBlock(2uL)
     val testBeaconBlockRoot2 = Random.nextBytes(32)
     createDatabase(databasePath).use { db ->
       db.newUpdater().use {
-        it.putBeaconBlock(testBeaconBlock1, testBeaconBlockRoot1).commit()
+        it.putSealedBeaconBlock(testBeaconBlock1, testBeaconBlockRoot1).commit()
       }
-      assertThat(db.getBeaconBlock(testBeaconBlockRoot1)).isEqualTo(testBeaconBlock1)
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot1)).isEqualTo(testBeaconBlock1)
 
-      assertThat(db.getBeaconBlock(testBeaconBlockRoot2)).isNull()
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot2)).isNull()
 
-      db.newUpdater().use { it.putBeaconBlock(testBeaconBlock2, testBeaconBlockRoot2).rollback() }
+      db.newUpdater().use { it.putSealedBeaconBlock(testBeaconBlock2, testBeaconBlockRoot2).rollback() }
 
-      assertThat(db.getBeaconBlock(testBeaconBlockRoot1)).isEqualTo(testBeaconBlock1)
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot1)).isEqualTo(testBeaconBlock1)
 
-      assertThat(db.getBeaconBlock(testBeaconBlockRoot2)).isNull()
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot2)).isNull()
     }
 
     createDatabase(databasePath).use { db ->
-      assertThat(db.getBeaconBlock(testBeaconBlockRoot1)).isEqualTo(testBeaconBlock1)
-      assertThat(db.getBeaconBlock(testBeaconBlockRoot2)).isNull()
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot1)).isEqualTo(testBeaconBlock1)
+      assertThat(db.getSealedBeaconBlock(testBeaconBlockRoot2)).isNull()
     }
   }
 }

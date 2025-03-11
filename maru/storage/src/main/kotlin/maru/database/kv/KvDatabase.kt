@@ -16,8 +16,8 @@
 package maru.database.kv
 
 import kotlin.jvm.optionals.getOrNull
-import maru.core.BeaconBlock
 import maru.core.BeaconState
+import maru.core.SealedBeaconBlock
 import maru.database.Database
 import maru.database.Updater
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor
@@ -37,11 +37,11 @@ class KvDatabase(
           KvStoreSerializers.BeaconStateSerializer,
         )
 
-      val BeaconBlockByBlockRoot: KvStoreColumn<ByteArray, BeaconBlock> =
+      val SealedBeaconBlockByBlockRoot: KvStoreColumn<ByteArray, SealedBeaconBlock> =
         KvStoreColumn.create(
           2,
           KvStoreSerializers.BytesSerializer,
-          KvStoreSerializers.BeaconBlockSerializer,
+          KvStoreSerializers.SealedBeaconBlockSerializer,
         )
 
       val LatestBeaconState: KvStoreVariable<BeaconState> =
@@ -57,8 +57,8 @@ class KvDatabase(
   override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? =
     kvStoreAccessor.get(Schema.BeaconStateByBlockRoot, beaconBlockRoot).getOrNull()
 
-  override fun getBeaconBlock(beaconBlockRoot: ByteArray): BeaconBlock? =
-    kvStoreAccessor.get(Schema.BeaconBlockByBlockRoot, beaconBlockRoot).getOrNull()
+  override fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock? =
+    kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, beaconBlockRoot).getOrNull()
 
   override fun newUpdater(): Updater = KvUpdater(this.kvStoreAccessor)
 
@@ -77,11 +77,11 @@ class KvDatabase(
       return this
     }
 
-    override fun putBeaconBlock(
-      beaconBlock: BeaconBlock,
+    override fun putSealedBeaconBlock(
+      sealedBeaconBlock: SealedBeaconBlock,
       beaconBlockRoot: ByteArray,
     ): Updater {
-      transaction.put(Schema.BeaconBlockByBlockRoot, beaconBlockRoot, beaconBlock)
+      transaction.put(Schema.SealedBeaconBlockByBlockRoot, beaconBlockRoot, sealedBeaconBlock)
       return this
     }
 

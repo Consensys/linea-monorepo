@@ -23,5 +23,6 @@ dependencies {
   implementation "io.tmio:tuweni-bytes"
   implementation "org.hyperledger.besu.internal:rlp"
   implementation "org.hyperledger.besu:besu-datatypes"
+  testImplementation (project(":core"))
   testImplementation (testFixtures(project(":core")))
 }

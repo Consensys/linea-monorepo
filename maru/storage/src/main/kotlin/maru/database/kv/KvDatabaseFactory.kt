@@ -33,7 +33,7 @@ object KvDatabaseFactory {
         metricCategory,
         KvStoreConfiguration().withDatabaseDir(databasePath),
         listOf(
-          KvDatabase.Companion.Schema.BeaconBlockByBlockRoot,
+          KvDatabase.Companion.Schema.SealedBeaconBlockByBlockRoot,
           KvDatabase.Companion.Schema.BeaconStateByBlockRoot,
         ),
         emptyList(),

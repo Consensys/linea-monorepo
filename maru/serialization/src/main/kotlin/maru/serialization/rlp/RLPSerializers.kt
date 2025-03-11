@@ -15,11 +15,15 @@
  */
 package maru.serialization.rlp
 
+import maru.core.HashUtil
+
 object RLPSerializers {
   val ValidatorSerializer = ValidatorSerializer()
   val BeaconBlockHeaderSerializer =
     BeaconBlockHeaderSerializer(
       validatorSerializer = ValidatorSerializer,
+      hasher = KeccakHasher,
+      headerHashFunction = HashUtil::headerHash,
     )
   val SealSerializer = SealSerializer()
   val ExecutionPayloadSerializer = ExecutionPayloadSerializer()
@@ -32,6 +36,11 @@ object RLPSerializers {
     BeaconBlockSerializer(
       beaconBlockHeaderSerializer = BeaconBlockHeaderSerializer,
       beaconBlockBodySerializer = BeaconBlockBodySerializer,
+    )
+  val SealedBeaconBlockSerializer =
+    SealedBeaconBlockSerializer(
+      beaconBlockSerializer = BeaconBlockSerializer,
+      sealSerializer = SealSerializer,
     )
   val BeaconStateSerializer =
     BeaconStateSerializer(
