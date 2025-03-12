@@ -62,7 +62,7 @@ export default function FaqPage() {
       <div className={styles["content-wrapper"]}>
         <Link className={styles["home-link"]} href="/">
           <ArrowLeftIcon />
-          <span>BRIDGE</span>
+          <span>Bridge</span>
         </Link>
         <h1 className={styles["title"]}>FAQ</h1>
 

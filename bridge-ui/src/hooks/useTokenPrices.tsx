@@ -1,9 +1,9 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Address } from "viem";
 import log from "loglevel";
 import { fetchTokenPrices } from "@/services/tokenService";
 import { useConfigStore } from "@/stores";
-import { useMemo } from "react";
 
 type UseTokenPrices = {
   data: Record<string, number>;
@@ -19,7 +19,7 @@ export default function useTokenPrices(tokenAddresses: Address[], chainId?: numb
   const memoizedTokenAddresses = useMemo(() => tokenAddresses, [JSON.stringify(tokenAddresses)]);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["tokenPrices", memoizedTokenAddresses.join("-"), chainId],
+    queryKey: ["tokenPrices", memoizedTokenAddresses.join("-"), chainId, currency.value],
     queryFn: () => fetchTokenPrices(memoizedTokenAddresses, currency.value, chainId),
     enabled: !!chainId && memoizedTokenAddresses.length > 0 && [1, 59144].includes(chainId),
     refetchOnWindowFocus: false,

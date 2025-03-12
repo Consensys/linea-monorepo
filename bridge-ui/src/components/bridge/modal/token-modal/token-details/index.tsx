@@ -7,7 +7,7 @@ import { useTokenBalance } from "@/hooks";
 import { useFormStore, useTokenStore, useChainStore, CurrencyOption } from "@/stores";
 import { formatUnits } from "viem";
 import { Token } from "@/types";
-import { isEth } from "@/utils";
+import { formatBalance, isEth } from "@/utils";
 
 interface TokenDetailsProps {
   token: Token;
@@ -60,7 +60,7 @@ export default function TokenDetails({ token, onTokenClick, tokenPrice, currency
       {!tokenNotFromCurrentLayer && (
         <div className={styles.rìght}>
           <p className={styles["balance"]}>
-            {formattedBalance} {token.symbol}
+            {formatBalance(formattedBalance, 8)} {token.symbol}
           </p>
           {totalValue !== undefined && (
             <p className={styles["price"]}>

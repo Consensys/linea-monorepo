@@ -1,14 +1,13 @@
 import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useAccount, useSwitchChain, useTransactionReceipt } from "wagmi";
-import { formatEther, zeroAddress } from "viem";
+import { formatEther } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
 import Modal from "@/components/modal";
 import styles from "./transaction-details.module.scss";
 import Button from "@/components/ui/button";
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
-import { useConfigStore } from "@/stores";
-import { useClaim, useTokenPrices } from "@/hooks";
+import { useClaim } from "@/hooks";
 import { TransactionStatus } from "@/types";
 import { formatBalance, formatHex, formatTimestamp, BridgeTransaction } from "@/utils";
 
@@ -22,11 +21,8 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
   const { chain } = useAccount();
   const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
 
-  const currency = useConfigStore((state) => state.currency);
   const formattedDate = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "MMM, dd, yyyy") : "";
   const formattedTime = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "ppp") : "";
-
-  const { data: tokensPrices } = useTokenPrices([zeroAddress], transaction?.fromChain.id);
 
   const queryClient = useQueryClient();
   const { claim, isConfirming, isPending, isConfirmed } = useClaim({
@@ -149,7 +145,7 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
                   {formatHex(transaction.claimingTx)}
                 </Link>
               ) : (
-                <span>N/A</span>
+                <span>Pending</span>
               )}
 
               <ArrowRightIcon />
@@ -158,19 +154,7 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
           {transaction?.status === TransactionStatus.COMPLETED && (
             <li>
               <span>Gas fee</span>
-              <span className={styles.price}>
-                {tokensPrices[zeroAddress] ? (
-                  <span>
-                    {(tokensPrices[zeroAddress] * Number(formatEther(gasFees))).toLocaleString("en-US", {
-                      style: "currency",
-                      currency: currency.label,
-                      maximumFractionDigits: 4,
-                    })}
-                  </span>
-                ) : (
-                  `${formatBalance(formatEther(gasFees), 8)} ETH`
-                )}
-              </span>
+              <span className={styles.price}>{formatBalance(formatEther(gasFees), 8)} ETH</span>
             </li>
           )}
         </ul>

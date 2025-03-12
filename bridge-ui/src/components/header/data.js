@@ -89,13 +89,6 @@ export const MENUS = [
         url: "/",
         mobileOnly: true,
       },
-      {
-        __id: "6Nafs8i1CnnT6WIaJUqnjezz",
-        __typename: "link",
-        name: "FAQ",
-        label: "FAQ",
-        url: "/faq",
-      },
     ],
   },
   {

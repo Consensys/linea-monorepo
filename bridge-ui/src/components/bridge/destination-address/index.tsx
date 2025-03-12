@@ -2,13 +2,17 @@ import { ChangeEvent, useEffect, useState } from "react";
 import { useAccount } from "wagmi";
 import { isAddress } from "viem";
 import clsx from "clsx";
+import Link from "next/link";
 import styles from "./destination-address.module.scss";
 import XCircleIcon from "@/assets/icons/x-circle.svg";
-import { useFormStore } from "@/stores";
+import { useChainStore, useFormStore } from "@/stores";
+import { ChainLayer } from "@/types";
+import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
 
 export function DestinationAddress() {
   const { address } = useAccount();
 
+  const toChain = useChainStore.useToChain();
   const recipient = useFormStore((state) => state.recipient);
   const setRecipient = useFormStore((state) => state.setRecipient);
   const [inputValue, setInputValue] = useState(recipient);
@@ -38,7 +42,20 @@ export function DestinationAddress() {
 
   return (
     <div className={styles["destination-address"]}>
-      <p className={styles.title}>Send to wallet</p>
+      <div className={styles["headline"]}>
+        <p className={styles.title}>Send to wallet</p>
+        {address !== inputValue && !error && (
+          <Link
+            href={`${toChain.blockExplorers?.default.url ?? ""}/address/${inputValue}`}
+            target="_blank"
+            rel="noopenner noreferrer"
+          >
+            VIEW ON {toChain.layer === ChainLayer.L1 ? "ETHERSCAN" : "LINEASCAN"}
+            <ArrowRightIcon />
+          </Link>
+        )}
+      </div>
+
       <div className={styles["input-container"]}>
         <input
           type="text"
@@ -48,6 +65,9 @@ export function DestinationAddress() {
           value={inputValue}
           pattern="^0x[a-fA-F0-9]{40}$"
           onChange={handleChange}
+          className={clsx(styles.input, {
+            [styles["error"]]: error,
+          })}
         />
 
         <button
@@ -60,7 +80,20 @@ export function DestinationAddress() {
           <XCircleIcon />
         </button>
       </div>
-      {error && <p className={styles["message-text"]}>{error.toString()}</p>}
+
+      <p
+        className={clsx(styles["message-text"], {
+          [styles["warning"]]: inputValue !== address,
+          [styles["success"]]: inputValue === address,
+          [styles["error"]]: error,
+        })}
+      >
+        {error
+          ? error.toString()
+          : address !== inputValue
+            ? "Editing the destination address can result in loss of your funds. Make sure you control this address."
+            : "This is your connected address"}
+      </p>
     </div>
   );
 }

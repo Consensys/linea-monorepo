@@ -55,7 +55,7 @@ export function Submit({ setIsDestinationAddressOpen }: Props) {
       return `Switch to ${fromChain.name}`;
     }
 
-    return "Review Bridge";
+    return "Bridge";
   }, [
     amount,
     balance,

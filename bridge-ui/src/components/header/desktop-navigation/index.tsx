@@ -51,10 +51,18 @@ function MenuItem({ menu }: MenuItemProps) {
     <li
       className={clsx(styles.menuItem, {
         [styles["active"]]: menu.active,
-        [styles["show"]]: showSubmenu,
+        [styles["show"]]: showSubmenu && (menu.submenusLeft?.length || menu.submenusRight),
       })}
-      onMouseEnter={() => setShowsubmenu(true)}
-      onMouseLeave={() => setShowsubmenu(false)}
+      onMouseEnter={() => {
+        if (menu.submenusLeft?.length || menu.submenusRight) {
+          setShowsubmenu(true);
+        }
+      }}
+      onMouseLeave={() => {
+        if (menu.submenusLeft?.length || menu.submenusRight) {
+          setShowsubmenu(false);
+        }
+      }}
     >
       {menu.url && (
         <Link href={menu.url} target={menu.external ? "_blank" : "_self"}>
