@@ -229,7 +229,7 @@ contract RewardsStreamerMP is
         }
 
         _updateGlobalState();
-        _updateVault(msg.sender, true);
+        _updateVault(msg.sender, false);
         (uint256 deltaMp, uint256 newLockEnd) =
             _calculateLock(vault.stakedBalance, vault.maxMP, vault.lockUntil, block.timestamp, lockPeriod);
 
@@ -280,6 +280,7 @@ contract RewardsStreamerMP is
             // further cleanup that isn't done in `_unstake`
             vault.rewardIndex = 0;
             vault.lockUntil = 0;
+            vault.lastMPUpdateTime = 0;
         }
 
         emit AccountLeft(msg.sender);
@@ -332,7 +333,7 @@ contract RewardsStreamerMP is
     function compound(address vaultAddress) external onlyNotEmergencyMode {
         VaultData storage vault = vaultData[vaultAddress];
         _updateGlobalState();
-        _updateVault(vaultAddress, true);
+        _updateVault(vaultAddress, false);
 
         uint256 mpToStake = vault.mpAccrued - vault.mpStaked;
         if (mpToStake == 0) {
@@ -383,7 +384,7 @@ contract RewardsStreamerMP is
         }
 
         _updateGlobalState();
-        _updateVault(msg.sender, true);
+        _updateVault(msg.sender, false);
 
         VaultData storage oldVault = vaultData[msg.sender];
         VaultData storage newVault = vaultData[migrateTo];
@@ -448,7 +449,7 @@ contract RewardsStreamerMP is
 
     function _unstake(uint256 amount, VaultData storage vault, address vaultAddress) internal {
         _updateGlobalState();
-        _updateVault(vaultAddress, true);
+        _updateVault(vaultAddress, false);
 
         (uint256 _deltaMpTotal, uint256 _deltaMpMax) = _calculateUnstake(
             vault.stakedBalance, vault.lockUntil, block.timestamp, vault.mpAccrued, vault.maxMP, amount
