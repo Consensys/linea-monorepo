@@ -331,8 +331,25 @@ contract RewardsStreamerMP is
      * @dev Anyone can compound MPs for any vault.
      */
     function compound(address vaultAddress) external onlyNotEmergencyMode {
-        VaultData storage vault = vaultData[vaultAddress];
         _updateGlobalState();
+        _compound(vaultAddress);
+    }
+
+    /**
+     * @notice Allows any user to compound accrued MP for any user.
+     * @dev This function is only callable when emergency mode is disabled.
+     * @dev Anyone can compound MPs for account.
+     */
+    function compoundAccount(address account) external onlyNotEmergencyMode {
+        _updateGlobalState();
+        address[] memory accountVaults = vaults[account];
+        for (uint256 i = 0; i < accountVaults.length; i++) {
+            _compound(accountVaults[i]);
+        }
+    }
+
+    function _compound(address vaultAddress) internal {
+        VaultData storage vault = vaultData[vaultAddress];
         _updateVault(vaultAddress, false);
 
         uint256 mpToStake = vault.mpAccrued - vault.mpStaked;
@@ -343,7 +360,6 @@ contract RewardsStreamerMP is
         vault.mpStaked += mpToStake;
         totalMPStaked += mpToStake;
         vault.rewardIndex = rewardIndex;
-
         emit Compound(vaultAddress, mpToStake);
     }
 
