@@ -12,7 +12,7 @@ func TestSRSStore(t *testing.T) {
 	srsStore, err := NewSRSStore("../prover-assets/kzgsrs")
 	assert.NoError(err)
 
-	assert.True(len(srsStore.entries) > 0)
+	assert.Greater(len(srsStore.entries), 0)
 
 	// log the entries
 	for curveID, entries := range srsStore.entries {
