@@ -7,7 +7,6 @@ import { IGenericErrors } from "../../../interfaces/IGenericErrors.sol";
 import { RateLimiter } from "../../../security/limiting/RateLimiter.sol";
 import { TransientStorageReentrancyGuardUpgradeable } from "../../../security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol";
 import { L2MessageManagerV1 } from "./L2MessageManagerV1.sol";
-import { TransientStorageHelpers } from "../../../libraries/TransientStorageHelpers.sol";
 import { MessageHashing } from "../../libraries/MessageHashing.sol";
 
 /**
@@ -35,6 +34,8 @@ abstract contract L2MessageServiceV1 is
   /// @notice The role required to set the minimum DDOS fee.
   bytes32 public constant MINIMUM_FEE_SETTER_ROLE = keccak256("MINIMUM_FEE_SETTER_ROLE");
 
+  address transient TRANSIENT_MESSAGE_SENDER;
+
   /// @dev DEPRECATED in favor of new transient storage with `MESSAGE_SENDER_TRANSIENT_KEY` key.
   address internal _messageSender;
 
@@ -46,10 +47,6 @@ abstract contract L2MessageServiceV1 is
 
   // @dev adding these should not affect storage as they are constants and are stored in bytecode.
   uint256 internal constant REFUND_OVERHEAD_IN_GAS = 44596;
-
-  /// @dev The transient storage key to set the message sender against while claiming.
-  bytes32 internal constant MESSAGE_SENDER_TRANSIENT_KEY =
-    bytes32(uint256(keccak256("eip1967.message.sender.transient.key")) - 1);
 
   /// @notice The default value for the message sender reset to post claiming using the MESSAGE_SENDER_TRANSIENT_KEY.
   address internal constant DEFAULT_MESSAGE_SENDER_TRANSIENT_VALUE = address(0);
@@ -130,7 +127,7 @@ abstract contract L2MessageServiceV1 is
     _requireTypeAndGeneralNotPaused(PauseType.L1_L2);
 
     /// @dev This is placed earlier to fix the stack issue by using these two earlier on.
-    TransientStorageHelpers.tstoreAddress(MESSAGE_SENDER_TRANSIENT_KEY, _from);
+    TRANSIENT_MESSAGE_SENDER = _from;
 
     bytes32 messageHash = MessageHashing._hashMessage(_from, _to, _fee, _value, _nonce, _calldata);
 
@@ -147,7 +144,8 @@ abstract contract L2MessageServiceV1 is
         revert MessageSendingFailed(_to);
       }
     }
-    TransientStorageHelpers.tstoreAddress(MESSAGE_SENDER_TRANSIENT_KEY, DEFAULT_MESSAGE_SENDER_TRANSIENT_VALUE);
+
+    TRANSIENT_MESSAGE_SENDER = DEFAULT_MESSAGE_SENDER_TRANSIENT_VALUE;
 
     emit MessageClaimed(messageHash);
   }
@@ -169,7 +167,7 @@ abstract contract L2MessageServiceV1 is
    * @return originalSender The message sender address that is stored temporarily in the transient storage when claiming.
    */
   function sender() external view returns (address originalSender) {
-    originalSender = TransientStorageHelpers.tloadAddress(MESSAGE_SENDER_TRANSIENT_KEY);
+    originalSender = TRANSIENT_MESSAGE_SENDER;
   }
 
   /**
