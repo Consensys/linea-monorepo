@@ -3,7 +3,7 @@ import assert from "assert";
 import { AbstractSigner, BaseContract, BlockTag, TransactionReceipt, TransactionRequest, Wallet, ethers } from "ethers";
 import path from "path";
 import { exec } from "child_process";
-import { L2MessageService, TokenBridge, LineaRollupV6 } from "../typechain";
+import { L2MessageServiceV1 as L2MessageService, TokenBridgeV1_1 as TokenBridge, LineaRollupV6 } from "../typechain";
 import {
   PayableOverrides,
   TypedContractEvent,
@@ -78,6 +78,46 @@ export class RollupGetZkEVMBlockNumberClient {
     const data = await response.json();
     assert("result" in data);
     return Number.parseInt(data.result);
+  }
+}
+
+export class LineaEstimateGasClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  public async lineaEstimateGas(
+    from: string,
+    to: string,
+    data: string = "0x",
+    value: string = "0x0",
+  ): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint; gasLimit: bigint }> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_estimateGas",
+        params: [
+          {
+            from,
+            to,
+            data,
+            value,
+          },
+        ],
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    const responseJson = await response.json();
+    assert("result" in responseJson);
+    return {
+      maxFeePerGas: BigInt(responseJson.result.baseFeePerGas) + BigInt(responseJson.result.priorityFeePerGas),
+      maxPriorityFeePerGas: BigInt(responseJson.result.priorityFeePerGas),
+      gasLimit: BigInt(responseJson.result.gasLimit),
+    };
   }
 }
 

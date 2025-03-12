@@ -12,7 +12,7 @@ import (
 )
 
 func TestWriteInSlice(t *testing.T) {
-	for i := 0; i < fuzzIteration; i++ {
+	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
 		builder := newTestBuilder(i)
@@ -44,7 +44,7 @@ func TestWriteInSlice(t *testing.T) {
 }
 
 func TestShiftingTest(t *testing.T) {
-	for i := 0; i < fuzzIteration; i++ {
+	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
 		builder := newTestBuilder(i)
@@ -78,7 +78,7 @@ func TestShiftingTest(t *testing.T) {
 
 func TestSubvectorFuzzy(t *testing.T) {
 
-	for i := 0; i < fuzzIteration; i++ {
+	for i := 0; i < FuzzIteration; i++ {
 
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.

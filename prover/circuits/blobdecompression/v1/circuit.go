@@ -247,35 +247,30 @@ func Compile(dictionaryLength int) constraint.ConstraintSystem {
 	}
 }
 
-func AssignFPI(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.Element) (fpi FunctionalPublicInput, err error) {
+func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element) (fpi FunctionalPublicInput, dict []byte, err error) {
 	if len(blobBytes) != blob.MaxUsableBytes {
 		err = fmt.Errorf("decompression circuit assignment : invalid blob length : %d. expected %d", len(blobBytes), blob.MaxUsableBytes)
 		return
 	}
 
-	dictStore, err := dictionary.SingletonStore(dict, 1)
-	if err != nil {
-		err = fmt.Errorf("failed to create dictionary store %w", err)
-		return
-	}
-	header, payload, _, err := blob.DecompressBlob(blobBytes, dictStore)
+	r, err := blob.DecompressBlob(blobBytes, dictStore)
 	if err != nil {
 		return
 	}
 
-	if header.NbBatches() > MaxNbBatches {
-		err = fmt.Errorf("decompression circuit assignment : too many batches in the header : %d. max %d", header.NbBatches(), MaxNbBatches)
+	if r.Header.NbBatches() > MaxNbBatches {
+		err = fmt.Errorf("decompression circuit assignment : too many batches in the header : %d. max %d", r.Header.NbBatches(), MaxNbBatches)
 		return
 	}
-	batchEnds := make([]int, header.NbBatches())
-	if header.NbBatches() > 0 {
-		batchEnds[0] = header.BatchSizes[0]
+	batchEnds := make([]int, r.Header.NbBatches())
+	if r.Header.NbBatches() > 0 {
+		batchEnds[0] = r.Header.BatchSizes[0]
 	}
-	for i := 1; i < len(header.BatchSizes); i++ {
-		batchEnds[i] = batchEnds[i-1] + header.BatchSizes[i]
+	for i := 1; i < len(r.Header.BatchSizes); i++ {
+		batchEnds[i] = batchEnds[i-1] + r.Header.BatchSizes[i]
 	}
 
-	fpi.BatchSums = BatchesChecksumAssign(batchEnds, payload)
+	fpi.BatchSums = BatchesChecksumAssign(batchEnds, r.RawPayload)
 
 	fpi.X = x
 
@@ -294,9 +289,9 @@ func AssignFPI(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.
 	return
 }
 
-func Assign(blobBytes, dict []byte, eip4844Enabled bool, x [32]byte, y fr381.Element) (assignment frontend.Circuit, publicInput fr377.Element, snarkHash []byte, err error) {
+func Assign(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element) (assignment frontend.Circuit, publicInput fr377.Element, snarkHash []byte, err error) {
 
-	fpi, err := AssignFPI(blobBytes, dict, eip4844Enabled, x, y)
+	fpi, dict, err := AssignFPI(blobBytes, dictStore, eip4844Enabled, x, y)
 	if err != nil {
 		return
 	}

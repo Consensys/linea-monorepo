@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Configuration level="INFO" monitorInterval="2">
-  <Properties>
-    <Property name="root.log.level">INFO</Property>
-  </Properties>
-
   <Appenders>
     <Console name="Console" target="SYSTEM_OUT">
       <PatternLayout pattern="%d{yyyy-MM-dd HH:mm:ss.SSS} | %t | %-5level | %c{1} | %msg %n" />
@@ -15,7 +11,7 @@
     <Logger name="org.hyperledger.besu" level="WARN" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
-    <Logger name="net.consensys.shomei.trielog" level="TRACE" additivity="false">
+    <Logger name="net.consensys.shomei.trielog" level="INFO" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
     <!-- to avoid annoying message "INFO ... No sync target, waiting for peers. Current peers: 0" change to WARN-->
@@ -34,19 +30,25 @@
     <Logger name="io.opentelemetry" level="WARN" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
-    <Logger name="linea.staterecover" level="INFO" additivity="false">
+    <Logger name="linea.staterecovery" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
-    <Logger name="linea.staterecover.clients.ExecutionLayerInProcessClient" level="TRACE" additivity="false">
+    <Logger name="linea.staterecovery.plugin.BlockImporter" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
-    <Logger name="linea.plugin.staterecover.clients.l1" level="DEBUG" additivity="false">
+    <Logger name="linea.staterecovery.clients.ExecutionLayerInProcessClient" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
-    <Logger name="linea.plugin.staterecover.clients.l1.transaction-details" level="DEBUG" additivity="false">
+    <Logger name="linea.plugin.staterecovery.clients.l1" level="DEBUG" additivity="false">
       <AppenderRef ref="Console"/>
     </Logger>
-    <Root level="${sys:root.log.level}">
+    <Logger name="linea.plugin.staterecovery.clients.l1.logs-searcher" level="DEBUG" additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
+    <Logger name="linea.plugin.staterecovery.clients.l1.transaction-details" level="DEBUG" additivity="false">
+      <AppenderRef ref="Console"/>
+    </Logger>
+    <Root level="INFO">
       <AppenderRef ref="Console"/>
     </Root>
   </Loggers>

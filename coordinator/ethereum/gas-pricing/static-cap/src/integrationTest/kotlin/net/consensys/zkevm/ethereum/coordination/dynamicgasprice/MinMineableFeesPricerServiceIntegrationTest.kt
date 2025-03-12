@@ -5,6 +5,8 @@ import io.vertx.core.Vertx
 import io.vertx.junit5.Timeout
 import io.vertx.junit5.VertxExtension
 import io.vertx.junit5.VertxTestContext
+import linea.kotlin.toHexString
+import linea.kotlin.toULong
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator
@@ -16,9 +18,9 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.GasUsageRatioWeightedAv
 import net.consensys.linea.ethereum.gaspricing.staticcap.MinMineableFeesPricerService
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
+import net.consensys.linea.metrics.MetricsFacade
+import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
 import net.consensys.linea.web3j.Web3jBlobExtended
-import net.consensys.toHexString
-import net.consensys.toULong
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.AfterAll
@@ -53,6 +55,7 @@ import kotlin.time.Duration.Companion.seconds
 @Disabled("Disable this test for now as causes issues with other tests because of price updates")
 class MinMineableFeesPricerServiceIntegrationTest {
   private val meterRegistry = SimpleMeterRegistry()
+  private val metricsFacade: MetricsFacade = MicrometerMetricsFacade(registry = meterRegistry, "linea")
   private val pollingInterval = 2.seconds
   private val feeHistoryBlockCount = 10u
   private val feeHistoryRewardPercentile = 15.0
@@ -362,7 +365,7 @@ class MinMineableFeesPricerServiceIntegrationTest {
   }
 
   private fun createGasPriceUpdater(vertx: Vertx) = GasPriceUpdaterImpl(
-    VertxHttpJsonRpcClientFactory(vertx, meterRegistry),
+    VertxHttpJsonRpcClientFactory(vertx, metricsFacade),
     GasPriceUpdaterImpl.Config(
       gethEndpoints = gethRecipients.map { URI(it).toURL() },
       besuEndPoints = besuRecipients.map { URI(it).toURL() },

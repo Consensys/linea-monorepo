@@ -1,6 +1,6 @@
 package net.consensys.linea.contract.l1
 
-import build.linea.contract.LineaRollupV5
+import build.linea.contract.LineaRollupV6
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.Web3JContractAsyncHelper
 import org.web3j.abi.datatypes.Function
@@ -13,23 +13,27 @@ import java.math.BigInteger
 internal class LineaRollupEnhancedWrapper(
   contractAddress: String,
   web3j: Web3j,
-  asyncTransactionManager: AsyncFriendlyTransactionManager,
+  transactionManager: AsyncFriendlyTransactionManager,
   contractGasProvider: ContractGasProvider,
-  val helper: Web3JContractAsyncHelper
-) : LineaRollupV5(
+  private val web3jContractHelper: Web3JContractAsyncHelper
+) : LineaRollupV6(
   contractAddress,
   web3j,
-  asyncTransactionManager,
+  transactionManager,
   contractGasProvider
 ) {
   @Synchronized
+
   override fun executeRemoteCallTransaction(
     function: Function,
     weiValue: BigInteger
-  ): RemoteFunctionCall<TransactionReceipt> = helper.executeRemoteCallTransaction(function, weiValue)
+  ): RemoteFunctionCall<TransactionReceipt> = web3jContractHelper.executeRemoteCallTransaction(function, weiValue)
 
   @Synchronized
   override fun executeRemoteCallTransaction(
     function: Function
-  ): RemoteFunctionCall<TransactionReceipt> = helper.executeRemoteCallTransaction(function, BigInteger.ZERO)
+  ): RemoteFunctionCall<TransactionReceipt> = web3jContractHelper.executeRemoteCallTransaction(
+    function,
+    BigInteger.ZERO
+  )
 }
