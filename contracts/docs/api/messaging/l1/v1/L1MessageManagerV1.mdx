@@ -34,6 +34,15 @@ uint8 OUTBOX_STATUS_SENT
 uint8 OUTBOX_STATUS_RECEIVED
 ```
 
+### outboxL1L2MessageStatus
+
+```solidity
+mapping(bytes32 => uint256) outboxL1L2MessageStatus
+```
+
+_DEPRECATED in favor of the rollingHashes mapping on the L1MessageManager for L1 to L2 messaging.
+Cannot be made private because there may be unclaimed messages stored in this data structure._
+
 ### inboxL2L1MessageStatus
 
 ```solidity
