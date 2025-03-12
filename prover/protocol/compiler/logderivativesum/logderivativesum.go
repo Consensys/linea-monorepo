@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -40,6 +41,10 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 		sizes := utils.SortedKeysOf(zEntries, func(i1, i2 int) bool { return i1 < i2 })
 
 		for _, size := range sizes {
+
+			if !utils.IsPowerOfTwo(size) {
+				utils.Panic("the size of a log-derivative cannot be a non-power of two: %v", size)
+			}
 
 			entry := zEntries[size]
 
@@ -86,19 +91,24 @@ type FinalEvaluationCheck struct {
 // Run implements the [wizard.VerifierAction]
 func (f *FinalEvaluationCheck) Run(run wizard.Runtime) error {
 
+	tmps := make([]field.Element, 0)
+
 	// zSum stores the sum of the ending values of the zs as queried
 	// in the protocol via the local opening queries.
 	zSum := field.Zero()
 	for k := range f.ZOpenings {
 		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
+		tmps = append(tmps, temp)
 		zSum.Add(&zSum, &temp)
 	}
 
 	claimedSum := run.GetLogDerivSumParams(f.LogDerivSumID).Sum
 	if zSum != claimedSum {
 		return fmt.Errorf("log-derivate-sum; the final evaluation check failed for %v\n"+
-			"given %v but calculated %v,",
-			f.LogDerivSumID, claimedSum.String(), zSum.String())
+			"given %v but calculated %v\n"+
+			"partial-sums=(len %v) %v",
+			f.LogDerivSumID, claimedSum.String(), zSum.String(), len(tmps), vector.Prettify(tmps),
+		)
 	}
 
 	return nil

@@ -343,7 +343,13 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 	}
 
 	if len(a.definitionInput.LogDerivativeArgs) > 0 {
-		run.AssignLogDerivSum(a.LogDerivativeSum.ID, a.LogDerivativeSum.Compute(run))
+
+		y, err := a.LogDerivativeSum.Compute(run)
+		if err != nil {
+			utils.Panic("LogDerivative has a zero term in the denominator: %v", err)
+		}
+
+		run.AssignLogDerivSum(a.LogDerivativeSum.ID, y)
 	}
 }
 

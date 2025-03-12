@@ -57,6 +57,8 @@ func TestCompilers(t *testing.T) {
 	runTestList(t, "projection", testtools.ListOfProjectionTestcaseNegative)
 	runTestList(t, "permutation", testtools.ListOfPermutationTestcasePositive)
 	runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
+	runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
+	runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcaseNegative)
 }
 
 func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {

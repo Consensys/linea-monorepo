@@ -52,6 +52,7 @@ func (z *ZCtx) Compile(comp *wizard.CompiledIOP) {
 			packingArity,
 		)
 	)
+
 	z.Zs = make([]ifaces.Column, numZs)
 	z.ZOpenings = make([]query.LocalOpening, numZs)
 	z.ZNumeratorBoarded = make([]sym.ExpressionBoard, numZs)
