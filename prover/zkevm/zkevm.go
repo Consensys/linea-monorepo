@@ -127,7 +127,11 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 		// Assigns the arithmetization module. From Corset. Must be done first
 		// because the following modules use the content of these columns to
 		// assign themselves.
-		z.arithmetization.Assign(run, input.ExecTracesFPath)
+		z.arithmetization.Assign(run, input.ExecTracesFPath,
+			&arithmetization.SanityCheckOptions{
+				ChainID:                input.ChainID,
+				NbAllL2L1MessageHashes: input.NbAllL2L1MessageHashes,
+			})
 
 		// Assign the state-manager module
 		z.ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))

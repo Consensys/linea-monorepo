@@ -26,7 +26,9 @@ type Witness struct {
 	// block.
 	TxHashes        [][32]byte
 	L2BridgeAddress common.Address
-	ChainID         uint
+	// NbAllL2L1MessageHashes is the total number of L2 to L1 message hashes
+	NbAllL2L1MessageHashes int
+	ChainID                uint
 	// BlockHashList is the list of the block-hashes of the proven blocks
 	BlockHashList []types.FullBytes32
 }

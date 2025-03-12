@@ -218,6 +218,7 @@ func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
 			TxSignatures:    txSignatures,
 			TxHashes:        txHashes,
 			L2BridgeAddress: cfg.Layer2.MsgSvcContract,
+			NbAllL2L1MessageHashes: len(rsp.AllL2L1MessageHashes),
 			ChainID:         cfg.Layer2.ChainID,
 			BlockHashList:   getBlockHashList(rsp),
 		},

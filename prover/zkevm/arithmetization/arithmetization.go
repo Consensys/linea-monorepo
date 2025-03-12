@@ -3,6 +3,7 @@ package arithmetization
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/consensys/go-corset/pkg/air"
@@ -27,6 +28,14 @@ type Settings struct {
 	// apply when compiling the zkevm.bin file to AIR constraints.  If in doubt,
 	// use mir.DEFAULT_OPTIMISATION_LEVEL.
 	OptimisationLevel *mir.OptimisationConfig
+}
+
+// SanityCheckOptions holds optional parameters for sanity checking
+// to check consistency between the prover response vs trace metadata
+type SanityCheckOptions struct {
+	ChainID uint
+	// NbAllL2L1MessageHashes stores the total number of L2 to L1 message hashes.
+	NbAllL2L1MessageHashes int
 }
 
 // Arithmetization exposes all the methods relevant for the user to interact
@@ -66,14 +75,37 @@ func NewArithmetization(builder *wizard.Builder, settings Settings) *Arithmetiza
 // according to the given schema.  The expansion process is about filling in
 // computed columns with concrete values, such for determining multiplicative
 // inverses, etc.
-func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
+func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string, opts *SanityCheckOptions) {
 	traceF := files.MustRead(traceFile)
-	// Parse trace file and extract raw column data.
-	rawColumns, metadata, errT := ReadLtTraces(traceF, a.Schema)
+	// Parse trace file and extract raw column data
+	rawColumns, traceMetadata, errT := ReadLtTraces(traceF, a.Schema)
 
-	// Performs a compatibility check by comparing the constraints
-	// commit of zkevm.bin with the constraints commit of the trace file.
-	// Panics if an incompatibility is detected.
+	// Perform constraints compatibility check (trace file vs zkevm.bin)
+	compatibilityCheck(traceMetadata, a)
+
+	// Perform sanity checks if (trace file vs prover response)
+	if opts != nil {
+		sanityCheck(traceMetadata, opts)
+	}
+
+	if errT != nil {
+		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
+	}
+
+	// Perform trace expansion
+	expandedTrace, errs := schema.NewTraceBuilder(a.Schema).Build(rawColumns)
+	if len(errs) > 0 {
+		logrus.Warnf("corset expansion gave the following errors: %v", errors.Join(errs...).Error())
+	}
+	// Passed
+	AssignFromLtTraces(run, a.Schema, expandedTrace, a.Settings.Limits)
+}
+
+// compatibilityCheck ensures the constraints commit of zkevm.bin matches the trace metadata.
+// It performs a compatibility check by comparing the constraints
+// commit of zkevm.bin with the constraints commit of the trace file.
+// Panics if an incompatibility is detected.
+func compatibilityCheck(metadata typed.Map, a *Arithmetization) {
 	if *a.Settings.IgnoreCompatibilityCheck == false {
 		var errors []string
 
@@ -98,19 +130,51 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string) {
 		// Panic only if there are errors
 		if len(errors) > 0 {
 			logrus.Panic("compatibility check failed with error message:\n" + strings.Join(errors, "\n"))
+		} else {
+			logrus.Info("zkevm.bin and trace file passed constraints compatibility check")
 		}
 	} else {
 		logrus.Info("Skip constraints compatibility check between zkevm.bin and trace file")
 	}
+}
 
-	if errT != nil {
-		fmt.Printf("error loading the trace fpath=%q err=%v", traceFile, errT.Error())
+// sanityCheck performs sanity checks between the prover response and the trace file.
+// It ensures the chainID and the number of total L2 to L1 msg logs are consistent,
+// and panics before expanding the trace if there is a mismatch
+func sanityCheck(metadata typed.Map, opts *SanityCheckOptions) {
+	// sanity-check chainID
+	traceChainIDStr, ok := metadata.String("chainId")
+	if !ok {
+		logrus.Panic("chainId is missing or not an integer")
 	}
-	// Perform trace expansion
-	expandedTrace, errs := schema.NewTraceBuilder(a.Schema).Build(rawColumns)
-	if len(errs) > 0 {
-		logrus.Warnf("corset expansion gave the following errors: %v", errors.Join(errs...).Error())
+
+	// Convert string to int
+	traceChainID, err := strconv.Atoi(traceChainIDStr)
+	if err != nil {
+		logrus.Panicf("invalid chainId format: %s", traceChainIDStr)
 	}
-	// Passed
-	AssignFromLtTraces(run, a.Schema, expandedTrace, a.Settings.Limits)
+
+	// sanity-check if chainID matches
+	if int(opts.ChainID) != traceChainID {
+		logrus.Panicf("sanity-check failed: responseChainID=%v vs traceChainID=%v", int(opts.ChainID), traceChainID)
+	}
+
+	// extract lineCounts BLOCK_L2_L1_LOGS from the .lt file
+	BLOCK_L2_L1_LOGS_Str, ok := metadata.String("BLOCK_L2_L1_LOGS")
+	if !ok {
+		logrus.Panic("missing BLOCK_L2_L1_LOGS metadata in .lt file")
+	}
+
+	// Convert string to int
+	BLOCK_L2_L1_LOGS, err := strconv.Atoi(BLOCK_L2_L1_LOGS_Str)
+	if err != nil {
+		logrus.Panicf("invalid BLOCK_L2_L1_LOGS format: %s", BLOCK_L2_L1_LOGS_Str)
+	}
+
+	// sanity-check if there is a mismatch between prover response and trace metadata
+	if opts.NbAllL2L1MessageHashes != BLOCK_L2_L1_LOGS {
+		logrus.Panicf("sanity-check failed: prover response NbAllL2L1MessageHashes=%v\n"+
+			"vs trace lineCounts(BLOCK_L2_L1_LOGS)=%v",
+			opts.NbAllL2L1MessageHashes, BLOCK_L2_L1_LOGS)
+	}
 }
