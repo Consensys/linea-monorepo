@@ -26,7 +26,7 @@ jobs:
     outputs:
       e2e_toggle: ${{ steps.eval.outputs.e2e_toggle }}
     steps:
-      - name: Evaluate Boolean Logic
+      - name: Evaluate Toggle State
         id: eval
         shell: bash
         run: |
