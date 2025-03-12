@@ -43,5 +43,5 @@ plugin-linea-tracer-readiness-server-host="0.0.0.0"
 plugin-linea-tracer-readiness-server-port=8548
 plugin-linea-tracer-readiness-max-blocks-behind=5
 
-Xbonsai-limit-trie-logs-enabled=false
+bonsai-limit-trie-logs-enabled=false
 bonsai-historical-block-limit=1024
