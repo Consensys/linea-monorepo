@@ -57,6 +57,35 @@ export const encodeData = (types: string[], values: unknown[], packed?: boolean)
   return ethers.AbiCoder.defaultAbiCoder().encode(types, values);
 };
 
+export function generateUUIDv4(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+export async function pollForBlockNumber(
+  provider: ethers.JsonRpcProvider,
+  expectedBlockNumber: number,
+  compareFunction: (a: number, b: number) => boolean = (a, b) => a >= b,
+  pollingInterval: number = 500,
+  timeout: number = 2 * 60 * 1000,
+): Promise<boolean> {
+  let isExceedTimeOut = false;
+  setTimeout(() => {
+    isExceedTimeOut = true;
+  }, timeout);
+
+  while (!isExceedTimeOut) {
+    const returnValue = await provider.getBlockNumber();
+    if (compareFunction(returnValue, expectedBlockNumber)) return true;
+    await wait(pollingInterval);
+  }
+
+  return false;
+}
+
 export class RollupGetZkEVMBlockNumberClient {
   private endpoint: URL;
   private request = {
@@ -121,6 +150,64 @@ export class LineaEstimateGasClient {
   }
 }
 
+export class LineaSendBundleClient {
+  private endpoint: URL;
+
+  public constructor(endpoint: URL) {
+    this.endpoint = endpoint;
+  }
+
+  public async lineaSendBundle(
+    txs: string[],
+    replacementUUID: string,
+    blockNumber: string,
+  ): Promise<{ bundleHash: string }> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_sendBundle",
+        params: [
+          {
+            txs,
+            replacementUUID,
+            blockNumber,
+          },
+        ],
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    const responseJson = await response.json();
+    if (responseJson.error?.code === -32601 && responseJson.error?.message === "Method not found") {
+      throw Error("Method not found");
+    }
+    assert("result" in responseJson);
+    return {
+      bundleHash: responseJson.result.bundleHash,
+    };
+  }
+
+  public async lineaCancelBundle(replacementUUID: string): Promise<boolean> {
+    const request = {
+      method: "post",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        method: "linea_cancelBundle",
+        params: [replacementUUID],
+        id: 1,
+      }),
+    };
+    const response = await fetch(this.endpoint, request);
+    const responseJson = await response.json();
+    if (responseJson.error?.code === -32601 && responseJson.error?.message === "Method not found") {
+      throw Error("Method not found");
+    }
+    assert("result" in responseJson);
+    return responseJson.result;
+  }
+}
+
 export class TransactionExclusionClient {
   private endpoint: URL;
 
@@ -180,9 +267,13 @@ export class TransactionExclusionClient {
   }
 }
 
-export async function getTransactionHash(txRequest: TransactionRequest, signer: Wallet): Promise<string> {
+export async function getRawTransactionHex(txRequest: TransactionRequest, signer: Wallet): Promise<string> {
   const rawTransaction = await signer.populateTransaction(txRequest);
-  const signature = await signer.signTransaction(rawTransaction);
+  return await signer.signTransaction(rawTransaction);
+}
+
+export async function getTransactionHash(txRequest: TransactionRequest, signer: Wallet): Promise<string> {
+  const signature = await getRawTransactionHex(txRequest, signer);
   return ethers.keccak256(signature);
 }
 
