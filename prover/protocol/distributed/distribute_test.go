@@ -76,6 +76,14 @@ func TestDistributeWizard(t *testing.T) {
 		t.Fatalf("")
 	}
 
+	var (
+		allGrandProduct     = field.NewElement(1)
+		allLogDerivativeSum = field.Element{}
+		allHornerSum        = field.Element{}
+		prevHornerN1Hash    = field.Element{}
+		prevGlobalSent      = field.Element{}
+	)
+
 	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
 
 	for i := range witnessGLs {
@@ -119,8 +127,8 @@ func TestDistributeWizard(t *testing.T) {
 		}
 
 		var (
-			proofGL  = wizard.Prove(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
-			verGLErr = wizard.Verify(moduleGL.Wiop, proofGL)
+			proofGL            = wizard.Prove(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
+			verGLRun, verGLErr = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL)
 		)
 
 		if verGLErr != nil {
@@ -128,13 +136,62 @@ func TestDistributeWizard(t *testing.T) {
 		}
 
 		var (
-			proofLPP  = wizard.Prove(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPPs[i]))
-			verLPPErr = wizard.Verify(moduleLPP.Wiop, proofLPP)
+			proofLPP             = wizard.Prove(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPPs[i]))
+			verLPPRun, verLPPErr = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP)
 		)
 
 		if verLPPErr != nil {
 			t.Errorf("verifier failed for segment %v, reason=%v", i, verLPPErr)
 		}
+
+		var (
+			errMsg           = fmt.Sprintf("segment=%v, moduleName=%v, segment-index=%v", i, moduleName, moduleIndex)
+			globalReceived   = verGLRun.GetPublicInput(globalReceiverPublicInput)
+			globalSent       = verGLRun.GetPublicInput(globalSenderPublicInput)
+			isFirst          = verGLRun.GetPublicInput(isFirstPublicInput)
+			isLast           = verGLRun.GetPublicInput(isLastPublicInput)
+			logDerivativeSum = verLPPRun.GetPublicInput(logDerivativeSumPublicInput)
+			grandProduct     = verLPPRun.GetPublicInput(grandProductPublicInput)
+			hornerSum        = verLPPRun.GetPublicInput(hornerPublicInput)
+			hornerN0Hash     = verLPPRun.GetPublicInput(hornerN0HashPublicInput)
+			hornerN1Hash     = verLPPRun.GetPublicInput(hornerN1HashPublicInput)
+			shouldBeFirst    = i == 0 || witnessGLs[i].ModuleName != witnessGLs[i-1].ModuleName
+			shouldBeLast     = i == len(witnessGLs)-1 || witnessGLs[i].ModuleName != witnessGLs[i+1].ModuleName
+		)
+
+		if isFirst.IsOne() != shouldBeFirst {
+			t.Errorf("isFirst has unexpected values: " + errMsg)
+		}
+
+		if isLast.IsOne() != shouldBeLast {
+			t.Errorf("isLast has unexpected values: " + errMsg)
+		}
+
+		if !shouldBeFirst && globalReceived != prevGlobalSent {
+			t.Errorf("global-received does not match: " + errMsg)
+		}
+
+		if !shouldBeFirst && hornerN0Hash != prevHornerN1Hash {
+			t.Errorf("horner-n0-hash mismatch: " + errMsg)
+		}
+
+		prevGlobalSent = globalSent
+		prevHornerN1Hash = hornerN1Hash
+		allGrandProduct.Mul(&allGrandProduct, &grandProduct)
+		allHornerSum.Add(&allHornerSum, &hornerSum)
+		allLogDerivativeSum.Add(&allLogDerivativeSum, &logDerivativeSum)
+	}
+
+	if !allGrandProduct.IsOne() {
+		t.Errorf("grand-product does not cancel")
+	}
+
+	if !allHornerSum.IsZero() {
+		t.Errorf("horner does not cancel")
+	}
+
+	if !allLogDerivativeSum.IsZero() {
+		t.Errorf("log-derivative-sum does not cancel. Has %v", allLogDerivativeSum.String())
 	}
 }
 
@@ -245,19 +302,27 @@ func TestBenchDistributedWizard(t *testing.T) {
 			t.Fatalf("module does not exists")
 		}
 
+		t.Logf("RUNNING THE GL PROVER: %v", time.Now())
+
 		var (
 			proofGL  = wizard.Prove(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
 			verGLErr = wizard.Verify(moduleGL.Wiop, proofGL)
 		)
 
+		t.Logf("RUNNING THE GL PROVER - DONE: %v", time.Now())
+
 		if verGLErr != nil {
 			t.Errorf("verifier failed for segment %v, reason=%v", i, verGLErr)
 		}
+
+		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
 
 		var (
 			proofLPP  = wizard.Prove(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPPs[i]))
 			verLPPErr = wizard.Verify(moduleLPP.Wiop, proofLPP)
 		)
+
+		t.Logf("RUNNING THE LPP PROVER - DONE: %v", time.Now())
 
 		if verLPPErr != nil {
 			t.Errorf("verifier failed for segment %v, reason=%v", i, verLPPErr)
@@ -274,7 +339,8 @@ func CompileSegmentFully(comp *wizard.CompiledIOP) {
 		logdata.Log("at-the-beginning-of-the-segment"),
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(1<<10, 1<<18, false),
+		compiler.Arcane(1<<10, 1<<17, false),
+		dummy.Compile,
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -286,7 +352,7 @@ func CompileSegmentFully(comp *wizard.CompiledIOP) {
 		logdata.Log("post-selfrecursion"),
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(1<<10, 1<<16, false),
+		compiler.Arcane(1<<10, 1<<15, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -357,22 +423,22 @@ func GetZkEVM() *zkevm.ZkEvm {
 		Binreftable:                          1 << 20,
 		Shfreftable:                          4096,
 		Instdecoder:                          512,
-		PrecompileEcrecoverEffectiveCalls:    500,
-		PrecompileSha2Blocks:                 600,
+		PrecompileEcrecoverEffectiveCalls:    1024,
+		PrecompileSha2Blocks:                 2048,
 		PrecompileRipemdBlocks:               0,
-		PrecompileModexpEffectiveCalls:       64,
+		PrecompileModexpEffectiveCalls:       256,
 		PrecompileEcaddEffectiveCalls:        1 << 14,
-		PrecompileEcmulEffectiveCalls:        32,
-		PrecompileEcpairingEffectiveCalls:    32,
-		PrecompileEcpairingMillerLoops:       64,
-		PrecompileEcpairingG2MembershipCalls: 64,
+		PrecompileEcmulEffectiveCalls:        1024,
+		PrecompileEcpairingEffectiveCalls:    1024,
+		PrecompileEcpairingMillerLoops:       1024,
+		PrecompileEcpairingG2MembershipCalls: 1024,
 		PrecompileBlakeEffectiveCalls:        0,
 		PrecompileBlakeRounds:                0,
-		BlockKeccak:                          1 << 13,
+		BlockKeccak:                          1 << 15,
 		BlockL1Size:                          100_000,
 		BlockL2L1Logs:                        16,
 		BlockTransactions:                    400,
-		ShomeiMerkleProofs:                   1 << 14,
+		ShomeiMerkleProofs:                   1 << 16,
 	}
 
 	return zkevm.FullZKEVMWithSuite(&traceLimits, []func(*wizard.CompiledIOP){})
