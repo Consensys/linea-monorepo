@@ -99,7 +99,7 @@ func NextPowerOfTwo[T ~int64 | ~uint64 | ~uintptr | ~int | ~uint](in T) T {
 	return v
 }
 
-// PositiveMod returns the positive modulus
+// PositiveMod returns the positive modulus of [a] modulo [n]
 func PositiveMod[T ~int](a, n T) T {
 	res := a % n
 	if res < 0 {
