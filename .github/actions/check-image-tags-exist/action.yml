@@ -1,28 +1,35 @@
 name: 'Check image tags exist'
 
-description: 'Check if the image tags exist'
+description: 'Verifies if the specified image tag exist in the container registry'
+
 inputs:
   last_commit_tag:
-    description: 'The tag of the last commit image'
+    description: 'The tag of the image from the last commit to check for existence'
     required: true
   image_name:
-    description: 'The name of the image to check'
+    description: 'The name of the container image to check'
     required: true
+
 outputs:
   last_commit_tag_exists:
-    description: 'Whether the last commit image tag exists'
-    value: ${{ steps.last_commit_image_exists.outputs.last_commit_tag_exists }}
+    description: 'Indicates whether the image tag from the last commit exists'
+    value: ${{ steps.check_image_tag.outputs.tag_exists }}
 
 runs:
   using: 'composite'
   steps:
-    - name: Check last commit image tag exists
-      id: last_commit_image_exists
+    - name: Check if the last commit image tag exists
+      id: check_image_tag
       shell: bash
       continue-on-error: true
       run: |
-        echo last_commit_tag_exists=$(docker pull ${{ inputs.image_name }}:${{ inputs.last_commit_tag }} > /dev/null ; echo $?) >> $GITHUB_OUTPUT
-    - name: Show outputs
+        if docker pull "${{ inputs.image_name }}:${{ inputs.last_commit_tag }}" > /dev/null 2>&1; then
+          echo "tag_exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "tag_exists=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Display output
       shell: bash
       run: |
-        echo "last_commit_tag_exists: ${{ steps.last_commit_image_exists.outputs.last_commit_tag_exists }}"
+        echo "Image tag exists: ${{ steps.check_image_tag.outputs.tag_exists }}"
