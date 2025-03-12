@@ -125,12 +125,18 @@ func (fs *State) RandomField() field.Element {
 func (fs *State) RandomFieldFromSeed(seed field.Element, name string) field.Element {
 
 	// The first step encodes the 'name' into a single field element. The
-	// seed is then obtained by calling the compression function over the
-	// encoded name and the
+	// field element is obtained by hashing and taking the modulo of the
+	// result to fit into a field element.
+	tmpFr := field.Element{}
 	nameBytes := []byte(name)
 	hasher, _ := blake2b.New256(nil)
 	hasher.Write(nameBytes)
 	nameBytes = hasher.Sum(nil)
+
+	// This ensures that the name is hashed into a field element
+	tmpFr.SetBytes(nameBytes)
+	nameBytes_ := tmpFr.Bytes()
+	nameBytes = nameBytes_[:]
 
 	// The seed is then obtained by calling the compression function over
 	// the seed and the encoded name.
@@ -138,7 +144,9 @@ func (fs *State) RandomFieldFromSeed(seed field.Element, name string) field.Elem
 	defer fs.SetState(oldState)
 
 	fs.SetState([]field.Element{seed})
-	fs.hasher.Write(nameBytes)
+	if _, err := fs.hasher.Write(nameBytes); err != nil {
+		panic(err)
+	}
 	challBytes := fs.hasher.Sum(nil)
 	res := new(field.Element).SetBytes(challBytes)
 

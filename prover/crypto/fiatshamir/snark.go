@@ -173,8 +173,8 @@ func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []frontend.Va
 func (fs *GnarkFiatShamir) RandomFieldFromSeed(seed frontend.Variable, name string) frontend.Variable {
 
 	// The first step encodes the 'name' into a single field element. The
-	// seed is then obtained by calling the compression function over the
-	// encoded name and the
+	// field element is obtained by hashing and taking the modulo of the
+	// result to fit into a field element.
 	nameBytes := []byte(name)
 	hasher, _ := blake2b.New256(nil)
 	hasher.Write(nameBytes)
