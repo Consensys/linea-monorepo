@@ -15,7 +15,7 @@
 package net.consensys.linea.replaytests;
 
 import static net.consensys.linea.replaytests.ReplayTestTools.replay;
-import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_SEPOLIA;
+import static net.consensys.linea.zktracer.ChainConfig.OLD_SEPOLIA_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
@@ -48,6 +48,6 @@ public class Issue1216Tests {
   @Tag("replay")
   @Test
   void issue_1216_sepolia_block_2392659() {
-    replay(LINEA_SEPOLIA, "2392659.sepolia.json.gz");
+    replay(OLD_SEPOLIA_TESTCONFIG, "2392659.sepolia.json.gz");
   }
 }

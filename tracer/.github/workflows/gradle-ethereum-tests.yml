@@ -29,7 +29,7 @@ jobs:
           JAVA_OPTS: -Dorg.gradle.daemon=false
 
       - name: Run General State Reference Tests
-        run: GOMEMLIMIT=40GiB ./gradlew -Dblockchain=Ethereum referenceGeneralStateTests
+        run: GOMEMLIMIT=40GiB ./gradlew referenceGeneralStateTests
         env:
           REFERENCE_TESTS_PARALLELISM: 3
           JAVA_OPTS: -Dorg.gradle.daemon=false

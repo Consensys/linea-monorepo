@@ -15,7 +15,7 @@
 package net.consensys.linea.replaytests;
 
 import static net.consensys.linea.replaytests.ReplayTestTools.replay;
-import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
+import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
 import org.junit.jupiter.api.Tag;
@@ -34,162 +34,162 @@ public class Issue1090Tests {
    */
   @Test
   void issue_1090_block_1507291() {
-    replay(LINEA_MAINNET, "1507291.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1507291.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1809818() {
-    replay(LINEA_MAINNET, "1809818.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1809818.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1812784() {
-    replay(LINEA_MAINNET, "1812784.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1812784.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1814860() {
-    replay(LINEA_MAINNET, "1814860.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1814860.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1714851() {
-    replay(LINEA_MAINNET, "1714851.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1714851.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1505729() {
-    replay(LINEA_MAINNET, "1505729.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1505729.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1511808() {
-    replay(LINEA_MAINNET, "1511808.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1511808.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1400040() {
-    replay(LINEA_MAINNET, "1400040.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1400040.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1409462() {
-    replay(LINEA_MAINNET, "1409462.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1409462.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1410650() {
-    replay(LINEA_MAINNET, "1410650.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1410650.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1204298() {
-    replay(LINEA_MAINNET, "1204298.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1204298.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1213822() {
-    replay(LINEA_MAINNET, "1213822.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1213822.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1214117() {
-    replay(LINEA_MAINNET, "1214117.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1214117.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1214259() {
-    replay(LINEA_MAINNET, "1214259.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1214259.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1214280() {
-    replay(LINEA_MAINNET, "1214280.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1214280.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1214528() {
-    replay(LINEA_MAINNET, "1214528.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1214528.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1100579() {
-    replay(LINEA_MAINNET, "1100579.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1100579.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1104982() {
-    replay(LINEA_MAINNET, "1104982.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1104982.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1105022() {
-    replay(LINEA_MAINNET, "1105022.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1105022.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1105029() {
-    replay(LINEA_MAINNET, "1105029.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1105029.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1105038() {
-    replay(LINEA_MAINNET, "1105038.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1105038.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1106506() {
-    replay(LINEA_MAINNET, "1106506.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1106506.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1106648() {
-    replay(LINEA_MAINNET, "1106648.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1106648.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1107867() {
-    replay(LINEA_MAINNET, "1107867.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1107867.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1002387() {
-    replay(LINEA_MAINNET, "1002387.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1002387.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1003970() {
-    replay(LINEA_MAINNET, "1003970.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1003970.mainnet.json.gz");
   }
 
   @Tag("nightly")
   @Test
   void issue_1090_block_1010069() {
-    replay(LINEA_MAINNET, "1010069.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1010069.mainnet.json.gz");
   }
 }

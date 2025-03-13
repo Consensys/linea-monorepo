@@ -17,8 +17,8 @@ package net.consensys.linea.replaytests;
 import static net.consensys.linea.replaytests.ReplayTestTools.BLOCK_NUMBERS;
 import static net.consensys.linea.replaytests.ReplayTestTools.add;
 import static net.consensys.linea.replaytests.ReplayTestTools.replay;
-import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
-import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_SEPOLIA;
+import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
+import static net.consensys.linea.zktracer.ChainConfig.OLD_SEPOLIA_TESTCONFIG;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,7 +39,7 @@ public class ReplayTests {
 
   @Test
   void fatMxp() {
-    replay(LINEA_MAINNET, "2492975-2492977.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "2492975-2492977.mainnet.json.gz");
   }
 
   /**
@@ -51,43 +51,43 @@ public class ReplayTests {
   @Test
   void bulkReplay() {
     // bulkReplay("./src/test/resources/replays");
-    // bulkReplay(LINEA_MAINNET, "");
+    // bulkReplay(OLD_LINEA_MAINNET, "");
   }
 
   @Test
   void failingMmuModexp() {
-    replay(LINEA_MAINNET, "5995162.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "5995162.mainnet.json.gz");
   }
 
   @Test
   void failRlpAddress() {
-    replay(LINEA_MAINNET, "5995097.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "5995097.mainnet.json.gz");
   }
 
   @Test
   void rlprcptManyTopicsWoLogData() {
-    replay(LINEA_MAINNET, "6569423.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "6569423.mainnet.json.gz");
   }
 
   @Test
   void multipleFailingCallToEcrecover() {
-    replay(LINEA_MAINNET, "5000544.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "5000544.mainnet.json.gz");
   }
 
   @Test
   @Tag("nightly")
   void incident777zkGethMainnet() {
-    replay(LINEA_MAINNET, "7461019-7461030.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "7461019-7461030.mainnet.json.gz");
   }
 
   @Test
   void issue1006() {
-    replay(LINEA_MAINNET, "6032696-6032699.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "6032696-6032699.mainnet.json.gz");
   }
 
   @Test
   void issue1004() {
-    replay(LINEA_MAINNET, "6020023-6020029.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "6020023-6020029.mainnet.json.gz");
   }
 
   @Test
@@ -95,45 +95,45 @@ public class ReplayTests {
     // The purpose of this test is to check the mechanism for spotting divergence between the replay
     // tests and mainnet.  Specifically, this replay has transaction result information embedded
     // within it.
-    replay(LINEA_MAINNET, "6110045.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "6110045.mainnet.json.gz");
   }
 
   @Test
   void failingCreate2() {
-    replay(LINEA_MAINNET, "2250197.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "2250197.mainnet.json.gz");
   }
 
   @Test
   void blockHash1() {
-    replay(LINEA_MAINNET, "8718090.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "8718090.mainnet.json.gz");
   }
 
   @Test
   void blockHash2() {
-    replay(LINEA_MAINNET, "8718330.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "8718330.mainnet.json.gz");
   }
 
   // TODO: should be replaced by a unit test triggering AnyToRamWithPadding (mixed case) MMU
   // instruction
   @Test
   void negativeNumberOfMmioInstruction() {
-    replay(LINEA_MAINNET, "6029454-6029459.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "6029454-6029459.mainnet.json.gz");
   }
 
   @Test
   void simpleSelfDestruct() {
-    replay(LINEA_MAINNET, "50020-50029.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "50020-50029.mainnet.json.gz");
   }
 
   // TODO: should be replaced by a unit test triggering a failed CREATE2
   @Test
   void failedCreate2() {
-    replay(LINEA_MAINNET, "41640-41649.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "41640-41649.mainnet.json.gz");
   }
 
   @Test
   void largeInitCode() {
-    replay(LINEA_SEPOLIA, "3318494.sepolia.json.gz");
+    replay(OLD_SEPOLIA_TESTCONFIG, "3318494.sepolia.json.gz");
   }
 
   /**
@@ -142,14 +142,14 @@ public class ReplayTests {
    */
   @Test
   void hotOrColdPrecompile() {
-    replay(LINEA_MAINNET, "2019510-2019519.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "2019510-2019519.mainnet.json.gz");
   }
 
   // TODO: should be replace by a unit test triggering a CALLDATACOPY in a ROOT context of a
   // deployment transaction
   @Test
   void callDataCopyCnNotFound() {
-    replay(LINEA_MAINNET, "67050-67059.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "67050-67059.mainnet.json.gz");
   }
 
   /**
@@ -158,13 +158,13 @@ public class ReplayTests {
    */
   @Test
   void returnOogxForCodeDepositCost() {
-    replay(LINEA_MAINNET, "1002387.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1002387.mainnet.json.gz");
   }
 
   @Test
   @Tag("nightly")
   void modexpTriggeringNonAlignedFirstLimbSingleSourceMmuModexp() {
-    replay(LINEA_MAINNET, "3108622-3108633.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "3108622-3108633.mainnet.json.gz");
   }
 
   /**
@@ -173,17 +173,17 @@ public class ReplayTests {
    */
   @Test
   void mainnet1339346ContextRevertTwice() {
-    replay(LINEA_MAINNET, "1339346.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "1339346.mainnet.json.gz");
   }
 
   @Test
   void legacyTxWithoutChainID() {
-    replay(LINEA_SEPOLIA, "254251.sepolia.json.gz");
+    replay(OLD_SEPOLIA_TESTCONFIG, "254251.sepolia.json.gz");
   }
 
   @Test
   void incorrectCreationCapture() {
-    replay(LINEA_MAINNET, "4323985.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "4323985.mainnet.json.gz");
   }
 
   @Disabled
@@ -204,7 +204,7 @@ public class ReplayTests {
         e.printStackTrace();
       }
     }
-    replay(LINEA_MAINNET, blockNumber + ".mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, blockNumber + ".mainnet.json.gz");
   }
 
   static Stream<Arguments> replayBlockTestSource() {

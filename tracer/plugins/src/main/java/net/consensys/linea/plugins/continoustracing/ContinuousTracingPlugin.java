@@ -20,6 +20,7 @@ import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
 import net.consensys.linea.plugins.BesuServiceProvider;
+import net.consensys.linea.zktracer.ChainConfig;
 import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuEvents;
@@ -93,7 +94,10 @@ public class ContinuousTracingPlugin implements BesuPlugin {
 
     besuEvents.addBlockAddedListener(
         new ContinuousTracingBlockAddedListener(
-            new ContinuousTracer(traceService, new CorsetValidator(), tracingConfiguration),
+            new ContinuousTracer(
+                traceService,
+                new CorsetValidator(ChainConfig.MAINNET_TESTCONFIG),
+                tracingConfiguration),
             new TraceFailureHandler(SlackNotificationService.create(webHookUrl))));
   }
 

@@ -15,7 +15,7 @@
 package net.consensys.linea.replaytests;
 
 import static net.consensys.linea.replaytests.ReplayTestTools.replay;
-import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
+import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
 import org.junit.jupiter.api.Tag;
@@ -29,6 +29,6 @@ public class Issue1116Tests {
 
   @Test
   void issue_1116_block_8019521() {
-    replay(LINEA_MAINNET, "8019521.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "8019521.mainnet.json.gz");
   }
 }

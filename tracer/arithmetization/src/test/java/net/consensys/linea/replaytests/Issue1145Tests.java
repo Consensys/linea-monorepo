@@ -15,7 +15,7 @@
 package net.consensys.linea.replaytests;
 
 import static net.consensys.linea.replaytests.ReplayTestTools.replay;
-import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_SEPOLIA;
+import static net.consensys.linea.zktracer.ChainConfig.OLD_SEPOLIA_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
 import org.junit.jupiter.api.Tag;
@@ -28,6 +28,6 @@ public class Issue1145Tests {
 
   @Test
   public void issue_1145_block_3318494_ReturnPrecondition() {
-    replay(LINEA_SEPOLIA, "3318494.sepolia.json.gz");
+    replay(OLD_SEPOLIA_TESTCONFIG, "3318494.sepolia.json.gz");
   }
 }

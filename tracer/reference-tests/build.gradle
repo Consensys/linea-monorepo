@@ -58,7 +58,7 @@ tasks.register("generateGeneralStateReferenceTests", RefTestGenerationTask) {
 }
 
 tasks.register('referenceBlockchainTests', Test) {
-  dependsOn(buildReferenceTestsZkevmBin)
+  dependsOn(buildZkevmBin)
   finalizedBy(jacocoReferenceBlockchainTestsReport)
   description = 'Runs ETH reference blockchain tests.'
   dependsOn generateBlockchainReferenceTests
@@ -83,7 +83,7 @@ tasks.register("jacocoReferenceBlockchainTestsReport", JacocoReport) {
 }
 
 tasks.register('referenceGeneralStateTests', Test) {
-  dependsOn(buildReferenceTestsZkevmBin)
+  dependsOn(buildZkevmBin)
   finalizedBy(jacocoReferenceGeneralStateTestsReport)
   description = 'Runs ETH reference general state tests.'
   dependsOn generateGeneralStateReferenceTests
@@ -113,8 +113,6 @@ tasks.register("jacocoReferenceGeneralStateTestsReport", JacocoReport) {
   tasks.named("referenceBlockchainTests"),
 ].forEach {
   it.configure {
-    // Record zkevm.bin for CorsetValidator
-    environment.put("ZKEVM_BIN", System.getenv("ZKEVM_BIN") ?: "zkevm_for_reference_tests.bin")
     // Configure parallelism
     environment.put("blockchain", System.getenv("blockchain") ?: "Ethereum")
     systemProperty("junit.jupiter.execution.timeout.default", "15 m")  // 5 minutes
