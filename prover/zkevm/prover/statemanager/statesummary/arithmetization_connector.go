@@ -1,6 +1,7 @@
 package statesummary
 
 import (
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -62,6 +63,12 @@ func (ss *Module) assignArithmetizationLink(run *wizard.ProverRuntime) {
 	runConcurrent([]wizard.ProverAction{
 		ss.arithmetizationLink.scpSelector.ComputeSelectorMinDeplBlock,
 		ss.arithmetizationLink.scpSelector.ComputeSelectorMaxDeplBlock,
+		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueHi,
+		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueLo,
+		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueNextHi,
+		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueNextLo,
+		ss.arithmetizationLink.scpSelector.ComputeSelectorSTKeyDiffHi,
+		ss.arithmetizationLink.scpSelector.ComputeSelectorSTKeyDiffLo,
 	})
 
 }
@@ -106,6 +113,15 @@ These columns are 1 at indices where the deployment number is equal to MinDeplBl
 type scpSelector struct {
 	SelectorMinDeplBlock, SelectorMaxDeplBlock               ifaces.Column
 	ComputeSelectorMinDeplBlock, ComputeSelectorMaxDeplBlock wizard.ProverAction
+	// selectors for empty keys, current values
+	SelectorEmptySTValueHi, SelectorEmptySTValueLo               ifaces.Column
+	ComputeSelectorEmptySTValueHi, ComputeSelectorEmptySTValueLo wizard.ProverAction
+	// selectors for empty keys, next values
+	SelectorEmptySTValueNextHi, SelectorEmptySTValueNextLo               ifaces.Column
+	ComputeSelectorEmptySTValueNextHi, ComputeSelectorEmptySTValueNextLo wizard.ProverAction
+	// storage key difference selectors
+	SelectorSTKeyDiffHi, SelectorSTKeyDiffLo               ifaces.Column
+	ComputeSelectorSTKeyDiffHi, ComputeSelectorSTKeyDiffLo wizard.ProverAction
 }
 
 /*
@@ -124,11 +140,61 @@ func newScpSelector(comp *wizard.CompiledIOP, smc HubColumnSet) scpSelector {
 		sym.Sub(smc.DeploymentNumber, smc.MaxDeplBlock),
 	)
 
+	// ST value selectors
+	SelectorEmptySTValueHi, ComputeSelectorEmptySTValueHi := dedicated.IsZero(
+		comp,
+		ifaces.ColumnAsVariable(smc.ValueHICurr),
+	)
+
+	SelectorEmptySTValueLo, ComputeSelectorEmptySTValueLo := dedicated.IsZero(
+		comp,
+		ifaces.ColumnAsVariable(smc.ValueLOCurr),
+	)
+	SelectorEmptySTValueNextHi, ComputeSelectorEmptySTValueNextHi := dedicated.IsZero(
+		comp,
+		ifaces.ColumnAsVariable(smc.ValueHINext),
+	)
+
+	SelectorEmptySTValueNextLo, ComputeSelectorEmptySTValueNextLo := dedicated.IsZero(
+		comp,
+		ifaces.ColumnAsVariable(smc.ValueLONext),
+	)
+	// storage key diff selectors
+	SelectorSTKeyDiffHi, ComputeSelectorSTKeyDiffHi := dedicated.IsZero(
+		comp,
+		sym.Sub(
+			smc.KeyHI,
+			column.Shift(smc.KeyHI, -1),
+		),
+	)
+	SelectorSTKeyDiffLo, ComputeSelectorSTKeyDiffLo := dedicated.IsZero(
+		comp,
+		sym.Sub(
+			smc.KeyLO,
+			column.Shift(smc.KeyLO, -1),
+		),
+	)
+
 	res := scpSelector{
 		SelectorMinDeplBlock:        SelectorMinDeplNoBlock,
 		SelectorMaxDeplBlock:        SelectorMaxDeplNoBlock,
 		ComputeSelectorMinDeplBlock: ComputeSelectorMinDeplNoBlock,
 		ComputeSelectorMaxDeplBlock: ComputeSelectorMaxDeplNoBlock,
+		// ST selectors, current
+		SelectorEmptySTValueHi:        SelectorEmptySTValueHi,
+		SelectorEmptySTValueLo:        SelectorEmptySTValueLo,
+		ComputeSelectorEmptySTValueHi: ComputeSelectorEmptySTValueHi,
+		ComputeSelectorEmptySTValueLo: ComputeSelectorEmptySTValueLo,
+		// ST selectors, next
+		SelectorEmptySTValueNextHi:        SelectorEmptySTValueNextHi,
+		SelectorEmptySTValueNextLo:        SelectorEmptySTValueNextLo,
+		ComputeSelectorEmptySTValueNextHi: ComputeSelectorEmptySTValueNextHi,
+		ComputeSelectorEmptySTValueNextLo: ComputeSelectorEmptySTValueNextLo,
+		// ST Key diff
+		SelectorSTKeyDiffHi:        SelectorSTKeyDiffHi,
+		SelectorSTKeyDiffLo:        SelectorSTKeyDiffLo,
+		ComputeSelectorSTKeyDiffHi: ComputeSelectorSTKeyDiffHi,
+		ComputeSelectorSTKeyDiffLo: ComputeSelectorSTKeyDiffLo,
 	}
 
 	return res
@@ -573,9 +639,43 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 			),
 		),
 	)
+	// if the filter is set to 0, then all the emoty value selectors must be 1.
 	comp.InsertGlobal(
 		0,
-		ifaces.QueryIDf("GLOBAL_CONSTRAINT_FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_INSERT_FILTER_ZEROIZATION"),
+		ifaces.QueryIDf("GLOBAL_CONSTRAINT_FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_INSERT_FILTER_VALUE_ZEROIZATION"),
+		sym.Mul(
+			smc.PeekAtStorage,
+			sym.Sub(
+				1,
+				filterAccountInsert,
+			),
+			sym.Sub(
+				1,
+				sym.Mul(
+					sc.SelectorEmptySTValueHi,
+					sc.SelectorEmptySTValueLo,
+					sc.SelectorEmptySTValueNextHi,
+					sc.SelectorEmptySTValueNextLo,
+				),
+			),
+		),
+	)
+	// filter must be constant as long as the storage key does not change
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("GLOBAL_CONSTRAINT_HUB_STATE_SUMMARY__ACCOUNT_INSERT_FILTER_CONSTANCY"),
+		sym.Mul(
+			sc.SelectorSTKeyDiffHi, // 1 if ST key HI is the same as in the previous index
+			sc.SelectorSTKeyDiffLo, // 1 if ST key LO is the same as in the previous index
+			sym.Sub(
+				filterAccountInsert,
+				column.Shift(filterAccountInsert, -1), // the filter remains constant if the ST key is the same
+			),
+		),
+	)
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("GLOBAL_CONSTRAINT_FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_INSERT_FILTER_NON_ZEROIZATION"),
 		sym.Mul(
 			sym.Sub(
 				1,
@@ -587,6 +687,7 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 			), // filterAccountInsert must be 1
 		),
 	)
+	// constrain the filter to be binary
 	mustBeBinary(comp, filterAccountInsert)
 }
 
@@ -637,11 +738,26 @@ func storageIntegrationAssignFinal(run *wizard.ProverRuntime, ss Module, smc Hub
 			if lastKOCBlock.IsOne() && existsAtBlockEnd.IsOne() {
 				existsAtBlockStart := existsFirstInBlock.GetColAssignmentAt(run, lastSegmentStart)
 				if existsAtBlockStart.IsZero() {
-					// we are indeed dealing with an insertion segment
+					// we are indeed dealing with an insertion segment, check if indeed all the storage values are 0
+					allStorageIsZero := true
 					for j := lastSegmentStart; j <= index; j++ {
-						// set the filter to zeros on the insertion segment
-						filterAccountInsert[j].SetZero()
+						valueCurrentHi := smc.ValueHICurr.GetColAssignmentAt(run, j)
+						valueCurrentLo := smc.ValueLOCurr.GetColAssignmentAt(run, j)
+						valueNextHi := smc.ValueHINext.GetColAssignmentAt(run, j)
+						valueNextLo := smc.ValueLONext.GetColAssignmentAt(run, j)
+						if !valueCurrentHi.IsZero() || !valueCurrentLo.IsZero() || !valueNextHi.IsZero() || !valueNextLo.IsZero() {
+							allStorageIsZero = false
+						}
 					}
+
+					if allStorageIsZero {
+						// indeed we are dealing with a zeroed insertion segment
+						for j := lastSegmentStart; j <= index; j++ {
+							// set the filter to zeros on the insertion segment
+							filterAccountInsert[j].SetZero()
+						}
+					}
+
 				}
 			}
 		}
