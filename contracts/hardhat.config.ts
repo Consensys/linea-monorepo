@@ -13,7 +13,6 @@ import "./scripts/operational/grantContractRolesTask";
 import "./scripts/operational/renounceContractRolesTask";
 import "./scripts/operational/setRateLimitTask";
 import "./scripts/operational/setVerifierAddressTask";
-import "./scripts/operational/setRemoteTokenBridgeTask";
 import "./scripts/operational/setMessageServiceOnTokenBridgeTask";
 
 import "solidity-docgen";
@@ -140,13 +139,13 @@ const config: HardhatUserConfig = {
   },
   docgen: {
     exclude: [
-      "token",
-      "test-contracts",
-      "proxies",
-      "tools",
-      "interfaces/tools",
-      "tokenBridge/mocks",
-      "tokenBridge/lib/StorageFiller39.sol",
+      "_testing",
+      "bridging/token/utils/StorageFiller39.sol",
+      "bridging/token/CustomBridgedToken.sol",
+      "governance/TimeLock.sol",
+      "security/access/PermissionsManager.sol",
+      "security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol",
+      "tokens",
       "verifiers",
     ],
     pages: "files",

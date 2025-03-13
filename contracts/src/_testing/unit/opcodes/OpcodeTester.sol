@@ -6,7 +6,7 @@ import { ErrorAndDestructionTesting } from "./ErrorAndDestructionTesting.sol";
 contract OpcodeTester {
   mapping(bytes2 => uint256) public opcodeExecutions;
   address public yulContract;
-  bytes32 rollingBlockDetailComputations;
+  bytes32 public rollingBlockDetailComputations;
 
   // The opcodes are logged here for completeness sake even though not used.
   // NOTE: For looping we make it 2 bytes instead of one, so the real value is actually missing the 00 from 0x0001 (0x01) etc.
@@ -269,8 +269,7 @@ contract OpcodeTester {
   function storeRollingGlobalVariablesToState() private {
     bytes memory fieldsToHashSection1 = abi.encode(
       rollingBlockDetailComputations,
-      blockhash(block.number - 1),
-      blockhash(block.number),
+      parentBlocksHashes(),
       block.basefee,
       block.chainid,
       block.coinbase,
@@ -290,5 +289,18 @@ contract OpcodeTester {
     rollingBlockDetailComputations = keccak256(
       bytes.concat(bytes.concat(fieldsToHashSection1, fieldsToHashSection2), fieldsToHashSection3)
     );
+  }
+
+  function parentBlocksHashes() private view returns (bytes32[] memory) {
+    uint256 endLookBack = 256;
+    if (block.number < 256) {
+      endLookBack = block.number;
+    }
+    bytes32[] memory blocksHashes = new bytes32[](endLookBack + 1);
+
+    for (uint256 i = 0; i <= endLookBack; i++) {
+      blocksHashes[i] = blockhash(block.number - i);
+    }
+    return blocksHashes;
   }
 }
