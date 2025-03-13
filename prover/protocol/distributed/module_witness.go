@@ -149,7 +149,12 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 			continue
 		}
 
-		nbSegmentModule = max(nbSegmentModule, nbSegmentCol)
+		// We ignore the columns where the density if full because most of the time
+		// these columns only exist by lack of optimization. (e.g.) use of a regular
+		// smart-vector while a full vector could be used.
+		if density < col.Size() {
+			nbSegmentModule = max(nbSegmentModule, nbSegmentCol)
+		}
 	}
 
 	if nbSegmentModule == -1 {
