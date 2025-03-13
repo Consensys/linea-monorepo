@@ -33,7 +33,7 @@ import org.hyperledger.besu.datatypes.Address;
 
 @RequiredArgsConstructor
 public class State {
-  private final StackedList<HubTransactionState> state = new StackedList<>();
+  @Getter private final StackedList<HubTransactionState> state = new StackedList<>();
 
   @Getter
   @Accessors(fluent = true)

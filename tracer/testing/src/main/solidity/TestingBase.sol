@@ -24,6 +24,19 @@ abstract contract TestingBase {
     /// @param contractAddress The contract address.
     event ContractDestroyed(address contractAddress);
 
+    /// @dev The event for writing storage;
+    /// @param contractAddress is the contract addresss, x is the storage key and y is the storage value.
+    /// Event signature: 33d8dc4a860afa0606947f2b214f16e21e7eac41e3eb6642e859d9626d002ef6
+    event Write(address contractAddress, uint256 x, uint256 y);
+
+    /// @dev The event for reading storage;
+    /// @param contractAddress is the contract addresss, x is the storage key and y is the storage value.
+    /// the event will be generated after y is read as the value stored at x.
+    /// Event signature: c2db4694c1ec690e784f771a7fe3533681e081da4baa4aa1ad7dd5c33da95925
+    event Read(address contractAddress, uint256 x, uint256 y);
+
+    event EventReadFromStorage(address contractAddress, uint256 x);
+
     /// @dev The Call types for external calls.
     /// @dev Default is delegate call (value==0), so be aware.
     enum CallType {
@@ -106,11 +119,11 @@ abstract contract TestingBase {
     function getCallFunction(
         CallType _callType
     )
-        internal
-        pure
-        returns (
-            function(address, bytes memory, uint256, uint256) returns (bool)
-        )
+    internal
+    pure
+    returns (
+        function(address, bytes memory, uint256, uint256) returns (bool)
+    )
     {
         if (_callType == CallType.DELEGATE_CALL) {
             return doDelegateCall;
@@ -198,28 +211,28 @@ abstract contract TestingBase {
         /// @solidity memory-safe-assembly
         assembly {
             let n := mload(_data) // Let `l` be `n + 1`. +1 as we prefix a STOP opcode.
-            /**
-             * ---------------------------------------------------+
-             * Opcode | Mnemonic       | Stack     | Memory       |
-             * ---------------------------------------------------|
-             * 61 l   | PUSH2 l        | l         |              |
-             * 80     | DUP1           | l l       |              |
-             * 60 0xa | PUSH1 0xa      | 0xa l l   |              |
-             * 3D     | RETURNDATASIZE | 0 0xa l l |              |
-             * 39     | CODECOPY       | l         | [0..l): code |
-             * 3D     | RETURNDATASIZE | 0 l       | [0..l): code |
-             * F3     | RETURN         |           | [0..l): code |
-             * 00     | STOP           |           |              |
-             * ---------------------------------------------------+
-             * @dev Prefix the bytecode with a STOP opcode to ensure it cannot be called.
+        /**
+         * ---------------------------------------------------+
+         * Opcode | Mnemonic       | Stack     | Memory       |
+         * ---------------------------------------------------|
+         * 61 l   | PUSH2 l        | l         |              |
+         * 80     | DUP1           | l l       |              |
+         * 60 0xa | PUSH1 0xa      | 0xa l l   |              |
+         * 3D     | RETURNDATASIZE | 0 0xa l l |              |
+         * 39     | CODECOPY       | l         | [0..l): code |
+         * 3D     | RETURNDATASIZE | 0 l       | [0..l): code |
+         * F3     | RETURN         |           | [0..l): code |
+         * 00     | STOP           |           |              |
+         * ---------------------------------------------------+
+         * @dev Prefix the bytecode with a STOP opcode to ensure it cannot be called.
              * Also PUSH2 is used since max contract size cap is 24,576 bytes which is less than 2 ** 16.
              */
-            // Do a out-of-gas revert if `n + 1` is more than 2 bytes.
+        // Do a out-of-gas revert if `n + 1` is more than 2 bytes.
             mstore(
                 add(_data, gt(n, 0xfffe)),
                 add(0xfe61000180600a3d393df300, shl(0x40, n))
             )
-            // Deploy a new contract with the generated creation code.
+        // Deploy a new contract with the generated creation code.
             pointer := create(0, add(_data, 0x15), add(n, 0xb))
             if iszero(pointer) {
                 mstore(0x00, 0x30116425) // `DeploymentFailed()`.
@@ -258,7 +271,8 @@ abstract contract TestingBase {
      */
     function deployWithCreate2(
         bytes32 _salt,
-        bytes memory _bytecode
+        bytes memory _bytecode,
+        bool _revertFlag
     ) public payable returns (address addr) {
         assembly {
             let value := callvalue()
@@ -274,6 +288,9 @@ abstract contract TestingBase {
         }
 
         emit ContractCreated(addr);
+        if (_revertFlag) {
+            revert();
+        }
     }
 
     /**

@@ -25,7 +25,7 @@ import lombok.experimental.Accessors;
 @Getter
 public class StackedList<E> {
   private final List<E> operationsCommitedToTheConflation;
-  private final List<E> operationsInTransactionBundle;
+  @Getter private final List<E> operationsInTransactionBundle;
 
   public StackedList() {
     this.operationsCommitedToTheConflation = new ArrayList<E>();

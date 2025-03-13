@@ -53,12 +53,12 @@ public final class AccountFragment
   @Setter private boolean requiresRomlex;
   private int codeFragmentIndex;
   private final Optional<Bytes> addressToTrim;
-  private final DomSubStampsSubFragment domSubStampsSubFragment;
+  @Getter private final DomSubStampsSubFragment domSubStampsSubFragment;
   @Setter private RlpAddrSubFragment rlpAddrSubFragment;
   private boolean markedForSelfDestruct;
   private boolean markedForSelfDestructNew;
   final int hubStamp;
-  final TransactionProcessingMetadata transactionProcessingMetadata;
+  @Getter final TransactionProcessingMetadata transactionProcessingMetadata;
 
   /**
    * {@link AccountFragment} creation requires access to a {@link DeferRegistry} for post-conflation
