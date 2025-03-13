@@ -83,7 +83,7 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string, op
 	// Perform constraints compatibility check (trace file vs zkevm.bin)
 	compatibilityCheck(traceMetadata, a)
 
-	// Perform sanity checks if (trace file vs prover response)
+	// Perform sanity checks (trace file and prover response)
 	if opts != nil {
 		sanityCheck(traceMetadata, opts)
 	}
@@ -102,9 +102,8 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string, op
 }
 
 // compatibilityCheck ensures the constraints commit of zkevm.bin matches the trace metadata.
-// It performs a compatibility check by comparing the constraints
-// commit of zkevm.bin with the constraints commit of the trace file.
-// Panics if an incompatibility is detected.
+// It performs a compatibility check by comparing the constraints commit of zkevm.bin
+// with the constraints commit of the trace file, panicking if an incompatibility is found.
 func compatibilityCheck(metadata typed.Map, a *Arithmetization) {
 	if *a.Settings.IgnoreCompatibilityCheck == false {
 		var errors []string
@@ -139,9 +138,9 @@ func compatibilityCheck(metadata typed.Map, a *Arithmetization) {
 }
 
 // sanityCheck performs sanity checks between the prover response and the trace file.
-// It ensures the chainID and the number of total L2 to L1 msg logs are consistent,
-// and panics before expanding the trace if there is a mismatch
-func sanityCheck(metadata typed.Map, opts *SanityCheckOptions) {
+// It verifies that the chainID and total L2 to L1 message logs are consistent between
+// the two sources, and panics if a mismatch is detected, before expanding the trace.
+func sanityCheck(metadata typed.Map, proverResponse *SanityCheckOptions) {
 	// sanity-check chainID
 	traceChainIDStr, ok := metadata.String("chainId")
 	if !ok {
@@ -155,8 +154,8 @@ func sanityCheck(metadata typed.Map, opts *SanityCheckOptions) {
 	}
 
 	// sanity-check if chainID matches
-	if int(opts.ChainID) != traceChainID {
-		logrus.Panicf("sanity-check failed: responseChainID=%v vs traceChainID=%v", int(opts.ChainID), traceChainID)
+	if int(proverResponse.ChainID) != traceChainID {
+		logrus.Panicf("sanity-check failed: responseChainID=%v vs traceChainID=%v", int(proverResponse.ChainID), traceChainID)
 	}
 
 	// extract lineCounts BLOCK_L2_L1_LOGS from the .lt file
@@ -172,9 +171,9 @@ func sanityCheck(metadata typed.Map, opts *SanityCheckOptions) {
 	}
 
 	// sanity-check if there is a mismatch between prover response and trace metadata
-	if opts.NbAllL2L1MessageHashes != BLOCK_L2_L1_LOGS {
+	if proverResponse.NbAllL2L1MessageHashes != BLOCK_L2_L1_LOGS {
 		logrus.Panicf("sanity-check failed: prover response NbAllL2L1MessageHashes=%v\n"+
 			"vs trace lineCounts(BLOCK_L2_L1_LOGS)=%v",
-			opts.NbAllL2L1MessageHashes, BLOCK_L2_L1_LOGS)
+			proverResponse.NbAllL2L1MessageHashes, BLOCK_L2_L1_LOGS)
 	}
 }
