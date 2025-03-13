@@ -344,10 +344,38 @@ func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 
 	filterArithReversed := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_ARITHMETIZATION_REVERSED", smc.AddressHI.Size())
 
-	summaryTable := []ifaces.Column{ss.Account.Address, ss.Storage.Key.Hi, ss.Storage.Key.Lo, ss.Storage.OldValue.Hi, ss.Storage.OldValue.Lo, ss.BatchNumber}
-	arithTable := []ifaces.Column{smc.Address, smc.KeyHI, smc.KeyLO, smc.ValueHICurr, smc.ValueLOCurr, smc.BlockNumber}
-	comp.InsertInclusionDoubleConditional(0, "LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_INIT_STORAGE", summaryTable, arithTable, filterSummary, filterArith)
-	comp.InsertInclusionDoubleConditional(0, "LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_INIT_STORAGE_REVERSE", arithTable, summaryTable, filterArithReversed, filterSummary)
+	summaryTable := []ifaces.Column{
+		ss.Account.Address,
+		ss.Storage.Key.Hi,
+		ss.Storage.Key.Lo,
+		ss.Storage.OldValue.Hi,
+		ss.Storage.OldValue.Lo,
+		ss.BatchNumber,
+	}
+	arithTable := []ifaces.Column{
+		smc.Address,
+		smc.KeyHI,
+		smc.KeyLO,
+		smc.ValueHICurr,
+		smc.ValueLOCurr,
+		smc.BlockNumber,
+	}
+	comp.InsertInclusionDoubleConditional(
+		0,
+		"LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_INIT_STORAGE",
+		summaryTable,
+		arithTable,
+		filterSummary,
+		filterArith,
+	)
+	comp.InsertInclusionDoubleConditional(
+		0,
+		"LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_INIT_STORAGE_REVERSE",
+		arithTable,
+		summaryTable,
+		filterArithReversed,
+		filterSummary,
+	)
 
 	// Now we define the constraints for our filters
 	comp.InsertGlobal(
@@ -449,9 +477,19 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 			smc.AddressHI.Size(),
 		)
 
+		filterArithReversed = comp.InsertCommit(0,
+			"FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_ARITHMETIZATION_REVERSED",
+			smc.AddressHI.Size(),
+		)
+
 		filterSummary = comp.InsertCommit(0,
 			"FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_SUMMARY",
 			ss.Account.Address.Size(),
+		)
+
+		filterAccountInsert = comp.InsertCommit(0,
+			"FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_INSERT_FILTER",
+			smc.AddressHI.Size(),
 		)
 	)
 
@@ -467,7 +505,7 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 		"LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_FINAL_STORAGE_REVERSED",
 		arithTable,
 		summaryTable,
-		filterArith,
+		filterArithReversed,
 		filterSummary,
 	)
 
@@ -476,6 +514,20 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 		ifaces.QueryIDf("CONSTRAINT_FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_ARITHMETIZATION"),
 		sym.Sub(
 			filterArith,
+			sym.Mul(
+				sc.SelectorMaxDeplBlock,
+				smc.PeekAtStorage,
+				smc.LastKOCBlock,
+				filterAccountInsert,
+			),
+		),
+	)
+
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("CONSTRAINT_FILTER_REVERSED_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_ARITHMETIZATION"),
+		sym.Sub(
+			filterArithReversed,
 			sym.Mul(
 				sc.SelectorMaxDeplBlock,
 				smc.PeekAtStorage,
@@ -495,6 +547,47 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 			),
 		),
 	)
+
+	// constraint the insertion selector filter
+	existsFirstInBlock := comp.Columns.GetHandle("hub.scp_EXISTS_FIRST_IN_BLOCK")
+	existsFinalInBlock := comp.Columns.GetHandle("hub.scp_EXISTS_FINAL_IN_BLOCK")
+	// on storage rows, we enforce that filterAccountInsert is 0 then (existsFirstInBlock = 0 and existsFinalInBlock = 1)
+	// security of the following constraint relies on the fact that the underlying marker columns are binary
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("GLOBAL_CONSTRAINT_FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_INSERT_FILTER"),
+		sym.Mul(
+			smc.PeekAtStorage, // when we are dealing with storage segments
+			sym.Mul(
+				sym.Sub(
+					1,
+					filterAccountInsert,
+				), // if  filterAccountInsert = 0 it must be that the conditions of the filter are both satisfied
+				sym.Add(
+					existsFirstInBlock,
+					sym.Sub(
+						1,
+						existsFinalInBlock,
+					),
+				),
+			),
+		),
+	)
+	comp.InsertGlobal(
+		0,
+		ifaces.QueryIDf("GLOBAL_CONSTRAINT_FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_INSERT_FILTER_ZEROIZATION"),
+		sym.Mul(
+			sym.Sub(
+				1,
+				smc.PeekAtStorage,
+			), // when we are not dealing with storage segments
+			sym.Sub(
+				1,
+				filterAccountInsert,
+			), // filterAccountInsert must be 1
+		),
+	)
+	mustBeBinary(comp, filterAccountInsert)
 }
 
 /*
@@ -511,9 +604,58 @@ func storageIntegrationAssignFinal(run *wizard.ProverRuntime, ss Module, smc Hub
 	}
 	svSelectorMaxDeplBlock := smartvectors.NewRegular(selectorMaxDeplBlock)
 
-	filterSummary := smartvectors.Mul(ss.IsStorage.GetColAssignment(run), ss.IsFinalDeployment.GetColAssignment(run))
+	filterSummary := smartvectors.Mul(
+		ss.IsStorage.GetColAssignment(run),
+		ss.IsFinalDeployment.GetColAssignment(run),
+	)
 	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_SUMMARY", filterSummary)
+	filterArithReversed := smartvectors.Mul(
+		svSelectorMaxDeplBlock,
+		smc.PeekAtStorage.GetColAssignment(run),
+		smc.LastKOCBlock.GetColAssignment(run),
+	)
+	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_ARITHMETIZATION_REVERSED", filterArithReversed)
 
-	filterArith := smartvectors.Mul(svSelectorMaxDeplBlock, smc.PeekAtStorage.GetColAssignment(run), smc.LastKOCBlock.GetColAssignment(run))
+	// compute the filter that detects account inserts in order to exclude those key reads from the
+	// arithmetization to state summary lookups.
+	existsFirstInBlock := run.Spec.Columns.GetHandle("hub.scp_EXISTS_FIRST_IN_BLOCK")
+	existsFinalInBlock := run.Spec.Columns.GetHandle("hub.scp_EXISTS_FINAL_IN_BLOCK")
+	filterAccountInsert := make([]field.Element, smc.AddressHI.Size())
+	lastSegmentStart := 0
+	for index := range filterAccountInsert {
+		filterAccountInsert[index].SetOne() // always set the filter as one, unless we detect an insertion segment
+		isStorage := smc.PeekAtStorage.GetColAssignmentAt(run, index)
+		if isStorage.IsOne() {
+			firstKOCBlock := smc.FirstKOCBlock.GetColAssignmentAt(run, index)
+			lastKOCBlock := smc.LastKOCBlock.GetColAssignmentAt(run, index)
+			existsAtBlockEnd := existsFinalInBlock.GetColAssignmentAt(run, index)
+
+			if firstKOCBlock.IsOne() {
+				// remember when the segment starts
+				lastSegmentStart = index
+			}
+			if lastKOCBlock.IsOne() && existsAtBlockEnd.IsOne() {
+				existsAtBlockStart := existsFirstInBlock.GetColAssignmentAt(run, lastSegmentStart)
+				if existsAtBlockStart.IsZero() {
+					// we are indeed dealing with an insertion segment
+					for j := lastSegmentStart; j <= index; j++ {
+						// set the filter to zeros on the insertion segment
+						filterAccountInsert[j].SetZero()
+					}
+				}
+			}
+		}
+
+	}
+	svfilterAccountInsert := smartvectors.NewRegular(filterAccountInsert)
+	run.AssignColumn("FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_INSERT_FILTER", svfilterAccountInsert)
+
+	//filterTxExec := run.Spec.Columns.GetHandle("hub.scp_TX_EXEC")
+	filterArith := smartvectors.Mul(
+		svSelectorMaxDeplBlock,
+		smc.PeekAtStorage.GetColAssignment(run),
+		smc.LastKOCBlock.GetColAssignment(run),
+		svfilterAccountInsert,
+	)
 	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_ARITHMETIZATION", filterArith)
 }
