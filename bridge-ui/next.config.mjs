@@ -6,7 +6,23 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**",
+        hostname: "s2.coinmarketcap.com",
+        pathname: "/static/img/coins/64x64/**",
+      },
+      {
+        protocol: "https",
+        hostname: "assets.coingecko.com",
+        pathname: "/coins/images/**",
+      },
+      {
+        protocol: "https",
+        hostname: "coin-images.coingecko.com",
+        pathname: "/coins/images/**",
+      },
+      {
+        protocol: "https",
+        hostname: "storage.googleapis.com",
+        pathname: "/public.withstable.com/logos/**",
       },
     ],
   },
