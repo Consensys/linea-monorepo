@@ -14,6 +14,7 @@ import linea.staterecovery.DataFinalizedV3
 import net.consensys.linea.errors.ErrorResponse
 import net.consensys.zkevm.domain.BlobRecord
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+
 import java.util.concurrent.ConcurrentHashMap
 
 open class FakeStateManagerClient(
