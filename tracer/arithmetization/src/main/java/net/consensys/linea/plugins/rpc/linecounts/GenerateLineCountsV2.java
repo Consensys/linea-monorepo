@@ -23,6 +23,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.plugins.BesuServiceProvider;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.Validator;
 import net.consensys.linea.zktracer.ZkTracer;
@@ -100,6 +101,8 @@ public class GenerateLineCountsV2 {
                     blockNumber -> {
                       final ZkTracer tracer =
                           new ZkTracer(
+                              LineaL1L2BridgeSharedConfiguration
+                                  .TEST_DEFAULT, // FIXME: is this appropriate?
                               BesuServiceProvider.getBesuService(
                                       besuContext, BlockchainService.class)
                                   .getChainId()

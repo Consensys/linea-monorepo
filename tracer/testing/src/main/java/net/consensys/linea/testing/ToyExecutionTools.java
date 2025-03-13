@@ -24,6 +24,7 @@ import java.util.function.Consumer;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
+import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -49,12 +50,13 @@ import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 
 @Slf4j
-public class GeneralStateReferenceTestTools {
+public class ToyExecutionTools {
   private static final List<String> SPECS_PRIOR_TO_DELETING_EMPTY_ACCOUNTS =
       Arrays.asList("Frontier", "Homestead", "EIP150");
-  private static final CorsetValidator CORSET_VALIDATOR = new CorsetValidator();
+  private static final CorsetValidator CORSET_VALIDATOR =
+      new CorsetValidator(ChainConfig.MAINNET_TESTCONFIG);
 
-  private GeneralStateReferenceTestTools() {
+  private ToyExecutionTools() {
     // utility class
   }
 
@@ -223,7 +225,8 @@ public class GeneralStateReferenceTestTools {
 
     Deque<MessageFrame> messageFrameStack = initialMessageFrame.getMessageFrameStack();
     while (!messageFrameStack.isEmpty()) {
-      processor.process(messageFrameStack.peekFirst(), new ZkTracer());
+      processor.process(
+          messageFrameStack.peekFirst(), new ZkTracer(ChainConfig.MAINNET_TESTCONFIG));
     }
 
     long intrinsicTxCostWithNoAccessOrDelegationCost =

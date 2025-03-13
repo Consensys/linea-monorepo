@@ -15,6 +15,9 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
+import static net.consensys.linea.zktracer.ChainConfig.OLD_SEPOLIA_TESTCONFIG;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.Reader;
@@ -34,8 +37,8 @@ import net.consensys.linea.blockcapture.snapshots.StorageSnapshot;
 import net.consensys.linea.blockcapture.snapshots.TransactionResultSnapshot;
 import net.consensys.linea.blockcapture.snapshots.TransactionSnapshot;
 import net.consensys.linea.corset.CorsetValidator;
+import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ConflationAwareOperationTracer;
-import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.apache.commons.io.FileUtils;
@@ -59,15 +62,6 @@ import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 @Builder
 @Slf4j
 public class ReplayExecutionEnvironment {
-  /** Chain ID for Linea mainnet */
-  public static final BigInteger LINEA_MAINNET = BigInteger.valueOf(Trace.LINEA_CHAIN_ID);
-
-  /** Chain ID for Linea sepolia */
-  public static final BigInteger LINEA_SEPOLIA = BigInteger.valueOf(Trace.LINEA_SEPOLIA_CHAIN_ID);
-
-  /** Used for checking resulting trace files. */
-  private static final CorsetValidator CORSET_VALIDATOR = new CorsetValidator();
-
   /**
    * Determines whether to enable block capturing for conflations executed by this environment. This
    * is used for primarily for debugging the block capturer.
@@ -96,7 +90,7 @@ public class ReplayExecutionEnvironment {
   private final TransactionProcessingResultValidator transactionProcessingResultValidator =
       TransactionProcessingResultValidator.EMPTY_VALIDATOR;
 
-  private ZkTracer zkTracer;
+  private final ZkTracer zkTracer;
 
   public void checkTracer(String inputFilePath, long startBlock, long endBlock) {
     // Generate the output file path based on the input file path
@@ -115,7 +109,7 @@ public class ReplayExecutionEnvironment {
    *
    * @param replayFile the file containing the conflation
    */
-  public void replay(BigInteger chainId, final Reader replayFile) {
+  public void replay(ChainConfig chain, final Reader replayFile) {
     Gson gson = new Gson();
     ConflationSnapshot conflation;
     try {
@@ -124,16 +118,16 @@ public class ReplayExecutionEnvironment {
       log.error(e.getMessage());
       return;
     }
-    this.executeFrom(chainId, conflation);
+    this.executeFrom(chain, conflation);
     ExecutionEnvironment.checkTracer(
         zkTracer,
-        CORSET_VALIDATOR,
+        new CorsetValidator(chain),
         Optional.of(log),
         conflation.firstBlockNumber(),
         conflation.lastBlockNumber());
   }
 
-  public void replay(BigInteger chainId, final Reader replayFile, String inputFilePath) {
+  public void replay(ChainConfig chain, final Reader replayFile, String inputFilePath) {
     Gson gson = new Gson();
     ConflationSnapshot conflation;
     try {
@@ -142,15 +136,15 @@ public class ReplayExecutionEnvironment {
       log.error(e.getMessage());
       return;
     }
-    this.executeFrom(chainId, conflation);
+    this.executeFrom(chain, conflation);
     this.checkTracer(inputFilePath, conflation.firstBlockNumber(), conflation.lastBlockNumber());
   }
 
-  public void replay(BigInteger chainId, ConflationSnapshot conflation) {
-    this.executeFrom(chainId, conflation);
+  public void replay(ChainConfig chain, ConflationSnapshot conflation) {
+    this.executeFrom(chain, conflation);
     ExecutionEnvironment.checkTracer(
         zkTracer,
-        CORSET_VALIDATOR,
+        new CorsetValidator(chain),
         Optional.of(log),
         conflation.firstBlockNumber(),
         conflation.lastBlockNumber());
@@ -163,7 +157,7 @@ public class ReplayExecutionEnvironment {
    *
    * @param conflation the conflation to replay
    */
-  private void executeFrom(final BigInteger chainId, final ConflationSnapshot conflation) {
+  private void executeFrom(final ChainConfig chain, final ConflationSnapshot conflation) {
     ConflationAwareOperationTracer tracer = this.zkTracer;
     BlockCapturer capturer = null;
     // Configure block capturer (if applicable)
@@ -177,7 +171,7 @@ public class ReplayExecutionEnvironment {
     }
     // Execute the conflation
     executeFrom(
-        chainId,
+        chain,
         conflation,
         tracer,
         this.txResultChecking,
@@ -185,12 +179,12 @@ public class ReplayExecutionEnvironment {
         this.transactionProcessingResultValidator);
     //
     if (debugBlockCapturer) {
-      writeCaptureToFile(chainId, conflation, capturer);
+      writeCaptureToFile(chain, conflation, capturer);
     }
   }
 
   private static void executeFrom(
-      final BigInteger chainId,
+      final ChainConfig chain,
       final ConflationSnapshot conflation,
       final ConflationAwareOperationTracer tracer,
       final boolean txResultChecking,
@@ -201,7 +195,7 @@ public class ReplayExecutionEnvironment {
     MutableWorldState world = initWorld(conflation);
     // Construct the transaction processor
     final MainnetTransactionProcessor transactionProcessor =
-        ExecutionEnvironment.getProtocolSpec(chainId).getTransactionProcessor();
+        ExecutionEnvironment.getProtocolSpec(chain.id).getTransactionProcessor();
     // Begin
     tracer.traceStartConflation(conflation.blocks().size());
     //
@@ -314,7 +308,7 @@ public class ReplayExecutionEnvironment {
   // Write the captured replay for a given conflation snapshot to a file.  This is used to debug the
   // BlockCapturer by making sure, for example, that captured replays still execute correctly.
   private static void writeCaptureToFile(
-      BigInteger chainId, ConflationSnapshot conflation, BlockCapturer capturer) {
+      ChainConfig chain, ConflationSnapshot conflation, BlockCapturer capturer) {
     // Extract capture name
     String json = capturer.toJson();
     // Determine suitable filename
@@ -326,12 +320,12 @@ public class ReplayExecutionEnvironment {
       endBlock = Math.max(endBlock, blk.header().number());
     }
     // Convert ChainID to something useful
-    String chain = getChainName(chainId);
+    String chainName = getChainName(chain.id);
     // Construct suitable filename for captured conflation.
     String filename =
         startBlock == endBlock
-            ? String.format("capture-%d.%s.json", startBlock, chain)
-            : String.format("capture-%d-%d.%s.json", startBlock, endBlock, chain);
+            ? String.format("capture-%d.%s.json", startBlock, chainName)
+            : String.format("capture-%d-%d.%s.json", startBlock, endBlock, chainName);
     // Write the conflation.
     try {
       File file = new File(filename);
@@ -350,9 +344,9 @@ public class ReplayExecutionEnvironment {
    * @return
    */
   private static String getChainName(BigInteger chainId) {
-    if (chainId.equals(LINEA_MAINNET)) {
+    if (chainId.equals(OLD_MAINNET_TESTCONFIG.id)) {
       return "mainnet";
-    } else if (chainId.equals(LINEA_SEPOLIA)) {
+    } else if (chainId.equals(OLD_SEPOLIA_TESTCONFIG.id)) {
       return "sepolia";
     } else {
       return String.format("chain%s", chainId.toString());

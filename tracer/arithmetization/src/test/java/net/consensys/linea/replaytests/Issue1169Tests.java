@@ -15,7 +15,7 @@
 package net.consensys.linea.replaytests;
 
 import static net.consensys.linea.replaytests.ReplayTestTools.replay;
-import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
+import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
 import org.junit.jupiter.api.Tag;
@@ -28,6 +28,6 @@ public class Issue1169Tests {
 
   @Test
   public void issue_1145_block_3318494_InsufficientBalanceMainnet() {
-    replay(LINEA_MAINNET, "2746060.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "2746060.mainnet.json.gz");
   }
 }

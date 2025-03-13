@@ -16,8 +16,6 @@
 package net.consensys.linea.zktracer.module.blockdata;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static net.consensys.linea.zktracer.Trace.Blockdata.GAS_LIMIT_MAXIMUM;
-import static net.consensys.linea.zktracer.Trace.Blockdata.GAS_LIMIT_MINIMUM;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_BF;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_CB;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_DEPTH;
@@ -40,6 +38,7 @@ import java.util.Arrays;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
@@ -58,6 +57,8 @@ public class BlockdataOperation extends ModuleOperation {
   private final Hub hub;
   private final Wcp wcp;
   private final Euc euc;
+  private final EWord gasLimitMinimum;
+  private final EWord gasLimitMaximum;
   private final Bytes chainId;
   private final BlockHeader blockHeader;
   private final BlockHeader prevBlockHeader;
@@ -87,7 +88,7 @@ public class BlockdataOperation extends ModuleOperation {
       int relTxMax,
       Wcp wcp,
       Euc euc,
-      Bytes chainId,
+      ChainConfig chain,
       OpCode opCode,
       long firstBlockNumber) {
     // Data from blockHeader
@@ -95,8 +96,9 @@ public class BlockdataOperation extends ModuleOperation {
     this.blockHeader = blockHeader;
     this.prevBlockHeader = prevBlockHeader;
     this.coinbaseAddress = hub.coinbaseAddress;
-
-    this.chainId = chainId;
+    this.gasLimitMinimum = EWord.of(chain.gasLimitMinimum);
+    this.gasLimitMaximum = EWord.of(chain.gasLimitMaximum);
+    this.chainId = EWord.of(chain.id);
     this.ctMax = ctMax(opCode);
     this.firstBlockNumber = firstBlockNumber;
     this.relTxMax = relTxMax;
@@ -185,11 +187,11 @@ public class BlockdataOperation extends ModuleOperation {
 
     // row i
     // comparison to minimum
-    wcpCallToGEQ(0, data, EWord.of(GAS_LIMIT_MINIMUM));
+    wcpCallToGEQ(0, data, gasLimitMinimum);
 
     // row i + 1
     // comparison to maximum
-    wcpCallToLEQ(1, data, EWord.of(GAS_LIMIT_MAXIMUM));
+    wcpCallToLEQ(1, data, gasLimitMaximum);
 
     if (!firstBlockInConflation) {
       final EWord prevGasLimit = EWord.of(prevBlockHeader.getGasLimit());

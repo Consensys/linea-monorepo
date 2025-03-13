@@ -29,7 +29,6 @@ import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
 import static org.hyperledger.besu.evm.frame.MessageFrame.Type.*;
 
-import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -39,6 +38,7 @@ import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
@@ -116,7 +116,6 @@ import net.consensys.linea.zktracer.runtime.callstack.CallStack;
 import net.consensys.linea.zktracer.runtime.stack.StackContext;
 import net.consensys.linea.zktracer.runtime.stack.StackLine;
 import net.consensys.linea.zktracer.types.Bytecode;
-import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.MemoryRange;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
@@ -391,8 +390,11 @@ public class Hub implements Module {
         .toList();
   }
 
-  public Hub(final Address l2l1ContractAddress, final Bytes l2l1Topic, final BigInteger chainId) {
-    checkState(chainId.signum() >= 0);
+  public Hub(final ChainConfig chain) {
+    checkState(chain.id.signum() >= 0);
+    Address l2l1ContractAddress = chain.bridgeConfiguration.contract();
+    final Bytes l2l1Topic = chain.bridgeConfiguration.topic();
+    //
     if (l2l1ContractAddress.equals(TEST_DEFAULT.contract())) {
       log.info("WARN: Using default testing L2L1 contract address");
     }
@@ -401,7 +403,7 @@ public class Hub implements Module {
     keccak = new Keccak(ecRecoverEffectiveCall, l2Block);
     shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
     rlpAddr = new RlpAddr(this, trm, keccak);
-    blockdata = new Blockdata(wcp, euc, txnData, EWord.of(chainId));
+    blockdata = new Blockdata(wcp, euc, txnData, chain);
     mmu = new Mmu(euc, wcp);
     mmio = new Mmio(mmu);
 

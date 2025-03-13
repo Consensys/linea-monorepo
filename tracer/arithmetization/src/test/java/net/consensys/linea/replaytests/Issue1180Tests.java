@@ -15,7 +15,7 @@
 package net.consensys.linea.replaytests;
 
 import static net.consensys.linea.replaytests.ReplayTestTools.replay;
-import static net.consensys.linea.testing.ReplayExecutionEnvironment.LINEA_MAINNET;
+import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
@@ -33,7 +33,7 @@ public class Issue1180Tests {
 
   @Test
   void split_range_2321470_2321479() {
-    replay(LINEA_MAINNET, "2321470-2321479.mainnet.json.gz");
+    replay(OLD_MAINNET_TESTCONFIG, "2321470-2321479.mainnet.json.gz");
   }
 
   @Test

@@ -140,9 +140,7 @@ tasks.test.configure {
 }
 
 tasks.register("fastReplayTests", Test) {
-  dependsOn(buildOldReplayTestsZkevmBin)
-    // Record zkevm.bin for CorsetValidator
-    environment.put("ZKEVM_BIN", System.getenv("ZKEVM_BIN") ?: "zkevm_for_old_replay_tests.bin")
+  dependsOn(buildZkevmBin)
     //
   if (System.getenv().containsKey("REPLAY_TESTS_PARALLELISM")) {
     systemProperty("junit.jupiter.execution.parallel.enabled", true)
@@ -170,7 +168,7 @@ tasks.register("jacocoFastReplayTestsReport", JacocoReport) {
 }
 
 tasks.register("nightlyReplayTests", Test) {
-  dependsOn(buildOldReplayTestsZkevmBin)
+  dependsOn(buildZkevmBin)
 
   boolean isCiServer = System.getenv().containsKey("CI")
   maxHeapSize = isCiServer ? "32g" : "8g"

@@ -26,10 +26,6 @@ tasks.register('corsetExists') {
 
 // Allowing overriding the default zkevm.bin file.
 def ZKEVM_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm.bin"
-// Allowing overriding the default zkevm.bin file.
-def ZKEVM_OLD_REPLAY_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm_for_old_replay_tests.bin"
-// Allowing overriding the default zkevm.bin file.
-def ZKEVM_REFTESTS_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm_for_reference_tests.bin"
 // Specify where the trace file should be generated.
 def TRACE_FILE = "arithmetization/src/main/java/net/consensys/linea/zktracer/Trace.java"
 // Specify package to use for trace file
@@ -58,77 +54,14 @@ tasks.register('buildZkevmBin', Exec) {
     }
 }
 
-tasks.register('buildOldReplayTestsZkevmBin', Exec) {
-    workingDir "${project.rootDir}/linea-constraints/"
-    // Sanity check executing this makes sense.
-    doFirst {
-        // sanity check target chain
-        def chain = System.getProperty('blockchain')
-        // note: null indicates the default (which is Linea).
-        if(chain != null && chain != "OldLinea") {
-            println("*** incorrect target chain (expected 'OldLinea' was '" + chain + "')\n\n")
-            assert false
-        }
-    }
-    //
-    commandLine 'make', ZKEVM_OLD_REPLAY_BIN
-    // Store the output instead of printing to the console
-    standardOutput = new ByteArrayOutputStream()
-    ext.output = {
-        return standardOutput.toString()
-    }
-}
-
-tasks.register('buildReferenceTestsZkevmBin', Exec) {
-    workingDir "${project.rootDir}/linea-constraints/"
-    // Sanity check executing this makes sense.
-    doFirst {
-        // sanity check target chain
-        def chain = System.getProperty('blockchain')
-        //
-        if(chain != "Ethereum") {
-            println("*** incorrect target chain (expected 'Ethereum' was '" + chain + "')\n\n")
-            assert false
-        }
-    }
-    //
-    commandLine 'make', ZKEVM_REFTESTS_BIN    
-    // Store the output instead of printing to the console
-    standardOutput = new ByteArrayOutputStream()
-    ext.output = {
-        return standardOutput.toString()
-    }
-}
-
 // Task which generates the Trace.java file using go-corset.
 tasks.register('buildTracer', Exec) {
     group "Trace files generation"
-
-    def chain = System.getProperty('blockchain')
-    def zkevmBin = ZKEVM_BIN
+    dependsOn 'buildZkevmBin'
+    // Locate target file
     def traceJava = getRootProject().file(TRACE_FILE)    
-    // Conditional dependsOn
-    if (chain == null) {
-        print("No chain provided, building for Linea\n")
-        dependsOn 'buildZkevmBin'
-    } else if (chain == "Linea") {
-        print("Building for Linea\n")
-        dependsOn 'buildZkevmBin'
-    } else if (chain == "Ethereum") {
-        print("Building for Ethereum\n")
-        dependsOn 'buildReferenceTestsZkevmBin'
-        zkevmBin = ZKEVM_REFTESTS_BIN
-    } else if (chain == "OldLinea") {
-        print("Building for Old Linea\n")
-        dependsOn 'buildOldReplayTestsZkevmBin'
-        zkevmBin = ZKEVM_OLD_REPLAY_BIN
-    } else {
-        // Force build failure if unknown chain.
-        println("*** unknown target chain.  Try '-Dblockchain=Linea' or '-Dblockchain=Ethereum'\n\n")
-        assert false
-    }
     // Configure full path to zkevm.bin
-    zkevmBin = getRootProject().file('linea-constraints/' + zkevmBin)
+    def zkevmBin = getRootProject().file('linea-constraints/' + ZKEVM_BIN)
     // Run go-corset generation
     commandLine 'go-corset','generate','-p',TRACE_PKG,'-o',traceJava,zkevmBin
 }

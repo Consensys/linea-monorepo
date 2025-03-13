@@ -22,6 +22,7 @@ import java.util.Optional;
 import com.google.common.base.Stopwatch;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.plugins.BesuServiceProvider;
+import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.Validator;
 import net.consensys.linea.tracewriter.TraceWriter;
@@ -94,6 +95,9 @@ public class GenerateConflatedTracesV2 {
     final long toBlock = params.endBlockNumber();
     final ZkTracer tracer =
         new ZkTracer(
+            // NOTE: following OK because bridge config only affects line counts for non-tracing
+            // modules.
+            LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT,
             BesuServiceProvider.getBesuService(besuContext, BlockchainService.class)
                 .getChainId()
                 .orElseThrow());

@@ -14,6 +14,7 @@
  */
 package net.consensys.linea.continoustracing;
 
+import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.matches;
@@ -114,6 +115,8 @@ public class ContinuousTracerTest {
 
     assertThrows(
         InvalidBlockTraceException.class,
-        () -> continuousTracer.verifyTraceOfBlock(BLOCK_NUMBER, BLOCK_HASH, new ZkTracer()));
+        () ->
+            continuousTracer.verifyTraceOfBlock(
+                BLOCK_NUMBER, BLOCK_HASH, new ZkTracer(MAINNET_TESTCONFIG)));
   }
 }

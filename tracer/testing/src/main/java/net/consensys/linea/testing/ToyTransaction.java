@@ -77,7 +77,7 @@ public class ToyTransaction {
               .gasLimit(Optional.ofNullable(gasLimit).orElse(DEFAULT_GAS_LIMIT))
               .value(Optional.ofNullable(value).orElse(DEFAULT_VALUE))
               .payload(Optional.ofNullable(payload).orElse(DEFAULT_INPUT_DATA))
-              .chainId(Optional.ofNullable(chainId).orElse(ToyExecutionEnvironmentV2.CHAIN_ID));
+              .chainId(Optional.ofNullable(chainId).orElse(ToyExecutionEnvironmentV2.CHAIN.id));
 
       if (transactionType == TransactionType.EIP1559) {
         builder.maxPriorityFeePerGas(
