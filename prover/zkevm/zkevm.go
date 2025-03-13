@@ -129,8 +129,8 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 		// assign themselves.
 		z.arithmetization.Assign(run, input.ExecTracesFPath,
 			&arithmetization.SanityCheckOptions{
-				ChainID:                input.ChainID,
 				NbAllL2L1MessageHashes: input.NbAllL2L1MessageHashes,
+				ChainID:                input.ChainID,
 			})
 
 		// Assign the state-manager module

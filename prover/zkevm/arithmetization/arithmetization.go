@@ -33,9 +33,9 @@ type Settings struct {
 // SanityCheckOptions holds optional parameters for sanity checking
 // to check consistency between the prover response vs trace metadata
 type SanityCheckOptions struct {
-	ChainID uint
 	// NbAllL2L1MessageHashes stores the total number of L2 to L1 message hashes.
 	NbAllL2L1MessageHashes int
+	ChainID                uint
 }
 
 // Arithmetization exposes all the methods relevant for the user to interact
@@ -78,14 +78,14 @@ func NewArithmetization(builder *wizard.Builder, settings Settings) *Arithmetiza
 func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string, opts *SanityCheckOptions) {
 	traceF := files.MustRead(traceFile)
 	// Parse trace file and extract raw column data
-	rawColumns, traceMetadata, errT := ReadLtTraces(traceF, a.Schema)
+	rawColumns, metadata, errT := ReadLtTraces(traceF, a.Schema)
 
 	// Perform constraints compatibility check (trace file vs zkevm.bin)
-	compatibilityCheck(traceMetadata, a)
+	compatibilityCheck(metadata, a)
 
 	// Perform sanity checks (trace file and prover response)
 	if opts != nil {
-		sanityCheck(traceMetadata, opts)
+		sanityCheck(metadata, opts)
 	}
 
 	if errT != nil {
@@ -140,40 +140,39 @@ func compatibilityCheck(metadata typed.Map, a *Arithmetization) {
 // sanityCheck performs sanity checks between the prover response and the trace file.
 // It verifies that the chainID and total L2 to L1 message logs are consistent between
 // the two sources, and panics if a mismatch is detected, before expanding the trace.
-func sanityCheck(metadata typed.Map, proverResponse *SanityCheckOptions) {
-	// sanity-check chainID
-	traceChainIDStr, ok := metadata.String("chainId")
-	if !ok {
-		logrus.Panic("chainId is missing or not an integer")
-	}
+func sanityCheck(traceMetadata typed.Map, proverResponse *SanityCheckOptions) {
 
-	// Convert string to int
-	traceChainID, err := strconv.Atoi(traceChainIDStr)
-	if err != nil {
-		logrus.Panicf("invalid chainId format: %s", traceChainIDStr)
-	}
-
-	// sanity-check if chainID matches
-	if int(proverResponse.ChainID) != traceChainID {
-		logrus.Panicf("sanity-check failed: responseChainID=%v vs traceChainID=%v", int(proverResponse.ChainID), traceChainID)
-	}
-
+	// Sanity-check: L2 to L1 Messages
 	// extract lineCounts BLOCK_L2_L1_LOGS from the .lt file
-	BLOCK_L2_L1_LOGS_Str, ok := metadata.String("BLOCK_L2_L1_LOGS")
+	BLOCK_L2_L1_LOGS_Str, ok := traceMetadata.String("BLOCK_L2_L1_LOGS")
 	if !ok {
 		logrus.Panic("missing BLOCK_L2_L1_LOGS metadata in .lt file")
 	}
-
 	// Convert string to int
 	BLOCK_L2_L1_LOGS, err := strconv.Atoi(BLOCK_L2_L1_LOGS_Str)
 	if err != nil {
 		logrus.Panicf("invalid BLOCK_L2_L1_LOGS format: %s", BLOCK_L2_L1_LOGS_Str)
 	}
-
 	// sanity-check if there is a mismatch between prover response and trace metadata
 	if proverResponse.NbAllL2L1MessageHashes != BLOCK_L2_L1_LOGS {
 		logrus.Panicf("sanity-check failed: prover response NbAllL2L1MessageHashes=%v\n"+
 			"vs trace lineCounts(BLOCK_L2_L1_LOGS)=%v",
 			proverResponse.NbAllL2L1MessageHashes, BLOCK_L2_L1_LOGS)
+	}
+
+	// Sanity-check: Chain ID
+	// extract chainID from the .lt file
+	traceChainIDStr, ok := traceMetadata.String("chainId")
+	if !ok {
+		logrus.Panic("chainId is missing or not an integer")
+	}
+	// Convert string to int
+	traceChainID, err := strconv.Atoi(traceChainIDStr)
+	if err != nil {
+		logrus.Panicf("invalid chainId format: %s", traceChainIDStr)
+	}
+	// sanity-check if chainID matches
+	if int(proverResponse.ChainID) != traceChainID {
+		logrus.Panicf("sanity-check failed: responseChainID=%v vs traceChainID=%v", int(proverResponse.ChainID), traceChainID)
 	}
 }
