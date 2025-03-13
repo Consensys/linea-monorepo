@@ -30,10 +30,18 @@ abstract contract BaseNFTMetadataGenerator is INFTMetadataGenerator, Ownable {
             abi.encodePacked(baseDescription, Strings.toHexString(account), " with balance ", Strings.toString(balance))
         );
 
-        string memory image = generateImageURI(account, balance);
+        (string memory imageField, string memory imageURI) = generateImageURI(account, balance);
 
         bytes memory json = abi.encodePacked(
-            "{\"name\":\"", propName, "\",\"description\":\"", propDescription, "\",\"image\":\"", image, "\"}"
+            "{\"name\":\"",
+            propName,
+            "\",\"description\":\"",
+            propDescription,
+            "\",\"",
+            imageField,
+            "\":\"",
+            imageURI,
+            "\"}"
         );
 
         string memory jsonBase64 = Base64.encode(json);
@@ -45,5 +53,12 @@ abstract contract BaseNFTMetadataGenerator is INFTMetadataGenerator, Ownable {
      * @param account The address of the NFT owner
      * @param balance The balance of the NFT owner
      */
-    function generateImageURI(address account, uint256 balance) internal view virtual returns (string memory);
+    function generateImageURI(
+        address account,
+        uint256 balance
+    )
+        internal
+        view
+        virtual
+        returns (string memory, string memory);
 }

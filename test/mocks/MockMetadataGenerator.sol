@@ -11,8 +11,8 @@ contract MockMetadataGenerator is BaseNFTMetadataGenerator {
         _baseURI = baseURI;
     }
 
-    function generateImageURI(address account, uint256) internal view override returns (string memory) {
+    function generateImageURI(address account, uint256) internal view override returns (string memory, string memory) {
         bytes memory uri = abi.encodePacked(_baseURI, Strings.toHexString(account));
-        return string(uri);
+        return ("image", string(uri));
     }
 }

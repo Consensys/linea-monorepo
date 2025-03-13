@@ -35,7 +35,7 @@ contract NFTMetadataGeneratorSVGTest is Test {
             "\"description\":\"",
             expectedDescription,
             "\",",
-            "\"image\":\"",
+            "\"image_data\":\"",
             expectedImage,
             "\"}"
         );

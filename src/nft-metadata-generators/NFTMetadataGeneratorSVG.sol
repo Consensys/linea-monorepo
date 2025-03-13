@@ -36,10 +36,10 @@ contract NFTMetadataGeneratorSVG is BaseNFTMetadataGenerator {
      * @notice Generates the image URI for the NFT based on the owner's address and balance
      * @param balance The balance of the NFT owner
      */
-    function generateImageURI(address, uint256 balance) internal view override returns (string memory) {
+    function generateImageURI(address, uint256 balance) internal view override returns (string memory, string memory) {
         string memory text = Strings.toString(balance / 1e18);
         bytes memory svg = abi.encodePacked(imagePrefix, text, imageSuffix);
 
-        return string(abi.encodePacked("data:image/svg+xml;base64,", Base64.encode(svg)));
+        return ("image_data", string(abi.encodePacked("data:image/svg+xml;base64,", Base64.encode(svg))));
     }
 }
