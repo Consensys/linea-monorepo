@@ -278,14 +278,21 @@ func (a *Alignment) assignMasks(run *wizard.ProverRuntime) {
 	// we have the number of 1 selector column elements. We must have
 	// same number of ones in the ACTUAL_MASK column. And at the same time the
 	// first time we have STATIC_MASK != ALIGNED_MASK, we set IS_ACTIVE to zero.
-	for i := 0; i < totalSize && totalAligned < totalInputs; i++ {
+	for i := 0; i < totalSize; i++ {
+
 		if i%nbPublicInputsPadded < nbPublicInputs {
 			totalAligned++
 		}
+
 		isActiveAssignment[i].SetOne()
+
+		if totalAligned >= totalInputs {
+			isActiveAssignment = isActiveAssignment[:i:i]
+			break
+		}
 	}
 
-	run.AssignColumn(a.IsActive.GetColID(), smartvectors.NewRegular(isActiveAssignment))
+	run.AssignColumn(a.IsActive.GetColID(), smartvectors.RightZeroPadded(isActiveAssignment, totalSize))
 	a.ActualCircuitInputMask.Assign(run)
 }
 
@@ -327,6 +334,7 @@ func (a *Alignment) assignCircData(run *wizard.ProverRuntime) {
 
 	close(dataChan)
 
+assignmentLoop:
 	for i := 0; i < maxNbInstances*nbInputsPadded; i += nbInputsPadded {
 		for k := 0; k < nbInput; k++ {
 			x, ok := <-dataChan
@@ -335,7 +343,7 @@ func (a *Alignment) assignCircData(run *wizard.ProverRuntime) {
 			// we stop right here and do not start a new instance.
 			if !ok && k == 0 {
 				res = res[:i+k]
-				break
+				break assignmentLoop
 			}
 
 			res[i+k] = x
