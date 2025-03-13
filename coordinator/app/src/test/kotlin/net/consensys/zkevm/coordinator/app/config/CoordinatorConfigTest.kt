@@ -4,7 +4,7 @@ import com.github.michaelbull.result.getError
 import com.sksamuel.hoplite.Masked
 import linea.coordinator.config.loadConfigs
 import linea.coordinator.config.loadConfigsOrError
-import net.consensys.linea.BlockParameter
+import linea.domain.BlockParameter
 import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.ExtraDataV1UpdaterImpl
@@ -45,8 +45,7 @@ class CoordinatorConfigTest {
       _smartContractErrors = mapOf(
         // L1 Linea Rollup
         "0f06cd15" to "DataAlreadySubmitted",
-        "c01eab56" to "EmptySubmissionData",
-        "abefa5e8" to "DataStartingBlockDoesNotMatch"
+        "c01eab56" to "EmptySubmissionData"
       ),
       fetchBlocksLimit = 4000
     )
@@ -162,13 +161,15 @@ class CoordinatorConfigTest {
       priorityFeePerGasLowerBound = 200000000UL,
       proofSubmissionDelay = Duration.parse("PT1S"),
       targetBlobsToSendPerTransaction = 6,
-      disabled = true
+      useEthEstimateGas = false,
+      disabled = false
     )
 
     private val aggregationFinalizationConfig = AggregationFinalizationConfig(
       dbPollingInterval = Duration.parse("PT1S"),
       maxAggregationsToFinalizePerTick = 1,
       proofSubmissionDelay = Duration.parse("PT1S"),
+      useEthEstimateGas = true,
       disabled = false
     )
 
