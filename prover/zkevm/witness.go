@@ -25,13 +25,14 @@ type Witness struct {
 	// TxHashes lists the hash of the transactions in the order found in the
 	// block.
 	TxHashes        [][32]byte
-	L2BridgeAddress common.Address
 	ChainID         uint
-	// BlockHashList is the list of the block-hashes of the proven blocks
-	BlockHashList []types.FullBytes32
-
+	L2BridgeAddress common.Address
 	// For SanityCheck: NbAllL2L1MessageHashes represents the total number of L2 to L1 message hashes.
 	NbAllL2L1MessageHashes int
+	L2L1MessageLimits      int
+
+	// BlockHashList is the list of the block-hashes of the proven blocks
+	BlockHashList []types.FullBytes32
 }
 
 // TxSignatureGetter implements the ecdsa.TxSignatureGetter interface

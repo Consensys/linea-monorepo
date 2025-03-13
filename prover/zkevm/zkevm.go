@@ -131,6 +131,7 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 			&arithmetization.SanityCheckOptions{
 				NbAllL2L1MessageHashes: input.NbAllL2L1MessageHashes,
 				ChainID:                input.ChainID,
+				L2L1MessageLimits:      input.L2L1MessageLimits,
 			})
 
 		// Assign the state-manager module

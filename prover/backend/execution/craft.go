@@ -209,18 +209,22 @@ func (rsp *Response) FuncInput() *public_input.Execution {
 	return fi
 }
 
-func NewWitness(cfg *config.Config, req *Request, rsp *Response) *Witness {
+func NewWitness(cfg *config.Config, req *Request, rsp *Response, traces *config.TracesLimits) *Witness {
 	txSignatures, txHashes := req.collectSignatures()
 	return &Witness{
 		ZkEVM: &zkevm.Witness{
-			ExecTracesFPath: path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
-			SMTraces:        req.StateManagerTraces(),
-			TxSignatures:    txSignatures,
-			TxHashes:        txHashes,
-			L2BridgeAddress: cfg.Layer2.MsgSvcContract,
+			ExecTracesFPath:        path.Join(cfg.Execution.ConflatedTracesDir, req.ConflatedExecutionTracesFile),
+			SMTraces:               req.StateManagerTraces(),
+			TxSignatures:           txSignatures,
+			TxHashes:               txHashes,
+			L2BridgeAddress:        cfg.Layer2.MsgSvcContract,
+			ChainID:                cfg.Layer2.ChainID,
+			BlockHashList:          getBlockHashList(rsp),
 			NbAllL2L1MessageHashes: len(rsp.AllL2L1MessageHashes),
-			ChainID:         cfg.Layer2.ChainID,
-			BlockHashList:   getBlockHashList(rsp),
+			// To consider large case, this should not be loaded from
+			// cfg.TraceLimits. Make sure this works for both normal and large
+			// trace limits cases.
+			L2L1MessageLimits: traces.BlockL2L1Logs,
 		},
 		FuncInp: rsp.FuncInput(),
 	}

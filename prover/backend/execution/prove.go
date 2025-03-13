@@ -45,7 +45,7 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 				out.Proof, out.VerifyingKeyShaSum = mustProveAndPass(
 					cfg,
 					traces,
-					NewWitness(cfg, req, &out),
+					NewWitness(cfg, req, &out, traces),
 				)
 
 				out.Version = cfg.Version

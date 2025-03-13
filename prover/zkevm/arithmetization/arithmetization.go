@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/sirupsen/logrus"
 )
 
@@ -33,9 +34,11 @@ type Settings struct {
 // SanityCheckOptions holds optional parameters for sanity checking
 // to check consistency between the prover response vs trace metadata
 type SanityCheckOptions struct {
+	ChainID uint
 	// NbAllL2L1MessageHashes stores the total number of L2 to L1 message hashes.
+	L2BridgeAddress        common.Address
 	NbAllL2L1MessageHashes int
-	ChainID                uint
+	L2L1MessageLimits      int
 }
 
 // Arithmetization exposes all the methods relevant for the user to interact
@@ -75,7 +78,7 @@ func NewArithmetization(builder *wizard.Builder, settings Settings) *Arithmetiza
 // according to the given schema.  The expansion process is about filling in
 // computed columns with concrete values, such for determining multiplicative
 // inverses, etc.
-func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string, opts *SanityCheckOptions) {
+func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string, proverInput *SanityCheckOptions) {
 	traceF := files.MustRead(traceFile)
 	// Parse trace file and extract raw column data
 	rawColumns, metadata, errT := ReadLtTraces(traceF, a.Schema)
@@ -84,8 +87,8 @@ func (a *Arithmetization) Assign(run *wizard.ProverRuntime, traceFile string, op
 	compatibilityCheck(metadata, a)
 
 	// Perform sanity checks (trace file and prover response)
-	if opts != nil {
-		sanityCheck(metadata, opts)
+	if proverInput != nil {
+		proverInputSanityCheck(metadata, proverInput)
 	}
 
 	if errT != nil {
@@ -140,7 +143,24 @@ func compatibilityCheck(metadata typed.Map, a *Arithmetization) {
 // sanityCheck performs sanity checks between the prover response and the trace file.
 // It verifies that the chainID and total L2 to L1 message logs are consistent between
 // the two sources, and panics if a mismatch is detected, before expanding the trace.
-func sanityCheck(traceMetadata typed.Map, proverResponse *SanityCheckOptions) {
+func proverInputSanityCheck(traceMetadata typed.Map, proverInput *SanityCheckOptions) {
+	// Sanity-check: Chain ID
+	// extract chainID from the .lt file
+	traceChainIDStr, ok := traceMetadata.String("chainId")
+	if !ok {
+		logrus.Panic("chainId is missing or not an integer")
+	}
+	// Convert string to int
+	traceChainID, err := strconv.Atoi(traceChainIDStr)
+	if err != nil {
+		logrus.Panicf("invalid chainId format: %s", traceChainIDStr)
+	}
+	// sanity-check if chainID matches
+	if int(proverInput.ChainID) != traceChainID {
+		logrus.Panicf("sanity-check failed: responseChainID=%v vs traceChainID=%v", int(proverInput.ChainID), traceChainID)
+	}
+
+	// l2l1 bridge address is same in both trace and prover response
 
 	// Sanity-check: L2 to L1 Messages
 	// extract lineCounts BLOCK_L2_L1_LOGS from the .lt file
@@ -154,25 +174,12 @@ func sanityCheck(traceMetadata typed.Map, proverResponse *SanityCheckOptions) {
 		logrus.Panicf("invalid BLOCK_L2_L1_LOGS format: %s", BLOCK_L2_L1_LOGS_Str)
 	}
 	// sanity-check if there is a mismatch between prover response and trace metadata
-	if proverResponse.NbAllL2L1MessageHashes != BLOCK_L2_L1_LOGS {
+	if proverInput.NbAllL2L1MessageHashes != BLOCK_L2_L1_LOGS {
 		logrus.Panicf("sanity-check failed: prover response NbAllL2L1MessageHashes=%v\n"+
 			"vs trace lineCounts(BLOCK_L2_L1_LOGS)=%v",
-			proverResponse.NbAllL2L1MessageHashes, BLOCK_L2_L1_LOGS)
+			proverInput.NbAllL2L1MessageHashes, BLOCK_L2_L1_LOGS)
 	}
 
-	// Sanity-check: Chain ID
-	// extract chainID from the .lt file
-	traceChainIDStr, ok := traceMetadata.String("chainId")
-	if !ok {
-		logrus.Panic("chainId is missing or not an integer")
-	}
-	// Convert string to int
-	traceChainID, err := strconv.Atoi(traceChainIDStr)
-	if err != nil {
-		logrus.Panicf("invalid chainId format: %s", traceChainIDStr)
-	}
-	// sanity-check if chainID matches
-	if int(proverResponse.ChainID) != traceChainID {
-		logrus.Panicf("sanity-check failed: responseChainID=%v vs traceChainID=%v", int(proverResponse.ChainID), traceChainID)
-	}
+	// range check:  linecounts L2 to L1 Messages <= target (limit)
+
 }
