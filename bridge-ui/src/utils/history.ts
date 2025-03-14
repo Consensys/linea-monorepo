@@ -7,10 +7,17 @@ import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
 import { defaultTokensConfig } from "@/stores";
 import { LineaSDKContracts } from "@/hooks";
 import { Chain, ChainLayer, Token, TransactionStatus, BridgingInitiatedV2Event, MessageSentEvent } from "@/types";
-import { eventETH, eventERC20V2, eventUSDC } from "@/utils";
-import { CCTP_TOKEN_MESSENGER } from "./cctp";
+import {
+  CCTP_TOKEN_MESSENGER,
+  eventETH,
+  eventERC20V2,
+  eventUSDC,
+  getCCTPMessageNonce,
+  isCCTPNonceUsed,
+  getCCTPTransactionStatus,
+} from "@/utils";
 import { DepositForBurnEvent } from "@/types/events";
-// import { fetchCctpAttestation } from "@/services/cctp";
+import { fetchCctpAttestation } from "@/services/cctp";
 
 type TransactionHistoryParams = {
   lineaSDK: LineaSDK;
@@ -21,6 +28,23 @@ type TransactionHistoryParams = {
   tokens: Token[];
 };
 
+type NativeBridgeMessage = {
+  from: Address;
+  to: Address;
+  fee: bigint;
+  value: bigint;
+  nonce: bigint;
+  calldata: string;
+  messageHash: string;
+  proof?: Proof;
+};
+
+// Params expected for `receiveMessage` as per https://developers.circle.com/stablecoins/transfer-usdc-on-testnet-from-ethereum-to-avalanche
+type CCTPV2BridgeMessage = {
+  message: string;
+  attestation: string;
+  value: bigint;
+};
 export interface BridgeTransaction {
   type: "ETH" | "ERC20";
   status: TransactionStatus;
@@ -28,19 +52,9 @@ export interface BridgeTransaction {
   fromChain: Chain;
   toChain: Chain;
   token: Token;
-  message: {
-    from: Address;
-    to: Address;
-    fee: bigint;
-    value: bigint;
-    nonce: bigint;
-    calldata: string;
-    messageHash: string;
-    proof?: Proof;
-  };
+  message: NativeBridgeMessage | CCTPV2BridgeMessage;
   bridgingTx: string;
   claimingTx?: string;
-  messageHash: string;
 }
 
 export async function fetchTransactionsHistory({
@@ -69,7 +83,8 @@ async function fetchBridgeEvents(
   const [ethEvents, erc20Events, cctpEvents] = await Promise.all([
     fetchETHBridgeEvents(lineaSDK, lineaSDKContracts, address, fromChain, toChain, tokens),
     fetchERC20BridgeEvents(lineaSDK, lineaSDKContracts, address, fromChain, toChain, tokens),
-    fetchCCTPBridgeEvents(address, fromChain),
+    // TODO - Implement feature toggle for CCTP for below
+    fetchCCTPBridgeEvents(address, fromChain, toChain, tokens),
   ]);
 
   return [...ethEvents, ...erc20Events, ...cctpEvents];
@@ -163,7 +178,6 @@ async function fetchETHBridgeEvents(
           messageHash: log.args._messageHash,
           proof: messageProof,
         },
-        messageHash,
       });
     }),
   );
@@ -276,7 +290,6 @@ async function fetchERC20BridgeEvents(
           messageHash: message[0].messageHash,
           proof: messageProof,
         },
-        messageHash: message[0].messageHash,
       });
     }),
   );
@@ -284,14 +297,21 @@ async function fetchERC20BridgeEvents(
   return Array.from(transactionsMap.values());
 }
 
-async function fetchCCTPBridgeEvents(address: Address, fromChain: Chain): Promise<BridgeTransaction[]> {
+async function fetchCCTPBridgeEvents(
+  address: Address,
+  fromChain: Chain,
+  toChain: Chain,
+  tokens: Token[],
+): Promise<BridgeTransaction[]> {
   const transactionsMap = new Map<string, BridgeTransaction>();
-
-  const client = getPublicClient(config, {
+  const fromChainClient = getPublicClient(config, {
     chainId: fromChain.id,
   });
+  const toChainClient = getPublicClient(config, {
+    chainId: toChain.id,
+  });
 
-  const usdcLogs = <DepositForBurnEvent[]>await client.getLogs({
+  const usdcLogs = <DepositForBurnEvent[]>await fromChainClient.getLogs({
     event: eventUSDC,
     fromBlock: "earliest",
     toBlock: "latest",
@@ -301,19 +321,56 @@ async function fetchCCTPBridgeEvents(address: Address, fromChain: Chain): Promis
     },
   });
 
+  // TODO - Consider deduplication
+
   const currentTimestamp = new Date();
 
   await Promise.all(
     usdcLogs.map(async (log) => {
-      // const transactionHash = log.transactionHash;
+      const transactionHash = log.transactionHash;
 
-      const block = await client.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
+      const block = await fromChainClient.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
 
       if (compareAsc(fromUnixTime(Number(block.timestamp.toString())), subDays(currentTimestamp, 90)) === -1) {
         return;
       }
 
-      // const attestation = await fetchCctpAttestation(transactionHash, fromChain.cctpDomain);
+      const token = tokens.find((token) => token.symbol === "USDC" && token.type.includes("bridge-reserved"));
+      if (!token) return;
+
+      const attestationApiResp = await fetchCctpAttestation(transactionHash, fromChain.cctpDomain);
+      if (!attestationApiResp) return;
+
+      const message = attestationApiResp.messages[0];
+      if (!message) return;
+
+      const nonce = getCCTPMessageNonce(message.message);
+      console.log("messageNonce:", nonce);
+      if (nonce.length !== 66) return;
+
+      const isNonceUsed = await isCCTPNonceUsed(toChainClient, nonce);
+      console.log("isNonceUsed:", isNonceUsed);
+
+      const status = getCCTPTransactionStatus(message.status, isNonceUsed);
+      console.log("status:", status);
+
+      // TODO - Get Claim Event and Tx
+
+      transactionsMap.set(transactionHash, {
+        type: "ERC20",
+        status,
+        token,
+        fromChain,
+        toChain,
+        timestamp: block.timestamp,
+        bridgingTx: log.transactionHash,
+        claimingTx: "",
+        message: {
+          attestation: message.attestation,
+          message: message.message,
+          value: BigInt(log.args.amount),
+        },
+      });
     }),
   );
 
