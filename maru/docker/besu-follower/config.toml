@@ -36,6 +36,6 @@ metrics-port=9545
 
 # database
 data-storage-format="BONSAI"
-Xbonsai-limit-trie-logs-enabled=false
+bonsai-limit-trie-logs-enabled=false
 bonsai-historical-block-limit=1024
 fast-sync-min-peers=1
