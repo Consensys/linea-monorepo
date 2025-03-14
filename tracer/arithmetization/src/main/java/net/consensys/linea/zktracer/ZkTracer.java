@@ -109,7 +109,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     metadata.put("conflation", range);
     // include line counts
     final Map<String, String> lineCounts = new HashMap<>();
-    for (Module m : hub.getModulesToCount()) {
+    for (Module m : hub.getTracelessModules()) {
       lineCounts.put(m.moduleKey(), Integer.toString(m.lineCount()));
     }
     metadata.put("lineCounts", lineCounts);
@@ -289,10 +289,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     }
   }
 
-  /**
-   * When called, erase all tracing related to the bundle of all transactions since the last {@link
-   * commitTransactionBundle()}
-   */
+  /** When called, erase all tracing related to the bundle of all transactions since the last. */
   public void popTransactionBundle() {
     hub.popTransactionBundle();
   }
@@ -301,6 +298,13 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     hub.commitTransactionBundle();
   }
 
+  /**
+   * Returns the total line count (i.e. including spillage) for both tracing and non-tracing
+   * modules. This method is called directly by the sequencer to determine whether a given
+   * transaction should go ahead. This method is also used to feed the line counting RPC end points.
+   *
+   * @return
+   */
   public Map<String, Integer> getModulesLineCount() {
     maybeThrowTracingExceptions();
     final HashMap<String, Integer> modulesLineCount = new HashMap<>();
