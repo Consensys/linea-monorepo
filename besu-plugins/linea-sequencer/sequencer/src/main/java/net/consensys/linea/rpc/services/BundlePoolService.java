@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import org.apache.tuweni.bytes.Bytes;
@@ -35,6 +36,7 @@ public interface BundlePoolService extends BesuService {
   /** TransactionBundle record representing a collection of pending transactions with metadata. */
   @Accessors(fluent = true)
   @Getter
+  @EqualsAndHashCode
   class TransactionBundle {
     private static final String FIELD_SEPARATOR = "|";
     private static final String ITEM_SEPARATOR = ",";

@@ -15,11 +15,14 @@
 package net.consensys.linea.rpc.methods;
 
 import static java.util.Optional.empty;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hyperledger.besu.ethereum.core.PrivateTransactionDataFixture.SIGNATURE_ALGORITHM;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -35,16 +38,19 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.core.TransactionTestFixture;
 import org.hyperledger.besu.plugin.services.BesuEvents;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 class LineaSendBundleTest {
+  private static final long CHAIN_HEAD_BLOCK_NUMBER = 100L;
   @TempDir Path dataDir;
   private LineaSendBundle lineaSendBundle;
   private BesuEvents mockEvents;
   private LineaLimitedBundlePool bundlePool;
+  private BlockchainService blockchainService;
 
   private Transaction mockTX1 =
       new TransactionTestFixture()
@@ -61,8 +67,10 @@ class LineaSendBundleTest {
   @BeforeEach
   void setup() {
     mockEvents = mock(BesuEvents.class);
+    blockchainService = mock(BlockchainService.class, RETURNS_DEEP_STUBS);
+    when(blockchainService.getChainHeadHeader().getNumber()).thenReturn(CHAIN_HEAD_BLOCK_NUMBER);
     bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096L, mockEvents));
-    lineaSendBundle = new LineaSendBundle().init(bundlePool);
+    lineaSendBundle = new LineaSendBundle(blockchainService).init(bundlePool);
   }
 
   @Test
@@ -156,14 +164,26 @@ class LineaSendBundleTest {
     PluginRpcRequest request = mock(PluginRpcRequest.class);
     when(request.getParams()).thenReturn(new Object[] {bundleParams});
 
-    Exception exception =
-        assertThrows(
-            RuntimeException.class,
-            () -> {
-              lineaSendBundle.execute(request);
-            });
+    assertThatThrownBy(() -> lineaSendBundle.execute(request))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageMatching(
+            "bundle max timestamp [0-9]+ is in the past, current timestamp is [0-9]+");
+  }
 
-    assertTrue(exception.getMessage().contains("bundle max timestamp is in the past"));
+  @Test
+  void testExecute_BundleForBlockAlreadyInChain_ThrowsException() {
+    List<String> transactions = List.of(mockTX1.encoded().toHexString());
+    LineaSendBundle.BundleParameter bundleParams =
+        new LineaSendBundle.BundleParameter(
+            transactions, CHAIN_HEAD_BLOCK_NUMBER, empty(), empty(), empty(), empty(), empty());
+
+    PluginRpcRequest request = mock(PluginRpcRequest.class);
+    when(request.getParams()).thenReturn(new Object[] {bundleParams});
+
+    assertThatThrownBy(() -> lineaSendBundle.execute(request))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageContaining(
+            "bundle block number 100 is not greater than current chain head block number 100");
   }
 
   @Test
@@ -179,6 +199,34 @@ class LineaSendBundleTest {
             });
 
     assertTrue(exception.getMessage().contains("malformed linea_sendBundle json param"));
+  }
+
+  @Test
+  void testExecute_DuplicateRequest_ThrowsException() {
+    List<String> transactions = List.of(mockTX1.encoded().toHexString());
+    LineaSendBundle.BundleParameter bundleParams1 =
+        new LineaSendBundle.BundleParameter(
+            transactions, CHAIN_HEAD_BLOCK_NUMBER + 1, empty(), empty(), empty(), empty(), empty());
+
+    PluginRpcRequest request1 = mock(PluginRpcRequest.class);
+    when(request1.getParams()).thenReturn(new Object[] {bundleParams1});
+
+    LineaSendBundle.BundleResponse response1 = lineaSendBundle.execute(request1);
+
+    // first time we send the request it works
+    assertThat(response1.bundleHash()).isEqualTo(Hash.hash(mockTX1.encoded()).toHexString());
+
+    LineaSendBundle.BundleParameter bundleParams2 =
+        new LineaSendBundle.BundleParameter(
+            transactions, CHAIN_HEAD_BLOCK_NUMBER + 1, empty(), empty(), empty(), empty(), empty());
+
+    PluginRpcRequest request2 = mock(PluginRpcRequest.class);
+    when(request2.getParams()).thenReturn(new Object[] {bundleParams2});
+
+    // same request sent again return already seen
+    assertThatThrownBy(() -> lineaSendBundle.execute(request2))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageMatching("request already seen PT[0-9]+\\.[0-9]+S ago");
   }
 
   @Test

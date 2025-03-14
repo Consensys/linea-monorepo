@@ -34,7 +34,7 @@ public class LineaSendBundleEndpointPlugin extends AbstractLineaRequiredPlugin {
    */
   @Override
   public void doRegister(final ServiceManager serviceManager) {
-    lineaSendBundleMethod = new LineaSendBundle();
+    lineaSendBundleMethod = new LineaSendBundle(blockchainService);
 
     rpcEndpointService.registerRPCEndpoint(
         lineaSendBundleMethod.getNamespace(),
