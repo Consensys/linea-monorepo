@@ -22,9 +22,7 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     /// @notice Emitted when the amount to stake is zero.
     error StakingManager__AmountCannotBeZero();
     /// @notice Emitted when the lock period is not zero.
-    error StakingManager__CannotRestakeWithLockedFunds();
-    /// @notice Emitted when the vault is already locked.
-    error StakingManager__AlreadyLocked();
+    error StakingManager__InvalidLockPeriod();
     /// @notice Emitted when emergency mode is enabled.
     error StakingManager__EmergencyModeEnabled();
     /// @notice Emitted trying to migrate to non empty vault

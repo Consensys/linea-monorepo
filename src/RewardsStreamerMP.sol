@@ -35,6 +35,7 @@ contract RewardsStreamerMP is
         uint256 lockUntil;
         uint256 mpStaked;
         uint256 rewardsAccrued;
+        uint256 totalLockTime;
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -186,9 +187,21 @@ contract RewardsStreamerMP is
         _updateVault(msg.sender, true);
 
         VaultData storage vault = vaultData[msg.sender];
-        if (vault.lockUntil != 0 && vault.lockUntil > block.timestamp) {
-            revert StakingManager__CannotRestakeWithLockedFunds();
+
+        bool isCurrentlyLocked = vault.lockUntil > block.timestamp;
+
+        // Can't have `lockPeriod = 0` if vault is currently locked
+        if (lockPeriod == 0 && isCurrentlyLocked) {
+            revert StakingManager__InvalidLockPeriod();
         }
+
+        if (lockPeriod > 0) {
+            if (vault.totalLockTime + lockPeriod > MAX_LOCKUP_PERIOD) {
+                revert StakingManager__InvalidLockPeriod();
+            }
+            vault.totalLockTime += lockPeriod;
+        }
+
         (uint256 _deltaMpTotal, uint256 _deltaMPMax, uint256 _newLockEnd) =
             _calculateStake(vault.stakedBalance, vault.maxMP, vault.lockUntil, block.timestamp, amount, lockPeriod);
 
@@ -198,8 +211,6 @@ contract RewardsStreamerMP is
 
         if (lockPeriod != 0) {
             vault.lockUntil = _newLockEnd;
-        } else {
-            vault.lockUntil = 0;
         }
 
         vault.mpAccrued += _deltaMpTotal;
@@ -227,6 +238,11 @@ contract RewardsStreamerMP is
         if (lockPeriod == 0) {
             revert StakingManager__DurationCannotBeZero();
         }
+
+        if (vault.totalLockTime + lockPeriod > MAX_LOCKUP_PERIOD) {
+            revert StakingManager__InvalidLockPeriod();
+        }
+        vault.totalLockTime += lockPeriod;
 
         _updateGlobalState();
         _updateVault(msg.sender, false);
@@ -281,6 +297,7 @@ contract RewardsStreamerMP is
             vault.rewardIndex = 0;
             vault.lockUntil = 0;
             vault.lastMPUpdateTime = 0;
+            vault.totalLockTime = 0;
         }
 
         emit AccountLeft(msg.sender);
