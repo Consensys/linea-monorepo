@@ -7,7 +7,7 @@ import TransactionHistory from "../transaction-history";
 import { supportedChainIds } from "@/lib/wagmi";
 import { useTokens } from "@/hooks";
 import { useChainStore, FormStoreProvider, FormState, useNativeBridgeNavigationStore } from "@/stores";
-import { BridgeType, ChainLayer } from "@/types";
+import { ChainLayer } from "@/types";
 import WrongNetwork from "../wrong-network";
 import BridgeSkeleton from "./skeleton";
 
@@ -39,7 +39,6 @@ export default function BridgeLayout() {
     gasFees: 0n,
     bridgingFees: 0n,
     balance: 0n,
-    mode: BridgeType.NATIVE,
     recipient: address || "0x",
   };
 

@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react";
 import { useReadContract } from "wagmi";
-import MessageService from "@/abis/MessageService.json";
 import { ChainLayer } from "@/types";
 import { useFormStore, useChainStore } from "@/stores";
 
@@ -8,11 +7,25 @@ const useMinimumFee = () => {
   const fromChain = useChainStore.useFromChain();
   const setMinimumFees = useFormStore((state) => state.setMinimumFees);
 
-  const isL2Network = useMemo(() => fromChain.layer === ChainLayer.L2, [fromChain]);
+  const isL2Network = useMemo(() => fromChain.layer === ChainLayer.L2, [fromChain.layer]);
 
   const { data, isLoading, error, queryKey, refetch } = useReadContract({
     address: fromChain.messageServiceAddress,
-    abi: MessageService.abi,
+    abi: [
+      {
+        inputs: [],
+        name: "minimumFeeInWei",
+        outputs: [
+          {
+            internalType: "uint256",
+            name: "",
+            type: "uint256",
+          },
+        ],
+        stateMutability: "view",
+        type: "function",
+      },
+    ],
     functionName: "minimumFeeInWei",
     chainId: fromChain.id,
     query: {

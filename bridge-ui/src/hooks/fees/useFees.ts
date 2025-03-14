@@ -11,7 +11,7 @@ const useFees = () => {
   const { address } = useAccount();
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
-  const { minimumFee } = useMinimumFee();
+  useMinimumFee();
 
   const { data: tokenPrices, isLoading: isTokenPricesLoading } = useTokenPrices([zeroAddress], fromChain.id);
 
@@ -23,10 +23,7 @@ const useFees = () => {
   const gasFeesResult = useGasFees({
     address,
     fromChain,
-    token,
-    recipient,
     amount: amount ?? 0n,
-    minimumFee,
   });
 
   const { bridgingFees, isLoading: isBridgingFeeLoading } = useBridgingFee({
