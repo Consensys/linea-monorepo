@@ -4,8 +4,6 @@ pragma solidity ^0.8.26;
 import { BaseScript } from "./Base.s.sol";
 import { DeploymentConfig } from "./DeploymentConfig.s.sol";
 
-import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-
 import { KarmaNFT } from "../src/KarmaNFT.sol";
 import { NFTMetadataGeneratorSVG } from "../src/nft-metadata-generators/NFTMetadataGeneratorSVG.sol";
 import { INFTMetadataGenerator } from "../src/interfaces/INFTMetadataGenerator.sol";
