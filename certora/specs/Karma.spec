@@ -3,6 +3,8 @@ using Karma as karma;
 methods {
     function owner() external returns (address) envfree;
     function totalDistributorAllocation() external returns (uint256) envfree;
+    function totalSupply() external returns (uint256) envfree;
+    function externalSupply() external returns (uint256) envfree;
     function _.setReward(uint256, uint256) external => HAVOC_ECF;
 }
 
@@ -20,11 +22,14 @@ invariant totalDistributorAllocationIsSumOfDistributorAllocations()
         f -> !isUpgradeFunction(f)
     }
 
-// TODO:
-// sum of external supply <= total supply
+rule externalSupplyIsLessOrEqThanTotalDistributorAllocation() {
+    assert externalSupply() <= totalDistributorAllocation();
+}
+
 
 definition isUpgradeFunction(method f) returns bool = (
-  f.selector == sig:karma.upgradeToAndCall(address, bytes).selector
+  f.selector == sig:karma.upgradeToAndCall(address, bytes).selector ||
+  f.selector == sig:karma.upgradeTo(address).selector
 );
 
 definition isERC20TransferFunction(method f) returns bool = (

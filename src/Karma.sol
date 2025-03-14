@@ -163,12 +163,13 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
         for (uint256 i = 0; i < rewardDistributors.length(); i++) {
             IRewardDistributor distributor = IRewardDistributor(rewardDistributors.at(i));
             uint256 supply = distributor.totalRewardsSupply();
-            if (supply > rewardDistributorAllocations[address(distributor)]) {
-                supply = rewardDistributorAllocations[address(distributor)];
-            }
-
             externalSupply += supply;
         }
+
+        if (externalSupply > totalDistributorAllocation) {
+            return totalDistributorAllocation;
+        }
+
         return externalSupply;
     }
 
@@ -229,5 +230,14 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
 
     function allowance(address, address) public pure override returns (uint256) {
         return 0;
+    }
+
+    /**
+     * @notice Returns the external supply of the token.
+     * @dev The external supply is the sum of the rewards from all reward distributors.
+     * @return The external supply of the token.
+     */
+    function externalSupply() public view returns (uint256) {
+        return _externalSupply();
     }
 }
