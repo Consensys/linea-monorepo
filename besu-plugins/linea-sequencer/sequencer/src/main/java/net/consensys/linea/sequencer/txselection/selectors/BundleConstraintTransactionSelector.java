@@ -18,7 +18,7 @@ import static java.lang.Boolean.TRUE;
 
 import java.time.Instant;
 
-import net.consensys.linea.rpc.services.BundlePoolService;
+import net.consensys.linea.rpc.services.TransactionBundle;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;
@@ -32,7 +32,7 @@ public class BundleConstraintTransactionSelector implements PluginTransactionSel
 
     // short circuit if we are not a PendingBundleTx
     if (!(txContext.getPendingTransaction()
-        instanceof BundlePoolService.TransactionBundle.PendingBundleTx pendingBundleTx)) {
+        instanceof TransactionBundle.PendingBundleTx pendingBundleTx)) {
       return TransactionSelectionResult.SELECTED;
     }
 
@@ -58,7 +58,7 @@ public class BundleConstraintTransactionSelector implements PluginTransactionSel
 
     // short circuit if we are not a PendingBundleTx
     if (!(txContext.getPendingTransaction()
-        instanceof BundlePoolService.TransactionBundle.PendingBundleTx pendingBundleTx)) {
+        instanceof TransactionBundle.PendingBundleTx pendingBundleTx)) {
       return TransactionSelectionResult.SELECTED;
     }
 

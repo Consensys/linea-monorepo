@@ -15,6 +15,8 @@
 
 package net.consensys.linea.rpc.services;
 
+import static java.util.Collections.emptyList;
+
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -22,13 +24,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import com.github.benmanes.caffeine.cache.Cache;
@@ -43,6 +46,7 @@ import org.hyperledger.besu.datatypes.PendingTransaction;
 import org.hyperledger.besu.plugin.data.AddedBlockContext;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BesuService;
+import org.hyperledger.besu.plugin.services.BlockchainService;
 
 /**
  * A pool for managing TransactionBundles with limited size and FIFO eviction. Provides access via
@@ -52,10 +56,11 @@ import org.hyperledger.besu.plugin.services.BesuService;
 @Slf4j
 public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.BlockAddedListener {
   public static final String BUNDLE_SAVE_FILENAME = "bundles.dump";
+  private final BlockchainService blockchainService;
   private final Cache<Hash, TransactionBundle> cache;
   private final Map<Long, List<TransactionBundle>> blockIndex;
   private final Path saveFilePath;
-  private final AtomicLong maxBlockHeight = new AtomicLong(0L);
+  private final AtomicBoolean isFrozen = new AtomicBoolean(false);
 
   /**
    * Initializes the LineaLimitedBundlePool with a maximum size and expiration time, and registers
@@ -65,8 +70,12 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
    */
   @VisibleForTesting
   public LineaLimitedBundlePool(
-      final Path dataDir, final long maxSizeInBytes, final BesuEvents eventService) {
+      final Path dataDir,
+      final long maxSizeInBytes,
+      final BesuEvents eventService,
+      final BlockchainService blockchainService) {
     this.saveFilePath = dataDir.resolve(BUNDLE_SAVE_FILENAME);
+    this.blockchainService = blockchainService;
     this.cache =
         Caffeine.newBuilder()
             .maximumWeight(maxSizeInBytes) // Maximum size in bytes
@@ -99,10 +108,11 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
    *
    * @param blockNumber The block number to look up.
    * @return A list of TransactionBundles for the given block number, or an empty list if none are
-   *     found.
+   *     found. The returned list if safe for modification since it is not backed by the original
+   *     one
    */
   public List<TransactionBundle> getBundlesByBlockNumber(long blockNumber) {
-    return blockIndex.getOrDefault(blockNumber, Collections.emptyList());
+    return List.copyOf(blockIndex.getOrDefault(blockNumber, emptyList()));
   }
 
   /**
@@ -132,12 +142,16 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
    * @param bundle The new TransactionBundle to replace the existing one.
    */
   public void putOrReplace(Hash hash, TransactionBundle bundle) {
-    TransactionBundle existing = cache.getIfPresent(hash);
-    if (existing != null) {
-      removeFromBlockIndex(existing);
-    }
-    cache.put(hash, bundle);
-    addToBlockIndex(bundle);
+    failIfFrozen(
+        () -> {
+          TransactionBundle existing = cache.getIfPresent(hash);
+          if (existing != null) {
+            removeFromBlockIndex(existing);
+          }
+          cache.put(hash, bundle);
+          addToBlockIndex(bundle);
+          return null;
+        });
   }
 
   /**
@@ -167,28 +181,16 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
    * @return boolean indicating if bundle was found and removed
    */
   public boolean remove(Hash hash) {
-    var existingBundle = cache.getIfPresent(hash);
-    if (existingBundle != null) {
-      cache.invalidate(hash);
-      removeFromBlockIndex(existingBundle);
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * Removes all TransactionBundles associated with the given block number. First removes them from
-   * the block index, then removes them from the cache.
-   *
-   * @param blockNumber The block number whose bundles should be removed.
-   */
-  public void removeByBlockNumber(long blockNumber) {
-    List<TransactionBundle> bundles = blockIndex.remove(blockNumber);
-    if (bundles != null) {
-      for (TransactionBundle bundle : bundles) {
-        cache.invalidate(bundle.bundleIdentifier());
-      }
-    }
+    return failIfFrozen(
+        () -> {
+          var existingBundle = cache.getIfPresent(hash);
+          if (existingBundle != null) {
+            cache.invalidate(hash);
+            removeFromBlockIndex(existingBundle);
+            return true;
+          }
+          return false;
+        });
   }
 
   @Override
@@ -197,60 +199,83 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
   }
 
   @Override
+  public boolean isFrozen() {
+    return isFrozen.get();
+  }
+
+  @Override
   public void saveToDisk() {
-    log.info("Saving bundles to {}", saveFilePath);
-    try (final BufferedWriter bw =
-        Files.newBufferedWriter(saveFilePath, StandardCharsets.US_ASCII)) {
-      final var savedCount =
-          blockIndex.values().stream()
-              .flatMap(List::stream)
-              .sorted(Comparator.comparing(TransactionBundle::blockNumber))
-              .map(TransactionBundle::serializeForDisk)
-              .peek(
-                  str -> {
-                    try {
-                      bw.write(str);
-                      bw.newLine();
-                    } catch (IOException e) {
-                      throw new RuntimeException(e);
-                    }
-                  })
-              .count();
-      log.info("Saved {} bundles to {}", savedCount, saveFilePath);
-    } catch (final Throwable ioe) {
-      log.error("Error while saving bundles to {}", saveFilePath, ioe);
+    synchronized (isFrozen) {
+      isFrozen.set(true);
+      log.info("Saving bundles to {}", saveFilePath);
+      try (final BufferedWriter bw =
+          Files.newBufferedWriter(saveFilePath, StandardCharsets.US_ASCII)) {
+        final var savedCount =
+            blockIndex.values().stream()
+                .flatMap(List::stream)
+                .sorted(Comparator.comparing(TransactionBundle::blockNumber))
+                .map(TransactionBundle::serializeForDisk)
+                .peek(
+                    str -> {
+                      try {
+                        bw.write(str);
+                        bw.newLine();
+                      } catch (IOException e) {
+                        throw new RuntimeException(e);
+                      }
+                    })
+                .count();
+        log.info("Saved {} bundles to {}", savedCount, saveFilePath);
+      } catch (final Throwable ioe) {
+        log.error("Error while saving bundles to {}", saveFilePath, ioe);
+      }
     }
   }
 
   @Override
   public void loadFromDisk() {
-    if (saveFilePath.toFile().exists()) {
-      log.info("Loading bundles from {}", saveFilePath);
-      final var loadedCount = new AtomicLong(0L);
-      try (final BufferedReader br =
-          Files.newBufferedReader(saveFilePath, StandardCharsets.US_ASCII)) {
-        br.lines()
-            .parallel()
-            .forEach(
-                line -> {
-                  try {
-                    final var bundle = TransactionBundle.restoreFromSerialized(line);
-                    this.putOrReplace(bundle.bundleIdentifier(), bundle);
-                    loadedCount.incrementAndGet();
-                  } catch (final Exception e) {
-                    log.warn("Error while loading bundle from serialized format {}", line, e);
-                  }
-                });
-        log.info("Loaded {} bundles from {}", loadedCount.get(), saveFilePath);
-      } catch (final Throwable t) {
-        log.error(
-            "Error while reading bundles from {}, partially loaded {} bundles",
-            saveFilePath,
-            loadedCount.get(),
-            t);
-      }
-      saveFilePath.toFile().delete();
-    }
+    failIfFrozen(
+        () -> {
+          if (saveFilePath.toFile().exists()) {
+            log.info("Loading bundles from {}", saveFilePath);
+            final var chainHeadBlockNumber = blockchainService.getChainHeadHeader().getNumber();
+            final var loadedCount = new AtomicLong(0L);
+            final var skippedCount = new AtomicLong(0L);
+            try (final BufferedReader br =
+                Files.newBufferedReader(saveFilePath, StandardCharsets.US_ASCII)) {
+              br.lines()
+                  .forEach(
+                      line -> {
+                        try {
+                          final var bundle = TransactionBundle.restoreFromSerialized(line);
+                          if (bundle.blockNumber() > chainHeadBlockNumber) {
+                            this.putOrReplace(bundle.bundleIdentifier(), bundle);
+                            loadedCount.incrementAndGet();
+                          } else {
+                            log.debug(
+                                "Skipping bundle {} at line {}, since its block number {} is not greater than chain head block number {}",
+                                bundle.bundleIdentifier(),
+                                line,
+                                bundle.blockNumber(),
+                                chainHeadBlockNumber);
+                            skippedCount.incrementAndGet();
+                          }
+                        } catch (final Exception e) {
+                          log.warn("Error while loading bundle from serialized format {}", line, e);
+                        }
+                      });
+              log.info("Loaded {} bundles from {}", loadedCount.get(), saveFilePath);
+            } catch (final Throwable t) {
+              log.error(
+                  "Error while reading bundles from {}, partially loaded {} bundles",
+                  saveFilePath,
+                  loadedCount.get(),
+                  t);
+            }
+            saveFilePath.toFile().delete();
+          }
+          return null;
+        });
   }
 
   /**
@@ -303,19 +328,33 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
    */
   @Override
   public void onBlockAdded(final AddedBlockContext addedBlockContext) {
-    final var lastSeen = addedBlockContext.getBlockHeader().getNumber();
-    final var latest = maxBlockHeight.updateAndGet(current -> Math.max(current, lastSeen));
-    // keep it simple regarding reorgs and, cull the pool for any block numbers lower than latest
-    blockIndex.keySet().stream()
-        .filter(k -> k < latest)
-        // collecting to a set in order to not mutate the collection we are streaming:
-        .collect(Collectors.toSet())
-        .forEach(
-            k -> {
-              blockIndex.get(k).forEach(bundle -> cache.invalidate(bundle.bundleIdentifier()));
-              // dropping from the cache should inherently remove from blockIndex, but this
-              // is cheap insurance against blockIndex map leaking due to cache evictions
-              blockIndex.remove(k);
-            });
+    synchronized (isFrozen) {
+      if (!isFrozen.get()) { // do nothing if frozen
+        final var lastSeen = addedBlockContext.getBlockHeader().getNumber();
+        final var latest = Math.max(lastSeen, blockchainService.getChainHeadHeader().getNumber());
+        // keep it simple regarding reorgs and, cull the pool for any block numbers lower than
+        // latest
+        blockIndex.keySet().stream()
+            .filter(k -> k < latest)
+            // collecting to a set in order to not mutate the collection we are streaming:
+            .collect(Collectors.toSet())
+            .forEach(
+                k -> {
+                  blockIndex.get(k).forEach(bundle -> cache.invalidate(bundle.bundleIdentifier()));
+                  // dropping from the cache should inherently remove from blockIndex, but this
+                  // is cheap insurance against blockIndex map leaking due to cache evictions
+                  blockIndex.remove(k);
+                });
+      }
+    }
+  }
+
+  private <R> R failIfFrozen(Supplier<R> modificationAction) {
+    synchronized (isFrozen) {
+      if (isFrozen.get()) {
+        throw new IllegalStateException("Bundle pool is not accepting modifications");
+      }
+      return modificationAction.get();
+    }
   }
 }

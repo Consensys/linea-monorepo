@@ -28,7 +28,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-import net.consensys.linea.rpc.services.BundlePoolService;
+import net.consensys.linea.rpc.services.TransactionBundle;
 import net.consensys.linea.sequencer.txselection.selectors.MaxBundleGasPerBlockTransactionSelector.BundleGasTracker;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
@@ -91,7 +91,7 @@ public class MaxBundleBlockGasTransactionSelectorTest {
 
     final var mockTxs = params.stream().map(__ -> mockTransaction()).toList();
     final var bundle =
-        new BundlePoolService.TransactionBundle(
+        new TransactionBundle(
             Hash.wrap(Bytes32.repeat((byte) seq++)),
             mockTxs,
             1L,

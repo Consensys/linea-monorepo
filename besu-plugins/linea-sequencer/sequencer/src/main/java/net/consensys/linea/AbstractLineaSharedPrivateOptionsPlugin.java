@@ -216,7 +216,8 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
         new LineaLimitedBundlePool(
             besuConfiguration.getDataPath(),
             transactionSelectorConfiguration().maxBundlePoolSizeBytes(),
-            besuEvents);
+            besuEvents,
+            blockchainService);
     bundlePoolService.loadFromDisk();
   }
 

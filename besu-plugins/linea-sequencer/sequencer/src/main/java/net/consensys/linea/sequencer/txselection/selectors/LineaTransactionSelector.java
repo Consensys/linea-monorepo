@@ -33,7 +33,7 @@ import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.rpc.services.BundlePoolService;
-import net.consensys.linea.rpc.services.BundlePoolService.TransactionBundle;
+import net.consensys.linea.rpc.services.TransactionBundle;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;

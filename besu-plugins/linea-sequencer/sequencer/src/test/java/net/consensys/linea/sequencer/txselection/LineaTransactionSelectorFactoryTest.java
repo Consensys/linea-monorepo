@@ -38,6 +38,7 @@ import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.rpc.services.BundlePoolService;
 import net.consensys.linea.rpc.services.LineaLimitedBundlePool;
+import net.consensys.linea.rpc.services.TransactionBundle;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.selectors.TraceLineLimitTransactionSelectorTest;
 import org.apache.tuweni.bytes.Bytes;
@@ -110,7 +111,7 @@ class LineaTransactionSelectorFactoryTest {
         new LineaL1L2BridgeSharedConfiguration(BRIDGE_CONTRACT, BRIDGE_LOG_TOPIC);
     mockProfitabilityConfiguration = mock(LineaProfitabilityConfiguration.class);
     mockEvents = mock(BesuEvents.class);
-    bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096, mockEvents));
+    bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096, mockEvents, mockBlockchainService));
 
     factory =
         new LineaTransactionSelectorFactory(
@@ -172,9 +173,9 @@ class LineaTransactionSelectorFactoryTest {
     verifyNoInteractions(mockBts);
   }
 
-  private LineaLimitedBundlePool.TransactionBundle createBundle(
+  private TransactionBundle createBundle(
       Hash hash, long blockNumber, Optional<Transaction> optPendingTx) {
-    return new LineaLimitedBundlePool.TransactionBundle(
+    return new TransactionBundle(
         hash,
         List.of(
             optPendingTx.isPresent()

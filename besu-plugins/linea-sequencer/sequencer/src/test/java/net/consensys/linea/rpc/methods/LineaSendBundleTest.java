@@ -32,8 +32,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import net.consensys.linea.rpc.services.BundlePoolService;
 import net.consensys.linea.rpc.services.LineaLimitedBundlePool;
+import net.consensys.linea.rpc.services.TransactionBundle;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.core.TransactionTestFixture;
@@ -69,7 +69,7 @@ class LineaSendBundleTest {
     mockEvents = mock(BesuEvents.class);
     blockchainService = mock(BlockchainService.class, RETURNS_DEEP_STUBS);
     when(blockchainService.getChainHeadHeader().getNumber()).thenReturn(CHAIN_HEAD_BLOCK_NUMBER);
-    bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096L, mockEvents));
+    bundlePool = spy(new LineaLimitedBundlePool(dataDir, 4096L, mockEvents, blockchainService));
     lineaSendBundle = new LineaSendBundle(blockchainService).init(bundlePool);
   }
 
@@ -147,7 +147,7 @@ class LineaSendBundleTest {
 
     // assert the new block number:
     assertTrue(bundlePool.get(expectedUUIDBundleHash).blockNumber().equals(12345L));
-    List<BundlePoolService.TransactionBundle.PendingBundleTx> pts =
+    List<TransactionBundle.PendingBundleTx> pts =
         bundlePool.get(expectedUUIDBundleHash).pendingTransactions();
     // assert the new tx2 is present
     assertTrue(pts.stream().map(pt -> pt.getTransaction()).anyMatch(t -> t.equals(mockTX2)));
@@ -246,5 +246,25 @@ class LineaSendBundleTest {
             });
 
     assertTrue(exception.getMessage().contains("Malformed bundle, no bundle transactions present"));
+  }
+
+  @Test
+  void testExecute_FrozenPool_ThrowsException() {
+    List<String> transactions = List.of(mockTX1.encoded().toHexString());
+    LineaSendBundle.BundleParameter bundleParams =
+        new LineaSendBundle.BundleParameter(
+            transactions, 123L, empty(), empty(), empty(), empty(), empty());
+
+    PluginRpcRequest request = mock(PluginRpcRequest.class);
+    when(request.getParams()).thenReturn(new Object[] {bundleParams});
+
+    // saving to disk freeze the pool
+    bundlePool.saveToDisk();
+
+    assertTrue(bundlePool.isFrozen());
+
+    assertThatThrownBy(() -> lineaSendBundle.execute(request))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessageMatching("Bundle pool is not accepting modifications");
   }
 }
