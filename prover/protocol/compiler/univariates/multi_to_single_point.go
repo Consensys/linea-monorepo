@@ -38,6 +38,7 @@ func MultiPointToSinglePoint(targetSize int) func(comp *wizard.CompiledIOP) {
 
 		ctx := createMptsCtx(comp, targetSize)
 		if len(ctx.hs) == 0 {
+			logrus.Warnf("[MPTS] no univariate queries to unify were found. Skipping the compilation step")
 			// Nothing to do : fly away
 			return
 		}
