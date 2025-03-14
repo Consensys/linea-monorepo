@@ -34,7 +34,9 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 @Getter
 @RequiredArgsConstructor
 public class L2Block implements Module {
+
   private final BlockTransactions blockTransactions;
+  private final Keccak keccak;
   private final L2L1Logs l2l1Logs;
   private final Address l2l1Address;
   private final LogTopic l2l1Topic;
@@ -107,7 +109,16 @@ public class L2Block implements Module {
     // overhead for each transaction (32 bytes for an offset, and 32 bytes for
     // to encode the length of each sub bytes array). This overhead is also
     // incurred by the top-level array, hence the +1.
-    sizesRlpEncodedTxs.add(tx.getBesuTransaction().encoded().size());
+    final int txDataSize = tx.getBesuTransaction().encoded().size();
+    sizesRlpEncodedTxs.add(txDataSize);
+    // Counts the number of Keccak from tx RLPs, used both for both the signature verification and
+    // the public input computation.
+    keccak.updateTally(txDataSize);
+    // TODO: this accounts for the message (hash) which the raw transaction signed.
+    // Recall that said message is assembled (re-RLP-ized) from fields of the raw transaction.
+    // This is an upper bound. Waiting for Besu to expose the method which computes said re-RLP-ized
+    // message (length.)
+    keccak.updateTally(txDataSize);
   }
 
   @Override
