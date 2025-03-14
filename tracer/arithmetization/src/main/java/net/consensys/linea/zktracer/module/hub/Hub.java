@@ -366,8 +366,10 @@ public class Hub implements Module {
       log.info("WARN: Using default testing L2L1 contract address");
     }
     l2L1Logs = new L2L1Logs();
-    l2Block = new L2Block(blockTransactions, l2L1Logs, l2l1ContractAddress, LogTopic.of(l2l1Topic));
-    keccak = new Keccak(ecRecoverEffectiveCall, l2Block);
+    keccak = new Keccak(ecRecoverEffectiveCall, blockTransactions);
+    l2Block =
+        new L2Block(
+            blockTransactions, keccak, l2L1Logs, l2l1ContractAddress, LogTopic.of(l2l1Topic));
     shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
     rlpAddr = new RlpAddr(this, trm, keccak);
     blockdata = new Blockdata(wcp, euc, txnData, chain);

@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test;
 public class KeccakBlocksTests {
 
   @Test
-  void twoSuccessfullL2l1Logs() {
+  void keccakCountTests() {
 
     // sender account
     final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
@@ -91,10 +91,9 @@ public class KeccakBlocksTests {
     // check lineCount of Keccak
     final int txRlpSize = tx.encoded().size();
     final int txKeccak =
-        numberOfKeccakBloc(txRlpSize)
-            + 1
-            + 1; // numberOfKeccakBloc(txRlpSize) + 1 for the tx + 1 for EcRecover
-    final int rlpAddrKeccak = 1 + 1; // 1 for CREATE, 1 for CRETAE2
+        2 * numberOfKeccakBloc(txRlpSize)
+            + 1; // 2 * numberOfKeccakBloc(txRlpSize) + 1 for EcRecover
+    final int rlpAddrKeccak = 1 + 1; // 1 for CREATE, 1 for CREATE2
     assertEquals(txKeccak + rlpAddrKeccak, keccak.lineCount());
 
     // check lineCount of l2Block
