@@ -11,16 +11,16 @@ const useTokens = (): Token[] => {
 
     if (fromChain.testnet) {
       if (fromChain.layer !== ChainLayer.L2) {
-        return tokensList.SEPOLIA.filter((token) => !token.type.includes("native") && token.symbol !== "USDC");
+        return tokensList.SEPOLIA.filter((token) => !token.type.includes("native"));
       }
-      return tokensList.SEPOLIA.filter((token) => token.symbol !== "USDC");
+      return tokensList.SEPOLIA;
     }
 
     if (fromChain.layer !== ChainLayer.L2) {
-      return tokensList.MAINNET.filter((token) => !token.type.includes("native") && token.symbol !== "USDC");
+      return tokensList.MAINNET.filter((token) => !token.type.includes("native"));
     }
 
-    return tokensList.MAINNET.filter((token) => token.symbol !== "USDC");
+    return tokensList.MAINNET;
   }, [fromChain, tokensList.MAINNET, tokensList.SEPOLIA]);
 };
 

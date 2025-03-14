@@ -29,4 +29,5 @@ export type Chain = {
   tokenBridgeAddress: Address;
   gasLimitSurplus: bigint;
   profitMargin: bigint;
+  cctpDomain: number;
 };

@@ -25,7 +25,7 @@ const useERC20BridgeTxArgs = ({ allowance }: UseERC20BridgeTxArgsProps) => {
       !fromChain ||
       !token ||
       !amount ||
-      !allowance ||
+      allowance === undefined ||
       allowance < amount ||
       !recipient ||
       !minimumFees ||

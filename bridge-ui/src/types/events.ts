@@ -24,3 +24,20 @@ export type BridgingInitiatedV2Event = Log & {
     amount: bigint;
   };
 };
+
+export type DepositForBurnEvent = Log & {
+  blockNumber: bigint;
+  transactionHash: Address;
+  args: {
+    burnToken: Address;
+    amount: bigint;
+    depositor: Address;
+    mintRecipient: `0x${string}`;
+    destinationDomain: number;
+    destinationTokenMessenger: `0x${string}`;
+    destinationCaller: `0x${string}`;
+    maxFee: bigint;
+    minFinalityThreshold: number;
+    hookData: `0x${string}`;
+  };
+};

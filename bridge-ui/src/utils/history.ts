@@ -7,7 +7,10 @@ import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
 import { defaultTokensConfig } from "@/stores";
 import { LineaSDKContracts } from "@/hooks";
 import { Chain, ChainLayer, Token, TransactionStatus, BridgingInitiatedV2Event, MessageSentEvent } from "@/types";
-import { eventETH, eventERC20V2 } from "@/utils";
+import { eventETH, eventERC20V2, eventUSDC } from "@/utils";
+import { CCTP_TOKEN_MESSENGER } from "./cctp";
+import { DepositForBurnEvent } from "@/types/events";
+// import { fetchCctpAttestation } from "@/services/cctp";
 
 type TransactionHistoryParams = {
   lineaSDK: LineaSDK;
@@ -63,12 +66,13 @@ async function fetchBridgeEvents(
   address: Address,
   tokens: Token[],
 ): Promise<BridgeTransaction[]> {
-  const [ethEvents, erc20Events] = await Promise.all([
+  const [ethEvents, erc20Events, cctpEvents] = await Promise.all([
     fetchETHBridgeEvents(lineaSDK, lineaSDKContracts, address, fromChain, toChain, tokens),
     fetchERC20BridgeEvents(lineaSDK, lineaSDKContracts, address, fromChain, toChain, tokens),
+    fetchCCTPBridgeEvents(address, fromChain),
   ]);
 
-  return [...ethEvents, ...erc20Events];
+  return [...ethEvents, ...erc20Events, ...cctpEvents];
 }
 
 async function fetchETHBridgeEvents(
@@ -274,6 +278,42 @@ async function fetchERC20BridgeEvents(
         },
         messageHash: message[0].messageHash,
       });
+    }),
+  );
+
+  return Array.from(transactionsMap.values());
+}
+
+async function fetchCCTPBridgeEvents(address: Address, fromChain: Chain): Promise<BridgeTransaction[]> {
+  const transactionsMap = new Map<string, BridgeTransaction>();
+
+  const client = getPublicClient(config, {
+    chainId: fromChain.id,
+  });
+
+  const usdcLogs = <DepositForBurnEvent[]>await client.getLogs({
+    event: eventUSDC,
+    fromBlock: "earliest",
+    toBlock: "latest",
+    address: CCTP_TOKEN_MESSENGER,
+    args: {
+      depositor: address,
+    },
+  });
+
+  const currentTimestamp = new Date();
+
+  await Promise.all(
+    usdcLogs.map(async (log) => {
+      // const transactionHash = log.transactionHash;
+
+      const block = await client.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
+
+      if (compareAsc(fromUnixTime(Number(block.timestamp.toString())), subDays(currentTimestamp, 90)) === -1) {
+        return;
+      }
+
+      // const attestation = await fetchCctpAttestation(transactionHash, fromChain.cctpDomain);
     }),
   );
 

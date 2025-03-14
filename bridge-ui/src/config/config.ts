@@ -13,6 +13,7 @@ export const config: Config = {
       profitMargin: process.env.NEXT_PUBLIC_MAINNET_PROFIT_MARGIN
         ? BigInt(process.env.NEXT_PUBLIC_MAINNET_PROFIT_MARGIN)
         : BigInt(1),
+      cctpDomain: 0,
     },
     59144: {
       iconPath: "/images/logo/linea-mainnet.svg",
@@ -24,6 +25,7 @@ export const config: Config = {
       profitMargin: process.env.NEXT_PUBLIC_MAINNET_PROFIT_MARGIN
         ? BigInt(process.env.NEXT_PUBLIC_MAINNET_PROFIT_MARGIN)
         : BigInt(1),
+      cctpDomain: 11,
     },
     11155111: {
       iconPath: "/images/logo/ethereum-rounded.svg",
@@ -35,6 +37,7 @@ export const config: Config = {
       profitMargin: process.env.NEXT_PUBLIC_SEPOLIA_PROFIT_MARGIN
         ? BigInt(process.env.NEXT_PUBLIC_SEPOLIA_PROFIT_MARGIN)
         : BigInt(1),
+      cctpDomain: 0,
     },
     59141: {
       iconPath: "/images/logo/linea-sepolia.svg",
@@ -46,6 +49,7 @@ export const config: Config = {
       profitMargin: process.env.NEXT_PUBLIC_SEPOLIA_PROFIT_MARGIN
         ? BigInt(process.env.NEXT_PUBLIC_SEPOLIA_PROFIT_MARGIN)
         : BigInt(1),
+      cctpDomain: 11,
     },
   },
   walletConnectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_ID ?? "",

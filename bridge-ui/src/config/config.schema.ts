@@ -11,6 +11,7 @@ const chainConfigSchema = z.object({
   }),
   gasLimitSurplus: z.bigint().positive(),
   profitMargin: z.bigint().positive(),
+  cctpDomain: z.number().gte(0).int(),
 });
 
 export const configSchema = z

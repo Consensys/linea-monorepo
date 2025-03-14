@@ -17,6 +17,7 @@ export const generateChain = (chain: ViemChain): Chain => {
     tokenBridgeAddress: config.chains[chain.id].tokenBridgeAddress as Address,
     gasLimitSurplus: config.chains[chain.id].gasLimitSurplus,
     profitMargin: config.chains[chain.id].profitMargin,
+    cctpDomain: config.chains[chain.id].cctpDomain,
   };
 };
 
