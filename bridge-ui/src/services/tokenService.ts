@@ -1,5 +1,6 @@
 import log from "loglevel";
 import { Address } from "viem";
+import { config } from "@/config";
 import { SupportedCurrencies, defaultTokensConfig } from "@/stores";
 import { GithubTokenListToken, Token, BridgeProvider, NetworkTokens } from "@/types";
 
@@ -86,16 +87,21 @@ export async function getTokenConfig(): Promise<NetworkTokens> {
 
   const updatedTokensConfig = { ...defaultTokensConfig };
 
+  // Feature toggle, remove when feature toggle no longer needed
+  const filterOutUSDCWhenCCTPNotEnabled = (token: Token) => config.isCCTPEnabled || token.symbol !== "USDC";
+
   updatedTokensConfig.MAINNET = [
     ...defaultTokensConfig.MAINNET,
-    ...(await Promise.all(
-      mainnetTokens.map(async (token: GithubTokenListToken): Promise<Token> => formatToken(token)),
-    )),
+    ...(await Promise.all(mainnetTokens.map(async (token: GithubTokenListToken): Promise<Token> => formatToken(token))))
+      // Feature toggle, remove .filter expression when feature toggle no longer needed
+      .filter(filterOutUSDCWhenCCTPNotEnabled),
   ];
 
   updatedTokensConfig.SEPOLIA = [
     ...defaultTokensConfig.SEPOLIA,
-    ...(await Promise.all(sepoliaTokens.map((token: GithubTokenListToken): Promise<Token> => formatToken(token)))),
+    ...(await Promise.all(sepoliaTokens.map((token: GithubTokenListToken): Promise<Token> => formatToken(token))))
+      // Feature toggle, remove .filter expression when feature toggle no longer needed
+      .filter(filterOutUSDCWhenCCTPNotEnabled),
   ];
 
   return updatedTokensConfig;

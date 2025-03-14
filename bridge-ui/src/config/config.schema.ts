@@ -21,6 +21,8 @@ export const configSchema = z
     storage: z.object({
       minVersion: z.number().positive().int(),
     }),
+    // Feature toggle for CCTPV2 for USDC transfers
+    isCCTPEnabled: z.boolean(),
   })
   .strict();
 
