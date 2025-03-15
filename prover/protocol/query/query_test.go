@@ -25,6 +25,7 @@ func TestQuery(t *testing.T) {
 	runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
 	runTestList(t, "log-derivative", testtools.ListOfLogDerivativeSumTestcasePositive)
 	runTestList(t, "log-derivative", testtools.ListOfLogDerivativeSumTestcaseNegative)
+	runTestList(t, "mimc", testtools.ListOfMiMCTestcase)
 }
 
 func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {

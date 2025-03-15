@@ -5,6 +5,7 @@ import (
 	"math/rand/v2"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -14,6 +15,13 @@ var rng = rand.New(utils.NewRandSource(0))
 // RandomVec returns a random vector of size "size".
 func RandomVec(size int) smartvectors.SmartVector {
 	return smartvectors.PseudoRand(rng, size)
+}
+
+// RandomVecPadded returns a random vector of size "size" such that the
+// last "size-density" are zero.
+func RandomVecPadded(density, size int) smartvectors.SmartVector {
+	v := vector.PseudoRand(rng, density)
+	return smartvectors.RightZeroPadded(v, size)
 }
 
 // RandomMatrix returns a random matrix of size "rows x cols" as a list

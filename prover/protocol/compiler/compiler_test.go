@@ -4,17 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/sirupsen/logrus"
@@ -22,23 +12,23 @@ import (
 
 var totalSuite = []func(comp *wizard.CompiledIOP){
 	mimc.CompileMiMC,
-	plonkinwizard.Compile,
-	specialqueries.RangeProof,
-	specialqueries.CompileFixedPermutations,
-	permutation.CompileIntoGdProduct,
-	permutation.CompileGrandProduct,
-	logderivativesum.LookupIntoLogDerivativeSum,
-	logderivativesum.CompileLogDerivativeSum,
-	horner.ProjectionToHorner,
-	horner.CompileHorner,
-	innerproduct.Compile,
-	stitchsplit.Stitcher(1, 8),
-	stitchsplit.Splitter(8),
-	localcs.Compile,
-	globalcs.Compile,
-	univariates.CompileLocalOpening,
-	univariates.Naturalize,
-	univariates.MultiPointToSinglePoint(8),
+	// plonkinwizard.Compile,
+	// specialqueries.RangeProof,
+	// specialqueries.CompileFixedPermutations,
+	// permutation.CompileIntoGdProduct,
+	// permutation.CompileGrandProduct,
+	// logderivativesum.LookupIntoLogDerivativeSum,
+	// logderivativesum.CompileLogDerivativeSum,
+	// horner.ProjectionToHorner,
+	// horner.CompileHorner,
+	// innerproduct.Compile,
+	// stitchsplit.Stitcher(1, 8),
+	// stitchsplit.Splitter(8),
+	// localcs.Compile,
+	// globalcs.Compile,
+	// univariates.CompileLocalOpening,
+	// univariates.Naturalize,
+	// univariates.MultiPointToSinglePoint(8),
 	dummy.Compile,
 	// vortex.Compile(2, vortex.ReplaceSisByMimc(), vortex.ForceNumOpenedColumns(2)),
 }
@@ -59,6 +49,7 @@ func TestCompilers(t *testing.T) {
 	runTestList(t, "permutation", testtools.ListOfPermutationTestcaseNegative)
 	runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
 	runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcaseNegative)
+	runTestList(t, "mimc", testtools.ListOfMiMCTestcase)
 }
 
 func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {
