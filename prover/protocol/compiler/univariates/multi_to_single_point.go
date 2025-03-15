@@ -34,13 +34,11 @@ See : https://eprint.iacr.org/2020/081.pdf (Section 3)
 */
 func MultiPointToSinglePoint(targetSize int) func(comp *wizard.CompiledIOP) {
 
-	logrus.Trace("started multi-point to single-point compiler")
-	defer logrus.Trace("finished multi-point to single-point compiler")
-
 	return func(comp *wizard.CompiledIOP) {
 
 		ctx := createMptsCtx(comp, targetSize)
 		if len(ctx.hs) == 0 {
+			logrus.Warnf("[MPTS] no univariate queries to unify were found. Skipping the compilation step")
 			// Nothing to do : fly away
 			return
 		}
@@ -504,7 +502,7 @@ func (ctx mptsCtx) verifier(run wizard.Runtime) error {
 	}
 
 	if left != right {
-		return fmt.Errorf("mismatch between left and right %v != %v", left.String(), right.String())
+		return fmt.Errorf("[multi-point	to single-point] mismatch between left and right %v != %v", left.String(), right.String())
 	}
 
 	return nil

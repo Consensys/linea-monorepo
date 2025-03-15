@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -91,6 +92,16 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// already handled by the self-recursion mechanism.
 		comp.InsertVerifier(lastRound, ctx.explicitPublicEvaluation, ctx.gnarkExplicitPublicEvaluation)
 		comp.InsertVerifier(lastRound+2, ctx.Verify, ctx.GnarkVerify)
+
+		if ctx.AddMerkleRootToPublicInputs.Enabled {
+			comp.InsertPublicInput(
+				ctx.AddMerkleRootToPublicInputs.Name,
+				accessors.NewFromPublicColumn(
+					ctx.Items.MerkleRoots[ctx.AddMerkleRootToPublicInputs.Round],
+					1,
+				),
+			)
+		}
 	}
 }
 
@@ -168,6 +179,14 @@ type Ctx struct {
 	// concerns the "Vortex" part of the verification all the dried rounds are
 	// still explicitly verified by the verifier.
 	IsSelfrecursed bool
+
+	// Additional options that tells the compiler to add a merkle root to the
+	// public inputs of the comp. This is useful for the distributed prover.
+	AddMerkleRootToPublicInputs struct {
+		Enabled bool
+		Name    string
+		Round   int
+	}
 }
 
 // Construct a new compilation context

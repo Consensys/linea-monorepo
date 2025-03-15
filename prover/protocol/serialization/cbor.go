@@ -29,7 +29,17 @@ func serializeAnyWithCborPkg(x any) json.RawMessage {
 
 // deserializeAnyWithCborPkg calls [json.Unmarshal] and wraps the error if any.
 func deserializeAnyWithCborPkg(data json.RawMessage, x any) error {
-	if err := cbor.Unmarshal(data, x); err != nil {
+
+	dm, err := cbor.DecOptions{
+		MaxArrayElements: 134217728,
+		MaxMapPairs:      134217728,
+	}.DecMode()
+
+	if err != nil {
+		panic(err)
+	}
+
+	if err := dm.Unmarshal(data, x); err != nil {
 		return fmt.Errorf("cbor.Unmarshal failed: %w", err)
 	}
 	return nil

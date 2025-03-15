@@ -88,7 +88,7 @@ func merkleProofCheck(
 	comp.InsertInclusion(
 		round,
 		ifaces.QueryIDf("MERKLE_MODULE_LOOKUP_%v", name),
-		[]ifaces.Column{cm.Cols.NewProof, cm.Cols.Curr, cm.Cols.PosAcc, cm.Cols.Root},
+		[]ifaces.Column{cm.Cols.NewProof.Natural, cm.Cols.Curr, cm.Cols.PosAcc, cm.Cols.Root},
 		[]ifaces.Column{rm.IsActive, rm.Leaf, rm.Pos, rm.Roots},
 	)
 
@@ -98,7 +98,7 @@ func merkleProofCheck(
 	if useNextProof {
 		comp.InsertInclusion(round,
 			ifaces.QueryIDf("MERKLE_MODULE_LOOKUP_FOR_USE_NEXT_PROOF_%v", name),
-			[]ifaces.Column{cm.Cols.NewProof, cm.Cols.UseNextMerkleProofExpanded, cm.Cols.IsActiveExpanded, cm.Cols.SegmentCounter},
+			[]ifaces.Column{cm.Cols.NewProof.Natural, cm.Cols.UseNextMerkleProofExpanded, cm.Cols.IsActiveExpanded, cm.Cols.SegmentCounter},
 			[]ifaces.Column{rm.IsActive, rm.UseNextMerkleProof, rm.IsActive, rm.Counter},
 		)
 	}

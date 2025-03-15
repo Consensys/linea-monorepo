@@ -45,6 +45,8 @@ func Compile(comp *wizard.CompiledIOP) {
 		}
 
 		compileQuery(comp, q)
+
+		comp.QueriesNoParams.MarkAsIgnored(q.Name())
 	}
 }
 

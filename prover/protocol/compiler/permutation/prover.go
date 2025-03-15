@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
@@ -71,5 +72,14 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 		run.AssignColumn(z.Zs[i].GetColID(), smartvectors.NewRegular(numerator))
 		run.AssignLocalPoint(z.ZOpenings[i].Name(), numerator[len(numerator)-1])
 	}
+}
 
+// AssignZeroToGrandProduct assignes zero to all grand-product queries in the current
+// round.
+type AssignZeroToGrandProduct struct {
+	Query *query.GrandProduct
+}
+
+func (a AssignZeroToGrandProduct) Run(run *wizard.ProverRuntime) {
+	run.AssignGrandProduct(a.Query.ID, field.One())
 }
