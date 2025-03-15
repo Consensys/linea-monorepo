@@ -6,10 +6,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// CompileMiMC compiles the MiMC queries by checking each query individually
+// CompileMiMC compiles the MiMC queries by checking each query individually in a single loop
 func CompileMiMC(comp *wizard.CompiledIOP) {
-	// Collect all MiMC queries
-	mimcQueries := []query.MiMC{}
+	hasMiMCQueries := false
 
 	for _, id := range comp.QueriesNoParams.AllUnignoredKeys() {
 		// Fetch the query
@@ -22,17 +21,14 @@ func CompileMiMC(comp *wizard.CompiledIOP) {
 
 		// Mark it as ignored
 		comp.QueriesNoParams.MarkAsIgnored(id)
-		mimcQueries = append(mimcQueries, qMiMC)
+		hasMiMCQueries = true
+
+		// Apply manual check to the query immediately
+		logrus.Debugf("MiMC compiler: checking query %v individually", qMiMC.ID)
+		manualCheckMiMCBlock(comp, qMiMC.Blocks, qMiMC.OldState, qMiMC.NewState)
 	}
 
-	if len(mimcQueries) == 0 {
+	if !hasMiMCQueries {
 		logrus.Debug("MiMC compiler exited: no MiMC queries to compile")
-		return
-	}
-
-	// Apply manual check to each query individually
-	for _, q := range mimcQueries {
-		logrus.Debugf("MiMC compiler: checking query %v individually", q.ID)
-		manualCheckMiMCBlock(comp, q.Blocks, q.OldState, q.NewState)
 	}
 }
