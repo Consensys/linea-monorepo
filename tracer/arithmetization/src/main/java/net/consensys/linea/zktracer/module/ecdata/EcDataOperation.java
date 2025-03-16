@@ -557,6 +557,10 @@ public class EcDataOperation extends ModuleOperation {
           if (i > CT_MAX_SMALL_POINT) {
             // Transition should happen at the beginning of large point
             overallTrivialPairing.set(i + rowsOffset, false);
+            // Propagate overallTrivialPairing to result rows as soon as the pairing is identified
+            // as non-trivial
+            overallTrivialPairing.set(overallTrivialPairing.size() - 1, false);
+            overallTrivialPairing.set(overallTrivialPairing.size() - 2, false);
           }
         } else {
           overallTrivialPairing.set(i + rowsOffset, !atLeastOneLargePointIsNotInfinity);
@@ -678,12 +682,19 @@ public class EcDataOperation extends ModuleOperation {
                   : isLargePoint && !largePointIsAtInfinity && smallPointIsAtInfinity)
               && internalChecksPassed;
       final boolean acceptablePairOfPointsForPairingCircuit =
-          isData
-              && precompileFlag == PRC_ECPAIRING
+          precompileFlag == PRC_ECPAIRING
+              && isData
               && successBit
               && !notOnG2AccMax
               && !largePointIsAtInfinity
               && !smallPointIsAtInfinity;
+
+      boolean circuitSelectorEcPairing = false;
+      if (isData && precompileFlag == PRC_ECPAIRING) {
+        circuitSelectorEcPairing = acceptablePairOfPointsForPairingCircuit;
+      } else if (!isData && precompileFlag == PRC_ECPAIRING) {
+        circuitSelectorEcPairing = successBit && !isOverallTrivialPairing();
+      }
 
       if (precompileFlag != PRC_ECPAIRING || !isData) {
         checkArgument(ct == 0);
@@ -730,7 +741,6 @@ public class EcDataOperation extends ModuleOperation {
           .isInfinity(isInfinity.get(i))
           .overallTrivialPairing(
               precompileFlag == PRC_ECPAIRING
-                  && isData
                   && overallTrivialPairing.get(
                       i)) // && conditions necessary because default value is true
           .g2MembershipTestRequired(g2MembershipTestRequired)
@@ -738,8 +748,7 @@ public class EcDataOperation extends ModuleOperation {
           .circuitSelectorEcrecover(circuitSelectorEcrecover)
           .circuitSelectorEcadd(circuitSelectorEcadd)
           .circuitSelectorEcmul(circuitSelectorEcmul)
-          .circuitSelectorEcpairing(
-              acceptablePairOfPointsForPairingCircuit) // = circuitSelectorEcPairing
+          .circuitSelectorEcpairing(circuitSelectorEcPairing)
           .circuitSelectorG2Membership(g2MembershipTestRequired) // = circuitSelectorG2Membership
           .wcpFlag(wcpFlag.get(i))
           .wcpArg1Hi(wcpArg1Hi.get(i))
@@ -836,6 +845,6 @@ public class EcDataOperation extends ModuleOperation {
   }
 
   boolean isOverallTrivialPairing() {
-    return overallTrivialPairing.get(nRowsData - 1);
+    return overallTrivialPairing.getLast();
   }
 }
