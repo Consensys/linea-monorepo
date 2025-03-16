@@ -19,8 +19,12 @@ import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_CALL_STIPEND;
 import static net.consensys.linea.zktracer.Trace.PRC_BLAKE2F_SIZE;
 import static net.consensys.linea.zktracer.Trace.PRC_ECPAIRING_SIZE;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
-import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.populateMemory;
+import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.generateModexpInput;
+import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getExpectedReturnAtCapacity;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getPrecompileCost;
+import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareBlake2F;
+import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareModexp;
+import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareSha256Ripemd160Id;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_ADD;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_MUL;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_PAIRING;
@@ -47,7 +51,6 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.oob.OobOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
-import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -83,12 +86,12 @@ public class LowGasStipendPrecompileCallTests {
   int r = 0;
 
   // MODEXP specific parameters
-  int bbs = 0;
-  int ebs = 0;
-  int mbs = 0;
-  List<ToyAccount> additionalAccounts = new ArrayList<>();
-  Address codeOwnerAddress = Address.fromHexString("0xC0DE");
-  int exponentLog = 0;
+  int bbs; // Defined within the test case
+  int ebs; // Defined within the test case
+  int mbs; // Defined within the test case
+  int exponentLog; // Computed within the test case
+  final Address codeOwnerAddress = Address.fromHexString("0xC0DE");
+  List<ToyAccount> additionalAccounts = new ArrayList<>(); // Re-assigned within the test case
 
   /**
    * Parameterized test for low gas stipend precompile call. In this family of tests we call every
@@ -131,7 +134,7 @@ public class LowGasStipendPrecompileCallTests {
       rLeadingByte = modexpCostGT200OrBlake2fRoundsGT0 ? 0x12 : 0;
       r = rLeadingByte << 8;
       callDataSize = PRC_BLAKE2F_SIZE;
-      prepareBlake2F(program, rLeadingByte, callDataOffset);
+      prepareBlake2F(program, rLeadingByte, callDataOffset + 2);
     } else if (precompileAddress == ALTBN128_PAIRING) {
       callDataSize = PRC_ECPAIRING_SIZE;
     } else if ((precompileAddress == SHA256
@@ -145,7 +148,21 @@ public class LowGasStipendPrecompileCallTests {
       ebs = modexpCostGT200OrBlake2fRoundsGT0 ? 6 : 3;
       mbs = modexpCostGT200OrBlake2fRoundsGT0 ? 25 : 4;
       callDataSize = 96 + bbs + ebs + mbs;
-      prepareModexp(bbs, mbs, ebs, callDataOffset, callDataSize, program);
+
+      final Bytes modexpInput = generateModexpInput(bbs, mbs, ebs);
+      exponentLog = OobOperation.computeExponentLog(modexpInput, callDataSize, bbs, ebs);
+      // codeOwnerAccount owns the bytecode that will be given as input to MODEXP through
+      // EXTCODECOPY
+      final ToyAccount codeOwnerAccount =
+          ToyAccount.builder()
+              .balance(Wei.of(0))
+              .nonce(1)
+              .address(codeOwnerAddress)
+              .code(modexpInput)
+              .build();
+      additionalAccounts = List.of(codeOwnerAccount);
+
+      prepareModexp(program, modexpInput, callDataOffset, codeOwnerAddress);
     } else {
       // ECADD, ECMUL, ECRECOVER cases
       callDataSize = 1; // This is an arbitrary value
@@ -188,7 +205,7 @@ public class LowGasStipendPrecompileCallTests {
         .push(gas) // gas
         .op(OpCode.CALL);
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
-    bytecodeRunner.run(61_000_000L, additionalAccounts);
+    bytecodeRunner.run(61_000_000L, precompileAddress == MODEXP ? additionalAccounts : List.of());
     final Hub hub = bytecodeRunner.getHub();
 
     // Here we check if OOB detects the insufficient gas for the precompile call
@@ -245,82 +262,6 @@ public class LowGasStipendPrecompileCallTests {
   }
 
   // Support methods
-  private void prepareBlake2F(BytecodeCompiler program, int rLeadingByte, int callDataOffset) {
-    program
-        .push(rLeadingByte) // For simplicity, we only set the first byte of r
-        .push(callDataOffset + 2) // offset
-        // Writing rLeadingByte at this offset
-        // allows to have r = 0x00000000 or r = 0x00001200
-        .op(OpCode.MSTORE8);
-  }
-
-  private void prepareSha256Ripemd160Id(BytecodeCompiler program, int nWords, int callDataOffset) {
-    populateMemory(program, nWords, callDataOffset);
-  }
-
-  private void prepareModexp(
-      int bbs, int mbs, int ebs, int targetOffset, int callDataSize, BytecodeCompiler program) {
-    final Bytes32 bbsPadded = Bytes32.leftPad(Bytes.of(bbs));
-    final Bytes32 ebsPadded = Bytes32.leftPad(Bytes.of(ebs));
-    final Bytes32 mbsPadded = Bytes32.leftPad(Bytes.of(mbs));
-    final Bytes bem =
-        Bytes.fromHexString("0x" + "aa".repeat(bbs) + "ff".repeat(ebs) + "bb".repeat(mbs));
-    final Bytes modexpInput = Bytes.concatenate(bbsPadded, ebsPadded, mbsPadded, bem);
-
-    // codeOwnerAccount owns the bytecode that will be given as input to MODEXP through EXTCODECOPY
-    final ToyAccount codeOwnerAccount =
-        ToyAccount.builder()
-            .balance(Wei.of(0))
-            .nonce(1)
-            .address(codeOwnerAddress)
-            .code(modexpInput)
-            .build();
-    additionalAccounts = List.of(codeOwnerAccount);
-
-    // This is computed here for convenience, and it is used for pricing the MODEXP precompile
-    exponentLog = Math.max(OobOperation.computeExponentLog(modexpInput, callDataSize, bbs, ebs), 1);
-
-    // Copy to targetOffset the code of codeOwnerAccount
-    program
-        .push(codeOwnerAddress)
-        .op(OpCode.EXTCODESIZE) // size
-        .push(0) // offset
-        .push(targetOffset) // targetOffset
-        .push(codeOwnerAddress) // address
-        .op(OpCode.EXTCODECOPY);
-  }
-
-  /**
-   * Computes the expected returnAtCapacity based on the precompile address, and callDataSize in the
-   * case of ID.
-   *
-   * @param precompileAddress the address of the precompile contract.
-   * @param callDataSize the call data size. Beyond the case of ID, this value is ignored.
-   * @param mbs the modulo byte size. Beyond the case of MODEXP, this value is ignored.
-   * @return the computed return at capacity.
-   */
-  private static int getExpectedReturnAtCapacity(
-      Address precompileAddress, int callDataSize, int mbs) {
-    final int returnAtCapacity;
-    if (precompileAddress == ECREC
-        || precompileAddress == SHA256
-        || precompileAddress == RIPEMD160
-        || precompileAddress == ALTBN128_PAIRING) {
-      returnAtCapacity = WORD_SIZE;
-    } else if (precompileAddress == ALTBN128_ADD
-        || precompileAddress == ALTBN128_MUL
-        || precompileAddress == BLAKE2B_F_COMPRESSION) {
-      returnAtCapacity = 2 * WORD_SIZE;
-    } else if (precompileAddress == MODEXP) {
-      returnAtCapacity = mbs;
-    } else if (precompileAddress == ID) {
-      returnAtCapacity = callDataSize;
-    } else {
-      throw new IllegalArgumentException("Unknown precompile address");
-    }
-    return returnAtCapacity;
-  }
-
   /**
    * Computes the gas based on the gas parameter and precompile cost.
    *
