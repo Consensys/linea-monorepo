@@ -19,11 +19,6 @@ const nextConfig = {
         hostname: "coin-images.coingecko.com",
         pathname: "/coins/images/**",
       },
-      {
-        protocol: "https",
-        hostname: "storage.googleapis.com",
-        pathname: "/public.withstable.com/logos/**",
-      },
     ],
   },
   webpack: (config) => {
