@@ -134,6 +134,28 @@ func auditInitialWizard(comp *wizard.CompiledIOP) error {
 			}
 		}
 
+		// Since we group all the columns of a permutation query to get in the same
+		// module we as well need them to have the same size.
+		if perm, isPerm := q.(query.Permutation); isPerm {
+
+			size := perm.A[0][0].Size()
+			for i := range perm.A {
+				for j := range perm.A[i] {
+					if perm.A[i][j].Size() != size {
+						err = errors.Join(err, fmt.Errorf("incompatible permutation sizes: %v, column %v has the wrong size", perm.ID, perm.A[i][j].GetColID()))
+					}
+				}
+			}
+
+			for i := range perm.B {
+				for j := range perm.B[i] {
+					if perm.B[i][j].Size() != size {
+						err = errors.Join(err, fmt.Errorf("incompatible permutation sizes: %v, column %v has the wrong size", perm, perm.A[i][j].GetColID()))
+					}
+				}
+			}
+		}
+
 		switch q_ := q.(type) {
 
 		case interface{ GetShiftedRelatedColumns() []ifaces.Column }:
