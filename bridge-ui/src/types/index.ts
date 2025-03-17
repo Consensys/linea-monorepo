@@ -9,4 +9,9 @@ export {
   type DepositForBurnEvent,
   type CCTPMessageReceivedEvent,
 } from "./events";
-export { type CctpAttestationApiResponse, type CctpAttestationMessageStatus } from "./cctp";
+export {
+  type CctpAttestationApiResponse,
+  type CctpAttestationMessage,
+  type CctpAttestationMessageStatus,
+  type CctpV2ReattestationApiResponse,
+} from "./cctp";
