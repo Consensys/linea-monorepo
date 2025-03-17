@@ -6,4 +6,12 @@ export { fetchTransactionsHistory, type BridgeTransaction } from "./history";
 export { computeMessageHash, computeMessageStorageSlot } from "./message";
 export { isEth } from "./tokens";
 export { isEmptyObject } from "./utils";
-export { CCTP_TOKEN_MESSENGER, getCCTPClaimTx, isCCTPNonceUsed, getCCTPTransactionStatus } from "./cctp";
+export {
+  CCTP_TOKEN_MESSENGER,
+  getCCTPClaimTx,
+  isCCTPNonceUsed,
+  getCCTPTransactionStatus,
+  refreshCCTPMessageIfNeeded,
+  getCCTPMessageByTxHash,
+  getCCTPMessageExpiryBlock,
+} from "./cctp";

@@ -16,9 +16,11 @@ import {
   getCCTPClaimTx,
   isCCTPNonceUsed,
   getCCTPTransactionStatus,
+  refreshCCTPMessageIfNeeded,
+  getCCTPMessageByTxHash,
+  getCCTPMessageExpiryBlock,
 } from "@/utils";
 import { DepositForBurnEvent } from "@/types/events";
-import { fetchCctpAttestation } from "@/services/cctp";
 
 type TransactionHistoryParams = {
   lineaSDK: LineaSDK;
@@ -73,6 +75,7 @@ export async function fetchTransactionsHistory({
   return events.flat().sort((a, b) => Number(b.timestamp.toString()) - Number(a.timestamp.toString()));
 }
 
+// TODO - Memoize events
 async function fetchBridgeEvents(
   lineaSDK: LineaSDK,
   lineaSDKContracts: LineaSDKContracts,
@@ -148,11 +151,13 @@ async function fetchETHBridgeEvents(
         return;
       }
 
+      // TODO - Move messageClaimedEvent to when claim modal opened
       const [messageStatus, [messageClaimedEvent]] = await Promise.all([
         contract.getMessageStatus(messageHash),
         contract.getEvents(lineaSDKContracts[toChain.layer].contract.filters.MessageClaimed(messageHash)),
       ]);
 
+      // TODO - Move to when claim modal opened
       const messageProof =
         toChain.layer === ChainLayer.L1 && messageStatus === OnChainMessageStatus.CLAIMABLE
           ? await lineaSDK.getL1ClaimingService().getMessageProof(messageHash)
@@ -254,6 +259,7 @@ async function fetchERC20BridgeEvents(
         return;
       }
 
+      // TODO - Move to when claim modal opened
       const [messageStatus, [messageClaimedEvent]] = await Promise.all([
         destinationContract.getMessageStatus(message[0].messageHash),
         destinationContract.getEvents(
@@ -325,38 +331,43 @@ async function fetchCCTPBridgeEvents(
   // TODO - Consider deduplication
 
   const currentTimestamp = new Date();
+  const currentToBlock = await toChainClient.getBlockNumber();
 
+  // TODO - Minimise # of CCTP API calls in this block
   await Promise.all(
     usdcLogs.map(async (log) => {
       const transactionHash = log.transactionHash;
 
-      const block = await fromChainClient.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
+      const fromBlock = await fromChainClient.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
 
-      if (compareAsc(fromUnixTime(Number(block.timestamp.toString())), subDays(currentTimestamp, 90)) === -1) {
+      if (compareAsc(fromUnixTime(Number(fromBlock.timestamp.toString())), subDays(currentTimestamp, 90)) === -1) {
         return;
       }
 
       const token = tokens.find((token) => token.symbol === "USDC" && token.type.includes("bridge-reserved"));
       if (!token) return;
 
-      const attestationApiResp = await fetchCctpAttestation(transactionHash, fromChain.cctpDomain);
-      if (!attestationApiResp) return;
-      // console.log("attestationApiResp:", attestationApiResp, "transactionHash:", transactionHash);
-
-      const message = attestationApiResp.messages[0];
+      const message = await getCCTPMessageByTxHash(transactionHash, fromChain.cctpDomain);
       if (!message) return;
 
+      // TODO - ?Compute deterministic nonce without consulting CCTP API, to guard against CCTP API rate limit of 10 requests/second
       const nonce = message.eventNonce;
-      // console.log("messageNonce:", nonce);
 
       const isNonceUsed = await isCCTPNonceUsed(toChainClient, nonce);
-      // console.log("isNonceUsed:", isNonceUsed);
 
-      const status = getCCTPTransactionStatus(message.status, isNonceUsed);
-      // console.log("status:", status);
+      const refreshedMessage = await refreshCCTPMessageIfNeeded(
+        message,
+        isNonceUsed,
+        currentToBlock,
+        fromChain.cctpDomain,
+      );
+      if (!refreshedMessage) return;
+      console.log("transactionHash:", transactionHash, "refreshedMessage:", refreshedMessage);
 
-      const claimTx = await getCCTPClaimTx(toChainClient, message.status, isNonceUsed, nonce);
-      // console.log("claimTx:", claimTx);
+      const status = getCCTPTransactionStatus(refreshedMessage.status, isNonceUsed);
+
+      // TODO - Move to when claim modal opened
+      const claimTx = await getCCTPClaimTx(toChainClient, isNonceUsed, nonce);
 
       transactionsMap.set(transactionHash, {
         type: "ERC20",
@@ -364,12 +375,12 @@ async function fetchCCTPBridgeEvents(
         token,
         fromChain,
         toChain,
-        timestamp: block.timestamp,
+        timestamp: fromBlock.timestamp,
         bridgingTx: log.transactionHash,
         claimingTx: claimTx,
         message: {
-          attestation: message.attestation,
-          message: message.message,
+          attestation: refreshedMessage.attestation,
+          message: refreshedMessage.message,
           value: BigInt(log.args.amount),
         },
       });
