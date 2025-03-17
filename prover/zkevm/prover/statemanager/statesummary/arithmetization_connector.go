@@ -257,6 +257,7 @@ func accountIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 		filterSummary,
 	)
 
+	//isWarm := comp.Columns.GetHandle("hub.acp_WARMTH")
 	// Now we define the constraints for our filters
 	comp.InsertGlobal(
 		0,
@@ -266,6 +267,11 @@ func accountIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 			sym.Mul(
 				smc.PeekAtAccount,
 				smc.FirstAOCBlock,
+				/*
+					sym.Sub(
+						1,
+						isWarm,
+					),*/
 			),
 		),
 	)
@@ -291,8 +297,20 @@ accountIntegrationAssignInitial assigns the columns used to check initial accoun
 data consistency using the lookups from AccountIntegrationDefineInitial
 */
 func accountIntegrationAssignInitial(run *wizard.ProverRuntime, ss Module, smc HubColumnSet) {
+	/*
+		isWarm := run.Spec.Columns.GetHandle("hub.acp_WARMTH")
+		isNotPrewarmingPhase := make([]field.Element, smc.AddressHI.Size())
+		for i := range isNotPrewarmingPhase {
+			fieldOne := field.One()
+			isWarmElem := isWarm.GetColAssignmentAt(run, i)
+			isNotPrewarmingPhase[i].Sub(&fieldOne, &isWarmElem)
+		}*/
 
-	svfilterArith := smartvectors.Mul(smc.PeekAtAccount.GetColAssignment(run), smc.FirstAOCBlock.GetColAssignment(run))
+	svfilterArith := smartvectors.Mul(
+		smc.PeekAtAccount.GetColAssignment(run),
+		smc.FirstAOCBlock.GetColAssignment(run),
+		//smartvectors.NewRegular(isNotPrewarmingPhase),
+	)
 
 	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_ACCOUNT_INITIAL_ARITHMETIZATION", svfilterArith)
 
@@ -345,6 +363,7 @@ func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 	comp.InsertInclusionDoubleConditional(0, "LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_FINAL_ACCOUNT", stateSummaryTable, arithTable, filterSummary, filterArith)
 	comp.InsertInclusionDoubleConditional(0, "LOOKUP_STATE_MGR_ARITH_TO_STATE_SUMMARY_FINAL_ACCOUNT_REVERSED", arithTable, stateSummaryTable, filterArith, filterSummary)
 
+	//isWarmNew := comp.Columns.GetHandle("hub.acp_WARMTH_NEW")
 	// Now we define the constraints for our filters
 	comp.InsertGlobal(
 		0,
@@ -354,6 +373,12 @@ func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 			sym.Mul(
 				smc.PeekAtAccount,
 				smc.LastAOCBlock,
+				/*
+					sym.Sub(
+						// remove prewarming slots
+						1,
+						isWarmNew,
+					),*/
 			),
 		),
 	)
@@ -378,7 +403,19 @@ func accountIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 accountIntegrationAssignFinal assigns the columns used to check initial account data consistency using the lookups from accountIntegrationAssignFinal
 */
 func accountIntegrationAssignFinal(run *wizard.ProverRuntime, ss Module, smc HubColumnSet) {
-	filterArith := smartvectors.Mul(smc.PeekAtAccount.GetColAssignment(run), smc.LastAOCBlock.GetColAssignment(run))
+	/*
+		isWarmNew := run.Spec.Columns.GetHandle("hub.acp_WARMTH_NEW")
+		isNotPrewarmingPhase := make([]field.Element, smc.AddressHI.Size())
+		for i := range isNotPrewarmingPhase {
+			fieldOne := field.One()
+			isWarmNewElem := isWarmNew.GetColAssignmentAt(run, i)
+			isNotPrewarmingPhase[i].Sub(&fieldOne, &isWarmNewElem)
+		}*/
+	filterArith := smartvectors.Mul(
+		smc.PeekAtAccount.GetColAssignment(run),
+		smc.LastAOCBlock.GetColAssignment(run),
+		//smartvectors.NewRegular(isNotPrewarmingPhase),
+	)
 
 	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_ACCOUNT_FINAL_ARITHMETIZATION", filterArith)
 
@@ -409,6 +446,8 @@ func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 	filterSummary := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_SUMMARY", ss.Account.Address.Size())
 
 	filterArithReversed := comp.InsertCommit(0, "FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_ARITHMETIZATION_REVERSED", smc.AddressHI.Size())
+
+	isExceptionalOperation := comp.Columns.GetHandle("hub.scp_EXCEPTIONAL_OPERATION")
 
 	summaryTable := []ifaces.Column{
 		ss.Account.Address,
@@ -443,6 +482,7 @@ func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 		filterSummary,
 	)
 
+	//isWarm := comp.Columns.GetHandle("hub.scp_WARMTH")
 	// Now we define the constraints for our filters
 	comp.InsertGlobal(
 		0,
@@ -453,6 +493,16 @@ func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 				sc.SelectorMinDeplBlock,
 				smc.PeekAtStorage,
 				smc.FirstKOCBlock,
+				sym.Sub(
+					1,
+					isExceptionalOperation,
+				),
+				/*
+					sym.Sub(
+						// remove rows that contain prewarming slots
+						1,
+						isWarm,
+					),*/
 			),
 		),
 	)
@@ -465,6 +515,13 @@ func storageIntegrationDefineInitial(comp *wizard.CompiledIOP, ss Module, smc Hu
 			sym.Mul(
 				smc.PeekAtStorage,
 				smc.FirstKOCBlock,
+				/*
+					sym.Sub(
+						// remove rows that contain prewarming slots
+						1,
+						isWarm,
+					)
+				*/
 			),
 		),
 	)
@@ -500,14 +557,45 @@ func storageIntegrationAssignInitial(run *wizard.ProverRuntime, ss Module, smc H
 	}
 	svSelectorMinDeplBlock := smartvectors.NewRegular(selectorMinDeplBlock)
 
-	filterArith := smartvectors.Mul(svSelectorMinDeplBlock, smc.PeekAtStorage.GetColAssignment(run), smc.FirstKOCBlock.GetColAssignment(run))
-	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_ARITHMETIZATION", filterArith)
+	isExceptionalOperation := run.Spec.Columns.GetHandle("hub.scp_EXCEPTIONAL_OPERATION")
+	isNotExceptionalOperation := make([]field.Element, smc.AddressHI.Size())
+
+	for i := range isNotExceptionalOperation {
+		fieldOne := field.One()
+		isExceptionElem := isExceptionalOperation.GetColAssignmentAt(run, i)
+		isNotExceptionalOperation[i].Sub(&fieldOne, &isExceptionElem)
+	}
+
+	/*
+		isWarm := run.Spec.Columns.GetHandle("hub.scp_WARMTH")
+		isNotPrewarmingPhase := make([]field.Element, smc.AddressHI.Size())
+		for i := range isNotPrewarmingPhase {
+			fieldOne := field.One()
+			isWarmElem := isWarm.GetColAssignmentAt(run, i)
+			isNotPrewarmingPhase[i].Sub(&fieldOne, &isWarmElem)
+		}*/
+
+	filterArith := smartvectors.Mul(
+		svSelectorMinDeplBlock,
+		smc.PeekAtStorage.GetColAssignment(run),
+		smc.FirstKOCBlock.GetColAssignment(run),
+		smartvectors.NewRegular(isNotExceptionalOperation),
+		//smartvectors.NewRegular(isNotPrewarmingPhase),
+	)
+	run.AssignColumn(
+		"FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_ARITHMETIZATION",
+		filterArith,
+	)
 
 	/*
 		When looking up with including = {arithmetization} and included = {State summary}, we remove the MinDeplBlock filter selector
 		(arithmetization keys might be read after the first deployment in the block)
 	*/
-	filterArithReversed := smartvectors.Mul(smc.PeekAtStorage.GetColAssignment(run), smc.FirstKOCBlock.GetColAssignment(run))
+	filterArithReversed := smartvectors.Mul(
+		smc.PeekAtStorage.GetColAssignment(run),
+		smc.FirstKOCBlock.GetColAssignment(run),
+		//smartvectors.NewRegular(isNotPrewarmingPhase),
+	)
 	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_INITIAL_ARITHMETIZATION_REVERSED", filterArithReversed)
 }
 
@@ -575,6 +663,10 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 		filterSummary,
 	)
 
+	isSLoad := comp.Columns.GetHandle("hub.scp_SLOAD_OPERATION")
+	isExceptionalOperation := comp.Columns.GetHandle("hub.scp_EXCEPTIONAL_OPERATION")
+	//isWarmNew := comp.Columns.GetHandle("hub.scp_WARMTH_NEW")
+
 	comp.InsertGlobal(
 		0,
 		ifaces.QueryIDf("CONSTRAINT_FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_ARITHMETIZATION"),
@@ -585,6 +677,22 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 				smc.PeekAtStorage,
 				smc.LastKOCBlock,
 				filterAccountInsert,
+				sym.Sub(
+					1,
+					sym.Mul(
+						// in this paranthesis, we have a filter for SLOADS that generate exceptions,
+						// and will not appear on Shomei's side. Currently, the SSTORE behavior seems to match
+						// betwen HUB and Shomei, so we do not filter or create separate lookups for SSTOREs
+						isSLoad,
+						isExceptionalOperation,
+					),
+				),
+				/*
+					sym.Sub(
+						// require that we are not in a prewarming phase
+						1,
+						isWarmNew,
+					),*/
 			),
 		),
 	)
@@ -598,6 +706,12 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 				sc.SelectorMaxDeplBlock,
 				smc.PeekAtStorage,
 				smc.LastKOCBlock,
+				/*
+					sym.Sub(
+						// require that we are not in a prewarming phase
+						1,
+						isWarmNew,
+					),*/
 			),
 		),
 	)
@@ -710,12 +824,6 @@ func storageIntegrationAssignFinal(run *wizard.ProverRuntime, ss Module, smc Hub
 		ss.IsFinalDeployment.GetColAssignment(run),
 	)
 	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_SUMMARY", filterSummary)
-	filterArithReversed := smartvectors.Mul(
-		svSelectorMaxDeplBlock,
-		smc.PeekAtStorage.GetColAssignment(run),
-		smc.LastKOCBlock.GetColAssignment(run),
-	)
-	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_ARITHMETIZATION_REVERSED", filterArithReversed)
 
 	// compute the filter that detects account inserts in order to exclude those key reads from the
 	// arithmetization to state summary lookups.
@@ -767,11 +875,43 @@ func storageIntegrationAssignFinal(run *wizard.ProverRuntime, ss Module, smc Hub
 	run.AssignColumn("FILTER_CONNECTOR_HUB_STATE_SUMMARY_ACCOUNT_INSERT_FILTER", svfilterAccountInsert)
 
 	//filterTxExec := run.Spec.Columns.GetHandle("hub.scp_TX_EXEC")
+	isSLoad := run.Spec.Columns.GetHandle("hub.scp_SLOAD_OPERATION")
+	isExceptionalOperation := run.Spec.Columns.GetHandle("hub.scp_EXCEPTIONAL_OPERATION")
+	isNotExceptionalSLoad := make([]field.Element, smc.AddressHI.Size())
+
+	for i := range isNotExceptionalSLoad {
+		fieldOne := field.One()
+		isExceptionElem := isExceptionalOperation.GetColAssignmentAt(run, i)
+		isSLoadElem := isSLoad.GetColAssignmentAt(run, i)
+		multiplied := new(field.Element).Mul(&isSLoadElem, &isExceptionElem)
+		isNotExceptionalSLoad[i].Sub(&fieldOne, multiplied)
+	}
+
+	// hub.scp_TX_WARM is = 1 iff the storage row is associated to pre-warming)
+	/*
+		isWarmNew := run.Spec.Columns.GetHandle("hub.scp_WARMTH_NEW")
+		isNotPrewarmingPhase := make([]field.Element, smc.AddressHI.Size())
+		for i := range isNotPrewarmingPhase {
+			fieldOne := field.One()
+			isWarmNewElem := isWarmNew.GetColAssignmentAt(run, i)
+			isNotPrewarmingPhase[i].Sub(&fieldOne, &isWarmNewElem)
+		}*/
+
 	filterArith := smartvectors.Mul(
 		svSelectorMaxDeplBlock,
 		smc.PeekAtStorage.GetColAssignment(run),
 		smc.LastKOCBlock.GetColAssignment(run),
 		svfilterAccountInsert,
+		smartvectors.NewRegular(isNotExceptionalSLoad),
+		//smartvectors.NewRegular(isNotPrewarmingPhase),
 	)
 	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_ARITHMETIZATION", filterArith)
+
+	filterArithReversed := smartvectors.Mul(
+		svSelectorMaxDeplBlock,
+		smc.PeekAtStorage.GetColAssignment(run),
+		smc.LastKOCBlock.GetColAssignment(run),
+		//smartvectors.NewRegular(isNotPrewarmingPhase),
+	)
+	run.AssignColumn("FILTER_CONNECTOR_SUMMARY_ARITHMETIZATION_STORAGE_FINAL_ARITHMETIZATION_REVERSED", filterArithReversed)
 }
