@@ -25,7 +25,7 @@ jobs:
           go-corset: true
 
       - name: Run Reference Blockchain test sample
-        run: ./gradlew -Dblockchain=Ethereum referenceBlockchainTests -x spotlessCheck --tests "BlockchainReferenceTest_104"
+        run: ./gradlew referenceBlockchainTests -x spotlessCheck --tests "BlockchainReferenceTest_104"
         timeout-minutes: 15
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
