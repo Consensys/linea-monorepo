@@ -160,19 +160,19 @@ func TestDistributeWizard(t *testing.T) {
 		)
 
 		if isFirst.IsOne() != shouldBeFirst {
-			t.Errorf("isFirst has unexpected values: " + errMsg)
+			t.Error("isFirst has unexpected values: " + errMsg)
 		}
 
 		if isLast.IsOne() != shouldBeLast {
-			t.Errorf("isLast has unexpected values: " + errMsg)
+			t.Error("isLast has unexpected values: " + errMsg)
 		}
 
 		if !shouldBeFirst && globalReceived != prevGlobalSent {
-			t.Errorf("global-received does not match: " + errMsg)
+			t.Error("global-received does not match: " + errMsg)
 		}
 
 		if !shouldBeFirst && hornerN0Hash != prevHornerN1Hash {
-			t.Errorf("horner-n0-hash mismatch: " + errMsg)
+			t.Error("horner-n0-hash mismatch: " + errMsg)
 		}
 
 		prevGlobalSent = globalSent
