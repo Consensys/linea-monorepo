@@ -93,12 +93,22 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		comp.InsertVerifier(lastRound, ctx.explicitPublicEvaluation, ctx.gnarkExplicitPublicEvaluation)
 		comp.InsertVerifier(lastRound+2, ctx.Verify, ctx.GnarkVerify)
 
-		if ctx.AddMerkleRootToPublicInputs.Enabled {
+		if ctx.AddMerkleRootToPublicInputsOpt.Enabled {
 			comp.InsertPublicInput(
-				ctx.AddMerkleRootToPublicInputs.Name,
+				ctx.AddMerkleRootToPublicInputsOpt.Name,
 				accessors.NewFromPublicColumn(
-					ctx.Items.MerkleRoots[ctx.AddMerkleRootToPublicInputs.Round],
-					1,
+					ctx.Items.MerkleRoots[ctx.AddMerkleRootToPublicInputsOpt.Round],
+					0,
+				),
+			)
+		}
+
+		if ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Enabled {
+			comp.InsertPublicInput(
+				ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name,
+				accessors.NewFromPublicColumn(
+					ctx.Items.Precomputeds.MerkleRoot,
+					0,
 				),
 			)
 		}
@@ -182,10 +192,17 @@ type Ctx struct {
 
 	// Additional options that tells the compiler to add a merkle root to the
 	// public inputs of the comp. This is useful for the distributed prover.
-	AddMerkleRootToPublicInputs struct {
+	AddMerkleRootToPublicInputsOpt struct {
 		Enabled bool
 		Name    string
 		Round   int
+	}
+
+	// This option tells the compiler to add the merkle root of the precomputeds
+	// columns to the public inputs.
+	AddPrecomputedMerkleRootToPublicInputsOpt struct {
+		Enabled bool
+		Name    string
 	}
 }
 
