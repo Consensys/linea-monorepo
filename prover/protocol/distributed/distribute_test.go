@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -201,6 +202,17 @@ func TestDistributedWizard(t *testing.T) {
 
 // TestBenchDistributedWizard runs the distributed wizard will all the compilations
 func TestBenchDistributedWizard(t *testing.T) {
+
+	logrus.SetLevel(logrus.FatalLevel)
+
+	go func() {
+		ticker := time.Tick(time.Second * 10)
+		for range ticker {
+			memstats := &runtime.MemStats{}
+			runtime.ReadMemStats(memstats)
+			fmt.Printf("[memstats] heap-in-use=%vGiB stack-in-use=%vGiB\n", memstats.HeapInuse/(1<<30), memstats.StackInuse/(1<<30))
+		}
+	}()
 
 	logrus.SetLevel(logrus.FatalLevel)
 
