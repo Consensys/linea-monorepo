@@ -1,7 +1,6 @@
 package arithmetization
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -36,7 +35,4 @@ func TestDefine(t *testing.T) {
 
 	require.NoError(t, errBin)
 	Define(comp, schema, limits)
-	for _, name := range comp.Columns.AllKeys() {
-		fmt.Println(name)
-	}
 }

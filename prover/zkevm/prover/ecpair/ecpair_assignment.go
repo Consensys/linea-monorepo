@@ -2,12 +2,9 @@ package ecpair
 
 import (
 	"github.com/consensys/gnark-crypto/ecc/bn254"
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
@@ -54,28 +51,6 @@ func (ec *ECPair) Assign(run *wizard.ProverRuntime) {
 	if ec.AlignedFinalExpCircuit != nil {
 		ec.AlignedFinalExpCircuit.Assign(run)
 	}
-	csvtraces.FmtCsv(
-		files.MustOverwrite("./alex-csv/ecpairsource.csv"),
-		run,
-		[]ifaces.Column{
-			ec.ECPairSource.Limb,
-			ec.ECPairSource.ID,
-			ec.ECPairSource.IsEcPairingResult,
-			ec.ECPairSource.CsEcpairing,
-		},
-		[]csvtraces.Option{},
-	)
-	csvtraces.FmtCsv(
-		files.MustOverwrite("./alex-csv/ecpair.csv"),
-		run,
-		[]ifaces.Column{
-			ec.UnalignedPairingData.Limb,
-			ec.UnalignedPairingData.InstanceID,
-			ec.UnalignedPairingData.IsResultOfInstance,
-			ec.UnalignedPairingData.IsPulling,
-		},
-		[]csvtraces.Option{},
-	)
 }
 
 func (ec *ECPair) assignPairingData(run *wizard.ProverRuntime) {
