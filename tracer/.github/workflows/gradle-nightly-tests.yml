@@ -36,7 +36,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nightly-tests-report
-          path: build/reports/tests/**/*
+          path: arithmetization/build/reports/tests/**/*
 
       - name: Upload jacoco nightly tests coverage report
         if: always()

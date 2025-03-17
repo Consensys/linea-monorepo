@@ -33,6 +33,13 @@ jobs:
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --air
 
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-tests-report
+          path: arithmetization/build/reports/tests/**/*
+
       - name: Upload jacoco weekly tests coverage report
         if: always()
         uses: actions/upload-artifact@v4
