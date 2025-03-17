@@ -258,6 +258,11 @@ func AssignFPI(blobBytes []byte, dictStore dictionary.Store, eip4844Enabled bool
 		return
 	}
 
+	if len(payload) > blob.MaxUncompressedBytes {
+		err = fmt.Errorf("decompression circuit assignment: blob payload too large : %d. max %d", len(payload), blob.MaxUncompressedBytes)
+		return
+	}
+
 	if header.NbBatches() > MaxNbBatches {
 		err = fmt.Errorf("decompression circuit assignment : too many batches in the header : %d. max %d", header.NbBatches(), MaxNbBatches)
 		return
