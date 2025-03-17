@@ -48,14 +48,17 @@ public class GenerateConflatedTracesV2 {
   private final Path tracesOutputPath;
   private final ServiceManager besuContext;
   private TraceService traceService;
+  private final LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration;
 
   public GenerateConflatedTracesV2(
       final ServiceManager besuContext,
       final RequestLimiter requestLimiter,
-      final TracesEndpointConfiguration endpointConfiguration) {
+      final TracesEndpointConfiguration endpointConfiguration,
+      LineaL1L2BridgeSharedConfiguration lineaL1L2BridgeSharedConfiguration) {
     this.besuContext = besuContext;
     this.requestLimiter = requestLimiter;
     this.tracesOutputPath = Paths.get(endpointConfiguration.tracesOutputPath());
+    this.l1L2BridgeSharedConfiguration = lineaL1L2BridgeSharedConfiguration;
   }
 
   public String getNamespace() {
@@ -95,9 +98,7 @@ public class GenerateConflatedTracesV2 {
     final long toBlock = params.endBlockNumber();
     final ZkTracer tracer =
         new ZkTracer(
-            // NOTE: following OK because bridge config only affects line counts for non-tracing
-            // modules.
-            LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT,
+            l1L2BridgeSharedConfiguration,
             BesuServiceProvider.getBesuService(besuContext, BlockchainService.class)
                 .getChainId()
                 .orElseThrow());
