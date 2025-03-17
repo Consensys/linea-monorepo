@@ -13,7 +13,7 @@ func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
 		disc  = &QueryBasedModuleDiscoverer{}
 	)
 
-	precompileInitialWizard(zkevm.WizardIOP)
+	precompileInitialWizard(zkevm.WizardIOP, nil)
 
 	// The test is to make sure that this function returns
 	disc.Analyze(zkevm.WizardIOP)
@@ -85,7 +85,7 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 		}
 	)
 
-	precompileInitialWizard(zkevm.WizardIOP)
+	precompileInitialWizard(zkevm.WizardIOP, nil)
 
 	// The test is to make sure that this function returns
 	disc.Analyze(zkevm.WizardIOP)

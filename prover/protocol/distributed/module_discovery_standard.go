@@ -5,6 +5,7 @@ import (
 	"math"
 	"sort"
 	"sync"
+	"unsafe"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -61,6 +62,8 @@ type QueryBasedModule struct {
 	// nbInstancesOfPlonkQuery indicates the number of Plonk in wizard query in the
 	// present module.
 	nbInstancesOfPlonkQuery int
+	// nbSegmentCache caches the results of SegmentBoundaries
+	nbSegmentCache map[unsafe.Pointer][2]int
 }
 
 // DisjointSet represents a union-find data structure, which efficiently groups elements (columns)
@@ -255,9 +258,6 @@ func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntim
 		stdModule        *StandardModule
 		queryBasedModule *QueryBasedModule
 		segmentSize      int
-		resOrientation   int
-		resMaxDensity    int
-		size             int
 	)
 
 	for i := range disc.modules {
@@ -275,45 +275,7 @@ func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntim
 		}
 	}
 
-	for col := range queryBasedModule.ds.parent {
-
-		var (
-			val               = col.GetColAssignment(run)
-			density           = smartvectors.Density(val)
-			orientation, oErr = smartvectors.PaddingOrientationOf(val)
-		)
-
-		size = val.Len()
-
-		if oErr != nil {
-			continue
-		}
-
-		if density == size {
-			continue
-		}
-
-		if resOrientation != 0 {
-			resOrientation = orientation
-		}
-
-		if orientation != resOrientation {
-			panic("conflicting orientation")
-		}
-
-		resMaxDensity = max(resMaxDensity, density)
-	}
-
-	var (
-		totalSegmentedArea = segmentSize * utils.DivCeil(resMaxDensity, segmentSize)
-		start, stop        = 0, totalSegmentedArea
-	)
-
-	if resOrientation == -1 {
-		start, stop = size-stop, size-start
-	}
-
-	return start, stop
+	return queryBasedModule.SegmentBoundaries(run, segmentSize)
 }
 
 // Analyze processes columns and assigns them to modules.
@@ -645,6 +607,62 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 	}
 
 	return moduleCandidates
+}
+
+// SegmentBoundaries computes the density of a module given an assignment.
+// This can be used to determine the number of segment of the module.
+func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmentSize int) (int, int) {
+
+	if res, ok := mod.nbSegmentCache[unsafe.Pointer(run)]; ok {
+		return res[0], res[1]
+	}
+
+	var (
+		resOrientation = 0
+		resMaxDensity  = 0
+		size           int
+	)
+
+	for col := range mod.ds.parent {
+
+		var (
+			val               = col.GetColAssignment(run)
+			density           = smartvectors.Density(val)
+			orientation, oErr = smartvectors.PaddingOrientationOf(val)
+		)
+
+		size = val.Len()
+
+		if oErr != nil {
+			continue
+		}
+
+		if density == size {
+			continue
+		}
+
+		if resOrientation != 0 {
+			resOrientation = orientation
+		}
+
+		if orientation != resOrientation {
+			panic("conflicting orientation")
+		}
+
+		resMaxDensity = max(resMaxDensity, density)
+	}
+
+	var (
+		totalSegmentedArea = segmentSize * utils.DivCeil(resMaxDensity, segmentSize)
+		start, stop        = 0, totalSegmentedArea
+	)
+
+	if resOrientation == -1 {
+		start, stop = size-stop, size-start
+	}
+
+	mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+	return start, stop
 }
 
 // Nilify a module. It empties its maps and sets its size to 0.

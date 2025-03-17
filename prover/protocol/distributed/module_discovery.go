@@ -43,6 +43,10 @@ type ModuleDiscoverer interface {
 	ModuleOf(col column.Natural) ModuleName
 	// NewSizeOf returns the split-size of a column in the module.
 	NewSizeOf(col column.Natural) int
+
+	// SegmentBoundaryOfColumn returns the starting point and the ending point of the
+	// segmentation of a column.
+	SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int)
 }
 
 // ExpressionIsInModule is a helper function that returns the module of a [symbolic.Expression]

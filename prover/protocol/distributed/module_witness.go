@@ -136,25 +136,11 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 		}
 
 		var (
-			newSize      = NewSizeOfColumn(disc, col)
-			assignment   = col.GetColAssignment(runtime)
-			density      = smartvectors.Density(assignment)
-			_, orientErr = smartvectors.PaddingOrientationOf(assignment)
-			nbSegmentCol = utils.DivCeil(density, newSize)
+			newSize     = NewSizeOfColumn(disc, col)
+			start, stop = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
 		)
 
-		if orientErr != nil && density > 0 {
-			// the column cannot be taken into account for the segmentation
-			colNamesWithOrientErr = append(colNamesWithOrientErr, col.GetColID())
-			continue
-		}
-
-		// We ignore the columns where the density if full because most of the time
-		// these columns only exist by lack of optimization. (e.g.) use of a regular
-		// smart-vector while a full vector could be used.
-		if density < col.Size() {
-			nbSegmentModule = max(nbSegmentModule, nbSegmentCol)
-		}
+		nbSegmentModule = max(nbSegmentModule, utils.DivExact(stop-start, newSize))
 	}
 
 	if nbSegmentModule == -1 {

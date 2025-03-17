@@ -49,7 +49,7 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) Distribut
 	}
 
 	distributedWizard := DistributedWizard{
-		Bootstrapper: precompileInitialWizard(comp),
+		Bootstrapper: precompileInitialWizard(comp, disc),
 	}
 
 	disc.Analyze(distributedWizard.Bootstrapper)
@@ -94,11 +94,11 @@ func (dist *DistributedWizard) CompileModules(compilers ...func(*wizard.Compiled
 // compilation steps needing to be run before the splitting phase. Its role is to
 // ensure that all of the queries that cannot be processed by the splitting phase
 // are removed from the compiled IOP.
-func precompileInitialWizard(comp *wizard.CompiledIOP) *wizard.CompiledIOP {
+func precompileInitialWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *wizard.CompiledIOP {
 	mimc.CompileMiMC(comp)
 	// specialqueries.RangeProof(comp)
 	// specialqueries.CompileFixedPermutations(comp)
-	logderivativesum.LookupIntoLogDerivativeSum(comp)
+	logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(disc)(comp)
 	permutation.CompileIntoGdProduct(comp)
 	horner.ProjectionToHorner(comp)
 	return comp
