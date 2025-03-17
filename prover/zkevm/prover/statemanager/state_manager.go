@@ -1,6 +1,7 @@
 package statemanager
 
 import (
+	"fmt"
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -14,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/codehashconsistency"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
+	"os"
 )
 
 // StateManager is a collection of modules responsible for attesting the
@@ -67,6 +69,7 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 // arithmetization columns to be assigned first.
 func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]statemanager.DecodedTrace) {
 	assignHubAddresses(run)
+	printAllShomeiTraces(&shomeiTraces)
 	addSkipFlags(&shomeiTraces)
 	sm.StateSummary.Assign(run, shomeiTraces)
 	sm.accumulator.Assign(run, utils.Join(shomeiTraces...))
@@ -75,7 +78,7 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 	sm.codeHashConsistency.Assign(run)
 
 	csvtraces.FmtCsv(
-		files.MustOverwrite("arith.csv"),
+		files.MustOverwrite("./alex-csv/arith.csv"),
 		run,
 		[]ifaces.Column{
 			run.Spec.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
@@ -88,6 +91,7 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 			run.Spec.Columns.GetHandle("hub.acp_CODE_HASH_LO"),
 			run.Spec.Columns.GetHandle("hub.acp_REL_BLK_NUM"),
 			run.Spec.Columns.GetHandle("hub.acp_EXISTS"),
+			run.Spec.Columns.GetHandle("hub.acp_EXISTS_NEW"),
 			run.Spec.Columns.GetHandle("hub.acp_PEEK_AT_ACCOUNT"),
 			run.Spec.Columns.GetHandle("hub.acp_FIRST_IN_BLK"),
 			run.Spec.Columns.GetHandle("hub.acp_IS_PRECOMPILE"),
@@ -95,7 +99,7 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 		[]csvtraces.Option{},
 	)
 	csvtraces.FmtCsv(
-		files.MustOverwrite("ss.csv"),
+		files.MustOverwrite("./alex-csv/ss.csv"),
 		run,
 		[]ifaces.Column{
 			sm.StateSummary.Account.Address,
@@ -113,7 +117,7 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 		[]csvtraces.Option{},
 	)
 	csvtraces.FmtCsv(
-		files.MustOverwrite("hub.csv"),
+		files.MustOverwrite("./alex-csv/hub.csv"),
 		run,
 		[]ifaces.Column{
 			run.Spec.Columns.GetHandle("hub.RELATIVE_BLOCK_NUMBER"),
@@ -122,7 +126,7 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 	)
 
 	csvtraces.FmtCsv(
-		files.MustOverwrite("scparith.csv"),
+		files.MustOverwrite("./alex-csv/scparith.csv"),
 		run,
 		[]ifaces.Column{
 			run.Spec.Columns.GetHandle("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
@@ -144,12 +148,15 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 			run.Spec.Columns.GetHandle("hub.scp_FINAL_IN_BLK"),
 			run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
 			run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
+			run.Spec.Columns.GetHandle("hub.scp_EXISTS_FIRST_IN_BLOCK"),
+			run.Spec.Columns.GetHandle("hub.scp_EXISTS_FINAL_IN_BLOCK"),
+			//run.Spec.Columns.GetHandle("hub.scp_TX_EXEC"),
 		},
 		[]csvtraces.Option{},
 	)
 
 	csvtraces.FmtCsv(
-		files.MustOverwrite("scpss.csv"),
+		files.MustOverwrite("./alex-csv/scpss.csv"),
 		run,
 		[]ifaces.Column{
 			sm.StateSummary.Account.Address,
@@ -219,4 +226,175 @@ func addSkipFlags(shomeiTraces *[][]statemanager.DecodedTrace) {
 			}
 		}
 	}
+}
+
+func printAllShomeiTraces(shomeiTraces *[][]statemanager.DecodedTrace) {
+	// AddressAndKey is a struct used as a key in order to identify skippable traces
+	// in our maps
+	type AddressAndKey struct {
+		address    types.Bytes32
+		storageKey types.Bytes32
+	}
+	file, err := os.OpenFile("shomeifull.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Println("Error opening file:", err)
+	}
+	// iterate over all the Shomei blocks
+	for blockNo, vec := range *shomeiTraces {
+		batchNumber := blockNo + 1
+		for _, trace := range vec {
+			curAddress, err := trace.GetRelatedAccount()
+
+			if err != nil {
+				panic(err)
+			}
+
+			accountAddress := curAddress
+			switch t := trace.Underlying.(type) {
+			case statemanager.ReadZeroTraceST:
+				// BEGIN LOGGING
+				// Open the file in append mode, create it if it doesn't exist
+				// Write the text to the file
+				if _, err := file.WriteString(
+					fmt.Sprintln("READZEROST") +
+						fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " STORAGE KEY "+t.Key.Hex()+" %d", batchNumber) +
+						fmt.Sprintln("IS SKIPPED ", trace.IsSkipped),
+				); err != nil {
+					fmt.Println("Error writing to file:", err)
+				}
+				// END LOGGING
+
+			case statemanager.ReadNonZeroTraceST:
+				// BEGIN LOGGING
+				// Write the text to the file
+				if _, err := file.WriteString(
+					fmt.Sprintln("READNONZEROST") +
+						fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " STORAGE KEY "+t.Key.Hex()+" %d"+" STORAGE VALUE "+t.Value.Hex(), batchNumber) +
+						fmt.Sprintln("IS SKIPPED ", trace.IsSkipped),
+				); err != nil {
+					fmt.Println("Error writing to file:", err)
+				}
+				// END LOGGING
+			case statemanager.InsertionTraceST:
+				// BEGIN LOGGING
+				if err != nil {
+					fmt.Println("Error opening file:", err)
+				}
+				// Write the text to the file
+				if _, err := file.WriteString(
+					fmt.Sprintln("INSERTST") +
+						fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " STORAGE KEY "+t.Key.Hex()+" %d"+" STORAGE VALUE "+t.Val.Hex(), batchNumber) +
+						fmt.Sprintln("IS SKIPPED ", trace.IsSkipped),
+				); err != nil {
+					fmt.Println("Error writing to file:", err)
+				}
+			//  END LOGGING
+			case statemanager.UpdateTraceST:
+				// BEGIN LOGGING
+				if err != nil {
+					fmt.Println("Error opening file:", err)
+				}
+				// Write the text to the file
+				if _, err := file.WriteString(
+					fmt.Sprintln("UPDATEST") +
+						fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " STORAGE KEY "+t.Key.Hex()+" %d"+" STORAGE VALUE + "+t.OldValue.Hex()+" "+t.NewValue.Hex(), batchNumber) +
+						fmt.Sprintln("IS SKIPPED ", trace.IsSkipped),
+				); err != nil {
+					fmt.Println("Error writing to file:", err)
+				}
+			// END LOGGING
+
+			case statemanager.DeletionTraceST:
+				// BEGIN LOGGING
+				if err != nil {
+					fmt.Println("Error opening file:", err)
+				}
+				// Write the text to the file
+				if _, err := file.WriteString(
+					fmt.Sprintln("DELETEST") +
+						fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " STORAGE KEY "+t.Key.Hex()+" %d"+" STORAGE VALUE + "+t.DeletedValue.Hex(), batchNumber) +
+						fmt.Sprintln("IS SKIPPED ", trace.IsSkipped),
+				); err != nil {
+					fmt.Println("Error writing to file:", err)
+				}
+			// END LOGGING
+			case statemanager.ReadZeroTraceWS:
+				// BEGIN LOGGING
+				if err != nil {
+					fmt.Println("Error opening file:", err)
+				}
+				// Write the text to the file
+				if _, err := file.WriteString(
+					fmt.Sprintln("READZEROWS") +
+						fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " %d", batchNumber),
+				); err != nil {
+					fmt.Println("Error writing to file:", err)
+				}
+				// END LOGGING
+			case statemanager.ReadNonZeroTraceWS:
+
+				// BEGIN LOGGING
+				if err != nil {
+					fmt.Println("Error opening file:", err)
+				}
+
+				// Write the text to the file
+				if _, err := file.WriteString(
+					fmt.Sprintln("READNONZEROWS") +
+						fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " %d", batchNumber),
+				); err != nil {
+					fmt.Println("Error writing to file:", err)
+				}
+				// END LOGGING
+			case statemanager.InsertionTraceWS:
+
+				// BEGIN LOGGING
+				// Write the text to the file
+				if err != nil {
+					fmt.Println("Error opening file:", err)
+				}
+				//x := *(&field.Element{}).SetBytes(accountAddress[:])
+				if _, err := file.WriteString(
+					fmt.Sprintln("INSERTWS") +
+						fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " %d", batchNumber),
+				); err != nil {
+					fmt.Println("Error writing to file:", err)
+				}
+				// END LOGGING
+
+			case statemanager.UpdateTraceWS:
+				// BEGIN LOGGING
+				if err != nil {
+					fmt.Println("Error opening file:", err)
+				}
+				//x := *(&field.Element{}).SetBytes(accountAddress[:])
+				if _, err := file.WriteString(
+					fmt.Sprintln("UPDATEWS") +
+						fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " %d", batchNumber),
+				); err != nil {
+					fmt.Println("Error writing to file:", err)
+				}
+				// END LOGGING
+			case statemanager.DeletionTraceWS:
+
+				// BEGIN LOGGING
+				if err != nil {
+					fmt.Println("Error opening file:", err)
+				}
+				//x := *(&field.Element{}).SetBytes(accountAddress[:])
+				if _, err := file.WriteString(
+					fmt.Sprintln("DELETEWS") +
+						fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " %d", batchNumber),
+				); err != nil {
+					fmt.Println("Error writing to file:", err)
+				}
+				// END LOGGING
+			default:
+				panic("unknown trace type")
+
+			}
+
+		}
+	}
+	file.Close()
 }

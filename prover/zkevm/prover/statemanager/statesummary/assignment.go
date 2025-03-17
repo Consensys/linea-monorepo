@@ -1,7 +1,9 @@
 package statesummary
 
 import (
+	"fmt"
 	"io"
+	"os"
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -216,9 +218,45 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 
 						ss.storage.push(t.Key, types.FullBytes32{}, arithStorage)
 						ss.accumulatorStatement.PushReadZero(oldRoot, hash(t.Key))
+
+						// BEGIN LOGGING
+						// Open the file in append mode, create it if it doesn't exist
+						file, err := os.OpenFile("shomei.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+						if err != nil {
+							fmt.Println("Error opening file:", err)
+						}
+
+						// Write the text to the file
+						if _, err := file.WriteString(
+							fmt.Sprintln("READZEROST") +
+								fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " STORAGE KEY "+t.Key.Hex()+" %d", batchNumber) +
+								fmt.Sprintln("DELETE SEGMENT"),
+						); err != nil {
+							fmt.Println("Error writing to file:", err)
+						}
+						file.Close()
+						// END LOGGING
 					} else {
 						ss.storage.pushOnlyKey(t.Key)
 						ss.accumulatorStatement.PushReadZero(oldRoot, hash(t.Key))
+
+						// BEGIN LOGGING
+						file, err := os.OpenFile("shomei.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+						if err != nil {
+							fmt.Println("Error opening file:", err)
+						}
+						// Write the text to the file
+						//x := *(&field.Element{}).SetBytes(accountAddress[:])
+						if _, err := file.WriteString(
+							fmt.Sprintln("READZEROST") +
+								fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " STORAGE KEY "+t.Key.Hex()+" %d", batchNumber) +
+								fmt.Sprintln("NON-DELETE SEGMENT"),
+						); err != nil {
+							fmt.Println("Error writing to file:", err)
+						}
+						file.Close()
+						// END LOGGING
+
 					}
 				case statemanager.ReadNonZeroTraceST:
 					if isDeleteSegment {
@@ -236,22 +274,99 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 						ss.storage.push(t.Key, t.Value, arithStorage)
 						ss.accumulatorStatement.PushReadNonZero(oldRoot, hash(t.Key), hash(t.Value))
 
+						// BEGIN LOGGING
+						file, err := os.OpenFile("shomei.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+						if err != nil {
+							fmt.Println("Error opening file:", err)
+						}
+						// Write the text to the file
+						if _, err := file.WriteString(
+							fmt.Sprintln("READNONZEROST") +
+								fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " STORAGE KEY "+t.Key.Hex()+" %d"+" STORAGE VALUE "+t.Value.Hex(), batchNumber) +
+								fmt.Sprintln("DELETE SEGMENT"),
+						); err != nil {
+							fmt.Println("Error writing to file:", err)
+						}
+						file.Close()
+						// END LOGGING
 					} else {
 						ss.storage.push(t.Key, t.Value, t.Value)
 						ss.accumulatorStatement.PushReadNonZero(oldRoot, hash(t.Key), hash(t.Value))
+
+						// BEGIN LOGGING
+						file, err := os.OpenFile("shomei.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+						if err != nil {
+							fmt.Println("Error opening file:", err)
+						}
+						// Write the text to the file
+						if _, err := file.WriteString(
+							fmt.Sprintln("READNONZEROST") +
+								fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " STORAGE KEY "+t.Key.Hex()+" %d"+" STORAGE VALUE "+t.Value.Hex(), batchNumber) +
+								fmt.Sprintln("NON-DELETE SEGMENT"),
+						); err != nil {
+							fmt.Println("Error writing to file:", err)
+						}
+						file.Close()
+						// END LOGGING
 					}
 
 				case statemanager.InsertionTraceST:
 					ss.storage.pushOnlyNew(t.Key, t.Val)
 					ss.accumulatorStatement.PushInsert(oldRoot, newRoot, hash(t.Key), hash(t.Val))
 
+					// BEGIN LOGGING
+					file, err := os.OpenFile("shomei.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+					if err != nil {
+						fmt.Println("Error opening file:", err)
+					}
+					// Write the text to the file
+					if _, err := file.WriteString(
+						fmt.Sprintln("INSERTST") +
+							fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " STORAGE KEY "+t.Key.Hex()+" %d"+" STORAGE VALUE "+t.Val.Hex(), batchNumber) +
+							fmt.Sprintln("SEGMENT"),
+					); err != nil {
+						fmt.Println("Error writing to file:", err)
+					}
+					file.Close()
+				//  END LOGGING
 				case statemanager.UpdateTraceST:
 					ss.storage.push(t.Key, t.OldValue, t.NewValue)
 					ss.accumulatorStatement.PushUpdate(oldRoot, newRoot, hash(t.Key), hash(t.OldValue), hash(t.NewValue))
+					// BEGIN LOGGING
+					file, err := os.OpenFile("shomei.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+					if err != nil {
+						fmt.Println("Error opening file:", err)
+					}
+					// Write the text to the file
+					if _, err := file.WriteString(
+						fmt.Sprintln("UPDATEST") +
+							fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " STORAGE KEY "+t.Key.Hex()+" %d"+" STORAGE VALUE + "+t.OldValue.Hex()+" "+t.NewValue.Hex(), batchNumber) +
+							fmt.Sprintln("SEGMENT"),
+					); err != nil {
+						fmt.Println("Error writing to file:", err)
+					}
+					file.Close()
+				// END LOGGING
 
 				case statemanager.DeletionTraceST:
 					ss.storage.pushOnlyOld(t.Key, t.DeletedValue)
 					ss.accumulatorStatement.PushDelete(oldRoot, newRoot, hash(t.Key), hash(t.DeletedValue))
+
+					// BEGIN LOGGING
+					file, err := os.OpenFile("shomei.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+					if err != nil {
+						fmt.Println("Error opening file:", err)
+					}
+					// Write the text to the file
+					if _, err := file.WriteString(
+						fmt.Sprintln("DELETEST") +
+							fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " STORAGE KEY "+t.Key.Hex()+" %d"+" STORAGE VALUE + "+t.DeletedValue.Hex(), batchNumber) +
+							fmt.Sprintln("SEGMENT"),
+					); err != nil {
+						fmt.Println("Error writing to file:", err)
+					}
+					file.Close()
+				// END LOGGING
 				default:
 					panic("unknown trace type")
 				}
@@ -278,14 +393,94 @@ func (ss *stateSummaryAssignmentBuilder) pushAccountSegment(batchNumber int, seg
 		switch t := seg.worldStateTrace.Underlying.(type) {
 		case statemanager.ReadZeroTraceWS:
 			ss.accumulatorStatement.PushReadZero(initWsRoot, hash(t.Key))
+			// BEGIN LOGGING
+			file, err := os.OpenFile("shomei.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				fmt.Println("Error opening file:", err)
+			}
+			// Write the text to the file
+			if _, err := file.WriteString(
+				fmt.Sprintln("READZEROWS") +
+					fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " %d", batchNumber) +
+					fmt.Sprintln("DELETE SEGMENT FLAG %b", isDeleteSegment),
+			); err != nil {
+				fmt.Println("Error writing to file:", err)
+			}
+			file.Close()
+			// END LOGGING
 		case statemanager.ReadNonZeroTraceWS:
 			ss.accumulatorStatement.PushReadNonZero(initWsRoot, hash(t.Key), hash(t.Value))
+
+			// BEGIN LOGGING
+			file, err := os.OpenFile("shomei.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				fmt.Println("Error opening file:", err)
+			}
+
+			// Write the text to the file
+			if _, err := file.WriteString(
+				fmt.Sprintln("READNONZEROWS") +
+					fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " %d", batchNumber) +
+					fmt.Sprintln("DELETE SEGMENT FLAG %b", isDeleteSegment),
+			); err != nil {
+				fmt.Println("Error writing to file:", err)
+			}
+			file.Close()
+			// END LOGGING
 		case statemanager.InsertionTraceWS:
 			ss.accumulatorStatement.PushInsert(initWsRoot, finalWsRoot, hash(t.Key), hash(t.Val))
+			// BEGIN LOGGING
+			// Write the text to the file
+			file, err := os.OpenFile("shomei.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				fmt.Println("Error opening file:", err)
+			}
+			//x := *(&field.Element{}).SetBytes(accountAddress[:])
+			if _, err := file.WriteString(
+				fmt.Sprintln("INSERTWS") +
+					fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " %d", batchNumber) +
+					fmt.Sprintln("DELETE SEGMENT FLAG %b", isDeleteSegment),
+			); err != nil {
+				fmt.Println("Error writing to file:", err)
+			}
+			file.Close()
+			// END LOGGING
+
 		case statemanager.UpdateTraceWS:
 			ss.accumulatorStatement.PushUpdate(initWsRoot, finalWsRoot, hash(t.Key), hash(t.OldValue), hash(t.NewValue))
+			// BEGIN LOGGING
+			file, err := os.OpenFile("shomei.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				fmt.Println("Error opening file:", err)
+			}
+			//x := *(&field.Element{}).SetBytes(accountAddress[:])
+			if _, err := file.WriteString(
+				fmt.Sprintln("UPDATEWS") +
+					fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " %d", batchNumber) +
+					fmt.Sprintln("DELETE SEGMENT FLAG %b", isDeleteSegment),
+			); err != nil {
+				fmt.Println("Error writing to file:", err)
+			}
+			file.Close()
+			// END LOGGING
 		case statemanager.DeletionTraceWS:
 			ss.accumulatorStatement.PushDelete(initWsRoot, finalWsRoot, hash(t.Key), hash(t.DeletedValue))
+
+			// BEGIN LOGGING
+			file, err := os.OpenFile("shomei.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				fmt.Println("Error opening file:", err)
+			}
+			//x := *(&field.Element{}).SetBytes(accountAddress[:])
+			if _, err := file.WriteString(
+				fmt.Sprintln("DELETEWS") +
+					fmt.Sprintln("ADDRESS ", accountAddress.Hex(), " %d", batchNumber) +
+					fmt.Sprintln("DELETE SEGMENT FLAG %b", isDeleteSegment),
+			); err != nil {
+				fmt.Println("Error writing to file:", err)
+			}
+			file.Close()
+			// END LOGGING
 		default:
 			panic("unknown trace type")
 		}

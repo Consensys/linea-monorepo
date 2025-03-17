@@ -8,7 +8,7 @@ retry_delays = [0, 1]
 
 [execution]
 prover_mode = "full"
-conflated_traces_dir = "/home/ubuntu/sepolia-testing-full/traces/conflated"
+conflated_traces_dir = "/home/ubuntu/bogdan2/linea-monorepo/prover/error_2"
 requests_root_dir = "/home/ubuntu/sepolia-testing-full/prover-execution"
 
 
