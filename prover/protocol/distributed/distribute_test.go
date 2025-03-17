@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand/v2"
+	"reflect"
 	"testing"
 	"time"
 
@@ -43,8 +44,8 @@ func TestDistributedWizard(t *testing.T) {
 
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
 	for i := range distWizard.GLs {
-		dummy.Compile(distWizard.GLs[i].Wiop)
-		dummy.Compile(distWizard.LPPs[i].Wiop)
+		dummy.CompileAtProverLvl(distWizard.GLs[i].Wiop)
+		dummy.CompileAtProverLvl(distWizard.LPPs[i].Wiop)
 	}
 
 	var (
@@ -129,7 +130,8 @@ func TestDistributedWizard(t *testing.T) {
 		}
 
 		var (
-			proofGL            = wizard.Prove(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
+			proverRunGL        = wizard.RunProver(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
+			proofGL            = proverRunGL.ExtractProof()
 			verGLRun, verGLErr = wizard.VerifyWithRuntime(moduleGL.Wiop, proofGL)
 		)
 
@@ -138,7 +140,8 @@ func TestDistributedWizard(t *testing.T) {
 		}
 
 		var (
-			proofLPP             = wizard.Prove(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPPs[i]))
+			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPPs[i]))
+			proofLPP             = proverRunLPP.ExtractProof()
 			verLPPRun, verLPPErr = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP)
 		)
 
@@ -159,6 +162,8 @@ func TestDistributedWizard(t *testing.T) {
 			hornerN1Hash     = verLPPRun.GetPublicInput(hornerN1HashPublicInput)
 			shouldBeFirst    = i == 0 || witnessGLs[i].ModuleName != witnessGLs[i-1].ModuleName
 			shouldBeLast     = i == len(witnessGLs)-1 || witnessGLs[i].ModuleName != witnessGLs[i+1].ModuleName
+			colLPPFirstRound = proverRunLPP.Spec.Columns.AllKeysCommittedAt(0)
+			colGLFirstRound  = proverRunGL.Spec.Columns.AllKeysCommittedAt(0)
 		)
 
 		if isFirst.IsOne() != shouldBeFirst {
@@ -175,6 +180,10 @@ func TestDistributedWizard(t *testing.T) {
 
 		if !shouldBeFirst && hornerN0Hash != prevHornerN1Hash {
 			t.Error("horner-n0-hash mismatch: " + errMsg)
+		}
+
+		if reflect.DeepEqual(colGLFirstRound, colLPPFirstRound) {
+			t.Errorf("Module=%v Segment=%v: the LPP columns and the GL columns are not the same at round 0.colGLFirstRound=%v, colLPPFirstRound=%v", moduleName, i, colGLFirstRound, colLPPFirstRound)
 		}
 
 		prevGlobalSent = globalSent
