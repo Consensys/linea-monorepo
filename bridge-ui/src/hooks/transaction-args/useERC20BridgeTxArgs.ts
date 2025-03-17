@@ -4,7 +4,7 @@ import { encodeFunctionData } from "viem";
 import { useFormStore, useChainStore } from "@/stores";
 import TokenBridge from "@/abis/TokenBridge.json";
 import { isEth } from "@/utils";
-import { BridgeProvider } from "@/types";
+import { BridgeProvider, ChainLayer } from "@/types";
 
 type UseERC20BridgeTxArgsProps = {
   allowance?: bigint;
@@ -18,6 +18,7 @@ const useERC20BridgeTxArgs = ({ allowance }: UseERC20BridgeTxArgsProps) => {
   const recipient = useFormStore((state) => state.recipient);
   const minimumFees = useFormStore((state) => state.minimumFees);
   const bridgingFees = useFormStore((state) => state.bridgingFees);
+  const claim = useFormStore((state) => state.claim);
 
   return useMemo(() => {
     if (
@@ -28,8 +29,9 @@ const useERC20BridgeTxArgs = ({ allowance }: UseERC20BridgeTxArgsProps) => {
       allowance === undefined ||
       allowance < amount ||
       !recipient ||
-      !minimumFees ||
-      !bridgingFees ||
+      (minimumFees === 0n && fromChain.layer === ChainLayer.L2) ||
+      ((bridgingFees === null || bridgingFees === undefined) && fromChain.layer === ChainLayer.L1) ||
+      (bridgingFees === 0n && claim === "auto") ||
       isEth(token) ||
       token.bridgeProvider !== BridgeProvider.NATIVE
     ) {
@@ -49,7 +51,7 @@ const useERC20BridgeTxArgs = ({ allowance }: UseERC20BridgeTxArgsProps) => {
         chainId: fromChain.id,
       },
     };
-  }, [address, allowance, amount, bridgingFees, fromChain, minimumFees, recipient, token]);
+  }, [address, allowance, amount, bridgingFees, claim, fromChain, minimumFees, recipient, token]);
 };
 
 export default useERC20BridgeTxArgs;

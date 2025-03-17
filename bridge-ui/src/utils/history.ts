@@ -266,7 +266,11 @@ async function fetchERC20BridgeEvents(
           ? await lineaSDK.getL1ClaimingService().getMessageProof(message[0].messageHash)
           : undefined;
 
-      const token = tokens.find((token) => token.L1 === log.args.token || token.L2 === log.args.token);
+      const token = tokens.find(
+        (token) =>
+          token.L1.toLowerCase() === log.args.token.toLowerCase() ||
+          token.L2.toLowerCase() === log.args.token.toLowerCase(),
+      );
 
       if (!token) {
         return;

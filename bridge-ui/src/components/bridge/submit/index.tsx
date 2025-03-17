@@ -39,12 +39,12 @@ export function Submit({ setIsDestinationAddressOpen }: Props) {
       return "Insufficient funds";
     }
 
-    if (transactionType === "approve") {
-      return "Approve Token";
-    }
-
     if (isPending || isConfirming) {
       return "Waiting for confirmation...";
+    }
+
+    if (transactionType === "approve") {
+      return "Approve Token";
     }
 
     if (isSwitchingChain) {
