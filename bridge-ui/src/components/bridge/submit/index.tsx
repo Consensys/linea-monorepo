@@ -6,6 +6,7 @@ import styles from "./submit.module.scss";
 import { useFormStore, useChainStore } from "@/stores";
 import { useBridge } from "@/hooks";
 import TransactionConfirmed from "../modal/transaction-confirmed";
+import ConfirmDestinationAddress from "../modal/confirm-destination-address";
 
 type Props = {
   setIsDestinationAddressOpen: MouseEventHandler<HTMLButtonElement>;
@@ -13,13 +14,16 @@ type Props = {
 
 export function Submit({ setIsDestinationAddressOpen }: Props) {
   const [showTransactionConfirmedModal, setShowTransactionConfirmedModal] = useState<boolean>(false);
+  const [showConfirmDestinationAddressModal, setShowConfirmDestinationAddressModal] = useState<boolean>(false);
 
   const fromChain = useChainStore.useFromChain();
   const amount = useFormStore((state) => state.amount);
   const balance = useFormStore((state) => state.balance);
+  const recipient = useFormStore((state) => state.recipient);
+
   const resetForm = useFormStore((state) => state.resetForm);
 
-  const { bridge, transactionType, isPending, isConfirming, isConfirmed } = useBridge();
+  const { bridge, transactionType, isPending, isConfirming, isConfirmed, refetchAllowance } = useBridge();
 
   const chainId = useChainId();
   const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
@@ -43,12 +47,12 @@ export function Submit({ setIsDestinationAddressOpen }: Props) {
       return "Waiting for confirmation...";
     }
 
-    if (transactionType === "approve") {
-      return "Approve Token";
-    }
-
     if (isSwitchingChain) {
       return "Switching chain...";
+    }
+
+    if (transactionType === "approve") {
+      return "Approve Token";
     }
 
     if (fromChain.id !== chainId) {
@@ -82,7 +86,11 @@ export function Submit({ setIsDestinationAddressOpen }: Props) {
             if (fromChain.id !== chainId) {
               switchChain({ chainId: fromChain.id });
             } else {
-              bridge?.();
+              if (transactionType !== "approve") {
+                setShowConfirmDestinationAddressModal(true);
+              } else {
+                bridge?.();
+              }
             }
           }}
           disabled={disabled}
@@ -94,10 +102,26 @@ export function Submit({ setIsDestinationAddressOpen }: Props) {
           <WalletIcon />
         </button>
       </div>
+      <ConfirmDestinationAddress
+        isModalOpen={showConfirmDestinationAddressModal}
+        recipient={recipient}
+        onCloseModal={() => {
+          setShowConfirmDestinationAddressModal(false);
+        }}
+        onConfirm={() => {
+          bridge?.();
+          setShowConfirmDestinationAddressModal(false);
+        }}
+      />
       <TransactionConfirmed
         isModalOpen={showTransactionConfirmedModal}
+        transactionType={transactionType}
         onCloseModal={() => {
-          resetForm();
+          if (transactionType !== "approve") {
+            resetForm();
+          } else {
+            refetchAllowance?.();
+          }
           setShowTransactionConfirmedModal(false);
         }}
       />
