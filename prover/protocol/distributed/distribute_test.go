@@ -182,7 +182,7 @@ func TestDistributedWizard(t *testing.T) {
 			t.Error("horner-n0-hash mismatch: " + errMsg)
 		}
 
-		if reflect.DeepEqual(colGLFirstRound, colLPPFirstRound) {
+		if !reflect.DeepEqual(colGLFirstRound, colLPPFirstRound) {
 			t.Errorf("Module=%v Segment=%v: the LPP columns and the GL columns are not the same at round 0.colGLFirstRound=%v, colLPPFirstRound=%v", moduleName, i, colGLFirstRound, colLPPFirstRound)
 		}
 
