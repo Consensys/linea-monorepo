@@ -1,24 +1,16 @@
 import { useMemo } from "react";
 import { useAccount } from "wagmi";
-import { Address, encodeFunctionData, zeroAddress } from "viem";
-import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
+import { encodeFunctionData, zeroAddress } from "viem";
 import MessageService from "@/abis/MessageService.json";
 import { Chain, ChainLayer, TransactionStatus } from "@/types";
+import { CCTPV2BridgeMessage, NativeBridgeMessage } from "@/utils/history";
+import { isNativeBridgeMessage } from "@/utils/message";
 
 type UseClaimTxArgsProps = {
   status?: TransactionStatus;
   fromChain?: Chain;
   toChain?: Chain;
-  args: {
-    from?: Address;
-    to?: Address;
-    fee?: bigint;
-    value?: bigint;
-    nonce?: bigint;
-    calldata?: string;
-    messageHash?: string;
-    proof?: Proof;
-  };
+  args?: NativeBridgeMessage | CCTPV2BridgeMessage;
 };
 
 const useClaimTxArgs = ({ status, fromChain, toChain, args }: UseClaimTxArgsProps) => {
@@ -31,6 +23,8 @@ const useClaimTxArgs = ({ status, fromChain, toChain, args }: UseClaimTxArgsProp
       status !== TransactionStatus.READY_TO_CLAIM ||
       !fromChain ||
       !toChain ||
+      !args ||
+      !isNativeBridgeMessage(args) ||
       !args.from ||
       !args.to ||
       args.fee === undefined ||
@@ -78,20 +72,7 @@ const useClaimTxArgs = ({ status, fromChain, toChain, args }: UseClaimTxArgsProp
         chainId: toChain.id,
       },
     };
-  }, [
-    address,
-    args.calldata,
-    args.fee,
-    args.from,
-    args.messageHash,
-    args.nonce,
-    args.proof,
-    args.to,
-    args.value,
-    fromChain,
-    status,
-    toChain,
-  ]);
+  }, [address, args, fromChain, status, toChain]);
 };
 
 export default useClaimTxArgs;

@@ -29,7 +29,7 @@ type TransactionHistoryParams = {
   tokens: Token[];
 };
 
-type NativeBridgeMessage = {
+export type NativeBridgeMessage = {
   from: Address;
   to: Address;
   fee: bigint;
@@ -42,7 +42,7 @@ type NativeBridgeMessage = {
 };
 
 // Params expected for `receiveMessage` as per https://developers.circle.com/stablecoins/transfer-usdc-on-testnet-from-ethereum-to-avalanche
-type CCTPV2BridgeMessage = {
+export type CCTPV2BridgeMessage = {
   message: string;
   attestation: string;
   amountSent: bigint;
