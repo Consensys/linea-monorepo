@@ -11,16 +11,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
@@ -224,6 +217,9 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 		// Minimal witness size to compile
 		minCompilationSize = 1 << 10
+
+		compiledGLs  = make([]RecursedSegmentCompilation, len(distWizard.GLs))
+		compiledLPPs = make([]RecursedSegmentCompilation, len(distWizard.LPPs))
 	)
 
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
@@ -231,13 +227,13 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 		if cells := logdata.CountCells(distWizard.GLs[i].Wiop); cells.TotalCells() > minCompilationSize {
 			fmt.Printf("[%v] Starting to compile module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
-			CompileSegmentFully(distWizard.GLs[i].Wiop)
+			compiledGLs[i] = CompileSegmentGL(distWizard.GLs[i])
 			fmt.Printf("[%v] Done compiling module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
 		}
 
 		if cells := logdata.CountCells(distWizard.LPPs[i].Wiop); cells.TotalCells() > minCompilationSize {
 			fmt.Printf("[%v] Starting to compile module LPP for %v\n", time.Now(), distWizard.ModuleNames[i])
-			CompileSegmentFully(distWizard.LPPs[i].Wiop)
+			compiledLPPs[i] = CompileSegmentLPP(distWizard.LPPs[i])
 			fmt.Printf("[%v] Done compiling module LPP for %v\n", time.Now(), distWizard.ModuleNames[i])
 		}
 	}
@@ -299,8 +295,8 @@ func TestBenchDistributedWizard(t *testing.T) {
 		}
 
 		var (
-			moduleGL  *ModuleGL
-			moduleLPP *ModuleLPP
+			moduleGL  *RecursedSegmentCompilation
+			moduleLPP *RecursedSegmentCompilation
 		)
 
 		for k := range distWizard.ModuleNames {
@@ -309,8 +305,8 @@ func TestBenchDistributedWizard(t *testing.T) {
 				continue
 			}
 
-			moduleGL = distWizard.GLs[k]
-			moduleLPP = distWizard.LPPs[k]
+			moduleGL = &compiledGLs[k]
+			moduleLPP = &compiledLPPs[k]
 		}
 
 		if moduleGL == nil {
@@ -319,75 +315,16 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 		t.Logf("RUNNING THE GL PROVER: %v", time.Now())
 
-		var (
-			proofGL  = wizard.Prove(moduleGL.Wiop, moduleGL.GetMainProverStep(witnessGLs[i]))
-			verGLErr = wizard.Verify(moduleGL.Wiop, proofGL)
-		)
+		_ = moduleGL.ProveSegment(witnessGL)
 
 		t.Logf("RUNNING THE GL PROVER - DONE: %v", time.Now())
 
-		if verGLErr != nil {
-			t.Errorf("verifier failed for segment %v, reason=%v", i, verGLErr)
-		}
-
 		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
 
-		var (
-			proofLPP  = wizard.Prove(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPPs[i]))
-			verLPPErr = wizard.Verify(moduleLPP.Wiop, proofLPP)
-		)
+		_ = moduleLPP.ProveSegment(witnessLPP)
 
 		t.Logf("RUNNING THE LPP PROVER - DONE: %v", time.Now())
-
-		if verLPPErr != nil {
-			t.Errorf("verifier failed for segment %v, reason=%v", i, verLPPErr)
-		}
 	}
-}
-
-// GetSegmentCompilationSuite returns the compilation suite for the segments
-func CompileSegmentFully(comp *wizard.CompiledIOP) {
-
-	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
-
-	wizard.ContinueCompilation(comp,
-		logdata.Log("at-the-beginning-of-the-segment"),
-		mimc.CompileMiMC,
-		plonkinwizard.Compile,
-		compiler.Arcane(1<<10, 1<<17, false),
-		vortex.Compile(
-			2,
-			vortex.ForceNumOpenedColumns(256),
-			vortex.WithSISParams(&sisInstance),
-		),
-
-		selfrecursion.SelfRecurse,
-
-		logdata.Log("post-selfrecursion"),
-		cleanup.CleanUp,
-		mimc.CompileMiMC,
-		compiler.Arcane(1<<10, 1<<15, false),
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
-		),
-
-		selfrecursion.SelfRecurse,
-
-		logdata.Log("post-selfrecursion-final"),
-		cleanup.CleanUp,
-		mimc.CompileMiMC,
-		compiler.Arcane(1<<10, 1<<13, false),
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
-		),
-
-		logdata.Log("final-post-vortex"),
-	)
-
 }
 
 // GetZkevmWitness returns a [zkevm.Witness]

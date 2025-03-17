@@ -150,6 +150,14 @@ func DefineRecursionOf(name string, comp, inputComp *wizard.CompiledIOP, without
 	return rec
 }
 
+// GetMainProverStep returns a prover step assigning the provided witness.
+// It can be used for circuits where the only thing happening is the recursion.
+func (r *Recursion) GetMainProverStep(wit []Witness) wizard.ProverStep {
+	return func(run *wizard.ProverRuntime) {
+		r.Assign(run, wit)
+	}
+}
+
 // Assign assigns the items generated for the recursion of an item. As a first
 // steps, the function assigns the Plonk-in-Wizard context. Then, it assigns
 // the "merkle-roots" columns of the PCS.
@@ -216,6 +224,14 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness) {
 	}
 
 	r.PlonkCtx.GetPlonkProverAction().Run(run, fullWitnesses)
+}
+
+// LastVortexCommitRound returns the round at which the last commitment
+// is made.
+func LastVortexCommitRound(comp *wizard.CompiledIOP) int {
+	vortexPCS := comp.PcsCtxs.(*vortex.Ctx)
+	query := vortexPCS.Query
+	return comp.QueriesParams.Round(query.QueryID)
 }
 
 // createNewPcsCtx creates a mirror for a vortex compilation context in to
