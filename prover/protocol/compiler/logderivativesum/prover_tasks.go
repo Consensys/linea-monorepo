@@ -138,6 +138,10 @@ type MAssignmentTask struct {
 
 	// SFilter stores the filters that are applied for each table S.
 	SFilter []ifaces.Column
+
+	// Segmenter is the segmenter that will be used to omit some of the values
+	// from the "S" column.
+	Segmenter ColumnSegmenter
 }
 
 // Run executes the task represented by the receiver of the method. Namely, it
@@ -217,7 +221,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		m = make([][]field.Element, len(a.T))
 
 		// mapm collects the entries in the inclusion set to their positions
-		// in tCollapsed. If T contains duplicates, the last position is the
+		// in tCollapsed. If T contains duplicates, the first position is the
 		// one that is kept in mapM.
 		//
 		// It is used to let us know where an entry of S appears in T. The stored
@@ -234,7 +238,10 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 	for frag := range a.T {
 		m[frag] = make([]field.Element, tCollapsed[frag].Len())
 		for k := 0; k < tCollapsed[frag].Len(); k++ {
-			mapM[tCollapsed[frag].Get(k)] = [2]int{frag, k}
+			v := tCollapsed[frag].Get(k)
+			if _, ok := mapM[v]; !ok {
+				mapM[v] = [2]int{frag, k}
+			}
 		}
 	}
 
@@ -243,15 +250,21 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 	for i := range sCollapsed {
 
 		var (
-			hasFilter = a.SFilter[i] != nil
-			filter    []field.Element
+			start, stop = 0, sCollapsed[i].Len()
+			hasFilter   = a.SFilter[i] != nil
+			filter      []field.Element
 		)
+
+		if a.Segmenter != nil {
+			sCol := column.RootsOf(a.S[i], true)[0].(column.Natural)
+			start, stop = a.Segmenter.SegmentBoundaryOf(run, sCol)
+		}
 
 		if hasFilter {
 			filter = a.SFilter[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 		}
 
-		for k := 0; k < sCollapsed[i].Len(); k++ {
+		for k := start; k < stop; k++ {
 
 			if hasFilter && filter[k].IsZero() {
 				continue

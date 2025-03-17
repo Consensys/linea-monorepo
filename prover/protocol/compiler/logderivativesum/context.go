@@ -36,6 +36,10 @@ type mainLookupCtx struct {
 	// round is obtained by taking the max of the declaration Rounds of the
 	// Inclusion queries using the corresponding lookup table.
 	Rounds map[string]int
+
+	// Segmenter is an optional parameter that allows detecting values to omit
+	// based on the padding of the "S" columns.
+	Segmenter ColumnSegmenter
 }
 
 // SingleTableCtx stores the compilation context for a single lookup query

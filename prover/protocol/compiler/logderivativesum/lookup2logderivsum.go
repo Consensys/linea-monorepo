@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -18,15 +19,48 @@ import (
 // compiler as a shorthand to make the code more eye-parseable.
 type table = []ifaces.Column
 
+// ColumnSegmenter is an interface reflecting the behavior of the
+// ["github.com/consensys/linea-monorepo/prover/protocol/distributed.ModuleDiscoverer"]
+// interface. It is used by the M-assignment prover action so that we can omit
+// some of the values that will be cut-off by the wizard distribution scheme.
+//
+// Importantly, it has to be implemented by a pointer type. This is important
+// because the module discovery analysis is done **after** the [LookupToLogDerivativeSum]
+// compilation phase. The modus operandi is to provide a pointer to the discoverer
+// to the compiler and run the analysis afterward. That way, the prover and verifier
+// steps can access the informations.
+type ColumnSegmenter interface {
+	SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int)
+}
+
 // LookupIntoLogDerivativeSum compiles  all the inclusion queries to a single
 // LogDerivativeSum query without compiling it immediately. This compiler
 // is used by the distributed wizard protocol feature as it allows to
 // prepare the lookup queries to be split across several wizard-IOP
 // in such a way that we can recombine them later.
 func LookupIntoLogDerivativeSum(comp *wizard.CompiledIOP) {
+	compileLookupIntoLogDerivativeSum(comp, nil)
+}
+
+// LookupIntoLogDerivativeSumWithSegmenter compiles all the inclusion queries to a single
+// LogDerivativeSum query passing a [ColumnSegmenter] that will be used to
+// omit some the values from the queries value during the M-assignment prover
+// action based on the information of the segmenter. The compiler analyses the
+// size and the density of each "S" column to determines which values ought to be
+// ignored.
+func LookupIntoLogDerivativeSumWithSegmenter(seg ColumnSegmenter) func(*wizard.CompiledIOP) {
+	return func(comp *wizard.CompiledIOP) {
+		compileLookupIntoLogDerivativeSum(comp, seg)
+	}
+}
+
+// compileLookupIntoLogDerivativeSum is the main entry point of this compiler.
+// It is used both by the [LookupToLogDerivativeSum] and the [LookupToLogDerivativeSumWithSegmenter]
+// compilers implementation.
+func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegmenter) {
 
 	var (
-		mainLookupCtx = CaptureLookupTables(comp)
+		mainLookupCtx = captureLookupTables(comp, seg)
 		lastRound     = 0
 		// zCatalog stores a mapping (round, size) into query.LogDerivativeSumInput and helps finding
 		// which Z context should be used to handle a part of a given inclusion
@@ -52,7 +86,7 @@ func LookupIntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 			round           = mainLookupCtx.Rounds[lookupTableName]
 			includedFilters = mainLookupCtx.IncludedFilters[lookupTableName]
 			// collapse multiColumns to single Columns and commit to M.
-			tableCtx = CompileLookupTable(comp, round, lookupTable, checkTable, includedFilters)
+			tableCtx = compileLookupTable(comp, round, lookupTable, checkTable, includedFilters)
 		)
 
 		lastRound = max(lastRound, round)
@@ -62,10 +96,11 @@ func LookupIntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 
 		// assign the multiplicity column
 		proverTasks[round].pushMAssignment(MAssignmentTask{
-			M:       tableCtx.M,
-			S:       checkTable,
-			T:       lookupTable,
-			SFilter: includedFilters,
+			M:         tableCtx.M,
+			S:         checkTable,
+			T:         lookupTable,
+			SFilter:   includedFilters,
+			Segmenter: seg,
 		})
 	}
 
@@ -79,15 +114,18 @@ func LookupIntoLogDerivativeSum(comp *wizard.CompiledIOP) {
 	qName := ifaces.QueryIDf("GlobalLogDerivativeSum_%v", comp.SelfRecursionCount)
 	q := comp.InsertLogDerivativeSum(lastRound+1, qName, zCatalog)
 
-	// assign parameters of LogDerivativeSum, it is just to prevent the panic attack in the prover
 	comp.SubProvers.AppendToInner(lastRound+1, func(run *wizard.ProverRuntime) {
 		run.AssignLogDerivSum(qName, field.Zero())
 	})
 
-	// the verifier checks that the log-derivative sum result is zeroo
-	comp.RegisterVerifierAction(lastRound+1, &CheckLogDerivativeSumMustBeZero{
-		Q: q,
-	})
+	if seg != nil {
+		// This verifier action checks that the log-derivative sum result is zero.
+		// We cancel it in case the segmenter is used because it invalidates the
+		// result.
+		comp.RegisterVerifierAction(lastRound+1, &CheckLogDerivativeSumMustBeZero{
+			Q: q,
+		})
+	}
 
 }
 
@@ -166,7 +204,7 @@ func (c *CheckLogDerivativeSumMustBeZero) IsSkipped() bool {
 	return c.skipped
 }
 
-// CaptureLookupTables inspects comp and look for Inclusion queries that are not
+// captureLookupTables inspects comp and look for Inclusion queries that are not
 // marked as ignored yet. All the queries matched queries are grouped by look-up
 // table (e.g. all the queries that use the same lookup table). All the matched
 // queries are marked as ignored. The function returns the thereby-initialized
@@ -178,13 +216,14 @@ func (c *CheckLogDerivativeSumMustBeZero) IsSkipped() bool {
 // The function also implictly reduces the conditionals over the Including table
 // be appending a "one" column on the included side and the filter on the
 // including side.
-func CaptureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
+func captureLookupTables(comp *wizard.CompiledIOP, seg ColumnSegmenter) mainLookupCtx {
 
 	ctx := mainLookupCtx{
 		LookupTables:    [][]table{},
 		CheckedTables:   map[string][]table{},
 		IncludedFilters: map[string][]ifaces.Column{},
 		Rounds:          map[string]int{},
+		Segmenter:       seg,
 	}
 
 	// Collect all the lookup queries into "lookups"
@@ -260,7 +299,7 @@ func CaptureLookupTables(comp *wizard.CompiledIOP) mainLookupCtx {
 //   - (5) The verier makes a `Global` query : $\left((\Sigma_T)[i] - (\Sigma_T)[i-1]\right)(T_i + \gamma) = M_i$
 
 // here we are looking up set of columns S in a single column T
-func CompileLookupTable(
+func compileLookupTable(
 	comp *wizard.CompiledIOP,
 	round int,
 	lookupTable []table,

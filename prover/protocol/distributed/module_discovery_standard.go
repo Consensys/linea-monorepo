@@ -6,6 +6,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
@@ -235,6 +236,84 @@ func (disc *StandardModuleDiscoverer) ModuleOf(col column.Natural) ModuleName {
 // NewSizeOf returns the size (length) of a column.
 func (disc *StandardModuleDiscoverer) NewSizeOf(col column.Natural) int {
 	return disc.columnsToSize[col]
+}
+
+// SegmentBoundaryOfColumn returns the starting point and the ending point of the
+// segmentation of column. The implementation works by identifying the corresponding
+// [StandardModule] and then the corresponding inner [QueryBasedModule]. The function
+// will then scans the assignment of the columns in the query based module and examine
+// their padding to return the boundaries of the segmented area.
+//
+// To clarify, the segmentation of the column corresponds to the part that will be
+// kept by the segmentation process of the column (e.g. the area covered by the
+// reunion of all the segments). The rest of the assignment corresponds to padding.
+func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int) {
+
+	var (
+		rootCol          = column.RootParents(col).(column.Natural)
+		stdModuleName    = disc.columnsToModule[col]
+		stdModule        *StandardModule
+		queryBasedModule *QueryBasedModule
+		segmentSize      int
+		resOrientation   int
+		resMaxDensity    int
+		size             int
+	)
+
+	for i := range disc.modules {
+		if disc.modules[i].moduleName == stdModuleName {
+			stdModule = disc.modules[i]
+			break
+		}
+	}
+
+	for i := range stdModule.subModules {
+		if _, ok := stdModule.subModules[i].ds.parent[rootCol]; ok {
+			segmentSize = stdModule.newSizes[i]
+			queryBasedModule = stdModule.subModules[i]
+			break
+		}
+	}
+
+	for col := range queryBasedModule.ds.parent {
+
+		var (
+			val               = col.GetColAssignment(run)
+			density           = smartvectors.Density(val)
+			orientation, oErr = smartvectors.PaddingOrientationOf(val)
+		)
+
+		size = val.Len()
+
+		if oErr != nil {
+			continue
+		}
+
+		if density == size {
+			continue
+		}
+
+		if resOrientation != 0 {
+			resOrientation = orientation
+		}
+
+		if orientation != resOrientation {
+			panic("conflicting orientation")
+		}
+
+		resMaxDensity = max(resMaxDensity, density)
+	}
+
+	var (
+		totalSegmentedArea = segmentSize * utils.DivCeil(resMaxDensity, segmentSize)
+		start, stop        = 0, totalSegmentedArea
+	)
+
+	if resOrientation == -1 {
+		start, stop = size-stop, size-start
+	}
+
+	return start, stop
 }
 
 // Analyze processes columns and assigns them to modules.
