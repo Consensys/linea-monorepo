@@ -41,3 +41,16 @@ export type DepositForBurnEvent = Log & {
     hookData: `0x${string}`;
   };
 };
+
+export type CCTPMessageReceivedEvent = Log & {
+  blockNumber: bigint;
+  transactionHash: Address;
+  args: {
+    caller: Address;
+    sourceDomain: number;
+    nonce: `0x${string}`;
+    sender: `0x${string}`;
+    finalityThresholdExecuted: number;
+    messageBody: `0x${string}`;
+  };
+};

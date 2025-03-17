@@ -2,15 +2,23 @@ import { Address } from "viem";
 import { compareAsc, fromUnixTime, subDays } from "date-fns";
 import { getPublicClient } from "@wagmi/core";
 import { LineaSDK, OnChainMessageStatus } from "@consensys/linea-sdk";
-import { config } from "@/lib/wagmi";
+import { config as wagmiConfig } from "@/lib/wagmi";
+import { config } from "@/config";
 import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
 import { defaultTokensConfig } from "@/stores";
 import { LineaSDKContracts } from "@/hooks";
 import { Chain, ChainLayer, Token, TransactionStatus, BridgingInitiatedV2Event, MessageSentEvent } from "@/types";
-import { eventETH, eventERC20V2, eventUSDC } from "@/utils";
-import { CCTP_TOKEN_MESSENGER } from "./cctp";
+import {
+  CCTP_TOKEN_MESSENGER,
+  eventETH,
+  eventERC20V2,
+  eventUSDC,
+  getCCTPClaimTx,
+  isCCTPNonceUsed,
+  getCCTPTransactionStatus,
+} from "@/utils";
 import { DepositForBurnEvent } from "@/types/events";
-// import { fetchCctpAttestation } from "@/services/cctp";
+import { fetchCctpAttestation } from "@/services/cctp";
 
 type TransactionHistoryParams = {
   lineaSDK: LineaSDK;
@@ -21,6 +29,23 @@ type TransactionHistoryParams = {
   tokens: Token[];
 };
 
+type NativeBridgeMessage = {
+  from: Address;
+  to: Address;
+  fee: bigint;
+  value: bigint;
+  nonce: bigint;
+  calldata: string;
+  messageHash: string;
+  proof?: Proof;
+};
+
+// Params expected for `receiveMessage` as per https://developers.circle.com/stablecoins/transfer-usdc-on-testnet-from-ethereum-to-avalanche
+type CCTPV2BridgeMessage = {
+  message: string;
+  attestation: string;
+  value: bigint;
+};
 export interface BridgeTransaction {
   type: "ETH" | "ERC20";
   status: TransactionStatus;
@@ -28,19 +53,9 @@ export interface BridgeTransaction {
   fromChain: Chain;
   toChain: Chain;
   token: Token;
-  message: {
-    from: Address;
-    to: Address;
-    fee: bigint;
-    value: bigint;
-    nonce: bigint;
-    calldata: string;
-    messageHash: string;
-    proof?: Proof;
-  };
+  message: NativeBridgeMessage | CCTPV2BridgeMessage;
   bridgingTx: string;
   claimingTx?: string;
-  messageHash: string;
 }
 
 export async function fetchTransactionsHistory({
@@ -69,7 +84,8 @@ async function fetchBridgeEvents(
   const [ethEvents, erc20Events, cctpEvents] = await Promise.all([
     fetchETHBridgeEvents(lineaSDK, lineaSDKContracts, address, fromChain, toChain, tokens),
     fetchERC20BridgeEvents(lineaSDK, lineaSDKContracts, address, fromChain, toChain, tokens),
-    fetchCCTPBridgeEvents(address, fromChain),
+    // Feature toggle for CCTP, will filter out USDC transactions if isCCTPEnabled == false
+    config.isCCTPEnabled ? fetchCCTPBridgeEvents(address, fromChain, toChain, tokens) : [],
   ]);
 
   return [...ethEvents, ...erc20Events, ...cctpEvents];
@@ -85,7 +101,7 @@ async function fetchETHBridgeEvents(
 ): Promise<BridgeTransaction[]> {
   const transactionsMap = new Map<string, BridgeTransaction>();
 
-  const client = getPublicClient(config, {
+  const client = getPublicClient(wagmiConfig, {
     chainId: fromChain.id,
   });
 
@@ -163,7 +179,6 @@ async function fetchETHBridgeEvents(
           messageHash: log.args._messageHash,
           proof: messageProof,
         },
-        messageHash,
       });
     }),
   );
@@ -181,7 +196,7 @@ async function fetchERC20BridgeEvents(
 ): Promise<BridgeTransaction[]> {
   const transactionsMap = new Map<string, BridgeTransaction>();
 
-  const client = getPublicClient(config, {
+  const client = getPublicClient(wagmiConfig, {
     chainId: fromChain.id,
   });
 
@@ -276,7 +291,6 @@ async function fetchERC20BridgeEvents(
           messageHash: message[0].messageHash,
           proof: messageProof,
         },
-        messageHash: message[0].messageHash,
       });
     }),
   );
@@ -284,14 +298,21 @@ async function fetchERC20BridgeEvents(
   return Array.from(transactionsMap.values());
 }
 
-async function fetchCCTPBridgeEvents(address: Address, fromChain: Chain): Promise<BridgeTransaction[]> {
+async function fetchCCTPBridgeEvents(
+  address: Address,
+  fromChain: Chain,
+  toChain: Chain,
+  tokens: Token[],
+): Promise<BridgeTransaction[]> {
   const transactionsMap = new Map<string, BridgeTransaction>();
-
-  const client = getPublicClient(config, {
+  const fromChainClient = getPublicClient(wagmiConfig, {
     chainId: fromChain.id,
   });
+  const toChainClient = getPublicClient(wagmiConfig, {
+    chainId: toChain.id,
+  });
 
-  const usdcLogs = <DepositForBurnEvent[]>await client.getLogs({
+  const usdcLogs = <DepositForBurnEvent[]>await fromChainClient.getLogs({
     event: eventUSDC,
     fromBlock: "earliest",
     toBlock: "latest",
@@ -301,19 +322,57 @@ async function fetchCCTPBridgeEvents(address: Address, fromChain: Chain): Promis
     },
   });
 
+  // TODO - Consider deduplication
+
   const currentTimestamp = new Date();
 
   await Promise.all(
     usdcLogs.map(async (log) => {
-      // const transactionHash = log.transactionHash;
+      const transactionHash = log.transactionHash;
 
-      const block = await client.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
+      const block = await fromChainClient.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
 
       if (compareAsc(fromUnixTime(Number(block.timestamp.toString())), subDays(currentTimestamp, 90)) === -1) {
         return;
       }
 
-      // const attestation = await fetchCctpAttestation(transactionHash, fromChain.cctpDomain);
+      const token = tokens.find((token) => token.symbol === "USDC" && token.type.includes("bridge-reserved"));
+      if (!token) return;
+
+      const attestationApiResp = await fetchCctpAttestation(transactionHash, fromChain.cctpDomain);
+      if (!attestationApiResp) return;
+      // console.log("attestationApiResp:", attestationApiResp, "transactionHash:", transactionHash);
+
+      const message = attestationApiResp.messages[0];
+      if (!message) return;
+
+      const nonce = message.eventNonce;
+      // console.log("messageNonce:", nonce);
+
+      const isNonceUsed = await isCCTPNonceUsed(toChainClient, nonce);
+      // console.log("isNonceUsed:", isNonceUsed);
+
+      const status = getCCTPTransactionStatus(message.status, isNonceUsed);
+      // console.log("status:", status);
+
+      const claimTx = await getCCTPClaimTx(toChainClient, message.status, isNonceUsed, nonce);
+      // console.log("claimTx:", claimTx);
+
+      transactionsMap.set(transactionHash, {
+        type: "ERC20",
+        status,
+        token,
+        fromChain,
+        toChain,
+        timestamp: block.timestamp,
+        bridgingTx: log.transactionHash,
+        claimingTx: claimTx,
+        message: {
+          attestation: message.attestation,
+          message: message.message,
+          value: BigInt(log.args.amount),
+        },
+      });
     }),
   );
 
