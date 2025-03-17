@@ -27,7 +27,7 @@ import (
 )
 
 // TestDistributeWizard attempts to run and compile the distributed protocol.
-func TestDistributeWizard(t *testing.T) {
+func TestDistributedWizard(t *testing.T) {
 
 	var (
 		rng              = rand.New(utils.NewRandSource(0))
@@ -65,15 +65,17 @@ func TestDistributeWizard(t *testing.T) {
 
 	t.Logf("loaded config: %++v", cfg)
 
+	t.Logf("Checking the initial bootstrapper - wizard")
 	var (
 		witness     = GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
 		proof       = runtimeBoot.ExtractProof()
 		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
 	)
+	t.Logf("Checking the initial bootstrapper - wizard")
 
 	if verBootErr != nil {
-		t.Fatalf("")
+		t.Fatalf("Bootstrapper failed because: %v", verBootErr)
 	}
 
 	var (
@@ -249,12 +251,16 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 	t.Logf("loaded config: %++v", cfg)
 
+	t.Logf("[%v] running the bootstrapper\n", time.Now())
+
 	var (
 		witness     = GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
 		proof       = runtimeBoot.ExtractProof()
 		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
 	)
+
+	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
 	if verBootErr != nil {
 		t.Fatalf("")
@@ -340,7 +346,6 @@ func CompileSegmentFully(comp *wizard.CompiledIOP) {
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
 		compiler.Arcane(1<<10, 1<<17, false),
-		dummy.Compile,
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -423,22 +428,22 @@ func GetZkEVM() *zkevm.ZkEvm {
 		Binreftable:                          1 << 20,
 		Shfreftable:                          4096,
 		Instdecoder:                          512,
-		PrecompileEcrecoverEffectiveCalls:    1024,
-		PrecompileSha2Blocks:                 2048,
+		PrecompileEcrecoverEffectiveCalls:    500,
+		PrecompileSha2Blocks:                 600,
 		PrecompileRipemdBlocks:               0,
-		PrecompileModexpEffectiveCalls:       256,
+		PrecompileModexpEffectiveCalls:       64,
 		PrecompileEcaddEffectiveCalls:        1 << 14,
-		PrecompileEcmulEffectiveCalls:        1024,
-		PrecompileEcpairingEffectiveCalls:    1024,
-		PrecompileEcpairingMillerLoops:       1024,
-		PrecompileEcpairingG2MembershipCalls: 1024,
+		PrecompileEcmulEffectiveCalls:        32,
+		PrecompileEcpairingEffectiveCalls:    32,
+		PrecompileEcpairingMillerLoops:       64,
+		PrecompileEcpairingG2MembershipCalls: 64,
 		PrecompileBlakeEffectiveCalls:        0,
 		PrecompileBlakeRounds:                0,
-		BlockKeccak:                          1 << 15,
+		BlockKeccak:                          1 << 13,
 		BlockL1Size:                          100_000,
 		BlockL2L1Logs:                        16,
 		BlockTransactions:                    400,
-		ShomeiMerkleProofs:                   1 << 16,
+		ShomeiMerkleProofs:                   1 << 14,
 	}
 
 	return zkevm.FullZKEVMWithSuite(&traceLimits, []func(*wizard.CompiledIOP){})
