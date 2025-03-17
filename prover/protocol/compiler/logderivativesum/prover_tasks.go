@@ -236,12 +236,14 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 	// This loops initializes mapM so that it tracks to the positions of the
 	// entries of T. It also preinitializes the values of ms
 	for frag := range a.T {
+
+		root := column.RootsOf(a.T[frag], true)[0].(column.Natural)
+		start, end := a.Segmenter.SegmentBoundaryOf(run, root)
 		m[frag] = make([]field.Element, tCollapsed[frag].Len())
-		for k := 0; k < tCollapsed[frag].Len(); k++ {
+
+		for k := start; k < end; k++ {
 			v := tCollapsed[frag].Get(k)
-			if _, ok := mapM[v]; !ok {
-				mapM[v] = [2]int{frag, k}
-			}
+			mapM[v] = [2]int{frag, k}
 		}
 	}
 
@@ -293,9 +295,10 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 				for j := range tableRow {
 					tableRow[j] = a.S[i][j].GetColAssignmentAt(run, k)
 				}
+
 				utils.Panic(
-					"entry %v of the table %v is not included in the table. tableRow=%v",
-					k, NameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow),
+					"entry %v of the table %v is not included in the table. tableRow=%v T-mapSize=%v T-name=%v\n",
+					k, NameTable([][]ifaces.Column{a.S[i]}), vector.Prettify(tableRow), len(mapM), NameTable(a.T),
 				)
 			}
 

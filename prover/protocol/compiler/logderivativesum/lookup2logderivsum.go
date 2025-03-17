@@ -115,10 +115,21 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 	q := comp.InsertLogDerivativeSum(lastRound+1, qName, zCatalog)
 
 	comp.SubProvers.AppendToInner(lastRound+1, func(run *wizard.ProverRuntime) {
-		run.AssignLogDerivSum(qName, field.Zero())
+
+		if seg == nil {
+			run.AssignLogDerivSum(qName, field.Zero())
+			return
+		}
+
+		v, err := q.Compute(run)
+		if err != nil {
+			panic(err)
+		}
+
+		run.AssignLogDerivSum(qName, v)
 	})
 
-	if seg != nil {
+	if seg == nil {
 		// This verifier action checks that the log-derivative sum result is zero.
 		// We cancel it in case the segmenter is used because it invalidates the
 		// result.

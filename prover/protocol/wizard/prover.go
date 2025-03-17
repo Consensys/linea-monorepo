@@ -290,6 +290,23 @@ func (run ProverRuntime) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
 	return res
 }
 
+// HasColumn returns whether the column is assigned. The function panics if the
+// provided column name does not exists
+func (run ProverRuntime) HasColumn(name ifaces.ColID) bool {
+
+	// global prover's lock before accessing the witnesses
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	/*
+		Make sure the column is registered. If the name is the one specified
+		does not correcpond to a natural column, this will panic. And this is
+		expected behaviour.
+	*/
+	run.Spec.Columns.MustHaveName(name)
+	return run.Columns.Exists(name)
+}
+
 // CopyColumnInto implements `column.GetWitness`. Copies the witness into a slice
 // Deprecated: this is deadcode
 func (run ProverRuntime) CopyColumnInto(name ifaces.ColID, buff *ifaces.ColAssignment) {

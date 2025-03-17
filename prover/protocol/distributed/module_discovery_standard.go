@@ -490,6 +490,8 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		for col := range module.ds.parent {
 			disc.columnsToModule[col] = module.moduleName
 		}
+
+		module.mustHaveConsistentLength()
 	}
 }
 
@@ -613,6 +615,10 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 // This can be used to determine the number of segment of the module.
 func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmentSize int) (int, int) {
 
+	if mod.nbSegmentCache == nil {
+		mod.nbSegmentCache = map[unsafe.Pointer][2]int{}
+	}
+
 	if res, ok := mod.nbSegmentCache[unsafe.Pointer(run)]; ok {
 		return res[0], res[1]
 	}
@@ -625,13 +631,20 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 
 	for col := range mod.ds.parent {
 
+		size = col.Size()
+
+		// As the function is meant to be called **during** the bootstrapping
+		// compilation, we cannot expect all columns to be available at this
+		// point. This is for instance the case with the lookup "M" columns.
+		if !run.HasColumn(col.ID) {
+			continue
+		}
+
 		var (
 			val               = col.GetColAssignment(run)
 			density           = smartvectors.Density(val)
 			orientation, oErr = smartvectors.PaddingOrientationOf(val)
 		)
-
-		size = val.Len()
 
 		if oErr != nil {
 			continue
@@ -641,12 +654,12 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 			continue
 		}
 
-		if resOrientation != 0 {
+		if resOrientation == 0 {
 			resOrientation = orientation
 		}
 
-		if orientation != resOrientation {
-			panic("conflicting orientation")
+		if orientation != 0 && orientation != resOrientation {
+			utils.Panic("conflicting orientation; orientation=%v main-orientation=%v failing-column=%v", orientation, resOrientation, col.ID)
 		}
 
 		resMaxDensity = max(resMaxDensity, density)
@@ -659,6 +672,12 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 
 	if resOrientation == -1 {
 		start, stop = size-stop, size-start
+	}
+
+	// Case where all the columns of the module are Regular. In this case, we return
+	// the whole area.
+	if resOrientation == 0 {
+		return 0, size
 	}
 
 	mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
@@ -861,4 +880,21 @@ func rootsOfColumns(cols []ifaces.Column) []column.Natural {
 		nats[i] = roots[i].(column.Natural)
 	}
 	return nats
+}
+
+// audit checks that all the columns taking part in the [QueryBasedModule] have
+// the same length. It panics
+func (m *QueryBasedModule) mustHaveConsistentLength() {
+
+	size := -1
+
+	for col := range m.ds.parent {
+		if size == -1 {
+			size = col.Size()
+		}
+
+		if size != col.Size() {
+			utils.Panic("col=%v does not have a consistent size %v != %v", col.ID, size, col.Size())
+		}
+	}
 }
