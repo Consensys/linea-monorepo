@@ -59,7 +59,8 @@ public class LineCountsEndpointServicePlugin extends AbstractLineaPrivateOptions
         RequestLimiterDispatcher.getLimiter(
             RequestLimiterDispatcher.SINGLE_INSTANCE_REQUEST_LIMITER_KEY);
 
-    final GenerateLineCountsV2 method = new GenerateLineCountsV2(besuContext, reqLimiter);
+    final GenerateLineCountsV2 method =
+        new GenerateLineCountsV2(reqLimiter, besuContext, l1L2BridgeSharedConfiguration());
     createAndRegister(method, rpcEndpointService);
   }
 
