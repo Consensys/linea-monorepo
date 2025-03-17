@@ -151,7 +151,6 @@ class L1DependentApp(
     rpcUrl = configs.l1.rpcEndpoint.toString(),
     log = LogManager.getLogger("clients.l1.eth-api"),
     pollingInterval = 1.seconds
-
   )
   private val l1Web3jService = Web3jBlobExtended(HttpService(configs.l1.ethFeeHistoryEndpoint.toString()))
   private val l2ZkTracesWeb3jClient: Web3j = createWeb3jHttpClient(
