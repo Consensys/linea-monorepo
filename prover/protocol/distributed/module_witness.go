@@ -156,26 +156,12 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer,
 	col ifaces.Column, index, totalNbSegment int) smartvectors.SmartVector {
 
 	var (
-		newSize                 = NewSizeOfColumn(disc, col)
-		assignment              = col.GetColAssignment(runtime)
-		orientiation, orientErr = smartvectors.PaddingOrientationOf(assignment)
-		start                   = index * newSize
-		end                     = start + newSize
+		newSize     = NewSizeOfColumn(disc, col)
+		startSeg, _ = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
+		start       = startSeg + index*newSize
+		end         = start + newSize
+		assignment  = col.GetColAssignment(runtime)
 	)
-
-	if orientErr != nil {
-		// If a column is assigned to a plain-vector, then it is assumed to
-		// be right-padded. The reason for this assumption is that the
-		// columns from the arithmetization are systematically padded on the
-		// left while the columns from the prover are all right-padded and the
-		// sometime they (suboptimally) assigned to plain-vectors.
-		orientiation = 1
-	}
-
-	if orientiation == -1 {
-		start += assignment.Len() - totalNbSegment*newSize
-		end += assignment.Len() - totalNbSegment*newSize
-	}
 
 	return assignment.SubVector(start, end)
 }
