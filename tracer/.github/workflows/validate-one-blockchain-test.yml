@@ -1,0 +1,33 @@
+name: "Validate One Blockchain Test"
+on: [pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validation-reference-test-flow:
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: get-branch-name
+        id: extract_branch
+        run: |
+          echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
+
+      - name: Setup Test Environment
+        uses: ./.github/actions/setup-environment
+        with:
+          go-corset: true
+
+      - name: Run Reference Blockchain test sample
+        run: ./gradlew -Dblockchain=Ethereum referenceBlockchainTests -x spotlessCheck --tests "BlockchainReferenceTest_104"
+        timeout-minutes: 15
+        env:
+          JAVA_OPTS: -Dorg.gradle.daemon=false
+          CORSET_FLAGS: disable
+          GOCORSET_FLAGS: -b1024 -vw --ansi-escapes=false --report --air
