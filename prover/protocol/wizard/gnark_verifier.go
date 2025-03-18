@@ -1,6 +1,8 @@
 package wizard
 
 import (
+	"encoding/json"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
@@ -37,9 +39,25 @@ type GnarkRuntime interface {
 	GetQuery(name ifaces.QueryID) ifaces.Query
 }
 
-// GnarkVerifierStep functions that can be registered in the CompiledIOP by the successive
-// compilation steps. They correspond to "precompiled" verification steps.
+// GnarkVerifierStep functions that can be registered in the CompiledIOP by the
+// successive compilation steps. They correspond to "precompiled" verification
+// steps.
 type GnarkVerifierStep func(frontend.API, GnarkRuntime)
+
+// VerifierCircuitAnalytic collects analytic datas on a verifier circuit
+type VerifierCircuitAnalytic struct {
+	NumCols            int
+	NumUnivariate      int
+	NumInnerProduct    int
+	NumLogDerivative   int
+	NumGrandProduct    int
+	NumHorner          int
+	NumLocalOpenings   int
+	WeightCols         int
+	WeightUnivariate   int
+	WeightInnerProduct int
+	WeightHorner       int
+}
 
 // VerifierCircuit the [VerifierRuntime] in a gnark circuit. The complete
 // implementation follows this mirror logic.
@@ -391,7 +409,7 @@ func (c *VerifierCircuit) GetRandomCoinField(name coin.Name) frontend.Variable {
 		and that it has the correct type
 	*/
 	infos := c.Spec.Coins.Data(name)
-	if infos.Type != coin.Field {
+	if infos.Type != coin.Field && infos.Type != coin.FieldFromSeed {
 		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.Field)
 	}
 	// If this panics, it means we generate the coins wrongly
@@ -595,7 +613,9 @@ func (c *VerifierCircuit) AllocGrandProduct(qName ifaces.QueryID, qInfo query.Gr
 // of the verifier circuit.
 func (c *VerifierCircuit) AllocHorner(qName ifaces.QueryID, qInfo *query.Horner) {
 	c.hornerIDs.InsertNew(qName, len(c.HornerParams))
-	c.HornerParams = append(c.HornerParams, query.GnarkHornerParams{})
+	c.HornerParams = append(c.HornerParams, query.GnarkHornerParams{
+		Parts: make([]query.HornerParamsPartGnark, len(qInfo.Parts)),
+	})
 }
 
 // AssignUnivariableEval assigns the parameters of a [query.UnivariateEval]
@@ -719,4 +739,44 @@ func (c *VerifierCircuit) GetQuery(name ifaces.QueryID) ifaces.Query {
 	}
 	utils.Panic("could not find query nb %v", name)
 	return nil
+}
+
+// Analyze returns a cell count for each type of query and/or column
+func (c *VerifierCircuit) Analyze() *VerifierCircuitAnalytic {
+
+	res := &VerifierCircuitAnalytic{}
+
+	for i := range c.Columns {
+		res.NumCols++
+		res.WeightCols += len(c.Columns[i])
+	}
+
+	for i := range c.HornerParams {
+		res.NumHorner++
+		res.WeightHorner += 2*len(c.HornerParams[i].Parts) + 1
+	}
+
+	for i := range c.InnerProductParams {
+		res.NumInnerProduct++
+		res.WeightInnerProduct += len(c.InnerProductParams[i].Ys)
+	}
+
+	for i := range c.UnivariateParams {
+		res.NumUnivariate++
+		res.WeightUnivariate += len(c.UnivariateParams[i].Ys)
+	}
+
+	res.NumGrandProduct += len(c.GrandProductParams)
+	res.NumLogDerivative += len(c.LogDerivSumParams)
+	res.NumLocalOpenings += len(c.LocalOpeningParams)
+
+	return res
+}
+
+func (a *VerifierCircuitAnalytic) JsonString() string {
+	b, e := json.Marshal(a)
+	if e != nil {
+		panic(e)
+	}
+	return string(b)
 }
