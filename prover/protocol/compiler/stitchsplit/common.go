@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // It stores the information regarding an alliance between a BigCol and a set of SubColumns.
@@ -81,11 +82,14 @@ func IsExprEligible(
 	hasAtLeastOneEligible := false
 	allAreEligible := true
 	allAreVeriferCol := true
+	rootCols := []ifaces.Column{}
+
 	for i := range metadata {
 		switch m := metadata[i].(type) {
 		// reminder: [verifiercol.VerifierCol] , [column.Natural] and [column.Shifted]
 		// all implement [ifaces.Column]
 		case ifaces.Column: // it is a Committed, Precomputed or verifierCol
+			rootCols = append(rootCols, m)
 			natural := column.RootParents(m)
 			switch natural.(type) {
 			case column.Natural: // then it is not a verifiercol
@@ -107,7 +111,7 @@ func IsExprEligible(
 		// 1. we expect no expression including Proof columns
 		// 2. we expect no expression over ignored columns
 		// 3. we expect no VerifiyingKey withing the stitching range.
-		panic("the expression is not valid, it is mixed with invalid columns of status Proof/Ingnored/verifierKey")
+		utils.Panic("the expression is not valid, it is mixed with invalid columns of status Proof/Ignored/verifierKey, %v", rootCols)
 	}
 	if allAreVeriferCol {
 		// 4. we expect no expression involving only and only the verifierCols.
