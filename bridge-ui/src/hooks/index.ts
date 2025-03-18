@@ -4,6 +4,7 @@ export { default as useAllowance } from "./useAllowance";
 export { default as useBridge } from "./useBridge";
 export { default as useChains } from "./useChains";
 export { default as useClaim } from "./useClaim";
+export { default as useClaimingTx } from "./useClaimingTx";
 export { default as useDebounce } from "./useDebounce";
 export { default as useDevice } from "./useDevice";
 export { default as useInitialiseChain } from "./useInitialiseChain";

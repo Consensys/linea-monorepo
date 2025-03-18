@@ -49,8 +49,8 @@ export type CCTPMessageReceivedEvent = Log & {
     caller: Address;
     sourceDomain: number;
     nonce: `0x${string}`;
-    sender: `0x${string}`;
+    sender: string;
     finalityThresholdExecuted: number;
-    messageBody: `0x${string}`;
+    messageBody: string;
   };
 };

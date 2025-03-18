@@ -20,6 +20,7 @@ export type CCTPV2BridgeMessage = {
   message: string;
   attestation: string;
   amountSent: bigint;
+  nonce: `0x${string}`;
 };
 
 export enum BridgeTransactionType {

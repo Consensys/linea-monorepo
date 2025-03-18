@@ -366,6 +366,7 @@ async function fetchCCTPBridgeEvents(
           attestation: message.attestation,
           message: message.message,
           amountSent: BigInt(log.args.amount),
+          nonce: nonce,
         },
       });
     }),
