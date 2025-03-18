@@ -226,9 +226,9 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness) {
 	r.PlonkCtx.GetPlonkProverAction().Run(run, fullWitnesses)
 }
 
-// LastVortexCommitRound returns the round at which the last commitment
+// VortexQueryRound returns the round at which the last commitment
 // is made.
-func LastVortexCommitRound(comp *wizard.CompiledIOP) int {
+func VortexQueryRound(comp *wizard.CompiledIOP) int {
 	vortexPCS := comp.PcsCtxs.(*vortex.Ctx)
 	query := vortexPCS.Query
 	return comp.QueriesParams.Round(query.QueryID)
