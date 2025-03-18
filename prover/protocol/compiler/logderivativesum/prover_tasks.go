@@ -237,8 +237,16 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 	// entries of T. It also preinitializes the values of ms
 	for frag := range a.T {
 
-		root := column.RootsOf(a.T[frag], true)[0].(column.Natural)
-		start, end := a.Segmenter.SegmentBoundaryOf(run, root)
+		start, end := 0, tCollapsed[frag].Len()
+
+		if a.Segmenter != nil {
+			root, ok := column.RootsOf(a.T[frag], true)[0].(column.Natural)
+			if !ok {
+				utils.Panic("col %v should be a column.Natural %++v", root.ID, root)
+			}
+			start, end = a.Segmenter.SegmentBoundaryOf(run, root)
+		}
+
 		m[frag] = make([]field.Element, tCollapsed[frag].Len())
 
 		for k := start; k < end; k++ {
