@@ -6,16 +6,19 @@ on:
       - main
     paths:
       - 'bridge-ui/**'
+      - '.github/workflows/bridge-ui-e2e-tests.yml'
       - '!bridge-ui/**/*.md'
   push:
     branches:
       - main
     paths:
       - 'bridge-ui/**'
+      - '.github/workflows/bridge-ui-e2e-tests.yml'
       - '!bridge-ui/**/*.md'
 
 jobs:
   run-e2e-tests:
+    if: github.event.pull_request.head.repo.fork == false
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     steps:
       - name: Checkout
@@ -35,6 +38,7 @@ jobs:
         env:
           NEXT_PUBLIC_WALLET_CONNECT_ID: ${{ secrets.PUBLIC_WALLET_CONNECT_ID }}
           NEXT_PUBLIC_INFURA_ID: ${{ secrets.PUBLIC_BRIDGE_UI_INFURA_ID }}
+          NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: ${{ secrets.PUBLIC_DYNAMIC_ENVIRONMENT_ID }}
 
       - name: Install linux dependencies
         run: |

@@ -1,84 +1,39 @@
-#!/bin/bash
-set -euo pipefail
+# Script to modify config files to enable Prague/Electra to run for the local stack
+# Runs on the 'l1-node-genesis-generator' Docker image entrypoint
 
-genesis_time=""
-current_time_delay_in_sec=""
-l1_genesis=""
-network_config=""
-mnemonics=""
-output_dir=""
+original_el_genesis_json_path="/config/genesis.json"
+original_cl_network_config_path="/config/network-config.yml"
+output_dir="/data/l1-node-config"
+modified_el_genesis_json_path=$output_dir/$(basename -- $original_el_genesis_json_path)
+modified_cl_network_config_path=$output_dir/$(basename -- $original_cl_network_config_path)
 
-usage() {
-  echo "Usage: $0 --genesis-time <timestamp> --current-time-delay-in-sec <seconds to delay current timestamp if genesis-time is not given> --l1-genesis <path to l1 genesis file> --network-config <path to network config file> --mnemonics <path to mnemonics file> --output-dir <output directory>"
-  exit 1
-}
+mkdir -p $output_dir
+cp $original_el_genesis_json_path $modified_el_genesis_json_path
+cp $original_cl_network_config_path $modified_cl_network_config_path
 
-while [[ $# -gt 0 ]]; do
-  case "$1" in
-    --genesis-time)
-      genesis_time="$2"
-      shift 2
-      ;;
-    --current-time-delay-in-sec)
-      current_time_delay_in_sec="$2"
-      shift 2
-      ;;
-    --l1-genesis)
-      l1_genesis="$2"
-      shift 2
-      ;;
-    --network-config)
-      network_config="$2"
-      shift 2
-      ;;
-    --mnemonics)
-      mnemonics="$2"
-      shift 2
-      ;;
-    --output-dir)
-      output_dir="$2"
-      shift 2
-      ;;
-    *)
-      echo "Error: Unknown option: $1"
-      usage
-      ;;
-  esac
-done
-
-if [ -z "$l1_genesis" ] || [ -z "$network_config" ] || [ -z "$mnemonics" ] || [ -z "$output_dir" ]; then
-  echo "Error: Missing required argument."
-  usage
+# Early exit if $PRAGUE feature flag is off
+if [ -z "$PRAGUE" ]; then
+  exit 0
 fi
 
 OS=$(uname);
-
-if [ -z "$genesis_time" ]; then
-  if [ -z "$current_time_delay_in_sec" ]; then
-    current_time_delay_in_sec="3"
-  fi 
-  genesis_time=$(    
+prague_time=$(    
     if [ $OS = "Linux" ]; then
-      date -d "+$current_time_delay_in_sec seconds" +%s;
+        date -d "+32 seconds" +%s;
     elif [ $OS = "Darwin" ]; then
-      date -v +"$current_time_delay_in_sec"S +%s;
+        date -v +32S +%s;
     fi
-  )
-fi
+)
 
-echo "Genesis time set to: $genesis_time"
+# Add Prague config to modified Besu config
+jq --argjson prague_time "$prague_time" '.config.pragueTime = $prague_time' $original_el_genesis_json_path > $modified_el_genesis_json_path
 
-mkdir -p $output_dir
-cp $l1_genesis $output_dir/genesis.json
-cp $network_config $output_dir/$(basename -- $network_config)
-
-# sed in-place command portable with both OS 
-if [ $OS = "Linux" ]; then
-  sed -i -E 's/"timestamp": "[0-9]+"/"timestamp": "'"$genesis_time"'"/' $output_dir/genesis.json
-  sed -i 's/\$GENESIS_TIME/'"$genesis_time"'/g' $output_dir/$(basename -- $network_config)
-elif [ $OS = "Darwin" ]; then
-  sed -i "" -E 's/"timestamp": "[0-9]+"/"timestamp": "'"$genesis_time"'"/' $output_dir/genesis.json
-  sed -i "" 's/\$GENESIS_TIME/'"$genesis_time"'/g' $output_dir/$(basename -- $network_config)
-fi
-
-/usr/local/bin/eth2-testnet-genesis deneb --config $output_dir/$(basename -- $network_config) --mnemonics $mnemonics --tranches-dir $output_dir/tranches --state-output $output_dir/genesis.ssz --eth1-config $output_dir/genesis.json
+# Add Electra config to modified Teku config
+cat <<EOF >> $modified_cl_network_config_path
+ELECTRA_FORK_VERSION: 0x60000038
+ELECTRA_FORK_EPOCH: 1
+MAX_BLOBS_PER_BLOCK_ELECTRA: 9
+MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA: 128000000000
+BLOB_SIDECAR_SUBNET_COUNT_ELECTRA: 9
+MAX_REQUEST_BLOB_SIDECARS_ELECTRA: 1152
+EOF

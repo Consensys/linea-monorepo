@@ -4,11 +4,11 @@ import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import linea.domain.BinaryDecoder
+import linea.domain.CommonDomainFunctions
+import linea.kotlin.decodeHex
+import linea.kotlin.encodeHex
 import linea.rlp.BesuRlpBlobDecoder
 import linea.rlp.RLP
-import net.consensys.decodeHex
-import net.consensys.encodeHex
-import net.consensys.linea.CommonDomainFunctions
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.blob.BlobDecompressor
 import org.apache.logging.log4j.LogManager
@@ -30,7 +30,7 @@ interface BlobDecompressorAndDeserializer {
 
 data class BlockHeaderStaticFields(
   val coinbase: ByteArray,
-  val gasLimit: ULong = 61_000_000UL,
+  val gasLimit: ULong = 2_000_000_000UL,
   val difficulty: ULong = 2UL
 ) {
   companion object {

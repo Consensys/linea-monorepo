@@ -7,12 +7,12 @@ import linea.domain.AccessListEntry
 import linea.domain.TransactionFactory
 import linea.domain.createBlock
 import linea.domain.toBesu
+import linea.kotlin.decodeHex
+import linea.kotlin.eth
+import linea.kotlin.toBigInteger
 import linea.rlp.BesuRlpBlobDecoder
 import linea.rlp.RLP
-import net.consensys.decodeHex
-import net.consensys.eth
 import net.consensys.linea.nativecompressor.CompressorTestData
-import net.consensys.toBigInteger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -25,7 +25,7 @@ class GoNativeBlobDecompressorTest {
   private val compressor: BlobCompressor = GoBackedBlobCompressor
     .getInstance(BlobCompressorVersion.V1_0_1, blobCompressedLimit.toUInt())
   private val decompressor: BlobDecompressor =
-    GoNativeBlobDecompressorFactory.getInstance(BlobDecompressorVersion.V1_1_0)
+    GoNativeBlobDecompressorFactory.getInstance(BlobDecompressorVersion.V1_1_1)
 
   @BeforeEach
   fun beforeEach() {
