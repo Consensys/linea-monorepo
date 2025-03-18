@@ -194,8 +194,10 @@ func (h HornerParams) UpdateFS(fs *fiatshamir.State) {
 	fs.Update(h.FinalResult)
 
 	for _, part := range h.Parts {
-		n1 := new(field.Element).SetInt64(int64(part.N1))
-		fs.Update(*n1)
+		fs.Update(
+			field.NewElement(uint64(part.N0)),
+			field.NewElement(uint64(part.N1)),
+		)
 	}
 }
 
