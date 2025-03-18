@@ -39,7 +39,7 @@ public final class StorageFragment implements TraceFragment {
   private final boolean outgoingWarmth;
   private final DomSubStampsSubFragment domSubStampsSubFragment;
   private final int blockNumber;
-  private final StorageFragmentPurpose purpose; // for debugging purposes
+  private final StorageFragmentPurpose purpose;
 
   public Trace.Hub trace(Trace.Hub trace) {
     domSubStampsSubFragment.trace(trace);
@@ -64,6 +64,12 @@ public final class StorageFragment implements TraceFragment {
         .pStorageValueCurrIsZero(valueCurrent.isZero())
         .pStorageValueNextIsCurr(valueNext.equals(valueCurrent))
         .pStorageValueNextIsZero(valueNext.isZero())
-        .pStorageValueNextIsOrig(valueNext.equals(valueOriginal));
+        .pStorageValueNextIsOrig(valueNext.equals(valueOriginal))
+        .pStorageSloadOperation(
+            purpose == StorageFragmentPurpose.SLOAD_DOING
+                || purpose == StorageFragmentPurpose.SLOAD_UNDOING)
+        .pStorageSstoreOperation(
+            purpose == StorageFragmentPurpose.SSTORE_DOING
+                || purpose == StorageFragmentPurpose.SSTORE_UNDOING);
   }
 }
