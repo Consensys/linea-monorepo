@@ -14,6 +14,10 @@
     "londonBlock": 0,
     "mergenetsplitblock": 6,
     "terminalTotalDifficulty": 10,
+    "shanghaiTime": %SWITCH_TIME%,
+    "cancunTime": %SWITCH_TIME%,
+    "pragueTime": %SWITCH_TIME%,
+    "depositContractAddress": "0x4242424242424242424242424242424242424242",
     "clique": {
       "createemptyblocks": false,
       "blockperiodseconds": 1,

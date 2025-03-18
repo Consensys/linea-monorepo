@@ -16,9 +16,10 @@
 package maru.consensus.delegated
 
 import java.util.concurrent.TimeUnit
-import kotlin.time.Duration
 import maru.consensus.ConsensusConfig
+import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
+import maru.consensus.ProtocolFactory
 import maru.core.Protocol
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -26,14 +27,25 @@ import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.DefaultBlockParameter
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
+class ElDelegatedConsensusFactory(
+  private val ethereumJsonRpcClient: Web3j,
+  private val newBlockHandler: NewBlockHandler,
+) : ProtocolFactory {
+  override fun create(forkSpec: ForkSpec): ElDelegatedConsensus =
+    ElDelegatedConsensus(
+      ethereumJsonRpcClient = ethereumJsonRpcClient,
+      onNewBlock = newBlockHandler,
+      blockTimeSeconds = forkSpec.blockTimeSeconds,
+    )
+}
+
 class ElDelegatedConsensus(
   private val ethereumJsonRpcClient: Web3j,
   private val onNewBlock: NewBlockHandler,
-  private val config: Config,
+  private val blockTimeSeconds: Int,
 ) : Protocol {
-  data class Config(
-    val pollPeriod: Duration,
-  ) : ConsensusConfig
+  // Only for comparisons in the tests to set common ground
+  object ElDelegatedConfig : ConsensusConfig
 
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -79,7 +91,7 @@ class ElDelegatedConsensus(
             {
               currentTask = poll()
             },
-            SafeFuture.delayedExecutor(config.pollPeriod.inWholeMilliseconds, TimeUnit.MILLISECONDS),
+            SafeFuture.delayedExecutor(blockTimeSeconds.toLong(), TimeUnit.SECONDS),
           )
       }
   }

@@ -15,21 +15,18 @@
  */
 package maru.consensus
 
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
+import kotlin.time.Duration.Companion.milliseconds
+import maru.consensus.dummy.NextBlockTimestampProviderImpl
 import maru.core.Protocol
 import maru.core.ext.DataGenerators
-import maru.executionlayer.client.ExecutionLayerClient
-import maru.executionlayer.manager.BlockMetadata
+import maru.executionlayer.client.MetadataProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
-import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
-import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
-import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
 class ProtocolStarterTest {
   private class StubProtocol : Protocol {
@@ -55,57 +52,47 @@ class ProtocolStarterTest {
 
   @Test
   fun `ProtocolStarter kickstarts the protocol based on the latest known block metadata`() {
-    val unexpectedProtocolConfig = protocolConfig1
-    val expectedProtocolConfig = protocolConfig2
     val forksSchedule =
       ForksSchedule(
         listOf(
-          ForkSpec(0u, unexpectedProtocolConfig),
-          ForkSpec(
-            15u,
-            expectedProtocolConfig,
-          ),
+          forkSpec1,
+          forkSpec2,
         ),
       )
-    val executionLayerClient =
-      createFakeExecutionLayerClient(latestBlockMetadataToReturn = DataGenerators.randomBlockMetadata(15u))
+    val metadataProvider = { SafeFuture.completedFuture(DataGenerators.randomBlockMetadata(15)) }
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        executionLayerClient = executionLayerClient,
+        metadataProvider = metadataProvider,
+        clockMilliseconds = 16000,
       )
     protocolStarter.start()
-    val currentProtocolWithConfig = protocolStarter.currentProtocolWithConfig.get()
-    assertThat(currentProtocolWithConfig.config).isEqualTo(expectedProtocolConfig)
+    val currentProtocolWithConfig = protocolStarter.currentProtocolWithForkReference.get()
+    assertThat(currentProtocolWithConfig.fork).isEqualTo(forkSpec2)
     assertThat(protocol2.started).isTrue()
     assertThat(protocol1.started).isFalse()
   }
 
   @Test
   fun `ProtocolStarter doesn't re-create the existing protocol`() {
-    val unexpectedProtocolConfig = protocolConfig1
-    val expectedProtocolConfig = protocolConfig2
     val forksSchedule =
       ForksSchedule(
         listOf(
-          ForkSpec(0u, unexpectedProtocolConfig),
-          ForkSpec(
-            15u,
-            expectedProtocolConfig,
-          ),
+          forkSpec1,
+          forkSpec2,
         ),
       )
-    val executionLayerClient =
-      createFakeExecutionLayerClient(latestBlockMetadataToReturn = DataGenerators.randomBlockMetadata(15u))
+    val metadataProvider = { SafeFuture.completedFuture(DataGenerators.randomBlockMetadata(15)) }
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        executionLayerClient = executionLayerClient,
+        metadataProvider = metadataProvider,
+        clockMilliseconds = 16000,
       )
     protocolStarter.start()
-    val initiallyCreatedProtocol = protocolStarter.currentProtocolWithConfig.get().protocol
-    protocolStarter.handleNewBlock(DataGenerators.randomBlockMetadata(16u))
-    val currentProtocol = protocolStarter.currentProtocolWithConfig.get().protocol
+    val initiallyCreatedProtocol = protocolStarter.currentProtocolWithForkReference.get().protocol
+    protocolStarter.handleNewBlock(DataGenerators.randomBlockMetadata(16))
+    val currentProtocol = protocolStarter.currentProtocolWithForkReference.get().protocol
     assertThat(initiallyCreatedProtocol).isSameAs(currentProtocol)
     assertThat(protocol2.started).isTrue()
     assertThat(protocol1.started).isFalse()
@@ -113,70 +100,73 @@ class ProtocolStarterTest {
 
   @Test
   fun `ProtocolStarter re-creates the protocol when the switch is needed`() {
-    val firstProtocolConfig = protocolConfig1
-    val secondProtocolConfig = protocolConfig2
     val forksSchedule =
       ForksSchedule(
         listOf(
-          ForkSpec(0u, firstProtocolConfig),
-          ForkSpec(
-            15u,
-            secondProtocolConfig,
-          ),
+          forkSpec1,
+          forkSpec2,
         ),
       )
-    val executionLayerClient =
-      createFakeExecutionLayerClient(latestBlockMetadataToReturn = DataGenerators.randomBlockMetadata(13u))
+    val metadataProvider = { SafeFuture.completedFuture(DataGenerators.randomBlockMetadata(13)) }
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
-        executionLayerClient = executionLayerClient,
+        metadataProvider = metadataProvider,
+        clockMilliseconds = 14000,
       )
     protocolStarter.start()
 
-    val initiallyCreatedProtocolWithConfig = protocolStarter.currentProtocolWithConfig.get()
-    assertThat(initiallyCreatedProtocolWithConfig.config).isEqualTo(firstProtocolConfig)
+    val initiallyCreatedProtocolWithConfig = protocolStarter.currentProtocolWithForkReference.get()
+    assertThat(initiallyCreatedProtocolWithConfig.fork).isEqualTo(forkSpec1)
     assertThat(protocol1.started).isTrue()
     assertThat(protocol2.started).isFalse()
 
-    protocolStarter.handleNewBlock(DataGenerators.randomBlockMetadata(14u))
-    val currentProtocolWithConfig = protocolStarter.currentProtocolWithConfig.get()
-    assertThat(currentProtocolWithConfig.config).isEqualTo(secondProtocolConfig)
+    protocolStarter.handleNewBlock(DataGenerators.randomBlockMetadata(14))
+    val currentProtocolWithConfig = protocolStarter.currentProtocolWithForkReference.get()
+    assertThat(currentProtocolWithConfig.fork).isEqualTo(forkSpec2)
     assertThat(initiallyCreatedProtocolWithConfig.protocol).isNotSameAs(currentProtocolWithConfig.protocol)
     assertThat(protocol1.started).isFalse()
     assertThat(protocol2.started).isTrue()
   }
 
-  private fun createFakeExecutionLayerClient(latestBlockMetadataToReturn: BlockMetadata): ExecutionLayerClient =
-    object : ExecutionLayerClient {
-      override fun getLatestBlockMetadata(): SafeFuture<BlockMetadata> =
-        SafeFuture.completedFuture(
-          latestBlockMetadataToReturn,
-        )
+  @Test
+  fun `if latest block is far in the past, current time takes precedence`() {
+    val forksSchedule =
+      ForksSchedule(
+        listOf(
+          forkSpec1,
+          forkSpec2,
+        ),
+      )
+    val metadataProvider = { SafeFuture.completedFuture(DataGenerators.randomBlockMetadata(2)) }
+    val protocolStarter =
+      createProtocolStarter(
+        forksSchedule = forksSchedule,
+        metadataProvider = metadataProvider,
+        clockMilliseconds = 15000,
+      )
+    protocolStarter.start()
 
-      override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV1>> {
-        TODO("Not yet implemented")
-      }
-
-      override fun newPayload(executionPayload: ExecutionPayloadV1): SafeFuture<Response<PayloadStatusV1>> {
-        TODO("Not yet implemented")
-      }
-
-      override fun forkChoiceUpdate(
-        forkChoiceState: ForkChoiceStateV1,
-        payloadAttributes: PayloadAttributesV1?,
-      ): SafeFuture<Response<ForkChoiceUpdatedResult>> {
-        TODO("Not yet implemented")
-      }
-    }
+    val initiallyCreatedProtocolWithConfig = protocolStarter.currentProtocolWithForkReference.get()
+    assertThat(initiallyCreatedProtocolWithConfig.fork).isEqualTo(forkSpec2)
+    assertThat(protocol1.started).isFalse()
+    assertThat(protocol2.started).isTrue()
+  }
 
   private val protocolConfig1 = object : ConsensusConfig {}
+  private val forkSpec1 = ForkSpec(0, 1, protocolConfig1)
   private val protocolConfig2 = object : ConsensusConfig {}
+  private val forkSpec2 =
+    ForkSpec(
+      15,
+      2,
+      protocolConfig2,
+    )
 
   private val protocolFactory =
     object : ProtocolFactory {
-      override fun create(protocolConfig: ConsensusConfig): Protocol =
-        when (protocolConfig) {
+      override fun create(forkSpec: ForkSpec): Protocol =
+        when (forkSpec.configuration) {
           protocolConfig1 -> protocol1
           protocolConfig2 -> protocol2
           else -> error("invalid protocol config")
@@ -185,11 +175,18 @@ class ProtocolStarterTest {
 
   private fun createProtocolStarter(
     forksSchedule: ForksSchedule,
-    executionLayerClient: ExecutionLayerClient,
+    metadataProvider: MetadataProvider,
+    clockMilliseconds: Long,
   ): ProtocolStarter =
     ProtocolStarter(
       forksSchedule = forksSchedule,
       protocolFactory = protocolFactory,
-      executionLayerClient = executionLayerClient,
+      metadataProvider = metadataProvider,
+      nextBlockTimestampProvider =
+        NextBlockTimestampProviderImpl(
+          clock = Clock.fixed(Instant.ofEpochMilli(clockMilliseconds), ZoneOffset.UTC),
+          forksSchedule = forksSchedule,
+          0.milliseconds,
+        ),
     )
 }

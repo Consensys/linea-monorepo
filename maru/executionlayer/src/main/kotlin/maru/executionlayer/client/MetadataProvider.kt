@@ -13,19 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.executionlayer.manager
+package maru.executionlayer.client
 
-import kotlin.random.Random
+import maru.executionlayer.manager.BlockMetadata
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-object DataGenerators {
-  fun randomValidForkChoiceUpdatedResult(payloadId: ByteArray = Random.nextBytes(8)): ForkChoiceUpdatedResult {
-    val expectedPayloadStatus =
-      PayloadStatus(
-        executionPayloadStatus = "VALID",
-        latestValidHash = Random.nextBytes(32),
-        validationError = null,
-        failureCause = null,
-      )
-    return ForkChoiceUpdatedResult(expectedPayloadStatus, payloadId)
-  }
+fun interface MetadataProvider {
+  fun getLatestBlockMetadata(): SafeFuture<BlockMetadata>
 }

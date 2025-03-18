@@ -15,55 +15,30 @@
  */
 package maru.consensus
 
-import java.time.Clock
-import maru.config.MaruConfig
 import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.dummy.DummyConsensusConfig
-import maru.consensus.dummy.DummyConsensusProtocolBuilder
 import maru.core.Protocol
-import maru.executionlayer.client.ExecutionLayerClient
-import org.web3j.protocol.Web3j
 
 interface ProtocolFactory {
-  fun create(protocolConfig: ConsensusConfig): Protocol
+  fun create(forkSpec: ForkSpec): Protocol
 }
 
 class OmniProtocolFactory(
-  private val forksSchedule: ForksSchedule,
-  private val clock: Clock,
-  private val config: MaruConfig,
-  private val executionLayerClient: ExecutionLayerClient,
-  private val ethereumJsonRpcClient: Web3j,
-  private val newBlockHandler: NewBlockHandler,
+  private val dummyConsensusFactory: ProtocolFactory,
+  private val elDelegatedConsensusFactory: ProtocolFactory,
 ) : ProtocolFactory {
-  override fun create(protocolConfig: ConsensusConfig): Protocol =
-    when (protocolConfig) {
+  override fun create(forkSpec: ForkSpec): Protocol =
+    when (forkSpec.configuration) {
       is DummyConsensusConfig -> {
-        require(config.dummyConsensusOptions != null) {
-          "Next fork is dummy consensus one, but dummyConsensusOptions are undefined!"
-        }
-
-        DummyConsensusProtocolBuilder
-          .build(
-            forksSchedule = forksSchedule,
-            clock = clock,
-            minTimeTillNextBlock = config.executionClientConfig.minTimeBetweenGetPayloadAttempts,
-            dummyConsensusOptions = config.dummyConsensusOptions!!,
-            executionLayerClient = executionLayerClient,
-            onNewBlockHandler = newBlockHandler,
-          )
+        dummyConsensusFactory.create(forkSpec)
       }
 
-      is ElDelegatedConsensus.Config -> {
-        ElDelegatedConsensus(
-          ethereumJsonRpcClient = ethereumJsonRpcClient,
-          onNewBlock = newBlockHandler,
-          config = protocolConfig,
-        )
+      is ElDelegatedConsensus.ElDelegatedConfig -> {
+        elDelegatedConsensusFactory.create(forkSpec)
       }
 
       else -> {
-        throw IllegalArgumentException("Fork $protocolConfig is unknown!")
+        throw IllegalArgumentException("Fork $forkSpec is unknown!")
       }
     }
 }

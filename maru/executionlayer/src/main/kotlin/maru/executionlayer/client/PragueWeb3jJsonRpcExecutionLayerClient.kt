@@ -16,51 +16,47 @@
 package maru.executionlayer.client
 
 import java.util.Optional
-import maru.executionlayer.manager.BlockMetadata
+import maru.core.ExecutionPayload
+import maru.executionlayer.extensions.toDomainExecutionPayload
+import maru.executionlayer.extensions.toExecutionPayloadV3
 import org.apache.tuweni.bytes.Bytes32
-import org.web3j.protocol.core.DefaultBlockParameter
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV3
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
 
-class Web3jJsonRpcExecutionLayerClient(
+class PragueWeb3jJsonRpcExecutionLayerClient(
   private val web3jEngineClient: Web3JExecutionEngineClient,
-  private val web3jEthereumApiClient: Web3JClient,
 ) : ExecutionLayerClient {
-  override fun getLatestBlockMetadata(): SafeFuture<BlockMetadata> =
-    SafeFuture
-      .of(
-        web3jEthereumApiClient.eth1Web3j
-          .ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), false)
-          .sendAsync()
-          .minimalCompletionStage(),
-      ).thenApply {
-        val block = it.block
-        BlockMetadata(
-          block.number
-            .toLong()
-            .toULong(),
-          Bytes32.fromHexString(block.hash).toArray(),
-          block.timestamp.toLong(),
-        )
+  override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayload>> =
+    web3jEngineClient.getPayloadV4(payloadId).thenApply {
+      Response.fromPayloadReceivedAsJson(it.payload.executionPayload.toDomainExecutionPayload())
+    }
+
+  override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<Response<PayloadStatusV1>> =
+    web3jEngineClient
+      .newPayloadV4(executionPayload.toExecutionPayloadV3(), emptyList(), Bytes32.ZERO, emptyList())
+      .thenApply {
+        Response.fromPayloadReceivedAsJson(it.payload)
       }
-
-  override fun getPayload(payloadId: Bytes8): SafeFuture<Response<ExecutionPayloadV1>> =
-    web3jEngineClient.getPayloadV1(payloadId)
-
-  override fun newPayload(executionPayload: ExecutionPayloadV1): SafeFuture<Response<PayloadStatusV1>> =
-    web3jEngineClient.newPayloadV1(executionPayload)
 
   override fun forkChoiceUpdate(
     forkChoiceState: ForkChoiceStateV1,
     payloadAttributes: PayloadAttributesV1?,
   ): SafeFuture<Response<ForkChoiceUpdatedResult>> =
-    web3jEngineClient.forkChoiceUpdatedV1(forkChoiceState, Optional.ofNullable(payloadAttributes))
+    web3jEngineClient.forkChoiceUpdatedV3(forkChoiceState, Optional.ofNullable(payloadAttributes?.toV3()))
+
+  private fun PayloadAttributesV1.toV3(): PayloadAttributesV3 =
+    PayloadAttributesV3(
+      this.timestamp,
+      this.prevRandao,
+      this.suggestedFeeRecipient,
+      emptyList(),
+      Bytes32.ZERO,
+    )
 }

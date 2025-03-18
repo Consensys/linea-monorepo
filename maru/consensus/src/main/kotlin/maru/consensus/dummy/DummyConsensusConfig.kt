@@ -16,22 +16,17 @@
 package maru.consensus.dummy
 
 import maru.consensus.ConsensusConfig
+import maru.consensus.ElFork
 
 data class DummyConsensusConfig(
-  private val blockTimeMillis: UInt,
   val feeRecipient: ByteArray,
+  val elFork: ElFork,
 ) : ConsensusConfig {
-  /** Leaving blockTimeMillis in the configuration to be future-proof, exposing nextBlockPeriodSeconds to be closer
-   * to reality where block timestamp is in seconds
-   */
-  val nextBlockPeriodSeconds = blockTimeMillis.toInt() / 1000
-
   init {
     require(feeRecipient.size == 20) {
       "feesRecipient address must be 20 bytes long, " +
         "but it's only ${feeRecipient.size} bytes long!"
     }
-    require(blockTimeMillis >= 1000u) { "blockTimeMillis must be greater or equal to 1 second" }
   }
 
   override fun equals(other: Any?): Boolean {
@@ -40,15 +35,15 @@ data class DummyConsensusConfig(
 
     other as DummyConsensusConfig
 
-    if (blockTimeMillis != other.blockTimeMillis) return false
     if (!feeRecipient.contentEquals(other.feeRecipient)) return false
+    if (elFork != other.elFork) return false
 
     return true
   }
 
   override fun hashCode(): Int {
-    var result = blockTimeMillis.hashCode()
-    result = 31 * result + feeRecipient.contentHashCode()
+    var result = feeRecipient.contentHashCode()
+    result = 31 * result + elFork.hashCode()
     return result
   }
 }

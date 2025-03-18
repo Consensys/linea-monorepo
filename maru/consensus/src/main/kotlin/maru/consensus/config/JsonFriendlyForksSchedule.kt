@@ -16,8 +16,8 @@
 package maru.consensus.config
 
 import fromHexToByteArray
-import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ConsensusConfig
+import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.delegated.ElDelegatedConsensus
@@ -30,8 +30,10 @@ data class JsonFriendlyForksSchedule(
     val forkSpecs: List<ForkSpec> =
       config.map { (k, v) ->
         val type = v["type"].toString()
+        val blockTimeSeconds = v["blockTimeSeconds"]!!.toInt()
         ForkSpec(
-          k.toULong(),
+          k.toLong(),
+          blockTimeSeconds,
           mapObjectToConfiguration(type, v),
         )
       }
@@ -44,10 +46,14 @@ data class JsonFriendlyForksSchedule(
   ): ConsensusConfig =
     when (type) {
       "dummy" -> {
-        DummyConsensusConfig(obj["blockTimeMillis"]!!.toUInt(), obj["feeRecipient"]!!.fromHexToByteArray())
+        DummyConsensusConfig(
+          feeRecipient = obj["feeRecipient"]!!.fromHexToByteArray(),
+          elFork = ElFork.valueOf(obj["elFork"]!!),
+        )
       }
+
       "delegated" -> {
-        ElDelegatedConsensus.Config(obj["pollPeriodMillis"]!!.toInt().milliseconds)
+        ElDelegatedConsensus.ElDelegatedConfig
       }
 
       else -> throw IllegalArgumentException("Unsupported fork type $type!")

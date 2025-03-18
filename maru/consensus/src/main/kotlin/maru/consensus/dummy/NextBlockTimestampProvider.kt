@@ -32,21 +32,10 @@ class NextBlockTimestampProviderImpl(
   private val minTimeTillNextBlock: Duration,
 ) : NextBlockTimestampProvider {
   override fun nextTargetBlockUnixTimestamp(lastBlockMetadata: BlockMetadata): Long {
-    val nextBlockConfig = forksSchedule.getForkByNumber(lastBlockMetadata.blockNumber + 1UL)
-    val lastBlockTimestamp = lastBlockMetadata.unixTimestamp
-
-    val nextBlockPeriodSeconds =
-      when (nextBlockConfig) {
-        is DummyConsensusConfig -> {
-          nextBlockConfig.nextBlockPeriodSeconds
-        }
-
-        else -> {
-          throw IllegalStateException("Unexpected consensus config")
-        }
-      }
+    val currentBlockTime = forksSchedule.getForkByTimestamp(lastBlockMetadata.unixTimestampSeconds).blockTimeSeconds
+    val lastBlockTimestamp = lastBlockMetadata.unixTimestampSeconds
 
     val nextIntegerSecond = ceil((clock.millis() + minTimeTillNextBlock.inWholeMilliseconds) / 1000.0).toLong()
-    return max(lastBlockTimestamp + nextBlockPeriodSeconds, nextIntegerSecond)
+    return max(lastBlockTimestamp + currentBlockTime, nextIntegerSecond)
   }
 }

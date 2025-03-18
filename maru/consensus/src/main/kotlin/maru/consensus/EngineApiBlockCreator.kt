@@ -48,7 +48,7 @@ class EngineApiBlockCreator(
   private val manager: ExecutionLayerManager,
   private val state: DummyConsensusState,
   private val blockHeaderFunctions: BlockHeaderFunctions,
-  initialBlockTimestamp: Long, // Block creation starts right after, so it's required
+  nextBlockTimestamp: Long, // Block creation starts right after, so it's required
 ) : BlockCreator {
   init {
     manager
@@ -56,7 +56,7 @@ class EngineApiBlockCreator(
         headHash = state.latestBlockHash,
         safeHash = state.finalizationState.safeBlockHash,
         finalizedHash = state.finalizationState.finalizedBlockHash,
-        nextBlockTimestamp = initialBlockTimestamp,
+        nextBlockTimestamp = nextBlockTimestamp,
       ).get()
   }
 

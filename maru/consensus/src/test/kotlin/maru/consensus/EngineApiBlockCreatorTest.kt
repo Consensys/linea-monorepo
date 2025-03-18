@@ -21,7 +21,7 @@ import maru.consensus.dummy.DummyConsensusState
 import maru.consensus.dummy.FinalizationState
 import maru.core.ExecutionPayload
 import maru.core.ext.DataGenerators
-import maru.executionlayer.manager.DataGenerators.randomValidForkChoiceUpdatedResult
+import maru.core.ext.DataGenerators.randomValidForkChoiceUpdatedResult
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
@@ -81,7 +81,7 @@ class EngineApiBlockCreatorTest {
       manager = executionLayerManager,
       state = dummyConsensusState,
       blockHeaderFunctions = MainnetBlockHeaderFunctions(),
-      initialBlockTimestamp = nextTimestamp,
+      nextBlockTimestamp = nextTimestamp,
     )
 
     verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
@@ -107,7 +107,7 @@ class EngineApiBlockCreatorTest {
         manager = executionLayerManager,
         state = dummyConsensusState,
         blockHeaderFunctions = MainnetBlockHeaderFunctions(),
-        initialBlockTimestamp = nextTimestamp,
+        nextBlockTimestamp = nextTimestamp,
       )
     blockCreator.createEmptyWithdrawalsBlock(1L, null)
     blockCreator.createEmptyWithdrawalsBlock(2L, null)
@@ -140,14 +140,14 @@ class EngineApiBlockCreatorTest {
     mockFinishBlockBuilding(expectedBlockBuildingResult)
     val forkChoiceUpdatedResult = randomValidForkChoiceUpdatedResult()
     mockSetHeadAndStartBlockBuilding(forkChoiceUpdatedResult)
-    val initialTimestamp = dummyConsensusState.clock.millis()
+    val nextBlockTimestamp = dummyConsensusState.clock.millis()
 
     val blockCreator =
       EngineApiBlockCreator(
         manager = executionLayerManager,
         state = dummyConsensusState,
         blockHeaderFunctions = MainnetBlockHeaderFunctions(),
-        initialBlockTimestamp = initialTimestamp,
+        nextBlockTimestamp = nextBlockTimestamp,
       )
     val nextTimestamp1 = 123L
     blockCreator.createEmptyWithdrawalsBlock(nextTimestamp1, null)

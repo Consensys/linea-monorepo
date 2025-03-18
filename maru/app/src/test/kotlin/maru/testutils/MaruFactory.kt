@@ -20,9 +20,13 @@ import maru.app.MaruApp
 import maru.app.MaruAppCli.Companion.loadConfig
 import maru.config.MaruConfigDtoToml
 import maru.config.Utils
+import maru.consensus.ElFork
 import maru.consensus.config.JsonFriendlyForksSchedule
 
 object MaruFactory {
+  private val consensusConfigDir = "/e2e/config"
+  private val pragueConsensusConfig = "$consensusConfigDir/dummy-consensus-prague.json"
+
   private fun buildMaruConfigString(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
@@ -43,9 +47,15 @@ object MaruFactory {
     validator-key = "0xdead"
     """.trimIndent()
 
+  private fun pickConsensusConfig(elFork: ElFork): String =
+    when (elFork) {
+      ElFork.Prague -> pragueConsensusConfig
+    }
+
   fun buildTestMaru(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
+    elFork: ElFork,
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
@@ -54,7 +64,7 @@ object MaruFactory {
           engineApiRpc = engineApiRpc,
         ),
       )
-    val consensusGenesisResource = this::class.java.getResource("/e2e/config/dummy-consensus.json")
+    val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
     val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
 
     return MaruApp(appConfig.domainFriendly(), beaconGenesisConfig.getUnsafe().domainFriendly())

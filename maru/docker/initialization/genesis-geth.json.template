@@ -16,10 +16,26 @@
     "grayGlacierBlock": 0,
     "MergeNetsplitBlock": 6,
     "terminalTotalDifficulty": 10,
+    "shanghaiTime": %SWITCH_TIME%,
+    "cancunTime": %SWITCH_TIME%,
+    "pragueTime": %SWITCH_TIME%,
+    "depositContractAddress": "0x4242424242424242424242424242424242424242",
     "terminalTotalDifficultyPassed": false,
     "clique": {
       "period": 1,
       "epoch": 1
+    },
+    "blobSchedule": {
+      "cancun": {
+        "target": 0,
+        "max": 0,
+        "baseFeeUpdateFraction": 3338477
+      },
+      "prague": {
+        "target": 0,
+        "max": 0,
+        "baseFeeUpdateFraction": 3338477
+      }
     }
   },
   "coinbase": "0x0000000000000000000000000000000000000000",
