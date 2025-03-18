@@ -89,7 +89,6 @@ export const refreshCCTPMessageIfNeeded = async (
   const expiryBlock = getCCTPMessageExpiryBlock(message.message);
   if (expiryBlock === 0n) return message;
   if (currentToBlock < expiryBlock) return message;
-  console.log("expiryBlock: ", expiryBlock, "currentToBlock", currentToBlock);
 
   // We have an expired message, reattest
   // TODO - Investigate if this will result in an edge case where a 'READY_TO_CLAIM' tx regresses to a 'PENDING' tx

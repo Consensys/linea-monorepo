@@ -17,6 +17,7 @@ type Props = {
   onCloseModal: () => void;
 };
 
+// TODO - We can move the logic to get claimingTx from 'fetchTransactionsHistory' to here
 export default function TransactionDetails({ transaction, isModalOpen, onCloseModal }: Props) {
   const { chain } = useAccount();
   const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
@@ -24,14 +25,20 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
   const formattedDate = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "MMM, dd, yyyy") : "";
   const formattedTime = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "ppp") : "";
 
-  const queryClient = useQueryClient();
+  // Hydrate BridgeTransaction object with data that is only required in TransactionDetails modal
+  // TODO - Hydrate BridgeTransaction.claimingTx, use Tanstack for caching
+  // if (isModalOpen && !transaction?.claimingTx) {}
+  // TODO - Hydrate BridgeTransaction.message object, use Tanstack for caching
+
   const { claim, isConfirming, isPending, isConfirmed } = useClaim({
     status: transaction?.status,
+    type: transaction?.type,
     fromChain: transaction?.fromChain,
     toChain: transaction?.toChain,
     args: transaction?.message,
   });
 
+  const queryClient = useQueryClient();
   useEffect(() => {
     if (isConfirmed) {
       queryClient.invalidateQueries({ queryKey: ["transactionHistory"], exact: false });
@@ -100,6 +107,7 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
       claim();
     }
   };
+
   return (
     <Modal title="Transaction details" isOpen={isModalOpen} onClose={onCloseModal}>
       <div className={styles["modal-inner"]}>

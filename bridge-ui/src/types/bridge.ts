@@ -22,9 +22,15 @@ export type CCTPV2BridgeMessage = {
   amountSent: bigint;
 };
 
+export enum BridgeTransactionType {
+  ETH = "ETH",
+  ERC20 = "ERC20",
+  USDC = "USDC",
+}
+
 // BridgeTransaction object that is populated when user opens "TransactionHistory" component, and is passed to child components.
 export interface BridgeTransaction {
-  type: "ETH" | "ERC20";
+  type: BridgeTransactionType;
   status: TransactionStatus;
   timestamp: bigint;
   fromChain: Chain;

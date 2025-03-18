@@ -12,6 +12,12 @@ const chainConfigSchema = z.object({
   gasLimitSurplus: z.bigint().positive(),
   profitMargin: z.bigint().positive(),
   cctpDomain: z.number().gte(0).int(),
+  cctpTokenMessengerV2Address: z.string().refine((val) => isAddress(val), {
+    message: "Invalid Ethereum address",
+  }),
+  cctpMessageTransmitterV2Address: z.string().refine((val) => isAddress(val), {
+    message: "Invalid Ethereum address",
+  }),
 });
 
 export const configSchema = z

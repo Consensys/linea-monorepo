@@ -8,6 +8,7 @@ import { defaultTokensConfig } from "@/stores";
 import { LineaSDKContracts } from "@/hooks";
 import {
   BridgeTransaction,
+  BridgeTransactionType,
   Chain,
   ChainLayer,
   Token,
@@ -143,7 +144,7 @@ async function fetchETHBridgeEvents(
       const token = tokens.find((token) => token.type.includes("eth"));
       const uniqueKey = `${log.args._from}-${log.args._to}-${log.transactionHash}`;
       transactionsMap.set(uniqueKey, {
-        type: "ETH",
+        type: BridgeTransactionType.ETH,
         status: formatStatus(messageStatus),
         token: token || defaultTokensConfig.MAINNET[0],
         fromChain,
@@ -263,7 +264,7 @@ async function fetchERC20BridgeEvents(
       const [amount] = decodeAbiParameters([{ type: "uint256", name: "amount" }], log.data);
 
       transactionsMap.set(transactionHash, {
-        type: "ERC20",
+        type: BridgeTransactionType.ERC20,
         status: formatStatus(messageStatus),
         token,
         fromChain,
@@ -347,7 +348,6 @@ async function fetchCCTPBridgeEvents(
         fromChain.cctpDomain,
       );
       if (!refreshedMessage) return;
-      console.log("transactionHash:", transactionHash, "refreshedMessage:", refreshedMessage);
 
       const status = getCCTPTransactionStatus(refreshedMessage.status, isNonceUsed);
 
@@ -355,7 +355,7 @@ async function fetchCCTPBridgeEvents(
       const claimTx = await getCCTPClaimTx(toChainClient, isNonceUsed, nonce);
 
       transactionsMap.set(transactionHash, {
-        type: "ERC20",
+        type: BridgeTransactionType.USDC,
         status,
         token,
         fromChain,

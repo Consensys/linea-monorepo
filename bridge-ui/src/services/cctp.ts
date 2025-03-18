@@ -39,7 +39,6 @@ export async function fetchCctpAttestationByNonce(
 
 // https://developers.circle.com/api-reference/stablecoins/common/reattest-message
 export async function reattestCCTPV2PreFinalityMessage(nonce: string): Promise<CctpV2ReattestationApiResponse> {
-  console.log("reattestCCTPV2PreFinalityMessage");
   const response = await fetch(`https://iris-api-sandbox.circle.com/v2/reattest/${nonce}`, {
     method: "POST",
     headers: {
