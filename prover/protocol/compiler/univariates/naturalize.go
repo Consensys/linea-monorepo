@@ -368,7 +368,7 @@ func (ctx naturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 		qID := ctx.reprToSubQueryID[subrepr]
 		submittedX := subQueriesParams[qID].X
 		// Or it is a mismatch between the evaluation queries and the derived query
-		api.AssertIsEqual(recoveredX, submittedX)
+		api.AssertIsEqual(recoveredX[0], submittedX)
 
 		/*
 			Recovers the Y values
