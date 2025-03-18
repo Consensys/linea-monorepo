@@ -18,6 +18,8 @@ export const generateChain = (chain: ViemChain): Chain => {
     gasLimitSurplus: config.chains[chain.id].gasLimitSurplus,
     profitMargin: config.chains[chain.id].profitMargin,
     cctpDomain: config.chains[chain.id].cctpDomain,
+    cctpTokenMessengerV2Address: config.chains[chain.id].cctpTokenMessengerV2Address as Address,
+    cctpMessageTransmitterV2Address: config.chains[chain.id].cctpMessageTransmitterV2Address as Address,
   };
 };
 

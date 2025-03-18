@@ -30,4 +30,6 @@ export type Chain = {
   gasLimitSurplus: bigint;
   profitMargin: bigint;
   cctpDomain: number;
+  cctpTokenMessengerV2Address: Address;
+  cctpMessageTransmitterV2Address: Address;
 };
