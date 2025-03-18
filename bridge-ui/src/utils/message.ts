@@ -1,5 +1,5 @@
 import { keccak256, encodeAbiParameters, Address } from "viem";
-import { CCTPV2BridgeMessage, NativeBridgeMessage } from "./history";
+import { CCTPV2BridgeMessage, NativeBridgeMessage } from "@/types";
 
 const INBOX_L1L2_MESSAGE_STATUS_MAPPING_SLOT = 176n;
 

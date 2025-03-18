@@ -4,10 +4,17 @@ import { getPublicClient } from "@wagmi/core";
 import { LineaSDK, OnChainMessageStatus } from "@consensys/linea-sdk";
 import { config as wagmiConfig } from "@/lib/wagmi";
 import { config } from "@/config";
-import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
 import { defaultTokensConfig } from "@/stores";
 import { LineaSDKContracts } from "@/hooks";
-import { Chain, ChainLayer, Token, TransactionStatus, BridgingInitiatedV2Event, MessageSentEvent } from "@/types";
+import {
+  BridgeTransaction,
+  Chain,
+  ChainLayer,
+  Token,
+  TransactionStatus,
+  BridgingInitiatedV2Event,
+  MessageSentEvent,
+} from "@/types";
 import {
   CCTP_TOKEN_MESSENGER,
   eventETH,
@@ -18,7 +25,6 @@ import {
   getCCTPTransactionStatus,
   refreshCCTPMessageIfNeeded,
   getCCTPMessageByTxHash,
-  getCCTPMessageExpiryBlock,
 } from "@/utils";
 import { DepositForBurnEvent } from "@/types/events";
 
@@ -30,36 +36,6 @@ type TransactionHistoryParams = {
   address: Address;
   tokens: Token[];
 };
-
-export type NativeBridgeMessage = {
-  from: Address;
-  to: Address;
-  fee: bigint;
-  value: bigint;
-  nonce: bigint;
-  calldata: string;
-  messageHash: string;
-  proof?: Proof;
-  amountSent: bigint;
-};
-
-// Params expected for `receiveMessage` as per https://developers.circle.com/stablecoins/transfer-usdc-on-testnet-from-ethereum-to-avalanche
-export type CCTPV2BridgeMessage = {
-  message: string;
-  attestation: string;
-  amountSent: bigint;
-};
-export interface BridgeTransaction {
-  type: "ETH" | "ERC20";
-  status: TransactionStatus;
-  timestamp: bigint;
-  fromChain: Chain;
-  toChain: Chain;
-  token: Token;
-  message: NativeBridgeMessage | CCTPV2BridgeMessage;
-  bridgingTx: string;
-  claimingTx?: string;
-}
 
 export async function fetchTransactionsHistory({
   lineaSDK,

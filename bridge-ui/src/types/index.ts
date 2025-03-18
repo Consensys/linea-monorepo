@@ -15,3 +15,4 @@ export {
   type CctpAttestationMessageStatus,
   type CctpV2ReattestationApiResponse,
 } from "./cctp";
+export { type NativeBridgeMessage, type CCTPV2BridgeMessage, type BridgeTransaction } from "./bridge";

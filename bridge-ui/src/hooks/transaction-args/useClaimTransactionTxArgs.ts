@@ -2,8 +2,7 @@ import { useMemo } from "react";
 import { useAccount } from "wagmi";
 import { encodeFunctionData, zeroAddress } from "viem";
 import MessageService from "@/abis/MessageService.json";
-import { Chain, ChainLayer, TransactionStatus } from "@/types";
-import { CCTPV2BridgeMessage, NativeBridgeMessage } from "@/utils/history";
+import { CCTPV2BridgeMessage, Chain, ChainLayer, NativeBridgeMessage, TransactionStatus } from "@/types";
 import { isNativeBridgeMessage } from "@/utils/message";
 
 type UseClaimTxArgsProps = {
