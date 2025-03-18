@@ -36,9 +36,7 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
     bridgingTx: transaction?.bridgingTx,
   });
 
-  if (transaction && transaction?.type === BridgeTransactionType.USDC) {
-    transaction.claimingTx = claimingTx;
-  }
+  if (transaction && claimingTx && !transaction?.claimingTx) transaction.claimingTx = claimingTx;
 
   // TODO - Hydrate BridgeTransaction.message object, use Tanstack for caching. Include re-assert for expired attestation here.
 

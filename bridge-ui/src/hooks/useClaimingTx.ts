@@ -1,7 +1,7 @@
 import { BridgeTransactionType, CCTPV2BridgeMessage, Chain, NativeBridgeMessage, TransactionStatus } from "@/types";
 import { getPublicClient } from "@wagmi/core";
 import { config as wagmiConfig } from "@/lib/wagmi";
-import { eventCCTPMessageReceived } from "@/utils/events";
+import { eventCCTPMessageReceived, eventMessageClaimed } from "@/utils/events";
 import { isNativeBridgeMessage, isCCTPV2BridgeMessage } from "@/utils/message";
 import { useQuery } from "@tanstack/react-query";
 
@@ -14,16 +14,15 @@ type UseClaimingTxProps = {
 };
 
 const useClaimingTx = ({ status, type, toChain, args, bridgingTx }: UseClaimingTxProps): string | undefined => {
-  // TODO - refactor into own file
+  // TODO - consider refactor into own file
   // queryFn for useQuery cannot return undefined - https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
   async function getClaimTx(params: {
     status?: TransactionStatus;
     type?: BridgeTransactionType;
     toChain?: Chain;
     args?: NativeBridgeMessage | CCTPV2BridgeMessage;
-    bridgingTx?: string;
   }): Promise<string> {
-    if (!status || !type || !toChain || !args || !bridgingTx) return "";
+    if (!status || !type || !toChain || !args) return "";
     if (status === TransactionStatus.PENDING) return "";
     const toChainClient = getPublicClient(wagmiConfig, {
       chainId: toChain.id,
@@ -32,11 +31,33 @@ const useClaimingTx = ({ status, type, toChain, args, bridgingTx }: UseClaimingT
     switch (type) {
       case BridgeTransactionType.ETH: {
         if (!isNativeBridgeMessage(args)) return "";
-        return "";
+        const messageClaimedEvents = await toChainClient.getLogs({
+          event: eventMessageClaimed,
+          // TODO - Find more efficient `fromBlock` param than 'earliest'
+          fromBlock: "earliest",
+          toBlock: "latest",
+          address: toChain.messageServiceAddress,
+          args: {
+            _messageHash: args?.messageHash as `0x${string}`,
+          },
+        });
+        if (messageClaimedEvents.length === 0) return "";
+        return messageClaimedEvents[0].transactionHash;
       }
       case BridgeTransactionType.ERC20: {
         if (!isNativeBridgeMessage(args)) return "";
-        return "";
+        const messageClaimedEvents = await toChainClient.getLogs({
+          event: eventMessageClaimed,
+          // TODO - Find more efficient `fromBlock` param than 'earliest'
+          fromBlock: "earliest",
+          toBlock: "latest",
+          address: toChain.messageServiceAddress,
+          args: {
+            _messageHash: args?.messageHash as `0x${string}`,
+          },
+        });
+        if (messageClaimedEvents.length === 0) return "";
+        return messageClaimedEvents[0].transactionHash;
       }
       case BridgeTransactionType.USDC: {
         if (!isCCTPV2BridgeMessage(args) || !args.nonce) return "";
