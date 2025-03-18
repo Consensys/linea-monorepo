@@ -2,7 +2,8 @@ import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { config } from "@/config";
-import { isEmptyObject, BridgeTransaction } from "@/utils";
+import { isEmptyObject } from "@/utils";
+import { BridgeTransaction } from "@/types";
 
 export type HistoryState = {
   isLoading: boolean;

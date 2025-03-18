@@ -1,7 +1,6 @@
 import { useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
 import useClaimTxArgs from "./transaction-args/useClaimTransactionTxArgs";
-import { Chain, TransactionStatus } from "@/types";
-import { CCTPV2BridgeMessage, NativeBridgeMessage } from "@/utils/history";
+import { CCTPV2BridgeMessage, Chain, NativeBridgeMessage, TransactionStatus } from "@/types";
 
 type UseClaimProps = {
   status?: TransactionStatus;

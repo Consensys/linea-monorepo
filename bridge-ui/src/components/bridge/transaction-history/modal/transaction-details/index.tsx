@@ -8,8 +8,8 @@ import styles from "./transaction-details.module.scss";
 import Button from "@/components/ui/button";
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
 import { useClaim } from "@/hooks";
-import { TransactionStatus } from "@/types";
-import { formatBalance, formatHex, formatTimestamp, BridgeTransaction } from "@/utils";
+import { BridgeTransaction, TransactionStatus } from "@/types";
+import { formatBalance, formatHex, formatTimestamp } from "@/utils";
 
 type Props = {
   transaction: BridgeTransaction | undefined;
