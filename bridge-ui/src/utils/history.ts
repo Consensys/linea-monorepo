@@ -20,7 +20,6 @@ import {
   eventETH,
   eventERC20V2,
   eventUSDC,
-  getCCTPClaimTx,
   isCCTPNonceUsed,
   getCCTPTransactionStatus,
   refreshCCTPMessageIfNeeded,
@@ -350,9 +349,6 @@ async function fetchCCTPBridgeEvents(
 
       const status = getCCTPTransactionStatus(refreshedMessage.status, isNonceUsed);
 
-      // TODO - Move to when claim modal opened
-      const claimTx = await getCCTPClaimTx(toChainClient, isNonceUsed, nonce, toChain.cctpMessageTransmitterV2Address);
-
       transactionsMap.set(transactionHash, {
         type: BridgeTransactionType.USDC,
         status,
@@ -361,7 +357,6 @@ async function fetchCCTPBridgeEvents(
         toChain,
         timestamp: fromBlock.timestamp,
         bridgingTx: log.transactionHash,
-        claimingTx: claimTx,
         message: {
           attestation: message.attestation,
           message: message.message,

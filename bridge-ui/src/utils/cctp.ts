@@ -49,30 +49,6 @@ export const getCCTPTransactionStatus = (
   return TransactionStatus.COMPLETED;
 };
 
-export const getCCTPClaimTx = async (
-  client: GetPublicClientReturnType,
-  isNonceUsed: boolean,
-  nonce: `0x${string}`,
-  cctpMessageTransmitterV2Address: `0x${string}`,
-): Promise<string | undefined> => {
-  if (!client) return undefined;
-  if (!isNonceUsed) return undefined;
-
-  const messageReceivedEvents = <CCTPMessageReceivedEvent[]>await client.getLogs({
-    event: eventCCTPMessageReceived,
-    // TODO - Find more efficient `fromBlock` param than 'earliest'
-    fromBlock: "earliest",
-    toBlock: "latest",
-    address: cctpMessageTransmitterV2Address,
-    args: {
-      nonce: nonce,
-    },
-  });
-
-  if (messageReceivedEvents.length === 0) return undefined;
-  return messageReceivedEvents[0].transactionHash;
-};
-
 export const refreshCCTPMessageIfNeeded = async (
   message: CctpAttestationMessage,
   isNonceUsed: boolean,

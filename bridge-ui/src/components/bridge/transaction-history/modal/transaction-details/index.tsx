@@ -8,7 +8,7 @@ import styles from "./transaction-details.module.scss";
 import Button from "@/components/ui/button";
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
 import { useClaim, useClaimingTx } from "@/hooks";
-import { BridgeTransaction, TransactionStatus } from "@/types";
+import { BridgeTransaction, BridgeTransactionType, TransactionStatus } from "@/types";
 import { formatBalance, formatHex, formatTimestamp } from "@/utils";
 
 type Props = {
@@ -27,15 +27,19 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
 
   // Hydrate BridgeTransaction object with data that is only required in TransactionDetails modal
 
-  // TODO - Hydrate BridgeTransaction.claimingTx, use Tanstack for caching
-  // if (transaction && !transaction?.claimingTx) {
-  //   transaction.claimingTx = useClaimingTx({
-  //     type: transaction?.type,
-  //     toChain: transaction?.toChain,
-  //     args: transaction?.message,
-  //     bridgingTx: transaction?.bridgingTx,
-  //   });
-  // }
+  // Hydrate BridgeTransaction.claimingTx
+  const claimingTx = useClaimingTx({
+    status: transaction?.status,
+    type: transaction?.type,
+    toChain: transaction?.toChain,
+    args: transaction?.message,
+    bridgingTx: transaction?.bridgingTx,
+  });
+
+  if (transaction && transaction?.type === BridgeTransactionType.USDC) {
+    transaction.claimingTx = claimingTx;
+  }
+
   // TODO - Hydrate BridgeTransaction.message object, use Tanstack for caching. Include re-assert for expired attestation here.
 
   const { claim, isConfirming, isPending, isConfirmed } = useClaim({
