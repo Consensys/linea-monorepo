@@ -37,10 +37,12 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
+	logCellCount(mod.Wiop, string(mod.definitionInput.ModuleName), "[ModuleLPP before compilation]")
+
 	wizard.ContinueCompilation(mod.Wiop,
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(1, 1<<17, true),
+		compiler.Arcane(256, 1<<17, true),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -50,7 +52,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(1, 1<<15, true),
+		compiler.Arcane(256, 1<<15, true),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -59,7 +61,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(1, 1<<13, true),
+		compiler.Arcane(256, 1<<13, true),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -67,18 +69,28 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 			vortex.PremarkAsSelfRecursed(),
 		),
 	)
+
+	logCellCount(mod.Wiop, string(mod.definitionInput.ModuleName), "[ModuleLPP before recursion]")
 
 	var recCtx *recursion.Recursion
 
 	defineRecursion := func(build2 *wizard.Builder) {
-		recCtx = recursion.DefineRecursionOf("test", build2.CompiledIOP, mod.Wiop, true, 1)
+		recCtx = recursion.DefineRecursionOf("wizard-recursion", build2.CompiledIOP, mod.Wiop, false, 1)
 	}
 
-	recursedComp := wizard.Compile(
-		defineRecursion,
+	recursedComp := wizard.Compile(defineRecursion,
+		mimc.CompileMiMC,
+		plonkinwizard.Compile,
+		compiler.Arcane(256, 1<<17, true),
+		vortex.Compile(
+			2,
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&sisInstance),
+			vortex.AddMerkleRootToPublicInputs("LPP_COLUMNS_MERKLE_ROOT", 0),
+		),
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(1, 1<<15, true),
+		compiler.Arcane(256, 1<<15, true),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -87,7 +99,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(1, 1<<13, true),
+		compiler.Arcane(256, 1<<13, true),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -96,9 +108,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		),
 	)
 
-	cellCount := logdata.CountCells(recursedComp)
-	cellCountJson, _ := json.Marshal(cellCount)
-	logrus.Infof("[ModuleLPP] module=%v finalCellCount=%v", mod.definitionInput.ModuleName, string(cellCountJson))
+	logCellCount(recursedComp, string(mod.definitionInput.ModuleName), "[ModuleLPP after recursion]")
 
 	return RecursedSegmentCompilation{
 		ModuleLPP:     mod,
@@ -113,10 +123,12 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
+	logCellCount(mod.Wiop, string(mod.definitionInput.ModuleName), "[moduleGL before compilation]")
+
 	wizard.ContinueCompilation(mod.Wiop,
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(2, 1<<17, true),
+		compiler.Arcane(256, 1<<17, true),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -126,7 +138,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(2, 1<<15, true),
+		compiler.Arcane(256, 1<<15, true),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -135,7 +147,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(2, 1<<13, true),
+		compiler.Arcane(256, 1<<13, true),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -144,15 +156,27 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		),
 	)
 
+	logCellCount(mod.Wiop, string(mod.definitionInput.ModuleName), "[ModuleGL before recursion]")
+
 	var recCtx *recursion.Recursion
 
 	defineRecursion := func(build2 *wizard.Builder) {
-		recCtx = recursion.DefineRecursionOf("test", build2.CompiledIOP, mod.Wiop, true, 1)
+		recCtx = recursion.DefineRecursionOf("wizard-recursion", build2.CompiledIOP, mod.Wiop, false, 1)
 	}
 
 	recursedComp := wizard.Compile(defineRecursion,
 		mimc.CompileMiMC,
-		compiler.Arcane(2, 1<<15, true),
+		plonkinwizard.Compile,
+		compiler.Arcane(256, 1<<17, true),
+		vortex.Compile(
+			2,
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&sisInstance),
+			vortex.AddMerkleRootToPublicInputs("LPP_COLUMNS_MERKLE_ROOT", 0),
+		),
+		selfrecursion.SelfRecurse,
+		mimc.CompileMiMC,
+		compiler.Arcane(256, 1<<15, true),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -162,7 +186,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(2, 1<<13, true),
+		compiler.Arcane(256, 1<<13, true),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -170,9 +194,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		),
 	)
 
-	cellCount := logdata.CountCells(recursedComp)
-	cellCountJson, _ := json.Marshal(cellCount)
-	logrus.Infof("[ModuleGL] module=%v cellCount=%v", mod.definitionInput.ModuleName, string(cellCountJson))
+	logCellCount(recursedComp, string(mod.definitionInput.ModuleName), "[ModuleGL] after recursion")
 
 	return RecursedSegmentCompilation{
 		ModuleGL:      mod,
@@ -193,12 +215,13 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit *ModuleWitness) wizard.Pro
 		comp = r.ModuleLPP.Wiop
 		proverStep = r.ModuleLPP.GetMainProverStep(wit)
 	} else {
-		comp = r.ModuleLPP.Wiop
+		comp = r.ModuleGL.Wiop
 		proverStep = r.ModuleGL.GetMainProverStep(wit)
 	}
 
 	var (
-		stoppingRound = recursion.LastVortexCommitRound(comp)
+		// In order to work, the recursion circuit needs to access the query params
+		stoppingRound = recursion.VortexQueryRound(comp) + 1
 		proverRun     = wizard.RunProverUntilRound(comp, proverStep, stoppingRound)
 		recursionWit  = recursion.ExtractWitness(proverRun)
 	)
@@ -207,4 +230,10 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit *ModuleWitness) wizard.Pro
 		r.RecursionComp,
 		r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}),
 	)
+}
+
+func logCellCount(comp *wizard.CompiledIOP, moduleName, msg string) {
+	cellCount := logdata.CountCells(comp)
+	cellCountJson, _ := json.Marshal(cellCount)
+	logrus.Infof("[wizard.analytic] msg=%v module=%v cellCount=%v\n", msg, moduleName, string(cellCountJson))
 }
