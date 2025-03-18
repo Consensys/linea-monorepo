@@ -15,18 +15,21 @@
 
 package net.consensys.linea.rpc.services;
 
-import static java.util.stream.Collectors.joining;
-
-import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Pattern;
+import java.util.SequencedMap;
+import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
+import net.consensys.linea.rpc.methods.LineaSendBundle;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.parameters.UnsignedLongParameter;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 
@@ -35,15 +38,14 @@ import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 @Getter
 @EqualsAndHashCode
 public class TransactionBundle {
-  private static final String FIELD_SEPARATOR = "|";
-  private static final String ITEM_SEPARATOR = ",";
-  private static final String LINE_TERMINATOR = "$";
   private final Hash bundleIdentifier;
+
   private final List<PendingBundleTx> pendingTransactions;
   private final Long blockNumber;
   private final Optional<Long> minTimestamp;
   private final Optional<Long> maxTimestamp;
   private final Optional<List<Hash>> revertingTxHashes;
+  private final Optional<UUID> replacementUUID;
 
   public TransactionBundle(
       final Hash bundleIdentifier,
@@ -51,76 +53,48 @@ public class TransactionBundle {
       final Long blockNumber,
       final Optional<Long> minTimestamp,
       final Optional<Long> maxTimestamp,
-      final Optional<List<Hash>> revertingTxHashes) {
+      final Optional<List<Hash>> revertingTxHashes,
+      final Optional<UUID> replacementUUID) {
     this.bundleIdentifier = bundleIdentifier;
     this.pendingTransactions = transactions.stream().map(PendingBundleTx::new).toList();
     this.blockNumber = blockNumber;
     this.minTimestamp = minTimestamp;
     this.maxTimestamp = maxTimestamp;
     this.revertingTxHashes = revertingTxHashes;
+    this.replacementUUID = replacementUUID;
   }
 
-  public String serializeForDisk() {
-    // version=1 | blockNumber | bundleIdentifier | minTimestamp | maxTimestamp |
-    // revertingTxHashes, | txs, $
-    return new StringBuilder("1")
-        .append(FIELD_SEPARATOR)
-        .append(blockNumber)
-        .append(FIELD_SEPARATOR)
-        .append(bundleIdentifier.toHexString())
-        .append(FIELD_SEPARATOR)
-        .append(minTimestamp.map(l -> l + FIELD_SEPARATOR).orElse(FIELD_SEPARATOR))
-        .append(maxTimestamp.map(l -> l + FIELD_SEPARATOR).orElse(FIELD_SEPARATOR))
-        .append(
-            revertingTxHashes
-                .map(l -> l.stream().map(Hash::toHexString).collect(joining(ITEM_SEPARATOR)))
-                .orElse(FIELD_SEPARATOR))
-        .append(
-            pendingTransactions.stream()
-                .map(PendingBundleTx::serializeForDisk)
-                .collect(joining(ITEM_SEPARATOR)))
-        .append(LINE_TERMINATOR)
-        .toString();
+  public LineaSendBundle.BundleParameter toBundleParameter() {
+    return new LineaSendBundle.BundleParameter(
+        pendingTransactions.stream().map(PendingBundleTx::toBase64String).toList(),
+        new UnsignedLongParameter(blockNumber),
+        minTimestamp,
+        maxTimestamp,
+        revertingTxHashes,
+        replacementUUID.map(UUID::toString),
+        Optional.empty());
   }
 
-  public static TransactionBundle restoreFromSerialized(final String str) {
-    if (!str.endsWith(LINE_TERMINATOR)) {
-      throw new IllegalArgumentException(
-          "Unterminated bundle serialization, missing terminal " + LINE_TERMINATOR);
-    }
+  @JsonValue
+  public Map<Hash, LineaSendBundle.BundleParameter> serialize() {
+    return Map.of(bundleIdentifier, toBundleParameter());
+  }
 
-    final var parts =
-        str.substring(0, str.length() - LINE_TERMINATOR.length())
-            .split(Pattern.quote(FIELD_SEPARATOR));
-    if (!parts[0].equals("1")) {
-      throw new IllegalArgumentException("Unsupported bundle serialization version " + parts[0]);
-    }
-    if (parts.length != 7) {
-      throw new IllegalArgumentException(
-          "Invalid bundle serialization, expected 7 fields but got " + parts.length);
-    }
-
-    final var blockNumber = Long.parseLong(parts[1]);
-    final var bundleIdentifier = Hash.fromHexString(parts[2]);
-    final Optional<Long> minTimestamp =
-        parts[3].isEmpty() ? Optional.empty() : Optional.of(Long.parseLong(parts[3]));
-    final Optional<Long> maxTimestamp =
-        parts[4].isEmpty() ? Optional.empty() : Optional.of(Long.parseLong(parts[4]));
-    final Optional<List<Hash>> revertingTxHashes =
-        parts[5].isEmpty()
-            ? Optional.empty()
-            : Optional.of(
-                Arrays.stream(parts[5].split(Pattern.quote(ITEM_SEPARATOR)))
-                    .map(Hash::fromHexString)
-                    .toList());
-    final var transactions =
-        Arrays.stream(parts[6].split(Pattern.quote(ITEM_SEPARATOR)))
-            .map(Bytes::fromBase64String)
-            .map(Transaction::readFrom)
-            .toList();
+  @JsonCreator
+  public static TransactionBundle deserialize(
+      final SequencedMap<Hash, LineaSendBundle.BundleParameter> serialized) {
+    final var entry = serialized.firstEntry();
+    final var hash = entry.getKey();
+    final var parameters = entry.getValue();
 
     return new TransactionBundle(
-        bundleIdentifier, transactions, blockNumber, minTimestamp, maxTimestamp, revertingTxHashes);
+        hash,
+        parameters.txs().stream().map(Bytes::fromBase64String).map(Transaction::readFrom).toList(),
+        parameters.blockNumber(),
+        parameters.minTimestamp(),
+        parameters.maxTimestamp(),
+        parameters.revertingTxHashes(),
+        parameters.replacementUUID().map(UUID::fromString));
   }
 
   /** A pending transaction contained in a bundle. */
@@ -144,7 +118,7 @@ public class TransactionBundle {
       return "Bundle tx: " + super.toTraceLog();
     }
 
-    String serializeForDisk() {
+    String toBase64String() {
       final var rlpOutput = new BytesValueRLPOutput();
       getTransaction().writeTo(rlpOutput);
       return rlpOutput.encoded().toBase64String();

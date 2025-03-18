@@ -14,6 +14,8 @@
  */
 package net.consensys.linea.rpc.methods;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_ABSENT;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -22,7 +24,9 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import lombok.RequiredArgsConstructor;
@@ -106,7 +110,8 @@ public class LineaSendBundle {
                         bundleParams.blockNumber,
                         bundleParams.minTimestamp,
                         bundleParams.maxTimestamp,
-                        bundleParams.revertingTxHashes()));
+                        bundleParams.revertingTxHashes(),
+                        optBundleUUID));
                 return new BundleResponse(bundleHash.toHexString());
               })
           .orElseThrow(
@@ -188,6 +193,8 @@ public class LineaSendBundle {
     }
   }
 
+  @JsonInclude(NON_ABSENT)
+  @JsonPropertyOrder({"blockNumber", "minTimestamp", "maxTimestamp"})
   public record BundleParameter(
       /*  array of signed transactions to execute in a bundle */
       List<String> txs,

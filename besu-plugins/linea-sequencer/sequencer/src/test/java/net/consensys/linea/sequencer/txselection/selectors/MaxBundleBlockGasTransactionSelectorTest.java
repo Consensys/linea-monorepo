@@ -97,6 +97,7 @@ public class MaxBundleBlockGasTransactionSelectorTest {
             1L,
             Optional.empty(),
             Optional.empty(),
+            Optional.empty(),
             Optional.empty());
     final var evaluationContexts =
         bundle.pendingTransactions().stream()

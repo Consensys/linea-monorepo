@@ -184,6 +184,7 @@ class LineaTransactionSelectorFactoryTest {
         blockNumber,
         Optional.empty(),
         Optional.empty(),
+        Optional.empty(),
         Optional.empty());
   }
 

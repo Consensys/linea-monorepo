@@ -22,6 +22,11 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.exc.ValueInstantiationException;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECPPrivateKey;
 import org.hyperledger.besu.crypto.SECPPublicKey;
@@ -33,6 +38,8 @@ import org.hyperledger.besu.ethereum.eth.transactions.PendingTransaction;
 import org.junit.jupiter.api.Test;
 
 class TransactionBundleTest {
+  private static final ObjectMapper objectMapper =
+      new ObjectMapper().registerModule(new Jdk8Module());
   private static final KeyPair KEY_PAIR_1 =
       new KeyPair(
           SECPPrivateKey.create(BigInteger.valueOf(Long.MAX_VALUE), SignatureAlgorithm.ALGORITHM),
@@ -46,21 +53,24 @@ class TransactionBundleTest {
       new TransactionTestFixture().nonce(2).gasLimit(21000).createTransaction(KEY_PAIR_1);
 
   @Test
-  void serializeForDisk() {
+  void serializeToJson() throws JsonProcessingException {
 
     Hash hash1 = Hash.fromHexStringLenient("0x1234");
     TransactionBundle bundle1 = createBundle(hash1, 1, List.of(TX1, TX2));
 
-    assertThat(bundle1.serializeForDisk())
+    assertThat(objectMapper.writeValueAsString(bundle1))
         .isEqualTo(
-            "1|1|0x0000000000000000000000000000000000000000000000000000000000001234||||+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7,+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf$");
+            """
+            {"0x0000000000000000000000000000000000000000000000000000000000001234":{"blockNumber":1,"txs":["+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7","+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf"]}}""");
   }
 
   @Test
-  void restoreFromSerialized() {
+  void deserializeFromJson() throws JsonProcessingException {
     TransactionBundle bundle =
-        TransactionBundle.restoreFromSerialized(
-            "1|1|0x0000000000000000000000000000000000000000000000000000000000001234||||+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7,+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf$");
+        objectMapper.readValue(
+            """
+            {"0x0000000000000000000000000000000000000000000000000000000000001234":{"blockNumber":1,"txs":["+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7","+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf"]}}""",
+            TransactionBundle.class);
 
     assertThat(bundle.blockNumber()).isEqualTo(1);
     assertThat(bundle.bundleIdentifier()).isEqualTo(Hash.fromHexStringLenient("0x1234"));
@@ -71,47 +81,39 @@ class TransactionBundleTest {
   }
 
   @Test
-  void restoreFromSerializedUnsupportedVersion() {
-    assertThatThrownBy(
-            () ->
-                TransactionBundle.restoreFromSerialized(
-                    "2|1|0x0000000000000000000000000000000000000000000000000000000000001234||||+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7,+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf$"))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageEndingWith("Unsupported bundle serialization version 2");
-  }
+  void deserializedMalformed() {
 
-  @Test
-  void restoreFromSerializedMalformed() {
     assertThatThrownBy(
             () ->
-                TransactionBundle.restoreFromSerialized(
-                    "1|1|0x0000000000000000000000000000000000000000000000000000000000001234$"))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageEndingWith("Invalid bundle serialization, expected 7 fields but got 3");
+                objectMapper.readValue(
+                    """
+            {"0x0000000000000000000000000000000000000000000000000000000000001234":{"wrong":1,"txs":["+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7","+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf"]}}""",
+                    TransactionBundle.class))
+        .isInstanceOf(ValueInstantiationException.class)
+        .hasMessageContaining("because \"blockNumber\" is null");
   }
 
   @Test
   void restoreFromSerializedParseError() {
     assertThatThrownBy(
             () ->
-                TransactionBundle.restoreFromSerialized(
-                    "1|should be a number|0x0000000000000000000000000000000000000000000000000000000000001234||||+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7,+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf$"))
-        .isInstanceOf(NumberFormatException.class)
-        .hasMessage("For input string: \"should be a number\"");
-  }
-
-  @Test
-  void restoreFromSerializedUnterminatedLine() {
-    assertThatThrownBy(
-            () ->
-                TransactionBundle.restoreFromSerialized(
-                    "1|should be a number|0x0000000000000000000000000000000000000000000000000000000000001234||||+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7,+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf"))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("Unterminated bundle serialization, missing terminal $");
+                objectMapper.readValue(
+                    """
+            {{wrong=json}}""",
+                    TransactionBundle.class))
+        .isInstanceOf(JsonParseException.class)
+        .hasMessageStartingWith(
+            "Unexpected character ('{' (code 123)): was expecting double-quote to start field name");
   }
 
   private TransactionBundle createBundle(Hash hash, long blockNumber, List<Transaction> maybeTxs) {
     return new TransactionBundle(
-        hash, maybeTxs, blockNumber, Optional.empty(), Optional.empty(), Optional.empty());
+        hash,
+        maybeTxs,
+        blockNumber,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 }

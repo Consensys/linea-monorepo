@@ -107,6 +107,7 @@ class BundleConstraintTransactionSelectorTest {
         blockNumber,
         Optional.ofNullable(minTimestamp),
         Optional.ofNullable(maxTimestamp),
+        Optional.empty(),
         Optional.empty());
   }
 

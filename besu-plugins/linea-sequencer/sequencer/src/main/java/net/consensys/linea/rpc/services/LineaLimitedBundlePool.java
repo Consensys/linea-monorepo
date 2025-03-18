@@ -34,6 +34,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import com.fasterxml.jackson.databind.MappingIterator;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SequenceWriter;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
@@ -55,7 +59,8 @@ import org.hyperledger.besu.plugin.services.BlockchainService;
 @AutoService(BesuService.class)
 @Slf4j
 public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.BlockAddedListener {
-  public static final String BUNDLE_SAVE_FILENAME = "bundles.dump";
+  public static final String BUNDLE_SAVE_FILENAME = "bundles.ndjson";
+  private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new Jdk8Module());
   private final BlockchainService blockchainService;
   private final Cache<Hash, TransactionBundle> cache;
   private final Map<Long, List<TransactionBundle>> blockIndex;
@@ -208,18 +213,27 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
     synchronized (isFrozen) {
       isFrozen.set(true);
       log.info("Saving bundles to {}", saveFilePath);
-      try (final BufferedWriter bw =
-          Files.newBufferedWriter(saveFilePath, StandardCharsets.US_ASCII)) {
+
+      try (final BufferedWriter bw = Files.newBufferedWriter(saveFilePath);
+          final SequenceWriter sequenceWriter =
+              objectMapper
+                  .writerFor(TransactionBundle.class)
+                  .withRootValueSeparator(System.lineSeparator())
+                  .writeValues(bw)) {
+
+        // write the header
+        bw.write(objectMapper.writeValueAsString(Map.of("version", 1)));
+        bw.newLine();
+
+        // write the bundles sorted by block number
         final var savedCount =
             blockIndex.values().stream()
                 .flatMap(List::stream)
                 .sorted(Comparator.comparing(TransactionBundle::blockNumber))
-                .map(TransactionBundle::serializeForDisk)
                 .peek(
-                    str -> {
+                    bundle -> {
                       try {
-                        bw.write(str);
-                        bw.newLine();
+                        sequenceWriter.write(bundle);
                       } catch (IOException e) {
                         throw new RuntimeException(e);
                       }
@@ -241,30 +255,37 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
             final var chainHeadBlockNumber = blockchainService.getChainHeadHeader().getNumber();
             final var loadedCount = new AtomicLong(0L);
             final var skippedCount = new AtomicLong(0L);
+
             try (final BufferedReader br =
                 Files.newBufferedReader(saveFilePath, StandardCharsets.US_ASCII)) {
-              br.lines()
-                  .forEach(
-                      line -> {
-                        try {
-                          final var bundle = TransactionBundle.restoreFromSerialized(line);
-                          if (bundle.blockNumber() > chainHeadBlockNumber) {
-                            this.putOrReplace(bundle.bundleIdentifier(), bundle);
-                            loadedCount.incrementAndGet();
-                          } else {
-                            log.debug(
-                                "Skipping bundle {} at line {}, since its block number {} is not greater than chain head block number {}",
-                                bundle.bundleIdentifier(),
-                                line,
-                                bundle.blockNumber(),
-                                chainHeadBlockNumber);
-                            skippedCount.incrementAndGet();
-                          }
-                        } catch (final Exception e) {
-                          log.warn("Error while loading bundle from serialized format {}", line, e);
-                        }
-                      });
-              log.info("Loaded {} bundles from {}", loadedCount.get(), saveFilePath);
+
+              // read header and check version
+              final var headerNode = objectMapper.readTree(br.readLine());
+              if (!headerNode.has("version") || headerNode.get("version").asInt() != 1) {
+                throw new IllegalArgumentException(
+                    "Unsupported bundle serialization header " + headerNode);
+              }
+              log.info("Loading bundles from {}, header {}", saveFilePath, headerNode);
+
+              try (final MappingIterator<TransactionBundle> iterator =
+                  objectMapper.readerFor(TransactionBundle.class).readValues(br)) {
+                iterator.forEachRemaining(
+                    bundle -> {
+                      if (bundle.blockNumber() > chainHeadBlockNumber) {
+                        this.putOrReplace(bundle.bundleIdentifier(), bundle);
+                        loadedCount.incrementAndGet();
+                      } else {
+                        log.debug(
+                            "Skipping bundle {} at location {}, since its block number {} is not greater than chain head block number {}",
+                            bundle.bundleIdentifier(),
+                            iterator.getCurrentLocation(),
+                            bundle.blockNumber(),
+                            chainHeadBlockNumber);
+                        skippedCount.incrementAndGet();
+                      }
+                    });
+                log.info("Loaded {} bundles from {}", loadedCount.get(), saveFilePath);
+              }
             } catch (final Throwable t) {
               log.error(
                   "Error while reading bundles from {}, partially loaded {} bundles",

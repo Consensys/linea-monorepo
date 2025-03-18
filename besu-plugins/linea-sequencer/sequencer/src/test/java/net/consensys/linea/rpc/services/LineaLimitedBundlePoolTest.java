@@ -280,11 +280,13 @@ class LineaLimitedBundlePoolTest {
 
     pool.saveToDisk();
 
-    final var savedLines = Files.readAllLines(dataDir.resolve(BUNDLE_SAVE_FILENAME), US_ASCII);
-    assertThat(savedLines)
-        .containsExactly(
-            "1|1|0x0000000000000000000000000000000000000000000000000000000000001234||||+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7,+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf$",
-            "1|2|0x0000000000000000000000000000000000000000000000000000000000005678||||+E8CghOIglIIgASAggqVoMmdnUf+4fBBE+l/IAxacTZhj5elWnFdplP+s4jg92yyoHUWAGDUZ5Vo6dg3q7e9+PyBAkwlk4Fprh1UFmyQhhjx$");
+    final var saved = Files.readString(dataDir.resolve(BUNDLE_SAVE_FILENAME), US_ASCII);
+    assertThat(saved)
+        .isEqualTo(
+            """
+            {"version":1}
+            {"0x0000000000000000000000000000000000000000000000000000000000001234":{"blockNumber":1,"txs":["+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7","+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf"]}}
+            {"0x0000000000000000000000000000000000000000000000000000000000005678":{"blockNumber":2,"txs":["+E8CghOIglIIgASAggqVoMmdnUf+4fBBE+l/IAxacTZhj5elWnFdplP+s4jg92yyoHUWAGDUZ5Vo6dg3q7e9+PyBAkwlk4Fprh1UFmyQhhjx"]}}""");
   }
 
   @Test
@@ -292,9 +294,9 @@ class LineaLimitedBundlePoolTest {
     Files.writeString(
         dataDir.resolve(BUNDLE_SAVE_FILENAME),
         """
-    1|11|0x0000000000000000000000000000000000000000000000000000000000001234||||+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7,+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf$
-    1|12|0x0000000000000000000000000000000000000000000000000000000000005678||||+E8CghOIglIIgASAggqVoMmdnUf+4fBBE+l/IAxacTZhj5elWnFdplP+s4jg92yyoHUWAGDUZ5Vo6dg3q7e9+PyBAkwlk4Fprh1UFmyQhhjx$
-    """,
+             {"version":1}
+             {"0x0000000000000000000000000000000000000000000000000000000000001234":{"blockNumber":11,"txs":["+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7","+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf"]}}
+             {"0x0000000000000000000000000000000000000000000000000000000000005678":{"blockNumber":12,"txs":["+E8CghOIglIIgASAggqVoMmdnUf+4fBBE+l/IAxacTZhj5elWnFdplP+s4jg92yyoHUWAGDUZ5Vo6dg3q7e9+PyBAkwlk4Fprh1UFmyQhhjx"]}}""",
         US_ASCII);
 
     pool.loadFromDisk();
@@ -322,13 +324,28 @@ class LineaLimitedBundlePoolTest {
   }
 
   @Test
+  void loadFromDisk_UnsupportedVersion() throws IOException {
+    Files.writeString(
+        dataDir.resolve(BUNDLE_SAVE_FILENAME),
+        """
+             {"version":0}
+             {"0x0000000000000000000000000000000000000000000000000000000000001234":{"blockNumber":11,"txs":["+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7","+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf"]}}""",
+        US_ASCII);
+
+    pool.loadFromDisk();
+
+    // no bundle should be restored
+    assertThat(pool.size()).isEqualTo(0);
+  }
+
+  @Test
   void partialLoadFromDisk_DueToInvalidLine() throws IOException {
     Files.writeString(
         dataDir.resolve(BUNDLE_SAVE_FILENAME),
         """
-    1|11|0x0000000000000000000000000000000000000000000000000000000000001234||||+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7,+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf$
-    1|not a number|0x0000000000000000000000000000000000000000000000000000000000005678||||+E8CghOIglIIgASAggqVoMmdnUf+4fBBE+l/IAxacTZhj5elWnFdplP+s4jg92yyoHUWAGDUZ5Vo6dg3q7e9+PyBAkwlk4Fprh1UFmyQhhjx$
-    """,
+             {"version":1}
+             {"0x0000000000000000000000000000000000000000000000000000000000001234":{"blockNumber":11,"txs":["+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7","+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf"]}}
+             {"0x0000000000000000000000000000000000000000000000000000000000005678":{"blockNumber":"not a number","txs":["+E8CghOIglIIgASAggqVoMmdnUf+4fBBE+l/IAxacTZhj5elWnFdplP+s4jg92yyoHUWAGDUZ5Vo6dg3q7e9+PyBAkwlk4Fprh1UFmyQhhjx"]}}""",
         US_ASCII);
 
     pool.loadFromDisk();
@@ -355,9 +372,9 @@ class LineaLimitedBundlePoolTest {
     Files.writeString(
         dataDir.resolve(BUNDLE_SAVE_FILENAME),
         """
-    1|10|0x0000000000000000000000000000000000000000000000000000000000005678||||+E8CghOIglIIgASAggqVoMmdnUf+4fBBE+l/IAxacTZhj5elWnFdplP+s4jg92yyoHUWAGDUZ5Vo6dg3q7e9+PyBAkwlk4Fprh1UFmyQhhjx$
-    1|11|0x0000000000000000000000000000000000000000000000000000000000001234||||+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7,+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf$
-    """,
+            {"version":1}
+            {"0x0000000000000000000000000000000000000000000000000000000000005678":{"blockNumber":10,"txs":["+E8CghOIglIIgASAggqVoMmdnUf+4fBBE+l/IAxacTZhj5elWnFdplP+s4jg92yyoHUWAGDUZ5Vo6dg3q7e9+PyBAkwlk4Fprh1UFmyQhhjx"]}}
+            {"0x0000000000000000000000000000000000000000000000000000000000001234":{"blockNumber":11,"txs":["+E+AghOIglIIgASAggqWoHNvbkX5jC5D+Q0GW88l7bP45W+b8oubebJsfXgE+lRzoAVzHPSnS/zQmUxq3Hg9UHQ3p51KWM6dyYuqKVM7HYz7","+E8BghOIglIIgASAggqVoGgwjcqbkx9qWzUse4MmYxq5fGYo617lp3j9YAj74GDhoFrjtX1uTIbDgflVrS1EPJv2jmbGV2NbxukBL0sNVpBf"]}}""",
         US_ASCII);
 
     pool.loadFromDisk();
@@ -385,6 +402,12 @@ class LineaLimitedBundlePoolTest {
 
   private TransactionBundle createBundle(Hash hash, long blockNumber, List<Transaction> maybeTxs) {
     return new TransactionBundle(
-        hash, maybeTxs, blockNumber, Optional.empty(), Optional.empty(), Optional.empty());
+        hash,
+        maybeTxs,
+        blockNumber,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty());
   }
 }
