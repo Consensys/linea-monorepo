@@ -60,6 +60,7 @@ func (fs *GnarkFiatShamir) SetState(state []frontend.Variable) {
 	case interface {
 		SetState([]frontend.Variable) error
 	}:
+		fs.hasher.Reset()
 		if err := hsh.SetState(state); err != nil {
 			panic(err)
 		}
