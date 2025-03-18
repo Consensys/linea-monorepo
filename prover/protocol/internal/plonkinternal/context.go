@@ -1,7 +1,7 @@
 package plonkinternal
 
 import (
-	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -117,8 +117,8 @@ func createCtx(
 	}
 
 	logrus.Debugf(
-		"constraint system has %v constraints and %v internal variables",
-		ccs.GetNbConstraints(), ccs.GetNbInternalVariables(),
+		"[plonk-in-wizard] compiled cs for %v, nbConstraints=%v, nbInternalVariables=%v\n",
+		name, ccs.GetNbConstraints(), ccs.GetNbInternalVariables(),
 	)
 
 	ctx.Plonk.SPR = ccs
@@ -144,7 +144,7 @@ func CompileCircuit(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func(
 
 	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
 	if err != nil {
-		return nil, nil, errors.New("error compiling the circuit with name")
+		return nil, nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
 	}
 
 	return ccsIface.(*cs.SparseR1CS), rcGetter, err
