@@ -2,7 +2,7 @@
 
 # [v2.0.0] - 18 Mar 2025
 
-# Fix: New bridge UI design
+# Feat: New bridge UI design
 
 Description:
 - New bridge UI v2 design
