@@ -3,7 +3,12 @@ package column
 import (
 	"reflect"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -90,4 +95,130 @@ func NbLeaves(h ifaces.Column) int {
 		utils.Panic("unexpected type %v", reflect.TypeOf(inner))
 	}
 	panic("unreachable")
+}
+
+// EvalExprColumn resolves an expression to a column assignment. The expression
+// must be converted to a board prior to evaluating the expression.
+//
+//   - If the expression does not uses ifaces.Column as metadata, the function
+//     will panic.
+//
+//   - If the expression contains several columns and they don't contain all
+//     have the same size.
+func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvectors.SmartVector {
+
+	var (
+		metadata = board.ListVariableMetadata()
+		inputs   = make([]smartvectors.SmartVector, len(metadata))
+		length   = ExprIsOnSameLengthHandles(&board)
+		v        field.Element
+	)
+
+	// Attempt to recover the size of the
+	for i := range inputs {
+		switch m := metadata[i].(type) {
+		case ifaces.Column:
+			inputs[i] = m.GetColAssignment(run)
+		case coin.Info:
+			v = run.GetRandomCoinField(m.Name)
+			inputs[i] = smartvectors.NewConstant(v, length)
+		case ifaces.Accessor:
+			v := m.GetVal(run)
+			inputs[i] = smartvectors.NewConstant(v, length)
+		case variables.PeriodicSample:
+			v := m.EvalCoset(length, 0, 1, false)
+			inputs[i] = v
+		case variables.X:
+			v := m.EvalCoset(length, 0, 1, false)
+			inputs[i] = v
+		}
+	}
+
+	return board.Evaluate(inputs)
+}
+
+// ExprIsOnSameLengthHandles checks that all the variables of the expression
+// that are [ifaces.Column] have the same size (and panics if it does not), then
+// returns the match.
+func ExprIsOnSameLengthHandles(board *symbolic.ExpressionBoard) int {
+
+	var (
+		metadatas = board.ListVariableMetadata()
+		length    = 0
+	)
+
+	for _, m := range metadatas {
+		switch metadata := m.(type) {
+		case ifaces.Column:
+			// Initialize the length with the first commitment
+			if length == 0 {
+				length = metadata.Size()
+			}
+
+			// Sanity-check the vector should all have the same length
+			if length != metadata.Size() {
+				utils.Panic("Inconsistent length for %v (has size %v, but expected %v)", metadata.GetColID(), metadata.Size(), length)
+			}
+		// The expression can involve random coins
+		case coin.Info, variables.X, variables.PeriodicSample, ifaces.Accessor:
+			// Do nothing
+		default:
+			utils.Panic("unknown type %T", metadata)
+		}
+	}
+
+	// No commitment were found in the metadata, thus this call is broken
+	if length == 0 {
+		utils.Panic("declared a handle from an expression which does not contains any handle")
+	}
+
+	return length
+}
+
+// return the runtime assignments of a linear combination column
+// that is computed on the fly from the columns stored in hs
+func RandLinCombColAssignment(run ifaces.Runtime, coinVal field.Element, hs []ifaces.Column) smartvectors.SmartVector {
+	var colTableWit smartvectors.SmartVector
+	var witnessCollapsed smartvectors.SmartVector
+	x := field.One()
+	witnessCollapsed = smartvectors.NewConstant(field.Zero(), hs[0].Size())
+	for tableCol := range hs {
+		colTableWit = hs[tableCol].GetColAssignment(run)
+		witnessCollapsed = smartvectors.Add(witnessCollapsed, smartvectors.Mul(colTableWit, smartvectors.NewConstant(x, hs[0].Size())))
+		x.Mul(&x, &coinVal)
+	}
+	return witnessCollapsed
+}
+
+// maximal round of declaration for a list of commitment
+func MaxRound(handles ...ifaces.Column) int {
+	res := 0
+	for _, handle := range handles {
+		res = utils.Max(res, handle.Round())
+	}
+	return res
+}
+
+// ShiftExpr returns a shifted version of the expression. The function will
+// panic if called with an expression that uses [variables.PeriodicSampling]
+func ShiftExpr(expr *symbolic.Expression, offset int) *symbolic.Expression {
+
+	return expr.ReconstructBottomUp(func(e *symbolic.Expression, children []*symbolic.Expression) (new *symbolic.Expression) {
+
+		vari, isVar := e.Operator.(symbolic.Variable)
+		if !isVar {
+			return e.SameWithNewChildren(children)
+		}
+
+		if _, isPeriodic := vari.Metadata.(variables.PeriodicSample); isPeriodic {
+			panic("unsupported: periodic sampling")
+		}
+
+		col, isCol := vari.Metadata.(ifaces.Column)
+		if !isCol {
+			return e.SameWithNewChildren(children)
+		}
+
+		return symbolic.NewVariable(Shift(col, offset))
+	})
 }
