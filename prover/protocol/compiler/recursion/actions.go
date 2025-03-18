@@ -42,6 +42,7 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		sisHashes         [][]field.Element
 		trees             []*smt.Tree
 		lastRound         = run.Spec.QueriesParams.Round(pcs.Query.QueryID)
+		pubs              = []field.Element{}
 	)
 
 	for round := 0; round <= lastRound; round++ {
@@ -63,12 +64,17 @@ func ExtractWitness(run *wizard.ProverRuntime) Witness {
 		}
 	}
 
+	for i := range run.Spec.PublicInputs {
+		pubs = append(pubs, run.Spec.PublicInputs[i].Acc.GetVal(run))
+	}
+
 	return Witness{
 		Proof:             run.ExtractProof(),
 		CommittedMatrices: committedMatrices,
 		SisHashes:         sisHashes,
 		Trees:             trees,
 		FinalFS:           run.FS.State()[0],
+		Pub:               pubs,
 	}
 }
 
