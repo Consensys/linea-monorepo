@@ -52,15 +52,21 @@ object TestEnvironment {
   // The switch doesn't work for nethermind yet
   private val nethermindFollowerL2Client: Web3j = buildWeb3Client("http://localhost:10545", jwtConfig)
   private val erigonFollowerL2Client: Web3j = buildWeb3Client("http://localhost:11545")
-  val followerClients =
+  val preMergeFollowerClients =
     mapOf(
       "follower-geth-2" to geth2L2Client,
       "follower-besu" to besuFollowerL2Client,
       "follower-erigon" to erigonFollowerL2Client,
       "follower-nethermind" to nethermindFollowerL2Client,
     )
-  val allClients = followerClients + ("sequencer" to sequencerL2Client)
-  val followerClientsPostMerge = followerClients + ("follower-geth" to geth1L2Client)
+  val clientsSyncablePreMergeAndPostMerge =
+    mapOf(
+      "follower-besu" to besuFollowerL2Client,
+      "follower-erigon" to erigonFollowerL2Client,
+      "follower-nethermind" to nethermindFollowerL2Client,
+    )
+  val followerClientsPostMerge = preMergeFollowerClients - "follower-geth-2" + ("follower-geth" to geth1L2Client)
+  val allClients = preMergeFollowerClients + followerClientsPostMerge + ("sequencer" to sequencerL2Client)
 
   private val besuFollowerExecutionEngineClient = createExecutionClient("http://localhost:9550")
   private val nethermindFollowerExecutionEngineClient =
@@ -79,7 +85,7 @@ object TestEnvironment {
     mapOf(
       "follower-geth-2" to geth2ExecutionEngineClient,
     )
-  val followerExecutionEngineClients =
+  private val followerExecutionEngineClients =
     mapOf(
       "follower-besu" to besuFollowerExecutionEngineClient,
       "follower-erigon" to erigonFollowerExecutionEngineClient,
@@ -87,7 +93,7 @@ object TestEnvironment {
     ) + gethExecutionEngineClients
 
   val followerExecutionClientsPostMerge =
-    (followerExecutionEngineClients + ("follower-geth" to geth1ExecutionEngineClient))
+    (followerExecutionEngineClients - "follower-geth-2" + ("follower-geth" to geth1ExecutionEngineClient))
 
   private val transactionManager =
     let {

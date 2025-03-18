@@ -8,14 +8,6 @@ dependencies {
   implementation(project(":core"))
   implementation(project(":executionlayer"))
 
-  implementation "tech.pegasys.teku.internal:executionclient"
-  implementation("tech.pegasys.teku.internal:time") {
-    because "required by executionclient ^"
-  }
-  implementation("tech.pegasys.teku.internal:ethereum-events") {
-    because "required by executionclient ^"
-  }
-
   testImplementation("org.hyperledger.besu.internal:core")
 
   implementation "info.picocli:picocli"

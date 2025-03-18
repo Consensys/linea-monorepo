@@ -20,9 +20,12 @@ plugins {
 dependencies {
   implementation(project(":core"))
 
+  api "tech.pegasys.teku.internal:executionclient"
+
+  api("tech.pegasys.teku.internal:time")
+  api("tech.pegasys.teku.internal:ethereum-events")
   implementation "tech.pegasys.teku.internal:unsigned"
   implementation "tech.pegasys.teku.internal:bytes"
-  implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:spec"
 
   testImplementation (group: 'tech.pegasys.teku.internal', name: 'spec', classifier: 'test-fixtures')

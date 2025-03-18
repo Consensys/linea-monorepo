@@ -1,0 +1,14 @@
+{
+  "config": {
+    "0": {
+      "type": "delegated",
+      "blockTimeSeconds": 1
+    },
+    "%PRAGUE_TIME%": {
+      "type": "dummy",
+      "blockTimeSeconds": 6,
+      "feeRecipient": "0x0000000000000000000000000000000000000000",
+      "elFork": "Prague"
+    }
+  }
+}

@@ -29,7 +29,6 @@ import org.hyperledger.besu.ethereum.core.encoding.EncodingContext
 import org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder
 import org.web3j.protocol.core.methods.response.EthBlock
 import org.web3j.protocol.core.methods.response.EthBlock.TransactionObject
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV1
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
 import tech.pegasys.teku.ethereum.executionclient.schema.WithdrawalV1
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
@@ -156,48 +155,6 @@ object Mappers {
       withdrawals,
       blobGasUsed,
       excessBlobGas,
-    )
-  }
-
-  fun executionPayloadV1FromBlock(block: EthBlock.Block): ExecutionPayloadV1 {
-    val parentHash = Bytes32.fromHexString(block.parentHash)
-    val feeRecipient = Bytes20.fromHexString(block.miner)
-    val stateRoot = Bytes32.fromHexString(block.stateRoot)
-    val receiptsRoot = Bytes32.fromHexString(block.receiptsRoot)
-    val logsBloom = Bytes.fromHexString(block.logsBloom)
-    val prevRandao = Bytes32.fromHexString(block.mixHash)
-    val blockNumber = UInt64.valueOf(block.number)
-    val gasLimit = UInt64.valueOf(block.gasLimit)
-    val gasUsed = UInt64.valueOf(block.gasUsed)
-    val timestamp = UInt64.valueOf(block.timestamp)
-    //        val extraData = Bytes.fromHexString(block.extraData.substring(0,
-    // ExtraDataStringHexLength))
-    val extraData = Bytes.fromHexString(block.extraData)
-    val baseFeePerGas = UInt256.valueOf(block.baseFeePerGas)
-    val blockHash = Bytes32.fromHexString(block.hash)
-
-    val transactions =
-      block.transactions.map {
-        val transaction = it.get() as TransactionObject
-        transaction.toBytes()
-      }
-
-    // Create an instance of ExecutionPayloadV3
-    return ExecutionPayloadV1(
-      parentHash,
-      feeRecipient,
-      stateRoot,
-      receiptsRoot,
-      logsBloom,
-      prevRandao,
-      blockNumber,
-      gasLimit,
-      gasUsed,
-      timestamp,
-      extraData,
-      baseFeePerGas,
-      blockHash,
-      transactions,
     )
   }
 }

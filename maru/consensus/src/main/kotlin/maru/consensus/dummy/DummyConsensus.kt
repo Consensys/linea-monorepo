@@ -28,7 +28,7 @@ import org.hyperledger.besu.consensus.common.bft.events.BlockTimerExpiry
 import org.hyperledger.besu.consensus.common.bft.statemachine.BftEventHandler
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class TimeDrivenEventProducer(
+class DummyConsensus(
   private val forksSchedule: ForksSchedule,
   private val eventHandler: BftEventHandler,
   private val blockMetadataProvider: () -> BlockMetadata,
@@ -59,8 +59,10 @@ class TimeDrivenEventProducer(
   @Synchronized
   private fun handleTick() {
     val lastBlockMetadata = blockMetadataProvider()
+    val nextTargetBlockTimestampSeconds = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(lastBlockMetadata)
+    val nextBlockFork =
+      forksSchedule.getForkByTimestamp(nextTargetBlockTimestampSeconds)
     val nextBlockNumber = lastBlockMetadata.blockNumber + 1u
-    val nextBlockConfig = forksSchedule.getForkByNumber(nextBlockNumber)
 
     log.debug("currentTimestamp={} nextBlockNumber={}", clock.millis(), nextBlockNumber)
 
@@ -71,11 +73,11 @@ class TimeDrivenEventProducer(
       stop()
     }
 
-    when (nextBlockConfig) {
+    when (nextBlockFork.configuration) {
       is DummyConsensusConfig -> {
         scheduleNextTask(
           nextBlockNumber = nextBlockNumber,
-          nextTargetTimestampSeconds = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(lastBlockMetadata),
+          nextTargetTimestampSeconds = nextTargetBlockTimestampSeconds,
         )
       }
 

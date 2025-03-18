@@ -54,11 +54,6 @@ services:
         condition: service_healthy
     image: ethereum/client-go:release-1.15
     restart: always
-    healthcheck:
-      test: [ "CMD-SHELL", "/scripts/healthcheck.sh" ]
-      interval: 1s
-      timeout: 5s
-      retries: 5
     entrypoint: [ "sh", "/scripts/node.sh", "1337", "/initialization/genesis-geth.json", "0x0", "0x1C9C380", "/data" ]
     environment:
       BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"

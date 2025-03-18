@@ -23,7 +23,7 @@ dependencies {
   implementation(project(":config"))
   implementation (project(":jvm-libs:extensions"))
   implementation(project(":executionlayer")) {
-    because "only because of protocol builders"
+    because "because of protocol builders"
   }
 
   implementation "com.sksamuel.hoplite:hoplite-json"

@@ -16,6 +16,7 @@
 package maru.app
 
 import java.math.BigInteger
+import maru.consensus.ElFork
 import maru.testutils.MaruFactory
 import maru.testutils.TransactionsHelper
 import maru.testutils.besu.BesuFactory
@@ -31,7 +32,6 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
 
@@ -48,16 +48,16 @@ class MaruDummyConsensusTest {
   private lateinit var transactionsHelper: TransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
 
-  @BeforeEach
-  fun setUp() {
+  private fun setUp(elFork: ElFork = ElFork.Prague) {
     transactionsHelper = TransactionsHelper()
-    besuNode = BesuFactory.buildTestBesu()
+    besuNode = BesuFactory.buildTestBesu(elFork)
     cluster = Cluster(NetConditions(NetTransactions()))
 
     cluster.start(besuNode)
     val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
     val engineRpcUrl = besuNode.engineRpcUrl().get()
-    maruNode = MaruFactory.buildTestMaru(ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl, engineApiRpc = engineRpcUrl)
+    maruNode =
+      MaruFactory.buildTestMaru(ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl, engineApiRpc = engineRpcUrl, elFork)
     maruNode.start()
   }
 
@@ -81,6 +81,7 @@ class MaruDummyConsensusTest {
 
   @Test
   fun `dummyConsensus is able to produce blocks with the expected block time`() {
+    setUp()
     val blocksToProduce = 10
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
@@ -91,6 +92,7 @@ class MaruDummyConsensusTest {
 
   @Test
   fun `dummyConsensus works if Besu stops mid flight`() {
+    setUp()
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
@@ -105,6 +107,21 @@ class MaruDummyConsensusTest {
 
   @Test
   fun `dummyConsensus works if Maru stops mid flight`() {
+    setUp()
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+    }
+    maruNode.stop()
+    maruNode.start()
+    repeat(blocksToProduce) {
+      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+    }
+  }
+
+  @Test
+  fun `dummyConsensus works with Prague fork`() {
+    setUp(ElFork.Prague)
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
