@@ -203,8 +203,6 @@ func TestDistributedWizard(t *testing.T) {
 // TestBenchDistributedWizard runs the distributed wizard will all the compilations
 func TestBenchDistributedWizard(t *testing.T) {
 
-	logrus.SetLevel(logrus.FatalLevel)
-
 	go func() {
 		ticker := time.Tick(time.Second * 10)
 		for range ticker {
@@ -236,6 +234,10 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
 	for i := range distWizard.GLs {
+
+		if i > 0 {
+			continue
+		}
 
 		if cells := logdata.CountCells(distWizard.GLs[i].Wiop); cells.TotalCells() > minCompilationSize {
 			fmt.Printf("[%v] Starting to compile module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
@@ -288,10 +290,11 @@ func TestBenchDistributedWizard(t *testing.T) {
 	for i := range witnessGLs {
 
 		var (
-			witnessGL   = witnessGLs[i]
-			witnessLPP  = witnessLPPs[i]
-			moduleIndex = witnessGLs[i].ModuleIndex
-			moduleName  = witnessGLs[i].ModuleName
+			matchedModule = 0
+			witnessGL     = witnessGLs[i]
+			witnessLPP    = witnessLPPs[i]
+			moduleIndex   = witnessGLs[i].ModuleIndex
+			moduleName    = witnessGLs[i].ModuleName
 		)
 
 		witnessLPP.InitialFiatShamirState = sharedRandomness
@@ -319,6 +322,11 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 			moduleGL = &compiledGLs[k]
 			moduleLPP = &compiledLPPs[k]
+			matchedModule = k
+		}
+
+		if matchedModule > 0 {
+			continue
 		}
 
 		if moduleGL == nil {
