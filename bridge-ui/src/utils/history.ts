@@ -17,7 +17,6 @@ import {
   MessageSentEvent,
 } from "@/types";
 import {
-  CCTP_TOKEN_MESSENGER,
   eventETH,
   eventERC20V2,
   eventUSDC,
@@ -308,7 +307,7 @@ async function fetchCCTPBridgeEvents(
     event: eventUSDC,
     fromBlock: "earliest",
     toBlock: "latest",
-    address: CCTP_TOKEN_MESSENGER,
+    address: fromChain.cctpTokenMessengerV2Address,
     args: {
       depositor: address,
     },
@@ -339,7 +338,7 @@ async function fetchCCTPBridgeEvents(
       // TODO - ?Compute deterministic nonce without consulting CCTP API, to guard against CCTP API rate limit of 10 requests/second
       const nonce = message.eventNonce;
 
-      const isNonceUsed = await isCCTPNonceUsed(toChainClient, nonce);
+      const isNonceUsed = await isCCTPNonceUsed(toChainClient, nonce, toChain.cctpMessageTransmitterV2Address);
 
       const refreshedMessage = await refreshCCTPMessageIfNeeded(
         message,
@@ -352,7 +351,7 @@ async function fetchCCTPBridgeEvents(
       const status = getCCTPTransactionStatus(refreshedMessage.status, isNonceUsed);
 
       // TODO - Move to when claim modal opened
-      const claimTx = await getCCTPClaimTx(toChainClient, isNonceUsed, nonce);
+      const claimTx = await getCCTPClaimTx(toChainClient, isNonceUsed, nonce, toChain.cctpMessageTransmitterV2Address);
 
       transactionsMap.set(transactionHash, {
         type: BridgeTransactionType.USDC,

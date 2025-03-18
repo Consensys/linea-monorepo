@@ -4,7 +4,7 @@ import { encodeFunctionData, padHex, zeroHash } from "viem";
 import { useFormStore, useChainStore } from "@/stores";
 import { isCctp } from "@/utils/tokens";
 import useCctpDestinationDomain from "./useCctpDestinationDomain";
-import { CCTP_MIN_FINALITY_THRESHOLD, CCTP_TOKEN_MESSENGER, CCTP_TRANSFER_MAX_FEE } from "@/utils/cctp";
+import { CCTP_MIN_FINALITY_THRESHOLD, CCTP_TRANSFER_MAX_FEE } from "@/utils/cctp";
 
 type UseDepositForBurnTxArgs = {
   allowance?: bigint;
@@ -35,7 +35,7 @@ const useDepositForBurnTxArgs = ({ allowance }: UseDepositForBurnTxArgs) => {
     return {
       type: "depositForBurn",
       args: {
-        to: CCTP_TOKEN_MESSENGER,
+        to: fromChain.cctpTokenMessengerV2Address,
         data: encodeFunctionData({
           abi: [
             {
