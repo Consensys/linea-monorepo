@@ -5,7 +5,7 @@
 # Fix: New bridge UI design
 
 Description:
-- New bridge UI design
+- New bridge UI v2 design
 
 [Changes][v2.0.0]
 
