@@ -7,10 +7,11 @@ import { useQueryClient } from "@tanstack/react-query";
 
 type Props = {
   isModalOpen: boolean;
+  transactionType?: string;
   onCloseModal: () => void;
 };
 
-export default function TransactionConfirmed({ isModalOpen, onCloseModal }: Props) {
+export default function TransactionConfirmed({ isModalOpen, transactionType, onCloseModal }: Props) {
   const setIsTransactionHistoryOpen = useNativeBridgeNavigationStore.useSetIsTransactionHistoryOpen();
   const queryClient = useQueryClient();
 
@@ -18,8 +19,9 @@ export default function TransactionConfirmed({ isModalOpen, onCloseModal }: Prop
     <Modal title="Transaction confirmed!" isOpen={isModalOpen} onClose={onCloseModal} size="lg">
       <div className={styles["modal-inner"]}>
         <p className={styles["text"]}>
-          You may now bridge another transaction, check your transaction history, or stay ahead of the curve with the
-          latest trending tokens.
+          {transactionType === "approve"
+            ? "You have successfully approved the token. You can now bridge your token."
+            : "You may now bridge another transaction, check your transaction history, or stay ahead of the curve with thelatest trending tokens."}
         </p>
         <div className={styles["list-button"]}>
           <Link
@@ -35,12 +37,14 @@ export default function TransactionConfirmed({ isModalOpen, onCloseModal }: Prop
             variant="link"
             className={styles["secondary-btn"]}
             onClick={() => {
-              setIsTransactionHistoryOpen(true);
-              queryClient.invalidateQueries({ queryKey: ["transactionHistory"], exact: false });
+              if (transactionType !== "approve") {
+                setIsTransactionHistoryOpen(true);
+                queryClient.invalidateQueries({ queryKey: ["transactionHistory"], exact: false });
+              }
               onCloseModal();
             }}
           >
-            View transactions
+            {transactionType === "approve" ? "Bridge your token" : "View transactions"}
           </Button>
         </div>
       </div>

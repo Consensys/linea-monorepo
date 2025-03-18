@@ -1,4 +1,4 @@
-import { Address } from "viem";
+import { Address, decodeAbiParameters } from "viem";
 import { compareAsc, fromUnixTime, subDays } from "date-fns";
 import { getPublicClient } from "@wagmi/core";
 import { LineaSDK, OnChainMessageStatus } from "@consensys/linea-sdk";
@@ -31,7 +31,7 @@ type TransactionHistoryParams = {
   tokens: Token[];
 };
 
-type NativeBridgeMessage = {
+export type NativeBridgeMessage = {
   from: Address;
   to: Address;
   fee: bigint;
@@ -40,13 +40,14 @@ type NativeBridgeMessage = {
   calldata: string;
   messageHash: string;
   proof?: Proof;
+  amountSent: bigint;
 };
 
 // Params expected for `receiveMessage` as per https://developers.circle.com/stablecoins/transfer-usdc-on-testnet-from-ethereum-to-avalanche
-type CCTPV2BridgeMessage = {
+export type CCTPV2BridgeMessage = {
   message: string;
   attestation: string;
-  value: bigint;
+  amountSent: bigint;
 };
 export interface BridgeTransaction {
   type: "ETH" | "ERC20";
@@ -183,6 +184,7 @@ async function fetchETHBridgeEvents(
           calldata: log.args._calldata,
           messageHash: log.args._messageHash,
           proof: messageProof,
+          amountSent: log.args._value,
         },
       });
     }),
@@ -272,11 +274,17 @@ async function fetchERC20BridgeEvents(
           ? await lineaSDK.getL1ClaimingService().getMessageProof(message[0].messageHash)
           : undefined;
 
-      const token = tokens.find((token) => token.L1 === log.args.token || token.L2 === log.args.token);
+      const token = tokens.find(
+        (token) =>
+          token.L1?.toLowerCase() === log.args.token.toLowerCase() ||
+          token.L2?.toLowerCase() === log.args.token.toLowerCase(),
+      );
 
       if (!token) {
         return;
       }
+
+      const [amount] = decodeAbiParameters([{ type: "uint256", name: "amount" }], log.data);
 
       transactionsMap.set(transactionHash, {
         type: "ERC20",
@@ -296,6 +304,7 @@ async function fetchERC20BridgeEvents(
           calldata: message[0].calldata,
           messageHash: message[0].messageHash,
           proof: messageProof,
+          amountSent: amount,
         },
       });
     }),
@@ -381,7 +390,7 @@ async function fetchCCTPBridgeEvents(
         message: {
           attestation: refreshedMessage.attestation,
           message: refreshedMessage.message,
-          value: BigInt(log.args.amount),
+          amountSent: BigInt(log.args.amount),
         },
       });
     }),

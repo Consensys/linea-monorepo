@@ -80,7 +80,7 @@ export default function Transaction({
       </div>
       <div className={styles["right"]}>
         <div className={styles["value-wrapper"]}>
-          <span className={styles["value"]}>{formatUnits(message.value, token.decimals)} &nbsp;</span>
+          <span className={styles["value"]}>{formatUnits(message.amountSent, token.decimals)} &nbsp;</span>
           <span className={styles["unit"]}>{token.symbol}</span>
         </div>
         <div className={styles["status"]}>{renderStatus()}</div>

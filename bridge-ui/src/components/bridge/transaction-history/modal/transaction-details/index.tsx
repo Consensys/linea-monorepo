@@ -29,16 +29,7 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
     status: transaction?.status,
     fromChain: transaction?.fromChain,
     toChain: transaction?.toChain,
-    args: {
-      from: transaction?.message?.from,
-      to: transaction?.message?.to,
-      fee: transaction?.message?.fee,
-      value: transaction?.message?.value,
-      nonce: transaction?.message?.nonce,
-      calldata: transaction?.message?.calldata,
-      messageHash: transaction?.message?.messageHash,
-      proof: transaction?.message?.proof,
-    },
+    args: transaction?.message,
   });
 
   useEffect(() => {

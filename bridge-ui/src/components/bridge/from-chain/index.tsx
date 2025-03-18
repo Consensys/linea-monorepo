@@ -47,7 +47,7 @@ export default function FromChain() {
           {fromChain?.iconPath && (
             <Image src={fromChain.iconPath} width="40" height="40" alt={fromChain.nativeCurrency.symbol} />
           )}
-          <div className={styles["info-value"]}>{fromChain?.name}</div>
+          <div className={styles["info-value"]}>{fromChain.name}</div>
         </div>
       </button>
       <SelectNetwork
