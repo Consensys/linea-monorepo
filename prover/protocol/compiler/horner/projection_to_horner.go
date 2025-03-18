@@ -91,6 +91,10 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 		ctx.Xs = append(ctx.Xs, alpha, alpha)
 	}
 
+	if len(parts) == 0 {
+		return
+	}
+
 	ctx.Query = comp.InsertHornerQuery(round, ifaces.QueryIDf("PROJECTION_TO_HORNER_%v", comp.SelfRecursionCount), parts)
 	comp.RegisterProverAction(round, assignHornerQuery{ctx})
 	comp.RegisterVerifierAction(round, &checkHornerQuery{projectionContext: ctx})
