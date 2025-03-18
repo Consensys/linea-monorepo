@@ -5,7 +5,6 @@ import { LineaSDK, OnChainMessageStatus } from "@consensys/linea-sdk";
 import { config as wagmiConfig } from "@/lib/wagmi";
 import { config } from "@/config";
 import { defaultTokensConfig } from "@/stores";
-import { LineaSDKContracts } from "@/hooks";
 import {
   BridgeTransaction,
   BridgeTransactionType,
@@ -29,7 +28,6 @@ import { DepositForBurnEvent } from "@/types/events";
 
 type TransactionHistoryParams = {
   lineaSDK: LineaSDK;
-  lineaSDKContracts: LineaSDKContracts;
   fromChain: Chain;
   toChain: Chain;
   address: Address;
@@ -38,15 +36,14 @@ type TransactionHistoryParams = {
 
 export async function fetchTransactionsHistory({
   lineaSDK,
-  lineaSDKContracts,
   fromChain,
   toChain,
   address,
   tokens,
 }: TransactionHistoryParams): Promise<BridgeTransaction[]> {
   const events = await Promise.all([
-    fetchBridgeEvents(lineaSDK, lineaSDKContracts, fromChain, toChain, address, tokens),
-    fetchBridgeEvents(lineaSDK, lineaSDKContracts, toChain, fromChain, address, tokens),
+    fetchBridgeEvents(lineaSDK, fromChain, toChain, address, tokens),
+    fetchBridgeEvents(lineaSDK, toChain, fromChain, address, tokens),
   ]);
   return events.flat().sort((a, b) => Number(b.timestamp.toString()) - Number(a.timestamp.toString()));
 }
@@ -54,15 +51,14 @@ export async function fetchTransactionsHistory({
 // TODO - Memoize events
 async function fetchBridgeEvents(
   lineaSDK: LineaSDK,
-  lineaSDKContracts: LineaSDKContracts,
   fromChain: Chain,
   toChain: Chain,
   address: Address,
   tokens: Token[],
 ): Promise<BridgeTransaction[]> {
   const [ethEvents, erc20Events, cctpEvents] = await Promise.all([
-    fetchETHBridgeEvents(lineaSDK, lineaSDKContracts, address, fromChain, toChain, tokens),
-    fetchERC20BridgeEvents(lineaSDK, lineaSDKContracts, address, fromChain, toChain, tokens),
+    fetchETHBridgeEvents(lineaSDK, address, fromChain, toChain, tokens),
+    fetchERC20BridgeEvents(lineaSDK, address, fromChain, toChain, tokens),
     // Feature toggle for CCTP, will filter out USDC transactions if isCCTPEnabled == false
     config.isCCTPEnabled ? fetchCCTPBridgeEvents(address, fromChain, toChain, tokens) : [],
   ]);
@@ -72,7 +68,6 @@ async function fetchBridgeEvents(
 
 async function fetchETHBridgeEvents(
   lineaSDK: LineaSDK,
-  lineaSDKContracts: LineaSDKContracts,
   address: Address,
   fromChain: Chain,
   toChain: Chain,
@@ -127,11 +122,7 @@ async function fetchETHBridgeEvents(
         return;
       }
 
-      // TODO - Move messageClaimedEvent to when claim modal opened
-      const [messageStatus, [messageClaimedEvent]] = await Promise.all([
-        contract.getMessageStatus(messageHash),
-        contract.getEvents(lineaSDKContracts[toChain.layer].contract.filters.MessageClaimed(messageHash)),
-      ]);
+      const messageStatus = await contract.getMessageStatus(messageHash);
 
       // TODO - Move to when claim modal opened
       const messageProof =
@@ -149,7 +140,6 @@ async function fetchETHBridgeEvents(
         toChain,
         timestamp: block.timestamp,
         bridgingTx: log.transactionHash,
-        claimingTx: messageClaimedEvent?.transactionHash,
         message: {
           from: log.args._from,
           to: log.args._to,
@@ -170,7 +160,6 @@ async function fetchETHBridgeEvents(
 
 async function fetchERC20BridgeEvents(
   lineaSDK: LineaSDK,
-  lineaSDKContracts: LineaSDKContracts,
   address: Address,
   fromChain: Chain,
   toChain: Chain,
@@ -237,12 +226,7 @@ async function fetchERC20BridgeEvents(
       }
 
       // TODO - Move to when claim modal opened
-      const [messageStatus, [messageClaimedEvent]] = await Promise.all([
-        destinationContract.getMessageStatus(message[0].messageHash),
-        destinationContract.getEvents(
-          lineaSDKContracts[toChain.layer].contract.filters.MessageClaimed(message[0].messageHash),
-        ),
-      ]);
+      const messageStatus = await destinationContract.getMessageStatus(message[0].messageHash);
 
       const messageProof =
         toChain.layer === ChainLayer.L1 && messageStatus === OnChainMessageStatus.CLAIMABLE
@@ -269,7 +253,6 @@ async function fetchERC20BridgeEvents(
         toChain,
         timestamp: block.timestamp,
         bridgingTx: log.transactionHash,
-        claimingTx: messageClaimedEvent?.transactionHash,
         message: {
           from: message[0].messageSender as Address,
           to: message[0].destination as Address,

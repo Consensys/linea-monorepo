@@ -83,7 +83,7 @@ const useClaimingTx = ({ status, type, toChain, args, bridgingTx }: UseClaimingT
   const { data } = useQuery({
     // TODO - Do we need to account for undefined props here? Otherwise caching behaviour is not as expected?
     queryKey: ["useClaimingTx", bridgingTx, toChain?.id],
-    queryFn: async () => getClaimTx({ status, type, toChain, args, bridgingTx }),
+    queryFn: async () => getClaimTx({ status, type, toChain, args }),
   });
 
   if (!data || data === "") return;
