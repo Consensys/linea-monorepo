@@ -3,7 +3,7 @@ import { useAccount } from "wagmi";
 import { encodeFunctionData, padHex, zeroHash } from "viem";
 import { useFormStore, useChainStore } from "@/stores";
 import { isCctp } from "@/utils/tokens";
-import { useCCTPDestinationDomain } from "./useCctpDestinationDomain";
+import useCCTPDestinationDomain from "./useCCTPDestinationDomain";
 import { useCCTPFee } from "./useCCTPFee";
 import { CCTP_MIN_FINALITY_THRESHOLD } from "@/utils";
 

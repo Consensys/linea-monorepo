@@ -19,11 +19,10 @@ export default function Transaction({
   timestamp,
   message,
   token,
-  type,
   onClick,
 }: Props) {
   const formatedTxHash = formatHex(bridgingTx);
-  const estimatedTime = type === BridgeTransactionType.USDC ? "5 mins" : "20 mins";
+  const estimatedTime = "20 mins";
 
   const renderStatus = () => {
     switch (status) {

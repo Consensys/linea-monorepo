@@ -17,6 +17,7 @@ export default function Claiming() {
 
   const amount = useFormStore((state) => state.amount);
   const balance = useFormStore((state) => state.balance);
+  const isTokenCanonicalUSDC = useFormStore((state) => state.isTokenCanonicalUSDC);
 
   const originChainBalanceTooLow = amount && balance < amount;
 
@@ -34,14 +35,19 @@ export default function Claiming() {
 
   return (
     <div className={styles["wrapper"]}>
-      <div className={styles.top}>
-        <p className={styles.title}>Receive</p>
-        <div className={styles.config}>
-          <button className={styles.setting} type="button" onClick={() => setShowAdvancedSettingsModal(true)}>
-            <SettingIcon />
-          </button>
-        </div>
-      </div>
+      {
+        // There is no auto-claiming for USDC via CCTPV2
+        isTokenCanonicalUSDC() ? undefined : (
+          <div className={styles.top}>
+            <p className={styles.title}>Receive</p>
+            <div className={styles.config}>
+              <button className={styles.setting} type="button" onClick={() => setShowAdvancedSettingsModal(true)}>
+                <SettingIcon />
+              </button>
+            </div>
+          </div>
+        )
+      }
 
       {loading ? (
         <Skeleton />

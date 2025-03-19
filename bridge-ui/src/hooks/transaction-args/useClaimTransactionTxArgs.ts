@@ -25,8 +25,6 @@ const useClaimTxArgs = ({ status, type, fromChain, toChain, args }: UseClaimTxAr
   const { address } = useAccount();
 
   return useMemo(() => {
-    // TODO - Should we console.error the early returns conditions? Otherwise the 'Claim' button mysteriously does nothing.
-
     // Missing props
     if (!address || !status || !type || !fromChain || !toChain || !args) return;
 

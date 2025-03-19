@@ -40,7 +40,6 @@ export const getCCTPNonce = async (
   console.log(
     `actualNonce: ${nonce}, depositTxHash: ${depositTxHash}, messageIndex: ${messageIndex}, messageHash: ${messageHash}`,
   );
-  console.log("0xdeadbeaf");
   return "";
 };
 

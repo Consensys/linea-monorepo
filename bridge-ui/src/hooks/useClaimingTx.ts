@@ -1,7 +1,7 @@
 import { BridgeTransaction, BridgeTransactionType, TransactionStatus, CCTPMessageReceivedAbiEvent } from "@/types";
 import { getPublicClient } from "@wagmi/core";
 import { config as wagmiConfig } from "@/lib/wagmi";
-import { isNativeBridgeMessage, isCCTPV2BridgeMessage } from "@/utils/message";
+import { isNativeBridgeMessage, isIncompleteCCTPV2BridgeMessage } from "@/utils/message";
 import { useQuery } from "@tanstack/react-query";
 import { getNativeBridgeMessageClaimedTxHash } from "@/utils";
 
@@ -13,7 +13,8 @@ const useClaimingTx = (transaction: BridgeTransaction | undefined): string | und
     if (transaction?.claimingTx) return "";
     const { status, type, toChain, message } = transaction;
     if (!status || !type || !toChain || !message) return "";
-    if (status === TransactionStatus.PENDING) return "";
+    // Not completed -> no existing claim tx
+    if (status !== TransactionStatus.COMPLETED) return "";
 
     const toChainClient = getPublicClient(wagmiConfig, {
       chainId: toChain.id,
@@ -37,7 +38,7 @@ const useClaimingTx = (transaction: BridgeTransaction | undefined): string | und
         );
       }
       case BridgeTransactionType.USDC: {
-        if (!isCCTPV2BridgeMessage(message) || !message.nonce) return "";
+        if (!isIncompleteCCTPV2BridgeMessage(message) || !message.nonce) return "";
         const messageReceivedEvents = await toChainClient.getLogs({
           event: CCTPMessageReceivedAbiEvent,
           // TODO - Find more efficient `fromBlock` param than 'earliest'

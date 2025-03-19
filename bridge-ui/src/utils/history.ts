@@ -18,7 +18,7 @@ import {
   CCTPDepositForBurnAbiEvent,
   MessageSentLogEvent,
 } from "@/types";
-import { isCCTPNonceUsed, getCCTPTransactionStatus, getCCTPMessageByTxHash } from "@/utils";
+import { isCctp, isCCTPNonceUsed, getCCTPTransactionStatus, getCCTPMessageByTxHash } from "@/utils";
 import { DepositForBurnLogEvent } from "@/types/events";
 
 type TransactionHistoryParams = {
@@ -122,12 +122,6 @@ async function fetchETHBridgeEvents(
 
       const messageStatus = await contract.getMessageStatus(messageHash);
 
-      // TODO - Move to when claim modal opened
-      const messageProof =
-        toChain.layer === ChainLayer.L1 && messageStatus === OnChainMessageStatus.CLAIMABLE
-          ? await lineaSDK.getL1ClaimingService().getMessageProof(messageHash)
-          : undefined;
-
       const token = tokens.find((token) => token.type.includes("eth"));
       const uniqueKey = `${log.args._from}-${log.args._to}-${log.transactionHash}`;
       transactionsMap.set(uniqueKey, {
@@ -146,7 +140,6 @@ async function fetchETHBridgeEvents(
           nonce: log.args._nonce,
           calldata: log.args._calldata,
           messageHash: log.args._messageHash,
-          proof: messageProof,
           amountSent: log.args._value,
         },
       });
@@ -223,13 +216,7 @@ async function fetchERC20BridgeEvents(
         return;
       }
 
-      // TODO - Move to when claim modal opened
       const messageStatus = await destinationContract.getMessageStatus(message[0].messageHash);
-
-      const messageProof =
-        toChain.layer === ChainLayer.L1 && messageStatus === OnChainMessageStatus.CLAIMABLE
-          ? await lineaSDK.getL1ClaimingService().getMessageProof(message[0].messageHash)
-          : undefined;
 
       const token = tokens.find(
         (token) =>
@@ -259,7 +246,6 @@ async function fetchERC20BridgeEvents(
           nonce: message[0].messageNonce,
           calldata: message[0].calldata,
           messageHash: message[0].messageHash,
-          proof: messageProof,
           amountSent: amount,
         },
       });
@@ -308,7 +294,8 @@ async function fetchCCTPBridgeEvents(
         return;
       }
 
-      const token = tokens.find((token) => token.symbol === "USDC" && token.type.includes("bridge-reserved"));
+      // const token = tokens.find((token) => token.symbol === "USDC" && token.type.includes("bridge-reserved"));
+      const token = tokens.find((token) => isCctp(token));
       if (!token) return;
 
       // TODO - Compute deterministic nonce without consulting CCTP API, to guard against CCTP API rate limit of 10 requests/second

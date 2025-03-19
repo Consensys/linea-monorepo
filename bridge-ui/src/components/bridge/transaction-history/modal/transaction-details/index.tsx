@@ -17,7 +17,6 @@ type Props = {
   onCloseModal: () => void;
 };
 
-// TODO - We can move the logic to get claimingTx from 'fetchTransactionsHistory' to here
 export default function TransactionDetails({ transaction, isModalOpen, onCloseModal }: Props) {
   const { chain } = useAccount();
   const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
@@ -25,11 +24,9 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
   const formattedDate = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "MMM, dd, yyyy") : "";
   const formattedTime = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "ppp") : "";
 
-  // TODO - Hydrate BridgeTransaction.message object for ETH/ERC20
+  // Hydrate BridgeTransaction.message with params required for claim tx
   const message = useBridgeTransactionMessage(transaction);
-  if (transaction && message && transaction.type === BridgeTransactionType.USDC) {
-    transaction.message = message;
-  }
+  if (transaction && message) transaction.message = message;
 
   // Hydrate BridgeTransaction.claimingTx
   const claimingTx = useClaimingTx(transaction);

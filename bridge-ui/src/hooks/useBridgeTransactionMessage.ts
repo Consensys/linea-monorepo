@@ -1,13 +1,23 @@
-import { BridgeTransaction, BridgeTransactionType, CCTPV2BridgeMessage, NativeBridgeMessage } from "@/types";
+import {
+  BridgeTransaction,
+  BridgeTransactionType,
+  CCTPV2BridgeMessage,
+  ChainLayer,
+  NativeBridgeMessage,
+  TransactionStatus,
+} from "@/types";
 import { getPublicClient } from "@wagmi/core";
 import { config as wagmiConfig } from "@/lib/wagmi";
-import { isCCTPV2BridgeMessage } from "@/utils/message";
+import { isIncompleteCCTPV2BridgeMessage, isNativeBridgeMessage } from "@/utils/message";
 import { useQuery } from "@tanstack/react-query";
 import { getCCTPMessageByNonce, refreshCCTPMessageIfNeeded } from "@/utils";
+import useLineaSDK from "./useLineaSDK";
 
 const useBridgeTransactionMessage = (
   transaction: BridgeTransaction | undefined,
 ): CCTPV2BridgeMessage | NativeBridgeMessage | undefined => {
+  const { lineaSDK } = useLineaSDK();
+
   // TODO - consider refactor into own file
   // queryFn for useQuery cannot return undefined - https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
   async function getBridgeTransactionMessage(
@@ -15,28 +25,35 @@ const useBridgeTransactionMessage = (
   ): Promise<CCTPV2BridgeMessage | NativeBridgeMessage> {
     const { status, type, fromChain, toChain, message } = transaction as BridgeTransaction;
     if (!status || !type || !fromChain || !toChain || !message) return message;
+    // Cannot claim, so don't waste time getting claim parameters
+    if (status !== TransactionStatus.READY_TO_CLAIM) return message;
 
-    // const fromChainClient = getPublicClient(wagmiConfig, {
-    //   chainId: fromChain.id,
-    // });
-
-    const toChainClient = getPublicClient(wagmiConfig, {
-      chainId: toChain.id,
-    });
-
+    // TODO - Refactor each case's logic into its own file
     switch (type) {
       case BridgeTransactionType.ETH: {
+        if (toChain.layer === ChainLayer.L2) return message;
+        if (!isNativeBridgeMessage(message) || !message?.messageHash) return message;
+        const { messageHash } = message;
+        message.proof = await lineaSDK.getL1ClaimingService().getMessageProof(messageHash);
         return message;
       }
       case BridgeTransactionType.ERC20: {
+        if (toChain.layer === ChainLayer.L2) return message;
+        if (!isNativeBridgeMessage(message) || !message?.messageHash) return message;
+        const { messageHash } = message;
+        message.proof = await lineaSDK.getL1ClaimingService().getMessageProof(messageHash);
         return message;
       }
       case BridgeTransactionType.USDC: {
-        if (!isCCTPV2BridgeMessage(message) || !message?.nonce) return message;
+        if (!isIncompleteCCTPV2BridgeMessage(message) || !message?.nonce) return message;
         const { nonce } = message;
         // Get message + attestation from CCTP API
         const cctpApiResp = await getCCTPMessageByNonce(nonce, fromChain.cctpDomain);
         if (!cctpApiResp) return message;
+
+        const toChainClient = getPublicClient(wagmiConfig, {
+          chainId: toChain.id,
+        });
 
         // If expired, get new message + attestation
         const refreshedMessage = await refreshCCTPMessageIfNeeded(
