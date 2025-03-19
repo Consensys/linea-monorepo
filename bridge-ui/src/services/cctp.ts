@@ -1,4 +1,4 @@
-import { CctpAttestationApiResponse, CctpV2ReattestationApiResponse } from "@/types/cctp";
+import { CctpAttestationApiResponse, CctpV2ReattestationApiResponse, CCTPFeeApiResponse } from "@/types/cctp";
 
 export async function fetchCctpAttestationByTxHash(
   cctpDomain: number,
@@ -49,5 +49,18 @@ export async function reattestCCTPV2PreFinalityMessage(nonce: string): Promise<C
     throw new Error(`Error in reattestCCTPV2PreFinalityMessage: nonce=${nonce}`);
   }
   const data: CctpV2ReattestationApiResponse = await response.json();
+  return data;
+}
+
+export async function getCCTPFee(srcDomain: number, dstDomain: number): Promise<CCTPFeeApiResponse> {
+  const response = await fetch(`https://iris-api-sandbox.circle.com/v2/fastBurn/USDC/fees/${srcDomain}/${dstDomain}`, {
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Error in getCCTPFee: srcDomain=${srcDomain} dstDomain=${dstDomain}`);
+  }
+  const data: CCTPFeeApiResponse = await response.json();
   return data;
 }

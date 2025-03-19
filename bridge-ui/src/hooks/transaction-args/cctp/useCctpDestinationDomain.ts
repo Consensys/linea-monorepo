@@ -1,8 +1,8 @@
 import { useChainStore } from "@/stores";
 
-const useCctpDestinationDomain = () => {
+export const useCCTPDestinationDomain = () => {
   const toChain = useChainStore.useToChain();
   return toChain.cctpDomain;
 };
 
-export default useCctpDestinationDomain;
+export default useCCTPDestinationDomain;

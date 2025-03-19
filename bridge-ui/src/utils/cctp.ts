@@ -9,7 +9,9 @@ import {
 import { keccak256 } from "viem";
 
 // TODO - Find optimal value
-export const CCTP_TRANSFER_MAX_FEE = 500n;
+export const CCTP_TRANSFER_MAX_FEE_FALLBACK = 100n;
+// Value we add to 'minimumFee' returned by CCTP API to nudge for timely attestation
+export const CCTP_TRANSFER_FEE_BUFFER = 50n;
 // 1000 Fast transfer, 2000 Standard transfer
 export const CCTP_MIN_FINALITY_THRESHOLD = 1000;
 

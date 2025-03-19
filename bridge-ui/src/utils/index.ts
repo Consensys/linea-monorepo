@@ -7,6 +7,9 @@ export { computeMessageHash, computeMessageStorageSlot } from "./message";
 export { isEth } from "./tokens";
 export { isEmptyObject } from "./utils";
 export {
+  CCTP_TRANSFER_FEE_BUFFER,
+  CCTP_TRANSFER_MAX_FEE_FALLBACK,
+  CCTP_MIN_FINALITY_THRESHOLD,
   getCCTPNonce,
   isCCTPNonceUsed,
   getCCTPTransactionStatus,
