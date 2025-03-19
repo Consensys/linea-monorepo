@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.rpc.services;
+package net.consensys.linea.bundles;
 
 import static java.util.Collections.emptyList;
 

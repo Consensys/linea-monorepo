@@ -16,7 +16,7 @@
 package net.consensys.linea.rpc.services;
 
 import static java.nio.charset.StandardCharsets.US_ASCII;
-import static net.consensys.linea.rpc.services.LineaLimitedBundlePool.BUNDLE_SAVE_FILENAME;
+import static net.consensys.linea.bundles.LineaLimitedBundlePool.BUNDLE_SAVE_FILENAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,6 +37,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import net.consensys.linea.bundles.LineaLimitedBundlePool;
+import net.consensys.linea.bundles.TransactionBundle;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECPPrivateKey;

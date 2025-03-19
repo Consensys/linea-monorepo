@@ -23,7 +23,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.UUID;
 
-import net.consensys.linea.rpc.services.LineaLimitedBundlePool;
+import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import org.hyperledger.besu.plugin.services.exception.PluginRpcEndpointException;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 import org.junit.jupiter.api.BeforeEach;

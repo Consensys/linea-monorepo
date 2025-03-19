@@ -32,13 +32,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import net.consensys.linea.bundles.BundlePoolService;
+import net.consensys.linea.bundles.LineaLimitedBundlePool;
+import net.consensys.linea.bundles.TransactionBundle;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
-import net.consensys.linea.rpc.services.BundlePoolService;
-import net.consensys.linea.rpc.services.LineaLimitedBundlePool;
-import net.consensys.linea.rpc.services.TransactionBundle;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import net.consensys.linea.sequencer.txselection.selectors.TraceLineLimitTransactionSelectorTest;
 import org.apache.tuweni.bytes.Bytes;

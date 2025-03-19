@@ -32,8 +32,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import net.consensys.linea.rpc.services.LineaLimitedBundlePool;
-import net.consensys.linea.rpc.services.TransactionBundle;
+import net.consensys.linea.bundles.BundleParameter;
+import net.consensys.linea.bundles.LineaLimitedBundlePool;
+import net.consensys.linea.bundles.TransactionBundle;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.core.TransactionTestFixture;
@@ -81,8 +82,8 @@ class LineaSendBundleTest {
     Optional<Long> minTimestamp = Optional.of(1000L);
     Optional<Long> maxTimestamp = Optional.of(System.currentTimeMillis() + 5000L);
 
-    LineaSendBundle.BundleParameter bundleParams =
-        new LineaSendBundle.BundleParameter(
+    BundleParameter bundleParams =
+        new BundleParameter(
             transactions, 123L, minTimestamp, maxTimestamp, empty(), empty(), empty());
 
     PluginRpcRequest request = mock(PluginRpcRequest.class);
@@ -105,8 +106,8 @@ class LineaSendBundleTest {
     Optional<Long> minTimestamp = Optional.of(1000L);
     Optional<Long> maxTimestamp = Optional.of(System.currentTimeMillis() + 5000L);
 
-    LineaSendBundle.BundleParameter bundleParams =
-        new LineaSendBundle.BundleParameter(
+    BundleParameter bundleParams =
+        new BundleParameter(
             transactions,
             123L,
             minTimestamp,
@@ -128,7 +129,7 @@ class LineaSendBundleTest {
     // Replace bundle:
     transactions = List.of(mockTX2.encoded().toHexString(), mockTX1.encoded().toHexString());
     bundleParams =
-        new LineaSendBundle.BundleParameter(
+        new BundleParameter(
             transactions,
             12345L,
             minTimestamp,
@@ -157,9 +158,8 @@ class LineaSendBundleTest {
   void testExecute_ExpiredBundle() {
     List<String> transactions = List.of(mockTX1.encoded().toHexString());
     Optional<Long> maxTimestamp = Optional.of(5000L);
-    LineaSendBundle.BundleParameter bundleParams =
-        new LineaSendBundle.BundleParameter(
-            transactions, 123L, empty(), maxTimestamp, empty(), empty(), empty());
+    BundleParameter bundleParams =
+        new BundleParameter(transactions, 123L, empty(), maxTimestamp, empty(), empty(), empty());
 
     PluginRpcRequest request = mock(PluginRpcRequest.class);
     when(request.getParams()).thenReturn(new Object[] {bundleParams});
@@ -173,8 +173,8 @@ class LineaSendBundleTest {
   @Test
   void testExecute_BundleForBlockAlreadyInChain_ThrowsException() {
     List<String> transactions = List.of(mockTX1.encoded().toHexString());
-    LineaSendBundle.BundleParameter bundleParams =
-        new LineaSendBundle.BundleParameter(
+    BundleParameter bundleParams =
+        new BundleParameter(
             transactions, CHAIN_HEAD_BLOCK_NUMBER, empty(), empty(), empty(), empty(), empty());
 
     PluginRpcRequest request = mock(PluginRpcRequest.class);
@@ -204,8 +204,8 @@ class LineaSendBundleTest {
   @Test
   void testExecute_DuplicateRequest_ThrowsException() {
     List<String> transactions = List.of(mockTX1.encoded().toHexString());
-    LineaSendBundle.BundleParameter bundleParams1 =
-        new LineaSendBundle.BundleParameter(
+    BundleParameter bundleParams1 =
+        new BundleParameter(
             transactions, CHAIN_HEAD_BLOCK_NUMBER + 1, empty(), empty(), empty(), empty(), empty());
 
     PluginRpcRequest request1 = mock(PluginRpcRequest.class);
@@ -216,8 +216,8 @@ class LineaSendBundleTest {
     // first time we send the request it works
     assertThat(response1.bundleHash()).isEqualTo(Hash.hash(mockTX1.encoded()).toHexString());
 
-    LineaSendBundle.BundleParameter bundleParams2 =
-        new LineaSendBundle.BundleParameter(
+    BundleParameter bundleParams2 =
+        new BundleParameter(
             transactions, CHAIN_HEAD_BLOCK_NUMBER + 1, empty(), empty(), empty(), empty(), empty());
 
     PluginRpcRequest request2 = mock(PluginRpcRequest.class);
@@ -231,9 +231,8 @@ class LineaSendBundleTest {
 
   @Test
   void testExecute_EmptyTransactions_ThrowsException() {
-    LineaSendBundle.BundleParameter bundleParams =
-        new LineaSendBundle.BundleParameter(
-            List.of(), 123L, empty(), empty(), empty(), empty(), empty());
+    BundleParameter bundleParams =
+        new BundleParameter(List.of(), 123L, empty(), empty(), empty(), empty(), empty());
 
     PluginRpcRequest request = mock(PluginRpcRequest.class);
     when(request.getParams()).thenReturn(new Object[] {bundleParams});
@@ -251,9 +250,8 @@ class LineaSendBundleTest {
   @Test
   void testExecute_FrozenPool_ThrowsException() {
     List<String> transactions = List.of(mockTX1.encoded().toHexString());
-    LineaSendBundle.BundleParameter bundleParams =
-        new LineaSendBundle.BundleParameter(
-            transactions, 123L, empty(), empty(), empty(), empty(), empty());
+    BundleParameter bundleParams =
+        new BundleParameter(transactions, 123L, empty(), empty(), empty(), empty(), empty());
 
     PluginRpcRequest request = mock(PluginRpcRequest.class);
     when(request.getParams()).thenReturn(new Object[] {bundleParams});

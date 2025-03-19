@@ -12,7 +12,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.rpc.services;
+package net.consensys.linea.bundles;
 
 import java.util.List;
 import java.util.UUID;

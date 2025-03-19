@@ -23,7 +23,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-import net.consensys.linea.rpc.services.TransactionBundle;
+import net.consensys.linea.bundles.TransactionBundle;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;

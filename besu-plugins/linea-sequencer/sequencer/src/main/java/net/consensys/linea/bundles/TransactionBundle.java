@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.rpc.services;
+package net.consensys.linea.bundles;
 
 import java.util.List;
 import java.util.Map;
@@ -26,7 +26,6 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.rpc.methods.LineaSendBundle;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.parameters.UnsignedLongParameter;
@@ -64,8 +63,8 @@ public class TransactionBundle {
     this.replacementUUID = replacementUUID;
   }
 
-  public LineaSendBundle.BundleParameter toBundleParameter() {
-    return new LineaSendBundle.BundleParameter(
+  public BundleParameter toBundleParameter() {
+    return new BundleParameter(
         pendingTransactions.stream().map(PendingBundleTx::toBase64String).toList(),
         new UnsignedLongParameter(blockNumber),
         minTimestamp,
@@ -76,13 +75,13 @@ public class TransactionBundle {
   }
 
   @JsonValue
-  public Map<Hash, LineaSendBundle.BundleParameter> serialize() {
+  public Map<Hash, BundleParameter> serialize() {
     return Map.of(bundleIdentifier, toBundleParameter());
   }
 
   @JsonCreator
   public static TransactionBundle deserialize(
-      final SequencedMap<Hash, LineaSendBundle.BundleParameter> serialized) {
+      final SequencedMap<Hash, BundleParameter> serialized) {
     final var entry = serialized.firstEntry();
     final var hash = entry.getKey();
     final var parameters = entry.getValue();

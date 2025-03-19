@@ -18,7 +18,7 @@ import static java.lang.Boolean.TRUE;
 
 import java.time.Instant;
 
-import net.consensys.linea.rpc.services.TransactionBundle;
+import net.consensys.linea.bundles.TransactionBundle;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.PluginTransactionSelector;

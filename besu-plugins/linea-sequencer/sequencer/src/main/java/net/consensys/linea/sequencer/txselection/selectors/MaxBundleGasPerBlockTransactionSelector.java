@@ -19,7 +19,7 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.rpc.services.TransactionBundle;
+import net.consensys.linea.bundles.TransactionBundle;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.AbstractStatefulPluginTransactionSelector;
