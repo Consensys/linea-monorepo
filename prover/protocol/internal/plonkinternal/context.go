@@ -2,6 +2,7 @@ package plonkinternal
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -10,6 +11,7 @@ import (
 	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -18,6 +20,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
+
+// This flag control whether to activate the gnark profiling for the circuits. Please leave it
+// to "false" because (1) it generates a lot of data (2) it is extremely time consuming.
+const activateGnarkProfiling = false
 
 // The CompilationCtx (context) carries all the compilation informations about a call to
 // Plonk in Wizard. Namely, (non-exhaustively) it contains the gnark's internal
@@ -111,9 +117,23 @@ func createCtx(
 
 	logrus.Debugf("Plonk in Wizard (%v) compiling the circuit", name)
 
+	var pro *profile.Profile
+
+	if activateGnarkProfiling {
+		fname := name
+		if !strings.HasSuffix(fname, ".pprof") {
+			fname += ".pprof"
+		}
+		pro = profile.Start(profile.WithPath(name))
+	}
+
 	ccs, rcGetter, err := CompileCircuit(ctx.Plonk.Circuit, ctx.RangeCheck.AddGateForRangeCheck)
 	if err != nil {
 		utils.Panic("error compiling circuit name=%v : %v", name, err)
+	}
+
+	if activateGnarkProfiling {
+		pro.Stop()
 	}
 
 	logrus.Debugf(
