@@ -4,6 +4,7 @@ import { config as wagmiConfig } from "@/lib/wagmi";
 import { isNativeBridgeMessage, isCCTPV2BridgeMessage } from "@/utils/message";
 import { useQuery } from "@tanstack/react-query";
 import { MessageClaimedABIEvent } from "@/types";
+import { getNativeBridgeMessageClaimedTxHash } from "@/utils";
 
 const useClaimingTx = (transaction: BridgeTransaction | undefined): string | undefined => {
   // TODO - consider refactor into own file
@@ -22,34 +23,19 @@ const useClaimingTx = (transaction: BridgeTransaction | undefined): string | und
     switch (type) {
       case BridgeTransactionType.ETH: {
         if (!isNativeBridgeMessage(message)) return "";
-        const messageClaimedEvents = await toChainClient.getLogs({
-          event: MessageClaimedABIEvent,
-          // TODO - Find more efficient `fromBlock` param than 'earliest'
-          fromBlock: "earliest",
-          toBlock: "latest",
-          address: toChain.messageServiceAddress,
-          args: {
-            _messageHash: message?.messageHash as `0x${string}`,
-          },
-        });
-        if (messageClaimedEvents.length === 0) return "";
-        const a = messageClaimedEvents[0].args;
-        return messageClaimedEvents[0].transactionHash;
+        return await getNativeBridgeMessageClaimedTxHash(
+          toChainClient,
+          toChain.messageServiceAddress,
+          message?.messageHash as `0x${string}`,
+        );
       }
       case BridgeTransactionType.ERC20: {
         if (!isNativeBridgeMessage(message)) return "";
-        const messageClaimedEvents = await toChainClient.getLogs({
-          event: MessageClaimedABIEvent,
-          // TODO - Find more efficient `fromBlock` param than 'earliest'
-          fromBlock: "earliest",
-          toBlock: "latest",
-          address: toChain.messageServiceAddress,
-          args: {
-            _messageHash: message?.messageHash as `0x${string}`,
-          },
-        });
-        if (messageClaimedEvents.length === 0) return "";
-        return messageClaimedEvents[0].transactionHash;
+        return await getNativeBridgeMessageClaimedTxHash(
+          toChainClient,
+          toChain.messageServiceAddress,
+          message?.messageHash as `0x${string}`,
+        );
       }
       case BridgeTransactionType.USDC: {
         if (!isCCTPV2BridgeMessage(message) || !message.nonce) return "";

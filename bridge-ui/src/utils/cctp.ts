@@ -12,6 +12,12 @@ export const CCTP_TRANSFER_MAX_FEE = 500n;
 // 1000 Fast transfer, 2000 Standard transfer
 export const CCTP_MIN_FINALITY_THRESHOLD = 1000;
 
+// Deterministic nonce for CCTPV2 - https://developers.circle.com/stablecoins/message-format
+// txHash, messageIndex, messageHash
+export const getCCTPNonce = (): string => {
+  return "";
+};
+
 export const isCCTPNonceUsed = async (
   client: GetPublicClientReturnType,
   nonce: string,

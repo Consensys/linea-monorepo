@@ -1,4 +1,4 @@
-export { eventETH, eventERC20V2, eventUSDC } from "./events";
+export { getNativeBridgeMessageClaimedTxHash } from "./events";
 export { generateChain, generateChains, getChainLogoPath, getChainNetworkLayer } from "./chains";
 export { estimateEthGasFee, estimateERC20GasFee } from "./fees";
 export { formatAddress, formatBalance, formatHex, formatTimestamp, safeGetAddress } from "./format";
