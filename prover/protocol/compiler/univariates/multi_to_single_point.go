@@ -514,8 +514,6 @@ of the evaluation step.
 */
 func (ctx mptsCtx) gnarkVerify(api frontend.API, c wizard.GnarkRuntime) {
 
-	logrus.Infof("Start verifying MPTS reduction")
-
 	ys, hs := ctx.getYsHsGnark(c)
 
 	// `x` is the random evaluation point
@@ -594,9 +592,6 @@ func (ctx mptsCtx) gnarkVerify(api frontend.API, c wizard.GnarkRuntime) {
 	}
 
 	api.AssertIsEqual(left, right)
-
-	logrus.Debugf("Done verifying MPTS reduction")
-
 }
 
 // collect all the alleged opening values in a map, so that we can utilize them later.

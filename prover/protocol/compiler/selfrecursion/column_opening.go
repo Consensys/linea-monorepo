@@ -22,7 +22,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-	"github.com/sirupsen/logrus"
 )
 
 // Specifies the column opening phase
@@ -67,11 +66,6 @@ func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
 			1<<ctx.VortexCtx.SisParams.LogTwoBound,
 		)
 	}
-
-	logrus.Infof(
-		"Self-recursion compiler (%v) - registererd %v columns of %v limbs",
-		ctx.SelfRecursionCnt, len(limbs), limbs[0].Size(),
-	)
 
 	// Registers them in the context as well
 	ctx.Columns.Preimages = limbs
