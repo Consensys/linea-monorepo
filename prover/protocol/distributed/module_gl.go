@@ -344,7 +344,7 @@ func (m *ModuleGL) InsertGlobal(q query.GlobalConstraint) query.GlobalConstraint
 		newExpr      = m.TranslateExpression(q.Expression)
 		newExprRound = wizardutils.LastRoundToEval(newExpr)
 		newGlobal    = m.Wiop.InsertGlobal(newExprRound, q.ID, newExpr)
-		offsetRange  = newGlobal.MinMaxOffset()
+		offsetRange  = query.MinMaxOffset(newGlobal.Expression)
 		columnOfExpr = wizardutils.ColumnsOfExpression(newExpr)
 	)
 
@@ -389,7 +389,7 @@ func (m *ModuleGL) InsertLocal(q query.LocalConstraint) query.LocalConstraint {
 	var (
 		newExpr      = m.TranslateExpression(q.Expression)
 		newExprRound = wizardutils.LastRoundToEval(newExpr)
-		offsetRange  = (&query.GlobalConstraint{Expression: newExpr}).MinMaxOffset()
+		offsetRange  = query.MinMaxOffset(newExpr)
 	)
 
 	// Note: if we remove this check. The constraint will only be enforced when
@@ -424,7 +424,7 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 	var (
 		newExpr            = newGlobal.Expression
 		newExprRound       = wizardutils.LastRoundToEval(newExpr)
-		offsetRange        = newGlobal.MinMaxOffset()
+		offsetRange        = query.MinMaxOffset(newExpr)
 		firstRowToComplete = min(-offsetRange.Max, 0)
 		lastRowToComplete  = max(-offsetRange.Min, 0)
 	)
@@ -500,6 +500,10 @@ func (m *ModuleGL) sendValueGlobal(col ifaces.Column, pos int) query.LocalOpenin
 		column.Shift(col, pos),
 	)
 
+	// It is fine to skip the result of the newLO because we already
+	// includes its hash in the FS.
+	m.Wiop.QueriesParams.MarkAsSkippedFromProverTranscript(newLO.ID)
+
 	m.SentValuesGlobalMap[name] = len(m.SentValuesGlobal)
 	m.SentValuesGlobal = append(m.SentValuesGlobal, newLO)
 	return newLO
@@ -549,6 +553,8 @@ func (m *ModuleGL) processSendAndReceiveGlobal() {
 		ifaces.ColID("RECEIVED_VALUES_GLOBAL"),
 		utils.NextPowerOfTwo(len(m.ReceivedValuesGlobalMap)),
 	)
+
+	m.Wiop.Columns.ExcludeFromProverFS(m.ReceivedValuesGlobal.GetColID())
 
 	m.ReceivedValuesGlobalAccs = make([]ifaces.Accessor, len(m.ReceivedValuesGlobalMap))
 	for i := range m.ReceivedValuesGlobalAccs {

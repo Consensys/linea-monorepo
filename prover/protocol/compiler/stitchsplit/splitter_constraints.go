@@ -318,7 +318,7 @@ func (ctx splitterContext) localQueriesForGapsInGlobal(q query.GlobalConstraint,
 	// Now, we need to cancel the expression at the beginning and/or the end
 	// For the first one, only cancel the end. For the last one, only cancel
 	// the beginning.
-	offsetRange := q.MinMaxOffset()
+	offsetRange := query.MinMaxOffset(q.Expression)
 	round := ctx.comp.QueriesNoParams.Round(q.ID)
 	nextStart := 0
 

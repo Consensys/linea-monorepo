@@ -240,8 +240,8 @@ func ShiftExpr(expr *symbolic.Expression, offset int) *symbolic.Expression {
 			return e.SameWithNewChildren(children)
 		}
 
-		if _, isPeriodic := vari.Metadata.(variables.PeriodicSample); isPeriodic {
-			panic("unsupported: periodic sampling")
+		if per, isPeriodic := vari.Metadata.(variables.PeriodicSample); isPeriodic {
+			return symbolic.NewVariable(variables.PeriodicSample{T: per.T, Offset: utils.PositiveMod(per.Offset-offset, per.T)})
 		}
 
 		col, isCol := vari.Metadata.(ifaces.Column)
