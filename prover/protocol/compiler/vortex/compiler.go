@@ -365,7 +365,8 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 	log := logrus.
 		WithField("where", "compileRoundWithVortex").
 		WithField("numComs", numComsActual).
-		WithField("numShadowRows", numShadowRows)
+		WithField("numShadowRows", numShadowRows).
+		WithField("round", round)
 
 	if len(comUnconstrained) > 0 {
 		log.
@@ -373,7 +374,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 			WithField("unconstraineds", comUnconstrained).
 			Warn("found unconstrained columns while compiling the Vortex commitment")
 	} else {
-		log.Info("")
+		log.Info("Compiled Vortex round")
 	}
 
 	ctx.CommitmentsByRounds.AppendToInner(round, coms...)

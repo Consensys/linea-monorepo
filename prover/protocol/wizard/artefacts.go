@@ -68,7 +68,7 @@ func (a artefactCache) TryLoad(key string, obj Artefact) (found bool, parseErr e
 		return false, fmt.Errorf("ReadFrom failed: %w", parseErr)
 	}
 
-	logrus.Infof("cache-key found cache-key=%v", fpath)
+	logrus.Debugf("cache-key found cache-key=%v", fpath)
 
 	return true, nil
 }
