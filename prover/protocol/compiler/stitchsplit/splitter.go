@@ -121,9 +121,13 @@ func (ctx *splitterContext) ScanSplitCommit() {
 			// Mark the handle as ignored
 			comp.Columns.MarkAsIgnored(col.GetColID())
 		}
+
+		if len(ctx.Splittings[round].ByBigCol) == 0 {
+			continue
+		}
+
 		ctx.comp.SubProvers.AppendToInner(round, ctx.Prove(round))
 	}
-
 }
 
 func nameHandleSlice(h ifaces.Column, num, numSlots int) ifaces.ColID {

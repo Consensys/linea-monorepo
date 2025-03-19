@@ -302,24 +302,30 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 		panic("inserted twice")
 	}
 
+	var (
+		comUnconstrained = []ifaces.ColID{}
+		numShadowRows    = 0
+		numComsActual    = 0 // actual == not shadow and not unconstrained
+	)
+
 	// Filters out the coms that are not touched by the query and mark them
 	// directly as ignored. (We do not care about them because they are un-
 	// constrained). But we still log these to alert during runtime.
-	{
-		coms_ := coms
-		coms = make([]ifaces.ColID, 0, len(coms_))
+	coms_ := coms
+	coms = make([]ifaces.ColID, 0, len(coms_))
 
-		for _, com := range coms_ {
+	for _, com := range coms_ {
 
-			if _, ok := ctx.PolynomialsTouchedByTheQuery[com]; !ok {
-				logrus.Warnf("found unconstrained column : %v", com)
-				ctx.comp.Columns.MarkAsIgnored(com)
-				continue
-			}
-
-			coms = append(coms, com)
+		if _, ok := ctx.PolynomialsTouchedByTheQuery[com]; !ok {
+			comUnconstrained = append(comUnconstrained, com)
+			ctx.comp.Columns.MarkAsIgnored(com)
+			continue
 		}
+
+		coms = append(coms, com)
 	}
+
+	numComsActual = len(coms)
 
 	if len(coms) == 0 {
 		return
@@ -343,12 +349,10 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 			utils.Panic("the number of limbs should at least divide the degree")
 		}
 		numFieldPerPoly := utils.Max(1, deg/numLimbs)
-		numShadow := (numFieldPerPoly - (len(coms) % numFieldPerPoly)) % numFieldPerPoly
+		numShadowRows = (numFieldPerPoly - (len(coms) % numFieldPerPoly)) % numFieldPerPoly
 		targetSize := ctx.comp.Columns.GetSize(coms[0])
 
-		logrus.Debugf("Vortex compiler, registering shadow columns : round=%v numShadow=%v numFieldPerPoly=%v", round, numShadow, numFieldPerPoly)
-
-		for shadowID := 0; shadowID < numShadow; shadowID++ {
+		for shadowID := 0; shadowID < numShadowRows; shadowID++ {
 			// Generate the shadow columns
 			shadowCol := autoAssignedShadowRow(ctx.comp, targetSize, round, shadowID)
 			// Register the column as part of the shadow columns
@@ -356,6 +360,20 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 			// And append it to the list of the commitments
 			coms = append(coms, shadowCol.GetColID())
 		}
+	}
+
+	log := logrus.
+		WithField("where", "compileRoundWithVortex").
+		WithField("numComs", numComsActual).
+		WithField("numShadowRows", numShadowRows)
+
+	if len(comUnconstrained) > 0 {
+		log.
+			WithField("numUnconstrained", len(comUnconstrained)).
+			WithField("unconstraineds", comUnconstrained).
+			Warn("found unconstrained columns while compiling the Vortex commitment")
+	} else {
+		log.Info("")
 	}
 
 	ctx.CommitmentsByRounds.AppendToInner(round, coms...)
@@ -592,6 +610,9 @@ func (ctx *Ctx) processStatusPrecomputed() {
 		return
 	}
 
+	// This captures the name of the precomputed columns that we ignore
+	precomputedColSkipped := []ifaces.ColID{}
+
 	// Sanity-check. This should be enforced by the splitter compiler already.
 	ctx.assertPolynomialHaveSameLength(precomputedColNames)
 	precomputedCols := []ifaces.Column{}
@@ -615,7 +636,11 @@ func (ctx *Ctx) processStatusPrecomputed() {
 
 		// For consistency, with the older version of the code
 		ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
-		logrus.Infof("We are not committing to the %d precomputeds", len(precomputedColNames))
+		logrus.
+			WithField("where", "processStatusPrecomputed").
+			WithField("nbPrecomputed", len(precomputedColNames)).
+			WithField("dryThreshold", ctx.DryTreshold).
+			Info("number of precomputed is smaller than dryThreshold")
 		return
 	}
 
@@ -623,7 +648,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 
 		_, ok := ctx.PolynomialsTouchedByTheQuery[name]
 		if !ok {
-			logrus.Warnf("got an unconstrained column: %v -> marking as ignored", name)
+			precomputedColSkipped = append(precomputedColSkipped, name)
 			comp.Columns.MarkAsIgnored(name)
 			continue
 		}
@@ -636,7 +661,10 @@ func (ctx *Ctx) processStatusPrecomputed() {
 		precomputedCols = append(precomputedCols, pCol)
 	}
 
-	logrus.Infof("Processing %v precomputed columns", len(precomputedCols))
+	var (
+		nbUnskippedPrecomputedCols = len(precomputedCols)
+		numShadowRows              = 0
+	)
 
 	// This corresponds to a technical edge-case. The SIS hash function works
 	// by mapping fields elements to a list of limbs. Limbs are in turn mapped
@@ -655,8 +683,9 @@ func (ctx *Ctx) processStatusPrecomputed() {
 			sisDegree          = ctx.SisParams.OutputSize()
 			sisNumLimbs        = ctx.SisParams.NumLimbs()
 			sisNumFieldPerPoly = utils.Max(1, sisDegree/sisNumLimbs)
-			numShadowRows      = sisNumFieldPerPoly - (len(precomputedCols) % sisNumFieldPerPoly)
 		)
+
+		numShadowRows = sisNumFieldPerPoly - (len(precomputedCols) % sisNumFieldPerPoly)
 
 		if sisDegree > sisNumLimbs && numShadowRows > 0 {
 			for i := 0; i < numShadowRows; i++ {
@@ -668,11 +697,24 @@ func (ctx *Ctx) processStatusPrecomputed() {
 				precomputedCols = append(precomputedCols, shadowCol)
 			}
 		}
-
 	}
 
-	logrus.Infof("Processed %v precomputed columns", len(precomputedCols))
 	ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
+
+	log := logrus.
+		WithField("where", "processStatusPrecomputed").
+		WithField("nbPrecomputedRows", nbUnskippedPrecomputedCols).
+		WithField("nbShadowRows", numShadowRows)
+
+	if len(precomputedColSkipped) > 0 {
+		log.
+			WithField("nbSkippedRows", len(precomputedColSkipped)).
+			WithField("skipped-columns", precomputedColSkipped).
+			Warnf("Found unconstrained columns. Skipping them and mark them as ignored")
+		return
+	}
+
+	log.Info("processed the precomputed columns")
 }
 
 // Returns the number of committed rounds. Must be called after the

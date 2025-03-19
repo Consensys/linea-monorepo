@@ -4,7 +4,17 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/sirupsen/logrus"
 )
+
+// Log is a [wizard.Compiler] implementation which logs metadata and
+// stats about the wizard in its current step of compilation.
+func Log(msg string) func(comp *wizard.CompiledIOP) {
+	return func(comp *wizard.CompiledIOP) {
+		cellCount := CountCells(comp)
+		logrus.Infof("[wizard.analytic] msg=%v cell-count=%+v", msg, cellCount)
+	}
+}
 
 // CellCount is a struct storing numerous metrics pertaining to a
 // compiled-IOP.
@@ -12,9 +22,11 @@ type CellCount struct {
 	NumColumnsCommitted        int
 	NumColumnsProof            int
 	NumColumnsPrecomputed      int
+	NumColumnsVerificationKeys int
 	NumCellsCommitted          int
 	NumCellsProof              int
 	NumCellsPrecomputed        int
+	NumCellsVerificationKeys   int
 	NumResultsInnerProduct     int
 	NumResultUnivariate        int
 	NumResultLocalOpening      int
@@ -56,6 +68,9 @@ func CountCells(comp *wizard.CompiledIOP) *CellCount {
 		case column.Precomputed:
 			cellCount.NumCellsPrecomputed += size
 			cellCount.NumColumnsPrecomputed++
+		case column.VerifyingKey:
+			cellCount.NumCellsVerificationKeys += size
+			cellCount.NumColumnsVerificationKeys++
 		}
 	}
 

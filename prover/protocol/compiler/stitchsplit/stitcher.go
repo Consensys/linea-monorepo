@@ -122,11 +122,14 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 						Status:  column.Committed,
 					}
 					ctx.stitchGroup(stitching)
-
 				}
 			}
-
 		}
+
+		if len(ctx.Stitchings[round].ByBigCol) == 0 {
+			continue
+		}
+
 		// @Azam Precomputed ones are double assigned by this?
 		ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
 			stopTimer := profiling.LogTimer("stitching compiler")
