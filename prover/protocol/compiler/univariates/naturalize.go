@@ -166,6 +166,11 @@ func (ctx *naturalizationCtx) registersTheNewQueries(comp *wizard.CompiledIOP) {
 	*/
 	for queryID, qName := range ctx.subQueriesNames {
 		comp.InsertUnivariate(ctx.roundID, qName, ctx.polsPerSubQuery[queryID])
+		// The result of the query is ditched from the FS state because in
+		// all scenarios. The result of the opening is (and is checked to be)
+		// identical to the result of the original univariate query. Hence, it
+		// does not contain informations that the verifier does not already have.
+		comp.QueriesParams.MarkAsSkippedFromProverTranscript(qName)
 	}
 
 	/*
