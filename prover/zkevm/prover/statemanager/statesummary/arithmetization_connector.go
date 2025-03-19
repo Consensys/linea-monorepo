@@ -69,6 +69,7 @@ func (ss *Module) assignArithmetizationLink(run *wizard.ProverRuntime) {
 		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueNextLo,
 		ss.arithmetizationLink.scpSelector.ComputeSelectorSTKeyDiffHi,
 		ss.arithmetizationLink.scpSelector.ComputeSelectorSTKeyDiffLo,
+		ss.arithmetizationLink.scpSelector.ComputeSelectorBlockNoDiff,
 	})
 
 }
@@ -122,6 +123,9 @@ type scpSelector struct {
 	// storage key difference selectors
 	SelectorSTKeyDiffHi, SelectorSTKeyDiffLo               ifaces.Column
 	ComputeSelectorSTKeyDiffHi, ComputeSelectorSTKeyDiffLo wizard.ProverAction
+	// block number key difference selectors
+	SelectorBlockNoDiff        ifaces.Column
+	ComputeSelectorBlockNoDiff wizard.ProverAction
 }
 
 /*
@@ -174,6 +178,14 @@ func newScpSelector(comp *wizard.CompiledIOP, smc HubColumnSet) scpSelector {
 			column.Shift(smc.KeyLO, -1),
 		),
 	)
+	// compute selectors for the block number difference
+	SelectorBlockNoDiff, ComputeSelectorBlockNoDiff := dedicated.IsZero(
+		comp,
+		sym.Sub(
+			smc.BlockNumber,
+			column.Shift(smc.BlockNumber, -1),
+		),
+	)
 
 	res := scpSelector{
 		SelectorMinDeplBlock:        SelectorMinDeplNoBlock,
@@ -195,6 +207,9 @@ func newScpSelector(comp *wizard.CompiledIOP, smc HubColumnSet) scpSelector {
 		SelectorSTKeyDiffLo:        SelectorSTKeyDiffLo,
 		ComputeSelectorSTKeyDiffHi: ComputeSelectorSTKeyDiffHi,
 		ComputeSelectorSTKeyDiffLo: ComputeSelectorSTKeyDiffLo,
+		// Block Number Diff
+		SelectorBlockNoDiff:        SelectorBlockNoDiff,
+		ComputeSelectorBlockNoDiff: ComputeSelectorBlockNoDiff,
 	}
 
 	return res
@@ -781,9 +796,10 @@ func storageIntegrationDefineFinal(comp *wizard.CompiledIOP, ss Module, smc HubC
 		sym.Mul(
 			sc.SelectorSTKeyDiffHi, // 1 if ST key HI is the same as in the previous index
 			sc.SelectorSTKeyDiffLo, // 1 if ST key LO is the same as in the previous index
+			sc.SelectorBlockNoDiff, // 1 if the block number is the same, meaning that we are in the same storage key segment
 			sym.Sub(
 				filterAccountInsert,
-				column.Shift(filterAccountInsert, -1), // the filter remains constant if the ST key is the same
+				column.Shift(filterAccountInsert, -1), // the filter remains constant if the ST key is the same, and block is the same
 			),
 		),
 	)
