@@ -4,10 +4,15 @@ export { type TransactionType, TransactionStatus } from "./transaction";
 export { type Token, type GithubTokenListToken, type NetworkTokens } from "./token";
 export { BridgeProvider } from "./providers";
 export {
-  type MessageSentEvent,
-  type BridgingInitiatedV2Event,
-  type DepositForBurnEvent,
-  type CCTPMessageReceivedEvent,
+  type MessageSentLogEvent,
+  type BridgingInitiatedV2LogEvent,
+  type DepositForBurnLogEvent,
+  CCTPMessageReceivedAbiEvent,
+  BridgingInitiatedABIEvent,
+  BridgingInitiatedV2ABIEvent,
+  MessageSentABIEvent,
+  MessageClaimedABIEvent,
+  CCTPDepositForBurnAbiEvent,
 } from "./events";
 export {
   type CctpAttestationApiResponse,

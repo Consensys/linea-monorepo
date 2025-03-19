@@ -12,19 +12,14 @@ import {
   ChainLayer,
   Token,
   TransactionStatus,
-  BridgingInitiatedV2Event,
-  MessageSentEvent,
+  BridgingInitiatedV2LogEvent,
+  BridgingInitiatedV2ABIEvent,
+  MessageSentABIEvent,
+  CCTPDepositForBurnAbiEvent,
+  MessageSentLogEvent,
 } from "@/types";
-import {
-  eventETH,
-  eventERC20V2,
-  eventUSDC,
-  isCCTPNonceUsed,
-  getCCTPTransactionStatus,
-  refreshCCTPMessageIfNeeded,
-  getCCTPMessageByTxHash,
-} from "@/utils";
-import { DepositForBurnEvent } from "@/types/events";
+import { isCCTPNonceUsed, getCCTPTransactionStatus, refreshCCTPMessageIfNeeded, getCCTPMessageByTxHash } from "@/utils";
+import { DepositForBurnLogEvent } from "@/types/events";
 
 type TransactionHistoryParams = {
   lineaSDK: LineaSDK;
@@ -82,25 +77,28 @@ async function fetchETHBridgeEvents(
   const contract = fromChain.layer === ChainLayer.L1 ? lineaSDK.getL2Contract() : lineaSDK.getL1Contract();
 
   const messageServiceAddress = fromChain.messageServiceAddress;
-  const [ethLogsForSender, ethLogsForRecipient] = await Promise.all([<Promise<MessageSentEvent[]>>client.getLogs({
-      event: eventETH,
+  const [ethLogsForSender, ethLogsForRecipient] = await Promise.all([
+    client.getLogs({
+      event: MessageSentABIEvent,
       fromBlock: "earliest",
       toBlock: "latest",
       address: messageServiceAddress,
       args: {
         _from: address,
       },
-    }), <Promise<MessageSentEvent[]>>client.getLogs({
-      event: eventETH,
+    }),
+    client.getLogs({
+      event: MessageSentABIEvent,
       fromBlock: "earliest",
       toBlock: "latest",
       address: messageServiceAddress,
       args: {
         _to: address,
       },
-    })]);
+    }),
+  ]);
 
-  const messageSentLogs = [...ethLogsForSender, ...ethLogsForRecipient];
+  const messageSentLogs = [...ethLogsForSender, ...ethLogsForRecipient] as unknown as MessageSentLogEvent[];
 
   const uniqueLogsMap = new Map<string, (typeof messageSentLogs)[0]>();
   for (const log of messageSentLogs) {
@@ -178,8 +176,8 @@ async function fetchERC20BridgeEvents(
 
   const tokenBridgeAddress = fromChain.tokenBridgeAddress;
   const [erc20LogsForSender, erc20LogsForRecipient] = await Promise.all([
-    <Promise<BridgingInitiatedV2Event[]>>client.getLogs({
-      event: eventERC20V2,
+    client.getLogs({
+      event: BridgingInitiatedV2ABIEvent,
       fromBlock: "earliest",
       toBlock: "latest",
       address: tokenBridgeAddress,
@@ -187,8 +185,8 @@ async function fetchERC20BridgeEvents(
         sender: address,
       },
     }),
-    <Promise<BridgingInitiatedV2Event[]>>client.getLogs({
-      event: eventERC20V2,
+    client.getLogs({
+      event: BridgingInitiatedV2ABIEvent,
       fromBlock: "earliest",
       toBlock: "latest",
       address: tokenBridgeAddress,
@@ -198,7 +196,7 @@ async function fetchERC20BridgeEvents(
     }),
   ]);
 
-  const erc20Logs = [...erc20LogsForSender, ...erc20LogsForRecipient];
+  const erc20Logs = [...erc20LogsForSender, ...erc20LogsForRecipient] as unknown as BridgingInitiatedV2LogEvent[];
 
   const uniqueLogsMap = new Map<string, (typeof erc20Logs)[0]>();
   for (const log of erc20Logs) {
@@ -285,15 +283,15 @@ async function fetchCCTPBridgeEvents(
     chainId: toChain.id,
   });
 
-  const usdcLogs = <DepositForBurnEvent[]>await fromChainClient.getLogs({
-    event: eventUSDC,
+  const usdcLogs = (await fromChainClient.getLogs({
+    event: CCTPDepositForBurnAbiEvent,
     fromBlock: "earliest",
     toBlock: "latest",
     address: fromChain.cctpTokenMessengerV2Address,
     args: {
       depositor: address,
     },
-  });
+  })) as unknown as DepositForBurnLogEvent[];
 
   // TODO - Consider deduplication
 
@@ -314,14 +312,16 @@ async function fetchCCTPBridgeEvents(
       const token = tokens.find((token) => token.symbol === "USDC" && token.type.includes("bridge-reserved"));
       if (!token) return;
 
+      // TODO - Move to TransactionDetail data hydration
       const message = await getCCTPMessageByTxHash(transactionHash, fromChain.cctpDomain);
       if (!message) return;
 
-      // TODO - ?Compute deterministic nonce without consulting CCTP API, to guard against CCTP API rate limit of 10 requests/second
+      // TODO - Compute deterministic nonce without consulting CCTP API, to guard against CCTP API rate limit of 10 requests/second
       const nonce = message.eventNonce;
 
       const isNonceUsed = await isCCTPNonceUsed(toChainClient, nonce, toChain.cctpMessageTransmitterV2Address);
 
+      // TODO - Move to TransactionDetail data hydration
       const refreshedMessage = await refreshCCTPMessageIfNeeded(
         message,
         isNonceUsed,
@@ -330,6 +330,7 @@ async function fetchCCTPBridgeEvents(
       );
       if (!refreshedMessage) return;
 
+      // TODO - Move to TransactionDetail data hydration
       const status = getCCTPTransactionStatus(refreshedMessage.status, isNonceUsed);
 
       transactionsMap.set(transactionHash, {

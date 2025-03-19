@@ -28,14 +28,7 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
   // Hydrate BridgeTransaction object with data that is only required in TransactionDetails modal
 
   // Hydrate BridgeTransaction.claimingTx
-  const claimingTx = useClaimingTx({
-    status: transaction?.status,
-    type: transaction?.type,
-    toChain: transaction?.toChain,
-    args: transaction?.message,
-    bridgingTx: transaction?.bridgingTx,
-  });
-
+  const claimingTx = useClaimingTx(transaction);
   if (transaction && claimingTx && !transaction?.claimingTx) transaction.claimingTx = claimingTx;
 
   // TODO - Hydrate BridgeTransaction.message object, use Tanstack for caching. Include re-assert for expired attestation here.

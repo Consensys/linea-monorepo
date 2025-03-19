@@ -1,12 +1,6 @@
 import MessageTransmitterV2 from "@/abis/MessageTransmitterV2.json";
-import {
-  CCTPMessageReceivedEvent,
-  CctpAttestationMessage,
-  CctpAttestationMessageStatus,
-  TransactionStatus,
-} from "@/types";
+import { CctpAttestationMessage, CctpAttestationMessageStatus, TransactionStatus } from "@/types";
 import { GetPublicClientReturnType } from "@wagmi/core";
-import { eventCCTPMessageReceived } from "./events";
 import {
   fetchCctpAttestationByNonce,
   fetchCctpAttestationByTxHash,
