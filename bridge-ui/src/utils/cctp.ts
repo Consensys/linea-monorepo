@@ -6,15 +6,39 @@ import {
   fetchCctpAttestationByTxHash,
   reattestCCTPV2PreFinalityMessage,
 } from "@/services/cctp";
+import { keccak256 } from "viem";
 
 // TODO - Find optimal value
 export const CCTP_TRANSFER_MAX_FEE = 500n;
 // 1000 Fast transfer, 2000 Standard transfer
 export const CCTP_MIN_FINALITY_THRESHOLD = 1000;
 
+// keccak256("MessageSent(bytes)")
+const MessageSentTopic0 = "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
+
 // Deterministic nonce for CCTPV2 - https://developers.circle.com/stablecoins/message-format
 // txHash, messageIndex, messageHash
-export const getCCTPNonce = (): string => {
+// TODO - Get further clarification from Circle on encoding scheme
+// We can then streamline CCTP API calls like so: compute Nonce -> check if nonce used
+//   -> (NonceUsed) Assign Complete Status
+//   -> (NonceNotUsed) Status is either PENDING or READY_TO_CLAIM, consult CCTP API
+export const getCCTPNonce = async (
+  client: GetPublicClientReturnType,
+  depositTxHash: `0x${string}`,
+  nonce?: string,
+): Promise<string | undefined> => {
+  // Get txReceipt
+  const txReceipt = await client?.getTransactionReceipt({ hash: depositTxHash });
+  if (!txReceipt) return;
+  const messageSentEventLog = txReceipt.logs.find((log) => log.topics[0] === MessageSentTopic0);
+  if (!messageSentEventLog) return;
+  const messageIndex = messageSentEventLog.logIndex;
+  const message = messageSentEventLog.data;
+  const messageHash = keccak256(message);
+  console.log(
+    `actualNonce: ${nonce}, depositTxHash: ${depositTxHash}, messageIndex: ${messageIndex}, messageHash: ${messageHash}`,
+  );
+  console.log("0xdeadbeaf");
   return "";
 };
 
@@ -51,11 +75,11 @@ export const getCCTPTransactionStatus = (
 
 export const refreshCCTPMessageIfNeeded = async (
   message: CctpAttestationMessage,
-  isNonceUsed: boolean,
+  status: TransactionStatus,
   currentToBlock: bigint,
   fromChainCCTPDomain: number,
 ): Promise<CctpAttestationMessage | undefined> => {
-  if (isNonceUsed) return message;
+  if (status === TransactionStatus.COMPLETED) return message;
   // Assume that 'pending_confirmations' implies that a message will not be expired
   if (message.status === "pending_confirmations") return message;
 
@@ -83,7 +107,7 @@ export const getCCTPMessageByTxHash = async (
   return message;
 };
 
-const getCCTPMessageByNonce = async (
+export const getCCTPMessageByNonce = async (
   nonce: string,
   fromChainCCTPDomain: number,
 ): Promise<CctpAttestationMessage | undefined> => {

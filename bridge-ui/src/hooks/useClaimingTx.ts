@@ -3,7 +3,6 @@ import { getPublicClient } from "@wagmi/core";
 import { config as wagmiConfig } from "@/lib/wagmi";
 import { isNativeBridgeMessage, isCCTPV2BridgeMessage } from "@/utils/message";
 import { useQuery } from "@tanstack/react-query";
-import { MessageClaimedABIEvent } from "@/types";
 import { getNativeBridgeMessageClaimedTxHash } from "@/utils";
 
 const useClaimingTx = (transaction: BridgeTransaction | undefined): string | undefined => {

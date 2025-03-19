@@ -18,7 +18,7 @@ import {
   CCTPDepositForBurnAbiEvent,
   MessageSentLogEvent,
 } from "@/types";
-import { isCCTPNonceUsed, getCCTPTransactionStatus, refreshCCTPMessageIfNeeded, getCCTPMessageByTxHash } from "@/utils";
+import { isCCTPNonceUsed, getCCTPTransactionStatus, getCCTPMessageByTxHash } from "@/utils";
 import { DepositForBurnLogEvent } from "@/types/events";
 
 type TransactionHistoryParams = {
@@ -296,7 +296,6 @@ async function fetchCCTPBridgeEvents(
   // TODO - Consider deduplication
 
   const currentTimestamp = new Date();
-  const currentToBlock = await toChainClient.getBlockNumber();
 
   // TODO - Minimise # of CCTP API calls in this block
   await Promise.all(
@@ -312,26 +311,17 @@ async function fetchCCTPBridgeEvents(
       const token = tokens.find((token) => token.symbol === "USDC" && token.type.includes("bridge-reserved"));
       if (!token) return;
 
-      // TODO - Move to TransactionDetail data hydration
+      // TODO - Compute deterministic nonce without consulting CCTP API, to guard against CCTP API rate limit of 10 requests/second
+      // TODO - Replace with getCCTPNonce once implemented
       const message = await getCCTPMessageByTxHash(transactionHash, fromChain.cctpDomain);
       if (!message) return;
-
-      // TODO - Compute deterministic nonce without consulting CCTP API, to guard against CCTP API rate limit of 10 requests/second
       const nonce = message.eventNonce;
+      // getCCTPNonce(fromChainClient, transactionHash, nonce);
 
       const isNonceUsed = await isCCTPNonceUsed(toChainClient, nonce, toChain.cctpMessageTransmitterV2Address);
 
-      // TODO - Move to TransactionDetail data hydration
-      const refreshedMessage = await refreshCCTPMessageIfNeeded(
-        message,
-        isNonceUsed,
-        currentToBlock,
-        fromChain.cctpDomain,
-      );
-      if (!refreshedMessage) return;
-
-      // TODO - Move to TransactionDetail data hydration
-      const status = getCCTPTransactionStatus(refreshedMessage.status, isNonceUsed);
+      // TODO - refactor getCCTPTransactionStatus to depend on nonce only, and not on CCTP API response
+      const status = getCCTPTransactionStatus(message.status, isNonceUsed);
 
       transactionsMap.set(transactionHash, {
         type: BridgeTransactionType.USDC,
@@ -342,8 +332,6 @@ async function fetchCCTPBridgeEvents(
         timestamp: fromBlock.timestamp,
         bridgingTx: log.transactionHash,
         message: {
-          attestation: message.attestation,
-          message: message.message,
           amountSent: BigInt(log.args.amount),
           nonce: nonce,
         },

@@ -50,9 +50,5 @@ export function isNativeBridgeMessage(msg: NativeBridgeMessage | CCTPV2BridgeMes
 }
 
 export function isCCTPV2BridgeMessage(msg: NativeBridgeMessage | CCTPV2BridgeMessage): msg is CCTPV2BridgeMessage {
-  return (
-    typeof (msg as CCTPV2BridgeMessage).message === "string" &&
-    typeof (msg as CCTPV2BridgeMessage).attestation === "string" &&
-    typeof (msg as CCTPV2BridgeMessage).nonce === "string"
-  );
+  return typeof (msg as CCTPV2BridgeMessage).nonce === "string";
 }

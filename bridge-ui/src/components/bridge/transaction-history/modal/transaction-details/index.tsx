@@ -7,7 +7,7 @@ import Modal from "@/components/modal";
 import styles from "./transaction-details.module.scss";
 import Button from "@/components/ui/button";
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
-import { useClaim, useClaimingTx } from "@/hooks";
+import { useClaim, useClaimingTx, useBridgeTransactionMessage } from "@/hooks";
 import { BridgeTransaction, BridgeTransactionType, TransactionStatus } from "@/types";
 import { formatBalance, formatHex, formatTimestamp } from "@/utils";
 
@@ -25,13 +25,15 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
   const formattedDate = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "MMM, dd, yyyy") : "";
   const formattedTime = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "ppp") : "";
 
-  // Hydrate BridgeTransaction object with data that is only required in TransactionDetails modal
+  // TODO - Hydrate BridgeTransaction.message object for ETH/ERC20
+  const message = useBridgeTransactionMessage(transaction);
+  if (transaction && message && transaction.type === BridgeTransactionType.USDC) {
+    transaction.message = message;
+  }
 
   // Hydrate BridgeTransaction.claimingTx
   const claimingTx = useClaimingTx(transaction);
   if (transaction && claimingTx && !transaction?.claimingTx) transaction.claimingTx = claimingTx;
-
-  // TODO - Hydrate BridgeTransaction.message object, use Tanstack for caching. Include re-assert for expired attestation here.
 
   const { claim, isConfirming, isPending, isConfirmed } = useClaim({
     status: transaction?.status,

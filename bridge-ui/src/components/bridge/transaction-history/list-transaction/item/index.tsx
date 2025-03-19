@@ -5,7 +5,7 @@ import CheckIcon from "@/assets/icons/check.svg";
 import ClockIcon from "@/assets/icons/clock.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import { getChainLogoPath, formatHex, formatTimestamp } from "@/utils";
-import { BridgeTransaction, TransactionStatus } from "@/types";
+import { BridgeTransaction, BridgeTransactionType, TransactionStatus } from "@/types";
 
 type Props = BridgeTransaction & {
   onClick: (code: string) => void;
@@ -19,10 +19,11 @@ export default function Transaction({
   timestamp,
   message,
   token,
+  type,
   onClick,
 }: Props) {
   const formatedTxHash = formatHex(bridgingTx);
-  const estimatedTime = "20 mins";
+  const estimatedTime = type === BridgeTransactionType.USDC ? "5 mins" : "20 mins";
 
   const renderStatus = () => {
     switch (status) {
