@@ -131,10 +131,14 @@ Initialize the context for an instance of the compilatioon
 */
 func createMptsCtx(comp *wizard.CompiledIOP, targetSize int) mptsCtx {
 
-	xPoly := make(map[ifaces.ColID][]int)
-	hs := []ifaces.QueryID{}
-	polys := []ifaces.Column{}
-	maxSize := 0
+	var (
+		xPoly      = make(map[ifaces.ColID][]int)
+		hs         = []ifaces.QueryID{}
+		polys      = []ifaces.Column{}
+		maxSize    = 0
+		hStats     = map[ifaces.QueryID]int{}
+		totalEvals = 0
+	)
 
 	/*
 		Adding coins in the protocol can add extra rounds,
@@ -172,6 +176,8 @@ func createMptsCtx(comp *wizard.CompiledIOP, targetSize int) mptsCtx {
 
 		q := q_.(query.UnivariateEval)
 		hs = append(hs, qName)
+		hStats[qName] = len(q.Pols)
+		totalEvals += len(q.Pols)
 
 		/*
 			The number of queries to be compiled by the present compilation
@@ -204,6 +210,12 @@ func createMptsCtx(comp *wizard.CompiledIOP, targetSize int) mptsCtx {
 	}
 	// And pad it to the next power of 2
 	quotientSize = utils.NextPowerOfTwo(quotientSize)
+
+	logrus.
+		WithField("nbUnivariateQueries", len(hs)).
+		WithField("totalEvaluation", totalEvals).
+		WithField("numPolyPerPoint", hStats).
+		Info("[mpts] prepared the compilation context")
 
 	return mptsCtx{
 		xPoly:           xPoly,
