@@ -1,0 +1,67 @@
+# The purpose of this workflow is to upload the necessary assets when
+# a release is made manually on github.
+name: Manual Release Assets
+
+on:
+  release:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Specify tag where assets should be added.
+        required: true
+        type: string
+        default: "v1.2.3"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: false
+
+      - name: Setup Environment
+        # setup go-corset
+        uses: ./.github/actions/setup-environment
+        
+      - name: Configure Tag
+        id: config
+        # set tag to use in subsequent steps.
+        run: echo ::set-output name=TAG::$tag_name
+        env:
+          tag_name: ${{ inputs.release_tag || github.event.release.tag_name }}
+
+      - name: Build Assets
+        run: ./gradlew artifacts -PreleaseVersion=${{ steps.config.outputs.TAG }}
+        env:
+          JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
+
+      - name: Upload Assets
+        run: |
+          gh release upload ${{ steps.config.outputs.TAG }} $jar_asset
+          gh release upload ${{ steps.config.outputs.TAG }} $zip_asset          
+        env:
+          jar_asset: ${{ github.workspace }}/plugins/build/libs/linea-tracer-${{ steps.config.outputs.TAG }}.jar
+          zip_asset: ${{ github.workspace }}/plugins/build/distributions/linea-tracer-${{ steps.config.outputs.TAG }}.zip
+          GH_TOKEN: ${{ github.token }}
+  publish:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    env:
+      architecture: "amd64"
+      GRADLE_OPTS: "-Xmx6g -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=4"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-environment
+
+      - name: Publish Java artifacts
+        run: ./gradlew publish
+        env:
+          CLOUDSMITH_USER: ${{ secrets.CLOUDSMITH_USER }}
+          CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
