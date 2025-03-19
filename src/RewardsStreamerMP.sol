@@ -188,13 +188,6 @@ contract RewardsStreamerMP is
 
         VaultData storage vault = vaultData[msg.sender];
 
-        bool isCurrentlyLocked = vault.lockUntil > block.timestamp;
-
-        // Can't have `lockPeriod = 0` if vault is currently locked
-        if (lockPeriod == 0 && isCurrentlyLocked) {
-            revert StakingManager__InvalidLockPeriod();
-        }
-
         if (lockPeriod > 0) {
             if (vault.totalLockTime + lockPeriod > MAX_LOCKUP_PERIOD) {
                 revert StakingManager__InvalidLockPeriod();
@@ -431,6 +424,7 @@ contract RewardsStreamerMP is
         newVault.lastMPUpdateTime = oldVault.lastMPUpdateTime;
         newVault.lockUntil = oldVault.lockUntil;
         newVault.rewardsAccrued = oldVault.rewardsAccrued;
+        newVault.totalLockTime = oldVault.totalLockTime;
 
         delete vaultData[msg.sender];
 
@@ -503,6 +497,16 @@ contract RewardsStreamerMP is
         totalMPAccrued -= _deltaMpTotal;
         totalMaxMP -= _deltaMpMax;
         totalStaked -= amount;
+
+        // if the user can unstake it means the lock period has ended
+        // and we can reset lockUntil
+        vault.lockUntil = 0;
+
+        // if the user withdraws all their staked balance
+        // we reset the totalLockTime
+        if (vault.stakedBalance == 0) {
+            vault.totalLockTime = 0;
+        }
     }
 
     function _totalShares() internal view returns (uint256) {

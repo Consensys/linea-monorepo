@@ -963,13 +963,17 @@ contract StakeTest is RewardsStreamerMPTest {
 
     function test_StakeMultipleTimesWithLockZeroAfterMaxLock() public {
         uint256 stakeAmount = 10e18;
+        uint256 initialTime = vm.getBlockTimestamp();
 
         // stake and lock 4 years
         _stake(alice, stakeAmount, 4 * YEAR);
-        vm.warp(vm.getBlockTimestamp() + 4 * YEAR);
 
-        // staking with lock 0 should now work because the previous
-        // lock up has expired
+        // staking with lock 0 should work even before lock up has expired
+        vm.warp(initialTime + 2 * YEAR);
+        _stake(alice, stakeAmount, 0);
+
+        // staking with lock 0 should work again when lock up has expired
+        vm.warp(initialTime + 4 * YEAR);
         _stake(alice, stakeAmount, 0);
 
         // staking with lock > 0 should revert as max lock time was reached
