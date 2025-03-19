@@ -49,8 +49,6 @@ func PlonkCheck(
 	options ...Option,
 ) *CompilationCtx {
 
-	logrus.Infof("building circuit for name=%v, nbInstance=%v", name, maxNbInstance)
-
 	// Create the ctx
 	ctx := createCtx(comp, name, round, circuit, maxNbInstance, options...)
 
@@ -69,6 +67,13 @@ func PlonkCheck(
 	}
 
 	comp.RegisterVerifierAction(round, &checkingActivators{Cols: ctx.Columns.Activators})
+
+	logrus.
+		WithField("nbConstraints", ctx.Plonk.SPR.NbConstraints).
+		WithField("maxNbInstances", maxNbInstance).
+		WithField("name", name).
+		WithField("hasCommitment", ctx.HasCommitment()).
+		Info("compiled Plonk in Wizard circuit")
 
 	return &ctx
 }
