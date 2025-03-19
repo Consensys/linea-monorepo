@@ -16,8 +16,7 @@ const useTransactionHistory = () => {
   const { data, isLoading, refetch } = useQuery({
     enabled: !!address && !!fromChain && !!toChain,
     queryKey: ["transactionHistory", address, fromChain.id, toChain.id],
-    queryFn: () =>
-      fetchTransactionsHistory({ lineaSDK, lineaSDKContracts, fromChain, toChain, address: address!, tokens }),
+    queryFn: () => fetchTransactionsHistory({ lineaSDK, fromChain, toChain, address: address!, tokens }),
     staleTime: 1000 * 60 * 2,
   });
 
