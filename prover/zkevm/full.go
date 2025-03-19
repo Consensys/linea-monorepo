@@ -3,6 +3,7 @@ package zkevm
 import (
 	"sync"
 
+	"github.com/consensys/go-corset/pkg/mir"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
@@ -100,37 +101,41 @@ var (
 // behavior is motivated by the fact that the compilation process takes time
 // and we don't want to spend the compilation time twice, plus in practice we
 // won't need to call it with different configuration parameters.
-func FullZkEvm(tl *config.TracesLimits) *ZkEvm {
+func FullZkEvm(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 	onceFullZkEvm.Do(func() {
 		// Initialize the Full zkEVM arithmetization
-		fullZkEvm = FullZKEVMWithSuite(tl, fullCompilationSuite)
+		fullZkEvm = FullZKEVMWithSuite(tl, fullCompilationSuite, cfg)
 	})
 
 	return fullZkEvm
 }
 
-func FullZkEVMCheckOnly(tl *config.TracesLimits) *ZkEvm {
+func FullZkEVMCheckOnly(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 	onceFullZkEvmCheckOnly.Do(func() {
 		// Initialize the Full zkEVM arithmetization
-		fullZkEvmCheckOnly = FullZKEVMWithSuite(tl, dummyCompilationSuite)
+		fullZkEvmCheckOnly = FullZKEVMWithSuite(tl, dummyCompilationSuite, cfg)
 	})
 
 	return fullZkEvmCheckOnly
 }
 
+
 // FullZKEVMWithSuite returns a compiled zkEVM with the given compilation suite.
 // It can be used to benchmark the compilation time of the zkEVM and helps with
 // performance optimization.
-func FullZKEVMWithSuite(tl *config.TracesLimits, suite compilationSuite) *ZkEvm {
+func FullZKEVMWithSuite(tl *config.TracesLimits, suite compilationSuite, cfg *config.Config) *ZkEvm {
+
 
 	// @Alex: only set mandatory parameters here. aka, the one that are not
 	// actually feature-gated.
 	settings := Settings{
 		CompilationSuite: suite,
 		Arithmetization: arithmetization.Settings{
-			Limits: tl,
+			Limits:                   tl,
+			OptimisationLevel:        &mir.DEFAULT_OPTIMISATION_LEVEL,
+			IgnoreCompatibilityCheck: &cfg.Execution.IgnoreCompatibilityCheck,
 		},
 		Statemanager: statemanager.Settings{
 			AccSettings: accumulator.Settings{

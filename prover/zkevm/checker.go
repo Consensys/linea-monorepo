@@ -3,6 +3,7 @@ package zkevm
 import (
 	"sync"
 
+	"github.com/consensys/go-corset/pkg/mir"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -25,11 +26,13 @@ var (
 // that the provided prover inputs are correct. It typically is used to audit
 // the traces of the arithmetization. Currently, it does not include the keccaks
 // nor does it include the state-management checks.
-func CheckerZkEvm(tl *config.TracesLimits) *ZkEvm {
+func CheckerZkEvm(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 	onceCheckerZkEvm.Do(func() {
 		settings := Settings{
 			Arithmetization: arithmetization.Settings{
-				Limits: tl,
+				Limits:                   tl,
+				OptimisationLevel:        &mir.DEFAULT_OPTIMISATION_LEVEL,
+				IgnoreCompatibilityCheck: &cfg.Execution.IgnoreCompatibilityCheck,
 			},
 			CompilationSuite: checkerCompilationSuite,
 			Metadata: wizard.VersionMetadata{

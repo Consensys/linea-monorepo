@@ -2,7 +2,7 @@ services:
   l1-el-node:
     container_name: l1-el-node
     hostname: l1-el-node
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-mainnet-fc27c01}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-devnet-547b40e}
     profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-node-genesis-generator:
@@ -14,7 +14,7 @@ services:
       retries: 120
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
-      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+      JAVA_OPTS: -Xmx1536m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
     entrypoint:
       - /bin/bash
       - -c
@@ -72,18 +72,22 @@ services:
         ipv4_address: 10.10.10.202
 
   l1-node-genesis-generator:
-    build:
-      context: ./config/l1-node/
+    image: ethpandaops/ethereum-genesis-generator:pk910-bash-el-genesis-generator
     profiles: [ "l1", "debug", "external-to-monorepo" ]
-    command:
-      --genesis-time ${L1_GENESIS_TIME:-""}
-      --current-time-delay-in-sec 3
-      --l1-genesis /config/l1-genesis.json
-      --network-config /config/network-config.yml
-      --mnemonics /config/mnemonics.yaml
-      --output-dir /data/l1-node-config
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        PRAGUE=${PRAGUE:-} bash /generate-genesis.sh
+        /usr/local/bin/eth2-testnet-genesis deneb \
+        --config /config/network-config.yml \${L1_GENESIS_TIME:+--timestamp ${L1_GENESIS_TIME:-} \}
+        --mnemonics /config/mnemonics.yaml \
+        --tranches-dir /data/l1-node-config/tranches \
+        --state-output /data/l1-node-config/genesis.ssz \
+        --eth1-config /config/genesis.json
     volumes:
-      - ./config/l1-node/cl/network-config.yml:/config/network-config.yml:ro
       - ./config/l1-node/cl/mnemonics.yaml:/config/mnemonics.yaml:ro
-      - ./config/l1-node/el/genesis.json:/config/l1-genesis.json
+      - ./config/l1-node/cl/network-config.yml:/config/network-config.yml:ro
+      - ./config/l1-node/el/genesis.json:/config/genesis.json
+      - ./config/l1-node/generate-genesis.sh:/generate-genesis.sh
       - local-dev:/data
