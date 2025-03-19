@@ -85,10 +85,12 @@ func (ctx *CompilationCtx) commitGateColumns() {
 	ctx.Columns.Qk = ctx.comp.InsertPrecomputed(ctx.colIDf("QK"), iopToSV(ctx.Plonk.Trace.Qk))
 
 	// Declare and pre-assign the rangecheck selectors
-	PcRcL, PcRcR, PcRcO := ctx.rcGetterToSV()
-	ctx.Columns.RcL = ctx.comp.InsertPrecomputed(ctx.colIDf("RcL"), PcRcL)
-	ctx.Columns.RcR = ctx.comp.InsertPrecomputed(ctx.colIDf("RcR"), PcRcR)
-	ctx.Columns.RcO = ctx.comp.InsertPrecomputed(ctx.colIDf("RcO"), PcRcO)
+	if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
+		PcRcL, PcRcR, PcRcO := ctx.rcGetterToSV()
+		ctx.Columns.RcL = ctx.comp.InsertPrecomputed(ctx.colIDf("RcL"), PcRcL)
+		ctx.Columns.RcR = ctx.comp.InsertPrecomputed(ctx.colIDf("RcR"), PcRcR)
+		ctx.Columns.RcO = ctx.comp.InsertPrecomputed(ctx.colIDf("RcO"), PcRcO)
+	}
 
 	ctx.Columns.L = make([]ifaces.Column, ctx.maxNbInstances)
 	ctx.Columns.R = make([]ifaces.Column, ctx.maxNbInstances)
