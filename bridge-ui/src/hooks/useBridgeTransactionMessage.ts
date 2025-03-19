@@ -1,11 +1,4 @@
-import {
-  BridgeTransaction,
-  BridgeTransactionType,
-  TransactionStatus,
-  CCTPMessageReceivedAbiEvent,
-  CCTPV2BridgeMessage,
-  NativeBridgeMessage,
-} from "@/types";
+import { BridgeTransaction, BridgeTransactionType, CCTPV2BridgeMessage, NativeBridgeMessage } from "@/types";
 import { getPublicClient } from "@wagmi/core";
 import { config as wagmiConfig } from "@/lib/wagmi";
 import { isCCTPV2BridgeMessage } from "@/utils/message";

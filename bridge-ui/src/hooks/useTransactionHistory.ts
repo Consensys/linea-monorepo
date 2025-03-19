@@ -9,7 +9,7 @@ const useTransactionHistory = () => {
   const { address } = useAccount();
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
-  const { lineaSDK, lineaSDKContracts } = useLineaSDK();
+  const { lineaSDK } = useLineaSDK();
   const tokens = useTokens();
 
   // TODO - For invalidateQueries with queryKey: "transactionHistory", we don't need to refetch the entire transaction history, just the single affected transaction
