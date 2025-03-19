@@ -18,7 +18,6 @@ package maru.consensus.qbft.adaptors
 import maru.serialization.rlp.RLPSerializers.BeaconBlockSerializer
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCodec
-import org.hyperledger.besu.consensus.qbft.core.types.QbftHashMode
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
@@ -26,10 +25,7 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput
  * Adaptor for QBFT block codec, this provides a way to serialize QBFT blocks
  */
 class QbftBlockCodecAdaptor : QbftBlockCodec {
-  override fun readFrom(
-    rlpInput: RLPInput,
-    qbftHashMode: QbftHashMode,
-  ): QbftBlock = QbftBlockAdaptor(BeaconBlockSerializer.readFrom(rlpInput))
+  override fun readFrom(rlpInput: RLPInput): QbftBlock = QbftBlockAdaptor(BeaconBlockSerializer.readFrom(rlpInput))
 
   override fun writeTo(
     qbftBlock: QbftBlock,

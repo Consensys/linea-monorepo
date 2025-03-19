@@ -20,7 +20,6 @@ import maru.consensus.qbft.adaptors.QbftBlockInterfaceAdaptor
 import maru.consensus.qbft.adaptors.toBeaconBlockHeader
 import maru.core.BeaconBlock
 import maru.core.ext.DataGenerators
-import org.hyperledger.besu.consensus.qbft.core.types.QbftHashMode
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -34,7 +33,7 @@ class QbftBlockInterfaceAdaptorTest {
       )
     val qbftBlock = QbftBlockAdaptor(beaconBlock)
     val updatedBlock =
-      QbftBlockInterfaceAdaptor().replaceRoundInBlock(qbftBlock, 20, QbftHashMode.COMMITTED_SEAL)
+      QbftBlockInterfaceAdaptor().replaceRoundInBlock(qbftBlock, 20)
     val updatedBeaconBlockHeader = updatedBlock.header.toBeaconBlockHeader()
     assertEquals(updatedBeaconBlockHeader.round, 20UL)
   }

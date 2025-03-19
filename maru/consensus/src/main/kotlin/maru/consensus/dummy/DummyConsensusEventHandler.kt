@@ -38,6 +38,9 @@ class DummyConsensusEventHandler(
   override fun start() {
   }
 
+  override fun stop() {
+  }
+
   override fun handleMessageEvent(p0: BftReceivedMessageEvent) {
     TODO("Unexpected because there should be no peers yet")
   }
