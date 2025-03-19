@@ -3,6 +3,7 @@ package experiment
 import (
 	"encoding/json"
 
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
@@ -13,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
 )
 
@@ -42,7 +44,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 	wizard.ContinueCompilation(mod.Wiop,
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<17, true),
+		compiler.Arcane(256, 1<<17, false),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -52,7 +54,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<15, true),
+		compiler.Arcane(256, 1<<15, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -61,7 +63,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, true),
+		compiler.Arcane(256, 1<<13, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -75,13 +77,21 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 	var recCtx *recursion.Recursion
 
 	defineRecursion := func(build2 *wizard.Builder) {
-		recCtx = recursion.DefineRecursionOf("wizard-recursion", build2.CompiledIOP, mod.Wiop, false, 1)
+		recCtx = recursion.DefineRecursionOf(
+			"wizard-recursion-lpp-"+string(mod.definitionInput.ModuleName),
+			build2.CompiledIOP,
+			mod.Wiop,
+			true,
+			1,
+		)
 	}
 
 	recursedComp := wizard.Compile(defineRecursion,
+		logdata.Log("recursion-lpp-initial-wizard-"+string(mod.definitionInput.ModuleName)),
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<17, true),
+		compiler.Arcane(256, 1<<17, false),
+		logdata.GenCSV(files.MustOverwrite("wizard-recursion-lpp-"+string(mod.definitionInput.ModuleName)+".csv")),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -90,7 +100,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		),
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<15, true),
+		compiler.Arcane(256, 1<<15, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -99,7 +109,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, true),
+		compiler.Arcane(256, 1<<13, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -128,7 +138,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 	wizard.ContinueCompilation(mod.Wiop,
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<17, true),
+		compiler.Arcane(256, 1<<17, false),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -138,7 +148,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<15, true),
+		compiler.Arcane(256, 1<<15, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -147,7 +157,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, true),
+		compiler.Arcane(256, 1<<13, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -161,13 +171,21 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 	var recCtx *recursion.Recursion
 
 	defineRecursion := func(build2 *wizard.Builder) {
-		recCtx = recursion.DefineRecursionOf("wizard-recursion", build2.CompiledIOP, mod.Wiop, false, 1)
+		recCtx = recursion.DefineRecursionOf(
+			"wizard-recursion-gl-"+string(mod.definitionInput.ModuleName),
+			build2.CompiledIOP,
+			mod.Wiop,
+			true,
+			1,
+		)
 	}
 
 	recursedComp := wizard.Compile(defineRecursion,
+		logdata.Log("recursion-gl-initial-wizard-"+string(mod.definitionInput.ModuleName)),
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<17, true),
+		compiler.Arcane(256, 1<<17, false),
+		logdata.GenCSV(files.MustOverwrite("wizard-recursion-gl-"+string(mod.definitionInput.ModuleName)+".csv")),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -176,7 +194,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		),
 		selfrecursion.SelfRecurse,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<15, true),
+		compiler.Arcane(256, 1<<15, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -186,7 +204,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, true),
+		compiler.Arcane(256, 1<<13, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -222,14 +240,29 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit *ModuleWitness) wizard.Pro
 	var (
 		// In order to work, the recursion circuit needs to access the query params
 		stoppingRound = recursion.VortexQueryRound(comp) + 1
-		proverRun     = wizard.RunProverUntilRound(comp, proverStep, stoppingRound)
+		proverRun     *wizard.ProverRuntime
+		initialTime   = profiling.TimeIt(func() {
+			proverRun = wizard.RunProverUntilRound(comp, proverStep, stoppingRound)
+		})
 		recursionWit  = recursion.ExtractWitness(proverRun)
+		proof         wizard.Proof
+		recursionTime = profiling.TimeIt(func() {
+			proof = wizard.Prove(
+				r.RecursionComp,
+				r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}),
+			)
+		})
 	)
 
-	return wizard.Prove(
-		r.RecursionComp,
-		r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}),
-	)
+	logrus.
+		WithField("moduleName", wit.ModuleName).
+		WithField("moduleIndex", wit.ModuleIndex).
+		WithField("initial-time", initialTime).
+		WithField("recursion-time", recursionTime).
+		WithField("is-lpp", wit.IsLPP).
+		Infof("Ran prover segment")
+
+	return proof
 }
 
 func logCellCount(comp *wizard.CompiledIOP, moduleName, msg string) {
