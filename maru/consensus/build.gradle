@@ -40,6 +40,10 @@ dependencies {
   implementation "org.hyperledger.besu.internal:qbft-core"
   implementation("org.hyperledger.besu:besu-datatypes")
   implementation("org.hyperledger.besu:evm")
+  implementation("org.hyperledger.besu.internal:algorithms")
+
+  implementation "tech.pegasys.teku.internal:executionclient"
+  implementation "tech.pegasys.teku.internal:spec"
 
   testImplementation(testFixtures(project(":core")))
   testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"

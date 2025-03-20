@@ -148,6 +148,8 @@ dependencyManagement {
 
     dependency "org.hyperledger.besu.internal:plugins-rocksdb:$besuVersion"
 
+    dependency "com.michael-bull.kotlin-result:kotlin-result:1.1.16"
+
     imports {
       mavenBom "org.slf4j:slf4j-bom:2.0.16"
     }
