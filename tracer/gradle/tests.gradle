@@ -135,6 +135,7 @@ tasks.test.configure {
     excludeTags("nightly")
     excludeTags("replay")
     excludeTags("weekly")
+    excludeTags("weekly-ecpairing")
   }
   finalizedBy(jacocoTestReport)
 }
@@ -229,6 +230,7 @@ tasks.register("weeklyTests", Test) {
   useJUnitPlatform {
     excludeTags("nightly")
     excludeTags("replay")
+    excludeTags("weekly-ecpairing")
     includeTags("weekly")
   }
   finalizedBy(jacocoWeeklyTestsReport)
@@ -253,6 +255,25 @@ tasks.register("jacocoUnitFastReplayWeeklyNightlyReferenceBlockchainAndStateTest
 
   sourceSets project(":arithmetization").sourceSets.main
   executionData fileTree(project.rootDir.absolutePath).include("**/build/jacoco/*.exec")
+}
+
+// Gradle task to concatenate Unit, FastReplay, Nightly, Weekly and Reference Blockchain and State tests exec files
+tasks.register("weeklyEcPairingTests", Test) {
+  dependsOn(buildZkevmBin)
+
+  systemProperty("junit.jupiter.execution.parallel.enabled", true)
+  systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+  systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+  systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+  systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
+          System.getenv().getOrDefault("WEEKLY_TESTS_PARALLELISM", "1").toInteger())
+
+  useJUnitPlatform {
+    excludeTags("nightly")
+    excludeTags("replay")
+    excludeTags("weekly")
+    includeTags("weekly-ecpairing")
+  }
 }
 
 // Configure default build task to require the tracer is built first.

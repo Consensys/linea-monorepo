@@ -99,7 +99,7 @@ public class Utilities {
         .push(rao)
         .push(cds)
         .push(cdo)
-        .op(BALANCE)
+        .op(SELFBALANCE)
         .push(1)
         .op(ADD) // puts balance + 1 on the stack
         .push(to)
@@ -128,6 +128,91 @@ public class Utilities {
         .op(MSTORE);
   }
 
+  public static void fullReturnDataCopyAt(BytecodeCompiler program, int targetOffset) {
+    program.op(RETURNDATASIZE).push(0).push(targetOffset);
+  }
+
+  /**
+   * Copies <b>1 / 2</b> of the return data starting at offset <b>RDS / 3</b> (internal to return
+   * data) into memory at targetOffset.
+   *
+   * @param program
+   * @param targetOffset
+   */
+  public static void copyHalfOfReturnDataOmittingTheFirstThirdOfIt(
+      BytecodeCompiler program, int targetOffset) {
+    pushRdsOverArgOntoTheStack(program, 2); // source size   ≡ rds/2
+    pushRdsOverArgOntoTheStack(program, 3); // source offset ≡ rds/3
+    program.push(targetOffset);
+  }
+
+  /**
+   * Loads the (right 0 padded) first <b>RDS ∧ 32</b> bytes from return data onto the stack.
+   *
+   * <p><b>Note.</b> if <b>RDS < 32</b>.
+   *
+   * @param program
+   * @param offset
+   */
+  public static void loadFirstReturnDataWordOntoStack(BytecodeCompiler program, int offset) {
+    squashMemoryWordAtOffset(program, offset);
+    pushMinOfRdsAnd32OntoStack(program); // leaves min(RDS, 32) on the stack
+    program.push(0).push(offset).op(RETURNDATACOPY).push(offset).op(MLOAD);
+  }
+
+  /**
+   * Pushes the integer <b>RDS ∧ 32 = min(RDS, 32)</b> onto the stack.
+   *
+   * @param program
+   */
+  public static void pushMinOfRdsAnd32OntoStack(BytecodeCompiler program) {
+    program
+        .push(WORD_SIZE)
+        .op(RETURNDATASIZE)
+        .op(LT) // stack: | ... | c ], where c ≡ [RDS < 32]
+        .op(DUP1)
+        .push(1)
+        .op(SUB) // stack: | ... | c | d ], where d ≡ ¬c ≡ [RDS ≥ 32]
+        .push(WORD_SIZE)
+        .op(MUL) // stack: | ... | c | (d ? 32 : 0) ]
+        .op(SWAP1) // stack:  | ... | (d ? 32 : 0) | c ]
+        .op(RETURNDATASIZE)
+        .op(MUL) // stack: | ... | (d ? 32 : 0) | (c ? RDS : 0) ]
+        .op(ADD) // stack: | ... | min(RDS, 32) ]
+    ;
+  }
+
+  /**
+   * Squashes the word in memory at (byte)<b>offset</b>, i.e. replaces it with <b>0x 00 .. 00</b>.
+   *
+   * @param program
+   * @param offset
+   */
+  public static void squashMemoryWordAtOffset(BytecodeCompiler program, int offset) {
+    program.push(0).push(offset).op(MSTORE);
+  }
+
+  /**
+   * Pushes <b>RDS / arg</b> onto the stack.
+   *
+   * @param program
+   * @param arg
+   */
+  public static void pushRdsOverArgOntoTheStack(BytecodeCompiler program, int arg) {
+    program.push(arg).op(RETURNDATASIZE).op(DIV);
+  }
+
+  /**
+   * Populates memory with 6 words of data, namely
+   *
+   * <p><b>0x aa ... aa bb ... bb cc ... cc dd ... dd ee ... ee ff ... ff</b>
+   *
+   * <p>starting at offset 0. This provides 192 = 6*32 nonzero bytes in RAM.
+   */
+  public static void populateMemory(BytecodeCompiler program) {
+    populateMemory(program, 6, 0);
+  }
+
   /**
    * {@link #populateMemory} populates memory with <b>nWords</b> chosen cyclically from the set of 6
    * EVM words obtained by repeating the strings <b>aa</b>, <b>bb</b>, ..., <b>ff</b> 32 times.
@@ -142,6 +227,81 @@ public class Utilities {
           .push(abcdef.get(i % abcdef.size()).repeat(WORD_SIZE)) // value, a 32 byte word
           .push(offset + i * WORD_SIZE) // offset
           .op(MSTORE);
+    }
+  }
+
+  /**
+   * Appends byte code to the {@code program} that loads the first word of call data onto the stack
+   * and interprets it as an address like so:
+   *
+   * <p><b>[address | xx ... xx]</b>
+   *
+   * <p>It then calls into this address.
+   *
+   * @param program
+   * @param callOpCode
+   */
+  public static void appendCallTo(BytecodeCompiler program, OpCode callOpCode, Address address) {
+    checkArgument(callOpCode.isCall());
+
+    pushSeveral(program, 0, 0, 0, 0);
+    if (callOpCode.callHasValueArgument()) {
+      program.push(256); // value
+    }
+    program.push(address).op(GAS).op(callOpCode);
+  }
+
+  /**
+   * Performs a full copy of the code at {@code foreignAddress} and runs it as initialization code.
+   *
+   * @param program
+   * @param foreignAddress
+   */
+  public static void copyForeignCodeAndRunItAsInitCode(
+      BytecodeCompiler program, Address foreignAddress) {
+
+    program.push(foreignAddress).op(EXTCODESIZE); // ] EXTCS ]
+    pushSeveral(program, 0, 0);
+    program.push(foreignAddress); // ] EXTCS | 0 | 0 | foreignAddress ]
+    program.op(EXTCODECOPY);
+    program.op(MSIZE);
+    pushSeveral(program, 0, 0); // ] MSIZE | 0 | 0 ]
+    program.op(CREATE);
+  }
+
+  /**
+   * <b>EXTCODECOPY</b>'s all of {@code foreignAddress}'s byte code and returns it.
+   *
+   * @param program
+   * @param foreignAddress
+   */
+  public static void copyForeignCodeAndReturnIt(BytecodeCompiler program, Address foreignAddress) {
+    copyForeignCodeToRam(program, foreignAddress);
+    program.op(MSIZE).push(0).op(RETURN); // return memory in full
+  }
+
+  public static void copyForeignCodeToRam(BytecodeCompiler program, Address foreignAddress) {
+    program.push(foreignAddress).op(EXTCODESIZE); // ] EXTCS ]
+    pushSeveral(program, 0, 0);
+    program.push(foreignAddress); // ] EXTCS | 0 | 0 | foreignAddress ]
+    program.op(EXTCODECOPY); // full copy of foreign code
+  }
+
+  public static void sstoreTopOfStackTo(BytecodeCompiler program, int storageKey) {
+    program.push(storageKey).op(SSTORE);
+  }
+
+  public static void sloadFrom(BytecodeCompiler program, int storageKey) {
+    program.push(storageKey).op(SLOAD);
+  }
+
+  public static void revertWith(BytecodeCompiler program, int offset, int size) {
+    program.push(size).push(offset).op(REVERT);
+  }
+
+  public static void pushSeveral(BytecodeCompiler program, int... values) {
+    for (int value : values) {
+      program.push(value);
     }
   }
 }
