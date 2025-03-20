@@ -26,10 +26,10 @@ jobs:
           go-corset: true
 
       - name: Run Weekly tests
-        run: GOMEMLIMIT=96GiB ./gradlew weeklyTests
+        run: GOMEMLIMIT=55GiB ./gradlew weeklyTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          WEEKLY_TESTS_PARALLELISM: 4
+          WEEKLY_TESTS_PARALLELISM: 2
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --air
 
@@ -63,3 +63,42 @@ jobs:
           payload: |
              name: "Weekly (Go-Corset)"
              status: "${{ job.status }}"
+
+  weekly-ecpairing-tests:
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
+    continue-on-error: true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Setup Test Environment
+        uses: ./.github/actions/setup-environment
+        with:
+          go-corset: true
+
+      - name: Run Weekly EcPairing tests
+        run: GOMEMLIMIT=50GiB ./gradlew weeklyEcPairingTests
+        env:
+          JAVA_OPTS: -Dorg.gradle.daemon=false
+          WEEKLY_TESTS_PARALLELISM: 2
+          CORSET_FLAGS: disable
+          GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --air
+
+      - name: Upload weekly ecpairing test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-ecpairing-tests-report
+          path: arithmetization/build/reports/tests/**/*
+
+      - name: Failure Notification
+        if: ${{ failure() || cancelled() }}
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: webhook-trigger
+          payload: |
+            name: "Weekly EcPairing (Go-Corset)"
+            status: "${{ job.status }}"
