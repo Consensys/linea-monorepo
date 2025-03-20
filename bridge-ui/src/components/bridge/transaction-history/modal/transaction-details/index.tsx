@@ -9,7 +9,7 @@ import Button from "@/components/ui/button";
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
 import { useClaim, useClaimingTx, useBridgeTransactionMessage } from "@/hooks";
 import { BridgeTransaction, TransactionStatus } from "@/types";
-import { formatBalance, formatHex, formatTimestamp } from "@/utils";
+import { formatBalance, formatHex, formatTimestamp, isCCTPV2BridgeMessage } from "@/utils";
 
 type Props = {
   transaction: BridgeTransaction | undefined;
@@ -26,7 +26,12 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
 
   // Hydrate BridgeTransaction.message with params required for claim tx
   const { message, isLoading: isLoadingClaimTxParams } = useBridgeTransactionMessage(transaction);
-  if (transaction && message) transaction.message = message;
+  if (transaction && message) {
+    transaction.message = message;
+    // Reattesting CCTP message caused bridging status regression
+    if (isCCTPV2BridgeMessage(message) && message.isStatusRegression === true)
+      transaction.status = TransactionStatus.PENDING;
+  }
 
   // Hydrate BridgeTransaction.claimingTx
   const claimingTx = useClaimingTx(transaction);

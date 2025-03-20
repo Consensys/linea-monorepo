@@ -8,7 +8,7 @@ import {
 } from "@/types";
 import { getPublicClient } from "@wagmi/core";
 import { config as wagmiConfig } from "@/lib/wagmi";
-import { isIncompleteCCTPV2BridgeMessage, isNativeBridgeMessage } from "@/utils/message";
+import { isCCTPV2BridgeMessage, isNativeBridgeMessage } from "@/utils/message";
 import { useQuery } from "@tanstack/react-query";
 import { getCCTPMessageByNonce, refreshCCTPMessageIfNeeded } from "@/utils";
 import useLineaSDK from "./useLineaSDK";
@@ -45,7 +45,7 @@ const useBridgeTransactionMessage = (
         return message;
       }
       case BridgeTransactionType.USDC: {
-        if (!isIncompleteCCTPV2BridgeMessage(message) || !message?.nonce) return message;
+        if (!isCCTPV2BridgeMessage(message) || !message?.nonce) return message;
         const { nonce } = message;
         // Get message + attestation from CCTP API if we have not already
         // We should have queried CCTP API previously in fetchCCTPBridgeEvents, so should not execute this if block
@@ -78,6 +78,7 @@ const useBridgeTransactionMessage = (
           attestation: refreshedMessage.attestation,
           amountSent: message.amountSent,
           nonce: message.nonce,
+          isStatusRegression: refreshedMessage.isStatusRegression,
         };
       }
       default: {

@@ -56,7 +56,6 @@ export async function fetchCCTPBridgeEvents(
         return;
       }
 
-      // const token = tokens.find((token) => token.symbol === "USDC" && token.type.includes("bridge-reserved"));
       const token = tokens.find((token) => isCctp(token));
       if (!token) return;
 
@@ -85,6 +84,7 @@ export async function fetchCCTPBridgeEvents(
           nonce: nonce,
           attestation: message.attestation,
           message: message.message,
+          isStatusRegression: false,
         },
       };
 

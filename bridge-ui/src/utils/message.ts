@@ -49,18 +49,11 @@ export function isNativeBridgeMessage(msg: NativeBridgeMessage | CCTPV2BridgeMes
   );
 }
 
-// Assert that message is CCTPV2BridgeMessage prior to data hydration in TransactionDetails modal
-// Data hydration will retrieve .message and .attestation properties from CCTP API
-export function isIncompleteCCTPV2BridgeMessage(
-  msg: NativeBridgeMessage | CCTPV2BridgeMessage,
-): msg is CCTPV2BridgeMessage {
-  return typeof (msg as CCTPV2BridgeMessage).nonce === "string";
-}
-
 export function isCCTPV2BridgeMessage(msg: NativeBridgeMessage | CCTPV2BridgeMessage): msg is CCTPV2BridgeMessage {
   return (
     typeof (msg as CCTPV2BridgeMessage).nonce === "string" &&
     typeof (msg as CCTPV2BridgeMessage).message === "string" &&
-    typeof (msg as CCTPV2BridgeMessage).attestation === "string"
+    typeof (msg as CCTPV2BridgeMessage).attestation === "string" &&
+    typeof (msg as CCTPV2BridgeMessage).isStatusRegression === "boolean"
   );
 }

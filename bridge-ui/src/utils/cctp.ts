@@ -80,8 +80,9 @@ export const refreshCCTPMessageIfNeeded = async (
   fromChainCCTPDomain: number,
   nonce: string,
   isTestnet: boolean,
-): Promise<{ message: `0x${string}`; attestation: `0x${string}` } | undefined> => {
-  const oldResp = { message: oldMessage, attestation: oldAttestation };
+  // 'isStatusRegression == true' is handle edge-case where reattesting CCTP will cause a 'READY_TO_CLAIM' tx to regress to a 'PENDING' tx
+): Promise<{ message: `0x${string}`; attestation: `0x${string}`; isStatusRegression: boolean } | undefined> => {
+  const oldResp = { message: oldMessage, attestation: oldAttestation, isStatusRegression: false };
   if (status !== TransactionStatus.READY_TO_CLAIM) return oldResp;
 
   // Check expiry of current message
@@ -90,12 +91,15 @@ export const refreshCCTPMessageIfNeeded = async (
   if (currentToBlock < expiryBlock) return oldResp;
 
   // We have an expired message, reattest
-  // TODO - Investigate if this will result in an edge case where a 'READY_TO_CLAIM' tx regresses to a 'PENDING' tx
   await reattestCCTPV2PreFinalityMessage(nonce, isTestnet);
 
   const refreshedMessage = await getCCTPMessageByNonce(nonce, fromChainCCTPDomain, isTestnet);
   if (!refreshedMessage) return undefined;
-  return { message: refreshedMessage.message, attestation: refreshedMessage.attestation };
+  return {
+    message: refreshedMessage.message,
+    attestation: refreshedMessage.attestation,
+    isStatusRegression: refreshedMessage.status === "pending_confirmations",
+  };
 };
 
 export const getCCTPMessageByTxHash = async (
