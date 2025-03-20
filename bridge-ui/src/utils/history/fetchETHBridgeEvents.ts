@@ -36,6 +36,8 @@ export async function fetchETHBridgeEvents(
   const [ethLogsForSender, ethLogsForRecipient] = await Promise.all([
     client.getLogs({
       event: MessageSentABIEvent,
+      // No need to find more 'optimal' value than earliest.
+      // Empirical testing showed no practical difference when using hardcoded block number (that was 90 days old).
       fromBlock: "earliest",
       toBlock: "latest",
       address: messageServiceAddress,
