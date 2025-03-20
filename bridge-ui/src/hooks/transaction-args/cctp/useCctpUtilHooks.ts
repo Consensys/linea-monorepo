@@ -16,11 +16,12 @@ export const useCCTPDestinationDomain = () => {
 };
 
 export const useCCTPFee = (): bigint => {
+  const fromChain = useChainStore.useFromChain();
   const srcDomain = useCCTPSrcDomain();
   const dstDomain = useCCTPDestinationDomain();
   const { data } = useQuery({
     queryKey: ["useCCTPFee", srcDomain, dstDomain],
-    queryFn: async () => getCCTPFee(srcDomain, dstDomain),
+    queryFn: async () => getCCTPFee(srcDomain, dstDomain, fromChain.testnet),
   });
   if (!data) return CCTP_TRANSFER_MAX_FEE_FALLBACK;
   return BigInt(data.minimumFee);
