@@ -25,7 +25,7 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
   const formattedTime = transaction?.timestamp ? formatTimestamp(Number(transaction.timestamp), "ppp") : "";
 
   // Hydrate BridgeTransaction.message with params required for claim tx
-  const message = useBridgeTransactionMessage(transaction);
+  const { message, isLoading: isLoadingClaimTxParams } = useBridgeTransactionMessage(transaction);
   if (transaction && message) transaction.message = message;
 
   // Hydrate BridgeTransaction.claimingTx
@@ -96,8 +96,20 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
       return `Switch to ${transaction?.toChain.name}`;
     }
 
+    if (isLoadingClaimTxParams) {
+      return "Loading Claim Data...";
+    }
+
     return "Claim";
-  }, [isPending, isConfirming, isSwitchingChain, chain?.id, transaction?.toChain.id, transaction?.toChain.name]);
+  }, [
+    isPending,
+    isConfirming,
+    isSwitchingChain,
+    isLoadingClaimTxParams,
+    chain?.id,
+    transaction?.toChain.id,
+    transaction?.toChain.name,
+  ]);
 
   const handleClaim = () => {
     if (transaction?.toChain.id && chain?.id && chain.id !== transaction?.toChain.id) {
@@ -160,7 +172,11 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
           )}
         </ul>
         {transaction?.status === TransactionStatus.READY_TO_CLAIM && (
-          <Button disabled={isPending || isConfirming || isSwitchingChain} onClick={handleClaim} fullWidth>
+          <Button
+            disabled={isLoadingClaimTxParams || isPending || isConfirming || isSwitchingChain}
+            onClick={handleClaim}
+            fullWidth
+          >
             {buttonText}
           </Button>
         )}

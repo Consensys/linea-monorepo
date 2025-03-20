@@ -12,7 +12,6 @@ type UseClaimProps = {
 
 const useClaim = (props: UseClaimProps) => {
   const transactionArgs = useClaimTxArgs(props);
-
   const { data: hash, sendTransaction, isPending, error, isSuccess } = useSendTransaction();
 
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({

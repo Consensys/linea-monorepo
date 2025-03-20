@@ -15,7 +15,7 @@ import useLineaSDK from "./useLineaSDK";
 
 const useBridgeTransactionMessage = (
   transaction: BridgeTransaction | undefined,
-): CCTPV2BridgeMessage | NativeBridgeMessage | undefined => {
+): { message: CCTPV2BridgeMessage | NativeBridgeMessage | undefined; isLoading: boolean } => {
   const { lineaSDK } = useLineaSDK();
 
   // TODO - consider refactor into own file
@@ -78,13 +78,14 @@ const useBridgeTransactionMessage = (
     }
   }
 
-  const { data } = useQuery({
+  const { data, isLoading } = useQuery({
     // TODO - Do we need to account for undefined props here? Otherwise caching behaviour is not as expected?
     queryKey: ["useBridgeTransactionMessage", transaction?.bridgingTx, transaction?.toChain?.id],
     queryFn: async () => getBridgeTransactionMessage(transaction),
   });
+  console.log("useBridgeTransactionMessage isLoading:", isLoading);
 
-  return data;
+  return { message: data, isLoading };
 };
 
 export default useBridgeTransactionMessage;

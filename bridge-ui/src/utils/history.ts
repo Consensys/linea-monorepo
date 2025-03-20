@@ -287,6 +287,7 @@ async function fetchCCTPBridgeEvents(
   await Promise.all(
     usdcLogs.map(async (log) => {
       const transactionHash = log.transactionHash;
+      // TODO - Search for cache for completed chainId-transactionHash, if cache-hit skip remaining logic
 
       const fromBlock = await fromChainClient.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
 
@@ -310,6 +311,7 @@ async function fetchCCTPBridgeEvents(
       // TODO - refactor getCCTPTransactionStatus to depend on nonce only, and not on CCTP API response
       const status = getCCTPTransactionStatus(message.status, isNonceUsed);
 
+      // TODO - Save to cache for completed chainId-transactionHash, if cache-hit skip remaining logic
       transactionsMap.set(transactionHash, {
         type: BridgeTransactionType.USDC,
         status,
