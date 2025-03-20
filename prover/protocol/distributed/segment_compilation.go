@@ -45,6 +45,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
 		compiler.Arcane(256, 1<<17, false),
+		logdata.GenCSV(files.MustOverwrite("wizard-initial-lpp-"+string(mod.definitionInput.ModuleName)+".csv")),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -98,6 +99,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 			vortex.WithSISParams(&sisInstance),
 			vortex.AddMerkleRootToPublicInputs("LPP_COLUMNS_MERKLE_ROOT", 0),
 		),
+		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
 		compiler.Arcane(256, 1<<15, false),
@@ -139,6 +141,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
 		compiler.Arcane(256, 1<<17, false),
+		logdata.GenCSV(files.MustOverwrite("wizard-initial-gl-"+string(mod.definitionInput.ModuleName)+".csv")),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
