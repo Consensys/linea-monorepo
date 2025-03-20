@@ -1,2 +1,2 @@
 export { fetchTransactionsHistory } from "./fetchTransactionsHistory";
-export { getBridgeTransactionKey } from "./getBridgeTransactionKey";
+export { getCompleteTxStoreKey, getCompleteTxStoreKeyForTx } from "./getCompleteTxStoreKey";

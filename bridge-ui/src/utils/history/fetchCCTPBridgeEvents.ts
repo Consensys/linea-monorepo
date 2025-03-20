@@ -5,8 +5,11 @@ import { config as wagmiConfig } from "@/lib/wagmi";
 import { BridgeTransaction, BridgeTransactionType, Chain, Token, CCTPDepositForBurnAbiEvent } from "@/types";
 import { isCctp, isCCTPNonceUsed, getCCTPTransactionStatus, getCCTPMessageByTxHash } from "@/utils";
 import { DepositForBurnLogEvent } from "@/types/events";
+import { HistoryActionsForCompleteTxCaching } from "@/stores";
+import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 
 export async function fetchCCTPBridgeEvents(
+  historyStoreActions: HistoryActionsForCompleteTxCaching,
   address: Address,
   fromChain: Chain,
   toChain: Chain,
@@ -38,7 +41,14 @@ export async function fetchCCTPBridgeEvents(
   await Promise.all(
     usdcLogs.map(async (log) => {
       const transactionHash = log.transactionHash;
-      // TODO - Search for cache for completed chainId-transactionHash, if cache-hit skip remaining logic
+
+      // Search cache for completed tx for this txHash, if cache-hit can skip remaining logic
+      const cacheKey = getCompleteTxStoreKey(fromChain.id, transactionHash);
+      const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
+      if (cachedCompletedTx) {
+        transactionsMap.set(transactionHash, cachedCompletedTx);
+        return;
+      }
 
       const fromBlock = await fromChainClient.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
 
@@ -62,8 +72,7 @@ export async function fetchCCTPBridgeEvents(
       // TODO - refactor getCCTPTransactionStatus to depend on nonce only, and not on CCTP API response
       const status = getCCTPTransactionStatus(message.status, isNonceUsed);
 
-      // TODO - Save to cache for completed chainId-transactionHash, if cache-hit skip remaining logic
-      transactionsMap.set(transactionHash, {
+      const tx: BridgeTransaction = {
         type: BridgeTransactionType.USDC,
         status,
         token,
@@ -75,7 +84,11 @@ export async function fetchCCTPBridgeEvents(
           amountSent: BigInt(log.args.amount),
           nonce: nonce,
         },
-      });
+      };
+
+      // Store COMPLETE tx in cache
+      historyStoreActions.setCompleteTx(tx);
+      transactionsMap.set(transactionHash, tx);
     }),
   );
 

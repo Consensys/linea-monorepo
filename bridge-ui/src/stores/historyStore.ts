@@ -2,8 +2,8 @@ import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { config } from "@/config";
-import { isEmptyObject } from "@/utils";
-import { BridgeTransaction } from "@/types";
+import { BridgeTransaction, TransactionStatus } from "@/types";
+import { getCompleteTxStoreKeyForTx } from "@/utils/history";
 
 export type HistoryState = {
   isLoading: boolean;
@@ -14,7 +14,7 @@ export type HistoryState = {
   completeTxHistory: Record<string, BridgeTransaction>;
 };
 
-export type HistoryActions = {
+type HistoryActions = {
   setIsLoading: (isLoading: boolean) => void;
   // setTransactions: (
   //   key: string,
@@ -22,12 +22,13 @@ export type HistoryActions = {
   //   lastL1FetchedBlockNumber?: bigint,
   //   lastL2FetchedBlockNumber?: bigint,
   // ) => void;
-  setCompleteTx: (key: string, transaction: BridgeTransaction) => void;
+  setCompleteTx: (transaction: BridgeTransaction) => void;
   // getTransactionsByKey: (key: string) => BridgeTransaction[];
   // getFromBlockNumbers: (key: string) => { l1FromBlock: bigint; l2FromBlock: bigint };
   getCompleteTx: (key: string) => BridgeTransaction | undefined;
-  getKey: (transaction: BridgeTransaction) => string;
 };
+
+export type HistoryActionsForCompleteTxCaching = Pick<HistoryActions, "setCompleteTx" | "getCompleteTx">;
 
 export type HistoryStore = HistoryState & HistoryActions;
 
@@ -53,19 +54,20 @@ export const useHistoryStore = createWithEqualityFn<HistoryStore>()(
       //       },
       //     },
       //   })),
-      setCompleteTx: (key, transaction) =>
-        set((state) => ({
-          completeTxHistory: {
-            ...state.completeTxHistory,
-            [key]: transaction,
-          },
-        })),
+      setCompleteTx: (transaction) =>
+        set((state) => {
+          if (transaction.status !== TransactionStatus.COMPLETED) return state;
+          const key = getCompleteTxStoreKeyForTx(transaction);
+          return {
+            completeTxHistory: {
+              ...state.completeTxHistory,
+              [key]: transaction,
+            },
+          };
+        }),
       getCompleteTx: (key) => {
         const { completeTxHistory } = get();
         return completeTxHistory[key];
-      },
-      getKey: (transaction) => {
-        return "";
       },
       // getTransactionsByKey: (key) => {
       //   const { history } = get();

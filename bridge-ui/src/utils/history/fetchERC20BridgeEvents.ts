@@ -13,8 +13,11 @@ import {
   BridgingInitiatedV2ABIEvent,
 } from "@/types";
 import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
+import { HistoryActionsForCompleteTxCaching } from "@/stores";
+import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 
 export async function fetchERC20BridgeEvents(
+  historyStoreActions: HistoryActionsForCompleteTxCaching,
   lineaSDK: LineaSDK,
   address: Address,
   fromChain: Chain,
@@ -70,6 +73,14 @@ export async function fetchERC20BridgeEvents(
     Array.from(uniqueLogsMap.values()).map(async (log) => {
       const transactionHash = log.transactionHash;
 
+      // Search cache for completed tx for this txHash, if cache-hit can skip remaining logic
+      const cacheKey = getCompleteTxStoreKey(fromChain.id, transactionHash);
+      const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
+      if (cachedCompletedTx) {
+        transactionsMap.set(transactionHash, cachedCompletedTx);
+        return;
+      }
+
       const block = await client.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
 
       if (compareAsc(fromUnixTime(Number(block.timestamp.toString())), subDays(currentTimestamp, 90)) === -1) {
@@ -94,8 +105,7 @@ export async function fetchERC20BridgeEvents(
       }
 
       const [amount] = decodeAbiParameters([{ type: "uint256", name: "amount" }], log.data);
-
-      transactionsMap.set(transactionHash, {
+      const tx = {
         type: BridgeTransactionType.ERC20,
         status: formatOnChainMessageStatus(messageStatus),
         token,
@@ -113,7 +123,11 @@ export async function fetchERC20BridgeEvents(
           messageHash: message[0].messageHash,
           amountSent: amount,
         },
-      });
+      };
+
+      // Store COMPLETE tx in cache
+      historyStoreActions.setCompleteTx(tx);
+      transactionsMap.set(transactionHash, tx);
     }),
   );
 

@@ -3,7 +3,7 @@ import { compareAsc, fromUnixTime, subDays } from "date-fns";
 import { getPublicClient } from "@wagmi/core";
 import { LineaSDK } from "@consensys/linea-sdk";
 import { config as wagmiConfig } from "@/lib/wagmi";
-import { defaultTokensConfig } from "@/stores";
+import { defaultTokensConfig, HistoryActionsForCompleteTxCaching } from "@/stores";
 import {
   BridgeTransaction,
   BridgeTransactionType,
@@ -14,8 +14,10 @@ import {
   MessageSentLogEvent,
 } from "@/types";
 import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
+import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 
 export async function fetchETHBridgeEvents(
+  historyStoreActions: HistoryActionsForCompleteTxCaching,
   lineaSDK: LineaSDK,
   address: Address,
   fromChain: Chain,
@@ -66,6 +68,16 @@ export async function fetchETHBridgeEvents(
 
   await Promise.all(
     Array.from(uniqueLogsMap.values()).map(async (log) => {
+      const uniqueKey = `${log.args._from}-${log.args._to}-${log.transactionHash}`;
+
+      // Search cache for completed tx for this txHash, if cache-hit can skip remaining logic
+      const cacheKey = getCompleteTxStoreKey(fromChain.id, log.transactionHash);
+      const cachedCompletedTx = historyStoreActions.getCompleteTx(cacheKey);
+      if (cachedCompletedTx) {
+        transactionsMap.set(uniqueKey, cachedCompletedTx);
+        return;
+      }
+
       const messageHash = log.args._messageHash;
 
       const block = await client.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
@@ -77,8 +89,8 @@ export async function fetchETHBridgeEvents(
       const messageStatus = await contract.getMessageStatus(messageHash);
 
       const token = tokens.find((token) => token.type.includes("eth"));
-      const uniqueKey = `${log.args._from}-${log.args._to}-${log.transactionHash}`;
-      transactionsMap.set(uniqueKey, {
+
+      const tx = {
         type: BridgeTransactionType.ETH,
         status: formatOnChainMessageStatus(messageStatus),
         token: token || defaultTokensConfig.MAINNET[0],
@@ -96,7 +108,11 @@ export async function fetchETHBridgeEvents(
           messageHash: log.args._messageHash,
           amountSent: log.args._value,
         },
-      });
+      };
+
+      // Store COMPLETE tx in cache
+      historyStoreActions.setCompleteTx(tx);
+      transactionsMap.set(uniqueKey, tx);
     }),
   );
 

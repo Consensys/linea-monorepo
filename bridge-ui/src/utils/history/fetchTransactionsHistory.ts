@@ -5,9 +5,11 @@ import { BridgeTransaction, Chain, Token } from "@/types";
 import { fetchETHBridgeEvents } from "./fetchETHBridgeEvents";
 import { fetchERC20BridgeEvents } from "./fetchERC20BridgeEvents";
 import { fetchCCTPBridgeEvents } from "./fetchCCTPBridgeEvents";
+import { HistoryActionsForCompleteTxCaching } from "@/stores";
 
 type TransactionHistoryParams = {
   lineaSDK: LineaSDK;
+  historyStoreActions: HistoryActionsForCompleteTxCaching;
   fromChain: Chain;
   toChain: Chain;
   address: Address;
@@ -20,10 +22,11 @@ export async function fetchTransactionsHistory({
   toChain,
   address,
   tokens,
+  historyStoreActions,
 }: TransactionHistoryParams): Promise<BridgeTransaction[]> {
   const events = await Promise.all([
-    fetchBridgeEvents(lineaSDK, fromChain, toChain, address, tokens),
-    fetchBridgeEvents(lineaSDK, toChain, fromChain, address, tokens),
+    fetchBridgeEvents(lineaSDK, fromChain, toChain, address, tokens, historyStoreActions),
+    fetchBridgeEvents(lineaSDK, toChain, fromChain, address, tokens, historyStoreActions),
   ]);
   return events.flat().sort((a, b) => Number(b.timestamp.toString()) - Number(a.timestamp.toString()));
 }
@@ -34,12 +37,13 @@ async function fetchBridgeEvents(
   toChain: Chain,
   address: Address,
   tokens: Token[],
+  historyStoreActions: HistoryActionsForCompleteTxCaching,
 ): Promise<BridgeTransaction[]> {
   const [ethEvents, erc20Events, cctpEvents] = await Promise.all([
-    fetchETHBridgeEvents(lineaSDK, address, fromChain, toChain, tokens),
-    fetchERC20BridgeEvents(lineaSDK, address, fromChain, toChain, tokens),
+    fetchETHBridgeEvents(historyStoreActions, lineaSDK, address, fromChain, toChain, tokens),
+    fetchERC20BridgeEvents(historyStoreActions, lineaSDK, address, fromChain, toChain, tokens),
     // Feature toggle for CCTP, will filter out USDC transactions if isCCTPEnabled == false
-    config.isCCTPEnabled ? fetchCCTPBridgeEvents(address, fromChain, toChain, tokens) : [],
+    config.isCCTPEnabled ? fetchCCTPBridgeEvents(historyStoreActions, address, fromChain, toChain, tokens) : [],
   ]);
 
   return [...ethEvents, ...erc20Events, ...cctpEvents];

@@ -1,9 +1,10 @@
 import { useAccount } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
-import { useChainStore } from "@/stores";
-import { fetchTransactionsHistory } from "@/utils";
+import { HistoryActionsForCompleteTxCaching, useChainStore } from "@/stores";
 import useLineaSDK from "./useLineaSDK";
 import useTokens from "./useTokens";
+import { useHistoryStore } from "@/stores";
+import { fetchTransactionsHistory } from "@/utils";
 
 const useTransactionHistory = () => {
   const { address } = useAccount();
@@ -11,12 +12,28 @@ const useTransactionHistory = () => {
   const toChain = useChainStore.useToChain();
   const { lineaSDK } = useLineaSDK();
   const tokens = useTokens();
+  const { setCompleteTx, getCompleteTx } = useHistoryStore((state) => ({
+    setCompleteTx: state.setCompleteTx,
+    getCompleteTx: state.getCompleteTx,
+  }));
+  const historyStoreActions: HistoryActionsForCompleteTxCaching = {
+    setCompleteTx,
+    getCompleteTx,
+  };
 
   // TODO - For invalidateQueries with queryKey: "transactionHistory", we don't need to refetch the entire transaction history, just the single affected transaction
   const { data, isLoading, refetch } = useQuery({
     enabled: !!address && !!fromChain && !!toChain,
     queryKey: ["transactionHistory", address, fromChain.id, toChain.id],
-    queryFn: () => fetchTransactionsHistory({ lineaSDK, fromChain, toChain, address: address!, tokens }),
+    queryFn: () =>
+      fetchTransactionsHistory({
+        lineaSDK,
+        fromChain,
+        toChain,
+        address: address!,
+        tokens,
+        historyStoreActions,
+      }),
     staleTime: 1000 * 60 * 2,
   });
 
