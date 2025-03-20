@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -90,17 +91,28 @@ func (t *Type) UnmarshalJSON(b []byte) error {
 /*
 Sample a random coin, according to its `spec`
 */
-func (info *Info) Sample(fs *fiatshamir.State, seed ...field.Element) interface{} {
+func (info *Info) Sample(fs *fiatshamir.State, seed field.Element) interface{} {
 	switch info.Type {
 	case Field:
 		return fs.RandomField()
 	case IntegerVec:
 		return fs.RandomManyIntegers(info.Size, info.UpperBound)
 	case FieldFromSeed:
-		if len(seed) == 0 {
-			panic("expected a SEED as the input")
-		}
-		return fs.RandomFieldFromSeed(seed[0], string(info.Name))
+		return fs.RandomFieldFromSeed(seed, string(info.Name))
+	}
+	panic("Unreachable")
+}
+
+// SampleGnark samples a random coin in a gnark circuit. The seed can optionally be
+// passed by the caller is used for [FieldFromSeed] coins. The function returns
+func (info *Info) SampleGnark(fs *fiatshamir.GnarkFiatShamir, seed frontend.Variable) interface{} {
+	switch info.Type {
+	case Field:
+		return fs.RandomField()
+	case IntegerVec:
+		return fs.RandomManyIntegers(info.Size, info.UpperBound)
+	case FieldFromSeed:
+		return fs.RandomFieldFromSeed(seed, string(info.Name))
 	}
 	panic("Unreachable")
 }

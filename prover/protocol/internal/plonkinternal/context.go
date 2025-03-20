@@ -1,6 +1,8 @@
 package plonkinternal
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -9,6 +11,7 @@ import (
 	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -17,6 +20,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
+
+// This flag control whether to activate the gnark profiling for the circuits. Please leave it
+// to "false" because (1) it generates a lot of data (2) it is extremely time consuming.
+const activateGnarkProfiling = false
 
 // The CompilationCtx (context) carries all the compilation informations about a call to
 // Plonk in Wizard. Namely, (non-exhaustively) it contains the gnark's internal
@@ -108,23 +115,35 @@ func createCtx(
 		opt(&ctx)
 	}
 
-	// Build the trace and track it in the context
-	gnarkBuilder, rcGetter := newExternalRangeChecker(comp, ctx.RangeCheck.AddGateForRangeCheck)
-
 	logrus.Debugf("Plonk in Wizard (%v) compiling the circuit", name)
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circuit)
+
+	var pro *profile.Profile
+
+	if activateGnarkProfiling {
+		fname := name
+		if !strings.HasSuffix(fname, ".pprof") {
+			fname += ".pprof"
+		}
+		pro = profile.Start(profile.WithPath(name))
+	}
+
+	ccs, rcGetter, err := CompileCircuit(ctx.Plonk.Circuit, ctx.RangeCheck.AddGateForRangeCheck)
 	if err != nil {
-		utils.Panic("error compiling the circuit with name `%v` : %v", name, err)
+		utils.Panic("error compiling circuit name=%v : %v", name, err)
+	}
+
+	if activateGnarkProfiling {
+		pro.Stop()
 	}
 
 	logrus.Debugf(
-		"constraint system has %v constraints and %v internal variables",
-		ccs.GetNbConstraints(), ccs.GetNbInternalVariables(),
+		"[plonk-in-wizard] compiled cs for %v, nbConstraints=%v, nbInternalVariables=%v\n",
+		name, ccs.GetNbConstraints(), ccs.GetNbInternalVariables(),
 	)
 
-	ctx.Plonk.RcGetter = rcGetter // Pass the range-check getter
-	ctx.Plonk.SPR = ccs.(*cs.SparseR1CS)
+	ctx.Plonk.SPR = ccs
 	ctx.Plonk.Domain = fft.NewDomain(uint64(ctx.DomainSize()))
+	ctx.Plonk.RcGetter = rcGetter // Pass the range-check getter
 
 	logrus.Debugf("Plonk in Wizard (%v) build trace", name)
 	ctx.Plonk.Trace = plonkBLS12_377.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
@@ -134,6 +153,21 @@ func createCtx(
 
 	logrus.Debugf("Plonk in Wizard (%v) done", name)
 	return ctx
+}
+
+// CompileCircuit compiles the circuit and returns the compiled
+// constraints system.
+func CompileCircuit(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func() [][2]int, error) {
+
+	// Build the trace and track it in the context
+	gnarkBuilder, rcGetter := newExternalRangeChecker(addGates)
+
+	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
+	if err != nil {
+		return nil, nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
+	}
+
+	return ccsIface.(*cs.SparseR1CS), rcGetter, err
 }
 
 // Return the size of the domain

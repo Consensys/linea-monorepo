@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 )
 
 // Defines a context of self-recursion
@@ -259,8 +258,6 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 		)
 	}
 	comp.Columns.SetStatus(ctx.Columns.Ualpha.GetColID(), column.Committed)
-
-	logrus.Infof("Selfrecursion compiler (%v) - Ualpha has size %v", ctx.SelfRecursionCnt, ctx.Columns.Ualpha.Size())
 
 	// And for the `WholePreimage`, we mark it as `Ignored` and make the
 	// same assumption that theirs status is `Proof`

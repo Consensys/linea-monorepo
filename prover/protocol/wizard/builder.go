@@ -22,7 +22,7 @@ In particular, Builder provides the utilities to
   - Declare random coins
   - Declare queries
 
-Deprecated: @alex: we should deprecate this and directly embed the "round"
+@alex: we should deprecate this and directly embed the "round"
 tracking capability within the [CompiledIOP] struct. The round-tracking
 mechanism does not allow for a smooth way to decompose the user's protocol into
 sub-protocols that spans on multiple rounds efficiently as a new round will be
@@ -317,10 +317,10 @@ func (comp *CompiledIOP) EqualizeRounds(numRounds int) {
 	comp.SubVerifiers.Reserve(numRounds)
 
 	/*
-		Check and reserve for the FiatShamirHooks
+		Check and reserve for the FiatShamirHooksPreSampling
 	*/
-	if comp.FiatShamirHooks.Len() > numRounds {
-		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the FiatShamirHooks. %v", numRounds, comp.FiatShamirHooks.Len(), helpMsg)
+	if comp.FiatShamirHooksPreSampling.Len() > numRounds {
+		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the FiatShamirHooksPreSampling. %v", numRounds, comp.FiatShamirHooksPreSampling.Len(), helpMsg)
 	}
-	comp.FiatShamirHooks.Reserve(numRounds)
+	comp.FiatShamirHooksPreSampling.Reserve(numRounds)
 }

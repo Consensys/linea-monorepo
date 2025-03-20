@@ -27,7 +27,7 @@ func LastRoundToEval(expr *symbolic.Expression) int {
 		case coin.Info:
 			maxRound = utils.Max(maxRound, metadata.Round)
 			// assert the coin is an expression
-			if metadata.Type != coin.Field {
+			if metadata.Type == coin.IntegerVec {
 				utils.Panic("The coin %v should be of type `Field`", metadata.Name)
 			}
 		case variables.X, variables.PeriodicSample:

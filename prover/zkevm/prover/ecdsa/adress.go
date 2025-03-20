@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -39,8 +40,19 @@ type Addresses struct {
 	// helper columns for intermediate computations/proofs
 
 	// filter over ecRecover; indicating only the AddressHi from EcRecoverIsRes
-	// we need this columns just because projection query does not support expressions as filter
+	// we need this columns just because projection query does not support expressions
+	// as filter. The shifted version of this column by 1 indicates the addressLo from
+	// ecrec.
 	isAddressHiEcRec ifaces.Column
+
+	// isAddressLoEcRec is a column that is explicitly constructed as the shifted version
+	// of isAddressLoEcRec. The reason we need to build this column is because projection
+	// queries cannot be distributed if their selector is a shifted column. (There would
+	// be a need to deal with the segment boundaries and it has not been figured out.)
+	// So, to simplify, we create a column directly and leave the business of managing
+	// the boundary values to a global constraint to which the feature is avaiable.
+	isAddressLoEcRec *dedicated.ManuallyShifted
+
 	// a column of all 16 indicating that all 16 bytes of public key should be hashed.
 	col16 ifaces.Column
 
@@ -64,17 +76,18 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 	ecRecSize := ecRec.EcRecoverIsRes.Size()
 	// declare the native columns
 	addr := &Addresses{
-		addressHi:          createCol("ADDRESS_HI"),
-		addressLo:          createCol("ADDRESS_LO"),
-		isAddress:          createCol("IS_ADDRESS"),
-		addressHiUntrimmed: createCol("ADRESSHI_UNTRIMMED"),
-		col16: comp.InsertPrecomputed(ifaces.ColIDf("ADDRESS_Col16"),
-			smartvectors.NewRegular(vector.Repeat(field.NewElement(16), size))),
+		addressHi:            createCol("ADDRESS_HI"),
+		addressLo:            createCol("ADDRESS_LO"),
+		isAddress:            createCol("IS_ADDRESS"),
+		addressHiUntrimmed:   createCol("ADRESSHI_UNTRIMMED"),
+		col16:                verifiercol.NewConstantCol(field.NewElement(16), size),
 		isAddressHiEcRec:     comp.InsertCommit(0, ifaces.ColIDf("ISADRESS_HI_ECREC"), ecRecSize),
 		isAddressFromEcRec:   createCol("ISADRESS_FROM_ECREC"),
 		isAddressFromTxnData: createCol("ISADRESS_FROM_TXNDATA"),
 		hashNum:              createCol("HASH_NUM"),
 	}
+
+	addr.isAddressLoEcRec = dedicated.ManuallyShift(comp, addr.isAddressHiEcRec, -1)
 
 	td.csTxnData(comp)
 
@@ -107,7 +120,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 	comp.InsertProjection(ifaces.QueryIDf("Project_AddressLo_EcRec"),
 		query.ProjectionInput{ColumnA: []ifaces.Column{ecRec.Limb},
 			ColumnB: []ifaces.Column{addr.addressLo},
-			FilterA: column.Shift(addr.isAddressHiEcRec, -1),
+			FilterA: addr.isAddressLoEcRec.Natural,
 			FilterB: addr.isAddressFromEcRec})
 
 	// projection from txn-data to address columns
@@ -304,8 +317,11 @@ func (addr *Addresses) assignHelperColumns(run *wizard.ProverRuntime, ecRec *EcR
 			i = i + 1
 		}
 	}
+
 	run.AssignColumn(addr.isAddressHiEcRec.GetColID(), smartvectors.NewRegular(col))
 
+	// this calls the auto-assign feature of the
+	_ = addr.isAddressLoEcRec.GetColAssignment(run)
 }
 
 // It indicates the row where ecrecover and txSignature are split.
