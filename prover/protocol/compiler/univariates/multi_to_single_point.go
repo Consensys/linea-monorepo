@@ -214,7 +214,6 @@ func createMptsCtx(comp *wizard.CompiledIOP, targetSize int) mptsCtx {
 	logrus.
 		WithField("nbUnivariateQueries", len(hs)).
 		WithField("totalEvaluation", totalEvals).
-		WithField("numPolyPerPoint", hStats).
 		Info("[mpts] prepared the compilation context")
 
 	return mptsCtx{

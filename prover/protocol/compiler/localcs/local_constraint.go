@@ -22,10 +22,6 @@ func ReduceLocalConstraint(comp *wizard.CompiledIOP, q query.LocalConstraint, ro
 	*/
 	comp.QueriesNoParams.MarkAsIgnored(q.ID)
 
-	if true {
-		return
-	}
-
 	var (
 		domainSize = 0
 		board      = q.Board()
