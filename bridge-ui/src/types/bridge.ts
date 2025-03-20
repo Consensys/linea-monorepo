@@ -14,6 +14,7 @@ export type NativeBridgeMessage = {
   amountSent: bigint;
 };
 
+// TODO - Move params to claim component, not transaction history component
 // Params expected for `receiveMessage` as per https://developers.circle.com/stablecoins/transfer-usdc-on-testnet-from-ethereum-to-avalanche
 export type CCTPV2BridgeMessage = {
   message?: string;
