@@ -269,7 +269,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit *ModuleWitness) wizard.Pro
 }
 
 func logCellCount(comp *wizard.CompiledIOP, moduleName, msg string) {
-	cellCount := logdata.CountCells(comp)
+	cellCount := logdata.GetWizardStats(comp)
 	cellCountJson, _ := json.Marshal(cellCount)
 	logrus.Infof("[wizard.analytic] msg=%v module=%v cellCount=%v\n", msg, moduleName, string(cellCountJson))
 }
