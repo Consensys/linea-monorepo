@@ -2,6 +2,7 @@ package stitchsplit
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -78,11 +79,15 @@ func IsExprEligible(
 	stitchings MultiSummary,
 	board symbolic.ExpressionBoard,
 ) bool {
-	metadata := board.ListVariableMetadata()
-	hasAtLeastOneEligible := false
-	allAreEligible := true
-	allAreVeriferCol := true
-	rootCols := []ifaces.Column{}
+
+	var (
+		metadata              = board.ListVariableMetadata()
+		hasAtLeastOneEligible = false
+		allAreEligible        = true
+		allAreVeriferCol      = true
+		rootCols              = []ifaces.Column{}
+		statusMap             = map[ifaces.ColID]string{}
+	)
 
 	for i := range metadata {
 		switch m := metadata[i].(type) {
@@ -91,8 +96,10 @@ func IsExprEligible(
 		case ifaces.Column: // it is a Committed, Precomputed or verifierCol
 			rootCols = append(rootCols, m)
 			natural := column.RootParents(m)
-			switch natural.(type) {
+
+			switch nat := natural.(type) {
 			case column.Natural: // then it is not a verifiercol
+				statusMap[natural.GetColID()] = nat.Status().String()
 				allAreVeriferCol = false
 				b := isColEligible(stitchings, m)
 
@@ -101,17 +108,17 @@ func IsExprEligible(
 				if m.Size() == 0 {
 					panic("found no columns in the expression")
 				}
+			case verifiercol.VerifierCol:
+				statusMap[natural.GetColID()] = column.VerifierDefined.String()
 			}
-
 		}
-
 	}
 
 	if hasAtLeastOneEligible && !allAreEligible {
 		// 1. we expect no expression including Proof columns
 		// 2. we expect no expression over ignored columns
 		// 3. we expect no VerifiyingKey withing the stitching range.
-		utils.Panic("the expression is not valid, it is mixed with invalid columns of status Proof/Ignored/verifierKey, %v", rootCols)
+		utils.Panic("the expression is not valid, it is mixed with invalid columns of status Proof/Ignored/verifierKey, %v", statusMap)
 	}
 	if allAreVeriferCol {
 		// 4. we expect no expression involving only and only the verifierCols.
