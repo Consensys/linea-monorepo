@@ -23,7 +23,7 @@ export type Chain = {
       apiUrl?: string | undefined;
     };
   };
-  testnet?: boolean;
+  testnet: boolean;
   layer: ChainLayer;
   messageServiceAddress: Address;
   tokenBridgeAddress: Address;

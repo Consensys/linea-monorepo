@@ -50,7 +50,7 @@ const useBridgeTransactionMessage = (
         // Get message + attestation from CCTP API if we have not already
         // We should have queried CCTP API previously in fetchCCTPBridgeEvents, so should not execute this if block
         if (!message.attestation || !message.message) {
-          const cctpApiResp = await getCCTPMessageByNonce(nonce, fromChain.cctpDomain);
+          const cctpApiResp = await getCCTPMessageByNonce(nonce, fromChain.cctpDomain, fromChain.testnet);
           if (!cctpApiResp) return message;
           message.message = cctpApiResp.message;
           message.attestation = cctpApiResp.attestation;
@@ -68,6 +68,7 @@ const useBridgeTransactionMessage = (
           await toChainClient.getBlockNumber(),
           fromChain.cctpDomain,
           nonce,
+          fromChain.testnet,
         );
         if (!refreshedMessage) return message;
 

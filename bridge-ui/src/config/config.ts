@@ -28,9 +28,8 @@ export const config: Config = {
         ? BigInt(process.env.NEXT_PUBLIC_MAINNET_PROFIT_MARGIN)
         : BigInt(1),
       cctpDomain: 11,
-      // TODO - Add addresses once CCTPV2 addresses deployed on Linea Mainnet
-      cctpTokenMessengerV2Address: getAddress("0x000000000000000000000000000000000000dEaD"),
-      cctpMessageTransmitterV2Address: getAddress("0x000000000000000000000000000000000000dEaD"),
+      cctpTokenMessengerV2Address: getAddress("0x28b5a0e9C621a5BadaA536219b3a228C8168cf5d"),
+      cctpMessageTransmitterV2Address: getAddress("0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"),
     },
     11155111: {
       iconPath: "/images/logo/ethereum-rounded.svg",

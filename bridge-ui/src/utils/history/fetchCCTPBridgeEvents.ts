@@ -62,7 +62,7 @@ export async function fetchCCTPBridgeEvents(
 
       // TODO - Compute deterministic nonce without consulting CCTP API, to guard against CCTP API rate limit of 10 requests/second
       // TODO - Replace with getCCTPNonce once implemented
-      const message = await getCCTPMessageByTxHash(transactionHash, fromChain.cctpDomain);
+      const message = await getCCTPMessageByTxHash(transactionHash, fromChain.cctpDomain, fromChain.testnet);
       if (!message) return;
       const nonce = message.eventNonce;
       // getCCTPNonce(fromChainClient, transactionHash, nonce);

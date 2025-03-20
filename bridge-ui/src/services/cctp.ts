@@ -1,11 +1,14 @@
 import { CctpAttestationApiResponse, CctpV2ReattestationApiResponse, CCTPFeeApiResponse } from "@/types/cctp";
 
+// TODO isTestnet ? https://iris-api-sandbox.circle.com : https://iris-api.circle.com
+
 export async function fetchCctpAttestationByTxHash(
   cctpDomain: number,
   transactionHash: string,
+  isTestnet: boolean,
 ): Promise<CctpAttestationApiResponse> {
   const response = await fetch(
-    `https://iris-api-sandbox.circle.com/v2/messages/${cctpDomain}?transactionHash=${transactionHash}`,
+    `https://iris-api${isTestnet ? "-sandbox" : ""}.circle.com/v2/messages/${cctpDomain}?transactionHash=${transactionHash}`,
     {
       headers: {
         "Content-Type": "application/json",
@@ -24,12 +27,16 @@ export async function fetchCctpAttestationByTxHash(
 export async function fetchCctpAttestationByNonce(
   cctpDomain: number,
   nonce: string,
+  isTestnet: boolean,
 ): Promise<CctpAttestationApiResponse> {
-  const response = await fetch(`https://iris-api-sandbox.circle.com/v2/messages/${cctpDomain}?nonce=${nonce}`, {
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetch(
+    `https://iris-api${isTestnet ? "-sandbox" : ""}.circle.com/v2/messages/${cctpDomain}?nonce=${nonce}`,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
     },
-  });
+  );
   if (!response.ok) {
     throw new Error(`Error in fetchCctpAttestationByNonce: cctpDomain=${cctpDomain} nonce=${nonce}`);
   }
@@ -38,8 +45,11 @@ export async function fetchCctpAttestationByNonce(
 }
 
 // https://developers.circle.com/api-reference/stablecoins/common/reattest-message
-export async function reattestCCTPV2PreFinalityMessage(nonce: string): Promise<CctpV2ReattestationApiResponse> {
-  const response = await fetch(`https://iris-api-sandbox.circle.com/v2/reattest/${nonce}`, {
+export async function reattestCCTPV2PreFinalityMessage(
+  nonce: string,
+  isTestnet: boolean,
+): Promise<CctpV2ReattestationApiResponse> {
+  const response = await fetch(`https://iris-api${isTestnet ? "-sandbox" : ""}.circle.com/v2/reattest/${nonce}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -52,12 +62,19 @@ export async function reattestCCTPV2PreFinalityMessage(nonce: string): Promise<C
   return data;
 }
 
-export async function getCCTPFee(srcDomain: number, dstDomain: number): Promise<CCTPFeeApiResponse> {
-  const response = await fetch(`https://iris-api-sandbox.circle.com/v2/fastBurn/USDC/fees/${srcDomain}/${dstDomain}`, {
-    headers: {
-      "Content-Type": "application/json",
+export async function getCCTPFee(
+  srcDomain: number,
+  dstDomain: number,
+  isTestnet: boolean,
+): Promise<CCTPFeeApiResponse> {
+  const response = await fetch(
+    `https://iris-api${isTestnet ? "-sandbox" : ""}.circle.com/v2/fastBurn/USDC/fees/${srcDomain}/${dstDomain}`,
+    {
+      headers: {
+        "Content-Type": "application/json",
+      },
     },
-  });
+  );
   if (!response.ok) {
     throw new Error(`Error in getCCTPFee: srcDomain=${srcDomain} dstDomain=${dstDomain}`);
   }

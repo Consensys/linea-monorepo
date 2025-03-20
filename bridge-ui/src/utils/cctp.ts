@@ -79,6 +79,7 @@ export const refreshCCTPMessageIfNeeded = async (
   currentToBlock: bigint,
   fromChainCCTPDomain: number,
   nonce: string,
+  isTestnet: boolean,
 ): Promise<{ message: `0x${string}`; attestation: `0x${string}` } | undefined> => {
   const oldResp = { message: oldMessage, attestation: oldAttestation };
   if (status !== TransactionStatus.READY_TO_CLAIM) return oldResp;
@@ -90,9 +91,9 @@ export const refreshCCTPMessageIfNeeded = async (
 
   // We have an expired message, reattest
   // TODO - Investigate if this will result in an edge case where a 'READY_TO_CLAIM' tx regresses to a 'PENDING' tx
-  await reattestCCTPV2PreFinalityMessage(nonce);
+  await reattestCCTPV2PreFinalityMessage(nonce, isTestnet);
 
-  const refreshedMessage = await getCCTPMessageByNonce(nonce, fromChainCCTPDomain);
+  const refreshedMessage = await getCCTPMessageByNonce(nonce, fromChainCCTPDomain, isTestnet);
   if (!refreshedMessage) return undefined;
   return { message: refreshedMessage.message, attestation: refreshedMessage.attestation };
 };
@@ -100,8 +101,9 @@ export const refreshCCTPMessageIfNeeded = async (
 export const getCCTPMessageByTxHash = async (
   transactionHash: string,
   fromChainCCTPDomain: number,
+  isTestnet: boolean,
 ): Promise<CctpAttestationMessage | undefined> => {
-  const attestationApiResp = await fetchCctpAttestationByTxHash(fromChainCCTPDomain, transactionHash);
+  const attestationApiResp = await fetchCctpAttestationByTxHash(fromChainCCTPDomain, transactionHash, isTestnet);
   if (!attestationApiResp) return;
   const message = attestationApiResp.messages[0];
   if (!message) return;
@@ -111,8 +113,9 @@ export const getCCTPMessageByTxHash = async (
 export const getCCTPMessageByNonce = async (
   nonce: string,
   fromChainCCTPDomain: number,
+  isTestnet: boolean,
 ): Promise<CctpAttestationMessage | undefined> => {
-  const attestationApiResp = await fetchCctpAttestationByNonce(fromChainCCTPDomain, nonce);
+  const attestationApiResp = await fetchCctpAttestationByNonce(fromChainCCTPDomain, nonce, isTestnet);
   if (!attestationApiResp) return;
   const message = attestationApiResp.messages[0];
   if (!message) return;

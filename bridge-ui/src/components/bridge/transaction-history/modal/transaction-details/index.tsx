@@ -84,6 +84,10 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
   }, [initialTransactionReceipt, claimingTransactionReceipt]);
 
   const buttonText = useMemo(() => {
+    if (isLoadingClaimTxParams) {
+      return "Loading Claim Data...";
+    }
+
     if (isPending || isConfirming) {
       return "Waiting for confirmation...";
     }
@@ -94,10 +98,6 @@ export default function TransactionDetails({ transaction, isModalOpen, onCloseMo
 
     if (chain?.id !== transaction?.toChain.id) {
       return `Switch to ${transaction?.toChain.name}`;
-    }
-
-    if (isLoadingClaimTxParams) {
-      return "Loading Claim Data...";
     }
 
     return "Claim";
