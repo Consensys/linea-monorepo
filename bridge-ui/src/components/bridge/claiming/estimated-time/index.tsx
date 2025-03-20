@@ -7,10 +7,8 @@ import { ChainLayer } from "@/types";
 
 export default function EstimatedTime() {
   const fromChain = useChainStore.useFromChain();
-  // const token = useFormStore((store) => store.token);
   const [showEstimatedTimeModal, setShowEstimatedTimeModal] = useState<boolean>(false);
 
-  // TODO - Change estimate time for USDC fast transfer
   const estimatedTime = fromChain.layer === ChainLayer.L1 ? "~ 20 mins" : "~ 8-32 hours";
   const estimatedTimeType = fromChain.layer === ChainLayer.L1 ? "deposit" : "withdraw";
 

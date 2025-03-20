@@ -11,7 +11,8 @@ export const generateChain = (chain: ViemChain): Chain => {
     iconPath: config.chains[chain.id].iconPath,
     nativeCurrency: chain.nativeCurrency,
     blockExplorers: chain.blockExplorers,
-    testnet: chain.testnet ?? false,
+    // Possibly the wrong assumption to fallback to 'true'
+    testnet: chain.testnet ?? true,
     layer: getChainNetworkLayer(chain.id),
     messageServiceAddress: config.chains[chain.id].messageServiceAddress as Address,
     tokenBridgeAddress: config.chains[chain.id].tokenBridgeAddress as Address,

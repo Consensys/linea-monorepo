@@ -1,7 +1,5 @@
 import { CctpAttestationApiResponse, CctpV2ReattestationApiResponse, CCTPFeeApiResponse } from "@/types/cctp";
 
-// TODO isTestnet ? https://iris-api-sandbox.circle.com : https://iris-api.circle.com
-
 export async function fetchCctpAttestationByTxHash(
   cctpDomain: number,
   transactionHash: string,
