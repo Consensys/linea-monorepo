@@ -454,9 +454,12 @@ func (ctx *Ctx) assertPolynomialHaveSameLength(coms []ifaces.ColID) {
 
 // generates the sis params. first check if we have any value to commit to
 func (ctx *Ctx) generateVortexParams() {
+
+	totalCommitted := ctx.CommittedRowsCount + len(ctx.Items.Precomputeds.PrecomputedColums)
+
 	// edge-case : we in fact have nothing to commit to. So no need to gene-
 	// rate the vortex params.
-	if ctx.NumCols == 0 || ctx.CommittedRowsCount == 0 {
+	if ctx.NumCols == 0 || totalCommitted == 0 {
 		logrus.Infof("nothing to commit to")
 		return
 	}
@@ -472,7 +475,7 @@ func (ctx *Ctx) generateVortexParams() {
 		}
 		sisParams = &ringsis.StdParams
 	}
-	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, ctx.CommittedRowsCount, *sisParams, mimc.NewMiMC)
+	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, mimc.NewMiMC)
 
 	// And replace SIS by MiMC if this is deemed useful
 	if ctx.ReplaceSisByMimc {
