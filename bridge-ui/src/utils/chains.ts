@@ -43,7 +43,7 @@ export const getChainNetworkLayer = (chainId: number) => {
 export const getChainLogoPath = (chainId: number) => {
   switch (chainId) {
     case linea.id:
-      return "/images/logo/linea-mainnet.svg";
+      return "/images/logo/linea-rounded.svg";
     case lineaSepolia.id:
       return "/images/logo/linea-sepolia.svg";
     case mainnet.id:

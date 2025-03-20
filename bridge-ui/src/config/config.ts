@@ -18,7 +18,7 @@ export const config: Config = {
       cctpMessageTransmitterV2Address: getAddress("0x81D40F21F12A8F0E3252Bccb954D722d4c464B64"),
     },
     59144: {
-      iconPath: "/images/logo/linea-mainnet.svg",
+      iconPath: "/images/logo/linea-rounded.svg",
       messageServiceAddress: getAddress(process.env.NEXT_PUBLIC_MAINNET_LINEA_MESSAGE_SERVICE ?? ""),
       tokenBridgeAddress: getAddress(process.env.NEXT_PUBLIC_MAINNET_LINEA_TOKEN_BRIDGE ?? ""),
       gasLimitSurplus: process.env.NEXT_PUBLIC_MAINNET_DEFAULT_GAS_LIMIT_SURPLUS
