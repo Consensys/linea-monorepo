@@ -3,7 +3,7 @@
 import { useChainStore } from "@/stores";
 import { getCCTPFee } from "@/services/cctp";
 import { useQuery } from "@tanstack/react-query";
-import { CCTP_TRANSFER_MAX_FEE_FALLBACK, CCTP_TRANSFER_FEE_BUFFER } from "@/utils/cctp";
+import { CCTP_TRANSFER_MAX_FEE_FALLBACK } from "@/utils/cctp";
 
 export const useCCTPSrcDomain = () => {
   const fromChain = useChainStore.useFromChain();
@@ -23,5 +23,5 @@ export const useCCTPFee = (): bigint => {
     queryFn: async () => getCCTPFee(srcDomain, dstDomain),
   });
   if (!data) return CCTP_TRANSFER_MAX_FEE_FALLBACK;
-  return BigInt(data.minimumFee) + CCTP_TRANSFER_FEE_BUFFER;
+  return BigInt(data.minimumFee);
 };
