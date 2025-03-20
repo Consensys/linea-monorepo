@@ -13,6 +13,8 @@ dependencies {
     exclude group: 'tech.pegasys.teku.internal', module: 'time'
   } because("We are using Teku's SafeFuture, an improved/extension of CompletableFuture.")
 
+  implementation "com.michael-bull.kotlin-result:kotlin-result"
+
   //<logging>
   implementation "org.apache.logging.log4j:log4j-api"
   implementation "org.apache.logging.log4j:log4j-core"
