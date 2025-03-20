@@ -75,26 +75,28 @@ export const getCCTPTransactionStatus = (
 };
 
 export const refreshCCTPMessageIfNeeded = async (
-  message: CctpAttestationMessage,
+  oldMessage: `0x${string}`,
+  oldAttestation: `0x${string}`,
   status: TransactionStatus,
   currentToBlock: bigint,
   fromChainCCTPDomain: number,
-): Promise<CctpAttestationMessage | undefined> => {
-  if (status === TransactionStatus.COMPLETED) return message;
-  // Assume that 'pending_confirmations' implies that a message will not be expired
-  if (message.status === "pending_confirmations") return message;
+  nonce: string,
+): Promise<{ message: `0x${string}`; attestation: `0x${string}` } | undefined> => {
+  const oldResp = { message: oldMessage, attestation: oldAttestation };
+  if (status !== TransactionStatus.READY_TO_CLAIM) return oldResp;
 
   // Check expiry of current message
-  const expiryBlock = getCCTPMessageExpiryBlock(message.message);
-  if (expiryBlock === 0n) return message;
-  if (currentToBlock < expiryBlock) return message;
+  const expiryBlock = getCCTPMessageExpiryBlock(oldMessage);
+  if (expiryBlock === 0n) return oldResp;
+  if (currentToBlock < expiryBlock) return oldResp;
 
   // We have an expired message, reattest
   // TODO - Investigate if this will result in an edge case where a 'READY_TO_CLAIM' tx regresses to a 'PENDING' tx
-  await reattestCCTPV2PreFinalityMessage(message.eventNonce);
+  await reattestCCTPV2PreFinalityMessage(nonce);
 
-  const refreshedMessage = await getCCTPMessageByNonce(message.eventNonce, fromChainCCTPDomain);
-  return refreshedMessage;
+  const refreshedMessage = await getCCTPMessageByNonce(nonce, fromChainCCTPDomain);
+  if (!refreshedMessage) return undefined;
+  return { message: refreshedMessage.message, attestation: refreshedMessage.attestation };
 };
 
 export const getCCTPMessageByTxHash = async (

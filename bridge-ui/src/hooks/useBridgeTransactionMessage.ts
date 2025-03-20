@@ -47,9 +47,14 @@ const useBridgeTransactionMessage = (
       case BridgeTransactionType.USDC: {
         if (!isIncompleteCCTPV2BridgeMessage(message) || !message?.nonce) return message;
         const { nonce } = message;
-        // Get message + attestation from CCTP API
-        const cctpApiResp = await getCCTPMessageByNonce(nonce, fromChain.cctpDomain);
-        if (!cctpApiResp) return message;
+        // Get message + attestation from CCTP API if we have not already
+        // We should have queried CCTP API previously in fetchCCTPBridgeEvents, so should not execute this if block
+        if (!message.attestation || !message.message) {
+          const cctpApiResp = await getCCTPMessageByNonce(nonce, fromChain.cctpDomain);
+          if (!cctpApiResp) return message;
+          message.message = cctpApiResp.message;
+          message.attestation = cctpApiResp.attestation;
+        }
 
         const toChainClient = getPublicClient(wagmiConfig, {
           chainId: toChain.id,
@@ -57,10 +62,12 @@ const useBridgeTransactionMessage = (
 
         // If expired, get new message + attestation
         const refreshedMessage = await refreshCCTPMessageIfNeeded(
-          cctpApiResp,
+          message.message as `0x${string}`,
+          message.attestation as `0x${string}`,
           status,
           await toChainClient.getBlockNumber(),
           fromChain.cctpDomain,
+          nonce,
         );
         if (!refreshedMessage) return message;
 
@@ -83,7 +90,6 @@ const useBridgeTransactionMessage = (
     queryKey: ["useBridgeTransactionMessage", transaction?.bridgingTx, transaction?.toChain?.id],
     queryFn: async () => getBridgeTransactionMessage(transaction),
   });
-  console.log("useBridgeTransactionMessage isLoading:", isLoading);
 
   return { message: data, isLoading };
 };

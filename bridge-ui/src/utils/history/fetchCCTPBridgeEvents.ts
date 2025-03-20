@@ -83,6 +83,8 @@ export async function fetchCCTPBridgeEvents(
         message: {
           amountSent: BigInt(log.args.amount),
           nonce: nonce,
+          attestation: message.attestation,
+          message: message.message,
         },
       };
 
