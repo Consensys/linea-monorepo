@@ -8,7 +8,7 @@ import styles from "./transaction-details.module.scss";
 import Button from "@/components/ui/button";
 import ArrowRightIcon from "@/assets/icons/arrow-right.svg";
 import { useClaim, useClaimingTx, useBridgeTransactionMessage } from "@/hooks";
-import { BridgeTransaction, BridgeTransactionType, TransactionStatus } from "@/types";
+import { BridgeTransaction, TransactionStatus } from "@/types";
 import { formatBalance, formatHex, formatTimestamp } from "@/utils";
 
 type Props = {

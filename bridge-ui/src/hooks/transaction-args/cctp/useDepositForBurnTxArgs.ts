@@ -71,7 +71,7 @@ const useDepositForBurnTxArgs = ({ allowance }: UseDepositForBurnTxArgs) => {
         chainId: fromChain.id,
       },
     };
-  }, [address, allowance, amount, CCTPDestinationDomain, fromChain, recipient, token]);
+  }, [address, allowance, amount, fee, CCTPDestinationDomain, fromChain, recipient, token]);
 };
 
 export default useDepositForBurnTxArgs;

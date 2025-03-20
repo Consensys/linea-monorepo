@@ -5,7 +5,7 @@ import CheckIcon from "@/assets/icons/check.svg";
 import ClockIcon from "@/assets/icons/clock.svg";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import { getChainLogoPath, formatHex, formatTimestamp } from "@/utils";
-import { BridgeTransaction, BridgeTransactionType, TransactionStatus } from "@/types";
+import { BridgeTransaction, TransactionStatus } from "@/types";
 
 type Props = BridgeTransaction & {
   onClick: (code: string) => void;
