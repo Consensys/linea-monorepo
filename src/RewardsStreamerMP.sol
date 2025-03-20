@@ -491,7 +491,6 @@ contract RewardsStreamerMP is
         if (vault.mpAccrued < vault.mpStaked) {
             totalMPStaked -= vault.mpStaked - vault.mpAccrued;
             vault.mpStaked = vault.mpAccrued;
-            totalMPStaked -= vault.mpStaked - vault.mpAccrued;
         }
 
         totalMPAccrued -= _deltaMpTotal;
