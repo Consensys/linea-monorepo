@@ -35,7 +35,6 @@ contract RewardsStreamerMP is
         uint256 lockUntil;
         uint256 mpStaked;
         uint256 rewardsAccrued;
-        uint256 totalLockTime;
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -188,13 +187,6 @@ contract RewardsStreamerMP is
 
         VaultData storage vault = vaultData[msg.sender];
 
-        if (lockPeriod > 0) {
-            if (vault.totalLockTime + lockPeriod > MAX_LOCKUP_PERIOD) {
-                revert StakingManager__InvalidLockPeriod();
-            }
-            vault.totalLockTime += lockPeriod;
-        }
-
         (uint256 _deltaMpTotal, uint256 _deltaMPMax, uint256 _newLockEnd) =
             _calculateStake(vault.stakedBalance, vault.maxMP, vault.lockUntil, block.timestamp, amount, lockPeriod);
 
@@ -231,11 +223,6 @@ contract RewardsStreamerMP is
         if (lockPeriod == 0) {
             revert StakingManager__DurationCannotBeZero();
         }
-
-        if (vault.totalLockTime + lockPeriod > MAX_LOCKUP_PERIOD) {
-            revert StakingManager__InvalidLockPeriod();
-        }
-        vault.totalLockTime += lockPeriod;
 
         _updateGlobalState();
         _updateVault(msg.sender, false);
@@ -290,7 +277,6 @@ contract RewardsStreamerMP is
             vault.rewardIndex = 0;
             vault.lockUntil = 0;
             vault.lastMPUpdateTime = 0;
-            vault.totalLockTime = 0;
         }
 
         emit AccountLeft(msg.sender);
@@ -400,7 +386,6 @@ contract RewardsStreamerMP is
         newVault.lastMPUpdateTime = oldVault.lastMPUpdateTime;
         newVault.lockUntil = oldVault.lockUntil;
         newVault.rewardsAccrued = oldVault.rewardsAccrued;
-        newVault.totalLockTime = oldVault.totalLockTime;
 
         delete vaultData[msg.sender];
 
@@ -482,12 +467,6 @@ contract RewardsStreamerMP is
         // if the user can unstake it means the lock period has ended
         // and we can reset lockUntil
         vault.lockUntil = 0;
-
-        // if the user withdraws all their staked balance
-        // we reset the totalLockTime
-        if (vault.stakedBalance == 0) {
-            vault.totalLockTime = 0;
-        }
     }
 
     function _totalShares() internal view returns (uint256) {

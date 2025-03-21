@@ -988,7 +988,7 @@ contract StakeTest is RewardsStreamerMPTest {
     }
 
     function test_StakeMultipleTimesWithLockZeroAfterMaxLock() public {
-        uint256 stakeAmount = 10e18;
+        uint256 stakeAmount = 10e6;
         uint256 initialTime = vm.getBlockTimestamp();
 
         // stake and lock 4 years
@@ -1002,9 +1002,11 @@ contract StakeTest is RewardsStreamerMPTest {
         vm.warp(initialTime + 4 * YEAR);
         _stake(alice, stakeAmount, 0);
 
-        // staking with lock > 0 should revert as max lock time was reached
-        vm.expectRevert(IStakeManager.StakingManager__InvalidLockPeriod.selector);
-        _stake(alice, stakeAmount, MIN_LOCKUP_PERIOD);
+        _stake(alice, stakeAmount, 0);
+        // locking up to new limit should render same maxMP as staking initially the whole
+        _lock(alice, _lockTimeAvailable(stakeAmount * 4, streamer.getVault(vaults[alice]).maxMP));
+        _stake(bob, stakeAmount * 4, MAX_LOCKUP_PERIOD);
+        assertEq(streamer.getVault(vaults[bob]).maxMP, streamer.getVault(vaults[alice]).maxMP);
     }
 
     function test_StakeMultipleTimesWithLockIncreaseAtSameBlock() public {
@@ -1059,61 +1061,21 @@ contract StakeTest is RewardsStreamerMPTest {
         );
 
         // any lock up beyond the max lock up period should revert
-        vm.expectRevert(IStakeManager.StakingManager__InvalidLockPeriod.selector);
+        vm.expectRevert(StakeMath.StakeMath__InvalidLockingPeriod.selector);
         _stake(alice, 1, MIN_LOCKUP_PERIOD);
     }
 
-    function test_RevertWhenStakeMultipleTimesExceedsMaxLockUpTime() public {
+    function test_StakeMultipleTimesDoesNotExceedsMaxMP() public {
         // stake and lock 1 year
-        uint256 stakeAmount = 10e18;
-        _stake(alice, stakeAmount, YEAR);
-
-        vm.warp(vm.getBlockTimestamp() + YEAR);
-
-        // stake and lock another year
-        _stake(alice, stakeAmount, YEAR);
-
-        vm.warp(vm.getBlockTimestamp() + YEAR);
-
-        // stake and lock another 2 * year
-        _stake(alice, stakeAmount, 2 * YEAR);
-
-        vm.warp(vm.getBlockTimestamp() + (2 * YEAR));
-
-        // we have now a total lock up of 4 years,
-        // so the next stake/or lock attempt should revert
-        vm.expectRevert(IStakeManager.StakingManager__InvalidLockPeriod.selector);
-        _stake(alice, stakeAmount, MIN_LOCKUP_PERIOD);
-    }
-
-    function test_RevertWhenStakeMultipleTimesWithGapsExceedsMaxLockUpTime() public {
-        uint256 stakeAmount = 10e18;
-
-        // stake and lock 1 year
-        _stake(alice, stakeAmount, YEAR);
-        vm.warp(vm.getBlockTimestamp() + YEAR);
-
-        // wait for 1 year
-        vm.warp(vm.getBlockTimestamp() + YEAR);
-
-        // stake and lock another year
-        _stake(alice, stakeAmount, YEAR);
-        vm.warp(vm.getBlockTimestamp() + YEAR);
-
-        // wait for 2 years
-        vm.warp(vm.getBlockTimestamp() + 2 * YEAR);
-
-        // stake and lock another 2 * year
-        _stake(alice, stakeAmount, 2 * YEAR);
-        vm.warp(vm.getBlockTimestamp() + (2 * YEAR));
-
-        // we have now staked for 7 years but locked up for 4 years,
-        // so the next stake/or lock attempt should revert
-        vm.expectRevert(IStakeManager.StakingManager__InvalidLockPeriod.selector);
-        _stake(alice, stakeAmount, MIN_LOCKUP_PERIOD);
-
-        vm.expectRevert(IStakeManager.StakingManager__InvalidLockPeriod.selector);
-        _lock(alice, MIN_LOCKUP_PERIOD);
+        uint256 stakeAmount = 10e16;
+        uint256 i = 0;
+        do {
+            i++;
+            _stake(alice, stakeAmount, YEAR);
+            vm.warp(vm.getBlockTimestamp() + YEAR);
+        } while (_lockTimeAvailable(stakeAmount * i, streamer.getVault(vaults[alice]).maxMP) > MIN_LOCKUP_PERIOD);
+        _stake(bob, stakeAmount * i, _estimateLockTime(streamer.getVault(vaults[alice]).maxMP, stakeAmount * i));
+        assertEq(streamer.getVault(vaults[bob]).maxMP, streamer.getVault(vaults[alice]).maxMP);
     }
 
     function test_StakeMultipleAccounts() public {
@@ -2043,7 +2005,7 @@ contract LockTest is RewardsStreamerMPTest {
         );
 
         // lock for another year should fail as 4 years is the maximum of total lock time
-        vm.expectRevert(IStakeManager.StakingManager__InvalidLockPeriod.selector);
+        vm.expectRevert(StakeMath.StakeMath__AbsoluteMaxMPOverflow.selector);
         _lock(alice, YEAR);
     }
 
@@ -3149,13 +3111,15 @@ contract FuzzTests is RewardsStreamerMPTest {
             expectedRevert = IStakeManager.StakingManager__DurationCannotBeZero.selector;
             return;
         }
-        if (lockUpPeriod > MAX_LOCKUP_PERIOD) {
-            expectedRevert = IStakeManager.StakingManager__InvalidLockPeriod.selector;
-            return;
-        }
+
         CheckVaultParams storage expectedAccountParams = expectedAccountState[account];
         if (expectedAccountParams.vaultBalance == 0) {
             expectedRevert = StakeMath.StakeMath__InsufficientBalance.selector;
+            return;
+        }
+
+        if (lockUpPeriod > MAX_LOCKUP_PERIOD) {
+            expectedRevert = StakeMath.StakeMath__InvalidLockingPeriod.selector;
             return;
         }
 
@@ -3169,8 +3133,7 @@ contract FuzzTests is RewardsStreamerMPTest {
         }
         if (expectedVaultLockState[expectedAccountParams.account].totalLockUp + lockUpPeriod > MAX_LOCKUP_PERIOD) {
             // total lock time surpassed the maximum allowed
-            //expectedRevert = StakeMath.StakeMath__AbsoluteMaxMPOverflow.selector;
-            expectedRevert = IStakeManager.StakingManager__InvalidLockPeriod.selector;
+            expectedRevert = StakeMath.StakeMath__AbsoluteMaxMPOverflow.selector;
         } else {
             expectedRevert = NO_REVERT;
             uint256 additionalBonusMP = _bonusMP(expectedAccountParams.vaultBalance, lockUpPeriod);

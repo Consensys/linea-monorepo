@@ -122,7 +122,7 @@ abstract contract MultiplierPointMath is IStakeConstants {
      * @return lockTime Amount of lock time allowed to be increased
      */
     function _lockTimeAvailable(uint256 _balance, uint256 _mpMax) internal pure returns (uint256 lockTime) {
-        return Math.mulDiv((_balance * MP_MPY_ABSOLUTE) - _mpMax, YEAR, _balance * 100);
+        return Math.mulDiv(_maxAbsoluteTotalMP(_balance) - _mpMax, YEAR, _balance);
     }
 
     /**
