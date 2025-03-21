@@ -3,7 +3,8 @@
 import { ReactNode } from "react";
 import { WagmiProvider } from "wagmi";
 import { DynamicWagmiConnector, EthereumWalletConnectors, DynamicContextProvider } from "@/lib/dynamic";
-import { config } from "@/lib/wagmi";
+import { config as wagmiConfig } from "@/lib/wagmi";
+import { config } from "@/config";
 
 type Web3ProviderProps = {
   children: ReactNode;
@@ -62,14 +63,14 @@ export function Web3Provider({ children }: Web3ProviderProps) {
   return (
     <DynamicContextProvider
       settings={{
-        environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID!,
+        environmentId: config.dynamicEnvironmentId,
         walletConnectors: [EthereumWalletConnectors],
         mobileExperience: "redirect",
         appName: "Linea Bridge",
         cssOverrides,
       }}
     >
-      <WagmiProvider config={config}>
+      <WagmiProvider config={wagmiConfig}>
         <DynamicWagmiConnector>{children}</DynamicWagmiConnector>
       </WagmiProvider>
     </DynamicContextProvider>

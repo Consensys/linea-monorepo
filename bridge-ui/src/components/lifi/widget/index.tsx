@@ -1,9 +1,11 @@
 "use client";
 
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { ChainId, LiFiWidget, WidgetSkeleton, type WidgetConfig } from "@/lib/lifi";
 import { ClientOnly } from "../client-only";
-import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import atypTextFont from "@/assets/fonts/atypText";
+import { CHAINS_RPC_URLS } from "@/constants";
+import { config } from "@/config";
 
 const widgetConfig: Partial<WidgetConfig> = {
   variant: "compact",
@@ -102,19 +104,19 @@ const widgetConfig: Partial<WidgetConfig> = {
   hiddenUI: ["appearance", "language"],
   sdkConfig: {
     rpcUrls: {
-      [ChainId.ETH]: [`https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
-      [ChainId.LNA]: [`https://linea-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
-      [ChainId.ARB]: [`https://arbitrum-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
-      [ChainId.AVA]: [`https://avalanche-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
-      [ChainId.BAS]: [`https://base-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
-      [ChainId.BLS]: [`https://blast-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
-      [ChainId.BSC]: [`https://bsc-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
-      [ChainId.CEL]: [`https://celo-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
-      [ChainId.MNT]: [`https://mantle-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
-      [ChainId.OPT]: [`https://optimism-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
-      [ChainId.POL]: [`https://polygon-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
-      [ChainId.SCL]: [`https://scroll-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
-      [ChainId.ERA]: [`https://zksync-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_ID}`],
+      [ChainId.ETH]: [CHAINS_RPC_URLS[ChainId.ETH]],
+      [ChainId.LNA]: [CHAINS_RPC_URLS[ChainId.LNA]],
+      [ChainId.ARB]: [CHAINS_RPC_URLS[ChainId.ARB]],
+      [ChainId.AVA]: [CHAINS_RPC_URLS[ChainId.AVA]],
+      [ChainId.BAS]: [CHAINS_RPC_URLS[ChainId.BAS]],
+      [ChainId.BLS]: [CHAINS_RPC_URLS[ChainId.BLS]],
+      [ChainId.BSC]: [CHAINS_RPC_URLS[ChainId.BSC]],
+      [ChainId.CEL]: [CHAINS_RPC_URLS[ChainId.CEL]],
+      [ChainId.MNT]: [CHAINS_RPC_URLS[ChainId.MNT]],
+      [ChainId.OPT]: [CHAINS_RPC_URLS[ChainId.OPT]],
+      [ChainId.POL]: [CHAINS_RPC_URLS[ChainId.POL]],
+      [ChainId.SCL]: [CHAINS_RPC_URLS[ChainId.SCL]],
+      [ChainId.ERA]: [CHAINS_RPC_URLS[ChainId.ERA]],
     },
   },
   chains: {
@@ -143,7 +145,7 @@ const widgetConfig: Partial<WidgetConfig> = {
   bridges: {
     allow: ["stargateV2", "stargateV2Bus", "across", "hop", "squid", "relay"],
   },
-  apiKey: process.env.NEXT_PUBLIC_LIFI_API_KEY,
+  apiKey: config.lifiApiKey,
 };
 
 export function Widget() {

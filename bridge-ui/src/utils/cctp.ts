@@ -5,11 +5,6 @@ import { fetchCctpAttestationByTxHash, reattestCctpV2PreFinalityMessage } from "
 import { getPublicClient } from "@wagmi/core";
 import { config as wagmiConfig } from "@/lib/wagmi";
 
-// TODO - Find optimal value
-export const CCTP_TRANSFER_MAX_FEE_FALLBACK = 5n;
-// 1000 Fast transfer, 2000 Standard transfer
-export const CCTP_MIN_FINALITY_THRESHOLD = 1000;
-
 const isCctpNonceUsed = async (
   client: GetPublicClientReturnType,
   nonce: string,
