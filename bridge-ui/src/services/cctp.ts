@@ -74,7 +74,7 @@ export async function getCctpFee(
     },
   );
   if (!response.ok) {
-    throw new Error(`Error in getCctpFee: srcDomain=${srcDomain} dstDomain=${dstDomain}`);
+    throw new Error(`Error in getCctpFee: isTestnet=${isTestnet} srcDomain=${srcDomain} dstDomain=${dstDomain}`);
   }
   const data: CctpFeeApiResponse = await response.json();
   return data;
