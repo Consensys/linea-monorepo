@@ -46,14 +46,14 @@ export const getCctpTransactionStatus = async (
   const messageExpiryBlock = getCctpMessageExpiryBlock(cctpAttestationMessage.message);
   // Message has no expiry
   if (messageExpiryBlock === 0n)
-    return cctpAttestationMessage.status === CctpAttestationMessageStatus.pending_confirmations
+    return cctpAttestationMessage.status === CctpAttestationMessageStatus.PENDING_CONFIRMATIONS
       ? TransactionStatus.PENDING
       : TransactionStatus.READY_TO_CLAIM;
 
   // Message not expired
   const currentToBlock = await toChainClient.getBlockNumber();
   if (currentToBlock < messageExpiryBlock)
-    return cctpAttestationMessage.status === CctpAttestationMessageStatus.pending_confirmations
+    return cctpAttestationMessage.status === CctpAttestationMessageStatus.PENDING_CONFIRMATIONS
       ? TransactionStatus.PENDING
       : TransactionStatus.READY_TO_CLAIM;
 

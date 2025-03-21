@@ -1,6 +1,6 @@
 export enum CctpAttestationMessageStatus {
-  pending_confirmations = "pending_confirmations",
-  complete = "complete",
+  PENDING_CONFIRMATIONS = "pending_confirmations",
+  COMPLETE = "complete",
 }
 export type CctpAttestationMessage = {
   attestation: `0x${string}`;
