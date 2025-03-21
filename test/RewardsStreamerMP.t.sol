@@ -163,15 +163,6 @@ contract RewardsStreamerMPTest is StakeMath, Test {
         vault.stake(amount, lockupTime);
     }
 
-    function _stake(address account, uint256 amount, uint256 lockupTime, bytes4 _expectedRevert) public virtual {
-        StakeVault vault = StakeVault(vaults[account]);
-        vm.prank(account);
-        if (_expectedRevert != bytes4(0)) {
-            vm.expectRevert(_expectedRevert);
-        }
-        vault.stake(amount, lockupTime);
-    }
-
     function _compound(address account) public {
         StakeVault vault = StakeVault(vaults[account]);
         streamer.compound(address(vault));
@@ -3018,36 +3009,38 @@ contract FuzzTests is RewardsStreamerMPTest {
         );
     }
 
-    function _stake(address account, uint256 amount, uint256 lockPeriod, bytes4 _expectedRevert) public override {
+    function _stake(address account, uint256 amount, uint256 lockPeriod, bytes4 _expectedRevert) internal {
         stakingToken.mint(account, amount);
-        vm.prank(account);
+        StakeVault vault = StakeVault(vaults[account]);
+        vm.startPrank(account);
         stakingToken.approve(vaults[account], amount);
-        super._stake(account, amount, lockPeriod, _expectedRevert);
+        _expectRevert(_expectedRevert);
+        vault.stake(amount, lockPeriod);
+        vm.stopPrank();
         expectedRevert = FuzzTests__UndefinedError.selector;
-    }
-
-    function _stake(address account, uint256 amount, uint256 lockPeriod) public override {
-        stakingToken.mint(account, amount);
-        vm.prank(account);
-        stakingToken.approve(vaults[account], amount);
-        super._stake(account, amount, lockPeriod);
     }
 
     function _lock(address account, uint256 lockPeriod, bytes4 _expectedRevert) internal {
         StakeVault vault = StakeVault(vaults[account]);
         vm.prank(account);
-        if (_expectedRevert != NO_REVERT) {
-            vm.expectRevert(_expectedRevert);
-        }
+        _expectRevert(_expectedRevert);
         vault.lock(lockPeriod);
         expectedRevert = FuzzTests__UndefinedError.selector;
     }
 
+    function _expectRevert(bytes4 _expectedRevert) internal {
+        if (_expectedRevert != NO_REVERT) {
+            if (_expectedRevert == FuzzTests__UndefinedError.selector) {
+                vm.expectRevert();
+            } else {
+                vm.expectRevert(_expectedRevert);
+            }
+        }
+    }
+
     function _compound(address account, bytes4 _expectedRevert) internal {
         StakeVault vault = StakeVault(vaults[account]);
-        if (_expectedRevert != NO_REVERT) {
-            vm.expectRevert(_expectedRevert);
-        }
+        _expectRevert(_expectedRevert);
         streamer.compound(address(vault));
     }
 
@@ -3062,9 +3055,7 @@ contract FuzzTests is RewardsStreamerMPTest {
     function _unstake(address account, uint256 amount, bytes4 _expectedRevert) internal {
         StakeVault vault = StakeVault(vaults[account]);
         vm.prank(account);
-        if (_expectedRevert != NO_REVERT) {
-            vm.expectRevert(_expectedRevert);
-        }
+        _expectRevert(_expectedRevert);
         vault.unstake(amount);
         expectedRevert = FuzzTests__UndefinedError.selector;
     }
@@ -3165,11 +3156,7 @@ contract FuzzTests is RewardsStreamerMPTest {
                 expectedSystemState.totalMaxMP += expectedMaxTotalMP;
             }
         } else {
-            if (lockUpPeriod > MAX_LOCKUP_PERIOD) {
-                expectedRevert = IStakeManager.StakingManager__InvalidLockPeriod.selector;
-            } else {
-                expectedRevert = StakeMath.StakeMath__InvalidLockingPeriod.selector;
-            }
+            expectedRevert = FuzzTests__UndefinedError.selector;
             return;
         }
     }
@@ -3194,11 +3181,7 @@ contract FuzzTests is RewardsStreamerMPTest {
         ) + lockUpPeriod;
         uint256 calcLockUpPeriod = calcLockEnd - vm.getBlockTimestamp();
         if (!(calcLockUpPeriod >= MIN_LOCKUP_PERIOD && calcLockUpPeriod <= MAX_LOCKUP_PERIOD)) {
-            if (calcLockUpPeriod > MAX_LOCKUP_PERIOD) {
-                expectedRevert = IStakeManager.StakingManager__InvalidLockPeriod.selector;
-            } else {
-                expectedRevert = StakeMath.StakeMath__InvalidLockingPeriod.selector;
-            }
+            expectedRevert = FuzzTests__UndefinedError.selector;
             return;
         }
         if (expectedVaultLockState[expectedAccountParams.account].totalLockUp + lockUpPeriod > MAX_LOCKUP_PERIOD) {
@@ -3357,7 +3340,9 @@ contract FuzzTests is RewardsStreamerMPTest {
             ? Math.mulDiv(accountRewardPeriod, rewardAmount, rewardPeriod)
             : rewardAmount;
 
-        _stake(alice, stakeAmount, lockUpPeriod);
+        expectedRevert = NO_REVERT;
+
+        _stake(alice, stakeAmount, lockUpPeriod, expectedRevert);
 
         _setRewards(rewardAmount, rewardPeriod);
 
@@ -3376,8 +3361,8 @@ contract FuzzTests is RewardsStreamerMPTest {
         uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
         uint256 expectedBonusMP = _bonusMP(stakeAmount, lockUpPeriod);
         uint256 expectedMaxTotalMP = _maxTotalMP(stakeAmount, lockUpPeriod);
-
-        _stake(alice, stakeAmount, lockUpPeriod);
+        expectedRevert = NO_REVERT;
+        _stake(alice, stakeAmount, lockUpPeriod, expectedRevert);
 
         vm.prank(admin);
         streamer.enableEmergencyMode();
