@@ -164,19 +164,19 @@ func TestFactorLinCompFromGroup(t *testing.T) {
 		Group   []*sym.Expression
 		Res     *sym.Expression
 	}{
-		// {
-		// 	LinComb: sym.Add(
-		// 		sym.Mul(a, b),
-		// 		sym.Mul(a, b, c),
-		// 		sym.Mul(a, b, d),
-		// 	),
-		// 	Group: []*sym.Expression{a, b},
-		// 	Res: sym.Mul(
-		// 		a,
-		// 		b,
-		// 		sym.Add(1, c, d),
-		// 	),
-		// },
+		{
+			LinComb: sym.Add(
+				sym.Mul(a, b),
+				sym.Mul(a, b, c),
+				sym.Mul(a, b, d),
+			),
+			Group: []*sym.Expression{a, b},
+			Res: sym.Mul(
+				a,
+				b,
+				sym.Add(1, c, d),
+			),
+		},
 		{
 			LinComb: sym.Add(
 				sym.Mul(a, c),
