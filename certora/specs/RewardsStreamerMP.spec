@@ -10,7 +10,7 @@ methods {
     function vaultData(address) external returns (uint256, uint256, uint256, uint256, uint256, uint256, uint256, uint256, uint256) envfree;
     function lastMPUpdatedTime() external returns (uint256) envfree;
     function updateGlobalState() external;
-    function updateVaultMP(address vaultAddress) external;
+    function updateVault(address vaultAddress) external;
     function emergencyModeEnabled() external returns (bool) envfree;
     function leave() external;
     function Math.mulDiv(uint256 a, uint256 b, uint256 c) internal returns uint256 => mulDivSummary(a,b,c);
@@ -77,8 +77,7 @@ rule stakingMintsMultiplierPoints1To1Ratio {
 
   require getVaultLockUntil(e.msg.sender) <= e.block.timestamp;
 
-  updateGlobalState(e);
-  updateVaultMP(e, e.msg.sender);
+  updateVault(e, e.msg.sender);
   uint256 t = lastMPUpdatedTime();
 
   multiplierPointsBefore = getVaultMPAccrued(e.msg.sender);

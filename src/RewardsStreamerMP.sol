@@ -336,41 +336,16 @@ contract RewardsStreamerMP is
     }
 
     /**
-     * @notice Allows users to compound their accrued MP.
-     * @dev This function is only callable when emergency mode is disabled.
-     * @dev Anyone can compound MPs for any vault.
-     */
-    function compound(address vaultAddress) external onlyNotEmergencyMode {
-        _updateGlobalState();
-        _compound(vaultAddress);
-    }
-
-    /**
      * @notice Allows any user to compound accrued MP for any user.
      * @dev This function is only callable when emergency mode is disabled.
      * @dev Anyone can compound MPs for account.
      */
-    function compoundAccount(address account) external onlyNotEmergencyMode {
+    function updateAccount(address account) external onlyNotEmergencyMode {
         _updateGlobalState();
         address[] memory accountVaults = vaults[account];
         for (uint256 i = 0; i < accountVaults.length; i++) {
-            _compound(accountVaults[i]);
+            _updateVault(accountVaults[i], false);
         }
-    }
-
-    function _compound(address vaultAddress) internal {
-        VaultData storage vault = vaultData[vaultAddress];
-        _updateVault(vaultAddress, false);
-
-        uint256 mpToStake = vault.mpAccrued - vault.mpStaked;
-        if (mpToStake == 0) {
-            revert StakingManager__InsufficientBalance();
-        }
-
-        vault.mpStaked += mpToStake;
-        totalMPStaked += mpToStake;
-        vault.rewardIndex = rewardIndex;
-        emit Compound(vaultAddress, mpToStake);
     }
 
     /**
@@ -378,7 +353,8 @@ contract RewardsStreamerMP is
      * @dev This function is only callable when emergency mode is disabled.
      * @dev Anyone can claim rewards on behalf of any vault
      */
-    function updateVaultMP(address vaultAddress) external onlyNotEmergencyMode {
+    function updateVault(address vaultAddress) external onlyNotEmergencyMode {
+        _updateGlobalState();
         _updateVault(vaultAddress, false);
     }
 
@@ -459,6 +435,12 @@ contract RewardsStreamerMP is
         uint256 rewardsAccrued = _vaultPendingRewards(vault);
         vault.rewardsAccrued += rewardsAccrued;
         vault.rewardIndex = rewardIndex;
+
+        uint256 mpToStake = vault.mpAccrued - vault.mpStaked;
+        vault.mpStaked += mpToStake;
+        totalMPStaked += mpToStake;
+        vault.rewardIndex = rewardIndex;
+        emit Compound(vaultAddress, mpToStake);
     }
 
     function updateRewardIndex() internal {

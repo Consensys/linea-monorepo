@@ -163,9 +163,9 @@ contract RewardsStreamerMPTest is StakeMath, Test {
         vault.stake(amount, lockupTime);
     }
 
-    function _compound(address account) public {
+    function _updateVault(address account) public {
         StakeVault vault = StakeVault(vaults[account]);
-        streamer.compound(address(vault));
+        streamer.updateVault(address(vault));
     }
 
     function _unstake(address account, uint256 amount) public {
@@ -835,16 +835,15 @@ contract StakeTest is RewardsStreamerMPTest {
         vm.warp(currentTime + (YEAR));
 
         streamer.updateGlobalState();
-        streamer.updateVaultMP(vaults[alice]);
+        streamer.updateVault(vaults[alice]);
 
         uint256 expectedMPIncrease = stakeAmount; // 1 year passed, 1 MP accrued per token staked
-        uint256 totalMPStaked = totalMPAccrued;
         totalMPAccrued = totalMPAccrued + expectedMPIncrease;
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
-                totalMPStaked: stakeAmount,
+                totalMPStaked: totalMPAccrued,
                 totalMPAccrued: totalMPAccrued,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
@@ -860,7 +859,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
-                mpStaked: totalMPStaked,
+                mpStaked: totalMPAccrued,
                 mpAccrued: totalMPAccrued, // accountMP == totalMPAccrued because only one account is staking
                 maxMP: totalMaxMP,
                 rewardsAccrued: 0
@@ -871,7 +870,7 @@ contract StakeTest is RewardsStreamerMPTest {
         vm.warp(currentTime + (YEAR / 2));
 
         streamer.updateGlobalState();
-        streamer.updateVaultMP(vaults[alice]);
+        streamer.updateVault(vaults[alice]);
 
         expectedMPIncrease = stakeAmount / 2; // 1/2 year passed, 1/2 MP accrued per token staked
         totalMPAccrued = totalMPAccrued + expectedMPIncrease;
@@ -879,7 +878,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
-                totalMPStaked: stakeAmount,
+                totalMPStaked: totalMPAccrued,
                 totalMPAccrued: totalMPAccrued,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
@@ -895,7 +894,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
-                mpStaked: totalMPStaked,
+                mpStaked: totalMPAccrued,
                 mpAccrued: totalMPAccrued, // accountMP == totalMPAccrued because only one account is staking
                 maxMP: totalMaxMP,
                 rewardsAccrued: 0
@@ -929,7 +928,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
-                mpStaked: stakeAmount,
+                mpStaked: totalMPAccrued,
                 mpAccrued: totalMPAccrued, // accountMP == totalMPAccrued because only one account is staking
                 maxMP: totalMaxMP, // maxMP == totalMaxMP because only one account is staking
                 rewardsAccrued: 0
@@ -940,13 +939,12 @@ contract StakeTest is RewardsStreamerMPTest {
         uint256 timeToMaxMP = _timeToAccrueMP(stakeAmount, totalMaxMP - totalMPAccrued);
         vm.warp(currentTime + timeToMaxMP);
 
-        streamer.updateGlobalState();
-        streamer.updateVaultMP(vaults[alice]);
+        streamer.updateVault(vaults[alice]);
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
-                totalMPStaked: stakeAmount,
+                totalMPStaked: totalMaxMP,
                 totalMPAccrued: totalMaxMP,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
@@ -962,7 +960,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
-                mpStaked: stakeAmount,
+                mpStaked: totalMaxMP,
                 mpAccrued: totalMaxMP,
                 maxMP: totalMaxMP,
                 rewardsAccrued: 0
@@ -974,13 +972,12 @@ contract StakeTest is RewardsStreamerMPTest {
         // increasing time by some big enough time such that MPs are actually generated
         vm.warp(currentTime + 14 days);
 
-        streamer.updateGlobalState();
-        streamer.updateVaultMP(vaults[alice]);
+        streamer.updateVault(vaults[alice]);
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
-                totalMPStaked: stakeAmount,
+                totalMPStaked: totalMaxMP,
                 totalMPAccrued: totalMaxMP,
                 totalMaxMP: totalMaxMP,
                 stakingBalance: stakeAmount,
@@ -1320,7 +1317,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: params.totalStaked,
-                totalMPStaked: params.totalStaked,
+                totalMPStaked: params.totalMPAccrued,
                 totalMPAccrued: params.totalMPAccrued,
                 totalMaxMP: params.totalMaxMP,
                 stakingBalance: params.totalStaked,
@@ -1359,9 +1356,8 @@ contract StakeTest is RewardsStreamerMPTest {
         uint256 currentTime = vm.getBlockTimestamp();
         vm.warp(currentTime + (YEAR));
 
-        streamer.updateGlobalState();
-        streamer.updateVaultMP(vaults[alice]);
-        streamer.updateVaultMP(vaults[bob]);
+        streamer.updateVault(vaults[alice]);
+        streamer.updateVault(vaults[bob]);
 
         uint256 aliceExpectedMPIncrease = params.aliceStakeAmount; // 1 year passed, 1 MP accrued per token staked
         uint256 bobExpectedMPIncrease = params.bobStakeAmount; // 1 year passed, 1 MP accrued per token staked
@@ -1374,7 +1370,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: params.totalStaked,
-                totalMPStaked: params.totalStaked,
+                totalMPStaked: params.totalMPAccrued,
                 totalMPAccrued: params.totalMPAccrued,
                 totalMaxMP: params.totalMaxMP,
                 stakingBalance: params.totalStaked,
@@ -1390,7 +1386,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: params.aliceStakeAmount,
                 vaultBalance: params.aliceStakeAmount,
                 rewardIndex: 0,
-                mpStaked: aliceMP,
+                mpStaked: aliceMP + aliceExpectedMPIncrease,
                 mpAccrued: aliceMP + aliceExpectedMPIncrease,
                 maxMP: aliceMaxMP,
                 rewardsAccrued: 0
@@ -1403,7 +1399,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: params.bobStakeAmount,
                 vaultBalance: params.bobStakeAmount,
                 rewardIndex: 0,
-                mpStaked: bobMP,
+                mpStaked: bobMPAccrued,
                 mpAccrued: bobMPAccrued,
                 maxMP: bobMaxMP,
                 rewardsAccrued: 0
@@ -1413,9 +1409,8 @@ contract StakeTest is RewardsStreamerMPTest {
         currentTime = vm.getBlockTimestamp();
         vm.warp(currentTime + (YEAR / 2));
 
-        streamer.updateGlobalState();
-        streamer.updateVaultMP(vaults[alice]);
-        streamer.updateVaultMP(vaults[bob]);
+        streamer.updateVault(vaults[alice]);
+        streamer.updateVault(vaults[bob]);
 
         aliceExpectedMPIncrease = params.aliceStakeAmount / 2;
         bobExpectedMPIncrease = params.bobStakeAmount / 2;
@@ -1428,7 +1423,7 @@ contract StakeTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: params.totalStaked,
-                totalMPStaked: params.totalStaked,
+                totalMPStaked: params.totalMPAccrued,
                 totalMPAccrued: params.totalMPAccrued,
                 totalMaxMP: params.totalMaxMP,
                 stakingBalance: params.totalStaked,
@@ -1444,7 +1439,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: params.aliceStakeAmount,
                 vaultBalance: params.aliceStakeAmount,
                 rewardIndex: 0,
-                mpStaked: aliceMP,
+                mpStaked: aliceMPAccrued,
                 mpAccrued: aliceMPAccrued,
                 maxMP: aliceMaxMP,
                 rewardsAccrued: 0
@@ -1457,7 +1452,7 @@ contract StakeTest is RewardsStreamerMPTest {
                 stakedBalance: params.bobStakeAmount,
                 vaultBalance: params.bobStakeAmount,
                 rewardIndex: 0,
-                mpStaked: bobMP,
+                mpStaked: bobMPAccrued,
                 mpAccrued: bobMPAccrued,
                 maxMP: bobMaxMP,
                 rewardsAccrued: 0
@@ -1524,13 +1519,12 @@ contract UnstakeTest is StakeTest {
         uint256 currentTime = vm.getBlockTimestamp();
         vm.warp(currentTime + (YEAR));
 
-        streamer.updateGlobalState();
-        streamer.updateVaultMP(vaults[alice]);
+        streamer.updateVault(vaults[alice]);
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: 10e18,
-                totalMPStaked: 10e18,
+                totalMPStaked: 20e18,
                 totalMPAccrued: 20e18, // total MP must have been doubled
                 totalMaxMP: 50e18,
                 stakingBalance: 10e18,
@@ -1569,13 +1563,12 @@ contract UnstakeTest is StakeTest {
 
         vm.warp(currentTime + (warpLength));
 
-        streamer.updateGlobalState();
-        streamer.updateVaultMP(vaults[alice]);
+        streamer.updateVault(vaults[alice]);
 
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
-                totalMPStaked: (stakeAmount + expectedBonusMP),
+                totalMPStaked: (stakeAmount + expectedBonusMP) + stakeAmount,
                 totalMPAccrued: (stakeAmount + expectedBonusMP) + stakeAmount, // we do `+ stakeAmount` we've accrued
                     // `stakeAmount` after 1 year
                 totalMaxMP: _maxTotalMP(stakeAmount, lockUpPeriod),
@@ -1706,8 +1699,7 @@ contract UnstakeTest is StakeTest {
 
         stage++; // second stage: progress in time
         vm.warp(timestamp[stage]);
-        streamer.updateGlobalState();
-        streamer.updateVaultMP(vaults[alice]);
+        streamer.updateVault(vaults[alice]);
         {
             RewardsStreamerMP.VaultData memory vaultData = streamer.getVault(vaults[alice]);
             assertEq(vaultData.stakedBalance, totalStaked[stage], "stage 2: wrong account staked balance");
@@ -2033,8 +2025,7 @@ contract LockTest is RewardsStreamerMPTest {
         uint256 currentTime = vm.getBlockTimestamp();
         vm.warp(currentTime + (4 * YEAR));
 
-        streamer.updateGlobalState();
-        streamer.updateVaultMP(vaults[alice]);
+        streamer.updateVault(vaults[alice]);
 
         // Check updated state
         checkVault(
@@ -2044,7 +2035,7 @@ contract LockTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
-                mpStaked: initialAccountMP + expectedBonusMP,
+                mpStaked: initialAccountMP + expectedBonusMP + (initialAccountMP * 4),
                 mpAccrued: initialAccountMP + expectedBonusMP + (initialAccountMP * 4),
                 maxMP: initialMaxMP + expectedBonusMP,
                 rewardsAccrued: 0
@@ -2640,7 +2631,7 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
         assertEq(streamer.vaultShares(vaults[bob]), 200e18);
         assertEq(streamer.rewardsBalanceOf(vaults[bob]), 250e18);
 
-        _compound(alice);
+        _updateVault(alice);
 
         assertEq(streamer.totalStaked(), 200e18);
         assertEq(streamer.totalMPStaked(), 400e18);
@@ -2795,8 +2786,7 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
         uint256 currentTime = vm.getBlockTimestamp();
         vm.warp(currentTime + 365 days);
 
-        streamer.updateGlobalState();
-        streamer.updateVaultMP(vaults[alice]);
+        streamer.updateVault(vaults[alice]);
 
         // ensure vault has accumulated MPs
         checkVault(
@@ -2806,7 +2796,7 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
-                mpStaked: initialAccountMP,
+                mpStaked: initialAccountMP * 2,
                 mpAccrued: initialAccountMP * 2, // alice now has twice the amount after a year
                 maxMP: initialMaxMP,
                 rewardsAccrued: 0
@@ -2816,7 +2806,7 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
-                totalMPStaked: stakeAmount,
+                totalMPStaked: stakeAmount * 2,
                 totalMPAccrued: initialAccountMP * 2, // stakemanager has twice the amount after a year
                 totalMaxMP: initialMaxMP,
                 stakingBalance: stakeAmount,
@@ -2837,7 +2827,7 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
         checkStreamer(
             CheckStreamerParams({
                 totalStaked: stakeAmount,
-                totalMPStaked: initialAccountMP,
+                totalMPStaked: initialAccountMP * 2,
                 totalMPAccrued: initialAccountMP * 2,
                 totalMaxMP: initialMaxMP,
                 stakingBalance: stakeAmount,
@@ -2854,7 +2844,7 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
                 stakedBalance: stakeAmount,
                 vaultBalance: stakeAmount,
                 rewardIndex: 0,
-                mpStaked: initialAccountMP,
+                mpStaked: initialAccountMP * 2,
                 mpAccrued: initialAccountMP * 2, // alice now has twice the amount after a year
                 maxMP: initialMaxMP,
                 rewardsAccrued: 0
@@ -2878,18 +2868,12 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
     }
 }
 
-contract CompoundTest is RewardsStreamerMPTest {
+contract UpdateVaultTest is RewardsStreamerMPTest {
     function setUp() public virtual override {
         super.setUp();
     }
 
-    function test_RevertWhenInsufficientMPBalance() public {
-        _stake(alice, 10e18, 0);
-        vm.expectRevert(IStakeManager.StakingManager__InsufficientBalance.selector);
-        _compound(alice);
-    }
-
-    function test_CompoundForAccount() public {
+    function test_UpdateAccount() public {
         uint256 stakeAmount = 1000e18;
 
         // alice stakes 1000 tokens
@@ -2928,7 +2912,7 @@ contract CompoundTest is RewardsStreamerMPTest {
         assertEq(streamer.mpStakedOf(vault4), stakeAmount);
 
         // compound alice's MP
-        streamer.compoundAccount(alice);
+        streamer.updateAccount(alice);
 
         uint256 expectedMPIncreasePerVault = _accrueMP(stakeAmount, rewardPeriod);
 
@@ -3038,18 +3022,17 @@ contract FuzzTests is RewardsStreamerMPTest {
         }
     }
 
-    function _compound(address account, bytes4 _expectedRevert) internal {
+    function _updateVault(address account, bytes4 _expectedRevert) internal {
         StakeVault vault = StakeVault(vaults[account]);
         _expectRevert(_expectedRevert);
-        streamer.compound(address(vault));
+        streamer.updateVault(address(vault));
     }
 
     function _accrue(address account, uint256 accruedTime) internal {
         if (accruedTime > 0) {
             vm.warp(vm.getBlockTimestamp() + accruedTime);
         }
-        streamer.updateGlobalState();
-        streamer.updateVaultMP(vaults[account]);
+        streamer.updateVault(vaults[account]);
     }
 
     function _unstake(address account, uint256 amount, bytes4 _expectedRevert) internal {
@@ -3060,7 +3043,7 @@ contract FuzzTests is RewardsStreamerMPTest {
         expectedRevert = FuzzTests__UndefinedError.selector;
     }
 
-    function _expectCompound(address account) internal {
+    function _expectUpdateVault(address account) internal {
         CheckVaultParams storage expectedAccountParams = expectedAccountState[account];
         uint256 mpCompounded = expectedAccountParams.mpAccrued - expectedAccountParams.mpStaked;
         if (mpCompounded == 0) {
@@ -3235,30 +3218,27 @@ contract FuzzTests is RewardsStreamerMPTest {
 
     function testFuzz_AccrueMP(uint128 stakeAmount, uint64 lockUpPeriod, uint64 accruedTime) public {
         vm.assume(stakeAmount > 0 && stakeAmount <= MAX_BALANCE);
-        //vm.assume(lockUpPeriod < vm.getBlockTimestamp() - (MAX_LOCKUP_PERIOD*10));
 
         _expectStake(alice, stakeAmount, lockUpPeriod);
         _stake(alice, stakeAmount, lockUpPeriod, expectedRevert);
         check("Stake: ", alice);
 
         _expectAccrue(alice, accruedTime);
+        _expectUpdateVault(alice);
         _accrue(alice, accruedTime);
         check("Accrue: ", alice);
     }
 
-    function testFuzz_Compound(uint128 stakeAmount, uint64 lockUpPeriod, uint64 accruedTime) public {
+    function testFuzz_UpdateVault(uint128 stakeAmount, uint64 lockUpPeriod, uint64 accruedTime) public {
         vm.assume(stakeAmount > 0 && stakeAmount <= MAX_BALANCE);
         _expectStake(alice, stakeAmount, lockUpPeriod);
         _stake(alice, stakeAmount, lockUpPeriod, expectedRevert);
         check("Stake: ", alice);
 
         _expectAccrue(alice, accruedTime);
+        _expectUpdateVault(alice);
         _accrue(alice, accruedTime);
         check("Accrue: ", alice);
-
-        _expectCompound(alice);
-        _compound(alice, expectedRevert);
-        check("Compound", alice);
     }
 
     /**
@@ -3280,6 +3260,7 @@ contract FuzzTests is RewardsStreamerMPTest {
         check("Stake: ", alice);
 
         _expectAccrue(alice, accruedTime);
+        _expectUpdateVault(alice);
         _accrue(alice, accruedTime);
         check("Accrue: ", alice);
 
@@ -3304,14 +3285,12 @@ contract FuzzTests is RewardsStreamerMPTest {
 
         if (accruedTime > 0) {
             _expectAccrue(alice, accruedTime);
+            _expectUpdateVault(alice);
             _accrue(alice, accruedTime);
             check("Accrue: ", alice);
         }
 
-        _expectCompound(alice);
-        _compound(alice, expectedRevert);
-        check("Compound", alice);
-
+        _expectUpdateVault(alice);
         _expectUnstake(alice, unstakeAmount);
         _unstake(alice, unstakeAmount, expectedRevert);
         check("Unstake: ", alice);

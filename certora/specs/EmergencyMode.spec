@@ -30,9 +30,8 @@ definition noCallDuringEmergency(method f) returns bool = (
                 || f.selector == sig:streamer.setRewardsSupplier(address).selector
                 || f.selector == sig:streamer.registerVault().selector
                 || f.selector == sig:streamer.migrateToVault(address).selector
-                || f.selector == sig:streamer.compound(address).selector
-                || f.selector == sig:streamer.compoundAccount(address).selector
-                || f.selector == sig:streamer.updateVaultMP(address).selector
+                || f.selector == sig:streamer.updateAccount(address).selector
+                || f.selector == sig:streamer.updateVault(address).selector
                 || f.selector == sig:streamer.unstake(uint256).selector
                 || f.selector == sig:streamer.stake(uint256, uint256).selector
                 || f.selector == sig:streamer.lock(uint256).selector

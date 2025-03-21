@@ -59,7 +59,7 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     function unstake(uint256 _amount) external;
     function leave() external;
     function migrateToVault(address migrateTo) external;
-    function compound(address _vault) external;
+    function updateVault(address vaultAddress) external;
 
     function emergencyModeEnabled() external view returns (bool);
     function totalStaked() external view returns (uint256);
