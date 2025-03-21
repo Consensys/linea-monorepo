@@ -10,8 +10,6 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
