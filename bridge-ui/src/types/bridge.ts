@@ -15,7 +15,7 @@ export type NativeBridgeMessage = {
 };
 
 // Params expected for `receiveMessage` as per https://developers.circle.com/stablecoins/transfer-usdc-on-testnet-from-ethereum-to-avalanche
-export type CCTPV2BridgeMessage = {
+export type CctpV2BridgeMessage = {
   message?: string;
   attestation?: string;
   amountSent: bigint;
@@ -36,7 +36,7 @@ export interface BridgeTransaction {
   fromChain: Chain;
   toChain: Chain;
   token: Token;
-  message: NativeBridgeMessage | CCTPV2BridgeMessage;
+  message: NativeBridgeMessage | CctpV2BridgeMessage;
   bridgingTx: string;
   claimingTx?: string;
 }

@@ -1,7 +1,7 @@
 import {
   BridgeTransaction,
   BridgeTransactionType,
-  CCTPV2BridgeMessage,
+  CctpV2BridgeMessage,
   ChainLayer,
   NativeBridgeMessage,
   TransactionStatus,
@@ -12,14 +12,14 @@ import useLineaSDK from "./useLineaSDK";
 
 const useBridgeTransactionMessage = (
   transaction: BridgeTransaction | undefined,
-): { message: CCTPV2BridgeMessage | NativeBridgeMessage | undefined; isLoading: boolean } => {
+): { message: CctpV2BridgeMessage | NativeBridgeMessage | undefined; isLoading: boolean } => {
   const { lineaSDK } = useLineaSDK();
 
   // TODO - consider refactor into own file
   // queryFn for useQuery cannot return undefined - https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
   async function getBridgeTransactionMessage(
     transaction: BridgeTransaction | undefined,
-  ): Promise<CCTPV2BridgeMessage | NativeBridgeMessage> {
+  ): Promise<CctpV2BridgeMessage | NativeBridgeMessage> {
     const { status, type, fromChain, toChain, message } = transaction as BridgeTransaction;
     if (!status || !type || !fromChain || !toChain || !message) return message;
     // Cannot claim, so don't waste time getting claim parameters

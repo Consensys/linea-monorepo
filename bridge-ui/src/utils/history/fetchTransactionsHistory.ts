@@ -42,8 +42,8 @@ async function fetchBridgeEvents(
   const [ethEvents, erc20Events, cctpEvents] = await Promise.all([
     fetchETHBridgeEvents(historyStoreActions, lineaSDK, address, fromChain, toChain, tokens),
     fetchERC20BridgeEvents(historyStoreActions, lineaSDK, address, fromChain, toChain, tokens),
-    // Feature toggle for CCTP, will filter out USDC transactions if isCCTPEnabled == false
-    config.isCCTPEnabled ? fetchCCTPBridgeEvents(historyStoreActions, address, fromChain, toChain, tokens) : [],
+    // Feature toggle for CCTP, will filter out USDC transactions if isCctpEnabled == false
+    config.isCctpEnabled ? fetchCCTPBridgeEvents(historyStoreActions, address, fromChain, toChain, tokens) : [],
   ]);
 
   return [...ethEvents, ...erc20Events, ...cctpEvents];

@@ -5,20 +5,20 @@ import MessageService from "@/abis/MessageService.json";
 import MessageTransmitterV2 from "@/abis/MessageTransmitterV2.json";
 import {
   BridgeTransactionType,
-  CCTPV2BridgeMessage,
+  CctpV2BridgeMessage,
   Chain,
   ChainLayer,
   NativeBridgeMessage,
   TransactionStatus,
 } from "@/types";
-import { isCCTPV2BridgeMessage, isNativeBridgeMessage } from "@/utils/message";
+import { isCctpV2BridgeMessage, isNativeBridgeMessage } from "@/utils/message";
 
 type UseClaimTxArgsProps = {
   status?: TransactionStatus;
   type?: BridgeTransactionType;
   fromChain?: Chain;
   toChain?: Chain;
-  args?: NativeBridgeMessage | CCTPV2BridgeMessage;
+  args?: NativeBridgeMessage | CctpV2BridgeMessage;
 };
 
 const useClaimTxArgs = ({ status, type, fromChain, toChain, args }: UseClaimTxArgsProps) => {
@@ -81,7 +81,7 @@ const useClaimTxArgs = ({ status, type, fromChain, toChain, args }: UseClaimTxAr
 
         break;
       case BridgeTransactionType.USDC:
-        if (!isCCTPV2BridgeMessage(args) || !args.attestation || !args.message) {
+        if (!isCctpV2BridgeMessage(args) || !args.attestation || !args.message) {
           return;
         }
         toAddress = toChain.cctpMessageTransmitterV2Address;

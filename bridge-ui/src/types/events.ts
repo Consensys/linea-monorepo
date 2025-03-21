@@ -42,7 +42,7 @@ export type DepositForBurnLogEvent = Log & {
   };
 };
 
-export const CCTPMessageReceivedAbiEvent: AbiEvent = {
+export const CctpMessageReceivedAbiEvent: AbiEvent = {
   anonymous: false,
   inputs: [
     { indexed: true, internalType: "address", name: "caller", type: "address" },
@@ -177,7 +177,7 @@ export const MessageClaimedABIEvent: AbiEvent = {
   type: "event",
 };
 
-export const CCTPDepositForBurnAbiEvent: AbiEvent = {
+export const CctpDepositForBurnAbiEvent: AbiEvent = {
   anonymous: false,
   inputs: [
     {

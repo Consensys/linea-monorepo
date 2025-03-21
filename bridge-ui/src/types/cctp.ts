@@ -17,6 +17,6 @@ export type CctpV2ReattestationApiResponse = {
   nonce: `0x${string}`;
 };
 
-export type CCTPFeeApiResponse = {
+export type CctpFeeApiResponse = {
   minimumFee: number;
 };

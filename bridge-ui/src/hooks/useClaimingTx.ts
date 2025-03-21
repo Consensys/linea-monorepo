@@ -1,7 +1,7 @@
-import { BridgeTransaction, BridgeTransactionType, TransactionStatus, CCTPMessageReceivedAbiEvent } from "@/types";
+import { BridgeTransaction, BridgeTransactionType, TransactionStatus, CctpMessageReceivedAbiEvent } from "@/types";
 import { getPublicClient } from "@wagmi/core";
 import { config as wagmiConfig } from "@/lib/wagmi";
-import { isNativeBridgeMessage, isCCTPV2BridgeMessage } from "@/utils/message";
+import { isNativeBridgeMessage, isCctpV2BridgeMessage } from "@/utils/message";
 import { useQuery } from "@tanstack/react-query";
 import { getNativeBridgeMessageClaimedTxHash } from "@/utils";
 
@@ -38,9 +38,9 @@ const useClaimingTx = (transaction: BridgeTransaction | undefined): string | und
         );
       }
       case BridgeTransactionType.USDC: {
-        if (!isCCTPV2BridgeMessage(message) || !message.nonce) return "";
+        if (!isCctpV2BridgeMessage(message) || !message.nonce) return "";
         const messageReceivedEvents = await toChainClient.getLogs({
-          event: CCTPMessageReceivedAbiEvent,
+          event: CctpMessageReceivedAbiEvent,
           fromBlock: "earliest",
           toBlock: "latest",
           address: toChain.cctpMessageTransmitterV2Address,

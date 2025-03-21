@@ -1,13 +1,13 @@
 import { useSendTransaction, useWaitForTransactionReceipt } from "wagmi";
 import useClaimTxArgs from "./transaction-args/useClaimTransactionTxArgs";
-import { BridgeTransactionType, CCTPV2BridgeMessage, Chain, NativeBridgeMessage, TransactionStatus } from "@/types";
+import { BridgeTransactionType, CctpV2BridgeMessage, Chain, NativeBridgeMessage, TransactionStatus } from "@/types";
 
 type UseClaimProps = {
   status?: TransactionStatus;
   type?: BridgeTransactionType;
   fromChain?: Chain;
   toChain?: Chain;
-  args?: NativeBridgeMessage | CCTPV2BridgeMessage;
+  args?: NativeBridgeMessage | CctpV2BridgeMessage;
 };
 
 const useClaim = (props: UseClaimProps) => {

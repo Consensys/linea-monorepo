@@ -7,23 +7,23 @@ export {
   type MessageSentLogEvent,
   type BridgingInitiatedV2LogEvent,
   type DepositForBurnLogEvent,
-  CCTPMessageReceivedAbiEvent,
+  CctpMessageReceivedAbiEvent,
   BridgingInitiatedABIEvent,
   BridgingInitiatedV2ABIEvent,
   MessageSentABIEvent,
   MessageClaimedABIEvent,
-  CCTPDepositForBurnAbiEvent,
+  CctpDepositForBurnAbiEvent,
 } from "./events";
 export {
   type CctpAttestationApiResponse,
   type CctpAttestationMessage,
   type CctpAttestationMessageStatus,
   type CctpV2ReattestationApiResponse,
-  type CCTPFeeApiResponse,
+  type CctpFeeApiResponse,
 } from "./cctp";
 export {
   type NativeBridgeMessage,
-  type CCTPV2BridgeMessage,
+  type CctpV2BridgeMessage,
   type BridgeTransaction,
   BridgeTransactionType,
 } from "./bridge";

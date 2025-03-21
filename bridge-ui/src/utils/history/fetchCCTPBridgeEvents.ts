@@ -2,8 +2,8 @@ import { Address } from "viem";
 import { compareAsc, fromUnixTime, subDays } from "date-fns";
 import { getPublicClient } from "@wagmi/core";
 import { config as wagmiConfig } from "@/lib/wagmi";
-import { BridgeTransaction, BridgeTransactionType, Chain, Token, CCTPDepositForBurnAbiEvent } from "@/types";
-import { isCctp, getCCTPMessageByTxHash, getCCTPTransactionStatus } from "@/utils";
+import { BridgeTransaction, BridgeTransactionType, Chain, Token, CctpDepositForBurnAbiEvent } from "@/types";
+import { isCctp, getCctpMessageByTxHash, getCctpTransactionStatus } from "@/utils";
 import { DepositForBurnLogEvent } from "@/types/events";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
 import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
@@ -21,7 +21,7 @@ export async function fetchCCTPBridgeEvents(
   });
 
   const usdcLogs = (await fromChainClient.getLogs({
-    event: CCTPDepositForBurnAbiEvent,
+    event: CctpDepositForBurnAbiEvent,
     fromBlock: "earliest",
     toBlock: "latest",
     address: fromChain.cctpTokenMessengerV2Address,
@@ -56,10 +56,10 @@ export async function fetchCCTPBridgeEvents(
       const token = tokens.find((token) => isCctp(token));
       if (!token) return;
 
-      const cctpMessage = await getCCTPMessageByTxHash(transactionHash, fromChain.cctpDomain, fromChain.testnet);
+      const cctpMessage = await getCctpMessageByTxHash(transactionHash, fromChain.cctpDomain, fromChain.testnet);
       if (!cctpMessage) return;
       const nonce = cctpMessage.eventNonce;
-      const status = await getCCTPTransactionStatus(toChain, cctpMessage, nonce);
+      const status = await getCctpTransactionStatus(toChain, cctpMessage, nonce);
 
       const tx: BridgeTransaction = {
         type: BridgeTransactionType.USDC,

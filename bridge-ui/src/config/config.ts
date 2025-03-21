@@ -65,7 +65,7 @@ export const config: Config = {
     // The storage will be cleared if its version is smaller than the one configured
     minVersion: process.env.NEXT_PUBLIC_STORAGE_MIN_VERSION ? parseInt(process.env.NEXT_PUBLIC_STORAGE_MIN_VERSION) : 1,
   },
-  isCCTPEnabled: process.env.NEXT_PUBLIC_IS_CCTP_ENABLED === "true",
+  isCctpEnabled: process.env.NEXT_PUBLIC_IS_CCTP_ENABLED === "true",
 };
 
 export async function getConfiguration(): Promise<Config> {

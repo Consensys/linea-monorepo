@@ -1,4 +1,4 @@
-import { CctpAttestationApiResponse, CctpV2ReattestationApiResponse, CCTPFeeApiResponse } from "@/types/cctp";
+import { CctpAttestationApiResponse, CctpV2ReattestationApiResponse, CctpFeeApiResponse } from "@/types/cctp";
 
 export async function fetchCctpAttestationByTxHash(
   cctpDomain: number,
@@ -43,7 +43,7 @@ export async function fetchCctpAttestationByNonce(
 }
 
 // https://developers.circle.com/api-reference/stablecoins/common/reattest-message
-export async function reattestCCTPV2PreFinalityMessage(
+export async function reattestCctpV2PreFinalityMessage(
   nonce: string,
   isTestnet: boolean,
 ): Promise<CctpV2ReattestationApiResponse> {
@@ -54,17 +54,17 @@ export async function reattestCCTPV2PreFinalityMessage(
     },
   });
   if (!response.ok) {
-    throw new Error(`Error in reattestCCTPV2PreFinalityMessage: nonce=${nonce}`);
+    throw new Error(`Error in reattestCctpV2PreFinalityMessage: nonce=${nonce}`);
   }
   const data: CctpV2ReattestationApiResponse = await response.json();
   return data;
 }
 
-export async function getCCTPFee(
+export async function getCctpFee(
   srcDomain: number,
   dstDomain: number,
   isTestnet: boolean,
-): Promise<CCTPFeeApiResponse> {
+): Promise<CctpFeeApiResponse> {
   const response = await fetch(
     `https://iris-api${isTestnet ? "-sandbox" : ""}.circle.com/v2/fastBurn/USDC/fees/${srcDomain}/${dstDomain}`,
     {
@@ -74,8 +74,8 @@ export async function getCCTPFee(
     },
   );
   if (!response.ok) {
-    throw new Error(`Error in getCCTPFee: srcDomain=${srcDomain} dstDomain=${dstDomain}`);
+    throw new Error(`Error in getCctpFee: srcDomain=${srcDomain} dstDomain=${dstDomain}`);
   }
-  const data: CCTPFeeApiResponse = await response.json();
+  const data: CctpFeeApiResponse = await response.json();
   return data;
 }
