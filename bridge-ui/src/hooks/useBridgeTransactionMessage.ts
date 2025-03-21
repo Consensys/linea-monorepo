@@ -15,7 +15,6 @@ const useBridgeTransactionMessage = (
 ): { message: CctpV2BridgeMessage | NativeBridgeMessage | undefined; isLoading: boolean } => {
   const { lineaSDK } = useLineaSDK();
 
-  // TODO - consider refactor into own file
   // queryFn for useQuery cannot return undefined - https://tanstack.com/query/latest/docs/framework/react/reference/useQuery
   async function getBridgeTransactionMessage(
     transaction: BridgeTransaction | undefined,

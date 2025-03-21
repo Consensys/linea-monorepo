@@ -14,7 +14,7 @@ export default function BridgeMode() {
     <div className={styles.container}>
       <button type="button" className={styles.button}>
         <div className={styles["selected-label"]}>
-          <Image src={logoSrc} width={16} height={16} alt="cctp" />
+          <Image src={logoSrc} width={16} height={16} alt="bridge-mode-logo" />
           <span>{label}</span>
         </div>
       </button>

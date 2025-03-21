@@ -21,7 +21,6 @@ const useTransactionHistory = () => {
     getCompleteTx,
   };
 
-  // TODO - For invalidateQueries with queryKey: "transactionHistory", we don't need to refetch the entire transaction history, just the single affected transaction
   const { data, isLoading, refetch } = useQuery({
     enabled: !!address && !!fromChain && !!toChain,
     queryKey: ["transactionHistory", address, fromChain.id, toChain.id],
