@@ -30,11 +30,8 @@ export async function fetchCctpBridgeEvents(
     },
   })) as unknown as DepositForBurnLogEvent[];
 
-  // TODO - Consider deduplication
-
   const currentTimestamp = new Date();
 
-  // TODO - Minimise # of CCTP API calls in this block
   await Promise.all(
     usdcLogs.map(async (log) => {
       const transactionHash = log.transactionHash;

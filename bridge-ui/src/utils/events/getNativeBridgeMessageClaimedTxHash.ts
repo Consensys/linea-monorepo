@@ -8,7 +8,6 @@ export const getNativeBridgeMessageClaimedTxHash = async (
 ): Promise<string> => {
   const messageClaimedEvents = await chainClient.getLogs({
     event: MessageClaimedABIEvent,
-    // TODO - Find more efficient `fromBlock` param than 'earliest'
     fromBlock: "earliest",
     toBlock: "latest",
     address: messageServiceAddress,
