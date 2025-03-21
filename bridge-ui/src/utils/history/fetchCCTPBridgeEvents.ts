@@ -8,7 +8,7 @@ import { DepositForBurnLogEvent } from "@/types/events";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
 import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 
-export async function fetchCCTPBridgeEvents(
+export async function fetchCctpBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
   address: Address,
   fromChain: Chain,

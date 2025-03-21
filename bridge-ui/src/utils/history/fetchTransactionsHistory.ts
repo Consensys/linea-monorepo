@@ -4,7 +4,7 @@ import { config } from "@/config";
 import { BridgeTransaction, Chain, Token } from "@/types";
 import { fetchETHBridgeEvents } from "./fetchETHBridgeEvents";
 import { fetchERC20BridgeEvents } from "./fetchERC20BridgeEvents";
-import { fetchCCTPBridgeEvents } from "./fetchCCTPBridgeEvents";
+import { fetchCctpBridgeEvents } from "./fetchCctpBridgeEvents";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
 
 type TransactionHistoryParams = {
@@ -43,7 +43,7 @@ async function fetchBridgeEvents(
     fetchETHBridgeEvents(historyStoreActions, lineaSDK, address, fromChain, toChain, tokens),
     fetchERC20BridgeEvents(historyStoreActions, lineaSDK, address, fromChain, toChain, tokens),
     // Feature toggle for CCTP, will filter out USDC transactions if isCctpEnabled == false
-    config.isCctpEnabled ? fetchCCTPBridgeEvents(historyStoreActions, address, fromChain, toChain, tokens) : [],
+    config.isCctpEnabled ? fetchCctpBridgeEvents(historyStoreActions, address, fromChain, toChain, tokens) : [],
   ]);
 
   return [...ethEvents, ...erc20Events, ...cctpEvents];
