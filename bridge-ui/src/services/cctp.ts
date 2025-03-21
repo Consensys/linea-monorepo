@@ -15,7 +15,7 @@ export async function fetchCctpAttestationByTxHash(
   );
   if (!response.ok) {
     throw new Error(
-      `Error in fetchCctpAttestationByTxHash: cctpDomain=${cctpDomain} transactionHash=${transactionHash}`,
+      `Error in fetchCctpAttestationByTxHash: isTestnet=${isTestnet} cctpDomain=${cctpDomain} transactionHash=${transactionHash}`,
     );
   }
   const data: CctpAttestationApiResponse = await response.json();
@@ -36,7 +36,9 @@ export async function fetchCctpAttestationByNonce(
     },
   );
   if (!response.ok) {
-    throw new Error(`Error in fetchCctpAttestationByNonce: cctpDomain=${cctpDomain} nonce=${nonce}`);
+    throw new Error(
+      `Error in fetchCctpAttestationByNonce: isTestnet=${isTestnet} cctpDomain=${cctpDomain} nonce=${nonce}`,
+    );
   }
   const data: CctpAttestationApiResponse = await response.json();
   return data;
@@ -54,7 +56,7 @@ export async function reattestCctpV2PreFinalityMessage(
     },
   });
   if (!response.ok) {
-    throw new Error(`Error in reattestCctpV2PreFinalityMessage: nonce=${nonce}`);
+    throw new Error(`Error in reattestCctpV2PreFinalityMessage: isTestnet=${isTestnet} nonce=${nonce}`);
   }
   const data: CctpV2ReattestationApiResponse = await response.json();
   return data;
