@@ -1,5 +1,5 @@
 import MessageTransmitterV2 from "@/abis/MessageTransmitterV2.json";
-import { CctpAttestationMessage, Chain, TransactionStatus } from "@/types";
+import { CctpAttestationMessage, Chain, TransactionStatus, CctpAttestationMessageStatus } from "@/types";
 import { GetPublicClientReturnType } from "@wagmi/core";
 import { fetchCctpAttestationByTxHash, reattestCctpV2PreFinalityMessage } from "@/services/cctp";
 import { getPublicClient } from "@wagmi/core";
@@ -46,14 +46,14 @@ export const getCctpTransactionStatus = async (
   const messageExpiryBlock = getCctpMessageExpiryBlock(cctpAttestationMessage.message);
   // Message has no expiry
   if (messageExpiryBlock === 0n)
-    return cctpAttestationMessage.status === "pending_confirmations"
+    return cctpAttestationMessage.status === CctpAttestationMessageStatus.pending_confirmations
       ? TransactionStatus.PENDING
       : TransactionStatus.READY_TO_CLAIM;
 
   // Message not expired
   const currentToBlock = await toChainClient.getBlockNumber();
   if (currentToBlock < messageExpiryBlock)
-    return cctpAttestationMessage.status === "pending_confirmations"
+    return cctpAttestationMessage.status === CctpAttestationMessageStatus.pending_confirmations
       ? TransactionStatus.PENDING
       : TransactionStatus.READY_TO_CLAIM;
 

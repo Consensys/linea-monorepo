@@ -17,9 +17,9 @@ export {
 export {
   type CctpAttestationApiResponse,
   type CctpAttestationMessage,
-  type CctpAttestationMessageStatus,
   type CctpV2ReattestationApiResponse,
   type CctpFeeApiResponse,
+  CctpAttestationMessageStatus,
 } from "./cctp";
 export {
   type NativeBridgeMessage,
