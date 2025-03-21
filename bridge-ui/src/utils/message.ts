@@ -53,7 +53,6 @@ export function isCCTPV2BridgeMessage(msg: NativeBridgeMessage | CCTPV2BridgeMes
   return (
     typeof (msg as CCTPV2BridgeMessage).nonce === "string" &&
     typeof (msg as CCTPV2BridgeMessage).message === "string" &&
-    typeof (msg as CCTPV2BridgeMessage).attestation === "string" &&
-    typeof (msg as CCTPV2BridgeMessage).isStatusRegression === "boolean"
+    typeof (msg as CCTPV2BridgeMessage).attestation === "string"
   );
 }

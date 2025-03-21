@@ -6,11 +6,8 @@ import {
   NativeBridgeMessage,
   TransactionStatus,
 } from "@/types";
-import { getPublicClient } from "@wagmi/core";
-import { config as wagmiConfig } from "@/lib/wagmi";
-import { isCCTPV2BridgeMessage, isNativeBridgeMessage } from "@/utils/message";
+import { isNativeBridgeMessage } from "@/utils/message";
 import { useQuery } from "@tanstack/react-query";
-import { getCCTPMessageByNonce, refreshCCTPMessageIfNeeded } from "@/utils";
 import useLineaSDK from "./useLineaSDK";
 
 const useBridgeTransactionMessage = (
@@ -28,7 +25,6 @@ const useBridgeTransactionMessage = (
     // Cannot claim, so don't waste time getting claim parameters
     if (status !== TransactionStatus.READY_TO_CLAIM) return message;
 
-    // TODO - Refactor each case's logic into its own file
     switch (type) {
       case BridgeTransactionType.ETH: {
         if (toChain.layer === ChainLayer.L2) return message;
@@ -45,41 +41,8 @@ const useBridgeTransactionMessage = (
         return message;
       }
       case BridgeTransactionType.USDC: {
-        if (!isCCTPV2BridgeMessage(message) || !message?.nonce) return message;
-        const { nonce } = message;
-        // Get message + attestation from CCTP API if we have not already
-        // We should have queried CCTP API previously in fetchCCTPBridgeEvents, so should not execute this if block
-        if (!message.attestation || !message.message) {
-          const cctpApiResp = await getCCTPMessageByNonce(nonce, fromChain.cctpDomain, fromChain.testnet);
-          if (!cctpApiResp) return message;
-          message.message = cctpApiResp.message;
-          message.attestation = cctpApiResp.attestation;
-        }
-
-        const toChainClient = getPublicClient(wagmiConfig, {
-          chainId: toChain.id,
-        });
-
-        // If expired, get new message + attestation
-        const refreshedMessage = await refreshCCTPMessageIfNeeded(
-          message.message as `0x${string}`,
-          message.attestation as `0x${string}`,
-          status,
-          await toChainClient.getBlockNumber(),
-          fromChain.cctpDomain,
-          nonce,
-          fromChain.testnet,
-        );
-        if (!refreshedMessage) return message;
-
-        // Populate message + attestation fields
-        return {
-          message: refreshedMessage.message,
-          attestation: refreshedMessage.attestation,
-          amountSent: message.amountSent,
-          nonce: message.nonce,
-          isStatusRegression: refreshedMessage.isStatusRegression,
-        };
+        // If message is READY_TO_CLAIM, then we will have already gotten the required params in TransactionList component.
+        return message;
       }
       default: {
         return message;

@@ -3,7 +3,7 @@ import { compareAsc, fromUnixTime, subDays } from "date-fns";
 import { getPublicClient } from "@wagmi/core";
 import { config as wagmiConfig } from "@/lib/wagmi";
 import { BridgeTransaction, BridgeTransactionType, Chain, Token, CCTPDepositForBurnAbiEvent } from "@/types";
-import { isCctp, isCCTPNonceUsed, getCCTPTransactionStatus, getCCTPMessageByTxHash } from "@/utils";
+import { isCctp, getCCTPMessageByTxHash, getCCTPTransactionStatus } from "@/utils";
 import { DepositForBurnLogEvent } from "@/types/events";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
 import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
@@ -18,9 +18,6 @@ export async function fetchCCTPBridgeEvents(
   const transactionsMap = new Map<string, BridgeTransaction>();
   const fromChainClient = getPublicClient(wagmiConfig, {
     chainId: fromChain.id,
-  });
-  const toChainClient = getPublicClient(wagmiConfig, {
-    chainId: toChain.id,
   });
 
   const usdcLogs = (await fromChainClient.getLogs({
@@ -59,13 +56,10 @@ export async function fetchCCTPBridgeEvents(
       const token = tokens.find((token) => isCctp(token));
       if (!token) return;
 
-      // TODO - Compute deterministic nonce without consulting CCTP API, to guard against CCTP API rate limit of 10 requests/second
-      // Once we can compute deterministic CCTP nonce, we can skip CCTP API request if `isNonceUsed == true`
-      const message = await getCCTPMessageByTxHash(transactionHash, fromChain.cctpDomain, fromChain.testnet);
-      if (!message) return;
-      const nonce = message.eventNonce;
-      const isNonceUsed = await isCCTPNonceUsed(toChainClient, nonce, toChain.cctpMessageTransmitterV2Address);
-      const status = getCCTPTransactionStatus(message.status, isNonceUsed);
+      const cctpMessage = await getCCTPMessageByTxHash(transactionHash, fromChain.cctpDomain, fromChain.testnet);
+      if (!cctpMessage) return;
+      const nonce = cctpMessage.eventNonce;
+      const status = await getCCTPTransactionStatus(toChain, cctpMessage, nonce);
 
       const tx: BridgeTransaction = {
         type: BridgeTransactionType.USDC,
@@ -78,9 +72,8 @@ export async function fetchCCTPBridgeEvents(
         message: {
           amountSent: BigInt(log.args.amount),
           nonce: nonce,
-          attestation: message.attestation,
-          message: message.message,
-          isStatusRegression: false,
+          attestation: cctpMessage.attestation,
+          message: cctpMessage.message,
         },
       };
 

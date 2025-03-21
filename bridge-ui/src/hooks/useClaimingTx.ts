@@ -41,7 +41,6 @@ const useClaimingTx = (transaction: BridgeTransaction | undefined): string | und
         if (!isCCTPV2BridgeMessage(message) || !message.nonce) return "";
         const messageReceivedEvents = await toChainClient.getLogs({
           event: CCTPMessageReceivedAbiEvent,
-          // TODO - Find more efficient `fromBlock` param than 'earliest'
           fromBlock: "earliest",
           toBlock: "latest",
           address: toChain.cctpMessageTransmitterV2Address,

@@ -20,8 +20,6 @@ export type CCTPV2BridgeMessage = {
   attestation?: string;
   amountSent: bigint;
   nonce: `0x${string}`;
-  // Handle edge case where reattesting an expired message will cause status to regress from "READY_TO_CLAIM" to "PENDING"
-  isStatusRegression?: boolean;
 };
 
 export enum BridgeTransactionType {
