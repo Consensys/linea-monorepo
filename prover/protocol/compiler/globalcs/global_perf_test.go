@@ -68,7 +68,7 @@ func BenchmarkGlobalConstraintWoArtefacts(b *testing.B) {
 
 		b.StartTimer()
 
-		_ = zkevm.FullZKEVMWithSuite(&cfg.TracesLimits, partialSuite)
+		_ = zkevm.FullZKEVMWithSuite(&cfg.TracesLimits, partialSuite, cfg)
 
 	}
 
