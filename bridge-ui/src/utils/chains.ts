@@ -12,7 +12,7 @@ export const generateChain = (chain: ViemChain): Chain => {
     nativeCurrency: chain.nativeCurrency,
     blockExplorers: chain.blockExplorers,
     // Possibly the wrong assumption to fallback to 'false', but fallback to 'true' makes the app crash mysteriously
-    testnet: chain.testnet ?? false,
+    testnet: Boolean(chain.testnet),
     layer: getChainNetworkLayer(chain.id),
     messageServiceAddress: config.chains[chain.id].messageServiceAddress as Address,
     tokenBridgeAddress: config.chains[chain.id].tokenBridgeAddress as Address,
