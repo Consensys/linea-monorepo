@@ -15,6 +15,7 @@ import {
 } from "@/types";
 import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
 import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
+import { isBlockTooOld } from "./isBlockTooOld";
 
 export async function fetchETHBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -66,8 +67,6 @@ export async function fetchETHBridgeEvents(
     }
   }
 
-  const currentTimestamp = new Date();
-
   await Promise.all(
     Array.from(uniqueLogsMap.values()).map(async (log) => {
       const uniqueKey = `${log.args._from}-${log.args._to}-${log.transactionHash}`;
@@ -83,10 +82,7 @@ export async function fetchETHBridgeEvents(
       const messageHash = log.args._messageHash;
 
       const block = await client.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
-
-      if (compareAsc(fromUnixTime(Number(block.timestamp.toString())), subDays(currentTimestamp, 90)) === -1) {
-        return;
-      }
+      if (isBlockTooOld(block)) return;
 
       const messageStatus = await contract.getMessageStatus(messageHash);
 

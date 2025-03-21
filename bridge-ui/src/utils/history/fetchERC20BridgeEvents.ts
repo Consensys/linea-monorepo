@@ -1,5 +1,4 @@
 import { Address, decodeAbiParameters } from "viem";
-import { compareAsc, fromUnixTime, subDays } from "date-fns";
 import { getPublicClient } from "@wagmi/core";
 import { LineaSDK } from "@consensys/linea-sdk";
 import { config as wagmiConfig } from "@/lib/wagmi";
@@ -15,6 +14,7 @@ import {
 import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
 import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
+import { isBlockTooOld } from "./isBlockTooOld";
 
 export async function fetchERC20BridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -67,8 +67,6 @@ export async function fetchERC20BridgeEvents(
     }
   }
 
-  const currentTimestamp = new Date();
-
   await Promise.all(
     Array.from(uniqueLogsMap.values()).map(async (log) => {
       const transactionHash = log.transactionHash;
@@ -82,10 +80,7 @@ export async function fetchERC20BridgeEvents(
       }
 
       const block = await client.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
-
-      if (compareAsc(fromUnixTime(Number(block.timestamp.toString())), subDays(currentTimestamp, 90)) === -1) {
-        return;
-      }
+      if (isBlockTooOld(block)) return;
 
       const message = await originContract.getMessagesByTransactionHash(transactionHash);
       if (!message || message.length === 0) {

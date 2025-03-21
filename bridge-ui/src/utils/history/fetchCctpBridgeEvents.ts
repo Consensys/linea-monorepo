@@ -7,6 +7,7 @@ import { isCctp, getCctpMessageByTxHash, getCctpTransactionStatus } from "@/util
 import { DepositForBurnLogEvent } from "@/types/events";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
 import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
+import { isBlockTooOld } from "./isBlockTooOld";
 
 export async function fetchCctpBridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -30,8 +31,6 @@ export async function fetchCctpBridgeEvents(
     },
   })) as unknown as DepositForBurnLogEvent[];
 
-  const currentTimestamp = new Date();
-
   await Promise.all(
     usdcLogs.map(async (log) => {
       const transactionHash = log.transactionHash;
@@ -45,10 +44,7 @@ export async function fetchCctpBridgeEvents(
       }
 
       const fromBlock = await fromChainClient.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
-
-      if (compareAsc(fromUnixTime(Number(fromBlock.timestamp.toString())), subDays(currentTimestamp, 90)) === -1) {
-        return;
-      }
+      if (isBlockTooOld(fromBlock)) return;
 
       const token = tokens.find((token) => isCctp(token));
       if (!token) return;
