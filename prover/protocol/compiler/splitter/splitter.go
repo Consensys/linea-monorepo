@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -176,7 +177,7 @@ func Compile(comp *wizard.CompiledIOP, size int) {
 			case query.LocalConstraint:
 				ctx.compileLocal(comp, q)
 			case query.GlobalConstraint:
-				ctx.compileGlobal(comp, q)
+				ctx.compileGlobalSmart(comp, q)
 			default:
 				utils.Panic("unexpected type of query that was not compiled : %T (%v)", q, qName)
 			}
@@ -362,6 +363,109 @@ func (ctx splitterCtx) compileGlobal(comp *wizard.CompiledIOP, q query.GlobalCon
 			round,
 			ifaces.QueryIDf("%v_SPLIT_%v_OVER_%v", q.ID, slot, numSlots),
 			replayed,
+		)
+	}
+}
+
+func (ctx splitterCtx) compileGlobalSmart(comp *wizard.CompiledIOP, q query.GlobalConstraint) {
+	comp.QueriesNoParams.MarkAsIgnored(q.ID)
+	board := q.Board()
+	metadatas := board.ListVariableMetadata()
+
+	for _, md := range metadatas {
+		if _, isPeriodic := md.(variables.PeriodicSample); isPeriodic {
+			logrus.Warnf("Fallback: skipped for %v due to periodic sampling", q.ID)
+			ctx.compileGlobal(comp, q)
+			return
+		}
+	}
+
+	round := comp.QueriesNoParams.Round(q.ID)
+
+	// Check if we’re dealing with an interleaved column
+	for _, md := range metadatas {
+		if h, ok := md.(ifaces.Column); ok && hasInterleaved(h) {
+			logrus.Warnf("Skipping %v due to interleaved column", q.ID)
+			return
+		}
+	}
+
+	if q.DomainSize < ctx.size {
+		// Fallback to simple verifier check for small domains
+		for _, metadata := range metadatas {
+			if h, ok := metadata.(ifaces.Column); ok {
+				verifiercol.AssertIsPublicCol(comp, h)
+			}
+		}
+		comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
+			return q.Check(vr)
+		}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+			q.CheckGnark(api, wvc)
+		})
+		return
+	}
+	logrus.Infof("---------globalsmart : %v ", q.ID)
+	omega := fft.GetOmega(q.DomainSize)
+	numSlots := q.DomainSize / ctx.size
+	offsetRange := q.MinMaxOffset()
+
+	for slot := 0; slot < numSlots; slot++ {
+		translationMap := collection.NewMapping[string, *symbolic.Expression]()
+		for _, metadata := range metadatas {
+			switch m := metadata.(type) {
+			case ifaces.Column:
+				subHandle := ctx.handleForSubsliceInGlobal(m, slot)
+				translationMap.InsertNew(m.String(), ifaces.ColumnAsVariable(subHandle))
+			case variables.PeriodicSample:
+				translated := symbolic.NewVariable(metadata)
+				if m.T > ctx.size {
+					slotStartAt := (slot * ctx.size) % m.T
+					slotStopAt := slotStartAt + ctx.size
+					if m.Offset >= slotStartAt && m.Offset < slotStopAt {
+						translated = variables.NewPeriodicSample(ctx.size, m.Offset%ctx.size)
+					} else {
+						translated = symbolic.NewConstant(0)
+					}
+				}
+				translationMap.InsertNew(m.String(), translated)
+			default:
+				translationMap.InsertNew(m.String(), symbolic.NewVariable(metadata))
+			}
+		}
+
+		// Build the weighted sum of gap constraints
+		var aggregated *symbolic.Expression
+		powOmega := field.One()
+		for offset := offsetRange.Min; offset <= offsetRange.Max; offset++ {
+			if offset == 0 {
+				continue
+			}
+			localExpr := q.Expression.Replay(translationMap)
+			if offset > 0 {
+				localExpr = column.ShiftExpr(localExpr, offset)
+			} else {
+				localExpr = column.ShiftExpr(localExpr, offset)
+			}
+			weighted := symbolic.Mul(localExpr, symbolic.NewConstant(powOmega))
+			if aggregated == nil {
+				aggregated = weighted
+			} else {
+				aggregated = symbolic.Add(aggregated, weighted)
+			}
+			powOmega.Mul(&powOmega, &omega)
+		}
+
+		// Add the "main" constraint for offset=0
+		mainExpr := q.Expression.Replay(translationMap)
+		if aggregated == nil {
+			aggregated = mainExpr
+		} else {
+			aggregated = symbolic.Add(aggregated, mainExpr)
+		}
+		comp.InsertGlobal(
+			round,
+			ifaces.QueryIDf("%v_SMARTAGG_SLOT_%v_OVER_%v", q.ID, slot, numSlots),
+			aggregated,
 		)
 	}
 }
