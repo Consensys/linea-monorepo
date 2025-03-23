@@ -2,6 +2,7 @@ package permutation
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -25,7 +26,7 @@ func dispatchPermutation(
 	zCatalog map[[2]int]*ZCtx,
 	round int,
 	q query.Permutation,
-) {
+) (numPub, denPub []*symbolic.Expression) {
 
 	var (
 		isMultiColumn = len(q.A[0]) > 1
@@ -60,14 +61,22 @@ func dispatchPermutation(
 
 			ctx := zCatalog[catalogEntry]
 
+			isPublic := column.IsPublicExpression(factor)
+
 			switch {
-			case k == 0:
+			case k == 0 && !isPublic:
 				ctx.NumeratorFactors = append(ctx.NumeratorFactors, factor)
-			case k == 1:
+			case k == 1 && !isPublic:
 				ctx.DenominatorFactors = append(ctx.DenominatorFactors, factor)
+			case k == 0 && isPublic:
+				numPub = append(numPub, factor)
+			case k == 1 && isPublic:
+				denPub = append(denPub, factor)
 			default:
 				panic("invalid k")
 			}
 		}
 	}
+
+	return numPub, denPub
 }

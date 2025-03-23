@@ -74,12 +74,19 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 	}
 }
 
-// AssignZeroToGrandProduct assignes zero to all grand-product queries in the current
-// round.
-type AssignZeroToGrandProduct struct {
+// AssignPermutationGranddProduct assigns the grand product query
+type AssignPermutationGrandProduct struct {
 	Query *query.GrandProduct
+	// IsPartial indicates that the permuation queries contains public
+	// terms to evaluate explictly by the verifier. In that case, the
+	// result of the query is not one and must be computed explicitly.
+	IsPartial bool
 }
 
-func (a AssignZeroToGrandProduct) Run(run *wizard.ProverRuntime) {
-	run.AssignGrandProduct(a.Query.ID, field.One())
+func (a AssignPermutationGrandProduct) Run(run *wizard.ProverRuntime) {
+	y := field.One()
+	if a.IsPartial {
+		y = a.Query.Compute(run)
+	}
+	run.AssignGrandProduct(a.Query.ID, y)
 }

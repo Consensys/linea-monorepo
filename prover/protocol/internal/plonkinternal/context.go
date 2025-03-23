@@ -12,9 +12,7 @@ import (
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/profile"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -258,30 +256,16 @@ func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_3
 	pt.S = permutation
 }
 
-// ConcatenatedTinyPIs returns a verifier column such constructed by stacking
-// all the `TinyPI` columns on top of one another and padding that with zeroes
-// up to the desired size.
-func (ctx CompilationCtx) ConcatenatedTinyPIs(size int) ifaces.Column {
-	return verifiercol.NewConcatTinyColumns(
-		ctx.comp,
-		size,
-		field.Zero(),
-		ctx.Columns.TinyPI...,
-	)
-}
-
 // GetPlonkProverAction returns the [PlonkInWizardProverAction] responsible for
 // assigning the first round of the wizard. In case we use the BBS commitment
 // this stands for [initialBBSProverAction] or [noCommitProverAction] in the
 // contrary case.
 func (ctx CompilationCtx) GetPlonkProverAction() PlonkInWizardProverAction {
-
 	if ctx.HasCommitment() {
 		return initialBBSProverAction{
 			CompilationCtx:  ctx,
 			proverStateLock: &sync.Mutex{},
 		}
 	}
-
 	return noCommitProverAction(ctx)
 }

@@ -15,6 +15,7 @@ type assignSelOpening struct{ *context }
 
 func (a *circAssignment) Run(run *wizard.ProverRuntime) {
 	a.PlonkCtx.GetPlonkProverAction().Run(run, a.getWitnesses(run))
+	a.StackedCircuitData.Run(run)
 }
 
 func (a circAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witness {

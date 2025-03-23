@@ -3,6 +3,7 @@ package specialqueries
 import (
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -43,19 +44,30 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) 
 
 	var (
 		round = comp.QueriesNoParams.Round(q.ID)
-		n     = q.A[0].Size()
-		sid   = make([]ifaces.Column, len(q.S))
+		sid   = make([]ifaces.Column, len(q.A))
 		s     = make([]ifaces.Column, len(q.S))
 		perm  = query.Permutation{
 			ID: q.Name() + "_FIXED_PERM",
 		}
+		cnt = 0
 	)
 
 	for i := range s {
-		sid[i] = comp.InsertPrecomputed(deriveNamePerm("SID", q.ID, i), getSiD(i, n))
 		s[i] = comp.InsertPrecomputed(deriveNamePerm("S", q.ID, i), q.S[i])
-		perm.A = append(perm.A, []ifaces.Column{q.A[i], sid[i]})
+		if column.StatusOf(q.B[i]).IsPublic() {
+			comp.Columns.SetStatus(s[i].GetColID(), column.VerifyingKey)
+		}
 		perm.B = append(perm.B, []ifaces.Column{q.B[i], s[i]})
+	}
+
+	for i := range q.A {
+		size := q.A[i].Size()
+		sid[i] = comp.InsertPrecomputed(deriveNamePerm("SID", q.ID, i), getSiD(cnt, size))
+		if column.StatusOf(q.A[i]).IsPublic() {
+			comp.Columns.SetStatus(sid[i].GetColID(), column.VerifyingKey)
+		}
+		perm.A = append(perm.A, []ifaces.Column{q.A[i], sid[i]})
+		cnt += size
 	}
 
 	comp.InsertFragmentedPermutation(round, perm.ID, perm.A, perm.B)
@@ -67,10 +79,10 @@ func deriveNamePerm(r string, queryName ifaces.QueryID, i int) ifaces.ColID {
 
 // getSiD returns a smartvector storing the witness of an SiD column. The witness
 // is defined as the arithmetic sequence nj, nj+1, nj+2, ..., nj+n-1
-func getSiD(j, n int) sv.SmartVector {
+func getSiD(s0, n int) sv.SmartVector {
 	identity := make([]field.Element, n)
 	for i := 0; i < n; i++ {
-		identity[i] = field.NewElement(uint64(n*j + i))
+		identity[i] = field.NewElement(uint64(s0 + i))
 	}
 	return sv.NewRegular(identity)
 }

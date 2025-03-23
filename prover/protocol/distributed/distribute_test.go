@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"reflect"
-	"runtime"
 	"testing"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
-	"github.com/sirupsen/logrus"
 )
 
 // TestDistributeWizard attempts to run and compile the distributed protocol.
@@ -203,17 +201,6 @@ func TestDistributedWizard(t *testing.T) {
 // TestBenchDistributedWizard runs the distributed wizard will all the compilations
 func TestBenchDistributedWizard(t *testing.T) {
 
-	go func() {
-		ticker := time.Tick(time.Second * 10)
-		for range ticker {
-			memstats := &runtime.MemStats{}
-			runtime.ReadMemStats(memstats)
-			fmt.Printf("[memstats] heap-in-use=%vGiB stack-in-use=%vGiB\n", memstats.HeapInuse/(1<<30), memstats.StackInuse/(1<<30))
-		}
-	}()
-
-	logrus.SetLevel(logrus.FatalLevel)
-
 	var (
 		rng              = rand.New(utils.NewRandSource(0))
 		sharedRandomness = field.PseudoRand(rng)
@@ -235,17 +222,13 @@ func TestBenchDistributedWizard(t *testing.T) {
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
 	for i := range distWizard.GLs {
 
-		if i > 0 {
-			continue
-		}
-
-		if cells := logdata.CountCells(distWizard.GLs[i].Wiop); cells.TotalCells() > minCompilationSize {
+		if cells := logdata.GetWizardStats(distWizard.GLs[i].Wiop); cells.TotalCells() > minCompilationSize {
 			fmt.Printf("[%v] Starting to compile module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
 			compiledGLs[i] = CompileSegmentGL(distWizard.GLs[i])
 			fmt.Printf("[%v] Done compiling module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
 		}
 
-		if cells := logdata.CountCells(distWizard.LPPs[i].Wiop); cells.TotalCells() > minCompilationSize {
+		if cells := logdata.GetWizardStats(distWizard.LPPs[i].Wiop); cells.TotalCells() > minCompilationSize {
 			fmt.Printf("[%v] Starting to compile module LPP for %v\n", time.Now(), distWizard.ModuleNames[i])
 			compiledLPPs[i] = CompileSegmentLPP(distWizard.LPPs[i])
 			fmt.Printf("[%v] Done compiling module LPP for %v\n", time.Now(), distWizard.ModuleNames[i])
@@ -290,11 +273,10 @@ func TestBenchDistributedWizard(t *testing.T) {
 	for i := range witnessGLs {
 
 		var (
-			matchedModule = 0
-			witnessGL     = witnessGLs[i]
-			witnessLPP    = witnessLPPs[i]
-			moduleIndex   = witnessGLs[i].ModuleIndex
-			moduleName    = witnessGLs[i].ModuleName
+			witnessGL   = witnessGLs[i]
+			witnessLPP  = witnessLPPs[i]
+			moduleIndex = witnessGLs[i].ModuleIndex
+			moduleName  = witnessGLs[i].ModuleName
 		)
 
 		witnessLPP.InitialFiatShamirState = sharedRandomness
@@ -322,11 +304,6 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 			moduleGL = &compiledGLs[k]
 			moduleLPP = &compiledLPPs[k]
-			matchedModule = k
-		}
-
-		if matchedModule > 0 {
-			continue
 		}
 
 		if moduleGL == nil {

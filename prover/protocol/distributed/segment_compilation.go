@@ -45,7 +45,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
 		compiler.Arcane(256, 1<<17, false),
-		logdata.GenCSV(files.MustOverwrite("wizard-initial-lpp-"+string(mod.definitionInput.ModuleName)+".csv")),
+		logdata.GenCSV(files.MustOverwrite("wizard-initial-lpp-"+string(mod.definitionInput.ModuleName)+".csv"), logdata.IncludeAllFilter),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -79,7 +79,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 
 	defineRecursion := func(build2 *wizard.Builder) {
 		recCtx = recursion.DefineRecursionOf(
-			"wizard-recursion-lpp-"+string(mod.definitionInput.ModuleName),
+			"wizard-recursion",
 			build2.CompiledIOP,
 			mod.Wiop,
 			true,
@@ -92,7 +92,7 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
 		compiler.Arcane(256, 1<<17, false),
-		logdata.GenCSV(files.MustOverwrite("wizard-recursion-lpp-"+string(mod.definitionInput.ModuleName)+".csv")),
+		logdata.GenCSV(files.MustOverwrite("./data/recursion/wizard-recursion-lpp-"+string(mod.definitionInput.ModuleName)+".csv"), logdata.IncludeAllFilter),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -141,7 +141,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
 		compiler.Arcane(256, 1<<17, false),
-		logdata.GenCSV(files.MustOverwrite("wizard-initial-gl-"+string(mod.definitionInput.ModuleName)+".csv")),
+		logdata.GenCSV(files.MustOverwrite("wizard-initial-gl-"+string(mod.definitionInput.ModuleName)+".csv"), logdata.IncludeAllFilter),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -161,6 +161,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
 		compiler.Arcane(256, 1<<13, false),
+		logdata.GenCSV(files.MustOverwrite("wizard-last-self-recursion-gl-"+string(mod.definitionInput.ModuleName)+".csv"), logdata.IncludeNonIgnoredColumnCSVFilter),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -175,7 +176,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 
 	defineRecursion := func(build2 *wizard.Builder) {
 		recCtx = recursion.DefineRecursionOf(
-			"wizard-recursion-gl-"+string(mod.definitionInput.ModuleName),
+			"wizard-recursion",
 			build2.CompiledIOP,
 			mod.Wiop,
 			true,
@@ -188,7 +189,7 @@ func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
 		compiler.Arcane(256, 1<<17, false),
-		logdata.GenCSV(files.MustOverwrite("wizard-recursion-gl-"+string(mod.definitionInput.ModuleName)+".csv")),
+		logdata.GenCSV(files.MustOverwrite("./data/recursion/wizard-recursion-gl-"+string(mod.definitionInput.ModuleName)+".csv"), logdata.IncludeAllFilter),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),

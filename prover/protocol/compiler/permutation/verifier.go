@@ -6,9 +6,11 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 // The verifier gets all the query openings and multiply them together and
@@ -66,12 +68,36 @@ func (v *VerifierCtx) IsSkipped() bool {
 // CheckGrandProductIsOne is a verifier action checking that the grand product
 // is one.
 type CheckGrandProductIsOne struct {
-	Query   *query.GrandProduct
-	Skipped bool
+	Query       *query.GrandProduct
+	ExplicitNum []*symbolic.Expression
+	ExplicitDen []*symbolic.Expression
+	Skipped     bool
 }
 
 func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
-	y := run.GetGrandProductParams(c.Query.ID).Y
+
+	var (
+		y = run.GetGrandProductParams(c.Query.ID).Y
+		d = field.One()
+	)
+
+	for _, e := range c.ExplicitNum {
+		col := column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+		for i := range col {
+			y.Mul(&y, &col[i])
+		}
+	}
+
+	for _, e := range c.ExplicitDen {
+		col := column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+		for i := range col {
+			d.Mul(&d, &col[i])
+		}
+	}
+
+	d.Inverse(&d)
+	y.Mul(&y, &d)
+
 	if !y.IsOne() {
 		return fmt.Errorf("[Permutation -> GrandProduct] the outcome of the grand-product query should be one")
 	}
@@ -79,7 +105,28 @@ func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 }
 
 func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	y := run.GetGrandProductParams(c.Query.ID).Prod
+
+	var (
+		y = run.GetGrandProductParams(c.Query.ID).Prod
+		d = frontend.Variable(1)
+	)
+
+	for _, e := range c.ExplicitNum {
+		col := column.GnarkEvalExprColumn(api, run, e.Board())
+		for i := range col {
+			y = api.Mul(y, col[i])
+		}
+	}
+
+	for _, e := range c.ExplicitDen {
+		col := column.GnarkEvalExprColumn(api, run, e.Board())
+		for i := range col {
+			d = api.Mul(d, col[i])
+		}
+	}
+
+	y = api.Div(y, d)
+
 	api.AssertIsEqual(y, frontend.Variable(1))
 }
 
@@ -100,6 +147,9 @@ type FinalProductCheck struct {
 	GrandProductID ifaces.QueryID
 	// skip the verifer action
 	skipped bool
+	// ToExplicitlyEvaluate list all the terms that are publicly
+	// evaluated by the verifier.
+	ToExplicitlyEvaluate []*symbolic.Expression
 }
 
 // Run implements the [wizard.VerifierAction]
@@ -111,6 +161,13 @@ func (f *FinalProductCheck) Run(run wizard.Runtime) error {
 	for k := range f.ZOpenings {
 		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
 		zProd.Mul(&zProd, &temp)
+	}
+
+	for _, e := range f.ToExplicitlyEvaluate {
+		c := column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+		for i := range c {
+			zProd.Mul(&zProd, &c[i])
+		}
 	}
 
 	claimedProd := run.GetGrandProductParams(f.GrandProductID).Y
@@ -127,6 +184,7 @@ func (f *FinalProductCheck) Run(run wizard.Runtime) error {
 func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	claimedProd := run.GetGrandProductParams(f.GrandProductID).Prod
+
 	// zProd stores the product of the ending values of the z columns
 	zProd := frontend.Variable(field.One())
 	for k := range f.ZOpenings {

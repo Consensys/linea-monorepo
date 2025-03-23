@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -11,10 +12,14 @@ import (
 // and compile them into global [query.GrandProduct]. One for every-round.
 func CompileIntoGdProduct(comp *wizard.CompiledIOP) {
 
-	// zCatalog stores a mapping (round, size) into ZCtx and helps finding
-	// which Z context should be used to handle a part of a given permutation
-	// query.
-	zCatalog := map[[2]int]*ZCtx{}
+	var (
+		// zCatalog stores a mapping (round, size) into ZCtx and helps finding
+		// which Z context should be used to handle a part of a given permutation
+		// query.
+		zCatalog = map[[2]int]*ZCtx{}
+		numPub   = []*symbolic.Expression{}
+		denPub   = []*symbolic.Expression{}
+	)
 
 	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
 
@@ -30,7 +35,9 @@ func CompileIntoGdProduct(comp *wizard.CompiledIOP) {
 		comp.QueriesNoParams.MarkAsIgnored(qName)
 		round := comp.QueriesNoParams.Round(qName)
 
-		dispatchPermutation(comp, zCatalog, round, permutation)
+		_numPub, _denPub := dispatchPermutation(comp, zCatalog, round, permutation)
+		numPub = append(numPub, _numPub...)
+		denPub = append(denPub, _denPub...)
 	}
 
 	zCatalogKeys := utils.SortedKeysOf(zCatalog, func(a, b [2]int) bool {
@@ -79,7 +86,7 @@ func CompileIntoGdProduct(comp *wizard.CompiledIOP) {
 		}
 
 		comp.InsertGrandProduct(query.Round, query.ID, query.Inputs)
-		comp.RegisterProverAction(query.Round, &AssignZeroToGrandProduct{Query: query})
-		comp.RegisterVerifierAction(query.Round, &CheckGrandProductIsOne{Query: query})
+		comp.RegisterProverAction(query.Round, &AssignPermutationGrandProduct{Query: query})
+		comp.RegisterVerifierAction(query.Round, &CheckGrandProductIsOne{Query: query, ExplicitNum: numPub, ExplicitDen: denPub})
 	}
 }

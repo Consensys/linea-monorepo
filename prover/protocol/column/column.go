@@ -3,6 +3,7 @@ package column
 import (
 	"reflect"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -167,6 +168,43 @@ func EvalExprColumn(run ifaces.Runtime, board symbolic.ExpressionBoard) smartvec
 	return board.Evaluate(inputs)
 }
 
+// GnarkEvalExprColumn evaluates an expression in a gnark circuit setting
+func GnarkEvalExprColumn(api frontend.API, run ifaces.GnarkRuntime, board symbolic.ExpressionBoard) []frontend.Variable {
+
+	var (
+		metadata = board.ListVariableMetadata()
+		length   = ExprIsOnSameLengthHandles(&board)
+		res      = make([]frontend.Variable, length)
+	)
+
+	for k := 0; k < length; k++ {
+
+		inputs := make([]frontend.Variable, len(metadata))
+
+		for i := range inputs {
+			switch m := metadata[i].(type) {
+			case ifaces.Column:
+				inputs[i] = m.GetColAssignmentGnarkAt(run, k)
+			case coin.Info:
+				inputs[i] = run.GetRandomCoinField(m.Name)
+			case ifaces.Accessor:
+				inputs[i] = m.GetFrontendVariable(api, run)
+			case variables.PeriodicSample:
+				inputs[i] = m.EvalAtOnDomain(k)
+			case variables.X:
+				// there is no theoritical problem with this but there are
+				// no cases known where this happens so we just don't
+				// support it.
+				panic("unexpected")
+			}
+		}
+
+		res[k] = board.GnarkEval(api, inputs)
+	}
+
+	return res
+}
+
 // ExprIsOnSameLengthHandles checks that all the variables of the expression
 // that are [ifaces.Column] have the same size (and panics if it does not), then
 // returns the match.
@@ -251,4 +289,48 @@ func ShiftExpr(expr *symbolic.Expression, offset int) *symbolic.Expression {
 
 		return symbolic.NewVariable(Shift(col, offset))
 	})
+}
+
+// StatusOf returns the status of the column
+func StatusOf(c ifaces.Column) Status {
+
+	switch col := c.(type) {
+	case Natural:
+		return col.Status()
+	case Shifted:
+		return StatusOf(col.Parent)
+	default:
+		// Expectedly, a verifier col
+		return VerifierDefined
+	}
+}
+
+// IsPublicExpression returns true if the expression is fully public
+func IsPublicExpression(expr *symbolic.Expression) bool {
+
+	var (
+		board        = expr.Board()
+		meta         = board.ListVariableMetadata()
+		numPublic    = 0
+		numNonPublic = 0
+		statusMap    = map[ifaces.ColID]string{}
+	)
+
+	for _, m := range meta {
+		if c, ok := m.(ifaces.Column); ok {
+			status := StatusOf(c)
+			statusMap[c.GetColID()] = status.String()
+			if status.IsPublic() {
+				numPublic++
+			} else {
+				numNonPublic++
+			}
+		}
+	}
+
+	if numNonPublic > 0 && numPublic > 0 {
+		utils.Panic("the expression is mixed: %v", statusMap)
+	}
+
+	return numPublic > 0
 }

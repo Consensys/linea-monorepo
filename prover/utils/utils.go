@@ -462,3 +462,11 @@ func SortedKeysOf[K comparable, V any](m map[K]V, less func(K, K) bool) []K {
 
 	return keys
 }
+
+// Ternary returns "a" if cond is true, else b
+func Ternary[T any](cond bool, ifTrue, ifFalse T) T {
+	if cond {
+		return ifTrue
+	}
+	return ifFalse
+}
