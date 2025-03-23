@@ -60,6 +60,7 @@ func TestCompilers(t *testing.T) {
 	runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
 	runTestList(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcaseNegative)
 	runTestList(t, "mimc", testtools.ListOfMiMCTestcase)
+	runTestList(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
 }
 
 func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {

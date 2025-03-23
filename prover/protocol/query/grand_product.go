@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -90,33 +89,55 @@ func (g GrandProduct) Compute(run ifaces.Runtime) field.Element {
 
 	result := field.One()
 
-	for key := range g.Inputs {
-		for i, num := range g.Inputs[key].Numerators {
+	for size := range g.Inputs {
+		for _, factor := range g.Inputs[size].Numerators {
 
 			var (
-				numBoard          = num.Board()
-				denBoard          = g.Inputs[key].Denominators[i].Board()
+				numBoard          = factor.Board()
 				numeratorMetadata = numBoard.ListVariableMetadata()
-				denominator       = column.EvalExprColumn(run, denBoard).IntoRegVecSaveAlloc()
 				numerator         []field.Element
-				packedZ           = field.BatchInvert(denominator)
 			)
 
 			if len(numeratorMetadata) == 0 {
-				numerator = vector.Repeat(field.One(), g.Inputs[key].Size)
+				panic("unreachable")
 			}
 
 			if len(numeratorMetadata) > 0 {
 				numerator = column.EvalExprColumn(run, numBoard).IntoRegVecSaveAlloc()
 			}
 
-			for k := range packedZ {
-				packedZ[k].Mul(&numerator[k], &packedZ[k])
-				if k > 0 {
-					packedZ[k].Mul(&packedZ[k], &packedZ[k-1])
-				}
+			for k := range numerator {
+				result.Mul(&result, &numerator[k])
 			}
-			result.Mul(&result, &packedZ[len(packedZ)-1])
+		}
+
+		for _, factor := range g.Inputs[size].Denominators {
+
+			var (
+				denBoard            = factor.Board()
+				denominatorMetadata = denBoard.ListVariableMetadata()
+				denominator         []field.Element
+				tmp                 = field.NewElement(1)
+			)
+
+			if len(denominatorMetadata) == 0 {
+				panic("unreachable")
+			}
+
+			if len(denominatorMetadata) > 0 {
+				denominator = column.EvalExprColumn(run, denBoard).IntoRegVecSaveAlloc()
+			}
+
+			for k := range denominator {
+
+				if denominator[k].IsZero() {
+					panic("denominator contains zeroes")
+				}
+
+				tmp.Mul(&tmp, &denominator[k])
+			}
+
+			result.Div(&result, &tmp)
 		}
 	}
 
@@ -153,7 +174,7 @@ func (g GrandProduct) Check(run ifaces.Runtime) error {
 	}
 
 	if actualProd != params.Y {
-		return fmt.Errorf("the grand product query %v is not satisfied, actualProd = %v, param.Y = %v", g.ID, actualProd, params.Y)
+		return fmt.Errorf("the grand product query %v is not satisfied, actualProd = %v, param.Y = %v", g.ID, actualProd.String(), params.Y.String())
 	}
 
 	return nil

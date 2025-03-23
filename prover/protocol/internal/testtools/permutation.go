@@ -2,6 +2,7 @@ package testtools
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -13,6 +14,8 @@ type PermutationTestcase struct {
 	NameStr      string
 	A            [][]smartvectors.SmartVector
 	B            [][]smartvectors.SmartVector
+	AIsProof     []bool
+	BIsProof     []bool
 	MustFailFlag bool
 	Q            query.Permutation
 }
@@ -66,6 +69,106 @@ var ListOfPermutationTestcasePositive = []*PermutationTestcase{
 				smartvectors.ForTest(4, 2, 3, 1, 8, 6, 7, 5, 9, 10, 11, 12, 13, 14, 15, 16),
 			},
 		},
+	},
+
+	{
+		NameStr: "positive/1234-with-proofs",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4),
+			},
+		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1),
+			},
+		},
+		AIsProof: []bool{true},
+	},
+
+	{
+		NameStr: "positive/1234-multi-column-with-proofs",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4),
+				smartvectors.ForTest(5, 6, 7, 8),
+			},
+		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1),
+				smartvectors.ForTest(8, 6, 7, 5),
+			},
+		},
+		AIsProof: []bool{true},
+	},
+
+	{
+		NameStr: "positive/1234-split-with-proofs",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4, 9, 10, 11, 12),
+			},
+			{
+				smartvectors.ForTest(5, 6, 7, 8, 13, 14, 15, 16),
+			},
+		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1, 8, 6, 7, 5, 9, 10, 11, 12, 13, 14, 15, 16),
+			},
+		},
+		AIsProof: []bool{true, true},
+	},
+
+	{
+		NameStr: "positive/1234-with-proofs-b",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4),
+			},
+		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1),
+			},
+		},
+		BIsProof: []bool{true},
+	},
+
+	{
+		NameStr: "positive/1234-multi-column-with-proofs-b",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4),
+				smartvectors.ForTest(5, 6, 7, 8),
+			},
+		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1),
+				smartvectors.ForTest(8, 6, 7, 5),
+			},
+		},
+		BIsProof: []bool{true},
+	},
+
+	{
+		NameStr: "positive/1234-split-with-proofs-b",
+		A: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 2, 3, 4, 9, 10, 11, 12),
+			},
+			{
+				smartvectors.ForTest(5, 6, 7, 8, 13, 14, 15, 16),
+			},
+		},
+		B: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(4, 2, 3, 1, 8, 6, 7, 5, 9, 10, 11, 12, 13, 14, 15, 16),
+			},
+		},
+		BIsProof: []bool{true},
 	},
 }
 
@@ -139,6 +242,10 @@ func (p *PermutationTestcase) Define(comp *wizard.CompiledIOP) {
 				formatName[ifaces.ColID]("Permutation", p.NameStr, "A", i, j),
 				p.A[i][j].Len(),
 			)
+
+			if i < len(p.AIsProof) && p.AIsProof[i] {
+				comp.Columns.SetStatus(a[i][j].GetColID(), column.Proof)
+			}
 		}
 	}
 
@@ -150,7 +257,12 @@ func (p *PermutationTestcase) Define(comp *wizard.CompiledIOP) {
 				formatName[ifaces.ColID]("Permutation", p.NameStr, "B", i, j),
 				p.B[i][j].Len(),
 			)
+
+			if i < len(p.BIsProof) && p.BIsProof[i] {
+				comp.Columns.SetStatus(b[i][j].GetColID(), column.Proof)
+			}
 		}
+
 	}
 
 	p.Q = query.Permutation{

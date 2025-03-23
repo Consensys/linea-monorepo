@@ -39,6 +39,9 @@ func NewFixedPermutation(id ifaces.QueryID, S []ifaces.ColAssignment, a, b []ifa
 	// recall that 'a' and 'b' have the same size
 	for i := range a {
 		a[i].MustExists()
+	}
+
+	for i := range b {
 		b[i].MustExists()
 	}
 

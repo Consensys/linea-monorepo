@@ -86,7 +86,7 @@ func CompileIntoGdProduct(comp *wizard.CompiledIOP) {
 		}
 
 		comp.InsertGrandProduct(query.Round, query.ID, query.Inputs)
-		comp.RegisterProverAction(query.Round, &AssignPermutationGrandProduct{Query: query})
+		comp.RegisterProverAction(query.Round, &AssignPermutationGrandProduct{Query: query, IsPartial: len(numPub)+len(denPub) > 0})
 		comp.RegisterVerifierAction(query.Round, &CheckGrandProductIsOne{Query: query, ExplicitNum: numPub, ExplicitDen: denPub})
 	}
 }
