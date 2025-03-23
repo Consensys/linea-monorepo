@@ -2,20 +2,18 @@ package statemanager
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulator"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/accumulatorsummary"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/codehashconsistency"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
-	"os"
 )
 
 // StateManager is a collection of modules responsible for attesting the
@@ -77,102 +75,102 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 	sm.mimcCodeHash.Assign(run)
 	sm.codeHashConsistency.Assign(run)
 
-	csvtraces.FmtCsv(
-		files.MustOverwrite("./alex-csv/arith.csv"),
-		run,
-		[]ifaces.Column{
-			run.Spec.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-			run.Spec.Columns.GetHandle("hub.acp_ADDRESS_HI"),
-			run.Spec.Columns.GetHandle("hub.acp_ADDRESS_LO"),
-			run.Spec.Columns.GetHandle("hub.acp_BALANCE"),
-			run.Spec.Columns.GetHandle("hub.acp_NONCE"),
-			run.Spec.Columns.GetHandle("hub.acp_CODE_SIZE"),
-			run.Spec.Columns.GetHandle("hub.acp_CODE_HASH_HI"),
-			run.Spec.Columns.GetHandle("hub.acp_CODE_HASH_LO"),
-			run.Spec.Columns.GetHandle("hub.acp_REL_BLK_NUM"),
-			run.Spec.Columns.GetHandle("hub.acp_EXISTS"),
-			run.Spec.Columns.GetHandle("hub.acp_EXISTS_NEW"),
-			run.Spec.Columns.GetHandle("hub.acp_PEEK_AT_ACCOUNT"),
-			run.Spec.Columns.GetHandle("hub.acp_FIRST_IN_BLK"),
-			run.Spec.Columns.GetHandle("hub.acp_IS_PRECOMPILE"),
-		},
-		[]csvtraces.Option{},
-	)
-	csvtraces.FmtCsv(
-		files.MustOverwrite("./alex-csv/ss.csv"),
-		run,
-		[]ifaces.Column{
-			sm.StateSummary.Account.Address,
-			sm.StateSummary.Account.Initial.Balance,
-			sm.StateSummary.Account.Initial.Nonce,
-			sm.StateSummary.Account.Initial.CodeSize,
-			sm.StateSummary.Account.Initial.KeccakCodeHash.Hi,
-			sm.StateSummary.Account.Initial.KeccakCodeHash.Lo,
-			sm.StateSummary.BatchNumber,
-			sm.StateSummary.Account.Initial.Exists,
-			sm.StateSummary.Account.Final.Exists,
-			sm.StateSummary.IsInitialDeployment,
-			sm.StateSummary.IsStorage,
-		},
-		[]csvtraces.Option{},
-	)
-	csvtraces.FmtCsv(
-		files.MustOverwrite("./alex-csv/hub.csv"),
-		run,
-		[]ifaces.Column{
-			run.Spec.Columns.GetHandle("hub.RELATIVE_BLOCK_NUMBER"),
-		},
-		[]csvtraces.Option{},
-	)
+	// csvtraces.FmtCsv(
+	// 	files.MustOverwrite("./alex-csv/arith.csv"),
+	// 	run,
+	// 	[]ifaces.Column{
+	// 		run.Spec.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_ADDRESS_HI"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_ADDRESS_LO"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_BALANCE"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_NONCE"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_CODE_SIZE"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_CODE_HASH_HI"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_CODE_HASH_LO"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_REL_BLK_NUM"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_EXISTS"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_EXISTS_NEW"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_PEEK_AT_ACCOUNT"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_FIRST_IN_BLK"),
+	// 		run.Spec.Columns.GetHandle("hub.acp_IS_PRECOMPILE"),
+	// 	},
+	// 	[]csvtraces.Option{},
+	// )
+	// csvtraces.FmtCsv(
+	// 	files.MustOverwrite("./alex-csv/ss.csv"),
+	// 	run,
+	// 	[]ifaces.Column{
+	// 		sm.StateSummary.Account.Address,
+	// 		sm.StateSummary.Account.Initial.Balance,
+	// 		sm.StateSummary.Account.Initial.Nonce,
+	// 		sm.StateSummary.Account.Initial.CodeSize,
+	// 		sm.StateSummary.Account.Initial.KeccakCodeHash.Hi,
+	// 		sm.StateSummary.Account.Initial.KeccakCodeHash.Lo,
+	// 		sm.StateSummary.BatchNumber,
+	// 		sm.StateSummary.Account.Initial.Exists,
+	// 		sm.StateSummary.Account.Final.Exists,
+	// 		sm.StateSummary.IsInitialDeployment,
+	// 		sm.StateSummary.IsStorage,
+	// 	},
+	// 	[]csvtraces.Option{},
+	// )
+	// csvtraces.FmtCsv(
+	// 	files.MustOverwrite("./alex-csv/hub.csv"),
+	// 	run,
+	// 	[]ifaces.Column{
+	// 		run.Spec.Columns.GetHandle("hub.RELATIVE_BLOCK_NUMBER"),
+	// 	},
+	// 	[]csvtraces.Option{},
+	// )
 
-	csvtraces.FmtCsv(
-		files.MustOverwrite("./alex-csv/scparith.csv"),
-		run,
-		[]ifaces.Column{
-			run.Spec.Columns.GetHandle("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-			run.Spec.Columns.GetHandle("hub.scp_ADDRESS_HI"),
-			run.Spec.Columns.GetHandle("hub.scp_ADDRESS_LO"),
-			run.Spec.Columns.GetHandle("hub.scp_STORAGE_KEY_HI"),
-			run.Spec.Columns.GetHandle("hub.scp_STORAGE_KEY_LO"),
-			run.Spec.Columns.GetHandle("hub.scp_VALUE_CURR_HI"),
-			run.Spec.Columns.GetHandle("hub.scp_VALUE_CURR_LO"),
-			run.Spec.Columns.GetHandle("hub.scp_VALUE_NEXT_HI"),
-			run.Spec.Columns.GetHandle("hub.scp_VALUE_NEXT_LO"),
-			run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
-			run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
-			run.Spec.Columns.GetHandle("hub.scp_REL_BLK_NUM"),
-			run.Spec.Columns.GetHandle("hub.scp_PEEK_AT_STORAGE"),
-			run.Spec.Columns.GetHandle("hub.scp_FIRST_IN_CNF"),
-			run.Spec.Columns.GetHandle("hub.scp_FINAL_IN_CNF"),
-			run.Spec.Columns.GetHandle("hub.scp_FIRST_IN_BLK"),
-			run.Spec.Columns.GetHandle("hub.scp_FINAL_IN_BLK"),
-			run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
-			run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
-			run.Spec.Columns.GetHandle("hub.scp_EXISTS_FIRST_IN_BLOCK"),
-			run.Spec.Columns.GetHandle("hub.scp_EXISTS_FINAL_IN_BLOCK"),
-			//run.Spec.Columns.GetHandle("hub.scp_TX_EXEC"),
-		},
-		[]csvtraces.Option{},
-	)
+	// csvtraces.FmtCsv(
+	// 	files.MustOverwrite("./alex-csv/scparith.csv"),
+	// 	run,
+	// 	[]ifaces.Column{
+	// 		run.Spec.Columns.GetHandle("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_ADDRESS_HI"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_ADDRESS_LO"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_STORAGE_KEY_HI"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_STORAGE_KEY_LO"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_VALUE_CURR_HI"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_VALUE_CURR_LO"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_VALUE_NEXT_HI"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_VALUE_NEXT_LO"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_REL_BLK_NUM"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_PEEK_AT_STORAGE"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_FIRST_IN_CNF"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_FINAL_IN_CNF"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_FIRST_IN_BLK"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_FINAL_IN_BLK"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_EXISTS_FIRST_IN_BLOCK"),
+	// 		run.Spec.Columns.GetHandle("hub.scp_EXISTS_FINAL_IN_BLOCK"),
+	// 		//run.Spec.Columns.GetHandle("hub.scp_TX_EXEC"),
+	// 	},
+	// 	[]csvtraces.Option{},
+	// )
 
-	csvtraces.FmtCsv(
-		files.MustOverwrite("./alex-csv/scpss.csv"),
-		run,
-		[]ifaces.Column{
-			sm.StateSummary.Account.Address,
-			sm.StateSummary.Storage.Key.Hi,
-			sm.StateSummary.Storage.Key.Lo,
-			sm.StateSummary.Storage.OldValue.Hi,
-			sm.StateSummary.Storage.OldValue.Lo,
-			sm.StateSummary.Storage.NewValue.Hi,
-			sm.StateSummary.Storage.NewValue.Lo,
-			sm.StateSummary.BatchNumber,
-			sm.StateSummary.IsFinalDeployment,
-			sm.StateSummary.Account.Final.Exists,
-			sm.StateSummary.IsStorage,
-		},
-		[]csvtraces.Option{},
-	)
+	// csvtraces.FmtCsv(
+	// 	files.MustOverwrite("./alex-csv/scpss.csv"),
+	// 	run,
+	// 	[]ifaces.Column{
+	// 		sm.StateSummary.Account.Address,
+	// 		sm.StateSummary.Storage.Key.Hi,
+	// 		sm.StateSummary.Storage.Key.Lo,
+	// 		sm.StateSummary.Storage.OldValue.Hi,
+	// 		sm.StateSummary.Storage.OldValue.Lo,
+	// 		sm.StateSummary.Storage.NewValue.Hi,
+	// 		sm.StateSummary.Storage.NewValue.Lo,
+	// 		sm.StateSummary.BatchNumber,
+	// 		sm.StateSummary.IsFinalDeployment,
+	// 		sm.StateSummary.Account.Final.Exists,
+	// 		sm.StateSummary.IsStorage,
+	// 	},
+	// 	[]csvtraces.Option{},
+	// )
 }
 
 // stateSummarySize returns the number of rows to give to the state-summary
