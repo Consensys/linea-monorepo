@@ -145,10 +145,6 @@ type VerifierCircuit struct {
 // Initializes the underlying structs and collections.
 func NewVerifierCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 
-	if numRound == 0 {
-		numRound = comp.NumRounds()
-	}
-
 	return &VerifierCircuit{
 		Spec: comp,
 
@@ -178,6 +174,10 @@ func NewVerifierCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 // the witness fields of the circuit and will allow the gnark compiler to
 // understand how big is the witness of the circuit.
 func AllocateWizardCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
+
+	if numRound == 0 {
+		numRound = comp.NumRounds()
+	}
 
 	res := NewVerifierCircuit(comp, numRound)
 
@@ -244,6 +244,10 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 // circuit from a proof. The result of this function can be used to construct a
 // gnark assignment circuit involving the verification of Wizard proof.
 func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *VerifierCircuit {
+
+	if numRound == 0 {
+		numRound = comp.NumRounds()
+	}
 
 	res := NewVerifierCircuit(comp, numRound)
 
@@ -319,6 +323,9 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 // [frontend.Define] function. Its work mirrors the [Verify] function.
 func (c *VerifierCircuit) Verify(api frontend.API) {
 
+	// Note: the function handles the case where c.HasherFactory == nil.
+	// It will instead use a standard MiMC hasher that does not use
+	// GKR instead.
 	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory)
 	c.FS.Update(c.Spec.FiatShamirSetup)
 
