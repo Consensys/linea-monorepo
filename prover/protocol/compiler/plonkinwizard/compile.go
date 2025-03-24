@@ -78,13 +78,6 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard) {
 
 	ctx.StackedCircuitData = dedicated.StackColumn(comp, ctx.PlonkCtx.Columns.TinyPI)
 
-	// Since [StackedCircuitData] already stores the values of tinyPIs and that
-	// the column (or rather a commitment to the column is included in the FS)
-	// transcript. So not removing it would lead to a costly duplicate.
-	for _, pi := range ctx.PlonkCtx.Columns.TinyPI {
-		comp.Columns.ExcludeFromProverFS(pi.GetColID())
-	}
-
 	checkActivators(comp, ctx)
 	checkPublicInputs(comp, ctx)
 
