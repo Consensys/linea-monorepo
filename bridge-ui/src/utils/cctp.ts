@@ -5,8 +5,8 @@ import { fetchCctpAttestationByTxHash, reattestCctpV2PreFinalityMessage } from "
 import { getPublicClient } from "@wagmi/core";
 import { config as wagmiConfig } from "@/lib/wagmi";
 
-// TODO - Find optimal value
-export const CCTP_TRANSFER_MAX_FEE_FALLBACK = 5n;
+// Current fast transfer route fee for mainnet
+export const CCTP_TRANSFER_MAX_FEE_FALLBACK = 100n;
 // 1000 Fast transfer, 2000 Standard transfer
 export const CCTP_MIN_FINALITY_THRESHOLD = 1000;
 // https://developers.circle.com/stablecoins/message-format, add 2 for '0x' prefix
