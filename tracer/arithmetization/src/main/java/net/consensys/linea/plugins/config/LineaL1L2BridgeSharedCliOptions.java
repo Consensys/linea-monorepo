@@ -31,7 +31,6 @@ public class LineaL1L2BridgeSharedCliOptions implements LineaCliOptions {
   private static final String L1L2_BRIDGE_TOPIC = "--plugin-linea-l1l2-bridge-topic";
 
   @CommandLine.Option(
-      required = true,
       names = {L1L2_BRIDGE_CONTRACT},
       paramLabel = "<ADDRESS>",
       converter = AddressConverter.class,
@@ -39,7 +38,6 @@ public class LineaL1L2BridgeSharedCliOptions implements LineaCliOptions {
   private Address l1l2BridgeContract = Address.ZERO;
 
   @CommandLine.Option(
-      required = true,
       names = {L1L2_BRIDGE_TOPIC},
       paramLabel = "<HEX_STRING>",
       converter = BytesConverter.class,

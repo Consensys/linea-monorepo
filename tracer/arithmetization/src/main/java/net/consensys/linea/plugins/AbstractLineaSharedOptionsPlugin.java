@@ -35,8 +35,14 @@ public abstract class AbstractLineaSharedOptionsPlugin extends AbstractLineaOpti
   }
 
   public LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration() {
-    return (LineaL1L2BridgeSharedConfiguration)
-        getConfigurationByKey(LineaL1L2BridgeSharedCliOptions.CONFIG_KEY).optionsConfig();
+    final LineaL1L2BridgeSharedConfiguration l2L1 =
+        (LineaL1L2BridgeSharedConfiguration)
+            getConfigurationByKey(LineaL1L2BridgeSharedCliOptions.CONFIG_KEY).optionsConfig();
+
+    if (l2L1.equals(LineaL1L2BridgeSharedConfiguration.EMPTY)) {
+      throw new IllegalStateException("L1L2 bridge configuration not provided.");
+    }
+    return l2L1;
   }
 
   @Override
