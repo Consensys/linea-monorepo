@@ -215,8 +215,8 @@ func TestBenchDistributedWizard(t *testing.T) {
 		// Minimal witness size to compile
 		minCompilationSize = 1 << 10
 
-		compiledGLs  = make([]RecursedSegmentCompilation, len(distWizard.GLs))
-		compiledLPPs = make([]RecursedSegmentCompilation, len(distWizard.LPPs))
+		compiledGLs  = make([]*RecursedSegmentCompilation, len(distWizard.GLs))
+		compiledLPPs = make([]*RecursedSegmentCompilation, len(distWizard.LPPs))
 	)
 
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
@@ -224,13 +224,13 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 		if cells := logdata.GetWizardStats(distWizard.GLs[i].Wiop); cells.TotalCells() > minCompilationSize {
 			fmt.Printf("[%v] Starting to compile module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
-			compiledGLs[i] = CompileSegmentGL(distWizard.GLs[i])
+			compiledGLs[i] = CompileSegment(distWizard.GLs[i])
 			fmt.Printf("[%v] Done compiling module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
 		}
 
 		if cells := logdata.GetWizardStats(distWizard.LPPs[i].Wiop); cells.TotalCells() > minCompilationSize {
 			fmt.Printf("[%v] Starting to compile module LPP for %v\n", time.Now(), distWizard.ModuleNames[i])
-			compiledLPPs[i] = CompileSegmentLPP(distWizard.LPPs[i])
+			compiledLPPs[i] = CompileSegment(distWizard.LPPs[i])
 			fmt.Printf("[%v] Done compiling module LPP for %v\n", time.Now(), distWizard.ModuleNames[i])
 		}
 	}
@@ -302,8 +302,8 @@ func TestBenchDistributedWizard(t *testing.T) {
 				continue
 			}
 
-			moduleGL = &compiledGLs[k]
-			moduleLPP = &compiledLPPs[k]
+			moduleGL = compiledGLs[k]
+			moduleLPP = compiledLPPs[k]
 		}
 
 		if moduleGL == nil {

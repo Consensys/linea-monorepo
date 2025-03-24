@@ -1,18 +1,16 @@
 package distributed
 
 import (
-	"encoding/json"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
 )
@@ -32,15 +30,30 @@ type RecursedSegmentCompilation struct {
 	RecursionComp *wizard.CompiledIOP
 }
 
-// CompileSegmentLPP applies all the compilation steps required to compile
-// an LPP module of the protocol.
-func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
+// CompileSegment applies all the compilation steps required to compile an LPP
+// or a GL module of the protocol. The function accepts either a *[ModuleLPP]
+// or a *[ModuleGL].
+func CompileSegment(mod any) *RecursedSegmentCompilation {
+
+	var (
+		modIOP *wizard.CompiledIOP
+		res    = &RecursedSegmentCompilation{}
+	)
+
+	switch m := mod.(type) {
+	case *ModuleGL:
+		modIOP = m.Wiop
+		res.ModuleGL = m
+	case *ModuleLPP:
+		modIOP = m.Wiop
+		res.ModuleLPP = m
+	default:
+		utils.Panic("unexpected type: %T", mod)
+	}
 
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
-	logCellCount(mod.Wiop, string(mod.definitionInput.ModuleName), "[ModuleLPP before compilation]")
-
-	wizard.ContinueCompilation(mod.Wiop,
+	wizard.ContinueCompilation(modIOP,
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
 		compiler.Arcane(256, 1<<17, false),
@@ -70,8 +83,6 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 			vortex.PremarkAsSelfRecursed(),
 		),
 	)
-
-	logCellCount(mod.Wiop, string(mod.definitionInput.ModuleName), "[ModuleLPP before recursion]")
 
 	var recCtx *recursion.Recursion
 
@@ -79,14 +90,13 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		recCtx = recursion.DefineRecursionOf(
 			"wizard-recursion",
 			build2.CompiledIOP,
-			mod.Wiop,
+			modIOP,
 			true,
 			1,
 		)
 	}
 
 	recursedComp := wizard.Compile(defineRecursion,
-		logdata.Log("recursion-lpp-initial-wizard-"+string(mod.definitionInput.ModuleName)),
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
 		compiler.Arcane(256, 1<<17, false),
@@ -117,106 +127,9 @@ func CompileSegmentLPP(mod *ModuleLPP) RecursedSegmentCompilation {
 		),
 	)
 
-	logCellCount(recursedComp, string(mod.definitionInput.ModuleName), "[ModuleLPP after recursion]")
-
-	return RecursedSegmentCompilation{
-		ModuleLPP:     mod,
-		Recursion:     recCtx,
-		RecursionComp: recursedComp,
-	}
-}
-
-// CompileSegmentGL applies all the compilation steps required to compile
-// a GL module of the protocol.
-func CompileSegmentGL(mod *ModuleGL) RecursedSegmentCompilation {
-
-	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
-
-	logCellCount(mod.Wiop, string(mod.definitionInput.ModuleName), "[moduleGL before compilation]")
-
-	wizard.ContinueCompilation(mod.Wiop,
-		mimc.CompileMiMC,
-		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<17, false),
-		vortex.Compile(
-			2,
-			vortex.ForceNumOpenedColumns(256),
-			vortex.WithSISParams(&sisInstance),
-			vortex.AddMerkleRootToPublicInputs("LPP_COLUMNS_MERKLE_ROOT", 0),
-		),
-		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
-		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<15, false),
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
-		),
-		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
-		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, false),
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
-			vortex.PremarkAsSelfRecursed(),
-		),
-	)
-
-	logCellCount(mod.Wiop, string(mod.definitionInput.ModuleName), "[ModuleGL before recursion]")
-
-	var recCtx *recursion.Recursion
-
-	defineRecursion := func(build2 *wizard.Builder) {
-		recCtx = recursion.DefineRecursionOf(
-			"wizard-recursion",
-			build2.CompiledIOP,
-			mod.Wiop,
-			true,
-			1,
-		)
-	}
-
-	recursedComp := wizard.Compile(defineRecursion,
-		logdata.Log("recursion-gl-initial-wizard-"+string(mod.definitionInput.ModuleName)),
-		mimc.CompileMiMC,
-		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<17, false),
-		vortex.Compile(
-			2,
-			vortex.ForceNumOpenedColumns(256),
-			vortex.WithSISParams(&sisInstance),
-			vortex.AddMerkleRootToPublicInputs("LPP_COLUMNS_MERKLE_ROOT", 0),
-		),
-		selfrecursion.SelfRecurse,
-		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<15, false),
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
-			vortex.AddPrecomputedMerkleRootToPublicInputs("VERIFICATION_KEY_MERKLE_ROOT"),
-		),
-		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
-		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, false),
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
-		),
-	)
-
-	logCellCount(recursedComp, string(mod.definitionInput.ModuleName), "[ModuleGL] after recursion")
-
-	return RecursedSegmentCompilation{
-		ModuleGL:      mod,
-		Recursion:     recCtx,
-		RecursionComp: recursedComp,
-	}
+	res.Recursion = recCtx
+	res.RecursionComp = recursedComp
+	return res
 }
 
 // ProveSegment runs the prover for a segment of the protocol
@@ -261,10 +174,4 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit *ModuleWitness) wizard.Pro
 		Infof("Ran prover segment")
 
 	return proof
-}
-
-func logCellCount(comp *wizard.CompiledIOP, moduleName, msg string) {
-	cellCount := logdata.GetWizardStats(comp)
-	cellCountJson, _ := json.Marshal(cellCount)
-	logrus.Infof("[wizard.analytic] msg=%v module=%v cellCount=%v\n", msg, moduleName, string(cellCountJson))
 }
