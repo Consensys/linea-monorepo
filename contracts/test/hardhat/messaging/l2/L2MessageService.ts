@@ -1160,7 +1160,7 @@ describe("L2MessageService", () => {
             1,
           );
 
-        await expectRevertWithReason(claimMessageCall, "ReentrancyGuard: reentrant call");
+        await expectRevertWithCustomError(l2MessageService, claimMessageCall, "ReentrantCall");
       });
 
       it("Should fail when the destination errors through receive", async () => {
