@@ -7,168 +7,157 @@
 [foundry]: https://getfoundry.sh/
 [foundry-badge]: https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg
 
-Smart contracts for staking and rewards distribution using Karma token.
+---
 
-This projects implements smart contracts that are used by Status to distribute rewards to users who stake their tokens.
+This project is a smart contract system built for secure token staking and reward management on the Ethereum blockchain. It provides essential components for handling staking operations, managing rewards, and ensuring the security of staked assets. The system is designed to be robust, leveraging mathematical precision for reward calculations and secure vaults for asset protection.
 
-# Deployments
+### Key Components
 
-| **Contract**                | **Address**                                                                                                                                   | **Snapshot**                                                                                                      |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **Sepolia**                 |                                                                                                                                               |                                                                                                                   |
-| StakeManager      | [`0x223532449d4cceBD432043aDb1CA0af642A2b3e0`](https://sepolia.etherscan.io/address/0x223532449d4cceBD432043aDb1CA0af642A2b3e0#code)                       | [`aa3442b`](https://github.com/status-im/communities-contracts/commit/aa3442b)   |
-| StakeManagerProxy | [`0x2B862e47E4743D929Da90998f1Ec2465DA184Dad`](https://sepolia.etherscan.io/address/0x2B862e47E4743D929Da90998f1Ec2465DA184Dad)                       | [`aa3442b`](https://github.com/status-im/communities-contracts/commit/aa3442b)   |
-| VaultFactory | [`0x899da2e9f6C8fbA95d9F1dD5a0C984F2435ab8e0`](https://sepolia.etherscan.io/address/0x899da2e9f6C8fbA95d9F1dD5a0C984F2435ab8e0)                       | [`aa3442b`](https://github.com/status-im/communities-contracts/commit/aa3442b)   |
-| Karma | [`0x1e1Be9175AA9f135Fe986Ef9b43421F6685c65FA`](https://sepolia.etherscan.io/address/0x1e1be9175aa9f135fe986ef9b43421f6685c65fa#readContract)                       | [`aa3442b`](https://github.com/status-im/communities-contracts/commit/aa3442b)   |
-| KarmaProxy | [`0x2eE435C111C1c04d1698870f3300B77F5c7f30Eb`](https://sepolia.etherscan.io/address/0x2eE435C111C1c04d1698870f3300B77F5c7f30Eb)                       | [`aa3442b`](https://github.com/status-im/communities-contracts/commit/aa3442b)   |
-| **Status Network Sepolia**                 |                                                                                                                                               |                                                                                                                   |
-| StakeManager      | [`0xE452027cdEF746c7Cd3DB31CB700428b16cD8E51`](https://sepoliascan.status.network/address/0xE452027cdEF746c7Cd3DB31CB700428b16cD8E51)                       | [`aa1addb`](https://github.com/vacp2p/staking-reward-streamer/commit/aa1addbfcd240f7e64050ffc4eba8399e40617a5)   |
-| StakeManagerProxy | [`0x785e6c5af58FB26F4a0E43e0cF254af10EaEe0f1`](https://sepoliascan.status.network/address/0x785e6c5af58FB26F4a0E43e0cF254af10EaEe0f1?tab=txs)                       | [`aa1addb`](https://github.com/vacp2p/staking-reward-streamer/commit/aa1addbfcd240f7e64050ffc4eba8399e40617a5)   |
-| VaultFactory | [`0xf7b6EC76aCa97b395dc48f7A2861aD810B34b52e`](https://sepoliascan.status.network/address/0xf7b6EC76aCa97b395dc48f7A2861aD810B34b52e)                       | [`aa1addb`](https://github.com/vacp2p/staking-reward-streamer/commit/aa1addbfcd240f7e64050ffc4eba8399e40617a5)   |
-| Karma | [`0x0936792b0efa243a5Ddff7035E84749E5a54FA9c`](https://sepoliascan.status.network/address/0x0936792b0efa243a5Ddff7035E84749E5a54FA9c)                       | [`aa1addb`](https://github.com/vacp2p/staking-reward-streamer/commit/aa1addbfcd240f7e64050ffc4eba8399e40617a5)   |
-| KarmaProxy | [`0x59510D0b235c75d7bCAEb66A420e9bb0edC976AE`](https://sepoliascan.status.network/address/0x59510D0b235c75d7bCAEb66A420e9bb0edC976AE)                       | [`aa1addb`](https://github.com/vacp2p/staking-reward-streamer/commit/aa1addbfcd240f7e64050ffc4eba8399e40617a5)   |
-| KarmaNFT | [`0x1E9E85e91deF9a9aCf1d6F2888033180e4673d57`](https://sepoliascan.status.network/address/0x1E9E85e91deF9a9aCf1d6F2888033180e4673d57?tab=contract)                       | [`aa1addb`](https://github.com/vacp2p/staking-reward-streamer/commit/aa1addbfcd240f7e64050ffc4eba8399e40617a5)   |
+- **StakeManager**: This contract handles the core staking operations. It is responsible for managing the staking process, calculating rewards, and tracking expired staking periods using advanced mathematical calculations. The contract utilizes OpenZeppelin’s ERC20 and math utilities to ensure accuracy and security.
+- **StakeVault**: This contract is responsible for securing user stakes. It ensures the security of user deposits by allowing only the owner to control the vault. The vault communicates with the StakeManager to handle staking and unstaking operations, while ensuring both the safety of funds and the validity of the vault’s code.
 
-## Rewards Streamer
+## Features
 
-The rewardIndex is a crucial part of the reward distribution mechanism.
+- **Secure Staking**: Users can securely stake tokens, with all interactions managed by the StakeVault and governed by the StakeManager. The StakeVault is owned by the user, and only the owner is permitted to perform actions on it. It stores the staked tokens and StakeManager verifies the StakeVault codehash to ensure that the code managing the tokens is valid and secure.
+- **Multiplier Points**: The Annual Percentage Yield (APY) is achieved through an internal balance of Multiplier Points, which grow over time based on the amount of staked tokens. Rewards are proportional to the user's balance of Multiplier Points and stake.
+- **Stake Locking**: Users can lock their stake to start with an increased balance of Multiplier Points, thereby enhancing their potential rewards.
+- **Integration with ERC20 Tokens**: Built on top of the OpenZeppelin ERC20 token standard, the system ensures compatibility with any ERC20-compliant token.
+- **Opt-in Upgrade**: StakeManager is a Proxy upgradable contract, however, users can choose to disagree with an upgrade and opt-out without penalities, and simply withdraw their stake, bypassing any lock defined. 
 
-It represents the accumulated rewards per staked token since the beginning of the contract's operation.
+## Installation
 
-Here's how it works:
+To install the dependencies for this project, run the following command:
 
-1. Initial state: When the contract starts, rewardIndex is 0.
-2. Whenever new rewards are added to the contract (detected in updateRewardIndex()), the rewardIndex increases. The
-   increase is calculated as: `rewardIndex += (newRewards * SCALE_FACTOR) / totalStaked` This calculation distributes
-   the new rewards evenly across all staked tokens.
-3. Each user has their own userRewardIndex, which represents the global rewardIndex at the time of their last
-   interaction (stake, unstake, or reward claim).
-4. When a user wants to claim rewards, we calculate the difference between the current rewardIndex and the user's
-   userRewardIndex, multiply it by their staked balance, and divide by SCALE_FACTOR
-5. After a user stakes, unstakes, or claims rewards, their userRewardIndex is updated to the current global rewardIndex.
-   This "resets" their reward accumulation for the next period.
+```bash
+pnpm install
+```
 
-Instead of updating each user's rewards every time new rewards are added, we only need to update a single global
-variable (rewardIndex).
+## Usage
 
-We don't need to assign Rewards to epochs, so we don't need to finalize Rewords for each epoch and each user.
+### Contract Setup
 
-User-specific calculations are done only when a user interacts with the contract.
+To install the system on the blockchain, follow these steps:
 
-`SCALE_FACTOR` is used to maintain precision in calculations.
+1. **Deploy StakeManager**: Begin by deploying the `StakeManager` contract.
+2. **Deploy Sample VaultManager**: Next, deploy a sample `VaultManager` contract on any chain (this can be on a development network or a testnet).
+3. **Configure Codehash**: Once the `VaultManager` is deployed, retrieve its codehash and configure it in the `StakeManager` using the `setTrustedCodehash(bytes32, bool)` function.
 
-### Rewards Streamer Example
+### Staking Tokens
 
-![example](https://github.com/user-attachments/assets/970dbb89-6163-494e-8276-358c5c405566)
+To stake tokens, the `StakeVault` contract interacts with the `StakeManager`. You can call the function `StakeVault.stake(uint256 _amount, uint256 _secondsToLock)` with the desired amount and lock duration. Before staking, it is required to call `approve` on the `StakeToken` to authorize the `StakeVault` address to manage your tokens.
 
-**Initial setup:**
+The minimum `_secondsToLock` is defined by the contract settings, and the minimum `_amount` required to stake is set to ensure it generates Multiplier Points in every epoch.
 
-- rewardIndex: 0
-- accountedRewards: 0
-- Rewards in contract: 0
+Tokens are never deposited directly or transferred to the `StakeManager`. Additionally, tokens should not be sent directly to the `StakeVault` address. Always use the `approve` method followed by the `stake` function to properly stake tokens.
 
-**T1: Alice stakes 10 tokens**
+Note that staking will automatically process epochs. Refer to the **Manually Processing Epochs** section for more information.tion.
 
-- Alice's userRewardIndex: 0
-- Alice's staked tokens: 10
-- totalStaked: 10 tokens
+### Unstaking
 
-**T2: Bob stakes 30 tokens**
+To unstake tokens, users call `StakeVault.unstake(uint256 amount)`. Unstaking reduces the user's balance on the `StakeManager` in proportion to the staked amount and time spent staking. Users can only unstake if their balance is not locked.
 
-- Alice's userRewardIndex: 0
-- Bob's userRewardIndex: 0
-- Alice's staked tokens: 10
-- Bob's staked tokens: 30
-- totalStaked: 40 tokens
+### Opt-In or Opt-Out Migration
 
-**T3: 1000 Rewards arrive**
+Users can accept or reject the new contract by calling `StakeVault.acceptMigration()` or `StakeVault.leave()`. If users have pending rewards in the old contract, those rewards will be claimed before opting in or out. Users with locked balances will have the option to leave, even if their balance is still locked.
 
-New rewardIndex calculation:
+Note that opting in or out of migration will automatically claim rewards. Refer to the **Claiming Rewards** section for more information.
 
-- newRewards = 1000
-- rewardIndex increase = 1000 / 40 = 25
-- rewardIndex = 0 + 25 = 25
-- accountedRewards: 1000
-- Rewards in contract: 1000
+## Development
 
-Potential Rewards for Alice and Bob:
+This is a list of the most frequently needed commands.
 
-For Alice:
+### Build
 
-- Staked amount: 10 tokens
-- Potential Rewards: 10 \* (25 - 0) = 250
+Build the contracts:
 
-For Bob:
+```sh
+$ forge build
+```
 
-- Staked amount: 30 tokens
-- Potential Rewards: 30 \* (25 - 0) = 750
+### Clean
 
-**T4: Alice withdraws her stake and Rewards**
+Delete the build artifacts and cache directories:
 
-Alice's withdrawal:
+```sh
+$ forge clean
+```
 
-- tokens returned: 10
-- Rewards: 250
+### Compile
 
-Update state:
+Compile the contracts:
 
-- totalStaked = 40 - 10 = 30 tokens
-- Rewards in contract = 1000 - 250 = 750
+```sh
+$ forge build
+```
 
-**T5: Charlie stakes 30 tokens**
+### Coverage
 
-- Charlie's userRewardIndex: 25
-- totalStaked = 30 + 30 = 60 tokens
+Get a test coverage report:
 
-**T6: Another 1000 Rewards arrive**
+```sh
+$ forge coverage
+```
 
-New rewardIndex calculation:
+### Deploy
 
-- newRewards = 1000
-- rewardIndex increase = 1000 / 60 = 16.67
-- new rewardIndex = 25 + 16.67 = 41.67
-- accountedRewards: 1000 + 1000 = 2000
-- Rewards in contract = 750 + 1000 = 1750
+Deploy to Anvil:
 
-Rewards for Bob and Charlie:
+```sh
+$ forge script script/Deploy.s.sol --broadcast --fork-url http://localhost:8545
+```
 
-For Bob:
+For this script to work, you need to have a `MNEMONIC` environment variable set to a valid
+[BIP39 mnemonic](https://iancoleman.io/bip39/).
 
-- Staked amount: 30 tokens
-- Potential Rewards: 30 \* (41.67 - 0) = 1250.1 // rounding error
-  - In bucket 1: 30 \* (25 - 0) = 750
-  - In bucket 2: 30 \* (16.67 - 0) = 500.1
-  - Total of b1 + b2: 750 + 500.1 = 1250.1
-  - Which is equal to
-    - 30 \* ( (25 - 0) + (41.67 - 25) )
+For instructions on how to deploy to a testnet or mainnet, check out the
+[Solidity Scripting](https://book.getfoundry.sh/tutorials/solidity-scripting.html) tutorial.
 
-For Charlie:
+### Format
 
-- Staked amount: 30 tokens
-- Potential Rewards: 30 \* (41.67 - 25) = 500.1 // rounding error
+Format the contracts:
 
-If Bob and Charlie were to withdraw now:
+```sh
+$ forge fmt
+```
 
-Bob's withdrawal:
+### Gas Usage
 
-- tokens returned: 30
-- Rewards: 1250.1
-- Rewards in contract after Bob's withdrawal: 1750 - 1250.1 = 499.9
+Get a gas report:
 
-Charlie's withdrawal:
+```sh
+pnpm gas-report
+```
 
-- tokens returned: 30
-- Rewards: 499.9
-- Rewards in contract after Charlie's withdrawal: 499.9 - 499.9 = 0
+Get a gas snapshot:
 
-**T7: Final state:**
+```bash
+forge snapshot
+```
 
-- Alice received: 10 tokens and 250 Rewards
-- Bob received: 30 tokens and 1250.1 Rewards
-- Charlie received: 30 tokens and 499.9 Rewards
-- Total Rewards distributed: 2000 Rewards
-- Rewards remaining in contract: 0
+### Lint
 
-## Rewards Streamer with Multiplier Points
+Lint the contracts:
 
-TODO
+```sh
+$ pnpm lint
+```
+
+### Test
+
+Run the tests:
+
+```sh
+$ forge test
+```
+
+#### Prepare to commit
+
+Formats, generates snapshot and gas report:
+
+```sh
+pnpm adorno
+```
+
+## License
+
+This project is licensed under MIT.
