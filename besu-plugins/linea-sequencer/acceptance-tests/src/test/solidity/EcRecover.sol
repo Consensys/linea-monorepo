@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract EcPairing {
-    function callEcPairing(bytes memory input)
+contract EcRecover {
+    function callEcRecover(bytes memory input)
         public
         view
         returns (bytes memory)
@@ -16,7 +16,7 @@ contract EcPairing {
 
             let success := staticcall(
                 gas(),
-                0x08, // ECPAIRING address
+                0x01, // ECRECOVER address
                 callDataOffset,
                 callDataSize,
                 returnAtOffset,
