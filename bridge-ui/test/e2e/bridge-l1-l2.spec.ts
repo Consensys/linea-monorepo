@@ -7,6 +7,11 @@ const test = testWithSynpress(advancedFixtures);
 const { expect, describe } = test;
 
 describe("Bridge L1 > L2", () => {
+  test("should have 'Native Bridge' button link on homepage", async ({ page }) => {
+    const nativeBridgeBtn = page.getByRole("link").filter({ hasText: "Native Bridge" });
+    await expect(nativeBridgeBtn).toBeVisible();
+  });
+
   test.skip("should set up the UI and metamask correctly", async ({ page, metamask, initUI }) => {
     await initUI(true);
 

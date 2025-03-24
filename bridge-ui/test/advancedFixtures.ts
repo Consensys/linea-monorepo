@@ -3,6 +3,7 @@ import setup from "./wallet-setup/metamask.setup";
 
 export const test = metaMaskFixtures(setup).extend<{
   initUI: (firstInit?: boolean) => Promise<void>;
+  initNativeBridge: () => Promise<void>;
   waitForTransactionToConfirm: () => Promise<void>;
   getBridgeTransactionsCount: () => Promise<number>;
   sendTokens: (amount: string, isETH?: boolean) => Promise<void>;
@@ -18,6 +19,12 @@ export const test = metaMaskFixtures(setup).extend<{
         const agreeTermsBtn = await page.waitForSelector("#agree-terms-btn");
         await agreeTermsBtn.click();
       }
+    });
+  },
+  initNativeBridge: async ({ page }, use) => {
+    await use(async () => {
+      const nativeBridgeBtn = page.getByRole("link").filter({ hasText: "Native Bridge" });
+      await nativeBridgeBtn.click();
     });
   },
   waitForTransactionToConfirm: async ({ metamask }, use) => {
