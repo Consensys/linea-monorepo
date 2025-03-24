@@ -41,6 +41,7 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
+import com.github.benmanes.caffeine.cache.Scheduler;
 import com.google.auto.service.AutoService;
 import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +52,7 @@ import org.hyperledger.besu.plugin.data.AddedBlockContext;
 import org.hyperledger.besu.plugin.services.BesuEvents;
 import org.hyperledger.besu.plugin.services.BesuService;
 import org.hyperledger.besu.plugin.services.BlockchainService;
+import org.hyperledger.besu.util.Subscribers;
 
 /**
  * A pool for managing TransactionBundles with limited size and FIFO eviction. Provides access via
@@ -66,6 +68,10 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
   private final Map<Long, List<TransactionBundle>> blockIndex;
   private final Path saveFilePath;
   private final AtomicBoolean isFrozen = new AtomicBoolean(false);
+  private final Subscribers<TransactionBundleAddedListener> transactionBundleAddedListeners =
+      Subscribers.create();
+  private final Subscribers<TransactionBundleRemovedListener> transactionBundleRemovedListeners =
+      Subscribers.create();
 
   /**
    * Initializes the LineaLimitedBundlePool with a maximum size and expiration time, and registers
@@ -84,6 +90,9 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
     this.cache =
         Caffeine.newBuilder()
             .maximumWeight(maxSizeInBytes) // Maximum size in bytes
+            .scheduler(
+                Scheduler
+                    .systemScheduler()) // To ensure maintenance operation are not delayed too much
             .weigher(
                 (Hash key, TransactionBundle value) -> {
                   // Calculate the size of a TransactionBundle in bytes
@@ -91,14 +100,19 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
                 })
             .removalListener(
                 (Hash key, TransactionBundle bundle, RemovalCause cause) -> {
-                  if (bundle != null && cause.wasEvicted()) {
-                    log.atTrace()
-                        .setMessage("Dropping transaction bundle {}:{} due to {}")
-                        .addArgument(bundle::blockNumber)
-                        .addArgument(() -> bundle.bundleIdentifier().toHexString())
-                        .addArgument(cause::name)
-                        .log();
-                    removeFromBlockIndex(bundle);
+                  if (bundle != null) {
+                    if (cause.wasEvicted()) {
+                      log.atTrace()
+                          .setMessage("Dropping transaction bundle {}:{} due to {}")
+                          .addArgument(bundle::blockNumber)
+                          .addArgument(() -> bundle.bundleIdentifier().toHexString())
+                          .addArgument(cause::name)
+                          .log();
+                      removeFromBlockIndex(bundle);
+                    }
+
+                    transactionBundleRemovedListeners.forEach(
+                        listener -> listener.onTransactionBundleRemoved(bundle));
                   }
                 })
             .build();
@@ -214,7 +228,7 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
       isFrozen.set(true);
       log.info("Saving bundles to {}", saveFilePath);
 
-      try (final BufferedWriter bw = Files.newBufferedWriter(saveFilePath);
+      try (final BufferedWriter bw = Files.newBufferedWriter(saveFilePath, StandardCharsets.UTF_8);
           final SequenceWriter sequenceWriter =
               objectMapper
                   .writerFor(TransactionBundle.class)
@@ -257,7 +271,7 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
             final var skippedCount = new AtomicLong(0L);
 
             try (final BufferedReader br =
-                Files.newBufferedReader(saveFilePath, StandardCharsets.US_ASCII)) {
+                Files.newBufferedReader(saveFilePath, StandardCharsets.UTF_8)) {
 
               // read header and check version
               final var headerNode = objectMapper.readTree(br.readLine());
@@ -299,6 +313,26 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
         });
   }
 
+  @Override
+  public long subscribeTransactionBundleAdded(final TransactionBundleAddedListener listener) {
+    return transactionBundleAddedListeners.subscribe(listener);
+  }
+
+  @Override
+  public long subscribeTransactionBundleRemoved(final TransactionBundleRemovedListener listener) {
+    return transactionBundleRemovedListeners.subscribe(listener);
+  }
+
+  @Override
+  public void unsubscribeTransactionBundleAdded(final long listenerId) {
+    transactionBundleAddedListeners.unsubscribe(listenerId);
+  }
+
+  @Override
+  public void unsubscribeTransactionBundleRemoved(final long listenerId) {
+    transactionBundleRemovedListeners.unsubscribe(listenerId);
+  }
+
   /**
    * Adds a TransactionBundle to the block index.
    *
@@ -307,6 +341,7 @@ public class LineaLimitedBundlePool implements BundlePoolService, BesuEvents.Blo
   private void addToBlockIndex(TransactionBundle bundle) {
     long blockNumber = bundle.blockNumber();
     blockIndex.computeIfAbsent(blockNumber, k -> new ArrayList<>()).add(bundle);
+    transactionBundleAddedListeners.forEach(listener -> listener.onTransactionBundleAdded(bundle));
   }
 
   /**

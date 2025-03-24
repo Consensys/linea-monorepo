@@ -23,7 +23,7 @@ import org.hyperledger.besu.plugin.BesuPlugin;
 import org.hyperledger.besu.plugin.ServiceManager;
 
 @AutoService(BesuPlugin.class)
-public class LineaSendBundleEndpointPlugin extends AbstractLineaRequiredPlugin {
+public class LineaBundleEndpointsPlugin extends AbstractLineaRequiredPlugin {
   private LineaSendBundle lineaSendBundleMethod;
   private LineaCancelBundle lineaCancelBundleMethod;
 
@@ -59,11 +59,5 @@ public class LineaSendBundleEndpointPlugin extends AbstractLineaRequiredPlugin {
     // set the pool
     lineaSendBundleMethod.init(bundlePoolService);
     lineaCancelBundleMethod.init(bundlePoolService);
-  }
-
-  @Override
-  public void stop() {
-
-    super.stop();
   }
 }

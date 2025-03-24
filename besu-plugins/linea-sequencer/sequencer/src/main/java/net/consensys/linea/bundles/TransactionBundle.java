@@ -20,11 +20,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.SequencedMap;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
@@ -36,9 +38,11 @@ import org.hyperledger.besu.ethereum.rlp.BytesValueRLPOutput;
 @Accessors(fluent = true)
 @Getter
 @EqualsAndHashCode
+@ToString
 public class TransactionBundle {
+  private static final AtomicLong BUNDLE_COUNT = new AtomicLong(0L);
+  private final long sequence = BUNDLE_COUNT.incrementAndGet();
   private final Hash bundleIdentifier;
-
   private final List<PendingBundleTx> pendingTransactions;
   private final Long blockNumber;
   private final Optional<Long> minTimestamp;
@@ -63,9 +67,13 @@ public class TransactionBundle {
     this.replacementUUID = replacementUUID;
   }
 
-  public BundleParameter toBundleParameter() {
+  public BundleParameter toBundleParameter(final boolean compact) {
     return new BundleParameter(
-        pendingTransactions.stream().map(PendingBundleTx::toBase64String).toList(),
+        pendingTransactions.stream()
+            .map(
+                ptx ->
+                    compact ? ptx.toBase64String() : ptx.getTransaction().encoded().toHexString())
+            .toList(),
         new UnsignedLongParameter(blockNumber),
         minTimestamp,
         maxTimestamp,
@@ -76,7 +84,7 @@ public class TransactionBundle {
 
   @JsonValue
   public Map<Hash, BundleParameter> serialize() {
-    return Map.of(bundleIdentifier, toBundleParameter());
+    return Map.of(bundleIdentifier, toBundleParameter(true));
   }
 
   @JsonCreator

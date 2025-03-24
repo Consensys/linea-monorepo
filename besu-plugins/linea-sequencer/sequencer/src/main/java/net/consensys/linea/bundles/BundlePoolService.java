@@ -21,6 +21,15 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.plugin.services.BesuService;
 
 public interface BundlePoolService extends BesuService {
+  @FunctionalInterface
+  interface TransactionBundleAddedListener {
+    void onTransactionBundleAdded(TransactionBundle transactionBundle);
+  }
+
+  @FunctionalInterface
+  interface TransactionBundleRemovedListener {
+    void onTransactionBundleRemoved(TransactionBundle transactionBundle);
+  }
 
   /**
    * Retrieves a list of TransactionBundles associated with a block number.
@@ -109,4 +118,12 @@ public interface BundlePoolService extends BesuService {
    * @throws IllegalStateException if the pool is frozen
    */
   void loadFromDisk();
+
+  long subscribeTransactionBundleAdded(TransactionBundleAddedListener listener);
+
+  long subscribeTransactionBundleRemoved(TransactionBundleRemovedListener listener);
+
+  void unsubscribeTransactionBundleAdded(long listenerId);
+
+  void unsubscribeTransactionBundleRemoved(long listenerId);
 }
