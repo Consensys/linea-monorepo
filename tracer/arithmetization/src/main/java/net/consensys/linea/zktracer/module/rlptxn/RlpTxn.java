@@ -156,53 +156,12 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
       traceValue.rlpLtByteSize = innerRlpSize(besuRlpLt.size() - 1);
     }
 
-    Bytes besuRlpLx;
+    final Bytes besuRlpLx = operation.tx().encodedPreimage();
     switch (traceValue.txType) {
-      case 0 -> {
-        besuRlpLx =
-            frontierPreimage(
-                operation.tx().getNonce(),
-                (Wei) operation.tx().getGasPrice().orElseThrow(),
-                operation.tx().getGasLimit(),
-                operation.tx().getTo().map(x -> (Address) x),
-                (Wei) operation.tx().getValue(),
-                operation.tx().getPayload(),
-                operation.tx().getChainId());
-        traceValue.rlpLxByteSize = innerRlpSize(besuRlpLx.size());
-      }
-      case 1 -> {
-        List<AccessListEntry> accessList = null;
-        if (operation.tx().getAccessList().isPresent()) {
-          accessList = operation.tx().getAccessList().orElseThrow();
-        }
-        besuRlpLx =
-            accessListPreimage(
-                operation.tx().getNonce(),
-                (Wei) operation.tx().getGasPrice().orElseThrow(),
-                operation.tx().getGasLimit(),
-                operation.tx().getTo().map(x -> (Address) x),
-                (Wei) operation.tx().getValue(),
-                operation.tx().getPayload(),
-                accessList,
-                operation.tx().getChainId());
-        // the innerRlp method already concatenate with the first byte "transaction  type"
-        traceValue.rlpLxByteSize = innerRlpSize(besuRlpLx.size() - 1);
-      }
-      case 2 -> {
-        besuRlpLx =
-            eip1559Preimage(
-                operation.tx().getNonce(),
-                (Wei) operation.tx().getMaxPriorityFeePerGas().orElseThrow(),
-                (Wei) operation.tx().getMaxFeePerGas().orElseThrow(),
-                operation.tx().getGasLimit(),
-                operation.tx().getTo().map(x -> (Address) x),
-                (Wei) operation.tx().getValue(),
-                operation.tx().getPayload(),
-                operation.tx().getChainId(),
-                operation.tx().getAccessList());
-        // the innerRlp method already concatenate with the first byte "transaction  type"
-        traceValue.rlpLxByteSize = innerRlpSize(besuRlpLx.size() - 1);
-      }
+      case 0 -> traceValue.rlpLxByteSize = innerRlpSize(besuRlpLx.size());
+      case 1, 2 ->
+      // the innerRlp method already concatenate with the first byte "transaction  type"
+      traceValue.rlpLxByteSize = innerRlpSize(besuRlpLx.size() - 1);
       default -> throw new IllegalStateException(
           "Transaction Type not supported: " + traceValue.txType);
     }
