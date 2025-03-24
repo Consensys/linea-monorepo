@@ -37,4 +37,10 @@ public record LineaL1L2BridgeSharedConfiguration(Address contract, Bytes topic)
           .contract(Address.fromHexString("0x7e577e577e577e577e577e577e577e577e577e57"))
           .topic(LINEA_L2L1TOPIC)
           .build();
+
+  public static final LineaL1L2BridgeSharedConfiguration EMPTY =
+      LineaL1L2BridgeSharedConfiguration.builder()
+          .contract(Address.ZERO)
+          .topic(Bytes.EMPTY)
+          .build();
 }
