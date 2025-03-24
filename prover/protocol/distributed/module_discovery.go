@@ -1,4 +1,4 @@
-package experiment
+package distributed
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
