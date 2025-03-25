@@ -23,7 +23,11 @@ import (
 // queries).
 type StandardModuleDiscoverer struct {
 	// TargetWeight is the target weight for each module.
-	TargetWeight    int
+	TargetWeight int
+	// Affinities indicates groups of columns (potentially spanning over
+	// multiple query-based modules) that are "alike" in the sense that
+	// they would be opportunistic to group in the same StandardModule.
+	Affinities      [][]ifaces.Column
 	modules         []*StandardModule
 	columnsToModule map[ifaces.Column]ModuleName
 	columnsToSize   map[ifaces.Column]int
@@ -47,7 +51,7 @@ type StandardModule struct {
 // QueryBasedModule represents a set of columns grouped by constraints.
 type QueryBasedModule struct {
 	moduleName ModuleName
-	ds         *DisjointSet[column.Natural] // Uses a disjoint set to track relationships among columns.
+	ds         *utils.DisjointSet[column.Natural] // Uses a disjoint set to track relationships among columns.
 	size       int
 	// nbConstraintsOfPlonkCirc counts the number of constraints in a Plonk
 	// in wizard module if one is found. If several circuits are stores
@@ -64,13 +68,6 @@ type QueryBasedModule struct {
 	nbInstancesOfPlonkQuery int
 	// nbSegmentCache caches the results of SegmentBoundaries
 	nbSegmentCache map[unsafe.Pointer][2]int
-}
-
-// DisjointSet represents a union-find data structure, which efficiently groups elements (columns)
-// into disjoint sets (modules). It supports fast union and find operations with path compression.
-type DisjointSet[T comparable] struct {
-	parent map[T]T   // Maps a column to its representative parent.
-	rank   map[T]int // Stores the rank (tree depth) for optimization.
 }
 
 // NewQueryBasedDiscoverer initializes a new Discoverer.
@@ -194,7 +191,7 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 			subModule := disc.modules[i].subModules[j]
 			newSize := disc.modules[i].newSizes[j]
 
-			for col := range subModule.ds.parent {
+			for col := range subModule.ds.Iter() {
 				disc.columnsToModule[col] = moduleName
 				disc.columnsToSize[col] = newSize
 			}
@@ -268,7 +265,7 @@ func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntim
 	}
 
 	for i := range stdModule.subModules {
-		if _, ok := stdModule.subModules[i].ds.parent[rootCol]; ok {
+		if stdModule.subModules[i].ds.Has(rootCol) {
 			segmentSize = stdModule.newSizes[i]
 			queryBasedModule = stdModule.subModules[i]
 			break
@@ -487,7 +484,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 	// Assign final module names after all processing
 	for _, module := range disc.modules {
-		for col := range module.ds.parent {
+		for col := range module.ds.Iter() {
 			disc.columnsToModule[col] = module.moduleName
 		}
 
@@ -498,7 +495,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 // RemoveNils remove the empty modules from the list of modules.
 func (disc *QueryBasedModuleDiscoverer) RemoveNils() {
 	for i := len(disc.modules) - 1; i >= 0; i-- {
-		if len(disc.modules[i].ds.parent) == 0 {
+		if disc.modules[i].ds.Size() == 0 {
 			disc.modules = append(disc.modules[:i], disc.modules[i+1:]...)
 		}
 	}
@@ -516,12 +513,9 @@ func (disc *QueryBasedModuleDiscoverer) CreateModule(columns []column.Natural) *
 
 	module := &QueryBasedModule{
 		moduleName: ModuleName(fmt.Sprintf("Module_%d_%s", len(disc.modules), colID)),
-		ds:         NewDisjointSet[column.Natural](),
+		ds:         utils.NewDisjointSetFromList(columns),
 	}
-	for _, col := range columns {
-		module.ds.parent[col] = col
-		module.ds.rank[col] = 0
-	}
+
 	for i := 0; i < len(columns); i++ {
 		for j := i + 1; j < len(columns); j++ {
 			module.ds.Union(columns[i], columns[j])
@@ -545,7 +539,7 @@ func (disc *QueryBasedModuleDiscoverer) MergeModules(modules []*QueryBasedModule
 	// Merge all remaining modules into the base
 	for _, module := range modules[1:] {
 
-		for col := range module.ds.parent {
+		for col := range module.ds.Iter() {
 			mergedModule.ds.Union(mergedModule.ds.Find(col), col)
 		}
 
@@ -558,15 +552,6 @@ func (disc *QueryBasedModuleDiscoverer) MergeModules(modules []*QueryBasedModule
 	}
 
 	return mergedModule
-}
-
-// AddColumnsToModule adds columns to an existing module.
-func (disc *QueryBasedModuleDiscoverer) AddColumnsToModule(module *QueryBasedModule, columns []column.Natural) {
-	for _, col := range columns {
-		module.ds.parent[col] = col
-		module.ds.rank[col] = 0
-		module.ds.Union(module.ds.Find(columns[0]), col) // Union with the first column
-	}
 }
 
 // GroupColumns ensures that columns are grouped together, merging
@@ -597,7 +582,7 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 		assignedModule.nbConstraintsOfPlonkCirc += nbConstraintsOfPlonkCirc
 		assignedModule.nbInstancesOfPlonkCirc += nbInstancesOfPlonkCirc
 		assignedModule.nbInstancesOfPlonkQuery += nbInstancesOfPlonkQuery
-		disc.AddColumnsToModule(assignedModule, columns)
+		assignedModule.ds.AddList(columns)
 	} else {
 
 		// Create a new module
@@ -629,7 +614,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		size           int
 	)
 
-	for col := range mod.ds.parent {
+	for col := range mod.ds.Iter() {
 
 		size = col.Size()
 
@@ -686,8 +671,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 
 // Nilify a module. It empties its maps and sets its size to 0.
 func (module *QueryBasedModule) Nilify() {
-	module.ds.parent = map[column.Natural]column.Natural{}
-	module.ds.rank = map[column.Natural]int{}
+	module.ds.Reset()
 	module.size = 0
 	module.nbConstraintsOfPlonkCirc = 0
 	module.nbInstancesOfPlonkCirc = 0
@@ -697,7 +681,7 @@ func (module *QueryBasedModule) Nilify() {
 // HasOverlap checks if a module shares at least one column with a set of columns.
 func (module *QueryBasedModule) HasOverlap(columns []column.Natural) bool {
 	for _, col := range columns {
-		if _, exists := module.ds.parent[col]; exists {
+		if module.ds.Has(col) {
 			return true
 		}
 	}
@@ -742,7 +726,7 @@ func (module *StandardModule) Weight() int {
 // NumRow returns the number of rows for the module
 func (module *QueryBasedModule) NumRow() int {
 	if module.size == 0 {
-		for col := range module.ds.parent {
+		for col := range module.ds.Iter() {
 			module.size = col.Size()
 			break
 		}
@@ -752,7 +736,7 @@ func (module *QueryBasedModule) NumRow() int {
 
 // NumColumn returns the number of columns for the module
 func (module *QueryBasedModule) NumColumn() int {
-	return len(module.ds.parent)
+	return module.ds.Size()
 }
 
 // NewSizeOf returns the size (length) of a column.
@@ -776,84 +760,6 @@ func (disc *QueryBasedModuleDiscoverer) ModuleOf(col column.Natural) ModuleName 
 		return moduleName
 	}
 	return ""
-}
-
-// NewDisjointSet initializes a new DisjointSet with empty mappings.
-func NewDisjointSet[T comparable]() *DisjointSet[T] {
-	return &DisjointSet[T]{
-		parent: make(map[T]T),
-		rank:   make(map[T]int),
-	}
-}
-
-// Find returns the representative (root) of a column using path compression for optimization.
-// Path compression ensures that the structure remains nearly flat, reducing the time complexity to O(α(n)),
-// where α(n) is the inverse Ackermann function, which is nearly constant in practice.
-//
-// Example:
-// Suppose we have the following sets:
-//
-//	A -> B -> C (C is the root)
-//	D -> E -> F (F is the root)
-//
-// Calling Find(A) will compress the path so that:
-//
-//	A -> C
-//	B -> C
-//	C remains the root
-//
-// Similarly, calling Find(D) will compress the path so that:
-//
-//	D -> F
-//	E -> F
-//	F remains the root
-func (ds *DisjointSet[T]) Find(col T) T {
-	if _, exists := ds.parent[col]; !exists {
-		ds.parent[col] = col
-		ds.rank[col] = 0
-	}
-	if ds.parent[col] != col {
-		ds.parent[col] = ds.Find(ds.parent[col])
-	}
-	return ds.parent[col]
-}
-
-// Union merges two sets by linking the root of one to the root of another, optimizing with rank.
-// The smaller tree is always attached to the larger tree to keep the depth minimal.
-//
-// Time Complexity: O(α(n)) (nearly constant due to path compression and union by rank).
-//
-// Example:
-// Suppose we have:
-//
-//	Set 1: A -> B (B is the root)
-//	Set 2: C -> D (D is the root)
-//
-// Calling Union(A, C) will merge the sets:
-//
-//	If B has a higher rank than D:
-//	    D -> B
-//	    C -> D -> B
-//	If D has a higher rank than B:
-//	    B -> D
-//	    A -> B -> D
-//	If B and D have equal rank:
-//	    D -> B (or B -> D)
-//	    Rank of the new root increases by 1
-func (ds *DisjointSet[T]) Union(col1, col2 T) {
-	root1 := ds.Find(col1)
-	root2 := ds.Find(col2)
-
-	if root1 != root2 {
-		if ds.rank[root1] > ds.rank[root2] {
-			ds.parent[root2] = root1
-		} else if ds.rank[root1] < ds.rank[root2] {
-			ds.parent[root1] = root2
-		} else {
-			ds.parent[root2] = root1
-			ds.rank[root1]++
-		}
-	}
 }
 
 // countConstraintsOfPlonkCirc returns the number of constraint of the circuit. The function is
@@ -888,7 +794,7 @@ func (m *QueryBasedModule) mustHaveConsistentLength() {
 
 	size := -1
 
-	for col := range m.ds.parent {
+	for col := range m.ds.Iter() {
 		if size == -1 {
 			size = col.Size()
 		}

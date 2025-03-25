@@ -61,7 +61,7 @@ func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
 
 		for i := range disc.modules {
 			mod := disc.modules[i]
-			if _, ok := mod.ds.parent[nat]; ok {
+			if mod.ds.Has(nat) {
 				modules = append(modules, mod.moduleName)
 			}
 		}
@@ -119,7 +119,7 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 		for i := range disc.modules {
 			mod := disc.modules[i]
 			for k := range mod.subModules {
-				if _, ok := mod.subModules[k].ds.parent[nat]; ok {
+				if mod.subModules[k].ds.Has(nat) {
 					modules = append(modules, mod.moduleName)
 				}
 			}
