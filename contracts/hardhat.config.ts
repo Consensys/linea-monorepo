@@ -8,13 +8,12 @@ import "hardhat-storage-layout";
 // import "hardhat-tracer"; // This plugin does not work with the latest hardhat version
 import { HardhatUserConfig } from "hardhat/config";
 import { getBlockchainNode, getL2BlockchainNode } from "./common";
-import "./scripts/operational/getCurrentFinalizedBlockNumberTask";
-import "./scripts/operational/grantContractRolesTask";
-import "./scripts/operational/renounceContractRolesTask";
-import "./scripts/operational/setRateLimitTask";
-import "./scripts/operational/setVerifierAddressTask";
-import "./scripts/operational/setRemoteTokenBridgeTask";
-import "./scripts/operational/setMessageServiceOnTokenBridgeTask";
+import "./scripts/operational/tasks/getCurrentFinalizedBlockNumberTask";
+import "./scripts/operational/tasks/grantContractRolesTask";
+import "./scripts/operational/tasks/renounceContractRolesTask";
+import "./scripts/operational/tasks/setRateLimitTask";
+import "./scripts/operational/tasks/setVerifierAddressTask";
+import "./scripts/operational/tasks/setMessageServiceOnTokenBridgeTask";
 
 import "solidity-docgen";
 
@@ -151,13 +150,13 @@ const config: HardhatUserConfig = {
   },
   docgen: {
     exclude: [
-      "token",
-      "test-contracts",
-      "proxies",
-      "tools",
-      "interfaces/tools",
-      "tokenBridge/mocks",
-      "tokenBridge/lib/StorageFiller39.sol",
+      "_testing",
+      "bridging/token/utils/StorageFiller39.sol",
+      "bridging/token/CustomBridgedToken.sol",
+      "governance/TimeLock.sol",
+      "security/access/PermissionsManager.sol",
+      "security/reentrancy/TransientStorageReentrancyGuardUpgradeable.sol",
+      "tokens",
       "verifiers",
     ],
     pages: "files",

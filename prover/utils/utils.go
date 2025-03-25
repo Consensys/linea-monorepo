@@ -470,3 +470,41 @@ func Ternary[T any](cond bool, ifTrue, ifFalse T) T {
 	}
 	return ifFalse
 }
+
+// SumFloat64: Calculates the sum of all values inside the float64 slice
+func SumFloat64(vals []float64) (sum float64) {
+	for _, val := range vals {
+		sum += val
+	}
+	return sum
+}
+
+// CalculateMinAvgMax computes min, avg, and max for a slice of float64 values
+func CalculateMinAvgMax(values []float64) (min, avg, max float64) {
+	if len(values) == 0 {
+		return 0, 0, 0
+	}
+
+	min = math.Inf(1)
+	max = math.Inf(-1)
+	sum := 0.0
+
+	for _, v := range values {
+		if v < min {
+			min = v
+		}
+		if v > max {
+			max = v
+		}
+		sum += v
+	}
+
+	avg = sum / float64(len(values))
+	return min, avg, max
+}
+
+// BytesToGiB converts bytes to GiB (Gibibytes)
+func BytesToGiB(bytes uint64) float64 {
+	const bytesInGiB = 1024 * 1024 * 1024 // 1 GiB = 1024^3 bytes
+	return float64(bytes) / bytesInGiB
+}
