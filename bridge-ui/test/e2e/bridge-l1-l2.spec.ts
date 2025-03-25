@@ -6,26 +6,21 @@ const test = testWithSynpress(advancedFixtures);
 
 const { expect, describe } = test;
 
-describe("Bridge L1 > L2", () => {
-  test("should have 'Native Bridge' button link on homepage", async ({ page }) => {
-    const nativeBridgeBtn = page.getByRole("link").filter({ hasText: "Native Bridge" });
-    await expect(nativeBridgeBtn).toBeVisible();
-  });
-
-  test.skip("should set up the UI and metamask correctly", async ({ page, metamask, initUI }) => {
-    await initUI(true);
-
-    await page.locator("#wallet-connect-btn").click();
-    await page.locator("wui-list-wallet", { hasText: "MetaMask" }).nth(1).click();
-
-    await metamask.connectToDapp();
-
-    await page.bringToFront();
-  });
-
+describe("L1 > L2 via Native Bridge", () => {
   test("should successfully go to the bridge UI page", async ({ page }) => {
     const pageUrl = page.url();
     expect(pageUrl).toEqual(TEST_URL);
+  });
+
+  test("should have 'Native Bridge' button link on homepage", async ({ page, clickNativeBridgeButton }) => {
+    const nativeBridgeBtn = await clickNativeBridgeButton();
+    await expect(nativeBridgeBtn).toBeVisible();
+  });
+
+  test("should connect MetaMask to dapp correctly", async ({ page, metamask, connectMetamaskToDapp }) => {
+    await connectMetamaskToDapp();
+    const metamaskAccountAddress = await metamask.getAccountAddress();
+    expect(metamaskAccountAddress).toBeTruthy();
   });
 
   test.skip("should successfully display the correct heading", async ({ page, initUI }) => {

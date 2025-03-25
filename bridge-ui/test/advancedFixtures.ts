@@ -1,15 +1,18 @@
 import { metaMaskFixtures } from "@synthetixio/synpress";
 import setup from "./wallet-setup/metamask.setup";
+import { Locator } from "@playwright/test";
 
 export const test = metaMaskFixtures(setup).extend<{
   initUI: (firstInit?: boolean) => Promise<void>;
-  initNativeBridge: () => Promise<void>;
+  clickNativeBridgeButton: () => Promise<Locator>;
+  connectMetamaskToDapp: (firstInit?: boolean) => Promise<void>;
   waitForTransactionToConfirm: () => Promise<void>;
   getBridgeTransactionsCount: () => Promise<number>;
   sendTokens: (amount: string, isETH?: boolean) => Promise<void>;
   waitForTransactionListUpdate: (txCountBeforeUpdate: number) => Promise<boolean>;
   selectToken: (tokenName: string) => Promise<void>;
 }>({
+  // Deprecated from Bridge UI V1
   initUI: async ({ page }, use) => {
     await use(async (firstInit: boolean = false) => {
       const nativeBridgeBtn = await page.waitForSelector("#native-bridge-btn");
@@ -21,10 +24,27 @@ export const test = metaMaskFixtures(setup).extend<{
       }
     });
   },
-  initNativeBridge: async ({ page }, use) => {
+  clickNativeBridgeButton: async ({ page }, use) => {
     await use(async () => {
       const nativeBridgeBtn = page.getByRole("link").filter({ hasText: "Native Bridge" });
       await nativeBridgeBtn.click();
+      return nativeBridgeBtn;
+    });
+  },
+  connectMetamaskToDapp: async ({ page, metamask }, use) => {
+    await use(async () => {
+      // `data-testid` attributes are specific to Dynamic
+
+      // Click Connect button
+      await page.getByTestId("ConnectButton").click();
+      // Click on 'Metamask' on the wallet dropdown menu
+      await page
+        .getByTestId("wallet-list-scroll-container")
+        .getByRole("button")
+        .filter({ hasText: "MetaMask" })
+        .click();
+
+      await metamask.connectToDapp();
     });
   },
   waitForTransactionToConfirm: async ({ metamask }, use) => {
