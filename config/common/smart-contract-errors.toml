@@ -43,7 +43,6 @@
 "37ed32e8" = "ReentrantCall"
 "6dfcc650" = "SafeCastOverflowedUintDowncast"
 
-
 # L2 Message Service
 # Generated from `npx ts-node contracts/scripts/operational/getSmartContractErrorsFromABI.ts contracts/local-deployments-artifacts/deployed-artifacts/L2MessageServiceV1-Deployed-2024-12-03.json`
 "3b174434" = "MessageHashesListLengthHigherThanOneHundred"
@@ -51,11 +50,10 @@
 "d39e75f9" = "L1MessageNumberSynchronizationWrong"
 "7557a60a" = "L1RollingHashSynchronizationWrong"
 "36a4bb94" = "FinalRollingHashIsZero"
+"732f9413" = "FeeTooLow"
 
 # Shared Message Service (L1 and L2) Errors
-"280b0ef2" = "ArrayLengthsDoNotMatch"
 "a57c4df4" = "FeePaymentFailed"
-"732f9413" = "FeeTooLow"
 "18659654" = "IsNotPaused"
 "c0a71b58" = "IsPaused"
 "d10d72bb" = "LimitIsZero"
