@@ -23,6 +23,7 @@ import (
 func TestDistributedWizard(t *testing.T) {
 
 	var (
+		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 		rng              = rand.New(utils.NewRandSource(0))
 		sharedRandomness = field.PseudoRand(rng)
 		zkevm            = GetZkEVM()
@@ -202,6 +203,7 @@ func TestDistributedWizard(t *testing.T) {
 func TestBenchDistributedWizard(t *testing.T) {
 
 	var (
+		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 		rng              = rand.New(utils.NewRandSource(0))
 		sharedRandomness = field.PseudoRand(rng)
 		zkevm            = GetZkEVM()
@@ -389,5 +391,5 @@ func GetZkEVM() *zkevm.ZkEvm {
 		ShomeiMerkleProofs:                   1 << 14,
 	}
 
-	return zkevm.FullZKEVMWithSuite(&traceLimits, []func(*wizard.CompiledIOP){})
+	return zkevm.FullZKEVMWithSuite(&traceLimits, []func(*wizard.CompiledIOP){}, &config.Config{})
 }

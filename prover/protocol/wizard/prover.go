@@ -224,13 +224,6 @@ func (run *ProverRuntime) ExtractProof() Proof {
 		}
 	}
 
-	// Write the performance logs to the csv file is the performance monitor is active
-	if run.PerformanceMonitor.Active {
-		if err := run.writePerformanceLogsToCSV(); err != nil {
-			utils.Panic("error writing performance logs to CSV: " + err.Error())
-		}
-	}
-
 	return Proof{
 		Messages:      messages,
 		QueriesParams: queriesParams,
@@ -798,6 +791,25 @@ func (run *ProverRuntime) AssignLogDerivSum(name ifaces.QueryID, y field.Element
 	run.QueriesParams.InsertNew(name, params)
 }
 
+// AssignGrandProduct assign the claimed values for a grand product
+// The function will panic if:
+//   - the parameters were already assigned
+//   - the specified query is not registered
+//   - the assignment round is incorrect
+func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Element) {
+
+	// Global prover locks for accessing the maps
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	// Make sure, it is done at the right round
+	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
+
+	// Adds it to the assignments
+	params := query.NewGrandProductParams(y)
+	run.QueriesParams.InsertNew(name, params)
+}
+
 // GetLogDeriveSum gets the metadata of a [query.LogDerivativeSum] query. Panic if not found.
 func (run *ProverRuntime) GetLogDeriveSum(name ifaces.QueryID) query.LogDerivativeSum {
 	// Global prover locks for accessing the maps
@@ -825,127 +837,6 @@ func (run *ProverRuntime) GetGrandProductParams(name ifaces.QueryID) query.Grand
 // parameters are found
 func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
 	return run.QueriesParams.MustGet(name)
-}
-
-// exec: executes the `action` with the performance monitor if active
-func (runtime *ProverRuntime) exec(name string, action any) {
-
-	// Define helper excute function
-	execute := func() {
-		switch a := action.(type) {
-		case func():
-			a()
-		case ProverStep:
-			a(runtime)
-		default:
-			panic("unsupported action type")
-		}
-	}
-
-	// If PerformanceMonitor is inactive, just execute the action and return
-	if !runtime.PerformanceMonitor.Active {
-		execute()
-		return
-	}
-
-	// Determine if profiling is needed based on action type and profile setting
-	shouldProfile := false
-	switch runtime.PerformanceMonitor.Profile {
-	case "all":
-		shouldProfile = true
-	case "prover-rounds":
-		shouldProfile = actionIsPlainFunc(action)
-	case "prover-steps":
-		shouldProfile = actionIsProverStep(action)
-	}
-
-	if shouldProfile {
-		runtime.profileAction(name, execute)
-	} else {
-		execute()
-	}
-}
-
-// profileAction profiles the given action and logs the performance metrics.
-func (runtime *ProverRuntime) profileAction(name string, action func()) {
-	profilingPath := path.Join(runtime.PerformanceMonitor.ProfileDir, name)
-	monitor, err := profiling.StartPerformanceMonitor(name, runtime.PerformanceMonitor.SampleDuration, profilingPath)
-	if err != nil {
-		panic("error setting up performance monitor for " + name)
-	}
-
-	action()
-
-	perfLog, err := monitor.Stop()
-	if err != nil {
-		logrus.Panicf("error:%s encountered while retrieving performance log for:%s", err.Error(), name)
-	}
-
-	// perfLog.PrintMetrics()
-	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
-}
-
-// writePerformanceLogsToCSV: Dumps all the performance logs inside prover runtime
-// to the csv file located at the specified path
-func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
-	csvFilePath := path.Join(runtime.PerformanceMonitor.ProfileDir, "runtime_performance_logs.csv")
-	file, err := os.Create(csvFilePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	startTime := time.Now()
-	logrus.Infof("Writing the runtime performance logs to csv file located at path%s", csvFilePath)
-
-	// Define CSV headers
-	headers := []string{
-		"Description", "Runtime (s)",
-		"CPU_Usage_Min", "CPU_Usage_Avg", "CPU_Usage_Max",
-		"Mem_Allocated_Min (GiB)", "Mem_Allocated_Avg (GiB)", "Mem_Allocated_Max (GiB)",
-		"Mem_InUse_Min (GiB)", "Mem_InUse_Avg (GiB)", "Mem_InUse_Max (GiB)",
-		"Mem_GC_NotDeallocated_Min (GiB)", "Mem_GC_NotDeallocated_Avg (GiB)", "Mem_GC_NotDeallocated_Max (GiB)",
-	}
-	writer.Write(headers)
-
-	// Write performance logs to CSV
-	for _, log := range runtime.PerformanceLogs {
-		record := []string{
-			log.Description,
-			strconv.FormatFloat(log.StopTime.Sub(log.StartTime).Seconds(), 'f', -1, 64),
-			strconv.FormatFloat(log.CpuUsageStats[0], 'f', 2, 64),
-			strconv.FormatFloat(log.CpuUsageStats[1], 'f', 2, 64),
-			strconv.FormatFloat(log.CpuUsageStats[2], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[0], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[1], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[2], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryInUseStatsGiB[0], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryInUseStatsGiB[1], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryInUseStatsGiB[2], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[0], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[1], 'f', 2, 64),
-			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[2], 'f', 2, 64),
-		}
-		writer.Write(record)
-	}
-
-	logrus.Infof("Finished writing to the csv file. Took %s", time.Since(startTime).String())
-	return nil
-}
-
-// actionIsProverRound checks if the action is a plain function such as nextRound or runProverSteps
-func actionIsPlainFunc(action any) bool {
-	_, ok := action.(func())
-	return ok
-}
-
-// actionIsProverStep checks if the action is an individual ProverStep in a specific round or highlevelProver.
-func actionIsProverStep(action any) bool {
-	_, ok := action.(ProverStep)
-	return ok
 }
 
 // AssignHornerParams assignes the parameters of a [query.Honer] query.

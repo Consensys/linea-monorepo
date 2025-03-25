@@ -130,7 +130,7 @@ func createCtx(
 		if !strings.HasSuffix(fname, ".pprof") {
 			fname += ".pprof"
 		}
-		pro = profile.Start(profile.WithPath(name))
+		pro = profile.Start(profile.WithPath(fname))
 	}
 
 	ccs, rcGetter, err := CompileCircuit(ctx.Plonk.Circuit, ctx.RangeCheck.AddGateForRangeCheck)

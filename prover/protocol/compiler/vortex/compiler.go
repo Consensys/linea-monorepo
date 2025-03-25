@@ -305,7 +305,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 	var (
 		comUnconstrained = []ifaces.ColID{}
 		numShadowRows    = 0
-		numComsActual    = 0 // actual == not shadow and not unconstrained
+		numComsActual    int // actual == not shadow and not unconstrained
 	)
 
 	// Filters out the coms that are not touched by the query and mark them

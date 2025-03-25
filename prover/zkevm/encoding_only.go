@@ -27,7 +27,7 @@ var (
 
 func EncodeOnlyZkEvm(tl *config.TracesLimits) *ZkEvm {
 	onceEncodeOnlyZkevm.Do(func() {
-		encodeOnlyZkevm = FullZKEVMWithSuite(tl, encodeOnlyCompilationSuite)
+		encodeOnlyZkevm = FullZKEVMWithSuite(tl, encodeOnlyCompilationSuite, &config.Config{})
 	})
 
 	return encodeOnlyZkevm

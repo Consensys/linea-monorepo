@@ -429,7 +429,7 @@ func (filter moduleFilter) FilterGrandProductInputs(q *query.GrandProduct) [][2]
 // to the current module. The function panics if one part could not be resolved.
 func (filter moduleFilter) FilterHornerParts(q *query.Horner) []query.HornerPart {
 
-	var res []query.HornerPart
+	var res = make([]query.HornerPart, len(q.Parts))
 
 	for _, part := range q.Parts {
 
