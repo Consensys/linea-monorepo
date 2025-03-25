@@ -93,7 +93,7 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 // the requested column is a [Natural].
 func (s *Store) GetSize(n ifaces.ColID) int {
 	if s == nil {
-		panic("null pointer here")
+		panic("column with a null pointer to the [Store]")
 	}
 	info := s.info(n)
 	return info.Size
@@ -102,7 +102,7 @@ func (s *Store) GetSize(n ifaces.ColID) int {
 // AllKeysAt returns the list of all keys for a given round. The result follows
 // the insertion order of insertion) (=assignment order)
 func (r *Store) AllKeysAt(round int) []ifaces.ColID {
-	rnd := r.byRounds.MustGet(round)
+	rnd := r.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.ColID, len(rnd))
 	for i := range rnd {
 		res[i] = rnd[i].ID
@@ -113,7 +113,7 @@ func (r *Store) AllKeysAt(round int) []ifaces.ColID {
 // Returns the list of all the [ifaces.ColID] tagged with the [Committed] status so far
 // at a given round. The order of the returned slice follows the insertion order.
 func (r *Store) AllKeysCommittedAt(round int) []ifaces.ColID {
-	rnd := r.byRounds.MustGet(round)
+	rnd := r.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.ColID, 0, len(rnd))
 
 	for i, info := range rnd {
@@ -129,7 +129,7 @@ func (r *Store) AllKeysCommittedAt(round int) []ifaces.ColID {
 // AllHandleCommittedAt returns the list of all the [Committed] columns so far
 // at a given round. The returned slice is ordered by order of insertion.
 func (r *Store) AllHandleCommittedAt(round int) []ifaces.Column {
-	rnd := r.byRounds.MustGet(round)
+	rnd := r.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.Column, 0, len(rnd))
 
 	for i, info := range rnd {
@@ -145,7 +145,7 @@ func (r *Store) AllHandleCommittedAt(round int) []ifaces.Column {
 // AllKeysIgnoredAt returns the list of all the [Ignored] columns ids so far at a
 // given round. The returned slice is ordered by order of insertion.
 func (r *Store) AllKeysIgnoredAt(round int) []ifaces.ColID {
-	rnd := r.byRounds.MustGet(round)
+	rnd := r.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.ColID, 0, len(rnd))
 
 	for i, info := range rnd {
@@ -177,7 +177,7 @@ func (r *Store) AllKeysCommitted() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
 	for round := 0; round < r.NumRounds(); round++ {
-		for _, info := range r.byRounds.MustGet(round) {
+		for _, info := range r.byRounds.GetOrEmpty(round) {
 			if info.Status != Committed {
 				continue
 			}
@@ -193,7 +193,7 @@ func (r *Store) AllKeysIgnored() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
 	for round := 0; round < r.NumRounds(); round++ {
-		for _, info := range r.byRounds.MustGet(round) {
+		for _, info := range r.byRounds.GetOrEmpty(round) {
 			if info.Status != Ignored {
 				continue
 			}
@@ -208,7 +208,7 @@ func (r *Store) AllKeysIgnored() []ifaces.ColID {
 // given round. The returned list is ordered by order of insertion.
 func (r *Store) AllKeysProofAt(round int) []ifaces.ColID {
 	res := []ifaces.ColID{}
-	rnd := r.byRounds.MustGet(round)
+	rnd := r.byRounds.GetOrEmpty(round)
 
 	for i, info := range rnd {
 		if info.Status != Proof {
@@ -314,7 +314,7 @@ func (r *Store) ReserveFor(newLen int) {
 Returns all handle stores at a given round
 */
 func (s *Store) AllHandlesAtRound(round int) []ifaces.Column {
-	roundInfos := s.byRounds.MustGet(round)
+	roundInfos := s.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.Column, len(roundInfos))
 	for posInRound, info := range roundInfos {
 		res[posInRound] = Natural{
@@ -330,7 +330,7 @@ func (s *Store) AllHandlesAtRound(round int) []ifaces.Column {
 Returns all handle stores at a given round
 */
 func (s *Store) AllHandlesAtRoundUnignored(round int) []ifaces.Column {
-	roundInfos := s.byRounds.MustGet(round)
+	roundInfos := s.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.Column, 0, len(roundInfos))
 
 	for posInRound, info := range roundInfos {
@@ -478,7 +478,7 @@ func (s *Store) IsExplicitlyExcludedFromProverFS(colName ifaces.ColID) bool {
 // be used as part of the FS transcript.
 func (s *Store) AllKeysInProverTranscript(round int) []ifaces.ColID {
 	res := []ifaces.ColID{}
-	rnd := s.byRounds.MustGet(round) // precomputed are always at round zero
+	rnd := s.byRounds.GetOrEmpty(round) // precomputed are always at round zero
 
 	for i, info := range rnd {
 

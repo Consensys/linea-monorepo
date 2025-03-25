@@ -52,9 +52,9 @@ func NewInnerProduct(id ifaces.QueryID, a ifaces.Column, bs ...ifaces.Column) In
 			utils.Panic("Assigned a polynomial ifaces.QueryID with an empty length")
 		}
 
-		if bsSet.Insert(b.GetColID()) {
-			utils.Panic("(query %v) Got a duplicate entry %v in %v\n", id, b, bs)
-		}
+		// Note: we used to check and panic for duplicates in the Horner
+		// query.
+		bsSet.Insert(b.GetColID())
 	}
 
 	return InnerProduct{ID: id, A: a, Bs: bs}
@@ -73,28 +73,19 @@ func (r InnerProduct) Name() ifaces.QueryID {
 // Check the inner-product manually
 func (r InnerProduct) Check(run ifaces.Runtime) error {
 
-	wA := r.A.GetColAssignment(run)
 	expecteds := run.GetParams(r.ID).(InnerProductParams)
+	computed := r.Compute(run)
 
 	// Prepare a nice error message in case we need it
 	errMsg := fmt.Sprintf("Inner-product %v\n", r.ID)
 	errorFlag := false
 
-	for i, b := range r.Bs {
-		wB := b.GetColAssignment(run)
-		mul := smartvectors.Mul(wA, wB)
+	for i := range computed {
 
-		// Compute manually the inner-product of two witnesses
-		actualIP := field.Zero()
-		for i := 0; i < mul.Len(); i++ {
-			tmp := mul.Get(i)
-			actualIP.Add(&actualIP, &tmp)
-		}
-
-		if expecteds.Ys[i] != actualIP {
+		if expecteds.Ys[i] != computed[i] {
 			errorFlag = true
 			errMsg = fmt.Sprintf("%v\tFor witness <%v, %v> the alleged value is %v but the correct value is %v\n",
-				errMsg, r.A.GetColID(), b.GetColID(), expecteds.Ys[i].String(), actualIP.String(),
+				errMsg, r.A.GetColID(), r.Bs[i].GetColID(), expecteds.Ys[i].String(), computed[i].String(),
 			)
 		}
 	}
@@ -104,6 +95,21 @@ func (r InnerProduct) Check(run ifaces.Runtime) error {
 	}
 
 	return nil
+}
+
+func (r InnerProduct) Compute(run ifaces.Runtime) []field.Element {
+
+	res := make([]field.Element, len(r.Bs))
+	a := r.A.GetColAssignment(run)
+
+	for i := range r.Bs {
+
+		b := r.Bs[i].GetColAssignment(run)
+		ab := smartvectors.Mul(a, b)
+		res[i] = smartvectors.Sum(ab)
+	}
+
+	return res
 }
 
 // Check the inner-product manually

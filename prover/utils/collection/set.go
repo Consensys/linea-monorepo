@@ -1,5 +1,11 @@
 package collection
 
+import (
+	"iter"
+
+	"github.com/consensys/linea-monorepo/prover/utils"
+)
+
 // A set is an unordered collection addressed by keys, which supports
 type Set[T comparable] struct {
 	inner map[T]struct{}
@@ -34,4 +40,37 @@ func (kv *Set[K]) Insert(k K) bool {
 		return false
 	}
 	return true
+}
+
+// Iter iterates over all elements in the Set in non-deterministic order
+func (kv Set[T]) Iter() iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for k := range kv.inner {
+			if !yield(k) {
+				return
+			}
+		}
+	}
+}
+
+// Merge merge the content of the given set into the receiver.
+func (kv *Set[T]) Merge(other Set[T]) {
+	for k := range other.inner {
+		kv.inner[k] = struct{}{}
+	}
+}
+
+// Clear removes all the keys from the set
+func (kv *Set[T]) Clear() {
+	kv.inner = make(map[T]struct{})
+}
+
+// SortKeysBy returns sorted keys of the set using the given less function.
+func (kv Set[T]) SortKeysBy(less func(T, T) bool) []T {
+	return utils.SortedKeysOf(kv.inner, less)
+}
+
+// Size returns the numbers of keys stored in the set
+func (kv Set[T]) Size() int {
+	return len(kv.inner)
 }

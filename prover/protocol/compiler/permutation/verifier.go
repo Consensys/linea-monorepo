@@ -2,10 +2,15 @@ package permutation
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
 // The verifier gets all the query openings and multiply them together and
@@ -58,4 +63,142 @@ func (v *VerifierCtx) Skip() {
 
 func (v *VerifierCtx) IsSkipped() bool {
 	return v.skipped
+}
+
+// CheckGrandProductIsOne is a verifier action checking that the grand product
+// is one.
+type CheckGrandProductIsOne struct {
+	Query       *query.GrandProduct
+	ExplicitNum []*symbolic.Expression
+	ExplicitDen []*symbolic.Expression
+	Skipped     bool
+}
+
+func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
+
+	var (
+		y = run.GetGrandProductParams(c.Query.ID).Y
+		d = field.One()
+	)
+
+	for _, e := range c.ExplicitNum {
+		col := column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+		for i := range col {
+			y.Mul(&y, &col[i])
+		}
+	}
+
+	for _, e := range c.ExplicitDen {
+		col := column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+		for i := range col {
+			d.Mul(&d, &col[i])
+		}
+	}
+
+	d.Inverse(&d)
+	y.Mul(&y, &d)
+
+	if !y.IsOne() {
+		return fmt.Errorf("[Permutation -> GrandProduct] the outcome of the grand-product query should be one")
+	}
+	return nil
+}
+
+func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+
+	var (
+		y = run.GetGrandProductParams(c.Query.ID).Prod
+		d = frontend.Variable(1)
+	)
+
+	for _, e := range c.ExplicitNum {
+		col := column.GnarkEvalExprColumn(api, run, e.Board())
+		for i := range col {
+			y = api.Mul(y, col[i])
+		}
+	}
+
+	for _, e := range c.ExplicitDen {
+		col := column.GnarkEvalExprColumn(api, run, e.Board())
+		for i := range col {
+			d = api.Mul(d, col[i])
+		}
+	}
+
+	y = api.Div(y, d)
+
+	api.AssertIsEqual(y, frontend.Variable(1))
+}
+
+func (c *CheckGrandProductIsOne) Skip() {
+	c.Skipped = true
+}
+
+func (c *CheckGrandProductIsOne) IsSkipped() bool {
+	return c.Skipped
+}
+
+// FinalProductCheck mutiplies the last entries of the z columns
+// and check that it is equal to the query param, implementing the [wizard.VerifierAction]
+type FinalProductCheck struct {
+	// ZOpenings lists all the openings of all the zCtx
+	ZOpenings []query.LocalOpening
+	// query ID
+	GrandProductID ifaces.QueryID
+	// skip the verifer action
+	skipped bool
+	// ToExplicitlyEvaluate list all the terms that are publicly
+	// evaluated by the verifier.
+	ToExplicitlyEvaluate []*symbolic.Expression
+}
+
+// Run implements the [wizard.VerifierAction]
+func (f *FinalProductCheck) Run(run wizard.Runtime) error {
+
+	// zProd stores the product of the ending values of the zs as queried
+	// in the protocol via the local opening queries.
+	zProd := field.One()
+	for k := range f.ZOpenings {
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
+		zProd.Mul(&zProd, &temp)
+	}
+
+	for _, e := range f.ToExplicitlyEvaluate {
+		c := column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+		for i := range c {
+			zProd.Mul(&zProd, &c[i])
+		}
+	}
+
+	claimedProd := run.GetGrandProductParams(f.GrandProductID).Y
+	if zProd != claimedProd {
+		return fmt.Errorf("grand product: the final evaluation check failed for %v\n"+
+			"given %v but calculated %v,",
+			f.GrandProductID, claimedProd.String(), zProd.String())
+	}
+
+	return nil
+}
+
+// RunGnark implements the [wizard.VerifierAction]
+func (f *FinalProductCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+
+	claimedProd := run.GetGrandProductParams(f.GrandProductID).Prod
+
+	// zProd stores the product of the ending values of the z columns
+	zProd := frontend.Variable(field.One())
+	for k := range f.ZOpenings {
+		temp := run.GetLocalPointEvalParams(f.ZOpenings[k].ID).Y
+		zProd = api.Mul(zProd, temp)
+	}
+
+	api.AssertIsEqual(zProd, claimedProd)
+}
+
+func (f *FinalProductCheck) Skip() {
+	f.skipped = true
+}
+
+func (f *FinalProductCheck) IsSkipped() bool {
+	return f.skipped
 }

@@ -43,8 +43,6 @@ func CompileAtProverLvl(comp *wizard.CompiledIOP) {
 	*/
 	verifier := func(run *wizard.ProverRuntime) {
 
-		logrus.Infof("started to run the dummy verifier")
-
 		var finalErr error
 		lock := sync.Mutex{}
 

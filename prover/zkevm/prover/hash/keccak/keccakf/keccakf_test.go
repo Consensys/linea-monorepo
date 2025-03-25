@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/lookup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -122,8 +122,8 @@ func BenchmarkDataTransferModule(b *testing.B) {
 					define,
 					specialqueries.RangeProof,
 					specialqueries.CompileFixedPermutations,
-					permutation.CompileGrandProduct,
-					lookup.CompileLogDerivative,
+					permutation.CompileViaGrandProduct,
+					logderivativesum.CompileLookups,
 					innerproduct.Compile,
 				)
 				numCells = 0

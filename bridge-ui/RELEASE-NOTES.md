@@ -1,3 +1,26 @@
+<a name="v2.1.0"></a>
+
+# [v2.1.0] - 24 Mar 2025
+
+# Feat: LiFi and CCTP V2 integration
+
+Description:
+- LiFi integration
+- CCTP V2 for USDC bridging
+
+[Changes][v2.1.0]
+
+<a name="v2.0.0"></a>
+
+# [v2.0.0] - 18 Mar 2025
+
+# Feat: New bridge UI design
+
+Description:
+- New bridge UI v2 design
+
+[Changes][v2.0.0]
+
 <a name="v1.1.0"></a>
 
 # [v1.1.0] - 2 Dec 2024

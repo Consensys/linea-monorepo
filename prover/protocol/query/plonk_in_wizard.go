@@ -59,14 +59,6 @@ type PlonkInWizard struct {
 	// meaning that it should be fully assignable just from the public inputs.
 	Circuit frontend.Circuit
 
-	// CircuitMask is an optional column that can be provided to help the compiler
-	// if provided, it should be a boolean vector with the same length as the
-	// [PlonkInWizard.Data] and [PlonkInWizard.Selector] columns. It indicates which
-	// rows are eligible to store actual public inputs (e.g. it indicates all the
-	// non-padding rows). If provided the column is checked by the compiler to store
-	// the right values.
-	CircuitMask ifaces.Column
-
 	// PlonkOptions are optional options to pass to the circuit when building it
 	PlonkOptions []PlonkOption
 
@@ -249,11 +241,11 @@ func (piw *PlonkInWizard) CheckMask(mask smartvectors.SmartVector) error {
 			val := mask.Get(i + k)
 
 			if k < nbPublicInputs && !val.IsOne() {
-				return fmt.Errorf("mask is not consistent with the circuit: mask[%v] = %v but expected 1", i+k, val)
+				return fmt.Errorf("mask is not consistent with the circuit: mask[%v] = %v but expected 1, k=%v", i+k, val.String(), k)
 			}
 
 			if k >= nbPublicInputs && !val.IsZero() {
-				return fmt.Errorf("mask is not consistent with the circuit: mask[%v] = %v but expected 0", i+k, val)
+				return fmt.Errorf("mask is not consistent with the circuit: mask[%v] = %v but expected 0, k=%v", i+k, val.String(), k)
 			}
 		}
 	}

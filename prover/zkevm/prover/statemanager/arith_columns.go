@@ -2,17 +2,21 @@ package statemanager
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/mimccodehash"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/statesummary"
 )
 
 const (
-	ACP = "acp"
-	SCP = "scp"
+	ACP             = "acp"
+	SCP             = "scp"
+	ADDR_MULTIPLIER = "340282366920938463463374607431768211456" // 2^{16*8}
 )
 
 // romLex returns the columns of the arithmetization.RomLex module of interest
@@ -47,15 +51,29 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 	// the prover-side state manager uses a single field element for 20-bytes addresses
 	// and we need to create this column ourselves
 	if !comp.Columns.Exists("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER") {
-		comp.InsertCommit(0,
+		combinedAddr := comp.InsertCommit(0,
 			"HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER",
 			size,
 		)
-		comp.InsertCommit(0,
-			"HUB_acp_PROVER_SIDE_ZERO_COLUMN",
-			size,
+
+		// constrain the processed HUB addresses
+		addrHI := comp.Columns.GetHandle("hub.acp_ADDRESS_HI")
+		addrLO := comp.Columns.GetHandle("hub.acp_ADDRESS_LO")
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_MANAGER_ACP_HUB_PROCESSED_ADDRESSES_GLOBAL_CONSTRAINT"),
+			sym.Sub(
+				combinedAddr,
+				sym.Mul(
+					addrHI,
+					field.NewFromString(ADDR_MULTIPLIER),
+				),
+				addrLO,
+			),
 		)
 	}
+
+	constantZero := verifiercol.NewConstantCol(field.Zero(), size)
 
 	res := statesummary.HubColumnSet{
 		Address:             comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
@@ -71,27 +89,27 @@ func acp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		CodeSizeNew:         comp.Columns.GetHandle("hub.acp_CODE_SIZE_NEW"),
 		BalanceOld:          comp.Columns.GetHandle("hub.acp_BALANCE"),
 		BalanceNew:          comp.Columns.GetHandle("hub.acp_BALANCE_NEW"),
-		KeyHI:               comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-		KeyLO:               comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-		ValueHICurr:         comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-		ValueLOCurr:         comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-		ValueHINext:         comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-		ValueLONext:         comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
+		KeyHI:               constantZero,
+		KeyLO:               constantZero,
+		ValueHICurr:         constantZero,
+		ValueLOCurr:         constantZero,
+		ValueHINext:         constantZero,
+		ValueLONext:         constantZero,
 		DeploymentNumber:    comp.Columns.GetHandle("hub.acp_DEPLOYMENT_NUMBER"),
 		DeploymentNumberInf: comp.Columns.GetHandle("hub.acp_DEPLOYMENT_NUMBER"),
 		BlockNumber:         comp.Columns.GetHandle("hub.acp_REL_BLK_NUM"),
 		Exists:              comp.Columns.GetHandle("hub.acp_EXISTS"),
 		ExistsNew:           comp.Columns.GetHandle("hub.acp_EXISTS_NEW"),
 		PeekAtAccount:       comp.Columns.GetHandle("hub.acp_PEEK_AT_ACCOUNT"),
-		PeekAtStorage:       comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
+		PeekAtStorage:       constantZero,
 		FirstAOC:            comp.Columns.GetHandle("hub.acp_FIRST_IN_CNF"),
 		LastAOC:             comp.Columns.GetHandle("hub.acp_FINAL_IN_CNF"),
-		FirstKOC:            comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-		LastKOC:             comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
+		FirstKOC:            constantZero,
+		LastKOC:             constantZero,
 		FirstAOCBlock:       comp.Columns.GetHandle("hub.acp_FIRST_IN_BLK"),
 		LastAOCBlock:        comp.Columns.GetHandle("hub.acp_FINAL_IN_BLK"),
-		FirstKOCBlock:       comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
-		LastKOCBlock:        comp.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
+		FirstKOCBlock:       constantZero,
+		LastKOCBlock:        constantZero,
 		MinDeplBlock:        comp.Columns.GetHandle("hub.acp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
 		MaxDeplBlock:        comp.Columns.GetHandle("hub.acp_DEPLOYMENT_NUMBER_FINAL_IN_BLOCK"),
 	}
@@ -107,30 +125,44 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 	// the prover-side state manager uses a single field element for 20-bytes addresses
 	// and we need to create this column ourselves
 	if !comp.Columns.Exists("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER") {
-		comp.InsertCommit(0,
+		combinedAddr := comp.InsertCommit(0,
 			"HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER",
 			size,
 		)
-		comp.InsertCommit(0,
-			"HUB_scp_PROVER_SIDE_ZERO_COLUMN",
-			size,
+
+		// constrain the processed HUB addresses
+		addrHI := comp.Columns.GetHandle("hub.scp_ADDRESS_HI")
+		addrLO := comp.Columns.GetHandle("hub.scp_ADDRESS_LO")
+		comp.InsertGlobal(
+			0,
+			ifaces.QueryIDf("STATE_MANAGER_SCP_HUB_PROCESSED_ADDRESSES_GLOBAL_CONSTRAINT"),
+			sym.Sub(
+				combinedAddr,
+				sym.Mul(
+					addrHI,
+					field.NewFromString(ADDR_MULTIPLIER),
+				),
+				addrLO,
+			),
 		)
 	}
+
+	constantZero := verifiercol.NewConstantCol(field.Zero(), size)
 
 	res := statesummary.HubColumnSet{
 		Address:             comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
 		AddressHI:           comp.Columns.GetHandle("hub.scp_ADDRESS_HI"),
 		AddressLO:           comp.Columns.GetHandle("hub.scp_ADDRESS_LO"),
-		Nonce:               comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		NonceNew:            comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		CodeHashHI:          comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		CodeHashLO:          comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		CodeHashHINew:       comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		CodeHashLONew:       comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		CodeSizeOld:         comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		CodeSizeNew:         comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		BalanceOld:          comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		BalanceNew:          comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
+		Nonce:               constantZero,
+		NonceNew:            constantZero,
+		CodeHashHI:          constantZero,
+		CodeHashLO:          constantZero,
+		CodeHashHINew:       constantZero,
+		CodeHashLONew:       constantZero,
+		CodeSizeOld:         constantZero,
+		CodeSizeNew:         constantZero,
+		BalanceOld:          constantZero,
+		BalanceNew:          constantZero,
 		KeyHI:               comp.Columns.GetHandle("hub.scp_STORAGE_KEY_HI"),
 		KeyLO:               comp.Columns.GetHandle("hub.scp_STORAGE_KEY_LO"),
 		ValueHICurr:         comp.Columns.GetHandle("hub.scp_VALUE_CURR_HI"),
@@ -140,16 +172,16 @@ func scp(comp *wizard.CompiledIOP) statesummary.HubColumnSet {
 		DeploymentNumber:    comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
 		DeploymentNumberInf: comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER"),
 		BlockNumber:         comp.Columns.GetHandle("hub.scp_REL_BLK_NUM"),
-		Exists:              comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		ExistsNew:           comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		PeekAtAccount:       comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
+		Exists:              constantZero,
+		ExistsNew:           constantZero,
+		PeekAtAccount:       constantZero,
 		PeekAtStorage:       comp.Columns.GetHandle("hub.scp_PEEK_AT_STORAGE"),
-		FirstAOC:            comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		LastAOC:             comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
+		FirstAOC:            constantZero,
+		LastAOC:             constantZero,
 		FirstKOC:            comp.Columns.GetHandle("hub.scp_FIRST_IN_CNF"),
 		LastKOC:             comp.Columns.GetHandle("hub.scp_FINAL_IN_CNF"),
-		FirstAOCBlock:       comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
-		LastAOCBlock:        comp.Columns.GetHandle("HUB_scp_PROVER_SIDE_ZERO_COLUMN"),
+		FirstAOCBlock:       constantZero,
+		LastAOCBlock:        constantZero,
 		FirstKOCBlock:       comp.Columns.GetHandle("hub.scp_FIRST_IN_BLK"),
 		LastKOCBlock:        comp.Columns.GetHandle("hub.scp_FINAL_IN_BLK"),
 		MinDeplBlock:        comp.Columns.GetHandle("hub.scp_DEPLOYMENT_NUMBER_FIRST_IN_BLOCK"),
@@ -189,11 +221,6 @@ func assignHubAddresses(run *wizard.ProverRuntime) {
 		run.AssignColumn(
 			ifaces.ColID(fmt.Sprintf("HUB_%s_PROVER_SIDE_ADDRESS_IDENTIFIER", domainName)),
 			smartvectors.NewRegular(newVect),
-		)
-
-		run.AssignColumn(
-			ifaces.ColID(fmt.Sprintf("HUB_%s_PROVER_SIDE_ZERO_COLUMN", domainName)),
-			smartvectors.NewConstant(field.Zero(), size),
 		)
 	}
 	// assign the addresses column in each of the submodules

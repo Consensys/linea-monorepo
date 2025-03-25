@@ -1,8 +1,16 @@
 package wizard
 
 import (
-	"sync"
+	"encoding/csv"
+	"fmt"
+	"os"
+	"path"
 
+	"strconv"
+	"sync"
+	"time"
+
+	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -12,7 +20,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/sirupsen/logrus"
 )
+
+// This is a compilation check to ensure that the [wizard.ProverRuntime]
+// implements the [wizard.Runtime] interface.
+var _ Runtime = &ProverRuntime{}
 
 // ProverStep represents an operation to be performed by the prover of a
 // wizard protocol. It can be provided by the user or by an internal compiled
@@ -120,21 +134,15 @@ type ProverRuntime struct {
 	// lock is global lock so that the assignment maps are thread safes
 	lock *sync.Mutex
 
-	// ParentRuntime stores an external runtime that can be accessed by the
-	// prover steps to retrieve data from a parent runtime. This can be used
-	// in the distributed prover by the module runtimes to access the initial
-	// wizard runtime.
-	ParentRuntime *ProverRuntime
-
-	// ProverID indicates the id of the prover among its siblings.
-	// It is merely in the context of the distributed prover;
-	// for vertical splitting to extract the relevant segment of a witness.
-	ProverID int
-
 	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
 	// round. The first entry is the initial state, the final entry is the final
 	// state.
 	FiatShamirHistory [][2][]field.Element
+
+	PerformanceMonitor *config.PerformanceMonitor
+
+	// PerformanceLogs stores performance metrics for each major operation
+	PerformanceLogs []*profiling.PerformanceLog
 }
 
 // Prove is the top-level function that runs the Prover on the user's side. It
@@ -164,58 +172,20 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
 // runtime. It does not returns the [Proof] however.
 func RunProver(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
-
-	runtime := c.createProver()
-	/*
-		Run the user provided assignment function. We can't expect it
-		to run all the rounds, because the compilation could have added
-		extra-rounds.
-	*/
-	highLevelprover(&runtime)
-
-	/*
-		Then, run the compiled prover steps
-	*/
-	runtime.runProverSteps()
-	for runtime.currRound+1 < runtime.NumRounds() {
-		runtime.goNextRound()
-		runtime.runProverSteps()
-	}
-
-	return &runtime
+	return RunProverUntilRound(c, highLevelprover, c.NumRounds())
 }
 
 // RunProverUntilRound runs the prover until the specified round
 func RunProverUntilRound(c *CompiledIOP, highLevelprover ProverStep, round int) *ProverRuntime {
 
 	runtime := c.createProver()
-
-	highLevelprover(&runtime)
-	runtime.runProverSteps()
+	runtime.exec("high-level-prover", highLevelprover)
+	runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
 
 	for runtime.currRound+1 < round {
-		runtime.goNextRound()
-		runtime.runProverSteps()
+		runtime.exec(fmt.Sprintf("next-after-round-%d", runtime.currRound), runtime.goNextRound)
+		runtime.exec(fmt.Sprintf("prover-steps-round-%d", runtime.currRound), runtime.runProverSteps)
 	}
-
-	return &runtime
-}
-
-// ProveOnlyFirstRound computes the first round of the prover and returns the
-// resulting ProverRuntime containing all the generated assignments.
-func ProverOnlyFirstRound(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
-	runtime := c.createProver()
-
-	// Run the user provided assignment function. We can't expect it
-	// to run all the rounds, because the compilation could have added
-	// extra-rounds.
-	//
-	highLevelprover(&runtime)
-
-	// Then, run the compiled prover steps. This will only run those of the
-	// first round.
-	//
-	runtime.runProverSteps()
 
 	return &runtime
 }
@@ -242,6 +212,13 @@ func (run *ProverRuntime) ExtractProof() Proof {
 	for round := 0; round <= run.currRound; round++ {
 		for _, name := range run.Spec.QueriesParams.AllKeysAt(round) {
 			queriesParams.InsertNew(name, run.QueriesParams.MustGet(name))
+		}
+	}
+
+	// Write the performance logs to the csv file is the performance monitor is active
+	if run.PerformanceMonitor.Active {
+		if err := run.writePerformanceLogsToCSV(); err != nil {
+			utils.Panic("error writing performance logs to CSV: " + err.Error())
 		}
 	}
 
@@ -273,15 +250,16 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 
 	// Instantiates an empty Assignment (but link it to the CompiledIOP)
 	runtime := ProverRuntime{
-		Spec:              c,
-		Columns:           collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
-		QueriesParams:     collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
-		Coins:             collection.NewMapping[coin.Name, interface{}](),
-		State:             collection.NewMapping[string, interface{}](),
-		FS:                fs,
-		currRound:         0,
-		lock:              &sync.Mutex{},
-		FiatShamirHistory: make([][2][]field.Element, c.NumRounds()),
+		Spec:               c,
+		Columns:            collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
+		QueriesParams:      collection.NewMapping[ifaces.QueryID, ifaces.QueryParams](),
+		Coins:              collection.NewMapping[coin.Name, interface{}](),
+		State:              collection.NewMapping[string, interface{}](),
+		FS:                 fs,
+		currRound:          0,
+		lock:               &sync.Mutex{},
+		FiatShamirHistory:  make([][2][]field.Element, c.NumRounds()),
+		PerformanceMonitor: profiling.GetMonitorParams(),
 	}
 
 	runtime.FiatShamirHistory[0] = [2][]field.Element{
@@ -332,6 +310,23 @@ func (run ProverRuntime) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
 	run.Spec.Columns.MustHaveName(name)
 	res := run.Columns.MustGet(name)
 	return res
+}
+
+// HasColumn returns whether the column is assigned. The function panics if the
+// provided column name does not exists
+func (run ProverRuntime) HasColumn(name ifaces.ColID) bool {
+
+	// global prover's lock before accessing the witnesses
+	run.lock.Lock()
+	defer run.lock.Unlock()
+
+	/*
+		Make sure the column is registered. If the name is the one specified
+		does not correcpond to a natural column, this will panic. And this is
+		expected behaviour.
+	*/
+	run.Spec.Columns.MustHaveName(name)
+	return run.Columns.Exists(name)
 }
 
 // CopyColumnInto implements `column.GetWitness`. Copies the witness into a slice
@@ -587,33 +582,31 @@ func (run *ProverRuntime) goNextRound() {
 	// Increment the number of rounds
 	run.currRound++
 
-	/*
-		Then assigns the coins for the new round. As the round
-		incrementation is made lazily, we expect that there is
-		a next round.
-	*/
+	if run.Spec.FiatShamirHooksPreSampling.Len() > run.currRound {
+		fsHooks := run.Spec.FiatShamirHooksPreSampling.MustGet(run.currRound)
+		for i := range fsHooks {
+			if fsHooks[i].IsSkipped() {
+				continue
+			}
+
+			fsHooks[i].Run(run)
+		}
+	}
+
+	seed := run.FS.State()[0]
+
+	// Then assigns the coins for the new round. As the round
+	// incrementation is made lazily, we expect that there is
+	// a next round.
 	toCompute := run.Spec.Coins.AllKeysAt(run.currRound)
 
 	for _, myCoin := range toCompute {
-
-		var (
-			info  = run.Spec.Coins.Data(myCoin)
-			value interface{}
-		)
-
-		if run.Spec.Coins.IsSkippedFromProverTranscript(info.Name) {
+		if run.Spec.Coins.IsSkippedFromProverTranscript(myCoin) {
 			continue
 		}
 
-		if info.Type == coin.FieldFromSeed {
-			// if it is of type FromSeed, sample a coin based on the seed
-			if seed, ok := run.ParentRuntime.Coins.MustGet("SEED").(field.Element); ok {
-				value = info.Sample(run.FS, seed)
-			}
-		} else {
-			// otherwise sample based on the transcript.
-			value = info.Sample(run.FS)
-		}
+		info := run.Spec.Coins.Data(myCoin)
+		value := info.Sample(run.FS, seed)
 		run.Coins.InsertNew(myCoin, value)
 	}
 
@@ -630,8 +623,11 @@ func (run *ProverRuntime) goNextRound() {
 func (run *ProverRuntime) runProverSteps() {
 	// Run all the assigners
 	subProverSteps := run.Spec.SubProvers.MustGet(run.currRound)
-	for _, step := range subProverSteps {
-		step(run)
+	for idx, step := range subProverSteps {
+
+		// Profile individual prover steps
+		namePrefix := fmt.Sprintf("prover-round%d-step%d", run.currRound, idx)
+		run.exec(namePrefix, step)
 	}
 }
 
@@ -811,6 +807,11 @@ func (run *ProverRuntime) GetLogDerivSumParams(name ifaces.QueryID) query.LogDer
 	return run.QueriesParams.MustGet(name).(query.LogDerivSumParams)
 }
 
+// GetGrandProductParams returns the parameters of a [query.Honer] query.
+func (run *ProverRuntime) GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams {
+	return run.QueriesParams.MustGet(name).(query.GrandProductParams)
+}
+
 // GetParams generically extracts the parameters of a query. Will panic if no
 // parameters are found
 func (run *ProverRuntime) GetParams(name ifaces.QueryID) ifaces.QueryParams {
@@ -836,15 +837,8 @@ func (run *ProverRuntime) AssignGrandProduct(name ifaces.QueryID, y field.Elemen
 	run.QueriesParams.InsertNew(name, params)
 }
 
-// AssignDistributedProjection assigns the value horner(A, fA) if A
-// is in the module, horner(B, fB)^{-1} if B is in the module, and
-// horner(A, fA) * horner(B, fB)^{-1} if both are in the module.
-// The function will panic if:
-//   - the parameters were already assigned
-//   - the specified query is not registered
-//   - the assignment round is incorrect
-func (run *ProverRuntime) AssignDistributedProjection(name ifaces.QueryID, distributedProjectionParam query.DistributedProjectionParams) {
-
+// AssignHornerParams assignes the parameters of a [query.Honer] query.
+func (run *ProverRuntime) AssignHornerParams(name ifaces.QueryID, params query.HornerParams) {
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
 	defer run.lock.Unlock()
@@ -853,8 +847,193 @@ func (run *ProverRuntime) AssignDistributedProjection(name ifaces.QueryID, distr
 	run.Spec.QueriesParams.MustBeInRound(run.currRound, name)
 
 	// Adds it to the assignments
-	params := query.NewDistributedProjectionParams(distributedProjectionParam.ScaledHorner,
-		distributedProjectionParam.HashCumSumOnePrev,
-		distributedProjectionParam.HashCumSumOneCurr)
 	run.QueriesParams.InsertNew(name, params)
+}
+
+// GetHornerParams returns the parameters of a [query.Honer] query.
+func (run *ProverRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParams {
+	// Global prover's lock for accessing params
+	run.lock.Lock()
+	defer run.lock.Unlock()
+	return run.QueriesParams.MustGet(name).(query.HornerParams)
+}
+
+// Fs returns the Fiat-Shamir state
+func (run *ProverRuntime) Fs() *fiatshamir.State {
+	return run.FS
+}
+
+// FsHistory returns the Fiat-Shamir state history
+func (run *ProverRuntime) FsHistory() [][2][]field.Element {
+	return run.FiatShamirHistory
+}
+
+// GetPublicInputs return the value of a public-input from its name
+func (run *ProverRuntime) GetPublicInput(name string) field.Element {
+	allPubs := run.Spec.PublicInputs
+	for i := range allPubs {
+		if allPubs[i].Name == name {
+			return allPubs[i].Acc.GetVal(run)
+		}
+	}
+	utils.Panic("could not find public input nb %v", name)
+	return field.Element{}
+}
+
+// GetQuery returns a query from its name
+func (run *ProverRuntime) GetQuery(name ifaces.QueryID) ifaces.Query {
+
+	if run.Spec.QueriesParams.Exists(name) {
+		return run.Spec.QueriesParams.Data(name)
+	}
+
+	if run.Spec.QueriesNoParams.Exists(name) {
+		return run.Spec.QueriesNoParams.Data(name)
+	}
+
+	utils.Panic("could not find query nb %v", name)
+	return nil
+}
+
+// GetSpec returns the underlying compiled IOP
+func (run *ProverRuntime) GetSpec() *CompiledIOP {
+	return run.Spec
+}
+
+// GetState returns an arbitrary value stored in the runtime
+func (run *ProverRuntime) GetState(name string) (any, bool) {
+	res, ok := run.State.TryGet(name)
+	return res, ok
+}
+
+// SetState sets an arbitrary value in the runtime
+func (run *ProverRuntime) SetState(name string, value any) {
+	run.State.InsertNew(name, value)
+}
+
+// InsertCoin is there so that [ProverRuntime] implements the [ifaces.Runtime]
+// but the function panicks if called.
+func (run *ProverRuntime) InsertCoin(name coin.Name, value any) {
+	utils.Panic("InsertCoin is not implemented")
+}
+
+// exec: executes the `action` with the performance monitor if active
+func (runtime *ProverRuntime) exec(name string, action any) {
+
+	// Define helper excute function
+	execute := func() {
+		switch a := action.(type) {
+		case func():
+			a()
+		case ProverStep:
+			a(runtime)
+		default:
+			panic("unsupported action type")
+		}
+	}
+
+	// If PerformanceMonitor is inactive, just execute the action and return
+	if !runtime.PerformanceMonitor.Active {
+		execute()
+		return
+	}
+
+	// Determine if profiling is needed based on action type and profile setting
+	shouldProfile := false
+	switch runtime.PerformanceMonitor.Profile {
+	case "all":
+		shouldProfile = true
+	case "prover-rounds":
+		shouldProfile = actionIsPlainFunc(action)
+	case "prover-steps":
+		shouldProfile = actionIsProverStep(action)
+	}
+
+	if shouldProfile {
+		runtime.profileAction(name, execute)
+	} else {
+		execute()
+	}
+}
+
+// profileAction profiles the given action and logs the performance metrics.
+func (runtime *ProverRuntime) profileAction(name string, action func()) {
+	profilingPath := path.Join(runtime.PerformanceMonitor.ProfileDir, name)
+	monitor, err := profiling.StartPerformanceMonitor(name, runtime.PerformanceMonitor.SampleDuration, profilingPath)
+	if err != nil {
+		panic("error setting up performance monitor for " + name)
+	}
+
+	action()
+
+	perfLog, err := monitor.Stop()
+	if err != nil {
+		logrus.Panicf("error:%s encountered while retrieving performance log for:%s", err.Error(), name)
+	}
+
+	// perfLog.PrintMetrics()
+	runtime.PerformanceLogs = append(runtime.PerformanceLogs, perfLog)
+}
+
+// writePerformanceLogsToCSV: Dumps all the performance logs inside prover runtime
+// to the csv file located at the specified path
+func (runtime *ProverRuntime) writePerformanceLogsToCSV() error {
+	csvFilePath := path.Join(runtime.PerformanceMonitor.ProfileDir, "runtime_performance_logs.csv")
+	file, err := os.Create(csvFilePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	startTime := time.Now()
+	logrus.Infof("Writing the runtime performance logs to csv file located at path%s", csvFilePath)
+
+	// Define CSV headers
+	headers := []string{
+		"Description", "Runtime (s)",
+		"CPU_Usage_Min", "CPU_Usage_Avg", "CPU_Usage_Max",
+		"Mem_Allocated_Min (GiB)", "Mem_Allocated_Avg (GiB)", "Mem_Allocated_Max (GiB)",
+		"Mem_InUse_Min (GiB)", "Mem_InUse_Avg (GiB)", "Mem_InUse_Max (GiB)",
+		"Mem_GC_NotDeallocated_Min (GiB)", "Mem_GC_NotDeallocated_Avg (GiB)", "Mem_GC_NotDeallocated_Max (GiB)",
+	}
+	writer.Write(headers)
+
+	// Write performance logs to CSV
+	for _, log := range runtime.PerformanceLogs {
+		record := []string{
+			log.Description,
+			strconv.FormatFloat(log.StopTime.Sub(log.StartTime).Seconds(), 'f', -1, 64),
+			strconv.FormatFloat(log.CpuUsageStats[0], 'f', 2, 64),
+			strconv.FormatFloat(log.CpuUsageStats[1], 'f', 2, 64),
+			strconv.FormatFloat(log.CpuUsageStats[2], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[0], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[1], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryAllocatedStatsGiB[2], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryInUseStatsGiB[0], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryInUseStatsGiB[1], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryInUseStatsGiB[2], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[0], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[1], 'f', 2, 64),
+			strconv.FormatFloat(log.MemoryGCNotDeallocatedStatsGiB[2], 'f', 2, 64),
+		}
+		writer.Write(record)
+	}
+
+	logrus.Infof("Finished writing to the csv file. Took %s", time.Since(startTime).String())
+	return nil
+}
+
+// actionIsProverRound checks if the action is a plain function such as nextRound or runProverSteps
+func actionIsPlainFunc(action any) bool {
+	_, ok := action.(func())
+	return ok
+}
+
+// actionIsProverStep checks if the action is an individual ProverStep in a specific round or highlevelProver.
+func actionIsProverStep(action any) bool {
+	_, ok := action.(ProverStep)
+	return ok
 }

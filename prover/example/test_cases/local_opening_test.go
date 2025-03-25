@@ -11,7 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/stretchr/testify/require"
 )
@@ -31,13 +31,10 @@ func proverLocalOpening(run *wizard.ProverRuntime) {
 }
 
 func TestGnarkCompile(t *testing.T) {
-	comp := wizard.Compile(defineLocalOpening, splitter.SplitColumns(32))
+	comp := wizard.Compile(defineLocalOpening, stitchsplit.Splitter(32))
 	proof := wizard.Prove(comp, proverLocalOpening)
 
-	circ, err := wizard.AllocateWizardCircuit(comp)
-	if err != nil {
-		panic(err)
-	}
+	circ := wizard.AllocateWizardCircuit(comp, comp.NumRounds())
 
 	scs, err := frontend.Compile(field.Modulus(), scs.NewBuilder, &SimpleTestGnarkCircuit{C: *circ})
 	if err != nil {

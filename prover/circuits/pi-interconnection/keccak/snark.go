@@ -4,14 +4,14 @@ import (
 	"errors"
 	"math/big"
 
+	"github.com/consensys/gnark/std/compress"
 	"github.com/consensys/linea-monorepo/prover/circuits/internal"
-	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
 	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/lookup/logderivlookup"
 	"github.com/consensys/gnark/std/rangecheck"
-	"github.com/consensys/linea-monorepo/prover/circuits/blobdecompression/v0/compress"
+	"github.com/consensys/linea-monorepo/prover/circuits/internal/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -102,7 +102,7 @@ func (h *Hasher) Sum(nbIn frontend.Variable, bytess ...[32]frontend.Variable) [3
 	return out
 }
 
-func (h *Hasher) Finalize(c *wizard.WizardVerifierCircuit) error {
+func (h *Hasher) Finalize(c *wizard.VerifierCircuit) error {
 	lanes, isLaneActive, isFirstLaneOfNewHash := h.createColumns()
 
 	if c == nil {
@@ -339,10 +339,10 @@ func (c *HashWizardVerifierSubCircuit) prove(ins [][]byte) wizard.Proof {
 	})
 }
 
-func (c *HashWizardVerifierSubCircuit) Compile() (*wizard.WizardVerifierCircuit, error) {
-	return wizard.AllocateWizardCircuit(c.compiled)
+func (c *HashWizardVerifierSubCircuit) Compile() (*wizard.VerifierCircuit, error) {
+	return wizard.AllocateWizardCircuit(c.compiled, c.compiled.NumRounds()), nil
 }
 
-func (c *HashWizardVerifierSubCircuit) Assign(ins [][]byte) *wizard.WizardVerifierCircuit {
-	return wizard.GetWizardVerifierCircuitAssignment(c.compiled, c.prove(ins))
+func (c *HashWizardVerifierSubCircuit) Assign(ins [][]byte) *wizard.VerifierCircuit {
+	return wizard.AssignVerifierCircuit(c.compiled, c.prove(ins), c.compiled.NumRounds())
 }

@@ -2,6 +2,7 @@ package plonkinwizard
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	plonkinternal "github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -25,6 +26,9 @@ type context struct {
 	// inputs. It is used to ensure that the selector goes to zero on
 	// the right position.
 	CircuitMask ifaces.Column
+	// StackedCircuitData is the column storing the concatenation of all the
+	// public inputs.
+	StackedCircuitData dedicated.StackedColumn
 }
 
 func Compile(comp *wizard.CompiledIOP) {
@@ -45,6 +49,8 @@ func Compile(comp *wizard.CompiledIOP) {
 		}
 
 		compileQuery(comp, q)
+
+		comp.QueriesNoParams.MarkAsIgnored(q.Name())
 	}
 }
 
@@ -70,6 +76,8 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard) {
 		}
 	)
 
+	ctx.StackedCircuitData = dedicated.StackColumn(comp, ctx.PlonkCtx.Columns.TinyPI)
+
 	checkActivators(comp, ctx)
 	checkPublicInputs(comp, ctx)
 
@@ -82,7 +90,7 @@ func checkPublicInputs(comp *wizard.CompiledIOP, ctx *context) {
 	comp.InsertGlobal(
 		ctx.Q.GetRound(),
 		ifaces.QueryIDf("%v_PUBLIC_INPUTS", ctx.Q.ID),
-		sym.Sub(ctx.Q.Data, ctx.PlonkCtx.ConcatenatedTinyPIs(ctx.Q.Data.Size())),
+		sym.Sub(ctx.Q.Data, ctx.StackedCircuitData.Column),
 	)
 }
 

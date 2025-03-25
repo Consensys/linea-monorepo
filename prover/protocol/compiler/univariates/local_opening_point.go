@@ -30,11 +30,16 @@ func CompileLocalOpening(comp *wizard.CompiledIOP) {
 		return
 	}
 
-	comp.InsertUnivariate(
+	q := comp.InsertUnivariate(
 		ctx.startRound,
 		ctx.fixedToVariable(),
 		ctx.handles,
 	)
+
+	// The result of the query is ditched from the FS transcript because
+	// the result of the evaluation is exactly the same as the one of the
+	// original local opening.
+	comp.QueriesParams.MarkAsSkippedFromProverTranscript(q.Name())
 
 	comp.SubProvers.AppendToInner(ctx.startRound, ctx.prover)
 	comp.InsertVerifier(ctx.startRound, ctx.verifier, ctx.gnarkVerifier)
