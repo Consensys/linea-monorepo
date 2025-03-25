@@ -82,9 +82,9 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []wi
 
 			// And parse the solution into a witness
 			solution := sol_.(*cs.SparseR1CSSolution)
-			run.AssignColumn(ctx.Columns.L[i].GetColID(), smartvectors.NewRegular(solution.L))
-			run.AssignColumn(ctx.Columns.R[i].GetColID(), smartvectors.NewRegular(solution.R))
-			run.AssignColumn(ctx.Columns.O[i].GetColID(), smartvectors.NewRegular(solution.O))
+			run.AssignColumn(ctx.Columns.L[i].GetColID(), smartvectors.RightZeroPadded(solution.L, ctx.Columns.L[i].Size()))
+			run.AssignColumn(ctx.Columns.R[i].GetColID(), smartvectors.RightZeroPadded(solution.R, ctx.Columns.R[i].Size()))
+			run.AssignColumn(ctx.Columns.O[i].GetColID(), smartvectors.RightZeroPadded(solution.O, ctx.Columns.O[i].Size()))
 			run.AssignColumn(ctx.Columns.Activators[i].GetColID(), smartvectors.NewConstant(field.One(), 1))
 		}
 	})

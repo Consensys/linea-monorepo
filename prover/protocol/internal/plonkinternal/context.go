@@ -176,9 +176,22 @@ func CompileCircuit(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func(
 	return ccsIface.(*cs.SparseR1CS), rcGetter, err
 }
 
-// Return the size of the domain
+// DomainSize returns the size of the domain. Meaning the size of the columns
+// taking part in the wizard for the current Plonk instance. The function
+// returns the next power of two of the number of constraints. Or, if the
+// option [WithFixedNbRows] is used, the fixed number of rows.
 func (ctx *CompilationCtx) DomainSize() int {
-	// fft domains
+
+	if ctx.FixedNbRowsOption.Enabled {
+		return ctx.FixedNbRowsOption.NbRow
+	}
+
+	return ctx.DomainSizePlonk()
+}
+
+// DomainSizePlonk returns the total size of the domain according to gnark.
+// Ignoring the [FixedNbRowsOption].
+func (ctx *CompilationCtx) DomainSizePlonk() int {
 	return utils.NextPowerOfTwo(
 		ctx.Plonk.SPR.NbConstraints + len(ctx.Plonk.SPR.Public),
 	)
@@ -208,7 +221,10 @@ func (ctx *CompilationCtx) TinyPISize() int {
 // like this: for i in tab: tab[i] = tab[permutation[i]]
 func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_377.Trace) {
 
-	nbVariables := spr.NbInternalVariables + len(spr.Public) + len(spr.Secret)
+	// nbVariables counts the number of variables occuring in the Plonk circuit. The
+	// +1 is to account for a "special" variable that we use for padding. It is
+	// associated with the "nbVariables - 1" variable-ID.
+	nbVariables := spr.NbInternalVariables + len(spr.Public) + len(spr.Secret) + 1
 
 	// nbVariables := spr.NbInternalVariables + len(spr.Public) + len(spr.Secret)
 	sizeSolution := ctx.DomainSize()
@@ -236,6 +252,12 @@ func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_3
 		lro[2*sizeSolution+offset+j] = int(c.XC)
 
 		j++
+	}
+
+	for ; j < sizeSolution-offset; j++ {
+		lro[offset+j] = nbVariables - 1
+		lro[sizeSolution+offset+j] = nbVariables - 1
+		lro[2*sizeSolution+offset+j] = nbVariables - 1
 	}
 
 	// init cycle:

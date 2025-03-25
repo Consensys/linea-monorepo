@@ -100,11 +100,12 @@ func checkFixedPermutation(a, b []ifaces.ColAssignment, s []ifaces.ColAssignment
 	}
 
 	for i := range b_ {
+
 		k := int(s_[i].Uint64())
 		x := b_[i]
 		y := a_[k]
 		if x != y {
-			return fmt.Errorf("the permutation does not work")
+			return fmt.Errorf("the permutation does not work: a[%v] = %v but b[%v] = %v", k, y.String(), i, x.String())
 		}
 	}
 
