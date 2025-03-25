@@ -17,17 +17,11 @@ describe("L1 > L2 via Native Bridge", () => {
     await expect(nativeBridgeBtn).toBeVisible();
   });
 
-  test("should connect MetaMask to dapp correctly", async ({ metamask, connectMetamaskToDapp }) => {
+  test("should connect MetaMask to dapp correctly", async ({ page, metamask, connectMetamaskToDapp }) => {
     await connectMetamaskToDapp();
-    const metamaskAccountAddress = await metamask.getAccountAddress();
-    expect(metamaskAccountAddress).toBeTruthy();
-  });
-
-  test.skip("should successfully display the correct heading", async ({ page, initUI }) => {
-    await initUI(true);
-
-    const header = "Bridge";
-    await page.locator("h2", { hasText: header }).waitFor({ state: "visible" });
+    // There should be no 'Connect' button visible anymore
+    const connectBtn = page.getByRole("button").filter({ hasText: "Connect" }).first();
+    await expect(connectBtn).toBeHidden();
   });
 
   test.skip("metamask should be connected to the right network", async ({ page, metamask, initUI }) => {

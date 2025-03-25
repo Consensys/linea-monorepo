@@ -42,6 +42,7 @@ export const test = metaMaskFixtures(setup).extend<{
       await metamaskBtnInDropdownList.click();
 
       await metamask.connectToDapp();
+      await metamask.confirmSignature();
     });
   },
   waitForTransactionToConfirm: async ({ metamask }, use) => {
