@@ -1,6 +1,7 @@
 package query
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
@@ -47,9 +48,15 @@ func NewLogDerivativeSum(round int, inp map[int]*LogDerivativeSumInput, id iface
 
 	// check the length consistency
 	for key := range inp {
+
 		if len(inp[key].Numerator) != len(inp[key].Denominator) || len(inp[key].Numerator) == 0 {
 			utils.Panic("Numerator and Denominator should have the same (no-zero) length, %v , %v", len(inp[key].Numerator), len(inp[key].Denominator))
 		}
+
+		if inp[key].Size != key {
+			utils.Panic("the size must match the key: key=%v != size=%v", key, inp[key].Size)
+		}
+
 		for i := range inp[key].Numerator {
 
 			if err := inp[key].Numerator[i].Validate(); err != nil {
@@ -80,39 +87,72 @@ func NewLogDerivSumParams(sum field.Element) LogDerivSumParams {
 	return LogDerivSumParams{Sum: sum}
 }
 
-// Test that global sum is correct
-func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
-	params := run.GetParams(r.ID).(LogDerivSumParams)
+// Compute returns the result value of the [LogDerivativeSum] query. It
+// should be run by a runtime with access to the query columns. i.e
+// either by a [wizard.ProverRuntime] or a [wizard.VerifierRuntime]
+// but then the involved columns should all be public.
+func (r LogDerivativeSum) Compute(run ifaces.Runtime) (field.Element, error) {
+
 	// compute the actual sum from the Numerator and Denominator
 	actualSum := field.Zero()
 	for key := range r.Inputs {
 		for i, num := range r.Inputs[key].Numerator {
 
 			var (
-				numBoard          = num.Board()
-				denBoard          = r.Inputs[key].Denominator[i].Board()
-				numeratorMetadata = numBoard.ListVariableMetadata()
-				denominator       = column.EvalExprColumn(run, denBoard).IntoRegVecSaveAlloc()
-				numerator         []field.Element
-				packedZ           = field.BatchInvert(denominator)
+				size                = r.Inputs[key].Size
+				numBoard            = num.Board()
+				denBoard            = r.Inputs[key].Denominator[i].Board()
+				numeratorMetadata   = numBoard.ListVariableMetadata()
+				denominatorMetadata = denBoard.ListVariableMetadata()
+				denominator         []field.Element
+				numerator           []field.Element
 			)
 
-			if len(numeratorMetadata) == 0 {
-				numerator = vector.Repeat(field.One(), r.Inputs[key].Size)
+			if len(denominatorMetadata) == 0 {
+				denominator = vector.Repeat(field.One(), size)
+			} else {
+				denominator = column.EvalExprColumn(run, denBoard).IntoRegVecSaveAlloc()
+				for k := range denominator {
+					if denominator[k].IsZero() {
+						return field.Element{}, fmt.Errorf("denominator contains zeroes [position=%v] [size=%v] [denominator=%v]", k, size, i)
+					}
+				}
+				denominator = field.BatchInvert(denominator)
 			}
 
-			if len(numeratorMetadata) > 0 {
+			if len(numeratorMetadata) == 0 {
+				numerator = vector.Repeat(field.One(), size)
+			} else {
 				numerator = column.EvalExprColumn(run, numBoard).IntoRegVecSaveAlloc()
 			}
 
-			for k := range packedZ {
-				packedZ[k].Mul(&numerator[k], &packedZ[k])
-				if k > 0 {
-					packedZ[k].Add(&packedZ[k], &packedZ[k-1])
-				}
+			var (
+				res = field.Zero()
+				tmp field.Element
+			)
+
+			for k := range numerator {
+				tmp.Mul(&numerator[k], &denominator[k])
+				res.Add(&res, &tmp)
 			}
-			actualSum.Add(&actualSum, &packedZ[len(packedZ)-1])
+
+			actualSum.Add(&actualSum, &res)
 		}
+	}
+
+	return actualSum, nil
+}
+
+// Test that global sum is correct
+func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
+
+	var (
+		params         = run.GetParams(r.ID).(LogDerivSumParams)
+		actualSum, err = r.Compute(run)
+	)
+
+	if err != nil {
+		return errors.New("expected a denominator without zeroes")
 	}
 
 	if actualSum != params.Sum {
@@ -124,8 +164,5 @@ func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
 
 // Test that global sum is correct
 func (r LogDerivativeSum) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
-	/*params := run.GetParams(r.ID).(GnarkLogDerivSumParams)
-	actualY := TBD
-	api.AssertIsEqual(params.Y, actualY)
-	*/
+	panic("unexpected call")
 }

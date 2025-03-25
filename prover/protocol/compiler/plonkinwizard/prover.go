@@ -15,6 +15,7 @@ type assignSelOpening struct{ *context }
 
 func (a *circAssignment) Run(run *wizard.ProverRuntime) {
 	a.PlonkCtx.GetPlonkProverAction().Run(run, a.getWitnesses(run))
+	a.StackedCircuitData.Run(run)
 }
 
 func (a circAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witness {
@@ -31,19 +32,11 @@ func (a circAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witnes
 
 		var (
 			locPubInputs  = data[i : i+nbPublic]
-			locSelector   = sel[i : i+nbPublic]
 			witness, _    = witness.New(ecc.BLS12_377.ScalarField())
 			witnessFiller = make(chan any, nbPublic)
 		)
 
 		for currPos := 0; currPos < nbPublic; currPos++ {
-
-			// NB: this will make the dummy verifier fail but not the
-			// actual one as this is not checked by the query. Still,
-			// if it happens it legitimately means there is a bug.
-			if locSelector[currPos].IsZero() {
-				panic("[plonkInWizard] incomplete assignment")
-			}
 
 			witnessFiller <- locPubInputs[currPos]
 		}

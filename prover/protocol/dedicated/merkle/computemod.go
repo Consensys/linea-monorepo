@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -44,11 +45,11 @@ type ComputeMod struct {
 		IsInactive ifaces.Column
 		// NewProof is a flag indicating that a new proof is
 		// being verified
-		NewProof ifaces.Column
+		NewProof *dedicated.HeartBeatColumn
 		// IsEndOfProof is a flag indicating that this is the
 		// last row to verify of a proof and that the NodeHash
 		// field contains the computed root.
-		IsEndOfProof ifaces.Column
+		IsEndOfProof *dedicated.HeartBeatColumn
 		// Root that contains the leaf of the current proof
 		Root ifaces.Column
 		// Curr contains the current node to be hashes
@@ -132,8 +133,6 @@ func (cm *ComputeMod) Define(comp *wizard.CompiledIOP, round int, name string, n
 
 	// Declare all the columns
 	cm.defineIsInactive()
-	cm.defineNewProof()
-	cm.defineIsProofEnd()
 	cm.defineZero()
 
 	cm.Cols.Root = comp.InsertCommit(cm.Round, cm.colname("ROOT"), cm.NumRows)
@@ -152,6 +151,7 @@ func (cm *ComputeMod) Define(comp *wizard.CompiledIOP, round int, name string, n
 
 	// Initializes all the sugar, we will use for the
 	// module constraining
+	cm.defineNewProofAndProofEnd()
 	cm.createSugarVar()
 
 	// And registers all the queries
@@ -186,6 +186,12 @@ func (cm *ComputeMod) defineIsInactive() {
 		return
 	}
 
+	if cm.withOptProofReuseCheck {
+		// In this case, the IsInactive column is computed very
+		// differently from the IsActiveExpanded column.
+		return
+	}
+
 	activeSize := cm.Depth * cm.NumProofs
 
 	cm.Cols.IsInactive = cm.comp.InsertPrecomputed(
@@ -199,49 +205,22 @@ func (cm *ComputeMod) defineIsInactive() {
 }
 
 // Declare the NewProof column
-func (cm *ComputeMod) defineNewProof() {
+func (cm *ComputeMod) defineNewProofAndProofEnd() {
 
-	// Compute the active part of the assignment
-	window := make([]field.Element, cm.Depth*cm.NumProofs)
-	for i := range window {
-		if i%cm.Depth == cm.Depth-1 {
-			window[i].SetOne()
-		}
+	var isActive *symbolic.Expression
+
+	if cm.withOptProofReuseCheck {
+		isActive = symbolic.NewVariable(cm.Cols.IsActiveExpanded)
+	} else if cm.isFullyActive() {
+		isActive = symbolic.NewVariable(verifiercol.NewConstantCol(field.One(), cm.NumRows))
+	} else if cm.Cols.IsInactive != nil {
+		isActive = symbolic.Sub(1, cm.Cols.IsInactive)
+	} else {
+		panic("none of the three above cases was matched")
 	}
 
-	assignment := smartvectors.RightZeroPadded(window, cm.NumRows)
-
-	// And register it as a precomputed column
-	cm.Cols.NewProof = cm.comp.InsertPrecomputed(
-		cm.colname("NEW_PROOF"),
-		assignment,
-	)
-}
-
-// Declare the IsProofEnd column
-func (cm *ComputeMod) defineIsProofEnd() {
-
-	// We can fully replace the variable by a periodic sample
-	if cm.isFullyActive() {
-		return
-	}
-
-	// Compute the active part of the assignment
-	window := make([]field.Element, cm.Depth*cm.NumProofs)
-	for i := range window {
-		if i%cm.Depth == 0 {
-			window[i].SetOne()
-		}
-	}
-
-	// registers the window as the full column
-	assignment := smartvectors.RightZeroPadded(window, cm.NumRows)
-
-	// And register it as a precomputed column
-	cm.Cols.IsEndOfProof = cm.comp.InsertPrecomputed(
-		cm.colname("IS_PROOF_END"),
-		assignment,
-	)
+	cm.Cols.NewProof = dedicated.CreateHeartBeat(cm.comp, cm.Round, cm.Depth, cm.Depth-1, isActive)
+	cm.Cols.IsEndOfProof = dedicated.CreateHeartBeat(cm.comp, cm.Round, cm.Depth, 0, isActive)
 }
 
 // Defines the precomputed column ZERO (always zero)
@@ -254,28 +233,28 @@ func (cm *ComputeMod) defineZero() {
 func (cm *ComputeMod) createSugarVar() {
 	sug := &cm.SugarVar
 	cols := cm.Cols
-	sug.NewProof = ifaces.ColumnAsVariable(cols.NewProof)
+	sug.NewProof = ifaces.ColumnAsVariable(cols.NewProof.Natural)
 
-	switch cm.isFullyActive() {
-	case true:
-		// the columns are replaced directly by some variables
-		sug.EndOfProof = variables.NewPeriodicSample(cm.Depth, 0)
-		sug.IsInactive = symbolic.NewConstant(0)
-	case false:
-		sug.EndOfProof = ifaces.ColumnAsVariable(cols.IsEndOfProof)
-		sug.IsInactive = ifaces.ColumnAsVariable(cols.IsInactive)
-	}
-
-	sug.IsActive = symbolic.Sub(1, sug.IsInactive)
-	sug.NotNewProof = symbolic.Sub(1, sug.NewProof)
-	sug.NotEndOfProof = symbolic.Sub(1, sug.EndOfProof)
-
-	// optional variables for the reuse of Merkle proofs
 	if cm.withOptProofReuseCheck {
 		// new definition of IsActive and IsInactive
 		sug.IsActive = ifaces.ColumnAsVariable(cols.IsActiveExpanded)
 		sug.IsInactive = symbolic.Sub(1, sug.IsActive)
+	} else if cm.isFullyActive() {
+		sug.IsInactive = symbolic.NewConstant(0)
+		sug.IsActive = symbolic.NewConstant(1)
+	} else {
+		sug.IsInactive = ifaces.ColumnAsVariable(cols.IsInactive)
+		sug.IsActive = symbolic.Sub(1, sug.IsInactive)
 	}
+
+	if cm.isFullyActive() {
+		sug.EndOfProof = variables.NewPeriodicSample(cm.Depth, 0)
+	} else {
+		sug.EndOfProof = ifaces.ColumnAsVariable(cols.IsEndOfProof.Natural)
+	}
+
+	sug.NotNewProof = symbolic.Sub(1, sug.NewProof)
+	sug.NotEndOfProof = symbolic.Sub(1, sug.EndOfProof)
 }
 
 // Define the query responsible for ensuring that the roots
@@ -428,7 +407,7 @@ func (cm *ComputeMod) checkReuseMerkleProofs() {
 	// IsActiveExpanded[i] * (UseNextMerkleProofExpanded[i+1] - UseNextMerkleProofExpanded[i]) * (1 - Proof[i])
 	expr3 := symbolic.Mul(cols.IsActiveExpanded,
 		symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.UseNextMerkleProofExpanded, 1)), cols.UseNextMerkleProofExpanded),
-		symbolic.Sub(1, cols.NewProof))
+		symbolic.Sub(1, cols.NewProof.Natural))
 	cm.comp.InsertGlobal(cm.Round, cm.qname("USE_NEXT_MERKLE_PROOF_EXPANDED_CONSISTENCY"), expr3)
 
 	// SegmentCounter is segment wise constant i.e.,
@@ -437,7 +416,7 @@ func (cm *ComputeMod) checkReuseMerkleProofs() {
 	// boundary effects.
 	expr4 := symbolic.Mul(cols.IsActiveExpanded,
 		symbolic.Sub(ifaces.ColumnAsVariable(column.Shift(cols.SegmentCounter, 1)), cols.SegmentCounter),
-		symbolic.Sub(1, cols.NewProof))
+		symbolic.Sub(1, cols.NewProof.Natural))
 	cm.comp.InsertGlobal(cm.Round, cm.qname("SEGMENT_COUNTER_CONSISTENCY_1"), expr4)
 
 	// SegmentCounter is incremented by 1 in the next segment in the active area
@@ -638,6 +617,8 @@ func (cm *ComputeMod) assign(
 		run.AssignColumn(cols.IsActiveExpanded.GetColID(), pad(isActiveExpanded))
 		run.AssignColumn(cols.SegmentCounter.GetColID(), pad(segmentCounter))
 	}
+	cm.Cols.IsEndOfProof.Assign(run)
+	cm.Cols.NewProof.Assign(run)
 }
 
 func (cm *ComputeMod) isFullyActive() bool {

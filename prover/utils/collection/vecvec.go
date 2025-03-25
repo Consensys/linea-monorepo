@@ -49,6 +49,15 @@ func (v *VecVec[T]) MustGet(pos int) []T {
 	return v.inner[pos]
 }
 
+// GetOrEmpty attempts to return the required subslice or returns an
+// empty slice if it goes out of bound.
+func (v *VecVec[T]) GetOrEmpty(pos int) []T {
+	if pos >= len(v.inner) {
+		return []T{}
+	}
+	return v.inner[pos]
+}
+
 /*
 Append one or more values to the given subslice. Will extend the larger size
 to match the requested position if necessary

@@ -15,7 +15,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -231,7 +230,6 @@ func GnarkVerifyCommon(
 ) ([][]frontend.Variable, error) {
 
 	// check the linear combination is a codeword
-	logrus.Infof("Checking the code membership")
 	api.Compiler().Defer(func(api frontend.API) error {
 		return assertIsCodeWord(
 			api,
@@ -243,7 +241,6 @@ func GnarkVerifyCommon(
 	})
 
 	// Check the consistency of Ys and proof.Linearcombination
-	logrus.Infof("Checking the consistency between ys and the linear combination")
 	yjoined := utils.Join(ys...)
 	alphaY := gnarkInterpolate(
 		api,

@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
@@ -27,5 +27,5 @@ func proveRange(run *wizard.ProverRuntime) {
 }
 
 func TestRange(t *testing.T) {
-	checkSolved(t, defineRange, proveRange, join(ALL_SPECIALS, compilationSuite{splitter.SplitColumns(8)}, DUMMY), true)
+	checkSolved(t, defineRange, proveRange, join(ALL_SPECIALS, compilationSuite{stitchsplit.Splitter(8)}, DUMMY), true)
 }

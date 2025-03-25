@@ -81,6 +81,33 @@ func NewConfigFromFile(path string) (*Config, error) {
 	return &cfg, nil
 }
 
+// NewConfigFromFileUnchecked is as [NewConfigFromFile] but does not run
+// the config validation. It will return an error if it fails reading
+// the file or if the config contains unknown fields.
+func NewConfigFromFileUnchecked(path string) (*Config, error) {
+
+	viper.SetConfigFile(path)
+
+	// Parse the config
+	err := viper.ReadInConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// Set the default values
+	setDefaultValues()
+
+	// Unmarshal the config; note that UnmarshalExact will error if there are any fields in the config
+	// that are not present in the struct.
+	var cfg Config
+	err = viper.UnmarshalExact(&cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
+}
+
 // validateIsPowerOfTwo implements validator.Func
 func validateIsPowerOfTwo(f validator.FieldLevel) bool {
 	if !f.Field().CanInt() {

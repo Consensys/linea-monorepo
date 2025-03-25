@@ -74,10 +74,15 @@ type CompiledIOP struct {
 	// always be preferred to express a relation that the witness must satisfy.
 	SubVerifiers collection.VecVec[VerifierAction]
 
-	// FiatShamirHooks is an action that is run during the FS sampling. Compared
-	// to a normal verifier action it has the possibility to interact with the
-	// Fiat-Shamir state.
-	FiatShamirHooks collection.VecVec[VerifierAction]
+	// FiatShamirHooksPreSampling is an action that is run during the FS sampling,
+	// before sampling the random coins and thus, before every verifier action in
+	// the same round. The action is run just after updating the FS state with the
+	// items of the previous round. Thus, it can be used to setup the FS state to
+	// a desired value. This can be used to add determinism in the coin generation
+	// (very useful for debugging, though completely insecure) or it can be used
+	// in the context of the distributed prover where the set value is a combination
+	// of the provided values and some other external values.
+	FiatShamirHooksPreSampling collection.VecVec[VerifierAction]
 
 	// Precomputed stores the assignments of all the Precomputed and VerifierKey
 	// polynomials. It is assigned directly when registering a precomputed
@@ -607,6 +612,11 @@ func (c *CompiledIOP) RegisterVerifierAction(round int, action VerifierAction) {
 
 // Register a GrandProduct query
 func (c *CompiledIOP) InsertGrandProduct(round int, id ifaces.QueryID, in map[int]*query.GrandProductInput) query.GrandProduct {
+
+	if in == nil {
+		panic("passed a nil set of inputs")
+	}
+
 	q := query.NewGrandProduct(round, in, id)
 	// Finally registers the query
 	c.QueriesParams.AddToRound(round, q.Name(), q)
@@ -647,14 +657,6 @@ func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in query.ProjectionInp
 	q := query.NewProjection(round, id, in)
 	// Finally registers the query
 	c.QueriesNoParams.AddToRound(round, q.Name(), q)
-	return q
-}
-
-// Register a distributed projection query
-func (c *CompiledIOP) InsertDistributedProjection(round int, id ifaces.QueryID, in []*query.DistributedProjectionInput) query.DistributedProjection {
-	q := query.NewDistributedProjection(round, id, in)
-	// Finally registers the query
-	c.QueriesParams.AddToRound(round, q.Name(), q)
 	return q
 }
 
@@ -708,16 +710,14 @@ func (c *CompiledIOP) InsertPlonkInWizard(q *query.PlonkInWizard) {
 		utils.Panic("the circuit has secret variables, found %v", nbSecret)
 	}
 
-	if q.CircuitMask != nil && !c.Precomputed.Exists(q.CircuitMask.GetColID()) {
-		utils.Panic("circuit mask %v not registered as a precomputed column", q.CircuitMask.GetColID())
-	}
-
-	if q.CircuitMask != nil {
-		mask := c.Precomputed.MustGet(q.CircuitMask.GetColID())
-		if err := q.CheckMask(mask); err != nil {
-			utils.Panic("provided mask is improper: %v", err)
-		}
-	}
-
 	c.QueriesNoParams.AddToRound(round, q.ID, q)
+}
+
+// InsertHornerQuery inserts a [query.Horner] in the current compilation
+// context.
+func (c *CompiledIOP) InsertHornerQuery(round int, id ifaces.QueryID, parts []query.HornerPart) query.Horner {
+	q := query.NewHorner(round, id, parts)
+	// Finally registers the query
+	c.QueriesParams.AddToRound(round, q.Name(), &q)
+	return q
 }
