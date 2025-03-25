@@ -77,7 +77,8 @@ type CompilationCtx struct {
 		RangeChecked []ifaces.Column
 	}
 
-	// Optional field used for specifying range checks
+	// Optional field used for specifying range checks option
+	// parameters.
 	RangeCheck struct {
 		// wasCancelled is set if no wires need to be constrained
 		wasCancelled         bool
@@ -86,6 +87,13 @@ type CompilationCtx struct {
 		NbLimbs              int
 		AddGateForRangeCheck bool
 		limbDecomposition    []wizard.ProverAction
+	}
+
+	// FixedNbRowsOption is used to specify a fixed number of rows
+	// in the CompilationCtx via the [WithFixedNbRow] option.
+	FixedNbRowsOption struct {
+		Enabled bool
+		NbRow   int
 	}
 }
 
