@@ -104,6 +104,7 @@ func TestSamplingFromSeed(t *testing.T) {
 	t.Run("dependence-on-name", func(t *testing.T) {
 
 		var (
+			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 			rng          = rand.New(utils.NewRandSource(789))
 			initialState = field.PseudoRand(rng)
 			seed         = field.PseudoRand(rng)
@@ -130,6 +131,7 @@ func TestSamplingFromSeed(t *testing.T) {
 	t.Run("non-dependance-curr-state", func(t *testing.T) {
 
 		var (
+			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 			rng    = rand.New(utils.NewRandSource(789))
 			state1 = field.PseudoRand(rng)
 			state2 = field.PseudoRand(rng)
@@ -153,6 +155,7 @@ func TestSamplingFromSeed(t *testing.T) {
 	t.Run("does-not-modify-state", func(t *testing.T) {
 
 		var (
+			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 			rng          = rand.New(utils.NewRandSource(789))
 			initialState = field.PseudoRand(rng)
 			seed         = field.PseudoRand(rng)
@@ -173,6 +176,7 @@ func TestSamplingFromSeed(t *testing.T) {
 	t.Run("is-repeatable", func(t *testing.T) {
 
 		var (
+			// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 			rng          = rand.New(utils.NewRandSource(789))
 			initialState = field.PseudoRand(rng)
 			seed         = field.PseudoRand(rng)

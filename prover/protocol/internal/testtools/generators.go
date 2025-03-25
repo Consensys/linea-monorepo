@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 var rng = rand.New(utils.NewRandSource(0))
 
 // RandomVec returns a random vector of size "size".
@@ -50,6 +51,7 @@ func RandBinary(size int) smartvectors.SmartVector {
 // seed. This can be used to ensure that the same vector is generated
 // through several calls.
 func RandomFromSeed(size int, seed int64) smartvectors.SmartVector {
+	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 	rng := rand.New(utils.NewRandSource(seed))
 	return smartvectors.PseudoRand(rng, size)
 }
