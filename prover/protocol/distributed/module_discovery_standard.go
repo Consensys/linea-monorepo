@@ -334,29 +334,6 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		queryData := comp.QueriesNoParams.Data(qName)
 
-		// Permutation queries are expectedly already compiled into a GdProduct
-		// queries. Still we still need to group the columns into the same modules
-		// because otherwise we can have a situation where both side of the permutation
-		// have  different number of segments and different sizes for the segment, causing
-		// the gd-product query to fail.
-		if perm, ok := queryData.(query.Permutation); ok {
-
-			group := []column.Natural{}
-
-			// If it is a permutation, we need to group the columns that are used
-			// in the permutation. Both sides must be in the same module.
-			for i := range perm.A {
-				group = append(group, rootsOfColumns(perm.A[i])...)
-			}
-
-			for i := range perm.B {
-				group = append(group, rootsOfColumns(perm.B[i])...)
-			}
-
-			moduleCandidates = disc.GroupColumns(group, moduleCandidates, 0, 0, 0)
-			continue
-		}
-
 		if comp.QueriesNoParams.IsIgnored(qName) {
 			continue
 		}
