@@ -42,7 +42,6 @@ function getSmartContractErrorsFromABI(abiInput: ABI): SmartContractErrorOutput[
       resp.push({
         name: element.name,
         functionSignature: functionSignature,
-        // selector: "A",
         selector: generateFunctionSelector(functionSignature),
       });
     }
