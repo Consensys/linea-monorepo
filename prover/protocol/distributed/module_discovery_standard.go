@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
 // StandardModuleDiscoverer groups modules using two layers. In the first layer,
@@ -27,7 +28,7 @@ type StandardModuleDiscoverer struct {
 	// Affinities indicates groups of columns (potentially spanning over
 	// multiple query-based modules) that are "alike" in the sense that
 	// they would be opportunistic to group in the same StandardModule.
-	Affinities      [][]ifaces.Column
+	Affinities      [][]column.Natural
 	modules         []*StandardModule
 	columnsToModule map[ifaces.Column]ModuleName
 	columnsToSize   map[ifaces.Column]int
@@ -87,10 +88,10 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 	subDiscover := NewQueryBasedDiscoverer()
 	subDiscover.Analyze(comp)
 
-	modulesQBased := subDiscover.modules
+	groupedByAffinity := groupQBModulesByAffinity(subDiscover.modules, disc.Affinities)
 
-	sort.Slice(modulesQBased, func(i, j int) bool {
-		return modulesQBased[i].Weight(0) < modulesQBased[j].Weight(0)
+	sort.Slice(groupedByAffinity, func(i, j int) bool {
+		return weightOfGroupOfQBModules(groupedByAffinity[i]) < weightOfGroupOfQBModules(groupedByAffinity[j])
 	})
 
 	var (
@@ -98,11 +99,11 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		currWeightSum = 0
 	)
 
-	for i := range modulesQBased {
+	for i := range groupedByAffinity {
 
 		var (
-			moduleNext = modulesQBased[i]
-			weightNext = moduleNext.Weight(0)
+			groupNext  = groupedByAffinity[i]
+			weightNext = weightOfGroupOfQBModules(groupNext)
 			distPrev   = utils.Abs(disc.TargetWeight - currWeightSum)
 			distNext   = utils.Abs(disc.TargetWeight - currWeightSum - weightNext)
 		)
@@ -117,7 +118,7 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		}
 
 		currWeightSum += weightNext
-		groups[len(groups)-1] = append(groups[len(groups)-1], moduleNext)
+		groups[len(groups)-1] = append(groups[len(groups)-1], groupNext...)
 	}
 
 	disc.modules = make([]*StandardModule, len(groups))
@@ -780,4 +781,77 @@ func (m *QueryBasedModule) mustHaveConsistentLength() {
 			utils.Panic("col=%v does not have a consistent size %v != %v", col.ID, size, col.Size())
 		}
 	}
+}
+
+// groupQBModulesByAffinity groups the [QueryBasedModule] by affinity. Affinity
+// consists in a group of columns that are to be grouped in the same standard
+// module.
+func groupQBModulesByAffinity(qbModules []*QueryBasedModule, affinities [][]column.Natural) (groups [][]*QueryBasedModule) {
+
+	sets := make([]collection.Set[*QueryBasedModule], len(qbModules))
+
+	for i := range qbModules {
+		sets[i] = collection.NewSet[*QueryBasedModule]()
+		sets[i].Insert(qbModules[i])
+	}
+
+	for _, aff := range affinities {
+
+		matched := make([]collection.Set[*QueryBasedModule], 0)
+		for i := range sets {
+
+			isSetMatched := false
+
+			for k := range aff {
+				for qbm := range sets[i].Iter() {
+					if qbm.ds.Has(aff[k]) {
+						isSetMatched = true
+						continue
+					}
+				}
+			}
+
+			if isSetMatched {
+				matched = append(matched, sets[i])
+			}
+		}
+
+		if len(matched) <= 1 {
+			continue
+		}
+
+		mergedModule := matched[0]
+
+		for i := 1; i < len(matched); i++ {
+			mergedModule.Merge(matched[i])
+			matched[i].Clear()
+		}
+	}
+
+	groups = make([][]*QueryBasedModule, 0, len(sets))
+
+	for i := range sets {
+		if sets[i].Size() == 0 {
+			continue
+		}
+
+		groups = append(
+			groups,
+			sets[i].SortKeysBy(
+				func(qbm1, qbm2 *QueryBasedModule) bool {
+					return string(qbm1.moduleName) < string(qbm2.moduleName)
+				},
+			),
+		)
+	}
+
+	return groups
+}
+
+func weightOfGroupOfQBModules(group []*QueryBasedModule) int {
+	var weight int
+	for i := range group {
+		weight += group[i].Weight(0)
+	}
+	return weight
 }
