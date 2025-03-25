@@ -17,11 +17,11 @@ describe("L1 > L2 via Native Bridge", () => {
     await expect(nativeBridgeBtn).toBeVisible();
   });
 
-  // test("should connect MetaMask to dapp correctly", async ({ metamask, connectMetamaskToDapp }) => {
-  //   await connectMetamaskToDapp();
-  //   const metamaskAccountAddress = await metamask.getAccountAddress();
-  //   expect(metamaskAccountAddress).toBeTruthy();
-  // });
+  test("should connect MetaMask to dapp correctly", async ({ metamask, connectMetamaskToDapp }) => {
+    await connectMetamaskToDapp();
+    const metamaskAccountAddress = await metamask.getAccountAddress();
+    expect(metamaskAccountAddress).toBeTruthy();
+  });
 
   test.skip("should successfully display the correct heading", async ({ page, initUI }) => {
     await initUI(true);
