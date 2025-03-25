@@ -186,29 +186,7 @@ class JsonRpcExecutionLayerManager private constructor(
           if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
             throw RuntimeException(validationResult.reason)
           }
-          executionLayerClient.newPayload(executionPayload).thenApply { payloadStatus ->
-            if (payloadStatus.isSuccess &&
-              payloadStatus.payload
-                .asInternalExecutionPayload()
-                .status
-                .get() ==
-              ExecutionPayloadStatus.VALID
-            ) {
-              payloadId = null // Not necessary, but it helps to reinforce the order of calls
-              log.debug("Unsetting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
-
-              latestBlockCache.updateNext(
-                BlockMetadata(
-                  executionPayload.blockNumber,
-                  executionPayload.blockHash,
-                  executionPayload.timestamp.toLong(),
-                ),
-              )
-              executionPayload
-            } else {
-              throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatus.errorMessage)
-            }
-          }
+          SafeFuture.completedFuture(executionPayload)
         } else {
           SafeFuture.failedFuture(
             IllegalStateException("engine_getPayload request failed! Cause: " + payloadResponse.errorMessage),
@@ -216,6 +194,36 @@ class JsonRpcExecutionLayerManager private constructor(
         }
       }
   }
+
+  override fun finishBlockBuildingAndBuildNextBlock(): SafeFuture<ExecutionPayload> =
+    finishBlockBuilding().thenCompose {
+      executionLayerClient.newPayload(it).thenCompose { payloadStatus ->
+        val executionPayload = it
+        executionLayerClient.newPayload(executionPayload).thenApply { payloadStatus ->
+          if (payloadStatus.isSuccess &&
+            payloadStatus.payload
+              .asInternalExecutionPayload()
+              .status
+              .get() ==
+            ExecutionPayloadStatus.VALID
+          ) {
+            payloadId = null // Not necessary, but it helps to reinforce the order of calls
+            log.debug("Unsetting payload Id, latest block metadata {}", latestBlockCache.currentBlockMetadata)
+
+            latestBlockCache.updateNext(
+              BlockMetadata(
+                executionPayload.blockNumber,
+                executionPayload.blockHash,
+                executionPayload.timestamp.toLong(),
+              ),
+            )
+            executionPayload
+          } else {
+            throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatus.errorMessage)
+          }
+        }
+      }
+    }
 
   override fun latestBlockMetadata(): BlockMetadata = latestBlockCache.currentBlockMetadata
 

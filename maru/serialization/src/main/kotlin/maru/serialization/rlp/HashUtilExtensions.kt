@@ -16,8 +16,12 @@
 package maru.serialization.rlp
 
 import maru.core.BeaconBlockBody
+import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
 import maru.core.HashUtil
+
+fun HashUtil.headerHash(beaconBlockHeader: BeaconBlockHeader): ByteArray =
+  rootHash(beaconBlockHeader, RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
 
 fun HashUtil.bodyRoot(beaconBlockBody: BeaconBlockBody): ByteArray =
   rootHash(beaconBlockBody, RLPSerializers.BeaconBlockBodySerializer, KeccakHasher)

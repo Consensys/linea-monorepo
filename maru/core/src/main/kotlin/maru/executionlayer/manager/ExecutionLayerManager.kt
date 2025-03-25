@@ -125,6 +125,8 @@ interface ExecutionLayerManager {
 
   fun finishBlockBuilding(): SafeFuture<ExecutionPayload>
 
+  fun finishBlockBuildingAndBuildNextBlock(): SafeFuture<ExecutionPayload>
+
   fun latestBlockMetadata(): BlockMetadata
 
   fun setHead(

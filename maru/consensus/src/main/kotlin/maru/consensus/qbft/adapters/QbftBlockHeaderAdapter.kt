@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft.adaptors
+package maru.consensus.qbft.adapters
 
 import maru.core.BeaconBlockHeader
 import org.apache.tuweni.bytes.Bytes
@@ -23,9 +23,9 @@ import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.datatypes.Hash
 
 /**
- * Adaptor class to convert a BeaconBlockHeader to a QBFT block header
+ * Adapter class to convert a BeaconBlockHeader to a QBFT block header
  */
-class QbftBlockHeaderAdaptor(
+class QbftBlockHeaderAdapter(
   val beaconBlockHeader: BeaconBlockHeader,
 ) : QbftBlockHeader {
   override fun getNumber(): Long = beaconBlockHeader.number.toLong()
@@ -38,7 +38,7 @@ class QbftBlockHeaderAdaptor(
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
-    if (other !is QbftBlockHeaderAdaptor) return false
+    if (other !is QbftBlockHeaderAdapter) return false
 
     if (beaconBlockHeader != other.beaconBlockHeader) return false
 
