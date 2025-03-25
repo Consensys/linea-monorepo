@@ -17,7 +17,6 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
     using EnumerableSet for EnumerableSet.AddressSet;
 
     error Karma__TransfersNotAllowed();
-    error Karma__MintAllowanceExceeded();
     error Karma__DistributorAlreadyAdded();
     error Karma__UnknownDistributor();
 
@@ -115,10 +114,6 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
      * @param amount The amount of tokens to mint.
      */
     function mint(address account, uint256 amount) external onlyOwner {
-        if (amount > _mintAllowance()) {
-            revert Karma__MintAllowanceExceeded();
-        }
-
         _mint(account, amount);
     }
 
@@ -140,16 +135,6 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
 
     function _totalSupply() internal view returns (uint256) {
         return super.totalSupply() + _externalSupply();
-    }
-
-    function _mintAllowance() internal view returns (uint256) {
-        uint256 maxSupply = _externalSupply() * 3;
-        uint256 fullTotalSupply = _totalSupply();
-        if (maxSupply <= fullTotalSupply) {
-            return 0;
-        }
-
-        return maxSupply - fullTotalSupply;
     }
 
     /**
@@ -200,15 +185,6 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
      */
     function getRewardDistributors() external view returns (address[] memory) {
         return rewardDistributors.values();
-    }
-
-    /**
-     * @notice Returns the mint allowance.
-     * @dev The mint allowance is the difference between the external supply and the total supply.
-     * @return The mint allowance.
-     */
-    function mintAllowance() public view returns (uint256) {
-        return _mintAllowance();
     }
 
     /**

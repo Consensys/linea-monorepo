@@ -6,7 +6,6 @@ import { DeployKarmaScript } from "../script/DeployKarma.s.sol";
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 import { Karma } from "../src/Karma.sol";
 import { KarmaDistributorMock } from "./mocks/KarmaDistributorMock.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract KarmaTest is Test {
     Karma public karma;
@@ -166,84 +165,5 @@ contract KarmaOwnershipTest is KarmaTest {
         vm.prank(alice);
         karma.acceptOwnership();
         assertEq(karma.owner(), alice);
-    }
-}
-
-contract KarmaMintAllowanceTest is KarmaTest {
-    function setUp() public override {
-        super.setUp();
-    }
-
-    function testMintAllowance_Available() public {
-        vm.startBroadcast(owner);
-        karma.setReward(address(distributor1), 1000 ether, 1000);
-        karma.setReward(address(distributor2), 2000 ether, 2000);
-        vm.stopBroadcast();
-        // 3000 external => maxSupply = 9000
-        distributor1.setTotalKarmaShares(1000 ether);
-        distributor2.setTotalKarmaShares(2000 ether);
-
-        vm.prank(owner);
-        karma.mint(owner, 500 ether);
-        // totalSupply = 3500
-
-        uint256 mintAllowance = karma.mintAllowance();
-        assertEq(mintAllowance, 5500 ether);
-    }
-
-    function testMintAllowance_NotAvailable() public {
-        vm.startBroadcast(owner);
-        karma.setReward(address(distributor1), 1000 ether, 1000);
-        karma.setReward(address(distributor2), 2000 ether, 2000);
-        vm.stopBroadcast();
-        // 3000 external => maxSupply = 9000
-        distributor1.setTotalKarmaShares(1000 ether);
-        distributor2.setTotalKarmaShares(2000 ether);
-
-        vm.prank(owner);
-        karma.mint(owner, 6000 ether);
-        // totalSupply = 9_000
-
-        uint256 mintAllowance = karma.mintAllowance();
-        assertEq(mintAllowance, 0);
-    }
-
-    function testMint_RevertWithAllowanceExceeded() public {
-        vm.startBroadcast(owner);
-        karma.setReward(address(distributor1), 1000 ether, 1000);
-        karma.setReward(address(distributor2), 2000 ether, 2000);
-        vm.stopBroadcast();
-        // 3000 external => maxSupply = 9000
-        distributor1.setTotalKarmaShares(1000 ether);
-        distributor2.setTotalKarmaShares(2000 ether);
-
-        vm.prank(owner);
-        karma.mint(owner, 500 ether);
-        // totalSupply = 3500
-        // allowed to mint 5500
-
-        vm.prank(owner);
-        vm.expectRevert(Karma.Karma__MintAllowanceExceeded.selector);
-        karma.mint(owner, 6000 ether);
-    }
-
-    function testMint_Ok() public {
-        vm.startBroadcast(owner);
-        karma.setReward(address(distributor1), 1000 ether, 1000);
-        karma.setReward(address(distributor2), 2000 ether, 2000);
-        vm.stopBroadcast();
-        // 3000 external => maxSupply = 9000
-        distributor1.setTotalKarmaShares(1000 ether);
-        distributor2.setTotalKarmaShares(2000 ether);
-
-        vm.prank(owner);
-        karma.mint(owner, 500 ether);
-        assertEq(karma.totalSupply(), 3500 ether);
-        // totalSupply = 3500
-        // allowed to mint 5500
-
-        vm.prank(owner);
-        karma.mint(owner, 5500 ether);
-        assertEq(karma.totalSupply(), 9000 ether);
     }
 }
