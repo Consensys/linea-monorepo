@@ -1,5 +1,6 @@
 "use client";
 
+import { zeroAddress } from "viem";
 import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import { ChainId, LiFiWidget, WidgetSkeleton, type WidgetConfig } from "@/lib/lifi";
 import { ClientOnly } from "../client-only";
@@ -12,6 +13,10 @@ const widgetConfig: Partial<WidgetConfig> = {
   subvariant: "default",
   appearance: "light",
   integrator: "Linea",
+  fromChain: ChainId.ETH,
+  fromToken: zeroAddress,
+  toChain: ChainId.LNA,
+  toToken: zeroAddress,
   theme: {
     palette: {
       primary: {
@@ -50,11 +55,11 @@ const widgetConfig: Partial<WidgetConfig> = {
       },
     },
     container: {
-      borderRadius: "0.625rem",
-      maxHeight: "80vh",
+      maxHeight: "none",
       maxWidth: "29.25rem",
       minWidth: "none",
       fontSize: "0.875rem",
+      filter: "none",
     },
     components: {
       MuiButton: {
@@ -91,11 +96,24 @@ const widgetConfig: Partial<WidgetConfig> = {
       MuiCard: {
         styleOverrides: {
           root: {
-            fontSize: "0.875rem",
+            ":hover": {
+              boxShadow: "inset 0 0 0 0.125rem var(--v2-color-icterine)",
+            },
           },
         },
         defaultProps: {
           variant: "elevation",
+          raised: false,
+          sx: {
+            p: {
+              fontSize: "0.875rem",
+            },
+            ".MuiCardContent-root": {
+              ":hover": {
+                boxShadow: "inset 0 0 0 0.125rem var(--v2-color-icterine)",
+              },
+            },
+          },
         },
       },
       MuiInputCard: "",
