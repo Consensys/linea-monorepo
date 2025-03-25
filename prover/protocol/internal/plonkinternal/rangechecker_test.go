@@ -388,3 +388,36 @@ func TestRangeCheckO(t *testing.T) {
 	err := wizard.Verify(compiled, proof)
 	require.NoError(t, err)
 }
+
+// This test checks the cross-functionality between the fixed nb of rows
+// and the external range-checker.
+func TestRangeCheckWithFixedNbRows(t *testing.T) {
+	circuit := &testRangeCheckLRSyncCircuit{}
+
+	assignment := gnarkutil.AsWitnessPublic([]frontend.Variable{1, 1})
+
+	var pa plonk.PlonkInWizardProverAction
+
+	compiled := wizard.Compile(
+		func(build *wizard.Builder) {
+			ctx := plonk.PlonkCheck(
+				build.CompiledIOP,
+				"PLONK",
+				0,
+				circuit,
+				1,
+				plonk.WithRangecheck(16, 1, false),
+				plonk.WithFixedNbRows(256),
+			)
+
+			pa = ctx.GetPlonkProverAction()
+		},
+		dummy.Compile,
+	)
+
+	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
+		pa.Run(run, []witness.Witness{assignment})
+	})
+	err := wizard.Verify(compiled, proof)
+	require.NoError(t, err)
+}

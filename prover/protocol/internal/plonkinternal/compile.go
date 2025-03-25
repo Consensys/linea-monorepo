@@ -49,8 +49,6 @@ func PlonkCheck(
 	options ...Option,
 ) *CompilationCtx {
 
-	logrus.Infof("building circuit for name=%v, nbInstance=%v", name, maxNbInstance)
-
 	// Create the ctx
 	ctx := createCtx(comp, name, round, circuit, maxNbInstance, options...)
 
@@ -70,6 +68,13 @@ func PlonkCheck(
 
 	comp.RegisterVerifierAction(round, &checkingActivators{Cols: ctx.Columns.Activators})
 
+	logrus.
+		WithField("nbConstraints", ctx.Plonk.SPR.NbConstraints).
+		WithField("maxNbInstances", maxNbInstance).
+		WithField("name", name).
+		WithField("hasCommitment", ctx.HasCommitment()).
+		Info("compiled Plonk in Wizard circuit")
+
 	return &ctx
 }
 
@@ -77,18 +82,22 @@ func PlonkCheck(
 // does not add any constraints whatsoever.
 func (ctx *CompilationCtx) commitGateColumns() {
 
+	nbRow := ctx.DomainSize()
+
 	// Declare and pre-assign the selector columns
-	ctx.Columns.Ql = ctx.comp.InsertPrecomputed(ctx.colIDf("QL"), iopToSV(ctx.Plonk.Trace.Ql))
-	ctx.Columns.Qr = ctx.comp.InsertPrecomputed(ctx.colIDf("QR"), iopToSV(ctx.Plonk.Trace.Qr))
-	ctx.Columns.Qo = ctx.comp.InsertPrecomputed(ctx.colIDf("QO"), iopToSV(ctx.Plonk.Trace.Qo))
-	ctx.Columns.Qm = ctx.comp.InsertPrecomputed(ctx.colIDf("QM"), iopToSV(ctx.Plonk.Trace.Qm))
-	ctx.Columns.Qk = ctx.comp.InsertPrecomputed(ctx.colIDf("QK"), iopToSV(ctx.Plonk.Trace.Qk))
+	ctx.Columns.Ql = ctx.comp.InsertPrecomputed(ctx.colIDf("QL"), iopToSV(ctx.Plonk.Trace.Ql, nbRow))
+	ctx.Columns.Qr = ctx.comp.InsertPrecomputed(ctx.colIDf("QR"), iopToSV(ctx.Plonk.Trace.Qr, nbRow))
+	ctx.Columns.Qo = ctx.comp.InsertPrecomputed(ctx.colIDf("QO"), iopToSV(ctx.Plonk.Trace.Qo, nbRow))
+	ctx.Columns.Qm = ctx.comp.InsertPrecomputed(ctx.colIDf("QM"), iopToSV(ctx.Plonk.Trace.Qm, nbRow))
+	ctx.Columns.Qk = ctx.comp.InsertPrecomputed(ctx.colIDf("QK"), iopToSV(ctx.Plonk.Trace.Qk, nbRow))
 
 	// Declare and pre-assign the rangecheck selectors
-	PcRcL, PcRcR, PcRcO := ctx.rcGetterToSV()
-	ctx.Columns.RcL = ctx.comp.InsertPrecomputed(ctx.colIDf("RcL"), PcRcL)
-	ctx.Columns.RcR = ctx.comp.InsertPrecomputed(ctx.colIDf("RcR"), PcRcR)
-	ctx.Columns.RcO = ctx.comp.InsertPrecomputed(ctx.colIDf("RcO"), PcRcO)
+	if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
+		PcRcL, PcRcR, PcRcO := ctx.rcGetterToSV()
+		ctx.Columns.RcL = ctx.comp.InsertPrecomputed(ctx.colIDf("RcL"), smartvectors.RightZeroPadded(PcRcL, nbRow))
+		ctx.Columns.RcR = ctx.comp.InsertPrecomputed(ctx.colIDf("RcR"), smartvectors.RightZeroPadded(PcRcR, nbRow))
+		ctx.Columns.RcO = ctx.comp.InsertPrecomputed(ctx.colIDf("RcO"), smartvectors.RightZeroPadded(PcRcO, nbRow))
+	}
 
 	ctx.Columns.L = make([]ifaces.Column, ctx.maxNbInstances)
 	ctx.Columns.R = make([]ifaces.Column, ctx.maxNbInstances)
@@ -100,17 +109,17 @@ func (ctx *CompilationCtx) commitGateColumns() {
 
 	if ctx.HasCommitment() {
 		// Selector for the commitment
-		ctx.Columns.Qcp = ctx.comp.InsertPrecomputed(ctx.colIDf("QCP"), iopToSV(ctx.Plonk.Trace.Qcp[0]))
+		ctx.Columns.Qcp = ctx.comp.InsertPrecomputed(ctx.colIDf("QCP"), iopToSV(ctx.Plonk.Trace.Qcp[0], nbRow))
 
 		// First round, for the committed value and the PI
 		for i := 0; i < ctx.maxNbInstances; i++ {
 			if ctx.TinyPISize() > 0 {
 				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.round, ctx.colIDf("PI_%v", i), ctx.TinyPISize())
-				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, ctx.DomainSize(), field.Zero(), ctx.Columns.TinyPI[i])
+				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
 			} else {
-				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), ctx.DomainSize())
+				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow)
 			}
-			ctx.Columns.Cp[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("Cp_%v", i), ctx.DomainSize())
+			ctx.Columns.Cp[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("Cp_%v", i), nbRow)
 			ctx.Columns.Activators[i] = ctx.comp.InsertProof(ctx.round, ctx.colIDf("ACTIVATOR_%v", i), 1)
 		}
 
@@ -119,30 +128,32 @@ func (ctx *CompilationCtx) commitGateColumns() {
 
 		// And assigns the LRO polynomials
 		for i := 0; i < ctx.maxNbInstances; i++ {
-			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.round+1, ctx.colIDf("L_%v", i), ctx.DomainSize())
-			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.round+1, ctx.colIDf("R_%v", i), ctx.DomainSize())
-			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.round+1, ctx.colIDf("O_%v", i), ctx.DomainSize())
+			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.round+1, ctx.colIDf("L_%v", i), nbRow)
+			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.round+1, ctx.colIDf("R_%v", i), nbRow)
+			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.round+1, ctx.colIDf("O_%v", i), nbRow)
 		}
 	} else {
 		// Else no additional selector, and just commit to LRO + PI at the same round
 		for i := 0; i < ctx.maxNbInstances; i++ {
 			if ctx.TinyPISize() > 0 {
 				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.round, ctx.colIDf("PI_%v", i), ctx.TinyPISize())
-				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, ctx.DomainSize(), field.Zero(), ctx.Columns.TinyPI[i])
+				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
 			} else {
-				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), ctx.DomainSize())
+				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow)
 			}
-			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("L_%v", i), ctx.DomainSize())
-			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("R_%v", i), ctx.DomainSize())
-			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("O_%v", i), ctx.DomainSize())
+			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("L_%v", i), nbRow)
+			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("R_%v", i), nbRow)
+			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("O_%v", i), nbRow)
 			ctx.Columns.Activators[i] = ctx.comp.InsertColumn(ctx.round, ctx.colIDf("ACTIVATOR_%v", i), 1, column.Proof)
 		}
 	}
 }
 
-// Returns an smart-vector from an iop.Polynomial
-func iopToSV(pol *iop.Polynomial) smartvectors.SmartVector {
-	return smartvectors.NewRegular(pol.Coefficients())
+// Returns an smart-vector from an iop.Polynomial. If nbRow is specified to
+// be greater than the length of Pol, then the function returns a zero-padded
+// smartvector.
+func iopToSV(pol *iop.Polynomial, nbRow int) smartvectors.SmartVector {
+	return smartvectors.RightZeroPadded(pol.Coefficients(), nbRow)
 }
 
 // This function constructs the PcRcL and PcRcR vectors. It is used by the
@@ -158,7 +169,7 @@ func iopToSV(pol *iop.Polynomial) smartvectors.SmartVector {
 // [plonk.newExternalRangeChecker] to obtain the result in "[]field.Element"
 // form and then it converts it into assignable smartvectors after having
 // checked a few hypothesis.
-func (ctx *CompilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO smartvectors.SmartVector) {
+func (ctx *CompilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO []field.Element) {
 	v := [3][]field.Element{
 		make([]field.Element, ctx.DomainSize()),
 		make([]field.Element, ctx.DomainSize()),
@@ -169,13 +180,10 @@ func (ctx *CompilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO smartvectors.Smar
 		v[ss[1]][ss[0]].SetInt64(1)
 	}
 
-	PcRcL = smartvectors.NewRegular(v[0])
-	PcRcR = smartvectors.NewRegular(v[1])
-	PcRcO = smartvectors.NewRegular(v[2])
-	return PcRcL, PcRcR, PcRcO
+	return v[0], v[1], v[2]
 }
 
-// Extract the permutation columns and track them in the ctx
+// extractPermutationColumns computes and tracks the values for ctx.Columns.S
 func (ctx *CompilationCtx) extractPermutationColumns() {
 	for i := range ctx.Columns.S {
 		// Directly use the ints from the trace instead of the fresh Plonk ones

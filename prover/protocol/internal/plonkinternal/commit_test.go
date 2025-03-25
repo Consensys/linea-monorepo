@@ -91,3 +91,29 @@ func TestPlonkWizardCircuitWithCommitMultiInstance(t *testing.T) {
 	err := wizard.Verify(compiled, proof)
 	require.NoError(t, err)
 }
+
+func TestPlonkWizardCircuitWithCommitMultiInstanceFixedNbRow(t *testing.T) {
+
+	circuit := &TestCommitCircuit{}
+
+	var pa plonkinternal.PlonkInWizardProverAction
+
+	compiled := wizard.Compile(
+		func(build *wizard.Builder) {
+			ctx := plonkinternal.PlonkCheck(build.CompiledIOP, "PLONK", 0, circuit, 5, plonkinternal.WithFixedNbRows(256))
+			pa = ctx.GetPlonkProverAction()
+		},
+		dummy.Compile,
+	)
+
+	proof := wizard.Prove(compiled, func(run *wizard.ProverRuntime) {
+		pa.Run(run, []witness.Witness{
+			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
+			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
+			gnarkutil.AsWitnessPublic([]frontend.Variable{0, 5}),
+		})
+	})
+
+	err := wizard.Verify(compiled, proof)
+	require.NoError(t, err)
+}

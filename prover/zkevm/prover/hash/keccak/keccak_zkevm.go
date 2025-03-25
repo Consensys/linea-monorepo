@@ -6,7 +6,7 @@
 package keccak
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
@@ -15,6 +15,10 @@ import (
 type KeccakZkEVM struct {
 	Settings *Settings
 
+	// SuppProverSteps is a list of prover steps to be run
+	// by the KeccakZKEvm at the beginning of the assignment.
+	SuppProverSteps []func(*wizard.ProverRuntime)
+
 	// The [wizard.ProverAction] for submodules.
 	pa_accData wizard.ProverAction
 	pa_accInfo wizard.ProverAction
@@ -22,14 +26,21 @@ type KeccakZkEVM struct {
 }
 
 func NewKeccakZkEVM(comp *wizard.CompiledIOP, settings Settings, providersFromEcdsa []generic.GenericByteModule) *KeccakZkEVM {
-	return newKeccakZkEvm(
+
+	shakira, shakiraSupp := getShakiraArithmetization(comp)
+
+	res := newKeccakZkEvm(
 		comp,
 		settings, append(
 			providersFromEcdsa,
-			getShakiraArithmetization(comp),
+			shakira,
 			getRlpAddArithmetization(comp),
 		),
 	)
+
+	res.SuppProverSteps = append(res.SuppProverSteps, shakiraSupp)
+
+	return res
 }
 
 func newKeccakZkEvm(comp *wizard.CompiledIOP, settings Settings, providers []generic.GenericByteModule) *KeccakZkEVM {
@@ -78,13 +89,24 @@ func newKeccakZkEvm(comp *wizard.CompiledIOP, settings Settings, providers []gen
 }
 
 func (k *KeccakZkEVM) Run(run *wizard.ProverRuntime) {
+
+	for i := range k.SuppProverSteps {
+		k.SuppProverSteps[i](run)
+	}
+
 	k.pa_accData.Run(run)
 	k.pa_accInfo.Run(run)
 	k.pa_keccak.Run(run)
 }
 
-func getShakiraArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModule {
-	return generic.GenericByteModule{
+// getShakiraArithmetization returns a [generic.GenericByteModule] representing
+// the data to hash using SHA3 in the SHAKIRA module of the arithmetization. The
+// returned module contains an [Info.IsHashLo] that is a column to assign: e.g
+// it does not come from the arithmetization directly but is derived from.
+// The function returns a closure doing the assignment of the defined column.
+func getShakiraArithmetization(comp *wizard.CompiledIOP) (generic.GenericByteModule, func(run *wizard.ProverRuntime)) {
+
+	res := generic.GenericByteModule{
 		Data: generic.GenDataModule{
 			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
 			Index:   comp.Columns.GetHandle("shakiradata.INDEX"),
@@ -93,13 +115,20 @@ func getShakiraArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModu
 			ToHash:  comp.Columns.GetHandle("shakiradata.IS_KECCAK_DATA"),
 		},
 		Info: generic.GenInfoModule{
-			HashNum:  comp.Columns.GetHandle("shakiradata.ID"),
-			HashLo:   comp.Columns.GetHandle("shakiradata.LIMB"),
-			HashHi:   comp.Columns.GetHandle("shakiradata.LIMB"),
-			IsHashLo: column.Shift(comp.Columns.GetHandle("shakiradata.SELECTOR_KECCAK_RES_HI"), -1),
+			HashNum: comp.Columns.GetHandle("shakiradata.ID"),
+			HashLo:  comp.Columns.GetHandle("shakiradata.LIMB"),
+			HashHi:  comp.Columns.GetHandle("shakiradata.LIMB"),
+			// Before, we usse to pass column.Shift(IsHashHi, -1) but this does
+			// not work with the prover distribution as the column is used as
+			// a filter for a projection query.
 			IsHashHi: comp.Columns.GetHandle("shakiradata.SELECTOR_KECCAK_RES_HI"),
 		},
 	}
+
+	supp := dedicated.ManuallyShift(comp, res.Info.IsHashHi, -1)
+	res.Info.IsHashLo = supp.Natural
+
+	return res, func(run *wizard.ProverRuntime) { supp.Assign(run) }
 }
 
 func getRlpAddArithmetization(comp *wizard.CompiledIOP) generic.GenericByteModule {

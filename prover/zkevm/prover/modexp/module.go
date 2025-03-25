@@ -1,8 +1,6 @@
 package modexp
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -44,10 +42,6 @@ type Module struct {
 	// constraint from the BLK_MDXP (using IsActive as filter). It is constrained
 	// to zero when IsActive = 0.
 	Limbs ifaces.Column
-	// LsbIndicator is a precomputed column marking with a 1 the last two limbs
-	// of every operands. The column is precomputed because all Modexp provided
-	// by the arithmetization have exactly the same layout.
-	LsbIndicator ifaces.Column
 	// ToSmallCirc and ToLargeCirc are indicator columns marking with a 1 the
 	// positions of limbs corresponding to public inputs of (respectely) the
 	// small and the large circuit.
@@ -85,7 +79,6 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 			Limbs:                  comp.InsertCommit(0, "MODEXP_LIMBS", size),
 			IsSmall:                comp.InsertCommit(0, "MODEXP_IS_SMALL", size),
 			IsLarge:                comp.InsertCommit(0, "MODEXP_IS_LARGE", size),
-			LsbIndicator:           comp.InsertPrecomputed("MODEXP_LSB_INDICATOR", lsbIndicatorValue(size)),
 			ToSmallCirc:            comp.InsertCommit(0, "MODEXP_TO_SMALL_CIRC", size),
 		}
 	)
@@ -136,19 +129,6 @@ func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkO
 	)
 
 	return mod
-}
-
-// lsbIndicatorValue returns the smartvector corresponding to the given size.
-// It is constructed the same pattern every 32 field elements which corresponds
-// to two 1s followed by 30 zeroes.
-func lsbIndicatorValue(size int) smartvectors.SmartVector {
-	resSlice := make([]field.Element, size)
-	for i := range resSlice {
-		if i%32 >= 30 {
-			resSlice[i].SetOne()
-		}
-	}
-	return smartvectors.NewRegular(resSlice)
 }
 
 // csIsActive ensures that the ant.IsActive column is well constructed and that
@@ -230,7 +210,7 @@ func (mod *Module) csIsSmallAndLarge(comp *wizard.CompiledIOP) {
 		sym.Mul(
 			mod.Limbs,
 			mod.IsSmall,
-			sym.Sub(1, mod.LsbIndicator),
+			sym.Sub(1, variables.NewPeriodicSample(32, 30), variables.NewPeriodicSample(32, 31)),
 		),
 	)
 }
@@ -245,7 +225,10 @@ func (mod *Module) csToCirc(comp *wizard.CompiledIOP) {
 			mod.ToSmallCirc,
 			sym.Mul(
 				mod.IsSmall,
-				mod.LsbIndicator,
+				sym.Add(
+					variables.NewPeriodicSample(32, 30),
+					variables.NewPeriodicSample(32, 31),
+				),
 			),
 		),
 	)

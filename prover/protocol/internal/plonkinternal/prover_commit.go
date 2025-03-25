@@ -111,7 +111,7 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 			com := <-solSync.comChan
 
 			// And assign it in the runtime
-			run.AssignColumn(ctx.Columns.Cp[i].GetColID(), smartvectors.NewRegular(com))
+			run.AssignColumn(ctx.Columns.Cp[i].GetColID(), smartvectors.RightZeroPadded(com, ctx.Columns.Cp[i].Size()))
 			run.AssignColumn(ctx.Columns.Activators[i].GetColID(), smartvectors.NewConstant(field.One(), 1))
 		}
 	})
@@ -150,9 +150,9 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 			solution := <-solsync.solChan
 
 			// And finally, we assign L, R, O from it
-			run.AssignColumn(ctx.Columns.L[i].GetColID(), smartvectors.NewRegular(solution.L))
-			run.AssignColumn(ctx.Columns.R[i].GetColID(), smartvectors.NewRegular(solution.R))
-			run.AssignColumn(ctx.Columns.O[i].GetColID(), smartvectors.NewRegular(solution.O))
+			run.AssignColumn(ctx.Columns.L[i].GetColID(), smartvectors.RightZeroPadded(solution.L, ctx.Columns.L[i].Size()))
+			run.AssignColumn(ctx.Columns.R[i].GetColID(), smartvectors.RightZeroPadded(solution.R, ctx.Columns.R[i].Size()))
+			run.AssignColumn(ctx.Columns.O[i].GetColID(), smartvectors.RightZeroPadded(solution.O, ctx.Columns.O[i].Size()))
 		}
 
 	})

@@ -134,6 +134,7 @@ func (mod *Module) Assign(
 	}
 
 	lu := mod.lookups
+	lu.DontUsePrevAIota.Assign(run)
 	mod.assignStateAndBlocks(run, traces, numKeccakf)
 	mod.IO.assignBlockFlags(run, traces)
 	mod.theta.assign(run, mod.state, lu, numKeccakf)

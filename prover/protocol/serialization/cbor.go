@@ -29,16 +29,17 @@ func serializeAnyWithCborPkg(x any) json.RawMessage {
 
 // deserializeAnyWithCborPkg calls [json.Unmarshal] and wraps the error if any.
 func deserializeAnyWithCborPkg(data json.RawMessage, x any) error {
-	opts := cbor.DecOptions{
-		MaxArrayElements: 134217728, // MaxArrayElements specifies the max number of elements for CBOR arrays.
-		MaxMapPairs:      134217728, // MaxMapPairs specifies the max number of key-value pairs for CBOR maps.
-	}
-	decMode, err := opts.DecMode()
+
+	dm, err := cbor.DecOptions{
+		MaxArrayElements: 134217728,
+		MaxMapPairs:      134217728,
+	}.DecMode()
+
 	if err != nil {
-		return fmt.Errorf("failed to create CBOR decoder mode: %w", err)
+		panic(err)
 	}
 
-	if err := decMode.Unmarshal(data, x); err != nil {
+	if err := dm.Unmarshal(data, x); err != nil {
 		return fmt.Errorf("cbor.Unmarshal failed: %w", err)
 	}
 	return nil

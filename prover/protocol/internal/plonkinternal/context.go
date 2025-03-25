@@ -1,6 +1,8 @@
 package plonkinternal
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -9,14 +11,17 @@ import (
 	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/gnark/profile"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
+
+// This flag control whether to activate the gnark profiling for the circuits. Please leave it
+// to "false" because (1) it generates a lot of data (2) it is extremely time consuming.
+const activateGnarkProfiling = false
 
 // The CompilationCtx (context) carries all the compilation informations about a call to
 // Plonk in Wizard. Namely, (non-exhaustively) it contains the gnark's internal
@@ -72,7 +77,8 @@ type CompilationCtx struct {
 		RangeChecked []ifaces.Column
 	}
 
-	// Optional field used for specifying range checks
+	// Optional field used for specifying range checks option
+	// parameters.
 	RangeCheck struct {
 		// wasCancelled is set if no wires need to be constrained
 		wasCancelled         bool
@@ -81,6 +87,13 @@ type CompilationCtx struct {
 		NbLimbs              int
 		AddGateForRangeCheck bool
 		limbDecomposition    []wizard.ProverAction
+	}
+
+	// FixedNbRowsOption is used to specify a fixed number of rows
+	// in the CompilationCtx via the [WithFixedNbRow] option.
+	FixedNbRowsOption struct {
+		Enabled bool
+		NbRow   int
 	}
 }
 
@@ -108,23 +121,35 @@ func createCtx(
 		opt(&ctx)
 	}
 
-	// Build the trace and track it in the context
-	gnarkBuilder, rcGetter := newExternalRangeChecker(comp, ctx.RangeCheck.AddGateForRangeCheck)
-
 	logrus.Debugf("Plonk in Wizard (%v) compiling the circuit", name)
-	ccs, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circuit)
+
+	var pro *profile.Profile
+
+	if activateGnarkProfiling {
+		fname := name
+		if !strings.HasSuffix(fname, ".pprof") {
+			fname += ".pprof"
+		}
+		pro = profile.Start(profile.WithPath(name))
+	}
+
+	ccs, rcGetter, err := CompileCircuit(ctx.Plonk.Circuit, ctx.RangeCheck.AddGateForRangeCheck)
 	if err != nil {
-		utils.Panic("error compiling the circuit with name `%v` : %v", name, err)
+		utils.Panic("error compiling circuit name=%v : %v", name, err)
+	}
+
+	if activateGnarkProfiling {
+		pro.Stop()
 	}
 
 	logrus.Debugf(
-		"constraint system has %v constraints and %v internal variables",
-		ccs.GetNbConstraints(), ccs.GetNbInternalVariables(),
+		"[plonk-in-wizard] compiled cs for %v, nbConstraints=%v, nbInternalVariables=%v\n",
+		name, ccs.GetNbConstraints(), ccs.GetNbInternalVariables(),
 	)
 
-	ctx.Plonk.RcGetter = rcGetter // Pass the range-check getter
-	ctx.Plonk.SPR = ccs.(*cs.SparseR1CS)
+	ctx.Plonk.SPR = ccs
 	ctx.Plonk.Domain = fft.NewDomain(uint64(ctx.DomainSize()))
+	ctx.Plonk.RcGetter = rcGetter // Pass the range-check getter
 
 	logrus.Debugf("Plonk in Wizard (%v) build trace", name)
 	ctx.Plonk.Trace = plonkBLS12_377.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
@@ -136,9 +161,37 @@ func createCtx(
 	return ctx
 }
 
-// Return the size of the domain
+// CompileCircuit compiles the circuit and returns the compiled
+// constraints system.
+func CompileCircuit(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func() [][2]int, error) {
+
+	// Build the trace and track it in the context
+	gnarkBuilder, rcGetter := newExternalRangeChecker(addGates)
+
+	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
+	if err != nil {
+		return nil, nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
+	}
+
+	return ccsIface.(*cs.SparseR1CS), rcGetter, err
+}
+
+// DomainSize returns the size of the domain. Meaning the size of the columns
+// taking part in the wizard for the current Plonk instance. The function
+// returns the next power of two of the number of constraints. Or, if the
+// option [WithFixedNbRows] is used, the fixed number of rows.
 func (ctx *CompilationCtx) DomainSize() int {
-	// fft domains
+
+	if ctx.FixedNbRowsOption.Enabled {
+		return ctx.FixedNbRowsOption.NbRow
+	}
+
+	return ctx.DomainSizePlonk()
+}
+
+// DomainSizePlonk returns the total size of the domain according to gnark.
+// Ignoring the [FixedNbRowsOption].
+func (ctx *CompilationCtx) DomainSizePlonk() int {
 	return utils.NextPowerOfTwo(
 		ctx.Plonk.SPR.NbConstraints + len(ctx.Plonk.SPR.Public),
 	)
@@ -168,7 +221,10 @@ func (ctx *CompilationCtx) TinyPISize() int {
 // like this: for i in tab: tab[i] = tab[permutation[i]]
 func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_377.Trace) {
 
-	nbVariables := spr.NbInternalVariables + len(spr.Public) + len(spr.Secret)
+	// nbVariables counts the number of variables occuring in the Plonk circuit. The
+	// +1 is to account for a "special" variable that we use for padding. It is
+	// associated with the "nbVariables - 1" variable-ID.
+	nbVariables := spr.NbInternalVariables + len(spr.Public) + len(spr.Secret) + 1
 
 	// nbVariables := spr.NbInternalVariables + len(spr.Public) + len(spr.Secret)
 	sizeSolution := ctx.DomainSize()
@@ -198,6 +254,12 @@ func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_3
 		j++
 	}
 
+	for ; j < sizeSolution-offset; j++ {
+		lro[offset+j] = nbVariables - 1
+		lro[sizeSolution+offset+j] = nbVariables - 1
+		lro[2*sizeSolution+offset+j] = nbVariables - 1
+	}
+
 	// init cycle:
 	// map ID -> last position the ID was seen
 	cycle := make([]int64, nbVariables)
@@ -224,30 +286,16 @@ func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_3
 	pt.S = permutation
 }
 
-// ConcatenatedTinyPIs returns a verifier column such constructed by stacking
-// all the `TinyPI` columns on top of one another and padding that with zeroes
-// up to the desired size.
-func (ctx CompilationCtx) ConcatenatedTinyPIs(size int) ifaces.Column {
-	return verifiercol.NewConcatTinyColumns(
-		ctx.comp,
-		size,
-		field.Zero(),
-		ctx.Columns.TinyPI...,
-	)
-}
-
 // GetPlonkProverAction returns the [PlonkInWizardProverAction] responsible for
 // assigning the first round of the wizard. In case we use the BBS commitment
 // this stands for [initialBBSProverAction] or [noCommitProverAction] in the
 // contrary case.
 func (ctx CompilationCtx) GetPlonkProverAction() PlonkInWizardProverAction {
-
 	if ctx.HasCommitment() {
 		return initialBBSProverAction{
 			CompilationCtx:  ctx,
 			proverStateLock: &sync.Mutex{},
 		}
 	}
-
 	return noCommitProverAction(ctx)
 }

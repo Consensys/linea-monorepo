@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
@@ -71,5 +72,21 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 		run.AssignColumn(z.Zs[i].GetColID(), smartvectors.NewRegular(numerator))
 		run.AssignLocalPoint(z.ZOpenings[i].Name(), numerator[len(numerator)-1])
 	}
+}
 
+// AssignPermutationGranddProduct assigns the grand product query
+type AssignPermutationGrandProduct struct {
+	Query *query.GrandProduct
+	// IsPartial indicates that the permuation queries contains public
+	// terms to evaluate explictly by the verifier. In that case, the
+	// result of the query is not one and must be computed explicitly.
+	IsPartial bool
+}
+
+func (a AssignPermutationGrandProduct) Run(run *wizard.ProverRuntime) {
+	y := field.One()
+	if a.IsPartial {
+		y = a.Query.Compute(run)
+	}
+	run.AssignGrandProduct(a.Query.ID, y)
 }

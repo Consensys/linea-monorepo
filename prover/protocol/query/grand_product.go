@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -52,6 +51,8 @@ func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryI
 			if err := inp[key].Numerators[i].Validate(); err != nil {
 				utils.Panic(" Numerator[%v] is not a valid expression", i)
 			}
+		}
+		for i := range inp[key].Denominators {
 			if err := inp[key].Denominators[i].Validate(); err != nil {
 				utils.Panic(" Denominator[%v] is not a valid expression", i)
 			}
@@ -80,9 +81,73 @@ func (gp GrandProductParams) UpdateFS(fs *fiatshamir.State) {
 	fs.Update(gp.Y)
 }
 
+// Compute returns the result value of the [GrandProduct] query. It
+// should be run by a runtime with access to the query columns. i.e
+// either by a [wizard.ProverRuntime] or a [wizard.VerifierRuntime]
+// but then the involved columns should all be public.
+func (g GrandProduct) Compute(run ifaces.Runtime) field.Element {
+
+	result := field.One()
+
+	for size := range g.Inputs {
+		for _, factor := range g.Inputs[size].Numerators {
+
+			var (
+				numBoard          = factor.Board()
+				numeratorMetadata = numBoard.ListVariableMetadata()
+				numerator         []field.Element
+			)
+
+			if len(numeratorMetadata) == 0 {
+				panic("unreachable")
+			}
+
+			if len(numeratorMetadata) > 0 {
+				numerator = column.EvalExprColumn(run, numBoard).IntoRegVecSaveAlloc()
+			}
+
+			for k := range numerator {
+				result.Mul(&result, &numerator[k])
+			}
+		}
+
+		for _, factor := range g.Inputs[size].Denominators {
+
+			var (
+				denBoard            = factor.Board()
+				denominatorMetadata = denBoard.ListVariableMetadata()
+				denominator         []field.Element
+				tmp                 = field.NewElement(1)
+			)
+
+			if len(denominatorMetadata) == 0 {
+				panic("unreachable")
+			}
+
+			if len(denominatorMetadata) > 0 {
+				denominator = column.EvalExprColumn(run, denBoard).IntoRegVecSaveAlloc()
+			}
+
+			for k := range denominator {
+
+				if denominator[k].IsZero() {
+					panic("denominator contains zeroes")
+				}
+
+				tmp.Mul(&tmp, &denominator[k])
+			}
+
+			result.Div(&result, &tmp)
+		}
+	}
+
+	return result
+}
+
 // Check verifies the satisfaction of the GrandProduct query using the provided runtime.
 // It calculates the product of numerators and denominators, and checks
 // if prod(Numerators) == Prod(Denominators)*ParamY, and returns an error if the condition is not satisfied.
+// The function also returns an error if the denominator contains a zero.
 //
 // Parameters:
 // - run: The runtime interface providing access to the query parameter for query verification.
@@ -90,39 +155,26 @@ func (gp GrandProductParams) UpdateFS(fs *fiatshamir.State) {
 // Returns:
 // - An error if the grand product query is not satisfied, or nil if it is satisfied.
 func (g GrandProduct) Check(run ifaces.Runtime) error {
-	params := run.GetParams(g.ID).(GrandProductParams)
-	actualProd := field.One()
-	for key := range g.Inputs {
-		for i, num := range g.Inputs[key].Numerators {
 
-			var (
-				numBoard          = num.Board()
-				denBoard          = g.Inputs[key].Denominators[i].Board()
-				numeratorMetadata = numBoard.ListVariableMetadata()
-				denominator       = column.EvalExprColumn(run, denBoard).IntoRegVecSaveAlloc()
-				numerator         []field.Element
-				packedZ           = field.BatchInvert(denominator)
-			)
+	var (
+		params     = run.GetParams(g.ID).(GrandProductParams)
+		actualProd = g.Compute(run)
+	)
 
-			if len(numeratorMetadata) == 0 {
-				numerator = vector.Repeat(field.One(), g.Inputs[key].Size)
-			}
-
-			if len(numeratorMetadata) > 0 {
-				numerator = column.EvalExprColumn(run, numBoard).IntoRegVecSaveAlloc()
-			}
-
-			for k := range packedZ {
-				packedZ[k].Mul(&numerator[k], &packedZ[k])
-				if k > 0 {
-					packedZ[k].Mul(&packedZ[k], &packedZ[k-1])
+	for size := range g.Inputs {
+		input := g.Inputs[size]
+		for i := range input.Denominators {
+			denominator := column.EvalExprColumn(run, input.Denominators[i].Board()).IntoRegVecSaveAlloc()
+			for k := range denominator {
+				if denominator[k].IsZero() {
+					return fmt.Errorf("the grand product query %v is not satisfied, (size=%v, denominator n°%v) denominator[%v] is zero", g.ID, size, i, k)
 				}
 			}
-			actualProd.Mul(&actualProd, &packedZ[len(packedZ)-1])
 		}
 	}
+
 	if actualProd != params.Y {
-		return fmt.Errorf("the grand product query %v is not satisfied, actualProd = %v, param.Y = %v", g.ID, actualProd, params.Y)
+		return fmt.Errorf("the grand product query %v is not satisfied, actualProd = %v, param.Y = %v", g.ID, actualProd.String(), params.Y.String())
 	}
 
 	return nil

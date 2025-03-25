@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
+	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
@@ -61,8 +62,13 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 
 	// function that will defer the hashing to gkr
 	factoryHasherFunc := func(_ frontend.API) (hash.FieldHasher, error) {
-		h := vr.GetHasherFactory().NewHasher()
-		return h, nil
+		factory := vr.GetHasherFactory()
+		if factory != nil {
+			h := vr.GetHasherFactory().NewHasher()
+			return h, nil
+		}
+		h, err := mimc.NewMiMC(api)
+		return &h, err
 	}
 
 	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
