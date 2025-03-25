@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft.adaptors
+package maru.consensus.qbft.adapters
 
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
@@ -28,8 +28,8 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
  */
 fun QbftBlock.toBeaconBlock(): BeaconBlock =
   when (this) {
-    is QbftBlockAdaptor -> this.beaconBlock
-    is QbftSealedBlockAdaptor -> this.sealedBeaconBlock.beaconBlock
+    is QbftBlockAdapter -> this.beaconBlock
+    is QbftSealedBlockAdapter -> this.sealedBeaconBlock.beaconBlock
     else -> throw IllegalArgumentException("Unsupported block type")
   }
 
@@ -39,7 +39,7 @@ fun QbftBlock.toBeaconBlock(): BeaconBlock =
  * @param qbftBlock the QBFT block to convert
  */
 fun QbftBlock.toSealedBeaconBlock(): SealedBeaconBlock {
-  if (this is QbftSealedBlockAdaptor) {
+  if (this is QbftSealedBlockAdapter) {
     return this.sealedBeaconBlock
   } else {
     throw IllegalArgumentException("Unsupported block type")
@@ -52,7 +52,7 @@ fun QbftBlock.toSealedBeaconBlock(): SealedBeaconBlock {
  * @param qbftBlockHeader the QBFT block header to convert
  */
 fun QbftBlockHeader.toBeaconBlockHeader(): BeaconBlockHeader {
-  if (this is QbftBlockHeaderAdaptor) {
+  if (this is QbftBlockHeaderAdapter) {
     return this.beaconBlockHeader
   } else {
     throw IllegalArgumentException("Unsupported block header type")

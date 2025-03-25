@@ -18,7 +18,7 @@ package maru.database
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
 
-interface Database : AutoCloseable {
+interface BeaconChain : AutoCloseable {
   fun getLatestBeaconState(): BeaconState?
 
   fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState?

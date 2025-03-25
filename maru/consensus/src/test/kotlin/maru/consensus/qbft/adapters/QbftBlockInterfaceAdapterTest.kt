@@ -13,17 +13,14 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.adaptors
+package maru.consensus.qbft.adapters
 
-import maru.consensus.qbft.adaptors.QbftBlockAdaptor
-import maru.consensus.qbft.adaptors.QbftBlockInterfaceAdaptor
-import maru.consensus.qbft.adaptors.toBeaconBlockHeader
 import maru.core.BeaconBlock
 import maru.core.ext.DataGenerators
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
-class QbftBlockInterfaceAdaptorTest {
+class QbftBlockInterfaceAdapterTest {
   @Test
   fun `can replace round number in header`() {
     val beaconBlock =
@@ -31,9 +28,9 @@ class QbftBlockInterfaceAdaptorTest {
         beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(1UL).copy(round = 10UL),
         beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
       )
-    val qbftBlock = QbftBlockAdaptor(beaconBlock)
+    val qbftBlock = QbftBlockAdapter(beaconBlock)
     val updatedBlock =
-      QbftBlockInterfaceAdaptor().replaceRoundInBlock(qbftBlock, 20)
+      QbftBlockInterfaceAdapter().replaceRoundInBlock(qbftBlock, 20)
     val updatedBeaconBlockHeader = updatedBlock.header.toBeaconBlockHeader()
     assertEquals(updatedBeaconBlockHeader.round, 20UL)
   }

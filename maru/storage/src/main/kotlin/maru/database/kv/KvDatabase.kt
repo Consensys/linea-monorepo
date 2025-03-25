@@ -18,7 +18,7 @@ package maru.database.kv
 import kotlin.jvm.optionals.getOrNull
 import maru.core.BeaconState
 import maru.core.SealedBeaconBlock
-import maru.database.Database
+import maru.database.BeaconChain
 import maru.database.Updater
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor
 import tech.pegasys.teku.storage.server.kvstore.KvStoreAccessor.KvStoreTransaction
@@ -27,7 +27,7 @@ import tech.pegasys.teku.storage.server.kvstore.schema.KvStoreVariable
 
 class KvDatabase(
   private val kvStoreAccessor: KvStoreAccessor,
-) : Database {
+) : BeaconChain {
   companion object {
     object Schema {
       val BeaconStateByBlockRoot: KvStoreColumn<ByteArray, BeaconState> =

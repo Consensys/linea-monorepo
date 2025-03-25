@@ -65,6 +65,9 @@ class StateTransitionImplTest {
     object : ValidatorProvider {
       override fun getValidatorsForBlock(header: BeaconBlockHeader): SafeFuture<Set<Validator>> =
         SafeFuture.completedFuture(validators)
+
+      override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>> =
+        SafeFuture.completedFuture(validators)
     }
 
   private val proposerSelector =

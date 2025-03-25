@@ -13,16 +13,16 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft.adaptors
+package maru.consensus.qbft.adapters
 
 import maru.core.BeaconBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockInterface
 
 /**
- * Adaptor class for QBFT block interface, this provides a way to replace the round number in a block
+ * Adapter class for QBFT block interface, this provides a way to replace the round number in a block
  */
-class QbftBlockInterfaceAdaptor : QbftBlockInterface {
+class QbftBlockInterfaceAdapter : QbftBlockInterface {
   override fun replaceRoundInBlock(
     proposalBlock: QbftBlock,
     roundNumber: Int,
@@ -32,7 +32,7 @@ class QbftBlockInterfaceAdaptor : QbftBlockInterface {
       beaconBlockHeader.copy(
         round = roundNumber.toULong(),
       )
-    return QbftBlockAdaptor(
+    return QbftBlockAdapter(
       BeaconBlock(replacedBeaconBlockHeader, proposalBlock.toBeaconBlock().beaconBlockBody),
     )
   }

@@ -209,6 +209,12 @@ class JsonRpcExecutionLayerManagerTest {
   }
 
   @Test
+  fun `finishBlockBuildingAndBuildNextBlock can't be called before setHeadAndStartBlockBuilding`() {
+    val result = executionLayerManager.finishBlockBuildingAndBuildNextBlock()
+    assertThat(result.isCompletedExceptionally).isTrue()
+  }
+
+  @Test
   fun `latestBlockHeight is initialized`() {
     val result = executionLayerManager.latestBlockMetadata()
     assertThat(result).isEqualTo(BlockMetadata(initialBlockHeight, latestBlockHash, 0L))
@@ -236,7 +242,7 @@ class JsonRpcExecutionLayerManagerTest {
     mockGetPayloadWithRandomData(payloadId, executionPayload)
     mockNewPayloadWithStatus(payloadStatus)
 
-    executionLayerManager.finishBlockBuilding().get()
+    executionLayerManager.finishBlockBuildingAndBuildNextBlock().get()
 
     executionLayerManager
       .setHeadAndStartBlockBuilding(

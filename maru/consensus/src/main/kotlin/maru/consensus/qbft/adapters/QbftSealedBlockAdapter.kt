@@ -13,38 +13,38 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.qbft.adaptors
+package maru.consensus.qbft.adapters
 
-import maru.core.BeaconBlock
+import maru.core.SealedBeaconBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 
 /**
- * Adaptor class to convert a BeaconBlock to a QBFT block
+ * Adapter class to convert a SealedBeaconBlock to a QBFT block
  */
-class QbftBlockAdaptor(
-  val beaconBlock: BeaconBlock,
+class QbftSealedBlockAdapter(
+  val sealedBeaconBlock: SealedBeaconBlock,
 ) : QbftBlock {
-  val qbftHeader: QbftBlockHeader = QbftBlockHeaderAdaptor(beaconBlock.beaconBlockHeader)
+  val qbftHeader: QbftBlockHeader = QbftBlockHeaderAdapter(sealedBeaconBlock.beaconBlock.beaconBlockHeader)
 
   override fun getHeader(): QbftBlockHeader = qbftHeader
 
   override fun isEmpty(): Boolean =
-    beaconBlock.beaconBlockBody.executionPayload.transactions
+    sealedBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.transactions
       .isEmpty()
 
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
-    if (other !is QbftBlockAdaptor) return false
+    if (other !is QbftSealedBlockAdapter) return false
 
-    if (beaconBlock != other.beaconBlock) return false
+    if (sealedBeaconBlock != other.sealedBeaconBlock) return false
     if (qbftHeader != other.qbftHeader) return false
 
     return true
   }
 
   override fun hashCode(): Int {
-    var result = beaconBlock.hashCode()
+    var result = sealedBeaconBlock.hashCode()
     result = 31 * result + qbftHeader.hashCode()
     return result
   }

@@ -60,7 +60,7 @@ class EngineApiBlockCreatorTest {
     )
 
   private fun mockFinishBlockBuilding(result: ExecutionPayload) {
-    whenever(executionLayerManager.finishBlockBuilding()).thenReturn(
+    whenever(executionLayerManager.finishBlockBuildingAndBuildNextBlock()).thenReturn(
       SafeFuture.completedFuture(result),
     )
   }
@@ -121,7 +121,7 @@ class EngineApiBlockCreatorTest {
         any(),
         any(),
       )
-      inOrder.verify(executionLayerManager).finishBlockBuilding()
+      inOrder.verify(executionLayerManager).finishBlockBuildingAndBuildNextBlock()
     }
     inOrder.verify(executionLayerManager).setHeadAndStartBlockBuilding(
       any(),
