@@ -360,6 +360,6 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
      * @return The amount of tokens staked.
      */
     function amountStaked() public view returns (uint256) {
-        return stakeManager.getStakedBalance(address(this));
+        return stakeManager.stakedBalanceOf(address(this));
     }
 }

@@ -37,7 +37,7 @@ contract StackOverflowStakeManager is UUPSUpgradeable, IStakeManager, TrustedCod
     mapping(address account => Account data) public accounts;
 
     // solhint-disable-next-line
-    function getStakedBalance(address _vault) external view override returns (uint256 _balance) {
+    function stakedBalanceOf(address _vault) external view override returns (uint256 _balance) {
         // implementation
     }
     // solhint-disable-next-line

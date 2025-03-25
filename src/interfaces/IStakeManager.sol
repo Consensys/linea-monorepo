@@ -63,7 +63,7 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     function totalStaked() external view returns (uint256);
     function totalMPAccrued() external view returns (uint256);
     function totalMaxMP() external view returns (uint256);
-    function getStakedBalance(address _vault) external view returns (uint256 _balance);
+    function stakedBalanceOf(address _vault) external view returns (uint256 _balance);
 
     function STAKING_TOKEN() external view returns (IERC20);
 }

@@ -644,7 +644,7 @@ contract RewardsStreamerMP is
      * @notice Returns the staked balance of a vault.
      * @param vaultAddress The address of the vault.
      */
-    function getStakedBalance(address vaultAddress) external view returns (uint256) {
+    function stakedBalanceOf(address vaultAddress) external view returns (uint256) {
         return vaultData[vaultAddress].stakedBalance;
     }
 
