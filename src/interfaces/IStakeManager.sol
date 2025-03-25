@@ -47,9 +47,9 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     /// @notice Emitted when emergency mode is enabled.
     event EmergencyModeEnabled();
     /// @notice Emitted when an account leaves the system
-    event AccountLeft(address indexed vault);
-    /// @notice Emited when accounts compound their MP
-    event Compound(address indexed vault, uint256 amount);
+    event VaultLeft(address indexed vault);
+    /// @notice Emited when accounts update their vaults
+    event VaultUpdated(address indexed vault, uint256 rewardsAccrued, uint256 mpAccrued);
 
     function registerVault() external;
     function stake(uint256 _amount, uint256 _seconds) external;

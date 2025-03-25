@@ -33,7 +33,6 @@ contract RewardsStreamerMP is
         uint256 maxMP;
         uint256 lastMPUpdateTime;
         uint256 lockUntil;
-        uint256 mpStaked;
         uint256 rewardsAccrued;
     }
 
@@ -199,7 +198,6 @@ contract RewardsStreamerMP is
         }
 
         vault.mpAccrued += _deltaMpTotal;
-        vault.mpStaked += _deltaMpTotal;
         totalMPAccrued += _deltaMpTotal;
 
         vault.maxMP += _deltaMPMax;
@@ -232,7 +230,6 @@ contract RewardsStreamerMP is
         // Update account state
         vault.lockUntil = newLockEnd;
         vault.mpAccrued += deltaMp;
-        vault.mpStaked += deltaMp;
         vault.maxMP += deltaMp;
 
         // Update global state
@@ -279,7 +276,7 @@ contract RewardsStreamerMP is
             vault.lastMPUpdateTime = 0;
         }
 
-        emit AccountLeft(msg.sender);
+        emit VaultLeft(msg.sender);
     }
 
     /**
@@ -380,7 +377,6 @@ contract RewardsStreamerMP is
         // migrate vault data to new vault
         newVault.stakedBalance = oldVault.stakedBalance;
         newVault.rewardIndex = oldVault.rewardIndex;
-        newVault.mpStaked = oldVault.mpStaked;
         newVault.mpAccrued = oldVault.mpAccrued;
         newVault.maxMP = oldVault.maxMP;
         newVault.lastMPUpdateTime = oldVault.lastMPUpdateTime;
@@ -411,20 +407,21 @@ contract RewardsStreamerMP is
 
     function _updateVault(address vaultAddress, bool forceMPUpdate) internal {
         VaultData storage vault = vaultData[vaultAddress];
-        uint256 accruedMP = _vaultPendingMP(vault);
-        if (accruedMP > 0 || forceMPUpdate) {
-            vault.mpAccrued += accruedMP;
-            vault.lastMPUpdateTime = block.timestamp;
-        }
 
+        // first accrue pending rewards for the work done so far
         uint256 rewardsAccrued = _vaultPendingRewards(vault);
         vault.rewardsAccrued += rewardsAccrued;
         vault.rewardIndex = lastRewardIndex;
 
-        uint256 mpToStake = vault.mpAccrued - vault.mpStaked;
-        vault.mpStaked += mpToStake;
-        totalMPStaked += mpToStake;
-        emit Compound(vaultAddress, mpToStake);
+        // then accrue pending MPs
+        uint256 accruedMP = _vaultPendingMP(vault);
+        if (accruedMP > 0 || forceMPUpdate) {
+            vault.mpAccrued += accruedMP;
+            vault.lastMPUpdateTime = block.timestamp;
+            totalMPStaked += accruedMP;
+        }
+
+        emit VaultUpdated(vaultAddress, rewardsAccrued, accruedMP);
     }
 
     function _updateRewardIndex() internal {
@@ -452,13 +449,7 @@ contract RewardsStreamerMP is
         vault.rewardIndex = lastRewardIndex;
         vault.mpAccrued -= _deltaMpTotal;
 
-        // A vault's "staked" MP will be reduced if the accrued MP is less than the staked MP.
-        // This is because the accrued MP represents the vault's total MP
-        if (vault.mpAccrued < vault.mpStaked) {
-            totalMPStaked -= vault.mpStaked - vault.mpAccrued;
-            vault.mpStaked = vault.mpAccrued;
-        }
-
+        totalMPStaked -= _deltaMpTotal;
         totalMPAccrued -= _deltaMpTotal;
         totalMaxMP -= _deltaMpMax;
         totalStaked -= amount;
@@ -474,7 +465,7 @@ contract RewardsStreamerMP is
 
     function _vaultShares(address vaultAddress) internal view returns (uint256) {
         VaultData storage vault = vaultData[vaultAddress];
-        return vault.stakedBalance + vault.mpStaked;
+        return vault.stakedBalance + vault.mpAccrued;
     }
 
     function _totalMP() internal view returns (uint256) {
@@ -572,7 +563,7 @@ contract RewardsStreamerMP is
         uint256 newRewardIndex;
         (, newRewardIndex) = _rewardIndex();
 
-        uint256 accountShares = vault.stakedBalance + vault.mpStaked;
+        uint256 accountShares = vault.stakedBalance + vault.mpAccrued;
         uint256 deltaRewardIndex = newRewardIndex - vault.rewardIndex;
 
         return (accountShares * deltaRewardIndex) / SCALE_FACTOR;
@@ -666,12 +657,11 @@ contract RewardsStreamerMP is
     }
 
     /**
-     * @notice Returns staked multiplier points of a vault.
-     * @return Staked multiplier points of the vault.
+     * @notice Returns the accrued multiplier points of a vault.
+     * @return Accrued multiplier points of the vault.
      */
-    function mpStakedOf(address vaultAddress) external view returns (uint256) {
-        VaultData storage vault = vaultData[vaultAddress];
-        return vault.mpStaked;
+    function mpAccruedOf(address vaultAddress) external view returns (uint256) {
+        return vaultData[vaultAddress].mpAccrued;
     }
 
     /**
