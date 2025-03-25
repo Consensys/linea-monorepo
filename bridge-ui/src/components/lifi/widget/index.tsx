@@ -47,17 +47,19 @@ const widgetConfig: Partial<WidgetConfig> = {
     },
     typography: {
       fontFamily: atypTextFont.style.fontFamily,
+      fontWeightBold: 700,
+      fontWeightMedium: 500,
+      fontWeightRegular: 400,
       body1: {
-        fontSize: "0.875rem",
-      },
-      body2: {
-        fontSize: "0.875rem",
+        fontSize: "0.875rem !important",
+        fontWeight: "500 !important",
       },
     },
     container: {
+      borderRadius: "0.625rem",
       maxHeight: "none",
-      maxWidth: "29.25rem",
-      minWidth: "none",
+      maxWidth: "100%",
+      minWidth: "min(416px, calc(100% - 3rem))",
       fontSize: "0.875rem",
       filter: "none",
     },
@@ -73,6 +75,7 @@ const widgetConfig: Partial<WidgetConfig> = {
         styleOverrides: {
           root: {
             fontSize: "0.875rem",
+            padding: "0.5rem",
           },
         },
       },
@@ -80,6 +83,7 @@ const widgetConfig: Partial<WidgetConfig> = {
         styleOverrides: {
           root: {
             display: "flex",
+            minHeight: "2.5rem",
             fontSize: "0.875rem",
             justifyContent: "flex-end",
             ["p"]: {
@@ -96,6 +100,9 @@ const widgetConfig: Partial<WidgetConfig> = {
       MuiCard: {
         styleOverrides: {
           root: {
+            filter: "none !important",
+            WebkitFilter: "none !important",
+            fontSize: "0.875rem !important",
             ":hover": {
               boxShadow: "inset 0 0 0 0.125rem var(--v2-color-icterine)",
             },
@@ -103,11 +110,7 @@ const widgetConfig: Partial<WidgetConfig> = {
         },
         defaultProps: {
           variant: "elevation",
-          raised: false,
           sx: {
-            p: {
-              fontSize: "0.875rem",
-            },
             ".MuiCardContent-root": {
               ":hover": {
                 boxShadow: "inset 0 0 0 0.125rem var(--v2-color-icterine)",
