@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -22,6 +23,22 @@ import (
 // TestDistributedWizard attempts to compiler the wizard distribution.
 func TestDistributedWizard(t *testing.T) {
 
+	var (
+		zkevm      = GetZkEVM()
+		affinities = GetAffinities(zkevm)
+		discoverer = &StandardModuleDiscoverer{
+			TargetWeight: 1 << 28,
+			Affinities:   affinities,
+		}
+	)
+
+	// This dumps a CSV with the list of all the columns in the original wizard
+	logdata.GenCSV(
+		files.MustOverwrite("./base-data/main.csv"),
+		logdata.IncludeColumnCSVFilter,
+	)(zkevm.WizardIOP)
+
+	_ = DistributeWizard(zkevm.WizardIOP, discoverer)
 }
 
 // TestDistributeWizard attempts to run and compile the distributed protocol in
@@ -387,7 +404,7 @@ func GetZkEVM() *zkevm.ZkEvm {
 		PrecompileSha2Blocks:                 600,
 		PrecompileRipemdBlocks:               0,
 		PrecompileModexpEffectiveCalls:       64,
-		PrecompileEcaddEffectiveCalls:        1 << 14,
+		PrecompileEcaddEffectiveCalls:        1 << 8,
 		PrecompileEcmulEffectiveCalls:        32,
 		PrecompileEcpairingEffectiveCalls:    32,
 		PrecompileEcpairingMillerLoops:       64,
@@ -402,4 +419,52 @@ func GetZkEVM() *zkevm.ZkEvm {
 	}
 
 	return zkevm.FullZKEVMWithSuite(&traceLimits, zkevm.CompilationSuite{}, &config.Config{})
+}
+
+// GetAffinities returns a list of affinities for the following modules. This
+// affinities regroup how the modules are grouped.
+//
+//	ecadd / ecmul / ecpairing
+//	hub / hub.scp / hub.acp
+//	everything related to keccak
+func GetAffinities(z *zkevm.ZkEvm) [][]column.Natural {
+
+	return [][]column.Natural{
+		{
+			z.Ecmul.AlignedGnarkData.IsActive.(column.Natural),
+			z.Ecadd.AlignedGnarkData.IsActive.(column.Natural),
+			z.Ecpair.AlignedFinalExpCircuit.IsActive.(column.Natural),
+			z.Ecpair.AlignedG2MembershipData.IsActive.(column.Natural),
+			z.Ecpair.AlignedMillerLoopCircuit.IsActive.(column.Natural),
+		},
+		{
+			z.WizardIOP.Columns.GetHandle("hub.HUB_STAMP").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("hub.scp_ADDRESS_HI").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("hub.acp_ADDRESS_HI").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("hub.ccp_HUB_STAMP").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("hub.envcp_HUB_STAMP").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("hub.stkcp_PEEK_AT_STACK_POW_4").(column.Natural),
+		},
+		{
+			z.WizardIOP.Columns.GetHandle("KECCAK_IMPORT_PAD_HASH_NUM").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("CLEANING_KECCAK_CleanLimb").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("DECOMPOSITION_KECCAK_Decomposed_Len_0").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("KECCAK_FILTERS_SPAGHETTI").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("LANE_KECCAK_Lane").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("KECCAKF_IS_ACTIVE_").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("KECCAKF_BLOCK_BASE_2_0").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("KECCAK_OVER_BLOCKS_TAGS_0").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("HASH_OUTPUT_Hash_Lo").(column.Natural),
+		},
+		{
+			z.WizardIOP.Columns.GetHandle("SHA2_IMPORT_PAD_HASH_NUM").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("DECOMPOSITION_SHA2_Decomposed_Len_0").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("LENGTH_CONSISTENCY_SHA2_BYTE_LEN_0_0").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("SHA2_FILTERS_SPAGHETTI").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("LANE_SHA2_Lane").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("Coefficient_SHA2").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("SHA2_OVER_BLOCK_IS_ACTIVE").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("SHA2_OVER_BLOCK_SHA2_COMPRESSION_CIRCUIT_IS_ACTIVE").(column.Natural),
+		},
+	}
 }
