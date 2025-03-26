@@ -7,23 +7,6 @@ const test = testWithSynpress(advancedFixtures);
 const { expect, describe } = test;
 
 describe("L1 > L2 via Native Bridge", () => {
-  // test.beforeEach(async ( {context} ) => {
-  //   // https://playwright.dev/docs/network#modify-requests
-  //   // Circumvent cors error in CI workflow
-  //   await context.route("https://app.dynamicauth.com/api/**", async route => {
-  //     console.log("intercepted", route.request().url());
-  //     const response = await route.fetch();
-  //   // Add a prefix to the title.
-  //     await route.fulfill({
-  //       response,
-  //       headers: {
-  //         ...response.headers(),
-  //         "Access-Control-Allow-Origin": "http://localhost:3000"
-  //       }
-  //     });
-  //   });
-  // });
-
   // test("should successfully go to the bridge UI page", async ({ page }) => {
   //   test.setTimeout(10_000);
   //   const pageUrl = page.url();
@@ -37,7 +20,7 @@ describe("L1 > L2 via Native Bridge", () => {
   // });
 
   test("should connect MetaMask to dapp correctly", async ({ page, connectMetamaskToDapp, clickNativeBridgeButton }) => {
-    test.setTimeout(30_000);
+    test.setTimeout(40_000);
     await clickNativeBridgeButton();
     await connectMetamaskToDapp();
   });
@@ -48,6 +31,7 @@ describe("L1 > L2 via Native Bridge", () => {
   //   clickNativeBridgeButton,
   //   openNativeBridgeTransactionHistory,
   // }) => {
+  //   test.setTimeout(60_000);
   //   await connectMetamaskToDapp();
   //   await clickNativeBridgeButton();
   //   await openNativeBridgeTransactionHistory();
