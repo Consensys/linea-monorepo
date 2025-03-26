@@ -2,6 +2,7 @@ import { formatUnits } from "viem";
 import styles from "./received-amount.module.scss";
 import { useTokenPrices } from "@/hooks";
 import { useConfigStore, useChainStore, useFormStore } from "@/stores";
+import { formatBalance } from "@/utils";
 
 function formatReceivedAmount(amount: bigint, tokenSymbol: string, bridgingFees: bigint) {
   if (tokenSymbol === "ETH") {
@@ -22,7 +23,8 @@ export default function ReceivedAmount() {
   return (
     <div className={styles.value}>
       <p className={styles.crypto}>
-        {formatUnits(amount || 0n, token.decimals)} {token.symbol}
+        {formatBalance(formatUnits(formatReceivedAmount(amount || 0n, token.symbol, bridgingFees), token.decimals), 6)}{" "}
+        {token.symbol}
       </p>
       {tokenPrices?.[token[fromChain.layer].toLowerCase()] &&
         tokenPrices?.[token[fromChain.layer].toLowerCase()] > 0 && (
@@ -33,7 +35,7 @@ export default function ReceivedAmount() {
             ).toLocaleString("en-US", {
               style: "currency",
               currency: currency.label,
-              maximumFractionDigits: 4,
+              maximumFractionDigits: 8,
             })}
           </p>
         )}
