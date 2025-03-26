@@ -21,10 +21,6 @@ export const test = metaMaskFixtures(setup).extend<{
       const nativeBridgeBtn = await page.waitForSelector("#native-bridge-btn");
       await nativeBridgeBtn.click();
 
-      if (firstInit) {
-        const agreeTermsBtn = await page.waitForSelector("#agree-terms-btn");
-        await agreeTermsBtn.click();
-      }
     });
   },
   clickNativeBridgeButton: async ({ page }, use) => {
@@ -36,16 +32,6 @@ export const test = metaMaskFixtures(setup).extend<{
   },
   connectMetamaskToDapp: async ({ page, metamask, context }, use) => {
     await use(async () => {
-      // https://playwright.dev/docs/network#modify-requests
-      // Circumvent cors error in CI workflow
-      await context.route("https://app.dynamicauth.com/api/**", async route => {
-        await route.continue({ headers: {
-          ...route.request().headers(), 
-          "Origin": "http://localhost:3000",
-          "Sec-Fetch-Site": "cross-site"
-        }});
-      });
-
       // Click Connect button
       const connectBtn = page.getByRole("button").filter({ hasText: "Connect" }).first();
       await connectBtn.click();

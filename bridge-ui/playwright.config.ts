@@ -12,7 +12,10 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:3000",
     trace: process.env.CI ? "on" : "retain-on-failure",
-    serviceWorkers: "block"
+    serviceWorkers: "block",
+    extraHTTPHeaders: {
+      "headhead": "headhead"
+    }
   },
   projects: [
     {
