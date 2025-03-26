@@ -36,6 +36,15 @@ export const test = metaMaskFixtures(setup).extend<{
   },
   connectMetamaskToDapp: async ({ page, metamask }, use) => {
     await use(async () => {
+      // https://playwright.dev/docs/network#modify-requests
+      // Circumvent cors error in CI workflow
+      await page.route('https://app.dynamicauth.com/api/**', async route => {
+        const headers = route.request().headers();
+        headers['Origin'] = "http://localhost:3000"
+        headers['Sec-Fetch-Site'] = "cross-site"
+        await route.continue({ headers });
+      });
+
       // Click Connect button
       const connectBtn = page.getByRole("button").filter({ hasText: "Connect" }).first();
       await connectBtn.click();
