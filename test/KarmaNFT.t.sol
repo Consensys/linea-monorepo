@@ -3,7 +3,6 @@ pragma solidity ^0.8.26;
 
 import { Test } from "forge-std/Test.sol";
 import { Base64 } from "@openzeppelin/contracts/utils/Base64.sol";
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { MockToken } from "./mocks/MockToken.sol";
 import { KarmaNFT } from "../src/KarmaNFT.sol";
 import { DeployKarmaNFTScript } from "../script/DeployKarmaNFT.s.sol";
