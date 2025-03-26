@@ -15,18 +15,6 @@ export const test = metaMaskFixtures(setup).extend<{
   waitForTransactionListUpdate: (txCountBeforeUpdate: number) => Promise<boolean>;
   selectToken: (tokenName: string) => Promise<void>;
 }>({
-  // Deprecated from Bridge UI V1
-  initUI: async ({ page }, use) => {
-    await use(async (firstInit: boolean = false) => {
-      const nativeBridgeBtn = await page.waitForSelector("#native-bridge-btn");
-      await nativeBridgeBtn.click();
-
-      if (firstInit) {
-        const agreeTermsBtn = await page.waitForSelector("#agree-terms-btn");
-        await agreeTermsBtn.click();
-      }
-    });
-  },
   clickNativeBridgeButton: async ({ page }, use) => {
     await use(async () => {
       const nativeBridgeBtn = page.getByRole("link").filter({ hasText: "Native Bridge" });
@@ -63,10 +51,11 @@ export const test = metaMaskFixtures(setup).extend<{
   },
   toggleShowTestNetworksInNativeBridgeForm: async ({ page }, use) => {
     await use(async () => {
-      const showTestNetworkToggle = page.getByTestId("native-bridge-show-test-network-toggle");
-      await showTestNetworkToggle.check();
+      // Suggested locator from 'playwright codegen'
+      await page.locator('label span').click();
     });
   },
+  
   waitForTransactionToConfirm: async ({ metamask }, use) => {
     await use(async () => {
       await metamask.page.bringToFront();

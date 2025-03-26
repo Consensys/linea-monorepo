@@ -12,8 +12,6 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:3000",
     trace: process.env.CI ? "on" : "retain-on-failure",
-    // To ensure Playwright can intercept API requests
-    serviceWorkers: "block"
   },
   projects: [
     {
