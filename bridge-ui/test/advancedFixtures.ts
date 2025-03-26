@@ -39,10 +39,11 @@ export const test = metaMaskFixtures(setup).extend<{
       // https://playwright.dev/docs/network#modify-requests
       // Circumvent cors error in CI workflow
       await page.route('https://app.dynamicauth.com/api/**', async route => {
-        const headers = route.request().headers();
-        headers['Origin'] = "http://localhost:3000"
-        headers['Sec-Fetch-Site'] = "cross-site"
-        await route.continue({ headers });
+        await route.continue({ headers: {
+          ...route.request().headers(), 
+          'Origin': 'http://localhost:3000',
+          'Sec-Fetch-Site': 'cross-site'
+        }});
       });
 
       // Click Connect button
