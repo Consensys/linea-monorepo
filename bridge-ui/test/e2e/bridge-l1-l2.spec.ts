@@ -28,57 +28,32 @@ describe("L1 > L2 via Native Bridge", () => {
     page,
     connectMetamaskToDapp,
     clickNativeBridgeButton,
-    openTransactionHistory,
+    openNativeBridgeTransactionHistory,
   }) => {
     await connectMetamaskToDapp();
     await clickNativeBridgeButton();
-    await openTransactionHistory();
+    await openNativeBridgeTransactionHistory();
+
     const txHistoryHeading = page.getByRole("heading").filter({ hasText: "Transaction History" });
     await expect(txHistoryHeading).toBeVisible();
   });
 
-  test.skip("should be able to switch network", async ({ page, metamask, initUI }) => {
-    await initUI(true);
-    await page.locator("#wallet-connect-btn").click();
-    await page.locator("wui-list-wallet", { hasText: "MetaMask" }).nth(1).click();
+  // test("should be able to switch to test networks", async ({
+  //   page,
+  //   connectMetamaskToDapp,
+  //   clickNativeBridgeButton,
+  //   openNativeBridgeFormSettings,
+  //   toggleShowTestNetworksInNativeBridgeForm,
+  // }) => {
+  //   await connectMetamaskToDapp();
+  //   await clickNativeBridgeButton();
+  //   await openNativeBridgeFormSettings();
+  //   await toggleShowTestNetworksInNativeBridgeForm();
 
-    await metamask.connectToDapp();
-
-    await page.locator("#chain-select").click();
-    await page.locator("#switch-alternative-chain-btn").click();
-
-    await metamask.approveSwitchNetwork();
-
-    await page.bringToFront();
-
-    await page.locator("#active-chain-name").getByText("Linea Sepolia Testnet").waitFor();
-  });
-
-  test.skip("should be able to claim funds if available", async ({
-    page,
-    metamask,
-    initUI,
-    waitForTransactionToConfirm,
-  }) => {
-    await initUI(true);
-    await page.locator("#wallet-connect-btn").click();
-    await page.locator("wui-list-wallet", { hasText: "MetaMask" }).nth(1).click();
-
-    await metamask.connectToDapp();
-
-    // Check if there is a claim button available
-    const checkClaimBtn = await page.locator("#claim-funds-btn").all();
-    if (checkClaimBtn.length > 0) {
-      const claimBtn = page.locator("#claim-funds-btn").nth(1);
-      await claimBtn.click();
-
-      await metamask.confirmTransaction();
-
-      await waitForTransactionToConfirm();
-    } else {
-      console.warn("Claim funds could not be tested since no funds are waiting to be claimed");
-    }
-  });
+  //   // Should have Sepolia text visible
+  //   const sepoliaText = page.getByText("Sepolia").first();
+  //   await expect(sepoliaText).toBeVisible();
+  // });
 
   test.skip("should be able to bridge ETH from L1 to L2", async ({
     page,
