@@ -19,8 +19,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
-// TestDistributeWizard attempts to run and compile the distributed protocol.
+// TestDistributedWizard attempts to compiler the wizard distribution.
 func TestDistributedWizard(t *testing.T) {
+
+}
+
+// TestDistributeWizard attempts to run and compile the distributed protocol in
+// dummy mode. Meaning without actual compilation.
+func TestDistributedWizardLogic(t *testing.T) {
 
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
@@ -395,5 +401,5 @@ func GetZkEVM() *zkevm.ZkEvm {
 		ShomeiMerkleProofs:                   1 << 14,
 	}
 
-	return zkevm.FullZKEVMWithSuite(&traceLimits, []func(*wizard.CompiledIOP){}, &config.Config{})
+	return zkevm.FullZKEVMWithSuite(&traceLimits, zkevm.CompilationSuite{}, &config.Config{})
 }
