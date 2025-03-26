@@ -82,6 +82,7 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 		zkevm = GetZkEVM()
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
+			Affinities:   GetAffinities(zkevm),
 		}
 	)
 

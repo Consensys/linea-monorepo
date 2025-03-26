@@ -561,6 +561,7 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 		assignedModule.nbInstancesOfPlonkCirc += nbInstancesOfPlonkCirc
 		assignedModule.nbInstancesOfPlonkQuery += nbInstancesOfPlonkQuery
 		assignedModule.ds.AddList(columns)
+
 	} else {
 
 		// Create a new module
@@ -788,16 +789,17 @@ func (m *QueryBasedModule) mustHaveConsistentLength() {
 // module.
 func groupQBModulesByAffinity(qbModules []*QueryBasedModule, affinities [][]column.Natural) (groups [][]*QueryBasedModule) {
 
-	sets := make([]collection.Set[*QueryBasedModule], len(qbModules))
+	sets := make([]*collection.Set[*QueryBasedModule], len(qbModules))
 
 	for i := range qbModules {
-		sets[i] = collection.NewSet[*QueryBasedModule]()
+		s := collection.NewSet[*QueryBasedModule]()
+		sets[i] = &s
 		sets[i].Insert(qbModules[i])
 	}
 
 	for _, aff := range affinities {
 
-		matched := make([]collection.Set[*QueryBasedModule], 0)
+		matched := make([]*collection.Set[*QueryBasedModule], 0)
 		for i := range sets {
 
 			isSetMatched := false

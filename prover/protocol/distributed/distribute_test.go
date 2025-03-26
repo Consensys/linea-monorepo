@@ -38,7 +38,25 @@ func TestDistributedWizard(t *testing.T) {
 		logdata.IncludeColumnCSVFilter,
 	)(zkevm.WizardIOP)
 
-	_ = DistributeWizard(zkevm.WizardIOP, discoverer)
+	distributed := DistributeWizard(zkevm.WizardIOP, discoverer)
+
+	for i := range distributed.ModuleNames {
+
+		var (
+			modLPP = distributed.LPPs[i]
+			modGL  = distributed.GLs[i]
+		)
+
+		logdata.GenCSV(
+			files.MustOverwrite(fmt.Sprintf("./module-data/module-%v-lpp.csv", i)),
+			logdata.IncludeColumnCSVFilter,
+		)(modLPP.Wiop)
+
+		logdata.GenCSV(
+			files.MustOverwrite(fmt.Sprintf("./module-data/module-%v-gl.csv", i)),
+			logdata.IncludeColumnCSVFilter,
+		)(modGL.Wiop)
+	}
 }
 
 // TestDistributeWizard attempts to run and compile the distributed protocol in
@@ -465,6 +483,10 @@ func GetAffinities(z *zkevm.ZkEvm) [][]column.Natural {
 			z.WizardIOP.Columns.GetHandle("Coefficient_SHA2").(column.Natural),
 			z.WizardIOP.Columns.GetHandle("SHA2_OVER_BLOCK_IS_ACTIVE").(column.Natural),
 			z.WizardIOP.Columns.GetHandle("SHA2_OVER_BLOCK_SHA2_COMPRESSION_CIRCUIT_IS_ACTIVE").(column.Natural),
+		},
+		{
+			z.WizardIOP.Columns.GetHandle("mmio.CN_ABC").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("mmio.MMIO_STAMP").(column.Natural),
 		},
 	}
 }
