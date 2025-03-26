@@ -24,16 +24,18 @@ describe("L1 > L2 via Native Bridge", () => {
     await expect(connectBtn).toBeHidden();
   });
 
-  // test("should be able to load the transaction history", async ({
-  //   page,
-  //   connectMetamaskToDapp,
-  //   openTransactionHistory,
-  // }) => {
-  //   await connectMetamaskToDapp();
-  //   await openTransactionHistory();
-  //   const txHistoryHeading = page.getByRole("heading").filter({ hasText: "Transaction History" });
-  //   await expect(txHistoryHeading).toBeVisible();
-  // });
+  test("should be able to load the transaction history", async ({
+    page,
+    connectMetamaskToDapp,
+    clickNativeBridgeButton,
+    openTransactionHistory,
+  }) => {
+    await connectMetamaskToDapp();
+    await clickNativeBridgeButton();
+    await openTransactionHistory();
+    const txHistoryHeading = page.getByRole("heading").filter({ hasText: "Transaction History" });
+    await expect(txHistoryHeading).toBeVisible();
+  });
 
   test.skip("should be able to switch network", async ({ page, metamask, initUI }) => {
     await initUI(true);

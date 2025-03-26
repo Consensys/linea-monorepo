@@ -35,7 +35,7 @@ jobs:
 
       - name: Install Playwright
         # Had import issues for "@playwright/testing" with 1.51.0 and 1.51.1
-        run: pnpm dlx playwright@1.50.0 install --with-deps
+        run: pnpm dlx playwright@1.50.0 install --with-deps chromium
 
       - name: Build Bridge UI
         run: pnpm run -F bridge-ui build
@@ -45,8 +45,8 @@ jobs:
           NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: ${{ secrets.PUBLIC_DYNAMIC_ENVIRONMENT_ID }}
           NEXT_PUBLIC_LIFI_API_KEY: ${{ secrets.PUBLIC_LIFI_API_KEY }}
 
-      - name: Download browsers for Playwright
-        run: pnpm exec playwright install
+      # - name: Download browsers for Playwright
+      #   run: pnpm exec playwright install
 
       - name: Install linux dependencies
         run: |
