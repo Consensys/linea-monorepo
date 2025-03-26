@@ -216,6 +216,13 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *M
 		)
 	}
 
+	// In case the LPP part is empty, we have a scenario where the sub-proof to
+	// build has no registered coin. This creates errors in the compilation
+	// due to sanity-check firing up. We add a coin to remediate.
+	if moduleLPP.Wiop.Coins.NumRounds() < 2 {
+		moduleLPP.InsertCoin("LPP_DUMMY_COIN", 1)
+	}
+
 	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
 	moduleLPP.Wiop.FiatShamirHooksPreSampling.AppendToInner(1, &SetInitialFSHash{ModuleLPP: *moduleLPP})
 
