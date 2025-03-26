@@ -34,7 +34,6 @@ jobs:
           pnpm-install-options: '--frozen-lockfile --prefer-offline'
 
       - name: Install Playwright
-        # Had import issues for "@playwright/testing" with 1.51.0 and 1.51.1
         run: pnpm dlx playwright@1.51.1 install --with-deps chromium
 
       - name: Build Bridge UI
@@ -45,14 +44,11 @@ jobs:
           NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: ${{ secrets.PUBLIC_DYNAMIC_ENVIRONMENT_ID }}
           NEXT_PUBLIC_LIFI_API_KEY: ${{ secrets.PUBLIC_LIFI_API_KEY }}
 
-      # - name: Download browsers for Playwright
-      #   run: pnpm exec playwright install
-
       - name: Install linux dependencies
         run: |
           sudo apt-get install --no-install-recommends -y xvfb
 
-      - name: Build synpress cache
+      - name: Build synpress cache (cache Metamask Fixture setup for UI tests)
         run: xvfb-run pnpm run -F bridge-ui build:cache
         env:
           E2E_TEST_PRIVATE_KEY: ${{ secrets.BRIDGE_UI_E2E_TESTS_PRIVATE_KEY }}
