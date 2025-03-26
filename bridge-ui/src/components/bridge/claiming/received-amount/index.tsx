@@ -3,9 +3,10 @@ import styles from "./received-amount.module.scss";
 import { useTokenPrices } from "@/hooks";
 import { useConfigStore, useChainStore, useFormStore } from "@/stores";
 import { formatBalance } from "@/utils";
+import { ETH_SYMBOL } from "@/constants";
 
 function formatReceivedAmount(amount: bigint, tokenSymbol: string, bridgingFees: bigint) {
-  if (tokenSymbol === "ETH") {
+  if (tokenSymbol === ETH_SYMBOL) {
     return amount - bridgingFees;
   }
   return amount;
