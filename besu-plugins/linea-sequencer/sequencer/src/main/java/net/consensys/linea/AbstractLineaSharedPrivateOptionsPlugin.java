@@ -97,10 +97,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
         LineaProfitabilityCliOptions.create().asPluginConfig());
     configMap.put(
         LineaTracerCliOptions.CONFIG_KEY, LineaTracerCliOptions.create().asPluginConfig());
-
     configMap.put(
         LineaRejectedTxReportingCliOptions.CONFIG_KEY,
         LineaRejectedTxReportingCliOptions.create().asPluginConfig());
+    configMap.put(
+        LineaBundleCliOptions.CONFIG_KEY, LineaBundleCliOptions.create().asPluginConfig());
     return configMap;
   }
 
