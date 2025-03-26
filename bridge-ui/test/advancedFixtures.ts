@@ -45,7 +45,6 @@ export const test = metaMaskFixtures(setup).extend<{
       await metamaskBtnInDropdownList.click();
 
       await metamask.connectToDapp();
-      await metamask.confirmSignature();
       await metamask.goBackToHomePage();
       await page.bringToFront();
     });
