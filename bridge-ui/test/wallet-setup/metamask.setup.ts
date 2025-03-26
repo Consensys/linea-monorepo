@@ -3,17 +3,6 @@ import { defineWalletSetup } from "@synthetixio/synpress";
 import { MetaMask, getExtensionId } from "@synthetixio/synpress/playwright";
 
 export default defineWalletSetup(METAMASK_PASSWORD, async (context, walletPage) => {
-  // https://playwright.dev/docs/network#modify-requests
-  // Circumvent cors error in CI workflow
-  await context.route("**/app.dynamicauth.com/api/**", async route => {
-    console.log("Intercepted route:", route.request().url());
-    await route.continue({ headers: {
-      ...route.request().headers(), 
-      "Origin": "http://localhost:3000",
-      "Sec-Fetch-Site": "cross-site",
-    }});
-  });
-
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   //@ts-ignore
   const extensionId = await getExtensionId(context, "MetaMask");
