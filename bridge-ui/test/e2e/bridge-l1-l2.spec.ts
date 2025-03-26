@@ -1,6 +1,6 @@
 import { testWithSynpress } from "@synthetixio/synpress";
 import { test as advancedFixtures } from "../advancedFixtures";
-import { SEPOLIA_NETWORK_NAME, TEST_URL, USDC_AMOUNT, WEI_AMOUNT } from "../constants";
+import { TEST_URL, USDC_AMOUNT, WEI_AMOUNT } from "../constants";
 
 const test = testWithSynpress(advancedFixtures);
 
@@ -22,22 +22,6 @@ describe("L1 > L2 via Native Bridge", () => {
     // There should be no 'Connect' button visible anymore
     const connectBtn = page.getByRole("button").filter({ hasText: "Connect" }).first();
     await expect(connectBtn).toBeHidden();
-  });
-
-  test.skip("metamask should be connected to the right network", async ({ page, metamask, initUI }) => {
-    await initUI(true);
-
-    await page.locator("#wallet-connect-btn").click();
-    await page.locator("wui-list-wallet", { hasText: "MetaMask" }).nth(1).click();
-
-    await metamask.connectToDapp();
-
-    await page.bringToFront();
-    await page
-      .locator("#active-chain-name", {
-        hasText: SEPOLIA_NETWORK_NAME,
-      })
-      .waitFor();
   });
 
   test.skip("should be able to reload the transaction history", async ({ page, metamask, initUI }) => {

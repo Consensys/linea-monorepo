@@ -15,6 +15,5 @@ export const LINEA_SEPOLIA_NETWORK = {
 };
 
 export const TEST_URL = "http://localhost:3000/";
-export const SEPOLIA_NETWORK_NAME = "Sepolia";
 export const WEI_AMOUNT = formatEther(BigInt(1)).toString();
 export const USDC_AMOUNT = formatUnits(BigInt(1), 6).toString();
