@@ -1,5 +1,5 @@
 import { useMemo, useEffect } from "react";
-import { Address } from "viem";
+import { Address, toHex } from "viem";
 import useFeeData from "./useFeeData";
 import useMessageNumber from "../useMessageNumber";
 import useERC20BridgingFee from "./useERC20BridgingFee";
@@ -9,6 +9,7 @@ import { Token } from "@/types";
 import { isEth } from "@/utils";
 
 type UseBridgingFeeProps = {
+  isConnected: boolean;
   token: Token;
   account?: Address;
   recipient: Address;
@@ -16,7 +17,7 @@ type UseBridgingFeeProps = {
   claimingType: "auto" | "manual";
 };
 
-const useBridgingFee = ({ account, token, claimingType, amount, recipient }: UseBridgingFeeProps) => {
+const useBridgingFee = ({ isConnected, account, token, claimingType, amount, recipient }: UseBridgingFeeProps) => {
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
   const setBridgingFees = useFormStore((state) => state.setBridgingFees);
@@ -24,25 +25,28 @@ const useBridgingFee = ({ account, token, claimingType, amount, recipient }: Use
   const { feeData } = useFeeData(toChain.id);
   const nextMessageNumber = useMessageNumber({ fromChain, claimingType });
 
+  const fromAddress = isConnected ? account : toHex("not connected", { size: 20 });
+  const toAddress = isConnected ? recipient : toHex("not connected", { size: 20 });
+
   const eth = useEthBridgingFee({
-    account,
+    account: fromAddress,
     fromChain,
     toChain,
     nextMessageNumber,
     amount,
-    recipient,
+    recipient: toAddress,
     token,
     claimingType,
   });
 
   const erc20 = useERC20BridgingFee({
-    account,
+    account: fromAddress,
     token,
     fromChain,
     toChain,
     nextMessageNumber,
     amount,
-    recipient,
+    recipient: toAddress,
     claimingType,
   });
 

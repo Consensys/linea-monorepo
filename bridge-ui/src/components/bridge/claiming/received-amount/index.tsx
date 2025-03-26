@@ -3,11 +3,19 @@ import styles from "./received-amount.module.scss";
 import { useTokenPrices } from "@/hooks";
 import { useConfigStore, useChainStore, useFormStore } from "@/stores";
 
+function formatReceivedAmount(amount: bigint, tokenSymbol: string, bridgingFees: bigint) {
+  if (tokenSymbol === "ETH") {
+    return amount - bridgingFees;
+  }
+  return amount;
+}
+
 export default function ReceivedAmount() {
   const fromChain = useChainStore.useFromChain();
   const currency = useConfigStore.useCurrency();
   const amount = useFormStore((state) => state.amount);
   const token = useFormStore((state) => state.token);
+  const bridgingFees = useFormStore((state) => state.bridgingFees);
 
   const { data: tokenPrices } = useTokenPrices([token[fromChain.layer]], fromChain.id);
 
@@ -20,7 +28,8 @@ export default function ReceivedAmount() {
         tokenPrices?.[token[fromChain.layer].toLowerCase()] > 0 && (
           <p className={styles.amount}>
             {(
-              Number(formatUnits(amount || 0n, token.decimals)) * tokenPrices?.[token[fromChain.layer].toLowerCase()]
+              Number(formatUnits(formatReceivedAmount(amount || 0n, token.symbol, bridgingFees), token.decimals)) *
+              tokenPrices?.[token[fromChain.layer].toLowerCase()]
             ).toLocaleString("en-US", {
               style: "currency",
               currency: currency.label,
