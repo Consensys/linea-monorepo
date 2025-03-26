@@ -1,9 +1,10 @@
-import { Address, maxUint256, toHex } from "viem";
+import { Address, maxUint256 } from "viem";
 import { useEstimateGas } from "wagmi";
 import { Chain, Token } from "@/types";
 import useFeeData from "./useFeeData";
 import { useTransactionArgs } from "../transaction-args";
 import { isCctp, isEth } from "@/utils";
+import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER } from "@/constants";
 
 type UseGasFeesProps = {
   token: Token;
@@ -35,7 +36,7 @@ const useGasFees = ({ address, amount, fromChain, isConnected, token }: UseGasFe
   const { feeData } = useFeeData(fromChain.id);
   const transactionArgs = useTransactionArgs();
 
-  const fromAddress = isConnected ? address : toHex("not connected", { size: 20 });
+  const fromAddress = isConnected ? address : DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER;
 
   const isEnabled = isConnected || isEth(token);
 

@@ -1,5 +1,5 @@
 import { useMemo, useEffect } from "react";
-import { Address, toHex } from "viem";
+import { Address } from "viem";
 import useFeeData from "./useFeeData";
 import useMessageNumber from "../useMessageNumber";
 import useERC20BridgingFee from "./useERC20BridgingFee";
@@ -7,6 +7,7 @@ import useEthBridgingFee from "./useEthBridgingFee";
 import { useFormStore, useChainStore } from "@/stores";
 import { Token } from "@/types";
 import { isEth } from "@/utils";
+import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER } from "@/constants";
 
 type UseBridgingFeeProps = {
   isConnected: boolean;
@@ -25,8 +26,8 @@ const useBridgingFee = ({ isConnected, account, token, claimingType, amount, rec
   const { feeData } = useFeeData(toChain.id);
   const nextMessageNumber = useMessageNumber({ fromChain, claimingType });
 
-  const fromAddress = isConnected ? account : toHex("not connected", { size: 20 });
-  const toAddress = isConnected ? recipient : toHex("not connected", { size: 20 });
+  const fromAddress = isConnected ? account : DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER;
+  const toAddress = isConnected ? recipient : DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER;
 
   const eth = useEthBridgingFee({
     account: fromAddress,

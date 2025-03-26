@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import { encodeFunctionData, toHex } from "viem";
+import { encodeFunctionData } from "viem";
 import { useFormStore, useChainStore } from "@/stores";
 import TokenBridge from "@/abis/TokenBridge.json";
 import { isEth, isNull, isUndefined, isUndefinedOrNull, isZero } from "@/utils";
 import { BridgeProvider, ChainLayer } from "@/types";
+import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER } from "@/constants";
 
 type UseERC20BridgeTxArgsProps = {
   isConnected: boolean;
@@ -19,7 +20,7 @@ const useERC20BridgeTxArgs = ({ isConnected, allowance }: UseERC20BridgeTxArgsPr
   const bridgingFees = useFormStore((state) => state.bridgingFees);
   const claim = useFormStore((state) => state.claim);
 
-  const toAddress = isConnected ? recipient : toHex("not connected", { size: 20 });
+  const toAddress = isConnected ? recipient : DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER;
 
   return useMemo(() => {
     if (
