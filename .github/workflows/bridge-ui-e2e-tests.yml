@@ -1,3 +1,4 @@
+# TODO in a later PR - Caching for repeated runs of this CI workflow
 name: Run Bridge UI E2E Tests
 
 on:
@@ -27,12 +28,15 @@ jobs:
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
         with:
-          node-version: 18.17.0
+          node-version: 20.17.0
           pnpm-install-options: '--frozen-lockfile --prefer-offline'
 
       - name: Install Playwright
         # Had import issues for "@playwright/testing" with 1.51.0 and 1.51.1
-        run: pnpm dlx playwright@1.50.0 install --with-deps
+        run: pnpm dlx playwright@1.50.0 install
+
+      - name: Download browsers for Playwright
+        run: pnpm exec playwright install
 
       - name: Build Bridge UI
         run: pnpm run -F bridge-ui build;

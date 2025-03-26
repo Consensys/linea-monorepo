@@ -9,7 +9,6 @@ export default defineWalletSetup(METAMASK_PASSWORD, async (context, walletPage) 
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   //@ts-ignore
   const metamask = new MetaMask(context, walletPage, METAMASK_PASSWORD, extensionId);
-  // console.log("METAMASK_SEED_PHRASE:", METAMASK_SEED_PHRASE);
   await metamask.importWallet(METAMASK_SEED_PHRASE);
   await metamask.importWalletFromPrivateKey(TEST_PRIVATE_KEY);
 
