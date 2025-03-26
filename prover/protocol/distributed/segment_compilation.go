@@ -15,6 +15,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
+	// the value is empirical and corresponds to the lowest value that works.
+	fixedNbRowPlonkCircuit = 1 << 24
+)
+
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
 // to compile a segment of the protocol into a standardized recursed proof.
 // A standardized proof has a verifier with a standard structure which has
@@ -88,11 +94,14 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 
 	defineRecursion := func(build2 *wizard.Builder) {
 		recCtx = recursion.DefineRecursionOf(
-			"wizard-recursion",
 			build2.CompiledIOP,
 			modIOP,
-			true,
-			1,
+			recursion.Parameters{
+				Name:                   "wizard-recursion",
+				WithoutGkr:             true,
+				MaxNumProof:            1,
+				FixedNbRowPlonkCircuit: fixedNbRowPlonkCircuit,
+			},
 		)
 	}
 

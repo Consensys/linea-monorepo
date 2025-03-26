@@ -57,7 +57,11 @@ func TestLookup(t *testing.T) {
 			var recCtx *Recursion
 
 			define2 := func(build2 *wizard.Builder) {
-				recCtx = DefineRecursionOf("test", build2.CompiledIOP, comp1, true, 1)
+				recCtx = DefineRecursionOf(build2.CompiledIOP, comp1, Parameters{
+					Name:        "test",
+					WithoutGkr:  true,
+					MaxNumProof: 1,
+				})
 			}
 
 			comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl)
