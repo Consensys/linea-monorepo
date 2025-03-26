@@ -19,26 +19,26 @@ describe("L1 > L2 via Native Bridge", () => {
   //   await expect(nativeBridgeBtn).toBeVisible();
   // });
 
-  // test("should connect MetaMask to dapp correctly", async ({ page, connectMetamaskToDapp, clickNativeBridgeButton }) => {
-  //   test.setTimeout(40_000);
-  //   await clickNativeBridgeButton();
-  //   await connectMetamaskToDapp();
-  // });
-
-  test("should be able to load the transaction history", async ({
-    page,
-    connectMetamaskToDapp,
-    clickNativeBridgeButton,
-    openNativeBridgeTransactionHistory,
-  }) => {
-    test.setTimeout(60_000);
-    await connectMetamaskToDapp();
+  test("should connect MetaMask to dapp correctly", async ({ page, connectMetamaskToDapp, clickNativeBridgeButton }) => {
+    test.setTimeout(40_000);
     await clickNativeBridgeButton();
-    await openNativeBridgeTransactionHistory();
-
-    const txHistoryHeading = page.getByRole("heading").filter({ hasText: "Transaction History" });
-    await expect(txHistoryHeading).toBeVisible();
+    await connectMetamaskToDapp();
   });
+
+  // test("should be able to load the transaction history", async ({
+  //   page,
+  //   connectMetamaskToDapp,
+  //   clickNativeBridgeButton,
+  //   openNativeBridgeTransactionHistory,
+  // }) => {
+  //   test.setTimeout(60_000);
+  //   await connectMetamaskToDapp();
+  //   await clickNativeBridgeButton();
+  //   await openNativeBridgeTransactionHistory();
+
+  //   const txHistoryHeading = page.getByRole("heading").filter({ hasText: "Transaction History" });
+  //   await expect(txHistoryHeading).toBeVisible();
+  // });
 
   // test("should be able to switch to test networks", async ({
   //   page,
