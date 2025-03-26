@@ -57,6 +57,7 @@ export default function BridgeForm() {
                 setIsBridgeOpen(false);
                 setIsTransactionHistoryOpen(true);
               }}
+              data-testid="transaction-history-icon"
             >
               <TransactionPaperIcon className={styles["transaction-icon"]} />
             </Button>

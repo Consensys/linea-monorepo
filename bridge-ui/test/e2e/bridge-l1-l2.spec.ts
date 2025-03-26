@@ -17,28 +17,23 @@ describe("L1 > L2 via Native Bridge", () => {
     await expect(nativeBridgeBtn).toBeVisible();
   });
 
-  test("should connect MetaMask to dapp correctly", async ({ page, metamask, connectMetamaskToDapp }) => {
+  test("should connect MetaMask to dapp correctly", async ({ page, connectMetamaskToDapp }) => {
     await connectMetamaskToDapp();
     // There should be no 'Connect' button visible anymore
     const connectBtn = page.getByRole("button").filter({ hasText: "Connect" }).first();
     await expect(connectBtn).toBeHidden();
   });
 
-  test.skip("should be able to reload the transaction history", async ({ page, metamask, initUI }) => {
-    await initUI(true);
-    await page.locator("#wallet-connect-btn").click();
-    await page.locator("wui-list-wallet", { hasText: "MetaMask" }).nth(1).click();
-
-    await metamask.connectToDapp();
-
-    const reloadHistoryBtn = await page.waitForSelector("#reload-history-btn");
-    await reloadHistoryBtn.click();
-
-    const reloadConfirmBtn = await page.waitForSelector("#reload-history-confirm-btn");
-    await reloadConfirmBtn.click();
-
-    await page.locator("#transactions-list").locator("ul").nth(1).waitFor({ timeout: 10_000 });
-  });
+  // test("should be able to load the transaction history", async ({
+  //   page,
+  //   connectMetamaskToDapp,
+  //   openTransactionHistory,
+  // }) => {
+  //   await connectMetamaskToDapp();
+  //   await openTransactionHistory();
+  //   const txHistoryHeading = page.getByRole("heading").filter({ hasText: "Transaction History" });
+  //   await expect(txHistoryHeading).toBeVisible();
+  // });
 
   test.skip("should be able to switch network", async ({ page, metamask, initUI }) => {
     await initUI(true);

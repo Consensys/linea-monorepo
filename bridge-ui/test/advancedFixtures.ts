@@ -6,6 +6,7 @@ export const test = metaMaskFixtures(setup).extend<{
   initUI: (firstInit?: boolean) => Promise<void>;
   clickNativeBridgeButton: () => Promise<Locator>;
   connectMetamaskToDapp: () => Promise<void>;
+  openTransactionHistory: () => Promise<void>;
   waitForTransactionToConfirm: () => Promise<void>;
   getBridgeTransactionsCount: () => Promise<number>;
   sendTokens: (amount: string, isETH?: boolean) => Promise<void>;
@@ -45,6 +46,13 @@ export const test = metaMaskFixtures(setup).extend<{
       await metamask.confirmSignature();
     });
   },
+  openTransactionHistory: async ({ page }, use) => {
+    await use(async () => {
+      const txHistoryIconButton = page.getByTestId("transaction-history-icon");
+      await txHistoryIconButton.click();
+    });
+  },
+
   waitForTransactionToConfirm: async ({ metamask }, use) => {
     await use(async () => {
       await metamask.page.bringToFront();
