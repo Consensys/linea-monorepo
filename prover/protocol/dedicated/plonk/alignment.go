@@ -320,15 +320,15 @@ func (a *Alignment) assignMasks(run *wizard.ProverRuntime) {
 	// first time we have STATIC_MASK != ALIGNED_MASK, we set IS_ACTIVE to zero.
 	for i := 0; i < totalSize; i++ {
 
-		if i%nbPublicInputsPadded < nbPublicInputs {
-			totalAligned++
+		if totalAligned >= totalInputs {
+			isActiveAssignment = isActiveAssignment[:i:i]
+			break
 		}
 
 		isActiveAssignment[i].SetOne()
 
-		if totalAligned >= totalInputs {
-			isActiveAssignment = isActiveAssignment[:i:i]
-			break
+		if i%nbPublicInputsPadded < nbPublicInputs {
+			totalAligned++
 		}
 	}
 
