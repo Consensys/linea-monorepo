@@ -11,12 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// asFromAccessors is an interface meant to access the fields of a [FromAccessors]
-// column without creating a cycle of dependencies.
-type asFromAccessors interface {
-	GetFromAccessorsFields() (accs []ifaces.Accessor, padding field.Element)
-}
-
 // compile check to enforce the struct to belong to the corresponding interface
 var _ VerifierCol = FromAccessors{}
 
