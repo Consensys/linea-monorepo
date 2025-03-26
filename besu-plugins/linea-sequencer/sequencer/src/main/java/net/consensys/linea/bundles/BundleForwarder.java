@@ -136,13 +136,17 @@ class BundleForwarder implements TransactionBundleAddedListener, TransactionBund
 
   record SendBundleResponse(long reqId, TransactionBundle bundle, Response response, String body) {}
 
-  @RequiredArgsConstructor
   @JsonAutoDetect(fieldVisibility = ANY)
   private static class JsonRpcEnvelope {
     private final String jsonrpc = "2.0";
     private final String method = "linea_sendBundle";
     private final long id;
-    private final BundleParameter params;
+    private final BundleParameter[] params;
+
+    public JsonRpcEnvelope(final long id, final BundleParameter params) {
+      this.id = id;
+      this.params = new BundleParameter[] {params};
+    }
   }
 
   @Accessors(fluent = true)

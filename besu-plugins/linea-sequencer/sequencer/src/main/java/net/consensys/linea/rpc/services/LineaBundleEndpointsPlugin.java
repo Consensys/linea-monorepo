@@ -60,4 +60,10 @@ public class LineaBundleEndpointsPlugin extends AbstractLineaRequiredPlugin {
     lineaSendBundleMethod.init(bundlePoolService);
     lineaCancelBundleMethod.init(bundlePoolService);
   }
+
+  @Override
+  public void stop() {
+    bundlePoolService.saveToDisk();
+    super.stop();
+  }
 }

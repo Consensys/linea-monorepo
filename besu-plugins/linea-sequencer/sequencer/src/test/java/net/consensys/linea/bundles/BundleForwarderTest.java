@@ -267,7 +267,7 @@ class BundleForwarderTest extends AbstractBundleTest {
           "jsonrpc": "2.0",
           "id": <reqId>,
           "method": "linea_sendBundle",
-          "params": <params>
+          "params": [<params>]
         }
         """
             .replace("<params>", OBJECT_MAPPER.writeValueAsString(bundle.toBundleParameter(false)))
