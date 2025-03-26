@@ -81,6 +81,7 @@ export default function Setting(props: SettingProps) {
                 onChange={(checked) => {
                   setShowTestnet(checked);
                 }}
+                data-testid="native-bridge-test-network-toggle"
               />
             </li>
           </ul>

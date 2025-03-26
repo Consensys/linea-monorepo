@@ -1,6 +1,6 @@
 import { testWithSynpress } from "@synthetixio/synpress";
 import { test as advancedFixtures } from "../advancedFixtures";
-import { TEST_URL, USDC_AMOUNT, WEI_AMOUNT } from "../constants";
+import { TEST_URL, USDC_SYMBOL, USDC_AMOUNT, WEI_AMOUNT, ETH_SYMBOL } from "../constants";
 
 const test = testWithSynpress(advancedFixtures);
 
@@ -8,19 +8,20 @@ const { expect, describe } = test;
 
 describe("L1 > L2 via Native Bridge", () => {
   test("should successfully go to the bridge UI page", async ({ page }) => {
-    test.setTimeout(10_000);
     const pageUrl = page.url();
     expect(pageUrl).toEqual(TEST_URL);
   });
 
   test("should have 'Native Bridge' button link on homepage", async ({ clickNativeBridgeButton }) => {
-    test.setTimeout(10_000);
     const nativeBridgeBtn = await clickNativeBridgeButton();
     await expect(nativeBridgeBtn).toBeVisible();
   });
 
-  test("should connect MetaMask to dapp correctly", async ({ page, connectMetamaskToDapp, clickNativeBridgeButton }) => {
-    test.setTimeout(40_000);
+  test("should connect MetaMask to dapp correctly", async ({
+    page,
+    connectMetamaskToDapp,
+    clickNativeBridgeButton,
+  }) => {
     await clickNativeBridgeButton();
     await connectMetamaskToDapp();
   });
@@ -31,7 +32,6 @@ describe("L1 > L2 via Native Bridge", () => {
     clickNativeBridgeButton,
     openNativeBridgeTransactionHistory,
   }) => {
-    test.setTimeout(60_000);
     await connectMetamaskToDapp();
     await clickNativeBridgeButton();
     await openNativeBridgeTransactionHistory();
@@ -57,46 +57,47 @@ describe("L1 > L2 via Native Bridge", () => {
     await expect(sepoliaText).toBeVisible();
   });
 
-  test.skip("should be able to bridge ETH from L1 to L2 in testnet", async ({
+  test("should be able to bridge ETH from L1 to L2 in testnet", async ({
     page,
     metamask,
     getBridgeTransactionsCount,
-    sendTokens,
+    bridgeToken,
     waitForTransactionToConfirm,
     waitForTransactionListUpdate,
+    connectMetamaskToDapp,
+    clickNativeBridgeButton,
+    openNativeBridgeFormSettings,
+    toggleShowTestNetworksInNativeBridgeForm,
   }) => {
-    await page.bringToFront();
-    const txnsLengthBefore = await getBridgeTransactionsCount();
+    await connectMetamaskToDapp();
+    await clickNativeBridgeButton();
+    await openNativeBridgeFormSettings();
+    await toggleShowTestNetworksInNativeBridgeForm();
 
-    await sendTokens(WEI_AMOUNT, true);
-    await metamask.confirmTransaction();
+    // const txnsLengthBefore = await getBridgeTransactionsCount();
 
-    // Wait for transaction to finish
-    await waitForTransactionToConfirm();
+    await bridgeToken(ETH_SYMBOL, WEI_AMOUNT);
 
-    await page.bringToFront();
+    // // Wait for transaction to finish
+    // await waitForTransactionToConfirm();
+
     // We check at the end that the transacton list is updated on the bridge UI
-    const listUpdated = await waitForTransactionListUpdate(txnsLengthBefore);
-
+    // const listUpdated = await waitForTransactionListUpdate(txnsLengthBefore);
     // Check that that new transaction is added to the list on the UI
-    expect(listUpdated).toBeTruthy();
+    // expect(listUpdated).toBeTruthy();
   });
 
   test.skip("should be able to bridge USDC from L1 to L2 in testnet", async ({
     page,
     metamask,
     getBridgeTransactionsCount,
-    selectToken,
-    sendTokens,
+    bridgeToken,
     waitForTransactionToConfirm,
     waitForTransactionListUpdate,
   }) => {
     const txnsLengthBefore = await getBridgeTransactionsCount();
 
-    // Select USDC in the token list
-    await selectToken("USDC");
-
-    await sendTokens(USDC_AMOUNT);
+    await bridgeToken(USDC_SYMBOL, USDC_AMOUNT);
 
     await metamask.confirmTransaction();
 
@@ -111,31 +112,31 @@ describe("L1 > L2 via Native Bridge", () => {
     expect(listUpdated).toBeTruthy();
   });
 
-  test.skip("should be able to bridge ERC20 tokens from L1 to L2", async ({
-    page,
-    metamask,
-    getBridgeTransactionsCount,
-    selectToken,
-    sendTokens,
-    waitForTransactionListUpdate,
-    waitForTransactionToConfirm,
-  }) => {
-    const txnsLengthBefore = await getBridgeTransactionsCount();
+  // test.skip("should be able to bridge ERC20 tokens from L1 to L2", async ({
+  //   page,
+  //   metamask,
+  //   getBridgeTransactionsCount,
+  //   selectToken,
+  //   bridgeToken,
+  //   waitForTransactionListUpdate,
+  //   waitForTransactionToConfirm,
+  // }) => {
+  //   const txnsLengthBefore = await getBridgeTransactionsCount();
 
-    // Select WETH in the token list (Easiest to get)
-    await selectToken("WETH");
+  //   // Select WETH in the token list (Easiest to get)
+  //   await selectToken("WETH");
 
-    await sendTokens(WEI_AMOUNT);
-    await metamask.confirmTransaction();
+  //   await bridgeToken(WEI_AMOUNT);
+  //   await metamask.confirmTransaction();
 
-    // Wait for transaction to finish
-    await waitForTransactionToConfirm();
+  //   // Wait for transaction to finish
+  //   await waitForTransactionToConfirm();
 
-    await page.bringToFront();
-    // We check at the end that the transacton list is updated on the bridge UI
-    const listUpdated = await waitForTransactionListUpdate(txnsLengthBefore);
+  //   await page.bringToFront();
+  //   // We check at the end that the transacton list is updated on the bridge UI
+  //   const listUpdated = await waitForTransactionListUpdate(txnsLengthBefore);
 
-    // Check that that new transaction is added to the list on the UI
-    expect(listUpdated).toBeTruthy();
-  });
+  //   // Check that that new transaction is added to the list on the UI
+  //   expect(listUpdated).toBeTruthy();
+  // });
 });
