@@ -14,6 +14,7 @@ export async function selectTokenAndWaitForBalance(tokenSymbol: string, page: Pa
   if ((await tokenBalance.textContent()) === `0 ${tokenSymbol}`) {
     throw `No ${tokenSymbol} balance, please add some funds before running the test`;
   }
+  console.log(`Selected token balance: ${await tokenBalance.textContent()}`);
   // Select token
   await page.getByTestId(`token-details-${tokenSymbol.toLowerCase()}-btn`).click();
 }

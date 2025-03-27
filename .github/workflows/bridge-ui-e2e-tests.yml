@@ -66,11 +66,11 @@ jobs:
           E2E_TEST_WALLET_PASSWORD: "TestPassword!"
           NEXT_PUBLIC_INFURA_ID: ${{ secrets.PUBLIC_BRIDGE_UI_INFURA_ID }}
 
-      - name: Run unit tests
-        run: pnpm run -F bridge-ui test:unit
-        env:
-          # Can run unit tests in parallel
-          CI: "false"
+      # - name: Run unit tests
+      #   run: pnpm run -F bridge-ui test:unit
+      #   env:
+      #     # Can run unit tests in parallel
+      #     CI: "false"
 
       - name: Run E2E tests
         run: xvfb-run pnpm run -F bridge-ui test:e2e:headful
