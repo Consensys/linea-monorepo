@@ -8,21 +8,21 @@ import { BaseScript } from "./Base.s.sol";
 import { DeploymentConfig } from "./DeploymentConfig.s.sol";
 
 import { TransparentProxy } from "../src/TransparentProxy.sol";
-import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
+import { StakeManager } from "../src/StakeManager.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { VaultFactory } from "../src/VaultFactory.sol";
 
-contract DeployRewardsStreamerMPScript is BaseScript {
-    function run() public returns (RewardsStreamerMP, VaultFactory, DeploymentConfig) {
+contract DeployStakeManagerScript is BaseScript {
+    function run() public returns (StakeManager, VaultFactory, DeploymentConfig) {
         DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
         (address deployer, address stakingToken,) = deploymentConfig.activeNetworkConfig();
 
-        bytes memory initializeData = abi.encodeCall(RewardsStreamerMP.initialize, (deployer, stakingToken));
+        bytes memory initializeData = abi.encodeCall(StakeManager.initialize, (deployer, stakingToken));
 
         vm.startBroadcast(deployer);
 
-        // Deploy RewardsStreamerMP logic contract
-        address impl = address(new RewardsStreamerMP());
+        // Deploy StakeManager logic contract
+        address impl = address(new StakeManager());
         // Create upgradeable proxy
         address proxy = address(new TransparentProxy(impl, initializeData));
 
@@ -31,13 +31,13 @@ contract DeployRewardsStreamerMPScript is BaseScript {
         address proxyClone = Clones.clone(vaultImplementation);
 
         // Whitelist vault implementation codehash
-        RewardsStreamerMP(proxy).setTrustedCodehash(proxyClone.codehash, true);
+        StakeManager(proxy).setTrustedCodehash(proxyClone.codehash, true);
 
         // Create vault factory
         VaultFactory vaultFactory = new VaultFactory(deployer, proxy, vaultImplementation);
 
         vm.stopBroadcast();
 
-        return (RewardsStreamerMP(proxy), vaultFactory, deploymentConfig);
+        return (StakeManager(proxy), vaultFactory, deploymentConfig);
     }
 }

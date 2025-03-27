@@ -13,12 +13,12 @@ import { StakeMath } from "./math/StakeMath.sol";
 
 // solhint-disable max-states-count
 /**
- * @title RewardsStreamerMP
+ * @title StakeManager
  * @notice A contract that manages staking and rewards for multiple vaults.
  * @dev This contract is upgradeable using the UUPS pattern.
  * @dev Uses `TrustedCodeHashAccess` to whitelist trusted vaults.
  */
-contract RewardsStreamerMP is
+contract StakeManager is
     Initializable,
     UUPSUpgradeable,
     IStakeManager,
@@ -80,21 +80,21 @@ contract RewardsStreamerMP is
 
     modifier onlyRegisteredVault() {
         if (vaultOwners[msg.sender] == address(0)) {
-            revert StakingManager__VaultNotRegistered();
+            revert StakeManager__VaultNotRegistered();
         }
         _;
     }
 
     modifier onlyNotEmergencyMode() {
         if (emergencyModeEnabled) {
-            revert StakingManager__EmergencyModeEnabled();
+            revert StakeManager__EmergencyModeEnabled();
         }
         _;
     }
 
     modifier onlyRewardsSupplier() {
         if (msg.sender != rewardsSupplier) {
-            revert StakingManager__Unauthorized();
+            revert StakeManager__Unauthorized();
         }
         _;
     }
@@ -147,12 +147,12 @@ contract RewardsStreamerMP is
         address owner = IStakeVault(vault).owner();
 
         if (vaultOwners[vault] != address(0)) {
-            revert StakingManager__VaultAlreadyRegistered();
+            revert StakeManager__VaultAlreadyRegistered();
         }
 
         // Verify this is a legitimate vault by checking it points to stakeManager
         if (address(IStakeVault(vault).stakeManager()) != address(this)) {
-            revert StakingManager__InvalidVault();
+            revert StakeManager__InvalidVault();
         }
 
         vaultOwners[vault] = owner;
@@ -178,7 +178,7 @@ contract RewardsStreamerMP is
         onlyRegisteredVault
     {
         if (amount == 0) {
-            revert StakingManager__AmountCannotBeZero();
+            revert StakeManager__AmountCannotBeZero();
         }
 
         _updateGlobalState();
@@ -219,7 +219,7 @@ contract RewardsStreamerMP is
         VaultData storage vault = vaultData[msg.sender];
 
         if (lockPeriod == 0) {
-            revert StakingManager__DurationCannotBeZero();
+            revert StakeManager__DurationCannotBeZero();
         }
 
         _updateGlobalState();
@@ -296,15 +296,15 @@ contract RewardsStreamerMP is
      */
     function setReward(uint256 amount, uint256 duration) external onlyRewardsSupplier {
         if (rewardEndTime > block.timestamp) {
-            revert StakingManager__RewardPeriodNotEnded();
+            revert StakeManager__RewardPeriodNotEnded();
         }
 
         if (duration == 0) {
-            revert StakingManager__DurationCannotBeZero();
+            revert StakeManager__DurationCannotBeZero();
         }
 
         if (amount == 0) {
-            revert StakingManager__AmountCannotBeZero();
+            revert StakeManager__AmountCannotBeZero();
         }
 
         // this will call updateRewardIndex and update the totalRewardsAccrued
@@ -361,11 +361,11 @@ contract RewardsStreamerMP is
     function migrateToVault(address migrateTo) external onlyNotEmergencyMode onlyTrustedCodehash onlyRegisteredVault {
         // first ensure the vault to migrate to is actually owned by the same user
         if (IStakeVault(msg.sender).owner() != IStakeVault(migrateTo).owner()) {
-            revert StakingManager__Unauthorized();
+            revert StakeManager__Unauthorized();
         }
 
         if (vaultData[migrateTo].stakedBalance > 0) {
-            revert StakingManager__MigrationTargetHasFunds();
+            revert StakeManager__MigrationTargetHasFunds();
         }
 
         _updateGlobalState();

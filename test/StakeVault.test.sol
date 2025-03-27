@@ -4,16 +4,16 @@ pragma solidity ^0.8.26;
 import { Test } from "forge-std/Test.sol";
 
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
-import { DeployRewardsStreamerMPScript } from "../script/DeployRewardsStreamerMP.s.sol";
+import { DeployStakeManagerScript } from "../script/DeployStakeManager.s.sol";
 import { VaultFactory } from "../src/VaultFactory.sol";
-import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
+import { StakeManager } from "../src/StakeManager.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { MockToken } from "./mocks/MockToken.sol";
 
 contract StakeVaultTest is Test {
     VaultFactory internal vaultFactory;
 
-    RewardsStreamerMP internal streamer;
+    StakeManager internal streamer;
 
     StakeVault internal stakeVault;
 
@@ -32,9 +32,8 @@ contract StakeVaultTest is Test {
         rewardToken = new MockToken("Reward Token", "RT");
         stakingToken = new MockToken("Staking Token", "ST");
 
-        DeployRewardsStreamerMPScript deployment = new DeployRewardsStreamerMPScript();
-        (RewardsStreamerMP stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) =
-            deployment.run();
+        DeployStakeManagerScript deployment = new DeployStakeManagerScript();
+        (StakeManager stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) = deployment.run();
         (, address _stakingToken,) = deploymentConfig.activeNetworkConfig();
 
         streamer = stakeManager;

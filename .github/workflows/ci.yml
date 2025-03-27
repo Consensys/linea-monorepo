@@ -172,7 +172,7 @@ jobs:
       max-parallel: 16
       matrix:
         rule:
-          - verify:rewards_streamer_mp
+          - verify:stake_manager
           - verify:emergency_mode
           - verify:mp_less_equal_max_mp
           - verify:karma

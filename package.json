@@ -1,5 +1,5 @@
 {
-  "name": "@vacp2p/staking-reward-streamer",
+  "name": "@vacp2p/staking",
   "description": "",
   "version": "0.1.1",
   "author": {
@@ -23,8 +23,8 @@
   "scripts": {
     "clean": "rm -rf cache out",
     "lint": "pnpm lint:sol && pnpm prettier:check",
-    "verify": "pnpm verify:rewards_streamer_mp && pnpm verify:mp_less_equal_max_mp && pnpm verify:karma && pnpm verify:emergency_mode",
-    "verify:rewards_streamer_mp": "certoraRun certora/confs/RewardsStreamerMP.conf",
+    "verify": "pnpm verify:stake_manager && pnpm verify:mp_less_equal_max_mp && pnpm verify:karma && pnpm verify:emergency_mode",
+    "verify:stake_manager": "certoraRun certora/confs/StakeManager.conf",
     "verify:mp_less_equal_max_mp": "certoraRun certora/confs/MPLessEqualMaxMP.conf",
     "verify:emergency_mode": "certoraRun certora/confs/EmergencyMode.conf",
     "verify:karma": "certoraRun certora/confs/Karma.conf",

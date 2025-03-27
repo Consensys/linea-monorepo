@@ -1,4 +1,4 @@
-using RewardsStreamerMP as streamer;
+using StakeManager as streamer;
 using ERC20A as staked;
 
 methods {

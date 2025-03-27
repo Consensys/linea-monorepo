@@ -1,4 +1,4 @@
-using RewardsStreamerMP as streamer;
+using StakeManager as streamer;
 
 function getVaultStakedBalance(address vault) returns uint256 {
     uint256 stakedBalance;

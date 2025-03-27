@@ -1,13 +1,13 @@
 import "./shared.spec";
 
 using ERC20A as staked;
-using RewardsStreamerMP as stakeManager;
+using StakeManager as stakeManager;
 
 methods {
   function ERC20A.balanceOf(address) external returns (uint256) envfree;
   function ERC20A.allowance(address, address) external returns(uint256) envfree;
   function ERC20A.totalSupply() external returns(uint256) envfree;
-  function RewardsStreamerMP.accounts(address) external returns(uint256, uint256, uint256, uint256, uint256, uint256) envfree;
+  function StakeManager.accounts(address) external returns(uint256, uint256, uint256, uint256, uint256, uint256) envfree;
   function _.owner() external => DISPATCHER(true);
   function _.transfer(address, uint256) external => DISPATCHER(true);
 }

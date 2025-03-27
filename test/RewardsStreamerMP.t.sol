@@ -4,15 +4,15 @@ pragma solidity ^0.8.26;
 import { Test, console } from "forge-std/Test.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { DeployKarmaScript } from "../script/DeployKarma.s.sol";
-import { DeployRewardsStreamerMPScript } from "../script/DeployRewardsStreamerMP.s.sol";
-import { UpgradeRewardsStreamerMPScript } from "../script/UpgradeRewardsStreamerMP.s.sol";
+import { DeployStakeManagerScript } from "../script/DeployStakeManager.s.sol";
+import { UpgradeStakeManagerScript } from "../script/UpgradeStakeManager.s.sol";
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { IStakeManager } from "../src/interfaces/IStakeManager.sol";
 import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
 import { ITrustedCodehashAccess } from "../src/interfaces/ITrustedCodehashAccess.sol";
-import { RewardsStreamerMP } from "../src/RewardsStreamerMP.sol";
+import { StakeManager } from "../src/StakeManager.sol";
 import { StakeMath } from "../src/math/StakeMath.sol";
 import { StakeVault } from "../src/StakeVault.sol";
 import { VaultFactory } from "../src/VaultFactory.sol";
@@ -20,9 +20,9 @@ import { Karma } from "../src/Karma.sol";
 import { MockToken } from "./mocks/MockToken.sol";
 import { StackOverflowStakeManager } from "./mocks/StackOverflowStakeManager.sol";
 
-contract RewardsStreamerMPTest is StakeMath, Test {
+contract StakeManagerTest is StakeMath, Test {
     MockToken internal stakingToken;
-    RewardsStreamerMP public streamer;
+    StakeManager public streamer;
     VaultFactory public vaultFactory;
     Karma public karma;
 
@@ -35,10 +35,9 @@ contract RewardsStreamerMPTest is StakeMath, Test {
     mapping(address owner => address vault) public vaults;
 
     function setUp() public virtual {
-        DeployRewardsStreamerMPScript deployment = new DeployRewardsStreamerMPScript();
+        DeployStakeManagerScript deployment = new DeployStakeManagerScript();
         DeployKarmaScript karmaDeployment = new DeployKarmaScript();
-        (RewardsStreamerMP stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) =
-            deployment.run();
+        (StakeManager stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) = deployment.run();
 
         (address _deployer, address _stakingToken,) = deploymentConfig.activeNetworkConfig();
 
@@ -108,7 +107,7 @@ contract RewardsStreamerMPTest is StakeMath, Test {
     }
 
     function checkVault(CheckVaultParams memory p) public view {
-        RewardsStreamerMP.VaultData memory vaultData = streamer.getVault(p.account);
+        StakeManager.VaultData memory vaultData = streamer.getVault(p.account);
 
         assertEq(vaultData.stakedBalance, p.stakedBalance, "wrong account staked balance");
         assertEq(stakingToken.balanceOf(p.account), p.vaultBalance, "wrong vault balance");
@@ -120,7 +119,7 @@ contract RewardsStreamerMPTest is StakeMath, Test {
     function checkVault(string memory text, CheckVaultParams memory p) public view {
         // assertEq(rewardToken.balanceOf(p.account), p.rewardBalance, "wrong account reward balance");
 
-        RewardsStreamerMP.VaultData memory vaultData = streamer.getVault(p.account);
+        StakeManager.VaultData memory vaultData = streamer.getVault(p.account);
 
         assertEq(
             vaultData.stakedBalance, p.stakedBalance, string(abi.encodePacked(text, "wrong account staked balance"))
@@ -196,7 +195,7 @@ contract RewardsStreamerMPTest is StakeMath, Test {
     }
 
     function _upgradeStakeManager() internal {
-        UpgradeRewardsStreamerMPScript upgrade = new UpgradeRewardsStreamerMPScript();
+        UpgradeStakeManagerScript upgrade = new UpgradeStakeManagerScript();
         upgrade.runWithAdminAndProxy(admin, IStakeManagerProxy(address(streamer)));
     }
 
@@ -206,7 +205,7 @@ contract RewardsStreamerMPTest is StakeMath, Test {
     }
 }
 
-contract MathTest is RewardsStreamerMPTest {
+contract MathTest is StakeManagerTest {
     function test_CalcInitialMP() public pure {
         assertEq(_initialMP(1), 1, "wrong initial MP");
         assertEq(_initialMP(10e18), 10e18, "wrong initial MP");
@@ -249,7 +248,7 @@ contract MathTest is RewardsStreamerMPTest {
     }
 }
 
-contract VaultRegistrationTest is RewardsStreamerMPTest {
+contract VaultRegistrationTest is StakeManagerTest {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -264,7 +263,7 @@ contract VaultRegistrationTest is RewardsStreamerMPTest {
     }
 }
 
-contract TrustedCodehashAccessTest is RewardsStreamerMPTest {
+contract TrustedCodehashAccessTest is StakeManagerTest {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -285,7 +284,7 @@ contract TrustedCodehashAccessTest is RewardsStreamerMPTest {
     }
 }
 
-contract IntegrationTest is RewardsStreamerMPTest {
+contract IntegrationTest is StakeManagerTest {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -651,7 +650,7 @@ contract IntegrationTest is RewardsStreamerMPTest {
     }
 }
 
-contract StakeTest is RewardsStreamerMPTest {
+contract StakeTest is StakeManagerTest {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -1611,7 +1610,7 @@ contract UnstakeTest is StakeTest {
         {
             _stake(alice, amountStaked, secondsLocked);
             {
-                RewardsStreamerMP.VaultData memory vaultData = streamer.getVault(vaults[alice]);
+                StakeManager.VaultData memory vaultData = streamer.getVault(vaults[alice]);
                 assertEq(vaultData.stakedBalance, totalStaked[stage], "stage 1: wrong account staked balance");
                 assertEq(vaultData.mpAccrued, predictedTotalMP[stage], "stage 1: wrong account MP");
                 assertEq(vaultData.maxMP, predictedTotalMaxMP[stage], "stage 1: wrong account max MP");
@@ -1626,7 +1625,7 @@ contract UnstakeTest is StakeTest {
         vm.warp(timestamp[stage]);
         streamer.updateVault(vaults[alice]);
         {
-            RewardsStreamerMP.VaultData memory vaultData = streamer.getVault(vaults[alice]);
+            StakeManager.VaultData memory vaultData = streamer.getVault(vaults[alice]);
             assertEq(vaultData.stakedBalance, totalStaked[stage], "stage 2: wrong account staked balance");
             assertEq(vaultData.mpAccrued, predictedTotalMP[stage], "stage 2: wrong account MP");
             assertEq(vaultData.maxMP, predictedTotalMaxMP[stage], "stage 2: wrong account max MP");
@@ -1639,7 +1638,7 @@ contract UnstakeTest is StakeTest {
         stage++; // third stage: reduced stake
         _unstake(alice, reducedStake);
         {
-            RewardsStreamerMP.VaultData memory vaultData = streamer.getVault(vaults[alice]);
+            StakeManager.VaultData memory vaultData = streamer.getVault(vaults[alice]);
             assertEq(vaultData.stakedBalance, totalStaked[stage], "stage 3: wrong account staked balance");
             assertEq(vaultData.mpAccrued, predictedTotalMP[stage], "stage 3: wrong account MP");
             assertEq(vaultData.maxMP, predictedTotalMaxMP[stage], "stage 3: wrong account max MP");
@@ -1782,7 +1781,7 @@ contract UnstakeTest is StakeTest {
     }
 }
 
-contract LockTest is RewardsStreamerMPTest {
+contract LockTest is StakeManagerTest {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -1966,7 +1965,7 @@ contract LockTest is RewardsStreamerMPTest {
 
     function test_LockFailsWithZero() public {
         _stake(alice, 10e18, 0);
-        vm.expectRevert(IStakeManager.StakingManager__DurationCannotBeZero.selector);
+        vm.expectRevert(IStakeManager.StakeManager__DurationCannotBeZero.selector);
         _lock(alice, 0);
     }
 
@@ -1987,7 +1986,7 @@ contract LockTest is RewardsStreamerMPTest {
     }
 }
 
-contract EmergencyExitTest is RewardsStreamerMPTest {
+contract EmergencyExitTest is StakeManagerTest {
     function setUp() public override {
         super.setUp();
     }
@@ -2008,7 +2007,7 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
         vm.prank(admin);
         streamer.enableEmergencyMode();
 
-        vm.expectRevert(IStakeManager.StakingManager__EmergencyModeEnabled.selector);
+        vm.expectRevert(IStakeManager.StakeManager__EmergencyModeEnabled.selector);
         vm.prank(admin);
         streamer.enableEmergencyMode();
     }
@@ -2207,13 +2206,13 @@ contract EmergencyExitTest is RewardsStreamerMPTest {
     }
 }
 
-contract UpgradeTest is RewardsStreamerMPTest {
+contract UpgradeTest is StakeManagerTest {
     function setUp() public override {
         super.setUp();
     }
 
     function test_RevertWhenNotOwner() public {
-        address newImpl = address(new RewardsStreamerMP());
+        address newImpl = address(new StakeManager());
         bytes memory initializeData;
         vm.prank(alice);
         vm.expectRevert("Ownable: caller is not the owner");
@@ -2255,7 +2254,7 @@ contract UpgradeTest is RewardsStreamerMPTest {
     }
 }
 
-contract LeaveTest is RewardsStreamerMPTest {
+contract LeaveTest is StakeManagerTest {
     function setUp() public override {
         super.setUp();
     }
@@ -2350,7 +2349,7 @@ contract LeaveTest is RewardsStreamerMPTest {
     }
 }
 
-contract MaliciousUpgradeTest is RewardsStreamerMPTest {
+contract MaliciousUpgradeTest is StakeManagerTest {
     function setUp() public override {
         super.setUp();
     }
@@ -2385,7 +2384,7 @@ contract MaliciousUpgradeTest is RewardsStreamerMPTest {
 }
 
 // solhint-disable-next-line
-contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
+contract StakeManager_RewardsTest is StakeManagerTest {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -2409,19 +2408,19 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
 
     function testSetRewards_RevertsNotAuthorized() public {
         vm.prank(alice);
-        vm.expectPartialRevert(IStakeManager.StakingManager__Unauthorized.selector);
+        vm.expectPartialRevert(IStakeManager.StakeManager__Unauthorized.selector);
         streamer.setReward(1000, 10);
     }
 
     function testSetRewards_RevertsBadDuration() public {
         vm.prank(admin);
-        vm.expectRevert(IStakeManager.StakingManager__DurationCannotBeZero.selector);
+        vm.expectRevert(IStakeManager.StakeManager__DurationCannotBeZero.selector);
         karma.setReward(address(streamer), 1000, 0);
     }
 
     function testSetRewards_RevertsBadAmount() public {
         vm.prank(admin);
-        vm.expectRevert(IStakeManager.StakingManager__AmountCannotBeZero.selector);
+        vm.expectRevert(IStakeManager.StakeManager__AmountCannotBeZero.selector);
         karma.setReward(address(streamer), 0, 10);
     }
 
@@ -2573,7 +2572,7 @@ contract RewardsStreamerMP_RewardsTest is RewardsStreamerMPTest {
     }
 }
 
-contract MultipleVaultsStakeTest is RewardsStreamerMPTest {
+contract MultipleVaultsStakeTest is StakeManagerTest {
     StakeVault public vault1;
     StakeVault public vault2;
     StakeVault public vault3;
@@ -2627,7 +2626,7 @@ contract MultipleVaultsStakeTest is RewardsStreamerMPTest {
     }
 }
 
-contract StakeVaultMigrationTest is RewardsStreamerMPTest {
+contract StakeVaultMigrationTest is StakeManagerTest {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -2635,7 +2634,7 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
     function test_RevertWhenNotOwnerOfMigrationVault() public {
         // alice tries to migrate to a vault she doesn't own
         vm.prank(alice);
-        vm.expectRevert(IStakeManager.StakingManager__Unauthorized.selector);
+        vm.expectRevert(IStakeManager.StakeManager__Unauthorized.selector);
         StakeVault(vaults[alice]).migrateToVault(vaults[bob]);
     }
 
@@ -2649,7 +2648,7 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
         newVault.stake(10e18, 0);
 
         // alice tries to migrate to a vault that is not empty
-        vm.expectRevert(IStakeManager.StakingManager__MigrationTargetHasFunds.selector);
+        vm.expectRevert(IStakeManager.StakeManager__MigrationTargetHasFunds.selector);
         StakeVault(vaults[alice]).migrateToVault(address(newVault));
     }
 
@@ -2770,7 +2769,7 @@ contract StakeVaultMigrationTest is RewardsStreamerMPTest {
     }
 }
 
-contract UpdateVaultTest is RewardsStreamerMPTest {
+contract UpdateVaultTest is StakeManagerTest {
     function setUp() public virtual override {
         super.setUp();
     }
@@ -2829,7 +2828,7 @@ contract UpdateVaultTest is RewardsStreamerMPTest {
     }
 }
 
-contract FuzzTests is RewardsStreamerMPTest {
+contract FuzzTests is StakeManagerTest {
     struct CheckVaultLockParams {
         uint256 lockEnd;
         uint256 totalLockUp;
@@ -2873,7 +2872,7 @@ contract FuzzTests is RewardsStreamerMPTest {
     function check(string memory text, CheckVaultParams storage p) internal view {
         // assertEq(rewardToken.balanceOf(p.account), p.rewardBalance, "wrong account reward balance");
 
-        RewardsStreamerMP.VaultData memory vaultData = streamer.getVault(p.account);
+        StakeManager.VaultData memory vaultData = streamer.getVault(p.account);
 
         assertEq(
             vaultData.stakedBalance, p.stakedBalance, string(abi.encodePacked(text, "wrong account staked balance"))
@@ -3036,7 +3035,7 @@ contract FuzzTests is RewardsStreamerMPTest {
 
     function _expectLock(address account, uint256 lockUpPeriod) internal {
         if (lockUpPeriod == 0) {
-            expectedRevert = IStakeManager.StakingManager__DurationCannotBeZero.selector;
+            expectedRevert = IStakeManager.StakeManager__DurationCannotBeZero.selector;
             return;
         }
 
