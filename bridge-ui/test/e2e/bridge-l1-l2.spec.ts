@@ -92,6 +92,18 @@ describe("L1 > L2 via Native Bridge", () => {
     await waitForTransactionListUpdate(txnsLengthBefore);
   });
 
+  // Note: This E2E test should address 
+
+  /**
+   * This E2E test should address the following edge case observed in initial development:
+   * 
+   * Steps to reproduce:
+   * 1. Clear local storage
+   * 2. Bridge USDC
+   * 3. Open Transaction History
+   * 
+   * Bug: Transaction History is not visible after above steps
+   */
   test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
     getBridgeTransactionsCount,
     waitForTransactionListUpdate,
