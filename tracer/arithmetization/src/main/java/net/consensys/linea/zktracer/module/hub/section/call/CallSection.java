@@ -144,8 +144,6 @@ public class CallSection extends TraceSection
 
   final Factories factory;
 
-  private boolean success;
-
   public CallSection(Hub hub, MessageFrame frame) {
     super(hub, maxNumberOfLines(hub));
 
@@ -201,7 +199,7 @@ public class CallSection extends TraceSection
 
     // OOGX case
     if (Exceptions.outOfGasException(exceptions)) {
-      this.oogXCall(hub);
+      this.oogXCall();
       return;
     }
 
@@ -250,7 +248,7 @@ public class CallSection extends TraceSection
     return 12; // 12 = 2 (stack) + 5 (CALL prequel) + 5 (successful PRC, except BLAKE and MODEXP)
   }
 
-  private void oogXCall(Hub hub) {
+  private void oogXCall() {
 
     final AccountFragment callerAccountFragment =
         factory
@@ -450,7 +448,7 @@ public class CallSection extends TraceSection
   public void resolveAtContextReEntry(Hub hub, CallFrame frame) {
     // The callSuccess will only be set
     // if the call is acted upon i.e. if the call is un-exceptional and un-aborted
-    success = bytesToBoolean(hub.messageFrame().getStackItem(0));
+    final boolean success = bytesToBoolean(hub.messageFrame().getStackItem(0));
 
     reEntryCallerSnapshot = canonical(hub, callerAddress);
     reEntryCalleeSnapshot = canonical(hub, calleeAddress);
