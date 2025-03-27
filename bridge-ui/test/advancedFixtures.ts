@@ -24,7 +24,7 @@ export const test = metaMaskFixtures(setup).extend<{
   connectMetamaskToDapp: () => Promise<void>;
   waitForTransactionToConfirm: () => Promise<void>;
   confirmTransactionAndWaitForInclusion: () => Promise<void>;
-  
+
   // Composite Bridge UI + Metamask Actions
   doTokenApprovalIfNeeded: () => Promise<void>;
   doInitiateBridgeTransaction: () => Promise<void>;
@@ -63,12 +63,12 @@ export const test = metaMaskFixtures(setup).extend<{
       await page.getByTestId("native-bridge-test-network-toggle").click();
     });
   },
-  getBridgeTransactionsCount: async ({ page }, use,) => {
+  getBridgeTransactionsCount: async ({ page }, use) => {
     await use(async () => {
       return await getBridgeTransactionsCountImpl(page);
     });
   },
-  selectTokenAndInputAmount: async ( { page }, use,) => {
+  selectTokenAndInputAmount: async ({ page }, use) => {
     await use(async (tokenSymbol: string, amount: string) => {
       // Wait for page to retrieve blockchain token balance
       await selectTokenAndWaitForBalance(tokenSymbol, page);
@@ -100,7 +100,7 @@ export const test = metaMaskFixtures(setup).extend<{
       } while (!listUpdated && tryCount < maxTries);
     });
   },
-  
+
   // Metamask Actions
   connectMetamaskToDapp: async ({ page, metamask }, use) => {
     await use(async () => {
@@ -159,7 +159,7 @@ export const test = metaMaskFixtures(setup).extend<{
 
       // Close 'Transaction successful' modal
       await page.bringToFront();
-      const closeModalBtn = page.getByRole('button', { name: 'Bridge your token' });
+      const closeModalBtn = page.getByRole("button", { name: "Bridge your token" });
       await closeModalBtn.click();
     });
   },
@@ -181,8 +181,8 @@ export const test = metaMaskFixtures(setup).extend<{
       await confirmTransactionAndWaitForInclusion();
 
       // Click on 'View transactions' button on the 'Transaction confirmed' modal
-      const viewTxButton = page.getByRole('button', { name: 'View transactions' })
-      await viewTxButton.click()
+      const viewTxButton = page.getByRole("button", { name: "View transactions" });
+      await viewTxButton.click();
     });
   },
 });
