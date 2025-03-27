@@ -29,10 +29,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.crypto.KeyPair;
 import org.hyperledger.besu.crypto.SECP256K1;
-import org.hyperledger.besu.datatypes.AccessListEntry;
-import org.hyperledger.besu.datatypes.Address;
-import org.hyperledger.besu.datatypes.Hash;
-import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.datatypes.*;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -45,7 +42,7 @@ public class HubShomeiTests {
 
   private static final Bytes32 key1 = Bytes32.repeat((byte) 1);
   private static final Bytes32 key2 = Bytes32.repeat((byte) 2);
-  private static final Bytes32 value = Bytes32.leftPad(Bytes.fromHexString("0x7a12e"));
+  private static final Bytes32 value = Bytes32.leftPad(Bytes.fromHexString("0x7a12e0"));
 
   private static final Address DEFAULT =
       Address.fromHexString("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef");
@@ -90,6 +87,7 @@ public class HubShomeiTests {
 
     final Transaction tx1 =
         ToyTransaction.builder()
+            .transactionType(TransactionType.ACCESS_LIST)
             .sender(senderAccount)
             .keyPair(keyPair)
             .gasLimit(1000000L)
@@ -100,6 +98,7 @@ public class HubShomeiTests {
 
     final Transaction tx2 =
         ToyTransaction.builder()
+            .transactionType(TransactionType.ACCESS_LIST)
             .sender(senderAccount)
             .nonce(senderAccount.getNonce() + 1)
             .keyPair(keyPair)
@@ -142,6 +141,7 @@ public class HubShomeiTests {
 
     final Transaction tx =
         ToyTransaction.builder()
+            .transactionType(TransactionType.ACCESS_LIST)
             .sender(senderAccount)
             .keyPair(keyPair)
             .gasLimit(1000000L)
