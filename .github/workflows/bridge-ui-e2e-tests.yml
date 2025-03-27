@@ -34,19 +34,19 @@ jobs:
             ~/.npm
             ${{ github.workspace }}/.next/cache
             ${{ github.workspace }}/.cache/ms-playwright
+            ${{ github.workspace }}/_work/.pnpm-store/v3
           key: ${{ runner.os }}-bridge-ui-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('bridge-ui/src/**/*.js', 'bridge-ui/src/**/*.ts', 'bridge-ui/src/**/*.tsx') }}
           restore-keys: |
             ${{ runner.os }}-bridge-ui-${{ hashFiles('**/pnpm-lock.yaml') }}-
+      
+      - name: Print GitHub Workspace
+        run: echo "GitHub Workspace is ${{ github.workspace }}"
 
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
         with:
           node-version: 20.17.0
           pnpm-install-options: '--frozen-lockfile --prefer-offline'
-
-      - name: Get pnpm store path
-        run: |
-          pnpm store path
 
       - name: Install Playwright
         run: pnpm dlx playwright@1.51.1 install --with-deps chromium

@@ -28,6 +28,7 @@ export async function fetchTransactionsHistory({
     fetchBridgeEvents(lineaSDK, fromChain, toChain, address, tokens, historyStoreActions),
     fetchBridgeEvents(lineaSDK, toChain, fromChain, address, tokens, historyStoreActions),
   ]);
+  console.log("fetchTransactionsHistory events:", events);
   return events.flat().sort((a, b) => Number(b.timestamp.toString()) - Number(a.timestamp.toString()));
 }
 

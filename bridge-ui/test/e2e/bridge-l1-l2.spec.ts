@@ -59,17 +59,8 @@ describe("L1 > L2 via Native Bridge", () => {
   //   await expect(sepoliaText).toBeVisible();
   // });
 
-  test.beforeEach(async ({ metamask }) => {
-    await metamask.page.route("https://**", async route => {
-      console.log("intercepted Metamask:", route.request().url());
-      const response = await route.fetch();  
-      await route.fulfill({response});
-    });
-  });
-
   test("should be able to initiate bridging ETH from L1 to L2 in testnet", async ({
     page,
-    context,
     getBridgeTransactionsCount,
     waitForTransactionListUpdate,
     connectMetamaskToDapp,
@@ -93,7 +84,6 @@ describe("L1 > L2 via Native Bridge", () => {
     // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
     await openNativeBridgeTransactionHistory();
     const txnsLengthBefore = await getBridgeTransactionsCountImpl(page);
-    await context.unrouteAll({ behavior: 'ignoreErrors' })
     await closeNativeBridgeTransactionHistory();
     // await page.pause();
     

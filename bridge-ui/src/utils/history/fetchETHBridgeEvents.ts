@@ -66,6 +66,7 @@ export async function fetchETHBridgeEvents(
     }
   }
 
+  console.log("fetchETHBridgeEvents uniqueLogsMap:", Array.from(uniqueLogsMap.values()));
   await Promise.all(
     Array.from(uniqueLogsMap.values()).map(async (log) => {
       const uniqueKey = `${log.args._from}-${log.args._to}-${log.transactionHash}`;
@@ -82,8 +83,10 @@ export async function fetchETHBridgeEvents(
 
       const block = await client.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
       if (isBlockTooOld(block)) return;
+      console.log("fetchETHBridgeEvents block:", block);
 
       const messageStatus = await contract.getMessageStatus(messageHash);
+      console.log("fetchETHBridgeEvents messageStatus:", messageStatus);
 
       const token = tokens.find((token) => token.type.includes("eth"));
 
