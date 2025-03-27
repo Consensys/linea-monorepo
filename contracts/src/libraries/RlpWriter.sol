@@ -78,7 +78,9 @@ library RlpWriter {
 
       let i := 0
       // Scan for first non-zero byte from MSB (big-endian)
-      for {} lt(i, 32) {
+      for {
+
+      } lt(i, 32) {
         i := add(i, 1)
       } {
         if iszero(and(shr(sub(248, mul(i, 8)), _uintValue), 0xff)) {
@@ -124,7 +126,11 @@ library RlpWriter {
         let temp := _itemLength
         let lengthOfLength := 0
 
-        for {} gt(temp, 0) {} {
+        for {
+
+        } gt(temp, 0) {
+
+        } {
           lengthOfLength := add(lengthOfLength, 1)
           temp := shr(8, temp)
         }
