@@ -56,7 +56,6 @@ jobs:
   unit-tests:
     needs: [ build ]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
-    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -67,7 +66,6 @@ jobs:
         uses: ./.github/actions/setup-environment
         with:
           enable-ssh: ${{ inputs.tests-with-ssh }}
-          go-corset: true
 
       - name: Run unit tests
         run: GOMEMLIMIT=26GiB ./gradlew :arithmetization:test
@@ -104,7 +102,6 @@ jobs:
   replay-tests:
     needs: [ build ]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
-    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -115,7 +112,6 @@ jobs:
         uses: ./.github/actions/setup-environment
         with:
           enable-ssh: ${{ inputs.tests-with-ssh }}
-          go-corset: true
 
       - name: Run replay tests
         run: GOMEMLIMIT=26GiB ./gradlew :arithmetization:fastReplayTests

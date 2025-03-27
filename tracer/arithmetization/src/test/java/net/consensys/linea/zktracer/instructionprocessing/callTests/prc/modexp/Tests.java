@@ -14,6 +14,7 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.callTests.prc.modexp;
 
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByDayOfMonth;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.CodeExecutionMethods.*;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.modexp.ByteSizeParameter.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
@@ -22,19 +23,21 @@ import java.util.stream.Stream;
 
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.*;
-import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ecmul.ParameterGeneration;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallTests;
-import org.junit.jupiter.api.Disabled;
+import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.hash.ParameterGeneration;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.Arguments;
 
-@Disabled
-@Tag("weekly")
+@Tag("prc-calltests")
 public class Tests extends PrecompileCallTests<CallParameters> {
+  // Set sample size with potential for override.
+  private static final int MODEXP_SAMPLE_SIZE =
+      Integer.parseInt(System.getenv().getOrDefault("PRC_CALLTESTS_SAMPLE_SIZE", "700"));
 
   public static Stream<Arguments> parameterGeneration() {
-    return ParameterGeneration.parameterGeneration();
+    return randomSampleByDayOfMonth(MODEXP_SAMPLE_SIZE, ParameterGeneration.parameterGeneration())
+        .stream();
   }
 
   /** Non-parametric test to make sure things are working as expected. */

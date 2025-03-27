@@ -18,7 +18,10 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
@@ -303,5 +306,28 @@ public class Utilities {
     for (int value : values) {
       program.push(value);
     }
+  }
+
+  /**
+   * Sample exactly n items at random from a given input list. If that list has fewer than n items,
+   * then the list is returned unchanged. The Random Number Generated (RNG) is seeded with the
+   * day-of-the-month. The idea here is that we benefit from different seeds (i.e. by testing
+   * different inputs), but should a failure occur we can (in principle) recreate it (provided we
+   * know what day of the month it failed on).
+   *
+   * @param n Number of items to sample
+   * @param items Source of items to sample from
+   * @param <T>
+   * @return
+   */
+  public static <T> List<T> randomSampleByDayOfMonth(int n, List<T> items) {
+    // Determine day of month
+    int dayOfMonth = Calendar.getInstance().get(Calendar.DAY_OF_MONTH);
+    // Seed rng with day of month.
+    Random rng = new Random(dayOfMonth);
+    // Randomly shuffle the items
+    Collections.shuffle(items, rng);
+    //
+    return items.subList(0, n);
   }
 }

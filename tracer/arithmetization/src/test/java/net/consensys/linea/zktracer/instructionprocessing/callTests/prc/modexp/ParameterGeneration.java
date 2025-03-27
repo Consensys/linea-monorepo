@@ -19,7 +19,6 @@ import static net.consensys.linea.zktracer.opcode.OpCode.STATICCALL;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -51,7 +50,7 @@ public class ParameterGeneration {
    *
    * @return Stream of test parameters
    */
-  public static Stream<Arguments> parameterGeneration() {
+  public static List<Arguments> parameterGeneration() {
     List<OpCode> CallOpCodes = List.of(CALL, CALLCODE, DELEGATECALL, STATICCALL);
 
     List<Arguments> argumentsList = new ArrayList<>();
@@ -92,6 +91,6 @@ public class ParameterGeneration {
         }
       }
     }
-    return argumentsList.stream();
+    return argumentsList;
   }
 }

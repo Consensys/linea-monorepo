@@ -21,7 +21,6 @@ jacoco {
   toolVersion = '0.8.12'
 }
 
-apply from: rootProject.file("gradle/corset.gradle")
 apply from: rootProject.file("gradle/java.gradle")
 apply from: rootProject.file("gradle/dependency-management.gradle")
 apply from: rootProject.file('gradle/common-dependencies.gradle')
@@ -58,7 +57,7 @@ tasks.register("generateGeneralStateReferenceTests", RefTestGenerationTask) {
 }
 
 tasks.register('referenceBlockchainTests', Test) {
-  dependsOn(buildZkevmBin)
+  dependsOn(":arithmetization:buildZkevmBin")
   finalizedBy(jacocoReferenceBlockchainTestsReport)
   description = 'Runs ETH reference blockchain tests.'
   dependsOn generateBlockchainReferenceTests
@@ -83,7 +82,7 @@ tasks.register("jacocoReferenceBlockchainTestsReport", JacocoReport) {
 }
 
 tasks.register('referenceGeneralStateTests', Test) {
-  dependsOn(buildZkevmBin)
+  dependsOn(":arithmetization:buildZkevmBin")
   finalizedBy(jacocoReferenceGeneralStateTestsReport)
   description = 'Runs ETH reference general state tests.'
   dependsOn generateGeneralStateReferenceTests
