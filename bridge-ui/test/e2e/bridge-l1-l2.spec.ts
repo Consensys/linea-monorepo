@@ -1,6 +1,7 @@
 import { testWithSynpress } from "@synthetixio/synpress";
 import { test as advancedFixtures } from "../advancedFixtures";
 import { TEST_URL, USDC_SYMBOL, USDC_AMOUNT, WEI_AMOUNT, ETH_SYMBOL } from "../constants";
+import { getBridgeTransactionsCountImpl } from "../utils";
 
 const test = testWithSynpress(advancedFixtures);
 
@@ -58,6 +59,7 @@ describe("L1 > L2 via Native Bridge", () => {
   // });
 
   test("should be able to initiate bridging ETH from L1 to L2 in testnet", async ({
+    page,
     getBridgeTransactionsCount,
     waitForTransactionListUpdate,
     connectMetamaskToDapp,
@@ -80,7 +82,7 @@ describe("L1 > L2 via Native Bridge", () => {
 
     // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
     await openNativeBridgeTransactionHistory();
-    const txnsLengthBefore = await getBridgeTransactionsCount();
+    const txnsLengthBefore = await getBridgeTransactionsCountImpl(page);
     await closeNativeBridgeTransactionHistory();
 
     // Actual bridging actions
