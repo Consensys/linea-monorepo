@@ -71,6 +71,10 @@ jobs:
         env:
           # Can run unit tests in parallel
           CI: "false"
+          NEXT_PUBLIC_LIFI_API_KEY: ${{ secrets.PUBLIC_LIFI_API_KEY }}
+          NEXT_PUBLIC_WALLET_CONNECT_ID: ${{ secrets.PUBLIC_WALLET_CONNECT_ID }}
+          NEXT_PUBLIC_INFURA_ID: ${{ secrets.PUBLIC_BRIDGE_UI_INFURA_ID }}
+          NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: ${{ secrets.PUBLIC_DYNAMIC_SANDBOX_ENVIRONMENT_ID }}
 
       - name: Run E2E tests
         run: xvfb-run pnpm run -F bridge-ui test:e2e:headful
