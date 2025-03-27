@@ -32,7 +32,7 @@ jobs:
           REFERENCE_TESTS_PARALLELISM: 4
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --air
+          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --air
 
       - name: Upload test report
         if: always()

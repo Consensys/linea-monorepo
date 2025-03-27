@@ -27,7 +27,7 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           WEEKLY_TESTS_PARALLELISM: 26
-          GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --hir
+          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --hir
 
       - name: Upload test report
         if: always()
@@ -76,7 +76,7 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           WEEKLY_TESTS_PARALLELISM: 20
-          GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --hir
+          GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --hir
 
       - name: Upload prc calls test report
         if: always()
