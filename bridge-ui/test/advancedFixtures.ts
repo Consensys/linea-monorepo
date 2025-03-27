@@ -1,7 +1,7 @@
 import { metaMaskFixtures } from "@synthetixio/synpress/playwright";
 import setup from "./wallet-setup/metamask.setup";
 import { Locator } from "@playwright/test";
-import { selectTokenAndWaitForBalance } from "./utils";
+import { getBridgeTransactionsCountImpl, selectTokenAndWaitForBalance } from "./utils";
 
 /**
  * NB: There is an issue with Synpress `metaMaskFixtures` extension functions wherein extension functions
@@ -65,11 +65,7 @@ export const test = metaMaskFixtures(setup).extend<{
   },
   getBridgeTransactionsCount: async ({ page }, use,) => {
     await use(async () => {
-      const txList = page.getByTestId("native-bridge-transaction-history-list");
-      await expect(txList).toBeVisible();
-      const txs = txList.getByRole("listitem");
-      const txCount = txs.count();
-      return txCount;
+      return await getBridgeTransactionsCountImpl(page);
     });
   },
   selectTokenAndInputAmount: async ( { page }, use,) => {
@@ -91,14 +87,13 @@ export const test = metaMaskFixtures(setup).extend<{
         throw "Insufficient funds available, please add some funds before running the test";
     });
   },
-  waitForTransactionListUpdate: async ({ page, getBridgeTransactionsCount }, use) => {
+  waitForTransactionListUpdate: async ({ page }, use) => {
     await use(async (txCountBeforeUpdate: number) => {
       const maxTries = 10;
       let tryCount = 0;
       let listUpdated = false;
       do {
-        const newTxCount = await getBridgeTransactionsCount();
-
+        const newTxCount = await getBridgeTransactionsCountImpl(page);
         listUpdated = newTxCount !== txCountBeforeUpdate;
         tryCount++;
         await page.waitForTimeout(250);

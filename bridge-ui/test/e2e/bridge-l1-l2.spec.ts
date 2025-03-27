@@ -6,6 +6,7 @@ const test = testWithSynpress(advancedFixtures);
 
 const { expect, describe } = test;
 
+// TODO - Claim tx for ETH and USDC
 describe("L1 > L2 via Native Bridge", () => {
   test("should successfully go to the bridge UI page", async ({ page }) => {
     const pageUrl = page.url();
@@ -56,8 +57,6 @@ describe("L1 > L2 via Native Bridge", () => {
     const sepoliaText = page.getByText("Sepolia").first();
     await expect(sepoliaText).toBeVisible();
   });
-
-  // TODO - Claim tx for ETH and USDC
 
   test("should be able to initiate bridging ETH from L1 to L2 in testnet", async ({
     getBridgeTransactionsCount,
