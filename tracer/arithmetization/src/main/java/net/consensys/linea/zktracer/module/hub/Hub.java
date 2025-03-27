@@ -200,7 +200,7 @@ public class Hub implements Module {
   private final Mul mul = new Mul(this);
   private final Mod mod = new Mod();
   private final Shf shf = new Shf();
-  @Getter private final Trm trm = new Trm();
+  @Getter private final Trm trm = new Trm(wcp);
 
   // other
   private final Blockdata blockdata;
