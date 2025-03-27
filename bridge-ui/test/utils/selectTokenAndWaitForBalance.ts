@@ -9,6 +9,11 @@ export async function selectTokenAndWaitForBalance(tokenSymbol: string, page: Pa
   while ((await ethBalance.textContent()) === "0 ETH") {
     await page.waitForTimeout(250);
   }
+  // Throw if no token balance
+  const tokenBalance = page.getByTestId(`token-details-${tokenSymbol.toLowerCase()}-amount`);
+  if ((await tokenBalance.textContent()) === `0 ${tokenSymbol}`) {
+    throw `No ${tokenSymbol} balance, please add some funds before running the test`;
+  }
   // Select token
   await page.getByTestId(`token-details-${tokenSymbol.toLowerCase()}-btn`).click();
 }

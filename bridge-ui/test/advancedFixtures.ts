@@ -120,6 +120,11 @@ export const test = metaMaskFixtures(setup).extend<{
   waitForTransactionToConfirm: async ({ metamask }, use) => {
     await use(async () => {
       await metamask.page.bringToFront();
+      await metamask.page.reload();
+      // Click "Got it" button on "What's new" modal if it appears
+      const gotItButton = metamask.page.locator("button", { hasText: "Got it" });
+      if (await gotItButton.isVisible()) await gotItButton.click();
+
       const activityButton = metamask.page.locator("button", { hasText: "Activity" });
       await activityButton.waitFor();
       await activityButton.click();
