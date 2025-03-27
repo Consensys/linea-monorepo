@@ -5,7 +5,7 @@ import {
   getRawTransactionHex,
   getTransactionHash,
   getWallet,
-  LineaSendBundleClient,
+  LineaBundleClient,
   pollForBlockNumber,
 } from "./common/utils";
 import { ethers, TransactionRequest } from "ethers";
@@ -13,10 +13,11 @@ import { ethers, TransactionRequest } from "ethers";
 const l2AccountManager = config.getL2AccountManager();
 
 describe("Send bundle test suite", () => {
-  const lineaSendBundleClient = new LineaSendBundleClient(config.getSequencerEndpoint()!);
+  const lineaCancelBundleClient = new LineaBundleClient(config.getSequencerEndpoint()!);
+  const lineaSendBundleClient = new LineaBundleClient(config.getL2BesuNodeEndpoint()!);
 
   it.concurrent(
-    "Should successfully call sendBundle to sequencer and the bundled txs should get included",
+    "Should successfully call sendBundle to RPC node and the bundled txs should get included",
     async () => {
       const senderAccount = await l2AccountManager.generateAccount();
       const senderWallet = getWallet(senderAccount.privateKey, config.getL2BesuNodeProvider()!);
@@ -64,7 +65,7 @@ describe("Send bundle test suite", () => {
   );
 
   it.concurrent(
-    "Should successfully call sendBundle to sequencer but the bundled txs should not get included",
+    "Should successfully call sendBundle to RPC node but the bundled txs should not get included",
     async () => {
       // 1500 wei should just be enough for the first ETH transfer tx, and the second and third would fail
       const senderAccount = await l2AccountManager.generateAccount(ethers.parseUnits("1500", "wei"));
@@ -112,7 +113,7 @@ describe("Send bundle test suite", () => {
   );
 
   it.concurrent(
-    "Should successfully call sendBundle and then cancelBundle to sequencer and no bundled txs should get included",
+    "Should successfully call sendBundle to RPC node and then cancelBundle to sequencer and no bundled txs should get included",
     async () => {
       const senderAccount = await l2AccountManager.generateAccount();
       const senderWallet = getWallet(senderAccount.privateKey, config.getL2BesuNodeProvider()!);
@@ -147,7 +148,7 @@ describe("Send bundle test suite", () => {
       }
 
       await pollForBlockNumber(config.getL2Provider(), targetBlockNumber - 5);
-      const cancelled = await lineaSendBundleClient.lineaCancelBundle(replacementUUID);
+      const cancelled = await lineaCancelBundleClient.lineaCancelBundle(replacementUUID);
       expect(cancelled).toBeTruthy();
 
       const hasReachedTargeBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);

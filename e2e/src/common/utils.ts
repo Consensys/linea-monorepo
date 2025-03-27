@@ -150,7 +150,7 @@ export class LineaEstimateGasClient {
   }
 }
 
-export class LineaSendBundleClient {
+export class LineaBundleClient {
   private endpoint: URL;
 
   public constructor(endpoint: URL) {
