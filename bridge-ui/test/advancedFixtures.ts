@@ -81,6 +81,10 @@ export const test = metaMaskFixtures(setup).extend<{
       const amountInput = page.getByRole("textbox", { name: "0" });
       await amountInput.fill(amount);
 
+      // Wait for "Receive amount" to populate, we need to fetch blockchain data before proceeding
+      const receivedAmountField = page.getByTestId("received-amount-text");
+      await receivedAmountField.waitFor({ state: "visible" });
+
       // Check if there are sufficient funds available
       const insufficientFundsButton = page.getByRole("button", { name: "Insufficient funds" });
       if ((await insufficientFundsButton.count()) > 0)
@@ -122,6 +126,8 @@ export const test = metaMaskFixtures(setup).extend<{
     await use(async () => {
       await metamask.page.bringToFront();
       await metamask.page.reload();
+      // TO test - does this correctly address edge case of "What's New" modal popping up?
+      await metamask.goBackToHomePage();
       const activityButton = metamask.page.locator("button", { hasText: "Activity" });
       await activityButton.waitFor();
       await activityButton.click();
@@ -145,40 +151,25 @@ export const test = metaMaskFixtures(setup).extend<{
   },
 
   // Composite Bridge UI + Metamask Actions
-  doTokenApprovalIfNeeded: async ({ page }, use) => {
+  doTokenApprovalIfNeeded: async ({ page, metamask, waitForTransactionToConfirm }, use) => {
     await use(async () => {
       // Check if approval required
       const approvalButton = page.getByRole("button", { name: "Approve Token" });
-      if ((await approvalButton.count()) > 0) {
-        // Do approval flow
-        // const tokenType = isETH ? "eth" : "erc";
-        // // Check that this amount has been approved
-        // if (tokenType === "erc" && submitBtnDisabled === 1) {
-        //   //We need to approve the amount first
-        //   const approveBtn = await page.waitForSelector(`#approve-btn`);
-        //   await approveBtn.click();
-        //   await metamask.page.bringToFront();
-        //   await metamask.page.reload();
-        //   const nextBtn = metamask.page.locator("button", {
-        //     hasText: "Next",
-        //   });
-        //   await nextBtn.waitFor();
-        //   await nextBtn.click();
-        //   const approveMMBtn = metamask.page.locator("button", { hasText: "Approve" });
-        //   await approveMMBtn.waitFor();
-        //   await approveMMBtn.click();
-        //   await waitForTransactionToConfirm();
-        //   await page.bringToFront();
-        // }
-      }
+      if ((await approvalButton.count()) === 0) return;
+      await approvalButton.click();
+
+      // Handle Metamask approval UI
+      await metamask.approveTokenPermission();
+      await waitForTransactionToConfirm();
+
+      // Close 'Transaction successful' modal
+      await page.bringToFront();
+      const closeModalBtn = page.getByRole('button', { name: 'Bridge your token' });
+      await closeModalBtn.click();
     });
   },
   doInitiateBridgeTransaction: async ({ page, confirmTransactionAndWaitForInclusion }, use) => {
     await use(async () => {
-      // Wait for "Receive amount", otherwise "Confirm and Bridge" button will silently fail
-      const receivedAmountField = page.getByTestId("received-amount-text");
-      await receivedAmountField.waitFor({ state: "visible" });
-
       // Click "Bridge" button
       const bridgeButton = page.getByRole("button", { name: "Bridge" });
       await bridgeButton.waitFor();
