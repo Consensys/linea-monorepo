@@ -60,7 +60,7 @@ describe("L1 > L2 via Native Bridge", () => {
 
   test("should be able to initiate bridging ETH from L1 to L2 in testnet", async ({
     getBridgeTransactionsCount,
-    waitForTransactionListUpdate,
+    waitForNewTxAdditionToTxList,
     connectMetamaskToDapp,
     clickNativeBridgeButton,
     openNativeBridgeFormSettings,
@@ -89,7 +89,7 @@ describe("L1 > L2 via Native Bridge", () => {
     await doInitiateBridgeTransaction();
 
     // Check that our bridge tx shows up in the tx history
-    await waitForTransactionListUpdate(txnsLengthBefore);
+    await waitForNewTxAdditionToTxList(txnsLengthBefore);
   });
 
   /**
@@ -104,7 +104,7 @@ describe("L1 > L2 via Native Bridge", () => {
    */
   test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
     getBridgeTransactionsCount,
-    waitForTransactionListUpdate,
+    waitForNewTxAdditionToTxList,
     connectMetamaskToDapp,
     clickNativeBridgeButton,
     openNativeBridgeFormSettings,
@@ -135,6 +135,42 @@ describe("L1 > L2 via Native Bridge", () => {
     await doInitiateBridgeTransaction();
 
     // Check that our bridge tx shows up in the tx history
-    await waitForTransactionListUpdate(txnsLengthBefore);
+    await waitForNewTxAdditionToTxList(txnsLengthBefore);
+  });
+
+  test("should be able to claim if available READY_TO_CLAIM transactions", async ({
+    page,
+    connectMetamaskToDapp,
+    clickNativeBridgeButton,
+    openNativeBridgeFormSettings,
+    toggleShowTestNetworksInNativeBridgeForm,
+    openNativeBridgeTransactionHistory,
+    getBridgeTransactionsCount,
+    switchToLineaSepolia,
+    doClaimTransaction,
+    waitForTxListUpdateForClaimTx
+  }) => {
+    await connectMetamaskToDapp();
+    await clickNativeBridgeButton();
+    await openNativeBridgeFormSettings();
+    await toggleShowTestNetworksInNativeBridgeForm();
+
+    // Switch to L2 network
+    await switchToLineaSepolia();
+
+    // Load tx history
+    await openNativeBridgeTransactionHistory();
+    await getBridgeTransactionsCount();
+
+    // Find and click READY_TO_CLAIM TX
+    const readyToClaimTx = page.getByRole("listitem").filter({hasText: "Ready to claim"});
+    const readyToClaimCount = await readyToClaimTx.count()
+    if (readyToClaimCount === 0) return;
+    await readyToClaimTx.first().click();
+
+    await doClaimTransaction();
+
+    // Check that tx history has updated accordingly
+    await waitForTxListUpdateForClaimTx(readyToClaimCount);
   });
 });

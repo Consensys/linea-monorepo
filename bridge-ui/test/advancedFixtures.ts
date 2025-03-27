@@ -2,7 +2,7 @@ import { metaMaskFixtures } from "@synthetixio/synpress/playwright";
 import setup from "./wallet-setup/metamask.setup";
 import { Locator } from "@playwright/test";
 import { getBridgeTransactionsCountImpl, selectTokenAndWaitForBalance } from "./utils";
-
+import { LINEA_SEPOLIA_NETWORK } from "./constants";
 /**
  * NB: There is an issue with Synpress `metaMaskFixtures` extension functions wherein extension functions
  * may not be able to reuse other extension functions. This is especially the case when advanced operations
@@ -18,16 +18,20 @@ export const test = metaMaskFixtures(setup).extend<{
   toggleShowTestNetworksInNativeBridgeForm: () => Promise<void>;
   getBridgeTransactionsCount: () => Promise<number>;
   selectTokenAndInputAmount: (tokenSymbol: string, amount: string) => Promise<void>;
-  waitForTransactionListUpdate: (txCountBeforeUpdate: number) => Promise<void>;
+  waitForNewTxAdditionToTxList: (txCountBeforeUpdate: number) => Promise<void>;
+  waitForTxListUpdateForClaimTx: (claimTxCountBeforeUpdate: number) => Promise<void>;
 
   // Metamask Actions
   connectMetamaskToDapp: () => Promise<void>;
   waitForTransactionToConfirm: () => Promise<void>;
   confirmTransactionAndWaitForInclusion: () => Promise<void>;
+  switchToLineaSepolia: () => Promise<void>;
 
   // Composite Bridge UI + Metamask Actions
   doTokenApprovalIfNeeded: () => Promise<void>;
   doInitiateBridgeTransaction: () => Promise<void>;
+  doClaimTransaction: () => Promise<void>;
+
 }>({
   // Bridge UI Actions
   clickNativeBridgeButton: async ({ page }, use) => {
@@ -87,7 +91,7 @@ export const test = metaMaskFixtures(setup).extend<{
         throw "Insufficient funds available, please add some funds before running the test";
     });
   },
-  waitForTransactionListUpdate: async ({ page }, use) => {
+  waitForNewTxAdditionToTxList: async ({ page }, use) => {
     await use(async (txCountBeforeUpdate: number) => {
       const maxTries = 10;
       let tryCount = 0;
@@ -95,6 +99,20 @@ export const test = metaMaskFixtures(setup).extend<{
       do {
         const newTxCount = await getBridgeTransactionsCountImpl(page);
         listUpdated = newTxCount !== txCountBeforeUpdate;
+        tryCount++;
+        await page.waitForTimeout(250);
+      } while (!listUpdated && tryCount < maxTries);
+    });
+  },
+  waitForTxListUpdateForClaimTx: async ({ page }, use) => {
+    await use(async (claimTxCountBeforeUpdate: number) => {
+      const maxTries = 10;
+      const readyToClaimTx = page.getByRole("listitem").filter({hasText: "Ready to claim"});
+      let tryCount = 0;
+      let listUpdated = false;
+      do {
+        const newReadyToClaimCount = await readyToClaimTx.count()
+        listUpdated = newReadyToClaimCount === claimTxCountBeforeUpdate + 1;
         tryCount++;
         await page.waitForTimeout(250);
       } while (!listUpdated && tryCount < maxTries);
@@ -148,6 +166,11 @@ export const test = metaMaskFixtures(setup).extend<{
       await page.bringToFront();
     });
   },
+  switchToLineaSepolia: async ({ page, metamask }, use) => {
+    await use(async () => {
+      await metamask.switchNetwork(LINEA_SEPOLIA_NETWORK.name, true);
+    });
+  },
 
   // Composite Bridge UI + Metamask Actions
   doTokenApprovalIfNeeded: async ({ page, metamask, waitForTransactionToConfirm }, use) => {
@@ -187,6 +210,21 @@ export const test = metaMaskFixtures(setup).extend<{
       // Click on 'View transactions' button on the 'Transaction confirmed' modal
       const viewTxButton = page.getByRole("button", { name: "View transactions" });
       await viewTxButton.click();
+    });
+  },
+  doClaimTransaction: async ({ page, confirmTransactionAndWaitForInclusion }, use) => {
+    await use(async () => {
+      // Click on 'Claim' button
+      const claimButton = page.getByRole("button", { name: "Claim", exact: true });
+      await expect(claimButton).toBeVisible();
+      await expect(claimButton).toBeEnabled();
+      await claimButton.click();
+
+      // Confirm Metamask Tx and wait for blockchain inclusion
+      // Should be ok to reuse this fixture function because it doesn't do much on the `Page` object
+      await confirmTransactionAndWaitForInclusion();
+
+      // Should finish on tx history page
     });
   },
 });
