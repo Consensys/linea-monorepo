@@ -15,15 +15,15 @@
 
 package net.consensys.linea.zktracer.module.trm;
 
-import static net.consensys.linea.zktracer.Trace.LLARGE;
-
 import java.util.List;
 
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.OperationSetModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -31,24 +31,23 @@ import org.hyperledger.besu.datatypes.Address;
 
 @Getter
 @Accessors(fluent = true)
+@RequiredArgsConstructor
 public class Trm implements OperationSetModule<TrmOperation> {
+  private final Wcp wcp;
   private final ModuleOperationStackedSet<TrmOperation> operations =
       new ModuleOperationStackedSet<>();
-
-  static final int MAX_CT = LLARGE;
-  static final int PIVOT_BIT_FLIPS_TO_TRUE = 12;
 
   @Override
   public String moduleKey() {
     return "TRM";
   }
 
-  public Address callTrimming(Bytes32 rawAddress) {
-    operations.add(new TrmOperation(EWord.of(rawAddress)));
+  public Address callTrimming(final Bytes32 rawAddress) {
+    operations.add(new TrmOperation(EWord.of(rawAddress), wcp));
     return Address.extract(rawAddress);
   }
 
-  public Address callTrimming(Bytes rawAddress) {
+  public Address callTrimming(final Bytes rawAddress) {
     return callTrimming(Bytes32.leftPad(rawAddress));
   }
 
@@ -64,9 +63,8 @@ public class Trm implements OperationSetModule<TrmOperation> {
 
   @Override
   public void commit(Trace trace) {
-    int stamp = 0;
     for (TrmOperation operation : operations.sortOperations(new TrmOperationComparator())) {
-      operation.trace(trace.trm, ++stamp);
+      operation.trace(trace.trm);
     }
   }
 }
