@@ -40,7 +40,6 @@ import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import net.consensys.linea.zktracer.runtime.stack.Stack;
 import net.consensys.linea.zktracer.runtime.stack.StackLine;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.evm.internal.Words;
 
 @Accessors(fluent = true)
 /* A TraceSection gather the trace lines linked to a single operation */
@@ -205,10 +204,7 @@ public class TraceSection {
     }
   }
 
-  public void triggerJumpDestinationVetting(Hub hub) {
-    final int pcNew = Words.clampedToInt(hub.messageFrame().getStackItem(0));
-    final boolean invalidJumpDestination = hub.messageFrame().getCode().isJumpDestInvalid(pcNew);
-
+  public void triggerJumpDestinationVetting() {
     for (TraceFragment fragment : this.fragments()) {
       if (fragment instanceof StackFragment) {
         ((StackFragment) fragment).jumpDestinationVettingRequired(true);

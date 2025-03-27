@@ -90,7 +90,7 @@ public class JumpSection extends TraceSection {
     // jump destination vetting
     ///////////////////////////
     if (mustAttemptJump) {
-      this.triggerJumpDestinationVetting(hub);
+      this.triggerJumpDestinationVetting();
     }
   }
 }

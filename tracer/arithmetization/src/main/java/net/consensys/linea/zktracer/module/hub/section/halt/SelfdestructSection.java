@@ -115,7 +115,7 @@ public class SelfdestructSection extends TraceSection
               ? selfdestructor
               : AccountSnapshot.canonical(hub, frame.getWorldUpdater(), recipientAddress);
 
-      AccountFragment selfdestructorFirstAccountFragment =
+      final AccountFragment selfdestructorFirstAccountFragment =
           hub.factories()
               .accountFragment()
               .make(
@@ -123,7 +123,7 @@ public class SelfdestructSection extends TraceSection
                   selfdestructor,
                   DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0));
 
-      AccountFragment recipientFirstAccountFragment =
+      final AccountFragment recipientFirstAccountFragment =
           hub.factories()
               .accountFragment()
               .makeWithTrm(
@@ -187,14 +187,14 @@ public class SelfdestructSection extends TraceSection
     }
     checkArgument(recipientNew.isWarm());
 
-    AccountFragment selfdestructorFirstAccountFragment =
+    final AccountFragment selfdestructorFirstAccountFragment =
         hub.factories()
             .accountFragment()
             .make(
                 selfdestructor,
                 selfdestructorNew,
                 DomSubStampsSubFragment.standardDomSubStamps(hubStamp, 0));
-    AccountFragment recipientFirstAccountFragment =
+    final AccountFragment recipientFirstAccountFragment =
         hub.factories()
             .accountFragment()
             .makeWithTrm(
