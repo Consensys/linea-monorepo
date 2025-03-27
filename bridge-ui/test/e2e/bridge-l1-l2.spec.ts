@@ -85,12 +85,13 @@ describe("L1 > L2 via Native Bridge", () => {
     await openNativeBridgeTransactionHistory();
     const txnsLengthBefore = await getBridgeTransactionsCount();
     await closeNativeBridgeTransactionHistory();
-    // // Actual bridging actions
-    // await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
-    // await doInitiateBridgeTransaction();
 
-    // // Check that our bridge tx shows up in the tx history
-    // await waitForTransactionListUpdate(txnsLengthBefore);
+    // // Actual bridging actions
+    await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
+    await doInitiateBridgeTransaction();
+
+    // Check that our bridge tx shows up in the tx history
+    await waitForTransactionListUpdate(txnsLengthBefore);
   });
 
   // test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
