@@ -17,6 +17,8 @@ package net.consensys.linea.bundles;
 
 import java.net.URL;
 import java.time.Duration;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import com.google.auto.service.AutoService;
@@ -28,25 +30,37 @@ import org.hyperledger.besu.plugin.ServiceManager;
 
 @AutoService(BesuPlugin.class)
 public class ForwardBundlesPlugin extends AbstractLineaRequiredPlugin {
-  private static final Duration DEFAULT_CALL_TIMEOUT = Duration.ofSeconds(5);
 
   @Override
   public void doRegister(final ServiceManager serviceManager) {}
 
   @Override
   public void doStart() {
-    final var forwardUrls = bundleConfiguration().bundleForwardUrls();
+    final var config = bundleConfiguration();
+    final var forwardUrls = config.forwardUrls();
     if (!forwardUrls.isEmpty()) {
-      final var rpcClient = createRpcClient();
+      final var rpcClient = createRpcClient(config.timeoutMillis());
+      final var retryScheduler = createRetryScheduler();
       forwardUrls.stream()
-          .map(url -> new BundleForwarder(createExecutor(url), blockchainService, rpcClient, url))
+          .map(
+              url ->
+                  new BundleForwarder(
+                      config,
+                      createExecutor(url),
+                      retryScheduler,
+                      blockchainService,
+                      rpcClient,
+                      url))
           .peek(bundlePoolService::subscribeTransactionBundleAdded)
           .toList();
     }
   }
 
-  private OkHttpClient createRpcClient() {
-    return new OkHttpClient.Builder().callTimeout(DEFAULT_CALL_TIMEOUT).build();
+  private OkHttpClient createRpcClient(final int timeoutMillis) {
+    return new OkHttpClient.Builder()
+        .retryOnConnectionFailure(false)
+        .callTimeout(Duration.ofMillis(timeoutMillis))
+        .build();
   }
 
   private PriorityThreadPoolExecutor createExecutor(final URL recipientUrl) {
@@ -56,6 +70,11 @@ public class ForwardBundlesPlugin extends AbstractLineaRequiredPlugin {
         10,
         TimeUnit.MINUTES,
         Thread.ofVirtual().name("BundleForwarder[" + recipientUrl.toString() + "]", 0L).factory());
+  }
+
+  private ScheduledExecutorService createRetryScheduler() {
+    return Executors.newSingleThreadScheduledExecutor(
+        Thread.ofPlatform().name("BundleForwarderRetry", 0L).factory());
   }
 
   @Override

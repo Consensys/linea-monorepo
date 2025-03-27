@@ -27,6 +27,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static java.util.concurrent.TimeUnit.SECONDS;
+import static net.consensys.linea.bundles.BundleForwarder.RETRY_COUNT_HEADER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 import static org.awaitility.Awaitility.await;
@@ -46,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -54,6 +56,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import net.consensys.linea.bundles.BundleForwarder.SendBundleResponse;
+import net.consensys.linea.config.LineaBundleConfiguration;
 import net.consensys.linea.utils.PriorityThreadPoolExecutor;
 import net.consensys.linea.utils.TestablePriorityThreadPoolExecutor;
 import okhttp3.OkHttpClient;
@@ -72,6 +75,7 @@ class BundleForwarderTest extends AbstractBundleTest {
   private static final AtomicLong REQ_ID_COUNT = new AtomicLong(0);
   private static final Duration RPC_CALL_TIMEOUT = Duration.ofSeconds(2);
   private static final long CHAIN_HEAD_BLOCK_NUMBER = 5L;
+  private LineaBundleConfiguration bundleConfiguration;
   private BundleForwarder bundleForwarder;
   private TestablePriorityThreadPoolExecutor executor;
   private ResponseCollector responseCollector;
@@ -89,9 +93,18 @@ class BundleForwarderTest extends AbstractBundleTest {
     executor =
         new TestablePriorityThreadPoolExecutor(0, 1, 1, SECONDS, Thread.ofVirtual().factory());
     executor.addAfterExecuteListener(responseCollector);
+    bundleConfiguration =
+        LineaBundleConfiguration.builder()
+            .forwardUrls(Set.of(URI.create(wmInfo.getHttpBaseUrl()).toURL()))
+            .timeoutMillis(5000)
+            .retryDelayMillis(100)
+            .build();
+
     bundleForwarder =
         new BundleForwarder(
+            bundleConfiguration,
             executor,
+            Executors.newSingleThreadScheduledExecutor(),
             blockchainService,
             new OkHttpClient.Builder().callTimeout(RPC_CALL_TIMEOUT).build(),
             URI.create(wmInfo.getHttpBaseUrl()).toURL());
@@ -131,7 +144,7 @@ class BundleForwarderTest extends AbstractBundleTest {
 
     verifyRequestSentFor(bundle, 0);
     responseCollector.assertFailedResponse(0, InterruptedIOException.class);
-    verifyRequestSentFor(bundle, 1);
+    verifyRequestSentFor(bundle, 1, 1);
     responseCollector.assertSuccessResponse(1);
   }
 
@@ -227,7 +240,7 @@ class BundleForwarderTest extends AbstractBundleTest {
     responseCollector.assertFailedResponse(0, InterruptedIOException.class);
     verifyRequestSentFor(bundle_bn2, 1);
     responseCollector.assertSuccessResponse(1);
-    verifyRequestSentFor(bundle_bn1, 2);
+    verifyRequestSentFor(bundle_bn1, 2, 1);
     responseCollector.assertSuccessResponse(2);
   }
 
@@ -313,16 +326,26 @@ class BundleForwarderTest extends AbstractBundleTest {
 
   private static void verifyRequestSentFor(final TransactionBundle bundle, final long reqId)
       throws JsonProcessingException {
+    verifyRequestSentFor(bundle, reqId, 0);
+  }
+
+  private static void verifyRequestSentFor(
+      final TransactionBundle bundle, final long reqId, final int retryCount)
+      throws JsonProcessingException {
     final var expectedRequest = getExpectedRequest(bundle, reqId);
-    await()
-        .atMost(2, SECONDS)
-        .untilAsserted(
-            () ->
-                verify(
-                    exactly(1),
-                    postRequestedFor(urlEqualTo("/"))
-                        .withHeader("Content-Type", equalTo("application/json; charset=UTF-8"))
-                        .withRequestBody(equalToJson(expectedRequest))));
+
+    final var patterBuilder =
+        postRequestedFor(urlEqualTo("/"))
+            .withHeader("Content-Type", equalTo("application/json; charset=UTF-8"))
+            .withRequestBody(equalToJson(expectedRequest));
+
+    if (retryCount > 0) {
+      patterBuilder.withHeader(RETRY_COUNT_HEADER, equalTo(String.valueOf(retryCount)));
+    } else {
+      patterBuilder.withoutHeader(RETRY_COUNT_HEADER);
+    }
+
+    await().atMost(2, SECONDS).untilAsserted(() -> verify(exactly(1), patterBuilder));
   }
 
   @SuppressWarnings("unchecked")

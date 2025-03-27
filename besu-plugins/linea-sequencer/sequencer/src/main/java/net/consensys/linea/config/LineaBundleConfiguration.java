@@ -30,5 +30,7 @@ import net.consensys.linea.plugins.LineaOptionsConfiguration;
 @Getter
 @ToString
 public class LineaBundleConfiguration implements LineaOptionsConfiguration {
-  private Set<URL> bundleForwardUrls;
+  private Set<URL> forwardUrls;
+  private int retryDelayMillis;
+  private int timeoutMillis;
 }

@@ -20,6 +20,8 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.OptionalLong;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
@@ -29,10 +31,12 @@ import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.BundlePoolService.TransactionBundleAddedListener;
 import net.consensys.linea.bundles.BundlePoolService.TransactionBundleRemovedListener;
+import net.consensys.linea.config.LineaBundleConfiguration;
 import net.consensys.linea.utils.PriorityThreadPoolExecutor;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -43,9 +47,13 @@ import org.hyperledger.besu.plugin.services.BlockchainService;
 
 @Slf4j
 @RequiredArgsConstructor
-class BundleForwarder implements TransactionBundleAddedListener, TransactionBundleRemovedListener {
+public class BundleForwarder
+    implements TransactionBundleAddedListener, TransactionBundleRemovedListener {
+  public static final String RETRY_COUNT_HEADER = "X-Retry-Count";
   private final AtomicLong reqIdProvider = new AtomicLong(0L);
+  private final LineaBundleConfiguration config;
   private final PriorityThreadPoolExecutor executor;
+  private final ScheduledExecutorService retryScheduler;
   private final BlockchainService blockchainService;
   private final OkHttpClient rpcClient;
   private final URL recipientUrl;
@@ -61,7 +69,10 @@ class BundleForwarder implements TransactionBundleAddedListener, TransactionBund
   }
 
   void retry(final TransactionBundle bundle, final int retry) {
-    executor.submit(new SendBundleTask(bundle, retry));
+    retryScheduler.schedule(
+        () -> executor.submit(new SendBundleTask(bundle, retry)),
+        config.retryDelayMillis(),
+        TimeUnit.MILLISECONDS);
   }
 
   @RequiredArgsConstructor
@@ -87,6 +98,9 @@ class BundleForwarder implements TransactionBundleAddedListener, TransactionBund
 
       final long reqId = reqIdProvider.getAndIncrement();
       final var jsonRpcRequest = new JsonRpcEnvelope(reqId, bundle.toBundleParameter(false));
+
+      log.trace("Forwarding request {}, retry count {}", jsonRpcRequest, retryCount);
+
       final RequestBody body;
       try {
         body = RequestBody.create(OBJECT_MAPPER.writeValueAsString(jsonRpcRequest), JSON);
@@ -96,17 +110,32 @@ class BundleForwarder implements TransactionBundleAddedListener, TransactionBund
             "Error creating send bundle request body", e, bundle, reqId);
       }
 
-      final Request request = new Request.Builder().url(recipientUrl).post(body).build();
+      final var requestBuilder = new Request.Builder().url(recipientUrl).post(body);
 
-      try (final Response response = rpcClient.newCall(request).execute()) {
+      if (retryCount > 0) {
+        requestBuilder.addHeader(RETRY_COUNT_HEADER, String.valueOf(retryCount));
+      }
+
+      try (final Response response = rpcClient.newCall(requestBuilder.build()).execute()) {
+        final var result =
+            new SendBundleResponse(reqId, bundle, response, response.body().string());
         if (response.isSuccessful()) {
-          log.info("Bundle forwarded successfully");
+          log.trace(
+              "Bundle {} forwarded successfully at retry count {}", jsonRpcRequest, retryCount);
         } else {
-          log.error("Bundle forward failed: {}", response.code());
+          log.error(
+              "Bundle {} forward failed with status {} at retry count {}",
+              jsonRpcRequest,
+              response.code(),
+              retryCount);
         }
-        return new SendBundleResponse(reqId, bundle, response, response.body().string());
+        return result;
       } catch (IOException e) {
-        log.warn("Error send bundle request, retrying later", e);
+        log.warn(
+            "Error forwarding bundle request {}, at retry count {}, retrying later",
+            jsonRpcRequest,
+            retryCount,
+            e);
         retry(bundle, retryCount + 1);
         throw new BundleForwarderException(
             "Error send bundle request, retrying later", e, bundle, reqId);
@@ -137,11 +166,12 @@ class BundleForwarder implements TransactionBundleAddedListener, TransactionBund
   record SendBundleResponse(long reqId, TransactionBundle bundle, Response response, String body) {}
 
   @JsonAutoDetect(fieldVisibility = ANY)
+  @ToString(onlyExplicitlyIncluded = true)
   private static class JsonRpcEnvelope {
     private final String jsonrpc = "2.0";
     private final String method = "linea_sendBundle";
-    private final long id;
-    private final BundleParameter[] params;
+    @ToString.Include private final long id;
+    @ToString.Include private final BundleParameter[] params;
 
     public JsonRpcEnvelope(final long id, final BundleParameter params) {
       this.id = id;
