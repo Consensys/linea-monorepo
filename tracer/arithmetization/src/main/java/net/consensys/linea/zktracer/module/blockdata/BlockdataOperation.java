@@ -71,7 +71,7 @@ public class BlockdataOperation extends ModuleOperation {
   private final OpCode opCode;
   private final long firstBlockNumber;
   private final int relTxMax;
-  private final long relBlock;
+  @Getter private final long relBlock;
 
   private EWord data;
   private EWord[] arg1;

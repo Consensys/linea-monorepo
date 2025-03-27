@@ -203,7 +203,7 @@ public class Hub implements Module {
   @Getter private final Trm trm = new Trm(wcp);
 
   // other
-  private final Blockdata blockdata;
+  @Getter private final Blockdata blockdata;
   @Getter private final RomLex romLex = new RomLex(this);
   private final Rom rom = new Rom(romLex);
   private final RlpTxn rlpTxn = new RlpTxn(romLex);
