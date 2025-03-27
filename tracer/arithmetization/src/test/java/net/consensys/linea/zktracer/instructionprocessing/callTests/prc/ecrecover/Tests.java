@@ -14,17 +14,24 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ecrecover;
 
+import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.randomSampleByDayOfMonth;
+
 import java.util.stream.Stream;
 
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallTests;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.params.provider.Arguments;
 
-@Disabled
-@Tag("weekly")
+@Tag("prc-calltests")
 public class Tests extends PrecompileCallTests<CallParameters> {
+  // Set sample size with potential for override.
+  private static int ECRECOVER_SAMPLE_SIZE =
+      Integer.parseInt(System.getenv().getOrDefault("PRC_CALLTESTS_SAMPLE_SIZE", "250"));
+
   public static Stream<Arguments> parameterGeneration() {
-    return ParameterGeneration.parameterGeneration();
+    System.out.println("ECRECOVER TESTS=" + ParameterGeneration.parameterGeneration().size());
+    return randomSampleByDayOfMonth(
+        ECRECOVER_SAMPLE_SIZE, ParameterGeneration.parameterGeneration())
+        .stream();
   }
 }

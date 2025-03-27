@@ -33,6 +33,10 @@ def TRACE_PKG = "net.consensys.linea.zktracer"
 
 tasks.register('buildZkevmBin', Exec) {
     workingDir "${project.rootDir}/linea-constraints/"
+    // Specify input files so gradle knows when to rebuild.
+    inputs.files(fileTree(workingDir).include('**/*.lisp'))
+    // Specify output file so gradle knows when out-of-date.
+    outputs.files(fileTree(workingDir).include(ZKEVM_BIN))
     // Sanity check executing this makes sense.
     doFirst {    
         // Record zkevm.bin for CorsetValidator

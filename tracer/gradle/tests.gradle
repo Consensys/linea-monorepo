@@ -41,12 +41,12 @@ apply plugin: 'com.adarshr.test-logger'
   * - 'root.log.level' and 'evm.log.level': allow to control the log level used during the tests.
   */
 tasks.withType(Test).configureEach {
-  minHeapSize = "4g"
+  minHeapSize = "256m"
   maxHeapSize = "8g"
 
   jvmArgs = [
     '-XX:-UseGCOverheadLimit',
-    '-XX:+PrintGC',
+    '-Xlog:gc',
     // Mockito and jackson-databind do some strange reflection during tests.
     // This suppresses an illegal access warning.
     '--add-opens',
@@ -135,7 +135,7 @@ tasks.test.configure {
     excludeTags("nightly")
     excludeTags("replay")
     excludeTags("weekly")
-    excludeTags("weekly-ecpairing")
+    excludeTags("prc-calltests")
   }
   finalizedBy(jacocoTestReport)
 }
@@ -225,15 +225,27 @@ tasks.register("weeklyTests", Test) {
   systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
   systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
   systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-          System.getenv().getOrDefault("WEEKLY_TESTS_PARALLELISM", "1").toInteger())
+          System.getenv().getOrDefault("WEEKLY_TESTS_PARALLELISM", "8").toInteger())
 
   useJUnitPlatform {
-    excludeTags("nightly")
-    excludeTags("replay")
-    excludeTags("weekly-ecpairing")
     includeTags("weekly")
   }
   finalizedBy(jacocoWeeklyTestsReport)
+}
+
+tasks.register("prcCallTests", Test) {
+  dependsOn(buildZkevmBin)
+  //
+  systemProperty("junit.jupiter.execution.parallel.enabled", true)
+  systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
+  systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
+  systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
+  systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
+          System.getenv().getOrDefault("WEEKLY_TESTS_PARALLELISM", "8").toInteger())
+
+  useJUnitPlatform {
+    includeTags("prc-calltests")
+  }
 }
 
 tasks.register("jacocoWeeklyTestsReport", JacocoReport) {
@@ -255,25 +267,6 @@ tasks.register("jacocoUnitFastReplayWeeklyNightlyReferenceBlockchainAndStateTest
 
   sourceSets project(":arithmetization").sourceSets.main
   executionData fileTree(project.rootDir.absolutePath).include("**/build/jacoco/*.exec")
-}
-
-// Gradle task to concatenate Unit, FastReplay, Nightly, Weekly and Reference Blockchain and State tests exec files
-tasks.register("weeklyEcPairingTests", Test) {
-  dependsOn(buildZkevmBin)
-
-  systemProperty("junit.jupiter.execution.parallel.enabled", true)
-  systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
-  systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
-  systemProperty("junit.jupiter.execution.parallel.config.strategy", "fixed")
-  systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
-          System.getenv().getOrDefault("WEEKLY_TESTS_PARALLELISM", "1").toInteger())
-
-  useJUnitPlatform {
-    excludeTags("nightly")
-    excludeTags("replay")
-    excludeTags("weekly")
-    includeTags("weekly-ecpairing")
-  }
 }
 
 // Configure default build task to require the tracer is built first.

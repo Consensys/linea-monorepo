@@ -11,9 +11,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  weekly-tests:
+  weekly-unit-tests:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
-    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -22,16 +21,13 @@ jobs:
 
       - name: Setup Test Environment
         uses: ./.github/actions/setup-environment
-        with:
-          go-corset: true
 
       - name: Run Weekly tests
-        run: GOMEMLIMIT=55GiB ./gradlew weeklyTests
+        run: GOMAXPROCS=2 GOMEMLIMIT=5GiB ./gradlew weeklyTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          WEEKLY_TESTS_PARALLELISM: 2
-          CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --air
+          WEEKLY_TESTS_PARALLELISM: 26
+          GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --hir
 
       - name: Upload test report
         if: always()
@@ -61,12 +57,11 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: webhook-trigger
           payload: |
-             name: "Weekly (Go-Corset)"
+             name: "Weekly Unit"
              status: "${{ job.status }}"
 
-  weekly-ecpairing-tests:
+  weekly-prc-calltests:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
-    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -75,22 +70,19 @@ jobs:
 
       - name: Setup Test Environment
         uses: ./.github/actions/setup-environment
-        with:
-          go-corset: true
 
-      - name: Run Weekly EcPairing tests
-        run: GOMEMLIMIT=50GiB ./gradlew weeklyEcPairingTests
+      - name: Run Precompile Call tests
+        run: GOMAXPROCS=2 GOMEMLIMIT=5GiB ./gradlew prcCallTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
-          WEEKLY_TESTS_PARALLELISM: 2
-          CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --air
+          WEEKLY_TESTS_PARALLELISM: 20
+          GOCORSET_FLAGS: -vw -b1024 --ansi-escapes=false --report --hir
 
-      - name: Upload weekly ecpairing test report
+      - name: Upload prc calls test report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: weekly-ecpairing-tests-report
+          name: prc-call-tests-report
           path: arithmetization/build/reports/tests/**/*
 
       - name: Failure Notification
@@ -100,5 +92,5 @@ jobs:
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
           webhook-type: webhook-trigger
           payload: |
-            name: "Weekly EcPairing (Go-Corset)"
+            name: "Weekly Precompile call"
             status: "${{ job.status }}"

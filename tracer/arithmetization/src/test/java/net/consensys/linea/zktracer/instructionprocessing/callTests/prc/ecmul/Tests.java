@@ -26,17 +26,19 @@ import java.util.stream.Stream;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ReturnAtParameter;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallTests;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.Arguments;
 
-@Disabled
-@Tag("weekly")
+@Tag("prc-calltests")
 public class Tests extends PrecompileCallTests<CallParameters> {
+  // Set sample size with potential for override.
+  private static final int ECMUL_SAMPLE_SIZE =
+      Integer.parseInt(System.getenv().getOrDefault("PRC_CALLTESTS_SAMPLE_SIZE", "700"));
 
   public static Stream<Arguments> parameterGeneration() {
-    return ParameterGeneration.parameterGeneration();
+    return randomSampleByDayOfMonth(ECMUL_SAMPLE_SIZE, ParameterGeneration.parameterGeneration())
+        .stream();
   }
 
   /** Non-parametric test to make sure things are working as expected. */

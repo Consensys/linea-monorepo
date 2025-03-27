@@ -26,7 +26,6 @@ import java.util.stream.Stream;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.*;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallTests;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.provider.Arguments;
@@ -61,9 +60,16 @@ import org.junit.jupiter.params.provider.Arguments;
  *
  * <p>- play with (precompile) return data
  */
-@Disabled
-@Tag("weekly")
+@Tag("prc-calltests")
 public class Tests extends PrecompileCallTests<CallParameters> {
+  // Set sample size with potential for override.
+  private static final int HASH_SAMPLE_SIZE =
+      Integer.parseInt(System.getenv().getOrDefault("PRC_CALLTESTS_SAMPLE_SIZE", "2000"));
+
+  public static Stream<Arguments> parameterGeneration() {
+    return randomSampleByDayOfMonth(HASH_SAMPLE_SIZE, ParameterGeneration.parameterGeneration())
+        .stream();
+  }
 
   /** Non-parametric test to make sure things are working as expected. */
   @Test
@@ -86,9 +92,5 @@ public class Tests extends PrecompileCallTests<CallParameters> {
     if (params.willRevert()) revertWith(rootCode, 3 * WORD_SIZE, 2 * WORD_SIZE);
 
     runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode);
-  }
-
-  public static Stream<Arguments> parameterGeneration() {
-    return ParameterGeneration.parameterGeneration();
   }
 }

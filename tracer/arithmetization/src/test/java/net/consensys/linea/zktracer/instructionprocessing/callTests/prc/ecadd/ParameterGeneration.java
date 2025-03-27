@@ -19,7 +19,6 @@ import static net.consensys.linea.zktracer.opcode.OpCode.STATICCALL;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.GasParameter;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ReturnAtParameter;
@@ -52,7 +51,7 @@ public class ParameterGeneration {
    * <p>- <b>ReturnAtParameter</b> the return at parameter to be tested; return data will be written
    * on the aforementioned blackened word in RAM;
    */
-  public static Stream<Arguments> parameterGeneration() {
+  public static List<Arguments> parameterGeneration() {
     List<OpCode> CallOpCodes = List.of(CALL, CALLCODE, DELEGATECALL, STATICCALL);
     List<GasParameter> GasParameters =
         List.of(GasParameter.ZERO, GasParameter.COST_MO, GasParameter.COST, GasParameter.PLENTY);
@@ -79,6 +78,6 @@ public class ParameterGeneration {
         }
       }
     }
-    return argumentsList.stream();
+    return argumentsList;
   }
 }

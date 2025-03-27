@@ -20,8 +20,6 @@ jobs:
 
       - name: Setup Test Environment
         uses: ./.github/actions/setup-environment
-        with:
-          go-corset: true
 
       - name: Generate General State Reference Tests
         run: ./gradlew generateGeneralStateReferenceTests -Dorg.gradle.caching=true

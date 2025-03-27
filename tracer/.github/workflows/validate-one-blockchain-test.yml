@@ -21,8 +21,6 @@ jobs:
 
       - name: Setup Test Environment
         uses: ./.github/actions/setup-environment
-        with:
-          go-corset: true
 
       - name: Run Reference Blockchain test sample
         run: ./gradlew referenceBlockchainTests -x spotlessCheck --tests "BlockchainReferenceTest_104"

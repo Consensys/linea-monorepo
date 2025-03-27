@@ -20,8 +20,6 @@ jobs:
 
       - name: Setup Test Environment
         uses: ./.github/actions/setup-environment
-        with:
-          go-corset: true
 
       - name: Run Nightly tests
         run: GOMEMLIMIT=32GiB ./gradlew nightlyTests

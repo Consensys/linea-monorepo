@@ -20,7 +20,6 @@ import static net.consensys.linea.zktracer.opcode.OpCode.STATICCALL;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.GasParameter;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ReturnAtParameter;
@@ -29,7 +28,7 @@ import org.junit.jupiter.params.provider.Arguments;
 
 public class ParameterGeneration {
 
-  public static Stream<Arguments> parameterGeneration() {
+  public static List<Arguments> parameterGeneration() {
     List<OpCode> CallOpCodes = List.of(CALL, CALLCODE, DELEGATECALL, STATICCALL);
     List<GasParameter> GasParameters = List.of(ZERO, COST_MO, COST, PLENTY);
     List<ReturnAtParameter> ReturnAtParameters =
@@ -55,6 +54,6 @@ public class ParameterGeneration {
         }
       }
     }
-    return argumentsList.stream();
+    return argumentsList;
   }
 }
