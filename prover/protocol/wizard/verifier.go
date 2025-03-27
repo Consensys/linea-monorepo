@@ -20,7 +20,7 @@ import (
 //
 // The proof can be constructed using the [Prove] function and can be
 // used as an input to the [Verify] function. It can also be used to
-// assign a [WizardVerifierCircuit] in order to recursively compose
+// assign a [VerifierCircuit] in order to recursively compose
 // the proof within a gnark circuit.
 //
 // The struct does not implement any serialization logic.
@@ -33,11 +33,32 @@ type Proof struct {
 	QueriesParams collection.Mapping[ifaces.QueryID, ifaces.QueryParams]
 }
 
+// Runtime is a generic interface extending the [ifaces.Runtime] interface
+// with all methods of [wizard.VerifierRuntime]. This is used to allow the
+// writing of adapters for the verifier runtime.
+type Runtime interface {
+	ifaces.Runtime
+	GetSpec() *CompiledIOP
+	GetPublicInput(name string) field.Element
+	GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams
+	GetHornerParams(name ifaces.QueryID) query.HornerParams
+	GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams
+	GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams
+	GetInnerProductParams(name ifaces.QueryID) query.InnerProductParams
+	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
+	GetUnivariateParams(name ifaces.QueryID) query.UnivariateEvalParams
+	GetQuery(name ifaces.QueryID) ifaces.Query
+	Fs() *fiatshamir.State
+	InsertCoin(name coin.Name, value any)
+	GetState(name string) (any, bool)
+	SetState(name string, value any)
+}
+
 // VerifierStep specifies a single step of verifier for a single subprotocol.
 // This can be used to specify verifier checks involving user-provided
 // columns for relations that cannot be automatically enforced via a
 // [ifaces.Query]
-type VerifierStep func(a *VerifierRuntime) error
+type VerifierStep func(a Runtime) error
 
 // VerifierRuntime runtime collects all data that visible or computed by the
 // verifier of the wizard protocol. This includes the prover's messages, the
@@ -69,10 +90,9 @@ type VerifierRuntime struct {
 	// included a second time. Use it externally at your own risks.
 	FS *fiatshamir.State
 
-	// FiatShamirHistory tracks the fiat-shamir state at the beginning of every
-	// round. The first entry is the initial state, the final entry is the final
-	// state.
-	FiatShamirHistory [][2][]field.Element
+	// State stores arbitrary data that can be used by the verifier. This
+	// can be used to communicate values between verifier states.
+	State map[string]interface{}
 }
 
 // Verify verifies a wizard proof. The caller specifies a [CompiledIOP] that
@@ -80,7 +100,11 @@ type VerifierRuntime struct {
 // `nil` to indicate that the proof passed and an error to indicate the proof
 // was invalid.
 func Verify(c *CompiledIOP, proof Proof) error {
+	_, err := VerifyWithRuntime(c, proof)
+	return err
+}
 
+func VerifyWithRuntime(c *CompiledIOP, proof Proof) (*VerifierRuntime, error) {
 	runtime := c.createVerifier(proof)
 
 	/*
@@ -88,14 +112,16 @@ func Verify(c *CompiledIOP, proof Proof) error {
 		messages is available at once. We can do it upfront, as opposed to the
 		prover's implementation.
 	*/
-	runtime.generateAllRandomCoins()
 
 	/*
 		And run all the precompiled rounds. Collecting the errors if there are
 		any
 	*/
 	errs := []error{}
-	for _, roundSteps := range runtime.Spec.SubVerifiers.Inner() {
+	for round, roundSteps := range runtime.Spec.SubVerifiers.Inner() {
+
+		runtime.GenerateCoinsFromRound(round)
+
 		for _, step := range roundSteps {
 			if !step.IsSkipped() {
 				if err := step.Run(&runtime); err != nil {
@@ -106,10 +132,10 @@ func Verify(c *CompiledIOP, proof Proof) error {
 	}
 
 	if len(errs) > 0 {
-		return utils.WrapErrsAlphabetically(errs)
+		return &runtime, utils.WrapErrsAlphabetically(errs)
 	}
 
-	return nil
+	return &runtime, nil
 }
 
 // createVerifier is an internal constructor for a new empty [VerifierRuntime] runtime. It
@@ -123,15 +149,15 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 		Instantiate an empty assigment for the verifier
 	*/
 	runtime := VerifierRuntime{
-		Spec:              c,
-		Coins:             collection.NewMapping[coin.Name, interface{}](),
-		Columns:           proof.Messages,
-		QueriesParams:     proof.QueriesParams,
-		FS:                fiatshamir.NewMiMCFiatShamir(),
-		FiatShamirHistory: make([][2][]field.Element, c.NumRounds()),
+		Spec:          c,
+		Coins:         collection.NewMapping[coin.Name, interface{}](),
+		Columns:       proof.Messages,
+		QueriesParams: proof.QueriesParams,
+		FS:            fiatshamir.NewMiMCFiatShamir(),
+		State:         make(map[string]interface{}),
 	}
 
-	runtime.FS.Update(c.fiatShamirSetup)
+	runtime.FS.Update(c.FiatShamirSetup)
 
 	/*
 		Insert the verifying key into the messages
@@ -144,87 +170,74 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 	return runtime
 }
 
-// generateAllRandomCoins populates the Coin field of the VerifierRuntime by
-// generating all the required for all the rounds at once. This contrasts with
-// the prover which can only do it round by round and is justified by the fact
-// that this is possible for the verifier since he is given all the messages at
-// once in the [Proof] and by the fact that it is simpler to work like that as
-// it avoid implementing a "round-after-round" coin population logic.
-func (run *VerifierRuntime) generateAllRandomCoins() {
+// GenerateCoinsFromRound generates all the random coins for the given round.
+// It does so by updating the FS with all the prover messages from round-1
+// and then generating all the coins for the current round.
+func (run *VerifierRuntime) GenerateCoinsFromRound(currRound int) {
 
-	for currRound := 0; currRound < run.Spec.NumRounds(); currRound++ {
+	if currRound > 0 {
 
-		initialState := run.FS.State()
+		if !run.Spec.DummyCompiled {
 
-		if currRound > 0 {
+			/*
+				Make sure that all messages have been written and use them
+				to update the FS state.  Note that we do not need to update
+				FS using the last round of the prover because he is always
+				the last one to "talk" in the protocol.
+			*/
+			msgsToFS := run.Spec.Columns.AllKeysProofAt(currRound - 1)
+			for _, msgName := range msgsToFS {
 
-			if !run.Spec.DummyCompiled {
-
-				/*
-					Make sure that all messages have been written and use them
-					to update the FS state.  Note that we do not need to update
-					FS using the last round of the prover because he is always
-					the last one to "talk" in the protocol.
-				*/
-				msgsToFS := run.Spec.Columns.AllKeysProofAt(currRound - 1)
-				for _, msgName := range msgsToFS {
-					instance := run.GetColumn(msgName)
-					run.FS.UpdateSV(instance)
-				}
-
-				msgsToFS = run.Spec.Columns.AllKeysPublicInputAt(currRound - 1)
-				for _, msgName := range msgsToFS {
-					instance := run.GetColumn(msgName)
-					run.FS.UpdateSV(instance)
-				}
-
-				/*
-					Also include the prover's allegations for all evaluations
-				*/
-				queries := run.Spec.QueriesParams.AllKeysAt(currRound - 1)
-				for _, qName := range queries {
-					if run.Spec.QueriesParams.IsSkippedFromVerifierTranscript(qName) {
-						continue
-					}
-
-					params := run.QueriesParams.MustGet(qName)
-					params.UpdateFS(run.FS)
-				}
-			}
-		}
-
-		/*
-			Then assigns the coins for the new round. As the round incrementation
-			is made lazily, we expect that there is a next round.
-		*/
-		toCompute := run.Spec.Coins.AllKeysAt(currRound)
-		for _, coin := range toCompute {
-			if run.Spec.Coins.IsSkippedFromVerifierTranscript(coin) {
-				continue
-			}
-
-			info := run.Spec.Coins.Data(coin)
-			value := info.Sample(run.FS)
-			run.Coins.InsertNew(coin, value)
-		}
-
-		if run.Spec.FiatShamirHooks.Len() > currRound {
-			fsHooks := run.Spec.FiatShamirHooks.MustGet(currRound)
-			for i := range fsHooks {
-				if fsHooks[i].IsSkipped() {
+				if run.Spec.Columns.IsExplicitlyExcludedFromProverFS(msgName) {
 					continue
 				}
 
-				fsHooks[i].Run(run)
+				instance := run.GetColumn(msgName)
+				run.FS.UpdateSV(instance)
 			}
-		}
 
-		run.FiatShamirHistory[currRound] = [2][]field.Element{
-			initialState,
-			run.FS.State(),
+			/*
+				Also include the prover's allegations for all evaluations
+			*/
+			queries := run.Spec.QueriesParams.AllKeysAt(currRound - 1)
+			for _, qName := range queries {
+				if run.Spec.QueriesParams.IsSkippedFromVerifierTranscript(qName) {
+					continue
+				}
+
+				params := run.QueriesParams.MustGet(qName)
+				params.UpdateFS(run.FS)
+			}
 		}
 	}
 
+	if run.Spec.FiatShamirHooksPreSampling.Len() > currRound {
+		fsHooks := run.Spec.FiatShamirHooksPreSampling.MustGet(currRound)
+		for i := range fsHooks {
+			if fsHooks[i].IsSkipped() {
+				continue
+			}
+
+			fsHooks[i].Run(run)
+		}
+	}
+
+	seed := run.FS.State()[0]
+
+	/*
+		Then assigns the coins for the new round. As the round incrementation
+		is made lazily, we expect that there is a next round.
+	*/
+	toCompute := run.Spec.Coins.AllKeysAt(currRound)
+	for _, myCoin := range toCompute {
+		if run.Spec.Coins.IsSkippedFromVerifierTranscript(myCoin) {
+			continue
+		}
+
+		info := run.Spec.Coins.Data(myCoin)
+		value := info.Sample(run.FS, seed)
+		run.Coins.InsertNew(myCoin, value)
+	}
 }
 
 // GetRandomCoinField returns a field element random. The coin should be issued
@@ -238,8 +251,22 @@ func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
 		and that it has the correct type
 	*/
 	infos := run.Spec.Coins.Data(name)
-	if infos.Type != coin.Field {
-		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.Field)
+	if infos.Type != coin.Field && infos.Type != coin.FieldFromSeed {
+		utils.Panic("Coin %v was registered with type %v but got %v", name, infos.Type, coin.Field)
+	}
+	// If this panics, it means we generates the coins wrongly
+	return run.Coins.MustGet(name).(field.Element)
+}
+
+// GetRandomCoinFromSeed returns a field element random based on the seed.
+func (run *VerifierRuntime) GetRandomCoinFromSeed(name coin.Name) field.Element {
+	/*
+		Early check, ensures the coin has been registered at all
+		and that it has the correct type
+	*/
+	infos := run.Spec.Coins.Data(name)
+	if infos.Type != coin.FieldFromSeed {
+		utils.Panic("Coin was registered as %v but expected %v", infos.Type, coin.FieldFromSeed)
 	}
 	// If this panics, it means we generates the coins wrongly
 	return run.Coins.MustGet(name).(field.Element)
@@ -309,7 +336,7 @@ func (run *VerifierRuntime) GetColumn(name ifaces.ColID) ifaces.ColAssignment {
 	// Just a sanity-check to ensure the message has the right size
 	expectedSize := run.Spec.Columns.GetSize(name)
 	if msgIFace.Len() != expectedSize {
-		utils.Panic("bad dimension %v, spec expected %v", msgIFace.Len(), expectedSize)
+		utils.Panic("bad dimension %v, spec expected %v, column-name %v", msgIFace.Len(), expectedSize, name)
 	}
 
 	return msgIFace
@@ -327,6 +354,21 @@ func (run *VerifierRuntime) GetInnerProductParams(name ifaces.QueryID) query.Inn
 // position.
 func (run *VerifierRuntime) GetLocalPointEvalParams(name ifaces.QueryID) query.LocalOpeningParams {
 	return run.QueriesParams.MustGet(name).(query.LocalOpeningParams)
+}
+
+// GetLogDerivSumParams returns the parameters of a [query.LogDerivativeSum]
+func (run *VerifierRuntime) GetLogDerivSumParams(name ifaces.QueryID) query.LogDerivSumParams {
+	return run.QueriesParams.MustGet(name).(query.LogDerivSumParams)
+}
+
+// GetGrandProductParams returns the parameters of a [query.GrandProduct]
+func (run *VerifierRuntime) GetGrandProductParams(name ifaces.QueryID) query.GrandProductParams {
+	return run.QueriesParams.MustGet(name).(query.GrandProductParams)
+}
+
+// GetHornerParams returns the parameters of a [query.Honer] query.
+func (run *VerifierRuntime) GetHornerParams(name ifaces.QueryID) query.HornerParams {
+	return run.QueriesParams.MustGet(name).(query.HornerParams)
 }
 
 /*
@@ -365,7 +407,7 @@ func (run VerifierRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element
 	wit := run.Columns.MustGet(name)
 
 	if pos >= wit.Len() || pos < 0 {
-		utils.Panic("asked pos %v for vector of size %v", pos, wit)
+		utils.Panic("asked pos %v for vector of size %v", pos, wit.Len())
 	}
 
 	return wit.Get(pos)
@@ -390,4 +432,47 @@ func (run *VerifierRuntime) GetPublicInput(name string) field.Element {
 	}
 	utils.Panic("could not find public input nb %v", name)
 	return field.Element{}
+}
+
+// Fs returns the Fiat-Shamir state
+func (run *VerifierRuntime) Fs() *fiatshamir.State {
+	return run.FS
+}
+
+// GetSpec returns the compiled IOP
+func (run *VerifierRuntime) GetSpec() *CompiledIOP {
+	return run.Spec
+}
+
+// InsertCoin inserts a coin into the runtime. It should not be
+// used by usual verifier action but is useful when implementing
+// recursion utilities.
+func (run *VerifierRuntime) InsertCoin(name coin.Name, value any) {
+	run.Coins.InsertNew(name, value)
+}
+
+// GetState returns an arbitrary value stored in the runtime
+func (run *VerifierRuntime) GetState(name string) (any, bool) {
+	res, ok := run.State[name]
+	return res, ok
+}
+
+// SetState sets an arbitrary value in the runtime
+func (run *VerifierRuntime) SetState(name string, value any) {
+	run.State[name] = value
+}
+
+// GetQuery returns a query from its name
+func (run *VerifierRuntime) GetQuery(name ifaces.QueryID) ifaces.Query {
+
+	if run.Spec.QueriesParams.Exists(name) {
+		return run.Spec.QueriesParams.Data(name)
+	}
+
+	if run.Spec.QueriesNoParams.Exists(name) {
+		return run.Spec.QueriesNoParams.Data(name)
+	}
+
+	utils.Panic("could not find query nb %v", name)
+	return nil
 }

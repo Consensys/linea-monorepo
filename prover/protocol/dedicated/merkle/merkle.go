@@ -4,9 +4,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -63,7 +63,7 @@ func merkleProofCheck(
 	useNextProof bool,
 ) {
 
-	round := wizardutils.MaxRound(proofs, roots, leaves, pos)
+	round := column.MaxRound(proofs, roots, leaves, pos)
 	// define the compute module
 	cm := ComputeMod{}
 	cm.Cols.Proof = proofs
@@ -88,7 +88,7 @@ func merkleProofCheck(
 	comp.InsertInclusion(
 		round,
 		ifaces.QueryIDf("MERKLE_MODULE_LOOKUP_%v", name),
-		[]ifaces.Column{cm.Cols.NewProof, cm.Cols.Curr, cm.Cols.PosAcc, cm.Cols.Root},
+		[]ifaces.Column{cm.Cols.NewProof.Natural, cm.Cols.Curr, cm.Cols.PosAcc, cm.Cols.Root},
 		[]ifaces.Column{rm.IsActive, rm.Leaf, rm.Pos, rm.Roots},
 	)
 
@@ -98,7 +98,7 @@ func merkleProofCheck(
 	if useNextProof {
 		comp.InsertInclusion(round,
 			ifaces.QueryIDf("MERKLE_MODULE_LOOKUP_FOR_USE_NEXT_PROOF_%v", name),
-			[]ifaces.Column{cm.Cols.NewProof, cm.Cols.UseNextMerkleProofExpanded, cm.Cols.IsActiveExpanded, cm.Cols.SegmentCounter},
+			[]ifaces.Column{cm.Cols.NewProof.Natural, cm.Cols.UseNextMerkleProofExpanded, cm.Cols.IsActiveExpanded, cm.Cols.SegmentCounter},
 			[]ifaces.Column{rm.IsActive, rm.UseNextMerkleProof, rm.IsActive, rm.Counter},
 		)
 	}

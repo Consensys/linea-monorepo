@@ -154,7 +154,7 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 	// This panics if the global constraints doesn't use any commitment
 	res := boarded.Evaluate(evalInputs)
 
-	offsetRange := cs.MinMaxOffset()
+	offsetRange := MinMaxOffset(cs.Expression)
 
 	start, stop := 0, res.Len()
 	if !cs.NoBoundCancel {
@@ -255,7 +255,7 @@ func (cs *GlobalConstraint) validatedDomainSize() int {
 }
 
 // Returns the min and max offset happening in the expression
-func (cs *GlobalConstraint) MinMaxOffset() utils.Range {
+func MinMaxOffset(expr *symbolic.Expression) utils.Range {
 
 	minOffset := math.MaxInt
 	maxOffset := math.MinInt
@@ -266,7 +266,7 @@ func (cs *GlobalConstraint) MinMaxOffset() utils.Range {
 	*/
 	foundAny := false
 
-	exprBoard := cs.Expression.Board()
+	exprBoard := expr.Board()
 
 	for _, metadataUncasted := range exprBoard.ListVariableMetadata() {
 		if handle, ok := metadataUncasted.(ifaces.Column); ok {
@@ -351,7 +351,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 		}
 	}
 
-	offsetRange := cs.MinMaxOffset()
+	offsetRange := MinMaxOffset(cs.Expression)
 
 	start, stop := 0, cs.DomainSize
 	if !cs.NoBoundCancel {

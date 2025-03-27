@@ -13,7 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-func (ctx *Ctx) Verify(vr *wizard.VerifierRuntime) error {
+func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -77,7 +77,7 @@ func (ctx *Ctx) getNbCommittedRows(round int) int {
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) getYs(vr *wizard.VerifierRuntime) (ys [][]field.Element) {
+func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 
 	query := ctx.Query
 	params := vr.GetUnivariateParams(ctx.Query.QueryID)
@@ -130,7 +130,7 @@ func (ctx *Ctx) getYs(vr *wizard.VerifierRuntime) (ys [][]field.Element) {
 
 // Returns the opened columns from the messages. The returned columns are
 // split "by-commitment-round".
-func (ctx *Ctx) RecoverSelectedColumns(vr *wizard.VerifierRuntime, entryList []int) [][][]field.Element {
+func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][]field.Element {
 
 	// Collect the columns : first extract the full columns
 	// Bear in mind that the prover messages are zero-padded
@@ -184,7 +184,7 @@ func (ctx *Ctx) RecoverSelectedColumns(vr *wizard.VerifierRuntime, entryList []i
 }
 
 // Evaluates explicitly the public polynomials (proof, vk, public inputs)
-func (ctx *Ctx) explicitPublicEvaluation(vr *wizard.VerifierRuntime) error {
+func (ctx *Ctx) explicitPublicEvaluation(vr wizard.Runtime) error {
 
 	params := vr.GetUnivariateParams(ctx.Query.QueryID)
 

@@ -12,6 +12,7 @@ import (
 	"math/big"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -98,7 +99,7 @@ func NextPowerOfTwo[T ~int64 | ~uint64 | ~uintptr | ~int | ~uint](in T) T {
 	return v
 }
 
-// PositiveMod returns the positive modulus
+// PositiveMod returns the positive modulus of [a] modulo [n]
 func PositiveMod[T ~int](a, n T) T {
 	res := a % n
 	if res < 0 {
@@ -442,6 +443,32 @@ func WriteToFile(path string, from io.WriterTo) error {
 	}
 	_, err = from.WriteTo(f)
 	return errors.Join(err, f.Close())
+}
+
+// SortedKeysOf returns a sorted list of the keys of the map using less
+// to determine the order. Less is as in [sort.Slice]
+func SortedKeysOf[K comparable, V any](m map[K]V, less func(K, K) bool) []K {
+
+	keys := make([]K, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+
+	// Since the keys of a map are all unique, we don't have to worry
+	// about the duplicates and thus, we don't need a stable sort.
+	sort.Slice(keys, func(i, j int) bool {
+		return less(keys[i], keys[j])
+	})
+
+	return keys
+}
+
+// Ternary returns "a" if cond is true, else b
+func Ternary[T any](cond bool, ifTrue, ifFalse T) T {
+	if cond {
+		return ifTrue
+	}
+	return ifFalse
 }
 
 // SumFloat64: Calculates the sum of all values inside the float64 slice

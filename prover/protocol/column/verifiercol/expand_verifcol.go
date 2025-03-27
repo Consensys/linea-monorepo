@@ -69,8 +69,7 @@ func (ex ExpandedVerifCol) GetColAssignmentAt(run ifaces.Runtime, pos int) field
 
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
 func (ex ExpandedVerifCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
-
-	return ex.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
+	return ex.Verifiercol.GetColAssignmentGnarkAt(run, pos/ex.Expansion)
 }
 
 // IsComposite implements the [ifaces.Column] interface

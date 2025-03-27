@@ -95,7 +95,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 		// associated Dh should be nil. That happens when the examinated round
 		// is a "dry" round or when it has been self-recursed already.
 		if (len(comsInRoundsI) == 0) != (ctx.Columns.Rooth[i] == nil) {
-			panic("nilness mismatch")
+			utils.Panic("nilness mismatch for round=%v #coms-in-round=%v vs root-is-nil=%v", i, len(comsInRoundsI), ctx.Columns.Rooth[i] == nil)
 		}
 
 		// Check if there is no rows to commit

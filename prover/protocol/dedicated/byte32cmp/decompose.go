@@ -170,7 +170,7 @@ func (d *decompositionCtx) Run(run *wizard.ProverRuntime) {
 		numLimbs     = len(d.decomposed.Limbs)
 		bitPerLimbs  = d.decomposed.LimbBitSize
 		totalNumBits = numLimbs * bitPerLimbs
-		original     = wizardutils.EvalExprColumn(run, d.original)
+		original     = column.EvalExprColumn(run, d.original)
 		limbsWitness = make([][]field.Element, numLimbs)
 		size         = original.Len()
 	)

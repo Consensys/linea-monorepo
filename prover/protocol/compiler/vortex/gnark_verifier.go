@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
+	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
@@ -14,7 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) {
+func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -61,8 +62,13 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) 
 
 	// function that will defer the hashing to gkr
 	factoryHasherFunc := func(_ frontend.API) (hash.FieldHasher, error) {
-		h := vr.HasherFactory.NewHasher()
-		return h, nil
+		factory := vr.GetHasherFactory()
+		if factory != nil {
+			h := vr.GetHasherFactory().NewHasher()
+			return h, nil
+		}
+		h, err := mimc.NewMiMC(api)
+		return &h, err
 	}
 
 	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
@@ -91,7 +97,7 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) 
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr *wizard.WizardVerifierCircuit) (ys [][]frontend.Variable) {
+func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]frontend.Variable) {
 
 	query := ctx.Query
 	params := vr.GetUnivariateParams(ctx.Query.QueryID)
@@ -161,7 +167,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr *wizard.WizardVerifierCircuit) (ys
 
 // Returns the opened columns from the messages. The returned columns are
 // split "by-commitment-round".
-func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr *wizard.WizardVerifierCircuit) [][][]frontend.Variable {
+func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRuntime) [][][]frontend.Variable {
 
 	// Collect the columns : first extract the full columns
 	// Bear in mind that the prover messages are zero-padded
@@ -213,7 +219,7 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr *wizard.WizardV
 }
 
 // Evaluates explicitly the public polynomials (proof, vk, public inputs)
-func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr *wizard.WizardVerifierCircuit) {
+func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkRuntime) {
 
 	params := vr.GetUnivariateParams(ctx.Query.QueryID)
 

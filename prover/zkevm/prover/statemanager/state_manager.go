@@ -66,6 +66,7 @@ func NewStateManager(comp *wizard.CompiledIOP, settings Settings) *StateManager 
 // Assign assignes the submodules of the state-manager. It requires the
 // arithmetization columns to be assigned first.
 func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]statemanager.DecodedTrace) {
+
 	assignHubAddresses(run)
 	printAllShomeiTraces(&shomeiTraces)
 	addSkipFlags(&shomeiTraces)
@@ -76,7 +77,7 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 	sm.codeHashConsistency.Assign(run)
 
 	// csvtraces.FmtCsv(
-	// 	files.MustOverwrite("./alex-csv/arith.csv"),
+	// 	files.MustOverwrite("arith.csv"),
 	// 	run,
 	// 	[]ifaces.Column{
 	// 		run.Spec.Columns.GetHandle("HUB_acp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
@@ -97,7 +98,7 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 	// 	[]csvtraces.Option{},
 	// )
 	// csvtraces.FmtCsv(
-	// 	files.MustOverwrite("./alex-csv/ss.csv"),
+	// 	files.MustOverwrite("ss.csv"),
 	// 	run,
 	// 	[]ifaces.Column{
 	// 		sm.StateSummary.Account.Address,
@@ -115,7 +116,7 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 	// 	[]csvtraces.Option{},
 	// )
 	// csvtraces.FmtCsv(
-	// 	files.MustOverwrite("./alex-csv/hub.csv"),
+	// 	files.MustOverwrite("hub.csv"),
 	// 	run,
 	// 	[]ifaces.Column{
 	// 		run.Spec.Columns.GetHandle("hub.RELATIVE_BLOCK_NUMBER"),
@@ -124,7 +125,7 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 	// )
 
 	// csvtraces.FmtCsv(
-	// 	files.MustOverwrite("./alex-csv/scparith.csv"),
+	// 	files.MustOverwrite("./scparith.csv"),
 	// 	run,
 	// 	[]ifaces.Column{
 	// 		run.Spec.Columns.GetHandle("HUB_scp_PROVER_SIDE_ADDRESS_IDENTIFIER"),
@@ -154,7 +155,7 @@ func (sm *StateManager) Assign(run *wizard.ProverRuntime, shomeiTraces [][]state
 	// )
 
 	// csvtraces.FmtCsv(
-	// 	files.MustOverwrite("./alex-csv/scpss.csv"),
+	// 	files.MustOverwrite("./scpss.csv"),
 	// 	run,
 	// 	[]ifaces.Column{
 	// 		sm.StateSummary.Account.Address,

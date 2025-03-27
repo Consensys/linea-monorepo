@@ -30,11 +30,16 @@ func CompileLocalOpening(comp *wizard.CompiledIOP) {
 		return
 	}
 
-	comp.InsertUnivariate(
+	q := comp.InsertUnivariate(
 		ctx.startRound,
 		ctx.fixedToVariable(),
 		ctx.handles,
 	)
+
+	// The result of the query is ditched from the FS transcript because
+	// the result of the evaluation is exactly the same as the one of the
+	// original local opening.
+	comp.QueriesParams.MarkAsSkippedFromProverTranscript(q.Name())
 
 	comp.SubProvers.AppendToInner(ctx.startRound, ctx.prover)
 	comp.InsertVerifier(ctx.startRound, ctx.verifier, ctx.gnarkVerifier)
@@ -96,7 +101,7 @@ func (ctx *localOpeningCtx) prover(assi *wizard.ProverRuntime) {
 	assi.AssignUnivariate(ctx.fixedToVariable(), field.One(), ys...)
 }
 
-func (ctx localOpeningCtx) verifier(assi *wizard.VerifierRuntime) error {
+func (ctx localOpeningCtx) verifier(assi wizard.Runtime) error {
 	ys := []field.Element{}
 
 	// Collect the evaluation from the assigned compiled queries
@@ -131,7 +136,7 @@ func (ctx localOpeningCtx) verifier(assi *wizard.VerifierRuntime) error {
 	return nil
 }
 
-func (ctx localOpeningCtx) gnarkVerifier(api frontend.API, c *wizard.WizardVerifierCircuit) {
+func (ctx localOpeningCtx) gnarkVerifier(api frontend.API, c wizard.GnarkRuntime) {
 	ys := []frontend.Variable{}
 
 	// Collect the evaluation from the assigned compiled queries

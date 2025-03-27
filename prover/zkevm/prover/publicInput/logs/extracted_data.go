@@ -4,8 +4,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
@@ -92,7 +92,12 @@ func DefineExtractedData(comp *wizard.CompiledIOP, logCols LogColumns, sel Selec
 		),
 	)
 	// a projection query to check that the messages are fetched correctly
-	projection.InsertProjection(comp, ifaces.QueryIDf("%s_LOGS_PROJECTION", GetName(logType)), fetchedTable, logsTable, fetched.filterFetched, fetched.filterArith)
+	comp.InsertProjection(
+		ifaces.QueryIDf("%s_LOGS_PROJECTION", GetName(logType)),
+		query.ProjectionInput{ColumnA: fetchedTable,
+			ColumnB: logsTable,
+			FilterA: fetched.filterFetched,
+			FilterB: fetched.filterArith})
 }
 
 // CheckBridgeAddress checks if a row does indeed contain the data corresponding to a the bridge address

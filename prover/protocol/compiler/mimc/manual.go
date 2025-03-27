@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
@@ -24,7 +25,7 @@ func manualCheckMiMCBlock(comp *wizard.CompiledIOP, blocks, oldStates, newStates
 		newStates: newStates,
 	}
 
-	round := wizardutils.MaxRound(blocks, oldStates, newStates)
+	round := column.MaxRound(blocks, oldStates, newStates)
 
 	// Creates an intermediate column for each round
 	s := blocks
@@ -155,7 +156,7 @@ func mimcExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, name ..
 
 	maxRound := wizardutils.LastRoundToEval(expr)
 	board := expr.Board()
-	length := wizardutils.ExprIsOnSameLengthHandles(&board)
+	length := column.ExprIsOnSameLengthHandles(&board)
 
 	handleName := fmt.Sprintf("SYMBOLIC_%v", expr.ESHash.String())
 	if len(name) > 0 {

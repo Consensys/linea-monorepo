@@ -11,7 +11,7 @@ type VortexOp func(ctx *Ctx)
 // not be used in production)
 func ForceNumOpenedColumns(nbCol int) VortexOp {
 	return func(ctx *Ctx) {
-		ctx.numOpenedCol = nbCol
+		ctx.NumOpenedCol = nbCol
 	}
 }
 
@@ -34,5 +34,41 @@ func ReplaceSisByMimc() VortexOp {
 	return func(ctx *Ctx) {
 		ctx.ReplaceSisByMimc = true
 		ctx.SisParams = nil
+	}
+}
+
+// PremarkAsSelfRecursed marks the ctx as selfrecursed. This is useful
+// toward conglomerating the receiver comp but is not needed for
+// self-recursion or full-recursion.
+func PremarkAsSelfRecursed() VortexOp {
+	return func(ctx *Ctx) {
+		ctx.IsSelfrecursed = true
+	}
+}
+
+// AddMerkleRootToPublicInputs tells the compiler to additionally adds
+// a merkle root to the public inputs of the comp. This is useful for
+// the distributed prover. The name argument is used to set the Name
+// field of the public-input.
+func AddMerkleRootToPublicInputs(name string, round int) VortexOp {
+	return func(ctx *Ctx) {
+		ctx.AddMerkleRootToPublicInputsOpt = struct {
+			Enabled bool
+			Name    string
+			Round   int
+		}{Enabled: true, Name: name, Round: round}
+	}
+}
+
+// AddPrecomputedMerkleRootToPublicInputs tells the compiler to adds
+// a precomputed merkle root to the public inputs of the comp. This is
+// useful for the distributed prover. The name argument is used to set
+// the Name field of the public-input.
+func AddPrecomputedMerkleRootToPublicInputs(name string) VortexOp {
+	return func(ctx *Ctx) {
+		ctx.AddPrecomputedMerkleRootToPublicInputsOpt = struct {
+			Enabled bool
+			Name    string
+		}{Enabled: true, Name: name}
 	}
 }

@@ -2,11 +2,12 @@ package univariates
 
 import (
 	"fmt"
-	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 	"math/big"
 	"reflect"
 	"runtime"
 	"sync"
+
+	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/sirupsen/logrus"
@@ -33,13 +34,11 @@ See : https://eprint.iacr.org/2020/081.pdf (Section 3)
 */
 func MultiPointToSinglePoint(targetSize int) func(comp *wizard.CompiledIOP) {
 
-	logrus.Trace("started multi-point to single-point compiler")
-	defer logrus.Trace("finished multi-point to single-point compiler")
-
 	return func(comp *wizard.CompiledIOP) {
 
 		ctx := createMptsCtx(comp, targetSize)
 		if len(ctx.hs) == 0 {
+			logrus.Warnf("[MPTS] no univariate queries to unify were found. Skipping the compilation step")
 			// Nothing to do : fly away
 			return
 		}
@@ -132,10 +131,14 @@ Initialize the context for an instance of the compilatioon
 */
 func createMptsCtx(comp *wizard.CompiledIOP, targetSize int) mptsCtx {
 
-	xPoly := make(map[ifaces.ColID][]int)
-	hs := []ifaces.QueryID{}
-	polys := []ifaces.Column{}
-	maxSize := 0
+	var (
+		xPoly      = make(map[ifaces.ColID][]int)
+		hs         = []ifaces.QueryID{}
+		polys      = []ifaces.Column{}
+		maxSize    = 0
+		hStats     = map[ifaces.QueryID]int{}
+		totalEvals = 0
+	)
 
 	/*
 		Adding coins in the protocol can add extra rounds,
@@ -173,6 +176,8 @@ func createMptsCtx(comp *wizard.CompiledIOP, targetSize int) mptsCtx {
 
 		q := q_.(query.UnivariateEval)
 		hs = append(hs, qName)
+		hStats[qName] = len(q.Pols)
+		totalEvals += len(q.Pols)
 
 		/*
 			The number of queries to be compiled by the present compilation
@@ -205,6 +210,11 @@ func createMptsCtx(comp *wizard.CompiledIOP, targetSize int) mptsCtx {
 	}
 	// And pad it to the next power of 2
 	quotientSize = utils.NextPowerOfTwo(quotientSize)
+
+	logrus.
+		WithField("nbUnivariateQueries", len(hs)).
+		WithField("totalEvaluation", totalEvals).
+		Info("[mpts] prepared the compilation context")
 
 	return mptsCtx{
 		xPoly:           xPoly,
@@ -396,12 +406,12 @@ func (ctx mptsCtx) claimEvaluation(run *wizard.ProverRuntime) {
 }
 
 // verifier of the evaluation
-func (ctx mptsCtx) verifier(run *wizard.VerifierRuntime) error {
+func (ctx mptsCtx) verifier(run wizard.Runtime) error {
 
 	ys, hs := ctx.getYsHs(
 		run.GetUnivariateParams,
 		func(qName ifaces.QueryID) query.UnivariateEval {
-			return run.Spec.QueriesParams.Data(qName).(query.UnivariateEval)
+			return run.GetQuery(qName).(query.UnivariateEval)
 		},
 	)
 
@@ -503,7 +513,7 @@ func (ctx mptsCtx) verifier(run *wizard.VerifierRuntime) error {
 	}
 
 	if left != right {
-		return fmt.Errorf("mismatch between left and right %v != %v", left.String(), right.String())
+		return fmt.Errorf("[multi-point	to single-point] mismatch between left and right %v != %v", left.String(), right.String())
 	}
 
 	return nil
@@ -513,9 +523,7 @@ func (ctx mptsCtx) verifier(run *wizard.VerifierRuntime) error {
 Gnark function generating constraints to mirror the verification
 of the evaluation step.
 */
-func (ctx mptsCtx) gnarkVerify(api frontend.API, c *wizard.WizardVerifierCircuit) {
-
-	logrus.Infof("Start verifying MPTS reduction")
+func (ctx mptsCtx) gnarkVerify(api frontend.API, c wizard.GnarkRuntime) {
 
 	ys, hs := ctx.getYsHsGnark(c)
 
@@ -595,9 +603,6 @@ func (ctx mptsCtx) gnarkVerify(api frontend.API, c *wizard.WizardVerifierCircuit
 	}
 
 	api.AssertIsEqual(left, right)
-
-	logrus.Debugf("Done verifying MPTS reduction")
-
 }
 
 // collect all the alleged opening values in a map, so that we can utilize them later.
@@ -696,7 +701,7 @@ func getLagrangesPolys(domain []field.Element) (lagranges [][]field.Element) {
 
 // Mirrrors `getYsHs` to build a gnark circuit
 func (ctx mptsCtx) getYsHsGnark(
-	c *wizard.WizardVerifierCircuit,
+	c wizard.GnarkRuntime,
 ) (
 	ys map[ifaces.ColID][]frontend.Variable,
 	hs []frontend.Variable,

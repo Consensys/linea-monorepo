@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/sirupsen/logrus"
 )
@@ -36,33 +37,38 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
 	}
 
-	logrus.Infof("Vortex compiler: RS encoding nrows=%v of ncol=%v to codeword-size=%v", len(ps), p.NbColumns, p.NbColumns*p.BlowUpFactor)
-	encodedMatrix = p.encodeRows(ps)
-	logrus.Infof("Vortex compiler: RS encoding DONE")
-	logrus.Infof("Vortex compiler: SIS hashing nrows=%v of ncol=%v to codeword-size=%v", len(ps), p.NbColumns, p.NbColumns*p.BlowUpFactor)
-	colHashes = p.hashColumns(encodedMatrix)
-	logrus.Infof("Vortex compiler: SIS hashing DONE")
+	timeEncoding := profiling.TimeIt(func() {
+		encodedMatrix = p.encodeRows(ps)
+	})
 
-	logrus.Infof("Vortex compiler: SIS merkle hashing START")
-	// Hash the digest by chunk and build the tree using the chunk hashes as leaves.
-	var leaves []types.Bytes32
+	timeSisHashing := profiling.TimeIt(func() {
+		colHashes = p.hashColumns(encodedMatrix)
+	})
 
-	if !p.HasSisReplacement() {
-		leaves = p.hashSisHash(colHashes)
-	} else {
-		leaves = make([]types.Bytes32, len(colHashes))
-		for i := range leaves {
-			leaves[i] = colHashes[i].Bytes()
+	timeTree := profiling.TimeIt(func() {
+		var leaves []types.Bytes32
+
+		if !p.HasSisReplacement() {
+			leaves = p.hashSisHash(colHashes)
+		} else {
+			leaves = make([]types.Bytes32, len(colHashes))
+			for i := range leaves {
+				leaves[i] = colHashes[i].Bytes()
+			}
 		}
-	}
 
-	tree = smt.BuildComplete(
-		leaves,
-		func() hashtypes.Hasher {
-			return hashtypes.Hasher{Hash: p.HashFunc()}
-		},
+		tree = smt.BuildComplete(
+			leaves,
+			func() hashtypes.Hasher {
+				return hashtypes.Hasher{Hash: p.HashFunc()}
+			},
+		)
+	})
+
+	logrus.Infof(
+		"[vortex-commitment] numCol=%v numRow=%v numColEncoded=%v timeEncoding=%v timeSisHashing=%v timeMerkleizing=%v",
+		p.NbColumns, len(ps), p.NumEncodedCols(), timeEncoding, timeSisHashing, timeTree,
 	)
-	logrus.Infof("Vortex compiler: SIS merkle hashing DONE")
 
 	return encodedMatrix, tree, colHashes
 }

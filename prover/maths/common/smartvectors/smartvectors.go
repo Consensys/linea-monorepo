@@ -1,6 +1,7 @@
 package smartvectors
 
 import (
+	"errors"
 	"fmt"
 	"math/rand/v2"
 
@@ -121,7 +122,7 @@ func IntoGnarkAssignment(sv SmartVector) []frontend.Variable {
 func LeftPadded(v []field.Element, padding field.Element, targetLen int) SmartVector {
 
 	if len(v) > targetLen {
-		utils.Panic("target length %v must be less than %v", len(v), targetLen)
+		utils.Panic("unpadded vector (length=%v) must be smaller than the target length (%v)", len(v), targetLen)
 	}
 
 	if len(v) == targetLen {
@@ -139,7 +140,7 @@ func LeftPadded(v []field.Element, padding field.Element, targetLen int) SmartVe
 func RightPadded(v []field.Element, padding field.Element, targetLen int) SmartVector {
 
 	if len(v) > targetLen {
-		utils.Panic("target length %v must be less than %v", len(v), targetLen)
+		utils.Panic("unpadded vector (length=%v) must be smaller than the target length (%v)", len(v), targetLen)
 	}
 
 	if len(v) == targetLen {
@@ -183,6 +184,28 @@ func Density(v SmartVector) int {
 	}
 }
 
+// PaddingOrientationOf returns an integer indicating the orientation of the
+// padding of a column. '0' indicates an unresolved orientation. '1' indicates
+// that the columns if right-padded and '-1' indicates that it is left-padded.
+//
+// The function returns an error if the vector is not a padded-circular window.
+func PaddingOrientationOf(v SmartVector) (int, error) {
+
+	switch w := v.(type) {
+	case *PaddedCircularWindow:
+		if w.offset == 0 {
+			return 1, nil
+		}
+		if w.offset+len(w.window) == w.totLen {
+			return -1, nil
+		}
+	default:
+		return 0, errors.New("vector is not a padded-circular window")
+	}
+
+	return 0, nil
+}
+
 // Window returns the effective window of the vector,
 // if the vector is Padded with zeroes it return the window.
 // Namely, the part without zero pads.
@@ -197,7 +220,7 @@ func Window(v SmartVector) []field.Element {
 func WindowBase(v SmartVector) ([]field.Element, error) {
 	switch w := v.(type) {
 	case *Constant:
-		return w.IntoRegVecSaveAllocBase()
+		return []field.Element{}, nil
 	case *PaddedCircularWindow:
 		return w.window, nil
 	case *Regular:
@@ -212,7 +235,7 @@ func WindowBase(v SmartVector) ([]field.Element, error) {
 func WindowExt(v SmartVector) []fext.Element {
 	switch w := v.(type) {
 	case *Constant:
-		return w.IntoRegVecSaveAllocExt()
+		return []fext.Element{}
 	case *PaddedCircularWindow:
 		temp := make([]fext.Element, len(w.window))
 		for i := 0; i < len(w.window); i++ {
@@ -231,6 +254,21 @@ func WindowExt(v SmartVector) []fext.Element {
 		return w.IntoRegVecSaveAllocExt()
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
+	}
+}
+
+// PaddingVal returns either the constant value of the smart-vector
+// if it is a constant or the padding value of the padded circular window
+// smart-vector. Otherwise, it returns zero. The function also returns
+// a flag indicating if the value has padding.
+func PaddingVal(v SmartVector) (val field.Element, hasPadding bool) {
+	switch w := v.(type) {
+	case *Constant:
+		return w.val, true
+	case *PaddedCircularWindow:
+		return w.paddingVal, true
+	default:
+		return field.Element{}, false
 	}
 }
 
