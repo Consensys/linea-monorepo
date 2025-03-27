@@ -92,8 +92,6 @@ describe("L1 > L2 via Native Bridge", () => {
     await waitForTransactionListUpdate(txnsLengthBefore);
   });
 
-  // Note: This E2E test should address 
-
   /**
    * This E2E test should address the following edge case observed in initial development:
    * 

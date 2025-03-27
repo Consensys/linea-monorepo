@@ -170,7 +170,7 @@ export const test = metaMaskFixtures(setup).extend<{
   doInitiateBridgeTransaction: async ({ page, confirmTransactionAndWaitForInclusion }, use) => {
     await use(async () => {
       // Click "Bridge" button
-      const bridgeButton = page.getByRole("button", { name: "Bridge" });
+      const bridgeButton = page.getByRole("button", { name: "Bridge", exact: true });
       await bridgeButton.waitFor();
       await bridgeButton.click();
 

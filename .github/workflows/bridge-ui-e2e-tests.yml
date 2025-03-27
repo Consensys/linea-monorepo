@@ -1,6 +1,3 @@
-# TODO in a later PR - Caching for repeated runs of this CI workflow; 
-# This CI workflow has fat dependencies (Playwright, browser/s and required system dependencies that don't come with a standard runner)
-# Consider starting from a public Playwright image, rather than cooking from scratch
 name: Run Bridge UI E2E Tests
 
 on:

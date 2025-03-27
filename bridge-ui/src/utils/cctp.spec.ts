@@ -1,6 +1,6 @@
 import { test } from "@playwright/test";
-import { getCctpMessageExpiryBlock } from "./cctp";
-import { CctpAttestationMessage, CctpAttestationMessageStatus, Chain, ChainLayer } from "@/types";
+import { getCctpMessageExpiryBlock, getCctpTransactionStatus } from "./cctp";
+import { CctpAttestationMessage, CctpAttestationMessageStatus, Chain, ChainLayer, TransactionStatus } from "@/types";
 
 const { expect, describe } = test;
 
@@ -26,7 +26,7 @@ describe("getCctpMessageExpiryBlock", () => {
   });
 });
 
-describe("getCctpMessageExpiryBlock", () => {
+describe("getCctpTransactionStatus", () => {
   const toChainStub: Chain = {
     id: 59141,
     cctpDomain: 11,
@@ -54,13 +54,13 @@ describe("getCctpMessageExpiryBlock", () => {
     },
   };
 
-  // const cctpApiRespPending: CctpAttestationMessage = {
-  //   "attestation": "PENDING",
-  //   "message": "0x",
-  //   "eventNonce": "0xaf75c4d910592bc593c34bf6eb89937b1326ad43d9e3cf45581512efcf3e7da7",
-  //   "cctpVersion": 2,
-  //   "status": CctpAttestationMessageStatus.PENDING_CONFIRMATIONS
-  // }
+  const cctpApiRespPending: CctpAttestationMessage = {
+    attestation: "PENDING",
+    message: "0x",
+    eventNonce: "0xaf75c4d910592bc593c34bf6eb89937b1326ad43d9e3cf45581512efcf3e7da7",
+    cctpVersion: 2,
+    status: CctpAttestationMessageStatus.PENDING_CONFIRMATIONS,
+  };
 
   const cctpApiRespReady: CctpAttestationMessage = {
     attestation:
@@ -81,4 +81,14 @@ describe("getCctpMessageExpiryBlock", () => {
     cctpVersion: 2,
     status: CctpAttestationMessageStatus.COMPLETE,
   };
+
+  test("should return PENDING for an empty message", async () => {
+    const resp = await getCctpTransactionStatus(toChainStub, cctpApiRespPending, cctpApiRespPending.eventNonce);
+    expect(resp).toBe(TransactionStatus.PENDING);
+  });
+
+  // test("should return COMPLETE for a used nonce", async () => {
+  //   const resp = await getCctpTransactionStatus(toChainStub, cctpApiRespPending, cctpApiRespPending.eventNonce);
+  //   expect(resp).toBe(TransactionStatus.PENDING);
+  // });
 });
