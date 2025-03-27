@@ -121,12 +121,14 @@ export const test = metaMaskFixtures(setup).extend<{
     await use(async () => {
       await metamask.page.bringToFront();
       await metamask.page.reload();
-      // Click "Got it" button on "What's new" modal if it appears
-      const gotItButton = metamask.page.locator("button", { hasText: "Got it" });
-      if (await gotItButton.isVisible()) await gotItButton.click();
 
       const activityButton = metamask.page.locator("button", { hasText: "Activity" });
       await activityButton.waitFor();
+      // Click "Got it" button on "What's new" modal if it appears
+      // Assuming this becomes visible at the same time that the Activity button becomes visible
+      const gotItButton = metamask.page.locator("button", { hasText: "Got it" });
+      if (await gotItButton.isVisible()) await gotItButton.click();
+      // Click Activity button
       await activityButton.click();
 
       let txCount = await metamask.page
