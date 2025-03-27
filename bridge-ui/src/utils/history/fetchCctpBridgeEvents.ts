@@ -20,6 +20,15 @@ export async function fetchCctpBridgeEvents(
     chainId: fromChain.id,
   });
 
+  console.log("fetchCctpBridgeEvents usdcLogs req:", {
+    event: CctpDepositForBurnAbiEvent,
+    fromBlock: "earliest",
+    toBlock: "latest",
+    address: fromChain.cctpTokenMessengerV2Address,
+    args: {
+      depositor: address,
+    },
+  });
   const usdcLogs = (await fromChainClient.getLogs({
     event: CctpDepositForBurnAbiEvent,
     fromBlock: "earliest",
