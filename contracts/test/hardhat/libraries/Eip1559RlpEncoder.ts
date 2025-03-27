@@ -7,7 +7,7 @@ import transactionWithCalldata from "../_testData/eip1559RlpEncoderTransactions/
 import { Eip1559Transaction } from "../common/types";
 import { generateKeccak256BytesDirectly } from "../common/helpers";
 
-describe.only("Eip1559RlpEncoder Library", () => {
+describe("Eip1559RlpEncoder Library", () => {
   let contract: TestEip1559RlpEncoder;
 
   async function deployTestEip1559RlpEncoderFixture() {
