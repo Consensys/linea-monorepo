@@ -1,6 +1,14 @@
 import { test } from "@playwright/test";
+import nock from "nock";
 import { getCctpMessageExpiryBlock, getCctpTransactionStatus } from "./cctp";
-import { CctpAttestationMessage, CctpAttestationMessageStatus, Chain, ChainLayer, TransactionStatus } from "@/types";
+import {
+  CctpAttestationMessage,
+  CctpAttestationMessageStatus,
+  CctpV2ReattestationApiResponse,
+  Chain,
+  ChainLayer,
+  TransactionStatus,
+} from "@/types";
 
 const { expect, describe } = test;
 
@@ -134,11 +142,20 @@ describe("getCctpTransactionStatus", () => {
 
   test("should return PENDING and call reattest API if i.) message is expired and ii.) nonce unused", async () => {
     const expiredCctpApiResp = { ...cctpApiRespNoExpiry };
-    // Put expiry block of 1 ->
+    // Put expiry block of 1
     expiredCctpApiResp.message = (expiredCctpApiResp.message.slice(0, -1) + "1") as `0x${string}`;
-    const resp = await getCctpTransactionStatus(toChainStub, expiredCctpApiResp, randomUnusedNonce);
-    expect(resp).toBe(TransactionStatus.READY_TO_CLAIM);
-  });
+    // Intercept request to CCTP reattest API
+    const stubbedReattestApiResp: CctpV2ReattestationApiResponse = {
+      message: "message",
+      nonce: randomUnusedNonce,
+    };
+    const interceptor = nock("https://iris-api-sandbox.circle.com")
+      .post(/.*/) // Intercept all POST requests
+      .reply(200, stubbedReattestApiResp);
 
-  // TODO - Handle expired CCTP msg
+    const resp = await getCctpTransactionStatus(toChainStub, expiredCctpApiResp, randomUnusedNonce);
+    expect(resp).toBe(TransactionStatus.PENDING);
+    // Assert we made a request to CCTP reattest API
+    expect(interceptor.isDone()).toBe(true);
+  });
 });

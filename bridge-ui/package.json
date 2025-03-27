@@ -60,6 +60,7 @@
     "autoprefixer": "10.4.21",
     "dotenv": "16.4.7",
     "eslint-config-next": "14.2.15",
+    "nock": "14.0.1",
     "postcss": "8.5.3"
   }
 }
