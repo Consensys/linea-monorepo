@@ -84,3 +84,16 @@ export type FinalizationData = {
 };
 
 export type ShnarfDataGenerator = (blobParentShnarfIndex: number, isMultiple?: boolean) => ShnarfData;
+
+export type Eip1559Transaction = {
+  nonce: bigint;
+  maxPriorityFeePerGas: bigint;
+  maxFeePerGas: bigint;
+  gasLimit: bigint;
+  to: string;
+  value: bigint;
+  input: string;
+  v: bigint;
+  r: bigint;
+  s: bigint;
+};
