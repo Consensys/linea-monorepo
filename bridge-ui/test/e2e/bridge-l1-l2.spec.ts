@@ -7,6 +7,7 @@ const test = testWithSynpress(advancedFixtures);
 const { expect, describe } = test;
 
 // TODO - Claim tx for ETH and USDC
+// To consider in a later ticket - Bridge ERC20 tokens case when ERC20 token is available in Sepolia token list
 describe("L1 > L2 via Native Bridge", () => {
   test("should successfully go to the bridge UI page", async ({ page }) => {
     const pageUrl = page.url();
@@ -126,6 +127,4 @@ describe("L1 > L2 via Native Bridge", () => {
     // Check that our bridge tx shows up in the tx history
     await waitForTransactionListUpdate(txnsLengthBefore);
   });
-
-  // To consider in a later ticket - Bridge ERC20 tokens case when ERC20 token is available in Sepolia token list
 });

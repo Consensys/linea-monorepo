@@ -20,15 +20,6 @@ export async function fetchCctpBridgeEvents(
     chainId: fromChain.id,
   });
 
-  console.log("fetchCctpBridgeEvents usdcLogs req:", {
-    event: CctpDepositForBurnAbiEvent,
-    fromBlock: "earliest",
-    toBlock: "latest",
-    address: fromChain.cctpTokenMessengerV2Address,
-    args: {
-      depositor: address,
-    },
-  });
   const usdcLogs = (await fromChainClient.getLogs({
     event: CctpDepositForBurnAbiEvent,
     fromBlock: "earliest",
@@ -38,7 +29,6 @@ export async function fetchCctpBridgeEvents(
       depositor: address,
     },
   })) as unknown as DepositForBurnLogEvent[];
-  console.log("fetchCctpBridgeEvents usdcLogs:", usdcLogs);
 
   await Promise.all(
     usdcLogs.map(async (log) => {
@@ -54,18 +44,15 @@ export async function fetchCctpBridgeEvents(
 
       const fromBlock = await fromChainClient.getBlock({ blockNumber: log.blockNumber, includeTransactions: false });
       if (isBlockTooOld(fromBlock)) return;
-      console.log("fetchCctpBridgeEvents fromBlock:", fromBlock);
 
       const token = tokens.find((token) => isCctp(token));
       if (!token) return;
 
       const cctpMessage = await getCctpMessageByTxHash(transactionHash, fromChain.cctpDomain, fromChain.testnet);
       if (!cctpMessage) return;
-      console.log("fetchCctpBridgeEvents cctpMessage:", cctpMessage);
 
       const nonce = cctpMessage.eventNonce;
       const status = await getCctpTransactionStatus(toChain, cctpMessage, nonce);
-      console.log("fetchCctpBridgeEvents status:", status);
 
       const tx: BridgeTransaction = {
         type: BridgeTransactionType.USDC,

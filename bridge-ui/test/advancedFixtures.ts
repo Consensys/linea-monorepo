@@ -120,9 +120,6 @@ export const test = metaMaskFixtures(setup).extend<{
   waitForTransactionToConfirm: async ({ metamask }, use) => {
     await use(async () => {
       await metamask.page.bringToFront();
-      await metamask.page.reload();
-      // TO test - does this correctly address edge case of "What's New" modal popping up?
-      await metamask.goBackToHomePage();
       const activityButton = metamask.page.locator("button", { hasText: "Activity" });
       await activityButton.waitFor();
       await activityButton.click();
