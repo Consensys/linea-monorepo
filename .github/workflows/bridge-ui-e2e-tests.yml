@@ -32,15 +32,17 @@ jobs:
         with:
           path: |
             ~/.npm
-            ${{ github.workspace }}/.next/cache
-            ${{ github.workspace }}/.cache/ms-playwright
-            ${{ github.workspace }}/_work/.pnpm-store/v3
-          key: ${{ runner.os }}-bridge-ui-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('bridge-ui/src/**/*.js', 'bridge-ui/src/**/*.ts', 'bridge-ui/src/**/*.tsx') }}
+            ~/.cache/ms-playwright
+            ~/.pnpm-store/v3
+            ${{ github.workspace }}/bridge-ui/.next/cache
+            ${{ github.workspace }}/bridge-ui/.cache-synpress
+          key: ${{ runner.os }}-bridge-ui-${{ hashFiles('**/pnpm-lock.yaml') }}-${{ hashFiles('**/bridge-ui/src/**/*.js', '**/bridge-ui/src/**/*.ts', '**/bridge-ui/src/**/*.tsx') }}
           restore-keys: |
             ${{ runner.os }}-bridge-ui-${{ hashFiles('**/pnpm-lock.yaml') }}-
-      
-      - name: Print GitHub Workspace
-        run: echo "GitHub Workspace is ${{ github.workspace }}"
+
+      - name: Print Home Directory Path
+        run: |
+          echo "Using $HOME: $HOME"
 
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs

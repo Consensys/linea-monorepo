@@ -85,7 +85,6 @@ describe("L1 > L2 via Native Bridge", () => {
     await openNativeBridgeTransactionHistory();
     const txnsLengthBefore = await getBridgeTransactionsCountImpl(page);
     await closeNativeBridgeTransactionHistory();
-    // await page.pause();
     
     // // Actual bridging actions
     // await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
