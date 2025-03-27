@@ -1,9 +1,14 @@
 import { metaMaskFixtures } from "@synthetixio/synpress/playwright";
 import setup from "./wallet-setup/metamask.setup";
-import { Locator, Page } from "@playwright/test";
+import { Locator } from "@playwright/test";
 import { selectTokenAndWaitForBalance } from "./utils";
 
-// NB: There is an issue with extending `metaMaskFixtures` in Synpress in which extension fixture functions may not be able to reuse other extension fixture functions
+/**
+ * NB: There is an issue with Synpress `metaMaskFixtures` extension functions wherein extension functions
+ * may not be able to reuse other extension functions. This is especially the case when advanced operations
+ * on the 'Page' object are done. It seems that the 'Page' object does not remain the same in a nested
+ * extension function call between the different layers of nesting.
+ */
 export const test = metaMaskFixtures(setup).extend<{
   // Bridge UI Actions
   clickNativeBridgeButton: () => Promise<Locator>;
@@ -13,8 +18,7 @@ export const test = metaMaskFixtures(setup).extend<{
   toggleShowTestNetworksInNativeBridgeForm: () => Promise<void>;
   getBridgeTransactionsCount: () => Promise<number>;
   selectTokenAndInputAmount: (tokenSymbol: string, amount: string) => Promise<void>;
-
-  waitForTransactionListUpdate: (txCountBeforeUpdate: number) => Promise<boolean>;
+  waitForTransactionListUpdate: (txCountBeforeUpdate: number) => Promise<void>;
 
   // Metamask Actions
   connectMetamaskToDapp: () => Promise<void>;
@@ -59,17 +63,12 @@ export const test = metaMaskFixtures(setup).extend<{
       await page.getByTestId("native-bridge-test-network-toggle").click();
     });
   },
-  getBridgeTransactionsCount: async (
-    { page, openNativeBridgeTransactionHistory, closeNativeBridgeTransactionHistory },
-    use,
-  ) => {
+  getBridgeTransactionsCount: async ({ page }, use,) => {
     await use(async () => {
-      await openNativeBridgeTransactionHistory();
       const txList = page.getByTestId("native-bridge-transaction-history-list");
       await expect(txList).toBeVisible();
       const txs = txList.getByRole("listitem");
       const txCount = txs.count();
-      await closeNativeBridgeTransactionHistory();
       return txCount;
     });
   },
@@ -88,8 +87,21 @@ export const test = metaMaskFixtures(setup).extend<{
         throw "Insufficient funds available, please add some funds before running the test";
     });
   },
+  waitForTransactionListUpdate: async ({ page, getBridgeTransactionsCount }, use) => {
+    await use(async (txCountBeforeUpdate: number) => {
+      const maxTries = 10;
+      let tryCount = 0;
+      let listUpdated = false;
+      do {
+        const newTxCount = await getBridgeTransactionsCount();
 
-
+        listUpdated = newTxCount !== txCountBeforeUpdate;
+        tryCount++;
+        await page.waitForTimeout(250);
+      } while (!listUpdated && tryCount < maxTries);
+    });
+  },
+  
   // Metamask Actions
   connectMetamaskToDapp: async ({ page, metamask }, use) => {
     await use(async () => {
@@ -131,6 +143,7 @@ export const test = metaMaskFixtures(setup).extend<{
       await page.bringToFront();
     });
   },
+
   // Composite Bridge UI + Metamask Actions
   doTokenApprovalIfNeeded: async ({ page }, use) => {
     await use(async () => {
@@ -160,7 +173,7 @@ export const test = metaMaskFixtures(setup).extend<{
       }
     });
   },
-  doInitiateBridgeTransaction: async ({ page }, use) => {
+  doInitiateBridgeTransaction: async ({ page, confirmTransactionAndWaitForInclusion }, use) => {
     await use(async () => {
       // Wait for "Receive amount", otherwise "Confirm and Bridge" button will silently fail
       const receivedAmountField = page.getByTestId("received-amount-text");
@@ -176,21 +189,14 @@ export const test = metaMaskFixtures(setup).extend<{
       await expect(confirmAndBridgeButton).toBeVisible();
       await expect(confirmAndBridgeButton).toBeEnabled();
       await confirmAndBridgeButton.click();
-    });
-  },
-  waitForTransactionListUpdate: async ({ getBridgeTransactionsCount }, use) => {
-    await use(async (txCountBeforeUpdate: number) => {
-      const maxTries = 20;
-      let tryCount = 0;
-      let listUpdated = false;
-      do {
-        const newTxCount = await getBridgeTransactionsCount();
 
-        listUpdated = newTxCount !== txCountBeforeUpdate;
-        tryCount++;
-      } while (!listUpdated && tryCount < maxTries);
+      // Confirm Metamask Tx and wait for blockchain inclusion
+      // Should be ok to reuse this fixture function because it doesn't do much on the `Page` object
+      await confirmTransactionAndWaitForInclusion();
 
-      return listUpdated;
+      // Click on 'View transactions' button on the 'Transaction confirmed' modal
+      const viewTxButton = page.getByRole('button', { name: 'View transactions' })
+      await viewTxButton.click()
     });
   },
 });
