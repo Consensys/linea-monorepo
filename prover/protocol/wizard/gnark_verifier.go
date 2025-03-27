@@ -335,9 +335,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 			break
 		}
 
-		if round > 0 {
-			c.GenerateCoinsForRound(api, round)
-		}
+		c.GenerateCoinsForRound(api, round)
 
 		for _, step := range roundSteps {
 			if !step.IsSkipped() {
@@ -352,7 +350,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 // it generates all the coins for the request round.
 func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int) {
 
-	if !c.Spec.DummyCompiled {
+	if currRound > 0 && !c.Spec.DummyCompiled {
 
 		// Make sure that all messages have been written and use them
 		// to update the FS state. Note that we do not need to update
