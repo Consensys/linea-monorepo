@@ -120,7 +120,7 @@ object DataGenerators {
       unixTimestampSeconds = timestamp,
     )
 
-  fun randomValidForkChoiceUpdatedResult(payloadId: ByteArray = Random.nextBytes(8)): ForkChoiceUpdatedResult {
+  fun randomValidForkChoiceUpdatedResult(payloadId: ByteArray? = Random.nextBytes(8)): ForkChoiceUpdatedResult {
     val expectedPayloadStatus =
       PayloadStatus(
         executionPayloadStatus = "VALID",

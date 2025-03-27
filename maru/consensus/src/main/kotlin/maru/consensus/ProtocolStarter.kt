@@ -16,7 +16,6 @@
 package maru.consensus
 
 import java.util.concurrent.atomic.AtomicReference
-import maru.consensus.dummy.NextBlockTimestampProvider
 import maru.core.Protocol
 import maru.executionlayer.client.MetadataProvider
 import maru.executionlayer.manager.BlockMetadata

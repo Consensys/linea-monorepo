@@ -16,29 +16,7 @@
 package maru.consensus.dummy
 
 import java.time.Clock
-
-data class FinalizationState(
-  val safeBlockHash: ByteArray,
-  val finalizedBlockHash: ByteArray,
-) {
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as FinalizationState
-
-    if (!safeBlockHash.contentEquals(other.safeBlockHash)) return false
-    if (!finalizedBlockHash.contentEquals(other.finalizedBlockHash)) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = safeBlockHash.contentHashCode()
-    result = 31 * result + finalizedBlockHash.contentHashCode()
-    return result
-  }
-}
+import maru.consensus.state.FinalizationState
 
 data class DummyConsensusState(
   val clock: Clock,

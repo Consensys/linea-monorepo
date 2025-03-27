@@ -71,10 +71,7 @@ class StateTransitionImplTest {
     }
 
   private val proposerSelector =
-    object : ProposerSelector {
-      override fun getProposerForBlock(header: BeaconBlockHeader): SafeFuture<Validator> =
-        SafeFuture.completedFuture(newBlockHeader.proposer)
-    }
+    ProposerSelector { SafeFuture.completedFuture(newBlockHeader.proposer) }
 
   private val postState =
     BeaconState(

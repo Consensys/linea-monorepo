@@ -19,6 +19,7 @@ import java.time.Clock
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration
 import maru.consensus.ForksSchedule
+import maru.consensus.NextBlockTimestampProvider
 import maru.core.Protocol
 import maru.executionlayer.manager.BlockMetadata
 import org.apache.logging.log4j.LogManager

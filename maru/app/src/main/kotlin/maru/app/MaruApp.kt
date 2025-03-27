@@ -21,11 +21,11 @@ import maru.config.MaruConfig
 import maru.consensus.ForksSchedule
 import maru.consensus.MetadataOnlyHandlerAdapter
 import maru.consensus.NewBlockHandlerMultiplexer
+import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
 import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.dummy.DummyConsensusProtocolFactory
-import maru.consensus.dummy.NextBlockTimestampProviderImpl
 import maru.executionlayer.client.Web3jMetadataProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

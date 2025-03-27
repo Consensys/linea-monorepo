@@ -18,15 +18,15 @@ package maru.consensus.dummy
 import java.time.Clock
 import maru.config.MaruConfig
 import maru.consensus.ElFork
-import maru.consensus.EngineApiBlockCreator
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.NewBlockHandler
+import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
+import maru.consensus.state.FinalizationState
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.executionlayer.client.MetadataProvider
 import maru.executionlayer.client.PragueWeb3jJsonRpcExecutionLayerClient
-import maru.executionlayer.manager.FeeRecipientProvider
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
@@ -52,7 +52,7 @@ class DummyConsensusProtocolFactory(
     private val forksSchedule: ForksSchedule,
   ) : FeeRecipientProvider {
     override fun getFeeRecipient(timestamp: Long): ByteArray {
-      val nextExpectedFork = forksSchedule.getForkFollowingTimestamp(timestamp)
+      val nextExpectedFork = forksSchedule.getForkByTimestamp(timestamp)
       return (
         nextExpectedFork.configuration as DummyConsensusConfig
       ).feeRecipient
@@ -77,7 +77,6 @@ class DummyConsensusProtocolFactory(
         .create(
           executionLayerClient = executionLayerClient,
           metadataProvider = metadataProvider,
-          feeRecipientProvider = DummyConsensusFeeRecipientProvider(forksSchedule),
           payloadValidator = EmptyBlockValidator,
         ).get()
     val latestBlockMetadata = jsonRpcExecutionLayerManager.latestBlockMetadata()
@@ -97,6 +96,7 @@ class DummyConsensusProtocolFactory(
         state = dummyConsensusState,
         blockHeaderFunctions = MainnetBlockHeaderFunctions(),
         nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(latestBlockMetadata),
+        feeRecipientProvider = DummyConsensusFeeRecipientProvider(forksSchedule),
       )
     val eventHandler =
       DummyConsensusEventHandler(

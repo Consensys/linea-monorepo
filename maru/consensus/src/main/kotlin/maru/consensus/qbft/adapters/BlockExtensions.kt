@@ -24,7 +24,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 /**
  * Convert a QBFT block to a BeaconBlock
  *
- * @param qbftBlock the QBFT block to convert
+ * @param this the QBFT block to convert
  */
 fun QbftBlock.toBeaconBlock(): BeaconBlock =
   when (this) {
@@ -36,25 +36,23 @@ fun QbftBlock.toBeaconBlock(): BeaconBlock =
 /**
  * Convert a QBFT block to a SealedBeaconBlock
  *
- * @param qbftBlock the QBFT block to convert
+ * @param this the QBFT block to convert
  */
 fun QbftBlock.toSealedBeaconBlock(): SealedBeaconBlock {
-  if (this is QbftSealedBlockAdapter) {
-    return this.sealedBeaconBlock
-  } else {
-    throw IllegalArgumentException("Unsupported block type")
+  require(this is QbftSealedBlockAdapter) {
+    "Unsupported block type"
   }
+  return this.sealedBeaconBlock
 }
 
 /**
  * Convert a QBFT block header to a BeaconBlockHeader
  *
- * @param qbftBlockHeader the QBFT block header to convert
+ * @param this the QBFT block header to convert
  */
 fun QbftBlockHeader.toBeaconBlockHeader(): BeaconBlockHeader {
-  if (this is QbftBlockHeaderAdapter) {
-    return this.beaconBlockHeader
-  } else {
-    throw IllegalArgumentException("Unsupported block header type")
+  require(this is QbftBlockHeaderAdapter) {
+    "Unsupported block header type"
   }
+  return this.beaconBlockHeader
 }

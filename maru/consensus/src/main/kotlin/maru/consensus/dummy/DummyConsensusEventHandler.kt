@@ -16,6 +16,7 @@
 package maru.consensus.dummy
 
 import maru.consensus.NewBlockHandler
+import maru.consensus.NextBlockTimestampProvider
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger

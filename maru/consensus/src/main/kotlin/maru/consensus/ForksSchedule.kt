@@ -59,11 +59,6 @@ class ForksSchedule(
     )
   }
 
-  fun getForkFollowingTimestamp(timestamp: Long): ForkSpec {
-    val currentFork = getForkByTimestamp(timestamp)
-    return getForkByTimestamp(timestamp + currentFork.blockTimeSeconds)
-  }
-
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false

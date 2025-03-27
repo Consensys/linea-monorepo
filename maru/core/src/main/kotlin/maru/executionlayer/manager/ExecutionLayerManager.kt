@@ -74,6 +74,32 @@ data class ForkChoiceUpdatedResult(
   }
 }
 
+data class PayloadAttributes(
+  val timestamp: Long,
+  val prevRandao: ByteArray = ByteArray(32),
+  val suggestedFeeRecipient: ByteArray,
+) {
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as PayloadAttributes
+
+    if (timestamp != other.timestamp) return false
+    if (!prevRandao.contentEquals(other.prevRandao)) return false
+    if (!suggestedFeeRecipient.contentEquals(other.suggestedFeeRecipient)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = timestamp.hashCode()
+    result = 31 * result + prevRandao.contentHashCode()
+    result = 31 * result + suggestedFeeRecipient.contentHashCode()
+    return result
+  }
+}
+
 data class BlockMetadata(
   val blockNumber: ULong,
   val blockHash: ByteArray,
@@ -121,11 +147,10 @@ interface ExecutionLayerManager {
     safeHash: ByteArray,
     finalizedHash: ByteArray,
     nextBlockTimestamp: Long,
+    feeRecipient: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
   fun finishBlockBuilding(): SafeFuture<ExecutionPayload>
-
-  fun finishBlockBuildingAndBuildNextBlock(): SafeFuture<ExecutionPayload>
 
   fun latestBlockMetadata(): BlockMetadata
 
@@ -135,5 +160,5 @@ interface ExecutionLayerManager {
     finalizedHash: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult>
 
-  fun importBlock(executionPayload: ExecutionPayload): ByteArray
+  fun importPayload(executionPayload: ExecutionPayload): SafeFuture<Unit>
 }

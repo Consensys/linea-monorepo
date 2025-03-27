@@ -23,6 +23,7 @@ import kotlin.time.Duration.Companion.milliseconds
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
+import maru.consensus.NextBlockTimestampProviderImpl
 import maru.executionlayer.manager.BlockMetadata
 import org.assertj.core.api.Assertions.assertThat
 

@@ -13,16 +13,15 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus.dummy
+package maru.consensus
 
 import java.time.Clock
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.time.Duration
-import maru.consensus.ForksSchedule
 import maru.executionlayer.manager.BlockMetadata
 
-interface NextBlockTimestampProvider {
+fun interface NextBlockTimestampProvider {
   fun nextTargetBlockUnixTimestamp(lastBlockMetadata: BlockMetadata): Long
 }
 

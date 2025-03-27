@@ -16,10 +16,13 @@
 package maru.executionlayer.extensions
 
 import maru.core.ExecutionPayload
+import maru.executionlayer.manager.PayloadAttributes
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.apache.tuweni.units.bigints.UInt256
 import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
+import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 import tech.pegasys.teku.infrastructure.bytes.Bytes20
 import tech.pegasys.teku.infrastructure.unsigned.UInt64
 
@@ -61,4 +64,13 @@ fun ExecutionPayload.toExecutionPayloadV3() =
     /* withdrawals */ emptyList(),
     /* blobGasUsed */ UInt64.ZERO,
     /* excessBlobGas */ UInt64.ZERO,
+  )
+
+fun PayloadStatusV1.hasValidExecutionPayload() = this.asInternalExecutionPayload().hasValidStatus()
+
+fun PayloadAttributes.toPayloadAttributesV1(): PayloadAttributesV1 =
+  PayloadAttributesV1(
+    UInt64.fromLongBits(this.timestamp),
+    Bytes32.wrap(this.prevRandao),
+    Bytes20(Bytes.wrap(this.suggestedFeeRecipient)),
   )

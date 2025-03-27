@@ -52,7 +52,7 @@ class KvDatabase(
     }
   }
 
-  override fun getLatestBeaconState(): BeaconState? = kvStoreAccessor.get(Schema.LatestBeaconState).getOrNull()
+  override fun getLatestBeaconState(): BeaconState = kvStoreAccessor.get(Schema.LatestBeaconState).get()
 
   override fun getBeaconState(beaconBlockRoot: ByteArray): BeaconState? =
     kvStoreAccessor.get(Schema.BeaconStateByBlockRoot, beaconBlockRoot).getOrNull()
