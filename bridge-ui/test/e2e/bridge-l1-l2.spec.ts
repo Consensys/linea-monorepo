@@ -59,9 +59,9 @@ describe("L1 > L2 via Native Bridge", () => {
   //   await expect(sepoliaText).toBeVisible();
   // });
 
-  test.beforeEach(async ({ context }) => {
-    await context.route("https://**", async route => {
-      console.log("intercepted:", route.request().url());
+  test.beforeEach(async ({ metamask }) => {
+    await metamask.page.route("https://**", async route => {
+      console.log("intercepted Metamask:", route.request().url());
       const response = await route.fetch();  
       await route.fulfill({response});
     });
