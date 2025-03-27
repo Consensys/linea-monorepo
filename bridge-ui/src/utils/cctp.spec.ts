@@ -82,13 +82,40 @@ describe("getCctpTransactionStatus", () => {
     status: CctpAttestationMessageStatus.COMPLETE,
   };
 
+  // Used on Linea Sepolia
+  const usedCctpNonce = "0xaf75c4d910592bc593c34bf6eb89937b1326ad43d9e3cf45581512efcf3e7da7";
+
+  // Random nonce, should be unused
+  const randomUnusedNonce = "0x97bce01d925f4152bbdc464a774bb8fcfd161557946b33930f0be0294e97eedf";
+
   test("should return PENDING for an empty message", async () => {
     const resp = await getCctpTransactionStatus(toChainStub, cctpApiRespPending, cctpApiRespPending.eventNonce);
     expect(resp).toBe(TransactionStatus.PENDING);
   });
 
-  // test("should return COMPLETE for a used nonce", async () => {
-  //   const resp = await getCctpTransactionStatus(toChainStub, cctpApiRespPending, cctpApiRespPending.eventNonce);
-  //   expect(resp).toBe(TransactionStatus.PENDING);
-  // });
+  test("should return COMPLETE for a used nonce", async () => {
+    const resp = await getCctpTransactionStatus(toChainStub, cctpApiRespNoExpiry, usedCctpNonce);
+    expect(resp).toBe(TransactionStatus.COMPLETED);
+  });
+
+  test("should return PENDING for a truncated message", async () => {
+    // Immutable creation of new object
+    const corruptedCctpApiResp = { ...cctpApiRespNoExpiry };
+    // Chop off last character. Last 32-bytes of message should be expirationBlock as per https://developers.circle.com/stablecoins/message-format
+    corruptedCctpApiResp.message = corruptedCctpApiResp.message.slice(0, -1) as `0x${string}`;
+    const resp = await getCctpTransactionStatus(toChainStub, corruptedCctpApiResp, randomUnusedNonce);
+    expect(resp).toBe(TransactionStatus.PENDING);
+  });
+
+  // TODO later - Address edge case where 'parseInt("0ILLEGAL", 16) == 0',
+
+  test("should return PENDING for a corrupted message", async () => {
+    // Immutable creation of new object
+    const corruptedCctpApiResp = { ...cctpApiRespNoExpiry };
+    // Replace hex characters with non-hex characters
+    corruptedCctpApiResp.message = (corruptedCctpApiResp.message.slice(0, -64) +
+      "ILLEGALILLEGALILLEGALILLEGALILLEGALILLEGALILLEGALILLEGALILLEGALI") as `0x${string}`;
+    const resp = await getCctpTransactionStatus(toChainStub, corruptedCctpApiResp, randomUnusedNonce);
+    expect(resp).toBe(TransactionStatus.PENDING);
+  });
 });

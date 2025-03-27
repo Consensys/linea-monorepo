@@ -31,6 +31,8 @@ export const getCctpMessageExpiryBlock = (message: string): bigint | undefined =
     CCTP_V2_EXPIRATION_BLOCK_OFFSET,
     CCTP_V2_EXPIRATION_BLOCK_OFFSET + CCTP_V2_EXPIRATION_BLOCK_LENGTH,
   );
+  // Should be 32-bytes
+  if (expiryInHex.length !== 64) return undefined;
   const expiryInInt = parseInt(expiryInHex, 16);
   if (Number.isNaN(expiryInInt)) return undefined;
   // Return bigint because this is also returned by Viem client.getBlockNumber()
