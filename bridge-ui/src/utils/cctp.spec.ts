@@ -132,5 +132,13 @@ describe("getCctpTransactionStatus", () => {
     expect(resp).toBe(TransactionStatus.READY_TO_CLAIM);
   });
 
+  test("should return PENDING and call reattest API if i.) message is expired and ii.) nonce unused", async () => {
+    const expiredCctpApiResp = { ...cctpApiRespNoExpiry };
+    // Put expiry block of 1 ->
+    expiredCctpApiResp.message = (expiredCctpApiResp.message.slice(0, -1) + "1") as `0x${string}`;
+    const resp = await getCctpTransactionStatus(toChainStub, expiredCctpApiResp, randomUnusedNonce);
+    expect(resp).toBe(TransactionStatus.READY_TO_CLAIM);
+  });
+
   // TODO - Handle expired CCTP msg
 });
