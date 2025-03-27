@@ -1,7 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
+import "dotenv/config";
 
 export default defineConfig({
-  testDir: "./test/e2e",
+  testDir: ".",
+  testMatch: '**/*.spec.ts',
   // Timeout for tests that don't involve blockchain transactions
   timeout: 40_000,
   fullyParallel: true,

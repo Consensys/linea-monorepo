@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { formatEther, formatUnits } from "viem";
 
 export const METAMASK_SEED_PHRASE = process.env.E2E_TEST_SEED_PHRASE;
