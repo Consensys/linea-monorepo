@@ -28,4 +28,4 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -b1024 -vw --ansi-escapes=false --report --air
+          GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air

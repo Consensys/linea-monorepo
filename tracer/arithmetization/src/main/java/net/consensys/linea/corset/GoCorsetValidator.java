@@ -122,7 +122,7 @@ public class GoCorsetValidator extends AbstractExecutable {
     ArrayList<String> options = new ArrayList<>();
     // Determine options to use (either default or override)
     String flags =
-        System.getenv().getOrDefault("GOCORSET_FLAGS", "-w --report --report-context 2 --hir ");
+        System.getenv().getOrDefault("GOCORSET_FLAGS", "--report --report-context 2 --hir ");
     // Determine whether to generate a coverage report (or not).
     String coverage = System.getenv().get("GOCORSET_COVERAGE");
     // Specify corset binary

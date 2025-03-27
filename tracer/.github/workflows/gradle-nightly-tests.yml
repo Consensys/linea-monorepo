@@ -26,7 +26,7 @@ jobs:
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
-          GOCORSET_FLAGS: -vw --ansi-escapes=false --report --mir
+          GOCORSET_FLAGS: -v --ansi-escapes=false --report --mir
           NIGHTLY_TESTS_PARALLELISM: 2
 
       - name: Upload test report
