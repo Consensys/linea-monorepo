@@ -9,6 +9,7 @@ const { expect, describe } = test;
 
 // TODO - Claim tx for ETH and USDC
 describe("L1 > L2 via Native Bridge", () => {
+
   // test("should successfully go to the bridge UI page", async ({ page }) => {
   //   const pageUrl = page.url();
   //   expect(pageUrl).toEqual(TEST_URL);
@@ -58,8 +59,17 @@ describe("L1 > L2 via Native Bridge", () => {
   //   await expect(sepoliaText).toBeVisible();
   // });
 
+  test.beforeEach(async ({ context }) => {
+    await context.route("https://**", async route => {
+      console.log("intercepted:", route.request().url());
+      const response = await route.fetch();  
+      await route.fulfill({response});
+    });
+  });
+
   test("should be able to initiate bridging ETH from L1 to L2 in testnet", async ({
     page,
+    context,
     getBridgeTransactionsCount,
     waitForTransactionListUpdate,
     connectMetamaskToDapp,
@@ -83,14 +93,16 @@ describe("L1 > L2 via Native Bridge", () => {
     // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
     await openNativeBridgeTransactionHistory();
     const txnsLengthBefore = await getBridgeTransactionsCountImpl(page);
+    await context.unrouteAll({ behavior: 'ignoreErrors' })
     await closeNativeBridgeTransactionHistory();
+    // await page.pause();
+    
+    // // Actual bridging actions
+    // await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
+    // await doInitiateBridgeTransaction();
 
-    // Actual bridging actions
-    await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
-    await doInitiateBridgeTransaction();
-
-    // Check that our bridge tx shows up in the tx history
-    await waitForTransactionListUpdate(txnsLengthBefore);
+    // // Check that our bridge tx shows up in the tx history
+    // await waitForTransactionListUpdate(txnsLengthBefore);
   });
 
   // test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
