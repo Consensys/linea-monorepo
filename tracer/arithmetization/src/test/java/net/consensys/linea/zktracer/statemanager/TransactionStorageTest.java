@@ -15,20 +15,17 @@
 
 package net.consensys.linea.zktracer.statemanager;
 
+import static net.consensys.linea.zktracer.statemanager.StateManagerUtils.computeStorageFirstAndLastMapList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import net.consensys.linea.testing.MultiBlockExecutionEnvironment;
 import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.testing.generated.FrameworkEntrypoint;
-import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
-import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
@@ -86,46 +83,13 @@ public class TransactionStorageTest {
             .build();
     multiBlockEnv.run();
 
-    // Initialize the storageFirstAndLastMap list
-    List<Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>>>
-        storageFirstAndLastMapList = new ArrayList<>();
-
-    // We count the number of transactions in the hub
+    // Total number of transactions
     int txCount = multiBlockEnv.getHub().state().txCount();
-    // We iterate over the transactions
-    for (int txNb = 0; txNb < txCount; txNb++) {
-      // We create an storageFirstAndLastMap for each transaction
-      storageFirstAndLastMapList.add(new HashMap<>());
-      // We retrieve the trace section list
-      List<TraceSection> traceSectionList =
-          multiBlockEnv
-              .getHub()
-              .state()
-              .getState()
-              .operationsInTransactionBundle()
-              .get(txNb)
-              .traceSections()
-              .trace();
-      // For each trace section
-      for (TraceSection traceSection : traceSectionList) {
-        // We iterate over the fragments
-        for (TraceFragment traceFragment : traceSection.fragments()) {
-          // We cast them to StorageFragment
-          // If an exception occurs, it means the Fragment is not a StorageFragment so we
-          // disregard it and continue
-          try {
-            StorageFragment storageFragment = (StorageFragment) traceFragment;
-            Address address = storageFragment.getStorageSlotIdentifier().getAddress();
-            EWord key = storageFragment.getStorageSlotIdentifier().getStorageKey();
-            // We update the storageFirstAndLastMapList
-            updateStorageFirstAndLast(
-                storageFragment, storageFirstAndLastMapList.get(txNb), Map.of(address, key));
-          } catch (Exception e) {
-            // ignore
-          }
-        }
-      }
-    }
+
+    // Replay the transaction's trace from the hub to compute the first and last values for the
+    // storage fragment
+    List<Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>>>
+        storageFirstAndLastMapList = computeStorageFirstAndLastMapList(multiBlockEnv.getHub());
 
     // prepare data for asserts
     // expected first values for the keys we are testing
@@ -148,15 +112,15 @@ public class TransactionStorageTest {
       },
     };
     // prepare the key pairs
-    List<Map<Address, EWord>> addrStorageKeyMap =
+    List<Map<Address, EWord>> addrStorageKeyMapList =
         List.of(Map.of(tc.initialAccounts[0].getAddress(), EWord.of(3L)));
 
     for (int txCounter = 0; txCounter < txCount; txCounter++) {
       Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>> storageMap =
           storageFirstAndLastMapList.get(txCounter);
-      for (int i = 0; i < addrStorageKeyMap.size(); i++) {
+      for (int i = 0; i < addrStorageKeyMapList.size(); i++) {
         FragmentFirstAndLast<StorageFragment> storageData =
-            storageMap.get(addrStorageKeyMap.get(i));
+            storageMap.get(addrStorageKeyMapList.get(i));
         // asserts for the first and last storage values in conflation
         // -1 due to block numbering
         assertEquals(expectedFirst[txCounter][i], storageData.getFirst().getValueCurrent());
@@ -165,31 +129,5 @@ public class TransactionStorageTest {
     }
 
     System.out.println("Done");
-  }
-
-  public void updateStorageFirstAndLast(
-      StorageFragment fragment,
-      Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>> storageFirstAndLastMap,
-      Map<Address, EWord> key) {
-    // Setting the post transaction first and last value
-    int dom = fragment.getDomSubStampsSubFragment().domStamp();
-    int sub = fragment.getDomSubStampsSubFragment().subStamp();
-
-    if (!storageFirstAndLastMap.containsKey(key)) {
-      FragmentFirstAndLast<StorageFragment> txnFirstAndLast =
-          new FragmentFirstAndLast<StorageFragment>(fragment, fragment, dom, sub, dom, sub);
-      storageFirstAndLastMap.put(key, txnFirstAndLast);
-    } else {
-      // the storage key has already been accessed for this account
-      FragmentFirstAndLast<StorageFragment> txnFirstAndLast = storageFirstAndLastMap.get(key);
-      // Replace condition
-      if (FragmentFirstAndLast.strictlySmallerStamps(
-          txnFirstAndLast.getLastDom(), txnFirstAndLast.getLastSub(), dom, sub)) {
-        txnFirstAndLast.setLast(fragment);
-        txnFirstAndLast.setLastDom(dom);
-        txnFirstAndLast.setLastSub(sub);
-        storageFirstAndLastMap.put(key, txnFirstAndLast);
-      }
-    }
   }
 }
