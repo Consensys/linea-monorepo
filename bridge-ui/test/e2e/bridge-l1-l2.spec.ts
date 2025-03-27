@@ -57,85 +57,85 @@ describe("L1 > L2 via Native Bridge", () => {
     await expect(sepoliaText).toBeVisible();
   });
 
-  // test("should be able to initiate bridging ETH from L1 to L2 in testnet", async ({
-  //   getBridgeTransactionsCount,
-  //   waitForNewTxAdditionToTxList,
-  //   connectMetamaskToDapp,
-  //   clickNativeBridgeButton,
-  //   openNativeBridgeFormSettings,
-  //   toggleShowTestNetworksInNativeBridgeForm,
-  //   selectTokenAndInputAmount,
-  //   doInitiateBridgeTransaction,
-  //   openNativeBridgeTransactionHistory,
-  //   closeNativeBridgeTransactionHistory,
-  // }) => {
-  //   // Code smell that we may need to refactor E2E tests with blockchain tx into another file with a separate timeout
-  //   test.setTimeout(90_000);
+  test("should be able to initiate bridging ETH from L1 to L2 in testnet", async ({
+    getBridgeTransactionsCount,
+    waitForNewTxAdditionToTxList,
+    connectMetamaskToDapp,
+    clickNativeBridgeButton,
+    openNativeBridgeFormSettings,
+    toggleShowTestNetworksInNativeBridgeForm,
+    selectTokenAndInputAmount,
+    doInitiateBridgeTransaction,
+    openNativeBridgeTransactionHistory,
+    closeNativeBridgeTransactionHistory,
+  }) => {
+    // Code smell that we may need to refactor E2E tests with blockchain tx into another file with a separate timeout
+    test.setTimeout(90_000);
 
-  //   // Setup testnet UI
-  //   await connectMetamaskToDapp();
-  //   await clickNativeBridgeButton();
-  //   await openNativeBridgeFormSettings();
-  //   await toggleShowTestNetworksInNativeBridgeForm();
+    // Setup testnet UI
+    await connectMetamaskToDapp();
+    await clickNativeBridgeButton();
+    await openNativeBridgeFormSettings();
+    await toggleShowTestNetworksInNativeBridgeForm();
 
-  //   // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
-  //   await openNativeBridgeTransactionHistory();
-  //   const txnsLengthBefore = await getBridgeTransactionsCount();
-  //   await closeNativeBridgeTransactionHistory();
+    // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
+    await openNativeBridgeTransactionHistory();
+    const txnsLengthBefore = await getBridgeTransactionsCount();
+    await closeNativeBridgeTransactionHistory();
 
-  //   // // Actual bridging actions
-  //   await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
-  //   await doInitiateBridgeTransaction();
+    // // Actual bridging actions
+    await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
+    await doInitiateBridgeTransaction();
 
-  //   // Check that our bridge tx shows up in the tx history
-  //   await waitForNewTxAdditionToTxList(txnsLengthBefore);
-  // });
+    // Check that our bridge tx shows up in the tx history
+    await waitForNewTxAdditionToTxList(txnsLengthBefore);
+  });
 
-  // /**
-  //  * This E2E test should address the following edge case observed in initial development:
-  //  * 
-  //  * Steps to reproduce:
-  //  * 1. Clear local storage
-  //  * 2. Bridge USDC
-  //  * 3. Open Transaction History
-  //  * 
-  //  * Bug: Transaction History is not visible after above steps
-  //  */
-  // test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
-  //   getBridgeTransactionsCount,
-  //   waitForNewTxAdditionToTxList,
-  //   connectMetamaskToDapp,
-  //   clickNativeBridgeButton,
-  //   openNativeBridgeFormSettings,
-  //   toggleShowTestNetworksInNativeBridgeForm,
-  //   selectTokenAndInputAmount,
-  //   doInitiateBridgeTransaction,
-  //   openNativeBridgeTransactionHistory,
-  //   closeNativeBridgeTransactionHistory,
-  //   doTokenApprovalIfNeeded,
-  // }) => {
-  //   // Code smell that we may need to refactor E2E tests with blockchain tx into another file with a separate timeout
-  //   test.setTimeout(120_000);
+  /**
+   * This E2E test should address the following edge case observed in initial development:
+   * 
+   * Steps to reproduce:
+   * 1. Clear local storage
+   * 2. Bridge USDC
+   * 3. Open Transaction History
+   * 
+   * Bug: Transaction History is not visible after above steps
+   */
+  test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
+    getBridgeTransactionsCount,
+    waitForNewTxAdditionToTxList,
+    connectMetamaskToDapp,
+    clickNativeBridgeButton,
+    openNativeBridgeFormSettings,
+    toggleShowTestNetworksInNativeBridgeForm,
+    selectTokenAndInputAmount,
+    doInitiateBridgeTransaction,
+    openNativeBridgeTransactionHistory,
+    closeNativeBridgeTransactionHistory,
+    doTokenApprovalIfNeeded,
+  }) => {
+    // Code smell that we may need to refactor E2E tests with blockchain tx into another file with a separate timeout
+    test.setTimeout(120_000);
 
-  //   // Setup testnet UI
-  //   await connectMetamaskToDapp();
-  //   await clickNativeBridgeButton();
-  //   await openNativeBridgeFormSettings();
-  //   await toggleShowTestNetworksInNativeBridgeForm();
+    // Setup testnet UI
+    await connectMetamaskToDapp();
+    await clickNativeBridgeButton();
+    await openNativeBridgeFormSettings();
+    await toggleShowTestNetworksInNativeBridgeForm();
 
-  //   // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
-  //   await openNativeBridgeTransactionHistory();
-  //   const txnsLengthBefore = await getBridgeTransactionsCount();
-  //   await closeNativeBridgeTransactionHistory();
+    // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
+    await openNativeBridgeTransactionHistory();
+    const txnsLengthBefore = await getBridgeTransactionsCount();
+    await closeNativeBridgeTransactionHistory();
 
-  //   // Actual bridging actions
-  //   await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
-  //   await doTokenApprovalIfNeeded();
-  //   await doInitiateBridgeTransaction();
+    // Actual bridging actions
+    await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
+    await doTokenApprovalIfNeeded();
+    await doInitiateBridgeTransaction();
 
-  //   // Check that our bridge tx shows up in the tx history
-  //   await waitForNewTxAdditionToTxList(txnsLengthBefore);
-  // });
+    // Check that our bridge tx shows up in the tx history
+    await waitForNewTxAdditionToTxList(txnsLengthBefore);
+  });
 
   // test.skip("should be able to claim if available READY_TO_CLAIM transactions", async ({
   //   page,
