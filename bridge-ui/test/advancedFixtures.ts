@@ -1,9 +1,9 @@
 import { metaMaskFixtures } from "@synthetixio/synpress/playwright";
 import setup from "./wallet-setup/metamask.setup";
 import { Locator, Page } from "@playwright/test";
-import { ETH_SYMBOL } from "./constants";
-import { Agent } from "http";
+import { selectTokenAndWaitForBalance } from "./utils";
 
+// NB: There is an issue with extending `metaMaskFixtures` in Synpress in which extension fixture functions may not be able to reuse other extension fixture functions
 export const test = metaMaskFixtures(setup).extend<{
   // Bridge UI Actions
   clickNativeBridgeButton: () => Promise<Locator>;
@@ -12,13 +12,18 @@ export const test = metaMaskFixtures(setup).extend<{
   openNativeBridgeFormSettings: () => Promise<void>;
   toggleShowTestNetworksInNativeBridgeForm: () => Promise<void>;
   getBridgeTransactionsCount: () => Promise<number>;
+  selectTokenAndInputAmount: (tokenSymbol: string, amount: string) => Promise<void>;
+
+  waitForTransactionListUpdate: (txCountBeforeUpdate: number) => Promise<boolean>;
+
   // Metamask Actions
   connectMetamaskToDapp: () => Promise<void>;
   waitForTransactionToConfirm: () => Promise<void>;
   confirmTransactionAndWaitForInclusion: () => Promise<void>;
+  
   // Composite Bridge UI + Metamask Actions
-  bridgeToken: (tokenSymbol: string, amount: string, isETH?: boolean) => Promise<void>;
-  waitForTransactionListUpdate: (txCountBeforeUpdate: number) => Promise<boolean>;
+  doTokenApprovalIfNeeded: () => Promise<void>;
+  doInitiateBridgeTransaction: () => Promise<void>;
 }>({
   // Bridge UI Actions
   clickNativeBridgeButton: async ({ page }, use) => {
@@ -68,6 +73,23 @@ export const test = metaMaskFixtures(setup).extend<{
       return txCount;
     });
   },
+  selectTokenAndInputAmount: async ( { page }, use,) => {
+    await use(async (tokenSymbol: string, amount: string) => {
+      // Wait for page to retrieve blockchain token balance
+      await selectTokenAndWaitForBalance(tokenSymbol, page);
+
+      // Input amount
+      const amountInput = page.getByRole("textbox", { name: "0" });
+      await amountInput.fill(amount);
+
+      // Check if there are sufficient funds available
+      const insufficientFundsButton = page.getByRole("button", { name: "Insufficient funds" });
+      if ((await insufficientFundsButton.count()) > 0)
+        throw "Insufficient funds available, please add some funds before running the test";
+    });
+  },
+
+
   // Metamask Actions
   connectMetamaskToDapp: async ({ page, metamask }, use) => {
     await use(async () => {
@@ -84,7 +106,7 @@ export const test = metaMaskFixtures(setup).extend<{
       await page.bringToFront();
     });
   },
-  waitForTransactionToConfirm: async ({ page, metamask }, use) => {
+  waitForTransactionToConfirm: async ({ metamask }, use) => {
     await use(async () => {
       await metamask.page.bringToFront();
       await metamask.page.reload();
@@ -110,20 +132,8 @@ export const test = metaMaskFixtures(setup).extend<{
     });
   },
   // Composite Bridge UI + Metamask Actions
-  bridgeToken: async ({ page, metamask, waitForTransactionToConfirm }, use) => {
-    await use(async (tokenSymbol: string, amount: string) => {
-      // Wait for 'balance' state
-      await selectTokenAndWaitForBalance(tokenSymbol, page);
-
-      // Input amount
-      const amountInput = page.getByRole("textbox", { name: "0" });
-      await amountInput.fill(amount);
-
-      // Check if there are sufficient funds available
-      const insufficientFundsButton = page.getByRole("button", { name: "Insufficient funds" });
-      if ((await insufficientFundsButton.count()) > 0)
-        throw "Insufficient funds available, please add some funds before running the test";
-
+  doTokenApprovalIfNeeded: async ({ page }, use) => {
+    await use(async () => {
       // Check if approval required
       const approvalButton = page.getByRole("button", { name: "Approve Token" });
       if ((await approvalButton.count()) > 0) {
@@ -148,7 +158,10 @@ export const test = metaMaskFixtures(setup).extend<{
         //   await page.bringToFront();
         // }
       }
-
+    });
+  },
+  doInitiateBridgeTransaction: async ({ page }, use) => {
+    await use(async () => {
       // Wait for "Receive amount", otherwise "Confirm and Bridge" button will silently fail
       const receivedAmountField = page.getByTestId("received-amount-text");
       await receivedAmountField.waitFor({ state: "visible" });
@@ -181,16 +194,5 @@ export const test = metaMaskFixtures(setup).extend<{
     });
   },
 });
-
-async function selectTokenAndWaitForBalance(tokenSymbol: string, page: Page) {
-  const openModalBtn = page.getByTestId("native-bridge-open-token-list-modal");
-  await openModalBtn.click();
-  // Wait for ETH amount to not be 0
-  const ethBalance = page.getByTestId(`token-details-eth-amount`);
-  while ((await ethBalance.textContent()) === "0 ETH") {
-    await page.waitForTimeout(500);
-  }
-  await page.getByTestId(`token-details-${tokenSymbol.toLowerCase()}-btn`).click();
-}
 
 export const { expect, describe } = test;
