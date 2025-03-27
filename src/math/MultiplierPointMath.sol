@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT-1.0
-pragma solidity ^0.8.26;
+pragma solidity 0.8.26;
 
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IStakeConstants } from "../interfaces/IStakeConstants.sol";
