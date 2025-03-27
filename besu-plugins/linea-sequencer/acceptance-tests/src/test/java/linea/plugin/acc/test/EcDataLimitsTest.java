@@ -318,12 +318,12 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
     final EcAdd ecAdd = deployEcAdd();
 
     // Create an account to send the transactions
-    Account ecPairingSender = accounts.createAccount("ecPairingSender");
+    Account ecAddSender = accounts.createAccount("ecAddSender");
 
     // Fund the account using secondary benefactor
     String fundTxHash =
         accountTransactions
-            .createTransfer(accounts.getSecondaryBenefactor(), ecPairingSender, 1, BigInteger.ZERO)
+            .createTransfer(accounts.getSecondaryBenefactor(), ecAddSender, 1, BigInteger.ZERO)
             .execute(minerNode.nodeRequests())
             .toHexString();
     // Verify that the transaction for transferring funds was successful
@@ -338,7 +338,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
 
       // Craft the transaction data
       final byte[] encodedCallEcAdd =
-          encodedCallEcAdd(ecAdd, ecPairingSender, nonce, Bytes.fromHexString(input));
+          encodedCallEcAdd(ecAdd, ecAddSender, nonce, Bytes.fromHexString(input));
 
       // Send the transaction
       final Web3j web3j = minerNode.nodeRequests().eth();
@@ -376,7 +376,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   }
 
   /**
-   * Tests the EcAdd PRECOMPILE_ECMUL_EFFECTIVE_CALLS limit, that is the number of times the
+   * Tests the EcMul PRECOMPILE_ECMUL_EFFECTIVE_CALLS limit, that is the number of times the
    * corresponding circuit may be invoked in a single block.
    */
   @Test
@@ -407,12 +407,12 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
     final EcMul ecMul = deployEcMul();
 
     // Create an account to send the transactions
-    Account ecPairingSender = accounts.createAccount("ecPairingSender");
+    Account ecMulSender = accounts.createAccount("ecMulSender");
 
     // Fund the account using secondary benefactor
     String fundTxHash =
         accountTransactions
-            .createTransfer(accounts.getSecondaryBenefactor(), ecPairingSender, 1, BigInteger.ZERO)
+            .createTransfer(accounts.getSecondaryBenefactor(), ecMulSender, 1, BigInteger.ZERO)
             .execute(minerNode.nodeRequests())
             .toHexString();
     // Verify that the transaction for transferring funds was successful
@@ -427,7 +427,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
 
       // Craft the transaction data
       final byte[] encodedCallEcMul =
-          encodedCallEcMul(ecMul, ecPairingSender, nonce, Bytes.fromHexString(input));
+          encodedCallEcMul(ecMul, ecMulSender, nonce, Bytes.fromHexString(input));
 
       // Send the transaction
       final Web3j web3j = minerNode.nodeRequests().eth();
@@ -465,7 +465,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   }
 
   /**
-   * Tests the EcAdd PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS limit, that is the number of times the
+   * Tests the EcRecover PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS limit, that is the number of times the
    * corresponding circuit may be invoked in a single block.
    */
   @Test
@@ -496,12 +496,12 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
     final EcRecover ecRecover = deployEcRecover();
 
     // Create an account to send the transactions
-    Account ecPairingSender = accounts.createAccount("ecPairingSender");
+    Account ecRecoverSender = accounts.createAccount("ecRecoverSender");
 
     // Fund the account using secondary benefactor
     String fundTxHash =
         accountTransactions
-            .createTransfer(accounts.getSecondaryBenefactor(), ecPairingSender, 1, BigInteger.ZERO)
+            .createTransfer(accounts.getSecondaryBenefactor(), ecRecoverSender, 1, BigInteger.ZERO)
             .execute(minerNode.nodeRequests())
             .toHexString();
     // Verify that the transaction for transferring funds was successful
@@ -516,7 +516,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
 
       // Craft the transaction data
       final byte[] encodedCallEcRecover =
-          encodedCallEcRecover(ecRecover, ecPairingSender, nonce, Bytes.fromHexString(input));
+          encodedCallEcRecover(ecRecover, ecRecoverSender, nonce, Bytes.fromHexString(input));
 
       // Send the transaction
       final Web3j web3j = minerNode.nodeRequests().eth();
