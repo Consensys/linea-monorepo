@@ -18,7 +18,8 @@ package maru.consensus
 import java.time.Clock
 import kotlin.random.Random
 import maru.consensus.dummy.DummyConsensusState
-import maru.consensus.dummy.FinalizationState
+import maru.consensus.dummy.EngineApiBlockCreator
+import maru.consensus.state.FinalizationState
 import maru.core.ExecutionPayload
 import maru.core.ext.DataGenerators
 import maru.core.ext.DataGenerators.randomValidForkChoiceUpdatedResult
@@ -60,13 +61,13 @@ class EngineApiBlockCreatorTest {
     )
 
   private fun mockFinishBlockBuilding(result: ExecutionPayload) {
-    whenever(executionLayerManager.finishBlockBuildingAndBuildNextBlock()).thenReturn(
+    whenever(executionLayerManager.finishBlockBuilding()).thenReturn(
       SafeFuture.completedFuture(result),
     )
   }
 
   private fun mockSetHeadAndStartBlockBuilding(result: ForkChoiceUpdatedResult) {
-    whenever(executionLayerManager.setHeadAndStartBlockBuilding(any(), any(), any(), any())).thenReturn(
+    whenever(executionLayerManager.setHeadAndStartBlockBuilding(any(), any(), any(), any(), any())).thenReturn(
       SafeFuture.completedFuture(result),
     )
   }
@@ -75,6 +76,7 @@ class EngineApiBlockCreatorTest {
   fun `initialization triggers setHeadAndStartBlockBuilding with latest known state`() {
     val finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
     val dummyConsensusState = createDummyConsensusState(finalizationState)
+    val feeRecipient = Random.nextBytes(20)
     mockSetHeadAndStartBlockBuilding(randomValidForkChoiceUpdatedResult())
     val nextTimestamp = dummyConsensusState.clock.millis()
     EngineApiBlockCreator(
@@ -82,6 +84,7 @@ class EngineApiBlockCreatorTest {
       state = dummyConsensusState,
       blockHeaderFunctions = MainnetBlockHeaderFunctions(),
       nextBlockTimestamp = nextTimestamp,
+      feeRecipientProvider = { feeRecipient },
     )
 
     verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
@@ -89,6 +92,7 @@ class EngineApiBlockCreatorTest {
       eq(finalizationState.safeBlockHash),
       eq(finalizationState.finalizedBlockHash),
       eq(nextTimestamp),
+      eq(feeRecipient),
     )
   }
 
@@ -108,6 +112,7 @@ class EngineApiBlockCreatorTest {
         state = dummyConsensusState,
         blockHeaderFunctions = MainnetBlockHeaderFunctions(),
         nextBlockTimestamp = nextTimestamp,
+        feeRecipientProvider = { Random.nextBytes(20) },
       )
     blockCreator.createEmptyWithdrawalsBlock(1L, null)
     blockCreator.createEmptyWithdrawalsBlock(2L, null)
@@ -120,10 +125,12 @@ class EngineApiBlockCreatorTest {
         any(),
         any(),
         any(),
+        any(),
       )
-      inOrder.verify(executionLayerManager).finishBlockBuildingAndBuildNextBlock()
+      inOrder.verify(executionLayerManager).finishBlockBuilding()
     }
     inOrder.verify(executionLayerManager).setHeadAndStartBlockBuilding(
+      any(),
       any(),
       any(),
       any(),
@@ -141,6 +148,7 @@ class EngineApiBlockCreatorTest {
     val forkChoiceUpdatedResult = randomValidForkChoiceUpdatedResult()
     mockSetHeadAndStartBlockBuilding(forkChoiceUpdatedResult)
     val nextBlockTimestamp = dummyConsensusState.clock.millis()
+    val feeRecipient = Random.nextBytes(20)
 
     val blockCreator =
       EngineApiBlockCreator(
@@ -148,6 +156,7 @@ class EngineApiBlockCreatorTest {
         state = dummyConsensusState,
         blockHeaderFunctions = MainnetBlockHeaderFunctions(),
         nextBlockTimestamp = nextBlockTimestamp,
+        feeRecipientProvider = { feeRecipient },
       )
     val nextTimestamp1 = 123L
     blockCreator.createEmptyWithdrawalsBlock(nextTimestamp1, null)
@@ -156,6 +165,7 @@ class EngineApiBlockCreatorTest {
       eq(finalizationState.safeBlockHash),
       eq(finalizationState.finalizedBlockHash),
       eq(nextTimestamp1),
+      eq(feeRecipient),
     )
     val newFinalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
     dummyConsensusState.updateFinalizationState(newFinalizationState)
@@ -168,6 +178,7 @@ class EngineApiBlockCreatorTest {
       eq(newFinalizationState.safeBlockHash),
       eq(newFinalizationState.finalizedBlockHash),
       eq(otherTimestamp2),
+      eq(feeRecipient),
     )
   }
 }

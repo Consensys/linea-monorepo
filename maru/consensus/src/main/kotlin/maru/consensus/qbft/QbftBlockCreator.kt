@@ -68,7 +68,7 @@ class QbftBlockCreator(
       BeaconBlockBody(latestBeaconBlock.commitSeals, executionPayload)
     val proposer =
       proposerSelector.selectProposerForRound(
-        ConsensusRoundIdentifier((parentBeaconBlockHeader.number + 1UL).toLong(), round.toInt()),
+        ConsensusRoundIdentifier((parentBeaconBlockHeader.number + 1UL).toLong(), round),
       )
     val stateRootBlockHeader =
       BeaconBlockHeader(

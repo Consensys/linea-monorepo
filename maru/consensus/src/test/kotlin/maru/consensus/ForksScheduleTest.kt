@@ -37,20 +37,6 @@ class ForksScheduleTest {
   }
 
   @Test
-  fun `test getForkFollowingTimestamp returns correct fork`() {
-    val fork1 = ForkSpec(1L, 1, consensusConfig)
-    val fork2 = ForkSpec(2L, 1, consensusConfig)
-    val fork3 = ForkSpec(3L, 1, consensusConfig)
-    val forks = listOf(fork1, fork2, fork3)
-
-    val schedule = ForksSchedule(forks)
-
-    assertThat(schedule.getForkFollowingTimestamp(1L)).isEqualTo(fork2)
-    assertThat(schedule.getForkFollowingTimestamp(2L)).isEqualTo(fork3)
-    assertThat(schedule.getForkFollowingTimestamp(3L)).isEqualTo(fork3)
-  }
-
-  @Test
   fun `getForkByTimestamp throws if timestamp is before all forks`() {
     val fork1 = ForkSpec(1000L, 10, consensusConfig)
     val fork2 = ForkSpec(2000L, 20, consensusConfig)

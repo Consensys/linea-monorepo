@@ -19,7 +19,6 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.time.Duration.Companion.milliseconds
-import maru.consensus.dummy.NextBlockTimestampProviderImpl
 import maru.core.Protocol
 import maru.core.ext.DataGenerators
 import maru.executionlayer.client.MetadataProvider

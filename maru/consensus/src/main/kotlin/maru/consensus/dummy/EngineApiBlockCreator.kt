@@ -13,10 +13,9 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.consensus.dummy
 
 import java.util.Optional
-import maru.consensus.dummy.DummyConsensusState
 import maru.core.ExecutionPayload
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.apache.logging.log4j.LogManager
@@ -42,13 +41,14 @@ import org.hyperledger.besu.evm.log.LogsBloomFilter
 /**
  * Responsible for block creation with Engine API. createEmptyWithdrawalsBlock is the only available signature, the
  * rest of the methods delegate to it
- * Even though it implements BlockCreator, this interface doesn't really fit Engine API flow due to its asynchronycity
+ * Even though it implements BlockCreator, this interface doesn't really fit Engine API flow due to its asynchronicity
  */
 class EngineApiBlockCreator(
   private val manager: ExecutionLayerManager,
   private val state: DummyConsensusState,
   private val blockHeaderFunctions: BlockHeaderFunctions,
   nextBlockTimestamp: Long, // Block creation starts right after, so it's required
+  private val feeRecipientProvider: FeeRecipientProvider,
 ) : BlockCreator {
   init {
     manager
@@ -57,6 +57,7 @@ class EngineApiBlockCreator(
         safeHash = state.finalizationState.safeBlockHash,
         finalizedHash = state.finalizationState.finalizedBlockHash,
         nextBlockTimestamp = nextBlockTimestamp,
+        feeRecipient = feeRecipientProvider.getFeeRecipient(nextBlockTimestamp),
       ).get()
   }
 
@@ -91,7 +92,7 @@ class EngineApiBlockCreator(
     val blockBuildingResult =
       try {
         manager
-          .finishBlockBuildingAndBuildNextBlock()
+          .finishBlockBuilding()
           .thenApply {
             state.updateLatestStatus(it.blockHash)
             log.info("Updating latest state")
@@ -112,6 +113,7 @@ class EngineApiBlockCreator(
         safeHash = finalizationState.safeBlockHash,
         finalizedHash = finalizationState.finalizedBlockHash,
         nextBlockTimestamp = timestamp,
+        feeRecipient = feeRecipientProvider.getFeeRecipient(timestamp),
       ).whenException {
         log.error("Error while initiating block building!", it)
       }.get()

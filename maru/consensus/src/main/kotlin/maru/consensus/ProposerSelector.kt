@@ -17,8 +17,12 @@ package maru.consensus
 
 import maru.core.BeaconBlockHeader
 import maru.core.Validator
+import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-interface ProposerSelector {
-  fun getProposerForBlock(header: BeaconBlockHeader): SafeFuture<Validator>
+fun interface ProposerSelector {
+  fun getProposerForBlock(consensusRoundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator>
 }
+
+fun BeaconBlockHeader.toConsensusRoundIdentifier(): ConsensusRoundIdentifier =
+  ConsensusRoundIdentifier(this.number.toLong(), this.round.toInt())
