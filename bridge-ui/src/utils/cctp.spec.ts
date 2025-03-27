@@ -110,7 +110,6 @@ describe("getCctpTransactionStatus", () => {
   // TODO later - Address edge case where 'parseInt("0ILLEGAL", 16) == 0',
 
   test("should return PENDING for a corrupted message", async () => {
-    // Immutable creation of new object
     const corruptedCctpApiResp = { ...cctpApiRespNoExpiry };
     // Replace hex characters with non-hex characters
     corruptedCctpApiResp.message = (corruptedCctpApiResp.message.slice(0, -64) +
@@ -118,4 +117,20 @@ describe("getCctpTransactionStatus", () => {
     const resp = await getCctpTransactionStatus(toChainStub, corruptedCctpApiResp, randomUnusedNonce);
     expect(resp).toBe(TransactionStatus.PENDING);
   });
+
+  test("should return PENDING if i.) CCTP API response has pending status, ii.) message has no expiry and iii.) nonce unused", async () => {
+    const stubbedCctpApiResp = { ...cctpApiRespNoExpiry };
+    stubbedCctpApiResp.status = CctpAttestationMessageStatus.PENDING_CONFIRMATIONS;
+    const resp = await getCctpTransactionStatus(toChainStub, stubbedCctpApiResp, randomUnusedNonce);
+    expect(resp).toBe(TransactionStatus.PENDING);
+  });
+
+  test("should return READY_TO_CLAIM if i.) CCTP API response has complete status, ii.) message has no expiry and iii.) nonce unused", async () => {
+    const stubbedCctpApiResp = { ...cctpApiRespNoExpiry };
+    stubbedCctpApiResp.status = CctpAttestationMessageStatus.COMPLETE;
+    const resp = await getCctpTransactionStatus(toChainStub, stubbedCctpApiResp, randomUnusedNonce);
+    expect(resp).toBe(TransactionStatus.READY_TO_CLAIM);
+  });
+
+  // TODO - Handle expired CCTP msg
 });
