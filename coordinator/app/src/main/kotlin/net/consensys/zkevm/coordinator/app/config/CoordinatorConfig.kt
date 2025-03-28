@@ -74,7 +74,6 @@ data class ConflationConfig(
 }
 
 data class ZkTraces(
-  val ethApi: URL,
   val newBlockPollingInterval: Duration
 )
 
