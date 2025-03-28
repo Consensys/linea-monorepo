@@ -17,6 +17,7 @@ package maru.core.ext
 
 import java.math.BigInteger
 import kotlin.random.Random
+import kotlin.random.nextUInt
 import kotlin.random.nextULong
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
@@ -41,7 +42,7 @@ object DataGenerators {
     val beaconBlockHeader =
       BeaconBlockHeader(
         number = number,
-        round = Random.nextULong(),
+        round = Random.nextUInt(),
         timestamp = Random.nextULong(),
         proposer = Validator(Random.nextBytes(128)),
         parentRoot = Random.nextBytes(32),
@@ -86,7 +87,7 @@ object DataGenerators {
   fun randomBeaconBlockHeader(number: ULong): BeaconBlockHeader =
     BeaconBlockHeader(
       number = number,
-      round = Random.nextULong(),
+      round = Random.nextUInt(),
       timestamp = Random.nextULong(),
       proposer = Validator(Random.nextBytes(128)),
       parentRoot = Random.nextBytes(32),

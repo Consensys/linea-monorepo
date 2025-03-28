@@ -35,7 +35,7 @@ class BeaconBlockHeaderSerializer(
     rlpOutput.startList()
 
     rlpOutput.writeLong(value.number.toLong())
-    rlpOutput.writeLong(value.round.toLong())
+    rlpOutput.writeInt(value.round.toInt())
     rlpOutput.writeLong(value.timestamp.toLong())
     validatorSerializer.writeTo(value.proposer, rlpOutput)
     rlpOutput.writeBytes(Bytes.wrap(value.parentRoot))
@@ -49,7 +49,7 @@ class BeaconBlockHeaderSerializer(
     rlpInput.enterList()
 
     val number = rlpInput.readLong().toULong()
-    val round = rlpInput.readLong().toULong()
+    val round = rlpInput.readInt().toUInt()
     val timestamp = rlpInput.readLong().toULong()
     val proposer = validatorSerializer.readFrom(rlpInput)
     val parentRoot = rlpInput.readBytes().toArray()

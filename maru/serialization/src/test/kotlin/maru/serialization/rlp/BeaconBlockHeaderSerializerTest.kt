@@ -16,6 +16,7 @@
 package maru.serialization.rlp
 
 import kotlin.random.Random
+import kotlin.random.nextUInt
 import kotlin.random.nextULong
 import maru.core.BeaconBlockHeader
 import maru.core.HashUtil
@@ -36,7 +37,7 @@ class BeaconBlockHeaderSerializerTest {
     val testValue =
       BeaconBlockHeader(
         number = Random.nextULong(),
-        round = Random.nextULong(),
+        round = Random.nextUInt(),
         timestamp = Random.nextULong(),
         proposer = Validator(Random.nextBytes(128)),
         parentRoot = Random.nextBytes(32),

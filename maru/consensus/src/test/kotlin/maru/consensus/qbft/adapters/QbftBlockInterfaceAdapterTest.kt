@@ -25,13 +25,13 @@ class QbftBlockInterfaceAdapterTest {
   fun `can replace round number in header`() {
     val beaconBlock =
       BeaconBlock(
-        beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(1UL).copy(round = 10UL),
+        beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(1UL).copy(round = 10u),
         beaconBlockBody = DataGenerators.randomBeaconBlockBody(),
       )
     val qbftBlock = QbftBlockAdapter(beaconBlock)
     val updatedBlock =
       QbftBlockInterfaceAdapter().replaceRoundInBlock(qbftBlock, 20)
     val updatedBeaconBlockHeader = updatedBlock.header.toBeaconBlockHeader()
-    assertEquals(updatedBeaconBlockHeader.round, 20UL)
+    assertEquals(updatedBeaconBlockHeader.round, 20u)
   }
 }

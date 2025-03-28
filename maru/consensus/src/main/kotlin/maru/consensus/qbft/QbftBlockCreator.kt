@@ -73,7 +73,7 @@ class QbftBlockCreator(
     val stateRootBlockHeader =
       BeaconBlockHeader(
         number = parentBeaconBlockHeader.number + 1UL,
-        round = round.toULong(),
+        round = round.toUInt(),
         timestamp = headerTimeStampSeconds.toULong(),
         proposer = Validator(proposer.toArrayUnsafe()),
         parentRoot = parentBeaconBlockHeader.hash(),
@@ -107,7 +107,7 @@ class QbftBlockCreator(
       }
     val block1 = block.toBeaconBlock()
     val beaconBlockHeader = block1.beaconBlockHeader
-    val updatedBlockHeader = beaconBlockHeader.copy(round = roundNumber.toULong())
+    val updatedBlockHeader = beaconBlockHeader.copy(round = roundNumber.toUInt())
     val sealedBlockBody =
       SealedBeaconBlock(
         BeaconBlock(updatedBlockHeader, block1.beaconBlockBody),
