@@ -33,7 +33,6 @@ export async function fetchETHBridgeEvents(
   const contract = fromChain.layer === ChainLayer.L1 ? lineaSDK.getL2Contract() : lineaSDK.getL1Contract();
 
   const messageServiceAddress = fromChain.messageServiceAddress;
-
   const [ethLogsForSender, ethLogsForRecipient] = await Promise.all([
     client.getLogs({
       event: MessageSentABIEvent,

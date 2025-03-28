@@ -50,7 +50,6 @@ export async function fetchCctpBridgeEvents(
 
       const cctpMessage = await getCctpMessageByTxHash(transactionHash, fromChain.cctpDomain, fromChain.testnet);
       if (!cctpMessage) return;
-
       const nonce = cctpMessage.eventNonce;
       const status = await getCctpTransactionStatus(toChain, cctpMessage, nonce);
 

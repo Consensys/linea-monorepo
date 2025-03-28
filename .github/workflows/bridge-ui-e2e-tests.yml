@@ -24,7 +24,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Use for testing workflow only
+      # Use for testing workflow only (and not publish to Docker)
       - uses: actions/cache@v4.2.0
         with:
           path: |
@@ -58,7 +58,7 @@ jobs:
         run: |
           sudo apt-get install --no-install-recommends -y xvfb
 
-      - name: Build synpress cache (cache Metamask Fixture setup for UI tests)
+      - name: Initialize Metamask testing fixture
         run: xvfb-run pnpm run -F bridge-ui build:cache
         env:
           E2E_TEST_PRIVATE_KEY: ${{ secrets.BRIDGE_UI_E2E_TESTS_PRIVATE_KEY }}
@@ -71,10 +71,10 @@ jobs:
         env:
           # Can run unit tests in parallel
           CI: "false"
-          NEXT_PUBLIC_LIFI_API_KEY: ${{ secrets.PUBLIC_LIFI_API_KEY }}
-          NEXT_PUBLIC_WALLET_CONNECT_ID: ${{ secrets.PUBLIC_WALLET_CONNECT_ID }}
-          NEXT_PUBLIC_INFURA_ID: ${{ secrets.PUBLIC_BRIDGE_UI_INFURA_ID }}
-          NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: ${{ secrets.PUBLIC_DYNAMIC_SANDBOX_ENVIRONMENT_ID }}
+          NEXT_PUBLIC_LIFI_API_KEY: "placeholder"
+          NEXT_PUBLIC_WALLET_CONNECT_ID: "placeholder"
+          NEXT_PUBLIC_INFURA_ID: "placeholder"
+          NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: "placeholder"
 
       - name: Run E2E tests
         run: xvfb-run pnpm run -F bridge-ui test:e2e:headful
