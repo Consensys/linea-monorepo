@@ -23,9 +23,9 @@ library RlpEncoder {
     bytes memory lengthPrefix = _encodeLength(_bytesIn.length, 128);
     uint256 prefixLen = lengthPrefix.length;
     uint256 dataLen = _bytesIn.length;
-    uint256 totalLen = prefixLen + dataLen;
 
     assembly {
+      let totalLen := add(prefixLen, dataLen)
       encodedBytes := mload(0x40)
       mstore(encodedBytes, totalLen)
 
