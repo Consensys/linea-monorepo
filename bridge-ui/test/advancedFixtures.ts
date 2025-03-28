@@ -76,7 +76,7 @@ export const test = metaMaskFixtures(setup).extend<{
       await selectTokenAndWaitForBalance(tokenSymbol, page);
 
       // Input amount
-      const amountInput = page.getByRole("textbox", { name: "0" });
+      const amountInput = page.getByRole("textbox", { name: "0", exact: true });
       await amountInput.fill(amount);
 
       // Wait for "Receive amount" to populate, we need to fetch blockchain data before proceeding
@@ -84,7 +84,7 @@ export const test = metaMaskFixtures(setup).extend<{
       await receivedAmountField.waitFor({ state: "visible" });
 
       // Check if there are sufficient funds available
-      const insufficientFundsButton = page.getByRole("button", { name: "Insufficient funds" });
+      const insufficientFundsButton = page.getByRole("button", { name: "Insufficient funds", exact: true });
       if ((await insufficientFundsButton.count()) > 0)
         throw "Insufficient funds available, please add some funds before running the test";
     });
