@@ -33,8 +33,8 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.headerHash
 import maru.serialization.rlp.stateRoot
-import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.crypto.SECPSignature
@@ -56,7 +56,9 @@ class QbftBlockCreatorTest {
     val parentBlock = DataGenerators.randomSealedBeaconBlock(10U)
     val parentHeader = QbftBlockHeaderAdapter(parentBlock.beaconBlock.beaconBlockHeader)
     val executionPayload = DataGenerators.randomExecutionPayload()
-    whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlock.beaconBlockHeader.hash())).thenReturn(parentBlock)
+    whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlock.beaconBlockHeader.hash())).thenReturn(
+      parentBlock,
+    )
     whenever(executionLayerManager.finishBlockBuilding()).thenReturn(completedFuture(executionPayload))
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
     whenever(
@@ -70,7 +72,7 @@ class QbftBlockCreatorTest {
     // block header fields
     val blockHeader = createBeaconBlock.beaconBlockHeader
     assertThat(blockHeader.number).isEqualTo(11UL)
-    assertThat(blockHeader.round).isEqualTo(1UL)
+    assertThat(blockHeader.round).isEqualTo(1U)
     assertThat(blockHeader.timestamp).isEqualTo(1000UL)
     assertThat(blockHeader.proposer).isEqualTo(Validator(Address.ZERO.toArray()))
 
@@ -83,13 +85,12 @@ class QbftBlockCreatorTest {
           Collections.emptySet(),
         ),
       )
-    Assertions
-      .assertThat(
-        blockHeader.bodyRoot,
-      ).isEqualTo(
-        HashUtil.bodyRoot(createBeaconBlock.beaconBlockBody),
-      )
-    Assertions.assertThat(blockHeader.stateRoot).isEqualTo(stateRoot)
+    assertThat(
+      blockHeader.bodyRoot,
+    ).isEqualTo(
+      HashUtil.bodyRoot(createBeaconBlock.beaconBlockBody),
+    )
+    assertThat(blockHeader.stateRoot).isEqualTo(stateRoot)
     assertThat(blockHeader.parentRoot).isEqualTo(parentHeader.toBeaconBlockHeader().hash())
     assertThat(
       createBeaconBlock.beaconBlockHeader.hash(),
@@ -115,13 +116,11 @@ class QbftBlockCreatorTest {
     ).thenReturn(SafeFuture.failedFuture(IllegalStateException("Execution payload not available")))
 
     val blockCreator = QbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 1)
-    Assertions
-      .assertThatThrownBy({
-        blockCreator.createBlock(1000L, parentHeader)
-      })
-      .isInstanceOf(
-        IllegalStateException::class.java,
-      ).hasMessage("Execution payload unavailable, unable to create block")
+    assertThatThrownBy {
+      blockCreator.createBlock(1000L, parentHeader)
+    }.isInstanceOf(
+      IllegalStateException::class.java,
+    ).hasMessage("Execution payload unavailable, unable to create block")
   }
 
   @Test
@@ -135,13 +134,11 @@ class QbftBlockCreatorTest {
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
 
     val blockCreator = QbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 1)
-    Assertions
-      .assertThatThrownBy({
-        blockCreator.createBlock(1000L, parentHeader)
-      })
-      .isInstanceOf(
-        IllegalStateException::class.java,
-      ).hasMessage("Parent beacon block unavailable, unable to create block")
+    assertThatThrownBy {
+      blockCreator.createBlock(1000L, parentHeader)
+    }.isInstanceOf(
+      IllegalStateException::class.java,
+    ).hasMessage("Parent beacon block unavailable, unable to create block")
   }
 
   @Test
@@ -158,18 +155,17 @@ class QbftBlockCreatorTest {
     // block header fields
     val createdSealedBlockHeader = createdSealedBeaconBlock.beaconBlock.beaconBlockHeader
     assertThat(createdSealedBlockHeader.number).isEqualTo(block.header.number.toULong())
-    assertThat(createdSealedBlockHeader.round).isEqualTo(round.toULong()) // round number is updated
+    assertThat(createdSealedBlockHeader.round).isEqualTo(round.toUInt()) // round number is updated
     assertThat(createdSealedBlockHeader.timestamp).isEqualTo(block.header.timestamp.toULong())
     assertThat(createdSealedBlockHeader.proposer).isEqualTo(block.toBeaconBlock().beaconBlockHeader.proposer)
 
     // block header roots
-    Assertions
-      .assertThat(
-        createdSealedBlockHeader.bodyRoot,
-      ).isEqualTo(
-        beaconBlock.beaconBlockHeader.bodyRoot,
-      )
-    Assertions.assertThat(createdSealedBlockHeader.stateRoot).isEqualTo(beaconBlock.beaconBlockHeader.stateRoot)
+    assertThat(
+      createdSealedBlockHeader.bodyRoot,
+    ).isEqualTo(
+      beaconBlock.beaconBlockHeader.bodyRoot,
+    )
+    assertThat(createdSealedBlockHeader.stateRoot).isEqualTo(beaconBlock.beaconBlockHeader.stateRoot)
     assertThat(createdSealedBlockHeader.parentRoot).isEqualTo(beaconBlock.beaconBlockHeader.parentRoot)
     assertThat(createdSealedBlockHeader.hash()).isEqualTo(HashUtil.headerHash(createdSealedBlockHeader))
 

@@ -17,7 +17,7 @@ package maru.core
 
 data class BeaconBlockHeader(
   val number: ULong,
-  val round: ULong,
+  val round: UInt,
   val timestamp: ULong,
   val proposer: Validator,
   val parentRoot: ByteArray,

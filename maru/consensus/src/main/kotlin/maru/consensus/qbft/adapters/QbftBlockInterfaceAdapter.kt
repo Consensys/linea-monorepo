@@ -30,7 +30,7 @@ class QbftBlockInterfaceAdapter : QbftBlockInterface {
     val beaconBlockHeader = proposalBlock.header.toBeaconBlockHeader()
     val replacedBeaconBlockHeader =
       beaconBlockHeader.copy(
-        round = roundNumber.toULong(),
+        round = roundNumber.toUInt(),
       )
     return QbftBlockAdapter(
       BeaconBlock(replacedBeaconBlockHeader, proposalBlock.toBeaconBlock().beaconBlockBody),
