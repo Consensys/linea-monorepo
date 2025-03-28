@@ -184,7 +184,6 @@ export const test = metaMaskFixtures(setup).extend<{
 
       // Close 'Transaction successful' modal
       await page.bringToFront();
-      await page.pause();
       const closeModalBtn = page.getByRole("button", { name: "Bridge your token", exact: true });
       await closeModalBtn.click();
     });

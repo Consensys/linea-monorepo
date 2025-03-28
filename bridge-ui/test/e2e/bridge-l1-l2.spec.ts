@@ -66,7 +66,7 @@ describe("L1 > L2 via Native Bridge", () => {
     openNativeBridgeTransactionHistory,
     closeNativeBridgeTransactionHistory,
   }) => {
-    // Code smell that we may need to refactor E2E tests with blockchain tx into another file with a separate timeout
+    // Code smell that we may need to refactor E2E tests with blockchain tx into another describe block with a separate timeout
     test.setTimeout(90_000);
 
     // Setup testnet UI
@@ -88,16 +88,6 @@ describe("L1 > L2 via Native Bridge", () => {
     await waitForNewTxAdditionToTxList(txnsLengthBefore);
   });
 
-  /**
-   * This E2E test should address the following edge case observed in initial development:
-   *
-   * Steps to reproduce:
-   * 1. Clear local storage
-   * 2. Bridge USDC
-   * 3. Open Transaction History
-   *
-   * Bug: Transaction History is not visible after above steps
-   */
   test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
     getNativeBridgeTransactionsCount,
     waitForNewTxAdditionToTxList,
@@ -111,7 +101,7 @@ describe("L1 > L2 via Native Bridge", () => {
     closeNativeBridgeTransactionHistory,
     doTokenApprovalIfNeeded,
   }) => {
-    // Code smell that we may need to refactor E2E tests with blockchain tx into another file with a separate timeout
+    // At least 2 blockchain tx in this test
     test.setTimeout(120_000);
 
     // Setup testnet UI
