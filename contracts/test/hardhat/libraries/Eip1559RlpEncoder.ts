@@ -4,6 +4,7 @@ import { deployFromFactory } from "../common/deployment";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import transactionWithoutCalldata from "../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
 import transactionWithCalldata from "../_testData/eip1559RlpEncoderTransactions/withCalldata.json";
+import transactionwithLargeCalldata from "../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
 import { generateKeccak256BytesDirectly } from "../common/helpers";
 import { buildEip1559Transaction } from "../common/helpers/typedTransactionBuilding";
 
@@ -36,6 +37,16 @@ describe("Eip1559RlpEncoder Library", () => {
       expect(transactionWithCalldata.result.hash).equal(transactionHash);
       expect(transactionWithCalldata.rlpEncoded).equal(rlpEncodedTransaction);
       expect(generateKeccak256BytesDirectly(rlpEncodedTransaction)).equal(transactionWithCalldata.result.hash);
+    });
+
+    it("Succeeds for a transaction with large calldata", async () => {
+      const { rlpEncodedTransaction, transactionHash } = await contract.encodeEip1559Transaction(
+        buildEip1559Transaction(transactionwithLargeCalldata.result),
+      );
+
+      expect(transactionwithLargeCalldata.result.hash).equal(transactionHash);
+      expect(transactionwithLargeCalldata.rlpEncoded).equal(rlpEncodedTransaction);
+      expect(generateKeccak256BytesDirectly(rlpEncodedTransaction)).equal(transactionwithLargeCalldata.result.hash);
     });
   });
 });
