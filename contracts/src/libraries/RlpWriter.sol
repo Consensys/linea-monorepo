@@ -100,8 +100,8 @@ library RlpWriter {
         j := add(j, 1)
       } {
         let shift := mul(sub(length, add(j, 1)), 8)
-        let b := and(shr(shift, _uintValue), 0xff)
-        mstore8(add(add(binaryBytes, 0x20), j), b)
+        let byteToAdd := and(shr(shift, _uintValue), 0xff)
+        mstore8(add(add(binaryBytes, 0x20), j), byteToAdd)
       }
 
       // Move free memory pointer
