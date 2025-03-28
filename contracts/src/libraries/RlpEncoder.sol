@@ -56,11 +56,11 @@ library RlpEncoder {
    * @return encodedBytes The address encoded as bytes.
    */
   function _encodeAddress(address _addressIn) internal pure returns (bytes memory encodedBytes) {
-    bytes memory addressRaw = new bytes(20);
+    encodedBytes = new bytes(20);
     assembly {
-      mstore(add(addressRaw, 0x20), shl(96, _addressIn))
+      mstore(add(encodedBytes, 0x20), shl(96, _addressIn))
     }
-    encodedBytes = _encodeBytes(addressRaw);
+    encodedBytes = _encodeBytes(encodedBytes);
   }
 
   /**
