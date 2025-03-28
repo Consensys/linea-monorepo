@@ -89,7 +89,7 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []wi
 		}
 	})
 
-	if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
+	if ctx.RangeCheckOption.Enabled && !ctx.RangeCheckOption.wasCancelled {
 		ctx.assignRangeChecked(run)
 	}
 }

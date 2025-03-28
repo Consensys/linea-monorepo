@@ -138,9 +138,9 @@ func (ctx *CompilationCtx) addRangeCheckConstraint() {
 
 	var (
 		round                            = ctx.Columns.L[0].Round()
-		rcL                              = ctx.Columns.RcL
-		rcR                              = ctx.Columns.RcR
-		rcO                              = ctx.Columns.RcO
+		rcL                              = ctx.RangeCheckOption.RcL
+		rcR                              = ctx.RangeCheckOption.RcR
+		rcO                              = ctx.RangeCheckOption.RcO
 		rcLValue                         = ctx.comp.Precomputed.MustGet(rcL.GetColID())
 		rcRValue                         = ctx.comp.Precomputed.MustGet(rcR.GetColID())
 		rcOValue                         = ctx.comp.Precomputed.MustGet(rcO.GetColID())
@@ -154,12 +154,12 @@ func (ctx *CompilationCtx) addRangeCheckConstraint() {
 	if totalNumRangeCheckedValues == 0 {
 		// nothing to range-check. Note: we still declared rcL, rcR, rcO which
 		// should be skipped also.
-		ctx.RangeCheck.wasCancelled = true
+		ctx.RangeCheckOption.wasCancelled = true
 		return
 	}
 
-	ctx.Columns.RangeChecked = make([]ifaces.Column, len(ctx.Columns.L))
-	ctx.RangeCheck.limbDecomposition = make([]wizard.ProverAction, len(ctx.Columns.L))
+	ctx.RangeCheckOption.RangeChecked = make([]ifaces.Column, len(ctx.Columns.L))
+	ctx.RangeCheckOption.limbDecomposition = make([]wizard.ProverAction, len(ctx.Columns.L))
 
 	for i := range ctx.Columns.L {
 
@@ -170,7 +170,7 @@ func (ctx *CompilationCtx) addRangeCheckConstraint() {
 			rangeChecked = ctx.comp.InsertCommit(round, ctx.colIDf("RANGE_CHECKED_%v", i), utils.ToInt(totalNumRangeCheckedValuesPadded))
 		)
 
-		ctx.Columns.RangeChecked[i] = rangeChecked
+		ctx.RangeCheckOption.RangeChecked[i] = rangeChecked
 
 		ctx.comp.GenericFragmentedConditionalInclusion(
 			round,
@@ -199,11 +199,11 @@ func (ctx *CompilationCtx) addRangeCheckConstraint() {
 			rcO,
 		)
 
-		_, ctx.RangeCheck.limbDecomposition[i] = byte32cmp.Decompose(
+		_, ctx.RangeCheckOption.limbDecomposition[i] = byte32cmp.Decompose(
 			ctx.comp,
 			rangeChecked,
-			ctx.RangeCheck.NbLimbs,
-			ctx.RangeCheck.NbBits,
+			ctx.RangeCheckOption.NbLimbs,
+			ctx.RangeCheckOption.NbBits,
 		)
 	}
 }
@@ -211,15 +211,15 @@ func (ctx *CompilationCtx) addRangeCheckConstraint() {
 func (ctx *CompilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
 
 	var (
-		rcL      = ctx.Columns.RcL
-		rcR      = ctx.Columns.RcR
-		rcO      = ctx.Columns.RcO
+		rcL      = ctx.RangeCheckOption.RcL
+		rcR      = ctx.RangeCheckOption.RcR
+		rcO      = ctx.RangeCheckOption.RcO
 		rcLValue = ctx.comp.Precomputed.MustGet(rcL.GetColID()).IntoRegVecSaveAlloc()
 		rcRValue = ctx.comp.Precomputed.MustGet(rcR.GetColID()).IntoRegVecSaveAlloc()
 		rcOValue = ctx.comp.Precomputed.MustGet(rcO.GetColID()).IntoRegVecSaveAlloc()
 	)
 
-	parallel.Execute(len(ctx.Columns.RangeChecked), func(start, stop int) {
+	parallel.Execute(len(ctx.RangeCheckOption.RangeChecked), func(start, stop int) {
 		for i := start; i < stop; i++ {
 
 			var (
@@ -227,13 +227,13 @@ func (ctx *CompilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
 				l         = ctx.Columns.L[i].GetColAssignment(run)
 				r         = ctx.Columns.R[i].GetColAssignment(run)
 				o         = ctx.Columns.O[i].GetColAssignment(run)
-				rcSize    = ctx.Columns.RangeChecked[i].Size()
+				rcSize    = ctx.RangeCheckOption.RangeChecked[i].Size()
 				rc        = make([]field.Element, 0, rcSize)
 			)
 
 			if activated.IsZero() {
 				run.AssignColumn(
-					ctx.Columns.RangeChecked[i].GetColID(),
+					ctx.RangeCheckOption.RangeChecked[i].GetColID(),
 					smartvectors.NewConstant(field.Zero(), rcSize),
 				)
 			} else {
@@ -253,12 +253,12 @@ func (ctx *CompilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
 				}
 
 				run.AssignColumn(
-					ctx.Columns.RangeChecked[i].GetColID(),
+					ctx.RangeCheckOption.RangeChecked[i].GetColID(),
 					smartvectors.RightZeroPadded(rc, rcSize),
 				)
 			}
 
-			ctx.RangeCheck.limbDecomposition[i].Run(run)
+			ctx.RangeCheckOption.limbDecomposition[i].Run(run)
 		}
 	})
 }

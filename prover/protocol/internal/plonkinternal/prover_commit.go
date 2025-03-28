@@ -157,7 +157,7 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 	})
 
-	if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
+	if ctx.RangeCheckOption.Enabled && !ctx.RangeCheckOption.wasCancelled {
 		ctx.assignRangeChecked(run)
 	}
 }

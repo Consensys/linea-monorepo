@@ -71,15 +71,11 @@ type CompilationCtx struct {
 		S [3]ifaces.ColAssignment
 		// Commitment randomness
 		Hcp coin.Info
-		// Selector for range checking from a column
-		RcL, RcR, RcO ifaces.Column
-		// RangeChecked stores the values to be range-checked
-		RangeChecked []ifaces.Column
 	}
 
 	// Optional field used for specifying range checks option
 	// parameters.
-	RangeCheck struct {
+	RangeCheckOption struct {
 		// wasCancelled is set if no wires need to be constrained
 		wasCancelled         bool
 		Enabled              bool
@@ -87,6 +83,10 @@ type CompilationCtx struct {
 		NbLimbs              int
 		AddGateForRangeCheck bool
 		limbDecomposition    []wizard.ProverAction
+		// Selector for range checking from a column
+		RcL, RcR, RcO ifaces.Column
+		// RangeChecked stores the values to be range-checked
+		RangeChecked []ifaces.Column
 	}
 
 	// FixedNbRowsOption is used to specify a fixed number of rows
@@ -133,7 +133,7 @@ func createCtx(
 		pro = profile.Start(profile.WithPath(fname))
 	}
 
-	ccs, rcGetter, err := CompileCircuit(ctx.Plonk.Circuit, ctx.RangeCheck.AddGateForRangeCheck)
+	ccs, rcGetter, err := CompileCircuit(ctx.Plonk.Circuit, ctx.RangeCheckOption.AddGateForRangeCheck)
 	if err != nil {
 		utils.Panic("error compiling circuit name=%v : %v", name, err)
 	}

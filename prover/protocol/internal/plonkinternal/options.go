@@ -8,10 +8,10 @@ type Option func(*CompilationCtx)
 // is true, then new gates are added for wires not present in existing gates.
 func WithRangecheck(nbBits, nbLimbs int, addGateForRangeCheck bool) Option {
 	return func(c *CompilationCtx) {
-		c.RangeCheck.Enabled = true
-		c.RangeCheck.NbBits = nbBits
-		c.RangeCheck.NbLimbs = nbLimbs
-		c.RangeCheck.AddGateForRangeCheck = addGateForRangeCheck
+		c.RangeCheckOption.Enabled = true
+		c.RangeCheckOption.NbBits = nbBits
+		c.RangeCheckOption.NbLimbs = nbLimbs
+		c.RangeCheckOption.AddGateForRangeCheck = addGateForRangeCheck
 	}
 }
 

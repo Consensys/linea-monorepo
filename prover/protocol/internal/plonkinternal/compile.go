@@ -58,7 +58,7 @@ func PlonkCheck(
 	ctx.addCopyConstraint()
 	ctx.addGateConstraint()
 
-	if ctx.RangeCheck.Enabled {
+	if ctx.RangeCheckOption.Enabled {
 		ctx.addRangeCheckConstraint()
 	}
 
@@ -92,11 +92,11 @@ func (ctx *CompilationCtx) commitGateColumns() {
 	ctx.Columns.Qk = ctx.comp.InsertPrecomputed(ctx.colIDf("QK"), iopToSV(ctx.Plonk.Trace.Qk, nbRow))
 
 	// Declare and pre-assign the rangecheck selectors
-	if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
+	if ctx.RangeCheckOption.Enabled && !ctx.RangeCheckOption.wasCancelled {
 		PcRcL, PcRcR, PcRcO := ctx.rcGetterToSV()
-		ctx.Columns.RcL = ctx.comp.InsertPrecomputed(ctx.colIDf("RcL"), smartvectors.RightZeroPadded(PcRcL, nbRow))
-		ctx.Columns.RcR = ctx.comp.InsertPrecomputed(ctx.colIDf("RcR"), smartvectors.RightZeroPadded(PcRcR, nbRow))
-		ctx.Columns.RcO = ctx.comp.InsertPrecomputed(ctx.colIDf("RcO"), smartvectors.RightZeroPadded(PcRcO, nbRow))
+		ctx.RangeCheckOption.RcL = ctx.comp.InsertPrecomputed(ctx.colIDf("RcL"), smartvectors.RightZeroPadded(PcRcL, nbRow))
+		ctx.RangeCheckOption.RcR = ctx.comp.InsertPrecomputed(ctx.colIDf("RcR"), smartvectors.RightZeroPadded(PcRcR, nbRow))
+		ctx.RangeCheckOption.RcO = ctx.comp.InsertPrecomputed(ctx.colIDf("RcO"), smartvectors.RightZeroPadded(PcRcO, nbRow))
 	}
 
 	ctx.Columns.L = make([]ifaces.Column, ctx.maxNbInstances)
