@@ -7,157 +7,184 @@
 [foundry]: https://getfoundry.sh/
 [foundry-badge]: https://img.shields.io/badge/Built%20with-Foundry-FFDB1C.svg
 
+## 🧭 Overview
+
+The **Staking Reward Streamer Protocol** enables secure token staking with dynamic reward calculation on Ethereum. Built with modularity and upgradability in mind, the system includes core components to manage stake deposits, reward calculations, time-based locking, and contract migration through user consent.
+
 ---
 
-This project is a smart contract system built for secure token staking and reward management on the Ethereum blockchain. It provides essential components for handling staking operations, managing rewards, and ensuring the security of staked assets. The system is designed to be robust, leveraging mathematical precision for reward calculations and secure vaults for asset protection.
+## 🧩 Core Contracts
 
-### Key Components
+### 🛠️ `StakeManager`
 
-- **StakeManager**: This contract handles the core staking operations. It is responsible for managing the staking process, calculating rewards, and tracking expired staking periods using advanced mathematical calculations. The contract utilizes OpenZeppelin’s ERC20 and math utilities to ensure accuracy and security.
-- **StakeVault**: This contract is responsible for securing user stakes. It ensures the security of user deposits by allowing only the owner to control the vault. The vault communicates with the StakeManager to handle staking and unstaking operations, while ensuring both the safety of funds and the validity of the vault’s code.
+- Handles staking logic, tracks stakes and reward epochs.
+- Calculates APY via **Multiplier Points**, which increase over time.
+- Validates vaults using codehash verification for added safety.
+- Upgradeable via proxy; users can opt out of migrations.
 
-## Features
+### 🔐 `StakeVault`
 
-- **Secure Staking**: Users can securely stake tokens, with all interactions managed by the StakeVault and governed by the StakeManager. The StakeVault is owned by the user, and only the owner is permitted to perform actions on it. It stores the staked tokens and StakeManager verifies the StakeVault codehash to ensure that the code managing the tokens is valid and secure.
-- **Multiplier Points**: The Annual Percentage Yield (APY) is achieved through an internal balance of Multiplier Points, which grow over time based on the amount of staked tokens. Rewards are proportional to the user's balance of Multiplier Points and stake.
-- **Stake Locking**: Users can lock their stake to start with an increased balance of Multiplier Points, thereby enhancing their potential rewards.
-- **Integration with ERC20 Tokens**: Built on top of the OpenZeppelin ERC20 token standard, the system ensures compatibility with any ERC20-compliant token.
-- **Opt-in Upgrade**: StakeManager is a Proxy upgradable contract, however, users can choose to disagree with an upgrade and opt-out without penalities, and simply withdraw their stake, bypassing any lock defined. 
+- A vault owned by the user, used to store and manage staked tokens.
+- Interacts directly with `StakeManager` for staking and unstaking operations.
+- Ensures only the owner can execute critical actions.
+- Verifies contract code via codehash to ensure safety.
 
-## Installation
+---
 
-To install the dependencies for this project, run the following command:
+## ✨ Features
+
+- **Secure, user-owned staking vaults**
+- **Dynamic APY via Multiplier Points**
+- **Stake locking to boost rewards**
+- **ERC20-compatible (via OpenZeppelin)**
+- **Proxy upgradeability with opt-in/opt-out support**
+- **Epoch-based reward streaming**
+
+---
+
+## 🚀 Getting Started
+
+### 📦 Install Dependencies
 
 ```bash
 pnpm install
 ```
 
-## Usage
+---
 
-### Contract Setup
+## ⚙️ Usage
 
-To install the system on the blockchain, follow these steps:
+### 📄 Deployment Flow
 
-1. **Deploy StakeManager**: Begin by deploying the `StakeManager` contract.
-2. **Deploy Sample VaultManager**: Next, deploy a sample `VaultManager` contract on any chain (this can be on a development network or a testnet).
-3. **Configure Codehash**: Once the `VaultManager` is deployed, retrieve its codehash and configure it in the `StakeManager` using the `setTrustedCodehash(bytes32, bool)` function.
+1. **Deploy `StakeManager`**
+2. **Deploy a sample `StakeVault` (e.g., on a devnet or testnet)**
+3. **Configure codehash** in `StakeManager`:
 
-### Staking Tokens
-
-To stake tokens, the `StakeVault` contract interacts with the `StakeManager`. You can call the function `StakeVault.stake(uint256 _amount, uint256 _secondsToLock)` with the desired amount and lock duration. Before staking, it is required to call `approve` on the `StakeToken` to authorize the `StakeVault` address to manage your tokens.
-
-The minimum `_secondsToLock` is defined by the contract settings, and the minimum `_amount` required to stake is set to ensure it generates Multiplier Points in every epoch.
-
-Tokens are never deposited directly or transferred to the `StakeManager`. Additionally, tokens should not be sent directly to the `StakeVault` address. Always use the `approve` method followed by the `stake` function to properly stake tokens.
-
-Note that staking will automatically process epochs. Refer to the **Manually Processing Epochs** section for more information.tion.
-
-### Unstaking
-
-To unstake tokens, users call `StakeVault.unstake(uint256 amount)`. Unstaking reduces the user's balance on the `StakeManager` in proportion to the staked amount and time spent staking. Users can only unstake if their balance is not locked.
-
-### Opt-In or Opt-Out Migration
-
-Users can accept or reject the new contract by calling `StakeVault.acceptMigration()` or `StakeVault.leave()`. If users have pending rewards in the old contract, those rewards will be claimed before opting in or out. Users with locked balances will have the option to leave, even if their balance is still locked.
-
-Note that opting in or out of migration will automatically claim rewards. Refer to the **Claiming Rewards** section for more information.
-
-## Development
-
-This is a list of the most frequently needed commands.
-
-### Build
-
-Build the contracts:
-
-```sh
-$ forge build
+```solidity
+stakeManager.setTrustedCodehash(<vault_codehash>, true);
 ```
 
-### Clean
+---
 
-Delete the build artifacts and cache directories:
+### 💰 Staking
 
-```sh
-$ forge clean
+1. **Approve** the `StakeVault` to spend your tokens:
+
+```solidity
+erc20.approve(stakeVaultAddress, amount);
 ```
 
-### Compile
+2. **Stake** your tokens:
 
-Compile the contracts:
-
-```sh
-$ forge build
+```solidity
+stakeVault.stake(amount, secondsToLock);
 ```
 
-### Coverage
+> ⚠️ Do not transfer tokens directly to the `StakeVault`. Always use `approve` + `stake`.
 
-Get a test coverage report:
+Minimum stake amount and lock duration are enforced via contract settings. Epochs are automatically processed on stake actions.
 
-```sh
-$ forge coverage
+---
+
+### 🔓 Unstaking
+
+```solidity
+stakeVault.unstake(amount);
 ```
 
-### Deploy
+- Only available for unlocked balances.
+- Reduces stake proportionally based on amount and duration.
 
-Deploy to Anvil:
+---
 
-```sh
-$ forge script script/Deploy.s.sol --broadcast --fork-url http://localhost:8545
+### 🔁 Migration (Opt-In/Out)
+
+Users may opt-in to a new `StakeManager` implementation or leave:
+
+```solidity
+stakeVault.acceptMigration(); // opt-in
+stakeVault.leave();           // opt-out
 ```
 
-For this script to work, you need to have a `MNEMONIC` environment variable set to a valid
-[BIP39 mnemonic](https://iancoleman.io/bip39/).
+> Migration triggers automatic reward claiming. Locked balances can still opt out.
 
-For instructions on how to deploy to a testnet or mainnet, check out the
-[Solidity Scripting](https://book.getfoundry.sh/tutorials/solidity-scripting.html) tutorial.
+---
 
-### Format
+## 📬 Deployed Contracts
 
-Format the contracts:
+These are the official contract deployments on the **Sepolia testnet** (via [Status Network Explorer](https://sepoliascan.status.network)):
+
+| Contract            | Address                                                                                             |
+|---------------------|-----------------------------------------------------------------------------------------------------|
+| **StakeManagerProxy** | [0x2C09141e66970A71862beAcCbDb816ec01D6B676](https://sepoliascan.status.network/address/0x2C09141e66970A71862beAcCbDb816ec01D6B676?tab=contract) |
+| **StakeManager**      | [0xa2432fB545829f89E172ddE2DeD6D289c7ee125F](https://sepoliascan.status.network/address/0xa2432fB545829f89E172ddE2DeD6D289c7ee125F?tab=contract) |
+| **VaultFactory**      | [0xA6300Bd8aF26530D399a1b24B703EEf2c48a71Be](https://sepoliascan.status.network/address/0xA6300Bd8aF26530D399a1b24B703EEf2c48a71Be) |
+| **KarmaProxy**        | [0x486Ac0F5Eb7079075dE26739E1192D41F278a8db](https://sepoliascan.status.network/address/0x486Ac0F5Eb7079075dE26739E1192D41F278a8db) |
+| **Karma**             | [0xE9413C84eFF6B08E4F614Efe69EB7eb9a1Ca1180](https://sepoliascan.status.network/address/0xE9413C84eFF6B08E4F614Efe69EB7eb9a1Ca1180?tab=contract) |
+| **KarmaNFT**          | [0xdE5592e1001f52380f9EDE01aa6725F469A8e46F](https://sepoliascan.status.network/address/0xdE5592e1001f52380f9EDE01aa6725F469A8e46F?tab=contract) |
+
+---
+
+## 🧪 Development
+
+### 🏗️ Build Contracts
 
 ```sh
-$ forge fmt
+forge build
 ```
 
-### Gas Usage
+### 🧹 Clean Build Artifacts
 
-Get a gas report:
+```sh
+forge clean
+```
+
+### 🧪 Run Tests
+
+```sh
+forge test
+```
+
+### 🧮 Coverage
+
+```sh
+forge coverage
+```
+
+### 🚀 Deploy Locally (Anvil)
+
+```sh
+forge script script/Deploy.s.sol --broadcast --fork-url http://localhost:8545
+```
+
+> Requires `MNEMONIC` env variable.
+
+---
+
+## 📊 Gas & Linting
+
+### Gas Reports
 
 ```sh
 pnpm gas-report
-```
-
-Get a gas snapshot:
-
-```bash
 forge snapshot
 ```
 
-### Lint
-
-Lint the contracts:
+### Linting
 
 ```sh
-$ pnpm lint
+pnpm lint
 ```
 
-### Test
-
-Run the tests:
+### Formatting
 
 ```sh
-$ forge test
+forge fmt
 ```
 
-#### Prepare to commit
-
-Formats, generates snapshot and gas report:
+### Commit preparing command
 
 ```sh
 pnpm adorno
 ```
 
-## License
-
-This project is licensed under MIT.
