@@ -151,7 +151,6 @@ class L1DependentApp(
     rpcUrl = configs.l1.rpcEndpoint.toString(),
     log = LogManager.getLogger("clients.l1.eth-api"),
     pollingInterval = 1.seconds
-
   )
   private val l1Web3jService = Web3jBlobExtended(HttpService(configs.l1.ethFeeHistoryEndpoint.toString()))
   private val l2ZkTracesWeb3jClient: Web3j = createWeb3jHttpClient(
@@ -1053,8 +1052,9 @@ class L1DependentApp(
   }
 
   override fun start(): CompletableFuture<Unit> {
-    return cleanupDbDataAfterLastProcessedBlock(
+    return cleanupDbDataAfterBlock(
       lastProcessedBlockNumber = lastProcessedBlockNumber,
+      lastFinalizedBlockNumber = lastFinalizedBlock,
       batchesRepository = batchesRepository,
       blobsRepository = blobsRepository,
       aggregationsRepository = aggregationsRepository
@@ -1095,19 +1095,46 @@ class L1DependentApp(
 
   companion object {
 
-    fun cleanupDbDataAfterLastProcessedBlock(
+    fun cleanupDbDataAfterBlock(
       lastProcessedBlockNumber: ULong,
+      lastFinalizedBlockNumber: ULong,
       batchesRepository: BatchesRepository,
       blobsRepository: BlobsRepository,
       aggregationsRepository: AggregationsRepository
     ): SafeFuture<*> {
+      return cleanupDbDataAfterLastProcessedBlock(
+        lastProcessedBlockNumber,
+        batchesRepository,
+        blobsRepository
+      ).thenCompose {
+        cleanupDbDataAfterLastFinalizedBlock(
+          lastFinalizedBlockNumber,
+          aggregationsRepository
+        )
+      }
+    }
+
+    private fun cleanupDbDataAfterLastProcessedBlock(
+      lastProcessedBlockNumber: ULong,
+      batchesRepository: BatchesRepository,
+      blobsRepository: BlobsRepository
+    ): SafeFuture<*> {
       val blockNumberInclusiveToDeleteFrom = lastProcessedBlockNumber + 1u
       val cleanupBatches = batchesRepository.deleteBatchesAfterBlockNumber(blockNumberInclusiveToDeleteFrom.toLong())
       val cleanupBlobs = blobsRepository.deleteBlobsAfterBlockNumber(blockNumberInclusiveToDeleteFrom)
+
+      return SafeFuture.allOf(cleanupBatches, cleanupBlobs)
+    }
+
+    private fun cleanupDbDataAfterLastFinalizedBlock(
+      lastFinalizedBlockNumber: ULong,
+      aggregationsRepository: AggregationsRepository
+    ): SafeFuture<*> {
+      val blockNumberInclusiveToDeleteFrom = lastFinalizedBlockNumber + 1u
       val cleanupAggregations = aggregationsRepository
         .deleteAggregationsAfterBlockNumber(blockNumberInclusiveToDeleteFrom.toLong())
 
-      return SafeFuture.allOf(cleanupBatches, cleanupBlobs, cleanupAggregations)
+      return SafeFuture.allOf(cleanupAggregations)
     }
 
     /**
