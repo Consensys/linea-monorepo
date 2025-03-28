@@ -49,7 +49,7 @@ describe("Eip1559RlpEncoder Library", () => {
       to: data.to,
       value: data.value,
       input: data.input,
-      v: data.v,
+      yParity: data.yParity,
       r: data.r,
       s: data.s,
     };

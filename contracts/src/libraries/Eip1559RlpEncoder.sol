@@ -7,10 +7,27 @@
  */
 pragma solidity ^0.8.28;
 
-import { RlpWriter } from "./RlpWriter.sol";
+import { RlpEncoder } from "./RlpEncoder.sol";
 
+/**
+ * @title Library for RLP Encoding a type 2 EIP-1559 transactions.
+ * @author ConsenSys Software Inc.
+ * @custom:security-contact security-report@linea.build
+ */
 library Eip1559RlpEncoder {
-  /// @dev chainId is defined in the function and access list is not encoded.
+  /**
+   * @notice Supporting data for encoding an EIP-1559 transaction.
+   * @dev NB: ChainId is not on the struct to allow flexibility by the consuming contract.
+   * @dev NB: Access lists is assumed empty and does not appear here.
+   * @dev nonce The sender's nonce.
+   * @dev maxPriorityFeePerGas The max priority fee the user will pay.
+   * @dev maxFeePerGas The max fee per gas the user will pay.
+   * @dev gasLimit The limit of gas that the user is prepared to spend.
+   * @dev input The calldata input for the transaction.
+   * @dev yParity The yParity in the signature.
+   * @dev r The r in the signature.
+   * @dev s The s in the signature.
+   */
   struct Eip1559Transaction {
     uint256 nonce;
     uint256 maxPriorityFeePerGas;
@@ -19,34 +36,38 @@ library Eip1559RlpEncoder {
     address to;
     uint256 value;
     bytes input;
-    uint8 v;
+    uint8 yParity;
     uint256 r;
     uint256 s;
   }
 
+  /**
+   * @notice Internal function that encodes bytes correctly with length data.
+   * @param _chainId The chainId to encode with.
+   * @param _transaction The EIP-1559 transaction excluding chainId.
+   * @return rlpEncodedTransaction The RLP encoded transaction for submitting.
+   * @return transactionHash The expected transaction hash.
+   */
   function encodeEIP1559Tx(
     uint256 _chainId,
     Eip1559Transaction memory _transaction
   ) internal pure returns (bytes memory rlpEncodedTransaction, bytes32 transactionHash) {
     bytes[] memory fields = new bytes[](12);
 
-    fields[0] = RlpWriter._encodeUint(_chainId);
-    fields[1] = RlpWriter._encodeUint(_transaction.nonce);
-    fields[2] = RlpWriter._encodeUint(_transaction.maxPriorityFeePerGas);
-    fields[3] = RlpWriter._encodeUint(_transaction.maxFeePerGas);
-    fields[4] = RlpWriter._encodeUint(_transaction.gasLimit);
-    fields[5] = RlpWriter._encodeAddress(_transaction.to);
-    fields[6] = RlpWriter._encodeUint(_transaction.value);
-    fields[7] = RlpWriter._encodeBytes(_transaction.input);
-    fields[8] = RlpWriter._encodeList(new bytes[](0)); // AccessList empty on purpose.
-    fields[9] = RlpWriter._encodeUint(_transaction.v);
-    fields[10] = RlpWriter._encodeUint(_transaction.r);
-    fields[11] = RlpWriter._encodeUint(_transaction.s);
+    fields[0] = RlpEncoder._encodeUint(_chainId);
+    fields[1] = RlpEncoder._encodeUint(_transaction.nonce);
+    fields[2] = RlpEncoder._encodeUint(_transaction.maxPriorityFeePerGas);
+    fields[3] = RlpEncoder._encodeUint(_transaction.maxFeePerGas);
+    fields[4] = RlpEncoder._encodeUint(_transaction.gasLimit);
+    fields[5] = RlpEncoder._encodeAddress(_transaction.to);
+    fields[6] = RlpEncoder._encodeUint(_transaction.value);
+    fields[7] = RlpEncoder._encodeBytes(_transaction.input);
+    fields[8] = RlpEncoder._encodeList(new bytes[](0)); // AccessList empty on purpose.
+    fields[9] = RlpEncoder._encodeUint(_transaction.yParity);
+    fields[10] = RlpEncoder._encodeUint(_transaction.r);
+    fields[11] = RlpEncoder._encodeUint(_transaction.s);
 
-    bytes memory encodedList = RlpWriter._encodeList(fields);
-
-    // Prepend type byte 0x02
-    rlpEncodedTransaction = abi.encodePacked(hex"02", encodedList);
+    rlpEncodedTransaction = abi.encodePacked(hex"02", RlpEncoder._encodeList(fields));
     transactionHash = keccak256(rlpEncodedTransaction);
   }
 }

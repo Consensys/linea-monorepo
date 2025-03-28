@@ -93,7 +93,7 @@ export type Eip1559Transaction = {
   to: string;
   value: bigint;
   input: string;
-  v: bigint;
+  yParity: bigint;
   r: bigint;
   s: bigint;
 };
