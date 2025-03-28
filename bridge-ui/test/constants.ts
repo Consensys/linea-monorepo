@@ -14,9 +14,9 @@ export const LINEA_SEPOLIA_NETWORK = {
 };
 
 export const TEST_URL = "http://localhost:3000/";
-export const WEI_AMOUNT = formatEther(BigInt(1)).toString();
+export const WEI_AMOUNT = formatEther(1n).toString();
 // Must be > minimum CCTP fee
-export const USDC_AMOUNT = formatUnits(BigInt(10), 6).toString();
+export const USDC_AMOUNT = formatUnits(10n, 6).toString();
 export const ETH_SYMBOL = "ETH";
 export const USDC_SYMBOL = "USDC";
 
