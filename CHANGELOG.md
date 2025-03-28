@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.2.0](https://github.com/vacp2p/staking-reward-streamer/compare/v0.1.1...v0.2.0) (2025-03-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **
+
+- `RewardsStreamerMP` is now `StakeManager`
+- `StakingManager__*` error selectors are now `StakeManager__*`
+  selectors
+* - `VaultData.mpStaked` no longer exists, use `VaultData.mpAccrued`
+instead.
+
+- `Compound(address,uint256)` is now `VaultUpdated(address,uint256,uint256)`
+
+- `AccountLeft(address)` is now `VaultLeft(address)`
+* `mintAllowance()` no longer exists.
+* `getStakedBalance(address)` is now `stakedBalanceOf(address)`
+* The previous public `rewardIndex` field is now called `lastRewardIndex`.
+* **RewardsStreamerMP:** A couple of APIs have been removed or replaced.
+
+-> inline _compound into _updateVault()
+-> remove compond() in favor of updateVaultMP()
+-> rename updateVaultMP() to updateVault()
+-> rename compoundAccount() to updateAccount()
+
+* !refactor(RewardsStreamerMP): rename `RewardsStreamerMP` to `StakeManager` ([801740f](https://github.com/vacp2p/staking-reward-streamer/commit/801740f74fea983782302d65e5c9c34770b93ae3))
+* !refactor(RewardsStreamerMP): remove `VaultData.mpStaked` ([7bd0c16](https://github.com/vacp2p/staking-reward-streamer/commit/7bd0c16872edb44a51e3432528cea5be332ff2bc))
+* !refactor(Karma): remove `mintAllowance()` ([ce982b9](https://github.com/vacp2p/staking-reward-streamer/commit/ce982b9ce5033e22bc2e087f8146b7514287cb5c)), closes [#192](https://github.com/vacp2p/staking-reward-streamer/issues/192)
+* !refactor: rename `getStakedBalance()` -> `stakedBalanceOf()` ([695a208](https://github.com/vacp2p/staking-reward-streamer/commit/695a2088041a53457e7809d00eddb65b858d072c)), closes [#188](https://github.com/vacp2p/staking-reward-streamer/issues/188) [#188](https://github.com/vacp2p/staking-reward-streamer/issues/188)
+* !refactor(RewardsStreamerMP): rename internal functions and `rewardIndex` ([8e4aa68](https://github.com/vacp2p/staking-reward-streamer/commit/8e4aa682c118abb0c715a7f9540d78ea66503970)), closes [#189](https://github.com/vacp2p/staking-reward-streamer/issues/189)
+* **RewardsStreamerMP:** merge `compound()` with `_updateVault()` ([2e01e0d](https://github.com/vacp2p/staking-reward-streamer/commit/2e01e0d03bc84660ea0ad643649ad6fa6496c27d)), closes [#187](https://github.com/vacp2p/staking-reward-streamer/issues/187) [#187](https://github.com/vacp2p/staking-reward-streamer/issues/187)
+
+
+### Features
+
+* **RewardsStreamerMP:** allow for staking multiple times with lock ([4fa3eb0](https://github.com/vacp2p/staking-reward-streamer/commit/4fa3eb06e08f7a8f64bfc18623ddcb430e024b67)), closes [#152](https://github.com/vacp2p/staking-reward-streamer/issues/152)
+
+
+### Bug Fixes
+
+* **RewardsStreamerMP:** remove double totalMPStaked substraction ([dabcf5c](https://github.com/vacp2p/staking-reward-streamer/commit/dabcf5c9908e70c3d57f645f2618ab39a02888ef))
+* **StakeManager:** Allow extending the lock after increasing stake to allow account reaching absolute max MP ([8df475a](https://github.com/vacp2p/staking-reward-streamer/commit/8df475aab8c8d1935d48e9589c528d2ff15dc31a))
+
 ## 0.1.1 (2025-03-18)
 
 
