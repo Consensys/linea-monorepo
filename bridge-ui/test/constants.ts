@@ -19,3 +19,5 @@ export const WEI_AMOUNT = formatEther(BigInt(1)).toString();
 export const USDC_AMOUNT = formatUnits(BigInt(10), 6).toString();
 export const ETH_SYMBOL = "ETH";
 export const USDC_SYMBOL = "USDC";
+
+export const POLLING_INTERVAL = 250;

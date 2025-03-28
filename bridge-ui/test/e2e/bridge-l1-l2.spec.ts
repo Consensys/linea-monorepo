@@ -18,10 +18,7 @@ describe("L1 > L2 via Native Bridge", () => {
     await expect(nativeBridgeBtn).toBeVisible();
   });
 
-  test("should connect MetaMask to dapp correctly", async ({
-    connectMetamaskToDapp,
-    clickNativeBridgeButton,
-  }) => {
+  test("should connect MetaMask to dapp correctly", async ({ connectMetamaskToDapp, clickNativeBridgeButton }) => {
     await clickNativeBridgeButton();
     await connectMetamaskToDapp();
   });
@@ -93,12 +90,12 @@ describe("L1 > L2 via Native Bridge", () => {
 
   /**
    * This E2E test should address the following edge case observed in initial development:
-   * 
+   *
    * Steps to reproduce:
    * 1. Clear local storage
    * 2. Bridge USDC
    * 3. Open Transaction History
-   * 
+   *
    * Bug: Transaction History is not visible after above steps
    */
   test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
@@ -147,7 +144,7 @@ describe("L1 > L2 via Native Bridge", () => {
     getNativeBridgeTransactionsCount,
     switchToLineaSepolia,
     doClaimTransaction,
-    waitForTxListUpdateForClaimTx
+    waitForTxListUpdateForClaimTx,
   }) => {
     test.setTimeout(90_000);
 
@@ -164,8 +161,8 @@ describe("L1 > L2 via Native Bridge", () => {
     await getNativeBridgeTransactionsCount();
 
     // Find and click READY_TO_CLAIM TX
-    const readyToClaimTx = page.getByRole("listitem").filter({hasText: "Ready to claim"});
-    const readyToClaimCount = await readyToClaimTx.count()
+    const readyToClaimTx = page.getByRole("listitem").filter({ hasText: "Ready to claim" });
+    const readyToClaimCount = await readyToClaimTx.count();
     if (readyToClaimCount === 0) return;
     await readyToClaimTx.first().click();
 

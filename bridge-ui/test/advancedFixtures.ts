@@ -2,7 +2,7 @@ import { metaMaskFixtures } from "@synthetixio/synpress/playwright";
 import setup from "./wallet-setup/metamask.setup";
 import { Locator } from "@playwright/test";
 import { getNativeBridgeTransactionsCountImpl, selectTokenAndWaitForBalance } from "./utils";
-import { LINEA_SEPOLIA_NETWORK } from "./constants";
+import { LINEA_SEPOLIA_NETWORK, POLLING_INTERVAL } from "./constants";
 /**
  * NB: There is an issue with Synpress `metaMaskFixtures` extension functions wherein extension functions
  * may not be able to reuse other extension functions. This is especially the case when advanced operations
@@ -23,7 +23,7 @@ export const test = metaMaskFixtures(setup).extend<{
   waitForNewTxAdditionToTxList: (txCountBeforeUpdate: number) => Promise<void>;
   waitForTxListUpdateForClaimTx: (claimTxCountBeforeUpdate: number) => Promise<void>;
 
-  // Metamask Actions
+  // Metamask Actions - Should be ok to reuse within other fixture functions
   connectMetamaskToDapp: () => Promise<void>;
   waitForTransactionToConfirm: () => Promise<void>;
   confirmTransactionAndWaitForInclusion: () => Promise<void>;
@@ -98,7 +98,7 @@ export const test = metaMaskFixtures(setup).extend<{
         const newTxCount = await getNativeBridgeTransactionsCountImpl(page);
         listUpdated = newTxCount !== txCountBeforeUpdate;
         tryCount++;
-        await page.waitForTimeout(250);
+        await page.waitForTimeout(POLLING_INTERVAL);
       } while (!listUpdated && tryCount < maxTries);
     });
   },
@@ -112,16 +112,16 @@ export const test = metaMaskFixtures(setup).extend<{
         const newReadyToClaimCount = await readyToClaimTx.count();
         listUpdated = newReadyToClaimCount === claimTxCountBeforeUpdate + 1;
         tryCount++;
-        await page.waitForTimeout(250);
+        await page.waitForTimeout(POLLING_INTERVAL);
       } while (!listUpdated && tryCount < maxTries);
     });
   },
 
-  // Metamask Actions
+  // Metamask Actions - Should be ok to reuse within other fixture functions
   connectMetamaskToDapp: async ({ page, metamask }, use) => {
     await use(async () => {
       // Click Connect button
-      const connectBtn = page.getByRole("button").filter({ hasText: "Connect" }).first();
+      const connectBtn = page.getByRole("button", { name: "Connect", exact: true }).first();
       await connectBtn.click();
 
       // Click on 'Metamask' on the wallet dropdown menu
@@ -140,8 +140,8 @@ export const test = metaMaskFixtures(setup).extend<{
 
       const activityButton = metamask.page.locator("button", { hasText: "Activity" });
       await activityButton.waitFor();
-      // Click "Got it" button on "What's new" modal if it appears
-      // Assuming this becomes visible at the same time that the Activity button becomes visible
+      // Sometimes a "What's new" modal pops up on Metamask. We assume this becomes visible at the same time as the Activity button
+      // This modal causes flaky tests because it appears unpredictably, and blocks other actions.
       const gotItButton = metamask.page.locator("button", { hasText: "Got it" });
       if (await gotItButton.isVisible()) await gotItButton.click();
       // Click Activity button
@@ -164,7 +164,7 @@ export const test = metaMaskFixtures(setup).extend<{
       await page.bringToFront();
     });
   },
-  switchToLineaSepolia: async ({ page, metamask }, use) => {
+  switchToLineaSepolia: async ({ metamask }, use) => {
     await use(async () => {
       await metamask.switchNetwork(LINEA_SEPOLIA_NETWORK.name, true);
     });
@@ -174,7 +174,7 @@ export const test = metaMaskFixtures(setup).extend<{
   doTokenApprovalIfNeeded: async ({ page, metamask, waitForTransactionToConfirm }, use) => {
     await use(async () => {
       // Check if approval required
-      const approvalButton = page.getByRole("button", { name: "Approve Token" });
+      const approvalButton = page.getByRole("button", { name: "Approve Token", exact: true });
       if ((await approvalButton.count()) === 0) return;
       await approvalButton.click();
 
@@ -184,7 +184,8 @@ export const test = metaMaskFixtures(setup).extend<{
 
       // Close 'Transaction successful' modal
       await page.bringToFront();
-      const closeModalBtn = page.getByRole("button", { name: "Bridge your token" });
+      await page.pause();
+      const closeModalBtn = page.getByRole("button", { name: "Bridge your token", exact: true });
       await closeModalBtn.click();
     });
   },
@@ -206,7 +207,7 @@ export const test = metaMaskFixtures(setup).extend<{
       await confirmTransactionAndWaitForInclusion();
 
       // Click on 'View transactions' button on the 'Transaction confirmed' modal
-      const viewTxButton = page.getByRole("button", { name: "View transactions" });
+      const viewTxButton = page.getByRole("button", { name: "View transactions", exact: true });
       await viewTxButton.click();
     });
   },
