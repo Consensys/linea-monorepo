@@ -28,6 +28,7 @@ export const test = metaMaskFixtures(setup).extend<{
   waitForTransactionToConfirm: () => Promise<void>;
   confirmTransactionAndWaitForInclusion: () => Promise<void>;
   switchToLineaSepolia: () => Promise<void>;
+  switchToEthereumMainnet: () => Promise<void>;
 
   // Composite Bridge UI + Metamask Actions
   doTokenApprovalIfNeeded: () => Promise<void>;
@@ -169,6 +170,11 @@ export const test = metaMaskFixtures(setup).extend<{
       await metamask.switchNetwork(LINEA_SEPOLIA_NETWORK.name, true);
     });
   },
+  switchToEthereumMainnet: async ({ metamask }, use) => {
+    await use(async () => {
+      await metamask.switchNetwork("Ethereum Mainnet", false);
+    });
+  },
 
   // Composite Bridge UI + Metamask Actions
   doTokenApprovalIfNeeded: async ({ page, metamask, waitForTransactionToConfirm }, use) => {
@@ -179,6 +185,7 @@ export const test = metaMaskFixtures(setup).extend<{
       await approvalButton.click();
 
       // Handle Metamask approval UI
+      // Seen once in E2E test that this line fails to move past Metamask approval screen
       await metamask.approveTokenPermission();
       await waitForTransactionToConfirm();
 
