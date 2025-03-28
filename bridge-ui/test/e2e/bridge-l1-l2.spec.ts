@@ -58,7 +58,7 @@ describe("L1 > L2 via Native Bridge", () => {
   });
 
   test("should be able to initiate bridging ETH from L1 to L2 in testnet", async ({
-    getBridgeTransactionsCount,
+    getNativeBridgeTransactionsCount,
     waitForNewTxAdditionToTxList,
     connectMetamaskToDapp,
     clickNativeBridgeButton,
@@ -80,7 +80,7 @@ describe("L1 > L2 via Native Bridge", () => {
 
     // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
     await openNativeBridgeTransactionHistory();
-    const txnsLengthBefore = await getBridgeTransactionsCount();
+    const txnsLengthBefore = await getNativeBridgeTransactionsCount();
     await closeNativeBridgeTransactionHistory();
 
     // // Actual bridging actions
@@ -102,7 +102,7 @@ describe("L1 > L2 via Native Bridge", () => {
    * Bug: Transaction History is not visible after above steps
    */
   test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
-    getBridgeTransactionsCount,
+    getNativeBridgeTransactionsCount,
     waitForNewTxAdditionToTxList,
     connectMetamaskToDapp,
     clickNativeBridgeButton,
@@ -125,7 +125,7 @@ describe("L1 > L2 via Native Bridge", () => {
 
     // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
     await openNativeBridgeTransactionHistory();
-    const txnsLengthBefore = await getBridgeTransactionsCount();
+    const txnsLengthBefore = await getNativeBridgeTransactionsCount();
     await closeNativeBridgeTransactionHistory();
 
     // Actual bridging actions
@@ -144,7 +144,7 @@ describe("L1 > L2 via Native Bridge", () => {
     openNativeBridgeFormSettings,
     toggleShowTestNetworksInNativeBridgeForm,
     openNativeBridgeTransactionHistory,
-    getBridgeTransactionsCount,
+    getNativeBridgeTransactionsCount,
     switchToLineaSepolia,
     doClaimTransaction,
     waitForTxListUpdateForClaimTx
@@ -161,7 +161,7 @@ describe("L1 > L2 via Native Bridge", () => {
 
     // Load tx history
     await openNativeBridgeTransactionHistory();
-    await getBridgeTransactionsCount();
+    await getNativeBridgeTransactionsCount();
 
     // Find and click READY_TO_CLAIM TX
     const readyToClaimTx = page.getByRole("listitem").filter({hasText: "Ready to claim"});

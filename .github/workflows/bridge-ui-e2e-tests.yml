@@ -76,6 +76,7 @@ jobs:
           NEXT_PUBLIC_WALLET_CONNECT_ID: "placeholder"
           NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID: "placeholder"
 
+      # Prerequisite - Testing wallet must have >0 ETH and USDC on Sepolia
       - name: Run E2E tests
         run: xvfb-run pnpm run -F bridge-ui test:e2e:headful
         env:

@@ -29,6 +29,7 @@ export default function TransactionHistory() {
                 setIsTransactionHistoryOpen(false);
                 setIsBridgeOpen(true);
               }}
+              data-testid="transaction-history-close-btn"
             >
               <ArrowLeftIcon className={styles["go-back-icon"]} />
             </Button>

@@ -1,2 +1,2 @@
 export { selectTokenAndWaitForBalance } from "./selectTokenAndWaitForBalance";
-export { getBridgeTransactionsCountImpl } from "./getBridgeTransactionsCountImpl";
+export { getNativeBridgeTransactionsCountImpl } from "./getNativeBridgeTransactionsCountImpl";

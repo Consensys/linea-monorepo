@@ -1,13 +1,15 @@
 import { metaMaskFixtures } from "@synthetixio/synpress/playwright";
 import setup from "./wallet-setup/metamask.setup";
 import { Locator } from "@playwright/test";
-import { getBridgeTransactionsCountImpl, selectTokenAndWaitForBalance } from "./utils";
+import { getNativeBridgeTransactionsCountImpl, selectTokenAndWaitForBalance } from "./utils";
 import { LINEA_SEPOLIA_NETWORK } from "./constants";
 /**
  * NB: There is an issue with Synpress `metaMaskFixtures` extension functions wherein extension functions
  * may not be able to reuse other extension functions. This is especially the case when advanced operations
  * on the 'Page' object are done. It seems that the 'Page' object does not remain the same in a nested
  * extension function call between the different layers of nesting.
+ *
+ * Nested `Metamask` object uses however seem ok.
  */
 export const test = metaMaskFixtures(setup).extend<{
   // Bridge UI Actions
@@ -16,7 +18,7 @@ export const test = metaMaskFixtures(setup).extend<{
   closeNativeBridgeTransactionHistory: () => Promise<void>;
   openNativeBridgeFormSettings: () => Promise<void>;
   toggleShowTestNetworksInNativeBridgeForm: () => Promise<void>;
-  getBridgeTransactionsCount: () => Promise<number>;
+  getNativeBridgeTransactionsCount: () => Promise<number>;
   selectTokenAndInputAmount: (tokenSymbol: string, amount: string) => Promise<void>;
   waitForNewTxAdditionToTxList: (txCountBeforeUpdate: number) => Promise<void>;
   waitForTxListUpdateForClaimTx: (claimTxCountBeforeUpdate: number) => Promise<void>;
@@ -31,12 +33,11 @@ export const test = metaMaskFixtures(setup).extend<{
   doTokenApprovalIfNeeded: () => Promise<void>;
   doInitiateBridgeTransaction: () => Promise<void>;
   doClaimTransaction: () => Promise<void>;
-
 }>({
   // Bridge UI Actions
   clickNativeBridgeButton: async ({ page }, use) => {
     await use(async () => {
-      const nativeBridgeBtn = page.getByRole("link").filter({ hasText: "Native Bridge" });
+      const nativeBridgeBtn = page.getByRole("link", { name: "Native Bridge", exact: true });
       await nativeBridgeBtn.click();
       return nativeBridgeBtn;
     });
@@ -49,11 +50,8 @@ export const test = metaMaskFixtures(setup).extend<{
   },
   closeNativeBridgeTransactionHistory: async ({ page }, use) => {
     await use(async () => {
-      await page
-        .locator("div")
-        .filter({ hasText: /^Transaction History$/ })
-        .getByRole("button")
-        .click();
+      const backButton = page.getByTestId("transaction-history-close-btn");
+      await backButton.click();
     });
   },
   openNativeBridgeFormSettings: async ({ page }, use) => {
@@ -67,9 +65,9 @@ export const test = metaMaskFixtures(setup).extend<{
       await page.getByTestId("native-bridge-test-network-toggle").click();
     });
   },
-  getBridgeTransactionsCount: async ({ page }, use) => {
+  getNativeBridgeTransactionsCount: async ({ page }, use) => {
     await use(async () => {
-      return await getBridgeTransactionsCountImpl(page);
+      return await getNativeBridgeTransactionsCountImpl(page);
     });
   },
   selectTokenAndInputAmount: async ({ page }, use) => {
@@ -97,7 +95,7 @@ export const test = metaMaskFixtures(setup).extend<{
       let tryCount = 0;
       let listUpdated = false;
       do {
-        const newTxCount = await getBridgeTransactionsCountImpl(page);
+        const newTxCount = await getNativeBridgeTransactionsCountImpl(page);
         listUpdated = newTxCount !== txCountBeforeUpdate;
         tryCount++;
         await page.waitForTimeout(250);
@@ -107,11 +105,11 @@ export const test = metaMaskFixtures(setup).extend<{
   waitForTxListUpdateForClaimTx: async ({ page }, use) => {
     await use(async (claimTxCountBeforeUpdate: number) => {
       const maxTries = 10;
-      const readyToClaimTx = page.getByRole("listitem").filter({hasText: "Ready to claim"});
+      const readyToClaimTx = page.getByRole("listitem").filter({ hasText: "Ready to claim" });
       let tryCount = 0;
       let listUpdated = false;
       do {
-        const newReadyToClaimCount = await readyToClaimTx.count()
+        const newReadyToClaimCount = await readyToClaimTx.count();
         listUpdated = newReadyToClaimCount === claimTxCountBeforeUpdate + 1;
         tryCount++;
         await page.waitForTimeout(250);

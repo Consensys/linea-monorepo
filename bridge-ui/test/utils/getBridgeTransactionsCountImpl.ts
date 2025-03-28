@@ -1,6 +1,6 @@
 import { Page } from "@playwright/test";
 
-export async function getBridgeTransactionsCountImpl(page: Page): Promise<number> {
+export async function getNativeBridgeTransactionsCountImpl(page: Page): Promise<number> {
   const txList = page.getByTestId("native-bridge-transaction-history-list");
   const noTransactionsYetText = page.getByText("No transactions yet");
   // Either `txList` or `noTransactionsYetText` will appear. Should be mutually exclusive.
