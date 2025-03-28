@@ -99,7 +99,7 @@ library RlpEncoder {
    */
   function _toBinary(uint256 _uintValue) private pure returns (bytes memory encodedBytes) {
     assembly {
-      let ptr := mload(0x40) 
+      let ptr := mload(0x40)
 
       let i := 0
       for {
@@ -113,7 +113,7 @@ library RlpEncoder {
         break
       }
 
-      let length := sub(32, i) 
+      let length := sub(32, i)
       encodedBytes := ptr
       mstore(encodedBytes, length)
 

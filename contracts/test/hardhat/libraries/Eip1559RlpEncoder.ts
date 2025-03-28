@@ -4,8 +4,8 @@ import { deployFromFactory } from "../common/deployment";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import transactionWithoutCalldata from "../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
 import transactionWithCalldata from "../_testData/eip1559RlpEncoderTransactions/withCalldata.json";
-import { Eip1559Transaction } from "../common/types";
 import { generateKeccak256BytesDirectly } from "../common/helpers";
+import { buildEip1559Transaction } from "../common/helpers/typedTransactionBuilding";
 
 describe("Eip1559RlpEncoder Library", () => {
   let contract: TestEip1559RlpEncoder;
@@ -38,20 +38,4 @@ describe("Eip1559RlpEncoder Library", () => {
       expect(generateKeccak256BytesDirectly(rlpEncodedTransaction)).equal(transactionWithCalldata.result.hash);
     });
   });
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function buildEip1559Transaction(data: any): Eip1559Transaction {
-    return {
-      nonce: data.nonce,
-      maxPriorityFeePerGas: data.maxPriorityFeePerGas,
-      maxFeePerGas: data.maxFeePerGas,
-      gasLimit: data.gas,
-      to: data.to,
-      value: data.value,
-      input: data.input,
-      yParity: data.yParity,
-      r: data.r,
-      s: data.s,
-    };
-  }
 });

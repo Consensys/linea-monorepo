@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity 0.8.28;
+
+import { RlpEncoder } from "../../../libraries/RlpEncoder.sol";
+
+contract TestRlpEncoder {
+  function encodeBool(bool _boolIn) external pure returns (bytes memory encodedBytes) {
+    return RlpEncoder._encodeBool(_boolIn);
+  }
+
+  function encodeString(string memory _stringIn) external pure returns (bytes memory encodedBytes) {
+    return RlpEncoder._encodeString(_stringIn);
+  }
+}
