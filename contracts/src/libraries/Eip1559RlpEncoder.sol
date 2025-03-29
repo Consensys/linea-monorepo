@@ -50,7 +50,7 @@ library Eip1559RlpEncoder {
    * @return rlpEncodedTransaction The RLP encoded transaction for submitting.
    * @return transactionHash The expected transaction hash.
    */
-  function encodeEIP1559Tx(
+  function _encodeEip1559Transaction(
     uint256 _chainId,
     Eip1559Transaction memory _transaction
   ) internal pure returns (bytes memory rlpEncodedTransaction, bytes32 transactionHash) {

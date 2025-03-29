@@ -13,6 +13,6 @@ contract TestEip1559RlpEncoder {
   function encodeEip1559Transaction(
     Eip1559RlpEncoder.Eip1559Transaction calldata _transaction
   ) external view returns (bytes memory rlpEncodedTransaction, bytes32 transactionHash) {
-    (rlpEncodedTransaction, transactionHash) = Eip1559RlpEncoder.encodeEIP1559Tx(chainId, _transaction);
+    (rlpEncodedTransaction, transactionHash) = Eip1559RlpEncoder._encodeEip1559Transaction(chainId, _transaction);
   }
 }
