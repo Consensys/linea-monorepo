@@ -24,6 +24,7 @@ library Eip1559RlpEncoder {
    * @dev maxFeePerGas The max fee per gas the user will pay.
    * @dev gasLimit The limit of gas that the user is prepared to spend.
    * @dev input The calldata input for the transaction.
+   * @dev accessList The access list used.
    * @dev yParity The yParity in the signature.
    * @dev r The r in the signature.
    * @dev s The s in the signature.
@@ -36,6 +37,7 @@ library Eip1559RlpEncoder {
     address to;
     uint256 value;
     bytes input;
+    RlpEncoder.AccessList[] accessList;
     uint8 yParity;
     uint256 r;
     uint256 s;
@@ -62,7 +64,7 @@ library Eip1559RlpEncoder {
     fields[5] = RlpEncoder._encodeAddress(_transaction.to);
     fields[6] = RlpEncoder._encodeUint(_transaction.value);
     fields[7] = RlpEncoder._encodeBytes(_transaction.input);
-    fields[8] = RlpEncoder._encodeList(new bytes[](0)); // AccessList empty on purpose.
+    fields[8] = RlpEncoder._encodeAccessList(_transaction.accessList);
     fields[9] = RlpEncoder._encodeUint(_transaction.yParity);
     fields[10] = RlpEncoder._encodeUint(_transaction.r);
     fields[11] = RlpEncoder._encodeUint(_transaction.s);

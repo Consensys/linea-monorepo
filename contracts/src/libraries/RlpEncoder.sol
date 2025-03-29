@@ -11,6 +11,16 @@ pragma solidity ^0.8.28;
  */
 library RlpEncoder {
   /**
+   * @notice Supporting data for encoding an EIP-2930/1559 access lists.
+   * @dev contractAddress is the address where the storageKeys will be accessed.
+   * @dev storageKeys contains the list of keys expected to be accessed at contractAddress.
+   */
+  struct AccessList {
+    address contractAddress;
+    bytes32[] storageKeys;
+  }
+
+  /**
    * @notice Internal function that encodes bytes correctly with length data.
    * @param _bytesIn The bytes to be encoded.
    * @return encodedBytes The bytes RLP encoded.
@@ -90,6 +100,34 @@ library RlpEncoder {
   function _encodeList(bytes[] memory _bytesToEncode) internal pure returns (bytes memory encodedBytes) {
     encodedBytes = _flatten(_bytesToEncode);
     encodedBytes = abi.encodePacked(_encodeLength(encodedBytes.length, 192), encodedBytes);
+  }
+
+  /**
+   * @notice Internal function that encodes an access list as bytes.
+   * @param _accesslist The access list to be encoded.
+   * @return encodedBytes The AccessList encoded as bytes.
+   */
+  function _encodeAccessList(AccessList[] memory _accesslist) internal pure returns (bytes memory encodedBytes) {
+    uint256 listLength = _accesslist.length;
+    bytes[] memory encodedAccessList = new bytes[](listLength);
+
+    for (uint256 i; i < listLength; ++i) {
+      bytes32[] memory storageKeys = _accesslist[i].storageKeys;
+      uint256 keyCount = storageKeys.length;
+
+      bytes[] memory encodedKeys = new bytes[](keyCount);
+      for (uint256 j; j < keyCount; ++j) {
+        encodedKeys[j] = _encodeBytes(abi.encodePacked(storageKeys[j]));
+      }
+
+      bytes[] memory accountTuple = new bytes[](2);
+      accountTuple[0] = _encodeAddress(_accesslist[i].contractAddress);
+      accountTuple[1] = _encodeList(encodedKeys);
+
+      encodedAccessList[i] = _encodeList(accountTuple);
+    }
+
+    encodedBytes = _encodeList(encodedAccessList);
   }
 
   /**

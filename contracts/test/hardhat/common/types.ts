@@ -93,7 +93,18 @@ export type Eip1559Transaction = {
   to: string;
   value: bigint;
   input: string;
+  accessList: AccessList[];
   yParity: bigint;
   r: bigint;
   s: bigint;
+};
+
+export type AccessList = {
+  contractAddress: string;
+  storageKeys: string[];
+};
+
+export type AccessListEntryInput = {
+  address: string;
+  storageKeys: string[];
 };

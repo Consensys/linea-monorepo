@@ -4,7 +4,8 @@ import { deployFromFactory } from "../common/deployment";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import transactionWithoutCalldata from "../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
 import transactionWithCalldata from "../_testData/eip1559RlpEncoderTransactions/withCalldata.json";
-import transactionwithLargeCalldata from "../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
+import transactionWithLargeCalldata from "../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
+import transactionWithCalldataAndAccessList from "../_testData/eip1559RlpEncoderTransactions/withCalldataAndAccessList.json";
 import { generateKeccak256BytesDirectly } from "../common/helpers";
 import { buildEip1559Transaction } from "../common/helpers/typedTransactionBuilding";
 
@@ -41,12 +42,26 @@ describe("Eip1559RlpEncoder Library", () => {
 
     it("Succeeds for a transaction with large calldata", async () => {
       const { rlpEncodedTransaction, transactionHash } = await contract.encodeEip1559Transaction(
-        buildEip1559Transaction(transactionwithLargeCalldata.result),
+        buildEip1559Transaction(transactionWithLargeCalldata.result),
       );
 
-      expect(transactionwithLargeCalldata.result.hash).equal(transactionHash);
-      expect(transactionwithLargeCalldata.rlpEncoded).equal(rlpEncodedTransaction);
-      expect(generateKeccak256BytesDirectly(rlpEncodedTransaction)).equal(transactionwithLargeCalldata.result.hash);
+      expect(transactionWithLargeCalldata.result.hash).equal(transactionHash);
+      expect(transactionWithLargeCalldata.rlpEncoded).equal(rlpEncodedTransaction);
+      expect(generateKeccak256BytesDirectly(rlpEncodedTransaction)).equal(transactionWithLargeCalldata.result.hash);
+    });
+
+    it("Succeeds for a transaction with calldata and an access list", async () => {
+      const sepoliaContract = (await deployFromFactory("TestEip1559RlpEncoder", 11155111)) as TestEip1559RlpEncoder;
+
+      const { rlpEncodedTransaction, transactionHash } = await sepoliaContract.encodeEip1559Transaction(
+        buildEip1559Transaction(transactionWithCalldataAndAccessList.result),
+      );
+
+      expect(transactionWithCalldataAndAccessList.result.hash).equal(transactionHash);
+      expect(transactionWithCalldataAndAccessList.rlpEncoded).equal(rlpEncodedTransaction);
+      expect(generateKeccak256BytesDirectly(rlpEncodedTransaction)).equal(
+        transactionWithCalldataAndAccessList.result.hash,
+      );
     });
   });
 });
