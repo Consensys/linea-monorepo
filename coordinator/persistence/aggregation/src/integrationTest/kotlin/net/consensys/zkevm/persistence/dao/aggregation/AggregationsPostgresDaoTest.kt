@@ -471,60 +471,102 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
 
   @Test
   fun findHighestConsecutiveEndBlockNumber_returns_highest_consecutive_end_block_number_from_various_block_numbers() {
-    // insert aggregation of blocks 1..20 in db
+    val aggregationProof1 = createProofToFinalize(
+      firstBlockNumber = 0,
+      finalBlockNumber = 10,
+      parentAggregationLastBlockTimestamp = Instant.fromEpochSeconds(0),
+      startBlockTime = Instant.fromEpochSeconds(0),
+      finalTimestamp = Instant.parse("2024-04-28T15:00:00Z")
+    )
+
     val aggregation1 = Aggregation(
       startBlockNumber = 1UL,
-      endBlockNumber = 20UL,
-      batchCount = 10UL,
-      aggregationProof = null // proof can be omitted here as not the focus of the test
+      endBlockNumber = 10UL,
+      batchCount = 5UL,
+      aggregationProof = aggregationProof1
     )
-    aggregationsPostgresDaoImpl.saveNewAggregation(aggregation1).get()
+    performInsertTest(aggregation1)
 
-    // skip aggregation of blocks 21..30 to leave a gap between aggregation of blocks 1..20 and blocks 31..39
-    // insert aggregation of blocks 31..39 in db
+    val aggregationProof2 = createProofToFinalize(
+      firstBlockNumber = 11,
+      finalBlockNumber = 20,
+      parentAggregationLastBlockTimestamp = Instant.parse("2024-04-28T15:00:00Z"),
+      startBlockTime = Instant.fromEpochSeconds(0),
+      finalTimestamp = Instant.parse("2024-04-28T15:01:00Z")
+    )
+
     val aggregation2 = Aggregation(
+      startBlockNumber = 11UL,
+      endBlockNumber = 20UL,
+      batchCount = 5UL,
+      aggregationProof = aggregationProof2
+    )
+    performInsertTest(aggregation2)
+
+    val aggregationProof3 = createProofToFinalize(
+      firstBlockNumber = 21,
+      finalBlockNumber = 39,
+      parentAggregationLastBlockTimestamp = Instant.parse("2024-04-28T15:01:00Z"),
+      startBlockTime = Instant.fromEpochSeconds(0),
+      finalTimestamp = Instant.parse("2024-04-28T15:02:00Z")
+    )
+
+    val aggregation3 = Aggregation(
       startBlockNumber = 31UL,
       endBlockNumber = 39UL,
       batchCount = 5UL,
-      aggregationProof = null // proof can be omitted here as not the focus of the test
+      aggregationProof = aggregationProof3
     )
-    aggregationsPostgresDaoImpl.saveNewAggregation(aggregation2).get()
+    performInsertTest(aggregation3)
 
-    // insert aggregation of blocks 40..50 in db
-    val aggregation3 = Aggregation(
+    val aggregationProof4 = createProofToFinalize(
+      firstBlockNumber = 40,
+      finalBlockNumber = 50,
+      parentAggregationLastBlockTimestamp = Instant.parse("2024-04-28T15:01:00Z"),
+      startBlockTime = Instant.fromEpochSeconds(0),
+      finalTimestamp = Instant.parse("2024-04-28T15:02:00Z")
+    )
+
+    val aggregation4 = Aggregation(
       startBlockNumber = 40UL,
       endBlockNumber = 50UL,
       batchCount = 5UL,
-      aggregationProof = null // proof can be omitted here as not the focus of the test
+      aggregationProof = aggregationProof4
     )
-    aggregationsPostgresDaoImpl.saveNewAggregation(aggregation3).get()
+    performInsertTest(aggregation4)
 
-    // should return 20L as aggregation of blocks 1..20 exists in db
     aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber(
       1L
     ).get().also { highestEndBlockNumber ->
-      assertThat(highestEndBlockNumber).isEqualTo(20L)
+      assertThat(highestEndBlockNumber).isNotNull
+      assertThat(highestEndBlockNumber!!.toULong()).isEqualTo(aggregationProof2.endBlockNumber)
     }
 
-    // should return null as there is no aggregation with start block number as 21L
+    aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber(
+      11L
+    ).get().also { highestEndBlockNumber ->
+      assertThat(highestEndBlockNumber).isNotNull
+      assertThat(highestEndBlockNumber!!.toULong()).isEqualTo(aggregationProof2.endBlockNumber)
+    }
+
     aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber(
       21L
     ).get().also { highestEndBlockNumber ->
       assertThat(highestEndBlockNumber).isNull()
     }
 
-    // should return 50L as aggregations of blocks 31..39 and blocks 40..50 exist in db
     aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber(
       31L
     ).get().also { highestEndBlockNumber ->
-      assertThat(highestEndBlockNumber).isEqualTo(50L)
+      assertThat(highestEndBlockNumber).isNotNull
+      assertThat(highestEndBlockNumber!!.toULong()).isEqualTo(aggregationProof4.endBlockNumber)
     }
 
-    // should return 50L as aggregation of blocks 40..50 exists in db
     aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber(
       40L
     ).get().also { highestEndBlockNumber ->
-      assertThat(highestEndBlockNumber).isEqualTo(50L)
+      assertThat(highestEndBlockNumber).isNotNull
+      assertThat(highestEndBlockNumber!!.toULong()).isEqualTo(aggregationProof4.endBlockNumber)
     }
   }
 

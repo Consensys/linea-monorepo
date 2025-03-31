@@ -307,7 +307,11 @@ class PostgresAggregationsDao(
       )
       .toSafeFuture()
       .thenApply { rowSet ->
-        rowSet.lastOrNull()?.getLong("end_block_number")
+        if (rowSet.size() > 0) {
+          rowSet.last().getLong("end_block_number")
+        } else {
+          null
+        }
       }
   }
 
