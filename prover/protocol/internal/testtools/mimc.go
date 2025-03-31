@@ -117,7 +117,7 @@ func (m *MiMCTestcase) Define(comp *wizard.CompiledIOP) {
 		comp.InsertMiMC(
 			0,
 			ifaces.QueryIDf("%v_MIMC_%v", m.NameStr, i),
-			blocks, oldStates, newStates,
+			blocks, oldStates, newStates, nil,
 		)
 	}
 }

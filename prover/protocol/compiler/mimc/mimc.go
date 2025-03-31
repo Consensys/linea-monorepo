@@ -25,7 +25,7 @@ func CompileMiMC(comp *wizard.CompiledIOP) {
 
 		// Apply manual check to the query immediately
 		logrus.Debugf("MiMC compiler: checking query %v individually", qMiMC.ID)
-		manualCheckMiMCBlock(comp, qMiMC.Blocks, qMiMC.OldState, qMiMC.NewState)
+		manualCheckMiMCBlock(comp, qMiMC.Blocks, qMiMC.OldState, qMiMC.NewState, qMiMC.Selector)
 	}
 
 	if !hasMiMCQueries {

@@ -3,6 +3,8 @@ package plonkinternal
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -41,6 +43,11 @@ func (ctx *CompilationCtx) addHashConstraint() {
 	for i := 0; i < ctx.maxNbInstances; i++ {
 
 		var (
+			selector = verifiercol.NewRepeatedAccessor(
+				accessors.NewFromPublicColumn(ctx.Columns.Activators[i], 0),
+				size,
+			)
+
 			lookupTables = [][]ifaces.Column{
 				{
 					posL, ctx.Columns.L[i],
@@ -106,6 +113,7 @@ func (ctx *CompilationCtx) addHashConstraint() {
 			eho.Blocks[i],
 			eho.OldStates[i],
 			eho.NewStates[i],
+			selector,
 		)
 	}
 }

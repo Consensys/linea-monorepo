@@ -51,6 +51,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols []ifaces.Column) (ifaces.Column,
 			round,
 			ifaces.QueryIDf("HASHING_%v_%v", ctxID, i),
 			inputCols[i], prevState, ctx.IntermediateHashes[i],
+			nil,
 		)
 
 		prevState = ctx.IntermediateHashes[i]

@@ -559,10 +559,10 @@ func (am *Module) checkPointer() {
 
 func (am *Module) checkLeafHashes() {
 	cols := am.Cols
-	am.comp.InsertMiMC(am.Round, am.qname("MIMC_PREV"), cols.LeafOpenings.Prev, cols.Zero, cols.Interm[0])
-	am.comp.InsertMiMC(am.Round, am.qname("MIMC_NEXT"), cols.LeafOpenings.Next, cols.Interm[0], cols.Interm[1])
-	am.comp.InsertMiMC(am.Round, am.qname("MIMC_HKEY"), cols.LeafOpenings.HKey, cols.Interm[1], cols.Interm[2])
-	am.comp.InsertMiMC(am.Round, am.qname("MIMC_HVAL_LEAF"), cols.LeafOpenings.HVal, cols.Interm[2], cols.LeafHashes)
+	am.comp.InsertMiMC(am.Round, am.qname("MIMC_PREV"), cols.LeafOpenings.Prev, cols.Zero, cols.Interm[0], nil)
+	am.comp.InsertMiMC(am.Round, am.qname("MIMC_NEXT"), cols.LeafOpenings.Next, cols.Interm[0], cols.Interm[1], nil)
+	am.comp.InsertMiMC(am.Round, am.qname("MIMC_HKEY"), cols.LeafOpenings.HKey, cols.Interm[1], cols.Interm[2], nil)
+	am.comp.InsertMiMC(am.Round, am.qname("MIMC_HVAL_LEAF"), cols.LeafOpenings.HVal, cols.Interm[2], cols.LeafHashes, nil)
 	// Global: IsActive[i] * (1 - IsEmptyLeaf[i]) * (Leaves[i] - LeafHashes[i])
 	expr1 := symbolic.Sub(cols.Leaves, cols.LeafHashes)
 	expr2 := symbolic.Sub(symbolic.NewConstant(1), cols.IsEmptyLeaf)
@@ -617,8 +617,8 @@ func (am *Module) checkNextFreeNode() {
 
 func (am *Module) checkTopRootHash() {
 	cols := am.Cols
-	am.comp.InsertMiMC(am.Round, am.qname("MIMC_INTERM_TOP_ROOT"), cols.NextFreeNode, cols.Zero, cols.IntermTopRoot)
-	am.comp.InsertMiMC(am.Round, am.qname("MIMC_TOP_ROOT"), cols.Roots, cols.IntermTopRoot, cols.TopRoot)
+	am.comp.InsertMiMC(am.Round, am.qname("MIMC_INTERM_TOP_ROOT"), cols.NextFreeNode, cols.Zero, cols.IntermTopRoot, nil)
+	am.comp.InsertMiMC(am.Round, am.qname("MIMC_TOP_ROOT"), cols.Roots, cols.IntermTopRoot, cols.TopRoot, nil)
 }
 
 func (am *Module) checkZeroInInactive() {

@@ -83,7 +83,7 @@ func DefineHashFilterConstraints(comp *wizard.CompiledIOP, hasher *MIMCHasher, n
 func (hasher *MIMCHasher) DefineHasher(comp *wizard.CompiledIOP, name string) {
 
 	// MiMC constraints
-	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), hasher.data, hasher.state, hasher.hash)
+	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), hasher.data, hasher.state, hasher.hash, nil)
 
 	// intermediary state integrity
 	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s", name, "CONSISTENCY_STATE_AND_HASH_LAST"), // LAST is either hashSecond

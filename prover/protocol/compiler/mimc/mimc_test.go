@@ -23,7 +23,7 @@ func TestMiMCCompilerSingleQuery(t *testing.T) {
 		block = b.RegisterCommit("BLOCK", size)
 		old = b.RegisterCommit("OLD", size)
 		new = b.RegisterCommit("NEW", size)
-		b.InsertMiMC(0, "MIMC", block, old, new)
+		b.InsertMiMC(0, "MIMC", block, old, new, nil)
 	}
 
 	prove := func(run *wizard.ProverRuntime) {
@@ -58,12 +58,12 @@ func TestMiMCCompilerTwoQuery(t *testing.T) {
 		block1 = b.RegisterCommit("BLOCK1", size1)
 		old1 = b.RegisterCommit("OLD1", size1)
 		new1 = b.RegisterCommit("NEW1", size1)
-		b.InsertMiMC(0, "MIMC1", block1, old1, new1)
+		b.InsertMiMC(0, "MIMC1", block1, old1, new1, nil)
 
 		block2 = b.RegisterCommit("BLOCK2", size2)
 		old2 = b.RegisterCommit("OLD2", size2)
 		new2 = b.RegisterCommit("NEW2", size2)
-		b.InsertMiMC(0, "MIMC2", block2, old2, new2)
+		b.InsertMiMC(0, "MIMC2", block2, old2, new2, nil)
 	}
 
 	prove := func(run *wizard.ProverRuntime) {

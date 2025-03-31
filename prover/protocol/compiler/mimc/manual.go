@@ -16,13 +16,14 @@ import (
 // Internally checks the correctness of hashing a MiMC blocks in parallel.
 // Namely, on every row i of the columns (blocks, oldStates, newStates), we
 // have that mimcF(oldState, blocks) == newState.
-func manualCheckMiMCBlock(comp *wizard.CompiledIOP, blocks, oldStates, newStates ifaces.Column) {
+func manualCheckMiMCBlock(comp *wizard.CompiledIOP, blocks, oldStates, newStates ifaces.Column, selector ifaces.Column) {
 
 	ctx := mimcCtx{
 		comp:      comp,
 		oldStates: oldStates,
 		blocks:    blocks,
 		newStates: newStates,
+		selector:  selector,
 	}
 
 	round := column.MaxRound(blocks, oldStates, newStates)
@@ -47,6 +48,7 @@ type mimcCtx struct {
 	oldStates          ifaces.Column
 	blocks             ifaces.Column
 	newStates          ifaces.Column
+	selector           ifaces.Column
 	intermediateResult []ifaces.Column
 	intermediatePow4   []ifaces.Column
 }
@@ -108,6 +110,10 @@ func (ctx *mimcCtx) manualCheckFinalRoundPerm(s ifaces.Column) {
 	expr = expr.Mul(sumPow16)
 	expr = expr.Add(oldState).Add(oldState).Add(block)
 	expr = expr.Sub(newState)
+
+	if ctx.selector != nil {
+		expr = symbolic.Mul(expr, ctx.selector)
+	}
 
 	// We use the intermediate result "s" to deduce the interaction round of
 	// the construction. This is not to be confused for the "permutation" round.
