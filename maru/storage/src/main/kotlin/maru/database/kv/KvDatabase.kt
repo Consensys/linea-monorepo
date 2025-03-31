@@ -44,6 +44,13 @@ class KvDatabase(
           KvStoreSerializers.SealedBeaconBlockSerializer,
         )
 
+      val BeaconBlockRootByBlockNumber: KvStoreColumn<ULong, ByteArray> =
+        KvStoreColumn.create(
+          3,
+          KvStoreSerializers.ULongSerializer,
+          KvStoreSerializers.BytesSerializer,
+        )
+
       val LatestBeaconState: KvStoreVariable<BeaconState> =
         KvStoreVariable.create(
           1,
@@ -60,6 +67,12 @@ class KvDatabase(
   override fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock? =
     kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, beaconBlockRoot).getOrNull()
 
+  override fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock? =
+    kvStoreAccessor
+      .get(Schema.BeaconBlockRootByBlockNumber, beaconBlockNumber)
+      .flatMap { blockRoot -> kvStoreAccessor.get(Schema.SealedBeaconBlockByBlockRoot, blockRoot) }
+      .getOrNull()
+
   override fun newUpdater(): Updater = KvUpdater(this.kvStoreAccessor)
 
   override fun close() {
@@ -72,16 +85,23 @@ class KvDatabase(
     private val transaction: KvStoreTransaction = kvStoreAccessor.startTransaction()
 
     override fun putBeaconState(beaconState: BeaconState): Updater {
-      transaction.put(Schema.BeaconStateByBlockRoot, beaconState.latestBeaconBlockRoot, beaconState)
+      transaction.put(Schema.BeaconStateByBlockRoot, beaconState.latestBeaconBlockHeader.hash, beaconState)
       transaction.put(Schema.LatestBeaconState, beaconState)
       return this
     }
 
-    override fun putSealedBeaconBlock(
-      sealedBeaconBlock: SealedBeaconBlock,
-      beaconBlockRoot: ByteArray,
-    ): Updater {
-      transaction.put(Schema.SealedBeaconBlockByBlockRoot, beaconBlockRoot, sealedBeaconBlock)
+    override fun putSealedBeaconBlock(sealedBeaconBlock: SealedBeaconBlock): Updater {
+      transaction.put(
+        Schema.SealedBeaconBlockByBlockRoot,
+        sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash,
+        sealedBeaconBlock,
+      )
+      transaction.put(
+        Schema.BeaconBlockRootByBlockNumber,
+        sealedBeaconBlock.beaconBlock.beaconBlockHeader.number,
+        sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash,
+      )
+
       return this
     }
 

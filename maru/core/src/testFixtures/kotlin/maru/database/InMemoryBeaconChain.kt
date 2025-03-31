@@ -23,6 +23,8 @@ class InMemoryBeaconChain(
 ) : BeaconChain {
   private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
   private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
+  private val sealedBeaconBlockByBlockNumber = mutableMapOf<ULong, SealedBeaconBlock>()
+
   private var latestBeaconState: BeaconState = initialBeaconState
 
   override fun getLatestBeaconState(): BeaconState = latestBeaconState
@@ -31,6 +33,9 @@ class InMemoryBeaconChain(
 
   override fun getSealedBeaconBlock(beaconBlockRoot: ByteArray): SealedBeaconBlock? =
     sealedBeaconBlockByBlockRoot[beaconBlockRoot]
+
+  override fun getSealedBeaconBlock(beaconBlockNumber: ULong): SealedBeaconBlock? =
+    sealedBeaconBlockByBlockNumber[beaconBlockNumber]
 
   override fun newUpdater(): Updater = InMemoryUpdater(this)
 
@@ -43,25 +48,26 @@ class InMemoryBeaconChain(
   ) : Updater {
     private val beaconStateByBlockRoot = mutableMapOf<ByteArray, BeaconState>()
     private val sealedBeaconBlockByBlockRoot = mutableMapOf<ByteArray, SealedBeaconBlock>()
+    private val sealedBeaconBlockByBlockNumber = mutableMapOf<ULong, SealedBeaconBlock>()
+
     private var newBeaconState: BeaconState? = null
 
     override fun putBeaconState(beaconState: BeaconState): Updater {
-      beaconStateByBlockRoot[beaconState.latestBeaconBlockRoot] = beaconState
+      beaconStateByBlockRoot[beaconState.latestBeaconBlockHeader.hash] = beaconState
       newBeaconState = beaconState
       return this
     }
 
-    override fun putSealedBeaconBlock(
-      sealedBeaconBlock: SealedBeaconBlock,
-      beaconBlockRoot: ByteArray,
-    ): Updater {
-      sealedBeaconBlockByBlockRoot[beaconBlockRoot] = sealedBeaconBlock
+    override fun putSealedBeaconBlock(sealedBeaconBlock: SealedBeaconBlock): Updater {
+      sealedBeaconBlockByBlockRoot[sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash] = sealedBeaconBlock
+      sealedBeaconBlockByBlockNumber[sealedBeaconBlock.beaconBlock.beaconBlockHeader.number] = sealedBeaconBlock
       return this
     }
 
     override fun commit() {
       beaconChain.beaconStateByBlockRoot.putAll(beaconStateByBlockRoot)
       beaconChain.sealedBeaconBlockByBlockRoot.putAll(sealedBeaconBlockByBlockRoot)
+      beaconChain.sealedBeaconBlockByBlockNumber.putAll(sealedBeaconBlockByBlockNumber)
       if (newBeaconState != null) {
         beaconChain.latestBeaconState = newBeaconState!!
       }
@@ -70,6 +76,7 @@ class InMemoryBeaconChain(
     override fun rollback() {
       beaconStateByBlockRoot.clear()
       sealedBeaconBlockByBlockRoot.clear()
+      sealedBeaconBlockByBlockNumber.clear()
       newBeaconState = null
     }
 
