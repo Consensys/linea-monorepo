@@ -126,7 +126,7 @@ class PostgresAggregationsDao(
       """.trimIndent()
     )
 
-  private val selectAggregationProofs =
+  private val selectAggregations =
     connection.preparedQuery(
       """
         with previous_ends as (select *,
@@ -278,7 +278,7 @@ class PostgresAggregationsDao(
     finalEndBlockCreatedBefore: Instant,
     maximumNumberOfProofs: Int
   ): SafeFuture<List<ProofToFinalize>> {
-    return selectAggregationProofs
+    return selectAggregations
       .execute(
         Tuple.of(
           fromBlockNumber,
@@ -297,7 +297,7 @@ class PostgresAggregationsDao(
   override fun findHighestConsecutiveEndBlockNumber(
     fromBlockNumber: Long
   ): SafeFuture<Long?> {
-    return selectAggregationProofs
+    return selectAggregations
       .execute(
         Tuple.of(
           fromBlockNumber,

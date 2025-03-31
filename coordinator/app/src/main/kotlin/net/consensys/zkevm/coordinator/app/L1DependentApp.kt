@@ -1099,11 +1099,11 @@ class L1DependentApp(
       blobsRepository: BlobsRepository,
       aggregationsRepository: AggregationsRepository
     ): SafeFuture<*> {
-      val blockNumberInclusiveToDeleteFrom = lastProcessedBlockNumber.inc()
+      val blockNumberInclusiveToDeleteFrom = lastProcessedBlockNumber + 1u
       val cleanupBatches = batchesRepository.deleteBatchesAfterBlockNumber(blockNumberInclusiveToDeleteFrom.toLong())
       val cleanupBlobs = blobsRepository.deleteBlobsAfterBlockNumber(blockNumberInclusiveToDeleteFrom)
       val cleanupAggregations = aggregationsRepository
-        .deleteAggregationsAfterBlockNumber(lastConsecutiveAggregatedBlockNumber.inc().toLong())
+        .deleteAggregationsAfterBlockNumber((lastConsecutiveAggregatedBlockNumber + 1u).toLong())
 
       return SafeFuture.allOf(cleanupBatches, cleanupBlobs, cleanupAggregations)
     }
