@@ -233,6 +233,15 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	return moduleLPP
 }
 
+// ModuleNames returns the list of the module names of the [ModuleLPP].
+func (m *ModuleLPP) ModuleNames() []ModuleName {
+	res := make([]ModuleName, 0)
+	for _, definitionInput := range m.definitionInputs {
+		res = append(res, definitionInput.ModuleName)
+	}
+	return res
+}
+
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
 // the provided [ModuleWitness] argument.
 func (m *ModuleLPP) GetMainProverStep(witness *ModuleWitnessLPP) wizard.ProverStep {

@@ -3,6 +3,8 @@ package distributed
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand/v2"
+	"reflect"
 	"testing"
 	"time"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
@@ -37,22 +40,20 @@ func TestDistributedWizard(t *testing.T) {
 
 	distributed := DistributeWizard(zkevm.WizardIOP, discoverer)
 
-	for i := range distributed.ModuleNames {
-
-		var (
-			modLPP = distributed.LPPs[i]
-			modGL  = distributed.GLs[i]
-		)
-
-		logdata.GenCSV(
-			files.MustOverwrite(fmt.Sprintf("./module-data/module-%v-lpp.csv", i)),
-			logdata.IncludeColumnCSVFilter,
-		)(modLPP.Wiop)
+	for i, modGL := range distributed.GLs {
 
 		logdata.GenCSV(
 			files.MustOverwrite(fmt.Sprintf("./module-data/module-%v-gl.csv", i)),
 			logdata.IncludeColumnCSVFilter,
 		)(modGL.Wiop)
+	}
+
+	for i, modLPP := range distributed.LPPs {
+
+		logdata.GenCSV(
+			files.MustOverwrite(fmt.Sprintf("./module-data/module-%v-lpp.csv", i)),
+			logdata.IncludeColumnCSVFilter,
+		)(modLPP.Wiop)
 	}
 }
 
@@ -117,9 +118,10 @@ func TestDistributedWizardLogic(t *testing.T) {
 		allLogDerivativeSum = field.Element{}
 		allHornerSum        = field.Element{}
 		prevGlobalSent      = field.Element{}
+		prevHornerN1Hash    = field.Element{}
 	)
 
-	witnessGLs, _ := SegmentRuntime(runtimeBoot, &distWizard)
+	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
 
 	for i := range witnessGLs {
 
@@ -127,21 +129,18 @@ func TestDistributedWizardLogic(t *testing.T) {
 			witnessGL   = witnessGLs[i]
 			moduleIndex = witnessGLs[i].ModuleIndex
 			moduleName  = witnessGLs[i].ModuleName
+			moduleGL    *ModuleGL
 		)
 
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-		var (
-			moduleGL *ModuleGL
-		)
-
 		for k := range distWizard.ModuleNames {
-
 			if distWizard.ModuleNames[k] != witnessGLs[i].ModuleName {
 				continue
 			}
 
 			moduleGL = distWizard.GLs[k]
+			break
 		}
 
 		if moduleGL == nil {
@@ -183,6 +182,58 @@ func TestDistributedWizardLogic(t *testing.T) {
 		prevGlobalSent = globalSent
 	}
 
+	for i := range witnessLPPs {
+
+		var (
+			witnessLPP  = witnessLPPs[i]
+			moduleIndex = witnessLPPs[i].ModuleIndex
+			moduleNames = witnessLPPs[i].ModuleNames
+			moduleLPP   *ModuleLPP
+		)
+
+		for k := range distWizard.LPPs {
+			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), moduleNames) {
+				continue
+			}
+
+			moduleLPP = distWizard.LPPs[k]
+			break
+		}
+
+		if moduleLPP == nil {
+			t.Fatalf("module does not exists")
+		}
+
+		var (
+			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPP))
+			proofLPP             = proverRunLPP.ExtractProof()
+			verLPPRun, verLPPErr = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP)
+		)
+
+		if verLPPErr != nil {
+			t.Errorf("verifier failed for segment %v, reason=%v", i, verLPPErr)
+		}
+
+		var (
+			errMsg           = fmt.Sprintf("segment=%v, moduleName=%v, segment-index=%v", i, moduleNames, moduleIndex)
+			logDerivativeSum = verLPPRun.GetPublicInput(logDerivativeSumPublicInput)
+			grandProduct     = verLPPRun.GetPublicInput(grandProductPublicInput)
+			hornerSum        = verLPPRun.GetPublicInput(hornerPublicInput)
+			hornerN0Hash     = verLPPRun.GetPublicInput(hornerN0HashPublicInput)
+			hornerN1Hash     = verLPPRun.GetPublicInput(hornerN1HashPublicInput)
+			shouldBeFirst    = i == 0 || !reflect.DeepEqual(witnessLPPs[i].ModuleNames, witnessLPPs[i-1].ModuleNames)
+		)
+
+		if !shouldBeFirst && hornerN0Hash != prevHornerN1Hash {
+			t.Error("horner-n0-hash mismatch: " + errMsg)
+		}
+
+		prevHornerN1Hash = hornerN1Hash
+		allGrandProduct.Mul(&allGrandProduct, &grandProduct)
+		allHornerSum.Add(&allHornerSum, &hornerSum)
+		allLogDerivativeSum.Add(&allLogDerivativeSum, &logDerivativeSum)
+	}
+
 	if !allGrandProduct.IsOne() {
 		t.Errorf("grand-product does not cancel")
 	}
@@ -203,10 +254,10 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 	var (
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-		// rng = rand.New(utils.NewRandSource(0))
-		// sharedRandomness = field.PseudoRand(rng)
-		zkevm = GetZkEVM()
-		disc  = &StandardModuleDiscoverer{
+		rng              = rand.New(utils.NewRandSource(0))
+		sharedRandomness = field.PseudoRand(rng)
+		zkevm            = GetZkEVM()
+		disc             = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 		}
 
@@ -215,7 +266,8 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 		// Minimal witness size to compile
 		// minCompilationSize = 1 << 10
-		compiledGLs = make([]*RecursedSegmentCompilation, len(distWizard.GLs))
+		compiledGLs  = make([]*RecursedSegmentCompilation, len(distWizard.GLs))
+		compiledLPPs = make([]*RecursedSegmentCompilation, len(distWizard.LPPs))
 	)
 
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
@@ -224,6 +276,13 @@ func TestBenchDistributedWizard(t *testing.T) {
 		fmt.Printf("[%v] Starting to compile module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
 		compiledGLs[i] = CompileSegment(distWizard.GLs[i])
 		fmt.Printf("[%v] Done compiling module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
+	}
+
+	for i := range distWizard.LPPs {
+
+		fmt.Printf("[%v] Starting to compile module LPP for %v\n", time.Now(), distWizard.LPPs[i].ModuleNames())
+		compiledLPPs[i] = CompileSegment(distWizard.LPPs[i])
+		fmt.Printf("[%v] Done compiling module LPP for %v\n", time.Now(), distWizard.LPPs[i].ModuleNames())
 	}
 
 	var (
@@ -259,7 +318,7 @@ func TestBenchDistributedWizard(t *testing.T) {
 		t.Fatalf("")
 	}
 
-	witnessGLs, _ := SegmentRuntime(runtimeBoot, &distWizard)
+	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
 
 	for i := range witnessGLs {
 
@@ -290,6 +349,39 @@ func TestBenchDistributedWizard(t *testing.T) {
 		_ = moduleGL.ProveSegment(witnessGL)
 
 		t.Logf("RUNNING THE GL PROVER - DONE: %v", time.Now())
+	}
+
+	for i := range witnessLPPs {
+
+		var (
+			witnessLPP = witnessLPPs[i]
+			moduleLPP  *RecursedSegmentCompilation
+		)
+
+		witnessLPP.InitialFiatShamirState = sharedRandomness
+
+		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
+
+		var ()
+
+		for k := range distWizard.LPPs {
+
+			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), witnessLPPs[i].ModuleNames) {
+				continue
+			}
+
+			moduleLPP = compiledLPPs[k]
+		}
+
+		if moduleLPP == nil {
+			t.Fatalf("module does not exists")
+		}
+
+		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
+
+		_ = moduleLPP.ProveSegment(witnessLPP)
+
+		t.Logf("RUNNING THE LPP PROVER - DONE: %v", time.Now())
 	}
 }
 
