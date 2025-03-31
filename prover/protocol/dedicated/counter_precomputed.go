@@ -23,9 +23,9 @@ func CounterPrecomputed(comp *wizard.CompiledIOP, from, to int) ifaces.Column {
 		utils.Panic("invalid range from=%v to=%v", from, to)
 	}
 
-	value := make([]field.Element, from-to)
+	value := make([]field.Element, to-from)
 	for i := from; i < to; i++ {
-		value[i] = field.NewElement(uint64(i))
+		value[i-from] = field.NewElement(uint64(i))
 	}
 
 	return comp.InsertPrecomputed(name, smartvectors.NewRegular(value))
