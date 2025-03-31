@@ -11,4 +11,8 @@ contract TestRlpEncoder {
   function encodeString(string memory _stringIn) external pure returns (bytes memory encodedBytes) {
     return RlpEncoder._encodeString(_stringIn);
   }
+
+  function encodeInt(int _intIn) external pure returns (bytes memory encodedBytes) {
+    return RlpEncoder._encodeInt(_intIn);
+  }
 }

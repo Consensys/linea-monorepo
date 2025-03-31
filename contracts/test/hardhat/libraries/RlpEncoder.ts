@@ -48,4 +48,15 @@ describe("RlpEncoder Library", () => {
       });
     });
   });
+
+  describe("Int Encoding", () => {
+    it("Encodes a negative int correctly", async () => {
+      const encoded = await contract.encodeInt(-123456789n);
+      expect(encoded).equal("0xa0fffffffffffffffffffffffffffffffffffffffffffffffffffffffff8a432eb");
+    });
+    it("Encodes a positive int correctly", async () => {
+      const encoded = await contract.encodeInt(123456789n);
+      expect(encoded).equal("0x84075bcd15");
+    });
+  });
 });

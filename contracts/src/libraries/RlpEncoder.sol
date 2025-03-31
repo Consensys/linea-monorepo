@@ -61,6 +61,15 @@ library RlpEncoder {
   }
 
   /**
+   * @notice Internal function that encodes an int value as bytes.
+   * @param _intIn The int to encode.
+   * @return encodedBytes The int encoded as bytes.
+   */
+  function _encodeInt(int256 _intIn) internal pure returns (bytes memory encodedBytes) {
+    encodedBytes = _encodeUint(uint256(_intIn));
+  }
+
+  /**
    * @notice Internal function that encodes a address value as bytes.
    * @param _addressIn The address to be encoded.
    * @return encodedBytes The address encoded as bytes.
