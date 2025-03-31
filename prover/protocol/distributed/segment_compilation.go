@@ -164,6 +164,15 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit *ModuleWitness) wizard.Pro
 		initialTime   = profiling.TimeIt(func() {
 			proverRun = wizard.RunProverUntilRound(comp, proverStep, stoppingRound)
 		})
+		initialProof    = proverRun.ExtractProof()
+		initialProofErr = wizard.VerifyUntilRound(comp, initialProof, stoppingRound)
+	)
+
+	if initialProofErr != nil {
+		panic(initialProofErr)
+	}
+
+	var (
 		recursionWit  = recursion.ExtractWitness(proverRun)
 		proof         wizard.Proof
 		recursionTime = profiling.TimeIt(func() {
