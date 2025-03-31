@@ -14,7 +14,6 @@
     "londonBlock": 0,
     "arrowGlacierBlock": 0,
     "grayGlacierBlock": 0,
-    "MergeNetsplitBlock": 6,
     "terminalTotalDifficulty": 10,
     "shanghaiTime": %SWITCH_TIME%,
     "cancunTime": %SWITCH_TIME%,

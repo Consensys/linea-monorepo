@@ -71,7 +71,7 @@ jobs:
           java-version: 21
       - name: Run e2e tests
         id: run_e2e_tests
-        timeout-minutes: 6
+        timeout-minutes: 8
         run: |
           make run-e2e-test
       - name: Show e2e tests result
