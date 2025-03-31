@@ -16,9 +16,9 @@ var (
 	moduleWitnessKey = "MODULE_WITNESS"
 )
 
-// ModuleWitness is a structure collecting the witness of a module. And
+// ModuleWitnessGL is a structure collecting the witness of a module. And
 // stores all the informations that are necessary to build the witness.
-type ModuleWitness struct {
+type ModuleWitnessGL struct {
 	// ModuleName indicates the name of the module
 	ModuleName ModuleName
 	// IsLPP indicates if the current instance of [ModuleWitness] is for
@@ -35,22 +35,38 @@ type ModuleWitness struct {
 	// ReceivedValuesGlobal stores the received values (for the global
 	// constraints) of the current segment.
 	ReceivedValuesGlobal []field.Element
-	// N0 values are the parameters to the Horner queries in the same order
-	// as in the [FilteredModuleInputs.HornerArgs]
-	N0Values []int
+}
+
+// ModuleWitnessLPP is a structure collecting the witness of a module. The
+// difference with a ModuleWitnessGL is that the witness is that the witness
+// can be for a group of modules.
+type ModuleWitnessLPP struct {
+	// ModuleNames indicates the name of the module
+	ModuleNames []ModuleName
+	// ModuleIndex indicates the vertical split of the current module
+	ModuleIndex int
 	// InitialFiatShamirState is the initial FiatShamir state to set at
 	// round 1.
 	InitialFiatShamirState field.Element
+	// N0 values are the parameters to the Horner queries in the same order
+	// as in the [FilteredModuleInputs.HornerArgs]
+	N0Values []int
+	// Columns maps the column id to their witness values
+	Columns map[ifaces.ColID]smartvectors.SmartVector
 }
 
 // SegmentRuntime scans a [wizard.ProverRuntime] and returns a list of
 // [ModuleWitness] that contains the witness for each segment of each
 // module.
-func SegmentRuntime(runtime *wizard.ProverRuntime, distributedWizard *DistributedWizard) (witnessesGL, witnessesLPP []*ModuleWitness) {
+func SegmentRuntime(runtime *wizard.ProverRuntime, distributedWizard *DistributedWizard) (witnessesGL []*ModuleWitnessGL, witnessesLPP []*ModuleWitnessLPP) {
 
-	for i := range distributedWizard.ModuleNames {
-		wGL, wLPP := SegmentModule(runtime, distributedWizard.GLs[i], distributedWizard.LPPs[i])
+	for i := range distributedWizard.GLs {
+		wGL := SegmentModuleGL(runtime, distributedWizard.GLs[i])
 		witnessesGL = append(witnessesGL, wGL...)
+	}
+
+	for i := range distributedWizard.LPPs {
+		wLPP := SegmentModuleLPP(runtime, distributedWizard.LPPs[i])
 		witnessesLPP = append(witnessesLPP, wLPP...)
 	}
 
@@ -58,38 +74,26 @@ func SegmentRuntime(runtime *wizard.ProverRuntime, distributedWizard *Distribute
 }
 
 // SegmentModule produces the list of the [ModuleWitness] for a given module
-func SegmentModule(runtime *wizard.ProverRuntime, moduleGL *ModuleGL, moduleLPP *ModuleLPP) (witnessesGL, witnessesLPP []*ModuleWitness) {
+func SegmentModuleGL(runtime *wizard.ProverRuntime, moduleGL *ModuleGL) (witnessesGL []*ModuleWitnessGL) {
 
 	var (
 		fmi                  = moduleGL.definitionInput
 		cols                 = runtime.Spec.Columns.AllKeys()
-		nbSegmentModule      = NbSegmentOfModule(runtime, fmi.Disc, fmi.ModuleName)
-		n0                   = make([]int, len(fmi.HornerArgs))
+		nbSegmentModule      = NbSegmentOfModule(runtime, fmi.Disc, []ModuleName{fmi.ModuleName})
 		receivedValuesGlobal = make([]field.Element, len(moduleGL.ReceivedValuesGlobalAccs))
 	)
 
-	witnessesLPP = make([]*ModuleWitness, nbSegmentModule)
-	witnessesGL = make([]*ModuleWitness, nbSegmentModule)
+	witnessesGL = make([]*ModuleWitnessGL, nbSegmentModule)
 
-	for moduleIndex := range witnessesLPP {
+	for moduleIndex := range witnessesGL {
 
-		moduleWitnessGL := &ModuleWitness{
+		moduleWitnessGL := &ModuleWitnessGL{
 			ModuleName:           fmi.ModuleName,
 			ModuleIndex:          moduleIndex,
 			IsFirst:              moduleIndex == 0,
 			IsLast:               moduleIndex == nbSegmentModule-1,
 			Columns:              make(map[ifaces.ColID]smartvectors.SmartVector),
 			ReceivedValuesGlobal: receivedValuesGlobal,
-		}
-
-		moduleWitnessLPP := &ModuleWitness{
-			ModuleName:  fmi.ModuleName,
-			ModuleIndex: moduleIndex,
-			IsFirst:     moduleIndex == 0,
-			IsLast:      moduleIndex == nbSegmentModule-1,
-			IsLPP:       true,
-			Columns:     make(map[ifaces.ColID]smartvectors.SmartVector),
-			N0Values:    n0,
 		}
 
 		for _, col := range cols {
@@ -102,36 +106,91 @@ func SegmentModule(runtime *wizard.ProverRuntime, moduleGL *ModuleGL, moduleLPP 
 
 			segment := SegmentOfColumn(runtime, fmi.Disc, col, moduleIndex, nbSegmentModule)
 			moduleWitnessGL.Columns[col.GetColID()] = segment
-
-			if _, ok := fmi.ColumnsLPPSet[col.GetColID()]; ok {
-				moduleWitnessLPP.Columns[col.GetColID()] = segment
-			}
 		}
 
 		witnessesGL[moduleIndex] = moduleWitnessGL
-		witnessesLPP[moduleIndex] = moduleWitnessLPP
-
-		n0 = moduleWitnessLPP.NextN0s(moduleLPP)
 		receivedValuesGlobal = moduleWitnessGL.NextReceivedValuesGlobal(moduleGL)
 	}
 
-	return witnessesGL, witnessesLPP
+	return witnessesGL
+}
+
+// SegmentModuleLPP produces the list of the [ModuleWitness] for a given module
+func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witnessesLPP []*ModuleWitnessLPP) {
+
+	var (
+		fmis          = moduleLPP.definitionInputs
+		cols          = runtime.Spec.Columns.AllKeys()
+		_, _, hArgs   = getQueryArgs(fmis)
+		n0            = make([]int, len(hArgs))
+		moduleNames   = make([]ModuleName, len(fmis))
+		moduleNameSet = make(map[ModuleName]struct{})
+		columnsLPPSet = make(map[ifaces.ColID]struct{})
+	)
+
+	for _, fmi := range moduleLPP.definitionInputs {
+		moduleNames = append(moduleNames, fmi.ModuleName)
+		moduleNameSet[fmi.ModuleName] = struct{}{}
+		for col := range fmi.ColumnsLPPSet {
+			columnsLPPSet[col] = struct{}{}
+		}
+	}
+
+	var (
+		nbSegmentModule = NbSegmentOfModule(runtime, moduleLPP.Disc, moduleNames)
+		witnessesLPPs   = make([]*ModuleWitnessLPP, nbSegmentModule)
+	)
+
+	for moduleIndex := range witnessesLPPs {
+
+		moduleWitnessLPP := &ModuleWitnessLPP{
+			ModuleNames: moduleNames,
+			ModuleIndex: moduleIndex,
+			Columns:     make(map[ifaces.ColID]smartvectors.SmartVector),
+			N0Values:    n0,
+		}
+
+		for _, col := range cols {
+
+			if _, ok := columnsLPPSet[col]; !ok {
+				continue
+			}
+
+			col := runtime.Spec.Columns.GetHandle(col)
+
+			segment := SegmentOfColumn(runtime, moduleLPP.Disc, col, moduleIndex, nbSegmentModule)
+			moduleWitnessLPP.Columns[col.GetColID()] = segment
+		}
+
+		witnessesLPPs[moduleIndex] = moduleWitnessLPP
+		n0 = moduleWitnessLPP.NextN0s(moduleLPP)
+	}
+
+	return witnessesLPPs
 }
 
 // NbSegmentOfModule returns the number of segments for a given module
-func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, moduleName ModuleName) int {
+func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, moduleName []ModuleName) int {
 
 	var (
 		cols                  = runtime.Spec.Columns.AllKeys()
 		nbSegmentModule       = -1
 		colNamesWithOrientErr = []ifaces.ColID{}
+		moduleSet             = map[ModuleName]struct{}{}
 	)
+
+	for _, mn := range moduleName {
+		moduleSet[mn] = struct{}{}
+	}
 
 	for _, col := range cols {
 
-		col := runtime.Spec.Columns.GetHandle(col)
+		var (
+			col = runtime.Spec.Columns.GetHandle(col)
+			mn  = ModuleOfColumn(disc, col)
+		)
 
-		if ModuleOfColumn(disc, col) != moduleName {
+		if _, ok := moduleSet[mn]; !ok {
 			continue
 		}
 
@@ -168,7 +227,7 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer,
 
 // NextN0s returns the next value of N0, from the current one and the witness
 // of the current module.
-func (mw *ModuleWitness) NextN0s(moduleLPP *ModuleLPP) []int {
+func (mw *ModuleWitnessLPP) NextN0s(moduleLPP *ModuleLPP) []int {
 
 	newN0s := append([]int{}, mw.N0Values...)
 	args := moduleLPP.Horner.Parts
@@ -198,7 +257,7 @@ func (mw *ModuleWitness) NextN0s(moduleLPP *ModuleLPP) []int {
 
 		selSV, ok := mw.Columns[selCol.GetColID()]
 		if !ok {
-			utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selCol, mw.ModuleName, mw.ModuleIndex)
+			utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selCol, mw.ModuleNames, mw.ModuleIndex)
 		}
 
 		sel := selSV.IntoRegVecSaveAlloc()
@@ -215,7 +274,7 @@ func (mw *ModuleWitness) NextN0s(moduleLPP *ModuleLPP) []int {
 
 // NextReceivedValuesGlobal returns the next value of ReceivedValuesGlobal, from
 // the witness of the current module.
-func (mw *ModuleWitness) NextReceivedValuesGlobal(moduleGL *ModuleGL) []field.Element {
+func (mw *ModuleWitnessGL) NextReceivedValuesGlobal(moduleGL *ModuleGL) []field.Element {
 
 	newReceivedValuesGlobal := make([]field.Element, len(mw.ReceivedValuesGlobal))
 

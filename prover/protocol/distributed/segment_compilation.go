@@ -1,6 +1,8 @@
 package distributed
 
 import (
+	"reflect"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
@@ -145,19 +147,28 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 }
 
 // ProveSegment runs the prover for a segment of the protocol
-func (r *RecursedSegmentCompilation) ProveSegment(wit *ModuleWitness) wizard.Proof {
+func (r *RecursedSegmentCompilation) ProveSegment(wit any) wizard.Proof {
 
 	var (
-		comp       *wizard.CompiledIOP
-		proverStep wizard.ProverStep
+		comp        *wizard.CompiledIOP
+		proverStep  wizard.ProverStep
+		moduleName  any
+		moduleIndex int
 	)
 
-	if wit.IsLPP {
+	switch m := wit.(type) {
+	case *ModuleWitnessLPP:
 		comp = r.ModuleLPP.Wiop
-		proverStep = r.ModuleLPP.GetMainProverStep(wit)
-	} else {
+		proverStep = r.ModuleLPP.GetMainProverStep(m)
+		moduleName = m.ModuleNames
+		moduleIndex = m.ModuleIndex
+	case *ModuleWitnessGL:
 		comp = r.ModuleGL.Wiop
-		proverStep = r.ModuleGL.GetMainProverStep(wit)
+		proverStep = r.ModuleGL.GetMainProverStep(m)
+		moduleName = m.ModuleName
+		moduleIndex = m.ModuleIndex
+	default:
+		utils.Panic("unexpected type")
 	}
 
 	var (
@@ -178,11 +189,11 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit *ModuleWitness) wizard.Pro
 	)
 
 	logrus.
-		WithField("moduleName", wit.ModuleName).
-		WithField("moduleIndex", wit.ModuleIndex).
+		WithField("moduleName", moduleName).
+		WithField("moduleIndex", moduleIndex).
 		WithField("initial-time", initialTime).
 		WithField("recursion-time", recursionTime).
-		WithField("is-lpp", wit.IsLPP).
+		WithField("is-lpp", reflect.TypeOf(wit).String()).
 		Infof("Ran prover segment")
 
 	return proof

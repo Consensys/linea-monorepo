@@ -251,7 +251,7 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
 // the provided [ModuleWitness] argument.
-func (m *ModuleGL) GetMainProverStep(witness *ModuleWitness) wizard.ProverStep {
+func (m *ModuleGL) GetMainProverStep(witness *ModuleWitnessGL) wizard.ProverStep {
 	return func(run *wizard.ProverRuntime) {
 		m.Assign(run, witness)
 	}
@@ -268,7 +268,7 @@ func (m *ModuleGL) GetMainProverStep(witness *ModuleWitness) wizard.ProverStep {
 //
 // The function depopulates the [ModuleWitness] from its columns assignment
 // as the columns are assigned in the runtime.
-func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitness) {
+func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
 
 	var (
 		// columns stores the list of columns to assign. Though, it
@@ -601,7 +601,7 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 		smartvectors.NewConstant(hashSend, 1),
 	)
 
-	witness := run.State.MustGet(moduleWitnessKey).(*ModuleWitness)
+	witness := run.State.MustGet(moduleWitnessKey).(*ModuleWitnessGL)
 	rcvData := witness.ReceivedValuesGlobal
 
 	if len(rcvData) != len(a.ReceivedValuesGlobalAccs) {
@@ -718,7 +718,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) IsSkipped() bool {
 func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
 
 	var (
-		witness = run.State.MustGet(moduleWitnessKey).(*ModuleWitness)
+		witness = run.State.MustGet(moduleWitnessKey).(*ModuleWitnessGL)
 		// columns stores the list of columns to assign. Though, it
 		// stores the columns as in the origin CompiledIOP so we cannot
 		// directly use them to refer to columns of the current IOP.

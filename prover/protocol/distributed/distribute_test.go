@@ -3,8 +3,6 @@ package distributed
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand/v2"
-	"reflect"
 	"testing"
 	"time"
 
@@ -16,7 +14,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
@@ -67,10 +64,10 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 	var (
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-		rng              = rand.New(utils.NewRandSource(0))
-		sharedRandomness = field.PseudoRand(rng)
-		zkevm            = GetZkEVM()
-		disc             = &StandardModuleDiscoverer{
+		// rng              = rand.New(utils.NewRandSource(0))
+		// sharedRandomness = field.PseudoRand(rng)
+		zkevm = GetZkEVM()
+		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 		}
 
@@ -119,36 +116,23 @@ func TestDistributedWizardLogic(t *testing.T) {
 		allGrandProduct     = field.NewElement(1)
 		allLogDerivativeSum = field.Element{}
 		allHornerSum        = field.Element{}
-		prevHornerN1Hash    = field.Element{}
 		prevGlobalSent      = field.Element{}
 	)
 
-	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
+	witnessGLs, _ := SegmentRuntime(runtimeBoot, &distWizard)
 
 	for i := range witnessGLs {
 
 		var (
 			witnessGL   = witnessGLs[i]
-			witnessLPP  = witnessLPPs[i]
 			moduleIndex = witnessGLs[i].ModuleIndex
 			moduleName  = witnessGLs[i].ModuleName
 		)
 
-		witnessLPP.InitialFiatShamirState = sharedRandomness
-
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-		if witnessLPP.ModuleName != moduleName || witnessLPP.ModuleIndex != moduleIndex {
-			t.Fatalf(
-				"GL and LPP are not aligned LPP[name=%v index=%v] GL[name=%v index=%v]",
-				witnessLPPs[i].ModuleName, witnessLPPs[i].ModuleIndex,
-				witnessGLs[i].ModuleName, witnessGLs[i].ModuleIndex,
-			)
-		}
-
 		var (
-			moduleGL  *ModuleGL
-			moduleLPP *ModuleLPP
+			moduleGL *ModuleGL
 		)
 
 		for k := range distWizard.ModuleNames {
@@ -158,7 +142,6 @@ func TestDistributedWizardLogic(t *testing.T) {
 			}
 
 			moduleGL = distWizard.GLs[k]
-			moduleLPP = distWizard.LPPs[k]
 		}
 
 		if moduleGL == nil {
@@ -176,30 +159,13 @@ func TestDistributedWizardLogic(t *testing.T) {
 		}
 
 		var (
-			proverRunLPP         = wizard.RunProver(moduleLPP.Wiop, moduleLPP.GetMainProverStep(witnessLPPs[i]))
-			proofLPP             = proverRunLPP.ExtractProof()
-			verLPPRun, verLPPErr = wizard.VerifyWithRuntime(moduleLPP.Wiop, proofLPP)
-		)
-
-		if verLPPErr != nil {
-			t.Errorf("verifier failed for segment %v, reason=%v", i, verLPPErr)
-		}
-
-		var (
-			errMsg           = fmt.Sprintf("segment=%v, moduleName=%v, segment-index=%v", i, moduleName, moduleIndex)
-			globalReceived   = verGLRun.GetPublicInput(globalReceiverPublicInput)
-			globalSent       = verGLRun.GetPublicInput(globalSenderPublicInput)
-			isFirst          = verGLRun.GetPublicInput(isFirstPublicInput)
-			isLast           = verGLRun.GetPublicInput(isLastPublicInput)
-			logDerivativeSum = verLPPRun.GetPublicInput(logDerivativeSumPublicInput)
-			grandProduct     = verLPPRun.GetPublicInput(grandProductPublicInput)
-			hornerSum        = verLPPRun.GetPublicInput(hornerPublicInput)
-			hornerN0Hash     = verLPPRun.GetPublicInput(hornerN0HashPublicInput)
-			hornerN1Hash     = verLPPRun.GetPublicInput(hornerN1HashPublicInput)
-			shouldBeFirst    = i == 0 || witnessGLs[i].ModuleName != witnessGLs[i-1].ModuleName
-			shouldBeLast     = i == len(witnessGLs)-1 || witnessGLs[i].ModuleName != witnessGLs[i+1].ModuleName
-			colLPPFirstRound = proverRunLPP.Spec.Columns.AllKeysCommittedAt(0)
-			colGLFirstRound  = proverRunGL.Spec.Columns.AllKeysCommittedAt(0)
+			errMsg         = fmt.Sprintf("segment=%v, moduleName=%v, segment-index=%v", i, moduleName, moduleIndex)
+			globalReceived = verGLRun.GetPublicInput(globalReceiverPublicInput)
+			globalSent     = verGLRun.GetPublicInput(globalSenderPublicInput)
+			isFirst        = verGLRun.GetPublicInput(isFirstPublicInput)
+			isLast         = verGLRun.GetPublicInput(isLastPublicInput)
+			shouldBeFirst  = i == 0 || witnessGLs[i].ModuleName != witnessGLs[i-1].ModuleName
+			shouldBeLast   = i == len(witnessGLs)-1 || witnessGLs[i].ModuleName != witnessGLs[i+1].ModuleName
 		)
 
 		if isFirst.IsOne() != shouldBeFirst {
@@ -214,19 +180,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 			t.Error("global-received does not match: " + errMsg)
 		}
 
-		if !shouldBeFirst && hornerN0Hash != prevHornerN1Hash {
-			t.Error("horner-n0-hash mismatch: " + errMsg)
-		}
-
-		if !reflect.DeepEqual(colGLFirstRound, colLPPFirstRound) {
-			t.Errorf("Module=%v Segment=%v: the LPP columns and the GL columns are not the same at round 0.colGLFirstRound=%v, colLPPFirstRound=%v", moduleName, i, colGLFirstRound, colLPPFirstRound)
-		}
-
 		prevGlobalSent = globalSent
-		prevHornerN1Hash = hornerN1Hash
-		allGrandProduct.Mul(&allGrandProduct, &grandProduct)
-		allHornerSum.Add(&allHornerSum, &hornerSum)
-		allLogDerivativeSum.Add(&allLogDerivativeSum, &logDerivativeSum)
 	}
 
 	if !allGrandProduct.IsOne() {
@@ -249,10 +203,10 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 	var (
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-		rng              = rand.New(utils.NewRandSource(0))
-		sharedRandomness = field.PseudoRand(rng)
-		zkevm            = GetZkEVM()
-		disc             = &StandardModuleDiscoverer{
+		// rng = rand.New(utils.NewRandSource(0))
+		// sharedRandomness = field.PseudoRand(rng)
+		zkevm = GetZkEVM()
+		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 		}
 
@@ -260,26 +214,16 @@ func TestBenchDistributedWizard(t *testing.T) {
 		distWizard = DistributeWizard(zkevm.WizardIOP, disc)
 
 		// Minimal witness size to compile
-		minCompilationSize = 1 << 10
-
-		compiledGLs  = make([]*RecursedSegmentCompilation, len(distWizard.GLs))
-		compiledLPPs = make([]*RecursedSegmentCompilation, len(distWizard.LPPs))
+		// minCompilationSize = 1 << 10
+		compiledGLs = make([]*RecursedSegmentCompilation, len(distWizard.GLs))
 	)
 
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
 	for i := range distWizard.GLs {
 
-		if cells := logdata.GetWizardStats(distWizard.GLs[i].Wiop); cells.TotalCells() > minCompilationSize {
-			fmt.Printf("[%v] Starting to compile module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
-			compiledGLs[i] = CompileSegment(distWizard.GLs[i])
-			fmt.Printf("[%v] Done compiling module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
-		}
-
-		if cells := logdata.GetWizardStats(distWizard.LPPs[i].Wiop); cells.TotalCells() > minCompilationSize {
-			fmt.Printf("[%v] Starting to compile module LPP for %v\n", time.Now(), distWizard.ModuleNames[i])
-			compiledLPPs[i] = CompileSegment(distWizard.LPPs[i])
-			fmt.Printf("[%v] Done compiling module LPP for %v\n", time.Now(), distWizard.ModuleNames[i])
-		}
+		fmt.Printf("[%v] Starting to compile module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
+		compiledGLs[i] = CompileSegment(distWizard.GLs[i])
+		fmt.Printf("[%v] Done compiling module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
 	}
 
 	var (
@@ -315,33 +259,18 @@ func TestBenchDistributedWizard(t *testing.T) {
 		t.Fatalf("")
 	}
 
-	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
+	witnessGLs, _ := SegmentRuntime(runtimeBoot, &distWizard)
 
 	for i := range witnessGLs {
 
 		var (
-			witnessGL   = witnessGLs[i]
-			witnessLPP  = witnessLPPs[i]
-			moduleIndex = witnessGLs[i].ModuleIndex
-			moduleName  = witnessGLs[i].ModuleName
+			witnessGL = witnessGLs[i]
+			moduleGL  *RecursedSegmentCompilation
 		)
-
-		witnessLPP.InitialFiatShamirState = sharedRandomness
 
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
 
-		if witnessLPP.ModuleName != moduleName || witnessLPP.ModuleIndex != moduleIndex {
-			t.Fatalf(
-				"GL and LPP are not aligned LPP[name=%v index=%v] GL[name=%v index=%v]",
-				witnessLPPs[i].ModuleName, witnessLPPs[i].ModuleIndex,
-				witnessGLs[i].ModuleName, witnessGLs[i].ModuleIndex,
-			)
-		}
-
-		var (
-			moduleGL  *RecursedSegmentCompilation
-			moduleLPP *RecursedSegmentCompilation
-		)
+		var ()
 
 		for k := range distWizard.ModuleNames {
 
@@ -350,7 +279,6 @@ func TestBenchDistributedWizard(t *testing.T) {
 			}
 
 			moduleGL = compiledGLs[k]
-			moduleLPP = compiledLPPs[k]
 		}
 
 		if moduleGL == nil {
@@ -362,12 +290,6 @@ func TestBenchDistributedWizard(t *testing.T) {
 		_ = moduleGL.ProveSegment(witnessGL)
 
 		t.Logf("RUNNING THE GL PROVER - DONE: %v", time.Now())
-
-		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
-
-		_ = moduleLPP.ProveSegment(witnessLPP)
-
-		t.Logf("RUNNING THE LPP PROVER - DONE: %v", time.Now())
 	}
 }
 
