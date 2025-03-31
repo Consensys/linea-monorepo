@@ -43,7 +43,7 @@ compileJava{
 }
 
 dependencies {
-  implementation 'io.consensys.protocols:tuweni-bytes'
+  implementation 'io.consensys.tuweni:tuweni-bytes'
   implementation 'net.java.dev.jna:jna'
 }
 
