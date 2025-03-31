@@ -90,12 +90,12 @@ import org.web3j.tx.response.TransactionReceiptProcessor;
 
 /** Base class for plugin tests. */
 @Slf4j
-public class LineaPluginTestBase extends AcceptanceTestBase {
+public abstract class LineaPluginTestBase extends AcceptanceTestBase {
   public static final int MAX_CALLDATA_SIZE = 1188; // contract has a call data size of 1160
   public static final int MAX_TX_GAS_LIMIT = DefaultGasProvider.GAS_LIMIT.intValue();
   public static final long CHAIN_ID = 1337L;
   public static final int BLOCK_PERIOD_SECONDS = 5;
-  public static final CliqueOptions LINEA_CLIQUE_OPTIONS =
+  public static final CliqueOptions DEFAULT_LINEA_CLIQUE_OPTIONS =
       new CliqueOptions(BLOCK_PERIOD_SECONDS, CliqueOptions.DEFAULT.epochLength(), false);
   protected static final HttpClient HTTP_CLIENT = HttpClient.newHttpClient();
   protected BesuNode minerNode;
@@ -104,7 +104,7 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
   public void setup() throws Exception {
     minerNode =
         createCliqueNodeWithExtraCliOptionsAndRpcApis(
-            "miner1", LINEA_CLIQUE_OPTIONS, getTestCliOptions(), Set.of("LINEA", "MINER"));
+            "miner1", getCliqueOptions(), getTestCliOptions(), Set.of("LINEA", "MINER"));
     minerNode.setTransactionPoolConfiguration(
         ImmutableTransactionPoolConfiguration.builder()
             .from(TransactionPoolConfiguration.DEFAULT)
@@ -113,8 +113,12 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
     cluster.start(minerNode);
   }
 
-  public List<String> getTestCliOptions() {
+  protected List<String> getTestCliOptions() {
     return new TestCommandLineOptionsBuilder().build();
+  }
+
+  protected CliqueOptions getCliqueOptions() {
+    return DEFAULT_LINEA_CLIQUE_OPTIONS;
   }
 
   @AfterEach
@@ -151,6 +155,7 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
             .metricsConfiguration(
                 MetricsConfiguration.builder()
                     .enabled(true)
+                    .port(0)
                     .metricCategories(
                         Set.of(PRICING_CONF, SEQUENCER_PROFITABILITY, TX_POOL_PROFITABILITY))
                     .build())
@@ -412,8 +417,8 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
   private TransactionReceiptProcessor createReceiptProcessor(Web3j web3j) {
     return new PollingTransactionReceiptProcessor(
         web3j,
-        Math.max(1000, LINEA_CLIQUE_OPTIONS.blockPeriodSeconds() * 1000 / 5),
-        LINEA_CLIQUE_OPTIONS.blockPeriodSeconds() * 3);
+        Math.max(1000, DEFAULT_LINEA_CLIQUE_OPTIONS.blockPeriodSeconds() * 1000 / 5),
+        DEFAULT_LINEA_CLIQUE_OPTIONS.blockPeriodSeconds() * 3);
   }
 
   protected String sendTransactionWithGivenLengthPayload(
@@ -448,7 +453,7 @@ public class LineaPluginTestBase extends AcceptanceTestBase {
       throws IOException, InterruptedException {
 
     final var metricsReq =
-        HttpRequest.newBuilder().GET().uri(URI.create("http://127.0.0.1:9545/metrics")).build();
+        HttpRequest.newBuilder().GET().uri(URI.create(minerNode.metricsHttpUrl().get())).build();
 
     final var respLines = HTTP_CLIENT.send(metricsReq, HttpResponse.BodyHandlers.ofLines());
 

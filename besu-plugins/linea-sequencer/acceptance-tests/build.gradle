@@ -48,6 +48,8 @@ tasks.register('acceptanceTests', Test) {
   useJUnitPlatform {
     includeTags("AcceptanceTest")
   }
+
+  maxParallelForks Runtime.runtime.availableProcessors()
 }
 
 dependencies {

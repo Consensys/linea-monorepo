@@ -33,6 +33,7 @@ import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
+import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -51,6 +52,14 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
         // set the module limits file
         .set("--plugin-linea-module-limit-file-path=", getResourcePath("/moduleLimits.toml"))
         .build();
+  }
+
+  @Override
+  protected GenesisConfigurationFactory.CliqueOptions getCliqueOptions() {
+    return new GenesisConfigurationFactory.CliqueOptions(
+        BLOCK_PERIOD_SECONDS + 1,
+        GenesisConfigurationFactory.CliqueOptions.DEFAULT.epochLength(),
+        false);
   }
 
   /**

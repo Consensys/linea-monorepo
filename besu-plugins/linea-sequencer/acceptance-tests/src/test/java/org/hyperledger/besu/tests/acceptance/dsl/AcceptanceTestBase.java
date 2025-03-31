@@ -63,7 +63,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(AcceptanceTestBaseTestWatcher.class)
 @Tag("AcceptanceTest")
 @Slf4j
-public class AcceptanceTestBase {
+public abstract class AcceptanceTestBase {
   protected final Accounts accounts;
   protected final AccountTransactions accountTransactions;
   protected final AdminConditions admin;
