@@ -62,6 +62,10 @@ func PlonkCheck(
 		ctx.addRangeCheckConstraint()
 	}
 
+	if ctx.ExternalHasherOption.Enabled {
+		ctx.addHashConstraint()
+	}
+
 	if ctx.HasCommitment() {
 		comp.RegisterProverAction(round+1, lroCommitProverAction{CompilationCtx: ctx, proverStateLock: &sync.Mutex{}})
 	}

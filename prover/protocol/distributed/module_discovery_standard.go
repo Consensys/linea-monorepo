@@ -751,7 +751,7 @@ func countConstraintsOfPlonkCirc(piw *query.PlonkInWizard) int {
 		hasAddGates = piw.PlonkOptions[0].RangeCheckAddGateForRangeCheck
 	}
 
-	ccs, _, _ := plonkinternal.CompileCircuit(piw.Circuit, hasAddGates)
+	ccs, _, _ := plonkinternal.CompileCircuitWithRangeCheck(piw.Circuit, hasAddGates)
 	nbConstraints := ccs.GetNbConstraints()
 	return nbConstraints
 }

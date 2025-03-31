@@ -160,6 +160,10 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 	if ctx.RangeCheckOption.Enabled && !ctx.RangeCheckOption.wasCancelled {
 		ctx.assignRangeChecked(run)
 	}
+
+	if ctx.ExternalHasherOption.Enabled {
+		ctx.assignHashColumns(run)
+	}
 }
 
 // Run the gnark solver and put the result in solSync.solChan

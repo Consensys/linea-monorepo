@@ -69,7 +69,7 @@ type storeCommitBuilder interface {
 	frontend.Committer
 	SetKeyValue(key, value any)
 	GetKeyValue(key any) (value any)
-	GetWireConstraints(wires []frontend.Variable, addMissing bool) ([][2]int, error)
+	GetWiresConstraintExact(wires []frontend.Variable, addMissing bool) ([][2]int, error)
 }
 
 // NewHasher returns the standard MiMC hasher as in [NewMiMC].
@@ -145,7 +145,7 @@ func (h *ExternalHasher) State() []frontend.Variable {
 // result is pushed on the stack of all the claims to verify.
 func (h *ExternalHasher) compress(state, block frontend.Variable) frontend.Variable {
 
-	newState, err := h.api.Compiler().NewHint(mimcHintfunc, 1, state, block)
+	newState, err := h.api.Compiler().NewHint(MimcHintfunc, 1, state, block)
 	if err != nil {
 		panic(err)
 	}
@@ -208,7 +208,7 @@ func (builder *externalHasherBuilder) Compile() (constraint.ConstraintSystem, er
 
 	// GetWireGates may add gates if [addGateForRangeCheck] is true. Call it
 	// synchronously before calling compile on the circuit.
-	cols, err := builder.storeCommitBuilder.GetWireConstraints(allCheckedVariables, builder.addGateForHashCheck)
+	cols, err := builder.storeCommitBuilder.GetWiresConstraintExact(allCheckedVariables, builder.addGateForHashCheck)
 	if err != nil {
 		return nil, fmt.Errorf("get wire gates: %w", err)
 	}
@@ -236,10 +236,10 @@ func (builder *externalHasherBuilder) Compiler() frontend.Compiler {
 	return builder.storeCommitBuilder.Compiler()
 }
 
-// mimcHintfunc is a gnark hint that computes the MiMC compression function, it
+// MimcHintfunc is a gnark hint that computes the MiMC compression function, it
 // is used to return the pending claims of the evaluation of the MiMC compression
 // function.
-func mimcHintfunc(f *big.Int, inputs []*big.Int, outputs []*big.Int) error {
+func MimcHintfunc(f *big.Int, inputs []*big.Int, outputs []*big.Int) error {
 
 	if f.String() != field.Modulus().String() {
 		utils.Panic("Not the BLS field %d != %d", f, field.Modulus())

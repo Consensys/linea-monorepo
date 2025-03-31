@@ -26,3 +26,12 @@ func WithFixedNbRows(nbRow int) Option {
 		c.FixedNbRowsOption.NbRow = nbRow
 	}
 }
+
+// WithExternalHasher allows using an external hasher for the witness
+// commitment. The hash function is MiMC.
+func WithExternalHasher(fixedNbRow int) Option {
+	return func(c *CompilationCtx) {
+		c.ExternalHasherOption.Enabled = true
+		c.ExternalHasherOption.FixedNbRows = fixedNbRow
+	}
+}

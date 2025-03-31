@@ -92,4 +92,8 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []wi
 	if ctx.RangeCheckOption.Enabled && !ctx.RangeCheckOption.wasCancelled {
 		ctx.assignRangeChecked(run)
 	}
+
+	if ctx.ExternalHasherOption.Enabled {
+		ctx.assignHashColumns(run)
+	}
 }
