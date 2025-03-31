@@ -111,12 +111,12 @@ library RlpEncoder {
     uint256 listLength = _accesslist.length;
     bytes[] memory encodedAccessList = new bytes[](listLength);
 
-    for (uint256 i; i < listLength; ++i) {
+    for (uint256 i; i < listLength; i++) {
       bytes32[] memory storageKeys = _accesslist[i].storageKeys;
       uint256 keyCount = storageKeys.length;
 
       bytes[] memory encodedKeys = new bytes[](keyCount);
-      for (uint256 j; j < keyCount; ++j) {
+      for (uint256 j; j < keyCount; j++) {
         encodedKeys[j] = _encodeBytes(abi.encodePacked(storageKeys[j]));
       }
 
