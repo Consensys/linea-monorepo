@@ -104,25 +104,37 @@ func Verify(c *CompiledIOP, proof Proof) error {
 	return err
 }
 
+// VerifyWithRuntime runs the verifier of the protocol and returns the result
+// and the runtime of the verifier.
 func VerifyWithRuntime(c *CompiledIOP, proof Proof) (*VerifierRuntime, error) {
-	runtime := c.createVerifier(proof)
+	return verifyWithRuntimeUntilRound(c, proof, c.NumRounds())
+}
 
-	/*
-		Pre-emptively generates the random coins. As the entire set of prover
-		messages is available at once. We can do it upfront, as opposed to the
-		prover's implementation.
-	*/
+// VerifyUntilRound runs the verifier up to a specified round
+func VerifyUntilRound(c *CompiledIOP, proof Proof, stopRound int) error {
+	_, err := verifyWithRuntimeUntilRound(c, proof, stopRound)
+	return err
+}
 
-	/*
-		And run all the precompiled rounds. Collecting the errors if there are
-		any
-	*/
-	errs := []error{}
-	for round, roundSteps := range runtime.Spec.SubVerifiers.Inner() {
+// verifyWithRuntimeUntilRound runs the verifier of 'comp' up to (and excluding)
+// the provided round "stopRound". By "excluding", we mean that the function
+// won't run the round "stopRound". If stopRound is higher than the number of
+// rounds in comp, the function runs the whole protocol.
+func verifyWithRuntimeUntilRound(comp *CompiledIOP, proof Proof, stopRound int) (run *VerifierRuntime, err error) {
+
+	var (
+		runtime = comp.createVerifier(proof)
+		errs    = []error{}
+	)
+
+	stopRound = min(stopRound, comp.NumRounds())
+
+	for round := 0; round < stopRound; round++ {
 
 		runtime.GenerateCoinsFromRound(round)
 
-		for _, step := range roundSteps {
+		verifierSteps := runtime.Spec.SubVerifiers.MustGet(round)
+		for _, step := range verifierSteps {
 			if !step.IsSkipped() {
 				if err := step.Run(&runtime); err != nil {
 					errs = append(errs, err)
