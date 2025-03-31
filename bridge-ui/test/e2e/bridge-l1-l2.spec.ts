@@ -6,7 +6,7 @@ const test = testWithSynpress(advancedFixtures);
 
 const { expect, describe } = test;
 
-// To consider in a later ticket - Bridge ERC20 tokens case when ERC20 token is available in Sepolia token list
+// There are known lines causing flaky E2E tests in this test suite, these are annotated by 'bridge-ui-known-flaky-line'
 describe("L1 > L2 via Native Bridge", () => {
   test("should successfully go to the bridge UI page", async ({ page }) => {
     const pageUrl = page.url();

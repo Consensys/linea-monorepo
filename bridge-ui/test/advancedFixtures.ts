@@ -141,8 +141,8 @@ export const test = metaMaskFixtures(setup).extend<{
 
       const activityButton = metamask.page.locator("button", { hasText: "Activity" });
       await activityButton.waitFor();
-      // Sometimes a "What's new" modal pops up on Metamask. We assume this becomes visible at the same time as the Activity button
-      // This modal causes flaky tests because it appears unpredictably, and blocks other actions.
+      // bridge-ui-known-flaky-line - Sometimes and unpredictably a "What's new" modal pops up on Metamask. This modal blocks other actions.
+      // We assume that the this button is available at the same time that the Activity button becomes available
       const gotItButton = metamask.page.locator("button", { hasText: "Got it" });
       if (await gotItButton.isVisible()) await gotItButton.click();
       // Click Activity button
@@ -185,7 +185,7 @@ export const test = metaMaskFixtures(setup).extend<{
       await approvalButton.click();
 
       // Handle Metamask approval UI
-      // Seen once in E2E test that this line fails to move past Metamask approval screen
+      // bridge-ui-known-flaky-line - Once seen Metamask stuck here on approval screen in CI
       await metamask.approveTokenPermission();
       await waitForTransactionToConfirm();
 
