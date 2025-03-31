@@ -470,6 +470,107 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
   }
 
   @Test
+  fun findHighestConsecutiveEndBlockNumber_returns_highest_consecutive_end_block_number_from_various_block_numbers() {
+    val aggregationProof1 = createProofToFinalize(
+      firstBlockNumber = 0,
+      finalBlockNumber = 10,
+      parentAggregationLastBlockTimestamp = Instant.fromEpochSeconds(0),
+      startBlockTime = Instant.fromEpochSeconds(0),
+      finalTimestamp = Instant.parse("2024-04-28T15:00:00Z")
+    )
+
+    val aggregation1 = Aggregation(
+      startBlockNumber = 1UL,
+      endBlockNumber = 10UL,
+      batchCount = 5UL,
+      aggregationProof = aggregationProof1
+    )
+    performInsertTest(aggregation1)
+
+    val aggregationProof2 = createProofToFinalize(
+      firstBlockNumber = 11,
+      finalBlockNumber = 20,
+      parentAggregationLastBlockTimestamp = Instant.parse("2024-04-28T15:00:00Z"),
+      startBlockTime = Instant.fromEpochSeconds(0),
+      finalTimestamp = Instant.parse("2024-04-28T15:01:00Z")
+    )
+
+    val aggregation2 = Aggregation(
+      startBlockNumber = 11UL,
+      endBlockNumber = 20UL,
+      batchCount = 5UL,
+      aggregationProof = aggregationProof2
+    )
+    performInsertTest(aggregation2)
+
+    val aggregationProof3 = createProofToFinalize(
+      firstBlockNumber = 21,
+      finalBlockNumber = 39,
+      parentAggregationLastBlockTimestamp = Instant.parse("2024-04-28T15:01:00Z"),
+      startBlockTime = Instant.fromEpochSeconds(0),
+      finalTimestamp = Instant.parse("2024-04-28T15:02:00Z")
+    )
+
+    val aggregation3 = Aggregation(
+      startBlockNumber = 31UL,
+      endBlockNumber = 39UL,
+      batchCount = 5UL,
+      aggregationProof = aggregationProof3
+    )
+    performInsertTest(aggregation3)
+
+    val aggregationProof4 = createProofToFinalize(
+      firstBlockNumber = 40,
+      finalBlockNumber = 50,
+      parentAggregationLastBlockTimestamp = Instant.parse("2024-04-28T15:01:00Z"),
+      startBlockTime = Instant.fromEpochSeconds(0),
+      finalTimestamp = Instant.parse("2024-04-28T15:02:00Z")
+    )
+
+    val aggregation4 = Aggregation(
+      startBlockNumber = 40UL,
+      endBlockNumber = 50UL,
+      batchCount = 5UL,
+      aggregationProof = aggregationProof4
+    )
+    performInsertTest(aggregation4)
+
+    aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber(
+      1L
+    ).get().also { highestEndBlockNumber ->
+      assertThat(highestEndBlockNumber).isNotNull
+      assertThat(highestEndBlockNumber!!.toULong()).isEqualTo(aggregationProof2.endBlockNumber)
+    }
+
+    aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber(
+      11L
+    ).get().also { highestEndBlockNumber ->
+      assertThat(highestEndBlockNumber).isNotNull
+      assertThat(highestEndBlockNumber!!.toULong()).isEqualTo(aggregationProof2.endBlockNumber)
+    }
+
+    aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber(
+      21L
+    ).get().also { highestEndBlockNumber ->
+      assertThat(highestEndBlockNumber).isNull()
+    }
+
+    aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber(
+      31L
+    ).get().also { highestEndBlockNumber ->
+      assertThat(highestEndBlockNumber).isNotNull
+      assertThat(highestEndBlockNumber!!.toULong()).isEqualTo(aggregationProof4.endBlockNumber)
+    }
+
+    aggregationsPostgresDaoImpl.findHighestConsecutiveEndBlockNumber(
+      40L
+    ).get().also { highestEndBlockNumber ->
+      assertThat(highestEndBlockNumber).isNotNull
+      assertThat(highestEndBlockNumber!!.toULong()).isEqualTo(aggregationProof4.endBlockNumber)
+    }
+  }
+
+  @Test
   fun deleteAggregationsUpToEndBlockNumber_deletes_aggregations_till_block_number() {
     val aggregationProof1 = createProofToFinalize(
       firstBlockNumber = 1,

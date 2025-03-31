@@ -139,9 +139,7 @@ class PostgresAggregationsDao(
           where start_block_number > $1 and start_block_number - 1 != previous_end_block_number
           limit 1)
 
-        select
-          aggregation_proof
-        from previous_ends
+        select * from previous_ends
         where EXISTS (select 1 from previous_ends where start_block_number = $1)
           and (previous_ends.previous_end_block_number = previous_ends.start_block_number - 1 or previous_ends.start_block_number = $1)
           and ((select count(1) from first_gapped_aggregation) = 0 or previous_ends.start_block_number < (select * from first_gapped_aggregation))
@@ -292,6 +290,27 @@ class PostgresAggregationsDao(
       .thenApply { rowSet ->
         rowSet.map(::parseAggregationProofs).filter { proofToFinalize ->
           proofToFinalize.finalTimestamp <= finalEndBlockCreatedBefore
+        }
+      }
+  }
+
+  override fun findHighestConsecutiveEndBlockNumber(
+    fromBlockNumber: Long
+  ): SafeFuture<Long?> {
+    return selectAggregationProofs
+      .execute(
+        Tuple.of(
+          fromBlockNumber,
+          aggregationStatusToDbValue(Aggregation.Status.Proven),
+          Int.MAX_VALUE
+        )
+      )
+      .toSafeFuture()
+      .thenApply { rowSet ->
+        if (rowSet.size() > 0) {
+          rowSet.last().getLong("end_block_number")
+        } else {
+          null
         }
       }
   }
