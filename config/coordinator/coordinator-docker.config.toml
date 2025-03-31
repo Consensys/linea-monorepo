@@ -55,9 +55,6 @@ fs-responses-directory = "/data/prover/v2/aggregation/responses"
 #fs-requests-directory = "/data/prover/v3/aggregation/requests"
 #fs-responses-directory = "/data/prover/v3/aggregation/responses"
 
-[zk-traces]
-new-block-polling-interval="PT1S"
-
 [traces]
 switch-to-linea-besu=false
 blob-compressor-version="V0_1_0"
@@ -148,6 +145,7 @@ max-receipt-retries=120
 # Coordinator will consider block as finalized after being included in the chain wtih children blocks-to-finalization
 # Recommended: Geth sequencer minimum of 2, Besu sequencer minimum of 1, 0 is safe localy
 blocks-to-finalization=0
+new-block-polling-interval="PT1S"
 
 [blob-submission]
 disabled=false

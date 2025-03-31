@@ -909,7 +909,7 @@ class L1DependentApp(
       blockCreationListener = block2BatchCoordinator,
       lastProvenBlockNumberProviderAsync = lastProvenBlockNumberProvider,
       config = BlockCreationMonitor.Config(
-        pollingInterval = configs.zkTraces.newBlockPollingInterval.toKotlinDuration(),
+        pollingInterval = configs.l2.newBlockPollingInterval.toKotlinDuration(),
         blocksToFinalization = configs.l2.blocksToFinalization.toLong(),
         blocksFetchLimit = configs.conflation.fetchBlocksLimit.toLong(),
         // We need to add 1 to l2InclusiveBlockNumberToStopAndFlushAggregation because conflation calculator requires

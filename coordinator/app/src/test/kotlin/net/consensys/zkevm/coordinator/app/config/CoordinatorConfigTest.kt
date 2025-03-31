@@ -50,10 +50,6 @@ class CoordinatorConfigTest {
       fetchBlocksLimit = 4000
     )
 
-    private val zkTracesConfig = ZkTraces(
-      Duration.parse("PT1S")
-    )
-
     private val proversConfig = ProversConfig(
       proverA = ProverConfig(
         execution = FileBasedProverConfig(
@@ -222,7 +218,8 @@ class CoordinatorConfigTest {
       blocksToFinalization = 0U,
       lastHashSearchWindow = 25U,
       anchoringReceiptPollingInterval = Duration.parse("PT01S"),
-      maxReceiptRetries = 120U
+      maxReceiptRetries = 120U,
+      newBlockPollingInterval = Duration.parse("PT1S")
     )
 
     private val finalizationSigner = SignerConfig(
@@ -352,7 +349,6 @@ class CoordinatorConfigTest {
     )
 
     private val coordinatorConfig = CoordinatorConfig(
-      zkTraces = zkTracesConfig,
       blobCompression = blobCompressionConfig,
       proofAggregation = aggregationConfig,
       traces = tracesConfig,
