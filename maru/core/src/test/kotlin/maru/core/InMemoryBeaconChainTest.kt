@@ -51,6 +51,12 @@ class InMemoryBeaconChainTest {
   }
 
   @Test
+  fun `getSealedBeaconBlock returns null for unknown block number`() {
+    val sealedBeaconBlock = inMemoryBeaconChain.getSealedBeaconBlock(100uL)
+    assertThat(sealedBeaconBlock).isNull()
+  }
+
+  @Test
   fun `newUpdater can put and commit beacon state`() {
     val newBeaconState = DataGenerators.randomBeaconState(2UL)
     val updater = inMemoryBeaconChain.newUpdater()
@@ -59,7 +65,7 @@ class InMemoryBeaconChainTest {
     val latestBeaconState = inMemoryBeaconChain.getLatestBeaconState()
     assertThat(latestBeaconState).isEqualTo(newBeaconState)
 
-    val retrievedBeaconState = inMemoryBeaconChain.getBeaconState(newBeaconState.latestBeaconBlockRoot)
+    val retrievedBeaconState = inMemoryBeaconChain.getBeaconState(newBeaconState.latestBeaconBlockHeader.hash)
     assertThat(retrievedBeaconState).isEqualTo(newBeaconState)
   }
 
@@ -68,10 +74,15 @@ class InMemoryBeaconChainTest {
     val sealedBeaconBlock = DataGenerators.randomSealedBeaconBlock(3UL)
     val beaconBlockRoot = sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
     val updater = inMemoryBeaconChain.newUpdater()
-    updater.putSealedBeaconBlock(sealedBeaconBlock, beaconBlockRoot).commit()
+    updater.putSealedBeaconBlock(sealedBeaconBlock).commit()
 
-    val retrievedSealedBeaconBlock = inMemoryBeaconChain.getSealedBeaconBlock(beaconBlockRoot)
-    assertThat(retrievedSealedBeaconBlock).isEqualTo(sealedBeaconBlock)
+    val retrievedSealedBeaconBlockByBlockRoot = inMemoryBeaconChain.getSealedBeaconBlock(beaconBlockRoot)
+    assertThat(retrievedSealedBeaconBlockByBlockRoot).isEqualTo(sealedBeaconBlock)
+
+    val retrievedSealedBeaconBlockByBlockNumber =
+      inMemoryBeaconChain
+        .getSealedBeaconBlock(sealedBeaconBlock.beaconBlock.beaconBlockHeader.number)
+    assertThat(retrievedSealedBeaconBlockByBlockNumber).isEqualTo(sealedBeaconBlock)
   }
 
   @Test
@@ -81,17 +92,22 @@ class InMemoryBeaconChainTest {
     val beaconBlockRoot = sealedBeaconBlock.beaconBlock.beaconBlockHeader.hash
     val updater = inMemoryBeaconChain.newUpdater()
     updater.putBeaconState(newBeaconState)
-    updater.putSealedBeaconBlock(sealedBeaconBlock, beaconBlockRoot)
+    updater.putSealedBeaconBlock(sealedBeaconBlock)
     updater.rollback()
 
     val latestBeaconState = inMemoryBeaconChain.getLatestBeaconState()
     assertThat(latestBeaconState).isEqualTo(initialBeaconState)
 
-    val retrievedBeaconState = inMemoryBeaconChain.getBeaconState(newBeaconState.latestBeaconBlockRoot)
+    val retrievedBeaconState = inMemoryBeaconChain.getBeaconState(newBeaconState.latestBeaconBlockHeader.hash)
     assertThat(retrievedBeaconState).isNull()
 
-    val retrievedSealedBeaconBlock = inMemoryBeaconChain.getSealedBeaconBlock(beaconBlockRoot)
-    assertThat(retrievedSealedBeaconBlock).isNull()
+    val retrievedSealedBeaconBlockByBlockRoot = inMemoryBeaconChain.getSealedBeaconBlock(beaconBlockRoot)
+    assertThat(retrievedSealedBeaconBlockByBlockRoot).isNull()
+
+    val retrievedSealedBeaconBlockByBlockNumber =
+      inMemoryBeaconChain
+        .getSealedBeaconBlock(sealedBeaconBlock.beaconBlock.beaconBlockHeader.number)
+    assertThat(retrievedSealedBeaconBlockByBlockNumber).isNull()
   }
 
   @Test
@@ -101,15 +117,20 @@ class InMemoryBeaconChainTest {
     val inflightBeaconBlockRoot = newBeaconBlock.beaconBlock.beaconBlockHeader.hash
     val updater = inMemoryBeaconChain.newUpdater()
     updater.putBeaconState(newBeaconState)
-    updater.putSealedBeaconBlock(newBeaconBlock, inflightBeaconBlockRoot)
+    updater.putSealedBeaconBlock(newBeaconBlock)
 
     val latestBeaconState = inMemoryBeaconChain.getLatestBeaconState()
     assertThat(latestBeaconState).isEqualTo(initialBeaconState)
 
-    val retrievedBeaconState = inMemoryBeaconChain.getBeaconState(newBeaconState.latestBeaconBlockRoot)
+    val retrievedBeaconState = inMemoryBeaconChain.getBeaconState(newBeaconState.latestBeaconBlockHeader.hash)
     assertThat(retrievedBeaconState).isNull()
 
-    val retrievedSealedBeaconBlock = inMemoryBeaconChain.getSealedBeaconBlock(inflightBeaconBlockRoot)
-    assertThat(retrievedSealedBeaconBlock).isNull()
+    val retrievedSealedBeaconBlockByBlockRoot = inMemoryBeaconChain.getSealedBeaconBlock(inflightBeaconBlockRoot)
+    assertThat(retrievedSealedBeaconBlockByBlockRoot).isNull()
+
+    val retrievedSealedBeaconBlockByBlockNumber =
+      inMemoryBeaconChain
+        .getSealedBeaconBlock(newBeaconBlock.beaconBlock.beaconBlockHeader.number)
+    assertThat(retrievedSealedBeaconBlockByBlockNumber).isNull()
   }
 }

@@ -56,10 +56,9 @@ class QbftBlockImportCoordinator(
             is Err<StateTransitionError> -> return false
           }
 
-        val beaconBlockHeader = beaconBlock.beaconBlockHeader
         updater
           .putBeaconState(resultingState)
-          .putSealedBeaconBlock(sealedBeaconBlock, beaconBlockHeader.bodyRoot)
+          .putSealedBeaconBlock(sealedBeaconBlock)
         beaconBlockImporter.importBlock(beaconBlock).get()
       } catch (e: Exception) {
         updater.rollback()

@@ -15,12 +15,11 @@
  */
 package maru.database.kv
 
-import maru.serialization.rlp.RLPSerializers
+import java.math.BigInteger
+import tech.pegasys.teku.storage.server.kvstore.serialization.KvStoreSerializer
 
-object KvStoreSerializers {
-  val BytesSerializer = BytesSerializer()
-  val BeaconStateSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconStateSerializer)
-  val BeaconBlockSerializer = KvStoreSerializerAdapter(RLPSerializers.BeaconBlockSerializer)
-  val SealedBeaconBlockSerializer = KvStoreSerializerAdapter(RLPSerializers.SealedBeaconBlockSerializer)
-  val ULongSerializer = ULongSerializer()
+class ULongSerializer : KvStoreSerializer<ULong> {
+  override fun serialize(value: ULong): ByteArray = BigInteger.valueOf(value.toLong()).toByteArray()
+
+  override fun deserialize(bytes: ByteArray): ULong = BigInteger(bytes).toLong().toULong()
 }
