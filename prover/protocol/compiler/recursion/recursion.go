@@ -102,6 +102,14 @@ type Parameters struct {
 	// FixedNbRowPlonkCircuit is a flag indicating that the Plonk circuit should
 	// be built with a fixed number of rows.
 	FixedNbRowPlonkCircuit int
+
+	// ExternalHasherNbRows is a flag indicating that the MiMC circuit should
+	// be built with a fixed number of rows.
+	ExternalHasherNbRows int
+
+	// WithExternalHasherOpts is a flag indicating that the recursion circuit should
+	// be built using the external hasher builder.
+	WithExternalHasherOpts bool
 }
 
 // DefineRecursionOf builds a recursion sub-circuit into 'comp' for verifying
@@ -117,6 +125,10 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 	plonkOpts := []plonkinternal.Option{}
 	if params.FixedNbRowPlonkCircuit > 0 {
 		plonkOpts = append(plonkOpts, plonkinternal.WithFixedNbRows(params.FixedNbRowPlonkCircuit))
+	}
+
+	if params.WithExternalHasherOpts {
+		plonkOpts = append(plonkOpts, plonkinternal.WithExternalHasher(params.ExternalHasherNbRows))
 	}
 
 	var (

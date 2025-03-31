@@ -18,7 +18,8 @@ import (
 const (
 	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
 	// the value is empirical and corresponds to the lowest value that works.
-	fixedNbRowPlonkCircuit = 1 << 24
+	fixedNbRowPlonkCircuit   = 1 << 24
+	fixedNbRowExternalHasher = 1 << 15
 )
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -101,6 +102,8 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				WithoutGkr:             true,
 				MaxNumProof:            1,
 				FixedNbRowPlonkCircuit: fixedNbRowPlonkCircuit,
+				WithExternalHasherOpts: true,
+				ExternalHasherNbRows:   fixedNbRowExternalHasher,
 			},
 		)
 	}
