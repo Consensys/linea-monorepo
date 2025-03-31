@@ -40,7 +40,6 @@ services:
       - ./initialization/:/initialization/:ro
     ports:
       - "8545:8545"
-      - "8546:8546"
       - "8550:8550"
       - "8551:8551"
       - "30303:30303"
@@ -63,7 +62,6 @@ services:
       - ./jwt:/jwt:ro
     ports:
       - "8555:8545"
-      - "8556:8546"
       - "8561:8551"
     networks:
       - linea
@@ -88,7 +86,6 @@ services:
       - ./jwt:/jwt:ro
     ports:
       - "8565:8545"
-      - "8566:8546"
       - "8571:8551"
     networks:
       - linea
@@ -118,7 +115,6 @@ services:
       - ./initialization/:/initialization/:ro
     ports:
       - "9545:8545"
-      - "9546:8546"
       - "9550:8550"
       - "9551:8551"
     networks:
@@ -138,7 +134,6 @@ services:
       - ./jwt:/nethermind/keystore/jwt-secret:ro
     ports:
       - "10545:8545"
-      - "10546:8546"
       - "10550:8550"
     networks:
       - linea
@@ -154,7 +149,6 @@ services:
       BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
     ports:
       - "11545:8545"
-      - "11546:8546"
       - "11551:8551"
     volumes:
       # It's ok to mount sub-dirs of "datadir" to different drives
