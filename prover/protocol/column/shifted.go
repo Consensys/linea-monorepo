@@ -1,6 +1,7 @@
 package column
 
 import (
+	"fmt"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -117,6 +118,30 @@ func (s Shifted) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 func (s Shifted) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
 	parent := s.Parent.GetColAssignmentGnark(run) // [a b c d e f g h]
 	res := make([]frontend.Variable, len(parent))
+	for i := range res {
+		posParent := utils.PositiveMod(i+s.Offset, len(parent))
+		res[i] = parent[posParent]
+	}
+	return res
+}
+
+func (s Shifted) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+	if s.IsBase() {
+		parent := s.Parent.GetColAssignmentGnark(run) // [a b c d e f g h]
+		res := make([]frontend.Variable, len(parent))
+		for i := range res {
+			posParent := utils.PositiveMod(i+s.Offset, len(parent))
+			res[i] = parent[posParent]
+		}
+		return res, nil
+	} else {
+		return nil, fmt.Errorf("requested base elements but column is defined over the extension")
+	}
+}
+
+func (s Shifted) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
+	parent := s.Parent.GetColAssignmentGnarkExt(run) // [a b c d e f g h]
+	res := make([]gnarkfext.Variable, len(parent))
 	for i := range res {
 		posParent := utils.PositiveMod(i+s.Offset, len(parent))
 		res[i] = parent[posParent]

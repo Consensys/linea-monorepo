@@ -1,6 +1,7 @@
 package fiatshamir
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"math"
 
 	"github.com/consensys/gnark/frontend"
@@ -81,7 +82,7 @@ func (fs *GnarkFiatShamir) State() []frontend.Variable {
 }
 
 // Update updates the Fiat-Shamir state with a vector of frontend.Variable
-// representing field element each.
+// representing each field element.
 func (fs *GnarkFiatShamir) Update(vec ...frontend.Variable) {
 	// Safeguard against nil
 	for _, x := range vec {
@@ -92,17 +93,46 @@ func (fs *GnarkFiatShamir) Update(vec ...frontend.Variable) {
 	fs.hasher.Write(vec...)
 }
 
-// UpdateVec updates the Fiat-Shamir state with a matrix of field element.
+func WriteExt(hasher hash.StateStorer, vec ...gnarkfext.Variable) {
+	flattenedVec := make([]frontend.Variable, 2*len(vec))
+	for index, elem := range vec {
+		flattenedVec[2*index] = elem.A0
+		flattenedVec[2*index+1] = elem.A1
+	}
+	hasher.Write(flattenedVec)
+
+}
+func (fs *GnarkFiatShamir) UpdateExt(vec ...gnarkfext.Variable) {
+	// Safeguard against nil
+	for _, x := range vec {
+		if x.A0 == nil || x.A1 == nil {
+			panic("gnark fiat-shamir updated with a nil extension frontend variable")
+		}
+	}
+	WriteExt(fs.hasher, vec...)
+}
+
+// UpdateVec updates the Fiat-Shamir state with a matrix of field elements.
 func (fs *GnarkFiatShamir) UpdateVec(mat ...[]frontend.Variable) {
 	for i := range mat {
 		fs.Update(mat[i]...)
 	}
 }
 
+// UpdateVec updates the Fiat-Shamir state with a matrix of field extensions.
+func (fs *GnarkFiatShamir) UpdateVecExt(mat ...[]gnarkfext.Variable) {
+	for i := range mat {
+		fs.UpdateExt(mat[i]...)
+	}
+}
+
 // RandomField returns a single valued fiat-shamir hash
-func (fs *GnarkFiatShamir) RandomField() frontend.Variable {
+func (fs *GnarkFiatShamir) RandomField() gnarkfext.Variable {
 	defer fs.safeguardUpdate()
-	return fs.hasher.Sum()
+	return gnarkfext.Variable{
+		A0: fs.hasher.Sum(),
+		A1: frontend.Variable(0),
+	}
 }
 
 // RandomManyIntegers returns a vector of variable that will contain small integers

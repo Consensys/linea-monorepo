@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
+	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
+	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -144,9 +146,19 @@ func (r UnivariateEval) Check(run ifaces.Runtime) error {
 func (r UnivariateEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	params := run.GetParams(r.QueryID).(GnarkUnivariateEvalParams)
 
-	for k, pol := range r.Pols {
-		wit := pol.GetColAssignmentGnark(run)
-		actualY := fastpoly.InterpolateGnark(api, wit, params.X)
-		api.AssertIsEqual(actualY, params.Ys[k])
+	if params.isBase {
+		for k, pol := range r.Pols {
+			wit := pol.GetColAssignmentGnark(run)
+			actualY := fastpoly.InterpolateGnark(api, wit, params.baseX)
+			api.AssertIsEqual(actualY, params.baseYs[k])
+		}
+	} else {
+		outerApi := gnarkfext.API{Inner: api}
+		for k, pol := range r.Pols {
+			wit := pol.GetColAssignmentGnarkExt(run)
+			actualY := fastpolyext.InterpolateGnark(outerApi, wit, params.extX)
+			outerApi.AssertIsEqual(actualY, params.extYs[k])
+		}
 	}
+
 }

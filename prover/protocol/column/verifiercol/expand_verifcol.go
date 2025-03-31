@@ -1,6 +1,7 @@
 package verifiercol
 
 import (
+	"fmt"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -64,7 +65,7 @@ func (ex ExpandedVerifCol) GetColAssignmentGnark(run ifaces.GnarkRuntime) []fron
 	return res
 }
 
-func (ex ExpandedVerifCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) []frontend.Variable {
+func (ex ExpandedVerifCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
 	if ex.Verifiercol.IsBase() {
 		assi := ex.Verifiercol.GetColAssignmentGnark(run)
 		res := make([]frontend.Variable, ex.Size())
@@ -73,9 +74,9 @@ func (ex ExpandedVerifCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) []
 				res[j+i*ex.Expansion] = assi[i]
 			}
 		}
-		return res
+		return res, nil
 	} else {
-		panic("Requested base elements but column is defined over the extension")
+		return nil, fmt.Errorf("requested base elements but column is defined over the extension")
 	}
 }
 
