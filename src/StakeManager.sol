@@ -359,6 +359,10 @@ contract StakeManager is
      * @dev Revets if the vault to migrate to has a non-zero staked balance.
      */
     function migrateToVault(address migrateTo) external onlyNotEmergencyMode onlyTrustedCodehash onlyRegisteredVault {
+        if (vaultOwners[migrateTo] == address(0)) {
+            revert StakeManager__InvalidVault();
+        }
+
         // first ensure the vault to migrate to is actually owned by the same user
         if (IStakeVault(msg.sender).owner() != IStakeVault(migrateTo).owner()) {
             revert StakeManager__Unauthorized();

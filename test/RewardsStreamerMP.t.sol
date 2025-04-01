@@ -2652,6 +2652,16 @@ contract StakeVaultMigrationTest is StakeManagerTest {
         StakeVault(vaults[alice]).migrateToVault(address(newVault));
     }
 
+    function test_RevertWhenDestinationVaultIsNotRegistered() public {
+        // alice creates vaults that's not registered with the stake manager
+        vm.startPrank(alice);
+        address faultyVault = address(Clones.clone(vaultFactory.vaultImplementation()));
+
+        // alice tries to migrate to a vault that is not registered
+        vm.expectRevert(IStakeManager.StakeManager__InvalidVault.selector);
+        StakeVault(vaults[alice]).migrateToVault(address(faultyVault));
+    }
+
     function testMigrateToVault() public {
         uint256 stakeAmount = 100e18;
 
