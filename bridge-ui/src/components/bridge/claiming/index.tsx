@@ -12,8 +12,13 @@ import BridgeMode from "./bridge-mode";
 
 export default function Claiming() {
   const { isConnected } = useAccount();
-  const fromChain = useChainStore.useFromChain();
-  const toChain = useChainStore.useToChain();
+  const { fromChainIconPath, fromChainNativeCurrencySymbol, toChainIconPath, toChainNativeCurrencySymbol } =
+    useChainStore((state) => ({
+      fromChainIconPath: state.fromChain.iconPath,
+      fromChainNativeCurrencySymbol: state.fromChain.nativeCurrency.symbol,
+      toChainIconPath: state.toChain.iconPath,
+      toChainNativeCurrencySymbol: state.toChain.nativeCurrency.symbol,
+    }));
 
   const [loading, setLoading] = useState<boolean>(false);
   const [showAdvancedSettingsModal, setShowAdvancedSettingsModal] = useState<boolean>(false);
@@ -59,10 +64,10 @@ export default function Claiming() {
         <div className={styles.content}>
           <div className={styles.result}>
             <BridgeTwoLogo
-              src1={fromChain?.iconPath ?? ""}
-              src2={toChain?.iconPath ?? ""}
-              alt1={fromChain?.nativeCurrency.symbol ?? ""}
-              alt2={toChain?.nativeCurrency.symbol ?? ""}
+              src1={fromChainIconPath}
+              src2={toChainIconPath}
+              alt1={fromChainNativeCurrencySymbol}
+              alt2={toChainNativeCurrencySymbol}
             />
             <ReceivedAmount />
           </div>

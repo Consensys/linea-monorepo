@@ -1,8 +1,8 @@
 "use client";
 
 import { type ReactNode, createContext, useRef, useContext } from "react";
-import { useStore } from "zustand";
-
+import { useStoreWithEqualityFn } from "zustand/traditional";
+import { shallow } from "zustand/shallow";
 import { TokenState, type TokenStore, createTokenStore } from "./tokenStore";
 
 export type TokenStoreApi = ReturnType<typeof createTokenStore>;
@@ -30,5 +30,5 @@ export const useTokenStore = <T,>(selector: (store: TokenStore) => T): T => {
     throw new Error(`useTokenStore must be used within TokenStoreProvider`);
   }
 
-  return useStore(tokenStoreContext, selector);
+  return useStoreWithEqualityFn(tokenStoreContext, selector, shallow);
 };

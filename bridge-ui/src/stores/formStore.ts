@@ -1,9 +1,8 @@
 import { Address } from "viem";
 import { defaultTokensConfig } from "./tokenStore";
-import { createWithEqualityFn } from "zustand/traditional";
-import { shallow } from "zustand/vanilla/shallow";
 import { Token } from "@/types";
 import { isCctp } from "@/utils";
+import { createStore } from "zustand";
 
 export type FormState = {
   token: Token;
@@ -44,14 +43,13 @@ export const defaultInitState: FormState = {
 };
 
 export const createFormStore = (defaultValues?: FormState) =>
-  createWithEqualityFn<FormStore>((set, get) => {
+  createStore<FormStore>((set, get) => {
     return {
       ...defaultInitState,
       ...defaultValues,
       setToken: (token) => {
-        set({ token });
         // No auto-claim for CCTP
-        isCctp(token) ? set({ claim: "manual" }) : set({ claim: "auto" });
+        set({ token, claim: isCctp(token) ? "manual" : "auto" });
       },
       setRecipient: (recipient) => set({ recipient }),
       setAmount: (amount) => set({ amount }),
@@ -64,4 +62,4 @@ export const createFormStore = (defaultValues?: FormState) =>
       // Custom getter function
       isTokenCanonicalUSDC: () => isCctp(get().token),
     };
-  }, shallow);
+  });

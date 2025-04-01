@@ -21,22 +21,22 @@ export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProp
   const { isConnected } = useAccount();
   const tokensList = useTokens();
   const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
-  const fromChain = useChainStore.useFromChain();
+  const { fromChainId, fromChainLayer, isFromChainTestnet } = useChainStore((state) => ({
+    fromChainLayer: state.fromChain.layer,
+    fromChainId: state.fromChain.id,
+    isFromChainTestnet: state.fromChain.testnet,
+  }));
   const currency = useConfigStore((state) => state.currency);
   const { isMobile } = useDevice();
 
   const [searchQuery, setSearchQuery] = useState("");
-
-  const chainLayer = fromChain.layer;
-  const chainId = fromChain.id;
-  const isTestnet = fromChain.testnet;
 
   const filteredTokens = useMemo(() => {
     if (!searchQuery) return tokensList;
     const query = searchQuery.toLowerCase();
 
     return tokensList.filter((token: Token) => {
-      const rawAddress = chainLayer ? token[chainLayer] : undefined;
+      const rawAddress = fromChainLayer ? token[fromChainLayer] : undefined;
       const tokenAddress = rawAddress ? safeGetAddress(rawAddress) : undefined;
       return (
         (tokenAddress || isEth(token)) &&
@@ -45,20 +45,20 @@ export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProp
           (tokenAddress && tokenAddress.toLowerCase().includes(query)))
       );
     });
-  }, [tokensList, searchQuery, chainLayer]);
+  }, [tokensList, searchQuery, fromChainLayer]);
 
   const tokenAddresses = useMemo(
     () =>
       filteredTokens.map((token) => {
         if (token.name === "Ether") return zeroAddress;
-        const rawAddress = chainLayer ? token[chainLayer] : null;
+        const rawAddress = fromChainLayer ? token[fromChainLayer] : null;
         const tokenAddress = rawAddress ? safeGetAddress(rawAddress) : null;
         return (tokenAddress ?? zeroAddress) as Address;
       }),
-    [filteredTokens, chainLayer],
+    [filteredTokens, fromChainLayer],
   );
 
-  const { data: tokenPrices } = useTokenPrices(tokenAddresses, chainId);
+  const { data: tokenPrices } = useTokenPrices(tokenAddresses, fromChainId);
 
   const handleTokenClick = useCallback(
     (token: Token) => {
@@ -70,14 +70,14 @@ export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProp
 
   const getTokenPrice = useCallback(
     (token: Token): number | undefined => {
-      if (fromChain && !isTestnet && !isEmptyObject(tokenPrices)) {
-        const rawAddress = token[chainLayer];
+      if (!isFromChainTestnet && !isEmptyObject(tokenPrices)) {
+        const rawAddress = token[fromChainLayer];
         const tokenAddress = (safeGetAddress(rawAddress) || zeroAddress).toLowerCase();
         return tokenPrices[tokenAddress];
       }
       return undefined;
     },
-    [tokenPrices, fromChain, chainLayer, isTestnet],
+    [tokenPrices, isFromChainTestnet, fromChainLayer],
   );
 
   const normalizeInput = useCallback((input: string): string => {

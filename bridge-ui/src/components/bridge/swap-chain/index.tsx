@@ -4,7 +4,7 @@ import styles from "./swap-chain.module.scss";
 import { useFormStore, useChainStore } from "@/stores";
 
 export default function SwapChain() {
-  const switchChainInStore = useChainStore.useSwitchChain();
+  const switchChainInStore = useChainStore((state) => state.switchChain);
   const resetForm = useFormStore((state) => state.resetForm);
 
   return (

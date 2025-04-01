@@ -8,9 +8,9 @@ type Props = {
 };
 
 export default function CurrencyDropdown({ disabled }: Props) {
-  const supportedCurrencies = useConfigStore.useSupportedCurrencies();
-  const currency = useConfigStore.useCurrency();
-  const setCurrency = useConfigStore.useSetCurrency();
+  const supportedCurrencies = useConfigStore((state) => state.supportedCurrencies);
+  const currency = useConfigStore((state) => state.currency);
+  const setCurrency = useConfigStore((state) => state.setCurrency);
 
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

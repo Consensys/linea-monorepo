@@ -1,5 +1,4 @@
-import { createWithEqualityFn } from "zustand/traditional";
-import { shallow } from "zustand/vanilla/shallow";
+import { createStore } from "zustand";
 import { BridgeProvider, NetworkTokens, Token } from "@/types";
 
 export const defaultTokensConfig: NetworkTokens = {
@@ -48,13 +47,10 @@ export const defaultInitState: TokenState = {
 };
 
 export const createTokenStore = (initState: TokenState = defaultInitState) => {
-  return createWithEqualityFn<TokenStore>()(
-    (set) => ({
-      ...initState,
-      setSelectedToken: (token: Token) => {
-        set({ selectedToken: token });
-      },
-    }),
-    shallow,
-  );
+  return createStore<TokenStore>()((set) => ({
+    ...initState,
+    setSelectedToken: (token: Token) => {
+      set({ selectedToken: token });
+    },
+  }));
 };

@@ -3,17 +3,17 @@ import styles from "./from-chain.module.scss";
 import SelectNetwork from "@/components/bridge/modal/select-network";
 import { useState } from "react";
 import { useChainStore } from "@/stores";
-import { useChains } from "@/hooks";
+import { useAvailableChains } from "@/hooks";
 import { Chain } from "@/types";
 
 export default function FromChain() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const chains = useChains();
-  const fromChain = useChainStore.useFromChain();
-  const toChain = useChainStore.useToChain();
-  const setFromChain = useChainStore.useSetFromChain();
-  const setToChain = useChainStore.useSetToChain();
+  const chains = useAvailableChains();
+  const fromChain = useChainStore((state) => state.fromChain);
+  const toChain = useChainStore((state) => state.toChain);
+  const setFromChain = useChainStore((state) => state.setFromChain);
+  const setToChain = useChainStore((state) => state.setToChain);
 
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => {
@@ -28,12 +28,7 @@ export default function FromChain() {
     }
 
     setFromChain(chain);
-
-    if (chain.testnet) {
-      setToChain(chains.find((c: Chain) => c.testnet && c.layer !== chain.layer));
-    } else {
-      setToChain(chains.find((c: Chain) => !c.testnet && c.layer !== chain.layer));
-    }
+    setToChain(chains.find((c: Chain) => c.layer !== chain.layer));
   };
 
   return (

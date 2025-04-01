@@ -13,7 +13,11 @@ type UseDepositForBurnTxArgs = {
 
 const useDepositForBurnTxArgs = ({ allowance }: UseDepositForBurnTxArgs) => {
   const { address } = useAccount();
-  const fromChain = useChainStore.useFromChain();
+  const { fromChainId, fromChainLayer, cctpTokenMessengerV2Address } = useChainStore((state) => ({
+    fromChainId: state.fromChain.id,
+    fromChainLayer: state.fromChain.layer,
+    cctpTokenMessengerV2Address: state.fromChain.cctpTokenMessengerV2Address,
+  }));
   const cctpDestinationDomain = useCctpDestinationDomain();
   const token = useFormStore((state) => state.token);
   const amount = useFormStore((state) => state.amount);
@@ -28,7 +32,7 @@ const useDepositForBurnTxArgs = ({ allowance }: UseDepositForBurnTxArgs) => {
     return {
       type: "depositForBurn",
       args: {
-        to: fromChain.cctpTokenMessengerV2Address,
+        to: cctpTokenMessengerV2Address,
         data: encodeFunctionData({
           abi: [
             {
@@ -52,17 +56,28 @@ const useDepositForBurnTxArgs = ({ allowance }: UseDepositForBurnTxArgs) => {
             amount,
             cctpDestinationDomain,
             padHex(recipient),
-            token[fromChain.layer],
+            token[fromChainLayer],
             zeroHash,
             fee,
             CCTP_MIN_FINALITY_THRESHOLD,
           ],
         }),
         value: 0n,
-        chainId: fromChain.id,
+        chainId: fromChainId,
       },
     };
-  }, [address, allowance, amount, fee, cctpDestinationDomain, fromChain, recipient, token]);
+  }, [
+    address,
+    amount,
+    allowance,
+    recipient,
+    token,
+    cctpTokenMessengerV2Address,
+    cctpDestinationDomain,
+    fromChainLayer,
+    fee,
+    fromChainId,
+  ]);
 };
 
 export default useDepositForBurnTxArgs;

@@ -7,8 +7,13 @@ import { isCctp } from "@/utils/tokens";
 const useAllowance = () => {
   const { address } = useAccount();
   const token = useFormStore((state) => state.token);
-  const fromChain = useChainStore.useFromChain();
-  const spender = !isCctp(token) ? fromChain.tokenBridgeAddress : fromChain.cctpTokenMessengerV2Address;
+  const { fromChainId, fromChainLayer, tokenBridgeAddress, cctpTokenMessengerV2Address } = useChainStore((state) => ({
+    fromChainId: state.fromChain.id,
+    fromChainLayer: state.fromChain.layer,
+    tokenBridgeAddress: state.fromChain.tokenBridgeAddress,
+    cctpTokenMessengerV2Address: state.fromChain.cctpTokenMessengerV2Address,
+  }));
+  const spender = !isCctp(token) ? tokenBridgeAddress : cctpTokenMessengerV2Address;
 
   const {
     data: allowance,
@@ -18,11 +23,11 @@ const useAllowance = () => {
     abi: erc20Abi,
     functionName: "allowance",
     args: [address ?? "0x", spender],
-    address: token[fromChain.layer] ?? "0x",
+    address: token[fromChainLayer] ?? "0x",
     query: {
-      enabled: !!token && !isEth(token) && !!address && !!fromChain,
+      enabled: !!token && !isEth(token) && !!address && !!fromChainLayer,
     },
-    chainId: fromChain.id,
+    chainId: fromChainId,
   });
 
   return { allowance, queryKey, refetchAllowance: refetch };

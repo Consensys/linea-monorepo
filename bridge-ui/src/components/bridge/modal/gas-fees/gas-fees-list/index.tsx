@@ -11,7 +11,7 @@ type Props = {
 };
 
 export default function GasFeesList({ fees }: Props) {
-  const currency = useConfigStore.useCurrency();
+  const currency = useConfigStore((state) => state.currency);
   return (
     <ul className={styles.list}>
       {fees.map((row, index) => (

@@ -1,5 +1,4 @@
-import { create } from "zustand";
-import { createSelectorHooks, ZustandHookSelectors } from "auto-zustand-selectors-hook";
+import { createStore } from "zustand";
 import { config } from "@/config";
 
 import { createJSONStorage, persist } from "zustand/middleware";
@@ -14,7 +13,6 @@ export type CurrencyOption = {
 
 export type ConfigState = {
   agreeToTerms: boolean;
-  rehydrated: boolean;
   supportedCurrencies: CurrencyOption[];
   currency: CurrencyOption;
   showTestnet: boolean;
@@ -30,7 +28,6 @@ export type ConfigStore = ConfigState & ConfigActions;
 
 export const defaultInitState: ConfigState = {
   agreeToTerms: false,
-  rehydrated: false,
   supportedCurrencies: [
     { value: "usd", label: "USD", flag: "🇺🇸" },
     { value: "eur", label: "EUR", flag: "🇪🇺" },
@@ -43,29 +40,22 @@ export const defaultInitState: ConfigState = {
   showTestnet: false,
 };
 
-const useConfigStoreBase = create<ConfigStore>()(
-  persist(
-    (set) => ({
-      ...defaultInitState,
-      setAgreeToTerms: (agree) => set({ agreeToTerms: agree }),
-      setCurrency: (currency: CurrencyOption) => set({ currency }),
-      setShowTestnet: (show: boolean) => set({ showTestnet: show }),
-    }),
-    {
-      name: "config-storage",
-      version: config.storage.minVersion,
-      storage: createJSONStorage(() => localStorage),
-      migrate: () => {
-        return defaultInitState;
+export const createConfigStore = () =>
+  createStore<ConfigStore>()(
+    persist(
+      (set) => ({
+        ...defaultInitState,
+        setAgreeToTerms: (agree) => set({ agreeToTerms: agree }),
+        setCurrency: (currency: CurrencyOption) => set({ currency }),
+        setShowTestnet: (show: boolean) => set({ showTestnet: show }),
+      }),
+      {
+        name: "config-storage",
+        version: config.storage.minVersion,
+        storage: createJSONStorage(() => localStorage),
+        migrate: () => {
+          return defaultInitState;
+        },
       },
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          state.rehydrated = true;
-        }
-      },
-    },
-  ),
-);
-
-export const useConfigStore = createSelectorHooks(useConfigStoreBase) as unknown as typeof useConfigStoreBase &
-  ZustandHookSelectors<ConfigStore>;
+    ),
+  );

@@ -6,13 +6,14 @@ import { USDC_SYMBOL } from "@/constants";
 
 const useTokens = (): Token[] => {
   const tokensList = useTokenStore((state) => state.tokensList);
-  const fromChain = useChainStore.useFromChain();
+  const { fromChainLayer, isFromChainTestnet } = useChainStore((state) => ({
+    fromChainLayer: state.fromChain.layer,
+    isFromChainTestnet: state.fromChain.testnet,
+  }));
 
   return useMemo(() => {
-    if (!fromChain) return [];
-
-    if (fromChain.testnet) {
-      if (fromChain.layer !== ChainLayer.L2) {
+    if (isFromChainTestnet) {
+      if (fromChainLayer !== ChainLayer.L2) {
         return tokensList.SEPOLIA.filter(
           (token) => !token.type.includes("native") && (config.isCctpEnabled || token.symbol !== USDC_SYMBOL),
         );
@@ -22,7 +23,7 @@ const useTokens = (): Token[] => {
         : tokensList.SEPOLIA.filter((token) => token.symbol !== USDC_SYMBOL);
     }
 
-    if (fromChain.layer !== ChainLayer.L2) {
+    if (fromChainLayer !== ChainLayer.L2) {
       return tokensList.MAINNET.filter(
         (token) => !token.type.includes("native") && (config.isCctpEnabled || token.symbol !== USDC_SYMBOL),
       );
@@ -31,7 +32,7 @@ const useTokens = (): Token[] => {
     return config.isCctpEnabled
       ? tokensList.MAINNET
       : tokensList.MAINNET.filter((token) => token.symbol !== USDC_SYMBOL);
-  }, [fromChain, tokensList.MAINNET, tokensList.SEPOLIA]);
+  }, [fromChainLayer, isFromChainTestnet, tokensList.MAINNET, tokensList.SEPOLIA]);
 };
 
 export default useTokens;

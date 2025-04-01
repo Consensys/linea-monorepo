@@ -5,13 +5,13 @@ import WithFees from "./with-fees";
 import { useFormStore, useChainStore } from "@/stores";
 
 export default function Fees() {
-  const fromChain = useChainStore.useFromChain();
+  const fromChainIconPath = useChainStore((state) => state.fromChain.iconPath);
   const claim = useFormStore((state) => state.claim);
 
   return (
     <>
       <div className={styles.estimate}>
-        <WithFees iconPath={fromChain.iconPath} />
+        <WithFees iconPath={fromChainIconPath} />
         <EstimatedTime />
         {claim === "manual" && <ManualClaim />}
       </div>

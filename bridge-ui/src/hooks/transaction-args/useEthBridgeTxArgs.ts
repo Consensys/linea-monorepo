@@ -11,7 +11,12 @@ type UseEthBridgeTxArgsProps = {
 };
 
 const useEthBridgeTxArgs = ({ isConnected }: UseEthBridgeTxArgsProps) => {
-  const fromChain = useChainStore.useFromChain();
+  const { isL2Network, isL1Network, fromChainId, messageServiceAddress } = useChainStore((state) => ({
+    fromChainId: state.fromChain.id,
+    messageServiceAddress: state.fromChain.messageServiceAddress,
+    isL2Network: state.fromChain.layer === ChainLayer.L2,
+    isL1Network: state.fromChain.layer === ChainLayer.L1,
+  }));
   const token = useFormStore((state) => state.token);
   const amount = useFormStore((state) => state.amount);
   const recipient = useFormStore((state) => state.recipient);
@@ -25,8 +30,8 @@ const useEthBridgeTxArgs = ({ isConnected }: UseEthBridgeTxArgsProps) => {
     if (
       !amount ||
       !toAddress ||
-      (isZero(minimumFees) && fromChain.layer === ChainLayer.L2) ||
-      (isUndefinedOrNull(bridgingFees) && fromChain.layer === ChainLayer.L1) ||
+      (isZero(minimumFees) && isL2Network) ||
+      (isUndefinedOrNull(bridgingFees) && isL1Network) ||
       (isZero(bridgingFees) && claim === "auto") ||
       !isEth(token) ||
       token.bridgeProvider !== BridgeProvider.NATIVE
@@ -37,17 +42,28 @@ const useEthBridgeTxArgs = ({ isConnected }: UseEthBridgeTxArgsProps) => {
     return {
       type: "bridge",
       args: {
-        to: fromChain.messageServiceAddress,
+        to: messageServiceAddress,
         data: encodeFunctionData({
           abi: MessageService.abi,
           functionName: "sendMessage",
           args: [toAddress, minimumFees + bridgingFees, "0x"],
         }),
         value: amount + minimumFees + bridgingFees,
-        chainId: fromChain.id,
+        chainId: fromChainId,
       },
     };
-  }, [fromChain, token, amount, toAddress, minimumFees, bridgingFees, claim]);
+  }, [
+    amount,
+    toAddress,
+    minimumFees,
+    isL2Network,
+    bridgingFees,
+    isL1Network,
+    claim,
+    token,
+    messageServiceAddress,
+    fromChainId,
+  ]);
 };
 
 export default useEthBridgeTxArgs;

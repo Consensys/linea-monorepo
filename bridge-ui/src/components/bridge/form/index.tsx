@@ -24,7 +24,7 @@ export default function BridgeForm() {
   const setIsBridgeOpen = useNativeBridgeNavigationStore.useSetIsBridgeOpen();
 
   const { address } = useAccount();
-  const fromChain = useChainStore.useFromChain();
+  const fromChainLayer = useChainStore((state) => state.fromChain.layer);
   const token = useFormStore((state) => state.token);
   const setRecipient = useFormStore((state) => state.setRecipient);
   const setBalance = useFormStore((state) => state.setBalance);
@@ -48,10 +48,10 @@ export default function BridgeForm() {
       setRecipient(address);
     }
 
-    if (fromChain.layer === ChainLayer.L2) {
+    if (fromChainLayer === ChainLayer.L2) {
       setClaim("manual");
     }
-  }, [balance, address, fromChain.layer, setBalance, setRecipient, setClaim]);
+  }, [balance, address, fromChainLayer, setBalance, setRecipient, setClaim]);
 
   return (
     <>

@@ -1,25 +1,22 @@
-"use client";
+import { ChainStoreProvider, ConfigStoreProvider, FormStoreProvider, TokenStoreProvider } from "@/stores";
+import { getTokenConfig } from "@/services/tokenService";
 
-import { useTokens } from "@/hooks";
-import { useAccount } from "wagmi";
-import { FormState, FormStoreProvider, useChainStore } from "@/stores";
-import { ChainLayer } from "@/types";
+async function getTokenStoreInitialState() {
+  const tokensList = await getTokenConfig();
 
-export default function Layout({ children }: { children: React.ReactNode }) {
-  const { address } = useAccount();
-  const tokens = useTokens();
-  const fromChain = useChainStore.useFromChain();
+  return { tokensList, selectedToken: tokensList.MAINNET[0] };
+}
 
-  const initialFormState: FormState = {
-    token: tokens[0],
-    claim: fromChain?.layer === ChainLayer.L1 ? "auto" : "manual",
-    amount: null,
-    minimumFees: 0n,
-    gasFees: 0n,
-    bridgingFees: 0n,
-    balance: 0n,
-    recipient: address || "0x",
-  };
+export default async function Layout({ children }: { children: React.ReactNode }) {
+  const tokensStoreInitialState = await getTokenStoreInitialState();
 
-  return <FormStoreProvider initialState={initialFormState}>{children}</FormStoreProvider>;
+  return (
+    <TokenStoreProvider initialState={tokensStoreInitialState}>
+      <ConfigStoreProvider>
+        <ChainStoreProvider>
+          <FormStoreProvider initialToken={tokensStoreInitialState.tokensList.MAINNET[0]}>{children}</FormStoreProvider>
+        </ChainStoreProvider>
+      </ConfigStoreProvider>
+    </TokenStoreProvider>
+  );
 }

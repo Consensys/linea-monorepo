@@ -1,8 +1,11 @@
 "use client";
 
 import { type ReactNode, createContext, useRef, useContext } from "react";
-import { useStore } from "zustand";
+import { shallow } from "zustand/vanilla/shallow";
 import { FormState, type FormStore, createFormStore } from "./formStore";
+import { useStoreWithEqualityFn } from "zustand/traditional";
+import { useAccount } from "wagmi";
+import { Token } from "@/types";
 
 export type FormStoreApi = ReturnType<typeof createFormStore>;
 
@@ -10,10 +13,23 @@ export const FormStoreContext = createContext<FormStoreApi | undefined>(undefine
 
 export interface FormStoreProviderProps {
   children: ReactNode;
-  initialState?: FormState;
+  initialToken: Token;
 }
 
-export function FormStoreProvider({ children, initialState }: FormStoreProviderProps) {
+export function FormStoreProvider({ children, initialToken }: FormStoreProviderProps) {
+  const { address } = useAccount();
+
+  const initialState: FormState = {
+    token: initialToken,
+    claim: "auto",
+    amount: null,
+    minimumFees: 0n,
+    gasFees: 0n,
+    bridgingFees: 0n,
+    balance: 0n,
+    recipient: address || "0x",
+  };
+
   const storeRef = useRef<FormStoreApi>();
   if (!storeRef.current) {
     storeRef.current = createFormStore(initialState);
@@ -26,8 +42,8 @@ export const useFormStore = <T,>(selector: (store: FormStore) => T): T => {
   const formStoreContext = useContext(FormStoreContext);
 
   if (!formStoreContext) {
-    throw new Error(`useFormStore must be used within TokenStoreProvider`);
+    throw new Error(`useFormStore must be used within FormStoreProvider`);
   }
 
-  return useStore(formStoreContext, selector);
+  return useStoreWithEqualityFn(formStoreContext, selector, shallow);
 };

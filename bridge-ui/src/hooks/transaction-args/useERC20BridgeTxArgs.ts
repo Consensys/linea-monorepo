@@ -12,7 +12,13 @@ type UseERC20BridgeTxArgsProps = {
 };
 
 const useERC20BridgeTxArgs = ({ isConnected, allowance }: UseERC20BridgeTxArgsProps) => {
-  const fromChain = useChainStore.useFromChain();
+  const { isL2Network, isL1Network, fromChainLayer, fromChainId, tokenBridgeAddress } = useChainStore((state) => ({
+    fromChainLayer: state.fromChain.layer,
+    fromChainId: state.fromChain.id,
+    tokenBridgeAddress: state.fromChain.tokenBridgeAddress,
+    isL2Network: state.fromChain.layer === ChainLayer.L2,
+    isL1Network: state.fromChain.layer === ChainLayer.L1,
+  }));
   const token = useFormStore((state) => state.token);
   const amount = useFormStore((state) => state.amount);
   const recipient = useFormStore((state) => state.recipient);
@@ -28,8 +34,8 @@ const useERC20BridgeTxArgs = ({ isConnected, allowance }: UseERC20BridgeTxArgsPr
       isNull(amount) ||
       (isConnected && (isUndefined(allowance) || allowance < amount)) ||
       !toAddress ||
-      (isZero(minimumFees) && fromChain.layer === ChainLayer.L2) ||
-      (isUndefinedOrNull(bridgingFees) && fromChain.layer === ChainLayer.L1) ||
+      (isZero(minimumFees) && isL2Network) ||
+      (isUndefinedOrNull(bridgingFees) && isL1Network) ||
       (isZero(bridgingFees) && claim === "auto") ||
       token.bridgeProvider !== BridgeProvider.NATIVE
     ) {
@@ -39,17 +45,31 @@ const useERC20BridgeTxArgs = ({ isConnected, allowance }: UseERC20BridgeTxArgsPr
     return {
       type: "bridge",
       args: {
-        to: fromChain.tokenBridgeAddress,
+        to: tokenBridgeAddress,
         data: encodeFunctionData({
           abi: TokenBridge.abi,
           functionName: "bridgeToken",
-          args: [token[fromChain.layer], amount, toAddress],
+          args: [token[fromChainLayer], amount, toAddress],
         }),
         value: minimumFees + bridgingFees,
-        chainId: fromChain.id,
+        chainId: fromChainId,
       },
     };
-  }, [allowance, amount, bridgingFees, claim, fromChain, minimumFees, toAddress, token, isConnected]);
+  }, [
+    token,
+    amount,
+    isConnected,
+    allowance,
+    toAddress,
+    minimumFees,
+    isL2Network,
+    bridgingFees,
+    isL1Network,
+    claim,
+    tokenBridgeAddress,
+    fromChainLayer,
+    fromChainId,
+  ]);
 };
 
 export default useERC20BridgeTxArgs;

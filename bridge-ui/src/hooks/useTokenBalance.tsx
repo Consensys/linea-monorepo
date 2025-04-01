@@ -6,10 +6,13 @@ import { Token } from "@/types";
 
 const useTokenBalance = (token: Token) => {
   const { address } = useAccount();
-  const fromChain = useChainStore.useFromChain();
+  const { fromChainId, fromChainLayer } = useChainStore((state) => ({
+    fromChainId: state.fromChain.id,
+    fromChainLayer: state.fromChain.layer,
+  }));
 
   const ethBalance = useBalance({
-    chainId: fromChain.id,
+    chainId: fromChainId,
     address,
     query: {
       enabled: !!address && !!isEth(token),
@@ -17,11 +20,11 @@ const useTokenBalance = (token: Token) => {
   });
 
   const erc20Balance = useReadContract({
-    address: token[fromChain.layer] || "0x",
+    address: token[fromChainLayer] || "0x",
     abi: erc20Abi,
     functionName: "balanceOf",
     args: [address || "0x"],
-    chainId: fromChain.id,
+    chainId: fromChainId,
     query: {
       enabled: !isEth(token) && !!address,
     },

@@ -19,8 +19,8 @@ type UseBridgingFeeProps = {
 };
 
 const useBridgingFee = ({ isConnected, account, token, claimingType, amount, recipient }: UseBridgingFeeProps) => {
-  const fromChain = useChainStore.useFromChain();
-  const toChain = useChainStore.useToChain();
+  const fromChain = useChainStore((state) => state.fromChain);
+  const toChain = useChainStore((state) => state.toChain);
   const setBridgingFees = useFormStore((state) => state.setBridgingFees);
 
   const { feeData } = useFeeData(toChain.id);

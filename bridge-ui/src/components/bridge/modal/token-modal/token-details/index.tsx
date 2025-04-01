@@ -19,13 +19,12 @@ interface TokenDetailsProps {
 
 export default function TokenDetails({ isConnected, token, onTokenClick, tokenPrice, currency }: TokenDetailsProps) {
   const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
-  const fromChain = useChainStore.useFromChain();
+  const fromChainLayer = useChainStore((state) => state.fromChain.layer);
   const { balance } = useTokenBalance(token);
   const setToken = useFormStore((state) => state.setToken);
   const setAmount = useFormStore((state) => state.setAmount);
 
-  const chainLayer = fromChain?.layer;
-  const tokenNotFromCurrentLayer = chainLayer && !token[chainLayer] && !isEth(token);
+  const tokenNotFromCurrentLayer = fromChainLayer && !token[fromChainLayer] && !isEth(token);
 
   const formattedBalance = useMemo(() => formatUnits(balance, token.decimals), [balance, token.decimals]);
 

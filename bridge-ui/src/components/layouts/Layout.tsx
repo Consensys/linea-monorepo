@@ -4,7 +4,6 @@ import clsx from "clsx";
 import { usePathname } from "next/navigation";
 import { useDynamicContext } from "@/lib/dynamic";
 import Header from "../header";
-import { useInitialiseChain } from "@/hooks";
 import { Theme } from "@/types";
 import Image from "next/image";
 import styles from "./layout.module.scss";
@@ -12,7 +11,6 @@ import InternalNav from "../internal-nav";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { sdkHasLoaded } = useDynamicContext();
-  useInitialiseChain();
 
   const pathname = usePathname();
 

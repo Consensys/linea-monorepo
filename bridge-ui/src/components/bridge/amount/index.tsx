@@ -10,16 +10,20 @@ const MAX_AMOUNT_CHAR = 20;
 
 export function Amount() {
   const currency = useConfigStore((state) => state.currency);
-  const fromChain = useChainStore.useFromChain();
+  const { fromChainId, fromChainLayer, isFromChainTestnet } = useChainStore((state) => ({
+    fromChainLayer: state.fromChain.layer,
+    fromChainId: state.fromChain.id,
+    isFromChainTestnet: state.fromChain.testnet,
+  }));
   const { address } = useAccount();
 
   const amount = useFormStore((state) => state.amount);
   const token = useFormStore((state) => state.token);
   const setAmount = useFormStore((state) => state.setAmount);
 
-  const tokenAddress = token[fromChain.layer];
+  const tokenAddress = token[fromChainLayer];
 
-  const { data: tokenPrices } = useTokenPrices([tokenAddress], fromChain.id);
+  const { data: tokenPrices } = useTokenPrices([tokenAddress], fromChainId);
 
   const [inputValue, setInputValue] = useState(amount ? formatUnits(amount, token.decimals) : "");
 
@@ -108,7 +112,7 @@ export function Amount() {
         pattern={AMOUNT_REGEX.source}
         placeholder="0"
       />
-      {!fromChain?.testnet && <span className={styles["calculated-value"]}>{calculatedValue}</span>}
+      {!isFromChainTestnet && <span className={styles["calculated-value"]}>{calculatedValue}</span>}
     </div>
   );
 }

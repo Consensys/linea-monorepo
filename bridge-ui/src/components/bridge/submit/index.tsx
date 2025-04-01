@@ -21,7 +21,10 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
   const [showTransactionConfirmedModal, setShowTransactionConfirmedModal] = useState<boolean>(false);
   const [showConfirmDestinationAddressModal, setShowConfirmDestinationAddressModal] = useState<boolean>(false);
 
-  const fromChain = useChainStore.useFromChain();
+  const { fromChainId, fromChainName } = useChainStore((state) => ({
+    fromChainId: state.fromChain.id,
+    fromChainName: state.fromChain.name,
+  }));
   const amount = useFormStore((state) => state.amount);
   const balance = useFormStore((state) => state.balance);
   const recipient = useFormStore((state) => state.recipient);
@@ -34,8 +37,8 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
   const { switchChain, isPending: isSwitchingChain } = useSwitchChain();
 
   const needChainSwitch = useMemo(() => {
-    return fromChain.id !== chainId;
-  }, [fromChain.id, chainId]);
+    return fromChainId !== chainId;
+  }, [fromChainId, chainId]);
 
   const disabled = useMemo(() => {
     if (needChainSwitch) return false;
@@ -55,7 +58,7 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
 
     // Do not let user do actions with wallet connected to wrong chain
     if (needChainSwitch) {
-      return `Switch to ${fromChain.name}`;
+      return `Switch to ${fromChainName}`;
     }
 
     if (!amount || amount <= 0n) {
@@ -72,7 +75,7 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
     }
 
     return "Bridge";
-  }, [amount, balance, fromChain.name, isConfirming, isPending, isSwitchingChain, transactionType, needChainSwitch]);
+  }, [amount, balance, fromChainName, isConfirming, isPending, isSwitchingChain, transactionType, needChainSwitch]);
 
   useEffect(() => {
     if (isConfirmed) {
@@ -88,7 +91,7 @@ export function Submit({ isDestinationAddressOpen, setIsDestinationAddressOpen }
             className={styles["submit-button"]}
             onClick={() => {
               if (needChainSwitch) {
-                switchChain({ chainId: fromChain.id });
+                switchChain({ chainId: fromChainId });
               } else {
                 if (transactionType !== "approve") {
                   setShowConfirmDestinationAddressModal(true);

@@ -73,7 +73,7 @@ describe("L1 > L2 via Native Bridge", () => {
     await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
 
     // Should have 'Switch to Sepolia' network button visible and enabled
-    const switchBtn = page.getByRole("button", {name: "Switch to Sepolia", exact: true});
+    const switchBtn = page.getByRole("button", { name: "Switch to Sepolia", exact: true });
     await expect(switchBtn).toBeVisible();
     await expect(switchBtn).toBeEnabled();
 

@@ -9,8 +9,8 @@ import { useFormStore, useChainStore } from "@/stores";
 
 const useFees = () => {
   const { address, isConnected } = useAccount();
-  const fromChain = useChainStore.useFromChain();
-  const toChain = useChainStore.useToChain();
+  const fromChain = useChainStore((state) => state.fromChain);
+  const toChainName = useChainStore((state) => state.toChain.name);
   useMinimumFee();
 
   const { data: tokenPrices, isLoading: isTokenPricesLoading } = useTokenPrices([zeroAddress], fromChain.id);
@@ -58,14 +58,14 @@ const useFees = () => {
 
       if (claim === "auto" && bridgingFees) {
         feesArray.push({
-          name: `${toChain.name} fee`,
+          name: `${toChainName} fee`,
           fee: bridgingFees,
           fiatValue: getFiatValue(bridgingFees),
         });
       }
     }
     return feesArray;
-  }, [gasFeesResult?.gasFees, fromChain.name, getFiatValue, claim, bridgingFees, toChain.name]);
+  }, [gasFeesResult?.gasFees, fromChain.name, getFiatValue, claim, bridgingFees, toChainName]);
 
   const totalFees = useMemo(() => {
     const totalFeeBigInt = fees.reduce<bigint>((acc, fee) => acc + fee.fee, 0n);

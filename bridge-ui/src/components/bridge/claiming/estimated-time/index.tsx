@@ -6,11 +6,11 @@ import { useChainStore } from "@/stores";
 import { ChainLayer } from "@/types";
 
 export default function EstimatedTime() {
-  const fromChain = useChainStore.useFromChain();
+  const isL1Network = useChainStore((state) => state.fromChain.layer === ChainLayer.L1);
   const [showEstimatedTimeModal, setShowEstimatedTimeModal] = useState<boolean>(false);
 
-  const estimatedTime = fromChain.layer === ChainLayer.L1 ? "~ 20 mins" : "~ 8-32 hours";
-  const estimatedTimeType = fromChain.layer === ChainLayer.L1 ? "deposit" : "withdraw";
+  const estimatedTime = isL1Network ? "~ 20 mins" : "~ 8-32 hours";
+  const estimatedTimeType = isL1Network ? "deposit" : "withdraw";
 
   return (
     <>

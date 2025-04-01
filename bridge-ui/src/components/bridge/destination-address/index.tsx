@@ -32,7 +32,10 @@ function formatMessage({
 export function DestinationAddress() {
   const { address, isConnected } = useAccount();
 
-  const toChain = useChainStore.useToChain();
+  const { toChainIsL1, toChainBlockExplorerUrl } = useChainStore((state) => ({
+    toChainIsL1: state.toChain.layer === ChainLayer.L1,
+    toChainBlockExplorerUrl: state.toChain.blockExplorers?.default.url,
+  }));
   const recipient = useFormStore((state) => state.recipient);
   const setRecipient = useFormStore((state) => state.setRecipient);
   const [inputValue, setInputValue] = useState(recipient);
@@ -77,11 +80,11 @@ export function DestinationAddress() {
         <p className={styles.title}>Send to wallet</p>
         {address !== inputValue && !error && isAddress(inputValue) && (
           <Link
-            href={`${toChain.blockExplorers?.default.url ?? ""}/address/${inputValue}`}
+            href={`${toChainBlockExplorerUrl ?? ""}/address/${inputValue}`}
             target="_blank"
             rel="noopenner noreferrer"
           >
-            VIEW ON {toChain.layer === ChainLayer.L1 ? "ETHERSCAN" : "LINEASCAN"}
+            VIEW ON {toChainIsL1 ? "ETHERSCAN" : "LINEASCAN"}
             <ArrowRightIcon />
           </Link>
         )}

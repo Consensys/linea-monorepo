@@ -12,7 +12,7 @@ type Props = {
 
 export default function WithFees({ iconPath }: Props) {
   const [showGasFeesModal, setShowGasFeesModal] = useState<boolean>(false);
-  const currency = useConfigStore.useCurrency();
+  const currency = useConfigStore((state) => state.currency);
 
   const { total, fees, isLoading } = useFees();
 

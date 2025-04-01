@@ -22,22 +22,25 @@ function formatReceivedAmount(
 }
 
 export default function ReceivedAmount() {
-  const fromChain = useChainStore.useFromChain();
-  const currency = useConfigStore.useCurrency();
+  const { fromChainId, fromChainLayer } = useChainStore((state) => ({
+    fromChainId: state.fromChain.id,
+    fromChainLayer: state.fromChain.layer,
+  }));
+  const currency = useConfigStore((state) => state.currency);
   const amount = useFormStore((state) => state.amount);
   const token = useFormStore((state) => state.token);
   const bridgingFees = useFormStore((state) => state.bridgingFees);
   const minimumFees = useFormStore((state) => state.minimumFees);
 
-  const { data: tokenPrices } = useTokenPrices([token[fromChain.layer]], fromChain.id);
+  const { data: tokenPrices } = useTokenPrices([token[fromChainLayer]], fromChainId);
 
   const receivedAmount = useMemo(
     () =>
       formatUnits(
-        formatReceivedAmount(amount || 0n, token.symbol, bridgingFees, minimumFees, fromChain.layer),
+        formatReceivedAmount(amount || 0n, token.symbol, bridgingFees, minimumFees, fromChainLayer),
         token.decimals,
       ),
-    [amount, token.symbol, bridgingFees, minimumFees, fromChain.layer, token.decimals],
+    [amount, token.symbol, bridgingFees, minimumFees, fromChainLayer, token.decimals],
   );
 
   return (
@@ -45,16 +48,15 @@ export default function ReceivedAmount() {
       <p className={styles.crypto} data-testid="received-amount-text">
         {formatBalance(receivedAmount, 6)} {token.symbol}
       </p>
-      {tokenPrices?.[token[fromChain.layer].toLowerCase()] &&
-        tokenPrices?.[token[fromChain.layer].toLowerCase()] > 0 && (
-          <p className={styles.amount}>
-            {(Number(receivedAmount) * tokenPrices?.[token[fromChain.layer].toLowerCase()]).toLocaleString("en-US", {
-              style: "currency",
-              currency: currency.label,
-              maximumFractionDigits: 8,
-            })}
-          </p>
-        )}
+      {tokenPrices?.[token[fromChainLayer].toLowerCase()] && tokenPrices?.[token[fromChainLayer].toLowerCase()] > 0 && (
+        <p className={styles.amount}>
+          {(Number(receivedAmount) * tokenPrices?.[token[fromChainLayer].toLowerCase()]).toLocaleString("en-US", {
+            style: "currency",
+            currency: currency.label,
+            maximumFractionDigits: 8,
+          })}
+        </p>
+      )}
     </div>
   );
 }

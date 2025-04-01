@@ -15,7 +15,7 @@ type Props = {
 };
 
 export default function ConfirmDestinationAddress({ isModalOpen, recipient, onCloseModal, onConfirm }: Props) {
-  const toChain = useChainStore.useToChain();
+  const toChainBlockExplorerUrl = useChainStore((state) => state.toChain.blockExplorers?.default.url);
 
   return (
     <Modal title="Confirm destination address" isOpen={isModalOpen} onClose={onCloseModal}>
@@ -24,11 +24,7 @@ export default function ConfirmDestinationAddress({ isModalOpen, recipient, onCl
           Your funds are being bridged to the following address on the destination chain. Please review and confirm
           before proceeding.
         </p>
-        <Link
-          href={`${toChain.blockExplorers?.default.url}/address/${recipient}`}
-          target="_blank"
-          rel="noopenner noreferrer"
-        >
+        <Link href={`${toChainBlockExplorerUrl}/address/${recipient}`} target="_blank" rel="noopenner noreferrer">
           {formatAddress(recipient)}
           <UnionIcon />
         </Link>

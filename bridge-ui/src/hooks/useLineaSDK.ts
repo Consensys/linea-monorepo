@@ -11,12 +11,12 @@ export interface LineaSDKContracts {
 }
 
 const useLineaSDK = () => {
-  const fromChain = useChainStore.useFromChain();
+  const isFromChainTestnet = useChainStore((state) => state.fromChain.testnet);
 
   const { lineaSDK, lineaSDKContracts } = useMemo(() => {
     let l1RpcUrl;
     let l2RpcUrl;
-    if (fromChain.testnet) {
+    if (isFromChainTestnet) {
       l1RpcUrl = CHAINS_RPC_URLS[sepolia.id];
       l2RpcUrl = CHAINS_RPC_URLS[lineaSepolia.id];
     } else {
@@ -27,7 +27,7 @@ const useLineaSDK = () => {
     const sdk = new LineaSDK({
       l1RpcUrl,
       l2RpcUrl,
-      network: `linea-${fromChain.testnet ? "sepolia" : "mainnet"}` as Network,
+      network: `linea-${isFromChainTestnet ? "sepolia" : "mainnet"}` as Network,
       mode: "read-only",
     });
 
@@ -37,7 +37,7 @@ const useLineaSDK = () => {
     };
 
     return { lineaSDK: sdk, lineaSDKContracts: newLineaSDKContracts };
-  }, [fromChain.testnet]);
+  }, [isFromChainTestnet]);
 
   return { lineaSDK, lineaSDKContracts };
 };

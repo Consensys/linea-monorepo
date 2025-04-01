@@ -8,8 +8,8 @@ import { fetchTransactionsHistory } from "@/utils";
 
 const useTransactionHistory = () => {
   const { address } = useAccount();
-  const fromChain = useChainStore.useFromChain();
-  const toChain = useChainStore.useToChain();
+  const fromChain = useChainStore((state) => state.fromChain);
+  const toChain = useChainStore((state) => state.toChain);
   const { lineaSDK } = useLineaSDK();
   const tokens = useTokens();
   const { setCompleteTx, getCompleteTx } = useHistoryStore((state) => ({

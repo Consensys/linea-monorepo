@@ -11,7 +11,7 @@ type Props = {
 };
 
 export default function AdvancedSettings({ isModalOpen, onCloseModal }: Props) {
-  const fromChain = useChainStore.useFromChain();
+  const fromChainIsL2 = useChainStore((state) => state.fromChain.layer === ChainLayer.L2);
 
   const claim = useFormStore((state) => state.claim);
   const setClaim = useFormStore((state) => state.setClaim);
@@ -32,7 +32,7 @@ export default function AdvancedSettings({ isModalOpen, onCloseModal }: Props) {
           </div>
           <div className={styles.toggle}>
             <ToggleSwitch
-              disabled={fromChain?.layer === ChainLayer.L2}
+              disabled={fromChainIsL2}
               checked={claim === "manual"}
               onChange={(checked) => {
                 if (checked) {

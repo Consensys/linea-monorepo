@@ -5,9 +5,7 @@ import SettingIcon from "@/assets/icons/setting.svg";
 import ToggleSwitch from "@/components/ui/toggle-switch";
 import { HTMLAttributes, useEffect, useRef, useState } from "react";
 import CurrencyDropdown from "@/components/bridge/currency-dropdown";
-import { useConfigStore, useChainStore, useFormStore } from "@/stores";
-import { useChains } from "@/hooks";
-import { ChainLayer } from "@/types";
+import { useConfigStore, useFormStore } from "@/stores";
 
 interface SettingProps extends HTMLAttributes<HTMLDivElement> {
   "data-testid": string;
@@ -16,11 +14,8 @@ interface SettingProps extends HTMLAttributes<HTMLDivElement> {
 export default function Setting(props: SettingProps) {
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   const [isDropdownVisible, setDropdownVisible] = useState<boolean>(false);
-  const setShowTestnet = useConfigStore.useSetShowTestnet();
-  const showTestnet = useConfigStore.useShowTestnet();
-  const chains = useChains();
-  const setFromChain = useChainStore.useSetFromChain();
-  const setToChain = useChainStore.useSetToChain();
+  const setShowTestnet = useConfigStore((state) => state.setShowTestnet);
+  const showTestnet = useConfigStore((state) => state.showTestnet);
   const resetForm = useFormStore((state) => state.resetForm);
 
   useEffect(() => {
@@ -41,13 +36,6 @@ export default function Setting(props: SettingProps) {
   };
 
   useEffect(() => {
-    if (!showTestnet) {
-      setFromChain(chains.find((c) => !c.testnet && c.layer === ChainLayer.L1));
-      setToChain(chains.find((c) => !c.testnet && c.layer === ChainLayer.L2));
-    } else {
-      setFromChain(chains.find((c) => c.testnet && c.layer === ChainLayer.L1));
-      setToChain(chains.find((c) => c.testnet && c.layer === ChainLayer.L2));
-    }
     resetForm();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showTestnet]);

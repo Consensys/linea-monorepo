@@ -7,8 +7,8 @@ import { Chain } from "@/types";
 
 const useInitialiseChain = () => {
   const chains = useChains();
-  const setFromChain = useChainStore.useSetFromChain();
-  const setToChain = useChainStore.useSetToChain();
+  const setFromChain = useChainStore((state) => state.setFromChain);
+  const setToChain = useChainStore((state) => state.setToChain);
 
   useEffect(() => {
     const unwatch = watchAccount(config, {
