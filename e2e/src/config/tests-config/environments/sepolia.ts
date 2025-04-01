@@ -34,6 +34,7 @@ const config: Config = {
       L1_CHAIN_ID,
     ),
     dummyContractAddress: "",
+    griefClaimMessageAddress: "",
   },
   L2: {
     rpcUrl: L2_RPC_URL,

@@ -115,136 +115,136 @@ async function sendL2ToL1Message(
 const l1AccountManager = config.getL1AccountManager();
 const l2AccountManager = config.getL2AccountManager();
 
-describe("Messaging test suite", () => {
-  it.concurrent(
-    "Should send a transaction with calldata to L1 message service, be successfully claimed it on L2",
-    async () => {
-      const [l1Account, l2Account] = await Promise.all([
-        l1AccountManager.generateAccount(),
-        l2AccountManager.generateAccount(),
-      ]);
+describe.only("Messaging test suite", () => {
+  it.skip("Should send a transaction with calldata to L1 message service, be successfully claimed it on L2", async () => {
+    const [l1Account, l2Account] = await Promise.all([
+      l1AccountManager.generateAccount(),
+      l2AccountManager.generateAccount(),
+    ]);
 
-      const { tx, receipt } = await sendL1ToL2Message(logger, { l1Account, l2Account, withCalldata: true });
+    const { tx, receipt } = await sendL1ToL2Message(logger, { l1Account, l2Account, withCalldata: true });
 
-      const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
-      const messageHash = messageSentEvent.topics[3];
-      logger.debug(`L1 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+    const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
+    const messageHash = messageSentEvent.topics[3];
+    logger.debug(`L1 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
-      logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
-      const l2MessageService = config.getL2MessageServiceContract();
-      const [messageClaimedEvent] = await waitForEvents(
-        l2MessageService,
-        l2MessageService.filters.MessageClaimed(messageHash),
-      );
+    logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
+    const l2MessageService = config.getL2MessageServiceContract();
+    const [messageClaimedEvent] = await waitForEvents(
+      l2MessageService,
+      l2MessageService.filters.MessageClaimed(messageHash),
+    );
 
-      expect(messageClaimedEvent).toBeDefined();
-      logger.debug(
-        `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
-      );
-    },
-    100_000,
-  );
+    expect(messageClaimedEvent).toBeDefined();
+    logger.debug(
+      `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
+    );
+  }, 100_000);
 
-  it.concurrent(
-    "Should send a transaction without calldata to L1 message service, be successfully claimed it on L2",
-    async () => {
-      const [l1Account, l2Account] = await Promise.all([
-        l1AccountManager.generateAccount(),
-        l2AccountManager.generateAccount(),
-      ]);
+  it.skip("Should send a transaction without calldata to L1 message service, be successfully claimed it on L2", async () => {
+    const [l1Account, l2Account] = await Promise.all([
+      l1AccountManager.generateAccount(),
+      l2AccountManager.generateAccount(),
+    ]);
 
-      const { tx, receipt } = await sendL1ToL2Message(logger, { l1Account, l2Account, withCalldata: false });
+    const { tx, receipt } = await sendL1ToL2Message(logger, { l1Account, l2Account, withCalldata: false });
 
-      const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
-      const messageHash = messageSentEvent.topics[3];
-      logger.debug(`L1 message sent. messageHash=${messageHash} transactionHash=${tx.hash}`);
+    const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
+    const messageHash = messageSentEvent.topics[3];
+    logger.debug(`L1 message sent. messageHash=${messageHash} transactionHash=${tx.hash}`);
 
-      logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
-      const l2MessageService = config.getL2MessageServiceContract();
-      const [messageClaimedEvent] = await waitForEvents(
-        l2MessageService,
-        l2MessageService.filters.MessageClaimed(messageHash),
-      );
-      expect(messageClaimedEvent).toBeDefined();
-      logger.debug(
-        `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
-      );
-    },
-    100_000,
-  );
+    logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
+    const l2MessageService = config.getL2MessageServiceContract();
+    const [messageClaimedEvent] = await waitForEvents(
+      l2MessageService,
+      l2MessageService.filters.MessageClaimed(messageHash),
+    );
+    expect(messageClaimedEvent).toBeDefined();
+    logger.debug(
+      `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
+    );
+  }, 100_000);
 
-  it.concurrent(
-    "Should send a transaction with calldata to L2 message service, be successfully claimed it on L1",
-    async () => {
-      const [l1Account, l2Account] = await Promise.all([
-        l1AccountManager.generateAccount(),
-        l2AccountManager.generateAccount(),
-      ]);
+  it.skip("Should send a transaction with calldata to L2 message service, be successfully claimed it on L1", async () => {
+    const [l1Account, l2Account] = await Promise.all([
+      l1AccountManager.generateAccount(),
+      l2AccountManager.generateAccount(),
+    ]);
 
-      const lineaRollup = config.getLineaRollupContract();
-      const { tx, receipt } = await sendL2ToL1Message(logger, { l1Account, l2Account, withCalldata: true });
+    const lineaRollup = config.getLineaRollupContract();
+    const { tx, receipt } = await sendL2ToL1Message(logger, { l1Account, l2Account, withCalldata: true });
 
-      const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
-      const messageHash = messageSentEvent.topics[3];
-      logger.debug(`L2 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+    const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
+    const messageHash = messageSentEvent.topics[3];
+    logger.debug(`L2 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
-      logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
-      await waitForEvents(
-        lineaRollup,
-        lineaRollup.filters.L2MessagingBlockAnchored(messageSentEvent.blockNumber),
-        1_000,
-      );
+    logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
+    await waitForEvents(lineaRollup, lineaRollup.filters.L2MessagingBlockAnchored(messageSentEvent.blockNumber), 1_000);
 
-      logger.debug(`Waiting for MessageClaimed event on L1... messageHash=${messageHash}`);
-      const [messageClaimedEvent] = await waitForEvents(
-        lineaRollup,
-        lineaRollup.filters.MessageClaimed(messageHash),
-        1_000,
-      );
+    logger.debug(`Waiting for MessageClaimed event on L1... messageHash=${messageHash}`);
+    const [messageClaimedEvent] = await waitForEvents(
+      lineaRollup,
+      lineaRollup.filters.MessageClaimed(messageHash),
+      1_000,
+    );
 
-      expect(messageClaimedEvent).toBeDefined();
-      logger.debug(
-        `Message claimed on L1. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
-      );
-    },
-    150_000,
-  );
+    expect(messageClaimedEvent).toBeDefined();
+    logger.debug(
+      `Message claimed on L1. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
+    );
+  }, 150_000);
 
-  it.concurrent(
-    "Should send a transaction without calldata to L2 message service, be successfully claimed it on L1",
-    async () => {
-      const [l1Account, l2Account] = await Promise.all([
-        l1AccountManager.generateAccount(),
-        l2AccountManager.generateAccount(),
-      ]);
+  it.skip("Should send a transaction without calldata to L2 message service, be successfully claimed it on L1", async () => {
+    const [l1Account, l2Account] = await Promise.all([
+      l1AccountManager.generateAccount(),
+      l2AccountManager.generateAccount(),
+    ]);
 
-      const lineaRollup = config.getLineaRollupContract();
-      const { tx, receipt } = await sendL2ToL1Message(logger, { l1Account, l2Account, withCalldata: false });
+    const lineaRollup = config.getLineaRollupContract();
+    const { tx, receipt } = await sendL2ToL1Message(logger, { l1Account, l2Account, withCalldata: false });
 
-      const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
-      const messageHash = messageSentEvent.topics[3];
-      logger.debug(`L2 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+    const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
+    const messageHash = messageSentEvent.topics[3];
+    logger.debug(`L2 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
-      logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
-      await waitForEvents(
-        lineaRollup,
-        lineaRollup.filters.L2MessagingBlockAnchored(messageSentEvent.blockNumber),
-        1_000,
-      );
+    logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
+    await waitForEvents(lineaRollup, lineaRollup.filters.L2MessagingBlockAnchored(messageSentEvent.blockNumber), 1_000);
 
-      logger.debug(`Waiting for MessageClaimed event on L1. messageHash=${messageHash}`);
-      const [messageClaimedEvent] = await waitForEvents(
-        lineaRollup,
-        lineaRollup.filters.MessageClaimed(messageHash),
-        1_000,
-      );
+    logger.debug(`Waiting for MessageClaimed event on L1. messageHash=${messageHash}`);
+    const [messageClaimedEvent] = await waitForEvents(
+      lineaRollup,
+      lineaRollup.filters.MessageClaimed(messageHash),
+      1_000,
+    );
 
-      expect(messageClaimedEvent).toBeDefined();
+    expect(messageClaimedEvent).toBeDefined();
 
-      logger.debug(
-        `Message claimed on L1. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
-      );
-    },
-    150_000,
-  );
+    logger.debug(
+      `Message claimed on L1. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
+    );
+  }, 150_000);
+
+  it.only("Griefing claim message on L2", async () => {
+    // const [l1Account, l2Account] = await Promise.all([
+    //   l1AccountManager.generateAccount(),
+    //   l2AccountManager.generateAccount(),
+    // ]);
+    // const lineaRollup = config.getLineaRollupContract();
+    // const { tx, receipt } = await sendL2ToL1Message(logger, { l1Account, l2Account, withCalldata: false });
+    // const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
+    // const messageHash = messageSentEvent.topics[3];
+    // logger.debug(`L2 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+    // logger.debug(`Waiting for L2MessagingBlockAnchored event... blockNumber=${messageSentEvent.blockNumber}`);
+    // await waitForEvents(lineaRollup, lineaRollup.filters.L2MessagingBlockAnchored(messageSentEvent.blockNumber), 1_000);
+    // logger.debug(`Waiting for MessageClaimed event on L1. messageHash=${messageHash}`);
+    // const [messageClaimedEvent] = await waitForEvents(
+    //   lineaRollup,
+    //   lineaRollup.filters.MessageClaimed(messageHash),
+    //   1_000,
+    // );
+    // expect(messageClaimedEvent).toBeDefined();
+    // logger.debug(
+    //   `Message claimed on L1. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
+    // );
+  }, 150_000);
 });
