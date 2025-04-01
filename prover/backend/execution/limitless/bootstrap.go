@@ -40,7 +40,7 @@ type DistMetadata struct {
 
 // GLSubModReq slice will be dispatched to the queue ideally
 func InitBootstrapper(cfg *config.Config, req *execution.Request,
-	traces *config.TracesLimits, targetWeight int, mainAddr string) (
+	traces *config.TracesLimits, targetWeight int) (
 	[]GLSubModReq, *DistMetadata, error) {
 	// Initialize module discoverer
 	disc := &distributed.StandardModuleDiscoverer{
@@ -86,13 +86,17 @@ func InitBootstrapper(cfg *config.Config, req *execution.Request,
 	// Create GLSubModReq for each GL segment
 	var glSubModReqs []GLSubModReq
 	for i, witnessGL := range witnessGLs {
-		// Simple unique ID => TODO: later will be replaced by guaranteed unique ID mechanisms
-		reqID := fmt.Sprintf("req-%d", i)
+		// TODO: Simple unique ID to start with later will be replaced by guaranteed unique ID mechanisms
+		reqID := fmt.Sprintf("sub-req-GL-%d", i)
 		glSubModReqs = append(glSubModReqs, GLSubModReq{
-			ReqID:     reqID,
+			ReqID: reqID,
+
 			ModuleID:  string(witnessGL.ModuleName),
 			SegmentID: witnessGL.ModuleIndex,
-			MainAddr:  mainAddr,
+
+			// Will be embedded in the config file later
+			// Initially worker and main instances are the same
+			MainAddr: "127.0.0.1",
 		})
 	}
 
