@@ -22,6 +22,7 @@ services:
     restart: "no"
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -XX:UseSVE=0
     entrypoint:
       - /bin/bash
       - -c
@@ -101,6 +102,7 @@ services:
     restart: "no"
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
+      JAVA_OPTS: -XX:UseSVE=0
     entrypoint:
       - /bin/bash
       - -c
@@ -180,7 +182,7 @@ services:
       retries: 120
     restart: "no"
     environment:
-      JAVA_OPTS: -Xmx1g -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+      JAVA_OPTS: -Xmx1g -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC -XX:UseSVE=0
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
     entrypoint:
       - /bin/bash
@@ -392,7 +394,7 @@ services:
         ipv4_address: 11.11.11.113
     environment:
       LOG4J_CONFIGURATION_FILE: /var/lib/besu/log4j.xml
-      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC
+      JAVA_OPTS: -Xmx512m -XX:+UnlockExperimentalVMOptions -XX:-UseG1GC -XX:+UseZGC -XX:UseSVE=0
     entrypoint:
       - /bin/bash
       - -c
@@ -432,6 +434,7 @@ services:
         ipv4_address: 11.11.11.114
     environment:
       LOG4J_CONFIGURATION_FILE: /log4j.xml
+      JAVA_OPTS: -XX:UseSVE=0
     command:
       - --besu-rpc-http-host=11.11.11.113
       - --besu-rpc-http-port=8545
@@ -468,6 +471,7 @@ services:
         ipv4_address: 11.11.11.107
     environment:
       LOG4J_CONFIGURATION_FILE: /log4j.xml
+      JAVA_OPTS: -XX:UseSVE=0
     command:
       - --besu-rpc-http-host=11.11.11.113
       - --besu-rpc-http-port=8545
@@ -498,7 +502,7 @@ services:
         condition: service_healthy
     ports:
       - "8082:8080"
-    command: [ 'java', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/transaction-exclusion-api.jar', 'config/transaction-exclusion-app-docker.config.toml', ]
+    command: [ 'java', '-XX:UseSVE=0', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/transaction-exclusion-api.jar', 'config/transaction-exclusion-app-docker.config.toml']
     volumes:
       - ../config/transaction-exclusion-api/transaction-exclusion-app-docker.config.toml:/opt/consensys/linea/transaction-exclusion-api/config/transaction-exclusion-app-docker.config.toml:ro
       - ../config/transaction-exclusion-api/vertx-options.json:/opt/consensys/linea/transaction-exclusion-api/config/vertx-options.json:ro
