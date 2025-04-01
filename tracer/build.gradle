@@ -34,6 +34,10 @@ sonar {
   } else if(tests == "Weekly") {
     print("Executing Sonarqube scanner for Weekly tests coverage report...\n")
     xmlTestReport  =  "${project.projectDir}/arithmetization/build/reports/jacoco/jacocoWeeklyTestsReport/jacocoWeeklyTestsReport.xml"
+    // If set to PrcWeekly, we account only for the Weekly Prc Call tests coverage report
+  } else if(tests == "PrcWeekly") {
+    print("Executing Sonarqube scanner for Weekly Prc Call tests coverage report...\n")
+    xmlTestReport  =  "${project.projectDir}/arithmetization/build/reports/jacoco/jacocoWeeklyTestsReport/jacocoPrcCallTestsReport.xml"
     // If set to ReferenceBlockchain, we account only for the Reference Blockchain tests coverage report
   } else if(tests == "ReferenceBlockchain") {
     print("Executing Sonarqube scanner for Reference Blockchain tests coverage report...\n")
@@ -54,8 +58,7 @@ sonar {
   properties {
     property "sonar.projectKey", "linea-tracer"
     property "sonar.host.url", "localhost:80"
-    property "sonar.login", "admin"
-    property "sonar.password", "Adminadmin123*"
+    property "sonar.token", "your_token"
     property "sonar.coverage.exclusions", "reference-tests/**/*, testing/**/*, **/*/Trace.java"
     property "sonar.coverage.jacoco.xmlReportPaths", "${xmlTestReport}"
   }

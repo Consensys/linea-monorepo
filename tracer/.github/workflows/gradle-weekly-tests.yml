@@ -85,6 +85,20 @@ jobs:
           name: prc-call-tests-report
           path: arithmetization/build/reports/tests/**/*
 
+      - name: Upload jacoco weekly prc-call tests coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-prc-call-tests-coverage-report
+          path: arithmetization/build/reports/jacoco/jacocoPrcCallTestsReport/**/*
+
+      - name: Upload jacoco weekly prc-call tests exec file
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-prc-call-tests-exec-file
+          path: arithmetization/build/jacoco/prcCallTests.exec
+
       - name: Failure Notification
         if: ${{ failure() || cancelled() }}
         uses: slackapi/slack-github-action@v2.0.0

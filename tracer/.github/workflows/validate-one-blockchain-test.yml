@@ -22,6 +22,11 @@ jobs:
       - name: Setup Test Environment
         uses: ./.github/actions/setup-environment
 
+      - name: Generate Reference Blockchain tests
+        run: ./gradlew :reference-tests:generateBlockchainReferenceTests -Dorg.gradle.caching=true
+        env:
+          JAVA_OPTS: -Dorg.gradle.daemon=false
+
       - name: Run Reference Blockchain test sample
         run: ./gradlew referenceBlockchainTests -x spotlessCheck --tests "BlockchainReferenceTest_104"
         timeout-minutes: 15

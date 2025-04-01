@@ -105,6 +105,14 @@ curl -u admin:admin -X POST "http://localhost:80/api/users/change_password?login
 
 Go to `localhost:80` in your browser and login with the credentials `admin/Adminadmin123*`
 
+Generate a token in `My Account` > `Security` > `Generate Tokens` with no expiration date
+
+Paste this token in `build.gradle` file in the `sonarqube` task's properties
+
+```
+    property "sonar.token", "your_token"
+```
+
 ## Coverage score with Sonarqube
 
 Launch `sonar` gradle task in verification group with the corresponding property depending on the coverage score you want to display

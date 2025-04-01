@@ -233,6 +233,15 @@ tasks.register("weeklyTests", Test) {
   finalizedBy(jacocoWeeklyTestsReport)
 }
 
+tasks.register("jacocoWeeklyTestsReport", JacocoReport) {
+  reports {
+    xml.required = true
+  }
+
+  sourceSets project(":arithmetization").sourceSets.main
+  executionData(weeklyTests)
+}
+
 tasks.register("prcCallTests", Test) {
   dependsOn(buildZkevmBin)
   //
@@ -246,15 +255,16 @@ tasks.register("prcCallTests", Test) {
   useJUnitPlatform {
     includeTags("prc-calltests")
   }
+  finalizedBy(jacocoPrcCallTestsReport)
 }
 
-tasks.register("jacocoWeeklyTestsReport", JacocoReport) {
+tasks.register("jacocoPrcCallTestsReport", JacocoReport) {
   reports {
     xml.required = true
   }
 
   sourceSets project(":arithmetization").sourceSets.main
-  executionData(weeklyTests)
+  executionData(prcCallTests)
 }
 
 // Gradle task to concatenate Unit, FastReplay, Nightly, Weekly and Reference Blockchain and State tests exec files
