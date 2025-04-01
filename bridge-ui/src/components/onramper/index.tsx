@@ -5,7 +5,7 @@ import styles from "./onramper.module.scss";
 
 const onRamperConfig: Record<string, string | string[]> = {
   apiKey: config.onRamperApiKey,
-  mode: ["buy", "sell"],
+  mode: ["buy"],
   defaultCrypto: "eth_linea",
   onlyCryptoNetworks: "linea",
   onlyCryptos: ["eth_linea", "usdc_linea", "usdt_linea", "weth_linea"],
