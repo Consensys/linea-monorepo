@@ -17,8 +17,8 @@ import {
   TestContract__factory,
   TestERC20,
   TestERC20__factory,
-  TokenBridgeV1 as TokenBridge,
-  TokenBridgeV1__factory as TokenBridge__factory,
+  TokenBridgeV1_1 as TokenBridge,
+  TokenBridgeV1_1__factory as TokenBridge__factory,
 } from "../../typechain";
 import { AccountManager } from "./accounts/account-manager";
 
@@ -74,6 +74,13 @@ export default class TestSetup {
       return undefined;
     }
     return this.config.L2.sequencerEndpoint;
+  }
+
+  public getL2BesuNodeEndpoint(): URL | undefined {
+    if (!this.isLocalL2Config(this.config.L2)) {
+      return undefined;
+    }
+    return this.config.L2.besuNodeRpcUrl;
   }
 
   public getTransactionExclusionEndpoint(): URL | undefined {

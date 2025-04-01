@@ -37,10 +37,6 @@ handler-polling-interval="PT1S"
 # batches-limit must be less than or equal to aggregation-proofs-limit-1
 batches-limit=1
 
-[zk-traces]
-eth-api="http://traces-node:8545"
-new-block-polling-interval="PT1S"
-
 [traces]
 switch-to-linea-besu=false
 blob-compressor-version="V0_1_0"
@@ -131,9 +127,11 @@ max-receipt-retries=120
 # Coordinator will consider block as finalized after being included in the chain wtih children blocks-to-finalization
 # Recommended: Geth sequencer minimum of 2, Besu sequencer minimum of 1, 0 is safe localy
 blocks-to-finalization=0
+new-block-polling-interval="PT1S"
 
 [blob-submission]
-disabled=true
+disabled=false
+use-eth-estimate-gas=false
 db-polling-interval="PT1S"
 max-blobs-to-return=100
 proof-submission-delay="PT1S"
@@ -146,6 +144,7 @@ priority-fee-per-gas-lower-bound=200000000 # 0.2 GWEI
 
 [aggregation-finalization]
 disabled=false
+use-eth-estimate-gas=true
 db-polling-interval="PT1S"
 max-aggregations-to-finalize-per-tick=1
 proof-submission-delay="PT1S"

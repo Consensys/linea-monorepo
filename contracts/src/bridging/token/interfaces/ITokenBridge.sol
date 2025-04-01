@@ -17,6 +17,7 @@ interface ITokenBridge {
    * @param tokenBeacon The address of the tokenBeacon.
    * @param sourceChainId The source chain id of the current layer.
    * @param targetChainId The target chaind id of the targeted layer.
+   * @param remoteSender Address of the remote token bridge.
    * @param reservedTokens The list of reserved tokens to be set.
    * @param roleAddresses The list of addresses and roles to assign permissions to.
    * @param pauseTypeRoles The list of pause types to associate with roles.
@@ -28,6 +29,7 @@ interface ITokenBridge {
     address tokenBeacon;
     uint256 sourceChainId;
     uint256 targetChainId;
+    address remoteSender;
     address[] reservedTokens;
     IPermissionsManager.RoleAddress[] roleAddresses;
     IPauseManager.PauseTypeRole[] pauseTypeRoles;
@@ -231,7 +233,7 @@ interface ITokenBridge {
 
   /**
    * @notice Similar to `bridgeToken` function but allows to pass additional
-   *   permit data to do the ERC20 approval in a single transaction.
+   *   permit data to do the ERC-20 approval in a single transaction.
    * @param _token The address of the token to be bridged.
    * @param _amount The amount of the token to be bridged.
    * @param _recipient The address that will receive the tokens on the other chain.
@@ -246,12 +248,12 @@ interface ITokenBridge {
 
   /**
    * @dev It can only be called from the Message Service. To finalize the bridging
-   *   process, a user or postmen needs to use the `claimMessage` function of the
+   *   process, a user or postman needs to use the `claimMessage` function of the
    *   Message Service to trigger the transaction.
    * @param _nativeToken The address of the token on its native chain.
    * @param _amount The amount of the token to be received.
    * @param _recipient The address that will receive the tokens.
-   * @param _chainId The source chainId or target chaindId for this token
+   * @param _chainId The source chainId or target chainId for this token
    * @param _tokenMetadata Additional data used to deploy the bridged token if it
    *   doesn't exist already.
    */
@@ -295,20 +297,14 @@ interface ITokenBridge {
   function setReserved(address _token) external;
 
   /**
-   * @dev Sets the address of the remote token bridge. Can only be called once.
-   * @param _remoteTokenBridge The address of the remote token bridge to be set.
-   */
-  function setRemoteTokenBridge(address _remoteTokenBridge) external;
-
-  /**
    * @dev Removes a token from the reserved list.
    * @param _token The address of the token to be removed from the reserved list.
    */
   function removeReserved(address _token) external;
 
   /**
-   * @dev Linea can set a custom ERC20 contract for specific ERC20.
-   *   For security purpose, Linea can only call this function if the token has
+   * @dev Linea can set a custom ERC-20 contract for specific ERC-20.
+   *   For security purposes, Linea can only call this function if the token has
    *   not been bridged yet.
    * @param _nativeToken address of the token on the source chain.
    * @param _targetContract address of the custom contract.

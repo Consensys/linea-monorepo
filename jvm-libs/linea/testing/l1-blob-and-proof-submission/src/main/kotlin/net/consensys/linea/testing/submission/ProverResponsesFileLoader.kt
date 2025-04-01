@@ -61,10 +61,17 @@ fun loadBlobsAndAggregations(
 
 fun loadBlobsAndAggregationsSortedAndGrouped(
   blobsResponsesDir: String,
-  aggregationsResponsesDir: String
+  aggregationsResponsesDir: String,
+  numberOfAggregations: Int? = null,
+  extraBlobsWithoutAggregation: Int = 0
 ): List<AggregationAndBlobs> {
-  val (blobs, aggregations) = loadBlobsAndAggregations(blobsResponsesDir, aggregationsResponsesDir)
-  return groupBlobsToAggregations(aggregations, blobs)
+  var (blobs, aggregations) = loadBlobsAndAggregations(blobsResponsesDir, aggregationsResponsesDir)
+
+  if (numberOfAggregations != null) {
+    aggregations = aggregations.take(numberOfAggregations)
+  }
+
+  return groupBlobsToAggregations(aggregations, blobs, extraBlobsWithoutAggregation)
 }
 
 data class AggregationAndBlobs(
@@ -74,14 +81,28 @@ data class AggregationAndBlobs(
 
 fun groupBlobsToAggregations(
   aggregations: List<Aggregation>,
-  blobs: List<BlobRecord>
+  blobs: List<BlobRecord>,
+  extraBlobsWithoutAggregation: Int
 ): List<AggregationAndBlobs> {
   val aggBlobs = aggregations.map { agg ->
     AggregationAndBlobs(agg, blobs.filter { it.startBlockNumber in agg.blocksRange })
   }.sortedBy { it.aggregation!!.startBlockNumber }
 
-  val blobsWithoutAgg = blobs.filter { blob ->
-    aggBlobs.none { it.blobs.contains(blob) }
+  return if (extraBlobsWithoutAggregation > 0) {
+    val blobsWithoutAgg = blobs.filter { blob ->
+      aggBlobs.none { it.blobs.contains(blob) }
+    }
+
+    if (blobsWithoutAgg.size < extraBlobsWithoutAggregation) {
+      throw IllegalStateException(
+        "Not enough blobs without aggregation: " +
+          "blobsWithoutAggregation=${blobsWithoutAgg.size} " +
+          "requestedBlobsWithoutAggregation=$extraBlobsWithoutAggregation"
+      )
+    }
+
+    aggBlobs + listOf(AggregationAndBlobs(null, blobsWithoutAgg.take(extraBlobsWithoutAggregation)))
+  } else {
+    aggBlobs
   }
-  return aggBlobs + listOf(AggregationAndBlobs(null, blobsWithoutAgg))
 }

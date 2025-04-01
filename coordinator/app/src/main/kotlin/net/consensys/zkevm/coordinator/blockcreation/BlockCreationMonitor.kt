@@ -2,8 +2,8 @@ package net.consensys.zkevm.coordinator.blockcreation
 
 import io.vertx.core.Vertx
 import linea.domain.Block
-import net.consensys.encodeHex
-import net.consensys.linea.BlockParameter.Companion.toBlockParameter
+import linea.domain.BlockParameter.Companion.toBlockParameter
+import linea.kotlin.encodeHex
 import net.consensys.linea.async.AsyncRetryer
 import net.consensys.linea.web3j.ExtendedWeb3J
 import net.consensys.zkevm.PeriodicPollingService
@@ -44,7 +44,7 @@ class BlockCreationMonitor(
   private val reorgDetected: AtomicBoolean = AtomicBoolean(false)
   private var statingBlockAvailabilityFuture: SafeFuture<*>? = null
 
-  val nexBlockNumberToFetch: Long
+  private val nexBlockNumberToFetch: Long
     get() = _nexBlockNumberToFetch.get()
 
   override fun handleError(error: Throwable) {

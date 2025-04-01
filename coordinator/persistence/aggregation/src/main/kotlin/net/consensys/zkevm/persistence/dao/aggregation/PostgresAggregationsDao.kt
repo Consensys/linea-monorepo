@@ -1,7 +1,5 @@
 package net.consensys.zkevm.persistence.dao.aggregation
 
-import build.linea.domain.BlockIntervals
-import build.linea.domain.toBlockIntervalsString
 import io.vertx.core.Future
 import io.vertx.pgclient.PgException
 import io.vertx.sqlclient.Row
@@ -9,7 +7,9 @@ import io.vertx.sqlclient.SqlClient
 import io.vertx.sqlclient.Tuple
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import net.consensys.decodeHex
+import linea.domain.BlockIntervals
+import linea.domain.toBlockIntervalsString
+import linea.kotlin.decodeHex
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.zkevm.coordinator.clients.prover.serialization.ProofToFinalizeJsonResponse
 import net.consensys.zkevm.domain.Aggregation
@@ -126,7 +126,7 @@ class PostgresAggregationsDao(
       """.trimIndent()
     )
 
-  private val selectAggregationProofs =
+  private val selectAggregations =
     connection.preparedQuery(
       """
         with previous_ends as (select *,
@@ -139,9 +139,7 @@ class PostgresAggregationsDao(
           where start_block_number > $1 and start_block_number - 1 != previous_end_block_number
           limit 1)
 
-        select
-          aggregation_proof
-        from previous_ends
+        select * from previous_ends
         where EXISTS (select 1 from previous_ends where start_block_number = $1)
           and (previous_ends.previous_end_block_number = previous_ends.start_block_number - 1 or previous_ends.start_block_number = $1)
           and ((select count(1) from first_gapped_aggregation) = 0 or previous_ends.start_block_number < (select * from first_gapped_aggregation))
@@ -280,7 +278,7 @@ class PostgresAggregationsDao(
     finalEndBlockCreatedBefore: Instant,
     maximumNumberOfProofs: Int
   ): SafeFuture<List<ProofToFinalize>> {
-    return selectAggregationProofs
+    return selectAggregations
       .execute(
         Tuple.of(
           fromBlockNumber,
@@ -293,6 +291,23 @@ class PostgresAggregationsDao(
         rowSet.map(::parseAggregationProofs).filter { proofToFinalize ->
           proofToFinalize.finalTimestamp <= finalEndBlockCreatedBefore
         }
+      }
+  }
+
+  override fun findHighestConsecutiveEndBlockNumber(
+    fromBlockNumber: Long
+  ): SafeFuture<Long?> {
+    return selectAggregations
+      .execute(
+        Tuple.of(
+          fromBlockNumber,
+          aggregationStatusToDbValue(Aggregation.Status.Proven),
+          Int.MAX_VALUE
+        )
+      )
+      .toSafeFuture()
+      .thenApply { rowSet ->
+        rowSet.lastOrNull()?.getLong("end_block_number")
       }
   }
 

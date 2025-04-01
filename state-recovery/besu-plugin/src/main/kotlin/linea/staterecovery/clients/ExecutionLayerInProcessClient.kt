@@ -1,14 +1,14 @@
 package linea.staterecovery.clients
 
+import linea.domain.BlockNumberAndHash
+import linea.domain.BlockParameter
+import linea.domain.CommonDomainFunctions
 import linea.staterecovery.BlockFromL1RecoveredData
 import linea.staterecovery.ExecutionLayerClient
 import linea.staterecovery.RecoveryStatusPersistence
 import linea.staterecovery.StateRecoveryStatus
 import linea.staterecovery.plugin.BlockImporter
 import linea.staterecovery.plugin.RecoveryModeManager
-import net.consensys.linea.BlockNumberAndHash
-import net.consensys.linea.BlockParameter
-import net.consensys.linea.CommonDomainFunctions
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.plugin.data.BlockHeader
 import org.hyperledger.besu.plugin.services.BlockSimulationService
@@ -45,6 +45,12 @@ class ExecutionLayerInProcessClient(
   }
 
   private val log = LogManager.getLogger(ExecutionLayerInProcessClient::class.java)
+
+  override fun addLookbackHashes(blocksHashes: Map<ULong, ByteArray>): SafeFuture<Unit> {
+    return runCatching { blockImporter.addLookbackHashes(blocksHashes) }
+      .map { SafeFuture.completedFuture(it) }
+      .getOrElse { th -> SafeFuture.failedFuture(th) }
+  }
 
   override fun getBlockNumberAndHash(blockParameter: BlockParameter): SafeFuture<BlockNumberAndHash> {
     val blockHeader: BlockHeader? = when (blockParameter) {

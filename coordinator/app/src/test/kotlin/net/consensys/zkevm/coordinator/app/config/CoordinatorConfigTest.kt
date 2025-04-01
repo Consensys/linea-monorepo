@@ -4,7 +4,7 @@ import com.github.michaelbull.result.getError
 import com.sksamuel.hoplite.Masked
 import linea.coordinator.config.loadConfigs
 import linea.coordinator.config.loadConfigsOrError
-import net.consensys.linea.BlockParameter
+import linea.domain.BlockParameter
 import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.ExtraDataV1UpdaterImpl
@@ -45,15 +45,9 @@ class CoordinatorConfigTest {
       _smartContractErrors = mapOf(
         // L1 Linea Rollup
         "0f06cd15" to "DataAlreadySubmitted",
-        "c01eab56" to "EmptySubmissionData",
-        "abefa5e8" to "DataStartingBlockDoesNotMatch"
+        "c01eab56" to "EmptySubmissionData"
       ),
       fetchBlocksLimit = 4000
-    )
-
-    private val zkTracesConfig = ZkTraces(
-      URI("http://traces-node:8545").toURL(),
-      Duration.parse("PT1S")
     )
 
     private val proversConfig = ProversConfig(
@@ -162,13 +156,15 @@ class CoordinatorConfigTest {
       priorityFeePerGasLowerBound = 200000000UL,
       proofSubmissionDelay = Duration.parse("PT1S"),
       targetBlobsToSendPerTransaction = 6,
-      disabled = true
+      useEthEstimateGas = false,
+      disabled = false
     )
 
     private val aggregationFinalizationConfig = AggregationFinalizationConfig(
       dbPollingInterval = Duration.parse("PT1S"),
       maxAggregationsToFinalizePerTick = 1,
       proofSubmissionDelay = Duration.parse("PT1S"),
+      useEthEstimateGas = true,
       disabled = false
     )
 
@@ -222,7 +218,8 @@ class CoordinatorConfigTest {
       blocksToFinalization = 0U,
       lastHashSearchWindow = 25U,
       anchoringReceiptPollingInterval = Duration.parse("PT01S"),
-      maxReceiptRetries = 120U
+      maxReceiptRetries = 120U,
+      newBlockPollingInterval = Duration.parse("PT1S")
     )
 
     private val finalizationSigner = SignerConfig(
@@ -280,7 +277,6 @@ class CoordinatorConfigTest {
         feeHistoryBlockCount = 50U,
         feeHistoryRewardPercentile = 15.0
       ),
-      jsonRpcPricingPropagationEnabled = true,
       legacy = L2NetworkGasPricingService.LegacyGasPricingCalculatorConfig(
         legacyGasPricingCalculatorBounds = BoundableFeeCalculator.Config(
           feeUpperBound = 10_000_000_000.0,
@@ -353,7 +349,6 @@ class CoordinatorConfigTest {
     )
 
     private val coordinatorConfig = CoordinatorConfig(
-      zkTraces = zkTracesConfig,
       blobCompression = blobCompressionConfig,
       proofAggregation = aggregationConfig,
       traces = tracesConfig,
@@ -457,7 +452,6 @@ class CoordinatorConfigTest {
 
     val expectedConfig =
       coordinatorConfig.copy(
-        zkTraces = zkTracesConfig.copy(ethApi = URI("http://traces-node-v2:8545").toURL()),
         l2NetworkGasPricingService = l2NetworkGasPricingServiceConfig.copy(
           legacy =
           l2NetworkGasPricingServiceConfig.legacy.copy(

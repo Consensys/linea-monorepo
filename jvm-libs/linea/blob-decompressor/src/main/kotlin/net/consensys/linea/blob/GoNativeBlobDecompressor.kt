@@ -1,8 +1,8 @@
 package net.consensys.linea.blob
 
-import build.linea.jvm.ResourcesUtil.copyResourceToTmpDir
 import com.sun.jna.Library
 import com.sun.jna.Native
+import linea.jvm.ResourcesUtil.copyResourceToTmpDir
 import java.nio.file.Path
 
 class DecompressionException(message: String) : RuntimeException(message)
@@ -81,7 +81,7 @@ internal interface GoNativeBlobDecompressorJnaBinding {
 internal interface GoNativeBlobDecompressorJnaLib : GoNativeBlobDecompressorJnaBinding, Library
 
 enum class BlobDecompressorVersion(val version: String) {
-  V1_1_0("v1.1.0")
+  V1_1_1("v1.1.1")
 }
 
 class GoNativeBlobDecompressorFactory {

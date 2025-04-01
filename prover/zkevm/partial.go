@@ -3,6 +3,7 @@ package zkevm
 import (
 	"sync"
 
+	"github.com/consensys/go-corset/pkg/mir"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
@@ -34,7 +35,7 @@ var (
 // ignore the configuration options and directly return the previously compiled
 // object. It therefore means that it should not be called twice with different
 // config options.
-func PartialZkEvm(tl *config.TracesLimits) *ZkEvm {
+func PartialZkEvm(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 	// This is hidden behind a once, because the compilation time can take a
 	// significant amount of time and we want it to be only triggered when we
@@ -47,7 +48,9 @@ func PartialZkEvm(tl *config.TracesLimits) *ZkEvm {
 		// modules to verify keccak or the state-manager traces.
 		settings := Settings{
 			Arithmetization: arithmetization.Settings{
-				Limits: tl,
+				Limits:                   tl,
+				OptimisationLevel:        &mir.DEFAULT_OPTIMISATION_LEVEL,
+				IgnoreCompatibilityCheck: &cfg.Execution.IgnoreCompatibilityCheck,
 			},
 			CompilationSuite: partialCompilationSuite,
 			Metadata: wizard.VersionMetadata{

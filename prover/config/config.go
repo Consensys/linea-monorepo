@@ -2,11 +2,13 @@ package config
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 	"os"
 	"path"
 	"path/filepath"
 	"text/template"
+	"time"
+
+	"github.com/consensys/linea-monorepo/prover/lib/compressor/blob/dictionary"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/go-playground/validator/v10"
@@ -111,16 +113,7 @@ type Config struct {
 	BlobDecompression          BlobDecompression `mapstructure:"blob_decompression"`
 	Aggregation                Aggregation
 	PublicInputInterconnection PublicInput `mapstructure:"public_input_interconnection"` // TODO add wizard compilation params
-
-	Debug struct {
-		// Profiling indicates whether we want to generate profiles using the [runtime/pprof] pkg.
-		// Profiles can later be read using the `go tool pprof` command.
-		Profiling bool `mapstructure:"profiling"`
-
-		// Tracing indicates whether we want to generate traces using the [runtime/trace] pkg.
-		// Traces can later be read using the `go tool trace` command.
-		Tracing bool `mapstructure:"tracing"`
-	}
+	Debug                      Debug       `mapstructure:"debug"`
 
 	Layer2 struct {
 		// ChainID stores the ID of the Linea L2 network to consider.
@@ -211,6 +204,12 @@ type Execution struct {
 
 	// ConflatedTracesDir stores the directory where the conflation traces are stored.
 	ConflatedTracesDir string `mapstructure:"conflated_traces_dir" validate:"required"`
+
+	// IgnoreCompatiblityCheck indicates whether to ignore constaints version checking between
+	// trace files and zkevm.bin constraint files. Specifically, this check ensures that the zkevm.bin file
+	// used within the prover was generated from the same commit of linea-constraints as the generated lt trace file.
+	// Set this to true to disable compatibility checks (default: false).
+	IgnoreCompatibilityCheck bool `mapstructure:"ignore_compatibility_check"`
 }
 
 type BlobDecompression struct {
@@ -278,7 +277,27 @@ type PublicInput struct {
 	MockKeccakWizard bool           // for testing purposes only
 	ChainID          uint64         // duplicate from Config
 	L2MsgServiceAddr common.Address // duplicate from Config
+}
 
+type Debug struct {
+	// Profiling indicates whether we want to generate profiles using the [runtime/pprof] pkg.
+	// Profiles the entire execution proof request-response lifecycle
+	Profiling bool `mapstructure:"profiling"`
+
+	// Tracing indicates whether we want to generate traces using the [runtime/trace] pkg.
+	// Traces can later be read using the `go tool trace` command.
+	Tracing bool `mapstructure:"tracing"`
+
+	// PerformanceMonitor indicates if we want to profile any specific prover steps or rounds
+	// This is basically profiling at a granular level
+	PerformanceMonitor PerformanceMonitor `mapstructure:"performance_monitor"`
+}
+
+type PerformanceMonitor struct {
+	Active         bool          `mapstructure:"active"`
+	SampleDuration time.Duration `mapstructure:"sample_duration"`
+	ProfileDir     string        `mapstructure:"profile_dir"`
+	Profile        string        `mapstructure:"profile" validate:"oneof=prover-steps prover-rounds all"`
 }
 
 // BlobDecompressionDictStore returns a decompression dictionary store

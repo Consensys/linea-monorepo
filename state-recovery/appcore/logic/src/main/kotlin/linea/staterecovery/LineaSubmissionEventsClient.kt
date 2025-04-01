@@ -1,11 +1,12 @@
 package linea.staterecovery
 
-import build.linea.domain.BlockInterval
-import build.linea.domain.EthLog
-import build.linea.domain.EthLogEvent
-import net.consensys.encodeHex
-import net.consensys.sliceOf32
-import net.consensys.toULongFromLast8Bytes
+import linea.domain.BlockInterval
+import linea.domain.BlockParameter
+import linea.domain.EthLog
+import linea.domain.EthLogEvent
+import linea.kotlin.encodeHex
+import linea.kotlin.sliceOf32
+import linea.kotlin.toULongFromLast8Bytes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 data class DataSubmittedV3(
@@ -127,15 +128,13 @@ data class FinalizationAndDataEventsV3(
 )
 
 interface LineaRollupSubmissionEventsClient {
-  fun findDataFinalizedEventByStartBlockNumber(
-    l2StartBlockNumberInclusive: ULong
-  ): SafeFuture<EthLogEvent<DataFinalizedV3>?>
+  fun findFinalizationAndDataSubmissionV3Events(
+    fromL1BlockNumber: BlockParameter,
+    finalizationStartBlockNumber: ULong
+  ): SafeFuture<FinalizationAndDataEventsV3?>
 
-  fun findDataFinalizedEventContainingBlock(
+  fun findFinalizationAndDataSubmissionV3EventsContainingL2BlockNumber(
+    fromL1BlockNumber: BlockParameter,
     l2BlockNumber: ULong
-  ): SafeFuture<EthLogEvent<DataFinalizedV3>?>
-
-  fun findDataSubmittedV3EventsUntilNextFinalization(
-    l2StartBlockNumberInclusive: ULong
   ): SafeFuture<FinalizationAndDataEventsV3?>
 }

@@ -95,7 +95,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 		comp         = b.CompiledIOP
 		arith        = arithmetization.NewArithmetization(b, s.Arithmetization)
 		ecdsa        = ecdsa.NewEcdsaZkEvm(comp, &s.Ecdsa)
-		stateManager = statemanager.NewStateManagerNoHub(comp, s.Statemanager)
+		stateManager = statemanager.NewStateManager(comp, s.Statemanager)
 		keccak       = keccak.NewKeccakZkEVM(comp, s.Keccak, ecdsa.GetProviders())
 		modexp       = modexp.NewModuleZkEvm(comp, s.Modexp)
 		ecadd        = ecarith.NewEcAddZkEvm(comp, &s.Ecadd)
@@ -138,7 +138,7 @@ func (z *ZkEvm) prove(input *Witness) (prover wizard.ProverStep) {
 		z.ecmul.Assign(run)
 		z.ecpair.Assign(run)
 		z.sha2.Run(run)
-		z.PublicInput.Assign(run, input.L2BridgeAddress)
+		z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList)
 	}
 }
 

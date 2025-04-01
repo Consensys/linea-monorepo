@@ -22,7 +22,7 @@ import { PermissionsManager } from "../../security/access/PermissionsManager.sol
 import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKeccak.sol";
 /**
  * @title Linea Canonical Token Bridge
- * @notice Contract to manage cross-chain ERC20 bridging.
+ * @notice Contract to manage cross-chain ERC-20 bridging.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
@@ -39,13 +39,10 @@ contract TokenBridge is
   using SafeERC20Upgradeable for IERC20Upgradeable;
 
   /// @dev This is the ABI version and not the reinitialize version.
-  string public constant CONTRACT_VERSION = "1.0";
+  string public constant CONTRACT_VERSION = "1.1";
 
   /// @notice Role used for setting the message service address.
   bytes32 public constant SET_MESSAGE_SERVICE_ROLE = keccak256("SET_MESSAGE_SERVICE_ROLE");
-
-  /// @notice Role used for setting the remote token bridge address.
-  bytes32 public constant SET_REMOTE_TOKENBRIDGE_ROLE = keccak256("SET_REMOTE_TOKENBRIDGE_ROLE");
 
   /// @notice Role used for setting a reserved token address.
   bytes32 public constant SET_RESERVED_TOKEN_ROLE = keccak256("SET_RESERVED_TOKEN_ROLE");
@@ -153,9 +150,9 @@ contract TokenBridge is
     nonZeroChainId(_initializationData.targetChainId)
     initializer
   {
-    __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
-    __MessageServiceBase_init(_initializationData.messageService);
     __ReentrancyGuard_init();
+    __MessageServiceBase_init(_initializationData.messageService);
+    __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
 
     if (_initializationData.defaultAdmin == address(0)) {
       revert ZeroAddressNotAllowed();
@@ -171,6 +168,7 @@ contract TokenBridge is
 
     tokenBeacon = _initializationData.tokenBeacon;
     if (_initializationData.sourceChainId == _initializationData.targetChainId) revert SourceChainSameAsTargetChain();
+    _setRemoteSender(_initializationData.remoteSender);
     sourceChainId = _initializationData.sourceChainId;
     targetChainId = _initializationData.targetChainId;
 
@@ -187,41 +185,9 @@ contract TokenBridge is
   }
 
   /**
-   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings.
-   * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-   * @param _defaultAdmin The default admin account's address.
-   * @param _roleAddresses The list of addresses and roles to assign permissions to.
-   * @param _pauseTypeRoles The list of pause types to associate with roles.
-   * @param _unpauseTypeRoles The list of unpause types to associate with roles.
-   */
-  function reinitializePauseTypesAndPermissions(
-    address _defaultAdmin,
-    RoleAddress[] calldata _roleAddresses,
-    PauseTypeRole[] calldata _pauseTypeRoles,
-    PauseTypeRole[] calldata _unpauseTypeRoles
-  ) external reinitializer(2) {
-    if (_defaultAdmin == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
-    _grantRole(DEFAULT_ADMIN_ROLE, _defaultAdmin);
-
-    assembly {
-      /// @dev Wiping the storage slot 101 of _owner as it is replaced by AccessControl and there is now the ERC165 __gap in its place.
-      sstore(101, 0)
-      /// @dev Wiping the storage slot 213 of _status as it is replaced by ReentrancyGuardUpgradeable at slot 1.
-      sstore(213, 0)
-    }
-
-    __ReentrancyGuard_init();
-    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
-    __Permissions_init(_roleAddresses);
-  }
-
-  /**
    * @notice This function is the single entry point to bridge tokens to the
    *   other chain, both for native and already bridged tokens. You can use it
-   *   to bridge any ERC20. If the token is bridged for the first time an ERC20
+   *   to bridge any ERC-20. If the token is bridged for the first time an ERC-20
    *   (BridgedToken.sol) will be automatically deployed on the target chain.
    * @dev User should first allow the bridge to transfer tokens on his behalf.
    *   Alternatively, you can use BridgeTokenWithPermit to do so in a single
@@ -233,7 +199,7 @@ contract TokenBridge is
    *   Linea can pause the bridge for security reason. In this case new bridge
    *   transaction would revert.
    * @dev Note: If, when bridging an unbridged token and decimals are unknown,
-   * the call will revert to prevent mismatched decimals. Only those ERC20s,
+   * the call will revert to prevent mismatched decimals. Only those ERC-20s,
    * with a decimals function are supported.
    * @param _token The address of the token to be bridged.
    * @param _amount The amount of the token to be bridged.
@@ -291,7 +257,7 @@ contract TokenBridge is
 
   /**
    * @notice Similar to `bridgeToken` function but allows to pass additional
-   *   permit data to do the ERC20 approval in a single transaction.
+   *   permit data to do the ERC-20 approval in a single transaction.
    * @notice _permit can fail silently, don't rely on this function passing as a form
    *   of authentication
    * @dev There is no need for validation at this level as the validation on pausing,
@@ -320,7 +286,7 @@ contract TokenBridge is
    * @param _nativeToken The address of the token on its native chain.
    * @param _amount The amount of the token to be received.
    * @param _recipient The address that will receive the tokens.
-   * @param _chainId The token's origin layer chaindId
+   * @param _chainId The token's origin layer chainId
    * @param _tokenMetadata Additional data used to deploy the bridged token if it
    *   doesn't exist already.
    */
@@ -417,17 +383,6 @@ contract TokenBridge is
   }
 
   /**
-   * @dev Sets the address of the remote token bridge. Can only be called once.
-   * @dev SET_REMOTE_TOKENBRIDGE_ROLE is required to execute.
-   * @param _remoteTokenBridge The address of the remote token bridge to be set.
-   */
-  function setRemoteTokenBridge(address _remoteTokenBridge) external onlyRole(SET_REMOTE_TOKENBRIDGE_ROLE) {
-    if (remoteSender != EMPTY) revert RemoteTokenBridgeAlreadySet(remoteSender);
-    _setRemoteSender(_remoteTokenBridge);
-    emit RemoteTokenBridgeSet(_remoteTokenBridge, msg.sender);
-  }
-
-  /**
    * @dev Deploy a new EC20 contract for bridged token using a beacon proxy pattern.
    *   To adapt to future requirements, Linea can update the implementation of
    *   all (existing and future) contracts by updating the beacon. This update is
@@ -482,8 +437,8 @@ contract TokenBridge is
   }
 
   /**
-   * @dev Linea can set a custom ERC20 contract for specific ERC20.
-   *   For security purpose, Linea can only call this function if the token has
+   * @dev Linea can set a custom ERC-20 contract for specific ERC-20.
+   *   For security purposes, Linea can only call this function if the token has
    *   not been bridged yet.
    * @dev SET_CUSTOM_CONTRACT_ROLE is required to execute.
    * @param _nativeToken The address of the token on the source chain.
@@ -521,7 +476,7 @@ contract TokenBridge is
   // https://github.com/traderjoe-xyz/joe-core/blob/main/contracts/MasterChefJoeV3.sol#L55-L95
 
   /**
-   * @dev Provides a safe ERC20.name version which returns 'NO_NAME' as fallback string.
+   * @dev Provides a safe ERC-20.name version which returns 'NO_NAME' as fallback string.
    * @param _token The address of the ERC-20 token contract
    * @return tokenName Returns the string of the token name.
    */
@@ -531,7 +486,7 @@ contract TokenBridge is
   }
 
   /**
-   * @dev Provides a safe ERC20.symbol version which returns 'NO_SYMBOL' as fallback string
+   * @dev Provides a safe ERC-20.symbol version which returns 'NO_SYMBOL' as fallback string
    * @param _token The address of the ERC-20 token contract
    * @return symbol Returns the string of the symbol.
    */
@@ -541,7 +496,7 @@ contract TokenBridge is
   }
 
   /**
-   * @notice Provides a safe ERC20.decimals version which reverts when decimals are unknown
+   * @notice Provides a safe ERC-20.decimals version which reverts when decimals are unknown
    *   Note Tokens with (decimals > 255) are not supported
    * @param _token The address of the ERC-20 token contract
    * @return Returns the token's decimals value.
@@ -592,9 +547,9 @@ contract TokenBridge is
   }
 
   /**
-   * @notice Call the token permit method of extended ERC20
+   * @notice Call the token permit method of extended ERC-20
    * @notice Only support tokens implementing ERC-2612
-   * @param _token ERC20 token address
+   * @param _token ERC-20 token address
    * @param _permitData Raw data of the call `permit` of the token
    */
   function _permit(address _token, bytes calldata _permitData) internal {

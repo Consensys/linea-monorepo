@@ -1,6 +1,10 @@
 package config
 
-import "github.com/spf13/viper"
+import (
+	"time"
+
+	"github.com/spf13/viper"
+)
 
 var (
 	DefaultDeferToOtherLargeCodes     = []int{137}     // List of exit codes for which the job will put back the job to be reexecuted in large mode.
@@ -13,6 +17,9 @@ func setDefaultValues() {
 
 	viper.SetDefault("debug.profiling", false)
 	viper.SetDefault("debug.tracing", false)
+	viper.SetDefault("debug.performance_monitor.active", false)
+	viper.SetDefault("debug.performance_monitor.sample_duration", 1*time.Second)
+	viper.SetDefault("debug.performance_monitor.profile", "prover-rounds")
 
 	viper.SetDefault("controller.enable_execution", true)
 	viper.SetDefault("controller.enable_blob_decompression", true)
@@ -28,6 +35,8 @@ func setDefaultValues() {
 	viper.SetDefault("controller.worker_cmd_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}")
 	viper.SetDefault("controller.worker_cmd_large_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}} --large")
 
+	viper.SetDefault("execution.ignore_compatibility_check", false)
+
 }
 
 func setDefaultPaths() {
@@ -35,6 +44,7 @@ func setDefaultPaths() {
 	viper.SetDefault("execution.requests_root_dir", "/shared/prover-execution")
 	viper.SetDefault("blob_decompression.requests_root_dir", "/shared/prover-compression")
 	viper.SetDefault("aggregation.requests_root_dir", "/shared/prover-aggregation")
+	viper.SetDefault("debug.performance_monitor.profile_dir", "/shared/prover-execution/profiling")
 }
 
 func setDefaultTracesLimit() {

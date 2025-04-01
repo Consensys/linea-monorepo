@@ -2,12 +2,12 @@
 
 pragma solidity 0.8.19;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title TestERC20
- * @dev Simple ERC20 Token example.
+ * @dev Simple ERC-20 Token example.
  */
 
 contract TestERC20 is ERC20, Ownable {

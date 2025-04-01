@@ -2,10 +2,10 @@ package net.consensys.zkevm.coordinator.app.config
 
 import com.sksamuel.hoplite.ConfigAlias
 import com.sksamuel.hoplite.Masked
-import net.consensys.assertIs32Bytes
-import net.consensys.decodeHex
-import net.consensys.linea.BlockParameter
-import net.consensys.linea.assertIsValidAddress
+import linea.domain.BlockParameter
+import linea.domain.assertIsValidAddress
+import linea.kotlin.assertIs32Bytes
+import linea.kotlin.decodeHex
 import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_FEE_HISTORIES_STORAGE_PERIOD
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_FEE_HISTORY_BLOCK_COUNT
@@ -72,11 +72,6 @@ data class ConflationConfig(
 
   val conflationTargetEndBlockNumbers: Set<ULong> = _conflationTargetEndBlockNumbers.map { it.toULong() }.toSet()
 }
-
-data class ZkTraces(
-  val ethApi: URL,
-  val newBlockPollingInterval: Duration
-)
 
 interface RetryConfig {
   val maxRetries: Int?
@@ -221,6 +216,7 @@ data class BlobSubmissionConfig(
   val maxBlobsToSubmitPerTick: Int = maxBlobsToReturn,
   // defaults to 6, not supported atm, preparatory work
   val targetBlobsToSendPerTransaction: Int = 6,
+  val useEthEstimateGas: Boolean = false,
   override var disabled: Boolean = false
 ) : FeatureToggleable {
   init {
@@ -236,6 +232,7 @@ data class AggregationFinalizationConfig(
   val dbPollingInterval: Duration,
   val maxAggregationsToFinalizePerTick: Int,
   val proofSubmissionDelay: Duration,
+  val useEthEstimateGas: Boolean = false,
   override var disabled: Boolean = false
 ) : FeatureToggleable {
   init {
@@ -311,7 +308,8 @@ data class L2Config(
   val blocksToFinalization: UInt,
   val lastHashSearchWindow: UInt,
   val anchoringReceiptPollingInterval: Duration,
-  val maxReceiptRetries: UInt
+  val maxReceiptRetries: UInt,
+  val newBlockPollingInterval: Duration
 ) {
   init {
     messageServiceAddress.assertIsValidAddress("messageServiceAddress")
@@ -511,7 +509,6 @@ data class TracesLimitsV2ConfigFile(val tracesLimits: Map<TracingModuleV2, UInt>
 // otherwise it's hard to test the configuration is loaded properly
 data class CoordinatorConfigTomlDto(
   val l2InclusiveBlockNumberToStopAndFlushAggregation: ULong? = null,
-  val zkTraces: ZkTraces,
   val blobCompression: BlobCompressionConfig,
   val proofAggregation: AggregationConfig,
   val traces: TracesConfig,
@@ -536,7 +533,6 @@ data class CoordinatorConfigTomlDto(
 ) {
   fun reified(): CoordinatorConfig = CoordinatorConfig(
     l2InclusiveBlockNumberToStopAndFlushAggregation = l2InclusiveBlockNumberToStopAndFlushAggregation,
-    zkTraces = zkTraces,
     blobCompression = blobCompression,
     proofAggregation = proofAggregation,
     traces = traces,
@@ -563,7 +559,6 @@ data class CoordinatorConfigTomlDto(
 
 data class CoordinatorConfig(
   val l2InclusiveBlockNumberToStopAndFlushAggregation: ULong? = null,
-  val zkTraces: ZkTraces,
   val blobCompression: BlobCompressionConfig,
   val proofAggregation: AggregationConfig,
   val traces: TracesConfig,

@@ -87,7 +87,7 @@ allprojects {
     systemProperty("L1_RPC_URL", "http://localhost:8445")
     systemProperty("L2_RPC_URL", "http://localhost:8545")
     systemProperty("L1_GENESIS", "docker/config/l1-node/el/genesis.json")
-    systemProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis-PoA.json")
+    systemProperty("L2_GENESIS", "docker/config/linea-local-dev-genesis-PoA-geth.json")
 
     systemProperties["junit.jupiter.execution.timeout.default"] = "5 m" // 5 minutes
     systemProperties["junit.jupiter.execution.parallel.enabled"] = true
@@ -168,7 +168,6 @@ dockerCompose {
     // without cleaning the volumes
     noRecreate = true
     projectName = "docker"
-    environment.put("L1_GENESIS_TIME", "${Instant.now().plusSeconds(3).getEpochSecond()}")
   }
 
   localStackPostgresDbOnly {
@@ -213,7 +212,6 @@ dockerCompose {
     // without cleaning the volumes
     noRecreate = true
     projectName = "docker"
-    environment.put("L1_GENESIS_TIME", "${Instant.now().plusSeconds(3).getEpochSecond()}")
   }
 }
 
