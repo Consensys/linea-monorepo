@@ -218,10 +218,10 @@ class L1DependentApp(
   private val l1FinalizationMonitor = run {
     FinalizationMonitorImpl(
       config =
-        FinalizationMonitorImpl.Config(
-          pollingInterval = configs.l1.finalizationPollingInterval.toKotlinDuration(),
-          l1QueryBlockTag = configs.l1.l1QueryBlockTag
-        ),
+      FinalizationMonitorImpl.Config(
+        pollingInterval = configs.l1.finalizationPollingInterval.toKotlinDuration(),
+        l1QueryBlockTag = configs.l1.l1QueryBlockTag
+      ),
       contract = lineaRollupClient,
       l2Client = l2Web3jClient,
       vertx = vertx
@@ -252,19 +252,19 @@ class L1DependentApp(
         config = GasPriceCapProviderImpl.Config(
           enabled = configs.l1DynamicGasPriceCapService.enabled,
           gasFeePercentile =
-            configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.gasFeePercentile,
+          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.gasFeePercentile,
           gasFeePercentileWindowInBlocks = feeHistoryPercentileWindowInBlocks,
           gasFeePercentileWindowLeewayInBlocks = feeHistoryPercentileWindowLeewayInBlocks,
           timeOfDayMultipliers =
-            configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.timeOfDayMultipliers!!,
+          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.timeOfDayMultipliers!!,
           adjustmentConstant =
-            configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.adjustmentConstant,
+          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.adjustmentConstant,
           blobAdjustmentConstant =
-            configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.blobAdjustmentConstant,
+          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.blobAdjustmentConstant,
           finalizationTargetMaxDelay =
-            configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.finalizationTargetMaxDelay.toKotlinDuration(),
+          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.finalizationTargetMaxDelay.toKotlinDuration(),
           gasPriceCapsCoefficient =
-            configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.gasPriceCapsCheckCoefficient
+          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.gasPriceCapsCheckCoefficient
         ),
         l2ExtendedWeb3JClient = l2ExtendedWeb3j,
         feeHistoriesRepository = l1FeeHistoriesRepository,
@@ -319,7 +319,7 @@ class L1DependentApp(
         config = ConflationCalculatorByTimeDeadline.Config(
           conflationDeadline = configs.conflation.conflationDeadline.toKotlinDuration(),
           conflationDeadlineLastBlockConfirmationDelay =
-            configs.conflation.conflationDeadlineLastBlockConfirmationDelay.toKotlinDuration()
+          configs.conflation.conflationDeadlineLastBlockConfirmationDelay.toKotlinDuration()
         ),
         lastBlockNumber = lastProcessedBlockNumber,
         clock = Clock.System,
@@ -615,7 +615,7 @@ class L1DependentApp(
       .create(
         vertx = vertx,
         aggregationCoordinatorPollingInterval =
-          configs.proofAggregation.aggregationCoordinatorPollingInterval.toKotlinDuration(),
+        configs.proofAggregation.aggregationCoordinatorPollingInterval.toKotlinDuration(),
         deadlineCheckInterval = configs.proofAggregation.deadlineCheckInterval.toKotlinDuration(),
         aggregationDeadline = configs.proofAggregation.aggregationDeadline.toKotlinDuration(),
         latestBlockProvider = GethCliqueSafeBlockProvider(
@@ -990,15 +990,15 @@ class L1DependentApp(
       FeeHistoryCachingService(
         config = FeeHistoryCachingService.Config(
           pollingInterval =
-            configs.l1DynamicGasPriceCapService.feeHistoryFetcher.fetchInterval.toKotlinDuration(),
+          configs.l1DynamicGasPriceCapService.feeHistoryFetcher.fetchInterval.toKotlinDuration(),
           feeHistoryMaxBlockCount =
-            configs.l1DynamicGasPriceCapService.feeHistoryFetcher.maxBlockCount,
+          configs.l1DynamicGasPriceCapService.feeHistoryFetcher.maxBlockCount,
           gasFeePercentile =
-            configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.gasFeePercentile,
+          configs.l1DynamicGasPriceCapService.gasPriceCapCalculation.gasFeePercentile,
           feeHistoryStoragePeriodInBlocks = feeHistoryStoragePeriodInBlocks,
           feeHistoryWindowInBlocks = feeHistoryPercentileWindowInBlocks,
           numOfBlocksBeforeLatest =
-            configs.l1DynamicGasPriceCapService.feeHistoryFetcher.numOfBlocksBeforeLatest
+          configs.l1DynamicGasPriceCapService.feeHistoryFetcher.numOfBlocksBeforeLatest
         ),
         vertx = vertx,
         web3jClient = l1Web3jClient,
@@ -1164,10 +1164,10 @@ class L1DependentApp(
       val l1FinalizationMonitor =
         FinalizationMonitorImpl(
           config =
-            FinalizationMonitorImpl.Config(
-              pollingInterval = type2StateProofProviderConfig.l1PollingInterval.toKotlinDuration(),
-              l1QueryBlockTag = type2StateProofProviderConfig.l1QueryBlockTag
-            ),
+          FinalizationMonitorImpl.Config(
+            pollingInterval = type2StateProofProviderConfig.l1PollingInterval.toKotlinDuration(),
+            l1QueryBlockTag = type2StateProofProviderConfig.l1QueryBlockTag
+          ),
           contract = lineaRollupClient,
           l2Client = l2Web3jClient,
           vertx = vertx
