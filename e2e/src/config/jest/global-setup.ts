@@ -43,7 +43,12 @@ async function configureOnceOffPrerequisities() {
 
   const [dummyContract, griefAttackContract, l2DummyContract, l2TestContract, opcodeTestContract] = await Promise.all([
     deployContract(new DummyContract__factory(), account, [{ nonce: l1AccountNonce }]),
-    deployContract(new GriefClaimMessage__factory(), account, [{ nonce: l1AccountNonce + 1 }]),
+    // deployContract(new DummyContract__factory(), account, [{ nonce: l1AccountNonce + 1 }]),
+
+    deployContract(new GriefClaimMessage__factory(), account, [
+      await lineaRollup.getAddress(),
+      { nonce: l1AccountNonce + 1 },
+    ]),
     deployContract(new DummyContract__factory(), l2Account, [{ nonce: l2AccountNonce }]),
     deployContract(new TestContract__factory(), l2Account, [{ nonce: l2AccountNonce + 1 }]),
     deployContract(new OpcodeTestContract__factory(), l2Account, [{ nonce: l2AccountNonce + 2 }]),

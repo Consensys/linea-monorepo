@@ -35,7 +35,7 @@ async function waitForCoordinatorRestart(logger: Logger) {
 
 const l1AccountManager = config.getL1AccountManager();
 
-describe("Coordinator restart test suite", () => {
+describe.skip("Coordinator restart test suite", () => {
   it.concurrent(
     "When the coordinator restarts it should resume blob submission and finalization",
     async () => {

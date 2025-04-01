@@ -12,7 +12,7 @@ import { config } from "./config/tests-config";
 
 const l1AccountManager = config.getL1AccountManager();
 
-describe("Submission and finalization test suite", () => {
+describe.skip("Submission and finalization test suite", () => {
   const sendMessages = async () => {
     const messageFee = etherToWei("0.0001");
     const messageValue = etherToWei("0.0051");

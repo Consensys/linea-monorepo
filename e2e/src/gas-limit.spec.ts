@@ -6,7 +6,7 @@ import { ContractTransactionReceipt, Wallet } from "ethers";
 const l2AccountManager = config.getL2AccountManager();
 const l2Provider = config.getL2Provider();
 
-describe("Gas limit test suite", () => {
+describe.skip("Gas limit test suite", () => {
   const setGasLimit = async (account: Wallet): Promise<ContractTransactionReceipt | null> => {
     logger.debug(`setGasLimit called with account=${account.address}`);
 

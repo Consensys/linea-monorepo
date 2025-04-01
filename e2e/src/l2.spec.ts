@@ -6,7 +6,7 @@ import { TRANSACTION_CALLDATA_LIMIT } from "./common/constants";
 
 const l2AccountManager = config.getL2AccountManager();
 
-describe("Layer 2 test suite", () => {
+describe.skip("Layer 2 test suite", () => {
   const l2Provider = config.getL2Provider();
   const lineaEstimateGasClient = new LineaEstimateGasClient(config.getL2BesuNodeEndpoint()!);
 

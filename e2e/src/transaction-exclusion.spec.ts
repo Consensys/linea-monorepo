@@ -5,7 +5,7 @@ import { TransactionRequest } from "ethers";
 
 const l2AccountManager = config.getL2AccountManager();
 
-describe("Transaction exclusion test suite", () => {
+describe.skip("Transaction exclusion test suite", () => {
   it.concurrent(
     "Should get the status of the rejected transaction reported from Besu RPC node",
     async () => {

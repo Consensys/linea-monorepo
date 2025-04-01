@@ -27,7 +27,7 @@ const config: Config = {
           path.resolve(__dirname, "../../../../..", "docker/config/l1-node/el", "genesis.json"),
       ),
     ),
-    griefClaimMessageAddress: "",
+    griefClaimMessageAddress: "0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e",
   },
   L2: {
     rpcUrl: L2_RPC_URL,
