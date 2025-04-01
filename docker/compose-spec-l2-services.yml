@@ -117,7 +117,7 @@ services:
     volumes:
       - ./config/l2-node-besu/l2-node-besu-config.toml:/var/lib/besu/l2-node-besu.config.toml:ro
       - ./config/linea-besu-sequencer/deny-list.txt:/var/lib/besu/deny-list.txt:ro
-      - ./config/l2-node-besu/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/linea-besu-sequencer/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
       - ../config/common/traces-limits-besu-v2.toml:/var/lib/besu/traces-limits.toml:ro
       - ../tmp/local/:/data/:rw
@@ -226,7 +226,7 @@ services:
   prover-v3: # prover compatible with the traces from zkbesu
     container_name: prover-v3
     hostname: prover-v3
-    image: consensys/linea-prover:${PROVER_TAG:-5c8ea31}
+    image: consensys/linea-prover:${PROVER_TAG:-29db47d}
     platform: linux/amd64
     # to avoid spinning up on CI for now
     profiles: [ "l2" ]
@@ -247,7 +247,7 @@ services:
   postman:
     container_name: postman
     hostname: postman
-    image: consensys/linea-postman:${POSTMAN_TAG:-5c8ea31}
+    image: consensys/linea-postman:${POSTMAN_TAG:-29db47d}
     profiles: [ "l2", "debug" ]
     platform: linux/amd64
     restart: on-failure
@@ -266,7 +266,7 @@ services:
   traces-api:
     hostname: traces-api
     container_name: traces-api
-    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-5c8ea31}
+    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-29db47d}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
@@ -287,7 +287,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-5c8ea31}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-29db47d}
     platform: linux/amd64
     profiles: [ "l2", "debug" ]
     depends_on:
@@ -490,7 +490,7 @@ services:
   transaction-exclusion-api:
     hostname: transaction-exclusion-api
     container_name: transaction-exclusion-api
-    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-5c8ea31}
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-29db47d}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
