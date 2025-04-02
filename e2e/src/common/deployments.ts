@@ -30,7 +30,10 @@ export const deployContract = async <T extends ContractFactory>(
 ): Promise<BaseContract> => {
   const deploymentArgs = args || [];
   const instance = await contractFactory.connect(deployer).deploy(...deploymentArgs);
-  await instance.waitForDeployment();
+  const tx = await instance.waitForDeployment();
+  if (args?.length == 2) {
+    console.log("deployContract deployTx gasUsed:", (await tx.deploymentTransaction()?.wait())?.gasUsed);
+  }
   return instance;
 };
 
