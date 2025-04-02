@@ -1,4 +1,4 @@
-name: get-e2e-toggle
+name: get-has-changes-requiring-e2e-testing
 
 on:
   workflow_call:
@@ -17,11 +17,11 @@ on:
         required: false
         type: string
     outputs:
-      e2e-toggle:
-        value: ${{ jobs.get-e2e-toggle.outputs.e2e_toggle }}
+      has-changes-requiring-e2e-testing:
+        value: ${{ jobs.get-has-changes-requiring-e2e-testing.outputs.e2e_toggle }}
 
 jobs:
-  get-e2e-toggle:
+  get-has-changes-requiring-e2e-testing:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     outputs:
       e2e_toggle: ${{ steps.eval.outputs.e2e_toggle }}

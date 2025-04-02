@@ -169,9 +169,9 @@ jobs:
       transaction_exclusion_api_changed: ${{ needs.filter-commit-changes.outputs.transaction-exclusion-api }}
     secrets: inherit
 
-  get-e2e-toggle:
+  get-has-changes-requiring-e2e-testing:
     needs: [ filter-commit-changes ]
-    uses: ./.github/workflows/get-e2e-toggle.yml
+    uses: ./.github/workflows/get-has-changes-requiring-e2e-testing.yml
     with:
       has_changes_requiring_build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
       contracts_excluding_local_deployment_artifacts: ${{ needs.filter-commit-changes.outputs.contracts-excluding-local-deployment-artifacts }}
@@ -180,8 +180,8 @@ jobs:
 
   manual-docker-build-and-e2e-tests:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    needs: [ store-image-name-and-tags, check-and-tag-images, get-e2e-toggle ]
-    if: ${{ needs.get-e2e-toggle.outputs.e2e-toggle == 'true' }}
+    needs: [ store-image-name-and-tags, check-and-tag-images, get-has-changes-requiring-e2e-testing ]
+    if: ${{ needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing == 'true' }}
     environment: ${{ github.ref != 'refs/heads/main' && 'docker-build-and-e2e' || '' }}
     concurrency:
       group: manual-docker-build-and-e2e-tests-${{ github.workflow }}-${{ github.ref }}
@@ -210,9 +210,9 @@ jobs:
     secrets: inherit
 
   run-e2e-tests-geth-tracing:
-    needs: [ store-image-name-and-tags, docker-build, get-e2e-toggle, manual-docker-build-and-e2e-tests ]
-    # Make this execute for e2e-toggle == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
-    if: ${{ always() && needs.get-e2e-toggle.outputs.e2e-toggle == 'false' || needs.docker-build.result == 'success' }}
+    needs: [ store-image-name-and-tags, docker-build, get-has-changes-requiring-e2e-testing, manual-docker-build-and-e2e-tests ]
+    # Make this execute for has-changes-requiring-e2e-testing == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
+    if: ${{ always() && needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing == 'false' || needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-geth-tracing-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -221,13 +221,13 @@ jobs:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       tracing-engine: 'geth'
       e2e-tests-logs-dump: true
-      e2e-toggle: ${{ needs.get-e2e-toggle.outputs.e2e-toggle }}
+      has-changes-requiring-e2e-testing: ${{ needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing }}
     secrets: inherit
 
   run-e2e-tests:
-    needs: [ store-image-name-and-tags, docker-build, get-e2e-toggle, manual-docker-build-and-e2e-tests ]
-    # Make this execute for e2e-toggle == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
-    if: ${{ always() && needs.get-e2e-toggle.outputs.e2e-toggle == 'false' || needs.docker-build.result == 'success' }}
+    needs: [ store-image-name-and-tags, docker-build, get-has-changes-requiring-e2e-testing, manual-docker-build-and-e2e-tests ]
+    # Make this execute for has-changes-requiring-e2e-testing == 'false' so that we can get to the required job @ which is in reuse-run-e2e-tests.yml
+    if: ${{ always() && needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing == 'false' || needs.docker-build.result == 'success' }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -236,7 +236,7 @@ jobs:
       commit_tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       tracing-engine: 'besu'
       e2e-tests-logs-dump: true
-      e2e-toggle: ${{ needs.get-e2e-toggle.outputs.e2e-toggle }}
+      has-changes-requiring-e2e-testing: ${{ needs.get-has-changes-requiring-e2e-testing.outputs.has-changes-requiring-e2e-testing }}
     secrets: inherit
 
   publish-images-after-run-tests-success-on-main:
