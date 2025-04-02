@@ -64,7 +64,6 @@ class BlockValidatorTest {
   private val currBeaconState =
     BeaconState(
       latestBeaconBlockHeader = validCurrBlockHeader,
-      latestBeaconBlockRoot = validCurrBlockHeader.bodyRoot,
       validators = validators.toSet(),
     )
 
@@ -81,7 +80,6 @@ class BlockValidatorTest {
     HashUtil.stateRoot(
       BeaconState(
         latestBeaconBlockHeader = validNewBlockStateRootHeader,
-        latestBeaconBlockRoot = validNewBlockStateRootHeader.bodyRoot,
         validators = validators.toSet(),
       ),
     )

@@ -16,7 +16,6 @@
 package maru.serialization.rlp
 
 import maru.core.BeaconState
-import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.ethereum.rlp.RLPInput
 import org.hyperledger.besu.ethereum.rlp.RLPOutput
 
@@ -31,7 +30,6 @@ class BeaconStateSerializer(
     rlpOutput.startList()
 
     beaconBlockHeaderSerializer.writeTo(value.latestBeaconBlockHeader, rlpOutput)
-    rlpOutput.writeBytes(Bytes.wrap(value.latestBeaconBlockRoot))
     rlpOutput.writeList(value.validators) { validator, output ->
       validatorSerializer.writeTo(validator, output)
     }
@@ -43,14 +41,12 @@ class BeaconStateSerializer(
     rlpInput.enterList()
 
     val latestBeaconBlockHeader = beaconBlockHeaderSerializer.readFrom(rlpInput)
-    val latestBeaconBlockRoot = rlpInput.readBytes().toArray()
     val validators = rlpInput.readList { validatorSerializer.readFrom(it) }.toSet()
 
     rlpInput.leaveList()
 
     return BeaconState(
       latestBeaconBlockHeader = latestBeaconBlockHeader,
-      latestBeaconBlockRoot = latestBeaconBlockRoot,
       validators = validators,
     )
   }
