@@ -1,10 +1,12 @@
-import BridgeLayout from "@/components/bridge/BridgeLayout";
+"use client";
 
-export default function Home() {
+import styles from "./page.module.scss";
+import { Widget } from "@/components/lifi/widget";
+
+export default function Page() {
   return (
-    <div className="min-w-min max-w-lg md:m-auto">
-      <h1 className="mb-6 text-4xl font-bold md:hidden">Bridge</h1>
-      <BridgeLayout />
-    </div>
+    <section className={styles["content-wrapper"]}>
+      <Widget />
+    </section>
   );
 }

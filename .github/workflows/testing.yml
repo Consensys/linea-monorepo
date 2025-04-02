@@ -24,16 +24,13 @@ on:
       transaction_exclusion_api_changed:
         required: true
         type: string
-
+      smart_contracts_changed:
+        required: true
+        type: string
 jobs:
-  # Disable cache for pulling docker images as empirically found that this 
-  # (retrieving cache and loading docker images) actually increased test time-to-completion
-  # cache-docker-images:
-  #   uses: ./.github/workflows/cache-docker-images.yml
-  #   secrets: inherit
-
+  # Cache for pulling Docker images is disabled as we empirically found that this
+  # (retrieving cache and loading Docker images) actually increased test time-to-completion
   coordinator:
-    # needs: [ cache-docker-images ]
     uses: ./.github/workflows/coordinator-testing.yml
     if: ${{ inputs.coordinator_changed == 'true' }}
     with:
@@ -60,11 +57,15 @@ jobs:
     secrets: inherit
 
   staterecovery:
-    # needs: [ cache-docker-images ]
     uses: ./.github/workflows/staterecovery-testing.yml
     if: ${{ inputs.staterecovery_changed == 'true' }}
     with:
       commit_tag: ${{ inputs.commit_tag }}
+    secrets: inherit
+
+  smart-contracts:
+    uses: ./.github/workflows/run-smc-tests.yml
+    if: ${{ inputs.smart_contracts_changed == 'true' }}
     secrets: inherit
 
   # If all jobs are skipped, the workflow will still succeed.
