@@ -1,12 +1,12 @@
 "use client";
 
-import BridgeLayout from "@/components/bridge/bridge-layout";
+import OnRamperWidget from "@/components/onramper";
 import styles from "./page.module.scss";
 
-export default function Home() {
+export default function Page() {
   return (
     <section className={styles["content-wrapper"]}>
-      <BridgeLayout />
+      <OnRamperWidget />
     </section>
   );
 }
