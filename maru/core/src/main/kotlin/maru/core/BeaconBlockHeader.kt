@@ -41,4 +41,8 @@ data class BeaconBlockHeader(
   override fun hashCode(): Int = hash.contentHashCode()
 
   fun hash(): ByteArray = hash
+
+  companion object {
+    val EMPTY_STATE_ROOT = ByteArray(0)
+  }
 }
