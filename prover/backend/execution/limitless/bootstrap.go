@@ -39,16 +39,16 @@ type DistMetadata struct {
 }
 
 // GLSubModReq slice will be dispatched to the queue ideally
-func InitBootstrapper(cfg *config.Config, req *execution.Request,
-	traces *config.TracesLimits, targetWeight int) (
+func InitBootstrapper(cfg *config.Config, req *execution.Request, targetWeight int) (
 	[]GLSubModReq, *DistMetadata, error) {
+
 	// Initialize module discoverer
 	disc := &distributed.StandardModuleDiscoverer{
 		TargetWeight: targetWeight,
 	}
 
 	// Get zkEVM instance
-	zkevmInstance := zkevm.FullZkEvm(traces, cfg)
+	zkevmInstance := zkevm.FullZkEvm(&cfg.TracesLimits, cfg)
 
 	// Distribute the wizard protocol
 	distWizard := distributed.DistributeWizard(zkevmInstance.WizardIOP, disc)
@@ -60,13 +60,15 @@ func InitBootstrapper(cfg *config.Config, req *execution.Request,
 	)
 
 	// Generate zkEVM witness from request and config
-	witness := GetZkevmWitness(req, cfg)
-	if witness == nil {
+	out := execution.CraftProverOutput(cfg, req)
+	witness := execution.NewWitness(cfg, req, &out)
+	zkWitness := witness.ZkEVM
+	if zkWitness == nil {
 		return nil, nil, errors.New("failed to generate zkEVM witness")
 	}
 
-	// Run the prover on the bootstrapper
-	runtimeBoot := wizard.RunProver(distWizard.Bootstrapper, zkevmInstance.GetMainProverStep(witness))
+	// Run the bootstrapper
+	runtimeBoot := wizard.RunProver(distWizard.Bootstrapper, zkevmInstance.GetMainProverStep(zkWitness))
 	if runtimeBoot == nil {
 		return nil, nil, errors.New("bootstrapper prover failed")
 	}
@@ -119,11 +121,4 @@ func buildModuleSegmentMap(witnessGLs []*distributed.ModuleWitness) ModuleSegmen
 		})
 	}
 	return m
-}
-
-// GetZkevmWitness returns a [zkevm.Witness]
-func GetZkevmWitness(req *execution.Request, cfg *config.Config) *zkevm.Witness {
-	out := execution.CraftProverOutput(cfg, req)
-	witness := execution.NewWitness(cfg, req, &out)
-	return witness.ZkEVM
 }
