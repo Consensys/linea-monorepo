@@ -8,9 +8,15 @@ import { IStakeManagerProxy } from "../src/interfaces/IStakeManagerProxy.sol";
 import { DeploymentConfig } from "./DeploymentConfig.s.sol";
 
 contract UpgradeStakeManagerScript is BaseScript {
+    error StakeManagerProxyAddressNotSet();
+
     function run() public returns (address) {
+        address currentImplProxy = vm.envAddress("STAKE_MANAGER_PROXY_ADDRESS");
+        if (currentImplProxy == address(0)) {
+            revert StakeManagerProxyAddressNotSet();
+        }
         DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
-        (address deployer,, address currentImplProxy) = deploymentConfig.activeNetworkConfig();
+        (address deployer,) = deploymentConfig.activeNetworkConfig();
         return runWithAdminAndProxy(deployer, IStakeManagerProxy(currentImplProxy));
     }
 

@@ -22,7 +22,7 @@ contract DeployKarmaNFTScript is BaseScript {
 
     function _run(address karmaAddress) public returns (KarmaNFT, INFTMetadataGenerator, DeploymentConfig) {
         DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
-        (address deployer,,) = deploymentConfig.activeNetworkConfig();
+        (address deployer,) = deploymentConfig.activeNetworkConfig();
 
         vm.startBroadcast(deployer);
 

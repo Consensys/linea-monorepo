@@ -12,7 +12,6 @@ contract DeploymentConfig is Script {
     struct NetworkConfig {
         address deployer;
         address stakingToken;
-        address currentImplProxy;
     }
 
     NetworkConfig public activeNetworkConfig;
@@ -44,23 +43,15 @@ contract DeploymentConfig is Script {
 
     function getOrCreateAnvilEthConfig() public returns (NetworkConfig memory) {
         MockToken stakingToken = new MockToken("Staking Token", "ST");
-        return NetworkConfig({ deployer: deployer, stakingToken: address(stakingToken), currentImplProxy: address(0) });
+        return NetworkConfig({ deployer: deployer, stakingToken: address(stakingToken) });
     }
 
     function getSepoliaConfig() public view returns (NetworkConfig memory) {
-        return NetworkConfig({
-            deployer: deployer,
-            stakingToken: SNT_ADDRESS_SEPOLIA,
-            currentImplProxy: STAKING_MANAGER_PROXY_ADDRESS_SEPOLIA
-        });
+        return NetworkConfig({ deployer: deployer, stakingToken: SNT_ADDRESS_SEPOLIA });
     }
 
     function getStatusNetworkSepoliaConfig() public view returns (NetworkConfig memory) {
-        return NetworkConfig({
-            deployer: deployer,
-            stakingToken: SNT_ADDRESS_STATUS_NETWORK_SEPOLIA,
-            currentImplProxy: address(0)
-        });
+        return NetworkConfig({ deployer: deployer, stakingToken: SNT_ADDRESS_STATUS_NETWORK_SEPOLIA });
     }
 
     // This function is a hack to have it excluded by `forge coverage` until

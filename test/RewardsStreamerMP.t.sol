@@ -39,7 +39,7 @@ contract StakeManagerTest is StakeMath, Test {
         DeployKarmaScript karmaDeployment = new DeployKarmaScript();
         (StakeManager stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) = deployment.run();
 
-        (address _deployer, address _stakingToken,) = deploymentConfig.activeNetworkConfig();
+        (address _deployer, address _stakingToken) = deploymentConfig.activeNetworkConfig();
 
         streamer = stakeManager;
         stakingToken = MockToken(_stakingToken);

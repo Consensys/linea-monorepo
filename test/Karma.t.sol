@@ -21,7 +21,7 @@ contract KarmaTest is Test {
         DeployKarmaScript karmaDeployment = new DeployKarmaScript();
         (Karma _karma, DeploymentConfig deploymentConfig) = karmaDeployment.run();
         karma = _karma;
-        (address deployer,,) = deploymentConfig.activeNetworkConfig();
+        (address deployer,) = deploymentConfig.activeNetworkConfig();
         owner = deployer;
 
         distributor1 = new KarmaDistributorMock();

@@ -11,7 +11,7 @@ import { Karma } from "../src/Karma.sol";
 contract DeployKarmaScript is BaseScript {
     function run() public returns (Karma, DeploymentConfig) {
         DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
-        (address deployer,,) = deploymentConfig.activeNetworkConfig();
+        (address deployer,) = deploymentConfig.activeNetworkConfig();
 
         vm.startBroadcast(deployer);
 

@@ -10,7 +10,7 @@ import { INFTMetadataGenerator } from "../src/interfaces/INFTMetadataGenerator.s
 contract DeployMetadataGenerator is BaseScript {
     function run() public returns (INFTMetadataGenerator, DeploymentConfig) {
         DeploymentConfig deploymentConfig = new DeploymentConfig(broadcaster);
-        (address deployer,,) = deploymentConfig.activeNetworkConfig();
+        (address deployer,) = deploymentConfig.activeNetworkConfig();
 
         vm.startBroadcast(deployer);
         string memory svgPrefix =

@@ -34,7 +34,7 @@ contract StakeVaultTest is Test {
 
         DeployStakeManagerScript deployment = new DeployStakeManagerScript();
         (StakeManager stakeManager, VaultFactory _vaultFactory, DeploymentConfig deploymentConfig) = deployment.run();
-        (, address _stakingToken,) = deploymentConfig.activeNetworkConfig();
+        (, address _stakingToken) = deploymentConfig.activeNetworkConfig();
 
         streamer = stakeManager;
         stakingToken = MockToken(_stakingToken);
