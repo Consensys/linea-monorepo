@@ -15,12 +15,8 @@
  */
 package maru.consensus.qbft
 
-import com.github.michaelbull.result.Err
-import com.github.michaelbull.result.Ok
 import maru.consensus.qbft.adapters.toSealedBeaconBlock
 import maru.consensus.state.StateTransition
-import maru.consensus.state.StateTransition.StateTransitionError
-import maru.core.BeaconState
 import maru.database.BeaconChain
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockImporter
@@ -42,20 +38,7 @@ class QbftBlockImportCoordinator(
 
     beaconChain.newUpdater().use { updater ->
       try {
-        val currentState = beaconChain.getLatestBeaconState()
-        val resultingState: BeaconState =
-          when (
-            val resultingState =
-              stateTransition
-                .processBlock(
-                  currentState,
-                  beaconBlock,
-                ).get()
-          ) {
-            is Ok<BeaconState> -> resultingState.value
-            is Err<StateTransitionError> -> return false
-          }
-
+        val resultingState = stateTransition.processBlock(beaconBlock).get()
         updater
           .putBeaconState(resultingState)
           .putSealedBeaconBlock(sealedBeaconBlock)

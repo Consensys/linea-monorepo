@@ -15,7 +15,6 @@
  */
 package maru.consensus
 
-import maru.core.BeaconBlockHeader
 import maru.core.Validator
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -23,8 +22,6 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
  * Provides access to the set of validators for a given block.
  */
 interface ValidatorProvider {
-  fun getValidatorsForBlock(header: BeaconBlockHeader): SafeFuture<Set<Validator>>
-
   fun getValidatorsAfterBlock(blockNumber: ULong): SafeFuture<Set<Validator>> = getValidatorsForBlock(blockNumber + 1u)
 
   fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>>
@@ -36,10 +33,6 @@ interface ValidatorProvider {
 class StaticValidatorProvider(
   private val validators: Set<Validator>,
 ) : ValidatorProvider {
-  // TODO: will be removed in the future
-  override fun getValidatorsForBlock(header: BeaconBlockHeader): SafeFuture<Set<Validator>> =
-    SafeFuture.completedFuture<Set<Validator>>(validators)
-
   override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>> =
-    SafeFuture.completedFuture<Set<Validator>>(validators)
+    SafeFuture.completedFuture(validators)
 }

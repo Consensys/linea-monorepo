@@ -19,22 +19,28 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import encodeHex
+import maru.consensus.ProposerSelector
+import maru.consensus.ValidatorProvider
+import maru.consensus.state.StateTransitionImpl
+import maru.consensus.toConsensusRoundIdentifier
 import maru.consensus.validation.BlockValidator.Companion.error
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
+import maru.core.BeaconState
 import maru.core.HashUtil
 import maru.core.Seal
+import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.core.ext.DataGenerators
+import maru.database.InMemoryBeaconChain
 import maru.executionlayer.client.ExecutionLayerClient
 import maru.serialization.rlp.bodyRoot
+import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.consensus.common.bft.BftHelpers
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
-import org.mockito.kotlin.doReturn
 import org.mockito.kotlin.mock
-import org.mockito.kotlin.spy
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
 import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -53,19 +59,89 @@ class BlockValidatorTest {
       proposer = validators[0],
       bodyRoot = HashUtil.bodyRoot(validCurrBlockBody),
     )
+  private val validCurrBlock = BeaconBlock(validCurrBlockHeader, validCurrBlockBody)
+
+  private val currBeaconState =
+    BeaconState(
+      latestBeaconBlockHeader = validCurrBlockHeader,
+      latestBeaconBlockRoot = validCurrBlockHeader.bodyRoot,
+      validators = validators.toSet(),
+    )
 
   private val validNewBlockBody = DataGenerators.randomBeaconBlockBody(numSeals = validators.size)
-  private val validNewBlockHeader =
+  private val validNewBlockStateRootHeader =
     DataGenerators.randomBeaconBlockHeader(newBlockNumber).copy(
       proposer = validators[1],
       parentRoot = validCurrBlockHeader.hash,
       timestamp = validCurrBlockHeader.timestamp + 1u,
       bodyRoot = HashUtil.bodyRoot(validNewBlockBody),
+      stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT,
     )
+  private val validNewStateRoot =
+    HashUtil.stateRoot(
+      BeaconState(
+        latestBeaconBlockHeader = validNewBlockStateRootHeader,
+        latestBeaconBlockRoot = validNewBlockStateRootHeader.bodyRoot,
+        validators = validators.toSet(),
+      ),
+    )
+  private val validNewBlockHeader = validNewBlockStateRootHeader.copy(stateRoot = validNewStateRoot)
   private val validNewBlock = BeaconBlock(validNewBlockHeader, validNewBlockBody)
+
+  private val beaconChain = InMemoryBeaconChain(currBeaconState)
+
+  private val proposerSelector =
+    ProposerSelector { consensusRoundIdentifier ->
+      when (consensusRoundIdentifier) {
+        validNewBlockHeader.toConsensusRoundIdentifier() -> SafeFuture.completedFuture(validNewBlockHeader.proposer)
+        else -> throw IllegalArgumentException("Unexpected consensus round identifier")
+      }
+    }
+
+  private val validatorProvider =
+    object : ValidatorProvider {
+      override fun getValidatorsForBlock(blockNumber: ULong): SafeFuture<Set<Validator>> =
+        SafeFuture.completedFuture(validators.toSet())
+    }
+
+  private val stateTransition = StateTransitionImpl(validatorProvider)
+
+  init {
+    beaconChain.newUpdater().putSealedBeaconBlock(SealedBeaconBlock(validCurrBlock, emptyList())).commit()
+  }
 
   @Test
   fun `test valid block`() {
+    val stateRootValidator =
+      StateRootValidator(stateTransition).also {
+        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
+      }
+
+    val blockNumberValidator =
+      BlockNumberValidator(parentBlockHeader = validCurrBlockHeader).also {
+        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
+      }
+
+    val timestampValidator =
+      TimestampValidator(parentBlockHeader = validCurrBlockHeader).also {
+        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
+      }
+
+    val proposerValidator =
+      ProposerValidator(proposerSelector = proposerSelector).also {
+        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
+      }
+
+    val parentRootValidator =
+      ParentRootValidator(parentBlockHeader = validCurrBlockHeader).also {
+        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
+      }
+
+    val bodyRootValidator =
+      BodyRootValidator().also {
+        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
+      }
+
     val sealVerifier =
       object : SealVerifier {
         override fun extractValidator(
@@ -82,6 +158,16 @@ class BlockValidatorTest {
         }
       }
 
+    val prevCommitSealValidator =
+      PrevCommitSealValidator(
+        sealVerifier = sealVerifier,
+        beaconChain = beaconChain,
+        validatorProvider = validatorProvider,
+        config = PrevCommitSealValidator.Config(prevBlockOffset = 1u),
+      ).also {
+        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
+      }
+
     val executionLayerClient =
       mock<ExecutionLayerClient> {
         on { newPayload(any()) }.thenReturn(
@@ -92,63 +178,98 @@ class BlockValidatorTest {
           ),
         )
       }
+    val executionPayloadValidator =
+      ExecutionPayloadValidator(executionLayerClient).also {
+        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
+      }
 
-    val compositeBlockValidator =
-      CompositeBlockValidator(
-        blockValidators =
-          listOf(
-            BlockValidators.BlockNumberValidator,
-            BlockValidators.TimestampValidator,
-            BlockValidators.ProposerValidator,
-            BlockValidators.ParentRootValidator,
-            BlockValidators.BodyRootValidator,
-//            PrevCommitSealValidator(sealVerifier = sealVerifier),
-            ExecutionPayloadValidator(executionLayerClient),
-          ),
+    val blockValidators =
+      listOf(
+        stateRootValidator,
+        blockNumberValidator,
+        timestampValidator,
+        proposerValidator,
+        parentRootValidator,
+        bodyRootValidator,
+        prevCommitSealValidator,
+        executionPayloadValidator,
       )
-    val result =
-      compositeBlockValidator
-        .validateBlock(
-          newBlock = validNewBlock,
-          proposerForNewBlock = validNewBlock.beaconBlockHeader.proposer,
-          parentBlockHeader = validCurrBlockHeader,
-        ).get()
-    assertThat(result is Ok).isTrue()
+    CompositeBlockValidator(blockValidators).also {
+      assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
+    }
   }
 
   @Test
-  fun `test invalid previous block number`() {
-    val prevBlockHeader = validCurrBlockHeader.copy(number = 8u)
+  fun `test invalid state root`() {
+    val invalidNewBlockHeader = validNewBlockHeader.copy(stateRoot = validNewStateRoot.reversedArray())
+    val invalidNewBlock = validNewBlock.copy(beaconBlockHeader = invalidNewBlockHeader)
+    val stateRootValidator = StateRootValidator(stateTransition)
+    val result = stateRootValidator.validateBlock(block = invalidNewBlock).get()
+    val expectedResult =
+      error(
+        "State root in header does not match state root " +
+          "stateRoot=${invalidNewBlockHeader.stateRoot.encodeHex()} " +
+          "expectedStateRoot=${validNewStateRoot.encodeHex()}",
+      )
+    assertThat(result).isEqualTo(expectedResult)
+  }
+
+  @Test
+  fun `test invalid previous block number, number lower`() {
+    val blockNumberValidator = BlockNumberValidator(parentBlockHeader = validCurrBlockHeader)
+    val invalidBlock =
+      validNewBlock.copy(
+        beaconBlockHeader = validNewBlockHeader.copy(number = validNewBlockHeader.number - 1u),
+      )
     val result =
-      BlockValidators.BlockNumberValidator
+      blockNumberValidator
         .validateBlock(
-          newBlock = validNewBlock,
-          proposerForNewBlock = validNewBlock.beaconBlockHeader.proposer,
-          parentBlockHeader = prevBlockHeader,
+          block = invalidBlock,
         ).get()
     val expectedResult =
       error(
         "Block number is not the next block number " +
-          "blockNumber=$newBlockNumber " +
-          "nextBlockNumber=${prevBlockHeader.number + 1u}",
+          "blockNumber=${invalidBlock.beaconBlockHeader.number} " +
+          "parentBlockNumber=${validCurrBlock.beaconBlockHeader.number}",
+      )
+    assertThat(result).isEqualTo(expectedResult)
+  }
+
+  @Test
+  fun `test invalid previous block number, number higher`() {
+    val blockNumberValidator = BlockNumberValidator(parentBlockHeader = validCurrBlockHeader)
+    val invalidBlock =
+      validNewBlock.copy(
+        beaconBlockHeader = validNewBlockHeader.copy(number = validNewBlockHeader.number + 1u),
+      )
+    val result =
+      blockNumberValidator
+        .validateBlock(
+          block = invalidBlock,
+        ).get()
+    val expectedResult =
+      error(
+        "Block number is not the next block number " +
+          "blockNumber=${invalidBlock.beaconBlockHeader.number} " +
+          "parentBlockNumber=${validCurrBlock.beaconBlockHeader.number}",
       )
     assertThat(result).isEqualTo(expectedResult)
   }
 
   @Test
   fun `test invalid block timestamp, equal to previous block timestamp`() {
-    val blockHeader = validNewBlockHeader.copy(timestamp = validCurrBlockHeader.timestamp)
+    val timestampValidator = TimestampValidator(parentBlockHeader = validCurrBlockHeader)
+    val invalidBlockHeader = validNewBlockHeader.copy(timestamp = validCurrBlockHeader.timestamp)
+    val invalidBlock = validNewBlock.copy(beaconBlockHeader = invalidBlockHeader)
     val result =
-      BlockValidators.TimestampValidator
+      timestampValidator
         .validateBlock(
-          newBlock = validNewBlock.copy(beaconBlockHeader = blockHeader),
-          proposerForNewBlock = validNewBlock.beaconBlockHeader.proposer,
-          parentBlockHeader = validCurrBlockHeader,
+          block = invalidBlock,
         ).get()
     val expectedResult =
       error(
         "Block timestamp is not greater than previous block timestamp " +
-          "blockTimestamp=${blockHeader.timestamp} " +
+          "blockTimestamp=${invalidBlockHeader.timestamp} " +
           "parentBlockTimestamp=${validCurrBlockHeader.timestamp}",
       )
     assertThat(result).isEqualTo(expectedResult)
@@ -156,18 +277,18 @@ class BlockValidatorTest {
 
   @Test
   fun `test invalid block timestamp, less than previous block timestamp`() {
-    val blockHeader = validNewBlockHeader.copy(timestamp = validCurrBlockHeader.timestamp - 1u)
+    val timestampValidator = TimestampValidator(parentBlockHeader = validCurrBlockHeader)
+    val invalidBlockHeader = validNewBlockHeader.copy(timestamp = validCurrBlockHeader.timestamp - 1u)
+    val invalidBlock = validNewBlock.copy(beaconBlockHeader = invalidBlockHeader)
     val result =
-      BlockValidators.TimestampValidator
+      timestampValidator
         .validateBlock(
-          newBlock = validNewBlock.copy(beaconBlockHeader = blockHeader),
-          proposerForNewBlock = validNewBlock.beaconBlockHeader.proposer,
-          parentBlockHeader = validCurrBlockHeader,
+          block = invalidBlock,
         ).get()
     val expectedResult =
       error(
         "Block timestamp is not greater than previous block timestamp " +
-          "blockTimestamp=${blockHeader.timestamp} " +
+          "blockTimestamp=${invalidBlockHeader.timestamp} " +
           "parentBlockTimestamp=${validCurrBlockHeader.timestamp}",
       )
 
@@ -176,36 +297,37 @@ class BlockValidatorTest {
 
   @Test
   fun `test invalid block proposer`() {
+    val invalidBlockHeader = validNewBlockHeader.copy(proposer = nonValidatorNode)
+    val invalidBlock = validNewBlock.copy(beaconBlockHeader = invalidBlockHeader)
+    val proposerValidator = ProposerValidator(proposerSelector = proposerSelector)
     val result =
-      BlockValidators.ProposerValidator
+      proposerValidator
         .validateBlock(
-          newBlock = validNewBlock,
-          proposerForNewBlock = validators.last(),
-          parentBlockHeader = validCurrBlockHeader,
+          block = invalidBlock,
         ).get()
     val expectedResult =
       error(
         "Proposer is not expected proposer " +
-          "proposer=${validNewBlockHeader.proposer} " +
-          "expectedProposer=${validators.last()}",
+          "proposer=${invalidBlockHeader.proposer} " +
+          "expectedProposer=${validNewBlockHeader.proposer}",
       )
     assertThat(result).isEqualTo(expectedResult)
   }
 
   @Test
   fun `test invalid parent root`() {
-    val blockHeader = validNewBlockHeader.copy(parentRoot = validCurrBlockHeader.hash.reversedArray())
+    val parentRootValidator = ParentRootValidator(parentBlockHeader = validCurrBlockHeader)
+    val invalidBlockHeader = validNewBlockHeader.copy(parentRoot = validCurrBlockHeader.hash.reversedArray())
+    val invalidBlock = validNewBlock.copy(beaconBlockHeader = invalidBlockHeader)
     val result =
-      BlockValidators.ParentRootValidator
+      parentRootValidator
         .validateBlock(
-          newBlock = validNewBlock.copy(beaconBlockHeader = blockHeader),
-          proposerForNewBlock = validNewBlockHeader.proposer,
-          parentBlockHeader = validCurrBlockHeader,
+          block = invalidBlock,
         ).get()
     val expectedResult =
       error(
         "Parent root does not match parent block root " +
-          "parentRoot=${blockHeader.parentRoot.encodeHex()} " +
+          "parentRoot=${invalidBlockHeader.parentRoot.encodeHex()} " +
           "expectedParentRoot=${validCurrBlockHeader.hash.encodeHex()}",
       )
     assertThat(result).isEqualTo(expectedResult)
@@ -213,18 +335,18 @@ class BlockValidatorTest {
 
   @Test
   fun `test invalid body root`() {
-    val blockHeader = validNewBlockHeader.copy(bodyRoot = validNewBlockHeader.bodyRoot.reversedArray())
+    val bodyRootValidator = BodyRootValidator()
+    val invalidBlockHeader = validNewBlockHeader.copy(bodyRoot = validNewBlockHeader.bodyRoot.reversedArray())
+    val invalidBlock = validNewBlock.copy(beaconBlockHeader = invalidBlockHeader)
     val result =
-      BlockValidators.BodyRootValidator
+      bodyRootValidator
         .validateBlock(
-          newBlock = validNewBlock.copy(beaconBlockHeader = blockHeader),
-          proposerForNewBlock = validCurrBlockHeader.proposer,
-          parentBlockHeader = validCurrBlockHeader,
+          block = invalidBlock,
         ).get()
     val expectedResult =
       error(
         "Body root in header does not match body root " +
-          "bodyRoot=${blockHeader.bodyRoot.encodeHex()} " +
+          "bodyRoot=${invalidBlockHeader.bodyRoot.encodeHex()} " +
           "expectedBodyRoot=${validNewBlockHeader.bodyRoot.encodeHex()}",
       )
     assertThat(result).isEqualTo(expectedResult)
@@ -260,28 +382,24 @@ class BlockValidatorTest {
             else -> Err(SealVerifier.SealValidationError("Invalid seal"))
           }
       }
-
-    val prevCommitSealValidator = spy(PrevCommitSealValidator(sealVerifier = sealVerifier))
-    doReturn(
-      SafeFuture.completedFuture(validators.toSet()),
-    ).`when`(prevCommitSealValidator).getValidatorsForAncestorBlock(
-      any(),
-    )
+    val prevCommitSealValidator =
+      PrevCommitSealValidator(
+        sealVerifier = sealVerifier,
+        beaconChain = beaconChain,
+        validatorProvider = validatorProvider,
+        config = PrevCommitSealValidator.Config(prevBlockOffset = 1u),
+      )
     val validResult =
       prevCommitSealValidator
         .validateBlock(
-          newBlock = validNewBlock.copy(beaconBlockBody = blockBodyWithEnoughSeals),
-          proposerForNewBlock = validNewBlockHeader.proposer,
-          parentBlockHeader = validCurrBlockHeader,
+          block = validNewBlock.copy(beaconBlockBody = blockBodyWithEnoughSeals),
         ).get()
-    assertThat(validResult is Ok).isTrue()
+    assertThat(validResult).isEqualTo(BlockValidator.ok())
 
     val inValidResult =
       prevCommitSealValidator
         .validateBlock(
-          newBlock = validNewBlock.copy(beaconBlockBody = blockBodyWithLessSeals),
-          proposerForNewBlock = validNewBlockHeader.proposer,
-          parentBlockHeader = validCurrBlockHeader,
+          block = validNewBlock.copy(beaconBlockBody = blockBodyWithLessSeals),
         ).get()
     val expectedResult =
       error(
@@ -303,19 +421,18 @@ class BlockValidatorTest {
         ): Result<Validator, SealVerifier.SealValidationError> = Ok(nonValidatorNode)
       }
 
-    val prevCommitSealValidator = spy(PrevCommitSealValidator(sealVerifier = sealVerifier))
-    doReturn(
-      SafeFuture.completedFuture(validators.toSet()),
-    ).`when`(prevCommitSealValidator).getValidatorsForAncestorBlock(
-      any(),
-    )
+    val prevCommitSealValidator =
+      PrevCommitSealValidator(
+        sealVerifier = sealVerifier,
+        beaconChain = beaconChain,
+        validatorProvider = validatorProvider,
+        config = PrevCommitSealValidator.Config(prevBlockOffset = 1u),
+      )
 
     val result =
       prevCommitSealValidator
         .validateBlock(
-          newBlock = validNewBlock,
-          proposerForNewBlock = validNewBlockHeader.proposer,
-          parentBlockHeader = validCurrBlockHeader,
+          block = validNewBlock,
         ).get()
     val expectedResult =
       error(
@@ -336,19 +453,19 @@ class BlockValidatorTest {
           beaconBlockHeader: BeaconBlockHeader,
         ): Result<Validator, SealVerifier.SealValidationError> = Err(SealVerifier.SealValidationError("Invalid seal"))
       }
-    val prevCommitSealValidator = spy(PrevCommitSealValidator(sealVerifier = sealVerifier))
-    doReturn(
-      SafeFuture.completedFuture(validators.toSet()),
-    ).`when`(prevCommitSealValidator).getValidatorsForAncestorBlock(
-      any(),
-    )
+
+    val prevCommitSealValidator =
+      PrevCommitSealValidator(
+        sealVerifier = sealVerifier,
+        beaconChain = beaconChain,
+        validatorProvider = validatorProvider,
+        config = PrevCommitSealValidator.Config(prevBlockOffset = 1u),
+      )
 
     val result =
       prevCommitSealValidator
         .validateBlock(
-          newBlock = validNewBlock,
-          proposerForNewBlock = validNewBlockHeader.proposer,
-          parentBlockHeader = validCurrBlockHeader,
+          block = validNewBlock,
         ).get()
     val expectedResult = error("Previous block seal verification failed. Reason: Invalid seal")
     assertThat(result).isEqualTo(expectedResult)
@@ -372,9 +489,7 @@ class BlockValidatorTest {
     val result =
       ExecutionPayloadValidator(executionLayerClient = invalidExecutionClient)
         .validateBlock(
-          newBlock = validNewBlock.copy(beaconBlockBody = blockBody),
-          proposerForNewBlock = validNewBlockHeader.proposer,
-          parentBlockHeader = validCurrBlockHeader,
+          block = validNewBlock.copy(beaconBlockBody = blockBody),
         ).get()
     val expectedResult =
       error(
