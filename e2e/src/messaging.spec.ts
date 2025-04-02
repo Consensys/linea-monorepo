@@ -2,7 +2,7 @@ import { ethers, Wallet } from "ethers";
 import { describe, expect, it } from "@jest/globals";
 import type { Logger } from "winston";
 import { config } from "./config/tests-config";
-import { encodeFunctionCall, etherToWei, LineaEstimateGasClient, waitForEvents } from "./common/utils";
+import { encodeFunctionCall, etherToWei, LineaEstimateGasClient, wait, waitForEvents } from "./common/utils";
 import { MESSAGE_SENT_EVENT_SIGNATURE } from "./common/constants";
 
 async function sendL1ToL2Message(
@@ -278,14 +278,20 @@ describe.only("Messaging test suite", () => {
     logger.debug(tx);
     logger.debug(receipt);
 
-    console.log("receipt.logs:", receipt.logs);
     const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
-    console.log("messageSentEvent:", messageSentEvent);
     const messageHash = messageSentEvent.topics[3];
     console.log(`L1 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
+    // TODO - Wait for Anchor
+    const l2MessageService = config.getL2MessageServiceContract();
+    while ((await l2MessageService.inboxL1L2MessageStatus(messageHash)) === 0n) {
+      console.log("Waiting for anchoring");
+      await wait(250);
+    }
+
+    console.log("Anchored");
+
     // console.log(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
-    // const l2MessageService = config.getL2MessageServiceContract();
     // const [messageClaimedEvent] = await waitForEvents(
     //   l2MessageService,
     //   l2MessageService.filters.MessageClaimed(messageHash),
