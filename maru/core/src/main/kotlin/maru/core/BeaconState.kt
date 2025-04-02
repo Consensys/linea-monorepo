@@ -22,7 +22,6 @@ package maru.core
  */
 data class BeaconState(
   val latestBeaconBlockHeader: BeaconBlockHeader,
-  val latestBeaconBlockRoot: ByteArray,
   val validators: Set<Validator>,
 ) {
   override fun equals(other: Any?): Boolean {
@@ -32,7 +31,6 @@ data class BeaconState(
     other as BeaconState
 
     if (latestBeaconBlockHeader != other.latestBeaconBlockHeader) return false
-    if (!latestBeaconBlockRoot.contentEquals(other.latestBeaconBlockRoot)) return false
     if (validators != other.validators) return false
 
     return true
@@ -40,7 +38,6 @@ data class BeaconState(
 
   override fun hashCode(): Int {
     var result = latestBeaconBlockHeader.hashCode()
-    result = 31 * result + latestBeaconBlockRoot.contentHashCode()
     result = 31 * result + validators.hashCode()
     return result
   }

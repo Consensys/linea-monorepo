@@ -88,7 +88,7 @@ class QbftBlockCreator(
         ).get()
     val stateRoot =
       HashUtil.stateRoot(
-        BeaconState(stateRootBlockHeader, HashUtil.bodyRoot(beaconBlockBody), validators),
+        BeaconState(stateRootBlockHeader, validators),
       )
     val finalBlockHeader = stateRootBlockHeader.copy(stateRoot = stateRoot)
     val beaconBlock =
