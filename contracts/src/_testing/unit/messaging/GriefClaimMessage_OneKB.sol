@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.28;
 
-contract GriefClaimMessage {
+contract GriefClaimMessage_OneKB {
     constructor (address _l1MessageServiceAddress) {
         l1MessageServiceAddress = _l1MessageServiceAddress;
     }

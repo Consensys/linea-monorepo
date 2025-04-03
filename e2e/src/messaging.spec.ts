@@ -1,4 +1,4 @@
-import { ethers, Wallet } from "ethers";
+import { dataSlice, ethers, Wallet, ZeroAddress } from "ethers";
 import { describe, expect, it } from "@jest/globals";
 import type { Logger } from "winston";
 import { config } from "./config/tests-config";
@@ -112,22 +112,26 @@ async function sendL2ToL1Message(
   return { tx, receipt };
 }
 
-async function invokeL1GriefClaimTxContract(
+async function invokeL1GriefClaimContract(
   logger: Logger,
+  kbOfSpam: 1 | 10,
   {
     l1Account,
   }: {
     l1Account: Wallet;
   },
 ) {
-  const griefClaimMessageContract = config.getGriefClaimMessageContract(l1Account);
+  const griefClaimMessageContract =
+    kbOfSpam === 1
+      ? config.getGriefClaimMessageOneKbContract(l1Account)
+      : config.getGriefClaimMessageTenKbContract(l1Account);
   const l1Provider = config.getL1Provider();
   const { maxPriorityFeePerGas, maxFeePerGas } = await l1Provider.getFeeData();
 
-  console.log(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
+  logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
   const nonce = await l1Provider.getTransactionCount(l1Account.address, "pending");
-  console.log(`Fetched nonce. nonce=${nonce} account=${l1Account.address}`);
+  logger.debug(`Fetched nonce. nonce=${nonce} account=${l1Account.address}`);
 
   const gasLimit = await l1Provider.estimateGas({
     from: l1Account,
@@ -141,15 +145,17 @@ async function invokeL1GriefClaimTxContract(
     gasLimit: gasLimit + 10000n,
   });
 
-  console.log(`spam transaction sent. transactionHash=${tx.hash}`);
+  logger.debug(`spam transaction sent. transactionHash=${tx.hash}`);
 
   let receipt = await tx.wait();
   while (!receipt) {
-    console.log(`Waiting for transaction to be mined... transactionHash=${tx.hash}`);
+    logger.debug(`Waiting for transaction to be mined... transactionHash=${tx.hash}`);
     receipt = await tx.wait();
   }
 
-  console.log(`Transaction mined. transactionHash=${tx.hash} status=${receipt.status}`);
+  console.log(`Spam tx gas used: ${receipt.gasUsed}`);
+
+  logger.debug(`Transaction mined. transactionHash=${tx.hash} status=${receipt.status}`);
 
   return { tx, receipt };
 }
@@ -170,17 +176,17 @@ describe.only("Messaging test suite", () => {
     const messageHash = messageSentEvent.topics[3];
     console.log(`L1 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
-    // console.log(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
-    // const l2MessageService = config.getL2MessageServiceContract();
-    // const [messageClaimedEvent] = await waitForEvents(
-    //   l2MessageService,
-    //   l2MessageService.filters.MessageClaimed(messageHash),
-    // );
+    console.log(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
+    const l2MessageService = config.getL2MessageServiceContract();
+    const [messageClaimedEvent] = await waitForEvents(
+      l2MessageService,
+      l2MessageService.filters.MessageClaimed(messageHash),
+    );
 
-    // expect(messageClaimedEvent).toBeDefined();
-    // console.log(
-    //   `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
-    // );
+    expect(messageClaimedEvent).toBeDefined();
+    console.log(
+      `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
+    );
   }, 100_000);
 
   it.skip("Should send a transaction without calldata to L1 message service, be successfully claimed it on L2", async () => {
@@ -266,40 +272,77 @@ describe.only("Messaging test suite", () => {
     );
   }, 150_000);
 
-  it.only("Griefing claim message on L2", async () => {
+  it("Send message with spam 1KB calldata", async () => {
     const [l1Account, l2Account] = await Promise.all([
       l1AccountManager.generateAccount(),
       l2AccountManager.generateAccount(),
     ]);
 
-    logger.debug(l2Account);
-
-    const { tx, receipt } = await invokeL1GriefClaimTxContract(logger, { l1Account });
-    logger.debug(tx);
-    logger.debug(receipt);
+    const { tx, receipt } = await invokeL1GriefClaimContract(logger, 1, { l1Account });
 
     const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
     const messageHash = messageSentEvent.topics[3];
-    console.log(`L1 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
 
-    // TODO - Wait for Anchor
+    const nonce = parseInt(dataSlice(messageSentEvent.data, 64, 96), 16);
+    logger.debug(`L1 message sent. nonce=${nonce} messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+
+    // Wait for anchoring
     const l2MessageService = config.getL2MessageServiceContract();
     while ((await l2MessageService.inboxL1L2MessageStatus(messageHash)) === 0n) {
-      console.log("Waiting for anchoring");
-      await wait(250);
+      await wait(1000);
     }
 
-    console.log("Anchored");
+    // Claim msg
+    const claimTx = await l2MessageService
+      .connect(l2Account)
+      .claimMessage(
+        await config.getGriefClaimMessageOneKbContract(l1Account).getAddress(),
+        "0x000000000000000000000000000000000000dEaD",
+        0,
+        0,
+        ZeroAddress,
+        "0xdead".padEnd(2050, "dead"),
+        nonce,
+      );
 
-    // console.log(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
-    // const [messageClaimedEvent] = await waitForEvents(
-    //   l2MessageService,
-    //   l2MessageService.filters.MessageClaimed(messageHash),
-    // );
+    const claimTxResponse = await claimTx.wait();
+    console.log("Claim tx gas used:", claimTxResponse?.gasUsed);
+  }, 150_000);
 
-    // expect(messageClaimedEvent).toBeDefined();
-    // console.log(
-    //   `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
-    // );
+  it("Send message with spam 10KB calldata", async () => {
+    const [l1Account, l2Account] = await Promise.all([
+      l1AccountManager.generateAccount(),
+      l2AccountManager.generateAccount(),
+    ]);
+
+    const { tx, receipt } = await invokeL1GriefClaimContract(logger, 10, { l1Account });
+
+    const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
+    const messageHash = messageSentEvent.topics[3];
+
+    const nonce = parseInt(dataSlice(messageSentEvent.data, 64, 96), 16);
+    logger.debug(`L1 message sent. nonce=${nonce} messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+
+    // Wait for anchoring
+    const l2MessageService = config.getL2MessageServiceContract();
+    while ((await l2MessageService.inboxL1L2MessageStatus(messageHash)) === 0n) {
+      await wait(1000);
+    }
+
+    // Claim msg
+    const claimTx = await l2MessageService
+      .connect(l2Account)
+      .claimMessage(
+        await config.getGriefClaimMessageTenKbContract(l1Account).getAddress(),
+        "0x000000000000000000000000000000000000dEaD",
+        0,
+        0,
+        ZeroAddress,
+        "0xdead".padEnd(20482, "dead"),
+        nonce,
+      );
+
+    const claimTxResponse = await claimTx.wait();
+    console.log("Claim tx gas used:", claimTxResponse?.gasUsed);
   }, 150_000);
 });

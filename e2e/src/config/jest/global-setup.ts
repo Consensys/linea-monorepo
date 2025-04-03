@@ -6,7 +6,8 @@ import {
   DummyContract__factory,
   TestContract__factory,
   OpcodeTestContract__factory,
-  GriefClaimMessage__factory,
+  GriefClaimMessage_OneKB__factory,
+  GriefClaimMessage_TenKB__factory,
 } from "../../typechain";
 import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
 import { EMPTY_CONTRACT_CODE } from "../../common/constants";
@@ -41,11 +42,22 @@ async function configureOnceOffPrerequisities() {
   const to = "0x8D97689C9818892B700e27F316cc3E41e17fBeb9";
   const calldata = "0x";
 
-  const [dummyContract, griefAttackContract, l2DummyContract, l2TestContract, opcodeTestContract] = await Promise.all([
+  const [
+    dummyContract,
+    griefAttackContract_OneKb,
+    griefAttackContract_TenKb,
+    l2DummyContract,
+    l2TestContract,
+    opcodeTestContract,
+  ] = await Promise.all([
     deployContract(new DummyContract__factory(), account, [{ nonce: l1AccountNonce }]),
-    deployContract(new GriefClaimMessage__factory(), account, [
+    deployContract(new GriefClaimMessage_OneKB__factory(), account, [
       await lineaRollup.getAddress(),
       { nonce: l1AccountNonce + 1 },
+    ]),
+    deployContract(new GriefClaimMessage_TenKB__factory(), account, [
+      await lineaRollup.getAddress(),
+      { nonce: l1AccountNonce + 2 },
     ]),
     deployContract(new DummyContract__factory(), l2Account, [{ nonce: l2AccountNonce }]),
     deployContract(new TestContract__factory(), l2Account, [{ nonce: l2AccountNonce + 1 }]),
@@ -62,7 +74,8 @@ async function configureOnceOffPrerequisities() {
   ]);
 
   logger.info(`L1 Dummy contract deployed. address=${await dummyContract.getAddress()}`);
-  logger.info(`L1 GriefClaimMessage contract deployed. address=${await griefAttackContract.getAddress()}`);
+  logger.info(`L1 GriefClaimMessage_OneKB contract deployed. address=${await griefAttackContract_OneKb.getAddress()}`);
+  logger.info(`L1 GriefClaimMessage_TenKB contract deployed. address=${await griefAttackContract_TenKb.getAddress()}`);
   logger.info(`L2 Dummy contract deployed. address=${await l2DummyContract.getAddress()}`);
   logger.info(`L2 Test contract deployed. address=${await l2TestContract.getAddress()}`);
   logger.info(`L2 OpcodeTest contract deployed. address=${await opcodeTestContract.getAddress()}`);

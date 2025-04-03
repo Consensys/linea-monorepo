@@ -5,8 +5,10 @@ import {
   BridgedToken__factory,
   DummyContract,
   DummyContract__factory,
-  GriefClaimMessage,
-  GriefClaimMessage__factory,
+  GriefClaimMessage_OneKB,
+  GriefClaimMessage_OneKB__factory,
+  GriefClaimMessage_TenKB,
+  GriefClaimMessage_TenKB__factory,
   L2MessageServiceV1 as L2MessageService,
   L2MessageServiceV1__factory as L2MessageService__factory,
   LineaRollupV6,
@@ -244,9 +246,22 @@ export default class TestSetup {
     return opcodeTestContract;
   }
 
-  public getGriefClaimMessageContract(signer?: Wallet): GriefClaimMessage {
-    const griefClaimMessageContract = GriefClaimMessage__factory.connect(
-      this.config.L1.griefClaimMessageAddress,
+  public getGriefClaimMessageOneKbContract(signer?: Wallet): GriefClaimMessage_OneKB {
+    const griefClaimMessageContract = GriefClaimMessage_OneKB__factory.connect(
+      this.config.L1.griefClaimMessageOneKbAddress,
+      this.getL2Provider(),
+    );
+
+    if (signer) {
+      return griefClaimMessageContract.connect(signer);
+    }
+
+    return griefClaimMessageContract;
+  }
+
+  public getGriefClaimMessageTenKbContract(signer?: Wallet): GriefClaimMessage_TenKB {
+    const griefClaimMessageContract = GriefClaimMessage_TenKB__factory.connect(
+      this.config.L1.griefClaimMessageTenKbAddress,
       this.getL2Provider(),
     );
 

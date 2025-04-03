@@ -12,7 +12,8 @@ export type L1Config = BaseConfig & {
   lineaRollupProxyAdminAddress: string;
   tokenBridgeAddress: string;
   l1TokenAddress: string;
-  griefClaimMessageAddress: string;
+  griefClaimMessageOneKbAddress: string;
+  griefClaimMessageTenKbAddress: string;
 };
 
 export type BaseL2Config = BaseConfig & {
