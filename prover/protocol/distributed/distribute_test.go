@@ -241,6 +241,7 @@ func TestBenchDistributedWizard(t *testing.T) {
 		}
 	}
 
+	// Bootstrapper
 	var (
 		reqFile      = files.MustRead("/home/ubuntu/beta-v2.1-rc1-trace/16303874-16303874-etv0.2.0-stv2.2.2-getZkProof.json")
 		cfgFilePath  = "/home/ubuntu/zkevm-monorepo/prover/config/config-sepolia-full.toml"
@@ -268,13 +269,13 @@ func TestBenchDistributedWizard(t *testing.T) {
 		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
 	)
 
-	t.Logf("[%v] done running the bootstrapper\n", time.Now())
-
 	if verBootErr != nil {
 		t.Fatalf("")
 	}
 
 	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
+
+	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
 	for i := range witnessGLs {
 
