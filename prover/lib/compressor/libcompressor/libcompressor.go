@@ -22,7 +22,7 @@ var (
 // Init initializes the compressor.
 // The dataLimit argument is the maximum size of the compressed data.
 // Returns true if the compressor was initialized, false otherwise.
-// If false is returned, the Error() method will return a string describing the error.
+// If false is returned, call Error() to retrieve the error message.
 //
 //export Init
 func Init(dataLimit int, dictPath *C.char) bool {
@@ -38,7 +38,7 @@ func initGo(dataLimit int, dictPath string) bool {
 	return lastError == nil
 }
 
-// Reset resets the compressor. Must be called between each Blob.
+// Reset resets the compressor. This function must be called before processing each new Blob.
 //
 //export Reset
 func Reset() {
@@ -71,7 +71,7 @@ func Write(input *C.char, inputLength C.int) (chunkAppended bool) {
 }
 
 // CanWrite behaves as Write, except that it doesn't append the input to the compressed data
-// (but return true if it could)
+// (but returns true if the input could be appended)
 //
 //export CanWrite
 func CanWrite(input *C.char, inputLength C.int) (chunkAppended bool) {
@@ -185,7 +185,7 @@ func WorstCompressedTxSize(input *C.char, inputLength C.int) C.int {
 }
 
 // RawCompressedSize compresses the (raw) input and returns the length of the compressed data.
-// The returned length account for the "padding" used by the blob maker to
+// The returned length accounts for the "padding" used by the blob maker to
 // fit the data in field elements.
 // Input size must be less than 256kB.
 // If an error occurred, returns -1.
