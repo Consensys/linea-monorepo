@@ -138,7 +138,7 @@ func TestLocalEvalWithStatus(t *testing.T) {
 
 }
 
-func testStitcher(t *testing.T, minSize, maxSize int, gen func() (wizard.DefineFunc, wizard.ProverStep)) {
+func testStitcher(t *testing.T, minSize, maxSize int, gen func() (wizard.DefineFunc, wizard.MainProverStep)) {
 
 	// Activates the logs for easy debugging
 	logrus.SetLevel(logrus.TraceLevel)
@@ -174,8 +174,8 @@ func testStitcher(t *testing.T, minSize, maxSize int, gen func() (wizard.DefineF
 	}
 }
 
-func localOpening(n int) func() (wizard.DefineFunc, wizard.ProverStep) {
-	return func() (wizard.DefineFunc, wizard.ProverStep) {
+func localOpening(n int) func() (wizard.DefineFunc, wizard.MainProverStep) {
+	return func() (wizard.DefineFunc, wizard.MainProverStep) {
 		definer := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, n)
 			_ = build.LocalOpening("O1", P1)
@@ -201,8 +201,8 @@ func localOpening(n int) func() (wizard.DefineFunc, wizard.ProverStep) {
 	}
 }
 
-func singlePolyFibo(size int) func() (wizard.DefineFunc, wizard.ProverStep) {
-	return func() (wizard.DefineFunc, wizard.ProverStep) {
+func singlePolyFibo(size int) func() (wizard.DefineFunc, wizard.MainProverStep) {
+	return func() (wizard.DefineFunc, wizard.MainProverStep) {
 		builder := func(build *wizard.Builder) {
 			// Number of rows
 			P1 := build.RegisterCommit(P1, size) // overshadows P
@@ -237,8 +237,8 @@ func singlePolyFibo(size int) func() (wizard.DefineFunc, wizard.ProverStep) {
 	}
 }
 
-func globalWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc, wizard.ProverStep) {
-	return func() (wizard.DefineFunc, wizard.ProverStep) {
+func globalWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc, wizard.MainProverStep) {
+	return func() (wizard.DefineFunc, wizard.MainProverStep) {
 
 		builder := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, size) // overshadows P
@@ -259,8 +259,8 @@ func globalWithPeriodicSample(size, period, offset int) func() (wizard.DefineFun
 	}
 }
 
-func localWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc, wizard.ProverStep) {
-	return func() (wizard.DefineFunc, wizard.ProverStep) {
+func localWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc, wizard.MainProverStep) {
+	return func() (wizard.DefineFunc, wizard.MainProverStep) {
 
 		builder := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, size) // overshadows P
@@ -281,8 +281,8 @@ func localWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc
 	}
 }
 
-func globalWithVerifColAndPeriodic(size, period, offset int) func() (wizard.DefineFunc, wizard.ProverStep) {
-	return func() (wizard.DefineFunc, wizard.ProverStep) {
+func globalWithVerifColAndPeriodic(size, period, offset int) func() (wizard.DefineFunc, wizard.MainProverStep) {
+	return func() (wizard.DefineFunc, wizard.MainProverStep) {
 
 		builder := func(build *wizard.Builder) {
 			P1 := build.RegisterCommit(P1, size)

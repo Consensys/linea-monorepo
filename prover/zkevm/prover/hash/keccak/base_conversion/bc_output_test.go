@@ -16,7 +16,7 @@ import (
 
 func makeTestCaseBaseConversionOutput() (
 	define wizard.DefineFunc,
-	prover wizard.ProverStep,
+	prover wizard.MainProverStep,
 ) {
 	maxNumBlocks := 4
 	b := &hashBaseConversion{}

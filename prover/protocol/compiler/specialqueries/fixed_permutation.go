@@ -196,7 +196,7 @@ func (t *fixedPermutationCtx) compilerPolyZ(comp *wizard.CompiledIOP) {
 }
 
 // Prover assignes  witnesses to S,S_id
-func (t *fixedPermutationCtx) proverAssignS() wizard.ProverStep {
+func (t *fixedPermutationCtx) proverAssignS() wizard.MainProverStep {
 	return func(run *wizard.ProverRuntime) {
 		stopTimer := profiling.LogTimer("exPermutation prover - assign s %v", t.q.ID)
 		for colID := range t.S {
@@ -211,7 +211,7 @@ func (t *fixedPermutationCtx) proverAssignS() wizard.ProverStep {
 Prover for the collapse step - compute Acollapse and Bcollapse
 */
 
-func (t *fixedPermutationCtx) proverColapsStep() wizard.ProverStep {
+func (t *fixedPermutationCtx) proverColapsStep() wizard.MainProverStep {
 	return func(run *wizard.ProverRuntime) {
 		stopTimer := profiling.LogTimer("exPermutation prover - colaps step %v", t.q.ID)
 		alphaWit := run.GetRandomCoinField(t.ALPHA)
@@ -252,7 +252,7 @@ func (t *fixedPermutationCtx) proverColapsStep() wizard.ProverStep {
 /*
 Compute Z
 */
-func (t *fixedPermutationCtx) proverAssignExtendedZ() wizard.ProverStep {
+func (t *fixedPermutationCtx) proverAssignExtendedZ() wizard.MainProverStep {
 	return func(run *wizard.ProverRuntime) {
 
 		stopTimer := profiling.LogTimer("exPermutation prover - assign extended z %v", t.q.ID)

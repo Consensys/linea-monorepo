@@ -24,7 +24,7 @@ func piChiIotaTestingModule(
 	func(
 		traces keccak.PermTraces,
 		runRet **wizard.ProverRuntime,
-	) wizard.ProverStep,
+	) wizard.MainProverStep,
 	*Module,
 ) {
 
@@ -65,7 +65,7 @@ func piChiIotaTestingModule(
 		// prover has been run. This allows the caller test to "open" the box
 		// and checks that the assigned columns are consistent with the traces.
 		runRet **wizard.ProverRuntime,
-	) wizard.ProverStep {
+	) wizard.MainProverStep {
 		return func(run *wizard.ProverRuntime) {
 			*runRet = run
 

@@ -639,7 +639,7 @@ func (ctx splitterCtx) handleForSubsliceInLocal(h ifaces.Column, num int) (res i
 	panic("unreachable")
 }
 
-func (ctx splitterCtx) Prove(round int) wizard.ProverStep {
+func (ctx splitterCtx) Prove(round int) wizard.MainProverStep {
 
 	return func(run *wizard.ProverRuntime) {
 

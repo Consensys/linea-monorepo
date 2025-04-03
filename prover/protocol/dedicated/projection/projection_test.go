@@ -13,7 +13,7 @@ import (
 
 func makeTestCaseProjection() (
 	define wizard.DefineFunc,
-	prover wizard.ProverStep,
+	prover wizard.MainProverStep,
 ) {
 	round := 0
 	flagSizeA := 512

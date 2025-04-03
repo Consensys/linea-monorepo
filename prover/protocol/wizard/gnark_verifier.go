@@ -16,10 +16,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// GnarkVerifierStep functions that can be registered in the CompiledIOP by the successive
-// compilation steps. They correspond to "precompiled" verification steps.
-type GnarkVerifierStep func(frontend.API, *WizardVerifierCircuit)
-
 // WizardVerifierCircuit the [VerifierRuntime] in a gnark circuit. The complete
 // implementation follows this mirror logic.
 //
@@ -155,7 +151,7 @@ func (c *WizardVerifierCircuit) Verify(api frontend.API) {
 	c.FiatShamirHistory = make([][2][]frontend.Variable, c.Spec.NumRounds())
 	c.generateAllRandomCoins(api)
 
-	for _, roundSteps := range c.Spec.SubVerifiers.Inner() {
+	for _, roundSteps := range c.Spec.subVerifiers.Inner() {
 		for _, step := range roundSteps {
 			if !step.IsSkipped() {
 				step.RunGnark(api, c)
