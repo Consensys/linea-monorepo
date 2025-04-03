@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [0.2.1](https://github.com/vacp2p/staking-reward-streamer/compare/v0.2.0...v0.2.1) (2025-04-03)
+
+
+### Bug Fixes
+
+* **StakeManager:** don't allow migrating to unregistered vaults ([22feed8](https://github.com/vacp2p/staking-reward-streamer/commit/22feed8dba99ca901829a97d2e1642f7e41be82c))
+
 ## [0.2.0](https://github.com/vacp2p/staking-reward-streamer/compare/v0.1.1...v0.2.0) (2025-03-28)
 
 
