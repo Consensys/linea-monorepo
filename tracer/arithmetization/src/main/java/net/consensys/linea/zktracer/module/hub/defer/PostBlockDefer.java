@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,19 +13,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.section;
+package net.consensys.linea.zktracer.module.hub.defer;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
-import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
+import org.hyperledger.besu.datatypes.Transaction;
 
-public class TransactionSection extends TraceSection {
-
-  public TransactionSection(Hub hub) {
-    // 2 = 1 + 1     (stack, transaction)
-    // 3 = 1 + 1 + 1 (stack, transaction, context)
-    super(hub, Exceptions.none(hub.pch().exceptions()) ? (short) 2 : (short) 3);
-
-    this.addStackAndFragments(hub, new TransactionFragment(hub.txStack().current()));
-  }
+public interface PostBlockDefer {
+  /**
+   * This method will be triggered as soon as the current block has finished its execution.
+   *
+   * @param hub the {@link Hub} in which the {@link Transaction} took place
+   */
+  void resolvePostBlock(Hub hub);
 }

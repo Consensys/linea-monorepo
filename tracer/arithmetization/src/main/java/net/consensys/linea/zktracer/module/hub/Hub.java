@@ -66,6 +66,7 @@ import net.consensys.linea.zktracer.module.hub.section.halt.SelfdestructSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.StopSection;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.hub.signals.PlatformController;
+import net.consensys.linea.zktracer.module.hub.state.BlockStack;
 import net.consensys.linea.zktracer.module.hub.state.State;
 import net.consensys.linea.zktracer.module.hub.state.TransactionStack;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
@@ -155,6 +156,9 @@ public class Hub implements Module {
 
   /** Stores the transaction Metadata of all the transaction of the conflated block */
   @Getter TransactionStack txStack = new TransactionStack();
+
+  /** Stores the block Metadata of all the blocks of the conflation */
+  @Getter BlockStack blockStack = new BlockStack();
 
   /** Stores all the actions that must be deferred to a later time */
   @Getter private final DeferRegistry defers = new DeferRegistry();
@@ -304,7 +308,6 @@ public class Hub implements Module {
   /** reference table modules */
   private final List<Module> refTableModules;
 
-  public Address coinbaseAddress;
   public boolean coinbaseWarmthAtTransactionEnd = false;
 
   /**
@@ -459,9 +462,8 @@ public class Hub implements Module {
   @Override
   public void traceStartBlock(
       final ProcessableBlockHeader processableBlockHeader, final Address miningBeneficiary) {
-    this.coinbaseAddress = miningBeneficiary;
     state.firstAndLastStorageSlotOccurrences.add(new HashMap<>());
-    this.transients().block().update(processableBlockHeader, miningBeneficiary);
+    blockStack.newBlock(processableBlockHeader, miningBeneficiary);
     txStack.resetBlock();
     for (Module m : modules) {
       m.traceStartBlock(processableBlockHeader, miningBeneficiary);
@@ -473,11 +475,12 @@ public class Hub implements Module {
     for (Module m : modules) {
       m.traceEndBlock(blockHeader, blockBody);
     }
+    defers.resolvePostBlock(this);
   }
 
   public void traceStartTransaction(final WorldView world, final Transaction tx) {
     pch.reset();
-    txStack.enterTransaction(world, tx, transients.block());
+    txStack.enterTransaction(this, world, tx);
 
     final TransactionProcessingMetadata transactionProcessingMetadata = txStack.current();
 
@@ -720,7 +723,7 @@ public class Hub implements Module {
       coinbaseWarmthAtTransactionEnd =
           isExceptional() || opCode() == REVERT
               ? txStack.current().coinbaseWarmthAfterTxInit(this)
-              : frame.isAddressWarm(coinbaseAddress);
+              : frame.isAddressWarm(coinbaseAddress());
     }
 
     if (frame.getDepth() == 0 && (isExceptional() || opCode() == REVERT)) {
@@ -1053,5 +1056,13 @@ public class Hub implements Module {
 
   public final boolean returnFromDeployment(MessageFrame frame) {
     return opCode() == RETURN && frame.getType() == CONTRACT_CREATION;
+  }
+
+  public Address coinbaseAddress() {
+    return blockStack.currentBlock().coinbaseAddress();
+  }
+
+  public Address coinbaseAddressOfRelativeBlock(final int relativeBlockNumber) {
+    return blockStack.getBlockByRelativeBlockNumber(relativeBlockNumber).coinbaseAddress();
   }
 }

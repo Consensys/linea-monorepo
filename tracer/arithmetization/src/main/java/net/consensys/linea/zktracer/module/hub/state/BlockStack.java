@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,7 +13,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.transients;
+package net.consensys.linea.zktracer.module.hub.state;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -21,23 +24,25 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
-/** Stores block-specific information. */
-@Accessors(fluent = true)
 @Getter
-public class Block {
-  private int blockNumber = 0;
-  private Address coinbaseAddress;
-  private Wei baseFee;
+@Accessors(fluent = true)
+public class BlockStack {
+  private final List<Block> blocks = new ArrayList<>();
 
-  /**
-   * Update block-specific information on new block entrance.
-   *
-   * @param processableBlockHeader the processable block header
-   */
-  public void update(
+  public void newBlock(
       final ProcessableBlockHeader processableBlockHeader, final Address miningBeneficiary) {
-    this.blockNumber++;
-    this.coinbaseAddress = miningBeneficiary;
-    this.baseFee = Wei.fromQuantity(processableBlockHeader.getBaseFee().orElseThrow());
+    blocks.add(new Block(miningBeneficiary, (Wei) processableBlockHeader.getBaseFee().get()));
+  }
+
+  public Block currentBlock() {
+    return blocks.getLast();
+  }
+
+  public int currentRelativeBlockNumber() {
+    return blocks.size();
+  }
+
+  public Block getBlockByRelativeBlockNumber(final int relativeBlockNumber) {
+    return blocks.get(relativeBlockNumber - 1);
   }
 }

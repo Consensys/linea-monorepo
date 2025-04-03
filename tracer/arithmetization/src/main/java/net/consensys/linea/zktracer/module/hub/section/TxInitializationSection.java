@@ -187,7 +187,7 @@ public class TxInitializationSection extends TraceSection implements EndTransact
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
 
     this.addFragment(miscFragment); // MISC i + 0
-    this.addFragment(TransactionFragment.prepare(hub, hub.txStack().current())); // TXN i + 1
+    this.addFragment(new TransactionFragment(hub.txStack().current())); // TXN i + 1
     this.addFragment(gasPaymentAccountFragment); // ACC i + 2 (sender: gas payment)
     this.addFragment(valueSendingAccountFragment); // ACC i + 3 (sender: value transfer)
     this.addFragment(valueReceptionAccountFragment); // ACC i + 4 (recipient: value reception)

@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.blockdata;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_BF;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_CB;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_DEPTH;
@@ -24,13 +25,6 @@ import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_GL;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_ID;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_NB;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_TS;
-import static net.consensys.linea.zktracer.Trace.EVM_INST_GT;
-import static net.consensys.linea.zktracer.Trace.EVM_INST_ISZERO;
-import static net.consensys.linea.zktracer.Trace.EVM_INST_LT;
-import static net.consensys.linea.zktracer.Trace.GAS_LIMIT_ADJUSTMENT_FACTOR;
-import static net.consensys.linea.zktracer.Trace.LLARGE;
-import static net.consensys.linea.zktracer.Trace.WCP_INST_GEQ;
-import static net.consensys.linea.zktracer.Trace.WCP_INST_LEQ;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import java.math.BigInteger;
@@ -48,7 +42,6 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 @Accessors(fluent = true)
@@ -62,16 +55,15 @@ public class BlockdataOperation extends ModuleOperation {
   private final Bytes chainId;
   private final BlockHeader blockHeader;
   private final BlockHeader prevBlockHeader;
-  private final Address coinbaseAddress;
-  private final EWord POWER_256_20 = EWord.of(BigInteger.ONE.shiftLeft(20 * 8));
-  private final EWord POWER_256_6 = EWord.of(BigInteger.ONE.shiftLeft(6 * 8));
+  private static final EWord POWER_256_20 = EWord.of(TWOFIFTYSIX_TO_THE_TWENTY);
+  private static final EWord POWER_256_6 = EWord.of(BigInteger.ONE.shiftLeft(6 * 8));
 
   private final boolean firstBlockInConflation;
   private final int ctMax;
   private final OpCode opCode;
   private final long firstBlockNumber;
   private final int relTxMax;
-  @Getter private final long relBlock;
+  @Getter private final int relBlock;
 
   private EWord data;
   private EWord[] arg1;
@@ -95,14 +87,13 @@ public class BlockdataOperation extends ModuleOperation {
     this.hub = hub;
     this.blockHeader = blockHeader;
     this.prevBlockHeader = prevBlockHeader;
-    this.coinbaseAddress = hub.coinbaseAddress;
     this.gasLimitMinimum = EWord.of(chain.gasLimitMinimum);
     this.gasLimitMaximum = EWord.of(chain.gasLimitMaximum);
     this.chainId = EWord.of(chain.id);
     this.ctMax = ctMax(opCode);
     this.firstBlockNumber = firstBlockNumber;
     this.relTxMax = relTxMax;
-    this.relBlock = blockHeader.getNumber() - firstBlockNumber + 1;
+    this.relBlock = (int) (blockHeader.getNumber() - firstBlockNumber + 1);
     this.firstBlockInConflation = (blockHeader.getNumber() == firstBlockNumber);
     this.wcp = wcp;
     this.euc = euc;
@@ -147,7 +138,7 @@ public class BlockdataOperation extends ModuleOperation {
   }
 
   private void handleCoinbase() {
-    data = EWord.ofHexString(hub.coinbaseAddress.toHexString());
+    data = EWord.ofHexString(hub.coinbaseAddressOfRelativeBlock(relBlock).toHexString());
     // row i
     wcpCallToLT(0, data, POWER_256_20);
   }
@@ -237,8 +228,8 @@ public class BlockdataOperation extends ModuleOperation {
           .isChainid(opCode == OpCode.CHAINID)
           .isBasefee(opCode == OpCode.BASEFEE)
           .inst(UnsignedByte.of(opCode.byteValue()))
-          .coinbaseHi(coinbaseAddress.slice(0, 4).toLong())
-          .coinbaseLo(coinbaseAddress.slice(4, LLARGE))
+          .coinbaseHi(hub.coinbaseAddressOfRelativeBlock(relBlock).slice(0, 4).toLong())
+          .coinbaseLo(hub.coinbaseAddressOfRelativeBlock(relBlock).slice(4, LLARGE))
           .blockGasLimit(Bytes.ofUnsignedLong(blockHeader.getGasLimit()))
           .basefee(
               Bytes.ofUnsignedLong(blockHeader.getBaseFee().get().getAsBigInteger().longValue()))

@@ -57,7 +57,7 @@ public class TxFinalizationSection extends TraceSection implements EndTransactio
 
     DeploymentInfo deploymentInfo = hub.transients().conflation().deploymentInfo();
     checkArgument(
-        !deploymentInfo.getDeploymentStatus(hub.coinbaseAddress),
+        !deploymentInfo.getDeploymentStatus(txMetadata.getCoinbaseAddress()),
         "The coinbase may not be under deployment");
 
     setSnapshots(hub, world);
@@ -81,7 +81,7 @@ public class TxFinalizationSection extends TraceSection implements EndTransactio
 
     this.addFragment(senderAccountFragment);
     this.addFragment(coinbaseAccountFragment);
-    this.addFragment(TransactionFragment.prepare(hub, hub.txStack().current())); // TXN i+2
+    this.addFragment(new TransactionFragment(hub.txStack().current())); // TXN i+2
   }
 
   /**
@@ -107,7 +107,7 @@ public class TxFinalizationSection extends TraceSection implements EndTransactio
    */
   private void setSnapshots(Hub hub, WorldView world) {
     final Address senderAddress = txMetadata.getSender();
-    final Address coinbaseAddress = hub.coinbaseAddress;
+    final Address coinbaseAddress = txMetadata.getCoinbaseAddress();
 
     if (senderIsCoinbase(hub)) {
       checkState(coinbaseWarmth());
@@ -135,6 +135,6 @@ public class TxFinalizationSection extends TraceSection implements EndTransactio
   public static boolean senderIsCoinbase(Hub hub) {
     final TransactionProcessingMetadata tx = hub.txStack().current();
     final Address senderAddress = tx.getSender();
-    return hub.coinbaseAddress.equals(senderAddress);
+    return tx.getCoinbaseAddress().equals(senderAddress);
   }
 }

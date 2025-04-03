@@ -27,6 +27,7 @@ import net.consensys.linea.testing.MultiBlockExecutionEnvironment;
 import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 
@@ -162,12 +163,13 @@ public class BlockwiseStorageTest {
 
     // Replay the transaction's trace from the hub to compute the first and last values for the
     // storage fragment
-    List<Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>>>
+    List<Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>>
         storageFirstAndLastMapList = computeStorageFirstAndLastMapList(multiBlockEnv.getHub());
 
     // Replay trace from the hub to compute blockMapStorage
-    Map<Map<Address, EWord>, Map<Integer, FragmentFirstAndLast<StorageFragment>>> blockMapStorage =
-        computeBlockMapStorage(multiBlockEnv.getHub(), storageFirstAndLastMapList);
+    Map<Map<Address, Bytes32>, Map<Integer, FragmentFirstAndLast<StorageFragment>>>
+        blockMapStorage =
+            computeBlockMapStorage(multiBlockEnv.getHub(), storageFirstAndLastMapList);
 
     // prepare data for asserts
     // expected first values for the keys we are testing
