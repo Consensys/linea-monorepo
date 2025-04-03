@@ -109,7 +109,7 @@ func (la *accumulateUpToMax) Run(run *wizard.ProverRuntime) {
 
 		s = s + column[j].Uint64()
 		if s > uint64(targetVal) {
-			utils.Panic("Should not reach a value larger than target value")
+			utils.Panic("Should not reach a value larger than target value, target-value=%v s=%v:", targetVal, column[j].Uint64())
 		}
 		if s == uint64(targetVal) {
 			acc[j] = field.NewElement(s)

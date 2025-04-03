@@ -3,6 +3,7 @@ package query
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -12,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // LogDerivativeSumInput stores the input to the query
@@ -57,14 +59,33 @@ func NewLogDerivativeSum(round int, inp map[int]*LogDerivativeSumInput, id iface
 			utils.Panic("the size must match the key: key=%v != size=%v", key, inp[key].Size)
 		}
 
-		for i := range inp[key].Numerator {
-
-			if err := inp[key].Numerator[i].Validate(); err != nil {
+		for i, num := range inp[key].Numerator {
+			if err := num.Validate(); err != nil {
 				utils.Panic(" Numerator[%v] is not a valid expression", i)
 			}
 
+			if rs := column.ColumnsOfExpression(num); len(rs) == 0 {
+				continue
+			}
+
+			b := num.Board()
+			if key != column.ExprIsOnSameLengthHandles(&b) {
+				utils.Panic("expression size mismatch")
+			}
+		}
+
+		for i, den := range inp[key].Denominator {
 			if err := inp[key].Denominator[i].Validate(); err != nil {
 				utils.Panic(" Denominator[%v] is not a valid expression", i)
+			}
+
+			if rs := column.ColumnsOfExpression(den); len(rs) == 0 {
+				continue
+			}
+
+			b := den.Board()
+			if key != column.ExprIsOnSameLengthHandles(&b) {
+				utils.Panic("expression size mismatch: qname=%v expression-size=%v expected-size=%v", id, column.ExprIsOnSameLengthHandles(&b), key)
 			}
 		}
 	}
@@ -94,14 +115,40 @@ func NewLogDerivSumParams(sum field.Element) LogDerivSumParams {
 func (r LogDerivativeSum) Compute(run ifaces.Runtime) (field.Element, error) {
 
 	// compute the actual sum from the Numerator and Denominator
-	actualSum := field.Zero()
+	var (
+		err       error
+		actualSum = field.Zero()
+		resLock   = &sync.Mutex{}
+		inputs    = []struct {
+			Num, Den *sym.Expression
+			Size     int
+		}{}
+	)
+
 	for key := range r.Inputs {
-		for i, num := range r.Inputs[key].Numerator {
+		for i := range r.Inputs[key].Numerator {
+			inputs = append(inputs, struct {
+				Num  *sym.Expression
+				Den  *sym.Expression
+				Size int
+			}{
+				Num:  r.Inputs[key].Numerator[i],
+				Den:  r.Inputs[key].Denominator[i],
+				Size: r.Inputs[key].Size,
+			})
+		}
+	}
+
+	parallel.Execute(len(inputs), func(start, stop int) {
+
+		for k := 0; k < len(inputs); k++ {
 
 			var (
-				size                = r.Inputs[key].Size
+				size                = inputs[k].Size
+				num                 = inputs[k].Num
+				den                 = inputs[k].Den
 				numBoard            = num.Board()
-				denBoard            = r.Inputs[key].Denominator[i].Board()
+				denBoard            = den.Board()
 				numeratorMetadata   = numBoard.ListVariableMetadata()
 				denominatorMetadata = denBoard.ListVariableMetadata()
 				denominator         []field.Element
@@ -112,9 +159,14 @@ func (r LogDerivativeSum) Compute(run ifaces.Runtime) (field.Element, error) {
 				denominator = vector.Repeat(field.One(), size)
 			} else {
 				denominator = column.EvalExprColumn(run, denBoard).IntoRegVecSaveAlloc()
-				for k := range denominator {
-					if denominator[k].IsZero() {
-						return field.Element{}, fmt.Errorf("denominator contains zeroes [position=%v] [size=%v] [denominator=%v]", k, size, i)
+				for l := range denominator {
+					if denominator[l].IsZero() {
+						resLock.Lock()
+						err = errors.Join(
+							err,
+							fmt.Errorf("denominator contains zeroes [position=%v] [size=%v] [term=%v]", l, size, k),
+						)
+						resLock.Unlock()
 					}
 				}
 				denominator = field.BatchInvert(denominator)
@@ -136,8 +188,14 @@ func (r LogDerivativeSum) Compute(run ifaces.Runtime) (field.Element, error) {
 				res.Add(&res, &tmp)
 			}
 
+			resLock.Lock()
 			actualSum.Add(&actualSum, &res)
+			resLock.Unlock()
 		}
+	})
+
+	if err != nil {
+		return field.Element{}, err
 	}
 
 	return actualSum, nil

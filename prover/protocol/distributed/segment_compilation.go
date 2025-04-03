@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
@@ -20,8 +21,8 @@ import (
 const (
 	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
 	// the value is empirical and corresponds to the lowest value that works.
-	fixedNbRowPlonkCircuit   = 1 << 24
-	fixedNbRowExternalHasher = 1 << 15
+	fixedNbRowPlonkCircuit   = 1 << 22
+	fixedNbRowExternalHasher = 1 << 16
 )
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -85,13 +86,34 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
 		compiler.Arcane(256, 1<<13, false),
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
-			vortex.PremarkAsSelfRecursed(),
-		),
 	)
+
+	// This optional step is to ensure the tightness of the final wizard by
+	// adding an optional second layer of compilation when we have very
+	// large inputs.
+	stats := logdata.GetWizardStats(modIOP)
+	if stats.NumCellsCommitted > 13500000 {
+
+		wizard.ContinueCompilation(modIOP,
+			vortex.Compile(
+				8,
+				vortex.ForceNumOpenedColumns(64),
+				vortex.WithSISParams(&sisInstance),
+				vortex.PremarkAsSelfRecursed(),
+			),
+			selfrecursion.SelfRecurse,
+			cleanup.CleanUp,
+			mimc.CompileMiMC,
+			compiler.Arcane(256, 1<<13, false),
+		)
+	}
+
+	vortex.Compile(
+		8,
+		vortex.ForceNumOpenedColumns(64),
+		vortex.WithSISParams(&sisInstance),
+		vortex.PremarkAsSelfRecursed(),
+	)(modIOP)
 
 	var recCtx *recursion.Recursion
 
@@ -113,21 +135,21 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	recursedComp := wizard.Compile(defineRecursion,
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<17, false),
-		vortex.Compile(
-			2,
-			vortex.ForceNumOpenedColumns(256),
-			vortex.WithSISParams(&sisInstance),
-			vortex.AddMerkleRootToPublicInputs("LPP_COLUMNS_MERKLE_ROOT", 0),
-		),
-		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
-		mimc.CompileMiMC,
 		compiler.Arcane(256, 1<<15, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
+		),
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		mimc.CompileMiMC,
+		compiler.Arcane(256, 1<<13, false),
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+			vortex.PremarkAsSelfRecursed(),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,

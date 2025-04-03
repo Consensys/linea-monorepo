@@ -5,7 +5,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -160,7 +159,7 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 			// This loops adds the involved columns in the lpp set
 			for i := range args {
 				for j := range args[i] {
-					cols := wizardutils.ColumnsOfExpression(args[i][j])
+					cols := column.ColumnsOfExpression(args[i][j])
 					roots := column.RootsOf(cols, true)
 					for _, root := range roots {
 						fmi.addColumnLPP(root)
@@ -176,7 +175,7 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 			args := mf.FilterGrandProductInputs(&q)
 			for i := range args {
 				for j := range args[i] {
-					cols := wizardutils.ColumnsOfExpression(args[i][j])
+					cols := column.ColumnsOfExpression(args[i][j])
 					roots := column.RootsOf(cols, true)
 					for _, root := range roots {
 						fmi.addColumnLPP(root)
@@ -191,7 +190,7 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 			}
 			args := mf.FilterHornerParts(q)
 			for i := range args {
-				cols := wizardutils.ColumnsOfExpression(args[i].Coefficient)
+				cols := column.ColumnsOfExpression(args[i].Coefficient)
 				cols = append(cols, args[i].Selector)
 				roots := column.RootsOf(cols, true)
 				for _, root := range roots {

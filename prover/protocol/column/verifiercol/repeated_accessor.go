@@ -13,13 +13,13 @@ import (
 // accessor require "api" to be evaluated in a gnark circuit.
 type RepeatedAccessor struct {
 	Accessor ifaces.Accessor
-	size     int
+	ColSize  int
 }
 
 // NewRepeatedAccessor instantiates a [RepeatedAccessor] column from an
 // [ifaces.Accessor] and a size.
 func NewRepeatedAccessor(accessor ifaces.Accessor, size int) ifaces.Column {
-	return RepeatedAccessor{Accessor: accessor, size: size}
+	return RepeatedAccessor{Accessor: accessor, ColSize: size}
 }
 
 // Round returns the round ID of the column and implements the [ifaces.Column]
@@ -30,7 +30,7 @@ func (f RepeatedAccessor) Round() int {
 
 // GetColID returns the column ID
 func (f RepeatedAccessor) GetColID() ifaces.ColID {
-	return ifaces.ColIDf("REPEATED_%v_SIZE=%v", f.Accessor.Name(), f.size)
+	return ifaces.ColIDf("REPEATED_%v_SIZE=%v", f.Accessor.Name(), f.ColSize)
 }
 
 // MustExists implements the [ifaces.Column] interface and always returns true.
@@ -39,7 +39,7 @@ func (f RepeatedAccessor) MustExists() {}
 // Size returns the size of the colum and implements the [ifaces.Column]
 // interface.
 func (f RepeatedAccessor) Size() int {
-	return f.size
+	return f.ColSize
 }
 
 // Split implements the [VerifierCol] interface

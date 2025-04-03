@@ -171,12 +171,11 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		}
 
 		if isPrecomp {
-			newRound = 0
-			moduleGL.Wiop.Precomputed.InsertNew(col.ID, precompData)
+			moduleGL.InsertPrecomputed(*col, precompData)
+			continue
 		}
 
 		moduleGL.InsertColumn(*col, newRound)
-
 	}
 
 	// As the columns of the GL and the LPP modules are split between two round although
@@ -345,7 +344,7 @@ func (m *ModuleGL) InsertGlobal(q query.GlobalConstraint) query.GlobalConstraint
 		newExprRound = wizardutils.LastRoundToEval(newExpr)
 		newGlobal    = m.Wiop.InsertGlobal(newExprRound, q.ID, newExpr)
 		offsetRange  = query.MinMaxOffset(newGlobal.Expression)
-		columnOfExpr = wizardutils.ColumnsOfExpression(newExpr)
+		columnOfExpr = column.ColumnsOfExpression(newExpr)
 	)
 
 	if offsetRange.Min == 0 && offsetRange.Max == 0 {
@@ -636,13 +635,18 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 
 	var (
 		sendGlobalHash   = a.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
+		hsh              = mimc.NewMiMC()
 		hashSendComputed = field.Element{}
 	)
 
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		hashSendComputed = mimc.BlockCompression(hashSendComputed, v.Y)
+		yBytes := v.Y.Bytes()
+		hsh.Write(yBytes[:])
 	}
+
+	hashSendComputedBytes := hsh.Sum(nil)
+	hashSendComputed.SetBytes(hashSendComputedBytes)
 
 	if hashSendComputed != sendGlobalHash {
 		return fmt.Errorf(
@@ -658,9 +662,15 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 		numReceived     = len(a.ReceivedValuesGlobalAccs)
 	)
 
+	hsh.Reset()
+
 	for i := range rcvGlobalCol[:numReceived] {
-		hashRcvComputed = mimc.BlockCompression(hashRcvComputed, rcvGlobalCol[i])
+		yBytes := rcvGlobalCol[i].Bytes()
+		hsh.Write(yBytes[:])
 	}
+
+	hashRcvComputedBytes := hsh.Sum(nil)
+	hashRcvComputed.SetBytes(hashRcvComputedBytes)
 
 	if hashRcvComputed != rcvGlobalHash {
 		return fmt.Errorf(
@@ -682,29 +692,32 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 	}
 
 	var (
-		sendGlobalHash   = a.SentValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		hashSendComputed = frontend.Variable(0)
+		sendGlobalHash = a.SentValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
+		hsh            = run.GetHasherFactory().NewHasher()
 	)
 
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		hashSendComputed = mimc.GnarkBlockCompression(api, hashSendComputed, v.Y)
+		hsh.Write(v.Y)
 	}
+
+	hashSendComputed := hsh.Sum()
 
 	api.AssertIsEqual(hashSendComputed, sendGlobalHash)
 
 	var (
-		rcvGlobalHash   = a.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		hashRcvComputed = frontend.Variable(0)
-		rcvGlobalCol    = a.ReceivedValuesGlobal.GetColAssignmentGnark(run)
-		numReceived     = len(a.ReceivedValuesGlobalAccs)
+		rcvGlobalHash = a.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
+		rcvGlobalCol  = a.ReceivedValuesGlobal.GetColAssignmentGnark(run)
+		numReceived   = len(a.ReceivedValuesGlobalAccs)
 	)
 
+	hsh.Reset()
+
 	for i := range rcvGlobalCol[:numReceived] {
-		hashRcvComputed = mimc.GnarkBlockCompression(api, hashRcvComputed, rcvGlobalCol[i])
+		hsh.Write(rcvGlobalCol[i])
 	}
 
-	api.AssertIsEqual(hashRcvComputed, rcvGlobalHash)
+	api.AssertIsEqual(hsh.Sum(), rcvGlobalHash)
 }
 
 func (a *ModuleGLCheckSendReceiveGlobal) Skip() {

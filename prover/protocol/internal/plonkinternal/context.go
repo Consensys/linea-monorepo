@@ -188,6 +188,10 @@ func createCtx(
 	ctx.Plonk.SPR = ccs
 	ctx.Plonk.Domain = fft.NewDomain(uint64(ctx.DomainSize()))
 
+	if ctx.FixedNbRowsOption.Enabled && ctx.FixedNbRowsOption.NbRow < ctx.DomainSizePlonk() {
+		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk())
+	}
+
 	logrus.Debugf("Plonk in Wizard (%v) build trace", name)
 	ctx.Plonk.Trace = plonkBLS12_377.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
 

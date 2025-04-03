@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -79,10 +78,20 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) Distribut
 		)
 	}
 
-	distributedWizard.LPPs = append(
-		distributedWizard.LPPs,
-		BuildModuleLPP(allFilteredModuleInputs),
+	var (
+		lppGrouping = 4
+		nbLPP       = len(distributedWizard.ModuleNames)
 	)
+
+	for i := 0; i < nbLPP; i += lppGrouping {
+
+		stop := min(len(distributedWizard.ModuleNames), i+lppGrouping)
+
+		distributedWizard.LPPs = append(
+			distributedWizard.LPPs,
+			BuildModuleLPP(allFilteredModuleInputs[i:stop]),
+		)
+	}
 
 	return distributedWizard
 }
@@ -130,7 +139,7 @@ func auditInitialWizard(comp *wizard.CompiledIOP) error {
 
 		if glob, isGlob := q.(query.GlobalConstraint); isGlob {
 			var (
-				cols     = wizardutils.ColumnsOfExpression(glob.Expression)
+				cols     = column.ColumnsOfExpression(glob.Expression)
 				rootCols = column.RootsOf(cols, true)
 			)
 

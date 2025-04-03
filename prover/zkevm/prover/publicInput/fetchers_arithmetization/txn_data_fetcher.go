@@ -118,11 +118,11 @@ func AssignTxnDataFetcher(run *wizard.ProverRuntime, fetcher TxnDataFetcher, td 
 	}
 
 	// assign the fetcher columns
-	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.NewRegular(relBlock))
-	run.AssignColumn(fetcher.AbsTxNum.GetColID(), smartvectors.NewRegular(absTxNum))
-	run.AssignColumn(fetcher.FromHi.GetColID(), smartvectors.NewRegular(fromHi))
-	run.AssignColumn(fetcher.FromLo.GetColID(), smartvectors.NewRegular(fromLo))
-	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetched))
+	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.NewRegular(relBlock), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.AbsTxNum.GetColID(), smartvectors.NewRegular(absTxNum), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.FromHi.GetColID(), smartvectors.NewRegular(fromHi), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.FromLo.GetColID(), smartvectors.NewRegular(fromLo), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetched), wizard.DisableAssignmentSizeReduction)
 	// assign the SelectorFromAddress using the ComputeSelectorFromAddress prover action
 	fetcher.ComputeSelectorFromAddress.Run(run)
 }

@@ -1,6 +1,8 @@
 package distributed
 
 import (
+	"strings"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -123,7 +125,7 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witn
 		cols          = runtime.Spec.Columns.AllKeys()
 		_, _, hArgs   = getQueryArgs(fmis)
 		n0            = make([]int, len(hArgs))
-		moduleNames   = make([]ModuleName, len(fmis))
+		moduleNames   = make([]ModuleName, 0, len(fmis))
 		moduleNameSet = make(map[ModuleName]struct{})
 		columnsLPPSet = make(map[ifaces.ColID]struct{})
 	)
@@ -214,13 +216,43 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer,
 	col ifaces.Column, index, totalNbSegment int) smartvectors.SmartVector {
 
+	if status := col.(column.Natural).Status(); status == column.Precomputed || status == column.VerifyingKey {
+		return col.GetColAssignment(runtime)
+	}
+
 	var (
-		newSize     = NewSizeOfColumn(disc, col)
-		startSeg, _ = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
-		start       = startSeg + index*newSize
-		end         = start + newSize
-		assignment  = col.GetColAssignment(runtime)
+		newSize = NewSizeOfColumn(disc, col)
+		// This returns the start and stop index of the segment for the current
+		// standard module. But we might need to adjust for the LPP columns because
+		// LPP modules group several standard modules together and they might have
+		// different number of segments.
+		startSeg, stopSeg = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
 	)
+
+	if startSeg > 0 && (stopSeg-startSeg) < totalNbSegment*newSize {
+		startSeg = stopSeg - totalNbSegment*newSize
+	}
+
+	var (
+		start      = startSeg + index*newSize
+		end        = start + newSize
+		assignment = col.GetColAssignment(runtime)
+	)
+
+	isOOB := end > col.Size() || start < 0
+
+	// This dirty hack is needed because sometime, the log-derivative-m columns are
+	// paired with precomputed columns. It means their sizes are not affected by the
+	// splitter and they will go OOB if they are used for more than 1 segment. When,
+	// this happens we "pad" it on the fly with zeroes to signify that they corresponds
+	// to unmatched lookup value.
+	if isOOB && strings.HasSuffix(string(col.GetColID()), "_LOGDERIVATIVE_M") {
+		return smartvectors.NewConstant(field.Zero(), newSize)
+	}
+
+	if isOOB {
+		utils.Panic("going to overflow a column, name=%v length=%v start=%v stop=%v", col.GetColID(), col.Size(), start, end)
+	}
 
 	return assignment.SubVector(start, end)
 }

@@ -4,6 +4,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/backend/witness"
 	cs "github.com/consensys/gnark/constraint/bls12-377"
+	"github.com/consensys/gnark/constraint/solver"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -43,6 +45,10 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []wi
 		maxNbInstance   = pa.maxNbInstances
 		numEffInstances = len(fullWitnesses)
 	)
+
+	if ctx.ExternalHasherOption.Enabled {
+		solver.RegisterHint(mimc.MimcHintfunc)
+	}
 
 	parallel.Execute(maxNbInstance, func(start, stop int) {
 		for i := start; i < stop; i++ {

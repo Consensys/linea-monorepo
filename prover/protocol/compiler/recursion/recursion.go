@@ -131,8 +131,12 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		plonkOpts = append(plonkOpts, plonkinternal.WithExternalHasher(params.ExternalHasherNbRows))
 	}
 
+	if !params.WithoutGkr && params.WithExternalHasherOpts {
+		utils.Panic("inconsistent choice, cannot use GKR and external hasher together")
+	}
+
 	var (
-		plonkCircuit = AllocRecursionCircuit(inputComp, params.WithoutGkr)
+		plonkCircuit = AllocRecursionCircuit(inputComp, params.WithoutGkr, params.WithExternalHasherOpts)
 		plonkCtx     = plonkinternal.PlonkCheck(comp, params.Name, 0, plonkCircuit, params.MaxNumProof, plonkOpts...)
 		vortexCtxs   = make([]*vortex.Ctx, params.MaxNumProof)
 		numYs        = len(plonkCircuit.Ys)

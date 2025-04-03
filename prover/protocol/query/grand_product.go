@@ -47,14 +47,33 @@ type GrandProductParams struct {
 func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryID) GrandProduct {
 	// check the length consistency
 	for key := range inp {
-		for i := range inp[key].Numerators {
-			if err := inp[key].Numerators[i].Validate(); err != nil {
+		for i, num := range inp[key].Numerators {
+			if err := num.Validate(); err != nil {
 				utils.Panic(" Numerator[%v] is not a valid expression", i)
 			}
+
+			if rs := column.ColumnsOfExpression(num); len(rs) == 0 {
+				continue
+			}
+
+			b := num.Board()
+			if key != column.ExprIsOnSameLengthHandles(&b) {
+				utils.Panic("expression size mismatch")
+			}
 		}
-		for i := range inp[key].Denominators {
-			if err := inp[key].Denominators[i].Validate(); err != nil {
+
+		for i, den := range inp[key].Denominators {
+			if err := den.Validate(); err != nil {
 				utils.Panic(" Denominator[%v] is not a valid expression", i)
+			}
+
+			if rs := column.ColumnsOfExpression(den); len(rs) == 0 {
+				continue
+			}
+
+			b := den.Board()
+			if key != column.ExprIsOnSameLengthHandles(&b) {
+				utils.Panic("expression size mismatch")
 			}
 		}
 	}

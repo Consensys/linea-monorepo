@@ -31,7 +31,7 @@ const (
 	NbInputPerInstanceEcPairMillerLoop = 1
 	NbInputPerInstanceEcPairFinalExp   = 1
 	NbInputPerInstanceEcPairG2Check    = 6
-	NbInputPerInstanceSha2Block        = 10
+	NbInputPerInstanceSha2Block        = 3
 	NbInputPerInstanceModexp256        = 10
 	NbInputPerInstanceModexp4096       = 1
 	NbInputPerInstanceEcdsa            = 4
@@ -170,7 +170,7 @@ func FullZKEVMWithSuite(tl *config.TracesLimits, suite CompilationSuite, cfg *co
 		},
 		Modexp: modexp.Settings{
 			MaxNbInstance256:                tl.PrecompileModexpEffectiveCalls,
-			MaxNbInstance4096:               1,
+			MaxNbInstance4096:               tl.PrecompileModexpEffectiveCalls4096,
 			NbInstancesPerCircuitModexp256:  NbInputPerInstanceModexp256,
 			NbInstancesPerCircuitModexp4096: NbInputPerInstanceModexp4096,
 		},

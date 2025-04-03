@@ -3,6 +3,7 @@ package recursion
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -23,19 +24,20 @@ import (
 // Alex: please don't change the ordering of the arguments as this
 // affects the parsing of the witness.
 type RecursionCircuit struct {
-	X              frontend.Variable   `gnark:",public"`
-	Ys             []frontend.Variable `gnark:",public"`
-	Commitments    []frontend.Variable `gnark:",public"`
-	Pubs           []frontend.Variable `gnark:",public"`
-	WizardVerifier *wizard.VerifierCircuit
-	withoutGkr     bool                 `gnark:"-"`
-	PolyQuery      query.UnivariateEval `gnark:"-"`
-	MerkleRoots    []ifaces.Column      `gnark:"-"`
+	X                  frontend.Variable   `gnark:",public"`
+	Ys                 []frontend.Variable `gnark:",public"`
+	Commitments        []frontend.Variable `gnark:",public"`
+	Pubs               []frontend.Variable `gnark:",public"`
+	WizardVerifier     *wizard.VerifierCircuit
+	withoutGkr         bool                 `gnark:"-"`
+	withExternalHasher bool                 `gnark:"-"`
+	PolyQuery          query.UnivariateEval `gnark:"-"`
+	MerkleRoots        []ifaces.Column      `gnark:"-"`
 }
 
 // AllocRecursionCircuit allocates a new RecursionCircuit with the
 // given parameters.
-func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool) *RecursionCircuit {
+func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool, withExternalHasher bool) *RecursionCircuit {
 
 	var (
 		pcsCtx      = comp.PcsCtxs.(*vortex.Ctx)
@@ -55,13 +57,14 @@ func AllocRecursionCircuit(comp *wizard.CompiledIOP, withoutGkr bool) *Recursion
 	}
 
 	return &RecursionCircuit{
-		withoutGkr:     withoutGkr,
-		PolyQuery:      polyQuery,
-		MerkleRoots:    merkleRoots,
-		WizardVerifier: wizard.AllocateWizardCircuit(comp, numRound),
-		Pubs:           make([]frontend.Variable, len(comp.PublicInputs)),
-		Commitments:    make([]frontend.Variable, len(merkleRoots)),
-		Ys:             make([]frontend.Variable, len(polyQuery.Pols)),
+		withoutGkr:         withoutGkr,
+		withExternalHasher: withExternalHasher,
+		PolyQuery:          polyQuery,
+		MerkleRoots:        merkleRoots,
+		WizardVerifier:     wizard.AllocateWizardCircuit(comp, numRound),
+		Pubs:               make([]frontend.Variable, len(comp.PublicInputs)),
+		Commitments:        make([]frontend.Variable, len(merkleRoots)),
+		Ys:                 make([]frontend.Variable, len(polyQuery.Pols)),
 	}
 }
 
@@ -73,6 +76,10 @@ func (r *RecursionCircuit) Define(api frontend.API) error {
 	if !r.withoutGkr {
 		w.HasherFactory = gkrmimc.NewHasherFactory(api)
 		w.FS = fiatshamir.NewGnarkFiatShamir(api, w.HasherFactory)
+	}
+
+	if r.withExternalHasher {
+		w.HasherFactory = &mimc.ExternalHasherFactory{Api: api}
 	}
 
 	w.Verify(api)

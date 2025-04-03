@@ -211,12 +211,12 @@ func AssignRlpTxnFetcher(run *wizard.ProverRuntime, fetcher *RlpTxnFetcher, rlpT
 
 	// assign the fetcher columns
 	size := fetcher.AbsTxNum.Size()
-	run.AssignColumn(fetcher.AbsTxNum.GetColID(), smartvectors.NewRegular(absTxNum))
-	run.AssignColumn(fetcher.AbsTxNumMax.GetColID(), smartvectors.NewRegular(absTxNumMax))
-	run.AssignColumn(fetcher.Limb.GetColID(), smartvectors.NewRegular(limb))
-	run.AssignColumn(fetcher.NBytes.GetColID(), smartvectors.NewRegular(nBytes))
-	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetched))
-	run.AssignColumn(fetcher.EndOfRlpSegment.GetColID(), smartvectors.NewRegular(endOfRlpSegment))
+	run.AssignColumn(fetcher.AbsTxNum.GetColID(), smartvectors.NewRegular(absTxNum), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.AbsTxNumMax.GetColID(), smartvectors.NewRegular(absTxNumMax), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.Limb.GetColID(), smartvectors.NewRegular(limb), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.NBytes.GetColID(), smartvectors.NewRegular(nBytes), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetched), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.EndOfRlpSegment.GetColID(), smartvectors.NewRegular(endOfRlpSegment), wizard.DisableAssignmentSizeReduction)
 	run.AssignColumn(fetcher.ChainID.GetColID(), smartvectors.NewConstant(chainID, size))
 	run.AssignColumn(fetcher.NBytesChainID.GetColID(), smartvectors.NewConstant(nBytesChainID, size))
 

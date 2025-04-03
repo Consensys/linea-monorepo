@@ -122,11 +122,12 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 				continue
 			}
 
-			moduleLPP.InsertColumn(*col, 0)
-
 			if data, isPrecomp := moduleInput.ColumnsPrecomputed[col.GetColID()]; isPrecomp {
-				moduleLPP.Wiop.Precomputed.InsertNew(col.ID, data)
+				moduleLPP.InsertPrecomputed(*col, data)
+				continue
 			}
+
+			moduleLPP.InsertColumn(*col, 0)
 		}
 	}
 
@@ -414,8 +415,8 @@ func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		hornerParams  = run.GetHornerParams(a.Horner.ID)
 		n0HashAlleged = a.N0Hash.GetColAssignmentGnarkAt(run, 0)
 		n1HashAlleged = a.N1Hash.GetColAssignmentGnarkAt(run, 0)
-		n0Hash        = hashNxsGnark(api, hornerParams, 0)
-		n1Hash        = hashNxsGnark(api, hornerParams, 1)
+		n0Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 0)
+		n1Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 1)
 	)
 
 	api.AssertIsEqual(n0Hash, n0HashAlleged)
@@ -453,7 +454,7 @@ func (a *SetInitialFSHash) IsSkipped() bool {
 // (pass x=0, to compute the hash of the N0s and x=1 for the N1s).
 func hashNxs(params query.HornerParams, x int) field.Element {
 
-	res := field.Element{}
+	hsh := mimc.NewMiMC()
 
 	for _, part := range params.Parts {
 
@@ -466,16 +467,21 @@ func hashNxs(params query.HornerParams, x int) field.Element {
 		}
 
 		nxField := field.NewElement(uint64(nx))
-		res = mimc.BlockCompression(res, nxField)
+		nxBytes := nxField.Bytes()
+		hsh.Write(nxBytes[:])
 	}
+
+	resBytes := hsh.Sum(nil)
+	var res field.Element
+	res.SetBytes(resBytes)
 
 	return res
 }
 
 // hashNxsGnark is as [hashNxs] but in a gnark circuit
-func hashNxsGnark(api frontend.API, params query.GnarkHornerParams, x int) frontend.Variable {
+func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x int) frontend.Variable {
 
-	res := frontend.Variable(0)
+	hsh := factory.NewHasher()
 
 	for _, part := range params.Parts {
 
@@ -487,10 +493,10 @@ func hashNxsGnark(api frontend.API, params query.GnarkHornerParams, x int) front
 			nx = part.N1
 		}
 
-		res = mimc.GnarkBlockCompression(api, res, nx)
+		hsh.Write(nx)
 	}
 
-	return res
+	return hsh.Sum()
 }
 
 // getQueryArgs groups the args of the [FilteredModuleInputs] provided

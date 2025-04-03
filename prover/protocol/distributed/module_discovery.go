@@ -133,6 +133,9 @@ func NewSizeOfColumn(disc ModuleDiscoverer, col ifaces.Column) int {
 
 	switch c := col.(type) {
 	case column.Natural:
+		if c.Status() == column.Precomputed || c.Status() == column.VerifyingKey {
+			return c.Size()
+		}
 		return disc.NewSizeOf(c)
 	case column.Shifted:
 		return NewSizeOfColumn(disc, c.Parent)

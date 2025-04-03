@@ -274,10 +274,10 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher
 	// assign the fetcher columns
 	run.AssignColumn(fetcher.First.GetColID(), smartvectors.NewConstant(first, size))
 	run.AssignColumn(fetcher.Last.GetColID(), smartvectors.NewConstant(last, size))
-	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.NewRegular(relBlock))
-	run.AssignColumn(fetcher.Data.GetColID(), smartvectors.NewRegular(data))
-	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetched))
-	run.AssignColumn(fetcher.FilterArith.GetColID(), smartvectors.NewRegular(filterArith))
+	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.NewRegular(relBlock), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.Data.GetColID(), smartvectors.NewRegular(data), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetched), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.FilterArith.GetColID(), smartvectors.NewRegular(filterArith), wizard.DisableAssignmentSizeReduction)
 	run.AssignColumn(fetcher.FirstBlockID.GetColID(), smartvectors.NewConstant(firstBlockID, size))
 	run.AssignColumn(fetcher.LastBlockID.GetColID(), smartvectors.NewConstant(lastBlockID, size))
 
