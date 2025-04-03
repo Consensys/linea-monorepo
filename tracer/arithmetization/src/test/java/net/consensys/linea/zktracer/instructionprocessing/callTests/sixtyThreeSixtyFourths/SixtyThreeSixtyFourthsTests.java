@@ -59,7 +59,6 @@ import net.consensys.linea.zktracer.module.oob.OobOperation;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
-import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -79,7 +78,6 @@ import org.junit.jupiter.params.provider.MethodSource;
  * SPDX-License-Identifier: Apache-2.0
  */
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class SixtyThreeSixtyFourthsTests {
 
   /*
@@ -96,33 +94,33 @@ public class SixtyThreeSixtyFourthsTests {
   See https://github.com/Consensys/linea-tracer/issues/1153 for additional documentation.
   */
 
-  final Bytes INFINITE_GAS = Bytes.fromHexString("ff".repeat(32));
+  static final Bytes INFINITE_GAS = Bytes.fromHexString("ff".repeat(32));
 
   // BLAKE2F specific parameters
-  final int rLeadingByte = 0x09;
-  final int r = rLeadingByte << 8;
+  static final int rLeadingByte = 0x09;
+  static final int r = rLeadingByte << 8;
 
   // MODEXP specific parameters
-  final int bbs = 2;
-  final int ebs = 6;
-  final int mbs = 128;
-  final Bytes modexpInput = generateModexpInput(bbs, mbs, ebs);
-  final int exponentLog =
+  static final int bbs = 2;
+  static final int ebs = 6;
+  static final int mbs = 128;
+  static final Bytes modexpInput = generateModexpInput(bbs, mbs, ebs);
+  static final int exponentLog =
       OobOperation.computeExponentLog(modexpInput, 96 + bbs + ebs + mbs, bbs, ebs);
-  final Address codeOwnerAddress = Address.fromHexString("0xC0DE");
+  static final Address codeOwnerAddress = Address.fromHexString("0xC0DE");
   // codeOwnerAccount owns the bytecode that will be given as input to MODEXP through EXTCODECOPY
-  final ToyAccount codeOwnerAccount =
+  static final ToyAccount codeOwnerAccount =
       ToyAccount.builder()
           .balance(Wei.of(0))
           .nonce(1)
           .address(codeOwnerAddress)
           .code(modexpInput)
           .build();
-  final List<ToyAccount> additionalAccounts = List.of(codeOwnerAccount);
+  static final List<ToyAccount> additionalAccounts = List.of(codeOwnerAccount);
 
   // Cost of preCallProgram in different scenarios:
   // (address, transfersValue) -> gasCost
-  final Map<Address, Map<Boolean, Long>> preCallProgramGasMap =
+  static final Map<Address, Map<Boolean, Long>> preCallProgramGasMap =
       Stream.of(
               ECREC,
               SHA256,
@@ -187,7 +185,7 @@ public class SixtyThreeSixtyFourthsTests {
     assertEquals(insufficientGasForPrecompileExpected, insufficientGasForPrecompileActual);
   }
 
-  Stream<Arguments> fixedCostEcAddTestSource() {
+  static Stream<Arguments> fixedCostEcAddTestSource() {
     List<Arguments> arguments = new ArrayList<>();
     final long targetCalleeGas = getECADDCost();
     for (int cornerCase : List.of(0, -1)) {
@@ -242,7 +240,7 @@ public class SixtyThreeSixtyFourthsTests {
     assertEquals(insufficientGasForPrecompileExpected, insufficientGasForPrecompileActual);
   }
 
-  Stream<Arguments> costGEQStipendTest() {
+  static Stream<Arguments> costGEQStipendTest() {
     List<Arguments> arguments = new ArrayList<>();
     for (Address address :
         List.of(
@@ -284,7 +282,7 @@ public class SixtyThreeSixtyFourthsTests {
   }
 
   // Support methods
-  Bytes preCallProgram(
+  static Bytes preCallProgram(
       Address address, boolean transfersValue, boolean targetAddressExists, int cds) {
     return BytecodeCompiler.newProgram()
         .immediate(expandMemoryTo2048Words())
@@ -296,16 +294,16 @@ public class SixtyThreeSixtyFourthsTests {
         .compile();
   }
 
-  Bytes expandMemoryTo2048Words() {
+  static Bytes expandMemoryTo2048Words() {
     return expandMemoryTo(2048);
   }
 
-  Bytes expandMemoryTo(int words) {
+  static Bytes expandMemoryTo(int words) {
     checkArgument(words >= 1);
     return BytecodeCompiler.newProgram().push((words - 1) * WORD_SIZE).op(MLOAD).op(POP).compile();
   }
 
-  Bytes successfullySummonIntoExistence(Address address) {
+  static Bytes successfullySummonIntoExistence(Address address) {
     return call(
         INFINITE_GAS,
         address,
@@ -315,14 +313,14 @@ public class SixtyThreeSixtyFourthsTests {
         true);
   }
 
-  Bytes call(Bytes gas, Address address, int cds, boolean transfersValue) {
+  static Bytes call(Bytes gas, Address address, int cds, boolean transfersValue) {
     return BytecodeCompiler.newProgram()
         .immediate(pushCallArguments(gas, address, cds, transfersValue))
         .op(CALL)
         .compile();
   }
 
-  Bytes pushCallArguments(Bytes gas, Address address, int cds, boolean transfersValue) {
+  static Bytes pushCallArguments(Bytes gas, Address address, int cds, boolean transfersValue) {
     return BytecodeCompiler.newProgram()
         .push(0) // returnAtCapacity
         .push(0) // returnAtOffset
@@ -345,7 +343,7 @@ public class SixtyThreeSixtyFourthsTests {
    * @param preCallProgramGas the gas cost of the preCallProgram.
    * @return the calculated gas limit for the transaction.
    */
-  long getGasLimit(
+  static long getGasLimit(
       long targetCalleeGas,
       boolean transfersValue,
       boolean targetAddressExists,
@@ -378,7 +376,7 @@ public class SixtyThreeSixtyFourthsTests {
    * @param targetAddressExists flag indicating if the target address exists.
    * @return the upfront gas cost for the call.
    */
-  long getUpfrontGasCost(boolean transfersValue, boolean targetAddressExists) {
+  static long getUpfrontGasCost(boolean transfersValue, boolean targetAddressExists) {
     // GAS_CONST_G_WARM_ACCESS = 100
     // GAS_CONST_G_COLD_ACCOUNT_ACCESS = 2600
     // GAS_CONST_G_CALL_VALUE = 9000
@@ -389,7 +387,7 @@ public class SixtyThreeSixtyFourthsTests {
             : 0);
   }
 
-  int getCallDataSize(Address address) {
+  static int getCallDataSize(Address address) {
     if (address == SHA256 || address == RIPEMD160 || address == ID) {
       return 1024 * WORD_SIZE; // Ensures cost is greater than stipend
     } else if (address == MODEXP) {

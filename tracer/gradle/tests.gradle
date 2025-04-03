@@ -42,7 +42,12 @@ apply plugin: 'com.adarshr.test-logger'
   */
 tasks.withType(Test).configureEach {
   minHeapSize = "256m"
-  maxHeapSize = "8g"
+  // Determine heap limit based on whether CI machine, or not.
+  if(System.getenv().containsKey("CI")) {
+      maxHeapSize = "32g"
+  } else {
+      maxHeapSize = "8g"
+  }
 
   jvmArgs = [
     '-XX:-UseGCOverheadLimit',
@@ -171,9 +176,6 @@ tasks.register("jacocoFastReplayTestsReport", JacocoReport) {
 tasks.register("nightlyReplayTests", Test) {
   dependsOn(buildZkevmBin)
 
-  boolean isCiServer = System.getenv().containsKey("CI")
-  maxHeapSize = isCiServer ? "32g" : "8g"
-
   if (System.getenv().containsKey("REPLAY_TESTS_PARALLELISM")) {
     systemProperty("junit.jupiter.execution.parallel.enabled", true)
     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
@@ -191,9 +193,6 @@ tasks.register("nightlyReplayTests", Test) {
 
 tasks.register("nightlyTests", Test) {
   dependsOn(buildZkevmBin)
-
-  boolean isCiServer = System.getenv().containsKey("CI")
-  maxHeapSize = isCiServer ? "32g" : "8g"
 
   systemProperty("junit.jupiter.execution.parallel.enabled", true)
   systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
