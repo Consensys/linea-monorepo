@@ -25,8 +25,8 @@ func (circuit *externalMimcFactoryTestLinear) Define(api frontend.API) error {
 	var (
 		factory      = &ExternalHasherFactory{Api: api}
 		factoryBasic = &BasicHasherFactory{Api: api}
-		hasher       = factory.NewHasher(api)
-		hasherBasic  = factoryBasic.NewHasher(api)
+		hasher       = factory.NewHasher()
+		hasherBasic  = factoryBasic.NewHasher()
 	)
 
 	hasher.Write(circuit.Inp[:]...)

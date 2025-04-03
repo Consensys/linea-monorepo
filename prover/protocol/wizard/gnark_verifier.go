@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -32,7 +32,7 @@ type GnarkRuntime interface {
 	GetUnivariateEval(name ifaces.QueryID) query.UnivariateEval
 	GetUnivariateParams(name ifaces.QueryID) query.GnarkUnivariateEvalParams
 	Fs() *fiatshamir.GnarkFiatShamir
-	GetHasherFactory() *gkrmimc.HasherFactory
+	GetHasherFactory() mimc.HasherFactory
 	InsertCoin(name coin.Name, value interface{})
 	GetState(name string) (any, bool)
 	SetState(name string, value any)
@@ -131,7 +131,7 @@ type VerifierCircuit struct {
 	// in the circuit. It is used for efficiently computing the Fiat-Shamir
 	// hashes but also the MiMC Vortex column hashes that we use for the
 	// last round of the self-recursion.
-	HasherFactory *gkrmimc.HasherFactory `gnark:"-"`
+	HasherFactory mimc.HasherFactory `gnark:"-"`
 
 	// State is a generic-purpose data store that the verifier steps can use to
 	// communicate with each other across rounds.
@@ -705,12 +705,12 @@ func (c *VerifierCircuit) SetFs(fs *fiatshamir.GnarkFiatShamir) {
 
 // GetHasherFactory returns the hasher factory of the verifier circuit; nil
 // if none is set.
-func (c *VerifierCircuit) GetHasherFactory() *gkrmimc.HasherFactory {
+func (c *VerifierCircuit) GetHasherFactory() mimc.HasherFactory {
 	return c.HasherFactory
 }
 
 // SetHasherFactory sets the hasher factory of the verifier circuit
-func (c *VerifierCircuit) SetHasherFactory(hf *gkrmimc.HasherFactory) {
+func (c *VerifierCircuit) SetHasherFactory(hf mimc.HasherFactory) {
 	c.HasherFactory = hf
 }
 

@@ -19,7 +19,7 @@ import (
 // protocol as in [gkrmimc.HasherFactory] or may trigger specific behaviors
 // of Plonk in Wizard.
 type HasherFactory interface {
-	NewHasher(api frontend.API) ghash.StateStorer
+	NewHasher() ghash.StateStorer
 }
 
 // BasicHasherFactory is a simple implementation of HasherFactory that returns
@@ -73,14 +73,14 @@ type storeCommitBuilder interface {
 }
 
 // NewHasher returns the standard MiMC hasher as in [NewMiMC].
-func (f *BasicHasherFactory) NewHasher(api frontend.API) ghash.StateStorer {
+func (f *BasicHasherFactory) NewHasher() ghash.StateStorer {
 	h, _ := mimc.NewMiMC(f.Api)
 	return &h
 }
 
 // NewHasher returns an external MiMC hasher.
-func (f *ExternalHasherFactory) NewHasher(api frontend.API) ghash.StateStorer {
-	return &ExternalHasher{api: api, state: frontend.Variable(0)}
+func (f *ExternalHasherFactory) NewHasher() ghash.StateStorer {
+	return &ExternalHasher{api: f.Api, state: frontend.Variable(0)}
 }
 
 // Writes fields elements into the hasher; implements [hash.FieldHasher]
