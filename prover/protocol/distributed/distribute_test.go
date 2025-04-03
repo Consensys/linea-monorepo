@@ -29,6 +29,7 @@ func TestDistributedWizard(t *testing.T) {
 		discoverer = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Affinities:   affinities,
+			Predivision:  16,
 		}
 	)
 
@@ -70,6 +71,8 @@ func TestDistributedWizardLogic(t *testing.T) {
 		zkevm = GetZkEVM()
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
+			Affinities:   GetAffinities(zkevm),
+			Predivision:  16,
 		}
 
 		// This tests the compilation of the compiled-IOP
@@ -83,7 +86,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 	}
 
 	var (
-		reqFile      = files.MustRead("/home/ubuntu/beta-v2.1-rc1-trace/16303874-16303874-etv0.2.0-stv2.2.2-getZkProof.json")
+		reqFile      = files.MustRead("/home/ubuntu/beta-v2-rc11/10556002-10556002-etv0.2.0-stv2.2.2-getZkProof.json")
 		cfgFilePath  = "/home/ubuntu/zkevm-monorepo/prover/config/config-sepolia-full.toml"
 		req          = &execution.Request{}
 		reqDecodeErr = json.NewDecoder(reqFile).Decode(req)
@@ -250,7 +253,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 // TestBenchDistributedWizard runs the distributed wizard will all the compilations
 func TestBenchDistributedWizard(t *testing.T) {
 
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
@@ -259,6 +262,8 @@ func TestBenchDistributedWizard(t *testing.T) {
 		zkevm            = GetZkEVM()
 		disc             = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
+			Affinities:   GetAffinities(zkevm),
+			Predivision:  16,
 		}
 
 		// This tests the compilation of the compiled-IOP
@@ -270,23 +275,8 @@ func TestBenchDistributedWizard(t *testing.T) {
 		compiledLPPs = make([]*RecursedSegmentCompilation, len(distWizard.LPPs))
 	)
 
-	// This applies the dummy.Compiler to all parts of the distributed wizard.
-	for i := range distWizard.GLs {
-
-		fmt.Printf("[%v] Starting to compile module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
-		compiledGLs[i] = CompileSegment(distWizard.GLs[i])
-		fmt.Printf("[%v] Done compiling module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
-	}
-
-	for i := range distWizard.LPPs {
-
-		fmt.Printf("[%v] Starting to compile module LPP for %v\n", time.Now(), distWizard.LPPs[i].ModuleNames())
-		compiledLPPs[i] = CompileSegment(distWizard.LPPs[i])
-		fmt.Printf("[%v] Done compiling module LPP for %v\n", time.Now(), distWizard.LPPs[i].ModuleNames())
-	}
-
 	var (
-		reqFile      = files.MustRead("/home/ubuntu/beta-v2.1-rc1-trace/16303874-16303874-etv0.2.0-stv2.2.2-getZkProof.json")
+		reqFile      = files.MustRead("/home/ubuntu/beta-v2-rc11/10556002-10556002-etv0.2.0-stv2.2.2-getZkProof.json")
 		cfgFilePath  = "/home/ubuntu/zkevm-monorepo/prover/config/config-sepolia-full.toml"
 		req          = &execution.Request{}
 		reqDecodeErr = json.NewDecoder(reqFile).Decode(req)
@@ -316,6 +306,23 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 	if verBootErr != nil {
 		t.Fatalf("")
+	}
+
+	return
+
+	for i := range distWizard.LPPs {
+
+		fmt.Printf("[%v] Starting to compile module LPP for %v\n", time.Now(), distWizard.LPPs[i].ModuleNames())
+		compiledLPPs[i] = CompileSegment(distWizard.LPPs[i])
+		fmt.Printf("[%v] Done compiling module LPP for %v\n", time.Now(), distWizard.LPPs[i].ModuleNames())
+	}
+
+	// This applies the dummy.Compiler to all parts of the distributed wizard.
+	for i := range distWizard.GLs {
+
+		fmt.Printf("[%v] Starting to compile module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
+		compiledGLs[i] = CompileSegment(distWizard.GLs[i])
+		fmt.Printf("[%v] Done compiling module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
 	}
 
 	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
@@ -362,8 +369,6 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
 
-		var ()
-
 		for k := range distWizard.LPPs {
 
 			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), witnessLPPs[i].ModuleNames) {
@@ -399,55 +404,56 @@ func GetZkEVM() *zkevm.ZkEvm {
 
 	// This are the config trace-limits from sepolia. All multiplied by 16.
 	traceLimits := config.TracesLimits{
-		Add:                                  1 << 19,
-		Bin:                                  1 << 18,
-		Blake2Fmodexpdata:                    1 << 14,
-		Blockdata:                            1 << 12,
-		Blockhash:                            1 << 12,
-		Ecdata:                               1 << 18,
-		Euc:                                  1 << 16,
-		Exp:                                  1 << 14,
-		Ext:                                  1 << 20,
-		Gas:                                  1 << 16,
-		Hub:                                  1 << 21,
-		Logdata:                              1 << 16,
-		Loginfo:                              1 << 12,
-		Mmio:                                 1 << 21,
-		Mmu:                                  1 << 21,
-		Mod:                                  1 << 17,
-		Mul:                                  1 << 16,
-		Mxp:                                  1 << 19,
-		Oob:                                  1 << 18,
-		Rlpaddr:                              1 << 12,
-		Rlptxn:                               1 << 17,
-		Rlptxrcpt:                            1 << 17,
-		Rom:                                  1 << 22,
-		Romlex:                               1 << 12,
-		Shakiradata:                          1 << 15,
-		Shf:                                  1 << 16,
-		Stp:                                  1 << 14,
-		Trm:                                  1 << 15,
-		Txndata:                              1 << 14,
-		Wcp:                                  1 << 18,
-		Binreftable:                          1 << 20,
-		Shfreftable:                          4096,
-		Instdecoder:                          512,
-		PrecompileEcrecoverEffectiveCalls:    500,
-		PrecompileSha2Blocks:                 600,
+		Add:                                  1 << 23,
+		Bin:                                  1 << 22,
+		Blake2Fmodexpdata:                    1 << 18,
+		Blockdata:                            1 << 16,
+		Blockhash:                            1 << 16,
+		Ecdata:                               1 << 22,
+		Euc:                                  1 << 20,
+		Exp:                                  1 << 18,
+		Ext:                                  1 << 24,
+		Gas:                                  1 << 20,
+		Hub:                                  1 << 25,
+		Logdata:                              1 << 20,
+		Loginfo:                              1 << 16,
+		Mmio:                                 1 << 25,
+		Mmu:                                  1 << 25,
+		Mod:                                  1 << 21,
+		Mul:                                  1 << 20,
+		Mxp:                                  1 << 23,
+		Oob:                                  1 << 22,
+		Rlpaddr:                              1 << 16,
+		Rlptxn:                               1 << 21,
+		Rlptxrcpt:                            1 << 21,
+		Rom:                                  1 << 26,
+		Romlex:                               1 << 16,
+		Shakiradata:                          1 << 19,
+		Shf:                                  1 << 20,
+		Stp:                                  1 << 18,
+		Trm:                                  1 << 19,
+		Txndata:                              1 << 18,
+		Wcp:                                  1 << 22,
+		Binreftable:                          1 << 24,
+		Shfreftable:                          1 << 16,
+		Instdecoder:                          1 << 13,
+		PrecompileEcrecoverEffectiveCalls:    1 << 13,
+		PrecompileSha2Blocks:                 1 << 13,
 		PrecompileRipemdBlocks:               0,
-		PrecompileModexpEffectiveCalls:       64,
-		PrecompileEcaddEffectiveCalls:        1 << 8,
-		PrecompileEcmulEffectiveCalls:        32,
-		PrecompileEcpairingEffectiveCalls:    32,
-		PrecompileEcpairingMillerLoops:       64,
-		PrecompileEcpairingG2MembershipCalls: 64,
+		PrecompileModexpEffectiveCalls:       1 << 10,
+		PrecompileModexpEffectiveCalls4096:   1 << 4,
+		PrecompileEcaddEffectiveCalls:        1 << 12,
+		PrecompileEcmulEffectiveCalls:        1 << 9,
+		PrecompileEcpairingEffectiveCalls:    1 << 9,
+		PrecompileEcpairingMillerLoops:       1 << 10,
+		PrecompileEcpairingG2MembershipCalls: 1 << 10,
 		PrecompileBlakeEffectiveCalls:        0,
 		PrecompileBlakeRounds:                0,
-		BlockKeccak:                          1 << 13,
+		BlockKeccak:                          1 << 17,
 		BlockL1Size:                          100_000,
 		BlockL2L1Logs:                        16,
-		BlockTransactions:                    400,
-		ShomeiMerkleProofs:                   1 << 14,
+		BlockTransactions:                    1 << 12,
+		ShomeiMerkleProofs:                   1 << 18,
 	}
 
 	return zkevm.FullZKEVMWithSuite(&traceLimits, zkevm.CompilationSuite{}, &config.Config{})
@@ -501,6 +507,7 @@ func GetAffinities(z *zkevm.ZkEvm) [][]column.Natural {
 		{
 			z.WizardIOP.Columns.GetHandle("mmio.CN_ABC").(column.Natural),
 			z.WizardIOP.Columns.GetHandle("mmio.MMIO_STAMP").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("mmu.STAMP").(column.Natural),
 		},
 	}
 }
