@@ -2,6 +2,9 @@ package smartvectors
 
 import (
 	"fmt"
+	"iter"
+	"slices"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
@@ -96,6 +99,11 @@ func (r *Regular) WriteInSliceExt(s []fext.Element) {
 
 func (r *Regular) Pretty() string {
 	return fmt.Sprintf("Regular[%v]", vector.Prettify(*r))
+}
+
+// IterateSmart returns an iterator over the elements of the Regular.
+func (r *Regular) IterateSmart() iter.Seq[field.Element] {
+	return slices.Values(*r)
 }
 
 func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mempool.MemPool) (result *Pooled, numMatches int) {

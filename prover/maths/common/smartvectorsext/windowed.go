@@ -2,6 +2,8 @@ package smartvectorsext
 
 import (
 	"fmt"
+	"iter"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -348,4 +350,8 @@ func (w *PaddedCircularWindowExt) IntoRegVecSaveAllocBase() ([]field.Element, er
 func (w *PaddedCircularWindowExt) IntoRegVecSaveAllocExt() []fext.Element {
 	res := IntoRegVecExt(w)
 	return res
+}
+
+func (w *PaddedCircularWindowExt) IterateSmart() iter.Seq[field.Element] {
+	panic("not available for extensions")
 }

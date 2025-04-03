@@ -2,6 +2,8 @@ package smartvectorsext
 
 import (
 	"fmt"
+	"iter"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -94,4 +96,8 @@ func (c *ConstantExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 func (c *ConstantExt) IntoRegVecSaveAllocExt() []fext.Element {
 	res := smartvectors.IntoRegVecExt(c)
 	return res
+}
+
+func (c *ConstantExt) IterateSmart() iter.Seq[field.Element] {
+	panic("not available for extensions")
 }

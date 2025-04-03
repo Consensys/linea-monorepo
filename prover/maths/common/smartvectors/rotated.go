@@ -2,6 +2,9 @@ package smartvectors
 
 import (
 	"fmt"
+	"iter"
+	"slices"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -182,6 +185,18 @@ func (r *Rotated) IntoRegVecSaveAllocExt() []fext.Element {
 		res[i].SetFromBase(&temp[i])
 	}
 	return res
+}
+
+func (r *Rotated) IntoRegVec() []field.Element {
+	return *rotatedAsRegular(r)
+}
+
+// IterateSmart returns an iterator over the elements of the Rotated.
+// It is not very smart as it reallocate the slice but that should not
+// matter as this is never called in practice.
+func (r *Rotated) IterateSmart() iter.Seq[field.Element] {
+	all := r.IntoRegVec()
+	return slices.Values(all)
 }
 
 // SoftRotate converts v into a [SmartVector] representing the same

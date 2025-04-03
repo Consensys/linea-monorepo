@@ -141,7 +141,7 @@ func (r LogDerivativeSum) Compute(run ifaces.Runtime) (field.Element, error) {
 
 	parallel.Execute(len(inputs), func(start, stop int) {
 
-		for k := 0; k < len(inputs); k++ {
+		for k := start; k < stop; k++ {
 
 			var (
 				size                = inputs[k].Size

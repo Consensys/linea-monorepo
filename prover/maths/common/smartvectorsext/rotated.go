@@ -2,6 +2,8 @@ package smartvectorsext
 
 import (
 	"fmt"
+	"iter"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -174,6 +176,10 @@ func (r *RotatedExt) IntoRegVecSaveAllocExt() []fext.Element {
 		res[i].Set(&temp[i])
 	}
 	return res
+}
+
+func (r *RotatedExt) IterateSmart() iter.Seq[field.Element] {
+	panic("not available for extensions")
 }
 
 // SoftRotate converts v into a [SmartVector] representing the same

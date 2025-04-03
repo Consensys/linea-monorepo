@@ -2,6 +2,9 @@ package smartvectors
 
 import (
 	"fmt"
+	"iter"
+	"slices"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -104,4 +107,8 @@ func (c *Constant) IntoRegVecSaveAllocExt() []fext.Element {
 		res[i].SetFromBase(&elem)
 	}
 	return res
+}
+
+func (c *Constant) IterateSmart() iter.Seq[field.Element] {
+	return slices.Values([]field.Element{c.val})
 }
