@@ -25,23 +25,21 @@ import java.util.Random;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
+import lombok.experimental.Accessors;
+import net.consensys.linea.UnitTestWatcher;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
-import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+@Accessors(fluent = true)
 @Tag("weekly")
-@TestMethodOrder(MethodOrderer.Alphanumeric.class) // Fixes the execution order of the tests
-@TestInstance(TestInstance.Lifecycle.PER_CLASS) // Allows non-static @MethodSource
+@ExtendWith(UnitTestWatcher.class)
 public class SignedOperationsExtensiveTest {
-  // See https://github.com/Consensys/linea-tracer/issues/1182 for documentation
-  Random RANDOM = new Random(123);
 
   @ParameterizedTest
   @MethodSource("signedComparisonsModDivTestSource")
@@ -51,16 +49,18 @@ public class SignedOperationsExtensiveTest {
     bytecodeRunner.run();
   }
 
-  Stream<Arguments> signedComparisonsModDivTestSource() {
+  private static Stream<Arguments> signedComparisonsModDivTestSource() {
+    Random rng = new Random(123);
+
     final String ZERO = "00".repeat(32);
     final String ONE = "00".repeat(31) + "01";
 
     // 10^3 < SMALL_1 < SMALL_2 < 10^9
-    final String SMALL_1 = "66" + randomBytes(1);
-    final String SMALL_2 = "66" + randomBytes(2);
+    final String SMALL_1 = "66" + randomBytes(rng, 1);
+    final String SMALL_2 = "66" + randomBytes(rng, 2);
 
-    final String LARGE_1 = randomBytes(16);
-    final String LARGE_2 = "01" + randomBytes(16);
+    final String LARGE_1 = randomBytes(rng, 16);
+    final String LARGE_2 = "01" + randomBytes(rng, 16);
 
     final String MIN_NEG = "80" + "00".repeat(31);
     final String MAX_POS = "7f" + "ff".repeat(31);
@@ -71,7 +71,7 @@ public class SignedOperationsExtensiveTest {
         IntStream.range(0, 10)
             .mapToObj(
                 i ->
-                    (new BigInteger(randomBytes(32), 16).and(new BigInteger(MAX_POS, 16)))
+                    (new BigInteger(randomBytes(rng, 32), 16).and(new BigInteger(MAX_POS, 16)))
                         .toString(16))
             .toArray(String[]::new);
     // e.g., "7f" + randomBytes(31, 5); // < 0x80 ...
@@ -80,7 +80,7 @@ public class SignedOperationsExtensiveTest {
         IntStream.range(0, 10)
             .mapToObj(
                 i ->
-                    (new BigInteger(randomBytes(32), 16).or(new BigInteger(MIN_NEG, 16)))
+                    (new BigInteger(randomBytes(rng, 32), 16).or(new BigInteger(MIN_NEG, 16)))
                         .toString(16))
             .toArray(String[]::new);
     // e.g., "81" + randomBytes(31, 6); // > 0x80 ...
@@ -110,14 +110,16 @@ public class SignedOperationsExtensiveTest {
 
   @ParameterizedTest
   @MethodSource("signExtendTestSource")
-  void signExtendTest(String position, String value) {
+  private static void signExtendTest(String position, String value) {
     BytecodeCompiler program =
         BytecodeCompiler.newProgram().push(value).push(position).op(OpCode.SIGNEXTEND);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run();
   }
 
-  Stream<Arguments> signExtendTestSource() {
+  private static Stream<Arguments> signExtendTestSource() {
+    Random rng = new Random(123);
+
     final String[] positions =
         Stream.concat(
                 Stream.concat(
@@ -131,7 +133,7 @@ public class SignedOperationsExtensiveTest {
                               BigInteger.valueOf(256).pow(32).subtract(BigInteger.ONE)
                             }))
                     .map(n -> n.toString(16)),
-                Stream.of(randomBytes(32))) // random value
+                Stream.of(randomBytes(rng, 32))) // random value
             .toArray(String[]::new);
 
     final String[] bytes = {"00", "56", "7f", "80", "c2", "ff"};
@@ -154,10 +156,10 @@ public class SignedOperationsExtensiveTest {
   }
 
   // Support method
-  private String randomBytes(int n) {
+  private static String randomBytes(Random rng, int n) {
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < n; i++) {
-      sb.append(String.format("%02x", new BigInteger(8, RANDOM).byteValue()));
+      sb.append(String.format("%02x", new BigInteger(8, rng).byteValue()));
     }
     return sb.toString();
   }
