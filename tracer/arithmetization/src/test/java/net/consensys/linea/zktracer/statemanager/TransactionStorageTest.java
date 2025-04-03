@@ -27,6 +27,7 @@ import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.testing.generated.FrameworkEntrypoint;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 
@@ -88,7 +89,7 @@ public class TransactionStorageTest {
 
     // Replay the transaction's trace from the hub to compute the first and last values for the
     // storage fragment
-    List<Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>>>
+    List<Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>>
         storageFirstAndLastMapList = computeStorageFirstAndLastMapList(multiBlockEnv.getHub());
 
     // prepare data for asserts
@@ -112,11 +113,11 @@ public class TransactionStorageTest {
       },
     };
     // prepare the key pairs
-    List<Map<Address, EWord>> addrStorageKeyMapList =
+    List<Map<Address, Bytes32>> addrStorageKeyMapList =
         List.of(Map.of(tc.initialAccounts[0].getAddress(), EWord.of(3L)));
 
     for (int txCounter = 0; txCounter < txCount; txCounter++) {
-      Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>> storageMap =
+      Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>> storageMap =
           storageFirstAndLastMapList.get(txCounter);
       for (int i = 0; i < addrStorageKeyMapList.size(); i++) {
         FragmentFirstAndLast<StorageFragment> storageData =

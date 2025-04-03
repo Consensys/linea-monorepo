@@ -15,21 +15,22 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.storage;
 
-import static com.google.common.base.Preconditions.*;
+import static net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragmentPurpose.maybeNewStorageSlot;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.defer.PostBlockDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
+import net.consensys.linea.zktracer.module.hub.state.Block;
 import net.consensys.linea.zktracer.module.hub.state.State;
 import net.consensys.linea.zktracer.types.EWord;
 
-@RequiredArgsConstructor
 @Getter
-public final class StorageFragment implements TraceFragment {
+public final class StorageFragment implements TraceFragment, PostBlockDefer {
   private final State hubState;
   private final State.StorageSlotIdentifier storageSlotIdentifier;
   private final EWord valueOriginal;
@@ -40,6 +41,34 @@ public final class StorageFragment implements TraceFragment {
   private final DomSubStampsSubFragment domSubStampsSubFragment;
   private final int blockNumber;
   private final StorageFragmentPurpose purpose;
+
+  public StorageFragment(
+      Hub hub,
+      State.StorageSlotIdentifier storageId,
+      EWord valueOriginal,
+      EWord valueCurrent,
+      EWord valueNext,
+      boolean incomingWarmth,
+      boolean outgoingWarmth,
+      DomSubStampsSubFragment domSubSubFragment,
+      StorageFragmentPurpose purpose) {
+    hubState = hub.state;
+    storageSlotIdentifier = storageId;
+    this.valueOriginal = valueOriginal;
+    this.valueCurrent = valueCurrent;
+    this.valueNext = valueNext;
+    this.incomingWarmth = incomingWarmth;
+    this.outgoingWarmth = outgoingWarmth;
+    domSubStampsSubFragment = domSubSubFragment;
+    blockNumber = hub.blockStack().currentRelativeBlockNumber();
+    this.purpose = purpose;
+
+    // This allows us to keep track of account that are accessed by the HUB during the execution of
+    // the block
+    if (maybeNewStorageSlot(purpose)) {
+      hub.defers().scheduleForPostBlock(this);
+    }
+  }
 
   public Trace.Hub trace(Trace.Hub trace) {
     domSubStampsSubFragment.trace(trace);
@@ -71,5 +100,12 @@ public final class StorageFragment implements TraceFragment {
         .pStorageSstoreOperation(
             purpose == StorageFragmentPurpose.SSTORE_DOING
                 || purpose == StorageFragmentPurpose.SSTORE_UNDOING);
+  }
+
+  @Override
+  public void resolvePostBlock(Hub hub) {
+    final Block currentBlock = hub.blockStack().currentBlock();
+    currentBlock.addStorageSeenByHub(
+        storageSlotIdentifier.getAddress(), storageSlotIdentifier.getStorageKey());
   }
 }

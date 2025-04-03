@@ -14,6 +14,8 @@
  */
 package net.consensys.linea.zktracer.module.hub.fragment.storage;
 
+import java.util.List;
+
 public enum StorageFragmentPurpose {
   SLOAD_DOING,
   SLOAD_UNDOING,
@@ -21,5 +23,16 @@ public enum StorageFragmentPurpose {
   SSTORE_DOING,
   SSTORE_UNDOING,
 
-  PRE_WARMING
-};
+  PRE_WARMING;
+
+  private static final List<StorageFragmentPurpose> undoingOperation =
+      List.of(SLOAD_UNDOING, SSTORE_UNDOING);
+
+  public static boolean guaranteedRepeatEncounterOfStorageSlot(StorageFragmentPurpose purpose) {
+    return undoingOperation.contains(purpose);
+  }
+
+  public static boolean maybeNewStorageSlot(StorageFragmentPurpose purpose) {
+    return !guaranteedRepeatEncounterOfStorageSlot(purpose);
+  }
+}

@@ -104,7 +104,7 @@ public class SstoreSection extends TraceSection implements PostRollbackDefer {
         new State.StorageSlotIdentifier(
             accountAddress,
             hub.transients().conflation().deploymentInfo().deploymentNumber(accountAddress),
-            EWord.of(storageKey));
+            storageKey);
     hub.state.updateOrInsertStorageSlotOccurrence(storageSlotIdentifier, doingSstore);
 
     // set the refundDelta
@@ -118,16 +118,14 @@ public class SstoreSection extends TraceSection implements PostRollbackDefer {
   private StorageFragment doingSstore(Hub hub) {
 
     return new StorageFragment(
-        hub.state,
-        new State.StorageSlotIdentifier(
-            accountAddress, accountAddressDeploymentNumber, EWord.of(storageKey)),
+        hub,
+        new State.StorageSlotIdentifier(accountAddress, accountAddressDeploymentNumber, storageKey),
         valueOriginal,
         valueCurrent,
         valueNext,
         incomingWarmth,
         true,
         DomSubStampsSubFragment.standardDomSubStamps(this.hubStamp(), 0),
-        hub.state.firstAndLastStorageSlotOccurrences.size(),
         SSTORE_DOING);
   }
 
@@ -138,16 +136,15 @@ public class SstoreSection extends TraceSection implements PostRollbackDefer {
 
     final StorageFragment undoingSstoreStorageFragment =
         new StorageFragment(
-            hub.state,
+            hub,
             new State.StorageSlotIdentifier(
-                accountAddress, accountAddressDeploymentNumber, EWord.of(storageKey)),
+                accountAddress, accountAddressDeploymentNumber, storageKey),
             valueOriginal,
             valueNext,
             valueCurrent,
             true,
             incomingWarmth,
             undoingDomSubStamps,
-            hub.state.firstAndLastStorageSlotOccurrences.size(),
             SSTORE_UNDOING);
 
     this.addFragment(undoingSstoreStorageFragment);

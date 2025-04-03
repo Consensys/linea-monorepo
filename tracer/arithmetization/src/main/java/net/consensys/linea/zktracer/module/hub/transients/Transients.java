@@ -32,14 +32,11 @@ public class Transients {
   /** stores conflation-lived information */
   final Conflation conflation = new Conflation();
 
-  /** stores block-lived information */
-  final Block block = new Block();
-
   /** provides operation-related information */
   final OperationAncillaries op;
 
   public TransactionProcessingMetadata tx() {
-    return this.hub.txStack().current();
+    return hub.txStack().current();
   }
 
   public Transients(final Hub hub) {

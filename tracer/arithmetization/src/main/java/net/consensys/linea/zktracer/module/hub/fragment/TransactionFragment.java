@@ -19,33 +19,17 @@ import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 
-import lombok.Setter;
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.Trace;
-import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.TransactionType;
 
+@RequiredArgsConstructor
 public final class TransactionFragment implements TraceFragment {
-  private final Hub hub;
-  private final Address coinbaseAddress;
   private final TransactionProcessingMetadata transactionProcessingMetadata;
-  @Setter private TraceSection parentSection;
-
-  private TransactionFragment(
-      Hub hub, TransactionProcessingMetadata transactionProcessingMetadata) {
-    this.hub = hub;
-    this.coinbaseAddress = Address.wrap(hub.coinbaseAddress.copy());
-    this.transactionProcessingMetadata = transactionProcessingMetadata;
-  }
-
-  public static TransactionFragment prepare(
-      Hub hub, TransactionProcessingMetadata transactionProcessingMetadata) {
-    return new TransactionFragment(hub, transactionProcessingMetadata);
-  }
 
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
@@ -83,7 +67,7 @@ public final class TransactionFragment implements TraceFragment {
             Bytes.minimalBytes(transactionProcessingMetadata.getRefundCounterMax()))
         .pTransactionRefundEffective(
             Bytes.minimalBytes(transactionProcessingMetadata.getGasRefunded()))
-        .pTransactionCoinbaseAddressHi(highPart(coinbaseAddress))
-        .pTransactionCoinbaseAddressLo(lowPart(coinbaseAddress));
+        .pTransactionCoinbaseAddressHi(highPart(transactionProcessingMetadata.getCoinbaseAddress()))
+        .pTransactionCoinbaseAddressLo(lowPart(transactionProcessingMetadata.getCoinbaseAddress()));
   }
 }

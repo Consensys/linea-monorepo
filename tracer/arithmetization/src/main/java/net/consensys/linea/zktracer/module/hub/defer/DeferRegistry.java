@@ -36,6 +36,7 @@ public class DeferRegistry
         PostRollbackDefer,
         EndTransactionDefer,
         AfterTransactionFinalizationDefer,
+        PostBlockDefer,
         PostConflationDefer {
 
   /** A list of actions deferred until the end of the current opcode execution */
@@ -56,6 +57,9 @@ public class DeferRegistry
   /** A list of actions deferred to after the TX_FINL phase of the current transaction */
   private final List<AfterTransactionFinalizationDefer> afterTransactionFinalizationDefers =
       new ArrayList<>();
+
+  /** A list of actions deferred until the end of the current block execution */
+  private final List<PostBlockDefer> postBlockDefers = new ArrayList<>();
 
   /** A list of actions deferred until the end of the current conflation execution */
   private final List<PostConflationDefer> postConflationDefers = new ArrayList<>();
@@ -95,7 +99,12 @@ public class DeferRegistry
     afterTransactionFinalizationDefers.add(defer);
   }
 
-  /** Schedule an action to be executed at the end of the current transaction. */
+  /** Schedule an action to be executed at the end of the current block. */
+  public void scheduleForPostBlock(PostBlockDefer defer) {
+    postBlockDefers.add(defer);
+  }
+
+  /** Schedule an action to be executed at the end of the current conflation. */
   public void scheduleForPostConflation(PostConflationDefer defer) {
     postConflationDefers.add(defer);
   }
@@ -147,6 +156,14 @@ public class DeferRegistry
       defer.resolveAfterTransactionFinalization(hub, worldView);
     }
     afterTransactionFinalizationDefers.clear();
+  }
+
+  @Override
+  public void resolvePostBlock(Hub hub) {
+    for (PostBlockDefer defer : postBlockDefers) {
+      defer.resolvePostBlock(hub);
+    }
+    postBlockDefers.clear();
   }
 
   /**

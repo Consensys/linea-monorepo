@@ -33,6 +33,7 @@ import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.DeferRegistry;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
+import net.consensys.linea.zktracer.module.hub.defer.PostBlockDefer;
 import net.consensys.linea.zktracer.module.hub.defer.PostConflationDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
@@ -46,7 +47,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Accessors(fluent = true)
 public final class AccountFragment
-    implements TraceFragment, EndTransactionDefer, PostConflationDefer {
+    implements TraceFragment, EndTransactionDefer, PostBlockDefer, PostConflationDefer {
 
   @Getter private final AccountSnapshot oldState;
   @Getter private final AccountSnapshot newState;
@@ -109,6 +110,10 @@ public final class AccountFragment
     // This allows us to properly fill MARKED_FOR_SELFDESTRUCT and MARKED_FOR_SELFDESTRUCT_NEW,
     // among other things
     hub.defers().scheduleForEndTransaction(this);
+
+    // This allows us to keep track of account that are accessed by the HUB during the execution of
+    // the block
+    hub.defers().scheduleForPostBlock(this);
   }
 
   @Override
@@ -176,6 +181,11 @@ public final class AccountFragment
       markedForSelfDestruct = false;
       markedForSelfDestructNew = false;
     }
+  }
+
+  @Override
+  public void resolvePostBlock(Hub hub) {
+    hub.blockStack().currentBlock().addAddressSeenByHub(oldState.address());
   }
 
   @Override

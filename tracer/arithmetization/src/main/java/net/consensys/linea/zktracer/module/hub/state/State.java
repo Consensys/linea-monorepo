@@ -28,7 +28,7 @@ import net.consensys.linea.zktracer.container.stacked.StackedList;
 import net.consensys.linea.zktracer.module.hub.HubProcessingPhase;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
 import net.consensys.linea.zktracer.module.hub.state.State.HubTransactionState.Stamps;
-import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 
 @RequiredArgsConstructor
@@ -76,7 +76,7 @@ public class State {
   public static class StorageSlotIdentifier {
     final Address address;
     final int deploymentNumber;
-    final EWord storageKey;
+    final Bytes32 storageKey;
   }
 
   public void updateOrInsertStorageSlotOccurrence(

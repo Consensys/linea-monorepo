@@ -23,7 +23,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
-import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 
 public class StateManagerUtils {
@@ -37,8 +37,7 @@ public class StateManagerUtils {
   }
 
   public static int getRelBlockNoFromBlock(Hub hub, int blockNb) {
-    return (int)
-        hub.blockdata().getOperations().get(blockNb * getBlockOperationsLength(hub)).relBlock();
+    return hub.blockdata().getOperations().get(blockNb * getBlockOperationsLength(hub)).relBlock();
   }
 
   public static int getBlockCount(Hub hub) {
@@ -80,9 +79,9 @@ public class StateManagerUtils {
     return accountFirstAndLastMapList;
   }
 
-  public static List<Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>>>
+  public static List<Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>>
       computeStorageFirstAndLastMapList(Hub hub) {
-    List<Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>>>
+    List<Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>>
         storageFirstAndLastMapList = new ArrayList<>();
 
     int txCount = getTxCount(hub);
@@ -142,16 +141,17 @@ public class StateManagerUtils {
     return accountFirstAndLastMap;
   }
 
-  public static Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>>
+  public static Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>
       updateStorageFirstAndLast(
           StorageFragment fragment,
-          Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>> storageFirstAndLastMap) {
+          Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>
+              storageFirstAndLastMap) {
     // Setting the post transaction first and last value
     int dom = fragment.getDomSubStampsSubFragment().domStamp();
     int sub = fragment.getDomSubStampsSubFragment().subStamp();
-    Address address = fragment.getStorageSlotIdentifier().getAddress();
-    EWord storageKey = fragment.getStorageSlotIdentifier().getStorageKey();
-    Map<Address, EWord> key = Map.of(address, storageKey);
+    final Address address = fragment.getStorageSlotIdentifier().getAddress();
+    final Bytes32 storageKey = fragment.getStorageSlotIdentifier().getStorageKey();
+    Map<Address, Bytes32> key = Map.of(address, storageKey);
     if (!storageFirstAndLastMap.containsKey(key)) {
       FragmentFirstAndLast<StorageFragment> txnFirstAndLast =
           new FragmentFirstAndLast<StorageFragment>(fragment, fragment, dom, sub, dom, sub);
@@ -243,13 +243,13 @@ public class StateManagerUtils {
     return blockMapAccount;
   }
 
-  public static Map<Map<Address, EWord>, Map<Integer, FragmentFirstAndLast<StorageFragment>>>
+  public static Map<Map<Address, Bytes32>, Map<Integer, FragmentFirstAndLast<StorageFragment>>>
       computeBlockMapStorage(
           Hub hub,
-          List<Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>>>
+          List<Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>>
               storageFirstAndLastMapList) {
-    Map<Map<Address, EWord>, Map<Integer, FragmentFirstAndLast<StorageFragment>>> blockMapStorage =
-        new HashMap<>();
+    Map<Map<Address, Bytes32>, Map<Integer, FragmentFirstAndLast<StorageFragment>>>
+        blockMapStorage = new HashMap<>();
 
     int blockCount = getBlockCount(hub);
     int txCount = getTxCount(hub);
@@ -260,12 +260,12 @@ public class StateManagerUtils {
             hub.txStack().getByAbsoluteTransactionNumber(txNb + 1).getRelativeBlockNumber();
 
         if (relBlokNoFromTx == relBlokNoFromBlock) {
-          Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>> storageFirstAndLastMap =
+          Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>> storageFirstAndLastMap =
               storageFirstAndLastMapList.get(txNb);
 
           // Update the block map for storage
           for (var entry : storageFirstAndLastMap.entrySet()) {
-            Map<Address, EWord> addrStorageMapKey = entry.getKey();
+            Map<Address, Bytes32> addrStorageMapKey = entry.getKey();
             // localValue exists for sure because addr belongs to the keySet of the local map
             FragmentFirstAndLast<StorageFragment> localValueStorage = entry.getValue();
 
@@ -373,30 +373,30 @@ public class StateManagerUtils {
     return conflationMapAccount;
   }
 
-  public static Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>>
+  public static Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>
       computeConflationMapStorage(
           Hub hub,
-          List<Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>>>
+          List<Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>>>
               storageFirstAndLastMapList,
-          Map<Map<Address, EWord>, Map<Integer, FragmentFirstAndLast<StorageFragment>>>
+          Map<Map<Address, Bytes32>, Map<Integer, FragmentFirstAndLast<StorageFragment>>>
               blockMapStorage) {
-    Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>> conflationMapStorage =
+    Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>> conflationMapStorage =
         new HashMap<>();
 
     int txCount = getTxCount(hub);
     int blockCount = getBlockCount(hub);
-    HashSet<Map<Address, EWord>> allStorage = new HashSet<Map<Address, EWord>>();
+    HashSet<Map<Address, Bytes32>> allStorage = new HashSet<Map<Address, Bytes32>>();
 
     // We iterate over the transactions
     for (int txNb = 0; txNb < txCount; txNb++) {
 
-      Map<Map<Address, EWord>, FragmentFirstAndLast<StorageFragment>> txnMapAccount =
+      Map<Map<Address, Bytes32>, FragmentFirstAndLast<StorageFragment>> txnMapAccount =
           storageFirstAndLastMapList.get(txNb);
 
       allStorage.addAll(txnMapAccount.keySet());
     }
 
-    for (Map<Address, EWord> addrStorageKeyPair : allStorage) {
+    for (Map<Address, Bytes32> addrStorageKeyPair : allStorage) {
       FragmentFirstAndLast<StorageFragment> firstValue = null;
       // Update the first value of the conflation map for Storage
       // We update the value of the conflation map with the earliest value of the block map

@@ -177,7 +177,7 @@ public class TxSkipSection extends TraceSection implements EndTransactionDefer {
 
     // transaction fragment
     final TransactionFragment transactionFragment =
-        TransactionFragment.prepare(hub, hub.txStack().current());
+        new TransactionFragment(hub.txStack().current());
 
     this.addFragment(senderAccountFragment);
     this.addFragment(recipientAccountFragment);

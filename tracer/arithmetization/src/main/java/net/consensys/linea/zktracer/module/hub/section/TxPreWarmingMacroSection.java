@@ -35,7 +35,6 @@ import net.consensys.linea.zktracer.module.hub.state.State;
 import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
 import net.consensys.linea.zktracer.types.EWord;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
-import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.datatypes.AccessListEntry;
@@ -55,7 +54,7 @@ public class TxPreWarmingMacroSection {
             accessList -> {
               if (!accessList.isEmpty()) {
                 final Set<Address> seenAddresses = new HashSet<>(precompileAddress);
-                final HashMap<Address, Set<Bytes>> seenKeys = new HashMap<>();
+                final HashMap<Address, Set<Bytes32>> seenKeys = new HashMap<>();
 
                 for (AccessListEntry entry : accessList) {
                   final Address address = entry.address();
@@ -112,20 +111,19 @@ public class TxPreWarmingMacroSection {
 
                     final State.StorageSlotIdentifier storageSlotIdentifier =
                         new State.StorageSlotIdentifier(
-                            address, deploymentInfo.deploymentNumber(address), EWord.of(k));
+                            address, deploymentInfo.deploymentNumber(address), k);
 
                     final StorageFragment storageFragment =
                         new StorageFragment(
-                            hub.state,
+                            hub,
                             new State.StorageSlotIdentifier(
-                                address, deploymentInfo.deploymentNumber(address), EWord.of(key)),
+                                address, deploymentInfo.deploymentNumber(address), key),
                             value,
                             value,
                             value,
                             seenKeys.computeIfAbsent(address, x -> new HashSet<>()).contains(key),
                             true,
                             DomSubStampsSubFragment.standardDomSubStamps(hub.stamp() + 1, 0),
-                            hub.state.firstAndLastStorageSlotOccurrences.size(),
                             PRE_WARMING);
 
                     new TxPrewarmingSection(hub, storageFragment);

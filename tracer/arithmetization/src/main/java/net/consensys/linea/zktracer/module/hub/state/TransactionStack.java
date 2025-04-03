@@ -22,7 +22,6 @@ import lombok.Setter;
 import net.consensys.linea.zktracer.container.stacked.StackedList;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.section.TxInitializationSection;
-import net.consensys.linea.zktracer.module.hub.transients.Block;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -63,13 +62,13 @@ public class TransactionStack {
     relativeTransactionNumber = 0;
   }
 
-  public void enterTransaction(final WorldView world, final Transaction tx, Block block) {
+  public void enterTransaction(final Hub hub, final WorldView world, final Transaction tx) {
     currentAbsNumber += 1;
     relativeTransactionNumber += 1;
 
     final TransactionProcessingMetadata newTx =
         new TransactionProcessingMetadata(
-            world, tx, block, relativeTransactionNumber, currentAbsNumber);
+            hub, world, tx, relativeTransactionNumber, currentAbsNumber);
 
     transactions.add(newTx);
   }
