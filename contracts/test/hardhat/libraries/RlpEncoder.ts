@@ -58,5 +58,32 @@ describe("RlpEncoder Library", () => {
       const encoded = await contract.encodeInt(123456789n);
       expect(encoded).equal("0x84075bcd15");
     });
+
+    // TODO random fuzz type tests
+    it("Encodes a very large positive int correctly", async () => {
+      const encoded =
+        await contract.encodeInt(1234567891234567567891234567789123456789123456789123456789123456789123456789n);
+      expect(encoded).equal("0xa002babd9c27f528a06ee127601e68ddbe8c982496f253de820f6f70b684045f15");
+    });
+
+    it("Encodes a large positive int correctly", async () => {
+      const encoded = await contract.encodeInt(123456789123456756789123456723456789123456789n);
+      expect(encoded).equal("0x93058936e53d139a968065bc45c0d9d0540c5f15");
+    });
+
+    it("Encodes 0 correctly", async () => {
+      const encoded = await contract.encodeInt(0n);
+      expect(encoded).equal("0x80");
+    });
+
+    it("Encodes 1 correctly", async () => {
+      const encoded = await contract.encodeInt(1n);
+      expect(encoded).equal("0x01");
+    });
+
+    it("Encodes 255 correctly", async () => {
+      const encoded = await contract.encodeInt(255n);
+      expect(encoded).equal("0x81ff");
+    });
   });
 });

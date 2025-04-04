@@ -26,9 +26,7 @@ library RlpEncoder {
    * @return encodedBytes The bytes RLP encoded.
    */
   function _encodeBytes(bytes memory _bytesIn) internal pure returns (bytes memory encodedBytes) {
-    if (_bytesIn.length == 1 && uint8(_bytesIn[0]) < 0x80) {
-      return _bytesIn;
-    }
+    if (_bytesIn.length == 1 && uint8(_bytesIn[0]) < 0x80) return _bytesIn;
 
     bytes memory lengthPrefix = _encodeLength(_bytesIn.length, 128);
     uint256 prefixLen = lengthPrefix.length;
@@ -141,37 +139,40 @@ library RlpEncoder {
 
   /**
    * @notice Private function that encodes an integer in big endian binary form with no leading zeroes.
+   * @dev The zero length check is critical as the case is not considered in the rest of the checking.
    * @param _uintValue The uint value to be encoded.
    * @return encodedBytes The encoded uint.
    */
   function _toBinary(uint256 _uintValue) private pure returns (bytes memory encodedBytes) {
+    if (_uintValue == 0) return new bytes(0);
+
     assembly {
       let ptr := mload(0x40)
-
-      let i := 0
+      let sectionStart := 0
+      let sectionLength := 128
       for {
 
-      } lt(i, 32) {
-        i := add(i, 1)
+      } gt(sectionLength, 7) {
+        sectionLength := shr(1, sectionLength)
       } {
-        if iszero(and(shr(sub(248, mul(i, 8)), _uintValue), 0xff)) {
+        if iszero(shr(sub(256, add(sectionLength, sectionStart)), _uintValue)) {
+          sectionStart := add(sectionStart, sectionLength)
           continue
         }
-        break
       }
 
-      let length := sub(32, i)
+      let length := div(sub(256, sectionStart), 8)
       encodedBytes := ptr
       mstore(encodedBytes, length)
+
+      let actualDataStart := add(encodedBytes, 0x20)
 
       for {
         let j := 0
       } lt(j, length) {
         j := add(j, 1)
       } {
-        let shift := mul(sub(length, add(j, 1)), 8)
-        let byteToAdd := and(shr(shift, _uintValue), 0xff)
-        mstore8(add(add(encodedBytes, 0x20), j), byteToAdd)
+        mstore8(add(actualDataStart, j), and(shr(mul(sub(length, add(j, 1)), 8), _uintValue), 0xff))
       }
 
       mstore(0x40, add(add(ptr, 0x20), length))
@@ -214,9 +215,7 @@ library RlpEncoder {
         } lt(i, lengthOfLength) {
           i := add(i, 1)
         } {
-          let shift := mul(8, sub(lengthOfLength, add(i, 1)))
-          let b := and(shr(shift, _itemLength), 0xff)
-          mstore8(add(add(encodedBytes, 0x21), i), b)
+          mstore8(add(add(encodedBytes, 0x21), i), and(shr(mul(8, sub(lengthOfLength, add(i, 1))), _itemLength), 0xff))
         }
 
         let totalLen := add(lengthOfLength, 1)
