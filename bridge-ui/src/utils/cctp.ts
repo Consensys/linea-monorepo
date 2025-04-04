@@ -9,7 +9,7 @@ import {
   CCTP_V2_EXPIRATION_BLOCK_LENGTH,
   CCTP_V2_EXPIRATION_BLOCK_OFFSET,
 } from "@/constants";
-import { isUndefined } from "@/utils";
+import { isUndefined } from "@/utils/utils";
 
 const isCctpNonceUsed = async (
   client: GetPublicClientReturnType,
