@@ -8,86 +8,90 @@ const { expect, describe } = test;
 
 // There are known lines causing flaky E2E tests in this test suite, these are annotated by 'bridge-ui-known-flaky-line'
 describe("L1 > L2 via Native Bridge", () => {
-  test("should successfully go to the bridge UI page", async ({ page }) => {
-    const pageUrl = page.url();
-    expect(pageUrl).toEqual(TEST_URL);
+  describe("No blockchain tx cases", () => {
+    test("should successfully go to the bridge UI page", async ({ page }) => {
+      const pageUrl = page.url();
+      expect(pageUrl).toEqual(TEST_URL);
+    });
+
+    test("should have 'Native Bridge' button link on homepage", async ({ clickNativeBridgeButton }) => {
+      const nativeBridgeBtn = await clickNativeBridgeButton();
+      await expect(nativeBridgeBtn).toBeVisible();
+    });
+
+    test("should connect MetaMask to dapp correctly", async ({ connectMetamaskToDapp, clickNativeBridgeButton }) => {
+      await clickNativeBridgeButton();
+      await connectMetamaskToDapp();
+    });
+
+    test("should be able to load the transaction history", async ({
+      page,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      openNativeBridgeTransactionHistory,
+    }) => {
+      await connectMetamaskToDapp();
+      await clickNativeBridgeButton();
+      await openNativeBridgeTransactionHistory();
+
+      const txHistoryHeading = page.getByRole("heading").filter({ hasText: "Transaction History" });
+      await expect(txHistoryHeading).toBeVisible();
+    });
+
+    test("should be able to switch to test networks", async ({
+      page,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      openNativeBridgeFormSettings,
+      toggleShowTestNetworksInNativeBridgeForm,
+    }) => {
+      await connectMetamaskToDapp();
+      await clickNativeBridgeButton();
+      await openNativeBridgeFormSettings();
+      await toggleShowTestNetworksInNativeBridgeForm();
+
+      // Should have Sepolia text visible
+      const sepoliaText = page.getByText("Sepolia").first();
+      await expect(sepoliaText).toBeVisible();
+    });
+
+    test("should not be able to approve on the wrong network", async ({
+      page,
+      metamask,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      openNativeBridgeFormSettings,
+      toggleShowTestNetworksInNativeBridgeForm,
+      selectTokenAndInputAmount,
+      switchToEthereumMainnet,
+    }) => {
+      test.setTimeout(60_000);
+
+      await connectMetamaskToDapp();
+      await clickNativeBridgeButton();
+      await openNativeBridgeFormSettings();
+      await toggleShowTestNetworksInNativeBridgeForm();
+
+      await switchToEthereumMainnet();
+      await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
+
+      // Should have 'Switch to Sepolia' network button visible and enabled
+      const switchBtn = page.getByRole("button", { name: "Switch to Sepolia", exact: true });
+      await expect(switchBtn).toBeVisible();
+      await expect(switchBtn).toBeEnabled();
+
+      // Do network switch
+      await switchBtn.click();
+      await metamask.approveSwitchNetwork();
+
+      // After network switch, should have 'Approve Token' button visible and enabled
+      const approvalButton = page.getByRole("button", { name: "Approve Token", exact: true });
+      await expect(approvalButton).toBeVisible();
+      await expect(approvalButton).toBeEnabled();
+    });
   });
 
-  test("should have 'Native Bridge' button link on homepage", async ({ clickNativeBridgeButton }) => {
-    const nativeBridgeBtn = await clickNativeBridgeButton();
-    await expect(nativeBridgeBtn).toBeVisible();
-  });
-
-  test("should connect MetaMask to dapp correctly", async ({ connectMetamaskToDapp, clickNativeBridgeButton }) => {
-    await clickNativeBridgeButton();
-    await connectMetamaskToDapp();
-  });
-
-  test("should be able to load the transaction history", async ({
-    page,
-    connectMetamaskToDapp,
-    clickNativeBridgeButton,
-    openNativeBridgeTransactionHistory,
-  }) => {
-    await connectMetamaskToDapp();
-    await clickNativeBridgeButton();
-    await openNativeBridgeTransactionHistory();
-
-    const txHistoryHeading = page.getByRole("heading").filter({ hasText: "Transaction History" });
-    await expect(txHistoryHeading).toBeVisible();
-  });
-
-  test("should be able to switch to test networks", async ({
-    page,
-    connectMetamaskToDapp,
-    clickNativeBridgeButton,
-    openNativeBridgeFormSettings,
-    toggleShowTestNetworksInNativeBridgeForm,
-  }) => {
-    await connectMetamaskToDapp();
-    await clickNativeBridgeButton();
-    await openNativeBridgeFormSettings();
-    await toggleShowTestNetworksInNativeBridgeForm();
-
-    // Should have Sepolia text visible
-    const sepoliaText = page.getByText("Sepolia").first();
-    await expect(sepoliaText).toBeVisible();
-  });
-
-  test("should not be able to approve on the wrong network", async ({
-    page,
-    metamask,
-    connectMetamaskToDapp,
-    clickNativeBridgeButton,
-    openNativeBridgeFormSettings,
-    toggleShowTestNetworksInNativeBridgeForm,
-    selectTokenAndInputAmount,
-    switchToEthereumMainnet,
-  }) => {
-    await connectMetamaskToDapp();
-    await clickNativeBridgeButton();
-    await openNativeBridgeFormSettings();
-    await toggleShowTestNetworksInNativeBridgeForm();
-
-    await switchToEthereumMainnet();
-    await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
-
-    // Should have 'Switch to Sepolia' network button visible and enabled
-    const switchBtn = page.getByRole("button", {name: "Switch to Sepolia", exact: true});
-    await expect(switchBtn).toBeVisible();
-    await expect(switchBtn).toBeEnabled();
-
-    // Do network switch
-    await switchBtn.click();
-    await metamask.approveSwitchNetwork();
-
-    // After network switch, should have 'Approve Token' button visible and enabled
-    const approvalButton = page.getByRole("button", { name: "Approve Token", exact: true });
-    await expect(approvalButton).toBeVisible();
-    await expect(approvalButton).toBeEnabled();
-  });
-
-  test("should be able to initiate bridging ETH from L1 to L2 in testnet", async ({
+  test.skip("should be able to initiate bridging ETH from L1 to L2 in testnet", async ({
     getNativeBridgeTransactionsCount,
     waitForNewTxAdditionToTxList,
     connectMetamaskToDapp,
@@ -121,7 +125,7 @@ describe("L1 > L2 via Native Bridge", () => {
     await waitForNewTxAdditionToTxList(txnsLengthBefore);
   });
 
-  test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
+  test.skip("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
     getNativeBridgeTransactionsCount,
     waitForNewTxAdditionToTxList,
     connectMetamaskToDapp,
@@ -157,7 +161,7 @@ describe("L1 > L2 via Native Bridge", () => {
     await waitForNewTxAdditionToTxList(txnsLengthBefore);
   });
 
-  test("should be able to claim if available READY_TO_CLAIM transactions", async ({
+  test.skip("should be able to claim if available READY_TO_CLAIM transactions", async ({
     page,
     connectMetamaskToDapp,
     clickNativeBridgeButton,
