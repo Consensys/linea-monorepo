@@ -40,7 +40,7 @@ func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bit
 	var (
 		limbs        = make([]ifaces.Column, numLimbs)
 		round        = wizardutils.LastRoundToEval(expr)
-		boarded      = expr.Board()
+		boarded      = expr.Board() // Still computed here, but we'll pass it as a pointer to the struct
 		size         = wizardutils.ExprIsOnSameLengthHandles(&boarded)
 		totalNumBits = numLimbs * bitPerLimbs
 	)
@@ -75,90 +75,112 @@ func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bit
 	comp.InsertGlobal(round, ifaces.QueryIDf("GLOBAL_BIGRANGE_%v", name), acc.Sub(expr))
 
 	// The below prover steps assign the limb values
-	comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-
-		// Evaluate the expression we wish to range proof
-		metadatas := boarded.ListVariableMetadata()
-
-		/*
-			Collects the relevant datas into a slice for the evaluation
-		*/
-		evalInputs := make([]sv.SmartVector, len(metadatas))
-
-		/*
-			Omega is a root of unity which generates the domain of evaluation
-			of the constraint. Its size coincide with the size of the domain
-			of evaluation. For each value of `i`, X will evaluate to omega^i.
-		*/
-		omega := fft.GetOmega(size)
-		omegaI := field.One()
-
-		// precomputations of the powers of omega, can be optimized if useful
-		omegas := make([]field.Element, size)
-		for i := 0; i < size; i++ {
-			omegas[i] = omegaI
-			omegaI.Mul(&omegaI, &omega)
-		}
-
-		/*
-			Collect the relevants inputs for evaluating the constraint
-		*/
-		for k, metadataInterface := range metadatas {
-			switch meta := metadataInterface.(type) {
-			case ifaces.Column:
-				w := meta.GetColAssignment(run)
-				evalInputs[k] = w
-			case coin.Info:
-				// Implicitly, the coin has to be a field element in the expression
-				// It will panic if not
-				x := run.GetRandomCoinField(meta.Name)
-				evalInputs[k] = sv.NewConstant(x, size)
-			case variables.X:
-				evalInputs[k] = meta.EvalCoset(size, 0, 1, false)
-			case variables.PeriodicSample:
-				evalInputs[k] = meta.EvalCoset(size, 0, 1, false)
-			case ifaces.Accessor:
-				evalInputs[k] = sv.NewConstant(meta.GetVal(run), size)
-			default:
-				utils.Panic("Not a variable type %v in sub-wizard %v", reflect.TypeOf(metadataInterface), name)
-			}
-		}
-
-		// This panics if the global constraints doesn't use any commitment
-		resWitness := boarded.Evaluate(evalInputs)
-
-		limbsWitness := make([][]field.Element, numLimbs)
-		for i := range limbsWitness {
-			limbsWitness[i] = make([]field.Element, size)
-		}
-
-		for j := 0; j < size; j++ {
-			x := resWitness.Get(j)
-			var tmp big.Int
-			x.BigInt(&tmp)
-
-			if tmp.BitLen() > totalNumBits {
-				utils.Panic(
-					"BigRange: cannot prove that the bitLen is smaller than %v : the provided witness has %v bits on position %v (%v)",
-					totalNumBits, tmp.BitLen(), j, x.String(),
-				)
-			}
-
-			for i := 0; i < numLimbs; i++ {
-				l := uint64(0)
-				for k := i * bitPerLimbs; k < (i+1)*bitPerLimbs; k++ {
-					extractedBit := tmp.Bit(k)
-					l |= uint64(extractedBit) << (k % bitPerLimbs)
-				}
-				limbsWitness[i][j].SetUint64(l)
-			}
-		}
-
-		// Then assigns the limbs
-		for i := range limbsWitness {
-			run.AssignColumn(limbs[i].GetColID(), sv.NewRegular(limbsWitness[i]))
-		}
-
+	comp.RegisterProverAction(round, &bigRangeAssignProverAction{
+		expr:         expr,
+		boarded:      &boarded, // Pass as a pointer
+		limbs:        limbs,
+		size:         size,
+		numLimbs:     numLimbs,
+		bitPerLimbs:  bitPerLimbs,
+		totalNumBits: totalNumBits,
+		name:         name,
 	})
+}
 
+// bigRangeAssignProverAction assigns the limb values for the BigRange check.
+// It implements the [wizard.ProverAction] interface.
+type bigRangeAssignProverAction struct {
+	expr         *symbolic.Expression
+	boarded      *symbolic.ExpressionBoard // Changed to a pointer
+	limbs        []ifaces.Column
+	size         int
+	numLimbs     int
+	bitPerLimbs  int
+	totalNumBits int
+	name         string
+}
+
+// Run executes the assignment of the limb values.
+func (a *bigRangeAssignProverAction) Run(run *wizard.ProverRuntime) {
+	// Evaluate the expression we wish to range proof
+	metadatas := a.boarded.ListVariableMetadata() // Use the pointer directly
+
+	/*
+		Collects the relevant datas into a slice for the evaluation
+	*/
+	evalInputs := make([]sv.SmartVector, len(metadatas))
+
+	/*
+		Omega is a root of unity which generates the domain of evaluation
+		of the constraint. Its size coincide with the size of the domain
+		of evaluation. For each value of `i`, X will evaluate to omega^i.
+	*/
+	omega := fft.GetOmega(a.size)
+	omegaI := field.One()
+
+	// precomputations of the powers of omega, can be optimized if useful
+	omegas := make([]field.Element, a.size)
+	for i := 0; i < a.size; i++ {
+		omegas[i] = omegaI
+		omegaI.Mul(&omegaI, &omega)
+	}
+
+	/*
+		Collect the relevants inputs for evaluating the constraint
+	*/
+	for k, metadataInterface := range metadatas {
+		switch meta := metadataInterface.(type) {
+		case ifaces.Column:
+			w := meta.GetColAssignment(run)
+			evalInputs[k] = w
+		case coin.Info:
+			// Implicitly, the coin has to be a field element in the expression
+			// It will panic if not
+			x := run.GetRandomCoinField(meta.Name)
+			evalInputs[k] = sv.NewConstant(x, a.size)
+		case variables.X:
+			evalInputs[k] = meta.EvalCoset(a.size, 0, 1, false)
+		case variables.PeriodicSample:
+			evalInputs[k] = meta.EvalCoset(a.size, 0, 1, false)
+		case ifaces.Accessor:
+			evalInputs[k] = sv.NewConstant(meta.GetVal(run), a.size)
+		default:
+			utils.Panic("Not a variable type %v in sub-wizard %v", reflect.TypeOf(metadataInterface), a.name)
+		}
+	}
+
+	// This panics if the global constraints doesn't use any commitment
+	resWitness := a.boarded.Evaluate(evalInputs) // Use the pointer directly
+
+	limbsWitness := make([][]field.Element, a.numLimbs)
+	for i := range limbsWitness {
+		limbsWitness[i] = make([]field.Element, a.size)
+	}
+
+	for j := 0; j < a.size; j++ {
+		x := resWitness.Get(j)
+		var tmp big.Int
+		x.BigInt(&tmp)
+
+		if tmp.BitLen() > a.totalNumBits {
+			utils.Panic(
+				"BigRange: cannot prove that the bitLen is smaller than %v : the provided witness has %v bits on position %v (%v)",
+				a.totalNumBits, tmp.BitLen(), j, x.String(),
+			)
+		}
+
+		for i := 0; i < a.numLimbs; i++ {
+			l := uint64(0)
+			for k := i * a.bitPerLimbs; k < (i+1)*a.bitPerLimbs; k++ {
+				extractedBit := tmp.Bit(k)
+				l |= uint64(extractedBit) << (k % a.bitPerLimbs)
+			}
+			limbsWitness[i][j].SetUint64(l)
+		}
+	}
+
+	// Then assigns the limbs
+	for i := range limbsWitness {
+		run.AssignColumn(a.limbs[i].GetColID(), sv.NewRegular(limbsWitness[i]))
+	}
 }

@@ -26,13 +26,27 @@ func Bytes32Cmp(
 	bcp.columnB = columnB
 	bcp.activeRow = activeRow
 	// assigns the module
-	comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-		colA := columnA.GetColAssignment(run)
-		colB := columnB.GetColAssignment(run)
-		bcp.assign(run, colA, colB)
+	comp.RegisterProverAction(round, &bytes32CmpAssignProverAction{
+		bcp:     bcp,
+		columnA: columnA,
+		columnB: columnB,
 	})
 	// We do call the assign function before define to avoid the race condition with
 	// the bigrange module
 	bcp.Define(comp, numLimbs, bitPerLimbs, name)
+}
 
+// bytes32CmpAssignProverAction assigns the BytesCmpCtx module for byte32 comparison.
+// It implements the [wizard.ProverAction] interface.
+type bytes32CmpAssignProverAction struct {
+	bcp     BytesCmpCtx
+	columnA ifaces.Column
+	columnB ifaces.Column
+}
+
+// Run executes the assignment of the BytesCmpCtx module.
+func (a *bytes32CmpAssignProverAction) Run(run *wizard.ProverRuntime) {
+	colA := a.columnA.GetColAssignment(run)
+	colB := a.columnB.GetColAssignment(run)
+	a.bcp.assign(run, colA, colB)
 }

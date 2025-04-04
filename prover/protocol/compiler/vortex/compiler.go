@@ -73,7 +73,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// registers all the commitments
 		for round := 0; round <= lastRound; round++ {
 			ctx.compileRound(round)
-			comp.SubProvers.AppendToInner(round, ctx.AssignColumn(round))
+			comp.RegisterProverAction(round, &compileProverAction{ctx: ctx, round: round, actionType: "assignColumn"})
 		}
 
 		ctx.generateVortexParams()
@@ -84,13 +84,35 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		ctx.registerOpeningProof(lastRound)
 
 		// Registers the prover and verifier steps
-		comp.SubProvers.AppendToInner(lastRound+1, ctx.ComputeLinearComb)
-		comp.SubProvers.AppendToInner(lastRound+2, ctx.OpenSelectedColumns)
+		comp.RegisterProverAction(lastRound+1, &compileProverAction{ctx: ctx, actionType: "computeLinearComb"})
+		comp.RegisterProverAction(lastRound+2, &compileProverAction{ctx: ctx, actionType: "openSelectedColumns"})
 		// This is separated from GnarkVerify because, when doing full-recursion
 		// , we want to recurse this verifier step but not [ctx.Verify] which is
 		// already handled by the self-recursion mechanism.
 		comp.InsertVerifier(lastRound, ctx.explicitPublicEvaluation, ctx.gnarkExplicitPublicEvaluation)
 		comp.InsertVerifier(lastRound+2, ctx.Verify, ctx.GnarkVerify)
+	}
+}
+
+// compileProverAction is the action to perform various steps in the Vortex compiler.
+// It implements the [wizard.ProverAction] interface.
+type compileProverAction struct {
+	ctx        Ctx
+	round      int
+	actionType string
+}
+
+// Run executes the specified action.
+func (a *compileProverAction) Run(run *wizard.ProverRuntime) {
+	switch a.actionType {
+	case "assignColumn":
+		a.ctx.AssignColumn(a.round)(run)
+	case "computeLinearComb":
+		a.ctx.ComputeLinearComb(run)
+	case "openSelectedColumns":
+		a.ctx.OpenSelectedColumns(run)
+	default:
+		utils.Panic("unknown action type: %v", a.actionType)
 	}
 }
 

@@ -108,33 +108,55 @@ func EvalCoeffBivariate(
 		hCom,
 	)
 
-	comp.SubProvers.AppendToInner(maxRound, func(assi *wizard.ProverRuntime) {
-
-		// Get the value of the coin and of pol
-		x, yx_pow_1mk := x.GetVal(assi), yx_pow_1mk_acc.GetVal(assi)
-		p := pCom.GetColAssignment(assi)
-
-		// Now needs to evaluate the Horner poly
-		h := make([]field.Element, length)
-		h[length-1] = p.Get(length - 1)
-
-		for i := length - 2; i >= 0; i-- {
-			pi := p.Get(i)
-
-			// Transition to a new "power of y"
-			if (i+1)%nPowX == 0 {
-				h[i].Mul(&h[i+1], &yx_pow_1mk).Add(&h[i], &pi)
-				continue
-			}
-
-			h[i].Mul(&h[i+1], &x).Add(&h[i], &pi)
-		}
-
-		assi.AssignColumn(ifaces.ColIDf("%v_%v", name, EVAL_BIVARIATE_POLY), smartvectors.NewRegular(h))
-		assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
+	comp.RegisterProverAction(maxRound, &evalCoeffBivariateAssignProverAction{
+		name:     name,
+		x:        x,
+		yxPow1mk: yx_pow_1mk_acc,
+		pCom:     pCom,
+		hCom:     hCom,
+		length:   length,
+		nPowX:    nPowX,
 	})
 
 	return accessors.NewLocalOpeningAccessor(finalLocalOpening, maxRound)
+}
+
+// evalCoeffBivariateAssignProverAction assigns the bivariate evaluation columns.
+// It implements the [wizard.ProverAction] interface.
+type evalCoeffBivariateAssignProverAction struct {
+	name     string
+	x        ifaces.Accessor
+	yxPow1mk XYPow1MinNAccessor
+	pCom     ifaces.Column
+	hCom     ifaces.Column
+	length   int
+	nPowX    int
+}
+
+// Run executes the assignment of the bivariate evaluation.
+func (a *evalCoeffBivariateAssignProverAction) Run(assi *wizard.ProverRuntime) {
+	// Get the value of the coin and of pol
+	x, yx_pow_1mk := a.x.GetVal(assi), a.yxPow1mk.GetVal(assi)
+	p := a.pCom.GetColAssignment(assi)
+
+	// Now needs to evaluate the Horner poly
+	h := make([]field.Element, a.length)
+	h[a.length-1] = p.Get(a.length - 1)
+
+	for i := a.length - 2; i >= 0; i-- {
+		pi := p.Get(i)
+
+		// Transition to a new "power of y"
+		if (i+1)%a.nPowX == 0 {
+			h[i].Mul(&h[i+1], &yx_pow_1mk).Add(&h[i], &pi)
+			continue
+		}
+
+		h[i].Mul(&h[i+1], &x).Add(&h[i], &pi)
+	}
+
+	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.name, EVAL_BIVARIATE_POLY), smartvectors.NewRegular(h))
+	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
 }
 
 // xYPower1MinAccessor implements [ifaces.Accessor] and computes X^(1-N) * Y

@@ -42,12 +42,24 @@ func (ctx splitterContext) LocalOpening() {
 		newQ := ctx.comp.InsertLocalOpening(round, queryName(q.ID), subCol)
 
 		// Registers the prover's step responsible for assigning the new query
-		ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-			y := run.QueriesParams.MustGet(q.ID).(query.LocalOpeningParams).Y
-			run.AssignLocalPoint(newQ.ID, y)
+		ctx.comp.RegisterProverAction(round, &localOpeningAssignProverAction{
+			q:    q,
+			newQ: newQ,
 		})
-
 	}
+}
+
+// localOpeningAssignProverAction assigns the local opening point for the splitter context.
+// It implements the [wizard.ProverAction] interface.
+type localOpeningAssignProverAction struct {
+	q    query.LocalOpening
+	newQ query.LocalOpening
+}
+
+// Run executes the assignment of the local opening point.
+func (a *localOpeningAssignProverAction) Run(run *wizard.ProverRuntime) {
+	y := run.QueriesParams.MustGet(a.q.ID).(query.LocalOpeningParams).Y
+	run.AssignLocalPoint(a.newQ.ID, y)
 }
 
 func (ctx splitterContext) LocalGlobalConstraints() {

@@ -76,10 +76,9 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation, 
 	p.compilerColapsStep(comp)
 	p.compilerPolyZ(comp)
 
-	comp.SubProvers.AppendToInner(round, p.proverAssignS())
-	comp.SubProvers.AppendToInner(round+1, p.proverColapsStep())
-	comp.SubProvers.AppendToInner(round+1, p.proverAssignExtendedZ())
-
+	comp.RegisterProverAction(round, &proverAssignSAction{ctx: p})
+	comp.RegisterProverAction(round+1, &proverColapsStepAction{ctx: p})
+	comp.RegisterProverAction(round+1, &proverAssignExtendedZAction{ctx: p})
 }
 
 /*
@@ -195,100 +194,103 @@ func (t *fixedPermutationCtx) compilerPolyZ(comp *wizard.CompiledIOP) {
 	comp.InsertGlobal(round_, t.QB, cs, true) // We forbid the boundary cancelling
 }
 
-// Prover assignes  witnesses to S,S_id
-func (t *fixedPermutationCtx) proverAssignS() wizard.MainProverStep {
-	return func(run *wizard.ProverRuntime) {
-		stopTimer := profiling.LogTimer("exPermutation prover - assign s %v", t.q.ID)
-		for colID := range t.S {
-			run.AssignColumn(t.Sid_NAME[colID], t.SidWit[colID])
-			run.AssignColumn(t.S_NAME[colID], t.q.S[colID])
-		}
-		stopTimer()
-	}
+// proverAssignSAction assigns witnesses to S and S_id
+type proverAssignSAction struct {
+	ctx fixedPermutationCtx
 }
 
-/*
-Prover for the collapse step - compute Acollapse and Bcollapse
-*/
-
-func (t *fixedPermutationCtx) proverColapsStep() wizard.MainProverStep {
-	return func(run *wizard.ProverRuntime) {
-		stopTimer := profiling.LogTimer("exPermutation prover - colaps step %v", t.q.ID)
-		alphaWit := run.GetRandomCoinField(t.ALPHA)
-		betaWit := run.GetRandomCoinField(t.BETA)
-
-		var betaVec sv.SmartVector = sv.NewConstant(betaWit, t.N)
-		var aWit sv.SmartVector = sv.NewConstant(field.One(), t.N)
-		var bWit sv.SmartVector = sv.NewConstant(field.One(), t.N)
-
-		for colID := range t.q.A {
-			/*
-				Recall that `A` and `B` have the same number of column left.
-				Thus we can compute both collapses in parallels.
-			*/
-			a := t.q.A[colID]
-			aColWit := a.GetColAssignment(run)
-			tmpA := sv.ScalarMul(t.SidWit[colID], alphaWit)
-			u := sv.Add(tmpA, betaVec)
-			v := sv.Add(u, aColWit)
-			aWit = sv.Mul(v, aWit)
-
-			b := t.q.B[colID]
-			bColWit := b.GetColAssignment(run)
-			tmpF := sv.ScalarMul(t.q.S[colID], alphaWit)
-			u = sv.Add(tmpF, betaVec)
-			v = sv.Add(u, bColWit)
-			bWit = sv.Mul(v, bWit)
-
-		}
-
-		run.AssignColumn(t.Acollapse_NAME, aWit)
-		run.AssignColumn(t.Bcollapse_NAME, bWit)
-
-		stopTimer()
+// Run executes the proverAssignSAction over a [ProverRuntime]
+func (action *proverAssignSAction) Run(run *wizard.ProverRuntime) {
+	stopTimer := profiling.LogTimer("exPermutation prover - assign s %v", action.ctx.q.ID)
+	for colID := range action.ctx.S {
+		run.AssignColumn(action.ctx.Sid_NAME[colID], action.ctx.SidWit[colID])
+		run.AssignColumn(action.ctx.S_NAME[colID], action.ctx.q.S[colID])
 	}
+	stopTimer()
 }
 
-/*
-Compute Z
-*/
-func (t *fixedPermutationCtx) proverAssignExtendedZ() wizard.MainProverStep {
-	return func(run *wizard.ProverRuntime) {
+// proverColapsStepAction computes Acollapse and Bcollapse
+type proverColapsStepAction struct {
+	ctx fixedPermutationCtx
+}
 
-		stopTimer := profiling.LogTimer("exPermutation prover - assign extended z %v", t.q.ID)
+// Run executes the proverColapsStepAction over a [ProverRuntime]
+func (action *proverColapsStepAction) Run(run *wizard.ProverRuntime) {
+	stopTimer := profiling.LogTimer("exPermutation prover - colaps step %v", action.ctx.q.ID)
+	alphaWit := run.GetRandomCoinField(action.ctx.ALPHA)
+	betaWit := run.GetRandomCoinField(action.ctx.BETA)
 
-		a := t.Acollapse.GetColAssignment(run)
-		b := t.Bcollapse.GetColAssignment(run)
+	var betaVec sv.SmartVector = sv.NewConstant(betaWit, action.ctx.N)
+	var aWit sv.SmartVector = sv.NewConstant(field.One(), action.ctx.N)
+	var bWit sv.SmartVector = sv.NewConstant(field.One(), action.ctx.N)
 
-		numerator := make([]field.Element, t.N)
-		denominator := make([]field.Element, t.N)
-
+	for colID := range action.ctx.q.A {
 		/*
-			Z is expressed as a quotient. For efficiency concerns, we compute the
-			numerator and the denominator apart. Then, we use the batch inverse
-			trick to compute the quotient.
+			Recall that `A` and `B` have the same number of column left.
+			Thus we can compute both collapses in parallels.
 		*/
-		numerator[0] = field.One()
-		denominator[0] = field.One()
+		a := action.ctx.q.A[colID]
+		aColWit := a.GetColAssignment(run)
+		tmpA := sv.ScalarMul(action.ctx.SidWit[colID], alphaWit)
+		u := sv.Add(tmpA, betaVec)
+		v := sv.Add(u, aColWit)
+		aWit = sv.Mul(v, aWit)
 
-		for i := 0; i < t.N-1; i++ {
-			ai, bi := a.Get(i), b.Get(i)
-			numerator[i+1] = ai
-			denominator[i+1] = bi
-			numerator[i+1].Mul(&numerator[i+1], &numerator[i])
-			denominator[i+1].Mul(&denominator[i+1], &denominator[i])
-		}
+		b := action.ctx.q.B[colID]
+		bColWit := b.GetColAssignment(run)
+		tmpF := sv.ScalarMul(action.ctx.q.S[colID], alphaWit)
+		u = sv.Add(tmpF, betaVec)
+		v = sv.Add(u, bColWit)
+		bWit = sv.Mul(v, bWit)
 
-		z := numerator
-		denominator = field.BatchInvert(denominator)
-		vector.MulElementWise(z, z, denominator)
-
-		run.AssignColumn(t.Z_NAME, sv.NewRegular(z))
-
-		stopTimer()
 	}
 
+	run.AssignColumn(action.ctx.Acollapse_NAME, aWit)
+	run.AssignColumn(action.ctx.Bcollapse_NAME, bWit)
+
+	stopTimer()
 }
+
+// proverAssignExtendedZAction computes Z
+type proverAssignExtendedZAction struct {
+	ctx fixedPermutationCtx
+}
+
+// Run executes the proverAssignExtendedZAction over a [ProverRuntime]
+func (action *proverAssignExtendedZAction) Run(run *wizard.ProverRuntime) {
+	stopTimer := profiling.LogTimer("exPermutation prover - assign extended z %v", action.ctx.q.ID)
+
+	a := action.ctx.Acollapse.GetColAssignment(run)
+	b := action.ctx.Bcollapse.GetColAssignment(run)
+
+	numerator := make([]field.Element, action.ctx.N)
+	denominator := make([]field.Element, action.ctx.N)
+
+	/*
+		Z is expressed as a quotient. For efficiency concerns, we compute the
+		numerator and the denominator apart. Then, we use the batch inverse
+		trick to compute the quotient.
+	*/
+	numerator[0] = field.One()
+	denominator[0] = field.One()
+
+	for i := 0; i < action.ctx.N-1; i++ {
+		ai, bi := a.Get(i), b.Get(i)
+		numerator[i+1] = ai
+		denominator[i+1] = bi
+		numerator[i+1].Mul(&numerator[i+1], &numerator[i])
+		denominator[i+1].Mul(&denominator[i+1], &denominator[i])
+	}
+
+	z := numerator
+	denominator = field.BatchInvert(denominator)
+	vector.MulElementWise(z, z, denominator)
+
+	run.AssignColumn(action.ctx.Z_NAME, sv.NewRegular(z))
+
+	stopTimer()
+}
+
 func deriveNamePerm(r string, queryName ifaces.QueryID, i int) ifaces.ColID {
 	return ifaces.ColIDf("%v_%v_%v", queryName, r, i)
 }

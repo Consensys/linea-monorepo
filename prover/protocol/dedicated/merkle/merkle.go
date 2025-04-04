@@ -104,11 +104,22 @@ func merkleProofCheck(
 	}
 
 	// assigns the compute module
-	comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-		leaves := leaves.GetColAssignment(run)
-		pos := pos.GetColAssignment(run)
-		cm.assign(run, leaves, pos)
-	})
+	comp.RegisterProverAction(round, &merkleProofCheckAssignProverAction{cm: cm, leaves: leaves, pos: pos})
+}
+
+// merkleProofCheckAssignProverAction assigns the compute module for Merkle proof checking.
+// It implements the [wizard.ProverAction] interface.
+type merkleProofCheckAssignProverAction struct {
+	cm     ComputeMod
+	leaves ifaces.Column
+	pos    ifaces.Column
+}
+
+// Run executes the assignment of the compute module.
+func (a *merkleProofCheckAssignProverAction) Run(run *wizard.ProverRuntime) {
+	leaves := a.leaves.GetColAssignment(run)
+	pos := a.pos.GetColAssignment(run)
+	a.cm.assign(run, leaves, pos)
 }
 
 // pack a list of merkle-proofs into a single vector
