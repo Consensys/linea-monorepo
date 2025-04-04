@@ -147,7 +147,7 @@ library RlpEncoder {
     if (_uintValue == 0) return new bytes(0);
 
     assembly {
-      let ptr := mload(0x40)
+      encodedBytes := mload(0x40)
       let sectionStart := 0
       let sectionLength := 128
       for {
@@ -162,20 +162,19 @@ library RlpEncoder {
       }
 
       let length := div(sub(256, sectionStart), 8)
-      encodedBytes := ptr
       mstore(encodedBytes, length)
 
-      let actualDataStart := add(encodedBytes, 0x20)
+      let writePtr := add(encodedBytes, 0x20)
 
       for {
         let j := 0
       } lt(j, length) {
         j := add(j, 1)
       } {
-        mstore8(add(actualDataStart, j), and(shr(mul(sub(length, add(j, 1)), 8), _uintValue), 0xff))
+        mstore8(add(writePtr, j), and(shr(mul(sub(length, add(j, 1)), 8), _uintValue), 0xff))
       }
 
-      mstore(0x40, add(add(ptr, 0x20), length))
+      mstore(0x40, add(add(encodedBytes, 0x20), length))
     }
   }
 
