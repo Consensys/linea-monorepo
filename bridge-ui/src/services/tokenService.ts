@@ -4,6 +4,7 @@ import { config } from "@/config";
 import { SupportedCurrencies, defaultTokensConfig } from "@/stores";
 import { GithubTokenListToken, Token, BridgeProvider, NetworkTokens } from "@/types";
 import { USDC_SYMBOL } from "@/constants";
+import { isUndefined } from "@/utils";
 
 enum NetworkTypes {
   MAINNET = "MAINNET",
@@ -24,7 +25,7 @@ export async function getTokens(networkTypes: NetworkTypes): Promise<GithubToken
     const bridgedTokens = tokens.filter(
       (token: GithubTokenListToken) =>
         token.tokenType.includes("canonical-bridge") ||
-        (token.tokenType.includes("native") && token.extension?.rootAddress !== undefined) ||
+        (token.tokenType.includes("native") && !isUndefined(token.extension?.rootAddress)) ||
         token.symbol === USDC_SYMBOL,
     );
     return bridgedTokens;
@@ -39,14 +40,14 @@ export async function fetchTokenPrices(
   currency: SupportedCurrencies,
   chainId?: number,
 ): Promise<Record<string, number>> {
-  if (!chainId) {
+  if (isUndefined(chainId)) {
     return {};
   }
 
   const response = await fetch(
     `https://price.api.cx.metamask.io/v2/chains/${chainId}/spot-prices?tokenAddresses=${tokenAddresses.join(",")}&vsCurrency=${currency}`,
   );
-  if (!response.ok) {
+  if (response.ok === false) {
     throw new Error("Error in getTokenPrices");
   }
 
