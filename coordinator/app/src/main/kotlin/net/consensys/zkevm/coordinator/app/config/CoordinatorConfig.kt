@@ -73,11 +73,6 @@ data class ConflationConfig(
   val conflationTargetEndBlockNumbers: Set<ULong> = _conflationTargetEndBlockNumbers.map { it.toULong() }.toSet()
 }
 
-data class ZkTraces(
-  val ethApi: URL,
-  val newBlockPollingInterval: Duration
-)
-
 interface RetryConfig {
   val maxRetries: Int?
   val timeout: Duration?
@@ -313,7 +308,8 @@ data class L2Config(
   val blocksToFinalization: UInt,
   val lastHashSearchWindow: UInt,
   val anchoringReceiptPollingInterval: Duration,
-  val maxReceiptRetries: UInt
+  val maxReceiptRetries: UInt,
+  val newBlockPollingInterval: Duration
 ) {
   init {
     messageServiceAddress.assertIsValidAddress("messageServiceAddress")
@@ -500,6 +496,12 @@ data class GasPriceCapTimeOfDayMultipliersConfig(val gasPriceCapTimeOfDayMultipl
 
 data class Type2StateProofProviderConfig(
   val endpoints: List<URL>,
+  val l1QueryBlockTag: BlockParameter.Tag = BlockParameter.Tag.LATEST,
+  val l1PollingInterval: Duration = Duration.ofSeconds(12),
+  val l1RequestRetry: RequestRetryConfigTomlFriendly = RequestRetryConfigTomlFriendly(
+    backoffDelay = Duration.ofSeconds(1),
+    failuresWarningThreshold = 3
+  ),
   override val requestRetry: RequestRetryConfigTomlFriendly
 ) : RequestRetryConfigurable
 
@@ -513,7 +515,6 @@ data class TracesLimitsV2ConfigFile(val tracesLimits: Map<TracingModuleV2, UInt>
 // otherwise it's hard to test the configuration is loaded properly
 data class CoordinatorConfigTomlDto(
   val l2InclusiveBlockNumberToStopAndFlushAggregation: ULong? = null,
-  val zkTraces: ZkTraces,
   val blobCompression: BlobCompressionConfig,
   val proofAggregation: AggregationConfig,
   val traces: TracesConfig,
@@ -538,7 +539,6 @@ data class CoordinatorConfigTomlDto(
 ) {
   fun reified(): CoordinatorConfig = CoordinatorConfig(
     l2InclusiveBlockNumberToStopAndFlushAggregation = l2InclusiveBlockNumberToStopAndFlushAggregation,
-    zkTraces = zkTraces,
     blobCompression = blobCompression,
     proofAggregation = proofAggregation,
     traces = traces,
@@ -565,7 +565,6 @@ data class CoordinatorConfigTomlDto(
 
 data class CoordinatorConfig(
   val l2InclusiveBlockNumberToStopAndFlushAggregation: ULong? = null,
-  val zkTraces: ZkTraces,
   val blobCompression: BlobCompressionConfig,
   val proofAggregation: AggregationConfig,
   val traces: TracesConfig,
