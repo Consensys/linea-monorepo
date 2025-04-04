@@ -32,12 +32,12 @@ func runTest(t *testing.T, gen GlobalConstraintGenerator, expectedCorrect bool) 
 	}
 }
 
-type GlobalConstraintGenerator func() (wizard.DefineFunc, wizard.ProverStep)
+type GlobalConstraintGenerator func() (wizard.DefineFunc, wizard.MainProverStep)
 
 /*
 No annulator remove the term (X-1)(X-omega) from the constraint. Making it invalid
 */
-func fibonacci() (wizard.DefineFunc, wizard.ProverStep) {
+func fibonacci() (wizard.DefineFunc, wizard.MainProverStep) {
 
 	var (
 		P ifaces.ColID   = "X"
@@ -66,7 +66,7 @@ func fibonacci() (wizard.DefineFunc, wizard.ProverStep) {
 	return definer, hLProver
 }
 
-func pythagoreTriplet() (wizard.DefineFunc, wizard.ProverStep) {
+func pythagoreTriplet() (wizard.DefineFunc, wizard.MainProverStep) {
 
 	var (
 		X ifaces.ColID   = "X"
@@ -100,7 +100,7 @@ func pythagoreTriplet() (wizard.DefineFunc, wizard.ProverStep) {
 	return define, hLProver
 }
 
-func testDummyShifted() (wizard.DefineFunc, wizard.ProverStep) {
+func testDummyShifted() (wizard.DefineFunc, wizard.MainProverStep) {
 	var (
 		X, Y ifaces.ColID = "X", "Y"
 	)

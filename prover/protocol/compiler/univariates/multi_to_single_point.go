@@ -2,11 +2,12 @@ package univariates
 
 import (
 	"fmt"
-	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 	"math/big"
 	"reflect"
 	"runtime"
 	"sync"
+
+	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/sirupsen/logrus"
@@ -65,15 +66,34 @@ func MultiPointToSinglePoint(targetSize int) func(comp *wizard.CompiledIOP) {
 		}
 
 		// Specify how to compute the quotient
-		comp.SubProvers.AppendToInner(ctx.numRound, ctx.accumulateQuotients)
+		comp.RegisterProverAction(ctx.numRound, &multiPointToSinglePointProverAction{ctx: ctx, actionType: "accumulateQuotients"})
 		// Evaluation point for the new expression
 		comp.InsertCoin(ctx.numRound+1, ctx.EvaluationPoint, coin.Field)
 		// Common single evaluation
 		comp.InsertUnivariate(ctx.numRound+1, ctx.EvaluationQuery, append(ctx.polys, ctx.Quotients...))
 		// Computation of the alleged values
-		comp.SubProvers.AppendToInner(ctx.numRound+1, ctx.claimEvaluation)
+		comp.RegisterProverAction(ctx.numRound+1, &multiPointToSinglePointProverAction{ctx: ctx, actionType: "claimEvaluation"})
 		// Consistency check
 		comp.InsertVerifier(ctx.numRound+1, ctx.verifier, ctx.gnarkVerify)
+	}
+}
+
+// multiPointToSinglePointProverAction is the action to perform various steps in the multi-point to single-point compiler.
+// It implements the [wizard.ProverAction] interface.
+type multiPointToSinglePointProverAction struct {
+	ctx        mptsCtx
+	actionType string
+}
+
+// Run executes the specified action.
+func (a *multiPointToSinglePointProverAction) Run(run *wizard.ProverRuntime) {
+	switch a.actionType {
+	case "accumulateQuotients":
+		a.ctx.accumulateQuotients(run)
+	case "claimEvaluation":
+		a.ctx.claimEvaluation(run)
+	default:
+		utils.Panic("unknown action type: %v", a.actionType)
 	}
 }
 

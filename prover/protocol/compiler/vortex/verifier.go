@@ -220,9 +220,19 @@ func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces
 	name := ifaces.ColIDf("VORTEX_%v_SHADOW_ROUND_%v_ID_%v", comp.SelfRecursionCount, round, id)
 	col := comp.InsertCommit(round, name, size)
 
-	comp.SubProvers.AppendToInner(round, func(assi *wizard.ProverRuntime) {
-		assi.AssignColumn(name, smartvectors.NewConstant(field.Zero(), size))
-	})
+	comp.RegisterProverAction(round, &shadowRowAssignProverAction{name: name, size: size})
 
 	return col
+}
+
+// shadowRowAssignProverAction assigns a zero-filled column for the shadow row.
+// It implements the [wizard.ProverAction] interface.
+type shadowRowAssignProverAction struct {
+	name ifaces.ColID
+	size int
+}
+
+// Run executes the assignment of the shadow row column.
+func (a *shadowRowAssignProverAction) Run(assi *wizard.ProverRuntime) {
+	assi.AssignColumn(a.name, smartvectors.NewConstant(field.Zero(), a.size))
 }

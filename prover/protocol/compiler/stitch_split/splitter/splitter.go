@@ -14,17 +14,26 @@ func Splitter(size int) func(*wizard.CompiledIOP) {
 	return func(comp *wizard.CompiledIOP) {
 		// it creates the splitting columns (from the eligible columns), and commits to them
 		ctx := newSplitter(comp, size)
-		//  adjust the constraints accordingly over the stitchings of the sub columns.
+		// adjust the constraints accordingly over the stitchings of the sub columns.
 		ctx.constraints()
 
 		// it assigns the stitching columns and delete the assignment of the sub columns.
-		comp.SubProvers.AppendToInner(comp.NumRounds()-1, func(run *wizard.ProverRuntime) {
-			for round := range ctx.Splittings {
-				for bigCol := range ctx.Splittings[round].ByBigCol {
-					run.Columns.TryDel(bigCol)
-				}
-			}
-		})
+		comp.RegisterProverAction(comp.NumRounds()-1, &splitterAssignProverAction{ctx: ctx})
+	}
+}
+
+// splitterAssignProverAction handles the assignment and deletion of columns in the splitter.
+// It implements the [wizard.ProverAction] interface.
+type splitterAssignProverAction struct {
+	ctx splitterContext
+}
+
+// Run executes the column deletion for the splitter.
+func (a *splitterAssignProverAction) Run(run *wizard.ProverRuntime) {
+	for round := range a.ctx.Splittings {
+		for bigCol := range a.ctx.Splittings[round].ByBigCol {
+			run.Columns.TryDel(bigCol)
+		}
 	}
 }
 
@@ -122,16 +131,27 @@ func (ctx *splitterContext) ScanSplitCommit() {
 			// Mark the handle as ignored
 			comp.Columns.MarkAsIgnored(col.GetColID())
 		}
-		ctx.comp.SubProvers.AppendToInner(round, ctx.Prove(round))
+		ctx.comp.RegisterProverAction(round, &splitCommitProverAction{ctx: ctx, round: round})
 	}
+}
 
+// splitCommitProverAction is the action to perform the split commit.
+// It implements the [wizard.ProverAction] interface.
+type splitCommitProverAction struct {
+	ctx   *splitterContext
+	round int
+}
+
+// Run executes the splitCommitProverAction over a [ProverRuntime]
+func (a *splitCommitProverAction) Run(run *wizard.ProverRuntime) {
+	a.ctx.Prove(a.round)(run)
 }
 
 func nameHandleSlice(h ifaces.Column, num, numSlots int) ifaces.ColID {
 	return ifaces.ColIDf("%v_SUBSLICE_%v_OVER_%v", h.GetColID(), num, numSlots)
 }
 
-func (ctx splitterContext) Prove(round int) wizard.ProverStep {
+func (ctx splitterContext) Prove(round int) wizard.MainProverStep {
 
 	return func(run *wizard.ProverRuntime) {
 		stopTimer := profiling.LogTimer("splitter compiler")

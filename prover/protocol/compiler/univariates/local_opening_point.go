@@ -36,8 +36,19 @@ func CompileLocalOpening(comp *wizard.CompiledIOP) {
 		ctx.handles,
 	)
 
-	comp.SubProvers.AppendToInner(ctx.startRound, ctx.prover)
+	comp.RegisterProverAction(ctx.startRound, &compileLocalOpeningProverAction{ctx: ctx})
 	comp.InsertVerifier(ctx.startRound, ctx.verifier, ctx.gnarkVerifier)
+}
+
+// compileLocalOpeningProverAction is the action to perform the local opening compilation.
+// It implements the [wizard.ProverAction] interface.
+type compileLocalOpeningProverAction struct {
+	ctx localOpeningCtx
+}
+
+// Run executes the compileLocalOpeningProverAction over a [ProverRuntime]
+func (a *compileLocalOpeningProverAction) Run(run *wizard.ProverRuntime) {
+	a.ctx.prover(run)
 }
 
 type localOpeningCtx struct {

@@ -33,12 +33,6 @@ type Proof struct {
 	QueriesParams collection.Mapping[ifaces.QueryID, ifaces.QueryParams]
 }
 
-// VerifierStep specifies a single step of verifier for a single subprotocol.
-// This can be used to specify verifier checks involving user-provided
-// columns for relations that cannot be automatically enforced via a
-// [ifaces.Query]
-type VerifierStep func(a *VerifierRuntime) error
-
 // VerifierRuntime runtime collects all data that visible or computed by the
 // verifier of the wizard protocol. This includes the prover's messages, the
 // [column.VerifyingKey] tagged columns.
@@ -95,7 +89,7 @@ func Verify(c *CompiledIOP, proof Proof) error {
 		any
 	*/
 	errs := []error{}
-	for _, roundSteps := range runtime.Spec.SubVerifiers.Inner() {
+	for _, roundSteps := range runtime.Spec.subVerifiers.Inner() {
 		for _, step := range roundSteps {
 			if !step.IsSkipped() {
 				if err := step.Run(&runtime); err != nil {

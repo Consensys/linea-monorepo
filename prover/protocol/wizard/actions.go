@@ -25,26 +25,3 @@ type VerifierAction interface {
 	// error the function enforces the passing of the verifier's checks.
 	RunGnark(frontend.API, *WizardVerifierCircuit)
 }
-
-// genVerifierAction represents a verifier action represented by closures
-type genVerifierAction struct {
-	skipped  bool
-	run      func(*VerifierRuntime) error
-	runGnark func(frontend.API, *WizardVerifierCircuit)
-}
-
-func (gva *genVerifierAction) Run(run *VerifierRuntime) error {
-	return gva.run(run)
-}
-
-func (gva *genVerifierAction) RunGnark(api frontend.API, run *WizardVerifierCircuit) {
-	gva.runGnark(api, run)
-}
-
-func (gva *genVerifierAction) Skip() {
-	gva.skipped = true
-}
-
-func (gva *genVerifierAction) IsSkipped() bool {
-	return gva.skipped
-}

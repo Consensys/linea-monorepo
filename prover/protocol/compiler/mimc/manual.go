@@ -37,7 +37,7 @@ func manualCheckMiMCBlock(comp *wizard.CompiledIOP, blocks, oldStates, newStates
 	// And checks consistency of the last one with the alleged resulting states
 	ctx.manualCheckFinalRoundPerm(s)
 
-	comp.SubProvers.AppendToInner(round, ctx.assign)
+	comp.RegisterProverAction(round, &mimcAssignProverAction{ctx: ctx})
 }
 
 // Utility struct wrapping all the intermediate values of the MiMC wizard
@@ -48,6 +48,17 @@ type mimcCtx struct {
 	newStates          ifaces.Column
 	intermediateResult []ifaces.Column
 	intermediatePow4   []ifaces.Column
+}
+
+// mimcAssignProverAction is the action to assign MiMC intermediate columns.
+// It implements the [wizard.ProverAction] interface.
+type mimcAssignProverAction struct {
+	ctx mimcCtx
+}
+
+// Run delegates to the existing assign method of mimcCtx.
+func (a *mimcAssignProverAction) Run(run *wizard.ProverRuntime) {
+	a.ctx.assign(run)
 }
 
 // Applies the round permutation #i, works for all except the last round

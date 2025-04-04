@@ -26,18 +26,12 @@ func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDeg
 		logrus.Debugf("Unsafe, the coin is before the commitment : %v", foldedName)
 	}
 
-	comp.SubProvers.AppendToInner(round, func(assi *wizard.ProverRuntime) {
-		// We need to compute an assignment for "folded"
-		h := h.GetColAssignment(assi) // overshadows the handle
-		x := x.GetVal(assi)           // overshadows the accessor
-
-		foldedVal := make([]field.Element, foldedSize)
-		for i := range foldedVal {
-			subH := h.SubVector(i*innerDegree, (i+1)*innerDegree)
-			foldedVal[i] = smartvectors.EvalCoeff(subH, x)
-		}
-
-		assi.AssignColumn(foldedName, smartvectors.NewRegular(foldedVal))
+	comp.RegisterProverAction(round, &foldProverAction{
+		h:           h,
+		x:           x,
+		innerDegree: innerDegree,
+		foldedName:  foldedName,
+		foldedSize:  foldedSize,
 	})
 
 	outerCoinName := coin.Namef("OUTER_COIN_%v", folded.GetColID())
@@ -62,4 +56,29 @@ func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDeg
 	})
 
 	return folded
+}
+
+// foldProverAction is the action to assign the folded column.
+// It implements the [wizard.ProverAction] interface.
+type foldProverAction struct {
+	h           ifaces.Column
+	x           ifaces.Accessor
+	innerDegree int
+	foldedName  ifaces.ColID
+	foldedSize  int
+}
+
+// Run executes the foldProverAction over a [ProverRuntime]
+func (a *foldProverAction) Run(assi *wizard.ProverRuntime) {
+	// We need to compute an assignment for "folded"
+	h := a.h.GetColAssignment(assi) // overshadows the handle
+	x := a.x.GetVal(assi)           // overshadows the accessor
+
+	foldedVal := make([]field.Element, a.foldedSize)
+	for i := range foldedVal {
+		subH := h.SubVector(i*a.innerDegree, (i+1)*a.innerDegree)
+		foldedVal[i] = smartvectors.EvalCoeff(subH, x)
+	}
+
+	assi.AssignColumn(a.foldedName, smartvectors.NewRegular(foldedVal))
 }

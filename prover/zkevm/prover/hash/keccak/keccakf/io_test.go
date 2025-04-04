@@ -14,7 +14,7 @@ import (
 
 func MakeTestCaseInputOutputModule(maxNumKeccakF int) (
 	define wizard.DefineFunc,
-	prover func(permTrace keccak.PermTraces) wizard.ProverStep,
+	prover func(permTrace keccak.PermTraces) wizard.MainProverStep,
 ) {
 	round := 0
 	mod := &Module{}
@@ -31,7 +31,7 @@ func MakeTestCaseInputOutputModule(maxNumKeccakF int) (
 		mod.IO.newOutput(comp, maxNumKeccakF, *mod)
 	}
 
-	prover = func(permTrace keccak.PermTraces) wizard.ProverStep {
+	prover = func(permTrace keccak.PermTraces) wizard.MainProverStep {
 		return func(run *wizard.ProverRuntime) {
 			mod.Assign(run, permTrace)
 		}

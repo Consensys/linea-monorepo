@@ -18,7 +18,7 @@ import (
 // It generates Define and Assign function of Packing module, for testing
 func makeTestCaseLaneAlloc() (
 	define wizard.DefineFunc,
-	prover wizard.ProverStep,
+	prover wizard.MainProverStep,
 ) {
 	var (
 		//  the total value stored in colA should be a factor of maxValue

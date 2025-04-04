@@ -20,13 +20,6 @@ Compile an IOP from a protocol definition
 var Compile = wizard.Compile
 
 /*
-User provided function that run the "top-level" protocol.
-Function to be run by the prover to pass the values to the
-prover (i.e) what values to commit to etc...
-*/
-type ProverSteps = wizard.ProverStep
-
-/*
 Run the prover of the compiled protocol
 */
 var Prover = wizard.Prove

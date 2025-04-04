@@ -298,38 +298,46 @@ func (ctx *stickContext) createMapToNew() {
 		}
 
 		// assign the new columns
-		round := round // deep copies the round to inject it in the closure
+		ctx.comp.RegisterProverAction(round, &mapToNewProverAction{ctx: ctx, round: round})
+	}
+}
 
-		ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-			stopTimer := profiling.LogTimer("splitter compiler")
-			defer stopTimer()
-			for _, newName := range ctx.News[round].List {
-				// Trick, in order to compute the assignment of newName we
-				// extract the witness of the interleaving of the grouped
-				// columns.
-				group := ctx.CompiledColumns[round].ByNew[newName.GetColID()]
-				witnesses := make([]smartvectors.SmartVector, len(group))
-				for i := range witnesses {
-					// If the column is allocated in the runtime (e.g. not a verifier column)
-					// then we use a shallow copy of it.
-					if run.Columns.Exists(group[i].GetColID()) {
-						witnesses[i] = run.Columns.MustGet(group[i].GetColID())
-						continue
-					}
-					// Else, we use the witness getting features attached to the column. (Which
-					// is not memory efficient). That's why we do not use it for all columns.
-					witnesses[i] = group[i].GetColAssignment(run)
-				}
-				assignement := smartvectors.
-					AllocateRegular(len(group) * witnesses[0].Len()).(*smartvectors.Regular)
-				for i := range group {
-					for j := 0; j < witnesses[0].Len(); j++ {
-						(*assignement)[i+j*len(group)] = witnesses[i].Get(j)
-					}
-				}
-				run.AssignColumn(newName.GetColID(), assignement)
+// mapToNewProverAction is the action to assign the new columns.
+// It implements the [wizard.ProverAction] interface.
+type mapToNewProverAction struct {
+	ctx   *stickContext
+	round int
+}
+
+// Run executes the mapToNewProverAction over a [ProverRuntime]
+func (a *mapToNewProverAction) Run(run *wizard.ProverRuntime) {
+	stopTimer := profiling.LogTimer("splitter compiler")
+	defer stopTimer()
+	for _, newName := range a.ctx.News[a.round].List {
+		// Trick, in order to compute the assignment of newName we
+		// extract the witness of the interleaving of the grouped
+		// columns.
+		group := a.ctx.CompiledColumns[a.round].ByNew[newName.GetColID()]
+		witnesses := make([]smartvectors.SmartVector, len(group))
+		for i := range witnesses {
+			// If the column is allocated in the runtime (e.g. not a verifier column)
+			// then we use a shallow copy of it.
+			if run.Columns.Exists(group[i].GetColID()) {
+				witnesses[i] = run.Columns.MustGet(group[i].GetColID())
+				continue
 			}
-		})
+			// Else, we use the witness getting features attached to the column. (Which
+			// is not memory efficient). That's why we do not use it for all columns.
+			witnesses[i] = group[i].GetColAssignment(run)
+		}
+		assignement := smartvectors.
+			AllocateRegular(len(group) * witnesses[0].Len()).(*smartvectors.Regular)
+		for i := range group {
+			for j := 0; j < witnesses[0].Len(); j++ {
+				(*assignement)[i+j*len(group)] = witnesses[i].Get(j)
+			}
+		}
+		run.AssignColumn(newName.GetColID(), assignement)
 	}
 }
 

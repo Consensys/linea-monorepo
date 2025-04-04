@@ -47,6 +47,25 @@ type perTableCase struct {
 	StratCondIncluded []assignmentStrat
 }
 
+// assignStratAction is the action to assign strategies to columns.
+// It implements the [wizard.ProverAction] interface.
+type assignStratAction struct {
+	strat     []assignmentStrat
+	table     [][]ifaces.Column
+	condTable []ifaces.Column
+	stratCond []assignmentStrat
+}
+
+// Run executes the assignStratAction over a [ProverRuntime]
+func (action *assignStratAction) Run(run *wizard.ProverRuntime) {
+	for frag := range action.strat {
+		action.strat[frag](run, action.table[frag]...)
+		if action.condTable != nil && action.stratCond != nil && action.stratCond[frag] != nil {
+			action.stratCond[frag](run, action.condTable[frag])
+		}
+	}
+}
+
 func TestExhaustive(t *testing.T) {
 
 	logrus.SetLevel(logrus.FatalLevel)
@@ -496,13 +515,11 @@ func TestExhaustive(t *testing.T) {
 							}
 						}
 
-						b.SubProvers.AppendToInner(0, func(run *wizard.ProverRuntime) {
-							for frag := range tabCase.StratIncluding {
-								tabCase.StratIncluding[frag](run, table[frag]...)
-								if condTable != nil {
-									tabCase.StratCondIncluding[frag](run, condTable[frag])
-								}
-							}
+						b.RegisterProverAction(0, &assignStratAction{
+							strat:     tabCase.StratIncluding,
+							table:     table,
+							condTable: condTable,
+							stratCond: tabCase.StratCondIncluding,
 						})
 
 						// This declare the included ones
@@ -524,11 +541,11 @@ func TestExhaustive(t *testing.T) {
 								)
 							}
 
-							b.SubProvers.AppendToInner(0, func(run *wizard.ProverRuntime) {
-								tabCase.StratIncluded[incID](run, included...)
-								if tabCase.StratCondIncluded != nil && tabCase.StratCondIncluded[incID] != nil {
-									tabCase.StratCondIncluded[incID](run, condInc)
-								}
+							b.RegisterProverAction(0, &assignStratAction{
+								strat:     tabCase.StratIncluded,
+								table:     [][]ifaces.Column{included},
+								condTable: []ifaces.Column{condInc},
+								stratCond: tabCase.StratCondIncluded,
 							})
 
 							b.GenericFragmentedConditionalInclusion(

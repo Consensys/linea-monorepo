@@ -64,14 +64,14 @@ type CompiledIOP struct {
 	// the user and the compilers and their role is to assign the columns and
 	// parametrizable's queries parameters during the prover runtime of the
 	// protocol.
-	SubProvers collection.VecVec[ProverStep]
+	subProvers collection.VecVec[ProverAction]
 
 	// subVerifier stores all the steps that need to be performed by the verifier
 	// explicitly. The role of the verifier function's is to implement all the
 	// manual checks that the verifier has to perform. This is useful when a check
 	// cannot be represented in term of query but, when possible, queries should
 	// always be preferred to express a relation that the witness must satisfy.
-	SubVerifiers collection.VecVec[VerifierAction]
+	subVerifiers collection.VecVec[VerifierAction]
 
 	// FiatShamirHooks is an action that is run during the FS sampling. Compared
 	// to a normal verifier action it has the possibility to interact with the
@@ -465,30 +465,6 @@ func (c *CompiledIOP) InsertPublicInput(round int, name ifaces.ColID, size int) 
 	return c.Columns.AddToRound(round, name, size, column.PublicInput)
 }
 
-// InsertVerifier registers a verifier steps into the current CompiledIOP;
-// meaning a "native" Go function that performs one or more checks involving
-// wizard items that are accessible to the verifier of the specified protocol.
-//
-// Unlike for adding prover steps, the caller is required to provide:
-//   - a version of the verifier function meant to operate in a normal setting
-//   - a version of the verifier function meant to be executed within a gnark
-//     circuit. This is required for recursive composition of the protocol. In
-//     a context where recursive composition is not required, it is fine to
-//     provide a no-op function, but the caller should not provide the nil
-//     function. If not a no-op function, the provided function should perform
-//     exactly the same checks as the "native" verifier function.
-//
-// Both functions should performs exactly the same checks but if the caller does
-// not intend to run the verifier of the Wizard protocol in a gnark circuit,
-// passing `nil` is fine.
-func (c *CompiledIOP) InsertVerifier(round int, ver VerifierStep, gnarkVer GnarkVerifierStep) {
-	c.assertConsistentRound(round)
-	c.SubVerifiers.AppendToInner(round, &genVerifierAction{
-		run:      ver,
-		runGnark: gnarkVer,
-	})
-}
-
 // InsertRange registers [query.Range] in the CompiledIOP. Namely, it ensures
 // that all the values taken by `h` are within the range [[0; max]]. The caller
 // must provide a non-empty uniquely-identifying name to the column. The name
@@ -626,13 +602,11 @@ func (c *CompiledIOP) RegisterVerifyingKey(name ifaces.ColID, witness ifaces.Col
 func (c *CompiledIOP) RegisterProverAction(round int, action ProverAction) {
 	// This is purely to not break the current provers in the middle of the
 	// switch.
-	c.SubProvers.AppendToInner(round, action.Run)
+	c.subProvers.AppendToInner(round, action)
 }
 
 // RegisterVerifierAction registers an action to be accomplished by the verifier
 // of the protocol at a given round
 func (c *CompiledIOP) RegisterVerifierAction(round int, action VerifierAction) {
-	// This is purely to not break the current provers in the middle of the
-	// switch.
-	c.InsertVerifier(round, action.Run, action.RunGnark)
+	c.subVerifiers.AppendToInner(round, action)
 }

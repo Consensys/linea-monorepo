@@ -126,45 +126,9 @@ func (ctx *linearHashCtx) HashingCols() {
 		ctx.ToHash.Size(),
 	)
 
-	ctx.comp.SubProvers.AppendToInner(
+	ctx.comp.RegisterProverAction(
 		ctx.Round,
-		func(run *wizard.ProverRuntime) {
-			// Extract the blocks
-			blocksWit := ctx.ToHash.GetColAssignment(run)
-
-			olds := make([]field.Element, ctx.Period*ctx.NumHash)
-			news := make([]field.Element, ctx.Period*ctx.NumHash)
-
-			// Assign the hashes in parallel
-			parallel.Execute(ctx.NumHash, func(start, stop int) {
-				for hashID := start; hashID < stop; hashID++ {
-					// each hash start from zero
-					old := field.Zero()
-					for i := 0; i < ctx.Period; i++ {
-						pos := hashID*ctx.Period + i
-						currentBlock := blocksWit.Get(pos)
-						new := mimc.BlockCompression(old, currentBlock)
-						olds[pos] = old
-						news[pos] = new
-						old = new
-					}
-				}
-			})
-
-			padNew := mimc.BlockCompression(field.Zero(), field.Zero())
-			oldSV := smartvectors.RightZeroPadded(olds, ctx.ToHash.Size())
-			newSV := smartvectors.RightPadded(news, padNew, ctx.ToHash.Size())
-			newCleanSV := smartvectors.RightZeroPadded(vector.DeepCopy(news), ctx.ToHash.Size())
-
-			// assign old state
-			run.AssignColumn(ctx.OldState.GetColID(), oldSV)
-
-			// assign new state
-			run.AssignColumn(ctx.NewState.GetColID(), newSV)
-
-			// and new clean, the same as newstate but clean
-			run.AssignColumn(ctx.NewStateClean.GetColID(), newCleanSV)
-		},
+		&hashingColsAssignProverAction{ctx: ctx},
 	)
 
 	// And registers queries for the initial values
@@ -204,6 +168,51 @@ func (ctx *linearHashCtx) HashingCols() {
 		ctx.ToHash, ctx.OldState, ctx.NewState,
 	)
 
+}
+
+// hashingColsAssignProverAction assigns the OldState, NewState, and NewStateClean columns.
+// It implements the [wizard.ProverAction] interface.
+type hashingColsAssignProverAction struct {
+	ctx *linearHashCtx
+}
+
+// Run executes the assignment of the hashing columns.
+func (a *hashingColsAssignProverAction) Run(run *wizard.ProverRuntime) {
+	// Extract the blocks
+	blocksWit := a.ctx.ToHash.GetColAssignment(run)
+
+	olds := make([]field.Element, a.ctx.Period*a.ctx.NumHash)
+	news := make([]field.Element, a.ctx.Period*a.ctx.NumHash)
+
+	// Assign the hashes in parallel
+	parallel.Execute(a.ctx.NumHash, func(start, stop int) {
+		for hashID := start; hashID < stop; hashID++ {
+			// each hash start from zero
+			old := field.Zero()
+			for i := 0; i < a.ctx.Period; i++ {
+				pos := hashID*a.ctx.Period + i
+				currentBlock := blocksWit.Get(pos)
+				new := mimc.BlockCompression(old, currentBlock)
+				olds[pos] = old
+				news[pos] = new
+				old = new
+			}
+		}
+	})
+
+	padNew := mimc.BlockCompression(field.Zero(), field.Zero())
+	oldSV := smartvectors.RightZeroPadded(olds, a.ctx.ToHash.Size())
+	newSV := smartvectors.RightPadded(news, padNew, a.ctx.ToHash.Size())
+	newCleanSV := smartvectors.RightZeroPadded(vector.DeepCopy(news), a.ctx.ToHash.Size())
+
+	// assign old state
+	run.AssignColumn(a.ctx.OldState.GetColID(), oldSV)
+
+	// assign new state
+	run.AssignColumn(a.ctx.NewState.GetColID(), newSV)
+
+	// and new clean, the same as newstate but clean
+	run.AssignColumn(a.ctx.NewStateClean.GetColID(), newCleanSV)
 }
 
 func (ctx *linearHashCtx) IsActiveExpected() ifaces.Column {

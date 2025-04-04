@@ -40,10 +40,10 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 	// Inserts the prover before calling the sub-wizard so that it is executed
 	// before the sub-prover's wizards.
 	//
-	comp.SubProvers.AppendToInner(round, func(assi *wizard.ProverRuntime) {
-		witness := h.GetColAssignment(assi)
-		coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0, nil).SubVector(0, codeDim)
-		assi.AssignColumn(ifaces.ColIDf("%v_%v", REED_SOLOMON_COEFF, h.GetColID()), coeffs)
+	comp.RegisterProverAction(round, &reedSolomonProverAction{
+		h:       h,
+		codeDim: codeDim,
+		coeff:   coeff,
 	})
 
 	coeffCheck := functionals.CoeffEval(
@@ -73,4 +73,19 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 		api.AssertIsEqual(y, y_)
 	})
 
+}
+
+// reedSolomonProverAction is the action to assign the Reed-Solomon coefficients.
+// It implements the [wizard.ProverAction] interface.
+type reedSolomonProverAction struct {
+	h       ifaces.Column
+	codeDim int
+	coeff   ifaces.Column
+}
+
+// Run executes the reedSolomonProverAction over a [ProverRuntime]
+func (a *reedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
+	witness := a.h.GetColAssignment(assi)
+	coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0, nil).SubVector(0, a.codeDim)
+	assi.AssignColumn(a.coeff.GetColID(), coeffs)
 }
