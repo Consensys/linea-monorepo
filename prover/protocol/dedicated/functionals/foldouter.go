@@ -27,20 +27,13 @@ func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, out
 		logrus.Debugf("Unsafe, the coin is before the commitment : %v", foldedName)
 	}
 
-	comp.SubProvers.AppendToInner(round, func(assi *wizard.ProverRuntime) {
-		// We need to compute an assignment for "folded"
-		h := h.GetColAssignment(assi) // overshadows the handle
-		x := x.GetVal(assi)           // overshadows the accessor
-
-		// Split h in "outerDegree" segments of size "innerDegree"
-		innerChunks := make([]smartvectors.SmartVector, outerDegree)
-		for i := range innerChunks {
-			innerChunks[i] = h.SubVector(i*innerDegree, (i+1)*innerDegree)
-		}
-
-		// Assign the folding as the RLC of the chunks using powers of x
-		foldedVal := smartvectors.PolyEval(innerChunks, x)
-		assi.AssignColumn(foldedName, foldedVal)
+	comp.RegisterProverAction(round, &foldOuterProverAction{
+		h:           h,
+		x:           x,
+		outerDegree: outerDegree,
+		innerDegree: innerDegree,
+		foldedName:  foldedName,
+		folded:      folded,
 	})
 
 	innerCoinName := coin.Namef("INNER_COIN_%v", folded.GetColID())
@@ -65,4 +58,32 @@ func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, out
 	})
 
 	return folded
+}
+
+// foldOuterProverAction is the action to assign the folded outer column.
+// It implements the [wizard.ProverAction] interface.
+type foldOuterProverAction struct {
+	h           ifaces.Column
+	x           ifaces.Accessor
+	outerDegree int
+	innerDegree int
+	foldedName  ifaces.ColID
+	folded      ifaces.Column
+}
+
+// Run executes the foldOuterProverAction over a [ProverRuntime]
+func (a *foldOuterProverAction) Run(assi *wizard.ProverRuntime) {
+	// We need to compute an assignment for "folded"
+	h := a.h.GetColAssignment(assi) // overshadows the handle
+	x := a.x.GetVal(assi)           // overshadows the accessor
+
+	// Split h in "outerDegree" segments of size "innerDegree"
+	innerChunks := make([]smartvectors.SmartVector, a.outerDegree)
+	for i := range innerChunks {
+		innerChunks[i] = h.SubVector(i*a.innerDegree, (i+1)*a.innerDegree)
+	}
+
+	// Assign the folding as the RLC of the chunks using powers of x
+	foldedVal := smartvectors.PolyEval(innerChunks, x)
+	assi.AssignColumn(a.foldedName, foldedVal)
 }

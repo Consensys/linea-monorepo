@@ -131,19 +131,19 @@ func (ctx *splitterContext) ScanSplitCommit() {
 			// Mark the handle as ignored
 			comp.Columns.MarkAsIgnored(col.GetColID())
 		}
-		ctx.comp.RegisterProverAction(round, &scanSplitCommitAssignProverAction{ctx: ctx, round: round})
+		ctx.comp.RegisterProverAction(round, &splitCommitProverAction{ctx: ctx, round: round})
 	}
 }
 
-// scanSplitCommitAssignProverAction handles the prover action for splitting columns.
+// splitCommitProverAction is the action to perform the split commit.
 // It implements the [wizard.ProverAction] interface.
-type scanSplitCommitAssignProverAction struct {
+type splitCommitProverAction struct {
 	ctx   *splitterContext
 	round int
 }
 
-// Run executes the prover action for the specified round.
-func (a *scanSplitCommitAssignProverAction) Run(run *wizard.ProverRuntime) {
+// Run executes the splitCommitProverAction over a [ProverRuntime]
+func (a *splitCommitProverAction) Run(run *wizard.ProverRuntime) {
 	a.ctx.Prove(a.round)(run)
 }
 

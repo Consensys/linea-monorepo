@@ -35,13 +35,22 @@ func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 		ctx.constraints()
 
 		// it assigns the stitching columns and delete the assignment of the sub columns.
-		comp.SubProvers.AppendToInner(comp.NumRounds()-1, func(run *wizard.ProverRuntime) {
-			for round := range ctx.Stitchings {
-				for subCol := range ctx.Stitchings[round].BySubCol {
-					run.Columns.TryDel(subCol)
-				}
-			}
-		})
+		comp.RegisterProverAction(comp.NumRounds()-1, &stitcherProverAction{ctx: ctx})
+	}
+}
+
+// stitcherProverAction is the action to assign the stitching columns and delete the assignment of the sub columns.
+// It implements the [wizard.ProverAction] interface.
+type stitcherProverAction struct {
+	ctx stitchingContext
+}
+
+// Run executes the stitcherProverAction over a [ProverRuntime]
+func (a *stitcherProverAction) Run(run *wizard.ProverRuntime) {
+	for round := range a.ctx.Stitchings {
+		for subCol := range a.ctx.Stitchings[round].BySubCol {
+			run.Columns.TryDel(subCol)
+		}
 	}
 }
 
@@ -129,41 +138,51 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 
 		}
 		// @Azam Precomputed ones are double assigned by this?
-		ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-			stopTimer := profiling.LogTimer("stitching compiler")
-			defer stopTimer()
-			var maxSizeGroup int
+		ctx.comp.RegisterProverAction(round, &stitchCommitProverAction{ctx: ctx, round: round})
+	}
+}
 
-			for idBigCol, subColumns := range ctx.Stitchings[round].ByBigCol {
+// stitchCommitProverAction is the action to perform the stitching commit.
+// It implements the [wizard.ProverAction] interface.
+type stitchCommitProverAction struct {
+	ctx   *stitchingContext
+	round int
+}
 
-				maxSizeGroup = ctx.MaxSize / subColumns[0].Size()
+// Run executes the stitchCommitProverAction over a [ProverRuntime]
+func (a *stitchCommitProverAction) Run(run *wizard.ProverRuntime) {
+	stopTimer := profiling.LogTimer("stitching compiler")
+	defer stopTimer()
+	var maxSizeGroup int
 
-				// Sanity-check
-				sizeBigCol := ctx.comp.Columns.GetHandle(idBigCol).Size()
-				if sizeBigCol != ctx.MaxSize {
-					utils.Panic("Unexpected size %v != %v", sizeBigCol, ctx.MaxSize)
-				}
+	for idBigCol, subColumns := range a.ctx.Stitchings[a.round].ByBigCol {
 
-				// If the column is precomputed, it is already assigned
-				if ctx.comp.Precomputed.Exists(idBigCol) {
-					continue
-				}
+		maxSizeGroup = a.ctx.MaxSize / subColumns[0].Size()
 
-				// get the assignment of the subColumns and interleave them
-				witnesses := make([]smartvectors.SmartVector, len(subColumns))
-				for i := range witnesses {
-					witnesses[i] = subColumns[i].GetColAssignment(run)
-				}
-				assignement := smartvectors.
-					AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
-				for i := range subColumns {
-					for j := 0; j < witnesses[0].Len(); j++ {
-						(*assignement)[i+j*maxSizeGroup] = witnesses[i].Get(j)
-					}
-				}
-				run.AssignColumn(idBigCol, assignement)
+		// Sanity-check
+		sizeBigCol := a.ctx.comp.Columns.GetHandle(idBigCol).Size()
+		if sizeBigCol != a.ctx.MaxSize {
+			utils.Panic("Unexpected size %v != %v", sizeBigCol, a.ctx.MaxSize)
+		}
+
+		// If the column is precomputed, it is already assigned
+		if a.ctx.comp.Precomputed.Exists(idBigCol) {
+			continue
+		}
+
+		// get the assignment of the subColumns and interleave them
+		witnesses := make([]smartvectors.SmartVector, len(subColumns))
+		for i := range witnesses {
+			witnesses[i] = subColumns[i].GetColAssignment(run)
+		}
+		assignement := smartvectors.
+			AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
+		for i := range subColumns {
+			for j := 0; j < witnesses[0].Len(); j++ {
+				(*assignement)[i+j*maxSizeGroup] = witnesses[i].Get(j)
 			}
-		})
+		}
+		run.AssignColumn(idBigCol, assignement)
 	}
 }
 

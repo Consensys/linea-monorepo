@@ -101,11 +101,22 @@ func Naturalize(comp *wizard.CompiledIOP) {
 			/*
 				And assigns them
 			*/
-			comp.SubProvers.AppendToInner(roundID, ctx.prove)
+			comp.RegisterProverAction(roundID, &naturalizeProverAction{ctx: ctx})
 
 			comp.InsertVerifier(roundID, ctx.Verify, ctx.GnarkVerify)
 		}
 	}
+}
+
+// naturalizeProverAction is the action to assign the naturalized queries.
+// It implements the [wizard.ProverAction] interface.
+type naturalizeProverAction struct {
+	ctx naturalizationCtx
+}
+
+// Run executes the naturalizeProverAction over a [ProverRuntime]
+func (a *naturalizeProverAction) Run(run *wizard.ProverRuntime) {
+	a.ctx.prove(run)
 }
 
 /*
