@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { encodeFunctionData } from "viem";
 import { useFormStore, useChainStore } from "@/stores";
 import MessageService from "@/abis/MessageService.json";
-import { isEth, isUndefinedOrNull, isZero, isUndefined, isUndefinedOrEmptyString, isNull } from "@/utils";
+import { isEth, isUndefinedOrNull, isZero, isUndefinedOrEmptyString, isNull } from "@/utils";
 import { BridgeProvider, ChainLayer } from "@/types";
 import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER } from "@/constants";
 
