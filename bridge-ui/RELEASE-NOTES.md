@@ -1,3 +1,26 @@
+<a name="v2.2.0"></a>
+
+# [v2.2.0] - 31 Mar 2025
+
+# Feat: OnRamper integration
+
+Description:
+- OnRamper integration
+
+[Changes][v2.2.0]
+
+<a name="v2.1.0"></a>
+
+# [v2.1.0] - 24 Mar 2025
+
+# Feat: LiFi and CCTP V2 integration
+
+Description:
+- LiFi integration
+- CCTP V2 for USDC bridging
+
+[Changes][v2.1.0]
+
 <a name="v2.0.0"></a>
 
 # [v2.0.0] - 18 Mar 2025

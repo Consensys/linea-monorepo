@@ -1,5 +1,7 @@
-import { SupportedChainId } from "@/lib/wagmi";
+import { NATIVE_BRIDGE_SUPPORTED_CHAIN_IDS } from "@/constants";
 import { Address } from "viem";
+
+export type SupportedChainIds = (typeof NATIVE_BRIDGE_SUPPORTED_CHAIN_IDS)[number];
 
 export enum ChainLayer {
   L1 = "L1",
@@ -7,7 +9,7 @@ export enum ChainLayer {
 }
 
 export type Chain = {
-  id: SupportedChainId;
+  id: SupportedChainIds;
   name: string;
   iconPath: string;
   nativeCurrency: { name: string; symbol: string; decimals: number };
@@ -23,11 +25,13 @@ export type Chain = {
       apiUrl?: string | undefined;
     };
   };
-  testnet?: boolean;
+  testnet: boolean;
   layer: ChainLayer;
   messageServiceAddress: Address;
   tokenBridgeAddress: Address;
   gasLimitSurplus: bigint;
   profitMargin: bigint;
   cctpDomain: number;
+  cctpTokenMessengerV2Address: Address;
+  cctpMessageTransmitterV2Address: Address;
 };

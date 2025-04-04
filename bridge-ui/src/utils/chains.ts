@@ -1,23 +1,39 @@
 import { Address } from "viem";
 import { linea, mainnet, Chain as ViemChain, sepolia, lineaSepolia } from "viem/chains";
-import { SupportedChainId } from "@/lib/wagmi";
 import { config } from "@/config";
-import { Chain, ChainLayer } from "@/types";
+import { Chain, ChainLayer, SupportedChainIds } from "@/types";
+
+const getChainName = (chainId: number) => {
+  switch (chainId) {
+    case linea.id:
+      return "Linea";
+    case lineaSepolia.id:
+      return "Linea Sepolia";
+    case mainnet.id:
+      return "Ethereum";
+    case sepolia.id:
+      return "Sepolia";
+    default:
+      return "";
+  }
+};
 
 export const generateChain = (chain: ViemChain): Chain => {
   return {
-    id: chain.id as SupportedChainId,
-    name: chain.id !== lineaSepolia.id ? chain.name : "Linea Sepolia",
+    id: chain.id as SupportedChainIds,
+    name: getChainName(chain.id),
     iconPath: config.chains[chain.id].iconPath,
     nativeCurrency: chain.nativeCurrency,
     blockExplorers: chain.blockExplorers,
-    testnet: chain.testnet,
+    testnet: Boolean(chain.testnet),
     layer: getChainNetworkLayer(chain.id),
     messageServiceAddress: config.chains[chain.id].messageServiceAddress as Address,
     tokenBridgeAddress: config.chains[chain.id].tokenBridgeAddress as Address,
     gasLimitSurplus: config.chains[chain.id].gasLimitSurplus,
     profitMargin: config.chains[chain.id].profitMargin,
     cctpDomain: config.chains[chain.id].cctpDomain,
+    cctpTokenMessengerV2Address: config.chains[chain.id].cctpTokenMessengerV2Address as Address,
+    cctpMessageTransmitterV2Address: config.chains[chain.id].cctpMessageTransmitterV2Address as Address,
   };
 };
 
@@ -41,7 +57,7 @@ export const getChainNetworkLayer = (chainId: number) => {
 export const getChainLogoPath = (chainId: number) => {
   switch (chainId) {
     case linea.id:
-      return "/images/logo/linea-mainnet.svg";
+      return "/images/logo/linea-rounded.svg";
     case lineaSepolia.id:
       return "/images/logo/linea-sepolia.svg";
     case mainnet.id:

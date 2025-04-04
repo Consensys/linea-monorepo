@@ -1,27 +1,25 @@
 import { useMemo } from "react";
-import { useAccount } from "wagmi";
 import { encodeFunctionData, erc20Abi } from "viem";
 import { useFormStore, useChainStore } from "@/stores";
-import { isEth } from "@/utils";
+import { isEth, isNull, isUndefined } from "@/utils";
 import { isCctp } from "@/utils/tokens";
-import { CCTP_TOKEN_MESSENGER } from "@/utils/cctp";
 
 type UseERC20ApproveTxArgsProps = {
+  isConnected: boolean;
   allowance?: bigint;
 };
 
 const useApproveTxArgs = ({ allowance }: UseERC20ApproveTxArgsProps) => {
-  const { address } = useAccount();
   const fromChain = useChainStore.useFromChain();
   const token = useFormStore((state) => state.token);
   const amount = useFormStore((state) => state.amount);
 
   return useMemo(() => {
-    if (!address || !fromChain || !token || isEth(token) || !amount || allowance === undefined || allowance >= amount) {
+    if (isEth(token) || isNull(amount) || isUndefined(allowance) || allowance >= amount) {
       return;
     }
 
-    const spender = !isCctp(token) ? fromChain.tokenBridgeAddress : CCTP_TOKEN_MESSENGER;
+    const spender = !isCctp(token) ? fromChain.tokenBridgeAddress : fromChain.cctpTokenMessengerV2Address;
 
     return {
       type: "approve",
@@ -37,7 +35,7 @@ const useApproveTxArgs = ({ allowance }: UseERC20ApproveTxArgsProps) => {
       },
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [address, allowance, amount, fromChain.id, token]);
+  }, [allowance, amount, fromChain.id, token]);
 };
 
 export default useApproveTxArgs;
