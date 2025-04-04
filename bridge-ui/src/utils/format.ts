@@ -31,7 +31,7 @@ export const formatHex = (hexString: string | undefined, step = 5) => {
  * @returns
  */
 export const formatBalance = (balance: string | 0n | undefined, precision = 4) => {
-  if (isUndefined(balance) || balance === 0n || isEmptyString(balance)) return "";
+  if (balance === 0n || isUndefinedOrEmptyString(balance)) return "";
   const [whole, fraction = ""] = balance.split(".");
   if (fraction.length > precision) {
     return `${whole}.${fraction.slice(0, precision)}`;
