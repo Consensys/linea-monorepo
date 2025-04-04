@@ -1,6 +1,6 @@
 import { formatDate, fromUnixTime } from "date-fns";
 import { Address, getAddress } from "viem";
-import { isUndefinedOrEmptyString, isUndefined, isEmptyString, isZero } from "@/utils";
+import { isUndefinedOrEmptyString, isUndefined, isEmptyString } from "@/utils";
 
 /**
  * Format Ethereum address

@@ -6,7 +6,7 @@ import useERC20BridgingFee from "./useERC20BridgingFee";
 import useEthBridgingFee from "./useEthBridgingFee";
 import { useFormStore, useChainStore } from "@/stores";
 import { Token } from "@/types";
-import { isEth, isUndefined, isNull } from "@/utils";
+import { isEth, isUndefined } from "@/utils";
 import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER } from "@/constants";
 
 type UseBridgingFeeProps = {
