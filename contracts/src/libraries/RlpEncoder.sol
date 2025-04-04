@@ -226,42 +226,43 @@ library RlpEncoder {
 
   /**
    * @custom:attribution https://github.com/sammayo/solidity-rlp-encoder
-   * @notice Flattens a list of byte strings into one byte string.
+   * @notice Private function that flattens a list of byte strings into one byte string.
    * @dev mcopy is used for the Cancun EVM fork. See original for other forks.
    * @param _bytesList List of byte strings to flatten.
    * @return flattenedBytes The flattened byte string.
    */
   function _flatten(bytes[] memory _bytesList) private pure returns (bytes memory flattenedBytes) {
-    uint256 bytesListLength = _bytesList.length;
-    if (bytesListLength == 0) {
-      return new bytes(0);
-    }
+    uint256 _bytesListLength = _bytesList.length;
+    if (_bytesListLength == 0) return new bytes(0);
 
-    uint256 flattenedBytesLength;
-    uint256 reusableCounter;
-    for (; reusableCounter < bytesListLength; reusableCounter++) {
-      unchecked {
-        flattenedBytesLength += _bytesList[reusableCounter].length;
-      }
-    }
-
-    flattenedBytes = new bytes(flattenedBytesLength);
-
-    uint256 flattenedPtr;
     assembly {
-      flattenedPtr := add(flattenedBytes, 0x20)
-    }
+      flattenedBytes := mload(0x40)
+      let totalLen := 0
+      let offset := add(_bytesList, 0x20)
 
-    bytes memory item;
-    uint256 itemLength;
-
-    for (reusableCounter = 0; reusableCounter < bytesListLength; reusableCounter++) {
-      item = _bytesList[reusableCounter];
-      itemLength = item.length;
-      assembly {
-        mcopy(flattenedPtr, add(item, 0x20), itemLength)
-        flattenedPtr := add(flattenedPtr, itemLength)
+      for {
+        let i := 0
+      } lt(i, _bytesListLength) {
+        i := add(i, 1)
+      } {
+        totalLen := add(totalLen, mload(mload(add(offset, mul(i, 0x20)))))
       }
+
+      mstore(flattenedBytes, totalLen)
+      let writePtr := add(flattenedBytes, 0x20)
+
+      for {
+        let i := 0
+      } lt(i, _bytesListLength) {
+        i := add(i, 1)
+      } {
+        let ptr := mload(add(offset, mul(i, 0x20)))
+        let len := mload(ptr)
+        mcopy(writePtr, add(ptr, 0x20), len)
+        writePtr := add(writePtr, len)
+      }
+
+      mstore(0x40, add(flattenedBytes, add(0x20, totalLen)))
     }
   }
 }
