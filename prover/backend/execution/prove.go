@@ -50,6 +50,7 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 					cfg,
 					traces,
 					NewWitness(cfg, req, &out),
+					large,
 				)
 
 				out.Version = cfg.Version
@@ -77,6 +78,7 @@ func mustProveAndPass(
 	cfg *config.Config,
 	traces *config.TracesLimits,
 	w *Witness,
+	large bool,
 ) (proofHexString string, vkeyShaSum string) {
 
 	switch cfg.Execution.ProverMode {
@@ -119,8 +121,15 @@ func mustProveAndPass(
 			errSetup    error
 			chSetupDone = make(chan struct{})
 		)
+
+		circuitID := circuits.ExecutionCircuitID
+		if large {
+			circuitID = circuits.ExecutionLargeCircuitID
+		}
+
 		go func() {
-			setup, errSetup = circuits.LoadSetup(cfg, circuits.ExecutionCircuitID)
+			logrus.Infof("Loading %s circuit", circuitID)
+			setup, errSetup = circuits.LoadSetup(cfg, circuitID)
 			close(chSetupDone)
 		}()
 
@@ -151,6 +160,7 @@ func mustProveAndPass(
 			// more interesting to directly include that information in the setup
 			// instead of the config. That way we are guaranteed to not pass the
 			// wrong value at runtime.
+			logrus.Infof("setup: '%s', config: '%s'", setupCfgChecksum, traces.Checksum())
 			utils.Panic("traces checksum in the setup manifest does not match the one in the config")
 		}
 
