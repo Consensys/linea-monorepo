@@ -30,11 +30,11 @@ func setDefaultValues() {
 	viper.SetDefault("controller.defer_to_other_large_codes", DefaultDeferToOtherLargeCodes)
 	viper.SetDefault("controller.retry_locally_with_large_codes", DefaultRetryLocallyWithLargeCodes)
 
-	// Set default for cmdTmpl and cmdLargeTmpl
 	// TODO @gbotrel binary to run prover is hardcoded here.
 	viper.SetDefault("controller.worker_cmd_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}")
 	viper.SetDefault("controller.worker_cmd_large_tmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}} --large")
-
+	viper.SetDefault("controller.cmdTmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}}")
+	viper.SetDefault("controller.cmdLargeTmpl", "prover prove --config {{.ConfFile}} --in {{.InFile}} --out {{.OutFile}} --large")
 	viper.SetDefault("execution.ignore_compatibility_check", false)
 
 }
