@@ -6,7 +6,7 @@ import useMinimumFee from "./useMinimumFee";
 import useBridgingFee from "./useBridgingFee";
 import useTokenPrices from "../useTokenPrices";
 import { useFormStore, useChainStore } from "@/stores";
-import { isZero } from "@/utils";
+import { isZero, isUndefined } from "@/utils";
 
 const useFees = () => {
   const { address, isConnected } = useAccount();
@@ -42,7 +42,7 @@ const useFees = () => {
     (fee: bigint) => {
       const zeroAddrLower = zeroAddress.toLowerCase();
       const price = tokenPrices?.[zeroAddrLower];
-      if (isZero(price) || price <= 0) return null;
+      if (isZero(price) || isUndefined(price) || price <= 0) return null;
       return Number(formatEther(fee)) * price;
     },
     [tokenPrices],
