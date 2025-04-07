@@ -2,6 +2,7 @@ package smartvectors
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -72,6 +73,27 @@ func PolyEval(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result
 	}
 
 	length := vecs[0].Len()
+
+	// In case the provided inputs are all constants, we can take a shortcut
+	// and skip the allocations.
+	hasOnlyConst := true
+	for i := 0; i < len(vecs); i++ {
+		if _, ok := vecs[i].(*Constant); !ok {
+			hasOnlyConst = false
+			break
+		}
+	}
+
+	if hasOnlyConst {
+		v := make([]field.Element, len(vecs))
+		for i := 0; i < len(vecs); i++ {
+			v[i] = vecs[i].(*Constant).val
+		}
+
+		y := poly.EvalUnivariate(v, x)
+		return NewConstant(y, length)
+	}
+
 	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 
 	// Preallocate the intermediate values
