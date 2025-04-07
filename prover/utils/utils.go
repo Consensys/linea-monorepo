@@ -534,3 +534,17 @@ func ConstantIterator[T any](value T, n int) iter.Seq[T] {
 		}
 	}
 }
+
+// SpliceExact splits a slice into a slice of slices of size n
+func SpliceExact[T any](slice []T, n int) [][]T {
+
+	if len(slice)%n != 0 {
+		panic("slice length must be a multiple of n")
+	}
+
+	slices := make([][]T, 0, len(slice)/n)
+	for i := 0; i < len(slice); i += n {
+		slices = append(slices, slice[i:i+n])
+	}
+	return slices
+}
