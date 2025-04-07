@@ -201,6 +201,7 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 			start, stop = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
 		)
 
+		moduleSet[mn] = struct{}{}
 		nbSegmentModule = max(nbSegmentModule, utils.DivExact(stop-start, newSize))
 	}
 
