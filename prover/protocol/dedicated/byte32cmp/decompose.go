@@ -176,18 +176,25 @@ func (d *decompositionCtx) Run(run *wizard.ProverRuntime) {
 	)
 
 	for i := range limbsWitness {
-		limbsWitness[i] = make([]field.Element, size)
+		// The division by 16 is because 99% of the time, we won't need that
+		// data.
+		limbsWitness[i] = make([]field.Element, 0, size/16)
 	}
 
-	for j := 0; j < size; j++ {
-		x := original.Get(j)
+	// As eval expr column is defective in giving out optimized smart-vectors,
+	// we try to reduce the size of the smart-vector. This empirically
+	// improves the performances of the protocol.
+	original, _ = smartvectors.TryReduceSize(original)
+
+	for x := range original.IterateCompact() {
+
 		var tmp big.Int
 		x.BigInt(&tmp)
 
 		if tmp.BitLen() > totalNumBits {
 			utils.Panic(
-				"BigRange: cannot prove that the bitLen is smaller than %v : the provided witness has %v bits on position %v (%v)",
-				totalNumBits, tmp.BitLen(), j, x.String(),
+				"BigRange: cannot prove that the bitLen is smaller than %v : the provided witness has %v bits (%v)",
+				totalNumBits, tmp.BitLen(), x.String(),
 			)
 		}
 
@@ -197,13 +204,12 @@ func (d *decompositionCtx) Run(run *wizard.ProverRuntime) {
 				extractedBit := tmp.Bit(k)
 				l |= uint64(extractedBit) << (k % bitPerLimbs)
 			}
-			limbsWitness[i][j].SetUint64(l)
+			limbsWitness[i] = append(limbsWitness[i], field.NewElement(l))
 		}
 	}
 
 	// Then assigns the limbs
 	for i := range limbsWitness {
-		run.AssignColumn(d.decomposed.Limbs[i].GetColID(), smartvectors.NewRegular(limbsWitness[i]))
+		run.AssignColumn(d.decomposed.Limbs[i].GetColID(), smartvectors.FromCompactWithShape(original, limbsWitness[i]))
 	}
-
 }
