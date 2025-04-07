@@ -24,7 +24,9 @@ type VectorBuilder struct {
 func NewVectorBuilder(col ifaces.Column) *VectorBuilder {
 	return &VectorBuilder{
 		column: col,
-		slice:  make([]field.Element, 0, col.Size()),
+		// The size is always divided by 16 because 99% of the time this
+		// will be more than needed. It make sense to reduce it.
+		slice: make([]field.Element, 0, col.Size()/16),
 	}
 }
 
@@ -183,4 +185,10 @@ func (vb *VectorBuilder) PushSliceF(s []field.Element) {
 // it overwrites the last push
 func (vb *VectorBuilder) OverWriteInt(n int) {
 	vb.slice[len(vb.slice)-1] = field.NewElement(uint64(n))
+}
+
+// Last returns the last inserted value. Will panic if the vector is empty.
+// Does not mutate the receiver.
+func (vb *VectorBuilder) Last() field.Element {
+	return vb.slice[len(vb.slice)-1]
 }
