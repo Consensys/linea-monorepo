@@ -150,6 +150,12 @@ func (c *WizardVerifierCircuit) Verify(api frontend.API) {
 	c.FS.Update(c.Spec.fiatShamirSetup)
 	c.FiatShamirHistory = make([][2][]frontend.Variable, c.Spec.NumRounds())
 	c.generateAllRandomCoins(api)
+
+	for _, roundSteps := range c.Spec.subVerifiers.Inner() {
+		for _, step := range roundSteps {
+			step.RunGnark(api, c)
+		}
+	}
 }
 
 // generateAllRandomCoins is as [VerifierRuntime.generateAllRandomCoins]. Note that the function

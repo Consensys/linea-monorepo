@@ -83,6 +83,23 @@ func Verify(c *CompiledIOP, proof Proof) error {
 		prover's implementation.
 	*/
 	runtime.generateAllRandomCoins()
+
+	/*
+		And run all the precompiled rounds. Collecting the errors if there are
+		any
+	*/
+	errs := []error{}
+	for _, roundSteps := range runtime.Spec.subVerifiers.Inner() {
+		for _, step := range roundSteps {
+			if err := step.Run(&runtime); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	}
+
+	if len(errs) > 0 {
+		return utils.WrapErrsAlphabetically(errs)
+	}
 	return nil
 }
 
