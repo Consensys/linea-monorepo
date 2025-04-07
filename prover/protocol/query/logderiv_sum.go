@@ -7,7 +7,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -144,51 +144,24 @@ func (r LogDerivativeSum) Compute(run ifaces.Runtime) (field.Element, error) {
 		for k := start; k < stop; k++ {
 
 			var (
-				size                = inputs[k].Size
-				num                 = inputs[k].Num
-				den                 = inputs[k].Den
-				numBoard            = num.Board()
-				denBoard            = den.Board()
-				numeratorMetadata   = numBoard.ListVariableMetadata()
-				denominatorMetadata = denBoard.ListVariableMetadata()
-				denominator         []field.Element
-				numerator           []field.Element
+				size   = inputs[k].Size
+				num    = inputs[k].Num
+				den    = inputs[k].Den
+				res, e = computeLogDerivativeSumPair(run, num, den, size)
 			)
 
-			if len(denominatorMetadata) == 0 {
-				denominator = vector.Repeat(field.One(), size)
-			} else {
-				denominator = column.EvalExprColumn(run, denBoard).IntoRegVecSaveAlloc()
-				for l := range denominator {
-					if denominator[l].IsZero() {
-						resLock.Lock()
-						err = errors.Join(
-							err,
-							fmt.Errorf("denominator contains zeroes [position=%v] [size=%v] [term=%v]", l, size, k),
-						)
-						resLock.Unlock()
-					}
-				}
-				denominator = field.BatchInvert(denominator)
-			}
-
-			if len(numeratorMetadata) == 0 {
-				numerator = vector.Repeat(field.One(), size)
-			} else {
-				numerator = column.EvalExprColumn(run, numBoard).IntoRegVecSaveAlloc()
-			}
-
-			var (
-				res = field.Zero()
-				tmp field.Element
-			)
-
-			for k := range numerator {
-				tmp.Mul(&numerator[k], &denominator[k])
-				res.Add(&res, &tmp)
+			if e != nil {
+				resLock.Lock()
+				err = e
+				resLock.Unlock()
+				return
 			}
 
 			resLock.Lock()
+			if err != nil {
+				resLock.Unlock()
+				return
+			}
 			actualSum.Add(&actualSum, &res)
 			resLock.Unlock()
 		}
@@ -223,4 +196,202 @@ func (r LogDerivativeSum) Check(run ifaces.Runtime) error {
 // Test that global sum is correct
 func (r LogDerivativeSum) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("unexpected call")
+}
+
+// computeLogDerivativeSumPair computes the log derivative sum for a couple
+// of numerator and denominator.
+func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, size int) (field.Element, error) {
+
+	var (
+		numBoard            = num.Board()
+		denBoard            = den.Board()
+		numeratorMetadata   = numBoard.ListVariableMetadata()
+		denominatorMetadata = denBoard.ListVariableMetadata()
+		numerator           smartvectors.SmartVector
+		denominator         smartvectors.SmartVector
+		noNumerator         = len(numeratorMetadata) == 0
+		noDenominator       = len(denominatorMetadata) == 0
+		res                 field.Element
+	)
+
+	if noNumerator && noDenominator {
+		return field.NewElement(uint64(size)), nil
+	}
+
+	if !noNumerator {
+		numerator = column.EvalExprColumn(run, numBoard)
+		numerator, _ = smartvectors.TryReduceSize(numerator)
+
+		// If the denominator resolves into a constant equal to 1, then
+		// this is identical to not having any denominator. If it is
+		// zero, then we can directly return 0.
+		if numC, ok := numerator.(*smartvectors.Constant); ok {
+
+			v := numC.Val()
+
+			if v.IsZero() {
+				return field.Zero(), nil
+			}
+
+			if v.IsOne() {
+				noNumerator = true
+			}
+		}
+	}
+
+	if !noDenominator {
+		denominator = column.EvalExprColumn(run, denBoard)
+		denominator, _ = smartvectors.TryReduceSize(denominator)
+
+		for d := range denominator.IterateCompact() {
+			if d.IsZero() {
+				return field.Zero(), errors.New("denominator is zero")
+			}
+		}
+	}
+
+	if noNumerator {
+
+		var (
+			denominatorWindow = smartvectors.Window(denominator)
+			res               = field.Zero()
+		)
+
+		denominatorWindow = field.BatchInvert(denominatorWindow)
+		for i := range denominatorWindow {
+			if denominatorWindow[i].IsZero() {
+				return field.Element{}, errors.New("denominator is zero")
+			}
+			res.Add(&res, &denominatorWindow[i])
+		}
+
+		denominatorPadding, denominatorHasPadding := smartvectors.PaddingVal(denominator)
+		if denominatorHasPadding {
+
+			if denominatorPadding.IsZero() {
+				return field.Zero(), fmt.Errorf("denominator padding is zero")
+			}
+
+			denominatorPadding.Inverse(&denominatorPadding)
+
+			var (
+				nbPadding        = denominator.Len() - len(denominatorWindow)
+				nbPaddingAsField field.Element
+			)
+
+			nbPaddingAsField.SetInt64(int64(nbPadding))
+			denominatorPadding.Mul(&denominatorPadding, &nbPaddingAsField)
+			res.Add(&res, &denominatorPadding)
+		}
+
+		return res, nil
+	}
+
+	if noDenominator {
+
+		var (
+			numeratorWindow = smartvectors.Window(numerator)
+			res             = field.Zero()
+		)
+
+		for i := range numeratorWindow {
+			res.Add(&res, &numeratorWindow[i])
+		}
+
+		numeratorPadding, numeratorHasPadding := smartvectors.PaddingVal(numerator)
+		if numeratorHasPadding {
+
+			var (
+				nbPadding        = numerator.Len() - len(numeratorWindow)
+				nbPaddingAsField field.Element
+			)
+
+			nbPaddingAsField.SetInt64(int64(nbPadding))
+			numeratorPadding.Mul(&numeratorPadding, &nbPaddingAsField)
+			res.Add(&res, &numeratorPadding)
+		}
+
+		return res, nil
+	}
+
+	// This implementation should catch 99% of the remaining cases. This follows
+	// from the fact that most vectors have a padded structure and we can take
+	// advantage of that in the implementation.
+	numeratorPCW, ok := numerator.(*smartvectors.PaddedCircularWindow)
+	if ok {
+		var (
+			pv     = numeratorPCW.PaddingVal()
+			offset = numeratorPCW.Offset()
+			window = numeratorPCW.Window()
+			size   = numeratorPCW.Len()
+		)
+
+		if pv.IsZero() && offset+len(window) <= size {
+
+			var (
+				start              = offset
+				stop               = offset + len(window)
+				denominatorNonZero = make([]field.Element, 0, len(window))
+				numeratorNonZero   = make([]field.Element, 0, len(window))
+			)
+
+			for i := start; i < stop; i++ {
+
+				if denominator.GetPtr(i).IsZero() {
+					return field.Element{}, errors.New("denominator is zero")
+				}
+
+				if !numerator.GetPtr(i).IsZero() {
+					denominatorNonZero = append(denominatorNonZero, denominator.Get(i))
+					numeratorNonZero = append(numeratorNonZero, numerator.Get(i))
+				}
+			}
+
+			denominatorNonZero = field.BatchInvert(denominatorNonZero)
+
+			for i := range denominatorNonZero {
+				var tmp field.Element
+				tmp.Mul(&denominatorNonZero[i], &numeratorNonZero[i])
+				res.Add(&res, &tmp)
+			}
+
+			return res, nil
+		}
+	}
+
+	// This is the "main" case which corresponds to when both numerator and the
+	// numerator are defined. In this case, we iterate over the numerator and
+	// record all the pairs num/den such that num != 0. The initial capacity is
+	// empirically divided by 16 as we will never need more than that 99% of
+	// the time.
+	//
+	// The implementation is based on the following observation: the numerator
+	// is always full of zeroes.
+	var (
+		denominatorNonZero = make([]field.Element, 0, denominator.Len()/16)
+		numeratorNonZero   = make([]field.Element, 0, numerator.Len()/16)
+	)
+
+	for i := 0; i < numerator.Len(); i++ {
+
+		if denominator.GetPtr(i).IsZero() {
+			return field.Element{}, errors.New("denominator is zero")
+		}
+
+		if !numerator.GetPtr(i).IsZero() {
+
+			denominatorNonZero = append(denominatorNonZero, denominator.Get(i))
+			numeratorNonZero = append(numeratorNonZero, numerator.Get(i))
+		}
+	}
+
+	denominatorNonZero = field.BatchInvert(denominatorNonZero)
+
+	for i := range denominatorNonZero {
+		var tmp field.Element
+		tmp.Mul(&denominatorNonZero[i], &numeratorNonZero[i])
+		res.Add(&res, &tmp)
+	}
+
+	return res, nil
 }
