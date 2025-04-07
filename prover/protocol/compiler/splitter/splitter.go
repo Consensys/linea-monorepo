@@ -154,7 +154,7 @@ func Compile(comp *wizard.CompiledIOP, size int) {
 		to assign values to all subvectors
 	*/
 	for round := 0; round < numRound; round++ {
-		comp.SubProvers.AppendToInner(round, ctx.Prove(round))
+		comp.RegisterProverAction(round, &compileSplitterProverAction{ctx: &ctx, round: round, lastRound: numRound - 1})
 	}
 
 	/*
@@ -207,13 +207,29 @@ func Compile(comp *wizard.CompiledIOP, size int) {
 
 	/*
 		At the last round, frees the polynomials that are not used anymore
+		Note: This is now handled by the single struct below
 	*/
-	comp.SubProvers.AppendToInner(numRound-1, func(assi *wizard.ProverRuntime) {
-		for col := range ctx.commitmentMap.InnerMap() {
-			assi.Columns.TryDel(col)
-		}
-	})
+}
 
+// compileSplitterProverAction handles both subvector assignment and polynomial freeing in the splitter.
+// It implements the [wizard.ProverAction] interface.
+type compileSplitterProverAction struct {
+	ctx       *splitterCtx
+	round     int
+	lastRound int
+}
+
+// Run executes the appropriate action based on the round.
+func (a *compileSplitterProverAction) Run(run *wizard.ProverRuntime) {
+	if a.round == a.lastRound {
+		// Free polynomials at the last round
+		for col := range a.ctx.commitmentMap.InnerMap() {
+			run.Columns.TryDel(col)
+		}
+	} else {
+		// Assign subvector values for all rounds
+		a.ctx.Prove(a.round)(run)
+	}
 }
 
 func nameHandleSlice(h ifaces.Column, num, numSlots int) ifaces.ColID {
@@ -516,12 +532,12 @@ func (ctx splitterCtx) compileLocalOpening(comp *wizard.CompiledIOP, q query.Loc
 	)
 
 	// The prover assigns the new local opening by reusing the result of the past one
-	comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-		params := run.GetLocalPointEvalParams(q.ID)
-		run.AssignLocalPoint(newQName, params.Y)
+	comp.RegisterProverAction(round, &compileLocalOpeningProverAction{
+		q:        q,
+		newQName: newQName,
 	})
 
-	// The verifier ensures that the old and new queries have the same assignement
+	// The verifier ensures that the old and new queries have the same assignment
 	comp.InsertVerifier(round, func(run *wizard.VerifierRuntime) error {
 		oldParams := run.GetLocalPointEvalParams(q.ID)
 		newParams := run.GetLocalPointEvalParams(newQName)
@@ -536,7 +552,19 @@ func (ctx splitterCtx) compileLocalOpening(comp *wizard.CompiledIOP, q query.Loc
 		newParams := run.GetLocalPointEvalParams(newQName)
 		api.AssertIsEqual(oldParams.Y, newParams.Y)
 	})
+}
 
+// compileLocalOpeningProverAction assigns the new local opening point in the splitter context.
+// It implements the [wizard.ProverAction] interface.
+type compileLocalOpeningProverAction struct {
+	q        query.LocalOpening
+	newQName ifaces.QueryID
+}
+
+// Run executes the assignment of the new local opening point.
+func (a *compileLocalOpeningProverAction) Run(run *wizard.ProverRuntime) {
+	params := run.GetLocalPointEvalParams(a.q.ID)
+	run.AssignLocalPoint(a.newQName, params.Y)
 }
 
 // Return a subslice handle

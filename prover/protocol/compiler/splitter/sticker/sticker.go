@@ -34,15 +34,7 @@ func Sticker(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 		ctx.compileFixedEvaluation()
 		ctx.compileArithmeticConstraints()
 
-		comp.SubProvers.AppendToInner(comp.NumRounds()-1, func(run *wizard.ProverRuntime) {
-			for _, compRound := range ctx.CompiledColumns {
-				for _, list := range compRound.BySize {
-					for _, h := range list {
-						run.Columns.TryDel(h.GetColID())
-					}
-				}
-			}
-		})
+		comp.RegisterProverAction(comp.NumRounds()-1, &stickerProverAction{ctx: &ctx})
 	}
 }
 
@@ -440,9 +432,10 @@ func (ctx *stickContext) compileFixedEvaluation() {
 		// Registers the prover's step responsible for assigning the
 		// new query @alex, it might be beneficial to run this in parallel
 		// We don't do it because we think this is not necessary.
-		ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-			y := run.QueriesParams.MustGet(q.ID).(query.LocalOpeningParams).Y
-			run.AssignLocalPoint(newQ.ID, y)
+		ctx.comp.RegisterProverAction(round, &stickerProverAction{
+			ctx:  ctx,
+			q:    q,
+			newQ: newQ,
 		})
 
 		// The verifier ensures that the old and new queries have the same assignement
@@ -461,7 +454,32 @@ func (ctx *stickContext) compileFixedEvaluation() {
 			api.AssertIsEqual(oldParams.Y, newParams.Y)
 		})
 	}
+}
 
+// stickerProverAction handles prover actions in the sticker context.
+// It implements the [wizard.ProverAction] interface.
+type stickerProverAction struct {
+	ctx  *stickContext      // The stick context
+	q    query.LocalOpening // Optional: Original query for local opening assignment (nil for column deletion)
+	newQ query.LocalOpening // Optional: New query for local opening assignment (nil for column deletion)
+}
+
+// Run executes the appropriate prover action based on the presence of q and newQ.
+func (a *stickerProverAction) Run(run *wizard.ProverRuntime) {
+	if a.q != (query.LocalOpening{}) && a.newQ != (query.LocalOpening{}) {
+		// Local opening assignment logic from compileFixedEvaluation
+		y := run.QueriesParams.MustGet(a.q.ID).(query.LocalOpeningParams).Y
+		run.AssignLocalPoint(a.newQ.ID, y)
+	} else {
+		// Column deletion logic from Sticker
+		for _, compRound := range a.ctx.CompiledColumns {
+			for _, list := range compRound.BySize {
+				for _, h := range list {
+					run.Columns.TryDel(h.GetColID())
+				}
+			}
+		}
+	}
 }
 
 // Get the column replacement for an expression

@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -158,77 +159,21 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 	)
 
 	// And assign them
-	comp.SubProvers.AppendToInner(round+1, func(run *wizard.ProverRuntime) {
-
-		r := large[0].GetColAssignment(run)
-		if needGamma {
-			// Then we need to compute the linear combination explicitly
-			largeWit := make([]smartvectors.SmartVector, numCol)
-			largeWit[0] = r
-			for i := 1; i < numCol; i++ {
-				largeWit[i] = large[i].GetColAssignment(run)
-			}
-
-			gamma := run.GetRandomCoinField(gamma.Name)
-			r = smartvectors.PolyEval(largeWit, gamma)
-		}
-
-		// AccLarge
-		prev := field.Zero()
-		accLargeWit := make([]field.Element, lenLarge)
-		alpha_ := run.GetRandomCoinField(alpha.Name)
-
-		for hashID := 0; hashID < lenSmall; hashID++ {
-			for i := 0; i < period; i++ {
-				pos := hashID*period + i
-
-				// Depending on whether the newstate is at the end
-				// of the chunk we compute the next value differently.
-				if i != offset {
-					// reuse the previous value
-					accLargeWit[pos] = prev
-					continue
-				}
-
-				// prev <- prev * alpha + newState
-				currentNewState := r.Get(pos)
-				accLargeWit[pos].Mul(&alpha_, &prev)
-				accLargeWit[pos].Add(&accLargeWit[pos], &currentNewState)
-				prev = accLargeWit[pos]
-			}
-		}
-
-		run.AssignColumn(accLarge.GetColID(), smartvectors.NewRegular(accLargeWit))
-		run.AssignLocalPoint(accLargeLast.ID, prev)
-
-		// rPrime
-
-		rPrime := small[0].GetColAssignment(run)
-		if needGamma {
-			// Then we need to compute the linear combination explicitly
-			smallWit := make([]smartvectors.SmartVector, numCol)
-			smallWit[0] = rPrime
-			for i := 1; i < numCol; i++ {
-				smallWit[i] = small[i].GetColAssignment(run)
-			}
-
-			gamma := run.GetRandomCoinField(gamma.Name)
-			rPrime = smartvectors.PolyEval(smallWit, gamma)
-		}
-
-		accSmallWit := make([]field.Element, lenSmall)
-		prev = field.Zero()
-
-		for hashID := 0; hashID < lenSmall; hashID++ {
-			// prev <- prev * alpha + newState
-			currExpectedHash := rPrime.Get(hashID)
-			accSmallWit[hashID].Mul(&alpha_, &prev)
-			accSmallWit[hashID].Add(&accSmallWit[hashID], &currExpectedHash)
-			prev = accSmallWit[hashID]
-		}
-
-		run.AssignColumn(accSmall.GetColID(), smartvectors.NewRegular(accSmallWit))
-		run.AssignLocalPoint(accSmallLast.ID, prev)
+	comp.RegisterProverAction(round+1, &checkSubsampleProverAction{
+		large:        large,
+		small:        small,
+		needGamma:    needGamma,
+		gamma:        gamma,
+		alpha:        alpha,
+		accLarge:     accLarge,
+		accSmall:     accSmall,
+		accLargeLast: accLargeLast,
+		accSmallLast: accSmallLast,
+		numCol:       numCol,
+		lenLarge:     lenLarge,
+		lenSmall:     lenSmall,
+		period:       period,
+		offset:       offset,
 	})
 
 	comp.InsertVerifier(
@@ -247,5 +192,95 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 			a.AssertIsEqual(resAccLast.Y, expectedResAccLast.Y)
 		},
 	)
+}
 
+// checkSubsampleProverAction assigns accumulators and local points for subsample checking.
+// It implements the [wizard.ProverAction] interface.
+type checkSubsampleProverAction struct {
+	large        []ifaces.Column
+	small        []ifaces.Column
+	needGamma    bool
+	gamma        coin.Info
+	alpha        coin.Info
+	accLarge     ifaces.Column
+	accSmall     ifaces.Column
+	accLargeLast query.LocalOpening
+	accSmallLast query.LocalOpening
+	numCol       int
+	lenLarge     int
+	lenSmall     int
+	period       int
+	offset       int
+}
+
+// Run executes the assignment of accumulators and local points.
+func (a *checkSubsampleProverAction) Run(run *wizard.ProverRuntime) {
+	r := a.large[0].GetColAssignment(run)
+	if a.needGamma {
+		// Then we need to compute the linear combination explicitly
+		largeWit := make([]smartvectors.SmartVector, a.numCol)
+		largeWit[0] = r
+		for i := 1; i < a.numCol; i++ {
+			largeWit[i] = a.large[i].GetColAssignment(run)
+		}
+
+		gamma := run.GetRandomCoinField(a.gamma.Name)
+		r = smartvectors.PolyEval(largeWit, gamma)
+	}
+
+	// AccLarge
+	prev := field.Zero()
+	accLargeWit := make([]field.Element, a.lenLarge)
+	alpha_ := run.GetRandomCoinField(a.alpha.Name)
+
+	for hashID := 0; hashID < a.lenSmall; hashID++ {
+		for i := 0; i < a.period; i++ {
+			pos := hashID*a.period + i
+
+			// Depending on whether the newstate is at the end
+			// of the chunk we compute the next value differently.
+			if i != a.offset {
+				// reuse the previous value
+				accLargeWit[pos] = prev
+				continue
+			}
+
+			// prev <- prev * alpha + newState
+			currentNewState := r.Get(pos)
+			accLargeWit[pos].Mul(&alpha_, &prev)
+			accLargeWit[pos].Add(&accLargeWit[pos], &currentNewState)
+			prev = accLargeWit[pos]
+		}
+	}
+
+	run.AssignColumn(a.accLarge.GetColID(), smartvectors.NewRegular(accLargeWit))
+	run.AssignLocalPoint(a.accLargeLast.ID, prev)
+
+	// rPrime
+	rPrime := a.small[0].GetColAssignment(run)
+	if a.needGamma {
+		// Then we need to compute the linear combination explicitly
+		smallWit := make([]smartvectors.SmartVector, a.numCol)
+		smallWit[0] = rPrime
+		for i := 1; i < a.numCol; i++ {
+			smallWit[i] = a.small[i].GetColAssignment(run)
+		}
+
+		gamma := run.GetRandomCoinField(a.gamma.Name)
+		rPrime = smartvectors.PolyEval(smallWit, gamma)
+	}
+
+	accSmallWit := make([]field.Element, a.lenSmall)
+	prev = field.Zero()
+
+	for hashID := 0; hashID < a.lenSmall; hashID++ {
+		// prev <- prev * alpha + newState
+		currExpectedHash := rPrime.Get(hashID)
+		accSmallWit[hashID].Mul(&alpha_, &prev)
+		accSmallWit[hashID].Add(&accSmallWit[hashID], &currExpectedHash)
+		prev = accSmallWit[hashID]
+	}
+
+	run.AssignColumn(a.accSmall.GetColID(), smartvectors.NewRegular(accSmallWit))
+	run.AssignLocalPoint(a.accSmallLast.ID, prev)
 }
