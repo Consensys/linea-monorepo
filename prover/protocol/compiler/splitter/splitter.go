@@ -514,6 +514,46 @@ func hasInterleaved(h ifaces.Column) bool {
 	panic("unreachable")
 }
 
+// localOpeningDirectVerifierAction implements the VerifierAction interface for direct local opening verification.
+type localOpeningDirectVerifierAction struct {
+	q query.LocalOpening
+}
+
+// Run executes the native verifier check for direct local opening consistency.
+func (a *localOpeningDirectVerifierAction) Run(vr *wizard.VerifierRuntime) error {
+	return a.q.Check(vr)
+}
+
+// RunGnark executes the gnark circuit verifier check for direct local opening consistency.
+func (a *localOpeningDirectVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	a.q.CheckGnark(api, wvc)
+}
+
+// localOpeningSplitVerifierAction implements the VerifierAction interface for split local opening verification.
+type localOpeningSplitVerifierAction struct {
+	q        query.LocalOpening
+	newQName ifaces.QueryID
+}
+
+// Run executes the native verifier check for split local opening consistency.
+func (a *localOpeningSplitVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	oldParams := run.GetLocalPointEvalParams(a.q.ID)
+	newParams := run.GetLocalPointEvalParams(a.newQName)
+
+	if oldParams != newParams {
+		return fmt.Errorf("splitter verifier failed for local opening %v - %v", a.q.ID, a.newQName)
+	}
+
+	return nil
+}
+
+// RunGnark executes the gnark circuit verifier check for split local opening consistency.
+func (a *localOpeningSplitVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	oldParams := wvc.GetLocalPointEvalParams(a.q.ID)
+	newParams := wvc.GetLocalPointEvalParams(a.newQName)
+	api.AssertIsEqual(oldParams.Y, newParams.Y)
+}
+
 func (ctx splitterCtx) compileLocalOpening(comp *wizard.CompiledIOP, q query.LocalOpening) {
 
 	round := comp.QueriesParams.Round(q.ID)
@@ -526,11 +566,7 @@ func (ctx splitterCtx) compileLocalOpening(comp *wizard.CompiledIOP, q query.Loc
 		verifiercol.AssertIsPublicCol(comp, q.Pol)
 
 		// Requires the verifier to verify the query itself
-		comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
-			return q.Check(vr)
-		}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
-			q.CheckGnark(api, wvc)
-		})
+		comp.RegisterVerifierAction(round, &localOpeningDirectVerifierAction{q: q})
 
 		// And skip the rest of the compilation : we are done
 		return
@@ -560,19 +596,9 @@ func (ctx splitterCtx) compileLocalOpening(comp *wizard.CompiledIOP, q query.Loc
 	})
 
 	// The verifier ensures that the old and new queries have the same assignment
-	comp.InsertVerifier(round, func(run *wizard.VerifierRuntime) error {
-		oldParams := run.GetLocalPointEvalParams(q.ID)
-		newParams := run.GetLocalPointEvalParams(newQName)
-
-		if oldParams != newParams {
-			return fmt.Errorf("splitter verifier failed for local opening %v - %v", q.ID, newQName)
-		}
-
-		return nil
-	}, func(api frontend.API, run *wizard.WizardVerifierCircuit) {
-		oldParams := run.GetLocalPointEvalParams(q.ID)
-		newParams := run.GetLocalPointEvalParams(newQName)
-		api.AssertIsEqual(oldParams.Y, newParams.Y)
+	comp.RegisterVerifierAction(round, &localOpeningSplitVerifierAction{
+		q:        q,
+		newQName: newQName,
 	})
 }
 

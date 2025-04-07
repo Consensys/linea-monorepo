@@ -608,5 +608,6 @@ func (c *CompiledIOP) RegisterProverAction(round int, action ProverAction) {
 // RegisterVerifierAction registers an action to be accomplished by the verifier
 // of the protocol at a given round
 func (c *CompiledIOP) RegisterVerifierAction(round int, action VerifierAction) {
+	c.assertConsistentRound(round)
 	c.subVerifiers.AppendToInner(round, action)
 }
