@@ -98,6 +98,14 @@ func (c *ConstantExt) IntoRegVecSaveAllocExt() []fext.Element {
 	return res
 }
 
-func (c *ConstantExt) IterateSmart() iter.Seq[field.Element] {
+func (c *ConstantExt) IterateCompact() iter.Seq[field.Element] {
+	panic("not available for extensions")
+}
+
+func (c *ConstantExt) IterateSkipPadding() iter.Seq[field.Element] {
+	panic("not available for extensions")
+}
+
+func (c *ConstantExt) GetPtr(n int) *field.Element {
 	panic("not available for extensions")
 }

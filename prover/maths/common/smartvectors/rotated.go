@@ -76,6 +76,11 @@ func (r *Rotated) Get(n int) field.Element {
 	return res
 }
 
+func (r *Rotated) GetPtr(n int) *field.Element {
+	pos := utils.PositiveMod(n+r.offset, r.Len())
+	return &r.v.Regular[pos]
+}
+
 // Returns a particular element. The subvector is taken at indices
 // [Start, Stop). (Stop being excluded from the span)
 func (r *Rotated) SubVector(start, stop int) SmartVector {
@@ -191,12 +196,18 @@ func (r *Rotated) IntoRegVec() []field.Element {
 	return *rotatedAsRegular(r)
 }
 
-// IterateSmart returns an iterator over the elements of the Rotated.
+// IterateCompact returns an iterator over the elements of the Rotated.
 // It is not very smart as it reallocate the slice but that should not
 // matter as this is never called in practice.
-func (r *Rotated) IterateSmart() iter.Seq[field.Element] {
+func (r *Rotated) IterateCompact() iter.Seq[field.Element] {
 	all := r.IntoRegVec()
 	return slices.Values(all)
+}
+
+// IterateSkipPadding returns an interator over all the elements of the
+// smart-vector. The function reallocates under the hood.
+func (r *Rotated) IterateSkipPadding() iter.Seq[field.Element] {
+	return r.IterateCompact()
 }
 
 // SoftRotate converts v into a [SmartVector] representing the same

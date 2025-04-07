@@ -178,7 +178,15 @@ func (r *RotatedExt) IntoRegVecSaveAllocExt() []fext.Element {
 	return res
 }
 
-func (r *RotatedExt) IterateSmart() iter.Seq[field.Element] {
+func (r *RotatedExt) IterateCompact() iter.Seq[field.Element] {
+	panic("not available for extensions")
+}
+
+func (c *RotatedExt) IterateSkipPadding() iter.Seq[field.Element] {
+	panic("not available for extensions")
+}
+
+func (c *RotatedExt) GetPtr(n int) *field.Element {
 	panic("not available for extensions")
 }
 

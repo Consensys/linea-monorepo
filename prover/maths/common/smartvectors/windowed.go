@@ -224,14 +224,14 @@ func (p *PaddedCircularWindow) Pretty() string {
 	return fmt.Sprintf("Windowed[totlen=%v offset=%v, paddingVal=%v, window=%v]", p.totLen, p.offset, p.paddingVal.String(), vector.Prettify(p.window))
 }
 
-// IterateSmart returns an iterator over the elements of the PaddedCircularWindow
+// IterateCompact returns an iterator over the elements of the PaddedCircularWindow
 // in a "compact" way. It can behave in 3 different ways:
 //   - (left-padded): the iterator will first return one element for the padding value
 //     and then the elements of the window.
 //   - (right-padded): the iterator will first return the elements of the window
 //     and then one element for the padding value.
 //   - (others): the iterator will not try to be smart and will return the elements
-func (p *PaddedCircularWindow) IterateSmart() iter.Seq[field.Element] {
+func (p *PaddedCircularWindow) IterateCompact() iter.Seq[field.Element] {
 
 	if p.offset > 0 && p.offset+len(p.window) != p.totLen {
 		all := p.IntoRegVecSaveAlloc()
@@ -246,11 +246,16 @@ func (p *PaddedCircularWindow) IterateSmart() iter.Seq[field.Element] {
 
 	its = append(its, slices.Values(p.window))
 
-	if p.offset+len(p.window) != p.totLen {
+	if p.offset+len(p.window) < p.totLen {
 		its = append(its, slices.Values([]field.Element{p.paddingVal}))
 	}
 
 	return utils.ChainIterators(its...)
+}
+
+// IterateSkipPadding returns an iterator over the windows of the PaddedCircularWindow
+func (p *PaddedCircularWindow) IterateSkipPadding() iter.Seq[field.Element] {
+	return slices.Values(p.window)
 }
 
 func (p *PaddedCircularWindow) interval() CircularInterval {
@@ -412,4 +417,20 @@ func (w *PaddedCircularWindow) IntoRegVecSaveAllocExt() []fext.Element {
 		res[i].SetFromBase(&elem)
 	}
 	return res
+}
+
+func (w *PaddedCircularWindow) GetPtr(n int) *field.Element {
+
+	// This normalizes the position of n with respect to the start of the
+	// window.
+	n = n - w.offset
+	if n < 0 {
+		n += w.totLen
+	}
+
+	if n < len(w.window) {
+		return &w.window[n]
+	}
+
+	return &w.paddingVal
 }

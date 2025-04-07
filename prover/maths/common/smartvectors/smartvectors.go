@@ -55,7 +55,7 @@ type SmartVector interface {
 	IntoRegVecSaveAllocBase() ([]field.Element, error)
 	IntoRegVecSaveAllocExt() []fext.Element
 
-	// IterateSmart returns an iterator over the elements of the smartvectors,
+	// IterateCompact returns an iterator over the elements of the smartvectors,
 	// the iterator will iterate depending on the type of smartvectors:
 	//
 	//   - Regular, Regular, Rotated: will iterate over the elements of the
@@ -68,7 +68,18 @@ type SmartVector interface {
 	//   - PaddedCircularWindow (bi-directionally-padded): the iterator will return
 	//     (1) one element for the padding value, (2) the elements of the window
 	//     and (3) one element for the padding value again
-	IterateSmart() iter.Seq[field.Element]
+	IterateCompact() iter.Seq[field.Element]
+
+	// IterateSkipPadding iterates over the non-padding area or a smart-vector
+	//
+	// - Constant: returns an empty iterator
+	// - PaddedCircularWindow: returns an iterator over the windows
+	// - Regular and others: returns an iterator over whole vector
+	IterateSkipPadding() iter.Seq[field.Element]
+
+	// GetPtr returns a pointer to the element at position n. Please do not
+	// mutate the result as this can have unpredictable side-effects.
+	GetPtr(int) *field.Element
 }
 
 // AllocateRegular returns a newly allocated smart-vector
@@ -372,4 +383,168 @@ func tryIntoRightPadded(v Regular) (*PaddedCircularWindow, bool) {
 	}
 
 	return RightPadded(v[:bestPos], last, len(v)).(*PaddedCircularWindow), true
+}
+
+// FromCompactWithShape creates a new smart-vector with the same shape as the
+// sameAs smart-vector and the values provided in the compact slice.
+//
+//   - If sameAs is left-padded, then the new smart-vector will be left-padded
+//     also, it will take the first value of compact as the padding value and the
+//     following one as the "plain" values. The function asserts that the window
+//     of len(sameAs.window) == len(compact) - 1.
+//   - If sameAs is right-padded, then the new smart-vector will be right-padded
+//     also, it will take the last value of compact as the padding value and the
+//     previous one as the "plain" values. The function asserts that the window
+//     of len(sameAs.window) == len(compact) - 1.
+//   - If sameAs is constant, then the new smart-vector will be constant as well
+//     and the function asserts that compact has the length 1.
+//   - If sameAs is regular, then the new smart-vector will be regular as well
+//     and have all its values from compact.
+//
+// In other situations, the function will panic.
+func FromCompactWithShape(v SmartVector, compact []field.Element) SmartVector {
+	switch w := v.(type) {
+	case *Constant:
+		return NewConstant(compact[0], v.Len())
+	case *PaddedCircularWindow:
+		// right-padded
+		if w.offset == 0 {
+
+			if len(w.window) != len(compact)-1 {
+				panic("unexpected shape for padded circular window")
+			}
+
+			last := compact[len(compact)-1]
+			window := compact[:len(compact)-1]
+			return RightPadded(window, last, w.Len())
+		}
+
+		// left-padded
+		if w.offset+len(w.window) == w.totLen {
+
+			if len(w.window) != len(compact)-1 {
+				panic("unexpected shape for padded circular window")
+			}
+
+			first := compact[0]
+			window := compact[1:]
+			return LeftPadded(window, first, w.Len())
+		}
+
+		panic("unexpected shape for padded circular window")
+	case *Regular:
+
+		if len(*w) != len(compact) {
+			panic("unexpected shape for regular vector")
+		}
+
+		return NewRegular(compact)
+	default:
+		panic(fmt.Sprintf("unexpected type %T", v))
+	}
+}
+
+// CoWindowRange scans the windows range of all the provided smartvectors
+// and returns the largest covering one. If one input is nil, then it is discarded
+// if all inputs are constants or nil, then the range is (0, 0). If one of the
+// inputs is a padded circular window with wrap-around, then the range will be
+// (0, totalSize).
+//
+// The function assumes that all provided smartvectors have the same length.
+func CoWindowRange(sv ...SmartVector) (start, stop int) {
+
+	foundAny := false
+
+	for _, s := range sv {
+
+		if s == nil {
+			continue
+		}
+
+		switch s := s.(type) {
+		default:
+			return 0, s.Len()
+		case *Constant:
+			continue
+		case *PaddedCircularWindow:
+
+			if s.Offset()+len(s.Window()) > s.Len() {
+				return 0, s.Len()
+			}
+
+			if !foundAny {
+				start = s.Offset()
+				stop = s.Offset() + len(s.Window())
+				continue
+			}
+
+			start = min(start, s.Offset())
+			stop = max(stop, s.Offset()+len(s.Window()))
+			foundAny = true
+		}
+	}
+
+	return start, stop
+}
+
+// CoCompactRange is as [CoWindowRange] but returns the compact range,
+// meaning the same as [CoWindowRange] but adding either an extra
+// position at the beginning or at the end to cover the padding value.
+//
+// This is compatible with [FromCompactWithShape] to conduct space and
+// time efficient operations over smart-vectors.
+func CoCompactRange(sv ...SmartVector) (start, stop int) {
+
+	start, stop = CoWindowRange(sv...)
+
+	if start > 0 {
+		start--
+	}
+
+	if stop < sv[0].Len() {
+		stop++
+	}
+
+	return start, stop
+}
+
+// FromCompactWithRange is as [FromCompactWithShape] but takes explicit
+// start and stop positions for the range. The function expects that
+// len(compact) = stop - start otherwise it will panic.
+func FromCompactWithRange(compact []field.Element, start, stop, fullLen int) SmartVector {
+
+	if stop-start > len(compact)+2 {
+		utils.Panic("inconsistent compact range, stop-start != len(compact), stop=%v, start=%v, len(compact)=%v", stop, start, len(compact))
+	}
+
+	if stop-start > fullLen {
+		utils.Panic("inconsistent compact range, stop-start > fullLen, stop=%v, start=%v, fullLen=%v", stop, start, fullLen)
+	}
+
+	if stop-start == 1 {
+		return NewConstant(compact[0], fullLen)
+	}
+
+	if start == 0 && stop == fullLen {
+		return NewRegular(compact)
+	}
+
+	if start == 0 {
+		return RightPadded(compact[:len(compact)-1], compact[len(compact)-1], fullLen)
+	}
+
+	if stop == fullLen {
+		return LeftPadded(compact[1:], compact[0], fullLen)
+	}
+
+	// At this point, we are dealing with a padded circular window whoses
+	// window is in the middle of the vector. That means the first element
+	// and the last element are the padding value, but this also means that
+	// that they should be identical.
+	if compact[0] != compact[len(compact)-1] {
+		panic("inconsistent compact range")
+	}
+
+	return NewPaddedCircularWindow(compact[1:len(compact)-1], compact[0], start+1, fullLen)
+
 }

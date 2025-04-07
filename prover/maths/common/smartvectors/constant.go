@@ -41,6 +41,10 @@ func (r *Constant) Get(n int) field.Element {
 	return res
 }
 
+func (r *Constant) GetPtr(n int) *field.Element {
+	return &r.val
+}
+
 // Returns a subvector
 func (c *Constant) SubVector(start, stop int) SmartVector {
 	if start > stop {
@@ -109,6 +113,14 @@ func (c *Constant) IntoRegVecSaveAllocExt() []fext.Element {
 	return res
 }
 
-func (c *Constant) IterateSmart() iter.Seq[field.Element] {
+// IterateCompact returns an iterator returning a single time the constant
+// value.
+func (c *Constant) IterateCompact() iter.Seq[field.Element] {
 	return slices.Values([]field.Element{c.val})
+}
+
+// IterateSkipPadding returns an empty iterator as the whole content of a
+// [Constant] is padding.
+func (c *Constant) IterateSkipPadding() iter.Seq[field.Element] {
+	return slices.Values([]field.Element{})
 }

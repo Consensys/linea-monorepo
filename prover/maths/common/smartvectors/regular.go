@@ -101,9 +101,15 @@ func (r *Regular) Pretty() string {
 	return fmt.Sprintf("Regular[%v]", vector.Prettify(*r))
 }
 
-// IterateSmart returns an iterator over the elements of the Regular.
-func (r *Regular) IterateSmart() iter.Seq[field.Element] {
+// IterateCompact returns an iterator over the elements of the Regular.
+func (r *Regular) IterateCompact() iter.Seq[field.Element] {
 	return slices.Values(*r)
+}
+
+// IterateSkipPadding returns an interator over all the elements of the
+// smart-vector.
+func (r *Regular) IterateSkipPadding() iter.Seq[field.Element] {
+	return r.IterateCompact()
 }
 
 func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mempool.MemPool) (result *Pooled, numMatches int) {
@@ -183,6 +189,10 @@ func (r *Regular) IntoRegVecSaveAllocExt() []fext.Element {
 		temp[i].SetFromBase(&elem)
 	}
 	return temp
+}
+
+func (r *Regular) GetPtr(n int) *field.Element {
+	return &(*r)[n]
 }
 
 type Pooled struct {
