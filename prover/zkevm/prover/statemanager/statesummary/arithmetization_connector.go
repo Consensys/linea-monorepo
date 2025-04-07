@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -571,16 +572,21 @@ func storageIntegrationAssignInitial(run *wizard.ProverRuntime, ss Module, smc H
 			selectorMinDeplBlock[index].SetOne()
 		}
 	}
-	svSelectorMinDeplBlock := smartvectors.NewRegular(selectorMinDeplBlock)
 
-	isExceptionalOperation := run.Spec.Columns.GetHandle("hub.scp_EXCEPTIONAL_OPERATION")
-	isNotExceptionalOperation := make([]field.Element, smc.AddressHI.Size())
+	var (
+		svSelectorMinDeplBlock           = smartvectors.NewRegular(selectorMinDeplBlock)
+		isExceptionalOperation           = run.Spec.Columns.GetHandle("hub.scp_EXCEPTIONAL_OPERATION")
+		isExceptionalOperationSV         = isExceptionalOperation.GetColAssignment(run)
+		isNotExceptionalOperationCompact = make([]field.Element, 0, smc.AddressHI.Size()/16)
+	)
 
-	for i := range isNotExceptionalOperation {
-		fieldOne := field.One()
-		isExceptionElem := isExceptionalOperation.GetColAssignmentAt(run, i)
-		isNotExceptionalOperation[i].Sub(&fieldOne, &isExceptionElem)
+	for v := range isExceptionalOperationSV.IterateCompact() {
+		n := field.One()
+		n.Sub(&n, &v)
+		isNotExceptionalOperationCompact = append(isNotExceptionalOperationCompact, n)
 	}
+
+	isNotExceptionalOperationSV := smartvectors.FromCompactWithShape(isExceptionalOperationSV, isNotExceptionalOperationCompact)
 
 	/*
 		isWarm := run.Spec.Columns.GetHandle("hub.scp_WARMTH")
@@ -595,7 +601,7 @@ func storageIntegrationAssignInitial(run *wizard.ProverRuntime, ss Module, smc H
 		svSelectorMinDeplBlock,
 		smc.PeekAtStorage.GetColAssignment(run),
 		smc.FirstKOCBlock.GetColAssignment(run),
-		smartvectors.NewRegular(isNotExceptionalOperation),
+		isNotExceptionalOperationSV,
 		//smartvectors.NewRegular(isNotPrewarmingPhase),
 	)
 	run.AssignColumn(
@@ -827,13 +833,15 @@ storageIntegrationAssignFinal assigns the columns used to check initial storage 
 */
 func storageIntegrationAssignFinal(run *wizard.ProverRuntime, ss Module, smc HubColumnSet) {
 	selectorMaxDeplBlock := make([]field.Element, smc.AddressHI.Size())
-	for index := range selectorMaxDeplBlock {
-		maxDeplBlock := smc.MaxDeplBlock.GetColAssignmentAt(run, index)
-		deplNumber := smc.DeploymentNumber.GetColAssignmentAt(run, index)
-		if maxDeplBlock.Equal(&deplNumber) {
-			selectorMaxDeplBlock[index].SetOne()
+	parallel.Execute(len(selectorMaxDeplBlock), func(start, stop int) {
+		for index := start; index < stop; index++ {
+			maxDeplBlock := smc.MaxDeplBlock.GetColAssignmentAt(run, index)
+			deplNumber := smc.DeploymentNumber.GetColAssignmentAt(run, index)
+			if maxDeplBlock.Equal(&deplNumber) {
+				selectorMaxDeplBlock[index].SetOne()
+			}
 		}
-	}
+	})
 	svSelectorMaxDeplBlock := smartvectors.NewRegular(selectorMaxDeplBlock)
 
 	filterSummary := smartvectors.Mul(
