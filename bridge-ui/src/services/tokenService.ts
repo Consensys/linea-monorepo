@@ -25,7 +25,7 @@ export async function getTokens(networkTypes: NetworkTypes): Promise<GithubToken
     const bridgedTokens = tokens.filter(
       (token: GithubTokenListToken) =>
         token.tokenType.includes("canonical-bridge") ||
-        (token.tokenType.includes("native") && !isUndefined(token.extension?.rootAddress)) ||
+        (token.tokenType.includes("native") && token.extension?.rootAddress !== undefined) ||
         token.symbol === USDC_SYMBOL,
     );
     return bridgedTokens;

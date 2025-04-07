@@ -15,7 +15,7 @@ import { formatOnChainMessageStatus } from "./formatOnChainMessageStatus";
 import { HistoryActionsForCompleteTxCaching } from "@/stores";
 import { getCompleteTxStoreKey } from "./getCompleteTxStoreKey";
 import { isBlockTooOld } from "./isBlockTooOld";
-import { isUndefined, isNull } from "@/utils";
+import { isUndefined, isUndefinedOrNull } from "@/utils";
 
 export async function fetchERC20BridgeEvents(
   historyStoreActions: HistoryActionsForCompleteTxCaching,
@@ -84,7 +84,7 @@ export async function fetchERC20BridgeEvents(
       if (isBlockTooOld(block)) return;
 
       const message = await originContract.getMessagesByTransactionHash(transactionHash);
-      if (isNull(message) || message.length === 0) {
+      if (isUndefinedOrNull(message) || message.length === 0) {
         return;
       }
 

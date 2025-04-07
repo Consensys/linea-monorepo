@@ -52,6 +52,7 @@ const useClaimTxArgs = ({ status, type, fromChain, toChain, args }: UseClaimTxAr
           isUndefinedOrEmptyString(args.to) ||
           isUndefined(args.fee) ||
           isUndefined(args.value) ||
+          isUndefined(args.nonce) ||
           args.nonce === 0n ||
           isUndefinedOrEmptyString(args.calldata) ||
           isUndefinedOrEmptyString(args.messageHash) ||
