@@ -37,9 +37,9 @@ jobs:
           # Don't make cache key too specific as
           # i.) Risk exceeding Github cache storage limit (10GB)
           # ii.) Add ~3 minutes to each workflow run to save cache for a new cache key
-          key: ${{ runner.os }}-bridge-ui-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-bridge-ui-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
-            ${{ runner.os }}-bridge-ui-${{ hashFiles('**/pnpm-lock.yaml') }}
+            ${{ runner.os }}-bridge-ui-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Setup nodejs environment
         uses: ./.github/actions/setup-nodejs
