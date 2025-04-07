@@ -253,17 +253,27 @@ func (ctx *stitchingContext) adjustExpression(
 	return newExpr
 }
 
+// queryVerifierAction implements the VerifierAction interface to handle query checks.
+type queryVerifierAction struct {
+	q ifaces.Query
+}
+
+// Run executes the native verifier check.
+func (a *queryVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	return a.q.Check(run)
+}
+
+// RunGnark executes the gnark circuit verifier check.
+func (a *queryVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	a.q.CheckGnark(api, wvc)
+}
+
+// insertVerifier registers a verifier action for the given query at the specified round.
 func insertVerifier(
 	comp *wizard.CompiledIOP,
 	q ifaces.Query,
 	round int,
 ) {
-
-	// Requires the verifier to verify the query itself
-	comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
-		return q.Check(vr)
-	}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
-		q.CheckGnark(api, wvc)
-	})
-
+	action := &queryVerifierAction{q: q}
+	comp.RegisterVerifierAction(round, action)
 }

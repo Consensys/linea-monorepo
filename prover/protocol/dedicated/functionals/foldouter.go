@@ -13,6 +13,28 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// foldOuterVerifierAction implements the VerifierAction interface for outer folding consistency.
+type foldOuterVerifierAction struct {
+	foldedEvalAcc ifaces.Accessor
+	hEvalAcc      ifaces.Accessor
+	foldedName    ifaces.ColID
+}
+
+// Run executes the native verifier check for outer folding consistency.
+func (a *foldOuterVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	if a.foldedEvalAcc.GetVal(run) != a.hEvalAcc.GetVal(run) {
+		return fmt.Errorf("verifier of folding failed %v", a.foldedName)
+	}
+	return nil
+}
+
+// RunGnark executes the gnark circuit verifier check for outer folding consistency.
+func (a *foldOuterVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	c := a.foldedEvalAcc.GetFrontendVariable(api, wvc)
+	c_ := a.hEvalAcc.GetFrontendVariable(api, wvc)
+	api.AssertIsEqual(c, c_)
+}
+
 // Same as fold but folds on the outer-variable rather than the inner variable
 func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, outerDegree int) ifaces.Column {
 
@@ -46,15 +68,10 @@ func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, out
 	verRound := utils.Max(innerCoinAcc.Round(), foldedEvalAcc.Round())
 
 	// Check that the two evaluations yield the same result
-	comp.InsertVerifier(verRound, func(run *wizard.VerifierRuntime) error {
-		if foldedEvalAcc.GetVal(run) != hEvalAcc.GetVal(run) {
-			return fmt.Errorf("verifier of folding failed %v", foldedName)
-		}
-		return nil
-	}, func(api frontend.API, run *wizard.WizardVerifierCircuit) {
-		c := foldedEvalAcc.GetFrontendVariable(api, run)
-		c_ := hEvalAcc.GetFrontendVariable(api, run)
-		api.AssertIsEqual(c, c_)
+	comp.RegisterVerifierAction(verRound, &foldOuterVerifierAction{
+		foldedEvalAcc: foldedEvalAcc,
+		hEvalAcc:      hEvalAcc,
+		foldedName:    foldedName,
 	})
 
 	return folded

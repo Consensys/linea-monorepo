@@ -27,6 +27,21 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
 
+// multiPointVerifierAction implements the VerifierAction interface for multi-point to single-point consistency.
+type multiPointVerifierAction struct {
+	ctx mptsCtx
+}
+
+// Run executes the native verifier check for multi-point to single-point consistency.
+func (a *multiPointVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	return a.ctx.verifier(run)
+}
+
+// RunGnark executes the gnark circuit verifier check for multi-point to single-point consistency.
+func (a *multiPointVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	a.ctx.gnarkVerify(api, wvc)
+}
+
 /*
 Reduce all the univariate queries into a unique single point evaluation
 
@@ -45,7 +60,7 @@ func MultiPointToSinglePoint(targetSize int) func(comp *wizard.CompiledIOP) {
 			return
 		}
 
-		// If the quotient is too smalls, we still adjust it to have the
+		// If the quotient is too small, we still adjust it to have the
 		// desired size by expanding it.
 		if ctx.quotientSize < targetSize {
 			targetSize = ctx.quotientSize
@@ -74,7 +89,7 @@ func MultiPointToSinglePoint(targetSize int) func(comp *wizard.CompiledIOP) {
 		// Computation of the alleged values
 		comp.RegisterProverAction(ctx.numRound+1, &multiPointToSinglePointProverAction{ctx: ctx, actionType: "claimEvaluation"})
 		// Consistency check
-		comp.InsertVerifier(ctx.numRound+1, ctx.verifier, ctx.gnarkVerify)
+		comp.RegisterVerifierAction(ctx.numRound+1, &multiPointVerifierAction{ctx: ctx})
 	}
 }
 

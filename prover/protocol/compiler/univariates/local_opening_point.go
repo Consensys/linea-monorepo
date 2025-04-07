@@ -13,6 +13,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// localOpeningVerifierAction implements the VerifierAction interface for local opening compilation.
+type localOpeningVerifierAction struct {
+	ctx localOpeningCtx
+}
+
+// Run executes the native verifier check for local opening consistency.
+func (a *localOpeningVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	return a.ctx.verifier(run)
+}
+
+// RunGnark executes the gnark circuit verifier check for local opening consistency.
+func (a *localOpeningVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	a.ctx.gnarkVerifier(api, wvc)
+}
+
 func CompileLocalOpening(comp *wizard.CompiledIOP) {
 
 	logrus.Trace("started local opening compiler")
@@ -37,7 +52,7 @@ func CompileLocalOpening(comp *wizard.CompiledIOP) {
 	)
 
 	comp.RegisterProverAction(ctx.startRound, &compileLocalOpeningProverAction{ctx: ctx})
-	comp.InsertVerifier(ctx.startRound, ctx.verifier, ctx.gnarkVerifier)
+	comp.RegisterVerifierAction(ctx.startRound, &localOpeningVerifierAction{ctx: ctx})
 }
 
 // compileLocalOpeningProverAction is the action to perform the local opening compilation.

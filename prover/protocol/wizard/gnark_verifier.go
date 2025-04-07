@@ -150,14 +150,6 @@ func (c *WizardVerifierCircuit) Verify(api frontend.API) {
 	c.FS.Update(c.Spec.fiatShamirSetup)
 	c.FiatShamirHistory = make([][2][]frontend.Variable, c.Spec.NumRounds())
 	c.generateAllRandomCoins(api)
-
-	for _, roundSteps := range c.Spec.subVerifiers.Inner() {
-		for _, step := range roundSteps {
-			if !step.IsSkipped() {
-				step.RunGnark(api, c)
-			}
-		}
-	}
 }
 
 // generateAllRandomCoins is as [VerifierRuntime.generateAllRandomCoins]. Note that the function
@@ -223,10 +215,6 @@ func (c *WizardVerifierCircuit) generateAllRandomCoins(api frontend.API) {
 		if c.Spec.FiatShamirHooks.Len() > currRound {
 			fsHooks := c.Spec.FiatShamirHooks.MustGet(currRound)
 			for i := range fsHooks {
-				if fsHooks[i].IsSkipped() {
-					continue
-				}
-
 				fsHooks[i].RunGnark(api, c)
 			}
 		}

@@ -20,6 +20,30 @@ const (
 	REED_SOLOMON_BETA        string = "REED_SOLOMON_BETA"
 )
 
+// reedSolomonVerifierAction implements the VerifierAction interface for Reed-Solomon code checking.
+type reedSolomonVerifierAction struct {
+	coeffCheck ifaces.Accessor
+	evalCheck  ifaces.Accessor
+	h          ifaces.Column
+}
+
+// Run executes the native verifier check for Reed-Solomon consistency.
+func (a *reedSolomonVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	y := a.coeffCheck.GetVal(run)
+	y_ := a.evalCheck.GetVal(run)
+	if y != y_ {
+		return fmt.Errorf("reed-solomon check failed - %v is not a codeword", a.h.GetColID())
+	}
+	return nil
+}
+
+// RunGnark executes the gnark circuit verifier check for Reed-Solomon consistency.
+func (a *reedSolomonVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	y := a.coeffCheck.GetFrontendVariable(api, wvc)
+	y_ := a.evalCheck.GetFrontendVariable(api, wvc)
+	api.AssertIsEqual(y, y_)
+}
+
 // Is code-member
 func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 
@@ -39,7 +63,6 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 
 	// Inserts the prover before calling the sub-wizard so that it is executed
 	// before the sub-prover's wizards.
-	//
 	comp.RegisterProverAction(round, &reedSolomonProverAction{
 		h:       h,
 		codeDim: codeDim,
@@ -60,19 +83,11 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 		h,
 	)
 
-	comp.InsertVerifier(round+1, func(a *wizard.VerifierRuntime) error {
-		y := coeffCheck.GetVal(a)
-		y_ := evalCheck.GetVal(a)
-		if y != y_ {
-			return fmt.Errorf("reed-solomon check failed - %v is not a codeword", h.GetColID())
-		}
-		return nil
-	}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
-		y := coeffCheck.GetFrontendVariable(api, wvc)
-		y_ := evalCheck.GetFrontendVariable(api, wvc)
-		api.AssertIsEqual(y, y_)
+	comp.RegisterVerifierAction(round+1, &reedSolomonVerifierAction{
+		coeffCheck: coeffCheck,
+		evalCheck:  evalCheck,
+		h:          h,
 	})
-
 }
 
 // reedSolomonProverAction is the action to assign the Reed-Solomon coefficients.

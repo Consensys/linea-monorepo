@@ -16,6 +16,29 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+// checkSubsampleVerifierAction implements the VerifierAction interface for subsample checking.
+type checkSubsampleVerifierAction struct {
+	accLargeLast query.LocalOpening
+	accSmallLast query.LocalOpening
+}
+
+// Run executes the native verifier check for subsample consistency.
+func (a *checkSubsampleVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	resAccLast := run.GetLocalPointEvalParams(a.accLargeLast.ID)
+	expectedResAccLast := run.GetLocalPointEvalParams(a.accSmallLast.ID)
+	if resAccLast.Y != expectedResAccLast.Y {
+		return fmt.Errorf("linear hashing failed : the ResAcc and ExpectedResAcc do not match on their last inputs %v, %v", resAccLast.Y.String(), expectedResAccLast.Y.String())
+	}
+	return nil
+}
+
+// RunGnark executes the gnark circuit verifier check for subsample consistency.
+func (a *checkSubsampleVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	resAccLast := wvc.GetLocalPointEvalParams(a.accLargeLast.ID)
+	expectedResAccLast := wvc.GetLocalPointEvalParams(a.accSmallLast.ID)
+	api.AssertIsEqual(resAccLast.Y, expectedResAccLast.Y)
+}
+
 // Tests that a small table is obtained from subsampling a larger column with a given offset
 func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces.Column, offset int) {
 
@@ -75,7 +98,6 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 	)
 
 	// Also declares the queries on ResAcc and ExpectedResAcc
-
 	r := ifaces.ColumnAsVariable(large[0])
 	rPrime := ifaces.ColumnAsVariable(small[0])
 
@@ -176,20 +198,11 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 		offset:       offset,
 	})
 
-	comp.InsertVerifier(
+	comp.RegisterVerifierAction(
 		round+1,
-		func(run *wizard.VerifierRuntime) error {
-			resAccLast := run.GetLocalPointEvalParams(accLargeLast.ID)
-			expectedResAccLast := run.GetLocalPointEvalParams(accSmallLast.ID)
-			if resAccLast.Y != expectedResAccLast.Y {
-				return fmt.Errorf("linear hashing failed : the ResAcc and ExpectedResAcc do not match on their last inputs %v, %v", resAccLast.Y.String(), expectedResAccLast.Y.String())
-			}
-			return nil
-		},
-		func(a frontend.API, run *wizard.WizardVerifierCircuit) {
-			resAccLast := run.GetLocalPointEvalParams(accLargeLast.ID)
-			expectedResAccLast := run.GetLocalPointEvalParams(accSmallLast.ID)
-			a.AssertIsEqual(resAccLast.Y, expectedResAccLast.Y)
+		&checkSubsampleVerifierAction{
+			accLargeLast: accLargeLast,
+			accSmallLast: accSmallLast,
 		},
 	)
 }

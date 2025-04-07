@@ -57,8 +57,8 @@ func Naturalize(comp *wizard.CompiledIOP) {
 			q_ := comp.QueriesParams.Data(qName)
 			if _, ok := q_.(query.UnivariateEval); !ok {
 				/*
-					Every other type of parametrizable queries (inner-product, local opening)
-					should have been compiled at this point.
+				   Every other type of parametrizable queries (inner-product, local opening)
+				   should have been compiled at this point.
 				*/
 				utils.Panic("query %v has type %v expected only univariate", qName, reflect.TypeOf(q_))
 			}
@@ -66,8 +66,8 @@ func Naturalize(comp *wizard.CompiledIOP) {
 			q := q_.(query.UnivariateEval)
 
 			/*
-				We skip the queries that are ineligible for compilation : the
-				one that are related to only natural commitment already.
+			   We skip the queries that are ineligible for compilation : the
+			   one that are related to only natural commitment already.
 			*/
 			isEligible := false
 			for _, pol := range q.Pols {
@@ -86,7 +86,7 @@ func Naturalize(comp *wizard.CompiledIOP) {
 			}
 
 			/*
-				Create the context
+			   Create the context
 			*/
 			ctx := naturalizationCtx{
 				q:                q,
@@ -99,13 +99,28 @@ func Naturalize(comp *wizard.CompiledIOP) {
 			ctx.registersTheNewQueries(comp)
 
 			/*
-				And assigns them
+			   And assigns them
 			*/
 			comp.RegisterProverAction(roundID, &naturalizeProverAction{ctx: ctx})
 
-			comp.InsertVerifier(roundID, ctx.Verify, ctx.GnarkVerify)
+			comp.RegisterVerifierAction(roundID, &naturalizeVerifierAction{ctx: ctx})
 		}
 	}
+}
+
+// naturalizeVerifierAction implements the VerifierAction interface for naturalization consistency.
+type naturalizeVerifierAction struct {
+	ctx naturalizationCtx
+}
+
+// Run executes the native verifier check for naturalization consistency.
+func (a *naturalizeVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	return a.ctx.Verify(run)
+}
+
+// RunGnark executes the gnark circuit verifier check for naturalization consistency.
+func (a *naturalizeVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	a.ctx.GnarkVerify(api, wvc)
 }
 
 // naturalizeProverAction is the action to assign the naturalized queries.

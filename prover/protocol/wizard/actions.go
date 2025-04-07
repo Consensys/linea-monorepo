@@ -14,10 +14,14 @@ type ProverAction interface {
 // protocol. Usually, this is used to represent verifier checks. They can be
 // registered via [CompiledIOP.RegisterVerifierAction].
 type VerifierAction interface {
-	// Skip indicates that the verifier action can be skipped
-	Skip()
-	// IsSkipped returns whether the current VerifierAction is skipped
-	IsSkipped() bool
+
+	/*
+		// Skip indicates that the verifier action can be skipped
+		Skip()
+		// IsSkipped returns whether the current VerifierAction is skipped
+		IsSkipped() bool
+	*/
+
 	// Run executes the VerifierAction over a [VerifierRuntime] it returns an
 	// error.
 	Run(*VerifierRuntime) error

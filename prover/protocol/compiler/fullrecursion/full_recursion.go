@@ -179,14 +179,8 @@ func captureCtx(comp *wizard.CompiledIOP) *fullRecursionCtx {
 		if comp.FiatShamirHooks.Len() > round {
 			resetFs := comp.FiatShamirHooks.Inner()[round]
 			for i := range resetFs {
-
 				fsHook := resetFs[i]
-				if fsHook.IsSkipped() {
-					continue
-				}
-
 				ctx.FsHooks[round] = append(ctx.VerifierActions[round], fsHook)
-				fsHook.Skip()
 			}
 		}
 	}

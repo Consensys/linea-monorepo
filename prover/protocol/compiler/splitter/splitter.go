@@ -236,6 +236,44 @@ func nameHandleSlice(h ifaces.Column, num, numSlots int) ifaces.ColID {
 	return ifaces.ColIDf("%v_SUBSLICE_%v_OVER_%v", h.GetColID(), num, numSlots)
 }
 
+// globalConstraintVerifierAction implements the VerifierAction interface for global constraint verification.
+type globalConstraintVerifierAction struct {
+	q query.GlobalConstraint
+}
+
+// Run executes the native verifier check for global constraint consistency.
+func (a *globalConstraintVerifierAction) Run(vr *wizard.VerifierRuntime) error {
+	err := a.q.Check(vr)
+	if err != nil {
+		return fmt.Errorf("failure for query %v, here is why %v", a.q.ID, err)
+	}
+	return nil
+}
+
+// RunGnark executes the gnark circuit verifier check for global constraint consistency.
+func (a *globalConstraintVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	a.q.CheckGnark(api, wvc)
+}
+
+// localConstraintVerifierAction implements the VerifierAction interface for local constraint verification.
+type localConstraintVerifierAction struct {
+	q query.LocalConstraint
+}
+
+// Run executes the native verifier check for local constraint consistency.
+func (a *localConstraintVerifierAction) Run(vr *wizard.VerifierRuntime) error {
+	err := a.q.Check(vr)
+	if err != nil {
+		return fmt.Errorf("failure for query %v, here is why %v", a.q.ID, err)
+	}
+	return nil
+}
+
+// RunGnark executes the gnark circuit verifier check for local constraint consistency.
+func (a *localConstraintVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	a.q.CheckGnark(api, wvc)
+}
+
 // replace a global constraint
 func (ctx splitterCtx) compileGlobal(comp *wizard.CompiledIOP, q query.GlobalConstraint) {
 
@@ -266,15 +304,7 @@ func (ctx splitterCtx) compileGlobal(comp *wizard.CompiledIOP, q query.GlobalCon
 		}
 
 		// Requires the verifier to verify the query itself
-		comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
-			err := q.Check(vr)
-			if err != nil {
-				return fmt.Errorf("failure for query %v, here is why %v", q.ID, err)
-			}
-			return nil
-		}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
-			q.CheckGnark(api, wvc)
-		})
+		comp.RegisterVerifierAction(round, &globalConstraintVerifierAction{q: q})
 
 		// And skip the compilation consequently : we are done
 		return
@@ -373,7 +403,7 @@ func (ctx splitterCtx) compileGlobal(comp *wizard.CompiledIOP, q query.GlobalCon
 			}
 		}
 
-		// Implictly, always cancel the constraint because the overflow is always unjustified.
+		// Implicitly, always cancel the constraint because the overflow is always unjustified.
 		comp.InsertGlobal(
 			round,
 			ifaces.QueryIDf("%v_SPLIT_%v_OVER_%v", q.ID, slot, numSlots),
@@ -432,15 +462,7 @@ func (ctx splitterCtx) compileLocal(comp *wizard.CompiledIOP, q query.LocalConst
 		}
 
 		// Requires the verifier to verify the query itself
-		comp.InsertVerifier(round, func(vr *wizard.VerifierRuntime) error {
-			err := q.Check(vr)
-			if err != nil {
-				return fmt.Errorf("failure for query %v, here is why %v", q.ID, err)
-			}
-			return nil
-		}, func(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
-			q.CheckGnark(api, wvc)
-		})
+		comp.RegisterVerifierAction(round, &localConstraintVerifierAction{q: q})
 
 		// Skip the rest of the compilation process : we are done
 		return

@@ -404,6 +404,30 @@ func (a *linearHashMerkleAssignProverAction) Run(run *wizard.ProverRuntime) {
 	)
 }
 
+// consistencyVerifierAction checks consistency between u_alpha and preimage.
+type consistencyVerifierAction struct {
+	left  ifaces.Accessor
+	right ifaces.Accessor
+}
+
+func (a *consistencyVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	if a.left.GetVal(run) != a.right.GetVal(run) {
+		l, r := a.left.GetVal(run), a.right.GetVal(run)
+		return fmt.Errorf("consistency between u_alpha and the preimage: "+
+			"mismatch between left and right %v != %v",
+			l.String(), r.String(),
+		)
+	}
+	return nil
+}
+
+func (a *consistencyVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	api.AssertIsEqual(
+		a.left.GetFrontendVariable(api, wvc),
+		a.right.GetFrontendVariable(api, wvc),
+	)
+}
+
 /*
 Collapsing phase
 
@@ -418,7 +442,6 @@ Collapsing phase
   - PreimageCollapse := \sum_{i} P_{i} (collapse)^i
 */
 func (ctx *SelfRecursionCtx) collapsingPhase() {
-
 	// starting one round after Q is sampled
 	round := ctx.Columns.Q.Round() + 1
 
@@ -442,18 +465,6 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			ctx.Columns.UalphaQ,
 		)
 
-		/*
-			- The preimages are given in the form of several columns of the form:
-			  [limb0, limb1, ..., limbL-1, limb0, ... limbL-1, ...], each field element is represented by
-			  L limbs (say)
-			- Next, we collapse the limbs
-			- First, we observe that "\sum_{i=0}^{numb_limbs} limb_i 2^(log_two_bound * i) = jth field element
-			  of the preimage" and that this corresponds to evaluating a polynomial whose coefficients are
-			  [limb0, ... limbL-1], numb_limbs is the number of limbs required to represent a field element
-			- Then making the double sum for all elements in an opened column using alpha as a second
-			  evaluation point, we get a bivariate polynomial evaluation
-		*/
-
 		right := functionals.EvalCoeffBivariate(
 			ctx.comp,
 			ctx.constencyUalphaQPreimageRight(),
@@ -464,31 +475,14 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			ctx.Columns.WholePreimages[0].Size(),
 		)
 
-		ctx.comp.InsertVerifier(
+		ctx.comp.RegisterVerifierAction(
 			left.Round(),
-			func(run *wizard.VerifierRuntime) error {
-				if left.GetVal(run) != right.GetVal(run) {
-					l, r := left.GetVal(run), right.GetVal(run)
-					return fmt.Errorf("consistency between u_alpha and the preimage: "+
-						"mismatch between left and right %v != %v",
-						l.String(), r.String(),
-					)
-				}
-				return nil
-			},
-			func(api frontend.API, run *wizard.WizardVerifierCircuit) {
-				api.AssertIsEqual(
-					left.GetFrontendVariable(api, run),
-					right.GetFrontendVariable(api, run),
-				)
-			},
+			&consistencyVerifierAction{left: left, right: right},
 		)
 	}
 
 	sisDeg := ctx.VortexCtx.SisParams.OutputSize()
 	// Currently, only powers of two SIS degree are allowed
-	// (in practice, we restrict ourselves to pure power of two)
-	// lattices instances.
 	if !utils.IsPowerOfTwo(sisDeg) {
 		utils.Panic("Attempting to fold to a non-power of two size : %v", sisDeg)
 	}
@@ -506,16 +500,9 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 		utils.Panic("the size of DhQ (%v) collapse must equal to the SIS modulus degree (%v)", ctx.Columns.DhQCollapse.Size(), sisDeg)
 	}
 
-	//
 	// Merging the SIS keys
-	//
-
-	// Create an accessor for collapse^t, where t is the number of opened columns
 	collapsePowT := accessors.NewExponent(ctx.Coins.Collapse, ctx.VortexCtx.NbColsToOpen())
 
-	// since some of the Ah and Dh can be nil, we compactify the slice by
-	// only retaining the non-nil elements before sending it to the
-	// linear combination operator.
 	nonNilAh := []ifaces.Column{}
 	for _, ah := range ctx.Columns.Ah {
 		if ah != nil {
@@ -523,7 +510,6 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 		}
 	}
 
-	// And computes the linear combination
 	ctx.Columns.ACollapsed = expr_handle.RandLinCombCol(
 		ctx.comp,
 		collapsePowT,
@@ -531,14 +517,10 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 		ctx.aCollapsedName(),
 	)
 
-	// And edual
-
-	// Declare Edual
 	ctx.Columns.Edual = ctx.comp.InsertCommit(
 		round, ctx.eDual(), ctx.VortexCtx.SisParams.OutputSize(),
 	)
 
-	// And assign it
 	ctx.comp.RegisterProverAction(round, &edualAssignProverAction{ctx: ctx, collapsePowT: collapsePowT})
 }
 
@@ -603,6 +585,60 @@ func (a *edualAssignProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(a.ctx.Columns.Edual.GetColID(), eDual)
 }
 
+// foldConsistencyVerifierAction checks folding consistency in the ring-SIS context.
+// It implements the RegisterVerifier Action interface
+type foldConsistencyVerifierAction struct {
+	ctx    *SelfRecursionCtx
+	degree int
+}
+
+func (a *foldConsistencyVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	edual := a.ctx.Columns.Edual.GetColAssignment(run)
+	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignment(run)
+	rfold := run.GetRandomCoinField(a.ctx.Coins.Fold.Name)
+	yAlleged := run.GetInnerProductParams(a.ctx.preimagesAndAmergeIP()).Ys[0]
+	yDual := smartvectors.EvalCoeff(edual, rfold)
+	yActual := smartvectors.EvalCoeff(dcollapse, rfold)
+
+	var xN, xNminus1, xNplus1 field.Element
+	one := field.One()
+	xN.Exp(rfold, big.NewInt(int64(a.degree)))
+	xNminus1.Sub(&xN, &one)
+	xNplus1.Add(&xN, &one)
+
+	var left, left0, left1, right field.Element
+	left0.Mul(&xNplus1, &yDual)
+	left1.Mul(&xNminus1, &yActual)
+	left.Sub(&left0, &left1)
+	right.Double(&yAlleged)
+
+	if left != right {
+		return fmt.Errorf("failed the consistency check of the ring-SIS : %v != %v", left.String(), right.String())
+	}
+	return nil
+}
+
+func (a *foldConsistencyVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	edual := a.ctx.Columns.Edual.GetColAssignmentGnark(wvc)
+	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignmentGnark(wvc)
+	rfold := wvc.GetRandomCoinField(a.ctx.Coins.Fold.Name)
+	yAlleged := wvc.GetInnerProductParams(a.ctx.preimagesAndAmergeIP()).Ys[0]
+	yDual := poly.EvaluateUnivariateGnark(api, edual, rfold)
+	yActual := poly.EvaluateUnivariateGnark(api, dcollapse, rfold)
+
+	one := field.One()
+	xN := gnarkutil.Exp(api, rfold, a.degree)
+	xNminus1 := api.Sub(xN, one)
+	xNplus1 := api.Add(xN, one)
+
+	left0 := api.Mul(xNplus1, yDual)
+	left1 := api.Mul(xNminus1, yActual)
+	left := api.Sub(left0, left1)
+	right := api.Mul(yAlleged, 2)
+
+	api.AssertIsEqual(left, right)
+}
+
 // Registers the final folding phase of the self-recursion
 //
 //   - Sample the folding random coin r\fold
@@ -617,128 +653,38 @@ func (a *edualAssignProverAction) Run(run *wizard.ProverRuntime) {
 //   - Perform the final check to evaluate the consistency vs
 //     Edual and D\merge,\collapse,q
 func (ctx *SelfRecursionCtx) foldPhase() {
-
-	// The round of declaration should be one more than EDual
 	round := ctx.Columns.Edual.Round() + 1
 
-	// Sample rFold
 	ctx.Coins.Fold = ctx.comp.InsertCoin(round, ctx.foldCoinName(), coin.Field)
 
-	// Constructs ACollapsedFold
 	ctx.Columns.ACollapseFold = functionals.Fold(
 		ctx.comp, ctx.Columns.ACollapsed,
 		accessors.NewFromCoin(ctx.Coins.Fold),
 		ctx.VortexCtx.SisParams.OutputSize(),
 	)
 
-	// Construct DmergeCollapseFold
 	ctx.Columns.PreimageCollapseFold = functionals.Fold(
 		ctx.comp, ctx.Columns.PreimagesCollapse,
 		accessors.NewFromCoin(ctx.Coins.Fold),
 		ctx.VortexCtx.SisParams.OutputSize(),
 	)
 
-	// Mark Edual and the DmergeQCollapse fold as proof
 	ctx.comp.Columns.SetStatus(ctx.Columns.DhQCollapse.GetColID(), column.Proof)
 	ctx.comp.Columns.SetStatus(ctx.Columns.Edual.GetColID(), column.Proof)
 
-	// Declare and assign the inner-product
 	ctx.Queries.LatticeInnerProd = ctx.comp.InsertInnerProduct(
 		round, ctx.preimagesAndAmergeIP(), ctx.Columns.ACollapseFold,
-		[]ifaces.Column{ctx.Columns.PreimageCollapseFold})
+		[]ifaces.Column{ctx.Columns.PreimageCollapseFold},
+	)
 
-	// Assignment part of the inner product
 	ctx.comp.RegisterProverAction(round, &innerProductAssignProverAction{ctx: ctx})
 
 	degree := ctx.SisKey().OutputSize()
 
-	// And the final check
-	// check the folding of the polynomial is correct
-	ctx.comp.InsertVerifier(round, func(run *wizard.VerifierRuntime) error {
-
-		// fetch the assignments to edual and dcollapse
-		edual := ctx.Columns.Edual.GetColAssignment(run)
-		dcollapse := ctx.Columns.DhQCollapse.GetColAssignment(run)
-
-		// the folding coin
-		rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
-
-		// evaluates both edual and dcollapse (seen as polynomial) by
-		// coefficients and fetch the result of the inner-product
-		yAlleged := run.GetInnerProductParams(ctx.preimagesAndAmergeIP()).Ys[0]
-		yDual := smartvectors.EvalCoeff(edual, rfold)
-		yActual := smartvectors.EvalCoeff(dcollapse, rfold)
-
-		/*
-			If P(X) is of degree 2n
-
-			And
-				- Q(X) = P(X) mod X^n - 1
-				- R(X) = P(X) mod X^n + 1
-
-			Then, with CRT we have: 2P(X) = (X^n+1)Q(X) - (X^n-1)R(X)
-			Here, we can identify at the point x
-
-			yDual * (x^n+1) - yActual * (x^n-1) == 2 * yAlleged
-		*/
-		var xN, xNminus1, xNplus1 field.Element
-		one := field.One()
-		xN.Exp(rfold, big.NewInt(int64(degree)))
-		xNminus1.Sub(&xN, &one)
-		xNplus1.Add(&xN, &one)
-
-		var left, left0, left1, right field.Element
-		left0.Mul(&xNplus1, &yDual)
-		left1.Mul(&xNminus1, &yActual)
-		left.Sub(&left0, &left1)
-
-		right.Double(&yAlleged)
-
-		if left != right {
-			return fmt.Errorf("failed the consistency check of the ring-SIS : %v != %v", left.String(), right.String())
-		}
-
-		return nil
-	}, func(api frontend.API, run *wizard.WizardVerifierCircuit) {
-
-		// fetch the assignments to edual and dcollapse
-		edual := ctx.Columns.Edual.GetColAssignmentGnark(run)
-		dcollapse := ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
-
-		// the folding coin
-		rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
-
-		// evaluates both edual and dcollapse (seen as polynomial) by
-		// coefficients and fetch the result of the inner-product
-		yAlleged := run.GetInnerProductParams(ctx.preimagesAndAmergeIP()).Ys[0]
-		yDual := poly.EvaluateUnivariateGnark(api, edual, rfold)
-		yActual := poly.EvaluateUnivariateGnark(api, dcollapse, rfold)
-
-		/*
-		   If P(X) is of degree 2n
-
-		   And
-		     - Q(X) = P(X) mod X^n - 1
-		     - R(X) = P(X) mod X^n + 1
-
-		   Then, with CRT we have: 2P(X) = (X^n+1)Q(X) - (X^n-1)R(X)
-		   Here, we can identify at the point x
-
-		   yDual * (x^n+1) - yActual * (x^n-1) == 2 * yAlleged
-		*/
-		one := field.One()
-		xN := gnarkutil.Exp(api, rfold, degree)
-		xNminus1 := api.Sub(xN, one)
-		xNplus1 := api.Add(xN, one)
-
-		left0 := api.Mul(xNplus1, yDual)
-		left1 := api.Mul(xNminus1, yActual)
-		left := api.Sub(left0, left1)
-
-		right := api.Mul(yAlleged, 2)
-
-		api.AssertIsEqual(left, right)
-	})
+	ctx.comp.RegisterVerifierAction(
+		round,
+		&foldConsistencyVerifierAction{ctx: ctx, degree: degree},
+	)
 }
 
 // innerProductAssignProverAction assigns the inner product for the fold phase.

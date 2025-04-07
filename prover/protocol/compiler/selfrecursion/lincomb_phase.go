@@ -54,9 +54,31 @@ func (ctx *SelfRecursionCtx) defineYs() {
 	ctx.Columns.Ys = verifiercol.NewFromYs(ctx.comp, ctx.VortexCtx.Query, ranges)
 }
 
-// Registers the consistency check between Ys and Ualpha
-func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
+// ysUalphaConsistencyVerifierAction checks consistency between Ys and Ualpha.
+type ysUalphaConsistencyVerifierAction struct {
+	ctx *SelfRecursionCtx
+}
 
+func (a *ysUalphaConsistencyVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	ys := a.ctx.Columns.Ys.GetColAssignment(run)
+	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
+	ysAlpha := smartvectors.EvalCoeff(ys, alpha)
+	uAlphaX := a.ctx.Accessors.InterpolateUalphaX.GetVal(run)
+	if uAlphaX != ysAlpha {
+		return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass")
+	}
+	return nil
+}
+
+func (a *ysUalphaConsistencyVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	ys := a.ctx.Columns.Ys.GetColAssignmentGnark(wvc)
+	alpha := wvc.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
+	uAlphaX := a.ctx.Accessors.InterpolateUalphaX.GetFrontendVariable(api, wvc)
+	ysAlpha := poly.EvaluateUnivariateGnark(api, ys, alpha)
+	api.AssertIsEqual(uAlphaX, ysAlpha)
+}
+
+func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 	// Defer the interpolation of Ualpha to a dedicated wizard
 	ctx.Accessors.InterpolateUalphaX = functionals.Interpolation(
 		ctx.comp,
@@ -68,25 +90,8 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 	round := ctx.Accessors.InterpolateUalphaX.Round()
 
 	// And let the verifier check that they should be both equal
-	ctx.comp.InsertVerifier(
+	ctx.comp.RegisterVerifierAction(
 		round,
-		func(run *wizard.VerifierRuntime) error {
-
-			ys := ctx.Columns.Ys.GetColAssignment(run)
-			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
-			ysAlpha := smartvectors.EvalCoeff(ys, alpha)
-			uAlphaX := ctx.Accessors.InterpolateUalphaX.GetVal(run)
-			if uAlphaX != ysAlpha {
-				return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass")
-			}
-			return nil
-		},
-		func(api frontend.API, run *wizard.WizardVerifierCircuit) {
-			ys := ctx.Columns.Ys.GetColAssignmentGnark(run)
-			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
-			uAlphaX := ctx.Accessors.InterpolateUalphaX.GetFrontendVariable(api, run)
-			ysAlpha := poly.EvaluateUnivariateGnark(api, ys, alpha)
-			api.AssertIsEqual(uAlphaX, ysAlpha)
-		},
+		&ysUalphaConsistencyVerifierAction{ctx: ctx},
 	)
 }

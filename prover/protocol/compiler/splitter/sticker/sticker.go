@@ -397,6 +397,32 @@ func (ctx *stickContext) compileArithmeticConstraints() {
 	}
 }
 
+// stickerVerifierAction handles verifier checks for the sticker context.
+// It implements the [wizard.VerifierAction] interface.
+type stickerVerifierAction struct {
+	q   query.LocalOpening
+	ctx *stickContext
+}
+
+// Run executes the native verifier check for local opening consistency.
+func (a *stickerVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	oldParams := run.GetLocalPointEvalParams(a.q.ID)
+	newParams := run.GetLocalPointEvalParams(queryName(a.q.ID))
+
+	if oldParams != newParams {
+		return fmt.Errorf("sticker verifier failed for local opening %v - %v", a.q.ID, queryName(a.q.ID))
+	}
+
+	return nil
+}
+
+// RunGnark executes the gnark circuit verifier check for local opening consistency.
+func (a *stickerVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	oldParams := wvc.GetLocalPointEvalParams(a.q.ID)
+	newParams := wvc.GetLocalPointEvalParams(queryName(a.q.ID))
+	api.AssertIsEqual(oldParams.Y, newParams.Y)
+}
+
 // Compiling the fixed evaluations is made by
 func (ctx *stickContext) compileFixedEvaluation() {
 
@@ -438,20 +464,10 @@ func (ctx *stickContext) compileFixedEvaluation() {
 			newQ: newQ,
 		})
 
-		// The verifier ensures that the old and new queries have the same assignement
-		ctx.comp.InsertVerifier(round, func(run *wizard.VerifierRuntime) error {
-			oldParams := run.GetLocalPointEvalParams(q.ID)
-			newParams := run.GetLocalPointEvalParams(queryName(q.ID))
-
-			if oldParams != newParams {
-				return fmt.Errorf("sticker verifier failed for local opening %v - %v", q.ID, queryName(q.ID))
-			}
-
-			return nil
-		}, func(api frontend.API, run *wizard.WizardVerifierCircuit) {
-			oldParams := run.GetLocalPointEvalParams(q.ID)
-			newParams := run.GetLocalPointEvalParams(queryName(q.ID))
-			api.AssertIsEqual(oldParams.Y, newParams.Y)
+		// The verifier ensures that the old and new queries have the same assignment
+		ctx.comp.RegisterVerifierAction(round, &stickerVerifierAction{
+			q:   q,
+			ctx: ctx,
 		})
 	}
 }

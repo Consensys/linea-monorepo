@@ -3,6 +3,7 @@ package vortex
 import (
 	"math"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -66,7 +67,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// Converts the precomputed as verifying key (e.g. send
 		// them to the verifier) in the offline phase if the
 		// CommitPrecomputes flag is false, otherwise set them as
-		// commited. If the flag `CommitPrecomputed` is set to true,
+		// committed. If the flag `CommitPrecomputed` is set to true,
 		// then this will instead register the precomputed columns.
 		ctx.processStatusPrecomputed()
 
@@ -89,9 +90,39 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// This is separated from GnarkVerify because, when doing full-recursion
 		// , we want to recurse this verifier step but not [ctx.Verify] which is
 		// already handled by the self-recursion mechanism.
-		comp.InsertVerifier(lastRound, ctx.explicitPublicEvaluation, ctx.gnarkExplicitPublicEvaluation)
-		comp.InsertVerifier(lastRound+2, ctx.Verify, ctx.GnarkVerify)
+		comp.RegisterVerifierAction(lastRound, &vortexPublicEvalVerifierAction{ctx: ctx})
+		comp.RegisterVerifierAction(lastRound+2, &vortexVerifierAction{ctx: ctx})
 	}
+}
+
+// vortexPublicEvalVerifierAction implements the VerifierAction interface for explicit public evaluation in Vortex.
+type vortexPublicEvalVerifierAction struct {
+	ctx Ctx
+}
+
+// Run executes the native verifier check for explicit public evaluation.
+func (a *vortexPublicEvalVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	return a.ctx.explicitPublicEvaluation(run)
+}
+
+// RunGnark executes the gnark circuit verifier check for explicit public evaluation.
+func (a *vortexPublicEvalVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	a.ctx.gnarkExplicitPublicEvaluation(api, wvc)
+}
+
+// vortexVerifierAction implements the VerifierAction interface for Vortex verification.
+type vortexVerifierAction struct {
+	ctx Ctx
+}
+
+// Run executes the native verifier check for Vortex consistency.
+func (a *vortexVerifierAction) Run(run *wizard.VerifierRuntime) error {
+	return a.ctx.Verify(run)
+}
+
+// RunGnark executes the gnark circuit verifier check for Vortex consistency.
+func (a *vortexVerifierAction) RunGnark(api frontend.API, wvc *wizard.WizardVerifierCircuit) {
+	a.ctx.GnarkVerify(api, wvc)
 }
 
 // compileProverAction is the action to perform various steps in the Vortex compiler.
