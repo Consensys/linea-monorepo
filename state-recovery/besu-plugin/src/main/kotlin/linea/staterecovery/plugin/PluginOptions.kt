@@ -56,7 +56,7 @@ class PluginCliOptions {
 
   @CommandLine.Option(
     names = ["--$cliOptionsPrefix-linea-block-difficulty"],
-    description = ["Linea Block dificulty. Default 2"],
+    description = ["Linea Block difficulty. Default 2"],
     required = false,
     defaultValue = "\${env:LINEA_BLOCK_DIFFICULTY}"
   )
