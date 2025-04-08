@@ -592,6 +592,18 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 
 // SegmentBoundaries computes the density of a module given an assignment.
 // This can be used to determine the number of segment of the module.
+//
+// The function works by iterating over the columns of the module and
+// computing the density of each column. The density is defined as the
+// number of non-padding elements. The function does a few quirks around
+// the regular columns: they are not taken into account when evaluating
+// the overall density of the module. That is because, it often happens
+// that we suboptimally assign a whole regular column while it could in fact
+// have a sparser representation. However, if all columns are regular,
+// then we consider that the density is equal to the size of the module.
+//
+// Beside we consider that constants columns have a density of 0, and the
+// function will return 0, 0 if all columns in the module are constants.
 func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmentSize int) (int, int) {
 
 	if mod.nbSegmentCache == nil {
@@ -603,15 +615,28 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 	}
 
 	var (
-		resOrientation = 0
-		resMaxDensity  = 0
-		size           int
-		refCol         column.Natural
+		resMaxDensity     = 0
+		size              int
+		areAnyNonRegular  = false
+		areAnyLeftPadded  = false
+		areAnyRightPadded = false
+		firstLeftPadded   column.Natural
+		firstRightPadded  column.Natural
+		firstColumn       column.Natural
 	)
 
 	for col := range mod.ds.Iter() {
 
-		size = col.Size()
+		if size == 0 {
+			size = col.Size()
+			firstColumn = col
+		}
+
+		// This should not happen for a well-formed module, query-based modules
+		// are expected to contain the same size for all columns.
+		if size != col.Size() {
+			utils.Panic("all columns must have the same size, first=%v col=%v", firstColumn.ID, col.ID)
+		}
 
 		// As the function is meant to be called **during** the bootstrapping
 		// compilation, we cannot expect all columns to be available at this
@@ -621,48 +646,74 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		}
 
 		var (
-			val               = col.GetColAssignment(run)
-			density           = smartvectors.Density(val)
-			orientation, oErr = smartvectors.PaddingOrientationOf(val)
+			val           = col.GetColAssignment(run)
+			start, stop   = smartvectors.CoWindowRange(val)
+			isLeftPadded  = start == 0
+			isRightPadded = stop == size
+			density       = stop - start
 		)
 
-		if oErr != nil {
+		if isLeftPadded && isRightPadded {
 			continue
+		} else {
+			areAnyNonRegular = true
 		}
 
-		if density == size {
-			continue
+		// It is important to exclude constant column from toggling up the
+		// areAnyLeftPadded flag. Otherwise, the panic condition stating that
+		// there should not be both left and right padded columns will be
+		// activated when we mix right-padded with a constant column.
+		if isLeftPadded && density > 0 {
+			areAnyLeftPadded = true
+			firstLeftPadded = col
 		}
 
-		if resOrientation == 0 {
-			resOrientation = orientation
-			refCol = col
+		if isRightPadded {
+			areAnyRightPadded = true
+			firstRightPadded = col
 		}
 
-		if orientation != 0 && orientation != resOrientation {
-			utils.Panic("conflicting orientation; orientation=%v main-orientation=%v failing-column=%v reference-column=%v", orientation, resOrientation, col.ID, refCol.ID)
+		if !isLeftPadded && !isRightPadded {
+			utils.Panic("column is neither left nor right padded, col=%v", col.ID)
 		}
 
 		resMaxDensity = max(resMaxDensity, density)
 	}
 
+	if !areAnyNonRegular {
+		start, stop := 0, size
+		mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+		return start, stop
+	}
+
+	if resMaxDensity == 0 {
+		start, stop := 0, 0
+		mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+		return start, stop
+	}
+
+	if areAnyLeftPadded && areAnyRightPadded {
+		utils.Panic("the module cannot contain at the same time left and right padded columns, oneLeftPadded=%v, oneRightPadded=%v", firstLeftPadded.ID, firstRightPadded.ID)
+	}
+
 	var (
-		totalSegmentedArea = segmentSize * utils.DivCeil(resMaxDensity, segmentSize)
-		start, stop        = 0, totalSegmentedArea
+		localNbSegment     = utils.DivCeil(resMaxDensity, segmentSize)
+		totalSegmentedArea = segmentSize * localNbSegment
 	)
 
-	if resOrientation == -1 {
-		start, stop = size-stop, size-start
+	if areAnyLeftPadded {
+		start, stop := 0, totalSegmentedArea
+		mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+		return start, stop
 	}
 
-	// Case where all the columns of the module are Regular. In this case, we return
-	// the whole area.
-	if resOrientation == 0 {
-		return 0, size
+	if areAnyRightPadded {
+		start, stop := size-totalSegmentedArea, size
+		mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+		return start, stop
 	}
 
-	mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-	return start, stop
+	panic("unreachable")
 }
 
 // Nilify a module. It empties its maps and sets its size to 0.

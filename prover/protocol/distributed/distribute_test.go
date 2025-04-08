@@ -62,7 +62,7 @@ func TestDistributedWizard(t *testing.T) {
 // dummy mode. Meaning without actual compilation.
 func TestDistributedWizardLogic(t *testing.T) {
 
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
@@ -82,6 +82,9 @@ func TestDistributedWizardLogic(t *testing.T) {
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
 	for i := range distWizard.GLs {
 		dummy.CompileAtProverLvl(distWizard.GLs[i].Wiop)
+	}
+
+	for i := range distWizard.LPPs {
 		dummy.CompileAtProverLvl(distWizard.LPPs[i].Wiop)
 	}
 
@@ -308,7 +311,7 @@ func TestBenchDistributedWizard(t *testing.T) {
 		t.Fatalf("")
 	}
 
-	return
+	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
 
 	for i := range distWizard.LPPs {
 
@@ -324,8 +327,6 @@ func TestBenchDistributedWizard(t *testing.T) {
 		compiledGLs[i] = CompileSegment(distWizard.GLs[i])
 		fmt.Printf("[%v] Done compiling module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
 	}
-
-	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
 
 	for i := range witnessGLs {
 
