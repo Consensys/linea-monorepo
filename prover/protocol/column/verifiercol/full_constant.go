@@ -12,6 +12,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+var _ ifaces.Column = ConstCol{}
+
 // Represents a constant column
 type ConstCol struct {
 	base   field.Element
@@ -90,15 +92,15 @@ func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []frontend.Varia
 	return res
 }
 
-func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) []frontend.Variable {
+func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
 	if cc.isBase {
 		res := make([]frontend.Variable, cc.Size_)
 		for i := range res {
 			res[i] = cc.base
 		}
-		return res
+		return res, nil
 	} else {
-		panic("requested base elements but column defined over field extensions")
+		return nil, fmt.Errorf("requested base elements but column defined over field extensions")
 	}
 }
 
