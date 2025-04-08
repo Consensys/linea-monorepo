@@ -343,8 +343,7 @@ class BlockValidatorTest {
         ).get()
     val expectedResult =
       error(
-        "Body root in header does not match body root " +
-          "bodyRoot=${invalidBlockHeader.bodyRoot.encodeHex()} " +
+        "Body root in header does not match body root bodyRoot=${invalidBlockHeader.bodyRoot.encodeHex()} " +
           "expectedBodyRoot=${validNewBlockHeader.bodyRoot.encodeHex()}",
       )
     assertThat(result).isEqualTo(expectedResult)
@@ -481,7 +480,7 @@ class BlockValidatorTest {
     val invalidExecutionClient =
       mock<ExecutionLayerClient> {
         on { newPayload(any()) }.thenReturn(
-          SafeFuture.completedFuture(Response.fromErrorMessage<PayloadStatusV1>("Invalid execution payload")),
+          SafeFuture.completedFuture(Response.fromErrorMessage("Invalid execution payload")),
         )
       }
     val result =
@@ -492,6 +491,38 @@ class BlockValidatorTest {
     val expectedResult =
       error(
         "Execution payload validation failed: Invalid execution payload",
+      )
+    assertThat(result).isEqualTo(expectedResult)
+  }
+
+  @Test
+  fun `test nonempty block`() {
+    val result =
+      EmptyBlockValidator
+        .validateBlock(
+          block = validNewBlock,
+        ).get()
+    assertThat(result).isEqualTo(BlockValidator.ok())
+  }
+
+  @Test
+  fun `test empty block`() {
+    val blockBody =
+      validNewBlockBody.copy(
+        executionPayload =
+          validNewBlockBody.executionPayload.copy(
+            transactions = emptyList(),
+          ),
+      )
+    val result =
+      EmptyBlockValidator
+        .validateBlock(
+          block = validNewBlock.copy(beaconBlockBody = blockBody),
+        ).get()
+    val expectedResult =
+      error(
+        "Block number=${validNewBlock.beaconBlockHeader.number} " +
+          "hash=${validNewBlock.beaconBlockHeader.hash.encodeHex()} is empty!",
       )
     assertThat(result).isEqualTo(expectedResult)
   }

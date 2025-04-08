@@ -41,15 +41,39 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.crypto.SECPSignature
 
 /**
- * Responsible for QBFT block creation.
+ * Responsible for QBFT block creation. As opposed to EagerBlockCreator, Delayed one relies on the fact that FCU was
+ * called some time in advance. So at the time of `createBlock` it actually ends the block creation process, not
+ * starts it
  */
-class QbftBlockCreator(
+class DelayedQbftBlockCreator(
   private val manager: ExecutionLayerManager,
   private val proposerSelector: ProposerSelector,
   private val validatorProvider: ValidatorProvider,
   private val beaconChain: BeaconChain,
   private val round: Int,
 ) : QbftBlockCreator {
+  companion object {
+    fun createSealedBlock(
+      qbftBlock: QbftBlock,
+      roundNumber: Int,
+      commitSeals: Collection<SECPSignature>,
+    ): QbftBlock {
+      val seals =
+        commitSeals.map {
+          Seal(it.encodedBytes().toArrayUnsafe())
+        }
+      val beaconBlock = qbftBlock.toBeaconBlock()
+      val beaconBlockHeader = beaconBlock.beaconBlockHeader
+      val updatedBlockHeader = beaconBlockHeader.copy(round = roundNumber.toUInt())
+      val sealedBlockBody =
+        SealedBeaconBlock(
+          BeaconBlock(updatedBlockHeader, beaconBlock.beaconBlockBody),
+          seals,
+        )
+      return QbftSealedBlockAdapter(sealedBlockBody)
+    }
+  }
+
   override fun createBlock(
     headerTimeStampSeconds: Long,
     parentHeader: QbftBlockHeader,
@@ -100,20 +124,5 @@ class QbftBlockCreator(
     block: QbftBlock,
     roundNumber: Int,
     commitSeals: Collection<SECPSignature>,
-  ): QbftBlock {
-    val seals =
-      commitSeals.map {
-        Seal(it.encodedBytes().toArrayUnsafe())
-      }
-    val block1 = block.toBeaconBlock()
-    val beaconBlockHeader = block1.beaconBlockHeader
-    val updatedBlockHeader = beaconBlockHeader.copy(round = roundNumber.toUInt())
-    val sealedBlockBody =
-      SealedBeaconBlock(
-        BeaconBlock(updatedBlockHeader, block1.beaconBlockBody),
-        seals,
-      )
-    val sealedBeaconBlock = sealedBlockBody
-    return QbftSealedBlockAdapter(sealedBeaconBlock)
-  }
+  ): QbftBlock = createSealedBlock(qbftBlock = block, roundNumber = roundNumber, commitSeals = commitSeals)
 }

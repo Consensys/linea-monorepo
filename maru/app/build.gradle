@@ -8,14 +8,13 @@ dependencies {
   implementation(project(":core"))
   implementation(project(":executionlayer"))
 
-  testImplementation("org.hyperledger.besu.internal:core")
-
   implementation "info.picocli:picocli"
   implementation "com.sksamuel.hoplite:hoplite-core"
 
+  testImplementation(project(":jvm-libs:test-utils"))
   testImplementation(testFixtures(project(":core")))
   testImplementation(testFixtures(project(":config")))
-  testImplementation "org.hyperledger.besu.internal:dsl"
+  testImplementation("org.hyperledger.besu.internal:core")
   testImplementation "org.hyperledger.besu.internal:api"
   testImplementation("org.hyperledger.besu.internal:algorithms")
   testImplementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')

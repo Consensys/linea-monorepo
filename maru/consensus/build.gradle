@@ -42,11 +42,13 @@ dependencies {
   implementation("org.hyperledger.besu:besu-datatypes")
   implementation("org.hyperledger.besu:evm")
   implementation("org.hyperledger.besu.internal:algorithms")
+  implementation("org.hyperledger.besu.internal:util")
 
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:spec"
 
   testImplementation(testFixtures(project(":core")))
+  testImplementation(project(":jvm-libs:test-utils"))
   testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
   testImplementation "tech.pegasys.teku.internal:executionclient"
   testImplementation "tech.pegasys.teku.internal:spec"

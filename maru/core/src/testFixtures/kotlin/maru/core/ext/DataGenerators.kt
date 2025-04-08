@@ -34,9 +34,15 @@ import maru.executionlayer.manager.PayloadStatus
 import maru.serialization.rlp.KeccakHasher
 import maru.serialization.rlp.RLPSerializers
 import maru.serialization.rlp.bodyRoot
+import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.crypto.SECP256K1
+import org.hyperledger.besu.datatypes.Address
+import org.hyperledger.besu.datatypes.TransactionType
+import org.hyperledger.besu.datatypes.Wei
+import org.hyperledger.besu.ethereum.core.Transaction
 
 object DataGenerators {
-  val HEADER_HASH_FUNCTION = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
+  private val HEADER_HASH_FUNCTION = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
 
   fun randomBeaconState(number: ULong): BeaconState {
     val beaconBlockHeader =
@@ -95,8 +101,25 @@ object DataGenerators {
       headerHashFunction = HEADER_HASH_FUNCTION,
     )
 
-  fun randomExecutionPayload(): ExecutionPayload =
-    ExecutionPayload(
+  fun randomExecutionPayload(numberOfTransactions: Int = 5): ExecutionPayload {
+    val transactions =
+      (1..numberOfTransactions).map {
+        Transaction
+          .builder()
+          .type(TransactionType.FRONTIER)
+          .chainId(BigInteger.valueOf(Random.nextLong(0, 10000L)))
+          .nonce(Random.nextLong(0, 1000L))
+          .gasPrice(Wei.of(Random.nextLong(0, 1000000L)))
+          .gasLimit(Random.nextLong(0, 1000000L))
+          .to(Address.wrap(Bytes.wrap(Random.nextBytes(20))))
+          .value(Wei.of(Random.nextLong(0, 1000L)))
+          .payload(Bytes.wrap(Bytes.wrap(Random.nextBytes(32))))
+          .signAndBuild(
+            SECP256K1().generateKeyPair(),
+          ).encoded()
+          .toArray()
+      }
+    return ExecutionPayload(
       parentHash = Random.nextBytes(32),
       feeRecipient = Random.nextBytes(20),
       stateRoot = Random.nextBytes(32),
@@ -110,8 +133,9 @@ object DataGenerators {
       extraData = Random.nextBytes(32),
       baseFeePerGas = BigInteger.valueOf(Random.nextLong(0, Long.MAX_VALUE)),
       blockHash = Random.nextBytes(32),
-      transactions = emptyList(),
+      transactions = transactions,
     )
+  }
 
   fun randomBlockMetadata(timestamp: Long): BlockMetadata =
     BlockMetadata(
@@ -133,5 +157,13 @@ object DataGenerators {
 
   fun randomValidator(): Validator = Validator(Random.nextBytes(20))
 
-  fun randomValidators(): Set<Validator> = buildSet(3) { Validator(Random.nextBytes(20)) }
+  fun randomValidators(): Set<Validator> =
+    buildSet(3) {
+      add(
+        Validator(
+          Random
+            .nextBytes(20),
+        ),
+      )
+    }
 }
