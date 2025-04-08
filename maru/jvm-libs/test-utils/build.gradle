@@ -1,0 +1,13 @@
+plugins {
+  id 'maru.kotlin-library-conventions'
+}
+
+dependencies {
+  implementation(project(":consensus"))
+
+  api "org.hyperledger.besu.internal:dsl"
+  implementation("org.hyperledger.besu.internal:core")
+  implementation("org.hyperledger.besu.internal:merge")
+  implementation("org.hyperledger.besu.internal:plugins-rocksdb")
+  implementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')
+}

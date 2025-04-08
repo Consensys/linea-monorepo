@@ -16,26 +16,49 @@
 package maru.consensus.qbft
 
 import maru.consensus.ValidatorProvider
+import maru.consensus.state.FinalizationState
+import maru.core.BeaconBlockHeader
+import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory
+import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator as BesuQbftBlockCreator
 
 /**
- * Adapter to convert a [BlockCreator] to a [org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory].
+ * Maru's QbftBlockCreator factory
  */
 class QbftBlockCreatorFactory(
   private val manager: ExecutionLayerManager,
   private val proposerSelector: ProposerSelector,
   private val validatorProvider: ValidatorProvider,
   private val beaconChain: BeaconChain,
+  private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
+  private val blockBuilderIdentity: Validator,
+  private val eagerQbftBlockCreatorConfig: EagerQbftBlockCreator.Config,
 ) : QbftBlockCreatorFactory {
-  override fun create(round: Int): QbftBlockCreator =
-    QbftBlockCreator(
-      manager = manager,
-      proposerSelector = proposerSelector,
-      validatorProvider = validatorProvider,
-      beaconChain = beaconChain,
-      round = round,
-    )
+  override fun create(round: Int): BesuQbftBlockCreator {
+    require(round >= 0) {
+      "round must not be negative!"
+    }
+    val mainBlockCreator =
+      DelayedQbftBlockCreator(
+        manager = manager,
+        proposerSelector = proposerSelector,
+        validatorProvider = validatorProvider,
+        beaconChain = beaconChain,
+        round = round,
+      )
+    return if (round == 0) {
+      mainBlockCreator
+    } else {
+      EagerQbftBlockCreator(
+        manager = manager,
+        delegate = mainBlockCreator,
+        finalizationStateProvider = finalizationStateProvider,
+        blockBuilderIdentity = blockBuilderIdentity,
+        config = eagerQbftBlockCreatorConfig,
+      )
+    }
+  }
 }

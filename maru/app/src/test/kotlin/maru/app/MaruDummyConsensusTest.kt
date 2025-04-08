@@ -26,7 +26,6 @@ import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
-import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
@@ -36,12 +35,11 @@ import org.junit.jupiter.api.Test
 import org.web3j.protocol.core.DefaultBlockParameter
 
 class MaruDummyConsensusTest {
-  private val besuNodeRunner: BesuNodeRunner = ThreadBesuNodeRunner()
   private var cluster =
     Cluster(
       ClusterConfigurationBuilder().build(),
       NetConditions(NetTransactions()),
-      besuNodeRunner,
+      ThreadBesuNodeRunner(),
     )
   private lateinit var besuNode: BesuNode
   private lateinit var maruNode: MaruApp

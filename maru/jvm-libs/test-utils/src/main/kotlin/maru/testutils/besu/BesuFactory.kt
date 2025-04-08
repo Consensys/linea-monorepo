@@ -28,12 +28,11 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.BesuNodeFact
 import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.GenesisConfigurationFactory
 
 object BesuFactory {
-  private val elConfigsDir = "/e2e/config"
-  private val pragueGenesis = "$elConfigsDir/el_prague.json"
+  private const val PRAGUE_GENESIS = "/el_prague.json"
 
   private fun pickGenesis(elFork: ElFork): String =
     when (elFork) {
-      ElFork.Prague -> pragueGenesis
+      ElFork.Prague -> PRAGUE_GENESIS
     }
 
   fun buildTestBesu(elFork: ElFork = ElFork.Prague): BesuNode =

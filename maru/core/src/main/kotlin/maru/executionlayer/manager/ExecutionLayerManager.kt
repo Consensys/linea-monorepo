@@ -127,7 +127,7 @@ data class BlockMetadata(
 }
 
 @FunctionalInterface
-interface ExecutionPayloadValidator {
+fun interface ExecutionPayloadValidator {
   sealed interface ValidationResult {
     data class Valid(
       val payload: ExecutionPayload,

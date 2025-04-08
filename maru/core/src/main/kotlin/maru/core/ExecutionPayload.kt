@@ -55,7 +55,7 @@ data class ExecutionPayload(
     if (!extraData.contentEquals(other.extraData)) return false
     if (baseFeePerGas != other.baseFeePerGas) return false
     if (!blockHash.contentEquals(other.blockHash)) return false
-    if (transactions != other.transactions) return false
+    if (!transactions.zip(other.transactions).all { it.first.contentEquals(it.second) }) return false
 
     return true
   }

@@ -16,7 +16,6 @@
 package maru.consensus.qbft
 
 import java.math.BigInteger
-import java.util.Collections
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockAdapter
 import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
@@ -46,11 +45,12 @@ import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
 
-class QbftBlockCreatorTest {
+class DelayedQbftBlockCreatorTest {
   private val executionLayerManager = Mockito.mock(ExecutionLayerManager::class.java)
   private val proposerSelector = Mockito.mock(ProposerSelector::class.java)
   private val validatorProvider = Mockito.mock(ValidatorProvider::class.java)
   private val beaconChain = Mockito.mock(BeaconChain::class.java)
+  private val validatorSet = DataGenerators.randomValidators()
 
   @Test
   fun `can create block`() {
@@ -61,19 +61,26 @@ class QbftBlockCreatorTest {
       parentBlock,
     )
     whenever(executionLayerManager.finishBlockBuilding()).thenReturn(completedFuture(executionPayload))
-    whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
+    whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 0))).thenReturn(Address.ZERO)
     whenever(
       validatorProvider.getValidatorsAfterBlock(10U),
-    ).thenReturn(completedFuture(DataGenerators.randomValidators()))
+    ).thenReturn(completedFuture(validatorSet))
 
-    val blockCreator = QbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 1)
+    val blockCreator =
+      DelayedQbftBlockCreator(
+        manager = executionLayerManager,
+        proposerSelector = proposerSelector,
+        validatorProvider = validatorProvider,
+        beaconChain = beaconChain,
+        round = 0,
+      )
     val createdBlock = blockCreator.createBlock(1000L, parentHeader)
     val createBeaconBlock = createdBlock.toBeaconBlock()
 
     // block header fields
     val blockHeader = createBeaconBlock.beaconBlockHeader
     assertThat(blockHeader.number).isEqualTo(11UL)
-    assertThat(blockHeader.round).isEqualTo(1U)
+    assertThat(blockHeader.round).isEqualTo(0U)
     assertThat(blockHeader.timestamp).isEqualTo(1000UL)
     assertThat(blockHeader.proposer).isEqualTo(Validator(Address.ZERO.toArray()))
 
@@ -82,7 +89,7 @@ class QbftBlockCreatorTest {
       HashUtil.stateRoot(
         BeaconState(
           createBeaconBlock.beaconBlockHeader.copy(stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT),
-          Collections.emptySet(),
+          validatorSet,
         ),
       )
     assertThat(
@@ -115,7 +122,14 @@ class QbftBlockCreatorTest {
       executionLayerManager.finishBlockBuilding(),
     ).thenReturn(SafeFuture.failedFuture(IllegalStateException("Execution payload not available")))
 
-    val blockCreator = QbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 1)
+    val blockCreator =
+      DelayedQbftBlockCreator(
+        manager = executionLayerManager,
+        proposerSelector = proposerSelector,
+        validatorProvider = validatorProvider,
+        beaconChain = beaconChain,
+        round = 0,
+      )
     assertThatThrownBy {
       blockCreator.createBlock(1000L, parentHeader)
     }.isInstanceOf(
@@ -131,9 +145,10 @@ class QbftBlockCreatorTest {
 
     whenever(executionLayerManager.finishBlockBuilding()).thenReturn(completedFuture(executionPayload))
     whenever(beaconChain.getSealedBeaconBlock(parentBlock.beaconBlockHeader.hash())).thenReturn(null)
-    whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 1))).thenReturn(Address.ZERO)
+    whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 0))).thenReturn(Address.ZERO)
 
-    val blockCreator = QbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 1)
+    val blockCreator =
+      DelayedQbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 0)
     assertThatThrownBy {
       blockCreator.createBlock(1000L, parentHeader)
     }.isInstanceOf(
@@ -146,9 +161,16 @@ class QbftBlockCreatorTest {
     val block = QbftBlockAdapter(DataGenerators.randomBeaconBlock(10U))
     val beaconBlock = block.toBeaconBlock()
     val seals = listOf(SECPSignature.create(BigInteger.ONE, BigInteger.TWO, 0x00, BigInteger.valueOf(4)))
-    val round = 1
+    val round = 0
 
-    val blockCreator = QbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 1)
+    val blockCreator =
+      DelayedQbftBlockCreator(
+        manager = executionLayerManager,
+        proposerSelector = proposerSelector,
+        validatorProvider = validatorProvider,
+        beaconChain = beaconChain,
+        round = 0,
+      )
     val createSealedBlock = blockCreator.createSealedBlock(block, round, seals)
     val createdSealedBeaconBlock = createSealedBlock.toSealedBeaconBlock()
 

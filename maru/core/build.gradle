@@ -20,5 +20,9 @@ plugins {
 
 dependencies {
   testImplementation(project(":serialization"))
+  testFixturesImplementation("org.hyperledger.besu.internal:core")
+  testFixturesImplementation("org.hyperledger.besu:besu-datatypes")
+  testFixturesImplementation("org.hyperledger.besu:plugin-api")
+  testFixturesImplementation("org.hyperledger.besu.internal:algorithms")
   testFixturesImplementation(project(":serialization"))
 }

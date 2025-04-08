@@ -33,9 +33,7 @@ data class BeaconBlockHeader(
 
     other as BeaconBlockHeader
 
-    if (!hash.contentEquals(other.hash)) return false
-
-    return true
+    return hash.contentEquals(other.hash)
   }
 
   override fun hashCode(): Int = hash.contentHashCode()
