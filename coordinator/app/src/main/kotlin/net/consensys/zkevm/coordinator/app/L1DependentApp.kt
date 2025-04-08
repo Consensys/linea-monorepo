@@ -40,6 +40,7 @@ import net.consensys.linea.web3j.SmartContractErrors
 import net.consensys.linea.web3j.Web3jBlobExtended
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
+import net.consensys.zkevm.coordinator.app.config.Type2StateProofProviderConfig
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.GethCliqueSafeBlockProvider
@@ -120,7 +121,7 @@ class L1DependentApp(
   private val batchesRepository: BatchesRepository,
   private val blobsRepository: BlobsRepository,
   private val aggregationsRepository: AggregationsRepository,
-  private val l1FeeHistoriesRepository: FeeHistoriesRepositoryWithCache,
+  l1FeeHistoriesRepository: FeeHistoriesRepositoryWithCache,
   private val smartContractErrors: SmartContractErrors,
   private val metricsFacade: MetricsFacade
 ) : LongRunningService {
@@ -151,16 +152,8 @@ class L1DependentApp(
     rpcUrl = configs.l1.rpcEndpoint.toString(),
     log = LogManager.getLogger("clients.l1.eth-api"),
     pollingInterval = 1.seconds
-
   )
   private val l1Web3jService = Web3jBlobExtended(HttpService(configs.l1.ethFeeHistoryEndpoint.toString()))
-  private val l2ZkTracesWeb3jClient: Web3j = createWeb3jHttpClient(
-    rpcUrl = configs.zkTraces.ethApi.toString(),
-    log = LogManager.getLogger("clients.l2.eth-api.tracer-node"),
-    pollingInterval = 1.seconds,
-    requestResponseLogLevel = org.apache.logging.log4j.Level.TRACE,
-    failuresLogLevel = org.apache.logging.log4j.Level.DEBUG
-  )
 
   private val l1ChainId = l1Web3jClient.ethChainId().send().chainId.toLong()
 
@@ -175,7 +168,7 @@ class L1DependentApp(
     metricsFacade = metricsFacade
   )
 
-  private val l2ExtendedWeb3j = ExtendedWeb3JImpl(l2ZkTracesWeb3jClient)
+  private val l2ExtendedWeb3j = ExtendedWeb3JImpl(l2Web3jClient)
 
   private val finalizationTransactionManager = createTransactionManager(
     vertx,
@@ -234,6 +227,14 @@ class L1DependentApp(
       vertx = vertx
     )
   }
+
+  private val l1FinalizationHandlerForShomeiRpc: LongRunningService = setupL1FinalizationMonitorForShomeiFrontend(
+    type2StateProofProviderConfig = configs.type2StateProofProvider,
+    httpJsonRpcClientFactory = httpJsonRpcClientFactory,
+    lineaRollupClient = lineaRollupClient,
+    l2Web3jClient = l2Web3jClient,
+    vertx = vertx
+  )
 
   private val gasPriceCapProvider =
     if (configs.l1DynamicGasPriceCapService.enabled) {
@@ -303,6 +304,10 @@ class L1DependentApp(
 
   private val lastFinalizedBlock = lastFinalizedBlock().get()
   private val lastProcessedBlockNumber = resumeConflationFrom(
+    aggregationsRepository,
+    lastFinalizedBlock
+  ).get()
+  private val lastConsecutiveAggregatedBlockNumber = resumeAggregationFrom(
     aggregationsRepository,
     lastFinalizedBlock
   ).get()
@@ -618,7 +623,7 @@ class L1DependentApp(
           GethCliqueSafeBlockProvider.Config(configs.l2.blocksToFinalization.toLong())
         ),
         maxProofsPerAggregation = configs.proofAggregation.aggregationProofsLimit.toUInt(),
-        startBlockNumberInclusive = lastFinalizedBlock + 1u,
+        startBlockNumberInclusive = lastConsecutiveAggregatedBlockNumber + 1u,
         aggregationsRepository = aggregationsRepository,
         consecutiveProvenBlobsProvider = maxBlobEndBlockNumberTracker,
         proofAggregationClient = proverClientFactory.proofAggregationProverClient(),
@@ -879,20 +884,6 @@ class L1DependentApp(
     )
   }
 
-  private val finalizedBlockNotifier = run {
-    val log = LogManager.getLogger("clients.ForkChoiceUpdaterShomeiClient")
-    val type2StateProofProviderClients = configs.type2StateProofProvider.endpoints.map {
-      ShomeiClient(
-        vertx = vertx,
-        rpcClient = httpJsonRpcClientFactory.create(it, log = log),
-        retryConfig = configs.type2StateProofProvider.requestRetryConfig,
-        log = log
-      )
-    }
-
-    ForkChoiceUpdaterImpl(type2StateProofProviderClients)
-  }
-
   private val lastProvenBlockNumberProvider = run {
     val lastProvenConsecutiveBatchBlockNumberProvider = BatchesRepoBasedLastProvenBlockNumberProvider(
       lastProcessedBlockNumber.toLong(),
@@ -916,7 +907,7 @@ class L1DependentApp(
       blockCreationListener = block2BatchCoordinator,
       lastProvenBlockNumberProviderAsync = lastProvenBlockNumberProvider,
       config = BlockCreationMonitor.Config(
-        pollingInterval = configs.zkTraces.newBlockPollingInterval.toKotlinDuration(),
+        pollingInterval = configs.l2.newBlockPollingInterval.toKotlinDuration(),
         blocksToFinalization = configs.l2.blocksToFinalization.toLong(),
         blocksFetchLimit = configs.conflation.fetchBlocksLimit.toLong(),
         // We need to add 1 to l2InclusiveBlockNumberToStopAndFlushAggregation because conflation calculator requires
@@ -1027,39 +1018,35 @@ class L1DependentApp(
     )
   }
 
-  private val blockFinalizationHandlerMap = mapOf(
-    "finalized records cleanup" to RecordsCleanupFinalizationHandler(
-      batchesRepository = batchesRepository,
-      blobsRepository = blobsRepository,
-      aggregationsRepository = aggregationsRepository
-    ),
-    "type 2 state proof provider finalization updates" to FinalizationHandler {
-      finalizedBlockNotifier.updateFinalizedBlock(
-        BlockNumberAndHash(it.blockNumber, it.blockHash.toArray())
-      )
-    },
-    "last_proven_block_provider" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
-      lastProvenBlockNumberProvider.updateLatestL1FinalizedBlock(update.blockNumber.toLong())
-    },
-    "highest_accepted_finalization_on_l1" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
-      highestAcceptedFinalizationTracker(update.blockNumber)
-    }
-  )
-
   init {
-    blockFinalizationHandlerMap.forEach { (handlerName, handler) ->
-      l1FinalizationMonitor.addFinalizationHandler(handlerName, handler)
-    }
+    mapOf(
+      "last_proven_block_provider" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
+        lastProvenBlockNumberProvider.updateLatestL1FinalizedBlock(update.blockNumber.toLong())
+      },
+      "finalized records cleanup" to RecordsCleanupFinalizationHandler(
+        batchesRepository = batchesRepository,
+        blobsRepository = blobsRepository,
+        aggregationsRepository = aggregationsRepository
+      ),
+      "highest_accepted_finalization_on_l1" to FinalizationHandler { update: FinalizationMonitor.FinalizationUpdate ->
+        highestAcceptedFinalizationTracker(update.blockNumber)
+      }
+    )
+      .forEach { (handlerName, handler) ->
+        l1FinalizationMonitor.addFinalizationHandler(handlerName, handler)
+      }
   }
 
   override fun start(): CompletableFuture<Unit> {
-    return cleanupDbDataAfterLastProcessedBlock(
+    return cleanupDbDataAfterBlockNumbers(
       lastProcessedBlockNumber = lastProcessedBlockNumber,
+      lastConsecutiveAggregatedBlockNumber = lastConsecutiveAggregatedBlockNumber,
       batchesRepository = batchesRepository,
       blobsRepository = blobsRepository,
       aggregationsRepository = aggregationsRepository
     )
       .thenCompose { l1FinalizationMonitor.start() }
+      .thenCompose { l1FinalizationHandlerForShomeiRpc.start() }
       .thenCompose { blobSubmissionCoordinator.start() }
       .thenCompose { aggregationFinalizationCoordinator.start() }
       .thenCompose { proofAggregationCoordinatorService.start() }
@@ -1078,6 +1065,7 @@ class L1DependentApp(
   override fun stop(): CompletableFuture<Unit> {
     return SafeFuture.allOf(
       l1FinalizationMonitor.stop(),
+      l1FinalizationHandlerForShomeiRpc.stop(),
       blobSubmissionCoordinator.stop(),
       aggregationFinalizationCoordinator.stop(),
       proofAggregationCoordinatorService.stop(),
@@ -1095,8 +1083,9 @@ class L1DependentApp(
 
   companion object {
 
-    fun cleanupDbDataAfterLastProcessedBlock(
+    fun cleanupDbDataAfterBlockNumbers(
       lastProcessedBlockNumber: ULong,
+      lastConsecutiveAggregatedBlockNumber: ULong,
       batchesRepository: BatchesRepository,
       blobsRepository: BlobsRepository,
       aggregationsRepository: AggregationsRepository
@@ -1105,7 +1094,7 @@ class L1DependentApp(
       val cleanupBatches = batchesRepository.deleteBatchesAfterBlockNumber(blockNumberInclusiveToDeleteFrom.toLong())
       val cleanupBlobs = blobsRepository.deleteBlobsAfterBlockNumber(blockNumberInclusiveToDeleteFrom)
       val cleanupAggregations = aggregationsRepository
-        .deleteAggregationsAfterBlockNumber(blockNumberInclusiveToDeleteFrom.toLong())
+        .deleteAggregationsAfterBlockNumber((lastConsecutiveAggregatedBlockNumber + 1u).toLong())
 
       return SafeFuture.allOf(cleanupBatches, cleanupBlobs, cleanupAggregations)
     }
@@ -1129,11 +1118,68 @@ class L1DependentApp(
         }
     }
 
+    fun resumeAggregationFrom(
+      aggregationsRepository: AggregationsRepository,
+      lastFinalizedBlock: ULong
+    ): SafeFuture<ULong> {
+      return aggregationsRepository
+        .findHighestConsecutiveEndBlockNumber(lastFinalizedBlock.toLong() + 1)
+        .thenApply { highestEndBlockNumber ->
+          highestEndBlockNumber?.toULong() ?: lastFinalizedBlock
+        }
+    }
+
     fun getEmptyTracesCounters(switchToLineaBesu: Boolean): TracesCounters {
       return when (switchToLineaBesu) {
         true -> TracesCountersV2.EMPTY_TRACES_COUNT
         false -> TracesCountersV1.EMPTY_TRACES_COUNT
       }
+    }
+
+    fun setupL1FinalizationMonitorForShomeiFrontend(
+      type2StateProofProviderConfig: Type2StateProofProviderConfig?,
+      httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
+      lineaRollupClient: LineaRollupSmartContractClientReadOnly,
+      l2Web3jClient: Web3j,
+      vertx: Vertx
+    ): LongRunningService {
+      if (type2StateProofProviderConfig == null || type2StateProofProviderConfig.endpoints.isEmpty()) {
+        return DisabledLongRunningService
+      }
+
+      val finalizedBlockNotifier = run {
+        val log = LogManager.getLogger("clients.ForkChoiceUpdaterShomeiClient")
+        val type2StateProofProviderClients = type2StateProofProviderConfig.endpoints.map {
+          ShomeiClient(
+            vertx = vertx,
+            rpcClient = httpJsonRpcClientFactory.create(it, log = log),
+            retryConfig = type2StateProofProviderConfig.requestRetryConfig,
+            log = log
+          )
+        }
+
+        ForkChoiceUpdaterImpl(type2StateProofProviderClients)
+      }
+
+      val l1FinalizationMonitor =
+        FinalizationMonitorImpl(
+          config =
+          FinalizationMonitorImpl.Config(
+            pollingInterval = type2StateProofProviderConfig.l1PollingInterval.toKotlinDuration(),
+            l1QueryBlockTag = type2StateProofProviderConfig.l1QueryBlockTag
+          ),
+          contract = lineaRollupClient,
+          l2Client = l2Web3jClient,
+          vertx = vertx
+        )
+
+      l1FinalizationMonitor.addFinalizationHandler("type 2 state proof provider finalization updates", {
+        finalizedBlockNotifier.updateFinalizedBlock(
+          BlockNumberAndHash(it.blockNumber, it.blockHash.toArray())
+        )
+      })
+
+      return l1FinalizationMonitor
     }
   }
 }

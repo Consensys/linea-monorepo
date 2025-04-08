@@ -21,7 +21,7 @@ rpc-http-max-active-connections=200
 rpc-ws-enabled=true
 rpc-ws-host="0.0.0.0"
 rpc-ws-port=8546
-rpc-ws-api=["ADMIN","TXPOOL","WEB3","ETH","NET","PERM"]
+rpc-ws-api=["ADMIN","TXPOOL","WEB3","ETH","NET","PERM","LINEA"]
 rpc-ws-max-active-connections=200
 
 # graphql

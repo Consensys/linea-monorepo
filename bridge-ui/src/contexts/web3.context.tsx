@@ -1,49 +1,85 @@
 "use client";
 
-import { ReactNode } from "react";
+import { PropsWithChildren } from "react";
 import { WagmiProvider } from "wagmi";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { config, wagmiConfig } from "@/config";
-import { createAppKit } from "@reown/appkit/react";
-import { chains, wagmiAdapter } from "@/config/wagmi";
+import {
+  DynamicWagmiConnector,
+  EthereumWalletConnectors,
+  DynamicContextProvider,
+  SolanaWalletConnectors,
+} from "@/lib/dynamic";
+import { config as wagmiConfig } from "@/lib/wagmi";
+import { config } from "@/config";
+import { SolanaWalletProvider } from "./solana-provider";
 
-const queryClient = new QueryClient();
+type Web3ProviderProps = PropsWithChildren;
 
-if (!config.walletConnectId) throw new Error("Project ID is not defined");
+export const cssOverrides = `
+  .connect-button {
+    font-size: 0.875rem;
+    border-radius: 1.875rem;
+    padding: 0.75rem 1.5rem;
+    text-align: center;
+    line-height: 1;
+    cursor: pointer;
+  }
 
-const metadata = {
-  name: "Linea Bridge",
-  description: `The Linea Bridge is a bridge solution, providing secure and efficient cross-chain transactions between Ethereum Layer 1 and Linea networks.
-  Discover the future of blockchain interaction with Linea Bridge.`,
-  url: "https://bridge.linea.build",
-  icons: [],
-};
+  .connect-button .typography {
+    font-size: 0.875rem;
+  }
 
-createAppKit({
-  adapters: [wagmiAdapter],
-  networks: chains,
-  projectId: config.walletConnectId,
-  metadata,
-  features: {
-    analytics: true,
-    email: false,
-    socials: false,
-    swaps: false,
-    onramp: false,
-    history: false,
-  },
-  enableEIP6963: true,
-  coinbasePreference: "eoaOnly",
-});
+  .dynamic-widget-inline-controls {
+    background-color: transparent;
+    border: 1px solid white;
+    border-radius: 1.875rem;
+  }
 
-type Web3ProviderProps = {
-  children: ReactNode;
-};
+  .dynamic-widget-inline-controls .network-switch-control__network-name {
+    color: white;
+
+    @media screen and (max-width: 912px) {
+      display: none;
+    }
+  }
+
+  .dynamic-widget-inline-controls .network-switch-control__container--error {
+    border-radius: 1.875rem 0 0 1.875rem;
+  }
+
+  .dynamic-widget-inline-controls .network-switch-control__arrow-icon {
+    color: white;
+  }
+
+  .account-control__name {
+    color: white;
+
+    @media screen and (max-width: 912px) {
+      display: none;
+    }
+  }
+
+  .account-control__icon {
+    color: white;
+  }
+`;
 
 export function Web3Provider({ children }: Web3ProviderProps) {
   return (
-    <WagmiProvider config={wagmiConfig}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </WagmiProvider>
+    <DynamicContextProvider
+      settings={{
+        environmentId: config.dynamicEnvironmentId,
+        walletConnectors: [EthereumWalletConnectors, SolanaWalletConnectors],
+        initialAuthenticationMode: "connect-only",
+        mobileExperience: "redirect",
+        appName: "Linea Bridge",
+        cssOverrides,
+      }}
+    >
+      <WagmiProvider config={wagmiConfig} reconnectOnMount={false}>
+        <DynamicWagmiConnector>
+          <SolanaWalletProvider>{children}</SolanaWalletProvider>
+        </DynamicWagmiConnector>
+      </WagmiProvider>
+    </DynamicContextProvider>
   );
 }
