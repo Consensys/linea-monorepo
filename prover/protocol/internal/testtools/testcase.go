@@ -45,7 +45,7 @@ func RunTestcase(t *testing.T, tc Testcase, suite []func(comp *wizard.CompiledIO
 	}
 }
 
-func runTestShouldPass(t *testing.T, comp *wizard.CompiledIOP, prover wizard.ProverStep) {
+func runTestShouldPass(t *testing.T, comp *wizard.CompiledIOP, prover wizard.MainProverStep) {
 
 	var (
 		proof = wizard.Prove(comp, prover)
@@ -57,7 +57,7 @@ func runTestShouldPass(t *testing.T, comp *wizard.CompiledIOP, prover wizard.Pro
 	}
 }
 
-func runTestShouldFail(t *testing.T, comp *wizard.CompiledIOP, prover wizard.ProverStep) {
+func runTestShouldFail(t *testing.T, comp *wizard.CompiledIOP, prover wizard.MainProverStep) {
 
 	var (
 		verErr, panicErr error

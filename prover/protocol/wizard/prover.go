@@ -28,23 +28,23 @@ import (
 // implements the [wizard.Runtime] interface.
 var _ Runtime = &ProverRuntime{}
 
-// ProverStep represents an operation to be performed by the prover of a
+// MainProverStep represents an operation to be performed by the prover of a
 // wizard protocol. It can be provided by the user or by an internal compiled
 // to the protocol specification [CompiledIOP] by appending it to the field
 // [CompiledIOP.SubProvers].
 //
 //	CompiledIOP.SubProvers.AppendToInner(round, proverStep)
 //
-// The ProverStep function may interact with the prover runtime to resolve
+// The MainProverStep function may interact with the prover runtime to resolve
 // the values of an already assigned item: ([ifaces.Colssignment], coin,
 // [ifaces.QueryParams], ...).
 //
-// The ProverStep function that we pass as the `highLevelProver` argument of
+// The MainProverStep function that we pass as the `highLevelProver` argument of
 // [Prove] function has the particularity that it is allowed to span
 // over multiple interaction-rounds between the prover and the verifier. This
 // is a behavior that we intend to deprecate and it should not be used by the
 // prover as this tends to create convolutions in the runtime of the prover.
-type ProverStep func(assi *ProverRuntime)
+type MainProverStep func(assi *ProverRuntime)
 
 // ProverRuntime collects the assignment of all the items with which the prover
 // interacts by the prover of the protocol. This includes the prover's
@@ -54,7 +54,7 @@ type ProverStep func(assi *ProverRuntime)
 // constructed by the user.
 //
 // Instead, the user should interact with the prover runtime within a
-// [ProverStep] function that he provides to the CompiledIOP that he is
+// [MainProverStep] function that he provides to the CompiledIOP that he is
 // building. Example:
 //
 //	// Function that the user provide to specify his protocol
@@ -110,7 +110,7 @@ type ProverRuntime struct {
 	Coins collection.Mapping[coin.Name, interface{}]
 
 	// State serves as an "any-purpose" data-storage for stateful proving. It allows
-	// ProverSteps to persist data that can be accessed in later prover steps
+	// MainProverSteps to persist data that can be accessed in later prover steps
 	// without having to store it in a column. For convenience, the user should
 	// take care of deleting the entry to free memory when he knows that the
 	// field will not be accessed again while proving.
@@ -147,7 +147,7 @@ type ProverRuntime struct {
 
 // Prove is the top-level function that runs the Prover on the user's side. It
 // is responsible for instantiating a fresh and new ProverRuntime and running
-// the user's and compiler's [ProverStep] in order and calling the Fiat-Shamir
+// the user's and compiler's [MainProverStep] in order and calling the Fiat-Shamir
 // state to generate the randomness between every rounds.
 //
 // The caller can specify a `highLevelProver` function that implements the
@@ -165,7 +165,7 @@ type ProverRuntime struct {
 // auto-detection adds little value and adds a lot of convolution especially
 // when the specified protocol is complicated and involves multiple multi-rounds
 // sub-protocols that runs independently.
-func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
+func Prove(c *CompiledIOP, highLevelprover func(*ProverRuntime)) Proof {
 	run := RunProver(c, highLevelprover)
 
 	// Write the performance logs to the csv file is the performance monitor is active
@@ -180,12 +180,12 @@ func Prove(c *CompiledIOP, highLevelprover ProverStep) Proof {
 
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
 // runtime. It does not returns the [Proof] however.
-func RunProver(c *CompiledIOP, highLevelprover ProverStep) *ProverRuntime {
+func RunProver(c *CompiledIOP, highLevelprover func(*ProverRuntime)) *ProverRuntime {
 	return RunProverUntilRound(c, highLevelprover, c.NumRounds())
 }
 
 // RunProverUntilRound runs the prover until the specified round
-func RunProverUntilRound(c *CompiledIOP, highLevelprover ProverStep, round int) *ProverRuntime {
+func RunProverUntilRound(c *CompiledIOP, highLevelprover func(*ProverRuntime), round int) *ProverRuntime {
 
 	runtime := c.createProver()
 	runtime.exec("high-level-prover", highLevelprover)
@@ -587,9 +587,9 @@ func (run *ProverRuntime) goNextRound() {
 	if run.Spec.FiatShamirHooksPreSampling.Len() > run.currRound {
 		fsHooks := run.Spec.FiatShamirHooksPreSampling.MustGet(run.currRound)
 		for i := range fsHooks {
-			if fsHooks[i].IsSkipped() {
-				continue
-			}
+			// if fsHooks[i].IsSkipped() {
+			// 	continue
+			// }
 
 			fsHooks[i].Run(run)
 		}
@@ -624,7 +624,7 @@ func (run *ProverRuntime) goNextRound() {
 // [CompiledIOP] object for the current round.
 func (run *ProverRuntime) runProverSteps() {
 	// Run all the assigners
-	subProverSteps := run.Spec.SubProvers.MustGet(run.currRound)
+	subProverSteps := run.Spec.subProvers.MustGet(run.currRound)
 	for idx, step := range subProverSteps {
 
 		// Profile individual prover steps
@@ -927,8 +927,10 @@ func (runtime *ProverRuntime) exec(name string, action any) {
 		switch a := action.(type) {
 		case func():
 			a()
-		case ProverStep:
+		case func(*ProverRuntime):
 			a(runtime)
+		case ProverAction:
+			a.Run(runtime)
 		default:
 			panic("unsupported action type")
 		}
@@ -948,7 +950,7 @@ func (runtime *ProverRuntime) exec(name string, action any) {
 	case "prover-rounds":
 		shouldProfile = actionIsPlainFunc(action)
 	case "prover-steps":
-		shouldProfile = actionIsProverStep(action)
+		shouldProfile = actionIsProverAction(action)
 	}
 
 	if shouldProfile {
@@ -1034,8 +1036,8 @@ func actionIsPlainFunc(action any) bool {
 	return ok
 }
 
-// actionIsProverStep checks if the action is an individual ProverStep in a specific round or highlevelProver.
-func actionIsProverStep(action any) bool {
-	_, ok := action.(ProverStep)
+// actionIsProverAction checks if the action is an individual ProverStep in a specific round or highlevelProver.
+func actionIsProverAction(action any) bool {
+	_, ok := action.(ProverAction)
 	return ok
 }

@@ -134,7 +134,7 @@ func nameHandleSlice(h ifaces.Column, num, numSlots int) ifaces.ColID {
 	return ifaces.ColIDf("%v_SUBSLICE_%v_OVER_%v", h.GetColID(), num, numSlots)
 }
 
-func (ctx splitterContext) Prove(round int) wizard.ProverStep {
+func (ctx splitterContext) Prove(round int) wizard.MainProverStep {
 
 	return func(run *wizard.ProverRuntime) {
 		stopTimer := profiling.LogTimer("splitter compiler")

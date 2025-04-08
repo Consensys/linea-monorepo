@@ -120,7 +120,7 @@ The test verifies that the test pass through all layers of compilation
 func checkSolved(
 	t *testing.T,
 	define wizard.DefineFunc,
-	prove wizard.ProverStep,
+	prove wizard.MainProverStep,
 	suite compilationSuite,
 	testCircuit bool,
 	expectFail ...bool,

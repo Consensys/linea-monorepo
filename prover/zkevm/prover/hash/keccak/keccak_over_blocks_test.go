@@ -17,7 +17,7 @@ import (
 // makes Define and Prove function for testing [NewKeccakOverBlocks]
 func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 	define wizard.DefineFunc,
-	prover wizard.ProverStep,
+	prover wizard.MainProverStep,
 ) {
 	mod := &KeccakOverBlocks{}
 	maxNumKeccakF := 16

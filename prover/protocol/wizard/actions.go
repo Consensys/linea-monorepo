@@ -14,37 +14,10 @@ type ProverAction interface {
 // protocol. Usually, this is used to represent verifier checks. They can be
 // registered via [CompiledIOP.RegisterVerifierAction].
 type VerifierAction interface {
-	// Skip indicates that the verifier action can be skipped
-	Skip()
-	// IsSkipped returns whether the current VerifierAction is skipped
-	IsSkipped() bool
 	// Run executes the VerifierAction over a [VerifierRuntime] it returns an
 	// error.
 	Run(Runtime) error
 	// RunGnark is as Run but in a gnark circuit. Instead, of the returning an
 	// error the function enforces the passing of the verifier's checks.
 	RunGnark(frontend.API, GnarkRuntime)
-}
-
-// genVerifierAction represents a verifier action represented by closures
-type genVerifierAction struct {
-	skipped  bool
-	run      func(Runtime) error
-	runGnark func(frontend.API, GnarkRuntime)
-}
-
-func (gva *genVerifierAction) Run(run Runtime) error {
-	return gva.run(run)
-}
-
-func (gva *genVerifierAction) RunGnark(api frontend.API, run GnarkRuntime) {
-	gva.runGnark(api, run)
-}
-
-func (gva *genVerifierAction) Skip() {
-	gva.skipped = true
-}
-
-func (gva *genVerifierAction) IsSkipped() bool {
-	return gva.skipped
 }

@@ -137,7 +137,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit *ModuleWitness) wizard.Pro
 
 	var (
 		comp       *wizard.CompiledIOP
-		proverStep wizard.ProverStep
+		proverStep wizard.MainProverStep
 	)
 
 	if wit.IsLPP {
