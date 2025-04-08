@@ -4,13 +4,7 @@ import { AbstractSigner, BaseContract, BlockTag, TransactionReceipt, Transaction
 import path from "path";
 import { exec } from "child_process";
 import { L2MessageServiceV1 as L2MessageService, TokenBridgeV1_1 as TokenBridge, LineaRollupV6 } from "../typechain";
-import {
-  PayableOverrides,
-  TypedContractEvent,
-  TypedDeferredTopicFilter,
-  TypedEventLog,
-  TypedContractMethod,
-} from "../typechain/common";
+import { PayableOverrides, TypedContractEvent, TypedDeferredTopicFilter, TypedEventLog } from "../typechain/common";
 import { MessageEvent, SendMessageArgs } from "./types";
 import { createTestLogger } from "../config/logger";
 import { randomUUID, randomInt } from "crypto";
@@ -342,26 +336,6 @@ export async function waitForEvents<
       (a: TypedEventLog<TEvent>[]) => a.length > 0,
       pollingIntervalMs,
     )) ?? []
-  );
-}
-
-// Currently only handle single uint256 return type
-export async function pollForContractMethodReturnValueExceedTarget<
-  ExpectedReturnType extends bigint,
-  R extends [ExpectedReturnType],
->(
-  method: TypedContractMethod<[], R, "view">,
-  targetReturnValue: ExpectedReturnType,
-  pollingIntervalMs: number = 500,
-  timeoutMs: number = 2 * 60 * 1000,
-): Promise<boolean> {
-  return (
-    (await awaitUntil(
-      async () => await method(),
-      (a: ExpectedReturnType) => a >= targetReturnValue,
-      pollingIntervalMs,
-      timeoutMs,
-    )) != null
   );
 }
 
