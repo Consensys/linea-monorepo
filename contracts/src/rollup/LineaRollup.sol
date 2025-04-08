@@ -9,7 +9,7 @@ import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
 import { FinalizedStateHashing } from "../libraries/FinalizedStateHashing.sol";
-import { IAcceptForcedTransactions } from "../messaging/l1/interfaces/IAcceptForcedTransactions.sol";
+import { IAcceptForcedTransactions } from "./interfaces/IAcceptForcedTransactions.sol";
 
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
@@ -102,10 +102,7 @@ contract LineaRollup is
   /// @dev The rolling hash for a forced transaction.
   mapping(uint256 forcedTransactionNumber => bytes32 rollingHash) forcedTransactionRollingHashes;
 
-  /// @dev The Forced Transaction Gateway address allowed to call and add forced transactions.
-  address forcedTransactionGateway;
-
-  /// @dev Total contract storage is 15 slots.
+  /// @dev Total contract storage is 14 slots.
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -179,7 +176,8 @@ contract LineaRollup is
    */
   function reinitializeLineaRollupV7(address _forcedTransactionGateway) external reinitializer(7) {
     nextForcedTransactionNumber = 1;
-    forcedTransactionGateway = _forcedTransactionGateway;
+
+    grantRole(FORCED_TRANSACTION_SENDER_ROLE, _forcedTransactionGateway);
 
     /// @dev using the constants requires string memory and more complex code.
     emit LineaRollupVersionChanged(bytes8("6.0"), bytes8("7.0"));
@@ -216,10 +214,16 @@ contract LineaRollup is
 
   function getLineaRollupProvidedFields()
     external
-    returns (uint256 forcedTransactionNumber, bytes32 previousForcedTransactionRollingHash, uint256 l2BlockNumber)
+    returns (
+      bytes32 finalizedState,
+      uint256 forcedTransactionNumber,
+      bytes32 previousForcedTransactionRollingHash,
+      uint256 l2BlockNumber
+    )
   {
     unchecked {
       forcedTransactionNumber = ++nextForcedTransactionNumber;
+      finalizedState = currentFinalizedState;
       previousForcedTransactionRollingHash = forcedTransactionRollingHashes[forcedTransactionNumber - 1];
       l2BlockNumber = currentL2BlockNumber;
     }

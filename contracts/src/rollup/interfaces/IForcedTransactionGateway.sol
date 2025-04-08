@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.28;
 
-import { RlpEncoder } from "../../../libraries/RlpEncoder.sol";
+import { RlpEncoder } from "../../libraries/RlpEncoder.sol";
 
 /**
  * @title Interface to manage forced transactions on L1.

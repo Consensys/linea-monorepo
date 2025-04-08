@@ -2,9 +2,9 @@
 pragma solidity 0.8.28;
 import { IAcceptForcedTransactions } from "./interfaces/IAcceptForcedTransactions.sol";
 import { IForcedTransactionGateway } from "./interfaces/IForcedTransactionGateway.sol";
-import { Mimc } from "../../libraries/Mimc.sol";
-import { RlpEncoder } from "../../libraries/RlpEncoder.sol";
-import { FinalizedStateHashing } from "../../libraries/FinalizedStateHashing.sol";
+import { Mimc } from "../libraries/Mimc.sol";
+import { RlpEncoder } from "../libraries/RlpEncoder.sol";
+import { FinalizedStateHashing } from "../libraries/FinalizedStateHashing.sol";
 
 /**
  * @title Contract to manage forced transactions on L1.
@@ -73,9 +73,18 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       revert ToAddressTooLow();
     }
 
+    // while less than ideal naming, it saves gas by doing a single query
+    // gets all LineaRollup fields (nb: increments the counter)
+    (
+      bytes32 currentFinalizedState,
+      uint256 forcedTransactionNumber,
+      bytes32 previousForcedTransactionRollingHash,
+      uint256 currentFinalizedL2BlockNumber
+    ) = LINEA_ROLLUP.getLineaRollupProvidedFields();
+
     // validate state is correct in order to use the timestamp.. we might need a better way than this.
     if (
-      LINEA_ROLLUP.currentFinalizedState() !=
+      currentFinalizedState !=
       FinalizedStateHashing._computeLastFinalizedState(
         _lastFinalizedState.messageNumber,
         _lastFinalizedState.messageRollingHash,
@@ -85,7 +94,7 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       )
     ) {
       revert FinalizationStateIncorrect(
-        LINEA_ROLLUP.currentFinalizedState(),
+        currentFinalizedState,
         FinalizedStateHashing._computeLastFinalizedState(
           _lastFinalizedState.messageNumber,
           _lastFinalizedState.messageRollingHash,
@@ -137,19 +146,16 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       );
     }
 
-    // while less than ideal naming, it saves gas by doing a single query
-    // gets all LineaRollup fields (nb: increments the counter)
-    (
-      uint256 forcedTransactionNumber,
-      bytes32 previousForcedTransactionRollingHash,
-      uint256 currentFinalizedL2BlockNumber
-    ) = LINEA_ROLLUP.getLineaRollupProvidedFields();
-
     // COMPUTE BLOCK NUMBER - TO BE DISCUSSED
-    uint256 expectedBlockNumber = computeForcedTransactionL2Block(
-      _lastFinalizedState.timestamp,
-      currentFinalizedL2BlockNumber
-    );
+    uint256 expectedBlockNumber;
+    unchecked {
+      // last L2 block + seconds between then and now to get "current" block and then 3 days of 1 second
+      expectedBlockNumber =
+        currentFinalizedL2BlockNumber +
+        block.timestamp -
+        _lastFinalizedState.timestamp +
+        L2_BLOCK_BUFFER; // we assume a 1 second block time
+    }
 
     // compute a rolling mimc hash
     bytes32 forcedTransactionRollingHash = _computeForcedTransactionRollingHash(
@@ -171,16 +177,6 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     );
   }
 
-  function computeForcedTransactionL2Block(
-    uint256 _lastFinalizedTimestamp,
-    uint256 _currentL2BlockNumber
-  ) private view returns (uint256 l2BlockNumber) {
-    unchecked {
-      // last L2 block + seconds between then and now to get "current" block and then 3 days of 1 second
-      l2BlockNumber = _currentL2BlockNumber + block.timestamp - _lastFinalizedTimestamp + L2_BLOCK_BUFFER; // we assume a 1 second block time
-    }
-  }
-
   function _computeForcedTransactionRollingHash(
     bytes32 _previousRollingHash,
     bytes32 _hashedPayload,
@@ -190,18 +186,16 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     bytes memory mimcPayload;
 
     assembly {
-      let msb := shr(128, _hashedPayload)
-      let lsb := and(_hashedPayload, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+      let mostSignificantBytes := shr(128, _hashedPayload)
+      let leadSignificantBytes := and(_hashedPayload, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
 
       mimcPayload := mload(0x40)
       mstore(mimcPayload, 0xA0)
-
       mstore(add(mimcPayload, 0x20), _previousRollingHash)
-      mstore(add(mimcPayload, 0x40), msb)
-      mstore(add(mimcPayload, 0x60), lsb)
+      mstore(add(mimcPayload, 0x40), mostSignificantBytes)
+      mstore(add(mimcPayload, 0x60), leadSignificantBytes)
       mstore(add(mimcPayload, 0x80), _expectedBlockNumber)
       mstore(add(mimcPayload, 0xA0), _from)
-
       mstore(0x40, add(mimcPayload, 0xC0))
     }
 
