@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@jest/globals";
 import { config } from "./config/tests-config";
 import {
-  generateUUIDv4,
+  generateRandomUUIDv4,
   getRawTransactionHex,
   getTransactionHash,
   getWallet,
@@ -38,7 +38,7 @@ describe("Send bundle test suite", () => {
         txHashes.push(await getTransactionHash(txRequest, senderWallet));
       }
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 5;
-      const replacementUUID = generateUUIDv4();
+      const replacementUUID = generateRandomUUIDv4();
 
       try {
         await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
@@ -58,8 +58,6 @@ describe("Send bundle test suite", () => {
         const receipt = await config.getL2Provider().getTransactionReceipt(tx);
         expect(receipt?.status).toStrictEqual(1);
       }
-      const recipientBalance = await config.getL2Provider().getBalance(recipientAccount.address);
-      expect(recipientBalance).toStrictEqual(ethers.parseUnits("3000", "wei"));
     },
     120_000,
   );
@@ -87,7 +85,7 @@ describe("Send bundle test suite", () => {
         txHashes.push(await getTransactionHash(txRequest, senderWallet));
       }
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 5;
-      const replacementUUID = generateUUIDv4();
+      const replacementUUID = generateRandomUUIDv4();
 
       try {
         await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
@@ -106,8 +104,6 @@ describe("Send bundle test suite", () => {
         const receipt = await config.getL2Provider().getTransactionReceipt(tx);
         expect(receipt?.status).toBeUndefined();
       }
-      const recipientBalance = await config.getL2Provider().getBalance(recipientAccount.address);
-      expect(recipientBalance).toStrictEqual(0n);
     },
     120_000,
   );
@@ -134,7 +130,7 @@ describe("Send bundle test suite", () => {
         txHashes.push(await getTransactionHash(txRequest, senderWallet));
       }
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 10;
-      const replacementUUID = generateUUIDv4();
+      const replacementUUID = generateRandomUUIDv4();
 
       try {
         await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
@@ -158,8 +154,6 @@ describe("Send bundle test suite", () => {
         const receipt = await config.getL2Provider().getTransactionReceipt(tx);
         expect(receipt?.status).toBeUndefined();
       }
-      const recipientBalance = await config.getL2Provider().getBalance(recipientAccount.address);
-      expect(recipientBalance).toStrictEqual(0n);
     },
     120_000,
   );

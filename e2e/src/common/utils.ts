@@ -13,6 +13,7 @@ import {
 } from "../typechain/common";
 import { MessageEvent, SendMessageArgs } from "./types";
 import { createTestLogger } from "../config/logger";
+import { randomUUID, randomInt } from "crypto";
 
 const logger = createTestLogger();
 
@@ -57,33 +58,47 @@ export const encodeData = (types: string[], values: unknown[], packed?: boolean)
   return ethers.AbiCoder.defaultAbiCoder().encode(types, values);
 };
 
-export function generateUUIDv4(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    const v = c === "x" ? r : (r & 0x3) | 0x8;
-    return v.toString(16);
-  });
+export function generateRandomInt(max = 1000): number {
+  return randomInt(max);
+}
+
+export function generateRandomUUIDv4(): string {
+  return randomUUID();
+}
+
+async function awaitUntil<T>(
+  callback: () => Promise<T>,
+  stopRetry: (a: T) => boolean,
+  pollingIntervalMs: number = 500,
+  timeoutMs: number = 2 * 60 * 1000,
+): Promise<T | null> {
+  let isExceedTimeOut = false;
+  setTimeout(() => {
+    isExceedTimeOut = true;
+  }, timeoutMs);
+
+  while (!isExceedTimeOut) {
+    const result = await callback();
+    if (stopRetry(result)) return result;
+    await wait(pollingIntervalMs);
+  }
+  return null;
 }
 
 export async function pollForBlockNumber(
   provider: ethers.JsonRpcProvider,
   expectedBlockNumber: number,
-  compareFunction: (a: number, b: number) => boolean = (a, b) => a >= b,
-  pollingInterval: number = 500,
-  timeout: number = 2 * 60 * 1000,
+  pollingIntervalMs: number = 500,
+  timeoutMs: number = 2 * 60 * 1000,
 ): Promise<boolean> {
-  let isExceedTimeOut = false;
-  setTimeout(() => {
-    isExceedTimeOut = true;
-  }, timeout);
-
-  while (!isExceedTimeOut) {
-    const returnValue = await provider.getBlockNumber();
-    if (compareFunction(returnValue, expectedBlockNumber)) return true;
-    await wait(pollingInterval);
-  }
-
-  return false;
+  return (
+    (await awaitUntil(
+      async () => await provider.getBlockNumber(),
+      (a: number) => a >= expectedBlockNumber,
+      pollingIntervalMs,
+      timeoutMs,
+    )) != null
+  );
 }
 
 export class RollupGetZkEVMBlockNumberClient {
@@ -94,7 +109,7 @@ export class RollupGetZkEVMBlockNumberClient {
       jsonrpc: "2.0",
       method: "rollup_getZkEVMBlockNumber",
       params: [],
-      id: 1,
+      id: generateRandomInt(),
     }),
   };
 
@@ -136,7 +151,7 @@ export class LineaEstimateGasClient {
             value,
           },
         ],
-        id: 1,
+        id: generateRandomInt(),
       }),
     };
     const response = await fetch(this.endpoint, request);
@@ -174,7 +189,7 @@ export class LineaBundleClient {
             blockNumber,
           },
         ],
-        id: 1,
+        id: generateRandomInt(),
       }),
     };
     const response = await fetch(this.endpoint, request);
@@ -195,7 +210,7 @@ export class LineaBundleClient {
         jsonrpc: "2.0",
         method: "linea_cancelBundle",
         params: [replacementUUID],
-        id: 1,
+        id: generateRandomInt(),
       }),
     };
     const response = await fetch(this.endpoint, request);
@@ -223,7 +238,7 @@ export class TransactionExclusionClient {
         jsonrpc: "2.0",
         method: "linea_getTransactionExclusionStatusV1",
         params: [txHash],
-        id: 1,
+        id: generateRandomInt(),
       }),
     };
     const response = await fetch(this.endpoint, request);
@@ -259,7 +274,7 @@ export class TransactionExclusionClient {
         jsonrpc: "2.0",
         method: "linea_saveRejectedTransactionV1",
         params: params,
-        id: 1,
+        id: generateRandomInt(),
       }),
     };
     const response = await fetch(this.endpoint, request);
@@ -316,44 +331,18 @@ export async function waitForEvents<
 >(
   contract: TContract,
   eventFilter: TypedDeferredTopicFilter<TEvent>,
-  pollingInterval: number = 500,
+  pollingIntervalMs: number = 500,
   fromBlock?: BlockTag,
   toBlock?: BlockTag,
   criteria?: (events: TypedEventLog<TEvent>[]) => Promise<TypedEventLog<TEvent>[]>,
 ): Promise<TypedEventLog<TEvent>[]> {
-  let events = await getEvents(contract, eventFilter, fromBlock, toBlock, criteria);
-
-  while (events.length === 0) {
-    events = await getEvents(contract, eventFilter, fromBlock, toBlock, criteria);
-    await wait(pollingInterval);
-  }
-
-  return events;
-}
-
-// Currently only handle simple single return types - uint256 | bytesX | string | bool
-export async function pollForContractMethodReturnValue<
-  ExpectedReturnType extends bigint | string | boolean,
-  R extends [ExpectedReturnType],
->(
-  method: TypedContractMethod<[], R, "view">,
-  expectedReturnValue: ExpectedReturnType,
-  compareFunction: (a: ExpectedReturnType, b: ExpectedReturnType) => boolean = (a, b) => a === b,
-  pollingInterval: number = 500,
-  timeout: number = 2 * 60 * 1000,
-): Promise<boolean> {
-  let isExceedTimeOut = false;
-  setTimeout(() => {
-    isExceedTimeOut = true;
-  }, timeout);
-
-  while (!isExceedTimeOut) {
-    const returnValue = await method();
-    if (compareFunction(returnValue, expectedReturnValue)) return true;
-    await wait(pollingInterval);
-  }
-
-  return false;
+  return (
+    (await awaitUntil(
+      async () => await getEvents(contract, eventFilter, fromBlock, toBlock, criteria),
+      (a: TypedEventLog<TEvent>[]) => a.length > 0,
+      pollingIntervalMs,
+    )) ?? []
+  );
 }
 
 // Currently only handle single uint256 return type
@@ -363,46 +352,23 @@ export async function pollForContractMethodReturnValueExceedTarget<
 >(
   method: TypedContractMethod<[], R, "view">,
   targetReturnValue: ExpectedReturnType,
-  pollingInterval: number = 500,
-  timeout: number = 2 * 60 * 1000,
+  pollingIntervalMs: number = 500,
+  timeoutMs: number = 2 * 60 * 1000,
 ): Promise<boolean> {
-  return pollForContractMethodReturnValue(method, targetReturnValue, (a, b) => a >= b, pollingInterval, timeout);
+  return (
+    (await awaitUntil(
+      async () => await method(),
+      (a: ExpectedReturnType) => a >= targetReturnValue,
+      pollingIntervalMs,
+      timeoutMs,
+    )) != null
+  );
 }
 
 export function getFiles(directory: string, fileRegex: RegExp[]): string[] {
   const files = fs.readdirSync(directory, { withFileTypes: true });
   const filteredFiles = files.filter((file) => fileRegex.map((regex) => regex.test(file.name)).includes(true));
   return filteredFiles.map((file) => fs.readFileSync(path.join(directory, file.name), "utf-8"));
-}
-
-export async function waitForFile(
-  directory: string,
-  regex: RegExp,
-  pollingInterval: number,
-  timeout: number,
-  criteria?: (fileName: string) => boolean,
-): Promise<string> {
-  const endTime = Date.now() + timeout;
-
-  while (Date.now() < endTime) {
-    try {
-      const files = fs.readdirSync(directory);
-
-      for (const file of files) {
-        if (regex.test(file) && (!criteria || criteria(file))) {
-          const filePath = path.join(directory, file);
-          const content = fs.readFileSync(filePath, "utf-8");
-          return content;
-        }
-      }
-    } catch (err) {
-      throw new Error(`Error reading directory: ${(err as Error).message}`);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, pollingInterval));
-  }
-
-  throw new Error("File check timed out");
 }
 
 export async function sendTransactionsToGenerateTrafficWithInterval(
