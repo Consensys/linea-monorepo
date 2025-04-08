@@ -26,7 +26,7 @@ type ConstCol struct {
 func NewConstantCol(elem field.Element, size int) ifaces.Column {
 	return ConstCol{
 		base:   elem,
-		ext:    fext.Element{elem, field.Zero()},
+		ext:    fext.NewFromBase(elem),
 		isBase: true,
 		Size_:  size,
 	}
@@ -137,7 +137,7 @@ func (cc ConstCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int)
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
-	return gnarkfext.Variable{A0: cc.ext.A0, A1: cc.ext.A1}
+	return gnarkfext.ExtToVariable(cc.ext)
 }
 
 // Since the column is directly defined from the
