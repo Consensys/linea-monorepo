@@ -3,12 +3,7 @@ import { ethers } from "ethers";
 import { config } from "../tests-config";
 import { deployContract } from "../../common/deployments";
 import { DummyContract__factory, TestContract__factory } from "../../typechain";
-import {
-  etherToWei,
-  generateRandomUUIDv4,
-  LineaBundleClient,
-  sendTransactionsToGenerateTrafficWithInterval,
-} from "../../common/utils";
+import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
 import { EMPTY_CONTRACT_CODE } from "../../common/constants";
 import { createTestLogger } from "../logger";
 
@@ -28,17 +23,6 @@ export default async (): Promise<void> => {
   const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(pollingAccount, 2_000);
 
   global.stopL2TrafficGeneration = stopPolling;
-
-  global.skipSendBundleTests = false;
-  const lineaSendBundleClient = new LineaBundleClient(config.getL2BesuNodeEndpoint()!);
-  try {
-    await lineaSendBundleClient.lineaSendBundle([], generateRandomUUIDv4(), "0xffff");
-  } catch (err) {
-    if (err instanceof Error) {
-      // Bundle request doesn't support in traces-v1 besu nodes, so we should skip the test
-      global.skipSendBundleTests = true;
-    }
-  }
 };
 
 async function configureOnceOffPrerequisities() {
