@@ -1,6 +1,10 @@
 package verifiercol
 
 import (
+	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"strings"
 
 	"github.com/consensys/gnark/frontend"
@@ -19,11 +23,16 @@ var _ VerifierCol = FromAccessors{}
 // column and subsumes almost all the other types.
 type FromAccessors struct {
 	// Accessors stores the list of accessors building the column.
-	Accessors []ifaces.Accessor
-	Padding   field.Element
-	Size_     int
+	Accessors  []ifaces.Accessor
+	Padding    field.Element
+	PaddingExt fext.Element
+	Size_      int
 	// Round_ caches the round value of the column.
 	Round_ int
+}
+
+func (f FromAccessors) IsBase() bool {
+	return f.Accessors[0].IsBase()
 }
 
 // NewFromAccessors instantiates a [FromAccessors] column from a list of
@@ -40,7 +49,28 @@ func NewFromAccessors(accessors []ifaces.Accessor, padding field.Element, size i
 	for i := range accessors {
 		round = max(round, accessors[i].Round())
 	}
-	return FromAccessors{Accessors: accessors, Round_: round, Padding: padding, Size_: size}
+	return FromAccessors{
+		Accessors: accessors,
+		Round_:    round,
+		Padding:   padding,
+		Size_:     size,
+	}
+}
+
+func NewFromAccessorsExt(accessors []ifaces.Accessor, padding fext.Element, size int) ifaces.Column {
+	if !utils.IsPowerOfTwo(size) {
+		utils.Panic("the column must be a power of two (size=%v)", size)
+	}
+	round := 0
+	for i := range accessors {
+		round = max(round, accessors[i].Round())
+	}
+	return FromAccessors{
+		Accessors:  accessors,
+		Round_:     round,
+		PaddingExt: padding,
+		Size_:      size,
+	}
 }
 
 // Round returns the round ID of the column and implements the [ifaces.Column]
@@ -69,11 +99,20 @@ func (f FromAccessors) Size() int {
 
 // GetColAssignment returns the assignment of the current column
 func (f FromAccessors) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
-	res := make([]field.Element, len(f.Accessors))
-	for i := range res {
-		res[i] = f.Accessors[i].GetVal(run)
+	if f.IsBase() {
+		res := make([]field.Element, len(f.Accessors))
+		for i := range res {
+			res[i] = f.Accessors[i].GetVal(run)
+		}
+		return smartvectors.RightPadded(res, f.Padding, f.Size_)
+	} else {
+		res := make([]fext.Element, len(f.Accessors))
+		for i := range res {
+			res[i] = f.Accessors[i].GetValExt(run)
+		}
+		return smartvectorsext.RightPadded(res, f.PaddingExt, f.Size_)
 	}
-	return smartvectors.RightPadded(res, f.Padding, f.Size_)
+
 }
 
 // GetColAssignment returns a gnark assignment of the current column
@@ -86,6 +125,36 @@ func (f FromAccessors) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend
 
 	for i := len(f.Accessors); i < f.Size_; i++ {
 		res[i] = f.Padding
+	}
+
+	return res
+}
+
+func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+	if f.IsBase() {
+		res := make([]frontend.Variable, f.Size_)
+		for i := range f.Accessors {
+			res[i] = f.Accessors[i].GetFrontendVariable(nil, run)
+		}
+
+		for i := len(f.Accessors); i < f.Size_; i++ {
+			res[i] = f.Padding
+		}
+
+		return res, nil
+	} else {
+		return nil, fmt.Errorf("requested a base element from a field extension")
+	}
+}
+
+func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
+	res := make([]gnarkfext.Variable, f.Size_)
+	for i := range f.Accessors {
+		res[i] = f.Accessors[i].GetFrontendVariableExt(nil, run)
+	}
+
+	for i := len(f.Accessors); i < f.Size_; i++ {
+		res[i] = gnarkfext.ExtToVariable(f.PaddingExt)
 	}
 
 	return res
@@ -105,6 +174,40 @@ func (f FromAccessors) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Ele
 	return f.Accessors[pos].GetVal(run)
 }
 
+func (f FromAccessors) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	if f.IsBase() {
+		if pos >= f.Size_ {
+			utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
+		}
+
+		if pos >= len(f.Accessors) {
+			return f.Padding, nil
+		}
+
+		return f.Accessors[pos].GetVal(run), nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested a base element from an underlying field extension")
+	}
+}
+
+func (f FromAccessors) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	if f.IsBase() {
+		baseElem, _ := f.GetColAssignmentAtBase(run, pos)
+		return fext.NewFromBase(baseElem)
+	} else {
+		if pos >= f.Size_ {
+			utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
+		}
+
+		if pos >= len(f.Accessors) {
+			return f.PaddingExt
+		}
+
+		return f.Accessors[pos].GetValExt(run)
+
+	}
+}
+
 // GetColAssignmentGnarkAt returns a particular position of the column in a gnark circuit
 func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
 	if pos >= f.Size_ {
@@ -116,6 +219,47 @@ func (f FromAccessors) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int)
 	}
 
 	return f.Accessors[pos].GetFrontendVariable(nil, run)
+}
+
+func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+	if f.IsBase() {
+		if pos >= f.Size_ {
+			utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
+		}
+
+		if pos >= len(f.Accessors) {
+			return f.Padding, nil
+		}
+
+		return f.Accessors[pos].GetFrontendVariable(nil, run), nil
+	} else {
+		return nil, fmt.Errorf("requested a base element from an underlying field extension")
+	}
+}
+
+func (f FromAccessors) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
+	if f.IsBase() {
+		if pos >= f.Size_ {
+			utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
+		}
+
+		if pos >= len(f.Accessors) {
+			return gnarkfext.NewFromBase(f.Padding)
+		}
+
+		elem, _ := f.Accessors[pos].GetFrontendVariableBase(nil, run)
+		return gnarkfext.NewFromBase(elem)
+	} else {
+		if pos >= f.Size_ {
+			utils.Panic("out of bound: size=%v pos=%v", f.Size_, pos)
+		}
+
+		if pos >= len(f.Accessors) {
+			return gnarkfext.ExtToVariable(f.PaddingExt)
+		}
+
+		return f.Accessors[pos].GetFrontendVariableExt(nil, run)
+	}
 }
 
 // IsComposite implements the [ifaces.Column] interface

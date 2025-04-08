@@ -127,7 +127,13 @@ func (fs *GnarkFiatShamir) UpdateVecExt(mat ...[]gnarkfext.Variable) {
 }
 
 // RandomField returns a single valued fiat-shamir hash
-func (fs *GnarkFiatShamir) RandomField() gnarkfext.Variable {
+func (fs *GnarkFiatShamir) RandomField() frontend.Variable {
+	defer fs.safeguardUpdate()
+	return fs.hasher.Sum()
+}
+
+// RandomField returns a single valued fiat-shamir hash
+func (fs *GnarkFiatShamir) RandomFieldExt() gnarkfext.Variable {
 	defer fs.safeguardUpdate()
 	return gnarkfext.Variable{
 		A0: fs.hasher.Sum(),

@@ -161,7 +161,7 @@ func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
 	expecteds := run.GetParams(r.ID).(GnarkInnerProductParams)
 
-	if expecteds.isBase {
+	if expecteds.IsBase {
 		wA := r.A.GetColAssignmentGnark(run)
 		for i, b := range r.Bs {
 			wB := b.GetColAssignmentGnark(run)
@@ -173,7 +173,7 @@ func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 				actualIP = api.Add(actualIP, tmp)
 			}
 
-			api.AssertIsEqual(expecteds.baseYs[i], actualIP)
+			api.AssertIsEqual(expecteds.BaseYs[i], actualIP)
 		}
 	} else {
 		wA := r.A.GetColAssignmentGnarkExt(run)
@@ -188,7 +188,7 @@ func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 				actualIP = extApi.Add(actualIP, tmp)
 			}
 
-			api.AssertIsEqual(expecteds.extYs[i], actualIP)
+			api.AssertIsEqual(expecteds.ExtYs[i], actualIP)
 		}
 	}
 

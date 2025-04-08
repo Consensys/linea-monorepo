@@ -48,7 +48,7 @@ func (c CircuitAssignment) Run(run *wizard.ProverRuntime) {
 
 func (c ReplacementAssignment) Run(run *wizard.ProverRuntime) {
 	params := run.GetUnivariateParams(c.PolyQuery.QueryID)
-	run.AssignUnivariate(c.PolyQueryReplacement.QueryID, params.X, params.Ys...)
+	run.AssignUnivariate(c.PolyQueryReplacement.QueryID, params.BaseX, params.BaseYs...)
 
 	oldRoots := c.PcsCtx.Items.MerkleRoots
 	for i := range c.MerkleRootsReplacement {

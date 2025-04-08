@@ -1,6 +1,8 @@
 package verifiercol
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"strings"
 
 	"github.com/consensys/gnark/frontend"
@@ -24,6 +26,40 @@ type FromYs struct {
 	Query query.UnivariateEval
 	// Remember the round in which the query was made
 	Round_ int
+}
+
+func (fys FromYs) IsBase() bool {
+
+}
+
+func (fys FromYs) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
+	//TODO implement me
+	panic("implement me")
 }
 
 // Construct a new column from a univariate query and a list of of ifaces.ColID
@@ -81,21 +117,26 @@ func (fys FromYs) Size() int {
 // Returns the coin's value as a column assignment
 func (fys FromYs) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
 
-	queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams)
+	if fys.IsBase() {
+		queryParams := run.GetParams(fys.Query.QueryID).(query.UnivariateEvalParams)
 
-	// Map the alleged evaluations to their respective commitment names
-	yMap := map[ifaces.ColID]field.Element{}
-	for i, polName := range fys.Query.Pols {
-		yMap[polName.GetColID()] = queryParams.Ys[i]
+		// Map the alleged evaluations to their respective commitment names
+		yMap := map[ifaces.ColID]field.Element{}
+		for i, polName := range fys.Query.Pols {
+			yMap[polName.GetColID()] = queryParams.BaseYs[i]
+		}
+
+		// This will leaves the columns missing from the query to zero.
+		res := make([]field.Element, len(fys.Ranges))
+		for i, name := range fys.Ranges {
+			res[i] = yMap[name]
+		}
+
+		return smartvectors.NewRegular(res)
+	} else {
+
 	}
 
-	// This will leaves the columns missing from the query to zero.
-	res := make([]field.Element, len(fys.Ranges))
-	for i, name := range fys.Ranges {
-		res[i] = yMap[name]
-	}
-
-	return smartvectors.NewRegular(res)
 }
 
 // Returns the coin's value as a column assignment

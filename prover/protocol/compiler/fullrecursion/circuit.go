@@ -32,9 +32,21 @@ func allocateGnarkCircuit(comp *wizard.CompiledIOP, ctx *fullRecursionCtx) *gnar
 		wizardVerifier = wizard.NewWizardVerifierCircuit()
 	)
 
+	// allocate the base columns
 	for round := range ctx.Columns {
 		for _, col := range ctx.Columns[round] {
-			wizardVerifier.AllocColumn(col.GetColID(), col.Size())
+			if col.IsBase() {
+				wizardVerifier.AllocColumn(col.GetColID(), col.Size())
+			}
+		}
+	}
+
+	// allocate the extension columns
+	for round := range ctx.Columns {
+		for _, col := range ctx.Columns[round] {
+			if !col.IsBase() {
+				wizardVerifier.AllocColumnExt(col.GetColID(), col.Size())
+			}
 		}
 	}
 

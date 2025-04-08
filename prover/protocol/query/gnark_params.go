@@ -28,23 +28,23 @@ func (p LocalOpeningParams) GnarkAssign() GnarkLocalOpeningParams {
 
 // A gnark circuit version of InnerProductParams
 type GnarkInnerProductParams struct {
-	baseYs []frontend.Variable
-	extYs  []gnarkfext.Variable
-	isBase bool
+	BaseYs []frontend.Variable
+	ExtYs  []gnarkfext.Variable
+	IsBase bool
 }
 
 func (p InnerProduct) GnarkAllocate() GnarkInnerProductParams {
 	if p.isBase {
 		return GnarkInnerProductParams{
-			baseYs: make([]frontend.Variable, len(p.Bs)),
-			extYs:  nil,
-			isBase: true,
+			BaseYs: make([]frontend.Variable, len(p.Bs)),
+			ExtYs:  nil,
+			IsBase: true,
 		}
 	} else {
 		return GnarkInnerProductParams{
-			baseYs: nil,
-			extYs:  make([]gnarkfext.Variable, len(p.Bs)),
-			isBase: false,
+			BaseYs: nil,
+			ExtYs:  make([]gnarkfext.Variable, len(p.Bs)),
+			IsBase: false,
 		}
 	}
 
@@ -52,65 +52,65 @@ func (p InnerProduct) GnarkAllocate() GnarkInnerProductParams {
 
 func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
 	return GnarkInnerProductParams{
-		baseYs: vector.IntoGnarkAssignment(p.baseYs),
-		extYs:  vectorext.IntoGnarkAssignment(p.extYs),
-		isBase: p.isBase,
+		BaseYs: vector.IntoGnarkAssignment(p.baseYs),
+		ExtYs:  vectorext.IntoGnarkAssignment(p.extYs),
+		IsBase: p.isBase,
 	}
 }
 
 // A gnark circuit version of univariate eval params
 type GnarkUnivariateEvalParams struct {
-	baseX  frontend.Variable
-	baseYs []frontend.Variable
-	extX   gnarkfext.Variable
-	extYs  []gnarkfext.Variable
-	isBase bool
+	BaseX  frontend.Variable
+	BaseYs []frontend.Variable
+	ExtX   gnarkfext.Variable
+	ExtYs  []gnarkfext.Variable
+	IsBase bool
 }
 
 func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 	// no need to preallocate the x because its size is already known
 	if p.Pols[0].IsBase() {
 		return GnarkUnivariateEvalParams{
-			baseYs: make([]frontend.Variable, len(p.Pols)),
-			extYs:  nil,
-			isBase: true,
+			BaseYs: make([]frontend.Variable, len(p.Pols)),
+			ExtYs:  nil,
+			IsBase: true,
 		}
 	} else {
 		return GnarkUnivariateEvalParams{
-			baseYs: nil,
-			extYs:  make([]gnarkfext.Variable, len(p.Pols)),
-			isBase: false,
+			BaseYs: nil,
+			ExtYs:  make([]gnarkfext.Variable, len(p.Pols)),
+			IsBase: false,
 		}
 	}
 }
 
 // Returns a gnark assignment for the present parameters
 func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
-	if p.isBase {
+	if p.IsBase {
 		return GnarkUnivariateEvalParams{
-			baseYs: vector.IntoGnarkAssignment(p.baseYs),
-			baseX:  p.baseX,
-			extYs:  nil,
-			extX:   gnarkfext.NewZero(),
-			isBase: true,
+			BaseYs: vector.IntoGnarkAssignment(p.BaseYs),
+			BaseX:  p.BaseX,
+			ExtYs:  nil,
+			ExtX:   gnarkfext.NewZero(),
+			IsBase: true,
 		}
 	} else {
 		return GnarkUnivariateEvalParams{
-			baseYs: nil,
-			baseX:  nil,
-			extYs:  vectorext.IntoGnarkAssignment(p.extYs),
-			extX:   gnarkfext.ExtToVariable(p.extX),
-			isBase: false,
+			BaseYs: nil,
+			BaseX:  nil,
+			ExtYs:  vectorext.IntoGnarkAssignment(p.ExtYs),
+			ExtX:   gnarkfext.ExtToVariable(p.ExtX),
+			IsBase: false,
 		}
 	}
 }
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkInnerProductParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
-	if p.isBase {
-		fs.Update(p.baseYs...)
+	if p.IsBase {
+		fs.Update(p.BaseYs...)
 	} else {
-		fs.UpdateExt(p.extYs...)
+		fs.UpdateExt(p.ExtYs...)
 	}
 }
 
@@ -125,9 +125,9 @@ func (p GnarkLocalOpeningParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
 
 // Update the fiat-shamir state with the the present parameters
 func (p GnarkUnivariateEvalParams) UpdateFS(fs *fiatshamir.GnarkFiatShamir) {
-	if p.isBase {
-		fs.Update(p.baseYs...)
+	if p.IsBase {
+		fs.Update(p.BaseYs...)
 	} else {
-		fs.UpdateExt(p.extYs...)
+		fs.UpdateExt(p.ExtYs...)
 	}
 }

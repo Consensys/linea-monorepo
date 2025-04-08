@@ -48,6 +48,13 @@ func NewElement(v1 uint64, v2 uint64) Element {
 	return Element{z1, z2}
 }
 
+func NewFromBase(base field.Element) Element {
+	return Element{
+		A0: base,
+		A1: field.Zero(),
+	}
+}
+
 // NotEqual returns 0 if and only if z == x; constant-time
 func (z *Element) NotEqual(x *Element) uint64 {
 	if z.Equal(x) {

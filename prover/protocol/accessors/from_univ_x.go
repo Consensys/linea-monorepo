@@ -2,6 +2,8 @@ package accessors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -19,6 +21,10 @@ type FromUnivXAccessor struct {
 	Q query.UnivariateEval
 	// Round is the declaration round of Q
 	QRound int
+}
+
+func (u *FromUnivXAccessor) IsBase() bool {
+	return u.Q.Pols[0].IsBase()
 }
 
 // NewUnivariateX returns an [ifaces.Accessor] object symbolizing the evaluation
@@ -44,13 +50,42 @@ func (u *FromUnivXAccessor) String() string {
 // GetVal implements [ifaces.Accessor]
 func (u *FromUnivXAccessor) GetVal(run ifaces.Runtime) field.Element {
 	params := run.GetParams(u.Q.QueryID).(query.UnivariateEvalParams)
-	return params.X
+	return params.BaseX
+}
+
+func (u *FromUnivXAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	if u.IsBase() {
+		params := run.GetParams(u.Q.QueryID).(query.UnivariateEvalParams)
+		return params.BaseX, nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested a base element from an underlying field extension")
+	}
+
+}
+
+func (u *FromUnivXAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	params := run.GetParams(u.Q.QueryID).(query.UnivariateEvalParams)
+	return params.ExtX
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (u *FromUnivXAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
 	params := circ.GetParams(u.Q.QueryID).(query.GnarkUnivariateEvalParams)
-	return params.X
+	return params.BaseX
+}
+
+func (u *FromUnivXAccessor) GetFrontendVariableBase(_ frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+	params := circ.GetParams(u.Q.QueryID).(query.GnarkUnivariateEvalParams)
+	if u.IsBase() {
+		return params.BaseX, nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested a base element from an underlying field extension")
+	}
+}
+
+func (u *FromUnivXAccessor) GetFrontendVariableExt(_ frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Variable {
+	params := circ.GetParams(u.Q.QueryID).(query.GnarkUnivariateEvalParams)
+	return params.ExtX
 }
 
 // AsVariable implements the [ifaces.Accessor] interface
