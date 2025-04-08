@@ -13,6 +13,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+type mimcCtxProverAction struct {
+	ctx *mimcCtx
+}
+
+func (a *mimcCtxProverAction) Run(run *wizard.ProverRuntime) {
+	a.ctx.assign(run)
+}
+
 // Internally checks the correctness of hashing a MiMC blocks in parallel.
 // Namely, on every row i of the columns (blocks, oldStates, newStates), we
 // have that mimcF(oldState, blocks) == newState.
@@ -38,7 +46,12 @@ func manualCheckMiMCBlock(comp *wizard.CompiledIOP, blocks, oldStates, newStates
 	// And checks consistency of the last one with the alleged resulting states
 	ctx.manualCheckFinalRoundPerm(s)
 
-	comp.SubProvers.AppendToInner(round, ctx.assign)
+	// comp.SubProvers.AppendToInner(round, ctx.assign)
+
+	// Register the ProverAction instead of using a closure
+	comp.RegisterProverAction(round, &mimcCtxProverAction{
+		ctx: &ctx,
+	})
 }
 
 // Utility struct wrapping all the intermediate values of the MiMC wizard

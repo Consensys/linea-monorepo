@@ -8,6 +8,18 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
 
+type deleteColumnsProverAction struct {
+	splittings []SummerizedAlliances
+}
+
+func (a *deleteColumnsProverAction) Run(run *wizard.ProverRuntime) {
+	for round := range a.splittings {
+		for bigCol := range a.splittings[round].ByBigCol {
+			run.Columns.TryDel(bigCol)
+		}
+	}
+}
+
 // Splitter
 func Splitter(size int) func(*wizard.CompiledIOP) {
 	return func(comp *wizard.CompiledIOP) {
@@ -17,12 +29,9 @@ func Splitter(size int) func(*wizard.CompiledIOP) {
 		ctx.constraints()
 
 		// it assigns the stitching columns and delete the assignment of the sub columns.
-		comp.SubProvers.AppendToInner(comp.NumRounds()-1, func(run *wizard.ProverRuntime) {
-			for round := range ctx.Splittings {
-				for bigCol := range ctx.Splittings[round].ByBigCol {
-					run.Columns.TryDel(bigCol)
-				}
-			}
+		// Register the ProverAction instead of using a closure
+		comp.RegisterProverAction(comp.NumRounds()-1, &deleteColumnsProverAction{
+			splittings: ctx.Splittings,
 		})
 	}
 }
@@ -47,6 +56,15 @@ func newSplitter(comp *wizard.CompiledIOP, size int) splitterContext {
 
 	ctx.ScanSplitCommit()
 	return ctx
+}
+
+type proveRoundProverAction struct {
+	ctx   *splitterContext
+	round int
+}
+
+func (a *proveRoundProverAction) Run(run *wizard.ProverRuntime) {
+	a.ctx.Prove(a.round)
 }
 
 func (ctx *splitterContext) ScanSplitCommit() {
@@ -126,7 +144,11 @@ func (ctx *splitterContext) ScanSplitCommit() {
 			continue
 		}
 
-		ctx.comp.SubProvers.AppendToInner(round, ctx.Prove(round))
+		// ctx.comp.SubProvers.AppendToInner(round, ctx.Prove(round))
+		ctx.comp.RegisterProverAction(round, &proveRoundProverAction{
+			ctx:   ctx,
+			round: round,
+		})
 	}
 }
 
