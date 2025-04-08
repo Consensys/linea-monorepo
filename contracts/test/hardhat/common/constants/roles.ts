@@ -13,6 +13,7 @@ export const CANCELLER_ROLE = generateKeccak256(["string"], ["CANCELLER_ROLE"], 
 
 // Roles hashes
 export const DEFAULT_ADMIN_ROLE = HASH_ZERO;
+export const FORCED_TRANSACTION_SENDER_ROLE = generateKeccak256(["string"], ["FORCED_TRANSACTION_SENDER_ROLE"], true);
 export const FUNCTION_EXECUTOR_ROLE = generateKeccak256(["string"], ["FUNCTION_EXECUTOR_ROLE"], true);
 export const RATE_LIMIT_SETTER_ROLE = generateKeccak256(["string"], ["RATE_LIMIT_SETTER_ROLE"], true);
 export const USED_RATE_LIMIT_RESETTER_ROLE = generateKeccak256(["string"], ["USED_RATE_LIMIT_RESETTER_ROLE"], true);

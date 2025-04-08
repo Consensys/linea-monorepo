@@ -67,9 +67,16 @@ export async function expectSuccessfulFinalize(
   expect(expectedFinalStateRootHash).to.equal(finalizationData.shnarfData.finalStateRootHash);
   expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
   expect(lastFinalizedState).to.equal(
+    // TODO TOGGLE
     generateKeccak256(
-      ["uint256", "bytes32", "uint256"],
-      [finalizationData.l1RollingHashMessageNumber, finalizationData.l1RollingHash, finalizationData.finalTimestamp],
+      ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
+      [
+        finalizationData.l1RollingHashMessageNumber,
+        finalizationData.l1RollingHash,
+        0,
+        HASH_ZERO,
+        finalizationData.finalTimestamp,
+      ],
     ),
   );
 }
@@ -209,7 +216,13 @@ export async function expectSuccessfulFinalizeViaCallForwarder(
   expect(lastFinalizedState).to.equal(
     generateKeccak256(
       ["uint256", "bytes32", "uint256"],
-      [finalizationData.l1RollingHashMessageNumber, finalizationData.l1RollingHash, finalizationData.finalTimestamp],
+      [
+        finalizationData.l1RollingHashMessageNumber,
+        finalizationData.l1RollingHash,
+        0,
+        HASH_ZERO,
+        finalizationData.finalTimestamp,
+      ],
     ),
   );
 }

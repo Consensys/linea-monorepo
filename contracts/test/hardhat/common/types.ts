@@ -108,3 +108,11 @@ export type AccessListEntryInput = {
   address: string;
   storageKeys: string[];
 };
+
+export type LastFinalizedState = {
+  timestamp: string;
+  messageNumber: string;
+  messageRollingHash: string;
+  forcedTransactionNumber: string;
+  forcedTransactionRollingHash: string;
+};

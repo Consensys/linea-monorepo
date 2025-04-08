@@ -180,18 +180,22 @@ describe("Linea Rollup contract: Finalization", () => {
         finalizationData.lastFinalizedTimestamp = finalizationData.finalTimestamp + 1n;
 
         const expectedHashValue = generateKeccak256(
-          ["uint256", "bytes32", "uint256"],
+          ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
           [
             finalizationData.lastFinalizedL1RollingHashMessageNumber,
             finalizationData.lastFinalizedL1RollingHash,
+            0,
+            HASH_ZERO,
             finalizationData.lastFinalizedTimestamp,
           ],
         );
         const actualHashValue = generateKeccak256(
-          ["uint256", "bytes32", "uint256"],
+          ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
           [
             finalizationData.lastFinalizedL1RollingHashMessageNumber,
             finalizationData.lastFinalizedL1RollingHash,
+            0,
+            HASH_ZERO,
             DEFAULT_LAST_FINALIZED_TIMESTAMP,
           ],
         );
@@ -435,10 +439,12 @@ describe("Linea Rollup contract: Finalization", () => {
       expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
       expect(lastFinalizedState).to.equal(
         generateKeccak256(
-          ["uint256", "bytes32", "uint256"],
+          ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
           [
             finalizationData.l1RollingHashMessageNumber,
             finalizationData.l1RollingHash,
+            0,
+            HASH_ZERO,
             finalizationData.finalTimestamp,
           ],
         ),

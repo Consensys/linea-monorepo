@@ -8,13 +8,24 @@ import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
+import { FinalizedStateHashing } from "../libraries/FinalizedStateHashing.sol";
+import { IAcceptForcedTransactions } from "../messaging/l1/interfaces/IAcceptForcedTransactions.sol";
+
 /**
  * @title Contract to manage cross-chain messaging on L1, L2 data submission, and rollup proof verification.
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, PermissionsManager, ILineaRollup {
+contract LineaRollup is
+  AccessControlUpgradeable,
+  ZkEvmV2,
+  L1MessageService,
+  PermissionsManager,
+  ILineaRollup,
+  IAcceptForcedTransactions
+{
   using EfficientLeftRightKeccak for *;
+  using FinalizedStateHashing for *;
 
   /// @notice This is the ABI version and not the reinitialize version.
   string public constant CONTRACT_VERSION = "7.0";
@@ -24,6 +35,9 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
 
   /// @notice The role required to set/remove  proof verifiers by type.
   bytes32 public constant VERIFIER_UNSETTER_ROLE = keccak256("VERIFIER_UNSETTER_ROLE");
+
+  /// @notice Role used for sending forced transactions.
+  bytes32 public constant FORCED_TRANSACTION_SENDER_ROLE = keccak256("FORCED_TRANSACTION_SENDER_ROLE");
 
   /// @dev Value indicating a shnarf exists.
   uint256 internal constant SHNARF_EXISTS_DEFAULT_VALUE = 1;
@@ -79,7 +93,19 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
   address public fallbackOperator;
 
-  /// @dev Total contract storage is 11 slots.
+  /// @dev The unique forced transaction number.
+  uint256 private nextForcedTransactionNumber;
+
+  /// @dev The expected L2 block numbers for forced transactions.
+  mapping(uint256 forcedTransactionNumber => uint256 l2BlockNumber) forcedTransactionL2BlockNumbers;
+
+  /// @dev The rolling hash for a forced transaction.
+  mapping(uint256 forcedTransactionNumber => bytes32 rollingHash) forcedTransactionRollingHashes;
+
+  /// @dev The Forced Transaction Gateway address allowed to call and add forced transactions.
+  address forcedTransactionGateway;
+
+  /// @dev Total contract storage is 15 slots.
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -136,35 +162,27 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
 
     blobShnarfExists[genesisShnarf] = SHNARF_EXISTS_DEFAULT_VALUE;
     currentFinalizedShnarf = genesisShnarf;
-    currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _initializationData.genesisTimestamp);
+    currentFinalizedState = FinalizedStateHashing._computeLastFinalizedState(
+      0,
+      EMPTY_HASH,
+      0,
+      EMPTY_HASH,
+      _initializationData.genesisTimestamp
+    );
+    nextForcedTransactionNumber = 1;
   }
 
   /**
-   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings and fallback operator.
+   * @notice Sets forced transaction gateway and reinitializes the last finalized state including forced tx data.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-   * @param _roleAddresses The list of addresses and roles to assign permissions to.
-   * @param _pauseTypeRoles The list of pause types to associate with roles.
-   * @param _unpauseTypeRoles The list of unpause types to associate with roles.
-   * @param _fallbackOperator The address of the fallback operator.
+   * @param _forcedTransactionGateway The address of the forced transaction gateway.
    */
-  function reinitializeLineaRollupV6(
-    RoleAddress[] calldata _roleAddresses,
-    PauseTypeRole[] calldata _pauseTypeRoles,
-    PauseTypeRole[] calldata _unpauseTypeRoles,
-    address _fallbackOperator
-  ) external reinitializer(6) {
-    __Permissions_init(_roleAddresses);
-    __PauseManager_init(_pauseTypeRoles, _unpauseTypeRoles);
-
-    if (_fallbackOperator == address(0)) {
-      revert ZeroAddressNotAllowed();
-    }
-
-    fallbackOperator = _fallbackOperator;
-    emit FallbackOperatorAddressSet(msg.sender, _fallbackOperator);
+  function reinitializeLineaRollupV7(address _forcedTransactionGateway) external reinitializer(7) {
+    nextForcedTransactionNumber = 1;
+    forcedTransactionGateway = _forcedTransactionGateway;
 
     /// @dev using the constants requires string memory and more complex code.
-    emit LineaRollupVersionChanged(bytes8("5.0"), bytes8("6.0"));
+    emit LineaRollupVersionChanged(bytes8("6.0"), bytes8("7.0"));
   }
 
   /**
@@ -179,6 +197,32 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     }
 
     super.renounceRole(_role, _account);
+  }
+
+  function storeForcedTransaction(
+    uint256 _forcedTransactionNumber,
+    uint256 _forcedL2BlockNumber,
+    bytes32 _forcedTransactionRollingHash
+  ) external onlyRole(FORCED_TRANSACTION_SENDER_ROLE) {
+    unchecked {
+      if (forcedTransactionL2BlockNumbers[_forcedTransactionNumber - 1] == _forcedL2BlockNumber) {
+        revert ForcedTransactionExistsForBlock(_forcedL2BlockNumber);
+      }
+    }
+
+    forcedTransactionRollingHashes[_forcedTransactionNumber] = _forcedTransactionRollingHash;
+    forcedTransactionL2BlockNumbers[_forcedTransactionNumber] = _forcedL2BlockNumber;
+  }
+
+  function getLineaRollupProvidedFields()
+    external
+    returns (uint256 forcedTransactionNumber, bytes32 previousForcedTransactionRollingHash, uint256 l2BlockNumber)
+  {
+    unchecked {
+      forcedTransactionNumber = ++nextForcedTransactionNumber;
+      previousForcedTransactionRollingHash = forcedTransactionRollingHashes[forcedTransactionNumber - 1];
+      l2BlockNumber = currentL2BlockNumber;
+    }
   }
 
   /**
@@ -204,14 +248,31 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
    * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
    * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
    */
+  // TODO - adjust this to use the new format
   function setFallbackOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external {
     if (block.timestamp < _lastFinalizedTimestamp + SIX_MONTHS_IN_SECONDS) {
       revert LastFinalizationTimeNotLapsed();
     }
-    if (currentFinalizedState != _computeLastFinalizedState(_messageNumber, _rollingHash, _lastFinalizedTimestamp)) {
+    // TODO TOGGLE
+    if (
+      currentFinalizedState !=
+      FinalizedStateHashing._computeLastFinalizedState(
+        _messageNumber,
+        _rollingHash,
+        0,
+        EMPTY_HASH,
+        _lastFinalizedTimestamp
+      )
+    ) {
       revert FinalizationStateIncorrect(
         currentFinalizedState,
-        _computeLastFinalizedState(_messageNumber, _rollingHash, _lastFinalizedTimestamp)
+        FinalizedStateHashing._computeLastFinalizedState(
+          _messageNumber,
+          _rollingHash,
+          0,
+          EMPTY_HASH,
+          _lastFinalizedTimestamp
+        )
       );
     }
 
@@ -361,27 +422,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   }
 
   /**
-   * @notice Internal function to compute and save the finalization state.
-   * @dev Using assembly this way is cheaper gas wise.
-   * @param _messageNumber Is the last L2 computed L1 message number in the finalization.
-   * @param _rollingHash Is the last L2 computed L1 rolling hash in the finalization.
-   * @param _timestamp The final timestamp in the finalization.
-   */
-  function _computeLastFinalizedState(
-    uint256 _messageNumber,
-    bytes32 _rollingHash,
-    uint256 _timestamp
-  ) internal pure returns (bytes32 hashedFinalizationState) {
-    assembly {
-      let mPtr := mload(0x40)
-      mstore(mPtr, _messageNumber)
-      mstore(add(mPtr, 0x20), _rollingHash)
-      mstore(add(mPtr, 0x40), _timestamp)
-      hashedFinalizationState := keccak256(mPtr, 0x60)
-    }
-  }
-
-  /**
    * @notice Internal function to compute the shnarf more efficiently.
    * @dev Using assembly this way is cheaper gas wise.
    * @param _parentShnarf The shnarf of the parent data item.
@@ -500,17 +540,22 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   ) internal returns (bytes32 finalShnarf) {
     _validateL2ComputedRollingHash(_finalizationData.l1RollingHashMessageNumber, _finalizationData.l1RollingHash);
 
+    // TODO : TOGGLE THE CHECK HERE
     if (
-      _computeLastFinalizedState(
+      FinalizedStateHashing._computeLastFinalizedState(
         _finalizationData.lastFinalizedL1RollingHashMessageNumber,
         _finalizationData.lastFinalizedL1RollingHash,
+        0,
+        EMPTY_HASH,
         _finalizationData.lastFinalizedTimestamp
       ) != currentFinalizedState
     ) {
       revert FinalizationStateIncorrect(
-        _computeLastFinalizedState(
+        FinalizedStateHashing._computeLastFinalizedState(
           _finalizationData.lastFinalizedL1RollingHashMessageNumber,
           _finalizationData.lastFinalizedL1RollingHash,
+          0,
+          EMPTY_HASH,
           _finalizationData.lastFinalizedTimestamp
         ),
         currentFinalizedState
@@ -546,9 +591,12 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
 
     currentFinalizedShnarf = finalShnarf;
 
-    currentFinalizedState = _computeLastFinalizedState(
+    // TODO - USE REAL VALUES
+    currentFinalizedState = FinalizedStateHashing._computeLastFinalizedState(
       _finalizationData.l1RollingHashMessageNumber,
       _finalizationData.l1RollingHash,
+      0,
+      EMPTY_HASH,
       _finalizationData.finalTimestamp
     );
 

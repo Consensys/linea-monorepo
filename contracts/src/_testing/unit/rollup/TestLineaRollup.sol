@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import { LineaRollup } from "../../../rollup/LineaRollup.sol";
+import { FinalizedStateHashing } from "../../../libraries/FinalizedStateHashing.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
 contract TestLineaRollup is LineaRollup {
@@ -37,7 +38,14 @@ contract TestLineaRollup is LineaRollup {
     blobShnarfExists[_shnarf] = _finalBlockNumber;
   }
 
+  // TODO : TOGGLE SWITCHING LOGIC
   function setLastFinalizedState(uint256 _messageNumber, bytes32 _rollingHash, uint256 _timestamp) external {
-    currentFinalizedState = _computeLastFinalizedState(_messageNumber, _rollingHash, _timestamp);
+    currentFinalizedState = FinalizedStateHashing._computeLastFinalizedState(
+      _messageNumber,
+      _rollingHash,
+      0,
+      bytes32(0),
+      _timestamp
+    );
   }
 }
