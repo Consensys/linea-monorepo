@@ -124,7 +124,8 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP)
 
 			for round := 0; round < comp.NumRounds(); round++ {
 
-				vas := comp.SubVerifiers.GetOrEmpty(round)
+				subV := comp.GetSubVerifiers()
+				vas := subV.GetOrEmpty(round)
 				for i := range vas {
 
 					va := vas[i]

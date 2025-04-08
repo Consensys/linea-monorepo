@@ -698,3 +698,7 @@ func (c *CompiledIOP) InsertHornerQuery(round int, id ifaces.QueryID, parts []qu
 	c.QueriesParams.AddToRound(round, q.Name(), &q)
 	return q
 }
+
+func (c *CompiledIOP) GetSubVerifiers() collection.VecVec[VerifierAction] {
+	return c.subVerifiers
+}

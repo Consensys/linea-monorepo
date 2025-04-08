@@ -147,7 +147,7 @@ func localWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc
 	}
 }
 
-func testSplitter(t *testing.T, splitSize int, gen func() (wizard.DefineFunc, wizard.ProverStep)) {
+func testSplitter(t *testing.T, splitSize int, gen func() (wizard.DefineFunc, wizard.MainProverStep)) {
 
 	// Activates the logs for easy debugging
 	logrus.SetLevel(logrus.TraceLevel)

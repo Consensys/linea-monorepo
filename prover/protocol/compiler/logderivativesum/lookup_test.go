@@ -496,14 +496,18 @@ func TestExhaustive(t *testing.T) {
 							}
 						}
 
-						b.SubProvers.AppendToInner(0, func(run *wizard.ProverRuntime) {
-							for frag := range tabCase.StratIncluding {
-								tabCase.StratIncluding[frag](run, table[frag]...)
-								if condTable != nil {
-									tabCase.StratCondIncluding[frag](run, condTable[frag])
-								}
+						for frag := range tabCase.StratIncluding {
+							b.RegisterProverAction(0, &assignColumnsProverAction{
+								strat: tabCase.StratIncluding[frag],
+								cols:  table[frag],
+							})
+							if condTable != nil && tabCase.StratCondIncluding[frag] != nil {
+								b.RegisterProverAction(0, &assignColumnsProverAction{
+									strat: tabCase.StratCondIncluding[frag],
+									cols:  []ifaces.Column{condTable[frag]},
+								})
 							}
-						})
+						}
 
 						// This declare the included ones
 						for incID := range tabCase.StratIncluded {
@@ -524,12 +528,16 @@ func TestExhaustive(t *testing.T) {
 								)
 							}
 
-							b.SubProvers.AppendToInner(0, func(run *wizard.ProverRuntime) {
-								tabCase.StratIncluded[incID](run, included...)
-								if tabCase.StratCondIncluded != nil && tabCase.StratCondIncluded[incID] != nil {
-									tabCase.StratCondIncluded[incID](run, condInc)
-								}
+							b.RegisterProverAction(0, &assignColumnsProverAction{
+								strat: tabCase.StratIncluded[incID],
+								cols:  included,
 							})
+							if tabCase.StratCondIncluded != nil && tabCase.StratCondIncluded[incID] != nil {
+								b.RegisterProverAction(0, &assignColumnsProverAction{
+									strat: tabCase.StratCondIncluded[incID],
+									cols:  []ifaces.Column{condInc},
+								})
+							}
 
 							b.GenericFragmentedConditionalInclusion(
 								0,
@@ -562,4 +570,15 @@ func TestExhaustive(t *testing.T) {
 				}
 			})
 	}
+}
+
+// Define a new struct to implement the ProverAction interface
+type assignColumnsProverAction struct {
+	strat assignmentStrat
+	cols  []ifaces.Column
+}
+
+// Implement the Run method for the ProverAction interface
+func (a *assignColumnsProverAction) Run(run *wizard.ProverRuntime) {
+	a.strat(run, a.cols...)
 }
