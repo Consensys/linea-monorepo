@@ -11,13 +11,14 @@ import {
 import { ethers, TransactionRequest } from "ethers";
 
 const l2AccountManager = config.getL2AccountManager();
+const itif = global.skipSendBundleTests ? it.skip : it.concurrent;
 
 describe("Send bundle test suite", () => {
   const lineaCancelBundleClient = new LineaBundleClient(config.getSequencerEndpoint()!);
   const lineaSendBundleClient = new LineaBundleClient(config.getL2BesuNodeEndpoint()!);
 
-  it.concurrent(
-    "Should successfully call sendBundle to RPC node and the bundled txs should get included",
+  itif(
+    "Call sendBundle to RPC node and the bundled txs should get included",
     async () => {
       const senderAccount = await l2AccountManager.generateAccount();
       const senderWallet = getWallet(senderAccount.privateKey, config.getL2BesuNodeProvider()!);
@@ -40,16 +41,7 @@ describe("Send bundle test suite", () => {
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 5;
       const replacementUUID = generateRandomUUIDv4();
 
-      try {
-        await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
-      } catch (err) {
-        if (err instanceof Error) {
-          expect(err.message).toStrictEqual("Method not found");
-          return;
-        } else {
-          throw err;
-        }
-      }
+      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
 
       const hasReachedTargeBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
 
@@ -62,8 +54,8 @@ describe("Send bundle test suite", () => {
     120_000,
   );
 
-  it.concurrent(
-    "Should successfully call sendBundle to RPC node but the bundled txs should not get included",
+  itif(
+    "Call sendBundle to RPC node but the bundled txs should not get included as not all of them is valid",
     async () => {
       // 1500 wei should just be enough for the first ETH transfer tx, and the second and third would fail
       const senderAccount = await l2AccountManager.generateAccount(ethers.parseUnits("1500", "wei"));
@@ -87,19 +79,12 @@ describe("Send bundle test suite", () => {
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 5;
       const replacementUUID = generateRandomUUIDv4();
 
-      try {
-        await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
-      } catch (err) {
-        if (err instanceof Error) {
-          expect(err.message).toStrictEqual("Method not found");
-          return;
-        } else {
-          throw err;
-        }
-      }
+      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
+
       const hasReachedTargeBlockNumber = await pollForBlockNumber(config.getL2Provider(), targetBlockNumber);
 
       expect(hasReachedTargeBlockNumber).toBeTruthy();
+      // None of the bundled txs should be included as not all of them is valid
       for (const tx of txHashes) {
         const receipt = await config.getL2Provider().getTransactionReceipt(tx);
         expect(receipt?.status).toBeUndefined();
@@ -108,8 +93,8 @@ describe("Send bundle test suite", () => {
     120_000,
   );
 
-  it.concurrent(
-    "Should successfully call sendBundle to RPC node and then cancelBundle to sequencer and no bundled txs should get included",
+  itif(
+    "Call sendBundle to RPC node and then cancelBundle to sequencer and no bundled txs should get included",
     async () => {
       const senderAccount = await l2AccountManager.generateAccount();
       const senderWallet = getWallet(senderAccount.privateKey, config.getL2BesuNodeProvider()!);
@@ -132,16 +117,7 @@ describe("Send bundle test suite", () => {
       const targetBlockNumber = (await config.getL2Provider().getBlockNumber()) + 10;
       const replacementUUID = generateRandomUUIDv4();
 
-      try {
-        await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
-      } catch (err) {
-        if (err instanceof Error) {
-          expect(err.message).toStrictEqual("Method not found");
-          return;
-        } else {
-          throw err;
-        }
-      }
+      await lineaSendBundleClient.lineaSendBundle(txs, replacementUUID, "0x" + targetBlockNumber.toString(16));
 
       await pollForBlockNumber(config.getL2Provider(), targetBlockNumber - 5);
       const cancelled = await lineaCancelBundleClient.lineaCancelBundle(replacementUUID);
