@@ -752,6 +752,8 @@ func (runtime *ProverRuntime) exec(name string, action any) {
 			a()
 		case ProverAction:
 			a.Run(runtime)
+		case func(*ProverRuntime):
+			a(runtime)
 		default:
 			panic("unsupported action type")
 		}

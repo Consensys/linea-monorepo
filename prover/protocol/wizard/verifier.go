@@ -91,10 +91,14 @@ func Verify(c *CompiledIOP, proof Proof) error {
 	errs := []error{}
 	for _, roundSteps := range runtime.Spec.subVerifiers.Inner() {
 		for _, step := range roundSteps {
-			if !step.IsSkipped() {
-				if err := step.Run(&runtime); err != nil {
-					errs = append(errs, err)
-				}
+			// if !step.IsSkipped() {
+			// 	if err := step.Run(&runtime); err != nil {
+			// 		errs = append(errs, err)
+			// 	}
+			// }
+
+			if err := step.Run(&runtime); err != nil {
+				errs = append(errs, err)
 			}
 		}
 	}
@@ -205,9 +209,9 @@ func (run *VerifierRuntime) generateAllRandomCoins() {
 		if run.Spec.FiatShamirHooks.Len() > currRound {
 			fsHooks := run.Spec.FiatShamirHooks.MustGet(currRound)
 			for i := range fsHooks {
-				if fsHooks[i].IsSkipped() {
-					continue
-				}
+				// if fsHooks[i].IsSkipped() {
+				// 	continue
+				// }
 
 				fsHooks[i].Run(run)
 			}

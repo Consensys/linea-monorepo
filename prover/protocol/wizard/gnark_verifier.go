@@ -153,9 +153,11 @@ func (c *WizardVerifierCircuit) Verify(api frontend.API) {
 
 	for _, roundSteps := range c.Spec.subVerifiers.Inner() {
 		for _, step := range roundSteps {
-			if !step.IsSkipped() {
-				step.RunGnark(api, c)
-			}
+			// if !step.IsSkipped() {
+			// 	step.RunGnark(api, c)
+			// }
+
+			step.RunGnark(api, c)
 		}
 	}
 }
@@ -223,9 +225,9 @@ func (c *WizardVerifierCircuit) generateAllRandomCoins(api frontend.API) {
 		if c.Spec.FiatShamirHooks.Len() > currRound {
 			fsHooks := c.Spec.FiatShamirHooks.MustGet(currRound)
 			for i := range fsHooks {
-				if fsHooks[i].IsSkipped() {
-					continue
-				}
+				// if fsHooks[i].IsSkipped() {
+				// 	continue
+				// }
 
 				fsHooks[i].RunGnark(api, c)
 			}
