@@ -224,24 +224,34 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 // AssignTimestampFetcher assigns the data in the TimestampFetcher using data fetched from the BlockDataCols
 func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher, bdc *arith.BlockDataCols) {
 
-	var first, last, firstBlockID field.Element
-	// get the hardcoded timestamp flag
-	timestampField := util.GetTimestampField()
+	var (
+		first, last, firstBlockID field.Element
+		// get the hardcoded timestamp flag
+		timestampField = util.GetTimestampField()
 
-	// initialize empty fetched data and filter on the fetched data
-	size := bdc.Ct.Size()
-	relBlock := make([]field.Element, size)
-	data := make([]field.Element, size)
-	filterFetched := make([]field.Element, size)
-	filterArith := make([]field.Element, size)
-
-	// counter is used to populate filter.Data and will increment every time we find a new timestamp
-	counter := 0
-
-	for i := 0; i < size; i++ {
 		// inst is the flag that specifies the row type
-		inst := bdc.Inst.GetColAssignmentAt(run, i)
-		ct := bdc.Ct.GetColAssignmentAt(run, i)
+		inst        = bdc.Inst.GetColAssignment(run)
+		ct          = bdc.Ct.GetColAssignment(run)
+		start, stop = smartvectors.CoCompactRange(ct, inst)
+
+		// initialize empty fetched data and filter on the fetched data
+		size          = ct.Len()
+		relBlock      = make([]field.Element, size)
+		data          = make([]field.Element, size)
+		filterFetched = make([]field.Element, size)
+		filterArith   = make([]field.Element, size)
+
+		// counter is used to populate filter.Data and will increment every
+		// time we find a new timestamp
+		counter = 0
+	)
+
+	for i := start; i < stop; i++ {
+
+		var (
+			inst = inst.GetPtr(i)
+			ct   = ct.GetPtr(i)
+		)
 
 		if inst.Equal(&timestampField) && ct.IsZero() {
 			// the row type is a timestamp-encoding row
@@ -274,10 +284,10 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher
 	// assign the fetcher columns
 	run.AssignColumn(fetcher.First.GetColID(), smartvectors.NewConstant(first, size))
 	run.AssignColumn(fetcher.Last.GetColID(), smartvectors.NewConstant(last, size))
-	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.NewRegular(relBlock), wizard.DisableAssignmentSizeReduction)
-	run.AssignColumn(fetcher.Data.GetColID(), smartvectors.NewRegular(data), wizard.DisableAssignmentSizeReduction)
-	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetched), wizard.DisableAssignmentSizeReduction)
-	run.AssignColumn(fetcher.FilterArith.GetColID(), smartvectors.NewRegular(filterArith), wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.RightZeroPadded(relBlock, size))
+	run.AssignColumn(fetcher.Data.GetColID(), smartvectors.RightZeroPadded(data, size))
+	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.RightZeroPadded(filterFetched, size))
+	run.AssignColumn(fetcher.FilterArith.GetColID(), smartvectors.FromCompactWithRange(filterArith, start, stop, size))
 	run.AssignColumn(fetcher.FirstBlockID.GetColID(), smartvectors.NewConstant(firstBlockID, size))
 	run.AssignColumn(fetcher.LastBlockID.GetColID(), smartvectors.NewConstant(lastBlockID, size))
 
