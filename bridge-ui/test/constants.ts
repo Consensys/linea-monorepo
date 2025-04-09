@@ -22,3 +22,4 @@ export const ETH_SYMBOL = "ETH";
 export const USDC_SYMBOL = "USDC";
 
 export const POLLING_INTERVAL = 250;
+export const PAGE_TIMEOUT = 10000;

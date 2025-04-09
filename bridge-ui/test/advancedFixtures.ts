@@ -1,8 +1,9 @@
 import { metaMaskFixtures, getExtensionId } from "@synthetixio/synpress/playwright";
 import setup from "./wallet-setup/metamask.setup";
-import { Locator } from "@playwright/test";
+import { Locator, Page } from "@playwright/test";
 import { getNativeBridgeTransactionsCountImpl, selectTokenAndWaitForBalance } from "./utils";
-import { LINEA_SEPOLIA_NETWORK, POLLING_INTERVAL } from "./constants";
+import { LINEA_SEPOLIA_NETWORK, PAGE_TIMEOUT, POLLING_INTERVAL } from "./constants";
+import next from "next";
 /**
  * NB: There is an issue with Synpress `metaMaskFixtures` extension functions wherein extension functions
  * may not be able to reuse other extension functions. This is especially the case when advanced operations
@@ -166,8 +167,18 @@ export const test = metaMaskFixtures(setup).extend<{
       ) {
         await page.waitForTimeout(POLLING_INTERVAL);
       }
+      const notificationPage = metamask.page
+        .context()
+        .pages()
+        .find((page) => page.url().includes(notificationPageUrl)) as Page;
+      await notificationPage.waitForLoadState("domcontentloaded", { timeout: PAGE_TIMEOUT });
+      await notificationPage.waitForLoadState("networkidle", { timeout: PAGE_TIMEOUT });
       await metamask.page.reload();
+      await metamask.page.waitForLoadState("domcontentloaded", { timeout: PAGE_TIMEOUT });
+      await metamask.page.waitForLoadState("networkidle", { timeout: PAGE_TIMEOUT });
       const nextBtn = metamask.page.getByRole("button", { name: "Next", exact: true });
+      await expect(nextBtn).toBeVisible();
+      await expect(nextBtn).toBeEnabled();
       await nextBtn.click();
       const approveMMBtn = metamask.page.getByRole("button", { name: "Approve", exact: true });
       await approveMMBtn.click();
