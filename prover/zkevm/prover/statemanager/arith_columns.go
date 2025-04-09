@@ -221,6 +221,7 @@ func assignHubAddresses(run *wizard.ProverRuntime) {
 		run.AssignColumn(
 			ifaces.ColID(fmt.Sprintf("HUB_%s_PROVER_SIDE_ADDRESS_IDENTIFIER", domainName)),
 			smartvectors.NewRegular(newVect),
+			wizard.DisableAssignmentSizeReduction,
 		)
 	}
 	// assign the addresses column in each of the submodules

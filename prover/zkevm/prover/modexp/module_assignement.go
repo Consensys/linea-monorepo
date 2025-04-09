@@ -30,6 +30,7 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 		modexpCountLarge int = 0
 		isModexp             = mod.Input.isModExp.GetColAssignment(run).IntoRegVecSaveAlloc()
 		limbs                = mod.Input.Limbs.GetColAssignment(run).IntoRegVecSaveAlloc()
+		settings             = mod.Input.Settings
 		builder              = antichamberAssignment{
 			isActive:    common.NewVectorBuilder(mod.IsActive),
 			isSmall:     common.NewVectorBuilder(mod.IsSmall),
@@ -86,13 +87,13 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 		currPosition += modexpNumRowsPerInstance
 	}
 
-	if modexpCountSmall > mod.MaxNb256BitsInstances {
-		logrus.Errorf("limit overflow: the modexp (256 bits) count is %v and the limit is %v\n", modexpCountSmall, mod.MaxNb256BitsInstances)
+	if modexpCountSmall > settings.MaxNbInstance256 {
+		logrus.Errorf("limit overflow: the modexp (256 bits) count is %v and the limit is %v\n", modexpCountSmall, settings.MaxNbInstance256)
 		os.Exit(77)
 	}
 
-	if modexpCountLarge > mod.MaxNb4096BitsInstances {
-		logrus.Errorf("limit overflow: the modexp (4096 bits) count is %v and the limit is %v\n", modexpCountSmall, mod.MaxNb4096BitsInstances)
+	if modexpCountLarge > settings.MaxNbInstance4096 {
+		logrus.Errorf("limit overflow: the modexp (4096 bits) count is %v and the limit is %v\n", modexpCountSmall, settings.MaxNbInstance4096)
 		os.Exit(77)
 	}
 

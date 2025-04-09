@@ -108,7 +108,7 @@ func (l *laneRepacking) csCoeff(comp *wizard.CompiledIOP, s spaghettiCtx) {
 	// coeff[last] = 1 // to cover the case where; last-active-row ==  last-row
 	comp.InsertLocal(
 		0, ifaces.QueryIDf("%v_Coeff-In_Last_Row", l.Inputs.pckInp.Name),
-		sym.Sub(column.Shift(l.coeff, -1), 1),
+		sym.Sub(column.Shift(l.coeff, -1), column.Shift(isActive, -1)),
 	)
 
 	// coeff[i] := coeff[i+1] * partialCoeff[i+1] * (1-isLaneComplete[i+1]) + isLaneComplete[i+1]
@@ -172,7 +172,7 @@ func (l *laneRepacking) assignCoeff(
 	// coeff[i] := coeff[i+1] * partialCoeff[i+1] * (1-isLaneComplete[i+1]) + isLaneComplete[i+1]
 	coeff := make([]field.Element, size)
 
-	coeff[size-1] = field.One()
+	coeff[size-1] = isActive[size-1]
 
 	var res, notComplete field.Element
 	for i := size - 2; i >= 0; i-- {

@@ -1,9 +1,12 @@
 package distributed
 
 import (
+	"reflect"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
@@ -13,6 +16,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
+	// the value is empirical and corresponds to the lowest value that works.
+	fixedNbRowPlonkCircuit   = 1 << 22
+	fixedNbRowExternalHasher = 1 << 16
 )
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -76,44 +86,70 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
 		compiler.Arcane(256, 1<<13, false),
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
-			vortex.PremarkAsSelfRecursed(),
-		),
 	)
+
+	// This optional step is to ensure the tightness of the final wizard by
+	// adding an optional second layer of compilation when we have very
+	// large inputs.
+	stats := logdata.GetWizardStats(modIOP)
+	if stats.NumCellsCommitted > 13500000 {
+
+		wizard.ContinueCompilation(modIOP,
+			vortex.Compile(
+				8,
+				vortex.ForceNumOpenedColumns(64),
+				vortex.WithSISParams(&sisInstance),
+				vortex.PremarkAsSelfRecursed(),
+			),
+			selfrecursion.SelfRecurse,
+			cleanup.CleanUp,
+			mimc.CompileMiMC,
+			compiler.Arcane(256, 1<<13, false),
+		)
+	}
+
+	vortex.Compile(
+		8,
+		vortex.ForceNumOpenedColumns(64),
+		vortex.WithSISParams(&sisInstance),
+		vortex.PremarkAsSelfRecursed(),
+	)(modIOP)
 
 	var recCtx *recursion.Recursion
 
 	defineRecursion := func(build2 *wizard.Builder) {
 		recCtx = recursion.DefineRecursionOf(
-			"wizard-recursion",
 			build2.CompiledIOP,
 			modIOP,
-			true,
-			1,
+			recursion.Parameters{
+				Name:                   "wizard-recursion",
+				WithoutGkr:             true,
+				MaxNumProof:            1,
+				FixedNbRowPlonkCircuit: fixedNbRowPlonkCircuit,
+				WithExternalHasherOpts: true,
+				ExternalHasherNbRows:   fixedNbRowExternalHasher,
+			},
 		)
 	}
 
 	recursedComp := wizard.Compile(defineRecursion,
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<17, false),
-		vortex.Compile(
-			2,
-			vortex.ForceNumOpenedColumns(256),
-			vortex.WithSISParams(&sisInstance),
-			vortex.AddMerkleRootToPublicInputs("LPP_COLUMNS_MERKLE_ROOT", 0),
-		),
-		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
-		mimc.CompileMiMC,
 		compiler.Arcane(256, 1<<15, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
+		),
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		mimc.CompileMiMC,
+		compiler.Arcane(256, 1<<13, false),
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+			vortex.PremarkAsSelfRecursed(),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
@@ -133,19 +169,28 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 }
 
 // ProveSegment runs the prover for a segment of the protocol
-func (r *RecursedSegmentCompilation) ProveSegment(wit *ModuleWitness) wizard.Proof {
+func (r *RecursedSegmentCompilation) ProveSegment(wit any) wizard.Proof {
 
 	var (
-		comp       *wizard.CompiledIOP
-		proverStep wizard.ProverStep
+		comp        *wizard.CompiledIOP
+		proverStep  wizard.ProverStep
+		moduleName  any
+		moduleIndex int
 	)
 
-	if wit.IsLPP {
+	switch m := wit.(type) {
+	case *ModuleWitnessLPP:
 		comp = r.ModuleLPP.Wiop
-		proverStep = r.ModuleLPP.GetMainProverStep(wit)
-	} else {
+		proverStep = r.ModuleLPP.GetMainProverStep(m)
+		moduleName = m.ModuleNames
+		moduleIndex = m.ModuleIndex
+	case *ModuleWitnessGL:
 		comp = r.ModuleGL.Wiop
-		proverStep = r.ModuleGL.GetMainProverStep(wit)
+		proverStep = r.ModuleGL.GetMainProverStep(m)
+		moduleName = m.ModuleName
+		moduleIndex = m.ModuleIndex
+	default:
+		utils.Panic("unexpected type")
 	}
 
 	var (
@@ -155,6 +200,15 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit *ModuleWitness) wizard.Pro
 		initialTime   = profiling.TimeIt(func() {
 			proverRun = wizard.RunProverUntilRound(comp, proverStep, stoppingRound)
 		})
+		initialProof    = proverRun.ExtractProof()
+		initialProofErr = wizard.VerifyUntilRound(comp, initialProof, stoppingRound)
+	)
+
+	if initialProofErr != nil {
+		panic(initialProofErr)
+	}
+
+	var (
 		recursionWit  = recursion.ExtractWitness(proverRun)
 		proof         wizard.Proof
 		recursionTime = profiling.TimeIt(func() {
@@ -166,11 +220,11 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit *ModuleWitness) wizard.Pro
 	)
 
 	logrus.
-		WithField("moduleName", wit.ModuleName).
-		WithField("moduleIndex", wit.ModuleIndex).
+		WithField("moduleName", moduleName).
+		WithField("moduleIndex", moduleIndex).
 		WithField("initial-time", initialTime).
 		WithField("recursion-time", recursionTime).
-		WithField("is-lpp", wit.IsLPP).
+		WithField("is-lpp", reflect.TypeOf(wit).String()).
 		Infof("Ran prover segment")
 
 	return proof

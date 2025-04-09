@@ -4,7 +4,7 @@ linters:
   # and memory to run practically since we merged go-corset. We shall revise
   # our toolset.
   enable:
-    - gofmt
+    # - gofmt
     # - staticcheck
     - gosec
     # - gosimple

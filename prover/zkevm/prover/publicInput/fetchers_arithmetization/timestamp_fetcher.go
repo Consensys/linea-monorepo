@@ -26,6 +26,10 @@ type TimestampFetcher struct {
 	RelBlock ifaces.Column
 	// timestamp data for the first and last blocks in the conflation, columns of size 1
 	First, Last ifaces.Column
+	// FirstArith and LastArith are identical to First and Last but are used in the constraints
+	// involving arithmetization columns. They are constrained to be constant and via the
+	// projection query between the fetcher and the
+	FirstArith, LastArith ifaces.Column
 	// Data contains all the timestamps in the conflation, ordered by block
 	Data ifaces.Column
 	// filter on the TimestampFetcher.Data column
@@ -44,6 +48,10 @@ type TimestampFetcher struct {
 	FirstBlockID ifaces.Column
 	// the absolute ID of the last block number
 	LastBlockID ifaces.Column
+	// the absolute ID of the first block number
+	FirstBlockIDArith ifaces.Column
+	// the absolute ID of the last block number
+	LastBlockIDArith ifaces.Column
 }
 
 // NewTimestampFetcher returns a new TimestampFetcher with initialized columns that are not constrained.
@@ -52,14 +60,18 @@ func NewTimestampFetcher(comp *wizard.CompiledIOP, name string, bdc *arith.Block
 	size := bdc.Ct.Size()
 
 	res := &TimestampFetcher{
-		RelBlock:      util.CreateCol(name, "REL_BLOCK", size, comp),
-		First:         util.CreateCol(name, "FIRST", size, comp),
-		Last:          util.CreateCol(name, "LAST", size, comp),
-		Data:          util.CreateCol(name, "DATA", size, comp),
-		FilterFetched: util.CreateCol(name, "FILTER_FETCHED", size, comp),
-		FilterArith:   util.CreateCol(name, "FILTER_ARITHMETIZATION", size, comp),
-		FirstBlockID:  util.CreateCol(name, "FIRST_BLOCK_ID", size, comp),
-		LastBlockID:   util.CreateCol(name, "LAST_BLOCK_ID", size, comp),
+		RelBlock:          util.CreateCol(name, "REL_BLOCK", size, comp),
+		Data:              util.CreateCol(name, "DATA", size, comp),
+		FilterFetched:     util.CreateCol(name, "FILTER_FETCHED", size, comp),
+		FilterArith:       util.CreateCol(name, "FILTER_ARITHMETIZATION", size, comp),
+		FirstBlockID:      util.CreateCol(name, "FIRST_BLOCK_ID", size, comp),
+		LastBlockID:       util.CreateCol(name, "LAST_BLOCK_ID", size, comp),
+		First:             util.CreateCol(name, "FIRST", size, comp),
+		Last:              util.CreateCol(name, "LAST", size, comp),
+		FirstBlockIDArith: util.CreateCol(name, "FIRST_BLOCK_ID_ARITHMETIZATION", size, comp),
+		LastBlockIDArith:  util.CreateCol(name, "LAST_BLOCK_ID_ARITHMETIZATION", size, comp),
+		FirstArith:        util.CreateCol(name, "FIRST_ARITHMETIZATION", size, comp),
+		LastArith:         util.CreateCol(name, "LAST_ARITHMETIZATION", size, comp),
 	}
 
 	return res
@@ -70,6 +82,8 @@ func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *TimestampFe
 
 	commonconstraints.MustBeConstant(comp, fetcher.FirstBlockID)
 	commonconstraints.MustBeConstant(comp, fetcher.LastBlockID)
+	commonconstraints.MustBeConstant(comp, fetcher.FirstBlockIDArith)
+	commonconstraints.MustBeConstant(comp, fetcher.LastBlockIDArith)
 
 	// Constrain the First Block ID
 	comp.InsertGlobal(
@@ -79,7 +93,7 @@ func ConstrainFirstAndLastBlockID(comp *wizard.CompiledIOP, fetcher *TimestampFe
 			fetcher.FilterArith, // select only non-padding, valid rows.
 			sym.Sub(
 				bdc.FirstBlock,
-				fetcher.FirstBlockID,
+				fetcher.FirstBlockIDArith,
 			),
 		),
 	)
@@ -151,6 +165,8 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 
 	commonconstraints.MustBeConstant(comp, fetcher.First)
 	commonconstraints.MustBeConstant(comp, fetcher.Last)
+	commonconstraints.MustBeConstant(comp, fetcher.FirstArith)
+	commonconstraints.MustBeConstant(comp, fetcher.LastArith)
 
 	// constrain fetcher.First to contain the value of the first block's timestamp, using all the timestamps in fetcher.Data
 	comp.InsertLocal(
@@ -167,7 +183,7 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 		0,
 		ifaces.QueryIDf("%s_%s", name, "LAST_LOCAL"),
 		sym.Sub(
-			column.Shift(fetcher.Last, -1),
+			column.Shift(fetcher.LastArith, -1),
 			column.Shift(bdc.DataLo, TimestampOffset),
 		),
 	)
@@ -198,11 +214,19 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 	fetcherTable := []ifaces.Column{
 		fetcher.RelBlock,
 		fetcher.Data,
+		fetcher.FirstBlockID,
+		fetcher.LastBlockID,
+		fetcher.First,
+		fetcher.Last,
 	}
 	// the BlockDataCols we extract timestamp data from, and which we will use to check for consistency
 	arithTable := []ifaces.Column{
 		bdc.RelBlock,
 		bdc.DataLo,
+		fetcher.FirstBlockIDArith,
+		fetcher.LastBlockIDArith,
+		fetcher.FirstArith,
+		fetcher.LastArith,
 	}
 
 	// a projection query to check that the timestamp data is fetched correctly
@@ -224,24 +248,34 @@ func DefineTimestampFetcher(comp *wizard.CompiledIOP, fetcher *TimestampFetcher,
 // AssignTimestampFetcher assigns the data in the TimestampFetcher using data fetched from the BlockDataCols
 func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher, bdc *arith.BlockDataCols) {
 
-	var first, last, firstBlockID field.Element
-	// get the hardcoded timestamp flag
-	timestampField := util.GetTimestampField()
+	var (
+		first, last, firstBlockID field.Element
+		// get the hardcoded timestamp flag
+		timestampField = util.GetTimestampField()
 
-	// initialize empty fetched data and filter on the fetched data
-	size := bdc.Ct.Size()
-	relBlock := make([]field.Element, size)
-	data := make([]field.Element, size)
-	filterFetched := make([]field.Element, size)
-	filterArith := make([]field.Element, size)
-
-	// counter is used to populate filter.Data and will increment every time we find a new timestamp
-	counter := 0
-
-	for i := 0; i < size; i++ {
 		// inst is the flag that specifies the row type
-		inst := bdc.Inst.GetColAssignmentAt(run, i)
-		ct := bdc.Ct.GetColAssignmentAt(run, i)
+		inst        = bdc.Inst.GetColAssignment(run)
+		ct          = bdc.Ct.GetColAssignment(run)
+		start, stop = smartvectors.CoCompactRange(ct, inst)
+
+		// initialize empty fetched data and filter on the fetched data
+		size          = ct.Len()
+		relBlock      = make([]field.Element, size)
+		data          = make([]field.Element, size)
+		filterFetched = make([]field.Element, size)
+		filterArith   = make([]field.Element, stop-start)
+
+		// counter is used to populate filter.Data and will increment every
+		// time we find a new timestamp
+		counter = 0
+	)
+
+	for i := start; i < stop; i++ {
+
+		var (
+			inst = inst.GetPtr(i)
+			ct   = ct.GetPtr(i)
+		)
 
 		if inst.Equal(&timestampField) && ct.IsZero() {
 			// the row type is a timestamp-encoding row
@@ -260,7 +294,7 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher
 			filterFetched[counter].SetOne()
 			relBlock[counter].Set(&fetchedRelBlock)
 			// update the arithmetization filter
-			filterArith[i].SetOne()
+			filterArith[i-start].SetOne()
 
 			data[counter].Set(&timestamp)
 			counter++
@@ -274,12 +308,16 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher
 	// assign the fetcher columns
 	run.AssignColumn(fetcher.First.GetColID(), smartvectors.NewConstant(first, size))
 	run.AssignColumn(fetcher.Last.GetColID(), smartvectors.NewConstant(last, size))
-	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.NewRegular(relBlock))
-	run.AssignColumn(fetcher.Data.GetColID(), smartvectors.NewRegular(data))
-	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetched))
-	run.AssignColumn(fetcher.FilterArith.GetColID(), smartvectors.NewRegular(filterArith))
+	run.AssignColumn(fetcher.FirstArith.GetColID(), smartvectors.NewConstant(first, size))
+	run.AssignColumn(fetcher.LastArith.GetColID(), smartvectors.NewConstant(last, size))
+	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.RightZeroPadded(relBlock, size))
+	run.AssignColumn(fetcher.Data.GetColID(), smartvectors.RightZeroPadded(data, size))
+	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.RightZeroPadded(filterFetched, size))
+	run.AssignColumn(fetcher.FilterArith.GetColID(), smartvectors.FromCompactWithRange(filterArith, start, stop, size))
 	run.AssignColumn(fetcher.FirstBlockID.GetColID(), smartvectors.NewConstant(firstBlockID, size))
 	run.AssignColumn(fetcher.LastBlockID.GetColID(), smartvectors.NewConstant(lastBlockID, size))
+	run.AssignColumn(fetcher.FirstBlockIDArith.GetColID(), smartvectors.NewConstant(firstBlockID, size))
+	run.AssignColumn(fetcher.LastBlockIDArith.GetColID(), smartvectors.NewConstant(lastBlockID, size))
 
 	// assign the SelectorTimestamp using the ComputeSelectorTimestamp prover action
 	fetcher.ComputeSelectorTimestamp.Run(run)

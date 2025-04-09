@@ -171,12 +171,11 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		}
 
 		if isPrecomp {
-			newRound = 0
-			moduleGL.Wiop.Precomputed.InsertNew(col.ID, precompData)
+			moduleGL.InsertPrecomputed(*col, precompData)
+			continue
 		}
 
 		moduleGL.InsertColumn(*col, newRound)
-
 	}
 
 	// As the columns of the GL and the LPP modules are split between two round although
@@ -251,7 +250,7 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
 // the provided [ModuleWitness] argument.
-func (m *ModuleGL) GetMainProverStep(witness *ModuleWitness) wizard.ProverStep {
+func (m *ModuleGL) GetMainProverStep(witness *ModuleWitnessGL) wizard.ProverStep {
 	return func(run *wizard.ProverRuntime) {
 		m.Assign(run, witness)
 	}
@@ -268,7 +267,7 @@ func (m *ModuleGL) GetMainProverStep(witness *ModuleWitness) wizard.ProverStep {
 //
 // The function depopulates the [ModuleWitness] from its columns assignment
 // as the columns are assigned in the runtime.
-func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitness) {
+func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
 
 	var (
 		// columns stores the list of columns to assign. Though, it
@@ -345,7 +344,7 @@ func (m *ModuleGL) InsertGlobal(q query.GlobalConstraint) query.GlobalConstraint
 		newExprRound = wizardutils.LastRoundToEval(newExpr)
 		newGlobal    = m.Wiop.InsertGlobal(newExprRound, q.ID, newExpr)
 		offsetRange  = query.MinMaxOffset(newGlobal.Expression)
-		columnOfExpr = wizardutils.ColumnsOfExpression(newExpr)
+		columnOfExpr = column.ColumnsOfExpression(newExpr)
 	)
 
 	if offsetRange.Min == 0 && offsetRange.Max == 0 {
@@ -601,7 +600,7 @@ func (a *ModuleGLAssignSendReceiveGlobal) Run(run *wizard.ProverRuntime) {
 		smartvectors.NewConstant(hashSend, 1),
 	)
 
-	witness := run.State.MustGet(moduleWitnessKey).(*ModuleWitness)
+	witness := run.State.MustGet(moduleWitnessKey).(*ModuleWitnessGL)
 	rcvData := witness.ReceivedValuesGlobal
 
 	if len(rcvData) != len(a.ReceivedValuesGlobalAccs) {
@@ -636,13 +635,18 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 
 	var (
 		sendGlobalHash   = a.SentValuesGlobalHash.GetColAssignmentAt(run, 0)
+		hsh              = mimc.NewMiMC()
 		hashSendComputed = field.Element{}
 	)
 
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		hashSendComputed = mimc.BlockCompression(hashSendComputed, v.Y)
+		yBytes := v.Y.Bytes()
+		hsh.Write(yBytes[:])
 	}
+
+	hashSendComputedBytes := hsh.Sum(nil)
+	hashSendComputed.SetBytes(hashSendComputedBytes)
 
 	if hashSendComputed != sendGlobalHash {
 		return fmt.Errorf(
@@ -658,9 +662,15 @@ func (a *ModuleGLCheckSendReceiveGlobal) Run(run wizard.Runtime) error {
 		numReceived     = len(a.ReceivedValuesGlobalAccs)
 	)
 
+	hsh.Reset()
+
 	for i := range rcvGlobalCol[:numReceived] {
-		hashRcvComputed = mimc.BlockCompression(hashRcvComputed, rcvGlobalCol[i])
+		yBytes := rcvGlobalCol[i].Bytes()
+		hsh.Write(yBytes[:])
 	}
+
+	hashRcvComputedBytes := hsh.Sum(nil)
+	hashRcvComputed.SetBytes(hashRcvComputedBytes)
 
 	if hashRcvComputed != rcvGlobalHash {
 		return fmt.Errorf(
@@ -682,29 +692,32 @@ func (a *ModuleGLCheckSendReceiveGlobal) RunGnark(api frontend.API, run wizard.G
 	}
 
 	var (
-		sendGlobalHash   = a.SentValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		hashSendComputed = frontend.Variable(0)
+		sendGlobalHash = a.SentValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
+		hsh            = run.GetHasherFactory().NewHasher()
 	)
 
 	for i := range a.SentValuesGlobal {
 		v := run.GetLocalPointEvalParams(a.SentValuesGlobal[i].ID)
-		hashSendComputed = mimc.GnarkBlockCompression(api, hashSendComputed, v.Y)
+		hsh.Write(v.Y)
 	}
+
+	hashSendComputed := hsh.Sum()
 
 	api.AssertIsEqual(hashSendComputed, sendGlobalHash)
 
 	var (
-		rcvGlobalHash   = a.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
-		hashRcvComputed = frontend.Variable(0)
-		rcvGlobalCol    = a.ReceivedValuesGlobal.GetColAssignmentGnark(run)
-		numReceived     = len(a.ReceivedValuesGlobalAccs)
+		rcvGlobalHash = a.ReceivedValuesGlobalHash.GetColAssignmentGnarkAt(run, 0)
+		rcvGlobalCol  = a.ReceivedValuesGlobal.GetColAssignmentGnark(run)
+		numReceived   = len(a.ReceivedValuesGlobalAccs)
 	)
 
+	hsh.Reset()
+
 	for i := range rcvGlobalCol[:numReceived] {
-		hashRcvComputed = mimc.GnarkBlockCompression(api, hashRcvComputed, rcvGlobalCol[i])
+		hsh.Write(rcvGlobalCol[i])
 	}
 
-	api.AssertIsEqual(hashRcvComputed, rcvGlobalHash)
+	api.AssertIsEqual(hsh.Sum(), rcvGlobalHash)
 }
 
 func (a *ModuleGLCheckSendReceiveGlobal) Skip() {
@@ -718,7 +731,7 @@ func (a *ModuleGLCheckSendReceiveGlobal) IsSkipped() bool {
 func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
 
 	var (
-		witness = run.State.MustGet(moduleWitnessKey).(*ModuleWitness)
+		witness = run.State.MustGet(moduleWitnessKey).(*ModuleWitnessGL)
 		// columns stores the list of columns to assign. Though, it
 		// stores the columns as in the origin CompiledIOP so we cannot
 		// directly use them to refer to columns of the current IOP.
