@@ -77,13 +77,17 @@ func createGateNames() {
 func registerGates() {
 	for i := 4; i < numGates-1; i++ {
 		name := gateNames[i]
-		gGkr.Gates[name] = NewRoundGateGnark(mimc.Constants[i-prefetchSize])
-		cGkr.Gates[name] = NewRoundGateCrypto(mimc.Constants[i-prefetchSize])
+		gateG := NewRoundGateGnark(mimc.Constants[i-prefetchSize])
+		gateC := NewRoundGateCrypto(mimc.Constants[i-prefetchSize])
+		gGkr.RegisterGate(gGkr.GateName(name), gateG.Evaluate, 2)
+		cGkr.RegisterGate(cGkr.GateName(name), gateC.Evaluate, 2)
 	}
 
 	name := gateNames[numGates-1]
-	gGkr.Gates[name] = NewFinalRoundGateGnark(mimc.Constants[len(mimc.Constants)-1])
-	cGkr.Gates[name] = NewFinalRoundGateCrypto(mimc.Constants[len(mimc.Constants)-1])
+	gateG := NewFinalRoundGateGnark(mimc.Constants[len(mimc.Constants)-1])
+	gateC := NewFinalRoundGateCrypto(mimc.Constants[len(mimc.Constants)-1])
+	gGkr.RegisterGate(gGkr.GateName(name), gateG.Evaluate, 3)
+	cGkr.RegisterGate(cGkr.GateName(name), gateC.Evaluate, 3)
 }
 
 // gkrMiMC constructs and return the GKR circuit. The function is concretely
@@ -108,10 +112,10 @@ func gkrMiMC(gkr *gGkr.API, initStates, blocks []frontend.Variable) (constraint.
 	v[3] = gkr.NamedGate("identity", v[1])
 
 	for i := 4; i < numGates-1; i++ {
-		v[i] = gkr.NamedGate(gateNames[i], v[2], v[i-1])
+		v[i] = gkr.NamedGate(gGkr.GateName(gateNames[i]), v[2], v[i-1])
 	}
 
-	res := gkr.NamedGate(gateNames[numGates-1], v[2], v[3], v[numGates-2])
+	res := gkr.NamedGate(gGkr.GateName(gateNames[numGates-1]), v[2], v[3], v[numGates-2])
 
 	return res, nil
 }
