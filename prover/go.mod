@@ -8,7 +8,7 @@ require (
 	github.com/bits-and-blooms/bitset v1.20.0
 	github.com/consensys/bavard v0.1.31-0.20250314194434-b30d4344e6d4
 	github.com/consensys/compress v0.2.5
-	github.com/consensys/gnark v0.11.1-0.20250107100237-2cb190338a01
+	github.com/consensys/gnark v0.12.1-0.20250409125015-1e252ace2ab9
 	github.com/consensys/gnark-crypto v0.17.1-0.20250326164229-5fd6610ac2a1
 	github.com/consensys/go-corset v1.0.3
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
@@ -116,5 +116,3 @@ require (
 	golang.org/x/sys v0.30.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-replace github.com/consensys/gnark => ../../gnark

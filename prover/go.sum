@@ -96,6 +96,8 @@ github.com/consensys/bavard v0.1.31-0.20250314194434-b30d4344e6d4 h1:0J+ppRic2ZX
 github.com/consensys/bavard v0.1.31-0.20250314194434-b30d4344e6d4/go.mod h1:k/zVjHHC4B+PQy1Pg7fgvG3ALicQw540Crag8qx+dZs=
 github.com/consensys/compress v0.2.5 h1:gJr1hKzbOD36JFsF1AN8lfXz1yevnJi1YolffY19Ntk=
 github.com/consensys/compress v0.2.5/go.mod h1:pyM+ZXiNUh7/0+AUjUf9RKUM6vSH7T/fsn5LLS0j1Tk=
+github.com/consensys/gnark v0.12.1-0.20250409125015-1e252ace2ab9 h1:Fkqx+pErtX4JEICDxH/DCGuuotGfiublOXGplGIYDqM=
+github.com/consensys/gnark v0.12.1-0.20250409125015-1e252ace2ab9/go.mod h1:+EaICVL6Ks4qCnIYBa1biEaFBxqaPjyl1w11O7le3Nw=
 github.com/consensys/gnark-crypto v0.17.1-0.20250326164229-5fd6610ac2a1 h1:6cK71BoMAjWHNl+EpvBh2PDDa0PIeoz1KFJ/6R16DjQ=
 github.com/consensys/gnark-crypto v0.17.1-0.20250326164229-5fd6610ac2a1/go.mod h1:uV1HwfBwGRj50DGK3LbDLeCvq0RX/vFXST3CRSAu0Fs=
 github.com/consensys/go-corset v1.0.3 h1:CZ04qi9NaMkMJnfv19UUHGhEXJZwpDNrAo5fwDbT1OM=
