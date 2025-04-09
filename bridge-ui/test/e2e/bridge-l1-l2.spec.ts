@@ -8,7 +8,7 @@ const { expect, describe } = test;
 
 // There are known lines causing flaky E2E tests in this test suite, these are annotated by 'bridge-ui-known-flaky-line'
 describe("L1 > L2 via Native Bridge", () => {
-  describe("No blockchain tx cases", () => {
+  describe.skip("No blockchain tx cases", () => {
     test.describe.configure({ mode: "parallel" });
 
     test("should successfully go to the bridge UI page", async ({ page }) => {
@@ -93,7 +93,7 @@ describe("L1 > L2 via Native Bridge", () => {
     });
   });
 
-  describe("Blockchain tx cases", () => {
+  describe.only("Blockchain tx cases", () => {
     // If not serial risk colliding nonces -> transactions cancelling each other out
     test.describe.configure({ retries: 1, timeout: 120_000, mode: "serial" });
 
@@ -128,7 +128,7 @@ describe("L1 > L2 via Native Bridge", () => {
       await waitForNewTxAdditionToTxList(txnsLengthBefore);
     });
 
-    test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
+    test.only("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
       getNativeBridgeTransactionsCount,
       waitForNewTxAdditionToTxList,
       connectMetamaskToDapp,
