@@ -47,7 +47,7 @@ export async function fetchTokenPrices(
   const response = await fetch(
     `https://price.api.cx.metamask.io/v2/chains/${chainId}/spot-prices?tokenAddresses=${tokenAddresses.join(",")}&vsCurrency=${currency}`,
   );
-  if (response.ok === false) {
+  if (!response.ok) {
     throw new Error("Error in getTokenPrices");
   }
 
