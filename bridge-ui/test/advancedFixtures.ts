@@ -174,9 +174,10 @@ export const test = metaMaskFixtures(setup).extend<{
       await notificationPage.waitForLoadState("domcontentloaded", { timeout: PAGE_TIMEOUT });
       await notificationPage.waitForLoadState("networkidle", { timeout: PAGE_TIMEOUT });
       await metamask.page.reload();
-      await metamask.page.waitForLoadState("domcontentloaded", { timeout: PAGE_TIMEOUT });
-      await metamask.page.waitForLoadState("networkidle", { timeout: PAGE_TIMEOUT });
+      // await metamask.page.waitForLoadState("domcontentloaded", { timeout: PAGE_TIMEOUT });
+      // await metamask.page.waitForLoadState("networkidle", { timeout: PAGE_TIMEOUT });
       const nextBtn = metamask.page.getByRole("button", { name: "Next", exact: true });
+      // Unsure if below are required to mitigate flakiness
       // await expect(nextBtn).toBeVisible();
       // await expect(nextBtn).toBeEnabled();
       await nextBtn.click();
