@@ -52,6 +52,21 @@ export const encodeData = (types: string[], values: unknown[], packed?: boolean)
   return ethers.AbiCoder.defaultAbiCoder().encode(types, values);
 };
 
+export async function isSendBundleMethodNotFound(rpcEndpoint: URL, targetBlockNumber = "0xffff") {
+  const lineaSendBundleClient = new LineaBundleClient(rpcEndpoint);
+  try {
+    await lineaSendBundleClient.lineaSendBundle([], generateRandomUUIDv4(), targetBlockNumber);
+  } catch (err) {
+    if (err instanceof Error) {
+      if (err.message === "Method not found") {
+        // Bundle request doesn't support in traces-v1 besu nodes
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 export function generateRandomInt(max = 1000): number {
   return randomInt(max);
 }

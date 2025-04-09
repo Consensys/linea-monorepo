@@ -14,30 +14,15 @@ describe("Send bundle test suite", () => {
   const l2AccountManager = config.getL2AccountManager();
   const lineaCancelBundleClient = new LineaBundleClient(config.getSequencerEndpoint()!);
   const lineaSendBundleClient = new LineaBundleClient(config.getL2BesuNodeEndpoint()!);
+  const itif = shouldSkipBundleTests ? it.skip : it.concurrent;
 
-  const isSendBundleMethodNotFound = async () => {
-    try {
-      await lineaSendBundleClient.lineaSendBundle([], generateRandomUUIDv4(), "0xffff");
-    } catch (err) {
-      if (err instanceof Error) {
-        if (err.message === "Method not found") {
-          // Bundle request doesn't support in traces-v1 besu nodes
-          return true;
-        }
-      }
-    }
-    return false;
-  };
+  if (shouldSkipBundleTests) {
+    logger.info("Skip bundle tests due to tracing-v1 besu nodes");
+  }
 
-  it.concurrent(
+  itif(
     "Call sendBundle to RPC node and the bundled txs should get included",
     async () => {
-      if (await isSendBundleMethodNotFound()) {
-        expect(true).toBe(true); // Placeholder assertion to mark as "passed"
-        console.log("Test skipped due to send-bundle method not available in tracing-v1 besu nodes");
-        return;
-      }
-
       const senderAccount = await l2AccountManager.generateAccount();
       const senderWallet = getWallet(senderAccount.privateKey, config.getL2BesuNodeProvider()!);
       const recipientAccount = await l2AccountManager.generateAccount(0n);
@@ -72,15 +57,9 @@ describe("Send bundle test suite", () => {
     120_000,
   );
 
-  it.concurrent(
+  itif(
     "Call sendBundle to RPC node but the bundled txs should not get included as not all of them is valid",
     async () => {
-      if (await isSendBundleMethodNotFound()) {
-        expect(true).toBe(true); // Placeholder assertion to mark as "passed"
-        console.log("Test skipped due to send-bundle method not available in tracing-v1 besu nodes");
-        return;
-      }
-
       // 1500 wei should just be enough for the first ETH transfer tx, and the second and third would fail
       const senderAccount = await l2AccountManager.generateAccount(ethers.parseUnits("1500", "wei"));
       const senderWallet = getWallet(senderAccount.privateKey, config.getL2BesuNodeProvider()!);
@@ -117,15 +96,9 @@ describe("Send bundle test suite", () => {
     120_000,
   );
 
-  it.concurrent(
+  itif(
     "Call sendBundle to RPC node and then cancelBundle to sequencer and no bundled txs should get included",
     async () => {
-      if (await isSendBundleMethodNotFound()) {
-        expect(true).toBe(true); // Placeholder assertion to mark as "passed"
-        console.log("Test skipped due to send-bundle method not available in tracing-v1 besu nodes");
-        return;
-      }
-
       const senderAccount = await l2AccountManager.generateAccount();
       const senderWallet = getWallet(senderAccount.privateKey, config.getL2BesuNodeProvider()!);
       const recipientAccount = await l2AccountManager.generateAccount(0n);
