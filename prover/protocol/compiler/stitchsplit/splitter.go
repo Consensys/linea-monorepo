@@ -8,38 +8,23 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
 
-type deleteColumnsProverAction struct {
+type splitProverAction struct {
 	splittings []SummerizedAlliances
 }
 
-// func (a *deleteColumnsProverAction) Run(run *wizard.ProverRuntime) {
-// 	for round := range a.splittings {
-// 		for bigCol := range a.splittings[round].ByBigCol {
-// 			run.Columns.TryDel(bigCol)
-// 		}
-// 	}
-// }
-
-func (a *deleteColumnsProverAction) Run(run *wizard.ProverRuntime) {
+func (a *splitProverAction) Run(run *wizard.ProverRuntime) {
 	for round := range a.splittings {
 		for bigCol := range a.splittings[round].ByBigCol {
-			// Get the original column assignment
 			if run.Columns.Exists(bigCol) {
 				originalCol := run.Columns.MustGet(bigCol)
-				// Compute and assign sub-columns (example logic)
-				for _, subCol := range a.splittings[round].ByBigCol[bigCol] { // Adjust based on actual structure
+				subCols := a.splittings[round].ByBigCol[bigCol]
+				for i, subCol := range subCols {
 					size := run.Spec.Columns.GetHandle(subCol.GetColID()).Size()
-					startIdx := 0 // Adjust based on sub-column index (e.g., 0 for _0_OVER_2)
-					if subCol.GetColID() == ifaces.ColID("C_SUBSLICE_0_OVER_2") {
-						startIdx = 0
-					} else if subCol.GetColID() == ifaces.ColID("C_SUBSLICE_1_OVER_2") {
-						startIdx = size
-					}
+					startIdx := i * size // Assumes sequential splits
 					subVec := originalCol.SubVector(startIdx, startIdx+size)
 					run.Columns.InsertNew(subCol.GetColID(), subVec)
 				}
 			}
-			// Now delete the original column
 			run.Columns.TryDel(bigCol)
 		}
 	}
@@ -55,7 +40,7 @@ func Splitter(size int) func(*wizard.CompiledIOP) {
 
 		// it assigns the stitching columns and delete the assignment of the sub columns.
 		// Register the ProverAction instead of using a closure
-		comp.RegisterProverAction(comp.NumRounds()-1, &deleteColumnsProverAction{
+		comp.RegisterProverAction(comp.NumRounds()-1, &splitProverAction{
 			splittings: ctx.Splittings,
 		})
 	}
