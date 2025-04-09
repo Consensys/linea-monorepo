@@ -8,10 +8,15 @@ type Option func(*CompilationCtx)
 // is true, then new gates are added for wires not present in existing gates.
 func WithRangecheck(nbBits, nbLimbs int, addGateForRangeCheck bool) Option {
 	return func(c *CompilationCtx) {
-		c.RangeCheck.Enabled = true
-		c.RangeCheck.NbBits = nbBits
-		c.RangeCheck.NbLimbs = nbLimbs
-		c.RangeCheck.AddGateForRangeCheck = addGateForRangeCheck
+
+		if c.RangeCheckOption.Enabled {
+			panic("external range-check and external hasher are incompatible")
+		}
+
+		c.RangeCheckOption.Enabled = true
+		c.RangeCheckOption.NbBits = nbBits
+		c.RangeCheckOption.NbLimbs = nbLimbs
+		c.RangeCheckOption.AddGateForRangeCheck = addGateForRangeCheck
 	}
 }
 
@@ -24,5 +29,19 @@ func WithFixedNbRows(nbRow int) Option {
 	return func(c *CompilationCtx) {
 		c.FixedNbRowsOption.Enabled = true
 		c.FixedNbRowsOption.NbRow = nbRow
+	}
+}
+
+// WithExternalHasher allows using an external hasher for the witness
+// commitment. The hash function is MiMC.
+func WithExternalHasher(fixedNbRow int) Option {
+	return func(c *CompilationCtx) {
+
+		if c.RangeCheckOption.Enabled {
+			panic("external range-check and external hasher are incompatible")
+		}
+
+		c.ExternalHasherOption.Enabled = true
+		c.ExternalHasherOption.FixedNbRows = fixedNbRow
 	}
 }

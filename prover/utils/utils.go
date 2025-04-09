@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"iter"
 	"math"
 	"math/big"
 	"os"
@@ -507,4 +508,43 @@ func CalculateMinAvgMax(values []float64) (min, avg, max float64) {
 func BytesToGiB(bytes uint64) float64 {
 	const bytesInGiB = 1024 * 1024 * 1024 // 1 GiB = 1024^3 bytes
 	return float64(bytes) / bytesInGiB
+}
+
+// ChainIterators concatenates iterators into a single iterator
+func ChainIterators[V any](iters ...iter.Seq[V]) iter.Seq[V] {
+	return func(yield func(V) bool) {
+		for _, iter := range iters {
+			for v := range iter {
+				if !yield(v) {
+					return
+				}
+			}
+		}
+	}
+}
+
+// ConstantIterator returns an iterator that always returns the same value
+// n times.
+func ConstantIterator[T any](value T, n int) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for i := 0; i < n; i++ {
+			if !yield(value) {
+				return
+			}
+		}
+	}
+}
+
+// SpliceExact splits a slice into a slice of slices of size n
+func SpliceExact[T any](slice []T, n int) [][]T {
+
+	if len(slice)%n != 0 {
+		panic("slice length must be a multiple of n")
+	}
+
+	slices := make([][]T, 0, len(slice)/n)
+	for i := 0; i < len(slice); i += n {
+		slices = append(slices, slice[i:i+n])
+	}
+	return slices
 }

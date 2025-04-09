@@ -113,10 +113,19 @@ func (lc *lengthConsistency) Run(run *wizard.ProverRuntime) {
 
 	// populate bytesLen
 	for j := 0; j < numCol; j++ {
-		tableLen[j] = lc.inp.TableLen[j].GetColAssignment(run)
 
-		for row := 0; row < tableLen[0].Len(); row++ {
-			dec := getZeroOnes(tableLen[j].Get(row), numBytes)
+		tableLen[j] = lc.inp.TableLen[j].GetColAssignment(run)
+		startPlainRange, stopPlainRange := smartvectors.CoWindowRange(tableLen[j])
+
+		if startPlainRange != 0 {
+			utils.Panic(
+				"tableLen were expected to be padded on the right, not on the left, start: %v, stop: %v len: %v",
+				startPlainRange, stopPlainRange, tableLen[j].Len(),
+			)
+		}
+
+		for tl := range tableLen[j].IterateSkipPadding() {
+			dec := getZeroOnes(tl, numBytes)
 			//  this is used in bytes32cmp.Decompose() which needs little-endian
 			slices.Reverse(dec)
 
@@ -125,6 +134,7 @@ func (lc *lengthConsistency) Run(run *wizard.ProverRuntime) {
 			}
 		}
 	}
+
 	for j := range tableLen {
 		for k := range bytesLen[0] {
 			bytesLen[j][k].PadAndAssign(run)

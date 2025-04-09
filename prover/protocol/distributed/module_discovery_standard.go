@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
@@ -28,7 +27,10 @@ type StandardModuleDiscoverer struct {
 	// Affinities indicates groups of columns (potentially spanning over
 	// multiple query-based modules) that are "alike" in the sense that
 	// they would be opportunistic to group in the same StandardModule.
-	Affinities      [][]column.Natural
+	Affinities [][]column.Natural
+	// Predivision indicates that all the inputs column size should be
+	// divided by some values before being added in a [QueryBasedModule].
+	Predivision     int
 	modules         []*StandardModule
 	columnsToModule map[ifaces.Column]ModuleName
 	columnsToSize   map[ifaces.Column]int
@@ -40,6 +42,7 @@ type QueryBasedModuleDiscoverer struct {
 	modules         []*QueryBasedModule
 	moduleNames     []ModuleName
 	columnsToModule map[ifaces.Column]ModuleName
+	predivision     int
 }
 
 // StandardModule is a structure coalescing a set of [QueryBasedModule]s.
@@ -68,7 +71,10 @@ type QueryBasedModule struct {
 	// present module.
 	nbInstancesOfPlonkQuery int
 	// nbSegmentCache caches the results of SegmentBoundaries
-	nbSegmentCache map[unsafe.Pointer][2]int
+	nbSegmentCache      map[unsafe.Pointer][2]int
+	nbSegmentCacheMutex *sync.Mutex
+	predivision         int
+	hasPrecomputed      bool
 }
 
 // NewQueryBasedDiscoverer initializes a new Discoverer.
@@ -86,6 +92,7 @@ func NewQueryBasedDiscoverer() *QueryBasedModuleDiscoverer {
 func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 	subDiscover := NewQueryBasedDiscoverer()
+	subDiscover.predivision = disc.Predivision
 	subDiscover.Analyze(comp)
 
 	groupedByAffinity := groupQBModulesByAffinity(subDiscover.modules, disc.Affinities)
@@ -159,7 +166,11 @@ func (disc *StandardModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 			currWeight := 0
 			for j := range groups[i] {
-				numRow := groups[i][j].NumRow() / reduction
+				numRow := groups[i][j].NumRow()
+				if !groups[i][j].hasPrecomputed {
+					numRow /= reduction
+				}
+
 				if numRow < 1 {
 					panic("the 'reduction' is bounded by the min number of rows so it should not be smaller than 1")
 				}
@@ -333,11 +344,11 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 	for _, qName := range comp.QueriesNoParams.AllKeys() {
 
-		queryData := comp.QueriesNoParams.Data(qName)
-
 		if comp.QueriesNoParams.IsIgnored(qName) {
 			continue
 		}
+
+		queryData := comp.QueriesNoParams.Data(qName)
 
 		var (
 			// toGroup lists sets of columns who need to be grouped.
@@ -360,11 +371,11 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 			// The query is expected but no grouping required.
 
 		case query.GlobalConstraint:
-			cols := wizardutils.ColumnsOfExpression(q.Expression)
+			cols := column.ColumnsOfExpression(q.Expression)
 			toGroup = append(toGroup, rootsOfColumns(cols))
 
 		case query.LocalConstraint:
-			cols := wizardutils.ColumnsOfExpression(q.Expression)
+			cols := column.ColumnsOfExpression(q.Expression)
 			toGroup = append(toGroup, rootsOfColumns(cols))
 
 		case *query.PlonkInWizard:
@@ -377,6 +388,10 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 			nbConstraintsOfPlonkCirc = utils.NextPowerOfTwo(countConstraintsOfPlonkCirc(q))
 			nbInstancesOfPlonkCirc = q.GetMaxNbCircuitInstances()
 			nbInstancesOfPlonkQuery = 1
+		}
+
+		if disc.predivision > 0 {
+			nbInstancesOfPlonkCirc /= disc.predivision
 		}
 
 		for _, columns := range toGroup {
@@ -395,13 +410,6 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 		var (
 			// toGroup lists sets of columns who need to be grouped.
 			toGroup = [][]column.Natural{}
-
-			// nbConstraintsOfPlonkCirc tells if there are Plonk-in-Wizard overheads
-			// associated with the modules columns. And how many constraints there
-			// are.
-			nbConstraintsOfPlonkCirc = 0
-			nbInstancesOfPlonkCirc   = 0
-			nbInstancesOfPlonkQuery  = 0
 		)
 
 		switch q := comp.QueriesParams.Data(qName).(type) {
@@ -418,8 +426,8 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 			for _, size := range sizes {
 				inpForSize := q.Inputs[size]
 				for i := range inpForSize.Numerator {
-					colNums := wizardutils.ColumnsOfExpression(inpForSize.Numerator[i])
-					colDens := wizardutils.ColumnsOfExpression(inpForSize.Denominator[i])
+					colNums := column.ColumnsOfExpression(inpForSize.Numerator[i])
+					colDens := column.ColumnsOfExpression(inpForSize.Denominator[i])
 					rootNums, rootDens := rootsOfColumns(colNums), rootsOfColumns(colDens)
 					toGroup = append(toGroup, append(rootNums, rootDens...))
 				}
@@ -432,8 +440,8 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 			for _, size := range sizes {
 				inpForSize := q.Inputs[size]
 				for i := range inpForSize.Numerators {
-					colNums := wizardutils.ColumnsOfExpression(inpForSize.Numerators[i])
-					colDens := wizardutils.ColumnsOfExpression(inpForSize.Denominators[i])
+					colNums := column.ColumnsOfExpression(inpForSize.Numerators[i])
+					colDens := column.ColumnsOfExpression(inpForSize.Denominators[i])
 					rootNums, rootDens := rootsOfColumns(colNums), rootsOfColumns(colDens)
 					toGroup = append(toGroup, append(rootNums, rootDens...))
 				}
@@ -441,7 +449,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		case *query.Horner:
 			for _, part := range q.Parts {
-				group := append(wizardutils.ColumnsOfExpression(part.Coefficient), part.Selector)
+				group := append(column.ColumnsOfExpression(part.Coefficient), part.Selector)
 				toGroup = append(toGroup, rootsOfColumns(group))
 			}
 		}
@@ -450,9 +458,7 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 			moduleCandidates = disc.GroupColumns(
 				columns,
 				moduleCandidates,
-				nbConstraintsOfPlonkCirc,
-				nbInstancesOfPlonkCirc,
-				nbInstancesOfPlonkQuery,
+				0, 0, 0,
 			)
 		}
 	}
@@ -462,10 +468,19 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 	// Assign final module names after all processing
 	for _, module := range disc.modules {
+
+		hasPrecomputed := false
+
 		for col := range module.ds.Iter() {
 			disc.columnsToModule[col] = module.moduleName
+			hp := col.Status() == column.Precomputed || col.Status() == column.VerifyingKey
+			hasPrecomputed = hp || hasPrecomputed
 		}
 
+		module.hasPrecomputed = hasPrecomputed
+		if !hasPrecomputed {
+			module.predivision = disc.predivision
+		}
 		module.mustHaveConsistentLength()
 	}
 }
@@ -490,8 +505,10 @@ func (disc *QueryBasedModuleDiscoverer) CreateModule(columns []column.Natural) *
 	}
 
 	module := &QueryBasedModule{
-		moduleName: ModuleName(fmt.Sprintf("Module_%d_%s", len(disc.modules), colID)),
-		ds:         utils.NewDisjointSetFromList(columns),
+		moduleName:          ModuleName(fmt.Sprintf("Module_%d_%s", len(disc.modules), colID)),
+		ds:                  utils.NewDisjointSetFromList(columns),
+		nbSegmentCache:      make(map[unsafe.Pointer][2]int),
+		nbSegmentCacheMutex: &sync.Mutex{},
 	}
 
 	for i := 0; i < len(columns); i++ {
@@ -524,6 +541,7 @@ func (disc *QueryBasedModuleDiscoverer) MergeModules(modules []*QueryBasedModule
 		mergedModule.nbConstraintsOfPlonkCirc += module.nbConstraintsOfPlonkCirc
 		mergedModule.nbInstancesOfPlonkCirc += module.nbInstancesOfPlonkCirc
 		mergedModule.nbInstancesOfPlonkQuery += module.nbInstancesOfPlonkQuery
+		mergedModule.hasPrecomputed = mergedModule.hasPrecomputed || module.hasPrecomputed
 
 		// nilifying the module ensures it can no longer be matched for anything
 		module.Nilify()
@@ -561,6 +579,7 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 		assignedModule.nbInstancesOfPlonkCirc += nbInstancesOfPlonkCirc
 		assignedModule.nbInstancesOfPlonkQuery += nbInstancesOfPlonkQuery
 		assignedModule.ds.AddList(columns)
+
 	} else {
 
 		// Create a new module
@@ -576,25 +595,50 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 
 // SegmentBoundaries computes the density of a module given an assignment.
 // This can be used to determine the number of segment of the module.
+//
+// The function works by iterating over the columns of the module and
+// computing the density of each column. The density is defined as the
+// number of non-padding elements. The function does a few quirks around
+// the regular columns: they are not taken into account when evaluating
+// the overall density of the module. That is because, it often happens
+// that we suboptimally assign a whole regular column while it could in fact
+// have a sparser representation. However, if all columns are regular,
+// then we consider that the density is equal to the size of the module.
+//
+// Beside we consider that constants columns have a density of 0, and the
+// function will return 0, 0 if all columns in the module are constants.
 func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmentSize int) (int, int) {
 
-	if mod.nbSegmentCache == nil {
-		mod.nbSegmentCache = map[unsafe.Pointer][2]int{}
-	}
-
+	mod.nbSegmentCacheMutex.Lock()
 	if res, ok := mod.nbSegmentCache[unsafe.Pointer(run)]; ok {
+		mod.nbSegmentCacheMutex.Unlock()
 		return res[0], res[1]
 	}
+	mod.nbSegmentCacheMutex.Unlock()
 
 	var (
-		resOrientation = 0
-		resMaxDensity  = 0
-		size           int
+		resMaxDensity     = 0
+		size              int
+		areAnyNonRegular  = false
+		areAnyLeftPadded  = false
+		areAnyRightPadded = false
+		firstLeftPadded   column.Natural
+		firstRightPadded  column.Natural
+		firstColumn       column.Natural
 	)
 
 	for col := range mod.ds.Iter() {
 
-		size = col.Size()
+		if size == 0 {
+			size = col.Size()
+			firstColumn = col
+		}
+
+		// This should not happen for a well-formed module, query-based modules
+		// are expected to contain the same size for all columns.
+		if size != col.Size() {
+			utils.Panic("all columns must have the same size, first=%v col=%v", firstColumn.ID, col.ID)
+		}
 
 		// As the function is meant to be called **during** the bootstrapping
 		// compilation, we cannot expect all columns to be available at this
@@ -604,47 +648,84 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		}
 
 		var (
-			val               = col.GetColAssignment(run)
-			density           = smartvectors.Density(val)
-			orientation, oErr = smartvectors.PaddingOrientationOf(val)
+			val           = col.GetColAssignment(run)
+			start, stop   = smartvectors.CoWindowRange(val)
+			isLeftPadded  = start == 0
+			isRightPadded = stop == size
+			density       = stop - start
 		)
 
-		if oErr != nil {
+		if isLeftPadded && isRightPadded {
 			continue
+		} else {
+			areAnyNonRegular = true
 		}
 
-		if density == size {
-			continue
+		// It is important to exclude constant column from toggling up the
+		// areAnyLeftPadded flag. Otherwise, the panic condition stating that
+		// there should not be both left and right padded columns will be
+		// activated when we mix right-padded with a constant column.
+		if isLeftPadded && density > 0 {
+			areAnyLeftPadded = true
+			firstLeftPadded = col
 		}
 
-		if resOrientation == 0 {
-			resOrientation = orientation
+		if isRightPadded {
+			areAnyRightPadded = true
+			firstRightPadded = col
 		}
 
-		if orientation != 0 && orientation != resOrientation {
-			utils.Panic("conflicting orientation; orientation=%v main-orientation=%v failing-column=%v", orientation, resOrientation, col.ID)
+		if !isLeftPadded && !isRightPadded {
+			utils.Panic("column is neither left nor right padded, col=%v", col.ID)
 		}
 
-		resMaxDensity = max(resMaxDensity, density)
+		if density > resMaxDensity {
+			resMaxDensity = density
+		}
+	}
+
+	if !areAnyNonRegular {
+		start, stop := 0, size
+		mod.nbSegmentCacheMutex.Lock()
+		defer mod.nbSegmentCacheMutex.Unlock()
+		mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+		return start, stop
+	}
+
+	if resMaxDensity == 0 {
+		start, stop := 0, 0
+		mod.nbSegmentCacheMutex.Lock()
+		defer mod.nbSegmentCacheMutex.Unlock()
+		mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+		return start, stop
+	}
+
+	if areAnyLeftPadded && areAnyRightPadded {
+		utils.Panic("the module cannot contain at the same time left and right padded columns, oneLeftPadded=%v, oneRightPadded=%v", firstLeftPadded.ID, firstRightPadded.ID)
 	}
 
 	var (
-		totalSegmentedArea = segmentSize * utils.DivCeil(resMaxDensity, segmentSize)
-		start, stop        = 0, totalSegmentedArea
+		localNbSegment     = utils.DivCeil(resMaxDensity, segmentSize)
+		totalSegmentedArea = segmentSize * localNbSegment
 	)
 
-	if resOrientation == -1 {
-		start, stop = size-stop, size-start
+	if areAnyLeftPadded {
+		start, stop := 0, totalSegmentedArea
+		mod.nbSegmentCacheMutex.Lock()
+		defer mod.nbSegmentCacheMutex.Unlock()
+		mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+		return start, stop
 	}
 
-	// Case where all the columns of the module are Regular. In this case, we return
-	// the whole area.
-	if resOrientation == 0 {
-		return 0, size
+	if areAnyRightPadded {
+		start, stop := size-totalSegmentedArea, size
+		mod.nbSegmentCacheMutex.Lock()
+		defer mod.nbSegmentCacheMutex.Unlock()
+		mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
+		return start, stop
 	}
 
-	mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
-	return start, stop
+	panic("unreachable")
 }
 
 // Nilify a module. It empties its maps and sets its size to 0.
@@ -706,9 +787,20 @@ func (module *QueryBasedModule) NumRow() int {
 	if module.size == 0 {
 		for col := range module.ds.Iter() {
 			module.size = col.Size()
+
+			if module.hasPrecomputed {
+				break
+			}
+
+			if module.predivision > col.Size() || module.predivision == 0 {
+				break
+			}
+
+			module.size /= module.predivision
 			break
 		}
 	}
+
 	return module.size
 }
 
@@ -719,7 +811,23 @@ func (module *QueryBasedModule) NumColumn() int {
 
 // NewSizeOf returns the size (length) of a column.
 func (disc *QueryBasedModuleDiscoverer) NewSizeOf(col column.Natural) int {
-	return col.Size()
+	size := col.Size()
+
+	mod := disc.ModuleOf(col)
+	for i := range disc.modules {
+		if disc.modules[i].moduleName == mod {
+			qbm := disc.modules[i]
+			if qbm.hasPrecomputed {
+				return size
+			}
+		}
+	}
+
+	if disc.predivision > 0 && disc.predivision < col.Size() {
+		return size / disc.predivision
+	}
+
+	return size
 }
 
 // ModuleList returns a list of all module names.
@@ -750,7 +858,7 @@ func countConstraintsOfPlonkCirc(piw *query.PlonkInWizard) int {
 		hasAddGates = piw.PlonkOptions[0].RangeCheckAddGateForRangeCheck
 	}
 
-	ccs, _, _ := plonkinternal.CompileCircuit(piw.Circuit, hasAddGates)
+	ccs, _, _ := plonkinternal.CompileCircuitWithRangeCheck(piw.Circuit, hasAddGates)
 	nbConstraints := ccs.GetNbConstraints()
 	return nbConstraints
 }
@@ -788,16 +896,17 @@ func (m *QueryBasedModule) mustHaveConsistentLength() {
 // module.
 func groupQBModulesByAffinity(qbModules []*QueryBasedModule, affinities [][]column.Natural) (groups [][]*QueryBasedModule) {
 
-	sets := make([]collection.Set[*QueryBasedModule], len(qbModules))
+	sets := make([]*collection.Set[*QueryBasedModule], len(qbModules))
 
 	for i := range qbModules {
-		sets[i] = collection.NewSet[*QueryBasedModule]()
+		s := collection.NewSet[*QueryBasedModule]()
+		sets[i] = &s
 		sets[i].Insert(qbModules[i])
 	}
 
 	for _, aff := range affinities {
 
-		matched := make([]collection.Set[*QueryBasedModule], 0)
+		matched := make([]*collection.Set[*QueryBasedModule], 0)
 		for i := range sets {
 
 			isSetMatched := false

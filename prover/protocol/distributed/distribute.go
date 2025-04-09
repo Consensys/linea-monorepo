@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -55,6 +54,8 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) Distribut
 	disc.Analyze(distributedWizard.Bootstrapper)
 	distributedWizard.ModuleNames = disc.ModuleList()
 
+	allFilteredModuleInputs := make([]FilteredModuleInputs, 0)
+
 	for _, moduleName := range distributedWizard.ModuleNames {
 
 		moduleFilter := moduleFilter{
@@ -66,14 +67,29 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) Distribut
 			distributedWizard.Bootstrapper,
 		)
 
-		distributedWizard.LPPs = append(
-			distributedWizard.LPPs,
-			BuildModuleLPP(&filteredModuleInputs),
-		)
-
 		distributedWizard.GLs = append(
 			distributedWizard.GLs,
 			BuildModuleGL(&filteredModuleInputs),
+		)
+
+		allFilteredModuleInputs = append(
+			allFilteredModuleInputs,
+			filteredModuleInputs,
+		)
+	}
+
+	var (
+		lppGrouping = 4
+		nbLPP       = len(distributedWizard.ModuleNames)
+	)
+
+	for i := 0; i < nbLPP; i += lppGrouping {
+
+		stop := min(len(distributedWizard.ModuleNames), i+lppGrouping)
+
+		distributedWizard.LPPs = append(
+			distributedWizard.LPPs,
+			BuildModuleLPP(allFilteredModuleInputs[i:stop]),
 		)
 	}
 
@@ -123,7 +139,7 @@ func auditInitialWizard(comp *wizard.CompiledIOP) error {
 
 		if glob, isGlob := q.(query.GlobalConstraint); isGlob {
 			var (
-				cols     = wizardutils.ColumnsOfExpression(glob.Expression)
+				cols     = column.ColumnsOfExpression(glob.Expression)
 				rootCols = column.RootsOf(cols, true)
 			)
 

@@ -29,6 +29,7 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 		modexpCountLarge int = 0
 		isModexp             = mod.Input.isModExp.GetColAssignment(run).IntoRegVecSaveAlloc()
 		limbs                = mod.Input.Limbs.GetColAssignment(run).IntoRegVecSaveAlloc()
+		settings             = mod.Input.Settings
 		builder              = antichamberAssignment{
 			isActive:    common.NewVectorBuilder(mod.IsActive),
 			isSmall:     common.NewVectorBuilder(mod.IsSmall),

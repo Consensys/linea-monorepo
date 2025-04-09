@@ -265,6 +265,16 @@ func (ctx *stitchingContext) stitchGroup(s Alliance) {
 			}
 		}
 
+		if assignement.Len() != ctx.MaxSize {
+			sizes := []int{}
+			sizes2 := []int{}
+			for i := range witnesses {
+				sizes = append(sizes, witnesses[i].Len())
+				sizes2 = append(sizes2, group[i].Size())
+			}
+			utils.Panic("creating a column bigger than it should: maxsize=%v totalsize=%v sizes=%v sizes2=%v inputs=%v", ctx.MaxSize, assignement.Len(), sizes, sizes2, group)
+		}
+
 		stitchingCol = ctx.comp.InsertPrecomputed(
 			groupedName(group),
 			assignement)

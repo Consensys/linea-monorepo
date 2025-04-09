@@ -5,9 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/constraint/solver"
-	"github.com/consensys/gnark/constraint/solver/gkrgates"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/gkrapi"
 	"github.com/consensys/gnark/std/gkrapi/gkr"
@@ -68,35 +66,42 @@ func createGateNames() {
 // registerGates instantiates and populates the cGkr and gkr global variables
 // which contains the "normal" and the "gnark" version of the GKR gates forming
 // the MiMC GKR circuit.
-func registerGates() error {
-	const (
-		ROUND_GATE_NB_INPUTS = 2  // initial state and current state
-		FINAL_GATE_NB_INPUTS = 3  // initial state, block and current state
-		GATE_DEGREE          = 17 // MiMC S-box degree for BLS12-377
+func registerGates() {
+
+	var (
+		cDegree17 = cGkr.WithDegree(17)
+		gDegree17 = gGkr.WithUnverifiedDegree(17)
 	)
+
 	for i := 4; i < numGates-1; i++ {
-		if err := gkrgates.Register(
-			RoundGate(mimc.Constants[i-prefetchSize]),
-			ROUND_GATE_NB_INPUTS,
-			gkrgates.WithName(gateNames[i]),
-			gkrgates.WithUnverifiedDegree(GATE_DEGREE),
-			gkrgates.WithCurves(ecc.BLS12_377),
-		); err != nil {
-			return fmt.Errorf("failed to register gate %s: %v", gateNames[i], err)
+
+		var (
+			name  = gateNames[i]
+			gateG = NewRoundGateGnark(mimc.Constants[i-prefetchSize])
+			gateC = NewRoundGateCrypto(mimc.Constants[i-prefetchSize])
+		)
+
+		if e := gGkr.RegisterGate(gGkr.GateName(name), gateG.Evaluate, 2, gDegree17); e != nil {
+			panic(e)
+		}
+
+		if e := cGkr.RegisterGate(cGkr.GateName(name), gateC.Evaluate, 2, cDegree17); e != nil {
+			panic(e)
 		}
 	}
 
-	if err := gkrgates.Register(
-		FinalRoundGate(mimc.Constants[len(mimc.Constants)-1]),
-		FINAL_GATE_NB_INPUTS,
-		gkrgates.WithName(gateNames[numGates-1]),
-		gkrgates.WithUnverifiedDegree(GATE_DEGREE),
-		gkrgates.WithCurves(ecc.BLS12_377),
-	); err != nil {
-		return fmt.Errorf("failed to register gate %s: %v", gateNames[numGates-1], err)
-	}
+	var (
+		name  = gateNames[numGates-1]
+		gateG = NewFinalRoundGateGnark(mimc.Constants[len(mimc.Constants)-1])
+		gateC = NewFinalRoundGateCrypto(mimc.Constants[len(mimc.Constants)-1])
+	)
 
-	return nil
+	if e := gGkr.RegisterGate(gGkr.GateName(name), gateG.Evaluate, 3, gDegree17); e != nil {
+		panic(e)
+	}
+	if e := cGkr.RegisterGate(cGkr.GateName(name), gateC.Evaluate, 3, cDegree17); e != nil {
+		panic(e)
+	}
 }
 
 // gkrMiMC constructs and return the GKR circuit. The function is concretely
@@ -121,10 +126,10 @@ func gkrMiMC(gkrapi *gkrapi.API, initStates, blocks []frontend.Variable) (gkr.Va
 	v[3] = gkrapi.NamedGate("identity", v[1])
 
 	for i := 4; i < numGates-1; i++ {
-		v[i] = gkrapi.NamedGate(gateNames[i], v[2], v[i-1])
+		v[i] = gkr.NamedGate(gGkr.GateName(gateNames[i]), v[2], v[i-1])
 	}
 
-	res := gkrapi.NamedGate(gateNames[numGates-1], v[2], v[3], v[numGates-2])
+	res := gkr.NamedGate(gGkr.GateName(gateNames[numGates-1]), v[2], v[3], v[numGates-2])
 
 	return res, nil
 }

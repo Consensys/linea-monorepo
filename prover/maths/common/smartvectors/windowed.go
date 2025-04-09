@@ -2,6 +2,9 @@ package smartvectors
 
 import (
 	"fmt"
+	"iter"
+	"slices"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -221,6 +224,40 @@ func (p *PaddedCircularWindow) Pretty() string {
 	return fmt.Sprintf("Windowed[totlen=%v offset=%v, paddingVal=%v, window=%v]", p.totLen, p.offset, p.paddingVal.String(), vector.Prettify(p.window))
 }
 
+// IterateCompact returns an iterator over the elements of the PaddedCircularWindow
+// in a "compact" way. It can behave in 3 different ways:
+//   - (left-padded): the iterator will first return one element for the padding value
+//     and then the elements of the window.
+//   - (right-padded): the iterator will first return the elements of the window
+//     and then one element for the padding value.
+//   - (others): the iterator will not try to be smart and will return the elements
+func (p *PaddedCircularWindow) IterateCompact() iter.Seq[field.Element] {
+
+	if p.offset > 0 && p.offset+len(p.window) != p.totLen {
+		all := p.IntoRegVecSaveAlloc()
+		return slices.Values(all)
+	}
+
+	its := []iter.Seq[field.Element]{}
+
+	if p.offset > 0 {
+		its = append(its, slices.Values([]field.Element{p.paddingVal}))
+	}
+
+	its = append(its, slices.Values(p.window))
+
+	if p.offset+len(p.window) < p.totLen {
+		its = append(its, slices.Values([]field.Element{p.paddingVal}))
+	}
+
+	return utils.ChainIterators(its...)
+}
+
+// IterateSkipPadding returns an iterator over the windows of the PaddedCircularWindow
+func (p *PaddedCircularWindow) IterateSkipPadding() iter.Seq[field.Element] {
+	return slices.Values(p.window)
+}
+
 func (p *PaddedCircularWindow) interval() CircularInterval {
 	return IvalWithStartLen(p.offset, len(p.window), p.totLen)
 }
@@ -380,4 +417,20 @@ func (w *PaddedCircularWindow) IntoRegVecSaveAllocExt() []fext.Element {
 		res[i].SetFromBase(&elem)
 	}
 	return res
+}
+
+func (w *PaddedCircularWindow) GetPtr(n int) *field.Element {
+
+	// This normalizes the position of n with respect to the start of the
+	// window.
+	n = n - w.offset
+	if n < 0 {
+		n += w.totLen
+	}
+
+	if n < len(w.window) {
+		return &w.window[n]
+	}
+
+	return &w.paddingVal
 }

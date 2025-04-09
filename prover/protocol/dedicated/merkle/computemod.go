@@ -379,8 +379,8 @@ func (cm *ComputeMod) currIsNextNodeHash() {
 // are valid MiMC triplets.
 func (cm *ComputeMod) checkMiMCCompressions() {
 	cols := cm.Cols
-	cm.comp.InsertMiMC(cm.Round, cm.qname("MIMC_LEFT"), cols.Left, cols.Zero, cols.Interm)
-	cm.comp.InsertMiMC(cm.Round, cm.qname("MIMC_RIGHT"), cols.Right, cols.Interm, cols.NodeHash)
+	cm.comp.InsertMiMC(cm.Round, cm.qname("MIMC_LEFT"), cols.Left, cols.Zero, cols.Interm, nil)
+	cm.comp.InsertMiMC(cm.Round, cm.qname("MIMC_RIGHT"), cols.Right, cols.Interm, cols.NodeHash, nil)
 }
 
 // Optional constraints checking reuse of Merkle proofs e.g., all the position

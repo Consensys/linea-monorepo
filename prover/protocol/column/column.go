@@ -334,3 +334,22 @@ func IsPublicExpression(expr *symbolic.Expression) bool {
 
 	return numPublic > 0
 }
+
+// ColumnsOfExpression returns the list of all the columns occuring as variables of
+// the provided expression.
+func ColumnsOfExpression(expr *symbolic.Expression) []ifaces.Column {
+
+	var (
+		board    = expr.Board()
+		metadata = board.ListVariableMetadata()
+		res      []ifaces.Column
+	)
+
+	for i := range metadata {
+		if _, ok := metadata[i].(ifaces.Column); ok {
+			res = append(res, metadata[i].(ifaces.Column))
+		}
+	}
+
+	return res
+}

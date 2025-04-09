@@ -16,20 +16,11 @@ const (
 	// module to represent a single instance. Each instance has 4 operands
 	// dispatched in limbs of
 	modexpNumRowsPerInstance = 32 * 4
-
-	// nbInstancePerCircuit256 and nbInstancePerCircuit4096 state how many
-	// instance of modexp are taken care of by a single gnark circuit in the
-	// "small" variant (256 bits) or the "large" variant (4096 bits)
-	nbInstancePerCircuit256, nbInstancePerCircuit4096 = 10, 1
 )
 
 // Module implements the wizard part responsible for checking the MODEXP
 // claims coming from the BLKMDXP module of the arithmetization.
 type Module struct {
-	// MaxNb256BitsInstances MaxNb4096BitsInstances corresponds to the maximum
-	// number of instances that we want to support for the corresponding variant
-	// of the Modexp circuit.
-	MaxNb256BitsInstances, MaxNb4096BitsInstances int
 	// Input stores the columns used as a source for the antichamber.
 	Input Input
 	// IsActive is a binary indicator column marking with a 1, the rows of the
@@ -72,14 +63,12 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 		maxNbInstance = settings.MaxNbInstance256 + settings.MaxNbInstance4096
 		size          = utils.NextPowerOfTwo(maxNbInstance * modexpNumRowsPerInstance)
 		mod           = &Module{
-			Input:                  input,
-			MaxNb256BitsInstances:  settings.MaxNbInstance256,
-			MaxNb4096BitsInstances: settings.MaxNbInstance4096,
-			IsActive:               comp.InsertCommit(0, "MODEXP_IS_ACTIVE", size),
-			Limbs:                  comp.InsertCommit(0, "MODEXP_LIMBS", size),
-			IsSmall:                comp.InsertCommit(0, "MODEXP_IS_SMALL", size),
-			IsLarge:                comp.InsertCommit(0, "MODEXP_IS_LARGE", size),
-			ToSmallCirc:            comp.InsertCommit(0, "MODEXP_TO_SMALL_CIRC", size),
+			Input:       input,
+			IsActive:    comp.InsertCommit(0, "MODEXP_IS_ACTIVE", size),
+			Limbs:       comp.InsertCommit(0, "MODEXP_LIMBS", size),
+			IsSmall:     comp.InsertCommit(0, "MODEXP_IS_SMALL", size),
+			IsLarge:     comp.InsertCommit(0, "MODEXP_IS_LARGE", size),
+			ToSmallCirc: comp.InsertCommit(0, "MODEXP_TO_SMALL_CIRC", size),
 		}
 	)
 
@@ -103,6 +92,7 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *Module {
 
 	mod.hasCircuit = true
+	settings := mod.Input.Settings
 
 	mod.GnarkCircuitConnector256Bits = plonk.DefineAlignment(
 		comp,
@@ -110,8 +100,8 @@ func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkO
 			Name:               "MODEXP_256_BITS",
 			DataToCircuit:      mod.Limbs,
 			DataToCircuitMask:  mod.ToSmallCirc,
-			Circuit:            allocateCircuit(nbInstancePerCircuit256, 256),
-			NbCircuitInstances: utils.DivCeil(mod.MaxNb256BitsInstances, nbInstancePerCircuit256),
+			Circuit:            allocateCircuit(settings.NbInstancesPerCircuitModexp256, 256),
+			NbCircuitInstances: utils.DivCeil(settings.MaxNbInstance256, settings.NbInstancesPerCircuitModexp256),
 			PlonkOptions:       options,
 		},
 	)
@@ -122,8 +112,8 @@ func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkO
 			Name:               "MODEXP_4096_BITS",
 			DataToCircuit:      mod.Limbs,
 			DataToCircuitMask:  mod.IsLarge,
-			Circuit:            allocateCircuit(nbInstancePerCircuit4096, 4096),
-			NbCircuitInstances: utils.DivCeil(mod.MaxNb4096BitsInstances, nbInstancePerCircuit4096),
+			Circuit:            allocateCircuit(settings.NbInstancesPerCircuitModexp4096, 4096),
+			NbCircuitInstances: utils.DivCeil(settings.MaxNbInstance4096, settings.NbInstancesPerCircuitModexp4096),
 			PlonkOptions:       options,
 		},
 	)

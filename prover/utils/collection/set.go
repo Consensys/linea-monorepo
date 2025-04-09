@@ -54,7 +54,7 @@ func (kv Set[T]) Iter() iter.Seq[T] {
 }
 
 // Merge merge the content of the given set into the receiver.
-func (kv *Set[T]) Merge(other Set[T]) {
+func (kv *Set[T]) Merge(other *Set[T]) {
 	for k := range other.inner {
 		kv.inner[k] = struct{}{}
 	}

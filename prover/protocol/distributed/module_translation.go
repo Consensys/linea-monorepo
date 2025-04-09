@@ -1,6 +1,7 @@
 package distributed
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -36,12 +37,36 @@ func (mt *moduleTranslator) InsertColumn(col column.Natural, atRound int) ifaces
 		utils.Panic("cannot translate a column with non-zero round %v", col.Round())
 	}
 
+	if col.Status() == column.Precomputed || col.Status() == column.VerifyingKey {
+		panic("use [InsertPrecomputed] for precomputed columns")
+	}
+
 	if mt.Wiop.Columns.Exists(col.ID) {
 		return mt.Wiop.Columns.GetHandle(col.ID)
 	}
 
 	newSize := NewSizeOfColumn(mt.Disc, col)
 	return mt.Wiop.InsertColumn(atRound, col.ID, newSize, col.Status())
+}
+
+// InsertPrecomputed is as [InsertColumn] but specificially works for precomputed
+// columns.
+func (mt *moduleTranslator) InsertPrecomputed(col column.Natural, data smartvectors.SmartVector) ifaces.Column {
+
+	if col.Round() != 0 {
+		utils.Panic("cannot translate a column with non-zero round %v", col.Round())
+	}
+
+	if col.Status() != column.Precomputed && col.Status() != column.VerifyingKey {
+		panic("use [InsertPrecomputed] for precomputed columns")
+	}
+
+	if mt.Wiop.Columns.Exists(col.ID) {
+		return mt.Wiop.Columns.GetHandle(col.ID)
+	}
+
+	mt.Wiop.Precomputed.InsertNew(col.ID, data)
+	return mt.Wiop.InsertColumn(0, col.ID, data.Len(), col.Status())
 }
 
 // TranslateColumn returns an equivalent column from the new module. The

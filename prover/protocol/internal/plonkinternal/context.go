@@ -11,7 +11,9 @@ import (
 	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/profile"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -53,6 +55,9 @@ type CompilationCtx struct {
 		SolverOpts []solver.Option
 		// Receives the list of rows which have to be marked containing range checks.
 		RcGetter func() [][2]int // the same for all circuits
+		// HashedGetter is a function that returns the list of rows which are tagged
+		// as range-checked.
+		HashedGetter func() [][3][2]int
 	}
 
 	// Columns
@@ -71,15 +76,11 @@ type CompilationCtx struct {
 		S [3]ifaces.ColAssignment
 		// Commitment randomness
 		Hcp coin.Info
-		// Selector for range checking from a column
-		RcL, RcR, RcO ifaces.Column
-		// RangeChecked stores the values to be range-checked
-		RangeChecked []ifaces.Column
 	}
 
 	// Optional field used for specifying range checks option
 	// parameters.
-	RangeCheck struct {
+	RangeCheckOption struct {
 		// wasCancelled is set if no wires need to be constrained
 		wasCancelled         bool
 		Enabled              bool
@@ -87,6 +88,10 @@ type CompilationCtx struct {
 		NbLimbs              int
 		AddGateForRangeCheck bool
 		limbDecomposition    []wizard.ProverAction
+		// Selector for range checking from a column
+		RcL, RcR, RcO ifaces.Column
+		// RangeChecked stores the values to be range-checked
+		RangeChecked []ifaces.Column
 	}
 
 	// FixedNbRowsOption is used to specify a fixed number of rows
@@ -94,6 +99,22 @@ type CompilationCtx struct {
 	FixedNbRowsOption struct {
 		Enabled bool
 		NbRow   int
+	}
+
+	// ExternalHasherOption is used to specify an external hasher
+	// for the CompilationCtx via the [WithExternalHasher] option.
+	ExternalHasherOption struct {
+		Enabled bool
+		// PosL, PosR and PosO are precomputing column storing the
+		// positions of the L, R and O columns that are tagged for
+		// each external hash constraints.
+		PosOldState, PosBlock, PosNewState ifaces.Column
+		// OldStates, Blocks, NewStates are the column affected by the
+		// MiMC query.
+		OldStates, Blocks, NewStates []ifaces.Column
+		// Fixed nb of row allows fixing the number of rows allocated
+		// for the hash checking.
+		FixedNbRows int
 	}
 }
 
@@ -133,9 +154,26 @@ func createCtx(
 		pro = profile.Start(profile.WithPath(fname))
 	}
 
-	ccs, rcGetter, err := CompileCircuit(ctx.Plonk.Circuit, ctx.RangeCheck.AddGateForRangeCheck)
-	if err != nil {
-		utils.Panic("error compiling circuit name=%v : %v", name, err)
+	var (
+		ccs        *cs.SparseR1CS
+		compileErr error
+	)
+
+	switch {
+	case ctx.RangeCheckOption.Enabled:
+		var rcGetter func() [][2]int
+		ccs, rcGetter, compileErr = CompileCircuitWithRangeCheck(ctx.Plonk.Circuit, ctx.RangeCheckOption.AddGateForRangeCheck)
+		ctx.Plonk.RcGetter = rcGetter
+	case ctx.ExternalHasherOption.Enabled:
+		var hshGetter func() [][3][2]int
+		ccs, hshGetter, compileErr = CompileCircuitWithExternalHasher(ctx.Plonk.Circuit, true)
+		ctx.Plonk.HashedGetter = hshGetter
+	case !ctx.ExternalHasherOption.Enabled && !ctx.RangeCheckOption.Enabled:
+		ccs, compileErr = CompileCircuitDefault(ctx.Plonk.Circuit)
+	}
+
+	if compileErr != nil {
+		utils.Panic("error compiling the gnark circuit: name=%v err=%v", name, compileErr)
 	}
 
 	if activateGnarkProfiling {
@@ -149,7 +187,10 @@ func createCtx(
 
 	ctx.Plonk.SPR = ccs
 	ctx.Plonk.Domain = fft.NewDomain(uint64(ctx.DomainSize()))
-	ctx.Plonk.RcGetter = rcGetter // Pass the range-check getter
+
+	if ctx.FixedNbRowsOption.Enabled && ctx.FixedNbRowsOption.NbRow < ctx.DomainSizePlonk() {
+		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk())
+	}
 
 	logrus.Debugf("Plonk in Wizard (%v) build trace", name)
 	ctx.Plonk.Trace = plonkBLS12_377.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
@@ -161,11 +202,23 @@ func createCtx(
 	return ctx
 }
 
-// CompileCircuit compiles the circuit and returns the compiled
-// constraints system.
-func CompileCircuit(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func() [][2]int, error) {
+// CompileCircuitDefault compiles the circuit using the default scs.Builder
+// of gnark.
+func CompileCircuitDefault(circ frontend.Circuit) (*cs.SparseR1CS, error) {
 
-	// Build the trace and track it in the context
+	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), scs.NewBuilder, circ)
+	if err != nil {
+		return nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
+	}
+
+	return ccsIface.(*cs.SparseR1CS), err
+
+}
+
+// CompileCircuitWithRangeCheck compiles the circuit and returns the compiled
+// constraints system.
+func CompileCircuitWithRangeCheck(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func() [][2]int, error) {
+
 	gnarkBuilder, rcGetter := newExternalRangeChecker(addGates)
 
 	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
@@ -174,6 +227,20 @@ func CompileCircuit(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func(
 	}
 
 	return ccsIface.(*cs.SparseR1CS), rcGetter, err
+}
+
+// CompileCircuitWithExternalHasher compiles the circuit and returns the compiled
+// constraints system.
+func CompileCircuitWithExternalHasher(circ frontend.Circuit, addGates bool) (*cs.SparseR1CS, func() [][3][2]int, error) {
+
+	gnarkBuilder, hshGetter := mimc.NewExternalHasherBuilder(addGates)
+
+	ccsIface, err := frontend.Compile(ecc.BLS12_377.ScalarField(), gnarkBuilder, circ)
+	if err != nil {
+		return nil, nil, fmt.Errorf("frontend.Compile returned an err=%v", err)
+	}
+
+	return ccsIface.(*cs.SparseR1CS), hshGetter, err
 }
 
 // DomainSize returns the size of the domain. Meaning the size of the columns

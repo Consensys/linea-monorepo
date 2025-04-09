@@ -155,3 +155,11 @@ func PseudoRandTruncated(rng *rand.Rand, sizeByte int) Element {
 func Generator(m uint64) (Element, error) {
 	return fr.Generator(m)
 }
+
+// FromBool returns 1 if true and zero if false
+func FromBool(b bool) Element {
+	if b {
+		return One()
+	}
+	return Zero()
+}

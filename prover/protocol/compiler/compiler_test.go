@@ -63,12 +63,37 @@ func TestCompilers(t *testing.T) {
 	runTestList(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
 }
 
+func TestCompilersWithGnarkVerifier(t *testing.T) {
+
+	logrus.SetLevel(logrus.FatalLevel)
+
+	runTestListGnark(t, "global", testtools.ListOfGlobalTestcasePositive)
+	runTestListGnark(t, "horner", testtools.ListOfHornerTestcasePositive)
+	runTestListGnark(t, "grand-product", testtools.ListOfGrandProductTestcasePositive)
+	runTestListGnark(t, "projection", testtools.ListOfProjectionTestcasePositive)
+	runTestListGnark(t, "permutation", testtools.ListOfPermutationTestcasePositive)
+	runTestListGnark(t, "logderivativesum", testtools.ListOfLogDerivativeSumTestcasePositive)
+	runTestListGnark(t, "mimc", testtools.ListOfMiMCTestcase)
+	runTestListGnark(t, "fixed-permutation", testtools.ListOfFixedPermutationTestcasePositive)
+}
+
 func runTestList[T testtools.Testcase](t *testing.T, prefix string, list []T) {
 
 	t.Run(prefix, func(t *testing.T) {
 		for _, tc := range list {
 			t.Run(tc.Name(), func(t *testing.T) {
 				testtools.RunTestcase(t, tc, totalSuite)
+			})
+		}
+	})
+}
+
+func runTestListGnark[T testtools.Testcase](t *testing.T, prefix string, list []T) {
+
+	t.Run(prefix, func(t *testing.T) {
+		for _, tc := range list {
+			t.Run(tc.Name(), func(t *testing.T) {
+				testtools.RunTestShouldPassWithGnark(t, tc, totalSuite)
 			})
 		}
 	})

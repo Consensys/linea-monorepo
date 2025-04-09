@@ -33,6 +33,8 @@ type Input struct {
 
 type Settings struct {
 	MaxNbInstance256, MaxNbInstance4096 int
+	NbInstancesPerCircuitModexp256      int
+	NbInstancesPerCircuitModexp4096     int
 }
 
 func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings) Input {

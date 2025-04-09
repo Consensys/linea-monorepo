@@ -135,6 +135,6 @@ func (ctx *isZeroCtx) Run(run *wizard.ProverRuntime) {
 		isZero = smartvectors.Mul(isZero, mask)
 	}
 
-	run.AssignColumn(ctx.invOrZero.GetColID(), invOrZero)
-	run.AssignColumn(ctx.isZero.GetColID(), isZero)
+	run.AssignColumn(ctx.invOrZero.GetColID(), invOrZero, wizard.DisableAssignmentSizeReduction)
+	run.AssignColumn(ctx.isZero.GetColID(), isZero, wizard.DisableAssignmentSizeReduction)
 }

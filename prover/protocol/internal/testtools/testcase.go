@@ -3,6 +3,9 @@ package testtools
 import (
 	"testing"
 
+	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/test"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -24,6 +27,18 @@ type AnonymousTestcase struct {
 	MustFailFlag bool
 }
 
+// verifierCircuit is a [frontend.Circuit] implementation that only verifies
+// a wizard proof. It is used to cover the Plonk in wizard cases.
+type verifierCircuit struct {
+	C *wizard.VerifierCircuit
+}
+
+// Define implements the [frontend.Circuit] interface.
+func (c *verifierCircuit) Define(api frontend.API) error {
+	c.C.Verify(api)
+	return nil
+}
+
 // RunTestcase compiles and runs a testcase using the provided compilation
 // suite. The function will attempt to run the prover and verify a proof
 // then it will either succeed of fail the test depending on the requirements
@@ -42,6 +57,31 @@ func RunTestcase(t *testing.T, tc Testcase, suite []func(comp *wizard.CompiledIO
 
 	if !tc.MustFail() {
 		runTestShouldPass(t, comp, tc.Assign)
+	}
+}
+
+// RunTestShouldPassWithGnark executes a test case expecting it to pass using
+// the gnark verifier circuit in place of the normal verifier.
+func RunTestShouldPassWithGnark(t *testing.T, tc Testcase, suite []func(comp *wizard.CompiledIOP)) {
+
+	var (
+		define = func(b *wizard.Builder) {
+			tc.Define(b.CompiledIOP)
+		}
+
+		comp    = wizard.Compile(define, suite...)
+		proof   = wizard.Prove(comp, tc.Assign)
+		circuit = &verifierCircuit{
+			C: wizard.AllocateWizardCircuit(comp, comp.NumRounds()),
+		}
+		assignment = &verifierCircuit{
+			C: wizard.AssignVerifierCircuit(comp, proof, comp.NumRounds()),
+		}
+		solveErr = test.IsSolved(circuit, assignment, ecc.BLS12_377.ScalarField())
+	)
+
+	if solveErr != nil {
+		t.Fatal(solveErr)
 	}
 }
 

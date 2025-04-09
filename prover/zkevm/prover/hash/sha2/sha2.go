@@ -13,12 +13,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 )
 
-const (
-	maxNbSha2BlockPerCircuitZkevm = 10
-)
-
 type Settings struct {
-	MaxNumSha2F int
+	MaxNumSha2F                    int
+	NbInstancesPerCircuitSha2Block int
 }
 
 // Sha2SingleProviderInput stores the inputs for [newSha2SingleProvider]
@@ -114,8 +111,8 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 		// this ensures the correctness of the block hashing
 		cSha2Inp = &sha2BlocksInputs{
 			Name:                 "SHA2_OVER_BLOCK",
-			MaxNbBlockPerCirc:    maxNbSha2BlockPerCircuitZkevm,
-			MaxNbCircuit:         utils.DivCeil(maxNumSha2F, maxNbSha2BlockPerCircuitZkevm),
+			MaxNbBlockPerCirc:    inp.NbInstancesPerCircuitSha2Block,
+			MaxNbCircuit:         utils.DivCeil(maxNumSha2F, inp.NbInstancesPerCircuitSha2Block),
 			PackedUint32:         packing.Repacked.Lanes,
 			Selector:             packing.Repacked.IsLaneActive,
 			IsFirstLaneOfNewHash: packing.Repacked.IsFirstLaneOfNewHash,
