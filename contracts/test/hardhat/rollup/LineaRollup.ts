@@ -494,7 +494,6 @@ describe("Linea Rollup contract", () => {
         .submitDataAsCalldata(DATA_ONE, prevShnarf, expectedShnarf, { gasLimit: 30_000_000 });
 
       const [dataOneCopy] = generateCallDataSubmission(0, 1);
-      dataOneCopy.endBlockNumber = 234253242n;
 
       const submitDataCall = lineaRollup
         .connect(operator)
@@ -726,7 +725,7 @@ describe("Linea Rollup contract", () => {
 
       const upgradedContract = await newLineaRollup.waitForDeployment();
 
-      await upgradedContract.setFallbackOperator(forwardingProxyAddress);
+      await upgradedContract.setFallbackOperatorManually(forwardingProxyAddress);
 
       // Grants deployed callforwarding proxy as operator
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
