@@ -167,12 +167,12 @@ export const test = metaMaskFixtures(setup).extend<{
       ) {
         await page.waitForTimeout(POLLING_INTERVAL);
       }
-      // const notificationPage = metamask.page
-      //   .context()
-      //   .pages()
-      //   .find((page) => page.url().includes(notificationPageUrl)) as Page;
-      // await notificationPage.waitForLoadState("domcontentloaded", { timeout: PAGE_TIMEOUT });
-      // await notificationPage.waitForLoadState("networkidle", { timeout: PAGE_TIMEOUT });
+      const notificationPage = metamask.page
+        .context()
+        .pages()
+        .find((page) => page.url().includes(notificationPageUrl)) as Page;
+      await notificationPage.waitForLoadState("domcontentloaded", { timeout: PAGE_TIMEOUT });
+      await notificationPage.waitForLoadState("networkidle", { timeout: PAGE_TIMEOUT });
       await metamask.page.reload();
       await metamask.page.waitForLoadState("domcontentloaded", { timeout: PAGE_TIMEOUT });
       await metamask.page.waitForLoadState("networkidle", { timeout: PAGE_TIMEOUT });
