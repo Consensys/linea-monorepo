@@ -60,11 +60,12 @@ func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
 
 // A gnark circuit version of univariate eval params
 type GnarkUnivariateEvalParams struct {
-	BaseX  frontend.Variable
-	BaseYs []frontend.Variable
-	ExtX   gnarkfext.Variable
-	ExtYs  []gnarkfext.Variable
-	IsBase bool
+	BaseX frontend.Variable
+	ExtX  gnarkfext.Variable
+	// isBaseX is true if the x value is in the base field, false otherwise
+	IsBaseX bool
+	BaseYs  []frontend.Variable
+	ExtYs   []gnarkfext.Variable
 }
 
 func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {

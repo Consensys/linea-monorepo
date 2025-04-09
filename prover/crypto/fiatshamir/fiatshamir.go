@@ -1,6 +1,7 @@
 package fiatshamir
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math"
 
 	"github.com/consensys/gnark-crypto/hash"
@@ -83,6 +84,64 @@ func (fs *State) Update(vec ...field.Element) {
 	fs.TranscriptSize += len(vec)
 }
 
+func (fs *State) UpdateExt(vec ...fext.Element) {
+	if len(vec) == 0 {
+		return
+	}
+
+	// Marshal the elements in a vector of bytes
+	for _, f := range vec {
+		bytes := f.Bytes()
+		_, err := fs.hasher.Write(bytes[:])
+		if err != nil {
+			// This normally happens if the bytes that we provide do not represent
+			// a field element. In our case, the bytes are computed by ourselves
+			// from the caller's field element so the error is not possible. Hence,
+			// the assertion.
+			panic("Hashing is not supposed to fail")
+		}
+	}
+
+	// Increase the transcript counter
+	fs.TranscriptSize += len(vec)
+}
+
+func (fs *State) UpdateMixed(vec ...interface{}) {
+	if len(vec) == 0 {
+		return
+	}
+
+	actualSize := 0
+	// Marshal the elements in a vector of bytes
+	for _, f := range vec {
+		var err error
+		if elem, isBase := f.(field.Element); isBase {
+			// we are using a base field element
+			bytes := elem.Bytes()
+			_, err = fs.hasher.Write(bytes[:])
+			actualSize++
+		} else {
+			// we are using an extension field element
+			fextElem := f.(fext.Element)
+			bytes := fextElem.Bytes()
+			_, err = fs.hasher.Write(bytes[:])
+			// make sure to increase the transcript counter by the extension degree
+			actualSize += fext.ExtensionDegree
+		}
+
+		if err != nil {
+			// This normally happens if the bytes that we provide do not represent
+			// a field element. In our case, the bytes are computed by ourselves
+			// from the caller's field element so the error is not possible. Hence,
+			// the assertion.
+			panic("Hashing is not supposed to fail")
+		}
+	}
+
+	// Increase the transcript counter
+	fs.TranscriptSize += actualSize
+}
+
 // UpdateVec updates the Fiat-Shamir state by passing one of more slices of
 // field elements.
 func (fs *State) UpdateVec(vecs ...[]field.Element) {
@@ -95,6 +154,26 @@ func (fs *State) UpdateVec(vecs ...[]field.Element) {
 	}
 }
 
+func (fs *State) UpdateVecExt(vecs ...[]fext.Element) {
+	if len(vecs) == 0 {
+		return
+	}
+
+	for i := range vecs {
+		fs.UpdateExt(vecs[i]...)
+	}
+}
+
+func (fs *State) UpdateVecMixed(vecs ...[]interface{}) {
+	if len(vecs) == 0 {
+		return
+	}
+
+	for i := range vecs {
+		fs.UpdateMixed(vecs[i]...)
+	}
+}
+
 // UpdateSV updates the FS state with a smart-vector. No-op if the smart-vector
 // has a length of zero.
 func (fs *State) UpdateSV(sv smartvectors.SmartVector) {
@@ -102,9 +181,17 @@ func (fs *State) UpdateSV(sv smartvectors.SmartVector) {
 		return
 	}
 
-	vec := make([]field.Element, sv.Len())
-	sv.WriteInSlice(vec)
-	fs.Update(vec...)
+	if _, isBaseErr := sv.GetBase(0); isBaseErr == nil {
+		// we are dealing with a smartvector over base field elements
+		vec := make([]field.Element, sv.Len())
+		sv.WriteInSlice(vec)
+		fs.Update(vec...)
+	} else { // we are dealing with a smartvector with extension field elements
+		vec := make([]fext.Element, sv.Len())
+		sv.WriteInSliceExt(vec)
+		fs.UpdateExt(vec...)
+	}
+
 }
 
 // RandomField generates and returns a single field element from the Fiat-Shamir
@@ -118,6 +205,12 @@ func (fs *State) RandomField() field.Element {
 	// increase the counter by one
 	fs.NumCoinGenerated++
 	return res
+}
+
+func (fs *State) RandomFieldExt() fext.Element {
+	f1 := fs.RandomField()
+	f2 := fs.RandomField()
+	return fext.NewFromBaseElements(f1, f2)
 }
 
 // RandomManyIntegers returns a list of challenge small integers. That is, a
