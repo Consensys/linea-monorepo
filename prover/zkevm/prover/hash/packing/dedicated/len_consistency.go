@@ -113,10 +113,15 @@ func (lc *lengthConsistency) Run(run *wizard.ProverRuntime) {
 
 	// populate bytesLen
 	for j := 0; j < numCol; j++ {
-		tableLen[j] = lc.inp.TableLen[j].GetColAssignment(run)
 
-		if o, e := smartvectors.PaddingOrientationOf(tableLen[j]); e != nil || o <= 0 {
-			panic("tableLen were expected to be padded on the right, not on the left")
+		tableLen[j] = lc.inp.TableLen[j].GetColAssignment(run)
+		startPlainRange, stopPlainRange := smartvectors.CoWindowRange(tableLen[j])
+
+		if startPlainRange != 0 {
+			utils.Panic(
+				"tableLen were expected to be padded on the right, not on the left, start: %v, stop: %v len: %v",
+				startPlainRange, stopPlainRange, tableLen[j].Len(),
+			)
 		}
 
 		for tl := range tableLen[j].IterateSkipPadding() {

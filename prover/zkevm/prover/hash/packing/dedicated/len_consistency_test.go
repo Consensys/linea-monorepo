@@ -50,6 +50,7 @@ func makeTestCaseLengthConsistency() (
 	}
 	return define, prover
 }
+
 func TestLengthConsistency(t *testing.T) {
 	define, prover := makeTestCaseLengthConsistency()
 	comp := wizard.Compile(define, dummy.Compile)

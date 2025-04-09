@@ -247,12 +247,12 @@ func (decomposed *decomposition) assignMainColumns(run *wizard.ProverRuntime) {
 
 		// These are needed for sanity-checking the implementation which
 		// crucially relies on the fact that the input vectors are post-padded.
-		orientCleamLimbs, eOCL = smartvectors.PaddingOrientationOf(cleanLimbs)
-		orientNByte, eONB      = smartvectors.PaddingOrientationOf(nByte)
+		cleanLimbsStartRange, _ = smartvectors.CoWindowRange(cleanLimbs)
+		nByteStartRange, _      = smartvectors.CoWindowRange(nByte)
 	)
 
-	if orientCleamLimbs <= 0 || orientNByte <= 0 || eOCL != nil || eONB != nil {
-		panic("the implementation relies on the fact that the columns are post-padded, but they are pre-padded")
+	if cleanLimbsStartRange > 0 || nByteStartRange > 0 {
+		utils.Panic("the implementation relies on the fact that the input vectors are post-padded, but their range start after 0, range-start:[%v %v]", cleanLimbsStartRange, nByteStartRange)
 	}
 
 	// assign row-by-row
