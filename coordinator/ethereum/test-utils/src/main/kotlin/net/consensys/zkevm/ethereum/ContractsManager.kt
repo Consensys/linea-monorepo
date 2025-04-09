@@ -1,8 +1,8 @@
 package net.consensys.zkevm.ethereum
 
-import build.linea.contract.l1.LineaContractVersion
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.addFileSource
+import linea.contract.l1.LineaContractVersion
 import linea.kotlin.gwei
 import net.consensys.linea.contract.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.EIP1559GasProvider
