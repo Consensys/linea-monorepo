@@ -9,8 +9,8 @@ import { getAccountsFixture, getRoleAddressesFixture } from "./";
 import {
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   FALLBACK_OPERATOR_ADDRESS,
-  HARDHAT_CHAIN_ID,
   INITIAL_WITHDRAW_LIMIT,
+  LINEA_MAINNET_CHAIN_ID,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   MAX_GAS_LIMIT,
   MAX_INPUT_LENGTH_LIMIT,
@@ -81,7 +81,7 @@ export async function deployForcedTransactionGatewayFixture() {
 
   const forcedTransactionGateway = (await forcedTransactionGatewayFactory.deploy(
     await lineaRollup.getAddress(),
-    HARDHAT_CHAIN_ID,
+    LINEA_MAINNET_CHAIN_ID,
     THREE_DAYS_IN_SECONDS,
     MAX_GAS_LIMIT,
     MAX_INPUT_LENGTH_LIMIT,

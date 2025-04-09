@@ -94,13 +94,13 @@ contract LineaRollup is
   address public fallbackOperator;
 
   /// @dev The unique forced transaction number.
-  uint256 private nextForcedTransactionNumber;
+  uint256 public nextForcedTransactionNumber;
 
   /// @dev The expected L2 block numbers for forced transactions.
-  mapping(uint256 forcedTransactionNumber => uint256 l2BlockNumber) forcedTransactionL2BlockNumbers;
+  mapping(uint256 forcedTransactionNumber => uint256 l2BlockNumber) public forcedTransactionL2BlockNumbers;
 
   /// @dev The rolling hash for a forced transaction.
-  mapping(uint256 forcedTransactionNumber => bytes32 rollingHash) forcedTransactionRollingHashes;
+  mapping(uint256 forcedTransactionNumber => bytes32 rollingHash) public forcedTransactionRollingHashes;
 
   /// @dev Total contract storage is 14 slots.
 
@@ -208,12 +208,18 @@ contract LineaRollup is
       }
     }
 
+    if (forcedTransactionL2BlockNumbers[_forcedTransactionNumber] != 0) {
+      revert ForcedTransactionExistsForTransactionNumber(_forcedTransactionNumber);
+    }
+
     forcedTransactionRollingHashes[_forcedTransactionNumber] = _forcedTransactionRollingHash;
     forcedTransactionL2BlockNumbers[_forcedTransactionNumber] = _forcedL2BlockNumber;
+    nextForcedTransactionNumber = _forcedTransactionNumber + 1;
   }
 
   function getLineaRollupProvidedFields()
     external
+    view
     returns (
       bytes32 finalizedState,
       uint256 forcedTransactionNumber,
@@ -222,7 +228,7 @@ contract LineaRollup is
     )
   {
     unchecked {
-      forcedTransactionNumber = ++nextForcedTransactionNumber;
+      forcedTransactionNumber = nextForcedTransactionNumber;
       finalizedState = currentFinalizedState;
       previousForcedTransactionRollingHash = forcedTransactionRollingHashes[forcedTransactionNumber - 1];
       l2BlockNumber = currentL2BlockNumber;

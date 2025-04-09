@@ -169,6 +169,7 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     LINEA_ROLLUP.storeForcedTransaction(forcedTransactionNumber, expectedBlockNumber, forcedTransactionRollingHash);
 
     emit ForcedTransactionAdded(
+      forcedTransactionNumber,
       signer,
       expectedBlockNumber,
       forcedTransactionRollingHash,

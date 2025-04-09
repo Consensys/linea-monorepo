@@ -3,6 +3,8 @@ pragma solidity ^0.8.28;
 
 interface IAcceptForcedTransactions {
   error ForcedTransactionExistsForBlock(uint256 blockNumber);
+  error ForcedTransactionExistsForTransactionNumber(uint256 forcedTransactionNumber);
+
   function getLineaRollupProvidedFields()
     external
     returns (

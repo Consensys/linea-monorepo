@@ -32,6 +32,7 @@ interface IForcedTransactionGateway {
   }
 
   event ForcedTransactionAdded(
+    uint256 indexed forcedTransactionNumber,
     address from,
     uint256 expectedBlockNumber,
     bytes32 forcedTransactionRollingHash,
