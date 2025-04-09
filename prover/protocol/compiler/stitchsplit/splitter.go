@@ -12,9 +12,34 @@ type deleteColumnsProverAction struct {
 	splittings []SummerizedAlliances
 }
 
+// func (a *deleteColumnsProverAction) Run(run *wizard.ProverRuntime) {
+// 	for round := range a.splittings {
+// 		for bigCol := range a.splittings[round].ByBigCol {
+// 			run.Columns.TryDel(bigCol)
+// 		}
+// 	}
+// }
+
 func (a *deleteColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	for round := range a.splittings {
 		for bigCol := range a.splittings[round].ByBigCol {
+			// Get the original column assignment
+			if run.Columns.Exists(bigCol) {
+				originalCol := run.Columns.MustGet(bigCol)
+				// Compute and assign sub-columns (example logic)
+				for _, subCol := range a.splittings[round].ByBigCol[bigCol] { // Adjust based on actual structure
+					size := run.Spec.Columns.GetHandle(subCol.GetColID()).Size()
+					startIdx := 0 // Adjust based on sub-column index (e.g., 0 for _0_OVER_2)
+					if subCol.GetColID() == ifaces.ColID("C_SUBSLICE_0_OVER_2") {
+						startIdx = 0
+					} else if subCol.GetColID() == ifaces.ColID("C_SUBSLICE_1_OVER_2") {
+						startIdx = size
+					}
+					subVec := originalCol.SubVector(startIdx, startIdx+size)
+					run.Columns.InsertNew(subCol.GetColID(), subVec)
+				}
+			}
+			// Now delete the original column
 			run.Columns.TryDel(bigCol)
 		}
 	}

@@ -44,6 +44,7 @@ var _ Runtime = &ProverRuntime{}
 // over multiple interaction-rounds between the prover and the verifier. This
 // is a behavior that we intend to deprecate and it should not be used by the
 // prover as this tends to create convolutions in the runtime of the prover.
+
 type MainProverStep func(assi *ProverRuntime)
 
 // ProverRuntime collects the assignment of all the items with which the prover
@@ -143,6 +144,9 @@ type ProverRuntime struct {
 
 	// PerformanceLogs stores performance metrics for each major operation
 	PerformanceLogs []*profiling.PerformanceLog
+
+	// High-level prover function
+	HighLevelProver MainProverStep
 }
 
 // Prove is the top-level function that runs the Prover on the user's side. It
@@ -165,7 +169,7 @@ type ProverRuntime struct {
 // auto-detection adds little value and adds a lot of convolution especially
 // when the specified protocol is complicated and involves multiple multi-rounds
 // sub-protocols that runs independently.
-func Prove(c *CompiledIOP, highLevelprover func(*ProverRuntime)) Proof {
+func Prove(c *CompiledIOP, highLevelprover MainProverStep) Proof {
 	run := RunProver(c, highLevelprover)
 
 	// Write the performance logs to the csv file is the performance monitor is active
@@ -180,15 +184,22 @@ func Prove(c *CompiledIOP, highLevelprover func(*ProverRuntime)) Proof {
 
 // RunProver initializes a [ProverRuntime], runs the prover and returns the final
 // runtime. It does not returns the [Proof] however.
-func RunProver(c *CompiledIOP, highLevelprover func(*ProverRuntime)) *ProverRuntime {
+func RunProver(c *CompiledIOP, highLevelprover MainProverStep) *ProverRuntime {
 	return RunProverUntilRound(c, highLevelprover, c.NumRounds())
 }
 
 // RunProverUntilRound runs the prover until the specified round
-func RunProverUntilRound(c *CompiledIOP, highLevelprover func(*ProverRuntime), round int) *ProverRuntime {
-
+// We wrap highLevelProver with a struct that implements the prover action interface
+func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round int) *ProverRuntime {
 	runtime := c.createProver()
-	runtime.exec("high-level-prover", highLevelprover)
+	runtime.HighLevelProver = highLevelProver
+
+	// Execute the high-level prover as a ProverAction
+	if runtime.HighLevelProver != nil {
+		runtime.exec("high-level-prover", mainProverStepWrapper{step: highLevelProver})
+	}
+
+	// Run sub-prover steps for the initial round
 	runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
 
 	for runtime.currRound+1 < round {
@@ -199,31 +210,55 @@ func RunProverUntilRound(c *CompiledIOP, highLevelprover func(*ProverRuntime), r
 	return &runtime
 }
 
+// func RunProverUntilRound(c *CompiledIOP, highLevelprover MainProverStep, round int) *ProverRuntime {
+// 	runtime := c.createProver()
+// 	runtime.exec("high-level-prover", highLevelprover)
+// 	runtime.exec(fmt.Sprintf("prover-steps-round%d", runtime.currRound), runtime.runProverSteps)
+
+// 	for runtime.currRound+1 < round {
+// 		runtime.exec(fmt.Sprintf("next-after-round-%d", runtime.currRound), runtime.goNextRound)
+// 		runtime.exec(fmt.Sprintf("prover-steps-round-%d", runtime.currRound), runtime.runProverSteps)
+// 	}
+
+// 	return &runtime
+// }
+
 // ExtractProof extracts the proof from a [ProverRuntime]. If the runtime has
 // been obtained via a [RunProverUntilRound], then it may be the case that
 // some columns have not been assigned at all. Those won't be included in the
 // returned proof.
 func (run *ProverRuntime) ExtractProof() Proof {
+	logrus.Info("Extracting proof before collection")
 	messages := collection.NewMapping[ifaces.ColID, ifaces.ColAssignment]()
+	logrus.Info("Extracting proof after collection")
 
 	for _, name := range run.Spec.Columns.AllKeysProof() {
+		logrus.Infof("Processing column: %v", name)
 
 		cols := run.Spec.Columns.GetHandle(name)
+		logrus.Infof("Column %v has round %v", name, run.currRound)
 		if run.currRound < cols.Round() {
+			logrus.Infof("Skipping column %v because current round %v is less than column round %v", name, run.currRound, cols.Round())
 			continue
 		}
 
 		messageValue := run.Columns.MustGet(name)
+		logrus.Infof("Retrieved column assignment for %v", name)
 		messages.InsertNew(name, messageValue)
+		logrus.Infof("Inserted column assignment for %v into messages", name)
 	}
 
 	queriesParams := collection.NewMapping[ifaces.QueryID, ifaces.QueryParams]()
 	for round := 0; round <= run.currRound; round++ {
+		logrus.Infof("Processing queries for round %v", round)
 		for _, name := range run.Spec.QueriesParams.AllKeysAt(round) {
+			logrus.Infof("Processing query: %v", name)
 			queriesParams.InsertNew(name, run.QueriesParams.MustGet(name))
+			logrus.Infof("Inserted query params for %v into queriesParams", name)
 		}
 	}
 
+	logrus.Info("Proof extraction completed")
 	return Proof{
 		Messages:      messages,
 		QueriesParams: queriesParams,
@@ -927,12 +962,10 @@ func (runtime *ProverRuntime) exec(name string, action any) {
 		switch a := action.(type) {
 		case func():
 			a()
-		case func(*ProverRuntime):
-			a(runtime)
 		case ProverAction:
 			a.Run(runtime)
 		default:
-			panic("unsupported action type")
+			utils.Panic("wizard.exec: unsupported action type: got %T; expected one of: func(), ProverAction", action)
 		}
 	}
 

@@ -10,6 +10,16 @@ type ProverAction interface {
 	Run(*ProverRuntime)
 }
 
+// mainProverStepWrapper adapts a  MainProverStep to the ProverAction interface.
+type mainProverStepWrapper struct {
+	step func(*ProverRuntime)
+}
+
+// Run implements the ProverAction interface for MainProverStep.
+func (w mainProverStepWrapper) Run(run *ProverRuntime) {
+	w.step(run)
+}
+
 // VerifierAction represents an action to be performed by the verifier of the
 // protocol. Usually, this is used to represent verifier checks. They can be
 // registered via [CompiledIOP.RegisterVerifierAction].
