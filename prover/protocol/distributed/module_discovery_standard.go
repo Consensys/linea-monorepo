@@ -71,9 +71,10 @@ type QueryBasedModule struct {
 	// present module.
 	nbInstancesOfPlonkQuery int
 	// nbSegmentCache caches the results of SegmentBoundaries
-	nbSegmentCache map[unsafe.Pointer][2]int
-	predivision    int
-	hasPrecomputed bool
+	nbSegmentCache      map[unsafe.Pointer][2]int
+	nbSegmentCacheMutex *sync.Mutex
+	predivision         int
+	hasPrecomputed      bool
 }
 
 // NewQueryBasedDiscoverer initializes a new Discoverer.
@@ -343,11 +344,11 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 	for _, qName := range comp.QueriesNoParams.AllKeys() {
 
-		queryData := comp.QueriesNoParams.Data(qName)
-
 		if comp.QueriesNoParams.IsIgnored(qName) {
 			continue
 		}
+
+		queryData := comp.QueriesNoParams.Data(qName)
 
 		var (
 			// toGroup lists sets of columns who need to be grouped.
@@ -504,8 +505,10 @@ func (disc *QueryBasedModuleDiscoverer) CreateModule(columns []column.Natural) *
 	}
 
 	module := &QueryBasedModule{
-		moduleName: ModuleName(fmt.Sprintf("Module_%d_%s", len(disc.modules), colID)),
-		ds:         utils.NewDisjointSetFromList(columns),
+		moduleName:          ModuleName(fmt.Sprintf("Module_%d_%s", len(disc.modules), colID)),
+		ds:                  utils.NewDisjointSetFromList(columns),
+		nbSegmentCache:      make(map[unsafe.Pointer][2]int),
+		nbSegmentCacheMutex: &sync.Mutex{},
 	}
 
 	for i := 0; i < len(columns); i++ {
@@ -606,13 +609,12 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 // function will return 0, 0 if all columns in the module are constants.
 func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmentSize int) (int, int) {
 
-	if mod.nbSegmentCache == nil {
-		mod.nbSegmentCache = map[unsafe.Pointer][2]int{}
-	}
-
+	mod.nbSegmentCacheMutex.Lock()
 	if res, ok := mod.nbSegmentCache[unsafe.Pointer(run)]; ok {
+		mod.nbSegmentCacheMutex.Unlock()
 		return res[0], res[1]
 	}
+	mod.nbSegmentCacheMutex.Unlock()
 
 	var (
 		resMaxDensity     = 0
@@ -677,17 +679,23 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 			utils.Panic("column is neither left nor right padded, col=%v", col.ID)
 		}
 
-		resMaxDensity = max(resMaxDensity, density)
+		if density > resMaxDensity {
+			resMaxDensity = density
+		}
 	}
 
 	if !areAnyNonRegular {
 		start, stop := 0, size
+		mod.nbSegmentCacheMutex.Lock()
+		defer mod.nbSegmentCacheMutex.Unlock()
 		mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
 		return start, stop
 	}
 
 	if resMaxDensity == 0 {
 		start, stop := 0, 0
+		mod.nbSegmentCacheMutex.Lock()
+		defer mod.nbSegmentCacheMutex.Unlock()
 		mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
 		return start, stop
 	}
@@ -703,12 +711,16 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 
 	if areAnyLeftPadded {
 		start, stop := 0, totalSegmentedArea
+		mod.nbSegmentCacheMutex.Lock()
+		defer mod.nbSegmentCacheMutex.Unlock()
 		mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
 		return start, stop
 	}
 
 	if areAnyRightPadded {
 		start, stop := size-totalSegmentedArea, size
+		mod.nbSegmentCacheMutex.Lock()
+		defer mod.nbSegmentCacheMutex.Unlock()
 		mod.nbSegmentCache[unsafe.Pointer(run)] = [2]int{start, stop}
 		return start, stop
 	}

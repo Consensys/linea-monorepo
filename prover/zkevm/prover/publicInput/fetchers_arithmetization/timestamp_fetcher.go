@@ -263,7 +263,7 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher
 		relBlock      = make([]field.Element, size)
 		data          = make([]field.Element, size)
 		filterFetched = make([]field.Element, size)
-		filterArith   = make([]field.Element, size)
+		filterArith   = make([]field.Element, stop-start)
 
 		// counter is used to populate filter.Data and will increment every
 		// time we find a new timestamp
@@ -294,7 +294,7 @@ func AssignTimestampFetcher(run *wizard.ProverRuntime, fetcher *TimestampFetcher
 			filterFetched[counter].SetOne()
 			relBlock[counter].Set(&fetchedRelBlock)
 			// update the arithmetization filter
-			filterArith[i].SetOne()
+			filterArith[i-start].SetOne()
 
 			data[counter].Set(&timestamp)
 			counter++

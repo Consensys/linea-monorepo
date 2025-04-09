@@ -197,14 +197,14 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 		}
 
 		var (
-			newSize     = NewSizeOfColumn(disc, col)
-			start, stop = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
+			newSize         = NewSizeOfColumn(disc, col)
+			start, stop     = disc.SegmentBoundaryOf(runtime, col.(column.Natural))
+			nbSegmentForCol = utils.DivExact(stop-start, newSize)
 		)
 
-		if utils.DivExact(stop-start, newSize) > nbSegmentModule {
-			nbSegmentModule = utils.DivExact(stop-start, newSize)
+		if nbSegmentForCol >= nbSegmentModule {
+			nbSegmentModule = nbSegmentForCol
 		}
-
 	}
 
 	if nbSegmentModule == -1 {
