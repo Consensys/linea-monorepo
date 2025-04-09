@@ -47,6 +47,17 @@ func MerkleProofCheckWithReuse(
 	merkleProofCheck(comp, name, depth, numProofs, proofs, roots, leaves, pos, UseNextMerkleProof, IsActive, counter, true)
 }
 
+type merkleProofProverAction struct {
+	cm     *ComputeMod
+	leaves ifaces.Column
+	pos    ifaces.Column
+}
+
+func (a *merkleProofProverAction) Run(run *wizard.ProverRuntime) {
+	leaves := a.leaves.GetColAssignment(run)
+	pos := a.pos.GetColAssignment(run)
+	a.cm.assign(run, leaves, pos)
+}
 func merkleProofCheck(
 	// compiled IOP
 	comp *wizard.CompiledIOP,
@@ -104,10 +115,10 @@ func merkleProofCheck(
 	}
 
 	// assigns the compute module
-	comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-		leaves := leaves.GetColAssignment(run)
-		pos := pos.GetColAssignment(run)
-		cm.assign(run, leaves, pos)
+	comp.RegisterProverAction(round, &merkleProofProverAction{
+		cm:     &cm,
+		leaves: leaves,
+		pos:    pos,
 	})
 }
 
