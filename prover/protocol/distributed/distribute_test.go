@@ -62,7 +62,7 @@ func TestDistributedWizard(t *testing.T) {
 // dummy mode. Meaning without actual compilation.
 func TestDistributedWizardLogic(t *testing.T) {
 
-	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
@@ -256,7 +256,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 // TestBenchDistributedWizard runs the distributed wizard will all the compilations
 func TestBenchDistributedWizard(t *testing.T) {
 
-	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
