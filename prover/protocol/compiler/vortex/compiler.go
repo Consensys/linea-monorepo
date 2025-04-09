@@ -96,7 +96,6 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// registers all the commitments
 		for round := 0; round <= lastRound; round++ {
 			ctx.compileRound(round)
-			// comp.SubProvers.AppendToInner(round, ctx.AssignColumn(round))
 			comp.RegisterProverAction(round, &vortexProverAction{
 				ctx: ctx,
 				fn:  ctx.AssignColumn(round),
@@ -111,8 +110,6 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		ctx.registerOpeningProof(lastRound)
 
 		// Registers the prover and verifier steps
-		//comp.SubProvers.AppendToInner(lastRound+1, ctx.ComputeLinearComb)
-		//comp.SubProvers.AppendToInner(lastRound+2, ctx.OpenSelectedColumns)
 		comp.RegisterProverAction(lastRound+1, &vortexProverAction{
 			ctx: ctx,
 			fn:  ctx.ComputeLinearComb,
@@ -124,9 +121,6 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// This is separated from GnarkVerify because, when doing full-recursion
 		// , we want to recurse this verifier step but not [ctx.Verify] which is
 		// already handled by the self-recursion mechanism.
-
-		// comp.InsertVerifier(lastRound, ctx.explicitPublicEvaluation, ctx.gnarkExplicitPublicEvaluation)
-		// comp.InsertVerifier(lastRound+2, ctx.Verify, ctx.GnarkVerify)
 		comp.RegisterVerifierAction(lastRound, &vortexVerifierAction{
 			ctx: ctx,
 		})
