@@ -23,11 +23,11 @@ type stitchingContext struct {
 	Stitchings []SummerizedAlliances
 }
 
-type deleteSubColumnsProverAction struct {
+type StichSubColumnsProverAction struct {
 	stitchings []SummerizedAlliances
 }
 
-func (a *deleteSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
+func (a *StichSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	for round := range a.stitchings {
 		for subCol := range a.stitchings[round].BySubCol {
 			run.Columns.TryDel(subCol)
@@ -46,7 +46,7 @@ func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 		ctx.constraints()
 
 		// it assigns the stitching columns and delete the assignment of the sub columns.
-		comp.RegisterProverAction(comp.NumRounds()-1, &deleteSubColumnsProverAction{
+		comp.RegisterProverAction(comp.NumRounds()-1, &StichSubColumnsProverAction{
 			stitchings: ctx.Stitchings,
 		})
 	}

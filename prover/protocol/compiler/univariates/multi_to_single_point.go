@@ -27,6 +27,27 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
 
+type mptsProverAction struct {
+	ctx mptsCtx
+	fn  func(*wizard.ProverRuntime)
+}
+
+func (a *mptsProverAction) Run(run *wizard.ProverRuntime) {
+	a.fn(run)
+}
+
+type mptsVerifierAction struct {
+	ctx mptsCtx
+}
+
+func (a *mptsVerifierAction) Run(run wizard.Runtime) error {
+	return a.ctx.verifier(run)
+}
+
+func (a *mptsVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+	a.ctx.gnarkVerify(api, c)
+}
+
 /*
 Reduce all the univariate queries into a unique single point evaluation
 
@@ -64,15 +85,29 @@ func MultiPointToSinglePoint(targetSize int) func(comp *wizard.CompiledIOP) {
 		}
 
 		// Specify how to compute the quotient
-		comp.SubProvers.AppendToInner(ctx.numRound, ctx.accumulateQuotients)
+		// comp.SubProvers.AppendToInner(ctx.numRound, ctx.accumulateQuotients)
+		comp.RegisterProverAction(ctx.numRound, &mptsProverAction{
+			ctx: ctx,
+			fn:  ctx.accumulateQuotients,
+		})
+
 		// Evaluation point for the new expression
 		comp.InsertCoin(ctx.numRound+1, ctx.EvaluationPoint, coin.Field)
 		// Common single evaluation
 		comp.InsertUnivariate(ctx.numRound+1, ctx.EvaluationQuery, append(ctx.polys, ctx.Quotients...))
+
 		// Computation of the alleged values
-		comp.SubProvers.AppendToInner(ctx.numRound+1, ctx.claimEvaluation)
+		// comp.SubProvers.AppendToInner(ctx.numRound+1, ctx.claimEvaluation)
+		comp.RegisterProverAction(ctx.numRound+1, &mptsProverAction{
+			ctx: ctx,
+			fn:  ctx.claimEvaluation,
+		})
+
 		// Consistency check
-		comp.InsertVerifier(ctx.numRound+1, ctx.verifier, ctx.gnarkVerify)
+		// comp.InsertVerifier(ctx.numRound+1, ctx.verifier, ctx.gnarkVerify)
+		comp.RegisterVerifierAction(ctx.numRound+1, &mptsVerifierAction{
+			ctx: ctx,
+		})
 	}
 }
 

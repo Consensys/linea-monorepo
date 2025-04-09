@@ -154,7 +154,6 @@ func (ctx *splitterContext) ScanSplitCommit() {
 			continue
 		}
 
-		// ctx.comp.SubProvers.AppendToInner(round, ctx.Prove(round))
 		ctx.comp.RegisterProverAction(round, &proveRoundProverAction{
 			ctx:   ctx,
 			round: round,
