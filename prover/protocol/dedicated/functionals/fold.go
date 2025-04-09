@@ -66,20 +66,6 @@ func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDeg
 		logrus.Debugf("Unsafe, the coin is before the commitment : %v", foldedName)
 	}
 
-	// comp.SubProvers.AppendToInner(round, func(assi *wizard.ProverRuntime) {
-	// 	// We need to compute an assignment for "folded"
-	// 	h := h.GetColAssignment(assi) // overshadows the handle
-	// 	x := x.GetVal(assi)           // overshadows the accessor
-
-	// 	foldedVal := make([]field.Element, foldedSize)
-	// 	for i := range foldedVal {
-	// 		subH := h.SubVector(i*innerDegree, (i+1)*innerDegree)
-	// 		foldedVal[i] = smartvectors.EvalCoeff(subH, x)
-	// 	}
-
-	// 	assi.AssignColumn(foldedName, smartvectors.NewRegular(foldedVal))
-	// })
-
 	comp.RegisterProverAction(round, &foldProverAction{
 		h:           h,
 		x:           x,
@@ -98,17 +84,6 @@ func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDeg
 	verRound := utils.Max(outerCoinAcc.Round(), foldedEvalAcc.Round())
 
 	// Check that the two evaluations yield the same result
-	// comp.InsertVerifier(verRound, func(a wizard.Runtime) error {
-	// 	if foldedEvalAcc.GetVal(a) != hEvalAcc.GetVal(a) {
-	// 		return fmt.Errorf("verifier of folding failed %v", foldedName)
-	// 	}
-	// 	return nil
-	// }, func(api frontend.API, wvc wizard.GnarkRuntime) {
-	// 	c := foldedEvalAcc.GetFrontendVariable(api, wvc)
-	// 	c_ := hEvalAcc.GetFrontendVariable(api, wvc)
-	// 	api.AssertIsEqual(c, c_)
-	// })
-
 	comp.RegisterVerifierAction(verRound, &foldVerifierAction{
 		foldedEvalAcc: foldedEvalAcc,
 		hEvalAcc:      hEvalAcc,

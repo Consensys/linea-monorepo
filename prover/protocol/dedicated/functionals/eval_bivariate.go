@@ -138,32 +138,6 @@ func EvalCoeffBivariate(
 		hCom,
 	)
 
-	// comp.SubProvers.AppendToInner(maxRound, func(assi *wizard.ProverRuntime) {
-
-	// 	// Get the value of the coin and of pol
-	// 	x, yx_pow_1mk := x.GetVal(assi), yx_pow_1mk_acc.GetVal(assi)
-	// 	p := pCom.GetColAssignment(assi)
-
-	// 	// Now needs to evaluate the Horner poly
-	// 	h := make([]field.Element, length)
-	// 	h[length-1] = p.Get(length - 1)
-
-	// 	for i := length - 2; i >= 0; i-- {
-	// 		pi := p.Get(i)
-
-	// 		// Transition to a new "power of y"
-	// 		if (i+1)%nPowX == 0 {
-	// 			h[i].Mul(&h[i+1], &yx_pow_1mk).Add(&h[i], &pi)
-	// 			continue
-	// 		}
-
-	// 		h[i].Mul(&h[i+1], &x).Add(&h[i], &pi)
-	// 	}
-
-	// 	assi.AssignColumn(ifaces.ColIDf("%v_%v", name, EVAL_BIVARIATE_POLY), smartvectors.NewRegular(h))
-	// 	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
-	// })
-
 	comp.RegisterProverAction(maxRound, &evalBivariateProverAction{
 		name:     name,
 		pCom:     pCom,

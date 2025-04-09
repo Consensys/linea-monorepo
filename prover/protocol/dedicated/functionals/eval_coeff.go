@@ -83,25 +83,6 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 		hornerPoly,
 	)
 
-	// comp.SubProvers.AppendToInner(maxRound, func(assi *wizard.ProverRuntime) {
-
-	// 	// Get the value of the coin and of pol
-	// 	x := assi.GetRandomCoinField(x.Name)
-	// 	p := pol.GetColAssignment(assi)
-
-	// 	// Now needs to evaluate the Horner poly
-	// 	h := make([]field.Element, length)
-	// 	h[length-1] = p.Get(length - 1)
-
-	// 	for i := length - 2; i >= 0; i-- {
-	// 		pi := p.Get(i)
-	// 		h[i].Mul(&h[i+1], &x).Add(&h[i], &pi)
-	// 	}
-
-	// 	assi.AssignColumn(ifaces.ColIDf("%v_%v", name, EVAL_COEFF_POLY), smartvectors.NewRegular(h))
-	// 	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_FIXED_POINT_BEGIN), h[0])
-	// })
-
 	comp.RegisterProverAction(maxRound, &coeffEvalProverAction{
 		name:   name,
 		x:      x,

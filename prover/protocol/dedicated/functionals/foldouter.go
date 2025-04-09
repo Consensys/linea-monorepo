@@ -68,22 +68,6 @@ func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, out
 		logrus.Debugf("Unsafe, the coin is before the commitment : %v", foldedName)
 	}
 
-	// comp.SubProvers.AppendToInner(round, func(assi *wizard.ProverRuntime) {
-	// 	// We need to compute an assignment for "folded"
-	// 	h := h.GetColAssignment(assi) // overshadows the handle
-	// 	x := x.GetVal(assi)           // overshadows the accessor
-
-	// 	// Split h in "outerDegree" segments of size "innerDegree"
-	// 	innerChunks := make([]smartvectors.SmartVector, outerDegree)
-	// 	for i := range innerChunks {
-	// 		innerChunks[i] = h.SubVector(i*innerDegree, (i+1)*innerDegree)
-	// 	}
-
-	// 	// Assign the folding as the RLC of the chunks using powers of x
-	// 	foldedVal := smartvectors.PolyEval(innerChunks, x)
-	// 	assi.AssignColumn(foldedName, foldedVal)
-	// })
-
 	comp.RegisterProverAction(round, &foldOuterProverAction{
 		h:           h,
 		x:           x,
@@ -103,17 +87,6 @@ func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, out
 	verRound := utils.Max(innerCoinAcc.Round(), foldedEvalAcc.Round())
 
 	// Check that the two evaluations yield the same result
-	// comp.InsertVerifier(verRound, func(run wizard.Runtime) error {
-	// 	if foldedEvalAcc.GetVal(run) != hEvalAcc.GetVal(run) {
-	// 		return fmt.Errorf("verifier of folding failed %v", foldedName)
-	// 	}
-	// 	return nil
-	// }, func(api frontend.API, run wizard.GnarkRuntime) {
-	// 	c := foldedEvalAcc.GetFrontendVariable(api, run)
-	// 	c_ := hEvalAcc.GetFrontendVariable(api, run)
-	// 	api.AssertIsEqual(c, c_)
-	// })
-
 	comp.RegisterVerifierAction(verRound, &foldOuterVerifierAction{
 		foldedEvalAcc: foldedEvalAcc,
 		hEvalAcc:      hEvalAcc,
