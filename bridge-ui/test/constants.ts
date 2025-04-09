@@ -1,4 +1,5 @@
 import { formatEther, formatUnits } from "viem";
+import "dotenv/config";
 
 export const METAMASK_SEED_PHRASE = process.env.E2E_TEST_SEED_PHRASE;
 export const METAMASK_PASSWORD = process.env.E2E_TEST_WALLET_PASSWORD;
