@@ -166,11 +166,10 @@ export const test = metaMaskFixtures(setup).extend<{
       ) {
         await page.waitForTimeout(POLLING_INTERVAL);
       }
-      // Not entirely sure why, but reload() is required for us to interact with Metamask notifaction page.
       await metamask.page.reload();
-      const nextBtn = metamask.notificationPage.page.getByRole("button", { name: "Next", exact: true });
+      const nextBtn = metamask.page.getByRole("button", { name: "Next", exact: true });
       await nextBtn.click();
-      const approveMMBtn = metamask.notificationPage.page.getByRole("button", { name: "Approve", exact: true });
+      const approveMMBtn = metamask.page.getByRole("button", { name: "Approve", exact: true });
       await approveMMBtn.click();
     });
   },
