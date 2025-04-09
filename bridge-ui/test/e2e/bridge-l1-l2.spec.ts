@@ -93,9 +93,9 @@ describe("L1 > L2 via Native Bridge", () => {
     });
   });
 
-  describe("Blockchain tx cases", () => {
+  describe.only("Blockchain tx cases", () => {
     // If not serial risk colliding nonces -> transactions cancelling each other out
-    test.describe.configure({ retries: 2, timeout: 120_000, mode: "serial" });
+    test.describe.configure({ timeout: 120_000, mode: "serial" });
 
     test("should be able to initiate bridging ETH from L1 to L2 in testnet", async ({
       getNativeBridgeTransactionsCount,
@@ -128,37 +128,41 @@ describe("L1 > L2 via Native Bridge", () => {
       await waitForNewTxAdditionToTxList(txnsLengthBefore);
     });
 
-    test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
-      getNativeBridgeTransactionsCount,
-      waitForNewTxAdditionToTxList,
-      connectMetamaskToDapp,
-      clickNativeBridgeButton,
-      openNativeBridgeFormSettings,
-      toggleShowTestNetworksInNativeBridgeForm,
-      selectTokenAndInputAmount,
-      doInitiateBridgeTransaction,
-      openNativeBridgeTransactionHistory,
-      closeNativeBridgeTransactionHistory,
-      doTokenApprovalIfNeeded,
-    }) => {
-      // Setup testnet UI
-      await connectMetamaskToDapp();
-      await clickNativeBridgeButton();
-      await openNativeBridgeFormSettings();
-      await toggleShowTestNetworksInNativeBridgeForm();
+    // Playwright does not provide method to set retries on an individual test function
+    // Anonymous describe workaround - https://github.com/microsoft/playwright/issues/10825#issuecomment-1851023643
+    describe.only(() => {
+      test("should be able to initiate bridging USDC from L1 to L2 in testnet", async ({
+        getNativeBridgeTransactionsCount,
+        waitForNewTxAdditionToTxList,
+        connectMetamaskToDapp,
+        clickNativeBridgeButton,
+        openNativeBridgeFormSettings,
+        toggleShowTestNetworksInNativeBridgeForm,
+        selectTokenAndInputAmount,
+        doInitiateBridgeTransaction,
+        openNativeBridgeTransactionHistory,
+        closeNativeBridgeTransactionHistory,
+        doTokenApprovalIfNeeded,
+      }) => {
+        // Setup testnet UI
+        await connectMetamaskToDapp();
+        await clickNativeBridgeButton();
+        await openNativeBridgeFormSettings();
+        await toggleShowTestNetworksInNativeBridgeForm();
 
-      // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
-      await openNativeBridgeTransactionHistory();
-      const txnsLengthBefore = await getNativeBridgeTransactionsCount();
-      await closeNativeBridgeTransactionHistory();
+        // Get # of txs in txHistory before doing bridge tx, so that we can later confirm that our bridge tx shows up in the txHistory.
+        await openNativeBridgeTransactionHistory();
+        const txnsLengthBefore = await getNativeBridgeTransactionsCount();
+        await closeNativeBridgeTransactionHistory();
 
-      // Actual bridging actions
-      await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
-      await doTokenApprovalIfNeeded();
-      await doInitiateBridgeTransaction();
+        // Actual bridging actions
+        await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
+        await doTokenApprovalIfNeeded();
+        await doInitiateBridgeTransaction();
 
-      // Check that our bridge tx shows up in the tx history
-      await waitForNewTxAdditionToTxList(txnsLengthBefore);
+        // Check that our bridge tx shows up in the tx history
+        await waitForNewTxAdditionToTxList(txnsLengthBefore);
+      });
     });
 
     test("should be able to claim if available READY_TO_CLAIM transactions", async ({
