@@ -39,6 +39,7 @@ export async function expectSuccessfulFinalize(
     aggregatedProof: proofData.aggregatedProof,
     shnarfData: shnarfDataGenerator(blobParentShnarfIndex, isMultiple),
   });
+
   finalizationData.lastFinalizedL1RollingHash = lastFinalizedRollingHash;
   finalizationData.lastFinalizedL1RollingHashMessageNumber = lastFinalizedMessageNumber;
 
@@ -148,18 +149,21 @@ export async function expectSuccessfulFinalizeViaCallForwarder(
       lastFinalizedMessageNumber,
       proofData.l1RollingHashMessageNumber,
       proofData.l2MerkleTreesDepth,
+      finalizationData.lastFinalizedForcedTransactionNumber,
+      finalizationData.finalForcedTransactionNumber,
+      finalizationData.lastFinalizedForcedTransactionRollingHash,
       proofData.l2MerkleRoots,
       proofData.l2MessagingBlocksOffsets,
     ],
   ];
 
   const encodedCall = ethers.concat([
-    "0x5603c65f",
+    "0x4abc041c",
     ethers.AbiCoder.defaultAbiCoder().encode(
       [
         "bytes",
         "uint256",
-        "tuple(bytes32,uint256,tuple(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,bytes32[],bytes)",
+        "tuple(bytes32,uint256,tuple(bytes32,bytes32,bytes32,bytes32,bytes32),uint256,uint256,bytes32,bytes32,uint256,uint256,uint256,uint256,uint256,bytes32,bytes32[],bytes)",
       ],
       txData,
     ),
@@ -215,7 +219,7 @@ export async function expectSuccessfulFinalizeViaCallForwarder(
   expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
   expect(lastFinalizedState).to.equal(
     generateKeccak256(
-      ["uint256", "bytes32", "uint256"],
+      ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
       [
         finalizationData.l1RollingHashMessageNumber,
         finalizationData.l1RollingHash,

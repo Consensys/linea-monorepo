@@ -505,7 +505,7 @@ contract LineaRollup is
   function finalizeBlocks(
     bytes calldata _aggregatedProof,
     uint256 _proofType,
-    FinalizationDataV3 calldata _finalizationData
+    FinalizationDataV4 calldata _finalizationData
   ) external whenTypeAndGeneralNotPaused(PauseType.FINALIZATION) onlyRole(OPERATOR_ROLE) {
     if (_aggregatedProof.length == 0) {
       revert ProofIsEmpty();
@@ -539,31 +539,40 @@ contract LineaRollup is
    * @return finalShnarf The final computed shnarf in finalizing.
    */
   function _finalizeBlocks(
-    FinalizationDataV3 calldata _finalizationData,
+    FinalizationDataV4 calldata _finalizationData,
     uint256 _lastFinalizedBlock
   ) internal returns (bytes32 finalShnarf) {
     _validateL2ComputedRollingHash(_finalizationData.l1RollingHashMessageNumber, _finalizationData.l1RollingHash);
 
-    // TODO : TOGGLE THE CHECK HERE
+    bytes32 lastFinalizedState = currentFinalizedState;
+
+    // post upgrade the most common case will be the 5 fields post first finalization
     if (
       FinalizedStateHashing._computeLastFinalizedState(
         _finalizationData.lastFinalizedL1RollingHashMessageNumber,
         _finalizationData.lastFinalizedL1RollingHash,
-        0,
-        EMPTY_HASH,
+        _finalizationData.lastFinalizedForcedTransactionNumber,
+        _finalizationData.lastFinalizedForcedTransactionRollingHash,
         _finalizationData.lastFinalizedTimestamp
-      ) != currentFinalizedState
+      ) != lastFinalizedState
     ) {
-      revert FinalizationStateIncorrect(
+      /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration
+      if (
         FinalizedStateHashing._computeLastFinalizedState(
           _finalizationData.lastFinalizedL1RollingHashMessageNumber,
           _finalizationData.lastFinalizedL1RollingHash,
-          0,
-          EMPTY_HASH,
           _finalizationData.lastFinalizedTimestamp
-        ),
-        currentFinalizedState
-      );
+        ) != lastFinalizedState
+      ) {
+        revert FinalizationStateIncorrect(
+          FinalizedStateHashing._computeLastFinalizedState(
+            _finalizationData.lastFinalizedL1RollingHashMessageNumber,
+            _finalizationData.lastFinalizedL1RollingHash,
+            _finalizationData.lastFinalizedTimestamp
+          ),
+          lastFinalizedState
+        );
+      }
     }
 
     if (_finalizationData.finalTimestamp >= block.timestamp) {
@@ -599,8 +608,8 @@ contract LineaRollup is
     currentFinalizedState = FinalizedStateHashing._computeLastFinalizedState(
       _finalizationData.l1RollingHashMessageNumber,
       _finalizationData.l1RollingHash,
-      0,
-      EMPTY_HASH,
+      _finalizationData.finalForcedTransactionNumber,
+      forcedTransactionRollingHashes[_finalizationData.finalForcedTransactionNumber],
       _finalizationData.finalTimestamp
     );
 
@@ -711,8 +720,11 @@ contract LineaRollup is
    * 0x160   lastFinalizedL1RollingHashMessageNumber
    * 0x180   l1RollingHashMessageNumber
    * 0x1a0   l2MerkleTreesDepth
-   * 0x1c0   l2MerkleRootsLengthLocation
-   * 0x1e0   l2MessagingBlocksOffsetsLengthLocation
+   * 0x1c0   lastFinalizedForcedTransactionNumber
+   * 0x1e0   finalForcedTransactionNumber
+   * 0x200   lastFinalizedForcedTransactionRollingHash
+   * 0x220   l2MerkleRootsLengthLocation
+   * 0x240   l2MessagingBlocksOffsetsLengthLocation
    * Dynamic l2MerkleRootsLength
    * Dynamic l2MerkleRoots
    * Dynamic l2MessagingBlocksOffsetsLength (location depends on where l2MerkleRoots ends)
@@ -722,7 +734,7 @@ contract LineaRollup is
    * @param _lastFinalizedBlockNumber The last finalized block number.
    */
   function _computePublicInput(
-    FinalizationDataV3 calldata _finalizationData,
+    FinalizationDataV4 calldata _finalizationData,
     bytes32 _lastFinalizedShnarf,
     bytes32 _finalShnarf,
     uint256 _lastFinalizedBlockNumber
@@ -757,8 +769,8 @@ contract LineaRollup is
        * The second memory pointer and free pointer are offset by 0x20 to temporarily hash the array outside the scope of working memory,
        * as we need the space left for the array hash to be stored at 0x160.
        */
-      let mPtrMerkleRoot := add(mPtr, 0x180)
-      let merkleRootsLengthLocation := add(_finalizationData, calldataload(add(_finalizationData, 0x1c0)))
+      let mPtrMerkleRoot := add(mPtr, 0x1e0)
+      let merkleRootsLengthLocation := add(_finalizationData, calldataload(add(_finalizationData, 0x220)))
       let merkleRootsLen := calldataload(merkleRootsLengthLocation)
       calldatacopy(mPtrMerkleRoot, add(merkleRootsLengthLocation, 0x20), mul(merkleRootsLen, 0x20))
       let l2MerkleRootsHash := keccak256(mPtrMerkleRoot, mul(merkleRootsLen, 0x20))

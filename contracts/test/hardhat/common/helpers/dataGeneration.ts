@@ -39,6 +39,9 @@ export async function generateFinalizationData(overrides?: Partial<FinalizationD
     l2MessagingBlocksOffsets: generateL2MessagingBlocksOffsets(1, 1),
     lastFinalizedL1RollingHash: HASH_ZERO,
     lastFinalizedL1RollingHashMessageNumber: 0n,
+    lastFinalizedForcedTransactionNumber: 0n,
+    finalForcedTransactionNumber: 0n,
+    lastFinalizedForcedTransactionRollingHash: HASH_ZERO,
     ...overrides,
   };
 }

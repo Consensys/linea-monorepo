@@ -81,6 +81,9 @@ export type FinalizationData = {
   l2MessagingBlocksOffsets: string;
   lastFinalizedL1RollingHash: string;
   lastFinalizedL1RollingHashMessageNumber: bigint;
+  lastFinalizedForcedTransactionNumber: bigint;
+  finalForcedTransactionNumber: bigint;
+  lastFinalizedForcedTransactionRollingHash: string;
 };
 
 export type ShnarfDataGenerator = (blobParentShnarfIndex: number, isMultiple?: boolean) => ShnarfData;
