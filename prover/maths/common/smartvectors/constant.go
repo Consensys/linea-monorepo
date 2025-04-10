@@ -2,6 +2,9 @@ package smartvectors
 
 import (
 	"fmt"
+	"iter"
+	"slices"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -36,6 +39,10 @@ func (r *Constant) Get(n int) field.Element {
 		panic(err)
 	}
 	return res
+}
+
+func (r *Constant) GetPtr(n int) *field.Element {
+	return &r.val
 }
 
 // Returns a subvector
@@ -104,4 +111,16 @@ func (c *Constant) IntoRegVecSaveAllocExt() []fext.Element {
 		res[i].SetFromBase(&elem)
 	}
 	return res
+}
+
+// IterateCompact returns an iterator returning a single time the constant
+// value.
+func (c *Constant) IterateCompact() iter.Seq[field.Element] {
+	return slices.Values([]field.Element{c.val})
+}
+
+// IterateSkipPadding returns an empty iterator as the whole content of a
+// [Constant] is padding.
+func (c *Constant) IterateSkipPadding() iter.Seq[field.Element] {
+	return slices.Values([]field.Element{})
 }

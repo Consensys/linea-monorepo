@@ -1,9 +1,8 @@
 package specialqueries
 
 import (
-	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -62,7 +61,7 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) 
 
 	for i := range q.A {
 		size := q.A[i].Size()
-		sid[i] = comp.InsertPrecomputed(deriveNamePerm("SID", q.ID, i), getSiD(cnt, size))
+		sid[i] = dedicated.CounterPrecomputed(comp, cnt, cnt+size)
 		if column.StatusOf(q.A[i]).IsPublic() {
 			comp.Columns.SetStatus(sid[i].GetColID(), column.VerifyingKey)
 		}
@@ -75,14 +74,4 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) 
 
 func deriveNamePerm(r string, queryName ifaces.QueryID, i int) ifaces.ColID {
 	return ifaces.ColIDf("%v_%v_%v", queryName, r, i)
-}
-
-// getSiD returns a smartvector storing the witness of an SiD column. The witness
-// is defined as the arithmetic sequence nj, nj+1, nj+2, ..., nj+n-1
-func getSiD(s0, n int) sv.SmartVector {
-	identity := make([]field.Element, n)
-	for i := 0; i < n; i++ {
-		identity[i] = field.NewElement(uint64(s0 + i))
-	}
-	return sv.NewRegular(identity)
 }

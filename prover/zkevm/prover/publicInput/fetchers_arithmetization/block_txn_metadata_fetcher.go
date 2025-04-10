@@ -139,15 +139,20 @@ func DefineBlockTxnMetaData(comp *wizard.CompiledIOP, btm *BlockTxnMetadata, nam
 }
 
 func AssignBlockTxnMetadata(run *wizard.ProverRuntime, btm BlockTxnMetadata, td *arith.TxnData) {
-	blockId := make([]field.Element, td.Ct.Size())
-	totalNoTxnBlock := make([]field.Element, td.Ct.Size())
-	filterFetched := make([]field.Element, td.Ct.Size())
-	filterArith := make([]field.Element, td.Ct.Size())
-	firstAbsTxId := make([]field.Element, td.Ct.Size())
-	lastAbsTxId := make([]field.Element, td.Ct.Size())
-	lastRelBlock := field.Zero()
-	counter := 0
-	var ctAbsTxNum int64 = 1
+
+	var (
+		size                  = td.Ct.Size()
+		blockId               = make([]field.Element, td.Ct.Size())
+		totalNoTxnBlock       = make([]field.Element, td.Ct.Size())
+		filterFetched         = make([]field.Element, td.Ct.Size())
+		filterArith           = make([]field.Element, td.Ct.Size())
+		firstAbsTxId          = make([]field.Element, td.Ct.Size())
+		lastAbsTxId           = make([]field.Element, td.Ct.Size())
+		lastRelBlock          = field.Zero()
+		counter               = 0
+		ctAbsTxNum      int64 = 1
+	)
+
 	for i := 0; i < td.Ct.Size(); i++ {
 		relBlock := td.RelBlock.GetColAssignmentAt(run, i)
 		if !relBlock.IsZero() && !relBlock.Equal(&lastRelBlock) {
@@ -175,12 +180,13 @@ func AssignBlockTxnMetadata(run *wizard.ProverRuntime, btm BlockTxnMetadata, td 
 			filterArith[i].SetOne()
 		}
 	}
-	run.AssignColumn(btm.BlockID.GetColID(), smartvectors.NewRegular(blockId))
-	run.AssignColumn(btm.TotalNoTxnBlock.GetColID(), smartvectors.NewRegular(totalNoTxnBlock))
-	run.AssignColumn(btm.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetched))
+
+	run.AssignColumn(btm.BlockID.GetColID(), smartvectors.RightZeroPadded(blockId[:counter], size))
+	run.AssignColumn(btm.TotalNoTxnBlock.GetColID(), smartvectors.RightZeroPadded(totalNoTxnBlock[:counter], size))
+	run.AssignColumn(btm.FilterFetched.GetColID(), smartvectors.RightZeroPadded(filterFetched[:counter], size))
+	run.AssignColumn(btm.FirstAbsTxId.GetColID(), smartvectors.RightZeroPadded(firstAbsTxId[:counter], size))
+	run.AssignColumn(btm.LastAbsTxId.GetColID(), smartvectors.RightZeroPadded(lastAbsTxId[:counter], size))
 	run.AssignColumn(btm.FilterArith.GetColID(), smartvectors.NewRegular(filterArith))
-	run.AssignColumn(btm.FirstAbsTxId.GetColID(), smartvectors.NewRegular(firstAbsTxId))
-	run.AssignColumn(btm.LastAbsTxId.GetColID(), smartvectors.NewRegular(lastAbsTxId))
 
 	btm.ComputeSelectorCt.Run(run)
 }

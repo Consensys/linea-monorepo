@@ -92,25 +92,42 @@ func DefineTxnDataFetcher(comp *wizard.CompiledIOP, fetcher *TxnDataFetcher, nam
 
 // AssignTxnDataFetcher assigns the data in the TxnDataFetcher using data fetched from the TxnData
 func AssignTxnDataFetcher(run *wizard.ProverRuntime, fetcher TxnDataFetcher, td *arith.TxnData) {
-	size := td.Ct.Size()
-	relBlock := make([]field.Element, size)
-	absTxNum := make([]field.Element, size)
-	fromHi := make([]field.Element, size)
-	fromLo := make([]field.Element, size)
-	filterFetched := make([]field.Element, size)
-	counter := 0
 
-	for i := 0; i < td.Ct.Size(); i++ {
-		ct := td.Ct.GetColAssignmentAt(run, i)
-		fetchedAbsTxNum := td.AbsTxNum.GetColAssignmentAt(run, i)
-		fetchedRelBlock := td.RelBlock.GetColAssignmentAt(run, i)
+	var (
+		// Those are the assignments from the arithmetization
+		ct              = td.Ct.GetColAssignment(run)
+		fetchedAbsTxNum = td.AbsTxNum.GetColAssignment(run)
+		fetchedRelBlock = td.RelBlock.GetColAssignment(run)
+		arithFromHi     = td.FromHi.GetColAssignment(run)
+		arithFromLo     = td.FromLo.GetColAssignment(run)
+		start, stop     = smartvectors.CoCompactRange(ct)
+		size            = td.Ct.Size()
+		density         = stop - start
+
+		// Those are the ongoing assignment slices
+		relBlock      = make([]field.Element, density)
+		absTxNum      = make([]field.Element, density)
+		fromHi        = make([]field.Element, density)
+		fromLo        = make([]field.Element, density)
+		filterFetched = make([]field.Element, density)
+		counter       = 0
+	)
+
+	for i := start; i < stop; i++ {
+
+		var (
+			ct              = ct.GetPtr(i)
+			fetchedAbsTxNum = fetchedAbsTxNum.GetPtr(i)
+			fetchedRelBlock = fetchedRelBlock.GetPtr(i)
+			arithFromHi     = arithFromHi.GetPtr(i)
+			arithFromLo     = arithFromLo.GetPtr(i)
+		)
+
 		if ct.IsOne() && !fetchedAbsTxNum.IsZero() { // absTxNum starts from 1, ct starts from 0 but always touches 1
-			arithFromHi := td.FromHi.GetColAssignmentAt(run, i)
-			arithFromLo := td.FromLo.GetColAssignmentAt(run, i)
-			absTxNum[counter].Set(&fetchedAbsTxNum)
-			relBlock[counter].Set(&fetchedRelBlock)
-			fromHi[counter].Set(&arithFromHi)
-			fromLo[counter].Set(&arithFromLo)
+			absTxNum[counter].Set(fetchedAbsTxNum)
+			relBlock[counter].Set(fetchedRelBlock)
+			fromHi[counter].Set(arithFromHi)
+			fromLo[counter].Set(arithFromLo)
 			// update counters
 			filterFetched[counter].SetOne()
 			counter++
@@ -118,11 +135,11 @@ func AssignTxnDataFetcher(run *wizard.ProverRuntime, fetcher TxnDataFetcher, td 
 	}
 
 	// assign the fetcher columns
-	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.NewRegular(relBlock))
-	run.AssignColumn(fetcher.AbsTxNum.GetColID(), smartvectors.NewRegular(absTxNum))
-	run.AssignColumn(fetcher.FromHi.GetColID(), smartvectors.NewRegular(fromHi))
-	run.AssignColumn(fetcher.FromLo.GetColID(), smartvectors.NewRegular(fromLo))
-	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.NewRegular(filterFetched))
+	run.AssignColumn(fetcher.RelBlock.GetColID(), smartvectors.RightZeroPadded(relBlock[:counter], size))
+	run.AssignColumn(fetcher.AbsTxNum.GetColID(), smartvectors.RightZeroPadded(absTxNum[:counter], size))
+	run.AssignColumn(fetcher.FromHi.GetColID(), smartvectors.RightZeroPadded(fromHi[:counter], size))
+	run.AssignColumn(fetcher.FromLo.GetColID(), smartvectors.RightZeroPadded(fromLo[:counter], size))
+	run.AssignColumn(fetcher.FilterFetched.GetColID(), smartvectors.RightZeroPadded(filterFetched[:counter], size))
 	// assign the SelectorFromAddress using the ComputeSelectorFromAddress prover action
 	fetcher.ComputeSelectorFromAddress.Run(run)
 }

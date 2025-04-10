@@ -205,7 +205,7 @@ func (ctx *linearHashCtx) HashingCols() {
 	ctx.comp.InsertMiMC(
 		ctx.Round,
 		ifaces.QueryID(prefixWithLinearHash(ctx.comp, ctx.name, "BLOCKS_COMPRESSION_%v", ctx.ToHash.GetColID())),
-		ctx.ToHash, ctx.OldState, ctx.NewState,
+		ctx.ToHash, ctx.OldState, ctx.NewState, nil,
 	)
 
 }

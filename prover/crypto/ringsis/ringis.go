@@ -1,14 +1,9 @@
 package ringsis
 
 import (
-	"bytes"
-	"encoding/binary"
-	"io"
-	"math"
 	"runtime"
 	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/sis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -109,30 +104,12 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// write the input as byte
-	s.gnarkInternal.Reset()
-	for i := range v {
-		_, err := s.gnarkInternal.Write(v[i].Marshal())
-		if err != nil {
-			panic(err)
-		}
-	}
-	sum := s.gnarkInternal.Sum(make([]byte, 0, field.Bytes*s.OutputSize()))
-
-	// unmarshal the result
-	var rlen [4]byte
-	if len(sum) > math.MaxUint32*fr.Bytes {
-		panic("slice too long")
-	}
-	binary.BigEndian.PutUint32(rlen[:], uint32(len(sum)/fr.Bytes)) // #nosec G115 -- Overflow checked
-	reader := io.MultiReader(bytes.NewReader(rlen[:]), bytes.NewReader(sum))
-	var result fr.Vector
-	_, err := result.ReadFrom(reader)
-	if err != nil {
+	res := make([]field.Element, s.OutputSize())
+	if err := s.gnarkInternal.Hash(v, res); err != nil {
 		panic(err)
 	}
 
-	return result
+	return res
 }
 
 // LimbSplit breaks down the entries of `v` into short limbs representing
@@ -140,23 +117,26 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 // vector, casted as field elements in Montgommery form.
 func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 
-	writer := bytes.Buffer{}
-	for i := range vReg {
-		b := vReg[i].Bytes() // big endian serialization
-		writer.Write(b[:])
+	it := sis.NewLimbIterator(sis.NewVectorIterator(vReg), s.LogTwoBound/8)
+
+	var (
+		numLimbs = len(vReg) * field.Bytes * 8 / s.LogTwoBound
+		res      = make([]field.Element, 0, numLimbs)
+	)
+
+	for i := 0; i < numLimbs; i++ {
+
+		limb, ok := it.NextLimb()
+		if !ok {
+			break
+		}
+
+		var v field.Element
+		v.SetUint64(limb)
+		res = append(res, v)
 	}
 
-	buf := writer.Bytes()
-	m := make([]field.Element, len(vReg)*s.NumLimbs())
-	sis.LimbDecomposeBytes(buf, m, s.LogTwoBound)
-
-	// The limbs are in regular form, we reconvert them back into montgommery
-	// form
-	for i := range m {
-		m[i] = field.MulR(m[i])
-	}
-
-	return m
+	return res
 }
 
 // HashModXnMinus1 applies the SIS hash modulo X^n - 1, (instead of X^n + 1).
@@ -349,18 +329,9 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 
 // CopyWithFreshBuffer creates a copy of the key with fresh buffers. Shallow
 // copies the the key itself.
+//
+// This is deprecated as the new implementation of SIS does not need them. The
+// function simply returns "s".
 func (s *Key) CopyWithFreshBuffer() *Key {
-
-	// Since hashing consumes and mutates the buffer stored internally in
-	// `gnarkInternal` go race had figured there might be a race condition
-	// possibility.
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	clonedRsis := s.gnarkInternal.CopyWithFreshBuffer()
-	return &Key{
-		lock:          &sync.Mutex{},
-		gnarkInternal: &clonedRsis,
-		Params:        s.Params,
-	}
+	return s
 }

@@ -33,9 +33,9 @@ type ModuleLPP struct {
 	// this module.
 	moduleTranslator
 
-	// definitionInput stores the [FilteredModuleInputs] that was used
+	// definitionInputs stores the [FilteredModuleInputs] that was used
 	// to generate the module.
-	definitionInput *FilteredModuleInputs
+	definitionInputs []FilteredModuleInputs
 
 	// InitialFiatShamirState is the state at which to start the FiatShamir
 	// computation
@@ -79,7 +79,7 @@ type CheckNxHash struct {
 // BuildModuleLPP builds a [ModuleLPP] from scratch from a [FilteredModuleInputs].
 // The function works by creating a define function that will call [NewModuleLPP]
 // / and then it calls [wizard.Compile] without passing compilers.
-func BuildModuleLPP(moduleInput *FilteredModuleInputs) *ModuleLPP {
+func BuildModuleLPP(moduleInput []FilteredModuleInputs) *ModuleLPP {
 
 	var (
 		moduleLPP  *ModuleLPP
@@ -98,42 +98,47 @@ func BuildModuleLPP(moduleInput *FilteredModuleInputs) *ModuleLPP {
 // and a [FilteredModuleInput]. The function performs all the necessary
 // declarations to build the LPP part of the module and returns the constructed
 // module.
-func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *ModuleLPP {
+func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) *ModuleLPP {
 
 	moduleLPP := &ModuleLPP{
 		moduleTranslator: moduleTranslator{
 			Wiop: builder.CompiledIOP,
-			Disc: moduleInput.Disc,
+			Disc: moduleInputs[0].Disc,
 		},
-		definitionInput:        moduleInput,
+		definitionInputs:       moduleInputs,
 		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 1),
 	}
 
-	for _, col := range moduleInput.Columns {
+	for _, moduleInput := range moduleInputs {
+		for _, col := range moduleInput.Columns {
 
-		if col.Round() != 0 {
-			utils.Panic("cannot translate a column with non-zero round %v", col.Round())
-		}
+			if col.Round() != 0 {
+				utils.Panic("cannot translate a column with non-zero round %v", col.Round())
+			}
 
-		_, isLPP := moduleInput.ColumnsLPPSet[col.GetColID()]
+			_, isLPP := moduleInput.ColumnsLPPSet[col.GetColID()]
 
-		if !isLPP {
-			continue
-		}
+			if !isLPP {
+				continue
+			}
 
-		moduleLPP.InsertColumn(*col, 0)
+			if data, isPrecomp := moduleInput.ColumnsPrecomputed[col.GetColID()]; isPrecomp {
+				moduleLPP.InsertPrecomputed(*col, data)
+				continue
+			}
 
-		if data, isPrecomp := moduleInput.ColumnsPrecomputed[col.GetColID()]; isPrecomp {
-			moduleLPP.Wiop.Precomputed.InsertNew(col.ID, data)
+			moduleLPP.InsertColumn(*col, 0)
 		}
 	}
 
-	if len(moduleInput.LogDerivativeArgs) > 0 {
+	logDerivativeArgs, grandProductArgs, hornerArgs := getQueryArgs(moduleInputs)
+
+	if len(logDerivativeArgs) > 0 {
 
 		moduleLPP.LogDerivativeSum = moduleLPP.InsertLogDerivative(
 			1,
 			ifaces.QueryID("MAIN_LOGDERIVATIVE"),
-			moduleInput.LogDerivativeArgs,
+			logDerivativeArgs,
 		)
 
 		moduleLPP.Wiop.InsertPublicInput(
@@ -149,12 +154,12 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *M
 		)
 	}
 
-	if len(moduleInput.GrandProductArgs) > 0 {
+	if len(grandProductArgs) > 0 {
 
 		moduleLPP.GrandProduct = moduleLPP.InsertGrandProduct(
 			1,
 			ifaces.QueryID("MAIN_GRANDPRODUCT"),
-			moduleInput.GrandProductArgs,
+			grandProductArgs,
 		)
 
 		moduleLPP.Wiop.InsertPublicInput(
@@ -170,12 +175,12 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *M
 		)
 	}
 
-	if len(moduleInput.HornerArgs) > 0 {
+	if len(hornerArgs) > 0 {
 
 		moduleLPP.Horner = moduleLPP.InsertHorner(
 			1,
 			ifaces.QueryID("MAIN_HORNER"),
-			moduleInput.HornerArgs,
+			hornerArgs,
 		)
 
 		moduleLPP.N0Hash = builder.InsertProof(1, "LPP_N0_HASH", 1)
@@ -216,15 +221,31 @@ func NewModuleLPP(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *M
 		)
 	}
 
+	// In case the LPP part is empty, we have a scenario where the sub-proof to
+	// build has no registered coin. This creates errors in the compilation
+	// due to sanity-check firing up. We add a coin to remediate.
+	if moduleLPP.Wiop.Coins.NumRounds() < 2 {
+		moduleLPP.InsertCoin("LPP_DUMMY_COIN", 1)
+	}
+
 	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
 	moduleLPP.Wiop.FiatShamirHooksPreSampling.AppendToInner(1, &SetInitialFSHash{ModuleLPP: *moduleLPP})
 
 	return moduleLPP
 }
 
+// ModuleNames returns the list of the module names of the [ModuleLPP].
+func (m *ModuleLPP) ModuleNames() []ModuleName {
+	res := make([]ModuleName, 0)
+	for _, definitionInput := range m.definitionInputs {
+		res = append(res, definitionInput.ModuleName)
+	}
+	return res
+}
+
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
 // the provided [ModuleWitness] argument.
-func (m *ModuleLPP) GetMainProverStep(witness *ModuleWitness) wizard.MainProverStep {
+func (m *ModuleLPP) GetMainProverStep(witness *ModuleWitnessLPP) wizard.MainProverStep {
 	return func(run *wizard.ProverRuntime) {
 		m.Assign(run, witness)
 	}
@@ -236,15 +257,7 @@ func (m *ModuleLPP) GetMainProverStep(witness *ModuleWitness) wizard.MainProverS
 //
 // The function depopulates the [ModuleWitness] from its columns assignment
 // as the columns are assigned in the runtime.
-func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitness) {
-
-	var (
-		// columns stores the list of columns to assign. Though, it
-		// stores the columns as in the origin CompiledIOP so we cannot
-		// directly use them to refer to columns of the current IOP.
-		// Yet, the column share the same names.
-		columns = m.definitionInput.Columns
-	)
+func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessLPP) {
 
 	run.AssignColumn(
 		m.InitialFiatShamirState.GetColID(),
@@ -253,32 +266,39 @@ func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitness) {
 
 	run.State.InsertNew(moduleWitnessKey, witness)
 
-	for _, col := range columns {
+	for _, definitionInput := range m.definitionInputs {
 
-		colName := col.GetColID()
+		// [definitionInput.Columns] stores the list of columns to assign.
+		// Though, it stores the columns as in the origin CompiledIOP so we
+		// cannot directly use them to refer to columns of the current IOP.
+		// Yet, the column share the same names.
+		for _, col := range definitionInput.Columns {
 
-		// Skips the non-LPP columns
-		if _, ok := m.definitionInput.ColumnsLPPSet[colName]; !ok {
-			continue
+			colName := col.GetColID()
+
+			// Skips the non-LPP columns
+			if _, ok := definitionInput.ColumnsLPPSet[colName]; !ok {
+				continue
+			}
+
+			newCol := m.Wiop.Columns.GetHandle(colName)
+
+			if newCol.Round() != 0 {
+				utils.Panic("expected a column with round 0, got %v, column: %v", newCol.Round(), colName)
+			}
+
+			if m.Wiop.Precomputed.Exists(colName) {
+				continue
+			}
+
+			colWitness, ok := witness.Columns[colName]
+			if !ok {
+				utils.Panic("witness of column %v was not found", colName)
+			}
+
+			run.AssignColumn(colName, colWitness)
+			delete(witness.Columns, colName)
 		}
-
-		newCol := m.Wiop.Columns.GetHandle(colName)
-
-		if newCol.Round() != 0 {
-			utils.Panic("expected a column with round 0, got %v, column: %v", newCol.Round(), colName)
-		}
-
-		if m.Wiop.Precomputed.Exists(colName) {
-			continue
-		}
-
-		colWitness, ok := witness.Columns[colName]
-		if !ok {
-			utils.Panic("witness of column %v was not found", colName)
-		}
-
-		run.AssignColumn(colName, colWitness)
-		delete(witness.Columns, colName)
 	}
 }
 
@@ -326,10 +346,12 @@ func (m *ModuleLPP) addCoinFromAccessor(acce ifaces.Accessor) {
 
 func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 
-	moduleWitness := run.State.MustGet(moduleWitnessKey).(*ModuleWitness)
+	moduleWitness := run.State.MustGet(moduleWitnessKey).(*ModuleWitnessLPP)
 	run.State.Del(moduleWitnessKey)
 
-	if len(a.definitionInput.HornerArgs) > 0 {
+	logDerivativeArgs, grandProductArgs, hornerArgs := getQueryArgs(a.definitionInputs)
+
+	if len(hornerArgs) > 0 {
 		hornerParams := a.getHornerParams(run, moduleWitness.N0Values)
 		run.AssignHornerParams(a.Horner.ID, hornerParams)
 		n0Hash, n1Hash := hashNxs(hornerParams, 0), hashNxs(hornerParams, 1)
@@ -338,11 +360,11 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 		run.AssignColumn(a.N1Hash.GetColID(), smartvectors.NewRegular([]field.Element{n1Hash}))
 	}
 
-	if len(a.definitionInput.GrandProductArgs) > 0 {
+	if len(grandProductArgs) > 0 {
 		run.AssignGrandProduct(a.GrandProduct.ID, a.GrandProduct.Compute(run))
 	}
 
-	if len(a.definitionInput.LogDerivativeArgs) > 0 {
+	if len(logDerivativeArgs) > 0 {
 
 		y, err := a.LogDerivativeSum.Compute(run)
 		if err != nil {
@@ -393,8 +415,8 @@ func (a *CheckNxHash) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		hornerParams  = run.GetHornerParams(a.Horner.ID)
 		n0HashAlleged = a.N0Hash.GetColAssignmentGnarkAt(run, 0)
 		n1HashAlleged = a.N1Hash.GetColAssignmentGnarkAt(run, 0)
-		n0Hash        = hashNxsGnark(api, hornerParams, 0)
-		n1Hash        = hashNxsGnark(api, hornerParams, 1)
+		n0Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 0)
+		n1Hash        = hashNxsGnark(run.GetHasherFactory(), hornerParams, 1)
 	)
 
 	api.AssertIsEqual(n0Hash, n0HashAlleged)
@@ -432,7 +454,7 @@ func (a *SetInitialFSHash) IsSkipped() bool {
 // (pass x=0, to compute the hash of the N0s and x=1 for the N1s).
 func hashNxs(params query.HornerParams, x int) field.Element {
 
-	res := field.Element{}
+	hsh := mimc.NewMiMC()
 
 	for _, part := range params.Parts {
 
@@ -445,16 +467,21 @@ func hashNxs(params query.HornerParams, x int) field.Element {
 		}
 
 		nxField := field.NewElement(uint64(nx))
-		res = mimc.BlockCompression(res, nxField)
+		nxBytes := nxField.Bytes()
+		hsh.Write(nxBytes[:])
 	}
+
+	resBytes := hsh.Sum(nil)
+	var res field.Element
+	res.SetBytes(resBytes)
 
 	return res
 }
 
 // hashNxsGnark is as [hashNxs] but in a gnark circuit
-func hashNxsGnark(api frontend.API, params query.GnarkHornerParams, x int) frontend.Variable {
+func hashNxsGnark(factory mimc.HasherFactory, params query.GnarkHornerParams, x int) frontend.Variable {
 
-	res := frontend.Variable(0)
+	hsh := factory.NewHasher()
 
 	for _, part := range params.Parts {
 
@@ -466,8 +493,19 @@ func hashNxsGnark(api frontend.API, params query.GnarkHornerParams, x int) front
 			nx = part.N1
 		}
 
-		res = mimc.GnarkBlockCompression(api, res, nx)
+		hsh.Write(nx)
 	}
 
-	return res
+	return hsh.Sum()
+}
+
+// getQueryArgs groups the args of the [FilteredModuleInputs] provided
+// by the caller.
+func getQueryArgs(moduleInputs []FilteredModuleInputs) (logDerivativeArgs, grandProductArgs [][2]*symbolic.Expression, hornerArgs []query.HornerPart) {
+	for _, moduleInput := range moduleInputs {
+		logDerivativeArgs = append(logDerivativeArgs, moduleInput.LogDerivativeArgs...)
+		grandProductArgs = append(grandProductArgs, moduleInput.GrandProductArgs...)
+		hornerArgs = append(hornerArgs, moduleInput.HornerArgs...)
+	}
+	return logDerivativeArgs, grandProductArgs, hornerArgs
 }

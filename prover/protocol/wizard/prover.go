@@ -24,6 +24,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// ProverRuntimeOption represents options that can be provided to
+// methods of the [wizard.ProverRuntime] struct. These are used to
+// enable/disable some of the optimization that are done by the prover
+// internally.
+type ProverRuntimeOption uint64
+
+const (
+	// DisableAssignmentSizeReduction is used to disable the
+	// the routine that tries to reduce the space taken by a column.
+	DisableAssignmentSizeReduction ProverRuntimeOption = 1 << iota
+)
+
 // This is a compilation check to ensure that the [wizard.ProverRuntime]
 // implements the [wizard.Runtime] interface.
 var _ Runtime = &ProverRuntime{}
@@ -444,7 +456,12 @@ func (run *ProverRuntime) GetRandomCoinIntegerVec(name coin.Name) []int {
 //   - the column assignment occurs at the wrong round. If this error happens,
 //     it is likely that the [ifaces.Column] was created in the wrong round to
 //     begin with.
-func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssignment, round ...int) {
+func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssignment, opts ...ProverRuntimeOption) {
+
+	var opts_ ProverRuntimeOption
+	for i := range opts {
+		opts_ |= opts[i]
+	}
 
 	// global prover's lock before accessing the witnesses. This makes the
 	// function thread-safe
@@ -469,11 +486,7 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 	// if round is empty, we expect it to assign the column at the current round,
 	// otherwise it assigns it in the round the column was declared.
 	// This is useful when we have for loop over rounds.
-	if len(round) == 0 {
-		ifaces.MustBeInRound(handle, run.currRound)
-	} else {
-		ifaces.MustBeInRound(handle, round[0])
-	}
+	ifaces.MustBeInRound(handle, run.currRound)
 
 	if witness.Len() != handle.Size() {
 		utils.Panic("Bad length for %v, expected %v got %v\n", handle, handle.Size(), witness.Len())
@@ -486,9 +499,11 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 		utils.Panic("Witness with non-power of two sizes, should have been caught earlier")
 	}
 
-	// This reduction is a trade-off between runtime and memory. It
-	// costs CPU but can save a significant amount of memory.
-	witness = smartvectors.TryReduceSize(witness)
+	// This reduction is a trade-off between runtime and memory. It costs CPU
+	// but can save a significant amount of memory.
+	if opts_&DisableAssignmentSizeReduction == 0 {
+		witness, _ = smartvectors.TryReduceSize(witness)
+	}
 
 	// Adds it to the assignments
 	run.Columns.InsertNew(handle.GetColID(), witness)

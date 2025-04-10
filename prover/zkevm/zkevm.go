@@ -21,31 +21,31 @@ type ZkEvm struct {
 	// process.
 	arithmetization *arithmetization.Arithmetization
 	// Keccak module in use. Generated during the compilation process.
-	keccak *keccak.KeccakZkEVM
+	Keccak *keccak.KeccakZkEVM
 	// State manager module in use. Generated during the compilation process.
 	stateManager *statemanager.StateManager
 	// PublicInput gives access to the public inputs of the wizard-IOP and is
 	// used to access them to define the outer-circuit.
 	PublicInput *publicInput.PublicInput
-	// ecdsa is the module responsible for verifying the ecdsa tx signatures and
+	// Ecdsa is the module responsible for verifying the Ecdsa tx signatures and
 	// ecrecover
-	ecdsa *ecdsa.EcdsaZkEvm
+	Ecdsa *ecdsa.EcdsaZkEvm
 
-	// modexp is the module responsible for proving the calls to the modexp
+	// Modexp is the module responsible for proving the calls to the Modexp
 	// precompile
-	modexp *modexp.Module
-	// ecadd is the module responsible for proving the calls to the ecadd
+	Modexp *modexp.Module
+	// Ecadd is the module responsible for proving the calls to the Ecadd
 	// precompile
-	ecadd *ecarith.EcAdd
-	// ecmul is the module responsible for proving the calls to the ecmul
+	Ecadd *ecarith.EcAdd
+	// Ecmul is the module responsible for proving the calls to the Ecmul
 	// precompile
-	ecmul *ecarith.EcMul
-	// ecpair is the module responsible for the proving the calls the ecpairing
+	Ecmul *ecarith.EcMul
+	// Ecpair is the module responsible for the proving the calls the ecpairing
 	// precompile
-	ecpair *ecpair.ECPair
-	// sha2 is the module responsible for doing the computation of the sha2
+	Ecpair *ecpair.ECPair
+	// Sha2 is the module responsible for doing the computation of the Sha2
 	// precompile.
-	sha2 *sha2.Sha2SingleProvider
+	Sha2 *sha2.Sha2SingleProvider
 
 	// Contains the actual wizard-IOP compiled object. This object is called to
 	// generate the inner-proof.
@@ -107,14 +107,14 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 
 	return &ZkEvm{
 		arithmetization: arith,
-		ecdsa:           ecdsa,
+		Ecdsa:           ecdsa,
 		stateManager:    stateManager,
-		keccak:          keccak,
-		modexp:          modexp,
-		ecadd:           ecadd,
-		ecmul:           ecmul,
-		ecpair:          ecpair,
-		sha2:            sha2,
+		Keccak:          keccak,
+		Modexp:          modexp,
+		Ecadd:           ecadd,
+		Ecmul:           ecmul,
+		Ecpair:          ecpair,
+		Sha2:            sha2,
 		PublicInput:     &publicInput,
 	}
 }
@@ -130,14 +130,14 @@ func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep)
 		z.arithmetization.Assign(run, input.ExecTracesFPath)
 
 		// Assign the state-manager module
-		z.ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
+		z.Ecdsa.Assign(run, input.TxSignatureGetter, len(input.TxSignatures))
 		z.stateManager.Assign(run, input.SMTraces)
-		z.keccak.Run(run)
-		z.modexp.Assign(run)
-		z.ecadd.Assign(run)
-		z.ecmul.Assign(run)
-		z.ecpair.Assign(run)
-		z.sha2.Run(run)
+		z.Keccak.Run(run)
+		z.Modexp.Assign(run)
+		z.Ecadd.Assign(run)
+		z.Ecmul.Assign(run)
+		z.Ecpair.Assign(run)
+		z.Sha2.Run(run)
 		z.PublicInput.Assign(run, input.L2BridgeAddress, input.BlockHashList)
 	}
 }

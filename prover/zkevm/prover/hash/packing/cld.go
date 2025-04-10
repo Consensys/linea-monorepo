@@ -190,20 +190,25 @@ func (decomposed decomposition) csFilter(comp *wizard.CompiledIOP) {
 // assign the columns specific to the module.
 func (decomposed *decomposition) Assign(run *wizard.ProverRuntime) {
 	decomposed.assignMainColumns(run)
+
 	// assign s.filter
-	var (
-		filter = make([]*common.VectorBuilder, decomposed.nbSlices)
-		one    = field.One()
-	)
 	for j := 0; j < decomposed.nbSlices; j++ {
 		decomposed.paIsZero[j].Run(run)
-		filter[j] = common.NewVectorBuilder(decomposed.filter[j])
-		a := decomposed.resIsZero[j].GetColAssignment(run).IntoRegVecSaveAlloc()
-		for i := range a {
-			f := *new(field.Element).Sub(&one, &a[i])
-			filter[j].PushField(f)
+
+		var (
+			filter        = decomposed.filter[j]
+			compactFilter = make([]field.Element, 0)
+			a             = decomposed.resIsZero[j].GetColAssignment(run)
+			one           = field.One()
+		)
+
+		for ai := range a.IterateCompact() {
+			var f field.Element
+			f.Sub(&one, &ai)
+			compactFilter = append(compactFilter, f)
 		}
-		filter[j].PadAndAssign(run, field.Zero())
+
+		run.AssignColumn(filter.GetColID(), smartvectors.FromCompactWithShape(a, compactFilter))
 	}
 
 	// assign Iszero()
@@ -233,23 +238,35 @@ func getDecompositionInputs(cleaning cleaningCtx, pckParam PackingInput) decompo
 func (decomposed *decomposition) assignMainColumns(run *wizard.ProverRuntime) {
 	var (
 		imported   = decomposed.Inputs.cleaningCtx.Inputs.imported
-		cleanLimbs = decomposed.Inputs.cleaningCtx.CleanLimb.GetColAssignment(run).IntoRegVecSaveAlloc()
-		nByte      = imported.NByte.GetColAssignment(run).IntoRegVecSaveAlloc()
-		size       = decomposed.size
+		cleanLimbs = decomposed.Inputs.cleaningCtx.CleanLimb.GetColAssignment(run)
+		nByte      = imported.NByte.GetColAssignment(run)
 
 		// Assign the columns decomposedLimbs and decomposedLen
-		decomposedLen   = make([][]field.Element, decomposed.nbSlices)
+		decomposedLen   [][]field.Element
 		decomposedLimbs = make([][]field.Element, decomposed.nbSlices)
+
+		// These are needed for sanity-checking the implementation which
+		// crucially relies on the fact that the input vectors are post-padded.
+		cleanLimbsStartRange, _ = smartvectors.CoWindowRange(cleanLimbs)
+		nByteStartRange, _      = smartvectors.CoWindowRange(nByte)
 	)
 
-	for j := range decomposedLimbs {
-		decomposedLimbs[j] = make([]field.Element, size)
-		decomposedLen[j] = make([]field.Element, size)
+	if cleanLimbsStartRange > 0 || nByteStartRange > 0 {
+		utils.Panic("the implementation relies on the fact that the input vectors are post-padded, but their range start after 0, range-start:[%v %v]", cleanLimbsStartRange, nByteStartRange)
 	}
 
 	// assign row-by-row
 	decomposedLen = cutUpToMax(nByte, decomposed.nbSlices, decomposed.maxLen)
-	for i := 0; i < size; i++ {
+
+	for j := range decomposedLimbs {
+		decomposedLimbs[j] = make([]field.Element, len(decomposedLen[0]))
+	}
+
+	for i := 0; i < len(decomposedLen[0]); i++ {
+
+		cleanLimb := cleanLimbs.Get(i)
+		nByte := nByte.Get(i)
+
 		// i-th row of DecomposedLen
 		var lenRow []int
 		for j := 0; j < decomposed.nbSlices; j++ {
@@ -257,12 +274,11 @@ func (decomposed *decomposition) assignMainColumns(run *wizard.ProverRuntime) {
 		}
 
 		// populate DecomposedLimb
-		decomposedLimb := decomposeByLength(cleanLimbs[i], field.ToInt(&nByte[i]), lenRow)
+		decomposedLimb := decomposeByLength(cleanLimb, field.ToInt(&nByte), lenRow)
 
 		for j := 0; j < decomposed.nbSlices; j++ {
 			decomposedLimbs[j][i] = decomposedLimb[j]
 		}
-
 	}
 
 	for j := 0; j < decomposed.nbSlices; j++ {
@@ -270,13 +286,19 @@ func (decomposed *decomposition) assignMainColumns(run *wizard.ProverRuntime) {
 		run.AssignColumn(decomposed.decomposedLen[j].GetColID(), smartvectors.RightZeroPadded(decomposedLen[j], decomposed.size))
 	}
 
+	// powersOf256 stores the successive powers of 256. This is used to compute
+	// the decomposedLenPowers.
+	powersOf256 := make([]field.Element, decomposed.maxLen+1)
+	for i := range powersOf256 {
+		powersOf256[i].Exp(field.NewElement(256), big.NewInt(int64(i)))
+	}
+
 	// assign decomposedLenPowers
-	var a big.Int
 	for j := range decomposedLen {
-		decomposedLenPowers := make([]field.Element, size)
+		decomposedLenPowers := make([]field.Element, len(decomposedLen[j]))
 		for i := range decomposedLen[0] {
-			decomposedLen[j][i].BigInt(&a)
-			decomposedLenPowers[i].Exp(field.NewElement(POWER8), &a)
+			decomLen := field.ToInt(&decomposedLen[j][i])
+			decomposedLenPowers[i] = powersOf256[decomLen]
 		}
 		run.AssignColumn(decomposed.decomposedLenPowers[j].GetColID(), smartvectors.RightPadded(decomposedLenPowers, field.One(), decomposed.size))
 	}
@@ -285,37 +307,44 @@ func (decomposed *decomposition) assignMainColumns(run *wizard.ProverRuntime) {
 // It receives an (set of) integer number N and outputs (n_1,...,n_nbChunk) such that
 // N = \sum_{i < nbChunk} n_i
 // n_i = min ( max, N - \sum_{j<i} n_j)
-func cutUpToMax(nByte []field.Element, nbChunk, max int) (b [][]field.Element) {
+func cutUpToMax(nByte smartvectors.SmartVector, nbChunk, max int) [][]field.Element {
 
-	missing := uint64(max)
-	b = make([][]field.Element, nbChunk)
-	for i := range nByte {
-		var a []field.Element
-		curr := nByte[i].Uint64()
+	var (
+		missing = uint64(max)
+		b       = make([][]field.Element, nbChunk)
+	)
+
+	for curr := range nByte.IterateSkipPadding() {
+
+		// a is filled with nbChunk elements. Theses elements are the decomposition
+		// of 'curr' into of integers less or equal to "max". For instance, curr = 10
+		// and max=3 would give a and nChunk=5 would give a = [3, 3, 3, 1, 0].
+		//
+		// missing is a sort of carry that propagate the remainder of the decomposition
+		// to the next line. With our example, the missing value would be 2 at the end
+		// of the decomposition. And the next line would start with a 2 and then keep
+		// going with 3s.
+		var a = make([]uint64, 0, nbChunk)
+		curr := curr.Uint64()
 		for curr != 0 {
 			if curr >= missing {
-				a = append(a, field.NewElement(missing))
+				a = append(a, missing)
 				curr = curr - missing
 				missing = uint64(max)
 			} else {
-				a = append(a, field.NewElement(curr))
+				a = append(a, curr)
 				missing = missing - curr
 				curr = 0
 			}
 		}
+
 		for len(a) < nbChunk {
-			a = append(a, field.Zero())
+			a = append(a, 0)
 		}
-		s := 0
+
 		for j := 0; j < nbChunk; j++ {
-			s += field.ToInt(&a[j])
-			b[j] = append(b[j], a[j])
+			b[j] = append(b[j], field.NewElement(a[j]))
 		}
-
-		if s != field.ToInt(&nByte[i]) {
-			utils.Panic("decomposition of nByte is not correct; nByte %v, s %v", nByte[i].Uint64(), s)
-		}
-
 	}
 
 	return b
@@ -330,7 +359,7 @@ func decomposeByLength(cleanLimb field.Element, nBytes int, givenLen []int) (sli
 		s = s + givenLen[i]
 	}
 	if s != nBytes {
-		utils.Panic("input can not be decomposed to the given lengths")
+		utils.Panic("input can not be decomposed to the given lengths s=%v nBytes=%v", s, nBytes)
 	}
 
 	b := cleanLimb.Bytes()

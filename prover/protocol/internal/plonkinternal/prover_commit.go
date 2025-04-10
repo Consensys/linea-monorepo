@@ -10,6 +10,7 @@ import (
 	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/constraint/solver"
 	fcs "github.com/consensys/gnark/frontend/cs"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -49,6 +50,10 @@ type (
 // Run initializes the circuit assignment in the case where the the circuit uses
 // BBS22 commitment.
 func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
+
+	if pa.ExternalHasherOption.Enabled {
+		solver.RegisterHint(mimc.MimcHintfunc)
+	}
 
 	var (
 		ctx             = CompilationCtx(pa.CompilationCtx)
@@ -157,8 +162,12 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 	})
 
-	if ctx.RangeCheck.Enabled && !ctx.RangeCheck.wasCancelled {
+	if ctx.RangeCheckOption.Enabled && !ctx.RangeCheckOption.wasCancelled {
 		ctx.assignRangeChecked(run)
+	}
+
+	if ctx.ExternalHasherOption.Enabled {
+		ctx.assignHashColumns(run)
 	}
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commonconstraints "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 	util "github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput/utilities"
 )
@@ -83,7 +84,7 @@ func DefineHashFilterConstraints(comp *wizard.CompiledIOP, hasher *MIMCHasher, n
 func (hasher *MIMCHasher) DefineHasher(comp *wizard.CompiledIOP, name string) {
 
 	// MiMC constraints
-	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), hasher.data, hasher.state, hasher.hash)
+	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), hasher.data, hasher.state, hasher.hash, nil)
 
 	// intermediary state integrity
 	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s", name, "CONSISTENCY_STATE_AND_HASH_LAST"), // LAST is either hashSecond
@@ -105,6 +106,7 @@ func (hasher *MIMCHasher) DefineHasher(comp *wizard.CompiledIOP, name string) {
 
 	comp.InsertGlobal(0, ifaces.QueryIDf("%s_%s", name, "CONSISTENCY_STATE_AND_HASH_LAST_2"), // LAST is either hashSecond
 		sym.Mul(
+			hasher.isActive,
 			sym.Sub(1, hasher.isData),
 			sym.Sub(hasher.data,
 				column.Shift(hasher.hash, -1),
@@ -136,81 +138,64 @@ func (hasher *MIMCHasher) DefineHasher(comp *wizard.CompiledIOP, name string) {
 
 // AssignHasher assigns the data in the MIMCHasher. The data and isActive columns are fetched from another module.
 func (hasher *MIMCHasher) AssignHasher(run *wizard.ProverRuntime) {
-	inputSize := hasher.inputData.Size()
-	size := hasher.data.Size()
-	isData := make([]field.Element, size)
-	data := make([]field.Element, size)
-	isActive := make([]field.Element, size)
-	hash := make([]field.Element, size)
-	state := make([]field.Element, size)
 
 	var (
+		inputSize = hasher.inputData.Size()
+		isData    = common.NewVectorBuilder(hasher.isData)
+		isActive  = common.NewVectorBuilder(hasher.isActive)
+		state     = common.NewVectorBuilder(hasher.state)
+		data      = common.NewVectorBuilder(hasher.data)
+		hash      = common.NewVectorBuilder(hasher.hash)
 		finalHash field.Element
 	)
 
-	isData[0].SetOne()
-	isData[1].SetOne()
-	isActive[0].SetOne()
-	isActive[1].SetOne()
+	// Writing the first row
+	isData.PushOne()
+	isActive.PushOne()
+	state.PushZero()
+	data.PushField(hasher.inputData.GetColAssignmentAt(run, 0))
+	hash.PushField(mimc.BlockCompression(state.Last(), data.Last()))
+
+	// Writing the second row
+	isData.PushOne()
+	isActive.PushOne()
+	state.PushField(hash.Last())
+	data.PushField(hasher.inputData.GetColAssignmentAt(run, 1))
+	hash.PushField(mimc.BlockCompression(state.Last(), data.Last()))
 
 	for j := 2; j < inputSize; j++ {
-		index := j*2 - 1 // corresponding index of the MIMC hasher
+
 		inputIsActive := hasher.inputIsActive.GetColAssignmentAt(run, j)
-		if inputIsActive.IsOne() {
-			isData[index].SetOne()
+		if !inputIsActive.IsOne() {
+			finHash := hash.Last()
+			finalHash.Set(&finHash)
+			break
 		}
-	}
 
-	// state[0] remains 0
-	// compute first hash
-	firstData := hasher.inputData.GetColAssignmentAt(run, 0)
-	data[0].Set(&firstData)
-	firstHash := mimc.BlockCompression(state[0], data[0])
-	hash[0].Set(&firstHash)
+		// Odds rows, we start a new hash from zero, using the previous hash
+		// as data.
+		isData.PushZero()
+		isActive.PushOne()
+		state.PushZero()
+		data.PushField(hash.Last())
+		hash.PushField(mimc.BlockCompression(state.Last(), data.Last()))
 
-	// second hash
-	secondData := hasher.inputData.GetColAssignmentAt(run, 1)
-	data[1].Set(&secondData)
-	state[1].Set(&firstHash)
-	secondHash := mimc.BlockCompression(state[1], data[1])
-	hash[1].Set(&secondHash)
-
-	inputCounter := 2 // the counter for the input data to process
-	// start i from 2, which contains unset field elements
-	// i is the hasher counter
-	for i := 2; i < len(hash); i++ {
-		var dataToHash field.Element
-		if isData[i].IsOne() {
-			dataToHash = hasher.inputData.GetColAssignmentAt(run, inputCounter)
-			state[i].Set(&hash[i-1])
-		} else {
-			// state[i] remains zero
-			dataToHash = hash[i-1]
-		}
-		data[i].Set(&dataToHash)
-		mimcOutput := mimc.BlockCompression(state[i], data[i])
-		hash[i].Set(&mimcOutput)
-
-		// set the active filters
-		if isData[i].IsOne() {
-			// if we just hashed concrete data, we set the active filters and the final hash
-			inputIsActive := hasher.inputIsActive.GetColAssignmentAt(run, inputCounter)
-			if inputIsActive.IsOne() {
-				isActive[i].SetOne()
-				isActive[i-1].SetOne()
-				finalHash.Set(&mimcOutput)
-				inputCounter++
-			}
-		}
+		// Evens rows, we continue the hash by adding the input data corresponding
+		// to "j".
+		isData.PushOne()
+		isActive.PushOne()
+		state.PushField(hash.Last())
+		data.PushField(hasher.inputData.GetColAssignmentAt(run, j))
+		hash.PushField(mimc.BlockCompression(state.Last(), data.Last()))
 	}
 
 	// assign the hasher columns
-	run.AssignColumn(hasher.hash.GetColID(), smartvectors.NewRegular(hash))
-	run.AssignColumn(hasher.state.GetColID(), smartvectors.NewRegular(state))
-	run.AssignColumn(hasher.data.GetColID(), smartvectors.NewRegular(data))
-	run.AssignColumn(hasher.isActive.GetColID(), smartvectors.NewRegular(isActive))
-	run.AssignColumn(hasher.isData.GetColID(), smartvectors.NewRegular(isData))
-	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewConstant(finalHash, size))
+	isData.PadAndAssign(run, field.Zero())
+	isActive.PadAndAssign(run, field.Zero())
+	state.PadAndAssign(run, field.Zero())
+	data.PadAndAssign(run, field.Zero())
+	hash.PadAndAssign(run, mimc.BlockCompression(field.Zero(), field.Zero()))
+	run.AssignColumn(hasher.HashFinal.GetColID(), smartvectors.NewConstant(finalHash, hasher.HashFinal.Size()))
 
 	hasher.isDataFirstRow.Assign(run)
 	hasher.isDataOddRows.Assign(run)

@@ -59,7 +59,7 @@ We use a dedicated wizard called Byte32cmp to verify this.
 const (
 
 	// Column names
-	ACCUMULATOR_PROOFS_NAME                ifaces.ColID = "ACCUMULATOR_PROOFS"
+	ACCUMULATOR_PROOFS_NAME                string       = "ACCUMULATOR_PROOFS"
 	ACCUMULATOR_ROOTS_NAME                 ifaces.ColID = "ACCUMULATOR_ROOTS"
 	ACCUMULATOR_POSITIONS_NAME             ifaces.ColID = "ACCUMULATOR_POSITIONS"
 	ACCUMULATOR_LEAVES_NAME                ifaces.ColID = "ACCUMULATOR_LEAVES"
@@ -115,7 +115,7 @@ type Module struct {
 		Leaves    ifaces.Column
 		Roots     ifaces.Column
 		Positions ifaces.Column
-		Proofs    ifaces.Column
+		Proofs    *merkle.FlatProof
 		// Column to verify reuse of Merkle proofs in INSERT, DELETE, and UPDATE operations
 		UseNextMerkleProof ifaces.Column
 		// Column denoting the active area of the accumulator module
@@ -186,6 +186,9 @@ type Module struct {
 		// TopRoot contains the MiMC hash of Roots and NextFreeNode
 		TopRoot ifaces.Column
 	}
+
+	// MerkleProofVerification is the merkle tree verification wizard
+	MerkleProofVerification *merkle.FlatMerkleProofVerification
 }
 
 // NewModule generates and constraints the accumulator module. The accumulator
@@ -207,7 +210,7 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	am.Cols.Leaves = comp.InsertCommit(am.Round, ACCUMULATOR_LEAVES_NAME, am.NumRows())
 	am.Cols.Roots = comp.InsertCommit(am.Round, ACCUMULATOR_ROOTS_NAME, am.NumRows())
 	am.Cols.Positions = comp.InsertCommit(am.Round, ACCUMULATOR_POSITIONS_NAME, am.NumRows())
-	am.Cols.Proofs = comp.InsertCommit(am.Round, ACCUMULATOR_PROOFS_NAME, am.merkleProofModNumRows())
+	am.Cols.Proofs = merkle.NewProof(comp, am.Round, ACCUMULATOR_PROOFS_NAME, am.MerkleTreeDepth, am.NumRows())
 	am.Cols.UseNextMerkleProof = comp.InsertCommit(am.Round, ACCUMULATOR_USE_NEXT_MERKLE_PROOF_NAME, am.NumRows())
 	am.Cols.IsActiveAccumulator = comp.InsertCommit(am.Round, ACCUMULATOR_IS_ACTIVE_NAME, am.NumRows())
 	am.Cols.AccumulatorCounter = comp.InsertCommit(am.Round, ACCUMULATOR_COUNTER_NAME, am.NumRows())
@@ -301,12 +304,19 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	//
 	// @alex: it would make sense to refactor the merkle package with an input
 	// struct so that the function signature is more readable.
-	merkle.MerkleProofCheckWithReuse(
+	am.MerkleProofVerification = merkle.CheckFlatMerkleProofs(
 		comp,
-		"ACCUMULATOR_MERKLE_PROOFS",
-		s.MerkleTreeDepth, s.MaxNumProofs,
-		am.Cols.Proofs, am.Cols.Roots, am.Cols.Leaves, am.Cols.Positions, am.Cols.UseNextMerkleProof, am.Cols.IsActiveAccumulator, am.Cols.AccumulatorCounter,
+		merkle.FlatProofVerificationInputs{
+			Name:     "ACCUMULATOR_MERKLE_PROOFS",
+			Proof:    *am.Cols.Proofs,
+			Roots:    am.Cols.Roots,
+			Leaf:     am.Cols.Leaves,
+			Position: am.Cols.Positions,
+			IsActive: am.Cols.IsActiveAccumulator,
+		},
 	)
+
+	am.MerkleProofVerification.AddProofReuseConstraint(comp, am.Cols.UseNextMerkleProof)
 }
 
 func (am *Module) commitLeafHashingCols() {
@@ -559,10 +569,10 @@ func (am *Module) checkPointer() {
 
 func (am *Module) checkLeafHashes() {
 	cols := am.Cols
-	am.comp.InsertMiMC(am.Round, am.qname("MIMC_PREV"), cols.LeafOpenings.Prev, cols.Zero, cols.Interm[0])
-	am.comp.InsertMiMC(am.Round, am.qname("MIMC_NEXT"), cols.LeafOpenings.Next, cols.Interm[0], cols.Interm[1])
-	am.comp.InsertMiMC(am.Round, am.qname("MIMC_HKEY"), cols.LeafOpenings.HKey, cols.Interm[1], cols.Interm[2])
-	am.comp.InsertMiMC(am.Round, am.qname("MIMC_HVAL_LEAF"), cols.LeafOpenings.HVal, cols.Interm[2], cols.LeafHashes)
+	am.comp.InsertMiMC(am.Round, am.qname("MIMC_PREV"), cols.LeafOpenings.Prev, cols.Zero, cols.Interm[0], nil)
+	am.comp.InsertMiMC(am.Round, am.qname("MIMC_NEXT"), cols.LeafOpenings.Next, cols.Interm[0], cols.Interm[1], nil)
+	am.comp.InsertMiMC(am.Round, am.qname("MIMC_HKEY"), cols.LeafOpenings.HKey, cols.Interm[1], cols.Interm[2], nil)
+	am.comp.InsertMiMC(am.Round, am.qname("MIMC_HVAL_LEAF"), cols.LeafOpenings.HVal, cols.Interm[2], cols.LeafHashes, nil)
 	// Global: IsActive[i] * (1 - IsEmptyLeaf[i]) * (Leaves[i] - LeafHashes[i])
 	expr1 := symbolic.Sub(cols.Leaves, cols.LeafHashes)
 	expr2 := symbolic.Sub(symbolic.NewConstant(1), cols.IsEmptyLeaf)
@@ -617,8 +627,8 @@ func (am *Module) checkNextFreeNode() {
 
 func (am *Module) checkTopRootHash() {
 	cols := am.Cols
-	am.comp.InsertMiMC(am.Round, am.qname("MIMC_INTERM_TOP_ROOT"), cols.NextFreeNode, cols.Zero, cols.IntermTopRoot)
-	am.comp.InsertMiMC(am.Round, am.qname("MIMC_TOP_ROOT"), cols.Roots, cols.IntermTopRoot, cols.TopRoot)
+	am.comp.InsertMiMC(am.Round, am.qname("MIMC_INTERM_TOP_ROOT"), cols.NextFreeNode, cols.Zero, cols.IntermTopRoot, nil)
+	am.comp.InsertMiMC(am.Round, am.qname("MIMC_TOP_ROOT"), cols.Roots, cols.IntermTopRoot, cols.TopRoot, nil)
 }
 
 func (am *Module) checkZeroInInactive() {

@@ -553,8 +553,11 @@ func (c *CompiledIOP) InsertLogDerivativeSum(lastRound int, id ifaces.QueryID, i
 //   - the columns do not share the same size
 //   - the declaration round is anterior to the declaration round of the
 //     provided input columns.
-func (c *CompiledIOP) InsertMiMC(round int, id ifaces.QueryID, block, old, new ifaces.Column) query.MiMC {
-	q := query.NewMiMC(id, block, old, new)
+//
+// The caller may provide a (potentially nil) column as a selector. The selector
+// disables the query on rows where the selector is 0.
+func (c *CompiledIOP) InsertMiMC(round int, id ifaces.QueryID, block, old, new ifaces.Column, selector ifaces.Column) query.MiMC {
+	q := query.NewMiMC(id, block, old, new, selector)
 	c.QueriesNoParams.AddToRound(round, id, q)
 	return q
 }

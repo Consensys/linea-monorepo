@@ -129,7 +129,7 @@ func NewModule(comp *wizard.CompiledIOP, inputs Inputs) (mh Module) {
 func (mh *Module) checkConsistency(comp *wizard.CompiledIOP) {
 
 	// NewState = MiMC(PrevState, Limb)
-	comp.InsertMiMC(mh.inputs.Round, mh.qname("MiMC_CODE_HASH"), mh.Limb, mh.PrevState, mh.NewState)
+	comp.InsertMiMC(mh.inputs.Round, mh.qname("MiMC_CODE_HASH"), mh.Limb, mh.PrevState, mh.NewState, nil)
 
 	// If IsNewHash = 0, PrevState[i] = NewState[i-1] (in the active area), e.g.,
 	// IsActive[i] * (1 - IsNewHash[i]) * (PrevState[i] - NextState[i-1]) = 0
