@@ -27,9 +27,6 @@ import org.hyperledger.besu.datatypes.Address
 class QbftValidatorProviderAdapter(
   private val validatorProvider: ValidatorProvider,
 ) : QbftValidatorProvider {
-  // This method has been removed from QbftValidatorProvider in Besu and will be removed once Besu version is updated
-  override fun getValidatorsAtHead(): Collection<Address> = throw UnsupportedOperationException("Not implemented")
-
   override fun getValidatorsAfterBlock(header: QbftBlockHeader): Collection<Address> =
     validatorProvider.getValidatorsAfterBlock(header.toBeaconBlockHeader().number).get().map {
       Address.wrap(Bytes.wrap(it.address))
