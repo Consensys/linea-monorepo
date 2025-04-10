@@ -21,7 +21,6 @@ func (a *splitProverAction) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-// Splitter
 func Splitter(size int) func(*wizard.CompiledIOP) {
 	return func(comp *wizard.CompiledIOP) {
 		ctx := newSplitter(comp, size)
@@ -33,12 +32,8 @@ func Splitter(size int) func(*wizard.CompiledIOP) {
 }
 
 type splitterContext struct {
-	// the compiled IOP
-	comp *wizard.CompiledIOP
-	// the size for splitting the big columns
-	size int
-	// It collects the information about the splitting and subColumns.
-	// The index of Splittings is over the rounds.
+	comp       *wizard.CompiledIOP
+	size       int
 	Splittings []SummerizedAlliances
 }
 
@@ -49,7 +44,6 @@ func newSplitter(comp *wizard.CompiledIOP, size int) splitterContext {
 		size:       size,
 		Splittings: make([]SummerizedAlliances, numRound),
 	}
-
 	ctx.ScanSplitCommit()
 	return ctx
 }
@@ -60,24 +54,9 @@ type proveRoundProverAction struct {
 }
 
 func (a *proveRoundProverAction) Run(run *wizard.ProverRuntime) {
-	stopTimer := profiling.LogTimer("splitter compiler")
-	defer stopTimer()
-
-	for idBigCol, subCols := range a.ctx.Splittings[a.round].ByBigCol {
-		bigCol := a.ctx.comp.Columns.GetHandle(idBigCol)
-		if len(subCols)*a.ctx.size != bigCol.Size() {
-			utils.Panic("Unexpected sizes %v * %v != %v", len(subCols), a.ctx.size, bigCol.Size())
-		}
-
-		if a.ctx.comp.Precomputed.Exists(idBigCol) {
-			continue
-		}
-
-		witness := bigCol.GetColAssignment(run)
-		for i := 0; i < len(subCols); i++ {
-			run.AssignColumn(subCols[i].GetColID(), witness.SubVector(i*a.ctx.size, (i+1)*a.ctx.size))
-		}
-	}
+	// Invoke the closure returned by Prove
+	proveFunc := a.ctx.Prove(a.round)
+	proveFunc(run)
 }
 
 func (ctx *splitterContext) ScanSplitCommit() {
@@ -147,26 +126,18 @@ func nameHandleSlice(h ifaces.Column, num, numSlots int) ifaces.ColID {
 	return ifaces.ColIDf("%v_SUBSLICE_%v_OVER_%v", h.GetColID(), num, numSlots)
 }
 
-func (ctx splitterContext) Prove(round int) wizard.MainProverStep {
-
+func (ctx *splitterContext) Prove(round int) wizard.MainProverStep {
 	return func(run *wizard.ProverRuntime) {
 		stopTimer := profiling.LogTimer("splitter compiler")
 		defer stopTimer()
-
 		for idBigCol, subCols := range ctx.Splittings[round].ByBigCol {
-
-			// Sanity-check
 			bigCol := ctx.comp.Columns.GetHandle(idBigCol)
 			if len(subCols)*ctx.size != bigCol.Size() {
-				utils.Panic("Unexpected sizes %v  * %v != %v", len(subCols), ctx.size, bigCol.Size())
+				utils.Panic("Unexpected sizes %v * %v != %v", len(subCols), ctx.size, bigCol.Size())
 			}
-
-			// If the column is precomputed, it was already assigned
 			if ctx.comp.Precomputed.Exists(idBigCol) {
 				continue
 			}
-
-			// assign the subColumns
 			witness := bigCol.GetColAssignment(run)
 			for i := 0; i < len(subCols); i++ {
 				run.AssignColumn(subCols[i].GetColID(), witness.SubVector(i*ctx.size, (i+1)*ctx.size))
