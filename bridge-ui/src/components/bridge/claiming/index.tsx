@@ -43,7 +43,7 @@ export default function Claiming() {
     if (isCctp(token)) return false;
     if (loading) return false;
     // If sponsored automatic claiming is available, we assume user has no need to select manual claiming.
-    if (claim === ClaimType.AUTO_FREE) false;
+    if (claim === ClaimType.AUTO_FREE) return false;
     return true;
   }, [fromChain, token, loading, claim]);
 
