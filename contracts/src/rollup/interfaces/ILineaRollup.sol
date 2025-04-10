@@ -177,6 +177,8 @@ interface ILineaRollup {
     bytes32 finalStateRootHash
   );
 
+  event TransactionDeposited(address indexed from, address indexed to);
+
   /**
    * @dev Thrown when the last finalization time has not lapsed when trying to grant the OPERATOR_ROLE to the fallback operator address.
    */

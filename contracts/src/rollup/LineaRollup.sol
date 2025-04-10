@@ -5,6 +5,7 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { L1MessageService } from "../messaging/l1/L1MessageService.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
 import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
+import { IMessageService } from "../messaging/interfaces/IMessageService.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
@@ -47,6 +48,9 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   /// @dev In practice, when used, this is expected to be a close approximation to 6 months, and is intentional.
   uint256 internal constant SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
 
+  /// @notice The L2 gas limit set when eth is deposited using the receive() function.
+  uint64 internal constant RECEIVE_DEFAULT_GAS_LIMIT = 100_000;
+
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
   mapping(bytes32 dataHash => bytes32 finalStateRootHash) private dataFinalStateRootHashes_DEPRECATED;
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
@@ -79,12 +83,58 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
   address public fallbackOperator;
 
-  /// @dev Total contract storage is 11 slots.
+  address public yieldManager;
+
+  /// @dev Total contract storage is 12 slots.
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
   }
+
+  function sendMessage(address _to, uint256 _fee, bytes calldata _calldata)
+    override(IMessageService, L1MessageService)
+    public
+    payable
+    whenTypeAndGeneralNotPaused(PauseType.L1_L2)
+  {
+      super.sendMessage(_to, _fee, _calldata);
+      if (msg.value > 0 && msg.sender != address(yieldManager)) {
+        _depositTransaction(_to, msg.value, RECEIVE_DEFAULT_GAS_LIMIT, bytes(""));
+      }
+  }
+
+  /// @notice Computes the minimum gas limit for a deposit.
+  ///         The minimum gas limit linearly increases based on the size of the calldata.
+  ///         This is to prevent users from creating L2 resource usage without paying for it.
+  ///         This function can be used when interacting with the portal to ensure forwards
+  ///         compatibility.
+  /// @param _byteCount Number of bytes in the calldata.
+  /// @return The minimum gas limit for a deposit.
+  function minimumGasLimit(uint64 _byteCount) public pure returns (uint64) {
+    return _byteCount * 16 + 21000;
+  }
+
+  function _depositTransaction(address _to, uint256 _value, uint64 _gasLimit, bytes memory _data) internal {
+    require(yieldManager != address(0), "YieldManager not set");
+    require(_to != address(0), "cannot deposit to address(0)");
+
+    // Prevent depositing transactions that have too small of a gas limit. Users should pay
+    // more for more resource usage.
+    require(_gasLimit >= minimumGasLimit(uint64(_data.length)), "gas limit too small");
+
+    // Prevent the creation of deposit transactions that have too much calldata. This gives an
+    // upper limit on the size of unsafe blocks over the p2p network. 120kb is chosen to ensure
+    // that the transaction can fit into the p2p network policy of 128kb even though deposit
+    // transactions are not gossipped over the p2p network.
+    require(_data.length <= 120_000, "data too large");
+
+    (bool success,) = yieldManager.call{value: msg.value}("");
+    require(success, "ETH transfer to YieldManager failed");
+
+    emit TransactionDeposited(msg.sender, _to);
+  }
+
 
   /**
    * @notice Initializes LineaRollup and underlying service dependencies - used for new networks only.

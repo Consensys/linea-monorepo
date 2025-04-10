@@ -59,7 +59,7 @@ abstract contract L1MessageService is
     address _to,
     uint256 _fee,
     bytes calldata _calldata
-  ) external payable whenTypeAndGeneralNotPaused(PauseType.L1_L2) {
+  ) virtual public payable whenTypeAndGeneralNotPaused(PauseType.L1_L2) {
     if (_to == address(0)) {
       revert ZeroAddressNotAllowed();
     }
