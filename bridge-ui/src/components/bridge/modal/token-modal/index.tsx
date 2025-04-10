@@ -7,9 +7,9 @@ import SearchIcon from "@/assets/icons/search.svg";
 import styles from "./token-modal.module.scss";
 import TokenDetails from "./token-details";
 import { useDevice, useTokenPrices, useTokens } from "@/hooks";
-import { useTokenStore, useChainStore, useConfigStore } from "@/stores";
+import { useTokenStore, useChainStore, useConfigStore, useFormStore } from "@/stores";
 import { Token } from "@/types";
-import { safeGetAddress, isEmptyObject, isEth } from "@/utils";
+import { safeGetAddress, isEmptyObject, isEth, isCctp } from "@/utils";
 import { useAccount } from "wagmi";
 
 interface TokenModalProps {
@@ -21,6 +21,7 @@ export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProp
   const { isConnected } = useAccount();
   const tokensList = useTokens();
   const setSelectedToken = useTokenStore((state) => state.setSelectedToken);
+  const setClaim = useFormStore((state) => state.setClaim);
   const fromChain = useChainStore.useFromChain();
   const currency = useConfigStore((state) => state.currency);
   const { isMobile } = useDevice();
@@ -60,12 +61,15 @@ export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProp
 
   const { data: tokenPrices } = useTokenPrices(tokenAddresses, chainId);
 
+  // TODO - Set default claim type for token selection here.
+  // TODO - Don't override manual for L2. Only have choice for L1.
   const handleTokenClick = useCallback(
     (token: Token) => {
       setSelectedToken(token);
+      if (isCctp(token)) setClaim("manual");
       onCloseModal();
     },
-    [onCloseModal, setSelectedToken],
+    [onCloseModal, setSelectedToken, setClaim],
   );
 
   const getTokenPrice = useCallback(

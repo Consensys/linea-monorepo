@@ -3,7 +3,6 @@ import { defaultTokensConfig } from "./tokenStore";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
 import { Token } from "@/types";
-import { isCctp } from "@/utils";
 
 export type FormState = {
   token: Token;
@@ -46,11 +45,7 @@ export const createFormStore = (defaultValues?: FormState) =>
     return {
       ...defaultInitState,
       ...defaultValues,
-      setToken: (token) => {
-        set({ token });
-        // No auto-claim for CCTP
-        isCctp(token) ? set({ claim: "manual" }) : set({ claim: "auto" });
-      },
+      setToken: (token) => set({ token }),
       setRecipient: (recipient) => set({ recipient }),
       setAmount: (amount) => set({ amount }),
       setBalance: (balance) => set({ balance }),
