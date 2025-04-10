@@ -62,7 +62,6 @@ export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProp
   const { data: tokenPrices } = useTokenPrices(tokenAddresses, chainId);
 
   // TODO - Set default claim type for token selection here.
-  // TODO - Don't override manual for L2. Only have choice for L1.
   const handleTokenClick = useCallback(
     (token: Token) => {
       setSelectedToken(token);
