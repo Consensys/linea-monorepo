@@ -2,10 +2,10 @@ package linea.staterecovery
 
 import build.linea.clients.StateManagerClientV1
 import build.linea.clients.StateManagerV1JsonRpcClient
-import build.linea.contract.l1.LineaContractVersion
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
+import linea.contract.l1.LineaContractVersion
 import linea.log4j.configureLoggers
 import linea.staterecovery.test.assertBesuAndShomeiRecoveredAsExpected
 import linea.staterecovery.test.execCommandAndAssertSuccess
@@ -96,6 +96,7 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
       "make staterecovery-replay-from-block " +
         "L1_ROLLUP_CONTRACT_ADDRESS=${rollupDeploymentResult.contractAddress} " +
         "STATERECOVERY_OVERRIDE_START_BLOCK_NUMBER=1",
+      timeout = 1.minutes,
       log = log
     ).thenPeek {
       log.info("make staterecovery-replay-from-block executed")
