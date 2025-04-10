@@ -75,7 +75,7 @@ async function prepareERC20TokenParams(
 /**
  * Generic helper to call gas estimation.
  */
-async function estimateGasFee(
+async function estimateClaimMessageGasUsed(
   publicClient: ReturnType<typeof getPublicClient>,
   contractAddress: Address,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -99,7 +99,7 @@ async function estimateGasFee(
 /**
  * Estimates the gas fee for bridging an ERC20 token.
  */
-export async function estimateERC20GasFee({
+export async function estimateERC20BridgingGasUsed({
   address,
   recipient,
   amount,
@@ -157,13 +157,19 @@ export async function estimateERC20GasFee({
     nextMessageNumber,
   ];
 
-  return estimateGasFee(destinationChainPublicClient, toChain.messageServiceAddress, argsArray, stateOverride, address);
+  return estimateClaimMessageGasUsed(
+    destinationChainPublicClient,
+    toChain.messageServiceAddress,
+    argsArray,
+    stateOverride,
+    address,
+  );
 }
 
 /**
  * Estimates the gas fee for bridging ETH.
  */
-export async function estimateEthGasFee({
+export async function estimateEthBridgingGasUsed({
   address,
   recipient,
   amount,
@@ -185,5 +191,11 @@ export async function estimateEthGasFee({
 
   const argsArray = [address, recipient, 0n, amount, zeroAddress, "0x", nextMessageNumber];
 
-  return estimateGasFee(destinationChainPublicClient, toChain.messageServiceAddress, argsArray, stateOverride, address);
+  return estimateClaimMessageGasUsed(
+    destinationChainPublicClient,
+    toChain.messageServiceAddress,
+    argsArray,
+    stateOverride,
+    address,
+  );
 }

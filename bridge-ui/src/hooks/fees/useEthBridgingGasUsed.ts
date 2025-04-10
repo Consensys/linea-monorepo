@@ -1,7 +1,7 @@
 import { Address } from "viem";
 import { useQuery } from "@tanstack/react-query";
 import { BridgeProvider, Chain, ChainLayer, ClaimType, Token } from "@/types";
-import { estimateEthGasFee, isEth } from "@/utils";
+import { estimateEthBridgingGasUsed, isEth } from "@/utils";
 
 type UseEthBridgingFeeProps = {
   account?: Address;
@@ -14,7 +14,7 @@ type UseEthBridgingFeeProps = {
   claimingType: ClaimType;
 };
 
-const useEthBridgingFee = ({
+const useEthBridgingGasUsed = ({
   token,
   account,
   recipient,
@@ -48,7 +48,7 @@ const useEthBridgingFee = ({
       !!recipient &&
       claimingType === ClaimType.AUTO_PAID,
     queryFn: async () =>
-      await estimateEthGasFee({
+      await estimateEthBridgingGasUsed({
         address: account!,
         recipient,
         amount,
@@ -62,4 +62,4 @@ const useEthBridgingFee = ({
   return { data, isLoading, isError, refetch };
 };
 
-export default useEthBridgingFee;
+export default useEthBridgingGasUsed;

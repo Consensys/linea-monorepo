@@ -2,8 +2,8 @@ import { useMemo, useEffect } from "react";
 import { Address } from "viem";
 import useFeeData from "./useFeeData";
 import useMessageNumber from "../useMessageNumber";
-import useERC20BridgingFee from "./useERC20BridgingFee";
-import useEthBridgingFee from "./useEthBridgingFee";
+import useERC20BridgingGasUsed from "./useERC20BridgingGasUsed";
+import useEthBridgingGasUsed from "./useEthBridgingGasUsed";
 import { useFormStore, useChainStore } from "@/stores";
 import { Token, ClaimType } from "@/types";
 import { isEth, isUndefined } from "@/utils";
@@ -29,7 +29,7 @@ const useBridgingFee = ({ isConnected, account, token, claimingType, amount, rec
   const fromAddress = isConnected ? account : DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER;
   const toAddress = isConnected ? recipient : DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER;
 
-  const eth = useEthBridgingFee({
+  const eth = useEthBridgingGasUsed({
     account: fromAddress,
     fromChain,
     toChain,
@@ -40,7 +40,7 @@ const useBridgingFee = ({ isConnected, account, token, claimingType, amount, rec
     claimingType,
   });
 
-  const erc20 = useERC20BridgingFee({
+  const erc20 = useERC20BridgingGasUsed({
     account: fromAddress,
     token,
     fromChain,
