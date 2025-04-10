@@ -228,33 +228,22 @@ func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round i
 // some columns have not been assigned at all. Those won't be included in the
 // returned proof.
 func (run *ProverRuntime) ExtractProof() Proof {
-	logrus.Info("Extracting proof before collection")
 	messages := collection.NewMapping[ifaces.ColID, ifaces.ColAssignment]()
-	logrus.Info("Extracting proof after collection")
-
 	for _, name := range run.Spec.Columns.AllKeysProof() {
-		logrus.Infof("Processing column: %v", name)
-
 		cols := run.Spec.Columns.GetHandle(name)
 		logrus.Infof("Column %v has round %v", name, run.currRound)
 		if run.currRound < cols.Round() {
 			logrus.Infof("Skipping column %v because current round %v is less than column round %v", name, run.currRound, cols.Round())
 			continue
 		}
-
 		messageValue := run.Columns.MustGet(name)
-		logrus.Infof("Retrieved column assignment for %v", name)
 		messages.InsertNew(name, messageValue)
-		logrus.Infof("Inserted column assignment for %v into messages", name)
 	}
 
 	queriesParams := collection.NewMapping[ifaces.QueryID, ifaces.QueryParams]()
 	for round := 0; round <= run.currRound; round++ {
-		logrus.Infof("Processing queries for round %v", round)
 		for _, name := range run.Spec.QueriesParams.AllKeysAt(round) {
-			logrus.Infof("Processing query: %v", name)
 			queriesParams.InsertNew(name, run.QueriesParams.MustGet(name))
-			logrus.Infof("Inserted query params for %v into queriesParams", name)
 		}
 	}
 

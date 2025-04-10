@@ -184,6 +184,7 @@ func (ctx *Ctx) getPols(run *wizard.ProverRuntime, round int) (pols []smartvecto
 	logrus.Infof("Vortex getPols at round %v: Expected columns: %v", round, names)
 	pols = make([]smartvectors.SmartVector, len(names))
 	for i := range names {
+		logrus.Infof("Column name %v", names[i])
 		pols[i] = run.Columns.MustGet(names[i])
 	}
 	return pols
