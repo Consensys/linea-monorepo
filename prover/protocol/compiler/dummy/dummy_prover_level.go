@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -41,56 +42,68 @@ func CompileAtProverLvl(comp *wizard.CompiledIOP) {
 		One step to be run at the end, by verifying every constraint
 		"a la mano"
 	*/
-	verifier := func(run *wizard.ProverRuntime) {
+	comp.RegisterProverAction(numRounds-1, &dummyVerifierProverAction{
+		comp:                     comp,
+		queriesParamsToCompile:   queriesParamsToCompile,
+		queriesNoParamsToCompile: queriesNoParamsToCompile,
+	})
+}
 
-		var finalErr error
-		lock := sync.Mutex{}
+// dummyVerifierProverAction is the action to verify queries at the prover level.
+// It implements the [wizard.ProverAction] interface.
+type dummyVerifierProverAction struct {
+	comp                     *wizard.CompiledIOP
+	queriesParamsToCompile   []ifaces.QueryID
+	queriesNoParamsToCompile []ifaces.QueryID
+}
 
-		/*
-			Test all the query with parameters
-		*/
-		parallel.Execute(len(queriesParamsToCompile), func(start, stop int) {
-			for i := start; i < stop; i++ {
-				name := queriesParamsToCompile[i]
+// Run executes the dummy verification by checking all queries.
+func (a *dummyVerifierProverAction) Run(run *wizard.ProverRuntime) {
+	logrus.Infof("started to run the dummy verifier")
+
+	var finalErr error
+	lock := sync.Mutex{}
+
+	/*
+		Test all the query with parameters
+	*/
+	parallel.Execute(len(a.queriesParamsToCompile), func(start, stop int) {
+		for i := start; i < stop; i++ {
+			name := a.queriesParamsToCompile[i]
+			lock.Lock()
+			q := a.comp.QueriesParams.Data(name)
+			lock.Unlock()
+			if err := q.Check(run); err != nil {
 				lock.Lock()
-				q := comp.QueriesParams.Data(name)
+				finalErr = fmt.Errorf("%v\nfailed %v - %v", finalErr, name, err)
 				lock.Unlock()
-				if err := q.Check(run); err != nil {
-					lock.Lock()
-					finalErr = fmt.Errorf("%v\nfailed %v - %v", finalErr, name, err)
-					lock.Unlock()
-					logrus.Debugf("query %v failed\n", name)
-				} else {
-					logrus.Debugf("query %v passed\n", name)
-				}
+				logrus.Debugf("query %v failed\n", name)
+			} else {
+				logrus.Debugf("query %v passed\n", name)
 			}
-		})
-
-		/*
-			Test the queries without parameters
-		*/
-		parallel.Execute(len(queriesNoParamsToCompile), func(start, stop int) {
-			for i := start; i < stop; i++ {
-				name := queriesNoParamsToCompile[i]
-				lock.Lock()
-				q := comp.QueriesNoParams.Data(name)
-				lock.Unlock()
-				if err := q.Check(run); err != nil {
-					lock.Lock()
-					finalErr = fmt.Errorf("%v\nfailed %v - %v", finalErr, name, err)
-					lock.Unlock()
-				} else {
-					logrus.Debugf("query %v passed\n", name)
-				}
-			}
-		})
-
-		if finalErr != nil {
-			utils.Panic("dummy.Compile brought errors: %v", finalErr.Error())
 		}
+	})
+
+	/*
+		Test the queries without parameters
+	*/
+	parallel.Execute(len(a.queriesNoParamsToCompile), func(start, stop int) {
+		for i := start; i < stop; i++ {
+			name := a.queriesNoParamsToCompile[i]
+			lock.Lock()
+			q := a.comp.QueriesNoParams.Data(name)
+			lock.Unlock()
+			if err := q.Check(run); err != nil {
+				lock.Lock()
+				finalErr = fmt.Errorf("%v\nfailed %v - %v", finalErr, name, err)
+				lock.Unlock()
+			} else {
+				logrus.Debugf("query %v passed\n", name)
+			}
+		}
+	})
+
+	if finalErr != nil {
+		utils.Panic("dummy.Compile brought errors: %v", finalErr.Error())
 	}
-
-	logrus.Debugf("NB: The gnark circuit does not check the verifier of the dummy reduction\n")
-	comp.SubProvers.AppendToInner(numRounds-1, verifier)
-
 }

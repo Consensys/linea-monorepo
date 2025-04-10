@@ -188,7 +188,7 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 
 // GetMainProverStep returns a prover step assigning the provided witness.
 // It can be used for circuits where the only thing happening is the recursion.
-func (r *Recursion) GetMainProverStep(wit []Witness) wizard.ProverStep {
+func (r *Recursion) GetMainProverStep(wit []Witness) wizard.MainProverStep {
 	return func(run *wizard.ProverRuntime) {
 		r.Assign(run, wit)
 	}

@@ -3,6 +3,7 @@ package vortex
 import (
 	"math"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
@@ -20,6 +21,27 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/sirupsen/logrus"
 )
+
+type vortexProverAction struct {
+	ctx Ctx
+	fn  func(*wizard.ProverRuntime)
+}
+
+func (a *vortexProverAction) Run(run *wizard.ProverRuntime) {
+	a.fn(run)
+}
+
+type vortexVerifierAction struct {
+	ctx Ctx
+}
+
+func (a *vortexVerifierAction) Run(run wizard.Runtime) error {
+	return a.ctx.explicitPublicEvaluation(run) // Adjust based on context; see note below
+}
+
+func (a *vortexVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+	a.ctx.gnarkExplicitPublicEvaluation(api, c) // Adjust based on context; see note below
+}
 
 /*
 Applies the Vortex compiler over the current polynomial-IOP
@@ -74,7 +96,10 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// registers all the commitments
 		for round := 0; round <= lastRound; round++ {
 			ctx.compileRound(round)
-			comp.SubProvers.AppendToInner(round, ctx.AssignColumn(round))
+			comp.RegisterProverAction(round, &vortexProverAction{
+				ctx: ctx,
+				fn:  ctx.AssignColumn(round),
+			})
 		}
 
 		ctx.generateVortexParams()
@@ -85,13 +110,23 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		ctx.registerOpeningProof(lastRound)
 
 		// Registers the prover and verifier steps
-		comp.SubProvers.AppendToInner(lastRound+1, ctx.ComputeLinearComb)
-		comp.SubProvers.AppendToInner(lastRound+2, ctx.OpenSelectedColumns)
+		comp.RegisterProverAction(lastRound+1, &vortexProverAction{
+			ctx: ctx,
+			fn:  ctx.ComputeLinearComb,
+		})
+		comp.RegisterProverAction(lastRound+2, &vortexProverAction{
+			ctx: ctx,
+			fn:  ctx.OpenSelectedColumns,
+		})
 		// This is separated from GnarkVerify because, when doing full-recursion
 		// , we want to recurse this verifier step but not [ctx.Verify] which is
 		// already handled by the self-recursion mechanism.
-		comp.InsertVerifier(lastRound, ctx.explicitPublicEvaluation, ctx.gnarkExplicitPublicEvaluation)
-		comp.InsertVerifier(lastRound+2, ctx.Verify, ctx.GnarkVerify)
+		comp.RegisterVerifierAction(lastRound, &vortexVerifierAction{
+			ctx: ctx,
+		})
+		comp.RegisterVerifierAction(lastRound+2, &vortexVerifierAction{
+			ctx: ctx,
+		})
 
 		if ctx.AddMerkleRootToPublicInputsOpt.Enabled {
 			comp.InsertPublicInput(

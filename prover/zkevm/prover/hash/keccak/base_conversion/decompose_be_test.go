@@ -15,7 +15,7 @@ import (
 
 func makeTestCaseDecomposeBE() (
 	define wizard.DefineFunc,
-	prover wizard.ProverStep,
+	prover wizard.MainProverStep,
 ) {
 	// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 	rand := rand.New(utils.NewRandSource(0))

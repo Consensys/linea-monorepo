@@ -15,7 +15,7 @@ import (
 // It generates Define and Assign function of Packing module, for testing
 func makeTestCaseLaneRepacking(uc generic.HashingUsecase) (
 	define wizard.DefineFunc,
-	prover wizard.ProverStep,
+	prover wizard.MainProverStep,
 ) {
 	var (
 		// max number of blocks that can be extracted from limbs

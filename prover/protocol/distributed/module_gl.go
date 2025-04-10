@@ -250,7 +250,7 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
 // the provided [ModuleWitness] argument.
-func (m *ModuleGL) GetMainProverStep(witness *ModuleWitnessGL) wizard.ProverStep {
+func (m *ModuleGL) GetMainProverStep(witness *ModuleWitnessGL) wizard.MainProverStep {
 	return func(run *wizard.ProverRuntime) {
 		m.Assign(run, witness)
 	}

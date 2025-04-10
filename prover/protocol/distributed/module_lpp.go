@@ -245,7 +245,7 @@ func (m *ModuleLPP) ModuleNames() []ModuleName {
 
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
 // the provided [ModuleWitness] argument.
-func (m *ModuleLPP) GetMainProverStep(witness *ModuleWitnessLPP) wizard.ProverStep {
+func (m *ModuleLPP) GetMainProverStep(witness *ModuleWitnessLPP) wizard.MainProverStep {
 	return func(run *wizard.ProverRuntime) {
 		m.Assign(run, witness)
 	}

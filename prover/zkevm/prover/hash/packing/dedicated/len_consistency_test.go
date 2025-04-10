@@ -14,7 +14,7 @@ import (
 
 func makeTestCaseLengthConsistency() (
 	define wizard.DefineFunc,
-	prover wizard.ProverStep,
+	prover wizard.MainProverStep,
 ) {
 	lc := lengthConsistency{}
 	size := 8

@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -22,6 +23,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/sirupsen/logrus"
 )
 
 // Specifies the column opening phase
@@ -44,21 +46,16 @@ func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
 	wholes := ctx.Columns.WholePreimages
 	sisParams := ctx.VortexCtx.SisParams
 
-	// Insert the limb expanded version of the preimages
 	limbs := make([]ifaces.Column, len(wholes))
 	round := wholes[0].Round()
 	limbSize := wholes[0].Size() * sisParams.NumLimbs()
 
 	for i := range limbs {
-
-		// Registers the new column
 		limbs[i] = ctx.comp.InsertCommit(
 			round,
 			ctx.limbExpandedPreimageName(wholes[i].GetColID()),
 			limbSize,
 		)
-
-		// And also registers a range checks on each
 		ctx.comp.InsertRange(
 			round,
 			ifaces.QueryIDf("SHORTNESS_%v", limbs[i].GetColID()),
@@ -67,21 +64,48 @@ func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
 		)
 	}
 
-	// Registers them in the context as well
 	ctx.Columns.Preimages = limbs
 
-	// Also assign them immediately
-	ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-		parallel.Execute(len(limbs), func(start, end int) {
-			for i := start; i < end; i++ {
-				whole := ctx.Columns.WholePreimages[i].GetColAssignment(run)
-				whole_ := smartvectors.IntoRegVec(whole)
-				expanded_ := ctx.SisKey().LimbSplit(whole_)
-				expanded := smartvectors.NewRegular(expanded_)
-				run.AssignColumn(limbs[i].GetColID(), expanded)
-			}
-		})
+	ctx.comp.RegisterProverAction(round, &preimageLimbsProverAction{
+		ctx:   ctx,
+		limbs: limbs,
 	})
+
+}
+
+type preimageLimbsProverAction struct {
+	ctx   *SelfRecursionCtx
+	limbs []ifaces.Column
+}
+
+func (a *preimageLimbsProverAction) Run(run *wizard.ProverRuntime) {
+	parallel.Execute(len(a.limbs), func(start, end int) {
+		for i := start; i < end; i++ {
+			whole := a.ctx.Columns.WholePreimages[i].GetColAssignment(run)
+			whole_ := smartvectors.IntoRegVec(whole)
+			expanded_ := a.ctx.SisKey().LimbSplit(whole_)
+			expanded := smartvectors.NewRegular(expanded_)
+			run.AssignColumn(a.limbs[i].GetColID(), expanded)
+			logrus.Infof("Assigned limb column: %v", a.limbs[i].GetColID())
+		}
+	})
+}
+
+type colSelectionProverAction struct {
+	ctx       *SelfRecursionCtx
+	uAlphaQID ifaces.ColID
+}
+
+func (a *colSelectionProverAction) Run(run *wizard.ProverRuntime) {
+	q := run.GetRandomCoinIntegerVec(a.ctx.Coins.Q.Name)
+	uAlpha := smartvectors.IntoRegVec(run.GetColumn(a.ctx.Columns.Ualpha.GetColID()))
+
+	uAlphaQ := make([]field.Element, 0, a.ctx.Columns.UalphaQ.Size())
+	for _, qi := range q {
+		uAlphaQ = append(uAlphaQ, uAlpha[qi])
+	}
+
+	run.AssignColumn(a.uAlphaQID, smartvectors.NewRegular(uAlphaQ))
 }
 
 // Declare the queries justifying the column selection:
@@ -109,29 +133,10 @@ func (ctx *SelfRecursionCtx) colSelection() {
 	)
 
 	// And registers the assignment function
-	ctx.comp.SubProvers.AppendToInner(
-		roundQ,
-		func(run *wizard.ProverRuntime) {
-
-			// Load the already assigned columns
-			q := run.GetRandomCoinIntegerVec(ctx.Coins.Q.Name)
-			uAlpha := smartvectors.IntoRegVec(
-				run.GetColumn(ctx.Columns.Ualpha.GetColID()),
-			)
-
-			// And select the columns
-			uAlphaQ := make([]field.Element, 0, ctx.Columns.UalphaQ.Size())
-
-			for _, qi := range q {
-				uAlphaQ = append(uAlphaQ, uAlpha[qi])
-			}
-
-			run.AssignColumn(
-				ctx.Columns.UalphaQ.GetColID(),
-				smartvectors.NewRegular(uAlphaQ),
-			)
-		},
-	)
+	ctx.comp.RegisterProverAction(roundQ, &colSelectionProverAction{
+		ctx:       ctx,
+		uAlphaQID: ctx.Columns.UalphaQ.GetColID(),
+	})
 
 	// Declare an inclusion query to finalize the selection check
 	ctx.comp.InsertInclusion(
@@ -148,223 +153,181 @@ func (ctx *SelfRecursionCtx) colSelection() {
 	)
 }
 
-// Merkle proof and Linear hashing verification
+type linearHashMerkleProverAction struct {
+	ctx                *SelfRecursionCtx
+	concatDhQSize      int
+	leavesSize         int
+	leavesSizeUnpadded int
+}
+
+func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
+	openingIndices := run.GetRandomCoinIntegerVec(a.ctx.Coins.Q.Name)
+	concatDhQ := make([]field.Element, a.leavesSizeUnpadded*a.ctx.VortexCtx.SisParams.OutputSize())
+	linearLeaves := make([]field.Element, a.leavesSizeUnpadded)
+	merkleLeaves := make([]field.Element, a.leavesSizeUnpadded)
+	merklePositions := make([]field.Element, a.leavesSizeUnpadded)
+	merkleRoots := make([]field.Element, a.leavesSizeUnpadded)
+
+	hashSize := a.ctx.VortexCtx.SisParams.OutputSize()
+	numOpenedCol := a.ctx.VortexCtx.NbColsToOpen()
+	totalNumRounds := a.ctx.comp.NumRounds()
+	committedRound := 0
+
+	if a.ctx.VortexCtx.IsCommitToPrecomputed() {
+		rootPrecomp := a.ctx.Columns.precompRoot.GetColAssignment(run).Get(0)
+		precompColSisHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
+		for i, selectedCol := range openingIndices {
+			srcStart := selectedCol * hashSize
+			destStart := i * hashSize
+			sisHash := precompColSisHash[srcStart : srcStart+hashSize]
+			copy(concatDhQ[destStart:destStart+hashSize], sisHash)
+			leaf := mimc.HashVec(sisHash)
+			insertAt := i
+			linearLeaves[insertAt] = leaf
+			merkleLeaves[insertAt] = leaf
+			merkleRoots[insertAt] = rootPrecomp
+			merklePositions[insertAt].SetInt64(int64(selectedCol))
+		}
+		committedRound++
+		totalNumRounds++
+	}
+
+	for round := 0; round <= totalNumRounds; round++ {
+		colSisHashName := a.ctx.VortexCtx.SisHashName(round)
+		colSisHashSV, found := run.State.TryGet(colSisHashName)
+		if !found {
+			continue
+		}
+
+		rooth := a.ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
+		colSisHash := colSisHashSV.([]field.Element)
+
+		for i, selectedCol := range openingIndices {
+			srcStart := selectedCol * hashSize
+			destStart := committedRound*numOpenedCol*hashSize + i*hashSize
+			sisHash := colSisHash[srcStart : srcStart+hashSize]
+			copy(concatDhQ[destStart:destStart+hashSize], sisHash)
+			leaf := mimc.HashVec(sisHash)
+			insertAt := committedRound*numOpenedCol + i
+			linearLeaves[insertAt] = leaf
+			merkleLeaves[insertAt] = leaf
+			merkleRoots[insertAt] = rooth
+			merklePositions[insertAt].SetInt64(int64(selectedCol))
+		}
+
+		run.State.TryDel(colSisHashName)
+		committedRound++
+	}
+
+	numCommittedRound := a.ctx.VortexCtx.NumCommittedRounds()
+	if a.ctx.VortexCtx.IsCommitToPrecomputed() {
+		numCommittedRound += 1
+	}
+	if committedRound != numCommittedRound {
+		utils.Panic("Committed rounds %v does not match the total number of committed rounds %v", committedRound, numCommittedRound)
+	}
+
+	// Assign columns using IDs from ctx.Columns
+	run.AssignColumn(a.ctx.Columns.ConcatenatedDhQ.GetColID(), smartvectors.RightZeroPadded(concatDhQ, a.concatDhQSize))
+	run.AssignColumn(a.ctx.Columns.MerkleProofsLeaves.GetColID(), smartvectors.RightZeroPadded(merkleLeaves, a.leavesSize))
+	run.AssignColumn(a.ctx.Columns.MerkleProofPositions.GetColID(), smartvectors.RightZeroPadded(merklePositions, a.leavesSize))
+	run.AssignColumn(a.ctx.Columns.MerkleRoots.GetColID(), smartvectors.RightZeroPadded(merkleRoots, a.leavesSize))
+}
+
 func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
-
-	// Declaration round of the coin Q
 	roundQ := ctx.Columns.Q.Round()
-
-	// Size of the concatenated DhQ
 	numRound := ctx.VortexCtx.NumCommittedRounds()
-	// If we commit to the precomputeds, number of rounds increases by 1
 	if ctx.VortexCtx.IsCommitToPrecomputed() {
 		numRound += 1
 	}
-	concatDhQSizeUnpadded := ctx.VortexCtx.SisParams.OutputSize() *
-		ctx.VortexCtx.NbColsToOpen() *
-		numRound
+	concatDhQSizeUnpadded := ctx.VortexCtx.SisParams.OutputSize() * ctx.VortexCtx.NbColsToOpen() * numRound
 	concatDhQSize := utils.NextPowerOfTwo(concatDhQSizeUnpadded)
-
-	// Size of the vector of the MiMC digestes of the above SIS hashes
-	// (which we call the leaves)
-	leavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() *
-		numRound
+	leavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRound
 	leavesSize := utils.NextPowerOfTwo(leavesSizeUnpadded)
 
-	// The vector of all the opened SIS hashes for all rounds concatenated
-	ctx.Columns.ConcatenatedDhQ = ctx.comp.InsertCommit(
-		roundQ,
-		ctx.concatenatedDhQ(),
-		concatDhQSize,
-	)
+	ctx.Columns.ConcatenatedDhQ = ctx.comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
+	ctx.Columns.MerkleProofsLeaves = ctx.comp.InsertCommit(roundQ, ctx.merkleLeavesName(), leavesSize)
+	ctx.Columns.MerkleProofPositions = ctx.comp.InsertCommit(roundQ, ctx.merklePositionssName(), leavesSize)
+	ctx.Columns.MerkleRoots = ctx.comp.InsertCommit(roundQ, ctx.merkleRootsName(), leavesSize)
 
-	// The vector collecting the hashes of all the SIS hashes to be used for
-	// merkle proof verification
-	ctx.Columns.MerkleProofsLeaves = ctx.comp.InsertCommit(
-		roundQ,
-		ctx.merkleLeavesName(),
-		leavesSize,
-	)
-
-	// The vector collecting all the leaves positions to be used for merkle proof
-	// verification
-	ctx.Columns.MerkleProofPositions = ctx.comp.InsertCommit(
-		roundQ,
-		ctx.merklePositionssName(),
-		leavesSize,
-	)
-
-	// The collection of all the merkle roots to be used for merkle proof verification
-	ctx.Columns.MerkleRoots = ctx.comp.InsertCommit(
-		roundQ,
-		ctx.merkleRootsName(),
-		leavesSize,
-	)
-
-	// Assign the linear hashing column
-	ctx.comp.SubProvers.AppendToInner(roundQ, func(run *wizard.ProverRuntime) {
-
-		openingIndices := run.GetRandomCoinIntegerVec(ctx.Coins.Q.Name)
-		concatDhQ := make([]field.Element, concatDhQSizeUnpadded)
-		linearLeaves := make([]field.Element, leavesSizeUnpadded)
-		merkleLeaves := make([]field.Element, leavesSizeUnpadded)
-		merklePositions := make([]field.Element, leavesSizeUnpadded)
-		merkleRoots := make([]field.Element, leavesSizeUnpadded)
-
-		hashSize := ctx.VortexCtx.SisParams.OutputSize()
-		numOpenedCol := ctx.VortexCtx.NbColsToOpen()
-		totalNumRounds := ctx.comp.NumRounds()
-
-		// indexes the committed rounds
-		committedRound := 0
-
-		// Ammend for the precomputeds, precomputed values are pre-appended to
-		// conCatDhQ, linearLeaves, merkleLeaves, and merkleRoots
-		if ctx.VortexCtx.IsCommitToPrecomputed() {
-			rootPrecomp := ctx.Columns.precompRoot.GetColAssignment(run).Get(0)
-			precompColSisHash := ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
-
-			for i, selectedCol := range openingIndices {
-				// Assign the concatDhQ
-				srcStart := selectedCol * hashSize
-				destStart := i * hashSize
-				sisHash := precompColSisHash[srcStart : srcStart+hashSize]
-				copy(concatDhQ[destStart:destStart+hashSize], sisHash)
-
-				// Compute the corresponding leaf
-				leaf := mimc.HashVec(sisHash)
-
-				// And the position we will insert it
-				insertAt := i
-
-				linearLeaves[insertAt] = leaf
-				merkleLeaves[insertAt] = leaf
-				merkleRoots[insertAt] = rootPrecomp
-				merklePositions[insertAt].SetInt64(int64(selectedCol))
-			}
-			committedRound++
-			// The total number of rounds effectively increases by 1
-			// if we commit to the precomputeds
-			totalNumRounds++
-		}
-
-		for round := 0; round <= totalNumRounds; round++ {
-			colSisHashName := ctx.VortexCtx.SisHashName(round)
-			colSisHashSV, found := run.State.TryGet(colSisHashName)
-			if !found {
-				// continue with the same committedRound until we meet a non-dry
-				// round or we  reach the total number of committed rounds
-				continue
-			}
-
-			// Attempt getting the corresponding root (if this makes a
-			// nil dereference, it means that the round was not-committed,
-			// but we check that above).
-			rooth := ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
-
-			// It's guaranteed to be a regular s-vector. So no performance loss
-			colSisHash := colSisHashSV.([]field.Element)
-
-			for i, selectedCol := range openingIndices {
-				// Assign the concatDhQ
-				srcStart := selectedCol * hashSize
-				destStart := committedRound*numOpenedCol*hashSize + i*hashSize
-				sisHash := colSisHash[srcStart : srcStart+hashSize]
-				copy(concatDhQ[destStart:destStart+hashSize], sisHash)
-
-				// Compute the corresponding leaf
-				leaf := mimc.HashVec(sisHash)
-
-				// And the position we will insert it
-				insertAt := committedRound*numOpenedCol + i
-
-				linearLeaves[insertAt] = leaf
-				merkleLeaves[insertAt] = leaf
-				merkleRoots[insertAt] = rooth
-				merklePositions[insertAt].SetInt64(int64(selectedCol))
-			}
-
-			// Frees the colSisHash
-			run.State.TryDel(colSisHashName)
-
-			// Increment only if the committedRound is non-dry
-			committedRound++
-		}
-
-		// Sanity check, we should gave now reached the total number of committed
-		// rounds
-		numCommittedRound := ctx.VortexCtx.NumCommittedRounds()
-		// numCommittedRound increases by 1 if we commit to the precomputeds
-		if ctx.VortexCtx.IsCommitToPrecomputed() {
-			numCommittedRound += 1
-		}
-		if committedRound != numCommittedRound {
-			utils.Panic("Committed rounds %v does not match the total number of committed rounds %v", committedRound, numCommittedRound)
-		}
-
-		//
-		// And assigns the columns with the corresponding padding
-		//
-
-		//
-		// First for linear hashing
-
-		// the concatenated DhQs
-		// we need right zero padding because we are not guaranteed that
-		// the concatenation will be a power of two
-
-		run.AssignColumn(
-			ctx.Columns.ConcatenatedDhQ.GetColID(),
-			smartvectors.RightZeroPadded(concatDhQ, concatDhQSize),
-		)
-
-		//
-		// Now, for the Merkle proofs
-
-		// the leaves
-		run.AssignColumn(
-			ctx.Columns.MerkleProofsLeaves.GetColID(),
-			smartvectors.RightZeroPadded(merkleLeaves, leavesSize),
-		)
-
-		// the position
-		run.AssignColumn(
-			ctx.Columns.MerkleProofPositions.GetColID(),
-			smartvectors.RightZeroPadded(merklePositions, leavesSize),
-		)
-
-		// the roots : again we must zero pad
-		run.AssignColumn(
-			ctx.Columns.MerkleRoots.GetColID(),
-			smartvectors.RightZeroPadded(merkleRoots, leavesSize),
-		)
-
+	ctx.comp.RegisterProverAction(roundQ, &linearHashMerkleProverAction{
+		ctx:                ctx,
+		concatDhQSize:      concatDhQSize,
+		leavesSize:         leavesSize,
+		leavesSizeUnpadded: leavesSizeUnpadded,
 	})
 
-	// depth of the merkle tree
 	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
+	merkle.MerkleProofCheck(ctx.comp, ctx.merkleProofVerificationName(), depth, leavesSizeUnpadded,
+		ctx.Columns.MerkleProofs, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves, ctx.Columns.MerkleProofPositions)
+	mimcW.CheckLinearHash(ctx.comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
+		ctx.VortexCtx.SisParams.OutputSize(), leavesSizeUnpadded, ctx.Columns.MerkleProofsLeaves)
+}
 
-	// After the assignment, we can check both linear
-	// hashing and merkle proof verification
-	merkle.MerkleProofCheck(
-		ctx.comp,
-		ctx.merkleProofVerificationName(),
-		depth, // depth
-		leavesSizeUnpadded,
-		ctx.Columns.MerkleProofs,
-		ctx.Columns.MerkleRoots,
-		ctx.Columns.MerkleProofsLeaves,
-		ctx.Columns.MerkleProofPositions,
-	)
+type collapsingProverAction struct {
+	ctx     *SelfRecursionCtx
+	eDualID ifaces.ColID
+	sisKey  *ringsis.Key
+}
 
-	// And the linear hashing
-	mimcW.CheckLinearHash(
-		ctx.comp,
-		ctx.linearHashVerificationName(),
-		ctx.Columns.ConcatenatedDhQ,
-		ctx.VortexCtx.SisParams.OutputSize(),
-		leavesSizeUnpadded,
-		ctx.Columns.MerkleProofsLeaves,
+func (a *collapsingProverAction) Run(run *wizard.ProverRuntime) {
+	collapsedPreimage := a.ctx.Columns.PreimagesCollapse.GetColAssignment(run)
+	sisKey := a.sisKey
+
+	subDuals := []smartvectors.SmartVector{}
+	roundStartAt := 0
+
+	if a.ctx.VortexCtx.IsCommitToPrecomputed() {
+		numPrecomputeds := len(a.ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
+		if numPrecomputeds == 0 {
+			utils.Panic("The number of precomputeds must be non-zero!")
+		}
+		preimageSlice := collapsedPreimage.SubVector(
+			roundStartAt*sisKey.NumLimbs(),
+			(roundStartAt + numPrecomputeds*sisKey.NumLimbs()),
+		)
+		subDual := sisKey.HashModXnMinus1(smartvectors.IntoRegVec(preimageSlice))
+		subDuals = append(subDuals, smartvectors.NewRegular(subDual))
+		roundStartAt += numPrecomputeds
+	}
+
+	for _, comsInRoundI := range a.ctx.VortexCtx.CommitmentsByRounds.Inner() {
+		if len(comsInRoundI) == 0 {
+			continue
+		}
+		preimageSlice := collapsedPreimage.SubVector(
+			roundStartAt*sisKey.NumLimbs(),
+			(roundStartAt+len(comsInRoundI))*sisKey.NumLimbs(),
+		)
+		subDual := sisKey.HashModXnMinus1(smartvectors.IntoRegVec(preimageSlice))
+		subDuals = append(subDuals, smartvectors.NewRegular(subDual))
+		roundStartAt += len(comsInRoundI)
+	}
+
+	colPowT := accessors.NewExponent(a.ctx.Coins.Collapse, a.ctx.VortexCtx.NbColsToOpen()).GetVal(run)
+	eDual := smartvectors.PolyEval(subDuals, colPowT)
+
+	run.AssignColumn(a.eDualID, eDual)
+}
+
+type collapsingVerifierAction struct {
+	uAlphaQEval  ifaces.Accessor
+	preImageEval ifaces.Accessor
+}
+
+func (a *collapsingVerifierAction) Run(run wizard.Runtime) error {
+	if a.uAlphaQEval.GetVal(run) != a.preImageEval.GetVal(run) {
+		l, r := a.uAlphaQEval.GetVal(run), a.preImageEval.GetVal(run)
+		return fmt.Errorf("consistency between u_alpha and the preimage: mismatch between uAlphaQEval=%v preimages=%v",
+			l.String(), r.String())
+	}
+	return nil
+}
+
+func (a *collapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	api.AssertIsEqual(
+		a.uAlphaQEval.GetFrontendVariable(api, run),
+		a.preImageEval.GetFrontendVariable(api, run),
 	)
 }
 
@@ -428,25 +391,10 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			ctx.Columns.WholePreimages[0].Size(),
 		)
 
-		ctx.comp.InsertVerifier(
-			uAlphaQEval.Round(),
-			func(run wizard.Runtime) error {
-				if uAlphaQEval.GetVal(run) != preImageEval.GetVal(run) {
-					l, r := uAlphaQEval.GetVal(run), preImageEval.GetVal(run)
-					return fmt.Errorf("consistency between u_alpha and the preimage: "+
-						"mismatch between uAlphaQEval=%v preimages=%v",
-						l.String(), r.String(),
-					)
-				}
-				return nil
-			},
-			func(api frontend.API, run wizard.GnarkRuntime) {
-				api.AssertIsEqual(
-					uAlphaQEval.GetFrontendVariable(api, run),
-					preImageEval.GetFrontendVariable(api, run),
-				)
-			},
-		)
+		ctx.comp.RegisterVerifierAction(uAlphaQEval.Round(), &collapsingVerifierAction{
+			uAlphaQEval:  uAlphaQEval,
+			preImageEval: preImageEval,
+		})
 	}
 
 	sisDeg := ctx.VortexCtx.SisParams.OutputSize()
@@ -503,59 +451,76 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 	)
 
 	// And assign it
-	ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-
-		// Get the collapsed preimage
-		collapsedPreimage := ctx.Columns.PreimagesCollapse.GetColAssignment(run)
-		sisKey := ctx.SisKey()
-
-		// Returns the list of all the hashes modulo X^n - 1
-		subDuals := []smartvectors.SmartVector{}
-		roundStartAt := 0
-		// Ammendments for the committed precomputeds
-		if ctx.VortexCtx.IsCommitToPrecomputed() {
-			numPrecomputeds := len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
-
-			// Sanity check: the number of precomputeds must be non-zero
-			if numPrecomputeds == 0 {
-				utils.Panic("The number of precomputeds must be non-zero!")
-			}
-
-			// Compute the dual for the chunk I
-			preimageSlice := collapsedPreimage.SubVector(
-				roundStartAt*sisKey.NumLimbs(),
-				(roundStartAt + numPrecomputeds*sisKey.NumLimbs()),
-			)
-			subDual := sisKey.HashModXnMinus1(smartvectors.IntoRegVec(preimageSlice))
-			subDuals = append(subDuals, smartvectors.NewRegular(subDual))
-
-			// And update the start cursor
-			roundStartAt += numPrecomputeds
-		}
-		for _, comsInRoundI := range ctx.VortexCtx.CommitmentsByRounds.Inner() {
-
-			// Check and skip if there is no committed rows
-			if len(comsInRoundI) == 0 {
-				continue
-			}
-
-			// Compute the dual for the chunk I
-			preimageSlice := collapsedPreimage.SubVector(
-				roundStartAt*sisKey.NumLimbs(),
-				(roundStartAt+len(comsInRoundI))*sisKey.NumLimbs(),
-			)
-			subDual := sisKey.HashModXnMinus1(smartvectors.IntoRegVec(preimageSlice))
-			subDuals = append(subDuals, smartvectors.NewRegular(subDual))
-
-			// And update the start cursor
-			roundStartAt += len(comsInRoundI)
-		}
-
-		colPowT := collapsePowT.GetVal(run)
-		eDual := smartvectors.PolyEval(subDuals, colPowT)
-
-		run.AssignColumn(ctx.Columns.Edual.GetColID(), eDual)
+	ctx.comp.RegisterProverAction(round, &collapsingProverAction{
+		ctx:     ctx,
+		eDualID: ctx.Columns.Edual.GetColID(),
+		sisKey:  ctx.SisKey(),
 	})
+}
+
+type foldPhaseProverAction struct {
+	ctx       *SelfRecursionCtx
+	ipQueryID ifaces.QueryID // Changed to ifaces.QueryID explicitly
+}
+
+func (a *foldPhaseProverAction) Run(run *wizard.ProverRuntime) {
+	foldedKey := a.ctx.Columns.ACollapseFold.GetColAssignment(run)
+	foldedPreimage := a.ctx.Columns.PreimageCollapseFold.GetColAssignment(run)
+	y := smartvectors.InnerProduct(foldedKey, foldedPreimage)
+	run.AssignInnerProduct(a.ipQueryID, y)
+}
+
+type foldPhaseVerifierAction struct {
+	ctx       *SelfRecursionCtx
+	ipQueryID ifaces.QueryID
+	degree    int
+}
+
+func (a *foldPhaseVerifierAction) Run(run wizard.Runtime) error {
+	edual := a.ctx.Columns.Edual.GetColAssignment(run)
+	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignment(run)
+	rfold := run.GetRandomCoinField(a.ctx.Coins.Fold.Name)
+	yAlleged := run.GetInnerProductParams(a.ipQueryID).Ys[0]
+	yDual := smartvectors.EvalCoeff(edual, rfold)
+	yActual := smartvectors.EvalCoeff(dcollapse, rfold)
+
+	var xN, xNminus1, xNplus1 field.Element
+	one := field.One()
+	xN.Exp(rfold, big.NewInt(int64(a.degree)))
+	xNminus1.Sub(&xN, &one)
+	xNplus1.Add(&xN, &one)
+
+	var left, left0, left1, right field.Element
+	left0.Mul(&xNplus1, &yDual)
+	left1.Mul(&xNminus1, &yActual)
+	left.Sub(&left0, &left1)
+	right.Double(&yAlleged)
+
+	if left != right {
+		return fmt.Errorf("failed the consistency check of the ring-SIS : %v != %v", left.String(), right.String())
+	}
+	return nil
+}
+
+func (a *foldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	edual := a.ctx.Columns.Edual.GetColAssignmentGnark(run)
+	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
+	rfold := run.GetRandomCoinField(a.ctx.Coins.Fold.Name)
+	yAlleged := run.GetInnerProductParams(a.ipQueryID).Ys[0]
+	yDual := poly.EvaluateUnivariateGnark(api, edual, rfold)
+	yActual := poly.EvaluateUnivariateGnark(api, dcollapse, rfold)
+
+	one := field.One()
+	xN := gnarkutil.Exp(api, rfold, a.degree)
+	xNminus1 := api.Sub(xN, one)
+	xNplus1 := api.Add(xN, one)
+
+	left0 := api.Mul(xNplus1, yDual)
+	left1 := api.Mul(xNminus1, yActual)
+	left := api.Sub(left0, left1)
+	right := api.Mul(yAlleged, 2)
+
+	api.AssertIsEqual(left, right)
 }
 
 // Registers the final folding phase of the self-recursion
@@ -603,102 +568,104 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 		[]ifaces.Column{ctx.Columns.PreimageCollapseFold})
 
 	// Assignment part of the inner product
-	ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-		// compute the inner-product
-		foldedKey := ctx.Columns.ACollapseFold.GetColAssignment(run)             // overshadows the handle
-		foldedPreimage := ctx.Columns.PreimageCollapseFold.GetColAssignment(run) // overshadows the handle
-
-		y := smartvectors.InnerProduct(foldedKey, foldedPreimage)
-		run.AssignInnerProduct(ctx.preimagesAndAmergeIP(), y)
+	ctx.comp.RegisterProverAction(round, &foldPhaseProverAction{
+		ctx:       ctx,
+		ipQueryID: ctx.Queries.LatticeInnerProd.Name(),
 	})
 
 	degree := ctx.SisKey().OutputSize()
 
 	// And the final check
 	// check the folding of the polynomial is correct
-	ctx.comp.InsertVerifier(round, func(run wizard.Runtime) error {
+	// ctx.comp.InsertVerifier(round, func(run wizard.Runtime) error {
 
-		// fetch the assignments to edual and dcollapse
-		edual := ctx.Columns.Edual.GetColAssignment(run)
-		dcollapse := ctx.Columns.DhQCollapse.GetColAssignment(run)
+	// 	// fetch the assignments to edual and dcollapse
+	// 	edual := ctx.Columns.Edual.GetColAssignment(run)
+	// 	dcollapse := ctx.Columns.DhQCollapse.GetColAssignment(run)
 
-		// the folding coin
-		rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
+	// 	// the folding coin
+	// 	rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
 
-		// evaluates both edual and dcollapse (seen as polynomial) by
-		// coefficients and fetch the result of the inner-product
-		yAlleged := run.GetInnerProductParams(ctx.preimagesAndAmergeIP()).Ys[0]
-		yDual := smartvectors.EvalCoeff(edual, rfold)
-		yActual := smartvectors.EvalCoeff(dcollapse, rfold)
+	// 	// evaluates both edual and dcollapse (seen as polynomial) by
+	// 	// coefficients and fetch the result of the inner-product
+	// 	yAlleged := run.GetInnerProductParams(ctx.preimagesAndAmergeIP()).Ys[0]
+	// 	yDual := smartvectors.EvalCoeff(edual, rfold)
+	// 	yActual := smartvectors.EvalCoeff(dcollapse, rfold)
 
-		/*
-			If P(X) is of degree 2n
+	// 	/*
+	// 		If P(X) is of degree 2n
 
-			And
-				- Q(X) = P(X) mod X^n - 1
-				- R(X) = P(X) mod X^n + 1
+	// 		And
+	// 			- Q(X) = P(X) mod X^n - 1
+	// 			- R(X) = P(X) mod X^n + 1
 
-			Then, with CRT we have: 2P(X) = (X^n+1)Q(X) - (X^n-1)R(X)
-			Here, we can identify at the point x
+	// 		Then, with CRT we have: 2P(X) = (X^n+1)Q(X) - (X^n-1)R(X)
+	// 		Here, we can identify at the point x
 
-			yDual * (x^n+1) - yActual * (x^n-1) == 2 * yAlleged
-		*/
-		var xN, xNminus1, xNplus1 field.Element
-		one := field.One()
-		xN.Exp(rfold, big.NewInt(int64(degree)))
-		xNminus1.Sub(&xN, &one)
-		xNplus1.Add(&xN, &one)
+	// 		yDual * (x^n+1) - yActual * (x^n-1) == 2 * yAlleged
+	// 	*/
+	// 	var xN, xNminus1, xNplus1 field.Element
+	// 	one := field.One()
+	// 	xN.Exp(rfold, big.NewInt(int64(degree)))
+	// 	xNminus1.Sub(&xN, &one)
+	// 	xNplus1.Add(&xN, &one)
 
-		var left, left0, left1, right field.Element
-		left0.Mul(&xNplus1, &yDual)
-		left1.Mul(&xNminus1, &yActual)
-		left.Sub(&left0, &left1)
+	// 	var left, left0, left1, right field.Element
+	// 	left0.Mul(&xNplus1, &yDual)
+	// 	left1.Mul(&xNminus1, &yActual)
+	// 	left.Sub(&left0, &left1)
 
-		right.Double(&yAlleged)
+	// 	right.Double(&yAlleged)
 
-		if left != right {
-			return fmt.Errorf("failed the consistency check of the ring-SIS : %v != %v", left.String(), right.String())
-		}
+	// 	if left != right {
+	// 		return fmt.Errorf("failed the consistency check of the ring-SIS : %v != %v", left.String(), right.String())
+	// 	}
 
-		return nil
-	}, func(api frontend.API, run wizard.GnarkRuntime) {
+	// 	return nil
+	// }, func(api frontend.API, run wizard.GnarkRuntime) {
 
-		// fetch the assignments to edual and dcollapse
-		edual := ctx.Columns.Edual.GetColAssignmentGnark(run)
-		dcollapse := ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
+	// 	// fetch the assignments to edual and dcollapse
+	// 	edual := ctx.Columns.Edual.GetColAssignmentGnark(run)
+	// 	dcollapse := ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
 
-		// the folding coin
-		rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
+	// 	// the folding coin
+	// 	rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
 
-		// evaluates both edual and dcollapse (seen as polynomial) by
-		// coefficients and fetch the result of the inner-product
-		yAlleged := run.GetInnerProductParams(ctx.preimagesAndAmergeIP()).Ys[0]
-		yDual := poly.EvaluateUnivariateGnark(api, edual, rfold)
-		yActual := poly.EvaluateUnivariateGnark(api, dcollapse, rfold)
+	// 	// evaluates both edual and dcollapse (seen as polynomial) by
+	// 	// coefficients and fetch the result of the inner-product
+	// 	yAlleged := run.GetInnerProductParams(ctx.preimagesAndAmergeIP()).Ys[0]
+	// 	yDual := poly.EvaluateUnivariateGnark(api, edual, rfold)
+	// 	yActual := poly.EvaluateUnivariateGnark(api, dcollapse, rfold)
 
-		/*
-		   If P(X) is of degree 2n
+	// 	/*
+	// 	   If P(X) is of degree 2n
 
-		   And
-		     - Q(X) = P(X) mod X^n - 1
-		     - R(X) = P(X) mod X^n + 1
+	// 	   And
+	// 	     - Q(X) = P(X) mod X^n - 1
+	// 	     - R(X) = P(X) mod X^n + 1
 
-		   Then, with CRT we have: 2P(X) = (X^n+1)Q(X) - (X^n-1)R(X)
-		   Here, we can identify at the point x
+	// 	   Then, with CRT we have: 2P(X) = (X^n+1)Q(X) - (X^n-1)R(X)
+	// 	   Here, we can identify at the point x
 
-		   yDual * (x^n+1) - yActual * (x^n-1) == 2 * yAlleged
-		*/
-		one := field.One()
-		xN := gnarkutil.Exp(api, rfold, degree)
-		xNminus1 := api.Sub(xN, one)
-		xNplus1 := api.Add(xN, one)
+	// 	   yDual * (x^n+1) - yActual * (x^n-1) == 2 * yAlleged
+	// 	*/
+	// 	one := field.One()
+	// 	xN := gnarkutil.Exp(api, rfold, degree)
+	// 	xNminus1 := api.Sub(xN, one)
+	// 	xNplus1 := api.Add(xN, one)
 
-		left0 := api.Mul(xNplus1, yDual)
-		left1 := api.Mul(xNminus1, yActual)
-		left := api.Sub(left0, left1)
+	// 	left0 := api.Mul(xNplus1, yDual)
+	// 	left1 := api.Mul(xNminus1, yActual)
+	// 	left := api.Sub(left0, left1)
 
-		right := api.Mul(yAlleged, 2)
+	// 	right := api.Mul(yAlleged, 2)
 
-		api.AssertIsEqual(left, right)
+	// 	api.AssertIsEqual(left, right)
+	// })
+
+	ctx.comp.RegisterVerifierAction(round, &foldPhaseVerifierAction{
+		ctx:       ctx,
+		ipQueryID: ctx.Queries.LatticeInnerProd.Name(),
+		degree:    degree,
 	})
 }

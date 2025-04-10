@@ -54,6 +54,30 @@ func (ctx *SelfRecursionCtx) defineYs() {
 	ctx.Columns.Ys = verifiercol.NewFromYs(ctx.comp, ctx.VortexCtx.Query, ranges)
 }
 
+type consistencyYsUalphaVerifierAction struct {
+	ctx                *SelfRecursionCtx
+	interpolateUalphaX ifaces.Accessor
+}
+
+func (a *consistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
+	ys := a.ctx.Columns.Ys.GetColAssignment(run)
+	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
+	ysAlpha := smartvectors.EvalCoeff(ys, alpha)
+	uAlphaX := a.interpolateUalphaX.GetVal(run)
+	if uAlphaX != ysAlpha {
+		return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass, ysAlphaX=%v uAlphaX=%v", ysAlpha.String(), uAlphaX.String())
+	}
+	return nil
+}
+
+func (a *consistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+	ys := a.ctx.Columns.Ys.GetColAssignmentGnark(run)
+	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
+	uAlphaX := a.interpolateUalphaX.GetFrontendVariable(api, run)
+	ysAlpha := poly.EvaluateUnivariateGnark(api, ys, alpha)
+	api.AssertIsEqual(uAlphaX, ysAlpha)
+}
+
 // Registers the consistency check between Ys and Ualpha
 func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 
@@ -68,25 +92,8 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 	round := ctx.Accessors.InterpolateUalphaX.Round()
 
 	// And let the verifier check that they should be both equal
-	ctx.comp.InsertVerifier(
-		round,
-		func(run wizard.Runtime) error {
-
-			ys := ctx.Columns.Ys.GetColAssignment(run)
-			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
-			ysAlpha := smartvectors.EvalCoeff(ys, alpha)
-			uAlphaX := ctx.Accessors.InterpolateUalphaX.GetVal(run)
-			if uAlphaX != ysAlpha {
-				return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass, ysAlphaX=%v uAlphaX=%v", ysAlpha.String(), uAlphaX.String())
-			}
-			return nil
-		},
-		func(api frontend.API, run wizard.GnarkRuntime) {
-			ys := ctx.Columns.Ys.GetColAssignmentGnark(run)
-			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
-			uAlphaX := ctx.Accessors.InterpolateUalphaX.GetFrontendVariable(api, run)
-			ysAlpha := poly.EvaluateUnivariateGnark(api, ys, alpha)
-			api.AssertIsEqual(uAlphaX, ysAlpha)
-		},
-	)
+	ctx.comp.RegisterVerifierAction(round, &consistencyYsUalphaVerifierAction{
+		ctx:                ctx,
+		interpolateUalphaX: ctx.Accessors.InterpolateUalphaX,
+	})
 }

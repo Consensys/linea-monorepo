@@ -106,6 +106,42 @@ func prefixWithLinearHash(comp *wizard.CompiledIOP, name, msg string, args ...an
 	return fmt.Sprintf("%v.LINEAR_HASH_%v_"+msg, args...)
 }
 
+type linearHashProverAction struct {
+	ctx             *linearHashCtx
+	oldStateID      ifaces.ColID
+	newStateID      ifaces.ColID
+	newStateCleanID ifaces.ColID
+}
+
+func (a *linearHashProverAction) Run(run *wizard.ProverRuntime) {
+	blocksWit := a.ctx.ToHash.GetColAssignment(run)
+	olds := make([]field.Element, a.ctx.Period*a.ctx.NumHash)
+	news := make([]field.Element, a.ctx.Period*a.ctx.NumHash)
+
+	parallel.Execute(a.ctx.NumHash, func(start, stop int) {
+		for hashID := start; hashID < stop; hashID++ {
+			old := field.Zero()
+			for i := 0; i < a.ctx.Period; i++ {
+				pos := hashID*a.ctx.Period + i
+				currentBlock := blocksWit.Get(pos)
+				new := mimc.BlockCompression(old, currentBlock)
+				olds[pos] = old
+				news[pos] = new
+				old = new
+			}
+		}
+	})
+
+	padNew := mimc.BlockCompression(field.Zero(), field.Zero())
+	oldSV := smartvectors.RightZeroPadded(olds, a.ctx.ToHash.Size())
+	newSV := smartvectors.RightPadded(news, padNew, a.ctx.ToHash.Size())
+	newCleanSV := smartvectors.RightZeroPadded(vector.DeepCopy(news), a.ctx.ToHash.Size())
+
+	run.AssignColumn(a.oldStateID, oldSV)
+	run.AssignColumn(a.newStateID, newSV)
+	run.AssignColumn(a.newStateCleanID, newCleanSV)
+}
+
 // Declares assign and constraints the columns OldStates and NewStates
 func (ctx *linearHashCtx) HashingCols() {
 
@@ -128,46 +164,12 @@ func (ctx *linearHashCtx) HashingCols() {
 		ctx.ToHash.Size(),
 	)
 
-	ctx.comp.SubProvers.AppendToInner(
-		ctx.Round,
-		func(run *wizard.ProverRuntime) {
-			// Extract the blocks
-			blocksWit := ctx.ToHash.GetColAssignment(run)
-
-			olds := make([]field.Element, ctx.Period*ctx.NumHash)
-			news := make([]field.Element, ctx.Period*ctx.NumHash)
-
-			// Assign the hashes in parallel
-			parallel.Execute(ctx.NumHash, func(start, stop int) {
-				for hashID := start; hashID < stop; hashID++ {
-					// each hash start from zero
-					old := field.Zero()
-					for i := 0; i < ctx.Period; i++ {
-						pos := hashID*ctx.Period + i
-						currentBlock := blocksWit.Get(pos)
-						new := mimc.BlockCompression(old, currentBlock)
-						olds[pos] = old
-						news[pos] = new
-						old = new
-					}
-				}
-			})
-
-			padNew := mimc.BlockCompression(field.Zero(), field.Zero())
-			oldSV := smartvectors.RightZeroPadded(olds, ctx.ToHash.Size())
-			newSV := smartvectors.RightPadded(news, padNew, ctx.ToHash.Size())
-			newCleanSV := smartvectors.RightZeroPadded(vector.DeepCopy(news), ctx.ToHash.Size())
-
-			// assign old state
-			run.AssignColumn(ctx.OldState.GetColID(), oldSV)
-
-			// assign new state
-			run.AssignColumn(ctx.NewState.GetColID(), newSV)
-
-			// and new clean, the same as newstate but clean
-			run.AssignColumn(ctx.NewStateClean.GetColID(), newCleanSV)
-		},
-	)
+	ctx.comp.RegisterProverAction(ctx.Round, &linearHashProverAction{
+		ctx:             ctx,
+		oldStateID:      ctx.OldState.GetColID(),
+		newStateID:      ctx.NewState.GetColID(),
+		newStateCleanID: ctx.NewStateClean.GetColID(),
+	})
 
 	// And registers queries for the initial values
 
