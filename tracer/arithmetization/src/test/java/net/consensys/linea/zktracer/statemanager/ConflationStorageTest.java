@@ -108,7 +108,7 @@ public class ConflationStorageTest {
             // deploy another account and perform storage operations on it
             .addBlock(
                 List.of(
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
@@ -149,7 +149,7 @@ public class ConflationStorageTest {
             // the salt will be the same twice in a row, which will be on purpose
             .addBlock(
                 List.of(
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
@@ -196,7 +196,7 @@ public class ConflationStorageTest {
                         BigInteger.ONE)))
             .addBlock(
                 List.of(
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
@@ -216,7 +216,7 @@ public class ConflationStorageTest {
             // deploy a new account and check revert operations on it
             .addBlock(
                 List.of(
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
