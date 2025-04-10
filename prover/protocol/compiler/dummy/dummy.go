@@ -13,6 +13,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+/*
+Transforms all oracle commitments into explicit messages and instructs the verifier
+to manually check all associated queries against them.
+
+This utility is primarily intended for testing and debugging, allowing inspection of commitment-query
+consistency without automated verification.
+*/
 func Compile(comp *wizard.CompiledIOP) {
 
 	comp.DummyCompiled = true

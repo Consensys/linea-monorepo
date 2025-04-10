@@ -54,9 +54,22 @@ type proveRoundProverAction struct {
 }
 
 func (a *proveRoundProverAction) Run(run *wizard.ProverRuntime) {
-	// Invoke the closure returned by Prove
-	proveFunc := a.ctx.Prove(a.round)
-	proveFunc(run)
+	stopTimer := profiling.LogTimer("splitter compiler")
+	defer stopTimer()
+
+	for idBigCol, subCols := range a.ctx.Splittings[a.round].ByBigCol {
+		bigCol := a.ctx.comp.Columns.GetHandle(idBigCol)
+		if len(subCols)*a.ctx.size != bigCol.Size() {
+			utils.Panic("Unexpected sizes %v * %v != %v", len(subCols), a.ctx.size, bigCol.Size())
+		}
+		if a.ctx.comp.Precomputed.Exists(idBigCol) {
+			continue
+		}
+		witness := bigCol.GetColAssignment(run)
+		for i := 0; i < len(subCols); i++ {
+			run.AssignColumn(subCols[i].GetColID(), witness.SubVector(i*a.ctx.size, (i+1)*a.ctx.size))
+		}
+	}
 }
 
 func (ctx *splitterContext) ScanSplitCommit() {
@@ -124,24 +137,4 @@ func (ctx *splitterContext) ScanSplitCommit() {
 
 func nameHandleSlice(h ifaces.Column, num, numSlots int) ifaces.ColID {
 	return ifaces.ColIDf("%v_SUBSLICE_%v_OVER_%v", h.GetColID(), num, numSlots)
-}
-
-func (ctx *splitterContext) Prove(round int) wizard.MainProverStep {
-	return func(run *wizard.ProverRuntime) {
-		stopTimer := profiling.LogTimer("splitter compiler")
-		defer stopTimer()
-		for idBigCol, subCols := range ctx.Splittings[round].ByBigCol {
-			bigCol := ctx.comp.Columns.GetHandle(idBigCol)
-			if len(subCols)*ctx.size != bigCol.Size() {
-				utils.Panic("Unexpected sizes %v * %v != %v", len(subCols), ctx.size, bigCol.Size())
-			}
-			if ctx.comp.Precomputed.Exists(idBigCol) {
-				continue
-			}
-			witness := bigCol.GetColAssignment(run)
-			for i := 0; i < len(subCols); i++ {
-				run.AssignColumn(subCols[i].GetColID(), witness.SubVector(i*ctx.size, (i+1)*ctx.size))
-			}
-		}
-	}
 }
