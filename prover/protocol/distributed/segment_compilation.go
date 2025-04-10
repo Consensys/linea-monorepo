@@ -173,7 +173,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) wizard.Proof {
 
 	var (
 		comp        *wizard.CompiledIOP
-		proverStep  wizard.ProverStep
+		proverStep  wizard.MainProverStep
 		moduleName  any
 		moduleIndex int
 	)

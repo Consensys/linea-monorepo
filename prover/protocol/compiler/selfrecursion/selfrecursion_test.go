@@ -295,7 +295,8 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 
 	logrus.SetLevel(logrus.FatalLevel)
 
-	tc := TestCase{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true}
+	tc := TestCase{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0],
+		NumPrecomp: 4, IsCommitPrecomp: true}
 	t.Run(fmt.Sprintf("testcase-%++v", tc), func(subT *testing.T) {
 		define, prove := generateProtocol(tc)
 

@@ -7,6 +7,16 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
+type bytes32CmpProverAction struct {
+	bcp *BytesCmpCtx
+}
+
+func (a *bytes32CmpProverAction) Run(run *wizard.ProverRuntime) {
+	colA := a.bcp.columnA.GetColAssignment(run)
+	colB := a.bcp.columnB.GetColAssignment(run)
+	a.bcp.assign(run, colA, colB)
+}
+
 func Bytes32Cmp(
 	// compiled IOP
 	comp *wizard.CompiledIOP,
@@ -25,14 +35,11 @@ func Bytes32Cmp(
 	bcp.columnA = columnA
 	bcp.columnB = columnB
 	bcp.activeRow = activeRow
-	// assigns the module
-	comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-		colA := columnA.GetColAssignment(run)
-		colB := columnB.GetColAssignment(run)
-		bcp.assign(run, colA, colB)
+	comp.RegisterProverAction(round, &bytes32CmpProverAction{
+		// Must pass pointer here
+		bcp: &bcp,
 	})
 	// We do call the assign function before define to avoid the race condition with
 	// the bigrange module
 	bcp.Define(comp, numLimbs, bitPerLimbs, name)
-
 }

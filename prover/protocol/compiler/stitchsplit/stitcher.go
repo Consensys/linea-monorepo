@@ -23,6 +23,18 @@ type stitchingContext struct {
 	Stitchings []SummerizedAlliances
 }
 
+type StichSubColumnsProverAction struct {
+	stitchings []SummerizedAlliances
+}
+
+func (a *StichSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
+	for round := range a.stitchings {
+		for subCol := range a.stitchings[round].BySubCol {
+			run.Columns.TryDel(subCol)
+		}
+	}
+}
+
 // Stitcher applies the stitching over the eligible sub columns and adjusts the constraints accordingly.
 func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 
@@ -34,12 +46,8 @@ func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 		ctx.constraints()
 
 		// it assigns the stitching columns and delete the assignment of the sub columns.
-		comp.SubProvers.AppendToInner(comp.NumRounds()-1, func(run *wizard.ProverRuntime) {
-			for round := range ctx.Stitchings {
-				for subCol := range ctx.Stitchings[round].BySubCol {
-					run.Columns.TryDel(subCol)
-				}
-			}
+		comp.RegisterProverAction(comp.NumRounds()-1, &StichSubColumnsProverAction{
+			stitchings: ctx.Stitchings,
 		})
 	}
 }
@@ -57,6 +65,47 @@ func newStitcher(comp *wizard.CompiledIOP, minSize, maxSize int) stitchingContex
 	// it scans the compiler trace for the eligible columns, creates stitchings from the sub columns and commits to the them.
 	res.ScanStitchCommit()
 	return res
+}
+
+type stitchColumnsProverAction struct {
+	ctx   *stitchingContext
+	round int
+}
+
+func (a *stitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
+	stopTimer := profiling.LogTimer("stitching compiler")
+	defer stopTimer()
+	var maxSizeGroup int
+
+	for idBigCol, subColumns := range a.ctx.Stitchings[a.round].ByBigCol {
+
+		maxSizeGroup = a.ctx.MaxSize / subColumns[0].Size()
+
+		// Sanity-check
+		sizeBigCol := a.ctx.comp.Columns.GetHandle(idBigCol).Size()
+		if sizeBigCol != a.ctx.MaxSize {
+			utils.Panic("Unexpected size %v != %v", sizeBigCol, a.ctx.MaxSize)
+		}
+
+		// If the column is precomputed, it is already assigned
+		if a.ctx.comp.Precomputed.Exists(idBigCol) {
+			continue
+		}
+
+		// get the assignment of the subColumns and interleave them
+		witnesses := make([]smartvectors.SmartVector, len(subColumns))
+		for i := range witnesses {
+			witnesses[i] = subColumns[i].GetColAssignment(run)
+		}
+		assignement := smartvectors.
+			AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
+		for i := range subColumns {
+			for j := 0; j < witnesses[0].Len(); j++ {
+				(*assignement)[i+j*maxSizeGroup] = witnesses[i].Get(j)
+			}
+		}
+		run.AssignColumn(idBigCol, assignement)
+	}
 }
 
 // ScanStitchCommit scans compiler trace and classifies the sub columns eligible to the stitching.
@@ -131,40 +180,9 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 		}
 
 		// @Azam Precomputed ones are double assigned by this?
-		ctx.comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
-			stopTimer := profiling.LogTimer("stitching compiler")
-			defer stopTimer()
-			var maxSizeGroup int
-
-			for idBigCol, subColumns := range ctx.Stitchings[round].ByBigCol {
-
-				maxSizeGroup = ctx.MaxSize / subColumns[0].Size()
-
-				// Sanity-check
-				sizeBigCol := ctx.comp.Columns.GetHandle(idBigCol).Size()
-				if sizeBigCol != ctx.MaxSize {
-					utils.Panic("Unexpected size %v != %v", sizeBigCol, ctx.MaxSize)
-				}
-
-				// If the column is precomputed, it is already assigned
-				if ctx.comp.Precomputed.Exists(idBigCol) {
-					continue
-				}
-
-				// get the assignment of the subColumns and interleave them
-				witnesses := make([]smartvectors.SmartVector, len(subColumns))
-				for i := range witnesses {
-					witnesses[i] = subColumns[i].GetColAssignment(run)
-				}
-				assignement := smartvectors.
-					AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
-				for i := range subColumns {
-					for j := 0; j < witnesses[0].Len(); j++ {
-						(*assignement)[i+j*maxSizeGroup] = witnesses[i].Get(j)
-					}
-				}
-				run.AssignColumn(idBigCol, assignement)
-			}
+		ctx.comp.RegisterProverAction(round, &stitchColumnsProverAction{
+			ctx:   ctx,
+			round: round,
 		})
 	}
 }

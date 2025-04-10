@@ -121,7 +121,7 @@ func newZkEVM(b *wizard.Builder, s *Settings) *ZkEvm {
 
 // Returns a prover function for the zkEVM module. The resulting function is
 // aimed to be passed to the wizard.Prove function.
-func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.ProverStep) {
+func (z *ZkEvm) GetMainProverStep(input *Witness) (prover wizard.MainProverStep) {
 	return func(run *wizard.ProverRuntime) {
 
 		// Assigns the arithmetization module. From Corset. Must be done first

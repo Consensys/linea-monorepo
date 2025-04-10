@@ -15,7 +15,7 @@ func TestBasicLocalOpening(t *testing.T) {
 	testLocalOpening(t, basicLocalOpening)
 }
 
-func basicLocalOpening() (wizard.DefineFunc, wizard.ProverStep) {
+func basicLocalOpening() (wizard.DefineFunc, wizard.MainProverStep) {
 
 	n := 16
 
@@ -41,7 +41,7 @@ func basicLocalOpening() (wizard.DefineFunc, wizard.ProverStep) {
 	return definer, prover
 }
 
-func testLocalOpening(t *testing.T, gen func() (wizard.DefineFunc, wizard.ProverStep)) {
+func testLocalOpening(t *testing.T, gen func() (wizard.DefineFunc, wizard.MainProverStep)) {
 
 	builder, prover := gen()
 	comp := wizard.Compile(builder, CompileLocalOpening, dummy.Compile)

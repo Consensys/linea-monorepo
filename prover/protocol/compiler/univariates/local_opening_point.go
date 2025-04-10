@@ -13,6 +13,27 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// ProverAction struct and implementation
+type localOpeningProverAction struct {
+	ctx localOpeningCtx
+}
+
+func (a *localOpeningProverAction) Run(run *wizard.ProverRuntime) {
+	a.ctx.prover(run)
+}
+
+type localOpeningVerifierAction struct {
+	ctx localOpeningCtx
+}
+
+func (a *localOpeningVerifierAction) Run(run wizard.Runtime) error {
+	return a.ctx.verifier(run)
+}
+
+func (a *localOpeningVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+	a.ctx.gnarkVerifier(api, c)
+}
+
 func CompileLocalOpening(comp *wizard.CompiledIOP) {
 
 	logrus.Trace("started local opening compiler")
@@ -41,8 +62,13 @@ func CompileLocalOpening(comp *wizard.CompiledIOP) {
 	// original local opening.
 	comp.QueriesParams.MarkAsSkippedFromProverTranscript(q.Name())
 
-	comp.SubProvers.AppendToInner(ctx.startRound, ctx.prover)
-	comp.InsertVerifier(ctx.startRound, ctx.verifier, ctx.gnarkVerifier)
+	comp.RegisterProverAction(ctx.startRound, &localOpeningProverAction{
+		ctx: ctx,
+	})
+
+	comp.RegisterVerifierAction(ctx.startRound, &localOpeningVerifierAction{
+		ctx: ctx,
+	})
 }
 
 type localOpeningCtx struct {

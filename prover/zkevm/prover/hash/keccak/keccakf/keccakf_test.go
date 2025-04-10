@@ -23,7 +23,7 @@ func keccakfTestingModule(
 	maxNumKeccakf int,
 ) (
 	define wizard.DefineFunc,
-	prover func(t *testing.T, traces keccak.PermTraces) wizard.ProverStep,
+	prover func(t *testing.T, traces keccak.PermTraces) wizard.MainProverStep,
 ) {
 
 	mod := &Module{}
@@ -39,7 +39,7 @@ func keccakfTestingModule(
 	prover = func(
 		t *testing.T,
 		traces keccak.PermTraces,
-	) wizard.ProverStep {
+	) wizard.MainProverStep {
 		return func(run *wizard.ProverRuntime) {
 			// Assigns the module
 			mod.Assign(run, traces)

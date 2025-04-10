@@ -329,7 +329,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory)
 	c.FS.Update(c.Spec.FiatShamirSetup)
 
-	for round, roundSteps := range c.Spec.SubVerifiers.Inner() {
+	for round, roundSteps := range c.Spec.subVerifiers.Inner() {
 
 		if round >= c.NumRound {
 			break
@@ -338,9 +338,10 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 		c.GenerateCoinsForRound(api, round)
 
 		for _, step := range roundSteps {
-			if !step.IsSkipped() {
-				step.RunGnark(api, c)
-			}
+			// if !step.IsSkipped() {
+			// 	step.RunGnark(api, c)
+			// }
+			step.RunGnark(api, c)
 		}
 	}
 }
@@ -384,10 +385,6 @@ func (c *VerifierCircuit) GenerateCoinsForRound(api frontend.API, currRound int)
 	if c.Spec.FiatShamirHooksPreSampling.Len() > currRound {
 		fsHooks := c.Spec.FiatShamirHooksPreSampling.MustGet(currRound)
 		for i := range fsHooks {
-			if fsHooks[i].IsSkipped() {
-				continue
-			}
-
 			fsHooks[i].RunGnark(api, c)
 		}
 	}

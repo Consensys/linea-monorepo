@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
+	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -180,8 +181,10 @@ func (ctx *Ctx) isDry(round int) bool {
 // so that we can commit to them
 func (ctx *Ctx) getPols(run *wizard.ProverRuntime, round int) (pols []smartvectors.SmartVector) {
 	names := ctx.CommitmentsByRounds.MustGet(round)
+	logrus.Infof("Vortex getPols at round %v: Expected columns: %v", round, names)
 	pols = make([]smartvectors.SmartVector, len(names))
 	for i := range names {
+		logrus.Infof("Column name %v", names[i])
 		pols[i] = run.Columns.MustGet(names[i])
 	}
 	return pols

@@ -15,7 +15,7 @@ import (
 
 func makeTestCaseBaseConversionInput() (
 	define wizard.DefineFunc,
-	prover wizard.ProverStep,
+	prover wizard.MainProverStep,
 ) {
 	numBlocks := 15
 	b := &blockBaseConversion{}

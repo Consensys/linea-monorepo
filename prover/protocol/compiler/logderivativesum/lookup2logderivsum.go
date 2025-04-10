@@ -114,19 +114,10 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 	qName := ifaces.QueryIDf("GlobalLogDerivativeSum_%v", comp.SelfRecursionCount)
 	q := comp.InsertLogDerivativeSum(lastRound+1, qName, zCatalog)
 
-	comp.SubProvers.AppendToInner(lastRound+1, func(run *wizard.ProverRuntime) {
-
-		if seg == nil {
-			run.AssignLogDerivSum(qName, field.Zero())
-			return
-		}
-
-		v, err := q.Compute(run)
-		if err != nil {
-			panic(err)
-		}
-
-		run.AssignLogDerivSum(qName, v)
+	comp.RegisterProverAction(lastRound+1, &assignLogDerivativeSumProverAction{
+		QName:     qName,
+		Q:         q,
+		Segmenter: seg,
 	})
 
 	if seg == nil {
@@ -137,7 +128,29 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 			Q: q,
 		})
 	}
+}
 
+// assignLogDerivativeSumProverAction is the action to assign the log-derivative sum result.
+// It implements the [wizard.ProverAction] interface.
+type assignLogDerivativeSumProverAction struct {
+	QName     ifaces.QueryID
+	Q         query.LogDerivativeSum
+	Segmenter ColumnSegmenter
+}
+
+// Run executes the assignment of the log-derivative sum result.
+func (a *assignLogDerivativeSumProverAction) Run(run *wizard.ProverRuntime) {
+	if a.Segmenter == nil {
+		run.AssignLogDerivSum(a.QName, field.Zero())
+		return
+	}
+
+	v, err := a.Q.Compute(run)
+	if err != nil {
+		panic("panic here" + err.Error())
+	}
+
+	run.AssignLogDerivSum(a.QName, v)
 }
 
 // pushToZCatalog constructs the numerators and denominators for the collapsed S and T
