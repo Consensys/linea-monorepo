@@ -5,8 +5,8 @@ import useMessageNumber from "../useMessageNumber";
 import useERC20BridgingFee from "./useERC20BridgingFee";
 import useEthBridgingFee from "./useEthBridgingFee";
 import { useFormStore, useChainStore } from "@/stores";
-import { ClaimType, Token } from "@/types";
-import { isEth } from "@/utils";
+import { Token, ClaimType } from "@/types";
+import { isEth, isUndefined } from "@/utils";
 import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER } from "@/constants";
 
 type UseBridgingFeeProps = {
@@ -59,7 +59,7 @@ const useBridgingFee = ({ isConnected, account, token, claimingType, amount, rec
     if (claimingType === ClaimType.MANUAL) {
       return 0n;
     }
-    if (isLoading || isError || !gasLimit || !feeData) {
+    if (isLoading || isError || isUndefined(gasLimit) || isUndefined(feeData)) {
       return null;
     }
     return feeData * (gasLimit + fromChain.gasLimitSurplus) * fromChain.profitMargin;
