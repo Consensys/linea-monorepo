@@ -58,6 +58,13 @@ const useFees = () => {
         fiatValue: getFiatValue(gasFeesResult.gasFees),
       });
 
+      if (claim === ClaimType.AUTO_FREE) {
+        feesArray.push({
+          name: `${toChain.name} fee`,
+          fee: 0n,
+          fiatValue: null,
+        });
+      }
       if (claim === ClaimType.AUTO_PAID && bridgingFees) {
         feesArray.push({
           name: `${toChain.name} fee`,
