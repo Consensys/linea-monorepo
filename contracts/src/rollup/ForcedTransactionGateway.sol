@@ -16,10 +16,19 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
   using RlpEncoder for *;
   using FinalizedStateHashing for *;
 
+  /// @notice Contains the destination address to store the forced transactions on.
   IAcceptForcedTransactions public immutable LINEA_ROLLUP;
+
+  /// @notice Contains the destination chain ID used in the RLP encoding.
   uint256 public immutable DESTINATION_CHAIN_ID;
+
+  /// @notice Contains the buffer for computing the L2 block the transaction will be processed by.
   uint256 public immutable L2_BLOCK_BUFFER;
+
+  /// @notice Contains the maximum gas allowed for a forced transaction.
   uint256 public immutable MAX_GAS_LIMIT;
+
+  /// @notice Contains the maximum calldata length allowed for a forced transaction.
   uint256 public immutable MAX_INPUT_LENGTH_LIMIT;
 
   constructor(
@@ -36,6 +45,11 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     MAX_INPUT_LENGTH_LIMIT = _maxInputLengthBuffer;
   }
 
+  /**
+   * @notice Function to submit forced transactions.
+   * @param _forcedTransaction The fields required for the transaction excluding chainId.
+   * @param _lastFinalizedState The last finalized state validated to use the timestamp in block number calculation.
+   */
   function submitForcedTransaction(
     Eip1559Transaction memory _forcedTransaction,
     LastFinalizedState calldata _lastFinalizedState
@@ -52,7 +66,7 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
 
     // 0 value gas fields
     if (_forcedTransaction.maxPriorityFeePerGas == 0 || _forcedTransaction.maxFeePerGas == 0) {
-      revert GasParamatersContainZero(_forcedTransaction.maxFeePerGas, _forcedTransaction.maxPriorityFeePerGas);
+      revert GasFeeParametersContainZero(_forcedTransaction.maxFeePerGas, _forcedTransaction.maxPriorityFeePerGas);
     }
 
     // priority fee must not be more than max fee per gas
@@ -73,14 +87,12 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       revert ToAddressTooLow();
     }
 
-    // while less than ideal naming, it saves gas by doing a single query
-    // gets all LineaRollup fields (nb: increments the counter)
     (
       bytes32 currentFinalizedState,
       uint256 forcedTransactionNumber,
       bytes32 previousForcedTransactionRollingHash,
       uint256 currentFinalizedL2BlockNumber
-    ) = LINEA_ROLLUP.getLineaRollupProvidedFields();
+    ) = LINEA_ROLLUP.getNextForcedTransactionFields();
 
     // validate state is correct in order to use the timestamp.. we might need a better way than this.
     if (

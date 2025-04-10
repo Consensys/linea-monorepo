@@ -197,6 +197,13 @@ contract LineaRollup is
     super.renounceRole(_role, _account);
   }
 
+  /**
+   * @notice Stores forced transaction details required for proving feedback loop.
+   * @dev The forced transaction number is incremented for the next transaction post storage.
+   * @param _forcedTransactionNumber The forced transaction number.
+   * @param _forcedL2BlockNumber The maximum expected L2 block number the transaction will be processed by.
+   * @param _forcedTransactionRollingHash The rolling hash for all the forced transaction fields.
+   */
   function storeForcedTransaction(
     uint256 _forcedTransactionNumber,
     uint256 _forcedL2BlockNumber,
@@ -217,21 +224,28 @@ contract LineaRollup is
     }
   }
 
-  function getLineaRollupProvidedFields()
+  /**
+   * @notice Provides fields for forced transaction.
+   * @return finalizedState The last finalized state hash.
+   * @return forcedTransactionNumber The forced transaction number to use.
+   * @return previousForcedTransactionRollingHash The previous forced transaction rolling hash.
+   * @return currentFinalizedL2BlockNumber The current finalized L2 block number.
+   */
+  function getNextForcedTransactionFields()
     external
     view
     returns (
       bytes32 finalizedState,
       uint256 forcedTransactionNumber,
       bytes32 previousForcedTransactionRollingHash,
-      uint256 l2BlockNumber
+      uint256 currentFinalizedL2BlockNumber
     )
   {
     unchecked {
-      forcedTransactionNumber = nextForcedTransactionNumber;
       finalizedState = currentFinalizedState;
+      forcedTransactionNumber = nextForcedTransactionNumber;
       previousForcedTransactionRollingHash = forcedTransactionRollingHashes[forcedTransactionNumber - 1];
-      l2BlockNumber = currentL2BlockNumber;
+      currentFinalizedL2BlockNumber = currentL2BlockNumber;
     }
   }
 
@@ -256,21 +270,27 @@ contract LineaRollup is
    * @dev Reverts if six months have not passed since the last finalization.
    * @param _messageNumber Last finalized L1 message number as part of the feedback loop.
    * @param _rollingHash Last finalized L1 rolling hash as part of the feedback loop.
+   * @param _lastFinalizedForcedTransactionNumber Last finalized forced transaction number.
+   * @param _lastFinalizedForcedTransactionRollingHash Last finalized forced transaction rolling hash.
    * @param _lastFinalizedTimestamp Last finalized L2 block timestamp.
    */
-  // TODO - adjust this to use the new format
-  function setFallbackOperator(uint256 _messageNumber, bytes32 _rollingHash, uint256 _lastFinalizedTimestamp) external {
+  function setFallbackOperator(
+    uint256 _messageNumber,
+    bytes32 _rollingHash,
+    uint256 _lastFinalizedForcedTransactionNumber,
+    bytes32 _lastFinalizedForcedTransactionRollingHash,
+    uint256 _lastFinalizedTimestamp
+  ) external {
     if (block.timestamp < _lastFinalizedTimestamp + SIX_MONTHS_IN_SECONDS) {
       revert LastFinalizationTimeNotLapsed();
     }
-    // TODO TOGGLE
     if (
       currentFinalizedState !=
       FinalizedStateHashing._computeLastFinalizedState(
         _messageNumber,
         _rollingHash,
-        0,
-        EMPTY_HASH,
+        _lastFinalizedForcedTransactionNumber,
+        _lastFinalizedForcedTransactionRollingHash,
         _lastFinalizedTimestamp
       )
     ) {
@@ -279,8 +299,8 @@ contract LineaRollup is
         FinalizedStateHashing._computeLastFinalizedState(
           _messageNumber,
           _rollingHash,
-          0,
-          EMPTY_HASH,
+          _lastFinalizedForcedTransactionNumber,
+          _lastFinalizedForcedTransactionRollingHash,
           _lastFinalizedTimestamp
         )
       );
@@ -410,9 +430,10 @@ contract LineaRollup is
       revert ParentBlobNotSubmitted(_parentShnarf);
     }
 
-    bytes32 currentDataHash = keccak256(_submission.compressedData);
-
-    bytes32 dataEvaluationPoint = EfficientLeftRightKeccak._efficientKeccak(_submission.snarkHash, currentDataHash);
+    bytes32 dataEvaluationPoint = EfficientLeftRightKeccak._efficientKeccak(
+      _submission.snarkHash,
+      keccak256(_submission.compressedData)
+    );
 
     bytes32 computedShnarf = _computeShnarf(
       _parentShnarf,
@@ -610,7 +631,6 @@ contract LineaRollup is
 
     currentFinalizedShnarf = finalShnarf;
 
-    // TODO - USE REAL VALUES
     currentFinalizedState = FinalizedStateHashing._computeLastFinalizedState(
       _finalizationData.l1RollingHashMessageNumber,
       _finalizationData.l1RollingHash,
@@ -619,13 +639,15 @@ contract LineaRollup is
       _finalizationData.finalTimestamp
     );
 
-    emit DataFinalizedV3(
-      ++_lastFinalizedBlock,
-      _finalizationData.endBlockNumber,
-      finalShnarf,
-      _finalizationData.parentStateRootHash,
-      _finalizationData.shnarfData.finalStateRootHash
-    );
+    unchecked {
+      emit DataFinalizedV3(
+        ++_lastFinalizedBlock,
+        _finalizationData.endBlockNumber,
+        finalShnarf,
+        _finalizationData.parentStateRootHash,
+        _finalizationData.shnarfData.finalStateRootHash
+      );
+    }
   }
 
   /**

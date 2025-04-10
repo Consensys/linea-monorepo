@@ -92,7 +92,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       await expectRevertWithCustomError(
         forcedTransactionGateway,
         forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
-        "GasParamatersContainZero",
+        "GasFeeParametersContainZero",
         [forcedTransaction.maxFeePerGas, 0],
       );
     });
@@ -103,7 +103,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       await expectRevertWithCustomError(
         forcedTransactionGateway,
         forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
-        "GasParamatersContainZero",
+        "GasFeeParametersContainZero",
         [0, forcedTransaction.maxPriorityFeePerGas],
       );
     });

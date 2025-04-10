@@ -609,25 +609,31 @@ describe("Linea Rollup contract", () => {
   });
 
   describe("fallback operator Role", () => {
-    const expectedLastFinalizedState = calculateLastFinalizedState(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
+    const expectedLastFinalizedState = calculateLastFinalizedState(
+      0n,
+      HASH_ZERO,
+      0n,
+      HASH_ZERO,
+      DEFAULT_LAST_FINALIZED_TIMESTAMP,
+    );
 
     it("Should revert if trying to set fallback operator role before six months have passed", async () => {
       const initialBlock = await ethers.provider.getBlock("latest");
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.setFallbackOperator(0n, HASH_ZERO, BigInt(initialBlock!.timestamp)),
+        lineaRollup.setFallbackOperator(0n, HASH_ZERO, 0n, HASH_ZERO, BigInt(initialBlock!.timestamp)),
         "LastFinalizationTimeNotLapsed",
       );
     });
 
     it("Should revert if the time has passed and the last finalized timestamp does not match", async () => {
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
-      const actualSentState = calculateLastFinalizedState(0n, HASH_ZERO, 123456789n);
+      const actualSentState = calculateLastFinalizedState(0n, HASH_ZERO, 0n, HASH_ZERO, 123456789n);
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.setFallbackOperator(0n, HASH_ZERO, 123456789n),
+        lineaRollup.setFallbackOperator(0n, HASH_ZERO, 0n, HASH_ZERO, 123456789n),
         "FinalizationStateIncorrect",
         [expectedLastFinalizedState, actualSentState],
       );
@@ -635,11 +641,17 @@ describe("Linea Rollup contract", () => {
 
     it("Should revert if the time has passed and the last finalized L1 message number does not match", async () => {
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
-      const actualSentState = calculateLastFinalizedState(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
+      const actualSentState = calculateLastFinalizedState(
+        1n,
+        HASH_ZERO,
+        0n,
+        HASH_ZERO,
+        DEFAULT_LAST_FINALIZED_TIMESTAMP,
+      );
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.setFallbackOperator(1n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        lineaRollup.setFallbackOperator(1n, HASH_ZERO, 0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FinalizationStateIncorrect",
         [expectedLastFinalizedState, actualSentState],
       );
@@ -648,11 +660,17 @@ describe("Linea Rollup contract", () => {
     it("Should revert if the time has passed and the last finalized L1 rolling hash does not match", async () => {
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
       const random32Bytes = generateRandomBytes(32);
-      const actualSentState = calculateLastFinalizedState(0n, random32Bytes, DEFAULT_LAST_FINALIZED_TIMESTAMP);
+      const actualSentState = calculateLastFinalizedState(
+        0n,
+        random32Bytes,
+        0n,
+        HASH_ZERO,
+        DEFAULT_LAST_FINALIZED_TIMESTAMP,
+      );
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.setFallbackOperator(0n, random32Bytes, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        lineaRollup.setFallbackOperator(0n, random32Bytes, 0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FinalizationStateIncorrect",
         [expectedLastFinalizedState, actualSentState],
       );
@@ -663,7 +681,7 @@ describe("Linea Rollup contract", () => {
 
       await expectEvent(
         lineaRollup,
-        lineaRollup.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        lineaRollup.setFallbackOperator(0n, HASH_ZERO, 0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FallbackOperatorRoleGranted",
         [admin.address, FALLBACK_OPERATOR_ADDRESS],
       );
@@ -676,7 +694,7 @@ describe("Linea Rollup contract", () => {
 
       await expectEvent(
         lineaRollup,
-        lineaRollup.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        lineaRollup.setFallbackOperator(0n, HASH_ZERO, 0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FallbackOperatorRoleGranted",
         [admin.address, FALLBACK_OPERATOR_ADDRESS],
       );
@@ -729,9 +747,10 @@ describe("Linea Rollup contract", () => {
 
       // Grants deployed callforwarding proxy as operator
       await networkTime.increase(SIX_MONTHS_IN_SECONDS);
+
       await expectEvent(
         upgradedContract,
-        upgradedContract.setFallbackOperator(0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
+        upgradedContract.setFallbackOperator(0n, HASH_ZERO, 0n, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP),
         "FallbackOperatorRoleGranted",
         [admin.address, forwardingProxyAddress],
       );
