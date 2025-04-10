@@ -87,7 +87,7 @@ public class UtilitiesTest {
         // destroyed
         .addBlock(
             List.of(
-                tc.deployWithCreate2(
+                tc.deployWithCreate2_withRevertTrigger(
                     tc.externallyOwnedAccounts[0],
                     tc.keyPairs[0],
                     tc.frameworkEntryPointAddress,
@@ -117,7 +117,7 @@ public class UtilitiesTest {
                 tc.frameworkEntryPointAccount))
         .addBlock(
             List.of(
-                tc.deployWithCreate2(
+                tc.deployWithCreate2_withRevertTrigger(
                     tc.externallyOwnedAccounts[0],
                     tc.keyPairs[0],
                     tc.frameworkEntryPointAddress,

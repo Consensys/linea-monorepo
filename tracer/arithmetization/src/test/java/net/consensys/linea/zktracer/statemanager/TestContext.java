@@ -291,20 +291,21 @@ public class TestContext {
   }
 
   // destination must be our .yul smart contract
-  Transaction deployWithCreate2(
+  Transaction deployWithCreate2_withRevertTrigger(
       ToyAccount sender,
       KeyPair senderKeyPair,
       Address destination,
       String saltString,
       Bytes contractBytes,
-      boolean revertFlag) {
+      boolean endWithRevert) {
     FrameworkEntrypoint.ContractCall snippetContractCall =
-        deployWithCreate2Call(destination, saltString, contractBytes, revertFlag);
+        deployWithCreate2_withRevertTriggerCall(
+            destination, saltString, contractBytes, endWithRevert);
     return newTxFromCalls(
         sender, senderKeyPair, new FrameworkEntrypoint.ContractCall[] {snippetContractCall});
   }
 
-  FrameworkEntrypoint.ContractCall deployWithCreate2Call(
+  FrameworkEntrypoint.ContractCall deployWithCreate2_withRevertTriggerCall(
       Address destination, String saltString, Bytes contractBytes, boolean revertFlag) {
     Bytes salt = Bytes.fromHexStringLenient(saltString);
     // the following is the bytecode of the .yul contract
@@ -313,7 +314,7 @@ public class TestContext {
     // prepare the Create2 function
     Function create2Function =
         new Function(
-            FrameworkEntrypoint.FUNC_DEPLOYWITHCREATE2,
+            FrameworkEntrypoint.FUNC_DEPLOYWITHCREATE2_WITHREVERTTRIGGER,
             Arrays.asList(
                 new org.web3j.abi.datatypes.generated.Bytes32(salt.toArray()),
                 new org.web3j.abi.datatypes.DynamicBytes(contractBytes.toArray()),

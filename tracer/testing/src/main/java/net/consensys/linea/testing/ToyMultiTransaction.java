@@ -34,7 +34,7 @@ public class ToyMultiTransaction {
      * @return an instance of {@link List<Transaction>}
      */
     public List<Transaction> build(
-        ToyTransactionBuilder[] toyTxBuilders, ToyAccount senderAccount) {
+        List<ToyTransactionBuilder> toyTxBuilders, ToyAccount senderAccount) {
       long senderAccountNonce = senderAccount.getNonce();
       List<Transaction> results = new ArrayList<>();
       for (ToyTransactionBuilder toyTxBuilder : toyTxBuilders) {

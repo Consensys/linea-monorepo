@@ -271,8 +271,35 @@ abstract contract TestingBase {
      */
     function deployWithCreate2(
         bytes32 _salt,
+        bytes memory _bytecode
+    ) public payable returns (address addr) {
+        assembly {
+            let value := callvalue()
+            addr := create2(
+                value,
+                add(_bytecode, 0x20),
+                mload(_bytecode),
+                _salt
+            )
+                if iszero(addr) {
+                revert(0, 0)
+            }
+        }
+
+        emit ContractCreated(addr);
+    }
+
+    /**
+     * @notice Deploys a contract with create 2 and can end with a revert on demand.
+     * @param _salt The salt for creating the contract.
+     * @param _bytecode The bytecode to use in creation.
+     * @param _endWithRevert Trigger a revert after contract creation.
+     * @return addr The new contract address.
+     */
+    function deployWithCreate2_withRevertTrigger(
+        bytes32 _salt,
         bytes memory _bytecode,
-        bool _revertFlag
+        bool _endWithRevert
     ) public payable returns (address addr) {
         assembly {
             let value := callvalue()
@@ -288,8 +315,34 @@ abstract contract TestingBase {
         }
 
         emit ContractCreated(addr);
-        if (_revertFlag) {
+        if (_endWithRevert) {
             revert();
+        }
+    }
+
+    /**
+     * @notice Deploys a contract with create 2, sends a value and never reverts. Event only emitted if address is not 0.
+     * @param _salt The salt for creating the contract.
+     * @param _bytecode The bytecode to use in creation.
+     * @param _value The value sent during the creation.
+     * @return addr The new contract address.
+     */
+    function deployWithCreate2_withValueNoRevert(
+        bytes32 _salt,
+        bytes memory _bytecode,
+        uint256 _value
+    ) public payable returns (address addr) {
+        assembly {
+            addr := create2(
+                _value,
+                add(_bytecode, 0x20),
+                mload(_bytecode),
+                _salt
+            )
+        }
+
+        if (addr != address(0)) {
+            emit ContractCreated(addr);
         }
     }
 

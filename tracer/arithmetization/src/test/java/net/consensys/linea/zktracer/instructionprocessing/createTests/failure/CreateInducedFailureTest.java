@@ -248,13 +248,13 @@ public class CreateInducedFailureTest {
               .gasPrice(Wei.of(8))
               .payload(leftPaddedAddress1);
 
-  final ToyTransactionBuilder[] toyTransactionBuilders = {
-    transactionBuilderDeployingDelegateCaller,
-    transactionBuilderLeadingDelegateCallerToCreateAnAccount,
-    transactionBuilderLeadingDelegateCallerToSelfDestruct,
-    transactionBuilderDeployingDelegateCallerAgain,
-    transactionBuilderLeadingDelegateCallerToAttemptCreateAgainThusRaisingFailureConditionF
-  };
+  final List<ToyTransactionBuilder> toyTransactionBuilders =
+      List.of(
+          transactionBuilderDeployingDelegateCaller,
+          transactionBuilderLeadingDelegateCallerToCreateAnAccount,
+          transactionBuilderLeadingDelegateCallerToSelfDestruct,
+          transactionBuilderDeployingDelegateCallerAgain,
+          transactionBuilderLeadingDelegateCallerToAttemptCreateAgainThusRaisingFailureConditionF);
 
   final List<Transaction> transactions =
       ToyMultiTransaction.builder().build(toyTransactionBuilders, userAccount);

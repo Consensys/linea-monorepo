@@ -61,7 +61,7 @@ public class BlockwiseDeplNoTest {
             // Block 1
             .addBlock(
                 List.of(
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
@@ -75,7 +75,7 @@ public class BlockwiseDeplNoTest {
                         tc.frameworkEntryPointAddress,
                         false,
                         BigInteger.ONE),
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
@@ -91,7 +91,7 @@ public class BlockwiseDeplNoTest {
                         BigInteger.ONE)))
             .addBlock(
                 List.of(
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
@@ -107,7 +107,7 @@ public class BlockwiseDeplNoTest {
                         BigInteger.ONE)))
             .addBlock(
                 List.of( // test some reverted calls
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
@@ -121,14 +121,14 @@ public class BlockwiseDeplNoTest {
                         tc.frameworkEntryPointAddress,
                         false,
                         BigInteger.ONE),
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
                         tc.salts[2],
                         TestContext.snippetsCodeForCreate2,
                         true),
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,

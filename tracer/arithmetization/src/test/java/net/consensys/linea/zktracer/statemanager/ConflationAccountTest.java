@@ -100,7 +100,7 @@ public class ConflationAccountTest {
             // deploy another account ctxt.addresses[3] and perform account operations on it
             .addBlock(
                 List.of(
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
@@ -131,7 +131,7 @@ public class ConflationAccountTest {
             // balance  again
             .addBlock(
                 List.of(
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
@@ -159,7 +159,7 @@ public class ConflationAccountTest {
                         BigInteger.ONE)))
             .addBlock(
                 List.of(
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
@@ -179,7 +179,7 @@ public class ConflationAccountTest {
             // deploy a new account and check revert operations on it
             .addBlock(
                 List.of(
-                    tc.deployWithCreate2(
+                    tc.deployWithCreate2_withRevertTrigger(
                         tc.externallyOwnedAccounts[0],
                         tc.keyPairs[0],
                         tc.frameworkEntryPointAddress,
