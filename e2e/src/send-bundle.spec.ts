@@ -10,17 +10,17 @@ import {
 } from "./common/utils";
 import { ethers, TransactionRequest } from "ethers";
 
-describe("Send bundle test suite", () => {
+const describeIf = shouldSkipBundleTests ? describe.skip : describe;
+if (shouldSkipBundleTests) {
+  logger.info("Skip bundle tests due to tracing-v1 besu nodes");
+}
+
+describeIf("Send bundle test suite", () => {
   const l2AccountManager = config.getL2AccountManager();
   const lineaCancelBundleClient = new LineaBundleClient(config.getSequencerEndpoint()!);
   const lineaSendBundleClient = new LineaBundleClient(config.getL2BesuNodeEndpoint()!);
-  const itif = shouldSkipBundleTests ? it.skip : it.concurrent;
 
-  if (shouldSkipBundleTests) {
-    logger.info("Skip bundle tests due to tracing-v1 besu nodes");
-  }
-
-  itif(
+  it.concurrent(
     "Call sendBundle to RPC node and the bundled txs should get included",
     async () => {
       const senderAccount = await l2AccountManager.generateAccount();
@@ -57,7 +57,7 @@ describe("Send bundle test suite", () => {
     120_000,
   );
 
-  itif(
+  it.concurrent(
     "Call sendBundle to RPC node but the bundled txs should not get included as not all of them is valid",
     async () => {
       // 1500 wei should just be enough for the first ETH transfer tx, and the second and third would fail
@@ -96,7 +96,7 @@ describe("Send bundle test suite", () => {
     120_000,
   );
 
-  itif(
+  it.concurrent(
     "Call sendBundle to RPC node and then cancelBundle to sequencer and no bundled txs should get included",
     async () => {
       const senderAccount = await l2AccountManager.generateAccount();
