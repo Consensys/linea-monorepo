@@ -206,15 +206,15 @@ contract LineaRollup is
       if (forcedTransactionL2BlockNumbers[_forcedTransactionNumber - 1] == _forcedL2BlockNumber) {
         revert ForcedTransactionExistsForBlock(_forcedL2BlockNumber);
       }
-    }
 
-    if (forcedTransactionL2BlockNumbers[_forcedTransactionNumber] != 0) {
-      revert ForcedTransactionExistsForTransactionNumber(_forcedTransactionNumber);
-    }
+      if (forcedTransactionL2BlockNumbers[_forcedTransactionNumber] != 0) {
+        revert ForcedTransactionExistsForTransactionNumber(_forcedTransactionNumber);
+      }
 
-    forcedTransactionRollingHashes[_forcedTransactionNumber] = _forcedTransactionRollingHash;
-    forcedTransactionL2BlockNumbers[_forcedTransactionNumber] = _forcedL2BlockNumber;
-    nextForcedTransactionNumber = _forcedTransactionNumber + 1;
+      forcedTransactionRollingHashes[_forcedTransactionNumber] = _forcedTransactionRollingHash;
+      forcedTransactionL2BlockNumbers[_forcedTransactionNumber] = _forcedL2BlockNumber;
+      nextForcedTransactionNumber = _forcedTransactionNumber + 1;
+    }
   }
 
   function getLineaRollupProvidedFields()
