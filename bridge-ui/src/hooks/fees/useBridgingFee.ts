@@ -7,7 +7,7 @@ import useEthBridgingGasUsed from "./useEthBridgingGasUsed";
 import { useFormStore, useChainStore } from "@/stores";
 import { Token, ClaimType } from "@/types";
 import { isEth, isUndefined } from "@/utils";
-import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER } from "@/constants";
+import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER, POSTMAN_SPONSOR_GAS_LIMIT_THRESHOLD } from "@/constants";
 
 type UseBridgingFeeProps = {
   isConnected: boolean;
@@ -22,6 +22,7 @@ const useBridgingFee = ({ isConnected, account, token, claimingType, amount, rec
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
   const setBridgingFees = useFormStore((state) => state.setBridgingFees);
+  const setClaim = useFormStore((state) => state.setClaim);
 
   const { feeData } = useFeeData(toChain.id);
   const nextMessageNumber = useMessageNumber({ fromChain, claimingType });
@@ -56,14 +57,34 @@ const useBridgingFee = ({ isConnected, account, token, claimingType, amount, rec
   const gasLimit = isEth(token) ? eth.data : erc20.data;
 
   const computedBridgingFees = useMemo(() => {
+    // Highest priority claim type, if L2->L1 or USDC, do not enable any path to other claim types.
     if (claimingType === ClaimType.MANUAL) {
       return 0n;
     }
     if (isLoading || isError || isUndefined(gasLimit) || isUndefined(feeData)) {
       return null;
     }
-    return feeData * (gasLimit + fromChain.gasLimitSurplus) * fromChain.profitMargin;
-  }, [isLoading, isError, gasLimit, feeData, claimingType, fromChain.gasLimitSurplus, fromChain.profitMargin]);
+
+    // Computation for AUTO_FREE, i.e. sponsored by the Postman
+    const bridgingGasUsedWithSurplus = gasLimit + fromChain.gasLimitSurplus;
+    if (bridgingGasUsedWithSurplus < POSTMAN_SPONSOR_GAS_LIMIT_THRESHOLD) {
+      setClaim(ClaimType.AUTO_FREE);
+      return 0n;
+    }
+
+    // Computation for ClaimType.AUTO_PAID
+    setClaim(ClaimType.AUTO_PAID);
+    return feeData * bridgingGasUsedWithSurplus * fromChain.profitMargin;
+  }, [
+    isLoading,
+    isError,
+    gasLimit,
+    feeData,
+    claimingType,
+    fromChain.gasLimitSurplus,
+    fromChain.profitMargin,
+    setClaim,
+  ]);
 
   useEffect(() => {
     if (computedBridgingFees !== null) {
