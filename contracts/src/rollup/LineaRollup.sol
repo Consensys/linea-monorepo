@@ -557,7 +557,8 @@ contract LineaRollup is
       _finalizationData,
       lastFinalizedShnarf,
       finalShnarf,
-      lastFinalizedBlockNumber
+      lastFinalizedBlockNumber,
+      forcedTransactionRollingHashes[_finalizationData.finalForcedTransactionNumber]
     );
 
     _verifyProof(publicInput, _proofType, _aggregatedProof);
@@ -764,12 +765,14 @@ contract LineaRollup is
    * @param _finalizationData The full finalization data.
    * @param _finalShnarf The final shnarf in the finalization.
    * @param _lastFinalizedBlockNumber The last finalized block number.
+   * @param _finalForcedTransactionRollingHash The final processed forced transactions's rolling hash.
    */
   function _computePublicInput(
     FinalizationDataV4 calldata _finalizationData,
     bytes32 _lastFinalizedShnarf,
     bytes32 _finalShnarf,
-    uint256 _lastFinalizedBlockNumber
+    uint256 _lastFinalizedBlockNumber,
+    bytes32 _finalForcedTransactionRollingHash
   ) private pure returns (uint256 publicInput) {
     assembly {
       let mPtr := mload(0x40)
@@ -797,17 +800,43 @@ contract LineaRollup is
       calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x120), 0xA0)
 
       /**
+       * PLACEHOLDER: THIS WILL BE USED ONCE PROVING CIRCUITS ARE READY
+       * _finalizationData.lastFinalizedL1RollingHash
+       * _finalizationData.l1RollingHash
+       * _finalizationData.lastFinalizedL1RollingHashMessageNumber
+       * _finalizationData.l1RollingHashMessageNumber
+       * _finalizationData.l2MerkleTreesDepth
+       * _finalizationData.lastFinalizedForcedTransactionNumber
+       * _finalizationData.finalForcedTransactionNumber
+       * _finalizationData.lastFinalizedForcedTransactionRollingHash
+       *
+       * calldatacopy(add(mPtr, 0xC0), add(_finalizationData, 0x120), 0x100)
+       * // _finalForcedTransactionRollingHash
+       * mstore(add(mPtr, 0x1c0), _finalForcedTransactionRollingHash)
+       */
+
+      /**
        * @dev Note the following in hashing the _finalizationData.l2MerkleRoots array:
        * The second memory pointer and free pointer are offset by 0x20 to temporarily hash the array outside the scope of working memory,
        * as we need the space left for the array hash to be stored at 0x160.
        */
-      let mPtrMerkleRoot := add(mPtr, 0x1e0)
+      let mPtrMerkleRoot := add(mPtr, 0x180)
+
+      /*
+       * THIS WILL BE USED ONCE PROVING CIRCUITS ARE READY
+       * let mPtrMerkleRoot := add(mPtr, 0x200)
+       */
+
       let merkleRootsLengthLocation := add(_finalizationData, calldataload(add(_finalizationData, 0x220)))
       let merkleRootsLen := calldataload(merkleRootsLengthLocation)
       calldatacopy(mPtrMerkleRoot, add(merkleRootsLengthLocation, 0x20), mul(merkleRootsLen, 0x20))
       let l2MerkleRootsHash := keccak256(mPtrMerkleRoot, mul(merkleRootsLen, 0x20))
       mstore(add(mPtr, 0x160), l2MerkleRootsHash)
 
+      /*
+       * PLACEHOLDER: THIS WILL BE USED ONCE PROVING CIRCUITS ARE READY
+       * publicInput := mod(keccak256(mPtr, 0x200), MODULO_R)
+       */
       publicInput := mod(keccak256(mPtr, 0x180), MODULO_R)
     }
   }
