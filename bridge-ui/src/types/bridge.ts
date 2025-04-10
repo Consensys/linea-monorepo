@@ -31,7 +31,7 @@ export enum BridgeTransactionType {
 export enum ClaimType {
   // Only for L1 -> L2, sponsored by the Postman
   AUTO_FREE = "AUTO_FREE",
-  // Only for L1 -> L2
+  // Only for L1 -> L2, practically this will only be available when the L2 token contract does not exist (costing ~460K gas to claimMessage on L2).
   AUTO_PAID = "AUTO_PAID",
   // L2 -> L1 must be MANUAL
   MANUAL = "MANUAL",

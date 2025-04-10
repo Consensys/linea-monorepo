@@ -56,14 +56,11 @@ export default function Claiming() {
         <p className={styles.title}>Receive</p>
         <div className={styles.config}>
           <BridgeMode />
-          {
-            // There is no auto-claiming for USDC via CCTPV2
-            showSettingIcon && (
-              <button className={styles.setting} type="button" onClick={() => setShowAdvancedSettingsModal(true)}>
-                <SettingIcon />
-              </button>
-            )
-          }
+          {showSettingIcon && (
+            <button className={styles.setting} type="button" onClick={() => setShowAdvancedSettingsModal(true)}>
+              <SettingIcon />
+            </button>
+          )}
         </div>
       </div>
 
