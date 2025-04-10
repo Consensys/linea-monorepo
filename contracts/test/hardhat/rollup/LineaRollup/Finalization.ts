@@ -407,6 +407,8 @@ describe("Linea Rollup contract: Finalization", () => {
       await betaV1LineaRollup.setLastFinalizedState(
         betaV1FinalizationData.parentAggregationLastL1RollingHashMessageNumber,
         betaV1FinalizationData.parentAggregationLastL1RollingHash,
+        0n,
+        HASH_ZERO,
         betaV1FinalizationData.parentAggregationLastBlockTimestamp,
       );
       await betaV1LineaRollup.setRollingHash(

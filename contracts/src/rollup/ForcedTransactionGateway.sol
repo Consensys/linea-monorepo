@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.28;
+import { IGenericErrors } from "../interfaces/IGenericErrors.sol";
 import { IAcceptForcedTransactions } from "./interfaces/IAcceptForcedTransactions.sol";
 import { IForcedTransactionGateway } from "./interfaces/IForcedTransactionGateway.sol";
 import { Mimc } from "../libraries/Mimc.sol";
 import { RlpEncoder } from "../libraries/RlpEncoder.sol";
 import { FinalizedStateHashing } from "../libraries/FinalizedStateHashing.sol";
-
 /**
  * @title Contract to manage forced transactions on L1.
  * @author ConsenSys Software Inc.
@@ -38,6 +38,26 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     uint256 _maxGasLimit,
     uint256 _maxInputLengthBuffer
   ) {
+    if (_lineaRollup == address(0)) {
+      revert IGenericErrors.ZeroAddressNotAllowed();
+    }
+
+    if (_destinationChainId == 0) {
+      revert IGenericErrors.ZeroValueNotAllowed();
+    }
+
+    if (_l2BlockBuffer == 0) {
+      revert IGenericErrors.ZeroValueNotAllowed();
+    }
+
+    if (_maxGasLimit == 0) {
+      revert IGenericErrors.ZeroValueNotAllowed();
+    }
+
+    if (_maxInputLengthBuffer == 0) {
+      revert IGenericErrors.ZeroValueNotAllowed();
+    }
+
     LINEA_ROLLUP = IAcceptForcedTransactions(_lineaRollup);
     DESTINATION_CHAIN_ID = _destinationChainId;
     L2_BLOCK_BUFFER = _l2BlockBuffer;

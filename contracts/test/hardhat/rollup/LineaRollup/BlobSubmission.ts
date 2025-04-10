@@ -7,9 +7,11 @@ import { ethers } from "hardhat";
 
 import blobAggregatedProof1To155 from "../../_testData/compressedDataEip4844/aggregatedProof-1-155.json";
 import blobMultipleAggregatedProof1To81 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-1-81.json";
+import blobMultipleAggregatedProof82To153 from "../../_testData/compressedDataEip4844/multipleProofs/aggregatedProof-82-153.json";
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 import secondCompressedDataContent from "../../_testData/compressedData/blocks-47-81.json";
 import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
+import fourthCompressedDataMultipleContent from "../../_testData/compressedData/multipleProofs/blocks-120-153.json";
 
 import { TestLineaRollup } from "contracts/typechain-types";
 import {
@@ -26,6 +28,7 @@ import {
   OPERATOR_ROLE,
   TEST_PUBLIC_VERIFIER_INDEX,
   BLOB_SUBMISSION_PAUSE_TYPE,
+  DEFAULT_LAST_FINALIZED_TIMESTAMP,
 } from "../../common/constants";
 import {
   generateFinalizationData,
@@ -669,6 +672,56 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       secondCompressedDataContent.finalStateRootHash,
       generateBlobParentShnarfData,
       true,
+    );
+
+    // Finalize second 2 blobs
+    await expectSuccessfulFinalize(
+      lineaRollup,
+      operator,
+      blobMultipleAggregatedProof82To153,
+      4,
+      fourthCompressedDataMultipleContent.finalStateRootHash,
+      generateBlobParentShnarfData,
+      true,
+      blobMultipleAggregatedProof1To81.l1RollingHash,
+      BigInt(blobMultipleAggregatedProof1To81.l1RollingHashMessageNumber),
+    );
+  });
+
+  it("Should successfully submit 2 blobs twice then finalize in two separate finalizations using 3 and then 5 finalizationState fields", async () => {
+    // Explicitly use the 3 fields to simulate an existing finalization
+    await lineaRollup.setLastFinalizedStateV6(0, HASH_ZERO, DEFAULT_LAST_FINALIZED_TIMESTAMP);
+
+    // Submit 2 blobs
+    await sendBlobTransaction(lineaRollup, 0, 2, true);
+    // Submit another 2 blobs
+    await sendBlobTransaction(lineaRollup, 2, 4, true);
+    // Finalize first 2 blobs
+    await expectSuccessfulFinalize(
+      lineaRollup,
+      operator,
+      blobMultipleAggregatedProof1To81,
+      2,
+      secondCompressedDataContent.finalStateRootHash,
+      generateBlobParentShnarfData,
+      true,
+      HASH_ZERO,
+      0n,
+      generateRandomBytes(32),
+      0n,
+    );
+
+    // Finalize second 2 blobs
+    await expectSuccessfulFinalize(
+      lineaRollup,
+      operator,
+      blobMultipleAggregatedProof82To153,
+      4,
+      fourthCompressedDataMultipleContent.finalStateRootHash,
+      generateBlobParentShnarfData,
+      true,
+      blobMultipleAggregatedProof1To81.l1RollingHash,
+      BigInt(blobMultipleAggregatedProof1To81.l1RollingHashMessageNumber),
     );
   });
 

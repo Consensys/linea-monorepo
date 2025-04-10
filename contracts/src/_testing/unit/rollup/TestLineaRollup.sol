@@ -42,13 +42,22 @@ contract TestLineaRollup is LineaRollup {
     blobShnarfExists[_shnarf] = _finalBlockNumber;
   }
 
-  // TODO : TOGGLE SWITCHING LOGIC
-  function setLastFinalizedState(uint256 _messageNumber, bytes32 _rollingHash, uint256 _timestamp) external {
+  function setLastFinalizedStateV6(uint256 _messageNumber, bytes32 _rollingHash, uint256 _timestamp) external {
+    currentFinalizedState = FinalizedStateHashing._computeLastFinalizedState(_messageNumber, _rollingHash, _timestamp);
+  }
+
+  function setLastFinalizedState(
+    uint256 _messageNumber,
+    bytes32 _rollingHash,
+    uint256 _forcedTransactionNumber,
+    bytes32 _forcedTransactionRollingHash,
+    uint256 _timestamp
+  ) external {
     currentFinalizedState = FinalizedStateHashing._computeLastFinalizedState(
       _messageNumber,
       _rollingHash,
-      0,
-      bytes32(0),
+      _forcedTransactionNumber,
+      _forcedTransactionRollingHash,
       _timestamp
     );
   }

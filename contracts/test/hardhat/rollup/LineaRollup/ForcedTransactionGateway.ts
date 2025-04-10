@@ -1,11 +1,12 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
-import { ForcedTransactionGateway, TestLineaRollup } from "contracts/typechain-types";
+import { ForcedTransactionGateway, Mimc, TestLineaRollup } from "contracts/typechain-types";
 import transactionWithoutCalldata from "../../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
 import transactionWithLargeCalldata from "../../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
 import transactionWithCalldataAndAccessList from "../../_testData/eip1559RlpEncoderTransactions/withCalldataAndAccessList.json";
 import transactionWithCalldata from "../../_testData/eip1559RlpEncoderTransactions/withCalldata.json";
 import l2SendMessageTransaction from "../../_testData/eip1559RlpEncoderTransactions/l2SendMessage.json";
+import { ethers } from "hardhat";
 
 import { getAccountsFixture, deployForcedTransactionGatewayFixture } from "./../helpers";
 import {
@@ -18,18 +19,23 @@ import {
   generateRandomBytes,
 } from "../../common/helpers";
 import {
+  ADDRESS_ZERO,
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   FORCED_TRANSACTION_SENDER_ROLE,
   HASH_ZERO,
+  LINEA_MAINNET_CHAIN_ID,
+  MAX_GAS_LIMIT,
   MAX_INPUT_LENGTH_LIMIT,
   THREE_DAYS_IN_SECONDS,
 } from "../../common/constants";
-import { ethers, toBeHex, zeroPadValue } from "ethers";
+import { toBeHex, zeroPadValue } from "ethers";
 import { expect } from "chai";
+import { deployFromFactory } from "../../common/deployment";
 
 describe("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
   let forcedTransactionGateway: ForcedTransactionGateway;
+  let mimcLibraryAddress: string;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let securityCouncil: SignerWithAddress;
@@ -45,6 +51,9 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
   before(async () => {
     ({ nonAuthorizedAccount, securityCouncil } = await loadFixture(getAccountsFixture));
+    const mimcLibrary = (await deployFromFactory("Mimc")) as unknown as Mimc;
+    await mimcLibrary.waitForDeployment();
+    mimcLibraryAddress = await mimcLibrary.getAddress();
   });
 
   beforeEach(async () => {
@@ -65,6 +74,98 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       forcedTransactionRollingHash: HASH_ZERO,
       timestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
     };
+  });
+
+  describe("Contract Construction", () => {
+    it("Should fail if the Linea rollup is set as address(0)", async () => {
+      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGatewayFactory.deploy(
+          ADDRESS_ZERO,
+          LINEA_MAINNET_CHAIN_ID,
+          THREE_DAYS_IN_SECONDS,
+          MAX_GAS_LIMIT,
+          MAX_INPUT_LENGTH_LIMIT,
+        ),
+        "ZeroAddressNotAllowed",
+      );
+    });
+
+    it("Should fail if the chainId is set to zero", async () => {
+      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGatewayFactory.deploy(
+          await lineaRollup.getAddress(),
+          0,
+          THREE_DAYS_IN_SECONDS,
+          MAX_GAS_LIMIT,
+          MAX_INPUT_LENGTH_LIMIT,
+        ),
+        "ZeroValueNotAllowed",
+      );
+    });
+
+    it("Should fail if the block buffer is set to zero", async () => {
+      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGatewayFactory.deploy(
+          await lineaRollup.getAddress(),
+          LINEA_MAINNET_CHAIN_ID,
+          0,
+          MAX_GAS_LIMIT,
+          MAX_INPUT_LENGTH_LIMIT,
+        ),
+        "ZeroValueNotAllowed",
+      );
+    });
+
+    it("Should fail if the max gas limit is set to zero", async () => {
+      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGatewayFactory.deploy(
+          await lineaRollup.getAddress(),
+          LINEA_MAINNET_CHAIN_ID,
+          THREE_DAYS_IN_SECONDS,
+          0,
+          MAX_INPUT_LENGTH_LIMIT,
+        ),
+        "ZeroValueNotAllowed",
+      );
+    });
+
+    it("Should fail if the max input limit is set to zero", async () => {
+      const forcedTransactionGatewayFactory = await ethers.getContractFactory("ForcedTransactionGateway", {
+        libraries: { Mimc: mimcLibraryAddress },
+      });
+
+      await expectRevertWithCustomError(
+        forcedTransactionGateway,
+        forcedTransactionGatewayFactory.deploy(
+          await lineaRollup.getAddress(),
+          LINEA_MAINNET_CHAIN_ID,
+          THREE_DAYS_IN_SECONDS,
+          MAX_GAS_LIMIT,
+          0,
+        ),
+        "ZeroValueNotAllowed",
+      );
+    });
   });
 
   describe("Adding forced transactions", () => {

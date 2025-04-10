@@ -25,6 +25,8 @@ export async function expectSuccessfulFinalize(
   isMultiple: boolean = false,
   lastFinalizedRollingHash: string = HASH_ZERO,
   lastFinalizedMessageNumber: bigint = 0n,
+  lastFinalizedForcedTransactionRollingHash: string = HASH_ZERO,
+  lastFinalizedForcedTransactionNumber: bigint = 0n,
 ) {
   const finalizationData = await generateFinalizationData({
     l1RollingHash: proofData.l1RollingHash,
@@ -42,6 +44,8 @@ export async function expectSuccessfulFinalize(
 
   finalizationData.lastFinalizedL1RollingHash = lastFinalizedRollingHash;
   finalizationData.lastFinalizedL1RollingHashMessageNumber = lastFinalizedMessageNumber;
+  finalizationData.lastFinalizedForcedTransactionRollingHash = lastFinalizedForcedTransactionRollingHash;
+  finalizationData.lastFinalizedForcedTransactionNumber = lastFinalizedForcedTransactionNumber;
 
   await lineaRollup.setRollingHash(proofData.l1RollingHashMessageNumber, proofData.l1RollingHash);
 
@@ -68,7 +72,6 @@ export async function expectSuccessfulFinalize(
   expect(expectedFinalStateRootHash).to.equal(finalizationData.shnarfData.finalStateRootHash);
   expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
   expect(lastFinalizedState).to.equal(
-    // TODO TOGGLE
     generateKeccak256(
       ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
       [
