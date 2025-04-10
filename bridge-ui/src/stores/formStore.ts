@@ -26,8 +26,6 @@ export type FormActions = {
   setBridgingFees: (bridgingFees: bigint) => void;
   setMinimumFees: (minimumFees: bigint) => void;
   resetForm(): void;
-  // Custom getter function
-  isTokenCanonicalUSDC: () => boolean;
 };
 
 export type FormStore = FormState & FormActions;
@@ -44,7 +42,7 @@ export const defaultInitState: FormState = {
 };
 
 export const createFormStore = (defaultValues?: FormState) =>
-  createWithEqualityFn<FormStore>((set, get) => {
+  createWithEqualityFn<FormStore>((set) => {
     return {
       ...defaultInitState,
       ...defaultValues,
@@ -61,7 +59,5 @@ export const createFormStore = (defaultValues?: FormState) =>
       setBridgingFees: (bridgingFees) => set({ bridgingFees }),
       setMinimumFees: (minimumFees) => set({ minimumFees }),
       resetForm: () => set(defaultInitState),
-      // Custom getter function
-      isTokenCanonicalUSDC: () => isCctp(get().token),
     };
   }, shallow);

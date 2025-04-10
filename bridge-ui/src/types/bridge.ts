@@ -28,6 +28,15 @@ export enum BridgeTransactionType {
   USDC = "USDC",
 }
 
+export enum ClaimType {
+  // Only for L1 -> L2, sponsored by the Postman
+  AUTO_FREE = "AUTO_FREE",
+  // Only for L1 -> L2
+  AUTO_PAID = "AUTO_PAID",
+  // L2 -> L1 must be MANUAL
+  MANUAL = "MANUAL",
+}
+
 // BridgeTransaction object that is populated when user opens "TransactionHistory" component, and is passed to child components.
 export interface BridgeTransaction {
   type: BridgeTransactionType;
