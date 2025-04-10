@@ -10,9 +10,10 @@ import secondCompressedDataContent from "../_testData/compressedData/blocks-47-8
 import fourthCompressedDataContent from "../_testData/compressedData/blocks-115-155.json";
 
 import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
-import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
+import { CallForwardingProxy, ForcedTransactionGateway, TestLineaRollup } from "contracts/typechain-types";
 import {
   deployCallForwardingProxy,
+  deployForcedTransactionGatewayFixture,
   deployLineaRollupFixture,
   expectSuccessfulFinalizeViaCallForwarder,
   getAccountsFixture,
@@ -39,6 +40,7 @@ import {
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
   SIX_MONTHS_IN_SECONDS,
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+  FORCED_TRANSACTION_SENDER_ROLE,
 } from "../common/constants";
 import { deployUpgradableFromFactory } from "../common/deployment";
 import {
@@ -61,6 +63,7 @@ describe("Linea Rollup contract", () => {
   let lineaRollup: TestLineaRollup;
   let verifier: string;
   let callForwardingProxy: CallForwardingProxy;
+  let forcedTransactionGateway: ForcedTransactionGateway;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let admin: SignerWithAddress;
@@ -68,6 +71,7 @@ describe("Linea Rollup contract", () => {
   let operator: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
   let roleAddresses: { addressWithRole: string; role: string }[];
+  let forcedTransactionGatewayAddress: string;
 
   const { compressedData, prevShnarf, expectedShnarf, expectedX, expectedY, parentStateRootHash } =
     firstCompressedDataContent;
@@ -80,6 +84,9 @@ describe("Linea Rollup contract", () => {
 
   beforeEach(async () => {
     ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+
+    ({ forcedTransactionGateway } = await loadFixture(deployForcedTransactionGatewayFixture));
+    forcedTransactionGatewayAddress = await forcedTransactionGateway.getAddress();
   });
 
   describe("Fallback/Receive tests", () => {
@@ -281,6 +288,50 @@ describe("Linea Rollup contract", () => {
       });
 
       await expectRevertWithReason(initializeCall, INITIALIZED_ALREADY_MESSAGE);
+    });
+  });
+
+  describe("Upgrading / reinitialisation", () => {
+    it("Should revert if the forced transaction gateway is address(0)", async () => {
+      const upgradeCall = lineaRollup.reinitializeLineaRollupV7(ADDRESS_ZERO);
+
+      await expectRevertWithCustomError(lineaRollup, upgradeCall, "ZeroAddressNotAllowed");
+    });
+
+    it("Should grant FORCED_TRANSACTION_SENDER_ROLE to the forced transaction gateway ", async () => {
+      await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV7(forcedTransactionGatewayAddress);
+
+      expect(await lineaRollup.hasRole(FORCED_TRANSACTION_SENDER_ROLE, forcedTransactionGatewayAddress)).true;
+    });
+
+    it("Should set the next forced transaction number to 1", async () => {
+      await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV7(forcedTransactionGatewayAddress);
+
+      expect(await lineaRollup.nextForcedTransactionNumber()).to.equal(1n);
+    });
+
+    it("Next contract version number should be 7.0", async () => {
+      await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV7(forcedTransactionGatewayAddress);
+
+      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("7.0");
+    });
+
+    it("Next contract version number should be 7.0", async () => {
+      const upgradeCall = lineaRollup
+        .connect(securityCouncil)
+        .reinitializeLineaRollupV7(forcedTransactionGatewayAddress);
+
+      expectEvent(lineaRollup, upgradeCall, "LineaRollupVersionChanged", ["6.0", "7.0"]);
+    });
+
+    it("Fails to reinitialize twice", async () => {
+      await lineaRollup.connect(securityCouncil).reinitializeLineaRollupV7(forcedTransactionGatewayAddress);
+
+      const secondUpgradeCall = lineaRollup
+        .connect(securityCouncil)
+        .reinitializeLineaRollupV7(forcedTransactionGatewayAddress);
+
+      expectRevertWithReason(secondUpgradeCall, INITIALIZED_ALREADY_MESSAGE);
     });
   });
 

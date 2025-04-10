@@ -175,6 +175,10 @@ contract LineaRollup is
    * @param _forcedTransactionGateway The address of the forced transaction gateway.
    */
   function reinitializeLineaRollupV7(address _forcedTransactionGateway) external reinitializer(7) {
+    if (_forcedTransactionGateway == address(0)) {
+      revert ZeroAddressNotAllowed();
+    }
+
     nextForcedTransactionNumber = 1;
 
     grantRole(FORCED_TRANSACTION_SENDER_ROLE, _forcedTransactionGateway);
