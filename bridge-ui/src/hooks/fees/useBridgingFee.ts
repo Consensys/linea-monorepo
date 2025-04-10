@@ -5,7 +5,7 @@ import useMessageNumber from "../useMessageNumber";
 import useERC20BridgingFee from "./useERC20BridgingFee";
 import useEthBridgingFee from "./useEthBridgingFee";
 import { useFormStore, useChainStore } from "@/stores";
-import { Token } from "@/types";
+import { ClaimType, Token } from "@/types";
 import { isEth } from "@/utils";
 import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER } from "@/constants";
 
@@ -15,7 +15,7 @@ type UseBridgingFeeProps = {
   account?: Address;
   recipient: Address;
   amount: bigint;
-  claimingType: "auto" | "manual";
+  claimingType: ClaimType;
 };
 
 const useBridgingFee = ({ isConnected, account, token, claimingType, amount, recipient }: UseBridgingFeeProps) => {
@@ -56,7 +56,7 @@ const useBridgingFee = ({ isConnected, account, token, claimingType, amount, rec
   const gasLimit = isEth(token) ? eth.data : erc20.data;
 
   const computedBridgingFees = useMemo(() => {
-    if (claimingType === "manual") {
+    if (claimingType === ClaimType.MANUAL) {
       return 0n;
     }
     if (isLoading || isError || !gasLimit || !feeData) {

@@ -2,14 +2,14 @@ import { Address } from "viem";
 import { defaultTokensConfig } from "./tokenStore";
 import { createWithEqualityFn } from "zustand/traditional";
 import { shallow } from "zustand/vanilla/shallow";
-import { Token } from "@/types";
+import { Token, ClaimType } from "@/types";
 
 export type FormState = {
   token: Token;
   recipient: Address;
   amount: bigint | null;
   balance: bigint;
-  claim: "auto" | "manual";
+  claim: ClaimType;
   gasFees: bigint;
   bridgingFees: bigint;
   minimumFees: bigint;
@@ -20,7 +20,7 @@ export type FormActions = {
   setRecipient: (recipient: Address) => void;
   setAmount: (amount: bigint) => void;
   setBalance: (balance: bigint) => void;
-  setClaim: (claim: "auto" | "manual") => void;
+  setClaim: (claim: ClaimType) => void;
   setGasFees: (gasFees: bigint) => void;
   setBridgingFees: (bridgingFees: bigint) => void;
   setMinimumFees: (minimumFees: bigint) => void;
@@ -34,7 +34,7 @@ export const defaultInitState: FormState = {
   amount: 0n,
   balance: 0n,
   recipient: "0x",
-  claim: "auto",
+  claim: ClaimType.AUTO_PAID,
   gasFees: 0n,
   bridgingFees: 0n,
   minimumFees: 0n,

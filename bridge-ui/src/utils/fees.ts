@@ -3,7 +3,7 @@ import { getPublicClient } from "@wagmi/core";
 import TokenBridge from "@/abis/TokenBridge.json";
 import MessageService from "@/abis/MessageService.json";
 import { computeMessageHash, computeMessageStorageSlot } from "./message";
-import { Chain, Token } from "@/types";
+import { Chain, ClaimType, Token } from "@/types";
 import { config } from "@/lib/wagmi";
 
 interface EstimationParams {
@@ -13,7 +13,7 @@ interface EstimationParams {
   nextMessageNumber: bigint;
   fromChain: Chain;
   toChain: Chain;
-  claimingType: "auto" | "manual";
+  claimingType: ClaimType;
 }
 
 /**
@@ -108,7 +108,7 @@ export async function estimateERC20GasFee({
   token,
   claimingType,
 }: EstimationParams & { token: Token }): Promise<bigint> {
-  if (claimingType === "manual") return 0n;
+  if (claimingType === ClaimType.MANUAL) return 0n;
 
   const destinationChainPublicClient = getPublicClient(config, {
     chainId: toChain.id,
@@ -170,7 +170,7 @@ export async function estimateEthGasFee({
   toChain,
   claimingType,
 }: EstimationParams): Promise<bigint> {
-  if (claimingType === "manual") return 0n;
+  if (claimingType === ClaimType.MANUAL) return 0n;
 
   const destinationChainPublicClient = getPublicClient(config, {
     chainId: toChain.id,

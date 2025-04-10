@@ -8,7 +8,7 @@ import styles from "./token-modal.module.scss";
 import TokenDetails from "./token-details";
 import { useDevice, useTokenPrices, useTokens } from "@/hooks";
 import { useTokenStore, useChainStore, useConfigStore, useFormStore } from "@/stores";
-import { ChainLayer, Token } from "@/types";
+import { ChainLayer, ClaimType, Token } from "@/types";
 import { safeGetAddress, isEmptyObject, isEth, isCctp } from "@/utils";
 import { useAccount } from "wagmi";
 
@@ -68,7 +68,7 @@ export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProp
       setSelectedToken(token);
       // For L2->L1, there is only manual claiming. This is set in the parent component BridgeForm, and we take care here to not override it.
       if (fromChain.layer === ChainLayer.L1) {
-        if (isCctp(token)) setClaim("manual");
+        if (isCctp(token)) setClaim(ClaimType.MANUAL);
       }
       onCloseModal();
     },
