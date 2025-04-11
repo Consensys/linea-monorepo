@@ -17,8 +17,10 @@ import {
   testMessage,
 } from "../../../utils/testing/constants";
 import {
+  DEFAULT_ENABLE_POSTMAN_SPONSORING,
   DEFAULT_MAX_CLAIM_GAS_LIMIT,
   DEFAULT_MAX_FEE_PER_GAS_CAP,
+  DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
   DEFAULT_PROFIT_MARGIN,
 } from "../../../core/constants";
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
@@ -57,6 +59,8 @@ describe("LineaTransactionValidationService", () => {
       {
         profitMargin: DEFAULT_PROFIT_MARGIN,
         maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+        isPostmanSponsorshipEnabled: DEFAULT_ENABLE_POSTMAN_SPONSORING,
+        maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
       },
       provider,
       l2ContractClient,
@@ -104,6 +108,7 @@ describe("LineaTransactionValidationService", () => {
         hasZeroFee: true,
         isRateLimitExceeded: false,
         isUnderPriced: true,
+        isForSponsorship: false,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         threshold: 0,
@@ -133,6 +138,7 @@ describe("LineaTransactionValidationService", () => {
         hasZeroFee: false,
         isRateLimitExceeded: false,
         isUnderPriced: true,
+        isForSponsorship: false,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         threshold: 0,
@@ -160,6 +166,7 @@ describe("LineaTransactionValidationService", () => {
         hasZeroFee: false,
         isRateLimitExceeded: false,
         isUnderPriced: true,
+        isForSponsorship: false,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         threshold: 0,
@@ -189,6 +196,7 @@ describe("LineaTransactionValidationService", () => {
         hasZeroFee: false,
         isRateLimitExceeded: false,
         isUnderPriced: false,
+        isForSponsorship: false,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         threshold: 2000000000000000,

@@ -74,6 +74,8 @@ describe("TestMessageClaimingProcessor", () => {
     transactionValidationService = new EthereumTransactionValidationService(lineaRollupContractMock, gasProvider, {
       profitMargin: DEFAULT_PROFIT_MARGIN,
       maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+      isPostmanSponsorshipEnabled: DEFAULT_ENABLE_POSTMAN_SPONSORING,
+      maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
     });
     messageClaimingProcessor = new MessageClaimingProcessor(
       lineaRollupContractMock,
@@ -145,6 +147,7 @@ describe("TestMessageClaimingProcessor", () => {
         hasZeroFee: true,
         isRateLimitExceeded: false,
         isUnderPriced: false,
+        isForSponsorship: false,
         estimatedGasLimit: 50_000n,
         threshold: 5,
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
