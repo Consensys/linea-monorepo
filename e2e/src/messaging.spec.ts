@@ -86,7 +86,8 @@ async function sendL2ToL1Message(
     l2Account.address,
     await l2MessageService.getAddress(),
     l2MessageService.interface.encodeFunctionData("sendMessage", [destinationAddress, valueAndFee, calldata]),
-    etherToWei("0.001").toString(16),
+    valueAndFee.toString(16),
+    1.5,
   );
   logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
 
