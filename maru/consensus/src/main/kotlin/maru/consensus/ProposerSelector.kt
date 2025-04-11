@@ -15,14 +15,55 @@
  */
 package maru.consensus
 
-import maru.core.BeaconBlockHeader
 import maru.core.Validator
+import maru.database.BeaconChain
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
+import org.hyperledger.besu.consensus.common.bft.blockcreation.BftProposerSelector
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface ProposerSelector {
   fun getProposerForBlock(consensusRoundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator>
 }
 
-fun BeaconBlockHeader.toConsensusRoundIdentifier(): ConsensusRoundIdentifier =
-  ConsensusRoundIdentifier(this.number.toLong(), this.round.toInt())
+class ProposerSelectorImpl(
+  private val beaconChain: BeaconChain,
+  private val validatorProvider: ValidatorProvider,
+  private val config: Config,
+) : ProposerSelector {
+  data class Config(
+    val genesisBlockNumber: ULong,
+    val genesisBlockProposer: Validator,
+  )
+
+  override fun getProposerForBlock(consensusRoundIdentifier: ConsensusRoundIdentifier): SafeFuture<Validator> {
+    val blockNumber = consensusRoundIdentifier.sequenceNumber.toULong()
+    if (blockNumber == config.genesisBlockNumber) {
+      return SafeFuture.completedFuture(config.genesisBlockProposer)
+    }
+    val prevBlockProposer =
+      beaconChain
+        .getSealedBeaconBlock(blockNumber - 1uL)
+        ?.beaconBlock
+        ?.beaconBlockHeader
+        ?.proposer
+        ?.toAddress()
+        ?: return SafeFuture.failedFuture(
+          IllegalArgumentException("Parent block not found. parentBlockNumber=${blockNumber - 1uL}"),
+        )
+    return validatorProvider.getValidatorsForBlock(blockNumber).thenApply { validators ->
+      val proposerAddress =
+        BftProposerSelector.selectProposerForRound(
+          consensusRoundIdentifier,
+          prevBlockProposer,
+          validators
+            .stream()
+            .map {
+              it
+                .toAddress()
+            }.toList(),
+          true,
+        )
+      Validator(proposerAddress.toArray())
+    }
+  }
+}
