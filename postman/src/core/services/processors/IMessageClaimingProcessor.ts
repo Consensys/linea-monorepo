@@ -13,6 +13,4 @@ export type MessageClaimingProcessorConfig = {
   maxClaimGasLimit: bigint;
   direction: Direction;
   originContractAddress: string;
-  isPostmanSponsorshipEnabled: boolean;
-  maxPostmanSponsorGasLimit: bigint;
 };

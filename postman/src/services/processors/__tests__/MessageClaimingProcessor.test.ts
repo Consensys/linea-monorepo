@@ -90,8 +90,6 @@ describe("TestMessageClaimingProcessor", () => {
         maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
         direction: Direction.L2_TO_L1,
         originContractAddress: TEST_CONTRACT_ADDRESS_2,
-        isPostmanSponsorshipEnabled: DEFAULT_ENABLE_POSTMAN_SPONSORING,
-        maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
       },
       logger,
     );
