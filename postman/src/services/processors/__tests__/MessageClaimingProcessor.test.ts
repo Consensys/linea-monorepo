@@ -425,6 +425,33 @@ describe("TestMessageClaimingProcessor", () => {
         claimGasEstimationThreshold: 10000000000,
         updatedAt: mockedDate,
       });
+      await messageClaimingProcessor.process();
+
+      expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
+      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(1);
+      expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedLoggingMessage);
+      expect(l2MessageServiceContractClaimSpy).toHaveBeenCalledTimes(1);
+      expect(messageRepositoryUpdateAtomicSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("Should successfully claim message with zero fee", async () => {
+      const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
+      const l2MessageServiceContractClaimSpy = jest.spyOn(lineaRollupContractMock, "claim");
+      const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
+      const messageRepositoryUpdateAtomicSpy = jest.spyOn(databaseService, "updateMessageWithClaimTxAtomic");
+      jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
+      jest.spyOn(signer, "getNonce").mockResolvedValue(99);
+      jest
+        .spyOn(gasProvider, "getGasFees")
+        .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
+      jest.spyOn(databaseService, "getMessageToClaim").mockResolvedValue(testZeroFeeAnchoredMessage);
+      jest.spyOn(lineaRollupContractMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
+      jest.spyOn(lineaRollupContractMock, "estimateClaimGas").mockResolvedValue(100_000n);
+      jest.spyOn(lineaRollupContractMock, "isRateLimitExceeded").mockResolvedValue(false);
+      const expectedLoggingMessage = new Message({
+        ...testZeroFeeAnchoredMessage,
+        updatedAt: mockedDate,
+      });
 
       await messageClaimingProcessor.process();
 
@@ -435,73 +462,32 @@ describe("TestMessageClaimingProcessor", () => {
       expect(messageRepositoryUpdateAtomicSpy).toHaveBeenCalledTimes(1);
     });
 
-    // it("Should successfully claim message with zero fee", async () => {
-    //   const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
-    //   const l2MessageServiceContractClaimSpy = jest.spyOn(lineaRollupContractMock, "claim");
-    //   const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
-    //   const messageRepositoryUpdateAtomicSpy = jest.spyOn(databaseService, "updateMessageWithClaimTxAtomic");
-    //   jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-    //   jest.spyOn(signer, "getNonce").mockResolvedValue(99);
-    //   jest
-    //     .spyOn(gasProvider, "getGasFees")
-    //     .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
-    //   jest.spyOn(databaseService, "getMessageToClaim").mockResolvedValue(testZeroFeeAnchoredMessage);
-    //   jest.spyOn(lineaRollupContractMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
-    //   jest.spyOn(lineaRollupContractMock, "estimateClaimGas").mockResolvedValue(100_000n);
-    //   jest.spyOn(lineaRollupContractMock, "isRateLimitExceeded").mockResolvedValue(false);
-    //   const expectedLoggingMessage = new Message({
-    //     ...testZeroFeeAnchoredMessage,
-    //     claimGasEstimationThreshold: 10000000000,
-    //     updatedAt: mockedDate,
-    //   });
+    it("Should successfully claim message with underpriced fee", async () => {
+      const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
+      const l2MessageServiceContractClaimSpy = jest.spyOn(lineaRollupContractMock, "claim");
+      const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
+      const messageRepositoryUpdateAtomicSpy = jest.spyOn(databaseService, "updateMessageWithClaimTxAtomic");
+      jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
+      jest.spyOn(signer, "getNonce").mockResolvedValue(99);
+      jest
+        .spyOn(gasProvider, "getGasFees")
+        .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
+      jest.spyOn(databaseService, "getMessageToClaim").mockResolvedValue(testUnderpricedAnchoredMessage);
+      jest.spyOn(lineaRollupContractMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
+      jest.spyOn(lineaRollupContractMock, "estimateClaimGas").mockResolvedValue(100_000n);
+      const expectedLoggingMessage = new Message({
+        ...testUnderpricedAnchoredMessage,
+        claimGasEstimationThreshold: 10,
+        updatedAt: mockedDate,
+      });
 
-    //   await messageClaimingProcessor.process();
+      await messageClaimingProcessor.process();
 
-    //   expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
-    //   expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(1);
-    //   expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedLoggingMessage);
-    //   expect(l2MessageServiceContractClaimSpy).toHaveBeenCalledTimes(1);
-    //   expect(messageRepositoryUpdateAtomicSpy).toHaveBeenCalledTimes(1);
-    // });
-
-    // it("Should successfully claim message with zero fee", async () => {
-    //   const loggerWarnSpy = jest.spyOn(logger, "warn");
-    //   const lineaRollupContractMsgStatusSpy = jest.spyOn(lineaRollupContractMock, "getMessageStatus");
-    //   const messageRepositorySaveSpy = jest.spyOn(databaseService, "updateMessage");
-    //   jest.spyOn(databaseService, "getLastClaimTxNonce").mockResolvedValue(100);
-    //   jest.spyOn(signer, "getNonce").mockResolvedValue(99);
-    //   jest
-    //     .spyOn(gasProvider, "getGasFees")
-    //     .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
-    //   jest.spyOn(databaseService, "getMessageToClaim").mockResolvedValue(testZeroFeeAnchoredMessage);
-    //   jest.spyOn(transactionValidationService, "evaluateTransaction").mockResolvedValueOnce({
-    //     hasZeroFee: true,
-    //     isRateLimitExceeded: false,
-    //     isUnderPriced: false,
-    //     isForSponsorship: false,
-    //     estimatedGasLimit: 50_000n,
-    //     threshold: 5,
-    //     maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
-    //     maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
-    //   });
-
-    //   const expectedLoggingMessage = new Message(testZeroFeeAnchoredMessage);
-    //   const expectedSavedMessage = new Message({
-    //     ...testZeroFeeAnchoredMessage,
-    //     status: MessageStatus.ZERO_FEE,
-    //     updatedAt: mockedDate,
-    //   });
-
-    //   await messageClaimingProcessor.process();
-
-    //   expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
-    //   expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
-    //   expect(loggerWarnSpy).toHaveBeenCalledWith(
-    //     "Found message with zero fee. This message will not be processed: messageHash=%s",
-    //     expectedLoggingMessage.messageHash,
-    //   );
-    //   expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(1);
-    //   expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedSavedMessage);
-    // });
+      expect(lineaRollupContractMsgStatusSpy).toHaveBeenCalledTimes(1);
+      expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(1);
+      expect(messageRepositorySaveSpy).toHaveBeenCalledWith(expectedLoggingMessage);
+      expect(l2MessageServiceContractClaimSpy).toHaveBeenCalledTimes(1);
+      expect(messageRepositoryUpdateAtomicSpy).toHaveBeenCalledTimes(1);
+    });
   });
 });
