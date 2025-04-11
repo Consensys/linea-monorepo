@@ -30,10 +30,12 @@ import { Message } from "../../../core/entities/Message";
 import { ErrorParser } from "../../../utils/ErrorParser";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import {
+  DEFAULT_ENABLE_POSTMAN_SPONSORING,
   DEFAULT_GAS_ESTIMATION_PERCENTILE,
   DEFAULT_MAX_CLAIM_GAS_LIMIT,
   DEFAULT_MAX_FEE_PER_GAS_CAP,
   DEFAULT_MAX_NUMBER_OF_RETRIES,
+  DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
   DEFAULT_PROFIT_MARGIN,
   DEFAULT_RETRY_DELAY_IN_SECONDS,
 } from "../../../core/constants";
@@ -86,6 +88,8 @@ describe("TestMessageClaimingProcessor", () => {
         maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
         direction: Direction.L2_TO_L1,
         originContractAddress: TEST_CONTRACT_ADDRESS_2,
+        isPostmanSponsorshipEnabled: DEFAULT_ENABLE_POSTMAN_SPONSORING,
+        maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
       },
       logger,
     );

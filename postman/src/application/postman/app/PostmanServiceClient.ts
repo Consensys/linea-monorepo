@@ -105,7 +105,7 @@ export class PostmanServiceClient {
     this.db = DB.create(config.databaseOptions);
 
     const messageRepository = new TypeOrmMessageRepository(this.db);
-    const lineaMessageDBService = new LineaMessageDBService(l2Provider, messageRepository);
+    const lineaMessageDBService = new LineaMessageDBService(messageRepository);
     const ethereumMessageDBService = new EthereumMessageDBService(l1GasProvider, messageRepository);
 
     // L1 -> L2 flow
@@ -181,6 +181,8 @@ export class PostmanServiceClient {
         maxNumberOfRetries: config.l2Config.claiming.maxNumberOfRetries,
         retryDelayInSeconds: config.l2Config.claiming.retryDelayInSeconds,
         maxClaimGasLimit: BigInt(config.l2Config.claiming.maxClaimGasLimit),
+        isPostmanSponsorshipEnabled: config.l2Config.claiming.isPostmanSponsorshipEnabled,
+        maxPostmanSponsorGasLimit: config.l2Config.claiming.maxPostmanSponsorGasLimit,
       },
       new WinstonLogger(`L2${MessageClaimingProcessor.name}`, config.loggerOptions),
     );
@@ -296,13 +298,15 @@ export class PostmanServiceClient {
       l1TransactionValidationService,
       {
         direction: Direction.L2_TO_L1,
+        originContractAddress: config.l2Config.messageServiceContractAddress,
         maxNonceDiff: config.l1Config.claiming.maxNonceDiff,
         feeRecipientAddress: config.l1Config.claiming.feeRecipientAddress,
         profitMargin: config.l1Config.claiming.profitMargin,
         maxNumberOfRetries: config.l1Config.claiming.maxNumberOfRetries,
         retryDelayInSeconds: config.l1Config.claiming.retryDelayInSeconds,
         maxClaimGasLimit: BigInt(config.l1Config.claiming.maxClaimGasLimit),
-        originContractAddress: config.l2Config.messageServiceContractAddress,
+        isPostmanSponsorshipEnabled: config.l1Config.claiming.isPostmanSponsorshipEnabled,
+        maxPostmanSponsorGasLimit: config.l1Config.claiming.maxPostmanSponsorGasLimit,
       },
       new WinstonLogger(`L1${MessageClaimingProcessor.name}`, config.loggerOptions),
     );

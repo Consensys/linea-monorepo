@@ -7,7 +7,7 @@ import useEthBridgingGasUsed from "./useEthBridgingGasUsed";
 import { useFormStore, useChainStore } from "@/stores";
 import { Token, ClaimType } from "@/types";
 import { isEth, isUndefined } from "@/utils";
-import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER, POSTMAN_SPONSOR_GAS_LIMIT_THRESHOLD } from "@/constants";
+import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER, MAX_POSTMAN_SPONSOR_GAS_LIMIT } from "@/constants";
 
 type UseBridgingFeeProps = {
   isConnected: boolean;
@@ -67,7 +67,7 @@ const useBridgingFee = ({ isConnected, account, token, claimingType, amount, rec
 
     // Computation for AUTO_FREE, i.e. sponsored by the Postman
     const bridgingGasUsedWithSurplus = gasLimit + fromChain.gasLimitSurplus;
-    if (bridgingGasUsedWithSurplus < POSTMAN_SPONSOR_GAS_LIMIT_THRESHOLD) {
+    if (bridgingGasUsedWithSurplus < MAX_POSTMAN_SPONSOR_GAS_LIMIT) {
       setClaim(ClaimType.AUTO_FREE);
       return 0n;
     }
