@@ -6,6 +6,9 @@ const test = testWithSynpress(advancedFixtures);
 
 const { expect, describe } = test;
 
+// TODO - Case to see 'FREE' gas for ETH bridge
+// TODO - Case to see 'MANUAL' txt for USDC bridge
+
 // There are known lines causing flaky E2E tests in this test suite, these are annotated by 'bridge-ui-known-flaky-line'
 describe("L1 > L2 via Native Bridge", () => {
   describe("No blockchain tx cases", () => {

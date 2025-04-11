@@ -17,8 +17,10 @@ import {
   testMessage,
 } from "../../../utils/testing/constants";
 import {
+  DEFAULT_ENABLE_POSTMAN_SPONSORING,
   DEFAULT_MAX_CLAIM_GAS_LIMIT,
   DEFAULT_MAX_FEE_PER_GAS_CAP,
+  DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
   DEFAULT_PROFIT_MARGIN,
 } from "../../../core/constants";
 import { IL2MessageServiceClient } from "../../../core/clients/blockchain/linea/IL2MessageServiceClient";
@@ -57,6 +59,8 @@ describe("LineaTransactionValidationService", () => {
       {
         profitMargin: DEFAULT_PROFIT_MARGIN,
         maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+        isPostmanSponsorshipEnabled: DEFAULT_ENABLE_POSTMAN_SPONSORING,
+        maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
       },
       provider,
       l2ContractClient,
@@ -104,6 +108,7 @@ describe("LineaTransactionValidationService", () => {
         hasZeroFee: true,
         isRateLimitExceeded: false,
         isUnderPriced: true,
+        isForSponsorship: false,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         threshold: 0,
@@ -133,6 +138,7 @@ describe("LineaTransactionValidationService", () => {
         hasZeroFee: false,
         isRateLimitExceeded: false,
         isUnderPriced: true,
+        isForSponsorship: false,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         threshold: 0,
@@ -160,6 +166,7 @@ describe("LineaTransactionValidationService", () => {
         hasZeroFee: false,
         isRateLimitExceeded: false,
         isUnderPriced: true,
+        isForSponsorship: false,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         threshold: 0,
@@ -189,9 +196,133 @@ describe("LineaTransactionValidationService", () => {
         hasZeroFee: false,
         isRateLimitExceeded: false,
         isUnderPriced: false,
+        isForSponsorship: false,
         maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
         threshold: 2000000000000000,
+      });
+    });
+
+    it("When isPostmanSponsorshipEnabled is false, should return transaction evaluation criteria with isForSponsorship = false", async () => {
+      lineaTransactionValidationService = new LineaTransactionValidationService(
+        {
+          profitMargin: DEFAULT_PROFIT_MARGIN,
+          maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+          isPostmanSponsorshipEnabled: false,
+          maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
+        },
+        provider,
+        l2ContractClient,
+      );
+
+      jest.spyOn(l2ContractClient, "getSigner").mockReturnValueOnce(new Wallet(TEST_L2_SIGNER_PRIVATE_KEY));
+      const estimatedGasLimit = 50_000n;
+      jest.spyOn(gasProvider, "getGasFees").mockResolvedValueOnce({
+        gasLimit: estimatedGasLimit,
+        maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+      });
+      jest.spyOn(provider, "getBlockExtraData").mockResolvedValueOnce({
+        version: 1,
+        variableCost: 1_000_000,
+        fixedCost: 1_000_000,
+        ethGasPrice: 1_000_000,
+      });
+
+      testMessage.fee = 0n;
+      const criteria = await lineaTransactionValidationService.evaluateTransaction(testMessage);
+
+      expect(criteria).toStrictEqual({
+        estimatedGasLimit: estimatedGasLimit,
+        hasZeroFee: true,
+        isRateLimitExceeded: false,
+        isUnderPriced: true,
+        isForSponsorship: false,
+        maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        threshold: 0,
+      });
+    });
+
+    it("When isPostmanSponsorshipEnabled is true and gas limit < sponsor threshold, should return transaction evaluation criteria with isForSponsorship = true", async () => {
+      lineaTransactionValidationService = new LineaTransactionValidationService(
+        {
+          profitMargin: DEFAULT_PROFIT_MARGIN,
+          maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+          isPostmanSponsorshipEnabled: true,
+          maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
+        },
+        provider,
+        l2ContractClient,
+      );
+
+      jest.spyOn(l2ContractClient, "getSigner").mockReturnValueOnce(new Wallet(TEST_L2_SIGNER_PRIVATE_KEY));
+      const estimatedGasLimit = DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT - 1n;
+      jest.spyOn(gasProvider, "getGasFees").mockResolvedValueOnce({
+        gasLimit: estimatedGasLimit,
+        maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+      });
+      jest.spyOn(provider, "getBlockExtraData").mockResolvedValueOnce({
+        version: 1,
+        variableCost: 1_000_000,
+        fixedCost: 1_000_000,
+        ethGasPrice: 1_000_000,
+      });
+
+      testMessage.fee = 0n;
+      const criteria = await lineaTransactionValidationService.evaluateTransaction(testMessage);
+
+      expect(criteria).toStrictEqual({
+        estimatedGasLimit: estimatedGasLimit,
+        hasZeroFee: true,
+        isRateLimitExceeded: false,
+        isUnderPriced: true,
+        isForSponsorship: true,
+        maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        threshold: 0,
+      });
+    });
+
+    it("When isPostmanSponsorshipEnabled is true and gas limit < sponsor threshold, should return transaction evaluation criteria with isForSponsorship = false", async () => {
+      lineaTransactionValidationService = new LineaTransactionValidationService(
+        {
+          profitMargin: DEFAULT_PROFIT_MARGIN,
+          maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+          isPostmanSponsorshipEnabled: true,
+          maxPostmanSponsorGasLimit: DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT,
+        },
+        provider,
+        l2ContractClient,
+      );
+
+      jest.spyOn(l2ContractClient, "getSigner").mockReturnValueOnce(new Wallet(TEST_L2_SIGNER_PRIVATE_KEY));
+      const estimatedGasLimit = DEFAULT_MAX_POSTMAN_SPONSOR_GAS_LIMIT + 1n;
+      jest.spyOn(gasProvider, "getGasFees").mockResolvedValueOnce({
+        gasLimit: estimatedGasLimit,
+        maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+      });
+      jest.spyOn(provider, "getBlockExtraData").mockResolvedValueOnce({
+        version: 1,
+        variableCost: 1_000_000,
+        fixedCost: 1_000_000,
+        ethGasPrice: 1_000_000,
+      });
+
+      testMessage.fee = 0n;
+      const criteria = await lineaTransactionValidationService.evaluateTransaction(testMessage);
+
+      expect(criteria).toStrictEqual({
+        estimatedGasLimit: estimatedGasLimit,
+        hasZeroFee: true,
+        isRateLimitExceeded: false,
+        isUnderPriced: true,
+        isForSponsorship: false,
+        maxFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        maxPriorityFeePerGas: DEFAULT_MAX_FEE_PER_GAS,
+        threshold: 0,
       });
     });
   });

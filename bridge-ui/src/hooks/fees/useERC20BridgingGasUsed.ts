@@ -1,7 +1,7 @@
 import { Address } from "viem";
 import { useQuery } from "@tanstack/react-query";
-import { BridgeProvider, Chain, ChainLayer, Token } from "@/types";
-import { estimateERC20GasFee, isEth } from "@/utils";
+import { BridgeProvider, Chain, ChainLayer, ClaimType, Token } from "@/types";
+import { estimateERC20BridgingGasUsed, isEth } from "@/utils";
 
 type UseERC20BridgingFeeProps = {
   account?: Address;
@@ -11,10 +11,10 @@ type UseERC20BridgingFeeProps = {
   fromChain: Chain;
   toChain: Chain;
   nextMessageNumber: bigint;
-  claimingType: "auto" | "manual";
+  claimingType: ClaimType;
 };
 
-const useERC20BridgingFee = ({
+const useERC20BridgingGasUsed = ({
   account,
   token,
   fromChain,
@@ -48,9 +48,9 @@ const useERC20BridgingFee = ({
       !!nextMessageNumber &&
       !!amount &&
       !!recipient &&
-      claimingType === "auto",
+      (claimingType === ClaimType.AUTO_PAID || claimingType === ClaimType.AUTO_FREE),
     queryFn: async () =>
-      await estimateERC20GasFee({
+      await estimateERC20BridgingGasUsed({
         address: account!,
         recipient,
         token,
@@ -65,4 +65,4 @@ const useERC20BridgingFee = ({
   return { data, isLoading, isError, refetch };
 };
 
-export default useERC20BridgingFee;
+export default useERC20BridgingGasUsed;
