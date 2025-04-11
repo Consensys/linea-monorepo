@@ -50,6 +50,8 @@ type = "Web3j"
 [l2-network-gas-pricing]
 disabled = false
 extra-data-update-endpoint = "http://127.0.0.1:8545/"
+price-update-interval = "PT5S"
+fee-history-block-count = 10
 
 [database]
 hostname = "127.0.0.1"
