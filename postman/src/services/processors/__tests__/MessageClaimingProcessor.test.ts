@@ -208,7 +208,7 @@ describe("TestMessageClaimingProcessor", () => {
         .mockResolvedValue({ maxFeePerGas: 1000000000n, maxPriorityFeePerGas: 1000000000n });
       jest.spyOn(databaseService, "getMessageToClaim").mockResolvedValue(testAnchoredMessage);
       jest.spyOn(lineaRollupContractMock, "getMessageStatus").mockResolvedValue(OnChainMessageStatus.CLAIMABLE);
-      jest.spyOn(lineaRollupContractMock, "estimateClaimGas").mockResolvedValue(200_000n);
+      jest.spyOn(lineaRollupContractMock, "estimateClaimGas").mockResolvedValue(DEFAULT_MAX_CLAIM_GAS_LIMIT * 2n);
       const expectedLoggingMessage = new Message(testAnchoredMessage);
       const expectedSavedMessage = new Message({
         ...testAnchoredMessage,
@@ -224,7 +224,7 @@ describe("TestMessageClaimingProcessor", () => {
         "Estimated gas limit is higher than the max allowed gas limit for this message: messageHash=%s messageInfo=%s estimatedGasLimit=%s maxAllowedGasLimit=%s",
         expectedLoggingMessage.messageHash,
         expectedLoggingMessage.toString(),
-        undefined, //"200000",
+        undefined, // DEFAULT_MAX_CLAIM_GAS_LIMIT * 2n,
         testL2NetworkConfig.claiming.maxClaimGasLimit!.toString(),
       );
       expect(messageRepositorySaveSpy).toHaveBeenCalledTimes(1);
