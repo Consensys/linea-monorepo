@@ -19,7 +19,6 @@ import static net.consensys.linea.BlockchainReferenceTestJson.readBlockchainRefe
 import static net.consensys.linea.ReferenceTestOutcomeRecorderTool.JSON_INPUT_FILENAME;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.math.BigInteger;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -436,8 +435,6 @@ public class BlockchainReferenceTestTools {
     final MutableBlockchain blockchain = spec.getBlockchain();
     final ProtocolContext context = spec.getProtocolContext();
 
-    final BigInteger nonnegativeChainId = schedule.getChainId().get().abs();
-
     final ZkTracer zkTracer = new ZkTracer(ChainConfig.ETHEREUM);
     zkTracer.traceStartConflation(spec.getCandidateBlocks().length);
 
@@ -462,7 +459,7 @@ public class BlockchainReferenceTestTools {
         final ProtocolSpec protocolSpec = schedule.getByBlockHeader(block.getHeader());
 
         final MainnetBlockImporter blockImporter =
-            getMainnetBlockImporter(context, protocolSpec, schedule, zkTracer);
+            getMainnetBlockImporter(protocolSpec, schedule, zkTracer);
 
         final HeaderValidationMode validationMode =
             "NoProof".equalsIgnoreCase(spec.getSealEngine())
@@ -503,11 +500,8 @@ public class BlockchainReferenceTestTools {
   }
 
   private static MainnetBlockImporter getMainnetBlockImporter(
-      final ProtocolContext context,
-      final ProtocolSpec protocolSpec,
-      final ProtocolSchedule schedule,
-      final ZkTracer zkTracer) {
-    CorsetBlockProcessor corsetBlockProcessor =
+      final ProtocolSpec protocolSpec, final ProtocolSchedule schedule, final ZkTracer zkTracer) {
+    final CorsetBlockProcessor corsetBlockProcessor =
         new CorsetBlockProcessor(
             protocolSpec.getTransactionProcessor(),
             protocolSpec.getTransactionReceiptFactory(),
@@ -517,12 +511,11 @@ public class BlockchainReferenceTestTools {
             schedule,
             zkTracer);
 
-    MainnetBlockValidator blockValidator =
+    final MainnetBlockValidator blockValidator =
         new MainnetBlockValidator(
             protocolSpec.getBlockHeaderValidator(),
             protocolSpec.getBlockBodyValidator(),
-            corsetBlockProcessor,
-            context.getBadBlockManager());
+            corsetBlockProcessor);
 
     return new MainnetBlockImporter(blockValidator);
   }
