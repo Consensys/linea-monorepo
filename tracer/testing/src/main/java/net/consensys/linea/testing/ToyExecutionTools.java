@@ -229,8 +229,8 @@ public class ToyExecutionTools {
           messageFrameStack.peekFirst(), new ZkTracer(ChainConfig.MAINNET_TESTCONFIG));
     }
 
-    long intrinsicTxCostWithNoAccessOrDelegationCost =
-        evm.getGasCalculator().transactionIntrinsicGasCost(txPayload, false, 0);
+    final long intrinsicTxCostWithNoAccessOrDelegationCost =
+        evm.getGasCalculator().transactionIntrinsicGasCost(tx, 0);
 
     return LINEA_BLOCK_GAS_LIMIT
         - initialMessageFrame.getRemainingGas()

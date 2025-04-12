@@ -143,12 +143,13 @@ public class TransactionProcessingMetadata {
 
     // Note: Besu's dataCost computation contains
     // - the 21_000 transaction cost (we deduce it)
-    // - the contract creation cost in case of deployment (we set deployment to false to not add it)
+    // - the contract creation cost in case of deployment
     // - the baseline gas (gas for access lists and 7702 authorizations) is set to zero, because we
     // only consider the cost of the transaction payload
     dataCost =
-        ZkTracer.gasCalculator.transactionIntrinsicGasCost(besuTransaction.getPayload(), false, 0)
-            - GAS_CONST_G_TRANSACTION;
+        ZkTracer.gasCalculator.transactionIntrinsicGasCost(besuTransaction, 0)
+            - GAS_CONST_G_TRANSACTION
+            - (isDeployment ? GAS_CONST_G_CREATE : 0);
     accessListCost =
         besuTransaction.getAccessList().map(ZkTracer.gasCalculator::accessListGasCost).orElse(0L);
     initiallyAvailableGas = getInitiallyAvailableGas();
