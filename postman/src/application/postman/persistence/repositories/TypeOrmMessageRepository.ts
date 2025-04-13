@@ -153,6 +153,10 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
     messageStatuses: MessageStatus[],
     maxRetry: number,
     retryDelay: number,
+    currentGasPrice: bigint,
+    gasEstimationMargin: number,
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     feeEstimationOptions: {
       minimumMargin: number;
       extraDataVariableCost: number;
@@ -175,15 +179,23 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
           }),
         )
         .andWhere(
-          "CAST(message.fee AS numeric) > :minimumMargin * ((:extraDataVariableCost * message.compressedTransactionSize) / message.claimTxGasLimit + :extraDataFixedCost) * message.claimTxGasLimit",
-          {
-            minimumMargin: feeEstimationOptions.minimumMargin,
-            extraDataVariableCost: feeEstimationOptions.extraDataVariableCost,
-            extraDataFixedCost: feeEstimationOptions.extraDataFixedCost,
-          },
+          new Brackets((qb) => {
+            qb.where("message.claimGasEstimationThreshold > :threshold", {
+              threshold: parseFloat(currentGasPrice.toString()) * gasEstimationMargin,
+            }).orWhere("message.claimGasEstimationThreshold IS NULL");
+          }),
         )
+        // .andWhere(
+        //   "CAST(message.fee AS numeric) > :minimumMargin * ((:extraDataVariableCost * message.compressedTransactionSize) / message.claimTxGasLimit + :extraDataFixedCost) * message.claimTxGasLimit",
+        //   {
+        //     minimumMargin: feeEstimationOptions.minimumMargin,
+        //     extraDataVariableCost: feeEstimationOptions.extraDataVariableCost,
+        //     extraDataFixedCost: feeEstimationOptions.extraDataFixedCost,
+        //   },
+        // )
         .orderBy("CAST(message.status as CHAR)", "ASC")
-        .addOrderBy("CAST(message.fee AS numeric)", "DESC")
+        .addOrderBy("message.claimGasEstimationThreshold", "DESC")
+        // .addOrderBy("CAST(message.fee AS numeric)", "DESC")
         .addOrderBy("message.sentBlockNumber", "ASC")
         .getOne();
 
@@ -315,6 +327,13 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
           claimTxHash: tx.hash,
         },
       );
+
+      // Store updated entity in the queryRunner to access it in the afterTransactionCommit hook
+      entityManager.queryRunner!.data.updatedEntity = {
+        previousStatus: message.status,
+        newStatus: MessageStatus.PENDING,
+        direction: message.direction,
+      };
     });
   }
 }

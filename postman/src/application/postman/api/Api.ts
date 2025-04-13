@@ -1,0 +1,67 @@
+// src/api/Api.ts
+
+import express, { Express, Request, Response } from "express";
+import { IMetricService } from "../../../core/metrics/IMetricService";
+import { ILogger } from "postman/src/core/utils/logging/ILogger";
+
+type ApiConfig = {
+  port: number;
+};
+
+export class Api {
+  private readonly app: Express;
+  private server?: ReturnType<Express["listen"]>;
+
+  constructor(
+    private readonly config: ApiConfig,
+    private readonly metricService: IMetricService,
+    private readonly logger: ILogger,
+  ) {
+    this.app = express();
+    this.metricService = metricService;
+
+    this.setupMiddleware();
+    this.setupRoutes();
+  }
+
+  private setupMiddleware(): void {
+    this.app.use(express.json());
+  }
+
+  private setupRoutes(): void {
+    this.app.get("/metrics", this.handleMetrics.bind(this));
+  }
+
+  private async handleMetrics(_req: Request, res: Response): Promise<void> {
+    try {
+      const registry = this.metricService.getRegistry();
+      res.set("Content-Type", registry.contentType);
+      res.end(await registry.metrics());
+    } catch (error) {
+      res.status(500).json({ error: "Failed to collect metrics" });
+    }
+  }
+
+  public async start(): Promise<void> {
+    return new Promise((resolve) => {
+      this.server = this.app.listen(this.config.port, () => {
+        this.logger.info(`Listening on port ${this.config.port}`);
+        resolve();
+      });
+    });
+  }
+
+  public async stop(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.server) return resolve();
+
+      this.server.close((err) => {
+        if (err) {
+          return reject(err);
+        }
+        this.logger.info(`Closing API server on port ${this.config.port}`);
+        resolve();
+      });
+    });
+  }
+}

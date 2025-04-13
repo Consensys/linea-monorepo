@@ -22,6 +22,8 @@ export interface IMessageRepository<ContractTransactionResponse> {
     messageStatuses: MessageStatus[],
     maxRetry: number,
     retryDelay: number,
+    currentGasPrice: bigint,
+    gasEstimationMargin: number,
     feeEstimationOptions: {
       minimumMargin: number;
       extraDataVariableCost: number;

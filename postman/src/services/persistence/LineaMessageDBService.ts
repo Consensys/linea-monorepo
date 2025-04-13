@@ -63,17 +63,22 @@ export class LineaMessageDBService extends MessageDBService implements IMessageD
    */
   public async getMessageToClaim(
     contractAddress: string,
-    _gasEstimationMargin: number,
+    gasEstimationMargin: number,
     maxRetry: number,
     retryDelay: number,
   ): Promise<Message | null> {
     const feeEstimationOptions = await this.getClaimDBQueryFeeOptions();
+
+    const { maxFeePerGas } = await this.provider.getFees();
+
     return this.messageRepository.getFirstMessageToClaimOnL2(
       Direction.L1_TO_L2,
       contractAddress,
       [MessageStatus.TRANSACTION_SIZE_COMPUTED, MessageStatus.FEE_UNDERPRICED],
       maxRetry,
       retryDelay,
+      maxFeePerGas,
+      gasEstimationMargin,
       feeEstimationOptions,
     );
   }

@@ -26,6 +26,9 @@ import { L2ClaimTransactionSizeCalculator } from "../../../services/L2ClaimTrans
 import { LineaTransactionValidationService } from "../../../services/LineaTransactionValidationService";
 import { EthereumTransactionValidationService } from "../../../services/EthereumTransactionValidationService";
 import { getConfig } from "./config/utils";
+import { Api } from "../api/Api";
+import { MessageStatusSubscriber } from "../persistence/subscribers/MessageStatusSubscriber";
+import { MessageMetricsService } from "../api/metrics/MessageMetricsService";
 
 export class PostmanServiceClient {
   // L1 -> L2 flow
@@ -49,6 +52,7 @@ export class PostmanServiceClient {
 
   private l1L2AutoClaimEnabled: boolean;
   private l2L1AutoClaimEnabled: boolean;
+  private api: Api;
 
   /**
    * Initializes a new instance of the PostmanServiceClient.
@@ -359,6 +363,23 @@ export class PostmanServiceClient {
    */
   public async connectDatabase() {
     await this.db.initialize();
+
+    // Initialize metrics and subscriber after database is connected
+    const metricService = new MessageMetricsService(this.db.manager);
+    await metricService.initialize();
+
+    const messageStatusSubscriber = new MessageStatusSubscriber(
+      metricService,
+      new WinstonLogger(MessageStatusSubscriber.name),
+    );
+    this.db.subscribers.push(messageStatusSubscriber);
+    this.api = new Api(
+      {
+        port: 9090,
+      },
+      metricService,
+      new WinstonLogger(Api.name),
+    );
   }
 
   /**
@@ -384,6 +405,8 @@ export class PostmanServiceClient {
 
     // Database Cleaner
     this.databaseCleaningPoller.start();
+
+    this.api.start();
 
     this.logger.info("All listeners and message deliverers have been started.");
   }
@@ -411,6 +434,8 @@ export class PostmanServiceClient {
 
     // Database Cleaner
     this.databaseCleaningPoller.stop();
+
+    this.api.stop();
 
     this.logger.info("All listeners and message deliverers have been stopped.");
   }
