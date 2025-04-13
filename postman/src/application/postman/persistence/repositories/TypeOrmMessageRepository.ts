@@ -155,13 +155,6 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
     retryDelay: number,
     currentGasPrice: bigint,
     gasEstimationMargin: number,
-
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    feeEstimationOptions: {
-      minimumMargin: number;
-      extraDataVariableCost: number;
-      extraDataFixedCost: number;
-    },
   ): Promise<Message | null> {
     try {
       const message = await this.createQueryBuilder("message")
@@ -185,17 +178,8 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
             }).orWhere("message.claimGasEstimationThreshold IS NULL");
           }),
         )
-        // .andWhere(
-        //   "CAST(message.fee AS numeric) > :minimumMargin * ((:extraDataVariableCost * message.compressedTransactionSize) / message.claimTxGasLimit + :extraDataFixedCost) * message.claimTxGasLimit",
-        //   {
-        //     minimumMargin: feeEstimationOptions.minimumMargin,
-        //     extraDataVariableCost: feeEstimationOptions.extraDataVariableCost,
-        //     extraDataFixedCost: feeEstimationOptions.extraDataFixedCost,
-        //   },
-        // )
-        .orderBy("CAST(message.status as CHAR)", "ASC")
+        .orderBy("CAST(message.status as CHAR)", "DESC")
         .addOrderBy("message.claimGasEstimationThreshold", "DESC")
-        // .addOrderBy("CAST(message.fee AS numeric)", "DESC")
         .addOrderBy("message.sentBlockNumber", "ASC")
         .getOne();
 

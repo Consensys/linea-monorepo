@@ -24,11 +24,6 @@ export interface IMessageRepository<ContractTransactionResponse> {
     retryDelay: number,
     currentGasPrice: bigint,
     gasEstimationMargin: number,
-    feeEstimationOptions: {
-      minimumMargin: number;
-      extraDataVariableCost: number;
-      extraDataFixedCost: number;
-    },
   ): Promise<Message | null>;
   getLatestMessageSent(direction: Direction, contractAddress: string): Promise<Message | null>;
   getNFirstMessagesByStatus(

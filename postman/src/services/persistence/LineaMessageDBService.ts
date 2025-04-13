@@ -11,10 +11,8 @@ import { Message } from "../../core/entities/Message";
 import { MessageStatus } from "../../core/enums";
 import { IMessageRepository } from "../../core/persistence/IMessageRepository";
 import { ILineaProvider } from "../../core/clients/blockchain/linea/ILineaProvider";
-import { BaseError } from "../../core/errors";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { MessageDBService } from "./MessageDBService";
-import { MINIMUM_MARGIN } from "../../core/constants";
 
 export class LineaMessageDBService extends MessageDBService implements IMessageDBService<ContractTransactionResponse> {
   /**
@@ -67,8 +65,6 @@ export class LineaMessageDBService extends MessageDBService implements IMessageD
     maxRetry: number,
     retryDelay: number,
   ): Promise<Message | null> {
-    const feeEstimationOptions = await this.getClaimDBQueryFeeOptions();
-
     const { maxFeePerGas } = await this.provider.getFees();
 
     return this.messageRepository.getFirstMessageToClaimOnL2(
@@ -79,33 +75,6 @@ export class LineaMessageDBService extends MessageDBService implements IMessageD
       retryDelay,
       maxFeePerGas,
       gasEstimationMargin,
-      feeEstimationOptions,
     );
-  }
-
-  /**
-   * Retrieves fee estimation options for querying the database.
-   *
-   * @private
-   * @returns {Promise<{ minimumMargin: number; extraDataVariableCost: number; extraDataFixedCost: number }>} A promise that resolves to an object containing fee estimation options.
-   * @throws {BaseError} If no extra data is available.
-   */
-  private async getClaimDBQueryFeeOptions(): Promise<{
-    minimumMargin: number;
-    extraDataVariableCost: number;
-    extraDataFixedCost: number;
-  }> {
-    const minimumMargin = MINIMUM_MARGIN;
-    const blockNumber = await this.provider.getBlockNumber();
-    const extraData = await this.provider.getBlockExtraData(blockNumber);
-
-    if (!extraData) {
-      throw new BaseError("no extra data.");
-    }
-    return {
-      minimumMargin,
-      extraDataVariableCost: extraData.variableCost,
-      extraDataFixedCost: extraData.fixedCost,
-    };
   }
 }
