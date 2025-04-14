@@ -139,6 +139,8 @@ public class TxPreWarmingMacroSection {
                 final Address recipientAddress = effectiveToAddress(besuTx);
                 currentTxMetadata.isSenderPreWarmed(seenAddresses.contains(senderAddress));
                 currentTxMetadata.isRecipientPreWarmed(seenAddresses.contains(recipientAddress));
+                currentTxMetadata.isCoinbasePreWarmed(
+                    seenAddresses.contains(hub.coinbaseAddress()));
               }
             });
   }

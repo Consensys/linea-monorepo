@@ -61,6 +61,10 @@ public class AccountSnapshot {
         isAddressWarm(hub.messageFrame(), address));
   }
 
+  public static AccountSnapshot canonical(Hub hub, Address address, boolean warmth) {
+    return canonical(hub, address).setWarmthTo(warmth);
+  }
+
   public static AccountSnapshot canonical(Hub hub, WorldView world, Address address) {
     return fromArguments(
         world,

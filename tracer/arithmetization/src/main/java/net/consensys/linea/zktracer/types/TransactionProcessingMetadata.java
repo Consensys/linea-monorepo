@@ -17,7 +17,6 @@ package net.consensys.linea.zktracer.types;
 
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.effectiveToAddress;
-import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import java.math.BigInteger;
 import java.util.HashMap;
@@ -106,7 +105,11 @@ public abstract class TransactionProcessingMetadata {
 
   @Accessors(fluent = true)
   @Setter
-  boolean isCoinbaseWarmAtTransactionEnd = false;
+  boolean isCoinbasePreWarmed = false;
+
+  @Accessors(fluent = true)
+  @Setter
+  boolean coinbaseWarmAtTransactionEnd = false;
 
   @Setter List<Log> logs;
 
@@ -161,10 +164,9 @@ public abstract class TransactionProcessingMetadata {
   public void setPreFinalisationValues(
       final long leftOverGas,
       final long refundCounterMax,
-      final boolean coinbaseIsWarmAtFinalisation,
-      final long accumulatedGasUsedInBlockAtStartTx) {
+      final long accumulatedGasUsedInBlockAtStartTx,
+      final boolean coinbaseWarmAtTransactionEnd) {
 
-    isCoinbaseWarmAtTransactionEnd(coinbaseIsWarmAtFinalisation);
     this.refundCounterMax = refundCounterMax;
     setLeftoverGas(leftOverGas);
     gasUsed = computeGasUsed();
@@ -172,6 +174,7 @@ public abstract class TransactionProcessingMetadata {
     gasRefunded = computeRefunded();
     totalGasUsed = computeTotalGasUsed();
     accumulatedGasUsedInBlock = accumulatedGasUsedInBlockAtStartTx + totalGasUsed;
+    this.coinbaseWarmAtTransactionEnd = coinbaseWarmAtTransactionEnd;
   }
 
   public void completeLineaTransaction(
@@ -331,21 +334,15 @@ public abstract class TransactionProcessingMetadata {
     return besuTransaction.getData().orElse(Bytes.EMPTY);
   }
 
-  public boolean coinbaseWarmthAfterTxInit(Hub hub) {
-    final boolean coinbaseIsInAccessList =
-        this.getBesuTransaction()
-            .getAccessList()
-            .map(
-                accessList ->
-                    accessList.stream().anyMatch(entry -> entry.address().equals(coinbaseAddress)))
-            .orElse(false);
-    final boolean coinbaseIsPrecompile = isPrecompile(coinbaseAddress);
-    final boolean coinbaseIsSender = this.getSender().equals(coinbaseAddress);
-    final boolean coinbaseIsRecipient = this.getEffectiveRecipient().equals(coinbaseAddress);
+  public boolean senderIsCoinbase() {
+    return getSender().equals(coinbaseAddress);
+  }
 
-    return coinbaseIsInAccessList
-        || coinbaseIsPrecompile
-        || coinbaseIsSender
-        || coinbaseIsRecipient;
+  public boolean recipientIsCoinbase() {
+    return effectiveRecipient.equals(coinbaseAddress);
+  }
+
+  public boolean senderIsRecipient() {
+    return getSender().equals(effectiveRecipient);
   }
 }
