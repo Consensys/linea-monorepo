@@ -9,7 +9,7 @@ import {
 import { MessageEntity } from "../entities/Message.entity";
 import { IMetricService } from "../../../../core/metrics/IMetricService";
 import { MessageStatus } from "../../../../core/enums";
-import { ILogger } from "postman/src/core/utils/logging/ILogger";
+import { ILogger } from "../../../../core/utils/logging/ILogger";
 
 @EventSubscriber()
 export class MessageStatusSubscriber implements EntitySubscriberInterface<MessageEntity> {

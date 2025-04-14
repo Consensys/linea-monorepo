@@ -1,8 +1,6 @@
-// src/api/Api.ts
-
 import express, { Express, Request, Response } from "express";
 import { IMetricService } from "../../../core/metrics/IMetricService";
-import { ILogger } from "postman/src/core/utils/logging/ILogger";
+import { ILogger } from "../../../core/utils/logging/ILogger";
 
 type ApiConfig = {
   port: number;
