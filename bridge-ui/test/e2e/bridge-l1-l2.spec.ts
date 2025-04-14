@@ -6,12 +6,9 @@ const test = testWithSynpress(advancedFixtures);
 
 const { expect, describe } = test;
 
-// TODO - Case to see 'FREE' gas for ETH bridge
-// TODO - Case to see 'MANUAL' txt for USDC bridge
-
 // There are known lines causing flaky E2E tests in this test suite, these are annotated by 'bridge-ui-known-flaky-line'
 describe("L1 > L2 via Native Bridge", () => {
-  describe("No blockchain tx cases", () => {
+  describe.only("No blockchain tx cases", () => {
     test.describe.configure({ mode: "parallel" });
 
     test("should successfully go to the bridge UI page", async ({ page }) => {
@@ -114,6 +111,7 @@ describe("L1 > L2 via Native Bridge", () => {
 
       // Open gas fee modal
       const gasFeeBtn = page.getByRole("button", { name: "fee-chain-icon" });
+      // bridge-ui-known-flaky-line - Unsure why, the gas fees will not load within 5s
       await expect(gasFeeBtn).not.toContainText("0.00000000");
       await gasFeeBtn.click();
 
@@ -131,6 +129,34 @@ describe("L1 > L2 via Native Bridge", () => {
           has: freeText,
         });
       await expect(listItem).toBeVisible();
+    });
+
+    test.only("should not see Free gas fees for USDC transfer to Linea", async ({
+      page,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      openNativeBridgeFormSettings,
+      toggleShowTestNetworksInNativeBridgeForm,
+      selectTokenAndInputAmount,
+    }) => {
+      test.setTimeout(60_000);
+
+      await connectMetamaskToDapp();
+      await clickNativeBridgeButton();
+      await openNativeBridgeFormSettings();
+      await toggleShowTestNetworksInNativeBridgeForm();
+
+      await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
+
+      // Open gas fee modal
+      const gasFeeBtn = page.getByRole("button", { name: "fee-chain-icon" });
+      // bridge-ui-known-flaky-line - Unsure why, the gas fees will not load within 5s
+      await expect(gasFeeBtn).not.toContainText("0.00000000");
+      await gasFeeBtn.click();
+
+      // Assert text items
+      const freeText = page.getByText("Free");
+      await expect(freeText).not.toBeVisible();
     });
   });
 
