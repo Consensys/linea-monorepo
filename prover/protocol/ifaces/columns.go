@@ -2,6 +2,8 @@ package ifaces
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"reflect"
 	"strconv"
 
@@ -100,11 +102,15 @@ type Column interface {
 	// position. For instance, col.GetColAssignment(run, 0), returns the first
 	// position of the assigned column.
 	GetColAssignmentAt(run Runtime, pos int) field.Element
+	GetColAssignmentAtBase(run Runtime, pos int) (field.Element, error)
+	GetColAssignmentAtExt(run Runtime, pos int) fext.Element
 	// GetColAssignmentGnark does the same as GetColAssignment but in a gnark
 	// circuit. This will panic if the column is not yet assigned or if the
 	// column is not visible by the verifier. For instance, it will panic if the
 	// column is tagged as committed.
 	GetColAssignmentGnark(run GnarkRuntime) []frontend.Variable
+	GetColAssignmentGnarkBase(run GnarkRuntime) ([]frontend.Variable, error)
+	GetColAssignmentGnarkExt(run GnarkRuntime) []gnarkfext.Variable
 	// GetColAssignmentGnarkAt recovers the assignment of the column at a
 	// particular position. This will panic if the column is not yet assigned or if the
 	// column is not visible by the verifier. For instance, it will panic if the
@@ -117,6 +123,8 @@ type Column interface {
 	// column as it is derived from an underlying column (which may or may not
 	// be a composite column itself)
 	IsComposite() bool
+	GetColAssignmentGnarkAtBase(run GnarkRuntime, pos int) (frontend.Variable, error)
+	GetColAssignmentGnarkAtExt(run GnarkRuntime, pos int) gnarkfext.Variable
 }
 
 // ColumnAsVariable instantiates a [symbolic.Variable] from a column. The [symbolic.Variable]

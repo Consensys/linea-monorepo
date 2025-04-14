@@ -3,6 +3,7 @@ package gnarkfext
 import (
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
@@ -210,4 +211,24 @@ func (api *API) AssertIsDifferent(i1, i2 Variable) {
 
 func ExtToVariable(origin fext.Element) Variable {
 	return Variable{origin.A0, origin.A1}
+}
+
+func NewExtApi(inner frontend.API) API {
+	return API{
+		Inner: inner,
+	}
+}
+
+func NewFromExtension(e fext.Element) Variable {
+	return Variable{
+		A0: e.A0,
+		A1: e.A1,
+	}
+}
+
+func NewFromBase(e frontend.Variable) Variable {
+	return Variable{
+		A0: e,
+		A1: field.Zero(),
+	}
 }

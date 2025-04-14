@@ -2,6 +2,8 @@ package accessors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -113,6 +115,16 @@ func (e *FromExprAccessor) GetVal(run ifaces.Runtime) field.Element {
 	return e.Boarded.Evaluate(inputs).Get(0)
 }
 
+func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
 // GetFrontendVariable implements [ifaces.Accessor]
 func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
 
@@ -133,6 +145,31 @@ func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.Gna
 	return e.Boarded.GnarkEval(api, inputs)
 }
 
+func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces.GnarkRuntime) (frontend.Variable, error) {
+	if e.IsBase() {
+		metadata := e.Boarded.ListVariableMetadata()
+		inputs := make([]frontend.Variable, len(metadata))
+
+		for i, m := range metadata {
+			switch castedMetadata := m.(type) {
+			case ifaces.Accessor:
+				inputs[i] = castedMetadata.GetFrontendVariable(api, circ)
+			case coin.Info:
+				inputs[i] = circ.GetRandomCoinField(castedMetadata.Name)
+			default:
+				utils.Panic("unsupported type %T", m)
+			}
+		}
+
+		return e.Boarded.GnarkEval(api, inputs)
+	}
+}
+
+func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Variable {
+	//TODO implement me
+	panic("implement me")
+}
+
 // AsVariable implements the [ifaces.Accessor] interface
 func (e *FromExprAccessor) AsVariable() *symbolic.Expression {
 	return symbolic.NewVariable(e)
@@ -141,4 +178,9 @@ func (e *FromExprAccessor) AsVariable() *symbolic.Expression {
 // Round implements the [ifaces.Accessor] interface
 func (e *FromExprAccessor) Round() int {
 	return e.ExprRound
+}
+
+func (e *FromExprAccessor) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
 }

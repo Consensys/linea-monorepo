@@ -2,6 +2,9 @@ package wizard
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
@@ -80,7 +83,8 @@ type VerifierCircuit struct {
 	// in a map that is not accessed by the gnark compiler. This way we
 	// can ensure determinism and are still able to do key-value access in a
 	// slightly more convoluted way
-	columnsIDs collection.Mapping[ifaces.ColID, int] `gnark:"-"`
+	columnsIDs    collection.Mapping[ifaces.ColID, int] `gnark:"-"`
+	columnsExtIDs collection.Mapping[ifaces.ColID, int] `gnark:"-"`
 	// Same for univariate query
 	univariateParamsIDs collection.Mapping[ifaces.QueryID, int] `gnark:"-"`
 	// Same for inner-product query
@@ -96,7 +100,8 @@ type VerifierCircuit struct {
 
 	// Columns stores the gnark witness part corresponding to the columns
 	// provided in the proof and in the VerifyingKey.
-	Columns [][]frontend.Variable `gnark:",secret"`
+	Columns    [][]frontend.Variable  `gnark:",secret"`
+	ColumnsExt [][]gnarkfext.Variable `gnark:",secret"`
 	// UnivariateParams stores an assignment for each [query.UnivariateParams]
 	// from the proof. This is part of the witness of the gnark circuit.
 	UnivariateParams []query.GnarkUnivariateEvalParams `gnark:",secret"`
@@ -149,6 +154,7 @@ func NewVerifierCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 		Spec: comp,
 
 		columnsIDs:          collection.NewMapping[ifaces.ColID, int](),
+		columnsExtIDs:       collection.NewMapping[ifaces.ColID, int](),
 		univariateParamsIDs: collection.NewMapping[ifaces.QueryID, int](),
 		localOpeningIDs:     collection.NewMapping[ifaces.QueryID, int](),
 		innerProductIDs:     collection.NewMapping[ifaces.QueryID, int](),
@@ -157,6 +163,7 @@ func NewVerifierCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 		hornerIDs:           collection.NewMapping[ifaces.QueryID, int](),
 
 		Columns:            [][]frontend.Variable{},
+		ColumnsExt:         [][]gnarkfext.Variable{},
 		UnivariateParams:   make([]query.GnarkUnivariateEvalParams, 0),
 		InnerProductParams: make([]query.GnarkInnerProductParams, 0),
 		LocalOpeningParams: make([]query.GnarkLocalOpeningParams, 0),
@@ -203,7 +210,14 @@ func AllocateWizardCircuit(comp *CompiledIOP, numRound int) *VerifierCircuit {
 		}
 
 		// Allocates the column in the circuit and indexes it
-		res.AllocColumn(colName, col.Size())
+		isBase := comp.Columns.GetHandle(colName).IsBase()
+		if isBase {
+			// Allocates the column in the circuit and indexes it
+			res.AllocColumn(colName, col.Size())
+		} else {
+			// Allocates a column over field extensions
+			res.AllocColumnExt(colName, col.Size())
+		}
 	}
 
 	/*
@@ -279,9 +293,18 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 		msgData := msgDataIFace
 
 		// Perform the conversion to frontend.Variable, element by element
-		assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
-		res.columnsIDs.InsertNew(colName, len(res.Columns))
-		res.Columns = append(res.Columns, assignedMsg)
+		if _, err := msgData.GetBase(0); err == nil {
+			// the assignment consists of base elements
+			assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
+			res.columnsIDs.InsertNew(colName, len(res.Columns))
+			res.Columns = append(res.Columns, assignedMsg)
+		} else {
+			// the assignment consists of extension elements
+			assignedMsg := smartvectorsext.IntoGnarkAssignment(msgData)
+			res.columnsExtIDs.InsertNew(colName, len(res.ColumnsExt))
+			res.ColumnsExt = append(res.ColumnsExt, assignedMsg)
+		}
+
 	}
 
 	// Assigns the query parameters. Note that the iteration order is
@@ -437,6 +460,19 @@ func (c *VerifierCircuit) GetRandomCoinIntegerVec(name coin.Name) []frontend.Var
 	return c.Coins.MustGet(name).([]frontend.Variable)
 }
 
+func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.Variable {
+	/*
+		Early check, ensures the coin has been registered at all
+		and that it has the correct type
+	*/
+	infos := c.Spec.Coins.Data(name)
+	if infos.Type != coin.FieldExt {
+		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.Field)
+	}
+	// If this panics, it means we generate the coins wrongly
+	return c.Coins.MustGet(name).(gnarkfext.Variable)
+}
+
 // GetUnivariateParams returns the parameters of a univariate evaluation (i.e:
 // x, the evaluation point) and y, the alleged polynomial opening. It mirrors
 // [VerifierRuntime.GetUnivariateParams].
@@ -530,10 +566,80 @@ func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []frontend.Variable {
 	return wrappedMsg
 }
 
+func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]frontend.Variable, error) {
+	if c.Spec.Columns.GetHandle(name).IsBase() {
+		// case where the column is part of the verification key
+		if c.Spec.Columns.Status(name) == column.VerifyingKey {
+			val := smartvectors.IntoRegVec(c.Spec.Precomputed.MustGet(name))
+			res := gnarkutil.AllocateSlice(len(val))
+			// Return the column as an array of constants
+			for i := range val {
+				res[i] = val[i]
+			}
+			return res, nil
+		}
+
+		msgID := c.columnsIDs.MustGet(name)
+		wrappedMsg := c.Columns[msgID]
+
+		size := c.Spec.Columns.GetSize(name)
+		if len(wrappedMsg) != size {
+			utils.Panic("bad dimension %v, spec expected %v", len(wrappedMsg), size)
+		}
+
+		return wrappedMsg, nil
+	} else {
+		return nil, fmt.Errorf("requested base element from underlying field extension")
+	}
+
+}
+
+func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.Variable {
+	// case where the column is part of the verification key
+	if c.Spec.Columns.Status(name) == column.VerifyingKey {
+		val := smartvectorsext.IntoRegVecExt(c.Spec.Precomputed.MustGet(name))
+		res := gnarkutil.AllocateSliceExt(len(val))
+		// Return the column as an array of constants
+		for i := range val {
+			res[i] = gnarkfext.ExtToVariable(val[i])
+		}
+		return res
+	}
+
+	msgID := c.columnsExtIDs.MustGet(name)
+	wrappedMsg := c.ColumnsExt[msgID]
+
+	size := c.Spec.Columns.GetSize(name)
+	if len(wrappedMsg) != size {
+		utils.Panic("bad dimension %v, spec expected %v", len(wrappedMsg), size)
+	}
+
+	return wrappedMsg
+
+}
+
 // GetColumnAt returns the gnark assignment of a column at a requested point in
 // a gnark circuit. It mirrors the function [VerifierRuntime.GetColumnAt]
 func (c *VerifierCircuit) GetColumnAt(name ifaces.ColID, pos int) frontend.Variable {
 	return c.GetColumn(name)[pos]
+}
+
+func (c *VerifierCircuit) GetColumnAtBase(name ifaces.ColID, pos int) (frontend.Variable, error) {
+	if c.Spec.Columns.GetHandle(name).IsBase() {
+		retrievedCol, _ := c.GetColumnBase(name)
+		return retrievedCol[pos], nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested base element from underlying field extension")
+	}
+}
+
+func (c *VerifierCircuit) GetColumnAtExt(name ifaces.ColID, pos int) gnarkfext.Variable {
+	if c.Spec.Columns.GetHandle(name).IsBase() {
+		retrievedCol, _ := c.GetColumnBase(name)
+		return gnarkfext.NewFromBase(retrievedCol[pos])
+	} else {
+		return c.GetColumnExt(name)[pos]
+	}
 }
 
 // GetParams returns a query parameters as a generic interface
@@ -568,11 +674,27 @@ func (c *VerifierCircuit) AllocColumn(id ifaces.ColID, size int) []frontend.Vari
 	return column
 }
 
+func (c *VerifierCircuit) AllocColumnExt(id ifaces.ColID, size int) []gnarkfext.Variable {
+	column := make([]gnarkfext.Variable, size)
+	columnIndex := len(c.ColumnsExt)
+	c.columnsExtIDs.InsertNew(id, columnIndex)
+	c.ColumnsExt = append(c.ColumnsExt, column)
+	return column
+}
+
 // AssignColumn assigns a column in the Wizard verifier circuit
 func (c *VerifierCircuit) AssignColumn(id ifaces.ColID, sv smartvectors.SmartVector) {
 	column := smartvectors.IntoGnarkAssignment(sv)
-	c.columnsIDs.InsertNew(id, len(c.Columns))
+	columnIndex := len(c.Columns)
+	c.columnsIDs.InsertNew(id, columnIndex)
 	c.Columns = append(c.Columns, column)
+}
+
+func (c *VerifierCircuit) AssignColumnExt(id ifaces.ColID, sv smartvectors.SmartVector) {
+	column := smartvectorsext.IntoGnarkAssignment(sv)
+	columnIndex := len(c.ColumnsExt)
+	c.columnsExtIDs.InsertNew(id, columnIndex)
+	c.ColumnsExt = append(c.ColumnsExt, column)
 }
 
 // AllocUnivariableEval inserts a slot for a univariate query opening in the

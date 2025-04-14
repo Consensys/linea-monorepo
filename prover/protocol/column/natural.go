@@ -1,11 +1,16 @@
 package column
 
 import (
+	"fmt"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
+
+var _ ifaces.Column = &Natural{}
 
 // Natural represents a [ifaces.Column] that has been directly declared in the
 // corresponding [github.com/consensys/linea-monorepo/prover/protocol/wizard.CompiledIOP] or [github.com/consensys/linea-monorepo/prover/protocol/wizard.Builder]
@@ -19,7 +24,8 @@ type Natural struct {
 	// store points to the Store where the column is registered. It is accessed
 	// to fetch static informations about the column such as its size or its
 	// status.
-	store *Store
+	store  *Store
+	isBase bool
 }
 
 // Size returns the size of the column, as required by the [ifaces.Column]
@@ -71,14 +77,47 @@ func (n Natural) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
 	return run.GetColumnAt(n.ID, pos)
 }
 
+func (n Natural) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	return run.GetColumnAtBase(n.ID, pos)
+}
+
+func (n Natural) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	return run.GetColumnAtExt(n.ID, pos)
+}
+
 // GetColAssignmentGnark implements [ifaces.Column]
 func (n Natural) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
 	return run.GetColumn(n.ID)
 }
 
+func (n Natural) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+	if n.isBase {
+		return run.GetColumn(n.ID), nil
+	} else {
+		return nil, fmt.Errorf("requested base elements but column defined over field extensions")
+	}
+}
+
+func (n Natural) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
+	return run.GetColumnExt(n.ID)
+}
+
 // GetColAssignmentGnarkAt implements [ifaces.Column]
 func (n Natural) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
 	return run.GetColumnAt(n.ID, utils.PositiveMod(pos, n.Size()))
+}
+
+func (n Natural) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+	if n.isBase {
+		return run.GetColumnAt(n.ID, utils.PositiveMod(pos, n.Size())), nil
+	} else {
+		return nil, fmt.Errorf("requested base elements but column defined over field extensions")
+	}
+
+}
+
+func (n Natural) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
+	return run.GetColumnAtExt(n.ID, utils.PositiveMod(pos, n.Size()))
 }
 
 // String returns the ID of the column as a string and implements [ifaces.Column]
@@ -91,4 +130,8 @@ func (n Natural) String() string {
 // and not by the other composite columns.
 func (n Natural) Status() Status {
 	return n.store.Status(n.ID)
+}
+
+func (n Natural) IsBase() bool {
+	return n.isBase
 }

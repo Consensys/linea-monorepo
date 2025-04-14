@@ -3,13 +3,15 @@ package symbolic
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
@@ -70,7 +72,7 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 
 	// This regroups all the constants into a global constant with a coefficient
 	// of 1.
-	var c, t field.Element
+	var c, t fext.Element
 	c.SetOne()
 	for i := range constExponents {
 		t.Exp(constVal[i], big.NewInt(int64(constExponents[i])))
@@ -95,11 +97,10 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	e := &Expression{
 		Operator: Product{Exponents: exponents},
 		Children: items,
-		ESHash:   field.One(),
 	}
 
 	for i := range e.Children {
-		var tmp field.Element
+		var tmp fext.Element
 		switch {
 		case exponents[i] == 1:
 			e.ESHash.Mul(&e.ESHash, &e.Children[i].ESHash)
@@ -178,4 +179,8 @@ func (prod Product) GnarkEval(api frontend.API, inputs []frontend.Variable) fron
 	}
 
 	return res
+}
+
+func (prod Product) EvaluateExt(inputs []sv.SmartVector, p ...mempoolext.MemPool) sv.SmartVector {
+	return smartvectorsext.Product(prod.Exponents, inputs, p...)
 }

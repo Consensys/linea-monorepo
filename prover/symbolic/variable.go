@@ -2,6 +2,8 @@ package symbolic
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
@@ -16,10 +18,11 @@ import (
 // used to instantiate a [Variable] with them.
 type Metadata interface {
 	/*
-		Strings allows adressing a map by variable 2 instances for which
+		Strings allows addressing a map by variable 2 instances for which
 		String() returns the same result are treated as equal.
 	*/
 	String() string
+	IsBase() bool
 }
 
 // Variable implements the [Operator] interface and implements a variable; i.e.
@@ -35,6 +38,11 @@ func (Variable) Degree([]int) int {
 
 // Evaluate implements the [Operator] interface. Yet, this panics if this is called.
 func (v Variable) Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
+	panic("we never call it for variables")
+}
+
+// EvaluateExt implements the [Operator] interface. Yet, this panics if this is called.
+func (v Variable) EvaluateExt([]sv.SmartVector, ...mempoolext.MemPool) sv.SmartVector {
 	panic("we never call it for variables")
 }
 
@@ -55,14 +63,14 @@ func NewVariable(metadata Metadata) *Expression {
 
 // metadataToESH gets the ESH from a metadata. It is obtained by hashing
 // the string representation of the metadata.
-func metadataToESH(m Metadata) field.Element {
+func metadataToESH(m Metadata) fext.Element {
 	var esh field.Element
 	sigSeed := []byte(m.String())
 	hasher, _ := blake2b.New256(nil)
 	hasher.Write(sigSeed)
 	sigBytes := hasher.Sum(nil)
 	esh.SetBytes(sigBytes)
-	return esh
+	return *(new(fext.Element).SetFromBase(&esh))
 }
 
 /*
@@ -92,3 +100,8 @@ func (v Variable) Validate(expr *Expression) error {
 
 	return nil
 }
+
+/*
+IsBase is always true for the StringVar testing struct
+*/
+func (s StringVar) IsBase() bool { return true }
