@@ -131,7 +131,7 @@ describe("L1 > L2 via Native Bridge", () => {
       await expect(listItem).toBeVisible();
     });
 
-    test.only("should not see Free gas fees for USDC transfer to Linea", async ({
+    test("should not see Free gas fees for USDC transfer to Linea", async ({
       page,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
