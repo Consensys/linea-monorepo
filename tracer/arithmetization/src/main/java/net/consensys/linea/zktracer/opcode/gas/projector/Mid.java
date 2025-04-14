@@ -15,7 +15,14 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
+import lombok.RequiredArgsConstructor;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+
+@RequiredArgsConstructor
 public class Mid extends GasProjection {
+
+  final GasCalculator gc;
+
   @Override
   public long staticGas() {
     return gc.getMidTierGasCost();

@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,17 +13,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.gas.projector;
+package net.consensys.linea.zktracer.types;
 
-import lombok.RequiredArgsConstructor;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+import net.consensys.linea.zktracer.module.hub.Hub;
+import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
-@RequiredArgsConstructor
-public class Low extends GasProjection {
-  final GasCalculator gc;
+public class LondonTransactionProcessingMetadata extends TransactionProcessingMetadata {
 
-  @Override
-  public long staticGas() {
-    return gc.getLowTierGasCost();
+  public LondonTransactionProcessingMetadata(
+      Hub hub,
+      WorldView world,
+      Transaction transaction,
+      int relativeTransactionNumber,
+      int absoluteTransactionNumber) {
+    super(hub, world, transaction, relativeTransactionNumber, absoluteTransactionNumber);
   }
 }

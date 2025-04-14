@@ -15,15 +15,20 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-import net.consensys.linea.zktracer.Trace;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_COLD_SLOAD;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_WARM_ACCESS;
+
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
 public final class SLoad extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private UInt256 key = null;
 
-  public SLoad(MessageFrame frame) {
+  public SLoad(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     this.frame = frame;
     if (frame.stackSize() > 0) {
       this.key = UInt256.fromBytes(frame.getStackItem(0));
@@ -36,9 +41,9 @@ public final class SLoad extends GasProjection {
       return 0;
     } else {
       if (frame.getWarmedUpStorage().contains(frame.getRecipientAddress(), key)) {
-        return Trace.GAS_CONST_G_WARM_ACCESS;
+        return GAS_CONST_G_WARM_ACCESS;
       } else {
-        return Trace.GAS_CONST_G_COLD_SLOAD;
+        return GAS_CONST_G_COLD_SLOAD;
       }
     }
   }

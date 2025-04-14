@@ -15,13 +15,18 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
-import net.consensys.linea.zktracer.Trace;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_EXP;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_EXP_BYTE;
+
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
 public final class Exp extends GasProjection {
+  final GasCalculator gc;
   private int exponentByteSize = 0;
 
-  public Exp(MessageFrame frame) {
+  public Exp(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     if (frame.stackSize() > 1) {
       final int bitLength = frame.getStackItem(1).bitLength();
       this.exponentByteSize = (bitLength + 7) / 8;
@@ -30,11 +35,11 @@ public final class Exp extends GasProjection {
 
   @Override
   public long staticGas() {
-    return Trace.GAS_CONST_G_EXP;
+    return GAS_CONST_G_EXP;
   }
 
   @Override
   public long expGas() {
-    return linearCost(Trace.GAS_CONST_G_EXP_BYTE, this.exponentByteSize, 1);
+    return linearCost(GAS_CONST_G_EXP_BYTE, this.exponentByteSize, 1);
   }
 }

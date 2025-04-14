@@ -15,18 +15,22 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_CODE_DEPOSIT;
+import static net.consensys.linea.zktracer.Trace.MAX_CODE_SIZE;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
-import net.consensys.linea.zktracer.Trace;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 public final class Return extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private long offset = 0;
   private long size = 0;
 
-  public Return(MessageFrame frame) {
+  public Return(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     this.frame = frame;
     if (frame.stackSize() > 1) {
       this.offset = clampedToLong(frame.getStackItem(0));
@@ -51,10 +55,10 @@ public final class Return extends GasProjection {
       return 0;
     }
 
-    if (this.size > 24_576) {
+    if (this.size > MAX_CODE_SIZE) {
       return 0L;
     } else {
-      return Trace.GAS_CONST_G_CODE_DEPOSIT * this.size;
+      return GAS_CONST_G_CODE_DEPOSIT * this.size;
     }
   }
 

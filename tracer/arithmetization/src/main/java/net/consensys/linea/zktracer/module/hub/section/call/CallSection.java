@@ -373,7 +373,7 @@ public class CallSection extends TraceSection
               + "\n\tHUB_STAMP  = "
               + hubStamp()
               + "\n\tABS_TX_NUM = "
-              + hub.txStack().getCurrentAbsNumber()
+              + hub.txStack().currentAbsNumber()
               + "\n\tbase byte size = "
               + ((ModexpSubsection) precompileSubsection).modexpMetaData.bbs().toDecimalString()
               + "\n\texp byte size = "

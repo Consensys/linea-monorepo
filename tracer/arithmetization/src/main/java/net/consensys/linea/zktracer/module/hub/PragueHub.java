@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,17 +13,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.opcode.gas.projector;
+package net.consensys.linea.zktracer.module.hub;
 
-import lombok.RequiredArgsConstructor;
+import net.consensys.linea.zktracer.ChainConfig;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
+import org.hyperledger.besu.evm.gascalculator.PragueGasCalculator;
 
-@RequiredArgsConstructor
-public class Low extends GasProjection {
-  final GasCalculator gc;
+public class PragueHub extends CancunHub {
+  public PragueHub(ChainConfig chain) {
+    super(chain);
+  }
 
   @Override
-  public long staticGas() {
-    return gc.getLowTierGasCost();
+  protected GasCalculator setGasCalculator() {
+    return new PragueGasCalculator();
   }
 }

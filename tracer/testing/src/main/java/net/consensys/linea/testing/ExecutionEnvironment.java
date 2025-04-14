@@ -26,6 +26,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 
 import net.consensys.linea.corset.CorsetValidator;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.config.GenesisConfig;
@@ -122,7 +123,7 @@ public class ExecutionEnvironment {
         .difficulty(Difficulty.of(LINEA_DIFFICULTY));
   }
 
-  public static ProtocolSpec getProtocolSpec(BigInteger chainId) {
+  public static ProtocolSpec getProtocolSpec(BigInteger chainId, Fork fork) {
     BadBlockManager badBlockManager = new BadBlockManager();
     final GenesisConfigOptions genesisConfigOptions = GENESIS_CONFIG.getConfigOptions();
 
@@ -139,17 +140,22 @@ public class ExecutionEnvironment {
             false,
             new NoOpMetricsSystem());
 
-    ProtocolSpecBuilder builder =
+    final MainnetProtocolSpecFactory protocol =
         new MainnetProtocolSpecFactory(
-                Optional.of(chainId),
-                true,
-                OptionalLong.empty(),
-                EvmConfiguration.DEFAULT,
-                MiningConfiguration.MINING_DISABLED,
-                false,
-                new NoOpMetricsSystem())
-            .londonDefinition(GENESIS_CONFIG.getConfigOptions());
-    // .lineaOpCodesDefinition(GENESIS_CONFIG.getConfigOptions());
+            Optional.of(chainId),
+            true,
+            OptionalLong.empty(),
+            EvmConfiguration.DEFAULT,
+            MiningConfiguration.MINING_DISABLED,
+            false,
+            new NoOpMetricsSystem());
+
+    final ProtocolSpecBuilder builder =
+        switch (fork) {
+          case LONDON -> protocol.londonDefinition(GENESIS_CONFIG.getConfigOptions());
+          case SHANGHAI -> protocol.shanghaiDefinition(GENESIS_CONFIG.getConfigOptions());
+          default -> throw new IllegalArgumentException("Unexpected fork value: " + fork);
+        };
 
     return builder
         .privacyParameters(PrivacyParameters.DEFAULT)

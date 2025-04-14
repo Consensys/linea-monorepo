@@ -30,7 +30,6 @@ import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.experimental.Accessors;
-import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruct;
@@ -43,7 +42,7 @@ import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
 @Getter
-public class TransactionProcessingMetadata {
+public abstract class TransactionProcessingMetadata {
 
   final int absoluteTransactionNumber;
   final int relativeTransactionNumber;
@@ -147,11 +146,11 @@ public class TransactionProcessingMetadata {
     // - the baseline gas (gas for access lists and 7702 authorizations) is set to zero, because we
     // only consider the cost of the transaction payload
     dataCost =
-        ZkTracer.gasCalculator.transactionIntrinsicGasCost(besuTransaction, 0)
+        hub.gasCalculator.transactionIntrinsicGasCost(besuTransaction, 0)
             - GAS_CONST_G_TRANSACTION
             - (isDeployment ? GAS_CONST_G_CREATE : 0);
     accessListCost =
-        besuTransaction.getAccessList().map(ZkTracer.gasCalculator::accessListGasCost).orElse(0L);
+        besuTransaction.getAccessList().map(hub.gasCalculator::accessListGasCost).orElse(0L);
     initiallyAvailableGas = getInitiallyAvailableGas();
 
     effectiveRecipient = effectiveToAddress(besuTransaction);

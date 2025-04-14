@@ -109,7 +109,7 @@ public class SstoreSection extends TraceSection implements PostRollbackDefer {
 
     // set the refundDelta
     commonValues.refundDelta(
-        Hub.GAS_PROJECTOR
+        hub.gasProjector
             .of(hub.currentFrame().frame(), hub.opCode())
             .refund()); // Note: we can't use Besu's refund value, as our is only for non-reverting
     // context

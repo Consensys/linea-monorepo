@@ -22,13 +22,16 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 public final class SelfDestruct extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private Address beneficiaryAddress = null;
 
-  public SelfDestruct(MessageFrame frame) {
+  public SelfDestruct(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     this.frame = frame;
     if (frame.stackSize() > 0) {
       this.beneficiaryAddress = Words.toAddress(frame.getStackItem(0));

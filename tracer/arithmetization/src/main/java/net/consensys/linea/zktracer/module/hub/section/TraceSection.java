@@ -175,7 +175,7 @@ public class TraceSection {
                 new StackLine().asStackItems(),
                 hub.pch().exceptions(),
                 hub.pch().abortingConditions().snapshot(),
-                Hub.GAS_PROJECTOR.of(currentFrame.frame(), currentFrame.opCode()),
+                hub.gasProjector.of(currentFrame.frame(), currentFrame.opCode()),
                 currentFrame.isDeployment(),
                 commonValues));
       }
@@ -188,7 +188,7 @@ public class TraceSection {
                 line.asStackItems(),
                 hub.pch().exceptions(),
                 hub.pch().abortingConditions().snapshot(),
-                Hub.GAS_PROJECTOR.of(currentFrame.frame(), currentFrame.opCode()),
+                hub.gasProjector.of(currentFrame.frame(), currentFrame.opCode()),
                 currentFrame.isDeployment(),
                 commonValues));
       }

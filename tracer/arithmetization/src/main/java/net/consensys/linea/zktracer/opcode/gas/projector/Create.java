@@ -19,14 +19,17 @@ import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import net.consensys.linea.zktracer.Trace;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 public final class Create extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private long initCodeOffset = 0;
   private long initCodeLength = 0;
 
-  public Create(MessageFrame frame) {
+  public Create(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     this.frame = frame;
     if (frame.stackSize() > 2) {
       this.initCodeOffset = clampedToLong(frame.getStackItem(1));

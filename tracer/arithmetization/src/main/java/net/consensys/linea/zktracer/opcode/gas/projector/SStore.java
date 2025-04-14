@@ -20,15 +20,18 @@ import static net.consensys.linea.zktracer.Trace.*;
 import org.apache.tuweni.units.bigints.UInt256;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
 public final class SStore extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private UInt256 key = UInt256.ZERO;
   private UInt256 originalValue = UInt256.ZERO;
   private UInt256 currentValue = UInt256.ZERO;
   private UInt256 newValue = UInt256.ZERO;
 
-  public SStore(MessageFrame frame) {
+  public SStore(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     this.frame = frame;
     if (frame.stackSize() > 1) {
       this.key = UInt256.fromBytes(frame.getStackItem(0));
