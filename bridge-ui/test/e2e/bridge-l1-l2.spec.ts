@@ -94,6 +94,44 @@ describe("L1 > L2 via Native Bridge", () => {
       await expect(approvalButton).toBeVisible();
       await expect(approvalButton).toBeEnabled();
     });
+
+    test("should see Free gas fees for ETH transfer to Linea", async ({
+      page,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      openNativeBridgeFormSettings,
+      toggleShowTestNetworksInNativeBridgeForm,
+      selectTokenAndInputAmount,
+    }) => {
+      test.setTimeout(60_000);
+
+      await connectMetamaskToDapp();
+      await clickNativeBridgeButton();
+      await openNativeBridgeFormSettings();
+      await toggleShowTestNetworksInNativeBridgeForm();
+
+      await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
+
+      // Open gas fee modal
+      const gasFeeBtn = page.getByRole("button", { name: "fee-chain-icon" });
+      await expect(gasFeeBtn).not.toContainText("0.00000000");
+      await gasFeeBtn.click();
+
+      // Assert text items
+      const lineaSepoliaFeeText = page.getByText("Linea Sepolia fee");
+      const freeText = page.getByText("Free");
+      await expect(lineaSepoliaFeeText).toBeVisible();
+      await expect(freeText).toBeVisible();
+      const listItem = page
+        .locator("li")
+        .filter({
+          has: lineaSepoliaFeeText,
+        })
+        .filter({
+          has: freeText,
+        });
+      await expect(listItem).toBeVisible();
+    });
   });
 
   describe("Blockchain tx cases", () => {
