@@ -8,7 +8,7 @@ const { expect, describe } = test;
 
 // There are known lines causing flaky E2E tests in this test suite, these are annotated by 'bridge-ui-known-flaky-line'
 describe("L1 > L2 via Native Bridge", () => {
-  describe.only("No blockchain tx cases", () => {
+  describe("No blockchain tx cases", () => {
     test.describe.configure({ mode: "parallel" });
 
     test("should successfully go to the bridge UI page", async ({ page }) => {
@@ -92,13 +92,14 @@ describe("L1 > L2 via Native Bridge", () => {
       await expect(approvalButton).toBeEnabled();
     });
 
-    test("should see Free gas fees for ETH transfer to Linea", async ({
+    test("should see Free gas fees for ETH transfer to L2", async ({
       page,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
       openNativeBridgeFormSettings,
       toggleShowTestNetworksInNativeBridgeForm,
       selectTokenAndInputAmount,
+      openGasFeeModal,
     }) => {
       test.setTimeout(60_000);
 
@@ -108,12 +109,7 @@ describe("L1 > L2 via Native Bridge", () => {
       await toggleShowTestNetworksInNativeBridgeForm();
 
       await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
-
-      // Open gas fee modal
-      const gasFeeBtn = page.getByRole("button", { name: "fee-chain-icon" });
-      // bridge-ui-known-flaky-line - Unsure why, the gas fees will not load within 5s
-      await expect(gasFeeBtn).not.toContainText("0.00000000");
-      await gasFeeBtn.click();
+      await openGasFeeModal();
 
       // Assert text items
       const lineaSepoliaFeeText = page.getByText("Linea Sepolia fee");
@@ -131,13 +127,14 @@ describe("L1 > L2 via Native Bridge", () => {
       await expect(listItem).toBeVisible();
     });
 
-    test("should not see Free gas fees for USDC transfer to Linea", async ({
+    test("should not see Free gas fees for USDC transfer to L2", async ({
       page,
       connectMetamaskToDapp,
       clickNativeBridgeButton,
       openNativeBridgeFormSettings,
       toggleShowTestNetworksInNativeBridgeForm,
       selectTokenAndInputAmount,
+      openGasFeeModal,
     }) => {
       test.setTimeout(60_000);
 
@@ -147,12 +144,33 @@ describe("L1 > L2 via Native Bridge", () => {
       await toggleShowTestNetworksInNativeBridgeForm();
 
       await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
+      await openGasFeeModal();
 
-      // Open gas fee modal
-      const gasFeeBtn = page.getByRole("button", { name: "fee-chain-icon" });
-      // bridge-ui-known-flaky-line - Unsure why, the gas fees will not load within 5s
-      await expect(gasFeeBtn).not.toContainText("0.00000000");
-      await gasFeeBtn.click();
+      // Assert text items
+      const freeText = page.getByText("Free");
+      await expect(freeText).not.toBeVisible();
+    });
+
+    test("should not see Free gas fees for ETH transfer to L1", async ({
+      page,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      openNativeBridgeFormSettings,
+      toggleShowTestNetworksInNativeBridgeForm,
+      selectTokenAndInputAmount,
+      openGasFeeModal,
+      switchToLineaSepolia,
+    }) => {
+      test.setTimeout(60_000);
+
+      await connectMetamaskToDapp();
+      await clickNativeBridgeButton();
+      await openNativeBridgeFormSettings();
+      await toggleShowTestNetworksInNativeBridgeForm();
+
+      await switchToLineaSepolia();
+      await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
+      await openGasFeeModal();
 
       // Assert text items
       const freeText = page.getByText("Free");
