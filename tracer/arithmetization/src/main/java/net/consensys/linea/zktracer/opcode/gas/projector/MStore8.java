@@ -18,12 +18,15 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
 public final class MStore8 extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private long offset = 0;
 
-  public MStore8(MessageFrame frame) {
+  public MStore8(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     this.frame = frame;
     if (frame.stackSize() > 0) {
       this.offset = clampedToLong(frame.getStackItem(0));

@@ -19,13 +19,16 @@ import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 public final class AccountAccess extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private Address target = null;
 
-  public AccountAccess(MessageFrame frame) {
+  public AccountAccess(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     if (frame.stackSize() > 0) {
       this.target = Words.toAddress(frame.getStackItem(0));
     }

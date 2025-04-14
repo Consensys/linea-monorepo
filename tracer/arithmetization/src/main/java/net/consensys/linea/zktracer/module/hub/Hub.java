@@ -106,7 +106,7 @@ import net.consensys.linea.zktracer.module.tables.bin.BinRt;
 import net.consensys.linea.zktracer.module.tables.instructionDecoder.*;
 import net.consensys.linea.zktracer.module.tables.shf.ShfRt;
 import net.consensys.linea.zktracer.module.trm.Trm;
-import net.consensys.linea.zktracer.module.txndata.TxnData;
+import net.consensys.linea.zktracer.module.txndata.module.TxnData;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodeData;
@@ -125,6 +125,7 @@ import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.AccountState;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.log.LogTopic;
 import org.hyperledger.besu.evm.operation.Operation;
@@ -135,9 +136,12 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 @Slf4j
 @Accessors(fluent = true)
-public class Hub implements Module {
+public abstract class Hub implements Module {
 
-  public static final GasProjector GAS_PROJECTOR = new GasProjector();
+  /** The {@link GasCalculator} used in this version of the arithmetization */
+  public final GasCalculator gasCalculator = setGasCalculator();
+
+  public final GasProjector gasProjector = new GasProjector(gasCalculator);
 
   /** accumulate the trace information for the Hub */
   @Getter public final State state = new State();
@@ -155,7 +159,7 @@ public class Hub implements Module {
   @Getter CallStack callStack = new CallStack();
 
   /** Stores the transaction Metadata of all the transaction of the conflated block */
-  @Getter TransactionStack txStack = new TransactionStack();
+  @Getter TransactionStack txStack = setTransactionStack();
 
   /** Stores the block Metadata of all the blocks of the conflation */
   @Getter BlockStack blockStack = new BlockStack();
@@ -198,7 +202,7 @@ public class Hub implements Module {
   private final Add add = new Add();
   private final Bin bin = new Bin();
   private final Blockhash blockhash = new Blockhash(this, wcp);
-  private final Euc euc = new Euc(wcp);
+  @Getter private final Euc euc = new Euc(wcp);
   @Getter private final Ext ext = new Ext(this);
   @Getter private final Gas gas = new Gas(wcp);
   private final Mul mul = new Mul(this);
@@ -213,7 +217,7 @@ public class Hub implements Module {
   private final RlpTxn rlpTxn = new RlpTxn(romLex);
   private final Mmio mmio;
 
-  @Getter private final TxnData txnData = new TxnData(this, wcp, euc);
+  @Getter private final TxnData txnData = setTxnData();
   private final RlpTxnRcpt rlpTxnRcpt = new RlpTxnRcpt();
   private final LogInfo logInfo = new LogInfo(rlpTxnRcpt);
   private final LogData logData = new LogData(rlpTxnRcpt);
@@ -303,7 +307,7 @@ public class Hub implements Module {
   @Getter private final L2L1Logs l2L1Logs;
 
   /** list of module than can be modified during execution */
-  private final List<Module> modules;
+  @Getter private final List<Module> modules;
 
   /** reference table modules */
   private final List<Module> refTableModules;
@@ -375,7 +379,7 @@ public class Hub implements Module {
             blockTransactions, keccak, l2L1Logs, l2l1ContractAddress, LogTopic.of(l2l1Topic));
     shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
     rlpAddr = new RlpAddr(this, trm, keccak);
-    blockdata = new Blockdata(wcp, euc, txnData, chain);
+    blockdata = new Blockdata(this, wcp, euc, chain);
     mmu = new Mmu(euc, wcp);
     mmio = new Mmio(mmu);
 
@@ -1064,5 +1068,17 @@ public class Hub implements Module {
 
   public Address coinbaseAddressOfRelativeBlock(final int relativeBlockNumber) {
     return blockStack.getBlockByRelativeBlockNumber(relativeBlockNumber).coinbaseAddress();
+  }
+
+  protected GasCalculator setGasCalculator() {
+    throw new IllegalStateException("must be implemented");
+  }
+
+  protected TransactionStack setTransactionStack() {
+    throw new IllegalStateException("must be implemented");
+  }
+
+  protected TxnData setTxnData() {
+    throw new IllegalStateException("must be implemented");
   }
 }

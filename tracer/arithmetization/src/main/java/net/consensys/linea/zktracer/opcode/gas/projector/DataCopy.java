@@ -20,17 +20,19 @@ import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import lombok.extern.slf4j.Slf4j;
-import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 @Slf4j
 public final class DataCopy extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private long targetOffset = 0;
   private long size = 0;
 
-  public DataCopy(MessageFrame frame, OpCode opCode) {
+  public DataCopy(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     this.frame = frame;
     if (frame.stackSize() > 2) {
       targetOffset = clampedToLong(frame.getStackItem(0));

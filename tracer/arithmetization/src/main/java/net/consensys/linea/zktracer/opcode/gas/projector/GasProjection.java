@@ -19,11 +19,7 @@ import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static org.hyperledger.besu.evm.internal.Words.*;
 
-import net.consensys.linea.zktracer.ZkTracer;
-import org.hyperledger.besu.evm.gascalculator.GasCalculator;
-
 public abstract class GasProjection {
-  GasCalculator gc = ZkTracer.gasCalculator;
 
   long linearCost(long costPerUnit, long size, long unit) {
     checkArgument((unit == 1) || (unit == WORD_SIZE));

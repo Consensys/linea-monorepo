@@ -15,6 +15,7 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.zktracer.Fork.LONDON;
 import static net.consensys.linea.zktracer.Trace.LINEA_BASE_FEE;
 
 import java.util.*;
@@ -38,7 +39,7 @@ import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 @Builder
 @Slf4j
 public class ToyExecutionEnvironmentV2 {
-  public static final ChainConfig CHAIN = ChainConfig.MAINNET_TESTCONFIG;
+  public static final ChainConfig CHAIN = ChainConfig.MAINNET_LONDON_TESTCONFIG;
   public static final Address DEFAULT_COINBASE_ADDRESS =
       Address.fromHexString("0xc019ba5e00000000c019ba5e00000000c019ba5e");
   public static final long DEFAULT_BLOCK_NUMBER = 6678980;
@@ -70,7 +71,7 @@ public class ToyExecutionEnvironmentV2 {
   private final ZkTracer tracer = new ZkTracer(CHAIN);
 
   public void run() {
-    ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(CHAIN.id);
+    ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(CHAIN.id, LONDON);
     GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
         this.buildGeneralStateTestCaseSpec(protocolSpec);
 
@@ -83,7 +84,7 @@ public class ToyExecutionEnvironmentV2 {
   }
 
   public long runForGasCost() {
-    ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(CHAIN.id);
+    ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(CHAIN.id, LONDON);
     GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
         this.buildGeneralStateTestCaseSpec(protocolSpec);
 

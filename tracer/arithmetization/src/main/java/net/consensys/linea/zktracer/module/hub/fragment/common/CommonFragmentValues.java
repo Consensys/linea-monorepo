@@ -222,11 +222,11 @@ public class CommonFragmentValues {
   }
 
   private long computeGasCost() {
-    return Hub.GAS_PROJECTOR.of(hub.messageFrame(), hub.opCode()).upfrontGasCost();
+    return hub.gasProjector.of(hub.messageFrame(), hub.opCode()).upfrontGasCost();
   }
 
   private long computeGasCostExcludingDeploymentCost() {
-    return Hub.GAS_PROJECTOR.of(hub.messageFrame(), hub.opCode()).gasCostExcludingDeploymentCost();
+    return hub.gasProjector.of(hub.messageFrame(), hub.opCode()).gasCostExcludingDeploymentCost();
   }
 
   /**
@@ -276,11 +276,11 @@ public class CommonFragmentValues {
   }
 
   public void payGasPaidOutOfPocket(Hub hub) {
-    this.gasNext -= Hub.GAS_PROJECTOR.of(hub.messageFrame(), hub.opCode()).gasPaidOutOfPocket();
+    this.gasNext -= hub.gasProjector.of(hub.messageFrame(), hub.opCode()).gasPaidOutOfPocket();
   }
 
   public void collectChildStipend(Hub hub) {
-    this.gasNext += Hub.GAS_PROJECTOR.of(hub.messageFrame(), hub.opCode()).stipend();
+    this.gasNext += hub.gasProjector.of(hub.messageFrame(), hub.opCode()).stipend();
   }
 
   public long gasCostToTrace() {

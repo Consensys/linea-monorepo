@@ -15,18 +15,22 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import net.consensys.linea.zktracer.Trace;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 public final class Create2 extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private long initCodeOffset = 0;
   private long initCodeLength = 0;
 
-  public Create2(MessageFrame frame) {
+  public Create2(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     this.frame = frame;
     if (frame.stackSize() > 2) {
       this.initCodeOffset = clampedToLong(frame.getStackItem(1));
@@ -51,7 +55,7 @@ public final class Create2 extends GasProjection {
 
   @Override
   public long linearPerWord() {
-    return linearCost(Trace.GAS_CONST_G_KECCAK_256_WORD, initCodeLength, 32);
+    return linearCost(Trace.GAS_CONST_G_KECCAK_256_WORD, initCodeLength, WORD_SIZE);
   }
 
   @Override

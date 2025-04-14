@@ -44,7 +44,8 @@ public class MultiBlockExecutionEnvironment {
   public static final BigInteger CHAIN_ID = BigInteger.valueOf(1337);
   private final ZkTracer tracer =
       new ZkTracer(
-          ChainConfig.LINEA_CHAIN(LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT, CHAIN_ID));
+          ChainConfig.LONDON_LINEA_CHAIN(
+              LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT, CHAIN_ID));
 
   /**
    * A transaction validator of each transaction; by default, it asserts that the transaction was

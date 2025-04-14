@@ -15,19 +15,21 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
+import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 
 import lombok.RequiredArgsConstructor;
-import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.types.Range;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 @RequiredArgsConstructor
 public class Call extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private final long stipend;
   private final Range inputData;
@@ -37,7 +39,7 @@ public class Call extends GasProjection {
   private final Address to;
 
   public static Call invalid() {
-    return new Call(null, 0, Range.empty(), Range.empty(), Wei.ZERO, null, null);
+    return new Call(null, null, 0, Range.empty(), Range.empty(), Wei.ZERO, null, null);
   }
 
   boolean isInvalid() {
@@ -73,9 +75,9 @@ public class Call extends GasProjection {
     }
 
     if (isAddressWarm(frame, to)) {
-      return Trace.GAS_CONST_G_WARM_ACCESS;
+      return GAS_CONST_G_WARM_ACCESS;
     } else {
-      return Trace.GAS_CONST_G_COLD_ACCOUNT_ACCESS;
+      return GAS_CONST_G_COLD_ACCOUNT_ACCESS;
     }
   }
 
@@ -86,7 +88,7 @@ public class Call extends GasProjection {
     }
 
     if ((recipient == null || recipient.isEmpty()) && !value.isZero()) {
-      return Trace.GAS_CONST_G_NEW_ACCOUNT;
+      return GAS_CONST_G_NEW_ACCOUNT;
     } else {
       return 0L;
     }
@@ -101,7 +103,7 @@ public class Call extends GasProjection {
     if (value.isZero()) {
       return 0L;
     } else {
-      return Trace.GAS_CONST_G_CALL_VALUE;
+      return GAS_CONST_G_CALL_VALUE;
     }
   }
 
@@ -128,6 +130,6 @@ public class Call extends GasProjection {
       return 0;
     }
 
-    return Trace.GAS_CONST_G_CALL_STIPEND;
+    return GAS_CONST_G_CALL_STIPEND;
   }
 }

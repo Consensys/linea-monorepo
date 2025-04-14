@@ -74,7 +74,8 @@ public class BlockchainReferenceTestTools {
                     testName + "[" + eip + "]", fullPath, spec, NETWORKS_TO_RUN.contains(eip));
               });
 
-  private static final CorsetValidator CORSET_VALIDATOR = new CorsetValidator(ChainConfig.ETHEREUM);
+  private static final CorsetValidator CORSET_VALIDATOR =
+      new CorsetValidator(ChainConfig.ETHEREUM_LONDON);
 
   static {
     if (NETWORKS_TO_RUN.isEmpty()) {
@@ -435,7 +436,7 @@ public class BlockchainReferenceTestTools {
     final MutableBlockchain blockchain = spec.getBlockchain();
     final ProtocolContext context = spec.getProtocolContext();
 
-    final ZkTracer zkTracer = new ZkTracer(ChainConfig.ETHEREUM);
+    final ZkTracer zkTracer = new ZkTracer(ChainConfig.ETHEREUM_LONDON);
     zkTracer.traceStartConflation(spec.getCandidateBlocks().length);
 
     for (var candidateBlock : spec.getCandidateBlocks()) {

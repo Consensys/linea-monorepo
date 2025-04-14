@@ -15,18 +15,22 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_KECCAK_256;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_KECCAK_256_WORD;
 import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
-import net.consensys.linea.zktracer.Trace;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
 public final class Sha3 extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private long offset = 0;
   private long length = 0;
 
-  public Sha3(MessageFrame frame) {
+  public Sha3(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     this.frame = frame;
     if (frame.stackSize() >= 2) {
       this.offset = clampedToLong(frame.getStackItem(0));
@@ -36,7 +40,7 @@ public final class Sha3 extends GasProjection {
 
   @Override
   public long staticGas() {
-    return Trace.GAS_CONST_G_KECCAK_256;
+    return GAS_CONST_G_KECCAK_256;
   }
 
   @Override
@@ -51,7 +55,7 @@ public final class Sha3 extends GasProjection {
 
   @Override
   public long linearPerWord() {
-    return linearCost(Trace.GAS_CONST_G_KECCAK_256_WORD, this.length, 32);
+    return linearCost(GAS_CONST_G_KECCAK_256_WORD, this.length, 32);
   }
 
   @Override

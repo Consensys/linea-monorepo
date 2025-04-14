@@ -21,15 +21,18 @@ import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 import net.consensys.linea.zktracer.Trace;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 public final class ExtCodeCopy extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private long offset = 0;
   private long size = 0;
   private Address target = Address.ZERO;
 
-  public ExtCodeCopy(MessageFrame frame) {
+  public ExtCodeCopy(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     this.frame = frame;
     if (frame.stackSize() > 3) {
       this.target = Words.toAddress(frame.getStackItem(0));

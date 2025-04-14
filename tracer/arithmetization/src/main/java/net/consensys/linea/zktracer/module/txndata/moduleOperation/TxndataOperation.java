@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.txndata;
+package net.consensys.linea.zktracer.module.txndata.moduleOperation;
 
 import static net.consensys.linea.zktracer.Trace.EIP2681_MAX_NONCE;
 import static net.consensys.linea.zktracer.Trace.MAX_REFUND_QUOTIENT;
@@ -40,7 +40,6 @@ import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToInt;
 import static org.hyperledger.besu.datatypes.TransactionType.*;
-import static org.web3j.crypto.transaction.type.TransactionType.EIP1559;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -50,15 +49,17 @@ import lombok.Getter;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
-import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.txndata.BlockSnapshot;
+import net.consensys.linea.zktracer.module.txndata.RlptxnOutgoing;
+import net.consensys.linea.zktracer.module.txndata.RlptxrcptOutgoing;
+import net.consensys.linea.zktracer.module.txndata.TxnDataComparisonRecord;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.TransactionType;
 
-public class TxndataOperation extends ModuleOperation {
-  private final Hub hub;
+public abstract class TxndataOperation extends ModuleOperation {
   private final Wcp wcp;
   private final Euc euc;
   @Getter public final TransactionProcessingMetadata tx;
@@ -72,9 +73,8 @@ public class TxndataOperation extends ModuleOperation {
   private final ArrayList<RlptxrcptOutgoing> valuesToRlpTxrcpt = new ArrayList<>(N_ROWS_TX_MAX);
   private static final Bytes BYTES_MAX_REFUND_QUOTIENT = Bytes.of(MAX_REFUND_QUOTIENT);
 
-  public TxndataOperation(Hub hub, Wcp wcp, Euc euc, TransactionProcessingMetadata tx) {
+  public TxndataOperation(Wcp wcp, Euc euc, TransactionProcessingMetadata tx) {
 
-    this.hub = hub;
     this.wcp = wcp;
     this.euc = euc;
     this.tx = tx;
@@ -99,6 +99,8 @@ public class TxndataOperation extends ModuleOperation {
                     .multiply(BigInteger.valueOf(tx.getBesuTransaction().getGasLimit()))));
     wcp.callLEQ(upfrontWeiCost, initialBalance);
     callsToEucAndWcp.add(TxnDataComparisonRecord.callToLeq(upfrontWeiCost, initialBalance, true));
+
+    setPostShanghaiCallsToEucAndWcp();
 
     // row 2: gasLimit covers the upfront gas cost
     final Bytes gasLimit = Bytes.minimalBytes(tx.getBesuTransaction().getGasLimit());
@@ -173,6 +175,8 @@ public class TxndataOperation extends ModuleOperation {
       }
     }
   }
+
+  void setPostShanghaiCallsToEucAndWcp() {}
 
   @Override
   protected int computeLineCount() {

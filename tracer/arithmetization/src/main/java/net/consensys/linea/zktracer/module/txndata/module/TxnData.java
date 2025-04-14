@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.txndata;
+package net.consensys.linea.zktracer.module.txndata.module;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +26,8 @@ import net.consensys.linea.zktracer.container.module.OperationListModule;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.txndata.BlockSnapshot;
+import net.consensys.linea.zktracer.module.txndata.moduleOperation.TxndataOperation;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.datatypes.Address;
@@ -35,14 +37,14 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 @RequiredArgsConstructor
 @Accessors(fluent = true)
-public class TxnData implements OperationListModule<TxndataOperation> {
+public abstract class TxnData implements OperationListModule<TxndataOperation> {
   @Getter
   private final ModuleOperationStackedList<TxndataOperation> operations =
       new ModuleOperationStackedList<>();
 
   @Getter private final Hub hub;
-  private final Wcp wcp;
-  private final Euc euc;
+  @Getter private final Wcp wcp;
+  @Getter private final Euc euc;
 
   private final List<BlockSnapshot> blocks = new ArrayList<>();
 
@@ -64,7 +66,7 @@ public class TxnData implements OperationListModule<TxndataOperation> {
 
   @Override
   public void traceEndTx(TransactionProcessingMetadata tx) {
-    operations.add(new TxndataOperation(hub, wcp, euc, tx));
+    throw new IllegalStateException("Should be implemented");
   }
 
   @Override

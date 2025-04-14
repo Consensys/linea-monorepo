@@ -90,7 +90,11 @@ public class TracesEndpointServicePlugin extends AbstractLineaPrivateOptionsPlug
 
     final GenerateConflatedTracesV2 method =
         new GenerateConflatedTracesV2(
-            besuContext, reqLimiter, endpointConfiguration, l1L2BridgeSharedConfiguration());
+            besuContext,
+            reqLimiter,
+            endpointConfiguration,
+            l1L2BridgeSharedConfiguration(),
+            fork());
 
     createAndRegister(method, rpcEndpointService);
   }

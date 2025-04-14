@@ -17,18 +17,24 @@ package net.consensys.linea.zktracer.opcode.gas.projector;
 
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
+import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.module.hub.transients.OperationAncillaries;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
+@RequiredArgsConstructor
 public class GasProjector {
+
+  final GasCalculator gc;
+
   public GasProjection of(MessageFrame frame, OpCode opCode) {
     return switch (opCode) {
-      case STOP -> new Zero();
+      case STOP -> new Zero(gc);
       case ADD,
           SUB,
           NOT,
@@ -109,11 +115,11 @@ public class GasProjector {
           SWAP13,
           SWAP14,
           SWAP15,
-          SWAP16 -> new VeryLow();
-      case MUL, DIV, SDIV, MOD, SMOD, SIGNEXTEND, SELFBALANCE -> new Low();
-      case ADDMOD, MULMOD, JUMP -> new Mid();
-      case EXP -> new Exp(frame);
-      case SHA3 -> new Sha3(frame);
+          SWAP16 -> new VeryLow(gc);
+      case MUL, DIV, SDIV, MOD, SMOD, SIGNEXTEND, SELFBALANCE -> new Low(gc);
+      case ADDMOD, MULMOD, JUMP -> new Mid(gc);
+      case EXP -> new Exp(gc, frame);
+      case SHA3 -> new Sha3(gc, frame);
       case ADDRESS,
           ORIGIN,
           CALLER,
@@ -132,24 +138,24 @@ public class GasProjector {
           PC,
           MSIZE,
           GAS,
-          BASEFEE -> new Base();
-      case BALANCE, EXTCODESIZE, EXTCODEHASH -> new AccountAccess(frame);
-      case CALLDATACOPY, CODECOPY, RETURNDATACOPY -> new DataCopy(frame, opCode);
-      case EXTCODECOPY -> new ExtCodeCopy(frame);
-      case BLOCKHASH -> new BlockHash();
-      case MLOAD, MSTORE -> new MLoadStore(frame);
-      case MSTORE8 -> new MStore8(frame);
-      case SLOAD -> new SLoad(frame);
-      case SSTORE -> new SStore(frame);
-      case JUMPI -> new High();
-      case JUMPDEST -> new JumpDest();
-      case LOG0 -> new Log(frame, 0);
-      case LOG1 -> new Log(frame, 1);
-      case LOG2 -> new Log(frame, 2);
-      case LOG3 -> new Log(frame, 3);
-      case LOG4 -> new Log(frame, 4);
-      case CREATE -> new Create(frame);
-      case CREATE2 -> new Create2(frame);
+          BASEFEE -> new Base(gc);
+      case BALANCE, EXTCODESIZE, EXTCODEHASH -> new AccountAccess(gc, frame);
+      case CALLDATACOPY, CODECOPY, RETURNDATACOPY -> new DataCopy(gc, frame);
+      case EXTCODECOPY -> new ExtCodeCopy(gc, frame);
+      case BLOCKHASH -> new BlockHash(gc);
+      case MLOAD, MSTORE -> new MLoadStore(gc, frame);
+      case MSTORE8 -> new MStore8(gc, frame);
+      case SLOAD -> new SLoad(gc, frame);
+      case SSTORE -> new SStore(gc, frame);
+      case JUMPI -> new High(gc);
+      case JUMPDEST -> new JumpDest(gc);
+      case LOG0 -> new Log(gc, frame, 0);
+      case LOG1 -> new Log(gc, frame, 1);
+      case LOG2 -> new Log(gc, frame, 2);
+      case LOG3 -> new Log(gc, frame, 3);
+      case LOG4 -> new Log(gc, frame, 4);
+      case CREATE -> new Create(gc, frame);
+      case CREATE2 -> new Create2(gc, frame);
       case CALL -> {
         if (frame.stackSize() > 6) {
           final long maxGasAllowance = clampedToLong(frame.getStackItem(0));
@@ -157,6 +163,7 @@ public class GasProjector {
           final Account recipient = frame.getWorldUpdater().get(to);
           final Wei value = Wei.wrap(frame.getStackItem(2));
           yield new Call(
+              gc,
               frame,
               maxGasAllowance,
               OperationAncillaries.callDataSegment(frame),
@@ -175,6 +182,7 @@ public class GasProjector {
           final Address to = Words.toAddress(frame.getStackItem(1));
           final Wei value = Wei.wrap(frame.getStackItem(2));
           yield new Call(
+              gc,
               frame,
               stipend,
               OperationAncillaries.callDataSegment(frame),
@@ -192,6 +200,7 @@ public class GasProjector {
           final Account recipient = frame.getWorldUpdater().get(frame.getRecipientAddress());
           final Address to = Words.toAddress(frame.getStackItem(1));
           yield new Call(
+              gc,
               frame,
               stipend,
               OperationAncillaries.callDataSegment(frame),
@@ -209,6 +218,7 @@ public class GasProjector {
           final Address to = Words.toAddress(frame.getStackItem(1));
           final Account recipient = frame.getWorldUpdater().get(to);
           yield new Call(
+              gc,
               frame,
               stipend,
               OperationAncillaries.callDataSegment(frame),
@@ -220,10 +230,10 @@ public class GasProjector {
           yield Call.invalid();
         }
       }
-      case RETURN -> new Return(frame);
-      case REVERT -> new Revert(frame);
+      case RETURN -> new Return(gc, frame);
+      case REVERT -> new Revert(gc, frame);
       case INVALID -> new GasProjection() {};
-      case SELFDESTRUCT -> new SelfDestruct(frame);
+      case SELFDESTRUCT -> new SelfDestruct(gc, frame);
       default -> throw new IllegalStateException("Unexpected value: " + opCode);
     };
   }

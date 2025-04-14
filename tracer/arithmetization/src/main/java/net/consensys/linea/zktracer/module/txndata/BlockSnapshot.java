@@ -19,6 +19,7 @@ import java.util.Optional;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.consensys.linea.zktracer.module.txndata.module.TxnData;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -38,7 +39,7 @@ public class BlockSnapshot {
   private final Bytes blockGasLimit;
   @Setter private int nbOfTxsInBlock;
 
-  BlockSnapshot(ProcessableBlockHeader header) {
+  public BlockSnapshot(ProcessableBlockHeader header) {
     this.baseFee = header.getBaseFee().map(x -> (Wei) x);
     this.coinbaseAddress = header.getCoinbase();
     this.blockGasLimit = Bytes.minimalBytes(header.getGasLimit());

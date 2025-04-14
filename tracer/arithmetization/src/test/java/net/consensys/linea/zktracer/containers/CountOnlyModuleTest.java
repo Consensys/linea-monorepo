@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.containers;
 
-import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
+import static net.consensys.linea.zktracer.ChainConfig.MAINNET_LONDON_TESTCONFIG;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import net.consensys.linea.UnitTestWatcher;
@@ -28,7 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class CountOnlyModuleTest {
   @Test
   void test() {
-    ZkTracer state = new ZkTracer(MAINNET_TESTCONFIG);
+    ZkTracer state = new ZkTracer(MAINNET_LONDON_TESTCONFIG);
     final ModexpEffectiveCall countingOnlyModule = state.getHub().modexpEffectiveCall();
 
     countingOnlyModule.updateTally(1);
@@ -47,7 +47,7 @@ public class CountOnlyModuleTest {
     countingOnlyModule.popTransactionBundle();
     assertThat(countingOnlyModule.lineCount()).isEqualTo(1);
 
-    state = new ZkTracer(MAINNET_TESTCONFIG);
+    state = new ZkTracer(MAINNET_LONDON_TESTCONFIG);
     assertThat(state.getHub().modexpEffectiveCall().lineCount()).isEqualTo(0);
   }
 }

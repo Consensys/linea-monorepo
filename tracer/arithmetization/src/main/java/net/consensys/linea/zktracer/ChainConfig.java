@@ -14,6 +14,7 @@
  */
 package net.consensys.linea.zktracer;
 
+import static net.consensys.linea.zktracer.Fork.LONDON;
 import static net.consensys.linea.zktracer.Trace.ETHEREUM_GAS_LIMIT_MAXIMUM;
 import static net.consensys.linea.zktracer.Trace.ETHEREUM_GAS_LIMIT_MINIMUM;
 import static net.consensys.linea.zktracer.Trace.LINEA_CHAIN_ID;
@@ -34,8 +35,9 @@ public class ChainConfig {
    * Represents Linea mainnet as it stands today which enforces the block gas limit (currently two
    * billion). As the name suggest, this is only intended for testing purposes.
    */
-  public static final ChainConfig MAINNET_TESTCONFIG =
+  public static final ChainConfig MAINNET_LONDON_TESTCONFIG =
       new ChainConfig(
+          LONDON,
           LINEA_CHAIN_ID,
           true,
           BigInteger.valueOf(LINEA_GAS_LIMIT_MINIMUM),
@@ -43,8 +45,9 @@ public class ChainConfig {
           LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT);
 
   /** Represents Ethereum mainnet for the purposes of running reference tests. */
-  public static final ChainConfig ETHEREUM =
+  public static final ChainConfig ETHEREUM_LONDON =
       new ChainConfig(
+          LONDON,
           1,
           false,
           BigInteger.valueOf(ETHEREUM_GAS_LIMIT_MINIMUM),
@@ -57,6 +60,7 @@ public class ChainConfig {
    */
   public static final ChainConfig OLD_MAINNET_TESTCONFIG =
       new ChainConfig(
+          LONDON,
           LINEA_CHAIN_ID,
           false,
           BigInteger.valueOf(LINEA_GAS_LIMIT_MINIMUM),
@@ -69,11 +73,14 @@ public class ChainConfig {
    */
   public static final ChainConfig OLD_SEPOLIA_TESTCONFIG =
       new ChainConfig(
+          LONDON,
           LINEA_SEPOLIA_CHAIN_ID,
           false,
           BigInteger.valueOf(LINEA_GAS_LIMIT_MINIMUM),
           BigInteger.valueOf(LINEA_GAS_LIMIT_MAXIMUM),
           LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT);
+
+  public final Fork fork;
 
   /** ChainID for this chain */
   public final BigInteger id;
@@ -91,12 +98,14 @@ public class ChainConfig {
   public final LineaL1L2BridgeSharedConfiguration bridgeConfiguration;
 
   private ChainConfig(
+      Fork fork,
       int chainId,
       boolean gasLimitEnabled,
       BigInteger gasLimitMinimum,
       BigInteger gasLimitMaximum,
       LineaL1L2BridgeSharedConfiguration bridgeConfig) {
     this(
+        fork,
         BigInteger.valueOf(chainId),
         gasLimitEnabled,
         gasLimitMinimum,
@@ -105,16 +114,18 @@ public class ChainConfig {
   }
 
   private ChainConfig(
+      Fork fork,
       BigInteger chainId,
       boolean fixedGasLimitEnabled,
       BigInteger gasLimitMinimum,
       BigInteger gasLimitMaximum,
       LineaL1L2BridgeSharedConfiguration bridgeConfig) {
-    // Sanity cehck chainId is non-negative.
+    // Sanity check chainId is non-negative.
     if (chainId.compareTo(BigInteger.ZERO) < 0) {
       throw new IllegalArgumentException("invalid chain id (" + chainId + ")");
     }
     //
+    this.fork = fork;
     this.id = chainId;
     this.fixedGasLimitEnabled = fixedGasLimitEnabled;
     this.gasLimitMinimum = gasLimitMinimum;
@@ -130,9 +141,21 @@ public class ChainConfig {
    * @param chainId
    * @return
    */
-  public static ChainConfig LINEA_CHAIN(
+  public static ChainConfig LONDON_LINEA_CHAIN(
       LineaL1L2BridgeSharedConfiguration bridgeConfig, BigInteger chainId) {
     return new ChainConfig(
+        LONDON,
+        chainId,
+        true,
+        BigInteger.valueOf(LINEA_GAS_LIMIT_MINIMUM),
+        BigInteger.valueOf(LINEA_GAS_LIMIT_MAXIMUM),
+        bridgeConfig);
+  }
+
+  public static ChainConfig FORK_LINEA_CHAIN(
+      Fork fork, LineaL1L2BridgeSharedConfiguration bridgeConfig, BigInteger chainId) {
+    return new ChainConfig(
+        fork,
         chainId,
         true,
         BigInteger.valueOf(LINEA_GAS_LIMIT_MINIMUM),

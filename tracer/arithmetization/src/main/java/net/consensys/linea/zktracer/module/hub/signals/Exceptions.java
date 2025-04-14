@@ -253,7 +253,7 @@ public class Exceptions {
       return MAX_CODE_SIZE_EXCEPTION;
     }
 
-    final GasProjector gp = Hub.GAS_PROJECTOR;
+    final GasProjector gp = hub.gasProjector;
     switch (opCode) {
       case CALLDATACOPY,
           CODECOPY,

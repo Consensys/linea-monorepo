@@ -15,16 +15,20 @@
 
 package net.consensys.linea.zktracer.opcode.gas.projector;
 
+import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.internal.Words;
 
 public final class MLoadStore extends GasProjection {
+  final GasCalculator gc;
   private final MessageFrame frame;
   private long offset = 0;
 
-  public MLoadStore(MessageFrame frame) {
+  public MLoadStore(GasCalculator gc, MessageFrame frame) {
+    this.gc = gc;
     this.frame = frame;
     if (frame.stackSize() > 0) {
       this.offset = clampedToLong(frame.getStackItem(0));
@@ -38,11 +42,11 @@ public final class MLoadStore extends GasProjection {
 
   @Override
   public long memoryExpansion() {
-    return gc.memoryExpansionGasCost(this.frame, this.offset, 32);
+    return gc.memoryExpansionGasCost(frame, offset, WORD_SIZE);
   }
 
   @Override
   public long largestOffset() {
-    return Words.clampedAdd(this.offset, 32);
+    return Words.clampedAdd(this.offset, WORD_SIZE);
   }
 }
