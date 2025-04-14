@@ -1,5 +1,5 @@
 import express, { Express, Request, Response } from "express";
-import { IMetricService } from "../../../core/metrics/IMetricService";
+import { IMetricsService } from "../../../core/metrics/IMetricsService";
 import { ILogger } from "../../../core/utils/logging/ILogger";
 
 type ApiConfig = {
@@ -12,11 +12,10 @@ export class Api {
 
   constructor(
     private readonly config: ApiConfig,
-    private readonly metricService: IMetricService,
+    private readonly metricsService: IMetricsService,
     private readonly logger: ILogger,
   ) {
     this.app = express();
-    this.metricService = metricService;
 
     this.setupMiddleware();
     this.setupRoutes();
@@ -32,7 +31,7 @@ export class Api {
 
   private async handleMetrics(_req: Request, res: Response): Promise<void> {
     try {
-      const registry = this.metricService.getRegistry();
+      const registry = this.metricsService.getRegistry();
       res.set("Content-Type", registry.contentType);
       res.end(await registry.metrics());
     } catch (error) {
@@ -41,8 +40,10 @@ export class Api {
   }
 
   public async start(): Promise<void> {
-    return new Promise((resolve) => {
-      this.server = this.app.listen(this.config.port, () => {
+    this.server = this.app.listen(this.config.port);
+
+    await new Promise<void>((resolve) => {
+      this.server?.on("listening", () => {
         this.logger.info(`Listening on port ${this.config.port}`);
         resolve();
       });
@@ -50,14 +51,13 @@ export class Api {
   }
 
   public async stop(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!this.server) return resolve();
+    if (!this.server) return;
 
-      this.server.close((err) => {
-        if (err) {
-          return reject(err);
-        }
+    await new Promise<void>((resolve, reject) => {
+      this.server?.close((err) => {
+        if (err) return reject(err);
         this.logger.info(`Closing API server on port ${this.config.port}`);
+        this.server = undefined;
         resolve();
       });
     });

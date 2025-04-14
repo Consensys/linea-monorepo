@@ -1,7 +1,7 @@
 import { Counter, Gauge, Histogram, Registry } from "prom-client";
-import { IMetricService } from "../../../../core/metrics/IMetricService";
+import { IMetricsService } from "../../../../core/metrics/IMetricsService";
 
-export abstract class MetricService implements IMetricService {
+export abstract class MetricsService implements IMetricsService {
   private readonly registry: Registry;
   private readonly counters: Map<string, Counter<string>>;
   private readonly gauges: Map<string, Gauge<string>>;

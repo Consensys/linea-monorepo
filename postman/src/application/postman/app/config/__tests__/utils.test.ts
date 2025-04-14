@@ -127,6 +127,9 @@ describe("Config utils", () => {
         },
         l2L1AutoClaimEnabled: false,
         loggerOptions: undefined,
+        apiConfig: {
+          port: 3000,
+        },
       });
     });
 
@@ -162,6 +165,9 @@ describe("Config utils", () => {
         },
         databaseCleanerOptions: {
           enabled: true,
+        },
+        apiOptions: {
+          port: 9090,
         },
       });
       expect(config).toStrictEqual({
@@ -232,6 +238,9 @@ describe("Config utils", () => {
         },
         l2L1AutoClaimEnabled: true,
         loggerOptions: undefined,
+        apiConfig: {
+          port: 9090,
+        },
       });
     });
   });

@@ -1,6 +1,6 @@
 import { Counter, Gauge, Histogram, Registry } from "prom-client";
 
-export interface IMetricService {
+export interface IMetricsService {
   getRegistry(): Registry;
   createCounter(name: string, help: string, labelNames?: string[]): Counter<string>;
   createGauge(name: string, help: string, labelNames?: string[]): Gauge<string>;

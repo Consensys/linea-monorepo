@@ -7,14 +7,13 @@ import {
   TransactionCommitEvent,
 } from "typeorm";
 import { MessageEntity } from "../entities/Message.entity";
-import { IMetricService } from "../../../../core/metrics/IMetricService";
-import { MessageStatus } from "../../../../core/enums";
+import { IMetricsService } from "../../../../core/metrics/IMetricsService";
 import { ILogger } from "../../../../core/utils/logging/ILogger";
 
 @EventSubscriber()
 export class MessageStatusSubscriber implements EntitySubscriberInterface<MessageEntity> {
   constructor(
-    private readonly metricsService: IMetricService,
+    private readonly metricsService: IMetricsService,
     private readonly logger: ILogger,
   ) {}
 
@@ -103,12 +102,6 @@ export class MessageStatusSubscriber implements EntitySubscriberInterface<Messag
       const messageStatus = event.entity.status;
       const previousStatus = event.databaseEntity.status;
       const messageDirection = event.databaseEntity.direction;
-
-      if (messageStatus === MessageStatus.CLAIMED_SUCCESS) {
-        this.metricsService.incrementCounter("postman_total_processed_messages", {
-          direction: messageDirection,
-        });
-      }
 
       const [previousGauge, gauge] = await Promise.all([
         this.metricsService.getGaugeValue("postman_messages_current", {

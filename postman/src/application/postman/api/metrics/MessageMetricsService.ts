@@ -1,59 +1,59 @@
 import { EntityManager } from "typeorm";
 import { Direction } from "@consensys/linea-sdk";
-import { MetricService } from "./MetricService";
+import { MetricsService } from "./MetricsService";
 import { MessageEntity } from "../../persistence/entities/Message.entity";
 import { MessageStatus } from "../../../../core/enums";
 
-export class MessageMetricsService extends MetricService {
+export class MessageMetricsService extends MetricsService {
   constructor(private readonly entityManager: EntityManager) {
     super();
-    this.createCounter("postman_total_processed_messages", "Total number of messages by status", ["direction"]);
     this.createGauge("postman_messages_current", "Current number of messages by status", ["status", "direction"]);
   }
 
   public async initialize(): Promise<void> {
-    const totalNumberOfProcessedMessages = await this.getTotalProcessedMessages();
-    if (totalNumberOfProcessedMessages) {
-      this.incrementCounter(
-        "postman_total_processed_messages",
-        {
-          direction: Direction.L1_TO_L2,
-        },
-        totalNumberOfProcessedMessages,
-      );
-    }
-
     const fullResult = await this.getMessagesCountByStatus();
     this.updateGauges(fullResult);
   }
 
-  private async getTotalProcessedMessages(): Promise<number | null> {
-    return this.entityManager.maximum(MessageEntity, "messageNonce", {
-      direction: Direction.L1_TO_L2,
-    });
-  }
-
-  private async getMessagesCountByStatus(): Promise<{ status: string; count: number }[]> {
-    const totalNumberOfL1L2MessagesByStatus = await this.entityManager
+  private async getMessagesCountByStatus(): Promise<{ status: MessageStatus; direction: Direction; count: number }[]> {
+    const totalNumberOfMessagesByStatusAndDirection = await this.entityManager
       .createQueryBuilder(MessageEntity, "message")
       .select("message.status", "status")
+      .addSelect("message.direction", "direction")
       .addSelect("COUNT(message.id)", "count")
       .groupBy("message.status")
+      .addGroupBy("message.direction")
       .getRawMany();
 
-    const resultMap = new Map(totalNumberOfL1L2MessagesByStatus.map((r) => [r.status, Number(r.count)]));
+    const resultMap = new Map<string, Map<string, number>>();
 
-    return Object.values(MessageStatus).map((status) => ({
-      status,
-      count: resultMap.get(status) || 0,
-    }));
+    totalNumberOfMessagesByStatusAndDirection.forEach((r) => {
+      if (!resultMap.has(r.status)) {
+        resultMap.set(r.status, new Map());
+      }
+      resultMap.get(r.status)!.set(r.direction, Number(r.count));
+    });
+
+    const results: { status: MessageStatus; direction: Direction; count: number }[] = [];
+
+    for (const status of Object.values(MessageStatus)) {
+      for (const direction of Object.values(Direction)) {
+        results.push({
+          status,
+          direction,
+          count: resultMap.get(status)?.get(direction) || 0,
+        });
+      }
+    }
+
+    return results;
   }
 
-  private updateGauges(fullResult: { status: string; count: number }[]): void {
-    for (const { status, count } of fullResult) {
+  private updateGauges(fullResult: { status: MessageStatus; direction: Direction; count: number }[]): void {
+    for (const { status, count, direction } of fullResult) {
       this.incrementGauge("postman_messages_current", count, {
         status,
-        direction: Direction.L1_TO_L2,
+        direction,
       });
     }
   }
