@@ -13,9 +13,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.section;
+package net.consensys.linea.zktracer.module.hub.section.txInitializationSection;
 
 import static com.google.common.base.Preconditions.checkState;
+import static net.consensys.linea.zktracer.module.hub.AccountSnapshot.canonical;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 
 import lombok.Getter;
@@ -27,6 +28,7 @@ import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
+import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
 import net.consensys.linea.zktracer.types.Bytecode;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -37,12 +39,14 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public class TxInitializationSection extends TraceSection implements EndTransactionDefer {
+public abstract class TxInitializationSection extends TraceSection implements EndTransactionDefer {
 
   @Getter private final int hubStamp;
   final AccountFragment.AccountFragmentFactory accountFragmentFactory;
 
-  ImcFragment miscFragment;
+  private final ImcFragment miscFragment;
+
+  public final AccountFragment coinbaseWarmingAccountFragment;
 
   private final AccountFragment gasPaymentAccountFragment;
   @Getter private final AccountSnapshot senderGasPayment;
@@ -64,8 +68,11 @@ public class TxInitializationSection extends TraceSection implements EndTransact
 
   @Getter private final ContextFragment initializationContextFragment;
 
+  /** This is used to generate the Dom / Sub offset */
+  private int domSubOffset = 0;
+
   public TxInitializationSection(Hub hub, WorldView world) {
-    super(hub, (short) 8);
+    super(hub, (short) 9);
     hub.defers().scheduleForEndTransaction(this);
 
     hubStamp = hub.stamp();
@@ -83,12 +90,11 @@ public class TxInitializationSection extends TraceSection implements EndTransact
     final Wei transactionGasPrice = Wei.of(tx.getEffectiveGasPrice());
     final Wei gasCost = transactionGasPrice.multiply(tx.getBesuTransaction().getGasLimit());
 
+    coinbaseWarmingAccountFragment = makeCoinbaseWarmingFragment(hub, world, tx);
+
     senderGasPayment =
-        AccountSnapshot.fromAccount(
-            senderAccount,
-            tx.isSenderPreWarmed(),
-            deploymentInfo.deploymentNumber(senderAddress),
-            deploymentInfo.getDeploymentStatus(senderAddress));
+        canonical(hub, world, senderAccount.getAddress(), senderWarmthAtGasPayment(tx));
+
     senderGasPaymentNew =
         senderGasPayment.deepCopy().decrementBalanceBy(gasCost).turnOnWarmth().raiseNonceByOne();
 
@@ -101,15 +107,14 @@ public class TxInitializationSection extends TraceSection implements EndTransact
 
     if (recipientAccount != null) {
       recipientValueReception =
-          senderIsRecipient(hub)
+          tx.senderIsRecipient()
               ? senderValueTransferNew
-              : AccountSnapshot.canonical(hub, world, recipientAddress, tx.isRecipientPreWarmed())
-                  .setWarmthTo(tx.isRecipientPreWarmed());
+              : canonical(hub, world, recipientAddress, recipientWarmthAtValueReception(tx));
     } else {
       recipientValueReception =
           AccountSnapshot.fromAddress(
               recipientAddress,
-              tx.isRecipientPreWarmed(),
+              recipientWarmthAtValueReception(tx),
               deploymentInfo.deploymentNumber(recipientAddress),
               deploymentInfo.getDeploymentStatus(recipientAddress));
     }
@@ -162,19 +167,19 @@ public class TxInitializationSection extends TraceSection implements EndTransact
             senderGasPayment,
             senderGasPaymentNew,
             senderGasPayment.address(),
-            DomSubStampsSubFragment.standardDomSubStamps(hubStamp, 0));
+            DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()));
     valueSendingAccountFragment =
         accountFragmentFactory.make(
             senderValueTransfer,
             senderValueTransferNew,
-            DomSubStampsSubFragment.standardDomSubStamps(hubStamp, 1));
+            DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()));
     valueReceptionAccountFragment =
         accountFragmentFactory
             .makeWithTrm(
                 recipientValueReception,
                 recipientValueReceptionNew,
                 recipientValueReception.address(),
-                DomSubStampsSubFragment.standardDomSubStamps(hubStamp, 2))
+                DomSubStampsSubFragment.standardDomSubStamps(hubStamp, domSubOffset()))
             .requiresRomlex(true);
 
     initializationContextFragment = ContextFragment.initializeExecutionContext(hub);
@@ -186,14 +191,14 @@ public class TxInitializationSection extends TraceSection implements EndTransact
   public void resolveAtEndTransaction(
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
 
-    this.addFragment(miscFragment); // MISC i + 0
-    this.addFragment(new TransactionFragment(hub.txStack().current())); // TXN i + 1
-    this.addFragment(gasPaymentAccountFragment); // ACC i + 2 (sender: gas payment)
-    this.addFragment(valueSendingAccountFragment); // ACC i + 3 (sender: value transfer)
-    this.addFragment(valueReceptionAccountFragment); // ACC i + 4 (recipient: value reception)
+    addFragment(miscFragment); // MISC i + 0
+    addFragment(new TransactionFragment(hub.txStack().current())); // TXN i + 1
+    addCoinbaseWarmingFragment(); // Post Shanghai Only
+    addFragment(gasPaymentAccountFragment); // ACC i +  (sender: gas payment)
+    addFragment(valueSendingAccountFragment); // ACC i +  (sender: value transfer)
+    addFragment(valueReceptionAccountFragment); // ACC i +  (recipient: value reception)
 
     if (!isSuccessful) {
-
       senderUndoingValueTransfer = senderValueTransferNew.deepCopy().setDeploymentNumber(hub);
       senderUndoingValueTransferNew = senderValueTransfer.deepCopy().setDeploymentNumber(hub);
 
@@ -210,27 +215,40 @@ public class TxInitializationSection extends TraceSection implements EndTransact
 
       final int revertStamp = hub.currentFrame().revertStamp();
 
-      this.addFragment( // ACC i + 5 (sender)
+      this.addFragment( // ACC i +  (sender)
           accountFragmentFactory.make(
               senderUndoingValueTransfer,
               senderUndoingValueTransferNew,
-              DomSubStampsSubFragment.revertWithCurrentDomSubStamps(hubStamp, revertStamp, 3)));
+              DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
+                  hubStamp, revertStamp, domSubOffset())));
 
-      this.addFragment( // ACC i + 6 (recipient)
+      this.addFragment( // ACC i +  (recipient)
           accountFragmentFactory.make(
               recipientUndoingValueReception,
               recipientUndoingValueReceptionNew,
-              DomSubStampsSubFragment.revertWithCurrentDomSubStamps(hubStamp, revertStamp, 4)));
+              DomSubStampsSubFragment.revertWithCurrentDomSubStamps(
+                  hubStamp, revertStamp, domSubOffset())));
     }
 
-    this.addFragment(initializationContextFragment); // CON i + 5/7
+    this.addFragment(initializationContextFragment); // CON i +
   }
 
-  public static boolean senderIsRecipient(Hub hub) {
-    final TransactionProcessingMetadata tx = hub.txStack().current();
-    final Address senderAddress = tx.getSender();
-    final Address recipientAddress = tx.getEffectiveRecipient();
-
-    return recipientAddress.equals(senderAddress);
+  protected int domSubOffset() {
+    return domSubOffset++;
   }
+
+  protected AccountFragment makeCoinbaseWarmingFragment(
+      final Hub hub, final WorldView world, final TransactionProcessingMetadata tx) {
+    return null;
+  }
+
+  protected boolean senderWarmthAtGasPayment(final TransactionProcessingMetadata tx) {
+    return tx.isSenderPreWarmed();
+  }
+
+  protected boolean recipientWarmthAtValueReception(TransactionProcessingMetadata tx) {
+    return tx.isRecipientPreWarmed();
+  }
+
+  protected void addCoinbaseWarmingFragment() {}
 }

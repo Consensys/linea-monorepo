@@ -15,13 +15,18 @@
 
 package net.consensys.linea.zktracer.module.hub;
 
+import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
+import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
+
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.LondonInitializationSection;
 import net.consensys.linea.zktracer.module.hub.state.LondonTransactionStack;
 import net.consensys.linea.zktracer.module.hub.state.TransactionStack;
 import net.consensys.linea.zktracer.module.txndata.module.LondonTxnData;
 import net.consensys.linea.zktracer.module.txndata.module.TxnData;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
+import org.hyperledger.besu.evm.worldstate.WorldView;
 
 public class LondonHub extends Hub {
   public LondonHub(ChainConfig chain) {
@@ -41,5 +46,17 @@ public class LondonHub extends Hub {
   @Override
   protected TxnData setTxnData() {
     return new LondonTxnData(this, wcp(), euc());
+  }
+
+  @Override
+  protected void setInitializationSection(WorldView world) {
+    new LondonInitializationSection(this, world);
+  }
+
+  @Override
+  protected boolean coinbaseWarmthAtTxEnd() {
+    return isExceptional() || opCode() == REVERT
+        ? txStack.current().isCoinbasePreWarmed()
+        : isAddressWarm(messageFrame(), coinbaseAddress());
   }
 }

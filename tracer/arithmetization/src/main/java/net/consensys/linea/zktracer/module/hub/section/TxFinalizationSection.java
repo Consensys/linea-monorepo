@@ -43,7 +43,7 @@ public class TxFinalizationSection extends TraceSection implements EndTransactio
   private AccountSnapshot coinbaseGasRefund;
   private AccountSnapshot coinbaseGasRefundNew;
 
-  public TxFinalizationSection(Hub hub, WorldView world, boolean exceptionOrRevert) {
+  public TxFinalizationSection(Hub hub) {
     super(hub, (short) 4);
     hub.defers().scheduleForEndTransaction(this);
     txMetadata = hub.txStack().current();
@@ -55,7 +55,7 @@ public class TxFinalizationSection extends TraceSection implements EndTransactio
 
     checkArgument(isSuccessful == txMetadata.statusCode());
 
-    DeploymentInfo deploymentInfo = hub.transients().conflation().deploymentInfo();
+    final DeploymentInfo deploymentInfo = hub.transients().conflation().deploymentInfo();
     checkArgument(
         !deploymentInfo.getDeploymentStatus(txMetadata.getCoinbaseAddress()),
         "The coinbase may not be under deployment");
@@ -109,32 +109,18 @@ public class TxFinalizationSection extends TraceSection implements EndTransactio
     final Address senderAddress = txMetadata.getSender();
     final Address coinbaseAddress = txMetadata.getCoinbaseAddress();
 
-    if (senderIsCoinbase(hub)) {
-      checkState(coinbaseWarmth());
-    }
-
     coinbaseGasRefundNew =
         AccountSnapshot.canonical(hub, world, coinbaseAddress)
-            .setWarmthTo(coinbaseWarmth())
+            .setWarmthTo(txMetadata.coinbaseWarmAtTransactionEnd())
             .setDeploymentInfo(hub);
     coinbaseGasRefund =
         coinbaseGasRefundNew.deepCopy().decrementBalanceBy(txMetadata.getCoinbaseReward());
 
     senderGasRefundNew =
-        senderIsCoinbase(hub)
+        txMetadata.senderIsCoinbase()
             ? coinbaseGasRefund.deepCopy()
             : AccountSnapshot.canonical(hub, world, senderAddress).turnOnWarmth();
     senderGasRefund =
         senderGasRefundNew.deepCopy().decrementBalanceBy(txMetadata.getGasRefundInWei());
-  }
-
-  private boolean coinbaseWarmth() {
-    return txMetadata.isCoinbaseWarmAtTransactionEnd();
-  }
-
-  public static boolean senderIsCoinbase(Hub hub) {
-    final TransactionProcessingMetadata tx = hub.txStack().current();
-    final Address senderAddress = tx.getSender();
-    return tx.getCoinbaseAddress().equals(senderAddress);
   }
 }
