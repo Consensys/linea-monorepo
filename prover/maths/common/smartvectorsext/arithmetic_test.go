@@ -4,11 +4,11 @@ package smartvectorsext
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"math/big"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/assert"
@@ -87,7 +87,7 @@ func TestFuzzProductWithPool(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			pool := mempoolext.CreateFromSyncPool(tcase.svecs[0].Len())
+			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			t.Logf("TEST CASE %v\n", tcase.String())
 
@@ -114,7 +114,7 @@ func TestFuzzProductWithPoolCompare(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			pool := mempoolext.CreateFromSyncPool(tcase.svecs[0].Len())
+			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			t.Logf("TEST CASE %v\n", tcase.String())
 
@@ -144,7 +144,7 @@ func TestFuzzLinCombWithPool(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			pool := mempoolext.CreateFromSyncPool(tcase.svecs[0].Len())
+			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			t.Logf("TEST CASE %v\n", tcase.String())
 
@@ -170,7 +170,7 @@ func TestFuzzLinCombWithPoolCompare(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			pool := mempoolext.CreateFromSyncPool(tcase.svecs[0].Len())
+			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			t.Logf("TEST CASE %v\n", tcase.String())
 
@@ -302,7 +302,7 @@ func TestFuzzPolyEvalWithPool(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			pool := mempoolext.CreateFromSyncPool(tcase.svecs[0].Len())
+			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			// PolyEval() with pool
 			polyEvalWithPool := PolyEval(tcase.svecs, tcase.evaluationPoint, pool)
@@ -327,7 +327,7 @@ func TestFuzzPolyEvalWithPoolCompare(t *testing.T) {
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			pool := mempoolext.CreateFromSyncPool(tcase.svecs[0].Len())
+			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
 			// PolyEval() with pool
 			polyEvalWithPool := PolyEval(tcase.svecs, tcase.evaluationPoint, pool)
