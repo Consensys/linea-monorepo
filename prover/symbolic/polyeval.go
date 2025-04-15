@@ -2,7 +2,6 @@ package symbolic
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -102,7 +101,7 @@ func (PolyEval) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend
 	return res
 }
 
-func (PolyEval) EvaluateExt(inputs []sv.SmartVector, p ...mempoolext.MemPool) sv.SmartVector {
+func (PolyEval) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 	// We assume that the first element is always a scalar
 	// Get the constant value. We use Get(0) to get the value, but any integer would
 	// also work provided it is also in range. 0 ensures that.

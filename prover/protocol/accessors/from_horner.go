@@ -14,6 +14,11 @@ type FromHornerAccessorFinalValue struct {
 	Q *query.Horner
 }
 
+func (l *FromHornerAccessorFinalValue) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
 // NewFromHornerAccessorFinalValue returns a new [FromHornerAccessorFinalValue].
 func NewFromHornerAccessorFinalValue(q *query.Horner) *FromHornerAccessorFinalValue {
 	return &FromHornerAccessorFinalValue{Q: q}

@@ -2,7 +2,6 @@ package symbolic
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -283,7 +282,7 @@ func (b boardAssignment) inspectCleaning() {
 	}
 }
 
-func (b boardAssignment) evalExt(na *nodeAssignment, pool mempoolext.MemPool) {
+func (b boardAssignment) evalExt(na *nodeAssignment, pool mempool.MemPool) {
 
 	if (na.allParentsKnown() && na.hasParents()) || na.hasAValue() {
 		return
@@ -309,7 +308,7 @@ func (b boardAssignment) evalExt(na *nodeAssignment, pool mempoolext.MemPool) {
 	}
 }
 
-func (b boardAssignment) incParentKnownCountOfExt(na *nodeAssignment, pool mempoolext.MemPool, recursive bool) (wasDeleted bool) {
+func (b boardAssignment) incParentKnownCountOfExt(na *nodeAssignment, pool mempool.MemPool, recursive bool) (wasDeleted bool) {
 
 	na.NumKnownParents++
 
@@ -338,7 +337,7 @@ func (b boardAssignment) incParentKnownCountOfExt(na *nodeAssignment, pool mempo
 	return false
 }
 
-func (na *nodeAssignment) tryFreeExt(pool mempoolext.MemPool) bool {
+func (na *nodeAssignment) tryFreeExt(pool mempool.MemPool) bool {
 	if pool == nil {
 		return false
 	}

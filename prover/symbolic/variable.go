@@ -2,7 +2,6 @@ package symbolic
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"reflect"
 
@@ -42,7 +41,7 @@ func (v Variable) Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector 
 }
 
 // EvaluateExt implements the [Operator] interface. Yet, this panics if this is called.
-func (v Variable) EvaluateExt([]sv.SmartVector, ...mempoolext.MemPool) sv.SmartVector {
+func (v Variable) EvaluateExt([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
 	panic("we never call it for variables")
 }
 

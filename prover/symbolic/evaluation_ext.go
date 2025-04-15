@@ -2,9 +2,8 @@ package symbolic
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"sync"
 
@@ -14,7 +13,7 @@ import (
 )
 
 // Evaluate the board for a batch  of inputs in parallel
-func (b *ExpressionBoard) EvaluateExt(inputs []sv.SmartVector, p ...mempoolext.MemPool) sv.SmartVector {
+func (b *ExpressionBoard) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 
 	/*
 		Find the size of the vector
@@ -71,10 +70,10 @@ func (b *ExpressionBoard) EvaluateExt(inputs []sv.SmartVector, p ...mempoolext.M
 
 	parallel.ExecuteFromChan(numChunks, func(wg *sync.WaitGroup, id *parallel.AtomicCounter) {
 
-		var pool []mempoolext.MemPool
+		var pool []mempool.MemPool
 		if len(p) > 0 {
-			if _, ok := p[0].(*mempoolext.DebuggeableCall); !ok {
-				pool = append(pool, mempoolext.WrapsWithMemCache(p[0]))
+			if _, ok := p[0].(*mempool.DebuggeableCall); !ok {
+				pool = append(pool, mempool.WrapsWithMemCache(p[0]))
 			}
 		}
 
@@ -111,7 +110,7 @@ func (b *ExpressionBoard) EvaluateExt(inputs []sv.SmartVector, p ...mempoolext.M
 		}
 
 		if len(p) > 0 {
-			if sa, ok := pool[0].(*mempoolext.SliceArena); ok {
+			if sa, ok := pool[0].(*mempool.SliceArena); ok {
 				sa.TearDown()
 			}
 		}
@@ -122,11 +121,11 @@ func (b *ExpressionBoard) EvaluateExt(inputs []sv.SmartVector, p ...mempoolext.M
 
 // evaluateSingleThread evaluates a boarded expression. The inputs can be either
 // vector or scalars. The vector's input length should be smaller than a chunk.
-func (b *ExpressionBoard) evaluateSingleThreadExt(inputs []sv.SmartVector, p ...mempoolext.MemPool) sv.SmartVector {
+func (b *ExpressionBoard) evaluateSingleThreadExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 
 	var (
 		length         = inputs[0].Len()
-		pool, hasPool  = mempoolext.ExtractCheckOptionalSoft(length, p...)
+		pool, hasPool  = mempool.ExtractCheckOptionalSoft(length, p...)
 		nodeAssignment = b.prepareNodeAssignments(inputs)
 	)
 
@@ -163,59 +162,12 @@ func (b *ExpressionBoard) evaluateSingleThreadExt(inputs []sv.SmartVector, p ...
 	return resBuf
 }
 
-func (b *ExpressionBoard) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.GenericMemPool) sv.SmartVector {
-	basePools := []mempool.MemPool{}
-	extPools := []mempoolext.MemPool{}
-	// separate the pools into base and extension pools
-	for _, pool := range p {
-		if extPool, ok := pool.(mempoolext.MemPool); ok {
-			// we have an extension pool
-			extPools = append(extPools, extPool)
-		} else {
-			// we have a base pool
-			basePools = append(basePools, pool.(mempool.MemPool))
-		}
-	}
-	vectorsBase := make([]sv.SmartVector, 0, len(inputs))
-	vectorsExt := make([]sv.SmartVector, 0, len(inputs))
-	for _, input := range inputs {
-		if _, isBaseError := input.GetBase(0); isBaseError == nil {
-			// we have a base vector
-			vectorsBase = append(vectorsBase, input)
-		} else {
-			// we have an extension vector
-			vectorsExt = append(vectorsExt, input)
-		}
-	}
-	// perform a size check between base and extension vectors
-	// compatibility of the  sizes inside the base set and extension set are
-	// checked inside the Evaluate function
-	if len(vectorsBase) > 0 && len(vectorsExt) > 0 &&
-		vectorsBase[0].Len() != vectorsExt[0].Len() {
-		utils.Panic("base and extension vectors have different sizes")
-	}
-	var resBase sv.SmartVector
-	var resExt sv.SmartVector
-	// evaluate the base vectors
-	if len(vectorsBase) > 0 {
-		// we have base vectors
-		// evaluate the base vectors
-		// use the base pools
-		resBase := b.Evaluate(vectorsBase, basePools...)
-	}
-	// evaluate the extension vectors
-	if len(vectorsExt) > 0 {
-		// we have extension vectors
-		// evaluate the extension vectors
-		// use the extension pools
-		resExt := b.EvaluateExt(vectorsExt, extPools...)
-	}
-	var res sv.SmartVector = sv.NewConstant(field.Zero(), inputs[0].Len())
-	if resBase != nil {
-		res = sv.Add(res, resBase)
-	}
-	if resExt != nil {
-		res = sv.Add(res, resExt)
-	}
-	return res
+func (b *ExpressionBoard) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+	return smartvectors_mixed.ExecuteFuncOnBaseExtWithMempool(
+		inputs,
+		b.Evaluate,
+		b.EvaluateExt,
+		smartvectorsext.Add,
+		p...,
+	)
 }

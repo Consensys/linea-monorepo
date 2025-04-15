@@ -161,8 +161,9 @@ func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces
 			}
 		}
 
-		return e.Boarded.GnarkEval(api, inputs)
+		return e.Boarded.GnarkEval(api, inputs), nil
 	}
+	panic("NOT IMPLEMENTED")
 }
 
 func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Variable {

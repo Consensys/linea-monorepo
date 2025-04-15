@@ -2,7 +2,6 @@ package symbolic
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"reflect"
@@ -102,7 +101,7 @@ func (lc LinComb) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.Sma
 	return sv.LinComb(lc.Coeffs, inputs, p...)
 }
 
-func (lc LinComb) EvaluateExt(inputs []sv.SmartVector, p ...mempoolext.MemPool) sv.SmartVector {
+func (lc LinComb) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 	return smartvectorsext.LinComb(lc.Coeffs, inputs, p...)
 }
 

@@ -2,6 +2,8 @@ package accessors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -18,6 +20,31 @@ type FromLocalOpeningYAccessor struct {
 	Q query.LocalOpening
 	// QRound is the declaration round of the query
 	QRound int
+}
+
+func (l *FromLocalOpeningYAccessor) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromLocalOpeningYAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromLocalOpeningYAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromLocalOpeningYAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromLocalOpeningYAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Variable {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewLocalOpeningAccessor creates an [ifaces.Accessor] returning the opening

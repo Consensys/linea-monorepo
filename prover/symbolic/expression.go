@@ -3,7 +3,6 @@ package symbolic
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"reflect"
@@ -64,7 +63,7 @@ type Operator interface {
 	Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector
 	// EvaluateExt returns an evaluation of the operator from a list of assignments:
 	// one for each operand (children) of the expression.
-	EvaluateExt([]sv.SmartVector, ...mempoolext.MemPool) sv.SmartVector
+	EvaluateExt([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector
 	// Validate performs a sanity-check of the expression the Operator belongs
 	// to.
 	Validate(e *Expression) error

@@ -1,7 +1,7 @@
 package smartvectorsext
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -20,7 +20,7 @@ import (
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFT(v smartvectors.SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempoolext.MemPool) smartvectors.SmartVector {
+func FFT(v smartvectors.SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool) smartvectors.SmartVector {
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
@@ -103,7 +103,7 @@ func FFT(v smartvectors.SmartVector, decimation fft.Decimation, bitReverse bool,
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFTInverse(v smartvectors.SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempoolext.MemPool) smartvectors.SmartVector {
+func FFTInverse(v smartvectors.SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool) smartvectors.SmartVector {
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())

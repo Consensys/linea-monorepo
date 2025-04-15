@@ -1,7 +1,7 @@
 package smartvectorsext
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -66,14 +66,14 @@ func InnerProduct(a, b smartvectors.SmartVector) fext.Element {
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //
 // where `x` is a scalar and `vecs[i]` are [SmartVector]
-func PolyEval(vecs []smartvectors.SmartVector, x fext.Element, p ...mempoolext.MemPool) (result smartvectors.SmartVector) {
+func PolyEval(vecs []smartvectors.SmartVector, x fext.Element, p ...mempool.MemPool) (result smartvectors.SmartVector) {
 
 	if len(vecs) == 0 {
 		panic("no input vectors")
 	}
 
 	length := vecs[0].Len()
-	pool, hasPool := mempoolext.ExtractCheckOptionalStrict(length, p...)
+	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 
 	// Preallocate the intermediate values
 	var resReg, tmpVec []fext.Element
@@ -141,7 +141,7 @@ func PolyEval(vecs []smartvectors.SmartVector, x fext.Element, p ...mempoolext.M
 	case anyCon && !anyReg:
 		// and we can directly unpool resreg because it was not used
 		if hasPool {
-			pool.Free(&resReg)
+			pool.FreeExt(&resReg)
 		}
 		return NewConstantExt(resCon, length)
 	case !anyCon && anyReg:

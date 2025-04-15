@@ -1,6 +1,7 @@
 package smartvectors_mixed
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -40,13 +41,6 @@ func LiftToExt(vec sv.SmartVector) sv.SmartVector {
 		)
 		return res
 	case *sv.Rotated:
-		/*		for i := range v.Window() {
-					windowExt[i].SetFromBase(&v.Window()[i])
-				}
-				return smartvectorsext.NewRotatedExt(
-					,
-					v.offset,
-			)*/
 		vecExt := make([]fext.Element, v.Len())
 		v.WriteInSliceExt(vecExt)
 		return smartvectorsext.NewRegularExt(vecExt)
@@ -62,11 +56,12 @@ func LiftToExt(vec sv.SmartVector) sv.SmartVector {
 	panic("unsupported type")
 }
 
-// Add returns a smart-vector obtained by position-wise adding [SmartVector].
-//   - all inputs `vecs` must have the same size, or the function panics
-//   - the output smart-vector has the same size as the input vectors
-//   - if no input vectors are provided, the function panics
-func Add(vecs ...sv.SmartVector) sv.SmartVector {
+func ExecuteFuncOnBaseExt(
+	vecs []sv.SmartVector,
+	baseOperation func(vec ...sv.SmartVector) sv.SmartVector,
+	extOperation func(vec ...sv.SmartVector) sv.SmartVector,
+	finalOperation func(vec ...sv.SmartVector) sv.SmartVector,
+) sv.SmartVector {
 	vecsBase := make([]sv.SmartVector, 0, len(vecs))
 	vecsExt := make([]sv.SmartVector, 0, len(vecs))
 	for _, vec := range vecs {
@@ -79,28 +74,79 @@ func Add(vecs ...sv.SmartVector) sv.SmartVector {
 
 	var res sv.SmartVector = sv.NewConstant(field.Zero(), vecs[0].Len())
 	if len(vecsBase) > 0 {
-		res = sv.Add(vecsBase...)
+		res = baseOperation(vecsBase...)
 	}
 
 	if len(vecsExt) == 0 {
+		// no extension vectors, return the base result
 		return res
 	} else {
-		addExt := smartvectorsext.Add(vecsExt...)
+		// there are some extension vectors present
+		// apply the extension operation to the extension vectors
+		addExt := extOperation(vecsExt...)
+		// lift the base result to extension representation and then apply the extension operation
 		liftedBase := LiftToExt(res)
-		return smartvectorsext.Add(liftedBase, addExt)
+		return finalOperation(liftedBase, addExt)
+	}
+}
+
+func ExecuteFuncOnBaseExtWithMempool(
+	vecs []sv.SmartVector,
+	baseOperation func(vec []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector,
+	extOperation func(vec []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector,
+	finalOperation func(vec ...sv.SmartVector) sv.SmartVector,
+	p ...mempool.MemPool,
+) sv.SmartVector {
+	vecsBase := make([]sv.SmartVector, 0, len(vecs))
+	vecsExt := make([]sv.SmartVector, 0, len(vecs))
+	for _, vec := range vecs {
+		if IsBase(vec) {
+			vecsBase = append(vecsBase, vec)
+		} else {
+			vecsExt = append(vecsExt, vec)
+		}
 	}
 
+	var res sv.SmartVector = sv.NewConstant(field.Zero(), vecs[0].Len())
+	if len(vecsBase) > 0 {
+		res = baseOperation(vecsBase, p...)
+	}
+
+	if len(vecsExt) == 0 {
+		// no extension vectors, return the base result
+		return res
+	} else {
+		// there are some extension vectors present
+		// apply the extension operation to the extension vectors
+		addExt := extOperation(vecsExt, p...)
+		// lift the base result to extension representation and then apply the extension operation
+		liftedBase := LiftToExt(res)
+		return finalOperation(liftedBase, addExt)
+	}
+}
+
+// Add returns a smart-vector obtained by position-wise adding [SmartVector].
+//   - all inputs `vecs` must have the same size, or the function panics
+//   - the output smart-vector has the same size as the input vectors
+//   - if no input vectors are provided, the function panics
+func Add(vecs ...sv.SmartVector) sv.SmartVector {
+	return ExecuteFuncOnBaseExt(
+		vecs,
+		sv.Add,
+		smartvectorsext.Add,
+		smartvectorsext.Add,
+	)
 }
 
 // Mul returns a smart-vector obtained by position-wise multiplying [SmartVector].
 //   - all inputs `vecs` must have the same size, or the function panics
 //   - the output smart-vector has the same size as the input vectors
 //   - if no input vectors are provided, the function panics
-func Mul(vecs ...SmartVector) SmartVector {
-	coeffs := make([]int, len(vecs))
-	for i := range coeffs {
-		coeffs[i] = 1
-	}
-
-	return Product(coeffs, vecs)
+func Mul(vecs ...sv.SmartVector) sv.SmartVector {
+	return ExecuteFuncOnBaseExt(
+		vecs,
+		sv.Mul,
+		smartvectorsext.Mul,
+		smartvectorsext.Mul,
+	)
 }

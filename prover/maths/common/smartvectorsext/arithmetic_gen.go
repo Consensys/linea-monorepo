@@ -1,7 +1,7 @@
 package smartvectorsext
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -12,7 +12,7 @@ import (
 //   - The function panics if svecs is empty
 //   - The function panics if the length of coeffs does not match the length of
 //     svecs
-func LinComb(coeffs []int, svecs []smartvectors.SmartVector, p ...mempoolext.MemPool) smartvectors.SmartVector {
+func LinComb(coeffs []int, svecs []smartvectors.SmartVector, p ...mempool.MemPool) smartvectors.SmartVector {
 	// Sanity check : all svec should have the same length
 	length := svecs[0].Len()
 	for i := 0; i < len(svecs); i++ {
@@ -28,7 +28,7 @@ func LinComb(coeffs []int, svecs []smartvectors.SmartVector, p ...mempoolext.Mem
 //   - The function panics if svecs is empty
 //   - The function panics if the length of exponents does not match the length of
 //     svecs
-func Product(exponents []int, svecs []smartvectors.SmartVector, p ...mempoolext.MemPool) smartvectors.SmartVector {
+func Product(exponents []int, svecs []smartvectors.SmartVector, p ...mempool.MemPool) smartvectors.SmartVector {
 	return processOperator(productOp{}, exponents, svecs, p...)
 }
 
@@ -37,7 +37,7 @@ func Product(exponents []int, svecs []smartvectors.SmartVector, p ...mempoolext.
 //   - The function panics if svecs is empty
 //   - The function panics if the length of coeffs does not match the length of
 //     svecs
-func processOperator(op operator, coeffs []int, svecs []smartvectors.SmartVector, p ...mempoolext.MemPool) smartvectors.SmartVector {
+func processOperator(op operator, coeffs []int, svecs []smartvectors.SmartVector, p ...mempool.MemPool) smartvectors.SmartVector {
 
 	// There should be as many coeffs than there are vectors
 	if len(coeffs) != len(svecs) {

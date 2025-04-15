@@ -2,13 +2,13 @@ package smartvectorsext
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"iter"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -104,11 +104,11 @@ func (r *RegularExt) Pretty() string {
 	return fmt.Sprintf("Regular[%v]", vectorext.Prettify(*r))
 }
 
-func processRegularOnlyExt(op operator, svecs []smartvectors.SmartVector, coeffs []int, p ...mempoolext.MemPool) (result *PooledExt, numMatches int) {
+func processRegularOnlyExt(op operator, svecs []smartvectors.SmartVector, coeffs []int, p ...mempool.MemPool) (result *PooledExt, numMatches int) {
 
 	length := svecs[0].Len()
 
-	pool, hasPool := mempoolext.ExtractCheckOptionalStrict(length, p...)
+	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 
 	var resvec *PooledExt
 
@@ -196,17 +196,17 @@ type PooledExt struct {
 	poolPtr *[]fext.Element
 }
 
-func AllocFromPoolExt(pool mempoolext.MemPool) *PooledExt {
-	poolPtr := pool.Alloc()
+func AllocFromPoolExt(pool mempool.MemPool) *PooledExt {
+	poolPtr := pool.AllocExt()
 	return &PooledExt{
 		RegularExt: *poolPtr,
 		poolPtr:    poolPtr,
 	}
 }
 
-func (p *PooledExt) Free(pool mempoolext.MemPool) {
+func (p *PooledExt) Free(pool mempool.MemPool) {
 	if p.poolPtr != nil {
-		pool.Free(p.poolPtr)
+		pool.FreeExt(p.poolPtr)
 	}
 	p.poolPtr = nil
 	p.RegularExt = nil
