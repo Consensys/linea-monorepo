@@ -372,15 +372,19 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
     it("Should emit the ForcedTransactionAdded event on adding a transaction", async () => {
       // use a way future dated timestamp and mimc the calculation for the block number
-      await networkTime.setNextBlockTimestamp(1954213624);
-      const expectedForcedTransactionNumber = 1n;
+      const nextNetworkBlockTimestamp = 1954213624n;
+      await networkTime.setNextBlockTimestamp(nextNetworkBlockTimestamp);
+      const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
+      const expectedBlockNumber =
+        nextNetworkBlockTimestamp -
+        defaultFinalizedState.timestamp +
+        lastFinalizedBlock +
+        BigInt(THREE_DAYS_IN_SECONDS);
 
+      const expectedForcedTransactionNumber = 1n;
       // TODO: Manually compute with Mimc for more dynamic testing
       const expectedMimcHashWithPreviousZeroValueRollingHash =
         "0x06f999b87d23e5d8b579a906300ca23b8029080d071517b75774b2e6b9abda8c";
-      const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
-      const expectedBlockNumber =
-        1954213624n - defaultFinalizedState.timestamp + lastFinalizedBlock + BigInt(THREE_DAYS_IN_SECONDS);
 
       const expectedEventArgs = [
         expectedForcedTransactionNumber,
@@ -404,15 +408,21 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
     it("Should change rolling hash with different expected block number", async () => {
       // use a way future dated timestamp and mimic the calculation for the block number
-      await networkTime.setNextBlockTimestamp(1754213624);
+      const nextNetworkBlockTimestamp = 1754213624n;
+      await networkTime.setNextBlockTimestamp(nextNetworkBlockTimestamp);
+      const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
+      const expectedBlockNumber = getExpectedL2BlockNumberForForcedTx({
+        blockTimestamp: nextNetworkBlockTimestamp,
+        l2BlockBuffer: BigInt(THREE_DAYS_IN_SECONDS),
+        currentFinalizedL2BlockNumber: lastFinalizedBlock,
+        lastFinalizedBlockTimestamp: defaultFinalizedState.timestamp,
+      });
+
       const expectedForcedTransactionNumber = 1n;
 
       // TODO: Manually compute with Mimc for more dynamic testing
       const expectedMimcHashWithPreviousZeroValueRollingHash =
         "0x105d807fa47dc19c25ca7ea12d66f8eea2428a916ae8db7e458b9a58b1ef6041";
-      const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
-      const expectedBlockNumber =
-        1754213624n - defaultFinalizedState.timestamp + lastFinalizedBlock + BigInt(THREE_DAYS_IN_SECONDS);
 
       const expectedEventArgs = [
         expectedForcedTransactionNumber,
