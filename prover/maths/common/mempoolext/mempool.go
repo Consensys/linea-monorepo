@@ -1,15 +1,16 @@
 package mempoolext
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 type MemPool interface {
+	mempool.GenericMemPool
 	Prewarm(nbPrewarm int) MemPool
 	Alloc() *[]fext.Element
 	Free(vec *[]fext.Element) error
-	Size() int
 }
 
 // ExtractCheckOptionalStrict returns

@@ -446,3 +446,16 @@ func (z *Element) SetBigIntFromBase(v *big.Int) *Element {
 	z.A1.SetZero()
 	return z
 }
+
+/*
+IsBase checks if the field extensionElement is a base element.
+An Element is considered a base element if all coordinates are 0 except for the first one.
+*/
+func (z *Element) IsBase() bool {
+	if z.A1.IsZero() {
+		return true
+	} else {
+		return false
+	}
+
+}

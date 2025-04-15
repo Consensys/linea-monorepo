@@ -6,10 +6,10 @@ import (
 )
 
 type MemPool interface {
+	GenericMemPool
 	Prewarm(nbPrewarm int) MemPool
 	Alloc() *[]field.Element
 	Free(vec *[]field.Element) error
-	Size() int
 }
 
 // ExtractCheckOptionalStrict returns

@@ -65,7 +65,7 @@ func (b *ExpressionBoard) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool
 	}
 
 	/*
-		The is no vector input iff totalSize is 0
+		There is no vector input iff totalSize is 0
 		Thus the condition below catch the two cases where:
 			- There is no input vectors (scalars only)
 			- The vectors are smaller than the min chunk size

@@ -1,8 +1,10 @@
 package symbolic
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"sync"
 
@@ -159,4 +161,61 @@ func (b *ExpressionBoard) evaluateSingleThreadExt(inputs []sv.SmartVector, p ...
 	}
 
 	return resBuf
+}
+
+func (b *ExpressionBoard) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.GenericMemPool) sv.SmartVector {
+	basePools := []mempool.MemPool{}
+	extPools := []mempoolext.MemPool{}
+	// separate the pools into base and extension pools
+	for _, pool := range p {
+		if extPool, ok := pool.(mempoolext.MemPool); ok {
+			// we have an extension pool
+			extPools = append(extPools, extPool)
+		} else {
+			// we have a base pool
+			basePools = append(basePools, pool.(mempool.MemPool))
+		}
+	}
+	vectorsBase := make([]sv.SmartVector, 0, len(inputs))
+	vectorsExt := make([]sv.SmartVector, 0, len(inputs))
+	for _, input := range inputs {
+		if _, isBaseError := input.GetBase(0); isBaseError == nil {
+			// we have a base vector
+			vectorsBase = append(vectorsBase, input)
+		} else {
+			// we have an extension vector
+			vectorsExt = append(vectorsExt, input)
+		}
+	}
+	// perform a size check between base and extension vectors
+	// compatibility of the  sizes inside the base set and extension set are
+	// checked inside the Evaluate function
+	if len(vectorsBase) > 0 && len(vectorsExt) > 0 &&
+		vectorsBase[0].Len() != vectorsExt[0].Len() {
+		utils.Panic("base and extension vectors have different sizes")
+	}
+	var resBase sv.SmartVector
+	var resExt sv.SmartVector
+	// evaluate the base vectors
+	if len(vectorsBase) > 0 {
+		// we have base vectors
+		// evaluate the base vectors
+		// use the base pools
+		resBase := b.Evaluate(vectorsBase, basePools...)
+	}
+	// evaluate the extension vectors
+	if len(vectorsExt) > 0 {
+		// we have extension vectors
+		// evaluate the extension vectors
+		// use the extension pools
+		resExt := b.EvaluateExt(vectorsExt, extPools...)
+	}
+	var res sv.SmartVector = sv.NewConstant(field.Zero(), inputs[0].Len())
+	if resBase != nil {
+		res = sv.Add(res, resBase)
+	}
+	if resExt != nil {
+		res = sv.Add(res, resExt)
+	}
+	return res
 }
