@@ -114,7 +114,7 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       uint256 currentFinalizedL2BlockNumber
     ) = LINEA_ROLLUP.getNextForcedTransactionFields();
 
-    // validate state is correct in order to use the timestamp.. we might need a better way than this.
+    // validate state is correct in order to use the timestamp. we might need a better way than this.
     if (
       currentFinalizedState !=
       FinalizedStateHashing._computeLastFinalizedState(
@@ -161,6 +161,7 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     // RLP encode the unsigned transaction payload fields
     bytes memory rlpEncodedUnsignedTransaction = abi.encodePacked(
       hex"02",
+      // To consider - rather than creating a new memory array 'unsignedTransactionFields', could we implement an `_encodePartialList` function to do `_encodeList` for the signedTransactionFields[0..9] array slice?
       RlpEncoder._encodeList(unsignedTransactionFields)
     );
 
@@ -220,13 +221,13 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
 
     assembly {
       let mostSignificantBytes := shr(128, _hashedPayload)
-      let leadSignificantBytes := and(_hashedPayload, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+      let leastSignificantBytes := and(_hashedPayload, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
 
       mimcPayload := mload(0x40)
       mstore(mimcPayload, 0xA0)
       mstore(add(mimcPayload, 0x20), _previousRollingHash)
       mstore(add(mimcPayload, 0x40), mostSignificantBytes)
-      mstore(add(mimcPayload, 0x60), leadSignificantBytes)
+      mstore(add(mimcPayload, 0x60), leastSignificantBytes)
       mstore(add(mimcPayload, 0x80), _expectedBlockNumber)
       mstore(add(mimcPayload, 0xA0), _from)
       mstore(0x40, add(mimcPayload, 0xC0))
