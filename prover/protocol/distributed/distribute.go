@@ -15,6 +15,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+// lppGroupingArity indicates how many GL modules an LPP module relates to.
+const lppGroupingArity = 4
+
 // DistributedWizard represents a wizard protocol that has undergone a
 // distributed compilation process.
 type DistributedWizard struct {
@@ -79,13 +82,12 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) Distribut
 	}
 
 	var (
-		lppGrouping = 4
-		nbLPP       = len(distributedWizard.ModuleNames)
+		nbLPP = len(distributedWizard.ModuleNames)
 	)
 
-	for i := 0; i < nbLPP; i += lppGrouping {
+	for i := 0; i < nbLPP; i += lppGroupingArity {
 
-		stop := min(len(distributedWizard.ModuleNames), i+lppGrouping)
+		stop := min(len(distributedWizard.ModuleNames), i+lppGroupingArity)
 
 		distributedWizard.LPPs = append(
 			distributedWizard.LPPs,

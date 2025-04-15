@@ -262,6 +262,12 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness) {
 	r.PlonkCtx.GetPlonkProverAction().Run(run, fullWitnesses)
 }
 
+// GetPublicInputs relative to one recursed module.
+func (rec *Recursion) GetPublicInputOfInstance(run wizard.Runtime, name string, inst int) field.Element {
+	name = addPrefixToID(rec.Name+"-"+strconv.Itoa(inst), name)
+	return run.GetPublicInput(name)
+}
+
 // VortexQueryRound returns the round at which the last commitment
 // is made.
 func VortexQueryRound(comp *wizard.CompiledIOP) int {

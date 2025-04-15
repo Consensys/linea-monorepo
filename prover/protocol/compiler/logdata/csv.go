@@ -141,6 +141,18 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP)
 				}
 			}
 		}
+
+		for _, pubInputs := range comp.PublicInputs {
+			row := &csvRow{
+				round:  0,
+				id:     pubInputs.Name,
+				status: "-",
+				typ:    "PublicInput",
+				size:   0,
+			}
+
+			row.Write(w)
+		}
 	}
 }
 

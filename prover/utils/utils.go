@@ -548,3 +548,37 @@ func SpliceExact[T any](slice []T, n int) [][]T {
 	}
 	return slices
 }
+
+// SetDiff returns the difference between two sets. The elements are returned
+// in non-deterministic order. The function returns aExtra for the elements
+// in a but not in b and bExtra for the elements in b but not in a.
+func SetDiff[T comparable](a, b []T) (aExtra, bExtra []T) {
+
+	mset := make(map[T]int, len(a))
+
+	for _, av := range a {
+		if _, ok := mset[av]; !ok {
+			mset[av] = 0
+		}
+		mset[av]++
+	}
+
+	for _, bv := range b {
+		if _, ok := mset[bv]; !ok {
+			mset[bv] = 0
+		}
+		mset[bv]--
+	}
+
+	for v, cnt := range mset {
+		if cnt > 0 {
+			aExtra = append(aExtra, v)
+			// Importantly, we want to ditch the "zeroes" so that they don't end up
+			// in bExtra.
+		} else if cnt < 0 {
+			bExtra = append(bExtra, v)
+		}
+	}
+
+	return aExtra, bExtra
+}

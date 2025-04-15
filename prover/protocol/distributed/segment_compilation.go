@@ -1,9 +1,12 @@
 package distributed
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
@@ -23,6 +26,8 @@ const (
 	// the value is empirical and corresponds to the lowest value that works.
 	fixedNbRowPlonkCircuit   = 1 << 22
 	fixedNbRowExternalHasher = 1 << 16
+	verifyingKeyPublicInput  = "VERIFYING_KEY"
+	lppMerkleRootPublicInput = "LPP_COLUMNS_MERKLE_ROOTS"
 )
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -46,8 +51,10 @@ type RecursedSegmentCompilation struct {
 func CompileSegment(mod any) *RecursedSegmentCompilation {
 
 	var (
-		modIOP *wizard.CompiledIOP
-		res    = &RecursedSegmentCompilation{}
+		modIOP            *wizard.CompiledIOP
+		res               = &RecursedSegmentCompilation{}
+		numActualLppRound = 0
+		isLPP             bool
 	)
 
 	switch m := mod.(type) {
@@ -57,6 +64,8 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	case *ModuleLPP:
 		modIOP = m.Wiop
 		res.ModuleLPP = m
+		numActualLppRound = len(m.ModuleNames())
+		isLPP = true
 	default:
 		utils.Panic("unexpected type: %T", mod)
 	}
@@ -67,12 +76,40 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
 		compiler.Arcane(256, 1<<17, false),
-		vortex.Compile(
-			2,
-			vortex.ForceNumOpenedColumns(256),
-			vortex.WithSISParams(&sisInstance),
-			vortex.AddMerkleRootToPublicInputs("LPP_COLUMNS_MERKLE_ROOT", 0),
-		),
+	)
+
+	if !isLPP {
+
+		wizard.ContinueCompilation(modIOP,
+			vortex.Compile(
+				2,
+				vortex.ForceNumOpenedColumns(256),
+				vortex.WithSISParams(&sisInstance),
+				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
+			),
+		)
+
+		for i := 1; i < lppGroupingArity; i++ {
+			modIOP.InsertPublicInput(fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, i), accessors.NewConstant(field.Zero()))
+		}
+
+	} else {
+
+		wizard.ContinueCompilation(modIOP,
+			vortex.Compile(
+				2,
+				vortex.ForceNumOpenedColumns(256),
+				vortex.WithSISParams(&sisInstance),
+				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, utils.RangeSlice(numActualLppRound, 0)),
+			),
+		)
+
+		for i := numActualLppRound; i < lppGroupingArity; i++ {
+			modIOP.InsertPublicInput(fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, i), accessors.NewConstant(field.Zero()))
+		}
+	}
+
+	wizard.ContinueCompilation(modIOP,
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
@@ -140,6 +177,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			8,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
+			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKeyPublicInput),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
@@ -149,7 +187,6 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			8,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
-			vortex.PremarkAsSelfRecursed(),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,

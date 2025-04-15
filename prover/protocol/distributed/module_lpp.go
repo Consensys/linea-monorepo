@@ -22,6 +22,8 @@ var (
 	hornerPublicInput           = "HORNER_FINAL_RES_PUBLIC_INPUT"
 	hornerN0HashPublicInput     = "HORNER_N0_HASH_PUBLIC_INPUT"
 	hornerN1HashPublicInput     = "HORNER_N1_HASH_PUBLIC_INPUT"
+	isLppPublicInput            = "IS_LPP"
+	nbActualLppPublicInput      = "NB_ACTUAL_LPP"
 )
 
 // ModuleLPP is a compilation structure holding the central informations
@@ -109,7 +111,11 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 1),
 	}
 
-	for _, moduleInput := range moduleInputs {
+	// The starting round is the round where we can add data other than the LPP
+	// columns.
+	var startingRound = len(moduleInputs)
+
+	for round, moduleInput := range moduleInputs {
 		for _, col := range moduleInput.Columns {
 
 			if col.Round() != 0 {
@@ -127,7 +133,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 				continue
 			}
 
-			moduleLPP.InsertColumn(*col, 0)
+			moduleLPP.InsertColumn(*col, round)
 		}
 	}
 
@@ -136,7 +142,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	if len(logDerivativeArgs) > 0 {
 
 		moduleLPP.LogDerivativeSum = moduleLPP.InsertLogDerivative(
-			1,
+			startingRound,
 			ifaces.QueryID("MAIN_LOGDERIVATIVE"),
 			logDerivativeArgs,
 		)
@@ -157,7 +163,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	if len(grandProductArgs) > 0 {
 
 		moduleLPP.GrandProduct = moduleLPP.InsertGrandProduct(
-			1,
+			startingRound,
 			ifaces.QueryID("MAIN_GRANDPRODUCT"),
 			grandProductArgs,
 		)
@@ -178,13 +184,13 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	if len(hornerArgs) > 0 {
 
 		moduleLPP.Horner = moduleLPP.InsertHorner(
-			1,
+			startingRound,
 			ifaces.QueryID("MAIN_HORNER"),
 			hornerArgs,
 		)
 
-		moduleLPP.N0Hash = builder.InsertProof(1, "LPP_N0_HASH", 1)
-		moduleLPP.N1Hash = builder.InsertProof(1, "LPP_N1_HASH", 1)
+		moduleLPP.N0Hash = builder.InsertProof(startingRound, "LPP_N0_HASH", 1)
+		moduleLPP.N1Hash = builder.InsertProof(startingRound, "LPP_N1_HASH", 1)
 
 		moduleLPP.Wiop.InsertPublicInput(
 			hornerPublicInput,
@@ -221,11 +227,25 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 		)
 	}
 
+	// These are the "dummy" public inputs that are only here so that the
+	// moduleGL and moduleLPP have identical set of public inputs.
+	moduleLPP.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewConstant(field.Zero()))
+
+	for _, pi := range moduleInputs[0].PublicInputs {
+		moduleLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
+	}
+
+	moduleLPP.Wiop.InsertPublicInput(isLppPublicInput, accessors.NewConstant(field.One()))
+	moduleLPP.Wiop.InsertPublicInput(nbActualLppPublicInput, accessors.NewConstant(field.NewElement(uint64(len(moduleInputs)))))
+
 	// In case the LPP part is empty, we have a scenario where the sub-proof to
 	// build has no registered coin. This creates errors in the compilation
 	// due to sanity-check firing up. We add a coin to remediate.
-	if moduleLPP.Wiop.Coins.NumRounds() < 2 {
-		moduleLPP.InsertCoin("LPP_DUMMY_COIN", 1)
+	for i := 0; i < len(moduleInputs); i++ {
+		moduleLPP.InsertCoin(coin.Namef("LPP_DUMMY_COIN_%v", i+1), i+1)
 	}
 
 	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})

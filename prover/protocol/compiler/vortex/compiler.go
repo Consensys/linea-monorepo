@@ -1,6 +1,7 @@
 package vortex
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/consensys/gnark/frontend"
@@ -129,13 +130,11 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		})
 
 		if ctx.AddMerkleRootToPublicInputsOpt.Enabled {
-			comp.InsertPublicInput(
-				ctx.AddMerkleRootToPublicInputsOpt.Name,
-				accessors.NewFromPublicColumn(
-					ctx.Items.MerkleRoots[ctx.AddMerkleRootToPublicInputsOpt.Round],
-					0,
-				),
-			)
+
+			for _, round := range ctx.AddMerkleRootToPublicInputsOpt.Round {
+				name := fmt.Sprintf("%v_%v", ctx.AddMerkleRootToPublicInputsOpt.Name, round)
+				comp.InsertPublicInput(name, accessors.NewFromPublicColumn(ctx.Items.MerkleRoots[round], 0))
+			}
 		}
 
 		if ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Enabled {
@@ -230,7 +229,7 @@ type Ctx struct {
 	AddMerkleRootToPublicInputsOpt struct {
 		Enabled bool
 		Name    string
-		Round   int
+		Round   []int
 	}
 
 	// This option tells the compiler to add the merkle root of the precomputeds
