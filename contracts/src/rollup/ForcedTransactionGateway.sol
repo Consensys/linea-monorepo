@@ -180,6 +180,7 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     }
 
     // COMPUTE BLOCK NUMBER - TO BE DISCUSSED
+    // To consider - why does the computation for expectedBlockNumber mix units of 'block number' and 'seconds'?
     uint256 expectedBlockNumber;
     unchecked {
       // last L2 block + seconds between then and now to get "current" block and then 3 days of 1 second

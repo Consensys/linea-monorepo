@@ -8,7 +8,11 @@ import transactionWithCalldata from "../../_testData/eip1559RlpEncoderTransactio
 import l2SendMessageTransaction from "../../_testData/eip1559RlpEncoderTransactions/l2SendMessage.json";
 import { ethers } from "hardhat";
 
-import { getAccountsFixture, deployForcedTransactionGatewayFixture } from "./../helpers";
+import {
+  getAccountsFixture,
+  deployForcedTransactionGatewayFixture,
+  getExpectedL2BlockNumberForForcedTx,
+} from "./../helpers";
 import {
   buildAccessErrorMessage,
   buildEip1559Transaction,
@@ -209,7 +213,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       );
     });
 
-    it("Should fail if the maxFeePerGas is zero", async () => {
+    it("Should fail if maxPriorityFeePerGas > maxFeePerGas", async () => {
       const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
       forcedTransaction.maxPriorityFeePerGas = 2n;
       forcedTransaction.maxFeePerGas = 1n;
@@ -221,7 +225,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       );
     });
 
-    it("Should fail if YParity Greater Than One", async () => {
+    it("Should fail if YParity > 1", async () => {
       const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
       forcedTransaction.yParity = 2n;
       await expectRevertWithCustomError(
@@ -245,10 +249,10 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       }
     });
 
-    it("Should fail if the last finalized state does not match", async () => {
+    it("Should fail if the last finalized state hash does not match", async () => {
       const forcedTransaction = buildEip1559Transaction(l2SendMessageTransaction.result);
 
-      const realFinalizedState = generateKeccak256(
+      const defaultFinalizedStateHash = generateKeccak256(
         ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
         [
           defaultFinalizedState.messageNumber,
@@ -259,28 +263,31 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         ],
       );
 
-      defaultFinalizedState.forcedTransactionNumber = 1n;
+      const corruptedFinalizedStateStruct = {
+        ...defaultFinalizedState,
+        forcedTransactionNumber: 1n,
+      };
 
-      const failedFinalizationState = generateKeccak256(
+      const corruptedFinalizationStateHash = generateKeccak256(
         ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
         [
-          defaultFinalizedState.messageNumber,
-          defaultFinalizedState.messageRollingHash,
-          defaultFinalizedState.forcedTransactionNumber,
-          defaultFinalizedState.forcedTransactionRollingHash,
-          defaultFinalizedState.timestamp,
+          corruptedFinalizedStateStruct.messageNumber,
+          corruptedFinalizedStateStruct.messageRollingHash,
+          corruptedFinalizedStateStruct.forcedTransactionNumber,
+          corruptedFinalizedStateStruct.forcedTransactionRollingHash,
+          corruptedFinalizedStateStruct.timestamp,
         ],
       );
 
       await expectRevertWithCustomError(
         forcedTransactionGateway,
-        forcedTransactionGateway.submitForcedTransaction(forcedTransaction, defaultFinalizedState),
+        forcedTransactionGateway.submitForcedTransaction(forcedTransaction, corruptedFinalizedStateStruct),
         "FinalizationStateIncorrect",
-        [realFinalizedState, failedFinalizationState],
+        [defaultFinalizedStateHash, corruptedFinalizationStateHash],
       );
     });
 
-    it("Should fail to call store on the Linea rollup if not the gateway", async () => {
+    it("Should fail LineaRollup.storeForcedTransaction if not FORCED_TRANSACTION_SENDER_ROLE", async () => {
       await expectRevertWithReason(
         lineaRollup.connect(nonAuthorizedAccount).storeForcedTransaction(99n, 121n, generateRandomBytes(32)),
         buildAccessErrorMessage(nonAuthorizedAccount, FORCED_TRANSACTION_SENDER_ROLE),
@@ -288,11 +295,15 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     });
 
     it("Should fail if the second transaction is expected on the same block", async () => {
-      await networkTime.setNextBlockTimestamp(1954213624);
+      const nextNetworkBlockTimestamp = 1954213624n;
+      await networkTime.setNextBlockTimestamp(nextNetworkBlockTimestamp);
       const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
-
-      const expectedBlockNumber =
-        1954213624n - defaultFinalizedState.timestamp + lastFinalizedBlock + BigInt(THREE_DAYS_IN_SECONDS);
+      const expectedBlockNumber = getExpectedL2BlockNumberForForcedTx({
+        blockTimestamp: nextNetworkBlockTimestamp,
+        l2BlockBuffer: BigInt(THREE_DAYS_IN_SECONDS),
+        currentFinalizedL2BlockNumber: lastFinalizedBlock,
+        lastFinalizedBlockTimestamp: defaultFinalizedState.timestamp,
+      });
 
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
@@ -308,11 +319,15 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     });
 
     it("Should fail if the second transaction is expected on the same transaction number", async () => {
-      await networkTime.setNextBlockTimestamp(1974213624n);
+      const nextNetworkBlockTimestamp = 1974213624n;
+      await networkTime.setNextBlockTimestamp(nextNetworkBlockTimestamp);
       const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
-
-      const expectedBlockNumber =
-        1974213624n - defaultFinalizedState.timestamp + lastFinalizedBlock + BigInt(THREE_DAYS_IN_SECONDS);
+      const expectedBlockNumber = getExpectedL2BlockNumberForForcedTx({
+        blockTimestamp: nextNetworkBlockTimestamp,
+        l2BlockBuffer: BigInt(THREE_DAYS_IN_SECONDS),
+        currentFinalizedL2BlockNumber: lastFinalizedBlock,
+        lastFinalizedBlockTimestamp: defaultFinalizedState.timestamp,
+      });
 
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
@@ -356,7 +371,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     });
 
     it("Should emit the ForcedTransactionAdded event on adding a transaction", async () => {
-      // use a way future dated timestamp and mimic the calculation for the block number
+      // use a way future dated timestamp and mimc the calculation for the block number
       await networkTime.setNextBlockTimestamp(1954213624);
       const expectedForcedTransactionNumber = 1n;
 
