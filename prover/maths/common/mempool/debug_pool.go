@@ -3,6 +3,7 @@ package mempool
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"runtime"
 	"strconv"
 	"unsafe"
@@ -36,8 +37,10 @@ func (m *DebuggeableCall) Prewarm(nbPrewarm int) MemPool {
 type recordType string
 
 const (
-	AllocRecord recordType = "alloc"
-	FreeRecord  recordType = "free"
+	AllocRecordBase recordType = "allocBase"
+	FreeRecordBase  recordType = "freeBase"
+	AllocRecordExt  recordType = "allocExt"
+	FreeRecordExt   recordType = "freeExt"
 )
 
 func (m *DebuggeableCall) Alloc() *[]field.Element {
@@ -58,7 +61,55 @@ func (m *DebuggeableCall) Alloc() *[]field.Element {
 
 	*logs = append(*logs, Record{
 		Where: file + ":" + strconv.Itoa(line),
-		What:  AllocRecord,
+		What:  AllocRecordBase,
+	})
+
+	return v
+}
+
+func (m *DebuggeableCall) AllocBase() *[]field.Element {
+
+	var (
+		v                = m.Parent.AllocBase()
+		uptr             = uintptr(unsafe.Pointer(v))
+		logs             *[]Record
+		_, file, line, _ = runtime.Caller(2)
+	)
+
+	logs, found := m.Logs[uptr]
+
+	if !found {
+		logs = &[]Record{}
+		m.Logs[uptr] = logs
+	}
+
+	*logs = append(*logs, Record{
+		Where: file + ":" + strconv.Itoa(line),
+		What:  AllocRecordBase,
+	})
+
+	return v
+}
+
+func (m *DebuggeableCall) AllocExt() *[]fext.Element {
+
+	var (
+		v                = m.Parent.AllocExt()
+		uptr             = uintptr(unsafe.Pointer(v))
+		logs             *[]Record
+		_, file, line, _ = runtime.Caller(2)
+	)
+
+	logs, found := m.Logs[uptr]
+
+	if !found {
+		logs = &[]Record{}
+		m.Logs[uptr] = logs
+	}
+
+	*logs = append(*logs, Record{
+		Where: file + ":" + strconv.Itoa(line),
+		What:  AllocRecordExt,
 	})
 
 	return v
@@ -81,10 +132,56 @@ func (m *DebuggeableCall) Free(v *[]field.Element) error {
 
 	*logs = append(*logs, Record{
 		Where: file + ":" + strconv.Itoa(line),
-		What:  FreeRecord,
+		What:  FreeRecordBase,
 	})
 
 	return m.Parent.Free(v)
+}
+
+func (m *DebuggeableCall) FreeBase(v *[]field.Element) error {
+
+	var (
+		uptr             = uintptr(unsafe.Pointer(v))
+		logs             *[]Record
+		_, file, line, _ = runtime.Caller(2)
+	)
+
+	logs, found := m.Logs[uptr]
+
+	if !found {
+		logs = &[]Record{}
+		m.Logs[uptr] = logs
+	}
+
+	*logs = append(*logs, Record{
+		Where: file + ":" + strconv.Itoa(line),
+		What:  FreeRecordBase,
+	})
+
+	return m.Parent.Free(v)
+}
+
+func (m *DebuggeableCall) FreeExt(v *[]fext.Element) error {
+
+	var (
+		uptr             = uintptr(unsafe.Pointer(v))
+		logs             *[]Record
+		_, file, line, _ = runtime.Caller(2)
+	)
+
+	logs, found := m.Logs[uptr]
+
+	if !found {
+		logs = &[]Record{}
+		m.Logs[uptr] = logs
+	}
+
+	*logs = append(*logs, Record{
+		Where: file + ":" + strconv.Itoa(line),
+		What:  FreeRecordExt,
+	})
+
+	return m.Parent.FreeExt(v)
 }
 
 func (m *DebuggeableCall) Size() int {
@@ -110,35 +207,44 @@ func (m *DebuggeableCall) Errors() error {
 		logs := *logs_
 
 		for i := range logs {
-			if i == 0 && logs[i].What == FreeRecord {
-				err = errors.Join(err, fmt.Errorf("freed a vector that was not from the pool: where=%v", logs[i].Where))
+			if i == 0 && logs[i].What == FreeRecordBase {
+				err = errors.Join(err, fmt.Errorf("freed a base vector that was not from the pool: where=%v", logs[i].Where))
 			}
 
-			if i == len(logs)-1 && logs[i].What == AllocRecord {
-				err = errors.Join(err, fmt.Errorf("leaked a vector out of the pool: where=%v", logs[i].Where))
+			if i == 0 && logs[i].What == FreeRecordExt {
+				err = errors.Join(err, fmt.Errorf("freed an extension vector that was not from the pool: where=%v", logs[i].Where))
+			}
+
+			if i == len(logs)-1 && logs[i].What == AllocRecordBase {
+				err = errors.Join(err, fmt.Errorf("leaked a base vector out of the pool: where=%v", logs[i].Where))
+			}
+
+			if i == len(logs)-1 && logs[i].What == AllocRecordExt {
+				err = errors.Join(err, fmt.Errorf("leaked an extension vector out of the pool: where=%v", logs[i].Where))
 			}
 
 			if i == 0 {
 				continue
 			}
 
-			if logs[i-1].What == AllocRecord && logs[i].What == AllocRecord {
-				wheres := []string{logs[i-1].Where, logs[i].Where}
-				for k := i + 1; k < len(logs) && logs[k].What == AllocRecord; k++ {
-					wheres = append(wheres, logs[k].Where)
-				}
+			errorGeneration := func(recordType recordType, verbString string) {
+				if logs[i-1].What == recordType && logs[i].What == recordType {
+					wheres := []string{logs[i-1].Where, logs[i].Where}
+					for k := i + 1; k < len(logs) && logs[k].What == recordType; k++ {
+						wheres = append(wheres, logs[k].Where)
+					}
 
-				err = errors.Join(err, fmt.Errorf("vector was allocated multiple times concurrently where=%v", wheres))
+					err = errors.Join(
+						err,
+						fmt.Errorf("vector was %s multiple times concurrently where=%v", verbString, wheres),
+					)
+				}
 			}
 
-			if logs[i-1].What == FreeRecord && logs[i].What == FreeRecord {
-				wheres := []string{logs[i-1].Where, logs[i].Where}
-				for k := i + 1; k < len(logs) && logs[k].What == FreeRecord; k++ {
-					wheres = append(wheres, logs[k].Where)
-				}
-
-				err = errors.Join(err, fmt.Errorf("vector was freed multiple times concurrently where=%v", wheres))
-			}
+			errorGeneration(AllocRecordBase, "allocated")
+			errorGeneration(AllocRecordExt, "allocated")
+			errorGeneration(FreeRecordBase, "freed")
+			errorGeneration(FreeRecordExt, "freed")
 		}
 	}
 
