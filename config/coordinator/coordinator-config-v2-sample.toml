@@ -2,6 +2,8 @@ testL1Disabled = false
 
 duplicated-logs-debounce-time = "PT15S"
 
+l1-default-endpoint = "http://l1-el-node:8545"
+l2-default-endpoint = "http://sequencer:8545"
 
 [protocol]
 [protocol.genesis]
@@ -24,6 +26,7 @@ blocks-to-finalization = 2 # Used in MessageAnchoring and SafeBlockProvider
 
 
 [conflation]
+diabled = false
 blocks-limit = 2
 conflation-calculator-version = "1.0.0"
 conflation-deadline = "PT6S" # =3*l2_block_time
@@ -36,6 +39,12 @@ conflation-deadline-last-block-confirmation-delay = "PT2S" # recommended: at lea
 consistent-number-of-blocks-on-l1-to-wait = 1
 fetch-blocks-limit = 4000
 
+l2-block-creation-endpoint = "http://sequencer:8545"
+l2-logs-endpoint = "http://sequencer:8545"
+[conflation.counters.request-retries]
+max-attempts = 4
+backoff-delay = "PT1S"
+failures-warning-threshold = 2
 
 [blob-compression]
 blob-size-limit = 102400 # 100KB
@@ -43,7 +52,6 @@ handler-polling-interval = "PT1S"
 # default batches limit is  aggregation-proofs-limit -1
 # batches-limit must be less than or equal to aggregation-proofs-limit-1
 batches-limit = 1
-
 
 [proof-aggregation]
 aggregation-proofs-limit = 3
@@ -60,22 +68,29 @@ fs-inprogess-proving-suffix-pattern = "\\.inprogress\\.prover.*"
 fs-polling-interval = "PT1S"
 fs-polling-timeout = "PT10M"
 [prover.execution]
-fs-requests-directory = "/data/prover-execution/requests"
-fs-responses-directory = "/data/prover-execution/responses"
+fs-requests-directory = "/data/prover/v2/execution/requests"
+fs-responses-directory = "/data/prover/v2/execution/responses"
 [prover.blob-compression]
-fs-requests-directory = "/data/prover-compression/requests"
-fs-responses-directory = "/data/prover-compression/responses"
+fs-requests-directory = "/data/prover/v2/compression/requests"
+fs-responses-directory = "/data/prover/v2/compression/responses"
 [prover.proof-aggregation]
-fs-requests-directory = "/data/prover-aggregation/requests"
-fs-responses-directory = "/data/prover-aggregation/responses"
+fs-requests-directory = "/data/prover/v2/aggregation/requests"
+fs-responses-directory = "/data/prover/v2/aggregation/responses"
 
-
-[zk-geth-traces]
-eth-api = "http://traces-node:8545"
-new-block-polling-interval = "PT1S"
+#[prover.new]
+#switch-block-number-inclusive=1000
+#[prover.new.execution]
+#fs-requests-directory = "/data/prover/v3/execution/requests"
+#fs-responses-directory = "/data/prover/v3/execution/responses"
+#[prover.new.blob-compression]
+#fs-requests-directory = "/data/prover/v3/compression/requests"
+#fs-responses-directory = "/data/prover/v3/compression/responses"
+#[prover.new.proof-aggregation]
+#fs-requests-directory = "/data/prover/v3/aggregation/requests"
+#fs-responses-directory = "/data/prover/v3/aggregation/responses"
 
 [traces]
-raw-execution-traces-version = "0.2.0"
+raw-execution-traces-version = "0.2.0" # TODO: remove after we remove geth tracing
 expected-traces-api-version = "0.2.0"
 [traces.counters]
 endpoints = ["http://traces-api:8080/"]
@@ -101,6 +116,25 @@ create-non-canonical-directory = true
 polling-interval = "PT1S"
 traces-file-creation-wait-timeout = "PT2M"
 
+#[traces.new]
+##switch-block-number-inclusive=1000
+#expected-traces-api-version = "2.2.0"
+#[traces.new.counters]
+#endpoints = ["http://traces-api-v2:8080/"]
+#request-limit-per-endpoint = 20
+#[traces.new.counters.request-retries]
+#max-attempts = 4
+#backoff-delay = "PT1S"
+#failures-warning-threshold = 2
+#
+#[traces.new.conflation]
+#endpoints = ["http://traces-api:8080/"]
+#request-limit-per-endpoint = 2
+#[traces.new.conflation.request-retries]
+#max-attempts = 4
+#backoff-delay = "PT1S"
+#failures-warning-threshold = 2
+
 [state-manager]
 version = "2.2.0"
 endpoints = ["http://shomei:8888/"]
@@ -110,15 +144,42 @@ max-attempts = 5
 backoff-delay = "PT2S"
 failures-warning-threshold = 2
 
+#[state-manager.new]
+#switch-block-number-inclusive=1000
+#version = "2.2.0"
+#endpoints = ["http://shomei:8888/"]
+#request-limit-per-endpoint = 3
+#[state-manager.new.request-retries]
+#max-attempts = 5
+#backoff-delay = "PT2S"
+#failures-warning-threshold = 2
+
 [type2-state-proof-provider]
+disabled = false
 endpoints = ["http://shomei-frontend:8888/"]
+l1-query-block-tag="LATEST"
+l1-polling-interval="PT12S"
+
 [type2-state-proof-provider.retries]
 max-attempts = 3
 backoff-delay = "PT1S"
 failures-warning-threshold = 2
 
 
+[l1-finalization-monitor]
+l1-endpoint = "http://l1-el-node:8545"
+l2-endpoint = "http://sequencer:8545"
+polling-interval = "PT1S"
+l1-query-block-tag="FINALIZED"
+
+[l1-finalization-monitor.retries]
+max-attempts = 3
+backoff-delay = "PT1S"
+failures-warning-threshold = 2
+
+
 [l1-submission] # submission
+disabled = true
 [l1-submission.dynamic-gas-price-cap]
 disabled = true
 [l1-submission.dynamic-gas-price-cap.gas-price-cap-calculation]
@@ -142,7 +203,7 @@ fee-history-reward-percentile = 15
 
 [l1-submission.blob]
 disabled = false
-rpc-endpoint = "http://l1-el-node:8545"
+endpoint = "http://l1-el-node:8545"
 submission-delay = "PT1S"
 submission-tick-interval = "PT1S"
 max-submissions-per-tick = 10
@@ -173,7 +234,7 @@ public-key = "9d9031e97dd78ff8c15aa86939de9b1e791066a0224e331bc962a2099a7b1f0464
 
 [l1-submission.aggregation]
 disabled = false
-rpc-endpoint = "http://l1-el-node:8545"
+endpoint = "http://l1-el-node:8545"
 submission-delay = "PT1S"
 submission-tick-interval = "PT1S"
 max-submissions-per-tick = 10
@@ -201,19 +262,22 @@ public-key = "ba5734d8f7091719471e7f7ed6b9df170dc70cc661ca05e688601ad984f068b0d6
 
 [message-anchoring]
 disabled = false
-l1-rpc-endpoint = "http://l1-el-node:8545"
-l2-rpc-endpoint = "http://sequencer:8545"
+l1-endpoint = "http://l1-el-node:8545"
+l2-endpoint = "http://sequencer:8545"
+l1-query-block-tag="FINALIZED"
+l2-query-block-tag="LATEST" # optional, default to LATEST it shall not be necessary as Linea has instant finality
 anchoring-tick-interval = "PT10S" # "polling-interval="PT10S"
-earliest-block = 0
+messages-anchoring-chuck-size = 100 # limit of L1toL2 Messages to anchor in a single L2 transaction
+l1-earliest-block = 0 # it should match smart contract deplyment block # TODO: check if can use events to infer this block
 # used in L2MessageAnchorerImpl bit this waiting is not necessary anymore
 # these values can be removed once we adapt L2MessageAnchorerImpl to wait a given time.
 anchoring-receipt-polling-interval = "PT01S"
 max-receipt-retries = 120
 
-[message-anchoring.send-message-event-scraping]
-scraping-interval = "PT1S" #send-message-event-polling-interval
-scraping-timeout = "PT5S" #max-event-scraping-time
-scraping-event-limit = 100
+[message-anchoring.l1-event-scraping]
+polling-interval = "PT1S" #message-events-polling-interval
+polling-timeout = "PT5S" #max-event-scraping-time
+message-limit-pertick = 100
 block-range-limit = 500
 finalized-block-tag = "FINALIZED" # optional, default to FINALIZED
 # reset this once we know what to do on dev/UAT
@@ -237,11 +301,6 @@ endpoint = "http://web3signer:9000"
 max-pool-size = 10
 keep-alive = true
 public-key = "4a788ad6fa008beed58de6418369717d7492f37d173d70e2c26d9737e2c6eeae929452ef8602a19410844db3e200a0e73f5208fd76259a8766b73953fc3e7023"
-
-[l2]
-# NOTE: this used in multiple places:
-# anchoring, aggregation (getting Message numbers), finalization (get L2 Block Info)
-rpc-endpoint = "http://sequencer:8545"
 
 
 [l2-network-gas-pricing] # old [dynamic-gas-price-service]
@@ -271,18 +330,18 @@ blob-submission-expected-execution-gas = 213000.0 # Lower to 120k as we improve 
 variable-cost-upper-bound = 10000000001 # ~10 GWEI
 variable-cost-lower-bound = 90000001  # ~0.09 GWEI
 margin = 4.0
-extra-data-update-recipient = "http://sequencer:8545/"
+extra-data-update-endpoint = "http://sequencer:8545/"
 
 [l2-network-gas-pricing.min-mineable] # current legacy implementation
 base-fee-coefficient = 0.1
 priority-fee-coefficient = 1.0
 base-fee-blob-coefficient = 0.1
 legacy-fees-multiplier = 1.2
-geth-gas-price-update-recipients = [
+geth-gas-price-update-endpoints = [
   "http://traces-node:8545/",
   "http://l2-node:8545/"
 ]
-besu-gas-price-update-recipients = [
+besu-gas-price-update-endpoints = [
   "http://sequencer:8545/"
 ]
 
@@ -298,5 +357,3 @@ transactional_pool_size = 10
 
 [api]
 observability_port = 9545
-
-l1.blocks-to-finalization = 2 # TODO: Remove this, used on Finalization Monitor: use "FINALISED" tag instead
