@@ -9,7 +9,7 @@ export default defineConfig({
   fullyParallel: true,
   maxFailures: process.env.CI ? 1 : 0,
   // To consider - cannot really run E2E tests involving blockchain tx in parallel. There is a high risk of reusing the same tx nonce -> leading to dropped transactions
-  workers: process.env.CI ? 2 : undefined,
+  workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI
     ? [
         ["html", { open: "never", outputFolder: `playwright-report-${process.env.HEADLESS ? "headless" : "headful"}` }],
