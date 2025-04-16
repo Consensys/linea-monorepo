@@ -1,5 +1,5 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { loadFixture, time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
+import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { ForcedTransactionGateway, Mimc, TestLineaRollup } from "contracts/typechain-types";
 import transactionWithoutCalldata from "../../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
 import transactionWithLargeCalldata from "../../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
@@ -11,7 +11,7 @@ import { ethers } from "hardhat";
 import {
   getAccountsFixture,
   deployForcedTransactionGatewayFixture,
-  getExpectedL2BlockNumberForForcedTx,
+  setNextExpectedL2BlockNumberForForcedTx,
 } from "./../helpers";
 import {
   buildAccessErrorMessage,
@@ -31,12 +31,13 @@ import {
   MAX_GAS_LIMIT,
   MAX_INPUT_LENGTH_LIMIT,
   THREE_DAYS_IN_SECONDS,
+  DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
 } from "../../common/constants";
 import { toBeHex, zeroPadValue } from "ethers";
 import { expect } from "chai";
 import { deployFromFactory } from "../../common/deployment";
 
-describe("Linea Rollup contract: Forced Transactions", () => {
+describe.only("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
   let forcedTransactionGateway: ForcedTransactionGateway;
   let mimcLibraryAddress: string;
@@ -295,15 +296,11 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     });
 
     it("Should fail if the second transaction is expected on the same block", async () => {
-      const nextNetworkBlockTimestamp = 1954213624n;
-      await networkTime.setNextBlockTimestamp(nextNetworkBlockTimestamp);
-      const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
-      const expectedBlockNumber = getExpectedL2BlockNumberForForcedTx({
-        blockTimestamp: nextNetworkBlockTimestamp,
-        l2BlockBuffer: BigInt(THREE_DAYS_IN_SECONDS),
-        currentFinalizedL2BlockNumber: lastFinalizedBlock,
-        lastFinalizedBlockTimestamp: defaultFinalizedState.timestamp,
-      });
+      const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
+        lineaRollup,
+        DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
+        defaultFinalizedState.timestamp,
+      );
 
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
@@ -319,15 +316,11 @@ describe("Linea Rollup contract: Forced Transactions", () => {
     });
 
     it("Should fail if the second transaction is expected on the same transaction number", async () => {
-      const nextNetworkBlockTimestamp = 1974213624n;
-      await networkTime.setNextBlockTimestamp(nextNetworkBlockTimestamp);
-      const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
-      const expectedBlockNumber = getExpectedL2BlockNumberForForcedTx({
-        blockTimestamp: nextNetworkBlockTimestamp,
-        l2BlockBuffer: BigInt(THREE_DAYS_IN_SECONDS),
-        currentFinalizedL2BlockNumber: lastFinalizedBlock,
-        lastFinalizedBlockTimestamp: defaultFinalizedState.timestamp,
-      });
+      const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
+        lineaRollup,
+        DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
+        defaultFinalizedState.timestamp,
+      );
 
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
@@ -372,14 +365,11 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
     it("Should emit the ForcedTransactionAdded event on adding a transaction", async () => {
       // use a way future dated timestamp and mimc the calculation for the block number
-      const nextNetworkBlockTimestamp = 1954213624n;
-      await networkTime.setNextBlockTimestamp(nextNetworkBlockTimestamp);
-      const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
-      const expectedBlockNumber =
-        nextNetworkBlockTimestamp -
-        defaultFinalizedState.timestamp +
-        lastFinalizedBlock +
-        BigInt(THREE_DAYS_IN_SECONDS);
+      const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
+        lineaRollup,
+        1954213624n,
+        defaultFinalizedState.timestamp,
+      );
 
       const expectedForcedTransactionNumber = 1n;
       // TODO: Manually compute with Mimc for more dynamic testing
@@ -408,15 +398,11 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
     it("Should change rolling hash with different expected block number", async () => {
       // use a way future dated timestamp and mimic the calculation for the block number
-      const nextNetworkBlockTimestamp = 1754213624n;
-      await networkTime.setNextBlockTimestamp(nextNetworkBlockTimestamp);
-      const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
-      const expectedBlockNumber = getExpectedL2BlockNumberForForcedTx({
-        blockTimestamp: nextNetworkBlockTimestamp,
-        l2BlockBuffer: BigInt(THREE_DAYS_IN_SECONDS),
-        currentFinalizedL2BlockNumber: lastFinalizedBlock,
-        lastFinalizedBlockTimestamp: defaultFinalizedState.timestamp,
-      });
+      const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
+        lineaRollup,
+        1754213624n,
+        defaultFinalizedState.timestamp,
+      );
 
       const expectedForcedTransactionNumber = 1n;
 

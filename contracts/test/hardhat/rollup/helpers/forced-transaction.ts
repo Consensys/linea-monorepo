@@ -1,9 +1,10 @@
-// import { LineaRollup, Mimc, TestEip1559RlpEncoder } from "contracts/typechain-types";
-import { Mimc } from "contracts/typechain-types";
-import { encodeData } from "contracts/common/helpers";
-// import { Eip1559Transaction } from "../../common/types";
+import { time as networkTime } from "@nomicfoundation/hardhat-network-helpers";
+import { LineaRollup, Mimc, TestEip1559RlpEncoder } from "contracts/typechain-types";
+import { encodeData, generateKeccak256 } from "contracts/common/helpers";
+import { Eip1559Transaction } from "../../common/types";
+import { THREE_DAYS_IN_SECONDS } from "../../common/constants";
 
-export const getExpectedL2BlockNumberForForcedTx = (params: {
+const getExpectedL2BlockNumberForForcedTx = (params: {
   blockTimestamp: bigint;
   lastFinalizedBlockTimestamp: bigint;
   currentFinalizedL2BlockNumber: bigint;
@@ -13,22 +14,54 @@ export const getExpectedL2BlockNumberForForcedTx = (params: {
   return currentFinalizedL2BlockNumber + blockTimestamp - lastFinalizedBlockTimestamp + l2BlockBuffer;
 };
 
-// TODO
-// export const getForcedTransactionRollingHash = async (
-//   mimcLibrary: Mimc,
-//   lineaRollup: LineaRollup,
-//   eip1559RlpEncoder: TestEip1559RlpEncoder,
-//   eip1559Tx: Eip1559Transaction,
-//   expectedBlockNumber: bigint,
-//   from: string,
-// ): Promise<string> => {
-//   const { previousForcedTransactionRollingHash } = await lineaRollup.getNextForcedTransactionFields();
-//   const { rlpEncodedTransaction } = await eip1559RlpEncoder.encodeEip1559Transaction(eip1559Tx);
-//   // Strip `yParity`, `r` and `s` from the rlpEncodedTransaction
-//   const rlpEncodedUnsignedTx = rlpEncodedTransaction.slice(0, -134);
-// };
+export const setNextExpectedL2BlockNumberForForcedTx = async (
+  lineaRollup: LineaRollup,
+  nextNetworkTimestamp: bigint,
+  lastFinalizedBlockTimestamp: bigint,
+) => {
+  await networkTime.setNextBlockTimestamp(nextNetworkTimestamp);
+  const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
+  const expectedBlockNumber = getExpectedL2BlockNumberForForcedTx({
+    blockTimestamp: nextNetworkTimestamp,
+    l2BlockBuffer: BigInt(THREE_DAYS_IN_SECONDS),
+    currentFinalizedL2BlockNumber: lastFinalizedBlock,
+    lastFinalizedBlockTimestamp: lastFinalizedBlockTimestamp,
+  });
+  return expectedBlockNumber;
+};
 
-export const _computeForcedTransactionRollingHash = async (
+export const getForcedTransactionRollingHash = async (
+  mimcLibrary: Mimc,
+  lineaRollup: LineaRollup,
+  eip1559RlpEncoder: TestEip1559RlpEncoder,
+  eip1559Tx: Eip1559Transaction,
+  expectedBlockNumber: bigint,
+  from: string,
+): Promise<string> => {
+  const { previousForcedTransactionRollingHash } = await lineaRollup.getNextForcedTransactionFields();
+  const { rlpEncodedTransaction } = await eip1559RlpEncoder.encodeEip1559Transaction(eip1559Tx);
+  // Strip `yParity`, `r` and `s` from the rlpEncodedTransaction
+  const rlpEncodedTransactionWithoutSignature = rlpEncodedTransaction.slice(0, -134);
+  // Get length byte and subtract by 67 (bytes used by signature)
+  const lengthByte = rlpEncodedTransactionWithoutSignature.slice(6, 8);
+  const lengthWithSignature = parseInt(lengthByte, 16);
+  const lengthWithoutSignature = lengthWithSignature - 67;
+  const lengthByteWithoutSignature = lengthWithoutSignature.toString(16);
+  const rlpEncodedUnsignedTransaction =
+    rlpEncodedTransactionWithoutSignature.slice(0, 6) +
+    lengthByteWithoutSignature +
+    rlpEncodedTransactionWithoutSignature.slice(8);
+  const hashedPayload = generateKeccak256(["bytes"], [rlpEncodedUnsignedTransaction], { encodePacked: true });
+  return await _computeForcedTransactionRollingHash(
+    mimcLibrary,
+    previousForcedTransactionRollingHash,
+    hashedPayload,
+    expectedBlockNumber,
+    from,
+  );
+};
+
+const _computeForcedTransactionRollingHash = async (
   mimcLibrary: Mimc,
   previousRollingHash: string,
   hashedPayload: string,
