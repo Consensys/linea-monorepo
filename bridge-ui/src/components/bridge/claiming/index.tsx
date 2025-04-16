@@ -9,7 +9,7 @@ import ReceivedAmount from "./received-amount";
 import Fees from "./fees";
 import { useFormStore, useChainStore } from "@/stores";
 import BridgeMode from "./bridge-mode";
-import { ChainLayer, ClaimType } from "@/types";
+import { ChainLayer } from "@/types";
 import { isCctp } from "@/utils";
 
 export default function Claiming() {
@@ -23,7 +23,6 @@ export default function Claiming() {
   const amount = useFormStore((state) => state.amount);
   const balance = useFormStore((state) => state.balance);
   const token = useFormStore((state) => state.token);
-  const claim = useFormStore((state) => state.claim);
 
   const originChainBalanceTooLow = amount && balance < amount;
 
@@ -42,10 +41,8 @@ export default function Claiming() {
     // No auto-claiming for USDC via CCTPV2
     if (isCctp(token)) return false;
     if (loading) return false;
-    // If sponsored automatic claiming is available, we assume user has no need to select manual claiming.
-    if (claim === ClaimType.AUTO_SPONSORED) return false;
     return true;
-  }, [fromChain, token, loading, claim]);
+  }, [fromChain, token, loading]);
 
   if (!amount || amount <= 0n) return null;
   if (isConnected && originChainBalanceTooLow) return null;
