@@ -1,7 +1,5 @@
-[execution-client]
-ethereum-json-rpc-endpoint = "http://sequencer:8545"
-engine-api-json-rpc-endpoint = "http://follower-geth:8555"
-min-time-between-get-payload-attempts=800m
+[sot-endpoint]
+endpoint = "http://sequencer:8545"
 
 [dummy-consensus-options]
 communication-time-margin=100m
@@ -10,4 +8,7 @@ communication-time-margin=100m
 port = 3322
 
 [validator]
-validator-key = "0xdead"
+private-key = "0xdead"
+jwt-secret-path = "/secret/path"
+min-time-between-get-payload-attempts=800m
+el-client-endpoint = "http://sequencer:8545"

@@ -20,6 +20,7 @@ import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockHeader
 import maru.core.Validator
 import maru.database.BeaconChain
+import maru.executionlayer.manager.BlockMetadata
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory
@@ -36,6 +37,7 @@ class QbftBlockCreatorFactory(
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val blockBuilderIdentity: Validator,
   private val eagerQbftBlockCreatorConfig: EagerQbftBlockCreator.Config,
+  private val metadataProvider: () -> BlockMetadata,
 ) : QbftBlockCreatorFactory {
   override fun create(round: Int): BesuQbftBlockCreator {
     require(round >= 0) {
@@ -58,6 +60,7 @@ class QbftBlockCreatorFactory(
         finalizationStateProvider = finalizationStateProvider,
         blockBuilderIdentity = blockBuilderIdentity,
         config = eagerQbftBlockCreatorConfig,
+        metadataProvider = metadataProvider,
       )
     }
   }

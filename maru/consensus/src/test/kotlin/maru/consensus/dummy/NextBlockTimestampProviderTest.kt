@@ -24,7 +24,6 @@ import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.NextBlockTimestampProviderImpl
-import maru.executionlayer.manager.BlockMetadata
 import org.assertj.core.api.Assertions.assertThat
 
 class NextBlockTimestampProviderTest {
@@ -35,7 +34,7 @@ class NextBlockTimestampProviderTest {
         ForkSpec(10, 2, DummyConsensusConfig(ByteArray(20), ElFork.Prague)),
       ),
     )
-  private val baseLastBlockMetadata = BlockMetadata(1UL, ByteArray(32), 9)
+  private val baseLastBlockTimestamp = 9L
 
   private fun createCLockForTimestamp(timestamp: Long): Clock =
     Clock.fixed(Instant.ofEpochMilli(timestamp), ZoneId.of("UTC"))
@@ -49,7 +48,7 @@ class NextBlockTimestampProviderTest {
         minTimeTillNextBlock = 0.milliseconds,
       )
 
-    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockMetadata)
+    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockTimestamp)
 
     assertThat(result).isEqualTo(10L)
   }
@@ -63,7 +62,7 @@ class NextBlockTimestampProviderTest {
         minTimeTillNextBlock = 100.milliseconds,
       )
 
-    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockMetadata)
+    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockTimestamp)
 
     assertThat(result).isEqualTo(11L)
   }
@@ -77,7 +76,7 @@ class NextBlockTimestampProviderTest {
         minTimeTillNextBlock = 100.milliseconds,
       )
 
-    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockMetadata)
+    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(baseLastBlockTimestamp)
 
     assertThat(result).isEqualTo(12L)
   }
@@ -91,8 +90,7 @@ class NextBlockTimestampProviderTest {
         minTimeTillNextBlock = 100.milliseconds,
       )
 
-    val lastBlockMetadata = baseLastBlockMetadata.copy(unixTimestampSeconds = 10L)
-    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(lastBlockMetadata)
+    val result = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(10L)
 
     assertThat(result).isEqualTo(12L)
   }

@@ -149,7 +149,7 @@ class StateRootValidator(
       .thenApply { postState ->
         val stateRootHeader =
           postState.latestBeaconBlockHeader.copy(
-            stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT,
+            stateRoot = BeaconBlockHeader.EMPTY_HASH,
           )
         val expectedStateRoot = HashUtil.stateRoot(postState.copy(latestBeaconBlockHeader = stateRootHeader))
         BlockValidator.require(block.beaconBlockHeader.stateRoot.contentEquals(expectedStateRoot)) {

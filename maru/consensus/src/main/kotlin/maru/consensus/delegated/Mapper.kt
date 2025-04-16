@@ -15,53 +15,51 @@
  */
 package maru.consensus.delegated
 
-import org.apache.tuweni.bytes.Bytes
-import org.apache.tuweni.bytes.Bytes32
-import org.hyperledger.besu.datatypes.Address
-import org.hyperledger.besu.datatypes.BlobGas
-import org.hyperledger.besu.datatypes.Hash
-import org.hyperledger.besu.datatypes.Wei
-import org.hyperledger.besu.ethereum.core.Block
-import org.hyperledger.besu.ethereum.core.BlockBody
-import org.hyperledger.besu.ethereum.core.BlockHeader
-import org.hyperledger.besu.ethereum.core.Difficulty
-import org.hyperledger.besu.ethereum.mainnet.BodyValidation
-import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
-import org.hyperledger.besu.evm.log.LogsBloomFilter
+import fromHexToByteArray
+import maru.core.BeaconBlock
+import maru.core.BeaconBlockBody
+import maru.core.BeaconBlockHeader
+import maru.core.ExecutionPayload
+import maru.core.HashUtil
+import maru.core.Validator
+import maru.serialization.rlp.KeccakHasher
+import maru.serialization.rlp.RLPSerializers
 import org.web3j.protocol.core.methods.response.EthBlock
 
 object Mapper {
-  private val blockHeaderFunctions = MainnetBlockHeaderFunctions()
+  private val hasher = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
 
-  fun mapWeb3jBlockToBesuBlock(block: EthBlock.Block): Block {
-    val blockHeader =
-      BlockHeader(
-        /* parentHash = */ Hash.wrap(Bytes32.fromHexString(block.parentHash)),
-        /* ommersHash = */ Hash.EMPTY_LIST_HASH,
-        /* coinbase = */ Address.fromHexString(block.miner),
-        /* stateRoot = */ Hash.wrap(Bytes32.fromHexString(block.stateRoot)),
-        /* transactionsRoot = */ Hash.wrap(Bytes32.fromHexString(block.transactionsRoot)),
-        /* receiptsRoot = */ Hash.wrap(Bytes32.fromHexString(block.receiptsRoot)),
-        /* logsBloom = */ LogsBloomFilter(Bytes.fromHexString(block.logsBloom)),
-        /* difficulty = */ Difficulty.ZERO,
-        /* number = */ block.number.toLong(),
-        /* gasLimit = */ block.gasLimit.toLong(),
-        /* gasUsed = */ block.gasUsed.toLong(),
-        /* timestamp = */ block.timestamp.toLong(),
-        /* extraData = */ Bytes.fromHexString(block.extraData),
-        /* baseFee = */ Wei.of(block.baseFeePerGas.toLong()),
-        /* mixHashOrPrevRandao = */ Bytes32.fromHexString(block.mixHash),
-        /* nonce = */ 0,
-        /* withdrawalsRoot = */ Hash.EMPTY_TRIE_HASH,
-        /* blobGasUsed = */ 0,
-        /* excessBlobGas = */ BlobGas.ZERO,
-        /* parentBeaconBlockRoot = TODO: use an actual beacon block root */ Bytes32.ZERO,
-        /* requestsHash = */ BodyValidation.requestsHash(listOf()),
-        /* blockHeaderFunctions = */ blockHeaderFunctions,
+  fun mapWeb3jBlockToBeaconBlock(block: EthBlock.Block): BeaconBlock {
+    val executionPayload =
+      ExecutionPayload(
+        parentHash = block.parentHash.fromHexToByteArray(),
+        feeRecipient = block.miner.fromHexToByteArray(),
+        stateRoot = block.stateRoot.fromHexToByteArray(),
+        receiptsRoot = block.receiptsRoot.fromHexToByteArray(),
+        logsBloom = block.logsBloom.fromHexToByteArray(),
+        prevRandao = block.mixHash.fromHexToByteArray(),
+        blockNumber = block.number.toLong().toULong(),
+        gasLimit = block.gasLimit.toLong().toULong(),
+        gasUsed = block.gasUsed.toLong().toULong(),
+        timestamp = block.timestamp.toLong().toULong(),
+        extraData = block.extraData.fromHexToByteArray(),
+        baseFeePerGas = block.baseFeePerGas,
+        blockHash = block.hash.fromHexToByteArray(),
+        transactions = emptyList(), // Transactions are omitted
       )
+    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptyList(), executionPayload = executionPayload)
 
-    // Transactions are omitted
-    val blockBody = BlockBody(listOf(), listOf())
-    return Block(blockHeader, blockBody)
+    val beaconBlockHeader =
+      BeaconBlockHeader(
+        number = 0u,
+        round = 0u,
+        timestamp = block.timestamp.toLong().toULong(),
+        proposer = Validator(block.miner.fromHexToByteArray()),
+        parentRoot = BeaconBlockHeader.EMPTY_HASH,
+        stateRoot = BeaconBlockHeader.EMPTY_HASH,
+        bodyRoot = BeaconBlockHeader.EMPTY_HASH,
+        headerHashFunction = hasher,
+      )
+    return BeaconBlock(beaconBlockHeader, beaconBlockBody)
   }
 }

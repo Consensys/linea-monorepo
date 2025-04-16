@@ -74,7 +74,7 @@ class BlockValidatorTest {
       parentRoot = validCurrBlockHeader.hash,
       timestamp = validCurrBlockHeader.timestamp + 1u,
       bodyRoot = HashUtil.bodyRoot(validNewBlockBody),
-      stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT,
+      stateRoot = BeaconBlockHeader.EMPTY_HASH,
     )
   private val validNewStateRoot =
     HashUtil.stateRoot(

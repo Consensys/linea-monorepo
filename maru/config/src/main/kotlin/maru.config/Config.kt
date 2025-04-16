@@ -18,10 +18,18 @@ package maru.config
 import java.net.URL
 import kotlin.time.Duration
 
-data class ExecutionClientConfig(
-  val ethereumJsonRpcEndpoint: URL,
-  val engineApiJsonRpcEndpoint: URL,
+data class ApiEndpointConfig(
+  val endpoint: URL,
+  val jwtSecretPath: String? = null,
+)
+
+data class ValidatorClientConfig(
+  val engineApiClientConfig: ApiEndpointConfig,
   val minTimeBetweenGetPayloadAttempts: Duration,
+)
+
+data class FollowersConfig(
+  val followers: Map<String, ApiEndpointConfig>,
 )
 
 data class P2P(
@@ -29,7 +37,8 @@ data class P2P(
 )
 
 data class Validator(
-  val validatorKey: ByteArray,
+  val key: ByteArray,
+  val client: ValidatorClientConfig,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -37,12 +46,10 @@ data class Validator(
 
     other as Validator
 
-    if (!validatorKey.contentEquals(other.validatorKey)) return false
-
-    return true
+    return key.contentEquals(other.key)
   }
 
-  override fun hashCode(): Int = validatorKey.contentHashCode()
+  override fun hashCode(): Int = key.contentHashCode()
 }
 
 data class DummyConsensusOptions(
@@ -51,28 +58,9 @@ data class DummyConsensusOptions(
 )
 
 data class MaruConfig(
-  val executionClientConfig: ExecutionClientConfig,
+  val sotNode: ApiEndpointConfig,
   val dummyConsensusOptions: DummyConsensusOptions?,
   val p2pConfig: P2P?,
   val validator: Validator?,
-) {
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as MaruConfig
-
-    if (executionClientConfig != other.executionClientConfig) return false
-    if (p2pConfig != other.p2pConfig) return false
-    if (validator != other.validator) return false
-
-    return true
-  }
-
-  override fun hashCode(): Int {
-    var result = executionClientConfig.hashCode()
-    result = 31 * result + (p2pConfig?.hashCode() ?: 0)
-    result = 31 * result + (validator?.hashCode() ?: 0)
-    return result
-  }
-}
+  val followers: FollowersConfig,
+)

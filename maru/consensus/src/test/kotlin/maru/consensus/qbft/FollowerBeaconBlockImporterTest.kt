@@ -31,12 +31,13 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class BeaconBlockImporterImplTest {
+class FollowerBeaconBlockImporterTest {
   private lateinit var executionLayerManager: ExecutionLayerManager
   private var nextBlockTimestamp: Long = 123456789L
   private var shouldBuildNextBlock: Boolean = false
   private var blockBuilderIdentity: Validator = Validator(Random.nextBytes(20))
-  private lateinit var beaconBlockImporter: BeaconBlockImporterImpl
+  private lateinit var followerBeaconBlockImporter: FollowerBeaconBlockImporter
+  private lateinit var beaconBlockImporter: BlockBuildingBeaconBlockImporter
   private lateinit var finalizationState: FinalizationState
 
   @BeforeEach
@@ -44,8 +45,11 @@ class BeaconBlockImporterImplTest {
     executionLayerManager = mock(ExecutionLayerManager::class.java)
     finalizationState = FinalizationState(Random.nextBytes(32), Random.nextBytes(32))
 
+    followerBeaconBlockImporter =
+      FollowerBeaconBlockImporter(executionLayerManager, finalizationStateProvider = { finalizationState })
     beaconBlockImporter =
-      BeaconBlockImporterImpl(
+      BlockBuildingBeaconBlockImporter(
+        followerBeaconBlockImporter = followerBeaconBlockImporter,
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = { finalizationState },
         nextBlockTimestampProvider = { nextBlockTimestamp },
@@ -112,7 +116,8 @@ class BeaconBlockImporterImplTest {
     val nextBlockTimestampProvider: (ConsensusRoundIdentifier) -> Long = mock()
     whenever(nextBlockTimestampProvider.invoke(eq(expectedConsensusRoundIdentifier))).thenReturn(nextBlockTimestamp)
     beaconBlockImporter =
-      BeaconBlockImporterImpl(
+      BlockBuildingBeaconBlockImporter(
+        followerBeaconBlockImporter = followerBeaconBlockImporter,
         executionLayerManager = executionLayerManager,
         finalizationStateProvider = { finalizationState },
         nextBlockTimestampProvider = nextBlockTimestampProvider,

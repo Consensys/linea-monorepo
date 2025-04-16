@@ -152,8 +152,6 @@ interface ExecutionLayerManager {
 
   fun finishBlockBuilding(): SafeFuture<ExecutionPayload>
 
-  fun latestBlockMetadata(): BlockMetadata
-
   fun setHead(
     headHash: ByteArray,
     safeHash: ByteArray,

@@ -32,10 +32,8 @@ object MaruFactory {
     engineApiRpc: String,
   ): String =
     """
-    [execution-client]
-    ethereum-json-rpc-endpoint = "$ethereumJsonRpcUrl"
-    engine-api-json-rpc-endpoint = "$engineApiRpc"
-    min-time-between-get-payload-attempts=800m
+    [sot-eth-endpoint]
+    endpoint = "$ethereumJsonRpcUrl"
 
     [dummy-consensus-options]
     communication-time-margin=100m
@@ -44,7 +42,9 @@ object MaruFactory {
     port = 3322
 
     [validator]
-    validator-key = "0xdead"
+    private-key = "0xdead"
+    min-time-between-get-payload-attempts=800m
+    el-client-engine-api-endpoint = "$engineApiRpc"
     """.trimIndent()
 
   private fun pickConsensusConfig(elFork: ElFork): String =

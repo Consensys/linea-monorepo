@@ -28,18 +28,38 @@ fun interface BeaconBlockImporter {
   fun importBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult>
 }
 
-class BeaconBlockImporterImpl(
+class FollowerBeaconBlockImporter(
+  private val executionLayerManager: ExecutionLayerManager,
+  private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
+) : BeaconBlockImporter {
+  override fun importBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {
+    val beaconBlockHeader = beaconBlock.beaconBlockHeader
+    val finalizationState = finalizationStateProvider(beaconBlockHeader)
+    return executionLayerManager
+      .setHead(
+        headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
+        safeHash = finalizationState.safeBlockHash,
+        finalizedHash = finalizationState.finalizedBlockHash,
+      )
+  }
+}
+
+class BlockBuildingBeaconBlockImporter(
+  private val followerBeaconBlockImporter: FollowerBeaconBlockImporter,
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val nextBlockTimestampProvider: (ConsensusRoundIdentifier) -> Long,
   private val shouldBuildNextBlock: (ConsensusRoundIdentifier) -> Boolean,
-  private val blockBuilderIdentity: Validator,
+  private val blockBuilderIdentity: Validator?,
 ) : BeaconBlockImporter {
   override fun importBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {
     val beaconBlockHeader = beaconBlock.beaconBlockHeader
     val finalizationState = finalizationStateProvider(beaconBlockHeader)
     val nextBlocksRoundIdentifier = ConsensusRoundIdentifier(beaconBlockHeader.number.toLong() + 1, 0)
     return if (shouldBuildNextBlock(nextBlocksRoundIdentifier)) {
+      require(blockBuilderIdentity != null) {
+        "Block builder identity can't be null if a block can be built by this node!"
+      }
       executionLayerManager.setHeadAndStartBlockBuilding(
         headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
         safeHash = finalizationState.safeBlockHash,
@@ -48,12 +68,7 @@ class BeaconBlockImporterImpl(
         feeRecipient = blockBuilderIdentity.address,
       )
     } else {
-      executionLayerManager
-        .setHead(
-          headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
-          safeHash = finalizationState.safeBlockHash,
-          finalizedHash = finalizationState.finalizedBlockHash,
-        )
+      followerBeaconBlockImporter.importBlock(beaconBlock)
     }
   }
 }

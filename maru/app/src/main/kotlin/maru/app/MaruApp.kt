@@ -16,22 +16,21 @@
 package maru.app
 
 import java.time.Clock
-import java.time.Duration
+import kotlin.time.Duration.Companion.seconds
+import maru.config.FollowersConfig
 import maru.config.MaruConfig
 import maru.consensus.ForksSchedule
-import maru.consensus.MetadataOnlyHandlerAdapter
+import maru.consensus.NewBlockHandler
 import maru.consensus.NewBlockHandlerMultiplexer
 import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.OmniProtocolFactory
 import maru.consensus.ProtocolStarter
+import maru.consensus.ProtocolStarterBlockHandler
 import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.dummy.DummyConsensusProtocolFactory
 import maru.executionlayer.client.Web3jMetadataProvider
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
-import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 class MaruApp(
   config: MaruConfig,
@@ -47,57 +46,57 @@ class MaruApp(
     if (config.validator == null) {
       log.info("Maru is running in follower-only node")
     }
+    log.info(config.toString())
   }
 
   private val ethereumJsonRpcClient =
-    buildJsonRpcClient(
-      config.executionClientConfig.ethereumJsonRpcEndpoint
-        .toString(),
+    Helpers.createWeb3jClient(
+      config.sotNode,
     )
-
-  private val newBlockHandlerMultiplexer = NewBlockHandlerMultiplexer(emptyMap())
 
   private val metadataProvider = Web3jMetadataProvider(ethereumJsonRpcClient.eth1Web3j)
 
-  private val nextBlockTimestampProvider =
+  private val nextTargetBlockTimestampProvider =
     NextBlockTimestampProviderImpl(
       clock = clock,
       forksSchedule = beaconGenesisConfig,
-      minTimeTillNextBlock = config.executionClientConfig.minTimeBetweenGetPayloadAttempts,
+      minTimeTillNextBlock = 0.seconds,
     )
   private val protocolStarter =
-    ProtocolStarter(
-      forksSchedule = beaconGenesisConfig,
-      protocolFactory =
-        OmniProtocolFactory(
-          dummyConsensusFactory =
-            DummyConsensusProtocolFactory(
-              forksSchedule = beaconGenesisConfig,
-              clock = clock,
-              maruConfig = config,
-              metadataProvider = metadataProvider,
-              newBlockHandler = newBlockHandlerMultiplexer,
-              nextBlockTimestampProvider = nextBlockTimestampProvider,
-            ),
-          elDelegatedConsensusFactory =
-            ElDelegatedConsensusFactory(
-              ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
-              newBlockHandler = newBlockHandlerMultiplexer,
-            ),
-        ),
-      metadataProvider = metadataProvider,
-      nextBlockTimestampProvider = nextBlockTimestampProvider,
-    ).also {
-      newBlockHandlerMultiplexer.addHandler("protocol starter", MetadataOnlyHandlerAdapter(it))
+    let {
+      val delegatedConsensusNewBlockHandler = NewBlockHandlerMultiplexer(emptyMap())
+      val dummyConsensusNewBlockHandler = NewBlockHandlerMultiplexer(createFollowerHandlers(config.followers))
+      ProtocolStarter(
+        forksSchedule = beaconGenesisConfig,
+        protocolFactory =
+          OmniProtocolFactory(
+            dummyConsensusFactory =
+              DummyConsensusProtocolFactory(
+                forksSchedule = beaconGenesisConfig,
+                clock = clock,
+                maruConfig = config,
+                metadataProvider = metadataProvider,
+                newBlockHandler = dummyConsensusNewBlockHandler,
+              ),
+            elDelegatedConsensusFactory =
+              ElDelegatedConsensusFactory(
+                ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
+                newBlockHandler = delegatedConsensusNewBlockHandler,
+              ),
+          ),
+        metadataProvider = metadataProvider,
+        nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
+      ).also {
+        delegatedConsensusNewBlockHandler.addHandler("protocol starter", ProtocolStarterBlockHandler(it))
+        dummyConsensusNewBlockHandler.addHandler("protocol starter", ProtocolStarterBlockHandler(it))
+      }
     }
 
-  private fun buildJsonRpcClient(endpoint: String): Web3JClient =
-    Web3jClientBuilder()
-      .endpoint(endpoint)
-      .timeout(Duration.ofMinutes(1))
-      .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
-      .executionClientEventsPublisher { }
-      .build()
+  private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler> =
+    followers.followers
+      .mapValues {
+        Helpers.createBlockImporter(it.value, metadataProvider)
+      }
 
   fun start() {
     protocolStarter.start()

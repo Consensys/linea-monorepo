@@ -15,6 +15,7 @@
  */
 package maru.consensus.qbft
 
+import fromHexToByteArray
 import java.time.Clock
 import java.time.Duration
 import kotlin.random.Random
@@ -32,6 +33,7 @@ import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.executionlayer.client.PragueWeb3jJsonRpcExecutionLayerClient
 import maru.executionlayer.client.Web3jMetadataProvider
+import maru.executionlayer.manager.BlockMetadata
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ExecutionPayloadValidator.ValidationResult
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
@@ -53,6 +55,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
+import org.web3j.protocol.core.DefaultBlockParameter
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
@@ -69,6 +72,13 @@ class EagerQbftBlockCreatorTest {
     BesuFactory.buildTestBesu().also {
       cluster.start(it)
     }
+  private val ethApiClient =
+    Web3jClientBuilder()
+      .endpoint(besuInstance.engineRpcUrl().get())
+      .timeout(Duration.ofMinutes(1))
+      .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
+      .executionClientEventsPublisher { }
+      .build()
   private val proposerSelector = Mockito.mock(ProposerSelector::class.java)
   private val validatorProvider = Mockito.mock(ValidatorProvider::class.java)
   private val beaconChain = Mockito.mock(BeaconChain::class.java)
@@ -102,7 +112,13 @@ class EagerQbftBlockCreatorTest {
         beaconChain = beaconChain,
         round = 1,
       )
-    val genesisBlockHash = executionLayerManager.latestBlockMetadata().blockHash
+    val genesisBlock =
+      ethApiClient
+        .eth1Web3j
+        .ethGetBlockByNumber(DefaultBlockParameter.valueOf("earliest"), false)
+        .send()
+        .block
+    val genesisBlockHash = genesisBlock.hash.fromHexToByteArray()
     val eagerQbftBlockCreator =
       EagerQbftBlockCreator(
         manager = executionLayerManager,
@@ -118,6 +134,7 @@ class EagerQbftBlockCreatorTest {
           EagerQbftBlockCreator.Config(
             blockBuildingDuration = 900.milliseconds,
           ),
+        metadataProvider = { BlockMetadata(0UL, genesisBlockHash, genesisBlock.timestamp.toLong()) },
       )
     // Create a non-empty proposal
     val rejectedBlockTimestamp = clock.millis() / 1000
@@ -156,7 +173,7 @@ class EagerQbftBlockCreatorTest {
     val stateRoot =
       HashUtil.stateRoot(
         BeaconState(
-          createdBeaconBlock.beaconBlockHeader.copy(stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT),
+          createdBeaconBlock.beaconBlockHeader.copy(stateRoot = BeaconBlockHeader.EMPTY_HASH),
           validatorSet,
         ),
       )
@@ -184,13 +201,6 @@ class EagerQbftBlockCreatorTest {
 
   private fun createExecutionLayerManager(): ExecutionLayerManager {
     val engineApiClient =
-      Web3jClientBuilder()
-        .endpoint(besuInstance.engineRpcUrl().get())
-        .timeout(Duration.ofMinutes(1))
-        .timeProvider(SystemTimeProvider.SYSTEM_TIME_PROVIDER)
-        .executionClientEventsPublisher { }
-        .build()
-    val ethApiClient =
       Web3jClientBuilder()
         .endpoint(besuInstance.engineRpcUrl().get())
         .timeout(Duration.ofMinutes(1))

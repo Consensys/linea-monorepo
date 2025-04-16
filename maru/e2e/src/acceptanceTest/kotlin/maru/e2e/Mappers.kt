@@ -15,10 +15,17 @@
  */
 package maru.e2e
 
+import fromHexToByteArray
 import java.math.BigInteger
+import maru.core.BeaconBlock
+import maru.core.BeaconBlockBody
+import maru.core.BeaconBlockHeader
+import maru.core.ExecutionPayload
+import maru.core.HashUtil
+import maru.core.Validator
+import maru.serialization.rlp.KeccakHasher
+import maru.serialization.rlp.RLPSerializers
 import org.apache.tuweni.bytes.Bytes
-import org.apache.tuweni.bytes.Bytes32
-import org.apache.tuweni.units.bigints.UInt256
 import org.bouncycastle.math.ec.custom.sec.SecP256K1Curve
 import org.hyperledger.besu.crypto.SECPSignature
 import org.hyperledger.besu.datatypes.AccessListEntry
@@ -29,17 +36,13 @@ import org.hyperledger.besu.ethereum.core.encoding.EncodingContext
 import org.hyperledger.besu.ethereum.core.encoding.TransactionEncoder
 import org.web3j.protocol.core.methods.response.EthBlock
 import org.web3j.protocol.core.methods.response.EthBlock.TransactionObject
-import tech.pegasys.teku.ethereum.executionclient.schema.ExecutionPayloadV3
-import tech.pegasys.teku.ethereum.executionclient.schema.WithdrawalV1
-import tech.pegasys.teku.infrastructure.bytes.Bytes20
-import tech.pegasys.teku.infrastructure.unsigned.UInt64
 
 // TODO: This is a copypaste from
 // https://github.com/Consensys/linea-monorepo/blob/main/jvm-libs/linea/web3j-extensions/src/main/kotlin/net/consensys/linea/web3j/DomainObjectMappers.kt clean up later
 object Mappers {
-  private val ExtraDataStringHexLength = 2 + 32 * 2 // Prefix + 2 hexchars per 1 byte
+  private val hasher = HashUtil.headerHash(RLPSerializers.BeaconBlockHeaderSerializer, KeccakHasher)
 
-  fun recIdFromV(v: BigInteger): Pair<Byte, BigInteger?> {
+  private fun recIdFromV(v: BigInteger): Pair<Byte, BigInteger?> {
     val recId: Byte
     var chainId: BigInteger? = null
     if (
@@ -60,7 +63,7 @@ object Mappers {
   }
 
   // TODO: Test
-  private fun TransactionObject.toBytes(): Bytes {
+  private fun TransactionObject.toByteArray(): ByteArray {
     val isFrontier = this.type == "0x0"
     val (recId, chainId) =
       if (isFrontier) {
@@ -110,51 +113,46 @@ object Mappers {
           }
         }.build()
 
-    return TransactionEncoder.encodeOpaqueBytes(transaction, EncodingContext.BLOCK_BODY)
+    return TransactionEncoder.encodeOpaqueBytes(transaction, EncodingContext.BLOCK_BODY).toArray()
   }
 
-  fun executionPayloadV3FromBlock(block: EthBlock.Block): ExecutionPayloadV3 {
-    val parentHash = Bytes32.fromHexString(block.parentHash)
-    val feeRecipient = Bytes20.fromHexString(block.miner)
-    val stateRoot = Bytes32.fromHexString(block.stateRoot)
-    val receiptsRoot = Bytes32.fromHexString(block.receiptsRoot)
-    val logsBloom = Bytes.fromHexString(block.logsBloom)
-    val prevRandao = Bytes32.fromHexString(block.mixHash)
-    val blockNumber = UInt64.valueOf(block.number)
-    val gasLimit = UInt64.valueOf(block.gasLimit)
-    val gasUsed = UInt64.valueOf(block.gasUsed)
-    val timestamp = UInt64.valueOf(block.timestamp)
-    val extraData = Bytes.fromHexString(block.extraData)
-    val baseFeePerGas = UInt256.valueOf(block.baseFeePerGas)
-    val blockHash = Bytes32.fromHexString(block.hash)
+  fun EthBlock.Block.toDomain(): BeaconBlock {
     val transactions =
-      block.transactions.map {
+      this.transactions.map {
         val transaction = it.get() as TransactionObject
-        transaction.toBytes()
+        transaction.toByteArray()
       }
-    val withdrawals = emptyList<WithdrawalV1>()
-    val blobGasUsed = UInt64.valueOf(block.blobGasUsed)
-    val excessBlobGas = UInt64.valueOf(block.excessBlobGas)
 
-    // Create an instance of ExecutionPayloadV3
-    return ExecutionPayloadV3(
-      parentHash,
-      feeRecipient,
-      stateRoot,
-      receiptsRoot,
-      logsBloom,
-      prevRandao,
-      blockNumber,
-      gasLimit,
-      gasUsed,
-      timestamp,
-      extraData,
-      baseFeePerGas,
-      blockHash,
-      transactions,
-      withdrawals,
-      blobGasUsed,
-      excessBlobGas,
-    )
+    val executionPayload =
+      ExecutionPayload(
+        parentHash = this.parentHash.fromHexToByteArray(),
+        feeRecipient = this.miner.fromHexToByteArray(),
+        stateRoot = this.stateRoot.fromHexToByteArray(),
+        receiptsRoot = this.receiptsRoot.fromHexToByteArray(),
+        logsBloom = this.logsBloom.fromHexToByteArray(),
+        prevRandao = this.mixHash.fromHexToByteArray(),
+        blockNumber = this.number.toLong().toULong(),
+        gasLimit = this.gasLimit.toLong().toULong(),
+        gasUsed = this.gasUsed.toLong().toULong(),
+        timestamp = this.timestamp.toLong().toULong(),
+        extraData = this.extraData.fromHexToByteArray(),
+        baseFeePerGas = this.baseFeePerGas,
+        blockHash = this.hash.fromHexToByteArray(),
+        transactions = transactions, // Transactions are omitted
+      )
+    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptyList(), executionPayload = executionPayload)
+
+    val beaconBlockHeader =
+      BeaconBlockHeader(
+        number = 0u,
+        round = 0u,
+        timestamp = this.timestamp.toLong().toULong(),
+        proposer = Validator(this.miner.fromHexToByteArray()),
+        parentRoot = ByteArray(32),
+        stateRoot = ByteArray(32),
+        bodyRoot = ByteArray(32),
+        headerHashFunction = hasher,
+      )
+    return BeaconBlock(beaconBlockHeader, beaconBlockBody)
   }
 }
