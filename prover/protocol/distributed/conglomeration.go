@@ -6,30 +6,35 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/profiling"
+	"github.com/sirupsen/logrus"
 )
 
 // ConglomeratorCompilation hold the compilation context of the conglomeration
 // proof. It stores pointers to the type of proof it can conglomerate and
 // pointers of the resulting compiled IOP object.
 type ConglomeratorCompilation struct {
-
 	// MaxNbProofs is the maximum number of proofs that can be conglomerated
 	// by the conglomeration proof at once.
 	MaxNbProofs int
-
 	// ModuleProofs lists the wizard whose proof are supported by the current
 	// instance of the conglomerator.
 	ModuleProofs []*wizard.CompiledIOP
-
 	// Wiop is the compiled IOP of the conglomeration wizard.
 	Wiop *wizard.CompiledIOP
-
 	// Recursion is the recursion context used to compile the conglomeration
 	// proof.
 	Recursion *recursion.Recursion
@@ -46,12 +51,47 @@ type ConglomerateHolisticCheck struct {
 // self-recursion.
 func Conglomerate(maxNbProofs int, moduleProofs []*wizard.CompiledIOP) *ConglomeratorCompilation {
 
-	return &ConglomeratorCompilation{
+	cong := &ConglomeratorCompilation{
 		MaxNbProofs:  maxNbProofs,
 		ModuleProofs: moduleProofs,
-		Wiop:         nil,
 	}
 
+	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
+
+	cong.Wiop = wizard.Compile(
+		func(build *wizard.Builder) {
+			cong.Compile(build.CompiledIOP)
+		},
+		mimc.CompileMiMC,
+		plonkinwizard.Compile,
+		compiler.Arcane(256, 1<<17, false),
+		vortex.Compile(
+			2,
+			vortex.ForceNumOpenedColumns(256),
+			vortex.WithSISParams(&sisInstance),
+			vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
+		),
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		mimc.CompileMiMC,
+		compiler.Arcane(256, 1<<15, false),
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+		),
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		mimc.CompileMiMC,
+		compiler.Arcane(256, 1<<13, false),
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+		),
+	)
+
+	return cong
 }
 
 // Compile compiles the conglomeration proof. The function first checks if the public
@@ -61,7 +101,6 @@ func (c *ConglomeratorCompilation) Compile(comp *wizard.CompiledIOP) {
 	w0 := c.ModuleProofs[0]
 
 	for i := 1; i < len(c.ModuleProofs); i++ {
-
 		diff1, diff2 := cmpWizardIOP(w0, c.ModuleProofs[i])
 		if len(diff1) > 0 || len(diff2) > 0 {
 			utils.Panic("incompatible IOPs +++=%v\n---=%v", diff1, diff2)
@@ -186,6 +225,27 @@ func (c *ConglomerateHolisticCheck) Run(run_ ifaces.Runtime) error {
 	}
 
 	return mainErr
+}
+
+// Prove is the main entry point for the prover. It takes a compiled IOP and
+// returns a proof.
+func (c *ConglomeratorCompilation) Prove(moduleGlProofs, moduleLppProofs []recursion.Witness) wizard.Proof {
+
+	var proof wizard.Proof
+	recursionTime := profiling.TimeIt(func() {
+		proof = wizard.Prove(
+			c.Wiop,
+			c.Recursion.GetMainProverStep(slices.Concat(moduleGlProofs, moduleLppProofs)),
+		)
+	})
+
+	logrus.
+		WithField("time", recursionTime).
+		WithField("nb_lpp_proofs", len(moduleLppProofs)).
+		WithField("nb_gl_proofs", len(moduleGlProofs)).
+		Info("recursion done")
+
+	return proof
 }
 
 // cmpWizardIOP compares two compiled IOPs. The function is here to help ensuring

@@ -206,7 +206,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 }
 
 // ProveSegment runs the prover for a segment of the protocol
-func (r *RecursedSegmentCompilation) ProveSegment(wit any) wizard.Proof {
+func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime {
 
 	var (
 		comp        *wizard.CompiledIOP
@@ -246,12 +246,14 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) wizard.Proof {
 	}
 
 	var (
-		recursionWit  = recursion.ExtractWitness(proverRun)
-		proof         wizard.Proof
-		recursionTime = profiling.TimeIt(func() {
-			proof = wizard.Prove(
+		recStoppingRound = recursion.VortexQueryRound(r.RecursionComp) + 1
+		recursionWit     = recursion.ExtractWitness(proverRun)
+		run              *wizard.ProverRuntime
+		recursionTime    = profiling.TimeIt(func() {
+			run = wizard.RunProverUntilRound(
 				r.RecursionComp,
 				r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}),
+				recStoppingRound,
 			)
 		})
 	)
@@ -264,5 +266,5 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) wizard.Proof {
 		WithField("is-lpp", reflect.TypeOf(wit).String()).
 		Infof("Ran prover segment")
 
-	return proof
+	return run
 }
