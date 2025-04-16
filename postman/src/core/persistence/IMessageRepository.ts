@@ -22,8 +22,6 @@ export interface IMessageRepository<ContractTransactionResponse> {
     messageStatuses: MessageStatus[],
     maxRetry: number,
     retryDelay: number,
-    currentGasPrice: bigint,
-    gasEstimationMargin: number,
   ): Promise<Message | null>;
   getLatestMessageSent(direction: Direction, contractAddress: string): Promise<Message | null>;
   getNFirstMessagesByStatus(

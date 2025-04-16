@@ -153,8 +153,6 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
     messageStatuses: MessageStatus[],
     maxRetry: number,
     retryDelay: number,
-    currentGasPrice: bigint,
-    gasEstimationMargin: number,
   ): Promise<Message | null> {
     try {
       const message = await this.createQueryBuilder("message")
@@ -171,15 +169,8 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
             });
           }),
         )
-        .andWhere(
-          new Brackets((qb) => {
-            qb.where("message.claimGasEstimationThreshold > :threshold", {
-              threshold: parseFloat(currentGasPrice.toString()) * gasEstimationMargin,
-            }).orWhere("message.claimGasEstimationThreshold IS NULL");
-          }),
-        )
         .orderBy("CAST(message.status as CHAR)", "DESC")
-        .addOrderBy("message.claimGasEstimationThreshold", "DESC")
+        .addOrderBy("CAST(message.fee AS numeric)", "DESC")
         .addOrderBy("message.sentBlockNumber", "ASC")
         .getOne();
 

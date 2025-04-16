@@ -111,7 +111,7 @@ export class PostmanServiceClient {
     this.db = DB.create(config.databaseOptions);
 
     const messageRepository = new TypeOrmMessageRepository(this.db);
-    const lineaMessageDBService = new LineaMessageDBService(l2Provider, messageRepository);
+    const lineaMessageDBService = new LineaMessageDBService(messageRepository);
     const ethereumMessageDBService = new EthereumMessageDBService(l1GasProvider, messageRepository);
 
     // L1 -> L2 flow
