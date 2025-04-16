@@ -101,7 +101,7 @@ class DelayedQbftBlockCreator(
         timestamp = headerTimeStampSeconds.toULong(),
         proposer = Validator(proposer.toArrayUnsafe()),
         parentRoot = parentBeaconBlockHeader.hash(),
-        stateRoot = BeaconBlockHeader.EMPTY_STATE_ROOT, // temporary state root to avoid circular dependency
+        stateRoot = BeaconBlockHeader.EMPTY_HASH, // temporary state root to avoid circular dependency
         bodyRoot = HashUtil.bodyRoot(beaconBlockBody),
         headerHashFunction = HashUtil::headerHash,
       )

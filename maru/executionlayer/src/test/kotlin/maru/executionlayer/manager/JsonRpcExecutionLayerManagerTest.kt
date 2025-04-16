@@ -36,6 +36,7 @@ import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
+import org.mockito.kotlin.times
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
 import tech.pegasys.teku.ethereum.executionclient.schema.PayloadAttributesV1
@@ -216,74 +217,14 @@ class JsonRpcExecutionLayerManagerTest {
   }
 
   @Test
-  fun `latestBlockHeight is initialized`() {
-    val result = executionLayerManager.latestBlockMetadata()
-    assertThat(result).isEqualTo(BlockMetadata(initialBlockHeight, latestBlockHash, 0L))
-  }
-
-  @Test
-  fun `latestBlockHeight is updated by setHeadAndStartBlockBuilding`() {
-    val newHeadHash = Bytes32.random()
-    val newSafeHash = Bytes32.random()
-    val newFinalizedHash = Bytes32.random()
-    val nextTimestamp = 0L
-
-    val payloadId = Bytes8(Bytes.random(8))
-    val payloadStatus = mockForkChoiceUpdateWithValidStatus(payloadId)
-
-    executionLayerManager
-      .setHeadAndStartBlockBuilding(
-        headHash = newHeadHash.toArray(),
-        safeHash = newSafeHash.toArray(),
-        finalizedHash = newFinalizedHash.toArray(),
-        nextBlockTimestamp = nextTimestamp,
-        feeRecipient = feeRecipient,
-      ).get()
-
-    val executionPayload = DataGenerators.randomExecutionPayload()
-    mockGetPayloadWithRandomData(payloadId, executionPayload)
-    mockNewPayloadWithStatus(payloadStatus)
-
-    executionLayerManager.finishBlockBuilding().get()
-
-    executionLayerManager
-      .setHeadAndStartBlockBuilding(
-        headHash = Bytes32.random().toArray(),
-        safeHash = Bytes32.random().toArray(),
-        finalizedHash = Bytes32.random().toArray(),
-        nextBlockTimestamp = nextTimestamp,
-        feeRecipient = feeRecipient,
-      ).get()
-
-    val expectedBlockMetadata =
-      BlockMetadata(
-        blockNumber = executionPayload.blockNumber,
-        blockHash = executionPayload.blockHash,
-        unixTimestampSeconds = executionPayload.timestamp.toLong(),
-      )
-    assertThat(executionLayerManager.latestBlockMetadata()).isEqualTo(expectedBlockMetadata)
-  }
-
-  @Test
-  fun `importPayload + setHead updates next block metadata on success`() {
+  fun `importPayload forwards the call`() {
     val executionPayload = DataGenerators.randomExecutionPayload()
     val payloadStatus = PayloadStatusV1(ExecutionPayloadStatus.VALID, Bytes32.random(), null)
     mockNewPayloadWithStatus(payloadStatus)
     mockForkChoiceUpdateWithValidStatus(null)
     executionLayerManager.importPayload(executionPayload).get()
 
-    executionLayerManager.setHead(
-      headHash = executionPayload.blockHash,
-      safeHash = executionPayload.blockHash,
-      finalizedHash = executionPayload.blockHash,
-    )
-    assertThat(executionLayerManager.latestBlockMetadata()).isEqualTo(
-      BlockMetadata(
-        executionPayload.blockNumber,
-        executionPayload.blockHash,
-        executionPayload.timestamp.toLong(),
-      ),
-    )
+    verify(executionLayerClient, times(1)).newPayload(eq(executionPayload))
   }
 
   @Test

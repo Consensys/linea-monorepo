@@ -18,14 +18,13 @@ package maru.consensus
 import java.time.Clock
 import kotlin.random.Random
 import maru.consensus.dummy.DummyConsensusState
-import maru.consensus.dummy.EngineApiBlockCreator
+import maru.consensus.dummy.DummyEngineApiBlockCreator
 import maru.consensus.state.FinalizationState
 import maru.core.ExecutionPayload
 import maru.core.ext.DataGenerators
 import maru.core.ext.DataGenerators.randomValidForkChoiceUpdatedResult
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
-import org.hyperledger.besu.ethereum.mainnet.MainnetBlockHeaderFunctions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -79,10 +78,9 @@ class EngineApiBlockCreatorTest {
     val feeRecipient = Random.nextBytes(20)
     mockSetHeadAndStartBlockBuilding(randomValidForkChoiceUpdatedResult())
     val nextTimestamp = dummyConsensusState.clock.millis()
-    EngineApiBlockCreator(
+    DummyEngineApiBlockCreator(
       manager = executionLayerManager,
       state = dummyConsensusState,
-      blockHeaderFunctions = MainnetBlockHeaderFunctions(),
       nextBlockTimestamp = nextTimestamp,
       feeRecipientProvider = { feeRecipient },
     )
@@ -107,16 +105,15 @@ class EngineApiBlockCreatorTest {
     val nextTimestamp = dummyConsensusState.clock.millis()
 
     val blockCreator =
-      EngineApiBlockCreator(
+      DummyEngineApiBlockCreator(
         manager = executionLayerManager,
         state = dummyConsensusState,
-        blockHeaderFunctions = MainnetBlockHeaderFunctions(),
         nextBlockTimestamp = nextTimestamp,
         feeRecipientProvider = { Random.nextBytes(20) },
       )
-    blockCreator.createEmptyWithdrawalsBlock(1L, null)
-    blockCreator.createEmptyWithdrawalsBlock(2L, null)
-    blockCreator.createEmptyWithdrawalsBlock(3L, null)
+    blockCreator.createBlock(1L)
+    blockCreator.createBlock(2L)
+    blockCreator.createBlock(3L)
 
     val inOrder = inOrder(executionLayerManager)
     repeat((1..3).count()) {
@@ -151,15 +148,14 @@ class EngineApiBlockCreatorTest {
     val feeRecipient = Random.nextBytes(20)
 
     val blockCreator =
-      EngineApiBlockCreator(
+      DummyEngineApiBlockCreator(
         manager = executionLayerManager,
         state = dummyConsensusState,
-        blockHeaderFunctions = MainnetBlockHeaderFunctions(),
         nextBlockTimestamp = nextBlockTimestamp,
         feeRecipientProvider = { feeRecipient },
       )
     val nextTimestamp1 = 123L
-    blockCreator.createEmptyWithdrawalsBlock(nextTimestamp1, null)
+    blockCreator.createBlock(nextTimestamp1)
     verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
       eq(expectedBlockBuildingResult.blockHash),
       eq(finalizationState.safeBlockHash),
@@ -171,7 +167,7 @@ class EngineApiBlockCreatorTest {
     dummyConsensusState.updateFinalizationState(newFinalizationState)
 
     val otherTimestamp2 = 124L
-    blockCreator.createEmptyWithdrawalsBlock(otherTimestamp2, null)
+    blockCreator.createBlock(otherTimestamp2)
 
     verify(executionLayerManager, atLeastOnce()).setHeadAndStartBlockBuilding(
       eq(expectedBlockBuildingResult.blockHash),

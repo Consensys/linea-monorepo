@@ -17,7 +17,7 @@ package maru.consensus.dummy
 
 import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
-import maru.executionlayer.manager.ExecutionLayerManager
+import maru.executionlayer.manager.BlockMetadata
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -26,13 +26,12 @@ import org.hyperledger.besu.consensus.common.bft.events.BlockTimerExpiry
 import org.hyperledger.besu.consensus.common.bft.events.NewChainHead
 import org.hyperledger.besu.consensus.common.bft.events.RoundExpiry
 import org.hyperledger.besu.consensus.common.bft.statemachine.BftEventHandler
-import org.hyperledger.besu.ethereum.blockcreation.BlockCreator
 
 class DummyConsensusEventHandler(
-  private val executionLayerManager: ExecutionLayerManager,
-  private val blockCreator: BlockCreator,
+  private val blockCreator: DummyEngineApiBlockCreator,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val onNewBlock: NewBlockHandler,
+  private val blockMetadataCache: LatestBlockMetadataCache,
 ) : BftEventHandler {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -56,21 +55,28 @@ class DummyConsensusEventHandler(
     if (isMsgForCurrentHeight(roundIdentifier)) {
       log.debug("Creating new block by timer {}", blockTimerExpiry.roundIdentifier)
 
-      val latestBlockMetadata = executionLayerManager.latestBlockMetadata()
-      val nextBlockTimestamp = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(latestBlockMetadata)
+      val latestBlockMetadata = blockMetadataCache.getLatestBlockMetadata()
+      val nextBlockTimestamp =
+        nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(latestBlockMetadata.unixTimestampSeconds)
       val blockCreationResult =
-        blockCreator.createEmptyWithdrawalsBlock(
+        blockCreator.createBlock(
           nextBlockTimestamp,
-          // Execution client is aware of the parent header
-          null,
         )
-      log.debug("Block creation timings {}", blockCreationResult.blockCreationTimings)
-      blockCreationResult.block?.also(onNewBlock::handleNewBlock)
+      blockCreationResult?.also(onNewBlock::handleNewBlock)?.also {
+        blockMetadataCache.updateLatestBlockMetadata(
+          BlockMetadata(
+            blockCreationResult.beaconBlockBody.executionPayload.blockNumber,
+            blockCreationResult.beaconBlockBody.executionPayload.blockHash,
+            blockCreationResult.beaconBlockBody.executionPayload.timestamp
+              .toLong(),
+          ),
+        )
+      }
     } else {
       log.trace(
         "Block timer event discarded as it is not for current block height " +
           "latestBlockMetadata={} eventHeight={}",
-        executionLayerManager.latestBlockMetadata(),
+        blockMetadataCache.getLatestBlockMetadata(),
         roundIdentifier.sequenceNumber,
       )
     }
@@ -81,5 +87,5 @@ class DummyConsensusEventHandler(
   }
 
   private fun isMsgForCurrentHeight(roundIdentifier: ConsensusRoundIdentifier): Boolean =
-    roundIdentifier.sequenceNumber.toULong() == executionLayerManager.latestBlockMetadata().blockNumber + 1.toULong()
+    roundIdentifier.sequenceNumber.toULong() == blockMetadataCache.getLatestBlockMetadata().blockNumber + 1.toULong()
 }

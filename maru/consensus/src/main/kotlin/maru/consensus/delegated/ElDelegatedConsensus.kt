@@ -82,7 +82,7 @@ class ElDelegatedConsensus(
       .of(
         ethereumJsonRpcClient.ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), false).sendAsync(),
       ).thenApply {
-        onNewBlock.handleNewBlock(Mapper.mapWeb3jBlockToBesuBlock(it.block))
+        onNewBlock.handleNewBlock(Mapper.mapWeb3jBlockToBeaconBlock(it.block))
       }.handleException {
         log.error(it.message, it)
       }.thenApply {

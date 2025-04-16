@@ -116,7 +116,6 @@ services:
     ports:
       - "9545:8545"
       - "9550:8550"
-      - "9551:8551"
     networks:
       - linea
 

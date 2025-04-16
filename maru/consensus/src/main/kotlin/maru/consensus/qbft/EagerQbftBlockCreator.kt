@@ -20,6 +20,7 @@ import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockHeader
 import maru.core.Validator
+import maru.executionlayer.manager.BlockMetadata
 import maru.executionlayer.manager.ExecutionLayerManager
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator
@@ -37,6 +38,7 @@ class EagerQbftBlockCreator(
   private val finalizationStateProvider: (BeaconBlockHeader) -> FinalizationState,
   private val blockBuilderIdentity: Validator,
   private val config: Config,
+  private val metadataProvider: () -> BlockMetadata,
 ) : QbftBlockCreator {
   data class Config(
     val blockBuildingDuration: Duration,
@@ -50,7 +52,7 @@ class EagerQbftBlockCreator(
     val finalizedState = finalizationStateProvider(beaconBlockHeader)
     manager
       .setHeadAndStartBlockBuilding(
-        headHash = manager.latestBlockMetadata().blockHash,
+        headHash = metadataProvider().blockHash,
         safeHash = finalizedState.safeBlockHash,
         finalizedHash = finalizedState.finalizedBlockHash,
         nextBlockTimestamp = headerTimeStampSeconds,

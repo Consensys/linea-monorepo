@@ -9,6 +9,11 @@ dependencies {
   implementation project(":app")
   implementation project(":consensus")
   implementation project(":config")
+  // For the syncing logic
+  implementation project(":core")
+  implementation(project(":executionlayer"))
+  implementation(project(":serialization"))
+  implementation(project(":jvm-libs:extensions"))
 
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:time"

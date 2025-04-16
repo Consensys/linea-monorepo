@@ -23,38 +23,87 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
 class HopliteFriendlinessTest {
+  private val emptyFollowersConfig =
+    """
+    [sot-eth-endpoint]
+    endpoint = "http://localhost:8545"
+
+    [dummy-consensus-options]
+    communication-time-margin=100m
+
+    [p2p-config]
+    port = 3322
+
+    [validator]
+    private-key = "0xdead"
+    jwt-secret-path = "/secret/path"
+    min-time-between-get-payload-attempts=800m
+    el-client-engine-api-endpoint = "http://localhost:8555"
+    """.trimIndent()
+  private val rawConfig =
+    """
+    $emptyFollowersConfig
+
+    [follower-engine-apis]
+    follower1 = { endpoint = "http://localhost:1234", jwt-secret-path = "/secret/path" }
+    follower2 = { endpoint = "http://localhost:4321" }
+    """.trimIndent()
+
   @Test
   fun appConfigFileIsParseable() {
     val config =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(
-        """
-        [execution-client]
-        ethereum-json-rpc-endpoint = "http://localhost:8545"
-        engine-api-json-rpc-endpoint = "http://localhost:8555"
-        min-time-between-get-payload-attempts=800m
-
-        [dummy-consensus-options]
-        communication-time-margin=100m
-
-        [p2p-config]
-        port = 3322
-
-        [validator]
-        validator-key = "0xdead"
-        """.trimIndent(),
-      )
+      Utils.parseTomlConfig<MaruConfigDtoToml>(rawConfig)
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
-          executionClient =
-            ExecutionClientConfig(
-              ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
-              engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
-              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+          sotEthEndpoint =
+            ApiEndpointDtoToml(
+              endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           dummyConsensusOptions = DummyConsensusOptionsDtoToml(100.milliseconds),
           p2pConfig = P2P(port = 3322u),
-          validator = ValidatorDtoToml(validatorKey = Secret("0xdead")),
+          validator =
+            ValidatorDtoToml(
+              elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
+              privateKey = Secret("0xdead"),
+              jwtSecretPath = "/secret/path",
+              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+            ),
+          followerEngineApis =
+            mapOf(
+              "follower1" to
+                ApiEndpointDtoToml(
+                  URI.create("http://localhost:1234").toURL(),
+                  jwtSecretPath =
+                    "/secret/path",
+                ),
+              "follower2" to ApiEndpointDtoToml(URI.create("http://localhost:4321").toURL()),
+            ),
+        ),
+      )
+  }
+
+  @Test
+  fun supportsEmptyFollowers() {
+    val config =
+      Utils.parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfig)
+    assertThat(config)
+      .isEqualTo(
+        MaruConfigDtoToml(
+          sotEthEndpoint =
+            ApiEndpointDtoToml(
+              endpoint = URI.create("http://localhost:8545").toURL(),
+            ),
+          dummyConsensusOptions = DummyConsensusOptionsDtoToml(100.milliseconds),
+          p2pConfig = P2P(port = 3322u),
+          validator =
+            ValidatorDtoToml(
+              elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
+              privateKey = Secret("0xdead"),
+              jwtSecretPath = "/secret/path",
+              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+            ),
+          followerEngineApis = null,
         ),
       )
   }
@@ -62,35 +111,66 @@ class HopliteFriendlinessTest {
   @Test
   fun appConfigFileIsConvertableToDomain() {
     val config =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(
-        """
-        [execution-client]
-        ethereum-json-rpc-endpoint = "http://localhost:8545"
-        engine-api-json-rpc-endpoint = "http://localhost:8555"
-        min-time-between-get-payload-attempts=800m
-
-        [dummy-consensus-options]
-        communication-time-margin=100m
-
-        [p2p-config]
-        port = 3322
-
-        [validator]
-        validator-key = "0xdead"
-        """.trimIndent(),
-      )
+      Utils.parseTomlConfig<MaruConfigDtoToml>(rawConfig)
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
-          executionClientConfig =
-            ExecutionClientConfig(
-              engineApiJsonRpcEndpoint = URI.create("http://localhost:8555").toURL(),
-              ethereumJsonRpcEndpoint = URI.create("http://localhost:8545").toURL(),
-              minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+          sotNode =
+            ApiEndpointConfig(
+              endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
           p2pConfig = P2P(port = 3322u),
-          validator = Validator(validatorKey = "0xdead".fromHexToByteArray()),
+          validator =
+            Validator(
+              client =
+                ValidatorClientConfig(
+                  engineApiClientConfig = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
+                  minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+                ),
+              key = "0xdead".fromHexToByteArray(),
+            ),
+          followers =
+            FollowersConfig(
+              mapOf(
+                "follower1" to ApiEndpointConfig(URI.create("http://localhost:1234").toURL(), "/secret/path"),
+                "follower2" to ApiEndpointConfig(URI.create("http://localhost:4321").toURL()),
+              ),
+            ),
+        ),
+      )
+  }
+
+  @Test
+  fun emptyFollowersAreConvertableToDomain() {
+    val config =
+      Utils.parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfig)
+    assertThat(config.domainFriendly())
+      .isEqualTo(
+        MaruConfig(
+          sotNode =
+            ApiEndpointConfig(
+              endpoint = URI.create("http://localhost:8545").toURL(),
+            ),
+          dummyConsensusOptions = DummyConsensusOptions(100.milliseconds),
+          p2pConfig = P2P(port = 3322u),
+          validator =
+            Validator(
+              client =
+                ValidatorClientConfig(
+                  engineApiClientConfig =
+                    ApiEndpointConfig(
+                      URI.create("http://localhost:8555").toURL(),
+                      "/secret/path",
+                    ),
+                  minTimeBetweenGetPayloadAttempts = 800.milliseconds,
+                ),
+              key = "0xdead".fromHexToByteArray(),
+            ),
+          followers =
+            FollowersConfig(
+              emptyMap(),
+            ),
         ),
       )
   }

@@ -16,12 +16,14 @@
 package maru.e2e
 
 import java.math.BigInteger
+import java.net.URI
 import java.util.Optional
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
+import maru.config.ApiEndpointConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
 import org.web3j.crypto.Credentials
@@ -30,15 +32,15 @@ import org.web3j.protocol.core.methods.response.EthSendTransaction
 import org.web3j.tx.RawTransactionManager
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
-import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JExecutionEngineClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
 import tech.pegasys.teku.infrastructure.time.SystemTimeProvider
 
 object TestEnvironment {
+  private val jwtConfigPath = "../docker/jwt"
   private val jwtConfig: Optional<JwtConfig> =
     JwtConfig.createIfNeeded(
       true,
-      Optional.of("../docker/jwt"),
+      Optional.of(jwtConfigPath),
       Optional.of(UUID.randomUUID().toString()),
       Path("/tmp"),
     )
@@ -68,19 +70,13 @@ object TestEnvironment {
   val followerClientsPostMerge = preMergeFollowerClients - "follower-geth-2" + ("follower-geth" to geth1L2Client)
   val allClients = preMergeFollowerClients + followerClientsPostMerge + ("sequencer" to sequencerL2Client)
 
-  private val besuFollowerExecutionEngineClient = createExecutionClient("http://localhost:9550")
+  private val besuFollowerExecutionEngineClient = createExecutionClientConfig("http://localhost:9550")
   private val nethermindFollowerExecutionEngineClient =
-    createExecutionClient(
-      "http://localhost:10550",
-      jwtConfig,
-    )
+    createExecutionClientConfig("http://localhost:10550", jwtConfigPath)
   private val erigonFollowerExecutionEngineClient =
-    createExecutionClient(
-      "http://localhost:11551",
-      jwtConfig,
-    )
-  private val geth1ExecutionEngineClient = createExecutionClient("http://localhost:8561", jwtConfig)
-  private val geth2ExecutionEngineClient = createExecutionClient("http://localhost:8571", jwtConfig)
+    createExecutionClientConfig("http://localhost:11551", jwtConfigPath)
+  private val geth1ExecutionEngineClient = createExecutionClientConfig("http://localhost:8561", jwtConfigPath)
+  private val geth2ExecutionEngineClient = createExecutionClientConfig("http://localhost:8571", jwtConfigPath)
   private val gethExecutionEngineClients =
     mapOf(
       "follower-geth-2" to geth2ExecutionEngineClient,
@@ -142,8 +138,8 @@ object TestEnvironment {
       .executionClientEventsPublisher {}
       .build()
 
-  private fun createExecutionClient(
+  private fun createExecutionClientConfig(
     eeEndpoint: String,
-    jwtConfig: Optional<JwtConfig> = Optional.empty(),
-  ): Web3JExecutionEngineClient = Web3JExecutionEngineClient(createWeb3jClient(eeEndpoint, jwtConfig))
+    jwtConfigPath: String? = null,
+  ): ApiEndpointConfig = ApiEndpointConfig(URI.create(eeEndpoint).toURL(), jwtConfigPath)
 }

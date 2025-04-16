@@ -60,7 +60,8 @@ class DummyConsensus(
   @Synchronized
   private fun handleTick() {
     val lastBlockMetadata = blockMetadataProvider()
-    val nextTargetBlockTimestampSeconds = nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(lastBlockMetadata)
+    val nextTargetBlockTimestampSeconds =
+      nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(lastBlockMetadata.unixTimestampSeconds)
     val nextBlockFork =
       forksSchedule.getForkByTimestamp(nextTargetBlockTimestampSeconds)
     val nextBlockNumber = lastBlockMetadata.blockNumber + 1u

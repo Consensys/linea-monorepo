@@ -15,12 +15,14 @@
  */
 package maru.consensus
 
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import maru.core.BeaconBlock
 import org.apache.logging.log4j.LogManager
-import org.hyperledger.besu.ethereum.core.Block
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface NewBlockHandler {
-  fun handleNewBlock(block: Block)
+  fun handleNewBlock(block: BeaconBlock)
 }
 
 class NewBlockHandlerMultiplexer(
@@ -36,18 +38,25 @@ class NewBlockHandlerMultiplexer(
     handlersMap[name] = handler
   }
 
-  override fun handleNewBlock(block: Block) {
-    handlersMap.forEach {
-      val (handlerName, handler) = it
-      try {
-        handler.handleNewBlock(block)
-      } catch (ex: Exception) {
-        log.error(
-          "New block handler $handlerName failed processing" +
-            " block hash=${block.hash}, number=${block.header.number}!",
-          ex,
-        )
+  override fun handleNewBlock(block: BeaconBlock) {
+    val handlerFutures: List<CompletableFuture<Void>> =
+      handlersMap.map {
+        val (handlerName, handler) = it
+        SafeFuture.runAsync {
+          try {
+            log.debug("Handling $handlerName")
+            handler.handleNewBlock(block)
+            log.debug("$handlerName handling completed successfully")
+          } catch (ex: Exception) {
+            log.error(
+              "New block handler $handlerName failed processing" +
+                " block hash=${block.beaconBlockHeader.hash}, number=${block.beaconBlockHeader.number} " +
+                "executionPayloadBlockNumber=${block.beaconBlockBody.executionPayload.blockNumber}!",
+              ex,
+            )
+          }
+        }
       }
-    }
+    SafeFuture.allOf(*handlerFutures.toTypedArray()).get()
   }
 }
