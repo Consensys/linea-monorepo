@@ -57,7 +57,7 @@ import {
   expectEventDirectFromReceiptData,
 } from "../../common/helpers";
 
-describe.only("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
+describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
   let lineaRollup: TestLineaRollup;
   let revertingVerifier: string;
 
