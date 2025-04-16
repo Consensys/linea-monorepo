@@ -1,50 +1,49 @@
-package smartvectorsext
+package smartvectors
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// Add returns a smart-vector obtained by position-wise adding [SmartVector].
+// AddExt returns a smart-vector obtained by position-wise adding [SmartVector].
 //   - all inputs `vecs` must have the same size, or the function panics
 //   - the output smart-vector has the same size as the input vectors
 //   - if no input vectors are provided, the function panics
-func Add(vecs ...smartvectors.SmartVector) smartvectors.SmartVector {
+func AddExt(vecs ...SmartVector) SmartVector {
 
 	coeffs := make([]int, len(vecs))
 	for i := range coeffs {
 		coeffs[i] = 1
 	}
 
-	return LinComb(coeffs, vecs)
+	return LinCombExt(coeffs, vecs)
 }
 
-// Mul returns a smart-vector obtained by position-wise multiplying [SmartVector].
+// MulExt returns a smart-vector obtained by position-wise multiplying [SmartVector].
 //   - all inputs `vecs` must have the same size, or the function panics
 //   - the output smart-vector has the same size as the input vectors
 //   - if no input vectors are provided, the function panics
-func Mul(vecs ...smartvectors.SmartVector) smartvectors.SmartVector {
+func MulExt(vecs ...SmartVector) SmartVector {
 	coeffs := make([]int, len(vecs))
 	for i := range coeffs {
 		coeffs[i] = 1
 	}
 
-	return Product(coeffs, vecs)
+	return ProductExt(coeffs, vecs)
 }
 
-// ScalarMul returns a smart-vector obtained by  multiplying a scalar with a [SmartVector].
+// ScalarMulExt returns a smart-vector obtained by  multiplying a scalar with a [SmartVector].
 //   - the output smart-vector has the same size as the input vector
-func ScalarMul(vec smartvectors.SmartVector, x fext.Element) smartvectors.SmartVector {
+func ScalarMulExt(vec SmartVector, x fext.Element) SmartVector {
 	xVec := NewConstantExt(x, vec.Len())
-	return Mul(vec, xVec)
+	return MulExt(vec, xVec)
 }
 
-// InnerProduct returns a scalar obtained as the inner-product of `a` and `b`.
+// InnerProductExt returns a scalar obtained as the inner-product of `a` and `b`.
 //   - a and b must have the same length, otherwise the function panics
-func InnerProduct(a, b smartvectors.SmartVector) fext.Element {
+func InnerProductExt(a, b SmartVector) fext.Element {
 	if a.Len() != b.Len() {
 		panic("length mismatch")
 	}
@@ -61,12 +60,12 @@ func InnerProduct(a, b smartvectors.SmartVector) fext.Element {
 	return res
 }
 
-// PolyEval returns a [SmartVector] computed as:
+// PolyEvalExt returns a [SmartVector] computed as:
 //
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //
 // where `x` is a scalar and `vecs[i]` are [SmartVector]
-func PolyEval(vecs []smartvectors.SmartVector, x fext.Element, p ...mempool.MemPool) (result smartvectors.SmartVector) {
+func PolyEvalExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPool) (result SmartVector) {
 
 	if len(vecs) == 0 {
 		panic("no input vectors")
@@ -106,7 +105,7 @@ func PolyEval(vecs []smartvectors.SmartVector, x fext.Element, p ...mempool.MemP
 
 		v := vecs[i]
 		if asRotated, ok := v.(*RotatedExt); ok {
-			v = rotatedAsRegular(asRotated)
+			v = rotatedAsRegularExt(asRotated)
 		}
 
 		switch casted := v.(type) {
@@ -152,10 +151,10 @@ func PolyEval(vecs []smartvectors.SmartVector, x fext.Element, p ...mempool.MemP
 	panic("unreachable")
 }
 
-// BatchInvert performs the batch inverse operation over a [SmartVector] and
+// BatchInvertExt performs the batch inverse operation over a [SmartVector] and
 // returns a SmartVector of the same type. When an input element is zero, the
 // function returns 0 at the corresponding position.
-func BatchInvert(x smartvectors.SmartVector) smartvectors.SmartVector {
+func BatchInvertExt(x SmartVector) SmartVector {
 
 	switch v := x.(type) {
 	case *ConstantExt:
@@ -184,9 +183,9 @@ func BatchInvert(x smartvectors.SmartVector) smartvectors.SmartVector {
 	panic("unsupported type")
 }
 
-// IsZero returns a [SmartVector] z with the same type of structure than x such
+// IsZeroExt returns a [SmartVector] z with the same type of structure than x such
 // that x[i] = 0 => z[i] = 1 AND x[i] != 0 => z[i] = 0.
-func IsZero(x smartvectors.SmartVector) smartvectors.SmartVector {
+func IsZeroExt(x SmartVector) SmartVector {
 	switch v := x.(type) {
 
 	case *ConstantExt:
@@ -248,8 +247,8 @@ func IsZero(x smartvectors.SmartVector) smartvectors.SmartVector {
 	panic("unsupported type")
 }
 
-// Sum returns the field summation of all the elements contained in the vector
-func Sum(a smartvectors.SmartVector) (res fext.Element) {
+// SumExt returns the field summation of all the elements contained in the vector
+func SumExt(a SmartVector) (res fext.Element) {
 
 	switch v := a.(type) {
 	case *RegularExt:

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 	"reflect"
@@ -182,5 +181,5 @@ func (prod Product) GnarkEval(api frontend.API, inputs []frontend.Variable) fron
 }
 
 func (prod Product) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-	return smartvectorsext.Product(prod.Exponents, inputs, p...)
+	return sv.ProductExt(prod.Exponents, inputs, p...)
 }

@@ -3,7 +3,6 @@ package smartvectors_mixed
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
@@ -23,7 +22,7 @@ func LiftToExt(vec sv.SmartVector) sv.SmartVector {
 	}
 	switch v := vec.(type) {
 	case *sv.Constant:
-		res := smartvectorsext.NewConstantExt(
+		res := sv.NewConstantExt(
 			fext.NewFromBase(v.Val()),
 			v.Len(),
 		)
@@ -33,7 +32,7 @@ func LiftToExt(vec sv.SmartVector) sv.SmartVector {
 		for i := range v.Window() {
 			windowExt[i].SetFromBase(&v.Window()[i])
 		}
-		res := smartvectorsext.NewPaddedCircularWindowExt(
+		res := sv.NewPaddedCircularWindowExt(
 			windowExt,
 			fext.NewFromBase(v.PaddingVal()),
 			v.Offset(),
@@ -43,15 +42,15 @@ func LiftToExt(vec sv.SmartVector) sv.SmartVector {
 	case *sv.Rotated:
 		vecExt := make([]fext.Element, v.Len())
 		v.WriteInSliceExt(vecExt)
-		return smartvectorsext.NewRegularExt(vecExt)
+		return sv.NewRegularExt(vecExt)
 	case *sv.Pooled:
 		vecExt := make([]fext.Element, v.Len())
 		v.WriteInSliceExt(vecExt)
-		return smartvectorsext.NewRegularExt(vecExt)
+		return sv.NewRegularExt(vecExt)
 	case *sv.Regular:
 		vecExt := make([]fext.Element, v.Len())
 		v.WriteInSliceExt(vecExt)
-		return smartvectorsext.NewRegularExt(vecExt)
+		return sv.NewRegularExt(vecExt)
 	}
 	panic("unsupported type")
 }
@@ -148,8 +147,8 @@ func Add(vecs ...sv.SmartVector) sv.SmartVector {
 	return executeFuncOnBaseExt(
 		vecs,
 		sv.Add,
-		smartvectorsext.Add,
-		smartvectorsext.Add,
+		sv.AddExt,
+		sv.AddExt,
 	)
 }
 
@@ -161,7 +160,7 @@ func Mul(vecs ...sv.SmartVector) sv.SmartVector {
 	return executeFuncOnBaseExt(
 		vecs,
 		sv.Mul,
-		smartvectorsext.Mul,
-		smartvectorsext.Mul,
+		sv.MulExt,
+		sv.MulExt,
 	)
 }

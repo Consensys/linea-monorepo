@@ -2,7 +2,6 @@ package symbolic
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"reflect"
 
@@ -65,7 +64,7 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 		return NewConstant(0)
 	}
 
-	// The LinComb is just a single-term: more efficient to unwrap it
+	// The LinCombExt is just a single-term: more efficient to unwrap it
 	if len(items) == 1 && coeffs[0] == 1 {
 		return items[0]
 	}
@@ -78,13 +77,13 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 	// Now we need to assign the ESH
 	eshashes := make([]sv.SmartVector, len(e.Children))
 	for i := range e.Children {
-		eshashes[i] = smartvectorsext.NewConstantExt(e.Children[i].ESHash, 1)
+		eshashes[i] = sv.NewConstantExt(e.Children[i].ESHash, 1)
 	}
 
 	if len(items) > 0 {
 		// The cast back to sv.Constant is not functionally important but is an easy
 		// sanity check.
-		e.ESHash = e.Operator.Evaluate(eshashes).(*smartvectorsext.ConstantExt).GetExt(0)
+		e.ESHash = e.Operator.Evaluate(eshashes).(*sv.ConstantExt).GetExt(0)
 	}
 
 	return e
@@ -102,7 +101,7 @@ func (lc LinComb) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.Sma
 }
 
 func (lc LinComb) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-	return smartvectorsext.LinComb(lc.Coeffs, inputs, p...)
+	return sv.LinCombExt(lc.Coeffs, inputs, p...)
 }
 
 // Validate implements the [Operator] interface

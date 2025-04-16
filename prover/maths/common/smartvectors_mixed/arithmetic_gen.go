@@ -3,7 +3,6 @@ package smartvectors_mixed
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -31,7 +30,7 @@ func LinComb(coeffs []int, svecs []sv.SmartVector, p ...mempool.MemPool) sv.Smar
 		}
 		// there are some extension vectors present
 		// apply the extension operation to the extension vectors
-		resExt := smartvectorsext.LinComb(coeffsExt, vecsExt, p...)
+		resExt := sv.LinCombExt(coeffsExt, vecsExt, p...)
 		// lift the base result to extension representation and then apply the extension operation
 		liftedBase := LiftToExt(resBase)
 		return Add(liftedBase, resExt)
@@ -61,7 +60,7 @@ func Product(exponents []int, svecs []sv.SmartVector, p ...mempool.MemPool) sv.S
 		}
 		// there are some extension vectors present
 		// apply the extension operation to the extension vectors
-		resExt := smartvectorsext.Product(expExt, vecsExt, p...)
+		resExt := sv.ProductExt(expExt, vecsExt, p...)
 		// lift the base result to extension representation and then apply the extension operation
 		liftedBase := LiftToExt(resBase)
 		return Mul(liftedBase, resExt)

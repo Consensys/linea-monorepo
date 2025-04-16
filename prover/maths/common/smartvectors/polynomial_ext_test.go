@@ -1,11 +1,10 @@
 //go:build !race
 
-package smartvectorsext
+package smartvectors
 
 import (
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -16,12 +15,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRuffini(t *testing.T) {
+func TestRuffiniExt(t *testing.T) {
 
 	testCases := []struct {
 		q           fext.Element
-		p           smartvectors.SmartVector
-		expectedQuo smartvectors.SmartVector
+		p           SmartVector
+		expectedQuo SmartVector
 		expectedRem fext.Element
 	}{
 		{
@@ -50,7 +49,7 @@ func TestRuffini(t *testing.T) {
 
 	for _, testCase := range testCases {
 
-		quo, rem := RuffiniQuoRem(testCase.p, testCase.q)
+		quo, rem := RuffiniQuoRemExt(testCase.p, testCase.q)
 		require.Equal(t, testCase.expectedQuo.Pretty(), quo.Pretty())
 		require.Equal(t, testCase.expectedRem.String(), rem.String())
 	}
@@ -59,13 +58,13 @@ func TestRuffini(t *testing.T) {
 
 func TestFuzzPolynomial(t *testing.T) {
 
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
+	for i := 0; i < FuzzIteration; i++ {
 
 		// We reuse the test-case generator of lincomb but we only
 		// use the first generated edge-case for each. The fact that
 		// we use two test-cases gives a and b of different length.
-		tcaseA := newTestBuilder(2 * i).NewTestCaseForLinComb()
-		tcaseB := newTestBuilder(2*i + 1).NewTestCaseForLinComb()
+		tcaseA := newTestBuilderExt(2 * i).NewTestCaseForLinCombExt()
+		tcaseB := newTestBuilderExt(2*i + 1).NewTestCaseForLinCombExt()
 
 		success := t.Run(fmt.Sprintf("fuzz-poly-%v", i), func(t *testing.T) {
 
@@ -73,7 +72,7 @@ func TestFuzzPolynomial(t *testing.T) {
 			b := tcaseB.svecs[0]
 
 			// Try interpolating by one (should return the first element)
-			xa := Interpolate(a, fext.One())
+			xa := InterpolateExt(a, fext.One())
 			expecteda0 := a.GetExt(0)
 			assert.Equal(t, xa.String(), expecteda0.String())
 
@@ -81,8 +80,8 @@ func TestFuzzPolynomial(t *testing.T) {
 			// identities
 			var x fext.Element
 			x.SetRandom()
-			aX := EvalCoeff(a, x)
-			bX := EvalCoeff(b, x)
+			aX := EvalCoeffExt(a, x)
+			bX := EvalCoeffExt(b, x)
 
 			// Get the evaluations of a-n, b-a, a+b
 			var aSubBx, bSubAx, aPlusBx fext.Element
@@ -92,15 +91,15 @@ func TestFuzzPolynomial(t *testing.T) {
 
 			// And evaluate the corresponding polynomials to compare
 			// with the above values
-			aSubb := PolySub(a, b)
-			bSuba := PolySub(b, a)
-			aPlusb := PolyAdd(a, b)
-			bPlusa := PolyAdd(b, a)
+			aSubb := PolySubExt(a, b)
+			bSuba := PolySubExt(b, a)
+			aPlusb := PolyAddExt(a, b)
+			bPlusa := PolyAddExt(b, a)
 
-			aSubBxActual := EvalCoeff(aSubb, x)
-			bSubAxActual := EvalCoeff(bSuba, x)
-			aPlusbxActual := EvalCoeff(aPlusb, x)
-			bPlusaxActual := EvalCoeff(bPlusa, x)
+			aSubBxActual := EvalCoeffExt(aSubb, x)
+			bSubAxActual := EvalCoeffExt(bSuba, x)
+			aPlusbxActual := EvalCoeffExt(aPlusb, x)
+			bPlusaxActual := EvalCoeffExt(bPlusa, x)
 
 			t.Logf(
 				"Len of a %v, b %v, a+b %v, a-b %v, b-a %v",
@@ -123,7 +122,7 @@ func TestFuzzPolynomial(t *testing.T) {
 func TestBivariatePolynomial(t *testing.T) {
 
 	testCases := []struct {
-		v         smartvectors.SmartVector
+		v         SmartVector
 		x         fext.Element
 		y         fext.Element
 		numCoeffX int
@@ -153,7 +152,7 @@ func TestBivariatePolynomial(t *testing.T) {
 	for i, testCase := range testCases {
 
 		t.Run(fmt.Sprintf("case-%v", i), func(t *testing.T) {
-			res := EvalCoeffBivariate(
+			res := EvalCoeffBivariateExt(
 				testCase.v,
 				testCase.x,
 				testCase.numCoeffX,

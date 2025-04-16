@@ -1,10 +1,9 @@
-package smartvectorsext
+package smartvectors
 
 import (
 	"fmt"
 	"iter"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -76,7 +75,7 @@ func (r *RotatedExt) Get(n int) field.Element {
 
 // Returns a particular element. The subvector is taken at indices
 // [start, stop). (stop being excluded from the span)
-func (r *RotatedExt) SubVector(start, stop int) smartvectors.SmartVector {
+func (r *RotatedExt) SubVector(start, stop int) SmartVector {
 
 	if stop+r.offset < len(r.v.RegularExt) && start+r.offset > 0 {
 		res := RegularExt(r.v.RegularExt[start+r.offset : stop+r.offset])
@@ -124,7 +123,7 @@ func (r *RotatedExt) SubVector(start, stop int) smartvectors.SmartVector {
 }
 
 // Rotates the vector into a new one, a positive offset means a left cyclic shift
-func (r *RotatedExt) RotateRight(offset int) smartvectors.SmartVector {
+func (r *RotatedExt) RotateRight(offset int) SmartVector {
 	// We limit the offset value to prevent integer overflow
 	if offset > 1<<40 {
 		utils.Panic("offset is too large")
@@ -137,7 +136,7 @@ func (r *RotatedExt) RotateRight(offset int) smartvectors.SmartVector {
 	}
 }
 
-func (r *RotatedExt) DeepCopy() smartvectors.SmartVector {
+func (r *RotatedExt) DeepCopy() SmartVector {
 	return NewRotatedExt(vectorext.DeepCopy(r.v.RegularExt), r.offset)
 }
 
@@ -146,7 +145,7 @@ func (r *RotatedExt) WriteInSlice(s []field.Element) {
 }
 
 func (r *RotatedExt) WriteInSliceExt(s []fext.Element) {
-	temp := rotatedAsRegular(r)
+	temp := rotatedAsRegularExt(r)
 	assertHasLength(len(s), len(*temp))
 	copy(s, *temp)
 }
@@ -157,7 +156,7 @@ func (r *RotatedExt) Pretty() string {
 
 // rotatedAsRegular converts a [Rotated] into a [Regular] by effecting the
 // symbolic shifting operation. The function allocates the result.
-func rotatedAsRegular(r *RotatedExt) *RegularExt {
+func rotatedAsRegularExt(r *RotatedExt) *RegularExt {
 	return r.SubVector(0, r.Len()).(*RegularExt)
 }
 
@@ -170,7 +169,7 @@ func (r *RotatedExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 }
 
 func (r *RotatedExt) IntoRegVecSaveAllocExt() []fext.Element {
-	temp := *rotatedAsRegular(r)
+	temp := *rotatedAsRegularExt(r)
 	res := make([]fext.Element, temp.Len())
 	for i := 0; i < temp.Len(); i++ {
 		res[i].Set(&temp[i])
@@ -193,7 +192,7 @@ func (c *RotatedExt) GetPtr(n int) *field.Element {
 // SoftRotate converts v into a [SmartVector] representing the same
 // [SmartVector]. The function tries to not reallocate the result. This means
 // that changing the v can subsequently affects the result of this function.
-func SoftRotate(v smartvectors.SmartVector, offset int) smartvectors.SmartVector {
+func SoftRotateExt(v SmartVector, offset int) SmartVector {
 
 	switch casted := v.(type) {
 	case *RegularExt:

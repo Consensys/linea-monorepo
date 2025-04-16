@@ -1,7 +1,6 @@
-package smartvectorsext
+package smartvectors
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"testing"
@@ -11,7 +10,7 @@ import (
 
 // This is a simple error case we have faces in the past, the test ensures that
 // it does go through.
-func TestProcessWindowed(_ *testing.T) {
+func TestProcessWindowedExt(_ *testing.T) {
 
 	a := NewPaddedCircularWindowExt(
 		vectorext.Rand(5),
@@ -27,14 +26,14 @@ func TestProcessWindowed(_ *testing.T) {
 		16,
 	)
 
-	_, _ = processWindowedOnly(
-		linCombOp{},
-		[]smartvectors.SmartVector{b, a},
+	_, _ = processWindowedOnlyExt(
+		linCombOpExt{},
+		[]SmartVector{b, a},
 		[]int{1, 1},
 	)
 }
 
-func TestEdgeCases(t *testing.T) {
+func TestEdgeCasesExt(t *testing.T) {
 	require.PanicsWithValue(t, "zero length subvector is forbidden", func() {
 		NewPaddedCircularWindowExt(
 			vectorext.Rand(5),

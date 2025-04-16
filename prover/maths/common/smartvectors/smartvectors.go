@@ -116,9 +116,13 @@ func ForTest(xs ...int) SmartVector {
 // is always reallocated and can be safely mutated without side-effects
 // on s.
 func IntoRegVec(s SmartVector) []field.Element {
-	res := make([]field.Element, s.Len())
-	s.WriteInSlice(res)
-	return res
+	if IsBase(s) {
+		res := make([]field.Element, s.Len())
+		s.WriteInSlice(res)
+		return res
+	} else {
+		panic(conversionError)
+	}
 }
 
 func IntoRegVecExt(s SmartVector) []fext.Element {
@@ -206,6 +210,16 @@ func Density(v SmartVector) int {
 		return len(w.v.Regular)
 	case *Pooled:
 		return len(w.Regular)
+	case *ConstantExt:
+		return 0
+	case *PaddedCircularWindowExt:
+		return len(w.window)
+	case *RegularExt:
+		return len(*w)
+	case *RotatedExt:
+		return len(w.v.RegularExt)
+	case *PooledExt:
+		return len(w.RegularExt)
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))
 	}
@@ -278,6 +292,15 @@ func WindowExt(v SmartVector) []fext.Element {
 		}
 		return temp
 	case *Rotated:
+		return w.IntoRegVecSaveAllocExt()
+		// below, we now consider extension vectors
+	case *ConstantExt:
+		return w.IntoRegVecSaveAllocExt()
+	case *PaddedCircularWindowExt:
+		return w.window
+	case *RegularExt:
+		return *w
+	case *RotatedExt:
 		return w.IntoRegVecSaveAllocExt()
 	default:
 		panic(fmt.Sprintf("unexpected type %T", v))

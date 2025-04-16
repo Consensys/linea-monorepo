@@ -1,10 +1,9 @@
 //go:build !race
 
-package smartvectorsext
+package smartvectors
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"testing"
 
@@ -12,12 +11,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWriteInSlice(t *testing.T) {
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
+func TestWriteInSliceExt(t *testing.T) {
+	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
-		builder := newTestBuilder(i)
-		tcase := builder.NewTestCaseForLinComb()
+		builder := newTestBuilderExt(i)
+		tcase := builder.NewTestCaseForLinCombExt()
 
 		success := t.Run(
 			fmt.Sprintf("fuzzy-write-in-slice-%v", i),
@@ -44,12 +43,12 @@ func TestWriteInSlice(t *testing.T) {
 	}
 }
 
-func TestShiftingTest(t *testing.T) {
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
+func TestShiftingTestExt(t *testing.T) {
+	for i := 0; i < FuzzIteration; i++ {
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
-		builder := newTestBuilder(i)
-		tcase := builder.NewTestCaseForLinComb()
+		builder := newTestBuilderExt(i)
+		tcase := builder.NewTestCaseForLinCombExt()
 
 		success := t.Run(
 			fmt.Sprintf("fuzzy-shifting-%v", i),
@@ -77,14 +76,14 @@ func TestShiftingTest(t *testing.T) {
 
 }
 
-func TestSubvectorFuzzy(t *testing.T) {
+func TestSubvectorFuzzyExt(t *testing.T) {
 
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
+	for i := 0; i < FuzzIteration; i++ {
 
 		// We reuse the test case generator for linear combinations. We only
 		// care about the first vector.
-		builder := newTestBuilder(i)
-		tcase := builder.NewTestCaseForLinComb()
+		builder := newTestBuilderExt(i)
+		tcase := builder.NewTestCaseForLinCombExt()
 
 		success := t.Run(
 			fmt.Sprintf("fuzzy-shifting-%v", i),

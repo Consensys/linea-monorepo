@@ -2,7 +2,6 @@ package symbolic
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"sync"
 
@@ -115,7 +114,7 @@ func (b *ExpressionBoard) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemP
 		}
 	})
 
-	return smartvectorsext.NewRegularExt(res)
+	return sv.NewRegularExt(res)
 }
 
 // evaluateSingleThread evaluates a boarded expression. The inputs can be either
@@ -151,7 +150,7 @@ func (b *ExpressionBoard) evaluateSingleThreadExt(inputs []sv.SmartVector, p ...
 	// Deep-copy the last node and put resBuf back in the pool. It's cleanier
 	// that way.
 	if hasPool {
-		if reg, ok := resBuf.(*smartvectorsext.PooledExt); ok {
+		if reg, ok := resBuf.(*sv.PooledExt); ok {
 			resGC := reg.DeepCopy()
 			reg.Free(pool)
 			resBuf = resGC

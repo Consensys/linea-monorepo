@@ -1,10 +1,9 @@
-package smartvectorsext
+package smartvectors
 
 import (
 	"fmt"
 	"iter"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -44,7 +43,7 @@ func (r *ConstantExt) Get(n int) field.Element {
 }
 
 // Returns a subvector
-func (c *ConstantExt) SubVector(start, stop int) smartvectors.SmartVector {
+func (c *ConstantExt) SubVector(start, stop int) SmartVector {
 	if start > stop {
 		utils.Panic("negative length are not allowed")
 	}
@@ -58,7 +57,7 @@ func (c *ConstantExt) SubVector(start, stop int) smartvectors.SmartVector {
 }
 
 // Returns a rotated version of the slice
-func (c *ConstantExt) RotateRight(int) smartvectors.SmartVector {
+func (c *ConstantExt) RotateRight(int) SmartVector {
 	return NewConstantExt(c.val, c.length)
 }
 
@@ -81,7 +80,7 @@ func (c *ConstantExt) Pretty() string {
 	return fmt.Sprintf("Constant[%v;%v]", c.val.String(), c.length)
 }
 
-func (c *ConstantExt) DeepCopy() smartvectors.SmartVector {
+func (c *ConstantExt) DeepCopy() SmartVector {
 	return NewConstantExt(c.val, c.length)
 }
 
@@ -94,7 +93,7 @@ func (c *ConstantExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
 }
 
 func (c *ConstantExt) IntoRegVecSaveAllocExt() []fext.Element {
-	res := smartvectors.IntoRegVecExt(c)
+	res := IntoRegVecExt(c)
 	return res
 }
 

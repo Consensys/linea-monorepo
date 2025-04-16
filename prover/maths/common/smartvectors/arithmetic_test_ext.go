@@ -1,6 +1,6 @@
 //go:build !fuzzlight
 
-package smartvectorsext
+package smartvectors
 
 import (
 	"fmt"
@@ -9,23 +9,22 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestFuzzProduct(t *testing.T) {
+func TestFuzzProductExt(t *testing.T) {
 
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForProd()
+	for i := 0; i < FuzzIteration; i++ {
+		tcase := newTestBuilderExt(i).NewTestCaseForProdExt()
 
 		success := t.Run(tcase.name, func(t *testing.T) {
-			actualProd := Product(tcase.coeffs, tcase.svecs)
+			actualProd := ProductExt(tcase.coeffs, tcase.svecs)
 			require.Equal(t, tcase.expectedValue.Pretty(), actualProd.Pretty(), "product failed")
 
 			// And let us do it a second time for idempotency
-			actualProd = Product(tcase.coeffs, tcase.svecs)
+			actualProd = ProductExt(tcase.coeffs, tcase.svecs)
 			require.Equal(t, tcase.expectedValue.Pretty(), actualProd.Pretty(), "product failed")
 		})
 
@@ -37,17 +36,17 @@ func TestFuzzProduct(t *testing.T) {
 
 }
 
-func TestFuzzLinComb(t *testing.T) {
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForLinComb()
+func TestFuzzLinCombExt(t *testing.T) {
+	for i := 0; i < FuzzIteration; i++ {
+		tcase := newTestBuilderExt(i).NewTestCaseForLinCombExt()
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			actualLinComb := LinComb(tcase.coeffs, tcase.svecs)
+			actualLinComb := LinCombExt(tcase.coeffs, tcase.svecs)
 			require.Equal(t, tcase.expectedValue.Pretty(), actualLinComb.Pretty(), "linear combination failed")
 
 			// And a second time for idempotency
-			actualLinComb = LinComb(tcase.coeffs, tcase.svecs)
+			actualLinComb = LinCombExt(tcase.coeffs, tcase.svecs)
 			require.Equal(t, tcase.expectedValue.Pretty(), actualLinComb.Pretty(), "linear combination failed")
 		})
 
@@ -58,17 +57,17 @@ func TestFuzzLinComb(t *testing.T) {
 	}
 }
 
-func TestFuzzPolyEval(t *testing.T) {
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForPolyEval()
+func TestFuzzPolyEvalExt(t *testing.T) {
+	for i := 0; i < FuzzIteration; i++ {
+		tcase := newTestBuilderExt(i).NewTestCaseForPolyEvalExt()
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
-			actualRes := PolyEval(tcase.svecs, tcase.evaluationPoint)
+			actualRes := PolyEvalExt(tcase.svecs, tcase.evaluationPoint)
 			require.Equal(t, tcase.expectedValue.Pretty(), actualRes.Pretty(), "linear combination failed")
 
 			// and a second time to ensure idempotency
-			actualRes = PolyEval(tcase.svecs, tcase.evaluationPoint)
+			actualRes = PolyEvalExt(tcase.svecs, tcase.evaluationPoint)
 			require.Equal(t, tcase.expectedValue.Pretty(), actualRes.Pretty(), "linear combination failed")
 
 		})
@@ -80,10 +79,10 @@ func TestFuzzPolyEval(t *testing.T) {
 	}
 }
 
-func TestFuzzProductWithPool(t *testing.T) {
+func TestFuzzProductWithPoolExt(t *testing.T) {
 
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForProd()
+	for i := 0; i < FuzzIteration; i++ {
+		tcase := newTestBuilderExt(i).NewTestCaseForProdExt()
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
@@ -91,11 +90,11 @@ func TestFuzzProductWithPool(t *testing.T) {
 
 			t.Logf("TEST CASE %v\n", tcase.String())
 
-			prodWithPool := Product(tcase.coeffs, tcase.svecs, pool)
+			prodWithPool := ProductExt(tcase.coeffs, tcase.svecs, pool)
 			require.Equal(t, tcase.expectedValue.Pretty(), prodWithPool.Pretty(), "product with pool failed")
 
 			// And let us do it a second time for idempotency
-			prodWithPool = Product(tcase.coeffs, tcase.svecs, pool)
+			prodWithPool = ProductExt(tcase.coeffs, tcase.svecs, pool)
 			require.Equal(t, tcase.expectedValue.Pretty(), prodWithPool.Pretty(), "product with pool failed")
 		})
 
@@ -107,10 +106,10 @@ func TestFuzzProductWithPool(t *testing.T) {
 
 }
 
-func TestFuzzProductWithPoolCompare(t *testing.T) {
+func TestFuzzProductWithPoolCompareExt(t *testing.T) {
 
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForProd()
+	for i := 0; i < FuzzIteration; i++ {
+		tcase := newTestBuilderExt(i).NewTestCaseForProdExt()
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
@@ -118,15 +117,15 @@ func TestFuzzProductWithPoolCompare(t *testing.T) {
 
 			t.Logf("TEST CASE %v\n", tcase.String())
 
-			// Product() with pool
-			prodWithPool := Product(tcase.coeffs, tcase.svecs, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), prodWithPool.Pretty(), "Product() with pool failed")
+			// ProductExt() with pool
+			prodWithPool := ProductExt(tcase.coeffs, tcase.svecs, pool)
+			require.Equal(t, tcase.expectedValue.Pretty(), prodWithPool.Pretty(), "ProductExt() with pool failed")
 
-			// Product() without pool
-			prod := Product(tcase.coeffs, tcase.svecs)
+			// ProductExt() without pool
+			prod := ProductExt(tcase.coeffs, tcase.svecs)
 
-			// check if Product() with pool = Product() without pool
-			require.Equal(t, prodWithPool.Pretty(), prod.Pretty(), "Product() w/ and w/o pool are different")
+			// check if ProductExt() with pool = ProductExt() without pool
+			require.Equal(t, prodWithPool.Pretty(), prod.Pretty(), "ProductExt() w/ and w/o pool are different")
 		})
 
 		if !success {
@@ -137,10 +136,10 @@ func TestFuzzProductWithPoolCompare(t *testing.T) {
 
 }
 
-func TestFuzzLinCombWithPool(t *testing.T) {
+func TestFuzzLinCombWithPoolExt(t *testing.T) {
 
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForLinComb()
+	for i := 0; i < FuzzIteration; i++ {
+		tcase := newTestBuilderExt(i).NewTestCaseForLinCombExt()
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
@@ -148,12 +147,12 @@ func TestFuzzLinCombWithPool(t *testing.T) {
 
 			t.Logf("TEST CASE %v\n", tcase.String())
 
-			linCombWithPool := LinComb(tcase.coeffs, tcase.svecs, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), linCombWithPool.Pretty(), "LinComb() with pool failed")
+			linCombWithPool := LinCombExt(tcase.coeffs, tcase.svecs, pool)
+			require.Equal(t, tcase.expectedValue.Pretty(), linCombWithPool.Pretty(), "LinCombExt() with pool failed")
 
 			// And let us do it a second time for idempotency
-			linCombWithPool = LinComb(tcase.coeffs, tcase.svecs, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), linCombWithPool.Pretty(), "LinComb() with pool failed")
+			linCombWithPool = LinCombExt(tcase.coeffs, tcase.svecs, pool)
+			require.Equal(t, tcase.expectedValue.Pretty(), linCombWithPool.Pretty(), "LinCombExt() with pool failed")
 		})
 
 		if !success {
@@ -163,10 +162,10 @@ func TestFuzzLinCombWithPool(t *testing.T) {
 	}
 }
 
-func TestFuzzLinCombWithPoolCompare(t *testing.T) {
+func TestFuzzLinCombWithPoolCompareExt(t *testing.T) {
 
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForLinComb()
+	for i := 0; i < FuzzIteration; i++ {
+		tcase := newTestBuilderExt(i).NewTestCaseForLinCombExt()
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
@@ -174,15 +173,15 @@ func TestFuzzLinCombWithPoolCompare(t *testing.T) {
 
 			t.Logf("TEST CASE %v\n", tcase.String())
 
-			// LinComb() with pool
-			linCombWithPool := LinComb(tcase.coeffs, tcase.svecs, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), linCombWithPool.Pretty(), "LinComb() with pool failed")
+			// LinCombExt() with pool
+			linCombWithPool := LinCombExt(tcase.coeffs, tcase.svecs, pool)
+			require.Equal(t, tcase.expectedValue.Pretty(), linCombWithPool.Pretty(), "LinCombExt() with pool failed")
 
-			// LinComb() without pool
-			linComb := LinComb(tcase.coeffs, tcase.svecs)
+			// LinCombExt() without pool
+			linComb := LinCombExt(tcase.coeffs, tcase.svecs)
 
-			// check if LinComb() with pool = LinComb() without pool
-			require.Equal(t, linCombWithPool.Pretty(), linComb.Pretty(), "LinComb() w/ and w/o pool are different")
+			// check if LinCombExt() with pool = LinCombExt() without pool
+			require.Equal(t, linCombWithPool.Pretty(), linComb.Pretty(), "LinCombExt() w/ and w/o pool are different")
 		})
 
 		if !success {
@@ -192,47 +191,47 @@ func TestFuzzLinCombWithPoolCompare(t *testing.T) {
 	}
 }
 
-func TestOpBasicEdgeCases(t *testing.T) {
+func TestOpBasicEdgeCasesExt(t *testing.T) {
 
 	two := fext.NewElement(2, fieldPaddingInt())
 	eight := new(fext.Element).Exp(two, big.NewInt(3))
 
 	testCases := []struct {
 		explainer   string
-		inputs      []smartvectors.SmartVector
-		expectedRes smartvectors.SmartVector
-		fn          func(...smartvectors.SmartVector) smartvectors.SmartVector
+		inputs      []SmartVector
+		expectedRes SmartVector
+		fn          func(...SmartVector) SmartVector
 	}{
 		{
 			explainer: "full-covering windows and a constant",
-			inputs: []smartvectors.SmartVector{
+			inputs: []SmartVector{
 				NewConstantExt(two, 16),
-				LeftPadded(vectorext.Repeat(two, 12), two, 16),
-				RightPadded(vectorext.Repeat(two, 12), two, 16),
+				LeftPaddedExt(vectorext.Repeat(two, 12), two, 16),
+				RightPaddedExt(vectorext.Repeat(two, 12), two, 16),
 			},
 			expectedRes: NewRegularExt(vectorext.Repeat(fext.NewElement(6, 3*fieldPaddingInt()), 16)),
-			fn:          Add,
+			fn:          AddExt,
 		},
 		{
 			explainer: "full-covering windows and a constant (mul)",
-			inputs: []smartvectors.SmartVector{
+			inputs: []SmartVector{
 				NewConstantExt(two, 16),
-				LeftPadded(vectorext.Repeat(two, 12), two, 16),
-				RightPadded(vectorext.Repeat(two, 12), two, 16),
+				LeftPaddedExt(vectorext.Repeat(two, 12), two, 16),
+				RightPaddedExt(vectorext.Repeat(two, 12), two, 16),
 			},
 			expectedRes: NewRegularExt(vectorext.Repeat(*eight, 16)),
-			fn:          Mul,
+			fn:          MulExt,
 		},
 		{
 			explainer: "full-covering windows, a regular and a constant",
-			inputs: []smartvectors.SmartVector{
+			inputs: []SmartVector{
 				NewConstantExt(two, 16),
-				LeftPadded(vectorext.Repeat(two, 12), two, 16),
-				RightPadded(vectorext.Repeat(two, 12), two, 16),
+				LeftPaddedExt(vectorext.Repeat(two, 12), two, 16),
+				RightPaddedExt(vectorext.Repeat(two, 12), two, 16),
 				NewRegularExt(vectorext.Repeat(two, 16)),
 			},
 			expectedRes: NewRegularExt(vectorext.Repeat(fext.NewElement(8, 4*fieldPaddingInt()), 16)),
-			fn:          Add,
+			fn:          AddExt,
 		},
 	}
 
@@ -246,13 +245,13 @@ func TestOpBasicEdgeCases(t *testing.T) {
 	}
 }
 
-func TestInnerProduct(t *testing.T) {
+func TestInnerProductExt(t *testing.T) {
 	a := ForTestFromPairs(1, 1, 2, 1, 1, 1, 2, 1, 1, 1)
 	b := ForTestFromPairs(1, 1, -1, 1, 2, 1, -1, 1, 2, 1)
 	sum := new(fext.Element).SetInt64Pair(int64(1+5*fext.RootPowers[1]), 10)
 
 	testCases := []struct {
-		a, b smartvectors.SmartVector
+		a, b SmartVector
 		y    fext.Element
 	}{
 		{
@@ -264,17 +263,17 @@ func TestInnerProduct(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case-%v", i), func(t *testing.T) {
-			y := InnerProduct(testCase.a, testCase.b)
+			y := InnerProductExt(testCase.a, testCase.b)
 			assert.Equal(t, testCase.y.String(), y.String())
 		})
 	}
 }
 
-func TestScalarMul(t *testing.T) {
+func TestScalarMulExt(t *testing.T) {
 	testCases := []struct {
-		a smartvectors.SmartVector
+		a SmartVector
 		b fext.Element
-		y smartvectors.SmartVector
+		y SmartVector
 	}{
 		{
 			a: ForTestExt(1, 2, 1, 2, 1),
@@ -290,26 +289,26 @@ func TestScalarMul(t *testing.T) {
 
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case-%v", i), func(t *testing.T) {
-			y := ScalarMul(testCase.a, testCase.b)
+			y := ScalarMulExt(testCase.a, testCase.b)
 			assert.Equal(t, testCase.y.Pretty(), y.Pretty())
 		})
 	}
 }
 
-func TestFuzzPolyEvalWithPool(t *testing.T) {
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForPolyEval()
+func TestFuzzPolyEvalWithPoolExt(t *testing.T) {
+	for i := 0; i < FuzzIteration; i++ {
+		tcase := newTestBuilderExt(i).NewTestCaseForPolyEvalExt()
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
 			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
-			// PolyEval() with pool
-			polyEvalWithPool := PolyEval(tcase.svecs, tcase.evaluationPoint, pool)
+			// PolyEvalExt() with pool
+			polyEvalWithPool := PolyEvalExt(tcase.svecs, tcase.evaluationPoint, pool)
 			require.Equal(t, tcase.expectedValue.Pretty(), polyEvalWithPool.Pretty(), "linear combination with pool failed")
 
 			// and a second time to ensure idempotency
-			polyEvalWithPool = PolyEval(tcase.svecs, tcase.evaluationPoint, pool)
+			polyEvalWithPool = PolyEvalExt(tcase.svecs, tcase.evaluationPoint, pool)
 			require.Equal(t, tcase.expectedValue.Pretty(), polyEvalWithPool.Pretty(), "linear combination with pool failed")
 
 		})
@@ -321,23 +320,23 @@ func TestFuzzPolyEvalWithPool(t *testing.T) {
 	}
 }
 
-func TestFuzzPolyEvalWithPoolCompare(t *testing.T) {
-	for i := 0; i < smartvectors.FuzzIteration; i++ {
-		tcase := newTestBuilder(i).NewTestCaseForPolyEval()
+func TestFuzzPolyEvalWithPoolCompareExt(t *testing.T) {
+	for i := 0; i < FuzzIteration; i++ {
+		tcase := newTestBuilderExt(i).NewTestCaseForPolyEvalExt()
 
 		success := t.Run(tcase.name, func(t *testing.T) {
 
 			pool := mempool.CreateFromSyncPool(tcase.svecs[0].Len())
 
-			// PolyEval() with pool
-			polyEvalWithPool := PolyEval(tcase.svecs, tcase.evaluationPoint, pool)
-			require.Equal(t, tcase.expectedValue.Pretty(), polyEvalWithPool.Pretty(), "PolyEval() with pool failed")
+			// PolyEvalExt() with pool
+			polyEvalWithPool := PolyEvalExt(tcase.svecs, tcase.evaluationPoint, pool)
+			require.Equal(t, tcase.expectedValue.Pretty(), polyEvalWithPool.Pretty(), "PolyEvalExt() with pool failed")
 
-			// PolyEval() without pool
-			polyEval := PolyEval(tcase.svecs, tcase.evaluationPoint)
+			// PolyEvalExt() without pool
+			polyEval := PolyEvalExt(tcase.svecs, tcase.evaluationPoint)
 
-			// check if PolyEval() with pool = PolyEval() without pool
-			require.Equal(t, polyEvalWithPool.Pretty(), polyEval.Pretty(), "PolyEval() w/ and w/o pool are different")
+			// check if PolyEvalExt() with pool = PolyEvalExt() without pool
+			require.Equal(t, polyEvalWithPool.Pretty(), polyEval.Pretty(), "PolyEvalExt() w/ and w/o pool are different")
 
 		})
 

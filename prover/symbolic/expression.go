@@ -3,7 +3,6 @@ package symbolic
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"reflect"
 	"sync"
@@ -159,13 +158,13 @@ func (e *Expression) Validate() error {
 
 	eshashes := make([]sv.SmartVector, len(e.Children))
 	for i := range e.Children {
-		eshashes[i] = smartvectorsext.NewConstantExt(e.Children[i].ESHash, 1)
+		eshashes[i] = sv.NewConstantExt(e.Children[i].ESHash, 1)
 	}
 
 	if len(e.Children) > 0 {
 		// The cast back to sv.Constant is not functionally important but is an
 		// easy sanity check.
-		expectedESH := e.Operator.Evaluate(eshashes).(*smartvectorsext.ConstantExt).GetExt(0)
+		expectedESH := e.Operator.Evaluate(eshashes).(*sv.ConstantExt).GetExt(0)
 		if expectedESH != e.ESHash {
 			return fmt.Errorf("esh mismatch %v %v", expectedESH.String(), e.ESHash.String())
 		}
@@ -205,7 +204,7 @@ func (e *Expression) Replay(translationMap collection.Mapping[string, *Expressio
 	case Variable:
 		res := translationMap.MustGet(op.Metadata.String())
 		return res
-	// LinComb
+	// LinCombExt
 	case LinComb:
 		children := make([]*Expression, len(e.Children))
 		for i, c := range e.Children {
@@ -213,7 +212,7 @@ func (e *Expression) Replay(translationMap collection.Mapping[string, *Expressio
 		}
 		res := NewLinComb(children, op.Coeffs)
 		return res
-	// Product
+	// ProductExt
 	case Product:
 		children := make([]*Expression, len(e.Children))
 		for i, c := range e.Children {
@@ -221,7 +220,7 @@ func (e *Expression) Replay(translationMap collection.Mapping[string, *Expressio
 		}
 		res := NewProduct(children, op.Exponents)
 		return res
-	// PolyEval
+	// PolyEvalExt
 	case PolyEval:
 		children := make([]*Expression, len(e.Children))
 		for i, c := range e.Children {
@@ -247,7 +246,7 @@ func (e *Expression) ReconstructBottomUp(
 	// applies the mutator and returns.
 	case Constant, Variable:
 		return constructor(e, []*Expression{})
-	// LinComb or Product or PolyEval. This is an intermediate expression.
+	// LinCombExt or ProductExt or PolyEvalExt. This is an intermediate expression.
 	case LinComb, Product, PolyEval:
 		children := make([]*Expression, len(e.Children))
 		var wg sync.WaitGroup
@@ -282,7 +281,7 @@ func (e *Expression) ReconstructBottomUpSingleThreaded(
 			panic(x)
 		}
 		return x
-	// LinComb or Product or PolyEval. This is an intermediate expression.
+	// LinCombExt or ProductExt or PolyEvalExt. This is an intermediate expression.
 	case LinComb, Product, PolyEval:
 		children := make([]*Expression, len(e.Children))
 		for i, c := range e.Children {
@@ -311,13 +310,13 @@ func (e *Expression) SameWithNewChildren(newChildren []*Expression) *Expression 
 	// Constant
 	case Constant, Variable:
 		return e
-	// LinComb
+	// LinCombExt
 	case LinComb:
 		return NewLinComb(newChildren, op.Coeffs)
-	// Product
+	// ProductExt
 	case Product:
 		return NewProduct(newChildren, op.Exponents)
-	// PolyEval
+	// PolyEvalExt
 	case PolyEval:
 		return NewPolyEval(newChildren[0], newChildren[1:])
 	default:

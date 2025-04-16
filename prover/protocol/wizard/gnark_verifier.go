@@ -3,7 +3,6 @@ package wizard
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
@@ -300,7 +299,7 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 			res.Columns = append(res.Columns, assignedMsg)
 		} else {
 			// the assignment consists of extension elements
-			assignedMsg := smartvectorsext.IntoGnarkAssignment(msgData)
+			assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
 			res.columnsExtIDs.InsertNew(colName, len(res.ColumnsExt))
 			res.ColumnsExt = append(res.ColumnsExt, assignedMsg)
 		}
@@ -597,7 +596,7 @@ func (c *VerifierCircuit) GetColumnBase(name ifaces.ColID) ([]frontend.Variable,
 func (c *VerifierCircuit) GetColumnExt(name ifaces.ColID) []gnarkfext.Variable {
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
-		val := smartvectorsext.IntoRegVecExt(c.Spec.Precomputed.MustGet(name))
+		val := smartvectors.IntoRegVecExt(c.Spec.Precomputed.MustGet(name))
 		res := gnarkutil.AllocateSliceExt(len(val))
 		// Return the column as an array of constants
 		for i := range val {
@@ -691,7 +690,7 @@ func (c *VerifierCircuit) AssignColumn(id ifaces.ColID, sv smartvectors.SmartVec
 }
 
 func (c *VerifierCircuit) AssignColumnExt(id ifaces.ColID, sv smartvectors.SmartVector) {
-	column := smartvectorsext.IntoGnarkAssignment(sv)
+	column := smartvectors.IntoGnarkAssignment(sv)
 	columnIndex := len(c.ColumnsExt)
 	c.columnsExtIDs.InsertNew(id, columnIndex)
 	c.ColumnsExt = append(c.ColumnsExt, column)
