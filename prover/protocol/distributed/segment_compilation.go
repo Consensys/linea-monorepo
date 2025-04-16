@@ -55,17 +55,20 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		res               = &RecursedSegmentCompilation{}
 		numActualLppRound = 0
 		isLPP             bool
+		subscript         string
 	)
 
 	switch m := mod.(type) {
 	case *ModuleGL:
 		modIOP = m.Wiop
 		res.ModuleGL = m
+		subscript = string(m.definitionInput.ModuleName)
 	case *ModuleLPP:
 		modIOP = m.Wiop
 		res.ModuleLPP = m
 		numActualLppRound = len(m.ModuleNames())
 		isLPP = true
+		subscript = fmt.Sprintf("%v", m.ModuleNames())
 	default:
 		utils.Panic("unexpected type: %T", mod)
 	}
@@ -165,6 +168,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				FixedNbRowPlonkCircuit: fixedNbRowPlonkCircuit,
 				WithExternalHasherOpts: true,
 				ExternalHasherNbRows:   fixedNbRowExternalHasher,
+				Subscript:              subscript,
 			},
 		)
 	}

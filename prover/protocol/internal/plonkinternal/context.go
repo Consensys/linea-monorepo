@@ -2,7 +2,6 @@ package plonkinternal
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -23,7 +22,7 @@ import (
 
 // This flag control whether to activate the gnark profiling for the circuits. Please leave it
 // to "false" because (1) it generates a lot of data (2) it is extremely time consuming.
-const activateGnarkProfiling = false
+const activateGnarkProfiling = true
 
 // The CompilationCtx (context) carries all the compilation informations about a call to
 // Plonk in Wizard. Namely, (non-exhaustively) it contains the gnark's internal
@@ -33,8 +32,14 @@ const activateGnarkProfiling = false
 type CompilationCtx struct {
 	// The compiled IOP
 	comp *wizard.CompiledIOP
-	// Name of the context
+	// Name of the context. It is used to generate the column names and the
+	// queries name so that we can understad where they come from. Two instances
+	// of Plonk in wizard cannot have the same name.
 	name string
+	// subscript allows providing more context than [name]. It is used in the
+	// logs and in the name of the profiling assets. It is however not used as
+	// part of the name of generated wizard items.
+	subscript string
 	// Round at which we create the ctx
 	round int
 	// Number of instances of the circuit
@@ -142,15 +147,26 @@ func createCtx(
 		opt(&ctx)
 	}
 
-	logrus.Debugf("Plonk in Wizard (%v) compiling the circuit", name)
+	logger := logrus.
+		WithField("subscript", ctx.subscript).
+		WithField("round", ctx.round).
+		WithField("maxNbInstances", ctx.maxNbInstances).
+		WithField("name", name)
+
+	logger.Debug("Plonk in Wizard compiling the circuit")
 
 	var pro *profile.Profile
 
 	if activateGnarkProfiling {
+
 		fname := name
-		if !strings.HasSuffix(fname, ".pprof") {
-			fname += ".pprof"
+
+		if len(ctx.subscript) > 0 {
+			fname = fname + "-" + ctx.subscript
 		}
+
+		// This adds a nice pprof suffix
+		fname = fname + ".pprof"
 		pro = profile.Start(profile.WithPath(fname))
 	}
 
@@ -180,10 +196,10 @@ func createCtx(
 		pro.Stop()
 	}
 
-	logrus.Debugf(
-		"[plonk-in-wizard] compiled cs for %v, nbConstraints=%v, nbInternalVariables=%v\n",
-		name, ccs.GetNbConstraints(), ccs.GetNbInternalVariables(),
-	)
+	logger.
+		WithField("nbConstraints", ccs.GetNbConstraints()).
+		WithField("nbInternalVariables", ccs.GetNbInternalVariables()).
+		Debug("[plonk-in-wizard] done compiling the circuit")
 
 	ctx.Plonk.SPR = ccs
 	ctx.Plonk.Domain = fft.NewDomain(uint64(ctx.DomainSize()))
