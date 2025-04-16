@@ -62,4 +62,12 @@ data class EthLog(
 data class EthLogEvent<E>(
   val event: E,
   val log: EthLog
-)
+) : Comparable<EthLogEvent<E>> {
+  override fun compareTo(other: EthLogEvent<E>): Int {
+    return when {
+      this.log.blockNumber != other.log.blockNumber -> this.log.blockNumber.compareTo(other.log.blockNumber)
+      this.log.logIndex != other.log.logIndex -> this.log.logIndex.compareTo(other.log.logIndex)
+      else -> 0
+    }
+  }
+}
