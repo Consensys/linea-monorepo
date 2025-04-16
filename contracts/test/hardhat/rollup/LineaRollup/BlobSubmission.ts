@@ -937,24 +937,24 @@ describe.only("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
 
       await expectEvent(betaV1_4LineaRollup, finalizeCompressedCall, "DataFinalizedV3", eventArgs);
 
-      // const [expectedFinalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
-      //   betaV1LineaRollup.stateRootHashes(finalizationData.endBlockNumber),
-      //   betaV1LineaRollup.currentL2BlockNumber(),
-      //   betaV1LineaRollup.currentFinalizedState(),
-      // ]);
+      const [expectedFinalStateRootHash, lastFinalizedBlockNumber, lastFinalizedState] = await Promise.all([
+        betaV1_4LineaRollup.stateRootHashes(finalizationData.endBlockNumber),
+        betaV1_4LineaRollup.currentL2BlockNumber(),
+        betaV1_4LineaRollup.currentFinalizedState(),
+      ]);
 
-      // expect(expectedFinalStateRootHash).to.equal(finalizationData.shnarfData.finalStateRootHash);
-      // expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
-      // expect(lastFinalizedState).to.equal(
-      //   generateKeccak256(
-      //     ["uint256", "bytes32", "uint256"],
-      //     [
-      //       finalizationData.l1RollingHashMessageNumber,
-      //       finalizationData.l1RollingHash,
-      //       finalizationData.finalTimestamp,
-      //     ],
-      //   ),
-      // );
+      expect(expectedFinalStateRootHash).to.equal(finalizationData.shnarfData.finalStateRootHash);
+      expect(lastFinalizedBlockNumber).to.equal(finalizationData.endBlockNumber);
+      expect(lastFinalizedState).to.equal(
+        generateKeccak256(
+          ["uint256", "bytes32", "uint256"],
+          [
+            finalizationData.l1RollingHashMessageNumber,
+            finalizationData.l1RollingHash,
+            finalizationData.finalTimestamp,
+          ],
+        ),
+      );
     });
 
     it.skip("Can migrate Mainnet Verifier to Prover Beta V1.4 successfully", async () => {
