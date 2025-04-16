@@ -65,10 +65,10 @@ const useBridgingFee = ({ isConnected, account, token, claimingType, amount, rec
       return null;
     }
 
-    // Computation for AUTO_FREE, i.e. sponsored by the Postman
+    // Computation for AUTO_SPONSORED, i.e. sponsored by the Postman
     const bridgingGasUsedWithSurplus = gasLimit + fromChain.gasLimitSurplus;
     if (bridgingGasUsedWithSurplus < MAX_POSTMAN_SPONSOR_GAS_LIMIT) {
-      setClaim(ClaimType.AUTO_FREE);
+      setClaim(ClaimType.AUTO_SPONSORED);
       return 0n;
     }
 

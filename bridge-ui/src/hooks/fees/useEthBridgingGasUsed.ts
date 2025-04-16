@@ -46,7 +46,7 @@ const useEthBridgingGasUsed = ({
       !!nextMessageNumber &&
       !!amount &&
       !!recipient &&
-      (claimingType === ClaimType.AUTO_PAID || claimingType === ClaimType.AUTO_FREE),
+      (claimingType === ClaimType.AUTO_PAID || claimingType === ClaimType.AUTO_SPONSORED),
     queryFn: async () =>
       await estimateEthBridgingGasUsed({
         address: account!,

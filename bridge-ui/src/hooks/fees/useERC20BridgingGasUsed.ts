@@ -48,7 +48,7 @@ const useERC20BridgingGasUsed = ({
       !!nextMessageNumber &&
       !!amount &&
       !!recipient &&
-      (claimingType === ClaimType.AUTO_PAID || claimingType === ClaimType.AUTO_FREE),
+      (claimingType === ClaimType.AUTO_PAID || claimingType === ClaimType.AUTO_SPONSORED),
     queryFn: async () =>
       await estimateERC20BridgingGasUsed({
         address: account!,

@@ -58,7 +58,7 @@ const useFees = () => {
         fiatValue: getFiatValue(gasFeesResult.gasFees),
       });
 
-      if (claim === ClaimType.AUTO_FREE) {
+      if (claim === ClaimType.AUTO_SPONSORED) {
         feesArray.push({
           name: `${toChain.name} fee`,
           fee: 0n,

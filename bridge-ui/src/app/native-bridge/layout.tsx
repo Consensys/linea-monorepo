@@ -12,7 +12,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const initialFormState: FormState = {
     token: tokens[0],
-    claim: fromChain?.layer === ChainLayer.L1 ? ClaimType.AUTO_FREE : ClaimType.MANUAL,
+    claim: fromChain?.layer === ChainLayer.L1 ? ClaimType.AUTO_SPONSORED : ClaimType.MANUAL,
     amount: null,
     minimumFees: 0n,
     gasFees: 0n,

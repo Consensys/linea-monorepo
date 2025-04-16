@@ -68,8 +68,8 @@ export default function TokenModal({ isModalOpen, onCloseModal }: TokenModalProp
       // For L2->L1, there is only manual claiming. This is set in the parent component BridgeForm, and we take care here to not override it.
       if (fromChain.layer === ChainLayer.L1) {
         if (isCctp(token)) setClaim(ClaimType.MANUAL);
-        // Initial claim type is AUTO_FREE, this can change when bridge fee computed in useBridgingFee
-        else setClaim(ClaimType.AUTO_FREE);
+        // Initial claim type is AUTO_SPONSORED, this can change when bridge fee computed in useBridgingFee
+        else setClaim(ClaimType.AUTO_SPONSORED);
       }
       onCloseModal();
     },

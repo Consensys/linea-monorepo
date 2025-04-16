@@ -169,7 +169,7 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
             });
           }),
         )
-        .orderBy("CAST(message.status as CHAR)", "ASC")
+        .orderBy("CAST(message.status as CHAR)", "DESC")
         .addOrderBy("CAST(message.fee AS numeric)", "DESC")
         .addOrderBy("message.sentBlockNumber", "ASC")
         .getOne();

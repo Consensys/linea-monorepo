@@ -34,7 +34,7 @@ export const defaultInitState: FormState = {
   amount: 0n,
   balance: 0n,
   recipient: "0x",
-  claim: ClaimType.AUTO_FREE,
+  claim: ClaimType.AUTO_SPONSORED,
   gasFees: 0n,
   bridgingFees: 0n,
   minimumFees: 0n,
