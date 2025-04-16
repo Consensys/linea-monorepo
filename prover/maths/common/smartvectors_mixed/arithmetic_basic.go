@@ -139,11 +139,11 @@ func ExecuteFuncOnBaseExtWithMempool(
 	}
 }
 
-// Add returns a smart-vector obtained by position-wise adding [SmartVector].
+// AddMixed returns a smart-vector obtained by position-wise adding [SmartVector].
 //   - all inputs `vecs` must have the same size, or the function panics
 //   - the output smart-vector has the same size as the input vectors
 //   - if no input vectors are provided, the function panics
-func Add(vecs ...sv.SmartVector) sv.SmartVector {
+func AddMixed(vecs ...sv.SmartVector) sv.SmartVector {
 	return executeFuncOnBaseExt(
 		vecs,
 		sv.Add,
@@ -152,11 +152,11 @@ func Add(vecs ...sv.SmartVector) sv.SmartVector {
 	)
 }
 
-// Mul returns a smart-vector obtained by position-wise multiplying [SmartVector].
+// MulMixed returns a smart-vector obtained by position-wise multiplying [SmartVector].
 //   - all inputs `vecs` must have the same size, or the function panics
 //   - the output smart-vector has the same size as the input vectors
 //   - if no input vectors are provided, the function panics
-func Mul(vecs ...sv.SmartVector) sv.SmartVector {
+func MulMixed(vecs ...sv.SmartVector) sv.SmartVector {
 	return executeFuncOnBaseExt(
 		vecs,
 		sv.Mul,
