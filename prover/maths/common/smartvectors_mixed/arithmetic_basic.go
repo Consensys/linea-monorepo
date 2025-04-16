@@ -56,21 +56,13 @@ func LiftToExt(vec sv.SmartVector) sv.SmartVector {
 	panic("unsupported type")
 }
 
-func ExecuteFuncOnBaseExt(
+func executeFuncOnBaseExt(
 	vecs []sv.SmartVector,
 	baseOperation func(vec ...sv.SmartVector) sv.SmartVector,
 	extOperation func(vec ...sv.SmartVector) sv.SmartVector,
 	finalOperation func(vec ...sv.SmartVector) sv.SmartVector,
 ) sv.SmartVector {
-	vecsBase := make([]sv.SmartVector, 0, len(vecs))
-	vecsExt := make([]sv.SmartVector, 0, len(vecs))
-	for _, vec := range vecs {
-		if IsBase(vec) {
-			vecsBase = append(vecsBase, vec)
-		} else {
-			vecsExt = append(vecsExt, vec)
-		}
-	}
+	vecsBase, vecsExt := SeparateBaseAndExtVectors(vecs)
 
 	var res sv.SmartVector = sv.NewConstant(field.Zero(), vecs[0].Len())
 	if len(vecsBase) > 0 {
@@ -90,13 +82,7 @@ func ExecuteFuncOnBaseExt(
 	}
 }
 
-func ExecuteFuncOnBaseExtWithMempool(
-	vecs []sv.SmartVector,
-	baseOperation func(vec []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector,
-	extOperation func(vec []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector,
-	finalOperation func(vec ...sv.SmartVector) sv.SmartVector,
-	p ...mempool.MemPool,
-) sv.SmartVector {
+func SeparateBaseAndExtVectors(vecs []sv.SmartVector) ([]sv.SmartVector, []sv.SmartVector) {
 	vecsBase := make([]sv.SmartVector, 0, len(vecs))
 	vecsExt := make([]sv.SmartVector, 0, len(vecs))
 	for _, vec := range vecs {
@@ -106,6 +92,35 @@ func ExecuteFuncOnBaseExtWithMempool(
 			vecsExt = append(vecsExt, vec)
 		}
 	}
+	return vecsBase, vecsExt
+}
+
+func SeparateBaseAndExtVectorsWithCoeffs(coeffs []int, vecs []sv.SmartVector) ([]sv.SmartVector, []sv.SmartVector, []int, []int) {
+	vecsBase := make([]sv.SmartVector, 0, len(vecs))
+	vecsExt := make([]sv.SmartVector, 0, len(vecs))
+	coeffsBase := make([]int, 0, len(vecs))
+	coeffsExt := make([]int, 0, len(vecs))
+
+	for index, vec := range vecs {
+		if IsBase(vec) {
+			vecsBase = append(vecsBase, vec)
+			coeffsBase = append(coeffsBase, coeffs[index])
+		} else {
+			vecsExt = append(vecsExt, vec)
+			coeffsExt = append(coeffsExt, coeffs[index])
+		}
+	}
+	return vecsBase, vecsExt, coeffsBase, coeffsExt
+}
+
+func ExecuteFuncOnBaseExtWithMempool(
+	vecs []sv.SmartVector,
+	baseOperation func(vec []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector,
+	extOperation func(vec []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector,
+	finalOperation func(vec ...sv.SmartVector) sv.SmartVector,
+	p ...mempool.MemPool,
+) sv.SmartVector {
+	vecsBase, vecsExt := SeparateBaseAndExtVectors(vecs)
 
 	var res sv.SmartVector = sv.NewConstant(field.Zero(), vecs[0].Len())
 	if len(vecsBase) > 0 {
@@ -130,7 +145,7 @@ func ExecuteFuncOnBaseExtWithMempool(
 //   - the output smart-vector has the same size as the input vectors
 //   - if no input vectors are provided, the function panics
 func Add(vecs ...sv.SmartVector) sv.SmartVector {
-	return ExecuteFuncOnBaseExt(
+	return executeFuncOnBaseExt(
 		vecs,
 		sv.Add,
 		smartvectorsext.Add,
@@ -143,7 +158,7 @@ func Add(vecs ...sv.SmartVector) sv.SmartVector {
 //   - the output smart-vector has the same size as the input vectors
 //   - if no input vectors are provided, the function panics
 func Mul(vecs ...sv.SmartVector) sv.SmartVector {
-	return ExecuteFuncOnBaseExt(
+	return executeFuncOnBaseExt(
 		vecs,
 		sv.Mul,
 		smartvectorsext.Mul,

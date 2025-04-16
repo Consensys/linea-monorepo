@@ -2,7 +2,6 @@ package symbolic
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"sync"
@@ -160,14 +159,4 @@ func (b *ExpressionBoard) evaluateSingleThreadExt(inputs []sv.SmartVector, p ...
 	}
 
 	return resBuf
-}
-
-func (b *ExpressionBoard) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-	return smartvectors_mixed.ExecuteFuncOnBaseExtWithMempool(
-		inputs,
-		b.Evaluate,
-		b.EvaluateExt,
-		smartvectorsext.Add,
-		p...,
-	)
 }
