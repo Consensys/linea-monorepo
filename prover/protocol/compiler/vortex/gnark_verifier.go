@@ -221,25 +221,36 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 // Evaluates explicitly the public polynomials (proof, vk, public inputs)
 func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkRuntime) {
 
-	params := vr.GetUnivariateParams(ctx.Query.QueryID)
+	var (
+		params     = vr.GetUnivariateParams(ctx.Query.QueryID)
+		polys      = make([][]frontend.Variable, 0)
+		expectedYs = make([]frontend.Variable, 0)
+	)
 
 	for i, pol := range ctx.Query.Pols {
 
-		// If the column is a VerifierDefined column, then it is
-		// directly concerned by direct verification but we can
-		// access its witness or status so we need a specific check.
-		if _, ok := pol.(verifiercol.VerifierCol); !ok {
+		// If the column is a VerifierDefined column, then it is directly
+		// concerned by direct verification but we cannot access its status.
+		// status so we need a hierarchical check to make sure we can access
+		// its status.
+		if _, isVerifierCol := pol.(verifiercol.VerifierCol); !isVerifierCol {
 			status := ctx.comp.Columns.Status(pol.GetColID())
 			if !status.IsPublic() {
-				// then, its not concerned by direct evaluation
+				// then, its not concerned by direct evaluation because the
+				// evaluation is implicitly checked by the invokation of the
+				// Vortex protocol.
 				continue
 			}
 		}
 
-		val := pol.GetColAssignmentGnark(vr)
+		polys = append(polys, pol.GetColAssignmentGnark(vr))
+		expectedYs = append(expectedYs, params.Ys[i])
+	}
 
-		y := fastpoly.InterpolateGnark(api, val, params.X)
-		api.AssertIsEqual(y, params.Ys[i])
+	ys := fastpoly.BatchInterpolateGnark(api, polys, params.X)
+
+	for i := range polys {
+		api.AssertIsEqual(ys[i], expectedYs[i])
 	}
 }
 
