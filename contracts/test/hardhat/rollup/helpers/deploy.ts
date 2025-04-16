@@ -36,6 +36,13 @@ export async function deployPlonkVerifierMainnetFull(): Promise<string> {
   return await verifier.getAddress();
 }
 
+export async function deployPlonkVerifierDev(): Promise<string> {
+  const plonkVerifierDev = await ethers.getContractFactory("PlonkVerifierDev");
+  const verifier = await plonkVerifierDev.deploy();
+  await verifier.waitForDeployment();
+  return await verifier.getAddress();
+}
+
 export async function deployPlonkVerifierForMultiTypeDataAggregation(): Promise<string> {
   const plonkVerifier = await ethers.getContractFactory("PlonkVerifierForMultiTypeDataAggregation");
   const verifier = await plonkVerifier.deploy();
