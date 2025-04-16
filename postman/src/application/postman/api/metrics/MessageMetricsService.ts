@@ -3,19 +3,25 @@ import { Direction } from "@consensys/linea-sdk";
 import { MetricsService } from "./MetricsService";
 import { MessageEntity } from "../../persistence/entities/Message.entity";
 import { MessageStatus } from "../../../../core/enums";
+import { LineaPostmanMetrics } from "../../../../core/metrics/IMetricsService";
 
 export class MessageMetricsService extends MetricsService {
   constructor(private readonly entityManager: EntityManager) {
     super();
-    this.createGauge("postman_messages_current", "Current number of messages by status", ["status", "direction"]);
+    this.createGauge(LineaPostmanMetrics.Messages, "Current number of messages by status and direction", [
+      "status",
+      "direction",
+    ]);
   }
 
   public async initialize(): Promise<void> {
-    const fullResult = await this.getMessagesCountByStatus();
-    this.updateGauges(fullResult);
+    const fullResult = await this.getMessagesCountFromDatabase();
+    this.initializeGaugeValues(fullResult);
   }
 
-  private async getMessagesCountByStatus(): Promise<{ status: MessageStatus; direction: Direction; count: number }[]> {
+  private async getMessagesCountFromDatabase(): Promise<
+    { status: MessageStatus; direction: Direction; count: number }[]
+  > {
     const totalNumberOfMessagesByStatusAndDirection = await this.entityManager
       .createQueryBuilder(MessageEntity, "message")
       .select("message.status", "status")
@@ -25,6 +31,7 @@ export class MessageMetricsService extends MetricsService {
       .addGroupBy("message.direction")
       .getRawMany();
 
+    // MessageStatus => MessageDirection => Count
     const resultMap = new Map<string, Map<string, number>>();
 
     totalNumberOfMessagesByStatusAndDirection.forEach((r) => {
@@ -49,12 +56,16 @@ export class MessageMetricsService extends MetricsService {
     return results;
   }
 
-  private updateGauges(fullResult: { status: MessageStatus; direction: Direction; count: number }[]): void {
+  private initializeGaugeValues(fullResult: { status: MessageStatus; direction: Direction; count: number }[]): void {
     for (const { status, count, direction } of fullResult) {
-      this.incrementGauge("postman_messages_current", count, {
-        status,
-        direction,
-      });
+      this.incrementGauge(
+        LineaPostmanMetrics.Messages,
+        {
+          status,
+          direction,
+        },
+        count,
+      );
     }
   }
 }

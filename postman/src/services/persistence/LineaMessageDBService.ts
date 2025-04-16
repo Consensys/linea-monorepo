@@ -54,7 +54,7 @@ export class LineaMessageDBService extends MessageDBService implements IMessageD
    * Retrieves the first message to claim on L2.
    *
    * @param {string} contractAddress - The address of the contract to filter messages by.
-   * @param {number} _gasEstimationMargin - The margin to apply to gas estimation.
+   * @param {number} gasEstimationMargin - The margin to apply to gas estimation.
    * @param {number} maxRetry - The maximum number of retries for claiming the message.
    * @param {number} retryDelay - The delay between retries in milliseconds.
    * @returns {Promise<Message | null>} A promise that resolves to the message to claim, or null if no message is found.

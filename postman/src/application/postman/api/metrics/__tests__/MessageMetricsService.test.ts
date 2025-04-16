@@ -3,6 +3,7 @@ import { Direction } from "@consensys/linea-sdk";
 import { MessageMetricsService } from "../MessageMetricsService";
 import { mock, MockProxy } from "jest-mock-extended";
 import { MessageStatus } from "../../../../../core/enums";
+import { LineaPostmanMetrics } from "../../../../../core/metrics/IMetricsService";
 
 describe("MessageMetricsService", () => {
   let messageMetricsService: MessageMetricsService;
@@ -31,14 +32,14 @@ describe("MessageMetricsService", () => {
 
     // Check if the gauge was updated
     expect(
-      await messageMetricsService.getGaugeValue("postman_messages_current", {
+      await messageMetricsService.getGaugeValue(LineaPostmanMetrics.Messages, {
         status: MessageStatus.SENT,
         direction: Direction.L1_TO_L2,
       }),
     ).toBe(5);
 
     expect(
-      await messageMetricsService.getGaugeValue("postman_messages_current", {
+      await messageMetricsService.getGaugeValue(LineaPostmanMetrics.Messages, {
         status: MessageStatus.CLAIMED_SUCCESS,
         direction: Direction.L1_TO_L2,
       }),
@@ -46,11 +47,15 @@ describe("MessageMetricsService", () => {
   });
 
   it("should return the correct gauge value", async () => {
-    messageMetricsService.incrementGauge("postman_messages_current", 10, {
-      status: "processed",
-      direction: Direction.L1_TO_L2,
-    });
-    const gaugeValue = await messageMetricsService.getGaugeValue("postman_messages_current", {
+    messageMetricsService.incrementGauge(
+      LineaPostmanMetrics.Messages,
+      {
+        status: "processed",
+        direction: Direction.L1_TO_L2,
+      },
+      10,
+    );
+    const gaugeValue = await messageMetricsService.getGaugeValue(LineaPostmanMetrics.Messages, {
       status: "processed",
       direction: Direction.L1_TO_L2,
     });

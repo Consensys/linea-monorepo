@@ -1,11 +1,14 @@
-import { Counter, Gauge, Histogram, Registry } from "prom-client";
-import { IMetricsService } from "../../../../core/metrics/IMetricsService";
+import { Counter, Gauge, MetricObjectWithValues, MetricValue, Registry } from "prom-client";
+import { IMetricsService, LineaPostmanMetrics } from "../../../../core/metrics/IMetricsService";
 
+/**
+ * MetricsService class that implements the IMetricsService interface.
+ * This class provides methods to create and manage Prometheus metrics.
+ */
 export abstract class MetricsService implements IMetricsService {
   private readonly registry: Registry;
-  private readonly counters: Map<string, Counter<string>>;
-  private readonly gauges: Map<string, Gauge<string>>;
-  private readonly histograms: Map<string, Histogram<string>>;
+  private readonly counters: Map<LineaPostmanMetrics, Counter<string>>;
+  private readonly gauges: Map<LineaPostmanMetrics, Gauge<string>>;
 
   constructor() {
     this.registry = new Registry();
@@ -13,9 +16,12 @@ export abstract class MetricsService implements IMetricsService {
 
     this.counters = new Map();
     this.gauges = new Map();
-    this.histograms = new Map();
   }
 
+  /**
+   * Returns the registry
+   * @returns {Registry} The registry instance
+   */
   public getRegistry(): Registry {
     return this.registry;
   }
@@ -23,7 +29,7 @@ export abstract class MetricsService implements IMetricsService {
   /**
    * Creates counter metric
    */
-  public createCounter(name: string, help: string, labelNames: string[] = []): Counter<string> {
+  public createCounter(name: LineaPostmanMetrics, help: string, labelNames: string[] = []): Counter<string> {
     if (!this.counters.has(name)) {
       this.counters.set(
         name,
@@ -38,23 +44,31 @@ export abstract class MetricsService implements IMetricsService {
     return this.counters.get(name) as Counter<string>;
   }
 
-  public async getCounterValue(name: string, labels: Record<string, string>): Promise<number | undefined> {
+  /**
+   * Get counter metric value
+   * @param name - Name of the metric
+   * @param labels - Labels for the metric
+   * @returns Value of the counter metric
+   */
+  public async getCounterValue(name: LineaPostmanMetrics, labels: Record<string, string>): Promise<number | undefined> {
     const counter = this.counters.get(name);
-    if (!counter) {
+    if (counter === undefined) {
       return undefined;
     }
 
-    return (
-      (await counter.get()).values.find((value) => {
-        return Object.entries(labels).every(([key, val]) => value.labels[key] === val);
-      })?.value || 0
-    );
+    const metricData = await counter.get();
+    const metricValueWithMatchingLabels = this.findMetricValueWithExactMatchingLabels(metricData, labels);
+    return metricValueWithMatchingLabels?.value;
   }
 
   /**
    * Creates gauge metric
+   * @param name - Name of the metric
+   * @param help - Help text for the metric
+   * @param labelNames - Array of label names for the metric
+   * @returns Gauge metric
    */
-  public createGauge(name: string, help: string, labelNames: string[] = []): Gauge<string> {
+  public createGauge(name: LineaPostmanMetrics, help: string, labelNames: string[] = []): Gauge<string> {
     if (!this.gauges.has(name)) {
       this.gauges.set(
         name,
@@ -69,79 +83,70 @@ export abstract class MetricsService implements IMetricsService {
     return this.gauges.get(name) as Gauge<string>;
   }
 
-  public async getGaugeValue(name: string, labels: Record<string, string>): Promise<number | undefined> {
+  /**
+   * Get gauge metric value
+   * @param name - Name of the metric
+   * @param labels - Labels for the metric
+   * @returns Value of the gauge metric
+   */
+  public async getGaugeValue(name: LineaPostmanMetrics, labels: Record<string, string>): Promise<number | undefined> {
     const gauge = this.gauges.get(name);
 
-    if (!gauge) {
+    if (gauge === undefined) {
       return undefined;
     }
 
-    return (await gauge.get()).values.find((value) => {
-      return Object.entries(labels).every(([key, val]) => value.labels[key] === val);
-    })?.value;
-  }
-
-  /**
-   * Creates histogram metric
-   */
-  public createHistogram(
-    name: string,
-    help: string,
-    labelNames: string[] = [],
-    buckets: number[] = [0.1, 0.5, 1, 2, 5, 10],
-  ): Histogram<string> {
-    if (!this.histograms.has(name)) {
-      this.histograms.set(
-        name,
-        new Histogram({
-          name,
-          help,
-          labelNames,
-          buckets,
-          registers: [this.registry],
-        }),
-      );
-    }
-    return this.histograms.get(name) as Histogram<string>;
+    const metricData = await gauge.get();
+    const metricValueWithMatchingLabels = this.findMetricValueWithExactMatchingLabels(metricData, labels);
+    return metricValueWithMatchingLabels?.value;
   }
 
   /**
    * Increments a counter metric
+   * @param name - Name of the metric
+   * @param labels - Labels for the metric
+   * @param value - Value to increment by (default is 1)
+   * @returns void
    */
-  public incrementCounter(name: string, labels: Record<string, string> = {}, value?: number): void {
+  public incrementCounter(name: LineaPostmanMetrics, labels: Record<string, string> = {}, value?: number): void {
     const counter = this.counters.get(name);
-    if (counter) {
+    if (counter !== undefined) {
       counter.inc(labels, value);
     }
   }
 
   /**
    * Increment a gauge metric value
+   * @param name - Name of the metric
+   * @param labels - Labels for the metric
+   * @param value - Value to increment by (default is 1)
+   * @returns void
    */
-  public incrementGauge(name: string, value: number, labels: Record<string, string> = {}): void {
+  public incrementGauge(name: LineaPostmanMetrics, labels: Record<string, string> = {}, value?: number): void {
     const gauge = this.gauges.get(name);
-    if (gauge) {
+    if (gauge !== undefined) {
       gauge.inc(labels, value);
     }
   }
 
   /**
    * Decrement a gauge metric value
+   * @param name - Name of the metric
+   * @param value - Value to decrement by (default is 1)
+   * @param labels - Labels for the metric
+   * @returns void
    */
-  public decrementGauge(name: string, value: number, labels: Record<string, string> = {}): void {
+  public decrementGauge(name: LineaPostmanMetrics, labels: Record<string, string> = {}, value?: number): void {
     const gauge = this.gauges.get(name);
-    if (gauge) {
+    if (gauge !== undefined) {
       gauge.dec(labels, value);
     }
   }
 
-  /**
-   * Records a value in a histogram metric
-   */
-  public observeHistogram(name: string, value: number, labels: Record<string, string> = {}): void {
-    const histogram = this.histograms.get(name);
-    if (histogram) {
-      histogram.observe(labels, value);
-    }
+  private findMetricValueWithExactMatchingLabels(
+    metricData: MetricObjectWithValues<MetricValue<string>>,
+    labels: Record<string, string>,
+  ): MetricValue<string> | undefined {
+    return metricData.values.find((value) => Object.entries(labels).every(([key, val]) => value.labels[key] === val));
   }
 }

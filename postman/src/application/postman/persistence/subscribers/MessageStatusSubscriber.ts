@@ -6,9 +6,11 @@ import {
   RemoveEvent,
   TransactionCommitEvent,
 } from "typeorm";
+import { Direction } from "@consensys/linea-sdk";
 import { MessageEntity } from "../entities/Message.entity";
-import { IMetricsService } from "../../../../core/metrics/IMetricsService";
+import { IMetricsService, LineaPostmanMetrics } from "../../../../core/metrics/IMetricsService";
 import { ILogger } from "../../../../core/utils/logging/ILogger";
+import { MessageStatus } from "../../../../core/enums";
 
 @EventSubscriber()
 export class MessageStatusSubscriber implements EntitySubscriberInterface<MessageEntity> {
@@ -22,70 +24,55 @@ export class MessageStatusSubscriber implements EntitySubscriberInterface<Messag
   }
 
   async afterInsert(event: InsertEvent<MessageEntity>): Promise<void> {
-    await this.updateMessageMetricsOnInsert(event);
+    const { status, direction } = event.entity;
+    this.updateMessageMetricsOnInsert(status, direction);
   }
 
   async afterUpdate(event: UpdateEvent<MessageEntity>): Promise<void> {
-    if (event.entity && event.databaseEntity) {
-      const previousStatus = event.databaseEntity.status;
-      const newStatus = event.entity.status;
-      if (previousStatus !== newStatus) {
-        await this.updateMessageMetricsOnUpdate(event);
-      }
+    if (!event.entity || !event.databaseEntity) return;
+
+    const prevStatus = event.databaseEntity.status;
+    const newStatus = event.entity.status;
+    const direction = event.databaseEntity.direction;
+
+    if (prevStatus !== newStatus) {
+      await this.swapStatus(
+        LineaPostmanMetrics.Messages,
+        { status: prevStatus, direction },
+        { status: newStatus, direction },
+      );
     }
   }
 
   async afterRemove(event: RemoveEvent<MessageEntity>): Promise<void> {
     if (event.entity) {
-      await this.updateMessageMetricsOnRemove(event);
+      await this.updateMessageMetricsOnRemove(event.databaseEntity.status, event.databaseEntity.direction);
     }
   }
 
   async afterTransactionCommit(event: TransactionCommitEvent): Promise<void> {
     const updatedEntity = event.queryRunner?.data?.updatedEntity;
     if (updatedEntity) {
-      const [previousGauge, gauge] = await Promise.all([
-        this.metricsService.getGaugeValue("postman_messages_current", {
-          status: updatedEntity.previousStatus,
-          direction: updatedEntity.direction,
-        }),
-        this.metricsService.getGaugeValue("postman_messages_current", {
-          status: updatedEntity.newStatus,
-          direction: updatedEntity.direction,
-        }),
-      ]);
-
-      if (previousGauge && previousGauge > 0) {
-        this.metricsService.decrementGauge("postman_messages_current", 1, {
-          status: updatedEntity.previousStatus,
-          direction: updatedEntity.direction,
-        });
-      }
-
-      if (gauge || gauge === 0) {
-        this.metricsService.incrementGauge("postman_messages_current", 1, {
-          status: updatedEntity.newStatus,
-          direction: updatedEntity.direction,
-        });
-      }
+      await this.swapStatus(
+        LineaPostmanMetrics.Messages,
+        { status: updatedEntity.previousStatus, direction: updatedEntity.direction },
+        { status: updatedEntity.newStatus, direction: updatedEntity.direction },
+      );
     }
   }
 
-  private async updateMessageMetricsOnInsert(event: InsertEvent<MessageEntity>): Promise<void> {
+  private async updateMessageMetricsOnInsert(messageStatus: MessageStatus, messageDirection: Direction): Promise<void> {
     try {
-      const messageStatus = event.entity.status;
-      const messageDirection = event.entity.direction;
-
-      const gauge = await this.metricsService.getGaugeValue("postman_messages_current", {
+      const prevGaugeValue = await this.metricsService.getGaugeValue(LineaPostmanMetrics.Messages, {
         status: messageStatus,
         direction: messageDirection,
       });
 
-      if (!gauge && gauge !== 0) {
+      if (prevGaugeValue === undefined) {
         return;
       }
 
-      this.metricsService.incrementGauge("postman_messages_current", 1, {
+      this.metricsService.incrementGauge(LineaPostmanMetrics.Messages, {
         status: messageStatus,
         direction: messageDirection,
       });
@@ -94,72 +81,44 @@ export class MessageStatusSubscriber implements EntitySubscriberInterface<Messag
     }
   }
 
-  private async updateMessageMetricsOnUpdate(event: UpdateEvent<MessageEntity>): Promise<void> {
+  private async updateMessageMetricsOnRemove(messageStatus: MessageStatus, messageDirection: Direction): Promise<void> {
     try {
-      if (!event.entity) {
-        return;
-      }
-      const messageStatus = event.entity.status;
-      const previousStatus = event.databaseEntity.status;
-      const messageDirection = event.databaseEntity.direction;
-
-      const [previousGauge, gauge] = await Promise.all([
-        this.metricsService.getGaugeValue("postman_messages_current", {
-          status: previousStatus,
-          direction: messageDirection,
-        }),
-        this.metricsService.getGaugeValue("postman_messages_current", {
-          status: messageStatus,
-          direction: messageDirection,
-        }),
-      ]);
-
-      if (!previousGauge && previousGauge !== 0) {
-        return;
-      }
-
-      if (!gauge && gauge !== 0) {
-        return;
-      }
-
-      if (previousGauge > 0) {
-        this.metricsService.decrementGauge("postman_messages_current", 1, {
-          status: previousStatus,
-          direction: messageDirection,
-        });
-      }
-
-      this.metricsService.incrementGauge("postman_messages_current", 1, {
-        status: messageStatus,
-        direction: messageDirection,
-      });
-    } catch (error) {
-      this.logger.error("[MessageStatusSubscriber] Failed to update metrics:", error);
-    }
-  }
-
-  private async updateMessageMetricsOnRemove(event: RemoveEvent<MessageEntity>): Promise<void> {
-    try {
-      const messageStatus = event.databaseEntity.status;
-      const messageDirection = event.databaseEntity.direction;
-
-      const gauge = await this.metricsService.getGaugeValue("postman_messages_current", {
+      const prevGaugeValue = await this.metricsService.getGaugeValue(LineaPostmanMetrics.Messages, {
         status: messageStatus,
         direction: messageDirection,
       });
 
-      if (!gauge && gauge !== 0) {
-        return;
-      }
-
-      if (gauge > 0) {
-        this.metricsService.decrementGauge("postman_messages_current", 1, {
+      if (prevGaugeValue && prevGaugeValue > 0) {
+        this.metricsService.decrementGauge(LineaPostmanMetrics.Messages, {
           status: messageStatus,
           direction: messageDirection,
         });
       }
     } catch (error) {
       this.logger.error("Failed to update metrics:", error);
+    }
+  }
+
+  private async swapStatus(
+    name: LineaPostmanMetrics,
+    previous: Record<string, string>,
+    next: Record<string, string>,
+  ): Promise<void> {
+    try {
+      const [prevVal, newVal] = await Promise.all([
+        this.metricsService.getGaugeValue(name, previous),
+        this.metricsService.getGaugeValue(name, next),
+      ]);
+
+      if (prevVal && prevVal > 0) {
+        this.metricsService.decrementGauge(name, previous);
+      }
+
+      if (newVal !== undefined) {
+        this.metricsService.incrementGauge(name, next);
+      }
+    } catch (error) {
+      this.logger.error("Metrics swap failed:", error);
     }
   }
 }
