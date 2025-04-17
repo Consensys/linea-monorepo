@@ -970,6 +970,102 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       );
     });
 
+    it("Should fail to finalize Prover Beta V1.4 blobs with Dev Verifier", async () => {
+      // *** ARRANGE ***
+      const devVerifier = await deployPlonkVerifierDev();
+
+      // Deploy and initialize LineaRollup
+      const initializationData = {
+        initialStateRootHash: betaV1_4PostReleaseFinalizationData.parentStateRootHash,
+        initialL2BlockNumber: betaV1_4PostReleaseFinalizationData.lastFinalizedBlockNumber,
+        genesisTimestamp: betaV1_4PostReleaseFinalizationData.parentAggregationLastBlockTimestamp,
+        defaultVerifier: devVerifier,
+        rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
+        rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
+        roleAddresses,
+        pauseTypeRoles: LINEA_ROLLUP_PAUSE_TYPES_ROLES,
+        unpauseTypeRoles: LINEA_ROLLUP_UNPAUSE_TYPES_ROLES,
+        fallbackOperator: FALLBACK_OPERATOR_ADDRESS,
+        defaultAdmin: securityCouncil.address,
+      };
+
+      const betaV1_4LineaRollup = (await deployUpgradableFromFactory("TestLineaRollup", [initializationData], {
+        initializer: LINEA_ROLLUP_INITIALIZE_SIGNATURE,
+        unsafeAllow: ["constructor", "incorrect-initializer-order"],
+      })) as unknown as TestLineaRollup;
+
+      await betaV1_4LineaRollup.setupParentShnarf(betaV1_4PostReleaseFinalizationData.parentAggregationFinalShnarf);
+
+      // Send blobs
+      const blobFiles = getVersionedBlobFiles("betaV1_4/postRelease");
+
+      for (let i = 0; i < blobFiles.length; i++) {
+        await sendVersionedBlobTransactionFromFile(
+          lineaRollup,
+          blobFiles[i],
+          betaV1_4LineaRollup,
+          "betaV1_4/postRelease",
+        );
+      }
+
+      const finalBlobFile = JSON.parse(
+        fs.readFileSync(`${__dirname}/../../_testData/betaV1_4/postRelease/${blobFiles.slice(-1)[0]}`, "utf-8"),
+      );
+
+      // Setup finalize call
+      const finalizationData = await generateFinalizationData({
+        l1RollingHash: betaV1_4PostReleaseFinalizationData.l1RollingHash,
+        l1RollingHashMessageNumber: BigInt(betaV1_4PostReleaseFinalizationData.l1RollingHashMessageNumber),
+        lastFinalizedTimestamp: BigInt(betaV1_4PostReleaseFinalizationData.parentAggregationLastBlockTimestamp),
+        endBlockNumber: BigInt(betaV1_4PostReleaseFinalizationData.finalBlockNumber),
+        parentStateRootHash: betaV1_4PostReleaseFinalizationData.parentStateRootHash,
+        finalTimestamp: BigInt(betaV1_4PostReleaseFinalizationData.finalTimestamp),
+        l2MerkleRoots: betaV1_4PostReleaseFinalizationData.l2MerkleRoots,
+        l2MerkleTreesDepth: BigInt(betaV1_4PostReleaseFinalizationData.l2MerkleTreesDepth),
+        l2MessagingBlocksOffsets: betaV1_4PostReleaseFinalizationData.l2MessagingBlocksOffsets,
+        aggregatedProof: betaV1_4PostReleaseFinalizationData.aggregatedProof,
+        shnarfData: {
+          parentShnarf: finalBlobFile.prevShnarf,
+          snarkHash: finalBlobFile.snarkHash,
+          finalStateRootHash: finalBlobFile.finalStateRootHash,
+          dataEvaluationPoint: finalBlobFile.expectedX,
+          dataEvaluationClaim: finalBlobFile.expectedY,
+        },
+      });
+
+      finalizationData.lastFinalizedL1RollingHash =
+        betaV1_4PostReleaseFinalizationData.parentAggregationLastL1RollingHash;
+      finalizationData.lastFinalizedL1RollingHashMessageNumber = BigInt(
+        betaV1_4PostReleaseFinalizationData.parentAggregationLastL1RollingHashMessageNumber,
+      );
+
+      // Setup LineaRollup state so that its references to past state, mirror the references in the finalization proof
+      await betaV1_4LineaRollup.setLastFinalizedShnarf(
+        betaV1_4PostReleaseFinalizationData.parentAggregationFinalShnarf,
+      );
+      await betaV1_4LineaRollup.setLastFinalizedState(
+        betaV1_4PostReleaseFinalizationData.parentAggregationLastL1RollingHashMessageNumber,
+        betaV1_4PostReleaseFinalizationData.parentAggregationLastL1RollingHash,
+        betaV1_4PostReleaseFinalizationData.parentAggregationLastBlockTimestamp,
+      );
+      await betaV1_4LineaRollup.setRollingHash(
+        betaV1_4PostReleaseFinalizationData.l1RollingHashMessageNumber,
+        betaV1_4PostReleaseFinalizationData.l1RollingHash,
+      );
+
+      // *** ACT ***
+      const finalizeCompressedCall = betaV1_4LineaRollup
+        .connect(operator)
+        .finalizeBlocks(
+          betaV1_4PostReleaseFinalizationData.aggregatedProof,
+          TEST_PUBLIC_VERIFIER_INDEX,
+          finalizationData,
+        );
+
+      // *** ASSERT ***
+      await expectRevertWithCustomError(betaV1_4LineaRollup, finalizeCompressedCall, "InvalidProof");
+    });
+
     it("Can migrate Dev Verifier to Prover Beta V1.4 successfully", async () => {
       /**
        * Test outline
