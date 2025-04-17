@@ -42,8 +42,8 @@ export const test = metaMaskFixtures(setup).extend<{
   clickFirstVisitModalConfirmButton: async ({ page }, use) => {
     await use(async () => {
       const confirmButton = page.getByTestId("first-visit-modal-confirm-btn");
-      await expect(confirmButton).toBeEnabled();
       await expect(confirmButton).toBeVisible();
+      await expect(confirmButton).toBeEnabled();
       await confirmButton.click();
     });
   },
