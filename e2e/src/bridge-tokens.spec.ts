@@ -184,7 +184,6 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
     logger.debug("Calling the bridgeToken function on the L2 TokenBridge contract");
 
     // Bridge token
-    logger.debug(`0.01 ether = ${etherToWei("0.01").toString(16)}`);
     nonce = await l2Provider.getTransactionCount(l2Account.address, "pending");
 
     lineaEstimateGasFee = await lineaEstimateGasClient.lineaEstimateGas(
@@ -192,6 +191,7 @@ describe("Bridge ERC20 Tokens L1 -> L2 and L2 -> L1", () => {
       l2TokenBridgeAddress,
       l2TokenBridge.interface.encodeFunctionData("bridgeToken", [l2TokenAddress, bridgeAmount, l1Account.address]),
       etherToWei("0.01").toString(16),
+      1.5,
     );
 
     const bridgeResponse = await l2TokenBridge

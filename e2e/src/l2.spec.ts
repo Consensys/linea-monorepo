@@ -27,17 +27,21 @@ describe("Layer 2 test suite", () => {
     const nonce = await l2Provider.getTransactionCount(account.address, "pending");
     logger.debug(`Fetched nonce. nonce=${nonce} account=${account.address}`);
 
-    const { maxPriorityFeePerGas, maxFeePerGas } = await lineaEstimateGasClient.lineaEstimateGas(
+    const randomBytes = ethers.randomBytes(1000);
+    const { maxPriorityFeePerGas, maxFeePerGas, gasLimit } = await lineaEstimateGasClient.lineaEstimateGas(
       account.address,
       await dummyContract.getAddress(),
-      dummyContract.interface.encodeFunctionData("setPayload", [ethers.randomBytes(1000)]),
+      dummyContract.interface.encodeFunctionData("setPayload", [randomBytes]),
     );
-    logger.debug(`Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas}`);
+    logger.debug(
+      `Fetched fee data. maxPriorityFeePerGas=${maxPriorityFeePerGas} maxFeePerGas=${maxFeePerGas} gasLimit=${gasLimit}`,
+    );
 
-    const tx = await dummyContract.connect(account).setPayload(ethers.randomBytes(1000), {
+    const tx = await dummyContract.connect(account).setPayload(randomBytes, {
       nonce: nonce,
       maxPriorityFeePerGas: maxPriorityFeePerGas,
       maxFeePerGas: maxFeePerGas,
+      gasLimit: gasLimit,
     });
     logger.debug(`setPayload transaction sent. transactionHash=${tx.hash}`);
 

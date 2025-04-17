@@ -146,6 +146,7 @@ export class LineaEstimateGasClient {
     to: string,
     data: string = "0x",
     value: string = "0x0",
+    multiplier: number = 1.0,
   ): Promise<{ maxFeePerGas: bigint; maxPriorityFeePerGas: bigint; gasLimit: bigint }> {
     const request = {
       method: "post",
@@ -166,9 +167,11 @@ export class LineaEstimateGasClient {
     const response = await fetch(this.endpoint, request);
     const responseJson = await response.json();
     assert("result" in responseJson);
+    const adjustedPriorityFeePerGas =
+      (BigInt(responseJson.result.priorityFeePerGas) * BigInt(multiplier * 100)) / BigInt(100);
     return {
-      maxFeePerGas: BigInt(responseJson.result.baseFeePerGas) + BigInt(responseJson.result.priorityFeePerGas),
-      maxPriorityFeePerGas: BigInt(responseJson.result.priorityFeePerGas),
+      maxFeePerGas: BigInt(responseJson.result.baseFeePerGas) + adjustedPriorityFeePerGas,
+      maxPriorityFeePerGas: adjustedPriorityFeePerGas,
       gasLimit: BigInt(responseJson.result.gasLimit),
     };
   }
