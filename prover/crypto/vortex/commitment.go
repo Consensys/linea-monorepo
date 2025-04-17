@@ -16,9 +16,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// MerkleCommitment represents a (merkle-mode) Vortex commitment
-type MerkleCommitment field.Element
-
 // EncodedMatrix represents the witness of a Vortex matrix commitment, it is
 // represented as an array of rows.
 type EncodedMatrix []smartvectors.SmartVector

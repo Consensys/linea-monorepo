@@ -285,7 +285,7 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 	dstVortexCtx := &vortex.Ctx{
 		RunStateNamePrefix: translator.Prefix,
 		BlowUpFactor:       srcVortexCtx.BlowUpFactor,
-		DryTreshold:        srcVortexCtx.DryTreshold,
+		CommitToPrecomputedTreshold: srcVortexCtx.CommitToPrecomputedTreshold,
 		CommittedRowsCount: srcVortexCtx.CommittedRowsCount,
 		NumCols:            srcVortexCtx.NumCols,
 		MaxCommittedRound:  srcVortexCtx.MaxCommittedRound,
