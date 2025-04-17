@@ -4,7 +4,7 @@ import { encodeData, generateKeccak256 } from "contracts/common/helpers";
 import { Eip1559Transaction } from "../../common/types";
 import { THREE_DAYS_IN_SECONDS } from "../../common/constants";
 
-const getExpectedL2BlockNumberForForcedTx = (params: {
+const _getExpectedL2BlockNumberForForcedTx = (params: {
   blockTimestamp: bigint;
   lastFinalizedBlockTimestamp: bigint;
   currentFinalizedL2BlockNumber: bigint;
@@ -21,13 +21,35 @@ export const setNextExpectedL2BlockNumberForForcedTx = async (
 ) => {
   await networkTime.setNextBlockTimestamp(nextNetworkTimestamp);
   const lastFinalizedBlock = await lineaRollup.currentL2BlockNumber();
-  const expectedBlockNumber = getExpectedL2BlockNumberForForcedTx({
+  const expectedBlockNumber = _getExpectedL2BlockNumberForForcedTx({
     blockTimestamp: nextNetworkTimestamp,
     l2BlockBuffer: BigInt(THREE_DAYS_IN_SECONDS),
     currentFinalizedL2BlockNumber: lastFinalizedBlock,
     lastFinalizedBlockTimestamp: lastFinalizedBlockTimestamp,
   });
   return expectedBlockNumber;
+};
+
+const _computeForcedTransactionRollingHash = async (
+  mimcLibrary: Mimc,
+  previousRollingHash: string,
+  hashedPayload: string,
+  expectedBlockNumber: bigint,
+  from: string,
+): Promise<string> => {
+  const mostSignificantBytesHashedPayload = "0x" + hashedPayload.slice(2, 32 + 2).padStart(64, "0");
+  const leastSignificantBytesHashedPayload = "0x" + hashedPayload.slice(32 + 2, 64 + 2).padStart(64, "0");
+  const mimcPayload = encodeData(
+    ["bytes32", "bytes32", "bytes32", "uint256", "address"],
+    [
+      previousRollingHash,
+      mostSignificantBytesHashedPayload,
+      leastSignificantBytesHashedPayload,
+      expectedBlockNumber,
+      from,
+    ],
+  );
+  return await mimcLibrary.hash(mimcPayload);
 };
 
 export const getForcedTransactionRollingHash = async (
@@ -59,26 +81,4 @@ export const getForcedTransactionRollingHash = async (
     expectedBlockNumber,
     from,
   );
-};
-
-const _computeForcedTransactionRollingHash = async (
-  mimcLibrary: Mimc,
-  previousRollingHash: string,
-  hashedPayload: string,
-  expectedBlockNumber: bigint,
-  from: string,
-): Promise<string> => {
-  const mostSignificantBytesHashedPayload = hashedPayload.slice(0, 32 + 2);
-  const leastSignificantBytesHashedPayload = `0x${hashedPayload.slice(32 + 2, 64 + 2)}`;
-  const mimcPayload = encodeData(
-    ["bytes32", "bytes32", "bytes32", "uint256", "address"],
-    [
-      previousRollingHash,
-      mostSignificantBytesHashedPayload,
-      leastSignificantBytesHashedPayload,
-      expectedBlockNumber,
-      from,
-    ],
-  );
-  return await mimcLibrary.hash(mimcPayload);
 };

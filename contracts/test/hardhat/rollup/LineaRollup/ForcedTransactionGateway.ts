@@ -38,7 +38,7 @@ import { toBeHex, zeroPadValue } from "ethers";
 import { expect } from "chai";
 import { deployFromFactory } from "../../common/deployment";
 
-describe.only("Linea Rollup contract: Forced Transactions", () => {
+describe("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
   let forcedTransactionGateway: ForcedTransactionGateway;
   let mimcLibrary: Mimc;
@@ -58,9 +58,6 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
 
   before(async () => {
     ({ nonAuthorizedAccount, securityCouncil } = await loadFixture(getAccountsFixture));
-    mimcLibrary = (await deployFromFactory("Mimc")) as Mimc;
-    await mimcLibrary.waitForDeployment();
-    mimcLibraryAddress = await mimcLibrary.getAddress();
   });
 
   beforeEach(async () => {
@@ -82,10 +79,19 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
       timestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
     };
 
+    async function deployMimc() {
+      mimcLibrary = (await deployFromFactory("Mimc")) as Mimc;
+      await mimcLibrary.waitForDeployment();
+      mimcLibraryAddress = await mimcLibrary.getAddress();
+    }
+
     async function deployTestEip1559RlpEncoderFixture() {
       return deployFromFactory("TestEip1559RlpEncoder", LINEA_MAINNET_CHAIN_ID);
     }
-    // Unsure why this only works in beforeEach block, and not before block
+
+    // Unsure why the following two lines do not work in before block
+    // If we deploy mimic or eip1559RlpEncoder in before block, and try to invoke the contracts, we get a weird error
+    await loadFixture(deployMimc);
     eip1559RlpEncoder = (await loadFixture(deployTestEip1559RlpEncoderFixture)) as TestEip1559RlpEncoder;
   });
 
@@ -380,9 +386,15 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
       );
 
       const expectedForcedTransactionNumber = 1n;
-      // TODO: Manually compute with Mimc for more dynamic testing
-      const expectedMimcHashWithPreviousZeroValueRollingHash =
-        "0x06f999b87d23e5d8b579a906300ca23b8029080d071517b75774b2e6b9abda8c";
+
+      const expectedMimcHashWithPreviousZeroValueRollingHash = await getForcedTransactionRollingHash(
+        mimcLibrary,
+        lineaRollup,
+        eip1559RlpEncoder,
+        buildEip1559Transaction(l2SendMessageTransaction.result),
+        expectedBlockNumber,
+        l2SendMessageTransaction?.result?.from,
+      );
 
       const expectedEventArgs = [
         expectedForcedTransactionNumber,
@@ -414,9 +426,14 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
 
       const expectedForcedTransactionNumber = 1n;
 
-      // TODO: Manually compute with Mimc for more dynamic testing
-      const expectedMimcHashWithPreviousZeroValueRollingHash =
-        "0x105d807fa47dc19c25ca7ea12d66f8eea2428a916ae8db7e458b9a58b1ef6041";
+      const expectedMimcHashWithPreviousZeroValueRollingHash = await getForcedTransactionRollingHash(
+        mimcLibrary,
+        lineaRollup,
+        eip1559RlpEncoder,
+        buildEip1559Transaction(l2SendMessageTransaction.result),
+        expectedBlockNumber,
+        l2SendMessageTransaction?.result?.from,
+      );
 
       const expectedEventArgs = [
         expectedForcedTransactionNumber,
@@ -460,7 +477,7 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
       expect(await lineaRollup.forcedTransactionL2BlockNumbers(1)).greaterThan(0);
     });
 
-    it.only("Updates the forcedTransactionRollingHashes on the Linea Rollup", async () => {
+    it("Updates the forcedTransactionRollingHashes on the Linea Rollup", async () => {
       expect(await lineaRollup.forcedTransactionRollingHashes(1)).equal(HASH_ZERO);
       const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
         lineaRollup,
@@ -475,14 +492,13 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
         expectedBlockNumber,
         l2SendMessageTransaction?.result?.from,
       );
-      console.log(expectedForcedTxRollingHash);
 
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
         defaultFinalizedState,
       );
 
-      expect(await lineaRollup.forcedTransactionRollingHashes(1)).not.equal(HASH_ZERO);
+      expect(await lineaRollup.forcedTransactionRollingHashes(1)).equal(expectedForcedTxRollingHash);
     });
   });
 });
