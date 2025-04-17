@@ -132,6 +132,8 @@ export const test = metaMaskFixtures(setup).extend<{
   // Metamask Actions - Should be ok to reuse within other fixture functions
   connectMetamaskToDapp: async ({ page, metamask }, use) => {
     await use(async () => {
+      await page.waitForLoadState("domcontentloaded", { timeout: PAGE_TIMEOUT });
+
       // Click Connect button
       const connectBtn = page.getByRole("button", { name: "Connect", exact: true }).first();
       await connectBtn.click();
