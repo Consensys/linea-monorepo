@@ -1,9 +1,9 @@
 import { metaMaskFixtures, getExtensionId } from "@synthetixio/synpress/playwright";
-import setup from "./wallet-setup/metamask.setup";
 import { Locator, Page } from "@playwright/test";
+import setup from "./wallet-setup/metamask.setup";
 import { getNativeBridgeTransactionsCountImpl, selectTokenAndWaitForBalance } from "./utils";
 import { LINEA_SEPOLIA_NETWORK, PAGE_TIMEOUT, POLLING_INTERVAL } from "./constants";
-import next from "next";
+
 /**
  * NB: There is an issue with Synpress `metaMaskFixtures` extension functions wherein extension functions
  * may not be able to reuse other extension functions. This is especially the case when advanced operations
@@ -14,6 +14,7 @@ import next from "next";
  */
 export const test = metaMaskFixtures(setup).extend<{
   // Bridge UI Actions
+  clickFirstVisitModalConfirmButton: () => Promise<void>;
   clickNativeBridgeButton: () => Promise<Locator>;
   openNativeBridgeTransactionHistory: () => Promise<void>;
   closeNativeBridgeTransactionHistory: () => Promise<void>;
@@ -38,6 +39,13 @@ export const test = metaMaskFixtures(setup).extend<{
   doInitiateBridgeTransaction: () => Promise<void>;
   doClaimTransaction: () => Promise<void>;
 }>({
+  clickFirstVisitModalConfirmButton: async ({ page }, use) => {
+    await use(async () => {
+      const confirmButton = page.getByTestId("first-visit-modal-confirm-btn");
+      await confirmButton.waitFor({ state: "visible" });
+      await confirmButton.click();
+    });
+  },
   // Bridge UI Actions
   clickNativeBridgeButton: async ({ page }, use) => {
     await use(async () => {

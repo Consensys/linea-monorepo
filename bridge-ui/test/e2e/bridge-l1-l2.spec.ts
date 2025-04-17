@@ -16,12 +16,21 @@ describe("L1 > L2 via Native Bridge", () => {
       expect(pageUrl).toEqual(TEST_URL);
     });
 
-    test("should have 'Native Bridge' button link on homepage", async ({ clickNativeBridgeButton }) => {
+    test("should have 'Native Bridge' button link on homepage", async ({
+      clickNativeBridgeButton,
+      clickFirstVisitModalConfirmButton,
+    }) => {
+      await clickFirstVisitModalConfirmButton();
       const nativeBridgeBtn = await clickNativeBridgeButton();
       await expect(nativeBridgeBtn).toBeVisible();
     });
 
-    test("should connect MetaMask to dapp correctly", async ({ connectMetamaskToDapp, clickNativeBridgeButton }) => {
+    test("should connect MetaMask to dapp correctly", async ({
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      clickFirstVisitModalConfirmButton,
+    }) => {
+      await clickFirstVisitModalConfirmButton();
       await clickNativeBridgeButton();
       await connectMetamaskToDapp();
     });
@@ -31,7 +40,9 @@ describe("L1 > L2 via Native Bridge", () => {
       connectMetamaskToDapp,
       clickNativeBridgeButton,
       openNativeBridgeTransactionHistory,
+      clickFirstVisitModalConfirmButton,
     }) => {
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await openNativeBridgeTransactionHistory();
@@ -46,7 +57,9 @@ describe("L1 > L2 via Native Bridge", () => {
       clickNativeBridgeButton,
       openNativeBridgeFormSettings,
       toggleShowTestNetworksInNativeBridgeForm,
+      clickFirstVisitModalConfirmButton,
     }) => {
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await openNativeBridgeFormSettings();
@@ -66,9 +79,10 @@ describe("L1 > L2 via Native Bridge", () => {
       toggleShowTestNetworksInNativeBridgeForm,
       selectTokenAndInputAmount,
       switchToEthereumMainnet,
+      clickFirstVisitModalConfirmButton,
     }) => {
       test.setTimeout(60_000);
-
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await openNativeBridgeFormSettings();
@@ -108,8 +122,10 @@ describe("L1 > L2 via Native Bridge", () => {
       doInitiateBridgeTransaction,
       openNativeBridgeTransactionHistory,
       closeNativeBridgeTransactionHistory,
+      clickFirstVisitModalConfirmButton,
     }) => {
       // Setup testnet UI
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await openNativeBridgeFormSettings();
@@ -140,8 +156,10 @@ describe("L1 > L2 via Native Bridge", () => {
       openNativeBridgeTransactionHistory,
       closeNativeBridgeTransactionHistory,
       doTokenApprovalIfNeeded,
+      clickFirstVisitModalConfirmButton,
     }) => {
       // Setup testnet UI
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await openNativeBridgeFormSettings();
@@ -172,7 +190,9 @@ describe("L1 > L2 via Native Bridge", () => {
       switchToLineaSepolia,
       doClaimTransaction,
       waitForTxListUpdateForClaimTx,
+      clickFirstVisitModalConfirmButton,
     }) => {
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await openNativeBridgeFormSettings();
