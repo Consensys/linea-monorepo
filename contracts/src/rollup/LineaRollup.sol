@@ -214,6 +214,9 @@ contract LineaRollup is
     bytes32 _forcedTransactionRollingHash
   ) external onlyRole(FORCED_TRANSACTION_SENDER_ROLE) {
     unchecked {
+      // To consider - Should we enforce that _forcedTransactionNumber == nextForcedTransactionNumber + 1?
+      // To consider - It seems that we can increment 'nextForcedTransactionNumber' by any arbitrary value here, yet we assume that the last forced tx is indexed by 'nextForcedTransactionNumber - 1'
+
       if (forcedTransactionL2BlockNumbers[_forcedTransactionNumber - 1] == _forcedL2BlockNumber) {
         revert ForcedTransactionExistsForBlock(_forcedL2BlockNumber);
       }
