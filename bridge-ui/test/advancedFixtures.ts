@@ -42,7 +42,8 @@ export const test = metaMaskFixtures(setup).extend<{
   clickFirstVisitModalConfirmButton: async ({ page }, use) => {
     await use(async () => {
       const confirmButton = page.getByTestId("first-visit-modal-confirm-btn");
-      await confirmButton.waitFor({ state: "visible" });
+      await expect(confirmButton).toBeEnabled();
+      await expect(confirmButton).toBeVisible();
       await confirmButton.click();
     });
   },
@@ -165,6 +166,7 @@ export const test = metaMaskFixtures(setup).extend<{
   // We use this instead of metamask.approveTokenPermission because we found the original method flaky
   submitERC20ApprovalTx: async ({ context, page, metamask }, use) => {
     await use(async () => {
+      metamask.approveTokenPermission;
       // Need to wait for Metamask Notification page to exist, does not exist immediately after clicking 'Approve' button.
       // In Synpress source code, they use this logic in every method interacting with the Metamask notification page.
       const extensionId = await getExtensionId(context, "MetaMask");
