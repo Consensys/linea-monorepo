@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub;
 
 import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
 import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
+import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.LondonInitializationSection;
@@ -24,6 +25,7 @@ import net.consensys.linea.zktracer.module.hub.state.LondonTransactionStack;
 import net.consensys.linea.zktracer.module.hub.state.TransactionStack;
 import net.consensys.linea.zktracer.module.txndata.module.LondonTxnData;
 import net.consensys.linea.zktracer.module.txndata.module.TxnData;
+import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -55,8 +57,14 @@ public class LondonHub extends Hub {
 
   @Override
   protected boolean coinbaseWarmthAtTxEnd() {
+    final TransactionProcessingMetadata currentTx = txStack().current();
+    if (currentTx.senderIsCoinbase()
+        || currentTx.recipientIsCoinbase()
+        || isPrecompile(currentTx.getCoinbaseAddress())) {
+      return true;
+    }
     return isExceptional() || opCode() == REVERT
-        ? txStack.current().isCoinbasePreWarmed()
+        ? currentTx.isCoinbasePreWarmed()
         : isAddressWarm(messageFrame(), coinbaseAddress());
   }
 }
