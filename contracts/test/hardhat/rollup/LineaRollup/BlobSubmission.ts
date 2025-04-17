@@ -970,7 +970,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       );
     });
 
-    it("Can migrate Mainnet Verifier to Prover Beta V1.4 successfully", async () => {
+    it("Can migrate Dev Verifier to Prover Beta V1.4 successfully", async () => {
       /**
        * Test outline
        * 1. Submit blob and finalize with old verifier
@@ -978,14 +978,14 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
        * 3. Submit blob and finalize with new verifier
        */
 
-      const oldMainnetVerifier = await deployPlonkVerifierDev();
+      const devVerifier = await deployPlonkVerifierDev();
       const newMainnetFullVerifier = await deployPlonkVerifierMainnetFull();
 
       const initializationData = {
         initialStateRootHash: betaV1_4PreReleaseFinalizationData.parentStateRootHash,
         initialL2BlockNumber: betaV1_4PreReleaseFinalizationData.lastFinalizedBlockNumber,
         genesisTimestamp: betaV1_4PreReleaseFinalizationData.parentAggregationLastBlockTimestamp,
-        defaultVerifier: oldMainnetVerifier,
+        defaultVerifier: devVerifier,
         rateLimitPeriodInSeconds: ONE_DAY_IN_SECONDS,
         rateLimitAmountInWei: INITIAL_WITHDRAW_LIMIT,
         roleAddresses,
@@ -1139,7 +1139,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
         .connect(operator)
         .finalizeBlocks(
           betaV1_4PostReleaseFinalizationData.aggregatedProof,
-          TEST_PUBLIC_VERIFIER_INDEX,
+          TEST_NEW_PUBLIC_VERIFIER_INDEX,
           newFinalizationData,
         );
 
