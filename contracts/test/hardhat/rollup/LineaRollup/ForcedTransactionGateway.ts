@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
-import { ForcedTransactionGateway, Mimc, TestLineaRollup } from "contracts/typechain-types";
+import { ForcedTransactionGateway, Mimc, TestLineaRollup, TestEip1559RlpEncoder } from "contracts/typechain-types";
 import transactionWithoutCalldata from "../../_testData/eip1559RlpEncoderTransactions/withoutCalldata.json";
 import transactionWithLargeCalldata from "../../_testData/eip1559RlpEncoderTransactions/withLargeCalldata.json";
 import transactionWithCalldataAndAccessList from "../../_testData/eip1559RlpEncoderTransactions/withCalldataAndAccessList.json";
@@ -12,6 +12,7 @@ import {
   getAccountsFixture,
   deployForcedTransactionGatewayFixture,
   setNextExpectedL2BlockNumberForForcedTx,
+  getForcedTransactionRollingHash,
 } from "./../helpers";
 import {
   buildAccessErrorMessage,
@@ -40,12 +41,13 @@ import { deployFromFactory } from "../../common/deployment";
 describe.only("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
   let forcedTransactionGateway: ForcedTransactionGateway;
+  let mimcLibrary: Mimc;
   let mimcLibraryAddress: string;
+  let eip1559RlpEncoder: TestEip1559RlpEncoder;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let securityCouncil: SignerWithAddress;
   let nonAuthorizedAccount: SignerWithAddress;
-
   let defaultFinalizedState = {
     messageNumber: 0n,
     messageRollingHash: HASH_ZERO,
@@ -56,7 +58,7 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
 
   before(async () => {
     ({ nonAuthorizedAccount, securityCouncil } = await loadFixture(getAccountsFixture));
-    const mimcLibrary = (await deployFromFactory("Mimc")) as unknown as Mimc;
+    mimcLibrary = (await deployFromFactory("Mimc")) as Mimc;
     await mimcLibrary.waitForDeployment();
     mimcLibraryAddress = await mimcLibrary.getAddress();
   });
@@ -79,6 +81,12 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
       forcedTransactionRollingHash: HASH_ZERO,
       timestamp: DEFAULT_LAST_FINALIZED_TIMESTAMP,
     };
+
+    async function deployTestEip1559RlpEncoderFixture() {
+      return deployFromFactory("TestEip1559RlpEncoder", LINEA_MAINNET_CHAIN_ID);
+    }
+    // Unsure why this only works in beforeEach block, and not before block
+    eip1559RlpEncoder = (await loadFixture(deployTestEip1559RlpEncoderFixture)) as TestEip1559RlpEncoder;
   });
 
   describe("Contract Construction", () => {
@@ -452,8 +460,22 @@ describe.only("Linea Rollup contract: Forced Transactions", () => {
       expect(await lineaRollup.forcedTransactionL2BlockNumbers(1)).greaterThan(0);
     });
 
-    it("Updates the forcedTransactionRollingHashes on the Linea Rollup", async () => {
+    it.only("Updates the forcedTransactionRollingHashes on the Linea Rollup", async () => {
       expect(await lineaRollup.forcedTransactionRollingHashes(1)).equal(HASH_ZERO);
+      const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
+        lineaRollup,
+        DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
+        defaultFinalizedState.timestamp,
+      );
+      const expectedForcedTxRollingHash = await getForcedTransactionRollingHash(
+        mimcLibrary,
+        lineaRollup,
+        eip1559RlpEncoder,
+        buildEip1559Transaction(l2SendMessageTransaction.result),
+        expectedBlockNumber,
+        l2SendMessageTransaction?.result?.from,
+      );
+      console.log(expectedForcedTxRollingHash);
 
       await forcedTransactionGateway.submitForcedTransaction(
         buildEip1559Transaction(l2SendMessageTransaction.result),
