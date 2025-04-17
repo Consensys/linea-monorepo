@@ -22,10 +22,11 @@ func WithSISParams(params *ringsis.Params) VortexOp {
 	}
 }
 
-// Allows skipping rounds when there are not many polynomials
-func WithDryThreshold(dryThreshold int) VortexOp {
+// Allows skipping commiting to the precomputed polynomials
+// when there are only a few of them
+func WithCommitToPrecomputedThreshold(commitToPrecomputedTresholdThreshold int) VortexOp {
 	return func(ctx *Ctx) {
-		ctx.DryTreshold = dryThreshold
+		ctx.CommitToPrecomputedTreshold = commitToPrecomputedTresholdThreshold
 	}
 }
 

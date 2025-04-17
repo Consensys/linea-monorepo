@@ -167,13 +167,14 @@ type Ctx struct {
 	ShadowCols                   map[ifaces.ColID]struct{}
 
 	// Public parameters of the commitment scheme
-	BlowUpFactor       int
-	DryTreshold        int
-	CommittedRowsCount int
-	NumCols            int
-	MaxCommittedRound  int
-	VortexParams       *vortex.Params
-	SisParams          *ringsis.Params
+	BlowUpFactor                int
+	CommitToPrecomputedTreshold int
+	ApplySISHashingThreshold    int
+	CommittedRowsCount          int
+	NumCols                     int
+	MaxCommittedRound           int
+	VortexParams                *vortex.Params
+	SisParams                   *ringsis.Params
 	// Optional parameter
 	NumOpenedCol int
 
@@ -301,30 +302,8 @@ func (ctx *Ctx) compileRound(round int) {
 		return
 	}
 
-	if len(allComs) <= ctx.DryTreshold {
-		// Compile the round as a dry round
-		ctx.compileRoundAsDry(round, allComs)
-		return
-	}
-
 	// Else, we compile it as a normal round
 	ctx.compileRoundWithVortex(round, allComs)
-}
-
-// Compile the round as a dry round : pass all committed as prover
-// messages directly instead of sending them to the oracle.
-func (ctx *Ctx) compileRoundAsDry(round int, coms []ifaces.ColID) {
-
-	// sanity-check for double insertions
-	if ctx.DriedByRounds.LenOf(round) > 0 {
-		utils.Panic("inserted twice in round %v : we had already %v\n", round, ctx.DriedByRounds.LenOf(round))
-	}
-	ctx.DriedByRounds.AppendToInner(round, coms...)
-
-	// mark the commitments as messages
-	for _, com := range coms {
-		ctx.comp.Columns.SetStatus(com, column.Proof)
-	}
 }
 
 // Compile the round as a Vortex round : ensure the number of limbs divides the degree by
@@ -523,7 +502,7 @@ func (ctx *Ctx) NbColsToOpen() int {
 
 	// opportunistic sanity-check : params should be set by now
 	if ctx.VortexParams == nil {
-		utils.Panic("ilcParams was not set")
+		utils.Panic("VortexParams was not set")
 	}
 
 	// If the context was created with the relevant option,
@@ -625,7 +604,7 @@ func (ctx *Ctx) NumEncodedCols() int {
 // commits to the precomputed columns. This is detected by checking if
 // the number of precomputed columns is greater than the dry treshold.
 func (ctx *Ctx) IsCommitToPrecomputed() bool {
-	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.DryTreshold
+	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.CommitToPrecomputedTreshold
 }
 
 // Turns the precomputed into verifying key messages. A possible improvement
@@ -659,7 +638,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	// If there are not enough columns, for a commitment to be meaningful,
 	// explicitly sends the column to the verifier so that he can check the
 	// evaluation by itself.
-	if len(precomputedColNames) < ctx.DryTreshold {
+	if len(precomputedColNames) < ctx.CommitToPrecomputedTreshold {
 		for _, name := range precomputedColNames {
 			comp.Columns.SetStatus(name, column.VerifyingKey)
 			pCol := comp.Columns.GetHandle(name)
@@ -678,8 +657,8 @@ func (ctx *Ctx) processStatusPrecomputed() {
 		logrus.
 			WithField("where", "processStatusPrecomputed").
 			WithField("nbPrecomputed", len(precomputedColNames)).
-			WithField("dryThreshold", ctx.DryTreshold).
-			Info("number of precomputed is smaller than dryThreshold")
+			WithField("commitToPrecomputedTreshold", ctx.CommitToPrecomputedTreshold).
+			Info("number of precomputed is smaller than commitToPrecomputedTreshold")
 		return
 	}
 
