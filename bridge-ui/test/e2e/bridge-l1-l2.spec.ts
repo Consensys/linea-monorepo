@@ -22,6 +22,7 @@ describe("L1 > L2 via Native Bridge", () => {
     }) => {
       await clickFirstVisitModalConfirmButton();
       const nativeBridgeBtn = await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await expect(nativeBridgeBtn).toBeVisible();
     });
 
@@ -32,6 +33,7 @@ describe("L1 > L2 via Native Bridge", () => {
     }) => {
       await clickFirstVisitModalConfirmButton();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
     });
 
@@ -45,6 +47,7 @@ describe("L1 > L2 via Native Bridge", () => {
       await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeTransactionHistory();
 
       const txHistoryHeading = page.getByRole("heading").filter({ hasText: "Transaction History" });
@@ -62,6 +65,7 @@ describe("L1 > L2 via Native Bridge", () => {
       await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 
@@ -85,6 +89,7 @@ describe("L1 > L2 via Native Bridge", () => {
       await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 
@@ -128,6 +133,7 @@ describe("L1 > L2 via Native Bridge", () => {
       await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 
@@ -162,6 +168,7 @@ describe("L1 > L2 via Native Bridge", () => {
       await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 
@@ -195,6 +202,7 @@ describe("L1 > L2 via Native Bridge", () => {
       await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 
