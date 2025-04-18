@@ -9,6 +9,7 @@ import atypFont from "@/assets/fonts/atyp";
 import atypTextFont from "@/assets/fonts/atypText";
 import "./globals.css";
 import "../scss/app.scss";
+import FirstVisitModal from "@/components/modal/first-time-visit";
 
 const metadata: Metadata = {
   title: "Linea Bridge",
@@ -21,11 +22,11 @@ const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-theme="v2">
+    <html lang="en" data-theme="v2" className={clsx(atypFont.variable, atypTextFont.variable)}>
       <title>{metadata.title?.toString()}</title>
       <meta name="description" content={metadata.description?.toString()} key="desc" />
 
-      <body className={clsx(atypFont.variable, atypTextFont.variable, atypFont.className, atypTextFont.className)}>
+      <body>
         <noscript dangerouslySetInnerHTML={{ __html: gtmNoScript }} />
 
         <Providers>
@@ -43,10 +44,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </symbol>
           </defs>
         </svg>
+        <FirstVisitModal />
       </body>
 
-      <Script id="usabilla" dangerouslySetInnerHTML={{ __html: usabillaBeScript }} />
-      <Script id="gtm" dangerouslySetInnerHTML={{ __html: gtmScript }} />
+      <Script id="usabilla" dangerouslySetInnerHTML={{ __html: usabillaBeScript }} strategy="lazyOnload" />
+      <Script id="gtm" dangerouslySetInnerHTML={{ __html: gtmScript }} strategy="lazyOnload" />
     </html>
   );
 }

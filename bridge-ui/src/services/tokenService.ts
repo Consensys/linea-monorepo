@@ -3,6 +3,8 @@ import { Address } from "viem";
 import { config } from "@/config";
 import { SupportedCurrencies, defaultTokensConfig } from "@/stores";
 import { GithubTokenListToken, Token, BridgeProvider, NetworkTokens } from "@/types";
+import { PRIORITY_SYMBOLS, USDC_SYMBOL } from "@/constants";
+import { isUndefined } from "@/utils";
 
 enum NetworkTypes {
   MAINNET = "MAINNET",
@@ -12,17 +14,19 @@ enum NetworkTypes {
 export async function getTokens(networkTypes: NetworkTypes): Promise<GithubTokenListToken[]> {
   try {
     // Fetch the JSON data from the URL.
-    let url = process.env.MAINNET_TOKEN_LIST ? (process.env.MAINNET_TOKEN_LIST as string) : "";
+    let url = config.tokenListUrls.mainnet;
     if (networkTypes === NetworkTypes.SEPOLIA) {
-      url = process.env.SEPOLIA_TOKEN_LIST ? (process.env.SEPOLIA_TOKEN_LIST as string) : "";
+      url = config.tokenListUrls.sepolia;
     }
 
-    const response = await fetch(url);
+    const response = await fetch(url, { next: { revalidate: 60 } });
     const data = await response.json();
     const tokens = data.tokens as GithubTokenListToken[];
     const bridgedTokens = tokens.filter(
       (token: GithubTokenListToken) =>
-        token.tokenType.includes("canonical-bridge") || token.tokenType.includes("native") || token.symbol === "USDC",
+        token.tokenType.includes("canonical-bridge") ||
+        (token.tokenType.includes("native") && token.extension?.rootAddress !== undefined) ||
+        token.symbol === USDC_SYMBOL,
     );
     return bridgedTokens;
   } catch (error) {
@@ -36,7 +40,7 @@ export async function fetchTokenPrices(
   currency: SupportedCurrencies,
   chainId?: number,
 ): Promise<Record<string, number>> {
-  if (!chainId) {
+  if (isUndefined(chainId)) {
     return {};
   }
 
@@ -62,7 +66,7 @@ export async function validateTokenURI(url: string): Promise<string> {
 }
 
 export async function formatToken(token: GithubTokenListToken): Promise<Token> {
-  const bridgeProvider = token.symbol === "USDC" ? BridgeProvider.CCTP : BridgeProvider.NATIVE;
+  const bridgeProvider = token.symbol === USDC_SYMBOL ? BridgeProvider.CCTP : BridgeProvider.NATIVE;
 
   const logoURI = await validateTokenURI(token.logoURI);
 
@@ -71,7 +75,7 @@ export async function formatToken(token: GithubTokenListToken): Promise<Token> {
     name: token.name,
     symbol: token.symbol,
     decimals: token.decimals,
-    L1: token?.extension?.rootAddress ?? null,
+    L1: token.extension.rootAddress,
     L2: token.address,
     image: logoURI,
     isDefault: true,
@@ -80,29 +84,49 @@ export async function formatToken(token: GithubTokenListToken): Promise<Token> {
 }
 
 export async function getTokenConfig(): Promise<NetworkTokens> {
+  const updatedTokensConfig = { ...defaultTokensConfig };
+
+  // Feature toggle, remove when feature toggle no longer needed
+  const filterOutUSDCWhenCctpNotEnabled = (token: Token) => config.isCctpEnabled || token.symbol !== USDC_SYMBOL;
+
+  // Sort the tokens to put priority tokens first
+  const sortPriorityTokensFirst = (tokens: Token[]): Token[] => {
+    const priority: Token[] = [];
+    const rest: Token[] = [];
+
+    for (const token of tokens) {
+      if (PRIORITY_SYMBOLS.includes(token.symbol)) {
+        // Avoid duplicates
+        if (!priority.find((t) => t.symbol === token.symbol)) {
+          priority.push(token);
+        }
+      } else {
+        rest.push(token);
+      }
+    }
+
+    return [...priority, ...rest];
+  };
+
+  const enrichTokens = async (tokens: GithubTokenListToken[], defaultList: Token[]): Promise<Token[]> => {
+    const formatted = await Promise.all(tokens.map(formatToken));
+    // Feature toggle, remove .filter expression when feature toggle no longer needed
+    const allTokens = [...defaultList, ...formatted.filter(filterOutUSDCWhenCctpNotEnabled)];
+    return sortPriorityTokensFirst(allTokens);
+  };
+
   const [mainnetTokens, sepoliaTokens] = await Promise.all([
     getTokens(NetworkTypes.MAINNET),
     getTokens(NetworkTypes.SEPOLIA),
   ]);
 
-  const updatedTokensConfig = { ...defaultTokensConfig };
+  const [mainnet, sepolia] = await Promise.all([
+    enrichTokens(mainnetTokens, defaultTokensConfig.MAINNET),
+    enrichTokens(sepoliaTokens, defaultTokensConfig.SEPOLIA),
+  ]);
 
-  // Feature toggle, remove when feature toggle no longer needed
-  const filterOutUSDCWhenCCTPNotEnabled = (token: Token) => config.isCCTPEnabled || token.symbol !== "USDC";
-
-  updatedTokensConfig.MAINNET = [
-    ...defaultTokensConfig.MAINNET,
-    ...(await Promise.all(mainnetTokens.map(async (token: GithubTokenListToken): Promise<Token> => formatToken(token))))
-      // Feature toggle, remove .filter expression when feature toggle no longer needed
-      .filter(filterOutUSDCWhenCCTPNotEnabled),
-  ];
-
-  updatedTokensConfig.SEPOLIA = [
-    ...defaultTokensConfig.SEPOLIA,
-    ...(await Promise.all(sepoliaTokens.map((token: GithubTokenListToken): Promise<Token> => formatToken(token))))
-      // Feature toggle, remove .filter expression when feature toggle no longer needed
-      .filter(filterOutUSDCWhenCCTPNotEnabled),
-  ];
+  updatedTokensConfig.MAINNET = mainnet;
+  updatedTokensConfig.SEPOLIA = sepolia;
 
   return updatedTokensConfig;
 }

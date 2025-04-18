@@ -1,14 +1,17 @@
+import { useEffect, useState } from "react";
+import { useAccount } from "wagmi";
 import BridgeTwoLogo from "@/components/bridge/bridge-two-logo";
 import styles from "./claiming.module.scss";
 import SettingIcon from "@/assets/icons/setting.svg";
-import { useEffect, useState } from "react";
 import AdvancedSettings from "@/components/bridge/modal/advanced-settings";
 import Skeleton from "@/components/bridge/claiming/skeleton";
 import ReceivedAmount from "./received-amount";
 import Fees from "./fees";
 import { useFormStore, useChainStore } from "@/stores";
+import BridgeMode from "./bridge-mode";
 
 export default function Claiming() {
+  const { isConnected } = useAccount();
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
 
@@ -17,6 +20,7 @@ export default function Claiming() {
 
   const amount = useFormStore((state) => state.amount);
   const balance = useFormStore((state) => state.balance);
+  const isTokenCanonicalUSDC = useFormStore((state) => state.isTokenCanonicalUSDC);
 
   const originChainBalanceTooLow = amount && balance < amount;
 
@@ -30,16 +34,22 @@ export default function Claiming() {
   }, [amount]);
 
   if (!amount || amount <= 0n) return null;
-  if (originChainBalanceTooLow) return null;
+  if (isConnected && originChainBalanceTooLow) return null;
 
   return (
     <div className={styles["wrapper"]}>
       <div className={styles.top}>
         <p className={styles.title}>Receive</p>
         <div className={styles.config}>
-          <button className={styles.setting} type="button" onClick={() => setShowAdvancedSettingsModal(true)}>
-            <SettingIcon />
-          </button>
+          <BridgeMode />
+          {
+            // There is no auto-claiming for USDC via CCTPV2
+            !isTokenCanonicalUSDC() && (
+              <button className={styles.setting} type="button" onClick={() => setShowAdvancedSettingsModal(true)}>
+                <SettingIcon />
+              </button>
+            )
+          }
         </div>
       </div>
 

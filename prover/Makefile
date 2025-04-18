@@ -43,17 +43,16 @@ zkevm/arithmetization/zkevm.bin: go-corset
 	cd ../constraints && $(GO_CORSET) make zkevm.bin && mv zkevm.bin ../prover/zkevm/arithmetization
 
 ##
-## zkevm.bin without 2B block gas limit constraint to test old traces
+## Generate the setup for all provers job for sepolia (to be run with S3 access)
 ##
-zkevm/arithmetization/zkevm_for_old_trace.bin: go-corset
-	cd ../constraints && $(GO_CORSET) make zkevm_for_old_replay_tests.bin &&\
-	mv zkevm_for_old_replay_tests.bin ../prover/zkevm/arithmetization/zkevm_for_old_trace.bin
+setup-sepolia: bin/prover
+	bin/prover setup --config ./config/config-sepolia-full.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
 
 ##
-## Generate the setup for the execution prover (to be run with S3 access)
+## Generate the setup for all provers job for mainnet (to be run with S3 access)
 ##
-setup: bin/prover
-	bin/prover setup --config ./config/config-sepolia-full.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
+setup-mainnet: bin/prover
+	bin/prover setup --config ./config/config-mainnet-full.toml --dict ./lib/compressor/compressor_dict.bin --assets-dir ./prover-assets
 
 ##
 ## Copy the prover assets to the S3 bucket (zkuat)

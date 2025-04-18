@@ -1,16 +1,18 @@
 "use client";
 
-import { DynamicWagmiConnector, EthereumWalletConnectors, DynamicContextProvider } from "@/lib/dynamic";
-import { ReactNode } from "react";
-import { config } from "@/lib/wagmi";
+import { PropsWithChildren } from "react";
 import { WagmiProvider } from "wagmi";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  DynamicWagmiConnector,
+  EthereumWalletConnectors,
+  DynamicContextProvider,
+  SolanaWalletConnectors,
+} from "@/lib/dynamic";
+import { config as wagmiConfig } from "@/lib/wagmi";
+import { config } from "@/config";
+import { SolanaWalletProvider } from "./solana-provider";
 
-const queryClient = new QueryClient();
-
-type Web3ProviderProps = {
-  children: ReactNode;
-};
+type Web3ProviderProps = PropsWithChildren;
 
 export const cssOverrides = `
   .connect-button {
@@ -65,16 +67,18 @@ export function Web3Provider({ children }: Web3ProviderProps) {
   return (
     <DynamicContextProvider
       settings={{
-        environmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID!,
-        walletConnectors: [EthereumWalletConnectors],
+        environmentId: config.dynamicEnvironmentId,
+        walletConnectors: [EthereumWalletConnectors, SolanaWalletConnectors],
+        initialAuthenticationMode: "connect-only",
+        mobileExperience: "redirect",
         appName: "Linea Bridge",
         cssOverrides,
       }}
     >
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
-          <DynamicWagmiConnector>{children}</DynamicWagmiConnector>
-        </QueryClientProvider>
+      <WagmiProvider config={wagmiConfig} reconnectOnMount={false}>
+        <DynamicWagmiConnector>
+          <SolanaWalletProvider>{children}</SolanaWalletProvider>
+        </DynamicWagmiConnector>
       </WagmiProvider>
     </DynamicContextProvider>
   );

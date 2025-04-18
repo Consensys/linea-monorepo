@@ -2,7 +2,7 @@ import { useState } from "react";
 import styles from "./list-transaction.module.scss";
 import Transaction from "./item";
 import TransactionDetails from "@/components/bridge/transaction-history/modal/transaction-details";
-import { BridgeTransaction } from "@/utils";
+import { BridgeTransaction } from "@/types";
 
 type Props = {
   transactions: BridgeTransaction[];
@@ -21,9 +21,9 @@ export default function ListTransaction({ transactions }: Props) {
   };
   return (
     <>
-      <ul className={styles["list"]}>
+      <ul className={styles["list"]} data-testid="native-bridge-transaction-history-list">
         {transactions.map((item, index) => (
-          <Transaction key={`${item.bridgingTx}-${index}`} onClick={handleClickTransaction} {...item} />
+          <Transaction key={`transaction-${item.bridgingTx}-${index}`} onClick={handleClickTransaction} {...item} />
         ))}
       </ul>
       <TransactionDetails

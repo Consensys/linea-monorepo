@@ -12,17 +12,32 @@ const chainConfigSchema = z.object({
   gasLimitSurplus: z.bigint().positive(),
   profitMargin: z.bigint().positive(),
   cctpDomain: z.number().gte(0).int(),
+  cctpTokenMessengerV2Address: z.string().refine((val) => isAddress(val), {
+    message: "Invalid Ethereum address",
+  }),
+  cctpMessageTransmitterV2Address: z.string().refine((val) => isAddress(val), {
+    message: "Invalid Ethereum address",
+  }),
 });
 
 export const configSchema = z
   .object({
     chains: z.record(z.string().regex(/^\d+$/), chainConfigSchema),
-    walletConnectId: z.string(),
+    walletConnectId: z.string().nonempty(),
     storage: z.object({
       minVersion: z.number().positive().int(),
     }),
     // Feature toggle for CCTPV2 for USDC transfers
-    isCCTPEnabled: z.boolean(),
+    isCctpEnabled: z.boolean(),
+    infuraApiKey: z.string().nonempty(),
+    quickNodeApiKey: z.string().nonempty(),
+    dynamicEnvironmentId: z.string().nonempty(),
+    lifiApiKey: z.string().nonempty(),
+    onRamperApiKey: z.string().nonempty(),
+    tokenListUrls: z.object({
+      mainnet: z.string().trim().url(),
+      sepolia: z.string().trim().url(),
+    }),
   })
   .strict();
 

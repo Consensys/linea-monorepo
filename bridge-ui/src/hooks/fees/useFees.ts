@@ -6,9 +6,10 @@ import useMinimumFee from "./useMinimumFee";
 import useBridgingFee from "./useBridgingFee";
 import useTokenPrices from "../useTokenPrices";
 import { useFormStore, useChainStore } from "@/stores";
+import { isZero, isUndefined } from "@/utils";
 
 const useFees = () => {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
   useMinimumFee();
@@ -21,12 +22,15 @@ const useFees = () => {
   const amount = useFormStore((state) => state.amount);
 
   const gasFeesResult = useGasFees({
+    token,
+    isConnected,
     address,
     fromChain,
     amount: amount ?? 0n,
   });
 
   const { bridgingFees, isLoading: isBridgingFeeLoading } = useBridgingFee({
+    isConnected,
     account: address,
     token,
     amount: amount ?? 0n,
@@ -38,7 +42,7 @@ const useFees = () => {
     (fee: bigint) => {
       const zeroAddrLower = zeroAddress.toLowerCase();
       const price = tokenPrices?.[zeroAddrLower];
-      if (!price || price <= 0) return null;
+      if (isZero(price) || isUndefined(price) || price <= 0) return null;
       return Number(formatEther(fee)) * price;
     },
     [tokenPrices],

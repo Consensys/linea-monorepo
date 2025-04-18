@@ -26,10 +26,14 @@ import (
 )
 
 var (
-	fullZkEvm              *ZkEvm
-	fullZkEvmCheckOnly     *ZkEvm
-	onceFullZkEvm          = sync.Once{}
-	onceFullZkEvmCheckOnly = sync.Once{}
+	fullZkEvm               *ZkEvm
+	fullZkEvmCheckOnly      *ZkEvm
+	fullZkEvmSetup          *ZkEvm
+	fullZkEvmSetupLarge     *ZkEvm
+	onceFullZkEvm           = sync.Once{}
+	onceFullZkEvmCheckOnly  = sync.Once{}
+	onceFullZkEvmSetup      = sync.Once{}
+	onceFullZkEvmSetupLarge = sync.Once{}
 
 	// This is the SIS instance, that has been found to minimize the overhead of
 	// recursion. It is changed w.r.t to the estimated because the estimated one
@@ -105,7 +109,7 @@ func FullZkEvm(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 	onceFullZkEvm.Do(func() {
 		// Initialize the Full zkEVM arithmetization
-		fullZkEvm = fullZKEVMWithSuite(tl, fullCompilationSuite, cfg)
+		fullZkEvm = FullZKEVMWithSuite(tl, fullCompilationSuite, cfg)
 	})
 
 	return fullZkEvm
@@ -115,13 +119,30 @@ func FullZkEVMCheckOnly(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
 
 	onceFullZkEvmCheckOnly.Do(func() {
 		// Initialize the Full zkEVM arithmetization
-		fullZkEvmCheckOnly = fullZKEVMWithSuite(tl, dummyCompilationSuite, cfg)
+		fullZkEvmCheckOnly = FullZKEVMWithSuite(tl, dummyCompilationSuite, cfg)
 	})
 
 	return fullZkEvmCheckOnly
 }
 
-func fullZKEVMWithSuite(tl *config.TracesLimits, suite compilationSuite, cfg *config.Config) *ZkEvm {
+func FullZkEvmSetup(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
+	onceFullZkEvmSetup.Do(func() {
+		fullZkEvmSetup = FullZKEVMWithSuite(tl, fullCompilationSuite, cfg)
+	})
+	return fullZkEvmSetup
+}
+
+func FullZkEvmSetupLarge(tl *config.TracesLimits, cfg *config.Config) *ZkEvm {
+	onceFullZkEvmSetupLarge.Do(func() {
+		fullZkEvmSetupLarge = FullZKEVMWithSuite(tl, fullCompilationSuite, cfg)
+	})
+	return fullZkEvmSetupLarge
+}
+
+// FullZKEVMWithSuite returns a compiled zkEVM with the given compilation suite.
+// It can be used to benchmark the compilation time of the zkEVM and helps with
+// performance optimization.
+func FullZKEVMWithSuite(tl *config.TracesLimits, suite compilationSuite, cfg *config.Config) *ZkEvm {
 
 	// @Alex: only set mandatory parameters here. aka, the one that are not
 	// actually feature-gated.

@@ -6,9 +6,11 @@ import useERC20BridgingFee from "./useERC20BridgingFee";
 import useEthBridgingFee from "./useEthBridgingFee";
 import { useFormStore, useChainStore } from "@/stores";
 import { Token } from "@/types";
-import { isEth } from "@/utils";
+import { isEth, isUndefined } from "@/utils";
+import { DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER } from "@/constants";
 
 type UseBridgingFeeProps = {
+  isConnected: boolean;
   token: Token;
   account?: Address;
   recipient: Address;
@@ -16,7 +18,7 @@ type UseBridgingFeeProps = {
   claimingType: "auto" | "manual";
 };
 
-const useBridgingFee = ({ account, token, claimingType, amount, recipient }: UseBridgingFeeProps) => {
+const useBridgingFee = ({ isConnected, account, token, claimingType, amount, recipient }: UseBridgingFeeProps) => {
   const fromChain = useChainStore.useFromChain();
   const toChain = useChainStore.useToChain();
   const setBridgingFees = useFormStore((state) => state.setBridgingFees);
@@ -24,25 +26,28 @@ const useBridgingFee = ({ account, token, claimingType, amount, recipient }: Use
   const { feeData } = useFeeData(toChain.id);
   const nextMessageNumber = useMessageNumber({ fromChain, claimingType });
 
+  const fromAddress = isConnected ? account : DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER;
+  const toAddress = isConnected ? recipient : DEFAULT_ADDRESS_FOR_NON_CONNECTED_USER;
+
   const eth = useEthBridgingFee({
-    account,
+    account: fromAddress,
     fromChain,
     toChain,
     nextMessageNumber,
     amount,
-    recipient,
+    recipient: toAddress,
     token,
     claimingType,
   });
 
   const erc20 = useERC20BridgingFee({
-    account,
+    account: fromAddress,
     token,
     fromChain,
     toChain,
     nextMessageNumber,
     amount,
-    recipient,
+    recipient: toAddress,
     claimingType,
   });
 
@@ -54,7 +59,7 @@ const useBridgingFee = ({ account, token, claimingType, amount, recipient }: Use
     if (claimingType === "manual") {
       return 0n;
     }
-    if (isLoading || isError || !gasLimit || !feeData) {
+    if (isLoading || isError || isUndefined(gasLimit) || isUndefined(feeData)) {
       return null;
     }
     return feeData * (gasLimit + fromChain.gasLimitSurplus) * fromChain.profitMargin;
