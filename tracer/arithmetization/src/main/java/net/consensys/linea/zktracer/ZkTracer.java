@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer;
 
 import static net.consensys.linea.zktracer.ChainConfig.FORK_LINEA_CHAIN;
+import static net.consensys.linea.zktracer.opcode.OpCodes.loadOpcodes;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -82,6 +83,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
    * @param chain
    */
   public ZkTracer(ChainConfig chain) {
+    loadOpcodes(chain.fork);
     this.chain = chain;
     this.hub =
         switch (chain.fork) {

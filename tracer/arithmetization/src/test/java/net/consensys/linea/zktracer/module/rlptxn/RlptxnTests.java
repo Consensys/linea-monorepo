@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.rlptxn;
 
-import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.CHAIN;
+import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.UNIT_TEST_CHAIN;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -108,7 +108,7 @@ public class RlptxnTests {
             .to(isDeployment ? null : recipientAccount)
             .payload(payload)
             .accessList(type == FRONTIER ? null : accessList)
-            .chainId(chainLess ? null : CHAIN.id)
+            .chainId(chainLess ? null : UNIT_TEST_CHAIN.id)
             .build();
 
     ToyExecutionEnvironmentV2.builder()

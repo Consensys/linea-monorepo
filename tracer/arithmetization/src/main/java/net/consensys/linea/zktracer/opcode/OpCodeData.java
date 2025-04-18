@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.opcode;
 
+import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.opcode.InstructionFamily.*;
 
 import java.util.Objects;
@@ -34,7 +35,6 @@ import net.consensys.linea.zktracer.opcode.stack.StackSettings;
  * @param instructionFamily The {@link InstructionFamily} to which the opcode belongs.
  * @param stackSettings A {@link StackSettings} instance describing how the opcode alters the EVM
  *     stack.
- * @param ramSettings A {@link RamSettings} instance describing how the opcode alters the memory.
  * @param billing A {@link Billing} instance describing the billing scheme of the instruction.
  */
 public record OpCodeData(
@@ -42,7 +42,6 @@ public record OpCodeData(
     int value,
     InstructionFamily instructionFamily,
     StackSettings stackSettings,
-    RamSettings ramSettings,
     Billing billing) {
 
   public Billing billing() {
@@ -67,21 +66,24 @@ public record OpCodeData(
             false,
             false,
             false),
-        new RamSettings(DataLocation.NONE, DataLocation.NONE),
         new Billing(GasConstants.G_ZERO, BillingRate.NONE, MxpType.NONE));
   }
 
   /**
-   * A method singling out <code>PUSHx</code> instructions.
+   * A method singling out <code>PUSHx</code> instructions with X != 0.
    *
    * @return <code>true</code> if this opcode is a <code>PUSHx</code>
    */
-  public boolean isPush() {
-    return (0x60 <= value) && (value < 0x80);
+  public boolean isNonTrivialPush() {
+    return (EVM_INST_PUSH1 <= value) && (value <= EVM_INST_PUSH32);
+  }
+
+  public boolean isPushZero() {
+    return value == EVM_INST_PUSH0;
   }
 
   public boolean isJumpDest() {
-    return value == 0x5b;
+    return value == EVM_INST_JUMPDEST;
   }
 
   public boolean isJump() {

@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.hub.fragment.common;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_PUSH0;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 import static net.consensys.linea.zktracer.module.hub.signals.Exceptions.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
@@ -172,10 +173,10 @@ public class CommonFragmentValues {
       return 0;
     }
 
-    if (!opCode.isPush() && !opCode.isJump()) return pc + 1;
+    if (!opCode.isNonTrivialPush() && !opCode.isJump()) return pc + 1;
 
-    if (opCode.getData().isPush()) {
-      return pc + 1 + (opCode.byteValue() - OpCode.PUSH1.byteValue() + 1);
+    if (opCode.isNonTrivialPush()) {
+      return pc + 1 + (opCode.byteValue() - EVM_INST_PUSH0);
     }
 
     if (opCode.isJump()) {
@@ -191,7 +192,8 @@ public class CommonFragmentValues {
       }
 
       if (opCode.equals(OpCode.JUMPI)) {
-        BigInteger condition = hub.currentFrame().frame().getStackItem(1).toUnsignedBigInteger();
+        final BigInteger condition =
+            hub.currentFrame().frame().getStackItem(1).toUnsignedBigInteger();
         if (!condition.equals(BigInteger.ZERO)) {
           return attemptedPcNew;
         } else {

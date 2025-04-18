@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub.fragment;
 
 import static com.google.common.base.Preconditions.*;
 import static com.google.common.primitives.Ints.min;
+import static net.consensys.linea.zktracer.Trace.EVM_INST_PUSH0;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
 import static net.consensys.linea.zktracer.opcode.InstructionFamily.*;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
@@ -137,21 +138,21 @@ public final class StackFragment implements TraceFragment {
     }
 
     this.commonFragmentValues = commonFragmentValues;
-    this.pushValue = opCode.isPush() ? EWord.of(getPushValue(hub)) : EWord.ZERO;
+    this.pushValue = opCode.isNonTrivialPush() ? EWord.of(getPushValue(hub)) : EWord.ZERO;
   }
 
   private Bytes getPushValue(Hub hub) {
-    checkState(hub.opCode().isPush());
+    checkState(hub.opCode().isNonTrivialPush());
 
     final int pc = hub.messageFrame().getPC();
     if (pc + 1 >= hub.messageFrame().getCode().getSize()) {
       return Bytes.EMPTY;
     }
 
-    Bytes byteCode = hub.messageFrame().getCode().getBytes();
-    int nBytesToPush = (opCode.byteValue() & 0xff) - (OpCode.PUSH1.byteValue() & 0xff) + 1;
-    int nLeftoverBytes = byteCode.size() - (pc + 1);
-    Bytes partialPushValue = byteCode.slice(pc + 1, min(nLeftoverBytes, nBytesToPush));
+    final Bytes byteCode = hub.messageFrame().getCode().getBytes();
+    final int nBytesToPush = (opCode.byteValue() & 0xff) - EVM_INST_PUSH0;
+    final int nLeftoverBytes = byteCode.size() - (pc + 1);
+    final Bytes partialPushValue = byteCode.slice(pc + 1, min(nLeftoverBytes, nBytesToPush));
     return (nLeftoverBytes >= nBytesToPush)
         ? partialPushValue
         : rightPadTo(partialPushValue, nBytesToPush);
@@ -216,7 +217,8 @@ public final class StackFragment implements TraceFragment {
     while (it.hasNext()) {
       var i = it.nextIndex();
       var op = it.next();
-      final EWord eValue = (i == 3 && opCode().isPush()) ? pushValue : EWord.of(op.value());
+      final EWord eValue =
+          (i == 3 && opCode().isNonTrivialPush()) ? pushValue : EWord.of(op.value());
 
       heightTracers.get(i).apply(op.height());
       valHiTracers.get(i).apply(eValue.hi());

@@ -85,7 +85,7 @@ public class MultiBlockExecutionEnvironment {
         .useCoinbaseAddressFromBlockHeader(true)
         .transactionProcessingResultValidator(this.transactionProcessingResultValidator)
         .build()
-        .replay(ToyExecutionEnvironmentV2.CHAIN, this.buildConflationSnapshot());
+        .replay(ToyExecutionEnvironmentV2.UNIT_TEST_CHAIN, this.buildConflationSnapshot());
   }
 
   public Hub getHub() {
