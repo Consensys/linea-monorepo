@@ -20,4 +20,13 @@ public enum Fork {
   SHANGHAI,
   CANCUN,
   PRAGUE;
+
+  public static String toString(Fork fork) {
+    return switch (fork) {
+      case LONDON -> "london";
+      case SHANGHAI -> "shanghai";
+      case CANCUN -> "cancun";
+      case PRAGUE -> "prague";
+    };
+  }
 }

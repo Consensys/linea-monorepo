@@ -39,7 +39,7 @@ import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
 @Builder
 @Slf4j
 public class ToyExecutionEnvironmentV2 {
-  public static final ChainConfig CHAIN = ChainConfig.MAINNET_LONDON_TESTCONFIG;
+  public static final ChainConfig UNIT_TEST_CHAIN = ChainConfig.MAINNET_LONDON_TESTCONFIG;
   public static final Address DEFAULT_COINBASE_ADDRESS =
       Address.fromHexString("0xc019ba5e00000000c019ba5e00000000c019ba5e");
   public static final long DEFAULT_BLOCK_NUMBER = 6678980;
@@ -68,10 +68,10 @@ public class ToyExecutionEnvironmentV2 {
 
   @Builder.Default private final Consumer<ZkTracer> zkTracerValidator = x -> {};
 
-  private final ZkTracer tracer = new ZkTracer(CHAIN);
+  private final ZkTracer tracer = new ZkTracer(UNIT_TEST_CHAIN);
 
   public void run() {
-    ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(CHAIN.id, LONDON);
+    ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(UNIT_TEST_CHAIN.id, LONDON);
     GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
         this.buildGeneralStateTestCaseSpec(protocolSpec);
 
@@ -84,7 +84,7 @@ public class ToyExecutionEnvironmentV2 {
   }
 
   public long runForGasCost() {
-    ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(CHAIN.id, LONDON);
+    ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(UNIT_TEST_CHAIN.id, LONDON);
     GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
         this.buildGeneralStateTestCaseSpec(protocolSpec);
 

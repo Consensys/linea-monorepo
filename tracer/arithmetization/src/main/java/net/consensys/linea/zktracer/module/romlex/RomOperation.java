@@ -15,14 +15,7 @@
 
 package net.consensys.linea.zktracer.module.romlex;
 
-import static net.consensys.linea.zktracer.Trace.EVM_INST_INVALID;
-import static net.consensys.linea.zktracer.Trace.EVM_INST_JUMPDEST;
-import static net.consensys.linea.zktracer.Trace.EVM_INST_PUSH1;
-import static net.consensys.linea.zktracer.Trace.EVM_INST_PUSH32;
-import static net.consensys.linea.zktracer.Trace.LLARGE;
-import static net.consensys.linea.zktracer.Trace.LLARGEMO;
-import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
-import static net.consensys.linea.zktracer.Trace.WORD_SIZE_MO;
+import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 
 import lombok.EqualsAndHashCode;
@@ -31,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.ModuleOperation;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.UnsignedByte;
 import org.apache.tuweni.bytes.Bytes;
 
@@ -63,8 +57,8 @@ public final class RomOperation extends ModuleOperation {
     Bytes pushValueLow = Bytes.minimalBytes(0);
 
     for (int i = 0; i < chunkRowSize; i++) {
-      boolean codeSizeReached = i >= codeSize;
-      int sliceNumber = i / LLARGE;
+      final boolean codeSizeReached = i >= codeSize;
+      final int sliceNumber = i / LLARGE;
 
       // Fill Generic columns
       trace
@@ -99,13 +93,13 @@ public final class RomOperation extends ModuleOperation {
 
       // Deal when not in a PUSH instruction
       if (pushParameter == 0) {
-        UnsignedByte opCode = UnsignedByte.of(dataPadded.get(i));
-        final boolean isPush =
-            EVM_INST_PUSH1 <= opCode.toInteger() && opCode.toInteger() <= EVM_INST_PUSH32;
+        final UnsignedByte opCodeUB = UnsignedByte.of(dataPadded.get(i));
+        final OpCode opcode = OpCode.of(opCodeUB.toInteger());
+        final boolean isPush = opcode.isNonTrivialPush();
 
         // The OpCode is a PUSH instruction
         if (isPush) {
-          pushParameter = opCode.toInteger() - EVM_INST_PUSH1 + 1;
+          pushParameter = opCodeUB.toInteger() - EVM_INST_PUSH0;
           if (pushParameter > LLARGE) {
             pushValueHigh = dataPadded.slice(i + 1, pushParameter - LLARGE);
             pushValueLow = dataPadded.slice(i + 1 + pushParameter - LLARGE, LLARGE);
@@ -117,14 +111,14 @@ public final class RomOperation extends ModuleOperation {
         trace
             .isPush(isPush)
             .isPushData(false)
-            .opcode(opCode)
+            .opcode(opCodeUB)
             .pushParameter(UnsignedByte.of(pushParameter))
             .counterPush(UnsignedByte.ZERO)
             .pushValueAcc(Bytes.EMPTY)
             .pushValueHi(pushValueHigh)
             .pushValueLo(pushValueLow)
             .pushFunnelBit(false)
-            .isJumpdest(opCode.toInteger() == EVM_INST_JUMPDEST);
+            .isJumpdest(opcode.getData().isJumpDest());
       }
       // Deal when in a PUSH instruction
       else {

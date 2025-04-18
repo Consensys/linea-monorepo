@@ -25,38 +25,42 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.type.CollectionType;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.json.JsonConverter;
 
+@Slf4j
 /** Responsible for managing opcode loading and opcode metadata retrieval. */
 public class OpCodes {
-  private static final JsonConverter YAML_CONVERTER = JsonConverter.builder().enableYaml().build();
-
   private static final short OPCODES_LIST_SIZE = 256;
   public static List<OpCodeData> opCodeDataList = new ArrayList<>(OPCODES_LIST_SIZE);
 
-  static {
-    init();
-  }
-
-  /** Loads all opcode metadata from src/main/resources/opcodes.yml. */
+  /** Loads all opcode metadata from src/main/resources/shanghaiOpcodes.yml. */
   @SneakyThrows(IOException.class)
-  private static void init() {
-    JsonNode rootNode =
-        YAML_CONVERTER
-            .getObjectMapper()
-            .readTree(OpCodes.class.getClassLoader().getResourceAsStream("opcodes.yml"))
+  public static void loadOpcodes(Fork fork) {
+    final JsonConverter YamlConverter = JsonConverter.builder().enableYaml().build();
+
+    final String yamlFileName = Fork.toString(fork) + "Opcodes.yml";
+
+    final JsonNode rootNode =
+        YamlConverter.getObjectMapper()
+            .readTree(OpCodes.class.getClassLoader().getResourceAsStream(yamlFileName))
             .get("opcodes");
 
-    CollectionType typeReference =
+    final CollectionType typeReference =
         TypeFactory.defaultInstance().constructCollectionType(List.class, OpCodeData.class);
 
-    List<OpCodeData> opCodesLocal =
-        YAML_CONVERTER.getObjectMapper().treeToValue(rootNode, typeReference);
+    final List<OpCodeData> opCodesLocal =
+        YamlConverter.getObjectMapper().treeToValue(rootNode, typeReference);
 
     initOpcodes(opCodesLocal);
   }
 
   private static void initOpcodes(final List<OpCodeData> opCodesLocal) {
+    if (!opCodeDataList.isEmpty()) {
+      log.info("opCodeDataList has already been initialized.");
+      return;
+    }
     for (int i = 0; i < OPCODES_LIST_SIZE; i++) {
       opCodeDataList.add(null);
     }
