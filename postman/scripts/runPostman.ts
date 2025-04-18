@@ -153,7 +153,7 @@ async function main() {
 main()
   .then()
   .catch((error) => {
-    console.error("", error);
+    console.error("Error occurred:", error);
     process.exit(1);
   });
 
