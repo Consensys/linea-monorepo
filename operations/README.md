@@ -28,7 +28,7 @@ To sync transactions between nodes, first make sure you have port-forwarded to t
 Then provide the source and target nodes, where the source node is the node pending transactions will be synced from.  
 `synctx -s http://localhost:8500 -t http://localhost:8501` 
 
-To perform a dry run and verify if the corrent nodes are targetted, include the `--dry-run` flag.  
+To perform a dry run and verify if the corrent nodes are targeted, include the `--dry-run` flag.  
 `synctx -s http://localhost:8500 -t http://localhost:8501 --dry-run` 
 
 # Ethstats
