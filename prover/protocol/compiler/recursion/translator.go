@@ -31,7 +31,7 @@ func (comp *compTranslator) AddPrecomputed(srcComp *wizard.CompiledIOP, col ifac
 	var (
 		nat          = col.(column.Natural)
 		prefixedName = addPrefixToID(comp.Prefix, col.GetColID())
-		ass          = srcComp.Precomputed.MustGet(prefixedName)
+		ass          = srcComp.Precomputed.MustGet(nat.ID)
 		newCol       = comp.Target.InsertColumn(0, prefixedName, col.Size(), nat.Status())
 	)
 

@@ -582,3 +582,21 @@ func SetDiff[T comparable](a, b []T) (aExtra, bExtra []T) {
 
 	return aExtra, bExtra
 }
+
+func NextMultipleOf(n, multiple int) int {
+	return multiple * ((n + multiple - 1) / multiple)
+}
+
+// FilterInSliceWithSet returns the entries of slice that are in the set.
+// The returned parameter "in" contains the entries found in the set and
+// the returned parameter "out" contains the entries not found in the set.
+func FilterInSliceWithMap[T comparable](slice []T, set map[T]struct{}) (in []T, out []T) {
+	for _, v := range slice {
+		if _, ok := set[v]; ok {
+			in = append(in, v)
+		} else {
+			out = append(out, v)
+		}
+	}
+	return in, out
+}

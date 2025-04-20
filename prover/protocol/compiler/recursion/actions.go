@@ -155,11 +155,13 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 	for i := range pis {
 
-		pcsCtx := cc.Ctx.PcsCtx[i]
-		piWitness := pis[i].GetColAssignmentGnark(run)
-		circX, circYs, circMRoots, _ := SplitPublicInputs(cc.Ctx, piWitness)
-		params := run.GetUnivariateParams(pcsCtx.Query.QueryID)
-		pcsMRoot := pcsCtx.Items.MerkleRoots
+		var (
+			pcsCtx                       = cc.Ctx.PcsCtx[i]
+			piWitness                    = pis[i].GetColAssignmentGnark(run)
+			circX, circYs, circMRoots, _ = SplitPublicInputs(cc.Ctx, piWitness)
+			params                       = run.GetUnivariateParams(pcsCtx.Query.QueryID)
+			pcsMRoot                     = pcsCtx.Items.MerkleRoots
+		)
 
 		api.AssertIsEqual(circX, params.X)
 

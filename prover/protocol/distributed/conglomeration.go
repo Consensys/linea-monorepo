@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
@@ -103,8 +104,14 @@ func (c *ConglomeratorCompilation) Compile(comp *wizard.CompiledIOP) {
 	for i := 1; i < len(c.ModuleProofs); i++ {
 		diff1, diff2 := cmpWizardIOP(w0, c.ModuleProofs[i])
 		if len(diff1) > 0 || len(diff2) > 0 {
-			utils.Panic("incompatible IOPs +++=%v\n---=%v", diff1, diff2)
+
+			for i, modIOP := range c.ModuleProofs {
+				dumpWizardIOP(modIOP, fmt.Sprintf("iop-%d.csv", i))
+			}
+
+			utils.Panic("incompatible IOPs i=%v\n\t+++=%v\n\t---=%v", i, diff1, diff2)
 		}
+
 	}
 
 	c.Recursion = recursion.DefineRecursionOf(comp, w0, recursion.Parameters{
@@ -281,4 +288,9 @@ func cmpWizardIOP(c1, c2 *wizard.CompiledIOP) (diff1, diff2 []string) {
 	slices.SortFunc(diff2, lessFunc)
 
 	return diff1, diff2
+}
+
+// dumpWizardIOP dumps a compiled IOP to a file.
+func dumpWizardIOP(c *wizard.CompiledIOP, name string) {
+	logdata.GenCSV(files.MustOverwrite(name), logdata.IncludeAllFilter)(c)
 }

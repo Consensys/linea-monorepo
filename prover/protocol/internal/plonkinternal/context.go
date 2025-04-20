@@ -22,7 +22,7 @@ import (
 
 // This flag control whether to activate the gnark profiling for the circuits. Please leave it
 // to "false" because (1) it generates a lot of data (2) it is extremely time consuming.
-const activateGnarkProfiling = true
+const activateGnarkProfiling = false
 
 // The CompilationCtx (context) carries all the compilation informations about a call to
 // Plonk in Wizard. Namely, (non-exhaustively) it contains the gnark's internal
@@ -166,7 +166,7 @@ func createCtx(
 		}
 
 		// This adds a nice pprof suffix
-		fname = fname + ".pprof"
+		fname = "profiling/" + fname + ".pprof"
 		pro = profile.Start(profile.WithPath(fname))
 	}
 
@@ -228,7 +228,6 @@ func CompileCircuitDefault(circ frontend.Circuit) (*cs.SparseR1CS, error) {
 	}
 
 	return ccsIface.(*cs.SparseR1CS), err
-
 }
 
 // CompileCircuitWithRangeCheck compiles the circuit and returns the compiled

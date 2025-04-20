@@ -28,6 +28,20 @@ const (
 	fixedNbRowExternalHasher = 1 << 16
 	verifyingKeyPublicInput  = "VERIFYING_KEY"
 	lppMerkleRootPublicInput = "LPP_COLUMNS_MERKLE_ROOTS"
+	// thresholdStopping self-recursion is the number of committed cells at
+	// which we stop iterating the self-recursion function. It's a purely
+	// empirical value and is obtained by looking at the smallest wizard
+	// size that we obtain by recursing infinitely the self-recursion
+	// procedure.
+	thresholdStoppingSelfrecursion = 13500000
+)
+
+var (
+	// enforcedNbRowVortexOpt tells the last invokation of Vortex prior to the self-
+	// recursion to use a plonk circuit with a fixed number of rows. The values
+	// are completely empirical and set to make the compilation work.
+	enforcedNbRowVortexOpt            = []int{68, 1409, 147, 5, 9, 7, 0, 1}
+	enforcedNbRowPrecomputedVortexOpt = 75
 )
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -132,8 +146,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	// adding an optional second layer of compilation when we have very
 	// large inputs.
 	stats := logdata.GetWizardStats(modIOP)
-	if stats.NumCellsCommitted > 13500000 {
-
+	if stats.NumCellsCommitted > thresholdStoppingSelfrecursion {
 		wizard.ContinueCompilation(modIOP,
 			vortex.Compile(
 				8,
@@ -148,12 +161,16 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		)
 	}
 
-	vortex.Compile(
-		8,
-		vortex.ForceNumOpenedColumns(64),
-		vortex.WithSISParams(&sisInstance),
-		vortex.PremarkAsSelfRecursed(),
-	)(modIOP)
+	wizard.ContinueCompilation(modIOP,
+		logdata.Log("just-before-recursion"),
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+			vortex.PremarkAsSelfRecursed(),
+			vortex.WithEnforcedNumRows(enforcedNbRowVortexOpt, enforcedNbRowPrecomputedVortexOpt),
+		),
+	)
 
 	var recCtx *recursion.Recursion
 

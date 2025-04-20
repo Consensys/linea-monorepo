@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -164,6 +165,11 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		pubInputOffset = 1 + numYs + numComs
 	)
 
+	f := files.MustOverwrite("conglomeration-circuit.json")
+	jsonString := plonkCircuit.WizardVerifier.Analyze().WithDetails(plonkCircuit.WizardVerifier).JsonString()
+	f.WriteString(jsonString)
+	f.Close()
+
 	for i := 0; i < params.MaxNumProof; i++ {
 
 		translator := &compTranslator{
@@ -241,6 +247,11 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness) {
 			assign = AssignRecursionCircuit(r.InputCompiledIOP, wit[i].Proof, wit[i].Pub, wit[i].FinalFS)
 		)
 
+		f := files.MustOverwrite("assign-" + prefix + ".json")
+		jsonString := assign.WizardVerifier.Analyze().WithDetails(assign.WizardVerifier).JsonString()
+		f.WriteString(jsonString)
+		f.Close()
+
 		fullWitnesses[i], err = frontend.NewWitness(assign, ecc.BLS12_377.ScalarField())
 		if err != nil {
 			utils.Panic("could not create witness: %v", err)
@@ -249,6 +260,14 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness) {
 		// Uses the assignment to assigns the merkle-roots columns.
 		for j := range assign.Commitments {
 			colName := addPrefixToID(prefix, assign.MerkleRoots[j].GetColID())
+
+			// One of the Merkle root may be the root to the precomputed
+			// polynomials and it may be of type precomputed ("may be", not
+			// "is") and thus may not be assignable.
+			if run.Spec.Precomputed.Exists(colName) {
+				continue
+			}
+
 			x := assign.Commitments[j].(field.Element)
 			run.AssignColumn(colName, smartvectors.NewConstant(x, 1))
 		}
@@ -332,7 +351,18 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 
 	if srcVortexCtx.IsCommitToPrecomputed() {
 		dstVortexCtx.Items.Precomputeds.PrecomputedColums = translator.AddColumnList(srcVortexCtx.Items.Precomputeds.PrecomputedColums, true, 0)
-		dstVortexCtx.Items.Precomputeds.MerkleRoot = translator.AddColumnAtRound(srcVortexCtx.Items.Precomputeds.MerkleRoot, false, 0)
+
+		// If the vortex compilation is done with the [AddPrecomputedMerkleRootToPublicInputsOpt]
+		// option, then the [MerkleRoot] column will not actually be a
+		// precomputed column. In this case, we cannot use the same function of
+		// the translator to add the column in the dst compilation context.
+		mRootCol := srcVortexCtx.Items.Precomputeds.MerkleRoot
+		if srcComp.Precomputed.Exists(mRootCol.GetColID()) {
+			dstVortexCtx.Items.Precomputeds.MerkleRoot = translator.AddPrecomputed(srcComp, mRootCol)
+		} else {
+			dstVortexCtx.Items.Precomputeds.MerkleRoot = translator.AddColumnAtRound(mRootCol, false, 0)
+		}
+
 		dstVortexCtx.Items.Precomputeds.CommittedMatrix = srcVortexCtx.Items.Precomputeds.CommittedMatrix
 		dstVortexCtx.Items.Precomputeds.DhWithMerkle = srcVortexCtx.Items.Precomputeds.DhWithMerkle
 		dstVortexCtx.Items.Precomputeds.Tree = srcVortexCtx.Items.Precomputeds.Tree

@@ -23,7 +23,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-	"github.com/sirupsen/logrus"
 )
 
 // Specifies the column opening phase
@@ -86,7 +85,6 @@ func (a *preimageLimbsProverAction) Run(run *wizard.ProverRuntime) {
 			expanded_ := a.ctx.SisKey().LimbSplit(whole_)
 			expanded := smartvectors.NewRegular(expanded_)
 			run.AssignColumn(a.limbs[i].GetColID(), expanded)
-			logrus.Infof("Assigned limb column: %v", a.limbs[i].GetColID())
 		}
 	})
 }

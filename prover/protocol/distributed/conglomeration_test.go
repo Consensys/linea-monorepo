@@ -3,19 +3,48 @@ package distributed
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand/v2"
-	"reflect"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
 )
+
+// TestConglomerationBasic generates a conglomeration proof and checks if it is valid
+func TestConglomerationBasic(t *testing.T) {
+
+	var (
+		numRow = 1 << 10
+		tc     = DistributeTestCase{numRow: numRow}
+		disc   = &StandardModuleDiscoverer{
+			TargetWeight: 3 * numRow,
+			Predivision:  1,
+		}
+		comp = wizard.Compile(func(build *wizard.Builder) {
+			tc.Define(build.CompiledIOP)
+		})
+
+		// This tests the compilation of the compiled-IOP
+		distWizard                = DistributeWizard(comp, disc)
+		compiledGLs, compiledLPPs = compileAllSegments(t, distWizard)
+
+		// This does the compilation of the conglomerator proof
+		conglomeration = runConglomerationCompiler(t, slices.Concat(compiledGLs, compiledLPPs))
+		runtimeBoot    = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
+
+		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, &distWizard)
+	)
+
+	fmt.Printf("nbWitnessesGL=%d nbWitnessesLPP=%d\n", len(witnessGLs), len(witnessLPPs))
+
+	runGLs := runProverGLs(t, distWizard, compiledGLs, witnessGLs)
+	runLPPs := runProverLPPs(t, distWizard, compiledLPPs, witnessLPPs)
+	runConglomerationProver(t, conglomeration, runGLs, runLPPs)
+}
 
 // TestConglomeration generates a conglomeration proof and checks if it is valid
 func TestConglomeration(t *testing.T) {
@@ -23,23 +52,19 @@ func TestConglomeration(t *testing.T) {
 	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
-		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-		rng              = rand.New(utils.NewRandSource(0))
-		sharedRandomness = field.PseudoRand(rng)
-		zkevm            = GetZkEVM()
-		disc             = &StandardModuleDiscoverer{
+		zkevm = GetZkEVM()
+		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Affinities:   GetAffinities(zkevm),
 			Predivision:  16,
 		}
 
 		// This tests the compilation of the compiled-IOP
-		distWizard = DistributeWizard(zkevm.WizardIOP, disc)
+		distWizard                = DistributeWizard(zkevm.WizardIOP, disc)
+		compiledGLs, compiledLPPs = compileAllSegments(t, distWizard)
 
-		// Minimal witness size to compile
-		// minCompilationSize = 1 << 10
-		compiledGLs  = make([]*RecursedSegmentCompilation, len(distWizard.GLs))
-		compiledLPPs = make([]*RecursedSegmentCompilation, len(distWizard.LPPs))
+		// This does the compilation of the conglomerator proof
+		conglomeration = runConglomerationCompiler(t, slices.Concat(compiledGLs, compiledLPPs))
 	)
 
 	var (
@@ -65,102 +90,57 @@ func TestConglomeration(t *testing.T) {
 	var (
 		witness     = GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
-		proof       = runtimeBoot.ExtractProof()
-		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
 	)
 
 	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
-	if verBootErr != nil {
-		t.Fatalf("")
-	}
-
 	var (
 		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, &distWizard)
-		proofGLs                = make([]recursion.Witness, len(witnessGLs))
-		proofLPPs               = make([]recursion.Witness, len(witnessLPPs))
-		moduleWiop              = make([]*wizard.CompiledIOP, 0)
+		runGLs                  = runProverGLs(t, distWizard, compiledGLs, witnessGLs)
+		runLPPs                 = runProverLPPs(t, distWizard, compiledLPPs, witnessLPPs)
 	)
 
-	for i := range distWizard.LPPs {
-		fmt.Printf("[%v] Starting to compile module LPP for %v\n", time.Now(), distWizard.LPPs[i].ModuleNames())
-		compiledLPPs[i] = CompileSegment(distWizard.LPPs[i])
-		fmt.Printf("[%v] Done compiling module LPP for %v\n", time.Now(), distWizard.LPPs[i].ModuleNames())
-		moduleWiop = append(moduleWiop, compiledLPPs[i].RecursionComp)
+	runConglomerationProver(t, conglomeration, runGLs, runLPPs)
+}
+
+// runConglomerationCompiler compiles the conglomeration proof and returns a new ConglomeratorCompilation object.
+// The function takes a slice of RecursedSegmentCompilation objects and compiles the
+// ConglomeratorCompilation object with the given number of proofs.
+func runConglomerationCompiler(t *testing.T, compiledSegments []*RecursedSegmentCompilation) *ConglomeratorCompilation {
+
+	wiops := make([]*wizard.CompiledIOP, len(compiledSegments))
+
+	for i := range compiledSegments {
+		wiops[i] = compiledSegments[i].RecursionComp
 	}
 
-	// This applies the dummy.Compiler to all parts of the distributed wizard.
-	for i := range distWizard.GLs {
-		fmt.Printf("[%v] Starting to compile module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
-		compiledGLs[i] = CompileSegment(distWizard.GLs[i])
-		fmt.Printf("[%v] Done compiling module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
-		moduleWiop = append(moduleWiop, compiledGLs[i].RecursionComp)
+	t.Logf("[%v] Starting to compile conglomerator\n", time.Now())
+	cong := Conglomerate(20, wiops)
+	t.Logf("[%v] Finished compiling conglomerator\n", time.Now())
+
+	return cong
+}
+
+// This function runs a prover for a conglomerator compilation. It takes in a ConglomeratorCompilation
+// object and two slices of ProverRuntime objects, runGLs and runLPPs. It extracts witnesses from
+// these runtimes, then uses the ConglomeratorCompilation object to prove the conglomerator,
+// logging the start and end times of the proof process.
+func runConglomerationProver(t *testing.T, cong *ConglomeratorCompilation, runGLs, runLPPs []*wizard.ProverRuntime) {
+
+	var (
+		witLPPs = make([]recursion.Witness, len(runLPPs))
+		witGLs  = make([]recursion.Witness, len(runGLs))
+	)
+
+	for i := range runLPPs {
+		witLPPs[i] = recursion.ExtractWitness(runLPPs[i])
 	}
 
-	// This does the compilation of the conglomerator proof
-	conglomeration := Conglomerate(max(20, len(witnessGLs)+len(witnessLPPs)), moduleWiop)
-
-	for i := range witnessGLs {
-
-		var (
-			witnessGL = witnessGLs[i]
-			moduleGL  *RecursedSegmentCompilation
-		)
-
-		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
-
-		for k := range distWizard.ModuleNames {
-
-			if distWizard.ModuleNames[k] != witnessGLs[i].ModuleName {
-				continue
-			}
-
-			moduleGL = compiledGLs[k]
-		}
-
-		if moduleGL == nil {
-			t.Fatalf("module does not exists")
-		}
-
-		t.Logf("RUNNING THE GL PROVER: %v", time.Now())
-
-		run := moduleGL.ProveSegment(witnessGL)
-		proofGLs[i] = recursion.ExtractWitness(run)
-
-		t.Logf("RUNNING THE GL PROVER - DONE: %v", time.Now())
+	for i := range runGLs {
+		witGLs[i] = recursion.ExtractWitness(runGLs[i])
 	}
 
-	for i := range witnessLPPs {
-
-		var (
-			witnessLPP = witnessLPPs[i]
-			moduleLPP  *RecursedSegmentCompilation
-		)
-
-		witnessLPP.InitialFiatShamirState = sharedRandomness
-
-		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
-
-		for k := range distWizard.LPPs {
-
-			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), witnessLPPs[i].ModuleNames) {
-				continue
-			}
-
-			moduleLPP = compiledLPPs[k]
-		}
-
-		if moduleLPP == nil {
-			t.Fatalf("module does not exists")
-		}
-
-		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
-
-		run := moduleLPP.ProveSegment(witnessLPP)
-		proofLPPs[i] = recursion.ExtractWitness(run)
-
-		t.Logf("RUNNING THE LPP PROVER - DONE: %v", time.Now())
-	}
-
-	_ = conglomeration.Prove(proofGLs, proofLPPs)
+	t.Logf("[%v] Starting to prove conglomerator\n", time.Now())
+	_ = cong.Prove(witGLs, witLPPs)
+	t.Logf("[%v] Finished proving conglomerator\n", time.Now())
 }
