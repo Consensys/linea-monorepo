@@ -182,11 +182,23 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 			// and sumRhoKYik. This part "comsumes" the value of zetaI.
 			vector.ScalarMul(zetaI, zetaI, sumRhoKYik)
 			vector.Add(localResult, localResult, zetaI)
-
 		}
 
+		quotientLock.Lock()
+		vector.Sub(quotientLargestSize, quotientLargestSize, localResult)
+		quotientLock.Unlock()
 	})
 
+	// The final step of the algorithm recombine all the small quotients
+	// in the large one to obtain the final quotient. This part is not
+	// well parallelized. The hope is that its runtime cost is negligible.
+	for i := 0; i < len(quotientOfSizes)-1; i++ {
+		quotient := ldeOf(quotientOfSizes[i], memPool)
+		vector.Add(quotientLargestSize, quotientLargestSize, *quotient)
+		memPool.Free(quotient)
+	}
+
+	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegular(quotientLargestSize))
 }
 
 // computeZetas returns the values of zeta_i = lambda^i / (X - xi)
@@ -258,11 +270,10 @@ func getPowersOfOmega(n int) []field.Element {
 // monomialBasisOf computes the monommial basis representation of a poly.
 // The operation is done in-place and the modified [poly] slices is returned.
 func monomialBasisOf(poly []field.Element) []field.Element {
-
-	var (
-		domainSmall = fft.NewDomain(len(v))
-	)
-
+	domainSmall := fft.NewDomain(len(poly))
+	domainSmall.FFTInverse(poly, fft.DIF)
+	fft.BitReverse(poly)
+	return poly
 }
 
 // ldeOf computes the low-degree extension of a vector and allocates the result
