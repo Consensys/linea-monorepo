@@ -45,13 +45,14 @@ func (a *vortexVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 /*
 Applies the Vortex compiler over the current polynomial-IOP
   - blowUpFactor : inverse rate of the reed-solomon code to use
-  - dryTreshold : minimal number of polynomial in rounds to consider
-    applying the Vortex transform (i.e. using Vortex). Implicitly, we
-    consider that applying Vortex over too few vectors is not worth it.
-    For these rounds all the "Committed" columns are swithed to "prover"
+  - SISTreshold : minimal number of polynomial in rounds to consider
+    applying the SIS hashing on the columns of the round matrix. Implicitly, we
+    consider that applying SIS hash over too few vectors is not worth it.
+    For these rounds we will use the MiMC hash function directly to compute
+    the leaves of the Merkle tree.
 
 There are the following requirements:
-  - FOR NON-DRY ROUNDS, all the polynomials must have the same size
+  - FOR ALL ROUNDS, all the polynomials must have the same size
   - The inbound wizard-IOP must be a single-point polynomial-IOP
 */
 func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
@@ -85,11 +86,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// Stores a pointer to the cryptographic compiler of Vortex
 		comp.PcsCtxs = &ctx
 
-		// Converts the precomputed as verifying key (e.g. send
-		// them to the verifier) in the offline phase if the
-		// CommitPrecomputes flag is false, otherwise set them as
-		// commited. If the flag `CommitPrecomputed` is set to true,
-		// then this will instead register the precomputed columns.
+		// Todo: write proper description
 		ctx.processStatusPrecomputed()
 
 		// registers all the commitments
@@ -166,8 +163,10 @@ type Ctx struct {
 	ShadowCols                   map[ifaces.ColID]struct{}
 
 	// Public parameters of the commitment scheme
-	BlowUpFactor          int
+	BlowUpFactor int
+	// Parameters for the optional SIS hashing feature
 	ApplySISHashThreshold int
+	IsSISApplied          []bool
 	CommittedRowsCount    int
 	NumCols               int
 	MaxCommittedRound     int
@@ -283,6 +282,9 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	// Preallocate all the merkle roots for all rounds
 	ctx.Items.MerkleRoots = make([]ifaces.Column, comp.NumRounds())
 
+	// Declare the IsSISApplied slice
+	ctx.IsSISApplied = make([]bool, 0, comp.NumRounds())
+
 	return ctx
 }
 
@@ -294,6 +296,8 @@ func (ctx *Ctx) compileRound(round int) {
 
 	// edge-case : no commitment for the round = nothing to do
 	if len(allComs) == 0 {
+		// We add the default value as false in the no-op round
+		ctx.IsSISApplied = append(ctx.IsSISApplied, false)
 		return
 	}
 
@@ -336,54 +340,73 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 
 	numComsActual = len(coms)
 
+	// If there is no commitment, then we have nothing to do
 	if len(coms) == 0 {
+		// We add the default value as false in the no-op round
+		ctx.IsSISApplied = append(ctx.IsSISApplied, false)
 		return
 	}
+	if len(coms) > ctx.ApplySISHashThreshold {
+		// We are preparing for SIS hashing on the columns of the round matrix
+		// To ensure the number limbs in each subcol divides the degree, we pad the list
+		// with shadow columns. This is required for self-recursion to work correctly. In
+		// practice they do not cost anything to the prover. When using MiMC, the number of
+		// limbs is equal to 1. This skips the aforementioned behaviour.
 
-	// To ensure the number limbs in each subcol divides the degree, we pad the list
-	// with shadow columns. This is required for self-recursion to work correctly. In
-	// practice they do not cost anything to the prover. When using MiMC, the number of
-	// limbs is equal to 1. This skips the aforementioned behaviour.
-	numLimbs := 1
-	deg := 1
-	if !ctx.ReplaceSisByMimc {
-		numLimbs = ctx.SisParams.NumLimbs()
-		deg = ctx.SisParams.OutputSize()
-	}
+		numLimbs := ctx.SisParams.NumLimbs()
+		deg := ctx.SisParams.OutputSize()
 
-	if deg > numLimbs {
-		// We still require that the output size should be divisible by the number of
-		// limbs. @alex We could still support it if useful enough.
-		if deg%numLimbs != 0 {
-			utils.Panic("the number of limbs should at least divide the degree")
+		if deg > numLimbs {
+			// We still require that the output size should be divisible by the number of
+			// limbs. @alex We could still support it if useful enough.
+			if deg%numLimbs != 0 {
+				utils.Panic("the number of limbs should at least divide the degree")
+			}
+			numFieldPerPoly := utils.Max(1, deg/numLimbs)
+			numShadowRows = (numFieldPerPoly - (len(coms) % numFieldPerPoly)) % numFieldPerPoly
+			targetSize := ctx.comp.Columns.GetSize(coms[0])
+
+			for shadowID := 0; shadowID < numShadowRows; shadowID++ {
+				// Generate the shadow columns
+				shadowCol := autoAssignedShadowRow(ctx.comp, targetSize, round, shadowID)
+				// Register the column as part of the shadow columns
+				ctx.ShadowCols[shadowCol.GetColID()] = struct{}{}
+				// And append it to the list of the commitments
+				coms = append(coms, shadowCol.GetColID())
+			}
 		}
-		numFieldPerPoly := utils.Max(1, deg/numLimbs)
-		numShadowRows = (numFieldPerPoly - (len(coms) % numFieldPerPoly)) % numFieldPerPoly
-		targetSize := ctx.comp.Columns.GetSize(coms[0])
 
-		for shadowID := 0; shadowID < numShadowRows; shadowID++ {
-			// Generate the shadow columns
-			shadowCol := autoAssignedShadowRow(ctx.comp, targetSize, round, shadowID)
-			// Register the column as part of the shadow columns
-			ctx.ShadowCols[shadowCol.GetColID()] = struct{}{}
-			// And append it to the list of the commitments
-			coms = append(coms, shadowCol.GetColID())
+		log := logrus.
+			WithField("where", "compileRoundWithVortexWithSIS").
+			WithField("numComs", numComsActual).
+			WithField("numShadowRows", numShadowRows).
+			WithField("round", round)
+
+		if len(comUnconstrained) > 0 {
+			log.
+				WithField("numUnconstrained", len(comUnconstrained)).
+				WithField("unconstraineds", comUnconstrained).
+				Warn("found unconstrained columns while compiling the Vortex commitment in SIS mode")
+		} else {
+			log.Info("Compiled Vortex round in SIS mode")
 		}
-	}
-
-	log := logrus.
-		WithField("where", "compileRoundWithVortex").
-		WithField("numComs", numComsActual).
-		WithField("numShadowRows", numShadowRows).
-		WithField("round", round)
-
-	if len(comUnconstrained) > 0 {
-		log.
-			WithField("numUnconstrained", len(comUnconstrained)).
-			WithField("unconstraineds", comUnconstrained).
-			Warn("found unconstrained columns while compiling the Vortex commitment")
+		ctx.IsSISApplied = append(ctx.IsSISApplied, true)
 	} else {
-		log.Info("Compiled Vortex round")
+		// We are preparing for not applying SIS hashing on the columns of the round matrix
+		ctx.IsSISApplied = append(ctx.IsSISApplied, false)
+		log := logrus.
+			WithField("where", "compileRoundWithVortexWithNoSIS").
+			WithField("numComs", numComsActual).
+			WithField("round", round)
+
+		if len(comUnconstrained) > 0 {
+			log.
+				WithField("numUnconstrained", len(comUnconstrained)).
+				WithField("unconstraineds", comUnconstrained).
+				Warn("found unconstrained columns while compiling the Vortex commitment in no-SIS mode")
+		} else {
+			log.Info("Compiled Vortex round in no-SIS mode")
+		}
 	}
 
 	ctx.CommitmentsByRounds.AppendToInner(round, coms...)

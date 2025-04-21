@@ -25,9 +25,9 @@ func WithSISParams(params *ringsis.Params) VortexOp {
 // Allows skipping the SIS hashing of columns of the round matrices
 // if the number of polynomials to commit to for the particular round
 // is less than the threshold
-func WithOptionalSISHashingThreshold(sisHashingTHreshold int) VortexOp {
+func WithOptionalSISHashingThreshold(sisHashingThreshold int) VortexOp {
 	return func(ctx *Ctx) {
-		ctx.ApplySISHashThreshold = sisHashingTHreshold
+		ctx.ApplySISHashThreshold = sisHashingThreshold
 	}
 }
 
