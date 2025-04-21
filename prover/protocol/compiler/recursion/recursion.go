@@ -283,19 +283,18 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 	}
 
 	dstVortexCtx := &vortex.Ctx{
-		RunStateNamePrefix: translator.Prefix,
-		BlowUpFactor:       srcVortexCtx.BlowUpFactor,
-		ApplySISHashingThreshold: srcVortexCtx.ApplySISHashingThreshold,
-		CommittedRowsCount: srcVortexCtx.CommittedRowsCount,
-		NumCols:            srcVortexCtx.NumCols,
-		MaxCommittedRound:  srcVortexCtx.MaxCommittedRound,
-		NumOpenedCol:       srcVortexCtx.NumOpenedCol,
-		VortexParams:       srcVortexCtx.VortexParams,
-		SisParams:          srcVortexCtx.SisParams,
+		RunStateNamePrefix:    translator.Prefix,
+		BlowUpFactor:          srcVortexCtx.BlowUpFactor,
+		ApplySISHashThreshold: srcVortexCtx.ApplySISHashThreshold,
+		CommittedRowsCount:    srcVortexCtx.CommittedRowsCount,
+		NumCols:               srcVortexCtx.NumCols,
+		MaxCommittedRound:     srcVortexCtx.MaxCommittedRound,
+		NumOpenedCol:          srcVortexCtx.NumOpenedCol,
+		VortexParams:          srcVortexCtx.VortexParams,
+		SisParams:             srcVortexCtx.SisParams,
 		// Although the srcVor
 		IsSelfrecursed:               true,
 		CommitmentsByRounds:          translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRounds),
-		DriedByRounds:                translator.AddColumnVecVec(srcVortexCtx.DriedByRounds),
 		PolynomialsTouchedByTheQuery: translator.AddColumnSet(srcVortexCtx.PolynomialsTouchedByTheQuery),
 		ShadowCols:                   translator.AddColumnSet(srcVortexCtx.ShadowCols),
 		Query:                        translator.AddUniEval(0, srcVortexCtx.Query),

@@ -27,7 +27,7 @@ func WithSISParams(params *ringsis.Params) VortexOp {
 // is less than the threshold
 func WithOptionalSISHashingThreshold(sisHashingTHreshold int) VortexOp {
 	return func(ctx *Ctx) {
-		ctx.ApplySISHashingThreshold = sisHashingTHreshold
+		ctx.ApplySISHashThreshold = sisHashingTHreshold
 	}
 }
 

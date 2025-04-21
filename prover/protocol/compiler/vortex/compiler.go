@@ -166,20 +166,18 @@ type Ctx struct {
 	ShadowCols                   map[ifaces.ColID]struct{}
 
 	// Public parameters of the commitment scheme
-	BlowUpFactor             int
-	ApplySISHashingThreshold int
-	CommittedRowsCount       int
-	NumCols                  int
-	MaxCommittedRound        int
-	VortexParams             *vortex.Params
-	SisParams                *ringsis.Params
+	BlowUpFactor          int
+	ApplySISHashThreshold int
+	CommittedRowsCount    int
+	NumCols               int
+	MaxCommittedRound     int
+	VortexParams          *vortex.Params
+	SisParams             *ringsis.Params
 	// Optional parameter
 	NumOpenedCol int
 
-	// By rounds commitments : if a round is dried we make an empty sublist.
-	// Inversely, for the `driedByRounds` which track the dried commitments.
+	// By rounds commitments
 	CommitmentsByRounds collection.VecVec[ifaces.ColID]
-	DriedByRounds       collection.VecVec[ifaces.ColID]
 
 	// RunStateNamePrefix is used to prefix some of the names of components of the
 	// compilation context. Mainly state objects.
@@ -272,7 +270,6 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 		// vortex params : the vortex params are set a posteriori
 		// during the compilation
 		CommitmentsByRounds: collection.NewVecVec[ifaces.ColID](),
-		DriedByRounds:       collection.NewVecVec[ifaces.ColID](),
 	}
 
 	for _, pol := range ctx.Query.Pols {
@@ -598,8 +595,8 @@ func (ctx *Ctx) NumEncodedCols() int {
 	return res
 }
 
-// We always commit to the precomputed columns. This is a bit of a hack for now. 
-// We shall remove this completely when making changes in the self recursion. 
+// We always commit to the precomputed columns. This is a bit of a hack for now.
+// We shall remove this completely when making changes in the self recursion.
 func (ctx *Ctx) IsCommitToPrecomputed() bool {
 	return true
 }
