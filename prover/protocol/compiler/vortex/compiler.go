@@ -13,7 +13,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -167,14 +166,13 @@ type Ctx struct {
 	ShadowCols                   map[ifaces.ColID]struct{}
 
 	// Public parameters of the commitment scheme
-	BlowUpFactor                int
-	CommitToPrecomputedTreshold int
-	ApplySISHashingThreshold    int
-	CommittedRowsCount          int
-	NumCols                     int
-	MaxCommittedRound           int
-	VortexParams                *vortex.Params
-	SisParams                   *ringsis.Params
+	BlowUpFactor             int
+	ApplySISHashingThreshold int
+	CommittedRowsCount       int
+	NumCols                  int
+	MaxCommittedRound        int
+	VortexParams             *vortex.Params
+	SisParams                *ringsis.Params
 	// Optional parameter
 	NumOpenedCol int
 
@@ -600,11 +598,10 @@ func (ctx *Ctx) NumEncodedCols() int {
 	return res
 }
 
-// IsCommitToPrecomputed returns true if the current compilation step
-// commits to the precomputed columns. This is detected by checking if
-// the number of precomputed columns is greater than the dry treshold.
+// We always commit to the precomputed columns. This is a bit of a hack for now. 
+// We shall remove this completely when making changes in the self recursion. 
 func (ctx *Ctx) IsCommitToPrecomputed() bool {
-	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.CommitToPrecomputedTreshold
+	return true
 }
 
 // Turns the precomputed into verifying key messages. A possible improvement
@@ -638,29 +635,6 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	// If there are not enough columns, for a commitment to be meaningful,
 	// explicitly sends the column to the verifier so that he can check the
 	// evaluation by itself.
-	if len(precomputedColNames) < ctx.CommitToPrecomputedTreshold {
-		for _, name := range precomputedColNames {
-			comp.Columns.SetStatus(name, column.VerifyingKey)
-			pCol := comp.Columns.GetHandle(name)
-
-			_, ok := ctx.PolynomialsTouchedByTheQuery[name]
-			if !ok {
-				comp.Columns.MarkAsIgnored(name)
-				continue
-			}
-
-			precomputedCols = append(precomputedCols, pCol)
-		}
-
-		// For consistency, with the older version of the code
-		ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
-		logrus.
-			WithField("where", "processStatusPrecomputed").
-			WithField("nbPrecomputed", len(precomputedColNames)).
-			WithField("commitToPrecomputedTreshold", ctx.CommitToPrecomputedTreshold).
-			Info("number of precomputed is smaller than commitToPrecomputedTreshold")
-		return
-	}
 
 	for _, name := range precomputedColNames {
 

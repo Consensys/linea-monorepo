@@ -22,11 +22,12 @@ func WithSISParams(params *ringsis.Params) VortexOp {
 	}
 }
 
-// Allows skipping commiting to the precomputed polynomials
-// when there are only a few of them
-func WithCommitToPrecomputedThreshold(commitToPrecomputedTresholdThreshold int) VortexOp {
+// Allows skipping the SIS hashing of columns of the round matrices
+// if the number of polynomials to commit to for the particular round
+// is less than the threshold
+func WithOptionalSISHashingThreshold(sisHashingTHreshold int) VortexOp {
 	return func(ctx *Ctx) {
-		ctx.CommitToPrecomputedTreshold = commitToPrecomputedTresholdThreshold
+		ctx.ApplySISHashingThreshold = sisHashingTHreshold
 	}
 }
 
