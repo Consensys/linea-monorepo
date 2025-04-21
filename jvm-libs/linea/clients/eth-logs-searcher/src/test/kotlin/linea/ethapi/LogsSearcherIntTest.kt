@@ -1,4 +1,4 @@
-package linea.web3j
+package linea.ethapi
 
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock.aResponse
@@ -17,6 +17,7 @@ import linea.kotlin.fromHexString
 import linea.kotlin.toHexString
 import linea.kotlin.toHexStringUInt256
 import linea.log4j.configureLoggers
+import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.jsonrpc.JsonRpcError
 import net.consensys.linea.jsonrpc.JsonRpcRequest
 import org.apache.logging.log4j.Level
@@ -73,10 +74,13 @@ class Web3JLogsSearcherIntTest {
     vertx = Vertx.vertx()
     logsClient = Web3JLogsSearcher(
       vertx,
-      web3jClient,
+      ethApiClient = createEthApiClient(
+        web3jClient = web3jClient,
+        requestRetryConfig = retryConfig,
+        vertx = vertx
+      ),
       config = Web3JLogsSearcher.Config(
-        loopSuccessBackoffDelay = 1.milliseconds,
-        requestRetryConfig = retryConfig
+        loopSuccessBackoffDelay = 1.milliseconds
       )
     )
   }
@@ -92,11 +96,14 @@ class Web3JLogsSearcherIntTest {
     )
     setUpFakeLogsServerToHandleEthLogs(TestingJsonRpcServer, subsetOfBlocksWithLogs)
     logsClient = Web3JLogsSearcher(
-      vertx,
-      web3jClient = Web3j.build(HttpService(URI("http://127.0.0.1:" + TestingJsonRpcServer.boundPort).toString())),
-      config = Web3JLogsSearcher.Config(
-        loopSuccessBackoffDelay = 1.milliseconds,
+      vertx = vertx,
+      ethApiClient = createEthApiClient(
+        vertx = vertx,
+        web3jClient = Web3j.build(HttpService(URI("http://127.0.0.1:" + TestingJsonRpcServer.boundPort).toString())),
         requestRetryConfig = retryConfig
+      ),
+      config = Web3JLogsSearcher.Config(
+        loopSuccessBackoffDelay = 1.milliseconds
       ),
       log = LogManager.getLogger("test.case.Web3JLogsSearcher")
     )
@@ -237,10 +244,13 @@ class Web3JLogsSearcherIntTest {
     vertx = Vertx.vertx()
     logsClient = Web3JLogsSearcher(
       vertx,
-      web3jClient,
+      createEthApiClient(
+        web3jClient,
+        requestRetryConfig = RetryConfig.noRetries,
+        vertx = null
+      ),
       config = Web3JLogsSearcher.Config(
-        loopSuccessBackoffDelay = 1.milliseconds,
-        requestRetryConfig = RetryConfig.noRetries
+        loopSuccessBackoffDelay = 1.milliseconds
       )
     )
 
@@ -428,8 +438,8 @@ class Web3JLogsSearcherIntTest {
       )
       return mapOf(
         "address" to "0x",
-        "blockHash" to "${blockNumber.toULong().toHexStringUInt256()}",
-        "blockNumber" to "${blockNumber.toULong().toHexString()}",
+        "blockHash" to blockNumber.toULong().toHexStringUInt256(),
+        "blockNumber" to blockNumber.toULong().toHexString(),
         "data" to "0x",
         "logIndex" to "0x0",
         "removed" to false,

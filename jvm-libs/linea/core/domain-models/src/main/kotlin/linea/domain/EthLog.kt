@@ -54,8 +54,8 @@ data class EthLog(
       "blockHash=${blockHash.encodeHex()}, " +
       "blockNumber=$blockNumber, " +
       "address=${address.encodeHex()}, " +
-      "data=${data.encodeHex()}, " +
-      "topics=${topics.map { it.encodeHex() }})"
+      "topics=${topics.map { it.encodeHex() }}, " +
+      "data=${data.encodeHex()}"
   }
 }
 

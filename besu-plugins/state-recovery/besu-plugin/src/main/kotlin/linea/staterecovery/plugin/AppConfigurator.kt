@@ -7,14 +7,15 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.micrometer.backends.BackendRegistries
 import linea.domain.RetryConfig
+import linea.ethapi.Web3JLogsSearcher
 import linea.staterecovery.BlockHeaderStaticFields
 import linea.staterecovery.ExecutionLayerClient
 import linea.staterecovery.StateRecoveryApp
 import linea.staterecovery.TransactionDetailsClient
 import linea.staterecovery.clients.VertxTransactionDetailsClient
 import linea.staterecovery.clients.blobscan.BlobScanClient
-import linea.web3j.Web3JLogsSearcher
 import linea.web3j.createWeb3jHttpClient
+import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -102,15 +103,17 @@ fun createAppClients(
   )
   val ethLogsSearcher = run {
     val log = LogManager.getLogger("linea.plugin.staterecovery.clients.l1.logs-searcher")
+    val web3jEthApiClient = createEthApiClient(
+      vertx = vertx,
+      rpcUrl = l1RpcEndpoint.toString(),
+      requestRetryConfig = l1RequestRetryConfig,
+      log = log
+    )
     Web3JLogsSearcher(
       vertx = vertx,
-      web3jClient = createWeb3jHttpClient(
-        rpcUrl = l1RpcEndpoint.toString(),
-        log = log
-      ),
+      ethApiClient = web3jEthApiClient,
       config = Web3JLogsSearcher.Config(
-        loopSuccessBackoffDelay = l1SuccessBackoffDelay,
-        requestRetryConfig = l1RequestRetryConfig
+        loopSuccessBackoffDelay = l1SuccessBackoffDelay
       ),
       log = log
     )

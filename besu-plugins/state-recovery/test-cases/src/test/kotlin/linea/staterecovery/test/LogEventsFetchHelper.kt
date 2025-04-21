@@ -2,8 +2,8 @@ package linea.staterecovery.test
 
 import linea.domain.BlockParameter
 import linea.domain.EthLogEvent
+import linea.ethapi.Web3JLogsSearcher
 import linea.staterecovery.DataFinalizedV3
-import linea.web3j.Web3JLogsSearcher
 
 fun getLastFinalizationOnL1(
   logsSearcher: Web3JLogsSearcher,
