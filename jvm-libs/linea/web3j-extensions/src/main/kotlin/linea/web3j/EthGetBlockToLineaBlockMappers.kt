@@ -2,6 +2,7 @@ package linea.web3j
 
 import linea.domain.AccessListEntry
 import linea.domain.Block
+import linea.domain.BlockWithTxHashes
 import linea.domain.Transaction
 import linea.domain.TransactionType
 import linea.kotlin.decodeHex
@@ -41,6 +42,38 @@ fun mapToDomain(web3jBlock: EthBlock.Block): Block {
         )
       }
       web3jBlock.transactions.map { (it as EthBlock.TransactionObject).toDomain() }
+    }
+  )
+  return block
+}
+
+fun mapToDomainWithTxHashes(web3jBlock: EthBlock.Block): BlockWithTxHashes {
+  val block = BlockWithTxHashes(
+    number = web3jBlock.number.toULong(),
+    hash = web3jBlock.hash.decodeHex(),
+    parentHash = web3jBlock.parentHash.decodeHex(),
+    ommersHash = web3jBlock.sha3Uncles.decodeHex(),
+    miner = web3jBlock.miner.decodeHex(),
+    nonce = web3jBlock.nonce.toULong(),
+    stateRoot = web3jBlock.stateRoot.decodeHex(),
+    transactionsRoot = web3jBlock.transactionsRoot.decodeHex(),
+    receiptsRoot = web3jBlock.receiptsRoot.decodeHex(),
+    logsBloom = web3jBlock.logsBloom.decodeHex(),
+    difficulty = web3jBlock.difficulty.toULong(),
+    gasLimit = web3jBlock.gasLimit.toULong(),
+    gasUsed = web3jBlock.gasUsed.toULong(),
+    timestamp = web3jBlock.timestamp.toULong(),
+    extraData = web3jBlock.extraData.decodeHex(),
+    mixHash = web3jBlock.mixHash.decodeHex(),
+    baseFeePerGas = web3jBlock.baseFeePerGas?.toULong(), // Optional field for EIP-1559 blocks
+    ommers = web3jBlock.uncles.map { it.decodeHex() }, // List of uncle block hashes
+    transactions = run {
+      if (web3jBlock.transactions.isNotEmpty() && web3jBlock.transactions[0] !is EthBlock.TransactionHash) {
+        throw IllegalArgumentException(
+          "Expected to be have EthBlock.TransactionHash. Got instance of ${web3jBlock.transactions[0]::class.java}"
+        )
+      }
+      web3jBlock.transactions.map { (it as EthBlock.TransactionHash).get().decodeHex() }
     }
   )
   return block

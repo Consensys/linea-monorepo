@@ -3,6 +3,7 @@ package linea.web3j.ethapi
 import io.vertx.core.Vertx
 import linea.domain.Block
 import linea.domain.BlockParameter
+import linea.domain.BlockWithTxHashes
 import linea.domain.EthLog
 import linea.domain.RetryConfig
 import linea.ethapi.EthApiClient
@@ -14,6 +15,7 @@ class Web3jEthApiClientWithRetries(
   val ethApiClient: EthApiClient,
   val requestRetryConfig: RetryConfig
 ) : EthApiClient {
+
   private fun <T> retry(
     fn: () -> SafeFuture<T>
   ): SafeFuture<T> {
@@ -26,8 +28,12 @@ class Web3jEthApiClientWithRetries(
     )
   }
 
-  override fun getBlockByNumber(blockParameter: BlockParameter, includeTransactions: Boolean): SafeFuture<Block?> {
-    return retry { ethApiClient.getBlockByNumber(blockParameter, includeTransactions) }
+  override fun getBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
+    return retry { ethApiClient.getBlockByNumber(blockParameter) }
+  }
+
+  override fun getBlockByNumberWithoutTransactionsData(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
+    return retry { ethApiClient.getBlockByNumberWithoutTransactionsData(blockParameter) }
   }
 
   override fun getLogs(

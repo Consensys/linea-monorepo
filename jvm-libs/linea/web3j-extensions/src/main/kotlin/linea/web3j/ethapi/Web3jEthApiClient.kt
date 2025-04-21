@@ -2,10 +2,12 @@ package linea.web3j.ethapi
 
 import linea.domain.Block
 import linea.domain.BlockParameter
+import linea.domain.BlockWithTxHashes
 import linea.domain.EthLog
 import linea.ethapi.EthApiClient
 import linea.web3j.domain.toDomain
 import linea.web3j.domain.toWeb3j
+import linea.web3j.mapToDomainWithTxHashes
 import linea.web3j.toDomain
 import net.consensys.linea.async.toSafeFuture
 import org.web3j.protocol.Web3j
@@ -36,12 +38,21 @@ class Web3jEthApiClient(
     }
   }
 
-  override fun getBlockByNumber(blockParameter: BlockParameter, includeTransactions: Boolean): SafeFuture<Block?> {
+  override fun getBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
     return web3jClient
-      .ethGetBlockByNumber(blockParameter.toWeb3j(), includeTransactions)
+      .ethGetBlockByNumber(blockParameter.toWeb3j(), true)
       .sendAsync()
       .thenCompose(::handleError)
       .thenApply { block -> block?.toDomain() }
+      .toSafeFuture()
+  }
+
+  override fun getBlockByNumberWithoutTransactionsData(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
+    return web3jClient
+      .ethGetBlockByNumber(blockParameter.toWeb3j(), false)
+      .sendAsync()
+      .thenCompose(::handleError)
+      .thenApply { block -> block?.let(::mapToDomainWithTxHashes) }
       .toSafeFuture()
   }
 

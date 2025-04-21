@@ -255,12 +255,12 @@ class Web3JLogsSearcher(
     } else if (blockParameter == BlockParameter.Tag.EARLIEST) {
       SafeFuture.completedFuture(0UL)
     } else {
-      ethApiClient.getBlockByNumber(blockParameter, false)
+      ethApiClient.getBlockByNumberWithoutTransactionsData(blockParameter)
         .thenApply { block ->
           if (block == null) {
-            log.info("block not found for blockParameter=$blockParameter")
+            throw IllegalStateException("block not found for blockParameter=$blockParameter")
           }
-          block?.number
+          block.number
         }
     }
   }
