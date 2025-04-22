@@ -62,6 +62,8 @@ const postmanServiceClientOptions: PostmanOptions = {
       profitMargin: 1.0,
       maxNumberOfRetries: 100,
       retryDelayInSeconds: 30,
+      isPostmanSponsorshipEnabled: false,
+      maxPostmanSponsorGasLimit: 250000n,
     },
   },
   l2Options: {
@@ -84,6 +86,8 @@ const postmanServiceClientOptions: PostmanOptions = {
       maxNumberOfRetries: 100,
       retryDelayInSeconds: 30,
       maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+      isPostmanSponsorshipEnabled: false,
+      maxPostmanSponsorGasLimit: 250000n,
     },
   },
   l1L2AutoClaimEnabled: true,

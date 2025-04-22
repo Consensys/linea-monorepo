@@ -86,6 +86,8 @@ export type ClaimingOptions = {
   retryDelayInSeconds?: number;
   maxClaimGasLimit?: bigint;
   maxTxRetries?: number;
+  isPostmanSponsorshipEnabled?: boolean;
+  maxPostmanSponsorGasLimit?: bigint;
 };
 
 export type ClaimingConfig = Omit<Required<ClaimingOptions>, "feeRecipientAddress"> & {

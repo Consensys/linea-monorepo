@@ -16,13 +16,24 @@ describe("L1 > L2 via Native Bridge", () => {
       expect(pageUrl).toEqual(TEST_URL);
     });
 
-    test("should have 'Native Bridge' button link on homepage", async ({ clickNativeBridgeButton }) => {
+    test("should have 'Native Bridge' button link on homepage", async ({
+      clickNativeBridgeButton,
+      clickFirstVisitModalConfirmButton,
+    }) => {
+      await clickFirstVisitModalConfirmButton();
       const nativeBridgeBtn = await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await expect(nativeBridgeBtn).toBeVisible();
     });
 
-    test("should connect MetaMask to dapp correctly", async ({ connectMetamaskToDapp, clickNativeBridgeButton }) => {
+    test("should connect MetaMask to dapp correctly", async ({
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      clickFirstVisitModalConfirmButton,
+    }) => {
+      await clickFirstVisitModalConfirmButton();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
     });
 
@@ -31,9 +42,12 @@ describe("L1 > L2 via Native Bridge", () => {
       connectMetamaskToDapp,
       clickNativeBridgeButton,
       openNativeBridgeTransactionHistory,
+      clickFirstVisitModalConfirmButton,
     }) => {
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeTransactionHistory();
 
       const txHistoryHeading = page.getByRole("heading").filter({ hasText: "Transaction History" });
@@ -46,9 +60,12 @@ describe("L1 > L2 via Native Bridge", () => {
       clickNativeBridgeButton,
       openNativeBridgeFormSettings,
       toggleShowTestNetworksInNativeBridgeForm,
+      clickFirstVisitModalConfirmButton,
     }) => {
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 
@@ -66,11 +83,13 @@ describe("L1 > L2 via Native Bridge", () => {
       toggleShowTestNetworksInNativeBridgeForm,
       selectTokenAndInputAmount,
       switchToEthereumMainnet,
+      clickFirstVisitModalConfirmButton,
     }) => {
       test.setTimeout(60_000);
-
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 
@@ -91,6 +110,91 @@ describe("L1 > L2 via Native Bridge", () => {
       await expect(approvalButton).toBeVisible();
       await expect(approvalButton).toBeEnabled();
     });
+
+    test("should see Free gas fees for ETH transfer to L2", async ({
+      page,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      openNativeBridgeFormSettings,
+      toggleShowTestNetworksInNativeBridgeForm,
+      selectTokenAndInputAmount,
+      openGasFeeModal,
+    }) => {
+      test.setTimeout(60_000);
+
+      await connectMetamaskToDapp();
+      await clickNativeBridgeButton();
+      await openNativeBridgeFormSettings();
+      await toggleShowTestNetworksInNativeBridgeForm();
+
+      await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
+      await openGasFeeModal();
+
+      // Assert text items
+      const lineaSepoliaFeeText = page.getByText("Linea Sepolia fee");
+      const freeText = page.getByText("Free");
+      await expect(lineaSepoliaFeeText).toBeVisible();
+      await expect(freeText).toBeVisible();
+      const listItem = page
+        .locator("li")
+        .filter({
+          has: lineaSepoliaFeeText,
+        })
+        .filter({
+          has: freeText,
+        });
+      await expect(listItem).toBeVisible();
+    });
+
+    test("should not see Free gas fees for USDC transfer to L2", async ({
+      page,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      openNativeBridgeFormSettings,
+      toggleShowTestNetworksInNativeBridgeForm,
+      selectTokenAndInputAmount,
+      openGasFeeModal,
+    }) => {
+      test.setTimeout(60_000);
+
+      await connectMetamaskToDapp();
+      await clickNativeBridgeButton();
+      await openNativeBridgeFormSettings();
+      await toggleShowTestNetworksInNativeBridgeForm();
+
+      await selectTokenAndInputAmount(USDC_SYMBOL, USDC_AMOUNT);
+      await openGasFeeModal();
+
+      // Assert text items
+      const freeText = page.getByText("Free");
+      await expect(freeText).not.toBeVisible();
+    });
+
+    test("should not see Free gas fees for ETH transfer to L1", async ({
+      page,
+      connectMetamaskToDapp,
+      clickNativeBridgeButton,
+      openNativeBridgeFormSettings,
+      toggleShowTestNetworksInNativeBridgeForm,
+      selectTokenAndInputAmount,
+      openGasFeeModal,
+      switchToLineaSepolia,
+    }) => {
+      test.setTimeout(60_000);
+
+      await connectMetamaskToDapp();
+      await clickNativeBridgeButton();
+      await openNativeBridgeFormSettings();
+      await toggleShowTestNetworksInNativeBridgeForm();
+
+      await switchToLineaSepolia();
+      await selectTokenAndInputAmount(ETH_SYMBOL, WEI_AMOUNT);
+      await openGasFeeModal();
+
+      // Assert text items
+      const freeText = page.getByText("Free");
+      await expect(freeText).not.toBeVisible();
+    });
   });
 
   describe("Blockchain tx cases", () => {
@@ -108,10 +212,13 @@ describe("L1 > L2 via Native Bridge", () => {
       doInitiateBridgeTransaction,
       openNativeBridgeTransactionHistory,
       closeNativeBridgeTransactionHistory,
+      clickFirstVisitModalConfirmButton,
     }) => {
       // Setup testnet UI
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 
@@ -140,10 +247,13 @@ describe("L1 > L2 via Native Bridge", () => {
       openNativeBridgeTransactionHistory,
       closeNativeBridgeTransactionHistory,
       doTokenApprovalIfNeeded,
+      clickFirstVisitModalConfirmButton,
     }) => {
       // Setup testnet UI
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 
@@ -172,9 +282,12 @@ describe("L1 > L2 via Native Bridge", () => {
       switchToLineaSepolia,
       doClaimTransaction,
       waitForTxListUpdateForClaimTx,
+      clickFirstVisitModalConfirmButton,
     }) => {
+      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 

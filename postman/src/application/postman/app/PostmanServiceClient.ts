@@ -168,6 +168,8 @@ export class PostmanServiceClient {
       {
         profitMargin: config.l2Config.claiming.profitMargin,
         maxClaimGasLimit: BigInt(config.l2Config.claiming.maxClaimGasLimit),
+        isPostmanSponsorshipEnabled: config.l2Config.claiming.isPostmanSponsorshipEnabled,
+        maxPostmanSponsorGasLimit: config.l2Config.claiming.maxPostmanSponsorGasLimit,
       },
       l2Provider,
       l2MessageServiceClient,
@@ -293,6 +295,8 @@ export class PostmanServiceClient {
     const l1TransactionValidationService = new EthereumTransactionValidationService(lineaRollupClient, l1GasProvider, {
       profitMargin: config.l1Config.claiming.profitMargin,
       maxClaimGasLimit: BigInt(config.l1Config.claiming.maxClaimGasLimit),
+      isPostmanSponsorshipEnabled: config.l1Config.claiming.isPostmanSponsorshipEnabled,
+      maxPostmanSponsorGasLimit: config.l1Config.claiming.maxPostmanSponsorGasLimit,
     });
 
     const l1MessageClaimingProcessor = new MessageClaimingProcessor(
@@ -302,13 +306,13 @@ export class PostmanServiceClient {
       l1TransactionValidationService,
       {
         direction: Direction.L2_TO_L1,
+        originContractAddress: config.l2Config.messageServiceContractAddress,
         maxNonceDiff: config.l1Config.claiming.maxNonceDiff,
         feeRecipientAddress: config.l1Config.claiming.feeRecipientAddress,
         profitMargin: config.l1Config.claiming.profitMargin,
         maxNumberOfRetries: config.l1Config.claiming.maxNumberOfRetries,
         retryDelayInSeconds: config.l1Config.claiming.retryDelayInSeconds,
         maxClaimGasLimit: BigInt(config.l1Config.claiming.maxClaimGasLimit),
-        originContractAddress: config.l2Config.messageServiceContractAddress,
       },
       new WinstonLogger(`L1${MessageClaimingProcessor.name}`, config.loggerOptions),
     );
