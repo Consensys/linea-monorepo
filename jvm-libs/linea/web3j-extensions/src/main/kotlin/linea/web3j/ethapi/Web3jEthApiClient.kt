@@ -17,7 +17,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 /**
  * Web3j Adapter of EthApiClient
- * Request retries is reponsability of another class
+ * Request retries is responsibility of another class
  */
 class Web3jEthApiClient(
   val web3jClient: Web3j
