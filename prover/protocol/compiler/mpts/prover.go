@@ -38,10 +38,9 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 		// in space as these can be big if the number of queries is big.
 		zetas = qa.computeZetas(run)
 
-		// quotientOfSizes lists different partial quotients that are computed by
-		// the prover. Each quotient corresponds to a particular size of column.
-		// Specifically, quotientOfSizes[i] is the partial quotient of size 2**i.
-		quotientOfSizes = make([][]field.Element, utils.Log2Ceil(qa.getNumRow())+1)
+		// quotient stores the assignment of the quotient polynomial as it is
+		// being computed.
+		quotient = make([]field.Element, qa.getNumRow())
 
 		// powersOfRho lists all the powers of rho and are precomputed to help
 		// parallelization.
@@ -53,6 +52,11 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 		// quotientLock protects [quotientOfSizes]
 		quotientLock = &sync.Mutex{}
+
+		// foundNonConstantPoly indicates whether any of the assignments of
+		// [Polys] is not constant. It is evaluated on the fly during the
+		// first loop.
+		foundNonConstantPoly = false
 	)
 
 	// The first part of the algorithm is to compute the terms of the form:
@@ -79,20 +83,19 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 				continue
 			}
 
+			foundNonConstantPoly = true
+
 			var (
 				poly                    = polySV.IntoRegVecSaveAlloc()
+				polyPtr                 *[]field.Element
 				pointsOfPoly            = qa.EvalPointOfPolys[polyID]
-				zetaIterationStep       = len(poly) / qa.getNumRow()
-				partialQuotientID       = utils.Log2Ceil(len(poly))
-				localPartialQuotientPtr *[]field.Element
-				localPartialQuotient    []field.Element
+				localPartialQuotientPtr = memPool.Alloc()
+				localPartialQuotient    = *localPartialQuotientPtr
 			)
 
-			if polySV.Len() == qa.getNumRow() {
-				localPartialQuotientPtr = memPool.Alloc()
-				localPartialQuotient = *localPartialQuotientPtr
-			} else {
-				localPartialQuotient = make([]field.Element, len(poly))
+			if len(poly) < qa.getNumRow() {
+				polyPtr = ldeOf(poly, memPool)
+				poly = *polyPtr
 			}
 
 			for j, queryID := range pointsOfPoly {
@@ -102,14 +105,12 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 				// but this is not just an optimization: since partialQuotient is
 				// allocated from the pool, we cannot assume it was already zeroed.
 				if j == 0 {
-					for k := 0; k < len(poly); k++ {
-						localPartialQuotient[k].Set(&zeta[k*zetaIterationStep])
-					}
+					copy(localPartialQuotient, zeta)
 					continue
 				}
 
 				for k := 0; k < len(poly); k++ {
-					localPartialQuotient[k].Add(&localPartialQuotient[k], &zeta[k*zetaIterationStep])
+					localPartialQuotient[k].Add(&localPartialQuotient[k], &zeta[k])
 				}
 			}
 
@@ -123,32 +124,24 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 			// small part of the computation.
 			{
 				quotientLock.Lock()
-
-				if len(quotientOfSizes[partialQuotientID]) == 0 {
-					quotientOfSizes[partialQuotientID] = make([]field.Element, len(poly))
-				}
-				quotientOfSize := quotientOfSizes[partialQuotientID]
-				vector.Add(quotientOfSize, quotientOfSize, localPartialQuotient)
-
+				vector.Add(quotient, quotient, localPartialQuotient)
 				quotientLock.Unlock()
 			}
 
 			// Since the pool is "manual", we need to free the memory allocated
 			// manually.
-			if localPartialQuotientPtr != nil {
-				memPool.Free(localPartialQuotientPtr)
+			memPool.Free(localPartialQuotientPtr)
+
+			if polyPtr != nil {
+				memPool.Free(polyPtr)
 			}
 		}
 	})
 
-	// quotientLargestSize expectedly has size [qa.getNumRow()] and is
-	// expectedly already allocated.
-	quotientLargestSize := quotientOfSizes[len(quotientOfSizes)-1]
-
 	// This clause addresses the edge-case where all the [Polys] are
 	// constant. In that case, the quotient is always the constant zero
 	// and we can early return with a default assignment to zero.
-	if len(quotientLargestSize) == 0 {
+	if !foundNonConstantPoly {
 		run.AssignColumn(
 			qa.Quotient.GetColID(),
 			smartvectors.NewConstant(field.Zero(), qa.getNumRow()),
@@ -209,24 +202,11 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 		}
 
 		quotientLock.Lock()
-		vector.Sub(quotientLargestSize, quotientLargestSize, localResult)
+		vector.Sub(quotient, quotient, localResult)
 		quotientLock.Unlock()
 	})
 
-	// The final step of the algorithm recombine all the small quotients
-	// in the large one to obtain the final quotient. This part is not
-	// well parallelized. The hope is that its runtime cost is negligible.
-	for i := 0; i < len(quotientOfSizes)-1; i++ {
-		if len(quotientOfSizes[i]) == 0 {
-			continue
-		}
-
-		quotient := ldeOf(quotientOfSizes[i], memPool)
-		vector.Add(quotientLargestSize, quotientLargestSize, *quotient)
-		memPool.Free(quotient)
-	}
-
-	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegular(quotientLargestSize))
+	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegular(quotient))
 }
 
 func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
