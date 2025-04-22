@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -26,6 +27,9 @@ type MultipointToSinglepointCompilation struct {
 	// name (alphabetical order). Finally, each "round" sequence is punctuated
 	// by a sequence of "shadow columns", these are columns that are added
 	// by the compiler to match a prescribed profile.
+	//
+	// The first round is a little special as the precomputed polynomials are
+	// considered in their own round, placed at the beginning.
 	Polys []ifaces.Column
 
 	// EvalPointOfPolys lists, for each entry in [Polys], the entries of
@@ -42,12 +46,18 @@ type MultipointToSinglepointCompilation struct {
 	// This can be used to obtain uniform wizards when doing conglomeration.
 	NumColumnProfileOpt []int
 
+	// NumColumnProfilePrecomputed is as [NumColumnProfileOpt] but for
+	// precomputed polynomials. The value of this field is only read if the
+	// value of [NumColumnProfileOpt] is not nil. It serves the same purpose
+	// as [NumColumnProfileOpt] as well.
+	NumColumnProfilePrecomputed int
+
 	// numRow is the number of rows in the columns that are compiled. The
 	// value is lazily evaluated and the evaluation procedure sanity-checks
 	// that all the columns has the same number of rows. The value of this
 	// field should not be accessed directly and the caller should instead
 	// use getNumRow().
-	numRow_ int
+	numRow int
 
 	// NewQuery is the query that is produced by the compilation, also named
 	// the "Grail" query in the paper. The evaluation spans overall the
@@ -82,18 +92,32 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 		ctx = &MultipointToSinglepointCompilation{
 			Queries: getAndMarkAsCompiledQueries(comp),
 		}
-		polysByRound = sortPolynomialsByRoundAndName(ctx.Queries)
+		polysByRound, polyPrecomputed = sortPolynomialsByRoundAndName(comp, ctx.Queries)
 	)
 
 	for _, op := range options {
 		op(ctx)
 	}
 
+	ctx.setMaxNumberOfRowsOf(slices.Concat(
+		append(polysByRound, polyPrecomputed)...),
+	)
+
 	if ctx.NumColumnProfileOpt != nil {
-		polysByRound = extendPWithShadowColumns(comp, polysByRound, ctx.NumColumnProfileOpt)
+
+		// startingRound is the first round that is not empty in polyRound
+		startingRound := getFirstNonEmptyPosition(polysByRound)
+
+		for round := startingRound; round < len(polysByRound); round++ {
+			polysByRound[round] = extendPWithShadowColumns(comp, round,
+				ctx.numRow, polysByRound[round], ctx.NumColumnProfileOpt[round-startingRound], false)
+		}
+
+		polyPrecomputed = extendPWithShadowColumns(comp, 0,
+			ctx.numRow, polyPrecomputed, ctx.NumColumnProfilePrecomputed, true)
 	}
 
-	ctx.Polys = slices.Concat(polysByRound...)
+	ctx.Polys = slices.Concat(append([][]ifaces.Column{polyPrecomputed}, polysByRound...)...)
 
 	ctx.LinCombCoeffLambda = comp.InsertCoin(
 		ctx.getNumRound(),
@@ -110,7 +134,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	ctx.Quotient = comp.InsertCommit(
 		ctx.getNumRound(),
 		ifaces.ColIDf("MPTS_QUOTIENT_%v", comp.SelfRecursionCount),
-		ctx.getNumRow(),
+		ctx.numRow,
 	)
 
 	ctx.EvaluationPoint = comp.InsertCoin(
@@ -134,22 +158,24 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	return ctx
 }
 
-// getNumRow returns the number of rows in the columns that are compiled. The
-// function panics if the number of rows is not the same for all the columns
-// and sets the result in [numRow_] for memoization.
+// setMaxNumberOfRowsOf scans the list of columns and returns the largest size.
+// and set it in the context.
+func (ctx *MultipointToSinglepointCompilation) setMaxNumberOfRowsOf(columns []ifaces.Column) int {
+	numRow := columns[0].Size()
+	for i := 1; i < len(columns); i++ {
+		numRow = max(numRow, columns[i].Size())
+	}
+	ctx.numRow = numRow
+	return numRow
+}
+
+// getNumRow returns the number of rows and panics if the field is not set
+// in the context.
 func (ctx *MultipointToSinglepointCompilation) getNumRow() int {
-
-	if ctx.numRow_ > 0 {
-		return ctx.numRow_
+	if ctx.numRow == 0 {
+		utils.Panic("the number of rows is not set")
 	}
-
-	ctx.numRow_ = ctx.Polys[0].Size()
-
-	for i := 1; i < len(ctx.Polys); i++ {
-		ctx.numRow_ = max(ctx.numRow_, ctx.Polys[i].Size())
-	}
-
-	return ctx.numRow_
+	return ctx.numRow
 }
 
 // getNumRound returns the number of rounds that are compiled. This is also
@@ -187,12 +213,30 @@ func getAndMarkAsCompiledQueries(comp *wizard.CompiledIOP) []query.UnivariateEva
 // sortPolynomialsByRoundAndName returns the polynomials sorted by round
 // and then by name. The result is a double list of polynomials. Each entry
 // corresponds to a round, and the sublists are sorted by name.
-func sortPolynomialsByRoundAndName(queries []query.UnivariateEval) [][]ifaces.Column {
+//
+// Precomputed polynomials can be considered at round -1 and are placed at
+// the beginning.
+func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.UnivariateEval) ([][]ifaces.Column, []ifaces.Column) {
 
-	polysByRound := make([][]ifaces.Column, 0)
+	var (
+		polysByRound    = make([][]ifaces.Column, 0)
+		polyPrecomputed = make([]ifaces.Column, 0)
+	)
 
 	for _, q := range queries {
 		for _, poly := range q.Pols {
+
+			if _, isNat := poly.(column.Natural); !isNat {
+				utils.Panic("only natural polynomials are supported, got %v of type %T", poly.GetColID(), poly)
+			}
+
+			// This works assuming the input polys are [colum.Natural] columns.
+			// Otherwise, the check would fail even if the column were a shifted
+			// version of a precomputed column.
+			if comp.Precomputed.Exists(poly.GetColID()) {
+				polyPrecomputed = append(polyPrecomputed, poly)
+			}
+
 			round := poly.Round()
 			polysByRound = utils.GrowSliceSize(polysByRound, round+1)
 			polysByRound[round] = append(polysByRound[round], poly)
@@ -211,64 +255,60 @@ func sortPolynomialsByRoundAndName(queries []query.UnivariateEval) [][]ifaces.Co
 		return 0
 	}
 
-	for round := range polysByRound {
-		slices.SortFunc(polysByRound[round], cmpNames)
-		polysByRound[round] = slices.Compact(polysByRound[round])
-		polysByRound[round] = slices.Clip(polysByRound[round])
+	// cleanSubList sorts and removes duplicates and empty entries from its
+	// input list. The input slice is mutated and should not be used anymore.
+	cleanSubList := func(s []ifaces.Column) []ifaces.Column {
+		slices.SortFunc(s, cmpNames)
+		s = slices.Compact(s)
+		s = slices.Clip(s)
+		return s
 	}
 
-	return polysByRound
+	polyPrecomputed = cleanSubList(polyPrecomputed)
+	for round := range polysByRound {
+		polysByRound[round] = cleanSubList(polysByRound[round])
+	}
+
+	return polysByRound, polyPrecomputed
 }
 
-// extendPWithShadowColumns adds shadow columns to each sublist of polynomials
-// to match a given profile. The profile is a list of integers indicating a
-// target number of polynomials to meet for each round. The positions of
-// profile are to be understood as "starting from the non-empty" entries of
-// p.
-//
-// For instance if
-//
-//	p = [[],[],[],[a, b, c],[d, e, f],[d],]
-//	profile = [3, 4, 2]
-//
-// then the result will be
-//
-//	p = [[],[],[],[a, b, c], [d, e, f, shadow0], [d, e, f, shadow1],]
-//
-// where shadow0 and shadow1 are the shadow columns.
-func extendPWithShadowColumns(comp *wizard.CompiledIOP, p [][]ifaces.Column, profile []int) [][]ifaces.Column {
+// extendPWithShadowColumns adds shadow columns to the given list of polynomials
+// to match a given profile. The profile corresponds to a target number of columns
+// to meet in "p".
+func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p []ifaces.Column, profile int, precomputed bool) []ifaces.Column {
 
-	var (
-		startingRoundMet = false
-		startingRound    = 0
-		numRow           int
-	)
+	if len(p) > profile {
+		utils.Panic("the profile is too small for the given polynomials list")
+	}
 
-	for round, polysAtRound := range p {
+	// It is important that
+	numP := len(p)
 
-		if len(polysAtRound) == 0 {
-			continue
+	for i := numP; i < profile; i++ {
+
+		var newShadowCol ifaces.Column
+		if precomputed {
+			newShadowCol = precomputedShadowRow(comp, numRow, i)
+		} else {
+			newShadowCol = autoAssignedShadowRow(comp, numRow, round, i-numP)
 		}
 
-		if !startingRoundMet {
-			startingRound = round
-			startingRoundMet = true
-			numRow = polysAtRound[0].Size()
-		}
-
-		var (
-			profileRound = profile[round-startingRound]
-		)
-
-		for i := len(polysAtRound); i < profileRound; i++ {
-			newShadowCol := autoAssignedShadowRow(comp, numRow, round, i-len(polysAtRound))
-			// Important: the appending has to be to "p[round]" and not polysAtRound
-			// otherwise, the appending will be ineffective.
-			p[round] = append(p[round], newShadowCol)
-		}
+		p = append(p, newShadowCol)
 	}
 
 	return p
+}
+
+// getFirstNonEmptyPosition returns the first position in s with a non-empty
+// sublist. The function panics if all the sublists are empty of if s is an
+// empty of nil list itself.
+func getFirstNonEmptyPosition(s [][]ifaces.Column) int {
+	for i := range s {
+		if len(s[i]) > 0 {
+			return i
+		}
+	}
+	panic("all sublists are empty")
 }
 
 // indexPolysAndPoints indexes the polynomials and points in two lists.

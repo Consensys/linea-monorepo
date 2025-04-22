@@ -33,3 +33,10 @@ func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces
 
 	return col
 }
+
+// precomputedShadowRow is a row filled with zeroes that we is precomputed
+func precomputedShadowRow(comp *wizard.CompiledIOP, size, i int) ifaces.Column {
+	name := ifaces.ColIDf("VORTEX_%v_PRECOMPUTED_SHADOW_%v", comp.SelfRecursionCount, i)
+	val := smartvectors.NewConstant(field.Zero(), size)
+	return comp.InsertPrecomputed(name, val)
+}
