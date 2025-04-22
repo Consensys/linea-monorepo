@@ -243,7 +243,6 @@ func (run *ProverRuntime) ExtractProof() Proof {
 	messages := collection.NewMapping[ifaces.ColID, ifaces.ColAssignment]()
 	for _, name := range run.Spec.Columns.AllKeysProof() {
 		cols := run.Spec.Columns.GetHandle(name)
-		logrus.Infof("Column %v has round %v", name, run.currRound)
 		if run.currRound < cols.Round() {
 			logrus.Infof("Skipping column %v because current round %v is less than column round %v", name, run.currRound, cols.Round())
 			continue
@@ -259,7 +258,6 @@ func (run *ProverRuntime) ExtractProof() Proof {
 		}
 	}
 
-	logrus.Info("Proof extraction completed")
 	return Proof{
 		Messages:      messages,
 		QueriesParams: queriesParams,

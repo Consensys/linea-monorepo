@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
@@ -38,7 +39,7 @@ var totalSuite = []func(comp *wizard.CompiledIOP){
 	globalcs.Compile,
 	univariates.CompileLocalOpening,
 	univariates.Naturalize,
-	univariates.MultiPointToSinglePoint(8),
+	mpts.Compile(),
 	dummy.Compile,
 	// vortex.Compile(2, vortex.ReplaceSisByMimc(), vortex.ForceNumOpenedColumns(2)),
 }

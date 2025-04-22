@@ -70,13 +70,13 @@ type MultipointToSinglepointCompilation struct {
 // Compile applies the multipoint to singlepoint compilation pass over `comp`.
 func Compile(options ...Option) func(*wizard.CompiledIOP) {
 	return func(comp *wizard.CompiledIOP) {
-		newCompilationContext(comp, options)
+		compileMultipointToSinglepoint(comp, options)
 	}
 }
 
 // compileMultipointToSinglepoint takes all the uncompiled multipoint to
 // singlepoint queries and compile them using a quotient accumulation technique.
-func newCompilationContext(comp *wizard.CompiledIOP, options []Option) *MultipointToSinglepointCompilation {
+func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) *MultipointToSinglepointCompilation {
 
 	var (
 		ctx = &MultipointToSinglepointCompilation{
@@ -127,6 +127,10 @@ func newCompilationContext(comp *wizard.CompiledIOP, options []Option) *Multipoi
 
 	ctx.EvalPointOfPolys, ctx.PolysOfEvalPoint = indexPolysAndPoints(ctx.Polys, ctx.Queries)
 
+	comp.RegisterProverAction(ctx.getNumRound(), quotientAccumulation{ctx})
+	comp.RegisterProverAction(ctx.getNumRound()+1, randomPointEvaluation{ctx})
+	comp.RegisterVerifierAction(ctx.getNumRound()+1, verifierAction{ctx})
+
 	return ctx
 }
 
@@ -142,15 +146,7 @@ func (ctx *MultipointToSinglepointCompilation) getNumRow() int {
 	ctx.numRow_ = ctx.Polys[0].Size()
 
 	for i := 1; i < len(ctx.Polys); i++ {
-		if ctx.Polys[i].Size() != ctx.numRow_ {
-			utils.Panic(
-				"number of rows is not the same for all the columns, sizeOf(%v) = %d while sizeOf(%v) = %v",
-				ctx.Polys[0].GetColID(),
-				ctx.Polys[0].Size(),
-				ctx.Polys[i].GetColID(),
-				ctx.Polys[i].Size(),
-			)
-		}
+		ctx.numRow_ = max(ctx.numRow_, ctx.Polys[i].Size())
 	}
 
 	return ctx.numRow_
@@ -217,6 +213,8 @@ func sortPolynomialsByRoundAndName(queries []query.UnivariateEval) [][]ifaces.Co
 
 	for round := range polysByRound {
 		slices.SortFunc(polysByRound[round], cmpNames)
+		polysByRound[round] = slices.Compact(polysByRound[round])
+		polysByRound[round] = slices.Clip(polysByRound[round])
 	}
 
 	return polysByRound
