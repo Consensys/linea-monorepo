@@ -16,6 +16,10 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
   using RlpEncoder for *;
   using FinalizedStateHashing for *;
 
+  uint256 private constant UNSIGNED_TRANSACTION_FIELD_LENGTH = 9;
+  uint256 private constant SIGNED_TRANSACTION_FIELD_LENGTH = 12;
+  address private constant PRECOMPILE_ADDRESS_LIMIT = address(21);
+
   /// @notice Contains the destination address to store the forced transactions on.
   IAcceptForcedTransactions public immutable LINEA_ROLLUP;
 
@@ -74,22 +78,18 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     Eip1559Transaction memory _forcedTransaction,
     LastFinalizedState calldata _lastFinalizedState
   ) external {
-    // gas limit check
     if (_forcedTransaction.gasLimit > MAX_GAS_LIMIT) {
       revert MaxGasLimitExceeded();
     }
 
-    // calldata length check
     if (_forcedTransaction.input.length > MAX_INPUT_LENGTH_LIMIT) {
       revert CalldataInputLengthLimitExceeded();
     }
 
-    // 0 value gas fields
     if (_forcedTransaction.maxPriorityFeePerGas == 0 || _forcedTransaction.maxFeePerGas == 0) {
       revert GasFeeParametersContainZero(_forcedTransaction.maxFeePerGas, _forcedTransaction.maxPriorityFeePerGas);
     }
 
-    // priority fee must not be more than max fee per gas
     if (_forcedTransaction.maxPriorityFeePerGas > _forcedTransaction.maxFeePerGas) {
       revert MaxPriorityFeePerGasHigherThanMaxFee(
         _forcedTransaction.maxFeePerGas,
@@ -97,13 +97,11 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       );
     }
 
-    // no point if parity is not 0 or 1
     if (_forcedTransaction.yParity > 1) {
       revert YParityGreaterThanOne(_forcedTransaction.yParity);
     }
 
-    // exclude precompiles and address 0
-    if (_forcedTransaction.to < address(21)) {
+    if (_forcedTransaction.to < address(PRECOMPILE_ADDRESS_LIMIT)) {
       revert ToAddressTooLow();
     }
 
@@ -113,7 +111,6 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       uint256 currentFinalizedL2BlockNumber
     ) = LINEA_ROLLUP.getNextForcedTransactionFields();
 
-    // validate state is correct in order to use the timestamp. we might need a better way than this.
     if (
       currentFinalizedState !=
       FinalizedStateHashing._computeLastFinalizedState(
@@ -136,8 +133,7 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       );
     }
 
-    // all 12 fields for sequencer raw submission
-    bytes[] memory signedTransactionFields = new bytes[](12);
+    bytes[] memory signedTransactionFields = new bytes[](SIGNED_TRANSACTION_FIELD_LENGTH);
     signedTransactionFields[0] = RlpEncoder._encodeUint(DESTINATION_CHAIN_ID);
     signedTransactionFields[1] = RlpEncoder._encodeUint(_forcedTransaction.nonce);
     signedTransactionFields[2] = RlpEncoder._encodeUint(_forcedTransaction.maxPriorityFeePerGas);
@@ -151,23 +147,13 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     signedTransactionFields[10] = RlpEncoder._encodeUint(_forcedTransaction.r);
     signedTransactionFields[11] = RlpEncoder._encodeUint(_forcedTransaction.s);
 
-    // clone for RLP encoding just the unsigned transaction payload fields
-    bytes[] memory unsignedTransactionFields = new bytes[](9);
-    for (uint256 i; i < 9; i++) {
-      unsignedTransactionFields[i] = signedTransactionFields[i];
-    }
-
-    // RLP encode the unsigned transaction payload fields
     bytes memory rlpEncodedUnsignedTransaction = abi.encodePacked(
       hex"02",
-      // To consider - rather than creating a new memory array 'unsignedTransactionFields', could we implement an `_encodePartialList` function to do `_encodeList` for the signedTransactionFields[0..9] array slice?
-      RlpEncoder._encodeList(unsignedTransactionFields)
+      RlpEncoder._encodeList(signedTransactionFields, UNSIGNED_TRANSACTION_FIELD_LENGTH)
     );
 
-    // Hash the RLP encoded insigned transaction to get
     bytes32 hashedPayload = keccak256(rlpEncodedUnsignedTransaction);
 
-    // recover from for prover
     address signer;
     unchecked {
       signer = ecrecover(
@@ -178,19 +164,16 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       );
     }
 
-    // COMPUTE BLOCK NUMBER - TO BE DISCUSSED
-    // To consider - why does the computation for expectedBlockNumber mix units of 'block number' and 'seconds'?
     uint256 expectedBlockNumber;
     unchecked {
-      // last L2 block + seconds between then and now to get "current" block and then 3 days of 1 second
+      /// @dev The computation uses 1s block time making block number and seconds interchangable.
       expectedBlockNumber =
         currentFinalizedL2BlockNumber +
         block.timestamp -
         _lastFinalizedState.timestamp +
-        L2_BLOCK_BUFFER; // we assume a 1 second block time
+        L2_BLOCK_BUFFER;
     }
 
-    // compute a rolling mimc hash
     bytes32 forcedTransactionRollingHash = _computeForcedTransactionRollingHash(
       previousForcedTransactionRollingHash,
       hashedPayload,
@@ -198,11 +181,8 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       signer
     );
 
-    // store the computed rolling hash validating there isn't already an existing forced transaction in the same block
-    uint256 forcedTransactionNumber = LINEA_ROLLUP.storeForcedTransaction(expectedBlockNumber, forcedTransactionRollingHash);
-
     emit ForcedTransactionAdded(
-      forcedTransactionNumber,
+      LINEA_ROLLUP.storeForcedTransaction(expectedBlockNumber, forcedTransactionRollingHash),
       signer,
       expectedBlockNumber,
       forcedTransactionRollingHash,
@@ -211,17 +191,26 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     );
   }
 
+  /**
+   * @notice Function to compute the forced transaction rolling hash with Mimc.
+   * @dev _hashedUnsignedPayload is split into two 16 bytes limbs, each represented in MSB over uint256 (e.g. 0x00..<16 bytes>..00yy..<16 bytes>..yy),
+   * to ensure that each limb fits on a BLS12-377 field element without overflowing, preventing potential resulting collisions.
+   * @param _previousRollingHash The previous rolling hash.
+   * @param _hashedUnsignedPayload The keccak256 hashed unsigned payload.
+   * @param _expectedBlockNumber The expected block number.
+   * @param _signer The transaction signer address.
+   */
   function _computeForcedTransactionRollingHash(
     bytes32 _previousRollingHash,
-    bytes32 _hashedPayload,
+    bytes32 _hashedUnsignedPayload,
     uint256 _expectedBlockNumber,
-    address _from
+    address _signer
   ) internal pure returns (bytes32 forcedTransactionRollingHash) {
     bytes memory mimcPayload;
 
     assembly {
-      let mostSignificantBytes := shr(128, _hashedPayload)
-      let leastSignificantBytes := and(_hashedPayload, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+      let mostSignificantBytes := shr(128, _hashedUnsignedPayload)
+      let leastSignificantBytes := and(_hashedUnsignedPayload, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
 
       mimcPayload := mload(0x40)
       mstore(mimcPayload, 0xA0)
@@ -229,7 +218,7 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       mstore(add(mimcPayload, 0x40), mostSignificantBytes)
       mstore(add(mimcPayload, 0x60), leastSignificantBytes)
       mstore(add(mimcPayload, 0x80), _expectedBlockNumber)
-      mstore(add(mimcPayload, 0xA0), _from)
+      mstore(add(mimcPayload, 0xA0), _signer)
       mstore(0x40, add(mimcPayload, 0xC0))
     }
 

@@ -38,7 +38,7 @@ import { toBeHex, zeroPadValue } from "ethers";
 import { expect } from "chai";
 import { deployFromFactory } from "../../common/deployment";
 
-describe.only("Linea Rollup contract: Forced Transactions", () => {
+describe("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
   let forcedTransactionGateway: ForcedTransactionGateway;
   let mimcLibrary: Mimc;

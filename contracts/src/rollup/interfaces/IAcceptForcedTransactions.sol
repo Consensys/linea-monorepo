@@ -37,5 +37,5 @@ interface IAcceptForcedTransactions {
   function storeForcedTransaction(
     uint256 _forcedL2BlockNumber,
     bytes32 _forcedTransactionRollingHash
-  ) external returns(uint256 forcedTransactionNumber);
+  ) external returns (uint256 forcedTransactionNumber);
 }
