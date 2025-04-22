@@ -35,12 +35,6 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 
 	// Collect all the commitments : rounds by rounds
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there is no
-		// commitement to look for.
-		if ctx.isDry(round) {
-			continue
-		}
-
 		rootSv := vr.GetColumn(ctx.MerkleRootName(round)) // len 1 smart vector
 		roots = append(roots, rootSv[0])
 	}
@@ -139,11 +133,6 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 
 	// Get the list of the polynomials
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// again, skip the dry rounds
-		if ctx.isDry(round) {
-			continue
-		}
-
 		names := ctx.CommitmentsByRounds.MustGet(round)
 		ysRounds := make([]frontend.Variable, len(names))
 		for i, name := range names {
@@ -194,11 +183,6 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// again, skip the dry rounds
-		if ctx.isDry(round) {
-			continue
-		}
-
 		openedSubColumnsForRound := make([][]frontend.Variable, ctx.NbColsToOpen())
 		numRowsForRound := ctx.getNbCommittedRows(round)
 		for j := 0; j < ctx.NbColsToOpen(); j++ {

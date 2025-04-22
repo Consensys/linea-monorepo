@@ -100,6 +100,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 
 		ctx.generateVortexParams()
 		// Commit to precomputed in Vortex if IsCommitToPrecomputed is true
+		// ToDo: change this accordingly
 		if ctx.IsCommitToPrecomputed() {
 			ctx.commitPrecomputeds()
 		}
@@ -346,8 +347,10 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 		ctx.IsSISApplied = append(ctx.IsSISApplied, false)
 		return
 	}
+	// If the number of commitments is more than the ApplySISHashThreshold, we do
+	// SIS+MiMC hashing on the columns of the round matrix. Otherwise, we do only MiMC hashing.
 	if len(coms) > ctx.ApplySISHashThreshold {
-		// We are preparing for SIS hashing on the columns of the round matrix
+		// We are preparing for SIS hashing on the columns of the round matrix.
 		// To ensure the number limbs in each subcol divides the degree, we pad the list
 		// with shadow columns. This is required for self-recursion to work correctly. In
 		// practice they do not cost anything to the prover. When using MiMC, the number of
@@ -624,6 +627,11 @@ func (ctx *Ctx) IsCommitToPrecomputed() bool {
 	return true
 }
 
+// IsSISAppliedToPrecomputed returns true if SIS is applied to the precomputed
+// columns
+func (ctx *Ctx) IsSISAppliedToPrecomputed() bool {
+	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.ApplySISHashThreshold
+}
 // Turns the precomputed into verifying key messages. A possible improvement
 // would be to make them an entire commitment but we estimate that it will not
 // be worth it. If the flag `CommitPrecomputed` is set to `true`, this will
@@ -738,9 +746,6 @@ func (ctx *Ctx) NumCommittedRounds() int {
 	// the compileRound method. Careful, the stopping condition is
 	// an LE and not a strict LT condition.
 	for i := 0; i <= ctx.MaxCommittedRound; i++ {
-		if ctx.isDry(i) {
-			continue
-		}
 		res++
 	}
 

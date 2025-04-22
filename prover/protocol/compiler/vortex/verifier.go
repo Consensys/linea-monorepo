@@ -21,21 +21,30 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	if ctx.IsSelfrecursed {
 		return nil
 	}
+	var (
+		roots = []types.Bytes32{}
+		// The bool flags denoting if the SIS hash is applied for the
+		// particular round. It starts from the precomputed commitment
+		isSISApplied = []bool{}
+	)
 
-	roots := []types.Bytes32{}
-
-	// Append the precomputed roots when IsCommitToPrecomputed is true
-	if ctx.IsCommitToPrecomputed() {
-		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
-		precompRootF := precompRootSv.Get(0)                                        // root as a field element
-		roots = append(roots, types.Bytes32(precompRootF.Bytes()))
+	// Append the precomputed roots
+	precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
+	precompRootF := precompRootSv.Get(0)                                        // root as a field element
+	roots = append(roots, types.Bytes32(precompRootF.Bytes()))
+	// Append the isSISApplied flag
+	if ctx.IsSISAppliedToPrecomputed() {
+		isSISApplied = append(isSISApplied, true)
+	} else {
+		isSISApplied = append(isSISApplied, false)
 	}
 	// Collect all the commitments : rounds by rounds
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there is no
-		// commitement to look for.
-		if ctx.isDry(round) {
-			continue
+		// Append the isSISApplied flag
+		if ctx.IsSISApplied[round] {
+			isSISApplied = append(isSISApplied, true)
+		} else {
+			isSISApplied = append(isSISApplied, false)
 		}
 
 		rootSv := vr.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
@@ -67,6 +76,7 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		OpeningProof: *proof,
 		RandomCoin:   randomCoin,
 		EntryList:    entryList,
+		IsSISApplied: isSISApplied,
 	})
 }
 
@@ -112,10 +122,6 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 
 	// Get the list of the polynomials
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// again, skip the dry rounds
-		if ctx.isDry(round) {
-			continue
-		}
 		names := ctx.CommitmentsByRounds.MustGet(round)
 		ysRounds := make([]field.Element, len(names))
 		for i, name := range names {
@@ -158,11 +164,6 @@ func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// again, skip the dry rounds
-		if ctx.isDry(round) {
-			continue
-		}
-
 		openedSubColumnsForRound := make([][]field.Element, len(entryList))
 		numRowsForRound := ctx.getNbCommittedRows(round)
 		for j := range entryList {

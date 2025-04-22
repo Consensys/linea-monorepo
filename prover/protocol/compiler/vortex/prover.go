@@ -1,6 +1,7 @@
 package vortex
 
 import (
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -15,19 +16,17 @@ import (
 
 // Prover steps of Vortex that is run in place of committing to polynomials
 func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
-
-	// Check if that is a dry round
-	if ctx.isDry(round) {
-		// Nothing special to do. The prover will send the polynomials
-		// to verifier directly and the verifier will be able to check
-		// the evaluation by himself
-		return func(pr *wizard.ProverRuntime) {}
-	}
-
 	return func(pr *wizard.ProverRuntime) {
 		pols := ctx.getPols(pr, round)
-
-		// Call Vortex in Merkle mode
+		// If there are no polynomials to commit to, we don't need to do anything
+		if len(pols) == 0 {
+			return
+		}
+		// If SIS hashing is not applied for this round, we need to remove it
+		// Todo: check if we need to reset it, otherwise use a slice instead
+		if !ctx.IsSISApplied[round] {
+			ctx.VortexParams.RemoveSis(mimc.NewMiMC)
+		}
 		committedMatrix, tree, sisDigest := ctx.VortexParams.CommitMerkle(pols)
 		pr.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		pr.State.InsertNew(ctx.MerkleTreeName(round), tree)
@@ -46,23 +45,16 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 
 // Prover steps of Vortex that is run when committing to the linear combination
 func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
-
-	committedSV := []smartvectors.SmartVector{}
-	// Add the precomputed columns to commitedSV if IsCommitToPrecomputed is true
-	if ctx.IsCommitToPrecomputed() {
-		for _, col := range ctx.Items.Precomputeds.PrecomputedColums {
-			committedSV = append(committedSV, col.GetColAssignment(pr))
-		}
-
+	var (
+		committedSV = []smartvectors.SmartVector{}
+	)
+	// Add the precomputed columns to commitedSV
+	for _, col := range ctx.Items.Precomputeds.PrecomputedColums {
+		committedSV = append(committedSV, col.GetColAssignment(pr))
 	}
 
 	// Collect all the committed polynomials : round by round
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there
-		// is no need to compute their linear combination.
-		if ctx.isDry(round) {
-			continue
-		}
 		pols := ctx.getPols(pr, round)
 		committedSV = append(committedSV, pols...)
 	}
@@ -80,21 +72,15 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 // the later but is recommended.
 func (ctx *Ctx) ComputeLinearCombFromRsMatrix(pr *wizard.ProverRuntime) {
 
-	committedSV := []smartvectors.SmartVector{}
+	var (
+		committedSV = []smartvectors.SmartVector{}
+	)
 
-	// Add the precomputed columns to commitedSV if IsCommitToPrecomputed is true
-	if ctx.IsCommitToPrecomputed() {
-		committedSV = append(committedSV, ctx.Items.Precomputeds.CommittedMatrix...)
-	}
+	// Add the precomputed columns to commitedSV
+	committedSV = append(committedSV, ctx.Items.Precomputeds.CommittedMatrix...)
 
 	// Collect all the committed polynomials : round by round
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there
-		// is no need to compute their linear combination.
-		if ctx.isDry(round) {
-			continue
-		}
-
 		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
 		committedSV = append(committedSV, committedMatrix...)
 	}
@@ -116,19 +102,11 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 	// left at this default value in case ctx.UseMerkleTree == false
 	trees := []*smt.Tree{}
 
-	// Append the precomputed committedMatrices and trees when IsCommitToPrecomputed is true
-	if ctx.IsCommitToPrecomputed() {
-		committedMatrices = append(committedMatrices, ctx.Items.Precomputeds.CommittedMatrix)
-		trees = append(trees, ctx.Items.Precomputeds.Tree)
-	}
+	// Append the precomputed committedMatrices and trees
+	committedMatrices = append(committedMatrices, ctx.Items.Precomputeds.CommittedMatrix)
+	trees = append(trees, ctx.Items.Precomputeds.Tree)
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there is no need to
-		// compute their linear combination.
-		if ctx.isDry(round) {
-			continue
-		}
-
 		// Fetch it from the state
 		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
 		// and delete it because it won't be needed anymore and its very heavy
@@ -144,7 +122,6 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 	entryList := pr.GetRandomCoinIntegerVec(ctx.Items.Q.Name)
 	proof := vortex.OpeningProof{}
 
-	// Merkle mode only:
 	// Amend the Vortex proof with the Merkle proofs and registers
 	// the Merkle proofs in the prover runtime
 	proof.Complete(entryList, committedMatrices, trees)
@@ -170,11 +147,6 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 
 	packedMProofs := ctx.packMerkleProofs(proof.MerkleProofs)
 	pr.AssignColumn(ctx.Items.MerkleProofs.GetColID(), packedMProofs)
-}
-
-// returns true if the round is dry (i.e, there is nothing to commit to)
-func (ctx *Ctx) isDry(round int) bool {
-	return ctx.CommitmentsByRounds.Len() <= round || ctx.CommitmentsByRounds.LenOf(round) == 0
 }
 
 // returns the list of all committed smartvectors for the given round

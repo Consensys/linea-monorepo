@@ -45,6 +45,9 @@ type VerifierInputs struct {
 	RandomCoin field.Element
 	// EntryList is the random coin representing the columns to open.
 	EntryList []int
+	// Flag indicating if the SIS hash is applied for the particular round
+	// It starts from the precomputed commitment
+	IsSISApplied []bool
 }
 
 // VerifyOpening verifies a Vortex opening proof, see [VerifierInputs] for
@@ -183,9 +186,10 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 				root           = v.MerkleRoots[i]
 				mProof         = v.OpeningProof.MerkleProofs[i][j]
 			)
-
-			if !v.Params.HasSisReplacement() {
-
+			// We verify the SIS hash of the current sub-column
+			// only if the SIS hash is applied for the current round.
+			// It starts from the precomputed commitment
+			if v.IsSISApplied[i] {
 				var (
 					// SIS hash of the current sub-column
 					sisHash = v.Params.Key.Hash(selectedSubCol)
@@ -203,7 +207,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 
 			} else {
 
-				hasher := v.Params.NoSisHashFunc()
+				hasher := v.Params.HashFunc()
 				hasher.Reset()
 				for k := range selectedSubCol {
 					xBytes := selectedSubCol[k].Bytes()
