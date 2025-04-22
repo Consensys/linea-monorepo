@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
@@ -46,7 +47,7 @@ func Arcane(minStickSize, targetColSize int, noLog ...bool) func(comp *wizard.Co
 		globalcs.Compile(comp)
 		univariates.CompileLocalOpening(comp)
 		univariates.Naturalize(comp)
-		univariates.MultiPointToSinglePoint(targetColSize)(comp)
+		mpts.Compile()(comp)
 		if withLog_ {
 			logdata.Log("end-of-arcane")(comp)
 		}

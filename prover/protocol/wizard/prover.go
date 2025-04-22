@@ -257,7 +257,6 @@ func (run *ProverRuntime) ExtractProof() Proof {
 		}
 	}
 
-	logrus.Info("Proof extraction completed")
 	return Proof{
 		Messages:      messages,
 		QueriesParams: queriesParams,
