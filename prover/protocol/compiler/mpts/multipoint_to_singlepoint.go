@@ -123,40 +123,40 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	ctx.Polys = slices.Concat(append([][]ifaces.Column{polyPrecomputed}, polysByRound...)...)
 
 	ctx.LinCombCoeffLambda = comp.InsertCoin(
-		ctx.getNumRound(),
+		ctx.getNumRound(comp),
 		coin.Namef("MPTS_LINCOMB_COEFF_LAMBDA_%v", comp.SelfRecursionCount),
 		coin.Field,
 	)
 
 	ctx.LinCombCoeffRho = comp.InsertCoin(
-		ctx.getNumRound(),
+		ctx.getNumRound(comp),
 		coin.Namef("MPTS_LINCOMB_COEFF_RHO_%v", comp.SelfRecursionCount),
 		coin.Field,
 	)
 
 	ctx.Quotient = comp.InsertCommit(
-		ctx.getNumRound(),
+		ctx.getNumRound(comp),
 		ifaces.ColIDf("MPTS_QUOTIENT_%v", comp.SelfRecursionCount),
 		ctx.numRow,
 	)
 
 	ctx.EvaluationPoint = comp.InsertCoin(
-		ctx.getNumRound()+1,
+		ctx.getNumRound(comp)+1,
 		coin.Namef("MPTS_EVALUATION_POINT_%v", comp.SelfRecursionCount),
 		coin.Field,
 	)
 
 	ctx.NewQuery = comp.InsertUnivariate(
-		ctx.getNumRound()+1,
+		ctx.getNumRound(comp)+1,
 		ifaces.QueryIDf("MPTS_NEW_QUERY_%v", comp.SelfRecursionCount),
 		append(ctx.Polys, ctx.Quotient),
 	)
 
 	ctx.EvalPointOfPolys, ctx.PolysOfEvalPoint = indexPolysAndPoints(ctx.Polys, ctx.Queries)
 
-	comp.RegisterProverAction(ctx.getNumRound(), quotientAccumulation{ctx})
-	comp.RegisterProverAction(ctx.getNumRound()+1, randomPointEvaluation{ctx})
-	comp.RegisterVerifierAction(ctx.getNumRound()+1, verifierAction{ctx})
+	comp.RegisterProverAction(ctx.getNumRound(comp), quotientAccumulation{ctx})
+	comp.RegisterProverAction(ctx.getNumRound(comp)+1, randomPointEvaluation{ctx})
+	comp.RegisterVerifierAction(ctx.getNumRound(comp)+1, verifierAction{ctx})
 
 	return ctx
 }
@@ -184,10 +184,25 @@ func (ctx *MultipointToSinglepointCompilation) getNumRow() int {
 // getNumRound returns the number of rounds that are compiled. This is also
 // the defintion round of the [LinCombCoeff] and [EvaluationPoint] in the
 // context.
-func (ctx *MultipointToSinglepointCompilation) getNumRound() int {
+//
+// The function assumes that the number of queries to compile is not 0.
+func (ctx *MultipointToSinglepointCompilation) getNumRound(comp *wizard.CompiledIOP) int {
+
+	maxRound := -1
+	for i := range ctx.Queries {
+		round := comp.QueriesParams.Round(ctx.Queries[i].Name())
+		if round > maxRound {
+			maxRound = round
+		}
+	}
+
+	if maxRound < 0 {
+		panic("no queries")
+	}
+
 	// This relies on the fact that the polynomials are sorted by round. So
 	// the last one has the highest round number.
-	return ctx.Polys[len(ctx.Polys)-1].Round() + 1
+	return maxRound + 1
 }
 
 // getAndMarkAsCompiledQueries returns all the queries that are relevant
