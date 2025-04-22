@@ -3,7 +3,9 @@ package testtools
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
@@ -18,8 +20,10 @@ type UnivariateTestcase struct {
 	// This parameter is optionally set. If not set, the test case computes the
 	// correct value.
 	QueryYs [][]field.Element
-	// IsPrecomputed of poly optionally control which polys are precomputed.
-	IsPrecomputed []bool
+	// Round indicates the round definition of [Polys]. -1 indicates that the column
+	// is precomputed. If the field is empty, the testcase assumes that the all
+	// the columns are for round zero.
+	RoundOfPolys []int
 }
 
 // ListOfUnivariateTestcasesPositive lists standard univariate testcases
@@ -62,6 +66,32 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		},
 	},
 	{
+		NameStr: "one-poly-one-point-precomputed",
+		Polys: []smartvectors.SmartVector{
+			RandomVec(8),
+		},
+		QueryXs: []field.Element{
+			field.NewElement(0),
+		},
+		QueryPols: [][]int{
+			{0},
+		},
+		RoundOfPolys: []int{-1},
+	},
+	{
+		NameStr: "one-poly-one-point-round-k",
+		Polys: []smartvectors.SmartVector{
+			RandomVec(8),
+		},
+		QueryXs: []field.Element{
+			field.NewElement(0),
+		},
+		QueryPols: [][]int{
+			{0},
+		},
+		RoundOfPolys: []int{3},
+	},
+	{
 		NameStr: "two-poly-one-point-same-simple-values",
 		Polys: []smartvectors.SmartVector{
 			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
@@ -86,10 +116,7 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		QueryPols: [][]int{
 			{0, 1},
 		},
-		IsPrecomputed: []bool{
-			true,
-			false,
-		},
+		RoundOfPolys: []int{-1, 0},
 	},
 	{
 		NameStr: "two-poly-one-point-different-sizes-simple-values",
@@ -146,6 +173,33 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 			{0, 1},
 		},
 	},
+	{
+		NameStr: "complex-multi-round",
+		Polys: []smartvectors.SmartVector{
+			RandomVec(8),
+			RandomVec(8),
+			RandomVec(8),
+			RandomVec(8),
+			RandomVec(8),
+			RandomVec(8),
+			RandomVec(8),
+		},
+		QueryXs: []field.Element{
+			field.PseudoRand(rng),
+			field.PseudoRand(rng),
+			field.PseudoRand(rng),
+			field.PseudoRand(rng),
+			field.PseudoRand(rng),
+		},
+		QueryPols: [][]int{
+			{0, 1, 2, 3},
+			{2, 3, 4, 5},
+			{0, 1, 4},
+			{0},
+			{6},
+		},
+		RoundOfPolys: []int{-1, 0, 1, 2, 2, 3, 3},
+	},
 }
 
 func (u *UnivariateTestcase) Name() string {
@@ -156,17 +210,40 @@ func (u *UnivariateTestcase) MustFail() bool { return false }
 
 func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 
-	polys := make([]ifaces.Column, len(u.Polys))
+	var (
+		polys    = make([]ifaces.Column, len(u.Polys))
+		maxRound = 0
+	)
+
 	for i := range polys {
 
-		name := formatName[ifaces.ColID]("Univariate", u.NameStr, "Poly", i)
+		var (
+			name  = formatName[ifaces.ColID]("Univariate", u.NameStr, "Poly", i)
+			round = 0
+		)
 
-		if len(u.IsPrecomputed) > i && u.IsPrecomputed[i] {
+		if len(u.RoundOfPolys) > i {
+			round = u.RoundOfPolys[i]
+		}
+
+		if round < 0 {
 			polys[i] = comp.InsertPrecomputed(name, u.Polys[i])
 			continue
 		}
 
-		polys[i] = comp.InsertCommit(0, name, u.Polys[i].Len())
+		maxRound = max(maxRound, round)
+		polys[i] = comp.InsertCommit(round, name, u.Polys[i].Len())
+
+		if round > 0 {
+			comp.RegisterProverAction(round, autoAssignColumn{
+				col: polys[i],
+				sv:  u.Polys[i],
+			})
+		}
+	}
+
+	for round := 1; round <= maxRound; round++ {
+		_ = comp.InsertCoin(round, formatName[coin.Name]("Univariate", u.NameStr, "Coin", round), coin.Field)
 	}
 
 	for i := range u.QueryXs {
@@ -177,18 +254,37 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 		}
 
 		comp.InsertUnivariate(
-			0,
+			maxRound,
 			formatName[ifaces.QueryID]("Univariate", u.NameStr, "Query", i),
 			queryPols,
 		)
+
+		if maxRound > 0 {
+			comp.RegisterProverAction(maxRound, assignUnivariatePA{u, i})
+		}
 	}
 }
 
 func (u *UnivariateTestcase) Assign(run *wizard.ProverRuntime) {
 
+	maxRound := 0
+	if len(u.RoundOfPolys) > 0 {
+		for _, r := range u.RoundOfPolys {
+			maxRound = max(maxRound, r)
+		}
+	}
+
 	for i := range u.Polys {
 
-		if len(u.IsPrecomputed) > i && u.IsPrecomputed[i] {
+		round := 0
+		if len(u.RoundOfPolys) > i {
+			round = u.RoundOfPolys[i]
+		}
+
+		// The columns with a round > 0 are assigned via a registered prover
+		// action. And those with a round < 0 are precomputed. So we only
+		// need to assign the columns with a round == 0.
+		if round != 0 {
 			continue
 		}
 
@@ -200,26 +296,38 @@ func (u *UnivariateTestcase) Assign(run *wizard.ProverRuntime) {
 	}
 
 	for i := range u.QueryXs {
-
-		var (
-			ys []field.Element
-			x  = u.QueryXs[i]
-		)
-
-		if len(u.QueryYs) > 0 {
-			ys = u.QueryYs[i]
-		} else {
-			ys = make([]field.Element, len(u.QueryPols[i]))
-			for j := range ys {
-				p := u.Polys[u.QueryPols[i][j]]
-				ys[j] = smartvectors.Interpolate(p, x)
-			}
+		if maxRound == 0 {
+			u.assignUnivariate(run, i)
 		}
-
-		run.AssignUnivariate(
-			formatName[ifaces.QueryID]("Univariate", u.NameStr, "Query", i),
-			u.QueryXs[i],
-			ys...,
-		)
 	}
 }
+
+func (u *UnivariateTestcase) assignUnivariate(run *wizard.ProverRuntime, i int) {
+
+	var (
+		name = formatName[ifaces.QueryID]("Univariate", u.NameStr, "Query", i)
+		ys   = make([]field.Element, len(u.QueryPols[i]))
+		x    = u.QueryXs[i]
+		q    = run.Spec.QueriesParams.Data(name).(query.UnivariateEval)
+	)
+
+	if len(u.QueryYs) > 0 {
+		run.AssignUnivariate(name, x, u.QueryYs[i]...)
+		return
+	}
+
+	for j := range q.Pols {
+		p := q.Pols[j].GetColAssignment(run)
+		ys[j] = smartvectors.Interpolate(p, x)
+	}
+
+	run.AssignUnivariate(q.QueryID, x, ys...)
+}
+
+// assignUnivariatePA is a ProverAction to assign a univariate query.
+type assignUnivariatePA struct {
+	u *UnivariateTestcase
+	i int
+}
+
+func (pa assignUnivariatePA) Run(run *wizard.ProverRuntime) { pa.u.assignUnivariate(run, pa.i) }
