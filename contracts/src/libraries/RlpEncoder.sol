@@ -102,6 +102,15 @@ library RlpEncoder {
   /**
    * @notice Internal function that flattens a bytes array and encodes it.
    * @param _bytesToEncode The bytes array to be encoded.
+   * @return encodedBytes The bytes array encoded as bytes.
+   */
+  function _encodeList(bytes[] memory _bytesToEncode) internal pure returns (bytes memory encodedBytes) {
+    encodedBytes = _encodeList(_bytesToEncode, _bytesToEncode.length);
+  }
+
+  /**
+   * @notice Internal function that flattens a bytes array and encodes it.
+   * @param _bytesToEncode The bytes array to be encoded.
    * @param _bytesListLengthToEncode The first n items in the list to encode.
    * @return encodedBytes The bytes array encoded as bytes.
    */
@@ -111,15 +120,6 @@ library RlpEncoder {
   ) internal pure returns (bytes memory encodedBytes) {
     encodedBytes = _flatten(_bytesToEncode, _bytesListLengthToEncode);
     encodedBytes = abi.encodePacked(_encodeLength(encodedBytes.length, 192), encodedBytes);
-  }
-
-  /**
-   * @notice Internal function that flattens a bytes array and encodes it.
-   * @param _bytesToEncode The bytes array to be encoded.
-   * @return encodedBytes The bytes array encoded as bytes.
-   */
-  function _encodeList(bytes[] memory _bytesToEncode) internal pure returns (bytes memory encodedBytes) {
-    encodedBytes = _encodeList(_bytesToEncode, _bytesToEncode.length);
   }
 
   /**
