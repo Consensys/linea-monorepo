@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -11,6 +12,43 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
+
+func TestWithProfile(t *testing.T) {
+
+	testcases := []struct {
+		Profile []int
+		UTC     *testtools.UnivariateTestcase
+	}{
+		{
+			Profile: []int{3},
+			UTC: &testtools.UnivariateTestcase{
+				NameStr: "profile-3",
+				Polys: []smartvectors.SmartVector{
+					smartvectors.ForTest(1, 2, 3, 4),
+				},
+				QueryXs: []field.Element{
+					field.NewElement(3),
+				},
+				QueryPols: [][]int{
+					{0},
+				},
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+
+		suite := []func(*wizard.CompiledIOP){
+			Compile(WithNumRowProfileOpt(tc.Profile)),
+			dummy.Compile,
+		}
+
+		t.Run(tc.UTC.NameStr, func(t *testing.T) {
+			testtools.RunTestcase(t, tc.UTC, suite)
+		})
+	}
+
+}
 
 func TestCompiler(t *testing.T) {
 
