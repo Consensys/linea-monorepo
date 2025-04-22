@@ -23,7 +23,7 @@ func (a *shadowRowProverAction) Run(run *wizard.ProverRuntime) {
 // a row divides the degree of the ring-SIS instance.
 func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces.Column {
 
-	name := ifaces.ColIDf("VORTEX_%v_SHADOW_ROUND_%v_ID_%v", comp.SelfRecursionCount, round, id)
+	name := ifaces.ColIDf("MPTS_%v_SHADOW_ROUND_%v_ID_%v", comp.SelfRecursionCount, round, id)
 	col := comp.InsertCommit(round, name, size)
 
 	comp.RegisterProverAction(round, &shadowRowProverAction{
@@ -36,7 +36,7 @@ func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces
 
 // precomputedShadowRow is a row filled with zeroes that we is precomputed
 func precomputedShadowRow(comp *wizard.CompiledIOP, size, i int) ifaces.Column {
-	name := ifaces.ColIDf("VORTEX_%v_PRECOMPUTED_SHADOW_%v", comp.SelfRecursionCount, i)
+	name := ifaces.ColIDf("MPTS_%v_PRECOMPUTED_SHADOW_%v", comp.SelfRecursionCount, i)
 	val := smartvectors.NewConstant(field.Zero(), size)
 	return comp.InsertPrecomputed(name, val)
 }

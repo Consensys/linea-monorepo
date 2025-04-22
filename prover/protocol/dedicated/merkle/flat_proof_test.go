@@ -49,7 +49,7 @@ func TestMerkleTreeFlat(t *testing.T) {
 
 			var (
 				tr   = &merkleTestRunnerFlat{}
-				comp = wizard.Compile(tr.Define, dummy.CompileAtProverLvl)
+				comp = wizard.Compile(tr.Define, dummy.CompileAtProverLvl())
 				_    = wizard.Prove(comp, func(run *wizard.ProverRuntime) { tr.Assign(run, tree) })
 			)
 

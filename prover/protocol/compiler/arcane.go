@@ -2,6 +2,7 @@ package compiler
 
 import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
@@ -18,6 +19,16 @@ import (
 
 // ArcaneParams is an option for the Arcane compiler
 type ArcaneParams func(*arcaneParamSet)
+
+// arcaneParamSet collects optional parameters for the Arcane compiler.
+type arcaneParamSet struct {
+	minStickSize  int
+	targetColSize int
+	withLogs      bool
+	WithoutMpts   bool
+	debugMode     bool
+	name          string
+}
 
 // WithStitcherMinSize sets the minimum size for the stitcher. All columns
 // under this size are moved to public columns.
@@ -48,12 +59,15 @@ func WithoutMpts() ArcaneParams {
 	}
 }
 
-// arcaneParamSet collects optional parameters for the Arcane compiler.
-type arcaneParamSet struct {
-	minStickSize  int
-	targetColSize int
-	withLogs      bool
-	WithoutMpts   bool
+// WithDebugMode tells the compiler to run in debug mode. It
+// will sanity-check the prover as it is generating the proof
+// to help identify which are the queries that are incorrect
+// and stop immediately.
+func WithDebugMode(name string) ArcaneParams {
+	return func(set *arcaneParamSet) {
+		set.debugMode = true
+		set.name = name
+	}
 }
 
 // Arcane is a grouping of all compilers. It compiles
@@ -75,11 +89,34 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 		}
 
 		specialqueries.RangeProof(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "-range-proof"))(comp)
+		}
+
 		specialqueries.CompileFixedPermutations(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "fixed-permutations"))(comp)
+		}
+
 		permutation.CompileViaGrandProduct(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "grand-product"))(comp)
+		}
+
 		logderivativesum.CompileLookups(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "lookups"))(comp)
+		}
+
 		horner.CompileProjection(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "projection"))(comp)
+		}
+
 		innerproduct.Compile(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "innerproduct"))(comp)
+		}
 
 		if params.withLogs {
 			logdata.Log("after-expansion")(comp)
@@ -87,6 +124,9 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 
 		stitchsplit.Stitcher(params.minStickSize, params.targetColSize)(comp)
 		stitchsplit.Splitter(params.targetColSize)(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "stitch-split"))(comp)
+		}
 
 		if params.withLogs {
 			logdata.Log("post-rectangularization")(comp)
@@ -94,12 +134,30 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 
 		cleanup.CleanUp(comp)
 		localcs.Compile(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "localcs"))(comp)
+		}
+
 		globalcs.Compile(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "globalcs"))(comp)
+		}
+
 		univariates.CompileLocalOpening(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "local-opening"))(comp)
+		}
+
 		univariates.Naturalize(comp)
+		if params.debugMode {
+			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "naturalize"))(comp)
+		}
 
 		if !params.WithoutMpts {
 			mpts.Compile()(comp)
+			if params.debugMode {
+				dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "mpts"))(comp)
+			}
 		}
 
 		if params.withLogs {

@@ -85,11 +85,11 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
 	for i := range distWizard.GLs {
-		dummy.CompileAtProverLvl(distWizard.GLs[i].Wiop)
+		dummy.CompileAtProverLvl()(distWizard.GLs[i].Wiop)
 	}
 
 	for i := range distWizard.LPPs {
-		dummy.CompileAtProverLvl(distWizard.LPPs[i].Wiop)
+		dummy.CompileAtProverLvl()(distWizard.LPPs[i].Wiop)
 	}
 
 	var (
