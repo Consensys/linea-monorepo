@@ -102,11 +102,24 @@ library RlpEncoder {
   /**
    * @notice Internal function that flattens a bytes array and encodes it.
    * @param _bytesToEncode The bytes array to be encoded.
+   * @param _bytesListLengthToEncode The first n items in the list to encode.
+   * @return encodedBytes The bytes array encoded as bytes.
+   */
+  function _encodeList(
+    bytes[] memory _bytesToEncode,
+    uint256 _bytesListLengthToEncode
+  ) internal pure returns (bytes memory encodedBytes) {
+    encodedBytes = _flatten(_bytesToEncode, _bytesListLengthToEncode);
+    encodedBytes = abi.encodePacked(_encodeLength(encodedBytes.length, 192), encodedBytes);
+  }
+
+  /**
+   * @notice Internal function that flattens a bytes array and encodes it.
+   * @param _bytesToEncode The bytes array to be encoded.
    * @return encodedBytes The bytes array encoded as bytes.
    */
   function _encodeList(bytes[] memory _bytesToEncode) internal pure returns (bytes memory encodedBytes) {
-    encodedBytes = _flatten(_bytesToEncode);
-    encodedBytes = abi.encodePacked(_encodeLength(encodedBytes.length, 192), encodedBytes);
+    encodedBytes = _encodeList(_bytesToEncode, _bytesToEncode.length);
   }
 
   /**
@@ -229,11 +242,14 @@ library RlpEncoder {
    * @notice Private function that flattens a list of byte strings into one byte string.
    * @dev mcopy is used for the Cancun EVM fork. See original for other forks.
    * @param _bytesList List of byte strings to flatten.
+   * @param _bytesListLengthToEncode The first n items in the list to encode.
    * @return flattenedBytes The flattened byte string.
    */
-  function _flatten(bytes[] memory _bytesList) private pure returns (bytes memory flattenedBytes) {
-    uint256 _bytesListLength = _bytesList.length;
-    if (_bytesListLength == 0) return new bytes(0);
+  function _flatten(
+    bytes[] memory _bytesList,
+    uint256 _bytesListLengthToEncode
+  ) private pure returns (bytes memory flattenedBytes) {
+    if (_bytesListLengthToEncode == 0) return new bytes(0);
 
     assembly {
       flattenedBytes := mload(0x40)
@@ -242,7 +258,7 @@ library RlpEncoder {
 
       for {
         let i := 0
-      } lt(i, _bytesListLength) {
+      } lt(i, _bytesListLengthToEncode) {
         i := add(i, 1)
       } {
         totalLen := add(totalLen, mload(mload(add(offset, mul(i, 0x20)))))
@@ -253,7 +269,7 @@ library RlpEncoder {
 
       for {
         let i := 0
-      } lt(i, _bytesListLength) {
+      } lt(i, _bytesListLengthToEncode) {
         i := add(i, 1)
       } {
         let ptr := mload(add(offset, mul(i, 0x20)))

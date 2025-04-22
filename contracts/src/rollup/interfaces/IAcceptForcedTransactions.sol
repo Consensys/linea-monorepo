@@ -13,14 +13,8 @@ interface IAcceptForcedTransactions {
   error ForcedTransactionExistsForBlock(uint256 blockNumber);
 
   /**
-   * @dev Thrown when trying to overwrite an existing forced transaction.
-   */
-  error ForcedTransactionExistsForTransactionNumber(uint256 forcedTransactionNumber);
-
-  /**
    * @notice Provides fields for forced transaction.
    * @return finalizedState The last finalized state hash.
-   * @return forcedTransactionNumber The forced transaction number to use.
    * @return previousForcedTransactionRollingHash The previous forced transaction rolling hash.
    * @return currentFinalizedL2BlockNumber The current finalized L2 block number.
    */
@@ -28,21 +22,20 @@ interface IAcceptForcedTransactions {
     external
     returns (
       bytes32 finalizedState,
-      uint256 forcedTransactionNumber,
       bytes32 previousForcedTransactionRollingHash,
       uint256 currentFinalizedL2BlockNumber
     );
 
   /**
    * @notice Stores forced transaction details required for proving feedback loop.
+   * @dev FORCED_TRANSACTION_SENDER_ROLE is required to store a forced transaction.
    * @dev The forced transaction number is incremented for the next transaction post storage.
-   * @param _forcedTransactionNumber The forced transaction number.
    * @param _forcedL2BlockNumber The maximum expected L2 block number the transaction will be processed by.
    * @param _forcedTransactionRollingHash The rolling hash for all the forced transaction fields.
+   * @return forcedTransactionNumber The unique forced transaction number for the transaction.
    */
   function storeForcedTransaction(
-    uint256 _forcedTransactionNumber,
     uint256 _forcedL2BlockNumber,
     bytes32 _forcedTransactionRollingHash
-  ) external;
+  ) external returns (uint256 forcedTransactionNumber);
 }

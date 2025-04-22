@@ -203,35 +203,31 @@ contract LineaRollup is
 
   /**
    * @notice Stores forced transaction details required for proving feedback loop.
+   * @dev FORCED_TRANSACTION_SENDER_ROLE is required to store a forced transaction.
    * @dev The forced transaction number is incremented for the next transaction post storage.
-   * @param _forcedTransactionNumber The forced transaction number.
    * @param _forcedL2BlockNumber The maximum expected L2 block number the transaction will be processed by.
    * @param _forcedTransactionRollingHash The rolling hash for all the forced transaction fields.
+   * @return forcedTransactionNumber The unique forced transaction number for the transaction.
    */
   function storeForcedTransaction(
-    uint256 _forcedTransactionNumber,
     uint256 _forcedL2BlockNumber,
     bytes32 _forcedTransactionRollingHash
-  ) external onlyRole(FORCED_TRANSACTION_SENDER_ROLE) {
+  ) external onlyRole(FORCED_TRANSACTION_SENDER_ROLE) returns (uint256 forcedTransactionNumber) {
     unchecked {
-      if (forcedTransactionL2BlockNumbers[_forcedTransactionNumber - 1] == _forcedL2BlockNumber) {
+      forcedTransactionNumber = nextForcedTransactionNumber++;
+
+      if (forcedTransactionL2BlockNumbers[forcedTransactionNumber - 1] == _forcedL2BlockNumber) {
         revert ForcedTransactionExistsForBlock(_forcedL2BlockNumber);
       }
 
-      if (forcedTransactionL2BlockNumbers[_forcedTransactionNumber] != 0) {
-        revert ForcedTransactionExistsForTransactionNumber(_forcedTransactionNumber);
-      }
-
-      forcedTransactionRollingHashes[_forcedTransactionNumber] = _forcedTransactionRollingHash;
-      forcedTransactionL2BlockNumbers[_forcedTransactionNumber] = _forcedL2BlockNumber;
-      nextForcedTransactionNumber = _forcedTransactionNumber + 1;
+      forcedTransactionRollingHashes[forcedTransactionNumber] = _forcedTransactionRollingHash;
+      forcedTransactionL2BlockNumbers[forcedTransactionNumber] = _forcedL2BlockNumber;
     }
   }
 
   /**
    * @notice Provides fields for forced transaction.
    * @return finalizedState The last finalized state hash.
-   * @return forcedTransactionNumber The forced transaction number to use.
    * @return previousForcedTransactionRollingHash The previous forced transaction rolling hash.
    * @return currentFinalizedL2BlockNumber The current finalized L2 block number.
    */
@@ -240,15 +236,13 @@ contract LineaRollup is
     view
     returns (
       bytes32 finalizedState,
-      uint256 forcedTransactionNumber,
       bytes32 previousForcedTransactionRollingHash,
       uint256 currentFinalizedL2BlockNumber
     )
   {
     unchecked {
       finalizedState = currentFinalizedState;
-      forcedTransactionNumber = nextForcedTransactionNumber;
-      previousForcedTransactionRollingHash = forcedTransactionRollingHashes[forcedTransactionNumber - 1];
+      previousForcedTransactionRollingHash = forcedTransactionRollingHashes[nextForcedTransactionNumber - 1];
       currentFinalizedL2BlockNumber = currentL2BlockNumber;
     }
   }
