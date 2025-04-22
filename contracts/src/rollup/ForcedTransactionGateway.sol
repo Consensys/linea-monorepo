@@ -109,7 +109,6 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
 
     (
       bytes32 currentFinalizedState,
-      uint256 forcedTransactionNumber,
       bytes32 previousForcedTransactionRollingHash,
       uint256 currentFinalizedL2BlockNumber
     ) = LINEA_ROLLUP.getNextForcedTransactionFields();
@@ -200,7 +199,7 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     );
 
     // store the computed rolling hash validating there isn't already an existing forced transaction in the same block
-    LINEA_ROLLUP.storeForcedTransaction(forcedTransactionNumber, expectedBlockNumber, forcedTransactionRollingHash);
+    uint256 forcedTransactionNumber = LINEA_ROLLUP.storeForcedTransaction(expectedBlockNumber, forcedTransactionRollingHash);
 
     emit ForcedTransactionAdded(
       forcedTransactionNumber,

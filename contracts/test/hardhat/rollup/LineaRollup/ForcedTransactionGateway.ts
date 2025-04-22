@@ -38,7 +38,7 @@ import { toBeHex, zeroPadValue } from "ethers";
 import { expect } from "chai";
 import { deployFromFactory } from "../../common/deployment";
 
-describe("Linea Rollup contract: Forced Transactions", () => {
+describe.only("Linea Rollup contract: Forced Transactions", () => {
   let lineaRollup: TestLineaRollup;
   let forcedTransactionGateway: ForcedTransactionGateway;
   let mimcLibrary: Mimc;
@@ -304,7 +304,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
     it("Should fail LineaRollup.storeForcedTransaction if not FORCED_TRANSACTION_SENDER_ROLE", async () => {
       await expectRevertWithReason(
-        lineaRollup.connect(nonAuthorizedAccount).storeForcedTransaction(99n, 121n, generateRandomBytes(32)),
+        lineaRollup.connect(nonAuthorizedAccount).storeForcedTransaction(121n, generateRandomBytes(32)),
         buildAccessErrorMessage(nonAuthorizedAccount, FORCED_TRANSACTION_SENDER_ROLE),
       );
     });
@@ -323,29 +323,9 @@ describe("Linea Rollup contract: Forced Transactions", () => {
 
       await expectRevertWithCustomError(
         lineaRollup,
-        lineaRollup.connect(securityCouncil).storeForcedTransaction(2, expectedBlockNumber, generateRandomBytes(32)),
+        lineaRollup.connect(securityCouncil).storeForcedTransaction(expectedBlockNumber, generateRandomBytes(32)),
         "ForcedTransactionExistsForBlock",
         [expectedBlockNumber],
-      );
-    });
-
-    it("Should fail if the second transaction is expected on the same transaction number", async () => {
-      const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
-        lineaRollup,
-        DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
-        defaultFinalizedState.timestamp,
-      );
-
-      await forcedTransactionGateway.submitForcedTransaction(
-        buildEip1559Transaction(l2SendMessageTransaction.result),
-        defaultFinalizedState,
-      );
-
-      await expectRevertWithCustomError(
-        lineaRollup,
-        lineaRollup.connect(securityCouncil).storeForcedTransaction(1, expectedBlockNumber, generateRandomBytes(32)),
-        "ForcedTransactionExistsForTransactionNumber",
-        [1],
       );
     });
 
