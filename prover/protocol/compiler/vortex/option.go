@@ -74,13 +74,3 @@ func AddPrecomputedMerkleRootToPublicInputs(name string) VortexOp {
 		}{Enabled: true, Name: name}
 	}
 }
-
-// WithEnforcedNumRows enforces specific dimensions for the Vortex matrix.
-// The compiler will inserts shadow rows equal to zero to ensure the matrix
-// dimension is the one expected.
-func WithEnforcedNumRows(enforcedNumRows []int, enforcedNumRowPrecomputed int) VortexOp {
-	return func(ctx *Ctx) {
-		ctx.EnforcedNumRowProfile = enforcedNumRows
-		ctx.EnforcedNumRowProfilePrecomputed = enforcedNumRowPrecomputed
-	}
-}

@@ -16,39 +16,93 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
+// ArcaneParams is an option for the Arcane compiler
+type ArcaneParams func(*arcaneParamSet)
+
+// WithStitcherMinSize sets the minimum size for the stitcher. All columns
+// under this size are moved to public columns.
+func WithStitcherMinSize(minStickSize int) ArcaneParams {
+	return func(set *arcaneParamSet) {
+		set.minStickSize = minStickSize
+	}
+}
+
+// WithTargetColSize sets the target size for the columns.
+func WithTargetColSize(targetColSize int) ArcaneParams {
+	return func(set *arcaneParamSet) {
+		set.targetColSize = targetColSize
+	}
+}
+
+// WithLogs tells the compiler to logs compilation stats.
+func WithLogs() ArcaneParams {
+	return func(set *arcaneParamSet) {
+		set.withLogs = true
+	}
+}
+
+// WithoutMpts tells the compiler to skip the Mpts compiler.
+func WithoutMpts() ArcaneParams {
+	return func(set *arcaneParamSet) {
+		set.WithoutMpts = true
+	}
+}
+
+// arcaneParamSet collects optional parameters for the Arcane compiler.
+type arcaneParamSet struct {
+	minStickSize  int
+	targetColSize int
+	withLogs      bool
+	WithoutMpts   bool
+}
+
 // Arcane is a grouping of all compilers. It compiles
 // any wizard into a single-point polynomial-IOP
-func Arcane(minStickSize, targetColSize int, noLog ...bool) func(comp *wizard.CompiledIOP) {
-	withLog_ := false
-	if len(noLog) > 0 {
-		withLog_ = !noLog[0]
+func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
+
+	params := &arcaneParamSet{}
+	for _, op := range options {
+		op(params)
+	}
+
+	if params.minStickSize == 0 {
+		params.minStickSize = 256
 	}
 
 	return func(comp *wizard.CompiledIOP) {
-		if withLog_ {
+		if params.withLogs {
 			logdata.Log("initially")(comp)
 		}
+
 		specialqueries.RangeProof(comp)
 		specialqueries.CompileFixedPermutations(comp)
 		permutation.CompileViaGrandProduct(comp)
 		logderivativesum.CompileLookups(comp)
 		horner.CompileProjection(comp)
 		innerproduct.Compile(comp)
-		if withLog_ {
+
+		if params.withLogs {
 			logdata.Log("after-expansion")(comp)
 		}
-		stitchsplit.Stitcher(minStickSize, targetColSize)(comp)
-		stitchsplit.Splitter(targetColSize)(comp)
-		if withLog_ {
+
+		stitchsplit.Stitcher(params.minStickSize, params.targetColSize)(comp)
+		stitchsplit.Splitter(params.targetColSize)(comp)
+
+		if params.withLogs {
 			logdata.Log("post-rectangularization")(comp)
 		}
+
 		cleanup.CleanUp(comp)
 		localcs.Compile(comp)
 		globalcs.Compile(comp)
 		univariates.CompileLocalOpening(comp)
 		univariates.Naturalize(comp)
-		mpts.Compile()(comp)
-		if withLog_ {
+
+		if !params.WithoutMpts {
+			mpts.Compile()(comp)
+		}
+
+		if params.withLogs {
 			logdata.Log("end-of-arcane")(comp)
 		}
 	}

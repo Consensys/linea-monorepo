@@ -259,13 +259,6 @@ type Ctx struct {
 		Name             string
 		PrecomputedValue field.Element
 	}
-
-	// EnforcedNumRowProfile is an optional parameter that can be set to a non
-	// nil value to tell the compiler to generate "filling" rows in the Vortex
-	// protocol. This can be used to make the verifier of distinct invokaction
-	// of Vortex uniform.
-	EnforcedNumRowProfile            []int
-	EnforcedNumRowProfilePrecomputed int
 }
 
 // Construct a new compilation context
@@ -395,19 +388,6 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	for i := range comUnconstrained {
 		ctx.comp.Columns.MarkAsIgnored(comUnconstrained[i])
-	}
-
-	if ctx.EnforcedNumRowProfile != nil {
-
-		if ctx.DryTreshold > 0 {
-			utils.Panic("cannot enforce rows when the dry round option is enabled")
-		}
-
-		if len(coms) > ctx.EnforcedNumRowProfile[round-startingRound] {
-			utils.Panic("more rows than enforced for round")
-		}
-
-		fillUpTo = ctx.EnforcedNumRowProfile[round-startingRound]
 	}
 
 	// Note: the above "if-clause" ensures that the fillUpTo >= len(coms), so
@@ -737,19 +717,6 @@ func (ctx *Ctx) processStatusPrecomputed() {
 		nbUnskippedPrecomputedCols = len(precomputedCols)
 		fillUpTo                   = nbUnskippedPrecomputedCols
 	)
-
-	if ctx.EnforcedNumRowProfile != nil {
-
-		if ctx.DryTreshold > 0 {
-			utils.Panic("cannot enforce rows when the dry round option is enabled")
-		}
-
-		if nbUnskippedPrecomputedCols > ctx.EnforcedNumRowProfilePrecomputed {
-			utils.Panic("more rows than enforced for round")
-		}
-
-		fillUpTo = ctx.EnforcedNumRowProfilePrecomputed
-	}
 
 	// Note: the above "if-clause" ensures that the fillUpTo >= len(coms), so
 	// it fillUpTo is equal to zero then coms is the empty slice. Otherwise, it

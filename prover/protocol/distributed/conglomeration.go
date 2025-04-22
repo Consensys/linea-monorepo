@@ -65,7 +65,9 @@ func Conglomerate(maxNbProofs int, moduleProofs []*wizard.CompiledIOP) *Conglome
 		},
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<17, false),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<17),
+		),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -75,7 +77,9 @@ func Conglomerate(maxNbProofs int, moduleProofs []*wizard.CompiledIOP) *Conglome
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<15, false),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<15),
+		),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -84,7 +88,9 @@ func Conglomerate(maxNbProofs int, moduleProofs []*wizard.CompiledIOP) *Conglome
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, false),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
+		),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),

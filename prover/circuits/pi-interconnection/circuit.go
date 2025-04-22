@@ -384,7 +384,7 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 
 		fullCompilationSuite = compilationSuite{
 
-			compiler.Arcane(1<<10, 1<<18, false),
+			compiler.Arcane(compiler.WithTargetColSize(1 << 18)),
 			vortex.Compile(
 				2,
 				vortex.ForceNumOpenedColumns(256),
@@ -394,7 +394,7 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 			selfrecursion.SelfRecurse,
 			cleanup.CleanUp,
 			mimcComp.CompileMiMC,
-			compiler.Arcane(1<<10, 1<<16, false),
+			compiler.Arcane(compiler.WithTargetColSize(1 << 16)),
 			vortex.Compile(
 				8,
 				vortex.ForceNumOpenedColumns(64),
@@ -404,7 +404,7 @@ func WizardCompilationParameters() []func(iop *wizard.CompiledIOP) {
 			selfrecursion.SelfRecurse,
 			cleanup.CleanUp,
 			mimcComp.CompileMiMC,
-			compiler.Arcane(1<<10, 1<<13, false),
+			compiler.Arcane(compiler.WithTargetColSize(1 << 13)),
 			vortex.Compile(
 				8,
 				vortex.ForceNumOpenedColumns(64),

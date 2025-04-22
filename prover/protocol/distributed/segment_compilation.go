@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
@@ -37,11 +38,11 @@ const (
 )
 
 var (
-	// enforcedNbRowVortexOpt tells the last invokation of Vortex prior to the self-
+	// numColumnProfileMpts tells the last invokation of Vortex prior to the self-
 	// recursion to use a plonk circuit with a fixed number of rows. The values
 	// are completely empirical and set to make the compilation work.
-	enforcedNbRowVortexOpt            = []int{68, 1409, 147, 5, 9, 7, 0, 1}
-	enforcedNbRowPrecomputedVortexOpt = 75
+	numColumnProfileMpts            = []int{68, 1409, 147, 5, 9, 7, 0, 1}
+	numColumnProfileMptsPrecomputed = 75
 )
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -92,7 +93,9 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	wizard.ContinueCompilation(modIOP,
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<17, false),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<17),
+		),
 	)
 
 	if !isLPP {
@@ -130,7 +133,9 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<15, false),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<15),
+		),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -139,7 +144,10 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, false),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
+			compiler.WithoutMpts(),
+		),
 	)
 
 	// This optional step is to ensure the tightness of the final wizard by
@@ -148,6 +156,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	stats := logdata.GetWizardStats(modIOP)
 	if stats.NumCellsCommitted > thresholdStoppingSelfrecursion {
 		wizard.ContinueCompilation(modIOP,
+			mpts.Compile(),
 			vortex.Compile(
 				8,
 				vortex.ForceNumOpenedColumns(64),
@@ -157,18 +166,21 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			selfrecursion.SelfRecurse,
 			cleanup.CleanUp,
 			mimc.CompileMiMC,
-			compiler.Arcane(256, 1<<13, false),
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<13),
+				compiler.WithoutMpts(),
+			),
 		)
 	}
 
 	wizard.ContinueCompilation(modIOP,
 		logdata.Log("just-before-recursion"),
+		mpts.Compile(mpts.WithNumColumnProfileOpt(numColumnProfileMpts, numColumnProfileMptsPrecomputed)),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
-			vortex.WithEnforcedNumRows(enforcedNbRowVortexOpt, enforcedNbRowPrecomputedVortexOpt),
 		),
 	)
 
@@ -193,7 +205,9 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	recursedComp := wizard.Compile(defineRecursion,
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<15, false),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<15),
+		),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -203,7 +217,9 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, false),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
+		),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -212,7 +228,9 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, false),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
+		),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),

@@ -18,6 +18,8 @@ type UnivariateTestcase struct {
 	// This parameter is optionally set. If not set, the test case computes the
 	// correct value.
 	QueryYs [][]field.Element
+	// IsPrecomputed of poly optionally control which polys are precomputed.
+	IsPrecomputed []bool
 }
 
 // ListOfUnivariateTestcasesPositive lists standard univariate testcases
@@ -70,6 +72,23 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		},
 		QueryPols: [][]int{
 			{0, 1},
+		},
+	},
+	{
+		NameStr: "two-poly-one-point-same-simple-values-one-precomputed",
+		Polys: []smartvectors.SmartVector{
+			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
+			smartvectors.ForTest(0, 0, 0, 0, 0, 1, 0, 0),
+		},
+		QueryXs: []field.Element{
+			field.Zero(),
+		},
+		QueryPols: [][]int{
+			{0, 1},
+		},
+		IsPrecomputed: []bool{
+			true,
+			false,
 		},
 	},
 	{
@@ -139,11 +158,15 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 
 	polys := make([]ifaces.Column, len(u.Polys))
 	for i := range polys {
-		polys[i] = comp.InsertCommit(
-			0,
-			formatName[ifaces.ColID]("Univariate", u.NameStr, "Poly", i),
-			u.Polys[i].Len(),
-		)
+
+		name := formatName[ifaces.ColID]("Univariate", u.NameStr, "Poly", i)
+
+		if len(u.IsPrecomputed) > i && u.IsPrecomputed[i] {
+			polys[i] = comp.InsertPrecomputed(name, u.Polys[i])
+			continue
+		}
+
+		polys[i] = comp.InsertCommit(0, name, u.Polys[i].Len())
 	}
 
 	for i := range u.QueryXs {
@@ -164,6 +187,11 @@ func (u *UnivariateTestcase) Define(comp *wizard.CompiledIOP) {
 func (u *UnivariateTestcase) Assign(run *wizard.ProverRuntime) {
 
 	for i := range u.Polys {
+
+		if len(u.IsPrecomputed) > i && u.IsPrecomputed[i] {
+			continue
+		}
+
 		run.AssignColumn(
 			formatName[ifaces.ColID]("Univariate", u.NameStr, "Poly", i),
 			u.Polys[i],
