@@ -7,7 +7,7 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.micrometer.backends.BackendRegistries
 import linea.domain.RetryConfig
-import linea.ethapi.Web3JLogsSearcher
+import linea.ethapi.EthLogsSearcherImpl
 import linea.staterecovery.BlockHeaderStaticFields
 import linea.staterecovery.ExecutionLayerClient
 import linea.staterecovery.StateRecoveryApp
@@ -66,7 +66,7 @@ fun createAppAllInProcess(
 
 data class AppClients(
   val lineaContractClient: Web3JLineaRollupSmartContractClientReadOnly,
-  val ethLogsSearcher: Web3JLogsSearcher,
+  val ethLogsSearcher: EthLogsSearcherImpl,
   val blobScanClient: BlobScanClient,
   val stateManagerClient: StateManagerClientV1,
   val transactionDetailsClient: TransactionDetailsClient
@@ -109,10 +109,10 @@ fun createAppClients(
       requestRetryConfig = l1RequestRetryConfig,
       log = log
     )
-    Web3JLogsSearcher(
+    EthLogsSearcherImpl(
       vertx = vertx,
       ethApiClient = web3jEthApiClient,
-      config = Web3JLogsSearcher.Config(
+      config = EthLogsSearcherImpl.Config(
         loopSuccessBackoffDelay = l1SuccessBackoffDelay
       ),
       log = log

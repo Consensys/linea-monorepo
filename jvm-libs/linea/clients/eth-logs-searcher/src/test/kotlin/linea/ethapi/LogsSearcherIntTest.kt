@@ -40,9 +40,9 @@ internal data class EthGetLogsRequest(
   val address: List<String>
 )
 
-class Web3JLogsSearcherIntTest {
+class EthLogsSearcherImplIntTest {
   private lateinit var web3jClient: Web3j
-  private lateinit var logsClient: Web3JLogsSearcher
+  private lateinit var logsClient: EthLogsSearcherImpl
   private lateinit var vertx: Vertx
   private lateinit var wireMockServer: WireMockServer
   private lateinit var TestingJsonRpcServer: TestingJsonRpcServer
@@ -72,14 +72,14 @@ class Web3JLogsSearcherIntTest {
 
     web3jClient = Web3j.build(HttpService(URI("http://127.0.0.1:" + wireMockServer.port()).toURL().toString()))
     vertx = Vertx.vertx()
-    logsClient = Web3JLogsSearcher(
+    logsClient = EthLogsSearcherImpl(
       vertx,
       ethApiClient = createEthApiClient(
         web3jClient = web3jClient,
         requestRetryConfig = retryConfig,
         vertx = vertx
       ),
-      config = Web3JLogsSearcher.Config(
+      config = EthLogsSearcherImpl.Config(
         loopSuccessBackoffDelay = 1.milliseconds
       )
     )
@@ -95,14 +95,14 @@ class Web3JLogsSearcherIntTest {
       recordRequestsResponses = true
     )
     setUpFakeLogsServerToHandleEthLogs(TestingJsonRpcServer, subsetOfBlocksWithLogs)
-    logsClient = Web3JLogsSearcher(
+    logsClient = EthLogsSearcherImpl(
       vertx = vertx,
       ethApiClient = createEthApiClient(
         vertx = vertx,
         web3jClient = Web3j.build(HttpService(URI("http://127.0.0.1:" + TestingJsonRpcServer.boundPort).toString())),
         requestRetryConfig = retryConfig
       ),
-      config = Web3JLogsSearcher.Config(
+      config = EthLogsSearcherImpl.Config(
         loopSuccessBackoffDelay = 1.milliseconds
       ),
       log = LogManager.getLogger("test.case.Web3JLogsSearcher")
@@ -242,14 +242,14 @@ class Web3JLogsSearcherIntTest {
     val randomHostname = "nowhere-${Random.nextBytes(20).encodeHex()}.local"
     web3jClient = Web3j.build(HttpService("http://$randomHostname:1234"))
     vertx = Vertx.vertx()
-    logsClient = Web3JLogsSearcher(
+    logsClient = EthLogsSearcherImpl(
       vertx,
       createEthApiClient(
         web3jClient,
         requestRetryConfig = RetryConfig.noRetries,
         vertx = null
       ),
-      config = Web3JLogsSearcher.Config(
+      config = EthLogsSearcherImpl.Config(
         loopSuccessBackoffDelay = 1.milliseconds
       )
     )

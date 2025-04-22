@@ -25,12 +25,12 @@ private sealed interface SearchResult {
   data object NoResultsInInterval : SearchResult
 }
 
-class Web3JLogsSearcher(
+class EthLogsSearcherImpl(
   val vertx: Vertx,
   val ethApiClient: EthApiClient,
   val config: Config = Config(),
   val clock: Clock = Clock.System,
-  val log: Logger = LogManager.getLogger(Web3JLogsSearcher::class.java)
+  val log: Logger = LogManager.getLogger(EthLogsSearcherImpl::class.java)
 ) : EthLogsSearcher, EthLogsClient by ethApiClient {
   data class Config(
     val loopSuccessBackoffDelay: Duration = 1.milliseconds

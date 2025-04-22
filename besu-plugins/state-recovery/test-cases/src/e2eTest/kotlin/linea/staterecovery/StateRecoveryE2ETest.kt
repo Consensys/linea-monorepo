@@ -8,7 +8,7 @@ import io.vertx.junit5.VertxExtension
 import kotlinx.datetime.Clock
 import linea.domain.EthLogEvent
 import linea.domain.RetryConfig
-import linea.ethapi.Web3JLogsSearcher
+import linea.ethapi.EthLogsSearcherImpl
 import linea.kotlin.gwei
 import linea.kotlin.toBigInteger
 import linea.kotlin.toULong
@@ -121,7 +121,7 @@ class StateRecoveryE2ETest {
     assertThat(getBesuErrorLogs()).isEmpty()
 
     val localStackL1ContractAddress = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
-    val logsSearcher = Web3JLogsSearcher(
+    val logsSearcher = EthLogsSearcherImpl(
       vertx = vertx,
       ethApiClient = createEthApiClient(
         web3jClient =
@@ -130,9 +130,10 @@ class StateRecoveryE2ETest {
           requestResponseLogLevel = Level.TRACE,
           failuresLogLevel = Level.WARN
         ),
-        requestRetryConfig = RetryConfig.noRetries
+        requestRetryConfig = RetryConfig.noRetries,
+        vertx = null
       ),
-      Web3JLogsSearcher.Config(
+      EthLogsSearcherImpl.Config(
         loopSuccessBackoffDelay = 1.milliseconds
       ),
       log = LogManager.getLogger("test.clients.l1.events-fetcher")

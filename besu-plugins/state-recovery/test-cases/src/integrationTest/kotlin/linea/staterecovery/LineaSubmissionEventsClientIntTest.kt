@@ -5,7 +5,7 @@ import io.vertx.junit5.VertxExtension
 import linea.contract.l1.LineaContractVersion
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
-import linea.ethapi.Web3JLogsSearcher
+import linea.ethapi.EthLogsSearcherImpl
 import linea.log4j.configureLoggers
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.testing.submission.AggregationAndBlobs
@@ -94,14 +94,14 @@ class LineaSubmissionEventsClientIntTest {
       failuresLogLevel = Level.WARN
     )
     return LineaSubmissionEventsClientImpl(
-      logsSearcher = Web3JLogsSearcher(
+      logsSearcher = EthLogsSearcherImpl(
         vertx = vertx,
         ethApiClient = createEthApiClient(
           web3jClient = eventsFetcherWeb3jClient,
           requestRetryConfig = RetryConfig.noRetries,
           vertx = null
         ),
-        config = Web3JLogsSearcher.Config(
+        config = EthLogsSearcherImpl.Config(
           loopSuccessBackoffDelay = 1.milliseconds
         ),
         log = log
