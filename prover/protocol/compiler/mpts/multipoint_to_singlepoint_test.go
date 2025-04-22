@@ -8,7 +8,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/testtools"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -60,6 +62,43 @@ func TestCompiler(t *testing.T) {
 	for _, tc := range testtools.ListOfUnivariateTestcasesPositive {
 		t.Run(tc.Name(), func(t *testing.T) {
 			testtools.RunTestcase(t, tc, suite)
+		})
+	}
+}
+
+func TestWithVerifierCol(t *testing.T) {
+
+	suite := []func(*wizard.CompiledIOP){
+		Compile(),
+		dummy.Compile,
+	}
+
+	testcases := []*testtools.AnonymousTestcase{
+		{
+			NameStr: "with-constant-col",
+			DefineFunc: func(comp *wizard.CompiledIOP) {
+				u := verifiercol.NewConstantCol(field.Zero(), 8)
+				comp.InsertUnivariate(0, "U", []ifaces.Column{u})
+			},
+			AssignFunc: func(run *wizard.ProverRuntime) {
+				run.AssignUnivariate("U", field.Zero(), field.Zero())
+			},
+		},
+		{
+			NameStr: "with-constant-col-2",
+			DefineFunc: func(comp *wizard.CompiledIOP) {
+				u := verifiercol.NewConstantCol(field.NewElement(42), 8)
+				comp.InsertUnivariate(0, "U", []ifaces.Column{u})
+			},
+			AssignFunc: func(run *wizard.ProverRuntime) {
+				run.AssignUnivariate("U", field.Zero(), field.NewElement(42))
+			},
+		},
+	}
+
+	for i, tc := range testcases {
+		t.Run(tc.NameStr, func(t *testing.T) {
+			testtools.RunTestcase(t, testcases[i], suite)
 		})
 	}
 }
