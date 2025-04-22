@@ -379,8 +379,18 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		coms, comUnconstrained = utils.FilterInSliceWithMap(coms_, ctx.PolynomialsTouchedByTheQuery)
 		numComsActual          = len(coms) // actual == not shadow and not unconstrained
 		fillUpTo               = len(coms)
-		targetSize             = ctx.comp.Columns.GetSize(coms[0])
 	)
+
+	// This part corresponds to an edge-case that is not supposed to happen
+	// in practice. Still, sometime, when debugging with upstream compilation
+	// steps it can happen that all of the columns of a round end up
+	// unconstrained. Importantly, the clause has to be put before attempting
+	// to resolving a targetsize.
+	if len(coms) == 0 {
+		return
+	}
+
+	targetSize := ctx.comp.Columns.GetSize(coms[0])
 
 	for i := range coms {
 		ctx.comp.Columns.MarkAsIgnored(coms[i])
