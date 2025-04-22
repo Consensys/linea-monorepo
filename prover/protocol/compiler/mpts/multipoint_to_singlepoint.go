@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -108,7 +109,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 
 		// startingRound is the first round that is not empty in polyRound
 		// ignoring precomputed columns.
-		startingRound := getFirstNonEmptyPosition(comp, polysByRound)
+		startingRound := getStartingRound(comp, polysByRound)
 
 		for round := startingRound; round < len(polysByRound); round++ {
 			polysByRound[round] = extendPWithShadowColumns(comp, round,
@@ -262,7 +263,7 @@ func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.Uni
 	// input list. The input slice is mutated and should not be used anymore.
 	cleanSubList := func(s []ifaces.Column) []ifaces.Column {
 		slices.SortFunc(s, cmpNames)
-		s = slices.Compact(s)
+		s = slices.CompactFunc(s, func(a, b ifaces.Column) bool { return a.GetColID() == b.GetColID() })
 		s = slices.Clip(s)
 		return s
 	}
@@ -277,15 +278,23 @@ func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.Uni
 
 // extendPWithShadowColumns adds shadow columns to the given list of polynomials
 // to match a given profile. The profile corresponds to a target number of columns
-// to meet in "p".
+// to meet in "p". The function will ignore the verifiercol from the count.
 func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p []ifaces.Column, profile int, precomputed bool) []ifaces.Column {
 
 	if len(p) > profile {
 		utils.Panic("the profile is too small for the given polynomials list")
 	}
 
-	// It is important that
 	numP := len(p)
+
+	// This loop effective remove the verifiercol from consideration when evaluating
+	// how many shadow columns are needed.
+	for i := range p {
+		_, isVcol := p[i].(verifiercol.VerifierCol)
+		if isVcol {
+			numP--
+		}
+	}
 
 	for i := numP; i < profile; i++ {
 
@@ -302,19 +311,25 @@ func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p
 	return p
 }
 
-// getFirstNonEmptyPosition returns the first position in s with a non-empty
+// getStartingRound returns the first position in s with a non-empty
 // sublist. The function panics if all the sublists are empty of if s is an
 // empty of nil list itself.
 //
 // The function will ignore the first round if it only contains precomputed
-// columns.
-func getFirstNonEmptyPosition(comp *wizard.CompiledIOP, s [][]ifaces.Column) int {
+// columns. The function also ignores [VerifierCol].
+func getStartingRound(comp *wizard.CompiledIOP, s [][]ifaces.Column) int {
 
 	if len(s) == 0 {
 		panic("empty list")
 	}
 
 	for j := range s[0] {
+
+		_, isVcol := s[0][j].(verifiercol.VerifierCol)
+		if isVcol {
+			continue
+		}
+
 		if !comp.Precomputed.Exists(s[0][j].GetColID()) {
 			fmt.Printf("found non precomputed column %s\n", s[0][j].GetColID())
 			return 0
