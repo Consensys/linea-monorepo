@@ -50,8 +50,6 @@ func TestWithProfile(t *testing.T) {
 
 }
 
-/*************  ✨ Windsurf Command ⭐  *************/
-/*******  f612471a-8442-4681-9a92-39f1d13a0aa6  *******/
 func TestCompiler(t *testing.T) {
 
 	suite := []func(*wizard.CompiledIOP){

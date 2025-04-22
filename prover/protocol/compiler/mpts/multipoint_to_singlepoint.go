@@ -1,6 +1,7 @@
 package mpts
 
 import (
+	"fmt"
 	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -106,7 +107,8 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	if ctx.NumColumnProfileOpt != nil {
 
 		// startingRound is the first round that is not empty in polyRound
-		startingRound := getFirstNonEmptyPosition(polysByRound)
+		// ignoring precomputed columns.
+		startingRound := getFirstNonEmptyPosition(comp, polysByRound)
 
 		for round := startingRound; round < len(polysByRound); round++ {
 			polysByRound[round] = extendPWithShadowColumns(comp, round,
@@ -226,8 +228,8 @@ func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.Uni
 	for _, q := range queries {
 		for _, poly := range q.Pols {
 
-			if _, isNat := poly.(column.Natural); !isNat {
-				utils.Panic("only natural polynomials are supported, got %v of type %T", poly.GetColID(), poly)
+			if _, isShf := poly.(column.Shifted); isShf {
+				utils.Panic("shifted polys are not supported. Please, run the naturalization pass prior to calling the MPTS pass")
 			}
 
 			// This works assuming the input polys are [colum.Natural] columns.
@@ -235,6 +237,7 @@ func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.Uni
 			// version of a precomputed column.
 			if comp.Precomputed.Exists(poly.GetColID()) {
 				polyPrecomputed = append(polyPrecomputed, poly)
+				continue
 			}
 
 			round := poly.Round()
@@ -302,12 +305,28 @@ func extendPWithShadowColumns(comp *wizard.CompiledIOP, round int, numRow int, p
 // getFirstNonEmptyPosition returns the first position in s with a non-empty
 // sublist. The function panics if all the sublists are empty of if s is an
 // empty of nil list itself.
-func getFirstNonEmptyPosition(s [][]ifaces.Column) int {
-	for i := range s {
+//
+// The function will ignore the first round if it only contains precomputed
+// columns.
+func getFirstNonEmptyPosition(comp *wizard.CompiledIOP, s [][]ifaces.Column) int {
+
+	if len(s) == 0 {
+		panic("empty list")
+	}
+
+	for j := range s[0] {
+		if !comp.Precomputed.Exists(s[0][j].GetColID()) {
+			fmt.Printf("found non precomputed column %s\n", s[0][j].GetColID())
+			return 0
+		}
+	}
+
+	for i := 1; i < len(s); i++ {
 		if len(s[i]) > 0 {
 			return i
 		}
 	}
+
 	panic("all sublists are empty")
 }
 
