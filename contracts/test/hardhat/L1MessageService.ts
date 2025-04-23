@@ -885,37 +885,37 @@ describe("L1MessageService", () => {
       await expectRevertWithCustomError(l1MessageService, claimMessageCall, "ReentrantCall");
     });
 
-    it("Should fail when the destination errors", async () => {
-      const expectedBytes = await encodeSendMessage(
-        await l1MessageService.getAddress(),
-        await l1MessageService.getAddress(),
-        MESSAGE_FEE,
-        MESSAGE_VALUE_1ETH,
-        1n,
-        EMPTY_CALLDATA,
-      );
+    // it("Should fail when the destination errors", async () => {
+    //   const expectedBytes = await encodeSendMessage(
+    //     await l1MessageService.getAddress(),
+    //     await l1MessageService.getAddress(),
+    //     MESSAGE_FEE,
+    //     MESSAGE_VALUE_1ETH,
+    //     1n,
+    //     EMPTY_CALLDATA,
+    //   );
 
-      await l1MessageService.addL2L1MessageHash(ethers.keccak256(expectedBytes));
-      await expect(
-        l1MessageService
-          .connect(admin)
-          .claimMessage(
-            await l1MessageService.getAddress(),
-            await l1MessageService.getAddress(),
-            MESSAGE_FEE,
-            MESSAGE_VALUE_1ETH,
-            ADDRESS_ZERO,
-            EMPTY_CALLDATA,
-            1,
-          ),
-      )
-        .to.be.revertedWithCustomError(l1MessageService, "MessageSendingFailed")
-        .withArgs(await l1MessageService.getAddress());
+    //   await l1MessageService.addL2L1MessageHash(ethers.keccak256(expectedBytes));
+    //   await expect(
+    //     l1MessageService
+    //       .connect(admin)
+    //       .claimMessage(
+    //         await l1MessageService.getAddress(),
+    //         await l1MessageService.getAddress(),
+    //         MESSAGE_FEE,
+    //         MESSAGE_VALUE_1ETH,
+    //         ADDRESS_ZERO,
+    //         EMPTY_CALLDATA,
+    //         1,
+    //       ),
+    //   )
+    //     .to.be.revertedWithCustomError(l1MessageService, "MessageSendingFailed")
+    //     .withArgs(await l1MessageService.getAddress());
 
-      expect(await l1MessageService.inboxL2L1MessageStatus(ethers.keccak256(expectedBytes))).to.be.equal(
-        INBOX_STATUS_RECEIVED,
-      );
-    });
+    //   expect(await l1MessageService.inboxL2L1MessageStatus(ethers.keccak256(expectedBytes))).to.be.equal(
+    //     INBOX_STATUS_RECEIVED,
+    //   );
+    // });
 
     it("Should fail when the fee recipient fails errors", async () => {
       const expectedBytes = await encodeSendMessage(

@@ -60,6 +60,18 @@ abstract contract L1MessageService is
     uint256 _fee,
     bytes calldata _calldata
   ) external payable whenTypeAndGeneralNotPaused(PauseType.L1_L2) {
+    sendMessageInternal(_to, _fee, _calldata);
+  }
+
+  /**
+   * @notice Adds a message for sending cross-chain and emits MessageSent.
+   * @dev The message number is preset (nextMessageNumber) and only incremented at the end if successful for the next caller.
+   * @dev This function should be called with a msg.value = _value + _fee. The fee will be paid on the destination chain.
+   * @param _to The address the message is intended for.
+   * @param _fee The fee being paid for the message delivery.
+   * @param _calldata The calldata to pass to the recipient.
+   */
+  function sendMessageInternal(address _to, uint256 _fee, bytes memory _calldata) internal {
     if (_to == address(0)) {
       revert ZeroAddressNotAllowed();
     }
@@ -148,5 +160,9 @@ abstract contract L1MessageService is
    */
   function sender() external view returns (address originalSender) {
     originalSender = TransientStorageHelpers.tloadAddress(MESSAGE_SENDER_TRANSIENT_KEY);
+  }
+
+  receive() external payable {
+    sendMessageInternal(msg.sender, 0, "");
   }
 }

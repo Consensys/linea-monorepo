@@ -24,7 +24,7 @@ library MessageHashing {
     uint256 _fee,
     uint256 _valueSent,
     uint256 _messageNumber,
-    bytes calldata _calldata
+    bytes memory _calldata
   ) internal pure returns (bytes32 messageHash) {
     assembly {
       let mPtr := mload(0x40)
@@ -34,15 +34,27 @@ library MessageHashing {
       mstore(add(mPtr, 0x60), _valueSent)
       mstore(add(mPtr, 0x80), _messageNumber)
       mstore(add(mPtr, 0xa0), 0xc0)
-      mstore(add(mPtr, 0xc0), _calldata.length)
-      let rem := mod(_calldata.length, 0x20)
+      let dataLen := mload(_calldata)
+      mstore(add(mPtr, 0xc0), dataLen)
+
+      let rem := mod(dataLen, 0x20)
       let extra := 0
       if iszero(iszero(rem)) {
         extra := sub(0x20, rem)
       }
 
-      calldatacopy(add(mPtr, 0xe0), _calldata.offset, _calldata.length)
-      messageHash := keccak256(mPtr, add(0xe0, add(_calldata.length, extra)))
+      // Copy the actual bytes from _calldata (skipping the 32-byte length prefix)
+      let dataPtr := add(_calldata, 0x20)
+      let destPtr := add(mPtr, 0xe0)
+      for {
+        let i := 0
+      } lt(i, dataLen) {
+        i := add(i, 0x20)
+      } {
+        mstore(add(destPtr, i), mload(add(dataPtr, i)))
+      }
+
+      messageHash := keccak256(mPtr, add(0xe0, add(dataLen, extra)))
     }
   }
 }
