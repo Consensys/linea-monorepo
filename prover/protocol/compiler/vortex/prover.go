@@ -1,7 +1,6 @@
 package vortex
 
 import (
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -20,14 +19,10 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 		pols := ctx.getPols(pr, round)
 		// If there are no polynomials to commit to, we don't need to do anything
 		if len(pols) == 0 {
+			logrus.Infof("Vortex AssignColumn at round %v: No polynomials to commit to", round)
 			return
 		}
-		// If SIS hashing is not applied for this round, we need to remove it
-		// Todo: check if we need to reset it, otherwise use a slice instead
-		if !ctx.IsSISApplied[round] {
-			ctx.VortexParams.RemoveSis(mimc.NewMiMC)
-		}
-		committedMatrix, tree, sisDigest := ctx.VortexParams.CommitMerkle(pols)
+		committedMatrix, tree, sisDigest := ctx.VortexParams.CommitMerkle(pols, ctx.IsSISApplied[round])
 		pr.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		pr.State.InsertNew(ctx.MerkleTreeName(round), tree)
 

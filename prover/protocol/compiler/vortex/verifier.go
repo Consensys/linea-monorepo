@@ -107,18 +107,16 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 
 	ys = [][]field.Element{}
 
-	// add ys for precomputed when IsCommitToPrecomputed is true
-	if ctx.IsCommitToPrecomputed() {
-		names := make([]ifaces.ColID, len(ctx.Items.Precomputeds.PrecomputedColums))
-		for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
-			names[i] = poly.GetColID()
-		}
-		ysPrecomputed := make([]field.Element, len(names))
-		for i, name := range names {
-			ysPrecomputed[i] = ysMap[name]
-		}
-		ys = append(ys, ysPrecomputed)
+	// add ys for precomputed
+	names := make([]ifaces.ColID, len(ctx.Items.Precomputeds.PrecomputedColums))
+	for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
+		names[i] = poly.GetColID()
 	}
+	ysPrecomputed := make([]field.Element, len(names))
+	for i, name := range names {
+		ysPrecomputed[i] = ysMap[name]
+	}
+	ys = append(ys, ysPrecomputed)
 
 	// Get the list of the polynomials
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
@@ -151,17 +149,14 @@ func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][
 	roundStartAt := 0
 
 	// Process precomputed
-	if ctx.IsCommitToPrecomputed() {
-		openedPrecompCols := make([][]field.Element, len(entryList))
-		numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
-		for j := range entryList {
-			openedPrecompCols[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numPrecomputeds]
-		}
-		// update the start counter to ensure we do not pass twice the same row
-		roundStartAt += numPrecomputeds
-		openedSubColumns = append(openedSubColumns, openedPrecompCols)
-
+	openedPrecompCols := make([][]field.Element, len(entryList))
+	numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
+	for j := range entryList {
+		openedPrecompCols[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numPrecomputeds]
 	}
+	// update the start counter to ensure we do not pass twice the same row
+	roundStartAt += numPrecomputeds
+	openedSubColumns = append(openedSubColumns, openedPrecompCols)
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		openedSubColumnsForRound := make([][]field.Element, len(entryList))

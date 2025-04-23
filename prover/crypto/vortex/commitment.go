@@ -28,7 +28,9 @@ type EncodedMatrix []smartvectors.SmartVector
 //
 // And can be safely converted to a field Element via
 // [field.Element.SetBytesCanonical]
-func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
+// We apply SIS+MiMC hashing on the columns to compute leaves only if
+// isSISAppliedForRound is true, otherwise we apply only the MiMC hashing.
+func (p *Params) CommitMerkle(ps []smartvectors.SmartVector, isSISAppliedForRound bool) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
 
 	if len(ps) > p.MaxNbRows {
 		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
@@ -37,15 +39,17 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 	timeEncoding := profiling.TimeIt(func() {
 		encodedMatrix = p.encodeRows(ps)
 	})
-
 	timeSisHashing := profiling.TimeIt(func() {
-		colHashes = p.hashColumns(encodedMatrix)
+		// colHashes stores concatenation of SIS+MiMC hashes of the columns
+		// if isSISAppliedForRound is true, otherwise it stores the MiMC hashes
+		// of the columns.
+		colHashes = p.hashColumns(encodedMatrix, isSISAppliedForRound)
 	})
 
 	timeTree := profiling.TimeIt(func() {
 		var leaves []types.Bytes32
 
-		if !p.HasSisReplacement() {
+		if !p.HasSisReplacement() && isSISAppliedForRound {
 			leaves = p.hashSisHash(colHashes)
 		} else {
 			leaves = make([]types.Bytes32, len(colHashes))
@@ -104,9 +108,9 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 // `encodedMatrix` sequentially.
 //
 // When SIS is used, `colHashes` stores the concatenation of the SIS hashes.
-func (params *Params) hashColumns(encodedMatrix EncodedMatrix) (colHashes []field.Element) {
+func (params *Params) hashColumns(encodedMatrix EncodedMatrix, isSISAppliedForRound bool) (colHashes []field.Element) {
 	// And obtain the hash of the columns
-	if !params.HasSisReplacement() {
+	if !params.HasSisReplacement() && isSISAppliedForRound {
 		return params.Key.TransversalHash(encodedMatrix)
 	}
 	return params.noSisTransversalHash(encodedMatrix)
@@ -147,11 +151,6 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []types.Bytes32)
 // Uses the no-sis hash function to hash the columns
 func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Element {
 
-	// Assert, we are in no-sis mode
-	if !p.HasSisReplacement() {
-		panic("expected no-sis mode")
-	}
-
 	// Assert that all smart-vectors have the same numCols
 	numCols := v[0].Len()
 	for i := range v {
@@ -169,7 +168,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Elem
 	parallel.ExecuteThreadAware(
 		numCols,
 		func(threadID int) {
-			hashers[threadID] = p.NoSisHashFunc()
+			hashers[threadID] = p.HashFunc()
 		},
 		func(col, threadID int) {
 			hasher := hashers[threadID]

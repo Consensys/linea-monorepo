@@ -99,11 +99,8 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		}
 
 		ctx.generateVortexParams()
-		// Commit to precomputed in Vortex if IsCommitToPrecomputed is true
-		// ToDo: change this accordingly
-		if ctx.IsCommitToPrecomputed() {
-			ctx.commitPrecomputeds()
-		}
+		// Commit to precomputed columns
+		ctx.commitPrecomputeds()
 		ctx.registerOpeningProof(lastRound)
 
 		// Registers the prover and verifier steps
@@ -630,8 +627,13 @@ func (ctx *Ctx) IsCommitToPrecomputed() bool {
 // IsSISAppliedToPrecomputed returns true if SIS is applied to the precomputed
 // columns
 func (ctx *Ctx) IsSISAppliedToPrecomputed() bool {
+	if ctx.Items.Precomputeds.PrecomputedColums == nil {
+		logrus.Infof("There are no precomputed columns to commit to")
+		return false
+	}
 	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.ApplySISHashThreshold
 }
+
 // Turns the precomputed into verifying key messages. A possible improvement
 // would be to make them an entire commitment but we estimate that it will not
 // be worth it. If the flag `CommitPrecomputed` is set to `true`, this will
@@ -754,17 +756,16 @@ func (ctx *Ctx) NumCommittedRounds() int {
 
 // MerkleProofSize Returns the size of the allocated Merkle proof vector
 func (ctx *Ctx) MerkleProofSize() int {
-	// In case of the Merkle-proof mode, we also registers the
-	// column that will contain the Merkle proofs altogether. But
+	// We registers the column that will contain the Merkle proofs altogether. But
 	// first, we need to evaluate its size. The proof size needs to
 	// be padded up to a power of two. Otherwise, we can't use PeriodicSampling.
-	depth := utils.Log2Ceil(ctx.NumEncodedCols())
-	numComs := ctx.NumCommittedRounds()
-	// The number of rounds increases by 1 when we commit to the precomputeds
-	if ctx.IsCommitToPrecomputed() {
-		numComs += 1
-	}
-	numOpening := ctx.NbColsToOpen()
+	var (
+		depth      = utils.Log2Ceil(ctx.NumEncodedCols())
+		numComs    = ctx.NumCommittedRounds()
+		numOpening = ctx.NbColsToOpen()
+	)
+	// The number of rounds increases by 1 for committing to the precomputed
+	numComs += 1
 
 	if depth*numComs*numOpening == 0 {
 		utils.Panic("something was zero : %v, %v, %v", depth, numComs, numOpening)
@@ -802,7 +803,7 @@ func (ctx *Ctx) commitPrecomputeds() {
 	ctx.CommittedRowsCount += numPrecomputeds
 
 	// Call Vortex in Merkle mode
-	committedMatrix, tree, colHashes := ctx.VortexParams.CommitMerkle(pols)
+	committedMatrix, tree, colHashes := ctx.VortexParams.CommitMerkle(pols, ctx.IsSISAppliedToPrecomputed())
 	ctx.Items.Precomputeds.DhWithMerkle = colHashes
 	ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
 	ctx.Items.Precomputeds.Tree = tree

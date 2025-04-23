@@ -222,7 +222,8 @@ func TestProver(t *testing.T) {
 				// Commits to it
 				committedMatrices := make([]EncodedMatrix, numCommitments)
 				for i := range trees {
-					committedMatrices[i], trees[i], _ = params.CommitMerkle(polyLists[i])
+					// We always apply SIS+MiMC hashing on the columns to compute leaves
+					committedMatrices[i], trees[i], _ = params.CommitMerkle(polyLists[i], true)
 					roots[i] = trees[i].Root
 				}
 
@@ -470,7 +471,8 @@ func TestVerifierNegative(t *testing.T) {
 			// Commits to it
 			committedMatrices := make([]EncodedMatrix, numCommitments)
 			for i := range trees {
-				committedMatrices[i], trees[i], _ = params.CommitMerkle(polyLists[i])
+				// We always apply SIS+MiMC hashing on the columns to compute leaves
+				committedMatrices[i], trees[i], _ = params.CommitMerkle(polyLists[i], true)
 				roots[i] = trees[i].Root
 			}
 

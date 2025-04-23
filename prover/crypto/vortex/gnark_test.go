@@ -333,7 +333,8 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	trees := make([]*smt.Tree, nCommitments)
 	committedMatrices := make([]EncodedMatrix, nCommitments)
 	for j := range trees {
-		committedMatrices[j], trees[j], _ = params.CommitMerkle(polyLists[j])
+		// We always apply SIS+MiMC hashing on the columns to compute leaves
+		committedMatrices[j], trees[j], _ = params.CommitMerkle(polyLists[j], true)
 		roots[j] = trees[j].Root
 	}
 
