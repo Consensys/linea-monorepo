@@ -37,5 +37,6 @@ export interface IMessageRepository<ContractTransactionResponse> {
     message: Message,
     nonce: number,
     claimTxResponsePromise: Promise<ContractTransactionResponse>,
+    isForSponsorship: boolean,
   ): Promise<void>;
 }

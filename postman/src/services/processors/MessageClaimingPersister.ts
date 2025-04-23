@@ -227,7 +227,11 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       return;
     }
 
-    message.edit({ status: MessageStatus.CLAIMED_SUCCESS });
+    message.edit({
+      status: MessageStatus.CLAIMED_SUCCESS,
+      claimTxGasUsed: Number(receipt.gasUsed),
+      claimTxGasPrice: BigInt(receipt.gasPrice),
+    });
     await this.databaseService.updateMessage(message);
     this.logger.info(
       "Message has been SUCCESSFULLY claimed: messageHash=%s transactionHash=%s",

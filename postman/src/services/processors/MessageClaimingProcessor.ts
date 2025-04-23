@@ -120,6 +120,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         estimatedGasLimit!,
         claimTxFees.maxPriorityFeePerGas,
         claimTxFees.maxFeePerGas,
+        isForSponsorship,
       );
     } catch (e) {
       await this.handleProcessingError(e, nextMessageToClaim);
@@ -158,6 +159,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    * @param {bigint} gasLimit - The gas limit for the transaction.
    * @param {bigint} maxPriorityFeePerGas - The maximum priority fee per gas for the transaction.
    * @param {bigint} maxFeePerGas - The maximum fee per gas for the transaction.
+   * @param {boolean} isForSponsorship - True if this claim is for sponsorship.
    * @returns {Promise<void>} A promise that resolves when the transaction is executed.
    */
   private async executeClaimTransaction(
@@ -166,6 +168,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     gasLimit: bigint,
     maxPriorityFeePerGas: bigint,
     maxFeePerGas: bigint,
+    isForSponsorship: boolean,
   ): Promise<void> {
     const claimTxResponsePromise = this.messageServiceContract.claim(
       {
@@ -174,7 +177,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       },
       { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
     );
-    await this.databaseService.updateMessageWithClaimTxAtomic(message, nonce, claimTxResponsePromise);
+    await this.databaseService.updateMessageWithClaimTxAtomic(message, nonce, claimTxResponsePromise, isForSponsorship);
   }
 
   /**
