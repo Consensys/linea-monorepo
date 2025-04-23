@@ -19,12 +19,14 @@ export type MessageProps = {
   claimTxGasUsed?: number;
   claimTxMaxFeePerGas?: bigint;
   claimTxMaxPriorityFeePerGas?: bigint;
+  claimTxGasPrice?: bigint;
   claimTxNonce?: number;
   claimTxHash?: string;
   claimNumberOfRetry: number;
   claimLastRetriedAt?: Date;
   claimGasEstimationThreshold?: number;
   compressedTransactionSize?: number;
+  isForSponsorship: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 };
@@ -70,12 +72,14 @@ export class Message {
   public claimTxGasUsed?: number;
   public claimTxMaxFeePerGas?: bigint;
   public claimTxMaxPriorityFeePerGas?: bigint;
+  public claimTxGasPrice?: bigint;
   public claimTxNonce?: number;
   public claimTxHash?: string;
   public claimNumberOfRetry: number;
   public claimLastRetriedAt?: Date;
   public claimGasEstimationThreshold?: number;
   public compressedTransactionSize?: number;
+  public isForSponsorship: boolean;
   public createdAt?: Date;
   public updatedAt?: Date;
 
@@ -97,12 +101,14 @@ export class Message {
     this.claimTxGasUsed = props.claimTxGasUsed;
     this.claimTxMaxFeePerGas = props.claimTxMaxFeePerGas;
     this.claimTxMaxPriorityFeePerGas = props.claimTxMaxPriorityFeePerGas;
+    this.claimTxGasPrice = props.claimTxGasPrice;
     this.claimTxNonce = props.claimTxNonce;
     this.claimTxHash = props.claimTxHash;
     this.claimNumberOfRetry = props.claimNumberOfRetry;
     this.claimLastRetriedAt = props.claimLastRetriedAt;
     this.claimGasEstimationThreshold = props.claimGasEstimationThreshold;
     this.compressedTransactionSize = props.compressedTransactionSize;
+    this.isForSponsorship = props.isForSponsorship ?? false;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
   }
@@ -119,6 +125,7 @@ export class Message {
     if (newMessage.claimTxMaxFeePerGas) this.claimTxMaxFeePerGas = newMessage.claimTxMaxFeePerGas;
     if (newMessage.claimTxMaxPriorityFeePerGas)
       this.claimTxMaxPriorityFeePerGas = newMessage.claimTxMaxPriorityFeePerGas;
+    if (newMessage.claimTxGasPrice) this.claimTxGasPrice = newMessage.claimTxGasPrice;
     if (newMessage.claimTxNonce) this.claimTxNonce = newMessage.claimTxNonce;
     if (newMessage.claimTxHash) this.claimTxHash = newMessage.claimTxHash;
     if (newMessage.claimNumberOfRetry) this.claimNumberOfRetry = newMessage.claimNumberOfRetry;
@@ -126,6 +133,7 @@ export class Message {
     if (newMessage.claimGasEstimationThreshold)
       this.claimGasEstimationThreshold = newMessage.claimGasEstimationThreshold;
     if (newMessage.compressedTransactionSize) this.compressedTransactionSize = newMessage.compressedTransactionSize;
+    if (newMessage.isForSponsorship !== undefined) this.isForSponsorship = newMessage.isForSponsorship;
 
     this.updatedAt = new Date();
   }
@@ -141,12 +149,12 @@ export class Message {
       this.claimTxGasLimit
     }, claimTxGasUsed=${this.claimTxGasUsed}, claimTxMaxFeePerGas=${this.claimTxMaxFeePerGas}, claimTxMaxPriorityFeePerGas=${
       this.claimTxMaxPriorityFeePerGas
-    }, claimTxNonce=${this.claimTxNonce}, claimTransactionHash=${this.claimTxHash}, claimNumberOfRetry=${
+    }, claimTxGasPrice=${this.claimTxGasPrice}, claimTxNonce=${this.claimTxNonce}, claimTransactionHash=${this.claimTxHash}, claimNumberOfRetry=${
       this.claimNumberOfRetry
     }, claimLastRetriedAt=${this.claimLastRetriedAt?.toISOString()}, claimGasEstimationThreshold=${
       this.claimGasEstimationThreshold
     }, compressedTransactionSize=${
       this.compressedTransactionSize
-    }, createdAt=${this.createdAt?.toISOString()}, updatedAt=${this.updatedAt?.toISOString()})`;
+    }, isForSponsorship=${this.isForSponsorship}, createdAt=${this.createdAt?.toISOString()}, updatedAt=${this.updatedAt?.toISOString()})`;
   }
 }
