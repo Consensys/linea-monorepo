@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import linea.plugin.acc.test.LineaPluginTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
@@ -32,6 +33,7 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
+import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.TransferTransactionSet;
 import org.junit.jupiter.api.Test;
 import org.web3j.abi.datatypes.generated.Bytes8;
 import org.web3j.crypto.Credentials;
@@ -77,13 +79,21 @@ public class EthSendRawTransactionSimulationCheckTest extends LineaPluginTestBas
   @Test
   public void validTransactionsAreAccepted() {
     // these are under the line count limit and should be accepted and selected
-    final Account fewLinesSender = accounts.getSecondaryBenefactor();
     final Account recipient = accounts.createAccount("recipient");
     final List<Hash> expectedConfirmedTxs = new ArrayList<>(4);
 
-    expectedConfirmedTxs.addAll(
-        minerNode.execute(
-            accountTransactions.createIncrementalTransfers(fewLinesSender, recipient, 4)));
+    final var transfers =
+        IntStream.range(0, 4)
+            .mapToObj(
+                i ->
+                    accountTransactions.createTransfer(
+                        accounts.getSecondaryBenefactor(), recipient, i + 1, BigInteger.valueOf(i)))
+            .toList()
+            .reversed();
+    // reversed, so we are sure no tx is selected before all are sent due to the nonce gap,
+    // otherwise a block can be built with some txs before we can check the txpool content
+
+    expectedConfirmedTxs.addAll(minerNode.execute(new TransferTransactionSet(transfers)));
 
     final var txPoolContentByHash = getTxPoolContent().stream().map(e -> e.get("hash")).toList();
     assertThat(txPoolContentByHash)

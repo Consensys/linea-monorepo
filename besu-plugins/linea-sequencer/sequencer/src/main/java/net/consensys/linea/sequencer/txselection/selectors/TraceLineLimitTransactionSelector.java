@@ -18,6 +18,7 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_COUNT_OVERFLOW_CACHED;
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_INVALID_COUNT;
+import static net.consensys.linea.zktracer.Fork.LONDON;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
 import java.math.BigInteger;
@@ -220,7 +221,7 @@ public class TraceLineLimitTransactionSelector
 
   private class ZkTracerWithLog extends ZkTracer {
     public ZkTracerWithLog(final LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
-      super(bridgeConfiguration, chainId);
+      super(LONDON, bridgeConfiguration, chainId);
     }
 
     @Override

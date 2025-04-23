@@ -17,6 +17,7 @@ package net.consensys.linea.rpc.methods;
 
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.MODULE_NOT_DEFINED;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.TX_MODULE_LINE_COUNT_OVERFLOW;
+import static net.consensys.linea.zktracer.Fork.LONDON;
 import static org.hyperledger.besu.ethereum.api.jsonrpc.internal.results.Quantity.create;
 
 import java.math.BigDecimal;
@@ -549,7 +550,7 @@ public class LineaEstimateGas {
 
   private ZkTracer createZkTracer(
       final ProcessableBlockHeader pendingBlockHeader, final BigInteger chainId) {
-    var zkTracer = new ZkTracer(l1L2BridgeConfiguration, chainId);
+    var zkTracer = new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
     zkTracer.traceStartConflation(1L);
     zkTracer.traceStartBlock(pendingBlockHeader, pendingBlockHeader.getCoinbase());
     return zkTracer;

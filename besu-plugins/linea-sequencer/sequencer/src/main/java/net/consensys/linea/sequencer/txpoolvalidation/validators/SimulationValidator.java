@@ -16,6 +16,7 @@ package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.MODULE_NOT_DEFINED;
 import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.ModuleLineCountResult.TX_MODULE_LINE_COUNT_OVERFLOW;
+import static net.consensys.linea.zktracer.Fork.LONDON;
 
 import java.math.BigInteger;
 import java.time.Instant;
@@ -161,7 +162,7 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
 
   private ZkTracer createZkTracer(
       final ProcessableBlockHeader pendingBlockHeader, BigInteger chainId) {
-    var zkTracer = new ZkTracer(l1L2BridgeConfiguration, chainId);
+    var zkTracer = new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
     zkTracer.traceStartConflation(1L);
     zkTracer.traceStartBlock(pendingBlockHeader, pendingBlockHeader.getCoinbase());
     return zkTracer;
