@@ -310,7 +310,6 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
         previousStatus: message.status,
         newStatus: MessageStatus.PENDING,
         direction: message.direction,
-        isForSponsorship,
       };
     });
   }
