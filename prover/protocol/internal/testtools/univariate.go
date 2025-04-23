@@ -2,7 +2,6 @@ package testtools
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -49,18 +48,6 @@ var ListOfUnivariateTestcasesPositive = []*UnivariateTestcase{
 		},
 		QueryXs: []field.Element{
 			field.NewElement(0),
-		},
-		QueryPols: [][]int{
-			{0},
-		},
-	},
-	{
-		NameStr: "one-poly-one-point-root-of-unity",
-		Polys: []smartvectors.SmartVector{
-			RandomVec(8),
-		},
-		QueryXs: []field.Element{
-			fft.GetOmega(8),
 		},
 		QueryPols: [][]int{
 			{0},

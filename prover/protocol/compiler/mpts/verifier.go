@@ -107,21 +107,23 @@ func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	var (
 		lambdaPowI = frontend.Variable(1)
 		rhoK       = frontend.Variable(1)
-		res        = frontend.Variable(0)
+		// res stores the right-hand of the equality check. Namely,
+		// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
+		res = frontend.Variable(0)
 	)
 
 	for i, q := range va.Queries {
 
 		xi := run.GetUnivariateParams(q.Name()).X
-		zetasOfR[i] = api.Sub(xi, r)
+		zetasOfR[i] = api.Sub(r, xi)
 		// NB: this is very sub-optimal. We should use a batch-inverse instead
 		// but the native verifier time is not very important in this context.
 		zetasOfR[i] = api.Inverse(zetasOfR[i])
+		zetasOfR[i] = api.Mul(zetasOfR[i], lambdaPowI)
 		lambdaPowI = api.Mul(lambdaPowI, lambda)
 	}
 
-	// res stores the right-hand of the equality check. Namely,
-	// sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
+	// This loop computes the value of [res]
 	for k := range va.Polys {
 		for _, i := range va.EvalPointOfPolys[k] {
 			// This sets tmp with the value of yik
