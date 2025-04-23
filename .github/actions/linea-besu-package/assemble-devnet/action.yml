@@ -77,7 +77,7 @@ runs:
     - name: copy the list of versions to the container
       shell: bash      
       run: |
-        cp ./versions/linea-devnet.env /tmp/besu/versions.txt
+        cp ./linea-besu-package/versions/linea-devnet.env /tmp/besu/versions.txt
         mkdir -p /tmp/besu/plugins
 
     - name: get the plugins
