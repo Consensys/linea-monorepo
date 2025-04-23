@@ -1,0 +1,134 @@
+name: test-linea-mainnet
+
+on:
+  pull_request:
+    branches:
+      - main
+
+  workflow_call:
+    outputs:
+      workflow_run_id: 
+        description: "the run id of the workflow"
+        value: ${{ jobs.build.outputs.workflow_run_id }}
+  workflow_dispatch:
+
+permissions:
+  id-token: write  
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: dockerhub
+    outputs:
+      workflow_run_id: ${{ steps.assemble.outputs.workflow_id }}
+      dockertag: ${{ steps.assemble.outputs.dockertag }}
+      dockerimage: ${{ steps.assemble.outputs.dockerimage }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: build the linea mainnet artifacts
+        id: assemble
+        uses: ./.github/actions/assemble-mainnet
+
+      - name: set up docker buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker        
+
+      - name: login to docker
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USER_RW }}
+          password: ${{ secrets.DOCKER_PASSWORD_RW }}
+
+      - name: set docker build args
+        run: |
+          echo "Building docker tag: ${{ steps.assemble.outputs.dockertag }}"
+          echo "Building docker image: ${{ steps.assemble.outputs.dockerimage }}"
+
+      - name: build the image
+        uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_SUMMARY: false
+        with:
+          context: linea-besu/.
+          platforms: linux/amd64
+          provenance: false
+          build-args: |
+            VERSION=${{ steps.assemble.outputs.dockertag }}
+            VCS_REF=${{ github.sha }}
+            BUILD_DATE=${{ steps.assemble.outputs.build_date }}
+          tags: |
+            consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }}
+
+      - name: Save Docker image
+        id: dockersave
+        run: |
+          docker images
+          docker save consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }} -o /tmp/docker-image-mainnet.tar
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-mainnet
+          path: /tmp/docker-image-mainnet.tar
+          retention-days: 1
+
+  prepare_tests:
+    runs-on: ubuntu-latest
+    needs: build
+    outputs:
+      files: ${{ steps.list.outputs.files }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Split profiles
+        id: list
+        run: |
+          files=$(ls linea-besu/profiles/*mainnet* | xargs -n 1 basename | sed 's/\.[^.]*$//')
+          files_json=$(echo "$files" | tr ' ' '\n' | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "files=$files_json" >> "$GITHUB_OUTPUT"
+          echo "Files: $files_json"
+
+  test-profile:
+    timeout-minutes: 4
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    needs: [prepare_tests, build]
+    strategy:
+      fail-fast: false
+      matrix:
+        file: ${{ fromJSON(needs.prepare_tests.outputs.files) }}
+    env:
+      CONTAINER_NAME: linea-besu-profile-check-${{ matrix.file }}
+      DOCKER_IMAGE: ${{needs.build.outputs.dockerimage}}
+    steps:
+      - name: Check repository
+        uses: actions/checkout@v4
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image-mainnet
+          path: /tmp
+
+      - name: Load image
+        run: |
+          docker load --input /tmp/docker-image-mainnet.tar
+
+      - name: Start container
+        run: |
+          env
+          COMMAND="docker run -d --name ${{ env.CONTAINER_NAME }} -e BESU_PROFILE=${{ matrix.file }} ${{ env.DOCKER_IMAGE }}"
+          echo $COMMAND
+          eval $COMMAND
+
+      - name: Verify besu container
+        run: bash .github/workflows/BesuContainerVerify.sh
+        env:
+          CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
+
+      - name: Stop container
+        run: docker stop ${{ env.CONTAINER_NAME }}
