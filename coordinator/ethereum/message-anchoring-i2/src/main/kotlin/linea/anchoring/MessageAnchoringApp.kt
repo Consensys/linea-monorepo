@@ -45,12 +45,6 @@ class MessageAnchoringApp(
       config = EthLogsSearcherImpl.Config(loopSuccessBackoffDelay = config.l1SuccessBackoffDelay)
     )
 
-  // private val eventsQueue = CapacityBoundedBlockingPriorityQueue<MessageSentEvent>(
-  //   targetCapacity = config.messageQueueCapacity,
-  //   // allow at least one 1 L1 Block full of Linea Messages
-  //   // sendMessages takes 67,385 gas, 60Mgas/67k ~ 1000
-  //   absoluteMaxCapacity = (config.messageQueueCapacity * 2u).coerceAtLeast(1000u)
-  // )
   private val eventsQueue = PriorityBlockingQueue<MessageSentEvent>(config.messageQueueCapacity.toInt())
 
   private val l1EventsPoller = run {

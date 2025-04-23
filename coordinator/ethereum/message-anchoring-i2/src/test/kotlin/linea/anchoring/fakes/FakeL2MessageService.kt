@@ -52,6 +52,7 @@ class FakeL2MessageService(
     lastAnchoredL1MessageNumber = finalMessageNumber
     lastAnchoredRollingHash = finalRollingHash
     anchoredMessageHashes.addAll(messageHashes)
+    anchoredMessageRollingHashes[finalMessageNumber] = finalRollingHash
 
     return SafeFuture.completedFuture(Random.nextBytes(32).encodeHex())
   }
@@ -73,4 +74,7 @@ class FakeL2MessageService(
 
   @Synchronized
   fun getAnchoredMessageHashes(): List<ByteArray> = anchoredMessageHashes.toList()
+
+  @Synchronized
+  fun getAnchoredMessagesRollingHashes(): Map<ULong, ByteArray> = anchoredMessageRollingHashes.toMap()
 }

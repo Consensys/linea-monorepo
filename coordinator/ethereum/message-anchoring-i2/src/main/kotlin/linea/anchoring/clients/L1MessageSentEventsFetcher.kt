@@ -5,9 +5,13 @@ import linea.anchoring.events.L1RollingHashUpdatedEvent
 import linea.anchoring.events.MessageSentEvent
 import linea.domain.BlockParameter
 import linea.domain.BlockParameter.Companion.toBlockParameter
+import linea.domain.CommonDomainFunctions
 import linea.domain.EthLogEvent
 import linea.kotlin.toHexStringUInt256
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.time.Duration
 
 /**
@@ -20,29 +24,20 @@ import kotlin.time.Duration
 internal class L1MessageSentEventsFetcher(
   private val l1SmartContractAddress: String,
   private val l1EventsSearcher: EthLogsSearcher,
-  private val highestBlockNumber: BlockParameter
+  private val highestBlock: BlockParameter,
+  private val log: Logger = LogManager.getLogger(L1MessageSentEventsFetcher::class.java)
 ) {
-  private val lastSearch: AtomicPair = AtomicPair()
+  private data class LastSearch(
+    val highestL1AlreadySearchedBlockNumber: ULong,
+    val lastStartingMessageNumber: ULong
+  )
 
-  private class AtomicPair(
-    private var highestL1AlreadySearchedBlockNumber: ULong = 0UL,
-    private var lastStartingMessageNumber: ULong = 0UL
-  ) {
-    @Synchronized
-    fun lastStartingMessageNumber(): ULong = lastStartingMessageNumber
-
-    @Synchronized
-    fun highestL1AlreadySearchedBlockNumber(): ULong = highestL1AlreadySearchedBlockNumber
-
-    @Synchronized
-    fun set(
-      highestL1AlreadySearchedBlockNumber: ULong,
-      lastStartingMessageNumber: ULong
-    ) {
-      this.highestL1AlreadySearchedBlockNumber = highestL1AlreadySearchedBlockNumber
-      this.lastStartingMessageNumber = lastStartingMessageNumber
-    }
-  }
+  private val lastSearch = AtomicReference(
+    LastSearch(
+      highestL1AlreadySearchedBlockNumber = 0UL,
+      lastStartingMessageNumber = 0UL
+    )
+  )
 
   fun findL1MessageSentEvents(
     startingMessageNumber: ULong,
@@ -50,13 +45,13 @@ internal class L1MessageSentEventsFetcher(
     fetchTimeout: Duration,
     blockChunkSize: UInt
   ): SafeFuture<List<EthLogEvent<MessageSentEvent>>> {
-    require(startingMessageNumber >= lastSearch.lastStartingMessageNumber()) {
+    require(startingMessageNumber >= lastSearch.get().lastStartingMessageNumber) {
       "startingMessageNumber=$startingMessageNumber must greater than " +
-        "or equal to lastStartingMessageNumber=${lastSearch.lastStartingMessageNumber()}"
+        "or equal to lastStartingMessageNumber=${lastSearch.get().lastStartingMessageNumber}"
     }
 
     return findL1RollingHashUpdatedEvent(
-      fromBlock = lastSearch.highestL1AlreadySearchedBlockNumber(),
+      fromBlock = lastSearch.get().highestL1AlreadySearchedBlockNumber,
       messageNumber = startingMessageNumber
     ).thenCompose { event ->
       if (event == null) {
@@ -65,7 +60,7 @@ internal class L1MessageSentEventsFetcher(
 
       l1EventsSearcher.getLogsRollingForward(
         fromBlock = event.log.blockNumber.toBlockParameter(),
-        toBlock = highestBlockNumber,
+        toBlock = highestBlock,
         address = l1SmartContractAddress,
         topics = listOf(
           MessageSentEvent.topic
@@ -74,11 +69,16 @@ internal class L1MessageSentEventsFetcher(
         searchTimeout = fetchTimeout,
         stopAfterTargetLogsCount = messagesToFetch
       ).thenApply { result ->
-        lastSearch.set(
-          highestL1AlreadySearchedBlockNumber = result.endBlockNumber,
-          lastStartingMessageNumber = startingMessageNumber
+        lastSearch.set(LastSearch(result.endBlockNumber, startingMessageNumber))
+        val events = result.logs.map(MessageSentEvent::fromEthLog)
+        log.debug(
+          "fetched MessageSent events from L1: messageNumbers={} l1Blocks={}",
+          CommonDomainFunctions.blockIntervalString(
+            events.first().event.messageNumber,
+            events.last().event.messageNumber
+          ),
+          result.intervalString()
         )
-
         result.logs.map(MessageSentEvent::fromEthLog)
       }
     }

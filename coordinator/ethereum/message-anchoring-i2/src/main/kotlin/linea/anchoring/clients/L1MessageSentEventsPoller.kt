@@ -24,7 +24,7 @@ class L1MessageSentEventsPoller(
   private val l1MessagesSentFetchTimeout: Duration,
   private val l1BlockSearchChuck: UInt,
   private val highestBlockNumber: BlockParameter,
-  private val log: Logger = LogManager.getLogger(L1MessageSentEventsFetcher::class.java)
+  private val log: Logger = LogManager.getLogger(L1MessageSentEventsPoller::class.java)
 ) : PeriodicPollingService(
   vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,
@@ -33,7 +33,8 @@ class L1MessageSentEventsPoller(
   private val eventsFetcher = L1MessageSentEventsFetcher(
     l1SmartContractAddress = l1SmartContractAddress,
     l1EventsSearcher = l1EventsSearcher,
-    highestBlockNumber = highestBlockNumber
+    highestBlock = highestBlockNumber,
+    log = log
   )
 
   private fun nextMessageNumberToFetchFromL1(): SafeFuture<ULong> {
@@ -46,7 +47,7 @@ class L1MessageSentEventsPoller(
     }
   }
 
-  fun queueRemainingCapacity(): Int {
+  private fun queueRemainingCapacity(): Int {
     return (eventsQueueMaxCapacity - eventsQueue.size).coerceAtLeast(0)
   }
 

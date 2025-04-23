@@ -46,6 +46,7 @@ class MessageAnchoringService(
           .take(maxMessagesToAnchorPerL2Transaction.toInt())
       }.thenCompose { eventsToAnchor ->
         if (eventsToAnchor.isEmpty()) {
+          log.trace("No messages to anchor")
           SafeFuture.completedFuture(null)
         } else {
           anchorMessages(eventsToAnchor)
@@ -54,13 +55,11 @@ class MessageAnchoringService(
   }
 
   private fun anchorMessages(eventsToAnchor: List<MessageSentEvent>): SafeFuture<String> {
-    log.info(
-      "anchoring messagesNumbers={}",
-      CommonDomainFunctions.blockIntervalString(
-        eventsToAnchor.first().messageNumber,
-        eventsToAnchor.last().messageNumber
-      )
+    val messagesInterval = CommonDomainFunctions.blockIntervalString(
+      eventsToAnchor.first().messageNumber,
+      eventsToAnchor.last().messageNumber
     )
+    log.debug("sending anchoring tx messagesNumbers={}", messagesInterval)
 
     return getRollingHash(messageNumber = eventsToAnchor.last().messageNumber)
       .thenCompose { rollingHash ->
@@ -71,6 +70,8 @@ class MessageAnchoringService(
             finalMessageNumber = eventsToAnchor.last().messageNumber,
             finalRollingHash = rollingHash
           )
+      }.thenPeek { txHash ->
+        log.info("sent anchoring tx messagesNumbers={} txHash={}", messagesInterval, txHash)
       }
   }
 

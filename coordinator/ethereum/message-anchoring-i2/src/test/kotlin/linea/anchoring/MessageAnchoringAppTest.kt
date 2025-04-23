@@ -152,9 +152,9 @@ class MessageAnchoringAppTest {
       numberOfMessagesPerBlock = 1
     )
     val anchoringApp = createApp(
-      l1EventSearchBlockChunk = 10u,
+      l1EventSearchBlockChunk = 1000u,
       maxMessagesToAnchorPerL2Transaction = 20u,
-      anchoringTickInterval = 1.seconds
+      anchoringTickInterval = 1.milliseconds
     )
     anchoringApp.start().get()
 
@@ -167,6 +167,8 @@ class MessageAnchoringAppTest {
         assertThat(l2MessageService.getLastAnchoredL1MessageNumber(block = BlockParameter.Tag.LATEST).get())
           .isEqualTo(ethLogs.last().l1RollingHashUpdated.event.messageNumber)
       }
+
+    assertThat(l2MessageService.getAnchoredMessagesRollingHashes().size).isEqualTo(5)
 
     anchoringApp.stop().get()
   }
@@ -206,30 +208,6 @@ class MessageAnchoringAppTest {
     anchoringApp.stop().get()
   }
 
-  private fun createL1MessageSentV1Logs(
-    l1BlocksWithMessages: List<ULong>,
-    numberOfMessagesPerBlock: Int,
-    startingMessageNumber: ULong = 1UL
-  ): List<L1MessageSentV1EthLogs> {
-    val ethLogs = mutableListOf<L1MessageSentV1EthLogs>()
-    var messageNumber = startingMessageNumber
-    l1BlocksWithMessages.forEach { blockNumber ->
-      for (i in 0 until numberOfMessagesPerBlock) {
-        ethLogs.add(
-          createL1MessageSentV1Logs(
-            blockNumber = blockNumber,
-            contractAddress = L1_CONTRACT_ADDRESS,
-            messageNumber = messageNumber,
-            messageHash = messageNumber.toHexStringUInt256().decodeHex(),
-            rollingHash = messageNumber.toHexStringUInt256().decodeHex()
-          )
-        )
-        messageNumber++
-      }
-    }
-    return ethLogs
-  }
-
   @Test
   fun `should be resilient when queue gets full`() {
     // Worst case scenario: L1 block has more messages that the queue can handle,
@@ -264,5 +242,29 @@ class MessageAnchoringAppTest {
       .isEqualTo(ethLogs.map { it.messageSent.event.messageHash })
 
     anchoringApp.stop().get()
+  }
+
+  private fun createL1MessageSentV1Logs(
+    l1BlocksWithMessages: List<ULong>,
+    numberOfMessagesPerBlock: Int,
+    startingMessageNumber: ULong = 1UL
+  ): List<L1MessageSentV1EthLogs> {
+    val ethLogs = mutableListOf<L1MessageSentV1EthLogs>()
+    var messageNumber = startingMessageNumber
+    l1BlocksWithMessages.forEach { blockNumber ->
+      repeat(numberOfMessagesPerBlock) {
+        ethLogs.add(
+          createL1MessageSentV1Logs(
+            blockNumber = blockNumber,
+            contractAddress = L1_CONTRACT_ADDRESS,
+            messageNumber = messageNumber,
+            messageHash = messageNumber.toHexStringUInt256().decodeHex(),
+            rollingHash = messageNumber.toHexStringUInt256().decodeHex()
+          )
+        )
+        messageNumber++
+      }
+    }
+    return ethLogs
   }
 }
