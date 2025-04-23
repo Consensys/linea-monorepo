@@ -109,7 +109,7 @@ jobs:
           pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
           gunzip -c $GITHUB_WORKSPACE/linea-besu-package/linea-besu-package-image.tar.gz | docker load
         shell: bash
-      - name: Replace expected traces api version in cooridinator config file
+      - name: Replace expected traces api version in coordinator config file
         shell: bash
         run: |
           sed -i 's/^\(expected-traces-api-version-v2=\).*/\1"${{ env.EXPECTED_TRACES_API_VERSION }}"/' config/coordinator/coordinator-docker-traces-v2-override.config.toml
