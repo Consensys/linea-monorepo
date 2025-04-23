@@ -13,7 +13,7 @@ The Linea Rollup, which contains the L1MessageService, is the smart contract tha
 
 ## Verifiers
 A Plonk based verifier contract is responsible for: 
-- verifing the Zero Knowledge proof that proves correct
+- verifying the Zero Knowledge proof that proves correct
   - L2 transaction execution.
   - L2 state transition.
   - The data submitted in the blobs align with the proven L2 state and execution.
