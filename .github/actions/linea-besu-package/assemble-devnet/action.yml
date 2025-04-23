@@ -19,7 +19,7 @@ outputs:
     description: docker image
     value: ${{ steps.dockerimage.outputs.dockerimage }}
   
-  linea_tracer_plugin_version:
+  tracer_plugin_version:
     description: tracer plugin version
     value: ${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}
 
