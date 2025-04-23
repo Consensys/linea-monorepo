@@ -8,9 +8,9 @@ pragma solidity ^0.8.28;
  */
 interface IAcceptForcedTransactions {
   /**
-   * @dev Thrown when another forced transaction is expected on the computed L2 block.
+   * @dev Thrown when another forced transaction is expected on the computed L2 block or the previous block number is higher than the submitted one.
    */
-  error ForcedTransactionExistsForBlock(uint256 blockNumber);
+  error ForcedTransactionExistsForBlockOrIsTooLow(uint256 blockNumber);
 
   /**
    * @notice Provides state fields for forced transactions.

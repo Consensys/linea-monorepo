@@ -324,7 +324,27 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       await expectRevertWithCustomError(
         lineaRollup,
         lineaRollup.connect(securityCouncil).storeForcedTransaction(expectedBlockNumber, generateRandomBytes(32)),
-        "ForcedTransactionExistsForBlock",
+        "ForcedTransactionExistsForBlockOrIsTooLow",
+        [expectedBlockNumber],
+      );
+    });
+
+    it("Should fail if the second transaction has a lower block number", async () => {
+      const expectedBlockNumber = await setNextExpectedL2BlockNumberForForcedTx(
+        lineaRollup,
+        DEFAULT_FUTURE_NEXT_NETWORK_TIMESTAMP,
+        defaultFinalizedState.timestamp + 1n,
+      );
+
+      await forcedTransactionGateway.submitForcedTransaction(
+        buildEip1559Transaction(l2SendMessageTransaction.result),
+        defaultFinalizedState,
+      );
+
+      await expectRevertWithCustomError(
+        lineaRollup,
+        lineaRollup.connect(securityCouncil).storeForcedTransaction(expectedBlockNumber, generateRandomBytes(32)),
+        "ForcedTransactionExistsForBlockOrIsTooLow",
         [expectedBlockNumber],
       );
     });

@@ -202,30 +202,6 @@ contract LineaRollup is
   }
 
   /**
-   * @notice Stores forced transaction details required for proving feedback loop.
-   * @dev FORCED_TRANSACTION_SENDER_ROLE is required to store a forced transaction.
-   * @dev The forced transaction number is incremented for the next transaction post storage.
-   * @param _forcedL2BlockNumber The maximum expected L2 block number the transaction will be processed by.
-   * @param _forcedTransactionRollingHash The rolling hash for all the forced transaction fields.
-   * @return forcedTransactionNumber The unique forced transaction number for the transaction.
-   */
-  function storeForcedTransaction(
-    uint256 _forcedL2BlockNumber,
-    bytes32 _forcedTransactionRollingHash
-  ) external onlyRole(FORCED_TRANSACTION_SENDER_ROLE) returns (uint256 forcedTransactionNumber) {
-    unchecked {
-      forcedTransactionNumber = nextForcedTransactionNumber++;
-
-      if (forcedTransactionL2BlockNumbers[forcedTransactionNumber - 1] == _forcedL2BlockNumber) {
-        revert ForcedTransactionExistsForBlock(_forcedL2BlockNumber);
-      }
-
-      forcedTransactionRollingHashes[forcedTransactionNumber] = _forcedTransactionRollingHash;
-      forcedTransactionL2BlockNumbers[forcedTransactionNumber] = _forcedL2BlockNumber;
-    }
-  }
-
-  /**
    * @notice Provides state fields for forced transactions.
    * @return finalizedState The last finalized state hash.
    * @return previousForcedTransactionRollingHash The previous forced transaction rolling hash.
@@ -244,6 +220,30 @@ contract LineaRollup is
       finalizedState = currentFinalizedState;
       previousForcedTransactionRollingHash = forcedTransactionRollingHashes[nextForcedTransactionNumber - 1];
       currentFinalizedL2BlockNumber = currentL2BlockNumber;
+    }
+  }
+
+  /**
+   * @notice Stores forced transaction details required for proving feedback loop.
+   * @dev FORCED_TRANSACTION_SENDER_ROLE is required to store a forced transaction.
+   * @dev The forced transaction number is incremented for the next transaction post storage.
+   * @param _forcedL2BlockNumber The maximum expected L2 block number the transaction will be processed by.
+   * @param _forcedTransactionRollingHash The rolling hash for all the forced transaction fields.
+   * @return forcedTransactionNumber The unique forced transaction number for the transaction.
+   */
+  function storeForcedTransaction(
+    uint256 _forcedL2BlockNumber,
+    bytes32 _forcedTransactionRollingHash
+  ) external onlyRole(FORCED_TRANSACTION_SENDER_ROLE) returns (uint256 forcedTransactionNumber) {
+    unchecked {
+      forcedTransactionNumber = nextForcedTransactionNumber++;
+
+      if (forcedTransactionL2BlockNumbers[forcedTransactionNumber - 1] >= _forcedL2BlockNumber) {
+        revert ForcedTransactionExistsForBlockOrIsTooLow(_forcedL2BlockNumber);
+      }
+
+      forcedTransactionRollingHashes[forcedTransactionNumber] = _forcedTransactionRollingHash;
+      forcedTransactionL2BlockNumbers[forcedTransactionNumber] = _forcedL2BlockNumber;
     }
   }
 
@@ -572,7 +572,7 @@ contract LineaRollup is
 
     bytes32 lastFinalizedState = currentFinalizedState;
 
-    // post upgrade the most common case will be the 5 fields post first finalization
+    /// @dev Post upgrade the most common case will be the 5 fields post first finalization.
     if (
       FinalizedStateHashing._computeLastFinalizedState(
         _finalizationData.lastFinalizedL1RollingHashMessageNumber,
@@ -582,7 +582,7 @@ contract LineaRollup is
         _finalizationData.lastFinalizedTimestamp
       ) != lastFinalizedState
     ) {
-      /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration
+      /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration.
       if (
         FinalizedStateHashing._computeLastFinalizedState(
           _finalizationData.lastFinalizedL1RollingHashMessageNumber,
