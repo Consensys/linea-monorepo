@@ -16,6 +16,7 @@ export type MessageProps = {
   status: MessageStatus;
   claimTxCreationDate?: Date;
   claimTxGasLimit?: number;
+  claimTxGasUsed?: number;
   claimTxMaxFeePerGas?: bigint;
   claimTxMaxPriorityFeePerGas?: bigint;
   claimTxNonce?: number;
@@ -66,6 +67,7 @@ export class Message {
   public status: MessageStatus;
   public claimTxCreationDate?: Date;
   public claimTxGasLimit?: number;
+  public claimTxGasUsed?: number;
   public claimTxMaxFeePerGas?: bigint;
   public claimTxMaxPriorityFeePerGas?: bigint;
   public claimTxNonce?: number;
@@ -92,6 +94,7 @@ export class Message {
     this.status = props.status;
     this.claimTxCreationDate = props.claimTxCreationDate;
     this.claimTxGasLimit = props.claimTxGasLimit;
+    this.claimTxGasUsed = props.claimTxGasUsed;
     this.claimTxMaxFeePerGas = props.claimTxMaxFeePerGas;
     this.claimTxMaxPriorityFeePerGas = props.claimTxMaxPriorityFeePerGas;
     this.claimTxNonce = props.claimTxNonce;
@@ -112,6 +115,7 @@ export class Message {
     if (newMessage.status) this.status = newMessage.status;
     if (newMessage.claimTxCreationDate) this.claimTxCreationDate = newMessage.claimTxCreationDate;
     if (newMessage.claimTxGasLimit) this.claimTxGasLimit = newMessage.claimTxGasLimit;
+    if (newMessage.claimTxGasUsed) this.claimTxGasUsed = newMessage.claimTxGasUsed;
     if (newMessage.claimTxMaxFeePerGas) this.claimTxMaxFeePerGas = newMessage.claimTxMaxFeePerGas;
     if (newMessage.claimTxMaxPriorityFeePerGas)
       this.claimTxMaxPriorityFeePerGas = newMessage.claimTxMaxPriorityFeePerGas;
@@ -135,7 +139,7 @@ export class Message {
       this.direction
     }, status=${this.status}, claimTxCreationDate=${this.claimTxCreationDate?.toISOString()}, claimTxGasLimit=${
       this.claimTxGasLimit
-    }, claimTxMaxFeePerGas=${this.claimTxMaxFeePerGas}, claimTxMaxPriorityFeePerGas=${
+    }, claimTxGasUsed=${this.claimTxGasUsed}, claimTxMaxFeePerGas=${this.claimTxMaxFeePerGas}, claimTxMaxPriorityFeePerGas=${
       this.claimTxMaxPriorityFeePerGas
     }, claimTxNonce=${this.claimTxNonce}, claimTransactionHash=${this.claimTxHash}, claimNumberOfRetry=${
       this.claimNumberOfRetry
