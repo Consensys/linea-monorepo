@@ -25,7 +25,6 @@ import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.ContextFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.section.TraceSection;
@@ -192,7 +191,7 @@ public abstract class TxInitializationSection extends TraceSection implements En
       Hub hub, WorldView state, Transaction tx, boolean isSuccessful) {
 
     addFragment(miscFragment); // MISC i + 0
-    addFragment(new TransactionFragment(hub.txStack().current())); // TXN i + 1
+    addFragment(hub.txStack().current().transactionFragment()); // TXN i + 1
     addCoinbaseWarmingFragment(); // Post Shanghai Only
     addFragment(gasPaymentAccountFragment); // ACC i +  (sender: gas payment)
     addFragment(valueSendingAccountFragment); // ACC i +  (sender: value transfer)
