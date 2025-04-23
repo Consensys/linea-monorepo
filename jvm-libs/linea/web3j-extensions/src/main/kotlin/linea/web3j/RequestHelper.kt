@@ -27,5 +27,5 @@ fun <Resp, RespT, T> Request<*, Resp>.requestAsync(
   return this.sendAsync()
     .thenCompose(::handleError)
     .toSafeFuture()
-    .thenApply { mapperFn(it) }
+    .thenApply(mapperFn)
 }
