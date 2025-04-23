@@ -48,7 +48,7 @@ func deserializeAnyWithCborPkg(data json.RawMessage, x any) error {
 // deserializeValueWithJSON packages attemps to deserialize `data` into the
 // [reflect.Value] `v`. It will return an error if the value cannot be accessed
 // through the [reflect] package or if it cannot be set.
-func deserializeValueWithJSONPkg(data json.RawMessage, v reflect.Value) error {
+func deserializeValueWithCBORPkg(data json.RawMessage, v reflect.Value) error {
 
 	if !v.CanAddr() {
 		return fmt.Errorf("deserializeValueWithJSONPkg cannot be used for type %v", v.Type())
@@ -70,7 +70,7 @@ func deserializeValueWithJSONPkg(data json.RawMessage, v reflect.Value) error {
 // serializeValueWithJSONPkg serializes a [reflect.Value] using the [json]
 // package. It will return an error if the provided value is an unexported
 // field.
-func serializeValueWithJSONPkg(v reflect.Value) (json.RawMessage, error) {
+func serializeValueWithCBORPkg(v reflect.Value) (json.RawMessage, error) {
 	if !v.CanInterface() {
 		return nil, fmt.Errorf("could not serialize value of type `%s` because it's an unexported field", v.Type().String())
 	}

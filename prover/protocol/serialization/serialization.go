@@ -42,7 +42,7 @@ var (
 	metadataType = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
 )
 
-// SerializeValue recursively serializes `v` into JSON. This function is
+// SerializeValue recursively serializes `v` into CBOR-encoded. This function is
 // specially crafted to handle the special types occurring in the `protocol`
 // directory. It can be used in `DeclarationMode` where the [column.Natural]
 // are serialized as [serializableColumnDecl] objects or in the [referenceMode]
@@ -62,7 +62,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 		reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
 		reflect.Uint32, reflect.Uint64, reflect.String:
 
-		return serializeValueWithJSONPkg(v)
+		return serializeValueWithCBORPkg(v)
 
 	case reflect.Array, reflect.Slice:
 
@@ -235,7 +235,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 		reflect.Uint32, reflect.Uint64, reflect.String:
 
 		v := reflect.New(t).Elem()
-		if err := deserializeValueWithJSONPkg(data, v); err != nil {
+		if err := deserializeValueWithCBORPkg(data, v); err != nil {
 			return reflect.Value{}, err
 		}
 		return v, nil

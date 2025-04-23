@@ -2,7 +2,7 @@ package serialization
 
 import (
 	"fmt"
-	"io/ioutil"
+
 	"os"
 	"strconv"
 	"testing"
@@ -42,13 +42,13 @@ func TestSerializeAndDeserializeAssignment(t *testing.T) {
 	compressedChunks := CompressChunks(serializedChunks)
 
 	// Write compressed chunks to temporary files
-	tempDir, err := ioutil.TempDir("", "serialization_test")
+	tempDir, err := os.MkdirTemp("", "serialization_test")
 	assert.NoError(t, err)
 	defer os.RemoveAll(tempDir)
 
 	for i, chunk := range compressedChunks {
 		chunkPath := tempDir + "/chunk_" + strconv.Itoa(i)
-		err := ioutil.WriteFile(chunkPath, chunk, 0600) // Use 0600 permissions
+		err := os.WriteFile(chunkPath, chunk, 0600) // Use 0600 permissions
 		assert.NoError(t, err)
 	}
 

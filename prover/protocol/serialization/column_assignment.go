@@ -6,8 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"math/big"
+	"os"
 	"sync"
 	"unsafe"
 
@@ -35,8 +35,7 @@ func hashWAssignment(a WAssignment) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// SerializeAssignment serializes map representing the column assignment of a
-// wizard protocol.
+// SerializeAssignment serializes map representing the column assignment of a wizard protocol.
 func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 	logrus.Infof("Hash of WAssignment before serialization: %s", hashWAssignment(a))
 
@@ -107,7 +106,8 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 	return serializedChunks
 }
 
-// CompressChunks compresses each serialized chunk
+// CompressChunks: Compresses each serialized chunk. Applied after SerializeAssignment to compress
+// chunks before saving to disk or sending to a verifier.
 func CompressChunks(chunks []json.RawMessage) []json.RawMessage {
 	compressedChunks := make([]json.RawMessage, len(chunks))
 	var wg sync.WaitGroup
@@ -150,7 +150,7 @@ func DeserializeAssignment(filepath string, numChunks int) (WAssignment, error) 
 		go func(i int) {
 			defer wg.Done()
 			chunkPath := fmt.Sprintf("%s_chunk_%d", filepath, i)
-			chunkData, err := ioutil.ReadFile(chunkPath)
+			chunkData, err := os.ReadFile(chunkPath)
 			if err != nil {
 				logrus.Errorf("Failed to read chunk %d: %v", i, err)
 				return
@@ -231,7 +231,7 @@ func CompressSmartVector(sv smartvectors.SmartVector) *CompressedSmartVector {
 			fullLen    = v.Len()
 		)
 
-		// It's a left-padded value
+		// It's a right-padded value
 		if offset == 0 {
 			return &CompressedSmartVector{
 				F: []CompressedSVFragment{
@@ -241,7 +241,7 @@ func CompressSmartVector(sv smartvectors.SmartVector) *CompressedSmartVector {
 			}
 		}
 
-		// It's a right-padded value
+		// It's a left-padded value
 		if offset+len(w) == fullLen {
 			return &CompressedSmartVector{
 				F: []CompressedSVFragment{
@@ -273,6 +273,7 @@ func (sv *CompressedSmartVector) Decompress() smartvectors.SmartVector {
 		return smartvectors.NewRegular(sv.F[0].readSlice())
 	}
 
+	// Padding comes first => Left padding
 	if len(sv.F) == 2 && sv.F[0].isConstant() && sv.F[1].isPlain() {
 
 		var (
@@ -284,7 +285,8 @@ func (sv *CompressedSmartVector) Decompress() smartvectors.SmartVector {
 		return smartvectors.LeftPadded(window, *paddingVal, size)
 	}
 
-	if len(sv.F) == 2 && sv.F[1].isConstant() && sv.F[0].isPlain() {
+	// Padding comes later => Right padding
+	if len(sv.F) == 2 && sv.F[0].isPlain() && sv.F[1].isConstant() {
 
 		var (
 			paddingVal = new(field.Element).SetBigInt(sv.F[1].X)

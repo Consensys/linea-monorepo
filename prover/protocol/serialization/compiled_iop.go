@@ -22,7 +22,7 @@ type rawCompiledIOP struct {
 }
 
 // SerializeCompiledIOP marshals a [wizard.CompiledIOP] object into JSON. This is
-// meant to allow deserializing the IOP during the prover time instead of
+// meant to allow deserializing the IOP during the prover runtime instead of
 // recompiling everything every time we want to run the prover.
 //
 // Example:
@@ -163,7 +163,6 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 			q := v.Interface().(ifaces.Query)
 			comp.QueriesParams.AddToRound(round, q.Name(), q)
 		}
-
 	}
 
 	return comp, nil
