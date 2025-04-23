@@ -99,7 +99,8 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 		raw.Coins = append(raw.Coins, rawCoins)
 	}
 
-	return serializeAnyWithCborPkg(raw), nil
+	res, _ := serializeAnyWithCborPkg(raw)
+	return res, nil
 }
 
 // DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns
