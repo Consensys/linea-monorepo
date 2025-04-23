@@ -40,6 +40,7 @@ class MessageAnchoringService(
         eventsQueue
           .toArray(emptyArray<MessageSentEvent>())
           .filter { it.messageNumber > lastAnchoredL1MessageNumber }
+          .sortedBy { it.messageNumber }
           .take(maxMessagesToAnchorPerL2Transaction.toInt())
       }.thenCompose { eventsToAnchor ->
         if (eventsToAnchor.isEmpty()) {

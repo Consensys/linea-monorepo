@@ -1,6 +1,9 @@
 package linea.anchoring
 
+import linea.anchoring.events.L1RollingHashUpdatedEvent
+import linea.anchoring.events.MessageSentEvent
 import linea.domain.EthLog
+import linea.domain.EthLogEvent
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import linea.kotlin.padLeft
@@ -75,11 +78,12 @@ fun createL1RollingHashUpdatedEthLogV1(
 }
 
 data class L1MessageSentV1EthLogs(
-  val messageSent: EthLog,
-  val l1RollingHashUpdated: EthLog
+  val messageSent: EthLogEvent<MessageSentEvent>,
+  val l1RollingHashUpdated: EthLogEvent<L1RollingHashUpdatedEvent>
 ) {
   fun asList(): List<EthLog> {
-    return listOf(l1RollingHashUpdated, messageSent)
+    // return listOf(l1RollingHashUpdated., messageSent)
+    return emptyList()
   }
 }
 fun createL1MessageSentV1Logs(
@@ -120,8 +124,8 @@ fun createL1MessageSentV1Logs(
   )
 
   return L1MessageSentV1EthLogs(
-    messageSent = messageSent,
-    l1RollingHashUpdated = l1RollingHashUpdated
+    messageSent = MessageSentEvent.fromEthLog(messageSent),
+    l1RollingHashUpdated = L1RollingHashUpdatedEvent.fromEthLog(l1RollingHashUpdated)
   )
 }
 

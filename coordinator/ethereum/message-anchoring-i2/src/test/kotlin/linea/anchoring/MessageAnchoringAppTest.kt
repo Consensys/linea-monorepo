@@ -33,36 +33,6 @@ class MessageAnchoringAppTest {
   private val L2_CONTRACT_ADDRESS = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa02"
   private lateinit var l1Client: FakeEthApiClient
   private lateinit var l2MessageService: FakeL2MessageService
-  private val l1MessageSentLogs = listOf(
-    createL1MessageSentV1Logs(
-      blockNumber = 100UL,
-      contractAddress = L1_CONTRACT_ADDRESS,
-      messageNumber = 1UL,
-      messageHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa01".decodeHex(),
-      rollingHash = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb01".decodeHex()
-    ).asList(),
-    createL1MessageSentV1Logs(
-      blockNumber = 200UL,
-      contractAddress = L1_CONTRACT_ADDRESS,
-      messageNumber = 2UL,
-      messageHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa02".decodeHex(),
-      rollingHash = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb02".decodeHex()
-    ).asList(),
-    createL1MessageSentV1Logs(
-      blockNumber = 200UL,
-      contractAddress = L1_CONTRACT_ADDRESS,
-      messageNumber = 3UL,
-      messageHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa03".decodeHex(),
-      rollingHash = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb03".decodeHex()
-    ).asList(),
-    createL1MessageSentV1Logs(
-      blockNumber = 400UL,
-      contractAddress = L1_CONTRACT_ADDRESS,
-      messageNumber = 4UL,
-      messageHash = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa04".decodeHex(),
-      rollingHash = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb04".decodeHex()
-    ).asList()
-  )
   private lateinit var vertx: Vertx
 
   @BeforeEach
@@ -113,22 +83,30 @@ class MessageAnchoringAppTest {
     )
   }
 
+  private fun addLogsToFakeEthClient(
+    logs: List<L1MessageSentV1EthLogs>
+  ) {
+    l1Client.setLogs(logs.map { listOf(it.l1RollingHashUpdated.log, it.messageSent.log) }.flatten())
+  }
+
   @Test
   fun `should anchor messages from fresh deployment`() {
-    l1Client.setLogs(l1MessageSentLogs.flatten())
+    val ethLogs = createL1MessageSentV1Logs(
+      l1BlocksWithMessages = listOf(100UL, 200UL, 300UL, 400UL),
+      numberOfMessagesPerBlock = 1
+    )
+    addLogsToFakeEthClient(ethLogs)
 
     val anchoringApp = createApp(anchoringTickInterval = 100.milliseconds, l1EventSearchBlockChunk = 100u)
     anchoringApp.start().get()
-    l1Client.setLatestBlockTag(l1MessageSentLogs.last().last().blockNumber + 10UL)
-    l1Client.setFinalizedBlockTag(l1MessageSentLogs.last().last().blockNumber + 10UL)
-
+    l1Client.setFinalizedBlockTag(ethLogs.last().messageSent.log.blockNumber + 10UL)
     await()
       .atMost(5.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(l2MessageService.getLastAnchoredL1MessageNumber(block = BlockParameter.Tag.LATEST).get())
-          .isEqualTo(4UL)
+          .isEqualTo(ethLogs.last().messageSent.event.messageNumber)
         assertThat(l2MessageService.getLastAnchoredRollingHash())
-          .isEqualTo("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb04".decodeHex())
+          .isEqualTo(ethLogs.last().l1RollingHashUpdated.event.rollingHash)
       }
 
     anchoringApp.stop().get()
@@ -136,31 +114,32 @@ class MessageAnchoringAppTest {
 
   @Test
   fun `should anchor messages resuming from latest anchored message on L2`() {
-    l2MessageService.setLastAnchoredL1Message(
-      l1MessageNumber = 1UL,
-      rollingHash = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb01".decodeHex()
+    val ethLogs = createL1MessageSentV1Logs(
+      l1BlocksWithMessages = listOf(100UL, 200UL, 300UL, 400UL),
+      numberOfMessagesPerBlock = 1
     )
-    val anchoringApp = createApp(anchoringTickInterval = 100.milliseconds, l1EventSearchBlockChunk = 100u)
+    l2MessageService.setLastAnchoredL1Message(
+      l1MessageNumber = ethLogs.first().l1RollingHashUpdated.event.messageNumber,
+      rollingHash = ethLogs.first().l1RollingHashUpdated.event.rollingHash
+    )
+    val anchoringApp = createApp(
+      anchoringTickInterval = 100.milliseconds,
+      l1EventSearchBlockChunk = 100u
+    )
     anchoringApp.start().get()
-    l1Client.setLogs(l1MessageSentLogs.flatten())
-    l1Client.setFinalizedBlockTag(l1MessageSentLogs.last().last().blockNumber + 10UL)
+    addLogsToFakeEthClient(ethLogs)
+    l1Client.setFinalizedBlockTag(ethLogs.last().messageSent.log.blockNumber + 10UL)
 
     await()
       .atMost(5.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(l2MessageService.getLastAnchoredL1MessageNumber(block = BlockParameter.Tag.LATEST).get())
-          .isEqualTo(4UL)
+          .isEqualTo(ethLogs.last().l1RollingHashUpdated.event.messageNumber)
         assertThat(l2MessageService.getLastAnchoredRollingHash())
-          .isEqualTo("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb04".decodeHex())
+          .isEqualTo(ethLogs.last().l1RollingHashUpdated.event.rollingHash)
 
         assertThat(l2MessageService.getAnchoredMessageHashes().map { it.encodeHex() })
-          .isEqualTo(
-            listOf(
-              "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa02",
-              "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa03",
-              "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa04"
-            )
-          )
+          .isEqualTo(ethLogs.drop(1).map { it.messageSent.event.messageHash.encodeHex() })
       }
 
     anchoringApp.stop().get()
@@ -168,16 +147,10 @@ class MessageAnchoringAppTest {
 
   @Test
   fun `should anchor messages in chunks when too many messages are waiting on L1`() {
-    val ethLogs = (1UL..100UL).mapIndexed { index, blockNumber ->
-      val messageNumber = (index + 1).toULong()
-      createL1MessageSentV1Logs(
-        blockNumber = blockNumber,
-        contractAddress = L1_CONTRACT_ADDRESS,
-        messageNumber = messageNumber,
-        messageHash = messageNumber.toHexStringUInt256().decodeHex(),
-        rollingHash = messageNumber.toHexStringUInt256().decodeHex()
-      ).asList()
-    }
+    val ethLogs = createL1MessageSentV1Logs(
+      l1BlocksWithMessages = (1UL..100UL).map { it },
+      numberOfMessagesPerBlock = 1
+    )
     val anchoringApp = createApp(
       l1EventSearchBlockChunk = 10u,
       maxMessagesToAnchorPerL2Transaction = 20u,
@@ -185,15 +158,14 @@ class MessageAnchoringAppTest {
     )
     anchoringApp.start().get()
 
-    l1Client.setLogs(ethLogs.flatten())
-    l1Client.setFinalizedBlockTag(ethLogs.last().last().blockNumber + 10UL)
+    addLogsToFakeEthClient(ethLogs)
+    l1Client.setFinalizedBlockTag(ethLogs.last().messageSent.log.blockNumber + 10UL)
 
-    val lastMessageSentEvent = MessageSentEvent.fromEthLog(ethLogs.last().last())
     await()
       .atMost(10.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(l2MessageService.getLastAnchoredL1MessageNumber(block = BlockParameter.Tag.LATEST).get())
-          .isEqualTo(lastMessageSentEvent.event.messageNumber)
+          .isEqualTo(ethLogs.last().l1RollingHashUpdated.event.messageNumber)
       }
 
     anchoringApp.stop().get()
@@ -204,39 +176,92 @@ class MessageAnchoringAppTest {
     // put Log every 1000 Blocks on L1
     // search chunk is 10 so it needs 100 queries to find 1 log on L1
     // slow timeout 1
-    val ethLogs = (1UL..100_000UL).step(1000).mapIndexed { index, blockNumber ->
-      val messageNumber = index.toULong() + 1UL
-      createL1MessageSentV1Logs(
-        blockNumber = blockNumber,
-        contractAddress = L1_CONTRACT_ADDRESS,
-        messageNumber = messageNumber,
-        messageHash = messageNumber.toHexStringUInt256().decodeHex(),
-        rollingHash = messageNumber.toHexStringUInt256().decodeHex()
-      ).asList()
-    }
+    val ethLogs = createL1MessageSentV1Logs(
+      l1BlocksWithMessages = (1UL..100_000UL).step(1000).map { it },
+      numberOfMessagesPerBlock = 1
+    )
     val anchoringApp = createApp(
       l1PollingInterval = 1.milliseconds,
       l1EventSearchBlockChunk = 10u,
       l1EventPollingTimeout = 50.milliseconds,
       l1SuccessBackoffDelay = 20.milliseconds,
       maxMessagesToAnchorPerL2Transaction = 50u,
-      anchoringTickInterval = 1.seconds
+      anchoringTickInterval = 20.milliseconds
     )
 
-    l1Client.setLogs(ethLogs.flatten())
-    l1Client.setFinalizedBlockTag(ethLogs.last().last().blockNumber + 10UL)
+    addLogsToFakeEthClient(ethLogs)
+    l1Client.setFinalizedBlockTag(ethLogs.last().messageSent.log.blockNumber + 10UL)
 
     anchoringApp.start().get()
-    val lastMessageSentEvent = MessageSentEvent.fromEthLog(ethLogs.last().last())
     await()
       .atMost(10.minutes.toJavaDuration())
       .untilAsserted {
         assertThat(l2MessageService.getLastAnchoredL1MessageNumber(block = BlockParameter.Tag.LATEST).get())
-          .isEqualTo(lastMessageSentEvent.event.messageNumber)
+          .isEqualTo(ethLogs.last().l1RollingHashUpdated.event.messageNumber)
+      }
+
+    assertThat(l2MessageService.getAnchoredMessageHashes().map { it.encodeHex() })
+      .isEqualTo(ethLogs.map { it.messageSent.event.messageHash.encodeHex() })
+
+    anchoringApp.stop().get()
+  }
+
+  private fun createL1MessageSentV1Logs(
+    l1BlocksWithMessages: List<ULong>,
+    numberOfMessagesPerBlock: Int,
+    startingMessageNumber: ULong = 1UL
+  ): List<L1MessageSentV1EthLogs> {
+    val ethLogs = mutableListOf<L1MessageSentV1EthLogs>()
+    var messageNumber = startingMessageNumber
+    l1BlocksWithMessages.forEach { blockNumber ->
+      for (i in 0 until numberOfMessagesPerBlock) {
+        ethLogs.add(
+          createL1MessageSentV1Logs(
+            blockNumber = blockNumber,
+            contractAddress = L1_CONTRACT_ADDRESS,
+            messageNumber = messageNumber,
+            messageHash = messageNumber.toHexStringUInt256().decodeHex(),
+            rollingHash = messageNumber.toHexStringUInt256().decodeHex()
+          )
+        )
+        messageNumber++
+      }
+    }
+    return ethLogs
+  }
+
+  @Test
+  fun `should be resilient when queue gets full`() {
+    // Worst case scenario: L1 block has more messages that the queue can handle,
+    // so it needs to query this block multiple times
+    val ethLogs = createL1MessageSentV1Logs(
+      l1BlocksWithMessages = listOf(100UL, 200UL, 201UL),
+      numberOfMessagesPerBlock = 100,
+      startingMessageNumber = 1UL
+    )
+
+    val anchoringApp = createApp(
+      l1PollingInterval = 1.milliseconds,
+      l1EventSearchBlockChunk = 10u,
+      l1EventPollingTimeout = 1.seconds,
+      messageQueueCapacity = 20u,
+      maxMessagesToAnchorPerL2Transaction = 50u,
+      anchoringTickInterval = 10.milliseconds
+    )
+
+    addLogsToFakeEthClient(ethLogs)
+    l1Client.setFinalizedBlockTag(ethLogs.last().messageSent.log.blockNumber + 10UL)
+
+    anchoringApp.start().get()
+    await()
+      .atMost(10.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(l2MessageService.getLastAnchoredL1MessageNumber(block = BlockParameter.Tag.LATEST).get())
+          .isEqualTo(ethLogs.last().l1RollingHashUpdated.event.messageNumber)
       }
 
     assertThat(l2MessageService.getAnchoredMessageHashes())
-      .isEqualTo(ethLogs.map { MessageSentEvent.fromEthLog(it.last()).event.messageHash })
+      .isEqualTo(ethLogs.map { it.messageSent.event.messageHash })
 
     anchoringApp.stop().get()
   }

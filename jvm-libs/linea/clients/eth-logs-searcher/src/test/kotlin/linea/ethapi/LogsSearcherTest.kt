@@ -116,10 +116,10 @@ class LogsSearcherTest {
       topics = emptyList(),
       chunkSize = 50U,
       searchTimeout = 2.hours,
-      stopAfterTargetLogsCount = 2U
+      stopAfterTargetLogsCount = 1U
     ).get()
 
-    assertThat(result.logs).isEqualTo(initialLogs.take(2))
+    assertThat(result.logs).isEqualTo(initialLogs.take(1))
   }
 
   @Test

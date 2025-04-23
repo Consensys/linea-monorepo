@@ -10,7 +10,7 @@ class CapacityBoundedBlockingPriorityQueue<T : Comparable<T>>(
   private val absoluteMaxCapacity: UInt = targetCapacity * 2u
 ) : PriorityBlockingQueue<T>(targetCapacity.toInt()) {
   init {
-    val validRange = 0..Int.MAX_VALUE
+    val validRange = 1..Int.MAX_VALUE
     require(targetCapacity.toInt() in validRange) { "targetCapacity=$targetCapacity must in range $validRange" }
     require(absoluteMaxCapacity.toInt() in validRange) {
       "absoluteMaxCapacity=$absoluteMaxCapacity must in range $validRange"
@@ -29,14 +29,14 @@ class CapacityBoundedBlockingPriorityQueue<T : Comparable<T>>(
 
   override fun addAll(elements: Collection<T>): Boolean {
     require((remainingMaxCapacity() - super.size) >= elements.size) {
-      "Queue absolute MaxremainingCapacity=${this.remainingMaxCapacity()} is less than elements size=${elements.size}"
+      "Queue absolute MaxRemainingCapacity=${this.remainingMaxCapacity()} is less than elements size=${elements.size}"
     }
 
     return super.addAll(elements)
   }
 
   override fun remainingCapacity(): Int {
-    return (targetCapacity.toInt() - super.size)
+    return (targetCapacity.toInt() - super.size).coerceAtLeast(0)
   }
 
   private fun remainingMaxCapacity(): Int {
