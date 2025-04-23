@@ -41,11 +41,11 @@ class MessageAnchoringService(
         eventsQueue
           .toArray(emptyArray<MessageSentEvent>())
           .filter { it.messageNumber > lastAnchoredL1MessageNumber }
+          // needs sorting because PriorityBlockingQueue#toArray does not guarantee order
           .sortedBy { it.messageNumber }
           .take(maxMessagesToAnchorPerL2Transaction.toInt())
       }.thenCompose { eventsToAnchor ->
         if (eventsToAnchor.isEmpty()) {
-          // log.debug("No new events to anchor")
           SafeFuture.completedFuture(null)
         } else {
           anchorMessages(eventsToAnchor)
@@ -61,7 +61,20 @@ class MessageAnchoringService(
         eventsToAnchor.last().messageNumber
       )
     )
-    val lastMessageNumber = eventsToAnchor.last().messageNumber
+
+    return getRollingHash(messageNumber = eventsToAnchor.last().messageNumber)
+      .thenCompose { rollingHash ->
+        l2MessageService
+          .anchorL1L2MessageHashes(
+            messageHashes = eventsToAnchor.map { it.messageHash },
+            startingMessageNumber = eventsToAnchor.first().messageNumber,
+            finalMessageNumber = eventsToAnchor.last().messageNumber,
+            finalRollingHash = rollingHash
+          )
+      }
+  }
+
+  private fun getRollingHash(messageNumber: ULong): SafeFuture<ByteArray> {
     return l1EthLogsClient
       .getLogs(
         // RollingHashUpdated event has message number indexed and unique
@@ -71,23 +84,16 @@ class MessageAnchoringService(
         address = l1ContractAddress,
         topics = listOf(
           L1RollingHashUpdatedEvent.topic,
-          lastMessageNumber.toHexStringUInt256()
+          messageNumber.toHexStringUInt256()
         )
       )
-      .thenApply { events -> events.map(L1RollingHashUpdatedEvent::fromEthLog) }
-      .thenCompose { events ->
+      .thenApply { rawLogs ->
+        val events = rawLogs.map(L1RollingHashUpdatedEvent::fromEthLog)
         require(events.size == 1) {
-          "Expected exactly 1 event RollingHashUpdated(messageNumber=$lastMessageNumber) " +
-            "but got ${events.size} events"
+          "Expected exactly 1 event RollingHashUpdated(messageNumber=$messageNumber) " +
+            "but got ${events.size} events. events=$events"
         }
-
-        l2MessageService
-          .anchorL1L2MessageHashes(
-            messageHashes = eventsToAnchor.map { it.messageHash },
-            startingMessageNumber = eventsToAnchor.first().messageNumber,
-            finalMessageNumber = eventsToAnchor.last().messageNumber,
-            events.first().event.rollingHash
-          )
+        events.first().event.rollingHash
       }
   }
 }
