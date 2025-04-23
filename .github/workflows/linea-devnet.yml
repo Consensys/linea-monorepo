@@ -95,7 +95,7 @@ jobs:
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-    uses: ./.github/workflows/linea-besu-package/reuse-run-e2e-tests.yml
+    uses: ./.github/workflows/besu-package-reuse-run-e2e-tests.yml
     with:
       linea_besu_package_tag: ${{ steps.assemble.outputs.dockertag }} 
       expected_traces_api_version: ${{ steps.assemble.outputs.tracer_plugin_version }}
@@ -107,7 +107,6 @@ jobs:
     if: ${{ always() && github.ref == 'refs/heads/main' && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     environment: dockerhub
-    secrets: inherit
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
