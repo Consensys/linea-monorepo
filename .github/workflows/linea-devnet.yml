@@ -122,7 +122,7 @@ jobs:
 
       - name: build the linea devnet artifacts
         id: assemble
-        uses: ./.github/actions/assemble-devnet
+        uses: ./.github/actions/linea-besu-package/assemble-devnet
       
       - name: set up docker buildx
         uses: docker/setup-buildx-action@v3   
@@ -144,7 +144,7 @@ jobs:
         env:
           DOCKER_BUILD_SUMMARY: false
         with:
-          context: linea-besu/.
+          context: linea-besu-package/linea-besu/.
           platforms: linux/arm64,linux/amd64
           provenance: false
           cache-from: type=local,src=/tmp/.buildx-cache
@@ -165,7 +165,7 @@ jobs:
         env:
           DOCKER_BUILD_SUMMARY: false
         with:
-          context: linea-besu/.
+          context: linea-besu-package/linea-besu/.
           platforms: linux/arm64,linux/amd64
           provenance: false
           cache-from: type=local,src=/tmp/.buildx-cache
