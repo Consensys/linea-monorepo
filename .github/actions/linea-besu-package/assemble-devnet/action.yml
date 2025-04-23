@@ -115,7 +115,7 @@ runs:
     - name: compile release notes
       if: startsWith(github.ref, 'refs/tags/v')
       id: release_create_artifacts
-      shell: bash      
+      shell: bash
       run: |
         mkdir release && cd release
         tar -czvf linea-besu-${{ steps.dockertag.outputs.dockertag }}.tar.gz ../linea-besu/
