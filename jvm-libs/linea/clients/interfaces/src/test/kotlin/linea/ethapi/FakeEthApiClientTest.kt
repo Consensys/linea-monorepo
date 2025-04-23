@@ -34,6 +34,10 @@ class FakeEthApiClientTest {
       topics = listOf(testTopic1.decodeHex())
     ),
     templateLog.copy(
+      blockNumber = 250UL,
+      topics = listOf(testTopic2.decodeHex())
+    ),
+    templateLog.copy(
       blockNumber = 300UL,
       address = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb01".decodeHex(),
       topics = listOf(testTopic2.decodeHex())
@@ -54,14 +58,14 @@ class FakeEthApiClientTest {
       emptyList()
     ).get()
 
-    assertThat(logs).isEqualTo(initialLogs.take(2))
+    assertThat(logs).isEqualTo(initialLogs.take(3))
   }
 
   @Test
   fun `should filter logs by address`() {
     val logs = fakeEthApiClient.getLogs(
       fromBlock = 0UL.toBlockParameter(),
-      toBlock = 300UL.toBlockParameter(),
+      toBlock = 200UL.toBlockParameter(),
       address = testAddress,
       emptyList()
     ).get()
@@ -113,7 +117,7 @@ class FakeEthApiClientTest {
       listOf(null)
     ).get()
 
-    assertThat(logs).isEqualTo(initialLogs.take(2))
+    assertThat(logs).isEqualTo(initialLogs.take(3))
   }
 
   @Test

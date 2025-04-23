@@ -37,6 +37,10 @@ class LogsSearcherTest {
       topics = listOf(testTopic1.decodeHex())
     ),
     templateLog.copy(
+      blockNumber = 350UL,
+      topics = listOf(testTopic2.decodeHex())
+    ),
+    templateLog.copy(
       blockNumber = 400UL,
       address = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa02".decodeHex(),
       topics = listOf(testTopic2.decodeHex())
@@ -72,7 +76,7 @@ class LogsSearcherTest {
       stopAfterTargetLogsCount = null
     ).get()
 
-    assertThat(result.logs).isEqualTo(initialLogs.take(2))
+    assertThat(result.logs).isEqualTo(initialLogs.take(3))
     assertThat(result.startBlockNumber).isEqualTo(10UL)
     assertThat(result.endBlockNumber).isEqualTo(450UL)
   }
@@ -89,14 +93,14 @@ class LogsSearcherTest {
       stopAfterTargetLogsCount = null
     ).get()
 
-    assertThat(result.logs).isEqualTo(listOf(initialLogs[2]))
+    assertThat(result.logs).isEqualTo(listOf(initialLogs[3]))
   }
 
   @Test
   fun `should filter logs by topics`() {
     val result = searcher.getLogsRollingForward(
       fromBlock = BlockParameter.BlockNumber(0UL),
-      toBlock = BlockParameter.BlockNumber(300UL),
+      toBlock = BlockParameter.BlockNumber(400UL),
       address = testAddress,
       topics = listOf(testTopic1),
       chunkSize = 100U,
