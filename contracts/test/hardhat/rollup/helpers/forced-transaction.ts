@@ -60,7 +60,7 @@ export const getForcedTransactionRollingHash = async (
   expectedBlockNumber: bigint,
   from: string,
 ): Promise<string> => {
-  const { previousForcedTransactionRollingHash } = await lineaRollup.getNextForcedTransactionFields();
+  const { previousForcedTransactionRollingHash } = await lineaRollup.getRequiredForcedTransactionFields();
   const { rlpEncodedTransaction } = await eip1559RlpEncoder.encodeEip1559Transaction(eip1559Tx);
   // Strip `yParity`, `r` and `s` from the rlpEncodedTransaction
   const rlpEncodedTransactionWithoutSignature = rlpEncodedTransaction.slice(0, -134);

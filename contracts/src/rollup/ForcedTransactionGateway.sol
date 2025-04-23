@@ -109,7 +109,7 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       bytes32 currentFinalizedState,
       bytes32 previousForcedTransactionRollingHash,
       uint256 currentFinalizedL2BlockNumber
-    ) = LINEA_ROLLUP.getNextForcedTransactionFields();
+    ) = LINEA_ROLLUP.getRequiredForcedTransactionFields();
 
     if (
       currentFinalizedState !=

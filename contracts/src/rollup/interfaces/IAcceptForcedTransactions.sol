@@ -13,12 +13,12 @@ interface IAcceptForcedTransactions {
   error ForcedTransactionExistsForBlock(uint256 blockNumber);
 
   /**
-   * @notice Provides fields for forced transaction.
+   * @notice Provides state fields for forced transactions.
    * @return finalizedState The last finalized state hash.
    * @return previousForcedTransactionRollingHash The previous forced transaction rolling hash.
    * @return currentFinalizedL2BlockNumber The current finalized L2 block number.
    */
-  function getNextForcedTransactionFields()
+  function getRequiredForcedTransactionFields()
     external
     returns (
       bytes32 finalizedState,
