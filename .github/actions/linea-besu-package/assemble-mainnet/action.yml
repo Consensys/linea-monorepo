@@ -39,7 +39,7 @@ runs:
       id: dotenv
       uses: falti/dotenv-action@v1
       with:
-        path: versions/linea-mainnet.env
+        path: linea-besu-package/versions/linea-mainnet.env
         mode: development
         keys-case: lower
         log-variables: true
