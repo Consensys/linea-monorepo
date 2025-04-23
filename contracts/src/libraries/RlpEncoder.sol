@@ -22,6 +22,7 @@ library RlpEncoder {
 
   /**
    * @notice Internal function that encodes bytes correctly with length data.
+   * @dev mcopy is used for the Cancun EVM fork. See original for other forks.
    * @param _bytesIn The bytes to be encoded.
    * @return encodedBytes The bytes RLP encoded.
    */
