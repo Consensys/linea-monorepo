@@ -53,7 +53,7 @@ jobs:
 
       - name: build the linea devnet artifacts
         id: assemble
-        uses: ./.github/workflows/linea-besu-package/assemble-devnet
+        uses: ./.github/actions/linea-besu-package/assemble-devnet
       
       - name: set up docker buildx
         uses: docker/setup-buildx-action@v3
