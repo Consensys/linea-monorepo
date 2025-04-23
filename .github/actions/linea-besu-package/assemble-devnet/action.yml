@@ -108,6 +108,7 @@ runs:
         cd linea-besu-package/linea-besu
         mv /tmp/besu ./
         mv config/ genesis/ profiles/ besu/
+        sudo apt-get install --no-install-recommends --assume-yes tree
         tree .
 
     - name: compile release notes
