@@ -28,7 +28,7 @@ class CapacityBoundedBlockingPriorityQueue<T : Comparable<T>>(
   }
 
   override fun addAll(elements: Collection<T>): Boolean {
-    require((remainingMaxCapacity() - super.size) >= elements.size) {
+    require(remainingMaxCapacity() >= elements.size) {
       "Queue absolute MaxRemainingCapacity=${this.remainingMaxCapacity()} is less than elements size=${elements.size}"
     }
 

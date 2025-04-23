@@ -34,9 +34,15 @@ class CapacityBoundedBlockingPriorityQueueTest {
 
   @Test
   fun `should add all elements within remaining max capacity`() {
-    val queue = CapacityBoundedBlockingPriorityQueue<Int>(targetCapacity = 3u, absoluteMaxCapacity = 10u)
+    val queue = CapacityBoundedBlockingPriorityQueue<Int>(targetCapacity = 3u, absoluteMaxCapacity = 5u)
 
-    queue.addAll(listOf(1, 2, 3, 4, 5))
+    queue.addAll(listOf(1, 2))
+
+    assertThrows<IllegalArgumentException> {
+      queue.addAll(listOf(3, 4, 5, 6, 7))
+    }
+
+    queue.addAll(listOf(3, 4, 5))
 
     assertThat(queue).containsExactly(1, 2, 3, 4, 5)
     assertThat(queue.remainingCapacity()).isEqualTo(0)

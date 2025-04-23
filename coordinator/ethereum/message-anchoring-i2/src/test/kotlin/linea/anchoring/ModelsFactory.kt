@@ -80,12 +80,8 @@ fun createL1RollingHashUpdatedEthLogV1(
 data class L1MessageSentV1EthLogs(
   val messageSent: EthLogEvent<MessageSentEvent>,
   val l1RollingHashUpdated: EthLogEvent<L1RollingHashUpdatedEvent>
-) {
-  fun asList(): List<EthLog> {
-    // return listOf(l1RollingHashUpdated., messageSent)
-    return emptyList()
-  }
-}
+)
+
 fun createL1MessageSentV1Logs(
   blockNumber: ULong = 100UL,
   logIndex: ULong = 0UL,
