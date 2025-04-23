@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
@@ -95,6 +96,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
+			compiler.WithDebugMode("initial"),
 		),
 	)
 
@@ -135,6 +137,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
+			compiler.WithDebugMode("initial-selfrecursion-0"),
 		),
 		vortex.Compile(
 			8,
@@ -147,6 +150,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<13),
 			compiler.WithoutMpts(),
+			compiler.WithDebugMode("initial-selfrecursion-1"),
 		),
 	)
 
@@ -169,6 +173,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13),
 				compiler.WithoutMpts(),
+				compiler.WithDebugMode("initial-selfrecursion-2"),
 			),
 		)
 	}
@@ -176,6 +181,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	wizard.ContinueCompilation(modIOP,
 		logdata.Log("just-before-recursion"),
 		mpts.Compile(mpts.WithNumColumnProfileOpt(numColumnProfileMpts, numColumnProfileMptsPrecomputed)),
+		dummy.CompileAtProverLvl(dummy.WithMsg("initial-last-mpts")),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),

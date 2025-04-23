@@ -71,7 +71,6 @@ var (
 		globalcs.Compile,
 	}
 	UNIVARIATES = compilationSuite{
-		univariates.CompileLocalOpening,
 		univariates.Naturalize,
 		univariates.MultiPointToSinglePoint(8),
 	}

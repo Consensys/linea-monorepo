@@ -143,11 +143,6 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "globalcs"))(comp)
 		}
 
-		univariates.CompileLocalOpening(comp)
-		if params.debugMode {
-			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "local-opening"))(comp)
-		}
-
 		univariates.Naturalize(comp)
 		if params.debugMode {
 			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "naturalize"))(comp)

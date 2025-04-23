@@ -42,7 +42,6 @@ func TestLookup(t *testing.T) {
 			logderivativesum.CompileLookups,
 			localcs.Compile,
 			globalcs.Compile,
-			univariates.CompileLocalOpening,
 			univariates.Naturalize,
 			univariates.MultiPointToSinglePoint(8),
 			vortex.Compile(2, vortex.ForceNumOpenedColumns(4), vortex.WithSISParams(&ringsis.StdParams), vortex.PremarkAsSelfRecursed()),

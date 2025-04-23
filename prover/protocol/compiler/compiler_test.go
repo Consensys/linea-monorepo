@@ -37,7 +37,6 @@ var totalSuite = []func(comp *wizard.CompiledIOP){
 	stitchsplit.Splitter(8),
 	localcs.Compile,
 	globalcs.Compile,
-	univariates.CompileLocalOpening,
 	univariates.Naturalize,
 	mpts.Compile(),
 	dummy.Compile,
