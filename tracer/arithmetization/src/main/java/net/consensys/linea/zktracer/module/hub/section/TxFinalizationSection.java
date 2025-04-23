@@ -24,7 +24,6 @@ import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.transients.DeploymentInfo;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -81,7 +80,7 @@ public class TxFinalizationSection extends TraceSection implements EndTransactio
 
     this.addFragment(senderAccountFragment);
     this.addFragment(coinbaseAccountFragment);
-    this.addFragment(new TransactionFragment(hub.txStack().current())); // TXN i+2
+    this.addFragment(txMetadata.transactionFragment()); // TXN i+2
   }
 
   /**

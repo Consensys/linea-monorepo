@@ -25,7 +25,6 @@ import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.defer.EndTransactionDefer;
 import net.consensys.linea.zktracer.module.hub.fragment.DomSubStampsSubFragment;
-import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
@@ -116,7 +115,7 @@ public class TxSkipSection extends TraceSection implements EndTransactionDefer {
 
     final Wei value = (Wei) txMetadata.getBesuTransaction().getValue();
 
-    if (senderAddressCollision()) {
+    if (txMetadata.senderAddressCollision()) {
       final BigInteger gasUsed = BigInteger.valueOf(txMetadata.getGasUsed());
       final BigInteger gasPrice = BigInteger.valueOf(txMetadata.getEffectiveGasPrice());
       final BigInteger gasCost = gasUsed.multiply(gasPrice);
@@ -128,11 +127,11 @@ public class TxSkipSection extends TraceSection implements EndTransactionDefer {
               .raiseNonceByOne();
     }
 
-    if (senderIsRecipient()) {
+    if (txMetadata.senderIsRecipient()) {
       recipient = senderNew.deepCopy();
       recipientNew = recipient.deepCopy().incrementBalanceBy(value);
     } else {
-      if (recipientIsCoinbase()) {
+      if (txMetadata.recipientIsCoinbase()) {
         recipientNew = coinbaseNew.deepCopy().decrementBalanceBy(txMetadata.getCoinbaseReward());
         recipient = recipientNew.deepCopy().decrementBalanceBy(value);
         if (txMetadata.isDeployment()) {
@@ -141,7 +140,7 @@ public class TxSkipSection extends TraceSection implements EndTransactionDefer {
       }
     }
 
-    if (coinbaseAddressCollision()) {
+    if (txMetadata.coinbaseAddressCollision()) {
       coinbase = coinbaseNew.deepCopy().decrementBalanceBy(txMetadata.getCoinbaseReward());
     }
 
@@ -175,45 +174,9 @@ public class TxSkipSection extends TraceSection implements EndTransactionDefer {
                 coinbase.address(),
                 DomSubStampsSubFragment.standardDomSubStamps(hub.stamp(), 2));
 
-    // transaction fragment
-    final TransactionFragment transactionFragment =
-        new TransactionFragment(hub.txStack().current());
-
     this.addFragment(senderAccountFragment);
     this.addFragment(recipientAccountFragment);
     this.addFragment(coinbaseAccountFragment);
-    this.addFragment(transactionFragment);
-  }
-
-  public boolean senderIsRecipient() {
-    return senderAddress.equals(recipientAddress);
-  }
-
-  public boolean senderIsCoinbase() {
-    return senderAddress.equals(coinbaseAddress);
-  }
-
-  public boolean recipientIsCoinbase() {
-    return recipientAddress.equals(coinbaseAddress);
-  }
-
-  public boolean senderAddressCollision() {
-    return senderIsRecipient() || senderIsCoinbase();
-  }
-
-  public boolean recipientAddressCollision() {
-    return senderIsRecipient() || recipientIsCoinbase();
-  }
-
-  public boolean coinbaseAddressCollision() {
-    return senderIsCoinbase() || recipientIsCoinbase();
-  }
-
-  public boolean addressCollision() {
-    return senderIsRecipient() || senderIsCoinbase() || recipientIsCoinbase();
-  }
-
-  public boolean noAddressCollisions() {
-    return !addressCollision();
+    this.addFragment(txMetadata.transactionFragment());
   }
 }

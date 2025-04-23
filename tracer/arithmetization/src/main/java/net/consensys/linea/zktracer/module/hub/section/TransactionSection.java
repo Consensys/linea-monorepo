@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.hub.section;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 
 public class TransactionSection extends TraceSection {
@@ -26,6 +25,6 @@ public class TransactionSection extends TraceSection {
     // 3 = 1 + 1 + 1 (stack, transaction, context)
     super(hub, Exceptions.none(hub.pch().exceptions()) ? (short) 2 : (short) 3);
 
-    this.addStackAndFragments(hub, new TransactionFragment(hub.txStack().current()));
+    this.addStackAndFragments(hub, hub.txStack().current().transactionFragment());
   }
 }

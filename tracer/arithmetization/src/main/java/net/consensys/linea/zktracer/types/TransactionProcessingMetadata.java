@@ -31,6 +31,7 @@ import lombok.Setter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.module.hub.AccountSnapshot;
 import net.consensys.linea.zktracer.module.hub.Hub;
+import net.consensys.linea.zktracer.module.hub.fragment.TransactionFragment;
 import net.consensys.linea.zktracer.module.hub.section.halt.AttemptedSelfDestruct;
 import net.consensys.linea.zktracer.module.hub.section.halt.EphemeralAccount;
 import org.apache.tuweni.bytes.Bytes;
@@ -123,6 +124,10 @@ public abstract class TransactionProcessingMetadata {
 
   @Getter final Map<EphemeralAccount, Integer> effectiveSelfDestructMap = new HashMap<>();
 
+  @Accessors(fluent = true)
+  @Getter
+  private final TransactionFragment transactionFragment;
+
   public TransactionProcessingMetadata(
       final Hub hub,
       final WorldView world,
@@ -159,6 +164,8 @@ public abstract class TransactionProcessingMetadata {
     effectiveRecipient = effectiveToAddress(besuTransaction);
 
     effectiveGasPrice = computeEffectiveGasPrice();
+
+    transactionFragment = new TransactionFragment(this);
   }
 
   public void setPreFinalisationValues(
@@ -344,5 +351,13 @@ public abstract class TransactionProcessingMetadata {
 
   public boolean senderIsRecipient() {
     return getSender().equals(effectiveRecipient);
+  }
+
+  public boolean senderAddressCollision() {
+    return senderIsRecipient() || senderIsCoinbase();
+  }
+
+  public boolean coinbaseAddressCollision() {
+    return senderIsCoinbase() || recipientIsCoinbase();
   }
 }
