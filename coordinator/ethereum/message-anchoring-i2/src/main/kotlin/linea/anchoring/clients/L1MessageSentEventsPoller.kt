@@ -2,7 +2,6 @@ package linea.anchoring.clients
 
 import io.vertx.core.Vertx
 import linea.EthLogsSearcher
-import linea.anchoring.CapacityBoundedBlockingPriorityQueue
 import linea.anchoring.events.MessageSentEvent
 import linea.contract.l2.L2MessageServiceSmartContractClient
 import linea.domain.BlockParameter
@@ -10,6 +9,7 @@ import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.PriorityBlockingQueue
 import kotlin.time.Duration
 
 class L1MessageSentEventsPoller(
@@ -17,7 +17,8 @@ class L1MessageSentEventsPoller(
   pollingInterval: Duration,
   private val l1SmartContractAddress: String,
   private val l1EventsSearcher: EthLogsSearcher,
-  private val eventQueue: CapacityBoundedBlockingPriorityQueue<MessageSentEvent>,
+  private val eventsQueue: PriorityBlockingQueue<MessageSentEvent>,
+  private val eventsQueueMaxCapacity: Int,
   private val l2MessageService: L2MessageServiceSmartContractClient,
   private val l1MessagesSentFetchLimit: UInt,
   private val l1MessagesSentFetchTimeout: Duration,
@@ -36,7 +37,7 @@ class L1MessageSentEventsPoller(
   )
 
   private fun nextMessageNumberToFetchFromL1(): SafeFuture<ULong> {
-    val queueLastMessage = eventQueue.lastOrNull()
+    val queueLastMessage = eventsQueue.lastOrNull()
     if (queueLastMessage != null) {
       return SafeFuture.completedFuture(queueLastMessage.messageNumber.inc())
     } else {
@@ -45,8 +46,12 @@ class L1MessageSentEventsPoller(
     }
   }
 
+  fun queueRemainingCapacity(): Int {
+    return (eventsQueueMaxCapacity - eventsQueue.size).coerceAtLeast(0)
+  }
+
   override fun action(): SafeFuture<*> {
-    val remainingCapacity = eventQueue.remainingCapacity()
+    val remainingCapacity = queueRemainingCapacity()
 
     if (remainingCapacity == 0) {
       log.debug("MessageSent event queue is full, skipping fetching new events")
@@ -63,7 +68,7 @@ class L1MessageSentEventsPoller(
         )
       }
       .thenApply { events ->
-        eventQueue.addAll(events.map { it.event })
+        eventsQueue.addAll(events.map { it.event })
       }
   }
 }

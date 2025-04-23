@@ -12,6 +12,7 @@ import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
+import java.util.concurrent.PriorityBlockingQueue
 import kotlin.time.Duration
 
 class MessageAnchoringService(
@@ -19,7 +20,7 @@ class MessageAnchoringService(
   private val l1ContractAddress: String,
   private val l1EthLogsClient: EthLogsClient,
   private val l2MessageService: L2MessageServiceSmartContractClient,
-  private val eventsQueue: CapacityBoundedBlockingPriorityQueue<MessageSentEvent>,
+  private val eventsQueue: PriorityBlockingQueue<MessageSentEvent>,
   private val maxMessagesToAnchorPerL2Transaction: UInt,
   private val l2HighestBlockTag: BlockParameter,
   anchoringTickInterval: Duration,

@@ -13,6 +13,7 @@ import net.consensys.zkevm.LongRunningService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.PriorityBlockingQueue
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -43,12 +44,14 @@ class MessageAnchoringApp(
       ethApiClient = l1EthApiClient,
       config = EthLogsSearcherImpl.Config(loopSuccessBackoffDelay = config.l1SuccessBackoffDelay)
     )
-  private val eventsQueue = CapacityBoundedBlockingPriorityQueue<MessageSentEvent>(
-    targetCapacity = config.messageQueueCapacity,
-    // allow at least one 1 L1 Block full of Linea Messages
-    // sendMessages takes 67,385 gas, 60Mgas/67k ~ 1000
-    absoluteMaxCapacity = (config.messageQueueCapacity * 2u).coerceAtLeast(1000u)
-  )
+
+  // private val eventsQueue = CapacityBoundedBlockingPriorityQueue<MessageSentEvent>(
+  //   targetCapacity = config.messageQueueCapacity,
+  //   // allow at least one 1 L1 Block full of Linea Messages
+  //   // sendMessages takes 67,385 gas, 60Mgas/67k ~ 1000
+  //   absoluteMaxCapacity = (config.messageQueueCapacity * 2u).coerceAtLeast(1000u)
+  // )
+  private val eventsQueue = PriorityBlockingQueue<MessageSentEvent>(config.messageQueueCapacity.toInt())
 
   private val l1EventsPoller = run {
     L1MessageSentEventsPoller(
@@ -56,7 +59,8 @@ class MessageAnchoringApp(
       pollingInterval = config.l1PollingInterval,
       l1SmartContractAddress = config.l1ContractAddress,
       l1EventsSearcher = l1EthLogsSearcher,
-      eventQueue = eventsQueue,
+      eventsQueue = eventsQueue,
+      eventsQueueMaxCapacity = config.messageQueueCapacity.toInt(),
       l2MessageService = l2MessageService,
       l1MessagesSentFetchLimit = config.maxMessagesToAnchorPerL2Transaction * 2u,
       l1MessagesSentFetchTimeout = config.l1EventPollingTimeout,
