@@ -105,7 +105,7 @@ runs:
     - name: piece the package together to build the docker images
       shell: bash    
       run: |
-        cd linea-besu
+        cd linea-besu-package/linea-besu
         mv /tmp/besu ./
         mv config/ genesis/ profiles/ besu/
         tree .
