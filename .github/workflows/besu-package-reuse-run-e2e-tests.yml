@@ -103,7 +103,7 @@ jobs:
       - name: Download local docker image artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: linea-besu-package-*
+          pattern: linea-besu-package*
       - name: Load Docker images
         run: |
           pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
