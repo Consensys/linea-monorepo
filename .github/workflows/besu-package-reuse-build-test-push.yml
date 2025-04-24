@@ -114,7 +114,9 @@ jobs:
 
       - name: build the linea artifacts
         id: assemble
-        uses: ./.github/actions/linea-besu-package/assemble-${{ env.LINEA_ENV }}
+        uses: ./.github/actions/linea-besu-package/assemble
+        with:
+          linea_env: ${{ env.LINEA_ENV }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
