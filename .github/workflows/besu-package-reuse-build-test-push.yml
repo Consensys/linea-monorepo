@@ -2,7 +2,7 @@ name: Reusable linea-besu-package build, test, and push
 on:
   workflow_call:
     inputs:
-      linea-env:
+      linea_env:
         required: true
         type: string
     outputs:
@@ -18,6 +18,8 @@ jobs:
   build-and-upload-artifact:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     environment: dockerhub
+    env:
+      LINEA_ENV: ${{ inputs.linea_env }}
     outputs:
       workflow_run_id: ${{ steps.assemble.outputs.workflow_id }}
       linea_besu_package_tag: ${{ steps.assemble.outputs.dockertag }} 
@@ -34,7 +36,7 @@ jobs:
 
       - name: build the linea artifacts
         id: assemble
-        uses: ./.github/actions/linea-besu-package/assemble-${{ inputs.linea-env }}
+        uses: ./.github/actions/linea-besu-package/assemble-${{ env.LINEA_ENV }}
       
       - name: set up docker buildx
         uses: docker/setup-buildx-action@v3
@@ -93,6 +95,7 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     environment: dockerhub
     env:
+      LINEA_ENV: ${{ inputs.linea_env }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     outputs:
@@ -109,7 +112,7 @@ jobs:
 
       - name: build the linea artifacts
         id: assemble
-        uses: ./.github/actions/linea-besu-package/assemble-${{ inputs.linea-env }}
+        uses: ./.github/actions/linea-besu-package/assemble-${{ env.LINEA_ENV }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -166,7 +169,7 @@ jobs:
             BUILD_DATE=${{ steps.assemble.outputs.build_date }}
           push: true
           tags: |
-            consensys/linea-besu-package:${{ inputs.linea-env }}-latest
+            consensys/linea-besu-package:${{ env.LINEA_ENV }}-latest
 
       ### update the release notes with docker hashes
       - name: create the release notes and then the release
@@ -196,7 +199,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
-          name: linea-${{ inputs.linea-env }}
+          name: linea-${{ env.LINEA_ENV }}
           retention-days: 1
           path: |
             ./release

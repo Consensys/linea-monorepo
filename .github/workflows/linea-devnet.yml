@@ -35,5 +35,5 @@ jobs:
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     uses: ./.github/workflows/besu-package-reuse-build-test-push.yml
     with:
-      linea-env: devnet
+      linea_env: devnet
     secrets: inherit
