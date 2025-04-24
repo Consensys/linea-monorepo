@@ -1,30 +1,30 @@
 name: Reusable run e2e tests
 on:
-  workflow_dispatch:
-    inputs:
-      linea_besu_package_tag:
-        description: The tag to use for all linea-besu-package images
-        required: true
-        type: string
-      expected_traces_api_version:
-        description: The expected traces api version used by cooridinator
-        required: true
-        type: string
-      e2e-tests-with-ssh:
-        description: Run end to end tests with ability to ssh into environment
-        required: false
-        type: boolean
-        default: false
-      e2e-tests-logs-dump:
-        description: Dump logs after running end to end tests
-        required: false
-        type: boolean
-        default: false
-      e2e-tests-containers-list:
-        description: List containers before starting end to end tests
-        required: false
-        type: boolean
-        default: true
+  # workflow_dispatch:
+  #   inputs:
+  #     linea_besu_package_tag:
+  #       description: The tag to use for all linea-besu-package images
+  #       required: true
+  #       type: string
+  #     expected_traces_api_version:
+  #       description: The expected traces api version used by cooridinator
+  #       required: true
+  #       type: string
+  #     e2e-tests-with-ssh:
+  #       description: Run end to end tests with ability to ssh into environment
+  #       required: false
+  #       type: boolean
+  #       default: false
+  #     e2e-tests-logs-dump:
+  #       description: Dump logs after running end to end tests
+  #       required: false
+  #       type: boolean
+  #       default: false
+  #     e2e-tests-containers-list:
+  #       description: List containers before starting end to end tests
+  #       required: false
+  #       type: boolean
+  #       default: true
   workflow_call:
     inputs:
       linea_besu_package_tag:
