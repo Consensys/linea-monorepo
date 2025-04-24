@@ -18,8 +18,6 @@ jobs:
   build-and-upload-artifact:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     environment: dockerhub
-    env:
-      LINEA_ENV: ${{ inputs.linea_env }}
     outputs:
       workflow_run_id: ${{ steps.assemble.outputs.workflow_id }}
       linea_besu_package_tag: ${{ steps.assemble.outputs.dockertag }} 
@@ -38,7 +36,7 @@ jobs:
         id: assemble
         uses: ./.github/actions/linea-besu-package/assemble
         with:
-          linea_env: ${{ env.LINEA_ENV }}
+          linea_env: ${{ inputs.linea_env }}
       
       - name: set up docker buildx
         uses: docker/setup-buildx-action@v3
@@ -84,7 +82,7 @@ jobs:
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-    uses: ./.github/workflows/besu-package-reuse-run-e2e-tests.yml
+    uses: ./.github/workflows/reuse-linea-besu-package-run-e2e-tests.yml
     with:
       linea_besu_package_tag: ${{ needs.build-and-upload-artifact.outputs.linea_besu_package_tag }} 
       expected_traces_api_version: ${{ needs.build-and-upload-artifact.outputs.expected_traces_api_version }}
@@ -97,7 +95,6 @@ jobs:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     environment: dockerhub
     env:
-      LINEA_ENV: ${{ inputs.linea_env }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     outputs:
@@ -116,7 +113,7 @@ jobs:
         id: assemble
         uses: ./.github/actions/linea-besu-package/assemble
         with:
-          linea_env: ${{ env.LINEA_ENV }}
+          linea_env: ${{ inputs.linea_env }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -173,7 +170,7 @@ jobs:
             BUILD_DATE=${{ steps.assemble.outputs.build_date }}
           push: true
           tags: |
-            consensys/linea-besu-package:${{ env.LINEA_ENV }}-latest
+            consensys/linea-besu-package:${{ inputs.linea_env }}-latest
 
       ### update the release notes with docker hashes
       - name: create the release notes and then the release
@@ -203,7 +200,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         uses: actions/upload-artifact@v4
         with:
-          name: linea-${{ env.LINEA_ENV }}
+          name: linea-${{ inputs.linea_env }}
           retention-days: 1
           path: |
             ./release

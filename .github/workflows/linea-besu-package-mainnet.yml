@@ -1,4 +1,4 @@
-name: linea-devnet
+name: linea-besu-package-mainnet
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
     branches:
       - main
     paths:
-      - 'linea-besu-package/versions/linea-devnet.env'
+      - 'linea-besu-package/versions/linea-mainnet.env'
 
   workflow_call:
     outputs:
@@ -33,7 +33,7 @@ jobs:
     concurrency:
       group: build-test-push-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-    uses: ./.github/workflows/besu-package-reuse-build-test-push.yml
+    uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
-      linea_env: devnet
+      linea_env: mainnet
     secrets: inherit
