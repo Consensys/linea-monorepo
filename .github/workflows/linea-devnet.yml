@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'linea-besu-package/versions/linea-devnet.env'
 
   workflow_call:
     outputs:
@@ -18,29 +20,29 @@ permissions:
   contents: read
 
 jobs:
-  filter-commit-changes:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    name: Filter commit changes
-    outputs:
-      linea-besu-package: ${{ steps.filter.outputs.linea-besu-package }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Filter commit changes
-        uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          base: ${{ github.ref }}
-          list-files: "json"
-          filters: |
-            all:
-              - '**/**'
-            linea-besu-package:
-              - 'linea-besu-package/versions/linea-devnet.env'
+  # filter-commit-changes:
+  #   runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+  #   name: Filter commit changes
+  #   outputs:
+  #     linea-besu-package: ${{ steps.filter.outputs.linea-besu-package }}
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Filter commit changes
+  #       uses: dorny/paths-filter@v3
+  #       id: filter
+  #       with:
+  #         base: ${{ github.ref }}
+  #         list-files: "json"
+  #         filters: |
+  #           all:
+  #             - '**/**'
+  #           linea-besu-package:
+  #             - 'linea-besu-package/versions/linea-devnet.env'
 
   build-and-upload-artifact:
-    needs: [ filter-commit-changes ]
-    if: ${{ needs.filter-commit-changes.outputs.linea-besu-package == 'true' }}
+    # needs: [ filter-commit-changes ]
+    # if: ${{ needs.filter-commit-changes.outputs.linea-besu-package == 'true' }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     environment: dockerhub
     outputs:
@@ -71,8 +73,8 @@ jobs:
           context: linea-besu-package/linea-besu/.
           platforms: linux/amd64
           provenance: false
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache          
+          # cache-from: type=local,src=/tmp/.buildx-cache
+          # cache-to: type=local,dest=/tmp/.buildx-cache          
           build-args: |
             VERSION=${{ steps.assemble.outputs.dockertag }}
             VCS_REF=${{ github.sha }}
