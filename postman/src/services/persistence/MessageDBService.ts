@@ -114,13 +114,7 @@ export abstract class MessageDBService {
     message: Message,
     nonce: number,
     claimTxResponsePromise: Promise<ContractTransactionResponse>,
-    isForSponsorship: boolean,
   ): Promise<void> {
-    await this.messageRepository.updateMessageWithClaimTxAtomic(
-      message,
-      nonce,
-      claimTxResponsePromise,
-      isForSponsorship,
-    );
+    await this.messageRepository.updateMessageWithClaimTxAtomic(message, nonce, claimTxResponsePromise);
   }
 }

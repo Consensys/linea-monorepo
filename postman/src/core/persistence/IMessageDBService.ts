@@ -27,6 +27,5 @@ export interface IMessageDBService<TransactionResponse> {
     message: Message,
     nonce: number,
     claimTxResponsePromise: Promise<TransactionResponse>,
-    isForSponsorship: boolean,
   ): Promise<void>;
 }

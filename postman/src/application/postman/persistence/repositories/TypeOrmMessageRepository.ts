@@ -275,7 +275,6 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
     message: Message,
     nonce: number,
     claimTxResponsePromise: Promise<ContractTransactionResponse>,
-    isForSponsorship: boolean,
   ): Promise<void> {
     await this.manager.transaction(async (entityManager) => {
       await entityManager.update(
@@ -301,7 +300,6 @@ export class TypeOrmMessageRepository<TransactionResponse extends ContractTransa
           claimTxMaxFeePerGas: tx.maxFeePerGas ?? undefined,
           claimTxMaxPriorityFeePerGas: tx.maxPriorityFeePerGas ?? undefined,
           claimTxHash: tx.hash,
-          isForSponsorship: isForSponsorship,
         },
       );
 

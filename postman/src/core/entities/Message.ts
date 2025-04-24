@@ -26,7 +26,7 @@ export type MessageProps = {
   claimLastRetriedAt?: Date;
   claimGasEstimationThreshold?: number;
   compressedTransactionSize?: number;
-  isForSponsorship: boolean;
+  isForSponsorship?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 };
@@ -79,7 +79,7 @@ export class Message {
   public claimLastRetriedAt?: Date;
   public claimGasEstimationThreshold?: number;
   public compressedTransactionSize?: number;
-  public isForSponsorship: boolean;
+  public isForSponsorship: boolean = false;
   public createdAt?: Date;
   public updatedAt?: Date;
 

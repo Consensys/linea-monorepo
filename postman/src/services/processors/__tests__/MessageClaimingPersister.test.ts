@@ -100,6 +100,8 @@ describe("TestMessageClaimingPersister ", () => {
         ...testPendingMessageLocal,
         status: MessageStatus.CLAIMED_SUCCESS,
         updatedAt: mockedDate,
+        claimTxGasUsed: Number(txReceipt.gasUsed),
+        claimTxGasPrice: txReceipt.gasPrice,
       });
 
       await messageClaimingPersister.process();

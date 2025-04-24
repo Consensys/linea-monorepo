@@ -120,7 +120,6 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         estimatedGasLimit!,
         claimTxFees.maxPriorityFeePerGas,
         claimTxFees.maxFeePerGas,
-        isForSponsorship,
       );
     } catch (e) {
       await this.handleProcessingError(e, nextMessageToClaim);
@@ -168,7 +167,6 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     gasLimit: bigint,
     maxPriorityFeePerGas: bigint,
     maxFeePerGas: bigint,
-    isForSponsorship: boolean,
   ): Promise<void> {
     const claimTxResponsePromise = this.messageServiceContract.claim(
       {
@@ -177,7 +175,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       },
       { nonce, gasLimit, maxPriorityFeePerGas, maxFeePerGas },
     );
-    await this.databaseService.updateMessageWithClaimTxAtomic(message, nonce, claimTxResponsePromise, isForSponsorship);
+    await this.databaseService.updateMessageWithClaimTxAtomic(message, nonce, claimTxResponsePromise);
   }
 
   /**
