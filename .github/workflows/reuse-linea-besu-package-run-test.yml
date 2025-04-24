@@ -9,9 +9,9 @@ on:
       dockerimage:
         required: true
         type: string
-    outputs:
-      tests_outcome:
-        value: ${{ jobs.test-profile.outcome }}
+    # outputs:
+    #   tests_outcome:
+    #     value: ${{ jobs.test-profile.outcome }}
 
 jobs:
   list-profiles:
