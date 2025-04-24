@@ -1163,42 +1163,31 @@ describe("L2MessageService", () => {
         await expectRevertWithReason(claimMessageCall, "ReentrancyGuard: reentrant call");
       });
 
-      it("Should fail when the destination errors through receive", async () => {
+      it("Should send a message when receive is invoked", async () => {
+        const adminAddress = await admin.getAddress();
+        const setMinimumFeeInWei = await l2MessageService.minimumFeeInWei();
+
         const expectedBytes = await encodeSendMessage(
-          await l2MessageService.getAddress(),
-          await l2MessageService.getAddress(),
-          MESSAGE_FEE,
+          adminAddress,
+          adminAddress,
+          0n,
           MESSAGE_VALUE_1ETH,
           1n,
           EMPTY_CALLDATA,
         );
 
-        await l2MessageService.addFunds({ value: INITIAL_WITHDRAW_LIMIT });
+        const messageHash = ethers.keccak256(expectedBytes);
 
-        const expectedBytesArray = [ethers.keccak256(expectedBytes)];
-        const expectedRollingHash = calculateRollingHash(ethers.ZeroHash, ethers.keccak256(expectedBytes));
+        const eventArgs = [adminAddress, adminAddress, 0n, MESSAGE_VALUE_1ETH, 1, EMPTY_CALLDATA, messageHash];
 
-        await l2MessageService.setLastAnchoredL1MessageNumber(1);
-        await l2MessageService
-          .connect(l1l2MessageSetter)
-          .anchorL1L2MessageHashes(expectedBytesArray, 2, 2, expectedRollingHash);
-
-        await expect(
-          l2MessageService
-            .connect(admin)
-            .claimMessage(
-              await l2MessageService.getAddress(),
-              await l2MessageService.getAddress(),
-              MESSAGE_FEE,
-              MESSAGE_VALUE_1ETH,
-              ADDRESS_ZERO,
-              EMPTY_CALLDATA,
-              1,
-            ),
-        ).to.be.reverted;
-
-        expect(await l2MessageService.inboxL1L2MessageStatus(ethers.keccak256(expectedBytes))).to.be.equal(
-          INBOX_STATUS_RECEIVED,
+        await expectEvent(
+          l2MessageService,
+          admin.sendTransaction({
+            to: await l2MessageService.getAddress(),
+            value: MESSAGE_VALUE_1ETH + setMinimumFeeInWei,
+          }),
+          "MessageSent",
+          eventArgs,
         );
       });
 

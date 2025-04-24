@@ -165,7 +165,7 @@ describe("L1MessageService", () => {
   });
 
   describe("Receive test", () => {
-    it("Should call sendMessage when receive is invoked", async () => {
+    it("Should send a message when receive is invoked", async () => {
       const adminAddress = await admin.getAddress();
 
       const expectedBytes = await encodeSendMessage(
