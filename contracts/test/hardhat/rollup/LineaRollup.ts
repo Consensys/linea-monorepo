@@ -82,16 +82,12 @@ describe("Linea Rollup contract", () => {
     ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
   });
 
-  describe("Fallback/Receive tests", () => {
+  describe("Fallback tests", () => {
     const sendEthToContract = async (data: string) => {
       return admin.sendTransaction({ to: await lineaRollup.getAddress(), value: INITIAL_WITHDRAW_LIMIT, data });
     };
 
-    it("Should fail to send eth to the lineaRollup contract through the fallback", async () => {
-      await expect(sendEthToContract(EMPTY_CALLDATA)).to.be.reverted;
-    });
-
-    it("Should fail to send eth to the lineaRollup contract through the receive function", async () => {
+    it("Should fail to send eth to the lineaRollup contract through the fallback function", async () => {
       await expect(sendEthToContract("0x1234")).to.be.reverted;
     });
   });

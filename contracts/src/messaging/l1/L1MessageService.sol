@@ -60,7 +60,7 @@ abstract contract L1MessageService is
     uint256 _fee,
     bytes calldata _calldata
   ) external payable whenTypeAndGeneralNotPaused(PauseType.L1_L2) {
-    sendMessageInternal(_to, _fee, _calldata);
+    _sendMessage(_to, _fee, _calldata);
   }
 
   /**
@@ -71,7 +71,7 @@ abstract contract L1MessageService is
    * @param _fee The fee being paid for the message delivery.
    * @param _calldata The calldata to pass to the recipient.
    */
-  function sendMessageInternal(address _to, uint256 _fee, bytes memory _calldata) internal {
+  function _sendMessage(address _to, uint256 _fee, bytes memory _calldata) internal {
     if (_to == address(0)) {
       revert ZeroAddressNotAllowed();
     }
@@ -162,7 +162,11 @@ abstract contract L1MessageService is
     originalSender = TransientStorageHelpers.tloadAddress(MESSAGE_SENDER_TRANSIENT_KEY);
   }
 
+  /**
+   * @notice Receives ETH and does an automatic no calldata ETH send message to L2.
+   * @dev The to and from addresses will always be the msg.sender.
+   */
   receive() external payable {
-    sendMessageInternal(msg.sender, 0, "");
+    _sendMessage(msg.sender, 0, "");
   }
 }
