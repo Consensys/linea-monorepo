@@ -34,7 +34,17 @@ func newEmptyCompiledIOP() *wizard.CompiledIOP {
 	}
 }
 
-// SerializeCompiledIOP marshals a [wizard.CompiledIOP] object into JSON.
+// SerializeCompiledIOP marshals a [wizard.CompiledIOP] object into JSON. This is
+// meant to allow deserializing the IOP during the prover time instead of
+// recompiling everything every time we want to run the prover.
+//
+// Example:
+//
+//	 	comp := wizard.Compile(myBuilder, myCompilerSuite...)
+//		marshaled, err := SerializeCompiledIOP(comp)
+//		if err != nil {
+//			panic(err)
+//		}
 func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 	numRounds := comp.NumRounds()
 	if numRounds == 0 {
@@ -149,7 +159,10 @@ func serializeCoins(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, err
 	return rawCoins, nil
 }
 
-// DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns an error if the marshalled object does not have the right format.
+// DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns an error
+// if the marshalled object does not have the right format. The
+// deserialized object can then be used for proving or verification via the
+// functions [wizard.Prove] or [wizard.Verify].
 func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	comp := newEmptyCompiledIOP()
 	raw := &rawCompiledIOP{}

@@ -33,6 +33,9 @@ import (
 )
 
 // Mode specifies the serialization context for handling protocol objects.
+// It indicates whether the serializer is currently running over a part of
+// the wizard in which is declaring columns, coins or queries or one that is
+// doing references to them.
 type Mode int
 
 // Constants for serialization modes.
@@ -103,8 +106,8 @@ func getStructFieldCache(t reflect.Type) *structFieldCache {
 }
 
 // SerializeValue serializes a reflect.Value into CBOR, handling protocol-specific types.
-// It supports DeclarationMode for full object serialization and ReferenceMode for IDbo-based references.
-// In PureExprMode, it serializes symbolic expressions without CompiledIOP dependencies.
+// It supports DeclarationMode for full object serialization and ReferenceMode for ID-based
+// references. In PureExprMode, it serializes symbolic expressions without CompiledIOP dependencies.
 func SerializeValue(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	if !v.IsValid() || v.Interface() == nil {
 		return json.RawMessage(NilString), nil
@@ -130,10 +133,16 @@ func SerializeValue(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	}
 }
 
-// DeserializeValue deserializes CBOR data into a reflect.Value of type t.
-// It reverses SerializeValue, handling protocol-specific types and modes.
-// In DeclarationMode, it may mutate comp to register columns.
-// In ReferenceMode, it expects referenced objects to be pre-registered in comp.
+// DeserializeValue recursively unmarshals `data` into a [reflect.Value] of
+// type matching the caller's target type `t`. It reverses the work of
+// [serializeValue]. It comes with the following subtleties:
+//
+//  1. `comp` of the function is mutated when run in [Declaration] mode over something
+//     that contains column type as it will register the columns within the provided
+//     `comp` object.
+//  2. If run with [ReferenceMode], it will expect all the potential references
+//     it finds to be references of objects that have been already unmarshalled
+//     in declaration mode.
 func DeserializeValue(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
 	if bytes.Equal(data, []byte(NilString)) {
 		return reflect.New(t), nil

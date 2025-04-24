@@ -42,6 +42,8 @@ func initCBOREncDecModes() {
 }
 
 // serializeAnyWithCborPkg serializes an interface{} object into CBOR using a pooled buffer.
+// It will return an error on failure and is meant to be used on data and types that controlled
+// by the current package.
 func serializeAnyWithCborPkg(x any) (json.RawMessage, error) {
 	initOnce.Do(initCBOREncDecModes)
 

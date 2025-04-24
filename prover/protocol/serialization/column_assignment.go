@@ -175,7 +175,8 @@ func compressChunk(chunk json.RawMessage) json.RawMessage {
 
 // Deserialization Functions
 
-// DeserializeAssignment deserializes a blob of bytes into a set of column assignments representing assigned columns of a Wizard protocol.
+// DeserializeAssignment deserializes a blob of bytes into a set of column assignments
+// representing assigned columns of a Wizard protocol.
 func DeserializeAssignment(filepath string, numChunks int) (WAssignment, error) {
 	res := collection.NewMapping[ifaces.ColID, smartvectors.SmartVector]()
 	lock := &sync.Mutex{}
