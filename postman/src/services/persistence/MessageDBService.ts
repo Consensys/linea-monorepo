@@ -107,7 +107,6 @@ export abstract class MessageDBService {
    * @param {Message} message - The message to update.
    * @param {number} nonce - The nonce to use for the claim transaction.
    * @param {Promise<ContractTransactionResponse>} claimTxResponsePromise - The promise that resolves to the claim transaction response.
-   * @param {boolean} isForSponsorship - True if the claim is for sponsorship.
    * @returns {Promise<void>} A promise that resolves when the message is updated.
    */
   public async updateMessageWithClaimTxAtomic(
