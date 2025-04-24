@@ -36,7 +36,9 @@ jobs:
 
       - name: build the linea artifacts
         id: assemble
-        uses: ./.github/actions/linea-besu-package/assemble-${{ env.LINEA_ENV }}
+        uses: ./.github/actions/linea-besu-package/assemble
+        with:
+          linea_env: ${{ env.LINEA_ENV }}
       
       - name: set up docker buildx
         uses: docker/setup-buildx-action@v3
