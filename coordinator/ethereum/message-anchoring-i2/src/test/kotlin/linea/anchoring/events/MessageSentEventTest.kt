@@ -40,11 +40,11 @@ class MessageSentEventTest {
 
     // Then
     val expectedEvent = MessageSentEvent(
+      messageNumber = 10000uL,
       from = "0x1234567890abcdef1234567890abcdef12345678".decodeHex(),
       to = "0xabcdef1234567890abcdef1234567890abcdef12".decodeHex(),
       fee = 1000uL,
       value = 2000uL,
-      messageNumber = 10000uL,
       calldata = "deadbeef".decodeHex(),
       messageHash = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd".decodeHex()
     )
@@ -57,11 +57,11 @@ class MessageSentEventTest {
   }
 
   private val eventTemplate = MessageSentEvent(
+    messageNumber = 1uL,
     from = "0x000000000000000000000000000000000000000a".decodeHex(),
     to = "0x000000000000000000000000000000000000000b".decodeHex(),
     fee = 0uL,
     value = 0uL,
-    messageNumber = 1uL,
     calldata = ByteArray(0),
     messageHash = "0x0000000000000000000000000000000000000000".decodeHex()
   )
