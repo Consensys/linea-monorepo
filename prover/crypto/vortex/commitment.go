@@ -28,9 +28,9 @@ type EncodedMatrix []smartvectors.SmartVector
 //
 // And can be safely converted to a field Element via
 // [field.Element.SetBytesCanonical]
-// We apply SIS+MiMC hashing on the columns to compute leaves only if
-// isSISAppliedForRound is true, otherwise we apply only the MiMC hashing.
-func (p *Params) CommitMerkle(ps []smartvectors.SmartVector, isSISAppliedForRound bool) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
+// We apply SIS+MiMC hashing on the columns to compute leaves
+// Should be used when the number of rows to commit is more than the [ApplySISThreshold]
+func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
 
 	if len(ps) > p.MaxNbRows {
 		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
@@ -43,32 +43,71 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector, isSISAppliedForRoun
 		// colHashes stores concatenation of SIS+MiMC hashes of the columns
 		// if isSISAppliedForRound is true, otherwise it stores the MiMC hashes
 		// of the columns.
-		colHashes = p.hashColumns(encodedMatrix, isSISAppliedForRound)
+		colHashes = p.hashColumnsWithSIS(encodedMatrix)
 	})
 
 	timeTree := profiling.TimeIt(func() {
 		var leaves []types.Bytes32
-
-		if !p.HasSisReplacement() && isSISAppliedForRound {
-			leaves = p.hashSisHash(colHashes)
-		} else {
-			leaves = make([]types.Bytes32, len(colHashes))
-			for i := range leaves {
-				leaves[i] = colHashes[i].Bytes()
-			}
-		}
+		// Hash the SIS digests to obtain the leaves of the Merkle tree.
+		leaves = p.hashSisHash(colHashes)
 
 		tree = smt.BuildComplete(
 			leaves,
 			func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: p.HashFunc()}
+				return hashtypes.Hasher{Hash: p.MerkleHashFunc()}
 			},
 		)
 	})
 
 	logrus.Infof(
-		"[vortex-commitment] numCol=%v numRow=%v numColEncoded=%v timeEncoding=%v timeSisHashing=%v timeMerkleizing=%v",
+		"[vortex-commitment-with-sis] numCol=%v numRow=%v numColEncoded=%v timeEncoding=%v timeSisHashing=%v timeMerkleizing=%v",
 		p.NbColumns, len(ps), p.NumEncodedCols(), timeEncoding, timeSisHashing, timeTree,
+	)
+
+	return encodedMatrix, tree, colHashes
+}
+
+// Commit to a sequence of columns and Merkle hash on top of that. Returns the
+// tree and an array containing the concatenated columns hashes. The final
+// short commitment can be obtained from the returned tree as:
+//
+//	tree.Root()
+//
+// And can be safely converted to a field Element via
+// [field.Element.SetBytesCanonical]
+// We apply MiMC hashing on the columns to compute leaves
+// Should be used when the number of rows to commit is less than the [ApplySISThreshold]
+func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector, isSISAppliedForRound bool) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
+
+	if len(ps) > p.MaxNbRows {
+		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
+	}
+
+	timeEncoding := profiling.TimeIt(func() {
+		encodedMatrix = p.encodeRows(ps)
+	})
+		// colHashes stores the MiMC hashes
+		// of the columns.
+		colHashes = p.hashColumnsWithoutSIS(encodedMatrix)
+
+	timeTree := profiling.TimeIt(func() {
+		var leaves []types.Bytes32
+			leaves = make([]types.Bytes32, len(colHashes))
+			for i := range leaves {
+				leaves[i] = colHashes[i].Bytes()
+			}
+
+		tree = smt.BuildComplete(
+			leaves,
+			func() hashtypes.Hasher {
+				return hashtypes.Hasher{Hash: p.MerkleHashFunc()}
+			},
+		)
+	})
+
+	logrus.Infof(
+		"[vortex-commitment-without-sis] numCol=%v numRow=%v numColEncoded=%v timeEncoding=%v timeMerkleizing=%v",
+		p.NbColumns, len(ps), p.NumEncodedCols(), timeEncoding, timeTree,
 	)
 
 	return encodedMatrix, tree, colHashes
@@ -104,15 +143,18 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 	return encodedMatrix
 }
 
-// hashColumns returns a slice storing the hashes of the column of
-// `encodedMatrix` sequentially.
-//
-// When SIS is used, `colHashes` stores the concatenation of the SIS hashes.
-func (params *Params) hashColumns(encodedMatrix EncodedMatrix, isSISAppliedForRound bool) (colHashes []field.Element) {
-	// And obtain the hash of the columns
-	if !params.HasSisReplacement() && isSISAppliedForRound {
-		return params.Key.TransversalHash(encodedMatrix)
-	}
+// hashColumnsWithSIS returns a slice storing the hashes of the column of
+// `encodedMatrix` sequentially. `colHashes` stores the concatenation of the SIS hashes.
+func (params *Params) hashColumnsWithSIS(encodedMatrix EncodedMatrix) (colHashes []field.Element) {
+	// Obtain the hash of the columns
+	return params.Key.TransversalHash(encodedMatrix)
+
+}
+
+// hashColumnWithoutSIS returns a slice storing the hashes of the column of
+// `encodedMatrix` sequentially. `colHashes` stores the concatenation of the MiMC hashes.
+func (params *Params) hashColumnsWithoutSIS(encodedMatrix EncodedMatrix) (colHashes []field.Element) {
+	// Obtain the hash of the columns
 	return params.noSisTransversalHash(encodedMatrix)
 }
 
@@ -129,7 +171,7 @@ func (p *Params) hashSisHash(colHashes []field.Element) (leaves []types.Bytes32)
 
 	parallel.Execute(numChunks, func(start, stop int) {
 		// Create the hasher in the parallel setting to avoid race conditions.
-		hasher := p.HashFunc()
+		hasher := p.LeafHashFunc()
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 			hasher.Reset()
@@ -168,7 +210,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Elem
 	parallel.ExecuteThreadAware(
 		numCols,
 		func(threadID int) {
-			hashers[threadID] = p.HashFunc()
+			hashers[threadID] = p.LeafHashFunc()
 		},
 		func(col, threadID int) {
 			hasher := hashers[threadID]

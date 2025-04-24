@@ -86,7 +86,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// Stores a pointer to the cryptographic compiler of Vortex
 		comp.PcsCtxs = &ctx
 
-		// Todo: write proper description
+		// Process the precomputed columns
 		ctx.processStatusPrecomputed()
 
 		// registers all the commitments

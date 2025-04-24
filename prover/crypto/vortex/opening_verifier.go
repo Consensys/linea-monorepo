@@ -169,7 +169,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 	var (
 		mTreeHashConfig = &smt.Config{
 			HashFunc: func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: v.Params.HashFunc()}
+				return hashtypes.Hasher{Hash: v.Params.MerkleHashFunc()}
 			},
 			Depth: utils.Log2Ceil(v.Params.NumEncodedCols()),
 		}
@@ -189,13 +189,13 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 			// We verify the SIS hash of the current sub-column
 			// only if the SIS hash is applied for the current round.
 			// It starts from the precomputed commitment
-			if !v.Params.HasSisReplacement() && v.IsSISApplied[i] {
+			if v.IsSISApplied[i] {
 				var (
 					// SIS hash of the current sub-column
 					sisHash = v.Params.Key.Hash(selectedSubCol)
 					// hasher used to hash the SIS hash (and thus not a hasher
 					// based on SIS)
-					hasher = v.Params.HashFunc()
+					hasher = v.Params.LeafHashFunc()
 				)
 
 				hasher.Reset()
@@ -208,7 +208,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 			} else {
 				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc() 
 				// (to be used for in place of SIS hash) are the same i.e. the MiMC hash function
-				hasher := v.Params.HashFunc()
+				hasher := v.Params.LeafHashFunc()
 				hasher.Reset()
 				for k := range selectedSubCol {
 					xBytes := selectedSubCol[k].Bytes()

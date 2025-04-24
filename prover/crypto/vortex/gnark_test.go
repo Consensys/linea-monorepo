@@ -311,8 +311,8 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	randomCoin = field.NewElement(1523)
 	entryList = []int{1, 5, 19, 645}
 
-	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, mimc.NewMiMC)
-	params.RemoveSis(mimc.NewMiMC)
+	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC)
+	// params.RemoveSis(mimc.NewMiMC)
 
 	polyLists := make([][]smartvectors.SmartVector, nCommitments)
 	yLists = make([][]field.Element, nCommitments)
@@ -333,8 +333,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	trees := make([]*smt.Tree, nCommitments)
 	committedMatrices := make([]EncodedMatrix, nCommitments)
 	for j := range trees {
-		// We always apply SIS+MiMC hashing on the columns to compute leaves
-		committedMatrices[j], trees[j], _ = params.CommitMerkle(polyLists[j], true)
+		committedMatrices[j], trees[j], _ = params.CommitMerkleWithSIS(polyLists[j])
 		roots[j] = trees[j].Root
 	}
 

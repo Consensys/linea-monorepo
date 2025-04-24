@@ -33,13 +33,12 @@ type Params struct {
 	// polynomial p is appended whose size if not 0 mod MaxNbRows, it is padded
 	// as p' so that len(p')=0 mod MaxNbRows.
 	MaxNbRows int
-	// HashFunc is an optional function that returns a `hash.Hash` it is used
-	// when vortex is used in "Merkle-tree" mode. In this case, the hash
-	// function is mandatory.
-	HashFunc func() hash.Hash
-	// NoSisHashFunc is an optional hash function that is used in place of the
-	// SIS. If it is set,
-	NoSisHashFunc func() hash.Hash
+	// LeafHashFunc returns a `hash.Hash` which is used
+	// to compute the leaves of the Merkle tree.
+	LeafHashFunc func() hash.Hash
+	// MerkleHashFunc returns a `hash.Hash` which is used
+	// to hash the nodes of the Merkle tree.
+	MerkleHashFunc func() hash.Hash
 }
 
 // NewParams creates and returns a [Params]:
@@ -48,13 +47,15 @@ type Params struct {
 //   - nbColumns: the number of columns in the witness matrix
 //   - maxNbRows: the maximum number of rows in the witness matrix
 //   - sisParams: the parameters of the SIS instance to use to hash the columns
-//   - merkleHashFunc: the hash function to use to hash the SIS hashes into a
-//     Merkle-tree.
+//   - leafHashFunc: the hash function to use to hash the SIS hashes into the
+//     leaves of the Merkle-tree.
+//   - merkleHashFunc: the hash function to use to hash the nodes of the Merkle-tree.
 func NewParams(
 	blowUpFactor int,
 	nbColumns int,
 	maxNbRows int,
 	sisParams ringsis.Params,
+	leafHashFunc func() hash.Hash,
 	merkleHashFunc func() hash.Hash,
 ) *Params {
 
@@ -64,6 +65,10 @@ func NewParams(
 
 	if !utils.IsPowerOfTwo(blowUpFactor) {
 		utils.Panic("The number of columns has to be a power of two, got %v", nbColumns)
+	}
+
+	if leafHashFunc == nil {
+		utils.Panic("`nil` leaf hash function provided")
 	}
 
 	if merkleHashFunc == nil {
@@ -79,11 +84,12 @@ func NewParams(
 			fft.NewDomain(nbColumns),
 			fft.NewDomain(blowUpFactor * nbColumns),
 		},
-		NbColumns:    nbColumns,
-		MaxNbRows:    maxNbRows,
-		BlowUpFactor: blowUpFactor,
-		Key:          ringsis.GenerateKey(sisParams, maxNbRows),
-		HashFunc:     merkleHashFunc,
+		NbColumns:      nbColumns,
+		MaxNbRows:      maxNbRows,
+		BlowUpFactor:   blowUpFactor,
+		Key:            ringsis.GenerateKey(sisParams, maxNbRows),
+		LeafHashFunc:   leafHashFunc,
+		MerkleHashFunc: merkleHashFunc,
 	}
 
 	return res
@@ -93,21 +99,4 @@ func NewParams(
 // equivalently this is the size of the codeword-rows.
 func (p *Params) NumEncodedCols() int {
 	return utils.NextPowerOfTwo(p.NbColumns) * p.BlowUpFactor
-}
-
-// RemoveSis set the Vortex parameters to use another hash function than SIS
-func (p *Params) RemoveSis(h func() hash.Hash) *Params {
-
-	if p == nil {
-		utils.Panic("provided a nil, no-SIS hash function")
-	}
-
-	p.NoSisHashFunc = h
-	p.Key = ringsis.Key{} // and remove the key
-	return p
-}
-
-// HasSisReplacement returns true if the parameters are set to not use SIS
-func (p *Params) HasSisReplacement() bool {
-	return p.NoSisHashFunc != nil
 }

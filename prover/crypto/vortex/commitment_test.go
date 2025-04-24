@@ -24,7 +24,7 @@ func TestLinearCombination(t *testing.T) {
 	x := field.NewElement(478)
 	randomCoin := field.NewElement(1523)
 
-	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, mimc.NewMiMC)
+	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC)
 
 	// Polynomials to commit to
 	polys := make([]smartvectors.SmartVector, nPolys)
@@ -50,10 +50,8 @@ func TestLinearCombination(t *testing.T) {
 
 // testCaseParameters is a corpus of valid parameters for Vortex
 var testCaseParameters = []*Params{
-	NewParams(2, 1<<4, 32, ringsis.StdParams, mimc.NewMiMC),
-	NewParams(2, 1<<4, 32, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
-	NewParams(4, 1<<3, 32, ringsis.StdParams, mimc.NewMiMC),
-	NewParams(4, 1<<3, 32, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
+	NewParams(2, 1<<4, 32, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC),
+	NewParams(4, 1<<3, 32, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC),
 }
 
 func TestProver(t *testing.T) {
@@ -74,6 +72,7 @@ func TestProver(t *testing.T) {
 		// the testCase provides to the prover. If nil, then this is equivalent
 		// to `f(n) -> n`.
 		ChangeAssignmentSize func(int) int
+		// Option to commit with SIS+MiMC or MiMC
 		MustPanic            bool
 	}{
 		{
@@ -222,8 +221,7 @@ func TestProver(t *testing.T) {
 				// Commits to it
 				committedMatrices := make([]EncodedMatrix, numCommitments)
 				for i := range trees {
-					// We always apply SIS+MiMC hashing on the columns to compute leaves
-					committedMatrices[i], trees[i], _ = params.CommitMerkle(polyLists[i], true)
+					committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
 					roots[i] = trees[i].Root
 				}
 
@@ -258,8 +256,8 @@ func TestVerifierNegative(t *testing.T) {
 			{3, 1, 15},
 		}
 		params = []*Params{
-			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC),
-			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
+			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC),
+			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC, mimc.NewMiMC),
 		}
 
 		statementMutatorCorpus = []struct {
@@ -471,8 +469,7 @@ func TestVerifierNegative(t *testing.T) {
 			// Commits to it
 			committedMatrices := make([]EncodedMatrix, numCommitments)
 			for i := range trees {
-				// We always apply SIS+MiMC hashing on the columns to compute leaves
-				committedMatrices[i], trees[i], _ = params.CommitMerkle(polyLists[i], true)
+				committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
 				roots[i] = trees[i].Root
 			}
 
