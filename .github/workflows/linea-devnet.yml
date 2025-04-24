@@ -70,9 +70,9 @@ jobs:
         with:
           context: linea-besu-package/linea-besu/.
           platforms: linux/arm64,linux/amd64
-          # provenance: false
-          # cache-from: type=local,src=/tmp/.buildx-cache
-          # cache-to: type=local,dest=/tmp/.buildx-cache          
+          provenance: false
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
           build-args: |
             VERSION=${{ steps.assemble.outputs.dockertag }}
             VCS_REF=${{ github.sha }}
