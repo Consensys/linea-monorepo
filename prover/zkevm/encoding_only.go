@@ -57,7 +57,7 @@ func (z *ZkEvm) AssignAndEncodeInChunks(filepath string, input *Witness, numChun
 
 	// Start compression and measure time
 	compressionStart := time.Now()
-	compressedSerializedChunks, _ := serialization.CompressChunks(serializedChunks)
+	compressedSerializedChunks := serialization.CompressChunks(serializedChunks)
 	compressionDuration := time.Since(compressionStart).Seconds()
 
 	// Calculate total size of compressed data

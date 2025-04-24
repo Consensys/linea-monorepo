@@ -17,8 +17,8 @@ type Serializable interface {
 
 // Size limits matching original configuration.
 const (
-	MaxArrayElements = 134217728 // 1 << 27
-	MaxMapPairs      = 134217728 // 1 << 27
+	MaxArrayElements = 1 << 27 // 134217728
+	MaxMapPairs      = 1 << 27 // 134217728
 )
 
 // typeCache caches CBOR encoding/decoding metadata for types.
@@ -111,4 +111,36 @@ func deserializeAnyWithCborPkg(data []byte, v any) error {
 		return fmt.Errorf("failed to decode into type %T: %w", v, err)
 	}
 	return nil
+}
+
+// deserializeValueWithJSON packages attemps to deserialize `data` into the
+// [reflect.Value] `v`. It will return an error if the value cannot be accessed
+// through the [reflect] package or if it cannot be set.
+func deserializeValueWithCBORPkg(data json.RawMessage, v reflect.Value) error {
+
+	if !v.CanAddr() {
+		return fmt.Errorf("deserializeValueWithJSONPkg cannot be used for type %v", v.Type())
+	}
+
+	if !v.CanInterface() {
+		return fmt.Errorf("could not deserialize value of type `%s` because it's an unexported field", v.Type().String())
+	}
+
+	// just to ensure that the JSON package will get a pointer. Otherwise, it
+	// will not accept to deserialize.
+	if v.Kind() != reflect.Pointer && v.CanAddr() {
+		v = v.Addr()
+	}
+
+	return deserializeAnyWithCborPkg(data, v.Interface())
+}
+
+// serializeValueWithJSONPkg serializes a [reflect.Value] using the [json]
+// package. It will return an error if the provided value is an unexported
+// field.
+func serializeValueWithCBORPkg(v reflect.Value) (json.RawMessage, error) {
+	if !v.CanInterface() {
+		return nil, fmt.Errorf("could not serialize value of type `%s` because it's an unexported field", v.Type().String())
+	}
+	return serializeAnyWithCborPkg(v.Interface())
 }

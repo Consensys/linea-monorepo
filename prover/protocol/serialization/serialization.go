@@ -62,7 +62,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 		reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
 		reflect.Uint32, reflect.Uint64, reflect.String:
 
-		return serializeAnyWithCborPkg(v.Interface())
+		return serializeValueWithCBORPkg(v)
 
 	case reflect.Array, reflect.Slice:
 
@@ -76,8 +76,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			raw[i] = r
 		}
 
-		res, _ := serializeAnyWithCborPkg(raw)
-		return res, nil
+		return serializeAnyWithCborPkg(raw)
 
 	case reflect.Interface:
 
@@ -114,8 +113,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			"value": rawValue,
 		}
 
-		res, _ := serializeAnyWithCborPkg(raw)
-		return res, nil
+		return serializeAnyWithCborPkg(raw)
 
 	case reflect.Map:
 
@@ -134,8 +132,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			raw[keyString] = r
 		}
 
-		res, _ := serializeAnyWithCborPkg(raw)
-		return res, nil
+		return serializeAnyWithCborPkg(raw)
 
 	case reflect.Pointer:
 
@@ -155,8 +152,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 		// is enough.
 		if mode == ReferenceMode && typeOfV == naturalType {
 			colID := v.Interface().(column.Natural).ID
-			res, _ := serializeAnyWithCborPkg(colID)
-			return res, nil
+			return serializeAnyWithCborPkg(colID)
 		}
 
 		// Note that this is the same handling as in the interface-level
@@ -176,8 +172,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 		// to include it in the serialized object. The ID is enough.
 		if mode == ReferenceMode && typeOfV.Implements(queryType) {
 			queryID := v.Interface().(ifaces.Query).Name()
-			res, _ := serializeAnyWithCborPkg(queryID)
-			return res, nil
+			return serializeAnyWithCborPkg(queryID)
 		}
 
 		// If 'v' implements query or column, it may be the case that its
@@ -205,8 +200,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			raw[rawFieldName] = r
 		}
 
-		res, _ := serializeAnyWithCborPkg(raw)
-		return res, nil
+		return serializeAnyWithCborPkg(raw)
 	}
 
 	panic(fmt.Sprintf("unreachable: v=%++v", v))
@@ -241,11 +235,10 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 		reflect.Uint32, reflect.Uint64, reflect.String:
 
 		v := reflect.New(t).Elem()
-		// if err := deserializeValueWithCBORPkg(data, v); err != nil {
-		// 	return reflect.Value{}, err
-		// }
-		// return v, nil
-		return v, deserializeAnyWithCborPkg(data, v.Addr().Interface())
+		if err := deserializeValueWithCBORPkg(data, v); err != nil {
+			return reflect.Value{}, err
+		}
+		return v, nil
 
 	case reflect.Array, reflect.Slice:
 
