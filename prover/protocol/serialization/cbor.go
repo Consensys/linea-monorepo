@@ -9,12 +9,6 @@ import (
 	"github.com/ugorji/go/codec"
 )
 
-// Serializable defines an interface for types with custom serialization.
-type Serializable interface {
-	Serialize() (json.RawMessage, error)
-	Deserialize(data json.RawMessage) error
-}
-
 // Size limits matching original configuration.
 const (
 	MaxArrayElements = 1 << 27 // 134217728
