@@ -92,6 +92,7 @@ data class MessageSentEvent(
       "to=${to.encodeHex()}, " +
       "fee=$fee, " +
       "value=$value, " +
+      "nonce=$messageNumber, " +
       "calldata=${calldata.encodeHex()}, " +
       "messageHash=${messageHash.encodeHex()}" +
       ")"
