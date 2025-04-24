@@ -30,10 +30,10 @@ npx ts-node postman/scripts/manualTestSendMessages.ts \
  * Should not be auto-claimed on L2, and log 'Found message with zero fee'
  *
  * 5. Fee = Underpriced
- * Should not be auto-claimed on L2, and log 'Fee underpriced found in this message' or 'Estimated gas limit is higher than the max allowed gas limit'
+ * Should not be auto-claimed on L2, and log 'Fee underpriced found in this message'
  *
  * 6. Fee = correctly priced
- * Should either be auto-claimed on L2, or not auto-claimed on L2 and log 'Estimated gas limit is higher than the max allowed gas limit'
+ * Should be auto-claimed on L2
  */
 
 import { config } from "dotenv";
@@ -115,13 +115,12 @@ const testScenarios: TestScenario[] = [
   },
   {
     logString:
-      "Case 5: >250_000 gas, underpriced fee => Should NOT be auto-claimed, and should find Postman log 'Fee underpriced found in this message' or 'Estimated gas limit is higher than the max allowed gas limit'",
+      "Case 5: >250_000 gas, underpriced fee => Should NOT be auto-claimed, and should find Postman log 'Fee underpriced found in this message'",
     fee: UNDERPRICED_FEE,
     calldata: SPAM_CALLDATA,
   },
   {
-    logString:
-      "Case 6: >250_000 gas, correct fee => Should either be auto-claimed, or NOT be auto-claimed and find Postman log 'Estimated gas limit is higher than the max allowed gas limit'",
+    logString: "Case 6: >250_000 gas, correct fee => Should be auto-claimed on L2",
     fee: CORRECTLY_PRICED_FEE,
     calldata: SPAM_CALLDATA,
   },
@@ -180,6 +179,7 @@ const getMessageCounter = async (deploymentEnv: DeploymentEnv, signer: Wallet) =
 };
 
 // MAIN SCRIPT
+
 const main = async (args: typeof argv) => {
   const l1Provider = new JsonRpcProvider(args.rpcUrl);
   const l1Signer = new Wallet(args.privKey, l1Provider);
