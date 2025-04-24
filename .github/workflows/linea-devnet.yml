@@ -69,7 +69,7 @@ jobs:
           DOCKER_BUILD_SUMMARY: false
         with:
           context: linea-besu-package/linea-besu/.
-          platforms: linux/amd64
+          platforms: linux/arm64,linux/amd64
           # provenance: false
           # cache-from: type=local,src=/tmp/.buildx-cache
           # cache-to: type=local,dest=/tmp/.buildx-cache          
@@ -107,7 +107,7 @@ jobs:
     secrets: inherit
 
   build-and-push-dockerhub:
-    needs: [ run-e2e-tests ]
+    needs: [ build-and-upload-artifact, run-e2e-tests ]
     if: ${{ always() && needs.run-e2e-tests.outputs.tests_outcome == 'success' }}
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     environment: dockerhub
@@ -117,15 +117,15 @@ jobs:
     outputs:
       workflow_run_id: ${{ steps.workflow_details.outputs.id }}
     steps:
-      - name: checkout
-        uses: actions/checkout@v4
+      # - name: checkout
+      #   uses: actions/checkout@v4
 
-      - name: build the linea devnet artifacts
-        id: assemble
-        uses: ./.github/actions/linea-besu-package/assemble-devnet
+      # - name: build the linea devnet artifacts
+      #   id: assemble
+      #   uses: ./.github/actions/linea-besu-package/assemble-devnet
       
-      - name: set up docker buildx
-        uses: docker/setup-buildx-action@v3   
+      # - name: set up docker buildx
+      #   uses: docker/setup-buildx-action@v3   
 
       - name: Login to Docker Hub
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
@@ -134,49 +134,66 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: set docker build args
+      - name: Download local docker image artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: linea-besu-package*
+      
+      - name: Load Docker images
         run: |
-          echo "Building docker tag: ${{ steps.assemble.outputs.dockertag }}"
-          echo "Building docker image: ${{ steps.assemble.outputs.dockerimage }}"
+          pwd && ls -la && echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE" &&
+          gunzip -c $GITHUB_WORKSPACE/linea-besu-package/linea-besu-package-image.tar.gz | docker load
 
-      - name: build and push the combined manifest
-        uses: docker/build-push-action@v6
-        env:
-          DOCKER_BUILD_SUMMARY: false
-        with:
-          context: linea-besu-package/linea-besu/.
-          platforms: linux/arm64,linux/amd64
-          provenance: false
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache          
-          build-args: |
-            VERSION=${{ steps.assemble.outputs.dockertag }}
-            VCS_REF=${{ github.sha }}
-            BUILD_DATE=${{ steps.assemble.outputs.build_date }}
-          push: true
-          tags: |
-            consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }}
+      - name: Push Docker image
+        run: docker push consensys/linea-besu-package:${{ needs.build-and-upload-artifact.outputs.linea_besu_package_tag }}
 
-      ### release process artifacts
-      ## adds one more tag :latest the above push on a release 
-      - name: build and push the combined manifest
+      - name: Push Docker image as latest
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: docker/build-push-action@v6
-        env:
-          DOCKER_BUILD_SUMMARY: false
-        with:
-          context: linea-besu-package/linea-besu/.
-          platforms: linux/arm64,linux/amd64
-          provenance: false
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache          
-          build-args: |
-            VERSION=${{ steps.assemble.outputs.dockertag }}
-            VCS_REF=${{ github.sha }}
-            BUILD_DATE=${{ steps.assemble.outputs.build_date }}
-          push: true
-          tags: |
-            consensys/linea-besu-package:devnet-latest
+        run: docker push consensys/linea-besu-package:devnet-latest
+
+      # - name: set docker build args
+      #   run: |
+      #     echo "Building docker tag: ${{ steps.assemble.outputs.dockertag }}"
+      #     echo "Building docker image: ${{ steps.assemble.outputs.dockerimage }}"
+
+      # - name: build and push the combined manifest
+      #   uses: docker/build-push-action@v6
+      #   env:
+      #     DOCKER_BUILD_SUMMARY: false
+      #   with:
+      #     context: linea-besu-package/linea-besu/.
+      #     platforms: linux/arm64,linux/amd64
+      #     provenance: false
+      #     cache-from: type=local,src=/tmp/.buildx-cache
+      #     cache-to: type=local,dest=/tmp/.buildx-cache          
+      #     build-args: |
+      #       VERSION=${{ steps.assemble.outputs.dockertag }}
+      #       VCS_REF=${{ github.sha }}
+      #       BUILD_DATE=${{ steps.assemble.outputs.build_date }}
+      #     push: true
+      #     tags: |
+      #       consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }}
+
+      # ### release process artifacts
+      # ## adds one more tag :latest the above push on a release 
+      # - name: build and push the combined manifest
+      #   if: startsWith(github.ref, 'refs/tags/v')
+      #   uses: docker/build-push-action@v6
+      #   env:
+      #     DOCKER_BUILD_SUMMARY: false
+      #   with:
+      #     context: linea-besu-package/linea-besu/.
+      #     platforms: linux/arm64,linux/amd64
+      #     provenance: false
+      #     cache-from: type=local,src=/tmp/.buildx-cache
+      #     cache-to: type=local,dest=/tmp/.buildx-cache          
+      #     build-args: |
+      #       VERSION=${{ steps.assemble.outputs.dockertag }}
+      #       VCS_REF=${{ github.sha }}
+      #       BUILD_DATE=${{ steps.assemble.outputs.build_date }}
+      #     push: true
+      #     tags: |
+      #       consensys/linea-besu-package:devnet-latest
 
       ### update the release notes with docker hashes
       - name: create the release notes and then the release
