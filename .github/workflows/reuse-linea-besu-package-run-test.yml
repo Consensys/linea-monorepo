@@ -17,7 +17,7 @@ jobs:
   list-profiles:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     outputs:
-      profile-files: ${{ steps.list-profiles.files }}
+      profile-files: ${{ steps.list-profiles.outputs.files }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
