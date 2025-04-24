@@ -1,0 +1,39 @@
+name: linea-besu-package-devnet
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+    paths:
+      - 'linea-besu-package/versions/linea-devnet.env'
+
+  workflow_call:
+    outputs:
+      workflow_run_id: 
+        description: "the run id of the workflow"
+        value: ${{ jobs.build-test-push.outputs.workflow_run_id }}
+  workflow_dispatch:
+
+permissions:
+  id-token: write  
+  contents: read
+
+jobs:
+  echo-github-variables:
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    steps:
+      - name: echo github variables
+        run: |
+          echo "github.run_id: ${{ github.run_id }}"
+          echo "github.workflow: ${{ github.workflow }}"
+          echo "github.ref: ${{ github.ref }}"
+
+  build-test-push:
+    concurrency:
+      group: build-test-push-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
+    with:
+      linea_env: devnet
+    secrets: inherit
