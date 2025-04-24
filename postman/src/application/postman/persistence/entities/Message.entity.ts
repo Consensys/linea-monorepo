@@ -63,13 +63,13 @@ export class MessageEntity {
   claimTxGasUsed?: number;
 
   @Column({ nullable: true, type: "bigint" })
+  claimTxGasPrice?: bigint;
+
+  @Column({ nullable: true, type: "bigint" })
   claimTxMaxFeePerGas?: bigint;
 
   @Column({ nullable: true, type: "bigint" })
   claimTxMaxPriorityFeePerGas?: bigint;
-
-  @Column({ nullable: true, type: "bigint" })
-  claimTxGasPrice?: bigint;
 
   @Column({ nullable: true })
   claimTxNonce?: number;

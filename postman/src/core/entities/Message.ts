@@ -17,9 +17,9 @@ export type MessageProps = {
   claimTxCreationDate?: Date;
   claimTxGasLimit?: number;
   claimTxGasUsed?: number;
+  claimTxGasPrice?: bigint;
   claimTxMaxFeePerGas?: bigint;
   claimTxMaxPriorityFeePerGas?: bigint;
-  claimTxGasPrice?: bigint;
   claimTxNonce?: number;
   claimTxHash?: string;
   claimNumberOfRetry: number;
@@ -70,9 +70,9 @@ export class Message {
   public claimTxCreationDate?: Date;
   public claimTxGasLimit?: number;
   public claimTxGasUsed?: number;
+  public claimTxGasPrice?: bigint;
   public claimTxMaxFeePerGas?: bigint;
   public claimTxMaxPriorityFeePerGas?: bigint;
-  public claimTxGasPrice?: bigint;
   public claimTxNonce?: number;
   public claimTxHash?: string;
   public claimNumberOfRetry: number;
@@ -99,9 +99,9 @@ export class Message {
     this.claimTxCreationDate = props.claimTxCreationDate;
     this.claimTxGasLimit = props.claimTxGasLimit;
     this.claimTxGasUsed = props.claimTxGasUsed;
+    this.claimTxGasPrice = props.claimTxGasPrice;
     this.claimTxMaxFeePerGas = props.claimTxMaxFeePerGas;
     this.claimTxMaxPriorityFeePerGas = props.claimTxMaxPriorityFeePerGas;
-    this.claimTxGasPrice = props.claimTxGasPrice;
     this.claimTxNonce = props.claimTxNonce;
     this.claimTxHash = props.claimTxHash;
     this.claimNumberOfRetry = props.claimNumberOfRetry;
@@ -122,10 +122,10 @@ export class Message {
     if (newMessage.claimTxCreationDate) this.claimTxCreationDate = newMessage.claimTxCreationDate;
     if (newMessage.claimTxGasLimit) this.claimTxGasLimit = newMessage.claimTxGasLimit;
     if (newMessage.claimTxGasUsed) this.claimTxGasUsed = newMessage.claimTxGasUsed;
+    if (newMessage.claimTxGasPrice) this.claimTxGasPrice = newMessage.claimTxGasPrice;
     if (newMessage.claimTxMaxFeePerGas) this.claimTxMaxFeePerGas = newMessage.claimTxMaxFeePerGas;
     if (newMessage.claimTxMaxPriorityFeePerGas)
       this.claimTxMaxPriorityFeePerGas = newMessage.claimTxMaxPriorityFeePerGas;
-    if (newMessage.claimTxGasPrice) this.claimTxGasPrice = newMessage.claimTxGasPrice;
     if (newMessage.claimTxNonce) this.claimTxNonce = newMessage.claimTxNonce;
     if (newMessage.claimTxHash) this.claimTxHash = newMessage.claimTxHash;
     if (newMessage.claimNumberOfRetry) this.claimNumberOfRetry = newMessage.claimNumberOfRetry;
