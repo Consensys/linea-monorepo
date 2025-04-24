@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - 'linea-besu-package/versions/linea-mainnet.env'
+      - 'linea-besu-package/linea-besu/profiles/*-mainnet.toml'
 
   workflow_call:
     outputs:
