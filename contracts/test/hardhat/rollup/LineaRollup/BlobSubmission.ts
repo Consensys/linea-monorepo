@@ -658,6 +658,49 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
     });
   });
 
+  it("Should fail to finalize if there are missing forced transactions", async () => {
+    // Submit 2 blobs
+    await sendBlobTransaction(lineaRollup, 0, 2, true);
+    // Submit another 2 blobs
+    await sendBlobTransaction(lineaRollup, 2, 4, true);
+
+    await lineaRollup.setForcedTransactionBlockNumber(BigInt(blobAggregatedProof1To155.finalBlockNumber));
+
+    const expectedErrorTransactionNumber = 1; // first transaction
+
+    const finalizationData = await generateFinalizationData({
+      l1RollingHash: blobAggregatedProof1To155.l1RollingHash,
+      l1RollingHashMessageNumber: BigInt(blobAggregatedProof1To155.l1RollingHashMessageNumber),
+      lastFinalizedTimestamp: BigInt(blobAggregatedProof1To155.parentAggregationLastBlockTimestamp),
+      endBlockNumber: BigInt(blobAggregatedProof1To155.finalBlockNumber),
+      parentStateRootHash: HASH_ZERO, // Manipulate for bypass
+      finalTimestamp: BigInt(blobAggregatedProof1To155.finalTimestamp),
+      l2MerkleRoots: blobAggregatedProof1To155.l2MerkleRoots,
+      l2MerkleTreesDepth: BigInt(blobAggregatedProof1To155.l2MerkleTreesDepth),
+      l2MessagingBlocksOffsets: blobAggregatedProof1To155.l2MessagingBlocksOffsets,
+      aggregatedProof: blobAggregatedProof1To155.aggregatedProof,
+      shnarfData: generateBlobParentShnarfData(4, false),
+      lastFinalizedL1RollingHash: HASH_ZERO,
+      lastFinalizedL1RollingHashMessageNumber: 0n,
+    });
+
+    await lineaRollup.setRollingHash(
+      blobAggregatedProof1To155.l1RollingHashMessageNumber,
+      blobAggregatedProof1To155.l1RollingHash,
+    );
+
+    await lineaRollup.setLastFinalizedBlock(10_000_000);
+
+    expectRevertWithCustomError(
+      lineaRollup,
+      lineaRollup
+        .connect(operator)
+        .finalizeBlocks(blobAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData),
+      "ExpectedForcedTransactionMissing",
+      [expectedErrorTransactionNumber],
+    );
+  });
+
   it("Should successfully submit 2 blobs twice then finalize in two separate finalizations", async () => {
     // Submit 2 blobs
     await sendBlobTransaction(lineaRollup, 0, 2, true);

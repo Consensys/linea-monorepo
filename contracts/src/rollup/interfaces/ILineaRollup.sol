@@ -290,6 +290,11 @@ interface ILineaRollup {
   error OnlyNonFallbackOperator();
 
   /**
+   * @dev Thrown when the rollup is missing a forced transaction in the finalization block range.
+   */
+  error ExpectedForcedTransactionMissing(uint256 nextForcedTransactionNumber);
+
+  /**
    * @notice Adds or updates the verifier contract address for a proof type.
    * @dev VERIFIER_SETTER_ROLE is required to execute.
    * @param _newVerifierAddress The address for the verifier contract.

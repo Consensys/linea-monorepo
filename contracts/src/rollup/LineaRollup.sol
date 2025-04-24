@@ -609,6 +609,20 @@ contract LineaRollup is
       revert FinalBlockStateEqualsZeroHash();
     }
 
+    /// @dev Check the next forced transaction is outside the scope of our finalization for censorship resistance checking.
+    unchecked {
+      uint256 nextFinalizationStartingForcedTxNumber = forcedTransactionL2BlockNumbers[
+        _finalizationData.finalForcedTransactionNumber + 1
+      ];
+
+      if (
+        nextFinalizationStartingForcedTxNumber > 0 &&
+        nextFinalizationStartingForcedTxNumber <= _finalizationData.endBlockNumber
+      ) {
+        revert ExpectedForcedTransactionMissing(_finalizationData.finalForcedTransactionNumber + 1);
+      }
+    }
+
     finalShnarf = _computeShnarf(
       _finalizationData.shnarfData.parentShnarf,
       _finalizationData.shnarfData.snarkHash,

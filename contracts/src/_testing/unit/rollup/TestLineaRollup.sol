@@ -61,4 +61,9 @@ contract TestLineaRollup is LineaRollup {
       _timestamp
     );
   }
+
+  function setForcedTransactionBlockNumber(uint256 _blockNumber) external {
+    uint256 currentForcedTxNumber = nextForcedTransactionNumber++;
+    forcedTransactionL2BlockNumbers[currentForcedTxNumber] = _blockNumber;
+  }
 }
