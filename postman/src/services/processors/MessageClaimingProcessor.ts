@@ -158,7 +158,6 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
    * @param {bigint} gasLimit - The gas limit for the transaction.
    * @param {bigint} maxPriorityFeePerGas - The maximum priority fee per gas for the transaction.
    * @param {bigint} maxFeePerGas - The maximum fee per gas for the transaction.
-   * @param {boolean} isForSponsorship - True if this claim is for sponsorship.
    * @returns {Promise<void>} A promise that resolves when the transaction is executed.
    */
   private async executeClaimTransaction(
