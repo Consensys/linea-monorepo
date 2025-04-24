@@ -61,8 +61,7 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
 		reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
 		reflect.Uint32, reflect.Uint64, reflect.String:
-
-		return serializeValueWithCBORPkg(v)
+		return serializeAnyWithCborPkg(v.Interface())
 
 	case reflect.Array, reflect.Slice:
 
@@ -75,7 +74,6 @@ func SerializeValue(v reflect.Value, mode mode) (json.RawMessage, error) {
 			}
 			raw[i] = r
 		}
-
 		return serializeAnyWithCborPkg(raw)
 
 	case reflect.Interface:
@@ -235,10 +233,7 @@ func DeserializeValue(data json.RawMessage, mode mode, t reflect.Type, comp *wiz
 		reflect.Uint32, reflect.Uint64, reflect.String:
 
 		v := reflect.New(t).Elem()
-		if err := deserializeValueWithCBORPkg(data, v); err != nil {
-			return reflect.Value{}, err
-		}
-		return v, nil
+		return v, deserializeAnyWithCborPkg(data, v.Addr().Interface())
 
 	case reflect.Array, reflect.Slice:
 

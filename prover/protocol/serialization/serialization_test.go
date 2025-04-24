@@ -58,8 +58,6 @@ func TestSerializeValue(t *testing.T) {
 		},
 		{
 			V: func() any {
-				// It's important to not provide an untyped string under
-				// the interface because the type cannot be serialized.
 				var s any = string("someStringUnderIface")
 				return &s
 			}(),
@@ -85,11 +83,9 @@ func TestSerializeValue(t *testing.T) {
 			Mode        mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
-
 			comp := newEmptyCompiledIOP()
 			nat := comp.InsertColumn(0, "myNaturalColumn", 16, column.Committed)
 			var v any = &nat
-
 			return struct {
 				V           any
 				Expected    string
@@ -108,12 +104,10 @@ func TestSerializeValue(t *testing.T) {
 			Mode        mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
-
 			comp := newEmptyCompiledIOP()
 			nat := comp.InsertColumn(0, "myNaturalColumn", 16, column.Committed)
 			nat = column.Shift(nat, 2)
 			var v any = &nat
-
 			return struct {
 				V           any
 				Expected    string
@@ -132,9 +126,7 @@ func TestSerializeValue(t *testing.T) {
 			Mode        mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
-
 			comp := newEmptyCompiledIOP()
-
 			col := verifiercol.NewConcatTinyColumns(
 				comp,
 				8,
@@ -143,7 +135,6 @@ func TestSerializeValue(t *testing.T) {
 				comp.InsertColumn(0, "b", 1, column.Proof),
 				comp.InsertColumn(0, "c", 1, column.Proof),
 			)
-
 			return struct {
 				V           any
 				Expected    string
@@ -151,7 +142,7 @@ func TestSerializeValue(t *testing.T) {
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &col,
-				Expected:    "\xa2dtypex,/protocol/column/verifiercol#FromAccessors#0evalueX\xfe\xa4dsizeA\beroundA\x00gpaddingI\x84A\x00A\x00A\x00A\x00iaccessorsXЃXC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBaacposA\x00XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBabcposA\x00XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBaccposA\x00",
+				Expected:    "\xa2dtypex,/protocol/column/verifiercol#FromAccessors#0evalueX\xfe\xa4iaccessorsXЃXC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBaacposA\x00XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBabcposA\x00XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBaccposA\x00gpaddingI\x84A\x00A\x00A\x00A\x00eroundA\x00dsizeA\b",
 				Mode:        ReferenceMode,
 				CompiledIOP: comp,
 			}
@@ -162,9 +153,7 @@ func TestSerializeValue(t *testing.T) {
 			Mode        mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
-
 			comp := newEmptyCompiledIOP()
-
 			var (
 				a                   = comp.InsertColumn(0, "a", 16, column.Committed)
 				aNext               = column.Shift(a, 2)
@@ -172,7 +161,6 @@ func TestSerializeValue(t *testing.T) {
 				concat              = verifiercol.NewConcatTinyColumns(comp, 4, field.Element{}, tiny)
 				univ   ifaces.Query = comp.InsertUnivariate(0, "univ", []ifaces.Column{a, aNext, concat})
 			)
-
 			return struct {
 				V           any
 				Expected    string
@@ -180,7 +168,7 @@ func TestSerializeValue(t *testing.T) {
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &univ,
-				Expected:    "\xa2dtypex /protocol/query#UnivariateEval#0evalueY\x01a\xa2dpolsY\x01J\x83X+\xa2dtypex\x1a/protocol/column#Natural#0evalueBaaXh\xa2dtypex\x1a/protocol/column#Shifted#0evalueX>\xa2foffsetA\x02fparentX+\xa2dtypex\x1a/protocol/column#Natural#0evalueBaaX\xb0\xa2dtypex,/protocol/column/verifiercol#FromAccessors#0evalueXt\xa4dsizeA\x04eroundA\x00gpaddingI\x84A\x00A\x00A\x00A\x00iaccessorsXF\x81XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBabcposA\x00gqueryIdEduniv",
+				Expected:    "\xa2dtypex /protocol/query#UnivariateEval#0evalueY\x01a\xa2dpolsY\x01J\x83X+\xa2dtypex\x1a/protocol/column#Natural#0evalueBaaXh\xa2dtypex\x1a/protocol/column#Shifted#0evalueX>\xa2foffsetA\x02fparentX+\xa2dtypex\x1a/protocol/column#Natural#0evalueBaaX\xb0\xa2dtypex,/protocol/column/verifiercol#FromAccessors#0evalueXt\xa4iaccessorsXF\x81XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBabcposA\x00gpaddingI\x84A\x00A\x00A\x00A\x00eroundA\x00dsizeA\x04gqueryIdEduniv",
 				Mode:        DeclarationMode,
 				CompiledIOP: comp,
 			}
@@ -191,9 +179,7 @@ func TestSerializeValue(t *testing.T) {
 			Mode        mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
-
 			comp := newEmptyCompiledIOP()
-
 			var (
 				a      = comp.InsertColumn(0, "a", 16, column.Committed)
 				aNext  = column.Shift(a, 2)
@@ -202,7 +188,6 @@ func TestSerializeValue(t *testing.T) {
 				univ   = comp.InsertUnivariate(0, "univ", []ifaces.Column{a, aNext, tiny, concat})
 				fromYs = verifiercol.NewFromYs(comp, univ, []ifaces.ColID{a.GetColID(), aNext.GetColID(), tiny.GetColID(), concat.GetColID()})
 			)
-
 			return struct {
 				V           any
 				Expected    string
@@ -210,14 +195,14 @@ func TestSerializeValue(t *testing.T) {
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &fromYs,
-				Expected:    "\xa2dtypex%/protocol/column/verifiercol#FromYs#0evalueXx\xa3equeryEduniveroundA\x00frangesXZ\x84BaaMlSHIFT_2_16_aBabXCxAFROM_ACCESSORS_FROM_COLUMN_POSITION_ACCESSOR_b_0_PADDING=0_SIZE=4",
+				Expected:    "\xa2dtypex%/protocol/column/verifiercol#FromYs#0evalueXx\xa3equeryEdunivfrangesXZ\x84BaaMlSHIFT_2_16_aBabXCxAFROM_ACCESSORS_FROM_COLUMN_POSITION_ACCESSOR_b_0_PADDING=0_SIZE=4eroundA\x00",
 				Mode:        ReferenceMode,
 				CompiledIOP: comp,
 			}
 		}(),
 		{
 			V:           coin.Info{Type: coin.IntegerVec, Size: 16, UpperBound: 16, Name: "foo", Round: 1},
-			Expected:    "\xa5dnameDcfoodsizeA\x10dtypeA\x01eroundA\x01jupperBoundA\x10",
+			Expected:    "\xa5dnameDcfooeroundA\x01dsizeA\x10dtypeA\x01jupperBoundA\x10",
 			Mode:        ReferenceMode,
 			CompiledIOP: nil,
 		},
@@ -225,7 +210,6 @@ func TestSerializeValue(t *testing.T) {
 
 	for i := range testCases {
 		t.Run(fmt.Sprintf("test-case-%v", i), func(t *testing.T) {
-
 			v := reflect.ValueOf(testCases[i].V)
 			msg, err := SerializeValue(v, testCases[i].Mode)
 			require.NoError(t, err)
@@ -236,5 +220,4 @@ func TestSerializeValue(t *testing.T) {
 			require.Equal(t, testCases[i].V, deserialized.Interface(), "wrong deserialization")
 		})
 	}
-
 }
