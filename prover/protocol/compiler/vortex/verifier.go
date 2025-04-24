@@ -69,14 +69,14 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	proof.MerkleProofs = ctx.unpackMerkleProofs(packedMProofs, entryList)
 
 	return vortex.VerifyOpening(&vortex.VerifierInputs{
-		Params:       *ctx.VortexParams,
-		MerkleRoots:  roots,
-		X:            x,
-		Ys:           ctx.getYs(vr),
-		OpeningProof: *proof,
-		RandomCoin:   randomCoin,
-		EntryList:    entryList,
-		IsSISApplied: isSISApplied,
+		Params:              *ctx.VortexParams,
+		MerkleRoots:         roots,
+		X:                   x,
+		Ys:                  ctx.getYs(vr),
+		OpeningProof:        *proof,
+		RandomCoin:          randomCoin,
+		EntryList:           entryList,
+		IsSISReplacedByMiMC: isSISApplied,
 	})
 }
 

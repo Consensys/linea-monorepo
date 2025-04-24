@@ -45,9 +45,10 @@ type VerifierInputs struct {
 	RandomCoin field.Element
 	// EntryList is the random coin representing the columns to open.
 	EntryList []int
-	// Flag indicating if the SIS hash is applied for the particular round
-	// It starts from the precomputed commitment
-	IsSISApplied []bool
+	// Flag indicating if the SIS hash is replaced for the particular round
+	// the default behavior is to use the SIS hash function along with the
+	// MiMC hash function
+	IsSISReplacedByMiMC []bool
 }
 
 // VerifyOpening verifies a Vortex opening proof, see [VerifierInputs] for
@@ -188,8 +189,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 			)
 			// We verify the SIS hash of the current sub-column
 			// only if the SIS hash is applied for the current round.
-			// It starts from the precomputed commitment
-			if v.IsSISApplied[i] {
+			if !v.IsSISReplacedByMiMC[i] {
 				var (
 					// SIS hash of the current sub-column
 					sisHash = v.Params.Key.Hash(selectedSubCol)
@@ -206,7 +206,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 				copy(leaf[:], hasher.Sum(nil))
 
 			} else {
-				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc() 
+				// We assume that HashFunc (to be used for Merkle Tree) and NoSisHashFunc()
 				// (to be used for in place of SIS hash) are the same i.e. the MiMC hash function
 				hasher := v.Params.LeafHashFunc()
 				hasher.Reset()

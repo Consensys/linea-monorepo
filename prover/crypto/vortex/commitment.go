@@ -77,7 +77,7 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 // [field.Element.SetBytesCanonical]
 // We apply MiMC hashing on the columns to compute leaves
 // Should be used when the number of rows to commit is less than the [ApplySISThreshold]
-func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector, isSISAppliedForRound bool) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
+func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
 
 	if len(ps) > p.MaxNbRows {
 		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
@@ -86,16 +86,15 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector, isSISAppl
 	timeEncoding := profiling.TimeIt(func() {
 		encodedMatrix = p.encodeRows(ps)
 	})
-		// colHashes stores the MiMC hashes
-		// of the columns.
-		colHashes = p.hashColumnsWithoutSIS(encodedMatrix)
+	// colHashes stores the MiMC hashes
+	// of the columns.
+	colHashes = p.hashColumnsWithoutSIS(encodedMatrix)
 
 	timeTree := profiling.TimeIt(func() {
-		var leaves []types.Bytes32
-			leaves = make([]types.Bytes32, len(colHashes))
-			for i := range leaves {
-				leaves[i] = colHashes[i].Bytes()
-			}
+		leaves := make([]types.Bytes32, len(colHashes))
+		for i := range leaves {
+			leaves[i] = colHashes[i].Bytes()
+		}
 
 		tree = smt.BuildComplete(
 			leaves,
