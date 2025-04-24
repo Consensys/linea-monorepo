@@ -1,101 +1,75 @@
 package serialization
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	"reflect"
 	"sync"
 
-	"github.com/ugorji/go/codec"
-)
-
-// Size limits matching original configuration.
-const (
-	MaxArrayElements = 1 << 27 // 134217728
-	MaxMapPairs      = 1 << 27 // 134217728
-	defaultBufferCap = 256     // Preallocated buffer size
+	"github.com/fxamacker/cbor/v2"
 )
 
 var (
-	// Shared pool for encoders/decoders
-	encoderPool = sync.Pool{
+	cborEncMode cbor.EncMode
+	cborDecMode cbor.DecMode
+	initOnce    sync.Once
+
+	bufferPool = sync.Pool{
 		New: func() interface{} {
-			return codec.NewEncoderBytes(nil, newOptimizedHandle())
+			return new(bytes.Buffer)
 		},
 	}
-
-	decoderPool = sync.Pool{
+	readerPool = sync.Pool{
 		New: func() interface{} {
-			return codec.NewDecoderBytes(nil, newOptimizedHandle())
+			return new(bytes.Reader)
 		},
 	}
 )
 
-// newOptimizedHandle creates a CBOR handle with performance-focused settings
-func newOptimizedHandle() *codec.CborHandle {
-	// Configure CborHandle with available options
-	handle := &codec.CborHandle{}
-
-	// Ensure deterministic encoding
-	handle.Canonical = true
-
-	// Disable Convert raw bytes to strings
-	handle.RawToString = false
-	handle.MapType = reflect.TypeOf(map[string]interface{}(nil))
-
-	handle.SkipUnexpectedTags = true
-	return handle
+func initCBOREncDecModes() {
+	var err error
+	cborEncMode, err = cbor.CoreDetEncOptions().EncMode()
+	if err != nil {
+		panic(fmt.Errorf("failed to create CBOR EncMode: %w", err))
+	}
+	cborDecMode, err = cbor.DecOptions{
+		MaxArrayElements: 134217728,
+		MaxMapPairs:      134217728,
+	}.DecMode()
+	if err != nil {
+		panic(fmt.Errorf("failed to create CBOR DecMode: %w", err))
+	}
 }
 
-// validateSize optimized with type switches
-func validateSize(v any) error {
-	switch tv := v.(type) {
-	case interface{ Len() int }:
-		if tv.Len() > MaxArrayElements {
-			return fmt.Errorf("size %d exceeds limit %d", tv.Len(), MaxArrayElements)
-		}
-	case map[string]interface{}:
-		if len(tv) > MaxMapPairs {
-			return fmt.Errorf("map size %d exceeds limit %d", len(tv), MaxMapPairs)
-		}
+// serializeAnyWithCborPkg serializes an interface{} object into CBOR using a pooled buffer.
+func serializeAnyWithCborPkg(x any) (json.RawMessage, error) {
+	initOnce.Do(initCBOREncDecModes)
+
+	buf := bufferPool.Get().(*bytes.Buffer)
+	buf.Reset()
+	defer bufferPool.Put(buf)
+
+	enc := cborEncMode.NewEncoder(buf)
+	if err := enc.Encode(x); err != nil {
+		return nil, err
+	}
+	// Copy the bytes out before returning buffer to pool
+	out := make([]byte, buf.Len())
+	copy(out, buf.Bytes())
+	return out, nil
+}
+
+// deserializeAnyWithCborPkg deserializes CBOR data into an object using a pooled reader.
+func deserializeAnyWithCborPkg(data json.RawMessage, x any) error {
+	initOnce.Do(initCBOREncDecModes)
+
+	r := readerPool.Get().(*bytes.Reader)
+	r.Reset(data)
+	defer readerPool.Put(r)
+
+	dec := cborDecMode.NewDecoder(r)
+	if err := dec.Decode(x); err != nil {
+		return fmt.Errorf("cbor.Unmarshal failed: %w", err)
 	}
 	return nil
-}
-
-// serializeAnyWithCborPkg with pooling and buffer preallocation
-func serializeAnyWithCborPkg(v any) (json.RawMessage, error) {
-	if s, ok := v.(Serializable); ok {
-		return s.Serialize()
-	}
-
-	if err := validateSize(v); err != nil {
-		return nil, fmt.Errorf("size validation failed for %T: %w", v, err)
-	}
-
-	// Get encoder from pool
-	enc := encoderPool.Get().(*codec.Encoder)
-	defer encoderPool.Put(enc)
-
-	// Preallocate buffer
-	buf := make([]byte, 0, defaultBufferCap)
-	enc.ResetBytes(&buf)
-
-	if err := enc.Encode(v); err != nil {
-		return nil, fmt.Errorf("encode failed for %T: %w", v, err)
-	}
-	return buf, nil
-}
-
-// deserializeAnyWithCborPkg with pooled decoder
-func deserializeAnyWithCborPkg(data []byte, v any) error {
-	if s, ok := v.(Serializable); ok {
-		return s.Deserialize(data)
-	}
-
-	// Get decoder from pool
-	dec := decoderPool.Get().(*codec.Decoder)
-	defer decoderPool.Put(dec)
-
-	dec.ResetBytes(data)
-	return dec.Decode(v)
 }

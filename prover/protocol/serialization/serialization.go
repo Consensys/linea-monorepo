@@ -1,5 +1,20 @@
 package serialization
 
+// Package serialization provides utilities for serializing and deserializing
+// the Wizard protocol's state, including CompiledIOP, column assignments, and
+// symbolic expressions, using CBOR encoding for compactness and efficiency.
+// It supports the Linea ZK rollup's prover by enabling state persistence and
+// test file generation.
+//
+// Files:
+// - cbor.go: Low-level CBOR encoding/decoding. Implements Serializable interface
+// - column_assignment.go: Serializes column assignments with compression.
+// - column_declaration.go: Serializes column metadata.
+// - compiled_iop.go: Serializes CompiledIOP structure.
+// - serialization.go: Core recursive serialization logic with modes.
+// - implementation_registry.go: Type registry for interface deserialization.
+// - pure_expression.go: Serializes symbolic expressions for testing.
+
 import (
 	"bytes"
 	"encoding/json"
@@ -95,11 +110,6 @@ func SerializeValue(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		return json.RawMessage(NilString), nil
 	}
 
-	// Check for Serializable interface first to bypass reflection.
-	if s, ok := v.Interface().(Serializable); ok {
-		return s.Serialize()
-	}
-
 	switch v.Kind() {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
 		reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
@@ -127,15 +137,6 @@ func SerializeValue(v reflect.Value, mode Mode) (json.RawMessage, error) {
 func DeserializeValue(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
 	if bytes.Equal(data, []byte(NilString)) {
 		return reflect.New(t), nil
-	}
-
-	// Check for Serializable interface first to bypass reflection.
-	if t.Implements(reflect.TypeOf((*Serializable)(nil)).Elem()) {
-		v := reflect.New(t).Interface().(Serializable)
-		if err := v.Deserialize(data); err != nil {
-			return reflect.Value{}, fmt.Errorf("failed to deserialize type %v via Serializable: %w", t, err)
-		}
-		return reflect.ValueOf(v).Elem(), nil
 	}
 
 	switch t.Kind() {
