@@ -52,9 +52,9 @@ class Web3jEthApiClient(
     return web3jClient
       .ethGetLogs(ethFilter)
       .requestAsync { logsResponse ->
-        if (logsResponse != null) {
+        if (logsResponse.logs != null) {
           @Suppress("UNCHECKED_CAST")
-          (logsResponse as List<org.web3j.protocol.core.methods.response.EthLog.LogResult<Log>>)
+          (logsResponse.logs as List<org.web3j.protocol.core.methods.response.EthLog.LogResult<Log>>)
             .map { logResult -> logResult.get().toDomain() }
         } else {
           emptyList()
