@@ -70,9 +70,9 @@ jobs:
         with:
           context: linea-besu-package/linea-besu/.
           platforms: linux/amd64
-          # provenance: false
-          # cache-from: type=local,src=/tmp/.buildx-cache
-          # cache-to: type=local,dest=/tmp/.buildx-cache          
+          provenance: false
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache          
           build-args: |
             VERSION=${{ steps.assemble.outputs.dockertag }}
             VCS_REF=${{ github.sha }}
@@ -123,6 +123,9 @@ jobs:
       - name: build the linea devnet artifacts
         id: assemble
         uses: ./.github/actions/linea-besu-package/assemble-devnet
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
       
       - name: set up docker buildx
         uses: docker/setup-buildx-action@v3   
