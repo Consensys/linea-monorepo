@@ -32,8 +32,12 @@ func getCborHandle(t reflect.Type) *codec.CborHandle {
 
 	// Configure CborHandle with available options
 	handle := &codec.CborHandle{}
-	handle.Canonical = true   // Ensure deterministic encoding
-	handle.RawToString = true // Convert raw bytes to strings
+
+	// Ensure deterministic encoding
+	handle.Canonical = true
+
+	// Disable Convert raw bytes to strings
+	handle.RawToString = false
 	handle.MapType = reflect.TypeOf(map[string]interface{}(nil))
 
 	typeCacheMu.Lock()
@@ -87,20 +91,8 @@ func deserializeAnyWithCborPkg(data []byte, v any) error {
 		return s.Deserialize(data)
 	}
 
-	// Decode into a temporary interface{} to validate size
-	var temp interface{}
-	dec := codec.NewDecoderBytes(data, getCborHandle(reflect.TypeOf(v)))
-	if err := dec.Decode(&temp); err != nil {
-		return fmt.Errorf("failed to decode into temporary type: %w", err)
-	}
-
-	// Validate size of decoded data
-	if err := validateSize(temp); err != nil {
-		return err
-	}
-
 	// Decode into target value
-	dec = codec.NewDecoderBytes(data, getCborHandle(reflect.TypeOf(v)))
+	dec := codec.NewDecoderBytes(data, getCborHandle(reflect.TypeOf(v)))
 	if err := dec.Decode(v); err != nil {
 		return fmt.Errorf("failed to decode into type %T: %w", v, err)
 	}
