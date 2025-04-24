@@ -13,23 +13,26 @@ import (
 const (
 	MaxArrayElements = 1 << 27 // 134217728
 	MaxMapPairs      = 1 << 27 // 134217728
+	defaultBufferCap = 256     // Preallocated buffer size
 )
 
-// typeCache caches CBOR encoding/decoding metadata for types.
 var (
-	typeCacheMu sync.RWMutex
-	typeCache   = make(map[reflect.Type]*codec.CborHandle)
+	// Shared pool for encoders/decoders
+	encoderPool = sync.Pool{
+		New: func() interface{} {
+			return codec.NewEncoderBytes(nil, newOptimizedHandle())
+		},
+	}
+
+	decoderPool = sync.Pool{
+		New: func() interface{} {
+			return codec.NewDecoderBytes(nil, newOptimizedHandle())
+		},
+	}
 )
 
-// getCborHandle returns a cached CBOR handle for a type.
-func getCborHandle(t reflect.Type) *codec.CborHandle {
-	typeCacheMu.RLock()
-	if handle, ok := typeCache[t]; ok {
-		typeCacheMu.RUnlock()
-		return handle
-	}
-	typeCacheMu.RUnlock()
-
+// newOptimizedHandle creates a CBOR handle with performance-focused settings
+func newOptimizedHandle() *codec.CborHandle {
 	// Configure CborHandle with available options
 	handle := &codec.CborHandle{}
 
@@ -40,61 +43,59 @@ func getCborHandle(t reflect.Type) *codec.CborHandle {
 	handle.RawToString = false
 	handle.MapType = reflect.TypeOf(map[string]interface{}(nil))
 
-	typeCacheMu.Lock()
-	typeCache[t] = handle
-	typeCacheMu.Unlock()
+	handle.SkipUnexpectedTags = true
 	return handle
 }
 
-// validateSize checks if arrays or maps exceed size limits.
+// validateSize optimized with type switches
 func validateSize(v any) error {
-	// Handle slices/arrays
-	if reflect.TypeOf(v).Kind() == reflect.Slice || reflect.TypeOf(v).Kind() == reflect.Array {
-		if reflect.ValueOf(v).Len() > MaxArrayElements {
-			return fmt.Errorf("array size %d exceeds limit %d", reflect.ValueOf(v).Len(), MaxArrayElements)
+	switch tv := v.(type) {
+	case interface{ Len() int }:
+		if tv.Len() > MaxArrayElements {
+			return fmt.Errorf("size %d exceeds limit %d", tv.Len(), MaxArrayElements)
+		}
+	case map[string]interface{}:
+		if len(tv) > MaxMapPairs {
+			return fmt.Errorf("map size %d exceeds limit %d", len(tv), MaxMapPairs)
 		}
 	}
-
-	// Handle maps
-	if reflect.TypeOf(v).Kind() == reflect.Map {
-		if reflect.ValueOf(v).Len() > MaxMapPairs {
-			return fmt.Errorf("map size %d exceeds limit %d", reflect.ValueOf(v).Len(), MaxMapPairs)
-		}
-	}
-
-	// Optionally recurse into nested structures (simplified for performance)
 	return nil
 }
 
-// serializeAnyWithCborPkg serializes a value to CBOR, preferring Serializable interface.
+// serializeAnyWithCborPkg with pooling and buffer preallocation
 func serializeAnyWithCborPkg(v any) (json.RawMessage, error) {
 	if s, ok := v.(Serializable); ok {
 		return s.Serialize()
 	}
 
-	// Validate size before encoding
 	if err := validateSize(v); err != nil {
-		return nil, fmt.Errorf("size validation failed for type %T: %w", v, err)
+		return nil, fmt.Errorf("size validation failed for %T: %w", v, err)
 	}
 
-	var b []byte
-	enc := codec.NewEncoderBytes(&b, getCborHandle(reflect.TypeOf(v)))
+	// Get encoder from pool
+	enc := encoderPool.Get().(*codec.Encoder)
+	defer encoderPool.Put(enc)
+
+	// Preallocate buffer
+	buf := make([]byte, 0, defaultBufferCap)
+	enc.ResetBytes(&buf)
+
 	if err := enc.Encode(v); err != nil {
-		return nil, fmt.Errorf("failed to encode value of type %T: %w", v, err)
+		return nil, fmt.Errorf("encode failed for %T: %w", v, err)
 	}
-	return b, nil
+	return buf, nil
 }
 
-// deserializeAnyWithCborPkg deserializes CBOR into a value, preferring Serializable interface.
+// deserializeAnyWithCborPkg with pooled decoder
 func deserializeAnyWithCborPkg(data []byte, v any) error {
 	if s, ok := v.(Serializable); ok {
 		return s.Deserialize(data)
 	}
 
-	// Decode into target value
-	dec := codec.NewDecoderBytes(data, getCborHandle(reflect.TypeOf(v)))
-	if err := dec.Decode(v); err != nil {
-		return fmt.Errorf("failed to decode into type %T: %w", v, err)
-	}
-	return nil
+	// Get decoder from pool
+	dec := decoderPool.Get().(*codec.Decoder)
+	defer decoderPool.Put(dec)
+
+	dec.ResetBytes(data)
+	return dec.Decode(v)
 }

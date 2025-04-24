@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 // rawCompiledIOP represents the serialized form of CompiledIOP.
@@ -21,37 +24,82 @@ type rawCompiledIOP struct {
 	DummyCompiled   bool                `json:"dummyCompiled"`
 }
 
+func newEmptyCompiledIOP() *wizard.CompiledIOP {
+	return &wizard.CompiledIOP{
+		Columns:         column.NewStore(),
+		QueriesParams:   wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
+		QueriesNoParams: wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
+		Coins:           wizard.NewRegister[coin.Name, coin.Info](),
+		Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
+	}
+}
+
 // SerializeCompiledIOP marshals a [wizard.CompiledIOP] object into JSON.
 func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
-	raw := &rawCompiledIOP{}
 	numRounds := comp.NumRounds()
-
-	for round := 0; round < numRounds; round++ {
-		rawCols, err := serializeColumns(comp, round)
-		if err != nil {
-			return nil, err
-		}
-		rawQParams, err := serializeQueries(&comp.QueriesParams, round)
-		if err != nil {
-			return nil, err
-		}
-		rawQNoParams, err := serializeQueries(&comp.QueriesNoParams, round)
-		if err != nil {
-			return nil, err
-		}
-		rawCoins, err := serializeCoins(comp, round)
-		if err != nil {
-			return nil, err
-		}
-
-		raw.Columns = append(raw.Columns, rawCols)
-		raw.QueriesParams = append(raw.QueriesParams, rawQParams)
-		raw.QueriesNoParams = append(raw.QueriesNoParams, rawQNoParams)
-		raw.Coins = append(raw.Coins, rawCoins)
+	if numRounds == 0 {
+		return serializeAnyWithCborPkg(&rawCompiledIOP{})
 	}
 
-	res, _ := serializeAnyWithCborPkg(raw)
-	return res, nil
+	// Initialize rawCompiledIOP with pre-allocated slices
+	raw := &rawCompiledIOP{
+		Columns:         make([][]json.RawMessage, numRounds),
+		QueriesParams:   make([][]json.RawMessage, numRounds),
+		QueriesNoParams: make([][]json.RawMessage, numRounds),
+		Coins:           make([][]json.RawMessage, numRounds),
+	}
+
+	// Mutex to protect slice assignments
+	var mu sync.Mutex
+
+	// Work function for ExecuteChunky
+	work := func(start, stop int) {
+		for round := start; round < stop; round++ {
+			var localErr error
+
+			// Serialize columns
+			cols, err := serializeColumns(comp, round)
+			if err != nil {
+				localErr = fmt.Errorf("round %d: serialize columns: %w", round, err)
+				utils.Panic(localErr.Error())
+			}
+
+			// Serialize queries with params
+			qParams, err := serializeQueries(&comp.QueriesParams, round)
+			if err != nil {
+				localErr = fmt.Errorf("round %d: serialize queries params: %w", round, err)
+				utils.Panic(localErr.Error())
+			}
+
+			// Serialize queries without params
+			qNoParams, err := serializeQueries(&comp.QueriesNoParams, round)
+			if err != nil {
+				localErr = fmt.Errorf("round %d: serialize queries no params: %w", round, err)
+				utils.Panic(localErr.Error())
+			}
+
+			// Serialize coins
+			coins, err := serializeCoins(comp, round)
+			if err != nil {
+				localErr = fmt.Errorf("round %d: serialize coins: %w", round, err)
+				utils.Panic(localErr.Error())
+			}
+
+			// Safely assign results to raw
+			mu.Lock()
+			raw.Columns[round] = cols
+			raw.QueriesParams[round] = qParams
+			raw.QueriesNoParams[round] = qNoParams
+			raw.Coins[round] = coins
+			mu.Unlock()
+		}
+	}
+
+	// Run parallel execution
+	parallel.ExecuteChunky(numRounds, work)
+
+	// Serialize the final rawCompiledIOP
+	return serializeAnyWithCborPkg(raw)
 }
 
 func serializeColumns(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, error) {
@@ -106,42 +154,89 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	comp := newEmptyCompiledIOP()
 	raw := &rawCompiledIOP{}
 	if err := deserializeAnyWithCborPkg(data, raw); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CBOR unmarshal failed: %w", err)
 	}
 
 	numRounds := len(raw.Columns)
-
-	if err := deserializeColumnsAndCoins(raw, comp, numRounds); err != nil {
-		return nil, err
+	if numRounds == 0 {
+		return comp, nil
 	}
 
-	if err := deserializeQueries(raw, comp, numRounds); err != nil {
-		return nil, err
+	// Mutex to protect updates to comp
+	var mu sync.Mutex
+
+	if err := deserializeColumnsAndCoinsParallel(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("columns and coins: %w", err)
+	}
+	if err := deserializeQueriesParallel(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("queries: %w", err)
 	}
 
 	return comp, nil
 }
 
-func deserializeColumnsAndCoins(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int) error {
-	for round := 0; round < numRounds; round++ {
-		if err := deserializeCoins(raw.Coins[round], round, comp); err != nil {
-			return err
+func deserializeColumnsAndCoinsParallel(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		var wg sync.WaitGroup
+		for round := start; round < stop; round++ {
+			if round >= len(raw.Columns) || round >= len(raw.Coins) {
+				utils.Panic("invalid round number %d, exceeds available rounds", round)
+			}
+
+			wg.Add(2)
+
+			// Run deserializeCoins in parallel
+			go func(round int) {
+				defer wg.Done()
+				if err := deserializeCoins(raw.Coins[round], round, comp, mu); err != nil {
+					utils.Panic("round %d coins: %v", round, err)
+				}
+			}(round)
+
+			// Run deserializeColumns in parallel
+			go func(round int) {
+				defer wg.Done()
+				if err := deserializeColumns(raw.Columns[round], comp); err != nil {
+					utils.Panic("round %d columns: %v", round, err)
+				}
+			}(round)
 		}
-		if err := deserializeColumns(raw.Columns[round], comp); err != nil {
-			return err
-		}
+		wg.Wait()
 	}
+
+	parallel.ExecuteChunky(numRounds, work)
 	return nil
 }
 
-func deserializeCoins(rawCoins []json.RawMessage, round int, comp *wizard.CompiledIOP) error {
+func deserializeQueriesParallel(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		for round := start; round < stop; round++ {
+			if round >= len(raw.QueriesNoParams) || round >= len(raw.QueriesParams) {
+				utils.Panic("invalid round number %d, exceeds available rounds", round)
+			}
+			if err := deserializeQuery(raw.QueriesNoParams[round], round, &comp.QueriesNoParams, comp, mu); err != nil {
+				utils.Panic("round %d queriesNoParams: %v", round, err)
+			}
+			if err := deserializeQuery(raw.QueriesParams[round], round, &comp.QueriesParams, comp, mu); err != nil {
+				utils.Panic("round %d queriesParams: %v", round, err)
+			}
+		}
+	}
+
+	parallel.ExecuteChunky(numRounds, work)
+	return nil
+}
+
+func deserializeCoins(rawCoins []json.RawMessage, round int, comp *wizard.CompiledIOP, mu *sync.Mutex) error {
 	for _, rawCoin := range rawCoins {
 		v, err := DeserializeValue(rawCoin, DeclarationMode, reflect.TypeOf(coin.Info{}), comp)
 		if err != nil {
 			return err
 		}
 		coin := v.Interface().(coin.Info)
+		mu.Lock()
 		comp.Coins.AddToRound(round, coin.Name, coin)
+		mu.Unlock()
 	}
 	return nil
 }
@@ -155,36 +250,16 @@ func deserializeColumns(rawCols []json.RawMessage, comp *wizard.CompiledIOP) err
 	return nil
 }
 
-func deserializeQueries(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int) error {
-	for round := 0; round < numRounds; round++ {
-		if err := deserializeQuery(raw.QueriesNoParams[round], round, &comp.QueriesNoParams, comp); err != nil {
-			return err
-		}
-		if err := deserializeQuery(raw.QueriesParams[round], round, &comp.QueriesParams, comp); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func deserializeQuery(rawQueries []json.RawMessage, round int, register *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query], comp *wizard.CompiledIOP) error {
+func deserializeQuery(rawQueries []json.RawMessage, round int, register *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query], comp *wizard.CompiledIOP, mu *sync.Mutex) error {
 	for _, rawQ := range rawQueries {
 		v, err := DeserializeValue(rawQ, DeclarationMode, queryType, comp)
 		if err != nil {
 			return err
 		}
 		q := v.Interface().(ifaces.Query)
+		mu.Lock()
 		register.AddToRound(round, q.Name(), q)
+		mu.Unlock()
 	}
 	return nil
-}
-
-func newEmptyCompiledIOP() *wizard.CompiledIOP {
-	return &wizard.CompiledIOP{
-		Columns:         column.NewStore(),
-		QueriesParams:   wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
-		QueriesNoParams: wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
-		Coins:           wizard.NewRegister[coin.Name, coin.Info](),
-		Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
-	}
 }
