@@ -62,6 +62,6 @@ jobs:
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
       linea_env: sepolia
-      run_e2e_test: ${{ needs.filter-commit-changes.outputs.linea-sepolia-env == 'true' }}
-      push_image: ${{ needs.filter-commit-changes.outputs.linea-sepolia-env == 'true' || needs.filter-commit-changes.outputs.linea-sepolia-profiles == 'true' }}
+      run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-sepolia-env == 'true' }}
+      push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-sepolia-env == 'true' || needs.filter-commit-changes.outputs.linea-sepolia-profiles == 'true' }}
     secrets: inherit
