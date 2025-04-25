@@ -83,7 +83,7 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 	if len(items) > 0 {
 		// The cast back to sv.Constant is not functionally important but is an easy
 		// sanity check.
-		e.ESHash = e.Operator.Evaluate(eshashes).(*sv.ConstantExt).GetExt(0)
+		e.ESHash = e.Operator.EvaluateExt(eshashes).(*sv.ConstantExt).GetExt(0)
 	}
 
 	return e

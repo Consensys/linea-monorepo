@@ -10,7 +10,8 @@ const ExtensionDegree int = 2
 
 // E2 is a degree two finite field extension of fr.Element
 type E2 struct {
-	A0, A1 fr.Element
+	A0 fr.Element `json:"field1"`
+	A1 fr.Element `json:"field2"`
 }
 
 // Equal returns true if z equals x, false otherwise

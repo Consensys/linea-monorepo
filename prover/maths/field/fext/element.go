@@ -379,6 +379,13 @@ func NewFromBaseElements(base1 field.Element, base2 field.Element) Element {
 		A1: base2,
 	}
 }
+
+func NewFromBaseInteger(base1 uint64) Element {
+	return Element{
+		A0: field.NewElement(base1),
+		A1: field.Zero(),
+	}
+}
 func (z *Element) SetInterface(i1 interface{}) (*Element, error) {
 	if i1 == nil {
 		return nil, errors.New("can't set fr.Element with <nil>")

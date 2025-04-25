@@ -3,7 +3,6 @@ package symbolic
 import (
 	"errors"
 	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 	"reflect"
@@ -96,6 +95,7 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	e := &Expression{
 		Operator: Product{Exponents: exponents},
 		Children: items,
+		ESHash:   fext.One(),
 	}
 
 	for i := range e.Children {

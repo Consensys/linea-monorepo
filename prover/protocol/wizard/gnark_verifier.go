@@ -299,7 +299,7 @@ func AssignVerifierCircuit(comp *CompiledIOP, proof Proof, numRound int) *Verifi
 			res.Columns = append(res.Columns, assignedMsg)
 		} else {
 			// the assignment consists of extension elements
-			assignedMsg := smartvectors.IntoGnarkAssignment(msgData)
+			assignedMsg := smartvectors.IntoGnarkAssignmentExt(msgData)
 			res.columnsExtIDs.InsertNew(colName, len(res.ColumnsExt))
 			res.ColumnsExt = append(res.ColumnsExt, assignedMsg)
 		}
@@ -690,7 +690,7 @@ func (c *VerifierCircuit) AssignColumn(id ifaces.ColID, sv smartvectors.SmartVec
 }
 
 func (c *VerifierCircuit) AssignColumnExt(id ifaces.ColID, sv smartvectors.SmartVector) {
-	column := smartvectors.IntoGnarkAssignment(sv)
+	column := smartvectors.IntoGnarkAssignmentExt(sv)
 	columnIndex := len(c.ColumnsExt)
 	c.columnsExtIDs.InsertNew(id, columnIndex)
 	c.ColumnsExt = append(c.ColumnsExt, column)

@@ -121,8 +121,8 @@ func processRegularOnlyExt(op operatorExt, svecs []SmartVector, coeffs []int, p 
 			svec = rotatedAsRegularExt(rot)
 		}
 
-		if pooled, ok := svec.(*Pooled); ok {
-			svec = &pooled.Regular
+		if pooled, ok := svec.(*PooledExt); ok {
+			svec = &pooled.RegularExt
 		}
 
 		if reg, ok := svec.(*RegularExt); ok {

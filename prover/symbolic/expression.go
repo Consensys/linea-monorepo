@@ -52,6 +52,7 @@ type Expression struct {
 	// Operator stores information relative to operation that the current
 	// Expression performs on its inputs.
 	Operator Operator
+	IsBase   bool
 }
 
 // Operator specifies an elementary operation a node of an [Expression] performs
@@ -164,7 +165,7 @@ func (e *Expression) Validate() error {
 	if len(e.Children) > 0 {
 		// The cast back to sv.Constant is not functionally important but is an
 		// easy sanity check.
-		expectedESH := e.Operator.Evaluate(eshashes).(*sv.ConstantExt).GetExt(0)
+		expectedESH := e.Operator.EvaluateExt(eshashes).(*sv.ConstantExt).GetExt(0)
 		if expectedESH != e.ESHash {
 			return fmt.Errorf("esh mismatch %v %v", expectedESH.String(), e.ESHash.String())
 		}

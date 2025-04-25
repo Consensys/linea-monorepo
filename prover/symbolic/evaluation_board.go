@@ -3,7 +3,7 @@ package symbolic
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 )
@@ -97,7 +97,7 @@ func (b boardAssignment) eval(na *nodeAssignment, pool mempool.MemPool) {
 		smv[i] = v.Value
 	}
 
-	na.Value = na.Node.Operator.Evaluate(smv, pool)
+	na.Value = na.Node.Operator.EvaluateExt(smv, pool)
 
 	for i := range val {
 		b.incParentKnownCountOf(val[i], pool, false)
@@ -120,7 +120,7 @@ func (na *nodeAssignment) tryGuessEval(val []*nodeAssignment) bool {
 	for i, v := range val {
 		var (
 			c, isC = v.constValue()
-			isZero = isC && (c.Val() == field.Element{})
+			isZero = isC && (c.Val() == fext.Element{})
 		)
 
 		allAreCnst = allAreCnst && isC
@@ -136,14 +136,14 @@ func (na *nodeAssignment) tryGuessEval(val []*nodeAssignment) bool {
 
 	case LinComb, PolyEval:
 		if allAreCnst {
-			na.Value = na.Node.Operator.Evaluate(input, nil)
+			na.Value = na.Node.Operator.EvaluateExt(input, nil)
 			return true
 		}
 		return false
 
 	case Product:
 		if anyIsZero {
-			na.Value = sv.NewConstant(field.Element{}, length)
+			na.Value = sv.NewConstantExt(fext.Element{}, length)
 			return true
 		}
 		return false
@@ -165,13 +165,13 @@ func (na *nodeAssignment) hasParents() bool {
 	return len(na.Node.Parents) > 0
 }
 
-func (na *nodeAssignment) constValue() (*sv.Constant, bool) {
+func (na *nodeAssignment) constValue() (*sv.ConstantExt, bool) {
 
 	if na.Value == nil {
 		return nil, false
 	}
 
-	if c, ok := na.Value.(*sv.Constant); ok {
+	if c, ok := na.Value.(*sv.ConstantExt); ok {
 		return c, true
 	}
 

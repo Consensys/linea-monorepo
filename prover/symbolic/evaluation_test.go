@@ -1,11 +1,11 @@
 package symbolic
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"testing"
 
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
 
@@ -22,35 +22,35 @@ func TestSimpleAddition(t *testing.T) {
 
 		t.Run("const-const", func(t *testing.T) {
 			// 2 + 3 = 5
-			res := b.Evaluate([]sv.SmartVector{
-				sv.NewConstant(field.NewElement(2), 1),
-				sv.NewConstant(field.NewElement(3), 1),
-			}).(*sv.Constant).Val()
+			res := b.EvaluateExt([]sv.SmartVector{
+				sv.NewConstantExt(fext.NewFromBaseInteger(2), 1),
+				sv.NewConstantExt(fext.NewFromBaseInteger(3), 1),
+			}).(*sv.ConstantExt).Val()
 
-			require.Equal(t, res.String(), "5")
+			require.Equal(t, res.String(), "5+0*u")
 		})
 
 		t.Run("const-vec", func(t *testing.T) {
 			// 2 + 1 = 3
 			// 2 + 5 = 7
 			res := b.Evaluate([]sv.SmartVector{
-				sv.NewConstant(field.NewElement(2), 2),
-				sv.ForTest(1, 5),
-			}).(*sv.Regular)
+				sv.NewConstantExt(fext.NewFromBaseInteger(2), 2),
+				sv.ForTestExt(1, 5),
+			}).(*sv.RegularExt)
 
-			require.Equal(t, (*res)[0].String(), "3")
-			require.Equal(t, (*res)[1].String(), "7")
+			require.Equal(t, (*res)[0].String(), "3+0*u")
+			require.Equal(t, (*res)[1].String(), "7+0*u")
 		})
 
 		t.Run("vec-vec", func(t *testing.T) {
 			// For large vectors
-			res := b.Evaluate([]sv.SmartVector{
-				sv.NewRegular(vector.Repeat(field.NewElement(2), SIZE)),
-				sv.NewRegular(vector.Repeat(field.NewElement(3), SIZE)),
-			}).(*sv.Regular)
+			res := b.EvaluateExt([]sv.SmartVector{
+				sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(2), SIZE)),
+				sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), SIZE)),
+			}).(*sv.RegularExt)
 
 			for i := range *res {
-				require.Equal(t, (*res)[i].String(), "5", "at position %v", i)
+				require.Equal(t, (*res)[i].String(), "5+0*u", "at position %v", i)
 			}
 		})
 	})
@@ -67,37 +67,37 @@ func TestPythagoras(t *testing.T) {
 
 	{
 		// 2^2 + 3^2 = 13
-		res := b.Evaluate([]sv.SmartVector{
-			sv.NewConstant(field.NewElement(2), 1),
-			sv.NewConstant(field.NewElement(3), 1),
-		}).(*sv.Constant).Val()
+		res := b.EvaluateExt([]sv.SmartVector{
+			sv.NewConstantExt(fext.NewFromBaseInteger(2), 1),
+			sv.NewConstantExt(fext.NewFromBaseInteger(3), 1),
+		}).(*sv.ConstantExt).Val()
 
-		require.Equal(t, res.String(), "13")
+		require.Equal(t, res.String(), "13+0*u")
 	}
 
 	{
 		// A vector and a scalar
-		res := b.Evaluate([]sv.SmartVector{
-			sv.NewConstant(field.NewElement(2), 1024),
-			sv.NewRegular(vector.Repeat(field.NewElement(3), 1024)),
-		}).(*sv.Regular)
+		res := b.EvaluateExt([]sv.SmartVector{
+			sv.NewConstantExt(fext.NewFromBaseInteger(2), 1024),
+			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), 1024)),
+		}).(*sv.RegularExt)
 
 		require.Equal(t, res.Len(), 1024)
 		for i := range *res {
-			require.Equal(t, (*res)[i].String(), "13")
+			require.Equal(t, (*res)[i].String(), "13+0*u")
 		}
 	}
 
 	{
 		// Two vectors
-		res := b.Evaluate([]sv.SmartVector{
-			sv.NewRegular(vector.Repeat(field.NewElement(2), 8192)),
-			sv.NewRegular(vector.Repeat(field.NewElement(3), 8192)),
-		}).(*sv.Regular)
+		res := b.EvaluateExt([]sv.SmartVector{
+			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(2), 8192)),
+			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), 8192)),
+		}).(*sv.RegularExt)
 
 		require.Equal(t, res.Len(), 8192)
 		for i := range *res {
-			require.Equal(t, (*res)[i].String(), "13", "at position i = %v", i)
+			require.Equal(t, (*res)[i].String(), "13+0*u", "at position i = %v", i)
 		}
 	}
 }
@@ -111,37 +111,37 @@ func TestMulAdd(t *testing.T) {
 
 	{
 		// (2+2) * (3+3) = 24
-		res := b.Evaluate([]sv.SmartVector{
-			sv.NewConstant(field.NewElement(2), 1),
-			sv.NewConstant(field.NewElement(3), 1),
-		}).(*sv.Constant).Val()
+		res := b.EvaluateExt([]sv.SmartVector{
+			sv.NewConstantExt(fext.NewFromBaseInteger(2), 1),
+			sv.NewConstantExt(fext.NewFromBaseInteger(3), 1),
+		}).(*sv.ConstantExt).Val()
 
-		require.Equal(t, res.String(), "24")
+		require.Equal(t, res.String(), "24+0*u")
 	}
 
 	{
 		// A vector and a scalar
-		res := b.Evaluate([]sv.SmartVector{
-			sv.NewConstant(field.NewElement(2), 1024),
-			sv.NewRegular(vector.Repeat(field.NewElement(3), 1024)),
-		}).(*sv.Regular)
+		res := b.EvaluateExt([]sv.SmartVector{
+			sv.NewConstantExt(fext.NewFromBaseInteger(2), 1024),
+			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), 1024)),
+		}).(*sv.RegularExt)
 
 		require.Equal(t, res.Len(), 1024)
 		for i := range *res {
-			require.Equal(t, (*res)[i].String(), "24", "at position i = %v", i)
+			require.Equal(t, (*res)[i].String(), "24+0*u", "at position i = %v", i)
 		}
 	}
 
 	{
 		// Two vectors
-		res := b.Evaluate([]sv.SmartVector{
-			sv.NewRegular(vector.Repeat(field.NewElement(2), 8192)),
-			sv.NewRegular(vector.Repeat(field.NewElement(3), 8192)),
-		}).(*sv.Regular)
+		res := b.EvaluateExt([]sv.SmartVector{
+			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(2), 8192)),
+			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), 8192)),
+		}).(*sv.RegularExt)
 
 		require.Equal(t, res.Len(), 8192)
 		for i := range *res {
-			require.Equal(t, (*res)[i].String(), "24", "at position i = %v", i)
+			require.Equal(t, (*res)[i].String(), "24+0*u", "at position i = %v", i)
 		}
 	}
 }
@@ -153,18 +153,18 @@ func TestBinaryConstraintWithLargeWindows(t *testing.T) {
 	expr2 := v.Mul(NewConstant("1").Sub(v))
 	boarded := expr2.Board()
 
-	res := boarded.Evaluate([]sv.SmartVector{
-		sv.NewPaddedCircularWindow(
-			vector.ForTest(0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
-			field.Zero(),
+	res := boarded.EvaluateExt([]sv.SmartVector{
+		sv.NewPaddedCircularWindowExt(
+			vectorext.ForTest(0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
+			fext.Zero(),
 			1,
 			1<<13,
 		),
 	})
 
 	for i := 0; i < res.Len(); i++ {
-		resx := res.Get(i)
-		require.Equal(t, "0", resx.String(), "position %v", i)
+		resx := res.GetExt(i)
+		require.Equal(t, "0+0*u", resx.String(), "position %v", i)
 	}
 }
 
@@ -174,11 +174,11 @@ func TestExpressionsContainAllCases(t *testing.T) {
 	expr := ExpressionContainingAllCases()
 	b := expr.Board()
 
-	valA := sv.NewRegular(vector.Repeat(field.NewElement(1), 8192))
-	valA0 := sv.NewConstant(field.NewElement(1), 8192)
-	valAW := sv.NewPaddedCircularWindow(vector.Repeat(field.One(), 1000), field.One(), 0, 8192)
-	valAWShifted := sv.NewPaddedCircularWindow(vector.Repeat(field.One(), 1000), field.One(), 1, 8192)
-	valB := sv.NewConstant(field.NewElement(3), 8192)
+	valA := sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(1), 8192))
+	valA0 := sv.NewConstantExt(fext.NewFromBaseInteger(1), 8192)
+	valAW := sv.NewPaddedCircularWindowExt(vectorext.Repeat(fext.One(), 1000), fext.One(), 0, 8192)
+	valAWShifted := sv.NewPaddedCircularWindowExt(vectorext.Repeat(fext.One(), 1000), fext.One(), 1, 8192)
+	valB := sv.NewConstantExt(fext.NewFromBaseInteger(3), 8192)
 
 	/*
 		Catch potential errors arising from a change in the ordering of the
@@ -186,10 +186,10 @@ func TestExpressionsContainAllCases(t *testing.T) {
 	*/
 	require.Equal(t, b.ListVariableMetadata(), []Metadata{StringVar("a"), StringVar("b")})
 
-	res := b.Evaluate([]sv.SmartVector{valA, valB}).(*sv.Regular).Get(0)
-	res0 := b.Evaluate([]sv.SmartVector{valA0, valB}).Get(0)
-	resW := b.Evaluate([]sv.SmartVector{valAW, valB}).Get(0)
-	resWShifted := b.Evaluate([]sv.SmartVector{valAWShifted, valB}).Get(0)
+	res := b.EvaluateExt([]sv.SmartVector{valA, valB}).(*sv.RegularExt).GetExt(0)
+	res0 := b.EvaluateExt([]sv.SmartVector{valA0, valB}).GetExt(0)
+	resW := b.EvaluateExt([]sv.SmartVector{valAW, valB}).GetExt(0)
+	resWShifted := b.EvaluateExt([]sv.SmartVector{valAWShifted, valB}).GetExt(0)
 
 	/*
 		Compare the result of the two evaluations

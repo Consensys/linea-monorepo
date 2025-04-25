@@ -2,6 +2,7 @@ package symbolic_test
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"path"
 	"testing"
 
@@ -78,21 +79,21 @@ func BenchmarkEvaluationSingleThreaded(b *testing.B) {
 func TestEvaluationSingleThreaded(t *testing.T) {
 
 	makeRegular := func() smartvectors.SmartVector {
-		return smartvectors.Rand(symbolic.MaxChunkSize)
+		return smartvectors.RandExt(symbolic.MaxChunkSize)
 	}
 
 	makeConst := func() smartvectors.SmartVector {
-		var x field.Element
+		var x fext.Element
 		x.SetRandom()
-		return smartvectors.NewConstant(x, symbolic.MaxChunkSize)
+		return smartvectors.NewConstantExt(x, symbolic.MaxChunkSize)
 	}
 
 	makeFullZero := func() smartvectors.SmartVector {
-		return smartvectors.NewConstant(field.Zero(), symbolic.MaxChunkSize)
+		return smartvectors.NewConstantExt(fext.Zero(), symbolic.MaxChunkSize)
 	}
 
 	makeFullOnes := func() smartvectors.SmartVector {
-		return smartvectors.NewConstant(field.One(), symbolic.MaxChunkSize)
+		return smartvectors.NewConstantExt(fext.One(), symbolic.MaxChunkSize)
 	}
 
 	for ratio := 1; ratio <= 32; ratio *= 2 {
@@ -136,7 +137,7 @@ func TestEvaluationSingleThreaded(t *testing.T) {
 				}
 			}
 
-			_ = board.Evaluate(inputs, pool)
+			_ = board.EvaluateExt(inputs, pool)
 
 			if len(pool.Logs) == 0 {
 				t.Fatalf("the pool was not used")

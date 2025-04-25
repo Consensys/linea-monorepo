@@ -3,6 +3,8 @@ package smartvectors
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"iter"
 	"math/rand/v2"
 
@@ -93,11 +95,18 @@ func Copy(into *SmartVector, x SmartVector) {
 	*into = x.DeepCopy()
 }
 
-// Rand creates a vector with random entries. Used for testing. Should not be
+// Rand creates a base vector with random entries. Used for testing. Should not be
 // used to generate secrets. Not reproducible.
 func Rand(n int) SmartVector {
 	v := vector.Rand(n)
 	return NewRegular(v)
+}
+
+// Rand creates an extension vector with random entries. Used for testing. Should not be
+// used to generate secrets. Not reproducible.
+func RandExt(n int) SmartVector {
+	v := vectorext.Rand(n)
+	return NewRegularExt(v)
 }
 
 // Rand creates a vector with random entries. Used for testing. Should not be
@@ -144,6 +153,24 @@ func IntoGnarkAssignment(sv SmartVector) []frontend.Variable {
 		for i := range res {
 			elem := sv.GetExt(i)
 			res[i] = elem
+		}
+	}
+	return res
+}
+
+// IntoGnarkAssignment converts an extension smart-vector into a gnark assignment
+func IntoGnarkAssignmentExt(sv SmartVector) []gnarkfext.Variable {
+	res := make([]gnarkfext.Variable, sv.Len())
+	_, err := sv.GetBase(0)
+	if err == nil {
+		for i := range res {
+			elem, _ := sv.GetBase(i)
+			res[i] = gnarkfext.NewFromBase(elem)
+		}
+	} else {
+		for i := range res {
+			elem := sv.GetExt(i)
+			res[i] = gnarkfext.ExtToVariable(elem)
 		}
 	}
 	return res
