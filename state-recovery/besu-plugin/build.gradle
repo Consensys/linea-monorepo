@@ -16,9 +16,9 @@ dependencies {
   api(project(":jvm-libs:linea:metrics:micrometer"))
   api(project(":jvm-libs:linea:clients:linea-l1-contract-client"))
   api(project(":jvm-libs:linea:web3j-extensions"))
-  api(project(":state-recovery:appcore:logic"))
-  api(project(":state-recovery:clients:blobscan-client"))
-  api(project(":state-recovery:clients:eth-api"))
+  api(project(":besu-plugins:state-recovery:appcore:logic"))
+  api(project(":besu-plugins:state-recovery:clients:blobscan-client"))
+  api(project(":besu-plugins:state-recovery:clients:eth-api"))
 }
 
 ext.groupsToIncludeInShadow = [

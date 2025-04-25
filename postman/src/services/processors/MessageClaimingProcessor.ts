@@ -87,19 +87,30 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
         return;
       }
 
-      const { hasZeroFee, isUnderPriced, isRateLimitExceeded, estimatedGasLimit, threshold, ...claimTxFees } =
-        await this.transactionValidationService.evaluateTransaction(
-          nextMessageToClaim,
-          this.config.feeRecipientAddress,
-        );
+      const {
+        hasZeroFee,
+        isUnderPriced,
+        isRateLimitExceeded,
+        isForSponsorship,
+        estimatedGasLimit,
+        threshold,
+        ...claimTxFees
+      } = await this.transactionValidationService.evaluateTransaction(
+        nextMessageToClaim,
+        this.config.feeRecipientAddress,
+      );
 
-      if (await this.handleZeroFee(hasZeroFee, nextMessageToClaim)) return;
+      // If isForSponsorship = true, then we ignore hasZeroFee and isUnderPriced
+      if (!isForSponsorship && (await this.handleZeroFee(hasZeroFee, nextMessageToClaim))) return;
       if (await this.handleNonExecutable(nextMessageToClaim, estimatedGasLimit)) return;
 
       nextMessageToClaim.edit({ claimGasEstimationThreshold: threshold });
       await this.databaseService.updateMessage(nextMessageToClaim);
 
-      if (await this.handleUnderpriced(nextMessageToClaim, isUnderPriced, estimatedGasLimit, claimTxFees.maxFeePerGas))
+      if (
+        !isForSponsorship &&
+        (await this.handleUnderpriced(nextMessageToClaim, isUnderPriced, estimatedGasLimit, claimTxFees.maxFeePerGas))
+      )
         return;
       if (this.handleRateLimitExceeded(nextMessageToClaim, isRateLimitExceeded)) return;
 
@@ -225,15 +236,17 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
     maxFeePerGas: bigint,
   ): Promise<boolean> {
     if (isUnderPriced) {
-      this.logger.warn(
-        "Fee underpriced found in this message: messageHash=%s messageInfo=%s transactionGasLimit=%s maxFeePerGas=%s",
-        message.messageHash,
-        message.toString(),
-        estimatedGasLimit?.toString(),
-        maxFeePerGas.toString(),
-      );
-      message.edit({ status: MessageStatus.FEE_UNDERPRICED });
-      await this.databaseService.updateMessage(message);
+      if (message.status !== MessageStatus.FEE_UNDERPRICED) {
+        this.logger.warn(
+          "Fee underpriced found in this message: messageHash=%s messageInfo=%s transactionGasLimit=%s maxFeePerGas=%s",
+          message.messageHash,
+          message.toString(),
+          estimatedGasLimit?.toString(),
+          maxFeePerGas.toString(),
+        );
+        message.edit({ status: MessageStatus.FEE_UNDERPRICED });
+        await this.databaseService.updateMessage(message);
+      }
       return true;
     }
     return false;
