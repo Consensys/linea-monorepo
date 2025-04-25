@@ -67,8 +67,10 @@ export const config: Config = {
   },
   isCctpEnabled: process.env.NEXT_PUBLIC_IS_CCTP_ENABLED === "true",
   infuraApiKey: process.env.NEXT_PUBLIC_INFURA_ID ?? "",
+  quickNodeApiKey: process.env.NEXT_PUBLIC_QUICKNODE_ID ?? "",
   dynamicEnvironmentId: process.env.NEXT_PUBLIC_DYNAMIC_ENVIRONMENT_ID ?? "",
   lifiApiKey: process.env.NEXT_PUBLIC_LIFI_API_KEY ?? "",
+  onRamperApiKey: process.env.NEXT_PUBLIC_ONRAMPER_API_KEY ?? "",
   tokenListUrls: {
     mainnet: process.env.NEXT_PUBLIC_MAINNET_TOKEN_LIST ?? "",
     sepolia: process.env.NEXT_PUBLIC_SEPOLIA_TOKEN_LIST ?? "",

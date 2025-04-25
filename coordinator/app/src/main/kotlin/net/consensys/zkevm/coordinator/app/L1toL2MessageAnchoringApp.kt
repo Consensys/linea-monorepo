@@ -1,11 +1,11 @@
 package net.consensys.zkevm.coordinator.app
 
 import io.vertx.core.Vertx
-import net.consensys.linea.contract.AsyncFriendlyTransactionManager
-import net.consensys.linea.contract.EIP1559GasProvider
+import linea.web3j.SmartContractErrors
+import linea.web3j.gas.EIP1559GasProvider
+import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.L2MessageService
 import net.consensys.linea.contract.l1.Web3JLineaRollupSmartContractClient
-import net.consensys.linea.web3j.SmartContractErrors
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.config.L1Config
 import net.consensys.zkevm.coordinator.app.config.L2Config

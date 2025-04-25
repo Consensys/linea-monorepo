@@ -29,7 +29,6 @@ aggregation-coordinator-polling-interval="PT2S"
 deadline-check-interval="PT8S"
 #target-end-blocks=[33, 90, 93]
 
-
 [prover]
 fs-inprogress-request-writing-suffix = ".inprogress_coordinator_writing"
 fs-inprogress-proving-suffix-pattern = ".*\\.inprogress\\.prover.*"
@@ -55,10 +54,6 @@ fs-responses-directory = "/data/prover/v2/aggregation/responses"
 #[prover.new.proof-aggregation]
 #fs-requests-directory = "/data/prover/v3/aggregation/requests"
 #fs-responses-directory = "/data/prover/v3/aggregation/responses"
-
-[zk-traces]
-eth-api="http://traces-node:8545"
-new-block-polling-interval="PT1S"
 
 [traces]
 switch-to-linea-besu=false
@@ -96,6 +91,8 @@ request-retry.failures-warning-threshold=2
 endpoints=["http://shomei-frontend:8888/"]
 request-retry.backoff-delay="PT1S"
 request-retry.failures-warning-threshold=2
+l1-query-block-tag="LATEST"
+l1-polling-interval="PT12S"
 
 [api]
 observability_port=9545
@@ -120,7 +117,7 @@ gas-price-cap-multiplier-for-finalization=2.0
 # blocks are 2s, this may catch in between blocks
 send-message-event-polling-interval="PT1S"
 # 10 blocks worth at 2s per block
-max-event-scraping-time="PT5S"
+max-event-scraping-time="PT5S" # use by message anchoring service
 # An optional config to define the L1 block time with default as PT12S
 block-time="PT1S" # set the same as local L1 block time
 block-range-loop-limit=500
@@ -150,6 +147,7 @@ max-receipt-retries=120
 # Coordinator will consider block as finalized after being included in the chain wtih children blocks-to-finalization
 # Recommended: Geth sequencer minimum of 2, Besu sequencer minimum of 1, 0 is safe localy
 blocks-to-finalization=0
+new-block-polling-interval="PT1S"
 
 [blob-submission]
 disabled=false

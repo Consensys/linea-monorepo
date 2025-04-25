@@ -50,11 +50,6 @@ class CoordinatorConfigTest {
       fetchBlocksLimit = 4000
     )
 
-    private val zkTracesConfig = ZkTraces(
-      URI("http://traces-node:8545").toURL(),
-      Duration.parse("PT1S")
-    )
-
     private val proversConfig = ProversConfig(
       proverA = ProverConfig(
         execution = FileBasedProverConfig(
@@ -139,7 +134,9 @@ class CoordinatorConfigTest {
       requestRetry = RequestRetryConfigTomlFriendly(
         backoffDelay = Duration.parse("PT1S"),
         failuresWarningThreshold = 2
-      )
+      ),
+      l1QueryBlockTag = BlockParameter.Tag.SAFE,
+      l1PollingInterval = Duration.parse("PT6S")
     )
     private val stateManagerConfig = StateManagerClientConfig(
       version = "2.3.0",
@@ -223,7 +220,8 @@ class CoordinatorConfigTest {
       blocksToFinalization = 0U,
       lastHashSearchWindow = 25U,
       anchoringReceiptPollingInterval = Duration.parse("PT01S"),
-      maxReceiptRetries = 120U
+      maxReceiptRetries = 120U,
+      newBlockPollingInterval = Duration.parse("PT1S")
     )
 
     private val finalizationSigner = SignerConfig(
@@ -353,7 +351,6 @@ class CoordinatorConfigTest {
     )
 
     private val coordinatorConfig = CoordinatorConfig(
-      zkTraces = zkTracesConfig,
       blobCompression = blobCompressionConfig,
       proofAggregation = aggregationConfig,
       traces = tracesConfig,
@@ -457,7 +454,6 @@ class CoordinatorConfigTest {
 
     val expectedConfig =
       coordinatorConfig.copy(
-        zkTraces = zkTracesConfig.copy(ethApi = URI("http://traces-node-v2:8545").toURL()),
         l2NetworkGasPricingService = l2NetworkGasPricingServiceConfig.copy(
           legacy =
           l2NetworkGasPricingServiceConfig.legacy.copy(

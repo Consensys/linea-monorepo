@@ -27,7 +27,7 @@ data class EthLog(
     if (blockNumber != other.blockNumber) return false
     if (!address.contentEquals(other.address)) return false
     if (!data.contentEquals(other.data)) return false
-    if (topics != other.topics) return false
+    if (topics.size != other.topics.size || !topics.zip(other.topics).all { (a, b) -> a.contentEquals(b) }) return false
 
     return true
   }
@@ -41,7 +41,7 @@ data class EthLog(
     result = 31 * result + blockNumber.hashCode()
     result = 31 * result + address.contentHashCode()
     result = 31 * result + data.contentHashCode()
-    result = 31 * result + topics.hashCode()
+    result = 31 * result + topics.fold(1) { acc, topic -> 31 * acc + topic.contentHashCode() }
     return result
   }
 
@@ -54,12 +54,20 @@ data class EthLog(
       "blockHash=${blockHash.encodeHex()}, " +
       "blockNumber=$blockNumber, " +
       "address=${address.encodeHex()}, " +
-      "data=${data.encodeHex()}, " +
-      "topics=$topics)"
+      "topics=${topics.map { it.encodeHex() }}, " +
+      "data=${data.encodeHex()}"
   }
 }
 
 data class EthLogEvent<E>(
   val event: E,
   val log: EthLog
-)
+) : Comparable<EthLogEvent<E>> {
+  override fun compareTo(other: EthLogEvent<E>): Int {
+    return when {
+      this.log.blockNumber != other.log.blockNumber -> this.log.blockNumber.compareTo(other.log.blockNumber)
+      this.log.logIndex != other.log.logIndex -> this.log.logIndex.compareTo(other.log.logIndex)
+      else -> 0
+    }
+  }
+}

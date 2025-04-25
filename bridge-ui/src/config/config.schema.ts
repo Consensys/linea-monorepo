@@ -30,8 +30,10 @@ export const configSchema = z
     // Feature toggle for CCTPV2 for USDC transfers
     isCctpEnabled: z.boolean(),
     infuraApiKey: z.string().nonempty(),
+    quickNodeApiKey: z.string().nonempty(),
     dynamicEnvironmentId: z.string().nonempty(),
     lifiApiKey: z.string().nonempty(),
+    onRamperApiKey: z.string().nonempty(),
     tokenListUrls: z.object({
       mainnet: z.string().trim().url(),
       sepolia: z.string().trim().url(),

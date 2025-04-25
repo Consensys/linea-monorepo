@@ -6,6 +6,7 @@ import linea.domain.BlockParameter
 import linea.domain.assertIsValidAddress
 import linea.kotlin.assertIs32Bytes
 import linea.kotlin.decodeHex
+import linea.web3j.SmartContractErrors
 import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_FEE_HISTORIES_STORAGE_PERIOD
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_FEE_HISTORY_BLOCK_COUNT
@@ -18,7 +19,6 @@ import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.TracingModuleV1
 import net.consensys.linea.traces.TracingModuleV2
-import net.consensys.linea.web3j.SmartContractErrors
 import net.consensys.zkevm.coordinator.app.L2NetworkGasPricingService
 import net.consensys.zkevm.coordinator.clients.prover.ProversConfig
 import java.math.BigInteger
@@ -72,11 +72,6 @@ data class ConflationConfig(
 
   val conflationTargetEndBlockNumbers: Set<ULong> = _conflationTargetEndBlockNumbers.map { it.toULong() }.toSet()
 }
-
-data class ZkTraces(
-  val ethApi: URL,
-  val newBlockPollingInterval: Duration
-)
 
 interface RetryConfig {
   val maxRetries: Int?
@@ -313,7 +308,8 @@ data class L2Config(
   val blocksToFinalization: UInt,
   val lastHashSearchWindow: UInt,
   val anchoringReceiptPollingInterval: Duration,
-  val maxReceiptRetries: UInt
+  val maxReceiptRetries: UInt,
+  val newBlockPollingInterval: Duration
 ) {
   init {
     messageServiceAddress.assertIsValidAddress("messageServiceAddress")
@@ -500,6 +496,8 @@ data class GasPriceCapTimeOfDayMultipliersConfig(val gasPriceCapTimeOfDayMultipl
 
 data class Type2StateProofProviderConfig(
   val endpoints: List<URL>,
+  val l1QueryBlockTag: BlockParameter.Tag = BlockParameter.Tag.LATEST,
+  val l1PollingInterval: Duration = Duration.ofSeconds(12),
   override val requestRetry: RequestRetryConfigTomlFriendly
 ) : RequestRetryConfigurable
 
@@ -513,7 +511,6 @@ data class TracesLimitsV2ConfigFile(val tracesLimits: Map<TracingModuleV2, UInt>
 // otherwise it's hard to test the configuration is loaded properly
 data class CoordinatorConfigTomlDto(
   val l2InclusiveBlockNumberToStopAndFlushAggregation: ULong? = null,
-  val zkTraces: ZkTraces,
   val blobCompression: BlobCompressionConfig,
   val proofAggregation: AggregationConfig,
   val traces: TracesConfig,
@@ -538,7 +535,6 @@ data class CoordinatorConfigTomlDto(
 ) {
   fun reified(): CoordinatorConfig = CoordinatorConfig(
     l2InclusiveBlockNumberToStopAndFlushAggregation = l2InclusiveBlockNumberToStopAndFlushAggregation,
-    zkTraces = zkTraces,
     blobCompression = blobCompression,
     proofAggregation = proofAggregation,
     traces = traces,
@@ -556,7 +552,8 @@ data class CoordinatorConfigTomlDto(
     api = api,
     l2Signer = l2Signer,
     messageAnchoringService = messageAnchoringService,
-    l2NetworkGasPricingService = if (!testL1Disabled) l2NetworkGasPricing.reified() else null,
+    l2NetworkGasPricingService =
+    if (testL1Disabled || l2NetworkGasPricing.disabled) null else l2NetworkGasPricing.reified(),
     l1DynamicGasPriceCapService = l1DynamicGasPriceCapService,
     testL1Disabled = testL1Disabled,
     proversConfig = prover.reified()
@@ -565,7 +562,6 @@ data class CoordinatorConfigTomlDto(
 
 data class CoordinatorConfig(
   val l2InclusiveBlockNumberToStopAndFlushAggregation: ULong? = null,
-  val zkTraces: ZkTraces,
   val blobCompression: BlobCompressionConfig,
   val proofAggregation: AggregationConfig,
   val traces: TracesConfig,
