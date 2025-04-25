@@ -110,7 +110,7 @@ Stop the postman docker container manually.
 
 #### Run the postman locally:
 
-Before the postman can be run and test locally, we must build the monorepo projects linea-sdk and linea-native-libs
+Before the postman can be run and tested locally, we must build the monorepo projects linea-sdk and linea-native-libs
 ```bash
 NATIVE_LIBS_RELEASE_TAG=blob-libs-v1.0.1 pnpm run -F linea-native-libs build && pnpm run -F linea-sdk build
 ```
