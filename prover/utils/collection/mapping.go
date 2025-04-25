@@ -131,3 +131,7 @@ func (kv *Mapping[K, V]) TryDel(k K) bool {
 	}
 	return found
 }
+
+func (kv *Mapping[K, V]) Len() int {
+	return len(kv.ListAllKeys())
+}
