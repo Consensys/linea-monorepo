@@ -16,11 +16,7 @@
     "build:runSdk": "tsc ./scripts/runSdk.ts",
     "test": "npx jest --bail --detectOpenHandles --forceExit",
     "lint:fix": "pnpm run lint:ts:fix && pnpm run prettier:fix",
-    "migration:create": "npx ts-node -P ./tsconfig.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create ./src/application/postman/persistence/migrations/${MIGRATION_NAME}",
-    "migration:generate": "npx ts-node -P ./tsconfig.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:generate -d ./src/application/postman/persistence/migrations/MigrationDataSource.ts ./src/application/postman/persistence/migrations/${MIGRATION_NAME}",
-    "migration:run": "npx ts-node -P ./tsconfig.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:run -d ./src/application/postman/persistence/migrations/MigrationDataSource.ts",
-    "migration:revert": "npx ts-node -P ./tsconfig.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:revert -d ./src/application/postman/persistence/migrations/MigrationDataSource.ts"
-
+    "migration:create": "npx ts-node -P ./tsconfig.json -r tsconfig-paths/register ./node_modules/typeorm/cli.js migration:create ./src/application/postman/persistence/migrations/${MIGRATION_NAME}"
   },
   "dependencies": {
     "@consensys/linea-native-libs": "workspace:*",

@@ -146,13 +146,7 @@ Create an empty DB migration file with <NAME>
 MIGRATION_NAME=<NAME> pnpm run migration:create
 ```
 
-Generate a DB migration file with <NAME>
-
-Prerequisite - Have a PostgreSQL container running in local. This can be done by running the local stack - `make start-env-with-tracing-v1-ci CLEAN_PREVIOUS_ENV=true` from monorepo root.
-
-```bash
-MIGRATION_NAME=<NAME> pnpm run migration:generate
-```
+We will then implement the migration code manually. We omit scripts for TypeORM migration generation because the CLI tool is unable to generate correct migration code in our case.
 
 ## License
 
