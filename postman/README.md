@@ -138,6 +138,13 @@ pnpm run build
 pnpm run test
 ```
 
+### Database migrations
+
+Create an empty DB migration file with <NAME>
+```bash
+MIGRATION_NAME=<NAME> pnpm run migration:create
+```
+
 ## License
 
 This package is licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for more information.
