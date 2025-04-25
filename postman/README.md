@@ -141,8 +141,17 @@ pnpm run test
 ### Database migrations
 
 Create an empty DB migration file with <NAME>
+
 ```bash
 MIGRATION_NAME=<NAME> pnpm run migration:create
+```
+
+Generate a DB migration file with <NAME>
+
+Prerequisite - Have a PostgreSQL container running in local. This can be done by running the local stack - `make start-env-with-tracing-v1-ci CLEAN_PREVIOUS_ENV=true` from monorepo root.
+
+```bash
+MIGRATION_NAME=<NAME> pnpm run migration:generate
 ```
 
 ## License
