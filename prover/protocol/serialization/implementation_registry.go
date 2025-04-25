@@ -230,5 +230,14 @@ func getPkgPathAndTypeName(x any) string {
 	}
 
 	return strings.TrimPrefix(pkgPath, pkgPathPrefixToRemove) + "#" + typeName
+}
 
+// castAsString returns the string value of a [reflect.String] kind
+// [reflect.Value]. It will return an error if the value does not have the right
+// kind.
+func castAsString(v reflect.Value) (string, error) {
+	if v.Kind() != reflect.String {
+		return "", fmt.Errorf("expected a string kind value: got %q", v.String())
+	}
+	return v.String(), nil
 }

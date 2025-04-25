@@ -36,7 +36,8 @@ func TestSerializeAndDeserializeAssignment(t *testing.T) {
 
 	// Serialize the WAssignment
 	numChunks := 4
-	serializedChunks := SerializeAssignment(wAssignment, numChunks)
+	serializedChunks, err := SerializeAssignment(wAssignment, numChunks)
+	assert.NoError(t, err)
 
 	// Compress the serialized chunks
 	compressedChunks := CompressChunks(serializedChunks)

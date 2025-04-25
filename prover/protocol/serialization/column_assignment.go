@@ -6,7 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
+
 	"math/big"
 	"sync"
 	"unsafe"
@@ -24,6 +25,22 @@ import (
 // of a column in a [wizard.ProverRuntime]
 type WAssignment = collection.Mapping[ifaces.ColID, smartvectors.SmartVector]
 
+// CompressedSmartVector represents a [smartvectors.SmartVector] in a more
+// space-efficient manner.
+type CompressedSmartVector struct {
+	F []CompressedSVFragment
+}
+
+// CompressedSVFragment represent a portion of a SerializableSmartVector
+type CompressedSVFragment struct {
+	L uint8
+	X *big.Int
+	V []byte
+	N int
+}
+
+// Hashing Functions
+
 // hashWAssignment computes a hash of the serialized WAssignment structure.
 func hashWAssignment(a WAssignment) string {
 	serialized, err := json.Marshal(a)
@@ -35,68 +52,64 @@ func hashWAssignment(a WAssignment) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// SerializeAssignment serializes map representing the column assignment of a
-// wizard protocol.
-func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
+// Serialization Functions
+
+// SerializeAssignment serializes map representing the column assignment of a wizard protocol.
+func SerializeAssignment(a WAssignment, numChunks int) ([]json.RawMessage, error) {
 	logrus.Infof("Hash of WAssignment before serialization: %s", hashWAssignment(a))
 
-	var (
-		as    = a.InnerMap()
-		ser   = map[string]*CompressedSmartVector{}
-		names = a.ListAllKeys()
-		lock  = &sync.Mutex{}
-	)
+	ser := prepareSerializedMap(a)
+	serSizeGB := calculateSizeInGB(ser)
+	logrus.Infof("Size of ser : %.6f GB", serSizeGB)
+
+	return parallelSerializeChunks(ser, numChunks)
+}
+
+// prepareSerializedMap prepares the serialized map from WAssignment.
+func prepareSerializedMap(a WAssignment) map[string]*CompressedSmartVector {
+	as := a.InnerMap()
+	ser := make(map[string]*CompressedSmartVector)
+	names := a.ListAllKeys()
+	lock := &sync.Mutex{}
 
 	parallel.ExecuteChunky(len(names), func(start, stop int) {
 		for i := start; i < stop; i++ {
 			v := CompressSmartVector(as[names[i]])
 			lock.Lock()
-			// Convert names[i] to string using fmt.Sprintf or another method
 			ser[fmt.Sprintf("%v", names[i])] = v
 			lock.Unlock()
 		}
 	})
 
-	// Calculate the size of `ser` in bytes
+	return ser
+}
+
+// calculateSizeInGB calculates the size of the serialized map in GB.
+func calculateSizeInGB(ser map[string]*CompressedSmartVector) float64 {
 	var serSizeBytes uintptr
 	for _, v := range ser {
 		serSizeBytes += unsafe.Sizeof(*v)
 	}
+	return float64(serSizeBytes) / (1024 * 1024 * 1024)
+}
 
-	// Convert size to GB
-	serSizeGB := float64(serSizeBytes) / (1024 * 1024 * 1024)
-	logrus.Infof("Size of ser : %.6f GB", serSizeGB)
-
-	// Parallelize CBOR serialization by chunking `ser`
-	chunkSize := (len(ser) + numChunks - 1) / numChunks // Calculate the size of each chunk
-	var serializedChunks = make([]json.RawMessage, numChunks)
+// parallelSerializeChunks serializes the chunks in parallel.
+func parallelSerializeChunks(ser map[string]*CompressedSmartVector, numChunks int) ([]json.RawMessage, error) {
+	chunkSize := (len(ser) + numChunks - 1) / numChunks
+	serializedChunks := make([]json.RawMessage, numChunks)
 	var wg sync.WaitGroup
 	var m sync.Mutex
+
 	for i := 0; i < numChunks; i++ {
 		wg.Add(1)
 		go func(chunkIndex int) {
 			defer wg.Done()
-
-			// Select chunk of data for this goroutine
-			start := chunkIndex * chunkSize
-			stop := start + chunkSize
-			if stop > len(names) {
-				stop = len(names)
+			chunk := prepareChunk(ser, chunkIndex, chunkSize)
+			serializedChunk, err := serializeAnyWithCborPkg(chunk)
+			if err != nil {
+				return
 			}
-
-			// Prepare chunk map for serialization
-			chunk := make(map[string]*CompressedSmartVector)
-			for j := start; j < stop; j++ {
-				// Convert names[j] to string
-				key := fmt.Sprintf("%v", names[j])
-				chunk[key] = ser[key]
-			}
-
-			// Serialize the chunk with CBOR
-			serializedChunk := serializeAnyWithCborPkg(chunk)
-			logrus.Infof("Serialized chunk %d, size: %d bytes", i, len(serializedChunk))
-
-			// Store the result in the slice
+			logrus.Infof("Serialized chunk %d, size: %d bytes", chunkIndex, len(serializedChunk))
 			m.Lock()
 			serializedChunks[chunkIndex] = serializedChunk
 			m.Unlock()
@@ -104,10 +117,32 @@ func SerializeAssignment(a WAssignment, numChunks int) []json.RawMessage {
 	}
 	wg.Wait()
 
-	return serializedChunks
+	return serializedChunks, nil
 }
 
-// CompressChunks compresses each serialized chunk
+// prepareChunk prepares a chunk of data for serialization.
+func prepareChunk(ser map[string]*CompressedSmartVector, chunkIndex, chunkSize int) map[string]*CompressedSmartVector {
+	start := chunkIndex * chunkSize
+	stop := start + chunkSize
+	if stop > len(ser) {
+		stop = len(ser)
+	}
+
+	chunk := make(map[string]*CompressedSmartVector)
+	for k, v := range ser {
+		if start <= 0 && stop > 0 {
+			chunk[k] = v
+		}
+		start--
+		stop--
+	}
+
+	return chunk
+}
+
+// Compression Functions
+
+// CompressChunks compresses each serialized chunk.
 func CompressChunks(chunks []json.RawMessage) []json.RawMessage {
 	compressedChunks := make([]json.RawMessage, len(chunks))
 	var wg sync.WaitGroup
@@ -116,15 +151,7 @@ func CompressChunks(chunks []json.RawMessage) []json.RawMessage {
 		wg.Add(1)
 		go func(i int, chunk json.RawMessage) {
 			defer wg.Done()
-			var compressedData bytes.Buffer
-			lz4Writer := lz4.NewWriter(&compressedData)
-			_, err := lz4Writer.Write(chunk)
-			if err != nil {
-				logrus.Errorf("Error compressing chunk %d: %v", i, err)
-				panic(err)
-			}
-			lz4Writer.Close()
-			compressedChunks[i] = compressedData.Bytes()
+			compressedChunks[i] = compressChunk(chunk)
 			logrus.Infof("Compressed chunk %d, size: %d bytes", i, len(compressedChunks[i]))
 		}(i, chunk)
 	}
@@ -133,53 +160,38 @@ func CompressChunks(chunks []json.RawMessage) []json.RawMessage {
 	return compressedChunks
 }
 
-// DeserializeAssignment deserializes a blob of bytes into a set of column
-// assignments representing assigned columns of a Wizard protocol.
+// compressChunk compresses a single chunk.
+func compressChunk(chunk json.RawMessage) json.RawMessage {
+	var compressedData bytes.Buffer
+	lz4Writer := lz4.NewWriter(&compressedData)
+	_, err := lz4Writer.Write(chunk)
+	if err != nil {
+		logrus.Errorf("Error compressing chunk: %v", err)
+		panic(err)
+	}
+	lz4Writer.Close()
+	return compressedData.Bytes()
+}
+
+// Deserialization Functions
+
+// DeserializeAssignment deserializes a blob of bytes into a set of column assignments
+// representing assigned columns of a Wizard protocol.
 func DeserializeAssignment(filepath string, numChunks int) (WAssignment, error) {
-	var (
-		res  = collection.NewMapping[ifaces.ColID, smartvectors.SmartVector]()
-		lock = &sync.Mutex{}
-	)
+	res := collection.NewMapping[ifaces.ColID, smartvectors.SmartVector]()
+	lock := &sync.Mutex{}
 
 	logrus.Infof("Reading the assignment files")
 
-	// Read and decompress each chunk individually
 	var wg sync.WaitGroup
 	for i := 0; i < numChunks; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			chunkPath := fmt.Sprintf("%s_chunk_%d", filepath, i)
-			chunkData, err := ioutil.ReadFile(chunkPath)
-			if err != nil {
-				logrus.Errorf("Failed to read chunk %d: %v", i, err)
-				return
-			}
-
-			logrus.Infof("Reading chunk %d from %s, size: %d bytes", i, chunkPath, len(chunkData))
-			lz4Reader := lz4.NewReader(bytes.NewReader(chunkData))
-			var decompressedData bytes.Buffer
-			n, err := decompressedData.ReadFrom(lz4Reader)
-			if err != nil {
-				logrus.Errorf("Error decompressing chunk %d: %v", i, err)
-				return
-			}
-			logrus.Infof("Decompressed chunk %d, size: %d bytes", i, n)
-
-			// Deserialize the decompressed chunk
-			var chunkMap map[string]*CompressedSmartVector
-			if err := deserializeAnyWithCborPkg(decompressedData.Bytes(), &chunkMap); err != nil {
-				logrus.Errorf("Error deserializing chunk %d: %v", i, err)
-				return
-			}
-
-			// Reconstruct the WAssignment
-			for k, v := range chunkMap {
-				decompressed := v.Decompress()
-				lock.Lock()
-				res.InsertNew(ifaces.ColID(k), decompressed)
-				lock.Unlock()
-			}
+			chunkData := readChunk(filepath, i)
+			decompressedData := decompressChunk(chunkData)
+			chunkMap := deserializeChunk(decompressedData)
+			reconstructAssignment(chunkMap, res, lock)
 		}(i)
 	}
 	wg.Wait()
@@ -189,27 +201,55 @@ func DeserializeAssignment(filepath string, numChunks int) (WAssignment, error) 
 	return res, nil
 }
 
-// CompressedSmartVector represents a [smartvectors.SmartVector] in a more
-// space-efficient manner.
-type CompressedSmartVector struct {
-	F []CompressedSVFragment
+// readChunk reads a chunk from a file.
+func readChunk(filepath string, chunkIndex int) []byte {
+	chunkPath := fmt.Sprintf("%s_chunk_%d", filepath, chunkIndex)
+	chunkData, err := os.ReadFile(chunkPath)
+	if err != nil {
+		logrus.Errorf("Failed to read chunk %d: %v", chunkIndex, err)
+		return nil
+	}
+	logrus.Infof("Reading chunk %d from %s, size: %d bytes", chunkIndex, chunkPath, len(chunkData))
+	return chunkData
 }
 
-// CompressedSVFragment represent a portion of a SerializableSmartVector
-type CompressedSVFragment struct {
-	// L is the byte length used by the fragment
-	L uint8
-	// X is the value used to represent a single field element
-	X *big.Int
-	// V is a byteslice storing the bytes of a vector if the fragment represent
-	// plain values.
-	V []byte
-	// N is the number of repetion used
-	N int
+// decompressChunk decompresses a chunk of data.
+func decompressChunk(chunkData []byte) []byte {
+	lz4Reader := lz4.NewReader(bytes.NewReader(chunkData))
+	var decompressedData bytes.Buffer
+	n, err := decompressedData.ReadFrom(lz4Reader)
+	if err != nil {
+		logrus.Errorf("Error decompressing chunk: %v", err)
+		return nil
+	}
+	logrus.Infof("Decompressed chunk, size: %d bytes", n)
+	return decompressedData.Bytes()
 }
 
+// deserializeChunk deserializes a chunk of data.
+func deserializeChunk(decompressedData []byte) map[string]*CompressedSmartVector {
+	var chunkMap map[string]*CompressedSmartVector
+	if err := deserializeAnyWithCborPkg(decompressedData, &chunkMap); err != nil {
+		logrus.Errorf("Error deserializing chunk: %v", err)
+		return nil
+	}
+	return chunkMap
+}
+
+// reconstructAssignment reconstructs the WAssignment from the deserialized chunk.
+func reconstructAssignment(chunkMap map[string]*CompressedSmartVector, res WAssignment, lock *sync.Mutex) {
+	for k, v := range chunkMap {
+		decompressed := v.Decompress()
+		lock.Lock()
+		res.InsertNew(ifaces.ColID(k), decompressed)
+		lock.Unlock()
+	}
+}
+
+// SmartVector Compression and Decompression
+
+// CompressSmartVector compresses a SmartVector.
 func CompressSmartVector(sv smartvectors.SmartVector) *CompressedSmartVector {
-
 	switch v := sv.(type) {
 	case *smartvectors.Constant:
 		return &CompressedSmartVector{
@@ -224,46 +264,46 @@ func CompressSmartVector(sv smartvectors.SmartVector) *CompressedSmartVector {
 			},
 		}
 	case *smartvectors.PaddedCircularWindow:
-		var (
-			w          = v.Window()
-			offset     = v.Offset()
-			paddingVal = v.PaddingVal()
-			fullLen    = v.Len()
-		)
-
-		// It's a left-padded value
-		if offset == 0 {
-			return &CompressedSmartVector{
-				F: []CompressedSVFragment{
-					newSliceSVFragment(w),
-					newConstantSVFragment(paddingVal, fullLen-len(w)),
-				},
-			}
+		return compressPaddedCircularWindow(v)
+	default:
+		return &CompressedSmartVector{
+			F: []CompressedSVFragment{
+				newSliceSVFragment(sv.IntoRegVecSaveAlloc()),
+			},
 		}
-
-		// It's a right-padded value
-		if offset+len(w) == fullLen {
-			return &CompressedSmartVector{
-				F: []CompressedSVFragment{
-					newConstantSVFragment(paddingVal, fullLen-len(w)),
-					newSliceSVFragment(w),
-				},
-			}
-		}
-
-	}
-
-	// The other cases are not expected, we still support them via a
-	// suboptimal method.
-	return &CompressedSmartVector{
-		F: []CompressedSVFragment{
-			newSliceSVFragment(sv.IntoRegVecSaveAlloc()),
-		},
 	}
 }
 
-func (sv *CompressedSmartVector) Decompress() smartvectors.SmartVector {
+// compressPaddedCircularWindow compresses a PaddedCircularWindow SmartVector.
+func compressPaddedCircularWindow(v *smartvectors.PaddedCircularWindow) *CompressedSmartVector {
+	w := v.Window()
+	offset := v.Offset()
+	paddingVal := v.PaddingVal()
+	fullLen := v.Len()
 
+	if offset == 0 {
+		return &CompressedSmartVector{
+			F: []CompressedSVFragment{
+				newSliceSVFragment(w),
+				newConstantSVFragment(paddingVal, fullLen-len(w)),
+			},
+		}
+	}
+
+	if offset+len(w) == fullLen {
+		return &CompressedSmartVector{
+			F: []CompressedSVFragment{
+				newConstantSVFragment(paddingVal, fullLen-len(w)),
+				newSliceSVFragment(w),
+			},
+		}
+	}
+
+	return nil
+}
+
+// Decompress decompresses a CompressedSmartVector.
+func (sv *CompressedSmartVector) Decompress() smartvectors.SmartVector {
 	if len(sv.F) == 1 && sv.F[0].isConstant() {
 		val := new(field.Element).SetBigInt(sv.F[0].X)
 		return smartvectors.NewConstant(*val, sv.F[0].N)
@@ -274,29 +314,23 @@ func (sv *CompressedSmartVector) Decompress() smartvectors.SmartVector {
 	}
 
 	if len(sv.F) == 2 && sv.F[0].isConstant() && sv.F[1].isPlain() {
-
-		var (
-			paddingVal = new(field.Element).SetBigInt(sv.F[0].X)
-			window     = sv.F[1].readSlice()
-			size       = sv.F[0].N + len(window)
-		)
-
+		paddingVal := new(field.Element).SetBigInt(sv.F[0].X)
+		window := sv.F[1].readSlice()
+		size := sv.F[0].N + len(window)
 		return smartvectors.LeftPadded(window, *paddingVal, size)
 	}
 
 	if len(sv.F) == 2 && sv.F[1].isConstant() && sv.F[0].isPlain() {
-
-		var (
-			paddingVal = new(field.Element).SetBigInt(sv.F[1].X)
-			window     = sv.F[0].readSlice()
-			size       = sv.F[1].N + len(window)
-		)
-
+		paddingVal := new(field.Element).SetBigInt(sv.F[1].X)
+		window := sv.F[0].readSlice()
+		size := sv.F[1].N + len(window)
 		return smartvectors.RightPadded(window, *paddingVal, size)
 	}
 
 	panic("unexpected pattern")
 }
+
+// CompressedSVFragment Methods
 
 func (f *CompressedSVFragment) isConstant() bool {
 	return f.X != nil
@@ -307,22 +341,16 @@ func (f *CompressedSVFragment) isPlain() bool {
 }
 
 func (f *CompressedSVFragment) readSlice() []field.Element {
-
-	var (
-		l   = int(f.L)
-		buf = bytes.NewBuffer(f.V)
-		tmp = [32]byte{}
-		n   = f.N
-	)
+	l := int(f.L)
+	buf := bytes.NewBuffer(f.V)
+	tmp := [32]byte{}
+	n := f.N
 
 	if l > 0 {
 		n = len(f.V) / l
 	}
 
-	var (
-		res = make([]field.Element, n)
-	)
-
+	res := make([]field.Element, n)
 	for i := range res {
 		buf.Read(tmp[32-l:])
 		res[i].SetBytes(tmp[:])
@@ -331,13 +359,11 @@ func (f *CompressedSVFragment) readSlice() []field.Element {
 	return res
 }
 
+// Helper Functions
+
 func newConstantSVFragment(x field.Element, n int) CompressedSVFragment {
-
-	var (
-		f big.Int
-		_ = x.BigInt(&f)
-	)
-
+	var f big.Int
+	_ = x.BigInt(&f)
 	return CompressedSVFragment{
 		X: &f,
 		N: n,
@@ -345,20 +371,13 @@ func newConstantSVFragment(x field.Element, n int) CompressedSVFragment {
 }
 
 func newSliceSVFragment(fv []field.Element) CompressedSVFragment {
-
-	var (
-		l int
-	)
-
+	l := 0
 	for i := range fv {
 		l = max(l, (fv[i].BitLen()+7)/8)
 	}
 
-	var (
-		res    = make([]byte, 0, len(fv)*l)
-		resBuf = bytes.NewBuffer(res)
-	)
-
+	res := make([]byte, 0, len(fv)*l)
+	resBuf := bytes.NewBuffer(res)
 	for i := range fv {
 		fbytes := fv[i].Bytes()
 		resBuf.Write(fbytes[32-l:])
@@ -369,9 +388,6 @@ func newSliceSVFragment(fv []field.Element) CompressedSVFragment {
 		V: resBuf.Bytes(),
 	}
 
-	// Can happen if the caller provides a vector of the form [0, 0, 0, 0]. In
-	// that case the value of "n" cannot be infered from the slice because the
-	// slice will be empty. The solution is to provide a length to the vector
 	if l == 0 {
 		compressed.N = len(fv)
 	}
