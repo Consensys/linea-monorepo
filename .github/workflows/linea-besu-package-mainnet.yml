@@ -6,8 +6,13 @@ on:
     branches:
       - main
     paths:
-      - 'linea-besu-package/versions/linea-mainnet.env'
-      - 'linea-besu-package/linea-besu/profiles/*-mainnet.toml'
+      # - 'linea-besu-package/versions/linea-mainnet.env'
+      # - 'linea-besu-package/linea-besu/profiles/*-mainnet.toml'
+      - 'linea-besu-package/'
+      - '.github/actions/linea-besu-package/'
+      - '.github/workflows/linea-besu-package/'  # to be removed
+      - '.github/workflows/linea-besu-package-mainnet.yml'
+      - '.github/workflows/reuse-linea-besu-package-*.yml'
 
   workflow_call:
     outputs:
@@ -21,6 +26,25 @@ permissions:
   contents: read
 
 jobs:
+  filter-commit-changes:
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    name: Filter commit changes
+    outputs:
+      linea-mainnet-env: ${{ steps.filter.outputs.linea-mainnet-env }}
+      linea-mainnet-profiles: ${{ steps.filter.outputs.linea-mainnet-profiles }}
+    steps:
+      - name: Filter commit changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          base: ${{ github.ref }}
+          list-files: "json"
+          filters: |
+            linea-mainnet-env:
+              - 'linea-besu-package/versions/linea-mainnet.env'
+            linea-mainnet-profiles:
+              - 'linea-besu-package/linea-besu/profiles/*-mainnet.toml'
+
   echo-github-variables:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
@@ -34,7 +58,10 @@ jobs:
     # concurrency:
     #   group: build-test-push-${{ github.workflow }}-${{ github.ref }}
     #   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    needs: [ filter-commit-changes ]
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
       linea_env: mainnet
+      run_e2e_test: ${{ needs.filter-commit-changes.outputs.linea-mainnet-env == 'true' }}
+      push_image: ${{ needs.filter-commit-changes.outputs.linea-mainnet-env == 'true' || needs.filter-commit-changes.outputs.linea-mainnet-profiles == 'true' }}
     secrets: inherit
