@@ -6,11 +6,11 @@ import org.web3j.protocol.core.Request
 import org.web3j.protocol.core.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-fun <Resp, T> rejectOnJsonRpcError(
+fun <Resp> rejectOnJsonRpcError(
   rpcMethod: String,
   response: Resp
 ): SafeFuture<Resp>
-  where Resp : Response<T> {
+  where Resp : Response<*> {
   return if (response.hasError()) {
     SafeFuture.failedFuture(
       RuntimeException(
