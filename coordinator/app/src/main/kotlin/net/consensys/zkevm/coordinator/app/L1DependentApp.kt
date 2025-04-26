@@ -4,15 +4,20 @@ import build.linea.clients.StateManagerClientV1
 import build.linea.clients.StateManagerV1JsonRpcClient
 import io.vertx.core.Vertx
 import kotlinx.datetime.Clock
+import linea.anchoring.MessageAnchoringApp
 import linea.contract.l1.LineaRollupSmartContractClientReadOnly
 import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
+import linea.contract.l2.Web3JL2MessageServiceSmartContractClient
 import linea.domain.BlockNumberAndHash
 import linea.encoding.BlockRLPEncoder
 import linea.web3j.ExtendedWeb3JImpl
 import linea.web3j.SmartContractErrors
 import linea.web3j.Web3jBlobExtended
 import linea.web3j.createWeb3jHttpClient
+import linea.web3j.ethapi.createEthApiClient
+import linea.web3j.gas.EIP1559GasProvider
 import net.consensys.linea.blob.ShnarfCalculatorVersion
+import net.consensys.linea.contract.Web3JContractAsyncHelper
 import net.consensys.linea.contract.Web3JL2MessageService
 import net.consensys.linea.contract.Web3JL2MessageServiceLogsClient
 import net.consensys.linea.contract.l1.GenesisStateProvider
@@ -39,6 +44,7 @@ import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
+import net.consensys.zkevm.coordinator.app.config.RetryConfig
 import net.consensys.zkevm.coordinator.app.config.Type2StateProofProviderConfig
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
@@ -109,6 +115,7 @@ import org.web3j.protocol.http.HttpService
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toKotlinDuration
 
@@ -931,26 +938,54 @@ class L1DependentApp(
     return l1BasedLastFinalizedBlockProvider.getLastFinalizedBlock()
   }
 
-  private val messageAnchoringApp: L1toL2MessageAnchoringApp? =
-    if (configs.messageAnchoringService.enabled) {
-      L1toL2MessageAnchoringApp(
-        vertx,
-        L1toL2MessageAnchoringApp.Config(
-          configs.l1,
-          configs.l2,
-          configs.finalizationSigner,
-          configs.l2Signer,
-          configs.messageAnchoringService
-        ),
-        l1Web3jClient,
-        l2Web3jClient,
-        smartContractErrors,
-        l2MessageService,
-        l2TransactionManager
+  private val messageAnchoringApp: LongRunningService = if (configs.messageAnchoringService.enabled
+  ) {
+    val gasProvider = EIP1559GasProvider(
+      l2Web3jClient,
+      EIP1559GasProvider.Config(
+        configs.l2.gasLimit,
+        configs.l2.maxFeePerGasCap,
+        configs.l2.feeHistoryBlockCount,
+        configs.l2.feeHistoryRewardPercentile
       )
-    } else {
-      null
-    }
+    )
+    val web3jContractHelper = Web3JContractAsyncHelper(
+      contractAddress = configs.l2.messageServiceAddress,
+      web3j = l2Web3jClient,
+      contractGasProvider = gasProvider,
+      transactionManager = l2TransactionManager,
+      smartContractErrors = smartContractErrors,
+      useEthEstimateGas = true
+    )
+    // FIXME: wire dynamic configs from the file
+    MessageAnchoringApp(
+      vertx = vertx,
+      config = MessageAnchoringApp.Config(
+        l1RequestRetryConfig = linea.domain.RetryConfig.noRetries,
+        l1PollingInterval = 1.seconds,
+        l1SuccessBackoffDelay = 1.milliseconds,
+        l1ContractAddress = configs.l1.zkEvmContractAddress,
+        l2HighestBlockTag = configs.l1.l1QueryBlockTag,
+        anchoringTickInterval = 1.seconds,
+        l1EventPollingTimeout = 2.seconds,
+        l1EventSearchBlockChunk = 1000u,
+        messageQueueCapacity = 1000u,
+        maxMessagesToAnchorPerL2Transaction = 100u
+      ),
+      l1EthApiClient = createEthApiClient(
+        web3jClient = l1Web3jClient,
+        requestRetryConfig = null,
+        vertx = vertx
+      ),
+      l2MessageService = Web3JL2MessageServiceSmartContractClient(
+        web3j = l2Web3jClient,
+        contractAddress = configs.l2.messageServiceAddress,
+        web3jContractHelper = web3jContractHelper
+      )
+    )
+  } else {
+    DisabledLongRunningService
+  }
 
   private val l2NetworkGasPricingService: L2NetworkGasPricingService? =
     if (configs.l2NetworkGasPricingService != null) {
@@ -1053,7 +1088,7 @@ class L1DependentApp(
       .thenCompose { blobSubmissionCoordinator.start() }
       .thenCompose { aggregationFinalizationCoordinator.start() }
       .thenCompose { proofAggregationCoordinatorService.start() }
-      .thenCompose { messageAnchoringApp?.start() ?: SafeFuture.completedFuture(Unit) }
+      .thenCompose { messageAnchoringApp.start() }
       .thenCompose { l2NetworkGasPricingService?.start() ?: SafeFuture.completedFuture(Unit) }
       .thenCompose { l1FeeHistoryCachingService.start() }
       .thenCompose { deadlineConflationCalculatorRunnerOld.start() }
@@ -1072,7 +1107,7 @@ class L1DependentApp(
       blobSubmissionCoordinator.stop(),
       aggregationFinalizationCoordinator.stop(),
       proofAggregationCoordinatorService.stop(),
-      messageAnchoringApp?.stop() ?: SafeFuture.completedFuture(Unit),
+      messageAnchoringApp.stop(),
       l2NetworkGasPricingService?.stop() ?: SafeFuture.completedFuture(Unit),
       l1FeeHistoryCachingService.stop(),
       blockCreationMonitor.stop(),
