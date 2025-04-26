@@ -1,5 +1,6 @@
 package net.consensys.linea.contract
 
+import linea.domain.gas.GasPriceCaps
 import linea.kotlin.toBigInteger
 import linea.kotlin.toGWei
 import linea.kotlin.toULong
@@ -11,10 +12,10 @@ import linea.web3j.gas.EIP4844GasFees
 import linea.web3j.gas.EIP4844GasProvider
 import linea.web3j.getRevertReason
 import linea.web3j.informativeEthCall
+import linea.web3j.requestAsync
+import linea.web3j.toWeb3jTxBlob
 import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
 import net.consensys.linea.async.toSafeFuture
-import net.consensys.zkevm.domain.BlobRecord
-import net.consensys.zkevm.ethereum.gaspricing.GasPriceCaps
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.tuweni.bytes.Bytes
@@ -32,6 +33,7 @@ import org.web3j.tx.gas.ContractGasProvider
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.math.BigInteger
 import java.util.concurrent.CompletableFuture
+import kotlin.collections.map
 
 class Web3JContractAsyncHelper(
   val contractAddress: String,
@@ -253,7 +255,9 @@ class Web3JContractAsyncHelper(
       )
     }
     val signedMessage = transactionManager.sign(transaction)
-    return web3j.ethSendRawTransaction(signedMessage).sendAsync()
+    return web3j
+      .ethSendRawTransaction(signedMessage)
+      .requestAsync { it }
   }
 
   @Synchronized
@@ -289,12 +293,8 @@ class Web3JContractAsyncHelper(
     gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String> {
     require(blobs.size in 0..6) { "Blobs size=${blobs.size} must be between 0 and 6." }
-    return sendBlobCarryingTransaction(function, BigInteger.ZERO, blobs.toWeb3JTxBlob(), gasPriceCaps)
-      .toSafeFuture()
-      .thenApply { result ->
-        throwExceptionIfJsonRpcErrorReturned("eth_sendRawTransaction", result)
-        result.transactionHash
-      }
+    return sendBlobCarryingTransaction(function, BigInteger.ZERO, blobs.toWeb3jTxBlob(), gasPriceCaps)
+      .thenApply { it.transactionHash }
   }
 
   @Synchronized
@@ -303,7 +303,7 @@ class Web3JContractAsyncHelper(
     weiValue: BigInteger,
     blobs: List<Blob>,
     gasPriceCaps: GasPriceCaps? = null
-  ): CompletableFuture<EthSendTransaction> {
+  ): SafeFuture<EthSendTransaction> {
     val blobVersionedHashes = blobs.map { BlobUtils.kzgToVersionedHash(BlobUtils.getCommitment(it)) }
     return getGasLimit(function, blobs, blobVersionedHashes)
       .thenCompose { gasLimit ->
@@ -333,7 +333,8 @@ class Web3JContractAsyncHelper(
           maxFeePerBlobGas = gasPriceCaps?.maxFeePerBlobGasCap?.toBigInteger() ?: maxFeePerBlobGas.toBigInteger()
         )
         val signedMessage = transactionManager.sign(transaction)
-        web3j.ethSendRawTransaction(signedMessage).sendAsync()
+        web3j.ethSendRawTransaction(signedMessage)
+          .requestAsync { it }
       }
   }
 
@@ -353,7 +354,11 @@ class Web3JContractAsyncHelper(
   ): RemoteFunctionCall<TransactionReceipt> {
     return executeRemoteCallTransaction(function, BigInteger.ZERO)
   }
-  fun executeEthCall(function: Function, overrideGasLimit: BigInteger? = null): SafeFuture<String?> {
+
+  fun executeEthCall(
+    function: Function,
+    overrideGasLimit: BigInteger? = null
+  ): SafeFuture<String?> {
     return (overrideGasLimit?.let { SafeFuture.completedFuture(overrideGasLimit) } ?: getGasLimit(function))
       .thenCompose { gasLimit ->
         Transaction.createFunctionCallTransaction(
@@ -371,12 +376,12 @@ class Web3JContractAsyncHelper(
 
   fun executeBlobEthCall(
     function: Function,
-    blobs: List<BlobRecord>,
+    blobs: List<ByteArray>,
     gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String?> {
     return createEip4844Transaction(
       function,
-      blobs.map { it.blobCompressionProof!!.compressedData }.toWeb3JTxBlob(),
+      blobs.toWeb3jTxBlob(),
       gasPriceCaps
     ).thenCompose { tx ->
       web3j.informativeEthCall(tx, smartContractErrors)
