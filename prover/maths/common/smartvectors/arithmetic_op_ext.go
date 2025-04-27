@@ -76,11 +76,7 @@ type operatorExt interface {
 	constTermExtIntoVecExt(res []fext.Element, term *fext.Element)
 }
 
-// linCompOp is an implementation of the [operator] interface. It represents a
-// linear combination with coefficients.
-type linCombOpExt struct{}
-
-func (linCombOpExt) constExtIntoConstExt(res, x *fext.Element, coeff int) {
+func (linCombOp) constExtIntoConstExt(res, x *fext.Element, coeff int) {
 	switch coeff {
 	case 1:
 		res.Add(res, x)
@@ -98,7 +94,7 @@ func (linCombOpExt) constExtIntoConstExt(res, x *fext.Element, coeff int) {
 	}
 }
 
-func (linCombOpExt) vecExtIntoVecExt(res, x []fext.Element, coeff int) {
+func (linCombOp) vecExtIntoVecExt(res, x []fext.Element, coeff int) {
 	// Sanity-check
 	assertHasLength(len(res), len(x))
 	switch coeff {
@@ -124,13 +120,13 @@ func (linCombOpExt) vecExtIntoVecExt(res, x []fext.Element, coeff int) {
 	}
 }
 
-func (linCombOpExt) constExtIntoVecExt(res []fext.Element, val *fext.Element, coeff int) {
+func (linCombOp) constExtIntoVecExt(res []fext.Element, val *fext.Element, coeff int) {
 	var term fext.Element
-	linCombOpExt.constExtIntoTermExt(linCombOpExt{}, &term, val, coeff)
-	linCombOpExt.constTermExtIntoVecExt(linCombOpExt{}, res, &term)
+	linCombOp.constExtIntoTermExt(linCombOp{}, &term, val, coeff)
+	linCombOp.constTermExtIntoVecExt(linCombOp{}, res, &term)
 }
 
-func (linCombOpExt) vecExtIntoTermExt(term, x []fext.Element, coeff int) {
+func (linCombOp) vecExtIntoTermExt(term, x []fext.Element, coeff int) {
 	switch coeff {
 	case 1:
 		copy(term, x)
@@ -153,7 +149,7 @@ func (linCombOpExt) vecExtIntoTermExt(term, x []fext.Element, coeff int) {
 	}
 }
 
-func (linCombOpExt) constExtIntoTermExt(term, x *fext.Element, coeff int) {
+func (linCombOp) constExtIntoTermExt(term, x *fext.Element, coeff int) {
 	switch coeff {
 	case 1:
 		term.Set(x)
@@ -170,24 +166,22 @@ func (linCombOpExt) constExtIntoTermExt(term, x *fext.Element, coeff int) {
 	}
 }
 
-func (linCombOpExt) constTermExtIntoConstExt(res, term *fext.Element) {
+func (linCombOp) constTermExtIntoConstExt(res, term *fext.Element) {
 	res.Add(res, term)
 }
 
-func (linCombOpExt) vecTermExtIntoVecExt(res, term []fext.Element) {
+func (linCombOp) vecTermExtIntoVecExt(res, term []fext.Element) {
 	vectorext.Add(res, res, term)
 }
 
-func (linCombOpExt) constTermExtIntoVecExt(res []fext.Element, term *fext.Element) {
+func (linCombOp) constTermExtIntoVecExt(res []fext.Element, term *fext.Element) {
 	for i := range res {
 		res[i].Add(&res[i], term)
 	}
 }
 
-type productOpExt struct{}
-
 // res *= x ^coeff where both res and x are constants
-func (productOpExt) constExtIntoConstExt(res, x *fext.Element, coeff int) {
+func (productOp) constExtIntoConstExt(res, x *fext.Element, coeff int) {
 	switch coeff {
 	case 0:
 		// Nothing to do
@@ -208,7 +202,7 @@ func (productOpExt) constExtIntoConstExt(res, x *fext.Element, coeff int) {
 }
 
 // res *= x ^coeff where both res and x are vectors
-func (productOpExt) vecExtIntoVecExt(res, x []fext.Element, coeff int) {
+func (productOp) vecExtIntoVecExt(res, x []fext.Element, coeff int) {
 
 	// Sanity-check
 	assertHasLength(len(res), len(x))
@@ -239,14 +233,14 @@ func (productOpExt) vecExtIntoVecExt(res, x []fext.Element, coeff int) {
 }
 
 // res *= x ^coeff where res is a vector and x is a constant
-func (productOpExt) constExtIntoVecExt(res []fext.Element, x *fext.Element, coeff int) {
+func (productOp) constExtIntoVecExt(res []fext.Element, x *fext.Element, coeff int) {
 	var term fext.Element
-	productOpExt.constExtIntoTermExt(productOpExt{}, &term, x, coeff)
-	productOpExt.constTermExtIntoVecExt(productOpExt{}, res, &term)
+	productOp.constExtIntoTermExt(productOp{}, &term, x, coeff)
+	productOp.constTermExtIntoVecExt(productOp{}, res, &term)
 }
 
 // res = x ^ coeff where x is a constant
-func (productOpExt) constExtIntoTermExt(res, x *fext.Element, coeff int) {
+func (productOp) constExtIntoTermExt(res, x *fext.Element, coeff int) {
 	switch coeff {
 	case 0:
 		res.SetOne()
@@ -264,7 +258,7 @@ func (productOpExt) constExtIntoTermExt(res, x *fext.Element, coeff int) {
 }
 
 // res = x * coeff or res = x ^ coeff where x is a vector
-func (productOpExt) vecExtIntoTermExt(res, x []fext.Element, coeff int) {
+func (productOp) vecExtIntoTermExt(res, x []fext.Element, coeff int) {
 	switch coeff {
 	case 0:
 		vectorext.Fill(res, fext.One())
@@ -288,17 +282,17 @@ func (productOpExt) vecExtIntoTermExt(res, x []fext.Element, coeff int) {
 }
 
 // res += term or res *= coeff for constants
-func (productOpExt) constTermExtIntoConstExt(res, term *fext.Element) {
+func (productOp) constTermExtIntoConstExt(res, term *fext.Element) {
 	res.Mul(res, term)
 }
 
 // res += term for vectors
-func (productOpExt) vecTermExtIntoVecExt(res, term []fext.Element) {
+func (productOp) vecTermExtIntoVecExt(res, term []fext.Element) {
 	vectorext.MulElementWise(res, res, term)
 
 }
 
 // res += term where res is a vector and term is a constant
-func (productOpExt) constTermExtIntoVecExt(res []fext.Element, term *fext.Element) {
+func (productOp) constTermExtIntoVecExt(res []fext.Element, term *fext.Element) {
 	vectorext.ScalarMul(res, res, *term)
 }

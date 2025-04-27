@@ -19,7 +19,7 @@ func LinCombExt(coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVe
 			utils.Panic("bad size %v, expected %v", svecs[i].Len(), length)
 		}
 	}
-	return processOperatorExt(linCombOpExt{}, coeffs, svecs, p...)
+	return processOperatorExt(linCombOp{}, coeffs, svecs, p...)
 }
 
 // ProductExt computes a product of smart-vectors with integer exponents
@@ -28,7 +28,7 @@ func LinCombExt(coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVe
 //   - The function panics if the length of exponents does not match the length of
 //     svecs
 func ProductExt(exponents []int, svecs []SmartVector, p ...mempool.MemPool) SmartVector {
-	return processOperatorExt(productOpExt{}, exponents, svecs, p...)
+	return processOperatorExt(productOp{}, exponents, svecs, p...)
 }
 
 // processOperatorExt computes the result of an [operator] and put the result into res
@@ -69,7 +69,7 @@ func processOperatorExt(op operatorExt, coeffs []int, svecs []SmartVector, p ...
 
 	// Special-case : if the operation is a product and the constRes is
 	// zero, we can early return zero ignoring the rest.
-	if _, ok := op.(productOpExt); ok && constRes != nil && constRes.val.IsZero() {
+	if _, ok := op.(productOp); ok && constRes != nil && constRes.val.IsZero() {
 		return constRes
 	}
 

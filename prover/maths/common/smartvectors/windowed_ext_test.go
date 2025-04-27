@@ -27,7 +27,7 @@ func TestProcessWindowedExt(_ *testing.T) {
 	)
 
 	_, _ = processWindowedOnlyExt(
-		linCombOpExt{},
+		linCombOp{},
 		[]SmartVector{b, a},
 		[]int{1, 1},
 	)
