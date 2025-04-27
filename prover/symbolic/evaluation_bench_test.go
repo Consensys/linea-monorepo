@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/stretchr/testify/assert"
@@ -17,22 +16,22 @@ import (
 
 func BenchmarkEvaluationSingleThreaded(b *testing.B) {
 
-	makeRegular := func() smartvectors.SmartVector {
-		return smartvectors.Rand(symbolic.MaxChunkSize)
+	makeRegularExt := func() smartvectors.SmartVector {
+		return smartvectors.RandExt(symbolic.MaxChunkSize)
 	}
 
-	makeConst := func() smartvectors.SmartVector {
-		var x field.Element
+	makeConstExt := func() smartvectors.SmartVector {
+		var x fext.Element
 		x.SetRandom()
-		return smartvectors.NewConstant(x, symbolic.MaxChunkSize)
+		return smartvectors.NewConstantExt(x, symbolic.MaxChunkSize)
 	}
 
-	makeFullZero := func() smartvectors.SmartVector {
-		return smartvectors.NewConstant(field.Zero(), symbolic.MaxChunkSize)
+	makeFullZeroExt := func() smartvectors.SmartVector {
+		return smartvectors.NewConstantExt(fext.Zero(), symbolic.MaxChunkSize)
 	}
 
-	makeFullOnes := func() smartvectors.SmartVector {
-		return smartvectors.NewConstant(field.One(), symbolic.MaxChunkSize)
+	makeFullOnesExt := func() smartvectors.SmartVector {
+		return smartvectors.NewConstantExt(fext.One(), symbolic.MaxChunkSize)
 	}
 
 	for ratio := 1; ratio <= 32; ratio *= 2 {
@@ -57,20 +56,20 @@ func BenchmarkEvaluationSingleThreaded(b *testing.B) {
 			for i := range inputs {
 				switch {
 				case !constantHood[i][0]:
-					inputs[i] = makeRegular()
+					inputs[i] = makeRegularExt()
 				case constantHood[i][1]:
-					inputs[i] = makeFullZero()
+					inputs[i] = makeFullZeroExt()
 				case constantHood[i][2]:
-					inputs[i] = makeFullOnes()
+					inputs[i] = makeFullOnesExt()
 				default:
-					inputs[i] = makeConst()
+					inputs[i] = makeConstExt()
 				}
 			}
 
 			b.ResetTimer()
 
 			for c := 0; c < b.N; c++ {
-				_ = board.Evaluate(inputs, pool)
+				_ = board.EvaluateExt(inputs, pool)
 			}
 		})
 	}
@@ -78,21 +77,21 @@ func BenchmarkEvaluationSingleThreaded(b *testing.B) {
 
 func TestEvaluationSingleThreaded(t *testing.T) {
 
-	makeRegular := func() smartvectors.SmartVector {
+	makeRegularExt := func() smartvectors.SmartVector {
 		return smartvectors.RandExt(symbolic.MaxChunkSize)
 	}
 
-	makeConst := func() smartvectors.SmartVector {
+	makeConstExt := func() smartvectors.SmartVector {
 		var x fext.Element
 		x.SetRandom()
 		return smartvectors.NewConstantExt(x, symbolic.MaxChunkSize)
 	}
 
-	makeFullZero := func() smartvectors.SmartVector {
+	makeFullZeroExt := func() smartvectors.SmartVector {
 		return smartvectors.NewConstantExt(fext.Zero(), symbolic.MaxChunkSize)
 	}
 
-	makeFullOnes := func() smartvectors.SmartVector {
+	makeFullOnesExt := func() smartvectors.SmartVector {
 		return smartvectors.NewConstantExt(fext.One(), symbolic.MaxChunkSize)
 	}
 
@@ -127,13 +126,13 @@ func TestEvaluationSingleThreaded(t *testing.T) {
 			for i := range inputs {
 				switch {
 				case !constantHood[i][0]:
-					inputs[i] = makeRegular()
+					inputs[i] = makeRegularExt()
 				case constantHood[i][1]:
-					inputs[i] = makeFullZero()
+					inputs[i] = makeFullZeroExt()
 				case constantHood[i][2]:
-					inputs[i] = makeFullOnes()
+					inputs[i] = makeFullOnesExt()
 				default:
-					inputs[i] = makeConst()
+					inputs[i] = makeConstExt()
 				}
 			}
 
