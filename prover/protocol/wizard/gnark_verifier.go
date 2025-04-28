@@ -15,7 +15,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/sirupsen/logrus"
 )
 
@@ -513,10 +512,10 @@ func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []frontend.Variable {
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
 		val := smartvectors.IntoRegVec(c.Spec.Precomputed.MustGet(name))
-		res := gnarkutil.AllocateSlice(len(val))
+		res := make([]frontend.Variable, len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i] = val[i]
+			res[i] = val[i].String()
 		}
 		return res
 	}
