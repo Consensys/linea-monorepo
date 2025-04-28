@@ -583,6 +583,7 @@ contract LineaRollup is
       ) != lastFinalizedState
     ) {
       /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration.
+      /// @dev Note: if this clause fails after first finalization post upgrade, the 5 fields are actually what is expected in the lastFinalizedState.
       if (
         FinalizedStateHashing._computeLastFinalizedState(
           _finalizationData.lastFinalizedL1RollingHashMessageNumber,

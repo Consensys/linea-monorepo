@@ -121,16 +121,25 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
         _lastFinalizedState.timestamp
       )
     ) {
-      revert FinalizationStateIncorrect(
-        currentFinalizedState,
+      /// @dev This is temporary and will be removed in the next upgrade and exists here for an initial zero-downtime migration.
+      /// @dev Note: if this clause fails after first finalization post upgrade, the 5 fields are actually what is expected in the lastFinalizedState.
+      if (
+        currentFinalizedState !=
         FinalizedStateHashing._computeLastFinalizedState(
           _lastFinalizedState.messageNumber,
           _lastFinalizedState.messageRollingHash,
-          _lastFinalizedState.forcedTransactionNumber,
-          _lastFinalizedState.forcedTransactionRollingHash,
           _lastFinalizedState.timestamp
         )
-      );
+      ) {
+        revert FinalizationStateIncorrect(
+          FinalizedStateHashing._computeLastFinalizedState(
+            _lastFinalizedState.messageNumber,
+            _lastFinalizedState.messageRollingHash,
+            _lastFinalizedState.timestamp
+          ),
+          currentFinalizedState
+        );
+      }
     }
 
     bytes[] memory signedTransactionFields = new bytes[](SIGNED_TRANSACTION_FIELD_LENGTH);
