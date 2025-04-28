@@ -18,6 +18,7 @@ dependencies {
   implementation "${besuArtifactGroup}:besu-datatypes"
   implementation "${besuArtifactGroup}:evm"
   implementation "${besuArtifactGroup}:plugin-api"
+  implementation "${besuArtifactGroup}.internal:api"
   implementation "${besuArtifactGroup}.internal:clique"
   implementation "${besuArtifactGroup}.internal:common"
   implementation "${besuArtifactGroup}.internal:config"
@@ -28,6 +29,9 @@ dependencies {
   implementation "${besuArtifactGroup}.internal:services"
   implementation "${besuArtifactGroup}.internal:testutil"
   implementation "${besuArtifactGroup}.internal:algorithms"
+  implementation "${besuArtifactGroup}.internal:dsl"
+  implementation "org.awaitility:awaitility"
+  testImplementation group: "${besuArtifactGroup}.internal", name: "core", classifier: "test-support"
 
   implementation 'com.google.code.gson:gson'
   implementation 'com.google.guava:guava'

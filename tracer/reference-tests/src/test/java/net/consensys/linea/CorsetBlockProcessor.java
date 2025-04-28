@@ -30,12 +30,11 @@ import org.hyperledger.besu.ethereum.BlockProcessingOutputs;
 import org.hyperledger.besu.ethereum.BlockProcessingResult;
 import org.hyperledger.besu.ethereum.ProtocolContext;
 import org.hyperledger.besu.ethereum.chain.Blockchain;
-import org.hyperledger.besu.ethereum.core.BlockBody;
+import org.hyperledger.besu.ethereum.core.Block;
 import org.hyperledger.besu.ethereum.core.BlockHeader;
 import org.hyperledger.besu.ethereum.core.MutableWorldState;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.core.TransactionReceipt;
-import org.hyperledger.besu.ethereum.core.Withdrawal;
 import org.hyperledger.besu.ethereum.mainnet.*;
 import org.hyperledger.besu.ethereum.privacy.storage.PrivateMetadataUpdater;
 import org.hyperledger.besu.ethereum.processing.TransactionProcessingResult;
@@ -74,14 +73,18 @@ public class CorsetBlockProcessor extends MainnetBlockProcessor {
       final ProtocolContext protocolContext,
       final Blockchain blockchain,
       final MutableWorldState worldState,
-      final BlockHeader blockHeader,
-      final List<Transaction> transactions,
-      final List<BlockHeader> ommers,
-      final Optional<List<Withdrawal>> maybeWithdrawals,
-      final PrivateMetadataUpdater privateMetadataUpdater) {
+      final Block block,
+      final Optional<PrivateMetadataUpdater> privateMetadataUpdater,
+      final PreprocessingFunction preprocessingBlockFunction) {
+
+    var blockHeader = block.getHeader();
+    var blockBody = block.getBody();
+    var ommers = blockBody.getOmmers();
+    var transactions = blockBody.getTransactions();
+    var maybeWithdrawals = blockBody.getWithdrawals();
+
     final List<TransactionReceipt> receipts = new ArrayList<>();
     long currentGasUsed = 0;
-    BlockBody blockBody = new BlockBody(transactions, new ArrayList<>());
 
     final ProtocolSpec protocolSpec = protocolSchedule.getByBlockHeader(blockHeader);
 

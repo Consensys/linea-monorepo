@@ -51,6 +51,7 @@ public class ToyExecutionEnvironmentV2 {
   @Builder.Default private final List<ToyAccount> accounts = Collections.emptyList();
   @Builder.Default private final Address coinbase = DEFAULT_COINBASE_ADDRESS;
   @Builder.Default public static final Wei DEFAULT_BASE_FEE = Wei.of(LINEA_BASE_FEE);
+  @Builder.Default private final Boolean runWithBesuNode = false;
 
   @Singular private final List<Transaction> transactions;
 
@@ -71,16 +72,19 @@ public class ToyExecutionEnvironmentV2 {
   private final ZkTracer tracer = new ZkTracer(UNIT_TEST_CHAIN);
 
   public void run() {
-    ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(UNIT_TEST_CHAIN.id, LONDON);
-    GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
-        this.buildGeneralStateTestCaseSpec(protocolSpec);
-
-    ToyExecutionTools.executeTest(
-        generalStateTestCaseEipSpec,
-        protocolSpec,
-        tracer,
-        transactionProcessingResultValidator,
-        zkTracerValidator);
+    if (!runWithBesuNode) {
+      ProtocolSpec protocolSpec = ExecutionEnvironment.getProtocolSpec(UNIT_TEST_CHAIN.id, LONDON);
+      GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
+          this.buildGeneralStateTestCaseSpec(protocolSpec);
+      ToyExecutionTools.executeTest(
+          generalStateTestCaseEipSpec,
+          protocolSpec,
+          tracer,
+          transactionProcessingResultValidator,
+          zkTracerValidator);
+    } else {
+      new BesuExecutionTools(UNIT_TEST_CHAIN, coinbase, accounts, transactions).executeTest();
+    }
   }
 
   public long runForGasCost() {

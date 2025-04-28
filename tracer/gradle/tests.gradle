@@ -127,7 +127,25 @@ jacocoTestReport {
 }
 
 tasks.test.configure {
-  dependsOn(buildZkevmBin)
+  dependsOn(buildZkevmBin, "copyPlugins")
+
+  delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
+  System.setProperty("besu.plugins.dir",
+          System.getenv().getOrDefault("besu.plugins.dir",
+                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/plugins/"
+          )
+  )
+  System.setProperty("besu.traces.dir",
+          System.getenv().getOrDefault("besu.traces.dir",
+                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/traces/"
+          )
+  )
+
+  systemProperty("besu.traces.dir", System.getProperty("besu.traces.dir"))
+  systemProperty("besu.plugins.dir", System.getProperty("besu.plugins.dir"))
+
 
   systemProperty("junit.jupiter.execution.parallel.enabled", true)
   systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
@@ -143,6 +161,12 @@ tasks.test.configure {
     excludeTags("prc-calltests")
   }
   finalizedBy(jacocoTestReport)
+}
+
+tasks.register("copyPlugins", Copy) {
+  dependsOn(project(":plugins").tasks.findByPath("jar"))
+  from project(":plugins").tasks.findByPath("jar").outputs.files.collect()
+  into "${System.getProperty("besu.plugins.dir")}"
 }
 
 tasks.register("fastReplayTests", Test) {

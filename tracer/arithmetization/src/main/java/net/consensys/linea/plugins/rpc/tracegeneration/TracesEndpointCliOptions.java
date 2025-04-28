@@ -19,7 +19,7 @@ import com.google.common.base.MoreObjects;
 import net.consensys.linea.plugins.LineaCliOptions;
 import picocli.CommandLine;
 
-class TracesEndpointCliOptions implements LineaCliOptions {
+public class TracesEndpointCliOptions implements LineaCliOptions {
 
   static final String CONFIG_KEY = "traces-endpoint-config";
 
@@ -44,7 +44,7 @@ class TracesEndpointCliOptions implements LineaCliOptions {
    *
    * @return the Linea cli options
    */
-  static TracesEndpointCliOptions create() {
+  public static TracesEndpointCliOptions create() {
     return new TracesEndpointCliOptions();
   }
 

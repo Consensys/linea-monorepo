@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -48,9 +49,10 @@ public class TracesEndpointServicePlugin extends AbstractLineaPrivateOptionsPlug
 
   @Override
   public Map<String, LineaOptionsPluginConfiguration> getLineaPluginConfigMap() {
+    final var configMap = new HashMap<>(super.getLineaPluginConfigMap());
     final TracesEndpointCliOptions tracesEndpointCliOptions = TracesEndpointCliOptions.create();
-
-    return Map.of(TracesEndpointCliOptions.CONFIG_KEY, tracesEndpointCliOptions.asPluginConfig());
+    configMap.put(TracesEndpointCliOptions.CONFIG_KEY, tracesEndpointCliOptions.asPluginConfig());
+    return configMap;
   }
 
   /**
