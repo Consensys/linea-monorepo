@@ -18,7 +18,6 @@ export class MessageMetricsService extends MetricsService {
 
   public async initialize(): Promise<void> {
     const messagesByAttribute = await this.getMessagesCountFromDatabase();
-    console.log("messagesByAttribute:", messagesByAttribute);
     this.initializeGaugeValues(messagesByAttribute);
   }
 
@@ -62,7 +61,6 @@ export class MessageMetricsService extends MetricsService {
 
   private initializeGaugeValues(messagesByAttribute: MessagesMetricsAttributesWithCount[]): void {
     for (const { attributes, count } of messagesByAttribute) {
-      console.log("initializeGaugeValues: ", attributes, count);
       this.incrementGauge(
         LineaPostmanMetrics.Messages,
         {

@@ -100,7 +100,6 @@ export abstract class MetricsService implements IMetricsService {
     }
 
     const metricData = await gauge.get();
-    console.log("metricData:", metricData);
     const aggregatedMetricValueWithMatchingLabels = this.aggregateMetricValuesWithExactMatchingLabels(
       metricData,
       labels,
