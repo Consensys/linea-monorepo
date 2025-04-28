@@ -77,7 +77,7 @@ runs:
       shell: bash
       run: |
         cd /tmp/
-        echo "downloading linea-besu: ${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }}"
+        echo "downloading besu from linea-besu-upstream: ${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }}"
         wget -nv "${{ steps.dotenv.outputs.LINEA_BESU_BASE_URL }}${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }}/${{ steps.dotenv.outputs.LINEA_BESU_FILENAME_PREFIX }}-${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }}.tar.gz"
         tar -xvf ${{ steps.dotenv.outputs.LINEA_BESU_FILENAME_PREFIX }}-${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }}.tar.gz
         mv /tmp/${{ steps.dotenv.outputs.LINEA_BESU_FILENAME_PREFIX }}-${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }} /tmp/besu
@@ -134,10 +134,10 @@ runs:
         echo "### Besu and Plugin Details" >> output.md
         echo "| Module | Version | SHA-256 |" >> output.md
         echo "|--------|---------|--------------|" >> output.md
-        echo "| linea-besu | ${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }} | $(sha256sum /tmp/linea-besu-${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }}.tar.gz | awk '{ print $1 }' ) |" >> output.md
-        echo "| linea-sequencer-plugin | ${{ steps.dotenv.outputs.LINEA_SEQUENCER_PLUGIN_VERSION }} | $(sha256sum ../linea-besu/besu/plugins/linea-sequencer-v${{ steps.dotenv.outputs.LINEA_SEQUENCER_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
-        echo "| linea-tracer-plugin | ${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }} | $(sha256sum ../linea-besu/besu/plugins/linea-tracer-${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
-        echo "| linea-finalized-tag-updater-plugin | ${{ steps.dotenv.outputs.LINEA_FINALIZED_TAG_UPDATER_PLUGIN_VERSION }} | $(sha256sum ../linea-besu/besu/plugins/linea-finalized-tag-updater-v${{ steps.dotenv.outputs.LINEA_FINALIZED_TAG_UPDATER_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
-        echo "| linea-staterecovery-plugin | ${{ steps.dotenv.outputs.LINEA_STATERECOVERY_PLUGIN_VERSION }} | $(sha256sum ../linea-besu/besu/plugins/linea-staterecovery-besu-plugin-v${{ steps.dotenv.outputs.LINEA_STATERECOVERY_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
-        echo "| shomei-plugin | ${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }} | $(sha256sum ../linea-besu/besu/plugins/besu-shomei-plugin-v${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
+        echo "| linea-besu | ${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }} | $(sha256sum /tmp/besu/${{ steps.dotenv.outputs.LINEA_BESU_FILENAME_PREFIX }}-${{ steps.dotenv.outputs.LINEA_BESU_TAR_GZ }}.tar.gz | awk '{ print $1 }' ) |" >> output.md
+        echo "| linea-sequencer-plugin | ${{ steps.dotenv.outputs.LINEA_SEQUENCER_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-sequencer-v${{ steps.dotenv.outputs.LINEA_SEQUENCER_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
+        echo "| linea-tracer-plugin | ${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-tracer-${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
+        echo "| linea-finalized-tag-updater-plugin | ${{ steps.dotenv.outputs.LINEA_FINALIZED_TAG_UPDATER_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-finalized-tag-updater-v${{ steps.dotenv.outputs.LINEA_FINALIZED_TAG_UPDATER_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
+        echo "| linea-staterecovery-plugin | ${{ steps.dotenv.outputs.LINEA_STATERECOVERY_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/linea-staterecovery-besu-plugin-v${{ steps.dotenv.outputs.LINEA_STATERECOVERY_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
+        echo "| shomei-plugin | ${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }} | $(sha256sum ../linea-besu-package/linea-besu/besu/plugins/besu-shomei-plugin-v${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }}.jar | awk '{ print $1 }' ) |" >> output.md    
         echo "" >> output.md
