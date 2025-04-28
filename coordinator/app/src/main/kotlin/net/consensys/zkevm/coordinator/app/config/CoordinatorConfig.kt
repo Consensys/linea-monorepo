@@ -379,16 +379,6 @@ interface FeatureToggleable {
     get() = !disabled
 }
 
-data class MessageAnchoringServiceConfig(
-  val pollingInterval: Duration,
-  val maxMessagesToAnchor: UInt,
-  override var disabled: Boolean = false
-) : FeatureToggleable {
-  init {
-    require(maxMessagesToAnchor > 0u) { "maxMessagesToAnchor must be greater than 0" }
-  }
-}
-
 data class L1DynamicGasPriceCapServiceConfig(
   val gasPriceCapCalculation: GasPriceCapCalculation,
   val feeHistoryFetcher: FeeHistoryFetcher,
