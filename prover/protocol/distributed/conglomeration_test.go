@@ -41,8 +41,20 @@ func TestConglomerationBasic(t *testing.T) {
 
 	fmt.Printf("nbWitnessesGL=%d nbWitnessesLPP=%d\n", len(witnessGLs), len(witnessLPPs))
 
-	runGLs := runProverGLs(t, distWizard, compiledGLs, witnessGLs)
 	runLPPs := runProverLPPs(t, distWizard, compiledLPPs, witnessLPPs)
+
+	for i := range runLPPs {
+		t.Logf("sanity-checking runLPPs[%d]\n", i)
+		sanityCheckConglomeration(t, conglomeration, runLPPs[i])
+	}
+
+	runGLs := runProverGLs(t, distWizard, compiledGLs, witnessGLs)
+
+	for i := range runGLs {
+		t.Logf("sanity-checking runGLs[%d]\n", i)
+		sanityCheckConglomeration(t, conglomeration, runGLs[i])
+	}
+
 	runConglomerationProver(t, conglomeration, runGLs, runLPPs)
 }
 
@@ -96,9 +108,20 @@ func TestConglomeration(t *testing.T) {
 
 	var (
 		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, &distWizard)
-		runGLs                  = runProverGLs(t, distWizard, compiledGLs, witnessGLs)
 		runLPPs                 = runProverLPPs(t, distWizard, compiledLPPs, witnessLPPs)
 	)
+
+	for i := range runLPPs {
+		t.Logf("sanity-checking runLPPs[%d]\n", i)
+		sanityCheckConglomeration(t, conglomeration, runLPPs[i])
+	}
+
+	runGLs := runProverGLs(t, distWizard, compiledGLs, witnessGLs)
+
+	for i := range runGLs {
+		t.Logf("sanity-checking runGLs[%d]\n", i)
+		sanityCheckConglomeration(t, conglomeration, runGLs[i])
+	}
 
 	runConglomerationProver(t, conglomeration, runGLs, runLPPs)
 }
@@ -119,6 +142,18 @@ func runConglomerationCompiler(t *testing.T, compiledSegments []*RecursedSegment
 	t.Logf("[%v] Finished compiling conglomerator\n", time.Now())
 
 	return cong
+}
+
+// Sanity-check for conglomeration compilation.
+func sanityCheckConglomeration(t *testing.T, cong *ConglomeratorCompilation, run *wizard.ProverRuntime) {
+
+	t.Logf("sanity-check for conglomeration")
+	stopRound := recursion.VortexQueryRound(cong.ModuleProofs[0])
+	err := wizard.VerifyUntilRound(cong.ModuleProofs[0], run.ExtractProof(), stopRound+1)
+
+	if err != nil {
+		t.Fatalf("could not verify proof: %v", err)
+	}
 }
 
 // This function runs a prover for a conglomerator compilation. It takes in a ConglomeratorCompilation
