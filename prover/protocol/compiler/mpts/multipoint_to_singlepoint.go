@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
@@ -33,6 +37,12 @@ type MultipointToSinglepointCompilation struct {
 	// The first round is a little special as the precomputed polynomials are
 	// considered in their own round, placed at the beginning.
 	Polys []ifaces.Column
+
+	// ExplictlyEvaluated columns are columns that are explicitly evaluated
+	// in the compilation. This includes the non-committed or non-precomputed
+	// columns and all the verifier columns. They are not part of the generated
+	// query.
+	ExplicitlyEvaluated []ifaces.Column
 
 	// EvalPointOfPolys lists, for each entry in [Polys], the entries of
 	// [Queries] corresponding to evaluation points affected to the
@@ -94,7 +104,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 		ctx = &MultipointToSinglepointCompilation{
 			Queries: getAndMarkAsCompiledQueries(comp),
 		}
-		polysByRound, polyPrecomputed = sortPolynomialsByRoundAndName(comp, ctx.Queries)
+		polysByRound, polyPrecomputed, direct = sortPolynomialsByRoundAndName(comp, ctx.Queries)
 	)
 
 	for _, op := range options {
@@ -102,7 +112,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	}
 
 	ctx.setMaxNumberOfRowsOf(slices.Concat(
-		append(polysByRound, polyPrecomputed)...),
+		append(polysByRound, polyPrecomputed, direct)...),
 	)
 
 	if ctx.NumColumnProfileOpt != nil {
@@ -120,7 +130,8 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 			ctx.numRow, polyPrecomputed, ctx.NumColumnProfilePrecomputed, true)
 	}
 
-	ctx.Polys = slices.Concat(append([][]ifaces.Column{polyPrecomputed}, polysByRound...)...)
+	ctx.Polys = slices.Concat(append([][]ifaces.Column{polyPrecomputed, direct}, polysByRound...)...)
+	ctx.ExplicitlyEvaluated = direct
 
 	ctx.LinCombCoeffLambda = comp.InsertCoin(
 		ctx.getNumRound(comp),
@@ -149,7 +160,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	ctx.NewQuery = comp.InsertUnivariate(
 		ctx.getNumRound(comp)+1,
 		ifaces.QueryIDf("MPTS_NEW_QUERY_%v", comp.SelfRecursionCount),
-		append(ctx.Polys, ctx.Quotient),
+		append(slices.Concat(append([][]ifaces.Column{polyPrecomputed}, polysByRound...)...), ctx.Quotient),
 	)
 
 	ctx.EvalPointOfPolys, ctx.PolysOfEvalPoint = indexPolysAndPoints(ctx.Polys, ctx.Queries)
@@ -162,8 +173,13 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 }
 
 // setMaxNumberOfRowsOf scans the list of columns and returns the largest size.
-// and set it in the context.
+// and set it in the context. The function returns an error if the list is empty.
 func (ctx *MultipointToSinglepointCompilation) setMaxNumberOfRowsOf(columns []ifaces.Column) int {
+
+	if len(columns) == 0 {
+		return 0
+	}
+
 	numRow := columns[0].Size()
 	for i := 1; i < len(columns); i++ {
 		numRow = max(numRow, columns[i].Size())
@@ -234,12 +250,11 @@ func getAndMarkAsCompiledQueries(comp *wizard.CompiledIOP) []query.UnivariateEva
 //
 // Precomputed polynomials can be considered at round -1 and are placed at
 // the beginning.
-func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.UnivariateEval) ([][]ifaces.Column, []ifaces.Column) {
+func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.UnivariateEval) (compiledByRound [][]ifaces.Column, precomputed []ifaces.Column, direct []ifaces.Column) {
 
-	var (
-		polysByRound    = make([][]ifaces.Column, 0)
-		polyPrecomputed = make([]ifaces.Column, 0)
-	)
+	compiledByRound = make([][]ifaces.Column, 0)
+	precomputed = make([]ifaces.Column, 0)
+	direct = make([]ifaces.Column, 0)
 
 	for _, q := range queries {
 		for _, poly := range q.Pols {
@@ -248,17 +263,27 @@ func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.Uni
 				utils.Panic("shifted polys are not supported. Please, run the naturalization pass prior to calling the MPTS pass")
 			}
 
+			if _, isV := poly.(verifiercol.VerifierCol); isV {
+				direct = append(direct, poly)
+				continue
+			}
+
+			if poly.(column.Natural).Status().IsPublic() {
+				direct = append(direct, poly)
+				continue
+			}
+
 			// This works assuming the input polys are [colum.Natural] columns.
 			// Otherwise, the check would fail even if the column were a shifted
 			// version of a precomputed column.
 			if comp.Precomputed.Exists(poly.GetColID()) {
-				polyPrecomputed = append(polyPrecomputed, poly)
+				precomputed = append(precomputed, poly)
 				continue
 			}
 
 			round := poly.Round()
-			polysByRound = utils.GrowSliceSize(polysByRound, round+1)
-			polysByRound[round] = append(polysByRound[round], poly)
+			compiledByRound = utils.GrowSliceSize(compiledByRound, round+1)
+			compiledByRound[round] = append(compiledByRound[round], poly)
 		}
 	}
 
@@ -283,12 +308,12 @@ func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.Uni
 		return s
 	}
 
-	polyPrecomputed = cleanSubList(polyPrecomputed)
-	for round := range polysByRound {
-		polysByRound[round] = cleanSubList(polysByRound[round])
+	precomputed = cleanSubList(precomputed)
+	for round := range compiledByRound {
+		compiledByRound[round] = cleanSubList(compiledByRound[round])
 	}
 
-	return polysByRound, polyPrecomputed
+	return compiledByRound, precomputed, direct
 }
 
 // extendPWithShadowColumns adds shadow columns to the given list of polynomials
@@ -394,4 +419,59 @@ func indexPolysAndPoints(polys []ifaces.Column, points []query.UnivariateEval) (
 	}
 
 	return evalPointOfPolys, polysOfEvalPoint
+}
+
+// cptEvaluationMap returns an evaluation map [Column] -> [Y] for all the
+// polynomials handled by [ctx]. This includes the columns of the new query
+// but also the explictly evaluated columns.
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMap(run wizard.Runtime) map[ifaces.ColID]field.Element {
+
+	var (
+		evaluationMap = make(map[ifaces.ColID]field.Element)
+		univParams    = run.GetParams(ctx.NewQuery.QueryID).(query.UnivariateEvalParams)
+		x             = univParams.X
+	)
+
+	for i := range ctx.NewQuery.Pols {
+		colID := ctx.NewQuery.Pols[i].GetColID()
+		evaluationMap[colID] = univParams.Ys[i]
+	}
+
+	for i, c := range ctx.ExplicitlyEvaluated {
+		colID := ctx.ExplicitlyEvaluated[i].GetColID()
+		poly := c.GetColAssignment(run)
+		evaluationMap[colID] = smartvectors.Interpolate(poly, x)
+	}
+
+	return evaluationMap
+}
+
+// cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]frontend.Variable {
+
+	var (
+		evaluationMap = make(map[ifaces.ColID]frontend.Variable)
+		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
+		x             = univParams.X
+		polys         = make([][]frontend.Variable, 0)
+	)
+
+	for i := range ctx.NewQuery.Pols {
+		colID := ctx.NewQuery.Pols[i].GetColID()
+		evaluationMap[colID] = univParams.Ys[i]
+	}
+
+	for _, c := range ctx.ExplicitlyEvaluated {
+		poly := c.GetColAssignmentGnark(run)
+		polys = append(polys, poly)
+	}
+
+	ys := fastpoly.BatchInterpolateGnark(api, polys, x)
+
+	for i := range ctx.ExplicitlyEvaluated {
+		colID := ctx.ExplicitlyEvaluated[i].GetColID()
+		evaluationMap[colID] = ys[i]
+	}
+
+	return evaluationMap
 }

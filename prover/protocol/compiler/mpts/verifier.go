@@ -19,11 +19,14 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
-		// polyOfRs stores the values of P_k(r) as returned in the query.
+		// _polyOfRs stores the values of P_k(r) as returned in the query.
 		// The last value of the slice is the value of Q(r) where q
 		// is the quotient polynomial.
-		polyOfRs = queryParams.Ys[:len(va.NewQuery.Pols)-1]
+		//
+		// However, the other values cannot be directly used by the verifier
+		// and should instead use the ysMap.
 		qr       = queryParams.Ys[len(va.NewQuery.Pols)-1]
+		polysAtR = va.cptEvaluationMap(run)
 		r        = queryParams.X
 		rCoin    = run.GetRandomCoinField(va.EvaluationPoint.Name)
 
@@ -60,12 +63,15 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 	}
 
 	// This loop computes the value of [res]
-	for k := range va.Polys {
+	for k, p := range va.Polys {
+
+		pr := polysAtR[p.GetColID()]
+
 		for _, i := range va.EvalPointOfPolys[k] {
 			// This sets tmp with the value of yik
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
 			tmp := run.GetUnivariateParams(va.Queries[i].Name()).Ys[posOfYik]
-			tmp.Sub(&polyOfRs[k], &tmp) // Pk(r) - y_{ik}
+			tmp.Sub(&pr, &tmp) // Pk(r) - y_{ik}
 			tmp.Mul(&tmp, &zetasOfR[i])
 			tmp.Mul(&tmp, &rhoK)
 			res.Add(&res, &tmp)
@@ -89,8 +95,8 @@ func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 		// polyOfRs stores the values of P_k(r) as returned in the query.
 		// The last value of the slice is the value of Q(r) where q
 		// is the quotient polynomial.
-		polyOfRs = queryParams.Ys[:len(va.NewQuery.Pols)-1]
 		qr       = queryParams.Ys[len(va.NewQuery.Pols)-1]
+		polysAtR = va.cptEvaluationMapGnark(api, run)
 		r        = queryParams.X
 		rCoin    = run.GetRandomCoinField(va.EvaluationPoint.Name)
 
@@ -124,12 +130,13 @@ func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	}
 
 	// This loop computes the value of [res]
-	for k := range va.Polys {
+	for k, p := range va.Polys {
+		pr := polysAtR[p.GetColID()]
 		for _, i := range va.EvalPointOfPolys[k] {
 			// This sets tmp with the value of yik
 			posOfYik := getPositionOfPolyInQueryYs(va.Queries[i], va.Polys[k])
 			tmp := run.GetUnivariateParams(va.Queries[i].Name()).Ys[posOfYik]
-			tmp = api.Sub(polyOfRs[k], tmp) // Pk(r) - y_{ik}
+			tmp = api.Sub(pr, tmp) // Pk(r) - y_{ik}
 			tmp = api.Mul(tmp, zetasOfR[i])
 			tmp = api.Mul(tmp, rhoK)
 			res = api.Add(res, tmp)
