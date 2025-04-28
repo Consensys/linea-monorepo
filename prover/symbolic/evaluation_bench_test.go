@@ -1,3 +1,7 @@
+//go:build skiptest
+
+// this test is skipped in the test suite due to the fact that the evaluation benchmark
+// files are outdated
 package symbolic_test
 
 import (
