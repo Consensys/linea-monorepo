@@ -96,7 +96,7 @@ class MessageAnchoringConfigTest {
   @Test
   fun `should parse message anchoroing with defaults`() {
     val toml = """
-      # Nothing configures, shall return defaults
+      # Nothing configured to return defaults
     """.trimIndent()
 
     assertThat(parseConfig(toml))

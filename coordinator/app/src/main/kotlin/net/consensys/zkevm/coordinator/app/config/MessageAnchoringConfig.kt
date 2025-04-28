@@ -62,8 +62,6 @@ data class MessageAnchoringConfigTomlDto(
       disabled = disabled,
       l1Endpoint = l1Endpoint ?: l1DefaultEndpoint,
       l2Endpoint = l2Endpoint ?: l2DefaultEndpoint,
-      // l1HighestBlockTag = BlockParameter.parse(l1HighestBlockTag),
-      // l2HighestBlockTag = BlockParameter.parse(l2HighestBlockTag),
       l1HighestBlockTag = l1HighestBlockTag,
       l2HighestBlockTag = l2HighestBlockTag,
       l1RequestRetryConfig = l1RequestRetries.asDomain,
