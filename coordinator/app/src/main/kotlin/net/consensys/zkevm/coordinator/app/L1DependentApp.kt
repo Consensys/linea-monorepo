@@ -16,7 +16,6 @@ import linea.web3j.Web3jBlobExtended
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.blob.ShnarfCalculatorVersion
-import net.consensys.linea.contract.Web3JL2MessageService
 import net.consensys.linea.contract.Web3JL2MessageServiceLogsClient
 import net.consensys.linea.contract.l1.GenesisStateProvider
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
@@ -577,20 +576,6 @@ class L1DependentApp(
   }
 
   private val proofAggregationCoordinatorService: LongRunningService = run {
-    // it needs it's own client because internally set the blockNumber when making queries.
-    // it does not make any transaction
-    val messageService = instantiateL2MessageServiceContractClient(
-      configs.l2,
-      l2TransactionManager,
-      l2Web3jClient,
-      smartContractErrors
-    )
-    val l2MessageServiceClient = Web3JL2MessageService(
-      vertx = vertx,
-      l2MessageServiceLogsClient = l2MessageServiceLogsClient,
-      web3jL2MessageService = messageService
-    )
-
     val maxBlobEndBlockNumberTracker = ConsecutiveProvenBlobsProviderWithLastEndBlockNumberTracker(
       aggregationsRepository,
       lastProcessedBlockNumber
@@ -627,8 +612,24 @@ class L1DependentApp(
         aggregationsRepository = aggregationsRepository,
         consecutiveProvenBlobsProvider = maxBlobEndBlockNumberTracker,
         proofAggregationClient = proverClientFactory.proofAggregationProverClient(),
-        l2web3jClient = l2Web3jClient,
-        l2MessageServiceClient = l2MessageServiceClient,
+        l2EthApiClient = createEthApiClient(
+          l2Web3jClient,
+          requestRetryConfig = linea.domain.RetryConfig(
+            backoffDelay = 1.seconds,
+            failuresWarningThreshold = 3u
+          ),
+          vertx = vertx
+        ),
+        l2MessageService = Web3JL2MessageServiceSmartContractClient.create(
+          web3jClient = l2Web3jClient,
+          contractAddress = configs.l2.messageServiceAddress,
+          gasLimit = configs.l2.gasLimit,
+          maxFeePerGasCap = configs.l2.maxFeePerGasCap,
+          feeHistoryBlockCount = configs.l2.feeHistoryBlockCount,
+          feeHistoryRewardPercentile = configs.l2.feeHistoryRewardPercentile,
+          transactionManager = l2TransactionManager,
+          smartContractErrors = smartContractErrors
+        ),
         aggregationDeadlineDelay = configs.conflation.conflationDeadlineLastBlockConfirmationDelay.toKotlinDuration(),
         targetEndBlockNumbers = configs.proofAggregation.targetEndBlocks,
         metricsFacade = metricsFacade,
