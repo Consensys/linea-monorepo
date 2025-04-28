@@ -218,8 +218,6 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         id: release_create_artifacts
         run: |
-          cd release
-          
           MANIFEST=$(docker manifest inspect consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }})
           if [ $? -eq 0 ]; then
             echo "### Docker Image Details" >> output.md
