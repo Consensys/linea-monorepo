@@ -252,6 +252,7 @@ jobs:
         with:
           #github-token: ${{ secrets.github_token }}
           git-path: ./linea-besu-package/
+          git-push: false
           output-file: "false"
       
       - name: Append Changelog Action to release note
