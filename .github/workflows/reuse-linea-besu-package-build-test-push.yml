@@ -219,6 +219,7 @@ jobs:
         if: ${{ github.event_name == 'workflow_dispatch' }}
         id: release_create_artifacts
         run: |
+          cd release
           MANIFEST=$(docker manifest inspect consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }})
           if [ $? -eq 0 ]; then
             echo "### Docker Image Details" >> output.md
@@ -244,6 +245,23 @@ jobs:
       #     retention-days: 1
       #     path: |
       #       ./release
+      - name: Conventional Changelog Action
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        id: change_log
+        uses: TriPSs/conventional-changelog-action@v5
+        with:
+          #github-token: ${{ secrets.github_token }}
+          git-path: ./linea-besu-package/
+          output-file: "false"
+      
+      - name: Append Changelog Action to release note
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        id: append_change_log
+        shell: bash
+        run: |
+          cd release
+          echo "${{ steps.change_log.outputs.clean_changelog }}" >> output.md
+          echo "output.md=$(cat output.md)"
 
       - name: release - publish artifacts and release notes
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -253,7 +271,7 @@ jobs:
           name: Linea Besu Package ${{ steps.assemble.outputs.dockertag }}
           tag_name: linea-besu-package-${{ steps.assemble.outputs.dockertag }}
           body_path: release/output.md
-          generate_release_notes: true
+          generate_release_notes: false
           fail_on_unmatched_files: true
           files: |
             release/linea-besu-package-${{ steps.assemble.outputs.dockertag }}.tar.gz
