@@ -70,7 +70,7 @@ func TestLookup(t *testing.T) {
 			witness1 := ExtractWitness(proverRuntime)
 
 			prove2 := func(run *wizard.ProverRuntime) {
-				recCtx.Assign(run, []Witness{witness1})
+				recCtx.Assign(run, []Witness{witness1}, nil)
 			}
 
 			proof2 := wizard.Prove(comp2, prove2)
