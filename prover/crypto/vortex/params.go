@@ -48,7 +48,8 @@ type Params struct {
 //   - maxNbRows: the maximum number of rows in the witness matrix
 //   - sisParams: the parameters of the SIS instance to use to hash the columns
 //   - leafHashFunc: the hash function to use to hash the SIS hashes into the
-//     leaves of the Merkle-tree.
+//     leaves of the Merkle-tree (when using the SIS hashing) or hash the field elements
+//     directly while not using the SIS hashing.
 //   - merkleHashFunc: the hash function to use to hash the nodes of the Merkle-tree.
 func NewParams(
 	blowUpFactor int,

@@ -47,9 +47,8 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 	})
 
 	timeTree := profiling.TimeIt(func() {
-		var leaves []types.Bytes32
 		// Hash the SIS digests to obtain the leaves of the Merkle tree.
-		leaves = p.hashSisHash(colHashes)
+		leaves := p.hashSisHash(colHashes)
 
 		tree = smt.BuildComplete(
 			leaves,
@@ -75,7 +74,7 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 //
 // And can be safely converted to a field Element via
 // [field.Element.SetBytesCanonical]
-// We apply MiMC hashing on the columns to compute leaves
+// We apply MiMC hashing on the columns to compute leaves.
 // Should be used when the number of rows to commit is less than the [ApplySISThreshold]
 func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
 

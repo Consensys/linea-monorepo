@@ -85,7 +85,7 @@ func TestProver(t *testing.T) {
 		{
 			Explainer:             "1 matrix commitment with several polys without SIS commitment",
 			NumPolysPerCommitment: []int{3},
-			IsSisReplacedByMiMC:   []bool{false},
+			IsSisReplacedByMiMC:   []bool{true},
 			NumOpenedColumns:      4,
 		},
 		{

@@ -176,6 +176,11 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 		}
 	)
 
+	// If IsSISReplacedByMiMC is not assigned, we assign them with default false values
+	if v.IsSISReplacedByMiMC == nil {
+		v.IsSISReplacedByMiMC = make([]bool, len(v.MerkleRoots))
+	}
+
 	for i := 0; i < len(v.MerkleRoots); i++ {
 		for j := 0; j < len(v.EntryList); j++ {
 
@@ -225,7 +230,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 
 			// And check that the Merkle proof is related to the correct entry
 			if mProof.Path != entry {
-				return fmt.Errorf("expected the Merkle proof to hold for position %v but was %v", entry, entry)
+				return fmt.Errorf("expected the Merkle proof to hold for position %v but was %v", entry, mProof.Path)
 			}
 		}
 	}
