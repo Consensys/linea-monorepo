@@ -51,6 +51,7 @@ export class MessageMetricsService extends MetricsService {
 
     const results: MessagesMetricsAttributesWithCount[] = [];
 
+    // Note that we must initialize every attribute combination, or 'incrementGauge' and 'decrementGauge' will not work later on.
     for (const status of Object.values(MessageStatus)) {
       for (const direction of Object.values(Direction)) {
         for (const isForSponsorship of [true, false]) {
@@ -67,14 +68,6 @@ export class MessageMetricsService extends MetricsService {
         }
       }
     }
-
-    // resultMap.forEach((count, resultMapKey) => {
-    //   const attributes: MessagesMetricsAttributes = JSON.parse(resultMapKey);
-    //   results.push({
-    //     attributes,
-    //     count,
-    //   });
-    // });
 
     return results;
   }
