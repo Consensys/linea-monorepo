@@ -27,10 +27,10 @@ on:
         type: string
         default: ''
         
-
 permissions:
+  actions: read
   id-token: write  
-  contents: read
+  contents: write
 
 jobs:
   filter-commit-changes:
