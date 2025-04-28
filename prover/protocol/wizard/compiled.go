@@ -128,6 +128,9 @@ type CompiledIOP struct {
 	// FunctionalPublic inputs lists the queries representing a public inputs
 	// and their identifiers
 	PublicInputs []PublicInput
+
+	// ExtraData is a free field in which compilers can store whatever they want.
+	ExtraData map[string]any
 }
 
 // NumRounds returns the total number of prover interactions with the verifier

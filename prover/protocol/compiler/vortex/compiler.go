@@ -148,6 +148,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 			ctx.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue = merkleRootValue.Get(0)
 			ctx.comp.Columns.SetStatus(merkleRootColumn.GetColID(), column.Proof)
 			ctx.comp.Precomputed.Del(merkleRootColumn.GetColID())
+			ctx.comp.ExtraData[ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name] = merkleRootValue
 
 			comp.RegisterProverAction(0, &ReassignPrecomputedRootAction{
 				Ctx: ctx,

@@ -39,6 +39,14 @@ type ConglomeratorCompilation struct {
 	// Recursion is the recursion context used to compile the conglomeration
 	// proof.
 	Recursion *recursion.Recursion
+
+	// AcceptablePrecomputedMerkleRoots tuple is the list of verifying keys
+	// that are accepted by the conglomeration proof. This ensures that only
+	// proofs for the expected circuits are accepted.
+	//
+	// They corresponds to the values of the precomputed merkleRoots that the
+	// proof provides as public inputs.
+	AcceptablePrecomputedMerkleRoots [][2]field.Element
 }
 
 // ConglomerationHolisticCheck is a [wizard.VerifierAction] checking that all
@@ -106,6 +114,7 @@ func Conglomerate(maxNbProofs int, moduleProofs []*wizard.CompiledIOP) *Conglome
 func (c *ConglomeratorCompilation) Compile(comp *wizard.CompiledIOP) {
 
 	w0 := c.ModuleProofs[0]
+	c.AcceptablePrecomputedMerkleRoots = make([][2]field.Element, len(c.ModuleProofs))
 
 	for i := 1; i < len(c.ModuleProofs); i++ {
 		diff1, diff2 := cmpWizardIOP(w0, c.ModuleProofs[i])
@@ -117,7 +126,13 @@ func (c *ConglomeratorCompilation) Compile(comp *wizard.CompiledIOP) {
 
 			utils.Panic("incompatible IOPs i=%v\n\t+++=%v\n\t---=%v", i, diff1, diff2)
 		}
+	}
 
+	for i := range c.ModuleProofs {
+		c.AcceptablePrecomputedMerkleRoots[i] = [2]field.Element{
+			c.ModuleProofs[i].ExtraData[verifyingKeyPublicInput].(field.Element),
+			c.ModuleProofs[i].ExtraData[verifyingKey2PublicInput].(field.Element),
+		}
 	}
 
 	c.Recursion = recursion.DefineRecursionOf(comp, w0, recursion.Parameters{
@@ -126,7 +141,6 @@ func (c *ConglomeratorCompilation) Compile(comp *wizard.CompiledIOP) {
 		MaxNumProof:            c.MaxNbProofs,
 		WithExternalHasherOpts: true,
 	})
-
 }
 
 // Run implements the [wizard.VerifierAction] interface.
