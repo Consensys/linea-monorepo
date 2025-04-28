@@ -29,6 +29,7 @@ import lombok.Builder;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.apache.tuweni.units.bigints.UInt256;
+import org.hyperledger.besu.config.GenesisAccount;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
@@ -195,6 +196,16 @@ public class ToyAccount implements MutableAccount {
     } else {
       return false;
     }
+  }
+
+  public GenesisAccount toGenesisAccount() {
+    return new GenesisAccount(
+        address,
+        nonce,
+        balance,
+        code,
+        storage,
+        keyPair == null ? null : Bytes32.wrap(keyPair.getPrivate().getEncoded()));
   }
 
   public ReferenceTestWorldState.AccountMock toAccountMock() {

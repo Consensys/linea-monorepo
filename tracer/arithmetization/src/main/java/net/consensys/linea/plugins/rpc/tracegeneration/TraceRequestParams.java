@@ -24,7 +24,8 @@ public record TraceRequestParams(
     long startBlockNumber, long endBlockNumber, String expectedTracesEngineVersion) {
 
   public void validate() {
-    if (!expectedTracesEngineVersion.equals(getTracerRuntime())) {
+    if (!expectedTracesEngineVersion.equals("test")
+        && !expectedTracesEngineVersion.equals(getTracerRuntime())) {
       throw new InvalidParameterException(
           "INVALID_TRACES_VERSION: Runtime version is %s, requesting version %s"
               .formatted(getTracerRuntime(), expectedTracesEngineVersion));
