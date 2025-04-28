@@ -376,9 +376,14 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 		// Filters out the coms that are not touched by the query and mark them
 		// directly as ignored. (We do not care about them because they are un-
 		// constrained). But we still log these to alert during runtime.
-		coms, comUnconstrained = utils.FilterInSliceWithMap(coms_, ctx.PolynomialsTouchedByTheQuery)
-		numComsActual          = len(coms) // actual == not shadow and not unconstrained
-		fillUpTo               = len(coms)
+		//
+		// Also, the order in which the precomputed columns are taken must be the one
+		// matching the query. Otherwise, we would not be able to obtain standard
+		// proofs for the limitless prover.
+		_, comUnconstrained = utils.FilterInSliceWithMap(coms_, ctx.PolynomialsTouchedByTheQuery)
+		coms                = ctx.commitmentsAtRoundFromQuery(round)
+		numComsActual       = len(coms) // actual == not shadow and not unconstrained
+		fillUpTo            = len(coms)
 	)
 
 	// This part corresponds to an edge-case that is not supposed to happen
@@ -666,7 +671,11 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	// change during the compilation time (in later compilation stage). And
 	// we want the precomputed columns defined at the beginning of the current
 	// vortex compilation step to be captured only.
-	precomputedColNames := comp.Columns.AllPrecomputed()
+	//
+	// Also, the order in which the precomputed columns are taken must be the one
+	// matching the query. Otherwise, we would not be able to obtain standard
+	// proofs for the limitless prover.
+	precomputedColNames := ctx.commitmentsAtRoundFromQueryPrecomputed()
 	if len(precomputedColNames) == 0 {
 		ctx.Items.Precomputeds.PrecomputedColums = []ifaces.Column{}
 		return
@@ -886,4 +895,59 @@ func (ctx *Ctx) startingRound() int {
 	}
 
 	return startingRound
+}
+
+// commitmentAtRoundFromQuery returns the commitment at the given round
+// in the same order of appearance as in the query. The function ignores
+// the precomputed columns.
+func (ctx *Ctx) commitmentsAtRoundFromQuery(round int) []ifaces.ColID {
+	var res []ifaces.ColID
+	for _, p := range ctx.Query.Pols {
+
+		if p.Round() != round {
+			continue
+		}
+
+		if ctx.comp.Precomputed.Exists(p.GetColID()) {
+			continue
+		}
+
+		if _, isV := p.(verifiercol.VerifierCol); isV {
+			panic("verifiercol")
+		}
+
+		if nat, isNat := p.(column.Natural); !isNat || nat.Status() != column.Committed {
+			panic("not committed")
+		}
+
+		res = append(res, p.GetColID())
+	}
+	return res
+}
+
+// commitmentAtRoundFromQueryPrecomputed returns the commitment at the given round
+// in the same order of appearance as in the query. The function only considers
+// the precomputed columns.
+func (ctx *Ctx) commitmentsAtRoundFromQueryPrecomputed() []ifaces.ColID {
+
+	var res []ifaces.ColID
+
+	for _, p := range ctx.Query.Pols {
+
+		if !ctx.comp.Precomputed.Exists(p.GetColID()) {
+			continue
+		}
+
+		if _, isV := p.(verifiercol.VerifierCol); isV {
+			panic("verifiercol")
+		}
+
+		if nat, isNat := p.(column.Natural); !isNat || nat.Status() != column.Precomputed {
+			panic("not precomputed")
+		}
+
+		res = append(res, p.GetColID())
+	}
+
+	return res
 }
