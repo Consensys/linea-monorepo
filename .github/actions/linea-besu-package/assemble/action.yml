@@ -124,7 +124,7 @@ runs:
       shell: bash
       run: |
         mkdir release && cd release
-        tar -czvf linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz ../linea-besu/
+        tar -czvf linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz ../linea-besu-package/linea-besu/
 
         echo "# Release Artifact: Linea - ${{ inputs.linea_env }}" > output.md
         echo "linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz" >> output.md
