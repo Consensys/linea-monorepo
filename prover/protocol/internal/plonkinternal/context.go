@@ -196,11 +196,6 @@ func createCtx(
 		pro.Stop()
 	}
 
-	logger.
-		WithField("nbConstraints", ccs.GetNbConstraints()).
-		WithField("nbInternalVariables", ccs.GetNbInternalVariables()).
-		Debug("[plonk-in-wizard] done compiling the circuit")
-
 	ctx.Plonk.SPR = ccs
 	ctx.Plonk.Domain = fft.NewDomain(uint64(ctx.DomainSize()))
 
@@ -208,13 +203,16 @@ func createCtx(
 		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk())
 	}
 
-	logrus.Debugf("Plonk in Wizard (%v) build trace", name)
 	ctx.Plonk.Trace = plonkBLS12_377.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
 
-	logrus.Debugf("Plonk in Wizard (%v) build permutation", name)
 	ctx.buildPermutation(ctx.Plonk.SPR, ctx.Plonk.Trace) // no part of BuildTrace
 
-	logrus.Debugf("Plonk in Wizard (%v) done", name)
+	logger.
+		WithField("nbConstraints", ccs.GetNbConstraints()).
+		WithField("nbInternalVariables", ccs.GetNbInternalVariables()).
+		WithField("columnSizeGnark", ctx.Plonk.SPR.NbConstraints+len(ctx.Plonk.SPR.Public)).
+		Info("[plonk-in-wizard] done compiling the circuit")
+
 	return ctx
 }
 
@@ -312,7 +310,6 @@ func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_3
 	sizeSolution := ctx.DomainSize()
 	sizePermutation := 3 * sizeSolution
 
-	// init permutation
 	permutation := make([]int64, sizePermutation)
 	for i := 0; i < len(permutation); i++ {
 		permutation[i] = -1
