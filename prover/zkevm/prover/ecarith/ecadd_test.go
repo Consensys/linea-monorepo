@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 func TestEcAddIntegration(t *testing.T) {
@@ -28,7 +27,7 @@ func TestEcAddIntegration(t *testing.T) {
 				IsRes:   ct.GetCommit(b, "IS_RES"),
 			}
 
-			for i := 0; i < common.NbFlattenColLimbs; i++ {
+			for i := 0; i < nbLimbsCols; i++ {
 				ecAddSource.Limbs[i] = ct.GetCommit(b, fmt.Sprintf("LIMB_%d", i))
 			}
 

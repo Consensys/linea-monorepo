@@ -1,6 +1,8 @@
 package modexp
 
 import (
+	"fmt"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -34,12 +36,17 @@ func TestModExpAntichamber(t *testing.T) {
 			)
 
 			cmp := wizard.Compile(func(build *wizard.Builder) {
+				var limbs [nbLimbsCols]ifaces.Column
+				for i := 0; i < nbLimbsCols; i++ {
+					limbs[i] = inpCt.GetCommit(build, fmt.Sprintf("LIMBS_%d", i))
+				}
+
 				inp = Input{
 					IsModExpBase:     inpCt.GetCommit(build, "IS_MODEXP_BASE"),
 					IsModExpExponent: inpCt.GetCommit(build, "IS_MODEXP_EXPONENT"),
 					IsModExpModulus:  inpCt.GetCommit(build, "IS_MODEXP_MODULUS"),
 					IsModExpResult:   inpCt.GetCommit(build, "IS_MODEXP_RESULT"),
-					Limbs:            inpCt.GetCommit(build, "LIMBS"),
+					Limbs:            limbs,
 					Settings:         Settings{MaxNbInstance256: 1, MaxNbInstance4096: 1},
 				}
 
@@ -48,23 +55,24 @@ func TestModExpAntichamber(t *testing.T) {
 
 			proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
 
-				inpCt.Assign(run,
-					"LIMBS",
-					"IS_MODEXP_BASE",
-					"IS_MODEXP_EXPONENT",
-					"IS_MODEXP_MODULUS",
-					"IS_MODEXP_RESULT",
-				)
+				var names []string
+				for i := 0; i < nbLimbsCols; i++ {
+					names = append(names, fmt.Sprintf("LIMBS_%d", i))
+				}
 
+				names = append(names, "IS_MODEXP_BASE", "IS_MODEXP_EXPONENT", "IS_MODEXP_MODULUS", "IS_MODEXP_RESULT")
+
+				inpCt.Assign(run, names...)
 				mod.Assign(run)
 
-				modCt.CheckAssignment(run,
-					"MODEXP_LIMBS",
-					"MODEXP_IS_ACTIVE",
-					"MODEXP_IS_SMALL",
-					"MODEXP_IS_LARGE",
-					"MODEXP_TO_SMALL_CIRC",
-				)
+				var moduleNames []string
+				for i := 0; i < nbLimbsCols; i++ {
+					moduleNames = append(moduleNames, fmt.Sprintf("MODEXP_LIMBS_%d", i))
+				}
+
+				names = append(names, "MODEXP_IS_ACTIVE", "MODEXP_IS_SMALL", "MODEXP_IS_LARGE", "MODEXP_TO_SMALL_CIRC")
+
+				modCt.CheckAssignment(run, moduleNames...)
 			})
 
 			if err := wizard.Verify(cmp, proof); err != nil {

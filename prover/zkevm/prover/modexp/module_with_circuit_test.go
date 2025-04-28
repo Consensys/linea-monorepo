@@ -3,6 +3,8 @@
 package modexp
 
 import (
+	"fmt"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -36,13 +38,18 @@ func TestModexpWithCircuit(t *testing.T) {
 			)
 
 			cmp := wizard.Compile(func(build *wizard.Builder) {
+				var limbs [nbLimbsCols]ifaces.Column
+				for i := 0; i < nbLimbsCols; i++ {
+					limbs[i] = inpCt.GetCommit(build, fmt.Sprintf("LIMBS_%d", i))
+				}
+
 				inp = Input{
 					IsModExpBase:     inpCt.GetCommit(build, "IS_MODEXP_BASE"),
 					IsModExpExponent: inpCt.GetCommit(build, "IS_MODEXP_EXPONENT"),
 					IsModExpModulus:  inpCt.GetCommit(build, "IS_MODEXP_MODULUS"),
 					IsModExpResult:   inpCt.GetCommit(build, "IS_MODEXP_RESULT"),
-					Limbs:            inpCt.GetCommit(build, "LIMBS"),
 					Settings:         Settings{MaxNbInstance256: 1, MaxNbInstance4096: 1, NbInstancesPerCircuitModexp256: 1, NbInstancesPerCircuitModexp4096: 1},
+					Limbs:            limbs,
 				}
 
 				mod = newModule(build.CompiledIOP, inp).
@@ -51,13 +58,14 @@ func TestModexpWithCircuit(t *testing.T) {
 
 			proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
 
-				inpCt.Assign(run,
-					"LIMBS",
-					"IS_MODEXP_BASE",
-					"IS_MODEXP_EXPONENT",
-					"IS_MODEXP_MODULUS",
-					"IS_MODEXP_RESULT",
-				)
+				var names []string
+				for i := 0; i < nbLimbsCols; i++ {
+					names = append(names, fmt.Sprintf("LIMBS_%d", i))
+				}
+
+				names = append(names, "IS_MODEXP_BASE", "IS_MODEXP_EXPONENT", "IS_MODEXP_MODULUS", "IS_MODEXP_RESULT")
+
+				inpCt.Assign(run, names...)
 
 				mod.Assign(run)
 			})

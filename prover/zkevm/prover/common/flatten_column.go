@@ -9,18 +9,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-const (
-	// NbFlattenColLimbs defines the default number of columns allocated for storing the limbs.
-	NbFlattenColLimbs = 8
-)
-
 // FlattenColumn flattens multiple limb columns and an accompanying mask into single columns,
 // provides consistency checks via a precomputed projection mask.
 type FlattenColumn struct {
-	// Limbs is the row-wise concatenation of all limb columns.
-	Limbs ifaces.Column
-	// Mask is the row-wise concatenation of the original mask column.
-	Mask ifaces.Column
+	// limbs is the row-wise concatenation of all limb columns.
+	limbs ifaces.Column
+	// mask is the row-wise concatenation of the original mask column.
+	mask ifaces.Column
 	// auxProjectionMask selects flattenLimbs's positions to validate flattening consistency.
 	auxProjectionMask ifaces.Column
 	// originalLimbs holds the original limb columns to flatten.
@@ -41,6 +36,7 @@ type FlattenColumn struct {
 //   - size: length of the original limbs columns
 //   - nbLimbsCols: number of limb columns to flatten
 //   - module: prefix for column identifiers
+//   - circuit: additional prefix for mask column identifiers
 //
 // It commits placeholders for flattened limbs and mask, and precomputes the projection mask.
 func NewFlattenColumn(comp *wizard.CompiledIOP, size, nbLimbsCols int, module, circuit string) *FlattenColumn {
@@ -68,8 +64,8 @@ func NewFlattenColumn(comp *wizard.CompiledIOP, size, nbLimbsCols int, module, c
 	}
 
 	return &FlattenColumn{
-		Limbs:             flattenLimbs,
-		Mask:              comp.InsertCommit(0, ifaces.ColIDf("%s.%s_FLATTEN_MASK", module, circuit), flattenSize),
+		limbs:             flattenLimbs,
+		mask:              comp.InsertCommit(0, ifaces.ColIDf("%s.%s_FLATTEN_MASK", module, circuit), flattenSize),
 		auxProjectionMask: auxProjectionMask,
 		nbLimbsCols:       nbLimbsCols,
 		onesColumn:        onesColumn,
@@ -77,6 +73,16 @@ func NewFlattenColumn(comp *wizard.CompiledIOP, size, nbLimbsCols int, module, c
 		circuit:           circuit,
 		isDuplicated:      isDuplicated,
 	}
+}
+
+// Limbs returns the flattened limbs column.
+func (l *FlattenColumn) Limbs() ifaces.Column {
+	return l.limbs
+}
+
+// Mask returns the flattened mask column.
+func (l *FlattenColumn) Mask() ifaces.Column {
+	return l.mask
 }
 
 // CsFlattenProjection adds a single batched projection constraint that enforces
@@ -132,8 +138,8 @@ func (l *FlattenColumn) CsFlattenProjection(comp *wizard.CompiledIOP, limbs []if
 
 	for i := 0; i < l.nbLimbsCols; i++ {
 		masks[i] = mask
-		shiftedFlattenLimbs[i] = column.Shift(l.Limbs, i)
-		shiftedFlattenMask[i] = column.Shift(l.Mask, i)
+		shiftedFlattenLimbs[i] = column.Shift(l.limbs, i)
+		shiftedFlattenMask[i] = column.Shift(l.mask, i)
 	}
 
 	comp.InsertProjection(ifaces.QueryIDf("%v_%s_FLATTEN_PROJECTION", l.module, l.circuit),
@@ -161,7 +167,7 @@ func (l *FlattenColumn) Assign(run *wizard.ProverRuntime) {
 func (l *FlattenColumn) assignMask(run *wizard.ProverRuntime) {
 	maskCol := l.originalMask.GetColAssignment(run).IntoRegVecSaveAlloc()
 
-	flattenMask := NewVectorBuilder(l.Mask)
+	flattenMask := NewVectorBuilder(l.mask)
 	for i := 0; i < l.originalMask.Size(); i++ {
 		for j := 0; j < l.nbLimbsCols; j++ {
 			flattenMask.PushField(maskCol[i])
@@ -177,7 +183,7 @@ func (l *FlattenColumn) assignLimbs(run *wizard.ProverRuntime) {
 		limbsCols[i] = limb.GetColAssignment(run).IntoRegVecSaveAlloc()
 	}
 
-	flattenLimbs := NewVectorBuilder(l.Limbs)
+	flattenLimbs := NewVectorBuilder(l.limbs)
 	for i := 0; i < l.originalMask.Size(); i++ {
 		for j := 0; j < l.nbLimbsCols; j++ {
 			flattenLimbs.PushField(limbsCols[j][i])

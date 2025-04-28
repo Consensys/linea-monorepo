@@ -7,7 +7,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
-// input collects references to the columns of the arithmetization containing
+// Input collects references to the columns of the arithmetization containing
 // the Modexp statements. These columns are constrained via a projection query
 // to describe the same statement as what is being stated in the antichamber
 // module. They are also used as a data source to assign the columns of the
@@ -28,7 +28,7 @@ type Input struct {
 	// 4 above columns.
 	IsModExp ifaces.Column
 	// Multiplexed column containing limbs for base, exponent, modulus, and result
-	Limbs ifaces.Column
+	Limbs [nbLimbsCols]ifaces.Column
 }
 
 type Settings struct {
@@ -38,14 +38,19 @@ type Settings struct {
 }
 
 func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings) Input {
-	return Input{
+	input := Input{
 		Settings:         settings,
 		IsModExpBase:     comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_BASE"),
 		IsModExpExponent: comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_EXPONENT"),
 		IsModExpModulus:  comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_MODULUS"),
 		IsModExpResult:   comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_RESULT"),
-		Limbs:            comp.Columns.GetHandle("blake2fmodexpdata.LIMB"),
 	}
+
+	for i := range nbLimbsCols {
+		input.Limbs[i] = comp.Columns.GetHandle(ifaces.ColIDf("blake2fmodexpdata.LIMB_%d", i))
+	}
+
+	return input
 }
 
 // setIsModexp constructs, constraints and set the [isModexpColumn]
