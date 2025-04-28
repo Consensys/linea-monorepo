@@ -717,7 +717,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
       lineaRollup
         .connect(operator)
         .finalizeBlocks(blobAggregatedProof1To155.aggregatedProof, TEST_PUBLIC_VERIFIER_INDEX, finalizationData),
-      "ExpectedForcedTransactionMissing",
+      "FinalizationDataMissingForcedTransaction",
       [expectedErrorTransactionNumber],
     );
   });

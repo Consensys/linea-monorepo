@@ -292,7 +292,7 @@ interface ILineaRollup {
   /**
    * @dev Thrown when the rollup is missing a forced transaction in the finalization block range.
    */
-  error ExpectedForcedTransactionMissing(uint256 nextForcedTransactionNumber);
+  error FinalizationDataMissingForcedTransaction(uint256 nextForcedTransactionNumber);
 
   /**
    * @notice Adds or updates the verifier contract address for a proof type.

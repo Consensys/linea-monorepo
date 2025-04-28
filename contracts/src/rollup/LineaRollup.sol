@@ -619,7 +619,7 @@ contract LineaRollup is
         nextFinalizationStartingForcedTxNumber > 0 &&
         nextFinalizationStartingForcedTxNumber <= _finalizationData.endBlockNumber
       ) {
-        revert ExpectedForcedTransactionMissing(_finalizationData.finalForcedTransactionNumber + 1);
+        revert FinalizationDataMissingForcedTransaction(_finalizationData.finalForcedTransactionNumber + 1);
       }
     }
 
