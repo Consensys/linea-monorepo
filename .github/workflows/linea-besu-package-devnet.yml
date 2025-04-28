@@ -1,17 +1,17 @@
 name: linea-besu-package-devnet
 
 on:
-  pull_request:
-  push:
-    branches:
-      - main
-    paths:
-      # - 'linea-besu-package/versions/linea-devnet.env'
-      # - 'linea-besu-package/'
-      # - '.github/actions/linea-besu-package/'
-      # - '.github/workflows/linea-besu-package/' # to be removed
-      - '.github/workflows/linea-besu-package-devnet.yml'
-      - '.github/workflows/reuse-linea-besu-package-*.yml'
+  # pull_request:
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     # - 'linea-besu-package/versions/linea-devnet.env'
+  #     # - 'linea-besu-package/'
+  #     # - '.github/actions/linea-besu-package/'
+  #     # - '.github/workflows/linea-besu-package/' # to be removed
+  #     - '.github/workflows/linea-besu-package-devnet.yml'
+  #     - '.github/workflows/reuse-linea-besu-package-*.yml'
 
   workflow_call:
     outputs:
@@ -27,8 +27,9 @@ on:
         default: ''
 
 permissions:
-  id-token: write  
-  contents: read
+  actions: read
+  id-token: write
+  contents: write
 
 jobs:
   filter-commit-changes:
