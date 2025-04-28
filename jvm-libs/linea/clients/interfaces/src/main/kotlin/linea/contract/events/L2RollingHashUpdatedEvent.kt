@@ -1,4 +1,4 @@
-package linea.anchoring.events
+package linea.contract.events
 
 import linea.domain.EthLog
 import linea.domain.EthLogEvent

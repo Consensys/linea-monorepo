@@ -1,13 +1,15 @@
-package linea.anchoring.events
+package linea.contract.events
 
 import linea.domain.EthLog
 import linea.domain.EthLogEvent
 import linea.kotlin.decodeHex
 import linea.kotlin.toBigInteger
 import linea.kotlin.toULongFromHex
+import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import java.math.BigInteger
+import kotlin.text.compareTo
 
 class MessageSentEventTest {
 
@@ -97,7 +99,7 @@ class MessageSentEventTest {
     val event1 = eventTemplate.copy(messageNumber = 1uL)
     val event2 = eventTemplate.copy(messageNumber = 2uL)
 
-    assertThat(event1.compareTo(event2)).isLessThan(0)
+    Assertions.assertThat(event1.compareTo(event2)).isLessThan(0)
   }
 
   @Test
@@ -105,7 +107,7 @@ class MessageSentEventTest {
     val event1 = eventTemplate.copy(messageNumber = 2uL)
     val event2 = eventTemplate.copy(messageNumber = 1uL)
 
-    assertThat(event1.compareTo(event2)).isGreaterThan(0)
+    Assertions.assertThat(event1.compareTo(event2)).isGreaterThan(0)
   }
 
   @Test
@@ -113,6 +115,6 @@ class MessageSentEventTest {
     val event1 = eventTemplate.copy(messageNumber = 2uL)
     val event2 = eventTemplate.copy(messageNumber = 2uL)
 
-    assertThat(event1.compareTo(event2)).isEqualTo(0)
+    Assertions.assertThat(event1.compareTo(event2)).isEqualTo(0)
   }
 }

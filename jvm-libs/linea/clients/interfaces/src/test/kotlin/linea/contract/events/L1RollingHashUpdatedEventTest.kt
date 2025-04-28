@@ -1,10 +1,10 @@
-package linea.anchoring.events
+package linea.contract.events
 
 import linea.domain.EthLog
 import linea.domain.EthLogEvent
 import linea.kotlin.decodeHex
 import linea.kotlin.toULongFromHex
-import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 
 class L1RollingHashUpdatedEventTest {
@@ -43,6 +43,6 @@ class L1RollingHashUpdatedEventTest {
       log = ethLog
     )
 
-    assertThat(result).isEqualTo(expectedEthLogEvent)
+    Assertions.assertThat(result).isEqualTo(expectedEthLogEvent)
   }
 }
