@@ -20,6 +20,12 @@ on:
         description: "the run id of the workflow"
         value: ${{ jobs.build-test-push.outputs.workflow_run_id }}
   workflow_dispatch:
+    inputs:
+      release_tag_prefix:
+        description: 'Custom release tag prefix'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   id-token: write  
@@ -64,6 +70,7 @@ jobs:
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
       linea_env: sepolia
+      release_tag_prefix: ${{ inputs.release_tag_prefix }}
       run_test: true
       run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-sepolia-env == 'true' }}
       push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-sepolia-env == 'true' || needs.filter-commit-changes.outputs.linea-sepolia-profiles == 'true' }}
