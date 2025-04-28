@@ -44,7 +44,6 @@ import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
-import net.consensys.zkevm.coordinator.app.config.RetryConfig
 import net.consensys.zkevm.coordinator.app.config.Type2StateProofProviderConfig
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
@@ -115,7 +114,6 @@ import org.web3j.protocol.http.HttpService
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.CompletableFuture
 import java.util.function.Consumer
-import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toKotlinDuration
 
@@ -134,7 +132,7 @@ class L1DependentApp(
   private val log = LogManager.getLogger(this::class.java)
 
   init {
-    if (configs.messageAnchoringService.disabled) {
+    if (configs.messageAnchoring.disabled) {
       log.warn("Message anchoring service is disabled")
     }
     if (configs.l2NetworkGasPricingService == null) {
@@ -148,12 +146,6 @@ class L1DependentApp(
     l2Web3jClient
   )
 
-  private val l2MessageService = instantiateL2MessageServiceContractClient(
-    configs.l2,
-    l2TransactionManager,
-    l2Web3jClient,
-    smartContractErrors
-  )
   private val l1Web3jClient = createWeb3jHttpClient(
     rpcUrl = configs.l1.rpcEndpoint.toString(),
     log = LogManager.getLogger("clients.l1.eth-api"),
@@ -938,7 +930,7 @@ class L1DependentApp(
     return l1BasedLastFinalizedBlockProvider.getLastFinalizedBlock()
   }
 
-  private val messageAnchoringApp: LongRunningService = if (configs.messageAnchoringService.enabled
+  private val messageAnchoringApp: LongRunningService = if (configs.messageAnchoring.enabled
   ) {
     val gasProvider = EIP1559GasProvider(
       l2Web3jClient,
@@ -957,20 +949,19 @@ class L1DependentApp(
       smartContractErrors = smartContractErrors,
       useEthEstimateGas = true
     )
-    // FIXME: wire dynamic configs from the file
     MessageAnchoringApp(
       vertx = vertx,
       config = MessageAnchoringApp.Config(
-        l1RequestRetryConfig = linea.domain.RetryConfig.noRetries,
-        l1PollingInterval = 1.seconds,
-        l1SuccessBackoffDelay = 1.milliseconds,
+        l1RequestRetryConfig = configs.messageAnchoring.l1RequestRetryConfig,
+        l1PollingInterval = configs.messageAnchoring.l1EventPollingInterval,
+        l1SuccessBackoffDelay = configs.messageAnchoring.l1SuccessBackoffDelay,
         l1ContractAddress = configs.l1.zkEvmContractAddress,
-        l2HighestBlockTag = configs.l1.l1QueryBlockTag,
-        anchoringTickInterval = 1.seconds,
-        l1EventPollingTimeout = 2.seconds,
-        l1EventSearchBlockChunk = 1000u,
-        messageQueueCapacity = 1000u,
-        maxMessagesToAnchorPerL2Transaction = 100u
+        l1EventPollingTimeout = configs.messageAnchoring.l1EventPollingTimeout,
+        l1EventSearchBlockChunk = configs.messageAnchoring.l1EventSearchBlockChunk,
+        l2HighestBlockTag = configs.messageAnchoring.l2HighestBlockTag,
+        anchoringTickInterval = configs.messageAnchoring.anchoringTickInterval,
+        messageQueueCapacity = configs.messageAnchoring.messageQueueCapacity,
+        maxMessagesToAnchorPerL2Transaction = configs.messageAnchoring.maxMessagesToAnchorPerL2Transaction
       ),
       l1EthApiClient = createEthApiClient(
         web3jClient = l1Web3jClient,
