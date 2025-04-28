@@ -163,6 +163,8 @@ type csvRow struct {
 	status string
 	round  int
 	typ    string
+	val    string
+	extra  []string
 }
 
 func (r *csvRow) SetQuery(q ifaces.Query) {
@@ -178,6 +180,11 @@ func (r *csvRow) SetQuery(q ifaces.Query) {
 		r.size = 1
 	case query.UnivariateEval:
 		r.size = len(q_.Pols)
+		extras := make([]string, len(q_.Pols))
+		for i := range extras {
+			extras[i] = q_.Pols[i].String()
+		}
+		r.extra = extras
 	case query.InnerProduct:
 		r.size = len(q_.Bs)
 	case *query.Horner:
@@ -186,5 +193,5 @@ func (r *csvRow) SetQuery(q ifaces.Query) {
 }
 
 func (r *csvRow) Write(w io.Writer) {
-	fmt.Fprintln(w, r.id, ";", r.typ, ";", r.status, ";", r.round, ";", r.size)
+	fmt.Fprintln(w, r.id, ";", r.typ, ";", r.status, ";", r.round, ";", r.size, ";", r.val, ";", r.extra)
 }
