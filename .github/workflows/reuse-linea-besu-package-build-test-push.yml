@@ -37,6 +37,9 @@ jobs:
       expected_traces_api_version: ${{ steps.assemble.outputs.tracer_plugin_version }}
       dockerimage: ${{ steps.assemble.outputs.dockerimage }}
     steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      
       - name: echo github variables
         run: |
           echo "github.run_id: ${{ github.run_id }}"
@@ -48,9 +51,6 @@ jobs:
           echo "rev-parse HEAD: $(git rev-parse --short HEAD)"
           echo "github.sha: ${{ github.sha }}"
           echo "rev-parse GITHUB_SHA: $(git rev-parse --short "$GITHUB_SHA")"
-
-      - name: checkout
-        uses: actions/checkout@v4
 
       - name: build the linea artifacts
         id: assemble
@@ -134,6 +134,9 @@ jobs:
     outputs:
       workflow_run_id: ${{ steps.assemble.outputs.workflow_id }}
     steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
       - name: echo github variables
         run: |
           echo "github.run_id: ${{ github.run_id }}"
@@ -145,9 +148,6 @@ jobs:
           echo "rev-parse HEAD: $(git rev-parse --short HEAD)"
           echo "github.sha: ${{ github.sha }}"
           echo "rev-parse GITHUB_SHA: $(git rev-parse --short "$GITHUB_SHA")"
-      
-      - name: checkout
-        uses: actions/checkout@v4
 
       - name: build the linea artifacts
         id: assemble
