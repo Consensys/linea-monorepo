@@ -57,19 +57,22 @@ func NewVariable(metadata Metadata) *Expression {
 		Children: []*Expression{},
 		ESHash:   metadataToESH(metadata),
 		Operator: Variable{Metadata: metadata},
+		isBase:   metadata.IsBase(),
 	}
 }
 
 // metadataToESH gets the ESH from a metadata. It is obtained by hashing
 // the string representation of the metadata.
 func metadataToESH(m Metadata) fext.Element {
+	// since we use bloack2b to hash the string, it is enough to do that on a base field element esh
 	var esh field.Element
 	sigSeed := []byte(m.String())
 	hasher, _ := blake2b.New256(nil)
 	hasher.Write(sigSeed)
 	sigBytes := hasher.Sum(nil)
 	esh.SetBytes(sigBytes)
-	return *(new(fext.Element).SetFromBase(&esh))
+	// the base field element is then wrapped into an extension element
+	return fext.NewFromBase(esh)
 }
 
 /*

@@ -2,6 +2,7 @@ package symbolic
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"reflect"
 
@@ -42,10 +43,14 @@ func NewConstant(val interface{}) *Expression {
 		panic(err)
 	}
 
+	// isBase is true if the value is a field.Element, otherwise it is false
+	_, isBase := val.(field.Element)
+
 	res := &Expression{
 		Operator: Constant{Val: x},
 		Children: []*Expression{},
 		ESHash:   x,
+		isBase:   isBase,
 	}
 
 	// Pass the string and not the field.Element itself

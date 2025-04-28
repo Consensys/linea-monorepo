@@ -44,10 +44,11 @@ func NewPolyEval(x *Expression, coeffs []*Expression) *Expression {
 	}
 
 	esh := polyext.EvalUnivariate(eshashes, x.ESHash)
+	children := append([]*Expression{x}, coeffs...)
 
 	return &Expression{
 		Operator: PolyEval{},
-		Children: append([]*Expression{x}, coeffs...),
+		Children: children,
 		ESHash:   esh,
 	}
 }
