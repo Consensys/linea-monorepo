@@ -22,12 +22,12 @@ describe("MessageMetricsService", () => {
       groupBy: jest.fn().mockReturnThis(),
       addGroupBy: jest.fn().mockReturnThis(),
       getRawMany: jest.fn().mockResolvedValue([
-        { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, isForSponsorship: String(false), count: 2 },
-        { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, isForSponsorship: String(true), count: 3 },
+        { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, isForSponsorship: false, count: 2 },
+        { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, isForSponsorship: true, count: 3 },
         {
           status: MessageStatus.CLAIMED_SUCCESS,
           direction: Direction.L1_TO_L2,
-          isForSponsorship: String(true),
+          isForSponsorship: true,
           count: 10,
         },
       ]),

@@ -6,6 +6,9 @@ import {
   MessagesMetricsAttributes,
   MessagesMetricsAttributesWithCount,
 } from "../../../../core/metrics/IMetricsService";
+import { Direction } from "@consensys/linea-sdk";
+import { MessageStatus } from "../../../../core/enums";
+
 export class MessageMetricsService extends MetricsService {
   constructor(private readonly entityManager: EntityManager) {
     super();
@@ -48,13 +51,30 @@ export class MessageMetricsService extends MetricsService {
 
     const results: MessagesMetricsAttributesWithCount[] = [];
 
-    resultMap.forEach((count, resultMapKey) => {
-      const attributes: MessagesMetricsAttributes = JSON.parse(resultMapKey);
-      results.push({
-        attributes,
-        count,
-      });
-    });
+    for (const status of Object.values(MessageStatus)) {
+      for (const direction of Object.values(Direction)) {
+        for (const isForSponsorship of [true, false]) {
+          const attributes: MessagesMetricsAttributes = {
+            status,
+            direction,
+            isForSponsorship,
+          };
+          const attributesKey = JSON.stringify(attributes);
+          results.push({
+            attributes,
+            count: resultMap.get(attributesKey) ?? 0,
+          });
+        }
+      }
+    }
+
+    // resultMap.forEach((count, resultMapKey) => {
+    //   const attributes: MessagesMetricsAttributes = JSON.parse(resultMapKey);
+    //   results.push({
+    //     attributes,
+    //     count,
+    //   });
+    // });
 
     return results;
   }
