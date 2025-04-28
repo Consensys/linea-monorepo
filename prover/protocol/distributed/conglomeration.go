@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
@@ -64,9 +65,11 @@ func Conglomerate(maxNbProofs int, moduleProofs []*wizard.CompiledIOP) *Conglome
 			cong.Compile(build.CompiledIOP)
 		},
 		mimc.CompileMiMC,
+		dummy.CompileAtProverLvl(dummy.WithMsg("conglomeration-before-piw")),
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
+			compiler.WithDebugMode("conglomeration"),
 		),
 		vortex.Compile(
 			2,
@@ -112,7 +115,7 @@ func (c *ConglomeratorCompilation) Compile(comp *wizard.CompiledIOP) {
 		if len(diff1) > 0 || len(diff2) > 0 {
 
 			for i, modIOP := range c.ModuleProofs {
-				dumpWizardIOP(modIOP, fmt.Sprintf("iop-%d.csv", i))
+				dumpWizardIOP(modIOP, fmt.Sprintf("conglomeration-debug/iop-%d.csv", i))
 			}
 
 			utils.Panic("incompatible IOPs i=%v\n\t+++=%v\n\t---=%v", i, diff1, diff2)
