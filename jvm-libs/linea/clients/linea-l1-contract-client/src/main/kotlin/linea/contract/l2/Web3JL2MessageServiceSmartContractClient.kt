@@ -4,8 +4,11 @@ import linea.domain.BlockParameter
 import linea.kotlin.encodeHex
 import linea.kotlin.toBigInteger
 import linea.kotlin.toULong
+import linea.web3j.SmartContractErrors
 import linea.web3j.domain.toWeb3j
+import linea.web3j.gas.EIP1559GasProvider
 import linea.web3j.requestAsync
+import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
 import net.consensys.linea.async.toSafeFuture
 import net.consensys.linea.contract.L2MessageService
 import net.consensys.linea.contract.Web3JContractAsyncHelper
@@ -25,6 +28,41 @@ class Web3JL2MessageServiceSmartContractClient(
   private val web3jContractHelper: Web3JContractAsyncHelper,
   private val log: Logger = LogManager.getLogger(Web3JL2MessageServiceSmartContractClient::class.java)
 ) : L2MessageServiceSmartContractClient {
+  companion object {
+    fun create(
+      web3jClient: Web3j,
+      contractAddress: String,
+      gasLimit: ULong,
+      maxFeePerGasCap: ULong,
+      feeHistoryBlockCount: UInt,
+      feeHistoryRewardPercentile: Double,
+      transactionManager: AsyncFriendlyTransactionManager,
+      smartContractErrors: SmartContractErrors
+    ): Web3JL2MessageServiceSmartContractClient {
+      val gasProvider = EIP1559GasProvider(
+        web3jClient = web3jClient,
+        config = EIP1559GasProvider.Config(
+          gasLimit = gasLimit,
+          maxFeePerGasCap = maxFeePerGasCap,
+          feeHistoryBlockCount = feeHistoryBlockCount,
+          feeHistoryRewardPercentile = feeHistoryRewardPercentile
+        )
+      )
+      val web3jContractHelper = Web3JContractAsyncHelper(
+        contractAddress = contractAddress,
+        web3j = web3jClient,
+        contractGasProvider = gasProvider,
+        transactionManager = transactionManager,
+        smartContractErrors = smartContractErrors,
+        useEthEstimateGas = true
+      )
+      return Web3JL2MessageServiceSmartContractClient(
+        web3j = web3jClient,
+        contractAddress = contractAddress,
+        web3jContractHelper = web3jContractHelper
+      )
+    }
+  }
   private val fakeCredentials = Credentials.create(ByteArray(32).encodeHex())
   private val smartContractVersionCache = AtomicReference<L2MessageServiceSmartContractVersion>(null)
 
