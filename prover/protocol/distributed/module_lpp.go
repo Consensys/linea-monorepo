@@ -23,6 +23,7 @@ var (
 	hornerN0HashPublicInput     = "HORNER_N0_HASH_PUBLIC_INPUT"
 	hornerN1HashPublicInput     = "HORNER_N1_HASH_PUBLIC_INPUT"
 	isLppPublicInput            = "IS_LPP"
+	isGlPublicInput             = "IS_GL"
 	nbActualLppPublicInput      = "NB_ACTUAL_LPP"
 )
 
@@ -247,6 +248,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 		moduleLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
 	}
 
+	moduleLPP.Wiop.InsertPublicInput(isGlPublicInput, accessors.NewConstant(field.Zero()))
 	moduleLPP.Wiop.InsertPublicInput(isLppPublicInput, accessors.NewConstant(field.One()))
 	moduleLPP.Wiop.InsertPublicInput(nbActualLppPublicInput, accessors.NewConstant(field.NewElement(uint64(len(moduleInputs)))))
 

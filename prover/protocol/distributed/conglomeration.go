@@ -31,9 +31,17 @@ type ConglomeratorCompilation struct {
 	// MaxNbProofs is the maximum number of proofs that can be conglomerated
 	// by the conglomeration proof at once.
 	MaxNbProofs int
+
 	// ModuleProofs lists the wizard whose proof are supported by the current
 	// instance of the conglomerator.
-	ModuleProofs []*wizard.CompiledIOP
+	ModuleGLIops, ModuleLPPIops []*wizard.CompiledIOP
+
+	// DefaultIops is the wizard IOP used for filling
+	DefaultIops *RecursedSegmentCompilation
+
+	// DefaultWitness is the assignment of the default IOP.
+	DefaultWitness recursion.Witness
+
 	// Wiop is the compiled IOP of the conglomeration wizard.
 	Wiop *wizard.CompiledIOP
 	// Recursion is the recursion context used to compile the conglomeration
@@ -55,14 +63,24 @@ type ConglomerateHolisticCheck struct {
 	ConglomeratorCompilation
 }
 
-// Conglomerate constructs and returns a new ConglomeratorCompilation object.
+// conglomerate constructs and returns a new ConglomeratorCompilation object.
 // The Wiop of the returned object is compiled with iterative layers of
 // self-recursion.
-func Conglomerate(maxNbProofs int, moduleProofs []*wizard.CompiledIOP) *ConglomeratorCompilation {
+func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompilation, moduleDefault *RecursedSegmentCompilation) *ConglomeratorCompilation {
 
 	cong := &ConglomeratorCompilation{
-		MaxNbProofs:  maxNbProofs,
-		ModuleProofs: moduleProofs,
+		MaxNbProofs: maxNbProofs,
+		// ModuleGLIops:  moduleGLs,
+		// ModuleLPPIops: moduleLpps,
+		DefaultIops: moduleDefault,
+	}
+
+	for i := range moduleGLs {
+		cong.ModuleGLIops = append(cong.ModuleGLIops, moduleGLs[i].RecursionComp)
+	}
+
+	for i := range moduleLpps {
+		cong.ModuleLPPIops = append(cong.ModuleLPPIops, moduleLpps[i].RecursionComp)
 	}
 
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
@@ -113,14 +131,16 @@ func Conglomerate(maxNbProofs int, moduleProofs []*wizard.CompiledIOP) *Conglome
 // inputs are compatible and then compiles the conglomeration proof.
 func (c *ConglomeratorCompilation) Compile(comp *wizard.CompiledIOP) {
 
-	w0 := c.ModuleProofs[0]
-	c.AcceptablePrecomputedMerkleRoots = make([][2]field.Element, len(c.ModuleProofs))
+	wiops := slices.Concat(c.ModuleGLIops, c.ModuleLPPIops, []*wizard.CompiledIOP{c.DefaultIops.RecursionComp})
 
-	for i := 1; i < len(c.ModuleProofs); i++ {
-		diff1, diff2 := cmpWizardIOP(w0, c.ModuleProofs[i])
+	w0 := wiops[0]
+	c.AcceptablePrecomputedMerkleRoots = make([][2]field.Element, len(wiops))
+
+	for i := 1; i < len(wiops); i++ {
+		diff1, diff2 := cmpWizardIOP(w0, wiops[i])
 		if len(diff1) > 0 || len(diff2) > 0 {
 
-			for i, modIOP := range c.ModuleProofs {
+			for i, modIOP := range wiops {
 				dumpWizardIOP(modIOP, fmt.Sprintf("conglomeration-debug/iop-%d.csv", i))
 			}
 
@@ -128,12 +148,15 @@ func (c *ConglomeratorCompilation) Compile(comp *wizard.CompiledIOP) {
 		}
 	}
 
-	for i := range c.ModuleProofs {
+	for i := range wiops {
 		c.AcceptablePrecomputedMerkleRoots[i] = [2]field.Element{
-			c.ModuleProofs[i].ExtraData[verifyingKeyPublicInput].(field.Element),
-			c.ModuleProofs[i].ExtraData[verifyingKey2PublicInput].(field.Element),
+			wiops[i].ExtraData[verifyingKeyPublicInput].(field.Element),
+			wiops[i].ExtraData[verifyingKey2PublicInput].(field.Element),
 		}
 	}
+
+	defaultRun := c.DefaultIops.ProveSegment(nil)
+	c.DefaultWitness = recursion.ExtractWitness(defaultRun)
 
 	c.Recursion = recursion.DefineRecursionOf(comp, w0, recursion.Parameters{
 		Name:                   "conglomeration",
@@ -262,7 +285,7 @@ func (c *ConglomeratorCompilation) Prove(moduleGlProofs, moduleLppProofs []recur
 	recursionTime := profiling.TimeIt(func() {
 		proof = wizard.Prove(
 			c.Wiop,
-			c.Recursion.GetMainProverStep(slices.Concat(moduleGlProofs, moduleLppProofs)),
+			c.Recursion.GetMainProverStep(slices.Concat(moduleGlProofs, moduleLppProofs), &c.DefaultWitness),
 		)
 	})
 

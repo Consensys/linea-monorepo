@@ -131,7 +131,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 		prevHornerN1Hash    = field.Element{}
 	)
 
-	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
+	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, distWizard)
 
 	for i := range witnessGLs {
 
@@ -271,8 +271,7 @@ func TestBenchDistributedWizard(t *testing.T) {
 		}
 
 		// This tests the compilation of the compiled-IOP
-		distWizard                = DistributeWizard(zkevm.WizardIOP, disc)
-		compiledGLs, compiledLPPs = compileAllSegments(t, distWizard)
+		distWizard = DistributeWizard(zkevm.WizardIOP, disc).CompileSegments()
 	)
 
 	var (
@@ -302,9 +301,9 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
-	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
-	runProverGLs(t, distWizard, compiledGLs, witnessGLs)
-	runProverLPPs(t, distWizard, compiledLPPs, witnessLPPs)
+	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, distWizard)
+	runProverGLs(t, distWizard, witnessGLs)
+	runProverLPPs(t, distWizard, witnessLPPs)
 }
 
 // GetZkevmWitness returns a [zkevm.Witness]
@@ -473,33 +472,6 @@ func (d DistributeTestCase) Assign(run *wizard.ProverRuntime) {
 	run.AssignColumn("c1", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(3), d.numRow-2), d.numRow))
 }
 
-// compileAllSegments applies the segment compilation to all segments of the
-// distributed wizard. The operation does in-place compilation for the
-// non-recursive part and the function logs in the testing.Logger. The function
-// returns the compiledGLs and the compiledLPPs objects.
-func compileAllSegments(t *testing.T, distWizard DistributedWizard) (compiledGLs, compiledLPPs []*RecursedSegmentCompilation) {
-
-	compiledGLs = make([]*RecursedSegmentCompilation, len(distWizard.GLs))
-	compiledLPPs = make([]*RecursedSegmentCompilation, len(distWizard.LPPs))
-
-	for i := range distWizard.LPPs {
-
-		t.Logf("[%v] Starting to compile module LPP for %v\n", time.Now(), distWizard.LPPs[i].ModuleNames())
-		compiledLPPs[i] = CompileSegment(distWizard.LPPs[i])
-		t.Logf("[%v] Done compiling module LPP for %v\n", time.Now(), distWizard.LPPs[i].ModuleNames())
-	}
-
-	// This applies the dummy.Compiler to all parts of the distributed wizard.
-	for i := range distWizard.GLs {
-
-		t.Logf("[%v] Starting to compile module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
-		compiledGLs[i] = CompileSegment(distWizard.GLs[i])
-		t.Logf("[%v] Done compiling module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
-	}
-
-	return compiledGLs, compiledLPPs
-}
-
 // runProverGLs executes the prover for each GL module segment. It takes in a list of
 // compiled GL segments and corresponding witnesses, then runs the prover for each
 // segment. The function logs the start and end times of the prover execution for each
@@ -507,12 +479,14 @@ func compileAllSegments(t *testing.T, distWizard DistributedWizard) (compiledGLs
 // result of the prover execution for a segment.
 func runProverGLs(
 	t *testing.T,
-	distWizard DistributedWizard,
-	compiledGLs []*RecursedSegmentCompilation,
+	distWizard *DistributedWizard,
 	witnessGLs []*ModuleWitnessGL,
 ) []*wizard.ProverRuntime {
 
-	runs := make([]*wizard.ProverRuntime, len(witnessGLs))
+	var (
+		compiledGLs = distWizard.CompiledGLs
+		runs        = make([]*wizard.ProverRuntime, len(witnessGLs))
+	)
 
 	for i := range witnessGLs {
 
@@ -548,8 +522,7 @@ func runProverGLs(
 // instances, each representing the result of the prover execution for a segment.
 func runProverLPPs(
 	t *testing.T,
-	distWizard DistributedWizard,
-	compiledLPPs []*RecursedSegmentCompilation,
+	distWizard *DistributedWizard,
 	witnessLPPs []*ModuleWitnessLPP,
 ) []*wizard.ProverRuntime {
 
@@ -558,6 +531,7 @@ func runProverLPPs(
 		rng              = rand.New(utils.NewRandSource(0))
 		sharedRandomness = field.PseudoRand(rng)
 		runs             = make([]*wizard.ProverRuntime, len(witnessLPPs))
+		compiledLPPs     = distWizard.CompiledLPPs
 	)
 
 	for i := range witnessLPPs {

@@ -205,16 +205,18 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 
 // GetMainProverStep returns a prover step assigning the provided witness.
 // It can be used for circuits where the only thing happening is the recursion.
-func (r *Recursion) GetMainProverStep(wit []Witness) wizard.MainProverStep {
+//
+// Filling is an optional parameter used if len(wit) < maxNumProof.
+func (r *Recursion) GetMainProverStep(wit []Witness, filling *Witness) wizard.MainProverStep {
 	return func(run *wizard.ProverRuntime) {
-		r.Assign(run, wit)
+		r.Assign(run, wit, filling)
 	}
 }
 
 // Assign assigns the items generated for the recursion of an item. As a first
 // steps, the function assigns the Plonk-in-Wizard context. Then, it assigns
 // the "merkle-roots" columns of the PCS.
-func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness) {
+func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *Witness) {
 
 	var (
 		// wit is reallocated because we are going to append to it and it
@@ -228,8 +230,14 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness) {
 
 	// When we have less proofs than the max
 	for i := 0; i < maxNbProof; i++ {
+
+		filling := _filling
+		if filling == nil {
+			filling = &_wit[0]
+		}
+
 		if i >= nbProofActual {
-			wit = append(wit, wit[0])
+			wit = append(wit, *filling)
 		}
 	}
 

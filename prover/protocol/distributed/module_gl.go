@@ -251,6 +251,7 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 	moduleGL.Wiop.InsertPublicInput(hornerN0HashPublicInput, accessors.NewConstant(field.Zero()))
 	moduleGL.Wiop.InsertPublicInput(hornerN1HashPublicInput, accessors.NewConstant(field.Zero()))
 
+	moduleGL.Wiop.InsertPublicInput(isGlPublicInput, accessors.NewConstant(field.One()))
 	moduleGL.Wiop.InsertPublicInput(isLppPublicInput, accessors.NewConstant(field.Zero()))
 	moduleGL.Wiop.InsertPublicInput(nbActualLppPublicInput, accessors.NewConstant(field.Zero()))
 

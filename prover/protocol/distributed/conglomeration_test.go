@@ -3,7 +3,6 @@ package distributed
 import (
 	"encoding/json"
 	"fmt"
-	"slices"
 	"testing"
 	"time"
 
@@ -29,33 +28,32 @@ func TestConglomerationBasic(t *testing.T) {
 		})
 
 		// This tests the compilation of the compiled-IOP
-		distWizard                = DistributeWizard(comp, disc)
-		compiledGLs, compiledLPPs = compileAllSegments(t, distWizard)
+		distWizard = DistributeWizard(comp, disc).
+				CompileSegments().
+				Conglomerate(20)
 
-		// This does the compilation of the conglomerator proof
-		conglomeration = runConglomerationCompiler(t, slices.Concat(compiledGLs, compiledLPPs))
-		runtimeBoot    = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
+		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
 
-		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, &distWizard)
+		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, distWizard)
 	)
 
 	fmt.Printf("nbWitnessesGL=%d nbWitnessesLPP=%d\n", len(witnessGLs), len(witnessLPPs))
 
-	runLPPs := runProverLPPs(t, distWizard, compiledLPPs, witnessLPPs)
+	runLPPs := runProverLPPs(t, distWizard, witnessLPPs)
 
 	for i := range runLPPs {
 		t.Logf("sanity-checking runLPPs[%d]\n", i)
-		sanityCheckConglomeration(t, conglomeration, runLPPs[i])
+		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runLPPs[i])
 	}
 
-	runGLs := runProverGLs(t, distWizard, compiledGLs, witnessGLs)
+	runGLs := runProverGLs(t, distWizard, witnessGLs)
 
 	for i := range runGLs {
 		t.Logf("sanity-checking runGLs[%d]\n", i)
-		sanityCheckConglomeration(t, conglomeration, runGLs[i])
+		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runGLs[i])
 	}
 
-	runConglomerationProver(t, conglomeration, runGLs, runLPPs)
+	runConglomerationProver(t, distWizard.CompiledConglomeration, runGLs, runLPPs)
 }
 
 // TestConglomeration generates a conglomeration proof and checks if it is valid
@@ -72,11 +70,9 @@ func TestConglomeration(t *testing.T) {
 		}
 
 		// This tests the compilation of the compiled-IOP
-		distWizard                = DistributeWizard(zkevm.WizardIOP, disc)
-		compiledGLs, compiledLPPs = compileAllSegments(t, distWizard)
-
-		// This does the compilation of the conglomerator proof
-		conglomeration = runConglomerationCompiler(t, slices.Concat(compiledGLs, compiledLPPs))
+		distWizard = DistributeWizard(zkevm.WizardIOP, disc).
+				CompileSegments().
+				Conglomerate(20)
 	)
 
 	var (
@@ -107,49 +103,31 @@ func TestConglomeration(t *testing.T) {
 	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
 	var (
-		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, &distWizard)
-		runLPPs                 = runProverLPPs(t, distWizard, compiledLPPs, witnessLPPs)
+		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, distWizard)
+		runLPPs                 = runProverLPPs(t, distWizard, witnessLPPs)
 	)
 
 	for i := range runLPPs {
 		t.Logf("sanity-checking runLPPs[%d]\n", i)
-		sanityCheckConglomeration(t, conglomeration, runLPPs[i])
+		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runLPPs[i])
 	}
 
-	runGLs := runProverGLs(t, distWizard, compiledGLs, witnessGLs)
+	runGLs := runProverGLs(t, distWizard, witnessGLs)
 
 	for i := range runGLs {
 		t.Logf("sanity-checking runGLs[%d]\n", i)
-		sanityCheckConglomeration(t, conglomeration, runGLs[i])
+		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runGLs[i])
 	}
 
-	runConglomerationProver(t, conglomeration, runGLs, runLPPs)
-}
-
-// runConglomerationCompiler compiles the conglomeration proof and returns a new ConglomeratorCompilation object.
-// The function takes a slice of RecursedSegmentCompilation objects and compiles the
-// ConglomeratorCompilation object with the given number of proofs.
-func runConglomerationCompiler(t *testing.T, compiledSegments []*RecursedSegmentCompilation) *ConglomeratorCompilation {
-
-	wiops := make([]*wizard.CompiledIOP, len(compiledSegments))
-
-	for i := range compiledSegments {
-		wiops[i] = compiledSegments[i].RecursionComp
-	}
-
-	t.Logf("[%v] Starting to compile conglomerator\n", time.Now())
-	cong := Conglomerate(20, wiops)
-	t.Logf("[%v] Finished compiling conglomerator\n", time.Now())
-
-	return cong
+	runConglomerationProver(t, distWizard.CompiledConglomeration, runGLs, runLPPs)
 }
 
 // Sanity-check for conglomeration compilation.
 func sanityCheckConglomeration(t *testing.T, cong *ConglomeratorCompilation, run *wizard.ProverRuntime) {
 
 	t.Logf("sanity-check for conglomeration")
-	stopRound := recursion.VortexQueryRound(cong.ModuleProofs[0])
-	err := wizard.VerifyUntilRound(cong.ModuleProofs[0], run.ExtractProof(), stopRound+1)
+	stopRound := recursion.VortexQueryRound(cong.ModuleGLIops[0])
+	err := wizard.VerifyUntilRound(cong.ModuleGLIops[0], run.ExtractProof(), stopRound+1)
 
 	if err != nil {
 		t.Fatalf("could not verify proof: %v", err)

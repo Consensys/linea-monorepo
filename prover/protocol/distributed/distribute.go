@@ -32,6 +32,11 @@ type DistributedWizard struct {
 	// GLs is the list of the GL parts for every modules
 	GLs []*ModuleGL
 
+	// DefaultModule is the module used for filling when the number of
+	// effective segment is smaller than the maximum number of segment to
+	// conglomerate.
+	DefaultModule *DefaultModule
+
 	// Bootstrapper is the original compiledIOP precompiled with a few
 	// preparation steps.
 	Bootstrapper *wizard.CompiledIOP
@@ -39,18 +44,34 @@ type DistributedWizard struct {
 	// Disc is the [ModuleDiscoverer] used to delimitate the scope for
 	// each module.
 	Disc ModuleDiscoverer
+
+	// CompiledGLs stores the compiled GL modules and is set by calling
+	// [DistributedWizard.Compile]
+	CompiledGLs []*RecursedSegmentCompilation
+
+	// CompiledLPPs stores the compiled LPP modules and is set by calling
+	// [DistributedWizard.Compile]
+	CompiledLPPs []*RecursedSegmentCompilation
+
+	// CompiledDefault stores the compiled default module and is set by calling
+	// [DistributedWizard.Compile]
+	CompiledDefault *RecursedSegmentCompilation
+
+	// CompiledConglomeration stores the compilation context of the
+	// conglomeration wizard.
+	CompiledConglomeration *ConglomeratorCompilation
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
 // takes ownership of the input [wizard.CompiledIOP]. And uses disc to design
 // the scope of each module.
-func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) DistributedWizard {
+func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *DistributedWizard {
 
 	if err := auditInitialWizard(comp); err != nil {
 		utils.Panic("improper initial wizard for distribution: %v", err)
 	}
 
-	distributedWizard := DistributedWizard{
+	distributedWizard := &DistributedWizard{
 		Bootstrapper: precompileInitialWizard(comp, disc),
 	}
 
@@ -95,17 +116,38 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) Distribut
 		)
 	}
 
+	distributedWizard.DefaultModule = BuildDefaultModule(&allFilteredModuleInputs[0])
+
 	return distributedWizard
 }
 
 // CompileModules applies the compilation steps to each modules identically.
-func (dist *DistributedWizard) CompileModules(compilers ...func(*wizard.CompiledIOP)) {
-	for i := range dist.ModuleNames {
-		for _, compile := range compilers {
-			compile(dist.LPPs[i].Wiop)
-			compile(dist.GLs[i].Wiop)
-		}
+func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
+
+	dist.CompiledDefault = CompileSegment(dist.DefaultModule)
+	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
+	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
+
+	for i := range dist.GLs {
+		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
 	}
+
+	for i := range dist.LPPs {
+		dist.CompiledLPPs[i] = CompileSegment(dist.LPPs[i])
+	}
+
+	return dist
+}
+
+// Conglomerate registers the conglomeration wizard and compiles it.
+func (dist *DistributedWizard) Conglomerate(maxNumSegment int) *DistributedWizard {
+	dist.CompiledConglomeration = conglomerate(
+		maxNumSegment,
+		dist.CompiledGLs,
+		dist.CompiledLPPs,
+		dist.CompiledDefault,
+	)
+	return dist
 }
 
 // precompileInitialWizard pre-compiles the initial wizard protocol by applying all the

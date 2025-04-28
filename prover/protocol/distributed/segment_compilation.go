@@ -36,6 +36,11 @@ const (
 	// size that we obtain by recursing infinitely the self-recursion
 	// procedure.
 	thresholdStoppingSelfrecursion = 13500000
+
+	// initialCompilerSize sets the target number of rows of the first invokation
+	// of [compiler.Arcane] of the pre-recursion pass of [CompileSegment]. It is
+	// also the length of the column in the [DefaultModule].
+	initialCompilerSize int = 1 << 17
 )
 
 var (
@@ -55,6 +60,9 @@ type RecursedSegmentCompilation struct {
 	ModuleGL *ModuleGL
 	// ModuleLPP is optional and is set if the segment is a LPP segment.
 	ModuleLPP *ModuleLPP
+	// ModuleDefault is optional and is set if the segment is default module
+	// segment.
+	DefaultModule *DefaultModule
 	// Recursion is the wizard construction context of the recursed wizard.
 	Recursion *recursion.Recursion
 	// RecursionComp is the compiled IOP of the recursed wizard.
@@ -85,6 +93,10 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		numActualLppRound = len(m.ModuleNames())
 		isLPP = true
 		subscript = fmt.Sprintf("%v", m.ModuleNames())
+	case *DefaultModule:
+		modIOP = m.Wiop
+		res.DefaultModule = m
+		subscript = "default-module"
 	default:
 		utils.Panic("unexpected type: %T", mod)
 	}
@@ -95,7 +107,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
 		compiler.Arcane(
-			compiler.WithTargetColSize(1<<17),
+			compiler.WithTargetColSize(initialCompilerSize),
 		),
 	)
 
@@ -267,6 +279,14 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 		proverStep = r.ModuleGL.GetMainProverStep(m)
 		moduleName = m.ModuleName
 		moduleIndex = m.ModuleIndex
+	case nil:
+		if r.DefaultModule == nil {
+			utils.Panic("witness is nil but module is not default")
+		}
+		comp = r.DefaultModule.Wiop
+		proverStep = r.DefaultModule.Assign
+		moduleName = "default-module"
+		moduleIndex = 0
 	default:
 		utils.Panic("unexpected type")
 	}
@@ -293,7 +313,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 		recursionTime    = profiling.TimeIt(func() {
 			run = wizard.RunProverUntilRound(
 				r.RecursionComp,
-				r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}),
+				r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}, nil),
 				recStoppingRound,
 			)
 		})
