@@ -60,6 +60,7 @@ jobs:
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
       linea_env: devnet
+      run_test: false
       run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-devnet-env == 'true' }}
       push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-devnet-env == 'true' }}
     secrets: inherit

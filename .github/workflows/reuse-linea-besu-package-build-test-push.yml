@@ -5,6 +5,12 @@ on:
       linea_env:
         required: true
         type: string
+      release_tag_prefix:
+        required: true
+        type: string 
+      run_test:
+        required: true
+        type: boolean
       run_e2e_test:
         required: true
         type: boolean
@@ -23,6 +29,7 @@ on:
 jobs:
   build-and-upload-artifact:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    if: ${{ inputs.run_test || inputs.run_e2e_test }}
     environment: dockerhub
     outputs:
       workflow_run_id: ${{ steps.assemble.outputs.workflow_id }}
@@ -35,6 +42,12 @@ jobs:
           echo "github.run_id: ${{ github.run_id }}"
           echo "github.workflow: ${{ github.workflow }}"
           echo "github.ref: ${{ github.ref }}"
+          echo "github.ref_type: ${{ github.ref_type }}"
+          echo "github.ref_name: ${{ github.ref_name }}"
+          echo "github.event_name: ${{ github.event_name }}"
+          echo "rev-parse HEAD: $(git rev-parse --short HEAD)"
+          echo "github.sha: ${{ github.sha }}"
+          echo "rev-parse GITHUB_SHA: $(git rev-parse --short "$GITHUB_SHA")"
 
       - name: checkout
         uses: actions/checkout@v4
@@ -44,6 +57,7 @@ jobs:
         uses: ./.github/actions/linea-besu-package/assemble
         with:
           linea_env: ${{ inputs.linea_env }}
+          release_tag_prefix: ${{ inputs.release_tag_prefix }}
       
       - name: set up docker buildx
         uses: docker/setup-buildx-action@v3
@@ -83,10 +97,11 @@ jobs:
         with:
           name: linea-besu-package
           path: linea-besu-package-image.tar.gz
+          retention-days: 1
 
   run-test:
     needs: [ build-and-upload-artifact ]
-    if: ${{ inputs.linea_env == 'sepolia' || inputs.linea_env == 'mainnet' }}
+    if: ${{ inputs.run_test }}
     concurrency:
       group: run-test-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -124,6 +139,12 @@ jobs:
           echo "github.run_id: ${{ github.run_id }}"
           echo "github.workflow: ${{ github.workflow }}"
           echo "github.ref: ${{ github.ref }}"
+          echo "github.ref_type: ${{ github.ref_type }}"
+          echo "github.ref_name: ${{ github.ref_name }}"
+          echo "github.event_name: ${{ github.event_name }}"
+          echo "rev-parse HEAD: $(git rev-parse --short HEAD)"
+          echo "github.sha: ${{ github.sha }}"
+          echo "rev-parse GITHUB_SHA: $(git rev-parse --short "$GITHUB_SHA")"
       
       - name: checkout
         uses: actions/checkout@v4
@@ -169,31 +190,32 @@ jobs:
           push: true
           tags: |
             consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }}
+            ${{ github.ref == 'refs/heads/main' && 'consensys/linea-besu-package:${{ inputs.linea_env }}-develop' || '' }}
 
-      ### release process artifacts
-      ## adds one more tag :latest the above push on a release 
-      - name: build and push the combined manifest
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: docker/build-push-action@v6
-        env:
-          DOCKER_BUILD_SUMMARY: false
-        with:
-          context: linea-besu-package/linea-besu/.
-          platforms: linux/arm64,linux/amd64
-          provenance: false
-          cache-from: type=local,src=/tmp/.buildx-cache
-          cache-to: type=local,dest=/tmp/.buildx-cache          
-          build-args: |
-            VERSION=${{ steps.assemble.outputs.dockertag }}
-            VCS_REF=${{ github.sha }}
-            BUILD_DATE=${{ steps.assemble.outputs.build_date }}
-          push: true
-          tags: |
-            consensys/linea-besu-package:${{ inputs.linea_env }}-latest
+      # ### release process artifacts
+      # ## adds one more tag :latest the above push on a release 
+      # - name: build and push the combined manifest
+      #   if: startsWith(github.ref, 'refs/tags/v')
+      #   uses: docker/build-push-action@v6
+      #   env:
+      #     DOCKER_BUILD_SUMMARY: false
+      #   with:
+      #     context: linea-besu-package/linea-besu/.
+      #     platforms: linux/arm64,linux/amd64
+      #     provenance: false
+      #     cache-from: type=local,src=/tmp/.buildx-cache
+      #     cache-to: type=local,dest=/tmp/.buildx-cache          
+      #     build-args: |
+      #       VERSION=${{ steps.assemble.outputs.dockertag }}
+      #       VCS_REF=${{ github.sha }}
+      #       BUILD_DATE=${{ steps.assemble.outputs.build_date }}
+      #     push: true
+      #     tags: |
+      #       consensys/linea-besu-package:${{ inputs.linea_env }}-latest
 
       ### update the release notes with docker hashes
       - name: create the release notes and then the release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         id: release_create_artifacts
         run: |
           cd release
@@ -215,11 +237,24 @@ jobs:
             exit 1
           fi
 
-      - name: upload linea artifacts
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: actions/upload-artifact@v4
+      # - name: upload linea artifacts
+      #   if: startsWith(github.ref, 'refs/tags/v')
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: linea-${{ inputs.linea_env }}
+      #     retention-days: 1
+      #     path: |
+      #       ./release
+
+      - name: release - publish artifacts and release notes
+        if: ${{ github.event_name == 'workflow_dispatch' }}
+        id: release_publish
+        uses: softprops/action-gh-release@v2
         with:
-          name: linea-${{ inputs.linea_env }}
-          retention-days: 1
-          path: |
-            ./release
+          name: Linea Besu Package ${{ steps.assemble.outputs.dockertag }}
+          tag_name: linea-besu-package-${{ steps.assemble.outputs.dockertag }}
+          body_path: release/output.md
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            release/linea-besu-package-${{ steps.assemble.outputs.dockertag }}.tar.gz
