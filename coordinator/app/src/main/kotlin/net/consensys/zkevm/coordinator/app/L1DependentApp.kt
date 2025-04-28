@@ -15,9 +15,7 @@ import linea.web3j.SmartContractErrors
 import linea.web3j.Web3jBlobExtended
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
-import linea.web3j.gas.EIP1559GasProvider
 import net.consensys.linea.blob.ShnarfCalculatorVersion
-import net.consensys.linea.contract.Web3JContractAsyncHelper
 import net.consensys.linea.contract.Web3JL2MessageService
 import net.consensys.linea.contract.Web3JL2MessageServiceLogsClient
 import net.consensys.linea.contract.l1.GenesisStateProvider
@@ -932,23 +930,6 @@ class L1DependentApp(
 
   private val messageAnchoringApp: LongRunningService = if (configs.messageAnchoring.enabled
   ) {
-    val gasProvider = EIP1559GasProvider(
-      l2Web3jClient,
-      EIP1559GasProvider.Config(
-        configs.l2.gasLimit,
-        configs.l2.maxFeePerGasCap,
-        configs.l2.feeHistoryBlockCount,
-        configs.l2.feeHistoryRewardPercentile
-      )
-    )
-    val web3jContractHelper = Web3JContractAsyncHelper(
-      contractAddress = configs.l2.messageServiceAddress,
-      web3j = l2Web3jClient,
-      contractGasProvider = gasProvider,
-      transactionManager = l2TransactionManager,
-      smartContractErrors = smartContractErrors,
-      useEthEstimateGas = true
-    )
     MessageAnchoringApp(
       vertx = vertx,
       config = MessageAnchoringApp.Config(
@@ -968,10 +949,15 @@ class L1DependentApp(
         requestRetryConfig = null,
         vertx = vertx
       ),
-      l2MessageService = Web3JL2MessageServiceSmartContractClient(
-        web3j = l2Web3jClient,
+      l2MessageService = Web3JL2MessageServiceSmartContractClient.create(
+        web3jClient = l2Web3jClient,
         contractAddress = configs.l2.messageServiceAddress,
-        web3jContractHelper = web3jContractHelper
+        gasLimit = configs.l2.gasLimit,
+        maxFeePerGasCap = configs.l2.maxFeePerGasCap,
+        feeHistoryBlockCount = configs.l2.feeHistoryBlockCount,
+        feeHistoryRewardPercentile = configs.l2.feeHistoryRewardPercentile,
+        transactionManager = l2TransactionManager,
+        smartContractErrors = smartContractErrors
       )
     )
   } else {
