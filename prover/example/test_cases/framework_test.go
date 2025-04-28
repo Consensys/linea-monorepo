@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
@@ -72,7 +73,7 @@ var (
 	}
 	UNIVARIATES = compilationSuite{
 		univariates.Naturalize,
-		univariates.MultiPointToSinglePoint(8),
+		mpts.Compile(),
 	}
 	DUMMY       = compilationSuite{dummy.Compile}
 	TENSOR      = compilationSuite{vortex.Compile(2, vortex.WithDryThreshold(1))} // dummy unsafe sis instance
