@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/witness"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -165,11 +164,6 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 		pubInputOffset = 1 + numYs + numComs
 	)
 
-	f := files.MustOverwrite("conglomeration-circuit.json")
-	jsonString := plonkCircuit.WizardVerifier.Analyze().WithDetails(plonkCircuit.WizardVerifier).JsonString()
-	f.WriteString(jsonString)
-	f.Close()
-
 	for i := 0; i < params.MaxNumProof; i++ {
 
 		translator := &compTranslator{
@@ -246,11 +240,6 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness) {
 			prefix = r.Name + "-" + strconv.Itoa(i)
 			assign = AssignRecursionCircuit(r.InputCompiledIOP, wit[i].Proof, wit[i].Pub, wit[i].FinalFS)
 		)
-
-		f := files.MustOverwrite("assign-" + prefix + ".json")
-		jsonString := assign.WizardVerifier.Analyze().WithDetails(assign.WizardVerifier).JsonString()
-		f.WriteString(jsonString)
-		f.Close()
 
 		fullWitnesses[i], err = frontend.NewWitness(assign, ecc.BLS12_377.ScalarField())
 		if err != nil {
@@ -335,12 +324,14 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		VortexParams:       srcVortexCtx.VortexParams,
 		SisParams:          srcVortexCtx.SisParams,
 		// Although the srcVor
-		IsSelfrecursed:               true,
-		CommitmentsByRounds:          translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRounds),
-		DriedByRounds:                translator.AddColumnVecVec(srcVortexCtx.DriedByRounds),
-		PolynomialsTouchedByTheQuery: translator.AddColumnSet(srcVortexCtx.PolynomialsTouchedByTheQuery),
-		ShadowCols:                   translator.AddColumnSet(srcVortexCtx.ShadowCols),
-		Query:                        translator.AddUniEval(0, srcVortexCtx.Query),
+		IsSelfrecursed:                 true,
+		CommitmentsByRounds:            translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRounds),
+		DriedByRounds:                  translator.AddColumnVecVec(srcVortexCtx.DriedByRounds),
+		PolynomialsTouchedByTheQuery:   translator.AddColumnSet(srcVortexCtx.PolynomialsTouchedByTheQuery),
+		ShadowCols:                     translator.AddColumnSet(srcVortexCtx.ShadowCols),
+		Query:                          translator.AddUniEval(0, srcVortexCtx.Query),
+		AddMerkleRootToPublicInputsOpt: srcVortexCtx.AddMerkleRootToPublicInputsOpt,
+		AddPrecomputedMerkleRootToPublicInputsOpt: srcVortexCtx.AddPrecomputedMerkleRootToPublicInputsOpt,
 	}
 
 	if srcVortexCtx.ReplaceSisByMimc {
