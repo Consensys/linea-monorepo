@@ -8,26 +8,24 @@ import linea.kotlin.toULongFromLast8Bytes
 import java.math.BigInteger
 
 /**
- * @notice Emitted when a message is sent.
- * @param _from The indexed sender address of the message (msg.sender).
- * @param _to The indexed intended recipient address of the message on the other layer.
- * @param _fee The fee being being paid to deliver the message to the recipient in Wei.
- * @param _value The value being sent to the recipient in Wei.
- * @param _nonce The unique message number.
- * @param _calldata The calldata being passed to the intended recipient when being called on claiming.
- * @param _messageHash The indexed hash of the message parameters.
- * @dev _calldata has the _ because calldata is a reserved word.
- * @dev We include the message hash to save hashing costs on the rollup.
+ * Emitted when a message is sent.
+ * @param messageNumber The unique message number.
+ * @param from The indexed sender address of the message (msg.sender).
+ * @param to The indexed intended recipient address of the message on the other layer.
+ * @param fee fee being paid to deliver the message to the recipient in Wei.
+ * @param value The value being sent to the recipient in Wei.
+ * @param calldata The calldata being passed to the intended recipient when being called on claiming.
+ * @param messageHash The indexed hash of the message parameters.
  * @dev This event is used on both L1 and L2.
-event MessageSent(
- address indexed _from,
- address indexed _to,
- uint256 _fee,
- uint256 _value,
- uint256 _nonce,
- bytes _calldata,
- bytes32 indexed _messageHash
-);
+ * event MessageSent(
+ *  address indexed _from,
+ *  address indexed _to,
+ *  uint256 _fee,
+ *  uint256 _value, // messageNumber
+ *  uint256 _nonce,
+ *  bytes _calldata,
+ *  bytes32 indexed _messageHash
+ * );
  */
 data class MessageSentEvent(
   val messageNumber: ULong, // Unique message number
