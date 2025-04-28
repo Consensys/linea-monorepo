@@ -1,8 +1,23 @@
 import { Counter, Gauge, Registry } from "prom-client";
+import { MessageStatus } from "../enums";
+import { Direction } from "@consensys/linea-sdk";
 
 export enum LineaPostmanMetrics {
   Messages = "linea_postman_messages",
+  // Tx fees paid by Postman for sponsored message claims
+  SponsorshipFees = "linea_postman_sponsorship_fees",
 }
+
+export type MessagesMetricsAttributes = {
+  status: MessageStatus;
+  direction: Direction;
+  isForSponsorship: boolean;
+};
+
+export type MessagesMetricsAttributesWithCount = {
+  attributes: MessagesMetricsAttributes;
+  count: number;
+};
 
 export interface IMetricsService {
   getRegistry(): Registry;

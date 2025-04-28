@@ -1,68 +1,74 @@
 import { EntityManager } from "typeorm";
-import { Direction } from "@consensys/linea-sdk";
 import { MetricsService } from "./MetricsService";
 import { MessageEntity } from "../../persistence/entities/Message.entity";
-import { MessageStatus } from "../../../../core/enums";
-import { LineaPostmanMetrics } from "../../../../core/metrics/IMetricsService";
-
+import {
+  LineaPostmanMetrics,
+  MessagesMetricsAttributes,
+  MessagesMetricsAttributesWithCount,
+} from "../../../../core/metrics/IMetricsService";
 export class MessageMetricsService extends MetricsService {
   constructor(private readonly entityManager: EntityManager) {
     super();
-    this.createGauge(LineaPostmanMetrics.Messages, "Current number of messages by status and direction", [
-      "status",
-      "direction",
-    ]);
+    this.createGauge(
+      LineaPostmanMetrics.Messages,
+      "Current number of messages by status, direction and sponsorship status",
+      ["status", "direction", "isForSponsorship"],
+    );
   }
 
   public async initialize(): Promise<void> {
-    const fullResult = await this.getMessagesCountFromDatabase();
-    this.initializeGaugeValues(fullResult);
+    const messagesByAttribute = await this.getMessagesCountFromDatabase();
+    console.log("messagesByAttribute:", messagesByAttribute);
+    this.initializeGaugeValues(messagesByAttribute);
   }
 
-  private async getMessagesCountFromDatabase(): Promise<
-    { status: MessageStatus; direction: Direction; count: number }[]
-  > {
-    const totalNumberOfMessagesByStatusAndDirection = await this.entityManager
+  private async getMessagesCountFromDatabase(): Promise<MessagesMetricsAttributesWithCount[]> {
+    const totalNumberOfMessagesByAttributeGroups = await this.entityManager
       .createQueryBuilder(MessageEntity, "message")
       .select("message.status", "status")
       .addSelect("message.direction", "direction")
+      .addSelect("message.is_for_sponsorship", "isForSponsorship")
       .addSelect("COUNT(message.id)", "count")
       .groupBy("message.status")
       .addGroupBy("message.direction")
+      .addGroupBy("message.is_for_sponsorship")
       .getRawMany();
 
-    // MessageStatus => MessageDirection => Count
-    const resultMap = new Map<string, Map<string, number>>();
+    // JSON.stringify(MessagesMetricsAttributes) => Count
+    const resultMap = new Map<string, number>();
 
-    totalNumberOfMessagesByStatusAndDirection.forEach((r) => {
-      if (!resultMap.has(r.status)) {
-        resultMap.set(r.status, new Map());
-      }
-      resultMap.get(r.status)!.set(r.direction, Number(r.count));
+    totalNumberOfMessagesByAttributeGroups.forEach((r) => {
+      const messageMetricAttributes: MessagesMetricsAttributes = {
+        status: r.status,
+        direction: r.direction,
+        isForSponsorship: r.isForSponsorship,
+      };
+      const resultMapKey = JSON.stringify(messageMetricAttributes);
+      resultMap.set(resultMapKey, r.count);
     });
 
-    const results: { status: MessageStatus; direction: Direction; count: number }[] = [];
+    const results: MessagesMetricsAttributesWithCount[] = [];
 
-    for (const status of Object.values(MessageStatus)) {
-      for (const direction of Object.values(Direction)) {
-        results.push({
-          status,
-          direction,
-          count: resultMap.get(status)?.get(direction) || 0,
-        });
-      }
-    }
+    resultMap.forEach((count, resultMapKey) => {
+      const attributes: MessagesMetricsAttributes = JSON.parse(resultMapKey);
+      results.push({
+        attributes,
+        count,
+      });
+    });
 
     return results;
   }
 
-  private initializeGaugeValues(fullResult: { status: MessageStatus; direction: Direction; count: number }[]): void {
-    for (const { status, count, direction } of fullResult) {
+  private initializeGaugeValues(messagesByAttribute: MessagesMetricsAttributesWithCount[]): void {
+    for (const { attributes, count } of messagesByAttribute) {
+      console.log("initializeGaugeValues: ", attributes, count);
       this.incrementGauge(
         LineaPostmanMetrics.Messages,
         {
-          status,
-          direction,
+          status: attributes.status,
+          direction: attributes.direction,
+          isForSponsorship: String(attributes.isForSponsorship),
         },
         count,
       );

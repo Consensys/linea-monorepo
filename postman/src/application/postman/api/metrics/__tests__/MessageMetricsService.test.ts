@@ -14,7 +14,7 @@ describe("MessageMetricsService", () => {
     messageMetricsService = new MessageMetricsService(mockEntityManager);
   });
 
-  it("should update gauges based on message status", async () => {
+  it("should get correct gauge values after initialization", async () => {
     jest.spyOn(mockEntityManager, "maximum").mockResolvedValue(10);
     jest.spyOn(mockEntityManager, "createQueryBuilder").mockReturnValue({
       select: jest.fn().mockReturnThis(),
@@ -22,8 +22,14 @@ describe("MessageMetricsService", () => {
       groupBy: jest.fn().mockReturnThis(),
       addGroupBy: jest.fn().mockReturnThis(),
       getRawMany: jest.fn().mockResolvedValue([
-        { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, count: 5 },
-        { status: MessageStatus.CLAIMED_SUCCESS, direction: Direction.L1_TO_L2, count: 10 },
+        { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, isForSponsorship: String(false), count: 2 },
+        { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, isForSponsorship: String(true), count: 3 },
+        {
+          status: MessageStatus.CLAIMED_SUCCESS,
+          direction: Direction.L1_TO_L2,
+          isForSponsorship: String(true),
+          count: 10,
+        },
       ]),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as unknown as SelectQueryBuilder<any>);
@@ -40,24 +46,42 @@ describe("MessageMetricsService", () => {
 
     expect(
       await messageMetricsService.getGaugeValue(LineaPostmanMetrics.Messages, {
+        status: MessageStatus.SENT,
+        direction: Direction.L1_TO_L2,
+        isForSponsorship: String(false),
+      }),
+    ).toBe(2);
+
+    expect(
+      await messageMetricsService.getGaugeValue(LineaPostmanMetrics.Messages, {
+        status: MessageStatus.SENT,
+        direction: Direction.L1_TO_L2,
+        isForSponsorship: String(true),
+      }),
+    ).toBe(3);
+
+    expect(
+      await messageMetricsService.getGaugeValue(LineaPostmanMetrics.Messages, {
         status: MessageStatus.CLAIMED_SUCCESS,
         direction: Direction.L1_TO_L2,
       }),
     ).toBe(10);
   });
 
-  it("should return the correct gauge value", async () => {
+  it("should get correct gauge values after increment the gauge", async () => {
     messageMetricsService.incrementGauge(
       LineaPostmanMetrics.Messages,
       {
         status: "processed",
         direction: Direction.L1_TO_L2,
+        isForSponsorship: String(true),
       },
       10,
     );
     const gaugeValue = await messageMetricsService.getGaugeValue(LineaPostmanMetrics.Messages, {
       status: "processed",
       direction: Direction.L1_TO_L2,
+      isForSponsorship: String(true),
     });
     expect(gaugeValue).toBe(10);
   });
