@@ -284,12 +284,10 @@ describe("Linea Rollup contract: Forced Transactions", () => {
       };
 
       const corruptedFinalizationStateHash = generateKeccak256(
-        ["uint256", "bytes32", "uint256", "bytes32", "uint256"],
+        ["uint256", "bytes32", "uint256"],
         [
           corruptedFinalizedStateStruct.messageNumber,
           corruptedFinalizedStateStruct.messageRollingHash,
-          corruptedFinalizedStateStruct.forcedTransactionNumber,
-          corruptedFinalizedStateStruct.forcedTransactionRollingHash,
           corruptedFinalizedStateStruct.timestamp,
         ],
       );
@@ -298,7 +296,7 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         forcedTransactionGateway,
         forcedTransactionGateway.submitForcedTransaction(forcedTransaction, corruptedFinalizedStateStruct),
         "FinalizationStateIncorrect",
-        [defaultFinalizedStateHash, corruptedFinalizationStateHash],
+        [corruptedFinalizationStateHash, defaultFinalizedStateHash],
       );
     });
 
@@ -346,6 +344,19 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         lineaRollup.connect(securityCouncil).storeForcedTransaction(expectedBlockNumber, generateRandomBytes(32)),
         "ForcedTransactionExistsForBlockOrIsTooLow",
         [expectedBlockNumber],
+      );
+    });
+
+    it("Should submit the forced transaction with no calldata and 3 field finalizedState", async () => {
+      await lineaRollup.setLastFinalizedStateV6(
+        defaultFinalizedState.messageNumber,
+        defaultFinalizedState.messageRollingHash,
+        defaultFinalizedState.timestamp,
+      );
+
+      await forcedTransactionGateway.submitForcedTransaction(
+        buildEip1559Transaction(transactionWithoutCalldata.result),
+        defaultFinalizedState,
       );
     });
 
