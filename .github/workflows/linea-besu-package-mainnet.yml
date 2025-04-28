@@ -20,6 +20,13 @@ on:
         description: "the run id of the workflow"
         value: ${{ jobs.build-test-push.outputs.workflow_run_id }}
   workflow_dispatch:
+    inputs:
+      release_tag_prefix:
+        description: 'Custom release tag prefix'
+        required: false
+        type: string
+        default: ''
+        
 
 permissions:
   id-token: write  
@@ -29,6 +36,7 @@ jobs:
   filter-commit-changes:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: Filter commit changes
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     outputs:
       linea-mainnet-env: ${{ steps.filter.outputs.linea-mainnet-env }}
       linea-mainnet-profiles: ${{ steps.filter.outputs.linea-mainnet-profiles }}
@@ -59,9 +67,12 @@ jobs:
     #   group: build-test-push-${{ github.workflow }}-${{ github.ref }}
     #   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     needs: [ filter-commit-changes ]
+    if: ${{ always() }}
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
       linea_env: mainnet
+      release_tag_prefix: ${{ inputs.release_tag_prefix }}
+      run_test: true
       run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-mainnet-env == 'true' }}
       push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-mainnet-env == 'true' || needs.filter-commit-changes.outputs.linea-mainnet-profiles == 'true' }}
     secrets: inherit

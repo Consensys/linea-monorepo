@@ -4,7 +4,10 @@ description: 'Composite action to assemble the artifacts for the targer environm
 
 inputs:
   linea_env:
-    description: 'The target Linea environment (e.g. devnet, sepolia, mainnet)'
+    description: 'Target Linea environment (e.g. devnet, sepolia, mainnet)'
+    required: true
+  release_tag_prefix:
+    description: 'Custom release tag prefix'
     required: true
 
 outputs:
@@ -58,8 +61,8 @@ runs:
       id: dockertag
       shell: bash      
       run: |
-        if [ "${{ github.event_name }}" == "push" ] && [ "${{ github.ref_type }}" == "tag" ]; then
-          echo "dockertag=${{ inputs.linea_env }}-${{ github.ref_name }}" >> $GITHUB_OUTPUT
+        if [ -n "${{ inputs.release_tag_prefix }}" ]; then
+          echo "dockertag=${{ inputs.release_tag_prefix }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         else
           echo "dockertag=${{ inputs.linea_env }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         fi
@@ -105,7 +108,7 @@ runs:
         echo "getting shomei_plugin_version: ${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }}" 
         wget -nv "https://github.com/Consensys/besu-shomei-plugin/releases/download/v${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }}/besu-shomei-plugin-v${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }}.jar" -P /tmp/besu/plugins
 
-    - name: piece the package together to build the docker images
+    - name: place the packages together to build the docker images
       shell: bash    
       run: |
         cd linea-besu-package/linea-besu
@@ -116,16 +119,16 @@ runs:
         tree .
 
     - name: compile release notes
-      if: startsWith(github.ref, 'refs/tags/v')
+      if: ${{ inputs.release_tag_prefix != '' }}
       id: release_create_artifacts
       shell: bash
       run: |
         mkdir release && cd release
-        tar -czvf linea-besu-${{ steps.dockertag.outputs.dockertag }}.tar.gz ../linea-besu/
+        tar -czvf linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz ../linea-besu/
 
         echo "# Release Artifact: Linea - ${{ inputs.linea_env }}" > output.md
-        echo "linea-besu-${{ steps.dockertag.outputs.dockertag }}.tar.gz" >> output.md
-        echo "SHA256: $(sha256sum linea-besu-${{ steps.dockertag.outputs.dockertag }}.tar.gz | awk '{ print $1 }' )" >> output.md
+        echo "linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz" >> output.md
+        echo "SHA256: $(sha256sum linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz | awk '{ print $1 }' )" >> output.md
         echo "" >> output.md
 
         echo "### Besu and Plugin Details" >> output.md
