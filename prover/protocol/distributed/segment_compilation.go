@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
@@ -29,6 +28,7 @@ const (
 	fixedNbRowPlonkCircuit   = 1 << 22
 	fixedNbRowExternalHasher = 1 << 16
 	verifyingKeyPublicInput  = "VERIFYING_KEY"
+	verifyingKey2PublicInput = "VERIFYING_KEY_2"
 	lppMerkleRootPublicInput = "LPP_COLUMNS_MERKLE_ROOTS"
 	// thresholdStopping self-recursion is the number of committed cells at
 	// which we stop iterating the self-recursion function. It's a purely
@@ -96,7 +96,6 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		plonkinwizard.Compile,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
-			compiler.WithDebugMode("initial"),
 		),
 	)
 
@@ -137,7 +136,6 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
-			compiler.WithDebugMode("initial-selfrecursion-0"),
 		),
 		vortex.Compile(
 			8,
@@ -150,7 +148,6 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<13),
 			compiler.WithoutMpts(),
-			compiler.WithDebugMode("initial-selfrecursion-1"),
 		),
 	)
 
@@ -173,7 +170,6 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			compiler.Arcane(
 				compiler.WithTargetColSize(1<<13),
 				compiler.WithoutMpts(),
-				compiler.WithDebugMode("initial-selfrecursion-2"),
 			),
 		)
 	}
@@ -181,12 +177,12 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	wizard.ContinueCompilation(modIOP,
 		logdata.Log("just-before-recursion"),
 		mpts.Compile(mpts.WithNumColumnProfileOpt(numColumnProfileMpts, numColumnProfileMptsPrecomputed)),
-		dummy.CompileAtProverLvl(dummy.WithMsg("initial-last-mpts")),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
 			vortex.PremarkAsSelfRecursed(),
+			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKeyPublicInput),
 		),
 	)
 
@@ -218,7 +214,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			8,
 			vortex.ForceNumOpenedColumns(64),
 			vortex.WithSISParams(&sisInstance),
-			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKeyPublicInput),
+			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKey2PublicInput),
 		),
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
@@ -301,7 +297,13 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 				recStoppingRound,
 			)
 		})
+		finalProof    = run.ExtractProof()
+		finalProofErr = wizard.VerifyUntilRound(r.RecursionComp, finalProof, recStoppingRound)
 	)
+
+	if finalProofErr != nil {
+		panic(finalProofErr)
+	}
 
 	logrus.
 		WithField("moduleName", moduleName).
