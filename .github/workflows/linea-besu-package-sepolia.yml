@@ -29,6 +29,7 @@ jobs:
   filter-commit-changes:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     name: Filter commit changes
+    if: ${{ github.event_name != 'workflow_dispatch' }}
     outputs:
       linea-sepolia-env: ${{ steps.filter.outputs.linea-sepolia-env }}
       linea-sepolia-profiles: ${{ steps.filter.outputs.linea-sepolia-profiles }}
@@ -59,9 +60,11 @@ jobs:
     #   group: build-test-push-${{ github.workflow }}-${{ github.ref }}
     #   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     needs: [ filter-commit-changes ]
+    if: ${{ always() }}
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
       linea_env: sepolia
+      run_test: true
       run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-sepolia-env == 'true' }}
       push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-sepolia-env == 'true' || needs.filter-commit-changes.outputs.linea-sepolia-profiles == 'true' }}
     secrets: inherit
