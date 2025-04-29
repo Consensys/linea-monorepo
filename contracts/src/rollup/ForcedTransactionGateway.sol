@@ -156,12 +156,9 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
     signedTransactionFields[10] = RlpEncoder._encodeUint(_forcedTransaction.r);
     signedTransactionFields[11] = RlpEncoder._encodeUint(_forcedTransaction.s);
 
-    bytes memory rlpEncodedUnsignedTransaction = abi.encodePacked(
-      hex"02",
-      RlpEncoder._encodeList(signedTransactionFields, UNSIGNED_TRANSACTION_FIELD_LENGTH)
+    bytes32 hashedPayload = keccak256(
+      abi.encodePacked(hex"02", RlpEncoder._encodeList(signedTransactionFields, UNSIGNED_TRANSACTION_FIELD_LENGTH))
     );
-
-    bytes32 hashedPayload = keccak256(rlpEncodedUnsignedTransaction);
 
     address signer;
     unchecked {
@@ -195,7 +192,6 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       signer,
       expectedBlockNumber,
       forcedTransactionRollingHash,
-      rlpEncodedUnsignedTransaction,
       abi.encodePacked(hex"02", RlpEncoder._encodeList(signedTransactionFields))
     );
   }

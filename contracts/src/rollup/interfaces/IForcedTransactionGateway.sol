@@ -59,7 +59,6 @@ interface IForcedTransactionGateway {
    * @param from The recovered signer's from address.
    * @param expectedBlockNumber The maximum expected L2 block number processing will occur by.
    * @param forcedTransactionRollingHash The computed rolling Mimc based hash.
-   * @param rlpEncodedUnsignedTransaction The RLP encoded type 02 transaction payload excluding signature.
    * @param rlpEncodedSignedTransaction The RLP encoded type 02 transaction payload including signature.
    */
   event ForcedTransactionAdded(
@@ -67,7 +66,6 @@ interface IForcedTransactionGateway {
     address from,
     uint256 expectedBlockNumber,
     bytes32 forcedTransactionRollingHash,
-    bytes rlpEncodedUnsignedTransaction,
     bytes rlpEncodedSignedTransaction
   );
 

@@ -412,7 +412,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         ethers.getAddress(l2SendMessageTransaction.result.from),
         expectedBlockNumber,
         expectedMimcHashWithPreviousZeroValueRollingHash,
-        l2SendMessageTransaction.rlpEncodedUnsigned,
         l2SendMessageTransaction.rlpEncodedSigned,
       ];
 
@@ -451,7 +450,6 @@ describe("Linea Rollup contract: Forced Transactions", () => {
         ethers.getAddress(l2SendMessageTransaction.result.from),
         expectedBlockNumber,
         expectedMimcHashWithPreviousZeroValueRollingHash,
-        l2SendMessageTransaction.rlpEncodedUnsigned,
         l2SendMessageTransaction.rlpEncodedSigned,
       ];
 
