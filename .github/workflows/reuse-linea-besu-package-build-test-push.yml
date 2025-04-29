@@ -231,7 +231,7 @@ jobs:
         shell: bash
         run: |
           cd release
-          echo "# What's Changed" >> output.md"
+          echo "# What's Changed" >> output.md
           echo "${{ steps.change_log.outputs.clean_changelog }}" >> output.md
           echo "output.md=$(cat output.md)"
 
