@@ -2,6 +2,11 @@ import { Counter, Gauge, Registry } from "prom-client";
 import { MessageStatus } from "../enums";
 import { Direction } from "@consensys/linea-sdk";
 
+export enum MetricsOperation {
+  INCREMENT = "INCREMENT",
+  DECREMENT = "DECREMENT",
+}
+
 export enum LineaPostmanMetrics {
   Messages = "linea_postman_messages",
   /**
@@ -30,7 +35,7 @@ export type SponsorshipFeesMetricsAttributes = {
   direction: Direction;
 };
 
-export interface IMetricsService {
+export interface IMetricsService extends IMetricsServiceUtils {
   getRegistry(): Registry;
   createCounter(name: LineaPostmanMetrics, help: string, labelNames?: string[]): Counter<string>;
   createGauge(name: LineaPostmanMetrics, help: string, labelNames?: string[]): Gauge<string>;
@@ -39,4 +44,8 @@ export interface IMetricsService {
   decrementGauge(name: LineaPostmanMetrics, labels?: Record<string, string>, value?: number): void;
   getGaugeValue(name: LineaPostmanMetrics, labels: Record<string, string>): Promise<number | undefined>;
   getCounterValue(name: LineaPostmanMetrics, labels: Record<string, string>): Promise<number | undefined>;
+}
+
+interface IMetricsServiceUtils {
+  convertTxFeesToWeiAndGwei(txFees: bigint): { gwei: number; wei: number };
 }

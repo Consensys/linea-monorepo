@@ -149,6 +149,18 @@ export abstract class MetricsService implements IMetricsService {
     }
   }
 
+  // **** PUBLIC UTILITY FUNCTIONS ****
+
+  // Protected because we don't want to declare this in the IMetricsService interface, but we want the child class MessageMetricsService to use this function
+  public convertTxFeesToWeiAndGwei(txFees: bigint): { gwei: number; wei: number } {
+    // Last 9 digits
+    const wei = Number(txFees % BigInt(1_000_000_000));
+    const gwei = Number(txFees / BigInt(1_000_000_000));
+    return { wei, gwei };
+  }
+
+  // **** PRIVATE FUNCTIONS ****
+
   private aggregateMetricValuesWithExactMatchingLabels(
     metricData: MetricObjectWithValues<MetricValue<string>>,
     labels: Record<string, string>,
@@ -165,14 +177,5 @@ export abstract class MetricsService implements IMetricsService {
     };
     matchingMetricObjects.forEach((m) => (mergedMetricObject.value += m.value));
     return mergedMetricObject;
-  }
-
-  // Protected because we don't want to declare this in the IMetricsService interface, but we want the child class MessageMetricsService to use this function
-  // TODO - MessageStatusSubscriber needs to use this function as well
-  protected convertTxFeesToWeiAndGwei(txFees: bigint): { gwei: number; wei: number } {
-    // Last 9 digits
-    const wei = Number(txFees % BigInt(1_000_000_000));
-    const gwei = Number(txFees / BigInt(1_000_000_000));
-    return { wei, gwei };
   }
 }
