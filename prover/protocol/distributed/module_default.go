@@ -63,7 +63,7 @@ func DefineDefaultModule(builder *wizard.Builder, moduleInputs *FilteredModuleIn
 	md.Wiop.InsertPublicInput(hornerPublicInput, accessors.NewConstant(field.Zero()))
 	md.Wiop.InsertPublicInput(hornerN0HashPublicInput, accessors.NewConstant(field.Zero()))
 	md.Wiop.InsertPublicInput(hornerN1HashPublicInput, accessors.NewConstant(field.Zero()))
-	md.Wiop.InsertPublicInput(isGlPublicInput, accessors.NewConstant(field.One()))
+	md.Wiop.InsertPublicInput(isGlPublicInput, accessors.NewConstant(field.Zero()))
 	md.Wiop.InsertPublicInput(isLppPublicInput, accessors.NewConstant(field.Zero()))
 	md.Wiop.InsertPublicInput(nbActualLppPublicInput, accessors.NewConstant(field.Zero()))
 
