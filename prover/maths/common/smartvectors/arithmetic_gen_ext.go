@@ -36,7 +36,7 @@ func ProductExt(exponents []int, svecs []SmartVector, p ...mempool.MemPool) Smar
 //   - The function panics if svecs is empty
 //   - The function panics if the length of coeffs does not match the length of
 //     svecs
-func processOperatorExt(op operatorExt, coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVector {
+func processOperatorExt(op operator, coeffs []int, svecs []SmartVector, p ...mempool.MemPool) SmartVector {
 
 	// There should be as many coeffs than there are vectors
 	if len(coeffs) != len(svecs) {
@@ -151,7 +151,7 @@ func processOperatorExt(op operatorExt, coeffs []int, svecs []SmartVector, p ...
 
 // Returns the result of the linear combination including only the constant. numMatches denotes
 // the number of Constant smart-vectors found in the list of arguments.
-func processConstOnlyExt(op operatorExt, svecs []SmartVector, coeffs []int) (constRes *ConstantExt, numMatches int) {
+func processConstOnlyExt(op operator, svecs []SmartVector, coeffs []int) (constRes *ConstantExt, numMatches int) {
 	var constVal fext.Element
 	for i, svec := range svecs {
 		if cnst, ok := svec.(*ConstantExt); ok {

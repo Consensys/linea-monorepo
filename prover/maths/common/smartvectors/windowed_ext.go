@@ -216,7 +216,7 @@ func (p *PaddedCircularWindowExt) interval() CircularInterval {
 //
 // The function returns the partial result of the operation and the number of
 // padded circular windows SmartVector that it found.
-func processWindowedOnlyExt(op operatorExt, svecs []SmartVector, coeffs_ []int) (res SmartVector, numMatches int) {
+func processWindowedOnlyExt(op operator, svecs []SmartVector, coeffs_ []int) (res SmartVector, numMatches int) {
 
 	// First we compute the union windows.
 	length := svecs[0].Len()
