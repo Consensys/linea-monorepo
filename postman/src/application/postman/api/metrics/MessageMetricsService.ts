@@ -57,7 +57,7 @@ export class MessageMetricsService extends MetricsService {
       const sponsorshipFeeMetricAttributesGwei: SponsorshipFeesMetricsAttributes = {
         direction: r.direction,
       };
-      const { wei, gwei } = this.convertTxFeesToWeiAndGwei(r.totalTxFees);
+      const { wei, gwei } = this.convertTxFeesToWeiAndGwei(BigInt(r.totalTxFees));
       const resultMapKeyWei = JSON.stringify(sponsorshipFeeMetricAttributesWei);
       const resultMapKeyGwei = JSON.stringify(sponsorshipFeeMetricAttributesGwei);
       weiResultMap.set(resultMapKeyWei, wei);
@@ -94,7 +94,7 @@ export class MessageMetricsService extends MetricsService {
       .select("message.status", "status")
       .addSelect("message.direction", "direction")
       .addSelect("message.is_for_sponsorship", "isForSponsorship")
-      .addSelect("COUNT(message.id)", "count")
+      .addSelect("COUNT(message.id)", "count") // Actually a string type
       .groupBy("message.status")
       .addGroupBy("message.direction")
       .addGroupBy("message.is_for_sponsorship")
@@ -110,7 +110,7 @@ export class MessageMetricsService extends MetricsService {
         isForSponsorship: r.isForSponsorship,
       };
       const resultMapKey = JSON.stringify(messageMetricAttributes);
-      resultMap.set(resultMapKey, r.count);
+      resultMap.set(resultMapKey, parseInt(r.count));
     });
 
     // Note that we must initialize every attribute combination, or 'incrementGauge' and 'decrementGauge' will not work later on.

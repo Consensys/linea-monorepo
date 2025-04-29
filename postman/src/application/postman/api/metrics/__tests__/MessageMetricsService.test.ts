@@ -15,21 +15,19 @@ describe("MessageMetricsService", () => {
   });
 
   const getMessagesCountQueryResp = [
-    { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, isForSponsorship: false, count: 2 },
-    { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, isForSponsorship: true, count: 3 },
+    { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, isForSponsorship: false, count: "2" },
+    { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, isForSponsorship: true, count: "3" },
     {
       status: MessageStatus.CLAIMED_SUCCESS,
       direction: Direction.L1_TO_L2,
       isForSponsorship: true,
-      count: 10,
+      count: "10",
     },
   ];
 
   const WEI_STRING = "480173904";
   const GWEI_STRING = "87498317";
-  const getSponsorshipFeesQueryResp = [
-    { direction: Direction.L1_TO_L2, totalTxFees: BigInt(`${GWEI_STRING}${WEI_STRING}`) },
-  ];
+  const getSponsorshipFeesQueryResp = [{ direction: Direction.L1_TO_L2, totalTxFees: `${GWEI_STRING}${WEI_STRING}` }];
 
   it("should get correct gauge values after initialization", async () => {
     jest.spyOn(mockEntityManager, "maximum").mockResolvedValue(10);
