@@ -154,6 +154,15 @@ func runConglomerationProver(t *testing.T, cong *ConglomeratorCompilation, runGL
 	}
 
 	t.Logf("[%v] Starting to prove conglomerator\n", time.Now())
-	_ = cong.Prove(witGLs, witLPPs)
+	proof := cong.Prove(witGLs, witLPPs)
 	t.Logf("[%v] Finished proving conglomerator\n", time.Now())
+
+	t.Logf("[%v] start sanity-checking proof\n", time.Now())
+
+	err := wizard.Verify(cong.Wiop, proof)
+	if err != nil {
+		t.Fatalf("could not verify proof: %v", err)
+	}
+
+	t.Logf("[%v] done sanity-checking proof\n", time.Now())
 }
