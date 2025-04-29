@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -295,10 +296,17 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 	r.PlonkCtx.GetPlonkProverAction().Run(run, fullWitnesses)
 }
 
-// GetPublicInputs relative to one recursed module.
+// GetPublicInputOfInstance relative to one recursed module.
 func (rec *Recursion) GetPublicInputOfInstance(run wizard.Runtime, name string, inst int) field.Element {
 	name = addPrefixToID(rec.Name+"-"+strconv.Itoa(inst), name)
 	return run.GetPublicInput(name)
+}
+
+// GetPublicInputAccessorOfInstance returns the accessor of a public input
+// relative to one recursed module.
+func (rec *Recursion) GetPublicInputAccessorOfInstance(comp *wizard.CompiledIOP, name string, inst int) ifaces.Accessor {
+	name = addPrefixToID(rec.Name+"-"+strconv.Itoa(inst), name)
+	return comp.GetPublicInputAccessor(name)
 }
 
 // VortexQueryRound returns the round at which the last commitment
