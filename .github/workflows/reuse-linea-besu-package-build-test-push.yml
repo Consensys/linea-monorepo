@@ -165,7 +165,7 @@ jobs:
 
       ### update the release notes with docker hashes
       - name: create the release notes and then the release
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+        # if: ${{ github.event_name == 'workflow_dispatch' }}
         id: release_create_artifacts
         run: |
           cd release
@@ -187,7 +187,7 @@ jobs:
           fi
 
       - name: Conventional Changelog Action
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+        # if: ${{ github.event_name == 'workflow_dispatch' }}
         id: change_log
         uses: TriPSs/conventional-changelog-action@v5
         with:
@@ -196,7 +196,7 @@ jobs:
           output-file: "false"
       
       - name: Append Changelog Action to release note
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+        # if: ${{ github.event_name == 'workflow_dispatch' }}
         id: append_change_log
         shell: bash
         run: |
@@ -206,12 +206,12 @@ jobs:
           echo "output.md=$(cat output.md)"
 
       - name: release - publish artifacts and release notes
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+        # if: ${{ github.event_name == 'workflow_dispatch' }}
         id: release_publish
         uses: softprops/action-gh-release@v2
         with:
           name: Linea Besu Package ${{ steps.assemble.outputs.dockertag }}
-          tag_name: linea-besu-package-${{ steps.assemble.outputs.dockertag }}
+          tag_name: linea-besu-package-${{ steps.assemble.outputs.releasetag }}
           body_path: release/output.md
           generate_release_notes: false
           fail_on_unmatched_files: true

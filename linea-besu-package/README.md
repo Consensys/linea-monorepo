@@ -8,7 +8,7 @@ used to run a node with a specific profile.
 
 ### Step 1. Download configuration files
 
-You can start with the Docker Compose files located in the [docker-compose](https://github.com/Consensys/linea-besu-package/tree/main/docker) directory.
+You can start with the Docker Compose files located in the [docker-compose](https://github.com/Consensys/linea-monorepo/tree/main/linea-besu-package/docker) directory.
 
 ### Step 2. Update the Docker Compose file
 In the docker-compose.yaml file, update the --p2p-host command to include your public IP address. For example:
@@ -41,7 +41,7 @@ docker run -e BESU_PROFILE=basic-mainnet consensys/linea-besu-package:sepolia-la
 ## Run with a binary distribution
 
 ### Step 1. Install Linea Besu from packaged binaries
-*  Download the [linea-besu-package&lt;release&gt;.tar.gz](https://github.com/Consensys/linea-besu-package/releases) 
+*  Download the [linea-besu-package-&lt;release&gt;.tar.gz](https://github.com/Consensys/linea-monorepo/releases?q=linea-besu-package&expanded=true) 
 from the assets.
 * Unpack the downloaded files and change into the besu-linea-package-&lt;release&gt;
 directory.
@@ -63,8 +63,8 @@ bin/besu --profile=advanced-mainnet --plugin-linea-l1-rpc-endpoint=YOUR_L1_RPC_E
 
 ## Build from source
 
-1. Make a branch with changes to `versions/linea-*.env` as needed
-2. Go to the [actions tab](https://github.com/Consensys/linea-besu-package/actions) and click on the appropriate workflow and select your branch - docker image will get published
+1. Make a branch with changes to `linea-besu-package/versions/linea-*.env` as needed
+2. Go to the [actions tab](https://github.com/Consensys/linea-monorepo/actions) and click on the appropriate workflow and select your branch - docker image will get published
 
 ## How-To Release
 
@@ -84,7 +84,7 @@ Additionally, the `latest` tag will be updated to match this release.
 
 This project leverages [Besu Profiles](https://besu.hyperledger.org/public-networks/how-to/use-configuration-file/profile) to enable multiple startup configurations for different node types.
 
-During the build process, all TOML files located in the [linea-besu/profiles](https://github.com/Consensys/linea-besu-package/tree/main/linea-besu/profiles) directory will be incorporated into the package. These profiles are crucial for configuring the node, as each one specifies the necessary plugins and CLI options to ensure Besu operates correctly.
+During the build process, all TOML files located in the [linea-besu/profiles](https://github.com/Consensys/linea-monorepo/tree/main/linea-besu-package/linea-besu/profiles) directory will be incorporated into the package. These profiles are crucial for configuring the node, as each one specifies the necessary plugins and CLI options to ensure Besu operates correctly.
 
 Each profile is a TOML file that outlines the plugins and CLI options to be used when starting the node. For example:
 
@@ -105,7 +105,7 @@ Currently, the following profiles are available:
 
 | Profile Name                                                                                                              | Description                                                               | Network | 
 |---------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|---------|
-| [`basic-mainnet`](https://github.com/Consensys/linea-besu-package/blob/main/linea-besu/profiles/basic-mainnet.toml)       | Creates a basic Linea Node.                                               | Mainnet |
-| [`advanced-mainnet`](https://github.com/Consensys/linea-besu-package/blob/main/linea-besu/profiles/advanced-mainnet.toml) | Creates a Linea Node with `linea_estimateGas` and `finalized tag plugin`. | Mainnet |
-| [`basic-sepolia`](https://github.com/Consensys/linea-besu-package/blob/main/linea-besu/profiles/basic-sepolia.toml)       | Creates a basic Linea Node.                                               | Sepolia |
-| [`advanced-sepolia`](https://github.com/Consensys/linea-besu-package/blob/main/linea-besu/profiles/advanced-mainnet.toml) | Creates a Linea Node with `linea_estimateGas` and `finalized tag plugin`. | Sepolia |
+| [`basic-mainnet`](https://github.com/Consensys/linea-monorepo/blob/main/linea-besu-package/linea-besu/profiles/basic-mainnet.toml)       | Creates a basic Linea Node.                                               | Mainnet |
+| [`advanced-mainnet`](https://github.com/Consensys/linea-monorepo/blob/main/linea-besu-package/linea-besu/profiles/advanced-mainnet.toml) | Creates a Linea Node with `linea_estimateGas` and `finalized tag plugin`. | Mainnet |
+| [`basic-sepolia`](https://github.com/Consensys/linea-monorepo/blob/main/linea-besu-package/linea-besu/profiles/basic-sepolia.toml)       | Creates a basic Linea Node.                                               | Sepolia |
+| [`advanced-sepolia`](https://github.com/Consensys/linea-monorepo/blob/main/linea-besu-package/linea-besu/profiles/advanced-mainnet.toml) | Creates a Linea Node with `linea_estimateGas` and `finalized tag plugin`. | Sepolia |
