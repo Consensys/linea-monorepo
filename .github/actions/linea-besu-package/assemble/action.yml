@@ -26,6 +26,10 @@ outputs:
   dockerimage:
     description: docker image
     value: ${{ steps.dockerimage.outputs.dockerimage }}
+
+  releasetag:
+    description: release tag
+    value: ${{ steps.dockerimage.outputs.releasetag }}
   
   tracer_plugin_version:
     description: tracer plugin version
@@ -69,10 +73,20 @@ runs:
       run: |
         if [ -n "${{ inputs.release_tag_prefix }}" ]; then
           echo "dockertag=${{ inputs.release_tag_prefix }}-${{ steps.timestamp.outputs.TIMESTAMP }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-        elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-          echo "dockertag=${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}-${{ steps.timestamp.outputs.TIMESTAMP }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         else
-          echo "dockertag=${{ inputs.linea_env }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "dockertag=${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}-${{ steps.timestamp.outputs.TIMESTAMP }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: set release tag
+      id: releasetag
+      shell: bash
+      run: |
+        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "releasetag=${{ steps.dockertag.outputs.dockertag }}" >> $GITHUB_OUTPUT
+        elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+          echo "releasetag=${{ inputs.linea_env }}-develop" >> $GITHUB_OUTPUT
+        else
+          echo "releasetag=${{ inputs.linea_env }}" >> $GITHUB_OUTPUT
         fi
 
     - name: set docker image
@@ -127,7 +141,7 @@ runs:
         tree .
 
     - name: compile release notes
-      if: ${{ github.event_name == 'workflow_dispatch' }}
+      #if: ${{ github.event_name == 'workflow_dispatch' }}
       id: release_create_artifacts
       shell: bash
       run: |
