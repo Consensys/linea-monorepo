@@ -176,6 +176,7 @@ jobs:
         uses: docker/build-push-action@v6
         env:
           DOCKER_BUILD_SUMMARY: false
+          LINEA_ENV: ${{ inputs.linea-env }}
         with:
           context: linea-besu-package/linea-besu/.
           platforms: linux/arm64,linux/amd64
@@ -189,8 +190,8 @@ jobs:
           push: true
           tags: |
             consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }}
-            ${{ github.ref == 'refs/heads/main' && 'consensys/linea-besu-package:${{ inputs.linea_env }}-develop' || '' }}
-            ${{ github.event_name == 'workflow_dispatch' && format('consensys/linea-besu-package:{0}-latest', github.event.inputs.linea_env) || '' }}
+            ${{ github.ref == 'refs/heads/main' && format('consensys/linea-besu-package:{0}-develop', env.LINEA_ENV) || '' }}
+            ${{ github.event_name == 'workflow_dispatch' && format('consensys/linea-besu-package:{0}-latest', env.LINEA_ENV) || '' }}
 
       ### update the release notes with docker hashes
       - name: create the release notes and then the release
