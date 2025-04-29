@@ -27,6 +27,7 @@ import { TypeOrmMessageRepository } from "../../persistence/repositories/TypeOrm
 import { L2ClaimMessageTransactionSizePoller } from "../../../../services/pollers/L2ClaimMessageTransactionSizePoller";
 import { DEFAULT_MAX_CLAIM_GAS_LIMIT } from "../../../../core/constants";
 import { MessageStatusSubscriber } from "../../persistence/subscribers/MessageStatusSubscriber";
+import { SponsorshipFeesSubscriber } from "../../persistence/subscribers/SponsorshipFeesSubscriber";
 import { MessageMetricsService } from "../../api/metrics/MessageMetricsService";
 import { Api } from "../../api/Api";
 
@@ -194,7 +195,7 @@ describe("PostmanServiceClient", () => {
             RemoveUniqueConstraint1689084924789,
             AddNewIndexes1701265652528,
           ],
-          subscribers: [MessageStatusSubscriber],
+          subscribers: [MessageStatusSubscriber, SponsorshipFeesSubscriber],
           migrationsTableName: "migrations",
           logging: ["error"],
           migrationsRun: true,

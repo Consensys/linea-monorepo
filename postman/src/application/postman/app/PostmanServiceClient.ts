@@ -28,6 +28,7 @@ import { EthereumTransactionValidationService } from "../../../services/Ethereum
 import { getConfig } from "./config/utils";
 import { Api } from "../api/Api";
 import { MessageStatusSubscriber } from "../persistence/subscribers/MessageStatusSubscriber";
+import { SponsorshipFeesSubscriber } from "../persistence/subscribers/SponsorshipFeesSubscriber";
 import { MessageMetricsService } from "../api/metrics/MessageMetricsService";
 
 export class PostmanServiceClient {
@@ -390,7 +391,12 @@ export class PostmanServiceClient {
         metricService,
         new WinstonLogger(MessageStatusSubscriber.name),
       );
+      const sponsorshipFeesSubscriber = new SponsorshipFeesSubscriber(
+        metricService,
+        new WinstonLogger(SponsorshipFeesSubscriber.name),
+      );
       this.db.subscribers.push(messageStatusSubscriber);
+      this.db.subscribers.push(sponsorshipFeesSubscriber);
 
       // Initialize or reinitialize the API using the metrics service.
       this.api = new Api({ port: this.config.apiConfig.port }, metricService, new WinstonLogger(Api.name));
