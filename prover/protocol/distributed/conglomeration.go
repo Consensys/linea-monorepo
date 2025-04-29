@@ -10,14 +10,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
@@ -295,8 +293,6 @@ func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRu
 // returns a proof.
 func (c *ConglomeratorCompilation) Prove(moduleGlProofs, moduleLppProofs []recursion.Witness) wizard.Proof {
 
-	logderivativesum.LogEverything = true
-
 	var proof wizard.Proof
 	recursionTime := profiling.TimeIt(func() {
 		proof = wizard.Prove(
@@ -391,11 +387,6 @@ func (cong *ConglomerationAssignHolisticCheckColumn) Run(run *wizard.ProverRunti
 
 		continue
 	}
-
-	fmt.Printf("mappedVK[0]=%v\n", vector.Prettify(assignment[0]))
-	fmt.Printf("mappedVK[1]=%v\n", vector.Prettify(assignment[1]))
-	fmt.Printf("verifyingKey[0]=%v\n", vector.Prettify(verifyingKey[0]))
-	fmt.Printf("verifyingKey[1]=%v\n", vector.Prettify(verifyingKey[1]))
 
 	colToAssign := cong.HolisticLookupMappedLPPVK
 	posToAssign := cong.HolisticLookupMappedLPPPostion
@@ -514,18 +505,6 @@ func (cong *ConglomeratorCompilation) precomputeToTheWhiteListVKeys() ([2]ifaces
 			smartvectors.RightPadded(vkMappingWhiteListGL[j][1], vkMappingWhiteListGL[j][1][0], vkMappingPaddedSize),
 		)
 	}
-
-	fmt.Printf("vkLPP[0] = %v\n", vector.Prettify(vkMappingWhiteListLPP[0]))
-	fmt.Printf("vkLPP[1] = %v\n", vector.Prettify(vkMappingWhiteListLPP[1]))
-
-	fmt.Printf("vkGL[0][0] = %v\n", vector.Prettify(vkMappingWhiteListGL[0][0]))
-	fmt.Printf("vkGL[0][1] = %v\n", vector.Prettify(vkMappingWhiteListGL[0][1]))
-	fmt.Printf("vkGL[1][0] = %v\n", vector.Prettify(vkMappingWhiteListGL[1][0]))
-	fmt.Printf("vkGL[1][1] = %v\n", vector.Prettify(vkMappingWhiteListGL[1][1]))
-	fmt.Printf("vkGL[2][0] = %v\n", vector.Prettify(vkMappingWhiteListGL[2][0]))
-	fmt.Printf("vkGL[2][1] = %v\n", vector.Prettify(vkMappingWhiteListGL[2][1]))
-	fmt.Printf("vkGL[3][0] = %v\n", vector.Prettify(vkMappingWhiteListGL[3][0]))
-	fmt.Printf("vkGL[3][1] = %v\n", vector.Prettify(vkMappingWhiteListGL[3][1]))
 
 	return vkMappingColumnsLPP, vkMappingColumnsGL
 }
