@@ -1,7 +1,5 @@
-package linea.anchoring.fakes
+package linea.contract.l2
 
-import linea.contract.l2.L2MessageServiceSmartContractClient
-import linea.contract.l2.L2MessageServiceSmartContractVersion
 import linea.domain.BlockParameter
 import linea.kotlin.encodeHex
 import tech.pegasys.teku.infrastructure.async.SafeFuture
