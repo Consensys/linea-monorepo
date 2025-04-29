@@ -4,8 +4,19 @@ import { Direction } from "@consensys/linea-sdk";
 
 export enum LineaPostmanMetrics {
   Messages = "linea_postman_messages",
-  // Tx fees paid by Postman for sponsored message claims
-  SponsorshipFees = "linea_postman_sponsorship_fees",
+  /**
+   * Tx fees in wei paid by Postman for sponsored message claims
+   *
+   * Workaround for prom-client metrics not supporting bigint type
+   * - We split txFee into GWEI and WEI components, and accumulate in two separate metrics
+   * - Note JS limitation of Number.MAX_SAFE_INTEGER = 9007199254740991
+   * - Given 150,000 sponsored messages a year, we should not reach overflow in <60 years
+   *
+   * We do not use separate labels for 'wei' and 'gwei' denominations, because metrics sharing the label should be aggregatable
+   * - I.e. metric (direction: A, denomination: wei) cannot be aggregated with metric (direction: A, denomination: gwei) because they represent different units
+   */
+  SponsorshipFeesWei = "linea_postman_sponsorship_fees_wei", // Represent up to ~9_007_199 GWEI
+  SponsorshipFeesGwei = "linea_postman_sponsorship_fees_gwei", // Represent up to ~9_007_199 ETH
 }
 
 export type MessagesMetricsAttributes = {
@@ -14,9 +25,9 @@ export type MessagesMetricsAttributes = {
   isForSponsorship: boolean;
 };
 
-export type MessagesMetricsAttributesWithCount = {
-  attributes: MessagesMetricsAttributes;
-  count: number;
+export type SponsorshipFeesMetricsAttributes = {
+  // Only a message with MessageStatus.CLAIMED_SUCCESS will have claimTxGasUsed and claimTxGasPrice properties
+  direction: Direction;
 };
 
 export interface IMetricsService {

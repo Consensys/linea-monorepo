@@ -4,12 +4,13 @@ import { MessageEntity } from "../../persistence/entities/Message.entity";
 import {
   LineaPostmanMetrics,
   MessagesMetricsAttributes,
-  MessagesMetricsAttributesWithCount,
+  SponsorshipFeesMetricsAttributes,
 } from "../../../../core/metrics/IMetricsService";
 import { Direction } from "@consensys/linea-sdk";
 import { MessageStatus } from "../../../../core/enums";
 
 export class MessageMetricsService extends MetricsService {
+  // FOR LATER - How to enable search by time for these metrics
   constructor(private readonly entityManager: EntityManager) {
     super();
     this.createGauge(
@@ -17,14 +18,77 @@ export class MessageMetricsService extends MetricsService {
       "Current number of messages by status, direction and sponsorship status",
       ["status", "direction", "isForSponsorship"],
     );
+    this.createGauge(
+      LineaPostmanMetrics.SponsorshipFeesWei,
+      "Current wei component of tx fees paid for sponsored messages by direction",
+      ["direction"],
+    );
+    this.createGauge(
+      LineaPostmanMetrics.SponsorshipFeesGwei,
+      "Current gwei component of tx fees paid for sponsored messages by direction",
+      ["direction"],
+    );
   }
 
   public async initialize(): Promise<void> {
-    const messagesByAttribute = await this.getMessagesCountFromDatabase();
-    this.initializeGaugeValues(messagesByAttribute);
+    this.initializeMessagesGauges();
+    this.initializeSponsorshipFeesGauges();
   }
 
-  private async getMessagesCountFromDatabase(): Promise<MessagesMetricsAttributesWithCount[]> {
+  private async initializeSponsorshipFeesGauges(): Promise<void> {
+    const totalNumberOfMessagesByAttributeGroups = await this.entityManager
+      .createQueryBuilder(MessageEntity, "message")
+      .select("message.direction", "direction")
+      .addSelect("SUM((message.claim_tx_gas_used::bigint) * message.claim_tx_gas_price)", "totalTxFees")
+      // Only include CLAIMED_SUCCESS messages which were sponsored
+      .where("message.status = :status", { status: MessageStatus.CLAIMED_SUCCESS })
+      .andWhere("message.is_for_sponsorship = true")
+      .groupBy("message.direction")
+      .getRawMany();
+
+    // JSON.stringify(SponsorshipFeesMetricsAttributes) => Count
+    const weiResultMap = new Map<string, number>();
+    const gweiResultMap = new Map<string, number>();
+
+    totalNumberOfMessagesByAttributeGroups.forEach((r) => {
+      const sponsorshipFeeMetricAttributesWei: SponsorshipFeesMetricsAttributes = {
+        direction: r.direction,
+      };
+      const sponsorshipFeeMetricAttributesGwei: SponsorshipFeesMetricsAttributes = {
+        direction: r.direction,
+      };
+      const { wei, gwei } = this.convertTxFeesToWeiAndGwei(r.totalTxFees);
+      const resultMapKeyWei = JSON.stringify(sponsorshipFeeMetricAttributesWei);
+      const resultMapKeyGwei = JSON.stringify(sponsorshipFeeMetricAttributesGwei);
+      weiResultMap.set(resultMapKeyWei, wei);
+      gweiResultMap.set(resultMapKeyGwei, gwei);
+    });
+
+    // Note that we must initialize every attribute combination, or 'incrementGauge' and 'decrementGauge' will not work later on.
+    for (const direction of Object.values(Direction)) {
+      const attributes: SponsorshipFeesMetricsAttributes = {
+        direction,
+      };
+      const attributesKey = JSON.stringify(attributes);
+      this.incrementGauge(
+        LineaPostmanMetrics.SponsorshipFeesWei,
+        {
+          direction: direction,
+        },
+        weiResultMap.get(attributesKey) ?? 0,
+      );
+      this.incrementGauge(
+        LineaPostmanMetrics.SponsorshipFeesGwei,
+        {
+          direction: direction,
+        },
+        gweiResultMap.get(attributesKey) ?? 0,
+      );
+    }
+  }
+
+  // TO CONSIDER IN LATER TICKET - Some combinations of (status,direction,isForSponsorship) should not happen. Should we still create the metric for these combinations?
+  private async initializeMessagesGauges(): Promise<void> {
     const totalNumberOfMessagesByAttributeGroups = await this.entityManager
       .createQueryBuilder(MessageEntity, "message")
       .select("message.status", "status")
@@ -49,8 +113,6 @@ export class MessageMetricsService extends MetricsService {
       resultMap.set(resultMapKey, r.count);
     });
 
-    const results: MessagesMetricsAttributesWithCount[] = [];
-
     // Note that we must initialize every attribute combination, or 'incrementGauge' and 'decrementGauge' will not work later on.
     for (const status of Object.values(MessageStatus)) {
       for (const direction of Object.values(Direction)) {
@@ -61,28 +123,17 @@ export class MessageMetricsService extends MetricsService {
             isForSponsorship,
           };
           const attributesKey = JSON.stringify(attributes);
-          results.push({
-            attributes,
-            count: resultMap.get(attributesKey) ?? 0,
-          });
+          this.incrementGauge(
+            LineaPostmanMetrics.Messages,
+            {
+              status: attributes.status,
+              direction: attributes.direction,
+              isForSponsorship: String(attributes.isForSponsorship),
+            },
+            resultMap.get(attributesKey) ?? 0,
+          );
         }
       }
-    }
-
-    return results;
-  }
-
-  private initializeGaugeValues(messagesByAttribute: MessagesMetricsAttributesWithCount[]): void {
-    for (const { attributes, count } of messagesByAttribute) {
-      this.incrementGauge(
-        LineaPostmanMetrics.Messages,
-        {
-          status: attributes.status,
-          direction: attributes.direction,
-          isForSponsorship: String(attributes.isForSponsorship),
-        },
-        count,
-      );
     }
   }
 }
