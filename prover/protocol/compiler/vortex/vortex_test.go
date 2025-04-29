@@ -187,7 +187,7 @@ func TestVortexSingleRoundMerkleNoSis(t *testing.T) {
 		pr.AssignUnivariate("EVAL", x, ys...)
 	}
 
-	compiled := wizard.Compile(define, vortex.Compile(4, vortex.ReplaceSisByMimc()))
+	compiled := wizard.Compile(define, vortex.Compile(4))
 	proof := wizard.Prove(compiled, prove)
 	valid := wizard.Verify(compiled, proof)
 
@@ -239,7 +239,7 @@ func TestVortexMultiRoundMerkleNoSis(t *testing.T) {
 		pr.AssignUnivariate("EVAL", x, ys...)
 	}
 
-	compiled := wizard.Compile(define, vortex.Compile(4, vortex.ReplaceSisByMimc()))
+	compiled := wizard.Compile(define, vortex.Compile(4))
 	proof := wizard.Prove(compiled, prove)
 	valid := wizard.Verify(compiled, proof)
 
@@ -293,10 +293,7 @@ func TestVortexOneFullOneDryMerkleNoSis(t *testing.T) {
 
 	compiled := wizard.Compile(
 		define,
-		vortex.Compile(
-			4,
-			vortex.ReplaceSisByMimc(),
-		),
+		vortex.Compile(4),
 	)
 	proof := wizard.Prove(compiled, prove)
 	valid := wizard.Verify(compiled, proof)

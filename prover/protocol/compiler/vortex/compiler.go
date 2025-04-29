@@ -100,7 +100,9 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 
 		ctx.generateVortexParams()
 		// Commit to precomputed columns
-		ctx.commitPrecomputeds()
+		if ctx.IsCommitToPrecomputed() {
+			ctx.commitPrecomputeds()
+		}
 		ctx.registerOpeningProof(lastRound)
 
 		// Registers the prover and verifier steps
@@ -612,10 +614,14 @@ func (ctx *Ctx) NumEncodedCols() int {
 	return res
 }
 
-// We always commit to the precomputed columns. This is a bit of a hack for now.
-// We shall remove this completely when making changes in the self recursion.
+// We commit to the precomputed columns if there are any.
 func (ctx *Ctx) IsCommitToPrecomputed() bool {
-	return true
+	if len(ctx.Items.Precomputeds.PrecomputedColums) > 0 {
+		return true
+	} else {
+		logrus.Infof("There are no precomputed columns to commit to")
+		return false
+	}
 }
 
 // IsSISAppliedToPrecomputed returns true if SIS is applied to the precomputed

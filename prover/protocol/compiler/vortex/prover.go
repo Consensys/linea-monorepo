@@ -16,13 +16,24 @@ import (
 // Prover steps of Vortex that is run in place of committing to polynomials
 func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 	return func(pr *wizard.ProverRuntime) {
+		var (
+			committedMatrix vortex.EncodedMatrix
+			tree            *smt.Tree
+			sisDigest       []field.Element
+		)
 		pols := ctx.getPols(pr, round)
 		// If there are no polynomials to commit to, we don't need to do anything
 		if len(pols) == 0 {
 			logrus.Infof("Vortex AssignColumn at round %v: No polynomials to commit to", round)
 			return
 		}
-		committedMatrix, tree, sisDigest := ctx.VortexParams.CommitMerkle(pols, ctx.IsSISApplied[round])
+		// We commit to the polynomials with SIS hashing if the number of polynomials
+		// is greater than the [ApplyToSISThreshold].
+		if ctx.IsSISReplacedByMiMC[round] {
+			committedMatrix, tree, sisDigest = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+		} else {
+			committedMatrix, tree, sisDigest = ctx.VortexParams.CommitMerkleWithSIS(pols)
+		}
 		pr.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		pr.State.InsertNew(ctx.MerkleTreeName(round), tree)
 
@@ -39,20 +50,42 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 }
 
 // Prover steps of Vortex that is run when committing to the linear combination
+// We stack the No SIS round matrices before the SIS round matrices in the committed matrix stack.
+// For the precomputed matrix, we stack it on top of the SIS round matrices if SIS is used on it or
+// we stack it on top of the No SIS round matrices if SIS is not used on it.
 func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 	var (
-		committedSV = []smartvectors.SmartVector{}
+		committedSV      = []smartvectors.SmartVector{}
+		committedSVSIS   = []smartvectors.SmartVector{}
+		committedSVNoSIS = []smartvectors.SmartVector{}
 	)
-	// Add the precomputed columns to commitedSV
-	for _, col := range ctx.Items.Precomputeds.PrecomputedColums {
-		committedSV = append(committedSV, col.GetColAssignment(pr))
+	// Add the precomputed columns
+	if ctx.IsCommitToPrecomputed() {
+		var precomputedSV = []smartvectors.SmartVector{}
+		for _, col := range ctx.Items.Precomputeds.PrecomputedColums {
+			precomputedSV = append(precomputedSV, col.GetColAssignment(pr))
+		}
+		// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
+		if ctx.IsSISAppliedToPrecomputed() {
+			committedSVSIS = append(committedSVSIS, precomputedSV...)
+		} else {
+			committedSVNoSIS = append(committedSVNoSIS, precomputedSV...)
+		}
 	}
 
 	// Collect all the committed polynomials : round by round
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		pols := ctx.getPols(pr, round)
-		committedSV = append(committedSV, pols...)
+		// Push pols to the right stack
+		if ctx.IsSISReplacedByMiMC[round] {
+			committedSVNoSIS = append(committedSVNoSIS, pols...)
+		} else {
+			committedSVSIS = append(committedSVSIS, pols...)
+		}
 	}
+	// Construct committedSV by stacking the No SIS round
+	// matrices before the SIS round matrices
+	committedSV = append(committedSVNoSIS, committedSVSIS...)
 
 	// And get the randomness
 	randomCoinLC := pr.GetRandomCoinField(ctx.Items.Alpha.Name)
@@ -65,6 +98,8 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 // ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses
 // the RS encoded matrix instead of using the basic one. It is slower than
 // the later but is recommended.
+// Todo: We do not shuffle the no SIS round matrix before the SIS round
+// matrix for now.
 func (ctx *Ctx) ComputeLinearCombFromRsMatrix(pr *wizard.ProverRuntime) {
 
 	var (
@@ -90,29 +125,56 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(pr *wizard.ProverRuntime) {
 }
 
 // Prover steps of Vortex where he opens the columns selected by the verifier
+// We stack the no SIS round matrices before the SIS round matrices in the committed matrix stack.
+// The same is done for the tree.
 func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 
-	committedMatrices := []vortex.EncodedMatrix{}
+	var (
+		committedMatrices      = []vortex.EncodedMatrix{}
+		trees                  = []*smt.Tree{}
+		committedMatricesSIS   = []vortex.EncodedMatrix{}
+		committedMatricesNoSIS = []vortex.EncodedMatrix{}
+		treesSIS               = []*smt.Tree{}
+		treesNoSIS             = []*smt.Tree{}
+	)
 
-	// left at this default value in case ctx.UseMerkleTree == false
-	trees := []*smt.Tree{}
-
-	// Append the precomputed committedMatrices and trees
-	committedMatrices = append(committedMatrices, ctx.Items.Precomputeds.CommittedMatrix)
-	trees = append(trees, ctx.Items.Precomputeds.Tree)
+	// Append the precomputed committedMatrices and trees to the SIS or no SIS matrices
+	// or trees as per the number of precomputed columns are more than the [ApplyToSISThreshold]
+	if ctx.IsCommitToPrecomputed() {
+		if ctx.IsSISAppliedToPrecomputed() {
+			committedMatricesSIS = append(committedMatricesSIS, ctx.Items.Precomputeds.CommittedMatrix)
+			treesSIS = append(treesSIS, ctx.Items.Precomputeds.Tree)
+		} else {
+			committedMatricesNoSIS = append(committedMatricesNoSIS, ctx.Items.Precomputeds.CommittedMatrix)
+			treesNoSIS = append(treesNoSIS, ctx.Items.Precomputeds.Tree)
+		}
+	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		// Fetch it from the state
 		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
 		// and delete it because it won't be needed anymore and its very heavy
 		pr.State.Del(ctx.VortexProverStateName(round))
-		// Fetch it from the state
-		committedMatrices = append(committedMatrices, committedMatrix)
 
 		// Also fetches the trees from the prover state
 		tree := pr.State.MustGet(ctx.MerkleTreeName(round)).(*smt.Tree)
-		trees = append(trees, tree)
+
+		// conditionally stack the matrix and tree
+		// to SIS or no SIS matrices and trees
+		if ctx.IsSISReplacedByMiMC[round] {
+			committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
+			treesNoSIS = append(treesNoSIS, tree)
+		} else {
+			committedMatricesSIS = append(committedMatricesSIS, committedMatrix)
+			treesSIS = append(treesSIS, tree)
+		}
 	}
+
+	// Stack the no SIS matrices and trees before the SIS matrices and trees
+	committedMatrices = append(committedMatricesNoSIS, committedMatricesSIS...)
+	trees = append(treesNoSIS, treesSIS...)
+	logrus.Printf("Length of trees: %v", len(trees))
+	logrus.Printf("Length of committed matrices: %v", len(committedMatrices))
 
 	entryList := pr.GetRandomCoinIntegerVec(ctx.Items.Q.Name)
 	proof := vortex.OpeningProof{}

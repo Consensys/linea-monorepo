@@ -22,35 +22,55 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		return nil
 	}
 	var (
-		roots = []types.Bytes32{}
+		// The roots of the merkle trees. We stack the no SIS round
+		// roots before the SIS roots. The precomputed root is the
+		// first root of the SIS roots if SIS hash is applied on the
+		// precomputed. Otherwise, it is the first root of the no SIS roots.
+		roots      = []types.Bytes32{}
+		noSisRoots = []types.Bytes32{}
+		sisRoots   = []types.Bytes32{}
 		// The bool flags denoting if the SIS hash is applied for the
-		// particular round. It starts from the precomputed commitment
-		isSISApplied = []bool{}
+		// particular round. It starts from the no SIS round and
+		// ends with the SIS round.
+		isSISReplacedByMiMC = []bool{}
+		// Slice of true value of length equal to the number of no SIS round
+		// + 1 (if SIS is not applied to precomputed)
+		flagForNoSISRounds = []bool{}
+		// Slice of false value of length equal to the number of SIS round
+		// + 1 (if SIS is applied to precomputed)
+		flagForSISRounds = []bool{}
 	)
 
-	// Append the precomputed roots
-	precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
-	precompRootF := precompRootSv.Get(0)                                        // root as a field element
-	roots = append(roots, types.Bytes32(precompRootF.Bytes()))
-	// Append the isSISApplied flag
-	if ctx.IsSISAppliedToPrecomputed() {
-		isSISApplied = append(isSISApplied, true)
-	} else {
-		isSISApplied = append(isSISApplied, false)
-	}
-	// Collect all the commitments : rounds by rounds
-	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// Append the isSISApplied flag
-		if ctx.IsSISApplied[round] {
-			isSISApplied = append(isSISApplied, true)
-		} else {
-			isSISApplied = append(isSISApplied, false)
-		}
+	// Append the precomputed roots and the corresponding flag
+	if ctx.IsCommitToPrecomputed() {
+		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
+		precompRootF := precompRootSv.Get(0)                                        // root as a field element
 
+		if ctx.IsSISAppliedToPrecomputed() {
+			sisRoots = append(sisRoots, types.Bytes32(precompRootF.Bytes()))
+			flagForSISRounds = append(flagForSISRounds, false)
+		} else {
+			noSisRoots = append(noSisRoots, types.Bytes32(precompRootF.Bytes()))
+			flagForNoSISRounds = append(flagForNoSISRounds, true)
+		}
+	}
+	// Collect all the roots: rounds by rounds
+	// and append them to the sis or no sis roots
+	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		rootSv := vr.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
 		rootF := rootSv.Get(0)                                          // root as a field element
-		roots = append(roots, types.Bytes32(rootF.Bytes()))
+		// Append the isSISApplied flag
+		if ctx.IsSISReplacedByMiMC[round] {
+			noSisRoots = append(noSisRoots, types.Bytes32(rootF.Bytes()))
+			flagForNoSISRounds = append(flagForNoSISRounds, true)
+		} else {
+			sisRoots = append(sisRoots, types.Bytes32(rootF.Bytes()))
+			flagForSISRounds = append(flagForSISRounds, false)
+		}
 	}
+	// assign the roots and the isSisReplacedByMiMC flags
+	roots = append(noSisRoots, sisRoots...)
+	isSISReplacedByMiMC = append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
 	randomCoin := vr.GetRandomCoinField(ctx.LinCombRandCoinName())
@@ -76,7 +96,7 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		OpeningProof:        *proof,
 		RandomCoin:          randomCoin,
 		EntryList:           entryList,
-		IsSISReplacedByMiMC: isSISApplied,
+		IsSISReplacedByMiMC: isSISReplacedByMiMC,
 	})
 }
 
@@ -89,8 +109,14 @@ func (ctx *Ctx) getNbCommittedRows(round int) int {
 // returns the Ys as a vector
 func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 
-	query := ctx.Query
-	params := vr.GetUnivariateParams(ctx.Query.QueryID)
+	var (
+		query  = ctx.Query
+		params = vr.GetUnivariateParams(ctx.Query.QueryID)
+		// We compute ysFull = (ysNoSIS, ysSIS)
+		ysFull  = [][]field.Element{}
+		ysNoSIS = [][]field.Element{}
+		ysSIS   = [][]field.Element{}
+	)
 
 	// Build an index table to efficiently lookup an alleged
 	// prover evaluation from its colID.
@@ -105,37 +131,55 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 		ysMap[shadowID] = field.Zero()
 	}
 
-	ys = [][]field.Element{}
-
 	// add ys for precomputed
-	names := make([]ifaces.ColID, len(ctx.Items.Precomputeds.PrecomputedColums))
-	for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
-		names[i] = poly.GetColID()
+	if ctx.IsCommitToPrecomputed() {
+		names := make([]ifaces.ColID, len(ctx.Items.Precomputeds.PrecomputedColums))
+		for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
+			names[i] = poly.GetColID()
+		}
+		ysPrecomputed := make([]field.Element, len(names))
+		for i, name := range names {
+			ysPrecomputed[i] = ysMap[name]
+		}
+		// conditionally append the ysPrecomputed to the SIS or no SIS list
+		if ctx.IsSISAppliedToPrecomputed() {
+			ysSIS = append(ysSIS, ysPrecomputed)
+		} else {
+			ysNoSIS = append(ysNoSIS, ysPrecomputed)
+		}
 	}
-	ysPrecomputed := make([]field.Element, len(names))
-	for i, name := range names {
-		ysPrecomputed[i] = ysMap[name]
-	}
-	ys = append(ys, ysPrecomputed)
 
-	// Get the list of the polynomials
+	// Get the list of the polynomials rounds by rounds
+	// and append them to the sis or no sis lists
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		names := ctx.CommitmentsByRounds.MustGet(round)
 		ysRounds := make([]field.Element, len(names))
 		for i, name := range names {
 			ysRounds[i] = ysMap[name]
 		}
-		ys = append(ys, ysRounds)
-
+		// conditionally append ysRounds to the SIS or no SIS list
+		if ctx.IsSISReplacedByMiMC[round] {
+			ysNoSIS = append(ysNoSIS, ysRounds)
+		} else {
+			ysSIS = append(ysSIS, ysRounds)
+		}
 	}
+	// Append the ysNoSIS and ysSIS
+	ysFull = append(ysNoSIS, ysSIS...)
 
-	return ys
+	return ysFull
 }
 
 // Returns the opened columns from the messages. The returned columns are
 // split "by-commitment-round".
 func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][]field.Element {
-
+	// We assign as below:
+	// openedSubColumns = (openedSubColumnsNoSIS, openedSubColumnsSIS)
+	var (
+		openedSubColumnsNoSIS = [][][]field.Element{}
+		openedSubColumnsSIS   = [][][]field.Element{}
+		openedSubColumns      = [][][]field.Element{}
+	)
 	// Collect the columns : first extract the full columns
 	// Bear in mind that the prover messages are zero-padded
 	fullSelectedCols := make([][]field.Element, len(entryList))
@@ -145,18 +189,25 @@ func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][
 	}
 
 	// Split the columns per commitment for the verification
-	openedSubColumns := [][][]field.Element{}
 	roundStartAt := 0
 
 	// Process precomputed
-	openedPrecompCols := make([][]field.Element, len(entryList))
-	numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
-	for j := range entryList {
-		openedPrecompCols[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numPrecomputeds]
+	if ctx.IsCommitToPrecomputed() {
+		openedPrecompCols := make([][]field.Element, len(entryList))
+		numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
+		for j := range entryList {
+			openedPrecompCols[j] = fullSelectedCols[j][roundStartAt : roundStartAt+numPrecomputeds]
+		}
+		// update the start counter to ensure we do not pass twice the same row
+		roundStartAt += numPrecomputeds
+		// conditionally append the opened precomputed columns
+		// to the SIS or no SIS list
+		if ctx.IsSISAppliedToPrecomputed() {
+			openedSubColumnsSIS = append(openedSubColumnsSIS, openedPrecompCols)
+		} else {
+			openedSubColumnsNoSIS = append(openedSubColumnsNoSIS, openedPrecompCols)
+		}
 	}
-	// update the start counter to ensure we do not pass twice the same row
-	roundStartAt += numPrecomputeds
-	openedSubColumns = append(openedSubColumns, openedPrecompCols)
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		openedSubColumnsForRound := make([][]field.Element, len(entryList))
@@ -167,8 +218,16 @@ func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][
 
 		// update the start counter to ensure we do not pass twice the same row
 		roundStartAt += numRowsForRound
-		openedSubColumns = append(openedSubColumns, openedSubColumnsForRound)
+		// conditionally append the opened columns
+		// to the SIS or no SIS list
+		if ctx.IsSISReplacedByMiMC[round] {
+			openedSubColumnsNoSIS = append(openedSubColumnsNoSIS, openedSubColumnsForRound)
+		} else {
+			openedSubColumnsSIS = append(openedSubColumnsSIS, openedSubColumnsForRound)
+		}
 	}
+	// Append the no SIS and SIS opened sub columns
+	openedSubColumns = append(openedSubColumnsNoSIS, openedSubColumnsSIS...)
 
 	// sanity-check : make sure we have not forgotten any column
 	// We need to treat the precomputed separately if they are committed

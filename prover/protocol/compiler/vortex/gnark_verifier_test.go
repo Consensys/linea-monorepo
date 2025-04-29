@@ -107,10 +107,7 @@ func TestVortexGnarkVerifier(t *testing.T) {
 
 	compiled := wizard.Compile(
 		define,
-		vortex.Compile(
-			4,
-			vortex.ReplaceSisByMimc(),
-		),
+		vortex.Compile(4),
 	)
 	proof := wizard.Prove(compiled, prove)
 

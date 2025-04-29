@@ -278,8 +278,8 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 
 	srcVortexCtx := srcComp.PcsCtxs.(*vortex.Ctx)
 
-	if !srcVortexCtx.IsSelfrecursed || srcVortexCtx.ReplaceSisByMimc {
-		utils.Panic("the input vortex ctx is expected to be selfrecursed or having SIS replaced by MiMC. Please sure the input comp has been last compiled by Vortex with the option [vortex.MarkAsSelfRecursed]")
+	if !srcVortexCtx.IsSelfrecursed {
+		utils.Panic("the input vortex ctx is expected to be selfrecursed. Please make sure the input comp has been last compiled by Vortex with the option [vortex.MarkAsSelfRecursed]")
 	}
 
 	dstVortexCtx := &vortex.Ctx{
@@ -300,9 +300,6 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		Query:                        translator.AddUniEval(0, srcVortexCtx.Query),
 	}
 
-	if srcVortexCtx.ReplaceSisByMimc {
-		panic("it should not replace by MiMC")
-	}
 
 	translator.Target.QueriesParams.MarkAsIgnored(dstVortexCtx.Query.QueryID)
 
