@@ -1,18 +1,16 @@
 name: linea-besu-package-sepolia
 
 on:
-  # pull_request:
-  # push:
-  #   branches:
-  #     - main
-  #   paths:
-  #     # - 'linea-besu-package/versions/linea-sepolia.env'
-  #     # - 'linea-besu-package/linea-besu/profiles/*-sepolia.toml'
-  #     - 'linea-besu-package/'
-  #     - '.github/actions/linea-besu-package/'
-  #     - '.github/workflows/linea-besu-package/' # to be removed
-  #     - '.github/workflows/linea-besu-package-sepolia.yml'
-  #     - '.github/workflows/reuse-linea-besu-package-*.yml'
+  pull_request:
+  push:
+    branches:
+      - main
+    paths:
+      - 'linea-besu-package/'
+      - '.github/actions/linea-besu-package/'
+      - '.github/workflows/linea-besu-package/'
+      - '.github/workflows/linea-besu-package-sepolia.yml'
+      - '.github/workflows/reuse-linea-besu-package-*.yml'
 
   workflow_call:
     outputs:
@@ -53,19 +51,16 @@ jobs:
             linea-sepolia-profiles:
               - 'linea-besu-package/linea-besu/profiles/*-sepolia.toml'
 
-  echo-github-variables:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    steps:
-      - name: echo github variables
-        run: |
-          echo "github.run_id: ${{ github.run_id }}"
-          echo "github.workflow: ${{ github.workflow }}"
-          echo "github.ref: ${{ github.ref }}"
+  # echo-github-variables:
+  #   runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+  #   steps:
+  #     - name: echo github variables
+  #       run: |
+  #         echo "github.run_id: ${{ github.run_id }}"
+  #         echo "github.workflow: ${{ github.workflow }}"
+  #         echo "github.ref: ${{ github.ref }}"
 
   build-test-push:
-    # concurrency:
-    #   group: build-test-push-${{ github.workflow }}-${{ github.ref }}
-    #   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     needs: [ filter-commit-changes ]
     if: ${{ always() }}
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
