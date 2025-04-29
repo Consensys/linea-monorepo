@@ -187,7 +187,7 @@ jobs:
           fi
 
       - name: Conventional Changelog Action
-        # if: ${{ github.event_name == 'workflow_dispatch' }}
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         id: change_log
         uses: TriPSs/conventional-changelog-action@v5
         with:
@@ -196,7 +196,7 @@ jobs:
           output-file: "false"
       
       - name: Append Changelog Action to release note
-        # if: ${{ github.event_name == 'workflow_dispatch' }}
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         id: append_change_log
         shell: bash
         run: |
