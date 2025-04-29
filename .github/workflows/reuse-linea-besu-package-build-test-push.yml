@@ -17,9 +17,6 @@ on:
       push_image:
         required: true
         type: boolean
-    outputs:
-      workflow_run_id:
-        value: ${{ jobs.build-and-upload-artifact.outputs.workflow_run_id }} #github.run_id 
     secrets:
       DOCKERHUB_USERNAME:
         required: false
@@ -32,25 +29,12 @@ jobs:
     if: ${{ inputs.run_test || inputs.run_e2e_test }}
     environment: dockerhub
     outputs:
-      workflow_run_id: ${{ steps.assemble.outputs.workflow_id }}
       linea_besu_package_tag: ${{ steps.assemble.outputs.dockertag }} 
       expected_traces_api_version: ${{ steps.assemble.outputs.tracer_plugin_version }}
       dockerimage: ${{ steps.assemble.outputs.dockerimage }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
-      
-      # - name: echo github variables
-      #   run: |
-      #     echo "github.run_id: ${{ github.run_id }}"
-      #     echo "github.workflow: ${{ github.workflow }}"
-      #     echo "github.ref: ${{ github.ref }}"
-      #     echo "github.ref_type: ${{ github.ref_type }}"
-      #     echo "github.ref_name: ${{ github.ref_name }}"
-      #     echo "github.event_name: ${{ github.event_name }}"
-      #     echo "rev-parse HEAD: $(git rev-parse --short HEAD)"
-      #     echo "github.sha: ${{ github.sha }}"
-      #     echo "rev-parse GITHUB_SHA: $(git rev-parse --short "$GITHUB_SHA")"
 
       - name: build the linea artifacts
         id: assemble
@@ -129,23 +113,9 @@ jobs:
     env:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-    outputs:
-      workflow_run_id: ${{ steps.assemble.outputs.workflow_id }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
-
-      # - name: echo github variables
-      #   run: |
-      #     echo "github.run_id: ${{ github.run_id }}"
-      #     echo "github.workflow: ${{ github.workflow }}"
-      #     echo "github.ref: ${{ github.ref }}"
-      #     echo "github.ref_type: ${{ github.ref_type }}"
-      #     echo "github.ref_name: ${{ github.ref_name }}"
-      #     echo "github.event_name: ${{ github.event_name }}"
-      #     echo "rev-parse HEAD: $(git rev-parse --short HEAD)"
-      #     echo "github.sha: ${{ github.sha }}"
-      #     echo "rev-parse GITHUB_SHA: $(git rev-parse --short "$GITHUB_SHA")"
 
       - name: build the linea artifacts
         id: assemble
