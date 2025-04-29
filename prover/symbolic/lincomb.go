@@ -72,7 +72,7 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 	e := &Expression{
 		Operator: LinComb{Coeffs: coeffs},
 		Children: items,
-		isBase:   computeIsBaseFromChildren(items),
+		IsBase:   computeIsBaseFromChildren(items),
 	}
 
 	// Now we need to assign the ESH

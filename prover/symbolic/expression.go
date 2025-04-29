@@ -52,7 +52,7 @@ type Expression struct {
 	// Operator stores information relative to operation that the current
 	// Expression performs on its inputs.
 	Operator Operator
-	isBase   bool
+	IsBase   bool
 }
 
 // Operator specifies an elementary operation a node of an [Expression] performs
@@ -339,16 +339,11 @@ func (e *Expression) MarshalJSONString() string {
 // based on its children.
 func computeIsBaseFromChildren(children []*Expression) bool {
 	for _, child := range children {
-		if !child.IsBase() {
+		if !child.IsBase {
 			// at least one child is not a base expression, therefore the expression is itself not a base expression
 			return false
 		}
 	}
 	// all children are base expressions, therefore the expression is itself a base expression
 	return true
-}
-
-// IsBase returns true if the expression is a base expression.
-func (e *Expression) IsBase() bool {
-	return computeIsBaseFromChildren(e.Children)
 }

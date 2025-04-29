@@ -43,14 +43,14 @@ func NewConstant(val interface{}) *Expression {
 		panic(err)
 	}
 
-	// isBase is true if the value is a field.Element, otherwise it is false
+	// IsBase is true if the value is a field.Element, otherwise it is false
 	_, isBase := val.(field.Element)
 
 	res := &Expression{
 		Operator: Constant{Val: x},
 		Children: []*Expression{},
 		ESHash:   x,
-		isBase:   isBase,
+		IsBase:   isBase,
 	}
 
 	// Pass the string and not the field.Element itself

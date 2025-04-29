@@ -57,7 +57,7 @@ func NewVariable(metadata Metadata) *Expression {
 		Children: []*Expression{},
 		ESHash:   metadataToESH(metadata),
 		Operator: Variable{Metadata: metadata},
-		isBase:   metadata.IsBase(),
+		IsBase:   metadata.IsBase(),
 	}
 }
 

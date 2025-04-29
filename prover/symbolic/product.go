@@ -96,7 +96,7 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 		Operator: Product{Exponents: exponents},
 		Children: items,
 		ESHash:   fext.One(),
-		isBase:   computeIsBaseFromChildren(items),
+		IsBase:   computeIsBaseFromChildren(items),
 	}
 
 	for i := range e.Children {
