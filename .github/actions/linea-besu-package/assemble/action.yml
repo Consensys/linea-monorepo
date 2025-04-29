@@ -29,7 +29,7 @@ outputs:
 
   releasetag:
     description: release tag
-    value: ${{ steps.dockerimage.outputs.releasetag }}
+    value: ${{ steps.releasetag.outputs.releasetag }}
   
   tracer_plugin_version:
     description: tracer plugin version
