@@ -7,7 +7,6 @@ import linea.kotlin.gwei
 import linea.web3j.SmartContractErrors
 import linea.web3j.gas.StaticGasProvider
 import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
-import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.linea.contract.l1.Web3JLineaRollupSmartContractClient
 import net.consensys.linea.testing.filesystem.findPathTo
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
@@ -20,8 +19,6 @@ data class LineaRollupDeploymentResult(
   val contractDeploymentAccount: Account,
   val contractDeploymentBlockNumber: ULong,
   val rollupOperators: List<AccountTransactionManager>,
-  @Deprecated("Use rollupOperatorClient instead")
-  val rollupOperatorClientLegacy: LineaRollupAsyncFriendly,
   val rollupOperatorClient: LineaRollupSmartContractClient
 ) {
   val rollupOperator: AccountTransactionManager
@@ -69,19 +66,6 @@ interface ContractsManager {
     ),
     smartContractErrors: SmartContractErrors? = null
   ): LineaRollupSmartContractClient
-
-  @Deprecated("Use connectToLineaRollupContract instead")
-  fun connectToLineaRollupContractLegacy(
-    contractAddress: String,
-    transactionManager: AsyncFriendlyTransactionManager,
-    gasProvider: ContractEIP1559GasProvider = StaticGasProvider(
-      L1AccountManager.chainId,
-      maxFeePerGas = 55UL.gwei,
-      maxPriorityFeePerGas = 50UL.gwei,
-      maxFeePerBlobGas = 1_000UL.gwei,
-      gasLimit = 1_000_000uL
-    )
-  ): LineaRollupAsyncFriendly
 
   companion object {
     fun get(): ContractsManager = MakeFileDelegatedContractsManager
@@ -136,18 +120,11 @@ object MakeFileDelegatedContractsManager : ContractsManager {
           accountsTxManagers.first().txManager,
           smartContractErrors = lineaRollupContractErrors
         )
-
-        @Suppress("DEPRECATION")
-        val rollupOperatorClientLegacy = connectToLineaRollupContractLegacy(
-          deploymentResult.address,
-          accountsTxManagers.first().txManager
-        )
         LineaRollupDeploymentResult(
           contractAddress = deploymentResult.address,
           contractDeploymentAccount = contractDeploymentAccount,
           contractDeploymentBlockNumber = deploymentResult.blockNumber.toULong(),
           rollupOperators = accountsTxManagers,
-          rollupOperatorClientLegacy = rollupOperatorClientLegacy,
           rollupOperatorClient = rollupOperatorClient
         )
       }
@@ -198,21 +175,6 @@ object MakeFileDelegatedContractsManager : ContractsManager {
       transactionManager,
       gasProvider,
       smartContractErrors ?: lineaRollupContractErrors
-    )
-  }
-
-  @Deprecated("Use connectToLineaRollupContract instead")
-  override fun connectToLineaRollupContractLegacy(
-    contractAddress: String,
-    transactionManager: AsyncFriendlyTransactionManager,
-    gasProvider: ContractEIP1559GasProvider
-  ): LineaRollupAsyncFriendly {
-    return LineaRollupAsyncFriendly.load(
-      contractAddress,
-      Web3jClientManager.l1Client,
-      transactionManager,
-      gasProvider,
-      emptyMap()
     )
   }
 }
