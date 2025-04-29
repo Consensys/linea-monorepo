@@ -2,7 +2,6 @@ package distributed
 
 import (
 	"fmt"
-	"reflect"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -255,6 +254,11 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 
 	res.Recursion = recCtx
 	res.RecursionComp = recursedComp
+
+	// It is necessary to add the extradata from the compiled IOP to the
+	// recursed one otherwise, it will not be found.
+	res.RecursionComp.ExtraData[verifyingKeyPublicInput] = modIOP.ExtraData[verifyingKeyPublicInput]
+
 	return res
 }
 
@@ -330,7 +334,7 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 		WithField("moduleIndex", moduleIndex).
 		WithField("initial-time", initialTime).
 		WithField("recursion-time", recursionTime).
-		WithField("is-lpp", reflect.TypeOf(wit).String()).
+		WithField("segment-type", fmt.Sprintf("%T", wit)).
 		Infof("Ran prover segment")
 
 	return run
