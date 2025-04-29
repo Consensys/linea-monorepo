@@ -176,7 +176,7 @@ jobs:
         uses: docker/build-push-action@v6
         env:
           DOCKER_BUILD_SUMMARY: false
-          LINEA_ENV: ${{ inputs.linea-env }}
+          LINEA_ENV: ${{ inputs.linea_env }}
         with:
           context: linea-besu-package/linea-besu/.
           platforms: linux/arm64,linux/amd64
