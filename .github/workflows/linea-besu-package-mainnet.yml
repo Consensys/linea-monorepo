@@ -13,14 +13,10 @@ on:
       - '.github/workflows/reuse-linea-besu-package-*.yml'
 
   workflow_call:
-    outputs:
-      workflow_run_id: 
-        description: "the run id of the workflow"
-        value: ${{ jobs.build-test-push.outputs.workflow_run_id }}
   workflow_dispatch:
     inputs:
       release_tag_prefix:
-        description: 'Custom release tag prefix'
+        description: 'Custom release tag prefix. e.g. if "2.2.2" is given, the release tag would be "linea-besu-package-2.2.2-5bdf213"'
         required: false
         type: string
         default: ''
@@ -50,15 +46,6 @@ jobs:
               - 'linea-besu-package/versions/linea-mainnet.env'
             linea-mainnet-profiles:
               - 'linea-besu-package/linea-besu/profiles/*-mainnet.toml'
-
-  # echo-github-variables:
-  #   runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-  #   steps:
-  #     - name: echo github variables
-  #       run: |
-  #         echo "github.run_id: ${{ github.run_id }}"
-  #         echo "github.workflow: ${{ github.workflow }}"
-  #         echo "github.ref: ${{ github.ref }}"
 
   build-test-push:
     needs: [ filter-commit-changes ]
