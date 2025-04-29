@@ -17,7 +17,7 @@ const (
 	// limbSize is the size (in bits) of a limb as in the public inputs of the
 	// circuit. This is a parameter linked to how the arithmetization encodes
 	// 256 bits integers.
-	limbSizeBits = 128
+	limbSizeBits = 16
 )
 
 // ModExpCircuit implements the [frontend.Circuit] interface and is responsible
