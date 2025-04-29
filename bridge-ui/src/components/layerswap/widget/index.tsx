@@ -13,8 +13,8 @@ export async function Widget() {
             <CustomHooks>
                 <Swap
                     featuredNetwork={{
-                        initialDirection: 'from',
-                        network: 'ETHEREUM_MAINNET',
+                        initialDirection: 'to',
+                        network: 'LINEA_MAINNET',
                         oppositeDirectionOverrides: 'onlyExchanges',
                     }}
                 />

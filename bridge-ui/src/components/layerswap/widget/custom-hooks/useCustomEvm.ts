@@ -181,7 +181,7 @@ const ResolveWallet = (props: ResolveWalletProps): Wallet | undefined => {
         asSourceSupportedNetworks: supportedNetworks.asSource,
         autofillSupportedNetworks: supportedNetworks.autofill,
         withdrawalSupportedNetworks: supportedNetworks.withdrawal,
-        networkIcon: networks.find(n => "ETHEREUM_MAINNET")?.logo,
+        networkIcon: networks.find(n => n.name.toLowerCase().includes('ethereum'))?.logo,
     }
 
     return wallet
