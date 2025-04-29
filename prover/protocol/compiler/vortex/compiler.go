@@ -617,6 +617,7 @@ func (ctx *Ctx) NumEncodedCols() int {
 // We commit to the precomputed columns if there are any.
 func (ctx *Ctx) IsCommitToPrecomputed() bool {
 	if len(ctx.Items.Precomputeds.PrecomputedColums) > 0 {
+		logrus.Infof("We are committing to #%v precomputed columns", len(ctx.Items.Precomputeds.PrecomputedColums))
 		return true
 	} else {
 		logrus.Infof("There are no precomputed columns to commit to")

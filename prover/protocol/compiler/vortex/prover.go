@@ -173,8 +173,6 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 	// Stack the no SIS matrices and trees before the SIS matrices and trees
 	committedMatrices = append(committedMatricesNoSIS, committedMatricesSIS...)
 	trees = append(treesNoSIS, treesSIS...)
-	logrus.Printf("Length of trees: %v", len(trees))
-	logrus.Printf("Length of committed matrices: %v", len(committedMatrices))
 
 	entryList := pr.GetRandomCoinIntegerVec(ctx.Items.Q.Name)
 	proof := vortex.OpeningProof{}

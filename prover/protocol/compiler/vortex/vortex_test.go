@@ -53,20 +53,29 @@ func TestVortexSingleRoundMerkle(t *testing.T) {
 func TestVortexMultiRoundMerkle(t *testing.T) {
 
 	polSize := 1 << 4
-	nPols := 15
+	// the number of polynomials in each round
+	// is set in such a way that the round 0 and 2
+	// will be no SIS round and round 1 and 3 will be SIS rounds.
+	// This is because we later set the SIS threshold to 10.
+	nPols := []int{8, 12, 9, 16}
 	numRounds := 4
 	rows := make([][]ifaces.Column, numRounds)
 
 	define := func(b *wizard.Builder) {
 		for round := 0; round < numRounds; round++ {
+			var offsetIndex = 0
 			// trigger the creation of a new round by declaring a dummy coin
 			if round != 0 {
 				_ = b.RegisterRandomCoin(coin.Namef("COIN_%v", round), coin.Field)
+				// Compute the offsetIndex
+				for i := 0; i < round; i++ {
+					offsetIndex += nPols[i]
+				}
 			}
 
-			rows[round] = make([]ifaces.Column, nPols)
-			for i := range rows[round] {
-				rows[round][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", round*nPols+i), polSize)
+			rows[round] = make([]ifaces.Column, nPols[round])
+			for i := range nPols[round] {
+				rows[round][i] = b.RegisterCommit(ifaces.ColIDf("P_%v", offsetIndex+i), polSize)
 			}
 		}
 
@@ -74,20 +83,30 @@ func TestVortexMultiRoundMerkle(t *testing.T) {
 	}
 
 	prove := func(pr *wizard.ProverRuntime) {
-		ys := make([]field.Element, len(rows)*len(rows[0]))
+		// Count the total number of polynomials
+		numPolys := 0
+		for i := range nPols {
+			numPolys += nPols[i]
+		}
+		ys := make([]field.Element, numPolys)
 		x := field.NewElement(57) // the evaluation point
 
 		// assign the rows with random polynomials and collect the ys
 		for round := range rows {
-			// let the prover know that it is free to go to the next
-			// round by sampling the coin.
+			var offsetIndex = 0
 			if round != 0 {
+				// let the prover know that it is free to go to the next
+				// round by sampling the coin.
 				_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+				// Compute the offsetIndex
+				for i := 0; i < round; i++ {
+					offsetIndex += nPols[i]
+				}
 			}
 
 			for i, row := range rows[round] {
 				p := smartvectors.Rand(polSize)
-				ys[round*nPols+i] = smartvectors.Interpolate(p, x)
+				ys[offsetIndex+i] = smartvectors.Interpolate(p, x)
 				pr.AssignColumn(row.GetColID(), p)
 			}
 		}
@@ -95,7 +114,7 @@ func TestVortexMultiRoundMerkle(t *testing.T) {
 		pr.AssignUnivariate("EVAL", x, ys...)
 	}
 
-	compiled := wizard.Compile(define, vortex.Compile(4))
+	compiled := wizard.Compile(define, vortex.Compile(4, vortex.WithOptionalSISHashingThreshold(10)))
 	proof := wizard.Prove(compiled, prove)
 	valid := wizard.Verify(compiled, proof)
 
