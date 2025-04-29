@@ -15,17 +15,36 @@ class AggregationL2StateProviderImpl(
   private val messageService: L2MessageServiceSmartContractClientReadOnly
 ) : AggregationL2StateProvider {
 
+  private data class AnchoredMessage(
+    val messageNumber: ULong,
+    val rollingHash: ByteArray
+  )
+
+  private fun getLastAnchoredMessage(blockNumber: ULong): SafeFuture<AnchoredMessage> {
+    return messageService
+      .getDeploymentBlock()
+      .thenCompose { deploymentBlockNumber ->
+        if (blockNumber < deploymentBlockNumber) {
+          // this happens always at 1st conflation, where the block number is 0
+          // will happen until message service is deployed
+          SafeFuture.completedFuture(AnchoredMessage(0UL, ByteArray(32)))
+        } else {
+          messageService
+            .getLastAnchoredL1MessageNumber(block = blockNumber.toBlockParameter())
+            .thenCompose { lastAnchoredMessageNumber ->
+              messageService.getRollingHashByL1MessageNumber(
+                block = blockNumber.toBlockParameter(),
+                l1MessageNumber = lastAnchoredMessageNumber
+              )
+                .thenApply { rollingHash -> AnchoredMessage(lastAnchoredMessageNumber, rollingHash) }
+            }
+        }
+      }
+  }
+
   override fun getAggregationL2State(blockNumber: Long): SafeFuture<AggregationL2State> {
     val blockParameter = blockNumber.toBlockParameter()
-    return messageService
-      .getLastAnchoredL1MessageNumber(block = blockParameter)
-      .thenCompose { lastAnchoredMessageNumber ->
-        messageService.getRollingHashByL1MessageNumber(
-          block = blockParameter,
-          l1MessageNumber = lastAnchoredMessageNumber
-        )
-          .thenApply { rollingHash -> lastAnchoredMessageNumber to rollingHash }
-      }
+    return getLastAnchoredMessage(blockNumber.toULong())
       .thenCombine(
         ethApiClient.getBlockByNumberWithoutTransactionsData(blockParameter)
       ) { (messageNumber, rollingHash), block ->

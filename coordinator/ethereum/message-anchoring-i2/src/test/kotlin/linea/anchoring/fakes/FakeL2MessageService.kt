@@ -9,6 +9,7 @@ import kotlin.random.Random
 
 class FakeL2MessageService(
   val contractAddress: String = Random.nextBytes(20).encodeHex(),
+  val contractDeployBlock: ULong = 0uL,
   var contractVersion: L2MessageServiceSmartContractVersion = L2MessageServiceSmartContractVersion.V1
 ) : L2MessageServiceSmartContractClient {
   private val anchoredMessageHashes: MutableList<ByteArray> = mutableListOf()
@@ -18,6 +19,7 @@ class FakeL2MessageService(
   private var lastAnchoredRollingHash: ByteArray = ByteArray(0)
 
   override fun getAddress(): String = contractAddress
+  override fun getDeploymentBlock(): SafeFuture<ULong> = SafeFuture.completedFuture(contractDeployBlock)
 
   @Synchronized
   override fun getVersion(): SafeFuture<L2MessageServiceSmartContractVersion> =
