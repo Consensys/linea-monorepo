@@ -56,13 +56,21 @@ runs:
         keys-case: lower
         log-variables: true
         load-mode: strict
+    
+    - name: Set timestamp
+      id: timestamp
+      shell: bash     
+      run: |
+        echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
 
     - name: set docker tag
       id: dockertag
-      shell: bash      
+      shell: bash
       run: |
         if [ -n "${{ inputs.release_tag_prefix }}" ]; then
-          echo "dockertag=${{ inputs.release_tag_prefix }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "dockertag=${{ inputs.release_tag_prefix }}-${{ steps.timestamp.outputs.TIMESTAMP }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+        elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+          echo "dockertag=${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}-${{ steps.timestamp.outputs.TIMESTAMP }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         else
           echo "dockertag=${{ inputs.linea_env }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
         fi
