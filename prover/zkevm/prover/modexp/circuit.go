@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 	"github.com/consensys/gnark/std/math/emulated/emparams"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 const (
@@ -36,10 +37,10 @@ type ModExpCircuit struct {
 //
 // The operands are represented in limbs of 16 bytes.
 type modexpCircuitInstance struct {
-	Base     [nbLimbsCols][]frontend.Variable `gnark:",public"`
-	Exponent [nbLimbsCols][]frontend.Variable `gnark:",public"`
-	Modulus  [nbLimbsCols][]frontend.Variable `gnark:",public"`
-	Result   [nbLimbsCols][]frontend.Variable `gnark:",public"`
+	Base     [common.NbLimbU128][]frontend.Variable `gnark:",public"`
+	Exponent [common.NbLimbU128][]frontend.Variable `gnark:",public"`
+	Modulus  [common.NbLimbU128][]frontend.Variable `gnark:",public"`
+	Result   [common.NbLimbU128][]frontend.Variable `gnark:",public"`
 }
 
 // allocate256Bits allocates [ModExpCircuit] for n instances assuming the 256-bit
@@ -58,7 +59,7 @@ func allocateCircuit(n int, numBits int) *ModExpCircuit {
 	)
 
 	for i := range res.Instances {
-		for j := range nbLimbsCols {
+		for j := range common.NbLimbU128 {
 			res.Instances[i].Base[j] = make([]frontend.Variable, numLimbs)
 			res.Instances[i].Exponent[j] = make([]frontend.Variable, numLimbs)
 			res.Instances[i].Modulus[j] = make([]frontend.Variable, numLimbs)

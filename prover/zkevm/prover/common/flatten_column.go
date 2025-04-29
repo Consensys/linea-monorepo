@@ -9,6 +9,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
+const (
+	// NbLimbU32 represents the number of 16-bit limbs for a 32-bit integer.
+	NbLimbU32 = 2
+	// NbLimbU64 represents the number of 16-bit limbs for a 64-bit integer.
+	NbLimbU64 = 4
+	// NbLimbEthAddress represents the number of 16-bit limbs for an Ethereum address (160 bits).
+	NbLimbEthAddress = 10
+	// NbLimbU128 represents the number of 16-bit limbs for a 128-bit integer.
+	NbLimbU128 = 8
+	// NbLimbU256 represents the number of 16-bit limbs for a 256-bit integer.
+	NbLimbU256 = 16
+)
+
 // FlattenColumn flattens multiple limb columns and an accompanying mask into single columns,
 // provides consistency checks via a precomputed projection mask.
 type FlattenColumn struct {
@@ -155,8 +168,8 @@ func (l *FlattenColumn) CsFlattenProjection(comp *wizard.CompiledIOP, limbs []if
 	l.originalLimbs = limbs
 }
 
-// Assign maps trace limb columns and mask into the flattened columns.
-func (l *FlattenColumn) Assign(run *wizard.ProverRuntime) {
+// Run maps trace limb columns and mask into the flattened columns.
+func (l *FlattenColumn) Run(run *wizard.ProverRuntime) {
 	l.assignMask(run)
 
 	if !l.isDuplicated {

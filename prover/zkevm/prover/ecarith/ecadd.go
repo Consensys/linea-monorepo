@@ -21,8 +21,6 @@ const (
 
 const (
 	nbRowsPerEcAdd = 12
-	// nbLimbsCols number of сolumns used to store the limbs.
-	nbLimbsCols = 8
 )
 
 // EcAdd integrated EC_ADD precompile call verification inside a
@@ -45,7 +43,7 @@ func NewEcAddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *EcAdd {
 		IsRes:   comp.Columns.GetHandle("ecdata.IS_ECADD_RESULT"),
 	}
 
-	for i := 0; i < nbLimbsCols; i++ {
+	for i := 0; i < common.NbLimbU128; i++ {
 		src.Limbs[i] = comp.Columns.GetHandle(ifaces.ColIDf("ecdata.LIMB_%d", i))
 	}
 
@@ -61,7 +59,7 @@ func NewEcAddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *EcAdd {
 func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, plonkOptions []query.PlonkOption) *EcAdd {
 	size := limits.sizeEcAddIntegration()
 
-	flattenLimbs := common.NewFlattenColumn(comp, src.CsEcAdd.Size(), nbLimbsCols, "ecdata", "ECADD")
+	flattenLimbs := common.NewFlattenColumn(comp, src.CsEcAdd.Size(), common.NbLimbU128, "ecdata", "ECADD")
 
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_ECADD + "_ALIGNMENT",
@@ -90,7 +88,7 @@ func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, pl
 
 // Assign assigns the data from the trace to the gnark inputs.
 func (em *EcAdd) Assign(run *wizard.ProverRuntime) {
-	em.FlattenLimbs.Assign(run)
+	em.FlattenLimbs.Run(run)
 	em.AlignedGnarkData.Assign(run)
 }
 
@@ -98,7 +96,7 @@ func (em *EcAdd) Assign(run *wizard.ProverRuntime) {
 // fetch data from the EC_DATA module from the arithmetization.
 type EcDataAddSource struct {
 	CsEcAdd ifaces.Column
-	Limbs   [nbLimbsCols]ifaces.Column
+	Limbs   [common.NbLimbU128]ifaces.Column
 	Index   ifaces.Column
 	IsData  ifaces.Column
 	IsRes   ifaces.Column
@@ -113,17 +111,17 @@ type MultiECAddCircuit struct {
 
 type ECAddInstance struct {
 	// First input to addition
-	P_X_hi, P_X_lo [nbLimbsCols]frontend.Variable `gnark:",public"`
-	P_Y_hi, P_Y_lo [nbLimbsCols]frontend.Variable `gnark:",public"`
+	P_X_hi, P_X_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	P_Y_hi, P_Y_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
 
 	// Second input to addition
-	Q_X_hi, Q_X_lo [nbLimbsCols]frontend.Variable `gnark:",public"`
-	Q_Y_hi, Q_Y_lo [nbLimbsCols]frontend.Variable `gnark:",public"`
+	Q_X_hi, Q_X_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	Q_Y_hi, Q_Y_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
 
 	// The result of the addition. Is provided non-deterministically by the
 	// caller, we have to ensure that the result is correct.
-	R_X_hi, R_X_lo [nbLimbsCols]frontend.Variable `gnark:",public"`
-	R_Y_hi, R_Y_lo [nbLimbsCols]frontend.Variable `gnark:",public"`
+	R_X_hi, R_X_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	R_Y_hi, R_Y_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
 }
 
 // NewECAddCircuit creates a new circuit for verifying the EC_MUL precompile

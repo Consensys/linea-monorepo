@@ -15,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 var (
@@ -102,7 +103,7 @@ func TestEcMulIntegration(t *testing.T) {
 				IsRes:   ct.GetCommit(b, "IS_RES"),
 			}
 
-			for i := 0; i < nbLimbsCols; i++ {
+			for i := 0; i < common.NbLimbU128; i++ {
 				ecMulSource.Limbs[i] = ct.GetCommit(b, fmt.Sprintf("LIMB_%d", i))
 			}
 

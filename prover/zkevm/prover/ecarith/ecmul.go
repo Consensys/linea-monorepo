@@ -43,7 +43,7 @@ func NewEcMulZkEvm(comp *wizard.CompiledIOP, limits *Limits) *EcMul {
 		IsRes:   comp.Columns.GetHandle("ecdata.IS_ECMUL_RESULT"),
 	}
 
-	for i := 0; i < nbLimbsCols; i++ {
+	for i := 0; i < common.NbLimbU128; i++ {
 		src.Limbs[i] = comp.Columns.GetHandle(ifaces.ColIDf("ecdata.LIMB_%d", i))
 	}
 
@@ -60,7 +60,7 @@ func NewEcMulZkEvm(comp *wizard.CompiledIOP, limits *Limits) *EcMul {
 func newEcMul(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMulSource, plonkOptions []query.PlonkOption) *EcMul {
 	size := limits.sizeEcMulIntegration()
 
-	flattenLimbs := common.NewFlattenColumn(comp, src.CsEcMul.Size(), nbLimbsCols, "ecdata", "ECMUL")
+	flattenLimbs := common.NewFlattenColumn(comp, src.CsEcMul.Size(), common.NbLimbU128, "ecdata", "ECMUL")
 
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_ECMUL + "_ALIGNMENT",
@@ -89,7 +89,7 @@ func newEcMul(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMulSource, pl
 
 // Assign assigns the data from the trace to the gnark inputs.
 func (em *EcMul) Assign(run *wizard.ProverRuntime) {
-	em.FlattenLimbs.Assign(run)
+	em.FlattenLimbs.Run(run)
 	em.AlignedGnarkData.Assign(run)
 }
 
@@ -97,7 +97,7 @@ func (em *EcMul) Assign(run *wizard.ProverRuntime) {
 // fetch data from the EC_DATA module from the arithmetization.
 type EcDataMulSource struct {
 	CsEcMul ifaces.Column
-	Limbs   [nbLimbsCols]ifaces.Column
+	Limbs   [common.NbLimbU128]ifaces.Column
 	Index   ifaces.Column
 	IsData  ifaces.Column
 	IsRes   ifaces.Column
@@ -117,15 +117,15 @@ type ECMulInstance struct {
 	// significant bits. The values are already range checked to be in 128 bit
 	// range.
 
-	P_X_hi, P_X_lo [nbLimbsCols]frontend.Variable `gnark:",public"`
-	P_Y_hi, P_Y_lo [nbLimbsCols]frontend.Variable `gnark:",public"`
+	P_X_hi, P_X_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	P_Y_hi, P_Y_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
 
-	N_hi, N_lo [nbLimbsCols]frontend.Variable `gnark:",public"`
+	N_hi, N_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
 
 	// The result of the multiplication. Is provided by the caller, we have to
 	// ensure that the result is correct.
-	R_X_hi, R_X_lo [nbLimbsCols]frontend.Variable `gnark:",public"`
-	R_Y_hi, R_Y_lo [nbLimbsCols]frontend.Variable `gnark:",public"`
+	R_X_hi, R_X_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
+	R_Y_hi, R_Y_lo [common.NbLimbU128]frontend.Variable `gnark:",public"`
 }
 
 // NewECMulCircuit creates a new circuit for verifying the EC_MUL precompile

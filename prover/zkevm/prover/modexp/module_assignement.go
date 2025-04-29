@@ -19,7 +19,7 @@ type antichamberAssignment struct {
 	isActive    *common.VectorBuilder
 	isSmall     *common.VectorBuilder
 	isLarge     *common.VectorBuilder
-	limbs       [nbLimbsCols]*common.VectorBuilder
+	limbs       [common.NbLimbU128]*common.VectorBuilder
 	toSmallCirc *common.VectorBuilder
 }
 
@@ -42,8 +42,8 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 	)
 
 	// Retrieve the limbs assignment and initialize the limb builders
-	var limbs [nbLimbsCols][]field.Element
-	for i := range nbLimbsCols {
+	var limbs [common.NbLimbU128][]field.Element
+	for i := range common.NbLimbU128 {
 		limbs[i] = mod.Input.Limbs[i].GetColAssignment(run).IntoRegVecSaveAlloc()
 		builder.limbs[i] = common.NewVectorBuilder(mod.Limbs[i])
 	}
@@ -58,7 +58,7 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 
 		// This sanity-check is purely defensive and will indicate that we
 		// missed the start of a Modexp instance
-		for i := range nbLimbsCols {
+		for i := range common.NbLimbU128 {
 			if len(limbs[i])-currPosition < modexpNumRowsPerInstance {
 				utils.Panic("A new modexp is starting but there is not enough rows (currPosition=%v len(ecdata.Limb)=%v)", currPosition, len(limbs))
 			}
@@ -70,7 +70,7 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 		// 2 16-bytes limbs (or 16 2-bytes limbs).
 		for k := 0; k < modexpNumRowsPerInstance; k++ {
 			isZeroLimbs := true
-			for i := range nbLimbsCols {
+			for i := range common.NbLimbU128 {
 				isZeroLimbs = isZeroLimbs && limbs[i][currPosition+k].IsZero()
 			}
 
@@ -92,7 +92,7 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 			builder.isSmall.PushBoolean(!isLarge)
 			builder.isLarge.PushBoolean(isLarge)
 
-			for i := range nbLimbsCols {
+			for i := range common.NbLimbU128 {
 				builder.limbs[i].PushField(limbs[i][currPosition+k])
 			}
 
@@ -126,15 +126,15 @@ func (mod *Module) Assign(run *wizard.ProverRuntime) {
 	builder.isSmall.PadAndAssign(run, field.Zero())
 	builder.isLarge.PadAndAssign(run, field.Zero())
 	builder.toSmallCirc.PadAndAssign(run, field.Zero())
-	for i := range nbLimbsCols {
+	for i := range common.NbLimbU128 {
 		builder.limbs[i].PadAndAssign(run, field.Zero())
 	}
 
 	// It is possible to not declare the circuit (for testing purpose) in that
 	// case we skip the corresponding assignment part.
 	if mod.HasCircuit {
-		mod.FlattenLimbsSmall.Assign(run)
-		mod.FlattenLimbsLarge.Assign(run)
+		mod.FlattenLimbsSmall.Run(run)
+		mod.FlattenLimbsLarge.Run(run)
 
 		mod.GnarkCircuitConnector256Bits.Assign(run)
 		mod.GnarkCircuitConnector4096Bits.Assign(run)

@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 func TestModExpAntichamber(t *testing.T) {
@@ -36,8 +37,8 @@ func TestModExpAntichamber(t *testing.T) {
 			)
 
 			cmp := wizard.Compile(func(build *wizard.Builder) {
-				var limbs [nbLimbsCols]ifaces.Column
-				for i := 0; i < nbLimbsCols; i++ {
+				var limbs [common.NbLimbU128]ifaces.Column
+				for i := 0; i < common.NbLimbU128; i++ {
 					limbs[i] = inpCt.GetCommit(build, fmt.Sprintf("LIMBS_%d", i))
 				}
 
@@ -56,7 +57,7 @@ func TestModExpAntichamber(t *testing.T) {
 			proof := wizard.Prove(cmp, func(run *wizard.ProverRuntime) {
 
 				var names []string
-				for i := 0; i < nbLimbsCols; i++ {
+				for i := 0; i < common.NbLimbU128; i++ {
 					names = append(names, fmt.Sprintf("LIMBS_%d", i))
 				}
 
@@ -66,7 +67,7 @@ func TestModExpAntichamber(t *testing.T) {
 				mod.Assign(run)
 
 				var moduleNames []string
-				for i := 0; i < nbLimbsCols; i++ {
+				for i := 0; i < common.NbLimbU128; i++ {
 					moduleNames = append(moduleNames, fmt.Sprintf("MODEXP_LIMBS_%d", i))
 				}
 

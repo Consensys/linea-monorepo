@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 // Input collects references to the columns of the arithmetization containing
@@ -28,7 +29,7 @@ type Input struct {
 	// 4 above columns.
 	IsModExp ifaces.Column
 	// Multiplexed column containing limbs for base, exponent, modulus, and result
-	Limbs [nbLimbsCols]ifaces.Column
+	Limbs [common.NbLimbU128]ifaces.Column
 }
 
 type Settings struct {
@@ -46,7 +47,7 @@ func newZkEVMInput(comp *wizard.CompiledIOP, settings Settings) Input {
 		IsModExpResult:   comp.Columns.GetHandle("blake2fmodexpdata.IS_MODEXP_RESULT"),
 	}
 
-	for i := range nbLimbsCols {
+	for i := range common.NbLimbU128 {
 		input.Limbs[i] = comp.Columns.GetHandle(ifaces.ColIDf("blake2fmodexpdata.LIMB_%d", i))
 	}
 

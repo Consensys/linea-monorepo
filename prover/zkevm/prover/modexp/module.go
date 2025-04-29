@@ -18,9 +18,6 @@ const (
 	// module to represent a single instance. Each instance has 4 operands
 	// dispatched in limbs of
 	modexpNumRowsPerInstance = 32 * 4
-
-	// nbLimbsCols number of сolumns used to store the limbs.
-	nbLimbsCols = 8
 )
 
 // Module implements the wizard part responsible for checking the MODEXP
@@ -37,7 +34,7 @@ type Module struct {
 	// Limb contains the modexp arguments and is subjected to a projection
 	// constraint from the BLK_MDXP (using IsActive as filter). It is constrained
 	// to zero when IsActive = 0.
-	Limbs [nbLimbsCols]ifaces.Column
+	Limbs [common.NbLimbU128]ifaces.Column
 	// ToSmallCirc and ToLargeCirc are indicator columns marking with a 1 the
 	// positions of limbs corresponding to public inputs of (respectely) the
 	// small and the large circuit.
@@ -86,7 +83,7 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 	// right padded.
 	pragmas.MarkRightPadded(mod.IsActive)
 
-	for i := 0; i < nbLimbsCols; i++ {
+	for i := 0; i < common.NbLimbU128; i++ {
 		mod.Limbs[i] = comp.InsertCommit(0, ifaces.ColIDf("MODEXP_LIMBS_%d", i), size)
 	}
 
@@ -96,7 +93,7 @@ func newModule(comp *wizard.CompiledIOP, input Input) *Module {
 	mod.csIsSmallAndLarge(comp)
 	mod.csToCirc(comp)
 
-	for i := range nbLimbsCols {
+	for i := range common.NbLimbU128 {
 		comp.InsertProjection(
 			ifaces.QueryIDf("MODEXP_BLKMDXP_PROJECTION_%d", i),
 			query.ProjectionInput{
@@ -119,9 +116,9 @@ func (mod *Module) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkO
 	settings := mod.Input.Settings
 
 	mod.FlattenLimbsSmall = common.NewFlattenColumn(comp, mod.ToSmallCirc.Size(),
-		nbLimbsCols, "ecdata", "MODEXP_SMALL")
+		common.NbLimbU128, "ecdata", "MODEXP_SMALL")
 	mod.FlattenLimbsLarge = common.NewFlattenColumn(comp, mod.IsLarge.Size(),
-		nbLimbsCols, "ecdata", "MODEXP_LARGE")
+		common.NbLimbU128, "ecdata", "MODEXP_LARGE")
 
 	mod.FlattenLimbsSmall.CsFlattenProjection(comp, mod.Limbs[:], mod.ToSmallCirc)
 	mod.FlattenLimbsLarge.CsFlattenProjection(comp, mod.Limbs[:], mod.IsLarge)
@@ -226,7 +223,7 @@ func (mod *Module) csIsSmallAndLarge(comp *wizard.CompiledIOP) {
 	// not be wrong to supply
 	//
 
-	for i := 0; i < nbLimbsCols; i++ {
+	for i := 0; i < common.NbLimbU128; i++ {
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("MODEXP_IS_SMALL_IMPLIES_SMALL_OPERANDS_%d", i),
@@ -276,8 +273,8 @@ func mustBeBinary(comp *wizard.CompiledIOP, c ifaces.Column) {
 // mustCancelWhenBinCancel enforces to 'c' to be zero when the binary column
 // `bin` is zero. The constraint does not work if bin is not constrained to be
 // binary.
-func mustCancelWhenBinCancel(comp *wizard.CompiledIOP, bin ifaces.Column, c [nbLimbsCols]ifaces.Column) {
-	for i := range nbLimbsCols {
+func mustCancelWhenBinCancel(comp *wizard.CompiledIOP, bin ifaces.Column, c [common.NbLimbU128]ifaces.Column) {
+	for i := range common.NbLimbU128 {
 		comp.InsertGlobal(
 			0,
 			ifaces.QueryIDf("%v_CANCEL_WHEN_NOT_%v", c[i].GetColID(), bin.GetColID()),
