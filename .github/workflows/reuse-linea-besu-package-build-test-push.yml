@@ -190,7 +190,7 @@ jobs:
           tags: |
             consensys/linea-besu-package:${{ steps.assemble.outputs.dockertag }}
             ${{ github.ref == 'refs/heads/main' && 'consensys/linea-besu-package:${{ inputs.linea_env }}-develop' || '' }}
-            ${{ github.event_name == 'workflow_dispatch' && 'consensys/linea-besu-package:${{ inputs.linea_env }}-latest'  || '' }}
+            ${{ github.event_name == 'workflow_dispatch' && format('consensys/linea-besu-package:{0}-latest', github.event.inputs.linea_env) || '' }}
 
       ### update the release notes with docker hashes
       - name: create the release notes and then the release
@@ -230,6 +230,7 @@ jobs:
         shell: bash
         run: |
           cd release
+          echo "# What's Changed" >> output.md"
           echo "${{ steps.change_log.outputs.clean_changelog }}" >> output.md
           echo "output.md=$(cat output.md)"
 
