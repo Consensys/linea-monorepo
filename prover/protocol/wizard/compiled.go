@@ -664,7 +664,13 @@ func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
 			return pi.Acc
 		}
 	}
-	utils.Panic("could not find public input %v", name)
+
+	pubInputNames := []string{}
+	for i := range c.PublicInputs {
+		pubInputNames = append(pubInputNames, c.PublicInputs[i].Name)
+	}
+
+	utils.Panic("could not find public input %v, the list of the public inputs is: %v", name, pubInputNames)
 	return nil // unreachable
 }
 
