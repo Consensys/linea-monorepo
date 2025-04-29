@@ -41,6 +41,11 @@ class FakeEthApiClient(
   }
 
   @Synchronized
+  fun addBlocks(blocks: List<Block>) {
+    blocks.forEach { block -> blocksDb[block.number] = block }
+  }
+
+  @Synchronized
   fun addLogs(logs: Set<EthLog>) = setLogs(logsDb.toSet() + logs)
 
   @Synchronized
@@ -158,7 +163,7 @@ class FakeEthApiClient(
         addressMatch && logFilterMatch
       }
       .let { logsMatching ->
-        // log.trace("logDb: {}", logsDb.joinToString(prefix = "\n   ", separator = "\n   ") { log -> log.toString() })
+        log.trace("logDb: {}", logsDb.joinToString(prefix = "\n   ", separator = "\n   ") { log -> log.toString() })
         log.debug(
           "getLogs: {}..{} address={} topics={} logsSize={} logs={}",
           fromBlock,

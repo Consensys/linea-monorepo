@@ -16,7 +16,6 @@ import linea.web3j.Web3jBlobExtended
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.blob.ShnarfCalculatorVersion
-import net.consensys.linea.contract.Web3JL2MessageServiceLogsClient
 import net.consensys.linea.contract.l1.GenesisStateProvider
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator
@@ -151,15 +150,6 @@ class L1DependentApp(
   private val l1Web3jService = Web3jBlobExtended(HttpService(configs.l1.ethFeeHistoryEndpoint.toString()))
 
   private val l1ChainId = l1Web3jClient.ethChainId().send().chainId.toLong()
-
-  private val l2MessageServiceLogsClient = run {
-    @Suppress("DEPRECATION")
-    val logsClient = linea.web3j.Web3JLogsClient(vertx, l2Web3jClient)
-    Web3JL2MessageServiceLogsClient(
-      logsClient = logsClient,
-      l2MessageServiceAddress = configs.l2.messageServiceAddress
-    )
-  }
 
   private val proverClientFactory = ProverClientFactory(
     vertx = vertx,
@@ -842,8 +832,15 @@ class L1DependentApp(
         tracesProductionCoordinator = TracesConflationCoordinatorImpl(tracesConflationClient, zkStateClient),
         zkProofProductionCoordinator = ZkProofCreationCoordinatorImpl(
           executionProverClient = executionProverClient,
-          l2MessageServiceLogsClient = l2MessageServiceLogsClient,
-          l2Web3jClient = l2Web3jClient
+          l2EthApiClient = createEthApiClient(
+            web3jClient = l2Web3jClient,
+            requestRetryConfig = linea.domain.RetryConfig(
+              backoffDelay = 1.seconds,
+              failuresWarningThreshold = 3u
+            ),
+            vertx = vertx
+          ),
+          messageServiceAddress = configs.l2.messageServiceAddress
         ),
         batchProofHandler = batchProofHandler,
         vertx = vertx,

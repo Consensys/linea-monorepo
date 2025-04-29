@@ -5,16 +5,13 @@ import com.sksamuel.hoplite.addFileSource
 import linea.contract.l1.LineaContractVersion
 import linea.kotlin.gwei
 import linea.web3j.SmartContractErrors
-import linea.web3j.gas.EIP1559GasProvider
 import linea.web3j.gas.StaticGasProvider
 import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
 import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.linea.contract.l1.Web3JLineaRollupSmartContractClient
-import net.consensys.linea.contract.l2.L2MessageServiceGasLimitEstimate
 import net.consensys.linea.testing.filesystem.findPathTo
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import org.slf4j.LoggerFactory
-import org.web3j.protocol.Web3j
 import org.web3j.tx.gas.ContractEIP1559GasProvider
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -72,22 +69,6 @@ interface ContractsManager {
     ),
     smartContractErrors: SmartContractErrors? = null
   ): LineaRollupSmartContractClient
-
-  fun connectL2MessageService(
-    contractAddress: String,
-    web3jClient: Web3j = Web3jClientManager.l2Client,
-    transactionManager: AsyncFriendlyTransactionManager,
-    gasProvider: EIP1559GasProvider = EIP1559GasProvider(
-      web3jClient,
-      EIP1559GasProvider.Config(
-        gasLimit = 1_000_000uL,
-        maxFeePerGasCap = 10_000uL,
-        feeHistoryBlockCount = 5u,
-        feeHistoryRewardPercentile = 0.15
-      )
-    ),
-    smartContractErrors: SmartContractErrors = emptyMap()
-  ): L2MessageServiceGasLimitEstimate
 
   @Deprecated("Use connectToLineaRollupContract instead")
   fun connectToLineaRollupContractLegacy(
@@ -217,22 +198,6 @@ object MakeFileDelegatedContractsManager : ContractsManager {
       transactionManager,
       gasProvider,
       smartContractErrors ?: lineaRollupContractErrors
-    )
-  }
-
-  override fun connectL2MessageService(
-    contractAddress: String,
-    web3jClient: Web3j,
-    transactionManager: AsyncFriendlyTransactionManager,
-    gasProvider: EIP1559GasProvider,
-    smartContractErrors: SmartContractErrors
-  ): L2MessageServiceGasLimitEstimate {
-    return L2MessageServiceGasLimitEstimate.load(
-      contractAddress,
-      web3jClient,
-      transactionManager,
-      gasProvider,
-      smartContractErrors
     )
   }
 
