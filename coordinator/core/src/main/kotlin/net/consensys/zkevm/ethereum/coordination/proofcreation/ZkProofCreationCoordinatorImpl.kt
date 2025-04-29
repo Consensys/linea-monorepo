@@ -30,13 +30,7 @@ class ZkProofCreationCoordinatorImpl(
   private fun getBlockStateRootHash(blockNumber: ULong): SafeFuture<ByteArray> {
     return l2EthApiClient
       .getBlockByNumberWithoutTransactionsData(blockNumber.toBlockParameter())
-      .thenApply { block ->
-        if (block == null) {
-          throw IllegalStateException("Block $blockNumber not found")
-        }
-
-        block.stateRoot
-      }
+      .thenApply { block -> block.stateRoot }
   }
 
   private fun getBridgeLogs(blockNumber: ULong): SafeFuture<List<EthLog>> {

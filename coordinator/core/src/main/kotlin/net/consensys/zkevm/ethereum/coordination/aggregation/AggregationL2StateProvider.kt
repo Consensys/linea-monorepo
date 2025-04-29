@@ -29,10 +29,6 @@ class AggregationL2StateProviderImpl(
       .thenCombine(
         ethApiClient.getBlockByNumberWithoutTransactionsData(blockParameter)
       ) { (messageNumber, rollingHash), block ->
-        if (block == null) {
-          throw IllegalStateException("Block $blockNumber not found")
-        }
-
         AggregationL2State(
           parentAggregationLastBlockTimestamp = Instant.fromEpochSeconds(block.timestamp.toLong()),
           parentAggregationLastL1RollingHashMessageNumber = messageNumber,

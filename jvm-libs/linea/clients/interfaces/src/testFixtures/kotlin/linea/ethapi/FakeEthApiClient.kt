@@ -112,7 +112,7 @@ class FakeEthApiClient(
     }
   }
 
-  override fun getBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
+  override fun findBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
     val blockNumber = blockParameterToBlockNumber(blockParameter)
     if (isAfterHead(blockNumber)) {
       return SafeFuture.completedFuture(null)
@@ -125,8 +125,10 @@ class FakeEthApiClient(
     return SafeFuture.completedFuture(block)
   }
 
-  override fun getBlockByNumberWithoutTransactionsData(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
-    return getBlockByNumber(blockParameter).thenApply { block -> block?.toBlockWithRandomTxHashes() }
+  override fun findBlockByNumberWithoutTransactionsData(
+    blockParameter: BlockParameter
+  ): SafeFuture<BlockWithTxHashes?> {
+    return findBlockByNumber(blockParameter).thenApply { block -> block?.toBlockWithRandomTxHashes() }
   }
 
   private fun isAfterHead(blockNumber: ULong): Boolean {
@@ -163,7 +165,10 @@ class FakeEthApiClient(
         addressMatch && logFilterMatch
       }
       .let { logsMatching ->
-        log.trace("logDb: {}", logsDb.joinToString(prefix = "\n   ", separator = "\n   ") { log -> log.toString() })
+        log.trace(
+          "logDb: {}",
+          logsDb.joinToString(prefix = "\n   ", separator = "\n   ") { log -> log.toString() }
+        )
         log.debug(
           "getLogs: {}..{} address={} topics={} logsSize={} logs={}",
           fromBlock,
