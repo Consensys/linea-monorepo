@@ -24,7 +24,7 @@ import (
 const (
 	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
 	// the value is empirical and corresponds to the lowest value that works.
-	fixedNbRowPlonkCircuit   = 1 << 22
+	fixedNbRowPlonkCircuit   = 1 << 20
 	fixedNbRowExternalHasher = 1 << 16
 	verifyingKeyPublicInput  = "VERIFYING_KEY"
 	verifyingKey2PublicInput = "VERIFYING_KEY_2"
@@ -221,6 +221,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<15),
 		),
+		logdata.Log("just-after-recursion-expanded"),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
