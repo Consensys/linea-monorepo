@@ -23,7 +23,7 @@ export async function Widget() {
         </LayerswapProvider>
     );
 }
-
+// TODO: Implement theme colors
 const themeData: ThemeData = {
     placeholderText: '134, 134, 134',
     actionButtonText: '255, 255, 255',
@@ -60,5 +60,4 @@ const themeData: ThemeData = {
         '950': '255, 255, 255',
         'text': '82, 82, 82',
     }
-  }
-  
+}
