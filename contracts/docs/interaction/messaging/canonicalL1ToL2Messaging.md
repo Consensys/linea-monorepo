@@ -28,8 +28,6 @@ This document describes the step-by-step flow of how a canonical message is sent
 
 ---
 
-## 🖼️ Diagram
-
-👉 _[Insert SVG of this flow here]_
+<img src="../diagrams/canonicalL1ToL2Messaging.png">
 
 

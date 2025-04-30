@@ -27,6 +27,4 @@ This document outlines the process of bridging tokens from L2 back to L1 using t
 
 ---
 
-## 🖼️ Diagram
-
-👉 _[Insert SVG of this flow here]_
+<img src="../diagrams/canonicalL2ToL1TokenBridging.png">

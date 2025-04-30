@@ -36,6 +36,4 @@ This document describes how tokens are bridged canonically from L1 to L2, step-b
 
 ---
 
-## 🖼️ Diagram
-
-👉 _[Insert SVG of this flow here]_
+<img src="../diagrams/canonicalL1ToL2TokenBridging.png">
