@@ -14,8 +14,8 @@ import (
 
 // Represents a constant column
 type ConstCol struct {
-	base   field.Element
-	ext    fext.Element
+	Base   field.Element
+	Ext    fext.Element
 	isBase bool
 	Size_  int
 }
@@ -23,8 +23,8 @@ type ConstCol struct {
 // NewConstantCol creates a new ConstCol column
 func NewConstantCol(elem field.Element, size int) ifaces.Column {
 	return ConstCol{
-		base:   elem,
-		ext:    fext.NewFromBase(elem),
+		Base:   elem,
+		Ext:    fext.NewFromBase(elem),
 		isBase: true,
 		Size_:  size,
 	}
@@ -32,8 +32,8 @@ func NewConstantCol(elem field.Element, size int) ifaces.Column {
 
 func NewConstantColExt(elem fext.Element, size int) ifaces.Column {
 	return ConstCol{
-		base:   field.Zero(),
-		ext:    elem,
+		Base:   field.Zero(),
+		Ext:    elem,
 		isBase: false,
 		Size_:  size,
 	}
@@ -49,9 +49,9 @@ func (cc ConstCol) Round() int {
 // Returns a generic name from the column. Defined from the coin's.
 func (cc ConstCol) GetColID() ifaces.ColID {
 	if cc.isBase {
-		return ifaces.ColIDf("CONSTCOL_%v_%v", cc.base.String(), cc.Size_)
+		return ifaces.ColIDf("CONSTCOL_%v_%v", cc.Base.String(), cc.Size_)
 	} else {
-		return ifaces.ColIDf("CONSTCOL_%v_%v", cc.ext.String(), cc.Size_)
+		return ifaces.ColIDf("CONSTCOL_%v_%v", cc.Ext.String(), cc.Size_)
 	}
 }
 
@@ -65,26 +65,26 @@ func (cc ConstCol) Size() int {
 
 // Returns a constant smart-vector
 func (cc ConstCol) GetColAssignment(_ ifaces.Runtime) ifaces.ColAssignment {
-	return smartvectors.NewConstant(cc.base, cc.Size_)
+	return smartvectors.NewConstant(cc.Base, cc.Size_)
 }
 
 func (cc ConstCol) GetColAssignmentAtBase(_ ifaces.Runtime, _ int) (field.Element, error) {
 	if cc.isBase {
-		return cc.base, nil
+		return cc.Base, nil
 	} else {
-		return field.Zero(), fmt.Errorf("requested a base element from a verifier col over field extensions")
+		return field.Zero(), fmt.Errorf("requested a Base element from a verifier col over field extensions")
 	}
 }
 
 func (cc ConstCol) GetColAssignmentAtExt(_ ifaces.Runtime, _ int) fext.Element {
-	return cc.ext
+	return cc.Ext
 }
 
 // Returns the column as a list of gnark constants
 func (cc ConstCol) GetColAssignmentGnark(_ ifaces.GnarkRuntime) []frontend.Variable {
 	res := make([]frontend.Variable, cc.Size_)
 	for i := range res {
-		res[i] = cc.base
+		res[i] = cc.Base
 	}
 	return res
 }
@@ -93,48 +93,48 @@ func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]fronten
 	if cc.isBase {
 		res := make([]frontend.Variable, cc.Size_)
 		for i := range res {
-			res[i] = cc.base
+			res[i] = cc.Base
 		}
 		return res, nil
 	} else {
-		return nil, fmt.Errorf("requested base elements but column defined over field extensions")
+		return nil, fmt.Errorf("requested Base elements but column defined over field extensions")
 	}
 }
 
 func (cc ConstCol) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
 	res := make([]gnarkfext.Variable, cc.Size_)
 	for i := range res {
-		res[i] = gnarkfext.NewFromExtension(cc.ext)
+		res[i] = gnarkfext.NewFromExtension(cc.Ext)
 	}
 	return res
 }
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
-	return cc.base
+	return cc.Base
 }
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
 	if cc.isBase {
-		return cc.base
+		return cc.Base
 	} else {
-		panic("requested a base element from a verifier col over field extensions")
+		panic("requested a Base element from a verifier col over field extensions")
 	}
 }
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
 	if cc.isBase {
-		return cc.base, nil
+		return cc.Base, nil
 	} else {
-		return field.Zero(), fmt.Errorf("requested a base element from a verifier col over field extensions")
+		return field.Zero(), fmt.Errorf("requested a Base element from a verifier col over field extensions")
 	}
 }
 
 // Returns a particular position of the coin value
 func (cc ConstCol) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
-	return gnarkfext.ExtToVariable(cc.ext)
+	return gnarkfext.ExtToVariable(cc.Ext)
 }
 
 // Since the column is directly defined from the
@@ -157,7 +157,7 @@ func (cc ConstCol) Split(comp *wizard.CompiledIOP, from, to int) ifaces.Column {
 	}
 
 	// Copy the underlying cc, and assigns the new from and to
-	return NewConstantCol(cc.base, to-from)
+	return NewConstantCol(cc.Base, to-from)
 }
 
 func (cc ConstCol) IsBase() bool {
