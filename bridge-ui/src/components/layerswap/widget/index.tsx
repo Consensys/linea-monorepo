@@ -1,5 +1,5 @@
 import "@layerswap/widget/index.css";
-import { Swap, LayerswapProvider, GetSettings } from '@layerswap/widget'
+import { Swap, LayerswapProvider, GetSettings, ThemeData } from '@layerswap/widget'
 import CustomHooks from "./custom-hooks";
 
 export async function Widget() {
@@ -9,6 +9,7 @@ export async function Widget() {
             integrator='linea'
             themeData={themeData}
             settings={settings}
+            apiKey={'YOUR_API_KEY'}
         >
             <CustomHooks>
                 <Swap
@@ -23,24 +24,24 @@ export async function Widget() {
     );
 }
 
-const themeData = {
+const themeData: ThemeData = {
     placeholderText: '134, 134, 134',
     actionButtonText: '255, 255, 255',
     buttonTextColor: '17, 17, 17',
     logo: '255, 0, 147',
-    footerLogo: 'none',
+    borderRadius: 'large',
     primary: {
         DEFAULT: '97, 26, 239',
-        '50': '248, 200, 220',
-        '100': '246, 182, 209',
-        '200': '241, 146, 186',
-        '300': '237, 110, 163',
-        '400': '232, 73, 140',
+        '50': '215, 198, 251',
+        '100': '202, 179, 250',
+        '200': '176, 140, 247',
+        '300': '150, 102, 244',
+        '400': '123, 64, 242',
         '500': '97, 26, 239',
-        '600': '166, 51, 94',
-        '700': '136, 17, 67',
-        '800': '147, 8, 99',
-        '900': '181, 144, 255',
+        '600': '74, 14, 195',
+        '700': '54, 10, 143',
+        '800': '34, 6, 90',
+        '900': '14, 3, 38',
         'text': '18, 18, 18',
         'textMuted': '86, 97, 123',
     },
@@ -59,4 +60,5 @@ const themeData = {
         '950': '255, 255, 255',
         'text': '82, 82, 82',
     }
-}
+  }
+  
