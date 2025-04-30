@@ -1,10 +1,5 @@
 import { Counter, Gauge, Registry } from "prom-client";
 
-export enum MetricsOperation {
-  INCREMENT = "INCREMENT",
-  DECREMENT = "DECREMENT",
-}
-
 export enum LineaPostmanMetrics {
   Messages = "linea_postman_messages",
   /**
@@ -22,7 +17,7 @@ export enum LineaPostmanMetrics {
   SponsorshipFeesGwei = "linea_postman_sponsorship_fees_gwei_total", // Represent up to ~9_007_199 ETH
 }
 
-export interface IMetricsService extends IMetricsServiceUtils {
+export interface IMetricsService {
   getRegistry(): Registry;
   createCounter(name: LineaPostmanMetrics, help: string, labelNames?: string[]): Counter<string>;
   createGauge(name: LineaPostmanMetrics, help: string, labelNames?: string[]): Gauge<string>;
@@ -31,8 +26,4 @@ export interface IMetricsService extends IMetricsServiceUtils {
   decrementGauge(name: LineaPostmanMetrics, labels?: Record<string, string>, value?: number): void;
   getGaugeValue(name: LineaPostmanMetrics, labels: Record<string, string>): Promise<number | undefined>;
   getCounterValue(name: LineaPostmanMetrics, labels: Record<string, string>): Promise<number | undefined>;
-}
-
-interface IMetricsServiceUtils {
-  convertTxFeesToWeiAndGwei(txFees: bigint): { gwei: number; wei: number };
 }

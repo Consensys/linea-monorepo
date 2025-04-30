@@ -68,7 +68,7 @@ describe("MessageMetricsUpdater", () => {
     ).toBe(10);
   });
 
-  it("should get correct gauge values for LineaPostmanMetrics.Messages after incrementing the gauge", async () => {
+  it("should get correct values after incrementMessageCount", async () => {
     messageMetricsUpdater.incrementMessageCount(
       {
         status: MessageStatus.PENDING,
@@ -83,5 +83,30 @@ describe("MessageMetricsUpdater", () => {
       isForSponsorship: true,
     });
     expect(gaugeValue).toBe(10);
+  });
+
+  it("should get correct values after decrementMessageCount", async () => {
+    messageMetricsUpdater.incrementMessageCount(
+      {
+        status: MessageStatus.PENDING,
+        direction: Direction.L1_TO_L2,
+        isForSponsorship: true,
+      },
+      10,
+    );
+    messageMetricsUpdater.decrementMessageCount(
+      {
+        status: MessageStatus.PENDING,
+        direction: Direction.L1_TO_L2,
+        isForSponsorship: true,
+      },
+      5,
+    );
+    const gaugeValue = await messageMetricsUpdater.getMessageCount({
+      status: MessageStatus.PENDING,
+      direction: Direction.L1_TO_L2,
+      isForSponsorship: true,
+    });
+    expect(gaugeValue).toBe(5);
   });
 });

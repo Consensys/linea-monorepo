@@ -152,18 +152,6 @@ export class SingletonMetricsService implements IMetricsService {
     }
   }
 
-  // **** PUBLIC UTILITY FUNCTIONS ****
-
-  // Protected because we don't want to declare this in the IMetricsService interface, but we want the child class MessageMetricsService to use this function
-  public convertTxFeesToWeiAndGwei(txFees: bigint): { gwei: number; wei: number } {
-    // Last 9 digits
-    const wei = Number(txFees % BigInt(1_000_000_000));
-    const gwei = Number(txFees / BigInt(1_000_000_000));
-    return { wei, gwei };
-  }
-
-  // **** PRIVATE FUNCTIONS ****
-
   private aggregateMetricValuesWithExactMatchingLabels(
     metricData: MetricObjectWithValues<MetricValue<string>>,
     labels: Record<string, string>,
