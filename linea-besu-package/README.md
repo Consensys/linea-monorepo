@@ -72,7 +72,7 @@ bin/besu --profile=advanced-mainnet --plugin-linea-l1-rpc-endpoint=YOUR_L1_RPC_E
 
 1. Go to the [actions tab](https://github.com/Consensys/linea-monorepo/actions) and click on the appropriate workflow you want to release against, e.g. `linea-besu-package-mainnet` for releasing based on `linea-besu-package/versions/linea-mainnet.env`
 
-2. If release prefix is not given, `LINEA_TRACER_PLUGIN_VERSION` in the target `linea-*.env` file will be used, and the resultant release tag would be `linea-besu-package-[releasePrefix]-[YYYYMMDDHHMMSS]-[commitShortenHash]` and the docker image tag would be `[releasePrefix]-[YYYYMMDDHHMMSS]-[commitShortenHash]`
+2. If release prefix is not given, `LINEA_TRACER_PLUGIN_VERSION` in the target `linea-*.env` file will be used, and the resultant release tag would be `linea-besu-package-[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]` and the docker image tag would be `[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]`
 
 3. Go to the [releases page](https://github.com/Consensys/linea-monorepo/releases?q=linea-besu-package&expanded=true) and you should find the corresponding release info along with the docker image tag
 
@@ -105,6 +105,6 @@ Currently, the following profiles are available:
 | Profile Name                                                                                                              | Description                                                               | Network | 
 |---------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------|---------|
 | [`basic-mainnet`](https://github.com/Consensys/linea-monorepo/blob/main/linea-besu-package/linea-besu/profiles/basic-mainnet.toml)       | Creates a basic Linea Node.                                               | Mainnet |
-| [`advanced-mainnet`](https://github.com/Consensys/linea-monorepo/blob/main/linea-besu-package/linea-besu/profiles/advanced-mainnet.toml) | Creates a Linea Node with `linea_estimateGas` and `finalized tag plugin`. | Mainnet |
+| [`advanced-mainnet`](https://github.com/Consensys/linea-monorepo/blob/main/linea-besu-package/linea-besu/profiles/advanced-mainnet.toml) | Creates a Linea Node with `linea_estimateGas` and `finalized tag updater plugin`. | Mainnet |
 | [`basic-sepolia`](https://github.com/Consensys/linea-monorepo/blob/main/linea-besu-package/linea-besu/profiles/basic-sepolia.toml)       | Creates a basic Linea Node.                                               | Sepolia |
-| [`advanced-sepolia`](https://github.com/Consensys/linea-monorepo/blob/main/linea-besu-package/linea-besu/profiles/advanced-mainnet.toml) | Creates a Linea Node with `linea_estimateGas` and `finalized tag plugin`. | Sepolia |
+| [`advanced-sepolia`](https://github.com/Consensys/linea-monorepo/blob/main/linea-besu-package/linea-besu/profiles/advanced-mainnet.toml) | Creates a Linea Node with `linea_estimateGas` and `finalized tag updater plugin`. | Sepolia |
