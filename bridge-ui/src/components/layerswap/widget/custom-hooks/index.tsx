@@ -1,10 +1,9 @@
 'use client'
-import { WalletHooksProvider, useWallet } from "@layerswap/widget";
-import useCustomEVM from "./useCustomeEvm";
-import { use } from "react";
+import { WalletHooksProvider } from "@layerswap/widget";
+import useCustomEVM from "./useCustomEvm";
+import { ReactNode } from "react";
 
-
-export default function ({ children }: { children: JSX.Element | JSX.Element[] }) {
+export default function ({ children }: { children: ReactNode }) {
     const customEvm = useCustomEVM()
     return <WalletHooksProvider overides={{ evm: customEvm }}>
         {children}
