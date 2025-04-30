@@ -18,11 +18,10 @@ package maru.consensus.validation
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
-import encodeHex
-import maru.consensus.ProposerSelector
 import maru.consensus.ValidatorProvider
+import maru.consensus.qbft.ProposerSelector
+import maru.consensus.qbft.toConsensusRoundIdentifier
 import maru.consensus.state.StateTransitionImpl
-import maru.consensus.toConsensusRoundIdentifier
 import maru.consensus.validation.BlockValidator.Companion.error
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
@@ -33,7 +32,10 @@ import maru.core.SealedBeaconBlock
 import maru.core.Validator
 import maru.core.ext.DataGenerators
 import maru.database.InMemoryBeaconChain
-import maru.executionlayer.client.ExecutionLayerClient
+import maru.executionlayer.manager.ExecutionLayerManager
+import maru.executionlayer.manager.ExecutionPayloadStatus
+import maru.executionlayer.manager.PayloadStatus
+import maru.extensions.encodeHex
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
 import org.assertj.core.api.Assertions.assertThat
@@ -41,10 +43,7 @@ import org.hyperledger.besu.consensus.common.bft.BftHelpers
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
-import tech.pegasys.teku.ethereum.executionclient.schema.PayloadStatusV1
-import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import tech.pegasys.teku.spec.executionlayer.ExecutionPayloadStatus
 
 class BlockValidatorTest {
   private val validators = (1..3).map { DataGenerators.randomValidator() }
@@ -86,10 +85,16 @@ class BlockValidatorTest {
   private val validNewBlockHeader = validNewBlockStateRootHeader.copy(stateRoot = validNewStateRoot)
   private val validNewBlock = BeaconBlock(validNewBlockHeader, validNewBlockBody)
 
-  private val beaconChain = InMemoryBeaconChain(currBeaconState)
+  private val beaconChain =
+    InMemoryBeaconChain(currBeaconState).also {
+      it
+        .newUpdater()
+        .putSealedBeaconBlock(SealedBeaconBlock(validCurrBlock, emptyList()))
+        .commit()
+    }
 
   private val proposerSelector =
-    ProposerSelector { consensusRoundIdentifier ->
+    ProposerSelector { beaconState, consensusRoundIdentifier ->
       when (consensusRoundIdentifier) {
         validNewBlockHeader.toConsensusRoundIdentifier() -> SafeFuture.completedFuture(validNewBlockHeader.proposer)
         else -> throw IllegalArgumentException("Unexpected consensus round identifier")
@@ -103,10 +108,6 @@ class BlockValidatorTest {
     }
 
   private val stateTransition = StateTransitionImpl(validatorProvider)
-
-  init {
-    beaconChain.newUpdater().putSealedBeaconBlock(SealedBeaconBlock(validCurrBlock, emptyList())).commit()
-  }
 
   @Test
   fun `test valid block`() {
@@ -126,7 +127,7 @@ class BlockValidatorTest {
       }
 
     val proposerValidator =
-      ProposerValidator(proposerSelector = proposerSelector).also {
+      ProposerValidator(proposerSelector = proposerSelector, beaconChain = beaconChain).also {
         assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
       }
 
@@ -166,18 +167,16 @@ class BlockValidatorTest {
         assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
       }
 
-    val executionLayerClient =
-      mock<ExecutionLayerClient> {
+    val executionLayerEngineApiClient =
+      mock<ExecutionLayerManager> {
         on { newPayload(any()) }.thenReturn(
           SafeFuture.completedFuture(
-            Response.fromPayloadReceivedAsSsz(
-              PayloadStatusV1(ExecutionPayloadStatus.VALID, null, null),
-            ),
+            DataGenerators.randomValidPayloadStatus(),
           ),
         )
       }
     val executionPayloadValidator =
-      ExecutionPayloadValidator(executionLayerClient).also {
+      ExecutionPayloadValidator(executionLayerEngineApiClient).also {
         assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
       }
 
@@ -226,7 +225,7 @@ class BlockValidatorTest {
         ).get()
     val expectedResult =
       error(
-        "Block number is not the next block number " +
+        "Beacon block number is not the next block number " +
           "blockNumber=${invalidBlock.beaconBlockHeader.number} " +
           "parentBlockNumber=${validCurrBlock.beaconBlockHeader.number}",
       )
@@ -247,7 +246,7 @@ class BlockValidatorTest {
         ).get()
     val expectedResult =
       error(
-        "Block number is not the next block number " +
+        "Beacon block number is not the next block number " +
           "blockNumber=${invalidBlock.beaconBlockHeader.number} " +
           "parentBlockNumber=${validCurrBlock.beaconBlockHeader.number}",
       )
@@ -297,18 +296,26 @@ class BlockValidatorTest {
   fun `test invalid block proposer`() {
     val invalidBlockHeader = validNewBlockHeader.copy(proposer = nonValidatorNode)
     val invalidBlock = validNewBlock.copy(beaconBlockHeader = invalidBlockHeader)
-    val proposerValidator = ProposerValidator(proposerSelector = proposerSelector)
-    val result =
-      proposerValidator
-        .validateBlock(
-          block = invalidBlock,
-        ).get()
+    val proposerValidator = ProposerValidator(proposerSelector = proposerSelector, beaconChain = beaconChain)
+    val result = proposerValidator.validateBlock(invalidBlock).get()
     val expectedResult =
       error(
         "Proposer is not expected proposer " +
           "proposer=${invalidBlockHeader.proposer} " +
           "expectedProposer=${validNewBlockHeader.proposer}",
       )
+    assertThat(result).isEqualTo(expectedResult)
+  }
+
+  @Test
+  fun `test missing parent block state`() {
+    val nonExistentParentHash = ByteArray(32)
+    val invalidBlockHeader = validNewBlockHeader.copy(parentRoot = nonExistentParentHash)
+    val invalidBlock = validNewBlock.copy(beaconBlockHeader = invalidBlockHeader)
+    val proposerValidator = ProposerValidator(proposerSelector = proposerSelector, beaconChain = beaconChain)
+    val result = proposerValidator.validateBlock(invalidBlock).get()
+    val expectedResult =
+      error("Beacon state not found for block parentHash=${nonExistentParentHash.encodeHex()}")
     assertThat(result).isEqualTo(expectedResult)
   }
 
@@ -324,7 +331,7 @@ class BlockValidatorTest {
         ).get()
     val expectedResult =
       error(
-        "Parent root does not match parent block root " +
+        "Parent beacon root does not match parent block root " +
           "parentRoot=${invalidBlockHeader.parentRoot.encodeHex()} " +
           "expectedParentRoot=${validCurrBlockHeader.hash.encodeHex()}",
       )
@@ -478,19 +485,19 @@ class BlockValidatorTest {
           ),
       )
     val invalidExecutionClient =
-      mock<ExecutionLayerClient> {
+      mock<ExecutionLayerManager> {
         on { newPayload(any()) }.thenReturn(
-          SafeFuture.completedFuture(Response.fromErrorMessage("Invalid execution payload")),
+          SafeFuture.completedFuture(PayloadStatus(ExecutionPayloadStatus.INVALID, null, "Invalid execution payload")),
         )
       }
     val result =
-      ExecutionPayloadValidator(executionLayerClient = invalidExecutionClient)
+      ExecutionPayloadValidator(executionLayerManager = invalidExecutionClient)
         .validateBlock(
           block = validNewBlock.copy(beaconBlockBody = blockBody),
         ).get()
     val expectedResult =
       error(
-        "Execution payload validation failed: Invalid execution payload",
+        "Execution payload validation failed: Invalid execution payload, status=INVALID, latestValidHash=null",
       )
     assertThat(result).isEqualTo(expectedResult)
   }
@@ -522,6 +529,7 @@ class BlockValidatorTest {
     val expectedResult =
       error(
         "Block number=${validNewBlock.beaconBlockHeader.number} " +
+          "executionPayloadBlockNumber=${validNewBlock.beaconBlockBody.executionPayload.blockNumber} " +
           "hash=${validNewBlock.beaconBlockHeader.hash.encodeHex()} is empty!",
       )
     assertThat(result).isEqualTo(expectedResult)

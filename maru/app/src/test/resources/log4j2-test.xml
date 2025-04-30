@@ -6,15 +6,16 @@
     </Console>
   </Appenders>
   <Loggers>
-    <Logger name="maru" level="DEBUG" additivity="false">
+    <Logger name="maru" level="TRACE" additivity="false">
       <AppenderRef ref="console"/>
     </Logger>
 <!--    <Logger name="org.hyperledger.besu.ethereum.blockcreation" level="TRACE"/>-->
-<!--    <Logger name="org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.ExecutionEngineJsonRpcMethod"-->
-<!--            level="TRACE"/>-->
+    <Logger name="org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.ExecutionEngineJsonRpcMethod"
+            level="TRACE"/>
 <!--    <Logger name="org.hyperledger.besu.consensus.merge.blockcreation.MergeCoordinator"-->
 <!--            level="TRACE"/>-->
-    <Logger name="org.hyperledger.besu" level="INFO"/>
+    <Logger name="org.hyperledger.besu" level="DEBUG"/>
+    <Logger name="org.hyperledger.besu.consensus.qbft" level="TRACE"/>
     <Root level="INFO" additivity="false">
       <appender-ref ref="console"/>
     </Root>

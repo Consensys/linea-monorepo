@@ -16,6 +16,7 @@
 package maru.testutils
 
 import java.io.File
+import java.nio.file.Path
 import maru.app.MaruApp
 import maru.app.MaruAppCli.Companion.loadConfig
 import maru.config.MaruConfigDtoToml
@@ -25,25 +26,28 @@ import maru.consensus.config.JsonFriendlyForksSchedule
 
 object MaruFactory {
   private val consensusConfigDir = "/e2e/config"
-  private val pragueConsensusConfig = "$consensusConfigDir/dummy-consensus-prague.json"
+  private val pragueConsensusConfig = "$consensusConfigDir/qbft-prague.json"
 
   private fun buildMaruConfigString(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
+    dataPath: String,
   ): String =
     """
+    [persistence]
+    data-path="$dataPath"
+
     [sot-eth-endpoint]
     endpoint = "$ethereumJsonRpcUrl"
 
-    [dummy-consensus-options]
-    communication-time-margin=100m
+    [qbft-options]
+    communication-margin=200m
 
     [p2p-config]
     port = 3322
 
     [validator]
-    private-key = "0xdead"
-    min-time-between-get-payload-attempts=800m
+    private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
     el-client-engine-api-endpoint = "$engineApiRpc"
     """.trimIndent()
 
@@ -56,12 +60,14 @@ object MaruFactory {
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     elFork: ElFork,
+    dataDir: Path,
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
         buildMaruConfigString(
           ethereumJsonRpcUrl = ethereumJsonRpcUrl,
           engineApiRpc = engineApiRpc,
+          dataPath = dataDir.toString(),
         ),
       )
     val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))

@@ -1,14 +1,20 @@
-[sot-endpoint]
+[sot-eth-endpoint]
 endpoint = "http://sequencer:8545"
 
-[dummy-consensus-options]
-communication-time-margin=100m
+[qbft-options]
+communication-margin=100m
+data-path="/tmp/maru-db"
 
 [p2p-config]
 port = 3322
 
 [validator]
-private-key = "0xdead"
-jwt-secret-path = "/secret/path"
-min-time-between-get-payload-attempts=800m
-el-client-endpoint = "http://sequencer:8545"
+private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+min-time-between-get-payload-attempts=6000m
+el-client-engine-api-endpoint = "http://sequencer:8550"
+
+[follower-engine-apis]
+"follower-besu" = { endpoint = "http://follower-besu:9550" }
+"follower-erigon" = { endpoint = "http://follower-erigon:11551", jwt-secret-path = "../docker/jwt" }
+"follower-nethermind" = { endpoint = "http://follower-nethermind:10550", jwt-secret-path = "../docker/jwt" }
+"follower-geth" = { endpoint = "http://follower-geth:8561", jwt-secret-path = "../docker/jwt" }

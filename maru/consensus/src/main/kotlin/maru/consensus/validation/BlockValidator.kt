@@ -18,11 +18,10 @@ package maru.consensus.validation
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
-import encodeHex
-import maru.consensus.ProposerSelector
 import maru.consensus.ValidatorProvider
+import maru.consensus.qbft.ProposerSelector
+import maru.consensus.qbft.toConsensusRoundIdentifier
 import maru.consensus.state.StateTransition
-import maru.consensus.toConsensusRoundIdentifier
 import maru.consensus.validation.BlockValidator.BlockValidationError
 import maru.consensus.validation.BlockValidator.Companion.error
 import maru.core.BeaconBlock
@@ -30,8 +29,8 @@ import maru.core.BeaconBlockHeader
 import maru.core.HashUtil
 import maru.core.Validator
 import maru.database.BeaconChain
-import maru.executionlayer.client.ExecutionLayerClient
-import maru.executionlayer.extensions.hasValidExecutionPayload
+import maru.executionlayer.manager.ExecutionLayerManager
+import maru.extensions.encodeHex
 import maru.serialization.rlp.bodyRoot
 import maru.serialization.rlp.stateRoot
 import org.hyperledger.besu.consensus.common.bft.BftHelpers
@@ -85,7 +84,7 @@ class BlockNumberValidator(
     val parentBlockNumber = parentBlockHeader.number
     return SafeFuture.completedFuture(
       BlockValidator.require(block.beaconBlockHeader.number == parentBlockNumber + 1u) {
-        "Block number is not the next block number blockNumber=${block.beaconBlockHeader.number} " +
+        "Beacon block number is not the next block number blockNumber=${block.beaconBlockHeader.number} " +
           "parentBlockNumber=$parentBlockNumber"
       },
     )
@@ -111,16 +110,28 @@ class TimestampValidator(
 
 class ProposerValidator(
   private val proposerSelector: ProposerSelector,
+  private val beaconChain: BeaconChain,
 ) : BlockValidator {
-  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
-    proposerSelector
-      .getProposerForBlock(block.beaconBlockHeader.toConsensusRoundIdentifier())
-      .thenApply { proposerForNewBlock ->
-        BlockValidator.require(block.beaconBlockHeader.proposer == proposerForNewBlock) {
-          "Proposer is not expected proposer proposer=${block.beaconBlockHeader.proposer} " +
-            "expectedProposer=$proposerForNewBlock"
+  override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> {
+    val parentState = beaconChain.getBeaconState(block.beaconBlockHeader.parentRoot)
+    return if (parentState == null) {
+      SafeFuture.completedFuture(
+        error("Beacon state not found for block parentHash=${block.beaconBlockHeader.parentRoot.encodeHex()}"),
+      )
+    } else {
+      proposerSelector
+        .getProposerForBlock(
+          parentState,
+          block.beaconBlockHeader
+            .toConsensusRoundIdentifier(),
+        ).thenApply { proposerForNewBlock ->
+          BlockValidator.require(block.beaconBlockHeader.proposer == proposerForNewBlock) {
+            "Proposer is not expected proposer proposer=${block.beaconBlockHeader.proposer} " +
+              "expectedProposer=$proposerForNewBlock"
+          }
         }
-      }
+    }
+  }
 }
 
 class ParentRootValidator(
@@ -134,7 +145,10 @@ class ParentRootValidator(
             .hash,
         ),
       ) {
-        "Parent root does not match parent block root parentRoot=${block.beaconBlockHeader.parentRoot.encodeHex()} " +
+        "Parent beacon root does not match parent block root parentRoot=${
+          block.beaconBlockHeader.parentRoot
+            .encodeHex()
+        } " +
           "expectedParentRoot=${parentBlockHeader.hash.encodeHex()}"
       },
     )
@@ -156,8 +170,6 @@ class StateRootValidator(
           "State root in header does not match state root stateRoot=${block.beaconBlockHeader.stateRoot.encodeHex()} " +
             "expectedStateRoot=${expectedStateRoot.encodeHex()}"
         }
-      }.exceptionally {
-        error("State root validation failed: ${it.message}")
       }
 }
 
@@ -231,14 +243,16 @@ class PrevCommitSealValidator(
 }
 
 class ExecutionPayloadValidator(
-  private val executionLayerClient: ExecutionLayerClient,
+  private val executionLayerManager: ExecutionLayerManager,
 ) : BlockValidator {
   override fun validateBlock(block: BeaconBlock): SafeFuture<Result<Unit, BlockValidationError>> =
-    executionLayerClient.newPayload(block.beaconBlockBody.executionPayload).thenApply { newPayloadResponse ->
+    executionLayerManager.newPayload(block.beaconBlockBody.executionPayload).thenApply { newPayloadStatus ->
       BlockValidator.require(
-        newPayloadResponse.isSuccess && newPayloadResponse.payload.hasValidExecutionPayload(),
+        newPayloadStatus.status.isValid(),
       ) {
-        "Execution payload validation failed: ${newPayloadResponse.errorMessage}"
+        "Execution payload validation failed: ${newPayloadStatus.validationError}," +
+          " status=${newPayloadStatus.status}," +
+          " latestValidHash=${newPayloadStatus.latestValidHash}"
       }
     }
 }
@@ -250,7 +264,9 @@ object EmptyBlockValidator : BlockValidator {
         block.beaconBlockBody.executionPayload.transactions
           .isNotEmpty(),
       ) {
-        "Block number=${block.beaconBlockHeader.number} hash=${block.beaconBlockHeader.hash.encodeHex()} is empty!"
+        "Block number=${block.beaconBlockHeader.number} " +
+          "executionPayloadBlockNumber=${block.beaconBlockBody.executionPayload.blockNumber} " +
+          "hash=${block.beaconBlockHeader.hash.encodeHex()} is empty!"
       },
     )
 }

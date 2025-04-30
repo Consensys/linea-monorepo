@@ -1,10 +1,12 @@
 import net.ltgt.gradle.errorprone.CheckSeverity
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 
 plugins {
   alias(libs.plugins.errorprone)
   alias(libs.plugins.spotless)
   alias(libs.plugins.spring.dependency.management)
   id "jacoco"
+  id 'maru.kotlin-common-minimal-conventions'
 }
 
 subprojects.each {
@@ -22,23 +24,6 @@ allprojects {
   apply plugin: libs.plugins.spring.dependency.management.get().getPluginId()
   apply from: "${rootDir}/gradle/versions.gradle"
   apply plugin: 'java-library'
-
-  repositories {
-    maven {
-      url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'
-      content { includeGroupByRegex('org\\.hyperledger\\..*') }
-    }
-    maven {
-      url 'https://artifacts.consensys.net/public/maven/maven/'
-      content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
-    }
-    maven {
-      url 'https://splunk.jfrog.io/splunk/ext-releases-local'
-      content { includeGroupByRegex('com\\.splunk\\..*') }
-    }
-
-    mavenCentral()
-  }
 
   apply plugin: libs.plugins.spotless.get().getPluginId()
 
@@ -162,6 +147,7 @@ allprojects {
     }
     useJUnitPlatform {}
     testLogging {
+      exceptionFormat TestExceptionFormat.FULL
       events 'passed', 'skipped', 'failed'
       showStandardStreams = true
     }

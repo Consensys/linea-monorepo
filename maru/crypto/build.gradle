@@ -1,0 +1,11 @@
+plugins {
+  id 'maru.kotlin-library-conventions'
+}
+
+dependencies {
+  implementation(project(":core"))
+  implementation("org.hyperledger.besu.internal:algorithms")
+  implementation("org.hyperledger.besu:besu-datatypes")
+  implementation("org.hyperledger.besu.internal:core")
+  implementation "io.tmio:tuweni-bytes"
+}

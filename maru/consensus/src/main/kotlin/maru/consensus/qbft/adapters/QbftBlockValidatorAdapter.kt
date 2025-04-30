@@ -19,13 +19,18 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import java.util.Optional
 import maru.consensus.validation.BlockValidator
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockValidator
 
 class QbftBlockValidatorAdapter(
   private val blockValidator: BlockValidator,
 ) : QbftBlockValidator {
+  private val log: Logger = LogManager.getLogger(this::javaClass)
+
   override fun validateBlock(qbftBlock: QbftBlock): QbftBlockValidator.ValidationResult {
+    log.trace("validating ${blockValidator.javaClass.canonicalName}")
     val beaconBlock = qbftBlock.toBeaconBlock()
     return when (val blockValidationResult = blockValidator.validateBlock(beaconBlock).get()) {
       is Ok -> QbftBlockValidator.ValidationResult(true, Optional.empty())

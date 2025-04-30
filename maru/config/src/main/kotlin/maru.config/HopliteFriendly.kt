@@ -16,24 +16,18 @@
 package maru.config
 
 import com.sksamuel.hoplite.Masked
-import fromHexToByteArray
 import java.net.URL
-import kotlin.time.Duration
+import maru.extensions.fromHexToByteArray
 
 data class ValidatorDtoToml(
   val privateKey: Masked,
   val elClientEngineApiEndpoint: URL,
   val jwtSecretPath: String? = null,
-  val minTimeBetweenGetPayloadAttempts: Duration,
 ) {
   fun domainFriendly(): Validator =
     Validator(
-      key = privateKey.value.fromHexToByteArray(),
-      client =
-        ValidatorClientConfig(
-          engineApiClientConfig = ApiEndpointDtoToml(elClientEngineApiEndpoint, jwtSecretPath).toDomain(),
-          minTimeBetweenGetPayloadAttempts = minTimeBetweenGetPayloadAttempts,
-        ),
+      privateKey = privateKey.value.fromHexToByteArray(),
+      engineApiClient = ApiEndpointDtoToml(elClientEngineApiEndpoint, jwtSecretPath).toDomain(),
     )
 }
 
@@ -44,23 +38,19 @@ data class ApiEndpointDtoToml(
   fun toDomain(): ApiEndpointConfig = ApiEndpointConfig(endpoint = endpoint, jwtSecretPath = jwtSecretPath)
 }
 
-data class DummyConsensusOptionsDtoToml(
-  val communicationTimeMargin: Duration,
-) {
-  fun domainFriendly(): DummyConsensusOptions = DummyConsensusOptions(communicationTimeMargin)
-}
-
 data class MaruConfigDtoToml(
+  private val persistence: Persistence,
+  private val qbftOptions: QbftOptions,
   private val sotEthEndpoint: ApiEndpointDtoToml,
-  private val dummyConsensusOptions: DummyConsensusOptionsDtoToml?,
   private val p2pConfig: P2P?,
   private val validator: ValidatorDtoToml?,
   private val followerEngineApis: Map<String, ApiEndpointDtoToml>?,
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
+      persistence = persistence,
+      qbftOptions = qbftOptions,
       sotNode = sotEthEndpoint.toDomain(),
-      dummyConsensusOptions = dummyConsensusOptions?.domainFriendly(),
       p2pConfig = p2pConfig,
       validator = validator?.domainFriendly(),
       followers = FollowersConfig(followers = followerEngineApis?.mapValues { it.value.toDomain() } ?: emptyMap()),

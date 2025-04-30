@@ -15,45 +15,21 @@
  */
 package maru.executionlayer.manager
 
-import kotlin.jvm.optionals.getOrNull
 import maru.core.ExecutionPayload
-import maru.executionlayer.client.ExecutionLayerClient
-import maru.executionlayer.client.MetadataProvider
-import maru.executionlayer.extensions.toPayloadAttributesV1
+import maru.executionlayer.client.ExecutionLayerEngineApiClient
+import maru.mappers.Mappers.toDomain
+import maru.mappers.Mappers.toPayloadAttributesV1
 import org.apache.logging.log4j.LogManager
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceStateV1
-import tech.pegasys.teku.ethereum.executionclient.schema.Response
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import tech.pegasys.teku.infrastructure.bytes.Bytes8
-import tech.pegasys.teku.spec.executionlayer.ExecutionPayloadStatus
-import tech.pegasys.teku.ethereum.executionclient.schema.ForkChoiceUpdatedResult as TekuForkChoiceUpdatedResult
 
-object NoopValidator : ExecutionPayloadValidator {
-  override fun validate(executionPayload: ExecutionPayload): ExecutionPayloadValidator.ValidationResult =
-    ExecutionPayloadValidator.ValidationResult.Valid(executionPayload)
-}
-
-class JsonRpcExecutionLayerManager private constructor(
-  private val executionLayerClient: ExecutionLayerClient,
-  private val payloadValidator: ExecutionPayloadValidator,
+class JsonRpcExecutionLayerManager(
+  private val executionLayerEngineApiClient: ExecutionLayerEngineApiClient,
 ) : ExecutionLayerManager {
   private val log = LogManager.getLogger(this.javaClass)
-
-  companion object {
-    fun create(
-      executionLayerClient: ExecutionLayerClient,
-      metadataProvider: MetadataProvider,
-      payloadValidator: ExecutionPayloadValidator,
-    ): SafeFuture<JsonRpcExecutionLayerManager> =
-      metadataProvider.getLatestBlockMetadata().thenApply {
-        JsonRpcExecutionLayerManager(
-          executionLayerClient = executionLayerClient,
-          payloadValidator = payloadValidator,
-        )
-      }
-  }
 
   private var payloadId: ByteArray? = null
 
@@ -65,7 +41,7 @@ class JsonRpcExecutionLayerManager private constructor(
     feeRecipient: ByteArray,
   ): SafeFuture<ForkChoiceUpdatedResult> {
     log.debug(
-      "Trying to create a block with timestamp={}",
+      "Trying to create a new block with timestamp={}",
       nextBlockTimestamp,
     )
     val payloadAttributes =
@@ -73,31 +49,11 @@ class JsonRpcExecutionLayerManager private constructor(
         timestamp = nextBlockTimestamp,
         suggestedFeeRecipient = feeRecipient,
       )
-    log.debug("Starting block building with payload attributes {}", payloadAttributes)
+    log.debug("Starting block building with payloadAttributes={}", payloadAttributes)
     return forkChoiceUpdate(headHash, safeHash, finalizedHash, payloadAttributes).thenPeek {
-      log.debug("Setting payload Id, timestamp={}", nextBlockTimestamp)
+      log.debug("Setting payload Id, nextBlockTimestamp={}", nextBlockTimestamp)
       payloadId = it.payloadId
     }
-  }
-
-  private fun mapForkChoiceUpdatedResultToDomain(
-    forkChoiceUpdatedResult: Response<TekuForkChoiceUpdatedResult>,
-  ): ForkChoiceUpdatedResult {
-    val payload = forkChoiceUpdatedResult.payload.asInternalExecutionPayload()
-    val parsedPayloadId =
-      payload.payloadId
-        .getOrNull()
-        ?.wrappedBytes
-        ?.toArray()
-    val payloadStatusV1 = payload.payloadStatus
-    val domainPayloadStatus =
-      PayloadStatus(
-        payloadStatusV1.status.getOrNull()?.name,
-        payloadStatusV1.latestValidHash.getOrNull()?.toArray(),
-        payloadStatusV1.validationError.getOrNull(),
-        payloadStatusV1.failureCause.getOrNull(),
-      )
-    return ForkChoiceUpdatedResult(domainPayloadStatus, parsedPayloadId)
   }
 
   override fun finishBlockBuilding(): SafeFuture<ExecutionPayload> {
@@ -108,28 +64,13 @@ class JsonRpcExecutionLayerManager private constructor(
         ),
       )
     }
-    return executionLayerClient
-      .getPayload(Bytes8(Bytes.wrap(payloadId!!)))
-      .thenCompose { payloadResponse ->
-        if (payloadResponse.isSuccess) {
-          val executionPayload = payloadResponse.payload
-          val validationResult = payloadValidator.validate(executionPayload)
-
-          if (validationResult is ExecutionPayloadValidator.ValidationResult.Invalid) {
-            throw RuntimeException(validationResult.reason)
-          }
-          importPayload(executionPayload).thenApply {
-            log.debug("Unsetting payload Id, blockNumber={}", executionPayload.blockNumber)
-
-            payloadId = null // Not necessary, but it helps to reinforce the order of calls
-            executionPayload
-          }
-        } else {
-          SafeFuture.failedFuture(
-            IllegalStateException("engine_getPayload request failed! Cause: " + payloadResponse.errorMessage),
-          )
-        }
+    return executionLayerEngineApiClient.getPayload(Bytes8(Bytes.wrap(payloadId!!))).thenApply { payloadResponse ->
+      if (payloadResponse.isSuccess) {
+        payloadResponse.payload
+      } else {
+        throw IllegalStateException("engine_getPayload request failed! Cause: " + payloadResponse.errorMessage)
       }
+    }
   }
 
   override fun setHead(
@@ -150,7 +91,7 @@ class JsonRpcExecutionLayerManager private constructor(
     finalizedHash: ByteArray,
     payloadAttributes: PayloadAttributes?,
   ): SafeFuture<ForkChoiceUpdatedResult> =
-    executionLayerClient
+    executionLayerEngineApiClient
       .forkChoiceUpdate(
         ForkChoiceStateV1(
           Bytes32.wrap(headHash),
@@ -158,24 +99,8 @@ class JsonRpcExecutionLayerManager private constructor(
           Bytes32.wrap(finalizedHash),
         ),
         payloadAttributes?.toPayloadAttributesV1(),
-      ).thenCompose { response ->
+      ).thenApply { response ->
         log.debug("Forkchoice update response with payload attributes {}", response)
-        if (response.isFailure) {
-          // TODO: Temporary hack for protocol switches. Should go when QBFT fully works along with dummy consensus
-          executionLayerClient
-            .forkChoiceUpdate(
-              ForkChoiceStateV1(
-                Bytes32.wrap(headHash),
-                Bytes32.wrap(safeHash),
-                Bytes32.wrap(finalizedHash),
-              ),
-              null,
-            )
-        } else {
-          SafeFuture.completedFuture(response)
-        }
-      }.thenApply { response ->
-        log.debug("Forkchoice update response after a retry without payload attributes {}", response)
         if (response.isFailure) {
           throw IllegalStateException(
             "forkChoiceUpdate request failed! nextBlockTimestamp=${
@@ -183,32 +108,22 @@ class JsonRpcExecutionLayerManager private constructor(
             } " + response.errorMessage,
           )
         } else {
-          mapForkChoiceUpdatedResultToDomain(response)
+          response.payload.toDomain()
         }
       }
 
-  override fun importPayload(executionPayload: ExecutionPayload): SafeFuture<Unit> =
-    executionLayerClient.newPayload(executionPayload).thenApply { payloadStatusResponse ->
+  override fun newPayload(executionPayload: ExecutionPayload): SafeFuture<PayloadStatus> =
+    executionLayerEngineApiClient.newPayload(executionPayload).thenApply { payloadStatusResponse ->
       if (payloadStatusResponse.isSuccess) {
         if (payloadStatusResponse.payload == null) {
           throw IllegalStateException(
-            "engine_newPayload request failed! blockNumber=${executionPayload.blockNumber} " +
-              "response=" + payloadStatusResponse,
+            "engine_newPayload request failed! blockNumber=${executionPayload.blockNumber} " + "response=" +
+              payloadStatusResponse,
           )
         }
-        val payloadStatusEnvelope = payloadStatusResponse.payload.asInternalExecutionPayload()
-        when (val payloadStatus = payloadStatusEnvelope.status.get()) {
-          ExecutionPayloadStatus.VALID -> log.debug("Block was imported")
-          ExecutionPayloadStatus.SYNCING -> log.debug("Node is syncing")
-          ExecutionPayloadStatus.INVALID -> throw IllegalStateException(
-            "engine_newPayload request failed! Cause: " +
-              payloadStatusEnvelope
-                .validationError
-                .getOrNull(),
-          )
-
-          else -> log.error("Unexpected import status! status={}", payloadStatus)
-        }
+        log.debug("Unsetting payload id, after importing blockNumber={}", executionPayload.blockNumber)
+        payloadId = null // Not necessary, but it helps to reinforce the order of calls
+        payloadStatusResponse.payload.asInternalExecutionPayload().toDomain()
       } else {
         throw IllegalStateException("engine_newPayload request failed! Cause: " + payloadStatusResponse.errorMessage)
       }

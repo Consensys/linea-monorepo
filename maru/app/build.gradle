@@ -7,16 +7,21 @@ dependencies {
   implementation(project(":consensus"))
   implementation(project(":core"))
   implementation(project(":executionlayer"))
+  implementation(project(":storage"))
+  implementation(project(":crypto"))
+  implementation(project(":serialization"))
+  implementation(project(":jvm-libs:extensions"))
+  implementation(project(":jvm-libs:mappers"))
 
   implementation "info.picocli:picocli"
   implementation "com.sksamuel.hoplite:hoplite-core"
 
+  implementation("org.hyperledger.besu.internal:metrics-core")
+
   testImplementation(project(":jvm-libs:test-utils"))
   testImplementation(testFixtures(project(":core")))
   testImplementation(testFixtures(project(":config")))
-  testImplementation("org.hyperledger.besu.internal:core")
   testImplementation "org.hyperledger.besu.internal:api"
-  testImplementation("org.hyperledger.besu.internal:algorithms")
   testImplementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')
 
   testImplementation("org.hyperledger.besu.internal:merge")

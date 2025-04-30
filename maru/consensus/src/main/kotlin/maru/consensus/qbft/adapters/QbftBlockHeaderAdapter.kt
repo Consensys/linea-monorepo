@@ -15,8 +15,8 @@
  */
 package maru.consensus.qbft.adapters
 
+import maru.consensus.qbft.toAddress
 import maru.core.BeaconBlockHeader
-import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.datatypes.Address
@@ -32,7 +32,7 @@ class QbftBlockHeaderAdapter(
 
   override fun getTimestamp(): Long = beaconBlockHeader.timestamp.toLong()
 
-  override fun getCoinbase(): Address = Address.wrap(Bytes.wrap(beaconBlockHeader.proposer.address))
+  override fun getCoinbase(): Address = beaconBlockHeader.proposer.toAddress()
 
   override fun getHash(): Hash = Hash.wrap(Bytes32.wrap(beaconBlockHeader.hash()))
 
@@ -46,4 +46,6 @@ class QbftBlockHeaderAdapter(
   }
 
   override fun hashCode(): Int = beaconBlockHeader.hashCode()
+
+  override fun toString(): String = beaconBlockHeader.toString()
 }

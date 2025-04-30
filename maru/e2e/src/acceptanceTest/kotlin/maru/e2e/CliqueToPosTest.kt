@@ -19,7 +19,6 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.palantir.docker.compose.DockerComposeRule
 import com.palantir.docker.compose.configuration.ProjectName
 import com.palantir.docker.compose.connection.waiting.HealthChecks
-import fromHexToByteArray
 import java.io.File
 import java.math.BigInteger
 import java.nio.file.Files
@@ -28,13 +27,20 @@ import java.nio.file.StandardCopyOption
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import maru.app.BlockImportHandler
-import maru.app.Helpers.createBlockImporter
+import maru.app.Helpers
 import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
-import maru.e2e.Mappers.toDomain
+import maru.consensus.ElFork
+import maru.consensus.NewBlockHandler
+import maru.consensus.blockimport.FollowerBeaconBlockImporter
+import maru.core.BeaconBlock
+import maru.core.BeaconBlockBody
+import maru.core.BeaconBlockHeader
+import maru.core.Validator
 import maru.e2e.TestEnvironment.waitForInclusion
-import maru.executionlayer.manager.BlockMetadata
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
+import maru.mappers.Mappers.toDomain
+import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
@@ -63,6 +69,7 @@ class CliqueToPosTest {
     private lateinit var maru: MaruApp
     private var pragueSwitchTimestamp: Long = 0
     private val genesisDir = File("../docker/initialization")
+    private val dataDir = File("/tmp/maru-db").also { it.deleteOnExit() }
 
     private fun parsePragueSwitchTimestamp(): Long {
       val objectMapper = ObjectMapper()
@@ -84,9 +91,11 @@ class CliqueToPosTest {
     @JvmStatic
     fun beforeAll() {
       deleteGenesisFiles()
+      dataDir.deleteRecursively()
       qbftCluster.before()
 
       pragueSwitchTimestamp = parsePragueSwitchTimestamp()
+      dataDir.mkdirs()
       maru = MaruFactory.buildTestMaru(pragueSwitchTimestamp)
     }
 
@@ -133,9 +142,9 @@ class CliqueToPosTest {
       TestEnvironment.sendArbitraryTransaction().waitForInclusion()
     }
 
-    val latestBlock = getBlockByNumber(6)!!
-    assertThat(latestBlock.timestamp.toLong()).isGreaterThanOrEqualTo(parsePragueSwitchTimestamp())
-    assertNodeLatestBlockHeight(TestEnvironment.sequencerL2Client)
+    val postMergeBlock = getBlockByNumber(6)!!
+    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThan(parsePragueSwitchTimestamp())
+    assertNodeBlockHeight(TestEnvironment.sequencerL2Client)
 
     waitForAllBlockHeightsToMatch()
     maru.stop()
@@ -148,6 +157,8 @@ class CliqueToPosTest {
     nodeName: String,
     engineApiConfig: ApiEndpointConfig,
   ) {
+    // To fail right away in case switch failed in the first place
+    assertNodeBlockHeight(TestEnvironment.sequencerL2Client)
     val nodeEthereumClient = TestEnvironment.followerClientsPostMerge[nodeName]!!
     restartNodeFromScratch(nodeName, nodeEthereumClient)
     log.info("Container $nodeName restarted")
@@ -163,6 +174,18 @@ class CliqueToPosTest {
           .timeout(30.seconds.toJavaDuration())
       }
 
+    if (nodeName.contains("besu")) {
+      // Required to change validation rules from Clique to PostMerge
+      // TODO: investigate this issue more. It was working happen with Dummy Consensus
+      syncTarget(engineApiConfig, 5)
+      awaitCondition
+        .ignoreExceptions()
+        .alias(nodeName)
+        .untilAsserted {
+          assertNodeBlockHeight(nodeEthereumClient, 5L)
+        }
+    }
+
     awaitCondition
       .ignoreExceptions()
       .alias(nodeName)
@@ -171,9 +194,8 @@ class CliqueToPosTest {
           // For some reason Erigon needs a restart after PoS transition
           restartNodeKeepingState(nodeName, nodeEthereumClient)
         }
-        val latestBlock = getBlockByNumber(9, retreiveTransactions = true)!!
-
-        buildBlockImportHandler(engineApiConfig, latestBlock).handleNewBlock(latestBlock.toDomain())
+        // TODO: Sync should be done entirely by Maru in the future
+        syncTarget(engineApiConfig, 9)
         if (nodeName.contains("follower-geth")) {
           val latestBlockFromGeth =
             getBlockByNumber(
@@ -184,34 +206,19 @@ class CliqueToPosTest {
           // For some reason it doesn't set latest block correctly, but the block is available
           assertThat(latestBlockFromGeth).isNotNull
         } else {
-          assertNodeLatestBlockHeight(nodeEthereumClient)
+          assertNodeBlockHeight(nodeEthereumClient)
         }
       }
   }
 
-  private fun buildBlockImportHandler(
-    engineApiConfig: ApiEndpointConfig,
-    latestBlock: EthBlock.Block,
-  ): BlockImportHandler {
-    val metadataProvider = {
-      SafeFuture.completedFuture(
-        BlockMetadata(
-          latestBlock.number
-            .toLong()
-            .toULong(),
-          latestBlock.hash.fromHexToByteArray(),
-          latestBlock.timestamp.toLong(),
-        ),
-      )
-    }
-    return createBlockImporter(engineApiConfig, metadataProvider)
-  }
+  private fun buildBlockImportHandler(engineApiConfig: ApiEndpointConfig): NewBlockHandler<ForkChoiceUpdatedResult> =
+    FollowerBeaconBlockImporter.create(Helpers.buildExecutionEngineClient(engineApiConfig, ElFork.Prague))
 
   private fun waitTillTimestamp(timestamp: Long) {
     await.timeout(1.minutes.toJavaDuration()).pollInterval(5.seconds.toJavaDuration()).untilAsserted {
       val unixTimestamp = System.currentTimeMillis() / 1000
       log.info(
-        "Waiting {} seconds for the Prague switch",
+        "Waiting {} seconds for the Prague switch at timestamp $timestamp",
         timestamp - unixTimestamp,
       )
       assertThat(unixTimestamp).isGreaterThan(timestamp)
@@ -266,6 +273,30 @@ class CliqueToPosTest {
       }
   }
 
+  private fun syncTarget(
+    engineApiConfig: ApiEndpointConfig,
+    headBlockNumber: Long,
+  ) {
+    val latestBlock = getBlockByNumber(headBlockNumber, retreiveTransactions = true)!!
+
+    val latestExecutionPayload = latestBlock.toDomain()
+    val stubBeaconBlock =
+      BeaconBlock(
+        BeaconBlockHeader(
+          number = 0u,
+          round = 0u,
+          timestamp = latestExecutionPayload.timestamp,
+          proposer = Validator(latestExecutionPayload.feeRecipient),
+          parentRoot = BeaconBlockHeader.EMPTY_HASH,
+          stateRoot = BeaconBlockHeader.EMPTY_HASH,
+          bodyRoot = BeaconBlockHeader.EMPTY_HASH,
+          headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+        ),
+        BeaconBlockBody(emptyList(), latestExecutionPayload),
+      )
+    buildBlockImportHandler(engineApiConfig).handleNewBlock(stubBeaconBlock).get()
+  }
+
   private fun sendCliqueTransactions() {
     val sequencerBlock = TestEnvironment.sequencerL2Client.ethBlockNumber().send()
     if (sequencerBlock.blockNumber >= BigInteger.valueOf(5)) {
@@ -274,9 +305,12 @@ class CliqueToPosTest {
     repeat(5) { TestEnvironment.sendArbitraryTransaction().waitForInclusion() }
   }
 
-  private fun assertNodeLatestBlockHeight(web3j: Web3j) {
+  private fun assertNodeBlockHeight(
+    web3j: Web3j,
+    expectedBlockNumber: Long = 9L,
+  ) {
     val targetNodeBlockHeight = web3j.ethBlockNumber().send().blockNumber
-    assertThat(targetNodeBlockHeight).isEqualTo(9L)
+    assertThat(targetNodeBlockHeight).isEqualTo(expectedBlockNumber)
   }
 
   private fun waitForAllBlockHeightsToMatch() {

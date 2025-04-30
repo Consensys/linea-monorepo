@@ -19,6 +19,7 @@ import java.nio.file.Path
 import java.util.Optional
 import kotlin.random.Random
 import maru.core.ext.DataGenerators
+import maru.database.BeaconChain
 import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import org.hyperledger.besu.plugin.services.metrics.MetricCategory
@@ -32,7 +33,7 @@ class KvDatabaseTest {
     override fun getApplicationPrefix(): Optional<String> = Optional.empty()
   }
 
-  private fun createDatabase(databasePath: Path): KvDatabase =
+  private fun createDatabase(databasePath: Path): BeaconChain =
     KvDatabaseFactory.createRocksDbDatabase(
       databasePath = databasePath,
       metricsSystem = NoOpMetricsSystem(),

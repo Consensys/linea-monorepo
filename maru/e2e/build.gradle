@@ -6,27 +6,21 @@ plugins {
 }
 
 dependencies {
+  implementation project(":core")
   implementation project(":app")
   implementation project(":consensus")
+  implementation project(":executionlayer")
   implementation project(":config")
   // For the syncing logic
-  implementation project(":core")
-  implementation(project(":executionlayer"))
+  implementation project(":jvm-libs:mappers")
   implementation(project(":serialization"))
   implementation(project(":jvm-libs:extensions"))
 
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:time"
-  implementation "tech.pegasys.teku.internal:bytes"
   implementation "tech.pegasys.teku.internal:ethereum-events"
   implementation "tech.pegasys.teku.internal:spec"
-  implementation "tech.pegasys.teku.internal:unsigned"
 
-  implementation "org.hyperledger.besu.internal:rlp"
-  implementation "org.hyperledger.besu.internal:core"
-  implementation "org.hyperledger.besu:besu-datatypes"
-  implementation "org.hyperledger.besu:plugin-api"
-  implementation "org.hyperledger.besu.internal:algorithms"
 
   implementation ("org.web3j:core")
 

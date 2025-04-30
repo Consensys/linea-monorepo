@@ -15,9 +15,17 @@
  */
 package maru.core
 
+import maru.extensions.encodeHex
+
 data class Validator(
   val address: ByteArray,
 ) {
+  init {
+    require(address.size == 20) {
+      "Addresses should be 20 bytes long"
+    }
+  }
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -28,4 +36,6 @@ data class Validator(
   }
 
   override fun hashCode(): Int = address.contentHashCode()
+
+  override fun toString(): String = "Validator(address=${address.encodeHex()})"
 }

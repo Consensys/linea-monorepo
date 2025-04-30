@@ -20,7 +20,14 @@ import maru.consensus.ConsensusConfig
 import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
 import maru.consensus.ProtocolFactory
+import maru.core.BeaconBlock
+import maru.core.BeaconBlockBody
+import maru.core.BeaconBlockHeader
+import maru.core.ExecutionPayload
 import maru.core.Protocol
+import maru.core.Validator
+import maru.mappers.Mappers.toDomain
+import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.web3j.protocol.Web3j
@@ -29,7 +36,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class ElDelegatedConsensusFactory(
   private val ethereumJsonRpcClient: Web3j,
-  private val newBlockHandler: NewBlockHandler,
+  private val newBlockHandler: NewBlockHandler<*>,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): ElDelegatedConsensus =
     ElDelegatedConsensus(
@@ -41,11 +48,11 @@ class ElDelegatedConsensusFactory(
 
 class ElDelegatedConsensus(
   private val ethereumJsonRpcClient: Web3j,
-  private val onNewBlock: NewBlockHandler,
+  private val onNewBlock: NewBlockHandler<*>,
   private val blockTimeSeconds: Int,
 ) : Protocol {
   // Only for comparisons in the tests to set common ground
-  object ElDelegatedConfig : ConsensusConfig
+  data object ElDelegatedConfig : ConsensusConfig
 
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -80,9 +87,9 @@ class ElDelegatedConsensus(
 
     return SafeFuture
       .of(
-        ethereumJsonRpcClient.ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), false).sendAsync(),
+        ethereumJsonRpcClient.ethGetBlockByNumber(DefaultBlockParameter.valueOf("latest"), true).sendAsync(),
       ).thenApply {
-        onNewBlock.handleNewBlock(Mapper.mapWeb3jBlockToBeaconBlock(it.block))
+        onNewBlock.handleNewBlock(wrapIntoDummyBeaconBlock(it.block.toDomain()))
       }.handleException {
         log.error(it.message, it)
       }.thenApply {
@@ -94,5 +101,22 @@ class ElDelegatedConsensus(
             SafeFuture.delayedExecutor(blockTimeSeconds.toLong(), TimeUnit.SECONDS),
           )
       }
+  }
+
+  private fun wrapIntoDummyBeaconBlock(executionPayload: ExecutionPayload): BeaconBlock {
+    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptyList(), executionPayload = executionPayload)
+
+    val beaconBlockHeader =
+      BeaconBlockHeader(
+        number = 0u,
+        round = 0u,
+        timestamp = executionPayload.timestamp,
+        proposer = Validator(executionPayload.feeRecipient),
+        parentRoot = BeaconBlockHeader.EMPTY_HASH,
+        stateRoot = BeaconBlockHeader.EMPTY_HASH,
+        bodyRoot = BeaconBlockHeader.EMPTY_HASH,
+        headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
+      )
+    return BeaconBlock(beaconBlockHeader, beaconBlockBody)
   }
 }
