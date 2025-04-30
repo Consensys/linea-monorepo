@@ -50,3 +50,5 @@ Safe Member
 - Only council or operational safes may perform this action
 - **Fee changes** must be reviewed for economic impact
 - Requires **simulation and multisig confirmation**
+
+<img src="../diagrams/settingMinimumL2Fee.png">

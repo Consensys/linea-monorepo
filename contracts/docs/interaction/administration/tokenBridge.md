@@ -55,3 +55,6 @@ Safe Member
 - Admin functions require **authorized multisig approval**
 - All actions are **on-chain and irreversible**
 - **Parameter verification and simulation** are mandatory before execution
+
+
+<img src="../diagrams/tokenBridge.png">

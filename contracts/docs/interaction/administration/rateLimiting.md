@@ -53,3 +53,5 @@ Safe Member
 - Changes require **multisig execution**
 - All function parameters must be **explicitly verified**
 - Simulation before execution is mandatory
+
+<img src="../diagrams/rateLimiting.png">

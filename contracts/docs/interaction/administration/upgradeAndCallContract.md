@@ -106,3 +106,5 @@ This guide outlines the process of **upgrading an upgradable contract** (e.g. **
 - Upgrades and initializations happen **atomically** via `upgradeAndCall()`
 - Timelock and council governance ensures **review and delay**
 - Full **simulation and verification** required before execution
+
+<img src="../diagrams/upgradeAndCallContract.png">

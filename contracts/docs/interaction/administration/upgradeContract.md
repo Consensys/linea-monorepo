@@ -104,3 +104,5 @@ This guide outlines the secure process for upgrading a contract (e.g. **LineaRol
 - All upgrades go through a **timelock delay** using multisig control
 - Contract upgrades do **not require reinitialization**
 - **Transaction simulation and parameter verification** are essential at both stages
+
+<img src="../diagrams/upgradeContract.png">

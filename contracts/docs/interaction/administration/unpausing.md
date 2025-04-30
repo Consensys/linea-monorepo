@@ -66,3 +66,5 @@ Safe Member
 | L1 TokenBridge     | `0x051F1D88f0aF5673fB88BeC4378eD4BB29ea3319`       |
 | L2MessageService   | `0x508cA82Df566dCD1B0DE828967a0e96332cDc446`      |
 | L2 Token Bridge    | `0x353012d04a9A6cF5C941bADC267f82004A8ceB9`        |
+
+<img src="../diagrams/unpausing.png">

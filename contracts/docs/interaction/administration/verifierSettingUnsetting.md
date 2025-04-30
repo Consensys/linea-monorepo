@@ -95,3 +95,5 @@ Council Member
 - All changes go through **delayed execution** via the `TimelockController`
 - All functions and parameters must be **independently verified**
 - Ensures decentralized governance and secure upgrades
+
+<img src="../diagrams/verifierSettingUnsetting.png">

@@ -104,3 +104,5 @@ Safe Member
 - Role changes are **on-chain** and require **multisig execution**
 - Clear access separation across all core modules
 - Function selectors and role identifiers must be fully **verified and simulated**
+
+<img src="../diagrams/roleManagement.png">
