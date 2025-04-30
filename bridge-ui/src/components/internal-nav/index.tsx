@@ -10,7 +10,7 @@ const NavData = [
     href: "/",
   },
   {
-    title: "Layerswap",
+    title: "CEX",
     href: "/layerswap",
   },
   {
