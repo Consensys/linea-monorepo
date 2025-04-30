@@ -11,7 +11,8 @@ This document describes the step-by-step flow of how a canonical message is sent
 2. The contract:
    - Verifies non-empty data
    - Gets the next message number
-   - Computes the rolling hash
+   - Computes the message hash with all the message fields
+   - Computes the rolling hash using the previous rolling hash and the new message hash
    - Stores the rolling hash and emits a message event
 3. **Coordinator** captures the emitted event and message hash.
 4. Coordinator:

@@ -6,7 +6,7 @@ Each section below links to a dedicated Markdown document detailing that categor
 
 ---
 
-## 📑 Workflow Index
+## 📑 Workflows
 
 ### 1. 🔐 [Role Management](../administration/roleManagement.md)
 Granting or revoking operational roles on core contracts like LineaRollup, L2MessageService, and TokenBridge.
@@ -41,6 +41,4 @@ View the L2 to L1 Token Bridging flow.
 - All workflows require transaction simulation and parameter verification.
 - Some admin operations are governed by time-locked multisigs.
 - Contract addresses and roles are listed inline in each document.
-
-For questions or reviews, please contact the Linea protocol engineering team.
 

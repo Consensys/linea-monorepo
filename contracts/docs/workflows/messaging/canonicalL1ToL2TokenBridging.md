@@ -15,7 +15,8 @@ This document describes how tokens are bridged canonically from L1 to L2, step-b
 4. The contract:
    - Verifies non-empty data
    - Gets the next message number
-   - Computes the rolling hash
+   - Computes the message hash with all the message fields
+   - Computes the rolling hash using the previous rolling hash and the new message hash
    - Stores the rolling hash and emits a message event
 5. **Coordinator** captures the event and message hash.
 6. Coordinator:

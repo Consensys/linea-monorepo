@@ -15,7 +15,7 @@ This document outlines the process of bridging tokens from L2 back to L1 using t
 4. The `L2MessageService`:
    - Verifies non-empty data
    - Gets the next message number
-   - Computes the message hash
+   - Computes the message hash with all the message fields
    - Stores message hash and emits event
 5. **Coordinator** captures the event and message hash.
 6. Coordinator:

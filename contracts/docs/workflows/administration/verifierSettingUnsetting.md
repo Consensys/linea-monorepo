@@ -16,11 +16,6 @@ This document outlines the secure and auditable flow for **setting or unsetting 
   - ✅ Must be **confirmed to match audited code** by multiple auditors
   - ✅ Bytecode must be **verified** to match the audited version
 
-**Visual Components:**
-- `Implementation 0xAbCd1234`
-- "Verified on Etherscan"
-- "Bytecode verified to match audited Bytecode"
-
 ---
 
 ## 🟧 2. Schedule Transaction via Timelock
