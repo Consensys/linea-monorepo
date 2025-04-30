@@ -81,13 +81,7 @@ runs:
       id: releasetag
       shell: bash
       run: |
-        if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-          echo "releasetag=${{ steps.dockertag.outputs.dockertag }}" >> $GITHUB_OUTPUT
-        elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
-          echo "releasetag=${{ inputs.linea_env }}-develop" >> $GITHUB_OUTPUT
-        else
-          echo "releasetag=${{ inputs.linea_env }}" >> $GITHUB_OUTPUT
-        fi
+        echo "releasetag=${{ steps.dockertag.outputs.dockertag }}" >> $GITHUB_OUTPUT
 
     - name: set docker image
       id: dockerimage
