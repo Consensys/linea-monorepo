@@ -15,6 +15,12 @@ import (
 
 // Prover steps of Vortex that is run in place of committing to polynomials
 func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
+	// Check if that is a dry round
+	if ctx.isDry(round) {
+		// Nothing special to do.
+		return func(pr *wizard.ProverRuntime) {}
+	}
+
 	return func(pr *wizard.ProverRuntime) {
 		var (
 			committedMatrix vortex.EncodedMatrix
@@ -74,6 +80,11 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 
 	// Collect all the committed polynomials : round by round
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		// There are not included in the commitments so there
+		// is no need to compute their linear combination.
+		if ctx.isDry(round) {
+			continue
+		}
 		pols := ctx.getPols(pr, round)
 		// Push pols to the right stack
 		if ctx.IsSISReplacedByMiMC[round] {
@@ -110,6 +121,11 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(pr *wizard.ProverRuntime) {
 
 	// Collect all the committed polynomials : round by round
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		// There are not included in the commitments so there
+		// is no need to proceed.
+		if ctx.isDry(round) {
+			continue
+		}
 		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
 		committedSV = append(committedSV, committedMatrix...)
 	}
@@ -148,6 +164,11 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		// There are not included in the commitments so there
+		// is no need to proceed.
+		if ctx.isDry(round) {
+			continue
+		}
 		// Fetch it from the state
 		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
 		// and delete it because it won't be needed anymore and its very heavy
@@ -301,4 +322,9 @@ func (ctx *Ctx) unpackMerkleProofs(sv smartvectors.SmartVector, entryList []int)
 		}
 	}
 	return proofs
+}
+
+// returns true if the round is dry (i.e, there is nothing to commit to)
+func (ctx *Ctx) isDry(round int) bool {
+	return ctx.CommitmentsByRounds.Len() <= round || ctx.CommitmentsByRounds.LenOf(round) == 0
 }

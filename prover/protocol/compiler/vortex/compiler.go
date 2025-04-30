@@ -751,6 +751,9 @@ func (ctx *Ctx) NumCommittedRounds() int {
 	// the compileRound method. Careful, the stopping condition is
 	// an LE and not a strict LT condition.
 	for i := 0; i <= ctx.MaxCommittedRound; i++ {
+		if ctx.isDry(i) {
+			continue
+		}
 		res++
 	}
 
