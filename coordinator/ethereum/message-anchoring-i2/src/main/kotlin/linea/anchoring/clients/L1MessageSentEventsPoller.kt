@@ -55,7 +55,11 @@ class L1MessageSentEventsPoller(
     val remainingCapacity = queueRemainingCapacity()
 
     if (remainingCapacity == 0) {
-      log.debug("MessageSent event queue is full, skipping fetching new events")
+      log.debug(
+        "skipping fetching MessageSent events: queueSize={} reached targetCapacity={}",
+        eventsQueue.size,
+        eventsQueueMaxCapacity
+      )
       return SafeFuture.completedFuture(null)
     }
 

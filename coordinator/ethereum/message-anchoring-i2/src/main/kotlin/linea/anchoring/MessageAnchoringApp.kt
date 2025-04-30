@@ -47,7 +47,7 @@ class MessageAnchoringApp(
     )
 
   private val eventsQueue: Deque<MessageSentEvent> = LinkedBlockingDeque()
-  val eventsQueueSize: Int
+  internal val eventsQueueSize: Int
     get() = eventsQueue.size
 
   private val l1EventsPoller = run {
