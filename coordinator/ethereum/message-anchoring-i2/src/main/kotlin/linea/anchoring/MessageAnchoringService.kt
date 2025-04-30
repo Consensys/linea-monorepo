@@ -12,7 +12,7 @@ import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.util.concurrent.PriorityBlockingQueue
+import java.util.Queue
 import kotlin.time.Duration
 
 class MessageAnchoringService(
@@ -20,7 +20,7 @@ class MessageAnchoringService(
   private val l1ContractAddress: String,
   private val l1EthLogsClient: EthLogsClient,
   private val l2MessageService: L2MessageServiceSmartContractClient,
-  private val eventsQueue: PriorityBlockingQueue<MessageSentEvent>,
+  private val eventsQueue: Queue<MessageSentEvent>,
   private val maxMessagesToAnchorPerL2Transaction: UInt,
   private val l2HighestBlockTag: BlockParameter,
   anchoringTickInterval: Duration,
@@ -36,13 +36,12 @@ class MessageAnchoringService(
       .thenApply { lastAnchoredL1MessageNumber ->
 
         // clean up the queue of events that are already anchored
-        eventsQueue.removeIf { it.messageNumber <= lastAnchoredL1MessageNumber }
+        val removed = eventsQueue.removeIf { it.messageNumber <= lastAnchoredL1MessageNumber }
 
+        log.debug("{}", removed)
         eventsQueue
-          .toArray(emptyArray<MessageSentEvent>())
+          .toTypedArray()
           .filter { it.messageNumber > lastAnchoredL1MessageNumber }
-          // needs sorting because PriorityBlockingQueue#toArray does not guarantee order
-          .sortedBy { it.messageNumber }
           .take(maxMessagesToAnchorPerL2Transaction.toInt())
       }.thenCompose { eventsToAnchor ->
         if (eventsToAnchor.isEmpty()) {

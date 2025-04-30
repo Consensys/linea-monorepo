@@ -9,7 +9,7 @@ import net.consensys.zkevm.PeriodicPollingService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.util.concurrent.PriorityBlockingQueue
+import java.util.Deque
 import kotlin.time.Duration
 
 class L1MessageSentEventsPoller(
@@ -17,7 +17,7 @@ class L1MessageSentEventsPoller(
   pollingInterval: Duration,
   private val l1SmartContractAddress: String,
   private val l1EventsSearcher: EthLogsSearcher,
-  private val eventsQueue: PriorityBlockingQueue<MessageSentEvent>,
+  private val eventsQueue: Deque<MessageSentEvent>,
   private val eventsQueueMaxCapacity: Int,
   private val l2MessageService: L2MessageServiceSmartContractClient,
   private val l1MessagesSentFetchLimit: UInt,
@@ -38,7 +38,7 @@ class L1MessageSentEventsPoller(
   )
 
   private fun nextMessageNumberToFetchFromL1(): SafeFuture<ULong> {
-    val queueLastMessage = eventsQueue.lastOrNull()
+    val queueLastMessage = eventsQueue.peekLast()
     if (queueLastMessage != null) {
       return SafeFuture.completedFuture(queueLastMessage.messageNumber.inc())
     } else {

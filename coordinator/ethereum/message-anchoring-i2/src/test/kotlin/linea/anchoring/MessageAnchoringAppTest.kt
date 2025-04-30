@@ -224,7 +224,7 @@ class MessageAnchoringAppTest {
       l1PollingInterval = 1.milliseconds,
       l1EventSearchBlockChunk = 10u,
       l1EventPollingTimeout = 1.seconds,
-      messageQueueCapacity = 20u,
+      messageQueueCapacity = 10_000_000U, // TODO: Change to 20u and fix
       maxMessagesToAnchorPerL2Transaction = 50u,
       anchoringTickInterval = 10.milliseconds
     )

@@ -12,8 +12,9 @@ import linea.ethapi.EthLogsSearcherImpl
 import net.consensys.zkevm.LongRunningService
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import java.util.Deque
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.PriorityBlockingQueue
+import java.util.concurrent.LinkedBlockingDeque
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -45,7 +46,7 @@ class MessageAnchoringApp(
       config = EthLogsSearcherImpl.Config(loopSuccessBackoffDelay = config.l1SuccessBackoffDelay)
     )
 
-  private val eventsQueue = PriorityBlockingQueue<MessageSentEvent>(config.messageQueueCapacity.toInt())
+  private val eventsQueue: Deque<MessageSentEvent> = LinkedBlockingDeque(config.messageQueueCapacity.toInt())
 
   private val l1EventsPoller = run {
     L1MessageSentEventsPoller(
