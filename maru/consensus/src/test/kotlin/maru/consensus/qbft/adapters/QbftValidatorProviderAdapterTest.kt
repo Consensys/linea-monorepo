@@ -17,10 +17,9 @@ package maru.consensus.qbft.adapters
 
 import kotlin.test.Test
 import maru.consensus.ValidatorProvider
+import maru.consensus.qbft.toAddress
 import maru.core.ext.DataGenerators
-import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
-import org.hyperledger.besu.datatypes.Address
 import org.mockito.Mockito
 import org.mockito.kotlin.whenever
 import tech.pegasys.teku.infrastructure.async.SafeFuture.completedFuture
@@ -44,10 +43,10 @@ class QbftValidatorProviderAdapterTest {
 
     assertThat(
       qbftValidatorProviderAdapter.getValidatorsAfterBlock(header1),
-    ).containsAll(validators1.map { Address.wrap(Bytes.wrap(it.address)) })
+    ).containsAll(validators1.map { it.toAddress() })
     assertThat(
       qbftValidatorProviderAdapter.getValidatorsAfterBlock(header2),
-    ).containsAll(validators2.map { Address.wrap(Bytes.wrap(it.address)) })
+    ).containsAll(validators2.map { it.toAddress() })
   }
 
   @Test
@@ -67,9 +66,9 @@ class QbftValidatorProviderAdapterTest {
     val qbftValidatorProviderAdapter = QbftValidatorProviderAdapter(validatorProvider)
     assertThat(
       qbftValidatorProviderAdapter.getValidatorsForBlock(header1),
-    ).containsAll(validators1.map { Address.wrap(Bytes.wrap(it.address)) })
+    ).containsAll(validators1.map { it.toAddress() })
     assertThat(
       qbftValidatorProviderAdapter.getValidatorsForBlock(header2),
-    ).containsAll(validators2.map { Address.wrap(Bytes.wrap(it.address)) })
+    ).containsAll(validators2.map { it.toAddress() })
   }
 }

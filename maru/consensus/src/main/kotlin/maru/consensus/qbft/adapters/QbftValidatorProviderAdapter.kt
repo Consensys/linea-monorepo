@@ -16,7 +16,7 @@
 package maru.consensus.qbft.adapters
 
 import maru.consensus.ValidatorProvider
-import org.apache.tuweni.bytes.Bytes
+import maru.consensus.qbft.toAddress
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
 import org.hyperledger.besu.consensus.qbft.core.types.QbftValidatorProvider
 import org.hyperledger.besu.datatypes.Address
@@ -28,12 +28,8 @@ class QbftValidatorProviderAdapter(
   private val validatorProvider: ValidatorProvider,
 ) : QbftValidatorProvider {
   override fun getValidatorsAfterBlock(header: QbftBlockHeader): Collection<Address> =
-    validatorProvider.getValidatorsAfterBlock(header.toBeaconBlockHeader().number).get().map {
-      Address.wrap(Bytes.wrap(it.address))
-    }
+    validatorProvider.getValidatorsAfterBlock(header.toBeaconBlockHeader().number).get().map { it.toAddress() }
 
   override fun getValidatorsForBlock(header: QbftBlockHeader): Collection<Address> =
-    validatorProvider.getValidatorsForBlock(header.toBeaconBlockHeader().number).get().map {
-      Address.wrap(Bytes.wrap(it.address))
-    }
+    validatorProvider.getValidatorsForBlock(header.toBeaconBlockHeader().number).get().map { it.toAddress() }
 }

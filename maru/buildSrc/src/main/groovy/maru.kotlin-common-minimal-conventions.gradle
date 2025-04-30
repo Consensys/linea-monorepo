@@ -16,13 +16,18 @@ repositories {
     url 'https://artifacts.consensys.net/public/teku/maven/'
     content { includeGroupAndSubgroups('tech.pegasys') }
   }
-//  maven {
-//    url "https://hyperledger.jfrog.io/artifactory/besu-maven/"
-//    content { includeGroupAndSubgroups('org.hyperledger.besu') }
-//  }
-//  maven {
-//    url "https://artifacts.consensys.net/public/maven/maven/"
-//  }
+  maven {
+    url 'https://hyperledger.jfrog.io/hyperledger/besu-maven'
+    content { includeGroupByRegex('org\\.hyperledger\\..*') }
+  }
+  maven {
+    url 'https://artifacts.consensys.net/public/maven/maven/'
+    content { includeGroupByRegex('tech\\.pegasys(\\..*)?') }
+  }
+  maven {
+    url 'https://splunk.jfrog.io/splunk/ext-releases-local'
+    content { includeGroupByRegex('com\\.splunk\\..*') }
+  }
 }
 
 dependencies {

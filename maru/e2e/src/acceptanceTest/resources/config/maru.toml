@@ -1,15 +1,17 @@
+[persistence]
+data-path="/tmp/maru-db"
+
 [sot-eth-endpoint]
 endpoint = "http://localhost:8545"
 
-[dummy-consensus-options]
-communication-time-margin=100m
+[qbft-options]
+communication-margin=100m
 
 [p2p-config]
 port = 3322
 
 [validator]
-private-key = "0xdead"
-min-time-between-get-payload-attempts=6000m
+private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
 el-client-engine-api-endpoint = "http://localhost:8550"
 
 [follower-engine-apis]

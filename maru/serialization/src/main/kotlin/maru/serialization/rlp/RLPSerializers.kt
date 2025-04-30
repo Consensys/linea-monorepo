@@ -19,6 +19,7 @@ import maru.core.HashUtil
 
 object RLPSerializers {
   val ValidatorSerializer = ValidatorSerializer()
+
   val BeaconBlockHeaderSerializer =
     BeaconBlockHeaderSerializer(
       validatorSerializer = ValidatorSerializer,
@@ -47,4 +48,5 @@ object RLPSerializers {
       beaconBlockHeaderSerializer = BeaconBlockHeaderSerializer,
       validatorSerializer = ValidatorSerializer,
     )
+  val DefaultHeaderHashFunction = HashUtil.headerHash(BeaconBlockHeaderSerializer, KeccakHasher)
 }

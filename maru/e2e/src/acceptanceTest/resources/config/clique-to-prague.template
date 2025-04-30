@@ -5,8 +5,8 @@
       "blockTimeSeconds": 1
     },
     "%PRAGUE_TIME%": {
-      "type": "dummy",
-      "blockTimeSeconds": 6,
+      "type": "qbft",
+      "blockTimeSeconds": 7,
       "feeRecipient": "0x0000000000000000000000000000000000000000",
       "elFork": "Prague"
     }

@@ -22,9 +22,10 @@ import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.delegated.ElDelegatedConsensus
-import maru.consensus.dummy.DummyConsensusConfig
+import maru.consensus.qbft.QbftConsensusConfig
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
 @OptIn(ExperimentalHoplite::class)
@@ -33,15 +34,15 @@ class JsonFriendlyForksScheduleTest {
     """
     {
       "config": {
-        "0": {
-          "type": "dummy",
-          "blockTimeSeconds": 1,
-          "feeRecipient": "0x0000000000000000000000000000000000000000",
-          "elFork": "Prague"
-        },
         "2": {
           "type": "delegated",
           "blockTimeSeconds": 4
+        },
+        "4": {
+          "type": "qbft",
+          "blockTimeSeconds": 6,
+          "feeRecipient": "0x0000000000000000000000000000000000000000",
+          "elFork": "Prague"
         }
       }
     }
@@ -53,23 +54,23 @@ class JsonFriendlyForksScheduleTest {
       parseJsonConfig<JsonFriendlyForksSchedule>(
         genesisConfig,
       )
-    val expectedDummyConsensusMap =
-      mapOf(
-        "type" to "dummy",
-        "blockTimeSeconds" to "1",
-        "feeRecipient" to "0x0000000000000000000000000000000000000000",
-        "elFork" to "Prague",
-      )
     val expectedDelegatedConsensusMap =
       mapOf(
         "type" to "delegated",
         "blockTimeSeconds" to "4",
       )
+    val expectedQbftMap =
+      mapOf(
+        "type" to "qbft",
+        "blockTimeSeconds" to "6",
+        "feeRecipient" to "0x0000000000000000000000000000000000000000",
+        "elFork" to "Prague",
+      )
     assertThat(config).isEqualTo(
       JsonFriendlyForksSchedule(
         mapOf(
-          "0" to expectedDummyConsensusMap,
           "2" to expectedDelegatedConsensusMap,
+          "4" to expectedQbftMap,
         ),
       ),
     )
@@ -85,21 +86,43 @@ class JsonFriendlyForksScheduleTest {
       ForksSchedule(
         setOf(
           ForkSpec(
-            0,
-            blockTimeSeconds = 2,
-            DummyConsensusConfig(
-              feeRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
-              elFork = ElFork.Prague,
-            ),
-          ),
-          ForkSpec(
-            2,
+            timestampSeconds = 2,
             blockTimeSeconds = 2,
             ElDelegatedConsensus.ElDelegatedConfig,
+          ),
+          ForkSpec(
+            timestampSeconds = 4,
+            blockTimeSeconds = 6,
+            configuration =
+              QbftConsensusConfig(
+                feeRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
+                elFork = ElFork.Prague,
+              ),
           ),
         ),
       ),
     )
+  }
+
+  @Test
+  fun parserFailsIfSomeConfigurationIsMissing() {
+    val invalidConfiguration =
+      """
+      {
+        "config": {
+          "4": {
+            "type": "qbft",
+            "feeRecipient": "0x0000000000000000000000000000000000000000",
+            "elFork": "Prague"
+          }
+        }
+      }
+      """.trimIndent()
+    assertThatThrownBy {
+      parseJsonConfig<JsonFriendlyForksSchedule>(
+        invalidConfiguration,
+      ).domainFriendly()
+    }.isInstanceOf(Exception::class.java)
   }
 
   private inline fun <reified T : Any> parseJsonConfig(json: String): T =

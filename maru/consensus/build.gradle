@@ -22,6 +22,7 @@ dependencies {
   implementation(project(":serialization"))
   implementation(project(":config"))
   implementation(project(":jvm-libs:extensions"))
+  implementation(project(":jvm-libs:mappers"))
   implementation(project(":executionlayer")) {
     because "because of protocol builders"
   }
@@ -35,13 +36,15 @@ dependencies {
   implementation("org.hyperledger.besu.internal:core")
   implementation("org.hyperledger.besu.internal:rlp")
   implementation("org.hyperledger.besu.internal:algorithms")
+  implementation("org.hyperledger.besu.internal:services")
+  implementation("org.hyperledger.besu.internal:p2p")
+  implementation("org.hyperledger.besu.internal:config")
   api("org.hyperledger.besu.internal:blockcreation") {
     because("of the BlockCreator")
   }
   implementation "org.hyperledger.besu.internal:qbft-core"
   implementation("org.hyperledger.besu:besu-datatypes")
   implementation("org.hyperledger.besu:evm")
-  implementation("org.hyperledger.besu.internal:algorithms")
   implementation("org.hyperledger.besu.internal:util")
 
   implementation "tech.pegasys.teku.internal:executionclient"

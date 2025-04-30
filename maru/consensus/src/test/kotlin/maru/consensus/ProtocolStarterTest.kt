@@ -18,14 +18,12 @@ package maru.consensus
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
-import kotlin.time.Duration.Companion.milliseconds
+import kotlin.random.Random
+import kotlin.random.nextULong
 import maru.core.Protocol
-import maru.core.ext.DataGenerators
-import maru.executionlayer.client.MetadataProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class ProtocolStarterTest {
   private class StubProtocol : Protocol {
@@ -58,7 +56,7 @@ class ProtocolStarterTest {
           forkSpec2,
         ),
       )
-    val metadataProvider = { SafeFuture.completedFuture(DataGenerators.randomBlockMetadata(15)) }
+    val metadataProvider = { randomBlockMetadata(15) }
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
@@ -81,7 +79,7 @@ class ProtocolStarterTest {
           forkSpec2,
         ),
       )
-    val metadataProvider = { SafeFuture.completedFuture(DataGenerators.randomBlockMetadata(15)) }
+    val metadataProvider = { randomBlockMetadata(15) }
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
@@ -90,7 +88,7 @@ class ProtocolStarterTest {
       )
     protocolStarter.start()
     val initiallyCreatedProtocol = protocolStarter.currentProtocolWithForkReference.get().protocol
-    protocolStarter.handleNewBlock(DataGenerators.randomBlockMetadata(16))
+    protocolStarter.handleNewBlock(randomBlockMetadata(16))
     val currentProtocol = protocolStarter.currentProtocolWithForkReference.get().protocol
     assertThat(initiallyCreatedProtocol).isSameAs(currentProtocol)
     assertThat(protocol2.started).isTrue()
@@ -106,7 +104,7 @@ class ProtocolStarterTest {
           forkSpec2,
         ),
       )
-    val metadataProvider = { SafeFuture.completedFuture(DataGenerators.randomBlockMetadata(13)) }
+    val metadataProvider = { randomBlockMetadata(13) }
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
@@ -120,7 +118,7 @@ class ProtocolStarterTest {
     assertThat(protocol1.started).isTrue()
     assertThat(protocol2.started).isFalse()
 
-    protocolStarter.handleNewBlock(DataGenerators.randomBlockMetadata(14))
+    protocolStarter.handleNewBlock(randomBlockMetadata(14))
     val currentProtocolWithConfig = protocolStarter.currentProtocolWithForkReference.get()
     assertThat(currentProtocolWithConfig.fork).isEqualTo(forkSpec2)
     assertThat(initiallyCreatedProtocolWithConfig.protocol).isNotSameAs(currentProtocolWithConfig.protocol)
@@ -137,7 +135,7 @@ class ProtocolStarterTest {
           forkSpec2,
         ),
       )
-    val metadataProvider = { SafeFuture.completedFuture(DataGenerators.randomBlockMetadata(2)) }
+    val metadataProvider = { randomBlockMetadata(2) }
     val protocolStarter =
       createProtocolStarter(
         forksSchedule = forksSchedule,
@@ -185,7 +183,13 @@ class ProtocolStarterTest {
         NextBlockTimestampProviderImpl(
           clock = Clock.fixed(Instant.ofEpochMilli(clockMilliseconds), ZoneOffset.UTC),
           forksSchedule = forksSchedule,
-          0.milliseconds,
         ),
+    )
+
+  fun randomBlockMetadata(timestamp: Long): BlockMetadata =
+    BlockMetadata(
+      Random.nextULong(),
+      blockHash = Random.nextBytes(32),
+      unixTimestampSeconds = timestamp,
     )
 }

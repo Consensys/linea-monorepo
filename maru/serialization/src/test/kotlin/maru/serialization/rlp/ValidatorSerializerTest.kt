@@ -25,7 +25,7 @@ class ValidatorSerializerTest {
 
   @Test
   fun `can serialize and deserialize same value`() {
-    val testValue = Validator(Random.nextBytes(128))
+    val testValue = Validator(Random.nextBytes(20))
     val serializedData = serializer.serialize(testValue)
     val deserializedValue = serializer.deserialize(serializedData)
     assertThat(deserializedValue).isEqualTo(testValue)

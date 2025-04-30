@@ -133,4 +133,17 @@ class InMemoryBeaconChainTest {
         .getSealedBeaconBlock(newBeaconBlock.beaconBlock.beaconBlockHeader.number)
     assertThat(retrievedSealedBeaconBlockByBlockNumber).isNull()
   }
+
+  @Test
+  fun `initial state can be found by hash`() {
+    val initialBeaconStateByHash = inMemoryBeaconChain.getBeaconState(initialBeaconState.latestBeaconBlockHeader.hash)
+    assertThat(initialBeaconStateByHash).isEqualTo(initialBeaconState)
+  }
+
+  @Test
+  fun `initial state can be found by number`() {
+    val initialBeaconStateByNumber =
+      inMemoryBeaconChain.getBeaconState(initialBeaconState.latestBeaconBlockHeader.number)
+    assertThat(initialBeaconStateByNumber).isEqualTo(initialBeaconState)
+  }
 }
