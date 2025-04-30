@@ -210,10 +210,11 @@ jobs:
         id: release_publish
         uses: softprops/action-gh-release@v2
         with:
-          name: Linea Besu Package ${{ steps.assemble.outputs.dockertag }}
+          name: Linea Besu Package ${{ steps.assemble.outputs.releasetag }}
           tag_name: linea-besu-package-${{ steps.assemble.outputs.releasetag }}
           body_path: release/output.md
           generate_release_notes: false
+          target_commitish: ${{ github.sha }}
           fail_on_unmatched_files: true
           files: |
             release/linea-besu-package-${{ steps.assemble.outputs.dockertag }}.tar.gz
