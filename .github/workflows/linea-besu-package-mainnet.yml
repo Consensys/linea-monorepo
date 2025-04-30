@@ -32,7 +32,7 @@ jobs:
     if: ${{ github.event_name != 'workflow_dispatch' }}
     outputs:
       linea-mainnet-env: ${{ steps.filter.outputs.linea-mainnet-env }}
-      linea-mainnet-profiles: ${{ steps.filter.outputs.linea-mainnet-profiles }}
+      linea-mainnet-configs: ${{ steps.filter.outputs.linea-mainnet-configs }}
     steps:
       - name: Filter commit changes
         uses: dorny/paths-filter@v3
@@ -43,8 +43,8 @@ jobs:
           filters: |
             linea-mainnet-env:
               - 'linea-besu-package/versions/linea-mainnet.env'
-            linea-mainnet-profiles:
-              - 'linea-besu-package/linea-besu/profiles/*-mainnet.toml'
+            linea-mainnet-configs:
+              - 'linea-besu-package/linea-besu/**/*mainnet.*'
 
   build-test-push:
     needs: [ filter-commit-changes ]
@@ -55,5 +55,5 @@ jobs:
       release_tag_prefix: ${{ inputs.release_tag_prefix }}
       run_test: true
       run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-mainnet-env == 'true' }}
-      push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-mainnet-env == 'true' || needs.filter-commit-changes.outputs.linea-mainnet-profiles == 'true' }}
+      push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-mainnet-env == 'true' || needs.filter-commit-changes.outputs.linea-mainnet-configs == 'true' }}
     secrets: inherit

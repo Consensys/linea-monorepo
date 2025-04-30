@@ -64,20 +64,19 @@ bin/besu --profile=advanced-mainnet --plugin-linea-l1-rpc-endpoint=YOUR_L1_RPC_E
 ## Build from source
 
 1. Make a branch with changes to `linea-besu-package/versions/linea-*.env` as needed
-2. Go to the [actions tab](https://github.com/Consensys/linea-monorepo/actions) and click on the appropriate workflow and select your branch - docker image will get published
+2. Create a PR for the branch
+3. Go to the [actions tab](https://github.com/Consensys/linea-monorepo/actions) to check if the workflow completed successfully
+4. Go to the [releases page](https://github.com/Consensys/linea-monorepo/releases?q=linea-besu-package&expanded=true) and you should find the corresponding release info along with the docker image tag
 
 ## How-To Release
 
-Releases are automated using GitHub Actions and are triggered by pushing a tag that matches the
-pattern `'v[0-9]+.[0-9]+.[0-9]+`. (e.g., `v1.0.0`, `v2.1.3`)
+1. Go to the [actions tab](https://github.com/Consensys/linea-monorepo/actions) and click on the appropriate workflow you want to release against, e.g. `linea-besu-package-mainnet` for releasing based on `linea-besu-package/versions/linea-mainnet.env`
 
-The tag creation will create a release and include the distribution artifact uploaded as an asset.
-   ```sh
-   git tag v0.0.1
-   git push upstream v0.0.1
-   ```
+2. If release prefix is not given, `LINEA_TRACER_PLUGIN_VERSION` in the target `linea-*.env` file will be used, and the resultant release tag would be `linea-besu-package-[releasePrefix]-[YYYYMMDDHHMMSS]-[commitShortenHash]` and the docker image tag would be `[releasePrefix]-[YYYYMMDDHHMMSS]-[commitShortenHash]`
 
-Additionally, the `latest` tag will be updated to match this release.
+3. Go to the [releases page](https://github.com/Consensys/linea-monorepo/releases?q=linea-besu-package&expanded=true) and you should find the corresponding release info along with the docker image tag
+
+Additionally, the `*-latest` tag will be updated to match this release, e.g. `mainnet-latest`
 
 
 ## Profiles
