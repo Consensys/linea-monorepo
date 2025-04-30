@@ -6,8 +6,8 @@ on:
     branches:
       - main
     paths:
-      - 'linea-besu-package/'
-      - '.github/actions/linea-besu-package/'
+      - 'linea-besu-package/**'
+      - '.github/actions/linea-besu-package/**'
       - '.github/workflows/linea-besu-package-mainnet.yml'
       - '.github/workflows/reuse-linea-besu-package-*.yml'
 
