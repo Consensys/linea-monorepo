@@ -43,7 +43,7 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 		// colHashes stores concatenation of SIS+MiMC hashes of the columns
 		// if isSISAppliedForRound is true, otherwise it stores the MiMC hashes
 		// of the columns.
-		colHashes = p.hashColumnsWithSIS(encodedMatrix)
+		colHashes = p.Key.TransversalHash(encodedMatrix)
 	})
 
 	timeTree := profiling.TimeIt(func() {
@@ -89,7 +89,7 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 	timeTree := profiling.TimeIt(func() {
 		// colHashes stores the MiMC hashes
 		// of the columns.
-		colHashes = p.hashColumnsWithoutSIS(encodedMatrix)
+		colHashes = p.noSisTransversalHash(encodedMatrix)
 		leaves := make([]types.Bytes32, len(colHashes))
 		for i := range leaves {
 			leaves[i] = colHashes[i].Bytes()
@@ -139,21 +139,6 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 	})
 
 	return encodedMatrix
-}
-
-// hashColumnsWithSIS returns a slice storing the hashes of the column of
-// `encodedMatrix` sequentially. `colHashes` stores the concatenation of the SIS hashes.
-func (params *Params) hashColumnsWithSIS(encodedMatrix EncodedMatrix) (colHashes []field.Element) {
-	// Obtain the hash of the columns
-	return params.Key.TransversalHash(encodedMatrix)
-
-}
-
-// hashColumnWithoutSIS returns a slice storing the hashes of the column of
-// `encodedMatrix` sequentially. `colHashes` stores the concatenation of the MiMC hashes.
-func (params *Params) hashColumnsWithoutSIS(encodedMatrix EncodedMatrix) (colHashes []field.Element) {
-	// Obtain the hash of the columns
-	return params.noSisTransversalHash(encodedMatrix)
 }
 
 // hashSisHash is used to hash the individual SIS hashes stored in colHashes.
