@@ -55,7 +55,6 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 // we stack it on top of the No SIS round matrices if SIS is not used on it.
 func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 	var (
-		committedSV      = []smartvectors.SmartVector{}
 		committedSVSIS   = []smartvectors.SmartVector{}
 		committedSVNoSIS = []smartvectors.SmartVector{}
 	)
@@ -85,7 +84,7 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 	}
 	// Construct committedSV by stacking the No SIS round
 	// matrices before the SIS round matrices
-	committedSV = append(committedSVNoSIS, committedSVSIS...)
+	committedSV := append(committedSVNoSIS, committedSVSIS...)
 
 	// And get the randomness
 	randomCoinLC := pr.GetRandomCoinField(ctx.Items.Alpha.Name)
@@ -130,8 +129,6 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(pr *wizard.ProverRuntime) {
 func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 
 	var (
-		committedMatrices      = []vortex.EncodedMatrix{}
-		trees                  = []*smt.Tree{}
 		committedMatricesSIS   = []vortex.EncodedMatrix{}
 		committedMatricesNoSIS = []vortex.EncodedMatrix{}
 		treesSIS               = []*smt.Tree{}
@@ -171,8 +168,8 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 	}
 
 	// Stack the no SIS matrices and trees before the SIS matrices and trees
-	committedMatrices = append(committedMatricesNoSIS, committedMatricesSIS...)
-	trees = append(treesNoSIS, treesSIS...)
+	committedMatrices := append(committedMatricesNoSIS, committedMatricesSIS...)
+	trees := append(treesNoSIS, treesSIS...)
 
 	entryList := pr.GetRandomCoinIntegerVec(ctx.Items.Q.Name)
 	proof := vortex.OpeningProof{}

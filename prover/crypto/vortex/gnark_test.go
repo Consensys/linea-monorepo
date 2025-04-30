@@ -346,13 +346,13 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 
 	// Check the proof
 	err := VerifyOpening(&VerifierInputs{
-		Params:       *params,
-		MerkleRoots:  roots,
-		X:            x,
-		Ys:           yLists,
-		OpeningProof: *proof,
-		RandomCoin:   randomCoin,
-		EntryList:    entryList,
+		Params:              *params,
+		MerkleRoots:         roots,
+		X:                   x,
+		Ys:                  yLists,
+		OpeningProof:        *proof,
+		RandomCoin:          randomCoin,
+		EntryList:           entryList,
 		IsSISReplacedByMiMC: isSISReplacedByMiMC,
 	})
 	require.NoError(t, err)

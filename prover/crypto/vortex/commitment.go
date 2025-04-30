@@ -85,7 +85,7 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 	timeEncoding := profiling.TimeIt(func() {
 		encodedMatrix = p.encodeRows(ps)
 	})
-	
+
 	timeTree := profiling.TimeIt(func() {
 		// colHashes stores the MiMC hashes
 		// of the columns.

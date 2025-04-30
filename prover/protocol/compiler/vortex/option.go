@@ -31,7 +31,6 @@ func WithOptionalSISHashingThreshold(sisHashingThreshold int) VortexOp {
 	}
 }
 
-
 // PremarkAsSelfRecursed marks the ctx as selfrecursed. This is useful
 // toward conglomerating the receiver comp but is not needed for
 // self-recursion or full-recursion.

@@ -300,7 +300,6 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		Query:                        translator.AddUniEval(0, srcVortexCtx.Query),
 	}
 
-
 	translator.Target.QueriesParams.MarkAsIgnored(dstVortexCtx.Query.QueryID)
 
 	if srcVortexCtx.IsCommitToPrecomputed() {

@@ -72,7 +72,7 @@ func TestProver(t *testing.T) {
 		// the testCase provides to the prover. If nil, then this is equivalent
 		// to `f(n) -> n`.
 		ChangeAssignmentSize func(int) int
-		// Flag denoting if we are committing with SIS+MiMC or MiMC
+		// Flag denoting if we are committing with SIS+MiMC hash or MiMC hash
 		IsSisReplacedByMiMC []bool
 		MustPanic           bool
 	}{
@@ -245,13 +245,13 @@ func TestProver(t *testing.T) {
 				// Check the proof
 				err := VerifyOpening(
 					&VerifierInputs{
-						Params:       *params,
-						MerkleRoots:  roots,
-						X:            x,
-						Ys:           yLists,
-						OpeningProof: *proof,
-						RandomCoin:   randomCoin,
-						EntryList:    entryList[:testCase.NumOpenedColumns],
+						Params:              *params,
+						MerkleRoots:         roots,
+						X:                   x,
+						Ys:                  yLists,
+						OpeningProof:        *proof,
+						RandomCoin:          randomCoin,
+						EntryList:           entryList[:testCase.NumOpenedColumns],
 						IsSISReplacedByMiMC: isSisReplacedByMiMC,
 					})
 

@@ -26,13 +26,8 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		// roots before the SIS roots. The precomputed root is the
 		// first root of the SIS roots if SIS hash is applied on the
 		// precomputed. Otherwise, it is the first root of the no SIS roots.
-		roots      = []types.Bytes32{}
 		noSisRoots = []types.Bytes32{}
 		sisRoots   = []types.Bytes32{}
-		// The bool flags denoting if the SIS hash is applied for the
-		// particular round. It starts from the no SIS round and
-		// ends with the SIS round.
-		isSISReplacedByMiMC = []bool{}
 		// Slice of true value of length equal to the number of no SIS round
 		// + 1 (if SIS is not applied to precomputed)
 		flagForNoSISRounds = []bool{}
@@ -69,8 +64,8 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		}
 	}
 	// assign the roots and the isSisReplacedByMiMC flags
-	roots = append(noSisRoots, sisRoots...)
-	isSISReplacedByMiMC = append(flagForNoSISRounds, flagForSISRounds...)
+	roots := append(noSisRoots, sisRoots...)
+	isSISReplacedByMiMC := append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
 	randomCoin := vr.GetRandomCoinField(ctx.LinCombRandCoinName())
@@ -110,10 +105,8 @@ func (ctx *Ctx) getNbCommittedRows(round int) int {
 func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 
 	var (
-		query  = ctx.Query
-		params = vr.GetUnivariateParams(ctx.Query.QueryID)
-		// We compute ysFull = (ysNoSIS, ysSIS)
-		ysFull  = [][]field.Element{}
+		query   = ctx.Query
+		params  = vr.GetUnivariateParams(ctx.Query.QueryID)
 		ysNoSIS = [][]field.Element{}
 		ysSIS   = [][]field.Element{}
 	)
@@ -165,7 +158,8 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 		}
 	}
 	// Append the ysNoSIS and ysSIS
-	ysFull = append(ysNoSIS, ysSIS...)
+	// We compute ysFull = (ysNoSIS, ysSIS)
+	ysFull := append(ysNoSIS, ysSIS...)
 
 	return ysFull
 }
@@ -178,7 +172,6 @@ func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][
 	var (
 		openedSubColumnsNoSIS = [][][]field.Element{}
 		openedSubColumnsSIS   = [][][]field.Element{}
-		openedSubColumns      = [][][]field.Element{}
 	)
 	// Collect the columns : first extract the full columns
 	// Bear in mind that the prover messages are zero-padded
@@ -227,7 +220,7 @@ func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][
 		}
 	}
 	// Append the no SIS and SIS opened sub columns
-	openedSubColumns = append(openedSubColumnsNoSIS, openedSubColumnsSIS...)
+	openedSubColumns := append(openedSubColumnsNoSIS, openedSubColumnsSIS...)
 
 	// sanity-check : make sure we have not forgotten any column
 	// We need to treat the precomputed separately if they are committed
