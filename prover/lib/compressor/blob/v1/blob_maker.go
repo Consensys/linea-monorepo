@@ -79,9 +79,6 @@ func NewBlobMaker(dataLimit int, dictPath string) (*BlobMaker, error) {
 		return nil, err
 	}
 
-	// initialize state
-	blobMaker.StartNewBatch()
-
 	return &blobMaker, nil
 }
 

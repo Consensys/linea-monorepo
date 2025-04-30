@@ -50,6 +50,7 @@ func parseHeader(api frontend.API, blobBytes []frontend.Variable, blobLen fronte
 		return 0, 0, 0, nil, errors.New("blob too short - no room for header")
 	}
 
+	// make sure this is a v1 blob
 	api.AssertIsEqual(blobBytes[0], 255)
 	api.AssertIsEqual(blobBytes[1], 255)
 	blobBytes = blobBytes[2:]
