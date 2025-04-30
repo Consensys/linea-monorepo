@@ -14,7 +14,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
@@ -27,6 +26,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/sirupsen/logrus"
 )
+
+// The prerecursion prefix is a prefix to apply to the name of the public
+// inputs to be able to access them in the conglomerated wizard-IOP.
+const preRecursionPrefix = "wizard-recursion-0."
 
 // ConglomeratorCompilation hold the compilation context of the conglomeration
 // proof. It stores pointers to the type of proof it can conglomerate and
@@ -119,12 +122,11 @@ func conglomerate(maxNbProofs int, moduleGLs, moduleLpps []*RecursedSegmentCompi
 		func(build *wizard.Builder) {
 			cong.Compile(build.CompiledIOP)
 		},
-		dummy.CompileAtProverLvl(dummy.WithMsg("dummy")),
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		dummy.CompileAtProverLvl(dummy.WithMsg("dummy-2")),
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<17),
+			compiler.WithDebugMode("conglomeration"),
 		),
 		vortex.Compile(
 			2,
@@ -212,34 +214,34 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 
 	for i := 0; i < c.MaxNbProofs; i++ {
 
-		recursionPrefix := "wizard-recursion-0."
-
 		var (
-			verifyingKey     = c.Recursion.GetPublicInputOfInstance(run, recursionPrefix+verifyingKeyPublicInput, i)
-			logDerivativeSum = c.Recursion.GetPublicInputOfInstance(run, recursionPrefix+logDerivativeSumPublicInput, i)
-			grandProduct     = c.Recursion.GetPublicInputOfInstance(run, recursionPrefix+grandProductPublicInput, i)
-			hornerSum        = c.Recursion.GetPublicInputOfInstance(run, recursionPrefix+hornerPublicInput, i)
-			hornerN0Hash     = c.Recursion.GetPublicInputOfInstance(run, recursionPrefix+hornerN0HashPublicInput, i)
-			hornerN1Hash     = c.Recursion.GetPublicInputOfInstance(run, recursionPrefix+hornerN1HashPublicInput, i)
-			globalReceived   = c.Recursion.GetPublicInputOfInstance(run, recursionPrefix+globalReceiverPublicInput, i)
-			globalSent       = c.Recursion.GetPublicInputOfInstance(run, recursionPrefix+globalSenderPublicInput, i)
-			isFirst          = c.Recursion.GetPublicInputOfInstance(run, recursionPrefix+isFirstPublicInput, i)
-			isLast           = c.Recursion.GetPublicInputOfInstance(run, recursionPrefix+isLastPublicInput, i)
-			isLPP            = c.Recursion.GetPublicInputOfInstance(run, recursionPrefix+isLppPublicInput, i)
-			isGL             = c.Recursion.GetPublicInputOfInstance(run, recursionPrefix+isGlPublicInput, i)
+			verifyingKey     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+verifyingKeyPublicInput, i)
+			verifyingKey2    = c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, i)
+			logDerivativeSum = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+logDerivativeSumPublicInput, i)
+			grandProduct     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+grandProductPublicInput, i)
+			hornerSum        = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+hornerPublicInput, i)
+			hornerN0Hash     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+hornerN0HashPublicInput, i)
+			hornerN1Hash     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+hornerN1HashPublicInput, i)
+			globalReceived   = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+globalReceiverPublicInput, i)
+			globalSent       = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+globalSenderPublicInput, i)
+			isFirst          = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+isFirstPublicInput, i)
+			isLast           = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+isLastPublicInput, i)
+			isLPP            = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+isLppPublicInput, i)
+			isGL             = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+isGlPublicInput, i)
 
-			prevVerifyingKey, nextVerifyingKey             field.Element
 			sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext bool
 		)
 
 		if i > 0 {
-			prevVerifyingKey = c.Recursion.GetPublicInputOfInstance(run, verifyingKeyPublicInput, i-1)
-			sameVerifyingKeyAsPrev = verifyingKey == prevVerifyingKey
+			prevVerifyingKey := c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+verifyingKeyPublicInput, i-1)
+			prevVerifyingKey2 := c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, i-1)
+			sameVerifyingKeyAsPrev = verifyingKey == prevVerifyingKey && verifyingKey2 == prevVerifyingKey2
 		}
 
 		if i < c.MaxNbProofs-1 {
-			nextVerifyingKey = c.Recursion.GetPublicInputOfInstance(run, verifyingKeyPublicInput, i+1)
-			sameVerifyingKeyAsNext = verifyingKey == nextVerifyingKey
+			nextVerifyingKey := c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+verifyingKeyPublicInput, i+1)
+			nextVerifyingKey2 := c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, i+1)
+			sameVerifyingKeyAsNext = verifyingKey == nextVerifyingKey && verifyingKey2 == nextVerifyingKey2
 		}
 
 		if isLPP.IsOne() && sameVerifyingKeyAsPrev && hornerN0Hash != prevHornerN1Hash {
@@ -541,11 +543,10 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 	for i := 0; i < cong.MaxNbProofs; i++ {
 
 		var (
-			prerecursionPrefix = "wizard-recursion-0."
-			verifyingKey       = cong.Recursion.GetPublicInputAccessorOfInstance(comp, prerecursionPrefix+verifyingKeyPublicInput, i)
-			verifyingKey2      = cong.Recursion.GetPublicInputAccessorOfInstance(comp, verifyingKey2PublicInput, i)
-			isLPP              = cong.Recursion.GetPublicInputAccessorOfInstance(comp, prerecursionPrefix+isLppPublicInput, i)
-			isGL               = cong.Recursion.GetPublicInputAccessorOfInstance(comp, prerecursionPrefix+isGlPublicInput, i)
+			verifyingKey  = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+verifyingKeyPublicInput, i)
+			verifyingKey2 = cong.Recursion.GetPublicInputAccessorOfInstance(comp, verifyingKey2PublicInput, i)
+			isLPP         = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+isLppPublicInput, i)
+			isGL          = cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+isGlPublicInput, i)
 		)
 
 		effectiveVksAccessors[0] = append(effectiveVksAccessors[0], verifyingKey)
@@ -557,7 +558,7 @@ func (cong *ConglomeratorCompilation) declareLookups() {
 			pubInputName := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, j)
 			lppColumnsAccessors[j] = append(
 				lppColumnsAccessors[j],
-				cong.Recursion.GetPublicInputAccessorOfInstance(comp, prerecursionPrefix+pubInputName, i),
+				cong.Recursion.GetPublicInputAccessorOfInstance(comp, preRecursionPrefix+pubInputName, i),
 			)
 		}
 	}
