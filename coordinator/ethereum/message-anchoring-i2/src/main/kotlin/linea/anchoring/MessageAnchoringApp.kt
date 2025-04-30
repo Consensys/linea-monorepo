@@ -46,7 +46,9 @@ class MessageAnchoringApp(
       config = EthLogsSearcherImpl.Config(loopSuccessBackoffDelay = config.l1SuccessBackoffDelay)
     )
 
-  private val eventsQueue: Deque<MessageSentEvent> = LinkedBlockingDeque(config.messageQueueCapacity.toInt())
+  private val eventsQueue: Deque<MessageSentEvent> = LinkedBlockingDeque()
+  val eventsQueueSize: Int
+    get() = eventsQueue.size
 
   private val l1EventsPoller = run {
     L1MessageSentEventsPoller(

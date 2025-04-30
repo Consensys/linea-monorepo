@@ -211,7 +211,7 @@ class MessageAnchoringAppTest {
   }
 
   @Test
-  fun `should be resilient when queue gets full`() {
+  fun `should not exceed queue target capacity and be resilient when queue gets full`() {
     // Worst case scenario: L1 block has more messages that the queue can handle,
     // so it needs to query this block multiple times
     val ethLogs = createL1MessageSentV1Logs(
@@ -224,15 +224,33 @@ class MessageAnchoringAppTest {
       l1PollingInterval = 1.milliseconds,
       l1EventSearchBlockChunk = 10u,
       l1EventPollingTimeout = 1.seconds,
-      messageQueueCapacity = 10_000_000U, // TODO: Change to 20u and fix
+      messageQueueCapacity = 20u,
       maxMessagesToAnchorPerL2Transaction = 50u,
       anchoringTickInterval = 10.milliseconds
     )
 
     addLogsToFakeEthClient(ethLogs)
     l1Client.setFinalizedBlockTag(ethLogs.last().messageSent.log.blockNumber + 10UL)
+    l2MessageService.forceAnchoringFailures = true
 
     anchoringApp.start().get()
+    // wait for the queue to fill up
+    await()
+      .atMost(10.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(anchoringApp.eventsQueueSize).isGreaterThan(0)
+      }
+    // ensure it has multiple event polling ticks but does
+    // not fetch more events that those already fetched
+    // in the 1st tick that filled the queue
+    await()
+      .atMost(2.seconds.toJavaDuration())
+      .untilAsserted {
+        assertThat(anchoringApp.eventsQueueSize).isBetween(1, 100)
+      }
+    // enable anchoring again
+    l2MessageService.forceAnchoringFailures = false
+
     await()
       .atMost(10.seconds.toJavaDuration())
       .untilAsserted {
