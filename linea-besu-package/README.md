@@ -70,7 +70,7 @@ bin/besu --profile=advanced-mainnet --plugin-linea-l1-rpc-endpoint=YOUR_L1_RPC_E
 
 ## How-To Release
 
-1. Go to the [actions tab](https://github.com/Consensys/linea-monorepo/actions) and click on the appropriate workflow you want to release against, e.g. `linea-besu-package-mainnet` for releasing based on `linea-besu-package/versions/linea-mainnet.env`
+1. Go to the [actions tab](https://github.com/Consensys/linea-monorepo/actions) and click on the appropriate workflow you want to release against, e.g. `linea-besu-package-mainnet` for release based on `linea-besu-package/versions/linea-mainnet.env`
 
 2. If release prefix is not given, `LINEA_TRACER_PLUGIN_VERSION` in the target `linea-*.env` file will be used, and the resultant release tag would be `linea-besu-package-[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]` and the docker image tag would be `[releasePrefix]-[YYYYMMDDHHMMSS]-[shortenCommitHash]`
 
