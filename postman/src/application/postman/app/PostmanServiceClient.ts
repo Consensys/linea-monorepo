@@ -28,9 +28,8 @@ import { EthereumTransactionValidationService } from "../../../services/Ethereum
 import { getConfig } from "./config/utils";
 import { Api } from "../api/Api";
 import { MessageStatusSubscriber } from "../persistence/subscribers/MessageStatusSubscriber";
-import { SponsorshipFeesSubscriber } from "../persistence/subscribers/SponsorshipFeesSubscriber";
-import { MessageMetricsService } from "../api/metrics/MessageMetricsService";
-
+import { SingletonMetricsService } from "../api/metrics/SingletonMetricsService";
+import { MessageMetricsUpdater } from "../api/metrics/MessageMetricsUpdater";
 export class PostmanServiceClient {
   // L1 -> L2 flow
   private l1MessageSentEventPoller: IPoller;
@@ -384,22 +383,18 @@ export class PostmanServiceClient {
    */
   public async initializeMetricsAndApi(): Promise<void> {
     try {
-      const metricService = new MessageMetricsService(this.db.manager);
-      await metricService.initialize();
+      const singletonMetricsService = new SingletonMetricsService();
+      const messageMetricsUpdater = new MessageMetricsUpdater(this.db.manager, singletonMetricsService);
+      await messageMetricsUpdater.initialize();
 
       const messageStatusSubscriber = new MessageStatusSubscriber(
-        metricService,
+        messageMetricsUpdater,
         new WinstonLogger(MessageStatusSubscriber.name),
       );
-      const sponsorshipFeesSubscriber = new SponsorshipFeesSubscriber(
-        metricService,
-        new WinstonLogger(SponsorshipFeesSubscriber.name),
-      );
       this.db.subscribers.push(messageStatusSubscriber);
-      this.db.subscribers.push(sponsorshipFeesSubscriber);
 
       // Initialize or reinitialize the API using the metrics service.
-      this.api = new Api({ port: this.config.apiConfig.port }, metricService, new WinstonLogger(Api.name));
+      this.api = new Api({ port: this.config.apiConfig.port }, singletonMetricsService, new WinstonLogger(Api.name));
 
       this.logger.info("Metrics and API have been initialized successfully.");
     } catch (error) {

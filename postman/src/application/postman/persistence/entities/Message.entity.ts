@@ -59,12 +59,6 @@ export class MessageEntity {
   @Column({ nullable: true })
   claimTxGasLimit?: number;
 
-  @Column({ nullable: true })
-  claimTxGasUsed?: number;
-
-  @Column({ nullable: true, type: "bigint" })
-  claimTxGasPrice?: bigint;
-
   @Column({ nullable: true, type: "bigint" })
   claimTxMaxFeePerGas?: bigint;
 

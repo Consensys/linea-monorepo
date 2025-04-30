@@ -1,6 +1,4 @@
 import { Counter, Gauge, Registry } from "prom-client";
-import { MessageStatus } from "../enums";
-import { Direction } from "@consensys/linea-sdk";
 
 export enum MetricsOperation {
   INCREMENT = "INCREMENT",
@@ -20,20 +18,9 @@ export enum LineaPostmanMetrics {
    * We do not use separate labels for 'wei' and 'gwei' denominations, because metrics sharing the label should be aggregatable
    * - I.e. metric (direction: A, denomination: wei) cannot be aggregated with metric (direction: A, denomination: gwei) because they represent different units
    */
-  SponsorshipFeesWei = "linea_postman_sponsorship_fees_wei", // Represent up to ~9_007_199 GWEI
-  SponsorshipFeesGwei = "linea_postman_sponsorship_fees_gwei", // Represent up to ~9_007_199 ETH
+  SponsorshipFeesWei = "linea_postman_sponsorship_fees_wei_total", // Represent up to ~9_007_199 GWEI
+  SponsorshipFeesGwei = "linea_postman_sponsorship_fees_gwei_total", // Represent up to ~9_007_199 ETH
 }
-
-export type MessagesMetricsAttributes = {
-  status: MessageStatus;
-  direction: Direction;
-  isForSponsorship: boolean;
-};
-
-export type SponsorshipFeesMetricsAttributes = {
-  // Only a message with MessageStatus.CLAIMED_SUCCESS will have claimTxGasUsed and claimTxGasPrice properties
-  direction: Direction;
-};
 
 export interface IMetricsService extends IMetricsServiceUtils {
   getRegistry(): Registry;

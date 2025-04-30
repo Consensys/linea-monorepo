@@ -30,8 +30,6 @@ export const mapMessageEntityToMessage = (entity: MessageEntity): Message => {
     status: entity.status,
     claimTxCreationDate: entity.claimTxCreationDate,
     claimTxGasLimit: entity.claimTxGasLimit,
-    claimTxGasUsed: entity.claimTxGasUsed,
-    claimTxGasPrice: entity.claimTxGasPrice,
     claimTxMaxFeePerGas: entity.claimTxMaxFeePerGas,
     claimTxMaxPriorityFeePerGas: entity.claimTxMaxPriorityFeePerGas,
     claimTxNonce: entity.claimTxNonce,

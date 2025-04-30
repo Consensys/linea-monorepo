@@ -8,14 +8,14 @@ import {
 } from "typeorm";
 import { Direction } from "@consensys/linea-sdk";
 import { MessageEntity } from "../entities/Message.entity";
-import { IMetricsService, LineaPostmanMetrics } from "../../../../core/metrics/IMetricsService";
+import { IMessageMetricsUpdater, MessagesMetricsAttributes } from "../../../../core/metrics";
 import { ILogger } from "../../../../core/utils/logging/ILogger";
 import { MessageStatus } from "../../../../core/enums";
 
 @EventSubscriber()
 export class MessageStatusSubscriber implements EntitySubscriberInterface<MessageEntity> {
   constructor(
-    private readonly metricsService: IMetricsService,
+    private readonly messageMetricsUpdater: IMessageMetricsUpdater,
     private readonly logger: ILogger,
   ) {}
 
@@ -38,10 +38,9 @@ export class MessageStatusSubscriber implements EntitySubscriberInterface<Messag
     const direction = event.databaseEntity.direction;
 
     if (prevStatus !== newStatus || prevIsForSponsorship !== newIsForSponsorship) {
-      await this.swapStatus(
-        LineaPostmanMetrics.Messages,
-        { status: prevStatus, direction, isForSponsorship: String(prevIsForSponsorship) },
-        { status: newStatus, direction, isForSponsorship: String(newIsForSponsorship) },
+      await this.swapMessageAttributes(
+        { status: prevStatus, direction, isForSponsorship: prevIsForSponsorship },
+        { status: newStatus, direction, isForSponsorship: newIsForSponsorship },
       );
     }
   }
@@ -59,17 +58,16 @@ export class MessageStatusSubscriber implements EntitySubscriberInterface<Messag
   async afterTransactionCommit(event: TransactionCommitEvent): Promise<void> {
     const updatedEntity = event.queryRunner?.data?.updatedEntity;
     if (updatedEntity) {
-      await this.swapStatus(
-        LineaPostmanMetrics.Messages,
+      await this.swapMessageAttributes(
         {
           status: updatedEntity.previousStatus,
           direction: updatedEntity.direction,
-          isForSponsorship: String(updatedEntity.isForSponsorship),
+          isForSponsorship: updatedEntity.isForSponsorship,
         },
         {
           status: updatedEntity.newStatus,
           direction: updatedEntity.direction,
-          isForSponsorship: String(updatedEntity.isForSponsorship),
+          isForSponsorship: updatedEntity.isForSponsorship,
         },
       );
     }
@@ -81,20 +79,20 @@ export class MessageStatusSubscriber implements EntitySubscriberInterface<Messag
     isForSponsorship: boolean,
   ): Promise<void> {
     try {
-      const prevGaugeValue = await this.metricsService.getGaugeValue(LineaPostmanMetrics.Messages, {
+      const prevGaugeValue = await this.messageMetricsUpdater.getMessageCount({
         status: messageStatus,
         direction: messageDirection,
-        isForSponsorship: String(isForSponsorship),
+        isForSponsorship: isForSponsorship,
       });
 
       if (prevGaugeValue === undefined) {
         return;
       }
 
-      this.metricsService.incrementGauge(LineaPostmanMetrics.Messages, {
+      this.messageMetricsUpdater.incrementMessageCount({
         status: messageStatus,
         direction: messageDirection,
-        isForSponsorship: String(isForSponsorship),
+        isForSponsorship: isForSponsorship,
       });
     } catch (error) {
       this.logger.error("Failed to update metrics:", error);
@@ -107,17 +105,17 @@ export class MessageStatusSubscriber implements EntitySubscriberInterface<Messag
     isForSponsorship: boolean,
   ): Promise<void> {
     try {
-      const prevGaugeValue = await this.metricsService.getGaugeValue(LineaPostmanMetrics.Messages, {
+      const prevGaugeValue = await this.messageMetricsUpdater.getMessageCount({
         status: messageStatus,
         direction: messageDirection,
-        isForSponsorship: String(isForSponsorship),
+        isForSponsorship: isForSponsorship,
       });
 
       if (prevGaugeValue && prevGaugeValue > 0) {
-        this.metricsService.decrementGauge(LineaPostmanMetrics.Messages, {
+        this.messageMetricsUpdater.decrementMessageCount({
           status: messageStatus,
           direction: messageDirection,
-          isForSponsorship: String(isForSponsorship),
+          isForSponsorship: isForSponsorship,
         });
       }
     } catch (error) {
@@ -125,23 +123,22 @@ export class MessageStatusSubscriber implements EntitySubscriberInterface<Messag
     }
   }
 
-  private async swapStatus(
-    name: LineaPostmanMetrics,
-    previous: Record<string, string>,
-    next: Record<string, string>,
+  private async swapMessageAttributes(
+    previousMessageAttributes: MessagesMetricsAttributes,
+    nextMessageAttributes: MessagesMetricsAttributes,
   ): Promise<void> {
     try {
       const [prevVal, newVal] = await Promise.all([
-        this.metricsService.getGaugeValue(name, previous),
-        this.metricsService.getGaugeValue(name, next),
+        this.messageMetricsUpdater.getMessageCount(previousMessageAttributes),
+        this.messageMetricsUpdater.getMessageCount(nextMessageAttributes),
       ]);
 
       if (prevVal && prevVal > 0) {
-        this.metricsService.decrementGauge(name, previous);
+        this.messageMetricsUpdater.decrementMessageCount(previousMessageAttributes);
       }
 
       if (newVal !== undefined) {
-        this.metricsService.incrementGauge(name, next);
+        this.messageMetricsUpdater.incrementMessageCount(nextMessageAttributes);
       }
     } catch (error) {
       this.logger.error("Metrics swap failed:", error);

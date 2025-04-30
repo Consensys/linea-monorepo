@@ -190,8 +190,6 @@ describe("TestMessageClaimingPersister ", () => {
         ...testPendingMessageLocal,
         status: MessageStatus.CLAIMED_SUCCESS,
         updatedAt: mockedDate,
-        claimTxGasUsed: Number(txReceipt.gasUsed),
-        claimTxGasPrice: txReceipt.gasPrice,
       });
       const { loggerInfoSpy, messageRepositoryUpdateSpy, l2QuerierGetReceiptSpy } = testFixtureFactory({
         firstPendingMessage: new Message(testPendingMessage),
@@ -266,8 +264,6 @@ describe("TestMessageClaimingPersister ", () => {
         ...testPendingMessageLocal,
         status: MessageStatus.CLAIMED_SUCCESS,
         updatedAt: mockedDate,
-        claimTxGasUsed: Number(retryTxReceipt.gasUsed),
-        claimTxGasPrice: retryTxReceipt.gasPrice,
       });
       const { loggerWarnSpy, messageRepositoryUpdateSpy, l2QuerierGetReceiptSpy } = testFixtureFactory({
         firstPendingMessage: new Message(testPendingMessageLocal),
@@ -333,8 +329,6 @@ describe("TestMessageClaimingPersister ", () => {
         ...testPendingMessageLocal,
         status: MessageStatus.CLAIMED_SUCCESS,
         updatedAt: mockedDate,
-        claimTxGasUsed: Number(retryTxReceipt.gasUsed),
-        claimTxGasPrice: retryTxReceipt.gasPrice,
         claimTxNonce: retryTxResponse.nonce,
         claimTxGasLimit: Number(retryTxResponse.gasLimit),
         claimNumberOfRetry: 1,
@@ -389,8 +383,6 @@ describe("TestMessageClaimingPersister ", () => {
         ...testPendingMessageLocal,
         status: MessageStatus.CLAIMED_SUCCESS,
         updatedAt: mockedDate,
-        claimTxGasUsed: Number(retryTxReceipt.gasUsed),
-        claimTxGasPrice: retryTxReceipt.gasPrice,
         claimTxNonce: retryTxResponse.nonce,
         claimTxGasLimit: Number(retryTxResponse.gasLimit),
         claimNumberOfRetry: 1,

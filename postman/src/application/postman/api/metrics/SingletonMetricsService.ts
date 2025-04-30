@@ -2,10 +2,13 @@ import { Counter, Gauge, MetricObjectWithValues, MetricValue, Registry } from "p
 import { IMetricsService, LineaPostmanMetrics } from "../../../../core/metrics/IMetricsService";
 
 /**
+ * Take care to instantiate as a singleton because there should be only be one instance of prom-client Registry
+ * TODO - Implement Singleton pattern for this class
+ *
  * MetricsService class that implements the IMetricsService interface.
  * This class provides methods to create and manage Prometheus metrics.
  */
-export abstract class MetricsService implements IMetricsService {
+export class SingletonMetricsService implements IMetricsService {
   private readonly registry: Registry;
   private readonly counters: Map<LineaPostmanMetrics, Counter<string>>;
   private readonly gauges: Map<LineaPostmanMetrics, Gauge<string>>;
