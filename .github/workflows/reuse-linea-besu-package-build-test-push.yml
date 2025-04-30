@@ -213,6 +213,7 @@ jobs:
           name: Linea Besu Package ${{ steps.assemble.outputs.releasetag }}
           tag_name: linea-besu-package-${{ steps.assemble.outputs.releasetag }}
           body_path: release/output.md
+          prerelease: ${{  github.event_name != 'workflow_dispatch' }}
           generate_release_notes: false
           target_commitish: ${{ github.sha }}
           fail_on_unmatched_files: true
