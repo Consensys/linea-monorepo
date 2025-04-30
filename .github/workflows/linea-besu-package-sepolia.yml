@@ -32,7 +32,7 @@ jobs:
     if: ${{ github.event_name != 'workflow_dispatch' }}
     outputs:
       linea-sepolia-env: ${{ steps.filter.outputs.linea-sepolia-env }}
-      linea-sepolia-profiles: ${{ steps.filter.outputs.linea-sepolia-profiles }}
+      linea-sepolia-configs: ${{ steps.filter.outputs.linea-sepolia-configs }}
     steps:
       - name: Filter commit changes
         uses: dorny/paths-filter@v3
@@ -43,8 +43,8 @@ jobs:
           filters: |
             linea-sepolia-env:
               - 'linea-besu-package/versions/linea-sepolia.env'
-            linea-sepolia-profiles:
-              - 'linea-besu-package/linea-besu/profiles/*-sepolia.toml'
+            linea-sepolia-configs:
+              - 'linea-besu-package/linea-besu/**/*sepolia.*'
 
   build-test-push:
     needs: [ filter-commit-changes ]
@@ -55,5 +55,5 @@ jobs:
       release_tag_prefix: ${{ inputs.release_tag_prefix }}
       run_test: true
       run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-sepolia-env == 'true' }}
-      push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-sepolia-env == 'true' || needs.filter-commit-changes.outputs.linea-sepolia-profiles == 'true' }}
+      push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-sepolia-env == 'true' || needs.filter-commit-changes.outputs.linea-sepolia-configs == 'true' }}
     secrets: inherit
