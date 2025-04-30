@@ -115,7 +115,7 @@ export default function useEVM(): WalletProvider {
         }).filter(w => w !== undefined) as Wallet[]
     }, [activeAccount, activeConnectors, config, userWallets])
 
-    const logo = networks.find(n => n.name.toLowerCase().includes('ethereum'))?.logo
+    const logo = networks.find(n => n.name.toLowerCase().includes('linea'))?.logo
     const availableWalletsForConnect: InternalConnector[] = [{
         id: id,
         name: name,
@@ -181,7 +181,7 @@ const ResolveWallet = (props: ResolveWalletProps): Wallet | undefined => {
         asSourceSupportedNetworks: supportedNetworks.asSource,
         autofillSupportedNetworks: supportedNetworks.autofill,
         withdrawalSupportedNetworks: supportedNetworks.withdrawal,
-        networkIcon: networks.find(n => n.name.toLowerCase().includes('ethereum'))?.logo,
+        networkIcon: networks.find(n => n.name.toLowerCase().includes('linea'))?.logo,
     }
 
     return wallet
