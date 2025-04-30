@@ -36,9 +36,8 @@ class MessageAnchoringService(
       .thenApply { lastAnchoredL1MessageNumber ->
 
         // clean up the queue of events that are already anchored
-        val removed = eventsQueue.removeIf { it.messageNumber <= lastAnchoredL1MessageNumber }
+        eventsQueue.removeIf { it.messageNumber <= lastAnchoredL1MessageNumber }
 
-        log.debug("{}", removed)
         eventsQueue
           .toTypedArray()
           .filter { it.messageNumber > lastAnchoredL1MessageNumber }
