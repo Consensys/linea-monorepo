@@ -18,7 +18,7 @@ This flow is used by the **Data Submission Operator** to submit blobs to the Lin
 3. The final computed `shnarf` is stored.
 4. A corresponding event is emitted to reflect successful blob(s) storage.
 
-**Note:** The `shnarf` is a rolling zk computation that aggregates previous shnarfs, a snark friendly hash, the final state in a blob's submission and fields linking the data availability.
+**Note:** The `shnarf` is a computation that aggregates previous shnarfs, a per-blob submission snark-friendly hash, the final state in a blob's submission and fields linking the data availability.
 
 ---
 
