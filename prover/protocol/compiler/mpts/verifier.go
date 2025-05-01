@@ -4,7 +4,11 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
@@ -146,4 +150,59 @@ func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	}
 
 	api.AssertIsEqual(res, qr)
+}
+
+// cptEvaluationMap returns an evaluation map [Column] -> [Y] for all the
+// polynomials handled by [ctx]. This includes the columns of the new query
+// but also the explictly evaluated columns.
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMap(run wizard.Runtime) map[ifaces.ColID]field.Element {
+
+	var (
+		evaluationMap = make(map[ifaces.ColID]field.Element)
+		univParams    = run.GetParams(ctx.NewQuery.QueryID).(query.UnivariateEvalParams)
+		x             = univParams.X
+	)
+
+	for i := range ctx.NewQuery.Pols {
+		colID := ctx.NewQuery.Pols[i].GetColID()
+		evaluationMap[colID] = univParams.Ys[i]
+	}
+
+	for i, c := range ctx.ExplicitlyEvaluated {
+		colID := ctx.ExplicitlyEvaluated[i].GetColID()
+		poly := c.GetColAssignment(run)
+		evaluationMap[colID] = smartvectors.Interpolate(poly, x)
+	}
+
+	return evaluationMap
+}
+
+// cptEvaluationMapGnark is the same as [cptEvaluationMap] but for a gnark circuit.
+func (ctx *MultipointToSinglepointCompilation) cptEvaluationMapGnark(api frontend.API, run wizard.GnarkRuntime) map[ifaces.ColID]frontend.Variable {
+
+	var (
+		evaluationMap = make(map[ifaces.ColID]frontend.Variable)
+		univParams    = run.GetUnivariateParams(ctx.NewQuery.QueryID)
+		x             = univParams.X
+		polys         = make([][]frontend.Variable, 0)
+	)
+
+	for i := range ctx.NewQuery.Pols {
+		colID := ctx.NewQuery.Pols[i].GetColID()
+		evaluationMap[colID] = univParams.Ys[i]
+	}
+
+	for _, c := range ctx.ExplicitlyEvaluated {
+		poly := c.GetColAssignmentGnark(run)
+		polys = append(polys, poly)
+	}
+
+	ys := fastpoly.BatchInterpolateGnark(api, polys, x)
+
+	for i := range ctx.ExplicitlyEvaluated {
+		colID := ctx.ExplicitlyEvaluated[i].GetColID()
+		evaluationMap[colID] = ys[i]
+	}
+
+	return evaluationMap
 }

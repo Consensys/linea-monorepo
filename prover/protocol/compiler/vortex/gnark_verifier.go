@@ -110,8 +110,15 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 	}
 
 	// Also add the shadow evaluations into ysMap. Since the shadow columns
-	// are full-zeroes. We know that the evaluation will also always be zero
-	for shadowID := range ctx.ShadowCols {
+	// are full-zeroes. We know that the evaluation will also always be zero.
+	//
+	// The sorting is necessary to ensure that the iteration below happens in
+	// deterministic order over the [ShadowCols] map.
+	shadowIDs := utils.SortedKeysOf(ctx.ShadowCols, func(a, b ifaces.ColID) bool {
+		return a < b
+	})
+
+	for _, shadowID := range shadowIDs {
 		ysMap[shadowID] = field.Zero()
 	}
 
