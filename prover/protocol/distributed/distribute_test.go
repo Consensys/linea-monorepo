@@ -447,11 +447,18 @@ func (d DistributeTestCase) Define(comp *wizard.CompiledIOP) {
 	b0 := comp.InsertCommit(0, "b0", d.numRow)
 	c0 := comp.InsertCommit(0, "c0", d.numRow)
 
+	// Importantly, the second module must be slightly different than the first
+	// one because else it will create a wierd edge case in the conglomeration:
+	// as we would have two GL modules with the same verifying key and we would
+	// not be able to infer a module from a VK.
+	//
+	// We differentiate the modules by adding a duplicate constraints for GL0
 	a1 := comp.InsertCommit(0, "a1", d.numRow)
 	b1 := comp.InsertCommit(0, "b1", d.numRow)
 	c1 := comp.InsertCommit(0, "c1", d.numRow)
 
 	comp.InsertGlobal(0, "global-0", symbolic.Sub(c0, b0, a0))
+	comp.InsertGlobal(0, "global-duplicate", symbolic.Sub(c0, b0, a0))
 	comp.InsertGlobal(0, "global-1", symbolic.Sub(c1, b1, a1))
 
 	comp.InsertInclusion(0, "inclusion-0", []ifaces.Column{c0, b0, a0}, []ifaces.Column{c1, b1, a1})
