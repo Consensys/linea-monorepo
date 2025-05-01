@@ -14,6 +14,8 @@ export interface ITransactionValidationService {
     maxPriorityFeePerGas: bigint;
     maxFeePerGas: bigint;
   }>;
+
+  isForSponsorship(message: Message, feeRecipient?: string): Promise<boolean>;
 }
 
 export type TransactionValidationServiceConfig = {

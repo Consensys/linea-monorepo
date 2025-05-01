@@ -424,7 +424,7 @@ describe("TestMessageClaimingProcessor", () => {
         ...testAnchoredMessage,
         claimGasEstimationThreshold: 10000000000,
         updatedAt: mockedDate,
-        isForSponsorship: true,
+        isForSponsorship: false,
       });
       await messageClaimingProcessor.process();
 
