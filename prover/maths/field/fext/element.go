@@ -19,6 +19,7 @@ package fext
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"math/big"
@@ -465,4 +466,16 @@ func (z *Element) IsBase() bool {
 		return false
 	}
 
+}
+
+func (z *Element) Text(base int) string {
+	if base < 2 || base > 36 {
+		panic("invalid base")
+	}
+	if z == nil {
+		return "<nil>"
+	}
+
+	res := fmt.Sprintf("%s + %s*u", z.A0.Text(base), z.A1.Text(base))
+	return res
 }
