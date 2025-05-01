@@ -16,6 +16,12 @@ This guide outlines the secure process for upgrading a contract (e.g. **LineaRol
   - ✅ Must match **audited code** confirmed by multiple auditors
   - ✅ Bytecode must be **verified** to match the audit
 
+## 🗂️ Function Signatures
+
+| 4bytes | Signature                              |
+|-------|---------------------------------------|
+| `0x99a88ec4`     | upgrade(address,address)                   |
+
 ---
 
 ## 🟧 2. Schedule Upgrade Transaction

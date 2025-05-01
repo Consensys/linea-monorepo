@@ -30,6 +30,15 @@ Safe Member
 **Verification Requirements:**
 - ✅ Transaction hash, parameters, and simulation must be verified
 
+## 🗂️ Function Signatures
+
+| 4bytes | Signature                              |
+|-------|---------------------------------------|
+| `0x1754f301`    | setCustomContract(address,address)                   |
+| `0xedc42a22`    | removeReserved(address)                   |
+| `0xbe46096f`    | setMessageService(address)                   |
+| `0xcdd914c5`    | setReserved(address)                   |
+
 ---
 
 ## 🗂️ All Mainnet Contract Addresses

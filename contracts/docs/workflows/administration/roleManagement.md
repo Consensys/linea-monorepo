@@ -28,6 +28,13 @@ Safe Member
 **Verification Requirements:**
 - ✅ Transaction hash, function selector, parameters, and simulation must be verified
 
+## 🗂️ Function Signatures
+
+| 4bytes | Signature                              |
+|-------|---------------------------------------|
+| `0x2f2ff15d`     | grantRole(bytes32,address)                   |
+| `0xd547741f`    | revokeRole(bytes32,address)                   |
+
 ---
 
 ## 🗂️ All Mainnet Contract Addresses

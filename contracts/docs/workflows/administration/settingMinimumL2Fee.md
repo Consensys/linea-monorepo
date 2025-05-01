@@ -27,6 +27,12 @@ Safe Member
 - ✅ Transaction hash, function, and simulation must be verified
 - ✅ Fee amount must be thoroughly reviewed before execution
 
+## 🗂️ Function Signatures
+
+| 4bytes | Signature                              |
+|-------|---------------------------------------|
+| `0x182a7506`     | setMinimumFee(uint256)                   |
+
 ---
 
 ## 🗂️ All Mainnet Contract Addresses

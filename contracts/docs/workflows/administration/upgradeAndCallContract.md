@@ -55,6 +55,12 @@ This guide outlines the process of **upgrading an upgradable contract** (e.g. **
 - ✅ Same payload as scheduled
 - ✅ Parameters and reinit target must be verified
 
+## 🗂️ Function Signatures
+
+| 4bytes | Signature                              |
+|-------|---------------------------------------|
+| `0x9623609d`     | upgradeAndCall(address,address,bytes)                   |
+
 ---
 
 ## 🗂️ Mainnet Contract Addresses

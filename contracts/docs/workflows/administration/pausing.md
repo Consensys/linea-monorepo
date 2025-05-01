@@ -5,7 +5,7 @@ This document outlines how a Safe Member can pause specific features on key Line
 
 ---
 
-## 🟧 Flow to Pause Features
+## 🟧 Flow to Pause Features or Set Roles Allowed to Pause Types 
 
 **Actor:** Safe Member  
 **Actions:**
@@ -13,7 +13,7 @@ This document outlines how a Safe Member can pause specific features on key Line
 - Selects a pause type from the list below
 - Adds a transaction via **Security Council** or **Operational Safe**
 - Targets the relevant **Proxy**
-- Calls the `pauseByType()` function with the selected type
+- Calls the `pauseByType()` or `updatePauseTypeRole()` function with the selected values to unpause or set unpause type roles
 
 **Execution Path:**
 ```
@@ -29,6 +29,13 @@ Safe Member
 - ✅ Transaction hash and simulation results must be confirmed
 
 **Note:** Non-security council members are bound by cooldown period and timed expiry.
+
+## 🗂️ Function Signatures
+
+| 4bytes | Signature                              |
+|-------|---------------------------------------|
+| `0xe196fb5d`     | pauseByType(uint8)                   |
+| `0x3e9ebfc2`     | updatePauseTypeRole(uint8,bytes32)                   |
 
 ---
 

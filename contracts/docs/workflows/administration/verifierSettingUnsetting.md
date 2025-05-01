@@ -60,6 +60,13 @@ Council Member
 - ✅ Transaction hash, details, and simulation must be verified
 - ✅ Function and parameters must be verified
 
+## 🗂️ Function Signatures
+
+| 4bytes | Signature                              |
+|-------|---------------------------------------|
+| `0xc2116974`     | setVerifierAddress(address,uint256)                   |
+| `0x28958174`    | unsetVerifierAddress(uint256)                   |
+
 **Outcome:**  
 ➡️ Verifier address is **set** or **unset**
 

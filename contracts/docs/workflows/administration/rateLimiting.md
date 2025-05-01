@@ -28,6 +28,14 @@ Safe Member
 **Verification Requirements:**
 - ✅ Transaction hash, parameters, and simulation must be verified
 
+
+## 🗂️ Function Signatures
+
+| 4bytes | Signature                              |
+|-------|---------------------------------------|
+| `0x557eac73`     | resetRateLimitAmount(uint256)                   |
+| `0xaea4f745`    | resetAmountUsedInPeriod()                   |
+
 ---
 
 ## 🗂️ All Mainnet Contract Addresses

@@ -5,7 +5,7 @@ This document outlines how a Safe Member can unpause previously paused features 
 
 ---
 
-## 🟧 Flow to Unpause Features
+## 🟧 Flow to Unpause Features or Set Roles Allowed to Unpause Types 
 
 **Actor:** Safe Member  
 **Actions:**
@@ -13,7 +13,7 @@ This document outlines how a Safe Member can unpause previously paused features 
 - Selects a pause type from the list below
 - Adds a transaction via **Security Council** or **Operational Safe**
 - Targets the relevant **Proxy**
-- Calls the `pauseByType()` function with the selected type to unpause
+- Calls the `unPauseByType()` or `updateUnpauseTypeRole()` function with the selected values to unpause or set unpause type roles
 
 **Execution Path:**
 ```
@@ -27,6 +27,13 @@ Safe Member
 **Verification Requirements:**
 - ✅ Function and parameters must be verified
 - ✅ Transaction hash and simulation results must be confirmed
+
+## 🗂️ Function Signatures
+
+| 4bytes | Signature                              |
+|-------|---------------------------------------|
+| `0x1065a399`     | unPauseByType(uint8)                   |
+| `0x52abf32d`     | updateUnpauseTypeRole(uint8,bytes32)                   |
 
 **Note:** Non-security council members are bound by cooldown period and timed expiry.
 
