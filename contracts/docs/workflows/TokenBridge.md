@@ -1,6 +1,6 @@
 # 📘 Canonical Token Bridge Core Admin Workflows
 
-Welcome to the **Canonical Token Bridge** documentation. This collection of guides outlines key privileged workflows that govern the operation and upgrade lifecycle of the Canonical Token Bridge smart contract. These workflows are designed to be executed via multisig-controlled safes, with strong verification and simulation practices to ensure safety and auditability.
+This collection of guides outlines key privileged workflows that govern the operation and upgrade lifecycle of the Canonical Token Bridge smart contract. These workflows are designed to be executed via multisig-controlled safes, with strong verification and simulation practices to ensure safety and auditability.
 
 Each section below links to a dedicated Markdown document detailing that category of administrative action.
 
