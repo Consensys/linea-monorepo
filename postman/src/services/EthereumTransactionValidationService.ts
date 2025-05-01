@@ -77,7 +77,7 @@ export class EthereumTransactionValidationService implements ITransactionValidat
     const isUnderPriced = this.isUnderPriced(gasLimit, message.fee, maxFeePerGas);
     const hasZeroFee = this.hasZeroFee(message);
     const isRateLimitExceeded = await this.isRateLimitExceeded(message.fee, message.value);
-    const isForSponsorship = this._isForSponsorship(gasLimit, hasZeroFee, isUnderPriced);
+    const isForSponsorship = this.isForSponsorship(gasLimit, hasZeroFee, isUnderPriced);
 
     return {
       hasZeroFee,
@@ -89,27 +89,6 @@ export class EthereumTransactionValidationService implements ITransactionValidat
       maxPriorityFeePerGas,
       maxFeePerGas,
     };
-  }
-
-  /**
-   * Evaluates a transaction to determine if it will be sponsored.
-   *
-   * @param {Message} message - The message object to evaluate.
-   * @param {string} [feeRecipient] - The optional fee recipient address.
-   * @returns {Promise<boolean>} A promise that resolves to `true` if the message is claimed due to sponsorship, `false` otherwise.
-   */
-  public async isForSponsorship(message: Message, feeRecipient?: string): Promise<boolean> {
-    const [gasLimit, { maxFeePerGas }] = await Promise.all([
-      this.lineaRollupClient.estimateClaimGas({
-        ...message,
-        feeRecipient,
-      }),
-      this.gasProvider.getGasFees(),
-    ]);
-    const isUnderPriced = this.isUnderPriced(gasLimit, message.fee, maxFeePerGas);
-    const hasZeroFee = this.hasZeroFee(message);
-    const isForSponsorship = this._isForSponsorship(gasLimit, hasZeroFee, isUnderPriced);
-    return isForSponsorship;
   }
 
   /**
@@ -177,7 +156,7 @@ export class EthereumTransactionValidationService implements ITransactionValidat
    * @param {boolean} isUnderPriced - `true` if the transaction is underpriced, `false` otherwise.
    * @returns {boolean} `true` if the message is for sponsoring, `false` otherwise.
    */
-  private _isForSponsorship(gasLimit: bigint, hasZeroFee: boolean, isUnderPriced: boolean): boolean {
+  private isForSponsorship(gasLimit: bigint, hasZeroFee: boolean, isUnderPriced: boolean): boolean {
     if (!this.config.isPostmanSponsorshipEnabled) return false;
     if (gasLimit > this.config.maxPostmanSponsorGasLimit) return false;
     if (hasZeroFee === true) return true;
