@@ -21,6 +21,7 @@ import { IMessageClaimingPersister } from "../../../core/services/processors/IMe
 import { MessageClaimingPersister } from "../MessageClaimingPersister";
 import { EthereumMessageDBService } from "../../persistence/EthereumMessageDBService";
 import { IProvider } from "../../../core/clients/blockchain/IProvider";
+import { ISponsorshipMetricsUpdater } from "postman/src/core/metrics";
 
 describe("TestMessageClaimingPersister ", () => {
   let messageClaimingPersister: IMessageClaimingPersister;
@@ -36,6 +37,7 @@ describe("TestMessageClaimingPersister ", () => {
     > &
       IGasProvider<TransactionRequest>
   >();
+  const sponsorshipMetricsUpdater = mock<ISponsorshipMetricsUpdater>();
   const provider =
     mock<IProvider<TransactionReceipt, Block, TransactionRequest, TransactionResponse, JsonRpcProvider>>();
   const logger = new TestLogger(MessageClaimingPersister.name);
@@ -44,6 +46,7 @@ describe("TestMessageClaimingPersister ", () => {
     messageClaimingPersister = new MessageClaimingPersister(
       databaseService,
       l2MessageServiceContractMock,
+      sponsorshipMetricsUpdater,
       provider,
       {
         direction: Direction.L1_TO_L2,
@@ -138,6 +141,7 @@ describe("TestMessageClaimingPersister ", () => {
     }
 
     jest.spyOn(provider, "getBlockNumber").mockResolvedValue(100);
+    jest.spyOn(sponsorshipMetricsUpdater, "incrementSponsorshipFeePaid").mockResolvedValue();
 
     const l2QuerierGetReceiptSpy = jest.spyOn(provider, "getTransactionReceipt");
     const loggerErrorSpy = jest.spyOn(logger, "error");
@@ -430,6 +434,7 @@ describe("TestMessageClaimingPersister ", () => {
       messageClaimingPersister = new MessageClaimingPersister(
         databaseService,
         l2MessageServiceContractMock,
+        sponsorshipMetricsUpdater,
         provider,
         {
           direction: Direction.L1_TO_L2,

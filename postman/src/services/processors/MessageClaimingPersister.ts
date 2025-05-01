@@ -21,7 +21,7 @@ import {
 } from "../../core/services/processors/IMessageClaimingPersister";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { ErrorParser } from "../../utils/ErrorParser";
-// import { ISponsorshipMetricsUpdater } from "../../core/metrics";
+import { ISponsorshipMetricsUpdater } from "../../core/metrics";
 
 export class MessageClaimingPersister implements IMessageClaimingPersister {
   private messageBeingRetry: { message: Message | null; retries: number };
@@ -45,7 +45,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       ContractTransactionResponse,
       ErrorDescription
     >,
-    // private readonly sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater,
+    private readonly sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater,
     private readonly provider: IProvider<
       TransactionReceipt,
       Block,
@@ -230,8 +230,12 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
     message.edit({
       status: MessageStatus.CLAIMED_SUCCESS,
     });
-    // this.sponsorshipMetricsUpdater.incrementSponsorshipFeePaid(BigInt(receipt.gasPrice) * BigInt(receipt.gasUsed), message.direction)
     await this.databaseService.updateMessage(message);
+    if (message.isForSponsorship)
+      await this.sponsorshipMetricsUpdater.incrementSponsorshipFeePaid(
+        BigInt(receipt.gasPrice) * BigInt(receipt.gasUsed),
+        message.direction,
+      );
     this.logger.info(
       "Message has been SUCCESSFULLY claimed: messageHash=%s transactionHash=%s",
       message.messageHash,
