@@ -24,7 +24,7 @@ import org.hyperledger.besu.ethereum.rlp.RLPOutput
 /**
  * Adapter for QBFT block codec, this provides a way to serialize QBFT blocks
  */
-class QbftBlockCodecAdapter : QbftBlockCodec {
+object QbftBlockCodecAdapter : QbftBlockCodec {
   override fun readFrom(rlpInput: RLPInput): QbftBlock = QbftBlockAdapter(BeaconBlockSerializer.readFrom(rlpInput))
 
   override fun writeTo(

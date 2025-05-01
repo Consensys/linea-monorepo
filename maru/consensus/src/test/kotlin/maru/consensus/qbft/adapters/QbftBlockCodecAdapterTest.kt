@@ -25,7 +25,7 @@ class QbftBlockCodecAdapterTest {
   fun `can encode and decode same value`() {
     val beaconBlock = DataGenerators.randomBeaconBlock(10U)
     val testValue = QbftBlockAdapter(beaconBlock)
-    val qbftBlockCodecAdapter = QbftBlockCodecAdapter()
+    val qbftBlockCodecAdapter = QbftBlockCodecAdapter
 
     val encodedData = RLP.encode { rlpOutput -> qbftBlockCodecAdapter.writeTo(testValue, rlpOutput) }
     val decodedValue = qbftBlockCodecAdapter.readFrom(RLP.input(encodedData))
