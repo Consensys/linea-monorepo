@@ -18,7 +18,7 @@ This flow is used by the **Data Submission Operator** to submit blobs to the Lin
 3. The final computed `shnarf` is stored.
 4. A corresponding event is emitted to reflect successful blob(s) storage.
 
-**Note:** The `shnarf` is a computation that aggregates previous shnarfs, a per-blob submission snark-friendly hash, the final state in a blob's submission and fields linking the data availability.
+**Note:** `Shnarf` denotes a generic and iterative hashing structure for a sequence of values. It is somewhat analog to a stack and supports efficient `proof of append` and `proof of pop`. The structure is similar to how block hashes are computed: for appends, `newShnarf = H(oldShnarf || appendedValue)`. In Linea, the structure is used to encode the sequence of the submitted blobs.
 
 ---
 
