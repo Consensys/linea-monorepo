@@ -102,8 +102,8 @@ func (comp *compTranslator) AddColumnVecVec(cols collection.VecVec[ifaces.ColID]
 	return res
 }
 
-// AddColumnSet translates a set of pre-inserted columns
-func (comp *compTranslator) AddColumnSet(cols map[ifaces.ColID]struct{}) map[ifaces.ColID]struct{} {
+// TranslateColumnSet translates a set of pre-inserted columns
+func (comp *compTranslator) TranslateColumnSet(cols map[ifaces.ColID]struct{}) map[ifaces.ColID]struct{} {
 
 	res := make(map[ifaces.ColID]struct{})
 
