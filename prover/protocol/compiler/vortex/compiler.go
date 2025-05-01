@@ -133,7 +133,13 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		if ctx.AddMerkleRootToPublicInputsOpt.Enabled {
 
 			for _, round := range ctx.AddMerkleRootToPublicInputsOpt.Round {
-				name := fmt.Sprintf("%v_%v", ctx.AddMerkleRootToPublicInputsOpt.Name, round)
+				var (
+					name = fmt.Sprintf("%v_%v", ctx.AddMerkleRootToPublicInputsOpt.Name, round)
+					mr   = ctx.Items.MerkleRoots[round]
+				)
+				if mr == nil {
+					utils.Panic("merkle root not found for round %v", round)
+				}
 				comp.InsertPublicInput(name, accessors.NewFromPublicColumn(ctx.Items.MerkleRoots[round], 0))
 			}
 		}
