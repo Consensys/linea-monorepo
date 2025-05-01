@@ -21,6 +21,7 @@ import {
 } from "../../core/services/processors/IMessageClaimingPersister";
 import { IMessageDBService } from "../../core/persistence/IMessageDBService";
 import { ErrorParser } from "../../utils/ErrorParser";
+// import { ISponsorshipMetricsUpdater } from "../../core/metrics";
 
 export class MessageClaimingPersister implements IMessageClaimingPersister {
   private messageBeingRetry: { message: Message | null; retries: number };
@@ -30,6 +31,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
    *
    * @param {IMessageDBService} databaseService - An instance of a class implementing the `IMessageDBService` interface, used for storing and retrieving message data.
    * @param {IMessageServiceContract} messageServiceContract - An instance of a class implementing the `IMessageServiceContract` interface, used to interact with the blockchain contract.
+   * @param {ISponsorshipMetricsUpdater} sponsorshipMetricsUpdater - An instance of a class implementing the `ISponsorshipMetricsUpdater` interface, update sponsorship metrics for Prometheus monitoring.
    * @param {IProvider} provider - An instance of a class implementing the `IProvider` interface, used to query blockchain data.
    * @param {MessageClaimingPersisterConfig} config - Configuration for network-specific settings, including transaction submission timeout and maximum transaction retries.
    * @param {ILogger} logger - An instance of a class implementing the `ILogger` interface, used for logging messages.
@@ -43,6 +45,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
       ContractTransactionResponse,
       ErrorDescription
     >,
+    // private readonly sponsorshipMetricsUpdater: ISponsorshipMetricsUpdater,
     private readonly provider: IProvider<
       TransactionReceipt,
       Block,
@@ -227,7 +230,7 @@ export class MessageClaimingPersister implements IMessageClaimingPersister {
     message.edit({
       status: MessageStatus.CLAIMED_SUCCESS,
     });
-    // TODO - Update Sponsorship Fees metrics with Number(receipt.gasUsed) and BigInt(receipt.gasPrice)
+    // this.sponsorshipMetricsUpdater.incrementSponsorshipFeePaid(BigInt(receipt.gasPrice) * BigInt(receipt.gasUsed), message.direction)
     await this.databaseService.updateMessage(message);
     this.logger.info(
       "Message has been SUCCESSFULLY claimed: messageHash=%s transactionHash=%s",

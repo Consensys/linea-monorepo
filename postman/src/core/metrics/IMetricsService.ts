@@ -2,6 +2,7 @@ import { Counter, Gauge, Registry } from "prom-client";
 
 export enum LineaPostmanMetrics {
   Messages = "linea_postman_messages",
+  SponsoredMessagesTotal = "linea_postman_sponsored_messages_total",
   /**
    * Tx fees in wei paid by Postman for sponsored message claims
    *

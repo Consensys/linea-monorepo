@@ -13,6 +13,17 @@ export class SponsorshipMetricsUpdater implements ISponsorshipMetricsUpdater {
       "Wei component of tx fees paid for sponsored messages by direction",
       ["direction"],
     );
+    this.metricsService.createCounter(
+      LineaPostmanMetrics.SponsoredMessagesTotal,
+      "Count of sponsored messages by direction",
+      ["direction"],
+    );
+  }
+
+  public async getSponsoredMessagesTotal(direction: Direction): Promise<number> {
+    const total = await this.metricsService.getCounterValue(LineaPostmanMetrics.SponsoredMessagesTotal, { direction });
+    if (total === undefined) return 0;
+    return total;
   }
 
   public async getSponsorshipFeePaid(direction: Direction): Promise<bigint> {
@@ -25,20 +36,9 @@ export class SponsorshipMetricsUpdater implements ISponsorshipMetricsUpdater {
 
   public async incrementSponsorshipFeePaid(txFee: bigint, direction: Direction) {
     const { wei, gwei } = this.convertTxFeesToWeiAndGwei(txFee);
-    await this.metricsService.incrementCounter(
-      LineaPostmanMetrics.SponsorshipFeesWei,
-      {
-        direction,
-      },
-      wei,
-    );
-    await this.metricsService.incrementCounter(
-      LineaPostmanMetrics.SponsorshipFeesGwei,
-      {
-        direction,
-      },
-      gwei,
-    );
+    await this.metricsService.incrementCounter(LineaPostmanMetrics.SponsoredMessagesTotal, { direction }, 1);
+    await this.metricsService.incrementCounter(LineaPostmanMetrics.SponsorshipFeesWei, { direction }, wei);
+    await this.metricsService.incrementCounter(LineaPostmanMetrics.SponsorshipFeesGwei, { direction }, gwei);
   }
 
   private convertTxFeesToWeiAndGwei(txFee: bigint): { gwei: number; wei: number } {

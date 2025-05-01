@@ -18,5 +18,6 @@ describe("SponsorshipMetricsUpdater", () => {
     await sponsorshipMetricsUpdater.incrementSponsorshipFeePaid(txFeeB, Direction.L1_TO_L2);
     const txFees = await sponsorshipMetricsUpdater.getSponsorshipFeePaid(Direction.L1_TO_L2);
     expect(txFees).toBe(txFeeA + txFeeB);
+    expect(await sponsorshipMetricsUpdater.getSponsoredMessagesTotal(Direction.L1_TO_L2)).toBe(2);
   });
 });
