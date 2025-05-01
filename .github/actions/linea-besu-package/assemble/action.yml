@@ -143,9 +143,9 @@ runs:
         tar -czvf linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz ../linea-besu-package/linea-besu/
 
         echo "# Release Artifact: Linea - ${{ inputs.linea_env }}" > output.md
-        echo "**Name:** ``linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz``" >> output.md
-        echo "**SHA256:** ``$(sha256sum linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz | awk '{ print $1 }' )``" >> output.md
-        echo "**From:** ``${{ github.ref_name }}`` (${{ github.event_name }})" >> output.md
+        echo "**Name:** ```linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz```" >> output.md
+        echo "**SHA256:** ```$(sha256sum linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz | awk '{ print $1 }' )```" >> output.md
+        echo "**From:** ```${{ github.ref_name }}``` (${{ github.event_name }})" >> output.md
         echo "" >> output.md
 
         echo "### Besu and Plugin Details" >> output.md
