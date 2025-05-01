@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
@@ -32,6 +33,11 @@ func (c Constant) EvaluateExt([]sv.SmartVector, ...mempool.MemPool) sv.SmartVect
 
 // GnarkEval implements the [Operator] interface.
 func (c Constant) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+	panic("we never call it for a constant")
+}
+
+// GnarkEvalExt implements the [Operator] interface.
+func (c Constant) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Variable) gnarkfext.Variable {
 	panic("we never call it for a constant")
 }
 

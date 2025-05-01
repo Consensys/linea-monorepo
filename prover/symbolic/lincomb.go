@@ -3,6 +3,7 @@ package symbolic
 import (
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
@@ -134,6 +135,28 @@ func (lc LinComb) GnarkEval(api frontend.API, inputs []frontend.Variable) fronte
 	for i, input := range inputs {
 		coeff := frontend.Variable(lc.Coeffs[i])
 		res = api.Add(res, api.Mul(coeff, input))
+	}
+
+	return res
+}
+
+// GnarkEval implements the [GnarkEvalExt] interface
+func (lc LinComb) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Variable) gnarkfext.Variable {
+
+	res := gnarkfext.NewZero()
+
+	// There should be as many inputs as there are coeffs
+	if len(inputs) != len(lc.Coeffs) {
+		utils.Panic("%v inputs but %v coeffs", len(inputs), len(lc.Coeffs))
+	}
+
+	outerApi := gnarkfext.NewExtApi(api)
+	/*
+		Accumulate the scalars
+	*/
+	for i, input := range inputs {
+		coeff := gnarkfext.NewFromBase(lc.Coeffs[i])
+		res = outerApi.Add(res, outerApi.Mul(coeff, input))
 	}
 
 	return res

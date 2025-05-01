@@ -162,13 +162,33 @@ func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces
 		}
 
 		return e.Boarded.GnarkEval(api, inputs), nil
+	} else {
+		return nil, fmt.Errorf("requested a Base element from a col over field extensions")
 	}
-	panic("NOT IMPLEMENTED")
 }
 
-func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Variable {
-	//TODO implement me
-	panic("implement me")
+func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.GnarkRuntime) gnarkfext.Variable {
+	if e.IsBase() {
+		baseElem, _ := e.GetFrontendVariableBase(api, circ)
+		return gnarkfext.NewFromBase(baseElem)
+	} else {
+		metadata := e.Boarded.ListVariableMetadata()
+		inputs := make([]gnarkfext.Variable, len(metadata))
+
+		for i, m := range metadata {
+			switch castedMetadata := m.(type) {
+			case ifaces.Accessor:
+				inputs[i] = castedMetadata.GetFrontendVariableExt(api, circ)
+			case coin.Info:
+				inputs[i] = circ.GetRandomCoinFieldExt(castedMetadata.Name)
+			default:
+				utils.Panic("unsupported type %T", m)
+			}
+		}
+
+		return e.Boarded.GnarkEval(api, inputs), nil
+
+	}
 }
 
 // AsVariable implements the [ifaces.Accessor] interface

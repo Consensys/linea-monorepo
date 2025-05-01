@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkutilext"
 	"math/big"
 	"reflect"
 
@@ -176,6 +178,28 @@ func (prod Product) GnarkEval(api frontend.API, inputs []frontend.Variable) fron
 	for i, input := range inputs {
 		term := gnarkutil.Exp(api, input, prod.Exponents[i])
 		res = api.Mul(res, term)
+	}
+
+	return res
+}
+
+// GnarkEval implements the [Operator] interface.
+func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Variable) gnarkfext.Variable {
+
+	res := gnarkfext.NewFromBase(1)
+
+	// There should be as many inputs as there are coeffs
+	if len(inputs) != len(prod.Exponents) {
+		utils.Panic("%v inputs but %v coeffs", len(inputs), len(prod.Exponents))
+	}
+
+	outerApi := gnarkfext.NewExtApi(api)
+	/*
+		Accumulate the scalars
+	*/
+	for i, input := range inputs {
+		term := gnarkutilext.Exp(outerApi, input, prod.Exponents[i])
+		res = outerApi.Mul(res, term)
 	}
 
 	return res

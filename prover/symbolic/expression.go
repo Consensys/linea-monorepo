@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"reflect"
 	"sync"
 
@@ -71,6 +72,7 @@ type Operator interface {
 	Degree([]int) int
 	// GnarkEval returns an evaluation of the operator in a gnark circuit.
 	GnarkEval(frontend.API, []frontend.Variable) frontend.Variable
+	GnarkEvalExt(frontend.API, []gnarkfext.Variable) gnarkfext.Variable
 }
 
 // Board pins down the expression into an ExpressionBoard. This converts the

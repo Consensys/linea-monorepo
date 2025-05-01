@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
@@ -96,6 +97,28 @@ func (PolyEval) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend
 		res = api.Mul(res, x)
 		c := inputs[i]
 		res = api.Add(res, c)
+	}
+
+	return res
+}
+
+/*
+EvaluateExt the expression in a gnark circuit
+Does not support vector evaluation
+*/
+func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Variable) gnarkfext.Variable {
+	/*
+		We use the Horner method
+	*/
+	x := inputs[0]
+	res := inputs[len(inputs)-1]
+
+	outerApi := gnarkfext.NewExtApi(api)
+
+	for i := len(inputs) - 2; i >= 1; i-- {
+		res = outerApi.Mul(res, x)
+		c := inputs[i]
+		res = outerApi.Add(res, c)
 	}
 
 	return res
