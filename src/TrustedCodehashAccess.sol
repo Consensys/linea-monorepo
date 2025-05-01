@@ -15,7 +15,8 @@ abstract contract TrustedCodehashAccess is ITrustedCodehashAccess, OwnableUpgrad
     /// @notice Whidelisted codehashes.
     mapping(bytes32 codehash => bool permission) private trustedCodehashes;
     /// @notice Gap for upgrade safety.
-    uint256[10] private __gap;
+    // solhint-disable-next-line
+    uint256[10] private __gap_TrustedcodehashAccess;
 
     /**
      * @notice Restricts access based on the codehash of the caller.
