@@ -448,7 +448,11 @@ func (m *ModuleGL) CompleteGlobalCs(newGlobal query.GlobalConstraint) {
 				}
 
 				if cnst, isConst := col.(verifiercol.ConstCol); isConst {
-					return sym.NewConstant(cnst.F)
+					if cnst.IsBase() {
+						return sym.NewConstant(cnst.Base)
+					} else {
+						return sym.NewConstant(cnst.Ext)
+					}
 				}
 
 				if _, isVCol := col.(verifiercol.ConstCol); isVCol {
