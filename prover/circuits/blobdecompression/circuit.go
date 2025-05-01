@@ -23,7 +23,7 @@ func Compile(dictionaryNbBytes int) constraint.ConstraintSystem {
 func Assign(blobData []byte, dictStore dictionary.Store, eip4844Enabled bool, x [32]byte, y fr381.Element) (circuit frontend.Circuit, publicInput fr.Element, snarkHash []byte, err error) {
 	vsn := blob.GetVersion(blobData)
 	switch vsn {
-	case 1:
+	case 1, 2:
 		return v1.Assign(blobData, dictStore, eip4844Enabled, x, y)
 	case 0:
 		return v0.Assign(blobData, dictStore, eip4844Enabled, x, y)

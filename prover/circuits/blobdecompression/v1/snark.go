@@ -50,9 +50,9 @@ func parseHeader(api frontend.API, blobBytes []frontend.Variable, blobLen fronte
 		return 0, 0, 0, nil, errors.New("blob too short - no room for header")
 	}
 
-	// make sure this is a v1 blob
+	// make sure the blob version is 1 or 2
 	api.AssertIsEqual(blobBytes[0], 255)
-	api.AssertIsEqual(blobBytes[1], 255)
+	api.AssertIsEqual(api.MulAcc(api.Mul(-255-254, blobBytes[1]), blobBytes[1], blobBytes[1]), -255*254) // (b - 255)(b - 254) = 0
 	blobBytes = blobBytes[2:]
 
 	dictHash = compress.ReadNum(api, blobBytes[:checkSumSize], big.NewInt(256))
