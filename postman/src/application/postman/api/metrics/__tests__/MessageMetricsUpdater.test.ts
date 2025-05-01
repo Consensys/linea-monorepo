@@ -17,12 +17,10 @@ describe("MessageMetricsUpdater", () => {
   });
 
   const getMessagesCountQueryResp = [
-    { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, isForSponsorship: false, count: "2" },
-    { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, isForSponsorship: true, count: "3" },
+    { status: MessageStatus.SENT, direction: Direction.L1_TO_L2, count: "5" },
     {
       status: MessageStatus.CLAIMED_SUCCESS,
       direction: Direction.L1_TO_L2,
-      isForSponsorship: true,
       count: "10",
     },
   ];
@@ -47,23 +45,13 @@ describe("MessageMetricsUpdater", () => {
       await messageMetricsUpdater.getMessageCount({
         status: MessageStatus.SENT,
         direction: Direction.L1_TO_L2,
-        isForSponsorship: false,
       }),
-    ).toBe(2);
-
-    expect(
-      await messageMetricsUpdater.getMessageCount({
-        status: MessageStatus.SENT,
-        direction: Direction.L1_TO_L2,
-        isForSponsorship: true,
-      }),
-    ).toBe(3);
+    ).toBe(5);
 
     expect(
       await messageMetricsUpdater.getMessageCount({
         status: MessageStatus.CLAIMED_SUCCESS,
         direction: Direction.L1_TO_L2,
-        isForSponsorship: true,
       }),
     ).toBe(10);
   });
@@ -73,14 +61,12 @@ describe("MessageMetricsUpdater", () => {
       {
         status: MessageStatus.PENDING,
         direction: Direction.L1_TO_L2,
-        isForSponsorship: true,
       },
       10,
     );
     const gaugeValue = await messageMetricsUpdater.getMessageCount({
       status: MessageStatus.PENDING,
       direction: Direction.L1_TO_L2,
-      isForSponsorship: true,
     });
     expect(gaugeValue).toBe(10);
   });
@@ -90,7 +76,6 @@ describe("MessageMetricsUpdater", () => {
       {
         status: MessageStatus.PENDING,
         direction: Direction.L1_TO_L2,
-        isForSponsorship: true,
       },
       10,
     );
@@ -98,14 +83,12 @@ describe("MessageMetricsUpdater", () => {
       {
         status: MessageStatus.PENDING,
         direction: Direction.L1_TO_L2,
-        isForSponsorship: true,
       },
       5,
     );
     const gaugeValue = await messageMetricsUpdater.getMessageCount({
       status: MessageStatus.PENDING,
       direction: Direction.L1_TO_L2,
-      isForSponsorship: true,
     });
     expect(gaugeValue).toBe(5);
   });
