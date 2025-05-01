@@ -3,6 +3,7 @@ package distributed
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -103,10 +104,36 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
 	wizard.ContinueCompilation(modIOP,
+		// @alex: unsure why we need to compile with MiMC since it should be done
+		// pre-bootstrapping.
 		mimc.CompileMiMC,
-		plonkinwizard.Compile,
+		// The reason why 1 works is because it will work for all the GL modules
+		// and because the LPP module do not have Plonk-in-wizards query.
+		plonkinwizard.CompileWithMinimalRound(1),
 		compiler.Arcane(
 			compiler.WithTargetColSize(initialCompilerSize),
+			// Some precompiles modules consists of only microscropic columns and
+			// a Plonk-in-wizard query for a giant circuit. The small columns are
+			// connected to the rest via a lookup but we need to ensure that the
+			// columns will not be turned into "PROOF" columns and be put out of
+			// the LPP commitment.
+			//
+			// @alex:
+			// It's quite a magic number but the choice to use it nonetheless is
+			// because to set the optimal value, we would need a feature where
+			// the Arcane compiler detects the smallest committed column at round
+			// 0 (or any round from a list) and sets its size as the StitcherMinSize
+			// internally.
+			//
+			// For now, the current solution is fine and we can update the value from
+			// time to time if not too frequent.
+			compiler.WithStitcherMinSize(1<<4),
+		),
+		logdata.GenCSV(
+			files.MustOverwrite(
+				fmt.Sprintf("./lpp-debug-8/%v-columns.csv", subscript),
+			),
+			logdata.IncludeColumnCSVFilter,
 		),
 	)
 
