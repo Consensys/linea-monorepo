@@ -38,7 +38,6 @@ export const mapMessageEntityToMessage = (entity: MessageEntity): Message => {
     claimLastRetriedAt: entity.claimLastRetriedAt,
     claimGasEstimationThreshold: entity.claimGasEstimationThreshold,
     compressedTransactionSize: entity.compressedTransactionSize,
-    isForSponsorship: entity.isForSponsorship,
     createdAt: entity.createdAt,
     updatedAt: entity.updatedAt,
   });

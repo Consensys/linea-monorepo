@@ -1,4 +1,4 @@
-import { IsBoolean, IsDate, IsDecimal, IsEnum, IsNumber, IsString } from "class-validator";
+import { IsDate, IsDecimal, IsEnum, IsNumber, IsString } from "class-validator";
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
 import { Direction } from "@consensys/linea-sdk";
 import { MessageStatus } from "../../../../core/enums";
@@ -87,10 +87,6 @@ export class MessageEntity {
   @Column({ nullable: true })
   @IsNumber()
   compressedTransactionSize?: number;
-
-  @Column({ default: false })
-  @IsBoolean()
-  isForSponsorship: boolean;
 
   @CreateDateColumn()
   public createdAt: Date;

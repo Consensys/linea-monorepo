@@ -104,7 +104,7 @@ export class MessageClaimingProcessor implements IMessageClaimingProcessor {
       if (!isForSponsorship && (await this.handleZeroFee(hasZeroFee, nextMessageToClaim))) return;
       if (await this.handleNonExecutable(nextMessageToClaim, estimatedGasLimit)) return;
 
-      nextMessageToClaim.edit({ claimGasEstimationThreshold: threshold, isForSponsorship });
+      nextMessageToClaim.edit({ claimGasEstimationThreshold: threshold });
       await this.databaseService.updateMessage(nextMessageToClaim);
 
       if (
