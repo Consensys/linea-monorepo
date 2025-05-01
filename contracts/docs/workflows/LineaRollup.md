@@ -34,6 +34,10 @@ View the L1 to L2 Messaging flow.
 
 ### 9. 🧾 [L2 to L1 Messaging](./messaging/canonicalL2ToL1Messaging.md)
 View the L2 to L1 Messaging flow.
+
+### 10. 📦 [Blob Submission and Finalization](./operations/blobSubmissionAndFinalization.md)
+See the blob and finalization submission flows.
+
 ---
 
 ## ✅ Notes
