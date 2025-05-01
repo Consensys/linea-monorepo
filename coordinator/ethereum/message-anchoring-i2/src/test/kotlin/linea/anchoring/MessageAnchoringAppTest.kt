@@ -2,10 +2,11 @@ package linea.anchoring
 
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
-import linea.anchoring.events.L1RollingHashUpdatedEvent
-import linea.anchoring.events.L2RollingHashUpdatedEvent
-import linea.anchoring.events.MessageSentEvent
 import linea.anchoring.fakes.FakeL2MessageService
+import linea.contract.events.L1RollingHashUpdatedEvent
+import linea.contract.events.L2RollingHashUpdatedEvent
+import linea.contract.events.MessageSentEvent
+import linea.contrat.events.L1MessageSentV1EthLogs
 import linea.domain.BlockParameter
 import linea.domain.RetryConfig
 import linea.ethapi.FakeEthApiClient
@@ -22,7 +23,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
-import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 
@@ -185,8 +185,10 @@ class MessageAnchoringAppTest {
     val anchoringApp = createApp(
       l1PollingInterval = 1.milliseconds,
       l1EventSearchBlockChunk = 10u,
-      l1EventPollingTimeout = 50.milliseconds,
-      l1SuccessBackoffDelay = 20.milliseconds,
+      // for this scenario l1EventPollingTimeout < l1SuccessBackoffDelay
+      // to simulate timeout after the 1st response and return, doing next request on next tick
+      l1EventPollingTimeout = 1.milliseconds,
+      l1SuccessBackoffDelay = 3.milliseconds,
       maxMessagesToAnchorPerL2Transaction = 50u,
       anchoringTickInterval = 20.milliseconds
     )
@@ -196,7 +198,7 @@ class MessageAnchoringAppTest {
 
     anchoringApp.start().get()
     await()
-      .atMost(10.minutes.toJavaDuration())
+      .atMost(10.seconds.toJavaDuration())
       .untilAsserted {
         assertThat(l2MessageService.getLastAnchoredL1MessageNumber(block = BlockParameter.Tag.LATEST).get())
           .isEqualTo(ethLogs.last().l1RollingHashUpdated.event.messageNumber)
@@ -254,7 +256,7 @@ class MessageAnchoringAppTest {
     l1BlocksWithMessages.forEach { blockNumber ->
       repeat(numberOfMessagesPerBlock) {
         ethLogs.add(
-          createL1MessageSentV1Logs(
+          linea.contrat.events.createL1MessageSentV1Logs(
             blockNumber = blockNumber,
             contractAddress = L1_CONTRACT_ADDRESS,
             messageNumber = messageNumber,
