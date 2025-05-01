@@ -32,12 +32,16 @@ import maru.consensus.ProtocolStarterBlockHandler
 import maru.consensus.Web3jMetadataProvider
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
 import maru.consensus.delegated.ElDelegatedConsensusFactory
+import maru.consensus.qbft.network.NoopGossiper
+import maru.consensus.qbft.network.NoopValidatorMulticaster
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
 import maru.database.kv.KvDatabaseFactory
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
+import org.hyperledger.besu.consensus.common.bft.Gossiper
+import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
@@ -45,6 +49,8 @@ class MaruApp(
   config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
+  gossiper: Gossiper = NoopGossiper,
+  validatorMulticaster: ValidatorMulticaster = NoopValidatorMulticaster,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -122,6 +128,8 @@ class MaruApp(
                 newBlockHandler = qbftConsensusNewBlockHandler,
                 beaconChain = beaconChain,
                 clock = clock,
+                gossiper = gossiper,
+                validatorMulticaster = validatorMulticaster,
               ),
           ),
         metadataProvider = lastBlockMetadataCache,

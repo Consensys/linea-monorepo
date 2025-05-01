@@ -38,8 +38,6 @@ import maru.consensus.qbft.adapters.QbftProtocolScheduleAdapter
 import maru.consensus.qbft.adapters.QbftValidatorModeTransitionLoggerAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
-import maru.consensus.qbft.network.NoopGossiper
-import maru.consensus.qbft.network.NoopValidatorMulticaster
 import maru.consensus.state.FinalizationState
 import maru.consensus.state.StateTransition
 import maru.consensus.state.StateTransitionImpl
@@ -55,8 +53,10 @@ import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
 import org.hyperledger.besu.consensus.common.bft.BlockTimer
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
+import org.hyperledger.besu.consensus.common.bft.Gossiper
 import org.hyperledger.besu.consensus.common.bft.MessageTracker
 import org.hyperledger.besu.consensus.common.bft.RoundTimer
+import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.consensus.common.bft.statemachine.FutureMessageBuffer
 import org.hyperledger.besu.consensus.qbft.core.payload.MessageFactory
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftBlockHeightManagerFactory
@@ -81,6 +81,8 @@ class QbftProtocolFactory(
   private val newBlockHandler: NewBlockHandler<Unit>,
   private val executionLayerManager: JsonRpcExecutionLayerManager,
   private val clock: Clock,
+  private val gossiper: Gossiper,
+  private val validatorMulticaster: ValidatorMulticaster,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(maruConfig.validator != null) {
@@ -100,7 +102,6 @@ class QbftProtocolFactory(
 
     val localAddress = Util.publicKeyToAddress(keyPair.publicKey)
     val qbftProposerSelector = ProposerSelectorAdapter(beaconChain, ProposerSelectorImpl)
-    val validatorMulticaster = NoopValidatorMulticaster()
 
     val localValidator = Validator(localAddress.toArray())
     val validatorProvider = StaticValidatorProvider(setOf(localValidator))
@@ -165,7 +166,7 @@ class QbftProtocolFactory(
 
     val blockImporter = QbftBlockImporterAdapter(sealedBeaconBlockImporter)
 
-    val blockCodec = QbftBlockCodecAdapter()
+    val blockCodec = QbftBlockCodecAdapter
     val blockInterface = QbftBlockInterfaceAdapter()
     val protocolSchedule =
       QbftProtocolScheduleAdapter(
@@ -203,7 +204,6 @@ class QbftProtocolFactory(
         /* validatorProvider = */ besuValidatorProvider,
         /* validatorModeTransitionLogger = */ transitionLogger,
       )
-    val gossiper = NoopGossiper()
     val duplicateMessageTracker = MessageTracker(maruConfig.qbftOptions.duplicateMessageLimit)
     val chainHeaderNumber =
       beaconChain

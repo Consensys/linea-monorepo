@@ -19,7 +19,7 @@ import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.datatypes.Address
 import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
 
-class NoopValidatorMulticaster : ValidatorMulticaster {
+object NoopValidatorMulticaster : ValidatorMulticaster {
   override fun send(message: MessageData) {
   }
 

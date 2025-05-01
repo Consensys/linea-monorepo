@@ -23,10 +23,15 @@ import maru.config.MaruConfigDtoToml
 import maru.config.Utils
 import maru.consensus.ElFork
 import maru.consensus.config.JsonFriendlyForksSchedule
+import maru.consensus.qbft.network.NoopGossiper
+import maru.consensus.qbft.network.NoopValidatorMulticaster
+import org.hyperledger.besu.consensus.common.bft.Gossiper
+import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 
 object MaruFactory {
   private val consensusConfigDir = "/e2e/config"
   private val pragueConsensusConfig = "$consensusConfigDir/qbft-prague.json"
+  const val VALIDATOR_PRIVATE_KEY = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
 
   private fun buildMaruConfigString(
     ethereumJsonRpcUrl: String,
@@ -47,7 +52,7 @@ object MaruFactory {
     port = 3322
 
     [validator]
-    private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+    private-key = "$VALIDATOR_PRIVATE_KEY"
     el-client-engine-api-endpoint = "$engineApiRpc"
     """.trimIndent()
 
@@ -61,6 +66,8 @@ object MaruFactory {
     engineApiRpc: String,
     elFork: ElFork,
     dataDir: Path,
+    gossiper: Gossiper = NoopGossiper,
+    validatorMulticaster: ValidatorMulticaster = NoopValidatorMulticaster,
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
@@ -73,6 +80,11 @@ object MaruFactory {
     val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
     val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
 
-    return MaruApp(appConfig.domainFriendly(), beaconGenesisConfig.getUnsafe().domainFriendly())
+    return MaruApp(
+      config = appConfig.domainFriendly(),
+      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
+      gossiper = gossiper,
+      validatorMulticaster = validatorMulticaster,
+    )
   }
 }

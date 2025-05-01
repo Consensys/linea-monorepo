@@ -18,7 +18,7 @@ package maru.consensus.qbft.network
 import org.hyperledger.besu.consensus.common.bft.Gossiper
 import org.hyperledger.besu.ethereum.p2p.rlpx.wire.Message
 
-class NoopGossiper : Gossiper {
+object NoopGossiper : Gossiper {
   override fun send(message: Message?) {
   }
 }

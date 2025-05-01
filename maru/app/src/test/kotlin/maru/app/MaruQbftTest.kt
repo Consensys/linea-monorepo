@@ -19,11 +19,21 @@ import java.io.File
 import java.math.BigInteger
 import java.nio.file.Files
 import maru.consensus.ElFork
+import maru.consensus.qbft.network.NoopValidatorMulticaster
+import maru.consensus.qbft.toAddress
+import maru.crypto.Crypto
+import maru.extensions.fromHexToByteArray
 import maru.testutils.MaruFactory
+import maru.testutils.SpyingValidatorMulticaster
 import maru.testutils.TransactionsHelper
 import maru.testutils.besu.BesuFactory
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
+import org.awaitility.kotlin.await
+import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Commit
+import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Prepare
+import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Proposal
+import org.hyperledger.besu.consensus.qbft.core.messagewrappers.RoundChange
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
@@ -44,6 +54,7 @@ class MaruQbftTest {
   private lateinit var transactionsHelper: TransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private lateinit var tmpDir: File
+  private lateinit var spyingValidatorMulticaster: SpyingValidatorMulticaster
 
   @BeforeEach
   fun setUp() {
@@ -61,12 +72,14 @@ class MaruQbftTest {
     val engineRpcUrl = besuNode.engineRpcUrl().get()
     tmpDir = Files.createTempDirectory("maru").toFile()
     tmpDir.deleteOnExit()
+    spyingValidatorMulticaster = SpyingValidatorMulticaster(NoopValidatorMulticaster)
     maruNode =
       MaruFactory.buildTestMaru(
         ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
         engineApiRpc = engineRpcUrl,
         elFork = elFork,
         dataDir = tmpDir.toPath(),
+        validatorMulticaster = spyingValidatorMulticaster,
       )
     maruNode.start()
   }
@@ -91,13 +104,78 @@ class MaruQbftTest {
   }
 
   @Test
-  fun `Maru is producing blocks with expected block time`() {
+  fun `Maru is producing blocks with expected block time and emits messages`() {
     val blocksToProduce = 10
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
     verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
+
+    // Need to wait because otherwise not all of the messages might be emitted at the time of a block being mined
+    await.untilAsserted {
+      validateRoundChange(maxBlockNumber = blocksToProduce.toLong())
+    }
+
+    for (blockNumber in 1L..blocksToProduce) {
+      assertThat(
+        anyPrepareWithBlockNumber(blockNumber),
+      ).withFailMessage { "Didn't find any prepare messages for blockNumber=$blockNumber" }
+        .isTrue
+      assertThat(
+        anyCommitWithBlockNumber(blockNumber),
+      ).withFailMessage { "Didn't find any commit messages for blockNumber=$blockNumber" }
+        .isTrue
+      assertThat(
+        anyProposalWithBlockNumber(blockNumber),
+      ).withFailMessage { "Didn't find any proposal messages for blockNumber=$blockNumber" }
+        .isTrue
+    }
+    allMessagesAreSignedByTheExpectedSigner()
+  }
+
+  private fun anyPrepareWithBlockNumber(blockNumber: Long): Boolean =
+    spyingValidatorMulticaster.emittedMessages.any {
+      it is Prepare && it.roundIdentifier.sequenceNumber == blockNumber
+    }
+
+  private fun anyProposalWithBlockNumber(blockNumber: Long): Boolean =
+    spyingValidatorMulticaster.emittedMessages.any {
+      it is Proposal && it.roundIdentifier.sequenceNumber == blockNumber
+    }
+
+  private fun anyCommitWithBlockNumber(blockNumber: Long): Boolean =
+    spyingValidatorMulticaster.emittedMessages.any {
+      it is Commit && it.roundIdentifier.sequenceNumber == blockNumber
+    }
+
+  // All blocks except the first must be produced within 0th round. Absence of transactions will trigger RoundChange
+  // events post test
+  private fun validateRoundChange(maxBlockNumber: Long) {
+    val roundChangeMessages =
+      spyingValidatorMulticaster.emittedMessages.filter {
+        it is RoundChange
+      }
+    assertThat(roundChangeMessages).isNotEmpty()
+    roundChangeMessages.forEach { roundChange ->
+      assertThat(
+        roundChange.roundIdentifier.sequenceNumber == 1L ||
+          roundChange.roundIdentifier.sequenceNumber > maxBlockNumber,
+      ).withFailMessage { "Unexpected RoundChange! $roundChange" }
+        .isTrue
+    }
+  }
+
+  private fun allMessagesAreSignedByTheExpectedSigner() {
+    val validatorAddress =
+      Crypto
+        .privateKeyToValidator(MaruFactory.VALIDATOR_PRIVATE_KEY.fromHexToByteArray())
+        .toAddress()
+    spyingValidatorMulticaster.emittedMessages.forEach {
+      assertThat(it.author)
+        .withFailMessage { "Unexpected signer address for message=$it author=${it.author}" }
+        .isEqualTo(validatorAddress)
+    }
   }
 
   @Test
