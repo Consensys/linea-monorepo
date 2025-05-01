@@ -465,8 +465,15 @@ func (c *VerifierCircuit) GetRandomCoinFieldExt(name coin.Name) gnarkfext.Variab
 		and that it has the correct type
 	*/
 	infos := c.Spec.Coins.Data(name)
+
+	// intermediary use case, should be removed when all coins become field extensions
+	if infos.Type == coin.Field || infos.Type == coin.FieldFromSeed {
+		res := c.Coins.MustGet(name).(frontend.Variable)
+		return gnarkfext.NewFromBase(res)
+	}
+
 	if infos.Type != coin.FieldExt {
-		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.Field)
+		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
 	}
 	// If this panics, it means we generate the coins wrongly
 	return c.Coins.MustGet(name).(gnarkfext.Variable)

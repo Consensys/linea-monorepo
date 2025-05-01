@@ -116,13 +116,55 @@ func (e *FromExprAccessor) GetVal(run ifaces.Runtime) field.Element {
 }
 
 func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
-	//TODO implement me
-	panic("implement me")
+	if e.IsBase() {
+		metadata := e.Boarded.ListVariableMetadata()
+		inputs := make([]smartvectors.SmartVector, len(metadata))
+
+		for i, m := range metadata {
+			switch castedMetadata := m.(type) {
+			case ifaces.Accessor:
+				x := castedMetadata.GetVal(run)
+				inputs[i] = smartvectors.NewConstant(x, 1)
+			case coin.Info:
+				// this is always fine because all coins are public
+				x := run.GetRandomCoinField(castedMetadata.Name)
+				inputs[i] = smartvectors.NewConstant(x, 1)
+			default:
+				utils.Panic("unsupported type %T", m)
+			}
+		}
+
+		return e.Boarded.Evaluate(inputs).Get(0), nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested a base element from an accessor over field extensions")
+	}
 }
 
 func (e *FromExprAccessor) GetValExt(run ifaces.Runtime) fext.Element {
-	//TODO implement me
-	panic("implement me")
+	if e.IsBase() {
+		res, _ := e.GetValBase(run)
+		return fext.NewFromBase(res)
+	} else {
+		// expression is over field extensions
+		metadata := e.Boarded.ListVariableMetadata()
+		inputs := make([]smartvectors.SmartVector, len(metadata))
+
+		for i, m := range metadata {
+			switch castedMetadata := m.(type) {
+			case ifaces.Accessor:
+				x := castedMetadata.GetValExt(run)
+				inputs[i] = smartvectors.NewConstantExt(x, 1)
+			case coin.Info:
+				// this is always fine because all coins are public
+				x := run.GetRandomCoinFieldExt(castedMetadata.Name)
+				inputs[i] = smartvectors.NewConstantExt(x, 1)
+			default:
+				utils.Panic("unsupported type %T", m)
+			}
+		}
+
+		return e.Boarded.EvaluateExt(inputs).GetExt(0)
+	}
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
@@ -186,7 +228,7 @@ func (e *FromExprAccessor) GetFrontendVariableExt(api frontend.API, circ ifaces.
 			}
 		}
 
-		return e.Boarded.GnarkEval(api, inputs), nil
+		return e.Boarded.GnarkEvalExt(api, inputs)
 
 	}
 }
@@ -202,6 +244,5 @@ func (e *FromExprAccessor) Round() int {
 }
 
 func (e *FromExprAccessor) IsBase() bool {
-	//TODO implement me
-	panic("implement me")
+	return e.IsBase()
 }
