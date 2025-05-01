@@ -273,17 +273,30 @@ func (mw *ModuleWitnessLPP) NextN0s(moduleLPP *ModuleLPP) []int {
 		selCol := args[i].Selector
 
 		if constCol, isConstCol := selCol.(verifiercol.ConstCol); isConstCol {
+			if constCol.IsBase() {
+				if constCol.Base.IsZero() {
+					continue
+				}
 
-			if constCol.Base.IsZero() {
-				continue
+				if constCol.Base.IsOne() {
+					newN0s[i] += constCol.Size()
+					continue
+				}
+
+				utils.Panic("the selector column has non-zero values: %v", constCol.Base.String())
+			} else {
+				if constCol.Ext.IsZero() {
+					continue
+				}
+
+				if constCol.Ext.IsOne() {
+					newN0s[i] += constCol.Size()
+					continue
+				}
+
+				utils.Panic("the selector column has non-zero values: %v", constCol.Ext.String())
+
 			}
-
-			if constCol.Base.IsOne() {
-				newN0s[i] += constCol.Size()
-				continue
-			}
-
-			utils.Panic("the selector column has non-zero values: %v", constCol.Base.String())
 		}
 
 		// Expectedly, at this point. The column must be a natural column. We can't support
@@ -295,13 +308,22 @@ func (mw *ModuleWitnessLPP) NextN0s(moduleLPP *ModuleLPP) []int {
 			utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selCol, mw.ModuleNames, mw.ModuleIndex)
 		}
 
-		sel := selSV.IntoRegVecSaveAlloc()
-
-		for j := range sel {
-			if sel[j].IsOne() {
-				newN0s[i]++
+		if selCol.IsBase() {
+			sel := selSV.IntoRegVecSaveAlloc()
+			for j := range sel {
+				if sel[j].IsOne() {
+					newN0s[i]++
+				}
+			}
+		} else {
+			sel := selSV.IntoRegVecSaveAllocExt()
+			for j := range sel {
+				if sel[j].IsOne() {
+					newN0s[i]++
+				}
 			}
 		}
+
 	}
 
 	return newN0s
