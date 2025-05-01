@@ -124,12 +124,18 @@ func (a *stitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 func (ctx *stitchingContext) ScanStitchCommit() {
 	for round := 0; round < ctx.comp.NumRounds(); round++ {
 
-		// scan the compiler trace to find the eligible columns for stitching
+		// scan the compiler trace to find the eligible columns for stitching. The
+		// sorting is critical to ensure that the stitching happens in deterministic
+		// order and that the columns are created in the same order.
 		columnsBySize := scanAndClassifyEligibleColumns(*ctx, round)
+		sizes := utils.SortedKeysOf(columnsBySize, func(a, b int) bool {
+			return a < b
+		})
 
-		for size, cols := range columnsBySize {
+		for _, size := range sizes {
 
 			var (
+				cols            = columnsBySize[size]
 				precomputedCols = make([]ifaces.Column, 0, len(cols))
 				committedCols   = make([]ifaces.Column, 0, len(cols))
 			)
