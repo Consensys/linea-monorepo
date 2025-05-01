@@ -1,8 +1,8 @@
 package linea.anchoring.clients
 
 import linea.EthLogsSearcher
-import linea.anchoring.events.L1RollingHashUpdatedEvent
-import linea.anchoring.events.MessageSentEvent
+import linea.contract.events.L1RollingHashUpdatedEvent
+import linea.contract.events.MessageSentEvent
 import linea.domain.BlockParameter
 import linea.domain.BlockParameter.Companion.toBlockParameter
 import linea.domain.CommonDomainFunctions
@@ -79,7 +79,7 @@ internal class L1MessageSentEventsFetcher(
           ),
           result.intervalString()
         )
-        result.logs.map(MessageSentEvent::fromEthLog)
+        events
       }
     }
   }
