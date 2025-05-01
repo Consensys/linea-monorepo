@@ -101,8 +101,11 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
             revert Karma__UnknownDistributor();
         }
 
+        _overflowCheck(amount);
+
         rewardDistributorAllocations[rewardsDistributor] += amount;
         totalDistributorAllocation += amount;
+
         IRewardDistributor(rewardsDistributor).setReward(amount, duration);
     }
 
@@ -114,6 +117,7 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
      * @param amount The amount of tokens to mint.
      */
     function mint(address account, uint256 amount) external onlyOwner {
+        _overflowCheck(amount);
         _mint(account, amount);
     }
 
@@ -164,6 +168,11 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
      */
     function _authorizeUpgrade(address) internal view override {
         _checkOwner();
+    }
+
+    function _overflowCheck(uint256 amount) internal view {
+        // This will revert if `amount` overflows the total supply
+        super.totalSupply() + totalDistributorAllocation + amount;
     }
 
     /*//////////////////////////////////////////////////////////////////////////
