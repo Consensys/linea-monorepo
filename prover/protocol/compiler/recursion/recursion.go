@@ -302,7 +302,7 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 
 	translator.Target.QueriesParams.MarkAsIgnored(dstVortexCtx.Query.QueryID)
 
-	if srcVortexCtx.IsCommitToPrecomputed() {
+	if srcVortexCtx.IsNonEmptyPrecomputed() {
 		dstVortexCtx.Items.Precomputeds.PrecomputedColums = translator.AddColumnList(srcVortexCtx.Items.Precomputeds.PrecomputedColums, true, 0)
 		dstVortexCtx.Items.Precomputeds.MerkleRoot = translator.AddColumnAtRound(srcVortexCtx.Items.Precomputeds.MerkleRoot, false, 0)
 		dstVortexCtx.Items.Precomputeds.CommittedMatrix = srcVortexCtx.Items.Precomputeds.CommittedMatrix

@@ -37,7 +37,7 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	)
 
 	// Append the precomputed roots and the corresponding flag
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
 		precompRootF := precompRootSv.Get(0)                                        // root as a field element
 
@@ -125,7 +125,7 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 	}
 
 	// add ys for precomputed
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		names := make([]ifaces.ColID, len(ctx.Items.Precomputeds.PrecomputedColums))
 		for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
 			names[i] = poly.GetColID()
@@ -185,7 +185,7 @@ func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][
 	roundStartAt := 0
 
 	// Process precomputed
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		openedPrecompCols := make([][]field.Element, len(entryList))
 		numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
 		for j := range entryList {

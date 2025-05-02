@@ -45,7 +45,7 @@ func (ctx *SelfRecursionCtx) registersI() {
 func (ctx *SelfRecursionCtx) registersAh() {
 	ahLength := ctx.VortexCtx.CommitmentsByRounds.Len()
 	// Consider the precomputed columns
-	if ctx.VortexCtx.IsCommitToPrecomputed() {
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		ahLength += 1
 	}
 	ah := make([]ifaces.Column, ahLength)
@@ -56,7 +56,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 	roundStartAt := 0
 
 	// Consider the precomputed columns
-	if ctx.VortexCtx.IsCommitToPrecomputed() {
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		numPrecomputeds := len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
 
 		// Sanity-check : if coms in precomputeds have length zero then the
@@ -85,7 +85,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 	}
 	// Offset for the precomputed polys
 	precompOffset := 0
-	if ctx.VortexCtx.IsCommitToPrecomputed() {
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		precompOffset += 1
 	}
 

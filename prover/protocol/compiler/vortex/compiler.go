@@ -100,7 +100,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 
 		ctx.generateVortexParams()
 		// Commit to precomputed columns
-		if ctx.IsCommitToPrecomputed() {
+		if ctx.IsNonEmptyPrecomputed() {
 			ctx.commitPrecomputeds()
 		}
 		ctx.registerOpeningProof(lastRound)
@@ -614,8 +614,8 @@ func (ctx *Ctx) NumEncodedCols() int {
 	return res
 }
 
-// We commit to the precomputed columns if there are any.
-func (ctx *Ctx) IsCommitToPrecomputed() bool {
+// We check if there are non zero numbers of precomputed columns to commit to.
+func (ctx *Ctx) IsNonEmptyPrecomputed() bool {
 	if len(ctx.Items.Precomputeds.PrecomputedColums) > 0 {
 		logrus.Infof("We are committing to #%v precomputed columns", len(ctx.Items.Precomputeds.PrecomputedColums))
 		return true
@@ -771,7 +771,9 @@ func (ctx *Ctx) MerkleProofSize() int {
 		numOpening = ctx.NbColsToOpen()
 	)
 	// The number of rounds increases by 1 for committing to the precomputed
-	numComs += 1
+	if ctx.IsNonEmptyPrecomputed() {
+		numComs += 1
+	}
 
 	if depth*numComs*numOpening == 0 {
 		utils.Panic("something was zero : %v, %v, %v", depth, numComs, numOpening)

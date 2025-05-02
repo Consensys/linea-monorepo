@@ -65,7 +65,7 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 		committedSVNoSIS = []smartvectors.SmartVector{}
 	)
 	// Add the precomputed columns
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		var precomputedSV = []smartvectors.SmartVector{}
 		for _, col := range ctx.Items.Precomputeds.PrecomputedColums {
 			precomputedSV = append(precomputedSV, col.GetColAssignment(pr))
@@ -153,7 +153,7 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 
 	// Append the precomputed committedMatrices and trees to the SIS or no SIS matrices
 	// or trees as per the number of precomputed columns are more than the [ApplyToSISThreshold]
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		if ctx.IsSISAppliedToPrecomputed() {
 			committedMatricesSIS = append(committedMatricesSIS, ctx.Items.Precomputeds.CommittedMatrix)
 			treesSIS = append(treesSIS, ctx.Items.Precomputeds.Tree)
@@ -253,14 +253,14 @@ func (ctx *Ctx) packMerkleProofs(proofs [][]smt.Proof) smartvectors.SmartVector 
 
 	// When we commit to the precomputeds, len(proofs) = ctx.NumCommittedRounds + 1,
 	// otherwise len(proofs) = ctx.NumCommittedRounds
-	if len(proofs) != ctx.NumCommittedRounds() && !ctx.IsCommitToPrecomputed() {
+	if len(proofs) != ctx.NumCommittedRounds() && !ctx.IsNonEmptyPrecomputed() {
 		utils.Panic(
 			"inconsitent proofs length %v, %v",
 			len(proofs), ctx.NumCommittedRounds(),
 		)
 	}
 
-	if len(proofs) != (ctx.NumCommittedRounds()+1) && ctx.IsCommitToPrecomputed() {
+	if len(proofs) != (ctx.NumCommittedRounds()+1) && ctx.IsNonEmptyPrecomputed() {
 		utils.Panic(
 			"inconsitent proofs length %v, %v",
 			len(proofs), ctx.NumCommittedRounds()+1,
@@ -294,7 +294,7 @@ func (ctx *Ctx) unpackMerkleProofs(sv smartvectors.SmartVector, entryList []int)
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		numComs = ctx.NumCommittedRounds() + 1 // Need to consider the precomputed commitments
 	}
 	numEntries := len(entryList)
