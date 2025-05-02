@@ -90,7 +90,6 @@ func fullSuite() []func(*wizard.CompiledIOP) {
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
-			vortex.ReplaceSisByMimc(),
 		),
 	}
 }

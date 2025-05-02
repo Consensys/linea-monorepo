@@ -120,7 +120,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 			}
 		}
 
-		if pcsCtx.IsCommitToPrecomputed() {
+		if pcsCtx.IsNonEmptyPrecomputed() {
 
 			com := pcsCtx.Items.Precomputeds.MerkleRoot.GetColAssignmentAt(run, 0)
 			if com != circMRoots[0] {
@@ -171,7 +171,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 			api.AssertIsEqual(circYs[i], params.Ys[i])
 		}
 
-		if pcsCtx.IsCommitToPrecomputed() {
+		if pcsCtx.IsNonEmptyPrecomputed() {
 
 			com := pcsCtx.Items.Precomputeds.MerkleRoot.GetColAssignmentGnarkAt(run, 0)
 			api.AssertIsEqual(com, circMRoots[0])

@@ -17,7 +17,7 @@ var (
 
 	partialCompilationSuite = CompilationSuite{
 		compiler.Arcane(1<<16, 1<<17, true),
-		vortex.Compile(2, vortex.WithDryThreshold(16)),
+		vortex.Compile(2, vortex.WithOptionalSISHashingThreshold(16)),
 	}
 )
 

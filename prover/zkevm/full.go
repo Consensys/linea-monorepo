@@ -104,7 +104,6 @@ var (
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
-			vortex.ReplaceSisByMimc(),
 		),
 		// logdata.Log("post-vortex-4"),
 	}
