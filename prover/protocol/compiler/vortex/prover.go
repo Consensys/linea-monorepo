@@ -16,7 +16,7 @@ import (
 // Prover steps of Vortex that is run in place of committing to polynomials
 func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 	// Check if that is a dry round
-	if ctx.isDry(round) {
+	if ctx.RoundStatus[round] == IsEmpty {
 		// Nothing special to do.
 		return func(pr *wizard.ProverRuntime) {}
 	}
@@ -35,9 +35,9 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 		}
 		// We commit to the polynomials with SIS hashing if the number of polynomials
 		// is greater than the [ApplyToSISThreshold].
-		if ctx.IsSISReplacedByMiMC[round] {
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			committedMatrix, tree, sisDigest = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
-		} else {
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			committedMatrix, tree, sisDigest = ctx.VortexParams.CommitMerkleWithSIS(pols)
 		}
 		pr.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
@@ -82,14 +82,14 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		// There are not included in the commitments so there
 		// is no need to compute their linear combination.
-		if ctx.isDry(round) {
+		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
 		pols := ctx.getPols(pr, round)
 		// Push pols to the right stack
-		if ctx.IsSISReplacedByMiMC[round] {
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			committedSVNoSIS = append(committedSVNoSIS, pols...)
-		} else {
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			committedSVSIS = append(committedSVSIS, pols...)
 		}
 	}
@@ -123,7 +123,7 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(pr *wizard.ProverRuntime) {
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		// There are not included in the commitments so there
 		// is no need to proceed.
-		if ctx.isDry(round) {
+		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
 		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
@@ -166,7 +166,7 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		// There are not included in the commitments so there
 		// is no need to proceed.
-		if ctx.isDry(round) {
+		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
 		// Fetch it from the state
@@ -179,10 +179,10 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 
 		// conditionally stack the matrix and tree
 		// to SIS or no SIS matrices and trees
-		if ctx.IsSISReplacedByMiMC[round] {
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
 			treesNoSIS = append(treesNoSIS, tree)
-		} else {
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			committedMatricesSIS = append(committedMatricesSIS, committedMatrix)
 			treesSIS = append(treesSIS, tree)
 		}
@@ -322,9 +322,4 @@ func (ctx *Ctx) unpackMerkleProofs(sv smartvectors.SmartVector, entryList []int)
 		}
 	}
 	return proofs
-}
-
-// returns true if the round is dry (i.e, there is nothing to commit to)
-func (ctx *Ctx) isDry(round int) bool {
-	return ctx.CommitmentsByRounds.Len() <= round || ctx.CommitmentsByRounds.LenOf(round) == 0
 }

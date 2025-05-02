@@ -55,10 +55,10 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 		rootSv := vr.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
 		rootF := rootSv.Get(0)                                          // root as a field element
 		// Append the isSISApplied flag
-		if ctx.IsSISReplacedByMiMC[round] {
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			noSisRoots = append(noSisRoots, types.Bytes32(rootF.Bytes()))
 			flagForNoSISRounds = append(flagForNoSISRounds, true)
-		} else {
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			sisRoots = append(sisRoots, types.Bytes32(rootF.Bytes()))
 			flagForSISRounds = append(flagForSISRounds, false)
 		}
@@ -151,9 +151,9 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 			ysRounds[i] = ysMap[name]
 		}
 		// conditionally append ysRounds to the SIS or no SIS list
-		if ctx.IsSISReplacedByMiMC[round] {
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			ysNoSIS = append(ysNoSIS, ysRounds)
-		} else {
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			ysSIS = append(ysSIS, ysRounds)
 		}
 	}
@@ -213,9 +213,9 @@ func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][
 		roundStartAt += numRowsForRound
 		// conditionally append the opened columns
 		// to the SIS or no SIS list
-		if ctx.IsSISReplacedByMiMC[round] {
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			openedSubColumnsNoSIS = append(openedSubColumnsNoSIS, openedSubColumnsForRound)
-		} else {
+		} else if ctx.RoundStatus[round] == IsSISApplied {
 			openedSubColumnsSIS = append(openedSubColumnsSIS, openedSubColumnsForRound)
 		}
 	}

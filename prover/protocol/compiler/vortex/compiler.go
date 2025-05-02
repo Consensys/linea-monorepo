@@ -21,6 +21,20 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type roundStatus int
+
+// Declare enum values using iota
+const (
+	// Denotes a round with no polynomials to commit to
+	IsEmpty roundStatus = iota
+	// Denotes a round when we apply only MiMC hashing
+	// on the columns of the round matrix
+	IsOnlyMiMCApplied
+	// Denotes a round when we apply SIS+MiMC hashing
+	// on the columns of the round matrix
+	IsSISApplied
+)
+
 type vortexProverAction struct {
 	ctx Ctx
 	fn  func(*wizard.ProverRuntime)
@@ -168,7 +182,7 @@ type Ctx struct {
 	// Otherwise, we replace SIS and directly apply MiMC hashing
 	// for computing the leaves of the Merkle tree.
 	ApplySISHashThreshold int
-	IsSISReplacedByMiMC   []bool
+	RoundStatus           []roundStatus
 
 	CommittedRowsCount int
 	NumCols            int
@@ -286,7 +300,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	ctx.Items.MerkleRoots = make([]ifaces.Column, comp.NumRounds())
 
 	// Declare the IsSISApplied slice
-	ctx.IsSISReplacedByMiMC = make([]bool, 0, comp.NumRounds())
+	ctx.RoundStatus = make([]roundStatus, 0, comp.NumRounds())
 
 	return ctx
 }
@@ -299,8 +313,8 @@ func (ctx *Ctx) compileRound(round int) {
 
 	// edge-case : no commitment for the round = nothing to do
 	if len(allComs) == 0 {
-		// We add the default value as true in the no-op round
-		ctx.IsSISReplacedByMiMC = append(ctx.IsSISReplacedByMiMC, true)
+		// We add the default value as 0 in the empty round
+		ctx.RoundStatus = append(ctx.RoundStatus, IsEmpty)
 		return
 	}
 
@@ -345,8 +359,8 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 
 	// If there is no commitment, then we have nothing to do
 	if len(coms) == 0 {
-		// We add the default value as true in the no-op round
-		ctx.IsSISReplacedByMiMC = append(ctx.IsSISReplacedByMiMC, true)
+		// We add the default value as 0 in the empty round
+		ctx.RoundStatus = append(ctx.RoundStatus, IsEmpty)
 		return
 	}
 	// If the number of commitments is more than the ApplySISHashThreshold, we do
@@ -359,7 +373,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 		// limbs is equal to 1. This skips the aforementioned behaviour.
 
 		// We append false value as we are not replacing SIS with MiMC
-		ctx.IsSISReplacedByMiMC = append(ctx.IsSISReplacedByMiMC, false)
+		ctx.RoundStatus = append(ctx.RoundStatus, IsSISApplied)
 		numLimbs := ctx.SisParams.NumLimbs()
 		deg := ctx.SisParams.OutputSize()
 
@@ -399,7 +413,7 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
 		}
 	} else {
 		// We are preparing for not applying SIS hashing on the columns of the round matrix
-		ctx.IsSISReplacedByMiMC = append(ctx.IsSISReplacedByMiMC, true)
+		ctx.RoundStatus = append(ctx.RoundStatus, IsOnlyMiMCApplied)
 		log := logrus.
 			WithField("where", "compileRoundWithVortexWithNoSIS").
 			WithField("numComs", numComsActual).
@@ -751,7 +765,8 @@ func (ctx *Ctx) NumCommittedRounds() int {
 	// the compileRound method. Careful, the stopping condition is
 	// an LE and not a strict LT condition.
 	for i := 0; i <= ctx.MaxCommittedRound; i++ {
-		if ctx.isDry(i) {
+		if ctx.RoundStatus[i] == IsEmpty {
+			// We skip the empty rounds
 			continue
 		}
 		res++

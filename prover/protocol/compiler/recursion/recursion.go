@@ -292,6 +292,7 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		NumOpenedCol:          srcVortexCtx.NumOpenedCol,
 		VortexParams:          srcVortexCtx.VortexParams,
 		SisParams:             srcVortexCtx.SisParams,
+		RoundStatus:           srcVortexCtx.RoundStatus,
 		// Although the srcVor
 		IsSelfrecursed:               true,
 		CommitmentsByRounds:          translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRounds),
