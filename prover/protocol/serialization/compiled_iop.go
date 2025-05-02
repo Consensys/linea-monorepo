@@ -24,7 +24,7 @@ type rawCompiledIOP struct {
 	DummyCompiled   bool                `json:"dummyCompiled"`
 }
 
-func newEmptyCompiledIOP() *wizard.CompiledIOP {
+func NewEmptyCompiledIOP() *wizard.CompiledIOP {
 	return &wizard.CompiledIOP{
 		Columns:         column.NewStore(),
 		QueriesParams:   wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
@@ -112,6 +112,35 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 	return serializeAnyWithCborPkg(raw)
 }
 
+// DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns an error
+// if the marshalled object does not have the right format. The
+// deserialized object can then be used for proving or verification via the
+// functions [wizard.Prove] or [wizard.Verify].
+func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
+	comp := NewEmptyCompiledIOP()
+	raw := &rawCompiledIOP{}
+	if err := deserializeAnyWithCborPkg(data, raw); err != nil {
+		return nil, fmt.Errorf("CBOR unmarshal failed: %w", err)
+	}
+
+	numRounds := len(raw.Columns)
+	if numRounds == 0 {
+		return comp, nil
+	}
+
+	// Mutex to protect updates to comp
+	var mu sync.Mutex
+
+	if err := deserializeColumnsAndCoinsParallel(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("columns and coins: %w", err)
+	}
+	if err := deserializeQueriesParallel(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("queries: %w", err)
+	}
+
+	return comp, nil
+}
+
 func serializeColumns(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, error) {
 	cols := comp.Columns.AllHandlesAtRound(round)
 	rawCols := make([]json.RawMessage, len(cols))
@@ -157,35 +186,6 @@ func serializeCoins(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, err
 	}
 
 	return rawCoins, nil
-}
-
-// DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns an error
-// if the marshalled object does not have the right format. The
-// deserialized object can then be used for proving or verification via the
-// functions [wizard.Prove] or [wizard.Verify].
-func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
-	comp := newEmptyCompiledIOP()
-	raw := &rawCompiledIOP{}
-	if err := deserializeAnyWithCborPkg(data, raw); err != nil {
-		return nil, fmt.Errorf("CBOR unmarshal failed: %w", err)
-	}
-
-	numRounds := len(raw.Columns)
-	if numRounds == 0 {
-		return comp, nil
-	}
-
-	// Mutex to protect updates to comp
-	var mu sync.Mutex
-
-	if err := deserializeColumnsAndCoinsParallel(raw, comp, numRounds, &mu); err != nil {
-		return nil, fmt.Errorf("columns and coins: %w", err)
-	}
-	if err := deserializeQueriesParallel(raw, comp, numRounds, &mu); err != nil {
-		return nil, fmt.Errorf("queries: %w", err)
-	}
-
-	return comp, nil
 }
 
 func deserializeColumnsAndCoinsParallel(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
