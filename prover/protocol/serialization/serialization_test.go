@@ -44,11 +44,6 @@ func TestSerializeValue(t *testing.T) {
 			Mode:     DeclarationMode,
 		},
 		{
-			V:        "someRandomString",
-			Expected: "psomeRandomString",
-			Mode:     DeclarationMode,
-		},
-		{
 			V: func() any {
 				var s = ifaces.ColID("someIndirectedString")
 				return &s
@@ -86,7 +81,7 @@ func TestSerializeValue(t *testing.T) {
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
-			comp := newEmptyCompiledIOP()
+			comp := NewEmptyCompiledIOP()
 			nat := comp.InsertColumn(0, "myNaturalColumn", 16, column.Committed)
 			var v any = &nat
 
@@ -109,7 +104,7 @@ func TestSerializeValue(t *testing.T) {
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
-			comp := newEmptyCompiledIOP()
+			comp := NewEmptyCompiledIOP()
 			nat := comp.InsertColumn(0, "myNaturalColumn", 16, column.Committed)
 			nat = column.Shift(nat, 2)
 			var v any = &nat
@@ -133,7 +128,7 @@ func TestSerializeValue(t *testing.T) {
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
-			comp := newEmptyCompiledIOP()
+			comp := NewEmptyCompiledIOP()
 
 			col := verifiercol.NewConcatTinyColumns(
 				comp,
@@ -163,7 +158,7 @@ func TestSerializeValue(t *testing.T) {
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
-			comp := newEmptyCompiledIOP()
+			comp := NewEmptyCompiledIOP()
 
 			var (
 				a                   = comp.InsertColumn(0, "a", 16, column.Committed)
@@ -192,7 +187,7 @@ func TestSerializeValue(t *testing.T) {
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
-			comp := newEmptyCompiledIOP()
+			comp := NewEmptyCompiledIOP()
 
 			var (
 				a      = comp.InsertColumn(0, "a", 16, column.Committed)

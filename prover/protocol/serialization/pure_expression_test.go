@@ -14,7 +14,7 @@ func TestPureExpr(t *testing.T) {
 	var (
 		stringA      = sym.NewDummyVar("a")
 		stringB      = sym.NewDummyVar("b")
-		comp         = newEmptyCompiledIOP()
+		comp         = NewEmptyCompiledIOP()
 		colA         = comp.InsertColumn(0, "a", 16, column.Committed)
 		colB         = comp.InsertColumn(0, "b", 16, column.Committed)
 		exprBuilders = []func(a, b any) *sym.Expression{

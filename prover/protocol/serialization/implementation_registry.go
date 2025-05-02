@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 )
 
 func init() {
@@ -64,6 +65,17 @@ func init() {
 	RegisterImplementation(variables.X{})
 	RegisterImplementation(variables.PeriodicSample{})
 	RegisterImplementation(symbolic.StringVar(""))
+
+	RegisterImplementation(&arithmetization.Arithmetization{})
+	// RegisterImplementation(&keccak.KeccakZkEVM{})
+	// RegisterImplementation(&statemanager.StateManager{})
+	// RegisterImplementation(&publicInput.PublicInput{})
+	// RegisterImplementation(&ecdsa.EcdsaZkEvm{})
+	// RegisterImplementation(&modexp.Module{})
+	// RegisterImplementation(&ecarith.EcAdd{})
+	// RegisterImplementation(&ecarith.EcMul{})
+	// RegisterImplementation(&ecpair.ECPair{})
+	// RegisterImplementation(&sha2.Sha2SingleProvider{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
