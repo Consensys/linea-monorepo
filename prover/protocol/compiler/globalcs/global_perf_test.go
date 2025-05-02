@@ -32,7 +32,7 @@ func BenchmarkGlobalConstraintWoArtefacts(b *testing.B) {
 		specialqueries.CompileFixedPermutations,
 		permutation.CompileGrandProduct,
 		logderivativesum.CompileLookups,
-		innerproduct.Compile,
+		innerproduct.Compile(),
 		stitchsplit.Stitcher(1<<10, 1<<19),
 		stitchsplit.Splitter(1 << 19),
 		cleanup.CleanUp,

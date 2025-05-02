@@ -32,7 +32,7 @@ var totalSuite = []func(comp *wizard.CompiledIOP){
 	logderivativesum.CompileLogDerivativeSum,
 	horner.ProjectionToHorner,
 	horner.CompileHorner,
-	innerproduct.Compile,
+	innerproduct.Compile(),
 	stitchsplit.Stitcher(1, 8),
 	stitchsplit.Splitter(8),
 	localcs.Compile,

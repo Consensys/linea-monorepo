@@ -22,12 +22,13 @@ type ArcaneParams func(*arcaneParamSet)
 
 // arcaneParamSet collects optional parameters for the Arcane compiler.
 type arcaneParamSet struct {
-	minStickSize  int
-	targetColSize int
-	withLogs      bool
-	WithoutMpts   bool
-	debugMode     bool
-	name          string
+	minStickSize             int
+	targetColSize            int
+	withLogs                 bool
+	WithoutMpts              bool
+	debugMode                bool
+	name                     string
+	innerProductMinimalRound int
 }
 
 // WithStitcherMinSize sets the minimum size for the stitcher. All columns
@@ -67,6 +68,13 @@ func WithDebugMode(name string) ArcaneParams {
 	return func(set *arcaneParamSet) {
 		set.debugMode = true
 		set.name = name
+	}
+}
+
+// WithInnerProductMinimalRound sets the minimum round for the inner product compiler.
+func WithInnerProductMinimalRound(minRound int) ArcaneParams {
+	return func(set *arcaneParamSet) {
+		set.innerProductMinimalRound = minRound
 	}
 }
 
@@ -113,7 +121,10 @@ func Arcane(options ...ArcaneParams) func(comp *wizard.CompiledIOP) {
 			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "projection"))(comp)
 		}
 
-		innerproduct.Compile(comp)
+		// Note: when the option is not passed to Arcane, the value of the
+		// minimal round is zero, which is the exact same as when not passing
+		// the option at all to the inner-product compiler.
+		innerproduct.Compile(innerproduct.WithMinimalRound(params.innerProductMinimalRound))(comp)
 		if params.debugMode {
 			dummy.CompileAtProverLvl(dummy.WithMsg(params.name + "innerproduct"))(comp)
 		}
