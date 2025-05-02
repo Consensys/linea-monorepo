@@ -10,13 +10,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 )
 
 func init() {
@@ -65,8 +65,9 @@ func init() {
 	RegisterImplementation(variables.X{})
 	RegisterImplementation(variables.PeriodicSample{})
 	RegisterImplementation(symbolic.StringVar(""))
+	RegisterImplementation(dedicated.ManuallyShifted{})
 
-	RegisterImplementation(&arithmetization.Arithmetization{})
+	// RegisterImplementation(&arithmetization.Arithmetization{})
 	// RegisterImplementation(&keccak.KeccakZkEVM{})
 	// RegisterImplementation(&statemanager.StateManager{})
 	// RegisterImplementation(&publicInput.PublicInput{})
