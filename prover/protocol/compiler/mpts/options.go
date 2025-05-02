@@ -15,3 +15,17 @@ func WithNumColumnProfileOpt(numColProfileOpt []int, numColPrecomputed int) Opti
 		ctx.NumColumnProfilePrecomputed = numColPrecomputed
 	}
 }
+
+// AddNonConstrainedColumns adds the non-constrained columns to the Polys and
+// thus, include them in the Grail query. This is needed for the limitless
+// prover because the GL module will contain columns that are initially only
+// lookup-constrained (i.e. they are constrained in the LPP module but not in
+// the GL module).
+//
+// When activated, the columns are added to the Grail query but the compiler
+// does not do anything else with the evaluation points.
+func AddUnconstrainedColumns() Option {
+	return func(ctx *MultipointToSinglepointCompilation) {
+		ctx.AddUnconstrainedColumnsOpt = true
+	}
+}

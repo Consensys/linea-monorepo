@@ -60,6 +60,11 @@ type MultipointToSinglepointCompilation struct {
 	// as [NumColumnProfileOpt] as well.
 	NumColumnProfilePrecomputed int
 
+	// AddUnconstrainedColumnsOpt is an optional compilation parameter that
+	// can be set to control whether unconstrained columns are added to the
+	// newQuery.
+	AddUnconstrainedColumnsOpt bool
+
 	// numRow is the number of rows in the columns that are compiled. The
 	// value is lazily evaluated and the evaluation procedure sanity-checks
 	// that all the columns has the same number of rows. The value of this
@@ -96,16 +101,15 @@ func Compile(options ...Option) func(*wizard.CompiledIOP) {
 // singlepoint queries and compile them using a quotient accumulation technique.
 func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) *MultipointToSinglepointCompilation {
 
-	var (
-		ctx = &MultipointToSinglepointCompilation{
-			Queries: getAndMarkAsCompiledQueries(comp),
-		}
-		polysByRound, polyPrecomputed, direct = sortPolynomialsByRoundAndName(comp, ctx.Queries)
-	)
+	ctx := &MultipointToSinglepointCompilation{
+		Queries: getAndMarkAsCompiledQueries(comp),
+	}
 
 	for _, op := range options {
 		op(ctx)
 	}
+
+	polysByRound, polyPrecomputed, direct := sortPolynomialsByRoundAndName(comp, ctx.Queries, ctx.AddUnconstrainedColumnsOpt)
 
 	ctx.setMaxNumberOfRowsOf(slices.Concat(
 		append(polysByRound, polyPrecomputed, direct)...),
@@ -117,13 +121,20 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 		// ignoring precomputed columns.
 		startingRound := getStartingRound(comp, polysByRound)
 
+		fmt.Printf("\tnbPrecomputedRounds: %v\n", len(polyPrecomputed))
+
+		polyPrecomputed = extendPWithShadowColumns(comp, 0,
+			ctx.numRow, polyPrecomputed, ctx.NumColumnProfilePrecomputed, true)
+
+		for round := startingRound; round < len(polysByRound); round++ {
+			fmt.Printf("\tnbCommitted: %v; profile: %v\n", len(polysByRound[round]), ctx.NumColumnProfileOpt[round-startingRound])
+		}
+
 		for round := startingRound; round < len(polysByRound); round++ {
 			polysByRound[round] = extendPWithShadowColumns(comp, round,
 				ctx.numRow, polysByRound[round], ctx.NumColumnProfileOpt[round-startingRound], false)
 		}
 
-		polyPrecomputed = extendPWithShadowColumns(comp, 0,
-			ctx.numRow, polyPrecomputed, ctx.NumColumnProfilePrecomputed, true)
 	}
 
 	ctx.Polys = slices.Concat(append([][]ifaces.Column{polyPrecomputed, direct}, polysByRound...)...)
@@ -245,8 +256,10 @@ func getAndMarkAsCompiledQueries(comp *wizard.CompiledIOP) []query.UnivariateEva
 // corresponds to a round, and the sublists are sorted by name.
 //
 // Precomputed polynomials can be considered at round -1 and are placed at
-// the beginning.
-func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.UnivariateEval) (compiledByRound [][]ifaces.Column, precomputed []ifaces.Column, direct []ifaces.Column) {
+// the beginning. addUnconstrainedColumn is a flag indicating whether to add
+// the unconstrained columns, it will only add the columns with the
+// [column.Committed] status.
+func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.UnivariateEval, addUnconstrainedColumn bool) (compiledByRound [][]ifaces.Column, precomputed []ifaces.Column, direct []ifaces.Column) {
 
 	compiledByRound = make([][]ifaces.Column, 0)
 	precomputed = make([]ifaces.Column, 0)
@@ -280,6 +293,18 @@ func sortPolynomialsByRoundAndName(comp *wizard.CompiledIOP, queries []query.Uni
 			round := poly.Round()
 			compiledByRound = utils.GrowSliceSize(compiledByRound, round+1)
 			compiledByRound[round] = append(compiledByRound[round], poly)
+		}
+	}
+
+	if addUnconstrainedColumn {
+
+		allColumns := comp.Columns.AllKeysCommitted()
+
+		for _, c := range allColumns {
+			col := comp.Columns.GetHandle(c)
+			round := col.Round()
+			compiledByRound = utils.GrowSliceSize(compiledByRound, round+1)
+			compiledByRound[round] = append(compiledByRound[round], col)
 		}
 	}
 

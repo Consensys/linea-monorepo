@@ -3,6 +3,7 @@ package distributed
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -29,12 +30,6 @@ const (
 	verifyingKeyPublicInput  = "VERIFYING_KEY"
 	verifyingKey2PublicInput = "VERIFYING_KEY_2"
 	lppMerkleRootPublicInput = "LPP_COLUMNS_MERKLE_ROOTS"
-	// thresholdStopping self-recursion is the number of committed cells at
-	// which we stop iterating the self-recursion function. It's a purely
-	// empirical value and is obtained by looking at the smallest wizard
-	// size that we obtain by recursing infinitely the self-recursion
-	// procedure.
-	thresholdStoppingSelfrecursion = 13500000
 
 	// initialCompilerSize sets the target number of rows of the first invokation
 	// of [compiler.Arcane] of the pre-recursion pass of [CompileSegment]. It is
@@ -46,8 +41,8 @@ var (
 	// numColumnProfileMpts tells the last invokation of Vortex prior to the self-
 	// recursion to use a plonk circuit with a fixed number of rows. The values
 	// are completely empirical and set to make the compilation work.
-	numColumnProfileMpts            = []int{68, 1409, 147, 5, 9, 7, 0, 1}
-	numColumnProfileMptsPrecomputed = 75
+	numColumnProfileMpts            = []int{68, 1596, 218, 5, 17, 7, 0, 1}
+	numColumnProfileMptsPrecomputed = 81
 )
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -127,6 +122,17 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			// For now, the current solution is fine and we can update the value from
 			// time to time if not too frequent.
 			compiler.WithStitcherMinSize(1<<4),
+			compiler.WithoutMpts(),
+			// @alex: in principle, the value of 1 would be used only for the GL
+			// prover but AFAIK, the GL modules never have inner-products to compile.
+			compiler.WithInnerProductMinimalRound(max(1, numActualLppRound)),
+		),
+		mpts.Compile(mpts.AddUnconstrainedColumns()),
+		logdata.GenCSV(
+			files.MustOverwrite(
+				fmt.Sprintf("./lpp-debug-8/%v-columns.csv", subscript),
+			),
+			logdata.IncludeColumnCSVFilter,
 		),
 	)
 
@@ -178,34 +184,24 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		mimc.CompileMiMC,
 		compiler.Arcane(
 			compiler.WithTargetColSize(1<<13),
+		),
+		// This extra step is to ensure the tightness of the final wizard by
+		// adding an optional second layer of compilation when we have very
+		// large inputs.
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+			vortex.PremarkAsSelfRecursed(),
+		),
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		mimc.CompileMiMC,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
 			compiler.WithoutMpts(),
 		),
-	)
-
-	// This optional step is to ensure the tightness of the final wizard by
-	// adding an optional second layer of compilation when we have very
-	// large inputs.
-	stats := logdata.GetWizardStats(modIOP)
-	if stats.NumCellsCommitted > thresholdStoppingSelfrecursion {
-		wizard.ContinueCompilation(modIOP,
-			mpts.Compile(),
-			vortex.Compile(
-				8,
-				vortex.ForceNumOpenedColumns(64),
-				vortex.WithSISParams(&sisInstance),
-				vortex.PremarkAsSelfRecursed(),
-			),
-			selfrecursion.SelfRecurse,
-			cleanup.CleanUp,
-			mimc.CompileMiMC,
-			compiler.Arcane(
-				compiler.WithTargetColSize(1<<13),
-				compiler.WithoutMpts(),
-			),
-		)
-	}
-
-	wizard.ContinueCompilation(modIOP,
+		// This final step expectedly always generate always the same profile.
 		logdata.Log("just-before-recursion"),
 		mpts.Compile(mpts.WithNumColumnProfileOpt(numColumnProfileMpts, numColumnProfileMptsPrecomputed)),
 		vortex.Compile(
