@@ -11,6 +11,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 )
 
 // hashArithmetization computes a SHA-256 hash of the serialized Arithmetization instance.
@@ -69,6 +71,150 @@ func TestArithmetization(t *testing.T) {
 	// Compare hashes
 	if !bytes.Equal(originalHash, deserializedHash) {
 		t.Errorf("Hashes do not match:\nOriginal: %x\nDeserialized: %x", originalHash, deserializedHash)
+	}
+}
+
+// hashKeccak computes a SHA-256 hash of the serialized Keccak instance.
+func hashKeccak(k *keccak.KeccakZkEVM) ([]byte, error) {
+	data, err := serialization.SerializeValue(reflect.ValueOf(k), serialization.DeclarationMode)
+	if err != nil {
+		return nil, fmt.Errorf("serialize Keccak: %w", err)
+	}
+
+	hash := sha256.Sum256(data)
+	return hash[:], nil
+}
+
+// TestKeccak tests serialization and deserialization of the Keccak field.
+func TestKeccak(t *testing.T) {
+	// Get a valid ZkEvm instance with inflated trace limits
+	z := GetZkEVM()
+	if z == nil {
+		t.Fatal("GetZkEVM returned nil")
+	}
+	if z.Keccak == nil {
+		t.Fatal("Keccak field is nil")
+	}
+
+	// Compute hash of original Keccak
+	originalHash, err := hashKeccak(z.Keccak)
+	if err != nil {
+		t.Fatalf("Failed to hash original Keccak: %v", err)
+	}
+
+	// Serialize Keccak
+	keccakSer, err := serialization.SerializeValue(reflect.ValueOf(z.Keccak), serialization.DeclarationMode)
+	if err != nil {
+		t.Fatalf("Failed to serialize Keccak: %v", err)
+	}
+
+	// Create a new empty CompiledIOP for deserialization
+	comp := serialization.NewEmptyCompiledIOP()
+
+	// Deserialize into a new Keccak
+	deserializedVal, err := serialization.DeserializeValue(keccakSer, serialization.DeclarationMode, reflect.TypeOf(&keccak.KeccakZkEVM{}), comp)
+	if err != nil {
+		t.Fatalf("Failed to deserialize Keccak: %v", err)
+	}
+	deserialized, ok := deserializedVal.Interface().(*keccak.KeccakZkEVM)
+	if !ok {
+		t.Fatalf("Deserialized value is not *keccak.KeccakZkEVM: got %T", deserializedVal.Interface())
+	}
+
+	// Compute hash of deserialized Keccak
+	deserializedHash, err := hashKeccak(deserialized)
+	if err != nil {
+		t.Fatalf("Failed to hash deserialized Keccak: %v", err)
+	}
+
+	// Compare hashes
+	if !bytes.Equal(originalHash, deserializedHash) {
+		t.Errorf("Hashes do not match:\nOriginal: %x\nDeserialized: %x", originalHash, deserializedHash)
+	}
+}
+
+// hashSha2 computes a SHA-256 hash of the serialized Sha2 instance.
+func hashSha2(s *sha2.Sha2SingleProvider) ([]byte, error) {
+	data, err := serialization.SerializeValue(reflect.ValueOf(s), serialization.DeclarationMode)
+	if err != nil {
+		return nil, fmt.Errorf("serialize Sha2: %w", err)
+	}
+
+	hash := sha256.Sum256(data)
+	return hash[:], nil
+}
+
+// TestSha2 tests serialization and deserialization of the Sha2 field.
+func TestSha2(t *testing.T) {
+	// Get a valid ZkEvm instance with inflated trace limits
+	z := GetZkEVM()
+	if z == nil {
+		t.Fatal("GetZkEVM returned nil")
+	}
+	if z.Sha2 == nil {
+		t.Fatal("Sha2 field is nil")
+	}
+
+	// Compute hash of original Sha2
+	originalHash, err := hashSha2(z.Sha2)
+	if err != nil {
+		t.Fatalf("Failed to hash original Sha2: %v", err)
+	}
+
+	// Serialize Sha2
+	sha2Ser, err := serialization.SerializeValue(reflect.ValueOf(z.Sha2), serialization.DeclarationMode)
+	if err != nil {
+		t.Fatalf("Failed to serialize Sha2: %v", err)
+	}
+
+	// Create a new empty CompiledIOP for deserialization
+	comp := serialization.NewEmptyCompiledIOP()
+
+	// Deserialize into a new Sha2
+	deserializedVal, err := serialization.DeserializeValue(sha2Ser, serialization.DeclarationMode, reflect.TypeOf(&sha2.Sha2SingleProvider{}), comp)
+	if err != nil {
+		t.Fatalf("Failed to deserialize Sha2: %v", err)
+	}
+	deserialized, ok := deserializedVal.Interface().(*sha2.Sha2SingleProvider)
+	if !ok {
+		t.Fatalf("Deserialized value is not *sha2.Sha2SingleProvider: got %T", deserializedVal.Interface())
+	}
+
+	// Compute hash of deserialized Sha2
+	deserializedHash, err := hashSha2(deserialized)
+	if err != nil {
+		t.Fatalf("Failed to hash deserialized Sha2: %v", err)
+	}
+
+	// Compare hashes
+	if !bytes.Equal(originalHash, deserializedHash) {
+		t.Errorf("Hashes do not match:\nOriginal: %x\nDeserialized: %x", originalHash, deserializedHash)
+	}
+}
+
+func TestDiscoverMissingTypesForArithmetization(t *testing.T) {
+	z := GetZkEVM()
+	if z == nil {
+		t.Fatal("GetZkEVM returned nil")
+	}
+	if z.Arithmetization == nil {
+		t.Fatal("Arithmetization field is nil")
+	}
+
+	data, missingTypes, err := serialization.SerializeValueWithDiscovery(reflect.ValueOf(z.Arithmetization), serialization.DeclarationMode)
+	if err != nil {
+		t.Logf("Serialization encountered issues: %v", err)
+	}
+	if len(missingTypes) > 0 {
+		t.Logf("Missing types for Arithmetization:")
+		for _, typ := range missingTypes {
+			t.Logf(" - %s", typ)
+		}
+	} else {
+		t.Log("No missing types found for Arithmetization.")
+	}
+	if data == nil {
+		t.Error("Serialized data is nil")
 	}
 }
 
