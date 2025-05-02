@@ -226,7 +226,7 @@ services:
   prover-v3: # prover compatible with the traces from zkbesu
     container_name: prover-v3
     hostname: prover-v3
-    image: consensys/linea-prover:${PROVER_TAG:-811743b}
+    image: consensys/linea-prover:${PROVER_TAG:-f005044}
     platform: linux/amd64
     # to avoid spinning up on CI for now
     profiles: [ "l2" ]
@@ -247,7 +247,7 @@ services:
   postman:
     container_name: postman
     hostname: postman
-    image: consensys/linea-postman:${POSTMAN_TAG:-b021601}
+    image: consensys/linea-postman:${POSTMAN_TAG:-f005044}
     profiles: [ "l2", "debug" ]
     platform: linux/amd64
     restart: on-failure
@@ -268,7 +268,7 @@ services:
   traces-api:
     hostname: traces-api
     container_name: traces-api
-    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-811743b}
+    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-f005044}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
@@ -289,7 +289,7 @@ services:
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-811743b}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-f005044}
     platform: linux/amd64
     profiles: [ "l2", "debug" ]
     depends_on:
@@ -492,7 +492,7 @@ services:
   transaction-exclusion-api:
     hostname: transaction-exclusion-api
     container_name: transaction-exclusion-api
-    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-811743b}
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-f005044}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
