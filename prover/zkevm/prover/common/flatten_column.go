@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 const (
@@ -25,21 +26,24 @@ const (
 // FlattenColumn flattens multiple limb columns and an accompanying mask into single columns,
 // provides consistency checks via a precomputed projection mask.
 type FlattenColumn struct {
+	// originalLimbs holds the original limb columns to flatten.
+	originalLimbs []ifaces.Column
+	// originalMask holds the original mask column that selects elements for gnark circuit.
+	originalMask ifaces.Column
+
 	// limbs is the row-wise concatenation of all limb columns.
 	limbs ifaces.Column
 	// mask is the row-wise concatenation of the original mask column.
 	mask ifaces.Column
 	// auxProjectionMask selects flattenLimbs's positions to validate flattening consistency.
 	auxProjectionMask ifaces.Column
-	// originalLimbs holds the original limb columns to flatten.
-	originalLimbs []ifaces.Column
-	// originalMask holds the original mask column that selects elements for gnark circuit.
-	originalMask ifaces.Column
 	// onesColumn selects elements from the original limbs. This is always a column of 1s.
-	onesColumn  ifaces.Column
-	module      string
-	circuit     string
+	onesColumn ifaces.Column
+
+	// nbLimbsCols is the number of limb columns to flatten.
 	nbLimbsCols int
+	// size is the length of the produced flattened column.
+	size int
 	// isDuplicated indicates if this FlattenColumn is already registered by other circuit,
 	// so we don't need to commit to a new one.
 	isDuplicated bool
@@ -48,44 +52,38 @@ type FlattenColumn struct {
 // NewFlattenColumn initializes a FlattenColumn with:
 //   - size: length of the original limbs columns
 //   - nbLimbsCols: number of limb columns to flatten
-//   - module: prefix for column identifiers
-//   - circuit: additional prefix for mask column identifiers
+//   - limbs: original limb columns to flatten
+//   - mask: original mask column for original limbs
 //
 // It commits placeholders for flattened limbs and mask, and precomputes the projection mask.
-func NewFlattenColumn(comp *wizard.CompiledIOP, size, nbLimbsCols int, module, circuit string) *FlattenColumn {
-	flattenLimbsID := ifaces.ColIDf("%s.FLATTEN_LIMBS", module)
-	auxProjectionMaskID := ifaces.ColIDf("%s.FLATTEN_PROJECTION_MASK", module)
-	onesColumnID := ifaces.ColIDf("%s.FLATTEN_ORIG_LIMBS_MASK", module)
+func NewFlattenColumn(comp *wizard.CompiledIOP, nbLimbsCols int, limbs []ifaces.Column, mask ifaces.Column) *FlattenColumn {
+	onesColumnID := ifaces.ColIDf("%s_FLATTEN_ORIG_LIMBS_MASK", limbs[0].GetColID())
 
-	flattenSize := size * nbLimbsCols
+	initialSize := mask.Size()
 
 	// If the column already exists, we assume it is already registered by another circuit.
 	var isDuplicated bool
-	var flattenLimbs, auxProjectionMask, onesColumn ifaces.Column
-	if comp.Columns.Exists(flattenLimbsID) {
-		isDuplicated = true
-
-		flattenLimbs = comp.Columns.GetHandle(flattenLimbsID)
-		auxProjectionMask = comp.Columns.GetHandle(auxProjectionMaskID)
+	var onesColumn ifaces.Column
+	if comp.Columns.Exists(onesColumnID) {
 		onesColumn = comp.Columns.GetHandle(onesColumnID)
 	} else {
-		flattenLimbs = comp.InsertCommit(0, flattenLimbsID, flattenSize)
-		auxProjectionMask = comp.InsertPrecomputed(auxProjectionMaskID,
-			precomputeAuxProjectionMask(flattenSize, nbLimbsCols))
-		onesColumn = comp.InsertPrecomputed(onesColumnID,
-			precomputeAuxProjectionMask(size, 1))
+		onesColumn = comp.InsertPrecomputed(onesColumnID, smartvectors.NewConstant(field.One(), initialSize))
 	}
 
-	return &FlattenColumn{
-		limbs:             flattenLimbs,
-		mask:              comp.InsertCommit(0, ifaces.ColIDf("%s.%s_FLATTEN_MASK", module, circuit), flattenSize),
-		auxProjectionMask: auxProjectionMask,
-		nbLimbsCols:       nbLimbsCols,
-		onesColumn:        onesColumn,
-		module:            module,
-		circuit:           circuit,
-		isDuplicated:      isDuplicated,
+	flattenSize := utils.NextPowerOfTwo(initialSize * nbLimbsCols)
+	res := &FlattenColumn{
+		size:          flattenSize,
+		originalMask:  mask,
+		originalLimbs: limbs,
+		nbLimbsCols:   nbLimbsCols,
+		onesColumn:    onesColumn,
+		isDuplicated:  isDuplicated,
 	}
+
+	res.initColumns(comp)
+	res.mask = comp.InsertCommit(0, res.MaskColID(), flattenSize)
+
+	return res
 }
 
 // Limbs returns the flattened limbs column.
@@ -96,6 +94,16 @@ func (l *FlattenColumn) Limbs() ifaces.Column {
 // Mask returns the flattened mask column.
 func (l *FlattenColumn) Mask() ifaces.Column {
 	return l.mask
+}
+
+// LimbsColID returns the column ID of the flattened limbs.
+func (l *FlattenColumn) LimbsColID() ifaces.ColID {
+	return ifaces.ColIDf("%s_FLATTEN_LIMBS", l.originalLimbs[0].GetColID())
+}
+
+// MaskColID returns the column ID of the flattened mask.
+func (l *FlattenColumn) MaskColID() ifaces.ColID {
+	return ifaces.ColIDf("%s_FLATTEN_MASK", l.originalMask.GetColID())
 }
 
 // CsFlattenProjection adds a single batched projection constraint that enforces
@@ -144,35 +152,54 @@ func (l *FlattenColumn) Mask() ifaces.Column {
 //	shift_i[idx] == original[r][i]
 //
 // CsFlattenProjection batches all these equalities into one projection check.
-func (l *FlattenColumn) CsFlattenProjection(comp *wizard.CompiledIOP, limbs []ifaces.Column, mask ifaces.Column) {
+func (l *FlattenColumn) CsFlattenProjection(comp *wizard.CompiledIOP) {
 	masks := make([]ifaces.Column, l.nbLimbsCols)
 	shiftedFlattenLimbs := make([]ifaces.Column, l.nbLimbsCols)
 	shiftedFlattenMask := make([]ifaces.Column, l.nbLimbsCols)
 
 	for i := 0; i < l.nbLimbsCols; i++ {
-		masks[i] = mask
+		masks[i] = l.originalMask
 		shiftedFlattenLimbs[i] = column.Shift(l.limbs, i)
 		shiftedFlattenMask[i] = column.Shift(l.mask, i)
 	}
 
-	comp.InsertProjection(ifaces.QueryIDf("%v_%s_FLATTEN_PROJECTION", l.module, l.circuit),
+	comp.InsertProjection(
+		ifaces.QueryIDf("%s_FLATTEN_LIMBS_PROJECTION", l.originalMask.GetColID()),
 		query.ProjectionInput{
 			ColumnA: append(shiftedFlattenLimbs[:], shiftedFlattenMask[:]...),
-			ColumnB: append(limbs[:], masks[:]...),
+			ColumnB: append(l.originalLimbs[:], masks[:]...),
 			FilterA: l.auxProjectionMask,
 			FilterB: l.onesColumn,
 		},
 	)
+}
 
-	l.originalMask = mask
-	l.originalLimbs = limbs
+// initColumns initializes the FlattenColumn by committing to the flattened limbs
+// and mask columns, and precomputing the projection mask.
+func (l *FlattenColumn) initColumns(comp *wizard.CompiledIOP) {
+	baseID := l.LimbsColID()
+	auxProjectionMaskID := ifaces.ColIDf("%s_PROJECTION_MASK", baseID)
+
+	// If the column already exists, we assume it is already registered by another circuit.
+	if comp.Columns.Exists(baseID) {
+		l.isDuplicated = true
+
+		l.limbs = comp.Columns.GetHandle(baseID)
+		l.auxProjectionMask = comp.Columns.GetHandle(auxProjectionMaskID)
+
+		return
+	}
+
+	l.limbs = comp.InsertCommit(0, baseID, l.size)
+	l.auxProjectionMask = comp.InsertPrecomputed(auxProjectionMaskID,
+		precomputeAuxProjectionMask(l.size, l.originalMask.Size(), l.nbLimbsCols))
 }
 
 // Run maps trace limb columns and mask into the flattened columns.
 func (l *FlattenColumn) Run(run *wizard.ProverRuntime) {
 	l.assignMask(run)
 
-	if !l.isDuplicated {
+	if !run.Columns.Exists(l.limbs.GetColID()) {
 		l.assignLimbs(run)
 	}
 }
@@ -208,11 +235,13 @@ func (l *FlattenColumn) assignLimbs(run *wizard.ProverRuntime) {
 
 // precomputeAuxProjectionMask creates a SmartVector with total size `size`,
 // where `nbMasked` positions are periodically set to one.
-func precomputeAuxProjectionMask(size, period int) smartvectors.SmartVector {
+func precomputeAuxProjectionMask(size, nbMarks, period int) smartvectors.SmartVector {
 	resSlice := make([]field.Element, size)
 
-	for i := 0; i < size; i += period {
-		resSlice[i].SetOne()
+	offset := 0
+	for i := 0; i < nbMarks; i++ {
+		resSlice[offset].SetOne()
+		offset += period
 	}
 
 	return smartvectors.NewRegular(resSlice)
