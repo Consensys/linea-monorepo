@@ -128,6 +128,9 @@ func (proof *OpeningProof) Complete(
 
 	// Generate the proofs for each tree and each entry
 	for treeID, tree := range trees {
+		if tree == nil {
+			utils.Panic("tree is nil")
+		}
 		proofs[treeID] = make([]smt.Proof, len(entryList))
 		for k, entry := range entryList {
 			var err error

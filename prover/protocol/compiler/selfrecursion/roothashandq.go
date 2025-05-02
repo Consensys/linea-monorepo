@@ -15,7 +15,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	// Get the list of the root hashes (without the non-appended ones)
 	// Insert precomputed roots
 	rootHashesClean := []ifaces.Column{}
-	if ctx.VortexCtx.IsCommitToPrecomputed() {
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		precompRoots := ctx.Columns.precompRoot
 		if precompRoots == nil {
 			utils.Panic("Precomputed root should not be nil! That's because, we are in commit to precomputed mode.")
@@ -31,7 +31,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 
 	numCommittedRound := ctx.VortexCtx.NumCommittedRounds()
 	// numCommittedRound increses by 1 if we commit to the precomputeds
-	if ctx.VortexCtx.IsCommitToPrecomputed() {
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		numCommittedRound += 1
 	}
 
@@ -150,7 +150,7 @@ func (ctx SelfRecursionCtx) GluePositions() {
 	sizePositionVec := positionVec.Size()
 	numCommittedRound := ctx.VortexCtx.NumCommittedRounds()
 	// numCommittedRound increses by 1 if we commit to the precomputeds
-	if ctx.VortexCtx.IsCommitToPrecomputed() {
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		numCommittedRound += 1
 	}
 	numActive := sizeSmallPos * numCommittedRound

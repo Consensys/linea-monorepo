@@ -28,19 +28,13 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 	roots := []frontend.Variable{}
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
 		roots = append(roots, precompRootSv[0])
 	}
 
 	// Collect all the commitments : rounds by rounds
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there is no
-		// commitement to look for.
-		if ctx.isDry(round) {
-			continue
-		}
-
 		rootSv := vr.GetColumn(ctx.MerkleRootName(round)) // len 1 smart vector
 		roots = append(roots, rootSv[0])
 	}
@@ -77,11 +71,7 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 	// pass the parameters for a merkle-mode sis verification
 	params := vortex.GParams{}
 	params.HasherFunc = factoryHasherFunc
-	if ctx.ReplaceSisByMimc {
-		params.NoSisHasher = factoryHasherFunc
-	} else {
-		params.Key = ctx.VortexParams.Key
-	}
+	params.Key = ctx.VortexParams.Key
 
 	vortex.GnarkVerifyOpeningWithMerkleProof(
 		api,
@@ -118,7 +108,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 	ys = [][]frontend.Variable{}
 
 	// add ys for precomputed when IsCommitToPrecomputed is true
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		names := make([]ifaces.ColID, len(ctx.Items.Precomputeds.PrecomputedColums))
 		for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
 			names[i] = poly.GetColID()
@@ -139,11 +129,6 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 
 	// Get the list of the polynomials
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// again, skip the dry rounds
-		if ctx.isDry(round) {
-			continue
-		}
-
 		names := ctx.CommitmentsByRounds.MustGet(round)
 		ysRounds := make([]frontend.Variable, len(names))
 		for i, name := range names {
@@ -181,7 +166,7 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 	roundStartAt := 0
 
 	// Process precomputed
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		openedPrecompCols := make([][]frontend.Variable, ctx.NbColsToOpen())
 		numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
 		for j := 0; j < ctx.NbColsToOpen(); j++ {
@@ -194,11 +179,6 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// again, skip the dry rounds
-		if ctx.isDry(round) {
-			continue
-		}
-
 		openedSubColumnsForRound := make([][]frontend.Variable, ctx.NbColsToOpen())
 		numRowsForRound := ctx.getNbCommittedRows(round)
 		for j := 0; j < ctx.NbColsToOpen(); j++ {
@@ -248,7 +228,7 @@ func (ctx *Ctx) unpackMerkleProofsGnark(sv []frontend.Variable, entryList []fron
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		numComs += 1
 	}
 

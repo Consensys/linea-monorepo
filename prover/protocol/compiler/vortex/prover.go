@@ -15,20 +15,31 @@ import (
 
 // Prover steps of Vortex that is run in place of committing to polynomials
 func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
-
 	// Check if that is a dry round
-	if ctx.isDry(round) {
-		// Nothing special to do. The prover will send the polynomials
-		// to verifier directly and the verifier will be able to check
-		// the evaluation by himself
+	if ctx.RoundStatus[round] == IsEmpty {
+		// Nothing special to do.
 		return func(pr *wizard.ProverRuntime) {}
 	}
 
 	return func(pr *wizard.ProverRuntime) {
+		var (
+			committedMatrix vortex.EncodedMatrix
+			tree            *smt.Tree
+			sisDigest       []field.Element
+		)
 		pols := ctx.getPols(pr, round)
-
-		// Call Vortex in Merkle mode
-		committedMatrix, tree, sisDigest := ctx.VortexParams.CommitMerkle(pols)
+		// If there are no polynomials to commit to, we don't need to do anything
+		if len(pols) == 0 {
+			logrus.Infof("Vortex AssignColumn at round %v: No polynomials to commit to", round)
+			return
+		}
+		// We commit to the polynomials with SIS hashing if the number of polynomials
+		// is greater than the [ApplyToSISThreshold].
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+			committedMatrix, tree, sisDigest = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+		} else if ctx.RoundStatus[round] == IsSISApplied {
+			committedMatrix, tree, sisDigest = ctx.VortexParams.CommitMerkleWithSIS(pols)
+		}
 		pr.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		pr.State.InsertNew(ctx.MerkleTreeName(round), tree)
 
@@ -45,27 +56,46 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 }
 
 // Prover steps of Vortex that is run when committing to the linear combination
+// We stack the No SIS round matrices before the SIS round matrices in the committed matrix stack.
+// For the precomputed matrix, we stack it on top of the SIS round matrices if SIS is used on it or
+// we stack it on top of the No SIS round matrices if SIS is not used on it.
 func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
-
-	committedSV := []smartvectors.SmartVector{}
-	// Add the precomputed columns to commitedSV if IsCommitToPrecomputed is true
-	if ctx.IsCommitToPrecomputed() {
+	var (
+		committedSVSIS   = []smartvectors.SmartVector{}
+		committedSVNoSIS = []smartvectors.SmartVector{}
+	)
+	// Add the precomputed columns
+	if ctx.IsNonEmptyPrecomputed() {
+		var precomputedSV = []smartvectors.SmartVector{}
 		for _, col := range ctx.Items.Precomputeds.PrecomputedColums {
-			committedSV = append(committedSV, col.GetColAssignment(pr))
+			precomputedSV = append(precomputedSV, col.GetColAssignment(pr))
 		}
-
+		// Add the precomputed columns to commitedSVSIS or commitedSVNoSIS
+		if ctx.IsSISAppliedToPrecomputed() {
+			committedSVSIS = append(committedSVSIS, precomputedSV...)
+		} else {
+			committedSVNoSIS = append(committedSVNoSIS, precomputedSV...)
+		}
 	}
 
 	// Collect all the committed polynomials : round by round
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		// There are not included in the commitments so there
 		// is no need to compute their linear combination.
-		if ctx.isDry(round) {
+		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
 		pols := ctx.getPols(pr, round)
-		committedSV = append(committedSV, pols...)
+		// Push pols to the right stack
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+			committedSVNoSIS = append(committedSVNoSIS, pols...)
+		} else if ctx.RoundStatus[round] == IsSISApplied {
+			committedSVSIS = append(committedSVSIS, pols...)
+		}
 	}
+	// Construct committedSV by stacking the No SIS round
+	// matrices before the SIS round matrices
+	committedSV := append(committedSVNoSIS, committedSVSIS...)
 
 	// And get the randomness
 	randomCoinLC := pr.GetRandomCoinField(ctx.Items.Alpha.Name)
@@ -78,23 +108,24 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 // ComputeLinearCombFromRsMatrix is the same as ComputeLinearComb but uses
 // the RS encoded matrix instead of using the basic one. It is slower than
 // the later but is recommended.
+// Todo: We do not shuffle the no SIS round matrix before the SIS round
+// matrix for now.
 func (ctx *Ctx) ComputeLinearCombFromRsMatrix(pr *wizard.ProverRuntime) {
 
-	committedSV := []smartvectors.SmartVector{}
+	var (
+		committedSV = []smartvectors.SmartVector{}
+	)
 
-	// Add the precomputed columns to commitedSV if IsCommitToPrecomputed is true
-	if ctx.IsCommitToPrecomputed() {
-		committedSV = append(committedSV, ctx.Items.Precomputeds.CommittedMatrix...)
-	}
+	// Add the precomputed columns to commitedSV
+	committedSV = append(committedSV, ctx.Items.Precomputeds.CommittedMatrix...)
 
 	// Collect all the committed polynomials : round by round
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
 		// There are not included in the commitments so there
-		// is no need to compute their linear combination.
-		if ctx.isDry(round) {
+		// is no need to proceed.
+		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
-
 		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
 		committedSV = append(committedSV, committedMatrix...)
 	}
@@ -109,42 +140,61 @@ func (ctx *Ctx) ComputeLinearCombFromRsMatrix(pr *wizard.ProverRuntime) {
 }
 
 // Prover steps of Vortex where he opens the columns selected by the verifier
+// We stack the no SIS round matrices before the SIS round matrices in the committed matrix stack.
+// The same is done for the tree.
 func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 
-	committedMatrices := []vortex.EncodedMatrix{}
+	var (
+		committedMatricesSIS   = []vortex.EncodedMatrix{}
+		committedMatricesNoSIS = []vortex.EncodedMatrix{}
+		treesSIS               = []*smt.Tree{}
+		treesNoSIS             = []*smt.Tree{}
+	)
 
-	// left at this default value in case ctx.UseMerkleTree == false
-	trees := []*smt.Tree{}
-
-	// Append the precomputed committedMatrices and trees when IsCommitToPrecomputed is true
-	if ctx.IsCommitToPrecomputed() {
-		committedMatrices = append(committedMatrices, ctx.Items.Precomputeds.CommittedMatrix)
-		trees = append(trees, ctx.Items.Precomputeds.Tree)
+	// Append the precomputed committedMatrices and trees to the SIS or no SIS matrices
+	// or trees as per the number of precomputed columns are more than the [ApplyToSISThreshold]
+	if ctx.IsNonEmptyPrecomputed() {
+		if ctx.IsSISAppliedToPrecomputed() {
+			committedMatricesSIS = append(committedMatricesSIS, ctx.Items.Precomputeds.CommittedMatrix)
+			treesSIS = append(treesSIS, ctx.Items.Precomputeds.Tree)
+		} else {
+			committedMatricesNoSIS = append(committedMatricesNoSIS, ctx.Items.Precomputeds.CommittedMatrix)
+			treesNoSIS = append(treesNoSIS, ctx.Items.Precomputeds.Tree)
+		}
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there is no need to
-		// compute their linear combination.
-		if ctx.isDry(round) {
+		// There are not included in the commitments so there
+		// is no need to proceed.
+		if ctx.RoundStatus[round] == IsEmpty {
 			continue
 		}
-
 		// Fetch it from the state
 		committedMatrix := pr.State.MustGet(ctx.VortexProverStateName(round)).(vortex.EncodedMatrix)
 		// and delete it because it won't be needed anymore and its very heavy
 		pr.State.Del(ctx.VortexProverStateName(round))
-		// Fetch it from the state
-		committedMatrices = append(committedMatrices, committedMatrix)
 
 		// Also fetches the trees from the prover state
 		tree := pr.State.MustGet(ctx.MerkleTreeName(round)).(*smt.Tree)
-		trees = append(trees, tree)
+
+		// conditionally stack the matrix and tree
+		// to SIS or no SIS matrices and trees
+		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+			committedMatricesNoSIS = append(committedMatricesNoSIS, committedMatrix)
+			treesNoSIS = append(treesNoSIS, tree)
+		} else if ctx.RoundStatus[round] == IsSISApplied {
+			committedMatricesSIS = append(committedMatricesSIS, committedMatrix)
+			treesSIS = append(treesSIS, tree)
+		}
 	}
+
+	// Stack the no SIS matrices and trees before the SIS matrices and trees
+	committedMatrices := append(committedMatricesNoSIS, committedMatricesSIS...)
+	trees := append(treesNoSIS, treesSIS...)
 
 	entryList := pr.GetRandomCoinIntegerVec(ctx.Items.Q.Name)
 	proof := vortex.OpeningProof{}
 
-	// Merkle mode only:
 	// Amend the Vortex proof with the Merkle proofs and registers
 	// the Merkle proofs in the prover runtime
 	proof.Complete(entryList, committedMatrices, trees)
@@ -170,11 +220,6 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 
 	packedMProofs := ctx.packMerkleProofs(proof.MerkleProofs)
 	pr.AssignColumn(ctx.Items.MerkleProofs.GetColID(), packedMProofs)
-}
-
-// returns true if the round is dry (i.e, there is nothing to commit to)
-func (ctx *Ctx) isDry(round int) bool {
-	return ctx.CommitmentsByRounds.Len() <= round || ctx.CommitmentsByRounds.LenOf(round) == 0
 }
 
 // returns the list of all committed smartvectors for the given round
@@ -208,14 +253,14 @@ func (ctx *Ctx) packMerkleProofs(proofs [][]smt.Proof) smartvectors.SmartVector 
 
 	// When we commit to the precomputeds, len(proofs) = ctx.NumCommittedRounds + 1,
 	// otherwise len(proofs) = ctx.NumCommittedRounds
-	if len(proofs) != ctx.NumCommittedRounds() && !ctx.IsCommitToPrecomputed() {
+	if len(proofs) != ctx.NumCommittedRounds() && !ctx.IsNonEmptyPrecomputed() {
 		utils.Panic(
 			"inconsitent proofs length %v, %v",
 			len(proofs), ctx.NumCommittedRounds(),
 		)
 	}
 
-	if len(proofs) != (ctx.NumCommittedRounds()+1) && ctx.IsCommitToPrecomputed() {
+	if len(proofs) != (ctx.NumCommittedRounds()+1) && ctx.IsNonEmptyPrecomputed() {
 		utils.Panic(
 			"inconsitent proofs length %v, %v",
 			len(proofs), ctx.NumCommittedRounds()+1,
@@ -249,7 +294,7 @@ func (ctx *Ctx) unpackMerkleProofs(sv smartvectors.SmartVector, entryList []int)
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		numComs = ctx.NumCommittedRounds() + 1 // Need to consider the precomputed commitments
 	}
 	numEntries := len(entryList)
