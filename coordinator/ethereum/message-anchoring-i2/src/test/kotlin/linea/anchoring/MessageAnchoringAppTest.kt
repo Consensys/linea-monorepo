@@ -240,7 +240,7 @@ class MessageAnchoringAppTest {
     await()
       .atMost(10.seconds.toJavaDuration())
       .untilAsserted {
-        assertThat(anchoringApp.eventsQueueSize).isGreaterThanOrEqualTo(20)
+        assertThat(anchoringApp.eventsQueueSize).isGreaterThanOrEqualTo(messageQueueSoftCap.toInt())
       }
 
     val filledEventsQueueSize = anchoringApp.eventsQueueSize
