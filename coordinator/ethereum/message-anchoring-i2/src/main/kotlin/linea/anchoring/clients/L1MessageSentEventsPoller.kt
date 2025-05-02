@@ -67,7 +67,7 @@ class L1MessageSentEventsPoller(
       .thenCompose { nextMessageNumberToFetchFromL1 ->
         eventsFetcher.findL1MessageSentEvents(
           startingMessageNumber = nextMessageNumberToFetchFromL1,
-          messagesToFetch = l1MessagesSentFetchLimit.coerceAtMost(remainingCapacity.toUInt()),
+          logsSoftLimit = l1MessagesSentFetchLimit.coerceAtMost(remainingCapacity.toUInt()),
           fetchTimeout = l1MessagesSentFetchTimeout,
           blockChunkSize = l1BlockSearchChuck
         )

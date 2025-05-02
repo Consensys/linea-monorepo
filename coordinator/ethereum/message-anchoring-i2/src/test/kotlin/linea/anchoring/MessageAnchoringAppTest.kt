@@ -220,11 +220,13 @@ class MessageAnchoringAppTest {
       startingMessageNumber = 1UL
     )
 
+    val messageQueueSoftCap = 20u
+    val l1PollingInterval = 1.milliseconds
     val anchoringApp = createApp(
-      l1PollingInterval = 1.milliseconds,
+      l1PollingInterval = l1PollingInterval,
       l1EventSearchBlockChunk = 10u,
       l1EventPollingTimeout = 1.seconds,
-      messageQueueCapacity = 20u,
+      messageQueueCapacity = messageQueueSoftCap,
       maxMessagesToAnchorPerL2Transaction = 50u,
       anchoringTickInterval = 10.milliseconds
     )
@@ -238,16 +240,15 @@ class MessageAnchoringAppTest {
     await()
       .atMost(10.seconds.toJavaDuration())
       .untilAsserted {
-        assertThat(anchoringApp.eventsQueueSize).isGreaterThan(0)
+        assertThat(anchoringApp.eventsQueueSize).isGreaterThanOrEqualTo(20)
       }
+
+    val filledEventsQueueSize = anchoringApp.eventsQueueSize
     // ensure it has multiple event polling ticks but does
     // not fetch more events that those already fetched
     // in the 1st tick that filled the queue
-    await()
-      .atMost(2.seconds.toJavaDuration())
-      .untilAsserted {
-        assertThat(anchoringApp.eventsQueueSize).isBetween(1, 100)
-      }
+    Thread.sleep(l1PollingInterval.inWholeMilliseconds * 2L)
+    assertThat(anchoringApp.eventsQueueSize).isEqualTo(filledEventsQueueSize)
     // enable anchoring again
     l2MessageService.forceAnchoringFailures = false
 
