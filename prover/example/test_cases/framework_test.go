@@ -64,7 +64,7 @@ var (
 		specialqueries.CompileFixedPermutations,
 		logderivativesum.CompileLookups,
 		permutation.CompileViaGrandProduct,
-		innerproduct.Compile,
+		innerproduct.Compile(),
 	}
 	ARITHMETICS = compilationSuite{
 		stitchsplit.Splitter(8),

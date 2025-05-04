@@ -3,7 +3,6 @@ package distributed
 import (
 	"fmt"
 
-	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -128,12 +127,6 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 			compiler.WithInnerProductMinimalRound(max(1, numActualLppRound)),
 		),
 		mpts.Compile(mpts.AddUnconstrainedColumns()),
-		logdata.GenCSV(
-			files.MustOverwrite(
-				fmt.Sprintf("./lpp-debug-8/%v-columns.csv", subscript),
-			),
-			logdata.IncludeColumnCSVFilter,
-		),
 	)
 
 	if !isLPP {
