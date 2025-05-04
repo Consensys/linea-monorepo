@@ -1,6 +1,8 @@
 package smartvectors
 
 import (
+	"runtime"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -19,7 +21,12 @@ import (
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool) SmartVector {
+func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, maxNumThread ...int) SmartVector {
+
+	maxNumThread_ := runtime.NumCPU()
+	if len(maxNumThread) == 0 {
+		maxNumThread_ = maxNumThread[0]
+	}
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
@@ -66,7 +73,7 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 	v.WriteInSlice(res.Regular)
 
 	domain := fft.NewDomain(v.Len())
-	opt := fft.EmptyOption()
+	opt := fft.WithNbTasks(maxNumThread_)
 
 	if cosetID != 0 || cosetRatio != 0 {
 		opt = fft.OnCoset()
@@ -102,7 +109,12 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 // CosetRatio > CosetID:
 //   - Specifies on which coset to perform the operation
 //   - 0, 0 to assert that the transformation should not be done over a coset
-func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool) SmartVector {
+func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, maxNumThread ...int) SmartVector {
+
+	maxNumThread_ := runtime.NumCPU()
+	if len(maxNumThread) == 0 {
+		maxNumThread_ = maxNumThread[0]
+	}
 
 	// Sanity-check on the size of the vector v
 	assertPowerOfTwoLen(v.Len())
@@ -147,7 +159,7 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 		res = &Pooled{Regular: make([]field.Element, v.Len())}
 	}
 
-	opt := fft.EmptyOption()
+	opt := fft.WithNbTasks(maxNumThread_)
 	v.WriteInSlice(res.Regular)
 
 	domain := fft.NewDomain(v.Len())
