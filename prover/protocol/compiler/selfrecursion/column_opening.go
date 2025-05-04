@@ -168,7 +168,8 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 
 	hashSize := a.ctx.VortexCtx.SisParams.OutputSize()
 	numOpenedCol := a.ctx.VortexCtx.NbColsToOpen()
-	totalNumRounds := a.ctx.comp.NumRounds()
+	// For some reason, using a.ctx.comp.NumRounds() here does not work well here.
+	totalNumRounds := a.ctx.VortexCtx.MaxCommittedRound
 	committedRound := 0
 
 	if a.ctx.VortexCtx.IsCommitToPrecomputed() {
@@ -221,6 +222,7 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	if a.ctx.VortexCtx.IsCommitToPrecomputed() {
 		numCommittedRound += 1
 	}
+
 	if committedRound != numCommittedRound {
 		utils.Panic("Committed rounds %v does not match the total number of committed rounds %v", committedRound, numCommittedRound)
 	}
