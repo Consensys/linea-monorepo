@@ -8,6 +8,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
+	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -204,17 +205,22 @@ func (c *ConglomeratorCompilation) Compile(comp *wizard.CompiledIOP) {
 func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 
 	var (
-		allGrandProduct     = field.NewElement(1)
-		allLogDerivativeSum = field.Element{}
-		allHornerSum        = field.Element{}
-		prevGlobalSent      = field.Element{}
-		prevHornerN1Hash    = field.Element{}
-		mainErr             error
+		allGrandProduct           = field.NewElement(1)
+		allLogDerivativeSum       = field.Element{}
+		allHornerSum              = field.Element{}
+		prevGlobalSent            = field.Element{}
+		prevHornerN1Hash          = field.Element{}
+		usedSharedRandomness      = field.Element{}
+		usedSharedRandomnessFound bool
+		computedSharedRandomness  = field.Element{}
+		mainErr                   error
 	)
 
 	for i := 0; i < c.MaxNbProofs; i++ {
 
 		var (
+			lppCommitment    = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0), i)
+			sharedRandomness = c.Recursion.GetPublicInputOfInstance(run, initialRandomnessPublicInput, i)
 			verifyingKey     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+verifyingKeyPublicInput, i)
 			verifyingKey2    = c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, i)
 			logDerivativeSum = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+logDerivativeSumPublicInput, i)
@@ -260,6 +266,21 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 			mainErr = errors.Join(mainErr, errors.New("global sent and receive don't match"))
 		}
 
+		if isLPP.IsOne() && !usedSharedRandomnessFound {
+			usedSharedRandomness = sharedRandomness
+			usedSharedRandomnessFound = true
+		}
+
+		if isLPP.IsOne() && usedSharedRandomnessFound {
+			if usedSharedRandomness != sharedRandomness {
+				mainErr = errors.Join(mainErr, errors.New("shared randomness mismatch"))
+			}
+		}
+
+		if isGL.IsOne() {
+			computedSharedRandomness = cmimc.BlockCompression(computedSharedRandomness, lppCommitment)
+		}
+
 		prevHornerN1Hash = hornerN1Hash
 		prevGlobalSent = globalSent
 
@@ -268,6 +289,10 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 			allHornerSum.Add(&allHornerSum, &hornerSum)
 			allLogDerivativeSum.Add(&allLogDerivativeSum, &logDerivativeSum)
 		}
+	}
+
+	if computedSharedRandomness != usedSharedRandomness {
+		mainErr = errors.Join(mainErr, errors.New("shared randomness mismatch"))
 	}
 
 	if !allGrandProduct.IsOne() {

@@ -2,13 +2,13 @@ package distributed
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -32,25 +32,24 @@ func TestConglomerationBasic(t *testing.T) {
 				CompileSegments().
 				Conglomerate(20)
 
-		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
-
+		runtimeBoot             = wizard.RunProver(distWizard.Bootstrapper, tc.Assign)
 		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, distWizard)
+		runGLs                  = runProverGLs(t, distWizard, witnessGLs)
 	)
-
-	fmt.Printf("nbWitnessesGL=%d nbWitnessesLPP=%d\n", len(witnessGLs), len(witnessLPPs))
-
-	runLPPs := runProverLPPs(t, distWizard, witnessLPPs)
-
-	for i := range runLPPs {
-		t.Logf("sanity-checking runLPPs[%d]\n", i)
-		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runLPPs[i])
-	}
-
-	runGLs := runProverGLs(t, distWizard, witnessGLs)
 
 	for i := range runGLs {
 		t.Logf("sanity-checking runGLs[%d]\n", i)
 		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runGLs[i])
+	}
+
+	var (
+		sharedRandomness = getSharedRandomness(runGLs)
+		runLPPs          = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
+	)
+
+	for i := range runLPPs {
+		t.Logf("sanity-checking runLPPs[%d]\n", i)
+		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runLPPs[i])
 	}
 
 	runConglomerationProver(t, distWizard.CompiledConglomeration, runGLs, runLPPs)
@@ -104,7 +103,17 @@ func TestConglomeration(t *testing.T) {
 
 	var (
 		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, distWizard)
-		runLPPs                 = runProverLPPs(t, distWizard, witnessLPPs)
+		runGLs                  = runProverGLs(t, distWizard, witnessGLs)
+	)
+
+	for i := range runGLs {
+		t.Logf("sanity-checking runGLs[%d]\n", i)
+		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runGLs[i])
+	}
+
+	var (
+		sharedRandomness = getSharedRandomness(runGLs)
+		runLPPs          = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
 	)
 
 	for i := range runLPPs {
@@ -112,14 +121,16 @@ func TestConglomeration(t *testing.T) {
 		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runLPPs[i])
 	}
 
-	runGLs := runProverGLs(t, distWizard, witnessGLs)
-
-	for i := range runGLs {
-		t.Logf("sanity-checking runGLs[%d]\n", i)
-		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runGLs[i])
-	}
-
 	runConglomerationProver(t, distWizard.CompiledConglomeration, runGLs, runLPPs)
+}
+
+// getSharedRandomness computes the shared randomnesses from the runtime
+func getSharedRandomness(runs []*wizard.ProverRuntime) field.Element {
+	witnesses := make([]recursion.Witness, len(runs))
+	for i := range runs {
+		witnesses[i] = recursion.ExtractWitness(runs[i])
+	}
+	return GetSharedRandomnessFromWitnesses(witnesses)
 }
 
 // Sanity-check for conglomeration compilation.

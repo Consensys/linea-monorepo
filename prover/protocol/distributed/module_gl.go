@@ -230,6 +230,7 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		)
 	}
 
+	moduleGL.Wiop.InsertPublicInput(initialRandomnessPublicInput, accessors.NewConstant(field.Zero()))
 	moduleGL.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewFromPublicColumn(moduleGL.IsFirst, 0))
 	moduleGL.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewFromPublicColumn(moduleGL.IsLast, 0))
 

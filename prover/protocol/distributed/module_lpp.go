@@ -17,14 +17,15 @@ import (
 )
 
 var (
-	logDerivativeSumPublicInput = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
-	grandProductPublicInput     = "GRAND_PRODUCT_PUBLIC_INPUT"
-	hornerPublicInput           = "HORNER_FINAL_RES_PUBLIC_INPUT"
-	hornerN0HashPublicInput     = "HORNER_N0_HASH_PUBLIC_INPUT"
-	hornerN1HashPublicInput     = "HORNER_N1_HASH_PUBLIC_INPUT"
-	isLppPublicInput            = "IS_LPP"
-	isGlPublicInput             = "IS_GL"
-	nbActualLppPublicInput      = "NB_ACTUAL_LPP"
+	logDerivativeSumPublicInput  = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
+	grandProductPublicInput      = "GRAND_PRODUCT_PUBLIC_INPUT"
+	hornerPublicInput            = "HORNER_FINAL_RES_PUBLIC_INPUT"
+	hornerN0HashPublicInput      = "HORNER_N0_HASH_PUBLIC_INPUT"
+	hornerN1HashPublicInput      = "HORNER_N1_HASH_PUBLIC_INPUT"
+	isLppPublicInput             = "IS_LPP"
+	isGlPublicInput              = "IS_GL"
+	nbActualLppPublicInput       = "NB_ACTUAL_LPP"
+	initialRandomnessPublicInput = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
 )
 
 // ModuleLPP is a compilation structure holding the central informations
@@ -127,6 +128,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	// moduleGL and moduleLPP have identical set of public inputs. The order
 	// of declaration is also important. Namely, these needs to be declared before
 	// the non-dummy ones.
+	moduleLPP.Wiop.InsertPublicInput(initialRandomnessPublicInput, accessors.NewFromPublicColumn(moduleLPP.InitialFiatShamirState, 0))
 	moduleLPP.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewConstant(field.Zero()))
 	moduleLPP.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewConstant(field.Zero()))
 	moduleLPP.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))

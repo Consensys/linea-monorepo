@@ -4,11 +4,14 @@ import (
 	"errors"
 	"fmt"
 
+	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -148,6 +151,32 @@ func (dist *DistributedWizard) Conglomerate(maxNumSegment int) *DistributedWizar
 		dist.CompiledDefault,
 	)
 	return dist
+}
+
+// GetSharedRandomness returns the shared randomness used by the protocol
+// to generate the LPP proofs. The LPP commitments are supposed to be the
+// one extractable from the [recursion.Witness] of the LPPs.
+//
+// The result of this function is to be used as the shared randomness for
+// the LPP provers.
+func GetSharedRandomness(lppCommitments []field.Element) field.Element {
+	return cmimc.HashVec(lppCommitments)
+}
+
+// GetSharedRandomnessFromRuntime returns the shared randomness used by the protocol
+// to generate the LPP proofs. The LPP commitments are supposed to be the
+// one extractable from the [recursion.Witness] of the LPPs.
+//
+// The result of this function is to be used as the shared randomness for
+// the LPP provers.
+func GetSharedRandomnessFromWitnesses(gLWitnesses []recursion.Witness) field.Element {
+	sharedRandomness := field.Element{}
+	for i := range gLWitnesses {
+		name := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0)
+		lpp := gLWitnesses[i].Proof.GetPublicInput(nil, preRecursionPrefix+name)
+		sharedRandomness = cmimc.BlockCompression(sharedRandomness, lpp)
+	}
+	return sharedRandomness
 }
 
 // precompileInitialWizard pre-compiles the initial wizard protocol by applying all the

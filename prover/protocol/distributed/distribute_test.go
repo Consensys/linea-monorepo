@@ -3,7 +3,6 @@ package distributed
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand/v2"
 	"reflect"
 	"testing"
 	"time"
@@ -20,7 +19,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
@@ -301,9 +299,12 @@ func TestBenchDistributedWizard(t *testing.T) {
 
 	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
-	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, distWizard)
-	runProverGLs(t, distWizard, witnessGLs)
-	runProverLPPs(t, distWizard, witnessLPPs)
+	var (
+		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, distWizard)
+		runGLs                  = runProverGLs(t, distWizard, witnessGLs)
+		sharedRandomness        = getSharedRandomness(runGLs)
+		_                       = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
+	)
 }
 
 // GetZkevmWitness returns a [zkevm.Witness]
@@ -530,15 +531,13 @@ func runProverGLs(
 func runProverLPPs(
 	t *testing.T,
 	distWizard *DistributedWizard,
+	sharedRandomness field.Element,
 	witnessLPPs []*ModuleWitnessLPP,
 ) []*wizard.ProverRuntime {
 
 	var (
-		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-		rng              = rand.New(utils.NewRandSource(0))
-		sharedRandomness = field.PseudoRand(rng)
-		runs             = make([]*wizard.ProverRuntime, len(witnessLPPs))
-		compiledLPPs     = distWizard.CompiledLPPs
+		runs         = make([]*wizard.ProverRuntime, len(witnessLPPs))
+		compiledLPPs = distWizard.CompiledLPPs
 	)
 
 	for i := range witnessLPPs {
