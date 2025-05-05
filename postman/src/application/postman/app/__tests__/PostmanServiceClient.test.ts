@@ -26,6 +26,9 @@ import { DatabaseCleaningPoller } from "../../../../services/pollers/DatabaseCle
 import { TypeOrmMessageRepository } from "../../persistence/repositories/TypeOrmMessageRepository";
 import { L2ClaimMessageTransactionSizePoller } from "../../../../services/pollers/L2ClaimMessageTransactionSizePoller";
 import { DEFAULT_MAX_CLAIM_GAS_LIMIT } from "../../../../core/constants";
+import { MessageStatusSubscriber } from "../../persistence/subscribers/MessageStatusSubscriber";
+import { MessageMetricsUpdater } from "../../api/metrics/MessageMetricsUpdater";
+import { Api } from "../../api/Api";
 
 jest.mock("ethers", () => {
   const allAutoMocked = jest.createMockFromModule("ethers");
@@ -59,6 +62,8 @@ const postmanServiceClientOptions: PostmanOptions = {
       profitMargin: 1.0,
       maxNumberOfRetries: 100,
       retryDelayInSeconds: 30,
+      isPostmanSponsorshipEnabled: false,
+      maxPostmanSponsorGasLimit: 250000n,
     },
   },
   l2Options: {
@@ -81,6 +86,8 @@ const postmanServiceClientOptions: PostmanOptions = {
       maxNumberOfRetries: 100,
       retryDelayInSeconds: 30,
       maxClaimGasLimit: DEFAULT_MAX_CLAIM_GAS_LIMIT,
+      isPostmanSponsorshipEnabled: false,
+      maxPostmanSponsorGasLimit: 250000n,
     },
   },
   l1L2AutoClaimEnabled: true,
@@ -167,8 +174,9 @@ describe("PostmanServiceClient", () => {
     });
   });
 
-  describe("connectDatabase", () => {
-    it("should initialize the db", async () => {
+  describe("connectServices", () => {
+    it("should initialize API and database", async () => {
+      jest.spyOn(MessageMetricsUpdater.prototype, "initialize").mockResolvedValueOnce();
       const initializeSpy = jest.spyOn(DataSource.prototype, "initialize").mockResolvedValue(
         new DataSource({
           type: "postgres",
@@ -186,19 +194,20 @@ describe("PostmanServiceClient", () => {
             RemoveUniqueConstraint1689084924789,
             AddNewIndexes1701265652528,
           ],
+          subscribers: [MessageStatusSubscriber],
           migrationsTableName: "migrations",
           logging: ["error"],
           migrationsRun: true,
         }),
       );
-      await postmanServiceClient.connectDatabase();
+      await postmanServiceClient.connectServices();
 
       expect(initializeSpy).toHaveBeenCalledTimes(1);
     });
   });
 
   describe("startAllServices", () => {
-    it("should start all postman services", () => {
+    it("should start all postman services", async () => {
       jest.spyOn(MessageSentEventPoller.prototype, "start").mockImplementationOnce(jest.fn());
       jest.spyOn(MessageAnchoringPoller.prototype, "start").mockImplementationOnce(jest.fn());
       jest.spyOn(MessageClaimingPoller.prototype, "start").mockImplementationOnce(jest.fn());
@@ -206,27 +215,35 @@ describe("PostmanServiceClient", () => {
       jest.spyOn(MessagePersistingPoller.prototype, "start").mockImplementationOnce(jest.fn());
       jest.spyOn(DatabaseCleaningPoller.prototype, "start").mockImplementationOnce(jest.fn());
       jest.spyOn(TypeOrmMessageRepository.prototype, "getLatestMessageSent").mockImplementationOnce(jest.fn());
+      jest.spyOn(Api.prototype, "start").mockImplementationOnce(jest.fn());
+
+      jest.spyOn(MessageMetricsUpdater.prototype, "initialize").mockResolvedValueOnce();
+      await postmanServiceClient.initializeMetricsAndApi();
 
       postmanServiceClient.startAllServices();
 
-      expect(loggerSpy).toHaveBeenCalledTimes(5);
-      expect(loggerSpy).toHaveBeenCalledWith("All listeners and message deliverers have been started.");
+      expect(loggerSpy).toHaveBeenCalledTimes(6);
+      expect(loggerSpy).toHaveBeenLastCalledWith("All listeners and message deliverers have been started.");
 
       postmanServiceClient.stopAllServices();
     });
 
-    it("should stop all postman services", () => {
+    it("should stop all postman services", async () => {
       jest.spyOn(MessageSentEventPoller.prototype, "stop").mockImplementationOnce(jest.fn());
       jest.spyOn(MessageAnchoringPoller.prototype, "stop").mockImplementationOnce(jest.fn());
       jest.spyOn(MessageClaimingPoller.prototype, "stop").mockImplementationOnce(jest.fn());
       jest.spyOn(L2ClaimMessageTransactionSizePoller.prototype, "stop").mockImplementationOnce(jest.fn());
       jest.spyOn(MessagePersistingPoller.prototype, "stop").mockImplementationOnce(jest.fn());
       jest.spyOn(DatabaseCleaningPoller.prototype, "stop").mockImplementationOnce(jest.fn());
+      jest.spyOn(Api.prototype, "stop").mockImplementationOnce(jest.fn());
+
+      jest.spyOn(MessageMetricsUpdater.prototype, "initialize").mockResolvedValueOnce();
+      await postmanServiceClient.initializeMetricsAndApi();
 
       postmanServiceClient.stopAllServices();
 
-      expect(loggerSpy).toHaveBeenCalledTimes(9);
-      expect(loggerSpy).toHaveBeenCalledWith("All listeners and message deliverers have been stopped.");
+      expect(loggerSpy).toHaveBeenCalledTimes(10);
+      expect(loggerSpy).toHaveBeenLastCalledWith("All listeners and message deliverers have been stopped.");
     });
   });
 });

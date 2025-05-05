@@ -11,7 +11,6 @@ const widgetConfig: Partial<WidgetConfig> = {
   variant: "compact",
   subvariant: "default",
   appearance: "light",
-  integrator: "Linea",
   toChain: ChainId.LNA,
   toToken: ETH_SYMBOL,
   theme: {
@@ -161,7 +160,7 @@ const widgetConfig: Partial<WidgetConfig> = {
     ],
   },
   bridges: {
-    allow: ["stargateV2", "stargateV2Bus", "across", "hop", "squid", "relay"],
+    allow: ["stargateV2", "stargateV2Bus", "across", "hop", "squid", "relay", "symbiosis"],
   },
   apiKey: config.lifiApiKey,
 };
@@ -182,7 +181,7 @@ export function Widget() {
               },
             },
           }}
-          integrator="linea"
+          integrator={config.lifiIntegrator}
         />
       </ClientOnly>
     </div>
