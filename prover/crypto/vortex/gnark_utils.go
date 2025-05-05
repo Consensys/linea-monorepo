@@ -160,7 +160,7 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z frontend.Variable, gen fr.Eleme
 // Checks that p is a polynomial of degree < cardinality/rate
 // * p polynomial of size cardinality
 // * genInv inverse of the generator of the subgroup of size cardinality
-// * rate rate of the RS code
+// * rate of the RS code
 func assertIsCodeWord(api frontend.API, p []frontend.Variable, genInv fr.Element, cardinality, rate uint64) error {
 
 	if uint64(len(p)) != cardinality {

@@ -172,7 +172,7 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	totalNumRounds := a.ctx.VortexCtx.MaxCommittedRound
 	committedRound := 0
 
-	if a.ctx.VortexCtx.IsCommitToPrecomputed() {
+	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		rootPrecomp := a.ctx.Columns.precompRoot.GetColAssignment(run).Get(0)
 		precompColSisHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
 		for i, selectedCol := range openingIndices {
@@ -219,7 +219,7 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	numCommittedRound := a.ctx.VortexCtx.NumCommittedRounds()
-	if a.ctx.VortexCtx.IsCommitToPrecomputed() {
+	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		numCommittedRound += 1
 	}
 
@@ -237,7 +237,7 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	roundQ := ctx.Columns.Q.Round()
 	numRound := ctx.VortexCtx.NumCommittedRounds()
-	if ctx.VortexCtx.IsCommitToPrecomputed() {
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		numRound += 1
 	}
 	concatDhQSizeUnpadded := ctx.VortexCtx.SisParams.OutputSize() * ctx.VortexCtx.NbColsToOpen() * numRound
@@ -277,7 +277,7 @@ func (a *collapsingProverAction) Run(run *wizard.ProverRuntime) {
 	subDuals := []smartvectors.SmartVector{}
 	roundStartAt := 0
 
-	if a.ctx.VortexCtx.IsCommitToPrecomputed() {
+	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		numPrecomputeds := len(a.ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
 		if numPrecomputeds == 0 {
 			utils.Panic("The number of precomputeds must be non-zero!")

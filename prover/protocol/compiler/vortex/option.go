@@ -23,18 +23,12 @@ func WithSISParams(params *ringsis.Params) VortexOp {
 	}
 }
 
-// Allows skipping rounds when there are not many polynomials
-func WithDryThreshold(dryThreshold int) VortexOp {
+// Allows skipping the SIS hashing of columns of the round matrices
+// if the number of polynomials to commit to for the particular round
+// is less than the threshold
+func WithOptionalSISHashingThreshold(sisHashingThreshold int) VortexOp {
 	return func(ctx *Ctx) {
-		ctx.DryTreshold = dryThreshold
-	}
-}
-
-// Replace SIS with a custom hasher
-func ReplaceSisByMimc() VortexOp {
-	return func(ctx *Ctx) {
-		ctx.ReplaceSisByMimc = true
-		ctx.SisParams = nil
+		ctx.ApplySISHashThreshold = sisHashingThreshold
 	}
 }
 

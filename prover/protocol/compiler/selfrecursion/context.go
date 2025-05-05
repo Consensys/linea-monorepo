@@ -221,7 +221,7 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 
 	ctx.Columns.Rooth = vortexCtx.Items.MerkleRoots
 	// precomputed Merkle roots are stored in a separate entity than rooth
-	if vortexCtx.IsCommitToPrecomputed() {
+	if vortexCtx.IsNonEmptyPrecomputed() {
 		ctx.Columns.precompRoot = vortexCtx.Items.Precomputeds.MerkleRoot
 	}
 	ctx.Coins.Alpha = vortexCtx.Items.Alpha

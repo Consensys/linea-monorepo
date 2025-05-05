@@ -8,7 +8,7 @@ import (
 
 // serializableColumnDecl is used to represent a "natural" column, meaning a
 // column that is explicitly registered as part of the scheme. This is in
-// oppposition with [serializableColumnRef] where such columns are encoded
+// opposition with [serializableColumnRef] where such columns are encoded
 // by just citing their names.
 //
 // Concretely, we need this because [column.Natural] has a complex structure
@@ -32,6 +32,9 @@ func intoSerializableColDecl(c *column.Natural) *serializableColumnDecl {
 	}
 }
 
+// Converts a serializableColumnDecl back into a column.Natural and registers it in a
+// wizard.CompiledIOP context, returning an ifaces.Column interface. Used during deserialization
+// to reconstruct the column structure after loading CBOR-encoded metadata.
 func (c *serializableColumnDecl) intoNaturalAndRegister(comp *wizard.CompiledIOP) ifaces.Column {
 	return comp.InsertColumn(c.Round, c.Name, c.Size, c.Status)
 }

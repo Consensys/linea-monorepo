@@ -325,24 +325,24 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 
 	srcVortexCtx := srcComp.PcsCtxs.(*vortex.Ctx)
 
-	if !srcVortexCtx.IsSelfrecursed || srcVortexCtx.ReplaceSisByMimc {
-		utils.Panic("the input vortex ctx is expected to be selfrecursed or having SIS replaced by MiMC. Please sure the input comp has been last compiled by Vortex with the option [vortex.MarkAsSelfRecursed]")
+	if !srcVortexCtx.IsSelfrecursed {
+		utils.Panic("the input vortex ctx is expected to be selfrecursed. Please make sure the input comp has been last compiled by Vortex with the option [vortex.MarkAsSelfRecursed]")
 	}
 
 	dstVortexCtx := &vortex.Ctx{
-		RunStateNamePrefix: translator.Prefix,
-		BlowUpFactor:       srcVortexCtx.BlowUpFactor,
-		DryTreshold:        srcVortexCtx.DryTreshold,
-		CommittedRowsCount: srcVortexCtx.CommittedRowsCount,
-		NumCols:            srcVortexCtx.NumCols,
-		MaxCommittedRound:  srcVortexCtx.MaxCommittedRound,
-		NumOpenedCol:       srcVortexCtx.NumOpenedCol,
-		VortexParams:       srcVortexCtx.VortexParams,
-		SisParams:          srcVortexCtx.SisParams,
+		RunStateNamePrefix:    translator.Prefix,
+		BlowUpFactor:          srcVortexCtx.BlowUpFactor,
+		ApplySISHashThreshold: srcVortexCtx.ApplySISHashThreshold,
+		CommittedRowsCount:    srcVortexCtx.CommittedRowsCount,
+		NumCols:               srcVortexCtx.NumCols,
+		MaxCommittedRound:     srcVortexCtx.MaxCommittedRound,
+		NumOpenedCol:          srcVortexCtx.NumOpenedCol,
+		VortexParams:          srcVortexCtx.VortexParams,
+		SisParams:             srcVortexCtx.SisParams,
+		RoundStatus:           srcVortexCtx.RoundStatus,
 		// Although the srcVor
 		IsSelfrecursed:                 true,
 		CommitmentsByRounds:            translator.AddColumnVecVec(srcVortexCtx.CommitmentsByRounds),
-		DriedByRounds:                  translator.AddColumnVecVec(srcVortexCtx.DriedByRounds),
 		PolynomialsTouchedByTheQuery:   translator.TranslateColumnSet(srcVortexCtx.PolynomialsTouchedByTheQuery),
 		ShadowCols:                     translator.TranslateColumnSet(srcVortexCtx.ShadowCols),
 		Query:                          translator.AddUniEval(0, srcVortexCtx.Query),
@@ -350,13 +350,13 @@ func createNewPcsCtx(translator *compTranslator, srcComp *wizard.CompiledIOP) *v
 		AddPrecomputedMerkleRootToPublicInputsOpt: srcVortexCtx.AddPrecomputedMerkleRootToPublicInputsOpt,
 	}
 
-	if srcVortexCtx.ReplaceSisByMimc {
-		panic("it should not replace by MiMC")
+	if dstVortexCtx.ApplySISHashThreshold > 0 {
+		panic("SIS hashes are not yet supported in recursion")
 	}
 
 	translator.Target.QueriesParams.MarkAsIgnored(dstVortexCtx.Query.QueryID)
 
-	if srcVortexCtx.IsCommitToPrecomputed() {
+	if srcVortexCtx.IsNonEmptyPrecomputed() {
 		dstVortexCtx.Items.Precomputeds.PrecomputedColums = translator.AddColumnList(srcVortexCtx.Items.Precomputeds.PrecomputedColums, true, 0)
 
 		// If the vortex compilation is done with the [AddPrecomputedMerkleRootToPublicInputsOpt]

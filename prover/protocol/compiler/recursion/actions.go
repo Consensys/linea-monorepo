@@ -120,7 +120,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 			}
 		}
 
-		if pcsCtx.IsCommitToPrecomputed() {
+		if pcsCtx.IsNonEmptyPrecomputed() {
 
 			com := pcsCtx.Items.Precomputeds.MerkleRoot.GetColAssignmentAt(run, 0)
 			if com != circMRoots[0] {
@@ -173,7 +173,7 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 			api.AssertIsEqual(circYs[i], params.Ys[i])
 		}
 
-		if pcsCtx.IsCommitToPrecomputed() {
+		if pcsCtx.IsNonEmptyPrecomputed() {
 
 			// Note alex: for the conglomeration use-case. The precomputed Merkle-root
 			// of the comp used to build the circuit and the one of the comp used to
