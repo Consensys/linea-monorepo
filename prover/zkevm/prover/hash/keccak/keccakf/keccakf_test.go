@@ -124,7 +124,7 @@ func BenchmarkDataTransferModule(b *testing.B) {
 					specialqueries.CompileFixedPermutations,
 					permutation.CompileViaGrandProduct,
 					logderivativesum.CompileLookups,
-					innerproduct.Compile,
+					innerproduct.Compile(),
 				)
 				numCells = 0
 				numCols  = 0

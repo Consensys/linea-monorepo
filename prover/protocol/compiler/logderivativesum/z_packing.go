@@ -100,18 +100,27 @@ func (z *ZCtx) Compile(comp *wizard.CompiledIOP) {
 			),
 		)
 
-		// consistency check
-		comp.InsertGlobal(
-			z.Round,
-			DeriveName[ifaces.QueryID]("Z_CONSISTENCY", comp.SelfRecursionCount, z.Round, z.Size, i),
-			sym.Sub(
-				zNumerator,
-				sym.Mul(
-					sym.Sub(z.Zs[i], column.Shift(z.Zs[i], -1)),
-					zDenominator,
+		// This is the consistency check ensuring that Zs[i] is well-computed vs
+		// Zs[i-1]. The check is skipped if the size is 1 because this is not
+		// needed in that case and because it creates an edge-case where Zs and
+		// Zs << 1 are the same column and cancel out in the expression.
+		//
+		// In theory, we could also simplify the whole compilation process for that
+		// situation by merging the initial and the final checks into one, but that
+		// would add complexity and not improve much.
+		if z.Size > 1 {
+			comp.InsertGlobal(
+				z.Round,
+				DeriveName[ifaces.QueryID]("Z_CONSISTENCY", comp.SelfRecursionCount, z.Round, z.Size, i),
+				sym.Sub(
+					zNumerator,
+					sym.Mul(
+						sym.Sub(z.Zs[i], column.Shift(z.Zs[i], -1)),
+						zDenominator,
+					),
 				),
-			),
-		)
+			)
+		}
 
 		// local opening of the final value of the Z polynomial
 		z.ZOpenings[i] = comp.InsertLocalOpening(

@@ -5,7 +5,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -179,6 +181,34 @@ func (c *CompiledIOP) createVerifier(proof Proof) VerifierRuntime {
 	}
 
 	return runtime
+}
+
+// GetPublicInput extracts the value of a public input from the proof.
+func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element {
+
+	publicInputsAccessor := comp.GetPublicInputAccessor(name)
+
+	switch a := publicInputsAccessor.(type) {
+	case *accessors.FromConstAccessor:
+		return a.F
+	case *accessors.FromPublicColumn:
+		if a.Col.Status() == column.Proof {
+			return proof.Messages.MustGet(a.Col.ID).Get(0)
+		}
+	case *accessors.FromLocalOpeningYAccessor:
+		return proof.QueriesParams.MustGet(a.Q.ID).(query.LocalOpeningParams).Y
+	}
+
+	// This generically returns the value of a public input by extracting
+	// it from the runtime of the verifier. This is inefficient because it
+	// needs to run the verifier to extract the value. So this behaviour
+	// should be used only for types of [ifaces.Accessor] who need it.
+	//
+	// These are not directly visible from the proof. Thus we need to
+	// run the verifier and extract them from the runtime.
+	verifierRuntime, _ := VerifyWithRuntime(comp, proof)
+	return verifierRuntime.GetPublicInput(name)
+
 }
 
 // GenerateCoinsFromRound generates all the random coins for the given round.

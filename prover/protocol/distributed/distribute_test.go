@@ -3,7 +3,6 @@ package distributed
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand/v2"
 	"reflect"
 	"testing"
 	"time"
@@ -11,12 +10,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 )
 
@@ -81,11 +83,11 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
 	for i := range distWizard.GLs {
-		dummy.CompileAtProverLvl(distWizard.GLs[i].Wiop)
+		dummy.CompileAtProverLvl()(distWizard.GLs[i].Wiop)
 	}
 
 	for i := range distWizard.LPPs {
-		dummy.CompileAtProverLvl(distWizard.LPPs[i].Wiop)
+		dummy.CompileAtProverLvl()(distWizard.LPPs[i].Wiop)
 	}
 
 	var (
@@ -127,7 +129,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 		prevHornerN1Hash    = field.Element{}
 	)
 
-	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
+	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, distWizard)
 
 	for i := range witnessGLs {
 
@@ -259,23 +261,15 @@ func TestBenchDistributedWizard(t *testing.T) {
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
-		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
-		rng              = rand.New(utils.NewRandSource(0))
-		sharedRandomness = field.PseudoRand(rng)
-		zkevm            = GetZkEVM()
-		disc             = &StandardModuleDiscoverer{
+		zkevm = GetZkEVM()
+		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Affinities:   GetAffinities(zkevm),
 			Predivision:  16,
 		}
 
 		// This tests the compilation of the compiled-IOP
-		distWizard = DistributeWizard(zkevm.WizardIOP, disc)
-
-		// Minimal witness size to compile
-		// minCompilationSize = 1 << 10
-		compiledGLs  = make([]*RecursedSegmentCompilation, len(distWizard.GLs))
-		compiledLPPs = make([]*RecursedSegmentCompilation, len(distWizard.LPPs))
+		distWizard = DistributeWizard(zkevm.WizardIOP, disc).CompileSegments()
 	)
 
 	var (
@@ -301,94 +295,16 @@ func TestBenchDistributedWizard(t *testing.T) {
 	var (
 		witness     = GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
-		proof       = runtimeBoot.ExtractProof()
-		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
 	)
 
 	t.Logf("[%v] done running the bootstrapper\n", time.Now())
 
-	if verBootErr != nil {
-		t.Fatalf("")
-	}
-
-	witnessGLs, witnessLPPs := SegmentRuntime(runtimeBoot, &distWizard)
-
-	for i := range distWizard.LPPs {
-
-		fmt.Printf("[%v] Starting to compile module LPP for %v\n", time.Now(), distWizard.LPPs[i].ModuleNames())
-		compiledLPPs[i] = CompileSegment(distWizard.LPPs[i])
-		fmt.Printf("[%v] Done compiling module LPP for %v\n", time.Now(), distWizard.LPPs[i].ModuleNames())
-	}
-
-	// This applies the dummy.Compiler to all parts of the distributed wizard.
-	for i := range distWizard.GLs {
-
-		fmt.Printf("[%v] Starting to compile module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
-		compiledGLs[i] = CompileSegment(distWizard.GLs[i])
-		fmt.Printf("[%v] Done compiling module GL for %v\n", time.Now(), distWizard.ModuleNames[i])
-	}
-
-	for i := range witnessGLs {
-
-		var (
-			witnessGL = witnessGLs[i]
-			moduleGL  *RecursedSegmentCompilation
-		)
-
-		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
-
-		var ()
-
-		for k := range distWizard.ModuleNames {
-
-			if distWizard.ModuleNames[k] != witnessGLs[i].ModuleName {
-				continue
-			}
-
-			moduleGL = compiledGLs[k]
-		}
-
-		if moduleGL == nil {
-			t.Fatalf("module does not exists")
-		}
-
-		t.Logf("RUNNING THE GL PROVER: %v", time.Now())
-
-		_ = moduleGL.ProveSegment(witnessGL)
-
-		t.Logf("RUNNING THE GL PROVER - DONE: %v", time.Now())
-	}
-
-	for i := range witnessLPPs {
-
-		var (
-			witnessLPP = witnessLPPs[i]
-			moduleLPP  *RecursedSegmentCompilation
-		)
-
-		witnessLPP.InitialFiatShamirState = sharedRandomness
-
-		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
-
-		for k := range distWizard.LPPs {
-
-			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), witnessLPPs[i].ModuleNames) {
-				continue
-			}
-
-			moduleLPP = compiledLPPs[k]
-		}
-
-		if moduleLPP == nil {
-			t.Fatalf("module does not exists")
-		}
-
-		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
-
-		_ = moduleLPP.ProveSegment(witnessLPP)
-
-		t.Logf("RUNNING THE LPP PROVER - DONE: %v", time.Now())
-	}
+	var (
+		witnessGLs, witnessLPPs = SegmentRuntime(runtimeBoot, distWizard)
+		runGLs                  = runProverGLs(t, distWizard, witnessGLs)
+		sharedRandomness        = getSharedRandomness(runGLs)
+		_                       = runProverLPPs(t, distWizard, sharedRandomness, witnessLPPs)
+	)
 }
 
 // GetZkevmWitness returns a [zkevm.Witness]
@@ -511,4 +427,146 @@ func GetAffinities(z *zkevm.ZkEvm) [][]column.Natural {
 			z.WizardIOP.Columns.GetHandle("mmu.STAMP").(column.Natural),
 		},
 	}
+}
+
+// DistributeTestCase is an implementation of the testcase interface. The
+// testcase generates 2 triplets of columns a, b, c such that a + b = c
+// and the two modules are joined by a lookup.
+type DistributeTestCase struct {
+	numRow int
+}
+
+// Define defines the structure of the distributed wizard. The structure is
+// composed of 2 modules that are connected by a lookup. The two modules are
+// identical and are defined as a + b = c. The a, b and c are each defined as
+// a commit in the wizard. The lookup is defined as a global constraint that
+// enforces the equality of the two modules.
+func (d DistributeTestCase) Define(comp *wizard.CompiledIOP) {
+
+	// Define the first module
+	a0 := comp.InsertCommit(0, "a0", d.numRow)
+	b0 := comp.InsertCommit(0, "b0", d.numRow)
+	c0 := comp.InsertCommit(0, "c0", d.numRow)
+
+	// Importantly, the second module must be slightly different than the first
+	// one because else it will create a wierd edge case in the conglomeration:
+	// as we would have two GL modules with the same verifying key and we would
+	// not be able to infer a module from a VK.
+	//
+	// We differentiate the modules by adding a duplicate constraints for GL0
+	a1 := comp.InsertCommit(0, "a1", d.numRow)
+	b1 := comp.InsertCommit(0, "b1", d.numRow)
+	c1 := comp.InsertCommit(0, "c1", d.numRow)
+
+	comp.InsertGlobal(0, "global-0", symbolic.Sub(c0, b0, a0))
+	comp.InsertGlobal(0, "global-duplicate", symbolic.Sub(c0, b0, a0))
+	comp.InsertGlobal(0, "global-1", symbolic.Sub(c1, b1, a1))
+
+	comp.InsertInclusion(0, "inclusion-0", []ifaces.Column{c0, b0, a0}, []ifaces.Column{c1, b1, a1})
+}
+
+// Assign sets up the column assignments for the DistributeTestCase
+// within the ProverRuntime. It assigns constant values to six columns
+// ('a0', 'b0', 'c0', 'a1', 'b1', 'c1') where each column is assigned
+// a smart vector with a constant field element value and a specified
+// number of rows (d.numRow). This function helps initialize the columns
+// with predetermined values for the testing setup.
+func (d DistributeTestCase) Assign(run *wizard.ProverRuntime) {
+	run.AssignColumn("a0", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(1), d.numRow-2), d.numRow))
+	run.AssignColumn("b0", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(2), d.numRow-2), d.numRow))
+	run.AssignColumn("c0", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(3), d.numRow-2), d.numRow))
+	run.AssignColumn("a1", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(1), d.numRow-2), d.numRow))
+	run.AssignColumn("b1", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(2), d.numRow-2), d.numRow))
+	run.AssignColumn("c1", smartvectors.RightZeroPadded(vector.Repeat(field.NewElement(3), d.numRow-2), d.numRow))
+}
+
+// runProverGLs executes the prover for each GL module segment. It takes in a list of
+// compiled GL segments and corresponding witnesses, then runs the prover for each
+// segment. The function logs the start and end times of the prover execution for each
+// segment. It returns a slice of ProverRuntime instances, each representing the
+// result of the prover execution for a segment.
+func runProverGLs(
+	t *testing.T,
+	distWizard *DistributedWizard,
+	witnessGLs []*ModuleWitnessGL,
+) []*wizard.ProverRuntime {
+
+	var (
+		compiledGLs = distWizard.CompiledGLs
+		runs        = make([]*wizard.ProverRuntime, len(witnessGLs))
+	)
+
+	for i := range witnessGLs {
+
+		var (
+			witnessGL = witnessGLs[i]
+			moduleGL  *RecursedSegmentCompilation
+		)
+
+		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessGL.ModuleName, witnessGL.ModuleIndex)
+		for k := range distWizard.ModuleNames {
+			if distWizard.ModuleNames[k] != witnessGLs[i].ModuleName {
+				continue
+			}
+			moduleGL = compiledGLs[k]
+		}
+
+		if moduleGL == nil {
+			t.Fatalf("module does not exists")
+		}
+
+		t.Logf("RUNNING THE GL PROVER: %v", time.Now())
+		runs[i] = moduleGL.ProveSegment(witnessGL)
+		t.Logf("RUNNING THE GL PROVER - DONE: %v", time.Now())
+	}
+
+	return runs
+}
+
+// runProverLPPs runs a prover for a LPP segment. It takes in a DistributedWizard
+// object, a slice of RecursedSegmentCompilation objects, and a slice of
+// ModuleWitnessLPP objects. It runs the prover for each segment and logs the
+// time at which the prover starts and ends. It returns a slice of ProverRuntime
+// instances, each representing the result of the prover execution for a segment.
+func runProverLPPs(
+	t *testing.T,
+	distWizard *DistributedWizard,
+	sharedRandomness field.Element,
+	witnessLPPs []*ModuleWitnessLPP,
+) []*wizard.ProverRuntime {
+
+	var (
+		runs         = make([]*wizard.ProverRuntime, len(witnessLPPs))
+		compiledLPPs = distWizard.CompiledLPPs
+	)
+
+	for i := range witnessLPPs {
+
+		var (
+			witnessLPP = witnessLPPs[i]
+			moduleLPP  *RecursedSegmentCompilation
+		)
+
+		witnessLPP.InitialFiatShamirState = sharedRandomness
+
+		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
+		for k := range distWizard.LPPs {
+
+			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), witnessLPPs[i].ModuleNames) {
+				continue
+			}
+
+			moduleLPP = compiledLPPs[k]
+		}
+
+		if moduleLPP == nil {
+			t.Fatalf("module does not exists")
+		}
+
+		t.Logf("RUNNING THE LPP PROVER: %v", time.Now())
+		runs[i] = moduleLPP.ProveSegment(witnessLPP)
+		t.Logf("RUNNING THE LPP PROVER - DONE: %v", time.Now())
+	}
+
+	return runs
 }

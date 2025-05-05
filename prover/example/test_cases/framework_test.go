@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/specialqueries"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
@@ -63,7 +64,7 @@ var (
 		specialqueries.CompileFixedPermutations,
 		logderivativesum.CompileLookups,
 		permutation.CompileViaGrandProduct,
-		innerproduct.Compile,
+		innerproduct.Compile(),
 	}
 	ARITHMETICS = compilationSuite{
 		stitchsplit.Splitter(8),
@@ -71,12 +72,11 @@ var (
 		globalcs.Compile,
 	}
 	UNIVARIATES = compilationSuite{
-		univariates.CompileLocalOpening,
 		univariates.Naturalize,
-		univariates.MultiPointToSinglePoint(8),
+		mpts.Compile(),
 	}
 	DUMMY       = compilationSuite{dummy.Compile}
-	TENSOR      = compilationSuite{vortex.Compile(2, vortex.WithDryThreshold(1))} // dummy unsafe sis instance
+	TENSOR      = compilationSuite{vortex.Compile(2, vortex.WithOptionalSISHashingThreshold(1))} // dummy unsafe sis instance
 	ALL_BUT_ILC = join(ALL_SPECIALS, ARITHMETICS, UNIVARIATES, DUMMY)
 	WITH_TENSOR = join(ALL_SPECIALS, ARITHMETICS, UNIVARIATES, TENSOR)
 )

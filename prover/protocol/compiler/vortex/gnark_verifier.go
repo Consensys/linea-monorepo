@@ -28,19 +28,13 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 	roots := []frontend.Variable{}
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
 		roots = append(roots, precompRootSv[0])
 	}
 
 	// Collect all the commitments : rounds by rounds
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// There are not included in the commitments so there is no
-		// commitement to look for.
-		if ctx.isDry(round) {
-			continue
-		}
-
 		rootSv := vr.GetColumn(ctx.MerkleRootName(round)) // len 1 smart vector
 		roots = append(roots, rootSv[0])
 	}
@@ -77,11 +71,7 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 	// pass the parameters for a merkle-mode sis verification
 	params := vortex.GParams{}
 	params.HasherFunc = factoryHasherFunc
-	if ctx.ReplaceSisByMimc {
-		params.NoSisHasher = factoryHasherFunc
-	} else {
-		params.Key = ctx.VortexParams.Key
-	}
+	params.Key = ctx.VortexParams.Key
 
 	vortex.GnarkVerifyOpeningWithMerkleProof(
 		api,
@@ -110,15 +100,22 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 	}
 
 	// Also add the shadow evaluations into ysMap. Since the shadow columns
-	// are full-zeroes. We know that the evaluation will also always be zero
-	for shadowID := range ctx.ShadowCols {
+	// are full-zeroes. We know that the evaluation will also always be zero.
+	//
+	// The sorting is necessary to ensure that the iteration below happens in
+	// deterministic order over the [ShadowCols] map.
+	shadowIDs := utils.SortedKeysOf(ctx.ShadowCols, func(a, b ifaces.ColID) bool {
+		return a < b
+	})
+
+	for _, shadowID := range shadowIDs {
 		ysMap[shadowID] = field.Zero()
 	}
 
 	ys = [][]frontend.Variable{}
 
 	// add ys for precomputed when IsCommitToPrecomputed is true
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		names := make([]ifaces.ColID, len(ctx.Items.Precomputeds.PrecomputedColums))
 		for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
 			names[i] = poly.GetColID()
@@ -139,11 +136,6 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 
 	// Get the list of the polynomials
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// again, skip the dry rounds
-		if ctx.isDry(round) {
-			continue
-		}
-
 		names := ctx.CommitmentsByRounds.MustGet(round)
 		ysRounds := make([]frontend.Variable, len(names))
 		for i, name := range names {
@@ -181,7 +173,7 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 	roundStartAt := 0
 
 	// Process precomputed
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		openedPrecompCols := make([][]frontend.Variable, ctx.NbColsToOpen())
 		numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
 		for j := 0; j < ctx.NbColsToOpen(); j++ {
@@ -194,11 +186,6 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		// again, skip the dry rounds
-		if ctx.isDry(round) {
-			continue
-		}
-
 		openedSubColumnsForRound := make([][]frontend.Variable, ctx.NbColsToOpen())
 		numRowsForRound := ctx.getNbCommittedRows(round)
 		for j := 0; j < ctx.NbColsToOpen(); j++ {
@@ -221,25 +208,36 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 // Evaluates explicitly the public polynomials (proof, vk, public inputs)
 func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkRuntime) {
 
-	params := vr.GetUnivariateParams(ctx.Query.QueryID)
+	var (
+		params     = vr.GetUnivariateParams(ctx.Query.QueryID)
+		polys      = make([][]frontend.Variable, 0)
+		expectedYs = make([]frontend.Variable, 0)
+	)
 
 	for i, pol := range ctx.Query.Pols {
 
-		// If the column is a VerifierDefined column, then it is
-		// directly concerned by direct verification but we can
-		// access its witness or status so we need a specific check.
-		if _, ok := pol.(verifiercol.VerifierCol); !ok {
+		// If the column is a VerifierDefined column, then it is directly
+		// concerned by direct verification but we cannot access its status.
+		// status so we need a hierarchical check to make sure we can access
+		// its status.
+		if _, isVerifierCol := pol.(verifiercol.VerifierCol); !isVerifierCol {
 			status := ctx.comp.Columns.Status(pol.GetColID())
 			if !status.IsPublic() {
-				// then, its not concerned by direct evaluation
+				// then, its not concerned by direct evaluation because the
+				// evaluation is implicitly checked by the invokation of the
+				// Vortex protocol.
 				continue
 			}
 		}
 
-		val := pol.GetColAssignmentGnark(vr)
+		polys = append(polys, pol.GetColAssignmentGnark(vr))
+		expectedYs = append(expectedYs, params.Ys[i])
+	}
 
-		y := fastpoly.InterpolateGnark(api, val, params.X)
-		api.AssertIsEqual(y, params.Ys[i])
+	ys := fastpoly.BatchInterpolateGnark(api, polys, params.X)
+
+	for i := range polys {
+		api.AssertIsEqual(ys[i], expectedYs[i])
 	}
 }
 
@@ -248,7 +246,7 @@ func (ctx *Ctx) unpackMerkleProofsGnark(sv []frontend.Variable, entryList []fron
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
-	if ctx.IsCommitToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() {
 		numComs += 1
 	}
 

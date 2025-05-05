@@ -86,11 +86,15 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []wi
 				utils.Panic("Error in the solver, err=%v", err)
 			}
 
-			// And parse the solution into a witness
+			// And parse the solution into a witness. The solution returned by gnark
+			// uses a padding value that is equal to the last value of the "actual"
+			// solution. In case we are extending the size of the column thanks to the
+			//
 			solution := sol_.(*cs.SparseR1CSSolution)
-			run.AssignColumn(ctx.Columns.L[i].GetColID(), smartvectors.RightZeroPadded(solution.L, ctx.Columns.L[i].Size()))
-			run.AssignColumn(ctx.Columns.R[i].GetColID(), smartvectors.RightZeroPadded(solution.R, ctx.Columns.R[i].Size()))
-			run.AssignColumn(ctx.Columns.O[i].GetColID(), smartvectors.RightZeroPadded(solution.O, ctx.Columns.O[i].Size()))
+			lastValue := solution.L[len(solution.L)-1]
+			run.AssignColumn(ctx.Columns.L[i].GetColID(), smartvectors.RightPadded(solution.L, lastValue, ctx.Columns.L[i].Size()))
+			run.AssignColumn(ctx.Columns.R[i].GetColID(), smartvectors.RightPadded(solution.R, lastValue, ctx.Columns.R[i].Size()))
+			run.AssignColumn(ctx.Columns.O[i].GetColID(), smartvectors.RightPadded(solution.O, lastValue, ctx.Columns.O[i].Size()))
 			run.AssignColumn(ctx.Columns.Activators[i].GetColID(), smartvectors.NewConstant(field.One(), 1))
 		}
 	})

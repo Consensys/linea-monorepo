@@ -17,11 +17,15 @@ import (
 )
 
 var (
-	logDerivativeSumPublicInput = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
-	grandProductPublicInput     = "GRAND_PRODUCT_PUBLIC_INPUT"
-	hornerPublicInput           = "HORNER_FINAL_RES_PUBLIC_INPUT"
-	hornerN0HashPublicInput     = "HORNER_N0_HASH_PUBLIC_INPUT"
-	hornerN1HashPublicInput     = "HORNER_N1_HASH_PUBLIC_INPUT"
+	logDerivativeSumPublicInput  = "LOG_DERIVATE_SUM_PUBLIC_INPUT"
+	grandProductPublicInput      = "GRAND_PRODUCT_PUBLIC_INPUT"
+	hornerPublicInput            = "HORNER_FINAL_RES_PUBLIC_INPUT"
+	hornerN0HashPublicInput      = "HORNER_N0_HASH_PUBLIC_INPUT"
+	hornerN1HashPublicInput      = "HORNER_N1_HASH_PUBLIC_INPUT"
+	isLppPublicInput             = "IS_LPP"
+	isGlPublicInput              = "IS_GL"
+	nbActualLppPublicInput       = "NB_ACTUAL_LPP"
+	initialRandomnessPublicInput = "INITIAL_RANDOMNESS_PUBLIC_INPUT"
 )
 
 // ModuleLPP is a compilation structure holding the central informations
@@ -76,6 +80,13 @@ type CheckNxHash struct {
 	skipped bool
 }
 
+// LppWitnessAssignment is a [wizard.ProverAction] responsible for assigning the
+// LPP witness values at round "round".
+type LppWitnessAssignment struct {
+	ModuleLPP
+	round int
+}
+
 // BuildModuleLPP builds a [ModuleLPP] from scratch from a [FilteredModuleInputs].
 // The function works by creating a define function that will call [NewModuleLPP]
 // / and then it calls [wizard.Compile] without passing compilers.
@@ -109,7 +120,21 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 1),
 	}
 
-	for _, moduleInput := range moduleInputs {
+	// The starting round is the round where we can add data other than the LPP
+	// columns.
+	var startingRound = len(moduleInputs)
+
+	// These are the "dummy" public inputs that are only here so that the
+	// moduleGL and moduleLPP have identical set of public inputs. The order
+	// of declaration is also important. Namely, these needs to be declared before
+	// the non-dummy ones.
+	moduleLPP.Wiop.InsertPublicInput(initialRandomnessPublicInput, accessors.NewFromPublicColumn(moduleLPP.InitialFiatShamirState, 0))
+	moduleLPP.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewConstant(field.Zero()))
+
+	for round, moduleInput := range moduleInputs {
 		for _, col := range moduleInput.Columns {
 
 			if col.Round() != 0 {
@@ -127,7 +152,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 				continue
 			}
 
-			moduleLPP.InsertColumn(*col, 0)
+			moduleLPP.InsertColumn(*col, round)
 		}
 	}
 
@@ -136,7 +161,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	if len(logDerivativeArgs) > 0 {
 
 		moduleLPP.LogDerivativeSum = moduleLPP.InsertLogDerivative(
-			1,
+			startingRound,
 			ifaces.QueryID("MAIN_LOGDERIVATIVE"),
 			logDerivativeArgs,
 		)
@@ -157,7 +182,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	if len(grandProductArgs) > 0 {
 
 		moduleLPP.GrandProduct = moduleLPP.InsertGrandProduct(
-			1,
+			startingRound,
 			ifaces.QueryID("MAIN_GRANDPRODUCT"),
 			grandProductArgs,
 		)
@@ -178,13 +203,13 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	if len(hornerArgs) > 0 {
 
 		moduleLPP.Horner = moduleLPP.InsertHorner(
-			1,
+			startingRound,
 			ifaces.QueryID("MAIN_HORNER"),
 			hornerArgs,
 		)
 
-		moduleLPP.N0Hash = builder.InsertProof(1, "LPP_N0_HASH", 1)
-		moduleLPP.N1Hash = builder.InsertProof(1, "LPP_N1_HASH", 1)
+		moduleLPP.N0Hash = builder.InsertProof(startingRound, "LPP_N0_HASH", 1)
+		moduleLPP.N1Hash = builder.InsertProof(startingRound, "LPP_N1_HASH", 1)
 
 		moduleLPP.Wiop.InsertPublicInput(
 			hornerPublicInput,
@@ -201,7 +226,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 			accessors.NewFromPublicColumn(moduleLPP.N1Hash, 0),
 		)
 
-		moduleLPP.Wiop.RegisterVerifierAction(1, &CheckNxHash{ModuleLPP: *moduleLPP})
+		moduleLPP.Wiop.RegisterVerifierAction(startingRound, &CheckNxHash{ModuleLPP: *moduleLPP})
 
 	} else {
 
@@ -221,14 +246,26 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 		)
 	}
 
+	for _, pi := range moduleInputs[0].PublicInputs {
+		moduleLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
+	}
+
+	moduleLPP.Wiop.InsertPublicInput(isGlPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(isLppPublicInput, accessors.NewConstant(field.One()))
+	moduleLPP.Wiop.InsertPublicInput(nbActualLppPublicInput, accessors.NewConstant(field.NewElement(uint64(len(moduleInputs)))))
+
 	// In case the LPP part is empty, we have a scenario where the sub-proof to
 	// build has no registered coin. This creates errors in the compilation
 	// due to sanity-check firing up. We add a coin to remediate.
-	if moduleLPP.Wiop.Coins.NumRounds() < 2 {
-		moduleLPP.InsertCoin("LPP_DUMMY_COIN", 1)
+	for i := 0; i < len(moduleInputs); i++ {
+		moduleLPP.InsertCoin(coin.Namef("LPP_DUMMY_COIN_%v", i+1), i+1)
 	}
 
-	moduleLPP.Wiop.RegisterProverAction(1, &AssignLPPQueries{*moduleLPP})
+	for round := 1; round < len(moduleInputs); round++ {
+		moduleLPP.Wiop.RegisterProverAction(round, LppWitnessAssignment{ModuleLPP: *moduleLPP, round: round})
+	}
+
+	moduleLPP.Wiop.RegisterProverAction(startingRound, &AssignLPPQueries{*moduleLPP})
 	moduleLPP.Wiop.FiatShamirHooksPreSampling.AppendToInner(1, &SetInitialFSHash{ModuleLPP: *moduleLPP})
 
 	return moduleLPP
@@ -255,17 +292,32 @@ func (m *ModuleLPP) GetMainProverStep(witness *ModuleWitnessLPP) wizard.MainProv
 // is responsible for setting up the [ProverRuntime.State] with the witness
 // value and assigning the columns.
 //
-// The function depopulates the [ModuleWitness] from its columns assignment
-// as the columns are assigned in the runtime.
+// The function will only populates the [ModuleWitness] from its columns
+// assignment as the columns are assigned in the runtime. The function will
+// only assign the columns corresponding to the first submodule The
+// others are done via [LppWitnessAssignment] with round > 0.
 func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessLPP) {
+	run.State.InsertNew(moduleWitnessKey, witness)
 
 	run.AssignColumn(
 		m.InitialFiatShamirState.GetColID(),
 		smartvectors.NewConstant(witness.InitialFiatShamirState, 1),
 	)
 
-	run.State.InsertNew(moduleWitnessKey, witness)
+	a := LppWitnessAssignment{ModuleLPP: *m, round: 0}
+	a.Run(run)
+}
 
+func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
+
+	var (
+		witness = run.State.MustGet(moduleWitnessKey).(*ModuleWitnessLPP)
+		m       = a.ModuleLPP
+		round   = a.round
+	)
+
+	// Note @alex: It should be fine to look only at m.definitionInputs[round]
+	// instead of scanning through all the definitionInputs.
 	for _, definitionInput := range m.definitionInputs {
 
 		// [definitionInput.Columns] stores the list of columns to assign.
@@ -283,8 +335,8 @@ func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessLPP)
 
 			newCol := m.Wiop.Columns.GetHandle(colName)
 
-			if newCol.Round() != 0 {
-				utils.Panic("expected a column with round 0, got %v, column: %v", newCol.Round(), colName)
+			if newCol.Round() != round {
+				continue
 			}
 
 			if m.Wiop.Precomputed.Exists(colName) {

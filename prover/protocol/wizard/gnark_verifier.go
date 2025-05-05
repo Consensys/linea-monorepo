@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
-
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
@@ -16,7 +15,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/sirupsen/logrus"
 )
 
@@ -59,6 +57,7 @@ type VerifierCircuitAnalytic struct {
 	WeightUnivariate   int
 	WeightInnerProduct int
 	WeightHorner       int
+	Details            []string
 }
 
 // VerifierCircuit the [VerifierRuntime] in a gnark circuit. The complete
@@ -553,10 +552,10 @@ func (c *VerifierCircuit) GetColumn(name ifaces.ColID) []frontend.Variable {
 	// case where the column is part of the verification key
 	if c.Spec.Columns.Status(name) == column.VerifyingKey {
 		val := smartvectors.IntoRegVec(c.Spec.Precomputed.MustGet(name))
-		res := gnarkutil.AllocateSlice(len(val))
+		res := make([]frontend.Variable, len(val))
 		// Return the column as an array of constants
 		for i := range val {
-			res[i] = val[i]
+			res[i] = val[i].String()
 		}
 		return res
 	}
@@ -903,6 +902,82 @@ func (c *VerifierCircuit) Analyze() *VerifierCircuitAnalytic {
 	res.NumLocalOpenings += len(c.LocalOpeningParams)
 
 	return res
+}
+
+// WithDetails adds details for every column into the verifier analytic. The
+// function returns a pointer to the receiver of the call.
+func (a *VerifierCircuitAnalytic) WithDetails(c *VerifierCircuit) *VerifierCircuitAnalytic {
+
+	comp := c.GetSpec()
+
+	for _, colName := range comp.Columns.AllKeys() {
+		id, ok := c.columnsIDs.TryGet(colName)
+		if !ok {
+			continue
+		}
+
+		value := c.Columns[id]
+		a.addDetail(fmt.Sprintf("[Column] size-circuit=%v name=%v", len(value), colName))
+	}
+
+	for _, queryName := range comp.QueriesParams.AllKeys() {
+
+		q := c.Spec.QueriesParams.Data(queryName)
+		switch q.(type) {
+
+		case query.InnerProduct:
+			id, ok := c.innerProductIDs.TryGet(queryName)
+			if !ok {
+				continue
+			}
+			value := c.InnerProductParams[id]
+			a.addDetail(fmt.Sprintf("[InnerProduct] size-circuit=%v name=%v", len(value.Ys), queryName))
+
+		case query.GrandProduct:
+			_, ok := c.grandProductIDs.TryGet(queryName)
+			if !ok {
+				continue
+			}
+			a.addDetail(fmt.Sprintf("[GrandProduct] size-circuit=%v name=%v", 1, queryName))
+
+		case *query.LocalOpening:
+			_, ok := c.localOpeningIDs.TryGet(queryName)
+			if !ok {
+				continue
+			}
+			a.addDetail(fmt.Sprintf("[LocalOpening] size-circuit=%v name=%v", 1, queryName))
+
+		case *query.Horner:
+			id, ok := c.hornerIDs.TryGet(queryName)
+			if !ok {
+				continue
+			}
+			value := c.HornerParams[id]
+			a.addDetail(fmt.Sprintf("[Horner] size-circuit=%v name=%v", len(value.Parts), queryName))
+
+		case *query.LogDerivativeSum:
+			_, ok := c.logDerivSumIDs.TryGet(queryName)
+			if !ok {
+				continue
+			}
+			a.addDetail(fmt.Sprintf("[LogDerivativeSum] size-circuit=%v name=%v", 1, queryName))
+
+		case query.UnivariateEval:
+			id, ok := c.univariateParamsIDs.TryGet(queryName)
+			if !ok {
+				continue
+			}
+			value := c.UnivariateParams[id]
+			a.addDetail(fmt.Sprintf("[UnivariateEval] size-circuit=%v name=%v", len(value.Ys), queryName))
+		}
+	}
+
+	return a
+}
+
+// addDetail adds a detail to the verifier analytic
+func (a *VerifierCircuitAnalytic) addDetail(detail string) {
+	a.Details = append(a.Details, detail)
 }
 
 func (a *VerifierCircuitAnalytic) JsonString() string {

@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/localcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -42,9 +43,8 @@ func TestLookup(t *testing.T) {
 			logderivativesum.CompileLookups,
 			localcs.Compile,
 			globalcs.Compile,
-			univariates.CompileLocalOpening,
 			univariates.Naturalize,
-			univariates.MultiPointToSinglePoint(8),
+			mpts.Compile(),
 			vortex.Compile(2, vortex.ForceNumOpenedColumns(4), vortex.WithSISParams(&ringsis.StdParams), vortex.PremarkAsSelfRecursed()),
 		},
 	}
@@ -64,13 +64,13 @@ func TestLookup(t *testing.T) {
 				})
 			}
 
-			comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl)
+			comp2 := wizard.Compile(define2, dummy.CompileAtProverLvl())
 
 			proverRuntime := wizard.RunProverUntilRound(comp1, prove1, 6)
 			witness1 := ExtractWitness(proverRuntime)
 
 			prove2 := func(run *wizard.ProverRuntime) {
-				recCtx.Assign(run, []Witness{witness1})
+				recCtx.Assign(run, []Witness{witness1}, nil)
 			}
 
 			proof2 := wizard.Prove(comp2, prove2)

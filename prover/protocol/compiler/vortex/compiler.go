@@ -1,6 +1,7 @@
 package vortex
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/consensys/gnark/frontend"
@@ -14,12 +15,27 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/sirupsen/logrus"
+)
+
+type roundStatus int
+
+// Declare enum values using iota
+const (
+	// Denotes a round with no polynomials to commit to
+	IsEmpty roundStatus = iota
+	// Denotes a round when we apply only MiMC hashing
+	// on the columns of the round matrix
+	IsOnlyMiMCApplied
+	// Denotes a round when we apply SIS+MiMC hashing
+	// on the columns of the round matrix
+	IsSISApplied
 )
 
 type vortexProverAction struct {
@@ -46,13 +62,14 @@ func (a *vortexVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 /*
 Applies the Vortex compiler over the current polynomial-IOP
   - blowUpFactor : inverse rate of the reed-solomon code to use
-  - dryTreshold : minimal number of polynomial in rounds to consider
-    applying the Vortex transform (i.e. using Vortex). Implicitly, we
-    consider that applying Vortex over too few vectors is not worth it.
-    For these rounds all the "Committed" columns are swithed to "prover"
+  - SISTreshold : minimal number of polynomial in rounds to consider
+    applying the SIS hashing on the columns of the round matrix. Implicitly, we
+    consider that applying SIS hash over too few vectors is not worth it.
+    For these rounds we will use the MiMC hash function directly to compute
+    the leaves of the Merkle tree.
 
 There are the following requirements:
-  - FOR NON-DRY ROUNDS, all the polynomials must have the same size
+  - FOR ALL ROUNDS, all the polynomials must have the same size
   - The inbound wizard-IOP must be a single-point polynomial-IOP
 */
 func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
@@ -86,11 +103,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// Stores a pointer to the cryptographic compiler of Vortex
 		comp.PcsCtxs = &ctx
 
-		// Converts the precomputed as verifying key (e.g. send
-		// them to the verifier) in the offline phase if the
-		// CommitPrecomputes flag is false, otherwise set them as
-		// commited. If the flag `CommitPrecomputed` is set to true,
-		// then this will instead register the precomputed columns.
+		// Process the precomputed columns
 		ctx.processStatusPrecomputed()
 
 		// registers all the commitments
@@ -103,8 +116,8 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		}
 
 		ctx.generateVortexParams()
-		// Commit to precomputed in Vortex if IsCommitToPrecomputed is true
-		if ctx.IsCommitToPrecomputed() {
+		// Commit to precomputed columns
+		if ctx.IsNonEmptyPrecomputed() {
 			ctx.commitPrecomputeds()
 		}
 		ctx.registerOpeningProof(lastRound)
@@ -129,16 +142,35 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		})
 
 		if ctx.AddMerkleRootToPublicInputsOpt.Enabled {
-			comp.InsertPublicInput(
-				ctx.AddMerkleRootToPublicInputsOpt.Name,
-				accessors.NewFromPublicColumn(
-					ctx.Items.MerkleRoots[ctx.AddMerkleRootToPublicInputsOpt.Round],
-					0,
-				),
-			)
+
+			for _, round := range ctx.AddMerkleRootToPublicInputsOpt.Round {
+				var (
+					name = fmt.Sprintf("%v_%v", ctx.AddMerkleRootToPublicInputsOpt.Name, round)
+					mr   = ctx.Items.MerkleRoots[round]
+				)
+				if mr == nil {
+					utils.Panic("merkle root not found for round %v", round)
+				}
+				comp.InsertPublicInput(name, accessors.NewFromPublicColumn(ctx.Items.MerkleRoots[round], 0))
+			}
 		}
 
 		if ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Enabled {
+
+			var (
+				merkleRootColumn = ctx.Items.Precomputeds.MerkleRoot
+				merkleRootValue  = ctx.comp.Precomputed.MustGet(merkleRootColumn.GetColID())
+			)
+
+			ctx.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue = merkleRootValue.Get(0)
+			ctx.comp.Columns.SetStatus(merkleRootColumn.GetColID(), column.Proof)
+			ctx.comp.Precomputed.Del(merkleRootColumn.GetColID())
+			ctx.comp.ExtraData[ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name] = merkleRootValue.Get(0)
+
+			comp.RegisterProverAction(0, &ReassignPrecomputedRootAction{
+				Ctx: ctx,
+			})
+
 			comp.InsertPublicInput(
 				ctx.AddPrecomputedMerkleRootToPublicInputsOpt.Name,
 				accessors.NewFromPublicColumn(
@@ -158,17 +190,22 @@ type Ctx struct {
 	// when the context is created
 	SelfRecursionCount int
 
-	// Flag indicating that we want to replace SIS by MiMC
-	ReplaceSisByMimc bool
-
 	// The (verifiedly) unique polynomial query
 	Query                        query.UnivariateEval
 	PolynomialsTouchedByTheQuery map[ifaces.ColID]struct{}
 	ShadowCols                   map[ifaces.ColID]struct{}
 
 	// Public parameters of the commitment scheme
-	BlowUpFactor       int
-	DryTreshold        int
+	BlowUpFactor int
+	// Parameters for the optional SIS hashing feature
+	// If the number of commitments for a given round
+	// is more than this threshold, we apply SIS hashing
+	//  and then MiMC hashing for computing the leaves of the Merkle tree.
+	// Otherwise, we replace SIS and directly apply MiMC hashing
+	// for computing the leaves of the Merkle tree.
+	ApplySISHashThreshold int
+	RoundStatus           []roundStatus
+
 	CommittedRowsCount int
 	NumCols            int
 	MaxCommittedRound  int
@@ -177,10 +214,8 @@ type Ctx struct {
 	// Optional parameter
 	NumOpenedCol int
 
-	// By rounds commitments : if a round is dried we make an empty sublist.
-	// Inversely, for the `driedByRounds` which track the dried commitments.
+	// By rounds commitments
 	CommitmentsByRounds collection.VecVec[ifaces.ColID]
-	DriedByRounds       collection.VecVec[ifaces.ColID]
 
 	// RunStateNamePrefix is used to prefix some of the names of components of the
 	// compilation context. Mainly state objects.
@@ -230,14 +265,20 @@ type Ctx struct {
 	AddMerkleRootToPublicInputsOpt struct {
 		Enabled bool
 		Name    string
-		Round   int
+		Round   []int
 	}
 
 	// This option tells the compiler to add the merkle root of the precomputeds
-	// columns to the public inputs.
+	// columns to the public inputs. When the option is activated, the merkle root
+	// is converted from "precomputed" to "proof" column and its value is set as
+	// a public input of the compilation context. Since the column is no longer
+	// considered a precomputed column in the wizard, its value is also removed
+	// from the precomputed table and is moved to the compilation context. This
+	// value will then be assigned to the column at round zero.
 	AddPrecomputedMerkleRootToPublicInputsOpt struct {
-		Enabled bool
-		Name    string
+		Enabled          bool
+		Name             string
+		PrecomputedValue field.Element
 	}
 }
 
@@ -273,7 +314,6 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 		// vortex params : the vortex params are set a posteriori
 		// during the compilation
 		CommitmentsByRounds: collection.NewVecVec[ifaces.ColID](),
-		DriedByRounds:       collection.NewVecVec[ifaces.ColID](),
 	}
 
 	for _, pol := range ctx.Query.Pols {
@@ -287,6 +327,9 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	// Preallocate all the merkle roots for all rounds
 	ctx.Items.MerkleRoots = make([]ifaces.Column, comp.NumRounds())
 
+	// Declare the IsSISApplied slice
+	ctx.RoundStatus = make([]roundStatus, 0, comp.NumRounds())
+
 	return ctx
 }
 
@@ -298,12 +341,8 @@ func (ctx *Ctx) compileRound(round int) {
 
 	// edge-case : no commitment for the round = nothing to do
 	if len(allComs) == 0 {
-		return
-	}
-
-	if len(allComs) <= ctx.DryTreshold {
-		// Compile the round as a dry round
-		ctx.compileRoundAsDry(round, allComs)
+		// We add the default value as 0 in the empty round
+		ctx.RoundStatus = append(ctx.RoundStatus, IsEmpty)
 		return
 	}
 
@@ -311,116 +350,111 @@ func (ctx *Ctx) compileRound(round int) {
 	ctx.compileRoundWithVortex(round, allComs)
 }
 
-// Compile the round as a dry round : pass all committed as prover
-// messages directly instead of sending them to the oracle.
-func (ctx *Ctx) compileRoundAsDry(round int, coms []ifaces.ColID) {
-
-	// sanity-check for double insertions
-	if ctx.DriedByRounds.LenOf(round) > 0 {
-		utils.Panic("inserted twice in round %v : we had already %v\n", round, ctx.DriedByRounds.LenOf(round))
-	}
-	ctx.DriedByRounds.AppendToInner(round, coms...)
-
-	// mark the commitments as messages
-	for _, com := range coms {
-		ctx.comp.Columns.SetStatus(com, column.Proof)
-	}
-}
-
-// Compile the round as a Vortex round : ensure the number of limbs divides the degree by
-// introducing zero valued shadow columns if necessary, increase the number of rows count,
-// insert Dh columns in the proof in case of non Merkle mode, or the Merkle roots for the Merkle mode
-func (ctx *Ctx) compileRoundWithVortex(round int, coms []ifaces.ColID) {
+// Compile the round as a Vortex round : ensure the number of limbs divides
+// the degree by introducing zero valued shadow columns if necessary, increase
+// the number of rows count, insert Dh columns in the proof in case of non
+// Merkle mode, or the Merkle roots for the Merkle mode.
+//
+// fillUpTo indicates how many filling "shadow" rows to add to the compilation.
+// The function assumes that fillUpTo is "correctly", i.e. the function will
+// brainlessly add the asked number of shadow rows.
+func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	// Sanity-check for double insertions
 	if ctx.CommitmentsByRounds.LenOf(round) > 0 {
 		panic("inserted twice")
 	}
 
-	var (
-		comUnconstrained = []ifaces.ColID{}
-		numShadowRows    = 0
-		numComsActual    int // actual == not shadow and not unconstrained
-	)
+	// The startingRound is the first round of definition for the Vortex
+	// compilation. It corresponds to the smallest round at which one
+	// of the evaluated poly is defined. This is used to determine if
+	// a Vortex compilation is needed or not.
+	startingRound := ctx.startingRound()
 
-	// Filters out the coms that are not touched by the query and mark them
-	// directly as ignored. (We do not care about them because they are un-
-	// constrained). But we still log these to alert during runtime.
-	coms_ := coms
-	coms = make([]ifaces.ColID, 0, len(coms_))
-
-	for _, com := range coms_ {
-
-		if _, ok := ctx.PolynomialsTouchedByTheQuery[com]; !ok {
-			comUnconstrained = append(comUnconstrained, com)
-			ctx.comp.Columns.MarkAsIgnored(com)
-			continue
-		}
-
-		coms = append(coms, com)
-	}
-
-	numComsActual = len(coms)
-
-	if len(coms) == 0 {
+	if round < startingRound {
 		return
 	}
 
-	// To ensure the number limbs in each subcol divides the degree, we pad the list
-	// with shadow columns. This is required for self-recursion to work correctly. In
-	// practice they do not cost anything to the prover. When using MiMC, the number of
-	// limbs is equal to 1. This skips the aforementioned behaviour.
-	numLimbs := 1
-	deg := 1
-	if !ctx.ReplaceSisByMimc {
-		numLimbs = ctx.SisParams.NumLimbs()
-		deg = ctx.SisParams.OutputSize()
+	var (
+		// Filters out the coms that are not touched by the query and mark them
+		// directly as ignored. (We do not care about them because they are un-
+		// constrained). But we still log these to alert during runtime.
+		//
+		// Also, the order in which the precomputed columns are taken must be the one
+		// matching the query. Otherwise, we would not be able to obtain standard
+		// proofs for the limitless prover.
+		_, comUnconstrained = utils.FilterInSliceWithMap(coms_, ctx.PolynomialsTouchedByTheQuery)
+		coms                = ctx.commitmentsAtRoundFromQuery(round)
+		numComsActual       = len(coms) // actual == not shadow and not unconstrained
+		fillUpTo            = len(coms)
+		onlyMiMCApplied     = len(coms) < ctx.ApplySISHashThreshold
+	)
+
+	// This part corresponds to an edge-case that is not supposed to happen
+	// in practice. Still, sometime, when debugging with upstream compilation
+	// steps it can happen that all of the columns of a round end up
+	// unconstrained. Importantly, the clause has to be put before attempting
+	// to resolving a targetsize.
+	if len(coms) == 0 {
+		// We add the default value as 0 in the empty round
+		ctx.RoundStatus = append(ctx.RoundStatus, IsEmpty)
+		return
 	}
 
-	if deg > numLimbs {
-		// We still require that the output size should be divisible by the number of
-		// limbs. @alex We could still support it if useful enough.
-		if deg%numLimbs != 0 {
-			utils.Panic("the number of limbs should at least divide the degree")
-		}
-		numFieldPerPoly := utils.Max(1, deg/numLimbs)
-		numShadowRows = (numFieldPerPoly - (len(coms) % numFieldPerPoly)) % numFieldPerPoly
-		targetSize := ctx.comp.Columns.GetSize(coms[0])
+	targetSize := ctx.comp.Columns.GetSize(coms[0])
 
-		for shadowID := 0; shadowID < numShadowRows; shadowID++ {
-			// Generate the shadow columns
-			shadowCol := autoAssignedShadowRow(ctx.comp, targetSize, round, shadowID)
-			// Register the column as part of the shadow columns
-			ctx.ShadowCols[shadowCol.GetColID()] = struct{}{}
-			// And append it to the list of the commitments
-			coms = append(coms, shadowCol.GetColID())
-		}
+	for i := range coms {
+		ctx.comp.Columns.MarkAsIgnored(coms[i])
 	}
 
-	log := logrus.
+	for i := range comUnconstrained {
+		ctx.comp.Columns.MarkAsIgnored(comUnconstrained[i])
+	}
+
+	// Note: the above "if-clause" ensures that the fillUpTo >= len(coms), so
+	// it fillUpTo is equal to zero then coms is the empty slice. Otherwise, it
+	// would have panicked at this point.
+	if fillUpTo == 0 {
+		return
+	}
+
+	// To ensure the number limbs in each subcol divides the degree, we pad the
+	// list with shadow columns. This is required for self-recursion to work
+	// correctly. In practice they do not cost anything to the prover. When
+	// using MiMC, the number of limbs is equal to 1. This skips the
+	// aforementioned behaviour.
+	if !onlyMiMCApplied && ctx.SisParams.NumFieldPerPoly() > 1 {
+		fillUpTo = utils.NextMultipleOf(fillUpTo, ctx.SisParams.NumFieldPerPoly())
+	}
+
+	numShadowRows := fillUpTo - len(coms)
+
+	for shadowID := 0; shadowID < numShadowRows; shadowID++ {
+		shadowCol := autoAssignedShadowRow(ctx.comp, targetSize, round, shadowID)
+		ctx.ShadowCols[shadowCol.GetColID()] = struct{}{}
+		ctx.comp.Columns.MarkAsIgnored(shadowCol.GetColID())
+		coms = append(coms, shadowCol.GetColID())
+	}
+
+	logrus.
 		WithField("where", "compileRoundWithVortex").
+		WithField("using-only-MiMC", onlyMiMCApplied).
 		WithField("numComs", numComsActual).
 		WithField("numShadowRows", numShadowRows).
-		WithField("round", round)
+		WithField("numUnconstrained", len(comUnconstrained)).
+		WithField("round", round).
+		Info("Compiled Vortex round")
 
-	if len(comUnconstrained) > 0 {
-		log.
-			WithField("numUnconstrained", len(comUnconstrained)).
-			WithField("unconstraineds", comUnconstrained).
-			Warn("found unconstrained columns while compiling the Vortex commitment")
+	if onlyMiMCApplied {
+		ctx.RoundStatus = append(ctx.RoundStatus, IsOnlyMiMCApplied)
 	} else {
-		log.Info("Compiled Vortex round")
+		ctx.RoundStatus = append(ctx.RoundStatus, IsSISApplied)
 	}
 
 	ctx.CommitmentsByRounds.AppendToInner(round, coms...)
 
 	// Ensures all commitments have the same length
 	ctx.assertPolynomialHaveSameLength(coms)
-
-	// Also, mark all of them as being ignored
-	for _, com := range coms {
-		ctx.comp.Columns.MarkAsIgnored(com)
-	}
 
 	// Increase the number of rows
 	ctx.CommittedRowsCount += len(coms)
@@ -502,20 +536,10 @@ func (ctx *Ctx) generateVortexParams() {
 	// Initialize the Params in the vanilla mode by default
 	sisParams := ctx.SisParams
 	if sisParams == nil {
-		// happens when using the ReplaceByMiMC options. In that case
-		// we pass the default SIS instance to vortex. They are then
-		// erased by the `RemoveSIS` options.
-		if !ctx.ReplaceSisByMimc {
-			panic("unexpected, SisParams are nil but the ReplaceSisByMimc option is unset")
-		}
+		// In this case we pass the default SIS instance to vortex.
 		sisParams = &ringsis.StdParams
 	}
-	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, mimc.NewMiMC)
-
-	// And replace SIS by MiMC if this is deemed useful
-	if ctx.ReplaceSisByMimc {
-		ctx.VortexParams.RemoveSis(mimc.NewMiMC)
-	}
+	ctx.VortexParams = vortex.NewParams(ctx.BlowUpFactor, ctx.NumCols, totalCommitted, *sisParams, mimc.NewMiMC, mimc.NewMiMC)
 }
 
 // return the number of columns to open
@@ -523,7 +547,7 @@ func (ctx *Ctx) NbColsToOpen() int {
 
 	// opportunistic sanity-check : params should be set by now
 	if ctx.VortexParams == nil {
-		utils.Panic("ilcParams was not set")
+		utils.Panic("VortexParams was not set")
 	}
 
 	// If the context was created with the relevant option,
@@ -621,11 +645,26 @@ func (ctx *Ctx) NumEncodedCols() int {
 	return res
 }
 
-// IsCommitToPrecomputed returns true if the current compilation step
-// commits to the precomputed columns. This is detected by checking if
-// the number of precomputed columns is greater than the dry treshold.
-func (ctx *Ctx) IsCommitToPrecomputed() bool {
-	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.DryTreshold
+// We check if there are non zero numbers of precomputed columns to commit to.
+func (ctx *Ctx) IsNonEmptyPrecomputed() bool {
+	if len(ctx.Items.Precomputeds.PrecomputedColums) > 0 {
+		logrus.Infof("We are committing to #%v precomputed columns", len(ctx.Items.Precomputeds.PrecomputedColums))
+		return true
+	} else {
+		logrus.Infof("There are no precomputed columns to commit to")
+		return false
+	}
+}
+
+// IsSISAppliedToPrecomputed returns true if SIS is applied to the precomputed
+// columns. This happens when the number of precomputed columns is greater than
+// the ApplySISHashThreshold.
+func (ctx *Ctx) IsSISAppliedToPrecomputed() bool {
+	if ctx.Items.Precomputeds.PrecomputedColums == nil {
+		logrus.Infof("There are no precomputed columns to commit to")
+		return false
+	}
+	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.ApplySISHashThreshold
 }
 
 // Turns the precomputed into verifying key messages. A possible improvement
@@ -643,7 +682,11 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	// change during the compilation time (in later compilation stage). And
 	// we want the precomputed columns defined at the beginning of the current
 	// vortex compilation step to be captured only.
-	precomputedColNames := comp.Columns.AllPrecomputed()
+	//
+	// Also, the order in which the precomputed columns are taken must be the one
+	// matching the query. Otherwise, we would not be able to obtain standard
+	// proofs for the limitless prover.
+	precomputedColNames := ctx.commitmentsAtRoundFromQueryPrecomputed()
 	if len(precomputedColNames) == 0 {
 		ctx.Items.Precomputeds.PrecomputedColums = []ifaces.Column{}
 		return
@@ -659,29 +702,6 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	// If there are not enough columns, for a commitment to be meaningful,
 	// explicitly sends the column to the verifier so that he can check the
 	// evaluation by itself.
-	if len(precomputedColNames) < ctx.DryTreshold {
-		for _, name := range precomputedColNames {
-			comp.Columns.SetStatus(name, column.VerifyingKey)
-			pCol := comp.Columns.GetHandle(name)
-
-			_, ok := ctx.PolynomialsTouchedByTheQuery[name]
-			if !ok {
-				comp.Columns.MarkAsIgnored(name)
-				continue
-			}
-
-			precomputedCols = append(precomputedCols, pCol)
-		}
-
-		// For consistency, with the older version of the code
-		ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
-		logrus.
-			WithField("where", "processStatusPrecomputed").
-			WithField("nbPrecomputed", len(precomputedColNames)).
-			WithField("dryThreshold", ctx.DryTreshold).
-			Info("number of precomputed is smaller than dryThreshold")
-		return
-	}
 
 	for _, name := range precomputedColNames {
 
@@ -702,8 +722,27 @@ func (ctx *Ctx) processStatusPrecomputed() {
 
 	var (
 		nbUnskippedPrecomputedCols = len(precomputedCols)
-		numShadowRows              = 0
+		fillUpTo                   = nbUnskippedPrecomputedCols
+		onlyMiMCApplied            = nbUnskippedPrecomputedCols < ctx.ApplySISHashThreshold
 	)
+
+	// Note: the above "if-clause" ensures that the fillUpTo >= len(coms), so
+	// it fillUpTo is equal to zero then coms is the empty slice. Otherwise, it
+	// would have panicked at this point.
+	if fillUpTo == 0 {
+		return
+	}
+
+	// To ensure the number limbs in each subcol divides the degree, we pad the
+	// list with shadow columns. This is required for self-recursion to work
+	// correctly. In practice they do not cost anything to the prover. When
+	// using MiMC, the number of limbs is equal to 1. This skips the
+	// aforementioned behaviour.
+	if !onlyMiMCApplied && ctx.SisParams.NumFieldPerPoly() > 1 {
+		fillUpTo = utils.NextMultipleOf(fillUpTo, ctx.SisParams.NumFieldPerPoly())
+	}
+
+	numShadowRows := fillUpTo - nbUnskippedPrecomputedCols
 
 	// This corresponds to a technical edge-case. The SIS hash function works
 	// by mapping fields elements to a list of limbs. Limbs are in turn mapped
@@ -716,26 +755,14 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	// prevent that from happening, we insert "shadow" rows, which are rows that
 	// may only contain zero and may only evaluate to zero whichever is the
 	// queried evaluation point.
-	if ctx.SisParams != nil {
-
-		var (
-			sisDegree          = ctx.SisParams.OutputSize()
-			sisNumLimbs        = ctx.SisParams.NumLimbs()
-			sisNumFieldPerPoly = utils.Max(1, sisDegree/sisNumLimbs)
-		)
-
-		numShadowRows = sisNumFieldPerPoly - (len(precomputedCols) % sisNumFieldPerPoly)
-
-		if sisDegree > sisNumLimbs && numShadowRows > 0 {
-			for i := 0; i < numShadowRows; i++ {
-				// The shift by 20 is to avoid collision with the committed cols
-				// at round zero.
-				shadowCol := autoAssignedShadowRow(comp, ctx.NumCols, 0, 1<<20+i)
-				ctx.ShadowCols[shadowCol.GetColID()] = struct{}{}
-				precomputedColNames = append(precomputedColNames, shadowCol.GetColID())
-				precomputedCols = append(precomputedCols, shadowCol)
-			}
-		}
+	for i := 0; i < numShadowRows; i++ {
+		// The shift by 20 is to avoid collision with the committed cols
+		// at round zero.
+		shadowCol := autoAssignedShadowRow(comp, ctx.NumCols, 0, 1<<20+i)
+		ctx.ShadowCols[shadowCol.GetColID()] = struct{}{}
+		precomputedColNames = append(precomputedColNames, shadowCol.GetColID())
+		precomputedCols = append(precomputedCols, shadowCol)
+		ctx.comp.Columns.MarkAsIgnored(shadowCol.GetColID())
 	}
 
 	ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
@@ -765,7 +792,8 @@ func (ctx *Ctx) NumCommittedRounds() int {
 	// the compileRound method. Careful, the stopping condition is
 	// an LE and not a strict LT condition.
 	for i := 0; i <= ctx.MaxCommittedRound; i++ {
-		if ctx.isDry(i) {
+		if ctx.RoundStatus[i] == IsEmpty {
+			// We skip the empty rounds
 			continue
 		}
 		res++
@@ -776,17 +804,18 @@ func (ctx *Ctx) NumCommittedRounds() int {
 
 // MerkleProofSize Returns the size of the allocated Merkle proof vector
 func (ctx *Ctx) MerkleProofSize() int {
-	// In case of the Merkle-proof mode, we also registers the
-	// column that will contain the Merkle proofs altogether. But
+	// We registers the column that will contain the Merkle proofs altogether. But
 	// first, we need to evaluate its size. The proof size needs to
 	// be padded up to a power of two. Otherwise, we can't use PeriodicSampling.
-	depth := utils.Log2Ceil(ctx.NumEncodedCols())
-	numComs := ctx.NumCommittedRounds()
-	// The number of rounds increases by 1 when we commit to the precomputeds
-	if ctx.IsCommitToPrecomputed() {
+	var (
+		depth      = utils.Log2Ceil(ctx.NumEncodedCols())
+		numComs    = ctx.NumCommittedRounds()
+		numOpening = ctx.NbColsToOpen()
+	)
+	// The number of rounds increases by 1 for committing to the precomputed
+	if ctx.IsNonEmptyPrecomputed() {
 		numComs += 1
 	}
-	numOpening := ctx.NbColsToOpen()
 
 	if depth*numComs*numOpening == 0 {
 		utils.Panic("something was zero : %v, %v, %v", depth, numComs, numOpening)
@@ -797,16 +826,18 @@ func (ctx *Ctx) MerkleProofSize() int {
 
 // Commit to the precomputed columns
 func (ctx *Ctx) commitPrecomputeds() {
+	var (
+		committedMatrix vortex.EncodedMatrix
+		tree            *smt.Tree
+		colHashes       []field.Element
+	)
 	precomputeds := ctx.Items.Precomputeds.PrecomputedColums
 	numPrecomputeds := len(precomputeds)
 
-	// This can happens if either the flag `CommitPrecomputeds` is
-	// unset or if there is not enough precomputed columns to make
-	// it worth committing to them (e.g. less precomputed columns than
-	// the dry threshold).
+	// This can happens if either there are no precomputed columns or
+	// a bug in the code.
 	if numPrecomputeds == 0 {
-		logrus.Tracef("skip commit precomputeds, because either the flag `CommitPrecomputeds`" +
-			"is unset or there are less columns than dry threshold.")
+		logrus.Tracef("skip commit precomputeds, as there are no precomputed columns!")
 		return
 	}
 
@@ -823,8 +854,14 @@ func (ctx *Ctx) commitPrecomputeds() {
 	// Increase the number of committed rows
 	ctx.CommittedRowsCount += numPrecomputeds
 
-	// Call Vortex in Merkle mode
-	committedMatrix, tree, colHashes := ctx.VortexParams.CommitMerkle(pols)
+	// Committing to the precomputed columns with SIS or without SIS.
+	if ctx.IsSISAppliedToPrecomputed() {
+		logrus.Infof("committing to precomputed columns with SIS")
+		committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
+	} else {
+		logrus.Infof("committing to precomputed columns without SIS")
+		committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+	}
 	ctx.Items.Precomputeds.DhWithMerkle = colHashes
 	ctx.Items.Precomputeds.CommittedMatrix = committedMatrix
 	ctx.Items.Precomputeds.Tree = tree
@@ -834,4 +871,82 @@ func (ctx *Ctx) commitPrecomputeds() {
 	root.SetBytes(tree.Root[:])
 	ctx.Items.Precomputeds.MerkleRoot = ctx.comp.RegisterVerifyingKey(ctx.PrecomputedMerkleRootName(), smartvectors.NewConstant(root, 1))
 
+}
+
+// startingRound returns the first round of definition for the Vortex
+// compilation. It corresponds to the smallest round at which one
+// of the evaluated poly is defined. This is used to determine if
+// a Vortex compilation is needed or not. The function ignores
+// precomputed and verifier-defined columns.
+func (ctx *Ctx) startingRound() int {
+
+	startingRound := math.MaxInt
+	for _, p := range ctx.Query.Pols {
+		if ctx.comp.Precomputed.Exists(p.GetColID()) {
+			continue
+		}
+
+		if _, isV := p.(verifiercol.VerifierCol); isV {
+			continue
+		}
+
+		startingRound = min(startingRound, p.Round())
+	}
+
+	return startingRound
+}
+
+// commitmentAtRoundFromQuery returns the commitment at the given round
+// in the same order of appearance as in the query. The function ignores
+// the precomputed columns.
+func (ctx *Ctx) commitmentsAtRoundFromQuery(round int) []ifaces.ColID {
+	var res []ifaces.ColID
+	for _, p := range ctx.Query.Pols {
+
+		if p.Round() != round {
+			continue
+		}
+
+		if ctx.comp.Precomputed.Exists(p.GetColID()) {
+			continue
+		}
+
+		if _, isV := p.(verifiercol.VerifierCol); isV {
+			panic("verifiercol")
+		}
+
+		if nat, isNat := p.(column.Natural); !isNat || nat.Status() != column.Committed {
+			panic("not committed")
+		}
+
+		res = append(res, p.GetColID())
+	}
+	return res
+}
+
+// commitmentAtRoundFromQueryPrecomputed returns the commitment at the given round
+// in the same order of appearance as in the query. The function only considers
+// the precomputed columns.
+func (ctx *Ctx) commitmentsAtRoundFromQueryPrecomputed() []ifaces.ColID {
+
+	var res []ifaces.ColID
+
+	for _, p := range ctx.Query.Pols {
+
+		if !ctx.comp.Precomputed.Exists(p.GetColID()) {
+			continue
+		}
+
+		if _, isV := p.(verifiercol.VerifierCol); isV {
+			panic("verifiercol")
+		}
+
+		if nat, isNat := p.(column.Natural); !isNat || nat.Status() != column.Precomputed {
+			panic("not precomputed")
+		}
+
+		res = append(res, p.GetColID())
+	}
+
+	return res
 }
