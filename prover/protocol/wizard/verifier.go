@@ -190,7 +190,12 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element 
 
 	switch a := publicInputsAccessor.(type) {
 	case *accessors.FromConstAccessor:
-		return a.F
+		if a.IsBase() {
+			return a.Base
+		} else {
+			panic("Requested a base element from a public input that is a field extension")
+		}
+
 	case *accessors.FromPublicColumn:
 		if a.Col.Status() == column.Proof {
 			return proof.Messages.MustGet(a.Col.ID).Get(0)
