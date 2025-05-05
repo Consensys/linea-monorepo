@@ -29,6 +29,8 @@ type StichSubColumnsProverAction struct {
 
 func (a *StichSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	for round := range a.stitchings {
+		// This loop is not in deterministic order but this does not matter
+		// as this is purely for cleaning up.
 		for subCol := range a.stitchings[round].BySubCol {
 			run.Columns.TryDel(subCol)
 		}
@@ -77,8 +79,15 @@ func (a *stitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	defer stopTimer()
 	var maxSizeGroup int
 
-	for idBigCol, subColumns := range a.ctx.Stitchings[a.round].ByBigCol {
+	// The sorting is necessary to ensure that the iteration below
+	// happens in deterministic order over the [ByBigCol] map.
+	idBigCols := utils.SortedKeysOf(a.ctx.Stitchings[a.round].ByBigCol, func(a, b ifaces.ColID) bool {
+		return a < b
+	})
 
+	for _, idBigCol := range idBigCols {
+
+		subColumns := a.ctx.Stitchings[a.round].ByBigCol[idBigCol]
 		maxSizeGroup = a.ctx.MaxSize / subColumns[0].Size()
 
 		// Sanity-check
@@ -115,12 +124,18 @@ func (a *stitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 func (ctx *stitchingContext) ScanStitchCommit() {
 	for round := 0; round < ctx.comp.NumRounds(); round++ {
 
-		// scan the compiler trace to find the eligible columns for stitching
+		// scan the compiler trace to find the eligible columns for stitching. The
+		// sorting is critical to ensure that the stitching happens in deterministic
+		// order and that the columns are created in the same order.
 		columnsBySize := scanAndClassifyEligibleColumns(*ctx, round)
+		sizes := utils.SortedKeysOf(columnsBySize, func(a, b int) bool {
+			return a < b
+		})
 
-		for size, cols := range columnsBySize {
+		for _, size := range sizes {
 
 			var (
+				cols            = columnsBySize[size]
 				precomputedCols = make([]ifaces.Column, 0, len(cols))
 				committedCols   = make([]ifaces.Column, 0, len(cols))
 			)

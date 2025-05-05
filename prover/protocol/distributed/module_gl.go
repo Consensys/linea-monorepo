@@ -23,10 +23,10 @@ import (
 const (
 	moduleGLReceiveGlobalKey  = "RECEIVE_GLOBAL"
 	moduleGLSendGlobalKey     = "SEND_GLOBAL"
-	globalSenderPublicInput   = "GLOBAL_PROVIDER_PUBLIC_INPUT"
-	globalReceiverPublicInput = "GLOBAL_RECEIVER_PUBLIC_INPUT"
-	isFirstPublicInput        = "IS_FIRST_PUBLIC_INPUT"
-	isLastPublicInput         = "IS_LAST_PUBLIC_INPUT"
+	globalSenderPublicInput   = "GLOBAL_PROVIDER"
+	globalReceiverPublicInput = "GLOBAL_RECEIVER"
+	isFirstPublicInput        = "IS_FIRST"
+	isLastPublicInput         = "IS_LAST"
 )
 
 // ModuleGL is a compilation structure holding the central informations
@@ -230,6 +230,7 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		)
 	}
 
+	moduleGL.Wiop.InsertPublicInput(initialRandomnessPublicInput, accessors.NewConstant(field.Zero()))
 	moduleGL.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewFromPublicColumn(moduleGL.IsFirst, 0))
 	moduleGL.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewFromPublicColumn(moduleGL.IsLast, 0))
 
@@ -240,6 +241,20 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 		moduleGL.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewConstant(field.Zero()))
 		moduleGL.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
 	}
+
+	// These public-inputs are the "dummy" ones and are only here so that the
+	// LPP and GL modules have exactly the same set of public inputs. The
+	// public-inputs are reordered a posteriori to ensure that the order
+	// match between GL and LPP.
+	moduleGL.Wiop.InsertPublicInput(logDerivativeSumPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(grandProductPublicInput, accessors.NewConstant(field.One()))
+	moduleGL.Wiop.InsertPublicInput(hornerPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(hornerN0HashPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(hornerN1HashPublicInput, accessors.NewConstant(field.Zero()))
+
+	moduleGL.Wiop.InsertPublicInput(isGlPublicInput, accessors.NewConstant(field.One()))
+	moduleGL.Wiop.InsertPublicInput(isLppPublicInput, accessors.NewConstant(field.Zero()))
+	moduleGL.Wiop.InsertPublicInput(nbActualLppPublicInput, accessors.NewConstant(field.Zero()))
 
 	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignGL{ModuleGL: moduleGL})
 	moduleGL.Wiop.RegisterProverAction(1, &ModuleGLAssignSendReceiveGlobal{ModuleGL: moduleGL})

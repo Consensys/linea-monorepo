@@ -23,7 +23,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-	"github.com/sirupsen/logrus"
 )
 
 // Specifies the column opening phase
@@ -86,7 +85,6 @@ func (a *preimageLimbsProverAction) Run(run *wizard.ProverRuntime) {
 			expanded_ := a.ctx.SisKey().LimbSplit(whole_)
 			expanded := smartvectors.NewRegular(expanded_)
 			run.AssignColumn(a.limbs[i].GetColID(), expanded)
-			logrus.Infof("Assigned limb column: %v", a.limbs[i].GetColID())
 		}
 	})
 }
@@ -170,7 +168,8 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 
 	hashSize := a.ctx.VortexCtx.SisParams.OutputSize()
 	numOpenedCol := a.ctx.VortexCtx.NbColsToOpen()
-	totalNumRounds := a.ctx.comp.NumRounds()
+	// For some reason, using a.ctx.comp.NumRounds() here does not work well here.
+	totalNumRounds := a.ctx.VortexCtx.MaxCommittedRound
 	committedRound := 0
 
 	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
@@ -223,6 +222,7 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		numCommittedRound += 1
 	}
+
 	if committedRound != numCommittedRound {
 		utils.Panic("Committed rounds %v does not match the total number of committed rounds %v", committedRound, numCommittedRound)
 	}

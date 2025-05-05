@@ -86,6 +86,7 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP)
 							status: status,
 							round:  round,
 							id:     string(name),
+							typ:    reflect.TypeOf(q).Name(),
 						}
 					)
 
@@ -98,6 +99,7 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP)
 					}
 
 					row.SetQuery(q)
+					row.Write(w)
 				}
 			}
 		}
@@ -141,6 +143,18 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP)
 				}
 			}
 		}
+
+		for _, pubInputs := range comp.PublicInputs {
+			row := &csvRow{
+				round:  0,
+				id:     pubInputs.Name,
+				status: "-",
+				typ:    "PublicInput",
+				size:   0,
+			}
+
+			row.Write(w)
+		}
 	}
 }
 
@@ -151,6 +165,8 @@ type csvRow struct {
 	status string
 	round  int
 	typ    string
+	val    string
+	extra  []string
 }
 
 func (r *csvRow) SetQuery(q ifaces.Query) {
@@ -166,6 +182,11 @@ func (r *csvRow) SetQuery(q ifaces.Query) {
 		r.size = 1
 	case query.UnivariateEval:
 		r.size = len(q_.Pols)
+		extras := make([]string, len(q_.Pols))
+		for i := range extras {
+			extras[i] = q_.Pols[i].String()
+		}
+		r.extra = extras
 	case query.InnerProduct:
 		r.size = len(q_.Bs)
 	case *query.Horner:
@@ -174,5 +195,5 @@ func (r *csvRow) SetQuery(q ifaces.Query) {
 }
 
 func (r *csvRow) Write(w io.Writer) {
-	fmt.Fprintln(w, r.id, ";", r.typ, ";", r.status, ";", r.round, ";", r.size)
+	fmt.Fprintln(w, r.id, ";", r.typ, ";", r.status, ";", r.round, ";", r.size, ";", r.val, ";", r.extra)
 }

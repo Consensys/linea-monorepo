@@ -3,6 +3,13 @@ package plonkinternal
 // PlonkOption allows modifying Plonk circuit arithmetization.
 type Option func(*CompilationCtx)
 
+// WithSubscript allows setting the [Subscript] of the plonk circuit.
+func WithSubscript(subscript string) Option {
+	return func(c *CompilationCtx) {
+		c.subscript = subscript
+	}
+}
+
 // WithRangecheck allows bridging range checking from gnark into Wizard. The
 // total of bits being range-checked are nbBits*nbLimbs. If addGateForRangeCheck
 // is true, then new gates are added for wires not present in existing gates.

@@ -38,7 +38,9 @@ func TestEvalCoeff(t *testing.T) {
 	}
 
 	compiled := wizard.Compile(definer,
-		compiler.Arcane(1<<4, 1<<4),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<4),
+		),
 		dummy.Compile,
 	)
 

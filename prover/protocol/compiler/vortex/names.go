@@ -67,7 +67,7 @@ func (ctx *Ctx) MerkleProofName() ifaces.ColID {
 
 // returns the name of the vector containing all the Merkle proofs
 func (ctx *Ctx) MerkleRootName(round int) ifaces.ColID {
-	return ifaces.ColIDf("VORTEX_%v_MERKLEROOT_%v", ctx.SelfRecursionCount, round)
+	return ifaces.ColIDf("VORTEX_%v_MERKLEROOT_%v", ctx.SelfRecursionCount, round-ctx.startingRound())
 }
 
 // returns the name of the precomputed commitment when Merkle is not applied

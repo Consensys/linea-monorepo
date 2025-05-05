@@ -548,3 +548,75 @@ func SpliceExact[T any](slice []T, n int) [][]T {
 	}
 	return slices
 }
+
+// SetDiff returns the difference between two sets. The elements are returned
+// in non-deterministic order. The function returns aExtra for the elements
+// in a but not in b and bExtra for the elements in b but not in a.
+func SetDiff[T comparable](a, b []T) (aExtra, bExtra []T) {
+
+	mset := make(map[T]int, len(a))
+
+	for _, av := range a {
+		if _, ok := mset[av]; !ok {
+			mset[av] = 0
+		}
+		mset[av]++
+	}
+
+	for _, bv := range b {
+		if _, ok := mset[bv]; !ok {
+			mset[bv] = 0
+		}
+		mset[bv]--
+	}
+
+	for v, cnt := range mset {
+		if cnt > 0 {
+			aExtra = append(aExtra, v)
+			// Importantly, we want to ditch the "zeroes" so that they don't end up
+			// in bExtra.
+		} else if cnt < 0 {
+			bExtra = append(bExtra, v)
+		}
+	}
+
+	return aExtra, bExtra
+}
+
+// NextMultipleOf returns the next multiple of "multiple" for "n".
+// For instance n=8 and multiple=5 returns 10.
+func NextMultipleOf(n, multiple int) int {
+	return multiple * ((n + multiple - 1) / multiple)
+}
+
+// FilterInSliceWithSet returns the entries of slice that are in the set.
+// The returned parameter "in" contains the entries found in the set and
+// the returned parameter "out" contains the entries not found in the set.
+func FilterInSliceWithMap[T comparable](slice []T, set map[T]struct{}) (in []T, out []T) {
+	for _, v := range slice {
+		if _, ok := set[v]; ok {
+			in = append(in, v)
+		} else {
+			out = append(out, v)
+		}
+	}
+	return in, out
+}
+
+// GrowSliceSize grows the size of a slice to the provided size. The function
+// does so by appending "zero" elements of the slice. If the slice is already
+// large enough, the function does nothing.
+func GrowSliceSize[T any](slice []T, size int) []T {
+
+	// Note: this clause is not necessary as the loop will just be skipped if
+	// the slice is already large enough.
+	if len(slice) >= size {
+		return slice
+	}
+
+	for i := len(slice); i < size; i++ {
+		var t T
+		slice = append(slice, t)
+	}
+	return slice
+}

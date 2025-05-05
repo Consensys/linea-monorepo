@@ -128,6 +128,9 @@ type CompiledIOP struct {
 	// FunctionalPublic inputs lists the queries representing a public inputs
 	// and their identifiers
 	PublicInputs []PublicInput
+
+	// ExtraData is a free field in which compilers can store whatever they want.
+	ExtraData map[string]any
 }
 
 // NumRounds returns the total number of prover interactions with the verifier
@@ -661,7 +664,13 @@ func (c *CompiledIOP) GetPublicInputAccessor(name string) ifaces.Accessor {
 			return pi.Acc
 		}
 	}
-	utils.Panic("could not find public input %v", name)
+
+	pubInputNames := []string{}
+	for i := range c.PublicInputs {
+		pubInputNames = append(pubInputNames, c.PublicInputs[i].Name)
+	}
+
+	utils.Panic("could not find public input %v, the list of the public inputs is: %v", name, pubInputNames)
 	return nil // unreachable
 }
 

@@ -2,7 +2,6 @@ package plonkinternal
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -33,8 +32,14 @@ const activateGnarkProfiling = false
 type CompilationCtx struct {
 	// The compiled IOP
 	comp *wizard.CompiledIOP
-	// Name of the context
+	// Name of the context. It is used to generate the column names and the
+	// queries name so that we can understad where they come from. Two instances
+	// of Plonk in wizard cannot have the same name.
 	name string
+	// subscript allows providing more context than [name]. It is used in the
+	// logs and in the name of the profiling assets. It is however not used as
+	// part of the name of generated wizard items.
+	subscript string
 	// Round at which we create the ctx
 	round int
 	// Number of instances of the circuit
@@ -142,15 +147,26 @@ func createCtx(
 		opt(&ctx)
 	}
 
-	logrus.Debugf("Plonk in Wizard (%v) compiling the circuit", name)
+	logger := logrus.
+		WithField("subscript", ctx.subscript).
+		WithField("round", ctx.round).
+		WithField("maxNbInstances", ctx.maxNbInstances).
+		WithField("name", name)
+
+	logger.Debug("Plonk in Wizard compiling the circuit")
 
 	var pro *profile.Profile
 
 	if activateGnarkProfiling {
+
 		fname := name
-		if !strings.HasSuffix(fname, ".pprof") {
-			fname += ".pprof"
+
+		if len(ctx.subscript) > 0 {
+			fname = fname + "-" + ctx.subscript
 		}
+
+		// This adds a nice pprof suffix
+		fname = "profiling/" + fname + ".pprof"
 		pro = profile.Start(profile.WithPath(fname))
 	}
 
@@ -180,11 +196,6 @@ func createCtx(
 		pro.Stop()
 	}
 
-	logrus.Debugf(
-		"[plonk-in-wizard] compiled cs for %v, nbConstraints=%v, nbInternalVariables=%v\n",
-		name, ccs.GetNbConstraints(), ccs.GetNbInternalVariables(),
-	)
-
 	ctx.Plonk.SPR = ccs
 	ctx.Plonk.Domain = fft.NewDomain(uint64(ctx.DomainSize()))
 
@@ -192,13 +203,16 @@ func createCtx(
 		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk())
 	}
 
-	logrus.Debugf("Plonk in Wizard (%v) build trace", name)
 	ctx.Plonk.Trace = plonkBLS12_377.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
 
-	logrus.Debugf("Plonk in Wizard (%v) build permutation", name)
 	ctx.buildPermutation(ctx.Plonk.SPR, ctx.Plonk.Trace) // no part of BuildTrace
 
-	logrus.Debugf("Plonk in Wizard (%v) done", name)
+	logger.
+		WithField("nbConstraints", ccs.GetNbConstraints()).
+		WithField("nbInternalVariables", ccs.GetNbInternalVariables()).
+		WithField("columnSizeGnark", ctx.Plonk.SPR.NbConstraints+len(ctx.Plonk.SPR.Public)).
+		Info("[plonk-in-wizard] done compiling the circuit")
+
 	return ctx
 }
 
@@ -212,7 +226,6 @@ func CompileCircuitDefault(circ frontend.Circuit) (*cs.SparseR1CS, error) {
 	}
 
 	return ccsIface.(*cs.SparseR1CS), err
-
 }
 
 // CompileCircuitWithRangeCheck compiles the circuit and returns the compiled
@@ -297,7 +310,6 @@ func (ctx *CompilationCtx) buildPermutation(spr *cs.SparseR1CS, pt *plonkBLS12_3
 	sizeSolution := ctx.DomainSize()
 	sizePermutation := 3 * sizeSolution
 
-	// init permutation
 	permutation := make([]int64, sizePermutation)
 	for i := 0; i < len(permutation); i++ {
 		permutation[i] = -1

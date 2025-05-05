@@ -155,11 +155,13 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 	for i := range pis {
 
-		pcsCtx := cc.Ctx.PcsCtx[i]
-		piWitness := pis[i].GetColAssignmentGnark(run)
-		circX, circYs, circMRoots, _ := SplitPublicInputs(cc.Ctx, piWitness)
-		params := run.GetUnivariateParams(pcsCtx.Query.QueryID)
-		pcsMRoot := pcsCtx.Items.MerkleRoots
+		var (
+			pcsCtx                       = cc.Ctx.PcsCtx[i]
+			piWitness                    = pis[i].GetColAssignmentGnark(run)
+			circX, circYs, circMRoots, _ = SplitPublicInputs(cc.Ctx, piWitness)
+			params                       = run.GetUnivariateParams(pcsCtx.Query.QueryID)
+			pcsMRoot                     = pcsCtx.Items.MerkleRoots
+		)
 
 		api.AssertIsEqual(circX, params.X)
 
@@ -173,8 +175,20 @@ func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 		if pcsCtx.IsNonEmptyPrecomputed() {
 
-			com := pcsCtx.Items.Precomputeds.MerkleRoot.GetColAssignmentGnarkAt(run, 0)
-			api.AssertIsEqual(com, circMRoots[0])
+			// Note alex: for the conglomeration use-case. The precomputed Merkle-root
+			// of the comp used to build the circuit and the one of the comp used to
+			// build the proof may be different.
+			//
+			// When this feature is activated, then the precomputed column is "elevated"
+			// to a round "0" Proof column. And its value is removed from the
+			// comp.Precomputed table. We use that fact to check if we can deactivate the
+			// equality assertion.
+			mRootName := pcsCtx.Items.Precomputeds.MerkleRoot.GetColID()
+			if cc.Ctx.InputCompiledIOP.Precomputed.Exists(mRootName) {
+				com := pcsCtx.Items.Precomputeds.MerkleRoot.GetColAssignmentGnarkAt(run, 0)
+				api.AssertIsEqual(com, circMRoots[0])
+			}
+
 			circMRoots = circMRoots[1:]
 		}
 

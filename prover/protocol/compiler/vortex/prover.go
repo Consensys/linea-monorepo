@@ -13,6 +13,21 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
+// ReassignPrecomputedRootAction is a [wizard.ProverAction] that assigns the
+// precomputed Merkle root of the Vortex invokation. The action is defined
+// for round 0 only and only if the AddPrecomputedMerkleRootToPublicInputsOpt
+// is enabled.
+type ReassignPrecomputedRootAction struct {
+	Ctx
+}
+
+func (r ReassignPrecomputedRootAction) Run(run *wizard.ProverRuntime) {
+	run.AssignColumn(
+		r.Items.Precomputeds.MerkleRoot.GetColID(),
+		smartvectors.NewConstant(r.AddPrecomputedMerkleRootToPublicInputsOpt.PrecomputedValue, 1),
+	)
+}
+
 // Prover steps of Vortex that is run in place of committing to polynomials
 func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 	// Check if that is a dry round
@@ -226,10 +241,8 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 // so that we can commit to them
 func (ctx *Ctx) getPols(run *wizard.ProverRuntime, round int) (pols []smartvectors.SmartVector) {
 	names := ctx.CommitmentsByRounds.MustGet(round)
-	logrus.Infof("Vortex getPols at round %v: Expected columns: %v", round, names)
 	pols = make([]smartvectors.SmartVector, len(names))
 	for i := range names {
-		logrus.Infof("Column name %v", names[i])
 		pols[i] = run.Columns.MustGet(names[i])
 	}
 	return pols

@@ -9,7 +9,7 @@ retry_delays = [0, 1]
 [execution]
 prover_mode = "full"
 conflated_traces_dir = "/home/ubuntu/beta-v2-rc11/"
-requests_root_dir = "/home/ubuntu/sepolia-testing-full/prover-execution"
+requests_root_dir = "/home/ubuntu/beta-v2-rc11/prover-execution"
 
 
 [blob_decompression]

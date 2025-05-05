@@ -92,6 +92,7 @@ func NewCompiledIOP() *CompiledIOP {
 		QueriesNoParams: NewRegister[ifaces.QueryID, ifaces.Query](),
 		Coins:           NewRegister[coin.Name, coin.Info](),
 		Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
+		ExtraData:       make(map[string]interface{}),
 	}
 	return CompiledIOP
 }

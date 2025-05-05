@@ -85,3 +85,13 @@ integration-testing/testdata/prover-requests/
 # Authorize the kzg srs folder
 prover-assets/**
 !prover-assets/kzgsrs/**
+
+# Handy for the pprof generated pdf
+**/*.pdf
+
+# For the json, csv and txt files generated while debugging the limitless prover
+# OK to remove eventually.
+protocol/distributed/**/*.json
+protocol/distributed/**/*.txt
+protocol/distributed/**/*.csv
+

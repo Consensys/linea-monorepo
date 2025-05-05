@@ -6,6 +6,8 @@ import (
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/test"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -22,6 +24,7 @@ type Testcase interface {
 // AnonymousTestcase is an implementation of testcase allowing the caller to
 // explicitly provide his own functions for define, assign and mustFail.
 type AnonymousTestcase struct {
+	NameStr      string
 	DefineFunc   func(comp *wizard.CompiledIOP)
 	AssignFunc   func(run *wizard.ProverRuntime)
 	MustFailFlag bool
@@ -131,4 +134,20 @@ func (a *AnonymousTestcase) Assign(run *wizard.ProverRuntime) {
 
 func (a *AnonymousTestcase) MustFail() bool {
 	return a.MustFailFlag
+}
+
+func (a *AnonymousTestcase) Name() string {
+	return a.NameStr
+}
+
+// autoAssignColumn is a helper [wizard.ProverAction] to auto-assign
+// a column.
+type autoAssignColumn struct {
+	col ifaces.Column
+	sv  smartvectors.SmartVector
+}
+
+func (ac autoAssignColumn) Run(run *wizard.ProverRuntime) {
+	name := ac.col.GetColID()
+	run.AssignColumn(name, ac.sv)
 }

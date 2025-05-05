@@ -79,7 +79,7 @@ func TestConcatTinyColRange(t *testing.T) {
 
 				// Compile with the full suite
 				compiled := wizard.Compile(define,
-					compiler.Arcane(16, 16, true),
+					compiler.Arcane(compiler.WithTargetColSize(16)),
 					dummy.Compile,
 				)
 
@@ -158,7 +158,7 @@ func TestConcatTinyColWithPaddingRange(t *testing.T) {
 
 				// Compile with the full suite
 				compiled := wizard.Compile(define,
-					compiler.Arcane(tc.Split, tc.Split, true),
+					compiler.Arcane(compiler.WithTargetColSize(tc.Split)),
 					dummy.Compile,
 				)
 

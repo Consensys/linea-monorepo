@@ -82,24 +82,38 @@ func (c *CheckGrandProductIsOne) Run(run wizard.Runtime) error {
 	)
 
 	for _, e := range c.ExplicitNum {
-		col := column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+
+		var (
+			col = column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+			tmp = field.One()
+		)
+
 		for i := range col {
-			y.Mul(&y, &col[i])
+			tmp.Mul(&tmp, &col[i])
 		}
+
+		y.Mul(&y, &tmp)
 	}
 
 	for _, e := range c.ExplicitDen {
-		col := column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+
+		var (
+			col = column.EvalExprColumn(run, e.Board()).IntoRegVecSaveAlloc()
+			tmp = field.One()
+		)
+
 		for i := range col {
-			d.Mul(&d, &col[i])
+			tmp.Mul(&tmp, &col[i])
 		}
+
+		d.Mul(&d, &tmp)
 	}
 
 	d.Inverse(&d)
 	y.Mul(&y, &d)
 
 	if !y.IsOne() {
-		return fmt.Errorf("[Permutation -> GrandProduct] the outcome of the grand-product query should be one")
+		return fmt.Errorf("[CheckGrandProductIsOne -> GrandProduct] the outcome of the grand-product query should be one")
 	}
 	return nil
 }
@@ -112,17 +126,31 @@ func (c *CheckGrandProductIsOne) RunGnark(api frontend.API, run wizard.GnarkRunt
 	)
 
 	for _, e := range c.ExplicitNum {
-		col := column.GnarkEvalExprColumn(api, run, e.Board())
+
+		var (
+			col = column.GnarkEvalExprColumn(api, run, e.Board())
+			tmp = frontend.Variable(1)
+		)
+
 		for i := range col {
-			y = api.Mul(y, col[i])
+			tmp = api.Mul(tmp, col[i])
 		}
+
+		y = api.Mul(y, tmp)
 	}
 
 	for _, e := range c.ExplicitDen {
-		col := column.GnarkEvalExprColumn(api, run, e.Board())
+
+		var (
+			col = column.GnarkEvalExprColumn(api, run, e.Board())
+			tmp = frontend.Variable(1)
+		)
+
 		for i := range col {
-			d = api.Mul(d, col[i])
+			tmp = api.Mul(tmp, col[i])
 		}
+
+		d = api.Mul(d, tmp)
 	}
 
 	y = api.Div(y, d)

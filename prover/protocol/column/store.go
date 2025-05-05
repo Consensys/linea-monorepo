@@ -412,6 +412,12 @@ func assertCorrectStatusTransition(old, new Status) {
 		return
 	}
 
+	// This whitelists a case in the recursion on a specific case. Namely,
+	// the precomputed Merkle root is converted into a proof column.
+	if old == VerifyingKey && new == Proof {
+		return
+	}
+
 	switch {
 	// Verifying keys element are always computed offline no matter whats
 	case old == VerifyingKey && new != VerifyingKey:

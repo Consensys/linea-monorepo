@@ -15,6 +15,8 @@ type splitProverAction struct {
 
 func (a *splitProverAction) Run(run *wizard.ProverRuntime) {
 	for round := range a.splittings {
+		// This is an iteration over a map so the order is non-deterministic
+		// but this does not matter here.
 		for bigCol := range a.splittings[round].ByBigCol {
 			run.Columns.TryDel(bigCol)
 		}
@@ -57,8 +59,17 @@ func (a *proveRoundProverAction) Run(run *wizard.ProverRuntime) {
 	stopTimer := profiling.LogTimer("splitter compiler")
 	defer stopTimer()
 
-	for idBigCol, subCols := range a.ctx.Splittings[a.round].ByBigCol {
+	// This sorting is necessary to ensure that we iterate in deterministic
+	// order over the [ByBigCol] map.
+	idBigCols := utils.SortedKeysOf(a.ctx.Splittings[a.round].ByBigCol, func(a, b ifaces.ColID) bool {
+		return a < b
+	})
+
+	for _, idBigCol := range idBigCols {
+
+		subCols := a.ctx.Splittings[a.round].ByBigCol[idBigCol]
 		bigCol := a.ctx.comp.Columns.GetHandle(idBigCol)
+
 		if len(subCols)*a.ctx.size != bigCol.Size() {
 			utils.Panic("Unexpected sizes %v * %v != %v", len(subCols), a.ctx.size, bigCol.Size())
 		}

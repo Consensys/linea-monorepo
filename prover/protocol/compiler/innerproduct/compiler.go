@@ -6,13 +6,41 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+// Option are compilation options that can passed to the compiler and be
+// added by the compilation step.
+type Option func(*optionSet)
+
+// optionSet collects optional parameters for the inner-product compiler
+type optionSet struct {
+	MinimalRound int
+}
+
+// WithMinimalRound sets the minimal round to be considered for inner-product
+// compilation. By default, the value is zero.
+func WithMinimalRound(minimalRound int) Option {
+	return func(o *optionSet) {
+		o.MinimalRound = minimalRound
+	}
+}
+
 // Compile applies the inner-product compilation pass over `comp` it marks all
 // the inner-product queries as `Ignored` and adds protocol items to justify
 // these compiled inner-products.
 //
 // The inner-product queries are processed in groups relating to column of the
 // same size.
-func Compile(comp *wizard.CompiledIOP) {
+func Compile(options ...Option) func(*wizard.CompiledIOP) {
+	return func(ci *wizard.CompiledIOP) {
+		compile(ci, options...)
+	}
+}
+
+func compile(comp *wizard.CompiledIOP, options ...Option) {
+
+	var opts optionSet
+	for _, op := range options {
+		op(&opts)
+	}
 
 	var (
 		// round stores the latest definition round for all the unignored
@@ -60,6 +88,8 @@ func Compile(comp *wizard.CompiledIOP) {
 		// We return because we found out that there were no queries to compile
 		return
 	}
+
+	round = utils.Max(opts.MinimalRound, round)
 
 	for _, size := range sizes {
 		ctx := compileForSize(comp, round, queryMap[size])
