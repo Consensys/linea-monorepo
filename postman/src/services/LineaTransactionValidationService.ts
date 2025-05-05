@@ -162,8 +162,8 @@ export class LineaTransactionValidationService implements ITransactionValidation
   private isForSponsorship(gasLimit: bigint, hasZeroFee: boolean, isUnderPriced: boolean): boolean {
     if (!this.config.isPostmanSponsorshipEnabled) return false;
     if (gasLimit > this.config.maxPostmanSponsorGasLimit) return false;
-    if (hasZeroFee === true) return true;
-    if (isUnderPriced === true) return true;
+    if (hasZeroFee) return true;
+    if (isUnderPriced) return true;
     // The message would be claimed regardless of sponsorship settings
     return false;
   }
