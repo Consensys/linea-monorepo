@@ -479,3 +479,11 @@ func (z *Element) Text(base int) string {
 	res := fmt.Sprintf("%s + %s*u", z.A0.Text(base), z.A1.Text(base))
 	return res
 }
+
+func (z *Element) GetBase() (field.Element, error) {
+	if z.IsBase() {
+		return z.A0, nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested a base element but the field extension is not a wrapped field element")
+	}
+}

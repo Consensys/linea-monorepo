@@ -158,6 +158,14 @@ func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
 // Validate operates a list of sanity-checks over the current expression to
 // assess its well-formedness. It returns an error if the check fails.
 func (e *Expression) Validate() error {
+	if e.IsBase {
+		return e.ValidateBase()
+	} else {
+		return e.ValidateExt()
+	}
+}
+
+func (e *Expression) ValidateExt() error {
 
 	eshashes := make([]sv.SmartVector, len(e.Children))
 	for i := range e.Children {
@@ -169,6 +177,39 @@ func (e *Expression) Validate() error {
 		// easy sanity check.
 		expectedESH := e.Operator.EvaluateExt(eshashes).(*sv.ConstantExt).GetExt(0)
 		if expectedESH != e.ESHash {
+			return fmt.Errorf("esh mismatch %v %v", expectedESH.String(), e.ESHash.String())
+		}
+	}
+
+	// Operator specific validation
+	if err := e.Operator.Validate(e); err != nil {
+		return err
+	}
+
+	// Validate the children recursively
+	for i := range e.Children {
+		if err := e.Children[i].Validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (e *Expression) ValidateBase() error {
+
+	eshashes := make([]sv.SmartVector, len(e.Children))
+	for i := range e.Children {
+		baseESHash, _ := e.Children[i].ESHash.GetBase()
+		eshashes[i] = sv.NewConstant(baseESHash, 1)
+	}
+
+	if len(e.Children) > 0 {
+		// The cast back to sv.Constant is not functionally important but is an
+		// easy sanity check.
+		expectedESH, _ := e.Operator.Evaluate(eshashes).(*sv.Constant).GetBase(0)
+		expressionBaseESHash, _ := e.ESHash.GetBase()
+		if expectedESH != expressionBaseESHash {
 			return fmt.Errorf("esh mismatch %v %v", expectedESH.String(), e.ESHash.String())
 		}
 	}

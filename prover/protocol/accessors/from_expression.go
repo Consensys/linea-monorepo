@@ -123,7 +123,7 @@ func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error)
 		for i, m := range metadata {
 			switch castedMetadata := m.(type) {
 			case ifaces.Accessor:
-				x := castedMetadata.GetVal(run)
+				x, _ := castedMetadata.GetValBase(run)
 				inputs[i] = smartvectors.NewConstant(x, 1)
 			case coin.Info:
 				// this is always fine because all coins are public
@@ -134,7 +134,8 @@ func (e *FromExprAccessor) GetValBase(run ifaces.Runtime) (field.Element, error)
 			}
 		}
 
-		return e.Boarded.Evaluate(inputs).Get(0), nil
+		return e.Boarded.Evaluate(inputs).GetBase(0)
+
 	} else {
 		return field.Zero(), fmt.Errorf("requested a base element from an accessor over field extensions")
 	}
