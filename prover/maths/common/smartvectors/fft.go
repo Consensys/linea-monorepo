@@ -24,7 +24,7 @@ import (
 func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, maxNumThread ...int) SmartVector {
 
 	maxNumThread_ := runtime.NumCPU()
-	if len(maxNumThread) == 0 {
+	if len(maxNumThread) > 0 {
 		maxNumThread_ = maxNumThread[0]
 	}
 
@@ -112,7 +112,7 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio int, cosetID int, pool mempool.MemPool, maxNumThread ...int) SmartVector {
 
 	maxNumThread_ := runtime.NumCPU()
-	if len(maxNumThread) == 0 {
+	if len(maxNumThread) > 0 {
 		maxNumThread_ = maxNumThread[0]
 	}
 
