@@ -16,7 +16,7 @@ import java.util.Queue
 import kotlin.time.Duration
 
 class MessageAnchoringService(
-  private val vertx: Vertx,
+  vertx: Vertx,
   private val l1ContractAddress: String,
   private val l1EthLogsClient: EthLogsClient,
   private val l2MessageService: L2MessageServiceSmartContractClient,
@@ -40,7 +40,6 @@ class MessageAnchoringService(
 
         eventsQueue
           .toTypedArray()
-          .filter { it.messageNumber > lastAnchoredL1MessageNumber }
           .take(maxMessagesToAnchorPerL2Transaction.toInt())
       }.thenCompose { eventsToAnchor ->
         if (eventsToAnchor.isEmpty()) {
