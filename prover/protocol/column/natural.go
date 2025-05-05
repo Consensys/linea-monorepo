@@ -93,3 +93,13 @@ func (n Natural) String() string {
 func (n Natural) Status() Status {
 	return n.store.Status(n.ID)
 }
+
+// SetPragma sets the pragma for a given column name.
+func (n Natural) SetPragma(pragma string, data any) {
+	n.store.SetPragma(n.ID, pragma, data)
+}
+
+// GetPragma returns the pragma for a given column name.
+func (n Natural) GetPragma(pragma string) (any, bool) {
+	return n.store.GetPragma(n.ID, pragma)
+}

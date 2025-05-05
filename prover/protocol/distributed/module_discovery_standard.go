@@ -9,6 +9,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -622,6 +623,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		areAnyNonRegular  = false
 		areAnyLeftPadded  = false
 		areAnyRightPadded = false
+		areAnyFull        = false
 		firstLeftPadded   column.Natural
 		firstRightPadded  column.Natural
 		firstColumn       column.Natural
@@ -653,7 +655,14 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 			isLeftPadded  = start == 0
 			isRightPadded = stop == size
 			density       = stop - start
+			isFullColumn  = pragmas.IsFullColumn(col)
 		)
+
+		if isFullColumn {
+			areAnyFull = true
+			resMaxDensity = density
+			break
+		}
 
 		if isLeftPadded && isRightPadded {
 			continue
@@ -684,7 +693,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		}
 	}
 
-	if !areAnyNonRegular {
+	if !areAnyNonRegular || areAnyFull {
 		start, stop := 0, size
 		mod.nbSegmentCacheMutex.Lock()
 		defer mod.nbSegmentCacheMutex.Unlock()

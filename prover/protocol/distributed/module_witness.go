@@ -216,8 +216,7 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 
 // SegmentColumn returns the segment of a given column for given index. The
 // function also takes a maxNbSegment value which is useful in case
-func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer,
-	col ifaces.Column, index, totalNbSegment int) smartvectors.SmartVector {
+func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, col ifaces.Column, index, totalNbSegment int) smartvectors.SmartVector {
 
 	if status := col.(column.Natural).Status(); status == column.Precomputed || status == column.VerifyingKey {
 		return col.GetColAssignment(runtime)

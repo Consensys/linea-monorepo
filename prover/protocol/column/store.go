@@ -55,6 +55,9 @@ type storedColumnInfo struct {
 	// will still be excluded from the transcript. This is used explicit FS
 	// compilation.
 	ExcludeFromProverFS bool
+	// Pragmas is a free map that users can use to store whatever they want,
+	// it can be used to store compile-time information.
+	Pragmas map[string]interface{}
 }
 
 // AddToRound constructs a [Natural], registers it in the [Store] and returns
@@ -80,7 +83,7 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 
 	// Constructing at the beginning does the validation early on
 	nat := newNatural(name, position, s)
-	infos := &storedColumnInfo{Size: size, ID: name, Status: status}
+	infos := &storedColumnInfo{Size: size, ID: name, Status: status, Pragmas: make(map[string]interface{})}
 
 	// Panic if the entry already exist
 	s.indicesByNames.InsertNew(name, position)
@@ -496,4 +499,15 @@ func (s *Store) AllKeysInProverTranscript(round int) []ifaces.ColID {
 	}
 
 	return res
+}
+
+// SetPragma sets the pragma for a given column name.
+func (s *Store) SetPragma(name ifaces.ColID, pragma string, data any) {
+	s.info(name).Pragmas[pragma] = data
+}
+
+// GetPragma returns the pragma for a given column name.
+func (s *Store) GetPragma(name ifaces.ColID, pragma string) (any, bool) {
+	res, ok := s.info(name).Pragmas[pragma]
+	return res, ok
 }
