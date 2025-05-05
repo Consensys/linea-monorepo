@@ -86,6 +86,7 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP)
 							status: status,
 							round:  round,
 							id:     string(name),
+							typ:    reflect.TypeOf(q).Name(),
 						}
 					)
 
@@ -98,6 +99,7 @@ func GenCSV(w io.Writer, filter CSVFilterOptions) func(comp *wizard.CompiledIOP)
 					}
 
 					row.SetQuery(q)
+					row.Write(w)
 				}
 			}
 		}
