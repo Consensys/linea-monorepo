@@ -481,3 +481,17 @@ func BytesToGiB(bytes uint64) float64 {
 	const bytesInGiB = 1024 * 1024 * 1024 // 1 GiB = 1024^3 bytes
 	return float64(bytes) / bytesInGiB
 }
+
+// RetryIfPanic retries running f it is panics
+func RetryIfPanic(f func(), maxRetries int) {
+
+	if maxRetries > 0 {
+		defer func() {
+			if r := recover(); r != nil {
+				RetryIfPanic(f, maxRetries-1)
+			}
+		}()
+	}
+
+	f()
+}

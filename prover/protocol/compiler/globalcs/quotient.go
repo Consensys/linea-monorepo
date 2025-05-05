@@ -1,13 +1,14 @@
 package globalcs
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"math/big"
 	"reflect"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 
 	"github.com/sirupsen/logrus"
 
@@ -235,8 +236,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				witness = pol.GetColAssignment(run)
 			}
 
-			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
-
+			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil, 4)
 			coeffs.Store(name, witness)
 		})
 
@@ -258,10 +258,14 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 			// normal case for interleaved or repeated columns
 			witness := pol.GetColAssignment(run)
 
-			witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
+			// The retry is because we noticed some panics in the FFT and we
+			// could not figure out why but retrying works. We also could not
+			// reproduce it as it was random and rare.
+			utils.RetryIfPanic(func() {
+				witness = sv.FFTInverse(witness, fft.DIF, false, 0, 0, nil)
+			}, 1)
 
 			name := pol.GetColID()
-
 			coeffs.Store(name, witness)
 		})
 		wg.Done()
@@ -370,7 +374,13 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 				// coset reevaluation.
 
 				v, _ := coeffs.Load(name)
-				reevaledRoot := sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool)
+				var reevaledRoot sv.SmartVector
+				// The retry is because we noticed some panics in the FFT and we
+				// could not figure out why but retrying works. We also could not
+				// reproduce it as it was random and rare.
+				utils.RetryIfPanic(func() {
+					reevaledRoot = sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool, 4)
+				}, 1)
 				computedReeval.Store(name, reevaledRoot)
 			})
 
@@ -420,7 +430,14 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 					utils.Panic("handle %v not found in the coeffs\n", name)
 				}
 
-				res := sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool)
+				var res sv.SmartVector
+
+				// The retry is because we noticed some panics in the FFT and we
+				// could not figure out why but retrying works. We also could not
+				// reproduce it as it was random and rare.
+				utils.RetryIfPanic(func() {
+					res = sv.FFT(v.(sv.SmartVector), fft.DIT, false, ratio, share, localPool, 4)
+				}, 1)
 				computedReeval.Store(name, res)
 
 			})
