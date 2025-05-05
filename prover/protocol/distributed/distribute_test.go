@@ -38,7 +38,7 @@ func TestDistributedWizard(t *testing.T) {
 	// This dumps a CSV with the list of all the columns in the original wizard
 	logdata.GenCSV(
 		files.MustOverwrite("./base-data/main.csv"),
-		logdata.IncludeColumnCSVFilter,
+		logdata.IncludeAllFilter,
 	)(zkevm.WizardIOP)
 
 	distributed := DistributeWizard(zkevm.WizardIOP, discoverer)
@@ -47,7 +47,7 @@ func TestDistributedWizard(t *testing.T) {
 
 		logdata.GenCSV(
 			files.MustOverwrite(fmt.Sprintf("./module-data/module-%v-gl.csv", i)),
-			logdata.IncludeColumnCSVFilter,
+			logdata.IncludeAllFilter,
 		)(modGL.Wiop)
 	}
 
@@ -55,7 +55,7 @@ func TestDistributedWizard(t *testing.T) {
 
 		logdata.GenCSV(
 			files.MustOverwrite(fmt.Sprintf("./module-data/module-%v-lpp.csv", i)),
-			logdata.IncludeColumnCSVFilter,
+			logdata.IncludeAllFilter,
 		)(modLPP.Wiop)
 	}
 }
@@ -64,7 +64,7 @@ func TestDistributedWizard(t *testing.T) {
 // dummy mode. Meaning without actual compilation.
 func TestDistributedWizardLogic(t *testing.T) {
 
-	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
+	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
@@ -74,7 +74,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Affinities:   GetAffinities(zkevm),
-			Predivision:  16,
+			Predivision:  1,
 		}
 
 		// This tests the compilation of the compiled-IOP
@@ -312,6 +312,62 @@ func GetZkevmWitness(req *execution.Request, cfg *config.Config) *zkevm.Witness 
 	out := execution.CraftProverOutput(cfg, req)
 	witness := execution.NewWitness(cfg, req, &out)
 	return witness.ZkEVM
+}
+
+// scaleUpLimits multiplies all the limits in [tl] by [by]. Except the [BlockL1Size]
+// and the [BlockL2L1Logs].
+func scaleUpLimits(tl *config.TracesLimits, by int) *config.TracesLimits {
+
+	tl.Add *= by
+	tl.Bin *= by
+	tl.Blake2Fmodexpdata *= by
+	tl.Blockdata *= by
+	tl.Blockhash *= by
+	tl.Ecdata *= by
+	tl.Euc *= by
+	tl.Exp *= by
+	tl.Ext *= by
+	tl.Gas *= by
+	tl.Hub *= by
+	tl.Logdata *= by
+	tl.Loginfo *= by
+	tl.Mmio *= by
+	tl.Mmu *= by
+	tl.Mod *= by
+	tl.Mul *= by
+	tl.Mxp *= by
+	tl.Oob *= by
+	tl.Rlpaddr *= by
+	tl.Rlptxn *= by
+	tl.Rlptxrcpt *= by
+	tl.Rom *= by
+	tl.Romlex *= by
+	tl.Shakiradata *= by
+	tl.Shf *= by
+	tl.Stp *= by
+	tl.Trm *= by
+	tl.Txndata *= by
+	tl.Wcp *= by
+	tl.Binreftable *= by
+	tl.Shfreftable *= by
+	tl.Instdecoder *= by
+	tl.PrecompileEcrecoverEffectiveCalls *= by
+	tl.PrecompileSha2Blocks *= by
+	tl.PrecompileRipemdBlocks *= by
+	tl.PrecompileModexpEffectiveCalls *= by
+	tl.PrecompileModexpEffectiveCalls4096 *= by
+	tl.PrecompileEcaddEffectiveCalls *= by
+	tl.PrecompileEcmulEffectiveCalls *= by
+	tl.PrecompileEcpairingEffectiveCalls *= by
+	tl.PrecompileEcpairingMillerLoops *= by
+	tl.PrecompileEcpairingG2MembershipCalls *= by
+	tl.PrecompileBlakeEffectiveCalls *= by
+	tl.PrecompileBlakeRounds *= by
+	tl.BlockKeccak *= by
+	tl.BlockL1Size *= by
+	tl.BlockL2L1Logs *= by
+	tl.BlockTransactions *= by
+	tl.ShomeiMerkleProofs *= by
 }
 
 // GetZKEVM returns a [zkevm.ZkEvm] with its trace limits inflated so that it
