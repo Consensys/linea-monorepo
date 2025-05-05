@@ -16,7 +16,7 @@ var (
 	oncePartialZkEvm = sync.Once{}
 
 	partialCompilationSuite = CompilationSuite{
-		compiler.Arcane(1<<16, 1<<17, true),
+		compiler.Arcane(compiler.WithTargetColSize(1 << 17)),
 		vortex.Compile(2, vortex.WithOptionalSISHashingThreshold(16)),
 	}
 )

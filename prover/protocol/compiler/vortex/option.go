@@ -2,6 +2,7 @@ package vortex
 
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // Option to be passed to vortex
@@ -44,12 +45,12 @@ func PremarkAsSelfRecursed() VortexOp {
 // a merkle root to the public inputs of the comp. This is useful for
 // the distributed prover. The name argument is used to set the Name
 // field of the public-input.
-func AddMerkleRootToPublicInputs(name string, round int) VortexOp {
+func AddMerkleRootToPublicInputs(name string, round []int) VortexOp {
 	return func(ctx *Ctx) {
 		ctx.AddMerkleRootToPublicInputsOpt = struct {
 			Enabled bool
 			Name    string
-			Round   int
+			Round   []int
 		}{Enabled: true, Name: name, Round: round}
 	}
 }
@@ -61,8 +62,9 @@ func AddMerkleRootToPublicInputs(name string, round int) VortexOp {
 func AddPrecomputedMerkleRootToPublicInputs(name string) VortexOp {
 	return func(ctx *Ctx) {
 		ctx.AddPrecomputedMerkleRootToPublicInputsOpt = struct {
-			Enabled bool
-			Name    string
+			Enabled          bool
+			Name             string
+			PrecomputedValue field.Element
 		}{Enabled: true, Name: name}
 	}
 }

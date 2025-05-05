@@ -29,9 +29,32 @@ type context struct {
 	// StackedCircuitData is the column storing the concatenation of all the
 	// public inputs.
 	StackedCircuitData dedicated.StackedColumn
+	// MinimalRound is the smallest round in which all the compilation assets.
+	MinimalRound int
 }
 
+// Compile is the default compiler for PlonkInWizard queries. For 99% of the
+// use-cases, this will be the one you need. It works by instantiating Plonk
+// columns to represent the circuit within the current wizard.
 func Compile(comp *wizard.CompiledIOP) {
+	compile(comp, 0)
+}
+
+// CompileWithMinimalRound applies the same compilation routine as [Compile]
+// but it additionally guarantees that all the compilation assets are not added
+// BEFORE round `minimalRound`. This is used for the limitless prover to ensure
+// that the first round of the GL module only contains columns that are passed
+// to the LPP module. If we added column in that round, they would pollute the
+// commitment and it would prevent the LPP commitment mechanism from working.
+//
+// Passing zero yields the exact same result as [Compile].
+func CompileWithMinimalRound(minimalRound int) func(comp *wizard.CompiledIOP) {
+	return func(comp *wizard.CompiledIOP) {
+		compile(comp, minimalRound)
+	}
+}
+
+func compile(comp *wizard.CompiledIOP, minimalRound int) {
 
 	qNames := comp.QueriesNoParams.AllKeys()
 	for i := range qNames {
@@ -48,13 +71,13 @@ func Compile(comp *wizard.CompiledIOP) {
 			continue
 		}
 
-		compileQuery(comp, q)
+		compileQuery(comp, q, minimalRound)
 
 		comp.QueriesNoParams.MarkAsIgnored(q.Name())
 	}
 }
 
-func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard) {
+func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard, minimalRound int) {
 
 	plonkOptions := make([]plonkinternal.Option, len(q.PlonkOptions))
 	for i := range plonkOptions {
@@ -68,11 +91,12 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard) {
 	}
 
 	var (
-		round          = max(q.Data.Round(), q.Selector.Round())
+		round          = max(q.Data.Round(), q.Selector.Round(), minimalRound)
 		maxNbInstances = q.GetMaxNbCircuitInstances()
 		ctx            = &context{
-			Q:        q,
-			PlonkCtx: plonkinternal.PlonkCheck(comp, string(q.ID), round, q.Circuit, maxNbInstances, plonkOptions...),
+			Q:            q,
+			PlonkCtx:     plonkinternal.PlonkCheck(comp, string(q.ID), round, q.Circuit, maxNbInstances, plonkOptions...),
+			MinimalRound: round,
 		}
 	)
 
@@ -88,7 +112,7 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard) {
 // consistent with the one of the PlonkCtx.
 func checkPublicInputs(comp *wizard.CompiledIOP, ctx *context) {
 	comp.InsertGlobal(
-		ctx.Q.GetRound(),
+		max(ctx.MinimalRound, ctx.Q.GetRound()),
 		ifaces.QueryIDf("%v_PUBLIC_INPUTS", ctx.Q.ID),
 		sym.Sub(ctx.Q.Data, ctx.StackedCircuitData.Column),
 	)
@@ -103,7 +127,7 @@ func checkActivators(comp *wizard.CompiledIOP, ctx *context) {
 		mask       = ctx.Q.Selector
 		offset     = utils.NextPowerOfTwo(ctx.Q.GetNbPublicInputs())
 		activators = ctx.PlonkCtx.Columns.Activators
-		round      = activators[0].Round()
+		round      = max(activators[0].Round(), ctx.MinimalRound)
 	)
 
 	for i := range openings {
@@ -114,7 +138,7 @@ func checkActivators(comp *wizard.CompiledIOP, ctx *context) {
 		)
 	}
 
-	comp.RegisterProverAction(ctx.Q.GetRound(), &assignSelOpening{context: ctx})
-	comp.RegisterVerifierAction(ctx.Q.GetRound(), &checkActivatorAndMask{context: ctx})
+	comp.RegisterProverAction(round, &assignSelOpening{context: ctx})
+	comp.RegisterVerifierAction(round, &checkActivatorAndMask{context: ctx})
 	ctx.SelOpenings = openings
 }

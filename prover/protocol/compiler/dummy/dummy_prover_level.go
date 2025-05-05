@@ -1,6 +1,7 @@
 package dummy
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -11,6 +12,25 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Option is an option for the compiler
+type Option func(*optionSet)
+
+// WithMsg tells the [CompileAtProverLvl] to use the given message
+// in the panic messages in case it fails. This is handy to differentiate
+// which invokation of the compiler failed.
+func WithMsg(msg string) Option {
+	return func(o *optionSet) {
+		o.msg = msg
+	}
+}
+
+// optionSet is a set of options that can be passed to the compiler.
+type optionSet struct {
+	// msg is an identifier shown in the panic message of the [CompileAtProverLvl]
+	// to help identifying which invokation of the compiler failed.
+	msg string
+}
+
 // CompileAtProverLvl instantiate the oracle as the prover. Meaning that the
 // prover is responsible for checking all the queries and the verifier does not
 // see any compiled IOP.
@@ -20,7 +40,17 @@ import (
 // column in plain-text to the verifier. The drawback is that since it happens
 // at prover level, the "errors" result in panics. This makes it not very
 // suitable for established unit-tests where we want to analyze the errors.
-func CompileAtProverLvl(comp *wizard.CompiledIOP) {
+func CompileAtProverLvl(opts ...Option) func(*wizard.CompiledIOP) {
+	os := &optionSet{}
+	for _, opt := range opts {
+		opt(os)
+	}
+	return func(comp *wizard.CompiledIOP) {
+		compileAtProverLvl(comp, os)
+	}
+}
+
+func compileAtProverLvl(comp *wizard.CompiledIOP, os *optionSet) {
 
 	/*
 		Registers all declared commitments and query parameters
@@ -46,6 +76,7 @@ func CompileAtProverLvl(comp *wizard.CompiledIOP) {
 		comp:                     comp,
 		queriesParamsToCompile:   queriesParamsToCompile,
 		queriesNoParamsToCompile: queriesNoParamsToCompile,
+		os:                       os,
 	})
 }
 
@@ -55,6 +86,7 @@ type dummyVerifierProverAction struct {
 	comp                     *wizard.CompiledIOP
 	queriesParamsToCompile   []ifaces.QueryID
 	queriesNoParamsToCompile []ifaces.QueryID
+	os                       *optionSet
 }
 
 // Run executes the dummy verification by checking all queries.
@@ -74,8 +106,9 @@ func (a *dummyVerifierProverAction) Run(run *wizard.ProverRuntime) {
 			q := a.comp.QueriesParams.Data(name)
 			lock.Unlock()
 			if err := q.Check(run); err != nil {
+				err = fmt.Errorf("%v\nfailed %v - %v", finalErr, name, err)
 				lock.Lock()
-				finalErr = fmt.Errorf("%v\nfailed %v - %v", finalErr, name, err)
+				finalErr = errors.Join(finalErr, err)
 				lock.Unlock()
 				logrus.Debugf("query %v failed\n", name)
 			} else {
@@ -94,8 +127,9 @@ func (a *dummyVerifierProverAction) Run(run *wizard.ProverRuntime) {
 			q := a.comp.QueriesNoParams.Data(name)
 			lock.Unlock()
 			if err := q.Check(run); err != nil {
+				err = fmt.Errorf("%v\nfailed %v - %v", finalErr, name, err)
 				lock.Lock()
-				finalErr = fmt.Errorf("%v\nfailed %v - %v", finalErr, name, err)
+				finalErr = errors.Join(finalErr, err)
 				lock.Unlock()
 			} else {
 				logrus.Debugf("query %v passed\n", name)
@@ -104,6 +138,6 @@ func (a *dummyVerifierProverAction) Run(run *wizard.ProverRuntime) {
 	})
 
 	if finalErr != nil {
-		utils.Panic("dummy.Compile brought errors: %v", finalErr.Error())
+		utils.Panic("dummy.Compile brought errors: msg=%v: err=%v", a.os.msg, finalErr.Error())
 	}
 }

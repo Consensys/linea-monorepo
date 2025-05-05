@@ -51,13 +51,13 @@ var (
 	// level target.
 	sisInstance = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
-	dummyCompilationSuite = CompilationSuite{dummy.CompileAtProverLvl}
+	dummyCompilationSuite = CompilationSuite{dummy.CompileAtProverLvl()}
 
 	// This is the compilation suite in use for the full prover
 	fullCompilationSuite = CompilationSuite{
 		// logdata.Log("initial-wizard"),
 		mimc.CompileMiMC,
-		compiler.Arcane(1<<10, 1<<19, false),
+		compiler.Arcane(compiler.WithTargetColSize(1 << 19)),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -70,7 +70,7 @@ var (
 		// logdata.Log("post-selfrecursion-1"),
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(1<<10, 1<<18, false),
+		compiler.Arcane(compiler.WithTargetColSize(1 << 18)),
 		vortex.Compile(
 			2,
 			vortex.ForceNumOpenedColumns(256),
@@ -83,7 +83,7 @@ var (
 		// logdata.Log("post-selfrecursion-2"),
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(1<<10, 1<<16, false),
+		compiler.Arcane(compiler.WithTargetColSize(1 << 16)),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -96,7 +96,7 @@ var (
 		// logdata.Log("post-selfrecursion-3"),
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(1<<10, 1<<13, false),
+		compiler.Arcane(compiler.WithTargetColSize(1 << 13)),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),

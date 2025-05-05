@@ -1,13 +1,16 @@
 package distributed
 
 import (
-	"reflect"
+	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logdata"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
@@ -21,8 +24,24 @@ import (
 const (
 	// fixedNbRowPlonkCircuit is the number of rows in the plonk circuit,
 	// the value is empirical and corresponds to the lowest value that works.
-	fixedNbRowPlonkCircuit   = 1 << 22
+	fixedNbRowPlonkCircuit   = 1 << 20
 	fixedNbRowExternalHasher = 1 << 16
+	verifyingKeyPublicInput  = "VERIFYING_KEY"
+	verifyingKey2PublicInput = "VERIFYING_KEY_2"
+	lppMerkleRootPublicInput = "LPP_COLUMNS_MERKLE_ROOTS"
+
+	// initialCompilerSize sets the target number of rows of the first invokation
+	// of [compiler.Arcane] of the pre-recursion pass of [CompileSegment]. It is
+	// also the length of the column in the [DefaultModule].
+	initialCompilerSize int = 1 << 17
+)
+
+var (
+	// numColumnProfileMpts tells the last invokation of Vortex prior to the self-
+	// recursion to use a plonk circuit with a fixed number of rows. The values
+	// are completely empirical and set to make the compilation work.
+	numColumnProfileMpts            = []int{68, 1596, 218, 5, 17, 7, 0, 1}
+	numColumnProfileMptsPrecomputed = 81
 )
 
 // RecursedSegmentCompilation collects all the wizard compilation artefacts
@@ -34,6 +53,9 @@ type RecursedSegmentCompilation struct {
 	ModuleGL *ModuleGL
 	// ModuleLPP is optional and is set if the segment is a LPP segment.
 	ModuleLPP *ModuleLPP
+	// ModuleDefault is optional and is set if the segment is default module
+	// segment.
+	DefaultModule *DefaultModule
 	// Recursion is the wizard construction context of the recursed wizard.
 	Recursion *recursion.Recursion
 	// RecursionComp is the compiled IOP of the recursed wizard.
@@ -46,17 +68,28 @@ type RecursedSegmentCompilation struct {
 func CompileSegment(mod any) *RecursedSegmentCompilation {
 
 	var (
-		modIOP *wizard.CompiledIOP
-		res    = &RecursedSegmentCompilation{}
+		modIOP            *wizard.CompiledIOP
+		res               = &RecursedSegmentCompilation{}
+		numActualLppRound = 0
+		isLPP             bool
+		subscript         string
 	)
 
 	switch m := mod.(type) {
 	case *ModuleGL:
 		modIOP = m.Wiop
 		res.ModuleGL = m
+		subscript = string(m.definitionInput.ModuleName)
 	case *ModuleLPP:
 		modIOP = m.Wiop
 		res.ModuleLPP = m
+		numActualLppRound = len(m.ModuleNames())
+		isLPP = true
+		subscript = fmt.Sprintf("%v", m.ModuleNames())
+	case *DefaultModule:
+		modIOP = m.Wiop
+		res.DefaultModule = m
+		subscript = "default-module"
 	default:
 		utils.Panic("unexpected type: %T", mod)
 	}
@@ -64,19 +97,76 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
 	wizard.ContinueCompilation(modIOP,
+		// @alex: unsure why we need to compile with MiMC since it should be done
+		// pre-bootstrapping.
 		mimc.CompileMiMC,
-		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<17, false),
-		vortex.Compile(
-			2,
-			vortex.ForceNumOpenedColumns(256),
-			vortex.WithSISParams(&sisInstance),
-			vortex.AddMerkleRootToPublicInputs("LPP_COLUMNS_MERKLE_ROOT", 0),
+		// The reason why 1 works is because it will work for all the GL modules
+		// and because the LPP module do not have Plonk-in-wizards query.
+		plonkinwizard.CompileWithMinimalRound(1),
+		compiler.Arcane(
+			compiler.WithTargetColSize(initialCompilerSize),
+			// Some precompiles modules consists of only microscropic columns and
+			// a Plonk-in-wizard query for a giant circuit. The small columns are
+			// connected to the rest via a lookup but we need to ensure that the
+			// columns will not be turned into "PROOF" columns and be put out of
+			// the LPP commitment.
+			//
+			// @alex:
+			// It's quite a magic number but the choice to use it nonetheless is
+			// because to set the optimal value, we would need a feature where
+			// the Arcane compiler detects the smallest committed column at round
+			// 0 (or any round from a list) and sets its size as the StitcherMinSize
+			// internally.
+			//
+			// For now, the current solution is fine and we can update the value from
+			// time to time if not too frequent.
+			compiler.WithStitcherMinSize(1<<4),
+			compiler.WithoutMpts(),
+			// @alex: in principle, the value of 1 would be used only for the GL
+			// prover but AFAIK, the GL modules never have inner-products to compile.
+			compiler.WithInnerProductMinimalRound(max(1, numActualLppRound)),
 		),
+		mpts.Compile(mpts.AddUnconstrainedColumns()),
+	)
+
+	if !isLPP {
+
+		wizard.ContinueCompilation(modIOP,
+			vortex.Compile(
+				2,
+				vortex.ForceNumOpenedColumns(256),
+				vortex.WithSISParams(&sisInstance),
+				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, []int{0}),
+			),
+		)
+
+		for i := 1; i < lppGroupingArity; i++ {
+			modIOP.InsertPublicInput(fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, i), accessors.NewConstant(field.Zero()))
+		}
+
+	} else {
+
+		wizard.ContinueCompilation(modIOP,
+			vortex.Compile(
+				2,
+				vortex.ForceNumOpenedColumns(256),
+				vortex.WithSISParams(&sisInstance),
+				vortex.AddMerkleRootToPublicInputs(lppMerkleRootPublicInput, utils.RangeSlice(numActualLppRound, 0)),
+			),
+		)
+
+		for i := numActualLppRound; i < lppGroupingArity; i++ {
+			modIOP.InsertPublicInput(fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, i), accessors.NewConstant(field.Zero()))
+		}
+	}
+
+	wizard.ContinueCompilation(modIOP,
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<15, false),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<15),
+		),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -85,35 +175,36 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, false),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
+		),
+		// This extra step is to ensure the tightness of the final wizard by
+		// adding an optional second layer of compilation when we have very
+		// large inputs.
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+			vortex.PremarkAsSelfRecursed(),
+		),
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		mimc.CompileMiMC,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
+			compiler.WithoutMpts(),
+		),
+		// This final step expectedly always generate always the same profile.
+		logdata.Log("just-before-recursion"),
+		mpts.Compile(mpts.WithNumColumnProfileOpt(numColumnProfileMpts, numColumnProfileMptsPrecomputed)),
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+			vortex.PremarkAsSelfRecursed(),
+			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKeyPublicInput),
+		),
 	)
-
-	// This optional step is to ensure the tightness of the final wizard by
-	// adding an optional second layer of compilation when we have very
-	// large inputs.
-	stats := logdata.GetWizardStats(modIOP)
-	if stats.NumCellsCommitted > 13500000 {
-
-		wizard.ContinueCompilation(modIOP,
-			vortex.Compile(
-				8,
-				vortex.ForceNumOpenedColumns(64),
-				vortex.WithSISParams(&sisInstance),
-				vortex.PremarkAsSelfRecursed(),
-			),
-			selfrecursion.SelfRecurse,
-			cleanup.CleanUp,
-			mimc.CompileMiMC,
-			compiler.Arcane(256, 1<<13, false),
-		)
-	}
-
-	vortex.Compile(
-		8,
-		vortex.ForceNumOpenedColumns(64),
-		vortex.WithSISParams(&sisInstance),
-		vortex.PremarkAsSelfRecursed(),
-	)(modIOP)
 
 	var recCtx *recursion.Recursion
 
@@ -128,6 +219,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 				FixedNbRowPlonkCircuit: fixedNbRowPlonkCircuit,
 				WithExternalHasherOpts: true,
 				ExternalHasherNbRows:   fixedNbRowExternalHasher,
+				Subscript:              subscript,
 			},
 		)
 	}
@@ -135,7 +227,22 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	recursedComp := wizard.Compile(defineRecursion,
 		mimc.CompileMiMC,
 		plonkinwizard.Compile,
-		compiler.Arcane(256, 1<<15, false),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<15),
+		),
+		logdata.Log("just-after-recursion-expanded"),
+		vortex.Compile(
+			8,
+			vortex.ForceNumOpenedColumns(64),
+			vortex.WithSISParams(&sisInstance),
+			vortex.AddPrecomputedMerkleRootToPublicInputs(verifyingKey2PublicInput),
+		),
+		selfrecursion.SelfRecurse,
+		cleanup.CleanUp,
+		mimc.CompileMiMC,
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
+		),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -144,17 +251,9 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 		selfrecursion.SelfRecurse,
 		cleanup.CleanUp,
 		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, false),
-		vortex.Compile(
-			8,
-			vortex.ForceNumOpenedColumns(64),
-			vortex.WithSISParams(&sisInstance),
-			vortex.PremarkAsSelfRecursed(),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<13),
 		),
-		selfrecursion.SelfRecurse,
-		cleanup.CleanUp,
-		mimc.CompileMiMC,
-		compiler.Arcane(256, 1<<13, false),
 		vortex.Compile(
 			8,
 			vortex.ForceNumOpenedColumns(64),
@@ -165,11 +264,16 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 
 	res.Recursion = recCtx
 	res.RecursionComp = recursedComp
+
+	// It is necessary to add the extradata from the compiled IOP to the
+	// recursed one otherwise, it will not be found.
+	res.RecursionComp.ExtraData[verifyingKeyPublicInput] = modIOP.ExtraData[verifyingKeyPublicInput]
+
 	return res
 }
 
 // ProveSegment runs the prover for a segment of the protocol
-func (r *RecursedSegmentCompilation) ProveSegment(wit any) wizard.Proof {
+func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime {
 
 	var (
 		comp        *wizard.CompiledIOP
@@ -189,6 +293,14 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) wizard.Proof {
 		proverStep = r.ModuleGL.GetMainProverStep(m)
 		moduleName = m.ModuleName
 		moduleIndex = m.ModuleIndex
+	case nil:
+		if r.DefaultModule == nil {
+			utils.Panic("witness is nil but module is not default")
+		}
+		comp = r.DefaultModule.Wiop
+		proverStep = r.DefaultModule.Assign
+		moduleName = "default-module"
+		moduleIndex = 0
 	default:
 		utils.Panic("unexpected type")
 	}
@@ -209,23 +321,31 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) wizard.Proof {
 	}
 
 	var (
-		recursionWit  = recursion.ExtractWitness(proverRun)
-		proof         wizard.Proof
-		recursionTime = profiling.TimeIt(func() {
-			proof = wizard.Prove(
+		recStoppingRound = recursion.VortexQueryRound(r.RecursionComp) + 1
+		recursionWit     = recursion.ExtractWitness(proverRun)
+		run              *wizard.ProverRuntime
+		recursionTime    = profiling.TimeIt(func() {
+			run = wizard.RunProverUntilRound(
 				r.RecursionComp,
-				r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}),
+				r.Recursion.GetMainProverStep([]recursion.Witness{recursionWit}, nil),
+				recStoppingRound,
 			)
 		})
+		finalProof    = run.ExtractProof()
+		finalProofErr = wizard.VerifyUntilRound(r.RecursionComp, finalProof, recStoppingRound)
 	)
+
+	if finalProofErr != nil {
+		panic(finalProofErr)
+	}
 
 	logrus.
 		WithField("moduleName", moduleName).
 		WithField("moduleIndex", moduleIndex).
 		WithField("initial-time", initialTime).
 		WithField("recursion-time", recursionTime).
-		WithField("is-lpp", reflect.TypeOf(wit).String()).
+		WithField("segment-type", fmt.Sprintf("%T", wit)).
 		Infof("Ran prover segment")
 
-	return proof
+	return run
 }
