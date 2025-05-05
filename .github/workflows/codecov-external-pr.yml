@@ -21,6 +21,11 @@ jobs:
       - name: Get commit tag
         shell: bash
         id: get-commit-tag
+        # COMMIT_TAG will be the commit SHA of the workflow run that triggered this workflow
+        # - For a new commit on a PR branch, COMMIT_TAG = head of PR branch
+        #
+        # Note that we cannot use GITHUB_SHA here because it will always reference the head of main branch
+        # Since we intend for this workflow to run only for PRs from an external fork, we want COMMIT_TAG to match the PR branch head
         run: |
           echo "COMMIT_TAG=$(git rev-parse --short ${{ github.event.workflow_run.head_sha }})" >> $GITHUB_OUTPUT
       - name: Show commit tag
