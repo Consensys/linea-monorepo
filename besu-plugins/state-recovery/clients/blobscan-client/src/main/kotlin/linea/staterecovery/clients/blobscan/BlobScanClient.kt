@@ -4,11 +4,15 @@ import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.client.WebClient
 import io.vertx.ext.web.client.WebClientOptions
+import linea.http.vertx.VertxHttpRequestSender
+import linea.http.vertx.VertxRequestRetrier
+import linea.http.vertx.VertxRestRequestLogger
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import linea.staterecovery.BlobFetcher
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.vertx.setDefaultsFrom
+import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -45,16 +49,26 @@ class BlobScanClient(
       logger: Logger = LogManager.getLogger(BlobScanClient::class.java),
       responseLogMaxSize: UInt? = 1000u
     ): BlobScanClient {
-      val restClient = VertxRestClient(
+      val requestSender: VertxHttpRequestSender = VertxRequestRetrier(
         vertx = vertx,
+        requestRetryConfig = requestRetryConfig,
+        retryableErrorCodes = setOf(429, 503, 504),
+        requestLogger = VertxRestRequestLogger(
+          logger,
+          requestResponseLogLevel = Level.TRACE,
+          failuresLogLevel = Level.DEBUG,
+          responseLogMaxSize = responseLogMaxSize
+        )
+      )
+      val restClient = VertxRestClient(
         webClient = WebClient.create(vertx, WebClientOptions().setDefaultsFrom(endpoint)),
         responseParser = { it.toJsonObject() },
-        retryableErrorCodes = setOf(429, 503, 504),
-        requestRetryConfig = requestRetryConfig,
-        log = logger,
-        responseLogMaxSize = responseLogMaxSize
+        requestSender = requestSender
       )
-      return BlobScanClient(restClient)
+      return BlobScanClient(
+        restClient = restClient,
+        log = logger
+      )
     }
   }
 }
