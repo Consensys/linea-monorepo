@@ -1,4 +1,4 @@
-name: Smart contracts test
+name: Smart contracts testa
 
 on:
   workflow_call:
