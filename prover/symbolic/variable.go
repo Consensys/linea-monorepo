@@ -113,3 +113,21 @@ func (v Variable) Validate(expr *Expression) error {
 IsBase is always true for the StringVar testing struct
 */
 func (s StringVar) IsBase() bool { return true }
+
+/*
+StringVarExt is an implementation of [Metadata] aimed toward testing, but
+StringVarExt will be over field extensions.
+*/
+type StringVarExt string
+
+func NewDummyVarExt(s string) *Expression {
+	return NewVariable(StringVarExt(s))
+}
+
+func (s StringVarExt) String() string { return string(s) }
+
+/*
+IsBase is always false for the StringVarExt testing struct,
+as it is considered over field extensions
+*/
+func (s StringVarExt) IsBase() bool { return false }
