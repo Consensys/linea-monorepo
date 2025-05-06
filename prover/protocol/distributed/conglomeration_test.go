@@ -2,6 +2,7 @@ package distributed
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -39,6 +40,7 @@ func TestConglomerationBasic(t *testing.T) {
 
 	for i := range runGLs {
 		t.Logf("sanity-checking runGLs[%d]\n", i)
+		listPublicInputs(runGLs[i])
 		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runGLs[i])
 	}
 
@@ -49,6 +51,7 @@ func TestConglomerationBasic(t *testing.T) {
 
 	for i := range runLPPs {
 		t.Logf("sanity-checking runLPPs[%d]\n", i)
+		listPublicInputs(runLPPs[i])
 		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runLPPs[i])
 	}
 
@@ -130,7 +133,13 @@ func getSharedRandomness(runs []*wizard.ProverRuntime) field.Element {
 	for i := range runs {
 		witnesses[i] = recursion.ExtractWitness(runs[i])
 	}
-	return GetSharedRandomnessFromWitnesses(witnesses)
+
+	comps := make([]*wizard.CompiledIOP, len(runs))
+	for i := range runs {
+		comps[i] = runs[i].Spec
+	}
+
+	return GetSharedRandomnessFromWitnesses(comps, witnesses)
 }
 
 // Sanity-check for conglomeration compilation.
@@ -142,6 +151,16 @@ func sanityCheckConglomeration(t *testing.T, cong *ConglomeratorCompilation, run
 
 	if err != nil {
 		t.Fatalf("could not verify proof: %v", err)
+	}
+}
+
+func listPublicInputs(run *wizard.ProverRuntime) {
+
+	pubs := run.Spec.PublicInputs
+
+	for i := range pubs {
+		y := pubs[i].Acc.GetVal(run)
+		fmt.Printf("position=%v, name=%v, value=%v\n", i, pubs[i].Name, y.String())
 	}
 }
 

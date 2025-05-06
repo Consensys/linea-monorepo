@@ -180,14 +180,14 @@ func GetSharedRandomness(lppCommitments []field.Element) field.Element {
 //
 // The result of this function is to be used as the shared randomness for
 // the LPP provers.
-func GetSharedRandomnessFromWitnesses(gLWitnesses []recursion.Witness) field.Element {
-	sharedRandomness := field.Element{}
+func GetSharedRandomnessFromWitnesses(comp []*wizard.CompiledIOP, gLWitnesses []recursion.Witness) field.Element {
+	lppCommitments := []field.Element{}
 	for i := range gLWitnesses {
 		name := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0)
-		lpp := gLWitnesses[i].Proof.GetPublicInput(nil, preRecursionPrefix+name)
-		sharedRandomness = cmimc.BlockCompression(sharedRandomness, lpp)
+		lpp := gLWitnesses[i].Proof.GetPublicInput(comp[i], preRecursionPrefix+name)
+		lppCommitments = append(lppCommitments, lpp)
 	}
-	return sharedRandomness
+	return GetSharedRandomness(lppCommitments)
 }
 
 // precompileInitialWizard pre-compiles the initial wizard protocol by applying all the

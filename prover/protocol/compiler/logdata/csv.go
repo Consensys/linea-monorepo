@@ -183,9 +183,9 @@ func (r *csvRow) SetQuery(q ifaces.Query) {
 	case query.UnivariateEval:
 		r.size = len(q_.Pols)
 		extras := make([]string, len(q_.Pols))
-		for i := range extras {
-			extras[i] = q_.Pols[i].String()
-		}
+		// for i := range extras {
+		// 	// extras[i] = q_.Pols[i].String()
+		// }
 		r.extra = extras
 	case query.InnerProduct:
 		r.size = len(q_.Bs)

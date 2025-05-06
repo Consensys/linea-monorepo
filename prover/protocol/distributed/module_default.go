@@ -54,6 +54,7 @@ func DefineDefaultModule(builder *wizard.Builder, moduleInputs *FilteredModuleIn
 	// moduleGL and moduleLPP have identical set of public inputs. The order
 	// of declaration is also important. Namely, these needs to be declared before
 	// the non-dummy ones.
+	md.Wiop.InsertPublicInput(initialRandomnessPublicInput, accessors.NewConstant(field.Zero()))
 	md.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewConstant(field.Zero()))
 	md.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewConstant(field.Zero()))
 	md.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
