@@ -7,7 +7,10 @@ import submissionDataJson3 from "./blocks-82-114.json";
 import submissionDataJson4 from "./blocks-115-155.json";
 import submissionDataJson5 from "./blocks-156-175.json";
 import submissionDataJson6 from "./blocks-176-206.json";
-import aggregateProof1to206 from "./aggregatedProof-1-206.json";
+import submissionDataJson7 from "./blocks-207-228.json";
+import submissionDataJson8 from "./blocks-229-265.json";
+import submissionDataJson9 from "./blocks-266-305.json";
+import aggregateProof1to305 from "./aggregatedProof-1-305.json";
 import { DataHexString } from "ethers/lib.commonjs/utils/data";
 
 const dataItems = [
@@ -17,6 +20,9 @@ const dataItems = [
   submissionDataJson4,
   submissionDataJson5,
   submissionDataJson6,
+  submissionDataJson7,
+  submissionDataJson8,
+  submissionDataJson9
 ];
 
 export function generateKeccak256(types: string[], values: unknown[], packed?: boolean) {
@@ -203,7 +209,7 @@ async function main() {
 
   await sendMessage();
 
-  await sendProof(aggregateProof1to206, parentSubmissionData1, finalSubmissionData);
+  await sendProof(aggregateProof1to305, parentSubmissionData1, finalSubmissionData);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -155,7 +155,7 @@ use-eth-estimate-gas=false
 db-polling-interval="PT1S"
 max-blobs-to-return=100
 proof-submission-delay="PT1S"
-max-blobs-to-submit-per-tick=10
+max-blobs-to-submit-per-tick=18
 # These lower and upper bounds will be effective only if L1 dynamic
 # gas price cap is disabled or during fallback when there's insufficient
 # cached fee history data to compute dynamic gas price caps

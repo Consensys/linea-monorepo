@@ -137,7 +137,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
 
   private fun submitDataToL1ContactAndWaitExecution(
     aggregationsAndBlobs: List<AggregationAndBlobs> = this.aggregationsAndBlobs,
-    blobChunksSize: Int = 6,
+    blobChunksSize: Int = 9,
     waitTimeout: Duration = 4.minutes
   ) {
     submitBlobsAndAggregationsAndWaitExecution(
