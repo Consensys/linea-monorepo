@@ -20,7 +20,7 @@ wiremock = "3.0.1"
 
 # Runtime
 besu = "25.2.1-linea1"
-blobCompressor = "0.0.4"
+blobCompressor = "1.2.0"
 blobShnarfCalculator = "0.0.4"
 bouncycastle = "1.79"
 caffeine = "3.1.6"
