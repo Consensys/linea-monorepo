@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -65,18 +64,7 @@ func init() {
 	RegisterImplementation(variables.X{})
 	RegisterImplementation(variables.PeriodicSample{})
 	RegisterImplementation(symbolic.StringVar(""))
-	RegisterImplementation(dedicated.ManuallyShifted{})
-
-	// RegisterImplementation(&arithmetization.Arithmetization{})
-	// RegisterImplementation(&keccak.KeccakZkEVM{})
-	// RegisterImplementation(&statemanager.StateManager{})
-	// RegisterImplementation(&publicInput.PublicInput{})
-	// RegisterImplementation(&ecdsa.EcdsaZkEvm{})
-	// RegisterImplementation(&modexp.Module{})
-	// RegisterImplementation(&ecarith.EcAdd{})
-	// RegisterImplementation(&ecarith.EcMul{})
-	// RegisterImplementation(&ecpair.ECPair{})
-	// RegisterImplementation(&sha2.Sha2SingleProvider{})
+	// RegisterImplementation(dedicated.ManuallyShifted{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
