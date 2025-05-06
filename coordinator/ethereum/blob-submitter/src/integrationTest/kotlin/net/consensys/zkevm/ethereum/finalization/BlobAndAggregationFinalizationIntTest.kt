@@ -119,7 +119,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
           pollingInterval = 6.seconds,
           proofSubmissionDelay = 0.seconds,
           maxBlobsToSubmitPerTick = 100u,
-          targetBlobsToSubmitPerTx = 6u // validating failure is prague related.
+          targetBlobsToSubmitPerTx = 9u
         ),
         blobsRepository = blobsRepository,
         aggregationsRepository = aggregationsRepository,
