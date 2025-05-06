@@ -78,7 +78,7 @@ services:
       - /bin/bash
       - -c
       - |
-        PRAGUE=true bash /generate-genesis.sh
+        bash /generate-genesis.sh
         /usr/local/bin/eth2-testnet-genesis deneb \
         --config /config/network-config.yml \${L1_GENESIS_TIME:+--timestamp ${L1_GENESIS_TIME:-} \}
         --mnemonics /config/mnemonics.yaml \

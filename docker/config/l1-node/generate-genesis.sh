@@ -11,11 +11,6 @@ mkdir -p $output_dir
 cp $original_el_genesis_json_path $modified_el_genesis_json_path
 cp $original_cl_network_config_path $modified_cl_network_config_path
 
-# Early exit if $PRAGUE feature flag is off
-if [ -z "$PRAGUE" ]; then
-  exit 0
-fi
-
 OS=$(uname);
 prague_time=$(    
     if [ $OS = "Linux" ]; then
