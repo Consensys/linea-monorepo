@@ -67,14 +67,25 @@ runs:
       run: |
         echo "TIMESTAMP=$(date -u +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
 
+    - name: Compute commit hash
+      id: commithash
+      shell: bash
+      run: |
+        # For PR, GITHUB_SHA is NOT the last commit pushed onto the PR branch - https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "commithash=$(git rev-parse --short ${{ github.event.pull_request.head.sha }})" >> $GITHUB_OUTPUT
+        else
+          echo "commithash=$(git rev-parse --short $GITHUB_SHA)" >> $GITHUB_OUTPUT
+        fi
+
     - name: set docker tag
       id: dockertag
       shell: bash
       run: |
         if [ -n "${{ inputs.release_tag_prefix }}" ]; then
-          echo "dockertag=${{ inputs.release_tag_prefix }}-${{ steps.timestamp.outputs.TIMESTAMP }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "dockertag=${{ inputs.release_tag_prefix }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.commithash.outputs.commithash }}" >> $GITHUB_OUTPUT
         else
-          echo "dockertag=${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}-${{ steps.timestamp.outputs.TIMESTAMP }}-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "dockertag=${{ steps.dotenv.outputs.LINEA_TRACER_PLUGIN_VERSION }}-${{ steps.timestamp.outputs.TIMESTAMP }}-${{ steps.commithash.outputs.commithash }}" >> $GITHUB_OUTPUT
         fi
     
     - name: set release tag
@@ -124,7 +135,7 @@ runs:
         echo "getting shomei_plugin_version: ${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }}" 
         wget -nv "https://github.com/Consensys/besu-shomei-plugin/releases/download/v${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }}/besu-shomei-plugin-v${{ steps.dotenv.outputs.SHOMEI_PLUGIN_VERSION }}.jar" -P /tmp/besu/plugins
 
-    - name: place the packages together to build the docker images
+    - name: place the packages together for preparing docker image build
       shell: bash    
       run: |
         cd linea-besu-package/linea-besu
