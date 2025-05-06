@@ -802,6 +802,44 @@ func (ctx *Ctx) NumCommittedRounds() int {
 	return res
 }
 
+// Returns the number of rounds committed with SIS hashing. Must be called after the
+// method compileRound has been executed. Otherwise, it will output zero.
+func (ctx *Ctx) NumCommittedRoundsSis() int {
+	res := 0
+
+	// MaxCommittedRounds is unset if the function is called before
+	// the compileRound method. Careful, the stopping condition is
+	// an LE and not a strict LT condition.
+	for i := 0; i <= ctx.MaxCommittedRound; i++ {
+		if ctx.RoundStatus[i] != IsSISApplied {
+			// We skip the no SIS and the empty rounds
+			continue
+		}
+		res++
+	}
+
+	return res
+}
+
+// Returns the number of rounds committed without SIS hashing. Must be called after the
+// method compileRound has been executed. Otherwise, it will output zero.
+func (ctx *Ctx) NumCommittedRoundsNoSis() int {
+	res := 0
+
+	// MaxCommittedRounds is unset if the function is called before
+	// the compileRound method. Careful, the stopping condition is
+	// an LE and not a strict LT condition.
+	for i := 0; i <= ctx.MaxCommittedRound; i++ {
+		if ctx.RoundStatus[i] != IsOnlyMiMCApplied {
+			// We skip the SIS and the empty rounds
+			continue
+		}
+		res++
+	}
+
+	return res
+}
+
 // MerkleProofSize Returns the size of the allocated Merkle proof vector
 func (ctx *Ctx) MerkleProofSize() int {
 	// We registers the column that will contain the Merkle proofs altogether. But
