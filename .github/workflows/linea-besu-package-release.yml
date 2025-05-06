@@ -1,4 +1,4 @@
-name: linea-besu-package-devnet
+name: linea-besu-package-release
 
 on:
   pull_request:
@@ -6,7 +6,9 @@ on:
     branches:
       - main
     paths:
-      - '.github/workflows/linea-besu-package-devnet.yml'
+      - 'linea-besu-package/**'
+      - '.github/actions/linea-besu-package/**'
+      - '.github/workflows/linea-besu-package-release.yml'
       - '.github/workflows/reuse-linea-besu-package-*.yml'
 
   workflow_call:
@@ -17,7 +19,7 @@ on:
         required: false
         type: string
         default: ''
-
+        
 permissions:
   actions: read
   id-token: write
@@ -29,7 +31,8 @@ jobs:
     name: Filter commit changes
     if: ${{ github.event_name != 'workflow_dispatch' }}
     outputs:
-      linea-devnet-env: ${{ steps.filter.outputs.linea-devnet-env }}
+      linea-env: ${{ steps.filter.outputs.linea-env }}
+      linea-configs: ${{ steps.filter.outputs.linea-configs }}
     steps:
       - name: Filter commit changes
         uses: dorny/paths-filter@v3
@@ -38,17 +41,18 @@ jobs:
           base: ${{ github.ref }}
           list-files: "json"
           filters: |
-            linea-devnet-env:
-              - 'linea-besu-package/versions/linea-devnet.env'
+            linea-env:
+              - 'linea-besu-package/versions/linea.env'
+            linea-configs:
+              - 'linea-besu-package/linea-besu/**'
 
   build-test-push:
     needs: [ filter-commit-changes ]
     if: ${{ always() }}
     uses: ./.github/workflows/reuse-linea-besu-package-build-test-push.yml
     with:
-      linea_env: devnet
       release_tag_prefix: ${{ inputs.release_tag_prefix }}
-      run_test: false
-      run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-devnet-env == 'true' }}
-      push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-devnet-env == 'true' }}
+      run_test: true
+      run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-env == 'true' }}
+      push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-env == 'true' || needs.filter-commit-changes.outputs.linea-configs == 'true' }}
     secrets: inherit
