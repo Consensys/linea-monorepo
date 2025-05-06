@@ -3,9 +3,6 @@ name: 'assemble'
 description: 'Composite action to assemble the artifacts for the targer environment'
 
 inputs:
-  linea_env:
-    description: 'Target Linea environment (e.g. devnet, sepolia, mainnet)'
-    required: true
   release_tag_prefix:
     description: 'Custom release tag prefix'
     required: true
@@ -55,7 +52,7 @@ runs:
       id: dotenv
       uses: falti/dotenv-action@v1
       with:
-        path: linea-besu-package/versions/linea-${{ inputs.linea_env }}.env
+        path: linea-besu-package/versions/linea.env
         mode: development
         keys-case: lower
         log-variables: true
@@ -112,7 +109,7 @@ runs:
     - name: copy the list of versions to the container
       shell: bash      
       run: |
-        cp ./linea-besu-package/versions/linea-${{ inputs.linea_env }}.env /tmp/besu/versions.txt
+        cp ./linea-besu-package/versions/linea.env /tmp/besu/versions.txt
         mkdir -p /tmp/besu/plugins
 
     - name: get the plugins
@@ -153,7 +150,7 @@ runs:
         mkdir release && cd release
         tar -czvf linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz ../linea-besu-package/linea-besu/
 
-        echo "# Release Artifact: Linea - ${{ inputs.linea_env }}" > output.md
+        echo "# Release Artifact: Linea Besu Package" > output.md
         echo "**Name:** linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz" >> output.md
         echo "**SHA256:** $(sha256sum linea-besu-package-${{ steps.dockertag.outputs.dockertag }}.tar.gz | awk '{ print $1 }' )" >> output.md
         echo "**From:** [${{ github.ref_name }} (${{ github.event_name }})](https://github.com/Consensys/linea-monorepo/actions/runs/${{ github.run_id }})" >> output.md
