@@ -727,6 +727,19 @@ class GlobalAggregationCalculatorTest {
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(7u, 6u)).isEqualTo(6u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(11u, 6u)).isEqualTo(6u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(12u, 6u)).isEqualTo(12u)
+
+
+    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(1u, 9u)).isEqualTo(1u)
+    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(2u, 9u)).isEqualTo(2u)
+    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(3u, 9u)).isEqualTo(3u)
+    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(4u, 9u)).isEqualTo(4u)
+    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(5u, 9u)).isEqualTo(5u)
+    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(6u, 9u)).isEqualTo(6u)
+    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(7u, 9u)).isEqualTo(7u)
+    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(8u, 9u)).isEqualTo(8u)
+    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(9u, 9u)).isEqualTo(9u)
+    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(11u, 9u)).isEqualTo(9u)
+    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(12u, 9u)).isEqualTo(9u)
   }
 
   companion object {
@@ -816,6 +829,38 @@ class GlobalAggregationCalculatorTest {
         expectedAggregations = listOf(
           BlobsToAggregate(1u, 12u),
           BlobsToAggregate(13u, 24u)
+        )
+      ),
+      AggregationSizeConstraintTestCase(
+        name = "regular_blobs",
+        aggregationSizeMultipleOf = 7,
+        blobs = regularBlobs(30),
+        proofsLimit = 26,
+        expectedAggregations = listOf(
+          BlobsToAggregate(1u, 7u),
+          BlobsToAggregate(8u, 14u),
+          BlobsToAggregate(15u, 21u)
+        )
+      ),
+      AggregationSizeConstraintTestCase(
+        name = "regular_blobs",
+        aggregationSizeMultipleOf = 8,
+        blobs = regularBlobs(30),
+        proofsLimit = 26,
+        expectedAggregations = listOf(
+          BlobsToAggregate(1u, 8u),
+          BlobsToAggregate(9u, 16u),
+          BlobsToAggregate(17u, 24u)
+        )
+      ),
+      AggregationSizeConstraintTestCase(
+        name = "regular_blobs",
+        aggregationSizeMultipleOf = 9,
+        blobs = regularBlobs(30),
+        proofsLimit = 26,
+        expectedAggregations = listOf(
+          BlobsToAggregate(1u, 9u),
+          BlobsToAggregate(10u, 18u)
         )
       )
     )

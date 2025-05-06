@@ -110,7 +110,7 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
         contractClientForBlobSubmission = contractClientForBlobSubmission,
         contractClientForAggregationSubmission = contractClientForAggregationSubmission,
         aggregationsAndBlobs = aggregationsAndBlobs,
-        blobChunksMaxSize = 6,
+        blobChunksMaxSize = 9,
         l1Web3jClient = Web3jClientManager.l1Client,
         waitTimeout = 4.minutes,
         log = log
