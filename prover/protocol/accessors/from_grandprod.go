@@ -2,6 +2,8 @@ package accessors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -20,6 +22,31 @@ type FromGrandProductAccessor struct {
 	// Q is the underlying query whose parameters are accessed by the current
 	// [ifaces.Accessor].
 	Q query.GrandProduct
+}
+
+func (l *FromGrandProductAccessor) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromGrandProductAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromGrandProductAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromGrandProductAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromGrandProductAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Variable {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewGrandProductAccessor creates an [ifaces.Accessor] returning the opening

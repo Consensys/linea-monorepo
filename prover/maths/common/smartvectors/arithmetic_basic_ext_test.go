@@ -1,8 +1,7 @@
-package smartvectorsext
+package smartvectors
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"testing"
@@ -12,7 +11,7 @@ import (
 
 func TestBatchInvert(t *testing.T) {
 
-	testCases := []smartvectors.SmartVector{
+	testCases := []SmartVector{
 		NewConstantExt(fext.Zero(), 4),
 		NewConstantExt(fext.One(), 4),
 		ForTestExt(0, 1, 2, 3, 0, 0, 4, 4),
@@ -41,7 +40,7 @@ func TestBatchInvert(t *testing.T) {
 	for i := range testCases {
 		t.Run(fmt.Sprintf("testcase-%v", i), func(t *testing.T) {
 
-			bi := BatchInvert(testCases[i])
+			bi := BatchInvertExt(testCases[i])
 
 			assert.Equal(t, bi.Len(), testCases[i].Len())
 
@@ -65,7 +64,7 @@ func TestBatchInvert(t *testing.T) {
 
 func TestIsZero(t *testing.T) {
 
-	testCases := []smartvectors.SmartVector{
+	testCases := []SmartVector{
 		NewConstantExt(fext.Zero(), 4),
 		NewConstantExt(fext.One(), 4),
 		ForTestExt(0, 1, 2, 3, 0, 0, 4, 4),
@@ -94,7 +93,7 @@ func TestIsZero(t *testing.T) {
 	for i := range testCases {
 		t.Run(fmt.Sprintf("testcase-%v", i), func(t *testing.T) {
 
-			iz := IsZero(testCases[i])
+			iz := IsZeroExt(testCases[i])
 
 			assert.Equal(t, iz.Len(), testCases[i].Len())
 

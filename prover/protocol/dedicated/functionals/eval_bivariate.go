@@ -162,6 +162,13 @@ type XYPow1MinNAccessor struct {
 	AccessName string
 }
 
+func (a *XYPow1MinNAccessor) IsBase() bool {
+	if a.X.IsBase() && a.Y.IsBase() {
+		return true
+	}
+	return false
+}
+
 // This makes the [XYPow1MinNAccessor] serializable. The return value is just
 // for making this compilable.
 var _ = func() int {

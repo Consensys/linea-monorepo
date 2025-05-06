@@ -2,6 +2,8 @@ package accessors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -19,6 +21,31 @@ type FromUnivXAccessor struct {
 	Q query.UnivariateEval
 	// Round is the declaration round of Q
 	QRound int
+}
+
+func (u *FromUnivXAccessor) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u *FromUnivXAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u *FromUnivXAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u *FromUnivXAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u *FromUnivXAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Variable {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewUnivariateX returns an [ifaces.Accessor] object symbolizing the evaluation

@@ -2,18 +2,18 @@ package symbolic
 
 import (
 	"fmt"
-	"math/big"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"reflect"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // Constant is an implementation of [Operator] which represents a constant value
 type Constant struct {
-	Val field.Element
+	Val fext.Element
 }
 
 // Degree implements the [Operator] interface
@@ -26,15 +26,24 @@ func (c Constant) Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector 
 	panic("we never call it for a constant")
 }
 
+func (c Constant) EvaluateExt([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
+	panic("we never call EvaluateExt for a constant")
+}
+
 // GnarkEval implements the [Operator] interface.
 func (c Constant) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
+	panic("we never call it for a constant")
+}
+
+// GnarkEvalExt implements the [Operator] interface.
+func (c Constant) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Variable) gnarkfext.Variable {
 	panic("we never call it for a constant")
 }
 
 // NewConstant creates a new [Constant]. The function admits any input types
 // that is either: field.Element, int, uint or decimal string.
 func NewConstant(val interface{}) *Expression {
-	var x field.Element
+	var x fext.Element
 	if _, err := x.SetInterface(val); err != nil {
 		panic(err)
 	}
@@ -42,12 +51,9 @@ func NewConstant(val interface{}) *Expression {
 	res := &Expression{
 		Operator: Constant{Val: x},
 		Children: []*Expression{},
-		ESHash:   x,
+		ESHash:   *new(fext.Element).Set(&x),
+		IsBase:   x.IsBase(),
 	}
-
-	// Pass the string and not the field.Element itself
-	var sig big.Int
-	res.ESHash.SetBigInt(x.BigInt(&sig))
 	return res
 }
 

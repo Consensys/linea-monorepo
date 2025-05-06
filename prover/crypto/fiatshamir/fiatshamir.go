@@ -1,6 +1,7 @@
 package fiatshamir
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math"
 
 	"github.com/consensys/gnark-crypto/hash"
@@ -245,4 +246,88 @@ func (fs *State) RandomManyIntegers(num, upperBound int) []int {
 // This is implemented by adding a 0 in the transcript.
 func (fs *State) safeguardUpdate() {
 	fs.Update(field.NewElement(0))
+}
+
+func (fs *State) UpdateExt(vec ...fext.Element) {
+	if len(vec) == 0 {
+		return
+	}
+
+	// Marshal the elements in a vector of bytes
+	for _, f := range vec {
+		bytes := f.Bytes()
+		_, err := fs.hasher.Write(bytes[:])
+		if err != nil {
+			// This normally happens if the bytes that we provide do not represent
+			// a field element. In our case, the bytes are computed by ourselves
+			// from the caller's field element so the error is not possible. Hence,
+			// the assertion.
+			panic("Hashing is not supposed to fail")
+		}
+	}
+
+	// Increase the transcript counter
+	fs.TranscriptSize += len(vec)
+}
+
+func (fs *State) UpdateMixed(vec ...interface{}) {
+	if len(vec) == 0 {
+		return
+	}
+
+	actualSize := 0
+	// Marshal the elements in a vector of bytes
+	for _, f := range vec {
+		var err error
+		if elem, isBase := f.(field.Element); isBase {
+			// we are using a base field element
+			bytes := elem.Bytes()
+			_, err = fs.hasher.Write(bytes[:])
+			actualSize++
+		} else {
+			// we are using an extension field element
+			fextElem := f.(fext.Element)
+			bytes := fextElem.Bytes()
+			_, err = fs.hasher.Write(bytes[:])
+			// make sure to increase the transcript counter by the extension degree
+			actualSize += fext.ExtensionDegree
+		}
+
+		if err != nil {
+			// This normally happens if the bytes that we provide do not represent
+			// a field element. In our case, the bytes are computed by ourselves
+			// from the caller's field element so the error is not possible. Hence,
+			// the assertion.
+			panic("Hashing is not supposed to fail")
+		}
+	}
+
+	// Increase the transcript counter
+	fs.TranscriptSize += actualSize
+}
+
+func (fs *State) UpdateVecExt(vecs ...[]fext.Element) {
+	if len(vecs) == 0 {
+		return
+	}
+
+	for i := range vecs {
+		fs.UpdateExt(vecs[i]...)
+	}
+}
+
+func (fs *State) UpdateVecMixed(vecs ...[]interface{}) {
+	if len(vecs) == 0 {
+		return
+	}
+
+	for i := range vecs {
+		fs.UpdateMixed(vecs[i]...)
+	}
+}
+
+func (fs *State) RandomFieldExt() fext.Element {
+	f1 := fs.RandomField()
+	f2 := fs.RandomField()
+	return fext.NewFromBaseElements(f1, f2)
 }

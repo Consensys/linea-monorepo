@@ -37,3 +37,12 @@ func assertStrictPositiveLen(l int) {
 		logrus.Panicf("FORBIDDEN : Got a negative length %v", l)
 	}
 }
+
+func IsBase(vec SmartVector) bool {
+	_, isBaseError := vec.GetBase(0)
+	if isBaseError == nil {
+		return true
+	} else {
+		return false
+	}
+}

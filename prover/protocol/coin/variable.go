@@ -27,3 +27,14 @@ func (i Info) String() string {
 	*/
 	return fmt.Sprintf("__COIN__%v", i.Name)
 }
+
+/*
+IsBase always returns false because coins are always
+either field extensions or integer vectors, but not base field elements.*
+*/
+func (i Info) IsBase() bool {
+	/*
+	   Coins are always field extensions
+	*/
+	return false
+}

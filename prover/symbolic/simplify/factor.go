@@ -2,11 +2,11 @@ package simplify
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math"
 	"sort"
 	"sync"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -102,7 +102,7 @@ func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 // children that are already in the children set.
 func rankChildren(
 	parents []*sym.Expression,
-	childrenSet map[uint64]*sym.Expression,
+	childrenSet map[fext.Element]*sym.Expression,
 ) []*sym.Expression {
 
 	// List all the grand-children of the expression whose parents are
@@ -112,7 +112,7 @@ func rankChildren(
 	// The risk if it happens is that it gets caught by the validation checks
 	// at the end of the factorization routine. The preallocation value is
 	// purely heuristic to avoid successive allocations.
-	var relevantGdChildrenCnt map[uint64]int
+	var relevantGdChildrenCnt map[fext.Element]int
 	var uniqueChildrenList []*sym.Expression
 
 	for _, p := range parents {
@@ -131,21 +131,21 @@ func rankChildren(
 
 			// If it's in the group, it does not count. We can't add it a second
 			// time.
-			if _, ok := childrenSet[c.ESHash[0]]; ok {
+			if _, ok := childrenSet[c.ESHash]; ok {
 				continue
 			}
 
 			if relevantGdChildrenCnt == nil {
-				relevantGdChildrenCnt = make(map[uint64]int, len(parents)+2)
+				relevantGdChildrenCnt = make(map[fext.Element]int, len(parents)+2)
 				uniqueChildrenList = make([]*sym.Expression, 0, len(parents)+2)
 			}
 
-			if _, ok := relevantGdChildrenCnt[c.ESHash[0]]; !ok {
-				relevantGdChildrenCnt[c.ESHash[0]] = 0
+			if _, ok := relevantGdChildrenCnt[c.ESHash]; !ok {
+				relevantGdChildrenCnt[c.ESHash] = 0
 				uniqueChildrenList = append(uniqueChildrenList, c)
 			}
 
-			relevantGdChildrenCnt[c.ESHash[0]]++
+			relevantGdChildrenCnt[c.ESHash]++
 		}
 	}
 
@@ -153,7 +153,7 @@ func rankChildren(
 		x := uniqueChildrenList[i].ESHash
 		y := uniqueChildrenList[j].ESHash
 		// We want to a decreasing order
-		return relevantGdChildrenCnt[x[0]] > relevantGdChildrenCnt[y[0]]
+		return relevantGdChildrenCnt[x] > relevantGdChildrenCnt[y]
 	})
 
 	return uniqueChildrenList
@@ -164,10 +164,10 @@ func rankChildren(
 // than one parent. The finding is based on a greedy algorithm. We iteratively
 // add nodes in the group so that the number of common parents decreases as
 // slowly as possible.
-func findGdChildrenGroup(expr *sym.Expression) map[uint64]*sym.Expression {
+func findGdChildrenGroup(expr *sym.Expression) map[fext.Element]*sym.Expression {
 
 	curParents := expr.Children
-	childrenSet := map[uint64]*sym.Expression{}
+	childrenSet := map[fext.Element]*sym.Expression{}
 
 	ranked := rankChildren(curParents, childrenSet)
 
@@ -180,12 +180,12 @@ func findGdChildrenGroup(expr *sym.Expression) map[uint64]*sym.Expression {
 	for i := range ranked {
 
 		best := ranked[i]
-		childrenSet[best.ESHash[0]] = best
+		childrenSet[best.ESHash] = best
 		curParents = filterParentsWithChildren(curParents, best.ESHash)
 
 		// Can't grow the set anymore
 		if len(curParents) <= 1 {
-			delete(childrenSet, best.ESHash[0])
+			delete(childrenSet, best.ESHash)
 			return childrenSet
 		}
 
@@ -202,7 +202,7 @@ func findGdChildrenGroup(expr *sym.Expression) map[uint64]*sym.Expression {
 // of parents and returns it without mutating he original list.
 func filterParentsWithChildren(
 	parents []*sym.Expression,
-	childEsh field.Element,
+	childEsh fext.Element,
 ) []*sym.Expression {
 
 	res := make([]*sym.Expression, 0, len(parents))
@@ -222,7 +222,7 @@ func filterParentsWithChildren(
 // determine the best common factor.
 func factorLinCompFromGroup(
 	lincom *sym.Expression,
-	group map[uint64]*sym.Expression,
+	group map[fext.Element]*sym.Expression,
 ) *sym.Expression {
 
 	var (
@@ -286,7 +286,7 @@ func factorLinCompFromGroup(
 //
 // Fortunately, this is guaranteed if the expression was constructed via
 // [sym.NewLinComb] or [sym.NewProduct] which is almost mandatory.
-func isFactored(e *sym.Expression, exponentsOfGroup map[uint64]int) (
+func isFactored(e *sym.Expression, exponentsOfGroup map[fext.Element]int) (
 	factored *sym.Expression,
 	success bool,
 ) {
@@ -301,7 +301,7 @@ func isFactored(e *sym.Expression, exponentsOfGroup map[uint64]int) (
 
 	numMatches := 0
 	for i, c := range e.Children {
-		eig, found := exponentsOfGroup[c.ESHash[0]]
+		eig, found := exponentsOfGroup[c.ESHash]
 		if !found {
 			continue
 		}
@@ -326,13 +326,13 @@ func isFactored(e *sym.Expression, exponentsOfGroup map[uint64]int) (
 // have the whole group as children.
 func optimRegroupExponents(
 	parents []*sym.Expression,
-	group map[uint64]*sym.Expression,
+	group map[fext.Element]*sym.Expression,
 ) (
-	exponentMap map[uint64]int,
+	exponentMap map[fext.Element]int,
 	groupedTerm *sym.Expression,
 ) {
 
-	exponentMap = make(map[uint64]int, 16)
+	exponentMap = make(map[fext.Element]int, 16)
 	canonTermList := make([]*sym.Expression, 0, 16) // built in deterministic order
 
 	for _, p := range parents {
@@ -345,10 +345,10 @@ func optimRegroupExponents(
 
 		// Used to sanity-check that all the nodes of the group have been
 		// reached through this parent.
-		matched := make(map[uint64]int, len(p.Children))
+		matched := make(map[fext.Element]int, len(p.Children))
 
 		for i, c := range p.Children {
-			if _, ingroup := group[c.ESHash[0]]; !ingroup {
+			if _, ingroup := group[c.ESHash]; !ingroup {
 				continue
 			}
 
@@ -356,16 +356,16 @@ func optimRegroupExponents(
 				panic("The expression is not canonic")
 			}
 
-			_, initialized := exponentMap[c.ESHash[0]]
+			_, initialized := exponentMap[c.ESHash]
 			if !initialized {
 				// Max int is used as a placeholder. It will be replaced anytime
 				// we wall utils.Min(exponentMap[h], n) where n is actually an
 				// exponent.
-				exponentMap[c.ESHash[0]] = math.MaxInt
+				exponentMap[c.ESHash] = math.MaxInt
 				canonTermList = append(canonTermList, c)
 			}
 
-			matched[c.ESHash[0]] = exponents[i]
+			matched[c.ESHash] = exponents[i]
 		}
 
 		if len(matched) != len(group) {
@@ -382,7 +382,7 @@ func optimRegroupExponents(
 
 	canonExponents := []int{}
 	for _, e := range canonTermList {
-		canonExponents = append(canonExponents, exponentMap[e.ESHash[0]])
+		canonExponents = append(canonExponents, exponentMap[e.ESHash])
 	}
 
 	return exponentMap, sym.NewProduct(canonTermList, canonExponents)

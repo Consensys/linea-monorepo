@@ -62,8 +62,13 @@ func NewConcatTinyColumns(
 		AssertIsPublicCol(comp, col)
 
 		if cc, isCC := col.(ConstCol); isCC {
-			access = append(access, accessors.NewConstant(cc.F))
-			continue
+			if cc.IsBase() {
+				access = append(access, accessors.NewConstant(cc.Base))
+				continue
+			} else {
+				access = append(access, accessors.NewConstantExt(cc.Ext))
+				continue
+			}
 		}
 
 		for pos := 0; pos < col.Size(); pos++ {
