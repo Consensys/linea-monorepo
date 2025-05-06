@@ -728,7 +728,6 @@ class GlobalAggregationCalculatorTest {
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(11u, 6u)).isEqualTo(6u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(12u, 6u)).isEqualTo(12u)
 
-
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(1u, 9u)).isEqualTo(1u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(2u, 9u)).isEqualTo(2u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(3u, 9u)).isEqualTo(3u)
