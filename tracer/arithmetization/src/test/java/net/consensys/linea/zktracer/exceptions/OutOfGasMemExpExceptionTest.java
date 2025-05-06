@@ -15,6 +15,7 @@
 
 package net.consensys.linea.zktracer.exceptions;
 
+import static net.consensys.linea.zktracer.exceptions.ExceptionUtils.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.OUT_OF_GAS_EXCEPTION;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -26,7 +27,6 @@ import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
-import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -209,19 +209,15 @@ public class OutOfGasMemExpExceptionTest {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     final int foreignCodeSize = 70;
-
     final ToyAccount codeOwnerAccount =
-        ToyAccount.builder()
-            .balance(Wei.fromEth(1))
-            .nonce(10)
-            .address(Address.fromHexString("c0deadd7e55"))
-            .code(Bytes.fromHexString("ff".repeat(foreignCodeSize)))
-            .build();
+        getAccountForAddressWithBytecode(
+            codeAddress, Bytes.fromHexString("ff".repeat(foreignCodeSize)));
+
     program
         .push(foreignCodeSize + 3) // size
         .push(11) // offset
         .push(33) // destoffset
-        .push("c0deadd7e55") // Address is cold
+        .push("c0de") // Address is cold
         .op(OpCode.EXTCODECOPY);
 
     Bytes pgCompile = program.compile();
@@ -264,36 +260,13 @@ public class OutOfGasMemExpExceptionTest {
   @ParameterizedTest
   @ValueSource(ints = {-1, 0, 1})
   void outOfGasExceptionReturnDataCopy(int cornerCase) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
 
     final ToyAccount returnDataProviderAccount =
-        ToyAccount.builder()
-            .balance(Wei.fromEth(1))
-            .nonce(10)
-            .address(Address.fromHexString("c0de"))
-            // Constructor that returns 32 FF
-            .code(
-                Bytes.fromHexString(
-                    "7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff60005260206000f3"))
-            .build();
+        getAccountForAddressWithBytecode(codeAddress, return32BytesFFBytecode);
 
-    program
-        // 1. Execute static call
-        .push(0) // byte size of return data
-        .push(0) // retOffset
-        .push(0) // byte size calldata
-        .push(0) // argsOffset
-        .push("c0de") // Address of 'return data provider' account
-        .op(OpCode.GAS) // gas
-        .op(OpCode.STATICCALL)
-        // 2. Clean the stack
-        .op(OpCode.POP)
-        // 3. Return data copy
-        .push(32) // size
-        .push(0) // offset
-        .push(65) // destoffset, trigger mem expansion
-        .op(OpCode.RETURNDATACOPY);
-
+    boolean RDCX = false;
+    boolean MXPX = false;
+    BytecodeCompiler program = getProgramRDCFromStaticCallToCodeAccount(RDCX, MXPX);
     Bytes pgCompile = program.compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
 
@@ -340,27 +313,15 @@ public class OutOfGasMemExpExceptionTest {
   3. No OOGX for CREATE after deployment: add 1/64th of 6418 to gasCost to account for gasAvailableForChildCreate
    */
   void outOfGasExceptionCreate(int cornerCase) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
-
-    program
-        // constructor
-        .push(
-            Bytes.fromHexString(
-                "0x7F7EFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")) // value
-        .push(0) // offset
-        .op(OpCode.MSTORE)
-        .push(
-            Bytes.fromHexString(
-                "0xFF60005260206000F30000000000000000000000000000000000000000000000")) // value
-        .push(32) // offset
-        .op(OpCode.MSTORE)
+    BytecodeCompiler programInitCodeToMem = getPgPushInitCodeToMem();
+    programInitCodeToMem
         // Create the contract
         .push(41)
         .push(0)
         .push(0)
         .op(OpCode.CREATE); // No constructor so code executed and runtime code set to return value
 
-    Bytes pgCompile = program.compile();
+    Bytes pgCompile = programInitCodeToMem.compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
@@ -421,9 +382,7 @@ public class OutOfGasMemExpExceptionTest {
         .push(Bytes.fromHexString("0x7F")) // value
         .push(0) // offset
         .op(OpCode.MSTORE)
-        .push(
-            Bytes.fromHexString(
-                "0x1FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")) // Topic 1
+        .push(topic1) // Topic 1
         .push(32) // size
         .push(1) // offset to trigger mem expansion
         .op(OpCode.LOG1);
@@ -448,12 +407,8 @@ public class OutOfGasMemExpExceptionTest {
         .push(Bytes.fromHexString("0x7F")) // value
         .push(0) // offset
         .op(OpCode.MSTORE)
-        .push(
-            Bytes.fromHexString(
-                "0x2FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")) // Topic 2
-        .push(
-            Bytes.fromHexString(
-                "0x1FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")) // Topic 1
+        .push(topic2) // Topic 2
+        .push(topic1) // Topic 1
         .push(32) // size
         .push(1) // offset to trigger mem expansion
         .op(OpCode.LOG2);
@@ -478,15 +433,9 @@ public class OutOfGasMemExpExceptionTest {
         .push(Bytes.fromHexString("0x7F")) // value
         .push(0) // offset
         .op(OpCode.MSTORE)
-        .push(
-            Bytes.fromHexString(
-                "0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")) // Topic 3
-        .push(
-            Bytes.fromHexString(
-                "0x2FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")) // Topic 2
-        .push(
-            Bytes.fromHexString(
-                "0x1FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")) // Topic 1
+        .push(topic3) // Topic 3
+        .push(topic2) // Topic 2
+        .push(topic1) // Topic 1
         .push(32) // size
         .push(1) // offset to trigger mem expansion
         .op(OpCode.LOG3);
@@ -511,18 +460,10 @@ public class OutOfGasMemExpExceptionTest {
         .push(Bytes.fromHexString("0x7F")) // value
         .push(0) // offset
         .op(OpCode.MSTORE)
-        .push(
-            Bytes.fromHexString(
-                "0x4FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")) // Topic 4
-        .push(
-            Bytes.fromHexString(
-                "0x3FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")) // Topic 3
-        .push(
-            Bytes.fromHexString(
-                "0x2FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")) // Topic 2
-        .push(
-            Bytes.fromHexString(
-                "0x1FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")) // Topic 1
+        .push(topic4) // Topic 4
+        .push(topic3) // Topic 3
+        .push(topic2) // Topic 2
+        .push(topic1) // Topic 1
         .push(32) // size
         .push(1) // offset to trigger mem expansion
         .op(OpCode.LOG4);
