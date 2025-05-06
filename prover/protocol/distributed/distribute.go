@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // lppGroupingArity indicates how many GL modules an LPP module relates to.
@@ -132,10 +133,20 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 
 	for i := range dist.GLs {
+		logrus.
+			WithField("module-name", dist.GLs[i].definitionInput.ModuleName).
+			WithField("module-type", "LPP").
+			Info("compiling module")
+
 		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
 	}
 
 	for i := range dist.LPPs {
+		logrus.
+			WithField("module-name", dist.LPPs[i].ModuleNames()).
+			WithField("module-type", "GL").
+			Info("compiling module")
+
 		dist.CompiledLPPs[i] = CompileSegment(dist.LPPs[i])
 	}
 
