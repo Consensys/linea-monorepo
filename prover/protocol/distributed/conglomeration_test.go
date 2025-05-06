@@ -65,7 +65,7 @@ func TestConglomeration(t *testing.T) {
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Affinities:   GetAffinities(zkevm),
-			Predivision:  16,
+			Predivision:  1,
 		}
 
 		// This tests the compilation of the compiled-IOP

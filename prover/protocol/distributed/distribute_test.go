@@ -31,7 +31,7 @@ func TestDistributedWizard(t *testing.T) {
 		discoverer = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Affinities:   affinities,
-			Predivision:  16,
+			Predivision:  1,
 		}
 	)
 
@@ -199,6 +199,8 @@ func TestDistributedWizardLogic(t *testing.T) {
 			moduleLPP   *ModuleLPP
 		)
 
+		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
+
 		for k := range distWizard.LPPs {
 			if !reflect.DeepEqual(distWizard.LPPs[k].ModuleNames(), moduleNames) {
 				continue
@@ -236,6 +238,8 @@ func TestDistributedWizardLogic(t *testing.T) {
 			t.Error("horner-n0-hash mismatch: " + errMsg)
 		}
 
+		t.Logf("log-derivative-sum=%v grand-product=%v horner-sum=%v", logDerivativeSum.String(), grandProduct.String(), hornerSum.String())
+
 		prevHornerN1Hash = hornerN1Hash
 		allGrandProduct.Mul(&allGrandProduct, &grandProduct)
 		allHornerSum.Add(&allHornerSum, &hornerSum)
@@ -265,7 +269,7 @@ func TestBenchDistributedWizard(t *testing.T) {
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Affinities:   GetAffinities(zkevm),
-			Predivision:  16,
+			Predivision:  1,
 		}
 
 		// This tests the compilation of the compiled-IOP
@@ -314,122 +318,66 @@ func GetZkevmWitness(req *execution.Request, cfg *config.Config) *zkevm.Witness 
 	return witness.ZkEVM
 }
 
-// scaleUpLimits multiplies all the limits in [tl] by [by]. Except the [BlockL1Size]
-// and the [BlockL2L1Logs].
-func scaleUpLimits(tl *config.TracesLimits, by int) *config.TracesLimits {
-
-	tl.Add *= by
-	tl.Bin *= by
-	tl.Blake2Fmodexpdata *= by
-	tl.Blockdata *= by
-	tl.Blockhash *= by
-	tl.Ecdata *= by
-	tl.Euc *= by
-	tl.Exp *= by
-	tl.Ext *= by
-	tl.Gas *= by
-	tl.Hub *= by
-	tl.Logdata *= by
-	tl.Loginfo *= by
-	tl.Mmio *= by
-	tl.Mmu *= by
-	tl.Mod *= by
-	tl.Mul *= by
-	tl.Mxp *= by
-	tl.Oob *= by
-	tl.Rlpaddr *= by
-	tl.Rlptxn *= by
-	tl.Rlptxrcpt *= by
-	tl.Rom *= by
-	tl.Romlex *= by
-	tl.Shakiradata *= by
-	tl.Shf *= by
-	tl.Stp *= by
-	tl.Trm *= by
-	tl.Txndata *= by
-	tl.Wcp *= by
-	tl.Binreftable *= by
-	tl.Shfreftable *= by
-	tl.Instdecoder *= by
-	tl.PrecompileEcrecoverEffectiveCalls *= by
-	tl.PrecompileSha2Blocks *= by
-	tl.PrecompileRipemdBlocks *= by
-	tl.PrecompileModexpEffectiveCalls *= by
-	tl.PrecompileModexpEffectiveCalls4096 *= by
-	tl.PrecompileEcaddEffectiveCalls *= by
-	tl.PrecompileEcmulEffectiveCalls *= by
-	tl.PrecompileEcpairingEffectiveCalls *= by
-	tl.PrecompileEcpairingMillerLoops *= by
-	tl.PrecompileEcpairingG2MembershipCalls *= by
-	tl.PrecompileBlakeEffectiveCalls *= by
-	tl.PrecompileBlakeRounds *= by
-	tl.BlockKeccak *= by
-	tl.BlockL1Size *= by
-	tl.BlockL2L1Logs *= by
-	tl.BlockTransactions *= by
-	tl.ShomeiMerkleProofs *= by
-}
-
 // GetZKEVM returns a [zkevm.ZkEvm] with its trace limits inflated so that it
 // can be used as input for the package functions. The zkevm is returned
 // without any compilation.
 func GetZkEVM() *zkevm.ZkEvm {
 
 	// This are the config trace-limits from sepolia. All multiplied by 16.
-	traceLimits := config.TracesLimits{
-		Add:                                  1 << 23,
-		Bin:                                  1 << 22,
-		Blake2Fmodexpdata:                    1 << 18,
-		Blockdata:                            1 << 16,
-		Blockhash:                            1 << 16,
-		Ecdata:                               1 << 22,
-		Euc:                                  1 << 20,
-		Exp:                                  1 << 18,
-		Ext:                                  1 << 24,
-		Gas:                                  1 << 20,
-		Hub:                                  1 << 25,
-		Logdata:                              1 << 20,
-		Loginfo:                              1 << 16,
-		Mmio:                                 1 << 25,
-		Mmu:                                  1 << 25,
-		Mod:                                  1 << 21,
-		Mul:                                  1 << 20,
-		Mxp:                                  1 << 23,
-		Oob:                                  1 << 22,
-		Rlpaddr:                              1 << 16,
-		Rlptxn:                               1 << 21,
-		Rlptxrcpt:                            1 << 21,
-		Rom:                                  1 << 26,
-		Romlex:                               1 << 16,
-		Shakiradata:                          1 << 19,
-		Shf:                                  1 << 20,
-		Stp:                                  1 << 18,
-		Trm:                                  1 << 19,
-		Txndata:                              1 << 18,
-		Wcp:                                  1 << 22,
-		Binreftable:                          1 << 24,
-		Shfreftable:                          1 << 16,
-		Instdecoder:                          1 << 13,
-		PrecompileEcrecoverEffectiveCalls:    1 << 13,
-		PrecompileSha2Blocks:                 1 << 13,
+	traceLimits := &config.TracesLimits{
+		Add:                                  1 << 19,
+		Bin:                                  1 << 18,
+		Blake2Fmodexpdata:                    1 << 14,
+		Blockdata:                            1 << 12,
+		Blockhash:                            1 << 12,
+		Ecdata:                               1 << 18,
+		Euc:                                  1 << 16,
+		Exp:                                  1 << 14,
+		Ext:                                  1 << 20,
+		Gas:                                  1 << 16,
+		Hub:                                  1 << 21,
+		Logdata:                              1 << 16,
+		Loginfo:                              1 << 12,
+		Mmio:                                 1 << 21,
+		Mmu:                                  1 << 21,
+		Mod:                                  1 << 17,
+		Mul:                                  1 << 16,
+		Mxp:                                  1 << 19,
+		Oob:                                  1 << 18,
+		Rlpaddr:                              1 << 12,
+		Rlptxn:                               1 << 17,
+		Rlptxrcpt:                            1 << 17,
+		Rom:                                  1 << 22,
+		Romlex:                               1 << 12,
+		Shakiradata:                          1 << 15,
+		Shf:                                  1 << 16,
+		Stp:                                  1 << 14,
+		Trm:                                  1 << 15,
+		Txndata:                              1 << 14,
+		Wcp:                                  1 << 18,
+		Binreftable:                          1 << 20,
+		Shfreftable:                          1 << 12,
+		Instdecoder:                          1 << 9,
+		PrecompileEcrecoverEffectiveCalls:    1 << 9,
+		PrecompileSha2Blocks:                 1 << 9,
 		PrecompileRipemdBlocks:               0,
 		PrecompileModexpEffectiveCalls:       1 << 10,
 		PrecompileModexpEffectiveCalls4096:   1 << 4,
-		PrecompileEcaddEffectiveCalls:        1 << 12,
-		PrecompileEcmulEffectiveCalls:        1 << 9,
-		PrecompileEcpairingEffectiveCalls:    1 << 9,
-		PrecompileEcpairingMillerLoops:       1 << 10,
-		PrecompileEcpairingG2MembershipCalls: 1 << 10,
+		PrecompileEcaddEffectiveCalls:        1 << 6,
+		PrecompileEcmulEffectiveCalls:        1 << 6,
+		PrecompileEcpairingEffectiveCalls:    1 << 4,
+		PrecompileEcpairingMillerLoops:       1 << 4,
+		PrecompileEcpairingG2MembershipCalls: 1 << 4,
 		PrecompileBlakeEffectiveCalls:        0,
 		PrecompileBlakeRounds:                0,
-		BlockKeccak:                          1 << 17,
+		BlockKeccak:                          1 << 13,
 		BlockL1Size:                          100_000,
 		BlockL2L1Logs:                        16,
-		BlockTransactions:                    1 << 12,
-		ShomeiMerkleProofs:                   1 << 18,
+		BlockTransactions:                    1 << 8,
+		ShomeiMerkleProofs:                   1 << 14,
 	}
 
-	return zkevm.FullZKEVMWithSuite(&traceLimits, zkevm.CompilationSuite{}, &config.Config{})
+	return zkevm.FullZKEVMWithSuite(traceLimits, zkevm.CompilationSuite{}, &config.Config{})
 }
 
 // GetAffinities returns a list of affinities for the following modules. This
