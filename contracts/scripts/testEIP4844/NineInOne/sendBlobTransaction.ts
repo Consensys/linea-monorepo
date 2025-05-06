@@ -22,7 +22,7 @@ const dataItems = [
   submissionDataJson6,
   submissionDataJson7,
   submissionDataJson8,
-  submissionDataJson9
+  submissionDataJson9,
 ];
 
 export function generateKeccak256(types: string[], values: unknown[], packed?: boolean) {
