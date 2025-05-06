@@ -6,16 +6,17 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"unicode"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/iancoleman/strcase"
-	"github.com/sirupsen/logrus"
 )
 
 type Mode int
@@ -31,10 +32,11 @@ const (
 )
 
 var (
-	columnType   = reflect.TypeOf((*ifaces.Column)(nil)).Elem()
-	queryType    = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
-	naturalType  = reflect.TypeOf(column.Natural{})
-	metadataType = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
+	columnType          = reflect.TypeOf((*ifaces.Column)(nil)).Elem()
+	queryType           = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
+	naturalType         = reflect.TypeOf(column.Natural{})
+	metadataType        = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
+	manuallyShiftedType = reflect.TypeOf(&dedicated.ManuallyShifted{})
 )
 
 type structFieldCache struct {
@@ -79,39 +81,6 @@ func getStructFieldCache(t reflect.Type) *structFieldCache {
 	structCache[t] = cache
 	structCacheMu.Unlock()
 	return cache
-}
-
-// SerializeValueWithDiscovery serializes a reflect.Value into CBOR and collects missing types.
-func SerializeValueWithDiscovery(v reflect.Value, mode Mode) (json.RawMessage, []string, error) {
-	missingTypes := []string{}
-	data, err := serializeValueWithDiscovery(v, mode, &missingTypes)
-	return data, missingTypes, err
-}
-
-// serializeValueWithDiscovery is a helper function that performs the serialization and collects missing types.
-func serializeValueWithDiscovery(v reflect.Value, mode Mode, missingTypes *[]string) (json.RawMessage, error) {
-	if !v.IsValid() || v.Interface() == nil {
-		return json.RawMessage(NilString), nil
-	}
-
-	switch v.Kind() {
-	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
-		reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
-		reflect.Uint32, reflect.Uint64, reflect.String:
-		return serializePrimitive(v)
-	case reflect.Array, reflect.Slice:
-		return serializeArrayOrSliceWithDiscovery(v, mode, missingTypes)
-	case reflect.Interface:
-		return serializeInterfaceWithDiscovery(v, mode, missingTypes)
-	case reflect.Map:
-		return serializeMapWithDiscovery(v, mode, missingTypes)
-	case reflect.Pointer:
-		return serializeValueWithDiscovery(v.Elem(), mode, missingTypes)
-	case reflect.Struct:
-		return serializeStructWithDiscovery(v, mode, missingTypes)
-	default:
-		return nil, fmt.Errorf("unsupported type kind: %v", v.Kind())
-	}
 }
 
 func SerializeValue(v reflect.Value, mode Mode) (json.RawMessage, error) {
@@ -189,30 +158,7 @@ func serializeArrayOrSlice(v reflect.Value, mode Mode) (json.RawMessage, error) 
 	return serializeAnyWithCborPkg(raw)
 }
 
-func serializeArrayOrSliceWithDiscovery(v reflect.Value, mode Mode, missingTypes *[]string) (json.RawMessage, error) {
-	length := v.Len()
-	raw := make([]json.RawMessage, 0, length)
-	const batchSize = 64
-
-	for i := 0; i < length; i += batchSize {
-		end := i + batchSize
-		if end > length {
-			end = length
-		}
-		for j := i; j < end; j++ {
-			r, err := serializeValueWithDiscovery(v.Index(j), mode, missingTypes)
-			if err != nil {
-				return nil, fmt.Errorf("could not serialize position %d of type %q: %w", j, v.Type().String(), err)
-			}
-			raw = append(raw, r)
-		}
-	}
-	return serializeAnyWithCborPkg(raw)
-}
-
 func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
-
-	logrus.Infof("Outside v: type:%s  elem:%s\n", v.Type().Name(), v.Elem())
 	if mode == pureExprMode && v.Type() == metadataType {
 		m := v.Interface().(symbolic.Metadata)
 		stringVar := symbolic.StringVar(m.String())
@@ -220,12 +166,7 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	}
 
 	if mode == DeclarationMode && v.Type() == columnType {
-		logrus.Infof("Inside v: type:%s elem:%s  kind:%s\n", v.Type().Name(), v.Elem(), v.Kind())
-		// Only natural columns can be expected in this case.
-		col := v.Interface().(column.Natural)
-		logrus.Info("After column.Natural")
-		decl := intoSerializableColDecl(&col)
-		return SerializeValue(reflect.ValueOf(decl), mode)
+		return serializeColumnInterface(v, mode)
 	}
 
 	concrete := v.Elem()
@@ -241,33 +182,33 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	return serializeAnyWithCborPkg(raw)
 }
 
-func serializeInterfaceWithDiscovery(v reflect.Value, mode Mode, missingTypes *[]string) (json.RawMessage, error) {
-	if mode == pureExprMode && v.Type() == metadataType {
-		m := v.Interface().(symbolic.Metadata)
-		stringVar := symbolic.StringVar(m.String())
-		return serializeValueWithDiscovery(reflect.ValueOf(stringVar), mode, missingTypes)
-	}
+// serializeColumnInterface handles serialization of column interfaces in DeclarationMode.
+// Column types can be either Natural or ManuallyShifted
+func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
+	concrete := v.Elem()
 
-	if mode == DeclarationMode && v.Type() == columnType {
+	switch concrete.Type() {
+	case naturalType:
 		col := v.Interface().(column.Natural)
 		decl := intoSerializableColDecl(&col)
-		return serializeValueWithDiscovery(reflect.ValueOf(decl), mode, missingTypes)
-	}
+		data, err := SerializeValue(reflect.ValueOf(decl), mode)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
 
-	concrete := v.Elem()
-	if !implementationRegistry.Exists(getPkgPathAndTypeName(concrete.Interface())) {
-		*missingTypes = append(*missingTypes, getPkgPathAndTypeName(concrete.Interface()))
-	}
-	rawValue, err := serializeValueWithDiscovery(concrete, mode, missingTypes)
-	if err != nil {
-		return nil, fmt.Errorf("could not serialize interface value of type %q: %w", v.Type().String(), err)
-	}
+	case manuallyShiftedType:
+		shifted := v.Interface().(*dedicated.ManuallyShifted)
+		decl := intoSerializableManuallyShifted(shifted)
+		data, err := SerializeValue(reflect.ValueOf(decl), mode)
+		if err != nil {
+			return nil, err
+		}
+		return data, nil
 
-	raw := map[string]interface{}{
-		"type":  getPkgPathAndTypeNameIndirect(concrete.Interface()),
-		"value": rawValue,
+	default:
+		return nil, fmt.Errorf("unsupported column type in DeclarationMode: %s", concrete.Type().String())
 	}
-	return serializeAnyWithCborPkg(raw)
 }
 
 func serializeMap(v reflect.Value, mode Mode) (json.RawMessage, error) {
@@ -289,33 +230,6 @@ func serializeMap(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	for _, keyString := range keyStrings {
 		k := keyMap[keyString]
 		r, err := SerializeValue(v.MapIndex(k), mode)
-		if err != nil {
-			return nil, fmt.Errorf("could not serialize map key %q: %w", keyString, err)
-		}
-		raw[keyString] = r
-	}
-	return serializeAnyWithCborPkg(raw)
-}
-
-func serializeMapWithDiscovery(v reflect.Value, mode Mode, missingTypes *[]string) (json.RawMessage, error) {
-	keys := v.MapKeys()
-	keyStrings := make([]string, 0, len(keys))
-	keyMap := make(map[string]reflect.Value, len(keys))
-
-	for _, k := range keys {
-		keyString, err := castAsString(k)
-		if err != nil {
-			return nil, fmt.Errorf("invalid map key type %q: %w", v.Type().Key().String(), err)
-		}
-		keyStrings = append(keyStrings, keyString)
-		keyMap[keyString] = k
-	}
-	sort.Strings(keyStrings)
-
-	raw := make(map[string]json.RawMessage, len(keys))
-	for _, keyString := range keyStrings {
-		k := keyMap[keyString]
-		r, err := serializeValueWithDiscovery(v.MapIndex(k), mode, missingTypes)
 		if err != nil {
 			return nil, fmt.Errorf("could not serialize map key %q: %w", keyString, err)
 		}
@@ -356,46 +270,6 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		}
 
 		r, err := SerializeValue(v.FieldByName(f.name), newMode)
-		if err != nil {
-			return nil, fmt.Errorf("could not serialize struct field %v.%v: %w", typeOfV.String(), f.rawName, err)
-		}
-		raw[f.rawName] = r
-	}
-	return serializeAnyWithCborPkg(raw)
-}
-
-func serializeStructWithDiscovery(v reflect.Value, mode Mode, missingTypes *[]string) (json.RawMessage, error) {
-	typeOfV := v.Type()
-
-	if mode == ReferenceMode && typeOfV == naturalType {
-		colID := v.Interface().(column.Natural).ID
-		return serializeAnyWithCborPkg(colID)
-	}
-
-	if mode == DeclarationMode && typeOfV == naturalType {
-		col := v.Interface().(column.Natural)
-		decl := intoSerializableColDecl(&col)
-		return serializeValueWithDiscovery(reflect.ValueOf(decl), mode, missingTypes)
-	}
-
-	if mode == ReferenceMode && typeOfV.Implements(queryType) {
-		queryID := v.Interface().(ifaces.Query).Name()
-		return serializeAnyWithCborPkg(queryID)
-	}
-
-	newMode := mode
-	if typeOfV.Implements(queryType) || typeOfV.Implements(columnType) {
-		newMode = ReferenceMode
-	}
-
-	cache := getStructFieldCache(typeOfV)
-	raw := make(map[string]json.RawMessage, len(cache.fields))
-	for _, f := range cache.fields {
-		if unicode.IsLower(rune(f.name[0])) {
-			continue // Skip unexported fields
-		}
-
-		r, err := serializeValueWithDiscovery(v.FieldByName(f.name), newMode, missingTypes)
 		if err != nil {
 			return nil, fmt.Errorf("could not serialize struct field %v.%v: %w", typeOfV.String(), f.rawName, err)
 		}
@@ -479,17 +353,34 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 
 	if mode == pureExprMode && t == metadataType {
 		var stringVar symbolic.StringVar
-		return DeserializeValue(data, mode, reflect.TypeOf(stringVar), comp)
+		result, err := DeserializeValue(data, mode, reflect.TypeOf(stringVar), comp)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		return result, nil
 	}
 
+	var rawType reflect.Type
 	if mode == DeclarationMode && t == columnType {
-		rawType := reflect.TypeOf(&serializableColumnDecl{})
+		isManualShiftColumn := strings.Contains(string(data), "ManualShift")
+		if isManualShiftColumn {
+			rawType = reflect.TypeOf(&serializableManuallyShifted{})
+		} else {
+			rawType = reflect.TypeOf(&serializableColumnDecl{})
+		}
 		v, err := DeserializeValue(data, mode, rawType, comp)
 		if err != nil {
 			return reflect.Value{}, fmt.Errorf("could not deserialize column interface declaration: %w", err)
 		}
-		nat := v.Interface().(*serializableColumnDecl).intoNaturalAndRegister(comp)
-		ifaceValue.Set(reflect.ValueOf(nat))
+
+		if isManualShiftColumn {
+			shiftCol := v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)
+			ifaceValue.Set(reflect.ValueOf(shiftCol))
+		} else {
+			nat := v.Interface().(*serializableColumnDecl).intoNaturalAndRegister(comp)
+			ifaceValue.Set(reflect.ValueOf(nat))
+		}
+
 		return ifaceValue, nil
 	}
 
@@ -503,7 +394,7 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 
 	concreteType, err := findRegisteredImplementation(raw.Type)
 	if err != nil {
-		return reflect.Value{}, fmt.Errorf("failed to deserialize interface %q: %w", t.Name(), err)
+		return reflect.Value{}, fmt.Errorf("failed to find concrete type and deserialize interface %q: %w", t.Name(), err)
 	}
 
 	v, err := DeserializeValue(raw.Value, mode, concreteType, comp)

@@ -1,7 +1,10 @@
 package serialization
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
@@ -32,9 +35,40 @@ func intoSerializableColDecl(c *column.Natural) *serializableColumnDecl {
 	}
 }
 
+type serializableManuallyShifted struct {
+	Natural *serializableColumnDecl
+	Root    *serializableColumnDecl
+	Offset  int
+}
+
+func intoSerializableManuallyShifted(d *dedicated.ManuallyShifted) *serializableManuallyShifted {
+	rootNatural, ok := d.Root.(column.Natural)
+	if !ok {
+		panic(fmt.Errorf("root is not a column.Natural, got %T", d.Root))
+	}
+	return &serializableManuallyShifted{
+		Natural: intoSerializableColDecl(&d.Natural),
+		Root:    intoSerializableColDecl(&rootNatural),
+		Offset:  d.Offset,
+	}
+}
+
+func (s *serializableManuallyShifted) intoManuallyShifted(comp *wizard.CompiledIOP) *dedicated.ManuallyShifted {
+	natural := s.Natural.intoNaturalAndRegister(comp)
+	root := s.Root.intoNaturalAndRegister(comp)
+	return &dedicated.ManuallyShifted{
+		Natural: natural.(column.Natural),
+		Root:    root,
+		Offset:  s.Offset,
+	}
+}
+
 // Converts a serializableColumnDecl back into a column.Natural and registers it in a
 // wizard.CompiledIOP context, returning an ifaces.Column interface. Used during deserialization
 // to reconstruct the column structure after loading CBOR-encoded metadata.
 func (c *serializableColumnDecl) intoNaturalAndRegister(comp *wizard.CompiledIOP) ifaces.Column {
+	if comp.Columns.Exists(c.Name) {
+		return comp.Columns.GetHandle(c.Name)
+	}
 	return comp.InsertColumn(c.Round, c.Name, c.Size, c.Status)
 }
