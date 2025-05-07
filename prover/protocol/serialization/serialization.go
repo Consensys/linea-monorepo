@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
-	"strings"
 	"sync"
 	"unicode"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/iancoleman/strcase"
+	"github.com/sirupsen/logrus"
 )
 
 type Mode int
@@ -187,28 +187,39 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	concrete := v.Elem()
 
+	// logrus.Infof("Serializing elem:%s with concreteType:%s \n", concrete, concrete.Type().String())
+
+	var data json.RawMessage
+	var err error
 	switch concrete.Type() {
 	case naturalType:
 		col := v.Interface().(column.Natural)
 		decl := intoSerializableColDecl(&col)
-		data, err := SerializeValue(reflect.ValueOf(decl), mode)
+		data, err = SerializeValue(reflect.ValueOf(decl), mode)
 		if err != nil {
 			return nil, err
 		}
-		return data, nil
+		// return data, nil
 
 	case manuallyShiftedType:
 		shifted := v.Interface().(*dedicated.ManuallyShifted)
 		decl := intoSerializableManuallyShifted(shifted)
-		data, err := SerializeValue(reflect.ValueOf(decl), mode)
+		data, err = SerializeValue(reflect.ValueOf(decl), mode)
 		if err != nil {
 			return nil, err
 		}
-		return data, nil
+		// return data, nil
 
 	default:
 		return nil, fmt.Errorf("unsupported column type in DeclarationMode: %s", concrete.Type().String())
 	}
+
+	raw := map[string]interface{}{
+		"type":  concrete.Type().String(),
+		"value": data,
+	}
+
+	return serializeAnyWithCborPkg(raw)
 }
 
 func serializeMap(v reflect.Value, mode Mode) (json.RawMessage, error) {
@@ -249,6 +260,12 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	if mode == DeclarationMode && typeOfV == naturalType {
 		col := v.Interface().(column.Natural)
 		decl := intoSerializableColDecl(&col)
+		return SerializeValue(reflect.ValueOf(decl), mode)
+	}
+
+	if mode == DeclarationMode && typeOfV == manuallyShiftedType {
+		shifted := v.Interface().(*dedicated.ManuallyShifted)
+		decl := intoSerializableManuallyShifted(shifted)
 		return SerializeValue(reflect.ValueOf(decl), mode)
 	}
 
@@ -360,36 +377,33 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 		return result, nil
 	}
 
-	var rawType reflect.Type
-	if mode == DeclarationMode && t == columnType {
-		isManualShiftColumn := strings.Contains(string(data), "ManualShift")
-		if isManualShiftColumn {
-			rawType = reflect.TypeOf(&serializableManuallyShifted{})
-		} else {
-			rawType = reflect.TypeOf(&serializableColumnDecl{})
-		}
-		v, err := DeserializeValue(data, mode, rawType, comp)
-		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not deserialize column interface declaration: %w", err)
-		}
-
-		if isManualShiftColumn {
-			shiftCol := v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)
-			ifaceValue.Set(reflect.ValueOf(shiftCol))
-		} else {
-			nat := v.Interface().(*serializableColumnDecl).intoNaturalAndRegister(comp)
-			ifaceValue.Set(reflect.ValueOf(nat))
-		}
-
-		return ifaceValue, nil
-	}
-
 	var raw struct {
 		Type  string          `json:"type"`
 		Value json.RawMessage `json:"value"`
 	}
 	if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
 		return reflect.Value{}, fmt.Errorf("failed to deserialize interface %q: %w", t.Name(), err)
+	}
+
+	switch raw.Type {
+	case "column.Natural":
+		rawType := reflect.TypeOf(&serializableColumnDecl{})
+		v, err := DeserializeValue(raw.Value, mode, rawType, comp)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("could not deserialize column interface declaration: %w", err)
+		}
+		nat := v.Interface().(*serializableColumnDecl).intoNaturalAndRegister(comp)
+		ifaceValue.Set(reflect.ValueOf(nat))
+		return ifaceValue, nil
+	case "*dedicated.ManuallyShifted":
+		rawType := reflect.TypeOf(&serializableManuallyShifted{})
+		v, err := DeserializeValue(raw.Value, mode, rawType, comp)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("could not deserialize ManuallyShifted: %w", err)
+		}
+		shifted := v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)
+		ifaceValue.Set(reflect.ValueOf(shifted))
+		return ifaceValue, nil
 	}
 
 	concreteType, err := findRegisteredImplementation(raw.Type)
@@ -434,6 +448,16 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		return reflect.ValueOf(nat), nil
 	}
 
+	if mode == DeclarationMode && t == manuallyShiftedType {
+		rawType := reflect.TypeOf(&serializableManuallyShifted{})
+		v, err := DeserializeValue(data, mode, rawType, comp)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("could not deserialize column interface declaration: %w", err)
+		}
+		shiftCol := v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)
+		return reflect.ValueOf(shiftCol), nil
+	}
+
 	if mode == ReferenceMode && t.Implements(queryType) {
 		var queryID ifaces.QueryID
 		if err := deserializeAnyWithCborPkg(data, &queryID); err != nil {
@@ -453,6 +477,7 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		newMode = ReferenceMode
 	}
 
+	logrus.Infof("Decoding raw map with passed in type:%v \n", t)
 	var raw map[string]json.RawMessage
 	if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
 		return reflect.Value{}, fmt.Errorf("could not deserialize struct type %q: %w", t.Name(), err)
@@ -476,5 +501,8 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		}
 		v.FieldByName(f.name).Set(fieldValue)
 	}
+
+	logrus.Infof("Success Decoding raw map with passed in type:%v \n", t)
+
 	return v, nil
 }

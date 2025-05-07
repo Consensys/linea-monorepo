@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/sirupsen/logrus"
 )
 
 // rawCompiledIOP represents the serialized form of CompiledIOP.
@@ -47,6 +48,8 @@ func NewEmptyCompiledIOP() *wizard.CompiledIOP {
 //		}
 func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 	numRounds := comp.NumRounds()
+
+	logrus.Infof("Serializing IOP with numRounds:%d \n", numRounds)
 	if numRounds == 0 {
 		return serializeAnyWithCborPkg(&rawCompiledIOP{})
 	}
@@ -108,8 +111,11 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 	// Run parallel execution
 	parallel.ExecuteChunky(numRounds, work)
 
+	serIOP, err := serializeAnyWithCborPkg(raw)
+	logrus.Info("Successfully serializated compiled IOP")
+
 	// Serialize the final rawCompiledIOP
-	return serializeAnyWithCborPkg(raw)
+	return serIOP, err
 }
 
 // DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns an error
