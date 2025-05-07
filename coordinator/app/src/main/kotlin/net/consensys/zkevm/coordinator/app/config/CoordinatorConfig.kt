@@ -237,7 +237,6 @@ data class BlobSubmissionConfig(
   val priorityFeePerGasUpperBound: ULong,
   val priorityFeePerGasLowerBound: ULong,
   val maxBlobsToSubmitPerTick: Int = maxBlobsToReturn,
-  // defaults to 9, not supported atm, preparatory work
   val targetBlobsToSendPerTransaction: Int = 9,
   val useEthEstimateGas: Boolean = false,
   override var disabled: Boolean = false
