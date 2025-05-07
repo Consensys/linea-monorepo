@@ -10,13 +10,17 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 )
 
 func init() {
@@ -29,16 +33,24 @@ func init() {
 	//      - ifaces.Column
 	//  	- ifaces.Query
 	//
+
+	// Interfaces
 	RegisterImplementation(ifaces.ColID(""))
 	RegisterImplementation(ifaces.QueryID(""))
 	RegisterImplementation(coin.Name(""))
+
+	// Columns
 	RegisterImplementation(column.Natural{})
 	RegisterImplementation(column.Shifted{})
+
+	// Verifier columns
 	RegisterImplementation(verifiercol.ConstCol{})
 	RegisterImplementation(verifiercol.FromYs{})
 	RegisterImplementation(verifiercol.FromAccessors{})
 	RegisterImplementation(verifiercol.ExpandedVerifCol{})
 	RegisterImplementation(verifiercol.RepeatedAccessor{})
+
+	// Queries
 	RegisterImplementation(query.FixedPermutation{})
 	RegisterImplementation(query.GlobalConstraint{})
 	RegisterImplementation(query.Inclusion{})
@@ -49,12 +61,17 @@ func init() {
 	RegisterImplementation(query.Permutation{})
 	RegisterImplementation(query.Range{})
 	RegisterImplementation(query.UnivariateEval{})
+	RegisterImplementation(query.Projection{})
+	RegisterImplementation(query.PlonkInWizard{})
+	RegisterImplementation(query.LocalOpening{})
 	RegisterImplementation(symbolic.Variable{})
 	RegisterImplementation(symbolic.Constant{})
 	RegisterImplementation(symbolic.Product{})
 	RegisterImplementation(symbolic.LinComb{})
 	RegisterImplementation(symbolic.PolyEval{})
 	RegisterImplementation(coin.Info{})
+
+	// Accessors
 	RegisterImplementation(accessors.FromCoinAccessor{})
 	RegisterImplementation(accessors.FromConstAccessor{})
 	RegisterImplementation(accessors.FromExprAccessor{})
@@ -62,10 +79,20 @@ func init() {
 	RegisterImplementation(accessors.FromLocalOpeningYAccessor{})
 	RegisterImplementation(accessors.FromPublicColumn{})
 	RegisterImplementation(accessors.FromUnivXAccessor{})
+
+	// variables
 	RegisterImplementation(variables.X{})
 	RegisterImplementation(variables.PeriodicSample{})
+
 	RegisterImplementation(symbolic.StringVar(""))
-	RegisterImplementation(dedicated.ManuallyShifted{})
+	RegisterImplementation(ecdsa.MultiEcRecoverCircuit{})
+	RegisterImplementation(modexp.ModExpCircuit{})
+	RegisterImplementation(ecarith.MultiECAddCircuit{})
+	RegisterImplementation(ecarith.MultiECMulCircuit{})
+	RegisterImplementation(ecpair.MultiG2GroupcheckCircuit{})
+	RegisterImplementation(ecpair.MultiMillerLoopMulCircuit{})
+	RegisterImplementation(ecpair.MultiMillerLoopFinalExpCircuit{})
+	RegisterImplementation(sha2.SHA2Circuit{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
