@@ -81,7 +81,6 @@ def excludeBesuProvidedDeps = {
 }
 
 jar {
-  dependsOn unTarBesu
   archiveBaseName = distributionIdentifier
   version = calculateVersion()
 
@@ -93,15 +92,6 @@ jar {
       'Implementation-Version': calculateVersion()
     )
   }
-
-
-  from {
-    configurations.runtimeClasspath.filter(excludeBesuProvidedDeps).collect {
-      it.isDirectory() ? it : zipTree(it)
-    }
-  }
-
-  duplicatesStrategy('exclude')
 }
 
 /**
@@ -110,6 +100,7 @@ jar {
  * extracted in the Besu plugins dir.
  */
 tasks.register('distPlugin', Zip) {
+  dependsOn unTarBesu
   dependsOn installDist
 
   archiveBaseName = distributionIdentifier
