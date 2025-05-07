@@ -311,7 +311,6 @@ func assertVortexCompiled(comp *wizard.CompiledIOP) *vortex.Ctx {
 	// Also "stamp" that the compilation context has been cancelled
 	// this means that the verifier part of vortex will be ignored
 	// (and will be replaced by what is declared in the self-recursion)
-	// The "Dried" part of the vortex compiler is NOT ignored though.
 	vortexCtx.IsSelfrecursed = true
 
 	return ctx.(*vortex.Ctx)
