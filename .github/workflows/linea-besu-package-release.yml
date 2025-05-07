@@ -31,8 +31,8 @@ jobs:
     name: Filter commit changes
     if: ${{ github.event_name != 'workflow_dispatch' }}
     outputs:
-      linea-env: ${{ steps.filter.outputs.linea-env }}
-      linea-configs: ${{ steps.filter.outputs.linea-configs }}
+      versions_env: ${{ steps.filter.outputs.versions-env }}
+      linea_configs: ${{ steps.filter.outputs.linea-configs }}
     steps:
       - name: Filter commit changes
         uses: dorny/paths-filter@v3
@@ -41,8 +41,8 @@ jobs:
           base: ${{ github.ref }}
           list-files: "json"
           filters: |
-            linea-env:
-              - 'linea-besu-package/versions/linea.env'
+            versions-env:
+              - 'linea-besu-package/versions.env'
             linea-configs:
               - 'linea-besu-package/linea-besu/**'
 
@@ -53,6 +53,6 @@ jobs:
     with:
       release_tag_prefix: ${{ inputs.release_tag_prefix }}
       run_test: true
-      run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-env == 'true' }}
-      push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.linea-env == 'true' || needs.filter-commit-changes.outputs.linea-configs == 'true' }}
+      run_e2e_test: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.versions_env == 'true' }}
+      push_image: ${{ github.event_name == 'workflow_dispatch' || needs.filter-commit-changes.outputs.versions_env == 'true' || needs.filter-commit-changes.outputs.linea_configs == 'true' }}
     secrets: inherit

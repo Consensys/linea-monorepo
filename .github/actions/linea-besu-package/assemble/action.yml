@@ -52,7 +52,7 @@ runs:
       id: dotenv
       uses: falti/dotenv-action@v1
       with:
-        path: linea-besu-package/versions/linea.env
+        path: linea-besu-package/versions.env
         mode: development
         keys-case: lower
         log-variables: true
@@ -109,7 +109,7 @@ runs:
     - name: copy the list of versions to the container
       shell: bash      
       run: |
-        cp ./linea-besu-package/versions/linea.env /tmp/besu/versions.txt
+        cp ./linea-besu-package/versions.env /tmp/besu/versions.txt
         mkdir -p /tmp/besu/plugins
 
     - name: get the plugins
