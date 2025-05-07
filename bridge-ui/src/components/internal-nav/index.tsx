@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import { useDevice } from "@/hooks";
 import clsx from "clsx";
 import BridgeAggregatorIcon from "@/assets/icons/bridge-aggregator.svg";

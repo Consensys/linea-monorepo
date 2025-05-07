@@ -1,11 +1,18 @@
 import "@layerswap/widget/index.css";
 import { Swap, LayerswapProvider, GetSettings, ThemeData } from "@layerswap/widget";
 import CustomHooks from "./custom-hooks";
+import { config } from "@/config";
 
 export async function Widget() {
   const settings = await GetSettings();
   return (
-    <LayerswapProvider integrator="linea" themeData={themeData} settings={settings} apiKey={"YOUR_API_KEY"}>
+    <LayerswapProvider
+      integrator="linea"
+      themeData={themeData}
+      settings={settings}
+      apiKey={config.layerswapApiKey}
+      version="mainnet"
+    >
       <CustomHooks>
         <Swap
           featuredNetwork={{
