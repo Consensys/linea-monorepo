@@ -16,7 +16,6 @@ import net.consensys.linea.ethereum.gaspricing.dynamiccap.getAllTimeOfDayKeys
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.traces.TracesCounters
 import net.consensys.linea.traces.TracesCountersV2
-import net.consensys.linea.traces.TracingModuleV1
 import net.consensys.linea.traces.TracingModuleV2
 import net.consensys.zkevm.coordinator.app.L2NetworkGasPricingService
 import net.consensys.zkevm.coordinator.clients.prover.ProversConfig
@@ -495,7 +494,6 @@ data class Type2StateProofProviderConfig(
   override val requestRetry: RequestRetryConfigTomlFriendly
 ) : RequestRetryConfigurable
 
-data class TracesLimitsV1ConfigFile(val tracesLimits: Map<TracingModuleV1, UInt>)
 data class TracesLimitsV2ConfigFile(val tracesLimits: Map<TracingModuleV2, UInt>)
 
 //

@@ -375,7 +375,6 @@ class CoordinatorConfigTest {
         Path.of("../../config/coordinator/coordinator-local-dev.config.overrides.toml"),
         Path.of("../../config/coordinator/coordinator-local-dev.config-traces-v2.overrides.toml")
       ),
-      tracesLimitsFileV1 = Path.of("../../config/common/traces-limits-v1.toml"),
       tracesLimitsFileV2 = Path.of("../../config/common/traces-limits-v2.toml"),
       gasPriceCapTimeOfDayMultipliersFile = Path.of("../../config/common/gas-price-cap-time-of-day-multipliers.toml"),
       smartContractErrorsFile = Path.of("../../config/common/smart-contract-errors.toml")
@@ -393,7 +392,6 @@ class CoordinatorConfigTest {
   fun `should parse and consolidate configs`() {
     val configs = loadConfigs(
       coordinatorConfigFiles = listOf(pathToResource("configs/coordinator.config.toml")),
-      tracesLimitsFileV1 = pathToResource("configs/traces-limits-v1.toml"),
       tracesLimitsFileV2 = pathToResource("configs/traces-limits-v2.toml"),
       gasPriceCapTimeOfDayMultipliersFile = pathToResource("configs/gas-price-cap-time-of-day-multipliers.toml"),
       smartContractErrorsFile = pathToResource("configs/smart-contract-errors.toml")
@@ -410,7 +408,6 @@ class CoordinatorConfigTest {
         pathToResource("configs/coordinator.config.toml"),
         pathToResource("configs/coordinator-web3signer-override.config.toml")
       ),
-      tracesLimitsFileV1 = pathToResource("configs/traces-limits-v1.toml"),
       tracesLimitsFileV2 = pathToResource("configs/traces-limits-v2.toml"),
       gasPriceCapTimeOfDayMultipliersFile = pathToResource("configs/gas-price-cap-time-of-day-multipliers.toml"),
       smartContractErrorsFile = pathToResource("configs/smart-contract-errors.toml")
@@ -433,7 +430,6 @@ class CoordinatorConfigTest {
         pathToResource("configs/coordinator.config.toml"),
         pathToResource("configs/coordinator-traces-v2-override.config.toml")
       ),
-      tracesLimitsFileV1 = pathToResource("configs/traces-limits-v1.toml"),
       tracesLimitsFileV2 = pathToResource("configs/traces-limits-v2.toml"),
       gasPriceCapTimeOfDayMultipliersFile = pathToResource("configs/gas-price-cap-time-of-day-multipliers.toml"),
       smartContractErrorsFile = pathToResource("configs/smart-contract-errors.toml")
