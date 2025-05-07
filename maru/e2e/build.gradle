@@ -15,6 +15,7 @@ dependencies {
   implementation project(":jvm-libs:mappers")
   implementation(project(":serialization"))
   implementation(project(":jvm-libs:extensions"))
+  implementation project(":jvm-libs:test-utils")
 
   implementation "tech.pegasys.teku.internal:executionclient"
   implementation "tech.pegasys.teku.internal:time"
@@ -66,4 +67,6 @@ tasks.register('acceptanceTest', Test) { test ->
     // set showStandardStreams if you need to see test logs
     showStandardStreams true
   }
+
+  systemProperties["junit.jupiter.execution.parallel.enabled"] = false
 }

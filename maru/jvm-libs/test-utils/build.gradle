@@ -8,6 +8,11 @@ dependencies {
   api "org.hyperledger.besu.internal:dsl"
   implementation("org.hyperledger.besu.internal:core")
   implementation("org.hyperledger.besu.internal:merge")
+  implementation("org.hyperledger.besu.internal:algorithms")
   implementation("org.hyperledger.besu.internal:plugins-rocksdb")
   implementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')
+
+  implementation "org.web3j:core"
+  implementation 'org.assertj:assertj-core'
+  implementation 'org.awaitility:awaitility-kotlin'
 }

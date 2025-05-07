@@ -16,8 +16,9 @@
 package maru.app
 
 import java.io.File
-import java.math.BigInteger
-import java.nio.file.Files
+import maru.app.Checks.getMinedBlocks
+import maru.app.Checks.verifyBlockTime
+import maru.app.Checks.verifyBlockTimeWithAGapOn
 import maru.consensus.ElFork
 import maru.consensus.qbft.network.NoopValidatorMulticaster
 import maru.consensus.qbft.toAddress
@@ -25,8 +26,8 @@ import maru.crypto.Crypto
 import maru.extensions.fromHexToByteArray
 import maru.testutils.MaruFactory
 import maru.testutils.SpyingValidatorMulticaster
-import maru.testutils.TransactionsHelper
 import maru.testutils.besu.BesuFactory
+import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.kotlin.await
@@ -45,33 +46,34 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.web3j.protocol.core.DefaultBlockParameter
+import org.junit.jupiter.api.io.TempDir
 
 class MaruQbftTest {
   private lateinit var cluster: Cluster
   private lateinit var besuNode: BesuNode
   private lateinit var maruNode: MaruApp
-  private lateinit var transactionsHelper: TransactionsHelper
+  private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
+
+  @TempDir
   private lateinit var tmpDir: File
   private lateinit var spyingValidatorMulticaster: SpyingValidatorMulticaster
 
   @BeforeEach
   fun setUp() {
     val elFork = ElFork.Prague
-    transactionsHelper = TransactionsHelper()
-    besuNode = BesuFactory.buildTestBesu(elFork)
+    transactionsHelper = BesuTransactionsHelper()
+    besuNode = BesuFactory.buildTestBesu()
     cluster =
       Cluster(
         ClusterConfigurationBuilder().build(),
         NetConditions(NetTransactions()),
         ThreadBesuNodeRunner(),
       )
+
     cluster.start(besuNode)
     val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
     val engineRpcUrl = besuNode.engineRpcUrl().get()
-    tmpDir = Files.createTempDirectory("maru").toFile()
-    tmpDir.deleteOnExit()
     spyingValidatorMulticaster = SpyingValidatorMulticaster(NoopValidatorMulticaster)
     maruNode =
       MaruFactory.buildTestMaru(
@@ -88,7 +90,6 @@ class MaruQbftTest {
   fun tearDown() {
     cluster.close()
     maruNode.stop()
-    tmpDir.deleteRecursively()
   }
 
   private fun sendTransactionAndAssertExecution(
@@ -110,7 +111,8 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
+    val blocks = besuNode.getMinedBlocks(blocksToProduce)
+    blocks.verifyBlockTime()
 
     // Need to wait because otherwise not all of the messages might be emitted at the time of a block being mined
     await.untilAsserted {
@@ -192,8 +194,8 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
-    verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
+    val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
+    blocks.verifyBlockTimeWithAGapOn(blocksToProduce)
   }
 
   @Test
@@ -209,8 +211,8 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
-    verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
+    val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
+    blocks.verifyBlockTimeWithAGapOn(blocksToProduce)
   }
 
   @Test
@@ -237,37 +239,8 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
 
-    verifyBlockHeaders(fromBlockNumber = 1, blocksToProduce)
-    verifyBlockHeaders(fromBlockNumber = 6, blocksToProduce)
-  }
+    val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
 
-  private fun verifyBlockHeaders(
-    fromBlockNumber: Int,
-    blocksProduced: Int,
-  ) {
-    val blocks =
-      (fromBlockNumber until fromBlockNumber + blocksProduced)
-        .map {
-          besuNode
-            .nodeRequests()
-            .eth()
-            .ethGetBlockByNumber(
-              DefaultBlockParameter.valueOf(BigInteger.valueOf(it.toLong())),
-              false,
-            ).sendAsync()
-        }.map { it.get().block }
-
-    val blockTimeSeconds = 1L
-    val timestampsSeconds = blocks.map { it.timestamp.toLong() }
-    (2.until(blocks.size)).forEach {
-      assertThat(timestampsSeconds[it - 1]).isLessThan(timestampsSeconds[it])
-      val actualBlockTime = timestampsSeconds[it] - timestampsSeconds[it - 1]
-      assertThat(actualBlockTime)
-        .withFailMessage("Timestamps: $timestampsSeconds")
-        .isGreaterThanOrEqualTo(blockTimeSeconds)
-      assertThat(actualBlockTime)
-        .withFailMessage("Timestamps: $timestampsSeconds")
-        .isLessThanOrEqualTo(blockTimeSeconds)
-    }
+    blocks.verifyBlockTimeWithAGapOn(blocksToProduce)
   }
 }

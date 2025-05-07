@@ -41,6 +41,16 @@ class ProtocolStarterTest {
   private val protocol1 = StubProtocol()
   private val protocol2 = StubProtocol()
 
+  private val protocolConfig1 = object : ConsensusConfig {}
+  private val forkSpec1 = ForkSpec(0, 1, protocolConfig1)
+  private val protocolConfig2 = object : ConsensusConfig {}
+  private val forkSpec2 =
+    ForkSpec(
+      15,
+      2,
+      protocolConfig2,
+    )
+
   @BeforeEach
   fun stopStubProtocols() {
     protocol1.stop()
@@ -61,7 +71,7 @@ class ProtocolStarterTest {
       createProtocolStarter(
         forksSchedule = forksSchedule,
         metadataProvider = metadataProvider,
-        clockMilliseconds = 16000,
+        clockMilliseconds = 14000,
       )
     protocolStarter.start()
     val currentProtocolWithConfig = protocolStarter.currentProtocolWithForkReference.get()
@@ -149,16 +159,6 @@ class ProtocolStarterTest {
     assertThat(protocol1.started).isFalse()
     assertThat(protocol2.started).isTrue()
   }
-
-  private val protocolConfig1 = object : ConsensusConfig {}
-  private val forkSpec1 = ForkSpec(0, 1, protocolConfig1)
-  private val protocolConfig2 = object : ConsensusConfig {}
-  private val forkSpec2 =
-    ForkSpec(
-      15,
-      2,
-      protocolConfig2,
-    )
 
   private val protocolFactory =
     object : ProtocolFactory {

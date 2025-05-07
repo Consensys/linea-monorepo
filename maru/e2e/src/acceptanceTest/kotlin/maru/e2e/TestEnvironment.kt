@@ -15,21 +15,14 @@
  */
 package maru.e2e
 
-import java.math.BigInteger
 import java.net.URI
 import java.util.Optional
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 import maru.config.ApiEndpointConfig
-import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.kotlin.await
-import org.web3j.crypto.Credentials
 import org.web3j.protocol.Web3j
-import org.web3j.protocol.core.methods.response.EthSendTransaction
-import org.web3j.tx.RawTransactionManager
 import tech.pegasys.teku.ethereum.executionclient.auth.JwtConfig
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3JClient
 import tech.pegasys.teku.ethereum.executionclient.web3j.Web3jClientBuilder
@@ -90,36 +83,6 @@ object TestEnvironment {
 
   val followerExecutionClientsPostMerge =
     (followerExecutionEngineClients - "follower-geth-2" + ("follower-geth" to geth1ExecutionEngineClient))
-
-  private val transactionManager =
-    let {
-      val credentials =
-        Credentials.create("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae")
-      RawTransactionManager(sequencerL2Client, credentials)
-    }
-
-  fun sendArbitraryTransaction(): EthSendTransaction {
-    val gasPrice = sequencerL2Client.ethGasPrice().send().gasPrice
-    val gasLimit = BigInteger.valueOf(21000)
-    val to = transactionManager.fromAddress
-    return transactionManager.sendTransaction(gasPrice, gasLimit, to, "", BigInteger.ZERO)
-  }
-
-  fun EthSendTransaction.waitForInclusion() {
-    await
-      .timeout(30, TimeUnit.SECONDS)
-      .untilAsserted {
-        val lastTransaction =
-          sequencerL2Client
-            .ethGetTransactionByHash(transactionHash)
-            .send()
-            .transaction
-            .get()
-        assertThat(lastTransaction.blockNumberRaw)
-          .withFailMessage("Transaction $transactionHash wasn't included!")
-          .isNotNull()
-      }
-  }
 
   private fun buildWeb3Client(
     rpcUrl: String,
