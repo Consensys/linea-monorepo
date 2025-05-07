@@ -48,14 +48,14 @@ func NewSha2ZkEvm(comp *wizard.CompiledIOP, s Settings) *Sha2SingleProvider {
 			Data: generic.GenDataModule{
 				HashNum: comp.Columns.GetHandle("shakiradata.ID"),
 				Index:   comp.Columns.GetHandle("shakiradata.INDEX"),
-				Limb:    comp.Columns.GetHandle("shakiradata.LIMB"),
+				Limbs:   []ifaces.Column{comp.Columns.GetHandle("shakiradata.LIMB")},
 				NBytes:  comp.Columns.GetHandle("shakiradata.nBYTES"),
 				ToHash:  comp.Columns.GetHandle("shakiradata.IS_SHA2_DATA"),
 			},
 			Info: generic.GenInfoModule{
 				HashNum: comp.Columns.GetHandle("shakiradata.ID"),
-				HashLo:  comp.Columns.GetHandle("shakiradata.LIMB"),
-				HashHi:  comp.Columns.GetHandle("shakiradata.LIMB"),
+				HashLo:  []ifaces.Column{comp.Columns.GetHandle("shakiradata.LIMB")},
+				HashHi:  []ifaces.Column{comp.Columns.GetHandle("shakiradata.LIMB")},
 				// Before, we usse to pass column.Shift(IsHashHi, -1) but this does
 				// not work with the prover distribution as the column is used as
 				// a filter for a projection query.
@@ -122,16 +122,22 @@ func newSha2SingleProvider(comp *wizard.CompiledIOP, inp Sha2SingleProviderInput
 	)
 
 	comp.InsertProjection("SHA2_RES_HI",
-		query.ProjectionInput{ColumnA: []ifaces.Column{cSha2.HashHi},
-			ColumnB: []ifaces.Column{inp.Provider.Info.HashHi},
+		query.ProjectionInput{
+			ColumnA: []ifaces.Column{cSha2.HashHi},
+			ColumnB: inp.Provider.Info.HashHi,
 			FilterA: cSha2.IsEffFirstLaneOfNewHash,
-			FilterB: inp.Provider.Info.IsHashHi})
+			FilterB: inp.Provider.Info.IsHashHi,
+		},
+	)
 
 	comp.InsertProjection("SHA2_RES_LO",
-		query.ProjectionInput{ColumnA: []ifaces.Column{cSha2.HashLo},
-			ColumnB: []ifaces.Column{inp.Provider.Info.HashLo},
+		query.ProjectionInput{
+			ColumnA: []ifaces.Column{cSha2.HashLo},
+			ColumnB: inp.Provider.Info.HashLo,
 			FilterA: cSha2.IsEffFirstLaneOfNewHash,
-			FilterB: inp.Provider.Info.IsHashLo})
+			FilterB: inp.Provider.Info.IsHashLo,
+		},
+	)
 
 	// set the module
 	m := &Sha2SingleProvider{

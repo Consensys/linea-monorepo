@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -19,7 +20,7 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 	hashNumInt, toHashInt []int, flag bool, path ...string) {
 
 	var (
-		size    = gdm.Limb.Size()
+		size    = gdm.Limbs[0].Size()
 		limbs   = make([]field.Element, size)
 		nBytes  = make([]field.Element, size)
 		toHash  = make([]field.Element, size)
@@ -28,7 +29,7 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 		rng     = rand.New(rand.NewChaCha8([32]byte{}))
 
 		nByteCol   = common.NewVectorBuilder(gdm.NBytes)
-		limbCol    = common.NewVectorBuilder(gdm.Limb)
+		limbCol    = common.NewVectorBuilder(gdm.Limbs[0])
 		hashNumCol = common.NewVectorBuilder(gdm.HashNum)
 		toHashCol  = common.NewVectorBuilder(gdm.ToHash)
 		indexCol   = common.NewVectorBuilder(gdm.Index)
@@ -124,7 +125,7 @@ func CreateGenDataModule(
 	createCol := common.CreateColFn(comp, name, size, pragmas.RightPadded)
 	gbm.HashNum = createCol("HASH_NUM")
 	gbm.Index = createCol("INDEX")
-	gbm.Limb = createCol("LIMBS")
+	gbm.Limbs = []ifaces.Column{createCol("LIMBS")}
 	gbm.NBytes = createCol("NBYTES")
 	gbm.ToHash = createCol("TO_HASH")
 	return gbm
@@ -137,8 +138,8 @@ func CreateGenInfoModule(
 	size int,
 ) (gim generic.GenInfoModule) {
 	createCol := common.CreateColFn(comp, name, size, pragmas.RightPadded)
-	gim.HashHi = createCol("HASH_HI")
-	gim.HashLo = createCol("HASH_LO")
+	gim.HashHi = []ifaces.Column{createCol("HASH_HI")}
+	gim.HashLo = []ifaces.Column{createCol("HASH_LO")}
 	gim.IsHashHi = createCol("IS_HASH_HI")
 	gim.IsHashLo = createCol("IS_HASH_LO")
 	return gim
@@ -153,8 +154,8 @@ func GenerateAndAssignGenInfoModule(
 ) {
 
 	var (
-		hashHi      = common.NewVectorBuilder(gim.HashHi)
-		hashLo      = common.NewVectorBuilder(gim.HashLo)
+		hashHi      = common.NewVectorBuilder(gim.HashHi[0])
+		hashLo      = common.NewVectorBuilder(gim.HashLo[0])
 		isHashHiCol = common.NewVectorBuilder(gim.IsHashHi)
 		isHashLoCol = common.NewVectorBuilder(gim.IsHashLo)
 	)

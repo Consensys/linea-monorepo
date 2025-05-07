@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/crypto/sha2"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/csvtraces"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
@@ -59,7 +60,7 @@ func TestImportAndPad(t *testing.T) {
 						Index:   inpCt.GetCommit(build, "INDEX"),
 						ToHash:  inpCt.GetCommit(build, "TO_HASH"),
 						NBytes:  inpCt.GetCommit(build, "NBYTES"),
-						Limb:    inpCt.GetCommit(build, "LIMBS"),
+						Limbs:   []ifaces.Column{inpCt.GetCommit(build, "LIMBS")},
 					}},
 					PaddingStrategy: uc.UseCase,
 				}
@@ -111,7 +112,7 @@ func checkPaddingAssignment(t *testing.T, run *wizard.ProverRuntime, paddingFunc
 	var (
 		paddedGdm = &generic.GenDataModule{
 			HashNum: mod.HashNum,
-			Limb:    mod.Limbs,
+			Limbs:   []ifaces.Column{mod.Limbs},
 			NBytes:  mod.NBytes,
 			ToHash:  mod.IsActive,
 			Index:   mod.Index,

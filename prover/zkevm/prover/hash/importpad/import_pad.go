@@ -189,10 +189,13 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 
 	comp.InsertProjection(
 		ifaces.QueryIDf("%v_IMPORT_PAD_PROJECTION", inp.Name),
-		query.ProjectionInput{ColumnA: []ifaces.Column{inp.Src.Data.HashNum, inp.Src.Data.Limb, inp.Src.Data.NBytes, inp.Src.Data.Index},
-			ColumnB: []ifaces.Column{res.HashNum, res.Limbs, res.NBytes, res.Index},
+		query.ProjectionInput{
+			ColumnA: append(inp.Src.Data.Limbs, inp.Src.Data.HashNum, inp.Src.Data.NBytes, inp.Src.Data.Index),
+			ColumnB: []ifaces.Column{res.Limbs, res.HashNum, res.NBytes, res.Index},
 			FilterA: inp.Src.Data.ToHash,
-			FilterB: res.IsInserted})
+			FilterB: res.IsInserted,
+		},
+	)
 
 	return res
 }
@@ -204,7 +207,7 @@ func (imp *Importation) Run(run *wizard.ProverRuntime) {
 		sha2Count = 0
 		srcData   = imp.Inputs.Src.Data
 		hashNum   = srcData.HashNum.GetColAssignment(run).IntoRegVecSaveAlloc()
-		limbs     = srcData.Limb.GetColAssignment(run).IntoRegVecSaveAlloc()
+		limbs     = srcData.Limbs[0].GetColAssignment(run).IntoRegVecSaveAlloc()
 		nBytes    = srcData.NBytes.GetColAssignment(run).IntoRegVecSaveAlloc()
 		index     = srcData.Index.GetColAssignment(run).IntoRegVecSaveAlloc()
 		toHash    = srcData.ToHash.GetColAssignment(run).IntoRegVecSaveAlloc()
