@@ -22,10 +22,6 @@ export const navList: NavItemProps[] = [
     href: "/bridge-aggregator",
   },
   {
-    title: "CEX",
-    href: "/layerswap",
-  },
-  {
     title: "Native Bridge",
     description: "Bridge from Ethereum via Linea’s official bridge",
     icon: <NativeBridgeIcon />,
