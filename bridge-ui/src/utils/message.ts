@@ -69,11 +69,11 @@ export const getEstimatedTimeText = (fromChain: Chain, token: Token, opts: GetEs
   const minuteUnit = isAbbreviatedTimeUnit ? "mins" : "minute";
   const secondUnit = isAbbreviatedTimeUnit ? "secs" : "second";
 
-  if (isCctp(token)) {
+  if (isCctp(token) && fromChain.layer === ChainLayer.L1) {
     return `22 ${secondUnit}${spaceChar}-${spaceChar}19 ${minuteUnit}`;
   }
   if (fromChain.layer === ChainLayer.L1) {
     return `20 ${minuteUnit}`;
   }
-  return `8${spaceChar}-${spaceChar}32 ${hourUnit}`;
+  return `2${spaceChar}-${spaceChar}16 ${hourUnit}`;
 };
