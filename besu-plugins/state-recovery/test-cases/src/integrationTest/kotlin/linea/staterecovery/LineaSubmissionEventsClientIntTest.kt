@@ -178,7 +178,7 @@ class LineaSubmissionEventsClientIntTest {
       .filter { it.aggregation != null }
       .map { (aggregation, aggBlobs) ->
         val expectedDataSubmittedEvents: List<DataSubmittedV3> = aggBlobs
-          .chunked(6)
+          .chunked(9)
           .map { blobsChunk ->
             DataSubmittedV3(
               parentShnarf = blobsChunk.first().blobCompressionProof!!.prevShnarf,
