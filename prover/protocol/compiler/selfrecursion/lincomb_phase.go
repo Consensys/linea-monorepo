@@ -39,18 +39,34 @@ func (ctx *SelfRecursionCtx) RowLinearCombinationPhase() {
 
 // Gather the alleged evaluation proven by vortex into a vector
 func (ctx *SelfRecursionCtx) defineYs() {
-	ranges := []ifaces.ColID{}
+	var (
+		rangesNonSis = []ifaces.ColID{}
+		rangesSis = []ifaces.ColID{}
+	)
 	// Includes the precomputed colIds
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		precompColIds := make([]ifaces.ColID, len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
 		for i, col := range ctx.VortexCtx.Items.Precomputeds.PrecomputedColums {
 			precompColIds[i] = col.GetColID()
 		}
-		ranges = append(ranges, precompColIds...)
+		// If SIS is applied to precomputed, we need to add the precomputed
+		// columns to the rangesSis, otherwise we add them to rangesNonSis
+		if ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+			rangesSis = append(rangesSis, precompColIds...)
+		} else {
+			rangesNonSis = append(rangesNonSis, precompColIds...)
+		}
 	}
-	for _, colIDs := range ctx.VortexCtx.CommitmentsByRounds.Inner() {
-		ranges = append(ranges, colIDs...)
+	// Collect the SIS round commitments
+	for _, colIDs := range ctx.VortexCtx.CommitmentsByRoundsSIS.Inner() {
+		rangesSis = append(rangesSis, colIDs...)
 	}
+	// Collect the non-SIS round commitments
+	for _, colIDs := range ctx.VortexCtx.CommitmentsByRoundsNonSIS.Inner() {
+		rangesNonSis = append(rangesNonSis, colIDs...)
+	}
+	// append the ranges
+	ranges := append(rangesNonSis, rangesSis...)
 	ctx.Columns.Ys = verifiercol.NewFromYs(ctx.comp, ctx.VortexCtx.Query, ranges)
 }
 

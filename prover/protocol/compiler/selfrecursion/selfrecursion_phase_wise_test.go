@@ -6,7 +6,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -25,9 +27,9 @@ type testCase = struct {
 func testCaseGenerator() []testCase {
 	var (
 		numTests = 3
-		polSize = 1 << 4
-		nPols   = 16
-		rows    = make([]ifaces.Column, nPols)
+		polSize  = 1 << 4
+		nPols    = 16
+		rows     = make([]ifaces.Column, nPols)
 		// variables for multi-round
 		nPolsMultiRound = []int{14, 8, 9, 16}
 		numRounds       = 4
@@ -259,6 +261,8 @@ func testCaseGenerator() []testCase {
 }
 
 func TestSelfRecursionLinComb(t *testing.T) {
+	// Mute the logs
+	logrus.SetLevel(logrus.FatalLevel)
 	testCases := testCaseGenerator()
 	for _, tc := range testCases {
 		t.Run(tc.Explainer, func(t *testing.T) {
@@ -268,7 +272,47 @@ func TestSelfRecursionLinComb(t *testing.T) {
 					2,
 					vortex.WithOptionalSISHashingThreshold(9),
 				),
-				selfrecursion.SelfRecurse,
+				selfrecursion.SelfRecurseLinCombPhaseOnly,
+				dummy.Compile,
+			)
+			proof := wizard.Prove(compiled, tc.Prove)
+			valid := wizard.Verify(compiled, proof)
+
+			require.NoErrorf(t, valid, "the proof did not pass")
+		})
+	}
+}
+
+func TestSelfRecursionLinCombMultiLayered(t *testing.T) {
+	// Mute the logs
+	logrus.SetLevel(logrus.FatalLevel)
+
+	testCases := testCaseGenerator()
+	for _, tc := range testCases {
+		t.Run(tc.Explainer, func(t *testing.T) {
+			logrus.Infof("Testing %s", tc.Explainer)
+			compiled := wizard.Compile(
+				tc.Define,
+				vortex.Compile(
+					2,
+					vortex.WithOptionalSISHashingThreshold(9),
+				),
+				selfrecursion.SelfRecurseLinCombPhaseOnly,
+				mimc.CompileMiMC,
+				compiler.Arcane(
+					compiler.WithTargetColSize(1<<10)),
+				vortex.Compile(
+					2,
+					vortex.WithOptionalSISHashingThreshold(9),
+				),
+				selfrecursion.SelfRecurseLinCombPhaseOnly,
+				mimc.CompileMiMC,
+				compiler.Arcane(
+					compiler.WithTargetColSize(1<<10)),
+				vortex.Compile(
+					2,
+					vortex.WithOptionalSISHashingThreshold(9),
+				),
 				dummy.Compile,
 			)
 			proof := wizard.Prove(compiled, tc.Prove)

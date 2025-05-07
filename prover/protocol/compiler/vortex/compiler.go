@@ -215,7 +215,13 @@ type Ctx struct {
 	NumOpenedCol int
 
 	// By rounds commitments
+	// Todo: To remove it completely after the change for
+	// optional sis hasing is complete for self recursion
 	CommitmentsByRounds collection.VecVec[ifaces.ColID]
+	// SIS round commitments
+	CommitmentsByRoundsSIS collection.VecVec[ifaces.ColID]
+	// Non SIS round commitments
+	CommitmentsByRoundsNonSIS collection.VecVec[ifaces.ColID]
 
 	// RunStateNamePrefix is used to prefix some of the names of components of the
 	// compilation context. Mainly state objects.
@@ -308,12 +314,10 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			MerkleProofs  ifaces.Column
 			MerkleRoots   []ifaces.Column
 		}{},
-		// rowsCount : initialized to zero, set a posteriori
-		// when compiling the instance.
-		// numcol : set a posteriori during the compilation
-		// vortex params : the vortex params are set a posteriori
-		// during the compilation
+		// Declare the by rounds/sis rounds/non-sis rounds commitments
 		CommitmentsByRounds: collection.NewVecVec[ifaces.ColID](),
+		CommitmentsByRoundsSIS:        collection.NewVecVec[ifaces.ColID](),
+		CommitmentsByRoundsNonSIS:     collection.NewVecVec[ifaces.ColID](),
 	}
 
 	for _, pol := range ctx.Query.Pols {
@@ -327,7 +331,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	// Preallocate all the merkle roots for all rounds
 	ctx.Items.MerkleRoots = make([]ifaces.Column, comp.NumRounds())
 
-	// Declare the IsSISApplied slice
+	// Declare the RoundStatus slice
 	ctx.RoundStatus = make([]roundStatus, 0, comp.NumRounds())
 
 	return ctx
@@ -447,8 +451,10 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	if onlyMiMCApplied {
 		ctx.RoundStatus = append(ctx.RoundStatus, IsOnlyMiMCApplied)
+		ctx.CommitmentsByRoundsNonSIS.AppendToInner(round, coms...)
 	} else {
 		ctx.RoundStatus = append(ctx.RoundStatus, IsSISApplied)
+		ctx.CommitmentsByRoundsSIS.AppendToInner(round, coms...)
 	}
 
 	ctx.CommitmentsByRounds.AppendToInner(round, coms...)
@@ -768,7 +774,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
 
 	log := logrus.
-		WithField("where", "processStatusPrecomputed").
+		WithField("where isSISAppliedForCommitment", !onlyMiMCApplied).
 		WithField("nbPrecomputedRows", nbUnskippedPrecomputedCols).
 		WithField("nbShadowRows", numShadowRows)
 
