@@ -41,7 +41,6 @@ class CoordinatorConfigTest {
       conflationDeadlineCheckInterval = Duration.parse("PT3S"),
       conflationDeadlineLastBlockConfirmationDelay = Duration.parse("PT2S"),
       blocksLimit = 2,
-      _tracesLimitsV1 = expectedTracesCountersV1,
       _tracesLimitsV2 = expectedTracesLimitsV2,
       _smartContractErrors = mapOf(
         // L1 Linea Rollup

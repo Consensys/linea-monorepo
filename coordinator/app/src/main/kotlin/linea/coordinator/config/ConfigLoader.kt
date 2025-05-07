@@ -7,7 +7,6 @@ import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getOrElse
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.addPathSource
-import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.zkevm.coordinator.app.config.BlockParameterDecoder
 import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
@@ -103,7 +102,6 @@ fun loadConfigsOrError(
   val baseConfig = coordinatorBaseConfigs.get()!!
   val finalConfig = baseConfig.copy(
     conflation = baseConfig.conflation.copy(
-      _tracesLimitsV1 = tracesLimitsV1Configs?.get()?.tracesLimits?.let { TracesCountersV1(it) },
       _tracesLimitsV2 = tracesLimitsV2Configs?.get()?.tracesLimits?.let { TracesCountersV2(it) },
       _smartContractErrors = smartContractErrorsConfig.get()!!.smartContractErrors
     ),

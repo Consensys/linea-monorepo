@@ -55,7 +55,7 @@ class TracesConflationCoordinatorImpl(
       requestConflatedTraces(blocks).thenCompose { tracesConflationResult: GenerateTracesResponse ->
         // these 2 requests can be done in parallel, but traces-api is much slower to respond so
         // requesting stateManger after traces-API because
-        // and we want to avoid having stateManager heavy JSON responses in memory in the meantime
+        // we want to avoid having stateManager heavy JSON responses in memory in the meantime
         requestStateMerkleProof(
           sortedByNumber.first().number,
           sortedByNumber.last().number

@@ -15,7 +15,6 @@ import net.consensys.linea.ethereum.gaspricing.dynamiccap.TimeOfDayMultipliers
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.getAllTimeOfDayKeys
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.traces.TracesCounters
-import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.TracingModuleV1
 import net.consensys.linea.traces.TracingModuleV2
@@ -41,7 +40,6 @@ data class ConflationConfig(
   val conflationDeadlineCheckInterval: Duration,
   val conflationDeadlineLastBlockConfirmationDelay: Duration,
   val blocksLimit: Long? = null,
-  private var _tracesLimitsV1: TracesCountersV1?,
   private var _tracesLimitsV2: TracesCountersV2?,
   private var _smartContractErrors: SmartContractErrors?,
   val fetchBlocksLimit: Int,
@@ -62,9 +60,6 @@ data class ConflationConfig(
       ?.let { it.mapKeys { it.key.lowercase() } }
       ?: emptyMap()
   }
-
-  val tracesLimitsV1: TracesCounters
-    get() = _tracesLimitsV1 ?: throw IllegalStateException("Traces limits not defined!")
 
   val tracesLimitsV2: TracesCounters
     get() = _tracesLimitsV2 ?: throw IllegalStateException("Traces limits not defined!")
