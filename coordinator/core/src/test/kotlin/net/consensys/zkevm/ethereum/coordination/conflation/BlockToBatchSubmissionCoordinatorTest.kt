@@ -4,7 +4,7 @@ import com.github.michaelbull.result.Ok
 import io.vertx.core.Vertx
 import io.vertx.junit5.VertxExtension
 import linea.domain.createBlock
-import net.consensys.linea.traces.TracesCountersV1
+import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.zkevm.coordinator.clients.GetTracesCountersResponse
 import net.consensys.zkevm.coordinator.clients.TracesCountersClientV1
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreated
@@ -32,7 +32,7 @@ class BlockToBatchSubmissionCoordinatorTest {
     private val randomBlock = createBlock(number = 100UL)
     private val baseBlock = BlockCreated(randomBlock)
     private val blockRlpEncoded = ByteArray(0)
-    private val tracesCounters = TracesCountersV1.EMPTY_TRACES_COUNT
+    private val tracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT
   }
 
   private fun createBlockToBatchSubmissionCoordinator(
