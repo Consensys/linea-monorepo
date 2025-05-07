@@ -158,7 +158,6 @@ jobs:
 
       ### update the release notes with docker hashes
       - name: create the release notes and then the release
-        # if: ${{ github.event_name == 'workflow_dispatch' }}
         id: release_create_artifacts
         run: |
           cd release
@@ -199,7 +198,6 @@ jobs:
           echo "output.md=$(cat output.md)"
 
       - name: release - publish artifacts and release notes
-        # if: ${{ github.event_name == 'workflow_dispatch' }}
         id: release_publish
         uses: softprops/action-gh-release@v2
         with:
