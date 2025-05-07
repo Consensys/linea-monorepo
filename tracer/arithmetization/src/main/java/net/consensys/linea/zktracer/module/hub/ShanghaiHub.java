@@ -16,11 +16,13 @@
 package net.consensys.linea.zktracer.module.hub;
 
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.module.hub.section.create.ShanghaiCreateSection;
 import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.ShanghaiInitializationSection;
 import net.consensys.linea.zktracer.module.hub.state.ShanghaiTransactionStack;
 import net.consensys.linea.zktracer.module.hub.state.TransactionStack;
 import net.consensys.linea.zktracer.module.txndata.module.ShanghaiTxnData;
 import net.consensys.linea.zktracer.module.txndata.module.TxnData;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.gascalculator.ShanghaiGasCalculator;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -55,5 +57,10 @@ public class ShanghaiHub extends LondonHub {
     // since EIP-3651 (Shanghai), the coinbase address is warm at the beginning of the transaction,
     // so obviously at the end.
     return true;
+  }
+
+  @Override
+  protected void setCreateSection(final Hub hub, final MessageFrame frame) {
+    new ShanghaiCreateSection(hub, frame);
   }
 }

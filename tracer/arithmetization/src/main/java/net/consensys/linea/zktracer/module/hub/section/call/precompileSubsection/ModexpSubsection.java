@@ -26,9 +26,9 @@ import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.f
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forModexpFullResultCopy;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forModexpLoadLead;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forModexpPartialResultCopy;
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.ModexpXbsCase.OOB_INST_MODEXP_BBS;
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.ModexpXbsCase.OOB_INST_MODEXP_EBS;
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.ModexpXbsCase.OOB_INST_MODEXP_MBS;
+import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase.OOB_INST_MODEXP_BBS;
+import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase.OOB_INST_MODEXP_EBS;
+import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase.OOB_INST_MODEXP_MBS;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.PRC_FAILURE_KNOWN_TO_RAM;
 
 import java.math.BigInteger;
@@ -38,11 +38,11 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.exp.ModexpLogExpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.ModexpCallDataSizeOobCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.ModexpExtractOobCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.ModexpLeadOobCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.ModexpPricingOobCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.ModexpXbsOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpCallDataSizeOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpExtractOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpLeadOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpPricingOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsOobCall;
 import net.consensys.linea.zktracer.module.hub.precompiles.ModexpMetadata;
 import net.consensys.linea.zktracer.module.hub.section.call.CallSection;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
@@ -80,7 +80,7 @@ public class ModexpSubsection extends PrecompileSubsection {
       return;
     }
 
-    final ModexpCallDataSizeOobCall firstOobCall = new ModexpCallDataSizeOobCall();
+    final ModexpCallDataSizeOobCall firstOobCall = new ModexpCallDataSizeOobCall(modexpMetaData);
     firstImcFragment.callOob(firstOobCall);
 
     final ImcFragment secondImcFragment = ImcFragment.empty(hub);
@@ -89,7 +89,9 @@ public class ModexpSubsection extends PrecompileSubsection {
       final MmuCall mmuCall = forModexpExtractBbs(hub, this, modexpMetaData);
       secondImcFragment.callMmu(mmuCall);
     }
-    final ModexpXbsOobCall secondOobCall = new ModexpXbsOobCall(OOB_INST_MODEXP_BBS);
+
+    final ModexpXbsOobCall secondOobCall =
+        new ModexpXbsOobCall(modexpMetaData, OOB_INST_MODEXP_BBS);
     secondImcFragment.callOob(secondOobCall);
 
     final ImcFragment thirdImcFragment = ImcFragment.empty(hub);
@@ -98,7 +100,7 @@ public class ModexpSubsection extends PrecompileSubsection {
       final MmuCall mmuCall = forModexpExtractEbs(hub, this, modexpMetaData);
       thirdImcFragment.callMmu(mmuCall);
     }
-    final ModexpXbsOobCall thirdOobCall = new ModexpXbsOobCall(OOB_INST_MODEXP_EBS);
+    final ModexpXbsOobCall thirdOobCall = new ModexpXbsOobCall(modexpMetaData, OOB_INST_MODEXP_EBS);
     thirdImcFragment.callOob(thirdOobCall);
 
     final ImcFragment fourthImcFragment = ImcFragment.empty(hub);
@@ -107,12 +109,13 @@ public class ModexpSubsection extends PrecompileSubsection {
       final MmuCall mmuCall = forModexpExtractMbs(hub, this, modexpMetaData);
       fourthImcFragment.callMmu(mmuCall);
     }
-    final ModexpXbsOobCall fourthOobCall = new ModexpXbsOobCall(OOB_INST_MODEXP_MBS);
+    final ModexpXbsOobCall fourthOobCall =
+        new ModexpXbsOobCall(modexpMetaData, OOB_INST_MODEXP_MBS);
     fourthImcFragment.callOob(fourthOobCall);
 
     final ImcFragment fifthImcFragment = ImcFragment.empty(hub);
     fragments().add(fifthImcFragment);
-    final ModexpLeadOobCall fifthOobCall = new ModexpLeadOobCall();
+    final ModexpLeadOobCall fifthOobCall = new ModexpLeadOobCall(modexpMetaData);
     fifthImcFragment.callOob(fifthOobCall);
     if (modexpMetaData.loadRawLeadingWord()) {
       final MmuCall mmuCall = forModexpLoadLead(hub, this, modexpMetaData);
@@ -124,13 +127,13 @@ public class ModexpSubsection extends PrecompileSubsection {
     final ImcFragment sixthImcFragment = ImcFragment.empty(hub);
     fragments().add(sixthImcFragment);
     final long calleeGas = callSection.stpCall.effectiveChildContextGasAllowance();
-    sixthOobCall = new ModexpPricingOobCall(calleeGas);
+    sixthOobCall = new ModexpPricingOobCall(modexpMetaData, calleeGas);
     sixthImcFragment.callOob(sixthOobCall);
 
     // We need to trigger the OOB before CALL's execution
     if (sixthOobCall.isRamSuccess()) {
       seventhImcFragment = ImcFragment.empty(hub);
-      final ModexpExtractOobCall seventhOobCall = new ModexpExtractOobCall();
+      final ModexpExtractOobCall seventhOobCall = new ModexpExtractOobCall(modexpMetaData);
       seventhImcFragment.callOob(seventhOobCall);
     }
   }

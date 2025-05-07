@@ -1,5 +1,5 @@
 /*
- * Copyright ConsenSys AG.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,14 +13,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles;
+package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common;
 
-import static net.consensys.linea.zktracer.Trace.OOB_INST_BLAKE_CDS;
-import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_BLAKE2F_CDS;
-import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToEQ;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToIsZero;
 import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.getOpCode;
 import static net.consensys.linea.zktracer.types.Conversions.*;
+
+import java.math.BigInteger;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -38,14 +37,17 @@ import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
-public class Blake2fCallDataSizeOobCall extends OobCall {
+public abstract class CommonPrecompileOobCall extends OobCall {
+  final Bytes calleeGas;
   EWord cds;
   EWord returnAtCapacity;
   boolean hubSuccess;
+  BigInteger returnGas;
   boolean returnAtCapacityNonZero;
+  boolean cdsIsZero; // Necessary to compute extractCallData and emptyCallData
 
-  public Blake2fCallDataSizeOobCall() {
-    super();
+  protected CommonPrecompileOobCall(final BigInteger calleeGas) {
+    this.calleeGas = bigIntegerToBytes(calleeGas);
   }
 
   @Override
@@ -53,49 +55,68 @@ public class Blake2fCallDataSizeOobCall extends OobCall {
     final OpCode opCode = getOpCode(frame);
     final int cdsIndex = opCode.callHasValueArgument() ? 4 : 3;
     final int returnAtCapacityIndex = opCode.callHasValueArgument() ? 6 : 5;
-    final EWord cds = EWord.of(frame.getStackItem(cdsIndex));
+
+    final EWord callDataSize = EWord.of(frame.getStackItem(cdsIndex));
+
     final EWord returnAtCapacity = EWord.of(frame.getStackItem(returnAtCapacityIndex));
-    setCds(cds);
+    setCds(callDataSize);
     setReturnAtCapacity(returnAtCapacity);
   }
 
   @Override
   public void callExoModules(Add add, Mod mod, Wcp wcp) {
     // row i
-    final OobExoCall validCdsCall = callToEQ(wcp, cds, Bytes.of(213));
-    exoCalls.add(validCdsCall);
-    setHubSuccess(bytesToBoolean(validCdsCall.result()));
+    final OobExoCall cdsIsZeroCall = callToIsZero(wcp, cds);
+    exoCalls.add(cdsIsZeroCall);
+    final boolean cdsIsZero = bytesToBoolean(cdsIsZeroCall.result());
 
     // row i + 1
-    final OobExoCall racIsZeroCall = callToIsZero(wcp, returnAtCapacity);
-    exoCalls.add(racIsZeroCall);
-    setReturnAtCapacityNonZero(!bytesToBoolean(racIsZeroCall.result()));
+    final OobExoCall returnAtCapacityCall = callToIsZero(wcp, returnAtCapacity);
+    exoCalls.add(returnAtCapacityCall);
+    final boolean returnAtCapacityIsZero = bytesToBoolean(returnAtCapacityCall.result());
+
+    setCdsIsZero(cdsIsZero);
+    setReturnAtCapacityNonZero(!returnAtCapacityIsZero);
   }
 
-  @Override
-  public int ctMax() {
-    return CT_MAX_BLAKE2F_CDS;
+  public boolean getExtractCallData() {
+    return hubSuccess && !cdsIsZero;
+  }
+
+  public boolean getCallDataIsEmpty() {
+    return hubSuccess && cdsIsZero;
   }
 
   @Override
   public Trace.Oob trace(Trace.Oob trace) {
+    traceOobInstructionInOob(trace);
     return trace
-        .isBlake2FCds(true)
-        .oobInst(OOB_INST_BLAKE_CDS)
+        .data1(calleeGas)
         .data2(cds.trimLeadingZeros())
         .data3(returnAtCapacity.trimLeadingZeros())
         .data4(booleanToBytes(hubSuccess)) // Set after the constructor
+        .data5(bigIntegerToBytes(returnGas)) // Set after the constructor
+        .data6(booleanToBytes(getExtractCallData())) // Derived from other parameters
+        .data7(booleanToBytes(getCallDataIsEmpty())) // Derived from other parameters
         .data8(booleanToBytes(returnAtCapacityNonZero)); // Set after the constructor
   }
 
+  protected abstract void traceOobInstructionInOob(Trace.Oob trace);
+
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
+    traceOobInstructionInHub(trace);
     return trace
         .pMiscOobFlag(true)
-        .pMiscOobInst(OOB_INST_BLAKE_CDS)
+        .pMiscOobData1(calleeGas)
         .pMiscOobData2(cds.trimLeadingZeros())
         .pMiscOobData3(returnAtCapacity.trimLeadingZeros())
         .pMiscOobData4(booleanToBytes(hubSuccess)) // Set after the constructor
+        .pMiscOobData5(bigIntegerToBytes(returnGas)) // Set after the constructor
+        .pMiscOobData6(booleanToBytes(getExtractCallData())) // Derived from other parameters
+        .pMiscOobData7(booleanToBytes(getCallDataIsEmpty())) // Derived from other parameters
         .pMiscOobData8(booleanToBytes(returnAtCapacityNonZero)); // Set after the constructor
   }
+
+  protected abstract void traceOobInstructionInHub(Trace.Hub trace);
 }

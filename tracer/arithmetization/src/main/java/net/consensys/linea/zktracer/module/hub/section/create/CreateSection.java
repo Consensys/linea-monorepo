@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.section;
+package net.consensys.linea.zktracer.module.hub.section.create;
 
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario.*;
@@ -34,9 +34,10 @@ import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.MxpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.StpCall;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.CreateOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.create.CreateOobCall;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.scenario.CreateScenarioFragment.CreateScenario;
+import net.consensys.linea.zktracer.module.hub.section.TraceSection;
 import net.consensys.linea.zktracer.module.hub.signals.AbortingConditions;
 import net.consensys.linea.zktracer.module.hub.signals.Exceptions;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
@@ -54,7 +55,7 @@ import org.hyperledger.besu.evm.internal.Words;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public class CreateSection extends TraceSection
+public abstract class CreateSection extends TraceSection
     implements PostOpcodeDefer,
         ContextEntryDefer,
         PostRollbackDefer,
@@ -125,6 +126,12 @@ public class CreateSection extends TraceSection
       return;
     }
 
+    // MAXCSX case: EIP-3860 in Shanghai
+    final boolean endOfCreateSection = maxCodeSizeExceptionalCreate(exceptions);
+    if (endOfCreateSection) {
+      return;
+    }
+
     // MXPX case
     final MxpCall mxpCall = new MxpCall(hub);
     imcFragment.callMxp(mxpCall);
@@ -145,7 +152,7 @@ public class CreateSection extends TraceSection
     checkArgument(Exceptions.none(exceptions));
     hub.currentFrame().childSpanningSection(this);
 
-    final CreateOobCall oobCall = new CreateOobCall();
+    final CreateOobCall oobCall = createOobCall();
     imcFragment.callOob(oobCall);
 
     firstCreator = AccountSnapshot.canonical(hub, frame.getWorldUpdater(), creatorAddress);
@@ -196,8 +203,6 @@ public class CreateSection extends TraceSection
     }
 
     // unexceptional, unaborted, non-failing, non-emptyInitCode CREATE(2)
-    /////////////////////////////////////////////////////////////////////
-
     // we charge for the gas paid out of pocket
     commonValues.payGasPaidOutOfPocket(hub);
 
@@ -441,7 +446,7 @@ public class CreateSection extends TraceSection
   }
 
   private void scheduleSection(Hub hub) {
-    CreateScenario scenario = scenarioFragment.getScenario();
+    final CreateScenario scenario = scenarioFragment.getScenario();
     final CallFrame currentFrame = hub.currentFrame();
     switch (scenario) {
       case CREATE_EXCEPTION -> {}
@@ -497,4 +502,8 @@ public class CreateSection extends TraceSection
   private boolean nontrivialCreate2(OpCode opCode, long size) {
     return (opCode == CREATE2 && size != 0);
   }
+
+  protected abstract boolean maxCodeSizeExceptionalCreate(final short exceptions);
+
+  protected abstract CreateOobCall createOobCall();
 }

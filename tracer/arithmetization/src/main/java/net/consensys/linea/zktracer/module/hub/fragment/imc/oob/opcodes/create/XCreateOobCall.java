@@ -1,5 +1,5 @@
 /*
- * Copyright Consensys Software Inc.
+ * Copyright ConsenSys Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,13 +13,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes;
+package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.create;
 
-import static net.consensys.linea.zktracer.Trace.MAX_CODE_SIZE;
-import static net.consensys.linea.zktracer.Trace.OOB_INST_DEPLOYMENT;
-import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_DEPLOYMENT;
+import static net.consensys.linea.zktracer.Trace.*;
+import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_XCREATE;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
-import static net.consensys.linea.zktracer.types.Conversions.*;
+import static net.consensys.linea.zktracer.module.txndata.moduleOperation.ShanghaiTxndataOperation.MAX_INIT_CODE_SIZE_BYTES;
+import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -28,59 +28,50 @@ import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
 import net.consensys.linea.zktracer.module.mod.Mod;
-import net.consensys.linea.zktracer.module.oob.OobExoCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.EWord;
-import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
-public class DeploymentOobCall extends OobCall {
-  private static final Bytes MAX_CODE_SIZE_BYTES = Bytes.ofUnsignedLong(MAX_CODE_SIZE);
-  EWord size;
-  boolean maxCodeSizeException;
+public class XCreateOobCall extends OobCall {
+  EWord codeSize;
 
-  public DeploymentOobCall() {
+  public XCreateOobCall() {
     super();
   }
 
   @Override
   public void setInputData(MessageFrame frame, Hub hub) {
-    setSize(EWord.of(frame.getStackItem(1)));
+    setCodeSize(EWord.of(frame.getStackItem(2)));
   }
 
   @Override
   public void callExoModules(Add add, Mod mod, Wcp wcp) {
-    // row i
-    final OobExoCall exceedsMaxCodeSizeCall = callToLT(wcp, MAX_CODE_SIZE_BYTES, size);
-    exoCalls.add(exceedsMaxCodeSizeCall);
-    final boolean exceedsMaxCodeSize = bytesToBoolean(exceedsMaxCodeSizeCall.result());
-    setMaxCodeSizeException(exceedsMaxCodeSize);
+    exoCalls.add(callToLT(wcp, MAX_INIT_CODE_SIZE_BYTES, codeSize));
   }
 
   @Override
   public int ctMax() {
-    return CT_MAX_DEPLOYMENT;
+    return CT_MAX_XCREATE;
   }
 
   @Override
   public Trace.Oob trace(Trace.Oob trace) {
     return trace
-        .isDeployment(true)
-        .oobInst(OOB_INST_DEPLOYMENT)
-        .data1(size.hi())
-        .data2(size.lo())
-        .data7(booleanToBytes(maxCodeSizeException));
+        .isXcreate(true)
+        .oobInst(OOB_INST_XCREATE)
+        .data1(codeSize.hi())
+        .data2(codeSize.lo())
+        .outgoingResLo(booleanToBytes(true));
   }
 
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
     return trace
         .pMiscOobFlag(true)
-        .pMiscOobInst(OOB_INST_DEPLOYMENT)
-        .pMiscOobData1(size.hi())
-        .pMiscOobData2(size.lo())
-        .pMiscOobData7(booleanToBytes(maxCodeSizeException));
+        .pMiscOobInst(OOB_INST_XCREATE)
+        .pMiscOobData1(codeSize.hi())
+        .pMiscOobData2(codeSize.lo());
   }
 }

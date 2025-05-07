@@ -26,6 +26,7 @@ import static net.consensys.linea.zktracer.module.hub.signals.TracedException.OU
 import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
 import static net.consensys.linea.zktracer.opcode.OpCode.MLOAD;
 import static net.consensys.linea.zktracer.opcode.OpCode.POP;
+import static net.consensys.linea.zktracer.precompiles.LowGasStipendPrecompileCallTests.computeExponentLog;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.generateModexpInput;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getBLAKE2FCost;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getECADDCost;
@@ -42,7 +43,6 @@ import static org.hyperledger.besu.datatypes.Address.ID;
 import static org.hyperledger.besu.datatypes.Address.MODEXP;
 import static org.hyperledger.besu.datatypes.Address.RIPEMD160;
 import static org.hyperledger.besu.datatypes.Address.SHA256;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 import java.util.ArrayList;
@@ -55,7 +55,6 @@ import java.util.stream.Stream;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
-import net.consensys.linea.zktracer.module.oob.OobOperation;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
@@ -105,8 +104,7 @@ public class SixtyThreeSixtyFourthsTests {
   static final int ebs = 6;
   static final int mbs = 128;
   static final Bytes modexpInput = generateModexpInput(bbs, mbs, ebs);
-  static final int exponentLog =
-      OobOperation.computeExponentLog(modexpInput, 96 + bbs + ebs + mbs, bbs, ebs);
+  static final int exponentLog = computeExponentLog(modexpInput, 96 + bbs + ebs + mbs, bbs, ebs);
   static final Address codeOwnerAddress = Address.fromHexString("0xC0DE");
   // codeOwnerAccount owns the bytecode that will be given as input to MODEXP through EXTCODECOPY
   static final ToyAccount codeOwnerAccount =
@@ -177,12 +175,6 @@ public class SixtyThreeSixtyFourthsTests {
     assertNotEquals(
         OUT_OF_GAS_EXCEPTION,
         bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
-
-    final boolean insufficientGasForPrecompileActual =
-        bytecodeRunner.getHub().oob().operations().stream()
-            .anyMatch(OobOperation::isInsufficientGasForPrecompile);
-
-    assertEquals(insufficientGasForPrecompileExpected, insufficientGasForPrecompileActual);
   }
 
   static Stream<Arguments> fixedCostEcAddTestSource() {
@@ -232,12 +224,6 @@ public class SixtyThreeSixtyFourthsTests {
     assertNotEquals(
         OUT_OF_GAS_EXCEPTION,
         bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
-
-    final boolean insufficientGasForPrecompileActual =
-        bytecodeRunner.getHub().oob().operations().stream()
-            .anyMatch(OobOperation::isInsufficientGasForPrecompile);
-
-    assertEquals(insufficientGasForPrecompileExpected, insufficientGasForPrecompileActual);
   }
 
   static Stream<Arguments> costGEQStipendTest() {

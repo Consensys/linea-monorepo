@@ -15,19 +15,32 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob;
 
-import lombok.RequiredArgsConstructor;
+import java.util.ArrayList;
+import java.util.List;
+
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.add.Add;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceSubFragment;
+import net.consensys.linea.zktracer.module.mod.Mod;
+import net.consensys.linea.zktracer.module.oob.OobExoCall;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /** This interface defines the API required to execute a call to the OOB module. */
-@RequiredArgsConstructor
 public abstract class OobCall implements TraceSubFragment {
 
-  public final OobInstruction oobInstruction;
+  public final List<OobExoCall> exoCalls;
 
-  public int oobInstructionValue() {
-    return oobInstruction.getValue();
+  protected OobCall() {
+    exoCalls = new ArrayList<>(ctMax());
   }
 
   public abstract Trace.Oob trace(Trace.Oob trace);
+
+  public abstract void setInputData(MessageFrame frame, Hub hub);
+
+  public abstract void callExoModules(final Add add, final Mod mod, final Wcp wcp);
+
+  public abstract int ctMax();
 }

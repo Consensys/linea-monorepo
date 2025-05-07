@@ -20,12 +20,14 @@ import static net.consensys.linea.zktracer.types.AddressUtils.isAddressWarm;
 import static net.consensys.linea.zktracer.types.AddressUtils.isPrecompile;
 
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.module.hub.section.create.LondonCreateSection;
 import net.consensys.linea.zktracer.module.hub.section.txInitializationSection.LondonInitializationSection;
 import net.consensys.linea.zktracer.module.hub.state.LondonTransactionStack;
 import net.consensys.linea.zktracer.module.hub.state.TransactionStack;
 import net.consensys.linea.zktracer.module.txndata.module.LondonTxnData;
 import net.consensys.linea.zktracer.module.txndata.module.TxnData;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.gascalculator.LondonGasCalculator;
 import org.hyperledger.besu.evm.worldstate.WorldView;
@@ -66,5 +68,10 @@ public class LondonHub extends Hub {
     return isExceptional() || opCode() == REVERT
         ? currentTx.isCoinbasePreWarmed()
         : isAddressWarm(messageFrame(), coinbaseAddress());
+  }
+
+  @Override
+  protected void setCreateSection(final Hub hub, final MessageFrame frame) {
+    new LondonCreateSection(hub, frame);
   }
 }

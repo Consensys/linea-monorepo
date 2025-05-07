@@ -16,23 +16,25 @@
 package net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.OOB_INST_RIPEMD;
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.OOB_INST_SHA2;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.PRC_SHA2_256;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.PRC_FAILURE_KNOWN_TO_HUB;
 import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.RIPEMD;
 import static net.consensys.linea.zktracer.module.shakiradata.HashFunction.SHA256;
 
+import java.math.BigInteger;
+
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.PrecompileCommonOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.shaRipId.RipOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.shaRipId.Sha2OobCall;
 import net.consensys.linea.zktracer.module.hub.section.call.CallSection;
 import net.consensys.linea.zktracer.module.shakiradata.ShakiraDataOperation;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 
 public class ShaTwoOrRipemdSubSection extends PrecompileSubsection {
-  final PrecompileCommonOobCall oobCall;
+  final CommonPrecompileOobCall oobCall;
 
   public ShaTwoOrRipemdSubSection(Hub hub, CallSection callSection) {
     super(hub, callSection);
@@ -40,8 +42,8 @@ public class ShaTwoOrRipemdSubSection extends PrecompileSubsection {
     final long calleeGas = callSection.stpCall.effectiveChildContextGasAllowance();
     oobCall =
         switch (flag()) {
-          case PRC_SHA2_256 -> new PrecompileCommonOobCall(OOB_INST_SHA2, calleeGas);
-          case PRC_RIPEMD_160 -> new PrecompileCommonOobCall(OOB_INST_RIPEMD, calleeGas);
+          case PRC_SHA2_256 -> new Sha2OobCall(BigInteger.valueOf(calleeGas));
+          case PRC_RIPEMD_160 -> new RipOobCall(BigInteger.valueOf(calleeGas));
           default -> throw new IllegalArgumentException(
               String.format(
                   "Precompile address %s not supported by constructor", this.flag().toString()));

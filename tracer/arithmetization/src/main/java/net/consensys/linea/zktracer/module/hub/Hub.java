@@ -39,6 +39,7 @@ import lombok.Getter;
 import lombok.experimental.Accessors;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
@@ -60,6 +61,7 @@ import net.consensys.linea.zktracer.module.hub.section.copy.CallDataCopySection;
 import net.consensys.linea.zktracer.module.hub.section.copy.CodeCopySection;
 import net.consensys.linea.zktracer.module.hub.section.copy.ExtCodeCopySection;
 import net.consensys.linea.zktracer.module.hub.section.copy.ReturnDataCopySection;
+import net.consensys.linea.zktracer.module.hub.section.create.CreateSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.ReturnSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.RevertSection;
 import net.consensys.linea.zktracer.module.hub.section.halt.SelfdestructSection;
@@ -137,6 +139,8 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 @Slf4j
 @Accessors(fluent = true)
 public abstract class Hub implements Module {
+
+  public final Fork fork;
 
   /** The {@link GasCalculator} used in this version of the arithmetization */
   public final GasCalculator gasCalculator = setGasCalculator();
@@ -363,6 +367,7 @@ public abstract class Hub implements Module {
   }
 
   public Hub(final ChainConfig chain) {
+    fork = chain.fork;
     checkState(chain.id.signum() >= 0);
     Address l2l1ContractAddress = chain.bridgeConfiguration.contract();
     final Bytes l2l1Topic = chain.bridgeConfiguration.topic();
@@ -981,7 +986,7 @@ public abstract class Hub implements Module {
 
       case JUMP -> new JumpSection(this);
 
-      case CREATE -> new CreateSection(this, frame);
+      case CREATE -> setCreateSection(this, frame);
 
       case CALL -> new CallSection(this, frame);
 
@@ -1072,6 +1077,10 @@ public abstract class Hub implements Module {
   }
 
   protected boolean coinbaseWarmthAtTxEnd() {
+    throw new IllegalStateException("must be implemented");
+  }
+
+  protected void setCreateSection(final Hub hub, final MessageFrame frame) {
     throw new IllegalStateException("must be implemented");
   }
 }

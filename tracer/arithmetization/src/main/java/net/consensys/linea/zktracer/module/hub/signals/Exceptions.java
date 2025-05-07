@@ -15,14 +15,16 @@
 
 package net.consensys.linea.zktracer.module.hub.signals;
 
-import static net.consensys.linea.zktracer.Trace.EIP_3541_MARKER;
-import static net.consensys.linea.zktracer.Trace.MAX_CODE_SIZE;
+import static net.consensys.linea.zktracer.Fork.isPostShanghai;
+import static net.consensys.linea.zktracer.Trace.*;
+import static net.consensys.linea.zktracer.opcode.OpCode.RETURN;
 import static net.consensys.linea.zktracer.runtime.callstack.CallFrame.getOpCode;
 import static org.hyperledger.besu.evm.internal.Words.clampedToInt;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import java.util.function.Consumer;
 
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -197,8 +199,7 @@ public class Exceptions {
   }
 
   private static boolean isInvalidCodePrefix(MessageFrame frame) {
-    if (frame.getType() != MessageFrame.Type.CONTRACT_CREATION
-        || getOpCode(frame) != OpCode.RETURN) {
+    if (frame.getType() != MessageFrame.Type.CONTRACT_CREATION || getOpCode(frame) != RETURN) {
       return false;
     }
     final long size = clampedToLong(frame.getStackItem(1));
@@ -213,18 +214,29 @@ public class Exceptions {
     return firstByte == (byte) EIP_3541_MARKER;
   }
 
-  private static boolean isCodeSizeOverflow(MessageFrame frame) {
-    if (frame.getType() != MessageFrame.Type.CONTRACT_CREATION
-        || getOpCode(frame) != OpCode.RETURN) {
+  private static boolean isCodeSizeOverflow(MessageFrame frame, Fork fork) {
+    final OpCode opCode = getOpCode(frame);
+    if (opCode != RETURN && !opCode.isCreate()) {
       return false;
     }
 
-    final long codeSize = clampedToLong(frame.getStackItem(1));
-    return codeSize > MAX_CODE_SIZE;
-  }
-
-  public static boolean isOogxOrUnexceptional(short exceptions) {
-    return Exceptions.none(exceptions) || Exceptions.outOfGasException(exceptions);
+    switch (opCode) {
+      case RETURN -> {
+        if (frame.getType() != MessageFrame.Type.CONTRACT_CREATION) {
+          return false;
+        }
+        final long codeSize = clampedToLong(frame.getStackItem(1));
+        return codeSize > MAX_CODE_SIZE;
+      }
+      case CREATE, CREATE2 -> {
+        if (!isPostShanghai(fork)) {
+          return false;
+        }
+        final long initCodeSize = clampedToLong(frame.getStackItem(2));
+        return initCodeSize > MAX_INIT_CODE_SIZE;
+      }
+      default -> throw new IllegalStateException("Unexpected value: " + opCode);
+    }
   }
 
   /**
@@ -249,7 +261,7 @@ public class Exceptions {
     if (isStaticFault(frame, opCodeData)) {
       return STATIC_FAULT;
     }
-    if (isCodeSizeOverflow(frame)) {
+    if (isCodeSizeOverflow(frame, hub.fork)) {
       return MAX_CODE_SIZE_EXCEPTION;
     }
 
