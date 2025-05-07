@@ -175,8 +175,15 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		return nil, fmt.Errorf("could not serialize interface value of type %q: %w", v.Type().String(), err)
 	}
 
+	concreteType := getPkgPathAndTypeNameIndirect(concrete.Interface())
+
+	_, err = findRegisteredImplementation(concreteType)
+	if err != nil {
+		logrus.Infof("MISSING concrete type in implementation registry:%s \n", concreteType)
+	}
+
 	raw := map[string]interface{}{
-		"type":  getPkgPathAndTypeNameIndirect(concrete.Interface()),
+		"type":  concreteType,
 		"value": rawValue,
 	}
 	return serializeAnyWithCborPkg(raw)
@@ -186,8 +193,6 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 // Column types can be either Natural or ManuallyShifted
 func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	concrete := v.Elem()
-
-	// logrus.Infof("Serializing elem:%s with concreteType:%s \n", concrete, concrete.Type().String())
 
 	var data json.RawMessage
 	var err error
@@ -199,7 +204,6 @@ func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, erro
 		if err != nil {
 			return nil, err
 		}
-		// return data, nil
 
 	case manuallyShiftedType:
 		shifted := v.Interface().(*dedicated.ManuallyShifted)
@@ -208,7 +212,6 @@ func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, erro
 		if err != nil {
 			return nil, err
 		}
-		// return data, nil
 
 	default:
 		return nil, fmt.Errorf("unsupported column type in DeclarationMode: %s", concrete.Type().String())
@@ -404,20 +407,19 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 		shifted := v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)
 		ifaceValue.Set(reflect.ValueOf(shifted))
 		return ifaceValue, nil
-	}
+	default:
+		concreteType, err := findRegisteredImplementation(raw.Type)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("failed to find concrete type and deserialize interface %q: %w", t.Name(), err)
+		}
 
-	concreteType, err := findRegisteredImplementation(raw.Type)
-	if err != nil {
-		return reflect.Value{}, fmt.Errorf("failed to find concrete type and deserialize interface %q: %w", t.Name(), err)
+		v, err := DeserializeValue(raw.Value, mode, concreteType, comp)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("failed to deserialize interface %q: %w", t.Name(), err)
+		}
+		ifaceValue.Set(v)
+		return ifaceValue, nil
 	}
-
-	v, err := DeserializeValue(raw.Value, mode, concreteType, comp)
-	if err != nil {
-		return reflect.Value{}, fmt.Errorf("failed to deserialize interface %q: %w", t.Name(), err)
-	}
-
-	ifaceValue.Set(v)
-	return ifaceValue, nil
 }
 
 func deserializePointer(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
@@ -429,35 +431,36 @@ func deserializePointer(data json.RawMessage, mode Mode, t reflect.Type, comp *w
 }
 
 func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
+	// Handle ReferenceMode for naturalType
 	if mode == ReferenceMode && t == naturalType {
 		var colID ifaces.ColID
 		if err := deserializeAnyWithCborPkg(data, &colID); err != nil {
 			return reflect.Value{}, fmt.Errorf("could not deserialize column ID: %w", err)
 		}
-		nat := comp.Columns.GetHandle(colID)
-		return reflect.ValueOf(nat), nil
+		return reflect.ValueOf(comp.Columns.GetHandle(colID)), nil
 	}
 
+	// Handle DeclarationMode for naturalType
 	if mode == DeclarationMode && t == naturalType {
 		rawType := reflect.TypeOf(&serializableColumnDecl{})
 		v, err := DeserializeValue(data, mode, rawType, comp)
 		if err != nil {
 			return reflect.Value{}, fmt.Errorf("could not deserialize column interface declaration: %w", err)
 		}
-		nat := v.Interface().(*serializableColumnDecl).intoNaturalAndRegister(comp)
-		return reflect.ValueOf(nat), nil
+		return reflect.ValueOf(v.Interface().(*serializableColumnDecl).intoNaturalAndRegister(comp)), nil
 	}
 
+	// Handle DeclarationMode for manuallyShiftedType
 	if mode == DeclarationMode && t == manuallyShiftedType {
 		rawType := reflect.TypeOf(&serializableManuallyShifted{})
 		v, err := DeserializeValue(data, mode, rawType, comp)
 		if err != nil {
 			return reflect.Value{}, fmt.Errorf("could not deserialize column interface declaration: %w", err)
 		}
-		shiftCol := v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)
-		return reflect.ValueOf(shiftCol), nil
+		return reflect.ValueOf(v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)), nil
 	}
 
+	// Handle ReferenceMode for queryType
 	if mode == ReferenceMode && t.Implements(queryType) {
 		var queryID ifaces.QueryID
 		if err := deserializeAnyWithCborPkg(data, &queryID); err != nil {
@@ -469,40 +472,47 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		if comp.QueriesNoParams.Exists(queryID) {
 			return reflect.ValueOf(comp.QueriesNoParams.Data(queryID)), nil
 		}
-		utils.Panic("could not find requested query ID: %v", queryID)
+		utils.Panic("Could not find requested query ID: %v", queryID)
 	}
 
+	// Adjust mode for queryType or columnType
 	newMode := mode
 	if t.Implements(queryType) || t.Implements(columnType) {
 		newMode = ReferenceMode
 	}
 
-	logrus.Infof("Decoding raw map with passed in type:%v \n", t)
+	// Decode raw map
 	var raw map[string]json.RawMessage
 	if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
 		return reflect.Value{}, fmt.Errorf("could not deserialize struct type %q: %w", t.Name(), err)
 	}
 
+	// Deserialize fields
 	v := reflect.New(t).Elem()
 	cache := getStructFieldCache(t)
+
 	for _, f := range cache.fields {
 		if unicode.IsLower(rune(f.name[0])) {
-			continue
+			continue // Skip unexported fields
 		}
 
 		fieldRaw, ok := raw[f.rawName]
 		if !ok {
-			utils.Panic("missing struct field %q.%v of type %q, provided sub-JSON: %v", t.String(), f.name, f.fieldType.String(), raw)
+			utils.Panic("Missing struct field %q.%v of type %q, provided sub-JSON: %v", t.String(), f.name, f.fieldType.String(), raw)
 		}
 
 		fieldValue, err := DeserializeValue(fieldRaw, newMode, f.fieldType, comp)
 		if err != nil {
-			utils.Panic("could not deserialize struct field %q.%v of type %q: %v", t.String(), f.name, f.fieldType.String(), err)
+			utils.Panic("Could not deserialize struct field %q.%v of type %q: %v", t.String(), f.name, f.fieldType.String(), err)
 		}
+
+		// Handle pointer types
+		if fieldValue.Type().Kind() == reflect.Ptr && fieldValue.Type().Elem() == f.fieldType {
+			fieldValue = fieldValue.Elem()
+		}
+
 		v.FieldByName(f.name).Set(fieldValue)
 	}
-
-	logrus.Infof("Success Decoding raw map with passed in type:%v \n", t)
 
 	return v, nil
 }
