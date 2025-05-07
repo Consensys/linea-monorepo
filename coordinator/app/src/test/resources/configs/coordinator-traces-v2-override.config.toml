@@ -10,7 +10,6 @@ fs-requests-directory = "/data/prover/v3/aggregation/requests"
 fs-responses-directory = "/data/prover/v3/aggregation/responses"
 
 [traces]
-switch-to-linea-besu=true
 blob-compressor-version="V1_0_1"
 expected-traces-api-version-v2="v0.8.0-rc8"
 [traces.counters-v2]

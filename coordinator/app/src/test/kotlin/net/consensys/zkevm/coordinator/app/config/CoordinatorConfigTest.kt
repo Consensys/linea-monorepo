@@ -23,7 +23,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
-import org.mockito.kotlin.timeout
 import java.math.BigInteger
 import java.net.URI
 import java.nio.file.Path
@@ -97,37 +96,26 @@ class CoordinatorConfigTest {
     )
 
     private val tracesConfig = TracesConfig(
-      switchToLineaBesu = false,
       blobCompressorVersion = BlobCompressorVersion.V0_1_0,
       rawExecutionTracesVersion = "0.2.0",
-      expectedTracesApiVersion = "0.2.0",
-      counters = TracesConfig.FunctionalityEndpoint(
+      expectedTracesApiVersionV2 = "v0.8.0-rc8",
+      conflationV2 = TracesConfig.FunctionalityEndpoint(
+        endpoints = listOf(java.net.URI("http://traces-node-v2:8545/").toURL()),
+        requestLimitPerEndpoint = 1U,
+        requestRetry = RequestRetryConfigTomlFriendly(
+          backoffDelay = Duration.parse("PT1S"),
+          failuresWarningThreshold = 2
+        )
+      ),
+      countersV2 = TracesConfig.FunctionalityEndpoint(
         listOf(
-          URI("http://traces-api:8080/").toURL()
+          URI("http://traces-node-v2:8545/").toURL()
         ),
-        requestLimitPerEndpoint = 2U,
+        requestLimitPerEndpoint = 1U,
         requestRetry = RequestRetryConfigTomlFriendly(
           backoffDelay = Duration.parse("PT1S"),
           failuresWarningThreshold = 2
         )
-      ),
-      conflation = TracesConfig.FunctionalityEndpoint(
-        endpoints = listOf(
-          URI("http://traces-api:8080/").toURL()
-        ),
-        requestLimitPerEndpoint = 2U,
-        requestRetry = RequestRetryConfigTomlFriendly(
-          backoffDelay = Duration.parse("PT1S"),
-          failuresWarningThreshold = 2
-        )
-      ),
-      fileManager = TracesConfig.FileManager(
-        tracesFileExtension = "json.gz",
-        rawTracesDirectory = Path.of("/data/traces/raw"),
-        nonCanonicalRawTracesDirectory = Path.of("/data/traces/raw-non-canonical"),
-        createNonCanonicalDirectory = true,
-        pollingInterval = Duration.parse("PT1S"),
-        tracesFileCreationWaitTimeout = Duration.parse("PT2M")
       )
     )
 
@@ -465,23 +453,10 @@ class CoordinatorConfigTest {
           )
         ),
         traces = tracesConfig.copy(
-          switchToLineaBesu = true,
           blobCompressorVersion = BlobCompressorVersion.V1_0_1,
           expectedTracesApiVersionV2 = "v0.8.0-rc8",
-          conflationV2 = tracesConfig.conflation.copy(
-            endpoints = listOf(URI("http://traces-node-v2:8545/").toURL()),
-            requestLimitPerEndpoint = 1U
-          ),
-          countersV2 = TracesConfig.FunctionalityEndpoint(
-            listOf(
-              URI("http://traces-node-v2:8545/").toURL()
-            ),
-            requestLimitPerEndpoint = 1U,
-            requestRetry = RequestRetryConfigTomlFriendly(
-              backoffDelay = Duration.parse("PT1S"),
-              failuresWarningThreshold = 2
-            )
-          )
+          conflationV2 = tracesConfig.conflationV2,
+          countersV2 = tracesConfig.countersV2,
         ),
         proversConfig = proversConfig.copy(
           proverA = proversConfig.proverA.copy(

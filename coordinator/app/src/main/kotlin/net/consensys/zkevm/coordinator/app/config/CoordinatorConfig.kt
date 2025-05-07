@@ -181,26 +181,11 @@ data class AggregationConfig(
 
 data class TracesConfig(
   val rawExecutionTracesVersion: String,
-  val expectedTracesApiVersion: String,
-  val counters: FunctionalityEndpoint,
-  val conflation: FunctionalityEndpoint,
-  val fileManager: FileManager,
-  val switchToLineaBesu: Boolean = false,
   val blobCompressorVersion: BlobCompressorVersion,
-  val expectedTracesApiVersionV2: String? = null,
-  val countersV2: FunctionalityEndpoint? = null,
-  val conflationV2: FunctionalityEndpoint? = null
+  val expectedTracesApiVersionV2: String,
+  val countersV2: FunctionalityEndpoint,
+  val conflationV2: FunctionalityEndpoint
 ) {
-  init {
-    if (switchToLineaBesu) {
-      require(expectedTracesApiVersionV2 != null) {
-        "expectedTracesApiVersionV2 is required when switching to linea besu for tracing"
-      }
-      require(countersV2 != null) { "countersV2 is required when switching to linea besu for tracing" }
-      require(conflationV2 != null) { "conflationV2 is required when switching to linea besu for tracing" }
-    }
-  }
-
   data class FunctionalityEndpoint(
     val endpoints: List<URL>,
     val requestLimitPerEndpoint: UInt,
