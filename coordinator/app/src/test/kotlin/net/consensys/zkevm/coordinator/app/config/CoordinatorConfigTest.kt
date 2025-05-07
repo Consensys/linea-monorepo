@@ -456,7 +456,7 @@ class CoordinatorConfigTest {
           blobCompressorVersion = BlobCompressorVersion.V1_0_1,
           expectedTracesApiVersionV2 = "v0.8.0-rc8",
           conflationV2 = tracesConfig.conflationV2,
-          countersV2 = tracesConfig.countersV2,
+          countersV2 = tracesConfig.countersV2
         ),
         proversConfig = proversConfig.copy(
           proverA = proversConfig.proverA.copy(
