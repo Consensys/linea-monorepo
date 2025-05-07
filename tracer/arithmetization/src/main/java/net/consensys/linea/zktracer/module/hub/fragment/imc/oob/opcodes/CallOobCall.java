@@ -15,64 +15,102 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes;
 
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.OOB_INST_CALL;
+import static net.consensys.linea.zktracer.Trace.OOB_INST_CALL;
+import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_CALL;
+import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToIsZero;
+import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.types.Conversions.*;
-
-import java.math.BigInteger;
 
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.add.Add;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
+import net.consensys.linea.zktracer.module.mod.Mod;
+import net.consensys.linea.zktracer.module.oob.OobExoCall;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
+import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.evm.account.Account;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
 public class CallOobCall extends OobCall {
+  public static final Bytes MAX_CALL_STACK_DEPTH_BYTES = Bytes.ofUnsignedInt(1024);
+
   public EWord value;
-  BigInteger balance;
-  BigInteger callStackDepth;
+  Bytes balance;
+  Bytes callStackDepth;
   boolean abortingCondition;
 
   public CallOobCall() {
-    super(OOB_INST_CALL);
+    super();
   }
 
-  public BigInteger valueHi() {
-    return value.hiBigInt();
+  @Override
+  public void setInputData(MessageFrame frame, Hub hub) {
+    final Account callerAccount = frame.getWorldUpdater().get(frame.getRecipientAddress());
+    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+
+    // DELEGATECALL, STATICCALL can't trasfer value,
+    // CALL, CALLCODE may transfer value
+    final EWord value =
+        opCode.callHasValueArgument() ? EWord.of(frame.getStackItem(2)) : EWord.ZERO;
+    setValue(value);
+    setBalance(bigIntegerToBytes(callerAccount.getBalance().toUnsignedBigInteger()));
+    setCallStackDepth(Bytes.ofUnsignedInt(frame.getDepth()));
   }
 
-  public BigInteger valueLo() {
-    return value.loBigInt();
+  @Override
+  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+    // row i
+    final OobExoCall insufficientBalanceAbortCall = callToLT(wcp, balance, value);
+    exoCalls.add(insufficientBalanceAbortCall);
+    final boolean insufficientBalanceAbort = bytesToBoolean(insufficientBalanceAbortCall.result());
+
+    // row i + 1
+    final OobExoCall callStackDepthAbortCall =
+        callToLT(wcp, callStackDepth, MAX_CALL_STACK_DEPTH_BYTES);
+    exoCalls.add(callStackDepthAbortCall);
+    final boolean callStackDepthAbort = !bytesToBoolean(callStackDepthAbortCall.result());
+
+    // row i + 2
+    exoCalls.add(callToIsZero(wcp, value));
+
+    setAbortingCondition(insufficientBalanceAbort || callStackDepthAbort);
+  }
+
+  @Override
+  public int ctMax() {
+    return CT_MAX_CALL;
   }
 
   @Override
   public Trace.Oob trace(Trace.Oob trace) {
     return trace
-        .data1(bigIntegerToBytes(valueHi()))
-        .data2(bigIntegerToBytes(valueLo()))
-        .data3(bigIntegerToBytes(balance))
-        .data4(ZERO)
-        .data5(ZERO)
-        .data6(bigIntegerToBytes(callStackDepth))
+        .isCall(true)
+        .oobInst(OOB_INST_CALL)
+        .data1(value.hi())
+        .data2(value.lo())
+        .data3(balance)
+        .data6(callStackDepth)
         .data7(booleanToBytes(!value.isZero()))
-        .data8(booleanToBytes(abortingCondition))
-        .data9(ZERO);
+        .data8(booleanToBytes(abortingCondition));
   }
 
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
     return trace
         .pMiscOobFlag(true)
-        .pMiscOobInst(oobInstructionValue())
-        .pMiscOobData1(bigIntegerToBytes(valueHi()))
-        .pMiscOobData2(bigIntegerToBytes(valueLo()))
-        .pMiscOobData3(bigIntegerToBytes(balance))
-        .pMiscOobData4(ZERO)
-        .pMiscOobData5(ZERO)
-        .pMiscOobData6(bigIntegerToBytes(callStackDepth))
+        .pMiscOobInst(OOB_INST_CALL)
+        .pMiscOobData1(value.hi())
+        .pMiscOobData2(value.lo())
+        .pMiscOobData3(balance)
+        .pMiscOobData6(callStackDepth)
         .pMiscOobData7(booleanToBytes(!value.isZero()))
-        .pMiscOobData8(booleanToBytes(abortingCondition))
-        .pMiscOobData9(ZERO);
+        .pMiscOobData8(booleanToBytes(abortingCondition));
   }
 }

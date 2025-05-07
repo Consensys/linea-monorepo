@@ -16,32 +16,38 @@ package net.consensys.linea.zktracer.module.hub.section.call.precompileSubsectio
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileFlag.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.PRC_FAILURE_KNOWN_TO_HUB;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.PRC_FAILURE_KNOWN_TO_RAM;
 
+import java.math.BigInteger;
+
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.PrecompileCommonOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.EcPairingOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.ecAddMulRecover.EcAddOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.ecAddMulRecover.EcMulOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.ecAddMulRecover.EcRecoverOobCall;
 import net.consensys.linea.zktracer.module.hub.section.call.CallSection;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 import org.apache.tuweni.bytes.Bytes;
 
 public class EllipticCurvePrecompileSubsection extends PrecompileSubsection {
-  final PrecompileCommonOobCall oobCall;
+  final CommonPrecompileOobCall oobCall;
 
   public EllipticCurvePrecompileSubsection(Hub hub, CallSection callSection) {
     super(hub, callSection);
 
-    final long calleeGas = callSection.stpCall.effectiveChildContextGasAllowance();
+    final BigInteger calleeGas =
+        BigInteger.valueOf(callSection.stpCall.effectiveChildContextGasAllowance());
     oobCall =
         switch (flag()) {
-          case PRC_ECRECOVER -> new PrecompileCommonOobCall(OOB_INST_ECRECOVER, calleeGas);
-          case PRC_ECADD -> new PrecompileCommonOobCall(OOB_INST_ECADD, calleeGas);
-          case PRC_ECMUL -> new PrecompileCommonOobCall(OOB_INST_ECMUL, calleeGas);
-          case PRC_ECPAIRING -> new PrecompileCommonOobCall(OOB_INST_ECPAIRING, calleeGas);
+          case PRC_ECRECOVER -> new EcRecoverOobCall(calleeGas);
+          case PRC_ECADD -> new EcAddOobCall(calleeGas);
+          case PRC_ECMUL -> new EcMulOobCall(calleeGas);
+          case PRC_ECPAIRING -> new EcPairingOobCall(calleeGas);
           default -> throw new IllegalArgumentException(
               String.format(
                   "Precompile address %s not supported by constructor", this.flag().toString()));

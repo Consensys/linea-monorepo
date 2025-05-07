@@ -29,4 +29,11 @@ public enum Fork {
       case PRAGUE -> "prague";
     };
   }
+
+  public static boolean isPostShanghai(Fork fork) {
+    return switch (fork) {
+      case LONDON -> false;
+      case SHANGHAI, CANCUN, PRAGUE -> true;
+    };
+  }
 }

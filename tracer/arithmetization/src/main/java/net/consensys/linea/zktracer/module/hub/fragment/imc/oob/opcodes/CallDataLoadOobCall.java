@@ -15,63 +15,75 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes;
 
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.OOB_INST_CDL;
+import static net.consensys.linea.zktracer.Trace.OOB_INST_CDL;
+import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_CDL;
+import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.types.Conversions.*;
-
-import java.math.BigInteger;
 
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.add.Add;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
+import net.consensys.linea.zktracer.module.mod.Mod;
+import net.consensys.linea.zktracer.module.oob.OobExoCall;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
 public class CallDataLoadOobCall extends OobCall {
   EWord offset;
-  BigInteger cds;
+  Bytes cds;
   boolean cdlOutOfBounds;
 
   public CallDataLoadOobCall() {
-    super(OOB_INST_CDL);
+    super();
   }
 
-  public BigInteger offsetHi() {
-    return offset.hiBigInt();
+  @Override
+  public void setInputData(MessageFrame frame, Hub hub) {
+    setOffset(EWord.of(frame.getStackItem(0)));
+    setCds(Bytes.ofUnsignedLong(frame.getInputData().size()));
   }
 
-  public BigInteger offsetLo() {
-    return offset.loBigInt();
+  @Override
+  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+    // row i
+    final OobExoCall touchesRamCall = callToLT(wcp, offset, cds);
+    exoCalls.add(touchesRamCall);
+    final boolean touchesRam = bytesToBoolean(touchesRamCall.result());
+
+    setCdlOutOfBounds(!touchesRam);
+  }
+
+  @Override
+  public int ctMax() {
+    return CT_MAX_CDL;
   }
 
   @Override
   public Trace.Oob trace(Trace.Oob trace) {
     return trace
-        .data1(bigIntegerToBytes(offsetHi()))
-        .data2(bigIntegerToBytes(offsetLo()))
-        .data3(ZERO)
-        .data4(ZERO)
-        .data5(bigIntegerToBytes(cds))
-        .data6(ZERO)
-        .data7(booleanToBytes(cdlOutOfBounds))
-        .data8(ZERO)
-        .data9(ZERO);
+        .isCdl(true)
+        .oobInst(OOB_INST_CDL)
+        .data1(offset.hi())
+        .data2(offset.lo())
+        .data5(cds)
+        .data7(booleanToBytes(cdlOutOfBounds));
   }
 
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
     return trace
         .pMiscOobFlag(true)
-        .pMiscOobInst(oobInstructionValue())
-        .pMiscOobData1(bigIntegerToBytes(offsetHi()))
-        .pMiscOobData2(bigIntegerToBytes(offsetLo()))
-        .pMiscOobData3(ZERO)
-        .pMiscOobData4(ZERO)
-        .pMiscOobData5(bigIntegerToBytes(cds))
-        .pMiscOobData6(ZERO)
-        .pMiscOobData7(booleanToBytes(cdlOutOfBounds))
-        .pMiscOobData8(ZERO)
-        .pMiscOobData9(ZERO);
+        .pMiscOobInst(OOB_INST_CDL)
+        .pMiscOobData1(offset.hi())
+        .pMiscOobData2(offset.lo())
+        .pMiscOobData5(cds)
+        .pMiscOobData7(booleanToBytes(cdlOutOfBounds));
   }
 }

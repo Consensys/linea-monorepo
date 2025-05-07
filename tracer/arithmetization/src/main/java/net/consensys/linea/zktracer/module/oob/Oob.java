@@ -15,9 +15,6 @@
 
 package net.consensys.linea.zktracer.module.oob;
 
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.*;
-import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
-
 import java.util.List;
 
 import lombok.Getter;
@@ -29,7 +26,6 @@ import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedSet;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction;
 import net.consensys.linea.zktracer.module.mod.Mod;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 
@@ -54,57 +50,24 @@ public class Oob implements OperationSetModule<OobOperation> {
 
   public void call(OobCall oobCall) {
     final OobOperation oobOperation =
-        new OobOperation(oobCall, hub.messageFrame(), add, mod, wcp, hub);
+        new OobOperation(oobCall, hub, hub.messageFrame(), add, mod, wcp);
     operations.add(oobOperation);
   }
 
   final void traceOperation(final OobOperation oobOperation, int stamp, Trace.Oob trace) {
     final int nRows = oobOperation.nRows();
-    final OobInstruction oobInstruction = oobOperation.oobCall.oobInstruction;
+    final OobCall oobCall = oobOperation.getOobCall();
 
     for (int ct = 0; ct < nRows; ct++) {
-      trace = oobOperation.getOobCall().trace(trace);
+      trace.stamp(stamp).ct((short) ct).ctMax((short) oobOperation.ctMax());
 
-      // Note: if a value is bigger than 128, do not use Bytes.of and use Bytes.ofUnsignedType
-      // instead (according to size)
-      trace
-          .stamp(stamp)
-          .ct((short) ct)
-          .ctMax((short) oobOperation.ctMax())
-          .oobInst(oobInstruction.getValue())
-          .isJump(oobInstruction == OOB_INST_JUMP)
-          .isJumpi(oobInstruction == OOB_INST_JUMPI)
-          .isRdc(oobInstruction == OOB_INST_RDC)
-          .isCdl(oobInstruction == OOB_INST_CDL)
-          .isXcall(oobInstruction == OOB_INST_XCALL)
-          .isCall(oobInstruction == OOB_INST_CALL)
-          .isCreate(oobInstruction == OOB_INST_CREATE)
-          .isSstore(oobInstruction == OOB_INST_SSTORE)
-          .isDeployment(oobInstruction == OOB_INST_DEPLOYMENT)
-          .isEcrecover(oobInstruction == OOB_INST_ECRECOVER)
-          .isSha2(oobInstruction == OOB_INST_SHA2)
-          .isRipemd(oobInstruction == OOB_INST_RIPEMD)
-          .isIdentity(oobInstruction == OOB_INST_IDENTITY)
-          .isEcadd(oobInstruction == OOB_INST_ECADD)
-          .isEcmul(oobInstruction == OOB_INST_ECMUL)
-          .isEcpairing(oobInstruction == OOB_INST_ECPAIRING)
-          .isBlake2FCds(oobInstruction == OOB_INST_BLAKE_CDS)
-          .isBlake2FParams(oobInstruction == OOB_INST_BLAKE_PARAMS)
-          .isModexpCds(oobInstruction == OOB_INST_MODEXP_CDS)
-          .isModexpXbs(oobInstruction == OOB_INST_MODEXP_XBS)
-          .isModexpLead(oobInstruction == OOB_INST_MODEXP_LEAD)
-          .isModexpPricing(oobInstruction == OOB_INST_MODEXP_PRICING)
-          .isModexpExtract(oobInstruction == OOB_INST_MODEXP_EXTRACT)
-          .addFlag(oobOperation.getAddFlag()[ct])
-          .modFlag(oobOperation.getModFlag()[ct])
-          .wcpFlag(oobOperation.getWcpFlag()[ct])
-          .outgoingInst(oobOperation.getOutgoingInst()[ct])
-          .outgoingData1(bigIntegerToBytes(oobOperation.getOutgoingData1()[ct]))
-          .outgoingData2(bigIntegerToBytes(oobOperation.getOutgoingData2()[ct]))
-          .outgoingData3(bigIntegerToBytes(oobOperation.getOutgoingData3()[ct]))
-          .outgoingData4(bigIntegerToBytes(oobOperation.getOutgoingData4()[ct]))
-          .outgoingResLo(bigIntegerToBytes(oobOperation.getOutgoingResLo()[ct]))
-          .validateRow();
+      // Trace the OOB instruction
+      trace = oobCall.trace(trace);
+
+      // Trace the exo calls to ADD, MOD and WCP
+      oobCall.exoCalls.get(ct).trace(trace);
+
+      trace.fillAndValidateRow();
     }
   }
 

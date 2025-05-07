@@ -15,53 +15,67 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes;
 
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.*;
+import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_CALL_STIPEND;
+import static net.consensys.linea.zktracer.Trace.OOB_INST_SSTORE;
+import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_SSTORE;
+import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.types.Conversions.*;
-
-import java.math.BigInteger;
 
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.add.Add;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
+import net.consensys.linea.zktracer.module.mod.Mod;
+import net.consensys.linea.zktracer.module.oob.OobExoCall;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
 public class SstoreOobCall extends OobCall {
-  BigInteger gas;
+
+  private static final Bytes GAS_CONST_G_CALL_STIPEND_BYTES =
+      Bytes.minimalBytes(GAS_CONST_G_CALL_STIPEND);
+  Bytes gas;
   boolean sstorex;
 
   public SstoreOobCall() {
-    super(OOB_INST_SSTORE);
+    super();
+  }
+
+  @Override
+  public void setInputData(MessageFrame frame, Hub hub) {
+    setGas(Bytes.minimalBytes(frame.getRemainingGas()));
+  }
+
+  @Override
+  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+    // row i
+    final OobExoCall sufficientGasCall = callToLT(wcp, GAS_CONST_G_CALL_STIPEND_BYTES, gas);
+    exoCalls.add(sufficientGasCall);
+    final boolean sufficientGas = bytesToBoolean(sufficientGasCall.result());
+    setSstorex(!sufficientGas);
+  }
+
+  @Override
+  public int ctMax() {
+    return CT_MAX_SSTORE;
   }
 
   @Override
   public Trace.Oob trace(Trace.Oob trace) {
-    return trace
-        .data1(ZERO)
-        .data2(ZERO)
-        .data3(ZERO)
-        .data4(ZERO)
-        .data5(bigIntegerToBytes(gas))
-        .data6(ZERO)
-        .data7(booleanToBytes(sstorex))
-        .data8(ZERO)
-        .data9(ZERO);
+    return trace.isSstore(true).oobInst(OOB_INST_SSTORE).data5(gas).data7(booleanToBytes(sstorex));
   }
 
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
     return trace
         .pMiscOobFlag(true)
-        .pMiscOobInst(oobInstructionValue())
-        .pMiscOobData1(ZERO)
-        .pMiscOobData2(ZERO)
-        .pMiscOobData3(ZERO)
-        .pMiscOobData4(ZERO)
-        .pMiscOobData5(bigIntegerToBytes(gas))
-        .pMiscOobData6(ZERO)
-        .pMiscOobData7(booleanToBytes(sstorex))
-        .pMiscOobData8(ZERO)
-        .pMiscOobData9(ZERO);
+        .pMiscOobInst(OOB_INST_SSTORE)
+        .pMiscOobData5(gas)
+        .pMiscOobData7(booleanToBytes(sstorex));
   }
 }

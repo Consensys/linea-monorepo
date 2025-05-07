@@ -15,72 +15,91 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes;
 
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.*;
+import static net.consensys.linea.zktracer.Trace.OOB_INST_RDC;
+import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_RDC;
+import static net.consensys.linea.zktracer.module.oob.OobExoCall.*;
 import static net.consensys.linea.zktracer.types.Conversions.*;
-
-import java.math.BigInteger;
 
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.module.add.Add;
+import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
+import net.consensys.linea.zktracer.module.mod.Mod;
+import net.consensys.linea.zktracer.module.oob.OobExoCall;
+import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.EWord;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 @Getter
 @Setter
 public class ReturnDataCopyOobCall extends OobCall {
   EWord offset;
   EWord size;
-  BigInteger rds;
+  Bytes rds;
   boolean rdcx;
 
   public ReturnDataCopyOobCall() {
-    super(OOB_INST_RDC);
+    super();
   }
 
-  public BigInteger offsetHi() {
-    return offset.hiBigInt();
+  @Override
+  public void setInputData(MessageFrame frame, Hub hub) {
+    setOffset(EWord.of(frame.getStackItem(1)));
+    setSize(EWord.of(frame.getStackItem(2)));
+    setRds(Bytes.ofUnsignedLong(frame.getReturnData().size()));
   }
 
-  public BigInteger offsetLo() {
-    return offset.loBigInt();
+  @Override
+  public void callExoModules(Add add, Mod mod, Wcp wcp) {
+    // row i
+    final OobExoCall rdcOobCall = callToIsZero(wcp, Bytes.concatenate(offset.hi(), size.hi()));
+    exoCalls.add(rdcOobCall);
+    final boolean rdcRoob = !bytesToBoolean(rdcOobCall.result());
+
+    // row i + 1
+    final OobExoCall secondCall = rdcRoob ? noCall() : callToADD(add, offset, size);
+    exoCalls.add(secondCall);
+    final Bytes sum = secondCall.result();
+
+    // row i + 2
+    final OobExoCall thirdCall = rdcRoob ? noCall() : callToGT(wcp, sum, rds);
+    exoCalls.add(thirdCall);
+    final boolean rdcSoob = bytesToBoolean(thirdCall.result());
+
+    setRdcx(rdcRoob || rdcSoob);
   }
 
-  public BigInteger sizeHi() {
-    return size.hiBigInt();
-  }
-
-  public BigInteger sizeLo() {
-    return size.loBigInt();
+  @Override
+  public int ctMax() {
+    return CT_MAX_RDC;
   }
 
   @Override
   public Trace.Oob trace(Trace.Oob trace) {
     return trace
-        .data1(bigIntegerToBytes(offsetHi()))
-        .data2(bigIntegerToBytes(offsetLo()))
-        .data3(bigIntegerToBytes(sizeHi()))
-        .data4(bigIntegerToBytes(sizeLo()))
-        .data5(bigIntegerToBytes(rds))
-        .data6(ZERO)
-        .data7(booleanToBytes(rdcx))
-        .data8(ZERO)
-        .data9(ZERO);
+        .isRdc(true)
+        .oobInst(OOB_INST_RDC)
+        .data1(offset.hi())
+        .data2(offset.lo())
+        .data3(size.hi())
+        .data4(size.lo())
+        .data5(rds)
+        .data7(booleanToBytes(rdcx));
   }
 
   @Override
   public Trace.Hub trace(Trace.Hub trace) {
     return trace
         .pMiscOobFlag(true)
-        .pMiscOobInst(oobInstructionValue())
-        .pMiscOobData1(bigIntegerToBytes(offsetHi()))
-        .pMiscOobData2(bigIntegerToBytes(offsetLo()))
-        .pMiscOobData3(bigIntegerToBytes(sizeHi()))
-        .pMiscOobData4(bigIntegerToBytes(sizeLo()))
-        .pMiscOobData5(bigIntegerToBytes(rds))
-        .pMiscOobData6(ZERO)
-        .pMiscOobData7(booleanToBytes(rdcx))
-        .pMiscOobData8(ZERO)
-        .pMiscOobData9(ZERO);
+        .pMiscOobInst(OOB_INST_RDC)
+        .pMiscOobData1(offset.hi())
+        .pMiscOobData2(offset.lo())
+        .pMiscOobData3(size.hi())
+        .pMiscOobData4(size.lo())
+        .pMiscOobData5(rds)
+        .pMiscOobData7(booleanToBytes(rdcx));
   }
 }

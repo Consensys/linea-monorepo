@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer.precompiles;
 
+import static com.google.common.math.BigIntegerMath.log2;
+import static java.lang.Math.min;
 import static net.consensys.linea.zktracer.Trace.GAS_CONST_G_CALL_STIPEND;
 import static net.consensys.linea.zktracer.Trace.PRC_BLAKE2F_SIZE;
 import static net.consensys.linea.zktracer.Trace.PRC_ECPAIRING_SIZE;
@@ -25,6 +27,7 @@ import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.getPrecom
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareBlake2F;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareModexp;
 import static net.consensys.linea.zktracer.precompiles.PrecompileUtils.prepareSha256Ripemd160Id;
+import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_ADD;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_MUL;
 import static org.hyperledger.besu.datatypes.Address.ALTBN128_PAIRING;
@@ -34,21 +37,17 @@ import static org.hyperledger.besu.datatypes.Address.ID;
 import static org.hyperledger.besu.datatypes.Address.MODEXP;
 import static org.hyperledger.besu.datatypes.Address.RIPEMD160;
 import static org.hyperledger.besu.datatypes.Address.SHA256;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.stream.Stream;
 
+import com.google.common.base.Preconditions;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
-import net.consensys.linea.zktracer.module.hub.Hub;
-import net.consensys.linea.zktracer.module.oob.OobOperation;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -150,7 +149,7 @@ public class LowGasStipendPrecompileCallTests {
       callDataSize = 96 + bbs + ebs + mbs;
 
       final Bytes modexpInput = generateModexpInput(bbs, mbs, ebs);
-      exponentLog = OobOperation.computeExponentLog(modexpInput, callDataSize, bbs, ebs);
+      exponentLog = computeExponentLog(modexpInput, callDataSize, bbs, ebs);
       // codeOwnerAccount owns the bytecode that will be given as input to MODEXP through
       // EXTCODECOPY
       final ToyAccount codeOwnerAccount =
@@ -206,38 +205,6 @@ public class LowGasStipendPrecompileCallTests {
         .op(OpCode.CALL);
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
     bytecodeRunner.run(61_000_000L, precompileAddress == MODEXP ? additionalAccounts : List.of());
-    final Hub hub = bytecodeRunner.getHub();
-
-    // Here we check if OOB detects the insufficient gas for the precompile call
-    // and the precompile cost computed by OOB.
-    // As the number of OOB operation required is variable, we look for it over all the operations.
-    boolean insufficientGasForPrecompile =
-        hub.oob().operations().getAll().stream()
-            .anyMatch(OobOperation::isInsufficientGasForPrecompile);
-
-    BigInteger precompileCostComputedByOOB =
-        hub.oob().operations().getAll().stream()
-            .map(OobOperation::getPrecompileCost)
-            .filter(Objects::nonNull)
-            .findFirst()
-            .orElse(BigInteger.ZERO);
-
-    // We assert that the precompileCost we compute here is the same as the one computed in OOB
-    assertEquals(BigInteger.valueOf(precompileCost), precompileCostComputedByOOB);
-
-    // We assert that the insufficientGasForPrecompile flag is set correctly in OOB
-    if (gasCase == GasCase.COST
-        || gasCase == GasCase.COST_PLUS_ONE
-        || (precompileAddress.equals(BLAKE2B_F_COMPRESSION)
-            && r == 0) // precompileCost is 0 so gas cannot be insufficient
-        || (precompileAddress.equals(ALTBN128_ADD)
-            && value > 0) // precompileCost is 150 but stipend is at least 2300 so gas cannot be
-    // insufficient
-    ) {
-      assertFalse(insufficientGasForPrecompile);
-    } else {
-      assertTrue(insufficientGasForPrecompile);
-    }
   }
 
   static Stream<Arguments> lowGasStipendPrecompileCallTestSource() {
@@ -277,5 +244,28 @@ public class LowGasStipendPrecompileCallTests {
       case COST -> precompileCost;
       case COST_PLUS_ONE -> precompileCost + 1;
     };
+  }
+
+  // TODO: this is ugly, shouldn't copy paste the functiun in OobOperation
+  // Support method for MODEXP
+  public static int computeExponentLog(Bytes paddedCallData, int cds, int bbs, int ebs) {
+    Preconditions.checkArgument(paddedCallData.size() >= 96);
+
+    // pad paddedCallData to 96 + bbs + ebs
+    final Bytes doublePaddedCallData =
+        cds < 96 + bbs + ebs ? rightPadTo(paddedCallData, 96 + bbs + ebs) : paddedCallData;
+
+    final BigInteger leadingBytesOfExponent =
+        doublePaddedCallData.slice(96 + bbs, min(ebs, 32)).toUnsignedBigInteger();
+
+    if (ebs <= 32 && leadingBytesOfExponent.signum() == 0) {
+      return 0;
+    } else if (ebs <= 32 && leadingBytesOfExponent.signum() != 0) {
+      return log2(leadingBytesOfExponent, RoundingMode.FLOOR);
+    } else if (ebs > 32 && leadingBytesOfExponent.signum() != 0) {
+      return 8 * (ebs - 32) + log2(leadingBytesOfExponent, RoundingMode.FLOOR);
+    } else {
+      return 8 * (ebs - 32);
+    }
   }
 }

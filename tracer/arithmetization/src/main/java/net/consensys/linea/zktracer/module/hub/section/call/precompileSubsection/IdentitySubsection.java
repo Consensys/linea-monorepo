@@ -18,25 +18,27 @@ package net.consensys.linea.zktracer.module.hub.section.call.precompileSubsectio
 import static com.google.common.base.Preconditions.*;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.callDataExtractionForIdentity;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.partialCopyOfReturnDataForIdentity;
-import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobInstruction.OOB_INST_IDENTITY;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.PRC_FAILURE_KNOWN_TO_HUB;
+
+import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall;
-import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.PrecompileCommonOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.CommonPrecompileOobCall;
+import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.common.shaRipId.IdentityOobCall;
 import net.consensys.linea.zktracer.module.hub.section.call.CallSection;
 import net.consensys.linea.zktracer.runtime.callstack.CallFrame;
 
 public class IdentitySubsection extends PrecompileSubsection {
 
-  final PrecompileCommonOobCall oobCall;
+  final CommonPrecompileOobCall oobCall;
 
   public IdentitySubsection(final Hub hub, final CallSection callSection) {
     super(hub, callSection);
 
     final long calleeGas = callSection.stpCall.effectiveChildContextGasAllowance();
-    oobCall = new PrecompileCommonOobCall(OOB_INST_IDENTITY, calleeGas);
+    oobCall = new IdentityOobCall(BigInteger.valueOf(calleeGas));
     firstImcFragment.callOob(oobCall);
 
     if (!oobCall.isHubSuccess()) {
