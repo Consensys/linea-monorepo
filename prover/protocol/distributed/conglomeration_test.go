@@ -111,6 +111,7 @@ func TestConglomeration(t *testing.T) {
 
 	for i := range runGLs {
 		t.Logf("sanity-checking runGLs[%d]\n", i)
+		listPublicInputs(runGLs[i])
 		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runGLs[i])
 	}
 
@@ -121,6 +122,7 @@ func TestConglomeration(t *testing.T) {
 
 	for i := range runLPPs {
 		t.Logf("sanity-checking runLPPs[%d]\n", i)
+		listPublicInputs(runLPPs[i])
 		sanityCheckConglomeration(t, distWizard.CompiledConglomeration, runLPPs[i])
 	}
 

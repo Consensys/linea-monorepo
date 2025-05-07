@@ -1,12 +1,13 @@
 package distributed
 
 import (
-	"strings"
+	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -159,7 +160,6 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witn
 			}
 
 			col := runtime.Spec.Columns.GetHandle(col)
-
 			segment := SegmentOfColumn(runtime, moduleLPP.Disc, col, moduleIndex, nbSegmentModule)
 			moduleWitnessLPP.Columns[col.GetColID()] = segment
 		}
@@ -236,10 +236,15 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, col i
 	}
 
 	var (
-		start      = startSeg + index*newSize
-		end        = start + newSize
-		assignment = col.GetColAssignment(runtime)
+		start               = startSeg + index*newSize
+		end                 = start + newSize
+		assignment          = col.GetColAssignment(runtime)
+		padding, isPaddable = pragmas.IsPaddable(col)
 	)
+
+	if isPaddable || col.GetColID() == "SHA2_IMPORT_PAD_NBYTES" {
+		fmt.Printf("[SegmentOfColumn] column %v, index %v, total segment %v, start=%v, end=%v, size=%v newSize=%v\n", col.GetColID(), index, totalNbSegment, start, end, col.Size(), newSize)
+	}
 
 	isOOB := end > col.Size() || start < 0
 
@@ -248,8 +253,8 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, col i
 	// splitter and they will go OOB if they are used for more than 1 segment. When,
 	// this happens we "pad" it on the fly with zeroes to signify that they corresponds
 	// to unmatched lookup value.
-	if isOOB && strings.HasSuffix(string(col.GetColID()), "_LOGDERIVATIVE_M") {
-		return smartvectors.NewConstant(field.Zero(), newSize)
+	if isOOB && isPaddable {
+		return smartvectors.NewConstant(padding, newSize)
 	}
 
 	if isOOB {

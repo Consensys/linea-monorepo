@@ -1,6 +1,7 @@
 package logderivativesum
 
 import (
+	"fmt"
 	"runtime/debug"
 	"sync"
 
@@ -268,6 +269,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 		if a.Segmenter != nil {
 			sCol := column.RootsOf(a.S[i], true)[0].(column.Natural)
 			start, stop = a.Segmenter.SegmentBoundaryOf(run, sCol)
+			fmt.Printf("[SegmentBoundaryOf.output] module of col=%v, start=%v, stop=%v\n", sCol.ID, start, stop)
 		}
 
 		if hasFilter {
@@ -317,6 +319,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 	}
 
 	for frag := range m {
+		fmt.Printf("[M-logderivativesum] assigned column %v\n", a.M[frag].GetColID())
 		run.AssignColumn(a.M[frag].GetColID(), sv.NewRegular(m[frag]), wizard.DisableAssignmentSizeReduction)
 	}
 

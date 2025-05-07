@@ -198,7 +198,12 @@ func precompileInitialWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *w
 	mimc.CompileMiMC(comp)
 	// specialqueries.RangeProof(comp)
 	// specialqueries.CompileFixedPermutations(comp)
-	logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(disc)(comp)
+	logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(
+		&LPPSegmentBoundaryCalculator{
+			Disc:     disc.(*StandardModuleDiscoverer),
+			LPPArity: lppGroupingArity,
+		},
+	)(comp)
 	permutation.CompileIntoGdProduct(comp)
 	horner.ProjectionToHorner(comp)
 	return comp

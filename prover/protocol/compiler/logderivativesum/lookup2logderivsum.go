@@ -1,6 +1,8 @@
 package logderivativesum
 
 import (
+	"crypto/sha256"
+	"encoding/binary"
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
@@ -8,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -250,6 +253,8 @@ func captureLookupTables(comp *wizard.CompiledIOP, seg ColumnSegmenter) mainLook
 		Segmenter:       seg,
 	}
 
+	kept := []ifaces.QueryID{}
+
 	// Collect all the lookup queries into "lookups"
 	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
 
@@ -263,6 +268,11 @@ func captureLookupTables(comp *wizard.CompiledIOP, seg ColumnSegmenter) mainLook
 		// compilation process. We know that the query was already ignored at
 		// the beginning because we are iterating over the unignored keys.
 		comp.QueriesNoParams.MarkAsIgnored(qName)
+
+		if !isKeptQuery(qName) {
+			continue
+		}
+		kept = append(kept, qName)
 
 		var (
 			// checkedTable corresponds to the "included" table and lookupTable
@@ -307,6 +317,8 @@ func captureLookupTables(comp *wizard.CompiledIOP, seg ColumnSegmenter) mainLook
 		ctx.Rounds[tableName] = max(ctx.Rounds[tableName], comp.QueriesNoParams.Round(lookup.ID))
 
 	}
+
+	fmt.Printf("kept %v queries, %v\n", len(kept), kept)
 
 	return ctx
 }
@@ -353,7 +365,6 @@ func compileLookupTable(
 				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
 				lookupTable[frag][0].Size(),
 			)
-
 		}
 
 		for i := range ctx.S {
@@ -378,6 +389,11 @@ func compileLookupTable(
 				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
 				lookupTable[frag][0].Size(),
 			)
+
+			// This is to tell the limitless prover that the column should be extended
+			// by zero padding in case it needs to be extended during the segmentation
+			// in modules.
+			pragmas.MarkPaddable(ctx.M[frag], field.Zero())
 		}
 
 		for i := range ctx.S {
@@ -392,4 +408,15 @@ func compileLookupTable(
 	)
 
 	return ctx
+}
+
+func isKeptQuery(qName ifaces.QueryID) bool {
+	var (
+		hsh           = sha256.Sum256([]byte(qName))
+		fingerprint   = binary.LittleEndian.Uint64(hsh[:8])
+		numBitWatched = 10
+		mask          = uint64((1 << numBitWatched) - 1)
+		target        = 0b100011100
+	)
+	return fingerprint&mask == uint64(target)
 }

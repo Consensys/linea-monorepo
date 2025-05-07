@@ -83,10 +83,12 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
 	for i := range distWizard.GLs {
+		logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("conglomeration-debug/module-gl-%v.csv", i)), logdata.IncludeAllFilter)(distWizard.GLs[i].Wiop)
 		dummy.CompileAtProverLvl()(distWizard.GLs[i].Wiop)
 	}
 
 	for i := range distWizard.LPPs {
+		logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("conglomeration-debug/module-lpp-%v.csv", i)), logdata.IncludeAllFilter)(distWizard.LPPs[i].Wiop)
 		dummy.CompileAtProverLvl()(distWizard.LPPs[i].Wiop)
 	}
 
@@ -198,6 +200,8 @@ func TestDistributedWizardLogic(t *testing.T) {
 			moduleNames = witnessLPPs[i].ModuleNames
 			moduleLPP   *ModuleLPP
 		)
+
+		witnessLPP.InitialFiatShamirState = field.NewFromString("6861409415040334196327676756394403519979367936044773323994693747743991500772")
 
 		t.Logf("segment(total)=%v module=%v segment.index=%v", i, witnessLPP.ModuleNames, witnessLPP.ModuleIndex)
 
