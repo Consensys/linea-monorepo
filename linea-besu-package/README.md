@@ -8,7 +8,7 @@ used to run a node with a specific profile.
 
 ### Step 1. Download configuration files
 
-You can start with the Docker Compose files located in the [docker-compose](https://github.com/Consensys/linea-monorepo/tree/main/linea-besu-package/docker) directory.
+You can start with the Docker Compose files located in the [docker](https://github.com/Consensys/linea-monorepo/tree/main/linea-besu-package/docker) directory.
 
 ### Step 2. Update the Docker Compose file
 In the docker-compose.yaml file, update the --p2p-host command to include your public IP address. For example:
