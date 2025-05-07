@@ -47,5 +47,4 @@ out/
 
 
 # Generated files
-docker/initialization/genesis-besu.json
-docker/initialization/genesis-geth.json
+docker/initialization/*.json

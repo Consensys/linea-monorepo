@@ -1,35 +1,39 @@
 {
+  "@_WARNING": "THIS FILE IS FOR LOCAL DEVELOPMENT ONLY! DO NOT REUSE ELSEWHERE",
   "config": {
-    "chainId":6110,
-    "homesteadBlock":0,
-    "eip150Block":0,
-    "eip155Block":0,
-    "eip158Block":0,
-    "byzantiumBlock":0,
-    "constantinopleBlock":0,
-    "petersburgBlock":0,
-    "istanbulBlock":0,
-    "muirGlacierBlock":0,
-    "berlinBlock":0,
-    "londonBlock":0,
-    "terminalTotalDifficulty":0,
+    "chainId": 6110,
+    "homesteadBlock": 0,
+    "eip150Block": 0,
+    "eip155Block": 0,
+    "eip158Block": 0,
+    "byzantiumBlock": 0,
+    "constantinopleBlock": 0,
+    "petersburgBlock": 0,
+    "istanbulBlock": 0,
+    "berlinBlock": 0,
+    "londonBlock": 0,
+    "terminalTotalDifficulty": 0,
+    "shanghaiTime": 0,
     "cancunTime": 0,
     "pragueTime": 0,
-    "clique": {
-      "period": 5,
-      "epoch": 30000
-    },
     "depositContractAddress": "0x4242424242424242424242424242424242424242",
-    "consolidationRequestContractAddress": "0x00b42dbF2194e931E80326D950320f7d9Dbeac02"
+    "consolidationRequestContractAddress": "0x00b42dbF2194e931E80326D950320f7d9Dbeac02",
+    "clique": {
+      "createemptyblocks": false,
+      "blockperiodseconds": 1,
+      "epochlength": 1
+    }
   },
-  "nonce":"0x42",
-  "timestamp":"0x0",
-  "extraData":"0x0000000000000000000000000000000000000000000000000000000000000000a94f5374fce5edbc8e2a8697c15331677e6ebf0b0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-  "gasLimit":"0x1C9C380",
-  "difficulty":"0x400000000",
-  "mixHash":"0x0000000000000000000000000000000000000000000000000000000000000000",
-  "coinbase":"0x0000000000000000000000000000000000000000",
-  "alloc":{
+  "coinbase": "0x0000000000000000000000000000000000000000",
+  "difficulty": "0x1",
+  "extraData": "0x00000000000000000000000000000000000000000000000000000000000000008F1F505E5DF8AFF01E442DB0B8AA9990D28F8D990000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+  "gasLimit": "0x1C9C380",
+  "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "nonce": "0x0",
+  "timestamp": "0x0",
+  "baseFeePerGas": "0x7",
+  "@_WARNING": "FOR LOCAL DEV ONLY - DO NOT REUSE THESE KEYS ELSEWHERE",
+  "alloc": {
     "a05b21E5186Ce93d2a226722b85D6e550Ac7D6E3": {
       "privateKey": "3a4ff6d22d7502ef2452368165422861c01a0f72f851793b372b87888dc3c453",
       "balance": "90000000000000000000000"

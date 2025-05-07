@@ -13,7 +13,7 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.testutils
+package maru.testutils.besu
 
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
@@ -23,7 +23,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.AccountTran
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.TransferTransaction
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.eth.EthTransactions
 
-class TransactionsHelper {
+class BesuTransactionsHelper {
   private val ethTransactions = EthTransactions()
   private val accounts = Accounts(ethTransactions)
   private val accountTransactions = AccountTransactions(accounts)
