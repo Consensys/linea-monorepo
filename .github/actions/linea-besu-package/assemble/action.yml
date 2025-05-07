@@ -143,7 +143,6 @@ runs:
         tree .
 
     - name: compile release notes
-      #if: ${{ github.event_name == 'workflow_dispatch' }}
       id: release_create_artifacts
       shell: bash
       run: |
