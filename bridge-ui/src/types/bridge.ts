@@ -1,4 +1,4 @@
-import { Proof } from "@consensys/linea-sdk/dist/lib/sdk/merkleTree/types";
+import { Proof } from "@consensys/linea-sdk/dist/core/clients/ethereum/IMerkleTreeService";
 import { Chain, Token, TransactionStatus } from "@/types";
 import { Address } from "viem";
 

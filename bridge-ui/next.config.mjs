@@ -10,18 +10,27 @@ const nextConfig = {
       },
     ],
   },
+  turbopack: {
+    rules: {
+      "*.svg": {
+        loaders: ["@svgr/webpack"],
+        as: "*.js",
+      },
+    },
+  },
   sassOptions: {
-    prependData: `@use 'sass:math'; @import 'src/scss/breakpoints';`,
+    includePaths: ["src/scss"],
+    prependData: `@use 'sass:math'; @import 'breakpoints';`,
   },
   webpack: (config) => {
-    const warning = [...(config.ignoreWarnings || []), { module: /typeorm/ }];
-
-    config.ignoreWarnings = warning;
+    config.ignoreWarnings = [...(config.ignoreWarnings || []), { module: /typeorm/ }];
 
     config.resolve.fallback = {
+      ...config.resolve.fallback,
       fs: false,
     };
-    config.externals.push("pino-pretty", "lokijs", "encoding");
+
+    config.externals = [...(config.externals || []), "pino-pretty", "lokijs", "encoding"];
 
     const fileLoaderRule = config.module.rules.find((rule) => rule.test?.test?.(".svg"));
 

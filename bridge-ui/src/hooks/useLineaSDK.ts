@@ -1,19 +1,13 @@
 import { useMemo } from "react";
 import { LineaSDK, Network } from "@consensys/linea-sdk";
 import { linea, lineaSepolia, mainnet, sepolia } from "viem/chains";
-import { L1MessageServiceContract, L2MessageServiceContract } from "@consensys/linea-sdk/dist/lib/contracts";
 import { useChainStore } from "@/stores";
 import { CHAINS_RPC_URLS } from "@/constants";
-
-export interface LineaSDKContracts {
-  L1: L1MessageServiceContract;
-  L2: L2MessageServiceContract;
-}
 
 const useLineaSDK = () => {
   const fromChain = useChainStore.useFromChain();
 
-  const { lineaSDK, lineaSDKContracts } = useMemo(() => {
+  const { lineaSDK } = useMemo(() => {
     let l1RpcUrl;
     let l2RpcUrl;
     if (fromChain.testnet) {
@@ -25,21 +19,16 @@ const useLineaSDK = () => {
     }
 
     const sdk = new LineaSDK({
-      l1RpcUrl,
-      l2RpcUrl,
+      l1RpcUrlOrProvider: l1RpcUrl,
+      l2RpcUrlOrProvider: l2RpcUrl,
       network: `linea-${fromChain.testnet ? "sepolia" : "mainnet"}` as Network,
       mode: "read-only",
     });
 
-    const newLineaSDKContracts: LineaSDKContracts = {
-      L1: sdk.getL1Contract(),
-      L2: sdk.getL2Contract(),
-    };
-
-    return { lineaSDK: sdk, lineaSDKContracts: newLineaSDKContracts };
+    return { lineaSDK: sdk };
   }, [fromChain.testnet]);
 
-  return { lineaSDK, lineaSDKContracts };
+  return { lineaSDK };
 };
 
 export default useLineaSDK;

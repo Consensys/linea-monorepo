@@ -1,8 +1,10 @@
 "use client";
 
 import type { PropsWithChildren } from "react";
-import { type Adapter, WalletAdapterNetwork, ConnectionProvider, WalletProvider, clusterApiUrl } from "@/lib/solana";
 import { DynamicSolanaProvider } from "./dynamic-solana-provider";
+import { clusterApiUrl } from "@solana/web3.js";
+import { Adapter, WalletAdapterNetwork } from "@solana/wallet-adapter-base";
+import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
 
 const endpoint = clusterApiUrl(WalletAdapterNetwork.Mainnet);
 

@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { usePathname } from "next/navigation";
-import { useDynamicContext } from "@/lib/dynamic";
+import { useDynamicContext } from "@dynamic-labs/sdk-react-core";
 import Header from "../header";
 import { useInitialiseChain } from "@/hooks";
 import { Theme } from "@/types";

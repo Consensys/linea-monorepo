@@ -1,7 +1,7 @@
 "use client";
 
-import { useDynamicContext, useIsLoggedIn } from "@/lib/dynamic";
-import { ChainId, LiFiWidget, WidgetSkeleton, type WidgetConfig } from "@/lib/lifi";
+import { useDynamicContext, useIsLoggedIn } from "@dynamic-labs/sdk-react-core";
+import { ChainId, LiFiWidget, WidgetSkeleton, type WidgetConfig } from "@lifi/widget";
 import { ClientOnly } from "../client-only";
 import atypTextFont from "@/assets/fonts/atypText";
 import { CHAINS_RPC_URLS, ETH_SYMBOL } from "@/constants";
@@ -115,7 +115,6 @@ const widgetConfig: Partial<WidgetConfig> = {
           },
         },
       },
-      MuiInputCard: "",
     },
   },
   hiddenUI: ["appearance", "language"],

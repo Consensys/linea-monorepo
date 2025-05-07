@@ -2,15 +2,14 @@
 
 import { PropsWithChildren } from "react";
 import { WagmiProvider } from "wagmi";
-import {
-  DynamicWagmiConnector,
-  EthereumWalletConnectors,
-  DynamicContextProvider,
-  SolanaWalletConnectors,
-} from "@/lib/dynamic";
+
 import { config as wagmiConfig } from "@/lib/wagmi";
 import { config } from "@/config";
 import { SolanaWalletProvider } from "./solana-provider";
+import { DynamicContextProvider } from "@dynamic-labs/sdk-react-core";
+import { DynamicWagmiConnector } from "@dynamic-labs/wagmi-connector";
+import { EthereumWalletConnectors } from "@dynamic-labs/ethereum";
+import { SolanaWalletConnectors } from "@dynamic-labs/solana";
 
 type Web3ProviderProps = PropsWithChildren;
 

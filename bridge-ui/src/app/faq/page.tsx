@@ -1,11 +1,7 @@
-"use client";
-import { useState } from "react";
-import { motion } from "framer-motion";
-
 import styles from "./page.module.scss";
 import Link from "next/link";
 import ArrowLeftIcon from "@/assets/icons/arrow-left.svg";
-import PlusIcon from "@/assets/icons/plus.svg";
+import Faq from "@/components/faq";
 
 const faqList = [
   {
@@ -51,99 +47,15 @@ const faqList = [
 ];
 
 export default function FaqPage() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-
-  const handleToggle = (index: number) => {
-    setOpenIndex(openIndex === index ? null : index);
-  };
-
   return (
-    <>
-      <div className={styles["content-wrapper"]}>
-        <Link className={styles["home-link"]} href="/">
-          <ArrowLeftIcon />
-          <span>Bridge</span>
-        </Link>
-        <h1 className={styles["title"]}>FAQ</h1>
+    <div className={styles["content-wrapper"]}>
+      <Link className={styles["home-link"]} href="/">
+        <ArrowLeftIcon />
+        <span>Bridge</span>
+      </Link>
+      <h1 className={styles["title"]}>FAQ</h1>
 
-        <ul className={styles["list"]}>
-          {faqList.map((faq, index) => (
-            <FaqItem
-              key={`faq-item-${index}`}
-              data={faq}
-              isOpen={openIndex === index}
-              onToggle={() => handleToggle(index)}
-            />
-          ))}
-        </ul>
-      </div>
-    </>
-  );
-}
-
-type FaqItemProps = {
-  data: {
-    title: string;
-    content: string;
-  };
-  isOpen: boolean;
-  onToggle: () => void;
-};
-
-function FaqItem({ data, isOpen, onToggle }: FaqItemProps) {
-  const { title, content } = data;
-  return (
-    <li className={styles["item"]}>
-      <motion.div
-        className={styles["header"]}
-        onClick={onToggle}
-        role="button"
-        tabIndex={0}
-        aria-expanded={isOpen}
-        onKeyDown={(e) => e.key === "Enter" && onToggle()}
-        animate={{
-          marginBottom: isOpen ? "1.6rem" : "0rem",
-        }}
-        transition={{
-          marginBottom: {
-            duration: 0.3,
-            ease: "easeInOut",
-          },
-        }}
-      >
-        <h2 className={styles["item-title"]}>{title}</h2>
-        <motion.div
-          animate={{ rotate: isOpen ? 225 : 0 }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-          className={styles["button"]}
-        >
-          <PlusIcon />
-        </motion.div>
-      </motion.div>
-
-      <motion.div
-        className={styles["content"]}
-        initial={false}
-        animate={{
-          height: isOpen ? "auto" : 0,
-          opacity: isOpen ? 1 : 0,
-        }}
-        transition={{
-          duration: 0.3,
-        }}
-        style={{ overflow: "hidden" }}
-      >
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: isOpen ? 1 : 0, y: isOpen ? 0 : -10 }}
-          transition={{
-            duration: 0.3,
-            ease: "easeInOut",
-            delay: isOpen ? 0.1 : 0,
-          }}
-          dangerouslySetInnerHTML={{ __html: content }}
-        />
-      </motion.div>
-    </li>
+      <Faq data={faqList} />
+    </div>
   );
 }

@@ -1,5 +1,3 @@
-"use client";
-
 import OnRamperWidget from "@/components/onramper";
 import styles from "./page.module.scss";
 

@@ -3,6 +3,8 @@ import { QueryProvider } from "@/contexts/query.context";
 import { TokenStoreProvider } from "@/stores";
 import { getTokenConfig } from "@/services/tokenService";
 
+import type { JSX } from "react";
+
 type ProvidersProps = {
   children: JSX.Element;
 };

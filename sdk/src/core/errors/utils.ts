@@ -1,5 +1,16 @@
-import { isNativeError } from "util/types";
 import { BaseError, InferErrorType } from "./BaseError";
+
+function isObject(arg: unknown): arg is object {
+  return typeof arg === "object" && arg !== null;
+}
+
+function objectToString(o: object): string {
+  return Object.prototype.toString.call(o);
+}
+
+function isNativeError(e: unknown): e is Error {
+  return isObject(e) && (objectToString(e) === "[object Error]" || e instanceof Error);
+}
 
 /**
  * Converts an `unknown` value that was thrown into a `BaseError` object.
