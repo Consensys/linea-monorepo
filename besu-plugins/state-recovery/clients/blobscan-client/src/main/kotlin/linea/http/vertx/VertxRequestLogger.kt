@@ -17,12 +17,26 @@ interface VertxRequestLogger {
 
 class VertxRestRequestLogger(
   private val log: Logger,
+  private val logFormatter: VertxHttpLoggingFormatter,
   private val requestResponseLogLevel: Level = Level.TRACE,
-  private val failuresLogLevel: Level = Level.DEBUG,
-  private val responseLogMaxSize: UInt? = null
+  private val failuresLogLevel: Level = Level.DEBUG
 ) : VertxRequestLogger {
+  constructor(
+    log: Logger,
+    responseLogMaxSize: UInt? = null,
+    requestResponseLogLevel: Level = Level.TRACE,
+    failuresLogLevel: Level = Level.DEBUG
+  ) : this(
+    log = log,
+    logFormatter = VertxRestLoggingFormatter(responseLogMaxSize = responseLogMaxSize),
+    requestResponseLogLevel = requestResponseLogLevel,
+    failuresLogLevel = failuresLogLevel
+  )
+
   private fun logRequest(request: HttpRequest<Buffer>, logLevel: Level = requestResponseLogLevel) {
-    log.log(logLevel, "--> {} {}", request.method(), request.uri())
+    if (log.isEnabled(logLevel)) {
+      log.log(logLevel, logFormatter.toLogString(request))
+    }
   }
 
   override fun logRequest(request: HttpRequest<Buffer>) {
@@ -42,23 +56,9 @@ class VertxRestRequestLogger(
       logRequest(request, logLevel)
     }
 
-    val responseToLog = response?.bodyAsString()?.let { bodyStr ->
-      if (responseLogMaxSize != null) {
-        bodyStr.take(responseLogMaxSize.toInt()) + "..." + "(contentLength=${response.getHeader("Content-Length")})"
-      } else {
-        bodyStr
-      }
+    if (log.isEnabled(logLevel)) {
+      log.log(logLevel, logFormatter.toLogString(request, response, failureCause))
     }
-
-    log.log(
-      logLevel,
-      "<-- {} {} {} {} {}",
-      request.method(),
-      request.uri(),
-      response?.statusCode(),
-      responseToLog,
-      failureCause?.message ?: ""
-    )
   }
 
   private fun isNotSuccessStatusCode(statusCode: Int): Boolean {
