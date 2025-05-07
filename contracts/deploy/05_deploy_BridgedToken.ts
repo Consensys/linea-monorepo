@@ -29,8 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const bridgedTokenAddress = await bridgedToken.getAddress();
   process.env.BRIDGED_TOKEN_ADDRESS = bridgedTokenAddress;
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
+  // @ts-expect-error - deployTransaction is not a standard property but exists in this plugin's return type
   const deployTx = bridgedToken.deployTransaction;
   if (!deployTx) {
     throw "Contract deployment transaction receipt not found.";
