@@ -32,7 +32,6 @@ contract StakeManager is
         uint256 mpAccrued;
         uint256 maxMP;
         uint256 lastMPUpdateTime;
-        uint256 lockUntil;
         uint256 rewardsAccrued;
     }
 
@@ -186,15 +185,16 @@ contract StakeManager is
 
         VaultData storage vault = vaultData[msg.sender];
 
-        (uint256 _deltaMpTotal, uint256 _deltaMPMax, uint256 _newLockEnd) =
-            _calculateStake(vault.stakedBalance, vault.maxMP, vault.lockUntil, block.timestamp, amount, lockPeriod);
+        (uint256 _deltaMpTotal, uint256 _deltaMPMax, uint256 _newLockEnd) = _calculateStake(
+            vault.stakedBalance, vault.maxMP, IStakeVault(msg.sender).lockUntil(), block.timestamp, amount, lockPeriod
+        );
 
         vault.stakedBalance += amount;
         totalStaked += amount;
         totalMPStaked += _deltaMpTotal;
 
         if (lockPeriod != 0) {
-            vault.lockUntil = _newLockEnd;
+            IStakeVault(msg.sender).updateLockUntil(_newLockEnd);
         }
 
         vault.mpAccrued += _deltaMpTotal;
@@ -224,13 +224,14 @@ contract StakeManager is
 
         _updateGlobalState();
         _updateVault(msg.sender, false);
-        (uint256 deltaMp, uint256 newLockEnd) =
-            _calculateLock(vault.stakedBalance, vault.maxMP, vault.lockUntil, block.timestamp, lockPeriod);
+        (uint256 deltaMp, uint256 newLockEnd) = _calculateLock(
+            vault.stakedBalance, vault.maxMP, IStakeVault(msg.sender).lockUntil(), block.timestamp, lockPeriod
+        );
 
         // Update account state
-        vault.lockUntil = newLockEnd;
         vault.mpAccrued += deltaMp;
         vault.maxMP += deltaMp;
+        IStakeVault(msg.sender).updateLockUntil(newLockEnd);
 
         // Update global state
         totalMPAccrued += deltaMp;
@@ -251,6 +252,9 @@ contract StakeManager is
      * @param amount The amount of tokens to unstake
      */
     function unstake(uint256 amount) external onlyTrustedCodehash onlyNotEmergencyMode onlyRegisteredVault {
+        if (IStakeVault(msg.sender).lockUntil() > block.timestamp) {
+            revert StakeManager__FundsLocked();
+        }
         VaultData storage vault = vaultData[msg.sender];
         _unstake(amount, vault, msg.sender);
         emit Unstaked(msg.sender, amount);
@@ -265,14 +269,11 @@ contract StakeManager is
         VaultData storage vault = vaultData[msg.sender];
 
         if (vault.stakedBalance > 0) {
-            //updates lockuntil to allow unstake early
-            vault.lockUntil = block.timestamp;
             // calling `_unstake` to update accounting accordingly
             _unstake(vault.stakedBalance, vault, msg.sender);
 
             // further cleanup that isn't done in `_unstake`
             vault.rewardIndex = 0;
-            vault.lockUntil = 0;
             vault.lastMPUpdateTime = 0;
         }
 
@@ -384,8 +385,8 @@ contract StakeManager is
         newVault.mpAccrued = oldVault.mpAccrued;
         newVault.maxMP = oldVault.maxMP;
         newVault.lastMPUpdateTime = oldVault.lastMPUpdateTime;
-        newVault.lockUntil = oldVault.lockUntil;
         newVault.rewardsAccrued = oldVault.rewardsAccrued;
+        IStakeVault(migrateTo).updateLockUntil(IStakeVault(msg.sender).lockUntil());
 
         delete vaultData[msg.sender];
 
@@ -445,9 +446,8 @@ contract StakeManager is
         _updateGlobalState();
         _updateVault(vaultAddress, false);
 
-        (uint256 _deltaMpTotal, uint256 _deltaMpMax) = _calculateUnstake(
-            vault.stakedBalance, vault.lockUntil, block.timestamp, vault.mpAccrued, vault.maxMP, amount
-        );
+        (uint256 _deltaMpTotal, uint256 _deltaMpMax) =
+            _calculateUnstake(vault.stakedBalance, vault.mpAccrued, vault.maxMP, amount);
         vault.stakedBalance -= amount;
         vault.maxMP -= _deltaMpMax;
         vault.rewardIndex = lastRewardIndex;
@@ -457,10 +457,6 @@ contract StakeManager is
         totalMPAccrued -= _deltaMpTotal;
         totalMaxMP -= _deltaMpMax;
         totalStaked -= amount;
-
-        // if the user can unstake it means the lock period has ended
-        // and we can reset lockUntil
-        vault.lockUntil = 0;
     }
 
     function _totalShares() internal view returns (uint256) {

@@ -33,6 +33,8 @@ interface IStakeManager is ITrustedCodehashAccess, IStakeConstants {
     error StakeManager__InsufficientBalance();
     /// @notice Emitted when the reward period has not ended.
     error StakeManager__RewardPeriodNotEnded();
+    /// @notice Emitted when trying to unstake and funds are locked
+    error StakeManager__FundsLocked();
 
     /// @notice Emitted when a vault is registered.
     event VaultRegistered(address indexed vault, address indexed owner);

@@ -1392,6 +1392,22 @@ contract UnstakeTest is StakeTest {
         super.setUp();
     }
 
+    function test_RevertWhen_FundsLocked() public {
+        uint256 stakeAmount = 10e18;
+        uint256 lockUpPeriod = streamer.MIN_LOCKUP_PERIOD();
+
+        _stake(alice, stakeAmount, lockUpPeriod);
+
+        // Alice tries to unstake before lock up period has expired
+        vm.expectRevert(IStakeManager.StakeManager__FundsLocked.selector);
+        _unstake(alice, stakeAmount);
+
+        vm.warp(vm.getBlockTimestamp() + lockUpPeriod);
+
+        // Alice unstake after lock up period has expired
+        _unstake(alice, stakeAmount);
+    }
+
     function test_UnstakeOneAccount() public {
         test_StakeOneAccount();
 
@@ -2317,6 +2333,31 @@ contract LeaveTest is StakeManagerTest {
         assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice has all her funds back");
     }
 
+    function test_LeaveShouldKeepFundsLockedInStakeVault() public {
+        uint256 aliceInitialBalance = stakingToken.balanceOf(alice);
+        uint256 stakeAmount = 10e18;
+        uint256 lockUpPeriod = streamer.MIN_LOCKUP_PERIOD();
+
+        _stake(alice, stakeAmount, lockUpPeriod);
+
+        assertEq(stakingToken.balanceOf(alice), aliceInitialBalance - stakeAmount, "Alice should have staked tokens");
+
+        _upgradeStakeManager();
+        _leave(alice);
+
+        assertEq(
+            stakingToken.balanceOf(alice), aliceInitialBalance - stakeAmount, "Alice still doesn't have her funds back"
+        );
+
+        vm.warp(block.timestamp + lockUpPeriod);
+
+        vm.prank(alice);
+        StakeVault vault = StakeVault(vaults[alice]);
+        vault.withdrawFromVault(stakeAmount, alice);
+
+        assertEq(stakingToken.balanceOf(alice), aliceInitialBalance, "Alice has withdrawn her funds");
+    }
+
     function test_TrustNewStakeManager() public {
         // first, upgrade to new stake manager, marking it as not trusted
         _upgradeStakeManager();
@@ -2897,7 +2938,7 @@ contract FuzzTests is StakeManagerTest {
             vaultData.rewardsAccrued, p.rewardsAccrued, string(abi.encodePacked(text, "wrong account rewards accrued"))
         );
         assertEq(
-            vaultData.lockUntil,
+            StakeVault(p.account).lockUntil(),
             expectedVaultLockState[p.account].lockEnd,
             string(abi.encodePacked(text, "wrong account lock end"))
         );
@@ -2954,19 +2995,18 @@ contract FuzzTests is StakeManagerTest {
     }
 
     function _expectUnstake(address account, uint256 amount) internal {
+        CheckVaultParams storage expectedAccountParams = expectedAccountState[account];
+        expectedAccountParams.account = vaults[account];
+        if (expectedVaultLockState[expectedAccountParams.account].lockEnd >= vm.getBlockTimestamp()) {
+            expectedRevert = IStakeManager.StakeManager__FundsLocked.selector;
+            return;
+        }
         if (amount == 0) {
             expectedRevert = StakeMath.StakeMath__InvalidAmount.selector;
             return;
         }
-        CheckVaultParams storage expectedAccountParams = expectedAccountState[account];
         if (amount > expectedAccountParams.stakedBalance) {
             expectedRevert = StakeMath.StakeMath__InsufficientBalance.selector;
-            console.log("no balance");
-            return;
-        }
-        if (expectedVaultLockState[expectedAccountParams.account].lockEnd >= vm.getBlockTimestamp()) {
-            expectedRevert = StakeMath.StakeMath__FundsLocked.selector;
-            console.log("locked");
             return;
         }
         expectedRevert = NO_REVERT;
@@ -2987,6 +3027,7 @@ contract FuzzTests is StakeManagerTest {
 
     function _expectAccrue(address account, uint256 accruedTime) internal {
         CheckVaultParams storage expectedAccountParams = expectedAccountState[account];
+        expectedAccountParams.account = vaults[account];
         if (expectedAccountParams.vaultBalance > 0) {
             uint256 rawAccruedMP = _accrueMP(expectedAccountParams.vaultBalance, accruedTime);
             expectedAccountParams.mpAccrued =
@@ -3001,6 +3042,7 @@ contract FuzzTests is StakeManagerTest {
 
     function _expectStake(address account, uint256 stakeAmount, uint256 lockUpPeriod) internal {
         CheckVaultParams storage expectedAccountParams = expectedAccountState[account];
+        expectedAccountParams.account = vaults[account];
         uint256 calcLockEnd = Math.max(
             expectedVaultLockState[expectedAccountParams.account].lockEnd, vm.getBlockTimestamp()
         ) + lockUpPeriod;
@@ -3012,7 +3054,6 @@ contract FuzzTests is StakeManagerTest {
                 expectedRevert = StakeMath.StakeMath__AbsoluteMaxMPOverflow.selector;
             } else {
                 expectedRevert = NO_REVERT;
-                expectedAccountParams.account = vaults[account];
                 uint256 expectedBonusMP = _bonusMP(stakeAmount, calcLockUpPeriod);
                 uint256 expectedMaxTotalMP = _maxTotalMP(stakeAmount, calcLockUpPeriod);
                 if (expectedVaultLockState[expectedAccountParams.account].lockEnd > vm.getBlockTimestamp()) {

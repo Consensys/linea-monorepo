@@ -120,8 +120,6 @@ abstract contract StakeMath is MultiplierPointMath {
     /**
      *
      * @param _balance Account current balance
-     * @param _currentLockEndTime Account current lock end timestamp
-     * @param _processTime Process current timestamp
      * @param _currentTotalMP Account current total multiplier points
      * @param _currentMaxMP Account current max multiplier points
      * @param _reducedAmount Reduced amount of balance
@@ -130,8 +128,6 @@ abstract contract StakeMath is MultiplierPointMath {
      */
     function _calculateUnstake(
         uint256 _balance,
-        uint256 _currentLockEndTime,
-        uint256 _processTime,
         uint256 _currentTotalMP,
         uint256 _currentMaxMP,
         uint256 _reducedAmount
@@ -145,9 +141,6 @@ abstract contract StakeMath is MultiplierPointMath {
         }
         if (_reducedAmount > _balance) {
             revert StakeMath__InsufficientBalance();
-        }
-        if (_currentLockEndTime > _processTime) {
-            revert StakeMath__FundsLocked();
         }
         _deltaMpTotal = _reduceMP(_balance, _currentTotalMP, _reducedAmount);
         _deltaMpMax = _reduceMP(_balance, _currentMaxMP, _reducedAmount);

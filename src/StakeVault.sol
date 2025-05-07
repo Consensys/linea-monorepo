@@ -23,6 +23,8 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     error StakeVault__InvalidDestinationAddress();
     /// @notice Emitted when staking was unsuccessful
     error StakeVault__StakingFailed();
+    /// @notice Emitted when the funds are locked
+    error StakeVault__FundsLocked();
     /// @notice Emitted when unstaking was unsuccessful
     error StakeVault__UnstakingFailed();
     /// @notice Emitted when not allowed to exit the system
@@ -33,6 +35,10 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     error StakeVault__StakeManagerImplementationNotTrusted();
     /// @notice Emitted when migration failed
     error StakeVault__MigrationFailed();
+    /// @notice Emitted when the caller is not the owner of the vault
+    error StakeVault__NotAuthorized();
+    /// @notice Emitted when withdrawing funds from vault fails
+    error StakeVault__WithdrawFromVaultFailed();
 
     /*//////////////////////////////////////////////////////////////////////////
                                   STATE VARIABLES
@@ -44,6 +50,8 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
     IStakeManagerProxy public stakeManager;
     /// @notice Address of the trusted stake manager implementation
     address public stakeManagerImplementationAddress;
+    /// @notice Timestamp until the funds are locked
+    uint256 public lockUntil;
 
     modifier validDestination(address _destination) {
         if (_destination == address(0)) {
@@ -199,9 +207,13 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         // If it was a benign upgrade, it will cause the stake manager to properly update
         // its internal accounting before we move the funds out.
         try stakeManager.leave() {
-            STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+            if (lockUntil <= block.timestamp) {
+                STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+            }
         } catch {
-            STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+            if (lockUntil <= block.timestamp) {
+                STAKING_TOKEN.transfer(_destination, STAKING_TOKEN.balanceOf(address(this)));
+            }
         }
     }
 
@@ -252,6 +264,23 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
         _withdraw(_token, _amount, _destination);
     }
 
+    function withdrawFromVault(
+        uint256 _amount,
+        address _destination
+    )
+        external
+        onlyOwner
+        validDestination(_destination)
+    {
+        if (lockUntil > block.timestamp) {
+            revert StakeVault__FundsLocked();
+        }
+        bool success = STAKING_TOKEN.transfer(_destination, _amount);
+        if (!success) {
+            revert StakeVault__WithdrawFromVaultFailed();
+        }
+    }
+
     /**
      * @notice Returns the available amount of a token that can be withdrawn.
      * @dev Returns only excess amount if token is staking token.
@@ -263,6 +292,18 @@ contract StakeVault is IStakeVault, Initializable, OwnableUpgradeable {
             return STAKING_TOKEN.balanceOf(address(this)) - amountStaked();
         }
         return _token.balanceOf(address(this));
+    }
+
+    /**
+     * @notice Updates the lock until timestamp.
+     * @dev This function is only callable by the trusted stake manager.
+     * @param _lockUntil The new lock until timestamp.
+     */
+    function updateLockUntil(uint256 _lockUntil) external onlyTrustedStakeManager {
+        if (msg.sender != address(stakeManager)) {
+            revert StakeVault__NotAuthorized();
+        }
+        lockUntil = _lockUntil;
     }
 
     /*//////////////////////////////////////////////////////////////////////////

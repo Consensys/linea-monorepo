@@ -7,13 +7,17 @@ methods {
     function ERC20A.allowance(address, address) external returns(uint256) envfree;
     function ERC20A.totalSupply() external returns(uint256) envfree;
     function totalStaked() external returns (uint256) envfree;
-    function vaultData(address) external returns (uint256, uint256, uint256, uint256, uint256, uint256, uint256) envfree;
+    function vaultData(address) external returns (uint256, uint256, uint256, uint256, uint256, uint256) envfree;
     function lastMPUpdatedTime() external returns (uint256) envfree;
     function updateGlobalState() external;
     function updateVault(address vaultAddress) external;
+    function getVaultLockUntil(address) external returns (uint256) envfree;
     function emergencyModeEnabled() external returns (bool) envfree;
     function leave() external;
     function Math.mulDiv(uint256 a, uint256 b, uint256 c) internal returns uint256 => mulDivSummary(a,b,c);
+
+    function _.updateLockUntil(uint256 _lockUntil) external => DISPATCHER(true);
+    function _.lockUntil() external => DISPATCHER(true);
 }
 
 function mulDivSummary(uint256 a, uint256 b, uint256 c) returns uint256 {
@@ -31,20 +35,14 @@ hook Sstore vaultData[KEY address vault].stakedBalance uint256 newValue (uint256
 
 function getVaultMaxMP(address vault) returns uint256 {
     uint256 maxMP;
-    _, _, _, maxMP, _, _, _ = streamer.vaultData(vault);
+    _, _, _, maxMP, _, _= streamer.vaultData(vault);
     return maxMP;
 }
 
 function getVaultMPAccrued(address vault) returns uint256 {
     uint256 vaultMPAccrued;
-    _, _, vaultMPAccrued, _, _, _, _ = streamer.vaultData(vault);
+    _, _, vaultMPAccrued, _, _, _ = streamer.vaultData(vault);
     return vaultMPAccrued;
-}
-
-function getVaultLockUntil(address vault) returns uint256 {
-    uint256 lockUntil;
-    _, _, _, _, _, lockUntil, _  = streamer.vaultData(vault);
-    return lockUntil;
 }
 
 invariant sumOfBalancesIsTotalStaked()
