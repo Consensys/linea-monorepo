@@ -88,12 +88,14 @@ func (gdm *GenDataModule) ScanStreams(run *wizard.ProverRuntime) [][]byte {
 		for col := uint64(0); col < numСols; col++ {
 			currLimb := limbs[col][row].Bytes()
 
-			nonZeroLimbs := maxNbBytesPerLimb
-			if (col+1)*maxNbBytesPerLimb > currNbBytes {
-				nonZeroLimbs = currNbBytes % maxNbBytesPerLimb
+			if (col+1)*maxNbBytesPerLimb <= currNbBytes {
+				buffer.Write(currLimb[nbUnusedBytes : nbUnusedBytes+maxNbBytesPerLimb])
+				continue
 			}
 
-			buffer.Write(currLimb[nbUnusedBytes : nbUnusedBytes+nonZeroLimbs])
+			nonZeroBytes := currNbBytes % maxNbBytesPerLimb
+			buffer.Write(currLimb[nbUnusedBytes : nbUnusedBytes+nonZeroBytes])
+			break
 		}
 	}
 
