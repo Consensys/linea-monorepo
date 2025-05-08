@@ -81,7 +81,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("could not parse the snark hash: %w", err)
 	}
 
-	assignment, pubInput, _snarkHash, err := blobdecompression.Assign(
+	assignment, pubInput, computedSnarkHash, err := blobdecompression.Assign(
 		utils.RightPad(blobBytes, expectedMaxUsableBytes),
 		dictStore,
 		req.Eip4844Enabled,
@@ -93,7 +93,7 @@ func Prove(cfg *config.Config, req *Request) (*Response, error) {
 		return nil, fmt.Errorf("while generating the assignment: %w", err)
 	}
 
-	if !bytes.Equal(snarkHash, _snarkHash) {
+	if !bytes.Equal(snarkHash, computedSnarkHash) {
 		return nil, fmt.Errorf("blob checksum does not match the one computed by the assigner")
 	}
 
