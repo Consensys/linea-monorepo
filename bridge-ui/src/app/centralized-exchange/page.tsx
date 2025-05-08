@@ -6,7 +6,9 @@ export default function Page() {
   return (
     <>
       <section className={styles["content-wrapper"]}>
-        <Widget />
+        <div className={styles["widget-wrapper"]}>
+          <Widget />
+        </div>
       </section>
       <FaqHelp />
     </>
