@@ -103,6 +103,7 @@ func init() {
 	RegisterImplementation(byte32cmp.DecompositionCtx{})
 	RegisterImplementation(dedicated.IsZeroCtx{})
 	RegisterImplementation(common.HashingCtx{})
+
 }
 
 // In order to save some space, we trim the prefix of the package path as this

@@ -23,6 +23,7 @@ type rawCompiledIOP struct {
 	QueriesNoParams [][]json.RawMessage `json:"queriesNoParams"`
 	Coins           [][]json.RawMessage `json:"coins"`
 	DummyCompiled   bool                `json:"dummyCompiled"`
+	Subprovers      [][]json.RawMessage `json:"subProvers"`
 }
 
 func NewEmptyCompiledIOP() *wizard.CompiledIOP {
@@ -32,6 +33,7 @@ func NewEmptyCompiledIOP() *wizard.CompiledIOP {
 		QueriesNoParams: wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
 		Coins:           wizard.NewRegister[coin.Name, coin.Info](),
 		Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
+		SubProvers:      collection.VecVec[wizard.ProverAction]{},
 	}
 }
 
@@ -60,6 +62,7 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 		QueriesParams:   make([][]json.RawMessage, numRounds),
 		QueriesNoParams: make([][]json.RawMessage, numRounds),
 		Coins:           make([][]json.RawMessage, numRounds),
+		Subprovers:      make([][]json.RawMessage, numRounds),
 	}
 
 	// Mutex to protect slice assignments
@@ -98,12 +101,20 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 				utils.Panic(localErr.Error())
 			}
 
+			// Serialize SubProvers
+			subProvers, err := serializeSubProverAction(comp, round)
+			if err != nil {
+				localErr = fmt.Errorf("round %d: serialize SubProvers: %w", round, err)
+				utils.Panic(localErr.Error())
+			}
+
 			// Safely assign results to raw
 			mu.Lock()
 			raw.Columns[round] = cols
 			raw.QueriesParams[round] = qParams
 			raw.QueriesNoParams[round] = qNoParams
 			raw.Coins[round] = coins
+			raw.Subprovers[round] = subProvers
 			mu.Unlock()
 		}
 	}
@@ -142,6 +153,10 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	}
 	if err := deserializeQueriesParallel(raw, comp, numRounds, &mu); err != nil {
 		return nil, fmt.Errorf("queries: %w", err)
+	}
+
+	if err := deserializeSubProverAction(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("error while decoding subProverAction:%w", err)
 	}
 
 	return comp, nil
@@ -192,6 +207,61 @@ func serializeCoins(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, err
 	}
 
 	return rawCoins, nil
+}
+
+func serializeSubProverAction(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, error) {
+	// Access ProverAction slice for the round
+	actions := comp.SubProvers.GetOrEmpty(round)
+	rawActions := make([]json.RawMessage, len(actions))
+	for i, action := range actions {
+		if action == nil {
+			logrus.Printf("Skipping nil ProverAction at round %d, index %d", round, i)
+			continue
+		}
+		r, err := SerializeValue(reflect.ValueOf(&action), DeclarationMode)
+		if err != nil {
+			return nil, fmt.Errorf("could not serialize ProverAction %d at round %d: %w", i, round, err)
+		}
+		rawActions[i] = r
+	}
+	return rawActions, nil
+}
+
+// deserializeSubProversParallel deserializes SubProvers for all rounds in parallel
+func deserializeSubProverAction(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		for round := start; round < stop; round++ {
+			if round >= len(raw.Subprovers) {
+				utils.Panic("invalid round number %d, exceeds available SubProvers rounds", round)
+			}
+			if err := deserializeSubProvers(raw.Subprovers[round], round, comp, mu); err != nil {
+				utils.Panic("round %d SubProvers: %v", round, err)
+			}
+		}
+	}
+
+	parallel.ExecuteChunky(numRounds, work)
+	return nil
+}
+
+// deserializeSubProvers deserializes SubProvers for a single round
+func deserializeSubProvers(rawSubProvers []json.RawMessage, round int, comp *wizard.CompiledIOP, mu *sync.Mutex) error {
+	// logrus.Info("Deserializing subprover action func()")
+	for i, rawAction := range rawSubProvers {
+		if string(rawAction) == "null" {
+			logrus.Warnf("Skipping null ProverAction at round %d, index %d", round, i)
+			continue
+		}
+		v, err := DeserializeValue(rawAction, DeclarationMode, reflect.TypeOf((*wizard.ProverAction)(nil)).Elem(), comp)
+		if err != nil {
+			return fmt.Errorf("could not deserialize ProverAction %d at round %d: %w", i, round, err)
+		}
+		action := v.Interface().(wizard.ProverAction)
+		mu.Lock()
+		comp.SubProvers.AppendToInner(round, action)
+		mu.Unlock()
+	}
+	return nil
 }
 
 func deserializeColumnsAndCoinsParallel(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
