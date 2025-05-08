@@ -15,16 +15,15 @@ import (
 )
 
 func main() {
-	makeBlobProofRequests()
-	//setup()
+	//makeBlobProofRequests()
+	setup()
 	//prove()
 }
 
-const configFile = "/home/ubuntu/linea-monorepo/prover/integration/doubledict/config-sepolia-full-doubledict.toml"
 
 func setup() {
 	assertNoError(cmd.Setup(context.TODO(), cmd.SetupArgs{
-		Circuits:   "blob-decompression-v1",
+		Circuits:   "aggregation",
 		DictPath:   "",
 		DictSize:   65536,
 		AssetsDir:  "/home/ubuntu/linea-monorepo/prover/prover-assets",
