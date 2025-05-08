@@ -738,8 +738,7 @@ class GlobalAggregationCalculatorTest {
     ) {
       for (aggregationSize in 1u..endSize) {
         assertThat(
-          GlobalAggregationCalculator.getUpdatedAggregationSize
-          (aggregationSize, maxAggregationSize)
+          GlobalAggregationCalculator.getUpdatedAggregationSize(aggregationSize, maxAggregationSize)
         ).isEqualTo(aggregationSize)
       }
     }
