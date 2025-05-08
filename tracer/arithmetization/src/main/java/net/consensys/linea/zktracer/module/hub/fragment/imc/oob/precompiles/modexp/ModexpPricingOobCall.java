@@ -91,7 +91,7 @@ public class ModexpPricingOobCall extends OobCall {
 
     // row i + 2
     final OobExoCall ceilngOfMaxDividedBy8Call =
-        callToDIV(mod, Bytes.of(maxMbsBbs + 7), Bytes.ofUnsignedInt(8));
+        callToDIV(mod, Bytes.ofUnsignedInt(maxMbsBbs + 7), Bytes.ofUnsignedInt(8));
     exoCalls.add(ceilngOfMaxDividedBy8Call);
     final BigInteger ceilingOfMaxDividedBy8 =
         ceilngOfMaxDividedBy8Call.result().toUnsignedBigInteger();
