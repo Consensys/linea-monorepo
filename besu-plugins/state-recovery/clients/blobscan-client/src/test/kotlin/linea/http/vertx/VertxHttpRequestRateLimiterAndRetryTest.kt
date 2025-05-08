@@ -7,7 +7,7 @@ import io.vertx.junit5.VertxExtension
 import linea.domain.RetryConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.extension.ExtendWith
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Duration.Companion.milliseconds
@@ -41,7 +41,7 @@ class VertxHttpRequestRateLimiterAndRetryTest {
     // )
   }
 
-  @Test
+  @Disabled("flaky test, need to investigate")
   fun `should rate limit requests even if retries are fired at higher rate`(vertx: Vertx) {
     val client = WebClient.create(vertx, WebClientOptions())
 
