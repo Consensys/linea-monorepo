@@ -59,7 +59,7 @@ class VertxHttpRequestRateLimiterAndRetryTest {
     // lenient assertion to avoid flakiness in the tests due to clock drift/precision
     baseReqSender.requestsTimesDiffs
       .drop(1)
-      .forEachIndexed { index, delay ->
+      .forEach { delay ->
         assertThat(delay).isGreaterThanOrEqualTo(rateLimitBackoffDelay)
       }
   }
