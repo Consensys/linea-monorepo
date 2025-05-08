@@ -731,11 +731,7 @@ class GlobalAggregationCalculatorTest {
       val expectedAggregations: List<BlobsToAggregate>
     )
 
-    private fun checkAggregationSizesNotExceedingMaxAggregationSize(
-      endSize:
-        UInt,
-      maxAggregationSize: UInt
-    ) {
+    private fun checkAggregationSizesNotExceedingMaxAggregationSize(endSize: UInt, maxAggregationSize: UInt) {
       for (aggregationSize in 1u..endSize) {
         assertThat(
           GlobalAggregationCalculator.getUpdatedAggregationSize(aggregationSize, maxAggregationSize)
