@@ -66,7 +66,7 @@ func InsertPartitionedIP(
 		),
 	)
 
-	comp.RegisterProverAction(0, &assignPIPProverAction{
+	comp.RegisterProverAction(0, &AssignPIPProverAction{
 		colA:      colA,
 		colB:      colB,
 		partition: partition,
@@ -75,9 +75,9 @@ func InsertPartitionedIP(
 	return ipTracker
 }
 
-// assignPIPProverAction is the action to assign the IPTracker columns for PIP.
+// AssignPIPProverAction is the action to assign the IPTracker columns for PIP.
 // It implements the [wizard.ProverAction] interface.
-type assignPIPProverAction struct {
+type AssignPIPProverAction struct {
 	colA      ifaces.Column
 	colB      ifaces.Column
 	partition ifaces.Column
@@ -85,7 +85,7 @@ type assignPIPProverAction struct {
 }
 
 // It assigns IPTracker for PIP.
-func (a *assignPIPProverAction) Run(run *wizard.ProverRuntime) {
+func (a *AssignPIPProverAction) Run(run *wizard.ProverRuntime) {
 
 	var (
 		cola         = a.colA.GetColAssignment(run).IntoRegVecSaveAlloc()

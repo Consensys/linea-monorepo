@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -24,11 +25,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+
+	ded "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
 )
 
 func init() {
 	// This registers all the types that we may need to deserialize
-	// as interfaces implementations. Cases of interfaces that are relevant
+	// as interface implementations. Cases of interfaces that are relevant
 	// are:
 	//
 	// 		- symbolic.Operator
@@ -104,6 +107,10 @@ func init() {
 	RegisterImplementation(dedicated.IsZeroCtx{})
 	RegisterImplementation(common.HashingCtx{})
 
+	// Prover actions (added to fix missing concrete type warnings)
+	RegisterImplementation(byte32cmp.Bytes32CmpProverAction{})
+	RegisterImplementation(bigrange.BigRangeProverAction{})
+	RegisterImplementation(ded.AssignPIPProverAction{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this

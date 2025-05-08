@@ -18,7 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 )
 
-type bigRangeProverAction struct {
+type BigRangeProverAction struct {
 	boarded      symbolic.ExpressionBoard
 	limbs        []ifaces.Column
 	size         int
@@ -26,7 +26,7 @@ type bigRangeProverAction struct {
 	totalNumBits int
 }
 
-func (a *bigRangeProverAction) Run(run *wizard.ProverRuntime) {
+func (a *BigRangeProverAction) Run(run *wizard.ProverRuntime) {
 	metadatas := a.boarded.ListVariableMetadata()
 	evalInputs := make([]sv.SmartVector, len(metadatas))
 	omega := fft.GetOmega(a.size)
@@ -145,7 +145,7 @@ func BigRange(comp *wizard.CompiledIOP, expr *symbolic.Expression, numLimbs, bit
 	comp.InsertGlobal(round, ifaces.QueryIDf("GLOBAL_BIGRANGE_%v", name), acc.Sub(expr))
 
 	// The below prover steps assign the limb values
-	comp.RegisterProverAction(round, &bigRangeProverAction{
+	comp.RegisterProverAction(round, &BigRangeProverAction{
 		boarded:      boarded,
 		limbs:        limbs,
 		size:         size,
