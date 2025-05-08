@@ -123,12 +123,12 @@ export function setup(sdk: Context) {
         data: '0x'
       });
     } else if (txType === 'ERC20Transfer') {
-      return usdcContract.estimateGas.transfer(USDC_ADDR, 1, { from: FROM_ADDR });
+      return usdcContract.estimateGas.transfer(TO_ADDR, 1, { from: FROM_ADDR });
     } else if (txType === 'ERC20Swap') {
       const params = {
         tokenIn: USDC_ADDR,
         tokenOut: WETH_ADDR,
-        fee: '500',
+        fee: 500,
         recipient: FROM_ADDR,
         deadline: 4102401129,
         amountIn: 9447000,
