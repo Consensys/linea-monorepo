@@ -27,6 +27,14 @@ jobs:
               - 'buildSrc/**'
               - 'config/**'
               - 'consensus/**'
+              - 'core/**'
+              - 'crypto/**'
+              - 'executionlayer/**'
+              - 'jvm-libs/**'
+              - 'p2p/**'
+              - 'serialization/**'
+              - 'storage/**'
+              - 'build.gradle'
 
       - name: Filter out commit changes
         uses: dorny/paths-filter@v3
