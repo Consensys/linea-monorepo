@@ -292,7 +292,7 @@ class Web3JContractAsyncHelper(
     blobs: List<ByteArray>,
     gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String> {
-    require(blobs.size in 0..9) { "Blobs size=${blobs.size} must be between 0 and 9." }
+    require(blobs.size in 1..9) { "Blobs size=${blobs.size} must be between 1 and 9." }
     return sendBlobCarryingTransaction(function, BigInteger.ZERO, blobs.toWeb3jTxBlob(), gasPriceCaps)
       .thenApply { it.transactionHash }
   }
