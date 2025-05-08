@@ -6,6 +6,10 @@ inputs:
   release_tag_prefix:
     description: 'Custom release tag prefix'
     required: true
+  compile_release_notes:
+    description: 'Compile release notes or not'
+    required: false
+    default: 'false'
 
 outputs:
   workflow_id:
@@ -144,6 +148,7 @@ runs:
 
     - name: compile release notes
       id: release_create_artifacts
+      if: ${{ inputs.compile_release_notes == 'true' }}
       shell: bash
       run: |
         mkdir release && cd release
