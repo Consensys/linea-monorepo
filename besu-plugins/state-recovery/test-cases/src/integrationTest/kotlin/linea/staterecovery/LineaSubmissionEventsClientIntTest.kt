@@ -43,7 +43,7 @@ class LineaSubmissionEventsClientIntTest {
   ) {
     configureLoggers(
       rootLevel = Level.INFO,
-      "net.consensys.linea.contract.Web3JContractAsyncHelper" to Level.WARN,
+      "net.consensys.linea.contract.Web3JContractAsyncHelper" to Level.WARN, // silence noisy gasPrice Caps logs
       "test.clients.l1.executionlayer" to Level.INFO,
       "test.clients.l1.web3j-default" to Level.INFO,
       "test.clients.l1.linea-contract" to Level.INFO,
