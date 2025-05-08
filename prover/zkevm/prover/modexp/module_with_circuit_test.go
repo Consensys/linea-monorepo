@@ -42,7 +42,7 @@ func TestModexpWithCircuit(t *testing.T) {
 					IsModExpModulus:  inpCt.GetCommit(build, "IS_MODEXP_MODULUS"),
 					IsModExpResult:   inpCt.GetCommit(build, "IS_MODEXP_RESULT"),
 					Limbs:            inpCt.GetCommit(build, "LIMBS"),
-					Settings:         Settings{MaxNbInstance256: 1, MaxNbInstance4096: 1},
+					Settings:         Settings{MaxNbInstance256: 1, MaxNbInstance4096: 1, NbInstancesPerCircuitModexp256: 1, NbInstancesPerCircuitModexp4096: 1},
 				}
 
 				mod = newModule(build.CompiledIOP, inp).

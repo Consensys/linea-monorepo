@@ -18,6 +18,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -95,7 +96,7 @@ func NewBlockBaseConversion(comp *wizard.CompiledIOP,
 
 // it declares the native columns
 func (b *blockBaseConversion) insertCommit(comp *wizard.CompiledIOP) {
-	createCol := common.CreateColFn(comp, BASE_CONVERSION, b.size)
+	createCol := common.CreateColFn(comp, BASE_CONVERSION, b.size, pragmas.RightPadded)
 	for j := range b.limbsX {
 		b.limbsX[j] = createCol("LimbX_%v", j)
 	}

@@ -317,7 +317,7 @@ func (a MAssignmentTask) Run(run *wizard.ProverRuntime) {
 	}
 
 	for frag := range m {
-		run.AssignColumn(a.M[frag].GetColID(), sv.NewRegular(m[frag]))
+		run.AssignColumn(a.M[frag].GetColID(), sv.NewRegular(m[frag]), wizard.DisableAssignmentSizeReduction)
 	}
 
 }

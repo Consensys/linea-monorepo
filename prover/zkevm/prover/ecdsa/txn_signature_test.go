@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic/testdata"
@@ -25,7 +26,7 @@ func TestTxnSignature(t *testing.T) {
 	compiled := wizard.Compile(func(b *wizard.Builder) {
 		var (
 			comp      = b.CompiledIOP
-			createCol = common.CreateColFn(comp, "TESTING_TxSignature", size)
+			createCol = common.CreateColFn(comp, "TESTING_TxSignature", size, pragmas.RightPadded)
 
 			txSignInputs = txSignatureInputs{
 				ac: &antichamber{

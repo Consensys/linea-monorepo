@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -37,7 +38,7 @@ func newBlock(comp *wizard.CompiledIOP, inp blockInput) block {
 	var (
 		name            = inp.lanes.Inputs.pckInp.Name
 		size            = inp.lanes.Size
-		createCol       = common.CreateColFn(comp, BLOCK+"_"+name, size)
+		createCol       = common.CreateColFn(comp, BLOCK+"_"+name, size, pragmas.RightPadded)
 		isLaneActive    = inp.lanes.IsLaneActive
 		nbLanesPerBlock = inp.param.NbOfLanesPerBlock()
 	)

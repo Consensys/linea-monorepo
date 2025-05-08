@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -479,7 +480,7 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 	}
 
 	// Sanity-check: Make sure, it is done at the right round
-	handle := run.Spec.Columns.GetHandle(name)
+	handle := run.Spec.Columns.GetHandle(name).(column.Natural)
 	// if round is empty, we expect it to assign the column at the current round,
 	// otherwise it assigns it in the round the column was declared.
 	// This is useful when we have for loop over rounds.
@@ -494,6 +495,19 @@ func (run *ProverRuntime) AssignColumn(name ifaces.ColID, witness ifaces.ColAssi
 	// earlier. Thus, the check is there purely for defensive purposes.
 	if !utils.IsPowerOfTwo(witness.Len()) {
 		utils.Panic("Witness with non-power of two sizes, should have been caught earlier")
+	}
+
+	start, stop := smartvectors.CoWindowRange(witness)
+	if _, isLeftPadded := handle.GetPragma(pragmas.LeftPadded); isLeftPadded && stop < witness.Len() && start == 0 {
+		logrus.Errorf("Left-padded column with non-left-padded witness: %v, start: %v, stop: %v", name, start, stop)
+	}
+
+	if _, isRightPadded := handle.GetPragma(pragmas.RightPadded); isRightPadded && start > 0 && stop == witness.Len() {
+		logrus.Errorf("Right-padded column with non-right-padded witness: %v, start: %v, stop: %v", name, start, stop)
+	}
+
+	if _, isFull := handle.GetPragma(pragmas.FullColumnPragma); isFull && (start > 0 || stop < witness.Len()) {
+		logrus.Errorf("Full column with non-full witness: %v, start: %v, stop: %v", name, start, stop)
 	}
 
 	// This reduction is a trade-off between runtime and memory. It costs CPU

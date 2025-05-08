@@ -8,7 +8,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/backend/files"
-	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -212,7 +211,7 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 		prevHornerN1Hash          = field.Element{}
 		usedSharedRandomness      = field.Element{}
 		usedSharedRandomnessFound bool
-		computedSharedRandomness  = field.Element{}
+		collectedLPPCommitments   = make([]field.Element, 0)
 		mainErr                   error
 	)
 
@@ -220,7 +219,7 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 
 		var (
 			lppCommitment    = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0), i)
-			sharedRandomness = c.Recursion.GetPublicInputOfInstance(run, initialRandomnessPublicInput, i)
+			sharedRandomness = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+initialRandomnessPublicInput, i)
 			verifyingKey     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+verifyingKeyPublicInput, i)
 			verifyingKey2    = c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, i)
 			logDerivativeSum = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+logDerivativeSumPublicInput, i)
@@ -273,12 +272,12 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 
 		if isLPP.IsOne() && usedSharedRandomnessFound {
 			if usedSharedRandomness != sharedRandomness {
-				mainErr = errors.Join(mainErr, errors.New("shared randomness mismatch"))
+				mainErr = errors.Join(mainErr, fmt.Errorf("shared randomness mismatch between different LPP segments: %v and %v", usedSharedRandomness.String(), sharedRandomness.String()))
 			}
 		}
 
 		if isGL.IsOne() {
-			computedSharedRandomness = cmimc.BlockCompression(computedSharedRandomness, lppCommitment)
+			collectedLPPCommitments = append(collectedLPPCommitments, lppCommitment)
 		}
 
 		prevHornerN1Hash = hornerN1Hash
@@ -291,8 +290,9 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 		}
 	}
 
+	computedSharedRandomness := GetSharedRandomness(collectedLPPCommitments)
 	if computedSharedRandomness != usedSharedRandomness {
-		mainErr = errors.Join(mainErr, errors.New("shared randomness mismatch"))
+		mainErr = errors.Join(mainErr, fmt.Errorf("shared randomness mismatch, between the one used in LPP and the hash of the LPP commitments computed by the GL: %v and %v", usedSharedRandomness.String(), computedSharedRandomness.String()))
 	}
 
 	if !allGrandProduct.IsOne() {

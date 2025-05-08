@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -44,7 +45,7 @@ type laneRepacking struct {
 func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInput) laneRepacking {
 	var (
 		size                  = utils.NextPowerOfTwo(pckInp.PackingParam.NbOfLanesPerBlock() * pckInp.MaxNumBlocks)
-		createCol             = common.CreateColFn(comp, LANE+"_"+pckInp.Name, size)
+		createCol             = common.CreateColFn(comp, LANE+"_"+pckInp.Name, size, pragmas.RightPadded)
 		isFirstSliceOfNewHash = spaghetti.newHashSp
 		maxValue              = pckInp.PackingParam.LaneSizeBytes()
 		decomposedLenSp       = spaghetti.decLenSp
