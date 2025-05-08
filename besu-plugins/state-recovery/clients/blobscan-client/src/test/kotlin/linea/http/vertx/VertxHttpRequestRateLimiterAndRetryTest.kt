@@ -7,7 +7,7 @@ import io.vertx.junit5.VertxExtension
 import linea.domain.RetryConfig
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import kotlin.time.Duration.Companion.milliseconds
@@ -41,7 +41,7 @@ class VertxHttpRequestRateLimiterAndRetryTest {
     // )
   }
 
-  @Disabled("flaky test, need to investigate")
+  @Test
   fun `should rate limit requests even if retries are fired at higher rate`(vertx: Vertx) {
     val client = WebClient.create(vertx, WebClientOptions())
 
@@ -57,15 +57,10 @@ class VertxHttpRequestRateLimiterAndRetryTest {
     assertThat(baseReqSender.requestsTimesDiffs.size).isGreaterThanOrEqualTo(10)
 
     // lenient assertion to avoid flakiness in the tests due to clock drift/precision
-    val lenientRateLimitBackoffDelay = rateLimitBackoffDelay - 1.milliseconds
     baseReqSender.requestsTimesDiffs
       .drop(1)
       .forEachIndexed { index, delay ->
-        assertThat(delay)
-          .isGreaterThanOrEqualTo(lenientRateLimitBackoffDelay)
-          .withFailMessage {
-            "request $index time=$delay must be greater than rateLimitBackoffDelay=$rateLimitBackoffDelay"
-          }
+        assertThat(delay).isGreaterThanOrEqualTo(rateLimitBackoffDelay)
       }
   }
 }
