@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       release_tag_prefix:
-        description: 'Custom release tag prefix. e.g. if "2.2.2" is given, the release tag would be "linea-besu-package-2.2.2-20250429141855-5bdf213"'
+        description: 'Custom release tag prefix, i.e. docker image tag would be [prefix]-[YYYYMMDDHHMMSS]-[commit], if not given, the tracer plugin version from "versions.env" would be used as prefix'
         required: false
         type: string
         default: ''
