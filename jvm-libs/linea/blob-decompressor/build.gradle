@@ -10,6 +10,7 @@ dependencies {
   compileOnly "net.java.dev.jna:jna:${libs.versions.jna.get()}"
   compileOnly project(":jvm-libs:generic:extensions:kotlin")
 
+  testImplementation "net.java.dev.jna:jna:${libs.versions.jna.get()}"
   testImplementation project(":jvm-libs:linea:blob-compressor")
   testImplementation(testFixtures(project(":jvm-libs:linea:blob-compressor")))
   testImplementation(testFixtures(project(":jvm-libs:linea:core:domain-models")))
