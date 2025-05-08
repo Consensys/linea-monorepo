@@ -10,12 +10,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
@@ -37,11 +40,11 @@ func init() {
 	// Interfaces
 	RegisterImplementation(ifaces.ColID(""))
 	RegisterImplementation(ifaces.QueryID(""))
-	RegisterImplementation(coin.Name(""))
 
-	// Columns
+	// Coins and Columns
 	RegisterImplementation(column.Natural{})
 	RegisterImplementation(column.Shifted{})
+	RegisterImplementation(coin.Name(""))
 
 	// Verifier columns
 	RegisterImplementation(verifiercol.ConstCol{})
@@ -80,11 +83,12 @@ func init() {
 	RegisterImplementation(accessors.FromPublicColumn{})
 	RegisterImplementation(accessors.FromUnivXAccessor{})
 
-	// variables
+	// Variables
 	RegisterImplementation(variables.X{})
 	RegisterImplementation(variables.PeriodicSample{})
-
 	RegisterImplementation(symbolic.StringVar(""))
+
+	// Circuit implementations
 	RegisterImplementation(ecdsa.MultiEcRecoverCircuit{})
 	RegisterImplementation(modexp.ModExpCircuit{})
 	RegisterImplementation(ecarith.MultiECAddCircuit{})
@@ -93,6 +97,12 @@ func init() {
 	RegisterImplementation(ecpair.MultiMillerLoopMulCircuit{})
 	RegisterImplementation(ecpair.MultiMillerLoopFinalExpCircuit{})
 	RegisterImplementation(sha2.SHA2Circuit{})
+
+	// Dedicated and common types
+	RegisterImplementation(byte32cmp.MultiLimbCmp{})
+	RegisterImplementation(byte32cmp.DecompositionCtx{})
+	RegisterImplementation(dedicated.IsZeroCtx{})
+	RegisterImplementation(common.HashingCtx{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this

@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-type isZeroCtx struct {
+type IsZeroCtx struct {
 	ctxID     int
 	size      int
 	round     int
@@ -32,7 +32,7 @@ type isZeroCtx struct {
 func IsZero(comp *wizard.CompiledIOP, c any) (ifaces.Column, wizard.ProverAction) {
 
 	var (
-		ctx = &isZeroCtx{
+		ctx = &IsZeroCtx{
 			ctxID: len(comp.QueriesNoParams.AllKeys()),
 		}
 	)
@@ -61,7 +61,7 @@ func IsZero(comp *wizard.CompiledIOP, c any) (ifaces.Column, wizard.ProverAction
 func IsZeroMask(comp *wizard.CompiledIOP, c, mask any) (ifaces.Column, wizard.ProverAction) {
 
 	var (
-		ctx = &isZeroCtx{
+		ctx = &IsZeroCtx{
 			ctxID: len(comp.QueriesNoParams.AllKeys()),
 		}
 	)
@@ -81,7 +81,7 @@ func IsZeroMask(comp *wizard.CompiledIOP, c, mask any) (ifaces.Column, wizard.Pr
 	return ctx.isZero, ctx
 }
 
-func compileIsZeroWithSize(comp *wizard.CompiledIOP, ctx *isZeroCtx) {
+func compileIsZeroWithSize(comp *wizard.CompiledIOP, ctx *IsZeroCtx) {
 
 	ctx.isZero = comp.InsertCommit(
 		ctx.round,
@@ -122,7 +122,7 @@ func compileIsZeroWithSize(comp *wizard.CompiledIOP, ctx *isZeroCtx) {
 }
 
 // Run implements the [wizard.ProverAction] interface
-func (ctx *isZeroCtx) Run(run *wizard.ProverRuntime) {
+func (ctx *IsZeroCtx) Run(run *wizard.ProverRuntime) {
 	var (
 		c         = column.EvalExprColumn(run, ctx.c.Board())
 		invOrZero = smartvectors.BatchInvert(c)

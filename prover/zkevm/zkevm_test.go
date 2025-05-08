@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
 
 // serializeAndHash serializes a value and computes its SHA-256 hash.
@@ -172,6 +173,47 @@ func TestCompiledIOP(t *testing.T) {
 	// Compare hashes
 	if !reflect.DeepEqual(z.WizardIOP, deserializedIOP) {
 
+	}
+}
+
+// TestStateManager tests serialization and deserialization of the StateManager field.
+func TestStateManager(t *testing.T) {
+	z := GetZkEVM()
+	if z == nil {
+		t.Fatal("GetZkEVM returned nil")
+	}
+	if z.StateManager == nil {
+		t.Fatal("StateManager field is nil")
+	}
+
+	// Serialize and compute hash for original StateManager
+	stateManagerSer, originalHash, err := serializeAndHash(z.StateManager)
+	if err != nil {
+		t.Fatalf("Failed to serialize and hash StateManager: %v", err)
+	}
+
+	// Create a new empty CompiledIOP for deserialization
+	comp := serialization.NewEmptyCompiledIOP()
+
+	// Deserialize into a new StateManager
+	deserializedVal, err := serialization.DeserializeValue(stateManagerSer, serialization.DeclarationMode, reflect.TypeOf(&statemanager.StateManager{}), comp)
+	if err != nil {
+		t.Fatalf("Failed to deserialize StateManager: %v", err)
+	}
+	deserialized, ok := deserializedVal.Interface().(*statemanager.StateManager)
+	if !ok {
+		t.Fatalf("Deserialized value is not *statemanager.StateManager: got %T", deserializedVal.Interface())
+	}
+
+	// Serialize and compute hash for deserialized StateManager
+	_, deserializedHash, err := serializeAndHash(deserialized)
+	if err != nil {
+		t.Fatalf("Failed to serialize and hash deserialized StateManager: %v", err)
+	}
+
+	// Compare hashes
+	if !reflect.DeepEqual(originalHash, deserializedHash) {
+		t.Errorf("Hashes do not match:\nOriginal: %x\nDeserialized: %x", originalHash, deserializedHash)
 	}
 }
 
