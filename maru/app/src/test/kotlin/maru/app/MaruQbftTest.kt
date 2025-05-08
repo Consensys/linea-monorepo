@@ -205,7 +205,7 @@ class MaruQbftTest {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
     }
     maruNode.stop()
-    Thread.sleep(3)
+    Thread.sleep(3000)
     maruNode.start()
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
@@ -224,7 +224,7 @@ class MaruQbftTest {
     maruNode.stop()
     maruNode.close()
 
-    Thread.sleep(3)
+    Thread.sleep(3000)
     maruNode =
       MaruFactory.buildTestMaru(
         ethereumJsonRpcUrl = besuNode.jsonRpcBaseUrl().get(),
