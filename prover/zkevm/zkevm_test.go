@@ -1,7 +1,6 @@
 package zkevm
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"reflect"
 	"testing"
@@ -15,14 +14,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
 
-// serializeAndHash serializes a value and computes its SHA-256 hash.
-func serializeAndHash(value interface{}) ([]byte, []byte, error) {
+// serializeValue serializes a value using the serialization package.
+func serializeValue(value interface{}) ([]byte, error) {
 	serializedData, err := serialization.SerializeValue(reflect.ValueOf(value), serialization.DeclarationMode)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to serialize value: %w", err)
+		return nil, fmt.Errorf("failed to serialize value: %w", err)
 	}
-	hash := sha256.Sum256(serializedData)
-	return serializedData, hash[:], nil
+	return serializedData, nil
 }
 
 // TestArithmetization tests serialization and deserialization of the Arithmetization field.
@@ -35,10 +33,10 @@ func TestArithmetization(t *testing.T) {
 		t.Fatal("Arithmetization field is nil")
 	}
 
-	// Serialize and compute hash for original Arithmetization
-	arithmetizationSer, originalHash, err := serializeAndHash(z.Arithmetization)
+	// Serialize the original Arithmetization
+	arithmetizationSer, err := serializeValue(z.Arithmetization)
 	if err != nil {
-		t.Fatalf("Failed to serialize and hash Arithmetization: %v", err)
+		t.Fatalf("Failed to serialize Arithmetization: %v", err)
 	}
 
 	// Create a new empty CompiledIOP for deserialization
@@ -54,15 +52,9 @@ func TestArithmetization(t *testing.T) {
 		t.Fatalf("Deserialized value is not *arithmetization.Arithmetization: got %T", deserializedVal.Interface())
 	}
 
-	// Serialize and compute hash for deserialized Arithmetization
-	_, deserializedHash, err := serializeAndHash(deserialized)
-	if err != nil {
-		t.Fatalf("Failed to serialize and hash deserialized Arithmetization: %v", err)
-	}
-
-	// Compare hashes
-	if !reflect.DeepEqual(originalHash, deserializedHash) {
-		t.Errorf("Hashes do not match:\nOriginal: %x\nDeserialized: %x", originalHash, deserializedHash)
+	// Compare structs while ignoring unexported fields
+	if !compareExportedFields(z.Arithmetization, deserialized) {
+		t.Fatalf("Mis-matched fields after serde Arithmetization (ignoring unexported fields)")
 	}
 }
 
@@ -76,10 +68,10 @@ func TestKeccak(t *testing.T) {
 		t.Fatal("Keccak field is nil")
 	}
 
-	// Serialize and compute hash for original Keccak
-	keccakSer, originalHash, err := serializeAndHash(z.Keccak)
+	// Serialize the original Keccak
+	keccakSer, err := serializeValue(z.Keccak)
 	if err != nil {
-		t.Fatalf("Failed to serialize and hash Keccak: %v", err)
+		t.Fatalf("Failed to serialize Keccak: %v", err)
 	}
 
 	// Create a new empty CompiledIOP for deserialization
@@ -95,15 +87,9 @@ func TestKeccak(t *testing.T) {
 		t.Fatalf("Deserialized value is not *keccak.KeccakZkEVM: got %T", deserializedVal.Interface())
 	}
 
-	// Serialize and compute hash for deserialized Keccak
-	_, deserializedHash, err := serializeAndHash(deserialized)
-	if err != nil {
-		t.Fatalf("Failed to serialize and hash deserialized Keccak: %v", err)
-	}
-
-	// Compare hashes
-	if !reflect.DeepEqual(originalHash, deserializedHash) {
-		t.Errorf("Hashes do not match:\nOriginal: %x\nDeserialized: %x", originalHash, deserializedHash)
+	// Compare structs while ignoring unexported fields
+	if !compareExportedFields(z.Keccak, deserialized) {
+		t.Fatalf("Mis-matched fields after serde Keccak (ignoring unexported fields)")
 	}
 }
 
@@ -117,10 +103,10 @@ func TestSha2(t *testing.T) {
 		t.Fatal("Sha2 field is nil")
 	}
 
-	// Serialize and compute hash for original Sha2
-	sha2Ser, originalHash, err := serializeAndHash(z.Sha2)
+	// Serialize the original Sha2
+	sha2Ser, err := serializeValue(z.Sha2)
 	if err != nil {
-		t.Fatalf("Failed to serialize and hash Sha2: %v", err)
+		t.Fatalf("Failed to serialize Sha2: %v", err)
 	}
 
 	// Create a new empty CompiledIOP for deserialization
@@ -136,15 +122,9 @@ func TestSha2(t *testing.T) {
 		t.Fatalf("Deserialized value is not *sha2.Sha2SingleProvider: got %T", deserializedVal.Interface())
 	}
 
-	// Serialize and compute hash for deserialized Sha2
-	_, deserializedHash, err := serializeAndHash(deserialized)
-	if err != nil {
-		t.Fatalf("Failed to serialize and hash deserialized Sha2: %v", err)
-	}
-
-	// Compare hashes
-	if !reflect.DeepEqual(originalHash, deserializedHash) {
-		t.Errorf("Hashes do not match:\nOriginal: %x\nDeserialized: %x", originalHash, deserializedHash)
+	// Compare structs while ignoring unexported fields
+	if !compareExportedFields(z.Sha2, deserialized) {
+		t.Fatalf("Mis-matched fields after serde Sha2 (ignoring unexported fields)")
 	}
 }
 
@@ -158,10 +138,10 @@ func TestCompiledIOP(t *testing.T) {
 		t.Fatal("WizardIOP field is nil")
 	}
 
-	// Serialize and compute hash for original CompiledIOP
+	// Serialize the original CompiledIOP
 	compiledIOPSer, err := serialization.SerializeCompiledIOP(z.WizardIOP)
 	if err != nil {
-		t.Fatalf("Failed to serialize and hash CompiledIOP: %v", err)
+		t.Fatalf("Failed to serialize CompiledIOP: %v", err)
 	}
 
 	// Deserialize into a new CompiledIOP
@@ -170,9 +150,25 @@ func TestCompiledIOP(t *testing.T) {
 		t.Fatalf("Failed to deserialize CompiledIOP: %v", err)
 	}
 
-	// Compare hashes
-	if !reflect.DeepEqual(z.WizardIOP, deserializedIOP) {
+	// Compare structs while ignoring unexported fields
+	if !compareExportedFields(z.WizardIOP.Columns, deserializedIOP.Columns) {
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: Columns (ignoring unexported fields)")
+	}
 
+	if !compareExportedFields(z.WizardIOP.Coins, deserializedIOP.Coins) {
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: Coins (ignoring unexported fields)")
+	}
+
+	if !compareExportedFields(z.WizardIOP.QueriesParams, deserializedIOP.QueriesParams) {
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: QueriesParams (ignoring unexported fields)")
+	}
+
+	if !compareExportedFields(z.WizardIOP.QueriesNoParams, deserializedIOP.QueriesNoParams) {
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: QueriesNoParams (ignoring unexported fields)")
+	}
+
+	if z.WizardIOP.DummyCompiled != deserializedIOP.DummyCompiled {
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: DummyCompiled")
 	}
 }
 
@@ -186,10 +182,10 @@ func TestStateManager(t *testing.T) {
 		t.Fatal("StateManager field is nil")
 	}
 
-	// Serialize and compute hash for original StateManager
-	stateManagerSer, originalHash, err := serializeAndHash(z.StateManager)
+	// Serialize the original StateManager
+	stateManagerSer, err := serializeValue(z.StateManager)
 	if err != nil {
-		t.Fatalf("Failed to serialize and hash StateManager: %v", err)
+		t.Fatalf("Failed to serialize StateManager: %v", err)
 	}
 
 	// Create a new empty CompiledIOP for deserialization
@@ -205,16 +201,98 @@ func TestStateManager(t *testing.T) {
 		t.Fatalf("Deserialized value is not *statemanager.StateManager: got %T", deserializedVal.Interface())
 	}
 
-	// Serialize and compute hash for deserialized StateManager
-	_, deserializedHash, err := serializeAndHash(deserialized)
-	if err != nil {
-		t.Fatalf("Failed to serialize and hash deserialized StateManager: %v", err)
+	// Compare structs while ignoring unexported fields
+	if !compareExportedFields(z.StateManager, deserialized) {
+		t.Fatalf("Mis-matched fields after serde StateManager (ignoring unexported fields)")
+	}
+}
+
+// compareExportedFields checks if two values are equal, ignoring unexported fields, including in nested structs.
+// It logs mismatched fields with their paths and values.
+func compareExportedFields(a, b interface{}) bool {
+	return compareExportedFieldsWithPath(a, b, "")
+}
+
+// compareExportedFieldsWithPath is a helper that tracks the field path for logging.
+func compareExportedFieldsWithPath(a, b interface{}, path string) bool {
+	v1 := reflect.ValueOf(a)
+	v2 := reflect.ValueOf(b)
+
+	// Ensure both values are valid
+	if !v1.IsValid() || !v2.IsValid() {
+		if !v1.IsValid() && !v2.IsValid() {
+			return true
+		}
+		fmt.Printf("Mismatch at %s: one value is invalid (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, reflect.TypeOf(a), reflect.TypeOf(b))
+		return false
 	}
 
-	// Compare hashes
-	if !reflect.DeepEqual(originalHash, deserializedHash) {
-		t.Errorf("Hashes do not match:\nOriginal: %x\nDeserialized: %x", originalHash, deserializedHash)
+	// Ensure same type
+	if v1.Type() != v2.Type() {
+		fmt.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, v1.Type(), v2.Type())
+		return false
 	}
+
+	// Handle pointers by dereferencing
+	if v1.Kind() == reflect.Ptr {
+		if v1.IsNil() && v2.IsNil() {
+			return true
+		}
+		if v1.IsNil() != v2.IsNil() {
+			fmt.Printf("Mismatch at %s: nil status differs (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
+			return false
+		}
+		return compareExportedFieldsWithPath(v1.Elem().Interface(), v2.Elem().Interface(), path)
+	}
+
+	// Handle structs
+	if v1.Kind() == reflect.Struct {
+		equal := true
+		for i := 0; i < v1.NumField(); i++ {
+			// Skip unexported fields
+			if !v1.Type().Field(i).IsExported() {
+				continue
+			}
+			f1 := v1.Field(i)
+			f2 := v2.Field(i)
+			fieldName := v1.Type().Field(i).Name
+			// Construct field path
+			fieldPath := fieldName
+			if path != "" {
+				fieldPath = path + "." + fieldName
+			}
+
+			// Recursively compare field values
+			if !compareExportedFieldsWithPath(f1.Interface(), f2.Interface(), fieldPath) {
+				equal = false
+			}
+		}
+		return equal
+	}
+
+	// Handle slices
+	if v1.Kind() == reflect.Slice {
+		if v1.Len() != v2.Len() {
+			fmt.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1, v2, v1.Type())
+			return false
+		}
+		equal := true
+		for i := 0; i < v1.Len(); i++ {
+			// Construct element path
+			elemPath := fmt.Sprintf("%s[%d]", path, i)
+			if !compareExportedFieldsWithPath(v1.Index(i).Interface(), v2.Index(i).Interface(), elemPath) {
+				equal = false
+			}
+		}
+		return equal
+	}
+
+	// For other types, use DeepEqual and log if mismatched
+	if !reflect.DeepEqual(a, b) {
+		fmt.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
+		return false
+	}
+	return true
 }
 
 // GetZKEVM returns a [zkevm.ZkEvm] with its trace limits inflated so that it
