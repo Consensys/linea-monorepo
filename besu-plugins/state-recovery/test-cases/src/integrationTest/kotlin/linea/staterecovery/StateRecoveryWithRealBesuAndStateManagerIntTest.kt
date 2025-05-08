@@ -39,7 +39,7 @@ import kotlin.time.Duration.Companion.seconds
 class StateRecoveryWithRealBesuAndStateManagerIntTest {
   private val log = LogManager.getLogger("test.case.StateRecoverAppWithLocalStackIntTest")
   private lateinit var stateManagerClient: StateManagerClientV1
-  private val testDataDir = "testdata/coordinator/prover/v3"
+  private val testDataDir = "testdata/coordinator/prover/v3/stateRecovery"
   private val aggregationsAndBlobs: List<AggregationAndBlobs> = loadBlobsAndAggregationsSortedAndGrouped(
     blobsResponsesDir = "$testDataDir/compression/responses",
     aggregationsResponsesDir = "$testDataDir/aggregation/responses"

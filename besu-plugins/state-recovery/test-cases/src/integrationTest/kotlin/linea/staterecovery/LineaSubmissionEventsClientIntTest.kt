@@ -31,13 +31,10 @@ import kotlin.time.toJavaDuration
 @ExtendWith(VertxExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class LineaSubmissionEventsClientIntTest {
-  private val testDataDir = "testdata/coordinator/prover/v2/"
+  private val testDataDir = "testdata/coordinator/prover/v3/submissionAndFinalization/"
   private lateinit var rollupDeploymentResult: LineaRollupDeploymentResult
 
-  // 1-block-per-blob test data has 3 aggregations: 1..7, 8..14, 15..21.
-  // We will upgrade the contract in the middle of 2nd aggregation: 12
-  // shall submit blob 12, stop submission, upgrade the contract and resume with blob 13
-  // val lastSubmittedBlobs = blobs.filter { it.startBlockNumber == 7UL }
+  // 1-block-per-blob test data has 2 aggregations: 1..10, 11..20 with 1 more than the max blob submission
   private lateinit var aggregationsAndBlobs: List<AggregationAndBlobs>
   private lateinit var submissionEventsFetcher: LineaRollupSubmissionEventsClient
 

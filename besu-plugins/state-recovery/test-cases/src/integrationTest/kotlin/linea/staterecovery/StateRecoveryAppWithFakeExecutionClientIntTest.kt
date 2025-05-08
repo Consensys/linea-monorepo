@@ -49,7 +49,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
   private lateinit var appClients: AppClients
 
   private val testDataDir = run {
-    "testdata/coordinator/prover/v3"
+    "testdata/coordinator/prover/v3/stateRecovery"
   }
 
   private val l1RpcUrl = "http://localhost:8445"
