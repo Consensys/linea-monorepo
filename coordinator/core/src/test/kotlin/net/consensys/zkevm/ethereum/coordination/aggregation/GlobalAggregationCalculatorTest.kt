@@ -708,37 +708,18 @@ class GlobalAggregationCalculatorTest {
 
   @Test
   fun `test getUpdatedAggregationSize`() {
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(1u, 1u)).isEqualTo(1u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(2u, 1u)).isEqualTo(2u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(3u, 1u)).isEqualTo(3u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(4u, 1u)).isEqualTo(4u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(5u, 1u)).isEqualTo(5u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(6u, 1u)).isEqualTo(6u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(7u, 1u)).isEqualTo(7u)
+    assertOneToAggregationSizeUsesAggregationSize(12u, 1u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(11u, 1u)).isEqualTo(11u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(12u, 1u)).isEqualTo(12u)
 
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(1u, 6u)).isEqualTo(1u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(2u, 6u)).isEqualTo(2u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(3u, 6u)).isEqualTo(3u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(4u, 6u)).isEqualTo(4u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(5u, 6u)).isEqualTo(5u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(6u, 6u)).isEqualTo(6u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(7u, 6u)).isEqualTo(6u)
+    assertOneToAggregationSizeUsesAggregationSize(6u, 6u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(11u, 6u)).isEqualTo(6u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(12u, 6u)).isEqualTo(12u)
 
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(1u, 9u)).isEqualTo(1u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(2u, 9u)).isEqualTo(2u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(3u, 9u)).isEqualTo(3u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(4u, 9u)).isEqualTo(4u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(5u, 9u)).isEqualTo(5u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(6u, 9u)).isEqualTo(6u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(7u, 9u)).isEqualTo(7u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(8u, 9u)).isEqualTo(8u)
-    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(9u, 9u)).isEqualTo(9u)
+    assertOneToAggregationSizeUsesAggregationSize(9u, 9u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(11u, 9u)).isEqualTo(9u)
     assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(12u, 9u)).isEqualTo(9u)
+    assertThat(GlobalAggregationCalculator.getUpdatedAggregationSize(18u, 9u)).isEqualTo(18u)
   }
 
   companion object {
@@ -749,6 +730,19 @@ class GlobalAggregationCalculatorTest {
       val proofsLimit: Int,
       val expectedAggregations: List<BlobsToAggregate>
     )
+
+    private fun assertOneToAggregationSizeUsesAggregationSize(
+      endSize:
+        UInt,
+      maxAggregationSize: UInt
+    ) {
+      for (aggregationSize in 1u..endSize) {
+        assertThat(
+          GlobalAggregationCalculator.getUpdatedAggregationSize
+          (aggregationSize, maxAggregationSize)
+        ).isEqualTo(aggregationSize)
+      }
+    }
 
     private fun regularBlobs(count: Int, batchSize: Int = 1): MutableList<BlobCounters> {
       return (1..count).map { i -> blob(i, i, batchSize) }.toMutableList()
