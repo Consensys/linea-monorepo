@@ -99,7 +99,7 @@ class CoordinatorConfigTest {
       rawExecutionTracesVersion = "0.2.0",
       expectedTracesApiVersionV2 = "v0.8.0-rc8",
       conflationV2 = TracesConfig.FunctionalityEndpoint(
-        endpoints = listOf(java.net.URI("http://traces-node-v2:8545/").toURL()),
+        endpoints = listOf(URI("http://traces-node:8545/").toURL()),
         requestLimitPerEndpoint = 1U,
         requestRetry = RequestRetryConfigTomlFriendly(
           backoffDelay = Duration.parse("PT1S"),
@@ -107,9 +107,7 @@ class CoordinatorConfigTest {
         )
       ),
       countersV2 = TracesConfig.FunctionalityEndpoint(
-        listOf(
-          URI("http://traces-node-v2:8545/").toURL()
-        ),
+        endpoints = listOf(URI("http://traces-node:8545/").toURL()),
         requestLimitPerEndpoint = 1U,
         requestRetry = RequestRetryConfigTomlFriendly(
           backoffDelay = Duration.parse("PT1S"),

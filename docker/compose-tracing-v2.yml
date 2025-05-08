@@ -41,10 +41,10 @@ services:
       file: compose-spec-l2-services.yml
       service: sequencer
 
-  traces-node-v2:
+  traces-node:
     extends:
       file: compose-spec-l2-services.yml
-      service: traces-node-v2
+      service: traces-node
 
   prover-v3:
     extends:

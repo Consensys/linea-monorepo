@@ -126,9 +126,9 @@ services:
       linea:
         ipv4_address: 11.11.11.119
 
-  traces-node-v2:
-    hostname: traces-node-v2
-    container_name: traces-node-v2
+  traces-node:
+    hostname: traces-node
+    container_name: traces-node
     image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-sepolia-3e31c8f}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
@@ -154,12 +154,12 @@ services:
       - -c
       - |
         /opt/besu/bin/besu \
-        --config-file=/var/lib/besu/traces-node-v2.config.toml \
+        --config-file=/var/lib/besu/traces-node.config.toml \
         --genesis-file=/var/lib/besu/genesis.json \
         --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
     volumes:
-      - ./config/traces-node-v2/traces-node-v2-config.toml:/var/lib/besu/traces-node-v2.config.toml:ro
-      - ./config/traces-node-v2/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/traces-node/traces-node-config.toml:/var/lib/besu/traces-node.config.toml:ro
+      - ./config/traces-node/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
       - ../tmp/local/:/data/:rw
     networks:
