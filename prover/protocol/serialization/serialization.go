@@ -175,8 +175,8 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		return nil, fmt.Errorf("could not serialize interface value of type %q: %w", v.Type().String(), err)
 	}
 
+	// DEBUG purposes
 	concreteType := getPkgPathAndTypeNameIndirect(concrete.Interface())
-
 	_, err = findRegisteredImplementation(concreteType)
 	if err != nil {
 		logrus.Infof("MISSING concrete type in implementation registry:%s \n", concreteType)
