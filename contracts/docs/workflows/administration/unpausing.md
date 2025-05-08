@@ -3,6 +3,8 @@
 
 This document outlines how a Safe Member can unpause previously paused features on key Linea ecosystem contracts using the specified pause types.
 
+**Note**: These contracts are governed by the [Security Council Charter](../../security-council-charter-v1.3.md).
+
 ---
 
 ## 🟧 Flow to Unpause Features or Set Roles Allowed to Unpause Types 

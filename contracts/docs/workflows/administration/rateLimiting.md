@@ -3,6 +3,8 @@
 
 This process allows a designated Safe Member to set or reset rate limit values, either by defining a new limit or resetting the amount used during a period.
 
+**Note**: These contracts are governed by the [Security Council Charter](../../security-council-charter-v1.3.md).
+
 ---
 
 ## 🟧 Flow: Rate Limit Configuration

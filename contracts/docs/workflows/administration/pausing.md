@@ -3,6 +3,8 @@
 
 This document outlines how a Safe Member can pause specific features on key Linea ecosystem contracts using well-defined pause types.
 
+**Note**: These contracts are governed by the [Security Council Charter](../../security-council-charter-v1.3.md).
+
 ---
 
 ## 🟧 Flow to Pause Features or Set Roles Allowed to Pause Types 
