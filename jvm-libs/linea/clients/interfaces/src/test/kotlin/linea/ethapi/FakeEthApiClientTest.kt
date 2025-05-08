@@ -132,14 +132,14 @@ class FakeEthApiClientTest {
       )
     ).also { client ->
       client.setFinalizedBlockTag(500UL)
-      assertThat(client.findBlockByNumber(BlockParameter.Tag.LATEST).get()?.number).isEqualTo(500UL)
-      assertThat(client.findBlockByNumber(BlockParameter.Tag.SAFE).get()?.number).isEqualTo(500UL)
-      assertThat(client.findBlockByNumber(BlockParameter.Tag.FINALIZED).get()?.number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get().number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get().number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get().number).isEqualTo(500UL)
 
       client.setFinalizedBlockTag(20UL)
-      assertThat(client.findBlockByNumber(BlockParameter.Tag.LATEST).get()?.number).isEqualTo(500UL)
-      assertThat(client.findBlockByNumber(BlockParameter.Tag.SAFE).get()?.number).isEqualTo(500UL)
-      assertThat(client.findBlockByNumber(BlockParameter.Tag.FINALIZED).get()?.number).isEqualTo(20UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get().number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get().number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get().number).isEqualTo(20UL)
     }
   }
 
