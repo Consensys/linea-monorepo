@@ -101,26 +101,26 @@ class ProofGeneratingConflationHandlerImpl(
           .thenCompose { batchProofHandler.acceptNewBatch(it) }
       }
   }
+}
 
-  private fun assertConsecutiveBlocksRange(
-    blocks: List<Block>
-  ): Result<ULongRange, IllegalArgumentException> {
-    if (blocks.isEmpty()) {
-      return Err(IllegalArgumentException("Empty list of blocks"))
-    }
-
-    if (blocks.size == 1) {
-      return Ok(blocks.first().number..blocks.last().number)
-    }
-
-    val sortedByNumber = blocks.sortedBy { it.number }
-    val gapFound = sortedByNumber
-      .zipWithNext { a, b -> b.number - a.number }
-      .any { it != 1UL }
-
-    if (gapFound) {
-      return Err(IllegalArgumentException("Conflated block list has non consecutive blocks!"))
-    }
-    return Ok(sortedByNumber.first().number..sortedByNumber.last().number)
+internal fun assertConsecutiveBlocksRange(
+  blocks: List<Block>
+): Result<ULongRange, IllegalArgumentException> {
+  if (blocks.isEmpty()) {
+    return Err(IllegalArgumentException("Empty list of blocks"))
   }
+
+  if (blocks.size == 1) {
+    return Ok(blocks.first().number..blocks.last().number)
+  }
+
+  val sortedByNumber = blocks.sortedBy { it.number }
+  val gapFound = sortedByNumber
+    .zipWithNext { a, b -> b.number - a.number }
+    .any { it != 1UL }
+
+  if (gapFound) {
+    return Err(IllegalArgumentException("Conflated blocks list has non consecutive blocks!"))
+  }
+  return Ok(sortedByNumber.first().number..sortedByNumber.last().number)
 }

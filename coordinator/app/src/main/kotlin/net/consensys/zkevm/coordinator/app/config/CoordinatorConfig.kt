@@ -21,7 +21,6 @@ import net.consensys.zkevm.coordinator.app.L2NetworkGasPricingService
 import net.consensys.zkevm.coordinator.clients.prover.ProversConfig
 import java.math.BigInteger
 import java.net.URL
-import java.nio.file.Path
 import java.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -189,15 +188,6 @@ data class TracesConfig(
       require(requestLimitPerEndpoint > 0u) { "requestLimitPerEndpoint must be greater than 0" }
     }
   }
-
-  data class FileManager(
-    val tracesFileExtension: String,
-    val rawTracesDirectory: Path,
-    val nonCanonicalRawTracesDirectory: Path,
-    val createNonCanonicalDirectory: Boolean,
-    val pollingInterval: Duration,
-    val tracesFileCreationWaitTimeout: Duration
-  )
 }
 
 data class StateManagerClientConfig(
