@@ -141,7 +141,7 @@ class Web3JContractAsyncHelper(
     gasPriceCaps: GasPriceCaps? = null
   ): SafeFuture<Eip4844Transaction> {
     require(blobs.size in 1..9) { "Blobs size=${blobs.size} must be between 1 and 9." }
-    val blobVersionedHashes = blobs.map {  BlobUtils.kzgToVersionedHash(BlobUtils.getCommitment(it)).toArray() }
+    val blobVersionedHashes = blobs.map { BlobUtils.kzgToVersionedHash(BlobUtils.getCommitment(it)).toArray() }
     return getGasLimit(function, blobs, blobVersionedHashes)
       .thenApply { gasLimit ->
         val (_, maxFeePerBlobGas) = getEip4844GasFees()
