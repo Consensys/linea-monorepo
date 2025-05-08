@@ -112,8 +112,8 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
       "linea.plugin.staterecovery.clients" to Level.INFO,
       "test.fake.clients.l1.fake-execution-layer" to Level.DEBUG,
       "test.clients.l1.web3j-default" to Level.DEBUG,
-      "test.clients.l1.web3j.receipt-poller" to Level.TRACE,
-      "linea.staterecovery.datafetching" to Level.TRACE
+      "test.clients.l1.web3j.receipt-poller" to Level.INFO,
+      "linea.staterecovery.datafetching" to Level.INFO
     )
   }
 
