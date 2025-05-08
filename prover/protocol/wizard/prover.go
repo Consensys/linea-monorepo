@@ -674,7 +674,7 @@ func (run *ProverRuntime) goNextRound() {
 // [CompiledIOP] object for the current round.
 func (run *ProverRuntime) runProverSteps() {
 	// Run all the assigners
-	subProverSteps := run.Spec.subProvers.MustGet(run.currRound)
+	subProverSteps := run.Spec.SubProvers.MustGet(run.currRound)
 	for idx, step := range subProverSteps {
 
 		// Profile individual prover steps

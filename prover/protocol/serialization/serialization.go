@@ -179,7 +179,7 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	concreteType := getPkgPathAndTypeNameIndirect(concrete.Interface())
 	_, err = findRegisteredImplementation(concreteType)
 	if err != nil {
-		logrus.Infof("MISSING concrete type in implementation registry:%s \n", concreteType)
+		logrus.Warnf("MISSING concrete type in implementation registry:%s \n", concreteType)
 	}
 
 	raw := map[string]interface{}{

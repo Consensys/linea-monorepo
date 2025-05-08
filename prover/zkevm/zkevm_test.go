@@ -9,8 +9,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
 
@@ -21,6 +24,163 @@ func serializeValue(value interface{}) ([]byte, error) {
 		return nil, fmt.Errorf("failed to serialize value: %w", err)
 	}
 	return serializedData, nil
+}
+
+func TestZKEVM(t *testing.T) {
+	z := GetZkEVM()
+	if z == nil {
+		t.Fatal("GetZkEVM returned nil")
+	}
+
+	// Run existing subtests for attributes
+	t.Run("Arithmetization", TestArithmetization)
+	t.Run("Sha2", TestSha2)
+	t.Run("StateManager", TestStateManager)
+	t.Run("CompiledIOP", TestCompiledIOP)
+
+	// Failing tests due to not supporting serialization of `func()`
+
+	t.Run("Keccak", TestKeccak)
+	t.Run("Modexp", TestModexp)
+	t.Run("Ecadd", TestEcadd)
+	t.Run("Ecmul", TestEcmul)
+	t.Run("Ecpair", TestEcpair)
+}
+
+func TestModexp(t *testing.T) {
+	z := GetZkEVM()
+	if z == nil {
+		t.Fatal("GetZkEVM returned nil")
+	}
+	if z.Modexp == nil {
+		t.Fatal("Modexp field is nil")
+	}
+
+	// Serialize the original Modexp
+	modexpSer, err := serializeValue(z.Modexp)
+	if err != nil {
+		t.Fatalf("Failed to serialize Modexp: %v", err)
+	}
+
+	// Create a new empty CompiledIOP for deserialization
+	comp := serialization.NewEmptyCompiledIOP()
+
+	// Deserialize into a new Modexp
+	deserializedModexpVal, err := serialization.DeserializeValue(modexpSer, serialization.DeclarationMode, reflect.TypeOf(&modexp.Module{}), comp)
+	if err != nil {
+		t.Fatalf("Failed to deserialize Modexp: %v", err)
+	}
+	deserializedModexp, ok := deserializedModexpVal.Interface().(*modexp.Module)
+	if !ok {
+		t.Fatalf("Deserialized value is not *modexp.Module: got %T", deserializedModexpVal.Interface())
+	}
+
+	// Compare structs while ignoring unexported fields
+	if !compareExportedFields(z.Modexp, deserializedModexp) {
+		t.Fatalf("Mis-matched fields after serde Modexp (ignoring unexported fields)")
+	}
+}
+
+func TestEcadd(t *testing.T) {
+	z := GetZkEVM()
+	if z == nil {
+		t.Fatal("GetZkEVM returned nil")
+	}
+	if z.Ecadd == nil {
+		t.Fatal("Ecadd field is nil")
+	}
+
+	// Serialize the original Ecadd
+	ecaddSer, err := serializeValue(z.Ecadd)
+	if err != nil {
+		t.Fatalf("Failed to serialize Ecadd: %v", err)
+	}
+
+	// Create a new empty CompiledIOP for deserialization
+	comp := serialization.NewEmptyCompiledIOP()
+
+	// Deserialize into a new Ecadd
+	deserializedEcaddVal, err := serialization.DeserializeValue(ecaddSer, serialization.DeclarationMode, reflect.TypeOf(&ecarith.EcAdd{}), comp)
+	if err != nil {
+		t.Fatalf("Failed to deserialize Ecadd: %v", err)
+	}
+	deserializedEcadd, ok := deserializedEcaddVal.Interface().(*ecarith.EcAdd)
+	if !ok {
+		t.Fatalf("Deserialized value is not *ecarith.EcAdd: got %T", deserializedEcaddVal.Interface())
+	}
+
+	// Compare structs while ignoring unexported fields
+	if !compareExportedFields(z.Ecadd, deserializedEcadd) {
+		t.Fatalf("Mis-matched fields after serde Ecadd (ignoring unexported fields)")
+	}
+}
+
+func TestEcmul(t *testing.T) {
+	z := GetZkEVM()
+	if z == nil {
+		t.Fatal("GetZkEVM returned nil")
+	}
+	if z.Ecmul == nil {
+		t.Fatal("Ecmul field is nil")
+	}
+
+	// Serialize the original Ecmul
+	ecmulSer, err := serializeValue(z.Ecmul)
+	if err != nil {
+		t.Fatalf("Failed to serialize Ecmul: %v", err)
+	}
+
+	// Create a new empty CompiledIOP for deserialization
+	comp := serialization.NewEmptyCompiledIOP()
+
+	// Deserialize into a new Ecmul
+	deserializedEcmulVal, err := serialization.DeserializeValue(ecmulSer, serialization.DeclarationMode, reflect.TypeOf(&ecarith.EcMul{}), comp)
+	if err != nil {
+		t.Fatalf("Failed to deserialize Ecmul: %v", err)
+	}
+	deserializedEcmul, ok := deserializedEcmulVal.Interface().(*ecarith.EcMul)
+	if !ok {
+		t.Fatalf("Deserialized value is not *ecarith.EcMul: got %T", deserializedEcmulVal.Interface())
+	}
+
+	// Compare structs while ignoring unexported fields
+	if !compareExportedFields(z.Ecmul, deserializedEcmul) {
+		t.Fatalf("Mis-matched fields after serde Ecmul (ignoring unexported fields)")
+	}
+}
+
+func TestEcpair(t *testing.T) {
+	z := GetZkEVM()
+	if z == nil {
+		t.Fatal("GetZkEVM returned nil")
+	}
+	if z.Ecpair == nil {
+		t.Fatal("Ecpair field is nil")
+	}
+
+	// Serialize the original Ecpair
+	ecpairSer, err := serializeValue(z.Ecpair)
+	if err != nil {
+		t.Fatalf("Failed to serialize Ecpair: %v", err)
+	}
+
+	// Create a new empty CompiledIOP for deserialization
+	comp := serialization.NewEmptyCompiledIOP()
+
+	// Deserialize into a new Ecpair
+	deserializedEcpairVal, err := serialization.DeserializeValue(ecpairSer, serialization.DeclarationMode, reflect.TypeOf(&ecpair.ECPair{}), comp)
+	if err != nil {
+		t.Fatalf("Failed to deserialize Ecpair: %v", err)
+	}
+	deserializedEcpair, ok := deserializedEcpairVal.Interface().(*ecpair.ECPair)
+	if !ok {
+		t.Fatalf("Deserialized value is not *ecpair.ECPair: got %T", deserializedEcpairVal.Interface())
+	}
+
+	// Compare structs while ignoring unexported fields
+	if !compareExportedFields(z.Ecpair, deserializedEcpair) {
+		t.Fatalf("Mis-matched fields after serde Ecpair (ignoring unexported fields)")
+	}
 }
 
 // TestArithmetization tests serialization and deserialization of the Arithmetization field.
@@ -165,6 +325,12 @@ func TestCompiledIOP(t *testing.T) {
 
 	if !compareExportedFields(z.WizardIOP.QueriesNoParams, deserializedIOP.QueriesNoParams) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: QueriesNoParams (ignoring unexported fields)")
+	}
+
+	if !compareExportedFields(z.WizardIOP.SubProvers, deserializedIOP.SubProvers) {
+		fmt.Printf("Original subprover actions:%v \n", z.WizardIOP.SubProvers)
+		fmt.Printf("Decoded subprover actions:%v \n", deserializedIOP.SubProvers)
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: SubProvers (ignoring unexported fields)")
 	}
 
 	if z.WizardIOP.DummyCompiled != deserializedIOP.DummyCompiled {

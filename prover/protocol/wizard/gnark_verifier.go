@@ -330,7 +330,7 @@ func (c *VerifierCircuit) Verify(api frontend.API) {
 	c.FS = fiatshamir.NewGnarkFiatShamir(api, c.HasherFactory)
 	c.FS.Update(c.Spec.FiatShamirSetup)
 
-	for round, roundSteps := range c.Spec.subVerifiers.Inner() {
+	for round, roundSteps := range c.Spec.SubVerifiers.Inner() {
 
 		if round >= c.NumRound {
 			break
