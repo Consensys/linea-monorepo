@@ -42,8 +42,6 @@ import net.consensys.zkevm.coordinator.app.config.Type2StateProofProviderConfig
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.GethCliqueSafeBlockProvider
-import net.consensys.zkevm.coordinator.blockcreation.TracesConflationClientV2Adapter
-import net.consensys.zkevm.coordinator.blockcreation.TracesCountersClientV2Adapter
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.ShomeiClient
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV2
@@ -697,7 +695,7 @@ class L1DependentApp(
     val tracesCountersClient = run {
       val tracesCounterV2Config = configs.traces.countersV2
       val expectedTracesApiVersionV2 = configs.traces.expectedTracesApiVersionV2
-      val tracesCountersClientV2 = TracesGeneratorJsonRpcClientV2(
+      TracesGeneratorJsonRpcClientV2(
         vertx = vertx,
         rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
           endpoints = tracesCounterV2Config.endpoints.toSet(),
@@ -710,15 +708,13 @@ class L1DependentApp(
         retryConfig = tracesCounterV2Config.requestRetryConfig,
         log = tracesCountersLog
       )
-
-      TracesCountersClientV2Adapter(tracesCountersClientV2 = tracesCountersClientV2)
     }
 
     val tracesConflationLog = LogManager.getLogger("clients.TracesConflation")
     val tracesConflationClient = run {
       val tracesConflationConfigV2 = configs.traces.conflationV2
       val expectedTracesApiVersionV2 = configs.traces.expectedTracesApiVersionV2
-      val tracesConflationClientV2 = TracesGeneratorJsonRpcClientV2(
+      TracesGeneratorJsonRpcClientV2(
         vertx = vertx,
         rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
           endpoints = tracesConflationConfigV2.endpoints.toSet(),
@@ -730,10 +726,6 @@ class L1DependentApp(
         ),
         retryConfig = tracesConflationConfigV2.requestRetryConfig,
         log = tracesConflationLog
-      )
-
-      TracesConflationClientV2Adapter(
-        tracesConflationClientV2 = tracesConflationClientV2
       )
     }
 

@@ -6,7 +6,7 @@ import io.vertx.junit5.VertxExtension
 import linea.domain.createBlock
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.zkevm.coordinator.clients.GetTracesCountersResponse
-import net.consensys.zkevm.coordinator.clients.TracesCountersClientV1
+import net.consensys.zkevm.coordinator.clients.TracesCountersClientV2
 import net.consensys.zkevm.ethereum.coordination.blockcreation.BlockCreated
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -41,8 +41,8 @@ class BlockToBatchSubmissionCoordinatorTest {
     log: Logger = LogManager.getLogger(this::class.java)
   ): BlockToBatchSubmissionCoordinator {
     val tracesCountersClient =
-      mock<TracesCountersClientV1>().also {
-        whenever(it.rollupGetTracesCounters(randomBlock.numberAndHash))
+      mock<TracesCountersClientV2>().also {
+        whenever(it.getTracesCounters(randomBlock.number))
           .thenReturn(SafeFuture.completedFuture(Ok(GetTracesCountersResponse(tracesCounters, ""))))
       }
     return BlockToBatchSubmissionCoordinator(
