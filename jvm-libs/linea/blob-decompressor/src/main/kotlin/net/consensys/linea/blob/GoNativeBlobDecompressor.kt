@@ -81,21 +81,21 @@ internal interface GoNativeBlobDecompressorJnaBinding {
 internal interface GoNativeBlobDecompressorJnaLib : GoNativeBlobDecompressorJnaBinding, Library
 
 enum class BlobDecompressorVersion(val version: String) {
-  V1_1_1("v1.1.1")
+  V1_2_0("v1.2.0")
 }
 
 class GoNativeBlobDecompressorFactory {
   companion object {
     private val DICTIONARY_NAMES = arrayOf(
-      "compressor_dict.bin",
-      "dict/21-04-25.bin"
+      "compressor-dictionaries/compressor_dict.bin",
+      "compressor-dictionaries/v2025-04-21.bin"
     )
     private val dictionaryPaths = DICTIONARY_NAMES.map { dictionaryName ->
       copyResourceToTmpDir(dictionaryName, GoNativeBlobDecompressorFactory::class.java.classLoader)
     }
 
     private fun getLibFileName(version: String) = "blob_decompressor_jna_$version"
-  
+
     fun getInstance(
       version: BlobDecompressorVersion
     ): BlobDecompressor {
