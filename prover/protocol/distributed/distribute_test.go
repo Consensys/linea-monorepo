@@ -83,12 +83,10 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 	// This applies the dummy.Compiler to all parts of the distributed wizard.
 	for i := range distWizard.GLs {
-		logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("conglomeration-debug/module-gl-%v.csv", i)), logdata.IncludeAllFilter)(distWizard.GLs[i].Wiop)
 		dummy.CompileAtProverLvl()(distWizard.GLs[i].Wiop)
 	}
 
 	for i := range distWizard.LPPs {
-		logdata.GenCSV(files.MustOverwrite(fmt.Sprintf("conglomeration-debug/module-lpp-%v.csv", i)), logdata.IncludeAllFilter)(distWizard.LPPs[i].Wiop)
 		dummy.CompileAtProverLvl()(distWizard.LPPs[i].Wiop)
 	}
 
