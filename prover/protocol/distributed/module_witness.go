@@ -1,8 +1,6 @@
 package distributed
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -241,10 +239,6 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, col i
 		assignment          = col.GetColAssignment(runtime)
 		padding, isPaddable = pragmas.IsPaddable(col)
 	)
-
-	if isPaddable || col.GetColID() == "SHA2_IMPORT_PAD_NBYTES" {
-		fmt.Printf("[SegmentOfColumn] column %v, index %v, total segment %v, start=%v, end=%v, size=%v newSize=%v\n", col.GetColID(), index, totalNbSegment, start, end, col.Size(), newSize)
-	}
 
 	isOOB := end > col.Size() || start < 0
 

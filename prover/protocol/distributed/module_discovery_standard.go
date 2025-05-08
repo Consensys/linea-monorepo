@@ -285,10 +285,6 @@ func (disc *StandardModuleDiscoverer) SegmentBoundaryOf(run *wizard.ProverRuntim
 		}
 	}
 
-	if col.ID == "DECOMPOSITION_SHA2_Decomposed_Len_3" {
-		fmt.Printf("[the qbm of %q is %v] newsize=%v\n", "DECOMPOSITION_SHA2_Decomposed_Len_3", queryBasedModule.moduleName, queryBasedModule.size)
-	}
-
 	return queryBasedModule.SegmentBoundaries(run, segmentSize)
 }
 
@@ -614,11 +610,6 @@ func (disc *QueryBasedModuleDiscoverer) GroupColumns(
 // function will return 0, 0 if all columns in the module are constants.
 func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmentSize int) (int, int) {
 
-	verbose := false
-	if mod.moduleName == "Module_807_SHA2_IMPORT_PAD_IS_PADDED" {
-		verbose = true
-	}
-
 	mod.nbSegmentCacheMutex.Lock()
 	if res, ok := mod.nbSegmentCache[unsafe.Pointer(run)]; ok {
 		mod.nbSegmentCacheMutex.Unlock()
@@ -669,44 +660,25 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 			hasRightPaddedPragma = pragmas.IsRightPadded(col)
 		)
 
-		if verbose {
-			fmt.Printf("size %v for column=%v, (areAnyNonRegularBefore=%v)\n", size, col.ID, areAnyNonRegular)
-		}
-
 		if hasFullColumnPragma {
-			if verbose {
-				fmt.Printf("has full column pragma, col=%v\n", col.ID)
-			}
 			areAnyFull = true
 			resMaxDensity = density
 			break
 		}
 
 		if hasLeftPaddedPragma {
-			if verbose {
-				fmt.Printf("has left padded pragma, col=%v\n", col.ID)
-			}
 			areAnyLeftPadded = true
 			firstLeftPadded = col
 		}
 
 		if hasRightPaddedPragma {
-			if verbose {
-				fmt.Printf("has right padded pragma, col=%v\n", col.ID)
-			}
 			areAnyRightPadded = true
 			firstRightPadded = col
 		}
 
 		if isRightPadded && isLeftPadded {
-			if verbose {
-				fmt.Printf("column is both left and right padded, col=%v\n", col.ID)
-			}
 			continue
 		} else {
-			if verbose {
-				fmt.Printf("column is non-regular, col=%v\n", col.ID)
-			}
 			areAnyNonRegular = true
 		}
 
@@ -715,17 +687,11 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		// there should not be both left and right padded columns will be
 		// activated when we mix right-padded with a constant column.
 		if isRightPadded && density > 0 {
-			if verbose {
-				fmt.Printf("column is right padded, col=%v\n", col.ID)
-			}
 			areAnyRightPadded = true
 			firstLeftPadded = col
 		}
 
 		if isLeftPadded {
-			if verbose {
-				fmt.Printf("column is left padded, col=%v\n", col.ID)
-			}
 			areAnyLeftPadded = true
 			firstRightPadded = col
 		}
@@ -734,9 +700,6 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 			utils.Panic("column is neither left nor right padded, col=%v", col.ID)
 		}
 
-		if verbose {
-			fmt.Printf("col=%v, start=%v, stop=%v, density=%v\n", col.ID, start, stop, density)
-		}
 		if density > resMaxDensity {
 			resMaxDensity = density
 		}
