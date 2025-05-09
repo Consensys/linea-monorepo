@@ -18,24 +18,26 @@ import (
 
 // rawCompiledIOP represents the serialized form of CompiledIOP.
 type rawCompiledIOP struct {
-	Columns         [][]json.RawMessage `json:"columns"`
-	QueriesParams   [][]json.RawMessage `json:"queriesParams"`
-	QueriesNoParams [][]json.RawMessage `json:"queriesNoParams"`
-	Coins           [][]json.RawMessage `json:"coins"`
-	DummyCompiled   bool                `json:"dummyCompiled"`
-	Subprovers      [][]json.RawMessage `json:"subProvers"`
-	SubVerifiers    [][]json.RawMessage `json:"subVerifiers"`
+	Columns                    [][]json.RawMessage `json:"columns"`
+	QueriesParams              [][]json.RawMessage `json:"queriesParams"`
+	QueriesNoParams            [][]json.RawMessage `json:"queriesNoParams"`
+	Coins                      [][]json.RawMessage `json:"coins"`
+	Subprovers                 [][]json.RawMessage `json:"subProvers"`
+	SubVerifiers               [][]json.RawMessage `json:"subVerifiers"`
+	FiatShamirHooksPreSampling [][]json.RawMessage `json:"fiatShamirHooksPreSampling"`
+	DummyCompiled              bool                `json:"dummyCompiled"`
 }
 
 func NewEmptyCompiledIOP() *wizard.CompiledIOP {
 	return &wizard.CompiledIOP{
-		Columns:         column.NewStore(),
-		QueriesParams:   wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
-		QueriesNoParams: wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
-		Coins:           wizard.NewRegister[coin.Name, coin.Info](),
-		Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
-		SubProvers:      collection.VecVec[wizard.ProverAction]{},
-		SubVerifiers:    collection.VecVec[wizard.VerifierAction]{},
+		Columns:                    column.NewStore(),
+		QueriesParams:              wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
+		QueriesNoParams:            wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
+		Coins:                      wizard.NewRegister[coin.Name, coin.Info](),
+		Precomputed:                collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
+		SubProvers:                 collection.VecVec[wizard.ProverAction]{},
+		SubVerifiers:               collection.VecVec[wizard.VerifierAction]{},
+		FiatShamirHooksPreSampling: collection.VecVec[wizard.VerifierAction]{},
 	}
 }
 
@@ -60,12 +62,13 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 
 	// Initialize rawCompiledIOP with pre-allocated slices
 	raw := &rawCompiledIOP{
-		Columns:         make([][]json.RawMessage, numRounds),
-		QueriesParams:   make([][]json.RawMessage, numRounds),
-		QueriesNoParams: make([][]json.RawMessage, numRounds),
-		Coins:           make([][]json.RawMessage, numRounds),
-		Subprovers:      make([][]json.RawMessage, numRounds),
-		SubVerifiers:    make([][]json.RawMessage, numRounds),
+		Columns:                    make([][]json.RawMessage, numRounds),
+		QueriesParams:              make([][]json.RawMessage, numRounds),
+		QueriesNoParams:            make([][]json.RawMessage, numRounds),
+		Coins:                      make([][]json.RawMessage, numRounds),
+		Subprovers:                 make([][]json.RawMessage, numRounds),
+		SubVerifiers:               make([][]json.RawMessage, numRounds),
+		FiatShamirHooksPreSampling: make([][]json.RawMessage, numRounds),
 	}
 
 	// Mutex to protect slice assignments
@@ -118,6 +121,13 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 				utils.Panic(localErr.Error())
 			}
 
+			// Serialize FiatShamirHooksPresampling
+			fiatShamirHooks, err := serializeFSHookPS(comp, round)
+			if err != nil {
+				localErr = fmt.Errorf("round %d: serialize FiatShamirHookPreSampling: %w", round, err)
+				utils.Panic(localErr.Error())
+			}
+
 			// Safely assign results to raw
 			mu.Lock()
 			raw.Columns[round] = cols
@@ -126,6 +136,7 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 			raw.Coins[round] = coins
 			raw.Subprovers[round] = subProvers
 			raw.SubVerifiers[round] = subVerifiers
+			raw.FiatShamirHooksPreSampling[round] = fiatShamirHooks
 			mu.Unlock()
 		}
 	}
@@ -159,10 +170,10 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	// Mutex to protect updates to comp
 	var mu sync.Mutex
 
-	if err := deserializeColumnsAndCoinsParallel(raw, comp, numRounds, &mu); err != nil {
+	if err := deserializeColumnsAndCoins(raw, comp, numRounds, &mu); err != nil {
 		return nil, fmt.Errorf("columns and coins: %w", err)
 	}
-	if err := deserializeQueriesParallel(raw, comp, numRounds, &mu); err != nil {
+	if err := deserializeQueries(raw, comp, numRounds, &mu); err != nil {
 		return nil, fmt.Errorf("queries: %w", err)
 	}
 
@@ -171,6 +182,10 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	}
 
 	if err := deserializeSubVerifierAction(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("error while decoding subVerifierAction:%w", err)
+	}
+
+	if err := deserializeFSHookPS(raw, comp, numRounds, &mu); err != nil {
 		return nil, fmt.Errorf("error while decoding subVerifierAction:%w", err)
 	}
 
@@ -246,8 +261,6 @@ func serializeSubVerifierAction(comp *wizard.CompiledIOP, round int) ([]json.Raw
 	actionsV := comp.SubVerifiers.GetOrEmpty(round)
 	rawVerifierActions := make([]json.RawMessage, len(actionsV))
 	for i, actionV := range actionsV {
-		t1 := reflect.ValueOf(&actionV)
-		fmt.Printf("action kind:%s type:%s \n", t1.Kind(), t1.Type())
 		r, err := SerializeValue(reflect.ValueOf(&actionV), DeclarationMode)
 		if err != nil {
 			return nil, fmt.Errorf("could not serialize VerifierAction %d at round %d: %w", i, round, err)
@@ -255,6 +268,19 @@ func serializeSubVerifierAction(comp *wizard.CompiledIOP, round int) ([]json.Raw
 		rawVerifierActions[i] = r
 	}
 	return rawVerifierActions, nil
+}
+
+func serializeFSHookPS(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, error) {
+	actionsFSHook := comp.FiatShamirHooksPreSampling.GetOrEmpty(round)
+	rawFSHookPS := make([]json.RawMessage, len(actionsFSHook))
+	for i, actionFS := range actionsFSHook {
+		r, err := SerializeValue(reflect.ValueOf(&actionFS), DeclarationMode)
+		if err != nil {
+			return nil, fmt.Errorf("could not serialize FSHook presampling %d at round %d: %w", i, round, err)
+		}
+		rawFSHookPS[i] = r
+	}
+	return rawFSHookPS, nil
 }
 
 // deserializeSubProverAction deserializes SubProvers for all rounds in parallel
@@ -289,6 +315,37 @@ func deserializeSubVerifierAction(raw *rawCompiledIOP, comp *wizard.CompiledIOP,
 	return nil
 }
 
+// deserializeFSHookPS deserializes FiatShamirHooksPreSampling actions for all rounds in parallel
+func deserializeFSHookPS(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		for round := start; round < stop; round++ {
+			if round >= len(raw.FiatShamirHooksPreSampling) {
+				utils.Panic("invalid round number %d, exceeds available FiatShamirHooksPreSampling rounds", round)
+			}
+			if err := deserializeFSHooks(raw.FiatShamirHooksPreSampling[round], round, comp, mu); err != nil {
+				utils.Panic("round %d FiatShamirHooksPreSampling: %v", round, err)
+			}
+		}
+	}
+	parallel.ExecuteChunky(numRounds, work)
+	return nil
+}
+
+// deserializeFSHooks deserializes FiatShamirHooksPreSampling actions for a single round
+func deserializeFSHooks(rawFSHooks []json.RawMessage, round int, comp *wizard.CompiledIOP, mu *sync.Mutex) error {
+	for i, rawAction := range rawFSHooks {
+		v, err := DeserializeValue(rawAction, DeclarationMode, reflect.TypeOf((*wizard.VerifierAction)(nil)).Elem(), comp)
+		if err != nil {
+			return fmt.Errorf("could not deserialize FiatShamirHookPreSampling %d at round %d: %w", i, round, err)
+		}
+		action := v.Interface().(wizard.VerifierAction)
+		mu.Lock()
+		comp.FiatShamirHooksPreSampling.AppendToInner(round, action)
+		mu.Unlock()
+	}
+	return nil
+}
+
 // deserializeSubProvers deserializes SubProvers for a single round
 func deserializeSubProvers(rawSubProvers []json.RawMessage, round int, comp *wizard.CompiledIOP, mu *sync.Mutex) error {
 	for i, rawAction := range rawSubProvers {
@@ -319,7 +376,7 @@ func deserializeSubVerifiers(rawSubVerifiers []json.RawMessage, round int, comp 
 	return nil
 }
 
-func deserializeColumnsAndCoinsParallel(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+func deserializeColumnsAndCoins(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
 	work := func(start, stop int) {
 		var wg sync.WaitGroup
 		for round := start; round < stop; round++ {
@@ -352,7 +409,7 @@ func deserializeColumnsAndCoinsParallel(raw *rawCompiledIOP, comp *wizard.Compil
 	return nil
 }
 
-func deserializeQueriesParallel(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+func deserializeQueries(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
 	work := func(start, stop int) {
 		for round := start; round < stop; round++ {
 			if round >= len(raw.QueriesNoParams) || round >= len(raw.QueriesParams) {
