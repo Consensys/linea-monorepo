@@ -65,7 +65,7 @@ jobs:
           # Gets run id of the precedeing workflow that triggered this workflow_run
           run-id: ${{ github.event.workflow_run.id }}
       - uses: codecov/codecov-action@v5
-        if: $ {{ steps.coordinator-report-download.outcome == 'success' }}
+        if: ${{ steps.coordinator-report-download.outcome == 'success' }}
         with:
           fail_ci_if_error: true
           files: ${{ github.workspace }}/jacocoRootReport.xml
@@ -95,7 +95,7 @@ jobs:
           # Gets run id of the precedeing workflow that triggered this workflow_run
           run-id: ${{ github.event.workflow_run.id }}
       - uses: codecov/codecov-action@v5
-        if: $ {{ steps.smc-report-download.outcome == 'success' }}
+        if: ${{ steps.smc-report-download.outcome == 'success' }}
         with:
           fail_ci_if_error: true
           files: ${{ github.workspace }}/coverage-final.json
