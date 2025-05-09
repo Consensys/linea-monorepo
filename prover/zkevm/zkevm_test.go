@@ -328,9 +328,11 @@ func TestCompiledIOP(t *testing.T) {
 	}
 
 	if !compareExportedFields(z.WizardIOP.SubProvers, deserializedIOP.SubProvers) {
-		fmt.Printf("Original subprover actions:%v \n", z.WizardIOP.SubProvers)
-		fmt.Printf("Decoded subprover actions:%v \n", deserializedIOP.SubProvers)
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: SubProvers (ignoring unexported fields)")
+	}
+
+	if !compareExportedFields(z.WizardIOP.SubVerifiers, deserializedIOP.SubVerifiers) {
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: SubVerifiers (ignoring unexported fields)")
 	}
 
 	if z.WizardIOP.DummyCompiled != deserializedIOP.DummyCompiled {

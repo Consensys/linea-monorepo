@@ -24,6 +24,7 @@ type rawCompiledIOP struct {
 	Coins           [][]json.RawMessage `json:"coins"`
 	DummyCompiled   bool                `json:"dummyCompiled"`
 	Subprovers      [][]json.RawMessage `json:"subProvers"`
+	SubVerifiers    [][]json.RawMessage `json:"subVerifiers"`
 }
 
 func NewEmptyCompiledIOP() *wizard.CompiledIOP {
@@ -34,6 +35,7 @@ func NewEmptyCompiledIOP() *wizard.CompiledIOP {
 		Coins:           wizard.NewRegister[coin.Name, coin.Info](),
 		Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
 		SubProvers:      collection.VecVec[wizard.ProverAction]{},
+		SubVerifiers:    collection.VecVec[wizard.VerifierAction]{},
 	}
 }
 
@@ -63,6 +65,7 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 		QueriesNoParams: make([][]json.RawMessage, numRounds),
 		Coins:           make([][]json.RawMessage, numRounds),
 		Subprovers:      make([][]json.RawMessage, numRounds),
+		SubVerifiers:    make([][]json.RawMessage, numRounds),
 	}
 
 	// Mutex to protect slice assignments
@@ -101,10 +104,17 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 				utils.Panic(localErr.Error())
 			}
 
-			// Serialize SubProvers
+			// Serialize subProvers
 			subProvers, err := serializeSubProverAction(comp, round)
 			if err != nil {
 				localErr = fmt.Errorf("round %d: serialize SubProvers: %w", round, err)
+				utils.Panic(localErr.Error())
+			}
+
+			// Serialize subVerifiers
+			subVerifiers, err := serializeSubVerifierAction(comp, round)
+			if err != nil {
+				localErr = fmt.Errorf("round %d: serialize SubVerifiers: %w", round, err)
 				utils.Panic(localErr.Error())
 			}
 
@@ -115,6 +125,7 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 			raw.QueriesNoParams[round] = qNoParams
 			raw.Coins[round] = coins
 			raw.Subprovers[round] = subProvers
+			raw.SubVerifiers[round] = subVerifiers
 			mu.Unlock()
 		}
 	}
@@ -157,6 +168,10 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 
 	if err := deserializeSubProverAction(raw, comp, numRounds, &mu); err != nil {
 		return nil, fmt.Errorf("error while decoding subProverAction:%w", err)
+	}
+
+	if err := deserializeSubVerifierAction(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("error while decoding subVerifierAction:%w", err)
 	}
 
 	return comp, nil
@@ -211,23 +226,38 @@ func serializeCoins(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, err
 
 func serializeSubProverAction(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, error) {
 	// Access ProverAction slice for the round
-	actions := comp.SubProvers.GetOrEmpty(round)
-	rawActions := make([]json.RawMessage, len(actions))
-	for i, action := range actions {
-		if action == nil {
-			logrus.Printf("Skipping nil ProverAction at round %d, index %d", round, i)
-			continue
-		}
-		r, err := SerializeValue(reflect.ValueOf(&action), DeclarationMode)
+	actionsP := comp.SubProvers.GetOrEmpty(round)
+	rawProverActions := make([]json.RawMessage, len(actionsP))
+	for i, actionP := range actionsP {
+		// MUST pass only pointer here: For example:
+		// action kind:ptr type:*byte32cmp.Bytes32CmpProverAction
+		// *action kind:ptr type:*wizard.ProverAction
+		r, err := SerializeValue(reflect.ValueOf(&actionP), DeclarationMode)
 		if err != nil {
 			return nil, fmt.Errorf("could not serialize ProverAction %d at round %d: %w", i, round, err)
 		}
-		rawActions[i] = r
+		rawProverActions[i] = r
 	}
-	return rawActions, nil
+	return rawProverActions, nil
 }
 
-// deserializeSubProversParallel deserializes SubProvers for all rounds in parallel
+func serializeSubVerifierAction(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, error) {
+	// Access VerifierAction slice for the round
+	actionsV := comp.SubVerifiers.GetOrEmpty(round)
+	rawVerifierActions := make([]json.RawMessage, len(actionsV))
+	for i, actionV := range actionsV {
+		t1 := reflect.ValueOf(&actionV)
+		fmt.Printf("action kind:%s type:%s \n", t1.Kind(), t1.Type())
+		r, err := SerializeValue(reflect.ValueOf(&actionV), DeclarationMode)
+		if err != nil {
+			return nil, fmt.Errorf("could not serialize VerifierAction %d at round %d: %w", i, round, err)
+		}
+		rawVerifierActions[i] = r
+	}
+	return rawVerifierActions, nil
+}
+
+// deserializeSubProverAction deserializes SubProvers for all rounds in parallel
 func deserializeSubProverAction(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
 	work := func(start, stop int) {
 		for round := start; round < stop; round++ {
@@ -239,26 +269,51 @@ func deserializeSubProverAction(raw *rawCompiledIOP, comp *wizard.CompiledIOP, n
 			}
 		}
 	}
+	parallel.ExecuteChunky(numRounds, work)
+	return nil
+}
 
+// deserializeSubVerifierAction: deserializes Subverifiers action for all rounds in parallel
+func deserializeSubVerifierAction(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		for round := start; round < stop; round++ {
+			if round >= len(raw.SubVerifiers) {
+				utils.Panic("invalid round number %d, exceeds available SubVerifiers rounds", round)
+			}
+			if err := deserializeSubVerifiers(raw.SubVerifiers[round], round, comp, mu); err != nil {
+				utils.Panic("round %d SubProvers: %v", round, err)
+			}
+		}
+	}
 	parallel.ExecuteChunky(numRounds, work)
 	return nil
 }
 
 // deserializeSubProvers deserializes SubProvers for a single round
 func deserializeSubProvers(rawSubProvers []json.RawMessage, round int, comp *wizard.CompiledIOP, mu *sync.Mutex) error {
-	// logrus.Info("Deserializing subprover action func()")
 	for i, rawAction := range rawSubProvers {
-		if string(rawAction) == "null" {
-			logrus.Warnf("Skipping null ProverAction at round %d, index %d", round, i)
-			continue
-		}
 		v, err := DeserializeValue(rawAction, DeclarationMode, reflect.TypeOf((*wizard.ProverAction)(nil)).Elem(), comp)
 		if err != nil {
 			return fmt.Errorf("could not deserialize ProverAction %d at round %d: %w", i, round, err)
 		}
 		action := v.Interface().(wizard.ProverAction)
 		mu.Lock()
-		comp.SubProvers.AppendToInner(round, action)
+		comp.RegisterProverAction(round, action)
+		mu.Unlock()
+	}
+	return nil
+}
+
+// deserializeSubVerifiers deserializes Subverifiers for a single round
+func deserializeSubVerifiers(rawSubVerifiers []json.RawMessage, round int, comp *wizard.CompiledIOP, mu *sync.Mutex) error {
+	for i, rawAction := range rawSubVerifiers {
+		v, err := DeserializeValue(rawAction, DeclarationMode, reflect.TypeOf((*wizard.VerifierAction)(nil)).Elem(), comp)
+		if err != nil {
+			return fmt.Errorf("could not deserialize VerifierAction %d at round %d: %w", i, round, err)
+		}
+		action := v.Interface().(wizard.VerifierAction)
+		mu.Lock()
+		comp.RegisterVerifierAction(round, action)
 		mu.Unlock()
 	}
 	return nil
