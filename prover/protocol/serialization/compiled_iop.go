@@ -30,6 +30,7 @@ type rawCompiledIOP struct {
 	DummyCompiled              bool                `json:"dummyCompiled"`
 }
 
+// NewEmptyCompiledIOP initializes an empty CompiledIOP object.
 func NewEmptyCompiledIOP() *wizard.CompiledIOP {
 	return &wizard.CompiledIOP{
 		Columns:                    column.NewStore(),
@@ -44,17 +45,8 @@ func NewEmptyCompiledIOP() *wizard.CompiledIOP {
 	}
 }
 
-// SerializeCompiledIOP marshals a [wizard.CompiledIOP] object into JSON. This is
-// meant to allow deserializing the IOP during the prover time instead of
-// recompiling everything every time we want to run the prover.
-//
-// Example:
-//
-//	 	comp := wizard.Compile(myBuilder, myCompilerSuite...)
-//		marshaled, err := SerializeCompiledIOP(comp)
-//		if err != nil {
-//			panic(err)
-//		}
+// SerializeCompiledIOP marshals a [wizard.CompiledIOP] object into JSON.
+// This allows deserializing the IOP during prover time instead of recompiling everything.
 func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 	numRounds := comp.NumRounds()
 	if numRounds == 0 {
@@ -72,38 +64,13 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 		FiatShamirHooksPreSampling: make([][]json.RawMessage, numRounds),
 	}
 
-	// Non-Round specific params
-
-	// Serialize Precomputed as a slice of key-value pairs
-	precomputedEntries := make([]struct {
-		Key   ifaces.ColID
-		Value ifaces.ColAssignment
-	}, 0, len(comp.Precomputed.ListAllKeys()))
-	for _, key := range comp.Precomputed.ListAllKeys() {
-		value := comp.Precomputed.MustGet(key)
-		precomputedEntries = append(precomputedEntries, struct {
-			Key   ifaces.ColID
-			Value ifaces.ColAssignment
-		}{Key: key, Value: value})
-	}
-	serPrecomputed, err := SerializeValue(reflect.ValueOf(precomputedEntries), DeclarationMode)
-	if err != nil {
+	// Serialize Precomputed attribute
+	if err := serializePrecomputed(comp, raw); err != nil {
 		return nil, fmt.Errorf("serialize Precomputed: %w", err)
 	}
-	raw.Precomputed = serPrecomputed
 
-	// Serialize PcsCtx
-	// logrus.Infof("Serializing PcsCtxs, value=%v, type=%T", comp.PcsCtxs, comp.PcsCtxs)
-	// serPcsCtxs, err := SerializeValue(reflect.ValueOf(&comp.PcsCtxs), DeclarationMode)
-	// if err != nil {
-	// 	utils.Panic("serialize PcsCtxs: %v", err)
-	// }
-	// raw.PcsCtxs = serPcsCtxs
-
-	// Round specific params are serialized in Parallel
+	// Serialize round-specific attributes in parallel
 	var mu sync.Mutex
-
-	// Work function for ExecuteChunky - Round specific
 	work := func(start, stop int) {
 		for round := start; round < stop; round++ {
 			var localErr error
@@ -170,20 +137,16 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 		}
 	}
 
-	// Run parallel execution
 	parallel.ExecuteChunky(numRounds, work)
 
 	serIOP, err := serializeAnyWithCborPkg(raw)
-	logrus.Info("Successfully serializated compiled IOP")
+	logrus.Info("Successfully serialized compiled IOP")
 
-	// Serialize the final rawCompiledIOP
 	return serIOP, err
 }
 
 // DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns an error
-// if the marshalled object does not have the right format. The
-// deserialized object can then be used for proving or verification via the
-// functions [wizard.Prove] or [wizard.Verify].
+// if the marshalled object does not have the right format.
 func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	comp := NewEmptyCompiledIOP()
 	raw := &rawCompiledIOP{}
@@ -196,66 +159,27 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 		return comp, nil
 	}
 
-	// Deserialize non-round specific params first
-
-	// Deserialize Precomputed
-	if raw.Precomputed != nil {
-		preCompType := reflect.SliceOf(reflect.TypeOf(struct {
-			Key   ifaces.ColID
-			Value ifaces.ColAssignment
-		}{}))
-		preCompVal, err := DeserializeValue(raw.Precomputed, DeclarationMode, preCompType, comp)
-		if err != nil {
-			return nil, fmt.Errorf("deserialize Precomputed: %w", err)
-		}
-		precomputedEntries := preCompVal.Interface().([]struct {
-			Key   ifaces.ColID
-			Value ifaces.ColAssignment
-		})
-		for _, entry := range precomputedEntries {
-			comp.Precomputed.InsertNew(entry.Key, entry.Value)
-		}
-		if len(comp.Precomputed.ListAllKeys()) == 0 && len(precomputedEntries) > 0 {
-			logrus.Warn("Deserialized Precomputed mapping is empty despite having entries")
-		}
+	// Deserialize Precomputed attribute
+	if err := deserializePrecomputed(raw, comp); err != nil {
+		return nil, fmt.Errorf("deserialize Precomputed: %w", err)
 	}
 
-	// Deserialize PcsCtxs
-	// if raw.PcsCtxs != nil && !bytes.Equal(raw.PcsCtxs, []byte(NilString)) {
-	// 	logrus.Infof("Deserializing PcsCtxs, raw data length=%d", len(raw.PcsCtxs))
-	// 	pcsCtxs, err := DeserializeValue(raw.PcsCtxs, DeclarationMode, reflect.TypeOf([]interface{}{}), comp)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("error while decoding PcsCtxs: %w", err)
-	// 	}
-	// 	comp.PcsCtxs = pcsCtxs.Interface()
-	// 	logrus.Infof("Deserialized PcsCtxs, type=%T, value=%v", comp.PcsCtxs, comp.PcsCtxs)
-	// } else {
-	// 	logrus.Info("PcsCtxs is nil or empty, setting to nil")
-	// 	comp.PcsCtxs = nil
-	// }
-
-	// Deserialize round specific params in parallel
-
-	// Mutex to protect updates to comp
+	// Deserialize round-specific attributes in parallel
 	var mu sync.Mutex
-
 	if err := deserializeColumnsAndCoins(raw, comp, numRounds, &mu); err != nil {
 		return nil, fmt.Errorf("columns and coins: %w", err)
 	}
 	if err := deserializeQueries(raw, comp, numRounds, &mu); err != nil {
 		return nil, fmt.Errorf("queries: %w", err)
 	}
-
 	if err := deserializeSubProverAction(raw, comp, numRounds, &mu); err != nil {
-		return nil, fmt.Errorf("error while decoding subProverAction:%w", err)
+		return nil, fmt.Errorf("error while decoding subProverAction: %w", err)
 	}
-
 	if err := deserializeSubVerifierAction(raw, comp, numRounds, &mu); err != nil {
-		return nil, fmt.Errorf("error while decoding subVerifierAction:%w", err)
+		return nil, fmt.Errorf("error while decoding subVerifierAction: %w", err)
 	}
-
 	if err := deserializeFSHookPS(raw, comp, numRounds, &mu); err != nil {
-		return nil, fmt.Errorf("error while decoding subVerifierAction:%w", err)
+		return nil, fmt.Errorf("error while decoding FiatShamirHookPreSampling: %w", err)
 	}
 
 	return comp, nil
@@ -350,6 +274,54 @@ func serializeFSHookPS(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, 
 		rawFSHookPS[i] = r
 	}
 	return rawFSHookPS, nil
+}
+
+// serializePrecomputed serializes the Precomputed attribute into the rawCompiledIOP.
+func serializePrecomputed(comp *wizard.CompiledIOP, raw *rawCompiledIOP) error {
+	precomputedEntries := make([]struct {
+		Key   ifaces.ColID
+		Value ifaces.ColAssignment
+	}, 0, len(comp.Precomputed.ListAllKeys()))
+	for _, key := range comp.Precomputed.ListAllKeys() {
+		value := comp.Precomputed.MustGet(key)
+		precomputedEntries = append(precomputedEntries, struct {
+			Key   ifaces.ColID
+			Value ifaces.ColAssignment
+		}{Key: key, Value: value})
+	}
+	serPrecomputed, err := SerializeValue(reflect.ValueOf(precomputedEntries), DeclarationMode)
+	if err != nil {
+		return fmt.Errorf("serialize Precomputed: %w", err)
+	}
+	raw.Precomputed = serPrecomputed
+	return nil
+}
+
+// deserializePrecomputed deserializes the Precomputed attribute from the rawCompiledIOP.
+func deserializePrecomputed(raw *rawCompiledIOP, comp *wizard.CompiledIOP) error {
+	if raw.Precomputed == nil {
+		logrus.Warn("Precomputed attribute is nil")
+		return nil
+	}
+	preCompType := reflect.SliceOf(reflect.TypeOf(struct {
+		Key   ifaces.ColID
+		Value ifaces.ColAssignment
+	}{}))
+	preCompVal, err := DeserializeValue(raw.Precomputed, DeclarationMode, preCompType, comp)
+	if err != nil {
+		return fmt.Errorf("deserialize Precomputed: %w", err)
+	}
+	precomputedEntries := preCompVal.Interface().([]struct {
+		Key   ifaces.ColID
+		Value ifaces.ColAssignment
+	})
+	for _, entry := range precomputedEntries {
+		comp.Precomputed.InsertNew(entry.Key, entry.Value)
+	}
+	if len(comp.Precomputed.ListAllKeys()) == 0 && len(precomputedEntries) > 0 {
+		logrus.Warn("Deserialized Precomputed mapping is empty despite having entries")
+	}
+	return nil
 }
 
 // deserializeSubProverAction deserializes SubProvers for all rounds in parallel
