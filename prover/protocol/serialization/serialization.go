@@ -368,6 +368,60 @@ func deserializeMap(data json.RawMessage, mode Mode, t reflect.Type, comp *wizar
 	return v, nil
 }
 
+// func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
+// 	ifaceValue := reflect.New(t).Elem()
+
+// 	if mode == pureExprMode && t == metadataType {
+// 		var stringVar symbolic.StringVar
+// 		result, err := DeserializeValue(data, mode, reflect.TypeOf(stringVar), comp)
+// 		if err != nil {
+// 			return reflect.Value{}, err
+// 		}
+// 		return result, nil
+// 	}
+
+// 	var raw struct {
+// 		Type  string          `json:"type"`
+// 		Value json.RawMessage `json:"value"`
+// 	}
+// 	if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
+// 		return reflect.Value{}, fmt.Errorf("failed to deserialize interface %q: %w", t.Name(), err)
+// 	}
+
+// 	switch raw.Type {
+// 	case "column.Natural":
+// 		rawType := reflect.TypeOf(&serializableColumnDecl{})
+// 		v, err := DeserializeValue(raw.Value, mode, rawType, comp)
+// 		if err != nil {
+// 			return reflect.Value{}, fmt.Errorf("could not deserialize column interface declaration: %w", err)
+// 		}
+// 		nat := v.Interface().(*serializableColumnDecl).intoNaturalAndRegister(comp)
+// 		ifaceValue.Set(reflect.ValueOf(nat))
+// 		return ifaceValue, nil
+// 	case "*dedicated.ManuallyShifted":
+// 		rawType := reflect.TypeOf(&serializableManuallyShifted{})
+// 		v, err := DeserializeValue(raw.Value, mode, rawType, comp)
+// 		if err != nil {
+// 			return reflect.Value{}, fmt.Errorf("could not deserialize ManuallyShifted: %w", err)
+// 		}
+// 		shifted := v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)
+// 		ifaceValue.Set(reflect.ValueOf(shifted))
+// 		return ifaceValue, nil
+// 	default:
+// 		concreteType, err := findRegisteredImplementation(raw.Type)
+// 		if err != nil {
+// 			return reflect.Value{}, fmt.Errorf("failed to find concrete type and deserialize interface %q: %w", t.Name(), err)
+// 		}
+
+// 		v, err := DeserializeValue(raw.Value, mode, concreteType, comp)
+// 		if err != nil {
+// 			return reflect.Value{}, fmt.Errorf("failed to deserialize interface %q: %w", t.Name(), err)
+// 		}
+// 		ifaceValue.Set(v)
+// 		return ifaceValue, nil
+// 	}
+// }
+
 func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
 	ifaceValue := reflect.New(t).Elem()
 
@@ -375,7 +429,7 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 		var stringVar symbolic.StringVar
 		result, err := DeserializeValue(data, mode, reflect.TypeOf(stringVar), comp)
 		if err != nil {
-			return reflect.Value{}, err
+			return reflect.Value{}, fmt.Errorf("could not deserialize stringVar: %w", err)
 		}
 		return result, nil
 	}
@@ -410,14 +464,33 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 	default:
 		concreteType, err := findRegisteredImplementation(raw.Type)
 		if err != nil {
-			return reflect.Value{}, fmt.Errorf("failed to find concrete type and deserialize interface %q: %w", t.Name(), err)
+			return reflect.Value{}, fmt.Errorf("failed to find concrete type for %q: %w", raw.Type, err)
 		}
 
-		v, err := DeserializeValue(raw.Value, mode, concreteType, comp)
-		if err != nil {
-			return reflect.Value{}, fmt.Errorf("failed to deserialize interface %q: %w", t.Name(), err)
+		// Handle pointer concrete types
+		isPointer := concreteType.Kind() == reflect.Ptr
+		targetType := concreteType
+		if isPointer {
+			targetType = concreteType.Elem()
 		}
-		ifaceValue.Set(v)
+
+		v, err := DeserializeValue(raw.Value, mode, targetType, comp)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("failed to deserialize concrete type %q: %w", raw.Type, err)
+		}
+
+		// If the concrete type is a pointer, create a new pointer and set its value
+		if isPointer {
+			ptrValue := reflect.New(targetType)
+			if v.IsValid() && v.Type().AssignableTo(targetType) {
+				ptrValue.Elem().Set(v)
+			} else {
+				return reflect.Value{}, fmt.Errorf("cannot assign deserialized value of type %v to pointer type %v", v.Type(), targetType)
+			}
+			ifaceValue.Set(ptrValue)
+		} else {
+			ifaceValue.Set(v)
+		}
 		return ifaceValue, nil
 	}
 }

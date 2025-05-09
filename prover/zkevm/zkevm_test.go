@@ -327,17 +327,34 @@ func TestCompiledIOP(t *testing.T) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: QueriesNoParams (ignoring unexported fields)")
 	}
 
+	fmt.Printf("Original Prover action:%+v \n", z.WizardIOP.SubProvers)
+	fmt.Printf("Deserialized Prover action:%+v \n", deserializedIOP.SubProvers)
+
 	if !compareExportedFields(z.WizardIOP.SubProvers, deserializedIOP.SubProvers) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: SubProvers (ignoring unexported fields)")
 	}
 
+	fmt.Printf("Original Verifier action:%+v \n", z.WizardIOP.SubVerifiers)
+	fmt.Printf("Deserialized Verifier action:%+v \n", deserializedIOP.SubVerifiers)
 	if !compareExportedFields(z.WizardIOP.SubVerifiers, deserializedIOP.SubVerifiers) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: SubVerifiers (ignoring unexported fields)")
 	}
 
+	fmt.Printf("Original FSHookPreSampling:%+v \n", z.WizardIOP.FiatShamirHooksPreSampling)
+	fmt.Printf("Deserialized FSHookPreSampling:%+v \n", deserializedIOP.FiatShamirHooksPreSampling)
 	if !compareExportedFields(z.WizardIOP.FiatShamirHooksPreSampling, deserializedIOP.FiatShamirHooksPreSampling) {
-		t.Fatalf("Mis-matched fields after serde CompiledIOP: SubVerifiers (ignoring unexported fields)")
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: FiatShamirHookPreSampling (ignoring unexported fields)")
 	}
+
+	fmt.Println("Original precomputed map:", z.WizardIOP.Precomputed)
+	fmt.Println("Deserialized precomputed map:", deserializedIOP.Precomputed)
+	if !compareExportedFields(z.WizardIOP.Precomputed, deserializedIOP.Precomputed) {
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: Precomputed (ignoring unexported fields)")
+	}
+
+	// if !compareExportedFields(z.WizardIOP.PcsCtxs, deserializedIOP.PcsCtxs) {
+	// 	t.Fatalf("Mis-matched fields after serde CompiledIOP: PcsCtxs (ignoring unexported fields)")
+	// }
 
 	if z.WizardIOP.DummyCompiled != deserializedIOP.DummyCompiled {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: DummyCompiled")
@@ -405,6 +422,28 @@ func compareExportedFieldsWithPath(a, b interface{}, path string) bool {
 		return false
 	}
 
+	// Handle maps
+	if v1.Kind() == reflect.Map {
+		// fmt.Printf("Map comparision for v1:%v v2:%v\n", v1, v2)
+		if v1.Len() != v2.Len() {
+			fmt.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1.Len(), v2.Len(), v1.Type())
+			return false
+		}
+		for _, key := range v1.MapKeys() {
+			value1 := v1.MapIndex(key)
+			value2 := v2.MapIndex(key)
+			if !value2.IsValid() {
+				fmt.Printf("Mismatch at %s: key %v is missing in second map\n", path, key)
+				return false
+			}
+			keyPath := fmt.Sprintf("%s[%v]", path, key)
+			if !compareExportedFieldsWithPath(value1.Interface(), value2.Interface(), keyPath) {
+				return false
+			}
+		}
+		return true
+	}
+
 	// Handle pointers by dereferencing
 	if v1.Kind() == reflect.Ptr {
 		if v1.IsNil() && v2.IsNil() {
@@ -419,6 +458,7 @@ func compareExportedFieldsWithPath(a, b interface{}, path string) bool {
 
 	// Handle structs
 	if v1.Kind() == reflect.Struct {
+		// fmt.Printf("Handling struct comparision\n")
 		equal := true
 		for i := 0; i < v1.NumField(); i++ {
 			// Skip unexported fields
