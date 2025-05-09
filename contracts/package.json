@@ -54,6 +54,7 @@
     "yargs": "17.7.2"
   },
   "dependencies": {
+    "solidity-coverage": "0.8.15",
     "solidity-docgen": "0.6.0-beta.36"
   }
 }
