@@ -335,6 +335,10 @@ func TestCompiledIOP(t *testing.T) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: SubVerifiers (ignoring unexported fields)")
 	}
 
+	if !compareExportedFields(z.WizardIOP.FiatShamirHooksPreSampling, deserializedIOP.FiatShamirHooksPreSampling) {
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: SubVerifiers (ignoring unexported fields)")
+	}
+
 	if z.WizardIOP.DummyCompiled != deserializedIOP.DummyCompiled {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: DummyCompiled")
 	}
