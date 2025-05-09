@@ -50,6 +50,7 @@ export default function InternalNav({ hide }: { hide?: boolean }) {
   const currentList = useMemo(() => navList.filter((item) => item.href !== pathname), [pathname]);
 
   useEffect(() => {
+    if (isMobile) return;
     const handleClickOutside = (event: MouseEvent) => {
       const dropdownElement = document.querySelector(`.${styles["dropdown-wrapper"]}`);
       if (dropdownElement && !dropdownElement.contains(event.target as Node)) {
@@ -59,7 +60,7 @@ export default function InternalNav({ hide }: { hide?: boolean }) {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     setIsOpen(false);
