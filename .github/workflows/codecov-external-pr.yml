@@ -55,17 +55,19 @@ jobs:
       - name: Download Jacoco test coverage report (from coordinator-testing.yml)
         continue-on-error: true
         uses: actions/download-artifact@v4
+        id: coordinator-report-download
         with:
           name: jacocoRootReport-${{ needs.get-commit-tag.outputs.commit-tag }}.xml
           path: |
-            ${{ github.workspace }}/jacocoRootReport.xml
+            ${{ github.workspace }}
           # Required to download artifacts from another workflow run
           github-token: ${{ secrets.GITHUB_TOKEN }}
           # Gets run id of the precedeing workflow that triggered this workflow_run
           run-id: ${{ github.event.workflow_run.id }}
       - uses: codecov/codecov-action@v5
-        continue-on-error: true
+        if: $ {{ steps.coordinator-report-download.outcome == 'success' }}
         with:
+          fail_ci_if_error: true
           files: ${{ github.workspace }}/jacocoRootReport.xml
           flags: kotlin
           os: linux
@@ -81,19 +83,21 @@ jobs:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
       - name: Download smart contract coverage report (from run-smc.tests.yml)
+        id: smc-report-download
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: smart-contract-coverage-${{ needs.get-commit-tag.outputs.commit-tag }}.json
           path: |
-            ${{ github.workspace }}/coverage-final.json
+            ${{ github.workspace }}
           # Required to download artifacts from another workflow run
           github-token: ${{ secrets.GITHUB_TOKEN }}
           # Gets run id of the precedeing workflow that triggered this workflow_run
           run-id: ${{ github.event.workflow_run.id }}
       - uses: codecov/codecov-action@v5
-        continue-on-error: true
+        if: $ {{ steps.smc-report-download.outcome == 'success' }}
         with:
+          fail_ci_if_error: true
           files: ${{ github.workspace }}/coverage-final.json
           flags: hardhat
           os: linux
