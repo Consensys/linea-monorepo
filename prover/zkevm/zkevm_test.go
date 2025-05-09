@@ -352,9 +352,11 @@ func TestCompiledIOP(t *testing.T) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: Precomputed (ignoring unexported fields)")
 	}
 
-	// if !compareExportedFields(z.WizardIOP.PcsCtxs, deserializedIOP.PcsCtxs) {
-	// 	t.Fatalf("Mis-matched fields after serde CompiledIOP: PcsCtxs (ignoring unexported fields)")
-	// }
+	fmt.Println("Original PcsCtxs:", z.WizardIOP.PcsCtxs)
+	fmt.Println("Deserialized PcsCtxs:", deserializedIOP.PcsCtxs)
+	if !compareExportedFields(z.WizardIOP.PcsCtxs, deserializedIOP.PcsCtxs) {
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: PcsCtxs (ignoring unexported fields)")
+	}
 
 	if z.WizardIOP.DummyCompiled != deserializedIOP.DummyCompiled {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: DummyCompiled")

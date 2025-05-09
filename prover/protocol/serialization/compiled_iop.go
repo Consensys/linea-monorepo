@@ -1,6 +1,7 @@
 package serialization
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -41,12 +42,19 @@ func NewEmptyCompiledIOP() *wizard.CompiledIOP {
 		SubVerifiers:               collection.VecVec[wizard.VerifierAction]{},
 		FiatShamirHooksPreSampling: collection.VecVec[wizard.VerifierAction]{},
 		Precomputed:                collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
-		PcsCtxs:                    []any{},
+		PcsCtxs:                    nil,
 	}
 }
 
 // SerializeCompiledIOP marshals a [wizard.CompiledIOP] object into JSON.
 // This allows deserializing the IOP during prover time instead of recompiling everything.
+// Example:
+//
+//	 	comp := wizard.Compile(myBuilder, myCompilerSuite...)
+//		marshaled, err := SerializeCompiledIOP(comp)
+//		if err != nil {
+//			panic(err)
+//		}
 func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 	numRounds := comp.NumRounds()
 	if numRounds == 0 {
@@ -67,6 +75,11 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 	// Serialize Precomputed attribute
 	if err := serializePrecomputed(comp, raw); err != nil {
 		return nil, fmt.Errorf("serialize Precomputed: %w", err)
+	}
+
+	// Serialize PcsCtxs attribute
+	if err := serializePcsCtxs(comp, raw); err != nil {
+		return nil, fmt.Errorf("serialize PcsCtxs: %w", err)
 	}
 
 	// Serialize round-specific attributes in parallel
@@ -162,6 +175,11 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	// Deserialize Precomputed attribute
 	if err := deserializePrecomputed(raw, comp); err != nil {
 		return nil, fmt.Errorf("deserialize Precomputed: %w", err)
+	}
+
+	// Deserialize PcsCtxs attribute
+	if err := deserializePcsCtxs(raw, comp); err != nil {
+		return nil, fmt.Errorf("deserialize PcsCtxs: %w", err)
 	}
 
 	// Deserialize round-specific attributes in parallel
@@ -294,6 +312,32 @@ func serializePrecomputed(comp *wizard.CompiledIOP, raw *rawCompiledIOP) error {
 		return fmt.Errorf("serialize Precomputed: %w", err)
 	}
 	raw.Precomputed = serPrecomputed
+	return nil
+}
+
+// serializePcsCtxs serializes the PcsCtxs attribute into the rawCompiledIOP.
+func serializePcsCtxs(comp *wizard.CompiledIOP, raw *rawCompiledIOP) error {
+	if comp.PcsCtxs != nil {
+		serPcsCtxs, err := SerializeValue(reflect.ValueOf(comp.PcsCtxs), DeclarationMode)
+		if err != nil {
+			return fmt.Errorf("serialize PcsCtxs: %w", err)
+		}
+		raw.PcsCtxs = serPcsCtxs
+	} else {
+		raw.PcsCtxs = json.RawMessage(NilString)
+	}
+	return nil
+}
+
+// deserializePcsCtxs deserializes the PcsCtxs attribute from the rawCompiledIOP.
+func deserializePcsCtxs(raw *rawCompiledIOP, comp *wizard.CompiledIOP) error {
+	if raw.PcsCtxs != nil && !bytes.Equal(raw.PcsCtxs, []byte(NilString)) {
+		pcsCtxsVal, err := DeserializeValue(raw.PcsCtxs, DeclarationMode, reflect.TypeOf((*any)(nil)).Elem(), comp)
+		if err != nil {
+			return fmt.Errorf("deserialize PcsCtxs: %w", err)
+		}
+		comp.PcsCtxs = pcsCtxsVal.Interface()
+	}
 	return nil
 }
 
