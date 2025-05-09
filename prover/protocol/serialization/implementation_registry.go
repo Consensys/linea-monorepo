@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -111,6 +112,10 @@ func init() {
 	RegisterImplementation(byte32cmp.Bytes32CmpProverAction{})
 	RegisterImplementation(bigrange.BigRangeProverAction{})
 	RegisterImplementation(ded.AssignPIPProverAction{})
+
+	// Smartvectors
+	RegisterImplementation(smartvectors.Regular{})
+	RegisterImplementation(smartvectors.PaddedCircularWindow{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this

@@ -25,6 +25,8 @@ type rawCompiledIOP struct {
 	Subprovers                 [][]json.RawMessage `json:"subProvers"`
 	SubVerifiers               [][]json.RawMessage `json:"subVerifiers"`
 	FiatShamirHooksPreSampling [][]json.RawMessage `json:"fiatShamirHooksPreSampling"`
+	Precomputed                json.RawMessage     `json:"precomputed"`
+	PcsCtxs                    json.RawMessage     `json:"pcsCtxs"`
 	DummyCompiled              bool                `json:"dummyCompiled"`
 }
 
@@ -34,10 +36,11 @@ func NewEmptyCompiledIOP() *wizard.CompiledIOP {
 		QueriesParams:              wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
 		QueriesNoParams:            wizard.NewRegister[ifaces.QueryID, ifaces.Query](),
 		Coins:                      wizard.NewRegister[coin.Name, coin.Info](),
-		Precomputed:                collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
 		SubProvers:                 collection.VecVec[wizard.ProverAction]{},
 		SubVerifiers:               collection.VecVec[wizard.VerifierAction]{},
 		FiatShamirHooksPreSampling: collection.VecVec[wizard.VerifierAction]{},
+		Precomputed:                collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
+		PcsCtxs:                    []any{},
 	}
 }
 
@@ -54,8 +57,6 @@ func NewEmptyCompiledIOP() *wizard.CompiledIOP {
 //		}
 func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 	numRounds := comp.NumRounds()
-
-	logrus.Infof("Serializing IOP with numRounds:%d \n", numRounds)
 	if numRounds == 0 {
 		return serializeAnyWithCborPkg(&rawCompiledIOP{})
 	}
@@ -71,10 +72,38 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 		FiatShamirHooksPreSampling: make([][]json.RawMessage, numRounds),
 	}
 
-	// Mutex to protect slice assignments
+	// Non-Round specific params
+
+	// Serialize Precomputed as a slice of key-value pairs
+	precomputedEntries := make([]struct {
+		Key   ifaces.ColID
+		Value ifaces.ColAssignment
+	}, 0, len(comp.Precomputed.ListAllKeys()))
+	for _, key := range comp.Precomputed.ListAllKeys() {
+		value := comp.Precomputed.MustGet(key)
+		precomputedEntries = append(precomputedEntries, struct {
+			Key   ifaces.ColID
+			Value ifaces.ColAssignment
+		}{Key: key, Value: value})
+	}
+	serPrecomputed, err := SerializeValue(reflect.ValueOf(precomputedEntries), DeclarationMode)
+	if err != nil {
+		return nil, fmt.Errorf("serialize Precomputed: %w", err)
+	}
+	raw.Precomputed = serPrecomputed
+
+	// Serialize PcsCtx
+	// logrus.Infof("Serializing PcsCtxs, value=%v, type=%T", comp.PcsCtxs, comp.PcsCtxs)
+	// serPcsCtxs, err := SerializeValue(reflect.ValueOf(&comp.PcsCtxs), DeclarationMode)
+	// if err != nil {
+	// 	utils.Panic("serialize PcsCtxs: %v", err)
+	// }
+	// raw.PcsCtxs = serPcsCtxs
+
+	// Round specific params are serialized in Parallel
 	var mu sync.Mutex
 
-	// Work function for ExecuteChunky
+	// Work function for ExecuteChunky - Round specific
 	work := func(start, stop int) {
 		for round := start; round < stop; round++ {
 			var localErr error
@@ -166,6 +195,46 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	if numRounds == 0 {
 		return comp, nil
 	}
+
+	// Deserialize non-round specific params first
+
+	// Deserialize Precomputed
+	if raw.Precomputed != nil {
+		preCompType := reflect.SliceOf(reflect.TypeOf(struct {
+			Key   ifaces.ColID
+			Value ifaces.ColAssignment
+		}{}))
+		preCompVal, err := DeserializeValue(raw.Precomputed, DeclarationMode, preCompType, comp)
+		if err != nil {
+			return nil, fmt.Errorf("deserialize Precomputed: %w", err)
+		}
+		precomputedEntries := preCompVal.Interface().([]struct {
+			Key   ifaces.ColID
+			Value ifaces.ColAssignment
+		})
+		for _, entry := range precomputedEntries {
+			comp.Precomputed.InsertNew(entry.Key, entry.Value)
+		}
+		if len(comp.Precomputed.ListAllKeys()) == 0 && len(precomputedEntries) > 0 {
+			logrus.Warn("Deserialized Precomputed mapping is empty despite having entries")
+		}
+	}
+
+	// Deserialize PcsCtxs
+	// if raw.PcsCtxs != nil && !bytes.Equal(raw.PcsCtxs, []byte(NilString)) {
+	// 	logrus.Infof("Deserializing PcsCtxs, raw data length=%d", len(raw.PcsCtxs))
+	// 	pcsCtxs, err := DeserializeValue(raw.PcsCtxs, DeclarationMode, reflect.TypeOf([]interface{}{}), comp)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("error while decoding PcsCtxs: %w", err)
+	// 	}
+	// 	comp.PcsCtxs = pcsCtxs.Interface()
+	// 	logrus.Infof("Deserialized PcsCtxs, type=%T, value=%v", comp.PcsCtxs, comp.PcsCtxs)
+	// } else {
+	// 	logrus.Info("PcsCtxs is nil or empty, setting to nil")
+	// 	comp.PcsCtxs = nil
+	// }
+
+	// Deserialize round specific params in parallel
 
 	// Mutex to protect updates to comp
 	var mu sync.Mutex
