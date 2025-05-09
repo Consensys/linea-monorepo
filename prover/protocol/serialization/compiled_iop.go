@@ -30,6 +30,7 @@ type rawCompiledIOP struct {
 	Precomputed                json.RawMessage     `json:"precomputed"`
 	PcsCtxs                    json.RawMessage     `json:"pcsCtxs"`
 	DummyCompiled              bool                `json:"dummyCompiled"`
+	SelfRecursionCount         int                 `json:"selfRecursionCount"`
 	Artefacts                  json.RawMessage     `json:"artefacts"`
 	FiatShamirSetup            json.RawMessage     `json:"fiatShamirSetup"`
 	PublicInputs               json.RawMessage     `json:"publicInputs"`
@@ -74,6 +75,8 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 		Subprovers:                 make([][]json.RawMessage, numRounds),
 		SubVerifiers:               make([][]json.RawMessage, numRounds),
 		FiatShamirHooksPreSampling: make([][]json.RawMessage, numRounds),
+		DummyCompiled:              comp.DummyCompiled,
+		SelfRecursionCount:         comp.SelfRecursionCount,
 	}
 
 	// Serialize Precomputed attribute
@@ -186,6 +189,10 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 		return comp, nil
 	}
 
+	// Set primitive fields
+	comp.DummyCompiled = raw.DummyCompiled
+	comp.SelfRecursionCount = raw.SelfRecursionCount
+
 	// Deserialize Precomputed attribute
 	if err := deserializePrecomputed(raw, comp); err != nil {
 		return nil, fmt.Errorf("deserialize Precomputed: %w", err)
@@ -206,11 +213,6 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 		return nil, err
 	}
 
-	// Deserialize PublicInputs attribute
-	if err := deserializePublicInputs(raw, comp); err != nil {
-		return nil, err
-	}
-
 	// Deserialize round-specific attributes in parallel
 	var mu sync.Mutex
 	if err := deserializeColumnsAndCoins(raw, comp, numRounds, &mu); err != nil {
@@ -227,6 +229,13 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	}
 	if err := deserializeFSHookPS(raw, comp, numRounds, &mu); err != nil {
 		return nil, fmt.Errorf("error while decoding FiatShamirHookPreSampling: %w", err)
+	}
+
+	// IMPORTANT: Deserialize PublicInputs attribute at the last since PublicInputs contains Acc
+	// ifaces.Accessor (e.g., accessor.LocalOpening), which references column IDs.
+	//If Columns are not deserialized first, calls to column.Store.GetHandle (via MustGet) fail, causing the panic.
+	if err := deserializePublicInputs(raw, comp); err != nil {
+		return nil, err
 	}
 
 	return comp, nil

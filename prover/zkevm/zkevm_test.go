@@ -373,6 +373,14 @@ func TestCompiledIOP(t *testing.T) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: PublicInputs (ignoring unexported fields)")
 	}
 
+	if z.WizardIOP.DummyCompiled != deserializedIOP.DummyCompiled {
+		t.Fatalf("Mismatch in DummyCompiled: Original=%v, Deserialized=%v", z.WizardIOP.DummyCompiled, deserializedIOP.DummyCompiled)
+	}
+
+	if z.WizardIOP.SelfRecursionCount != deserializedIOP.SelfRecursionCount {
+		t.Fatalf("Mismatch in SelfRecursionCount: Original=%v, Deserialized=%v", z.WizardIOP.SelfRecursionCount, deserializedIOP.SelfRecursionCount)
+	}
+
 }
 
 // TestStateManager tests serialization and deserialization of the StateManager field.
