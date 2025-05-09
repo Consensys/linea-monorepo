@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	public_input "github.com/consensys/linea-monorepo/prover/public-input"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
@@ -146,7 +147,8 @@ func mustProveAndPass(
 
 		logrus.Info("Sanity-checking the inner-proof")
 		if err := fullZkEvm.VerifyInner(proof); err != nil {
-			utils.Panic("The prover did not pass: %v", err)
+			logrus.Errorf("The sanity-check of the inner-proof did not pass: %v", err)
+			exit.OnUnsatisfiedConstraints()
 		}
 
 		// wait for setup to be loaded

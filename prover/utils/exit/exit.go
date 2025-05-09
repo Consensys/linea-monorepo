@@ -1,6 +1,9 @@
 package exit
 
-import "os"
+import (
+	"os"
+	"runtime/debug"
+)
 
 var (
 	activateExitOnIssue bool
@@ -23,6 +26,9 @@ const (
 // but only if the activateExitOnIssue flag is set to true. Otherwise, it will
 // just panic.
 func OnLimitOverflow() {
+
+	debug.PrintStack()
+
 	if !activateExitOnIssue {
 		panic("limit overflow")
 	}
@@ -30,6 +36,9 @@ func OnLimitOverflow() {
 }
 
 func OnUnsatisfiedConstraints() {
+
+	debug.PrintStack()
+
 	if !activateExitOnIssue {
 		panic("unsatisfied constraints")
 	}
