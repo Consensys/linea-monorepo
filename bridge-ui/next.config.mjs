@@ -43,38 +43,6 @@ const nextConfig = {
 
     return config;
   },
-  async headers() {
-    /**
-     * Mitigate XSS and data injection attack.
-     * Restrict what content the browser is allowed to load.
-     * - default-src 'self' -> Default policy to only allow resources from same origin
-     * - script-src -> Ideally not https: as this allows all HTTPS sources, but it turns out that Google Tag Manager uses many domains to load scripts
-     */
-    const cspHeader = `
-      default-src 'self';
-      connect-src 'self' https:;
-      script-src 'self' 'unsafe-eval' 'unsafe-inline' https:;
-      style-src 'self' 'unsafe-inline';
-      img-src 'self' blob: data: https:;
-      font-src 'self' data: https://cdn.jsdelivr.net;
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-      frame-ancestors 'none';
-      upgrade-insecure-requests;
-    `;
-    return [
-      {
-        source: "/(.*)",
-        headers: [
-          {
-            key: "Content-Security-Policy",
-            value: cspHeader.replace(/\n/g, ""),
-          },
-        ],
-      },
-    ];
-  },
 };
 
 export default nextConfig;
