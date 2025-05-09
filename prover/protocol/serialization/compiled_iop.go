@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -29,6 +30,9 @@ type rawCompiledIOP struct {
 	Precomputed                json.RawMessage     `json:"precomputed"`
 	PcsCtxs                    json.RawMessage     `json:"pcsCtxs"`
 	DummyCompiled              bool                `json:"dummyCompiled"`
+	Artefacts                  json.RawMessage     `json:"artefacts"`
+	FiatShamirSetup            json.RawMessage     `json:"fiatShamirSetup"`
+	PublicInputs               json.RawMessage     `json:"publicInputs"`
 }
 
 // NewEmptyCompiledIOP initializes an empty CompiledIOP object.
@@ -80,6 +84,16 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 	// Serialize PcsCtxs attribute
 	if err := serializePcsCtxs(comp, raw); err != nil {
 		return nil, fmt.Errorf("serialize PcsCtxs: %w", err)
+	}
+
+	// Serialize FiatShamirSetup attribute
+	if err := serializeFiatShamirSetup(comp, raw); err != nil {
+		return nil, err
+	}
+
+	// Serialize PublicInputs attribute
+	if err := serializePublicInputs(comp, raw); err != nil {
+		return nil, err
 	}
 
 	// Serialize round-specific attributes in parallel
@@ -180,6 +194,21 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	// Deserialize PcsCtxs attribute
 	if err := deserializePcsCtxs(raw, comp); err != nil {
 		return nil, fmt.Errorf("deserialize PcsCtxs: %w", err)
+	}
+
+	// Deserialize Artefacts attribute
+	// if err := deserializeArtefacts(raw, comp); err != nil {
+	// 	return nil, fmt.Errorf("deserialize Artefacts: %w", err)
+	// }
+
+	// Deserialize FiatShamirSetup attribute
+	if err := deserializeFiatShamirSetup(raw, comp); err != nil {
+		return nil, err
+	}
+
+	// Deserialize PublicInputs attribute
+	if err := deserializePublicInputs(raw, comp); err != nil {
+		return nil, err
 	}
 
 	// Deserialize round-specific attributes in parallel
@@ -325,6 +354,57 @@ func serializePcsCtxs(comp *wizard.CompiledIOP, raw *rawCompiledIOP) error {
 		raw.PcsCtxs = serPcsCtxs
 	} else {
 		raw.PcsCtxs = json.RawMessage(NilString)
+	}
+	return nil
+}
+
+func serializeFiatShamirSetup(comp *wizard.CompiledIOP, raw *rawCompiledIOP) error {
+	if !comp.FiatShamirSetup.IsZero() {
+		fiatShamirBytes := comp.FiatShamirSetup.Bytes()
+		serFiatShamir, err := serializeAnyWithCborPkg(fiatShamirBytes[:])
+		if err != nil {
+			return fmt.Errorf("serialize FiatShamirSetup: %w", err)
+		}
+		raw.FiatShamirSetup = serFiatShamir
+	} else {
+		raw.FiatShamirSetup = json.RawMessage(NilString)
+	}
+	return nil
+}
+
+func serializePublicInputs(comp *wizard.CompiledIOP, raw *rawCompiledIOP) error {
+	if len(comp.PublicInputs) > 0 {
+		serPublicInputs, err := SerializeValue(reflect.ValueOf(comp.PublicInputs), DeclarationMode)
+		if err != nil {
+			return fmt.Errorf("serialize PublicInputs: %w", err)
+		}
+		raw.PublicInputs = serPublicInputs
+	} else {
+		raw.PublicInputs = json.RawMessage(NilString)
+	}
+	return nil
+}
+
+func deserializePublicInputs(raw *rawCompiledIOP, comp *wizard.CompiledIOP) error {
+	if raw.PublicInputs != nil && !bytes.Equal(raw.PublicInputs, []byte(NilString)) {
+		publicInputsVal, err := DeserializeValue(raw.PublicInputs, DeclarationMode, reflect.TypeOf([]wizard.PublicInput{}), comp)
+		if err != nil {
+			return fmt.Errorf("deserialize PublicInputs: %w", err)
+		}
+		comp.PublicInputs = publicInputsVal.Interface().([]wizard.PublicInput)
+	}
+	return nil
+}
+
+func deserializeFiatShamirSetup(raw *rawCompiledIOP, comp *wizard.CompiledIOP) error {
+	if raw.FiatShamirSetup != nil && !bytes.Equal(raw.FiatShamirSetup, []byte(NilString)) {
+		var fiatShamirBytes [field.Bytes]byte
+		if err := deserializeAnyWithCborPkg(raw.FiatShamirSetup, &fiatShamirBytes); err != nil {
+			return fmt.Errorf("deserialize FiatShamirSetup: %w", err)
+		}
+		var fiatShamir field.Element
+		fiatShamir.SetBytes(fiatShamirBytes[:])
+		comp.FiatShamirSetup = fiatShamir
 	}
 	return nil
 }

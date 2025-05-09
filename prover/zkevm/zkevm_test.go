@@ -329,7 +329,6 @@ func TestCompiledIOP(t *testing.T) {
 
 	fmt.Printf("Original Prover action:%+v \n", z.WizardIOP.SubProvers)
 	fmt.Printf("Deserialized Prover action:%+v \n", deserializedIOP.SubProvers)
-
 	if !compareExportedFields(z.WizardIOP.SubProvers, deserializedIOP.SubProvers) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: SubProvers (ignoring unexported fields)")
 	}
@@ -361,6 +360,19 @@ func TestCompiledIOP(t *testing.T) {
 	if z.WizardIOP.DummyCompiled != deserializedIOP.DummyCompiled {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: DummyCompiled")
 	}
+
+	fmt.Println("Original FiatShamirSetup:", z.WizardIOP.FiatShamirSetup)
+	fmt.Println("Deserialized FiatShamirSetup:", deserializedIOP.FiatShamirSetup)
+	if z.WizardIOP.FiatShamirSetup != deserializedIOP.FiatShamirSetup {
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: FiatShamirSetup")
+	}
+
+	fmt.Println("Original PublicInputs:", z.WizardIOP.PublicInputs)
+	fmt.Println("Deserialized PublicInputs:", deserializedIOP.PublicInputs)
+	if !compareExportedFields(z.WizardIOP.PublicInputs, deserializedIOP.PublicInputs) {
+		t.Fatalf("Mis-matched fields after serde CompiledIOP: PublicInputs (ignoring unexported fields)")
+	}
+
 }
 
 // TestStateManager tests serialization and deserialization of the StateManager field.
@@ -396,6 +408,7 @@ func TestStateManager(t *testing.T) {
 	if !compareExportedFields(z.StateManager, deserialized) {
 		t.Fatalf("Mis-matched fields after serde StateManager (ignoring unexported fields)")
 	}
+
 }
 
 // compareExportedFields checks if two values are equal, ignoring unexported fields, including in nested structs.
