@@ -341,6 +341,10 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 		return deserializeStringVar(data, mode, comp)
 	}
 
+	if bytes.Equal(data, []byte(NilString)) {
+		return ifaceValue, nil
+	}
+
 	// Deserialize the raw JSON into a structured format
 	var raw struct {
 		Type  string          `json:"type"`
@@ -384,9 +388,11 @@ func deserializeConcreteType(typeName string, value json.RawMessage, mode Mode, 
 	}
 
 	// Handle pointer types: When the concrete type is a pointer, the interface must hold a pointer to the deserialized value
-	// to match the registered type and ensure addressability. Without this, deserializePointer (which calls v.Addr()) would
-	// panic if v is unaddressable (e.g., a temporary value). For non-pointer types, the deserialized value can be assigned
-	//  directly, as it’s already in the correct form.
+	// to match the registered type and ensure addressability. Without this, for nested interfaces or pointer fields within
+	// the concrete type (e.g., a struct with a *[]int field), deserializePointer (which calls v.Addr()) would panic if v is
+	// unaddressable (e.g., a temporary value). This is critical when deserializing interface values like ifaces.ColAssignment,
+	// where the concrete type or its fields may be pointers. For non-pointer types, the deserialized value can be assigned
+	// directly, as it is already in the correct form and typically addressable when stored in the interface.
 	if isPointer {
 		ptrValue := reflect.New(targetType) // returns a pointer value to new type
 		if v.IsValid() && v.Type().AssignableTo(targetType) {
