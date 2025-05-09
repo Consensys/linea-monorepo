@@ -1,10 +1,12 @@
 package serialization
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -52,4 +54,14 @@ func MarshalExprCBOR(w io.Writer, expr *symbolic.Expression) (int64, error) {
 	}
 
 	return int64(n), nil
+}
+
+// Helper function to deserialize symbolic.StringVar
+func deserializeStringVar(data json.RawMessage, mode Mode, comp *wizard.CompiledIOP) (reflect.Value, error) {
+	var stringVar symbolic.StringVar
+	result, err := DeserializeValue(data, mode, reflect.TypeOf(stringVar), comp)
+	if err != nil {
+		return reflect.Value{}, fmt.Errorf("could not deserialize stringVar: %w", err)
+	}
+	return result, nil
 }

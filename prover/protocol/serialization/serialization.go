@@ -189,42 +189,6 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	return serializeAnyWithCborPkg(raw)
 }
 
-// serializeColumnInterface handles serialization of column interfaces in DeclarationMode.
-// Column types can be either Natural or ManuallyShifted
-func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
-	concrete := v.Elem()
-
-	var data json.RawMessage
-	var err error
-	switch concrete.Type() {
-	case naturalType:
-		col := v.Interface().(column.Natural)
-		decl := intoSerializableColDecl(&col)
-		data, err = SerializeValue(reflect.ValueOf(decl), mode)
-		if err != nil {
-			return nil, err
-		}
-
-	case manuallyShiftedType:
-		shifted := v.Interface().(*dedicated.ManuallyShifted)
-		decl := intoSerializableManuallyShifted(shifted)
-		data, err = SerializeValue(reflect.ValueOf(decl), mode)
-		if err != nil {
-			return nil, err
-		}
-
-	default:
-		return nil, fmt.Errorf("unsupported column type in DeclarationMode: %s", concrete.Type().String())
-	}
-
-	raw := map[string]interface{}{
-		"type":  concrete.Type().String(),
-		"value": data,
-	}
-
-	return serializeAnyWithCborPkg(raw)
-}
-
 func serializeMap(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	keys := v.MapKeys()
 	keyStrings := make([]string, 0, len(keys))
@@ -368,72 +332,16 @@ func deserializeMap(data json.RawMessage, mode Mode, t reflect.Type, comp *wizar
 	return v, nil
 }
 
-// func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
-// 	ifaceValue := reflect.New(t).Elem()
-
-// 	if mode == pureExprMode && t == metadataType {
-// 		var stringVar symbolic.StringVar
-// 		result, err := DeserializeValue(data, mode, reflect.TypeOf(stringVar), comp)
-// 		if err != nil {
-// 			return reflect.Value{}, err
-// 		}
-// 		return result, nil
-// 	}
-
-// 	var raw struct {
-// 		Type  string          `json:"type"`
-// 		Value json.RawMessage `json:"value"`
-// 	}
-// 	if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
-// 		return reflect.Value{}, fmt.Errorf("failed to deserialize interface %q: %w", t.Name(), err)
-// 	}
-
-// 	switch raw.Type {
-// 	case "column.Natural":
-// 		rawType := reflect.TypeOf(&serializableColumnDecl{})
-// 		v, err := DeserializeValue(raw.Value, mode, rawType, comp)
-// 		if err != nil {
-// 			return reflect.Value{}, fmt.Errorf("could not deserialize column interface declaration: %w", err)
-// 		}
-// 		nat := v.Interface().(*serializableColumnDecl).intoNaturalAndRegister(comp)
-// 		ifaceValue.Set(reflect.ValueOf(nat))
-// 		return ifaceValue, nil
-// 	case "*dedicated.ManuallyShifted":
-// 		rawType := reflect.TypeOf(&serializableManuallyShifted{})
-// 		v, err := DeserializeValue(raw.Value, mode, rawType, comp)
-// 		if err != nil {
-// 			return reflect.Value{}, fmt.Errorf("could not deserialize ManuallyShifted: %w", err)
-// 		}
-// 		shifted := v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)
-// 		ifaceValue.Set(reflect.ValueOf(shifted))
-// 		return ifaceValue, nil
-// 	default:
-// 		concreteType, err := findRegisteredImplementation(raw.Type)
-// 		if err != nil {
-// 			return reflect.Value{}, fmt.Errorf("failed to find concrete type and deserialize interface %q: %w", t.Name(), err)
-// 		}
-
-// 		v, err := DeserializeValue(raw.Value, mode, concreteType, comp)
-// 		if err != nil {
-// 			return reflect.Value{}, fmt.Errorf("failed to deserialize interface %q: %w", t.Name(), err)
-// 		}
-// 		ifaceValue.Set(v)
-// 		return ifaceValue, nil
-// 	}
-// }
-
 func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
+	// Create a new reflect.Value for the interface type
 	ifaceValue := reflect.New(t).Elem()
 
+	// Special case for pureExprMode and metadataType
 	if mode == pureExprMode && t == metadataType {
-		var stringVar symbolic.StringVar
-		result, err := DeserializeValue(data, mode, reflect.TypeOf(stringVar), comp)
-		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not deserialize stringVar: %w", err)
-		}
-		return result, nil
+		return deserializeStringVar(data, mode, comp)
 	}
 
+	// Deserialize the raw JSON into a structured format
 	var raw struct {
 		Type  string          `json:"type"`
 		Value json.RawMessage `json:"value"`
@@ -442,57 +350,56 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 		return reflect.Value{}, fmt.Errorf("failed to deserialize interface %q: %w", t.Name(), err)
 	}
 
+	// Handle specific types based on the "Type" field
 	switch raw.Type {
 	case "column.Natural":
-		rawType := reflect.TypeOf(&serializableColumnDecl{})
-		v, err := DeserializeValue(raw.Value, mode, rawType, comp)
-		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not deserialize column interface declaration: %w", err)
-		}
-		nat := v.Interface().(*serializableColumnDecl).intoNaturalAndRegister(comp)
-		ifaceValue.Set(reflect.ValueOf(nat))
-		return ifaceValue, nil
+		return deserializeColumnNatural(raw.Value, mode, comp, ifaceValue)
 	case "*dedicated.ManuallyShifted":
-		rawType := reflect.TypeOf(&serializableManuallyShifted{})
-		v, err := DeserializeValue(raw.Value, mode, rawType, comp)
-		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not deserialize ManuallyShifted: %w", err)
-		}
-		shifted := v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)
-		ifaceValue.Set(reflect.ValueOf(shifted))
-		return ifaceValue, nil
+		return deserializeManuallyShifted(raw.Value, mode, comp, ifaceValue)
 	default:
-		concreteType, err := findRegisteredImplementation(raw.Type)
-		if err != nil {
-			return reflect.Value{}, fmt.Errorf("failed to find concrete type for %q: %w", raw.Type, err)
-		}
-
-		// Handle pointer concrete types
-		isPointer := concreteType.Kind() == reflect.Ptr
-		targetType := concreteType
-		if isPointer {
-			targetType = concreteType.Elem()
-		}
-
-		v, err := DeserializeValue(raw.Value, mode, targetType, comp)
-		if err != nil {
-			return reflect.Value{}, fmt.Errorf("failed to deserialize concrete type %q: %w", raw.Type, err)
-		}
-
-		// If the concrete type is a pointer, create a new pointer and set its value
-		if isPointer {
-			ptrValue := reflect.New(targetType)
-			if v.IsValid() && v.Type().AssignableTo(targetType) {
-				ptrValue.Elem().Set(v)
-			} else {
-				return reflect.Value{}, fmt.Errorf("cannot assign deserialized value of type %v to pointer type %v", v.Type(), targetType)
-			}
-			ifaceValue.Set(ptrValue)
-		} else {
-			ifaceValue.Set(v)
-		}
-		return ifaceValue, nil
+		return deserializeConcreteType(raw.Type, raw.Value, mode, comp, ifaceValue)
 	}
+}
+
+// Helper function to deserialize concrete types
+func deserializeConcreteType(typeName string, value json.RawMessage, mode Mode, comp *wizard.CompiledIOP, ifaceValue reflect.Value) (reflect.Value, error) {
+	// Find the registered implementation for the type
+	concreteType, err := findRegisteredImplementation(typeName)
+	if err != nil {
+		return reflect.Value{}, fmt.Errorf("failed to find concrete type for %q: %w", typeName, err)
+	}
+
+	// Determine if the concrete type is a pointer
+	isPointer := concreteType.Kind() == reflect.Ptr
+	targetType := concreteType
+	if isPointer {
+		// Dereference the elem if it is a pointer
+		targetType = concreteType.Elem()
+	}
+
+	// Deserialize the value into the target type
+	v, err := DeserializeValue(value, mode, targetType, comp)
+	if err != nil {
+		return reflect.Value{}, fmt.Errorf("failed to deserialize concrete type %q: %w", typeName, err)
+	}
+
+	// Handle pointer types: When the concrete type is a pointer, the interface must hold a pointer to the deserialized value
+	// to match the registered type and ensure addressability. Without this, deserializePointer (which calls v.Addr()) would
+	// panic if v is unaddressable (e.g., a temporary value). For non-pointer types, the deserialized value can be assigned
+	//  directly, as it’s already in the correct form.
+	if isPointer {
+		ptrValue := reflect.New(targetType) // returns a pointer value to new type
+		if v.IsValid() && v.Type().AssignableTo(targetType) {
+			ptrValue.Elem().Set(v)
+		} else {
+			return reflect.Value{}, fmt.Errorf("cannot assign deserialized value of type %v to pointer type %v", v.Type(), targetType)
+		}
+		ifaceValue.Set(ptrValue)
+	} else {
+		ifaceValue.Set(v)
+	}
+
+	return ifaceValue, nil
 }
 
 func deserializePointer(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {

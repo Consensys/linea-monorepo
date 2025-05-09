@@ -1,7 +1,9 @@
 package serialization
 
 import (
+	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
@@ -71,4 +73,64 @@ func (c *serializableColumnDecl) intoNaturalAndRegister(comp *wizard.CompiledIOP
 		return comp.Columns.GetHandle(c.Name)
 	}
 	return comp.InsertColumn(c.Round, c.Name, c.Size, c.Status)
+}
+
+// serializeColumnInterface handles serialization of column interfaces in DeclarationMode.
+// Column types can be either Natural or ManuallyShifted
+func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
+	concrete := v.Elem()
+
+	var data json.RawMessage
+	var err error
+	switch concrete.Type() {
+	case naturalType:
+		col := v.Interface().(column.Natural)
+		decl := intoSerializableColDecl(&col)
+		data, err = SerializeValue(reflect.ValueOf(decl), mode)
+		if err != nil {
+			return nil, err
+		}
+
+	case manuallyShiftedType:
+		shifted := v.Interface().(*dedicated.ManuallyShifted)
+		decl := intoSerializableManuallyShifted(shifted)
+		data, err = SerializeValue(reflect.ValueOf(decl), mode)
+		if err != nil {
+			return nil, err
+		}
+
+	default:
+		return nil, fmt.Errorf("unsupported column type in DeclarationMode: %s", concrete.Type().String())
+	}
+
+	raw := map[string]interface{}{
+		"type":  concrete.Type().String(),
+		"value": data,
+	}
+
+	return serializeAnyWithCborPkg(raw)
+}
+
+// Helper function to deserialize column.Natural
+func deserializeColumnNatural(value json.RawMessage, mode Mode, comp *wizard.CompiledIOP, ifaceValue reflect.Value) (reflect.Value, error) {
+	rawType := reflect.TypeOf(&serializableColumnDecl{})
+	v, err := DeserializeValue(value, mode, rawType, comp)
+	if err != nil {
+		return reflect.Value{}, fmt.Errorf("could not deserialize column interface declaration: %w", err)
+	}
+	nat := v.Interface().(*serializableColumnDecl).intoNaturalAndRegister(comp)
+	ifaceValue.Set(reflect.ValueOf(nat))
+	return ifaceValue, nil
+}
+
+// Helper function to deserialize dedicated.ManuallyShifted
+func deserializeManuallyShifted(value json.RawMessage, mode Mode, comp *wizard.CompiledIOP, ifaceValue reflect.Value) (reflect.Value, error) {
+	rawType := reflect.TypeOf(&serializableManuallyShifted{})
+	v, err := DeserializeValue(value, mode, rawType, comp)
+	if err != nil {
+		return reflect.Value{}, fmt.Errorf("could not deserialize ManuallyShifted: %w", err)
+	}
+	shifted := v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)
+	ifaceValue.Set(reflect.ValueOf(shifted))
+	return ifaceValue, nil
 }
