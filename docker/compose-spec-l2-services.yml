@@ -127,41 +127,8 @@ services:
         ipv4_address: 11.11.11.119
 
   traces-node:
-    container_name: traces-node
     hostname: traces-node
-    image: consensys/linea-geth:${ZKGETH_TAG:-0588665}
-    platform: linux/amd64
-    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
-    depends_on:
-      sequencer:
-        condition: service_healthy
-    ports:
-      - "8645:8545" # http
-      - "8646:8546" # websockets
-      - "8651:8551" # engine_ API
-    environment:
-      DATA_DIR: "/l2-zkgeth-traces-node/"
-      NETRESTRICT: "11.11.11.0/24"
-      # ETHSTATS_URL: "zkgeth-traces-node:${WS_SECRET:-dummy-secret}@l2-ethstats:3000"
-      BOOTNODES: "enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303"
-      TRACES_DIR: "/data/traces/raw"
-      MAX_BLOCK_GAS: 10000000  #10M
-      MAX_BLOCKDATA_BYTES: 35000 #35 KBytes
-      MAX_TXDATA_BYTES: 30000 #30 KBytes
-      VERSION: "0.2.0"
-      TRACES_FILE_EXTENSION: ".json.gz"
-    entrypoint: [ "sh", "/scripts/node.sh", "1337", "/genesis.json", "0xa", "0x1C9C380", "0xF4240" ]
-    volumes:
-      - ./geth/scripts:/scripts:ro
-      - ./config/linea-local-dev-genesis-PoA-geth.json:/genesis.json:ro
-      - ../tmp/local/:/data/
-    networks:
-      linea:
-        ipv4_address: 11.11.11.102
-
-  traces-node-v2:
-    hostname: traces-node-v2
-    container_name: traces-node-v2
+    container_name: traces-node
     image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-sepolia-3e31c8f}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
@@ -187,46 +154,22 @@ services:
       - -c
       - |
         /opt/besu/bin/besu \
-        --config-file=/var/lib/besu/traces-node-v2.config.toml \
+        --config-file=/var/lib/besu/traces-node.config.toml \
         --genesis-file=/var/lib/besu/genesis.json \
         --bootnodes=enode://14408801a444dafc44afbccce2eb755f902aed3b5743fed787b3c790e021fef28b8c827ed896aa4e8fb46e22bd67c39f994a73768b4b382f8597b0d44370e15d@11.11.11.101:30303
     volumes:
-      - ./config/traces-node-v2/traces-node-v2-config.toml:/var/lib/besu/traces-node-v2.config.toml:ro
-      - ./config/traces-node-v2/log4j.xml:/var/lib/besu/log4j.xml:ro
+      - ./config/traces-node/traces-node-config.toml:/var/lib/besu/traces-node.config.toml:ro
+      - ./config/traces-node/log4j.xml:/var/lib/besu/log4j.xml:ro
       - ./config/linea-local-dev-genesis-PoA-besu.json/:/var/lib/besu/genesis.json:ro
       - ../tmp/local/:/data/:rw
     networks:
       linea:
         ipv4_address: 11.11.11.115
 
-  prover:
-    container_name: prover
-    hostname: prover
-    image: consensys/linea-prover:b4550ce-untested
-    platform: linux/amd64
-    # to avoid spinning up on CI for now
-    profiles: [ "l2" ]
-    environment:
-      GOMAXPROCS: 16
-      CONTROLLER_CONFIG: "/opt/linea/prover/config/controller/controller.config.toml"
-      GOMEMLIMIT: "10GiB"
-      WORKER_ID: prover-i1 # keep this prover- to mimic prod env prover-aggregation-91
-    volumes:
-      - logs:/logs
-      - ../tmp/local/:/data/
-      - ./config/prover/v2/prover-controller.config.toml:/opt/linea/prover/config/controller/controller.config.toml
-      - ./config/prover/v2/prover-execution.config.toml:/opt/linea/prover/config/executor/execution.config.toml
-      - ./config/prover/v2/prover-decompression.config.toml:/opt/linea/prover/config/executor/decompression.config.toml
-      - ./config/prover/v2/prover-aggregation.config.toml:/opt/linea/prover/config/executor/aggregation.config.toml
-      - ../config/common/traces-limits-v1.toml:/opt/linea/prover/config/executor/traces-limits-M.toml
-    networks:
-      linea:
-        ipv4_address: 11.11.11.108
-
   prover-v3: # prover compatible with the traces from zkbesu
     container_name: prover-v3
     hostname: prover-v3
-    image: consensys/linea-prover:${PROVER_TAG:-811743b}
+    image: consensys/linea-prover:${PROVER_TAG:-052958b}
     platform: linux/amd64
     # to avoid spinning up on CI for now
     profiles: [ "l2" ]
@@ -247,7 +190,7 @@ services:
   postman:
     container_name: postman
     hostname: postman
-    image: consensys/linea-postman:${POSTMAN_TAG:-811743b}
+    image: consensys/linea-postman:${POSTMAN_TAG:-052958b}
     profiles: [ "l2", "debug" ]
     platform: linux/amd64
     restart: on-failure
@@ -265,31 +208,10 @@ services:
       linea:
         ipv4_address: 11.11.11.222
 
-  traces-api:
-    hostname: traces-api
-    container_name: traces-api
-    image: consensys/linea-traces-api-facade:${TRACES_API_TAG:-811743b}
-    profiles: [ "l2", "debug" ]
-    restart: on-failure
-    depends_on:
-      traces-node:
-        condition: service_started
-    ports:
-      - "8080:8080"
-    command: [ 'java', '-Dvertx.configurationFile=config/vertx-options.json', '-Dlog4j2.configurationFile=config/log4j2-dev.xml', '-jar', 'libs/app-all.jar', 'config/traces-app-docker.config.toml', ]
-    volumes:
-      - ../config/traces-api/traces-app-docker.config.toml:/opt/consensys/linea/traces-api-facade/config/traces-app-docker.config.toml:ro
-      - ../config/traces-api/vertx-options.json:/opt/consensys/linea/traces-api-facade/config/vertx-options.json:ro
-      - ../config/traces-api/log4j2-dev.xml:/opt/consensys/linea/traces-api-facade/config/log4j2-dev.xml:ro
-      - ../tmp/local/:/data/
-    networks:
-      linea:
-        ipv4_address: 11.11.11.105
-
   coordinator:
     hostname: coordinator
     container_name: coordinator
-    image: consensys/linea-coordinator:${COORDINATOR_TAG:-811743b}
+    image: consensys/linea-coordinator:${COORDINATOR_TAG:-052958b}
     platform: linux/amd64
     profiles: [ "l2", "debug" ]
     depends_on:
@@ -306,11 +228,15 @@ services:
     ports:
       - "9545:9545"
     restart: on-failure
-    command: [ 'java', '-Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json', '-Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml', '-jar', 'libs/coordinator.jar', '--traces-limits', 'config/traces-limits-v1.toml', '--smart-contract-errors', 'config/smart-contract-errors.toml', '--gas-price-cap-time-of-day-multipliers', 'config/gas-price-cap-time-of-day-multipliers.toml', 'config/coordinator-docker.config.toml', 'config/coordinator-docker-web3signer-override.config.toml' ]
+    environment:
+      config__override__l2-network-gas-pricing__json-rpc-pricing-propagation__disabled: ${DISABLE_JSON_RPC_PRICING_PROPAGATION:-true}
+      config__override__type2-state-proof-provider__endpoints: # leave empty to disable
+    command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/var/lib/coordinator/vertx-options.json', '-Dlog4j2.configurationFile=/var/lib/coordinator/log4j2-dev.xml', '-jar', 'libs/coordinator.jar', '--traces-limits-v2', 'config/traces-limits-v2.toml', '--smart-contract-errors', 'config/smart-contract-errors.toml', '--gas-price-cap-time-of-day-multipliers', 'config/gas-price-cap-time-of-day-multipliers.toml', 'config/coordinator-docker.config.toml', 'config/coordinator-docker-traces-v2-override.config.toml' ]
     volumes:
       - ../config/coordinator/coordinator-docker.config.toml:/opt/consensys/linea/coordinator/config/coordinator-docker.config.toml:ro
       - ../config/coordinator/coordinator-docker-web3signer-override.config.toml:/opt/consensys/linea/coordinator/config/coordinator-docker-web3signer-override.config.toml:ro
-      - ../config/common/traces-limits-v1.toml:/opt/consensys/linea/coordinator/config/traces-limits-v1.toml:ro
+      - ../config/coordinator/coordinator-docker-traces-v2-override.config.toml:/opt/consensys/linea/coordinator/config/coordinator-docker-traces-v2-override.config.toml:ro
+      - ../config/common/traces-limits-v2.toml:/opt/consensys/linea/coordinator/config/traces-limits-v2.toml:ro
       - ../config/common/smart-contract-errors.toml:/opt/consensys/linea/coordinator/config/smart-contract-errors.toml:ro
       - ../config/common/gas-price-cap-time-of-day-multipliers.toml:/opt/consensys/linea/coordinator/config/gas-price-cap-time-of-day-multipliers.toml:ro
       - ../config/coordinator/vertx-options.json:/var/lib/coordinator/vertx-options.json:ro
@@ -492,7 +418,7 @@ services:
   transaction-exclusion-api:
     hostname: transaction-exclusion-api
     container_name: transaction-exclusion-api
-    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-811743b}
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-052958b}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
@@ -515,7 +441,7 @@ services:
   blobscan-api:
     container_name: blobscan-api
     hostname: blobscan-api
-    image: blossomlabs/blobscan-api:1.3.1
+    image: blossomlabs/blobscan-api:1.7.0
     platform: linux/amd64 # only linux available
     profiles: [ "staterecovery" ]
     ports:
@@ -545,7 +471,7 @@ services:
   blobscan-indexer:
     container_name: blobscan-indexer
     hostname: blobscan-indexer
-    image: blossomlabs/blobscan-indexer:0.2.1
+    image: blossomlabs/blobscan-indexer:0.3.1
     platform: linux/amd64 # only linux available
     profiles: [ "staterecovery" ]
     env_file: "./config/blobscan/env"
