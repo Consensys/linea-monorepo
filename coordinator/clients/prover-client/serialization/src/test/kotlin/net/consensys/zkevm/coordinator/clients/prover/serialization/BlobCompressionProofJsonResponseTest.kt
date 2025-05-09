@@ -53,7 +53,8 @@ class BlobCompressionProofJsonResponseTest {
   }
 
   companion object {
-    private const val testdataPath1 = "../../../../testdata/coordinator/prover/v3/submissionAndFinalization/compression/responses"
+    private const val testdataPath1 =
+      "../../../../testdata/coordinator/prover/v3/submissionAndFinalization/compression/responses"
     private const val testdataPath2 = "../../../../testdata/coordinator/prover/v3/stateRecovery/compression/responses"
 
     private fun testFiles(): Array<File> {
