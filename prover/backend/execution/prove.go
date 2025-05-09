@@ -27,6 +27,10 @@ func Prove(cfg *config.Config, req *Request, large bool) (*Response, error) {
 	// Set MonitorParams before any proving happens
 	profiling.SetMonitorParams(cfg)
 
+	// This instructs the [exit] package to actually exit when [OnLimitOverflow]
+	// or [OnSatisfiedConstraints] are called.
+	exit.ActivateExitOnIssue()
+
 	var resp Response
 
 	// TODO @gbotrel wrap profiling in the caller; so that we can properly return errors

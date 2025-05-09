@@ -1,8 +1,6 @@
 package common
 
 import (
-	"runtime/debug"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -161,7 +159,6 @@ func (vb *VectorBuilder) PadAndAssign(run *wizard.ProverRuntime, v ...field.Elem
 	if len(vb.slice) > vb.column.Size() {
 		logrus.Errorf("the slice size %v is larger than the column size %v", len(vb.slice), vb.column.Size())
 		// We print the stack to help debugging
-		debug.PrintStack()
 		exit.OnLimitOverflow()
 	}
 
