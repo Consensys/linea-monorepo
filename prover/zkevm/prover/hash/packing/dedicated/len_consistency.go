@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -49,7 +50,7 @@ func LengthConsistency(comp *wizard.CompiledIOP, inp LcInputs) *lengthConsistenc
 		numCol    = len(inp.Table)
 		size      = inp.Table[0].Size()
 		numBytes  = inp.MaxLen
-		createCol = common.CreateColFn(comp, "LENGTH_CONSISTENCY_"+name, size)
+		createCol = common.CreateColFn(comp, "LENGTH_CONSISTENCY_"+name, size, pragmas.RightPadded)
 	)
 
 	res := &lengthConsistency{

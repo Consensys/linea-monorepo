@@ -128,11 +128,15 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	// moduleGL and moduleLPP have identical set of public inputs. The order
 	// of declaration is also important. Namely, these needs to be declared before
 	// the non-dummy ones.
+	for _, pi := range moduleInputs[0].PublicInputs {
+		moduleLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
+	}
+
 	moduleLPP.Wiop.InsertPublicInput(initialRandomnessPublicInput, accessors.NewFromPublicColumn(moduleLPP.InitialFiatShamirState, 0))
 	moduleLPP.Wiop.InsertPublicInput(isFirstPublicInput, accessors.NewConstant(field.Zero()))
 	moduleLPP.Wiop.InsertPublicInput(isLastPublicInput, accessors.NewConstant(field.Zero()))
-	moduleLPP.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
 	moduleLPP.Wiop.InsertPublicInput(globalSenderPublicInput, accessors.NewConstant(field.Zero()))
+	moduleLPP.Wiop.InsertPublicInput(globalReceiverPublicInput, accessors.NewConstant(field.Zero()))
 
 	for round, moduleInput := range moduleInputs {
 		for _, col := range moduleInput.Columns {
@@ -244,10 +248,6 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 			hornerN1HashPublicInput,
 			accessors.NewConstant(field.Zero()),
 		)
-	}
-
-	for _, pi := range moduleInputs[0].PublicInputs {
-		moduleLPP.Wiop.InsertPublicInput(pi.Name, accessors.NewConstant(field.Zero()))
 	}
 
 	moduleLPP.Wiop.InsertPublicInput(isGlPublicInput, accessors.NewConstant(field.Zero()))

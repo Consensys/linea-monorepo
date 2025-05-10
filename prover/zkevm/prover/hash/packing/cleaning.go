@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -40,7 +41,7 @@ type cleaningCtx struct {
 // NewClean imposes the constraint for cleaning the limbs.
 func NewClean(comp *wizard.CompiledIOP, inp cleaningInputs) cleaningCtx {
 
-	createCol := common.CreateColFn(comp, CLEANING+"_"+inp.Name, inp.imported.Limb.Size())
+	createCol := common.CreateColFn(comp, CLEANING+"_"+inp.Name, inp.imported.Limb.Size(), pragmas.RightPadded)
 	ctx := cleaningCtx{
 		CleanLimb:     createCol("CleanLimb"),
 		nbZeros:       createCol("NbZeroes"),

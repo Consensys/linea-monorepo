@@ -1,11 +1,13 @@
 package packing
 
 import (
+	"fmt"
 	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	iszero "github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -111,7 +113,7 @@ func newDecomposition(comp *wizard.CompiledIOP, inp decompositionInputs) decompo
 // declare the native columns
 func (decomposed *decomposition) insertCommit(comp *wizard.CompiledIOP) {
 
-	createCol := common.CreateColFn(comp, DECOMPOSITION+"_"+decomposed.Inputs.Name, decomposed.size)
+	createCol := common.CreateColFn(comp, DECOMPOSITION+"_"+decomposed.Inputs.Name, decomposed.size, pragmas.RightPadded)
 	for x := 0; x < decomposed.nbSlices; x++ {
 		decomposed.decomposedLimbs = append(decomposed.decomposedLimbs, createCol("Decomposed_Limbs", x))
 		decomposed.decomposedLen = append(decomposed.decomposedLen, createCol("Decomposed_Len_%v", x))
@@ -140,6 +142,8 @@ func (decomposed *decomposition) csDecomposLen(
 	s := sym.NewConstant(0)
 	for j := range decomposed.decomposedLimbs {
 		s = sym.Add(s, decomposed.decomposedLen[j])
+
+		fmt.Printf("lu.colNumber = %v, size = %v\n", lu.colNumber.GetColID(), lu.colNumber.Size())
 
 		// Equivalence of "decomposedLenPowers" with "2^(decomposedLen * 8)"
 		comp.InsertInclusion(0,

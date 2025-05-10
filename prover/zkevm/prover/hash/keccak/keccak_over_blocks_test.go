@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -25,7 +26,7 @@ func MakeTestCaseCustomizedKeccak(t *testing.T, providers [][]byte) (
 
 	define = func(builder *wizard.Builder) {
 		comp := builder.CompiledIOP
-		createCol := common.CreateColFn(comp, "Test_Customized_Keccak", size)
+		createCol := common.CreateColFn(comp, "Test_Customized_Keccak", size, pragmas.RightPadded)
 
 		inp := KeccakOverBlockInputs{
 			LaneInfo: LaneInfo{

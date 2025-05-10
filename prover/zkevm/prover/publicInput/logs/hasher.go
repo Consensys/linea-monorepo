@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -46,6 +47,12 @@ func NewLogHasher(comp *wizard.CompiledIOP, size int, name string) LogHasher {
 
 // DefineHasher specifies the constraints of the LogHasher with respect to the ExtractedData fetched from the arithmetization
 func DefineHasher(comp *wizard.CompiledIOP, hasher LogHasher, name string, fetched ExtractedData) {
+
+	// Needed for the limitless prover to understand that the columns are
+	// not just empty with just padding and suboptimal representation.
+	pragmas.MarkFullColumn(hasher.inter)
+	pragmas.MarkFullColumn(hasher.hashFirst)
+	pragmas.MarkFullColumn(hasher.hashSecond)
 
 	// MiMC constraints
 	comp.InsertMiMC(0, ifaces.QueryIDf("%s_%s", name, "MIMC_CONSTRAINT"), fetched.Hi, hasher.inter, hasher.hashFirst, nil)

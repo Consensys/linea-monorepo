@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -52,7 +53,7 @@ func AccumulateUpToMax(comp *wizard.CompiledIOP, maxValue int, colA, isActive if
 	var (
 		uniqueID  = strconv.Itoa(len(comp.ListCommitments()))
 		size      = colA.Size()
-		createCol = common.CreateColFn(comp, "ACCUMULATE_UP_TO_MAX_"+uniqueID, size)
+		createCol = common.CreateColFn(comp, "ACCUMULATE_UP_TO_MAX_"+uniqueID, size, pragmas.RightPadded)
 	)
 
 	acc := &accumulateUpToMax{

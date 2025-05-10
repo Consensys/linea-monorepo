@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -76,7 +77,7 @@ func NewGenericInfoAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 
 // declare columns
 func (info *GenericInfoAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProviders int) {
-	createCol := common.CreateColFn(comp, GENERIC_ACCUMULATOR, info.size)
+	createCol := common.CreateColFn(comp, GENERIC_ACCUMULATOR, info.size, pragmas.RightPadded)
 
 	info.IsActive = createCol("IsActive_Info")
 

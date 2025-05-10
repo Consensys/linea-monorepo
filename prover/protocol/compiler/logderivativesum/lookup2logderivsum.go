@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -353,7 +354,6 @@ func compileLookupTable(
 				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
 				lookupTable[frag][0].Size(),
 			)
-
 		}
 
 		for i := range ctx.S {
@@ -378,6 +378,11 @@ func compileLookupTable(
 				DeriveTableNameWithIndex[ifaces.ColID](LogDerivativePrefix, lookupTable, frag, "M"),
 				lookupTable[frag][0].Size(),
 			)
+
+			// This is to tell the limitless prover that the column should be extended
+			// by zero padding in case it needs to be extended during the segmentation
+			// in modules.
+			pragmas.MarkPaddable(ctx.M[frag], field.Zero())
 		}
 
 		for i := range ctx.S {

@@ -1,12 +1,11 @@
 package distributed
 
 import (
-	"strings"
-
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -159,7 +158,6 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witn
 			}
 
 			col := runtime.Spec.Columns.GetHandle(col)
-
 			segment := SegmentOfColumn(runtime, moduleLPP.Disc, col, moduleIndex, nbSegmentModule)
 			moduleWitnessLPP.Columns[col.GetColID()] = segment
 		}
@@ -216,8 +214,7 @@ func NbSegmentOfModule(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, mod
 
 // SegmentColumn returns the segment of a given column for given index. The
 // function also takes a maxNbSegment value which is useful in case
-func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer,
-	col ifaces.Column, index, totalNbSegment int) smartvectors.SmartVector {
+func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer, col ifaces.Column, index, totalNbSegment int) smartvectors.SmartVector {
 
 	if status := col.(column.Natural).Status(); status == column.Precomputed || status == column.VerifyingKey {
 		return col.GetColAssignment(runtime)
@@ -237,9 +234,10 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer,
 	}
 
 	var (
-		start      = startSeg + index*newSize
-		end        = start + newSize
-		assignment = col.GetColAssignment(runtime)
+		start               = startSeg + index*newSize
+		end                 = start + newSize
+		assignment          = col.GetColAssignment(runtime)
+		padding, isPaddable = pragmas.IsPaddable(col)
 	)
 
 	isOOB := end > col.Size() || start < 0
@@ -249,8 +247,8 @@ func SegmentOfColumn(runtime *wizard.ProverRuntime, disc ModuleDiscoverer,
 	// splitter and they will go OOB if they are used for more than 1 segment. When,
 	// this happens we "pad" it on the fly with zeroes to signify that they corresponds
 	// to unmatched lookup value.
-	if isOOB && strings.HasSuffix(string(col.GetColID()), "_LOGDERIVATIVE_M") {
-		return smartvectors.NewConstant(field.Zero(), newSize)
+	if isOOB && isPaddable {
+		return smartvectors.NewConstant(padding, newSize)
 	}
 
 	if isOOB {

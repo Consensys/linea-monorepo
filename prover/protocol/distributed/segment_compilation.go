@@ -2,6 +2,7 @@ package distributed
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -97,6 +98,10 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	sisInstance := ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 
 	wizard.ContinueCompilation(modIOP,
+		// This ensures that all the public inputs are declared in the same order to
+		// prevent bugs in the conglomeration. This will not affect the future position
+		// of the public inputs we declare afterwards.
+		sortPublicInput,
 		// @alex: unsure why we need to compile with MiMC since it should be done
 		// pre-bootstrapping.
 		mimc.CompileMiMC,
@@ -348,4 +353,19 @@ func (r *RecursedSegmentCompilation) ProveSegment(wit any) *wizard.ProverRuntime
 		Infof("Ran prover segment")
 
 	return run
+}
+
+// sortPublicInput is small compiler sorting the public inputs by name.
+// This helps ensuring that the order of public inputs is identical between all types
+// of module. This is to avoid errors in the conglomeration phase where public inputs
+// are only identified by their positions.
+//
+// Normally, they should already be declared in identical order so, in theory, this
+// function solves nothing but it's hard to debug when that changes so we keep the
+// function for "safety". Not that this will however change the initial ordering of
+// the public inputs.
+func sortPublicInput(comp *wizard.CompiledIOP) {
+	sort.Slice(comp.PublicInputs, func(i, j int) bool {
+		return comp.PublicInputs[i].Name < comp.PublicInputs[j].Name
+	})
 }
