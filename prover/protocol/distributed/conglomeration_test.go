@@ -65,7 +65,7 @@ func TestConglomeration(t *testing.T) {
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Affinities:   GetAffinities(zkevm),
-			Predivision:  16,
+			Predivision:  1,
 		}
 
 		// This tests the compilation of the compiled-IOP
@@ -130,7 +130,13 @@ func getSharedRandomness(runs []*wizard.ProverRuntime) field.Element {
 	for i := range runs {
 		witnesses[i] = recursion.ExtractWitness(runs[i])
 	}
-	return GetSharedRandomnessFromWitnesses(witnesses)
+
+	comps := make([]*wizard.CompiledIOP, len(runs))
+	for i := range runs {
+		comps[i] = runs[i].Spec
+	}
+
+	return GetSharedRandomnessFromWitnesses(comps, witnesses)
 }
 
 // Sanity-check for conglomeration compilation.

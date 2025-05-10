@@ -83,3 +83,55 @@ func (tl *TracesLimits) Checksum() string {
 
 	return digest
 }
+
+func (tl *TracesLimits) ScaleUp(by int) {
+
+	tl.Add *= by
+	tl.Bin *= by
+	tl.Blake2Fmodexpdata *= by
+	tl.Blockdata *= by
+	tl.Blockhash *= by
+	tl.Ecdata *= by
+	tl.Euc *= by
+	tl.Exp *= by
+	tl.Ext *= by
+	tl.Gas *= by
+	tl.Hub *= by
+	tl.Logdata *= by
+	tl.Loginfo *= by
+	tl.Mmio *= by
+	tl.Mmu *= by
+	tl.Mod *= by
+	tl.Mul *= by
+	tl.Mxp *= by
+	tl.Oob *= by
+	tl.Rlpaddr *= by
+	tl.Rlptxn *= by
+	tl.Rlptxrcpt *= by
+	tl.Rom *= by
+	tl.Romlex *= by
+	tl.Shakiradata *= by
+	tl.Shf *= by
+	tl.Stp *= by
+	tl.Trm *= by
+	tl.Txndata *= by
+	tl.Wcp *= by
+	tl.Binreftable *= by
+	tl.Shfreftable *= by
+	tl.Instdecoder *= by
+	tl.PrecompileEcrecoverEffectiveCalls *= by
+	tl.PrecompileSha2Blocks *= by
+	tl.PrecompileRipemdBlocks *= by
+	tl.PrecompileModexpEffectiveCalls *= by
+	tl.PrecompileModexpEffectiveCalls4096 *= by
+	tl.PrecompileEcaddEffectiveCalls *= by
+	tl.PrecompileEcmulEffectiveCalls *= by
+	tl.PrecompileEcpairingEffectiveCalls *= by
+	tl.PrecompileEcpairingMillerLoops *= by
+	tl.PrecompileEcpairingG2MembershipCalls *= by
+	tl.PrecompileBlakeEffectiveCalls *= by
+	tl.PrecompileBlakeRounds *= by
+	tl.BlockKeccak *= by
+	tl.BlockTransactions *= by
+	tl.ShomeiMerkleProofs *= by
+}

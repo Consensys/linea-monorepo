@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -159,7 +160,7 @@ func (io *InputOutput) newOutput(comp *wizard.CompiledIOP, maxNumKeccakF int,
 func (io *InputOutput) declareColumnsInput(comp *wizard.CompiledIOP, maxNumKeccakF int) {
 	var (
 		size      = numRows(maxNumKeccakF)
-		createCol = common.CreateColFn(comp, "KECCAKF_INPUT_MODULE", size)
+		createCol = common.CreateColFn(comp, "KECCAKF_INPUT_MODULE", size, pragmas.RightPadded)
 	)
 
 	io.IsFirstBlock = createCol("IS_FIRST_BLOCK")
@@ -171,7 +172,7 @@ func (io *InputOutput) declareColumnsInput(comp *wizard.CompiledIOP, maxNumKecca
 func (io *InputOutput) declareColumnsOutput(comp *wizard.CompiledIOP, maxNumKeccakF int) {
 	var (
 		size      = utils.NextPowerOfTwo(maxNumKeccakF)
-		createCol = common.CreateColFn(comp, "KECCAKF_OUTPUT_MODULE", size)
+		createCol = common.CreateColFn(comp, "KECCAKF_OUTPUT_MODULE", size, pragmas.RightPadded)
 	)
 	for j := range io.HashOutputSlicesBaseB {
 		for k := range io.HashOutputSlicesBaseB[0] {

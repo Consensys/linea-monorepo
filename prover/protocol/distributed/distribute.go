@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // lppGroupingArity indicates how many GL modules an LPP module relates to.
@@ -132,10 +133,20 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 
 	for i := range dist.GLs {
+		logrus.
+			WithField("module-name", dist.GLs[i].definitionInput.ModuleName).
+			WithField("module-type", "LPP").
+			Info("compiling module")
+
 		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
 	}
 
 	for i := range dist.LPPs {
+		logrus.
+			WithField("module-name", dist.LPPs[i].ModuleNames()).
+			WithField("module-type", "GL").
+			Info("compiling module")
+
 		dist.CompiledLPPs[i] = CompileSegment(dist.LPPs[i])
 	}
 
@@ -169,14 +180,14 @@ func GetSharedRandomness(lppCommitments []field.Element) field.Element {
 //
 // The result of this function is to be used as the shared randomness for
 // the LPP provers.
-func GetSharedRandomnessFromWitnesses(gLWitnesses []recursion.Witness) field.Element {
-	sharedRandomness := field.Element{}
+func GetSharedRandomnessFromWitnesses(comp []*wizard.CompiledIOP, gLWitnesses []recursion.Witness) field.Element {
+	lppCommitments := []field.Element{}
 	for i := range gLWitnesses {
 		name := fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0)
-		lpp := gLWitnesses[i].Proof.GetPublicInput(nil, preRecursionPrefix+name)
-		sharedRandomness = cmimc.BlockCompression(sharedRandomness, lpp)
+		lpp := gLWitnesses[i].Proof.GetPublicInput(comp[i], preRecursionPrefix+name)
+		lppCommitments = append(lppCommitments, lpp)
 	}
-	return sharedRandomness
+	return GetSharedRandomness(lppCommitments)
 }
 
 // precompileInitialWizard pre-compiles the initial wizard protocol by applying all the
@@ -187,7 +198,12 @@ func precompileInitialWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *w
 	mimc.CompileMiMC(comp)
 	// specialqueries.RangeProof(comp)
 	// specialqueries.CompileFixedPermutations(comp)
-	logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(disc)(comp)
+	logderivativesum.LookupIntoLogDerivativeSumWithSegmenter(
+		&LPPSegmentBoundaryCalculator{
+			Disc:     disc.(*StandardModuleDiscoverer),
+			LPPArity: lppGroupingArity,
+		},
+	)(comp)
 	permutation.CompileIntoGdProduct(comp)
 	horner.ProjectionToHorner(comp)
 	return comp

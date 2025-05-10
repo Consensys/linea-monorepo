@@ -3,6 +3,7 @@ package base_conversion
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
@@ -53,7 +54,7 @@ func NewHashBaseConversion(comp *wizard.CompiledIOP, inp HashBaseConversionInput
 // it declares the native columns
 func (h *hashBaseConversion) DeclareColumns(comp *wizard.CompiledIOP) {
 
-	createCol := common.CreateColFn(comp, HASH_OUTPUT, h.size)
+	createCol := common.CreateColFn(comp, HASH_OUTPUT, h.size, pragmas.RightPadded)
 	h.limbsHi = make([]ifaces.Column, numLimbsOutput)
 	h.limbsLo = make([]ifaces.Column, numLimbsOutput)
 

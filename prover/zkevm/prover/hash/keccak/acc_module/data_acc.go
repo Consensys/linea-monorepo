@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -83,7 +84,7 @@ func NewGenericDataAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 
 // It declares the columns specific to the DataModule
 func (d *GenericDataAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProviders int) {
-	createCol := common.CreateColFn(comp, GENERIC_ACCUMULATOR, d.size)
+	createCol := common.CreateColFn(comp, GENERIC_ACCUMULATOR, d.size, pragmas.RightPadded)
 
 	d.sFilters = make([]ifaces.Column, nbProviders)
 	for i := 0; i < nbProviders; i++ {
