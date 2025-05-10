@@ -302,6 +302,13 @@ func (rec *Recursion) GetPublicInputOfInstance(run wizard.Runtime, name string, 
 	return run.GetPublicInput(name)
 }
 
+// GetPublicInputOfInstanceGnark returns the requested public input in a
+// gnark circuit context.
+func (rec *Recursion) GetPublicInputOfInstanceGnark(api frontend.API, run wizard.GnarkRuntime, name string, inst int) frontend.Variable {
+	name = addPrefixToID(rec.Name+"-"+strconv.Itoa(inst), name)
+	return run.GetPublicInput(api, name)
+}
+
 // GetPublicInputAccessorOfInstance returns the accessor of a public input
 // relative to one recursed module.
 func (rec *Recursion) GetPublicInputAccessorOfInstance(comp *wizard.CompiledIOP, name string, inst int) ifaces.Accessor {
