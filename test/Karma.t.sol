@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
+
 import { Test } from "forge-std/Test.sol";
 import { DeployKarmaScript } from "../script/DeployKarma.s.sol";
 import { DeploymentConfig } from "../script/DeploymentConfig.s.sol";
@@ -16,6 +18,8 @@ contract KarmaTest is Test {
 
     KarmaDistributorMock public distributor1;
     KarmaDistributorMock public distributor2;
+
+    address public operator = makeAddr("operator");
 
     function setUp() public virtual {
         DeployKarmaScript karmaDeployment = new DeployKarmaScript();
@@ -33,11 +37,24 @@ contract KarmaTest is Test {
         vm.stopBroadcast();
     }
 
-    function testAddKarmaDistributorOnlyOwner() public {
+    function _accessControlError(address account, bytes32 role) internal pure returns (bytes memory) {
+        string memory expectedError = string(
+            abi.encodePacked(
+                "AccessControl: account ",
+                Strings.toHexString(uint160(account)),
+                " is missing role ",
+                Strings.toHexString(uint256(role), 32)
+            )
+        );
+        return bytes(expectedError);
+    }
+
+    function testAddKarmaDistributorOnlyAdmin() public {
         KarmaDistributorMock distributor3 = new KarmaDistributorMock();
 
+        bytes memory expectedError = _accessControlError(alice, karma.DEFAULT_ADMIN_ROLE());
         vm.prank(alice);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(expectedError);
         karma.addRewardDistributor(address(distributor3));
 
         vm.prank(owner);
@@ -51,8 +68,9 @@ contract KarmaTest is Test {
     }
 
     function testRemoveKarmaDistributorOnlyOwner() public {
+        bytes memory expectedError = _accessControlError(alice, karma.DEFAULT_ADMIN_ROLE());
         vm.prank(alice);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(expectedError);
         karma.removeRewardDistributor(address(distributor1));
 
         vm.prank(owner);
@@ -114,7 +132,7 @@ contract KarmaTest is Test {
         assertEq(balance, expectedBalance);
     }
 
-    function testMintOnlyOwner() public {
+    function testMintOnlyAdmin() public {
         vm.startBroadcast(owner);
         karma.setReward(address(distributor1), 1000 ether, 1000);
         karma.setReward(address(distributor2), 2000 ether, 2000);
@@ -125,7 +143,7 @@ contract KarmaTest is Test {
         assertEq(karma.totalSupply(), 3000 ether);
 
         vm.prank(alice);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert(Karma.Karma__Unauthorized.selector);
         karma.mint(alice, 1000e18);
 
         vm.prank(owner);
@@ -154,17 +172,148 @@ contract KarmaOwnershipTest is KarmaTest {
     }
 
     function testInitialOwner() public view {
-        assertEq(karma.owner(), owner);
+        assert(karma.hasRole(karma.DEFAULT_ADMIN_ROLE(), owner));
     }
 
     function testOwnershipTransfer() public {
-        vm.prank(owner);
-        karma.transferOwnership(alice);
-        assertEq(karma.owner(), owner);
+        vm.startPrank(owner);
+        karma.grantRole(karma.DEFAULT_ADMIN_ROLE(), alice);
+        vm.stopPrank();
+        assert(karma.hasRole(karma.DEFAULT_ADMIN_ROLE(), alice));
+    }
+}
 
-        vm.prank(alice);
-        karma.acceptOwnership();
-        assertEq(karma.owner(), alice);
+contract AddRewardDistributorTest is KarmaTest {
+    address public distributor;
+
+    function setUp() public virtual override {
+        super.setUp();
+        distributor = address(new KarmaDistributorMock());
+    }
+
+    function test_RevertWhen_SenderIsNotDefaultAdmin() public {
+        vm.prank(makeAddr("someone"));
+        vm.expectRevert();
+        karma.addRewardDistributor(distributor);
+    }
+
+    function testAddRewardDistributorAsOtherAdmin() public {
+        address otherAdmin = makeAddr("otherAdmin");
+        vm.startPrank(owner);
+        karma.grantRole(karma.DEFAULT_ADMIN_ROLE(), otherAdmin);
+        vm.stopPrank();
+
+        vm.startPrank(otherAdmin);
+        karma.addRewardDistributor(distributor);
+        vm.stopPrank();
+        address[] memory distributors = karma.getRewardDistributors();
+        assertEq(distributors.length, 3);
+        assertEq(distributors[2], distributor);
+    }
+}
+
+contract RemoveRewardDistributorTest is KarmaTest {
+    address public distributor;
+
+    function setUp() public virtual override {
+        super.setUp();
+        distributor = address(new KarmaDistributorMock());
+    }
+
+    function test_RevertWhen_SenderIsNotDefaultAdmin() public {
+        vm.expectRevert();
+        karma.removeRewardDistributor(distributor);
+    }
+
+    function testRemoveRewardDistributor() public {
+        // add a distributor
+        vm.prank(owner);
+        karma.addRewardDistributor(distributor);
+        address[] memory distributors = karma.getRewardDistributors();
+        assertEq(distributors.length, 3);
+        assertEq(distributors[2], distributor);
+
+        // remove the distributor
+        vm.prank(owner);
+        karma.removeRewardDistributor(distributor);
+        distributors = karma.getRewardDistributors();
+        assertEq(distributors.length, 2);
+    }
+
+    function testRemoveRewardDistributorAsOtherAdmin() public {
+        // add a distributor
+        vm.prank(owner);
+        karma.addRewardDistributor(distributor);
+        address[] memory distributors = karma.getRewardDistributors();
+        assertEq(distributors.length, 3);
+        assertEq(distributors[2], distributor);
+
+        // grant admin role
+        address otherAdmin = makeAddr("otherAdmin");
+        vm.startPrank(owner);
+        karma.grantRole(karma.DEFAULT_ADMIN_ROLE(), otherAdmin);
+        vm.stopPrank();
+
+        // remove the distributor
+        vm.prank(otherAdmin);
+        karma.removeRewardDistributor(address(distributor1));
+        distributors = karma.getRewardDistributors();
+        assertEq(distributors.length, 2);
+    }
+}
+
+contract SetRewardTest is KarmaTest {
+    address public distributor;
+
+    function setUp() public virtual override {
+        super.setUp();
+        distributor = address(new KarmaDistributorMock());
+    }
+
+    function test_RevertWhen_SenderIsNotDefaultAdmin() public {
+        vm.prank(makeAddr("someone"));
+        vm.expectRevert();
+        karma.setReward(distributor, 0, 0);
+    }
+
+    function test_RevertWhen_SenderIsNotOperator() public {
+        assert(karma.hasRole(karma.OPERATOR_ROLE(), operator) == false);
+
+        vm.prank(operator);
+        vm.expectRevert();
+        karma.setReward(distributor, 0, 0);
+    }
+
+    function testSetRewardAsAdmin() public {
+        vm.startPrank(owner);
+        karma.addRewardDistributor(distributor);
+        karma.setReward(distributor, 0, 0);
+        vm.stopPrank();
+    }
+
+    function testSetRewardAsOtherAdmin() public {
+        vm.startPrank(owner);
+        karma.grantRole(karma.DEFAULT_ADMIN_ROLE(), operator);
+        karma.addRewardDistributor(distributor);
+        vm.stopPrank();
+
+        vm.prank(operator);
+        karma.setReward(distributor, 0, 0);
+    }
+
+    function testSetRewardAsOperator() public {
+        // grant operator role
+        assert(karma.hasRole(karma.DEFAULT_ADMIN_ROLE(), owner));
+
+        // actually `vm.prank()` should be used here, but for some reason
+        // foundry seems to mess up the context for what `owner` is
+        vm.startPrank(owner);
+        karma.grantRole(karma.OPERATOR_ROLE(), operator);
+        vm.stopPrank();
+
+        // set reward as operator
+        vm.prank(operator);
+        karma.setReward(address(distributor1), 0, 0);
     }
 }
 

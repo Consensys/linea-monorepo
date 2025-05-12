@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import { Ownable2StepUpgradeable } from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
+import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import { ERC20Upgradeable } from "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
@@ -13,12 +13,19 @@ import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableS
  * @notice This contract allows for setting rewards for reward distributors.
  * @dev Implementation of the Karma token
  */
-contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPSUpgradeable {
+contract Karma is Initializable, ERC20Upgradeable, UUPSUpgradeable, AccessControlUpgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    /// @notice Emitted when the address is invalid
+    error Karma__InvalidAddress();
+    /// @notice Emitted because transfers are not allowed
     error Karma__TransfersNotAllowed();
+    /// @notice Emitted when distributor is already added
     error Karma__DistributorAlreadyAdded();
+    /// @notice Emitted when distributor is not found
     error Karma__UnknownDistributor();
+    /// @notice Emitted sender does not have the required role
+    error Karma__Unauthorized();
 
     event RewardDistributorAdded(address distributor);
 
@@ -32,11 +39,24 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
     string public constant SYMBOL = "KARMA";
     /// @notice The total allocation for all reward distributors
     uint256 public totalDistributorAllocation;
-
     /// @notice Set of reward distributors
     EnumerableSet.AddressSet private rewardDistributors;
     /// @notice Mapping of reward distributor to allocation
     mapping(address distributor => uint256 allocation) public rewardDistributorAllocations;
+
+    /// @notice Operator role keccak256("OPERATOR_ROLE")
+    bytes32 public constant OPERATOR_ROLE = 0x97667070c54ef182b0f5858b034beac1b6f3089aa2d3188bb1e8929f4fa9b929;
+    /// @notice Gap for upgrade safety.
+    // solhint-disable-next-line
+    uint256[30] private __gap_Karma;
+
+    /// @notice Modifier to check if sender is admin or operator
+    modifier onlyAdminOrOperator() {
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender) && !hasRole(OPERATOR_ROLE, msg.sender)) {
+            revert Karma__Unauthorized();
+        }
+        _;
+    }
 
     /*//////////////////////////////////////////////////////////////////////////
                                      CONSTRUCTOR
@@ -51,9 +71,13 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
      * @param _owner Address of the owner of the contract.
      */
     function initialize(address _owner) public initializer {
+        if (_owner == address(0)) {
+            revert Karma__InvalidAddress();
+        }
         __ERC20_init(NAME, SYMBOL);
-        _transferOwnership(_owner);
         __UUPSUpgradeable_init();
+        __AccessControl_init();
+        _setupRole(DEFAULT_ADMIN_ROLE, _owner);
     }
 
     /*//////////////////////////////////////////////////////////////////////////
@@ -66,13 +90,8 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
      * @dev Emits a `RewardDistributorAdded` event when a distributor is added.
      * @param distributor The address of the reward distributor.
      */
-    function addRewardDistributor(address distributor) external onlyOwner {
-        if (rewardDistributors.contains(distributor)) {
-            revert Karma__DistributorAlreadyAdded();
-        }
-
-        rewardDistributors.add(address(distributor));
-        emit RewardDistributorAdded(distributor);
+    function addRewardDistributor(address distributor) public virtual onlyRole(DEFAULT_ADMIN_ROLE) {
+        _addRewardDistributor(distributor);
     }
 
     /**
@@ -80,12 +99,8 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
      * @dev Only the owner can remove a reward distributor.
      * @param distributor The address of the reward distributor.
      */
-    function removeRewardDistributor(address distributor) external onlyOwner {
-        if (!rewardDistributors.contains(distributor)) {
-            revert Karma__UnknownDistributor();
-        }
-
-        rewardDistributors.remove(distributor);
+    function removeRewardDistributor(address distributor) public virtual onlyRole(DEFAULT_ADMIN_ROLE) {
+        _removeRewardDistributor(distributor);
     }
 
     /**
@@ -96,17 +111,16 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
      * @param amount The amount of rewards to set.
      * @param duration The duration of the rewards.
      */
-    function setReward(address rewardsDistributor, uint256 amount, uint256 duration) external onlyOwner {
-        if (!rewardDistributors.contains(rewardsDistributor)) {
-            revert Karma__UnknownDistributor();
-        }
-
-        _overflowCheck(amount);
-
-        rewardDistributorAllocations[rewardsDistributor] += amount;
-        totalDistributorAllocation += amount;
-
-        IRewardDistributor(rewardsDistributor).setReward(amount, duration);
+    function setReward(
+        address rewardsDistributor,
+        uint256 amount,
+        uint256 duration
+    )
+        public
+        virtual
+        onlyAdminOrOperator
+    {
+        _setReward(rewardsDistributor, amount, duration);
     }
 
     /**
@@ -116,7 +130,7 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
      * @param account The account to mint tokens to.
      * @param amount The amount of tokens to mint.
      */
-    function mint(address account, uint256 amount) external onlyOwner {
+    function mint(address account, uint256 amount) public virtual onlyAdminOrOperator {
         _overflowCheck(amount);
         _mint(account, amount);
     }
@@ -167,7 +181,47 @@ contract Karma is Initializable, ERC20Upgradeable, Ownable2StepUpgradeable, UUPS
      * @dev This function is only callable by the owner.
      */
     function _authorizeUpgrade(address) internal view override {
-        _checkOwner();
+        if (!hasRole(DEFAULT_ADMIN_ROLE, msg.sender)) {
+            revert Karma__Unauthorized();
+        }
+    }
+
+    /**
+     * @notice Adds a reward distributor to the set of reward distributors.
+     * @param distributor The address of the reward distributor.
+     */
+    function _addRewardDistributor(address distributor) internal virtual {
+        if (rewardDistributors.contains(distributor)) {
+            revert Karma__DistributorAlreadyAdded();
+        }
+
+        rewardDistributors.add(distributor);
+        emit RewardDistributorAdded(distributor);
+    }
+
+    /**
+     * @notice Removes a reward distributor from the set of reward distributors.
+     * @param distributor The address of the reward distributor.
+     */
+    function _removeRewardDistributor(address distributor) internal virtual {
+        if (!rewardDistributors.contains(distributor)) {
+            revert Karma__UnknownDistributor();
+        }
+        rewardDistributors.remove(distributor);
+    }
+
+    /**
+     * @notice Sets the reward for a reward distributor.
+     */
+    function _setReward(address rewardsDistributor, uint256 amount, uint256 duration) internal virtual {
+        if (!rewardDistributors.contains(rewardsDistributor)) {
+            revert Karma__UnknownDistributor();
+        }
+        _overflowCheck(amount);
+
+        rewardDistributorAllocations[rewardsDistributor] += amount;
+        totalDistributorAllocation += amount;
+        IRewardDistributor(rewardsDistributor).setReward(amount, duration);
     }
 
     function _overflowCheck(uint256 amount) internal view {

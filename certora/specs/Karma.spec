@@ -1,11 +1,13 @@
 using Karma as karma;
 
 methods {
-    function owner() external returns (address) envfree;
     function totalDistributorAllocation() external returns (uint256) envfree;
     function totalSupply() external returns (uint256) envfree;
     function externalSupply() external returns (uint256) envfree;
-    function _.setReward(uint256, uint256) external => HAVOC_ECF;
+    function _.setReward(uint256, uint256) external => DISPATCHER(true);
+    function hasRole(bytes32, address) external returns (bool) envfree;
+    function DEFAULT_ADMIN_ROLE() external returns (bytes32) envfree;
+    function OPERATOR_ROLE() external returns (bytes32) envfree;
 }
 
 persistent ghost mathint sumOfDistributorAllocations {
@@ -38,12 +40,15 @@ definition isERC20TransferFunction(method f) returns bool = (
                 || f.selector == sig:karma.approve(address, uint256).selector
 );
 
-definition isOwnableFunction(method f) returns bool = (
+definition isAdminFunction(method f) returns bool = (
   f.selector == sig:karma.addRewardDistributor(address).selector
                 || f.selector == sig:karma.removeRewardDistributor(address).selector
-                || f.selector == sig:karma.setReward(address, uint256, uint256).selector
-                || f.selector == sig:karma.mint(address, uint256).selector
 
+);
+
+definition isOperatorFunction(method f) returns bool = (
+    f.selector == sig:karma.setReward(address, uint256, uint256).selector
+                || f.selector == sig:karma.mint(address, uint256).selector
 );
 
 rule erc20TransferIsDisabled(method f) {
@@ -56,16 +61,29 @@ rule erc20TransferIsDisabled(method f) {
     assert isERC20TransferFunction(f) => isReverted;
 }
 
-rule ownableFuncsOnlyCallableByOwner(method f) {
+rule adminFuncsOnlyCallableByAdmin(method f) {
     env e;
     calldataarg args;
 
-    bool isOwner = owner() == e.msg.sender;
+    bool isOwner = hasRole(DEFAULT_ADMIN_ROLE(), e.msg.sender);
 
     f@withrevert(e, args);
     bool isReverted = lastReverted;
 
-    assert isOwnableFunction(f) && !isOwner => isReverted;
+    assert isAdminFunction(f) && !isOwner => isReverted;
+}
+
+rule operatorFuncsCallableByAdminAndOperators(method f) {
+    env e;
+    calldataarg args;
+
+    bool isOwner = hasRole(DEFAULT_ADMIN_ROLE(), e.msg.sender);
+    bool isOperator = hasRole(OPERATOR_ROLE(), e.msg.sender);
+
+    f@withrevert(e, args);
+    bool isReverted = lastReverted;
+
+    assert isOperatorFunction(f) && !isOwner && !isOperator => isReverted;
 }
 
 rule totalDistributorAllocationCanOnlyIncrease(method f) filtered { f ->
