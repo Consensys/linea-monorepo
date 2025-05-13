@@ -218,13 +218,17 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       let leastSignificantBytes := and(_hashedUnsignedPayload, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
 
       mimcPayload := mload(0x40)
+      let dataPtr := add(mimcPayload, 0x20)
+
+      mstore(dataPtr, _previousRollingHash)
+      mstore(add(dataPtr, 0x20), mostSignificantBytes)
+      mstore(add(dataPtr, 0x40), leastSignificantBytes)
+      mstore(add(dataPtr, 0x60), _expectedBlockNumber)
+      mstore(add(dataPtr, 0x80), _signer)
+
       mstore(mimcPayload, 0xA0)
-      mstore(add(mimcPayload, 0x20), _previousRollingHash)
-      mstore(add(mimcPayload, 0x40), mostSignificantBytes)
-      mstore(add(mimcPayload, 0x60), leastSignificantBytes)
-      mstore(add(mimcPayload, 0x80), _expectedBlockNumber)
-      mstore(add(mimcPayload, 0xA0), _signer)
-      mstore(0x40, add(mimcPayload, 0xC0))
+
+      mstore(0x40, add(dataPtr, 0xA0))
     }
 
     forcedTransactionRollingHash = Mimc.hash(mimcPayload);
