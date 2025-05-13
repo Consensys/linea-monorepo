@@ -280,37 +280,26 @@ func (c *checkHornerResult) Run(run wizard.Runtime) error {
 		var (
 			ipQuery  = c.CountingInnerProducts[i]
 			ipParams = run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
-			found    = false
+			ipCount  = 0
 		)
 
 		for k := range ipQuery.Bs {
 
+			// Note: this check is not purely necessary from the verifier viewpoint. If
+			// the result is not a uint64, then it means the query was malformed: the
+			// result of the inner-product is the inner-product of two binary vectors
+			// and there is no way they are big enough to overflow the 2**64.
+			//
+			// Still, it is useful information as it indicates the protocol is malformed.
 			if !ipParams.Ys[k].IsUint64() {
 				return errors.New("ip result does not fit on a uint64")
 			}
 
-			ipCount := int(ipParams.Ys[k].Uint64())
+			ipCount += int(ipParams.Ys[k].Uint64())
+		}
 
-			for j, c := range hornerQuery.Parts {
-
-				if c.Selectors[0].GetColID() != ipQuery.Bs[k].GetColID() {
-					continue
-				}
-
-				found = true
-				params := hornerParams.Parts[j]
-				n0, n1 := params.N0, params.N1
-
-				if n1-n0 != ipCount {
-					return fmt.Errorf("inner-product and horner params do not match: %v - %v (%v) != %v", n1, n0, n1-n0, ipCount)
-				}
-
-				break
-			}
-
-			if !found {
-				utils.Panic("could not find selector %v from the Horner query", ipQuery.Bs[k].String())
-			}
+		if hornerParams.Parts[i].N0+ipCount != hornerParams.Parts[i].N1 {
+			return fmt.Errorf("the counting of the 1s in the filter does not match the one in the local-opening: (%v-%v) != %v", hornerParams.Parts[i].N1, hornerParams.Parts[i].N0, ipCount)
 		}
 	}
 
@@ -356,31 +345,14 @@ func (c *checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 		var (
 			ipQuery  = c.CountingInnerProducts[i]
 			ipParams = run.GetInnerProductParams(c.CountingInnerProducts[i].ID)
-			found    = false
+			ipCount  = frontend.Variable(0)
 		)
 
 		for k := range ipQuery.Bs {
-
-			ipCount := ipParams.Ys[k]
-
-			for j, c := range hornerQuery.Parts {
-
-				if c.Selectors[0].GetColID() != ipQuery.Bs[k].GetColID() {
-					continue
-				}
-
-				found = true
-				params := hornerParams.Parts[j]
-				n0, n1 := params.N0, params.N1
-
-				api.AssertIsEqual(n1, api.Add(n0, ipCount))
-				break
-			}
-
-			if !found {
-				utils.Panic("could not find selector %v from the Horner query", ipQuery.Bs[k].String())
-			}
+			ipCount = api.Add(ipCount, ipParams.Ys[k])
 		}
+
+		api.AssertIsEqual(api.Add(hornerParams.Parts[i].N0, ipCount), hornerParams.Parts[i].N1)
 	}
 
 	// This loop is responsible for checking that the final result is correctly

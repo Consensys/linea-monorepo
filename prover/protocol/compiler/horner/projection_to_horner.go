@@ -17,9 +17,6 @@ import (
 // projectionContext is a compilation artefact generated during the execution of
 // the [InsertProjection] and which is used to instantiate the Horner query.
 type projectionContext struct {
-	// Xs are the coins used as X values in the Horner query that compiles the
-	// projection queries.
-	Xs []coin.Info
 	// Query is the Horner query generated during the compilation of the projection
 	// queries.
 	Query query.Horner
@@ -79,22 +76,28 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 
 		for i := 0; i < widthA; i++ {
 
-			as[i] = sym.NewVariable(projection.Inp.ColumnsA[i][0])
+			as[widthA-i-1] = sym.NewVariable(projection.Inp.ColumnsA[i][0])
 			if numCols > 1 {
-				as[i] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsA[i])
+				as[widthA-i-1] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsA[i])
 			}
 
-			selectorsA[i] = projection.Inp.FiltersA[i]
+			// The reversal in the assignment is required due to the order
+			// in which the [Horner] query iterates over the coefficient in
+			// the multi-ary settings.
+			selectorsA[widthA-i-1] = projection.Inp.FiltersA[i]
 		}
 
 		for i := 0; i < widthB; i++ {
 
-			bs[i] = sym.NewVariable(projection.Inp.ColumnsB[i][0])
+			bs[widthB-i-1] = sym.NewVariable(projection.Inp.ColumnsB[i][0])
 			if numCols > 1 {
-				bs[i] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsB[i])
+				bs[widthB-i-1] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsB[i])
 			}
 
-			selectorsB[i] = projection.Inp.FiltersB[i]
+			// The reversal in the assignment is required due to the order
+			// in which the [Horner] query iterates over the coefficient in
+			// the multi-ary settings.
+			selectorsB[widthB-i-1] = projection.Inp.FiltersB[i]
 		}
 
 		parts = append(
@@ -111,8 +114,6 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 				X:            accessors.NewFromCoin(alpha),
 			},
 		)
-
-		ctx.Xs = append(ctx.Xs, alpha, alpha)
 	}
 
 	if len(parts) == 0 {
