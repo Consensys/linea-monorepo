@@ -88,6 +88,28 @@ var ListOfProjectionTestcasePositive = []*ProjectionTestcase{
 			},
 		},
 	},
+
+	{
+		NameStr: "positive/spaghettification-with-selectors",
+		FilterA: []smartvectors.SmartVector{
+			smartvectors.NewConstant(field.One(), 8),
+		},
+		FilterB: []smartvectors.SmartVector{
+			smartvectors.ForTest(1, 1, 1, 1, 0, 0, 0, 0),
+			smartvectors.ForTest(1, 1, 1, 1, 0, 0, 0, 0),
+		},
+		As: [][]smartvectors.SmartVector{{
+			smartvectors.ForTest(1, 2, 3, 4, 5, 6, 7, 8),
+		}},
+		Bs: [][]smartvectors.SmartVector{
+			{
+				smartvectors.ForTest(1, 3, 5, 7, -1, -1, -1, -1),
+			},
+			{
+				smartvectors.ForTest(2, 4, 6, 8, -1, -1, -1, -1),
+			},
+		},
+	},
 }
 
 var ListOfProjectionTestcaseNegative = []*ProjectionTestcase{
