@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
@@ -40,11 +41,8 @@ func TestZKEVM(t *testing.T) {
 	t.Run("Keccak", TestKeccak)
 	t.Run("Ecadd", TestEcadd)
 	t.Run("Ecmul", TestEcmul)
-
-	// Failing tests due to not supporting serialization of `func()`
-
+	t.Run("ECDSA", TestECDSA)
 	t.Run("Modexp", TestModexp)
-
 	t.Run("Ecpair", TestEcpair)
 }
 
@@ -79,6 +77,40 @@ func TestModexp(t *testing.T) {
 	// Compare structs while ignoring unexported fields
 	if !compareExportedFields(z.Modexp, deserializedModexp) {
 		t.Fatalf("Mis-matched fields after serde Modexp (ignoring unexported fields)")
+	}
+}
+
+func TestECDSA(t *testing.T) {
+	z := GetZkEVM()
+	if z == nil {
+		t.Fatal("GetZkEVM returned nil")
+	}
+	if z.Ecdsa == nil {
+		t.Fatal("Ecadd field is nil")
+	}
+
+	// Serialize the original Ecdsa
+	ecdsaSer, err := serializeValue(z.Ecdsa)
+	if err != nil {
+		t.Fatalf("Failed to serialize Ecdsa: %v", err)
+	}
+
+	// Create a new empty CompiledIOP for deserialization
+	comp := serialization.NewEmptyCompiledIOP()
+
+	// Deserialize into a new Ecadd
+	deserializedEcdsaVal, err := serialization.DeserializeValue(ecdsaSer, serialization.DeclarationMode, reflect.TypeOf(&ecdsa.EcdsaZkEvm{}), comp)
+	if err != nil {
+		t.Fatalf("Failed to deserialize Ecdsa: %v", err)
+	}
+	deserializedEcdsa, ok := deserializedEcdsaVal.Interface().(*ecdsa.EcdsaZkEvm)
+	if !ok {
+		t.Fatalf("Deserialized value is not *ecarith.EcAdd: got %T", deserializedEcdsaVal.Interface())
+	}
+
+	// Compare structs while ignoring unexported fields
+	if !compareExportedFields(z.Ecdsa, deserializedEcdsa) {
+		t.Fatalf("Mis-matched fields after serde Ecadd (ignoring unexported fields)")
 	}
 }
 
@@ -426,18 +458,22 @@ func compareExportedFields(a, b interface{}) bool {
 	return compareExportedFieldsWithPath(a, b, "")
 }
 
-// compareExportedFieldsWithPath is a helper that tracks the field path for logging.
 func compareExportedFieldsWithPath(a, b interface{}, path string) bool {
 	v1 := reflect.ValueOf(a)
 	v2 := reflect.ValueOf(b)
 
 	// Ensure both values are valid
 	if !v1.IsValid() || !v2.IsValid() {
+		// Treat nil and zero values as equivalent
 		if !v1.IsValid() && !v2.IsValid() {
 			return true
 		}
-		fmt.Printf("Mismatch at %s: one value is invalid (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, reflect.TypeOf(a), reflect.TypeOf(b))
-		return false
+		if !v1.IsValid() {
+			v1 = reflect.Zero(v2.Type())
+		}
+		if !v2.IsValid() {
+			v2 = reflect.Zero(v1.Type())
+		}
 	}
 
 	// Ensure same type
@@ -448,7 +484,6 @@ func compareExportedFieldsWithPath(a, b interface{}, path string) bool {
 
 	// Handle maps
 	if v1.Kind() == reflect.Map {
-		// fmt.Printf("Map comparision for v1:%v v2:%v\n", v1, v2)
 		if v1.Len() != v2.Len() {
 			fmt.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1.Len(), v2.Len(), v1.Type())
 			return false
@@ -482,7 +517,6 @@ func compareExportedFieldsWithPath(a, b interface{}, path string) bool {
 
 	// Handle structs
 	if v1.Kind() == reflect.Struct {
-		// fmt.Printf("Handling struct comparision\n")
 		equal := true
 		for i := 0; i < v1.NumField(); i++ {
 			// Skip unexported fields
@@ -492,13 +526,10 @@ func compareExportedFieldsWithPath(a, b interface{}, path string) bool {
 			f1 := v1.Field(i)
 			f2 := v2.Field(i)
 			fieldName := v1.Type().Field(i).Name
-			// Construct field path
 			fieldPath := fieldName
 			if path != "" {
 				fieldPath = path + "." + fieldName
 			}
-
-			// Recursively compare field values
 			if !compareExportedFieldsWithPath(f1.Interface(), f2.Interface(), fieldPath) {
 				equal = false
 			}
@@ -514,26 +545,12 @@ func compareExportedFieldsWithPath(a, b interface{}, path string) bool {
 		}
 		equal := true
 		for i := 0; i < v1.Len(); i++ {
-			// Construct element path
 			elemPath := fmt.Sprintf("%s[%d]", path, i)
 			if !compareExportedFieldsWithPath(v1.Index(i).Interface(), v2.Index(i).Interface(), elemPath) {
 				equal = false
 			}
 		}
 		return equal
-	}
-
-	// Handle func type
-	if v1.Kind() == reflect.Func {
-		// funcName1 := serialization.GetFuncIdentifier(v1.Interface())
-		// funcName2 := serialization.GetFuncIdentifier(v2.Interface())
-		// if funcName1 != funcName2 {
-		// 	fmt.Printf("Mismatch at %s: function identifiers differ (v1: %s, v2: %s)\n", path, funcName1, funcName2)
-		// 	return false
-		// }
-
-		fmt.Printf("Func comparisions: v1:%s v2:%s \n", v1.String(), v2.String())
-		return true
 	}
 
 	// For other types, use DeepEqual and log if mismatched

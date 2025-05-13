@@ -209,7 +209,7 @@ func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round i
 
 	// Execute the high-level prover as a ProverAction
 	if runtime.HighLevelProver != nil {
-		runtime.exec("high-level-prover", ProverStepWrapper{Step: highLevelProver})
+		runtime.exec("high-level-prover", proverStepWrapper{step: highLevelProver})
 	}
 
 	// Run sub-prover steps for the initial round

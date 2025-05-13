@@ -120,9 +120,6 @@ func init() {
 	RegisterImplementation(smartvectors.PaddedCircularWindow{})
 }
 
-// Registry for functions
-var funcRegistry = collection.NewMapping[string, any]()
-
 // In order to save some space, we trim the prefix of the package path as this
 // is repetitive.
 const pkgPathPrefixToRemove = "github.com/consensys/linea-monorepo/prover"
@@ -298,22 +295,3 @@ func castAsString(v reflect.Value) (string, error) {
 	}
 	return v.String(), nil
 }
-
-// func GetFuncIdentifier(fn interface{}) string {
-// 	if fn == nil {
-// 		fmt.Println("Function is nil")
-// 		return "nil"
-// 	}
-
-// 	for name, registeredFn := range funcRegistry.InnerMap() {
-// 		fmt.Printf("Passed fn:%s \n", reflect.ValueOf(fn))
-// 		fmt.Printf("Registered fn:%s \n", reflect.ValueOf(registeredFn))
-
-// 		if reflect.ValueOf(fn).Pointer() == reflect.ValueOf(registeredFn).Pointer() {
-// 			return name
-// 		}
-// 	}
-
-// 	fmt.Printf("pointer unequal")
-// 	return "InputFillerZero"
-// }

@@ -59,7 +59,7 @@ type CircuitAlignmentInput struct {
 	// PlonkOptions are optional options to the plonk-in-wizard checker. See [Option].
 	PlonkOptions []query.PlonkOption
 
-	// InputFiller returns an element to pad in the public input for the
+	// inputFiller returns an element to pad in the public input for the
 	// circuit in case DataToCircuitMask is not full length of the circuit
 	// input. If it is nil, then we use zero value.
 	inputFiller func(circuitInstance, inputIndex int) field.Element
