@@ -3,195 +3,95 @@ import { makeBaseError } from "../../core/errors";
 import { ZERO_HASH } from "../../core/constants";
 import { Proof } from "../../core/clients/ethereum";
 
-class MerkleTreeNode {
-  public value: string;
-  public left: MerkleTreeNode | null;
-  public right: MerkleTreeNode | null;
-
-  constructor(value: string, left: MerkleTreeNode | null = null, right: MerkleTreeNode | null = null) {
-    this.value = value;
-    this.left = left;
-    this.right = right;
-  }
-}
-
+/**
+ * A sparse Merkle tree implementation using 1-based flat indexing.
+ *
+ * Flat-Tree Schema
+ * - Root is at index 1.
+ * - For any node at index `i`:
+ *   - Left child: `2 * i`
+ *   - Right child: `2 * i + 1`
+ *   - Parent: `Math.floor(i / 2)`
+ * - Leaves occupy indices from `2^depth` through `2^(depth+1) - 1`.
+ *   - Leaf with zero-based key `k` is at index `2^depth + k`.
+ *
+ * This scheme allows O(log N) updates and proofs without building the full tree.
+ *
+ * Flat-Tree Indexing (depth = 3 example):
+ *
+ *      Level 0              [1]
+ *                        /      \
+ *                       /        \
+ *                      /          \
+ *                     /            \
+ *      Level 1      [2]             [3]
+ *                   /   \           /   \
+ *                  /     \         /     \
+ *                 /       \       /       \
+ *      Level 2   [4]     [5]      [6]      [7]
+ *                / \     / \      / \      / \
+ *               /   \   /   \    /   \    /   \
+ *      Level 3 [8] [9] [10][11] [12][13] [14][15]
+ */
 export class SparseMerkleTree {
-  private root: MerkleTreeNode;
-  private readonly depth: number;
-  private readonly emptyLeaves: string[];
+  /** Tree depth (number of levels to leaves) */
+  private depth: number;
+  /** Map storing only non-default node hashes keyed by their flat-tree index */
+  private nodeMap = new Map<bigint, string>();
 
   /**
-   * Constructs a `SparseMerkleTree` instance with a specified depth.
-   *
-   * @param {number} depth - The depth of the Merkle tree. Must be greater than 1.
+   * Precomputed hashes of empty subtrees at each height:
+   * zeroHashes[i] = merkle root of an empty subtree of height `i`.
+   * - `zeroHashes[0] = ZERO_HASH`  (empty leaf)
+   * - `zeroHashes[1] = H(ZERO_HASH, ZERO_HASH)`
+   * - …
+   * - `zeroHashes[depth] = root` of a fully-empty tree
+   */
+  private zeroHashes: string[];
+
+  /**
+   * @param depth The depth of the tree (must be > 1).
+   * @throws If depth <= 1.
    */
   constructor(depth: number) {
     if (depth <= 1) {
       throw makeBaseError("Merkle tree depth must be greater than 1");
     }
+
     this.depth = depth;
-    this.emptyLeaves = this.generateEmptyLeaves(this.depth);
-    this.root = this.createDefaultNode(this.depth);
+    this.zeroHashes = this.buildZeroHashes(depth);
+    // Seed the root (index 1) to the empty-tree root
+    this.nodeMap.set(1n, this.zeroHashes[depth]);
   }
 
   /**
-   * Adds a leaf to the Merkle tree at the specified key with the given value.
-   *
-   * @param {number} key - The key at which to add the leaf. Must be within the range of the tree's depth.
-   * @param {string} value - The value of the leaf to add.
+   * Build the zeroHashes array: empty subtree roots for heights 0..depth.
+   * @private
+   * @param {number} depth The depth of the tree.
+   * @returns {string[]} An array of hashes for empty subtrees at each height.
    */
-  public addLeaf(key: number, value: string): void {
-    const binaryKey = this.keyToBinary(key);
-    this.root = this.insert(this.root, binaryKey, value, 0);
+  private buildZeroHashes(depth: number): string[] {
+    const z: string[] = [ZERO_HASH];
+    for (let i = 1; i <= depth; i++) {
+      z[i] = this.hash(z[i - 1], z[i - 1]);
+    }
+    return z;
   }
 
   /**
-   * Generates a proof for the existence of a leaf at the specified key.
-   *
-   * @param {number} key - The key of the leaf to generate a proof for.
-   * @returns {Proof} An object containing the proof elements, the root hash, and the leaf index.
-   */
-  public getProof(key: number): Proof {
-    if (key < 0 || key >= Math.pow(2, this.depth)) {
-      throw makeBaseError(`Leaf index is out of range`);
-    }
-
-    const binaryKey = this.keyToBinary(key);
-    const leaf = this.getLeaf(key);
-
-    if (leaf === this.emptyLeaves[0]) {
-      throw makeBaseError(`Leaf does not exist`);
-    }
-
-    return {
-      proof: this.createProof(this.root, binaryKey, 0).reverse(),
-      root: this.root.value,
-      leafIndex: key,
-    };
-  }
-
-  /**
-   * Retrieves the value of a leaf at the specified key.
-   *
-   * @param {number} key - The key of the leaf to retrieve.
-   * @returns {string} The value of the leaf at the specified key.
-   */
-  public getLeaf(key: number): string {
-    if (key < 0 || key >= Math.pow(2, this.depth)) {
-      throw makeBaseError("Leaf index is out of range");
-    }
-    const binaryKey = this.keyToBinary(key);
-    return this.getLeafHelper(this.root, binaryKey, 0);
-  }
-
-  /**
-   * Retrieves the root hash of the Merkle tree.
+   * Get the current Merkle root (hash at index 1).
    *
    * @returns {string} The root hash of the Merkle tree.
    */
   public getRoot(): string {
-    return this.root.value;
-  }
-
-  /**
-   * Converts a numerical key into its binary string representation, padded to match the tree's depth.
-   *
-   * @param {number} key - The key to convert.
-   * @returns {string} The binary string representation of the key, padded to the tree's depth.
-   */
-  private keyToBinary(key: number): string {
-    return key.toString(2).padStart(this.depth, "0");
-  }
-
-  /**
-   * Recursively retrieves the value of a leaf node based on its binary key representation.
-   *
-   * @param {MerkleTreeNode} node - The current node being traversed.
-   * @param {string} binaryKey - The binary key representation of the leaf to retrieve.
-   * @param {number} depth - The current depth in the tree.
-   * @returns {string} The value of the leaf node.
-   */
-  private getLeafHelper(node: MerkleTreeNode, binaryKey: string, depth: number): string {
-    if (depth === this.depth) {
-      return node.value;
-    }
-
-    const newDepth = this.depth - depth - 1;
-    const newNode = new MerkleTreeNode(this.emptyLeaves[newDepth]);
-
-    if (binaryKey[depth] === "0") {
-      return this.getLeafHelper(node.left || newNode, binaryKey, depth + 1);
-    }
-
-    return this.getLeafHelper(node.right || newNode, binaryKey, depth + 1);
-  }
-
-  /**
-   * Inserts a new leaf node into the tree at the specified key, or updates an existing leaf's value.
-   *
-   * @param {MerkleTreeNode} node - The current node being traversed.
-   * @param {string} key - The binary key representation of where to insert the new leaf.
-   * @param {string} value - The value to store in the new leaf node.
-   * @param {number} depth - The current depth in the tree.
-   * @returns {MerkleTreeNode} The new or updated node after insertion.
-   */
-  private insert(node: MerkleTreeNode, key: string, value: string, depth: number): MerkleTreeNode {
-    if (depth === this.depth) {
-      return new MerkleTreeNode(value);
-    }
-
-    const newDepth = this.depth - depth - 1;
-    const defaultNode = this.createDefaultNode(newDepth);
-
-    let newLeft = node.left;
-    let newRight = node.right;
-
-    if (key[depth] === "0") {
-      newLeft = this.insert(node.left || defaultNode, key, value, depth + 1);
-    } else {
-      newRight = this.insert(node.right || defaultNode, key, value, depth + 1);
-    }
-
-    return new MerkleTreeNode(
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion, @typescript-eslint/no-non-null-asserted-optional-chain
-      this.hash(newLeft?.value!, newRight?.value!),
-      newLeft,
-      newRight,
-    );
-  }
-
-  /**
-   * Generates a proof of existence for a leaf node based on its binary key representation.
-   *
-   * @param {MerkleTreeNode} node - The current node being traversed.
-   * @param {string} key - The binary key representation of the leaf to prove.
-   * @param {number} depth - The current depth in the tree.
-   * @returns {string[]} An array of hashes representing the proof of existence for the leaf.
-   */
-  private createProof(node: MerkleTreeNode, key: string, depth: number): string[] {
-    if (depth === this.depth) {
-      return [];
-    }
-
-    const newDepth = this.depth - depth - 1;
-    const defaultNode = this.createDefaultNode(newDepth);
-
-    if (key[depth] === "0") {
-      const nextNode = node.left || defaultNode;
-      const value = node.right ? node.right.value : this.emptyLeaves[newDepth];
-      return [value].concat(this.createProof(nextNode, key, depth + 1));
-    }
-
-    const nextNode = node.right || defaultNode;
-    const value = node.left ? node.left.value : this.emptyLeaves[newDepth];
-    return [value].concat(this.createProof(nextNode, key, depth + 1));
+    return this.nodeMap.get(1n)!;
   }
 
   /**
    * Computes the hash of two child node values using the ethers `solidityPackedKeccak256` hashing function.
    *
-   * @param {string} left - The value of the left child node.
-   * @param {string} right - The value of the right child node.
+   * @param {string} left The value of the left child node.
+   * @param {string} right The value of the right child node.
    * @returns {string} The hash of the two child node values.
    */
   private hash(left: string, right: string): string {
@@ -199,33 +99,133 @@ export class SparseMerkleTree {
   }
 
   /**
-   * Generates an array of hashes representing the empty leaves of the tree, used for initializing the tree structure.
-   *
-   * @param {number} depth - The depth of the tree.
-   * @returns {string[]} An array of hashes representing the empty leaves.
+   * Compute flat-tree index for a leaf.
+   * @private
+   * @param {number} idx Zero-based leaf index (0 ≤ idx < 2^depth).
+   * @throws If idx out of range.
+   * @returns {number} The depth of the tree.
    */
-  private generateEmptyLeaves(depth: number): string[] {
-    const emptyLeaves = [ZERO_HASH];
-
-    for (let i = 1; i < depth; i++) {
-      emptyLeaves.push(this.hash(emptyLeaves[i - 1], emptyLeaves[i - 1]));
+  private leafNodeIndex(idx: number): bigint {
+    if (idx < 0 || idx >= 1 << this.depth) {
+      throw makeBaseError("Leaf index is out of range");
     }
-
-    return emptyLeaves;
+    // Flat-tree leaf index: 2^depth + idx
+    return (1n << BigInt(this.depth)) + BigInt(idx);
   }
 
   /**
-   * Creates a default node at a specified depth, initializing its value and children based on the tree's empty leaves.
-   *
-   * @param {number} depth - The depth at which to create the default node.
-   * @returns {MerkleTreeNode} The newly created default node.
+   * Compute parent index.
+   * @private
+   * @param {bigint} nodeIdx The index of the child node.
+   * @returns {bigint} The index of the parent node.
    */
-  private createDefaultNode(depth: number): MerkleTreeNode {
-    if (depth === 0) {
-      return new MerkleTreeNode(this.emptyLeaves[0]);
+  private parentIndex(nodeIdx: bigint): bigint {
+    return nodeIdx >> 1n;
+  }
+
+  /**
+   * Compute sibling index.
+   * @private
+   * @param {bigint} nodeIdx The index of the child node.
+   * @returns {bigint} The index of the sibling node.
+   */
+  private siblingIndex(nodeIdx: bigint): bigint {
+    return (nodeIdx & 1n) === 1n ? nodeIdx - 1n : nodeIdx + 1n;
+  }
+
+  /**
+   * Fallback hash for missing nodes at given height above leaves.
+   * @private
+   * @param {number} height The height of the node.
+   * @returns {string} The fallback hash for the specified height.
+   */
+  private fallbackHash(height: number): string {
+    return this.zeroHashes[height];
+  }
+
+  /**
+   * Retrieve the hash of a leaf. Returns ZERO_HASH if unset.
+   * @param {number} idx Zero-based leaf index (0 ≤ idx < 2^depth).
+   * @throws If idx out of range.
+   * @returns {string} The value of the leaf at the specified key.
+   */
+  public getLeaf(idx: number): string {
+    const leafIdx = this.leafNodeIndex(idx);
+    return this.nodeMap.get(leafIdx) ?? this.fallbackHash(0);
+  }
+
+  /**
+   * Insert or update a leaf at given index, then rebalance the path to root.
+   * @param {number} idx Zero-based leaf index (0 ≤ idx < 2^depth).
+   * @param {string} leafHash The hash to set at that leaf.
+   * @throws If idx out of range.
+   */
+  public addLeaf(idx: number, leafHash: string): void {
+    const nodeIdx = this.leafNodeIndex(idx);
+    this.nodeMap.set(nodeIdx, leafHash);
+    this.rehashPath(nodeIdx);
+  }
+
+  /**
+   * Walk from a node up to root, recomputing and storing each parent.
+   * @private
+   * @param {bigint} startIdx The index of the starting node.
+   * @returns {void}
+   */
+  private rehashPath(startIdx: bigint): void {
+    let nodeIdx = startIdx;
+
+    for (let level = this.depth; level > 0; level--) {
+      const currentHeight = this.depth - level;
+
+      const siblingIdx = this.siblingIndex(nodeIdx);
+
+      const leftIdx = (nodeIdx & 1n) === 1n ? siblingIdx : nodeIdx;
+      const rightIdx = (nodeIdx & 1n) === 1n ? nodeIdx : siblingIdx;
+
+      const fallbackHash = this.fallbackHash(currentHeight);
+      const leftHash = this.nodeMap.get(leftIdx) ?? fallbackHash;
+      const rightHash = this.nodeMap.get(rightIdx) ?? fallbackHash;
+
+      nodeIdx = this.parentIndex(nodeIdx);
+
+      this.nodeMap.set(nodeIdx, this.hash(leftHash, rightHash));
+    }
+  }
+
+  /**
+   * Generate a Merkle proof for a leaf, in leaf-to-root order.
+   * @param {number} idx Zero-based leaf index (0 ≤ idx < 2^depth).
+   * @throws If idx out of range or leaf is unset.
+   * @returns {Proof} An object containing the proof elements, the root hash, and the leaf index.
+   */
+  public getProof(idx: number): Proof {
+    const leafIdx = this.leafNodeIndex(idx);
+
+    const leafHash = this.nodeMap.get(leafIdx) ?? this.fallbackHash(0);
+
+    if (leafHash === this.fallbackHash(0)) {
+      throw makeBaseError("Leaf does not exist");
     }
 
-    const child = this.createDefaultNode(depth - 1);
-    return new MerkleTreeNode(this.hash(this.emptyLeaves[depth - 1], this.emptyLeaves[depth - 1]), child, child);
+    const proof: string[] = [];
+    let nodeIdx = leafIdx;
+
+    for (let level = this.depth; level > 0; level--) {
+      const currentheight = this.depth - level;
+      const siblingIdx = this.siblingIndex(nodeIdx);
+      const fallbackHash = this.fallbackHash(currentheight);
+      const siblingHash = this.nodeMap.get(siblingIdx) ?? fallbackHash;
+
+      proof.push(siblingHash);
+
+      nodeIdx = this.parentIndex(nodeIdx);
+    }
+
+    return {
+      proof,
+      root: this.getRoot(),
+      leafIndex: idx,
+    };
   }
 }
