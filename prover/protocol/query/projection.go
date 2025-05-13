@@ -70,14 +70,16 @@ func NewProjectionMultiAry(
 		utils.Panic("A and B must have at least one table: len(A)=%v, len(B)=%v", len(inp.ColumnsA), len(inp.ColumnsB))
 	}
 
-	if len(inp.ColumnsA[0]) == 0 {
-		utils.Panic("A and B must have at least one column: len(A[0])=%v", len(inp.ColumnsA[0]))
+	if len(inp.ColumnsA[0]) == 0 || len(inp.ColumnsB[0]) == 0 {
+		utils.Panic("A and B must have at least one column: len(A[0])=%v, len(B[0])=%v", len(inp.ColumnsA[0]), len(inp.ColumnsB[0]))
 	}
 
 	var (
 		numCols   = len(inp.ColumnsA[0])
 		numPartsA = len(inp.ColumnsA)
 		numPartsB = len(inp.ColumnsB)
+		sizeA     = inp.ColumnsA[0][0].Size()
+		sizeB     = inp.ColumnsB[0][0].Size()
 	)
 
 	if len(inp.FiltersA) != numPartsA || len(inp.FiltersB) != numPartsB {
@@ -91,7 +93,15 @@ func NewProjectionMultiAry(
 
 		size := ifaces.AssertSameLength(inp.ColumnsA[i]...)
 
-		if size != inp.FiltersA[i].Size() {
+		if i == 0 {
+			sizeA = size
+		}
+
+		if size != sizeA {
+			utils.Panic("All table must have the same number of columns: len(A[%v])=%v, len(A[0])=%v", i, len(inp.ColumnsA), numCols)
+		}
+
+		if sizeA != inp.FiltersA[i].Size() {
 			utils.Panic("A[%v] and its filter do not have the same column sizes", i)
 		}
 	}
@@ -103,7 +113,15 @@ func NewProjectionMultiAry(
 
 		size := ifaces.AssertSameLength(inp.ColumnsB[i]...)
 
-		if size != inp.FiltersB[i].Size() {
+		if i == 0 {
+			sizeB = size
+		}
+
+		if size != sizeB {
+			utils.Panic("All table must have the same number of columns: len(B[%v])=%v, len(B[0])=%v", i, len(inp.ColumnsB), numCols)
+		}
+
+		if sizeB != inp.FiltersB[i].Size() {
 			utils.Panic("B[%v] and its filter do not have the same column sizes", i)
 		}
 	}
