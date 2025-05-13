@@ -58,32 +58,58 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 
 		comp.QueriesNoParams.MarkAsIgnored(qName)
 
-		qRound := comp.QueriesNoParams.Round(qName)
-		round = max(round, qRound+1)
-
 		var (
-			alpha = comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_ALPHA"), coin.Field)
-			a     = symbolic.NewVariable(projection.Inp.ColumnA[0])
-			b     = symbolic.NewVariable(projection.Inp.ColumnB[0])
+			qRound     = comp.QueriesNoParams.Round(qName)
+			widthA     = len(projection.Inp.ColumnsA)
+			widthB     = len(projection.Inp.ColumnsB)
+			numCols    = len(projection.Inp.ColumnsA[0])
+			as         = make([]*symbolic.Expression, widthA)
+			bs         = make([]*symbolic.Expression, widthB)
+			selectorsA = make([]ifaces.Column, widthA)
+			selectorsB = make([]ifaces.Column, widthB)
+			gamma      coin.Info
+			alpha      = comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_ALPHA"), coin.Field)
 		)
 
-		if len(projection.Inp.ColumnA) > 1 {
-			gamma := comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_GAMMA"), coin.Field)
-			a = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnA)
-			b = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnB)
+		round = max(round, qRound+1)
+
+		if numCols > 1 {
+			gamma = comp.InsertCoin(qRound+1, coin.Name(qName+"_COIN_GAMMA"), coin.Field)
+		}
+
+		for i := 0; i < widthA; i++ {
+			a := symbolic.NewVariable(projection.Inp.ColumnsA[i][0])
+
+			if numCols > 1 {
+				a = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsA[i])
+			}
+
+			as = append(as, a)
+			selectorsA = append(selectorsA, projection.Inp.FiltersA[i])
+		}
+
+		for i := 0; i < widthB; i++ {
+			b := symbolic.NewVariable(projection.Inp.ColumnsB[i][0])
+
+			if numCols > 1 {
+				b = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsB[i])
+			}
+
+			bs = append(bs, b)
+			selectorsB = append(selectorsB, projection.Inp.FiltersB[i])
 		}
 
 		parts = append(
 			parts,
 			query.HornerPart{
-				Coefficient: a,
-				Selector:    projection.Inp.FilterA,
-				X:           accessors.NewFromCoin(alpha),
+				Coefficients: as,
+				Selectors:    selectorsA,
+				X:            accessors.NewFromCoin(alpha),
 			},
 			query.HornerPart{
 				SignNegative: true,
-				Coefficient:  b,
-				Selector:     projection.Inp.FilterB,
+				Coefficients: bs,
+				Selectors:    selectorsB,
 				X:            accessors.NewFromCoin(alpha),
 			},
 		)

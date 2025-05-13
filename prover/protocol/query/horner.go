@@ -218,7 +218,6 @@ func getResultOfParts(run ifaces.Runtime, q *HornerPart) (field.Element, int) {
 			// Note, this is already check at the constructor level.
 			utils.Panic("All data must have the same size")
 		}
-
 	}
 
 	for row := size - 1; row >= 0; row-- {
