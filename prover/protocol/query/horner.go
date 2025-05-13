@@ -221,7 +221,7 @@ func getResultOfParts(run ifaces.Runtime, q *HornerPart) (field.Element, int) {
 
 	}
 
-	for row := 0; row < size; row++ {
+	for row := size - 1; row >= 0; row-- {
 		for coor := 0; coor < len(datas); coor++ {
 
 			if selectors[coor][row].IsZero() {
