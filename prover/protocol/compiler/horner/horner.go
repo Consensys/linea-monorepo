@@ -114,14 +114,14 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 			sym.Sub(
 				col,
 				sym.Mul(
-					sym.Sub(1, q.Parts[i].Selector),
+					sym.Sub(1, q.Parts[i].Selectors[0]),
 					column.Shift(col, 1),
 				),
 				sym.Mul(
-					q.Parts[i].Selector,
+					q.Parts[i].Selectors[0],
 					sym.Add(
 						sym.Mul(q.Parts[i].X, column.Shift(col, 1)),
-						q.Parts[i].Coefficient),
+						q.Parts[i].Coefficients[0]),
 				),
 			),
 		)
@@ -133,8 +133,8 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 			sym.Sub(
 				column.Shift(col, -1),
 				sym.Mul(
-					column.Shift(q.Parts[i].Selector, -1),
-					column.ShiftExpr(q.Parts[i].Coefficient, -1),
+					column.Shift(q.Parts[i].Selectors[0], -1),
+					column.ShiftExpr(q.Parts[i].Coefficients[0], -1),
 				),
 			),
 		)
@@ -146,10 +146,10 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 		}
 
 		selectorsForSize := ctx.Selectors[partSize]
-		*selectorsForSize = append(*selectorsForSize, q.Parts[i].Selector)
+		*selectorsForSize = append(*selectorsForSize, q.Parts[i].Selectors[0])
 		ctx.AccumulatingCols = append(ctx.AccumulatingCols, col)
 		ctx.LocOpenings = append(ctx.LocOpenings, loc)
-		iPRound = max(iPRound, q.Parts[i].Selector.Round())
+		iPRound = max(iPRound, q.Parts[i].Selectors[0].Round())
 	}
 
 	sizes := utils.SortedKeysOf(ctx.Selectors, func(a, b int) bool {
@@ -187,8 +187,8 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 
 		var (
 			col        = make([]field.Element, a.AccumulatingCols[i].Size())
-			coeffBoard = a.Q.Parts[i].Coefficient.Board()
-			selector   = a.Q.Parts[i].Selector.GetColAssignment(run).IntoRegVecSaveAlloc()
+			coeffBoard = a.Q.Parts[i].Coefficients[0].Board()
+			selector   = a.Q.Parts[i].Selectors[0].GetColAssignment(run).IntoRegVecSaveAlloc()
 			data       = column.EvalExprColumn(run, coeffBoard).IntoRegVecSaveAlloc()
 			x          = a.Q.Parts[i].X.GetVal(run)
 			n0         = params.Parts[i].N0
@@ -300,7 +300,7 @@ func (c *checkHornerResult) Run(run wizard.Runtime) error {
 
 			for j, c := range hornerQuery.Parts {
 
-				if c.Selector.GetColID() != ipQuery.Bs[k].GetColID() {
+				if c.Selectors[0].GetColID() != ipQuery.Bs[k].GetColID() {
 					continue
 				}
 
@@ -378,7 +378,7 @@ func (c *checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 
 			for j, c := range hornerQuery.Parts {
 
-				if c.Selector.GetColID() != ipQuery.Bs[k].GetColID() {
+				if c.Selectors[0].GetColID() != ipQuery.Bs[k].GetColID() {
 					continue
 				}
 

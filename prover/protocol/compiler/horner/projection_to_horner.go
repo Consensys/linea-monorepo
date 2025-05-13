@@ -78,25 +78,23 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 		}
 
 		for i := 0; i < widthA; i++ {
-			a := symbolic.NewVariable(projection.Inp.ColumnsA[i][0])
 
+			as[i] = symbolic.NewVariable(projection.Inp.ColumnsA[i][0])
 			if numCols > 1 {
-				a = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsA[i])
+				as[i] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsA[i])
 			}
 
-			as = append(as, a)
-			selectorsA = append(selectorsA, projection.Inp.FiltersA[i])
+			selectorsA[i] = projection.Inp.FiltersA[i]
 		}
 
 		for i := 0; i < widthB; i++ {
-			b := symbolic.NewVariable(projection.Inp.ColumnsB[i][0])
 
+			bs[i] = symbolic.NewVariable(projection.Inp.ColumnsB[i][0])
 			if numCols > 1 {
-				b = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsB[i])
+				bs[i] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsB[i])
 			}
 
-			bs = append(bs, b)
-			selectorsB = append(selectorsB, projection.Inp.FiltersB[i])
+			selectorsB[i] = projection.Inp.FiltersB[i]
 		}
 
 		parts = append(
