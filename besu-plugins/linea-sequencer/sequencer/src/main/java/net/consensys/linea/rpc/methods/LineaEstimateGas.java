@@ -54,7 +54,10 @@ import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonCallPar
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonRpcParameter;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.ethereum.core.Transaction;
-import org.hyperledger.besu.evm.tracing.EstimateGasOperationTracer;
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.operation.Operation;
+import org.hyperledger.besu.evm.operation.SStoreOperation;
+import org.hyperledger.besu.evm.tracing.OperationTracer;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -596,6 +599,46 @@ public class LineaEstimateGas {
     @Override
     public String getMessage() {
       return errorReason;
+    }
+  }
+
+  private static class EstimateGasOperationTracer implements OperationTracer {
+
+    private int maxDepth = 0;
+
+    private long sStoreStipendNeeded = 0L;
+
+    /** Default constructor. */
+    public EstimateGasOperationTracer() {}
+
+    @Override
+    public void tracePostExecution(
+        final MessageFrame frame, final Operation.OperationResult operationResult) {
+      if (frame.getCurrentOperation() instanceof SStoreOperation sStoreOperation
+          && sStoreStipendNeeded == 0L) {
+        sStoreStipendNeeded = sStoreOperation.getMinimumGasRemaining();
+      }
+      if (maxDepth < frame.getDepth()) {
+        maxDepth = frame.getDepth();
+      }
+    }
+
+    /**
+     * Gets max depth.
+     *
+     * @return the max depth
+     */
+    public int getMaxDepth() {
+      return maxDepth;
+    }
+
+    /**
+     * Gets stipend needed.
+     *
+     * @return the stipend needed
+     */
+    public long getStipendNeeded() {
+      return sStoreStipendNeeded;
     }
   }
 }
