@@ -59,8 +59,12 @@ func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, pl
 		Circuit:            NewECAddCircuit(limits),
 		NbCircuitInstances: limits.NbCircuitInstances,
 		PlonkOptions:       plonkOptions,
-		InputFiller:        nil, // not necessary: 0 * (0,0) = (0,0) with complete arithmetic
+		// InputFiller:         nil, // not necessary: 0 * (0,0) = (0,0) with complete arithmetic
 	}
+
+	// Register circuit alignment input fillers
+	toAlign.RegisterInputFiller(nil)
+
 	res := &EcAdd{
 		EcDataAddSource:  src,
 		AlignedGnarkData: plonk.DefineAlignment(comp, toAlign),

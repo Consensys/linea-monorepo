@@ -103,6 +103,13 @@ func SerializeValue(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		return SerializeValue(v.Elem(), mode)
 	case reflect.Struct:
 		return serializeStruct(v, mode)
+	// case reflect.Func:
+	// 	// Serialize the function as an identifier
+	// 	funcName, err := serializeFunc(v.Interface())
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("could not serialize func: %w", err)
+	// 	}
+	// 	return json.Marshal(funcName)
 	default:
 		return nil, fmt.Errorf("unsupported type kind: %v", v.Kind())
 	}
@@ -112,6 +119,18 @@ func DeserializeValue(data json.RawMessage, mode Mode, t reflect.Type, comp *wiz
 	if bytes.Equal(data, []byte(NilString)) {
 		return reflect.New(t), nil
 	}
+
+	// // Handle *frontend.Variable explicitly
+	// if t == reflect.TypeOf((*frontend.Variable)(nil)) {
+	// 	if string(data) == `"null"` {
+	// 		return reflect.ValueOf((*frontend.Variable)(nil)), nil
+	// 	}
+	// 	var v frontend.Variable
+	// 	if err := json.Unmarshal(data, &v); err != nil {
+	// 		return reflect.Value{}, fmt.Errorf("failed to unmarshal frontend.Variable: %w", err)
+	// 	}
+	// 	return reflect.ValueOf(&v), nil
+	// }
 
 	switch t.Kind() {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
@@ -128,10 +147,36 @@ func DeserializeValue(data json.RawMessage, mode Mode, t reflect.Type, comp *wiz
 		return deserializePointer(data, mode, t, comp)
 	case reflect.Struct:
 		return deserializeStruct(data, mode, t, comp)
+	// case reflect.Func:
+	// 	// Deserialize the function from its identifier
+	// 	var funcName string
+	// 	if err := json.Unmarshal(data, &funcName); err != nil {
+	// 		return reflect.Value{}, fmt.Errorf("could not deserialize func: %w", err)
+	// 	}
+	// 	if funcName == "nil" {
+	// 		return reflect.ValueOf(nil), nil // Handle nil functions
+	// 	}
+	// 	fn, exists := funcRegistry.TryGet(funcName)
+	// 	if !exists {
+	// 		return reflect.Value{}, fmt.Errorf("function %q not found in registry", funcName)
+	// 	}
+	// 	return reflect.ValueOf(fn), nil
 	default:
 		return reflect.Value{}, fmt.Errorf("unsupported type kind: %v", t.Kind())
 	}
 }
+
+// func serializeFunc(fn interface{}) (string, error) {
+// 	if fn == nil {
+// 		return "nil", nil // Special identifier for nil functions
+// 	}
+
+// 	funcName := GetFuncIdentifier(fn)
+// 	if funcName == "" {
+// 		return "", fmt.Errorf("function not registered")
+// 	}
+// 	return funcName, nil
+// }
 
 func serializePrimitive(v reflect.Value) (json.RawMessage, error) {
 	return serializeAnyWithCborPkg(v.Interface())
@@ -490,6 +535,12 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		fieldValue, err := DeserializeValue(fieldRaw, newMode, f.fieldType, comp)
 		if err != nil {
 			utils.Panic("Could not deserialize struct field %q.%v of type %q: %v", t.String(), f.name, f.fieldType.String(), err)
+		}
+
+		// Handle zero (invalid) values
+		if !fieldValue.IsValid() {
+			v.FieldByName(f.name).Set(reflect.Zero(f.fieldType))
+			continue
 		}
 
 		// Handle pointer types

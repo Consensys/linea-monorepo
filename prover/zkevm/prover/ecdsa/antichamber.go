@@ -120,10 +120,10 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 		DataToCircuit:      res.UnalignedGnarkData.GnarkData,
 		DataToCircuitMask:  res.IsPushing,
 		Circuit:            newMultiEcRecoverCircuit(settings.NbInputInstance),
-		InputFiller:        inputFiller,
 		PlonkOptions:       inputs.plonkOptions,
 		NbCircuitInstances: settings.NbCircuitInstances,
 	}
+	toAlign.RegisterInputFiller(inputFiller)
 	res.AlignedGnarkData = plonk.DefineAlignment(comp, toAlign)
 
 	// root module constraints

@@ -79,6 +79,8 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 		SelfRecursionCount:         comp.SelfRecursionCount,
 	}
 
+	// Serialize non-round specific params
+
 	// Serialize Precomputed attribute
 	if err := serializePrecomputed(comp, raw); err != nil {
 		return nil, fmt.Errorf("serialize Precomputed: %w", err)
@@ -233,11 +235,11 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 
 	// IMPORTANT: Deserialize PublicInputs attribute at the last since PublicInputs contains Acc
 	// ifaces.Accessor (e.g., accessor.LocalOpening), which references column IDs.
-	//If Columns are not deserialized first, calls to column.Store.GetHandle (via MustGet) fail, causing the panic.
+	// If Columns are not deserialized first, calls to column.Store.GetHandle (via MustGet) fail,
+	// causing the panic.
 	if err := deserializePublicInputs(raw, comp); err != nil {
 		return nil, err
 	}
-
 	return comp, nil
 }
 

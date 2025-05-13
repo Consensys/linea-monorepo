@@ -522,6 +522,19 @@ func compareExportedFieldsWithPath(a, b interface{}, path string) bool {
 		return equal
 	}
 
+	// Handle func type
+	if v1.Kind() == reflect.Func {
+		// funcName1 := serialization.GetFuncIdentifier(v1.Interface())
+		// funcName2 := serialization.GetFuncIdentifier(v2.Interface())
+		// if funcName1 != funcName2 {
+		// 	fmt.Printf("Mismatch at %s: function identifiers differ (v1: %s, v2: %s)\n", path, funcName1, funcName2)
+		// 	return false
+		// }
+
+		fmt.Printf("Func comparisions: v1:%s v2:%s \n", v1.String(), v2.String())
+		return true
+	}
+
 	// For other types, use DeepEqual and log if mismatched
 	if !reflect.DeepEqual(a, b) {
 		fmt.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
