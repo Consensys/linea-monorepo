@@ -49,6 +49,7 @@ import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.log.Log;
 import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 import org.hyperledger.besu.testutil.JsonTestParameters;
+import org.junit.jupiter.api.Assumptions;
 
 @Slf4j
 public class GeneralStateReferenceTestTools {
@@ -107,6 +108,16 @@ public class GeneralStateReferenceTestTools {
     if (EIPS_TO_RUN.isEmpty()) {
       PARAMS.ignoreAll();
     }
+
+    // ignore tests that are failing in Besu too
+    PARAMS.ignore("stCreate2/RevertInCreateInInitCreate2.json");
+    PARAMS.ignore("stRevertTest/RevertInCreateInInit.json");
+    PARAMS.ignore("stCreate2/create2collisionStorage.json");
+    PARAMS.ignore("stExtCodeHash/dynamicAccountOverwriteEmpty.json");
+
+    // ignore tests that are failing because there is an account with nonce 0 and
+    // non empty code which can't happen in Linea since we are post LONDON
+    PARAMS.ignore("stSStoreTest/InitCollision.json");
 
     // Consumes a huge amount of memory
     PARAMS.ignore("static_Call1MB1024Calldepth-\\w");
@@ -178,6 +189,52 @@ public class GeneralStateReferenceTestTools {
     PARAMS.ignore("stTransactionTest/HighGasLimit.json");
     PARAMS.ignore("stTransactionTest/OverflowGasRequire2.json");
     PARAMS.ignore("stCallCreateCallCodeTest/Call1024PreCalls.json");
+
+    // Deployment transaction to an account with nonce / code
+    PARAMS.ignore("stCreateTest/TransactionCollisionToEmptyButCode.json");
+    PARAMS.ignore("stCreateTest/TransactionCollisionToEmptyButNonce.json");
+    PARAMS.ignore("stCallCreateCallCodeTest/createJS_ExampleContract.json");
+    PARAMS.ignore("stEIP3607/initCollidingWithNonEmptyAccount.json");
+
+    // Deployment transaction to an account with zero nonce, empty code (and zero balance) but
+    // nonempty storage. Given [EIP-7610](https://github.com/ethereum/EIPs/pull/8161), no Besu
+    // execution takes place, which means that no TraceSection's are created beyond the
+    // {@link TxInitializationSection}. This triggers a NPE when tracing, as at some point
+    // {@link TraceSection#nextSection} is null in {@link TraceSection#computeContextNumberNew()}.
+    PARAMS.ignore("stSpecialTest/FailedCreateRevertsDeletion.json");
+
+    // We ignore the following tests because they satisfy one of the following:
+    // - bbs > 512, bbs ≡ base byte size
+    // - ebs > 512, ebs ≡ exponent byte size
+    // - mbs > 512, mbs ≡ modulus byte size
+    PARAMS.ignore("modexp-London\\[12\\]");
+    PARAMS.ignore("modexp-London\\[13\\]");
+    PARAMS.ignore("modexp-London\\[14\\]");
+    PARAMS.ignore("modexp-London\\[15\\]");
+    PARAMS.ignore("modexp-London\\[76\\]");
+    PARAMS.ignore("modexp-London\\[77\\]");
+    PARAMS.ignore("modexp-London\\[78\\]");
+    PARAMS.ignore("modexp-London\\[79\\]");
+    PARAMS.ignore("modexp-London\\[80\\]");
+    PARAMS.ignore("modexp-London\\[81\\]");
+    PARAMS.ignore("modexp-London\\[82\\]");
+    PARAMS.ignore("modexp-London\\[83\\]");
+    PARAMS.ignore("modexp-London\\[84\\]");
+    PARAMS.ignore("modexp-London\\[85\\]");
+    PARAMS.ignore("modexp-London\\[86\\]");
+    PARAMS.ignore("modexp-London\\[87\\]");
+    PARAMS.ignore("modexp-London\\[144\\]");
+    PARAMS.ignore("modexp-London\\[145\\]");
+    PARAMS.ignore("modexp-London\\[146\\]");
+    PARAMS.ignore("modexp-London\\[147\\]");
+    PARAMS.ignore("modexp-London\\[148\\]");
+    PARAMS.ignore("modexp-London\\[149\\]");
+    PARAMS.ignore("modexp-London\\[150\\]");
+    PARAMS.ignore("modexp-London\\[151\\]");
+    PARAMS.ignore("modexp-London\\[151\\]");
+    PARAMS.ignore("idPrecomps-London\\[4\\]");
+    PARAMS.ignore("modexp_modsize0_returndatasize-London\\[4\\]");
+    PARAMS.ignore("stRandom2/randomStatetest650.json");
   }
 
   private GeneralStateReferenceTestTools() {
@@ -193,6 +250,8 @@ public class GeneralStateReferenceTestTools {
     final BlockHeader blockHeader = spec.getBlockHeader();
     final ReferenceTestWorldState initialWorldState = spec.getInitialWorldState();
     final Transaction transaction = spec.getTransaction(0);
+    Assumptions.assumeTrue(
+        transaction != null, "Skipping the test because the block has no transaction");
     final BlockBody blockBody = new BlockBody(List.of(transaction), new ArrayList<>());
 
     // Sometimes the tests ask us assemble an invalid transaction.  If we have
