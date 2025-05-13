@@ -657,7 +657,6 @@ func (ctx *Ctx) IsNonEmptyPrecomputed() bool {
 		logrus.Infof("We are committing to #%v precomputed columns", len(ctx.Items.Precomputeds.PrecomputedColums))
 		return true
 	} else {
-		logrus.Infof("There are no precomputed columns to commit to")
 		return false
 	}
 }
@@ -667,7 +666,6 @@ func (ctx *Ctx) IsNonEmptyPrecomputed() bool {
 // the ApplySISHashThreshold.
 func (ctx *Ctx) IsSISAppliedToPrecomputed() bool {
 	if ctx.Items.Precomputeds.PrecomputedColums == nil {
-		logrus.Infof("There are no precomputed columns to commit to")
 		return false
 	}
 	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.ApplySISHashThreshold
