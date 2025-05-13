@@ -18,11 +18,13 @@ type HornerPart struct {
 	// SignNegative indicates that the result should be negated.
 	SignNegative bool
 	// Coefficient is the coefficient of the term. It may be a
-	// column or random linear combination of columns.
-	Coefficient *symbolic.Expression
+	// column or random linear combination of columns. Each entry
+	// in the table corresponds to a multi-ary entry.
+	Coefficients []*symbolic.Expression
 	// Selector is a boolean indicator column telling which terms
 	// or [Coefficients] should be included in the Horner evaluation.
-	Selector ifaces.Column
+	// Each entry in the list corresponds to a multi-ary entry.
+	Selectors []ifaces.Column
 	// X is the "x" value in the Horner evaluation query. Most of the
 	// time, the accessor will be a random coin. The typing to accessor
 	// allows for more flexibility.
@@ -53,6 +55,10 @@ type HornerPart struct {
 // ```
 //
 // where x and n0 are parameters of the query.
+//
+// As an addtional feature, the Horner query may be "multi-ary" meaning
+// that the summation is not just computed vertically but left-to-right
+// then top-to-bottom over a range of expressions.
 type Horner struct {
 	// Round is the round of definition of the query
 	Round int
@@ -90,16 +96,26 @@ func NewHorner(round int, id ifaces.QueryID, parts []HornerPart) Horner {
 
 	for i := range parts {
 
-		var (
-			board = parts[i].Coefficient.Board()
-			size  = column.ExprIsOnSameLengthHandles(&board)
-		)
+		for j := range parts[i].Selectors {
+			var (
+				board = parts[i].Coefficients[j].Board()
+				size  = column.ExprIsOnSameLengthHandles(&board)
+			)
 
-		if parts[i].Selector.Size() != size {
-			utils.Panic("Horner part %v has a selector of size %v and a coefficient of size %v", i, parts[i].Selector.Size(), size)
+			if size == 0 {
+				utils.Panic("Horner part %v has a coefficient of size 0", i)
+			}
+
+			if parts[i].Selectors[j].Size() != size {
+				utils.Panic("Horner part %v has a selector of size %v and a coefficient of size %v", i, parts[i].Selectors[j].Size(), size)
+			}
+
+			if parts[i].size > 0 && size != parts[i].size {
+				utils.Panic("Horner part %v has a selector of size %v and a coefficient of size %v", i, parts[i].Selectors[j].Size(), size)
+			}
+
+			parts[i].size = size
 		}
-
-		parts[i].size = size
 	}
 
 	return Horner{
@@ -151,23 +167,11 @@ func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, final
 	for i, part := range q.Parts {
 
 		var (
-			dataBoard = part.Coefficient.Board()
-			data      = column.EvalExprColumn(run, dataBoard).IntoRegVecSaveAlloc()
-			sel       = part.Selector.GetColAssignment(run).IntoRegVecSaveAlloc()
-			n0        = p.Parts[i].N0
-			x         = part.X.GetVal(run)
-			count     = 0
-			res       field.Element
-			xN0       = new(field.Element).Exp(x, big.NewInt(int64(n0)))
+			n0         = p.Parts[i].N0
+			res, count = getResultOfParts(run, &part)
+			x          = part.X.GetVal(run)
+			xN0        = new(field.Element).Exp(x, big.NewInt(int64(n0)))
 		)
-
-		for j := len(data) - 1; j >= 0; j-- {
-			if sel[j].IsOne() {
-				res.Mul(&res, &x)
-				res.Add(&res, &data[j])
-				count++
-			}
-		}
 
 		res.Mul(&res, xN0)
 
@@ -180,6 +184,57 @@ func (p *HornerParams) GetResult(run ifaces.Runtime, q Horner) (n1s []int, final
 	}
 
 	return n1s, finalResult
+}
+
+// getResultOfParts computes the result of a part i of the [HornerQuery]. It
+// returns the result of the evaluation and the selector count.
+func getResultOfParts(run ifaces.Runtime, q *HornerPart) (field.Element, int) {
+
+	var (
+		datas     = [][]field.Element{}
+		selectors = [][]field.Element{}
+		count     = 0
+		x         = q.X.GetVal(run)
+		acc       = field.Zero()
+		size      = 0
+	)
+
+	for coor := range q.Coefficients {
+
+		var (
+			board    = q.Coefficients[coor].Board()
+			data     = column.EvalExprColumn(run, board).IntoRegVecSaveAlloc()
+			selector = q.Selectors[coor].GetColAssignment(run).IntoRegVecSaveAlloc()
+		)
+
+		datas = append(datas, data)
+		selectors = append(selectors, selector)
+
+		if coor == 0 {
+			size = len(data)
+		}
+
+		if size != len(data) {
+			// Note, this is already check at the constructor level.
+			utils.Panic("All data must have the same size")
+		}
+
+	}
+
+	for row := 0; row < size; row++ {
+		for coor := 0; coor < len(datas); coor++ {
+
+			if selectors[coor][row].IsZero() {
+				continue
+			}
+
+			count++
+			acc.Mul(&acc, &x)
+			acc.Add(&acc, &datas[coor][row])
+		}
+	}
+
+	return acc, count
 }
 
 // Name implements the [ifaces.Query] interface
