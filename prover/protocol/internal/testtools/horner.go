@@ -234,16 +234,16 @@ func (t *HornerTestcase) Define(comp *wizard.CompiledIOP) {
 	for i := range parts {
 		parts[i] = query.HornerPart{
 			SignNegative: t.SignNegativeParts[i],
-			Coefficient: sym.NewVariable(comp.InsertCommit(
+			Coefficients: []*sym.Expression{sym.NewVariable(comp.InsertCommit(
 				0,
 				formatName[ifaces.ColID]("Horner", t.NameStr, "Coefficient", i),
 				t.Coefficients[i].Len(),
-			)),
-			Selector: comp.InsertCommit(
+			))},
+			Selectors: []ifaces.Column{comp.InsertCommit(
 				0,
 				formatName[ifaces.ColID]("Horner", t.NameStr, "Selector", i),
 				t.Selectors[i].Len(),
-			),
+			)},
 			X: accessors.NewConstant(t.Xs[i]),
 		}
 	}
