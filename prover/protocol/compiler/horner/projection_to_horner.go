@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
-	"github.com/consensys/linea-monorepo/prover/symbolic"
+	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -63,8 +63,8 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 			widthA     = len(projection.Inp.ColumnsA)
 			widthB     = len(projection.Inp.ColumnsB)
 			numCols    = len(projection.Inp.ColumnsA[0])
-			as         = make([]*symbolic.Expression, widthA)
-			bs         = make([]*symbolic.Expression, widthB)
+			as         = make([]*sym.Expression, widthA)
+			bs         = make([]*sym.Expression, widthB)
 			selectorsA = make([]ifaces.Column, widthA)
 			selectorsB = make([]ifaces.Column, widthB)
 			gamma      coin.Info
@@ -79,7 +79,7 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 
 		for i := 0; i < widthA; i++ {
 
-			as[i] = symbolic.NewVariable(projection.Inp.ColumnsA[i][0])
+			as[i] = sym.NewVariable(projection.Inp.ColumnsA[i][0])
 			if numCols > 1 {
 				as[i] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsA[i])
 			}
@@ -89,7 +89,7 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 
 		for i := 0; i < widthB; i++ {
 
-			bs[i] = symbolic.NewVariable(projection.Inp.ColumnsB[i][0])
+			bs[i] = sym.NewVariable(projection.Inp.ColumnsB[i][0])
 			if numCols > 1 {
 				bs[i] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsB[i])
 			}
