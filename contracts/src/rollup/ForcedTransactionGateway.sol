@@ -227,7 +227,6 @@ contract ForcedTransactionGateway is IForcedTransactionGateway {
       mstore(add(dataPtr, 0x80), _signer)
 
       mstore(mimcPayload, 0xA0)
-
       mstore(0x40, add(dataPtr, 0xA0))
     }
 
