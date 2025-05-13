@@ -15,14 +15,14 @@ type ProverAction interface {
 	Run(*ProverRuntime)
 }
 
-// mainProverStepWrapper adapts a  MainProverStep to the ProverAction interface.
-type mainProverStepWrapper struct {
-	step func(*ProverRuntime)
+// ProverStepWrapper adapts a  MainProverStep to the ProverAction interface.
+type ProverStepWrapper struct {
+	Step func(*ProverRuntime)
 }
 
 // Run implements the ProverAction interface for MainProverStep.
-func (w mainProverStepWrapper) Run(run *ProverRuntime) {
-	w.step(run)
+func (w ProverStepWrapper) Run(run *ProverRuntime) {
+	w.Step(run)
 }
 
 // VerifierAction represents an action to be performed by the verifier of the

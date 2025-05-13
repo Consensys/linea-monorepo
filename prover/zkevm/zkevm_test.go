@@ -37,13 +37,14 @@ func TestZKEVM(t *testing.T) {
 	t.Run("Sha2", TestSha2)
 	t.Run("StateManager", TestStateManager)
 	t.Run("CompiledIOP", TestCompiledIOP)
+	t.Run("Keccak", TestKeccak)
+	t.Run("Ecadd", TestEcadd)
+	t.Run("Ecmul", TestEcmul)
 
 	// Failing tests due to not supporting serialization of `func()`
 
-	t.Run("Keccak", TestKeccak)
 	t.Run("Modexp", TestModexp)
-	t.Run("Ecadd", TestEcadd)
-	t.Run("Ecmul", TestEcmul)
+
 	t.Run("Ecpair", TestEcpair)
 }
 
