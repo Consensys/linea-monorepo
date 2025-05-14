@@ -58,7 +58,7 @@ func TestFFT(t *testing.T) {
 		sample := domainWithPrecompute.Generator
 		sample.Exp(sample, big.NewInt(int64(ithpower)))
 
-		eval := poly.EvalUnivariate(backupPol, sample)
+		eval := poly.Eval(backupPol, sample)
 
 		return eval.Equal(&pol[ithpower])
 	}
@@ -85,7 +85,7 @@ func TestFFT(t *testing.T) {
 			sample.Exp(sample, big.NewInt(int64(ithpower))).
 				Mul(&sample, &domainWithPrecompute.FrMultiplicativeGen)
 
-			eval := poly.EvalUnivariate(backupPol, sample)
+			eval := poly.Eval(backupPol, sample)
 
 			return eval.Equal(&pol[ithpower])
 
@@ -112,7 +112,7 @@ func TestFFT(t *testing.T) {
 			sample := domainWithPrecompute.Generator
 			sample.Exp(sample, big.NewInt(int64(ithpower)))
 
-			eval := poly.EvalUnivariate(backupPol, sample)
+			eval := poly.Eval(backupPol, sample)
 
 			return eval.Equal(&pol[ithpower])
 

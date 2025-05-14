@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEvalUnivariate(t *testing.T) {
+func TestEval(t *testing.T) {
 	// Just a simple test vector
 	// (1+a)+(2+2a)X+(5+a)X^2+(12+2a)X^3
 	testVec := []fext.Element{
@@ -25,7 +25,7 @@ func TestEvalUnivariate(t *testing.T) {
 
 	x := fext.NewElement(3, 4)
 
-	y := polyext.EvalUnivariate(testVec, x)
+	y := polyext.Eval(testVec, x)
 	// expanded form of the polynomial 128 a^4 + 1072 a^3 + 2056 a^2 + 1494 a + 376
 	first := 128*fext.RootPowers[1]*fext.RootPowers[1] + 2056*fext.RootPowers[1] + 376
 	second := 1072*fext.RootPowers[1] + 1494

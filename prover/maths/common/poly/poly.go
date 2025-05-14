@@ -6,14 +6,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// EvalUnivariate evaluates a univariate polynomial `pol` given as a vector of
+// Eval evaluates a univariate polynomial `pol` given as a vector of
 // coefficients. Coefficients are for increasing degree monomials: meaning that
 // pol[0] is the constant term and pol[len(pol) - 1] is the highest degree term.
 // The evaluation is done using the Horner method.
 //
 // If the empty slice is provided, it is understood as the zero polynomial and
 // the function returns zero.
-func EvalUnivariate(pol []field.Element, x field.Element) field.Element {
+func Eval(pol []field.Element, x field.Element) field.Element {
 	var res field.Element
 	for i := len(pol) - 1; i >= 0; i-- {
 		res.Mul(&res, &x)

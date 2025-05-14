@@ -164,7 +164,7 @@ func TestLimbSplit(t *testing.T) {
 		limbs := key.LimbSplit(v)
 		for i := range v {
 			subLimbs := limbs[i*key.NumLimbs() : (i+1)*key.NumLimbs()]
-			recomposed := poly.EvalUnivariate(subLimbs, bound)
+			recomposed := poly.Eval(subLimbs, bound)
 			assert.Equal(subT, v[i].String(), recomposed.String())
 		}
 	}

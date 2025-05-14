@@ -8,8 +8,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// EvalUnivariate evalutes P := \sum_{i<n}pol[i]X^i at x.
-func EvalUnivariate(pol []extensions.E4, x extensions.E4) extensions.E4 {
+// Eval evalutes P := \sum_{i<n}pol[i]X^i at x.
+func Eval(pol []extensions.E4, x extensions.E4) extensions.E4 {
 	var res extensions.E4
 	for i := len(pol) - 1; i >= 0; i-- {
 		res.Mul(&res, &x)
@@ -18,7 +18,7 @@ func EvalUnivariate(pol []extensions.E4, x extensions.E4) extensions.E4 {
 	return res
 }
 
-func EvalUnivariateBase(pol []extensions.E4, x koalabear.Element) extensions.E4 {
+func EvalOnBaseField(pol []extensions.E4, x koalabear.Element) extensions.E4 {
 	var res extensions.E4
 
 	for i := len(pol) - 1; i >= 0; i-- {

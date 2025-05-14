@@ -34,7 +34,7 @@ func EvaluateLagrangeAnyDomainGnark(api frontend.API, domain []frontend.Variable
 }
 
 // EvaluateUnivariateGnark evaluate a univariate polynomial in a gnark circuit.
-// It mirrors [EvalUnivariate].
+// It mirrors [Eval].
 func EvaluateUnivariateGnark(api frontend.API, pol []frontend.Variable, x frontend.Variable) frontend.Variable {
 	res := frontend.Variable(0)
 	for i := len(pol) - 1; i >= 0; i-- {

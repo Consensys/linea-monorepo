@@ -290,7 +290,7 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 	if winMaxStop-winMinStart > gen.windowWithLen {
 		utils.Panic("inconsistent window dimension %v %v with gen %++v", winMinStart, winMaxStop, gen)
 	}
-	resVal := polyext.EvalUnivariate(vals, x)
+	resVal := polyext.Eval(vals, x)
 
 	switch {
 	case maxType == constantT:

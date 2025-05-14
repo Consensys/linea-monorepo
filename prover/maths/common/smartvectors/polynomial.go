@@ -243,7 +243,7 @@ func EvalCoeff(v SmartVector, x field.Element) field.Element {
 	// Maybe there is an optim for windowed here
 	res := make([]field.Element, v.Len())
 	v.WriteInSlice(res)
-	return poly.EvalUnivariate(res, x)
+	return poly.Eval(res, x)
 }
 
 func EvalCoeffBivariate(v SmartVector, x field.Element, numCoeffX int, y field.Element) field.Element {
@@ -258,8 +258,8 @@ func EvalCoeffBivariate(v SmartVector, x field.Element, numCoeffX int, y field.E
 
 	foldOnX := make([]field.Element, len(slice)/numCoeffX)
 	for i := 0; i < len(slice); i += numCoeffX {
-		foldOnX[i/numCoeffX] = poly.EvalUnivariate(slice[i:i+numCoeffX], x)
+		foldOnX[i/numCoeffX] = poly.Eval(slice[i:i+numCoeffX], x)
 	}
 
-	return poly.EvalUnivariate(foldOnX, y)
+	return poly.Eval(foldOnX, y)
 }

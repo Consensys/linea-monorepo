@@ -43,7 +43,7 @@ func NewPolyEval(x *Expression, coeffs []*Expression) *Expression {
 		eshashes = append(eshashes, coeffs[i].ESHash)
 	}
 
-	esh := poly.EvalUnivariate(eshashes, x.ESHash)
+	esh := poly.Eval(eshashes, x.ESHash)
 
 	return &Expression{
 		Operator: PolyEval{},

@@ -151,8 +151,8 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 
 	x := field.NewElement(51)
 
-	expectedY := poly.EvalUnivariate(randPoly, x)
-	expectedY2 := poly.EvalUnivariate(randPoly2, x)
+	expectedY := poly.Eval(randPoly, x)
+	expectedY2 := poly.Eval(randPoly2, x)
 	domain := fft.NewDomain(n).WithCoset()
 
 	/*
@@ -199,8 +199,8 @@ func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
 	randPoly2 := vector.ForTest(2, 2, 2, 2)
 	x := field.NewElement(51)
 
-	expectedY := poly.EvalUnivariate(randPoly, x)
-	expectedY2 := poly.EvalUnivariate(randPoly2, x)
+	expectedY := poly.Eval(randPoly, x)
+	expectedY2 := poly.Eval(randPoly2, x)
 	domain := fft.NewDomain(n).WithCoset()
 
 	/*
@@ -250,9 +250,9 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 
 	x := field.NewElement(51)
 
-	expectedY := poly.EvalUnivariate(randPoly, x)
-	expectedY2 := poly.EvalUnivariate(randPoly2, x)
-	expectedY3 := poly.EvalUnivariate(randPoly3, x)
+	expectedY := poly.Eval(randPoly, x)
+	expectedY2 := poly.Eval(randPoly2, x)
+	expectedY3 := poly.Eval(randPoly3, x)
 	domain := fft.NewDomain(n).WithCoset()
 
 	/*

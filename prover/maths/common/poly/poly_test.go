@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestEvalUnivariate(t *testing.T) {
+func TestEval(t *testing.T) {
 	// Just a simple test vector
 	testVec := []field.Element{
 		field.NewElement(1),
@@ -21,7 +21,7 @@ func TestEvalUnivariate(t *testing.T) {
 
 	x := field.NewElement(17)
 
-	y := poly.EvalUnivariate(testVec, x)
+	y := poly.Eval(testVec, x)
 
 	require.Equal(t, y, field.NewElement(60436))
 

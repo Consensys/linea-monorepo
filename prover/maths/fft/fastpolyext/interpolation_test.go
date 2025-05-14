@@ -14,7 +14,7 @@ func TestInterpolation(t *testing.T) {
 	n := 4
 	randPoly := vectorext.ForTest(1, 2, 3, 4)
 	x := fext.NewElement(51, 0)
-	expectedY := polyext.EvalUnivariate(randPoly, x)
+	expectedY := polyext.Eval(randPoly, x)
 	domain := fft.NewDomain(n).WithCoset()
 
 	/*
@@ -44,8 +44,8 @@ func TestBatchInterpolation(t *testing.T) {
 	randPoly2 := vectorext.ForTest(5, 6, 7, 8)
 	x := fext.NewElement(51, 0)
 
-	expectedY := polyext.EvalUnivariate(randPoly, x)
-	expectedY2 := polyext.EvalUnivariate(randPoly2, x)
+	expectedY := polyext.Eval(randPoly, x)
+	expectedY2 := polyext.Eval(randPoly2, x)
 	domain := fft.NewDomain(n).WithCoset()
 
 	/*
@@ -96,8 +96,8 @@ func TestBatchInterpolationRootOfUnity(t *testing.T) {
 	// define x as a root of unity
 	x := fext.One()
 
-	expectedY := polyext.EvalUnivariate(randPoly, x)
-	expectedY2 := polyext.EvalUnivariate(randPoly2, x)
+	expectedY := polyext.Eval(randPoly, x)
+	expectedY2 := polyext.Eval(randPoly2, x)
 	domain := fft.NewDomain(n).WithCoset()
 
 	/*

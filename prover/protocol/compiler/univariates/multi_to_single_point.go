@@ -434,7 +434,7 @@ func (ctx mptsCtx) verifier(run *wizard.VerifierRuntime) error {
 	qxs := univQ.Ys[len(ctx.polys):]
 	var xN field.Element
 	xN.Exp(x, big.NewInt(int64(ctx.targetSize)))
-	qx := poly.EvalUnivariate(qxs, xN)
+	qx := poly.Eval(qxs, xN)
 
 	// The left hand corresponds to Q(X) * Z(X)
 	// Where Z(X) is the vanishing polynomial in all `xs`

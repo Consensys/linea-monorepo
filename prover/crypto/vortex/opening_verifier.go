@@ -125,7 +125,7 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 		}
 
 		// Check the linear combination is consistent with the opened column
-		y := poly.EvalUnivariate(fullCol, v.RandomCoin)
+		y := poly.Eval(fullCol, v.RandomCoin)
 
 		if selectedColID > linearCombination.Len() {
 			return fmt.Errorf("entry overflows the size of the linear combination")
@@ -148,7 +148,7 @@ func (v *VerifierInputs) checkStatement() (err error) {
 	var (
 		Yjoined     = utils.Join(v.Ys...)
 		alphaY      = smartvectors.Interpolate(v.OpeningProof.LinearCombination, v.X)
-		alphaYProme = poly.EvalUnivariate(Yjoined, v.RandomCoin)
+		alphaYProme = poly.Eval(Yjoined, v.RandomCoin)
 	)
 
 	if alphaY != alphaYProme {

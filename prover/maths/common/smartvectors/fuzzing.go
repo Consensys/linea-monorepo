@@ -289,7 +289,7 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 		utils.Panic("inconsistent window dimension %v %v with gen %++v", winMinStart, winMaxStop, gen)
 	}
 
-	resVal := poly.EvalUnivariate(vals, x)
+	resVal := poly.Eval(vals, x)
 
 	switch {
 	case maxType == constantT:
