@@ -2,8 +2,9 @@ testL1Disabled = false
 
 duplicated-logs-debounce-time = "PT15S"
 
-l1-default-endpoint = "http://l1-el-node:8545"
-l2-default-endpoint = "http://sequencer:8545"
+[defaults]
+l1-endpoint = "http://l1-el-node:8545"
+l2-endpoint = "http://sequencer:8545"
 
 [protocol]
 [protocol.genesis]
@@ -15,14 +16,10 @@ genesis-state-root-hash = "0x072ead6777750dc20232d1cee8dc9a395c2d350df4bbaa5096c
 genesis-shnarf-v5 = "0x47452a1b9ebadfe02bdd02f580fa1eba17680d57eec968a591644d05d78ee84f"
 [protocol.l1]
 contract-address = "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+#contract-deployment-block-number = 3
 [protocol.l2]
 contract-address = "0xe537D669CA013d86EBeF1D64e40fC74CADC91987"
-# Number of children blocks to wait before considering a block "finalized"
-# and elegible for conflation and
-# this a workaround to mitigate Geth fork issues with Clique PoA
-# Coordinator will consider block as finalized after being included in the chain wtih children blocks-to-finalization
-# Recommended minimum of 2
-blocks-to-finalization = 2 # Used in MessageAnchoring and SafeBlockProvider
+contract-deployment-block-number = 3
 
 
 [conflation]
@@ -41,10 +38,6 @@ fetch-blocks-limit = 4000
 
 l2-block-creation-endpoint = "http://sequencer:8545"
 l2-logs-endpoint = "http://sequencer:8545"
-[conflation.counters.request-retries]
-max-attempts = 4
-backoff-delay = "PT1S"
-failures-warning-threshold = 2
 
 [blob-compression]
 blob-size-limit = 102400 # 100KB
@@ -107,14 +100,6 @@ request-limit-per-endpoint = 2
 max-attempts = 4
 backoff-delay = "PT1S"
 failures-warning-threshold = 2
-
-[traces.file-manager]
-traces-file-extension = "json.gz"
-raw-traces-directory = "/data/traces/raw"
-non-canonical-raw-traces-directory = "/data/traces/raw-non-canonical"
-create-non-canonical-directory = true
-polling-interval = "PT1S"
-traces-file-creation-wait-timeout = "PT2M"
 
 #[traces.new]
 ##switch-block-number-inclusive=1000
