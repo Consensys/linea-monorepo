@@ -18,13 +18,13 @@ fs-responses-directory = "tmp/local/prover/v3/execution/responses"
 fs-requests-directory = "tmp/local/prover/v3/compression/requests"
 fs-responses-directory = "tmp/local/prover/v3/compression/responses"
 [prover.proof-aggregation]
-fs-requests-directory = "tmp/local/prover/v2/aggregation/requests"
-fs-responses-directory = "tmp/local/prover/v2/aggregation/responses"
+fs-requests-directory = "tmp/local/prover/v3/aggregation/requests"
+fs-responses-directory = "tmp/local/prover/v3/aggregation/responses"
 
 # Config of Traces API Facade endpoint
 [traces]
 blob-compressor-version="V1_0_1"
-expected-traces-api-version-v2="beta-v2.1-rc14"
+expected-traces-api-version-v2="beta-v2.1-rc16"
 [traces.counters-v2]
 endpoints=["http://127.0.0.1:8745/"]
 [traces.conflation-v2]
@@ -37,7 +37,8 @@ endpoints=["http://127.0.0.1:8998/"]
 extra-data-update-recipient = "http://127.0.0.1:8545/"
 
 [l2-network-gas-pricing.json-rpc-pricing-propagation]
-geth-gas-price-update-recipients = ["http://127.0.0.1:8845"]
+disabled=true
+geth-gas-price-update-recipients = []
 besu-gas-price-update-recipients = []
 
 [l1]
@@ -52,7 +53,7 @@ finalized-block-tag="finalized"
 earliestBlock=0
 
 [l2]
-rpc-endpoint="http://127.0.0.1:8845"
+rpc-endpoint="http://127.0.0.1:9045"
 blocks-to-finalization=0
 
 [database]

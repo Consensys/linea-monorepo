@@ -45,6 +45,16 @@ services:
     extends:
       file: compose-spec-l2-services.yml
       service: traces-node
+  
+  l2-node:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: l2-node
+
+  shomei-frontend:
+    extends:
+      file: compose-spec-l2-services.yml
+      service: shomei-frontend
 
   prover-v3:
     extends:
