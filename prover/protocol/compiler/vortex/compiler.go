@@ -207,10 +207,12 @@ type Ctx struct {
 	RoundStatus           []roundStatus
 
 	CommittedRowsCount int
-	NumCols            int
-	MaxCommittedRound  int
-	VortexParams       *vortex.Params
-	SisParams          *ringsis.Params
+	// Committed rows count for the SIS rounds only
+	CommittedRowsCountSIS int
+	NumCols               int
+	MaxCommittedRound     int
+	VortexParams          *vortex.Params
+	SisParams             *ringsis.Params
 	// Optional parameter
 	NumOpenedCol int
 
@@ -315,9 +317,9 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			MerkleRoots   []ifaces.Column
 		}{},
 		// Declare the by rounds/sis rounds/non-sis rounds commitments
-		CommitmentsByRounds: collection.NewVecVec[ifaces.ColID](),
-		CommitmentsByRoundsSIS:        collection.NewVecVec[ifaces.ColID](),
-		CommitmentsByRoundsNonSIS:     collection.NewVecVec[ifaces.ColID](),
+		CommitmentsByRounds:       collection.NewVecVec[ifaces.ColID](),
+		CommitmentsByRoundsSIS:    collection.NewVecVec[ifaces.ColID](),
+		CommitmentsByRoundsNonSIS: collection.NewVecVec[ifaces.ColID](),
 	}
 
 	for _, pol := range ctx.Query.Pols {
@@ -455,6 +457,8 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	} else {
 		ctx.RoundStatus = append(ctx.RoundStatus, IsSISApplied)
 		ctx.CommitmentsByRoundsSIS.AppendToInner(round, coms...)
+		// Increase the number of rows
+		ctx.CommittedRowsCountSIS += len(coms)
 	}
 
 	ctx.CommitmentsByRounds.AppendToInner(round, coms...)
@@ -898,6 +902,9 @@ func (ctx *Ctx) commitPrecomputeds() {
 
 	// Committing to the precomputed columns with SIS or without SIS.
 	if ctx.IsSISAppliedToPrecomputed() {
+		// We increase the number of committed rows for SIS rounds
+		// in this case
+		ctx.CommittedRowsCountSIS += numPrecomputeds
 		logrus.Infof("committing to precomputed columns with SIS")
 		committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
 	} else {

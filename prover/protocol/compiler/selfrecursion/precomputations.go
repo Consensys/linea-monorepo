@@ -25,13 +25,16 @@ import (
 //
 // Namely, all key shards consists of the first entries of A with
 // some offset and are zeroes everywhere else.
+
+// ToDo: Make the above explanation better and remove the
+// function Precomputations()
 func (ctx *SelfRecursionCtx) Precomputations() {
-	ctx.registersI()
-	ctx.registersAh()
+	ctx.RegistersI()
+	ctx.RegistersAh()
 }
 
 // Registers the polynomial I(X)
-func (ctx *SelfRecursionCtx) registersI() {
+func (ctx *SelfRecursionCtx) RegistersI() {
 	nBColEncoded := ctx.VortexCtx.NumEncodedCols()
 	i := make([]field.Element, nBColEncoded)
 	for k := range i {
@@ -42,21 +45,24 @@ func (ctx *SelfRecursionCtx) registersI() {
 
 // Registers the key shards, since some rounds are dried, some of the
 // of the entries are nil
-func (ctx *SelfRecursionCtx) registersAh() {
-	ahLength := ctx.VortexCtx.CommitmentsByRounds.Len()
-	// Consider the precomputed columns
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
+func (ctx *SelfRecursionCtx) RegistersAh() {
+	// We need the length of total number of SIS rounds
+	ahLength := ctx.VortexCtx.CommitmentsByRoundsSIS.Len()
+	// Consider the precomputed columns.
+	// We increase ahLength only if SIS is applied to 
+	// the precomputed columns.
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() && ctx.VortexCtx.IsSISAppliedToPrecomputed(){
 		ahLength += 1
 	}
 	ah := make([]ifaces.Column, ahLength)
 
-	// Tracks the number of rows already committed as we arrive in this
+	// Tracks the number of rows already committed with SIS as we arrive in this
 	// round
-	maxSize := utils.NextPowerOfTwo(ctx.VortexCtx.CommittedRowsCount)
+	maxSize := utils.NextPowerOfTwo(ctx.VortexCtx.CommittedRowsCountSIS)
 	roundStartAt := 0
 
 	// Consider the precomputed columns
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() && ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		numPrecomputeds := len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
 
 		// Sanity-check : if coms in precomputeds have length zero then the
@@ -77,7 +83,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 		// then the preexisting precomputed key is reused.
 		ah[0] = ctx.comp.InsertPrecomputed(
 			ctx.ahName(ctx.SisKey(), roundStartAt, numPrecomputeds, maxSize),
-			FlattenedKeyChunk(ctx.SisKey(), roundStartAt, numPrecomputeds, maxSize),
+			flattenedKeyChunk(ctx.SisKey(), roundStartAt, numPrecomputeds, maxSize),
 		)
 
 		// And update the value of the start
@@ -85,11 +91,11 @@ func (ctx *SelfRecursionCtx) registersAh() {
 	}
 	// Offset for the precomputed polys
 	precompOffset := 0
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() && ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		precompOffset += 1
 	}
 
-	for i, comsInRoundsI := range ctx.VortexCtx.CommitmentsByRounds.Inner() {
+	for i, comsInRoundsI := range ctx.VortexCtx.CommitmentsByRoundsSIS.Inner() {
 
 		// Sanity-check : if coms in rounds has length zero then the
 		// associated Dh should be nil. That happens when the examinated round
@@ -116,7 +122,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 		// then the preexisting precomputed key is reused).
 		ah[i+precompOffset] = ctx.comp.InsertPrecomputed(
 			ctx.ahName(ctx.SisKey(), roundStartAt, len(comsInRoundsI), maxSize),
-			FlattenedKeyChunk(ctx.SisKey(), roundStartAt, len(comsInRoundsI), maxSize),
+			flattenedKeyChunk(ctx.SisKey(), roundStartAt, len(comsInRoundsI), maxSize),
 		)
 
 		// And update the value of the start
@@ -128,6 +134,8 @@ func (ctx *SelfRecursionCtx) registersAh() {
 	// It's cleaner for us to have len(dH) == len(aH), so we enforces that
 	// by `nil` appending the two slices so that they have the same size at
 	// the end
+	// Todo: to check if the below code needs modification
+	// for the optional SIS hash feature.
 	for len(ctx.Columns.Ah) < len(ctx.Columns.Rooth) {
 		ctx.Columns.Ah = append(ctx.Columns.Ah, nil)
 	}
@@ -143,7 +151,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 }
 
 // Returns the laid out keys
-func FlattenedKeyChunk(key *ringsis.Key, start, length, maxSize int) smartvectors.SmartVector {
+func flattenedKeyChunk(key *ringsis.Key, start, length, maxSize int) smartvectors.SmartVector {
 
 	// Sanity-check : the chunkNo can't be off-bound
 	if maxSize < start+length {
@@ -151,7 +159,7 @@ func FlattenedKeyChunk(key *ringsis.Key, start, length, maxSize int) smartvector
 	}
 
 	// Case for the last chunk
-	FlattenedKey := key.FlattenedKey()
+	flattenedKey := key.FlattenedKey()
 	res := make([]field.Element, maxSize*key.NumLimbs())
 
 	// Scales the start and the length according to how many limbs
@@ -159,6 +167,6 @@ func FlattenedKeyChunk(key *ringsis.Key, start, length, maxSize int) smartvector
 	startAt := start * key.NumLimbs()
 	numToWrite := length * key.NumLimbs()
 
-	copy(res[startAt:], FlattenedKey[:numToWrite])
+	copy(res[startAt:], flattenedKey[:numToWrite])
 	return smartvectors.NewRegular(res)
 }
