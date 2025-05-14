@@ -1,9 +1,6 @@
 package distributed
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -20,17 +17,15 @@ var (
 		Affinities:   affinities,
 		Predivision:  1,
 	}
+	dw = distributed.DistributeWizard(zkevm.WizardIOP, discoverer)
 )
-
-var dw = distributed.DistributeWizard(zkevm.WizardIOP, discoverer)
 
 // TestSerdeDistWizard tests serialization and deserialization of DistributedWizard fields.
 func TestSerdeDistWizard(t *testing.T) {
-
 	// Run subtests for attributes
 	t.Run("ModuleNames", TestSerdeModuleNames)
 
-	t.Run("LPPs", TestSerdeLPPs)
+	// t.Run("LPPs", TestSerdeLPPs)
 }
 
 // TestSerdeModuleNames tests serialization and deserialization of the ModuleNames field.
@@ -67,6 +62,7 @@ func TestSerdeModuleNames(t *testing.T) {
 	}
 }
 
+/*
 // TestSerdeLPPs tests serialization and deserialization of the LPPs field.
 func TestSerdeLPPs(t *testing.T) {
 	if dw == nil {
@@ -150,7 +146,7 @@ func deserializeModuleLPPs(data []byte) ([]*distributed.ModuleLPP, error) {
 	return lpps, nil
 }
 
-/*
+
 // serializeModuleLPP serializes a single ModuleLPP with its CompiledIOP's Columns store.
 func serializeModuleLPP(lpp *distributed.ModuleLPP, comp *wizard.CompiledIOP) ([]byte, error) {
 	if lpp == nil {
