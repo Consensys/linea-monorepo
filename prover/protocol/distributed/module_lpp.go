@@ -280,6 +280,14 @@ func (m *ModuleLPP) ModuleNames() []ModuleName {
 	return res
 }
 
+func (m *ModuleLPP) SetModuleTranslatorIOP(comp *wizard.CompiledIOP) {
+	m.moduleTranslator.Wiop = comp
+}
+
+func (m *ModuleLPP) GetModuleTranslator() moduleTranslator {
+	return m.moduleTranslator
+}
+
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
 // the provided [ModuleWitness] argument.
 func (m *ModuleLPP) GetMainProverStep(witness *ModuleWitnessLPP) wizard.MainProverStep {

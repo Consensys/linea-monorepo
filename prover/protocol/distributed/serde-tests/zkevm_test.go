@@ -27,26 +27,26 @@ func serializeValue(value interface{}) ([]byte, error) {
 	return serializedData, nil
 }
 
-func TestZKEVM(t *testing.T) {
+func TestSerdeZKEVM(t *testing.T) {
 	z := distributed.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
 
 	// Run existing subtests for attributes
-	t.Run("Arithmetization", TestArithmetization)
-	t.Run("Sha2", TestSha2)
-	t.Run("StateManager", TestStateManager)
-	t.Run("CompiledIOP", TestCompiledIOP)
-	t.Run("Keccak", TestKeccak)
-	t.Run("Ecadd", TestEcadd)
-	t.Run("Ecmul", TestEcmul)
-	t.Run("ECDSA", TestECDSA)
-	t.Run("Modexp", TestModexp)
-	t.Run("Ecpair", TestEcpair)
+	t.Run("Arithmetization", TestSerdeArithmetization)
+	t.Run("Sha2", TestSerdeSha2)
+	t.Run("StateManager", TestSerdeStateManager)
+	t.Run("CompiledIOP", TestSerdeCompiledIOP)
+	t.Run("Keccak", TestSerdeKeccak)
+	t.Run("Ecadd", TestSerdeEcadd)
+	t.Run("Ecmul", TestSerdeEcmul)
+	t.Run("ECDSA", TestSerdeECDSA)
+	t.Run("Modexp", TestSerdeModexp)
+	t.Run("Ecpair", TestSerdeEcpair)
 }
 
-func TestModexp(t *testing.T) {
+func TestSerdeModexp(t *testing.T) {
 	z := distributed.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
@@ -80,7 +80,7 @@ func TestModexp(t *testing.T) {
 	}
 }
 
-func TestECDSA(t *testing.T) {
+func TestSerdeECDSA(t *testing.T) {
 	z := distributed.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
@@ -114,7 +114,7 @@ func TestECDSA(t *testing.T) {
 	}
 }
 
-func TestEcadd(t *testing.T) {
+func TestSerdeEcadd(t *testing.T) {
 	z := distributed.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
@@ -148,7 +148,7 @@ func TestEcadd(t *testing.T) {
 	}
 }
 
-func TestEcmul(t *testing.T) {
+func TestSerdeEcmul(t *testing.T) {
 	z := distributed.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
@@ -182,7 +182,7 @@ func TestEcmul(t *testing.T) {
 	}
 }
 
-func TestEcpair(t *testing.T) {
+func TestSerdeEcpair(t *testing.T) {
 	z := distributed.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
@@ -217,7 +217,7 @@ func TestEcpair(t *testing.T) {
 }
 
 // TestArithmetization tests serialization and deserialization of the Arithmetization field.
-func TestArithmetization(t *testing.T) {
+func TestSerdeArithmetization(t *testing.T) {
 	z := distributed.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
@@ -252,7 +252,7 @@ func TestArithmetization(t *testing.T) {
 }
 
 // TestKeccak tests serialization and deserialization of the Keccak field.
-func TestKeccak(t *testing.T) {
+func TestSerdeKeccak(t *testing.T) {
 	z := distributed.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
@@ -287,7 +287,7 @@ func TestKeccak(t *testing.T) {
 }
 
 // TestSha2 tests serialization and deserialization of the Sha2 field.
-func TestSha2(t *testing.T) {
+func TestSerdeSha2(t *testing.T) {
 	z := distributed.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
@@ -322,7 +322,7 @@ func TestSha2(t *testing.T) {
 }
 
 // TestCompiledIOP tests serialization and deserialization of the WizardIOP field.
-func TestCompiledIOP(t *testing.T) {
+func TestSerdeCompiledIOP(t *testing.T) {
 	z := distributed.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
@@ -417,7 +417,7 @@ func TestCompiledIOP(t *testing.T) {
 }
 
 // TestStateManager tests serialization and deserialization of the StateManager field.
-func TestStateManager(t *testing.T) {
+func TestSerdeStateManager(t *testing.T) {
 	z := distributed.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")

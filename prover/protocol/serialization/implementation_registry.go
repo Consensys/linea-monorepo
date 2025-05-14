@@ -286,12 +286,38 @@ func getPkgPathAndTypeName(x any) string {
 	return strings.TrimPrefix(pkgPath, pkgPathPrefixToRemove) + "#" + typeName
 }
 
-// castAsString returns the string value of a [reflect.String] kind
-// [reflect.Value]. It will return an error if the value does not have the right
-// kind.
-func castAsString(v reflect.Value) (string, error) {
-	if v.Kind() != reflect.String {
-		return "", fmt.Errorf("expected a string kind value: got %q", v.String())
+// castAsString converts a reflect.Value key to a string representation.
+func castAsString(key reflect.Value) (string, error) {
+	switch key.Kind() {
+	case reflect.String:
+		return key.String(), nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return fmt.Sprintf("%d", key.Int()), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return fmt.Sprintf("%d", key.Uint()), nil
+	default:
+		return "", fmt.Errorf("unsupported key type to be cast as string: %v", key.Type().Name())
 	}
-	return v.String(), nil
+}
+
+// convertKeyToType converts a string key from serialized data to the target key type.
+func convertKeyToType(keyStr string, keyType reflect.Type) (reflect.Value, error) {
+	switch keyType.Kind() {
+	case reflect.String:
+		return reflect.ValueOf(keyStr).Convert(keyType), nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		keyInt, err := strconv.ParseInt(keyStr, 10, 64)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("cannot convert key %q to %v: %w", keyStr, keyType.Name(), err)
+		}
+		return reflect.ValueOf(keyInt).Convert(keyType), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		keyUint, err := strconv.ParseUint(keyStr, 10, 64)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("cannot convert key %q to %v: %w", keyStr, keyType.Name(), err)
+		}
+		return reflect.ValueOf(keyUint).Convert(keyType), nil
+	default:
+		return reflect.Value{}, fmt.Errorf("unsupported map key type: %v", keyType.Name())
+	}
 }

@@ -194,33 +194,6 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	return serializeAnyWithCborPkg(raw)
 }
 
-func serializeMap(v reflect.Value, mode Mode) (json.RawMessage, error) {
-	keys := v.MapKeys()
-	keyStrings := make([]string, 0, len(keys))
-	keyMap := make(map[string]reflect.Value, len(keys))
-
-	for _, k := range keys {
-		keyString, err := castAsString(k)
-		if err != nil {
-			return nil, fmt.Errorf("invalid map key type %q: %w", v.Type().Key().String(), err)
-		}
-		keyStrings = append(keyStrings, keyString)
-		keyMap[keyString] = k
-	}
-	sort.Strings(keyStrings)
-
-	raw := make(map[string]json.RawMessage, len(keys))
-	for _, keyString := range keyStrings {
-		k := keyMap[keyString]
-		r, err := SerializeValue(v.MapIndex(k), mode)
-		if err != nil {
-			return nil, fmt.Errorf("could not serialize map key %q: %w", keyString, err)
-		}
-		raw[keyString] = r
-	}
-	return serializeAnyWithCborPkg(raw)
-}
-
 func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	typeOfV := v.Type()
 
@@ -263,6 +236,34 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 			return nil, fmt.Errorf("could not serialize struct field %v.%v: %w", typeOfV.String(), f.rawName, err)
 		}
 		raw[f.rawName] = r
+	}
+	return serializeAnyWithCborPkg(raw)
+}
+
+// serializeMap serializes a map to CBOR-encoded data.
+func serializeMap(v reflect.Value, mode Mode) (json.RawMessage, error) {
+	keys := v.MapKeys()
+	keyStrings := make([]string, 0, len(keys))
+	keyMap := make(map[string]reflect.Value, len(keys))
+
+	for _, k := range keys {
+		keyString, err := castAsString(k)
+		if err != nil {
+			return nil, fmt.Errorf("invalid map key type %q: %w", v.Type().Key().Name(), err)
+		}
+		keyStrings = append(keyStrings, keyString)
+		keyMap[keyString] = k
+	}
+	sort.Strings(keyStrings)
+
+	raw := make(map[string]json.RawMessage, len(keys))
+	for _, keyString := range keyStrings {
+		k := keyMap[keyString]
+		r, err := SerializeValue(v.MapIndex(k), mode)
+		if err != nil {
+			return nil, fmt.Errorf("could not serialize map key %q: %w", keyString, err)
+		}
+		raw[keyString] = r
 	}
 	return serializeAnyWithCborPkg(raw)
 }
@@ -313,25 +314,30 @@ func deserializeArrayOrSlice(data json.RawMessage, mode Mode, t reflect.Type, co
 	return v, nil
 }
 
+// deserializeMap deserializes a map from CBOR-encoded data, supporting non-string keys.
 func deserializeMap(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
-	keyType := t.Key()
-	if keyType.Kind() != reflect.String {
-		return reflect.Value{}, fmt.Errorf("cannot deserialize a map with non-string keys: %q", t.Name())
-	}
-
 	var raw map[string]json.RawMessage
 	if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
 		return reflect.Value{}, fmt.Errorf("failed to deserialize to %q: %w", t.Name(), err)
 	}
 
+	keyType := t.Key()
 	v := reflect.MakeMap(t)
 	valueType := t.Elem()
+
 	for keyRaw, valRaw := range raw {
+		// Convert the string key to the target key type
+		key, err := convertKeyToType(keyRaw, keyType)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("failed to convert map key %q to type %v: %w", keyRaw, keyType.Name(), err)
+		}
+
+		// Deserialize the value
 		val, err := DeserializeValue(valRaw, mode, valueType, comp)
 		if err != nil {
 			return reflect.Value{}, fmt.Errorf("failed to deserialize map field %v of type %v: %w", keyRaw, valueType.Name(), err)
 		}
-		key := reflect.ValueOf(keyRaw).Convert(keyType)
+
 		v.SetMapIndex(key, val)
 	}
 	return v, nil
