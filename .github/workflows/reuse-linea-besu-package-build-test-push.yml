@@ -30,18 +30,6 @@ jobs:
       expected_traces_api_version: ${{ steps.assemble.outputs.tracer_plugin_version }}
       dockerimage: ${{ steps.assemble.outputs.dockerimage }}
     steps:
-      - name: echo github variables
-        run: |
-          echo "github.run_id: ${{ github.run_id }}"
-          echo "github.workflow: ${{ github.workflow }}"
-          echo "github.ref: ${{ github.ref }}"
-          echo "github.ref_type: ${{ github.ref_type }}"
-          echo "github.ref_name: ${{ github.ref_name }}"
-          echo "github.event_name: ${{ github.event_name }}"
-          echo "rev-parse HEAD: $(git rev-parse --short HEAD)"
-          echo "github.sha: ${{ github.sha }}"
-          echo "rev-parse GITHUB_SHA: $(git rev-parse --short "$GITHUB_SHA")"
-      
       - name: checkout
         uses: actions/checkout@v4
 
@@ -91,7 +79,7 @@ jobs:
 
   run-test:
     needs: [ build-and-upload-artifact ]
-    if: ${{ !cancelled() && inputs.run_test }}
+    if: ${{ inputs.run_test }}
     concurrency:
       group: run-test-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
@@ -101,7 +89,7 @@ jobs:
 
   run-e2e-tests:
     needs: [ build-and-upload-artifact ]
-    if: ${{ !cancelled() && inputs.run_e2e_test }}
+    if: ${{ inputs.run_e2e_test }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' || github.event_name == 'workflow_dispatch' }}
