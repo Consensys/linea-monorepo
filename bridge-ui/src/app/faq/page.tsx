@@ -18,19 +18,19 @@ const faqList = [
   },
   {
     title: "Why do I need to claim my funds?",
-    content: `<p>Manual claiming is required for all L2 → L1 transfers, and in some other circumstances detailed in our <a rel="noopener noreferrer" target="_blank" href="https://docs.linea.build/get-started/how-to/bridge">documentation</a>. This is because the “postman” service that enables automatic claiming is not feasible to implement for all circumstances.</p>`,
+    content: `<p>Manual claiming is required for all L2 → L1 transfers, and in some other circumstances detailed in our <a rel="noopener noreferrer" target="_blank" href="https://docs.linea.build/get-started/how-to/bridge">documentation</a>.</p>`,
   },
   {
     title: "I need to claim a transaction. What do I do?",
-    content: `<div><p>If your transfer requires manual claiming, you need to return to the native bridge and make an additional transaction. It typically takes around 20 minutes (two Ethereum epochs) before you can claim a deposit; withdrawals from Linea can take much longer, and vary in duration.</p><p>To claim, click the receipt icon in the top-right of the widget. If your transaction is ready, it will be marked as “Ready to claim”. Click the transaction, and then “Claim” to prompt the claiming transaction in your wallet. Once it’s complete, the funds will be in your wallet.</p></div>`,
+    content: `<div><p>If your transfer requires manual claiming, you need to return to the native bridge and make an additional transaction. It typically takes around 20 minutes before you can claim a deposit; withdrawals from Linea can take longer.</p><p>To claim, click the receipt icon in the top-right of the widget. If your transaction is ready, it will be marked as “Ready to claim”. Click the transaction, and then “Claim” to prompt the claiming transaction in your wallet. Once it’s complete, the funds will be in your wallet.</p></div>`,
   },
   {
     title: "What fees will I pay?",
-    content: `<div><p>Linea does not charge fees for using the native bridge. However, you will need to pay gas fees for transactions. Gas fees vary according to network activity, so we cannot accurately predict how much you'll pay. The bulk of the cost will be for interacting with Ethereum Mainnet; Linea's gas fees are considerably cheaper.</p><p>If you use manual claiming, you pay gas fees for the bridge transaction and then gas fees for the claim transaction.</p><p>For automatic claiming, you pay gas fees for your initial bridge transaction and then a fee to cover the gas costs of the postman executing the claim on your behalf.</p></div>`,
+    content: `<div><p>Linea does not charge fees for using the native bridge. However, you will still need to pay gas fees on Ethereum when bridging from Ethereum to Linea.</p><p>In the default automatic claiming flow from Ethereum to Linea, we cover the gas fees on the Linea side, which means you only have to pay gas on Ethereum and nothing more.</p><p>If you choose manual claiming, you will need to pay gas fees on both Ethereum and Linea.</p></div>`,
   },
   {
     title: "Why can I only select Linea Mainnet and Ethereum Mainnet?",
-    content: `<div><p>The native bridge is designed for transacting between layer 1 (Ethereum Mainnet) and layer 2 (Linea Mainnet) only.</p><p>If you want to bridge to other chains, switch to the “All Bridges” tab, or head to the  <a href="https://linea.build/apps" target="_blank" rel="noopener noreferrer">dapp directory</a> to find a third-party bridge.</p></div>`,
+    content: `<div><p>The native bridge is designed for transacting between layer 1 (Ethereum Mainnet) and layer 2 (Linea Mainnet) only.</p><p>If you want to bridge to other chains, switch to the “Bridge Aggregator” tab.</p></div>`,
   },
   {
     title: "Why can't I see the token I want to bridge?",
