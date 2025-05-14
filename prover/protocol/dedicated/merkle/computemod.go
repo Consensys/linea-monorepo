@@ -191,7 +191,7 @@ func (cm *ComputeMod) defineIsInactive() {
 	cm.Cols.IsInactive = cm.comp.InsertPrecomputed(
 		cm.colname("IS_INACTIVE"),
 		smartvectors.RightPadded(
-			vector.Repeat(field.Zero(), activeSize),
+			vector.Constant(field.Zero(), activeSize),
 			field.One(),
 			cm.NumRows,
 		),

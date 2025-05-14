@@ -59,7 +59,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 
 	numRootsPadded := len(rootHashVecParts)
 
-	rootHashVecParts = utils.RepeatSlice(
+	rootHashVecParts = utils.ConstantSlice(
 		rootHashVecParts,
 		totalRoots/len(rootHashVecParts),
 	)
@@ -160,7 +160,7 @@ func (ctx SelfRecursionCtx) GluePositions() {
 	// of merklePos (otherwise, we can't do the fixed permutation
 	// check).
 	positionVec = verifiercol.NewFromAccessors(
-		utils.RepeatSlice(
+		utils.ConstantSlice(
 			positionVec.(verifiercol.FromAccessors).Accessors,
 			merklePos.Size()/sizePositionVec,
 		),

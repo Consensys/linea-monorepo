@@ -339,13 +339,13 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 			w := meta.GetColAssignmentGnark(run)
 			evalInputs[k] = w
 		case coin.Info:
-			evalInputs[k] = gnarkutil.RepeatedVariable(run.GetRandomCoinField(meta.Name), cs.DomainSize)
+			evalInputs[k] = gnarkutil.ConstantedVariable(run.GetRandomCoinField(meta.Name), cs.DomainSize)
 		case variables.X:
 			evalInputs[k] = meta.GnarkEvalNoCoset(cs.DomainSize)
 		case variables.PeriodicSample:
 			evalInputs[k] = meta.GnarkEvalNoCoset(cs.DomainSize)
 		case ifaces.Accessor:
-			evalInputs[k] = gnarkutil.RepeatedVariable(meta.GetFrontendVariable(api, run), cs.DomainSize)
+			evalInputs[k] = gnarkutil.ConstantedVariable(meta.GetFrontendVariable(api, run), cs.DomainSize)
 		default:
 			utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), cs.ID)
 		}

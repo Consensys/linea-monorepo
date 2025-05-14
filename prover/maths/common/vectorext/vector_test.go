@@ -2,10 +2,11 @@ package vectorext_test
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,6 +18,7 @@ func TestVectors(t *testing.T) {
 		// a, b and x are very common vectors in all the tests
 		a = vectorext.ForTestFromPairs(1, 2, 3, 4, 5, 6)
 		b = vectorext.ForTestFromPairs(3, 4, 5, 6, 7, 8)
+		var c int
 		x = fext.NewElement(2, 0)
 
 		// aBAndXMustNotChange asserts that a and b did not change as this is
@@ -95,9 +97,9 @@ func TestVectors(t *testing.T) {
 		aBAndXMustNotChange(t)
 	})
 
-	t.Run("Repeat", func(t *testing.T) {
+	t.Run("Constant", func(t *testing.T) {
 		y := fext.NewElement(1, 2)
-		c := vectorext.Repeat(y, 4)
+		c := vectorext.Constant(y, 4)
 		assert.Equal(t, vectorext.ForTestFromPairs(1, 2, 1, 2, 1, 2, 1, 2), c)
 		aBAndXMustNotChange(t)
 	})

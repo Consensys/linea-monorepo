@@ -134,7 +134,7 @@ func valRCBase2(maxNumKeccakf int) smartvectors.SmartVector {
 
 // Returns the values of the UsePrevAIota
 func valUsePrevAIota(maxNumKeccakf int) smartvectors.SmartVector {
-	res := vector.Repeat(field.One(), maxNumKeccakf*keccak.NumRound)
+	res := vector.Constant(field.One(), maxNumKeccakf*keccak.NumRound)
 	for i := 0; i < maxNumKeccakf; i++ {
 		res[i*keccak.NumRound] = field.Zero()
 	}

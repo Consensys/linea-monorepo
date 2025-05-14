@@ -156,13 +156,13 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 		tcase.expectedValue = NewConstantExt(resVal, gen.fullLen)
 	case maxType == windowT:
 		tcase.expectedValue = NewPaddedCircularWindowExt(
-			vectorext.Repeat(resVal, winMaxStop-winMinStart),
+			vectorext.Constant(resVal, winMaxStop-winMinStart),
 			resVal,
 			normalize(winMinStart, -gen.windowMustStartAfter, gen.fullLen),
 			gen.fullLen,
 		)
 	case maxType == RegularExtT || maxType == RotatedExtT:
-		tcase.expectedValue = NewRegularExt(vectorext.Repeat(resVal, gen.fullLen))
+		tcase.expectedValue = NewRegularExt(vectorext.Constant(resVal, gen.fullLen))
 	}
 
 	return tcase
@@ -228,13 +228,13 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 		tcase.expectedValue = NewConstantExt(resVal, gen.fullLen)
 	case maxType == windowT:
 		tcase.expectedValue = NewPaddedCircularWindowExt(
-			vectorext.Repeat(resVal, winMaxStop-winMinStart),
+			vectorext.Constant(resVal, winMaxStop-winMinStart),
 			resVal,
 			normalize(winMinStart, -gen.windowMustStartAfter, gen.fullLen),
 			gen.fullLen,
 		)
 	case maxType == RegularExtT || maxType == RotatedExtT:
-		tcase.expectedValue = NewRegularExt(vectorext.Repeat(resVal, gen.fullLen))
+		tcase.expectedValue = NewRegularExt(vectorext.Constant(resVal, gen.fullLen))
 	}
 
 	return tcase
@@ -296,7 +296,7 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 	case maxType == constantT:
 		tcase.expectedValue = NewConstantExt(resVal, gen.fullLen)
 	case maxType == RegularExtT || maxType == windowT || maxType == RotatedExtT:
-		tcase.expectedValue = NewRegularExt(vectorext.Repeat(resVal, gen.fullLen))
+		tcase.expectedValue = NewRegularExt(vectorext.Constant(resVal, gen.fullLen))
 	}
 
 	return tcase
@@ -323,11 +323,11 @@ func (gen *testCaseGen) genWindow(val, paddingVal fext.Element) *PaddedCircularW
 	if winLen == 0 {
 		winLen = 1
 	}
-	return NewPaddedCircularWindowExt(vectorext.Repeat(val, winLen), paddingVal, start, gen.fullLen)
+	return NewPaddedCircularWindowExt(vectorext.Constant(val, winLen), paddingVal, start, gen.fullLen)
 }
 
 func (gen *testCaseGen) genRegularExt(val fext.Element) *RegularExt {
-	return NewRegularExt(vectorext.Repeat(val, gen.fullLen))
+	return NewRegularExt(vectorext.Constant(val, gen.fullLen))
 }
 
 func (gen *testCaseGen) genRotatedExt(val fext.Element) *RotatedExt {

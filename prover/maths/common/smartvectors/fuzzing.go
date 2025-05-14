@@ -154,13 +154,13 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 		tcase.expectedValue = NewConstant(resVal, gen.fullLen)
 	case maxType == windowT:
 		tcase.expectedValue = NewPaddedCircularWindow(
-			vector.Repeat(resVal, winMaxStop-winMinStart),
+			vector.Constant(resVal, winMaxStop-winMinStart),
 			resVal,
 			normalize(winMinStart, -gen.windowMustStartAfter, gen.fullLen),
 			gen.fullLen,
 		)
 	case maxType == regularT || maxType == rotatedT:
-		tcase.expectedValue = NewRegular(vector.Repeat(resVal, gen.fullLen))
+		tcase.expectedValue = NewRegular(vector.Constant(resVal, gen.fullLen))
 	}
 
 	return tcase
@@ -226,13 +226,13 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 		tcase.expectedValue = NewConstant(resVal, gen.fullLen)
 	case maxType == windowT:
 		tcase.expectedValue = NewPaddedCircularWindow(
-			vector.Repeat(resVal, winMaxStop-winMinStart),
+			vector.Constant(resVal, winMaxStop-winMinStart),
 			resVal,
 			normalize(winMinStart, -gen.windowMustStartAfter, gen.fullLen),
 			gen.fullLen,
 		)
 	case maxType == regularT || maxType == rotatedT:
-		tcase.expectedValue = NewRegular(vector.Repeat(resVal, gen.fullLen))
+		tcase.expectedValue = NewRegular(vector.Constant(resVal, gen.fullLen))
 	}
 
 	return tcase
@@ -295,7 +295,7 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 	case maxType == constantT:
 		tcase.expectedValue = NewConstant(resVal, gen.fullLen)
 	case maxType == regularT || maxType == windowT || maxType == rotatedT:
-		tcase.expectedValue = NewRegular(vector.Repeat(resVal, gen.fullLen))
+		tcase.expectedValue = NewRegular(vector.Constant(resVal, gen.fullLen))
 	}
 
 	return tcase
@@ -322,11 +322,11 @@ func (gen *testCaseGen) genWindow(val, paddingVal field.Element) *PaddedCircular
 	if winLen == 0 {
 		winLen = 1
 	}
-	return NewPaddedCircularWindow(vector.Repeat(val, winLen), paddingVal, start, gen.fullLen)
+	return NewPaddedCircularWindow(vector.Constant(val, winLen), paddingVal, start, gen.fullLen)
 }
 
 func (gen *testCaseGen) genRegular(val field.Element) *Regular {
-	return NewRegular(vector.Repeat(val, gen.fullLen))
+	return NewRegular(vector.Constant(val, gen.fullLen))
 }
 
 func (gen *testCaseGen) genRotated(val field.Element) *Rotated {

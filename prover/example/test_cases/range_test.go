@@ -15,7 +15,7 @@ func defineRange(build *wizard.Builder) {
 	// P2 := build.RegisterCommit(P2, 8) // overshadows P2
 	// P3 := build.RegisterCommit(P3, 8) // overshadows P3
 	build.Range(RANGE1, P1, 16)
-	// build.Range(RANGE2, P2.Repeat(2), 16)
+	// build.Range(RANGE2, P2.Constant(2), 16)
 	// build.Range(RANGE3, commitment.Interleave(P1, P3), 32)
 	// build.Range(RANGE4, P3.Shift(1), 16)
 }

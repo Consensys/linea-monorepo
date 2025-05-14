@@ -2,10 +2,11 @@ package smartvectorsext
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )

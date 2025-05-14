@@ -22,17 +22,17 @@ func TestConcatTinyColRange(t *testing.T) {
 
 	testcases := []struct {
 		NumCols, Split int
-		Shift, Repeat  int
+		Shift, Constant  int
 	}{
-		{NumCols: 16, Split: 8, Shift: 1, Repeat: 0},
-		{NumCols: 16, Split: 8, Shift: 0, Repeat: 2},
-		{NumCols: 16, Split: 8, Shift: 1, Repeat: 2},
-		{NumCols: 16, Split: 16, Shift: 1, Repeat: 0},
-		{NumCols: 16, Split: 16, Shift: 0, Repeat: 2},
-		{NumCols: 16, Split: 16, Shift: 1, Repeat: 2},
-		{NumCols: 16, Split: 32, Shift: 1, Repeat: 0},
-		{NumCols: 16, Split: 32, Shift: 0, Repeat: 2},
-		{NumCols: 16, Split: 32, Shift: 1, Repeat: 2},
+		{NumCols: 16, Split: 8, Shift: 1, Constant: 0},
+		{NumCols: 16, Split: 8, Shift: 0, Constant: 2},
+		{NumCols: 16, Split: 8, Shift: 1, Constant: 2},
+		{NumCols: 16, Split: 16, Shift: 1, Constant: 0},
+		{NumCols: 16, Split: 16, Shift: 0, Constant: 2},
+		{NumCols: 16, Split: 16, Shift: 1, Constant: 2},
+		{NumCols: 16, Split: 32, Shift: 1, Constant: 0},
+		{NumCols: 16, Split: 32, Shift: 0, Constant: 2},
+		{NumCols: 16, Split: 32, Shift: 1, Constant: 2},
 	}
 
 	for _, tc := range testcases {
@@ -106,17 +106,17 @@ func TestConcatTinyColWithPaddingRange(t *testing.T) {
 
 	testcases := []struct {
 		NumCols, PaddedSize, Split int
-		Shift, Repeat              int
+		Shift, Constant              int
 	}{
-		{NumCols: 12, PaddedSize: 16, Split: 8, Shift: 1, Repeat: 0},
-		{NumCols: 12, PaddedSize: 16, Split: 8, Shift: 0, Repeat: 2},
-		{NumCols: 12, PaddedSize: 16, Split: 8, Shift: 1, Repeat: 2},
-		{NumCols: 12, PaddedSize: 16, Split: 16, Shift: 1, Repeat: 0},
-		{NumCols: 12, PaddedSize: 16, Split: 16, Shift: 0, Repeat: 2},
-		{NumCols: 12, PaddedSize: 16, Split: 16, Shift: 1, Repeat: 2},
-		{NumCols: 12, PaddedSize: 16, Split: 32, Shift: 1, Repeat: 0},
-		{NumCols: 12, PaddedSize: 16, Split: 32, Shift: 0, Repeat: 2},
-		{NumCols: 12, PaddedSize: 16, Split: 32, Shift: 1, Repeat: 2},
+		{NumCols: 12, PaddedSize: 16, Split: 8, Shift: 1, Constant: 0},
+		{NumCols: 12, PaddedSize: 16, Split: 8, Shift: 0, Constant: 2},
+		{NumCols: 12, PaddedSize: 16, Split: 8, Shift: 1, Constant: 2},
+		{NumCols: 12, PaddedSize: 16, Split: 16, Shift: 1, Constant: 0},
+		{NumCols: 12, PaddedSize: 16, Split: 16, Shift: 0, Constant: 2},
+		{NumCols: 12, PaddedSize: 16, Split: 16, Shift: 1, Constant: 2},
+		{NumCols: 12, PaddedSize: 16, Split: 32, Shift: 1, Constant: 0},
+		{NumCols: 12, PaddedSize: 16, Split: 32, Shift: 0, Constant: 2},
+		{NumCols: 12, PaddedSize: 16, Split: 32, Shift: 1, Constant: 2},
 	}
 
 	for _, tc := range testcases {

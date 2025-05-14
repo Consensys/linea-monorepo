@@ -359,7 +359,7 @@ func (ctx *stickContext) compileArithmeticConstraints() {
 			ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// detect if we can compile the expression
-			if report.hasCompiledRepeated || report.hasCompiledInterleaved || !report.allColumnCompiled {
+			if report.hasCompiledConstanted || report.hasCompiledInterleaved || !report.allColumnCompiled {
 				continue
 			}
 
@@ -381,7 +381,7 @@ func (ctx *stickContext) compileArithmeticConstraints() {
 			ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// detect if we can compile the expression
-			if report.hasCompiledRepeated || report.hasCompiledInterleaved || !report.allColumnCompiled {
+			if report.hasCompiledConstanted || report.hasCompiledInterleaved || !report.allColumnCompiled {
 				continue
 			}
 
@@ -465,7 +465,7 @@ func (ctx *stickContext) replacedExpression(
 ) {
 
 	// we assume the expression has already been checked for compilability
-	if !r.allColumnCompiled || r.hasCompiledInterleaved || r.hasCompiledRepeated {
+	if !r.allColumnCompiled || r.hasCompiledInterleaved || r.hasCompiledConstanted {
 		panic("the expression has not been checked for compilability")
 	}
 
@@ -521,7 +521,7 @@ type exprAnalysisReport struct {
 	// we transition completely to the log-derivative lookups. This
 	// will not be necessary anymore as we will be able to remove
 	// support for repeated and interleaved columns completely.
-	hasCompiledRepeated bool
+	hasCompiledConstanted bool
 	// true if the expression contains a compiled column
 	allColumnCompiled bool
 	// true if any of the column is compiled
@@ -558,7 +558,7 @@ func analyzeExpr(
 
 			// check if the column has a repeat
 			if isCompiled && len(rootParents) == 1 && parent.Size() < m.Size() {
-				r.hasCompiledRepeated = true
+				r.hasCompiledConstanted = true
 			}
 		}
 	}

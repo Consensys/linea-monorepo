@@ -199,7 +199,7 @@ func (b *blockBaseConversion) csBaseConversion(comp *wizard.CompiledIOP) {
 
 // assign column isFromFirstBlock
 func (b *blockBaseConversion) assignIsFromFirstBlock(run *wizard.ProverRuntime) {
-	ones := vector.Repeat(field.One(), generic.KeccakUsecase.NbOfLanesPerBlock())
+	ones := vector.Constant(field.One(), generic.KeccakUsecase.NbOfLanesPerBlock())
 	var (
 		size                 = b.size
 		isFirstLaneOfNewHash = b.Inputs.IsFirstLaneOfNewHash.GetColAssignment(run).IntoRegVecSaveAlloc()

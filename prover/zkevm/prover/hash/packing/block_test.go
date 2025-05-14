@@ -59,7 +59,7 @@ func makeTestCaseBlockModule(uc generic.HashingUsecase) (
 	prover = func(run *wizard.ProverRuntime) {
 
 		// assign isActive
-		col := vector.Repeat(field.One(), effectiveSize)
+		col := vector.Constant(field.One(), effectiveSize)
 		run.AssignColumn(isActive.GetColID(), smartvectors.RightZeroPadded(col, size))
 		// assign isFirstLaneOfHash
 		isFirst := common.NewVectorBuilder(isFirstLaneOfHash)

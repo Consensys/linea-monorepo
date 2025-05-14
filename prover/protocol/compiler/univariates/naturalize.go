@@ -31,7 +31,7 @@ Offset:
 		=>
 	P(x) = a for x = wt
 
-Repeat:
+Constant:
 
 	P(x^2) = a for x = t
 		=>

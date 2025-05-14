@@ -78,8 +78,8 @@ func TestVectors(t *testing.T) {
 		aBAndXMustNotChange(t)
 	})
 
-	t.Run("Repeat", func(t *testing.T) {
-		c := vector.Repeat(x, 5)
+	t.Run("Constant", func(t *testing.T) {
+		c := vector.Constant(x, 5)
 		assert.Equal(t, vector.ForTest(2, 2, 2, 2, 2), c)
 		aBAndXMustNotChange(t)
 	})

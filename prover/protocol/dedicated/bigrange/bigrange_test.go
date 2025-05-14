@@ -37,7 +37,7 @@ func TestBigRangeNegative(t *testing.T) {
 	assignments := []smartvectors.SmartVector{
 		smartvectors.Rand(16),
 		smartvectors.RightPadded(
-			vector.Repeat(
+			vector.Constant(
 				field.NewFromString("0x10000000000000000000000000"), 10),
 			field.Zero(),
 			16,

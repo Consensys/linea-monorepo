@@ -69,7 +69,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 		isAddress:          createCol("IS_ADDRESS"),
 		addressHiUntrimmed: createCol("ADRESSHI_UNTRIMMED"),
 		col16: comp.InsertPrecomputed(ifaces.ColIDf("ADDRESS_Col16"),
-			smartvectors.NewRegular(vector.Repeat(field.NewElement(16), size))),
+			smartvectors.NewRegular(vector.Constant(field.NewElement(16), size))),
 		isAddressHiEcRec:     comp.InsertCommit(0, ifaces.ColIDf("ISADRESS_HI_ECREC"), ecRecSize),
 		isAddressFromEcRec:   createCol("ISADRESS_FROM_ECREC"),
 		isAddressFromTxnData: createCol("ISADRESS_FROM_TXNDATA"),
@@ -260,10 +260,10 @@ func (addr *Addresses) assignMainColumns(
 		if len(hashHi) == split {
 			n = nbRowsPerTxSign
 		}
-		repeatLO := vector.Repeat(w, n)
-		repeatHi := vector.Repeat(v, n)
-		repeatTrimmedHi := vector.Repeat(u, n)
-		repeatIsTxHash := vector.Repeat(field.Zero(), n-1)
+		repeatLO := vector.Constant(w, n)
+		repeatHi := vector.Constant(v, n)
+		repeatTrimmedHi := vector.Constant(u, n)
+		repeatIsTxHash := vector.Constant(field.Zero(), n-1)
 
 		hashHi = append(hashHi, repeatHi...)
 		hashLo = append(hashLo, repeatLO...)
@@ -273,7 +273,7 @@ func (addr *Addresses) assignMainColumns(
 	}
 
 	isFromEcRec := isHash[:split]
-	isFromTxnData := vector.Repeat(field.Zero(), split)
+	isFromTxnData := vector.Constant(field.Zero(), split)
 	isFromTxnData = append(isFromTxnData, isHash[split:]...)
 
 	run.AssignColumn(addr.addressHiUntrimmed.GetColID(), smartvectors.RightZeroPadded(hashHi, size))

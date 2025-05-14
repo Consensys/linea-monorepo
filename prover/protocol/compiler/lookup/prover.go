@@ -314,7 +314,7 @@ func (z zAssignmentTask) run(run *wizard.ProverRuntime) {
 			)
 
 			if len(numeratorMetadata) == 0 {
-				numerator = vector.Repeat(field.One(), z.Size)
+				numerator = vector.Constant(field.One(), z.Size)
 			}
 
 			if len(numeratorMetadata) > 0 {

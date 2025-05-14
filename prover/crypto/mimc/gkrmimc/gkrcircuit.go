@@ -45,7 +45,7 @@ func init() {
 // the total size of the appended string is `nbDigits` characters.
 func writePaddedHex(sbb *strings.Builder, n, nbDigits int) {
 	hex := strconv.FormatInt(int64(n), 16)
-	sbb.WriteString(strings.Repeat("0", nbDigits-len(hex)))
+	sbb.WriteString(strings.Constant("0", nbDigits-len(hex)))
 	sbb.WriteString(hex)
 }
 
