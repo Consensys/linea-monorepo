@@ -1,21 +1,16 @@
 package polyext
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// EvalUnivariate evaluates a univariate polynomial `pol` given as a vector of
-// coefficients. Coefficients are for increasing degree monomials: meaning that
-// pol[0] is the constant term and pol[len(pol) - 1] is the highest degree term.
-// The evaluation is done using the Horner method.
-//
-// If the empty slice is provided, it is understood as the zero polynomial and
-// the function returns zero.
-func EvalUnivariate(pol []fext.Element, x fext.Element) fext.Element {
-	var res fext.Element
+// EvalUnivariate evalutes P := \sum_{i<n}pol[i]X^i at x.
+func EvalUnivariate(pol []extensions.E4, x extensions.E4) extensions.E4 {
+	var res extensions.E4
 	for i := len(pol) - 1; i >= 0; i-- {
 		res.Mul(&res, &x)
 		res.Add(&res, &pol[i])
@@ -23,9 +18,14 @@ func EvalUnivariate(pol []fext.Element, x fext.Element) fext.Element {
 	return res
 }
 
-func EvalUnivariateBase(pol []fext.Element, x field.Element) fext.Element {
-	wrappedX := fext.Element{x, field.Zero()}
-	return EvalUnivariate(pol, wrappedX)
+func EvalUnivariateBase(pol []extensions.E4, x koalabear.Element) extensions.E4 {
+	var res extensions.E4
+
+	for i := len(pol) - 1; i >= 0; i-- {
+		res.B0.A0.Mul(&res.B0.A0, &x)
+		res.Add(&res, &pol[i])
+	}
+	return res
 }
 
 // Mul multiplies two polynomials expressed by their coefficients using the
@@ -37,18 +37,18 @@ func EvalUnivariateBase(pol []fext.Element, x field.Element) fext.Element {
 // FFT methods should be preferred to this end.
 //
 // The empty slice is understood as the zero polynomial. If provided on either
-// side the function returns []fext.Element{}
-func Mul(a, b []fext.Element) (res []fext.Element) {
+// side the function returns []extensions.E4{}
+func Mul(a, b []extensions.E4) (res []extensions.E4) {
 
 	if len(a) == 0 || len(b) == 0 {
-		return []fext.Element{}
+		return []extensions.E4{}
 	}
 
-	res = make([]fext.Element, len(a)+len(b)-1)
+	res = make([]extensions.E4, len(a)+len(b)-1)
 
 	for i := 0; i < len(a); i++ {
 		for j := 0; j < len(b); j++ {
-			var tmp fext.Element
+			var tmp extensions.E4
 			tmp.Mul(&a[i], &b[j])
 			res[i+j].Add(&res[i+j], &tmp)
 		}
@@ -61,9 +61,9 @@ func Mul(a, b []fext.Element) (res []fext.Element) {
 // The returned slice has length = max(len(a), len(b)).
 // The empty slice is understood as the zero polynomial and if both a and b are
 // empty, the function returns the empty slice.
-func Add(a, b []fext.Element) (res []fext.Element) {
+func Add(a, b []extensions.E4) (res []extensions.E4) {
 
-	res = make([]fext.Element, utils.Max(len(a), len(b)))
+	res = make([]extensions.E4, utils.Max(len(a), len(b)))
 	copy(res, a)
 	for i := range b {
 		res[i].Add(&res[i], &b[i])
@@ -73,8 +73,8 @@ func Add(a, b []fext.Element) (res []fext.Element) {
 }
 
 // ScalarMul multiplies a polynomials in coefficient form by a scalar.
-func ScalarMul(p []fext.Element, x fext.Element) (res []fext.Element) {
-	res = make([]fext.Element, len(p))
+func ScalarMul(p []extensions.E4, x extensions.E4) (res []extensions.E4) {
+	res = make([]extensions.E4, len(p))
 	vectorext.ScalarMul(res, p, x)
 	return res
 }
@@ -84,13 +84,13 @@ func ScalarMul(p []fext.Element, x fext.Element) (res []fext.Element) {
 // schoolbook algorithm and is only relevant for small domains.
 //
 // The function panics if provided an empty domain.
-func EvaluateLagrangesAnyDomain(domain []fext.Element, x fext.Element) []fext.Element {
+func EvaluateLagrangesAnyDomain(domain []extensions.E4, x extensions.E4) []extensions.E4 {
 
 	if len(domain) == 0 {
 		utils.Panic("got provided an empty domain")
 	}
 
-	lagrange := make([]fext.Element, len(domain))
+	lagrange := make([]extensions.E4, len(domain))
 
 	for i := range domain {
 		// allocate outside of the loop to avoid memory aliasing in for loop
