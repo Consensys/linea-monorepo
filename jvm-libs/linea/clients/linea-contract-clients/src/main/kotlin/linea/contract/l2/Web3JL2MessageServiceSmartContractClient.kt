@@ -1,6 +1,6 @@
 package linea.contract.l2
 
-import linea.contract.events.ContractInitializedEvent
+import linea.contract.events.Upgraded
 import linea.domain.BlockParameter
 import linea.kotlin.encodeHex
 import linea.kotlin.toBigInteger
@@ -128,10 +128,10 @@ class Web3JL2MessageServiceSmartContractClient(
           fromBlock = BlockParameter.Tag.EARLIEST,
           toBlock = BlockParameter.Tag.LATEST,
           address = contractAddress,
-          topics = listOf(ContractInitializedEvent.topic)
+          topics = listOf(Upgraded.topic)
         ).thenApply { logs ->
           if (logs.isEmpty()) {
-            throw IllegalStateException("No contract initialized event found: contractAddress=$contractAddress")
+            throw IllegalStateException("Upgraded event not found: contractAddress=$contractAddress")
           }
           val blockNumber = logs.minByOrNull { it.blockNumber }!!.blockNumber
           deploymentBlockNumberCache.set(blockNumber)

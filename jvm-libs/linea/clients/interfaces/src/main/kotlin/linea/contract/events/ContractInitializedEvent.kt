@@ -19,3 +19,15 @@ data class ContractInitializedEvent(val version: UInt) {
     }
   }
 }
+
+/**
+ * Event emitted by ProxyAdmin when the contract implmentation address is upgraded.
+ *
+ * This event is used in Practice by contract client to when the contract was deployed
+ * and use it's block number as earlier search block parameter.
+ */
+data class Upgraded(val implementationAddress: String) {
+  companion object {
+    val topic = "0xbc7cd75a20ee27fd9adebab32041f755214dbc6bffa90cc0225b39da2e5c2d3b"
+  }
+}
