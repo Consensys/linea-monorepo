@@ -532,11 +532,12 @@ class L1DependentApp(
         } to "Blob Submission Delay Consumer"
       )
 
-      BlobSubmissionCoordinator.create(
+      val create = BlobSubmissionCoordinator.create(
         config = BlobSubmissionCoordinator.Config(
           configs.blobSubmission.dbPollingInterval.toKotlinDuration(),
           configs.blobSubmission.proofSubmissionDelay.toKotlinDuration(),
-          configs.blobSubmission.maxBlobsToSubmitPerTick.toUInt()
+          configs.blobSubmission.maxBlobsToSubmitPerTick.toUInt(),
+          configs.blobSubmission.targetBlobsToSendPerTransaction.toUInt()
         ),
         blobsRepository = blobsRepository,
         aggregationsRepository = aggregationsRepository,
@@ -547,6 +548,7 @@ class L1DependentApp(
         vertx = vertx,
         clock = Clock.System
       )
+      create
     }
   }
 
