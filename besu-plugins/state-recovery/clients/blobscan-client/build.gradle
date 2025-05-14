@@ -20,10 +20,10 @@ dependencies {
   implementation(project(':besu-plugins:state-recovery:appcore:clients-interfaces'))
   implementation("io.vertx:vertx-web-client:${libs.versions.vertx}")
 
-  testImplementation "com.github.tomakehurst:wiremock-jre8:${libs.versions.wiremock.get()}"
+  testImplementation "org.wiremock:wiremock:${libs.versions.wiremock.get()}"
   testImplementation "org.slf4j:slf4j-api:${libs.versions.slf4j.get()}"
-  testImplementation "org.apache.logging.log4j:log4j-slf4j-impl:${libs.versions.log4j}"
-  testImplementation "org.apache.logging.log4j:log4j-core:${libs.versions.log4j}"
+  testImplementation project(":jvm-libs:generic:logging")
+  testImplementation "io.github.hakky54:logcaptor:${libs.versions.logcaptor.get()}"
 }
 
 sourceSets {

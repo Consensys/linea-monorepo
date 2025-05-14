@@ -16,8 +16,6 @@ import linea.web3j.Web3jBlobExtended
 import linea.web3j.createWeb3jHttpClient
 import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.blob.ShnarfCalculatorVersion
-import net.consensys.linea.contract.Web3JL2MessageService
-import net.consensys.linea.contract.Web3JL2MessageServiceLogsClient
 import net.consensys.linea.contract.l1.GenesisStateProvider
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.FeesCalculator
@@ -37,8 +35,6 @@ import net.consensys.linea.ethereum.gaspricing.staticcap.FeeHistoryFetcherImpl
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
-import net.consensys.linea.traces.TracesCounters
-import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.zkevm.LongRunningService
 import net.consensys.zkevm.coordinator.app.config.CoordinatorConfig
@@ -46,13 +42,8 @@ import net.consensys.zkevm.coordinator.app.config.Type2StateProofProviderConfig
 import net.consensys.zkevm.coordinator.blockcreation.BatchesRepoBasedLastProvenBlockNumberProvider
 import net.consensys.zkevm.coordinator.blockcreation.BlockCreationMonitor
 import net.consensys.zkevm.coordinator.blockcreation.GethCliqueSafeBlockProvider
-import net.consensys.zkevm.coordinator.blockcreation.TracesConflationClientV2Adapter
-import net.consensys.zkevm.coordinator.blockcreation.TracesCountersClientV2Adapter
-import net.consensys.zkevm.coordinator.blockcreation.TracesCountersV1WatcherClient
-import net.consensys.zkevm.coordinator.blockcreation.TracesFilesManager
 import net.consensys.zkevm.coordinator.clients.ExecutionProverClientV2
 import net.consensys.zkevm.coordinator.clients.ShomeiClient
-import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV1
 import net.consensys.zkevm.coordinator.clients.TracesGeneratorJsonRpcClientV2
 import net.consensys.zkevm.coordinator.clients.prover.ProverClientFactory
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
@@ -152,15 +143,6 @@ class L1DependentApp(
   private val l1Web3jService = Web3jBlobExtended(HttpService(configs.l1.ethFeeHistoryEndpoint.toString()))
 
   private val l1ChainId = l1Web3jClient.ethChainId().send().chainId.toLong()
-
-  private val l2MessageServiceLogsClient = run {
-    @Suppress("DEPRECATION")
-    val logsClient = linea.web3j.Web3JLogsClient(vertx, l2Web3jClient)
-    Web3JL2MessageServiceLogsClient(
-      logsClient = logsClient,
-      l2MessageServiceAddress = configs.l2.messageServiceAddress
-    )
-  }
 
   private val proverClientFactory = ProverClientFactory(
     vertx = vertx,
@@ -361,11 +343,8 @@ class L1DependentApp(
     val calculators: MutableList<ConflationCalculator> =
       mutableListOf(
         ConflationCalculatorByExecutionTraces(
-          tracesCountersLimit = when (configs.traces.switchToLineaBesu) {
-            true -> configs.conflation.tracesLimitsV2
-            false -> configs.conflation.tracesLimitsV1
-          },
-          emptyTracesCounters = getEmptyTracesCounters(configs.traces.switchToLineaBesu),
+          tracesCountersLimit = configs.conflation.tracesLimitsV2,
+          emptyTracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
           metricsFacade = metricsFacade,
           log = logger
         ),
@@ -394,7 +373,7 @@ class L1DependentApp(
       lastBlockNumber = lastProcessedBlockNumber,
       syncCalculators = createCalculatorsForBlobsAndConflation(logger, compressedBlobCalculator),
       deferredTriggerConflationCalculators = listOf(deadlineConflationCalculatorRunnerNew),
-      emptyTracesCounters = getEmptyTracesCounters(configs.traces.switchToLineaBesu),
+      emptyTracesCounters = TracesCountersV2.EMPTY_TRACES_COUNT,
       log = logger
     )
 
@@ -470,11 +449,6 @@ class L1DependentApp(
         maxProvenBlobCache
       )
     )
-    val blobShnarfCalculatorVersion = if (configs.traces.switchToLineaBesu) {
-      ShnarfCalculatorVersion.V1_0_1
-    } else {
-      ShnarfCalculatorVersion.V0_1_0
-    }
 
     val blobCompressionProofCoordinator = BlobCompressionProofCoordinator(
       vertx = vertx,
@@ -482,7 +456,7 @@ class L1DependentApp(
       blobCompressionProverClient = proverClientFactory.blobCompressionProverClient(),
       rollingBlobShnarfCalculator = RollingBlobShnarfCalculator(
         blobShnarfCalculator = GoBackedBlobShnarfCalculator(
-          version = blobShnarfCalculatorVersion,
+          version = ShnarfCalculatorVersion.V1_0_1,
           metricsFacade = metricsFacade
         ),
         blobsRepository = blobsRepository,
@@ -577,20 +551,6 @@ class L1DependentApp(
   }
 
   private val proofAggregationCoordinatorService: LongRunningService = run {
-    // it needs it's own client because internally set the blockNumber when making queries.
-    // it does not make any transaction
-    val messageService = instantiateL2MessageServiceContractClient(
-      configs.l2,
-      l2TransactionManager,
-      l2Web3jClient,
-      smartContractErrors
-    )
-    val l2MessageServiceClient = Web3JL2MessageService(
-      vertx = vertx,
-      l2MessageServiceLogsClient = l2MessageServiceLogsClient,
-      web3jL2MessageService = messageService
-    )
-
     val maxBlobEndBlockNumberTracker = ConsecutiveProvenBlobsProviderWithLastEndBlockNumberTracker(
       aggregationsRepository,
       lastProcessedBlockNumber
@@ -627,8 +587,25 @@ class L1DependentApp(
         aggregationsRepository = aggregationsRepository,
         consecutiveProvenBlobsProvider = maxBlobEndBlockNumberTracker,
         proofAggregationClient = proverClientFactory.proofAggregationProverClient(),
-        l2web3jClient = l2Web3jClient,
-        l2MessageServiceClient = l2MessageServiceClient,
+        l2EthApiClient = createEthApiClient(
+          l2Web3jClient,
+          requestRetryConfig = linea.domain.RetryConfig(
+            backoffDelay = 1.seconds,
+            failuresWarningThreshold = 3u
+          ),
+          vertx = vertx
+        ),
+        l2MessageService = Web3JL2MessageServiceSmartContractClient.create(
+          web3jClient = l2Web3jClient,
+          contractAddress = configs.l2.messageServiceAddress,
+          gasLimit = configs.l2.gasLimit,
+          maxFeePerGasCap = configs.l2.maxFeePerGasCap,
+          feeHistoryBlockCount = configs.l2.feeHistoryBlockCount,
+          feeHistoryRewardPercentile = configs.l2.feeHistoryRewardPercentile,
+          transactionManager = l2TransactionManager,
+          smartContractErrors = smartContractErrors,
+          smartContractDeploymentBlockNumber = configs.l2.messageServiceDeploymentBlockNumber
+        ),
         aggregationDeadlineDelay = configs.conflation.conflationDeadlineLastBlockConfirmationDelay.toKotlinDuration(),
         targetEndBlockNumbers = configs.proofAggregation.targetEndBlocks,
         metricsFacade = metricsFacade,
@@ -716,102 +693,41 @@ class L1DependentApp(
 
   private val block2BatchCoordinator = run {
     val tracesCountersLog = LogManager.getLogger("clients.TracesCounters")
-    val tracesCountersClient = when (configs.traces.switchToLineaBesu) {
-      true -> {
-        val tracesCounterV2Config = configs.traces.countersV2!!
-        val expectedTracesApiVersionV2 = configs.traces.expectedTracesApiVersionV2!!
-        val tracesCountersClientV2 = TracesGeneratorJsonRpcClientV2(
-          vertx = vertx,
-          rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
-            endpoints = tracesCounterV2Config.endpoints.toSet(),
-            maxInflightRequestsPerClient = tracesCounterV2Config.requestLimitPerEndpoint,
-            log = tracesCountersLog
-          ),
-          config = TracesGeneratorJsonRpcClientV2.Config(
-            expectedTracesApiVersion = expectedTracesApiVersionV2
-          ),
-          retryConfig = tracesCounterV2Config.requestRetryConfig,
+    val tracesCountersClient = run {
+      val tracesCounterV2Config = configs.traces.countersV2
+      val expectedTracesApiVersionV2 = configs.traces.expectedTracesApiVersionV2
+      TracesGeneratorJsonRpcClientV2(
+        vertx = vertx,
+        rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
+          endpoints = tracesCounterV2Config.endpoints.toSet(),
+          maxInflightRequestsPerClient = tracesCounterV2Config.requestLimitPerEndpoint,
           log = tracesCountersLog
-        )
-
-        TracesCountersClientV2Adapter(tracesCountersClientV2 = tracesCountersClientV2)
-      }
-
-      false -> {
-        val tracesFilesManager = TracesFilesManager(
-          vertx,
-          TracesFilesManager.Config(
-            configs.traces.fileManager.rawTracesDirectory,
-            configs.traces.fileManager.nonCanonicalRawTracesDirectory,
-            configs.traces.fileManager.pollingInterval.toKotlinDuration(),
-            configs.traces.fileManager.tracesFileCreationWaitTimeout.toKotlinDuration(),
-            configs.traces.rawExecutionTracesVersion,
-            configs.traces.fileManager.tracesFileExtension,
-            configs.traces.fileManager.createNonCanonicalDirectory
-          )
-        )
-        val tracesCountersClientV1 = TracesGeneratorJsonRpcClientV1(
-          vertx = vertx,
-          rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
-            endpoints = configs.traces.counters.endpoints.toSet(),
-            maxInflightRequestsPerClient = configs.traces.counters.requestLimitPerEndpoint,
-            log = tracesCountersLog
-          ),
-          config = TracesGeneratorJsonRpcClientV1.Config(
-            rawExecutionTracesVersion = configs.traces.rawExecutionTracesVersion,
-            expectedTracesApiVersion = configs.traces.expectedTracesApiVersion
-          ),
-          retryConfig = configs.traces.counters.requestRetryConfig,
-          log = tracesCountersLog
-        )
-
-        TracesCountersV1WatcherClient(
-          tracesFilesManager = tracesFilesManager,
-          tracesCountersClientV1 = tracesCountersClientV1
-        )
-      }
+        ),
+        config = TracesGeneratorJsonRpcClientV2.Config(
+          expectedTracesApiVersion = expectedTracesApiVersionV2
+        ),
+        retryConfig = tracesCounterV2Config.requestRetryConfig,
+        log = tracesCountersLog
+      )
     }
 
     val tracesConflationLog = LogManager.getLogger("clients.TracesConflation")
-    val tracesConflationClient = when (configs.traces.switchToLineaBesu) {
-      true -> {
-        val tracesConflationConfigV2 = configs.traces.conflationV2!!
-        val expectedTracesApiVersionV2 = configs.traces.expectedTracesApiVersionV2!!
-        val tracesConflationClientV2 = TracesGeneratorJsonRpcClientV2(
-          vertx = vertx,
-          rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
-            endpoints = tracesConflationConfigV2.endpoints.toSet(),
-            maxInflightRequestsPerClient = tracesConflationConfigV2.requestLimitPerEndpoint,
-            log = tracesConflationLog
-          ),
-          config = TracesGeneratorJsonRpcClientV2.Config(
-            expectedTracesApiVersion = expectedTracesApiVersionV2
-          ),
-          retryConfig = configs.traces.conflation.requestRetryConfig,
+    val tracesConflationClient = run {
+      val tracesConflationConfigV2 = configs.traces.conflationV2
+      val expectedTracesApiVersionV2 = configs.traces.expectedTracesApiVersionV2
+      TracesGeneratorJsonRpcClientV2(
+        vertx = vertx,
+        rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
+          endpoints = tracesConflationConfigV2.endpoints.toSet(),
+          maxInflightRequestsPerClient = tracesConflationConfigV2.requestLimitPerEndpoint,
           log = tracesConflationLog
-        )
-
-        TracesConflationClientV2Adapter(
-          tracesConflationClientV2 = tracesConflationClientV2
-        )
-      }
-
-      false -> {
-        TracesGeneratorJsonRpcClientV1(
-          vertx = vertx,
-          rpcClient = httpJsonRpcClientFactory.createWithLoadBalancing(
-            endpoints = configs.traces.conflation.endpoints.toSet(),
-            maxInflightRequestsPerClient = configs.traces.conflation.requestLimitPerEndpoint,
-            log = tracesConflationLog
-          ),
-          config = TracesGeneratorJsonRpcClientV1.Config(
-            rawExecutionTracesVersion = configs.traces.rawExecutionTracesVersion,
-            expectedTracesApiVersion = configs.traces.expectedTracesApiVersion
-          ),
-          retryConfig = configs.traces.conflation.requestRetryConfig,
-          log = tracesConflationLog
-        )
-      }
+        ),
+        config = TracesGeneratorJsonRpcClientV2.Config(
+          expectedTracesApiVersion = expectedTracesApiVersionV2
+        ),
+        retryConfig = tracesConflationConfigV2.requestRetryConfig,
+        log = tracesConflationLog
+      )
     }
 
     val blobsConflationHandler: (BlocksConflation) -> SafeFuture<*> = run {
@@ -841,8 +757,15 @@ class L1DependentApp(
         tracesProductionCoordinator = TracesConflationCoordinatorImpl(tracesConflationClient, zkStateClient),
         zkProofProductionCoordinator = ZkProofCreationCoordinatorImpl(
           executionProverClient = executionProverClient,
-          l2MessageServiceLogsClient = l2MessageServiceLogsClient,
-          l2Web3jClient = l2Web3jClient
+          l2EthApiClient = createEthApiClient(
+            web3jClient = l2Web3jClient,
+            requestRetryConfig = linea.domain.RetryConfig(
+              backoffDelay = 1.seconds,
+              failuresWarningThreshold = 3u
+            ),
+            vertx = vertx
+          ),
+          messageServiceAddress = configs.l2.messageServiceAddress
         ),
         batchProofHandler = batchProofHandler,
         vertx = vertx,
@@ -957,7 +880,8 @@ class L1DependentApp(
         feeHistoryBlockCount = configs.l2.feeHistoryBlockCount,
         feeHistoryRewardPercentile = configs.l2.feeHistoryRewardPercentile,
         transactionManager = l2TransactionManager,
-        smartContractErrors = smartContractErrors
+        smartContractErrors = smartContractErrors,
+        smartContractDeploymentBlockNumber = configs.l2.messageServiceDeploymentBlockNumber
       )
     )
   } else {
@@ -1142,13 +1066,6 @@ class L1DependentApp(
         .thenApply { highestEndBlockNumber ->
           highestEndBlockNumber?.toULong() ?: lastFinalizedBlock
         }
-    }
-
-    fun getEmptyTracesCounters(switchToLineaBesu: Boolean): TracesCounters {
-      return when (switchToLineaBesu) {
-        true -> TracesCountersV2.EMPTY_TRACES_COUNT
-        false -> TracesCountersV1.EMPTY_TRACES_COUNT
-      }
     }
 
     fun setupL1FinalizationMonitorForShomeiFrontend(
