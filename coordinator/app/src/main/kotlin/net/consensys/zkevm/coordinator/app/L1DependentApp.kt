@@ -532,7 +532,7 @@ class L1DependentApp(
         } to "Blob Submission Delay Consumer"
       )
 
-      val create = BlobSubmissionCoordinator.create(
+      BlobSubmissionCoordinator.create(
         config = BlobSubmissionCoordinator.Config(
           configs.blobSubmission.dbPollingInterval.toKotlinDuration(),
           configs.blobSubmission.proofSubmissionDelay.toKotlinDuration(),
@@ -548,7 +548,6 @@ class L1DependentApp(
         vertx = vertx,
         clock = Clock.System
       )
-      create
     }
   }
 
