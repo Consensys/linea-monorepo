@@ -363,3 +363,112 @@ func GetRepoRootPath() (string, error) {
 	i += len(repoName)
 	return wd[:i], nil
 }
+
+// compareExportedFields checks if two values are equal, ignoring unexported fields, including in nested structs.
+// It logs mismatched fields with their paths and values.
+func CompareExportedFields(a, b interface{}) bool {
+	return CompareExportedFieldsWithPath(a, b, "")
+}
+
+func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
+	v1 := reflect.ValueOf(a)
+	v2 := reflect.ValueOf(b)
+
+	// Ensure both values are valid
+	if !v1.IsValid() || !v2.IsValid() {
+		// Treat nil and zero values as equivalent
+		if !v1.IsValid() && !v2.IsValid() {
+			return true
+		}
+		if !v1.IsValid() {
+			v1 = reflect.Zero(v2.Type())
+		}
+		if !v2.IsValid() {
+			v2 = reflect.Zero(v1.Type())
+		}
+	}
+
+	// Ensure same type
+	if v1.Type() != v2.Type() {
+		fmt.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, v1.Type(), v2.Type())
+		return false
+	}
+
+	// Handle maps
+	if v1.Kind() == reflect.Map {
+		if v1.Len() != v2.Len() {
+			fmt.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1.Len(), v2.Len(), v1.Type())
+			return false
+		}
+		for _, key := range v1.MapKeys() {
+			value1 := v1.MapIndex(key)
+			value2 := v2.MapIndex(key)
+			if !value2.IsValid() {
+				fmt.Printf("Mismatch at %s: key %v is missing in second map\n", path, key)
+				return false
+			}
+			keyPath := fmt.Sprintf("%s[%v]", path, key)
+			if !CompareExportedFieldsWithPath(value1.Interface(), value2.Interface(), keyPath) {
+				return false
+			}
+		}
+		return true
+	}
+
+	// Handle pointers by dereferencing
+	if v1.Kind() == reflect.Ptr {
+		if v1.IsNil() && v2.IsNil() {
+			return true
+		}
+		if v1.IsNil() != v2.IsNil() {
+			fmt.Printf("Mismatch at %s: nil status differs (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
+			return false
+		}
+		return CompareExportedFieldsWithPath(v1.Elem().Interface(), v2.Elem().Interface(), path)
+	}
+
+	// Handle structs
+	if v1.Kind() == reflect.Struct {
+		equal := true
+		for i := 0; i < v1.NumField(); i++ {
+			// Skip unexported fields
+			if !v1.Type().Field(i).IsExported() {
+				continue
+			}
+			f1 := v1.Field(i)
+			f2 := v2.Field(i)
+			fieldName := v1.Type().Field(i).Name
+			fieldPath := fieldName
+			if path != "" {
+				fieldPath = path + "." + fieldName
+			}
+			if !CompareExportedFieldsWithPath(f1.Interface(), f2.Interface(), fieldPath) {
+				equal = false
+			}
+		}
+		return equal
+	}
+
+	// Handle slices
+	if v1.Kind() == reflect.Slice {
+		if v1.Len() != v2.Len() {
+			fmt.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1, v2, v1.Type())
+			return false
+		}
+		equal := true
+		for i := 0; i < v1.Len(); i++ {
+			elemPath := fmt.Sprintf("%s[%d]", path, i)
+			if !CompareExportedFieldsWithPath(v1.Index(i).Interface(), v2.Index(i).Interface(), elemPath) {
+				equal = false
+			}
+		}
+		return equal
+	}
+
+	// For other types, use DeepEqual and log if mismatched
+	if !reflect.DeepEqual(a, b) {
+		fmt.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
+		return false
+	}
+	return true
+}

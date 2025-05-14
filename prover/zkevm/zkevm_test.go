@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
@@ -75,7 +76,7 @@ func TestModexp(t *testing.T) {
 	}
 
 	// Compare structs while ignoring unexported fields
-	if !compareExportedFields(z.Modexp, deserializedModexp) {
+	if !test_utils.CompareExportedFields(z.Modexp, deserializedModexp) {
 		t.Fatalf("Mis-matched fields after serde Modexp (ignoring unexported fields)")
 	}
 }
@@ -109,7 +110,7 @@ func TestECDSA(t *testing.T) {
 	}
 
 	// Compare structs while ignoring unexported fields
-	if !compareExportedFields(z.Ecdsa, deserializedEcdsa) {
+	if !test_utils.CompareExportedFields(z.Ecdsa, deserializedEcdsa) {
 		t.Fatalf("Mis-matched fields after serde Ecadd (ignoring unexported fields)")
 	}
 }
@@ -143,7 +144,7 @@ func TestEcadd(t *testing.T) {
 	}
 
 	// Compare structs while ignoring unexported fields
-	if !compareExportedFields(z.Ecadd, deserializedEcadd) {
+	if !test_utils.CompareExportedFields(z.Ecadd, deserializedEcadd) {
 		t.Fatalf("Mis-matched fields after serde Ecadd (ignoring unexported fields)")
 	}
 }
@@ -177,7 +178,7 @@ func TestEcmul(t *testing.T) {
 	}
 
 	// Compare structs while ignoring unexported fields
-	if !compareExportedFields(z.Ecmul, deserializedEcmul) {
+	if !test_utils.CompareExportedFields(z.Ecmul, deserializedEcmul) {
 		t.Fatalf("Mis-matched fields after serde Ecmul (ignoring unexported fields)")
 	}
 }
@@ -211,7 +212,7 @@ func TestEcpair(t *testing.T) {
 	}
 
 	// Compare structs while ignoring unexported fields
-	if !compareExportedFields(z.Ecpair, deserializedEcpair) {
+	if !test_utils.CompareExportedFields(z.Ecpair, deserializedEcpair) {
 		t.Fatalf("Mis-matched fields after serde Ecpair (ignoring unexported fields)")
 	}
 }
@@ -246,7 +247,7 @@ func TestArithmetization(t *testing.T) {
 	}
 
 	// Compare structs while ignoring unexported fields
-	if !compareExportedFields(z.Arithmetization, deserialized) {
+	if !test_utils.CompareExportedFields(z.Arithmetization, deserialized) {
 		t.Fatalf("Mis-matched fields after serde Arithmetization (ignoring unexported fields)")
 	}
 }
@@ -281,7 +282,7 @@ func TestKeccak(t *testing.T) {
 	}
 
 	// Compare structs while ignoring unexported fields
-	if !compareExportedFields(z.Keccak, deserialized) {
+	if !test_utils.CompareExportedFields(z.Keccak, deserialized) {
 		t.Fatalf("Mis-matched fields after serde Keccak (ignoring unexported fields)")
 	}
 }
@@ -316,7 +317,7 @@ func TestSha2(t *testing.T) {
 	}
 
 	// Compare structs while ignoring unexported fields
-	if !compareExportedFields(z.Sha2, deserialized) {
+	if !test_utils.CompareExportedFields(z.Sha2, deserialized) {
 		t.Fatalf("Mis-matched fields after serde Sha2 (ignoring unexported fields)")
 	}
 }
@@ -344,49 +345,49 @@ func TestCompiledIOP(t *testing.T) {
 	}
 
 	// Compare structs while ignoring unexported fields
-	if !compareExportedFields(z.WizardIOP.Columns, deserializedIOP.Columns) {
+	if !test_utils.CompareExportedFields(z.WizardIOP.Columns, deserializedIOP.Columns) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: Columns (ignoring unexported fields)")
 	}
 
-	if !compareExportedFields(z.WizardIOP.Coins, deserializedIOP.Coins) {
+	if !test_utils.CompareExportedFields(z.WizardIOP.Coins, deserializedIOP.Coins) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: Coins (ignoring unexported fields)")
 	}
 
-	if !compareExportedFields(z.WizardIOP.QueriesParams, deserializedIOP.QueriesParams) {
+	if !test_utils.CompareExportedFields(z.WizardIOP.QueriesParams, deserializedIOP.QueriesParams) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: QueriesParams (ignoring unexported fields)")
 	}
 
-	if !compareExportedFields(z.WizardIOP.QueriesNoParams, deserializedIOP.QueriesNoParams) {
+	if !test_utils.CompareExportedFields(z.WizardIOP.QueriesNoParams, deserializedIOP.QueriesNoParams) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: QueriesNoParams (ignoring unexported fields)")
 	}
 
 	fmt.Printf("Original Prover action:%+v \n", z.WizardIOP.SubProvers)
 	fmt.Printf("Deserialized Prover action:%+v \n", deserializedIOP.SubProvers)
-	if !compareExportedFields(z.WizardIOP.SubProvers, deserializedIOP.SubProvers) {
+	if !test_utils.CompareExportedFields(z.WizardIOP.SubProvers, deserializedIOP.SubProvers) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: SubProvers (ignoring unexported fields)")
 	}
 
 	fmt.Printf("Original Verifier action:%+v \n", z.WizardIOP.SubVerifiers)
 	fmt.Printf("Deserialized Verifier action:%+v \n", deserializedIOP.SubVerifiers)
-	if !compareExportedFields(z.WizardIOP.SubVerifiers, deserializedIOP.SubVerifiers) {
+	if !test_utils.CompareExportedFields(z.WizardIOP.SubVerifiers, deserializedIOP.SubVerifiers) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: SubVerifiers (ignoring unexported fields)")
 	}
 
 	fmt.Printf("Original FSHookPreSampling:%+v \n", z.WizardIOP.FiatShamirHooksPreSampling)
 	fmt.Printf("Deserialized FSHookPreSampling:%+v \n", deserializedIOP.FiatShamirHooksPreSampling)
-	if !compareExportedFields(z.WizardIOP.FiatShamirHooksPreSampling, deserializedIOP.FiatShamirHooksPreSampling) {
+	if !test_utils.CompareExportedFields(z.WizardIOP.FiatShamirHooksPreSampling, deserializedIOP.FiatShamirHooksPreSampling) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: FiatShamirHookPreSampling (ignoring unexported fields)")
 	}
 
 	fmt.Println("Original precomputed map:", z.WizardIOP.Precomputed)
 	fmt.Println("Deserialized precomputed map:", deserializedIOP.Precomputed)
-	if !compareExportedFields(z.WizardIOP.Precomputed, deserializedIOP.Precomputed) {
+	if !test_utils.CompareExportedFields(z.WizardIOP.Precomputed, deserializedIOP.Precomputed) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: Precomputed (ignoring unexported fields)")
 	}
 
 	fmt.Println("Original PcsCtxs:", z.WizardIOP.PcsCtxs)
 	fmt.Println("Deserialized PcsCtxs:", deserializedIOP.PcsCtxs)
-	if !compareExportedFields(z.WizardIOP.PcsCtxs, deserializedIOP.PcsCtxs) {
+	if !test_utils.CompareExportedFields(z.WizardIOP.PcsCtxs, deserializedIOP.PcsCtxs) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: PcsCtxs (ignoring unexported fields)")
 	}
 
@@ -402,7 +403,7 @@ func TestCompiledIOP(t *testing.T) {
 
 	fmt.Println("Original PublicInputs:", z.WizardIOP.PublicInputs)
 	fmt.Println("Deserialized PublicInputs:", deserializedIOP.PublicInputs)
-	if !compareExportedFields(z.WizardIOP.PublicInputs, deserializedIOP.PublicInputs) {
+	if !test_utils.CompareExportedFields(z.WizardIOP.PublicInputs, deserializedIOP.PublicInputs) {
 		t.Fatalf("Mis-matched fields after serde CompiledIOP: PublicInputs (ignoring unexported fields)")
 	}
 
@@ -446,119 +447,10 @@ func TestStateManager(t *testing.T) {
 	}
 
 	// Compare structs while ignoring unexported fields
-	if !compareExportedFields(z.StateManager, deserialized) {
+	if !test_utils.CompareExportedFields(z.StateManager, deserialized) {
 		t.Fatalf("Mis-matched fields after serde StateManager (ignoring unexported fields)")
 	}
 
-}
-
-// compareExportedFields checks if two values are equal, ignoring unexported fields, including in nested structs.
-// It logs mismatched fields with their paths and values.
-func compareExportedFields(a, b interface{}) bool {
-	return compareExportedFieldsWithPath(a, b, "")
-}
-
-func compareExportedFieldsWithPath(a, b interface{}, path string) bool {
-	v1 := reflect.ValueOf(a)
-	v2 := reflect.ValueOf(b)
-
-	// Ensure both values are valid
-	if !v1.IsValid() || !v2.IsValid() {
-		// Treat nil and zero values as equivalent
-		if !v1.IsValid() && !v2.IsValid() {
-			return true
-		}
-		if !v1.IsValid() {
-			v1 = reflect.Zero(v2.Type())
-		}
-		if !v2.IsValid() {
-			v2 = reflect.Zero(v1.Type())
-		}
-	}
-
-	// Ensure same type
-	if v1.Type() != v2.Type() {
-		fmt.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, v1.Type(), v2.Type())
-		return false
-	}
-
-	// Handle maps
-	if v1.Kind() == reflect.Map {
-		if v1.Len() != v2.Len() {
-			fmt.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1.Len(), v2.Len(), v1.Type())
-			return false
-		}
-		for _, key := range v1.MapKeys() {
-			value1 := v1.MapIndex(key)
-			value2 := v2.MapIndex(key)
-			if !value2.IsValid() {
-				fmt.Printf("Mismatch at %s: key %v is missing in second map\n", path, key)
-				return false
-			}
-			keyPath := fmt.Sprintf("%s[%v]", path, key)
-			if !compareExportedFieldsWithPath(value1.Interface(), value2.Interface(), keyPath) {
-				return false
-			}
-		}
-		return true
-	}
-
-	// Handle pointers by dereferencing
-	if v1.Kind() == reflect.Ptr {
-		if v1.IsNil() && v2.IsNil() {
-			return true
-		}
-		if v1.IsNil() != v2.IsNil() {
-			fmt.Printf("Mismatch at %s: nil status differs (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
-			return false
-		}
-		return compareExportedFieldsWithPath(v1.Elem().Interface(), v2.Elem().Interface(), path)
-	}
-
-	// Handle structs
-	if v1.Kind() == reflect.Struct {
-		equal := true
-		for i := 0; i < v1.NumField(); i++ {
-			// Skip unexported fields
-			if !v1.Type().Field(i).IsExported() {
-				continue
-			}
-			f1 := v1.Field(i)
-			f2 := v2.Field(i)
-			fieldName := v1.Type().Field(i).Name
-			fieldPath := fieldName
-			if path != "" {
-				fieldPath = path + "." + fieldName
-			}
-			if !compareExportedFieldsWithPath(f1.Interface(), f2.Interface(), fieldPath) {
-				equal = false
-			}
-		}
-		return equal
-	}
-
-	// Handle slices
-	if v1.Kind() == reflect.Slice {
-		if v1.Len() != v2.Len() {
-			fmt.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1, v2, v1.Type())
-			return false
-		}
-		equal := true
-		for i := 0; i < v1.Len(); i++ {
-			elemPath := fmt.Sprintf("%s[%d]", path, i)
-			if !compareExportedFieldsWithPath(v1.Index(i).Interface(), v2.Index(i).Interface(), elemPath) {
-				equal = false
-			}
-		}
-		return equal
-	}
-
-	// For other types, use DeepEqual and log if mismatched
-	if !reflect.DeepEqual(a, b) {
-		fmt.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
-		return false
-	}
-	return true
 }
 
 // GetZKEVM returns a [zkevm.ZkEvm] with its trace limits inflated so that it
