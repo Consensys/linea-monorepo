@@ -164,7 +164,7 @@ func (l *FlattenColumn) CsFlattenProjection(comp *wizard.CompiledIOP) {
 	}
 
 	comp.InsertProjection(
-		ifaces.QueryIDf("%s_FLATTEN_LIMBS_PROJECTION", l.originalMask.GetColID()),
+		ifaces.QueryIDf("%v_FLATTEN_LIMBS_PROJECTION", l.originalMask.GetColID()),
 		query.ProjectionInput{
 			ColumnA: append(shiftedFlattenLimbs[:], shiftedFlattenMask[:]...),
 			ColumnB: append(l.originalLimbs[:], masks[:]...),

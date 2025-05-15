@@ -1,11 +1,13 @@
 package ecpair
 
 import (
+	"fmt"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 func createColFn(comp *wizard.CompiledIOP, rootName string, size int) func(name string) ifaces.Column {
@@ -59,25 +61,31 @@ type ECPair struct {
 	AlignedG2MembershipData  *plonk.Alignment
 	AlignedMillerLoopCircuit *plonk.Alignment
 	AlignedFinalExpCircuit   *plonk.Alignment
+
+	flattenLimbsMillerLoop   *common.FlattenColumn
+	flattenLimbsFinalExp     *common.FlattenColumn
+	flattenLimbsG2Membership *common.FlattenColumn
 }
 
 func NewECPairZkEvm(comp *wizard.CompiledIOP, limits *Limits) *ECPair {
-	return newECPair(
-		comp,
-		limits,
-		&ECPairSource{
-			CsEcpairing:       comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_ECPAIRING"),
-			ID:                comp.Columns.GetHandle("ecdata.ID"),
-			Limb:              comp.Columns.GetHandle("ecdata.LIMB"),
-			SuccessBit:        comp.Columns.GetHandle("ecdata.SUCCESS_BIT"),
-			Index:             comp.Columns.GetHandle("ecdata.INDEX"),
-			IsEcPairingData:   comp.Columns.GetHandle("ecdata.IS_ECPAIRING_DATA"),
-			IsEcPairingResult: comp.Columns.GetHandle("ecdata.IS_ECPAIRING_RESULT"),
-			AccPairings:       comp.Columns.GetHandle("ecdata.ACC_PAIRINGS"),
-			TotalPairings:     comp.Columns.GetHandle("ecdata.TOTAL_PAIRINGS"),
-			CsG2Membership:    comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_G2_MEMBERSHIP"),
-		},
-	).WithG2MembershipCircuit(comp).
+	source := &ECPairSource{
+		CsEcpairing:       comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_ECPAIRING"),
+		ID:                comp.Columns.GetHandle("ecdata.ID"),
+		SuccessBit:        comp.Columns.GetHandle("ecdata.SUCCESS_BIT"),
+		Index:             comp.Columns.GetHandle("ecdata.INDEX"),
+		IsEcPairingData:   comp.Columns.GetHandle("ecdata.IS_ECPAIRING_DATA"),
+		IsEcPairingResult: comp.Columns.GetHandle("ecdata.IS_ECPAIRING_RESULT"),
+		AccPairings:       comp.Columns.GetHandle("ecdata.ACC_PAIRINGS"),
+		TotalPairings:     comp.Columns.GetHandle("ecdata.TOTAL_PAIRINGS"),
+		CsG2Membership:    comp.Columns.GetHandle("ecdata.CIRCUIT_SELECTOR_G2_MEMBERSHIP"),
+	}
+
+	for i := 0; i < common.NbLimbU128; i++ {
+		source.Limbs[i] = comp.Columns.GetHandle(ifaces.ColIDf("ecdata.LIMB_%d", i))
+	}
+
+	return newECPair(comp, limits, source).
+		WithG2MembershipCircuit(comp).
 		WithPairingCircuit(comp, query.PlonkRangeCheckOption(16, 6, true))
 }
 
@@ -127,11 +135,15 @@ func newECPair(comp *wizard.CompiledIOP, limits *Limits, ecSource *ECPairSource)
 // WithPairingCircuit attaches the gnark circuit to the ECPair module for
 // enforcing the pairing checks.
 func (ec *ECPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *ECPair {
+	ec.flattenLimbsMillerLoop = common.NewFlattenColumn(comp, common.NbLimbU128,
+		ec.UnalignedPairingData.Limbs[:], ec.UnalignedPairingData.ToMillerLoopCircuitMask)
+	ec.flattenLimbsMillerLoop.CsFlattenProjection(comp)
+
 	alignInputMillerLoop := &plonk.CircuitAlignmentInput{
 		Round:              roundNr,
 		Name:               nameAlignmentMillerLoop,
-		DataToCircuit:      ec.UnalignedPairingData.Limb,
-		DataToCircuitMask:  ec.UnalignedPairingData.ToMillerLoopCircuitMask,
+		DataToCircuit:      ec.flattenLimbsMillerLoop.Limbs(),
+		DataToCircuitMask:  ec.flattenLimbsMillerLoop.Mask(),
 		Circuit:            newMultiMillerLoopMulCircuit(ec.NbMillerLoopInputInstances),
 		InputFillerKey:     inputFillerMillerLoopKey,
 		PlonkOptions:       options,
@@ -140,11 +152,15 @@ func (ec *ECPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.
 
 	ec.AlignedMillerLoopCircuit = plonk.DefineAlignment(comp, alignInputMillerLoop)
 
+	ec.flattenLimbsFinalExp = common.NewFlattenColumn(comp, common.NbLimbU128,
+		ec.UnalignedPairingData.Limbs[:], ec.UnalignedPairingData.ToFinalExpCircuitMask)
+	ec.flattenLimbsFinalExp.CsFlattenProjection(comp)
+
 	alignInputFinalExp := &plonk.CircuitAlignmentInput{
 		Round:              roundNr,
 		Name:               nameAlignmentFinalExp,
-		DataToCircuit:      ec.UnalignedPairingData.Limb,
-		DataToCircuitMask:  ec.UnalignedPairingData.ToFinalExpCircuitMask,
+		DataToCircuit:      ec.flattenLimbsFinalExp.Limbs(),
+		DataToCircuitMask:  ec.flattenLimbsFinalExp.Mask(),
 		Circuit:            newMultiMillerLoopFinalExpCircuit(ec.NbFinalExpInputInstances),
 		InputFillerKey:     inputFillerFinalExpKey,
 		PlonkOptions:       options,
@@ -158,11 +174,15 @@ func (ec *ECPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.
 // WithG2MembershipCircuit attaches the gnark circuit to the ECPair module for
 // enforcing the G2 membership checks.
 func (ec *ECPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *ECPair {
+	ec.flattenLimbsG2Membership = common.NewFlattenColumn(comp, common.NbLimbU128,
+		ec.UnalignedG2MembershipData.Limbs[:], ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask)
+	ec.flattenLimbsG2Membership.CsFlattenProjection(comp)
+
 	alignInputG2Membership := &plonk.CircuitAlignmentInput{
 		Round:              roundNr,
 		Name:               nameAlignmentG2Subgroup,
-		DataToCircuit:      ec.UnalignedG2MembershipData.Limb,
-		DataToCircuitMask:  ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
+		DataToCircuit:      ec.flattenLimbsG2Membership.Limbs(),
+		DataToCircuitMask:  ec.flattenLimbsG2Membership.Mask(),
 		Circuit:            newMultiG2GroupcheckCircuit(ec.NbG2MembershipInputInstances),
 		InputFillerKey:     inputFillerG2MembershipKey,
 		PlonkOptions:       options,
@@ -179,7 +199,7 @@ func (ec *ECPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...q
 type ECPairSource struct {
 	ID            ifaces.Column
 	Index         ifaces.Column
-	Limb          ifaces.Column
+	Limbs         [common.NbLimbU128]ifaces.Column
 	SuccessBit    ifaces.Column
 	AccPairings   ifaces.Column
 	TotalPairings ifaces.Column
@@ -204,7 +224,7 @@ type UnalignedG2MembershipData struct {
 	IsPulling  ifaces.Column
 	IsComputed ifaces.Column
 
-	Limb                      ifaces.Column
+	Limbs                     [common.NbLimbU128]ifaces.Column
 	SuccessBit                ifaces.Column
 	ToG2MembershipCircuitMask ifaces.Column
 }
@@ -213,13 +233,18 @@ func newUnalignedG2MembershipData(comp *wizard.CompiledIOP, limits *Limits) *Una
 	size := limits.sizeECPair()
 	createCol := createColFn(comp, nameG2Data, size)
 
-	return &UnalignedG2MembershipData{
+	res := &UnalignedG2MembershipData{
 		IsPulling:                 createCol("IS_PULLING"),
 		IsComputed:                createCol("IS_COMPUTED"),
-		Limb:                      createCol("LIMB"),
 		SuccessBit:                createCol("SUCCESS_BIT"),
 		ToG2MembershipCircuitMask: createCol("TO_G2_MEMBERSHIP_CIRCUIT"),
 	}
+
+	for i := 0; i < common.NbLimbU128; i++ {
+		res.Limbs[i] = createCol(fmt.Sprintf("LIMB_%d", i))
+	}
+
+	return res
 }
 
 // UnalignedPairingData represents the unaligned columns for the pairing data.
@@ -241,7 +266,7 @@ type UnalignedPairingData struct {
 	InstanceID ifaces.Column
 	PairID     ifaces.Column
 	TotalPairs ifaces.Column
-	Limb       ifaces.Column
+	Limbs      [common.NbLimbU128]ifaces.Column
 	Index      ifaces.Column
 
 	ToMillerLoopCircuitMask ifaces.Column
@@ -257,11 +282,10 @@ func newUnalignedPairingData(comp *wizard.CompiledIOP, limits *Limits) *Unaligne
 	size := limits.sizeECPair()
 	createCol := createColFn(comp, namePairingData, size)
 
-	return &UnalignedPairingData{
+	res := &UnalignedPairingData{
 		IsActive:                     createCol("IS_ACTIVE"),
 		IsPulling:                    createCol("IS_PULLING"),
 		IsComputed:                   createCol("IS_COMPUTED"),
-		Limb:                         createCol("LIMB"),
 		InstanceID:                   createCol("INSTANCE_ID"),
 		PairID:                       createCol("PAIR_ID"),
 		TotalPairs:                   createCol("TOTAL_PAIRS"),
@@ -276,4 +300,10 @@ func newUnalignedPairingData(comp *wizard.CompiledIOP, limits *Limits) *Unaligne
 		IsAccumulatorInit:            createCol("IS_ACCUMULATOR_INIT"),
 		Index:                        createCol("INDEX"),
 	}
+
+	for i := 0; i < common.NbLimbU128; i++ {
+		res.Limbs[i] = createCol(fmt.Sprintf("LIMB_%d", i))
+	}
+
+	return res
 }
