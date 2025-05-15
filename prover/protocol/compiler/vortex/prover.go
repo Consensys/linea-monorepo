@@ -38,9 +38,10 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 
 	return func(pr *wizard.ProverRuntime) {
 		var (
-			committedMatrix vortex.EncodedMatrix
-			tree            *smt.Tree
-			sisDigest       []field.Element
+			committedMatrix  vortex.EncodedMatrix
+			tree             *smt.Tree
+			sisAndMimcDigest []field.Element
+			mimcDigest       []field.Element
 		)
 		pols := ctx.getPols(pr, round)
 		// If there are no polynomials to commit to, we don't need to do anything
@@ -51,16 +52,22 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 		// We commit to the polynomials with SIS hashing if the number of polynomials
 		// is greater than the [ApplyToSISThreshold].
 		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
-			committedMatrix, tree, sisDigest = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+			committedMatrix, tree, mimcDigest = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedMatrix, tree, sisDigest = ctx.VortexParams.CommitMerkleWithSIS(pols)
+			committedMatrix, tree, sisAndMimcDigest = ctx.VortexParams.CommitMerkleWithSIS(pols)
 		}
 		pr.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		pr.State.InsertNew(ctx.MerkleTreeName(round), tree)
 
 		// Only to be read by the self-recursion compiler.
 		if ctx.IsSelfrecursed {
-			pr.State.InsertNew(ctx.SisHashName(round), sisDigest)
+			// We need to store the SIS and MiMC digests in the prover state
+			// so that we can use them in the self-recursion compiler.
+			if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+				pr.State.InsertNew(ctx.MIMCHashName(round), mimcDigest)
+			} else if ctx.RoundStatus[round] == IsSISApplied {
+				pr.State.InsertNew(ctx.SisHashName(round), sisAndMimcDigest)
+			}
 		}
 
 		// And assign the 1-sized column to contain the root

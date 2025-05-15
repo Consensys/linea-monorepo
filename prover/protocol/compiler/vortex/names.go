@@ -42,6 +42,16 @@ func (ctx *Ctx) SisHashName(round int) string {
 	return ctx.RunStateNamePrefix + "." + name
 }
 
+// MIMCHashName returns a preformatted message representing the MiMC hash digests
+// for each round that we store in the state.
+func (ctx *Ctx) MIMCHashName(round int) string {
+	name := fmt.Sprintf("VORTEX_%v_MIMC_HASH_%v", ctx.SelfRecursionCount, round)
+	if len(ctx.RunStateNamePrefix) == 0 {
+		return name
+	}
+	return ctx.RunStateNamePrefix + "." + name
+}
+
 // returns the name of a prover state for a given round of Vortex
 func (ctx *Ctx) VortexProverStateName(round int) string {
 	name := fmt.Sprintf("VORTEX_%v_PROVER_STATE_%v", ctx.SelfRecursionCount, round)

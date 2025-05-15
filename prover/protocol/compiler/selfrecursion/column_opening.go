@@ -28,7 +28,7 @@ import (
 // Specifies the column opening phase
 func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	// Registers the limb expanded version of the preimages
-	ctx.colSelection()
+	ctx.ColSelection()
 	ctx.linearHashAndMerkle()
 	ctx.RootHashGlue()
 	ctx.GluePositions()
@@ -116,7 +116,7 @@ func (a *colSelectionProverAction) Run(run *wizard.ProverRuntime) {
 //
 //   - Performs the following lookup constraint:
 //     `(q,Uα,q)⊂(I,Uα)`
-func (ctx *SelfRecursionCtx) colSelection() {
+func (ctx *SelfRecursionCtx) ColSelection() {
 
 	// Build the column q, (auto-assigned)
 	ctx.Columns.Q = verifiercol.NewFromIntVecCoin(ctx.comp, ctx.Coins.Q)
@@ -160,8 +160,8 @@ type linearHashMerkleProverAction struct {
 
 func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	openingIndices := run.GetRandomCoinIntegerVec(a.ctx.Coins.Q.Name)
-	concatDhQ := make([]field.Element, a.leavesSizeUnpadded*a.ctx.VortexCtx.SisParams.OutputSize())
-	linearLeaves := make([]field.Element, a.leavesSizeUnpadded)
+	concatDhQ := make([]field.Element, a.concatDhQSize*a.ctx.VortexCtx.SisParams.OutputSize())
+	linearLeaves := make([]field.Element, a.leavesSizeUnpadded) // change?
 	merkleLeaves := make([]field.Element, a.leavesSizeUnpadded)
 	merklePositions := make([]field.Element, a.leavesSizeUnpadded)
 	merkleRoots := make([]field.Element, a.leavesSizeUnpadded)
@@ -236,11 +236,20 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 
 func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	roundQ := ctx.Columns.Q.Round()
+	// numRound denotes the total number of commitment rounds
+	// including SIS and non SIS rounds
 	numRound := ctx.VortexCtx.NumCommittedRounds()
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		numRound += 1
 	}
-	concatDhQSizeUnpadded := ctx.VortexCtx.SisParams.OutputSize() * ctx.VortexCtx.NbColsToOpen() * numRound
+	// Next we consider the number of rounds for which we apply the SIS hash
+	numRoundSis := ctx.VortexCtx.NumCommittedRoundsSis()
+	// We increase the sis round by 1 if sis is applied to the precomputed
+	if ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		numRoundSis += 1
+	}
+
+	concatDhQSizeUnpadded := ctx.VortexCtx.SisParams.OutputSize() * ctx.VortexCtx.NbColsToOpen() * numRoundSis
 	concatDhQSize := utils.NextPowerOfTwo(concatDhQSizeUnpadded)
 	leavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRound
 	leavesSize := utils.NextPowerOfTwo(leavesSizeUnpadded)
@@ -574,7 +583,10 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 	})
 
 	degree := ctx.SisKey().OutputSize()
-
+	// Todo: remove the commented code
+	// Also the paper needs to be updated
+	// with the identity 2P(X) = (X^n+1)Q(X) - (X^n-1)R(X) (check it in the code)
+	//
 	// And the final check
 	// check the folding of the polynomial is correct
 	// ctx.comp.InsertVerifier(round, func(run wizard.Runtime) error {
