@@ -103,6 +103,7 @@ func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, erro
 		return nil, fmt.Errorf("unsupported column type in DeclarationMode: %s", concrete.Type().String())
 	}
 
+	fmt.Printf("SER Column Interface type:%s \n", concrete.Type().String())
 	raw := map[string]interface{}{
 		"type":  concrete.Type().String(),
 		"value": data,

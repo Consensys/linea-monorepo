@@ -159,6 +159,8 @@ func serializeArrayOrSlice(v reflect.Value, mode Mode) (json.RawMessage, error) 
 }
 
 func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
+
+	fmt.Printf("Serializing Interface \n")
 	if mode == pureExprMode && v.Type() == metadataType {
 		m := v.Interface().(symbolic.Metadata)
 		stringVar := symbolic.StringVar(m.String())
@@ -197,12 +199,14 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	typeOfV := v.Type()
 
+	fmt.Printf("Ser STRUCT\n")
 	if mode == ReferenceMode && typeOfV == naturalType {
 		colID := v.Interface().(column.Natural).ID
 		return serializeAnyWithCborPkg(colID)
 	}
 
 	if mode == DeclarationMode && typeOfV == naturalType {
+		fmt.Printf("Entering here columnNatural struct\n")
 		col := v.Interface().(column.Natural)
 		decl := intoSerializableColDecl(&col)
 		return SerializeValue(reflect.ValueOf(decl), mode)
@@ -365,6 +369,7 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 		return reflect.Value{}, fmt.Errorf("failed to deserialize interface %q: %w", t.Name(), err)
 	}
 
+	fmt.Printf("Deser Interface:%s \n", raw.Type)
 	// Handle specific types based on the "Type" field
 	switch raw.Type {
 	case "column.Natural":
@@ -428,6 +433,8 @@ func deserializePointer(data json.RawMessage, mode Mode, t reflect.Type, comp *w
 }
 
 func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
+
+	fmt.Printf("DeSer struct \n")
 	// Handle ReferenceMode for naturalType
 	if mode == ReferenceMode && t == naturalType {
 		var colID ifaces.ColID

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -36,7 +37,7 @@ func TestSerdeLPPs(t *testing.T) {
 
 	// Run individual subtests
 	// Updated t.Run calls
-	t.Run("CompiledIOP", TestLPPIOP)
+
 	t.Run("InitialFiatShamirState", TestLPPFSState)
 	t.Run("N0Hash", TestLPPN0Hash)
 	t.Run("N1Hash", TestLPPN1Hash)
@@ -45,6 +46,9 @@ func TestSerdeLPPs(t *testing.T) {
 	t.Run("Horner", TestLPPHorner)
 	t.Run("FullModuleLPP", TestFullModuleLPP)
 	t.Run("FullLPPsSlice", TestFullLPPsSlice)
+
+	// Failiing due to cir. dep
+	t.Run("CompiledIOP", TestLPPIOP)
 }
 
 // TestLPPIOP tests serialization and deserialization of the CompiledIOP field.
@@ -71,17 +75,21 @@ func TestLPPIOP(t *testing.T) {
 
 // TestLPPFSState tests serialization and deserialization of the InitialFiatShamirState field.
 func TestLPPFSState(t *testing.T) {
-	testField(t, "InitialFiatShamirState", lpp.InitialFiatShamirState, reflect.TypeOf((*ifaces.Column)(nil)).Elem())
+	if lpp.InitialFiatShamirState == nil {
+		t.Fatalf("InitialFiatShamirState is nil")
+	}
+	fmt.Printf("Concrete type of InitialFiatShamirState: %T\n", lpp.InitialFiatShamirState)
+	testField(t, "InitialFiatShamirState", lpp.InitialFiatShamirState, reflect.TypeOf(column.Natural{}))
 }
 
 // TestLPPN0Hash tests serialization and deserialization of the N0Hash field.
 func TestLPPN0Hash(t *testing.T) {
-	testField(t, "N0Hash", lpp.N0Hash, reflect.TypeOf((*ifaces.Column)(nil)).Elem())
+	testField(t, "N0Hash", lpp.N0Hash, reflect.TypeOf(column.Natural{}))
 }
 
 // TestLPPN1Hash tests serialization and deserialization of the N1Hash field.
 func TestLPPN1Hash(t *testing.T) {
-	testField(t, "N1Hash", lpp.N1Hash, reflect.TypeOf((*ifaces.Column)(nil)).Elem())
+	testField(t, "N1Hash", lpp.N1Hash, reflect.TypeOf(column.Natural{}))
 }
 
 // TestLPPLogDerivativeSum tests serialization and deserialization of the LogDerivativeSum field.
