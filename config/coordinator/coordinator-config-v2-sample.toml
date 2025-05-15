@@ -29,30 +29,28 @@ conflation-calculator-version = "1.0.0"
 conflation-deadline = "PT6S" # =3*l2_block_time
 conflation-deadline-check-interval = "PT3S"
 conflation-deadline-last-block-confirmation-delay = "PT2S" # recommended: at least 2 * blockInterval
+2fetch-blocks-limit = 4000
+l2-block-creation-endpoint = "http://sequencer:8545"
+l2-logs-endpoint = "http://sequencer:8545"
 
 # This is to prevent inflight trasactions that may change Smart contract state while coordinator is restarted.
 # Queries SMC for last finalised block, and keeps polling until this number of blocks observe the same state.
 # If state is updated meanwhile, it resets counter and restarts the polling.
 consistent-number-of-blocks-on-l1-to-wait = 1
-fetch-blocks-limit = 4000
 
-l2-block-creation-endpoint = "http://sequencer:8545"
-l2-logs-endpoint = "http://sequencer:8545"
-
-[blob-compression]
+[conflation.blob-compression]
 blob-size-limit = 102400 # 100KB
 handler-polling-interval = "PT1S"
 # default batches limit is  aggregation-proofs-limit -1
 # batches-limit must be less than or equal to aggregation-proofs-limit-1
 batches-limit = 1
 
-[proof-aggregation]
+[conflation.proof-aggregation]
 aggregation-proofs-limit = 3
 aggregation-deadline = "PT1M"
 aggregation-coordinator-polling-interval = "PT2S"
 deadline-check-interval = "PT8S"
 target-end-blocks = []
-
 
 [prover]
 version = "v2.0.0"
@@ -145,7 +143,7 @@ endpoints = ["http://shomei-frontend:8888/"]
 l1-query-block-tag="LATEST"
 l1-polling-interval="PT12S"
 
-[type2-state-proof-provider.retries]
+[type2-state-proof-provider.request-retries]
 max-attempts = 3
 backoff-delay = "PT1S"
 failures-warning-threshold = 2
@@ -157,7 +155,7 @@ l2-endpoint = "http://sequencer:8545"
 polling-interval = "PT1S"
 l1-query-block-tag="FINALIZED"
 
-[l1-finalization-monitor.retries]
+[l1-finalization-monitor.request-retries]
 max-attempts = 3
 backoff-delay = "PT1S"
 failures-warning-threshold = 2
