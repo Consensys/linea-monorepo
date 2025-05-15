@@ -1,11 +1,9 @@
 package ringsis
 
 import (
-	"bytes"
 	"runtime"
 	"sync"
 
-	"github.com/bits-and-blooms/bitset"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
@@ -123,17 +121,19 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 // vector, casted as field elements in Montgommery form.
 func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 
-	writer := bytes.Buffer{}
-	for i := range vReg {
-		b := vReg[i].Bytes() // big endian serialization
-		writer.Write(b[:])
+	//buf := writer.Bytes()
+	//m := make([]field.Element, len(vReg)*s.NumLimbs())
+	//limbDecomposeBytes(buf, m, s.LogTwoBound, 0, nil)
+
+	vr := sis.NewLimbIterator(sis.NewVectorIterator(vReg), s.LogTwoBound/8)
+
+	//	len(vReg)*s.NumLimbs() = nbElmts*fr.Bytes*8/logTwoBound
+	m := make([]fr.Element, len(vReg)*fr.Bytes*8/s.LogTwoBound)
+
+	for i := 0; i < len(m); i++ {
+		m[i][0], _ = vr.NextLimb()
+		//assert.True(ok)
 	}
-
-	buf := writer.Bytes()
-	m := make([]field.Element, len(vReg)*s.NumLimbs())
-	//sis.LimbDecomposeBytes(buf, m, s.LogTwoBound)
-	limbDecomposeBytes(buf, m, s.LogTwoBound, 0, nil)
-
 	// The limbs are in regular form, we reconvert them back into montgommery
 	// form
 	for i := range m {
@@ -141,51 +141,6 @@ func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 	}
 
 	return m
-}
-
-func limbDecomposeBytes(buf []byte, m fr.Vector, logTwoBound, degree int, mValues *bitset.BitSet) {
-
-	// bitwise decomposition of the buffer, in order to build m (the vector to hash)
-	// as a list of polynomials, whose coefficients are less than r.B bits long.
-	// Say buf=[0xbe,0x0f]. As a stream of bits it is interpreted like this:
-	// 10111110 00001111. BitAt(0)=1 (=leftmost bit), bitAt(1)=0 (=second leftmost bit), etc.
-	nbBits := len(buf) * 8
-	bitAt := func(i int) uint8 {
-		k := i / 8
-		if k >= len(buf) {
-			return 0
-		}
-		b := buf[k]
-		j := i % 8
-		return b >> (7 - j) & 1
-	}
-
-	// we process the input buffer by blocks of r.LogTwoBound bits
-	// each of these block (<< 64bits) are interpreted as a coefficient
-	mPos := 0
-	for fieldStart := 0; fieldStart < nbBits; {
-		for bitInField := 0; bitInField < fr.Bytes*8; {
-
-			j := bitInField % logTwoBound
-
-			// r.LogTwoBound < 64; we just use the first word of our element here,
-			// and set the bits from LSB to MSB.
-			at := fieldStart + fr.Bytes*8 - bitInField - 1
-
-			m[mPos][0] |= uint64(bitAt(at)) << j
-			bitInField++
-
-			// Check if mPos is zero and mark as non-zero in the bitset if not
-			if m[mPos][0] != 0 && mValues != nil {
-				mValues.Set(uint(mPos / degree))
-			}
-
-			if j == logTwoBound-1 || bitInField == fr.Bytes*8 {
-				mPos++
-			}
-		}
-		fieldStart += fr.Bytes * 8
-	}
 }
 
 // HashModXnMinus1 applies the SIS hash modulo X^n - 1, (instead of X^n + 1).
