@@ -75,6 +75,7 @@ func init() {
 	RegisterImplementation(query.LocalOpening{})
 	RegisterImplementation(query.LogDerivativeSum{})
 	RegisterImplementation(query.GrandProduct{})
+	RegisterImplementation(query.Horner{})
 
 	// Symbolic
 	RegisterImplementation(symbolic.Variable{})
@@ -126,8 +127,6 @@ func init() {
 	RegisterImplementation(smartvectors.Regular{})
 	RegisterImplementation(smartvectors.PaddedCircularWindow{})
 
-	// LPP
-	// RegisterImplementation(distributed.LppWitnessAssignment{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this

@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -64,6 +65,15 @@ type DistributedWizard struct {
 	// CompiledConglomeration stores the compilation context of the
 	// conglomeration wizard.
 	CompiledConglomeration *ConglomeratorCompilation
+}
+
+func init() {
+	serialization.RegisterImplementation(LppWitnessAssignment{})
+	serialization.RegisterImplementation(AssignLPPQueries{})
+	serialization.RegisterImplementation(SetInitialFSHash{})
+	serialization.RegisterImplementation(CheckNxHash{})
+
+	serialization.RegisterImplementation(StandardModuleDiscoverer{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It

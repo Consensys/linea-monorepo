@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
@@ -28,7 +27,7 @@ func serializeValue(value interface{}) ([]byte, error) {
 }
 
 func TestSerdeZKEVM(t *testing.T) {
-	z := distributed.GetZkEVM()
+	z := test_utils.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -47,7 +46,7 @@ func TestSerdeZKEVM(t *testing.T) {
 }
 
 func TestSerdeModexp(t *testing.T) {
-	z := distributed.GetZkEVM()
+	z := test_utils.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -81,7 +80,7 @@ func TestSerdeModexp(t *testing.T) {
 }
 
 func TestSerdeECDSA(t *testing.T) {
-	z := distributed.GetZkEVM()
+	z := test_utils.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -115,7 +114,7 @@ func TestSerdeECDSA(t *testing.T) {
 }
 
 func TestSerdeEcadd(t *testing.T) {
-	z := distributed.GetZkEVM()
+	z := test_utils.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -149,7 +148,7 @@ func TestSerdeEcadd(t *testing.T) {
 }
 
 func TestSerdeEcmul(t *testing.T) {
-	z := distributed.GetZkEVM()
+	z := test_utils.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -183,7 +182,7 @@ func TestSerdeEcmul(t *testing.T) {
 }
 
 func TestSerdeEcpair(t *testing.T) {
-	z := distributed.GetZkEVM()
+	z := test_utils.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -218,7 +217,7 @@ func TestSerdeEcpair(t *testing.T) {
 
 // TestArithmetization tests serialization and deserialization of the Arithmetization field.
 func TestSerdeArithmetization(t *testing.T) {
-	z := distributed.GetZkEVM()
+	z := test_utils.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -253,7 +252,7 @@ func TestSerdeArithmetization(t *testing.T) {
 
 // TestKeccak tests serialization and deserialization of the Keccak field.
 func TestSerdeKeccak(t *testing.T) {
-	z := distributed.GetZkEVM()
+	z := test_utils.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -288,7 +287,7 @@ func TestSerdeKeccak(t *testing.T) {
 
 // TestSha2 tests serialization and deserialization of the Sha2 field.
 func TestSerdeSha2(t *testing.T) {
-	z := distributed.GetZkEVM()
+	z := test_utils.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -323,7 +322,7 @@ func TestSerdeSha2(t *testing.T) {
 
 // TestCompiledIOP tests serialization and deserialization of the WizardIOP field.
 func TestSerdeCompiledIOP(t *testing.T) {
-	z := distributed.GetZkEVM()
+	z := test_utils.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -418,7 +417,7 @@ func TestSerdeCompiledIOP(t *testing.T) {
 
 // TestStateManager tests serialization and deserialization of the StateManager field.
 func TestSerdeStateManager(t *testing.T) {
-	z := distributed.GetZkEVM()
+	z := test_utils.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}

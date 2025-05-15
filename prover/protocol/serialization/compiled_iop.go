@@ -573,7 +573,7 @@ func deserializeColumnsAndCoins(raw *rawCompiledIOP, comp *wizard.CompiledIOP, n
 			// Run deserializeColumns in parallel
 			go func(round int) {
 				defer wg.Done()
-				if err := deserializeColumns(raw.Columns[round], comp); err != nil {
+				if err := deserializeColumns(raw.Columns[round], comp, mu); err != nil {
 					utils.Panic("round %d columns: %v", round, err)
 				}
 			}(round)
@@ -618,11 +618,14 @@ func deserializeCoins(rawCoins []json.RawMessage, round int, comp *wizard.Compil
 	return nil
 }
 
-func deserializeColumns(rawCols []json.RawMessage, comp *wizard.CompiledIOP) error {
+func deserializeColumns(rawCols []json.RawMessage, comp *wizard.CompiledIOP, mu *sync.Mutex) error {
 	for _, rawCol := range rawCols {
+		mu.Lock()
 		if _, err := DeserializeValue(rawCol, DeclarationMode, columnType, comp); err != nil {
+			mu.Unlock()
 			return err
 		}
+		mu.Unlock()
 	}
 	return nil
 }

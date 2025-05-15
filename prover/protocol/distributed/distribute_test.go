@@ -18,14 +18,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
 // TestDistributedWizard attempts to compiler the wizard distribution.
 func TestDistributedWizard(t *testing.T) {
 
 	var (
-		zkevm      = GetZkEVM()
-		affinities = GetAffinities(zkevm)
+		zkevm      = test_utils.GetZkEVM()
+		affinities = test_utils.GetAffinities(zkevm)
 		discoverer = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
 			Affinities:   affinities,
@@ -68,10 +69,10 @@ func TestDistributedWizardLogic(t *testing.T) {
 		// #nosec G404 --we don't need a cryptographic RNG for testing purpose
 		// rng              = rand.New(utils.NewRandSource(0))
 		// sharedRandomness = field.PseudoRand(rng)
-		zkevm = GetZkEVM()
+		zkevm = test_utils.GetZkEVM()
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   GetAffinities(zkevm),
+			Affinities:   test_utils.GetAffinities(zkevm),
 			Predivision:  1,
 		}
 
@@ -108,7 +109,7 @@ func TestDistributedWizardLogic(t *testing.T) {
 
 	t.Logf("Checking the initial bootstrapper - wizard")
 	var (
-		witness     = GetZkevmWitness(req, cfg)
+		witness     = test_utils.GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
 		proof       = runtimeBoot.ExtractProof()
 		verBootErr  = wizard.Verify(distWizard.Bootstrapper, proof)
@@ -265,10 +266,10 @@ func TestBenchDistributedWizard(t *testing.T) {
 	t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
-		zkevm = GetZkEVM()
+		zkevm = test_utils.GetZkEVM()
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   GetAffinities(zkevm),
+			Affinities:   test_utils.GetAffinities(zkevm),
 			Predivision:  1,
 		}
 
@@ -297,7 +298,7 @@ func TestBenchDistributedWizard(t *testing.T) {
 	t.Logf("[%v] running the bootstrapper\n", time.Now())
 
 	var (
-		witness     = GetZkevmWitness(req, cfg)
+		witness     = test_utils.GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
 	)
 
