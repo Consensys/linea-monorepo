@@ -65,7 +65,7 @@ fresh-start-l2-blockchain-only:
 start-env-with-tracing-v2:
 	make start-env COMPOSE_FILE=docker/compose-tracing-v2.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true
 
-## Enable L2 geth node and Shomei frontend
+## Enable L2 geth node
 start-env-with-tracing-v2-extra:
 	make start-env COMPOSE_PROFILES:=l1,l2,l2-extra COMPOSE_FILE:=docker/compose-tracing-v2.yml LINEA_PROTOCOL_CONTRACTS_ONLY=true DISABLE_JSON_RPC_PRICING_PROPAGATION=false
 
