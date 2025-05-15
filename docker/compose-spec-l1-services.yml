@@ -2,7 +2,7 @@ services:
   l1-el-node:
     container_name: l1-el-node
     hostname: l1-el-node
-    image: consensys/linea-besu-package:sepolia-3e31c8f # Hardcoded this for now to avoid the genesis missing addresses issue from besu 25.5.0-linea1
+    image: consensys/linea-besu-package:sepolia-3e31c8f # Hardcoded this for now to avoid the Besu<->Teku Prague issue from besu 25.5.0-linea1
     profiles: [ "l1", "debug", "external-to-monorepo" ]
     depends_on:
       l1-node-genesis-generator:
