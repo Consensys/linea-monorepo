@@ -99,7 +99,7 @@ func TestVectors(t *testing.T) {
 
 	t.Run("Constant", func(t *testing.T) {
 		y := fext.NewElement(1, 2)
-		c := vectorext.Constant(y, 4)
+		c := vectorext.Repeat(y, 4)
 		assert.Equal(t, vectorext.ForTestFromPairs(1, 2, 1, 2, 1, 2, 1, 2), c)
 		aBAndXMustNotChange(t)
 	})

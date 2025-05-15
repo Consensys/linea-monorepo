@@ -86,8 +86,8 @@ func Reverse(v []fext.Element) {
 	}
 }
 
-// Constant returns a vector of size n whose values are all equal to x.
-func Constant(x fext.Element, n int) []fext.Element {
+// Repeat returns a vector of size n whose values are all equal to x.
+func Repeat(x fext.Element, n int) []fext.Element {
 	res := make([]fext.Element, n)
 	for i := range res {
 		res[i].Set(&x)
