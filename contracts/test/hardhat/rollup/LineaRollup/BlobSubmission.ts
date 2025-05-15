@@ -3,7 +3,7 @@ import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import * as fs from "fs";
 import * as kzg from "c-kzg";
 import { expect } from "chai";
-import { BaseContract, Transaction } from "ethers";
+import { BaseContract, toBeHex, Transaction } from "ethers";
 import { ethers } from "hardhat";
 
 import betaV1_4PreReleaseFinalizationData from "../../_testData/betaV1_4/preRelease/proof/17865582-12865637-getZkAggregatedProof.json";
@@ -15,7 +15,7 @@ import secondCompressedDataContent from "../../_testData/compressedData/blocks-4
 import fourthCompressedDataContent from "../../_testData/compressedData/blocks-115-155.json";
 
 import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
-import { TestLineaRollup } from "contracts/typechain-types";
+import { TestLineaRollup } from "../../../../typechain-types";
 import {
   deployLineaRollupFixture,
   deployPlonkVerifierMainnetFull,
@@ -857,7 +857,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
 
     it("Should fail to finalize Prover Beta V1.4 blobs with Dev Verifier", async () => {
       // *** ARRANGE ***
-      const devVerifier = await deployPlonkVerifierDev();
+      const devVerifier = await deployPlonkVerifierDev([{ name: "chainId", value: toBeHex(1337, 32) }]);
 
       // Deploy and initialize LineaRollup
       const initializationData = {
@@ -959,7 +959,7 @@ describe("Linea Rollup contract: EIP-4844 Blob submission tests", () => {
        * 3. Submit blob and finalize with new verifier
        */
 
-      const devVerifier = await deployPlonkVerifierDev();
+      const devVerifier = await deployPlonkVerifierDev([{ name: "chainId", value: toBeHex(1337, 32) }]);
       const newMainnetFullVerifier = await deployPlonkVerifierMainnetFull();
 
       const initializationData = {

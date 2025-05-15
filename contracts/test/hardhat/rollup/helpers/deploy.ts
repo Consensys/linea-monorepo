@@ -4,7 +4,7 @@ import { ethers } from "hardhat";
 import firstCompressedDataContent from "../../_testData/compressedData/blocks-1-46.json";
 
 import { LINEA_ROLLUP_PAUSE_TYPES_ROLES, LINEA_ROLLUP_UNPAUSE_TYPES_ROLES } from "contracts/common/constants";
-import { CallForwardingProxy, TestLineaRollup } from "contracts/typechain-types";
+import { CallForwardingProxy, TestLineaRollup, IPlonkVerifier } from "contracts/typechain-types";
 import { getAccountsFixture, getRoleAddressesFixture } from "./";
 import {
   DEFAULT_LAST_FINALIZED_TIMESTAMP,
@@ -13,7 +13,7 @@ import {
   LINEA_ROLLUP_INITIALIZE_SIGNATURE,
   ONE_DAY_IN_SECONDS,
 } from "../../common/constants";
-import { deployUpgradableFromFactory } from "../../common/deployment";
+import { deployFromFactory, deployUpgradableFromFactory } from "../../common/deployment";
 
 export async function deployRevertingVerifier(scenario: bigint): Promise<string> {
   const revertingVerifierFactory = await ethers.getContractFactory("RevertingVerifier");
@@ -36,9 +36,14 @@ export async function deployPlonkVerifierMainnetFull(): Promise<string> {
   return await verifier.getAddress();
 }
 
-export async function deployPlonkVerifierDev(): Promise<string> {
-  const plonkVerifierDev = await ethers.getContractFactory("PlonkVerifierDev");
-  const verifier = await plonkVerifierDev.deploy();
+export async function deployPlonkVerifierDev(
+  params: IPlonkVerifier.ChainConfigurationParameterStruct[],
+): Promise<string> {
+  const mimc = await deployFromFactory("Mimc");
+  const plonkVerifierDev = await ethers.getContractFactory("PlonkVerifierDev", {
+    libraries: { Mimc: await mimc.getAddress() },
+  });
+  const verifier = await plonkVerifierDev.deploy(params);
   await verifier.waitForDeployment();
   return await verifier.getAddress();
 }
