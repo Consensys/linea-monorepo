@@ -34,7 +34,8 @@ dependencies {
   annotationProcessor 'com.google.auto.service:auto-service'
   compileOnly 'com.google.auto.service:auto-service'
 
-  implementation project(":native:compress")
+  api "build.linea:blob-compressor:1.1.4"
+  api "build.linea.internal:kotlin:0.1.0"
 
   implementation "${besuArtifactGroup}:besu-datatypes"
   implementation "${besuArtifactGroup}:evm"

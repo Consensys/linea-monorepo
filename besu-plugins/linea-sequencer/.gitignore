@@ -21,6 +21,7 @@ nohup.out
 .settings
 .springBeans
 .vertx
+.java-version
 ./bin
 local.properties
 target/

@@ -69,36 +69,6 @@ jobs:
           name: acceptance-test-report
           path: acceptance-tests/build/reports/tests/
 
-  libCompressTest:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Install Go
-        uses: actions/setup-go@v5
-
-      - name: Set up GCC
-        uses: egor-tensin/setup-gcc@v1
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: temurin
-
-      - name: Run libcompress JNI tests
-        run: ./gradlew :native:compress:test
-        env:
-          JAVA_OPTS: -Dorg.gradle.daemon=false
-
-      - name: Upload test report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: compress-test-report
-          path: compress/build/reports/tests/
-
   spotless:
     runs-on: ubuntu-latest
     steps:

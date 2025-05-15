@@ -22,7 +22,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
-import net.consensys.linea.compress.LibCompress;
 import net.consensys.linea.config.LineaBundleCliOptions;
 import net.consensys.linea.config.LineaBundleConfiguration;
 import net.consensys.linea.config.LineaProfitabilityCliOptions;
@@ -75,11 +74,6 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   private static final AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
 
   private ServiceManager serviceManager;
-
-  static {
-    // force the initialization of the gnark compress native library to fail fast in case of issues
-    LibCompress.CompressedSize(new byte[0], 0);
-  }
 
   @Override
   public Map<String, LineaOptionsPluginConfiguration> getLineaPluginConfigMap() {
