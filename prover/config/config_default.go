@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	DefaultDeferToOtherLargeCodes     = []int{137}     // List of exit codes for which the job will put back the job to be reexecuted in large mode.
-	DefaultRetryLocallyWithLargeCodes = []int{77, 333} // List of exit codes for which the job will retry in large mode
+	DefaultDeferToOtherLargeCodes     = []int{137}        // List of exit codes for which the job will put back the job to be reexecuted in large mode.
+	DefaultRetryLocallyWithLargeCodes = []int{2, 77, 333} // List of exit codes for which the job will retry in large mode
 )
 
 func setDefaultValues() {
