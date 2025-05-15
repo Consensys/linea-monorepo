@@ -37,6 +37,8 @@ interface BlobCompressor {
     // even when block is not appended, compressedSizeAfter should as if it was appended
     val compressedSizeAfter: Int
   )
+
+  fun compressedSize(data: ByteArray): Int
 }
 
 class GoBackedBlobCompressor private constructor(
@@ -115,5 +117,9 @@ class GoBackedBlobCompressor private constructor(
 
   override fun reset() {
     goNativeBlobCompressor.Reset()
+  }
+
+  override fun compressedSize(data: ByteArray): Int {
+    return goNativeBlobCompressor.RawCompressedSize(data, data.size)
   }
 }

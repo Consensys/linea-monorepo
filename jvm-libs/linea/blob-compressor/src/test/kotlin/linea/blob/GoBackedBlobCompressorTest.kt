@@ -93,4 +93,11 @@ class GoBackedBlobCompressorTest {
     assertThat(res.blockAppended).isTrue()
     assertThat(compressor.getCompressedData().size).isGreaterThan(0)
   }
+
+  @Test
+  fun `should calculate the compression size of raw data`() {
+    val data = TEST_DATA.first()
+    val compressedSize = compressor.compressedSize(data)
+    assertThat(compressedSize).isBetween(1, data.size - 1)
+  }
 }
