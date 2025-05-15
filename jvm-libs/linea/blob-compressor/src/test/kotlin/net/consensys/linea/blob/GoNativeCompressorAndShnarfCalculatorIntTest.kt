@@ -30,7 +30,7 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
         }
-      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V0_1_0)
+      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V1_0_1)
     }
 
     @Test
