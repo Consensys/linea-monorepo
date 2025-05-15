@@ -1,10 +1,6 @@
 package ringsis
 
 import (
-	"bytes"
-	"encoding/binary"
-	"io"
-	"math"
 	"runtime"
 	"sync"
 
@@ -109,25 +105,9 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// write the input as byte
-	s.gnarkInternal.Reset()
-	for i := range v {
-		_, err := s.gnarkInternal.Write(v[i].Marshal())
-		if err != nil {
-			panic(err)
-		}
-	}
-	sum := s.gnarkInternal.Sum(make([]byte, 0, field.Bytes*s.OutputSize()))
+	result := make([]fr.Element, s.gnarkInternal.Degree)
+	err := s.gnarkInternal.Hash(v, result)
 
-	// unmarshal the result
-	var rlen [4]byte
-	if len(sum) > math.MaxUint32*fr.Bytes {
-		panic("slice too long")
-	}
-	binary.BigEndian.PutUint32(rlen[:], uint32(len(sum)/fr.Bytes)) // #nosec G115 -- Overflow checked
-	reader := io.MultiReader(bytes.NewReader(rlen[:]), bytes.NewReader(sum))
-	var result fr.Vector
-	_, err := result.ReadFrom(reader)
 	if err != nil {
 		panic(err)
 	}
@@ -140,16 +120,15 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 // vector, casted as field elements in Montgommery form.
 func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 
-	writer := bytes.Buffer{}
-	for i := range vReg {
-		b := vReg[i].Bytes() // big endian serialization
-		writer.Write(b[:])
+	vr := sis.NewLimbIterator(sis.NewVectorIterator(vReg), s.LogTwoBound/8)
+	m := make([]fr.Element, len(vReg)*fr.Bytes*8/s.LogTwoBound)
+	var ok bool
+	for i := 0; i < len(m); i++ {
+		m[i][0], ok = vr.NextLimb()
+		if !ok {
+			utils.Panic("LimbSplit panic")
+		}
 	}
-
-	buf := writer.Bytes()
-	m := make([]field.Element, len(vReg)*s.NumLimbs())
-	sis.LimbDecomposeBytes(buf, m, s.LogTwoBound)
-
 	// The limbs are in regular form, we reconvert them back into montgommery
 	// form
 	for i := range m {
@@ -357,7 +336,7 @@ func (s *Key) CopyWithFreshBuffer() *Key {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	clonedRsis := s.gnarkInternal.CopyWithFreshBuffer()
+	clonedRsis := *s.gnarkInternal
 	return &Key{
 		lock:          &sync.Mutex{},
 		gnarkInternal: &clonedRsis,

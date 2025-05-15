@@ -43,22 +43,22 @@ var testCasesKey = []struct {
 	{
 		Size: 43,
 		Params: Params{
-			LogTwoBound:  1,
-			LogTwoDegree: 1,
+			LogTwoBound:  8,
+			LogTwoDegree: 5,
 		},
 	},
 	{
 		Size: 23,
 		Params: Params{
-			LogTwoBound:  1,
-			LogTwoDegree: 1,
+			LogTwoBound:  8,
+			LogTwoDegree: 6,
 		},
 	},
 	{
 		Size: 256,
 		Params: Params{
-			LogTwoBound:  1,
-			LogTwoDegree: 1,
+			LogTwoBound:  8,
+			LogTwoDegree: 6,
 		},
 	},
 }
