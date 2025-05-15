@@ -2,13 +2,12 @@ package ringsis
 
 import (
 	"bytes"
-	"encoding/binary"
-	"io"
-	"math"
 	"runtime"
 	"sync"
 
+	"github.com/bits-and-blooms/bitset"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/sis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -109,30 +108,14 @@ func (s *Key) Hash(v []field.Element) []field.Element {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// write the input as byte
-	s.gnarkInternal.Reset()
-	for i := range v {
-		_, err := s.gnarkInternal.Write(v[i].Marshal())
-		if err != nil {
-			panic(err)
-		}
-	}
-	sum := s.gnarkInternal.Sum(make([]byte, 0, field.Bytes*s.OutputSize()))
+	res := make([]fr.Element, s.gnarkInternal.Degree)
+	err := s.gnarkInternal.Hash(v, res)
 
-	// unmarshal the result
-	var rlen [4]byte
-	if len(sum) > math.MaxUint32*fr.Bytes {
-		panic("slice too long")
-	}
-	binary.BigEndian.PutUint32(rlen[:], uint32(len(sum)/fr.Bytes)) // #nosec G115 -- Overflow checked
-	reader := io.MultiReader(bytes.NewReader(rlen[:]), bytes.NewReader(sum))
-	var result fr.Vector
-	_, err := result.ReadFrom(reader)
 	if err != nil {
 		panic(err)
 	}
 
-	return result
+	return res
 }
 
 // LimbSplit breaks down the entries of `v` into short limbs representing
@@ -148,7 +131,8 @@ func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 
 	buf := writer.Bytes()
 	m := make([]field.Element, len(vReg)*s.NumLimbs())
-	sis.LimbDecomposeBytes(buf, m, s.LogTwoBound)
+	//sis.LimbDecomposeBytes(buf, m, s.LogTwoBound)
+	limbDecomposeBytes(buf, m, s.LogTwoBound, 0, nil)
 
 	// The limbs are in regular form, we reconvert them back into montgommery
 	// form
@@ -157,6 +141,51 @@ func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 	}
 
 	return m
+}
+
+func limbDecomposeBytes(buf []byte, m fr.Vector, logTwoBound, degree int, mValues *bitset.BitSet) {
+
+	// bitwise decomposition of the buffer, in order to build m (the vector to hash)
+	// as a list of polynomials, whose coefficients are less than r.B bits long.
+	// Say buf=[0xbe,0x0f]. As a stream of bits it is interpreted like this:
+	// 10111110 00001111. BitAt(0)=1 (=leftmost bit), bitAt(1)=0 (=second leftmost bit), etc.
+	nbBits := len(buf) * 8
+	bitAt := func(i int) uint8 {
+		k := i / 8
+		if k >= len(buf) {
+			return 0
+		}
+		b := buf[k]
+		j := i % 8
+		return b >> (7 - j) & 1
+	}
+
+	// we process the input buffer by blocks of r.LogTwoBound bits
+	// each of these block (<< 64bits) are interpreted as a coefficient
+	mPos := 0
+	for fieldStart := 0; fieldStart < nbBits; {
+		for bitInField := 0; bitInField < fr.Bytes*8; {
+
+			j := bitInField % logTwoBound
+
+			// r.LogTwoBound < 64; we just use the first word of our element here,
+			// and set the bits from LSB to MSB.
+			at := fieldStart + fr.Bytes*8 - bitInField - 1
+
+			m[mPos][0] |= uint64(bitAt(at)) << j
+			bitInField++
+
+			// Check if mPos is zero and mark as non-zero in the bitset if not
+			if m[mPos][0] != 0 && mValues != nil {
+				mValues.Set(uint(mPos / degree))
+			}
+
+			if j == logTwoBound-1 || bitInField == fr.Bytes*8 {
+				mPos++
+			}
+		}
+		fieldStart += fr.Bytes * 8
+	}
 }
 
 // HashModXnMinus1 applies the SIS hash modulo X^n - 1, (instead of X^n + 1).
@@ -357,7 +386,7 @@ func (s *Key) CopyWithFreshBuffer() *Key {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	clonedRsis := s.gnarkInternal.CopyWithFreshBuffer()
+	clonedRsis := *s.gnarkInternal
 	return &Key{
 		lock:          &sync.Mutex{},
 		gnarkInternal: &clonedRsis,

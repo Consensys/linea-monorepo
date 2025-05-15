@@ -43,22 +43,22 @@ var testCasesKey = []struct {
 	{
 		Size: 43,
 		Params: Params{
-			LogTwoBound:  1,
-			LogTwoDegree: 1,
+			LogTwoBound:  8,
+			LogTwoDegree: 5,
 		},
 	},
 	{
 		Size: 23,
 		Params: Params{
-			LogTwoBound:  1,
-			LogTwoDegree: 1,
+			LogTwoBound:  8,
+			LogTwoDegree: 6,
 		},
 	},
 	{
 		Size: 256,
 		Params: Params{
-			LogTwoBound:  1,
-			LogTwoDegree: 1,
+			LogTwoBound:  8,
+			LogTwoDegree: 6,
 		},
 	},
 }
@@ -160,6 +160,7 @@ func TestLimbSplit(t *testing.T) {
 	}
 
 	coreTest := func(subT *testing.T, v []field.Element, key Key) {
+
 		bound := field.NewElement(1 << key.LogTwoBound)
 		limbs := key.LimbSplit(v)
 		for i := range v {
@@ -175,6 +176,7 @@ func TestLimbSplit(t *testing.T) {
 			t.Run(
 				fmt.Sprintf("array-#%v-key-#%v", arrID, keyID),
 				func(t *testing.T) {
+					print("limbSplit,LogTwoBound=: ", key.LogTwoBound)
 					coreTest(t, arr, key)
 				},
 			)
@@ -204,7 +206,9 @@ func TestHashFromLimbs(t *testing.T) {
 
 	for pId, tcParams := range testCasesKey {
 		for vecId, tcVec := range testCaseVecs {
+
 			key := GenerateKey(tcParams.Params, len(tcVec))
+
 			t.Run(fmt.Sprintf("params-#%v-vec-1%v", pId, vecId), func(t *testing.T) {
 				coreTest(t, &key, tcVec)
 			})
