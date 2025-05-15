@@ -68,12 +68,14 @@ type DistributedWizard struct {
 }
 
 func init() {
-	serialization.RegisterImplementation(LppWitnessAssignment{})
 	serialization.RegisterImplementation(AssignLPPQueries{})
 	serialization.RegisterImplementation(SetInitialFSHash{})
 	serialization.RegisterImplementation(CheckNxHash{})
-
 	serialization.RegisterImplementation(StandardModuleDiscoverer{})
+	serialization.RegisterImplementation(LppWitnessAssignment{})
+	serialization.RegisterImplementation(ModuleGLAssignGL{})
+	serialization.RegisterImplementation(ModuleGLAssignSendReceiveGlobal{})
+	serialization.RegisterImplementation(ModuleGLCheckSendReceiveGlobal{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It

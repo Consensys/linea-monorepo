@@ -25,6 +25,7 @@ func TestSerdeDistWizard(t *testing.T) {
 	// Run subtests for attributes
 	t.Run("ModuleNames", TestSerdeModuleNames)
 	t.Run("LPPs", TestSerdeLPPs)
+	t.Run("GLs", TestSerdeGLs)
 }
 
 // TestSerdeModuleNames tests serialization and deserialization of the ModuleNames field.
@@ -61,7 +62,7 @@ func TestSerdeModuleNames(t *testing.T) {
 	}
 }
 
-// TestSerdeLPPS tests full serialization and deserialization of the LPPs slice.
+// TestSerdeLPPS tests full serialization and deserialization of the LPPs modules.
 func TestSerdeLPPs(t *testing.T) {
 	serializedData, err := serializeModuleLPPs(dw.LPPs)
 	if err != nil {
@@ -74,6 +75,23 @@ func TestSerdeLPPs(t *testing.T) {
 	}
 
 	if !test_utils.CompareExportedFields(dw.LPPs, deserializedLPPs) {
-		t.Errorf("mismatch in exported fields after full LPPs slice serde")
+		t.Errorf("mismatch in exported fields after LPP mods serde")
+	}
+}
+
+// TestSerdeGLs tests full serialization and deserialization of the GL modules.
+func TestSerdeGLs(t *testing.T) {
+	serializedData, err := SerializeModuleGLs(dw.GLs)
+	if err != nil {
+		t.Fatalf("failed to serialize LPPs: %v", err)
+	}
+
+	deserializedGLs, err := DeserializeModuleGLs(serializedData)
+	if err != nil {
+		t.Fatalf("failed to deserialize LPPs: %v", err)
+	}
+
+	if !test_utils.CompareExportedFields(dw.GLs, deserializedGLs) {
+		t.Errorf("mismatch in exported fields after GL mods serde")
 	}
 }

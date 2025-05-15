@@ -15,6 +15,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
+var lpp = dw.LPPs[0]
+
 // rawModuleLPP represents the serialized form of ModuleLPP.
 type rawModuleLPP struct {
 	CompiledIOP            json.RawMessage `json:"compiledIOP"`
@@ -28,10 +30,8 @@ type rawModuleLPP struct {
 	Horner                 json.RawMessage `json:"horner"`
 }
 
-// TestFullModuleLPP tests full serialization and deserialization of a ModuleLPP.
-func TestFullModuleLPP(t *testing.T) {
-
-	// fmt.Printf("LPP module:%v\n", lpp)
+// TestSerdeLPP tests full serialization and deserialization of a ModuleLPP.
+func TestSerdeLPP(t *testing.T) {
 	serializedData, err := serializeModuleLPP(lpp)
 	if err != nil {
 		t.Fatalf("Failed to serialize ModuleLPP: %v", err)
@@ -46,8 +46,6 @@ func TestFullModuleLPP(t *testing.T) {
 		t.Errorf("Mismatch in exported fields after full ModuleLPP serde")
 	}
 }
-
-var lpp = dw.LPPs[0]
 
 // serializeModuleLPP serializes a single ModuleLPP instance field-by-field.
 func serializeModuleLPP(lpp *distributed.ModuleLPP) ([]byte, error) {

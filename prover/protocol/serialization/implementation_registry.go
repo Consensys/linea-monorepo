@@ -127,6 +127,7 @@ func init() {
 	RegisterImplementation(smartvectors.Regular{})
 	RegisterImplementation(smartvectors.PaddedCircularWindow{})
 
+	// RegisterImplementation(expr.Term{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
