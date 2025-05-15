@@ -26,6 +26,7 @@ services:
       - /bin/bash
       - -c
       - |
+        sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*\:/opt/besu/plugins/\*' /opt/besu/bin/besu && \
         /opt/besu/bin/besu \
         --config-file=/var/lib/besu/sequencer.config.toml \
         --node-private-key-file="/var/lib/besu/key" \
