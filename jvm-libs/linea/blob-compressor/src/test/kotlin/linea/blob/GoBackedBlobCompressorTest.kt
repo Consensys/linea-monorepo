@@ -14,7 +14,7 @@ class GoBackedBlobCompressorTest {
   companion object {
     private const val DATA_LIMIT = 24 * 1024
     private val TEST_DATA = CompressorTestData.blocksRlpEncoded
-    private val compressor = GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V0_1_0, DATA_LIMIT.toUInt())
+    private val compressor = GoBackedBlobCompressor.getInstance(BlobCompressorVersion.V1_0_1, DATA_LIMIT)
   }
 
   @BeforeEach
