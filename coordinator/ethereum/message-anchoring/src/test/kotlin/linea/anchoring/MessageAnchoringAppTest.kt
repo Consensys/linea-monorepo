@@ -70,6 +70,7 @@ class MessageAnchoringAppTest {
         l1PollingInterval = l1PollingInterval,
         l1SuccessBackoffDelay = l1SuccessBackoffDelay,
         l1ContractAddress = L1_CONTRACT_ADDRESS,
+        l1HighestBlockTag = BlockParameter.Tag.FINALIZED,
         l2HighestBlockTag = BlockParameter.Tag.LATEST,
         anchoringTickInterval = anchoringTickInterval,
         l1RequestRetryConfig = RetryConfig.noRetries,
