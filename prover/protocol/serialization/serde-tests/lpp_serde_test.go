@@ -1,4 +1,4 @@
-package distributed
+package serdetests
 
 import (
 	"bytes"

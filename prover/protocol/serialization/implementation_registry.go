@@ -50,6 +50,7 @@ func init() {
 	RegisterImplementation(column.Natural{})
 	RegisterImplementation(column.Shifted{})
 	RegisterImplementation(coin.Name(""))
+	RegisterImplementation(coin.Info{})
 
 	// Verifier columns
 	RegisterImplementation(verifiercol.ConstCol{})
@@ -72,12 +73,16 @@ func init() {
 	RegisterImplementation(query.Projection{})
 	RegisterImplementation(query.PlonkInWizard{})
 	RegisterImplementation(query.LocalOpening{})
+	RegisterImplementation(query.LogDerivativeSum{})
+	RegisterImplementation(query.GrandProduct{})
+
+	// Symbolic
 	RegisterImplementation(symbolic.Variable{})
 	RegisterImplementation(symbolic.Constant{})
 	RegisterImplementation(symbolic.Product{})
 	RegisterImplementation(symbolic.LinComb{})
 	RegisterImplementation(symbolic.PolyEval{})
-	RegisterImplementation(coin.Info{})
+	RegisterImplementation(symbolic.StringVar(""))
 
 	// Accessors
 	RegisterImplementation(accessors.FromCoinAccessor{})
@@ -87,11 +92,13 @@ func init() {
 	RegisterImplementation(accessors.FromLocalOpeningYAccessor{})
 	RegisterImplementation(accessors.FromPublicColumn{})
 	RegisterImplementation(accessors.FromUnivXAccessor{})
+	RegisterImplementation(accessors.FromLogDerivSumAccessor{})
+	RegisterImplementation(accessors.FromGrandProductAccessor{})
+	RegisterImplementation(accessors.FromHornerAccessorFinalValue{})
 
 	// Variables
 	RegisterImplementation(variables.X{})
 	RegisterImplementation(variables.PeriodicSample{})
-	RegisterImplementation(symbolic.StringVar(""))
 
 	// Circuit implementations
 	RegisterImplementation(ecdsa.MultiEcRecoverCircuit{})
@@ -118,6 +125,9 @@ func init() {
 	// Smartvectors
 	RegisterImplementation(smartvectors.Regular{})
 	RegisterImplementation(smartvectors.PaddedCircularWindow{})
+
+	// LPP
+	// RegisterImplementation(distributed.LppWitnessAssignment{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
