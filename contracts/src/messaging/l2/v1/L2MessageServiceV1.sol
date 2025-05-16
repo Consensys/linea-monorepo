@@ -63,9 +63,20 @@ abstract contract L2MessageServiceV1 is
    * @param _fee The fee being paid for the message delivery.
    * @param _calldata The calldata to pass to the recipient.
    */
-  function sendMessage(address _to, uint256 _fee, bytes calldata _calldata) external payable {
+  function sendMessage(address _to, uint256 _fee, bytes memory _calldata) external payable {
     _requireTypeAndGeneralNotPaused(PauseType.L2_L1);
 
+    _sendMessage(_to, _fee, _calldata);
+  }
+
+  /**
+   * @notice Adds a message for sending cross-chain and emits a relevant event.
+   * @dev The message number is preset and only incremented at the end if successful for the next caller.
+   * @param _to The address the message is intended for.
+   * @param _fee The fee being paid for the message delivery.
+   * @param _calldata The calldata to pass to the recipient.
+   */
+  function _sendMessage(address _to, uint256 _fee, bytes memory _calldata) internal {
     if (_to == address(0)) {
       revert ZeroAddressNotAllowed();
     }
@@ -217,5 +228,14 @@ abstract contract L2MessageServiceV1 is
         revert FeePaymentFailed(feeReceiver);
       }
     }
+  }
+
+  /**
+   * @notice Receives ETH and does an automatic no calldata ETH send message to L2.
+   * @dev The to and from addresses will always be the msg.sender.
+   * @dev The minimumFeeInWei is set as it is a prerequisite for L2->L1 messaging.
+   */
+  receive() external payable {
+    _sendMessage(msg.sender, minimumFeeInWei, "");
   }
 }

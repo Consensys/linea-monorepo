@@ -164,6 +164,32 @@ describe("L1MessageService", () => {
     });
   });
 
+  describe("Receive test", () => {
+    it("Should send a message when receive is invoked", async () => {
+      const adminAddress = await admin.getAddress();
+
+      const expectedBytes = await encodeSendMessage(
+        adminAddress,
+        adminAddress,
+        0n,
+        MESSAGE_VALUE_1ETH,
+        1n,
+        EMPTY_CALLDATA,
+      );
+
+      const messageHash = ethers.keccak256(expectedBytes);
+
+      const eventArgs = [adminAddress, adminAddress, 0n, MESSAGE_VALUE_1ETH, 1, EMPTY_CALLDATA, messageHash];
+
+      await expectEvent(
+        l1MessageService,
+        admin.sendTransaction({ to: await l1MessageService.getAddress(), value: MESSAGE_VALUE_1ETH }),
+        "MessageSent",
+        eventArgs,
+      );
+    });
+  });
+
   describe("Send messages", () => {
     it("Should fail when the fee is higher than the amount sent", async () => {
       const sendMessageCall = l1MessageService
@@ -892,7 +918,7 @@ describe("L1MessageService", () => {
         MESSAGE_FEE,
         MESSAGE_VALUE_1ETH,
         1n,
-        EMPTY_CALLDATA,
+        "0x1234",
       );
 
       await l1MessageService.addL2L1MessageHash(ethers.keccak256(expectedBytes));
@@ -905,7 +931,7 @@ describe("L1MessageService", () => {
             MESSAGE_FEE,
             MESSAGE_VALUE_1ETH,
             ADDRESS_ZERO,
-            EMPTY_CALLDATA,
+            "0x1234",
             1,
           ),
       )
