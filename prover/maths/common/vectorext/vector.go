@@ -20,19 +20,15 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	// "github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"io"
 	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"unsafe"
-)
-
-const (
-	frBytes = 32
-	Bytes   = 64 // number of bytes needed to represent a Element
 )
 
 // Vector represents a slice of Element.
@@ -44,7 +40,7 @@ const (
 //   - encoding.BinaryMarshaler
 //   - encoding.BinaryUnmarshaler
 //   - sort.Interface
-type Vector []fext.Element
+type Vector []extensions.E4
 
 // MarshalBinary implements encoding.BinaryMarshaler
 func (vector *Vector) MarshalBinary() (data []byte, err error) {
@@ -66,6 +62,7 @@ func (vector *Vector) UnmarshalBinary(data []byte) error {
 // WriteTo implements io.WriterTo and writes a vector of big endian encoded Element.
 // Length of the vector is encoded as a uint32 on the first 4 bytes.
 func (vector *Vector) WriteTo(w io.Writer) (int64, error) {
+	
 	// encode slice length
 	if err := binary.Write(w, binary.BigEndian, uint32(len(*vector))); err != nil {
 		return 0, err
@@ -73,17 +70,31 @@ func (vector *Vector) WriteTo(w io.Writer) (int64, error) {
 
 	n := int64(4)
 
-	var buf [frBytes]byte
+	// TODO put that in a const somewhere
+	degreeExtension := 4
+
+	bufCoords := make([]koalabear.Element, degreeExtension)
+	var buf [koalabear.Bytes]byte
+
 	for i := 0; i < len(*vector); i++ {
-		subElems := [2]fr.Element{(*vector)[i].A0, (*vector)[i].A1}
-		for j := 0; j < 2; j++ {
-			fr.BigEndian.PutElement(&buf, subElems[j])
+
+			bufCoords[0] = (*vector)[i].B0.A0
+			bufCoords[1] = (*vector)[i].B0.A1
+			bufCoords[2] = (*vector)[i].B1.A0
+			bufCoords[3] = (*vector)[i].B1.A1
+			
+		
+		for j := 0; j < degreeExtension; j++ {
+
+			koalabear.BigEndian.PutElement(&buf, bufCoords[j])
 			m, err := w.Write(buf[:])
 			n += int64(m)
 			if err != nil {
 				return n, err
 			}
+
 		}
+
 	}
 	return n, nil
 }
@@ -95,13 +106,14 @@ func (vector *Vector) WriteTo(w io.Writer) (int64, error) {
 // The validation consist of checking that the elements are smaller than the modulus, and
 // converting them to montgomery form.
 func (vector *Vector) AsyncReadFrom(r io.Reader) (int64, error, chan error) {
+
 	chErr := make(chan error, 1)
-	var buf [Bytes]byte
-	if read, err := io.ReadFull(r, buf[:4]); err != nil {
+	var bufSizeSlice [4]byte
+	if read, err := io.ReadFull(r, bufSizeSlice[:]); err != nil {
 		close(chErr)
 		return int64(read), err, chErr
 	}
-	sliceLen := binary.BigEndian.Uint32(buf[:4])
+	sliceLen := binary.BigEndian.Uint32(bufSizeSlice[:])
 
 	n := int64(4)
 	(*vector) = make(Vector, sliceLen)
@@ -110,7 +122,12 @@ func (vector *Vector) AsyncReadFrom(r io.Reader) (int64, error, chan error) {
 		return n, nil, chErr
 	}
 
-	bSlice := unsafe.Slice((*byte)(unsafe.Pointer(&(*vector)[0])), sliceLen*Bytes)
+	// TODO declare those as a const somewhere
+	degreeExtension := 4
+	modulus := uint32(2130706433)
+	nbBytesE4Elmt :=  degreeExtension * koalabear.Bytes
+
+	bSlice := unsafe.Slice((*byte)(unsafe.Pointer(&(*vector)[0])), sliceLen*uint32(nbBytesE4Elmt))
 	read, err := io.ReadFull(r, bSlice)
 	n += int64(read)
 	if err != nil {
@@ -118,42 +135,36 @@ func (vector *Vector) AsyncReadFrom(r io.Reader) (int64, error, chan error) {
 		return n, err, chErr
 	}
 
+	var tmp uint32
+
 	go func() {
 		var cptErrors uint64
+
 		// process the elements in parallel
 		execute(int(sliceLen), func(start, end int) {
+
+			coeffs := make([]koalabear.Element, degreeExtension)
+
 			for i := start; i < end; i++ {
-				var z fr.Element
-				bstart := i * 2 * frBytes
-				bend := bstart + frBytes
-				b := bSlice[bstart:bend]
-				z[0] = binary.BigEndian.Uint64(b[24:32])
-				z[1] = binary.BigEndian.Uint64(b[16:24])
-				z[2] = binary.BigEndian.Uint64(b[8:16])
-				z[3] = binary.BigEndian.Uint64(b[0:8])
 
-				if !fext.SmallerThanModulus(&z) {
-					atomic.AddUint64(&cptErrors, 1)
-					return
-				}
-				fext.ToMont(&z)
-				(*vector)[i].A0.Set(&z)
-				// set second coordinate
-				var w fr.Element
-				cstart := (i*2 + 1) * frBytes
-				cend := cstart + frBytes
-				c := bSlice[cstart:cend]
-				w[0] = binary.BigEndian.Uint64(c[24:32])
-				w[1] = binary.BigEndian.Uint64(c[16:24])
-				w[2] = binary.BigEndian.Uint64(c[8:16])
-				w[3] = binary.BigEndian.Uint64(c[0:8])
+				bstart := i * nbBytesE4Elmt
 
-				if !fext.SmallerThanModulus(&w) {
-					atomic.AddUint64(&cptErrors, 1)
-					return
+				// read the 4 coordinates an E4 element
+				for j := 0; j<degreeExtension; j++ {
+					b := bSlice[bstart:bstart+koalabear.Bytes]
+					tmp = binary.BigEndian.Uint32(b[:])
+					if ! (tmp<modulus) {
+						atomic.AddUint64(&cptErrors, 1)
+						return
+					}
+					coeffs[j].SetBytes(b) // <- already converted in Montgomery form
+					bstart+=koalabear.Bytes
 				}
-				fext.ToMont(&w)
-				(*vector)[i].A1.Set(&w)
+				(*vector)[i].B0.A0.Set(&coeffs[0])
+				(*vector)[i].B0.A1.Set(&coeffs[1])
+				(*vector)[i].B1.A0.Set(&coeffs[2])
+				(*vector)[i].B1.A1.Set(&coeffs[3])
+				
 			}
 		})
 
@@ -169,38 +180,38 @@ func (vector *Vector) AsyncReadFrom(r io.Reader) (int64, error, chan error) {
 // Length of the vector must be encoded as a uint32 on the first 4 bytes.
 func (vector *Vector) ReadFrom(r io.Reader) (int64, error) {
 
-	var buf [frBytes]byte
-	if read, err := io.ReadFull(r, buf[:4]); err != nil {
+	var buf [koalabear.Bytes]byte
+	var bufSize [4]byte
+
+	if read, err := io.ReadFull(r, bufSize[:]); err != nil {
 		return int64(read), err
 	}
-	sliceLen := binary.BigEndian.Uint32(buf[:4])
+	sliceLen := binary.BigEndian.Uint32(bufSize[:4])
 
 	n := int64(4)
 	(*vector) = make(Vector, sliceLen)
 
+	// TODO should declare the degree of the extension as a const or something
+	degreeExtension := 4
+	coeffs := make([]koalabear.Element, degreeExtension)
 	for i := 0; i < int(sliceLen); i++ {
-		var A0, A1 fr.Element
-		read, err := io.ReadFull(r, buf[:])
-		n += int64(read)
-		if err != nil {
-			return n, err
-		}
-		A0, err = fr.BigEndian.Element(&buf)
-		if err != nil {
-			return n, err
-		}
 
-		// read the second element
-		read, err = io.ReadFull(r, buf[:])
-		n += int64(read)
-		if err != nil {
-			return n, err
+		for j := 0; j<degreeExtension; j++ {
+			read, err := io.ReadFull(r, buf[:])
+			n += int64(read)
+			if err != nil {
+				return n, err
+			}
+			coeffs[j], err = koalabear.BigEndian.Element(&buf)
+			if err!=nil {
+				return n, err
+			}
 		}
-		A1, err = fr.BigEndian.Element(&buf)
-		if err != nil {
-			return n, err
-		}
-		(*vector)[i] = fext.Element{A0, A1}
+		
+		(*vector)[i].B0.A0.Set(&coeffs[0])
+		(*vector)[i].B0.A1.Set(&coeffs[1])
+		(*vector)[i].B1.A0.Set(&coeffs[2])
+		(*vector)[i].B1.A1.Set(&coeffs[3])
 	}
 
 	return n, nil
@@ -254,7 +265,7 @@ func subVecGeneric(res, a, b Vector) {
 	}
 }
 
-func scalarMulVecGeneric(res, a Vector, b *fext.Element) {
+func scalarMulVecGeneric(res, a Vector, b *extensions.E4) {
 	if len(a) != len(res) {
 		panic("vector.ScalarMul: vectors don't have the same length")
 	}
@@ -263,17 +274,17 @@ func scalarMulVecGeneric(res, a Vector, b *fext.Element) {
 	}
 }
 
-func sumVecGeneric(res *fext.Element, a Vector) {
+func sumVecGeneric(res *extensions.E4, a Vector) {
 	for i := 0; i < len(a); i++ {
 		res.Add(res, &a[i])
 	}
 }
 
-func innerProductVecGeneric(res *fext.Element, a, b Vector) {
+func innerProductVecGeneric(res *extensions.E4, a, b Vector) {
 	if len(a) != len(b) {
 		panic("vector.InnerProduct: vectors don't have the same length")
 	}
-	var tmp fext.Element
+	var tmp extensions.E4
 	for i := 0; i < len(a); i++ {
 		tmp.Mul(&a[i], &b[i])
 		res.Add(res, &tmp)
