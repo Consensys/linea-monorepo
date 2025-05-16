@@ -341,3 +341,168 @@ contract OverflowTest is KarmaTest {
         karma.setReward(address(distributor1), 1e18, 1000);
     }
 }
+
+contract SlashAmountOfTest is KarmaTest {
+    address public slasher = makeAddr("slasher");
+
+    function _mintKarmaToAccount(address account, uint256 amount) internal {
+        vm.startPrank(owner);
+        karma.mint(account, amount);
+        vm.stopPrank();
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        vm.startPrank(owner);
+        karma.grantRole(karma.SLASHER_ROLE(), slasher);
+        vm.stopPrank();
+    }
+
+    function test_SlashAmountOf() public {
+        uint256 accountBalance = 100 ether;
+        uint256 distributorBalance = 50 ether;
+        _mintKarmaToAccount(alice, accountBalance);
+        vm.prank(owner);
+        distributor1.setUserKarmaShare(alice, distributorBalance);
+
+        vm.prank(owner);
+        karma.slash(alice);
+
+        uint256 slashedAmount = karma.slashedAmountOf(alice);
+        assertEq(
+            slashedAmount, karma.calculateSlashAmount(accountBalance) + karma.calculateSlashAmount(distributorBalance)
+        );
+    }
+
+    function testFuzz_SlashAmountOf(
+        uint256 accountBalance,
+        uint256 distributor1Balance,
+        uint256 distributor2Balance
+    )
+        public
+    {
+        // adding some bounds here to ensure we don't overflow
+        vm.assume(accountBalance < 1e30);
+        vm.assume(distributor1Balance < 1e30);
+        vm.assume(distributor2Balance < 1e30);
+
+        _mintKarmaToAccount(alice, accountBalance);
+        vm.startPrank(owner);
+        distributor1.setUserKarmaShare(alice, distributor1Balance);
+        distributor2.setUserKarmaShare(alice, distributor2Balance);
+        vm.stopPrank();
+
+        vm.prank(owner);
+        karma.slash(alice);
+
+        uint256 slashedAmount = karma.slashedAmountOf(alice);
+        uint256 expectedSlashAmount = karma.calculateSlashAmount(accountBalance)
+            + karma.calculateSlashAmount(distributor1Balance) + karma.calculateSlashAmount(distributor2Balance);
+        assertEq(slashedAmount, expectedSlashAmount);
+    }
+}
+
+contract SlashTest is KarmaTest {
+    address public slasher = makeAddr("slasher");
+
+    function _mintKarmaToAccount(address account, uint256 amount) internal {
+        vm.startPrank(owner);
+        karma.mint(account, amount);
+        vm.stopPrank();
+    }
+
+    function setUp() public override {
+        super.setUp();
+
+        vm.startPrank(owner);
+        karma.grantRole(karma.SLASHER_ROLE(), slasher);
+        vm.stopPrank();
+    }
+
+    function test_RevertWhen_SenderIsNotDefaultAdminOrSlasher() public {
+        vm.prank(makeAddr("someone"));
+        vm.expectRevert(Karma.Karma__Unauthorized.selector);
+        karma.slash(alice);
+    }
+
+    function test_RevertWhen_KarmaBalanceIsInvalid() public {
+        vm.prank(slasher);
+        vm.expectRevert(Karma.Karma__CannotSlashZeroBalance.selector);
+        karma.slash(alice);
+    }
+
+    function test_SlashRemainingBalanceIfBalanceIsLow() public {
+        _mintKarmaToAccount(alice, karma.MIN_SLASH_AMOUNT() - 1);
+
+        vm.prank(slasher);
+        karma.slash(alice);
+
+        assertEq(karma.balanceOf(alice), 0);
+    }
+
+    function test_Slash() public {
+        // ensure rewards
+        uint256 currentBalance = 100 ether;
+        _mintKarmaToAccount(alice, currentBalance);
+        uint256 slashedAmount = karma.calculateSlashAmount(currentBalance);
+
+        // slash the account
+        vm.prank(slasher);
+        karma.slash(alice);
+        assertEq(karma.balanceOf(alice), currentBalance - slashedAmount);
+
+        currentBalance = karma.balanceOf(alice);
+        slashedAmount = karma.calculateSlashAmount(currentBalance);
+
+        // slash again
+        vm.prank(slasher);
+        karma.slash(alice);
+
+        assertEq(karma.balanceOf(alice), currentBalance - slashedAmount);
+    }
+
+    function testFuzz_Slash(uint256 rewardsAmount) public {
+        vm.assume(rewardsAmount > 0);
+        _mintKarmaToAccount(alice, rewardsAmount);
+
+        vm.prank(slasher);
+        karma.slash(alice);
+        uint256 slashedAmount = karma.slashedAmountOf(alice);
+
+        assertEq(karma.balanceOf(alice), rewardsAmount - slashedAmount);
+    }
+
+    function testRemoveRewardDistributorShouldReduceSlashAmount() public {
+        uint256 distributorRewards = 1000 ether;
+        uint256 mintedRewards = 1000 ether;
+        uint256 totalRewards = distributorRewards + mintedRewards;
+
+        // set up rewards for alice
+        vm.prank(owner);
+        distributor1.setUserKarmaShare(alice, distributorRewards);
+        _mintKarmaToAccount(alice, mintedRewards);
+        assertEq(distributor1.rewardsBalanceOfAccount(alice), distributorRewards);
+        assertEq(karma.balanceOf(alice), totalRewards);
+
+        // slash alice
+        uint256 accountSlashAmount = karma.calculateSlashAmount(mintedRewards);
+        uint256 distributorSlashAmount = karma.calculateSlashAmount(distributorRewards);
+        vm.prank(owner);
+        karma.slash(alice);
+
+        uint256 totalSlashAmount = karma.slashedAmountOf(alice);
+
+        assertEq(karma.accountSlashAmount(alice), accountSlashAmount);
+        assertEq(karma.rewardDistributorSlashAmount(address(distributor1), alice), distributorSlashAmount);
+        assertEq(karma.slashedAmountOf(alice), totalSlashAmount);
+        assertEq(karma.balanceOf(alice), totalRewards - totalSlashAmount);
+
+        // remove the distributor
+        vm.prank(owner);
+        karma.removeRewardDistributor(address(distributor1));
+        totalSlashAmount = karma.slashedAmountOf(alice);
+        assertEq(karma.accountSlashAmount(alice), accountSlashAmount);
+        assertEq(karma.balanceOf(alice), totalRewards - distributorRewards - totalSlashAmount);
+    }
+}

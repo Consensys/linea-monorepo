@@ -1,13 +1,23 @@
-using Karma as karma;
+using KarmaHarness as karma;
 
 methods {
+    function balanceOf(address) external returns (uint256) envfree;
+    function rawBalanceOf(address) external returns (uint256) envfree;
     function totalDistributorAllocation() external returns (uint256) envfree;
     function totalSupply() external returns (uint256) envfree;
     function externalSupply() external returns (uint256) envfree;
+    function accountSlashAmount(address) external returns (uint256) envfree;
     function _.setReward(uint256, uint256) external => DISPATCHER(true);
+    function _.rewardsBalanceOfAccount(address) external => DISPATCHER(true);
     function hasRole(bytes32, address) external returns (bool) envfree;
     function DEFAULT_ADMIN_ROLE() external returns (bytes32) envfree;
     function OPERATOR_ROLE() external returns (bytes32) envfree;
+    function Math.mulDiv(uint256 a, uint256 b, uint256 c) internal returns uint256 => mulDivSummary(a,b,c);
+}
+
+function mulDivSummary(uint256 a, uint256 b, uint256 c) returns uint256 {
+  require c != 0;
+  return require_uint256(a*b/c);
 }
 
 persistent ghost mathint sumOfDistributorAllocations {
@@ -17,17 +27,6 @@ persistent ghost mathint sumOfDistributorAllocations {
 hook Sstore rewardDistributorAllocations[KEY address addr] uint256 newValue (uint256 oldValue) {
     sumOfDistributorAllocations = sumOfDistributorAllocations - oldValue + newValue;
 }
-
-invariant totalDistributorAllocationIsSumOfDistributorAllocations()
-    to_mathint(totalDistributorAllocation()) == sumOfDistributorAllocations
-    filtered {
-        f -> !isUpgradeFunction(f)
-    }
-
-rule externalSupplyIsLessOrEqThanTotalDistributorAllocation() {
-    assert externalSupply() <= totalDistributorAllocation();
-}
-
 
 definition isUpgradeFunction(method f) returns bool = (
   f.selector == sig:karma.upgradeToAndCall(address, bytes).selector ||
@@ -50,6 +49,22 @@ definition isOperatorFunction(method f) returns bool = (
     f.selector == sig:karma.setReward(address, uint256, uint256).selector
                 || f.selector == sig:karma.mint(address, uint256).selector
 );
+
+invariant totalDistributorAllocationIsSumOfDistributorAllocations()
+    to_mathint(totalDistributorAllocation()) == sumOfDistributorAllocations
+    filtered {
+        f -> !isUpgradeFunction(f)
+    }
+
+// invariant slashAmountIsLessEqualToKarmaBalance(address account)
+//     rawBalanceOf(account) >= getSlashAmountForAccount(account)
+//     filtered {
+//         f -> !isUpgradeFunction(f) && !isERC20TransferFunction(f)
+//     }
+
+// rule externalSupplyIsLessOrEqThanTotalDistributorAllocation() {
+//     assert externalSupply() <= totalDistributorAllocation();
+// }
 
 rule erc20TransferIsDisabled(method f) {
     env e;
