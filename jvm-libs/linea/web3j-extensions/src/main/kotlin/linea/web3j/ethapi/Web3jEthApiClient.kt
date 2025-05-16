@@ -8,8 +8,8 @@ import linea.ethapi.EthApiClient
 import linea.web3j.domain.toDomain
 import linea.web3j.domain.toWeb3j
 import linea.web3j.mapToDomainWithTxHashes
+import linea.web3j.requestAsync
 import linea.web3j.toDomain
-import net.consensys.linea.async.toSafeFuture
 import org.web3j.protocol.Web3j
 import org.web3j.protocol.core.methods.request.EthFilter
 import org.web3j.protocol.core.methods.response.Log
@@ -23,37 +23,18 @@ class Web3jEthApiClient(
   val web3jClient: Web3j
 ) : EthApiClient {
 
-  private fun <T> handleError(
-    response: org.web3j.protocol.core.Response<T>
-  ): SafeFuture<T> {
-    return if (response.hasError()) {
-      SafeFuture.failedFuture(
-        RuntimeException(
-          "json-rpc error: code=${response.error.code} message=${response.error.message} " +
-            "data=${response.error.data}"
-        )
-      )
-    } else {
-      SafeFuture.completedFuture(response.result)
-    }
-  }
-
-  override fun getBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
+  override fun findBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
     return web3jClient
       .ethGetBlockByNumber(blockParameter.toWeb3j(), true)
-      .sendAsync()
-      .thenCompose(::handleError)
-      .thenApply { block -> block?.toDomain() }
-      .toSafeFuture()
+      .requestAsync { resp -> resp.block?.toDomain() }
   }
 
-  override fun getBlockByNumberWithoutTransactionsData(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
+  override fun findBlockByNumberWithoutTransactionsData(
+    blockParameter: BlockParameter
+  ): SafeFuture<BlockWithTxHashes?> {
     return web3jClient
       .ethGetBlockByNumber(blockParameter.toWeb3j(), false)
-      .sendAsync()
-      .thenCompose(::handleError)
-      .thenApply { block -> block?.let(::mapToDomainWithTxHashes) }
-      .toSafeFuture()
+      .requestAsync { resp -> resp.block?.let(::mapToDomainWithTxHashes) }
   }
 
   override fun getLogs(
@@ -72,13 +53,10 @@ class Web3jEthApiClient(
 
     return web3jClient
       .ethGetLogs(ethFilter)
-      .sendAsync()
-      .toSafeFuture()
-      .thenCompose(::handleError)
-      .thenApply { logsResponse ->
-        if (logsResponse != null) {
+      .requestAsync { logsResponse ->
+        if (logsResponse.logs != null) {
           @Suppress("UNCHECKED_CAST")
-          (logsResponse as List<org.web3j.protocol.core.methods.response.EthLog.LogResult<Log>>)
+          (logsResponse.logs as List<org.web3j.protocol.core.methods.response.EthLog.LogResult<Log>>)
             .map { logResult -> logResult.get().toDomain() }
         } else {
           emptyList()
