@@ -160,7 +160,7 @@ func (h *hashBaseConversion) Run(
 
 	// recomposing limbsHi into hashHi,
 	// since this is output of the module, it should be big-Endian
-	res := vector.Constant(field.Zero(), size)
+	res := vector.Repeat(field.Zero(), size)
 	t := make([]field.Element, size)
 	for j := len(limbsHi) - 1; j >= 0; j-- {
 		vector.ScalarMul(t, res, field.NewElement(POWER4))
@@ -169,7 +169,7 @@ func (h *hashBaseConversion) Run(
 	hashHi.PushSliceF(res)
 	hashHi.PadAndAssign(run, field.Zero())
 
-	res = vector.Constant(field.Zero(), size)
+	res = vector.Repeat(field.Zero(), size)
 	for j := len(limbsHi) - 1; j >= 0; j-- {
 		vector.ScalarMul(t, res, field.NewElement(POWER4))
 		vector.Add(res, t, limbsLo[j].Slice())

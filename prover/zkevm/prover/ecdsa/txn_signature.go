@@ -107,9 +107,9 @@ func (txn *txSignature) assignTxSignature(run *wizard.ProverRuntime, nbActualEcR
 	var (
 		nbEcRecover = nbActualEcRecover
 		n           = startAt(nbEcRecover)
-		hashHi      = vector.Constant(field.Zero(), n)
-		hashLo      = vector.Constant(field.Zero(), n)
-		isTxHash    = vector.Constant(field.Zero(), n)
+		hashHi      = vector.Repeat(field.Zero(), n)
+		hashLo      = vector.Repeat(field.Zero(), n)
+		isTxHash    = vector.Repeat(field.Zero(), n)
 		size        = txn.Inputs.ac.size
 		permTrace   = keccak.GenerateTrace(txn.Inputs.RlpTxn.ScanStreams(run))
 		v, w        field.Element
@@ -122,9 +122,9 @@ func (txn *txSignature) assignTxSignature(run *wizard.ProverRuntime, nbActualEcR
 		v.SetBytes(hi[:])
 		w.SetBytes(lo[:])
 
-		repeatLo := vector.Constant(w, nbRowsPerTxSign)
-		repeatHi := vector.Constant(v, nbRowsPerTxSign)
-		repeatIsTxHash := vector.Constant(field.Zero(), nbRowsPerTxSign-1)
+		repeatLo := vector.Repeat(w, nbRowsPerTxSign)
+		repeatHi := vector.Repeat(v, nbRowsPerTxSign)
+		repeatIsTxHash := vector.Repeat(field.Zero(), nbRowsPerTxSign-1)
 
 		hashHi = append(hashHi, repeatHi...)
 		hashLo = append(hashLo, repeatLo...)

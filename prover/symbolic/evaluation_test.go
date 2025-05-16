@@ -45,8 +45,8 @@ func TestSimpleAddition(t *testing.T) {
 		t.Run("vec-vec", func(t *testing.T) {
 			// For large vectors
 			res := b.Evaluate([]sv.SmartVector{
-				sv.NewRegular(vector.Constant(field.NewElement(2), SIZE)),
-				sv.NewRegular(vector.Constant(field.NewElement(3), SIZE)),
+				sv.NewRegular(vector.Repeat(field.NewElement(2), SIZE)),
+				sv.NewRegular(vector.Repeat(field.NewElement(3), SIZE)),
 			}).(*sv.Regular)
 
 			for i := range *res {
@@ -79,7 +79,7 @@ func TestPythagoras(t *testing.T) {
 		// A vector and a scalar
 		res := b.Evaluate([]sv.SmartVector{
 			sv.NewConstant(field.NewElement(2), 1024),
-			sv.NewRegular(vector.Constant(field.NewElement(3), 1024)),
+			sv.NewRegular(vector.Repeat(field.NewElement(3), 1024)),
 		}).(*sv.Regular)
 
 		require.Equal(t, res.Len(), 1024)
@@ -91,8 +91,8 @@ func TestPythagoras(t *testing.T) {
 	{
 		// Two vectors
 		res := b.Evaluate([]sv.SmartVector{
-			sv.NewRegular(vector.Constant(field.NewElement(2), 8192)),
-			sv.NewRegular(vector.Constant(field.NewElement(3), 8192)),
+			sv.NewRegular(vector.Repeat(field.NewElement(2), 8192)),
+			sv.NewRegular(vector.Repeat(field.NewElement(3), 8192)),
 		}).(*sv.Regular)
 
 		require.Equal(t, res.Len(), 8192)
@@ -123,7 +123,7 @@ func TestMulAdd(t *testing.T) {
 		// A vector and a scalar
 		res := b.Evaluate([]sv.SmartVector{
 			sv.NewConstant(field.NewElement(2), 1024),
-			sv.NewRegular(vector.Constant(field.NewElement(3), 1024)),
+			sv.NewRegular(vector.Repeat(field.NewElement(3), 1024)),
 		}).(*sv.Regular)
 
 		require.Equal(t, res.Len(), 1024)
@@ -135,8 +135,8 @@ func TestMulAdd(t *testing.T) {
 	{
 		// Two vectors
 		res := b.Evaluate([]sv.SmartVector{
-			sv.NewRegular(vector.Constant(field.NewElement(2), 8192)),
-			sv.NewRegular(vector.Constant(field.NewElement(3), 8192)),
+			sv.NewRegular(vector.Repeat(field.NewElement(2), 8192)),
+			sv.NewRegular(vector.Repeat(field.NewElement(3), 8192)),
 		}).(*sv.Regular)
 
 		require.Equal(t, res.Len(), 8192)
@@ -174,10 +174,10 @@ func TestExpressionsContainAllCases(t *testing.T) {
 	expr := ExpressionContainingAllCases()
 	b := expr.Board()
 
-	valA := sv.NewRegular(vector.Constant(field.NewElement(1), 8192))
+	valA := sv.NewRegular(vector.Repeat(field.NewElement(1), 8192))
 	valA0 := sv.NewConstant(field.NewElement(1), 8192)
-	valAW := sv.NewPaddedCircularWindow(vector.Constant(field.One(), 1000), field.One(), 0, 8192)
-	valAWShifted := sv.NewPaddedCircularWindow(vector.Constant(field.One(), 1000), field.One(), 1, 8192)
+	valAW := sv.NewPaddedCircularWindow(vector.Repeat(field.One(), 1000), field.One(), 0, 8192)
+	valAWShifted := sv.NewPaddedCircularWindow(vector.Repeat(field.One(), 1000), field.One(), 1, 8192)
 	valB := sv.NewConstant(field.NewElement(3), 8192)
 
 	/*

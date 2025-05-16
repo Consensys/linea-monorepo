@@ -137,7 +137,7 @@ func (d *GenericDataAccumulator) Run(run *wizard.ProverRuntime) {
 	}
 
 	// populate and assign isActive
-	isActive := vector.Constant(field.One(), len(sFilters[0]))
+	isActive := vector.Repeat(field.One(), len(sFilters[0]))
 	run.AssignColumn(d.IsActive.GetColID(), smartvectors.RightZeroPadded(isActive, d.size))
 
 	// populate Provider

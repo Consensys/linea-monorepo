@@ -188,6 +188,6 @@ func assignImportationColumns(run *wizard.ProverRuntime, imported *Importation, 
 	run.AssignColumn(imported.Limb.GetColID(), smartvectors.RightZeroPadded(u, targetSize))
 
 	run.AssignColumn(imported.IsActive.GetColID(),
-		smartvectors.RightZeroPadded(vector.Constant(field.One(), len(t.limb)), targetSize))
+		smartvectors.RightZeroPadded(vector.Repeat(field.One(), len(t.limb)), targetSize))
 
 }

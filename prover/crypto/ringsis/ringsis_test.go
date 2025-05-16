@@ -107,17 +107,17 @@ func TestHashModXnMinusOne(t *testing.T) {
 		key := GenerateKey(testCasesKey[i].Params, testCase.Size)
 
 		t.Run(fmt.Sprintf("case-%++v/all-ones", i), func(t *testing.T) {
-			runTest(t, &key, vector.Constant(field.One(), key.maxNumLimbsHashable()))
+			runTest(t, &key, vector.Repeat(field.One(), key.maxNumLimbsHashable()))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/all-zeroes", i), func(t *testing.T) {
-			runTest(t, &key, vector.Constant(field.Zero(), key.maxNumLimbsHashable()))
+			runTest(t, &key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/rand-constant", i), func(t *testing.T) {
 			var r field.Element
 			r.SetRandom()
-			runTest(t, &key, vector.Constant(r, key.maxNumLimbsHashable()))
+			runTest(t, &key, vector.Repeat(r, key.maxNumLimbsHashable()))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/full-rand", i), func(t *testing.T) {
@@ -127,17 +127,17 @@ func TestHashModXnMinusOne(t *testing.T) {
 		// ==== passing shorter vectors
 
 		t.Run(fmt.Sprintf("case-%++v/all-ones-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Constant(field.One(), key.maxNumLimbsHashable()-1))
+			runTest(t, &key, vector.Repeat(field.One(), key.maxNumLimbsHashable()-1))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/all-zeroes-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Constant(field.Zero(), key.maxNumLimbsHashable()-1))
+			runTest(t, &key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()-1))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/rand-constant-shorter", i), func(t *testing.T) {
 			var r field.Element
 			r.SetRandom()
-			runTest(t, &key, vector.Constant(r, key.maxNumLimbsHashable()-1))
+			runTest(t, &key, vector.Repeat(r, key.maxNumLimbsHashable()-1))
 		})
 
 		t.Run(fmt.Sprintf("case-%++v/full-rand-shorter", i), func(t *testing.T) {

@@ -83,7 +83,7 @@ func AssignEcRecTxnData(
 	run.AssignColumn(td.ct.GetColID(), smartvectors.LeftZeroPadded(ctWit, sizeTxnData))
 
 	effectiveSize := nbEcRec*nbRowsPerEcRec + nbTxS*nbRowsPerTxSign
-	isActive := vector.Constant(field.One(), effectiveSize)
+	isActive := vector.Repeat(field.One(), effectiveSize)
 	run.AssignColumn(ac.IsActive.GetColID(), smartvectors.RightZeroPadded(isActive, size))
 }
 

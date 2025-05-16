@@ -221,7 +221,7 @@ func (ctx *linearHashCtx) IsActiveExpected() ifaces.Column {
 			assignment = smartvectors.NewConstant(field.One(), ctx.NumHash)
 		} else {
 			assignment = smartvectors.RightZeroPadded(
-				vector.Constant(field.One(), ctx.NumHash),
+				vector.Repeat(field.One(), ctx.NumHash),
 				ctx.ExpectedHash.Size(),
 			)
 		}
@@ -246,7 +246,7 @@ func (ctx *linearHashCtx) IsActiveVar() *symbolic.Expression {
 		ctx.IsActiveLarge = ctx.comp.InsertPrecomputed(
 			ifaces.ColIDf(prefixWithLinearHash(ctx.comp, "IS_ACTIVE_%v", ctx.ToHash.GetColID())),
 			smartvectors.RightZeroPadded(
-				vector.Constant(field.One(), ctx.NumHash*ctx.Period),
+				vector.Repeat(field.One(), ctx.NumHash*ctx.Period),
 				ctx.ToHash.Size(),
 			),
 		)

@@ -109,7 +109,7 @@ func globalWithPeriodicSample(size, period, offset int) func() (wizard.DefineFun
 		}
 
 		prover := func(run *wizard.ProverRuntime) {
-			v := vector.Constant(field.One(), size)
+			v := vector.Repeat(field.One(), size)
 			for i := 0; i < size; i++ {
 				if i%period == offset {
 					v[i].SetZero()
@@ -131,7 +131,7 @@ func localWithPeriodicSample(size, period, offset int) func() (wizard.DefineFunc
 		}
 
 		prover := func(run *wizard.ProverRuntime) {
-			v := vector.Constant(field.One(), size)
+			v := vector.Repeat(field.One(), size)
 			for i := 0; i < size; i++ {
 				if i%period == offset {
 					v[i].SetZero()

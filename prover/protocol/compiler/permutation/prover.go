@@ -50,13 +50,13 @@ func (z *ZCtx) run(run *wizard.ProverRuntime) {
 		if packingArity*i < len(z.NumeratorFactors) {
 			numerator = wizardutils.EvalExprColumn(run, z.NumeratorFactorsBoarded[i]).IntoRegVecSaveAlloc()
 		} else {
-			numerator = vector.Constant(field.One(), z.Size)
+			numerator = vector.Repeat(field.One(), z.Size)
 		}
 
 		if packingArity*i < len(z.DenominatorFactors) {
 			denominator = wizardutils.EvalExprColumn(run, z.DenominatorFactorsBoarded[i]).IntoRegVecSaveAlloc()
 		} else {
-			denominator = vector.Constant(field.One(), z.Size)
+			denominator = vector.Repeat(field.One(), z.Size)
 		}
 
 		denominator = field.BatchInvert(denominator)

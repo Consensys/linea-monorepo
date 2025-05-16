@@ -81,7 +81,7 @@ func (rm *ResultMod) Define(comp *wizard.CompiledIOP, round int, name string, nu
 	rm.IsActive = rm.comp.InsertPrecomputed(
 		rm.colname("ISACTIVE"),
 		smartvectors.RightZeroPadded(
-			vector.Constant(field.One(), rm.NumProofs),
+			vector.Repeat(field.One(), rm.NumProofs),
 			rm.NumRows,
 		),
 	)

@@ -153,7 +153,7 @@ func (mod *Module) assignStateAndBlocks(
 	run.AssignColumn(
 		mod.isActive.GetColID(),
 		smartvectors.RightZeroPadded(
-			vector.Constant(field.One(), unpaddedSize),
+			vector.Repeat(field.One(), unpaddedSize),
 			colSize,
 		),
 	)
