@@ -4,8 +4,8 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	gnarkfft "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -27,7 +27,7 @@ func Interpolate(poly []field.Element, x fr.Element, oncoset ...bool) field.Elem
 
 	n := len(poly)
 
-	domain := fft.NewDomain(n)
+	domain := gnarkfft.NewDomain(uint64(n))
 	denominator := make([]field.Element, n)
 
 	one := field.One()
@@ -91,7 +91,7 @@ func BatchInterpolate(polys [][]field.Element, x fr.Element, oncoset ...bool) []
 
 	n := len(poly)
 
-	domain := fft.NewDomain(n)
+	domain := gnarkfft.NewDomain(uint64(n))
 	denominator := make([]field.Element, n)
 
 	one := field.One()

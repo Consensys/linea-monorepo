@@ -2,17 +2,19 @@ package fastpolyext
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	gnarkfft "github.com/consensys/gnark-crypto/field/koalabear/fft"
 )
 
 // Multiply twi polynomial modulo X^n - 1
 // a and b must be in coefficient form, the result is in coefficient
 // form
 // a and b are destroyed during the operation
-func MultModXMinus1(domain *fft.Domain, res, a, b []fext.Element) {
+func MultModXMinus1(domain *gnarkfft.Domain, res, a, b []fext.Element) {
 	// All the item must be of the right size
 	if len(a) != len(b) || len(a) != len(res) || uint64(len(a)) != domain.Cardinality {
 		panic(
@@ -34,7 +36,7 @@ func MultModXMinus1(domain *fft.Domain, res, a, b []fext.Element) {
 // `res` can be either `a` or any pre-allocated array
 // res must pre-allocated in all cases
 // a is destroyed during the operation
-func MultModXnMinus1Precomputed(domain *fft.Domain, res, a, precomp []fext.Element) {
+func MultModXnMinus1Precomputed(domain *gnarkfft.Domain, res, a, precomp []fext.Element) {
 
 	// All the item must be of the right size
 	if len(a) != len(precomp) || len(a) != len(res) || uint64(len(a)) != domain.Cardinality {

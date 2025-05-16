@@ -1,8 +1,8 @@
 package fastpoly
 
 import (
+	gnarkfft "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
@@ -22,7 +22,7 @@ func InterpolateGnark(api frontend.API, poly []frontend.Variable, x frontend.Var
 	}
 
 	n := len(poly)
-	domain := fft.NewDomain(n)
+	domain := gnarkfft.NewDomain(uint64(n))
 	one := field.One()
 
 	// Test that x is not a root of unity. In the other case, we would

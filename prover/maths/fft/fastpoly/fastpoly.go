@@ -3,8 +3,8 @@ package fastpoly
 import (
 	"fmt"
 
+	gnarkfft "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
@@ -12,7 +12,7 @@ import (
 // a and b must be in coefficient form, the result is in coefficient
 // form
 // a and b are destroyed during the operation
-func MultModXMinus1(domain *fft.Domain, res, a, b []field.Element) {
+func MultModXMinus1(domain *gnarkfft.Domain, res, a, b []field.Element) {
 	// All the item must be of the right size
 	if len(a) != len(b) || len(a) != len(res) || uint64(len(a)) != domain.Cardinality {
 		panic(
@@ -21,10 +21,10 @@ func MultModXMinus1(domain *fft.Domain, res, a, b []field.Element) {
 		)
 	}
 
-	domain.FFT(a, fft.DIF)
-	domain.FFT(b, fft.DIF)
+	domain.FFT(a, gnarkfft.DIF)
+	domain.FFT(b, gnarkfft.DIF)
 	vector.MulElementWise(res, a, b)
-	domain.FFTInverse(res, fft.DIT)
+	domain.FFTInverse(res, gnarkfft.DIT)
 
 }
 
@@ -34,7 +34,7 @@ func MultModXMinus1(domain *fft.Domain, res, a, b []field.Element) {
 // `res` can be either `a` or any pre-allocated array
 // res must pre-allocated in all cases
 // a is destroyed during the operation
-func MultModXnMinus1Precomputed(domain *fft.Domain, res, a, precomp []field.Element) {
+func MultModXnMinus1Precomputed(domain *gnarkfft.Domain, res, a, precomp []field.Element) {
 
 	// All the item must be of the right size
 	if len(a) != len(precomp) || len(a) != len(res) || uint64(len(a)) != domain.Cardinality {
@@ -44,7 +44,7 @@ func MultModXnMinus1Precomputed(domain *fft.Domain, res, a, precomp []field.Elem
 		)
 	}
 
-	domain.FFT(a, fft.DIF)
+	domain.FFT(a, gnarkfft.DIF)
 	vector.MulElementWise(res, a, precomp)
-	domain.FFTInverse(res, fft.DIT)
+	domain.FFTInverse(res, gnarkfft.DIT)
 }

@@ -1,14 +1,16 @@
 package smartvectorsext
 
 import (
+	"math/big"
+
+	gnarkfft "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"math/big"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -162,7 +164,7 @@ func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.
 		utils.Panic("only support powers of two but poly has length %v", len(polys))
 	}
 
-	domain := fft.NewDomain(n)
+	domain := gnarkfft.NewDomain(uint64(n))
 	denominator := make([]fext.Element, n)
 
 	one := fext.One()

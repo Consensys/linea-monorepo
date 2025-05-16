@@ -3,9 +3,10 @@ package smartvectors
 import (
 	"math/big"
 
+	gnarkfft "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -161,7 +162,7 @@ func batchInterpolateSV(results []field.Element, computed []bool, polys [][]fiel
 		utils.Panic("only support powers of two but poly has length %v", len(polys))
 	}
 
-	domain := fft.NewDomain(n)
+	domain := gnarkfft.NewDomain(uint64(n))
 	denominator := make([]field.Element, n)
 
 	one := field.One()

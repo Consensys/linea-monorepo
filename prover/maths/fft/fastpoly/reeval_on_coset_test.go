@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	gnarkfft "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
@@ -47,7 +48,7 @@ func TestXMinusOneOnACoset(t *testing.T) {
 	*/
 	one := field.One()
 	for i := 0; i < N; i++ {
-		domainN := fft.NewDomain(N)
+		domainN := gnarkfft.NewDomain(uint64(N))
 		expected := domainN.Generator
 		expected.Exp(expected, big.NewInt(int64(i)))
 		expected.Mul(&expected, &domainN.FrMultiplicativeGen)

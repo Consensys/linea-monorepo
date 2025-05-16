@@ -1,19 +1,19 @@
 package fft
 
 import (
-	"github.com/consensys/gnark-crypto/ecc"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-	"math/bits"
+	gnarkfft "github.com/consensys/gnark-crypto/field/koalabear/fft"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+
+	field "github.com/consensys/gnark-crypto/field/koalabear"
 )
 
 // Decimation is used in the FFT call to select decimation in time or in frequency
-type Decimation uint8
+type Decimation = gnarkfft.Decimation
 
 const (
-	DIT Decimation = iota
-	DIF
+	DIT Decimation = gnarkfft.DIT // Decimation in time
+	DIF Decimation = gnarkfft.DIF // Decimation in frequency
 )
 
 // parallelize threshold for a single butterfly op, if the fft stage is not parallelized already
@@ -25,38 +25,7 @@ const butterflyThreshold = 16
 // if coset if set, the FFT(a) returns the evaluation of a on a coset.
 func (domain *Domain) FFT(a []field.Element, decimation Decimation, opts ...Option) {
 
-	opt := fftOptions(opts...)
-
-	// find the stage where we should stop spawning go routines in our recursive calls
-	// (ie when we have as many go routines running as we have available CPUs)
-	maxSplits := bits.TrailingZeros64(ecc.NextPowerOfTwo(uint64(opt.nbTasks)))
-	if opt.nbTasks == 1 {
-		maxSplits = -1
-	}
-
-	// if coset != 0, scale by coset table
-	if opt.coset {
-		scale := func(cosetTable []field.Element) {
-			for i := 0; i < len(a); i++ {
-				a[i].Mul(&a[i], &cosetTable[i])
-			}
-		}
-		if decimation == DIT {
-			scale(domain.CosetTableReversed)
-
-		} else {
-			scale(domain.CosetTable)
-		}
-	}
-
-	switch decimation {
-	case DIF:
-		difFFT(a, domain.Twiddles, 0, maxSplits, nil, opt.nbTasks)
-	case DIT:
-		ditFFT(a, domain.Twiddles, 0, maxSplits, nil, opt.nbTasks)
-	default:
-		panic("not implemented")
-	}
+	domain.gnarkDomain.FFT(a, decimation, opts...)
 }
 
 // FFTInverse computes (recursively) the inverse discrete Fourier transform of a and stores the result in a
@@ -65,46 +34,7 @@ func (domain *Domain) FFT(a []field.Element, decimation Decimation, opts ...Opti
 // coset sets the shift of the fft (0 = no shift, standard fft)
 // len(a) must be a power of 2, and w must be a len(a)th root of unity in field F.
 func (domain *Domain) FFTInverse(a []field.Element, decimation Decimation, opts ...Option) {
-
-	opt := fftOptions(opts...)
-
-	// find the stage where we should stop spawning go routines in our recursive calls
-	// (ie when we have as many go routines running as we have available CPUs)
-	maxSplits := bits.TrailingZeros64(ecc.NextPowerOfTwo(uint64(opt.nbTasks)))
-	if opt.nbTasks == 1 {
-		maxSplits = -1
-	}
-
-	switch decimation {
-	case DIF:
-		difFFT(a, domain.TwiddlesInv, 0, maxSplits, nil, opt.nbTasks)
-	case DIT:
-		ditFFT(a, domain.TwiddlesInv, 0, maxSplits, nil, opt.nbTasks)
-	default:
-		panic("not implemented")
-	}
-
-	// scale by CardinalityInv
-	if !opt.coset {
-		for i := 0; i < len(a); i++ {
-			a[i].Mul(&a[i], &domain.CardinalityInv)
-		}
-		return
-	}
-
-	scale := func(cosetTable []field.Element) {
-		for i := 0; i < len(a); i++ {
-			a[i].Mul(&a[i], &cosetTable[i]).
-				Mul(&a[i], &domain.CardinalityInv)
-		}
-	}
-	if decimation == DIT {
-		scale(domain.CosetTableInv)
-		return
-	}
-
-	// decimation == DIF
-	scale(domain.CosetTableInvReversed)
+	domain.gnarkDomain.FFTInverse(a, decimation, opts...)
 
 }
 

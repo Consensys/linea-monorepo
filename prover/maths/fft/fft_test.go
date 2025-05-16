@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	field "github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/stretchr/testify/require"
 
 	"github.com/leanovate/gopter"
@@ -55,7 +55,7 @@ func TestFFT(t *testing.T) {
 		domainWithPrecompute.FFT(pol, DIF)
 		BitReverse(pol)
 
-		sample := domainWithPrecompute.Generator
+		sample := domainWithPrecompute.gnarkDomain.Generator
 		sample.Exp(sample, big.NewInt(int64(ithpower)))
 
 		eval := poly.EvalUnivariate(backupPol, sample)
@@ -81,9 +81,9 @@ func TestFFT(t *testing.T) {
 			domainWithPrecompute.FFT(pol, DIF, OnCoset())
 			BitReverse(pol)
 
-			sample := domainWithPrecompute.Generator
+			sample := domainWithPrecompute.gnarkDomain.Generator
 			sample.Exp(sample, big.NewInt(int64(ithpower))).
-				Mul(&sample, &domainWithPrecompute.FrMultiplicativeGen)
+				Mul(&sample, &domainWithPrecompute.gnarkDomain.FrMultiplicativeGen)
 
 			eval := poly.EvalUnivariate(backupPol, sample)
 
@@ -109,7 +109,7 @@ func TestFFT(t *testing.T) {
 			BitReverse(pol)
 			domainWithPrecompute.FFT(pol, DIT)
 
-			sample := domainWithPrecompute.Generator
+			sample := domainWithPrecompute.gnarkDomain.Generator
 			sample.Exp(sample, big.NewInt(int64(ithpower)))
 
 			eval := poly.EvalUnivariate(backupPol, sample)

@@ -3,6 +3,7 @@ package fastpoly_test
 import (
 	"testing"
 
+	gnarkfft "github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
@@ -15,7 +16,7 @@ func TestMultiplication(t *testing.T) {
 
 	n := 8
 	// smallN := 6
-	domain := fft.NewDomain(n)
+	domain := gnarkfft.NewDomain(uint64(n))
 
 	// Unitary X : multiplying by it results in identity
 	{
