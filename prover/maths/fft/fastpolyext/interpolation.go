@@ -1,9 +1,10 @@
 package fastpolyext
 
 import (
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -32,7 +33,11 @@ func Interpolate(poly []fext.Element, x fext.Element, oncoset ...bool) fext.Elem
 
 	one := fext.One()
 
-	wrappedFrMultiplicativeGenInv := fext.Element{domain.FrMultiplicativeGenInv, field.Zero()}
+	var wrappedFrMultiplicativeGenInv fext.Element
+	wrappedFrMultiplicativeGenInv.B0.A0 = domain.GnarkDomain.FrMultiplicativeGenInv
+	wrappedFrMultiplicativeGenInv.B0.A1.SetZero()
+	wrappedFrMultiplicativeGenInv.B1.A0.SetZero()
+	wrappedFrMultiplicativeGenInv.B1.A1.SetZero()
 
 	if len(oncoset) > 0 && oncoset[0] {
 		x.Mul(&x, &wrappedFrMultiplicativeGenInv)
@@ -46,7 +51,11 @@ func Interpolate(poly []fext.Element, x fext.Element, oncoset ...bool) fext.Elem
 			and g a field element such that gH is the coset
 	*/
 	denominator[0] = x
-	wrappedGeneratorInv := fext.Element{domain.GeneratorInv, field.Zero()}
+	var wrappedGeneratorInv fext.Element
+	wrappedGeneratorInv.B0.A0 = domain.GnarkDomain.GeneratorInv
+	wrappedGeneratorInv.B0.A1.SetZero()
+	wrappedGeneratorInv.B1.A0.SetZero()
+	wrappedGeneratorInv.B1.A1.SetZero()
 	for i := 1; i < n; i++ {
 		denominator[i].Mul(&denominator[i-1], &wrappedGeneratorInv)
 	}

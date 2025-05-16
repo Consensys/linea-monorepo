@@ -15,10 +15,10 @@ import (
 // a and b are destroyed during the operation
 func MultModXMinus1(domain *fft.Domain, res, a, b []fext.Element) {
 	// All the item must be of the right size
-	if len(a) != len(b) || len(a) != len(res) || uint64(len(a)) != domain.Cardinality {
+	if len(a) != len(b) || len(a) != len(res) || uint64(len(a)) != domain.GnarkDomain.Cardinality {
 		panic(
 			fmt.Sprintf("All items should have the right size %v %v %v %v",
-				domain.Cardinality, len(res), len(a), len(b)),
+				domain.GnarkDomain.Cardinality, len(res), len(a), len(b)),
 		)
 	}
 
@@ -38,10 +38,10 @@ func MultModXMinus1(domain *fft.Domain, res, a, b []fext.Element) {
 func MultModXnMinus1Precomputed(domain *fft.Domain, res, a, precomp []fext.Element) {
 
 	// All the item must be of the right size
-	if len(a) != len(precomp) || len(a) != len(res) || uint64(len(a)) != domain.Cardinality {
+	if len(a) != len(precomp) || len(a) != len(res) || uint64(len(a)) != domain.GnarkDomain.Cardinality {
 		panic(
 			fmt.Sprintf("All items should have the right size %v %v %v %v",
-				domain.Cardinality, len(res), len(a), len(precomp)),
+				domain.GnarkDomain.Cardinality, len(res), len(a), len(precomp)),
 		)
 	}
 

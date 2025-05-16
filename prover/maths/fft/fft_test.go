@@ -55,7 +55,7 @@ func TestFFT(t *testing.T) {
 		domainWithPrecompute.FFT(pol, DIF)
 		BitReverse(pol)
 
-		sample := domainWithPrecompute.Generator
+		sample := domainWithPrecompute.GnarkDomain.Generator
 		sample.Exp(sample, big.NewInt(int64(ithpower)))
 
 		eval := poly.Eval(backupPol, sample)
@@ -81,9 +81,9 @@ func TestFFT(t *testing.T) {
 			domainWithPrecompute.FFT(pol, DIF, OnCoset())
 			BitReverse(pol)
 
-			sample := domainWithPrecompute.Generator
+			sample := domainWithPrecompute.GnarkDomain.Generator
 			sample.Exp(sample, big.NewInt(int64(ithpower))).
-				Mul(&sample, &domainWithPrecompute.FrMultiplicativeGen)
+				Mul(&sample, &domainWithPrecompute.GnarkDomain.FrMultiplicativeGen)
 
 			eval := poly.Eval(backupPol, sample)
 
@@ -109,7 +109,7 @@ func TestFFT(t *testing.T) {
 			BitReverse(pol)
 			domainWithPrecompute.FFT(pol, DIT)
 
-			sample := domainWithPrecompute.Generator
+			sample := domainWithPrecompute.GnarkDomain.Generator
 			sample.Exp(sample, big.NewInt(int64(ithpower)))
 
 			eval := poly.Eval(backupPol, sample)

@@ -3,7 +3,7 @@ package fastpoly
 import (
 	"math/big"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -84,7 +84,7 @@ func EvalXnMinusOneOnACoset(n, N int) []field.Element {
 		res[i].Mul(&res[i-1], &t)
 	}
 
-	var one fr.Element
+	var one koalabear.Element
 	one.SetOne()
 	for i := 0; i < N/n; i++ {
 		res[i].Sub(&res[i], &one)

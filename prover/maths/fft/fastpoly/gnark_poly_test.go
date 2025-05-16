@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -24,7 +25,7 @@ func TestGnarkInterpolate(t *testing.T) {
 
 			def := func(api frontend.API) error {
 				var (
-					x         = field.NewElement(42)
+					x         = koalabear.NewElement(42)
 					vec       = vector.IntoGnarkAssignment(testCases[i])
 					expectedY = Interpolate(testCases[i], x)
 					computedY = InterpolateGnark(api, vec, x)

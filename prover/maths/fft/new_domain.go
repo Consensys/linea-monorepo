@@ -1,9 +1,8 @@
 package fft
 
 import (
-	"math/big"
+	gnarkfft "github.com/consensys/gnark-crypto/field/koalabear/fft"
 
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -12,36 +11,9 @@ Creates a domain without a coset
 */
 func NewDomain(m int) *Domain {
 
-	// Sanity-check
-	if !utils.IsPowerOfTwo(m) {
-		utils.Panic("`m` is not a power of two %v", m)
-	}
-
-	// Sanity-check
-	if m > 1<<maxOrderInt {
-		utils.Panic("The current field does not have a `m`-roots of unity group (m = %v)", m)
-	}
-
-	domain := &Domain{}
-	order := utils.Log2Ceil(m)
-	domain.Cardinality = uint64(m)
-
-	// Multiplicative generator of FF* (not a 2-adic root of unity)
-	domain.FrMultiplicativeGen.SetUint64(field.MultiplicativeGen)
-	domain.FrMultiplicativeGenInv.Inverse(&domain.FrMultiplicativeGen)
-
-	// Generator = FinerGenerator^2 has order x
-	expo := uint64(1 << (maxOrderInt - order))
-	var expoBig big.Int
-	expoBig.SetUint64(expo)
-	// order x
-	domain.Generator.Exp(field.RootOfUnity, &expoBig)
-	domain.GeneratorInv.Inverse(&domain.Generator)
-	domain.CardinalityInv.SetUint64(uint64(m)).Inverse(&domain.CardinalityInv)
-
-	// Either get the twiddles or recompute them
-	domain.Twiddles, domain.TwiddlesInv = GetTwiddleForDomainOfSize(m)
-	return domain
+	// gnark-crypto's NewDomain takes the domain cardinality directly.
+	gnarkD := gnarkfft.NewDomain(uint64(m))
+	return &Domain{GnarkDomain: gnarkD}
 }
 
 /*
@@ -55,6 +27,7 @@ func (dom *Domain) WithCoset() *Domain {
 Equipe the current domain with a custom coset obtained as explained in
 the doc of `GetCoset`
 */
+// TODO: remove below?
 func (dom *Domain) WithCustomCoset(r, numcoset int) *Domain {
 	n := utils.ToInt(dom.Cardinality)
 	dom.CosetTable,
