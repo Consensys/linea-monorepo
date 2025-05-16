@@ -1,23 +1,14 @@
 package field
 
 import (
-	"math/big"
-	"math/rand/v2"
-	"unsafe"
-
-	"math/bits"
-
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 )
 
-// Element aliases [fr.Element] and represents a field element in the scalar
-// field of the BLS12-377 curve. The zero value of this struct corresponds to
-// the zero value of the field. However, for the rest the Elements are
-// represented in Montgommery form. So neither `field.Element([0, 0, 0, 1])“ or
-// `field.Element(1, 0, 0, 0)` represent valid field elements.
-type Element = fr.Element
+// Embedding
+type Element = koalabear.Element
 
+/*
+// todo: remove below
 const (
 	// RootOfUnityOrder is the smallest integer such that
 	// 		[RootOfUnity] ** (2 ** RootOfUnityOrder) == 1
@@ -32,6 +23,7 @@ const (
 	// Bytes is the number of bytes needed to represent a field element.
 	Bytes = fr.Bytes
 )
+
 
 var (
 	// RootOfUnity is a 47-th root of unity in the field. It is the same as
@@ -148,3 +140,4 @@ func PseudoRandTruncated(rng *rand.Rand, sizeByte int) Element {
 	res.SetBigInt(bigInt)
 	return res
 }
+*/

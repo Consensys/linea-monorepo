@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -16,7 +17,8 @@ func TestVectors(t *testing.T) {
 		// a, b and x are very common vectors in all the tests
 		a = vector.ForTest(1, 2, 3, 4, 5)
 		b = vector.ForTest(3, 4, 5, 6, 7)
-		x = field.NewElement(2)
+
+		x = koalabear.NewElement(2)
 
 		// aBAndXMustNotChange asserts that a and b did not change as this is
 		// a very common check in all the sub-tests.
@@ -30,7 +32,6 @@ func TestVectors(t *testing.T) {
 	t.Run("DeepCopy", func(t *testing.T) {
 		c := vector.DeepCopy(a)
 		assert.Equal(t, a, c, "the deep copied vector must be equal")
-		c[0] = field.NewElement(40)
 		aBAndXMustNotChange(t)
 	})
 
@@ -150,11 +151,11 @@ func TestVectors(t *testing.T) {
 }
 
 func TestReverse(t *testing.T) {
-	vec := []field.Element{field.NewElement(0), field.NewElement(1), field.NewElement(2)}
+	vec := []field.Element{koalabear.NewElement(0), koalabear.NewElement(1), koalabear.NewElement(2)}
 	vector.Reverse(vec)
-	require.Equal(t, vec[0], field.NewElement(2))
-	require.Equal(t, vec[1], field.NewElement(1))
-	require.Equal(t, vec[2], field.NewElement(0))
+	require.Equal(t, vec[0], koalabear.NewElement(2))
+	require.Equal(t, vec[1], koalabear.NewElement(1))
+	require.Equal(t, vec[2], koalabear.NewElement(0))
 }
 
 func TestScalarProd(t *testing.T) {
@@ -163,7 +164,7 @@ func TestScalarProd(t *testing.T) {
 			vector.ForTest(1, 2, 3, 4),
 			vector.ForTest(1, 2, 3, 4),
 		),
-		field.NewElement(30),
+		koalabear.NewElement(30),
 	)
 }
 

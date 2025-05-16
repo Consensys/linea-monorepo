@@ -3,6 +3,7 @@ package field
 import (
 	"runtime"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
@@ -19,7 +20,7 @@ func ParBatchInvert(a []Element, numCPU int) []Element {
 	res := make([]Element, len(a))
 
 	parallel.Execute(len(a), func(start, stop int) {
-		subRes := BatchInvert(a[start:stop])
+		subRes := koalabear.BatchInvert(a[start:stop])
 		copy(res[start:stop], subRes)
 	}, numCPU)
 
