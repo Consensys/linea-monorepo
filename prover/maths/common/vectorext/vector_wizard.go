@@ -6,21 +6,21 @@ import (
 	"fmt"
 	"math/rand/v2"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // DeepCopy deep-copies the input vector
-func DeepCopy(pol []fext.Element) []fext.Element {
-	return append([]fext.Element{}, pol...)
+func DeepCopy(pol []extensions.E4) []extensions.E4 {
+	return append([]extensions.E4{}, pol...)
 }
 
 // ScalarMul multiplies a vector by a scalar - in place.
 // The result should be preallocated or it is going to panic.
 // res = vec is a valid parameter assignment.
-func ScalarMul(res, vec []fext.Element, scalar fext.Element) {
+func ScalarMul(res, vec []extensions.E4, scalar extensions.E4) {
 
 	if len(res)+len(vec) == 0 {
 		return
@@ -33,7 +33,7 @@ func ScalarMul(res, vec []fext.Element, scalar fext.Element) {
 // ScalarProd returns the scalar (inner) product of a and b. The function panics
 // if a and b do not have the same size. If they have both empty vectors, the
 // function returns 0.
-func ScalarProd(a, b []fext.Element) fext.Element {
+func ScalarProd(a, b []extensions.E4) extensions.E4 {
 	// The length checks is done by gnark-crypto already
 	a_ := Vector(a)
 	res := a_.InnerProduct(Vector(b))
@@ -41,8 +41,8 @@ func ScalarProd(a, b []fext.Element) fext.Element {
 }
 
 // Rand creates a random vector of size n
-func Rand(n int) []fext.Element {
-	vec := make([]fext.Element, n)
+func Rand(n int) []extensions.E4 {
+	vec := make([]extensions.E4, n)
 	for i := range vec {
 		_, err := vec[i].SetRandom()
 		// Just to enfore never having to deal with zeroes
@@ -55,14 +55,14 @@ func Rand(n int) []fext.Element {
 
 // MulElementWise multiplies two vectors element wise and write the result in
 // res. res = a is a valid assignment.
-func MulElementWise(res, a, b []fext.Element) {
+func MulElementWise(res, a, b []extensions.E4) {
 	// The length checks is done by gnark-crypto already
 	res_ := Vector(res)
 	res_.Mul(Vector(a), Vector(b))
 }
 
 // Prettify returns a string representing `a` in a human-readable fashion
-func Prettify(a []fext.Element) string {
+func Prettify(a []extensions.E4) string {
 	res := "["
 
 	for i := range a {
@@ -79,7 +79,7 @@ func Prettify(a []fext.Element) string {
 }
 
 // Reverse the elements of a vector inplace
-func Reverse(v []fext.Element) {
+func Reverse(v []extensions.E4) {
 	n := len(v) - 1
 	for i := 0; i < len(v)/2; i++ {
 		v[i], v[n-i] = v[n-i], v[i]
@@ -87,8 +87,8 @@ func Reverse(v []fext.Element) {
 }
 
 // Repeat returns a vector of size n whose values are all equal to x.
-func Repeat(x fext.Element, n int) []fext.Element {
-	res := make([]fext.Element, n)
+func Repeat(x extensions.E4, n int) []extensions.E4 {
+	res := make([]extensions.E4, n)
 	for i := range res {
 		res[i].Set(&x)
 	}
@@ -96,8 +96,8 @@ func Repeat(x fext.Element, n int) []fext.Element {
 }
 
 // ForTest returns a vector instantiated from a list of integers.
-func ForTest(xs ...int) []fext.Element {
-	res := make([]fext.Element, len(xs))
+func ForTest(xs ...int) []extensions.E4 {
+	res := make([]extensions.E4, len(xs))
 	for i, x := range xs {
 		res[i].SetInt64(int64(x))
 	}
@@ -106,8 +106,8 @@ func ForTest(xs ...int) []fext.Element {
 
 // ForTestFromVect computes a vector of field extensions,
 // where each field extension is populated using one vector of size [fext.ExtensionDegree]
-func ForTestFromVect(xs ...[fext.ExtensionDegree]int) []fext.Element {
-	res := make([]fext.Element, len(xs))
+func ForTestFromVect(xs ...[fext.ExtensionDegree]int) []extensions.E4 {
+	res := make([]extensions.E4, len(xs))
 	for i, x := range xs {
 		res[i].SetFromVector(x)
 	}
@@ -117,11 +117,11 @@ func ForTestFromVect(xs ...[fext.ExtensionDegree]int) []fext.Element {
 // ForTestFromPairs groups the input into pairs. Each pair populates the first two
 // coordinates of a field extension, and the function then
 // returns a vector instantiated these field extension elements.
-func ForTestFromPairs(xs ...int) []fext.Element {
+func ForTestFromPairs(xs ...int) []extensions.E4 {
 	if len(xs)%2 != 0 {
 		panic("ForTestFromPairs must receive an even-length input vector")
 	}
-	res := make([]fext.Element, len(xs)/2)
+	res := make([]extensions.E4, len(xs)/2)
 	for i := 0; i < len(res); i++ {
 		res[i].SetInt64Pair(int64(xs[2*i]), int64(xs[2*i+1]))
 	}
@@ -132,7 +132,7 @@ func ForTestFromPairs(xs ...int) []fext.Element {
 // `res` must be pre-allocated by the caller and res, a and b must all have
 // the same size.
 // res == a or res == b or both is valid assignment.
-func Add(res, a, b []fext.Element, extras ...[]fext.Element) {
+func Add(res, a, b []extensions.E4, extras ...[]extensions.E4) {
 
 	if len(res)+len(a)+len(b) == 0 {
 		return
@@ -146,7 +146,7 @@ func Add(res, a, b []fext.Element, extras ...[]fext.Element) {
 	}
 }
 
-func AddExt(res, a, b []fext.Element, extras ...[]fext.Element) {
+func AddExt(res, a, b []extensions.E4, extras ...[]extensions.E4) {
 
 	if len(res)+len(a)+len(b) == 0 {
 		return
@@ -164,7 +164,7 @@ func AddExt(res, a, b []fext.Element, extras ...[]fext.Element) {
 // `res` must be pre-allocated by the caller and res, a and b must all have
 // the same size.
 // res == a or res == b or both is valid assignment.
-func Sub(res, a, b []fext.Element) {
+func Sub(res, a, b []extensions.E4) {
 
 	if len(res)+len(a)+len(b) == 0 {
 		return
@@ -179,11 +179,11 @@ func Sub(res, a, b []fext.Element) {
 // right (appending, not prepending)
 // The resulting slice is allocated by the function, so it can be safely
 // modified by the caller after the function returns.
-func ZeroPad(v []fext.Element, newLen int) []fext.Element {
+func ZeroPad(v []extensions.E4, newLen int) []extensions.E4 {
 	if newLen < len(v) {
 		utils.Panic("newLen (%v) < len(v) (%v)", newLen, len(v))
 	}
-	res := make([]fext.Element, newLen)
+	res := make([]extensions.E4, newLen)
 	copy(res, v)
 	return res
 }
@@ -193,7 +193,7 @@ func ZeroPad(v []fext.Element, newLen int) []fext.Element {
 //	(a, a, a, a), (b, b, b, b) -> (a, b, a, b, a, b, a, b)
 //
 // The vecs[i] vectors must all have the same length
-func Interleave(vecs ...[]fext.Element) []fext.Element {
+func Interleave(vecs ...[]extensions.E4) []extensions.E4 {
 	numVecs := len(vecs)
 	vecSize := len(vecs[0])
 
@@ -204,7 +204,7 @@ func Interleave(vecs ...[]fext.Element) []fext.Element {
 		}
 	}
 
-	res := make([]fext.Element, numVecs*vecSize)
+	res := make([]extensions.E4, numVecs*vecSize)
 	for i := 0; i < vecSize; i++ {
 		for j := 0; j < numVecs; j++ {
 			res[i*numVecs+j] = vecs[j][i]
@@ -215,7 +215,7 @@ func Interleave(vecs ...[]fext.Element) []fext.Element {
 }
 
 // Fill a vector `vec` in place with the given value `val`.
-func Fill(v []fext.Element, val fext.Element) {
+func Fill(v []extensions.E4, val extensions.E4) {
 	for i := range v {
 		v[i] = val
 	}
@@ -224,16 +224,16 @@ func Fill(v []fext.Element, val fext.Element) {
 // PowerVec allocates and returns a vector of size n consisting of consecutive
 // powers of x, starting from x^0 = 1 and ending on x^{n-1}. The function panics
 // if given x=0 and returns an empty vector if n=0.
-func PowerVec(x fext.Element, n int) []fext.Element {
+func PowerVec(x extensions.E4, n int) []extensions.E4 {
 	if x == fext.Zero() {
 		utils.Panic("cannot build a power vec for x=0")
 	}
 
 	if n == 0 {
-		return []fext.Element{}
+		return []extensions.E4{}
 	}
 
-	res := make([]fext.Element, n)
+	res := make([]extensions.E4, n)
 	res[0].SetOne()
 
 	for i := 1; i < n; i++ {
@@ -246,7 +246,7 @@ func PowerVec(x fext.Element, n int) []fext.Element {
 // IntoGnarkAssignment converts an array of field.Element into an array of
 // frontend.Variable that can be used to assign a vector of frontend.Variable
 // in a circuit or to generate a vector of constant in the circuit definition.
-func IntoGnarkAssignment(msgData []fext.Element) []gnarkfext.Variable {
+func IntoGnarkAssignment(msgData []extensions.E4) []gnarkfext.Variable {
 	assignedMsg := []gnarkfext.Variable{}
 	for _, x := range msgData {
 		assignedMsg = append(assignedMsg, gnarkfext.Variable{frontend.Variable(x.A0), frontend.Variable(x.A1)})
@@ -257,7 +257,7 @@ func IntoGnarkAssignment(msgData []fext.Element) []gnarkfext.Variable {
 // Equal compares a and b and returns a boolean indicating whether they contain
 // the same value. The function assumes that a and b have the same length. It
 // panics otherwise.
-func Equal(a, b []fext.Element) bool {
+func Equal(a, b []extensions.E4) bool {
 
 	if len(a) != len(b) {
 		utils.Panic("a and b don't have the same length: %v %v", len(a), len(b))
@@ -274,8 +274,8 @@ func Equal(a, b []fext.Element) bool {
 
 // PseudoRand generates a vector of field element with a given size using the
 // provided random number generator
-func PseudoRand(rng *rand.Rand, size int) []fext.Element {
-	slice := make([]fext.Element, size)
+func PseudoRand(rng *rand.Rand, size int) []extensions.E4 {
+	slice := make([]extensions.E4, size)
 	for i := range slice {
 		slice[i] = fext.PseudoRand(rng)
 	}
