@@ -86,8 +86,8 @@ func Reverse(v []field.Element) {
 	}
 }
 
-// Constant returns a vector of size n whose values are all equal to x.
-func Constant(x field.Element, n int) []field.Element {
+// Repeat returns a vector of size n whose values are all equal to x.
+func Repeat(x field.Element, n int) []field.Element {
 	res := make([]field.Element, n)
 	for i := range res {
 		res[i] = x

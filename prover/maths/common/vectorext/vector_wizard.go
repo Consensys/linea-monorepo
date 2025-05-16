@@ -225,7 +225,7 @@ func Fill(v []fext.Element, val fext.Element) {
 // powers of x, starting from x^0 = 1 and ending on x^{n-1}. The function panics
 // if given x=0 and returns an empty vector if n=0.
 func PowerVec(x fext.Element, n int) []fext.Element {
-	if x == fext.Zero() {
+	if x.IsZero() {
 		utils.Panic("cannot build a power vec for x=0")
 	}
 
