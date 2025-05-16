@@ -49,9 +49,9 @@ class ExtraDataV1PricerServiceTest {
   )
 
   @Test
-  @Timeout(value = 5, timeUnit = TimeUnit.SECONDS)
+  @Timeout(2, timeUnit = TimeUnit.SECONDS)
   fun start_startsPollingProcess(vertx: Vertx, testContext: VertxTestContext) {
-    val pollingInterval = 50.milliseconds
+    val pollingInterval = 10.milliseconds
     val variableFees = 15000.0
     val expectedVariableFees = variableFees
     val legacyFees = 100000.0
@@ -95,8 +95,8 @@ class ExtraDataV1PricerServiceTest {
     // Start the service
     monitor.start().thenAccept { _ ->
       // Wait for a reasonable amount of time to ensure polling executes at least once
-      // Use 3x the polling interval to ensure enough time for the action to complete
-      vertx.setTimer(pollingInterval.inWholeMilliseconds * 3) {
+      // Use 5x the polling interval to ensure enough time for the action to complete
+      vertx.setTimer(pollingInterval.inWholeMilliseconds * 5) {
         testContext
           .verify {
             // Stop the service
