@@ -3,6 +3,8 @@ package wizard
 import (
 	// "reflect"
 
+	"slices"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -628,18 +630,38 @@ The projection query checks if a0 = b2, a3 = b8, a4 = b9
 Note that the query imposes that:
   - the number of 1 in the filters are equal
   - the order of filtered elements is preserved
+
+The "in" argument can be either a [query.ProjectionInput] or a
+[query.ProjectionMultiAryInput].
 */
-func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in query.ProjectionInput) query.Projection {
-	var (
-		round = max(
+func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in any) query.Projection {
+
+	var q query.Projection
+
+	switch in := in.(type) {
+
+	case query.ProjectionInput:
+		round := max(
 			column.MaxRound(in.ColumnA...),
 			column.MaxRound(in.ColumnB...),
 			in.FilterA.Round(),
 			in.FilterB.Round())
-	)
-	q := query.NewProjection(round, id, in)
-	// Finally registers the query
-	c.QueriesNoParams.AddToRound(round, q.Name(), q)
+		q = query.NewProjection(round, id, in)
+
+	case query.ProjectionMultiAryInput:
+		round := max(
+			column.MaxRound(slices.Concat(in.ColumnsA...)...),
+			column.MaxRound(slices.Concat(in.ColumnsB...)...),
+			column.MaxRound(in.FiltersA...),
+			column.MaxRound(in.FiltersB...))
+		q = query.NewProjectionMultiAry(round, id, in)
+
+	default:
+		panic("invalid projection input")
+	}
+
+	c.QueriesNoParams.AddToRound(q.Round, q.Name(), q)
+
 	return q
 }
 
