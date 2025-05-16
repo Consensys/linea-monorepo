@@ -28,6 +28,14 @@ repositories {
     url 'https://splunk.jfrog.io/splunk/ext-releases-local'
     content { includeGroupByRegex('com\\.splunk\\..*') }
   }
+  maven {
+    url 'https://dl.cloudsmith.io/public/libp2p/jvm-libp2p/maven/'
+    content { includeGroup('io.libp2p') }
+  }
+  maven {
+    url "https://jitpack.io"
+    content { includeGroup('com.github.multiformats')}
+  }
 }
 
 dependencies {

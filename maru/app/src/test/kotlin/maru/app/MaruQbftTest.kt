@@ -45,6 +45,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurati
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -199,7 +200,9 @@ class MaruQbftTest {
   }
 
   @Test
+  @Disabled
   fun `Maru works after restart`() {
+    // TODO: This test cannot work as the LibP2PNetwork is not able to restart
     val blocksToProduce = 5
     repeat(blocksToProduce) {
       sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))

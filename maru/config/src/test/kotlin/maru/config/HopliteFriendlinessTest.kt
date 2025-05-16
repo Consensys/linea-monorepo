@@ -15,12 +15,10 @@
  */
 package maru.config
 
-import com.sksamuel.hoplite.Secret
 import java.net.URI
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
-import maru.extensions.fromHexToByteArray
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
@@ -38,9 +36,10 @@ class HopliteFriendlinessTest {
 
     [p2p-config]
     port = 3322
+    ip-address = "127.0.0.1"
+    static-peers = []
 
     [validator]
-    private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
     jwt-secret-path = "/secret/path"
     el-client-engine-api-endpoint = "http://localhost:8555"
     """.trimIndent()
@@ -66,11 +65,10 @@ class HopliteFriendlinessTest {
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           qbftOptions = QbftOptions(100.milliseconds),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validator =
             ValidatorDtoToml(
               elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
-              privateKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
               jwtSecretPath = "/secret/path",
             ),
           followerEngineApis =
@@ -100,11 +98,10 @@ class HopliteFriendlinessTest {
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           qbftOptions = QbftOptions(100.milliseconds),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validator =
             ValidatorDtoToml(
               elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
-              privateKey = Secret("0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"),
               jwtSecretPath = "/secret/path",
             ),
           followerEngineApis = null,
@@ -123,11 +120,10 @@ class HopliteFriendlinessTest {
             ApiEndpointConfig(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validator =
             Validator(
-              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
-              privateKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
+              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL(), "/secret/path"),
             ),
           qbftOptions = QbftOptions(100.milliseconds),
           followers =
@@ -154,11 +150,10 @@ class HopliteFriendlinessTest {
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
           qbftOptions = QbftOptions(100.milliseconds),
-          p2pConfig = P2P(port = 3322u),
+          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validator =
             Validator(
-              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL()),
-              privateKey = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae".fromHexToByteArray(),
+              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL(), "/secret/path"),
             ),
           followers =
             FollowersConfig(

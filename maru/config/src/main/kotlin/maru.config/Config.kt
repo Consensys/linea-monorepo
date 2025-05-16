@@ -22,6 +22,7 @@ import kotlin.time.Duration.Companion.seconds
 
 data class Persistence(
   val dataPath: Path,
+  val privateKeyPath: Path = dataPath.resolve("private-key"),
 )
 
 data class ApiEndpointConfig(
@@ -34,29 +35,44 @@ data class FollowersConfig(
 )
 
 data class P2P(
-  val port: UInt = 9000u,
-)
-
-data class Validator(
-  val privateKey: ByteArray,
-  val engineApiClient: ApiEndpointConfig,
+  val ipAddress: String,
+  val port: String,
+  val staticPeers: List<String> = emptyList(),
 ) {
-  init {
-    require(privateKey.size == 32) {
-      "validator key must be 32 bytes long"
-    }
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as P2P
+
+    if (ipAddress != other.ipAddress) return false
+    if (port != other.port) return false
+    if (staticPeers != other.staticPeers) return false
+
+    return true
   }
 
+  override fun hashCode(): Int {
+    var result = ipAddress.hashCode()
+    result = 31 * result + port.hashCode()
+    result = 31 * result + staticPeers.hashCode()
+    return result
+  }
+}
+
+data class Validator(
+  val engineApiClient: ApiEndpointConfig,
+) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
 
     other as Validator
 
-    return privateKey.contentEquals(other.privateKey)
+    return engineApiClient == other.engineApiClient
   }
 
-  override fun hashCode(): Int = privateKey.contentHashCode()
+  override fun hashCode(): Int = engineApiClient.hashCode()
 }
 
 data class QbftOptions(

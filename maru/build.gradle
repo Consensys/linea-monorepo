@@ -25,7 +25,6 @@ allprojects {
   apply plugin: libs.plugins.spring.dependency.management.get().getPluginId()
   apply from: "${rootDir}/gradle/versions.gradle"
   apply plugin: 'java-library'
-
   apply plugin: libs.plugins.spotless.get().getPluginId()
 
   spotless {
