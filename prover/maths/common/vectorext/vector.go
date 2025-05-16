@@ -20,8 +20,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	// "github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"io"
 	"runtime"
@@ -40,7 +39,7 @@ import (
 //   - encoding.BinaryMarshaler
 //   - encoding.BinaryUnmarshaler
 //   - sort.Interface
-type Vector []extensions.E4
+type Vector []fext.Element
 
 // MarshalBinary implements encoding.BinaryMarshaler
 func (vector *Vector) MarshalBinary() (data []byte, err error) {
@@ -265,7 +264,7 @@ func subVecGeneric(res, a, b Vector) {
 	}
 }
 
-func scalarMulVecGeneric(res, a Vector, b *extensions.E4) {
+func scalarMulVecGeneric(res, a Vector, b *fext.Element) {
 	if len(a) != len(res) {
 		panic("vector.ScalarMul: vectors don't have the same length")
 	}
@@ -274,17 +273,17 @@ func scalarMulVecGeneric(res, a Vector, b *extensions.E4) {
 	}
 }
 
-func sumVecGeneric(res *extensions.E4, a Vector) {
+func sumVecGeneric(res *fext.Element, a Vector) {
 	for i := 0; i < len(a); i++ {
 		res.Add(res, &a[i])
 	}
 }
 
-func innerProductVecGeneric(res *extensions.E4, a, b Vector) {
+func innerProductVecGeneric(res *fext.Element, a, b Vector) {
 	if len(a) != len(b) {
 		panic("vector.InnerProduct: vectors don't have the same length")
 	}
-	var tmp extensions.E4
+	var tmp fext.Element
 	for i := 0; i < len(a); i++ {
 		tmp.Mul(&a[i], &b[i])
 		res.Add(res, &tmp)
