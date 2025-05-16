@@ -1,6 +1,24 @@
 package fext
 
+import "math/bits"
+
+// One returns 1
+func One() Element {
+	var res Element
+	res.B0.A0.SetOne()
+	return res
+}
+
 // SetUint64 sets z to v and returns z
+// ./field/fext/utils.go:3:// SetUint64 sets z to v and returns z
+// ./field/fext/utils.go:4:func SetUint64(z *Element, v uint64) *Element {
+// ./field/fext/utils.go:6:	z.B0.A0.SetUint64(v)
+// ./fft/new_domain.go:30:	domain.FrMultiplicativeGen.SetUint64(field.MultiplicativeGen)
+// ./fft/new_domain.go:36:	expoBig.SetUint64(expo)
+// ./fft/new_domain.go:40:	domain.CardinalityInv.SetUint64(uint64(m)).Inverse(&domain.CardinalityInv)
+// ./fft/fastpoly/reeval_on_coset.go:77:	res[0].SetUint64(field.MultiplicativeGen)
+// ./fft/fastpolyext/reeval_on_coset.go:77:	res[0].SetUint64(field.MultiplicativeGen)
+// ./fft/cosets.go:132:	a.SetUint64(field.MultiplicativeGen)
 func SetUint64(z *Element, v uint64) *Element {
 	//  sets z LSB to v (non-Montgomery form) and convert z to Montgomery form
 	z.B0.A0.SetUint64(v)
@@ -10,6 +28,18 @@ func SetUint64(z *Element, v uint64) *Element {
 }
 
 // SetInt64 sets z to v and returns z
+// ./common/smartvectorsext/fuzzing.go:195:		coeffField.SetInt64(int64(tcase.coeffs[i]))
+// ./common/smartvectorsext/arithmetic_op.go:95:		c.SetInt64(int64(coeff))
+// ./common/smartvectorsext/arithmetic_op.go:119:		c.SetInt64(int64(coeff))
+// ./common/smartvectorsext/arithmetic_op.go:149:		c.SetInt64(int64(coeff))
+// ./common/smartvectorsext/arithmetic_op.go:168:		c.SetInt64(int64(coeff))
+// ./common/smartvectors/fft_test.go:254:				xCoeff.SetInt64(2)
+// ./common/smartvectors/fuzzing.go:193:		coeffField.SetInt64(int64(tcase.coeffs[i]))
+// ./common/smartvectors/arithmetic_op.go:96:		c.SetInt64(int64(coeff))
+// ./common/smartvectors/arithmetic_op.go:120:		c.SetInt64(int64(coeff))
+// ./common/smartvectors/arithmetic_op.go:150:		c.SetInt64(int64(coeff))
+// ./common/smartvectors/arithmetic_op.go:169:		c.SetInt64(int64(coeff))
+// ./common/vector/vector_wizard.go:102:		res[i].SetInt64(int64(x))
 func SetInt64(z *Element, v int64) *Element {
 	z.B0.A0.SetInt64(v)
 	z.B0.A1.SetZero()
@@ -58,3 +88,25 @@ func SetInt64Tuple(z *Element, v1, v2, v3, v4 int64) *Element {
 // 	z.B0.A1.Div(&first.A1, second)
 // 	return z
 // }
+
+func ExpToInt(z *Element, x Element, k int) *Element {
+	if k == 0 {
+		return z.SetOne()
+	}
+
+	if k < 0 {
+		x.Inverse(&x)
+		k = -k
+	}
+
+	z.Set(&x)
+
+	for i := bits.Len(uint(k)) - 2; i >= 0; i-- {
+		z.Square(z)
+		if (k>>i)&1 == 1 {
+			z.Mul(z, &x)
+		}
+	}
+
+	return z
+}
