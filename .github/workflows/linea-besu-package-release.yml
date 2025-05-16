@@ -61,7 +61,7 @@ jobs:
             versions-env:
               - 'linea-besu-package/versions.env'
             dockerfile:
-              - 'linea-besu-package/linea-besu/Dockerfile
+              - 'linea-besu-package/linea-besu/Dockerfile'
             linea-configs:
               - 'linea-besu-package/linea-besu/**'
 
