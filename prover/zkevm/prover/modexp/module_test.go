@@ -71,7 +71,7 @@ func TestModExpAntichamber(t *testing.T) {
 					moduleNames = append(moduleNames, fmt.Sprintf("MODEXP_LIMBS_%d", i))
 				}
 
-				names = append(names, "MODEXP_IS_ACTIVE", "MODEXP_IS_SMALL", "MODEXP_IS_LARGE", "MODEXP_TO_SMALL_CIRC")
+				moduleNames = append(moduleNames, "MODEXP_IS_ACTIVE", "MODEXP_IS_SMALL", "MODEXP_IS_LARGE", "MODEXP_TO_SMALL_CIRC")
 
 				modCt.CheckAssignment(run, moduleNames...)
 			})
