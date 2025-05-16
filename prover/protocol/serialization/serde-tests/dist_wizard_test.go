@@ -23,9 +23,10 @@ var (
 // TestSerdeDistWizard tests serialization and deserialization of DistributedWizard fields.
 func TestSerdeDistWizard(t *testing.T) {
 	// Run subtests for attributes
-	t.Run("ModuleNames", TestSerdeModuleNames)
-	t.Run("LPPs", TestSerdeLPPs)
-	t.Run("GLs", TestSerdeGLs)
+	t.Run("TestSerdeModuleNames", TestSerdeModuleNames)
+	t.Run("TestSerdeLPPs", TestSerdeLPPs)
+	t.Run("TestSerdeGLs", TestSerdeGLs)
+	t.Run("TestSerdeDefaultModule", TestSerdeDefMods)
 }
 
 // TestSerdeModuleNames tests serialization and deserialization of the ModuleNames field.
@@ -93,5 +94,29 @@ func TestSerdeGLs(t *testing.T) {
 
 	if !test_utils.CompareExportedFields(dw.GLs, deserializedGLs) {
 		t.Errorf("mismatch in exported fields after GL mods serde")
+	}
+}
+
+func TestSerdeDefMods(t *testing.T) {
+	if dw == nil {
+		t.Fatal("distributed wizard is nil")
+	}
+
+	if dw.DefaultModule == nil {
+		t.Fatal("Dist. Wizard default module i nil")
+	}
+
+	serDM, err := SerializeDWDefMods(dw.DefaultModule)
+	if err != nil {
+		t.Fatalf("error during serializing distributed wizard default module:%s \n", err.Error())
+	}
+
+	deSerDM, err := DeserializeDWDefMods(serDM)
+	if err != nil {
+		t.Fatalf("error during de-serializing distributed wizard default module:%s \n", err.Error())
+	}
+
+	if !test_utils.CompareExportedFields(dw.DefaultModule, deSerDM) {
+		t.Errorf("mismatch in exported fields after DW Def.Mods serde")
 	}
 }

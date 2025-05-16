@@ -1,11 +1,15 @@
 package serdetests
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
@@ -33,6 +37,65 @@ func DeserializeDisc(data []byte) (distributed.ModuleDiscoverer, error) {
 	}
 
 	return deserializedDisc, nil
+}
+
+type rawDWDefMod struct {
+	Cols        json.RawMessage `json:"cols"`
+	CompiledIOP json.RawMessage `json:"compiledIOP"`
+}
+
+func SerializeDWDefMods(dm *distributed.DefaultModule) ([]byte, error) {
+
+	// Serialize attributes individually
+	cols, compIOP := dm.Column, dm.Wiop
+
+	serCol, err := serialization.SerializeValue(reflect.ValueOf(cols), serialization.DeclarationMode)
+	if err != nil {
+		return nil, err
+	}
+
+	serCompIOP, err := serialization.SerializeCompiledIOP(compIOP)
+	if err != nil {
+		return nil, err
+	}
+
+	serDefmod := rawDWDefMod{
+		Cols:        serCol,
+		CompiledIOP: serCompIOP,
+	}
+
+	return serialization.SerializeAnyWithCborPkg(serDefmod)
+}
+
+func DeserializeDWDefMods(data []byte) (*distributed.DefaultModule, error) {
+	if bytes.Equal(data, []byte(serialization.NilString)) {
+		return nil, nil
+	}
+
+	var rawDWDM rawDWDefMod
+	if err := serialization.DeserializeAnyWithCborPkg(data, &rawDWDM); err != nil {
+		return nil, err
+	}
+
+	dm := &distributed.DefaultModule{}
+
+	// Deserialize columns first
+	comp := serialization.NewEmptyCompiledIOP()
+	cols, err := serialization.DeserializeValue(rawDWDM.Cols, serialization.DeclarationMode, reflect.TypeOf(column.Natural{}), comp)
+	if err != nil {
+		return nil, err
+	}
+
+	dm.Column = cols.Interface().(ifaces.Column)
+
+	iop, err := serialization.DeserializeCompiledIOP(rawDWDM.CompiledIOP)
+	if err != nil {
+		return nil, err
+	}
+
+	dm.Wiop = iop
+
+	return dm, nil
 }
 
 // TestSerdeDisc tests serialization and deserialization of the StandardModuleDiscoverer.
