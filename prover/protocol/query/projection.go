@@ -108,7 +108,7 @@ func NewProjectionMultiAry(
 
 	for i := range inp.ColumnsB {
 		if len(inp.ColumnsB[i]) != numCols {
-			utils.Panic("All table must have the same number of columns: len(B[%v])=%v, len(A[0])=%v", i, len(inp.ColumnsB), numCols)
+			utils.Panic("All table must have the same number of columns: len(B[%v])=%v, numCols=%v", i, len(inp.ColumnsB[i]), numCols)
 		}
 
 		size := ifaces.AssertSameLength(inp.ColumnsB[i]...)
