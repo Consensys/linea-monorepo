@@ -25,10 +25,16 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
+type mimcHashMetaData struct {
+	hashSizes []int
+	hashValues [][]field.Element
+	hashPreimages [][][]field.Element
+}
+
 // Specifies the column opening phase
 func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	// Registers the limb expanded version of the preimages
-	ctx.colSelection()
+	ctx.ColSelection()
 	ctx.linearHashAndMerkle()
 	ctx.RootHashGlue()
 	ctx.GluePositions()
@@ -42,7 +48,7 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 // Get the preimages (preimage0,preimage1,…,preimaget−1)And range-check
 // each of them on the ring-SIS bound
 func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
-	wholes := ctx.Columns.WholePreimages
+	wholes := ctx.Columns.WholePreimagesSis
 	sisParams := ctx.VortexCtx.SisParams
 
 	limbs := make([]ifaces.Column, len(wholes))
@@ -63,7 +69,7 @@ func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
 		)
 	}
 
-	ctx.Columns.Preimages = limbs
+	ctx.Columns.PreimagesSis = limbs
 
 	ctx.comp.RegisterProverAction(round, &preimageLimbsProverAction{
 		ctx:   ctx,
@@ -80,7 +86,7 @@ type preimageLimbsProverAction struct {
 func (a *preimageLimbsProverAction) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(a.limbs), func(start, end int) {
 		for i := start; i < end; i++ {
-			whole := a.ctx.Columns.WholePreimages[i].GetColAssignment(run)
+			whole := a.ctx.Columns.WholePreimagesSis[i].GetColAssignment(run)
 			whole_ := smartvectors.IntoRegVec(whole)
 			expanded_ := a.ctx.SisKey().LimbSplit(whole_)
 			expanded := smartvectors.NewRegular(expanded_)
@@ -116,7 +122,7 @@ func (a *colSelectionProverAction) Run(run *wizard.ProverRuntime) {
 //
 //   - Performs the following lookup constraint:
 //     `(q,Uα,q)⊂(I,Uα)`
-func (ctx *SelfRecursionCtx) colSelection() {
+func (ctx *SelfRecursionCtx) ColSelection() {
 
 	// Build the column q, (auto-assigned)
 	ctx.Columns.Q = verifiercol.NewFromIntVecCoin(ctx.comp, ctx.Coins.Q)
@@ -156,17 +162,18 @@ type linearHashMerkleProverAction struct {
 	concatDhQSize      int
 	leavesSize         int
 	leavesSizeUnpadded int
+	mimcHashMetaData mimcHashMetaData
 }
 
 func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	openingIndices := run.GetRandomCoinIntegerVec(a.ctx.Coins.Q.Name)
-	concatDhQ := make([]field.Element, a.leavesSizeUnpadded*a.ctx.VortexCtx.SisParams.OutputSize())
-	linearLeaves := make([]field.Element, a.leavesSizeUnpadded)
+	concatDhQ := make([]field.Element, a.concatDhQSize*a.ctx.VortexCtx.SisParams.OutputSize())
 	merkleLeaves := make([]field.Element, a.leavesSizeUnpadded)
 	merklePositions := make([]field.Element, a.leavesSizeUnpadded)
 	merkleRoots := make([]field.Element, a.leavesSizeUnpadded)
 
 	hashSize := a.ctx.VortexCtx.SisParams.OutputSize()
+	//mimcHashSize := 1
 	numOpenedCol := a.ctx.VortexCtx.NbColsToOpen()
 	// For some reason, using a.ctx.comp.NumRounds() here does not work well here.
 	totalNumRounds := a.ctx.VortexCtx.MaxCommittedRound
@@ -174,21 +181,35 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 
 	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		rootPrecomp := a.ctx.Columns.precompRoot.GetColAssignment(run).Get(0)
-		precompColSisHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
-		for i, selectedCol := range openingIndices {
-			srcStart := selectedCol * hashSize
-			destStart := i * hashSize
-			sisHash := precompColSisHash[srcStart : srcStart+hashSize]
-			copy(concatDhQ[destStart:destStart+hashSize], sisHash)
-			leaf := mimc.HashVec(sisHash)
-			insertAt := i
-			linearLeaves[insertAt] = leaf
-			merkleLeaves[insertAt] = leaf
-			merkleRoots[insertAt] = rootPrecomp
-			merklePositions[insertAt].SetInt64(int64(selectedCol))
+		if a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+			precompColSisHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
+			for i, selectedCol := range openingIndices {
+				srcStart := selectedCol * hashSize
+				destStart := i * hashSize
+				sisHash := precompColSisHash[srcStart : srcStart+hashSize]
+				copy(concatDhQ[destStart:destStart+hashSize], sisHash)
+				leaf := mimc.HashVec(sisHash)
+				insertAt := i
+				merkleLeaves[insertAt] = leaf
+				merkleRoots[insertAt] = rootPrecomp
+				merklePositions[insertAt].SetInt64(int64(selectedCol))
+			}
+			committedRound++
+			totalNumRounds++
+		} else {
+			//precompColMiMCHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
+			for i, selectedCol := range openingIndices {
+				//srcStart := selectedCol * mimcHashSize
+				//mimcHash := precompColMiMCHash[srcStart : srcStart+mimcHashSize]
+				mimcPreimage := a.ctx.VortexCtx.GetPrecomputedSelectedCol(selectedCol)
+				leaf := mimc.HashVec(mimcPreimage)
+				insertAt := i
+				merkleLeaves[insertAt] = leaf
+				merkleRoots[insertAt] = rootPrecomp
+				merklePositions[insertAt].SetInt64(int64(selectedCol))
+				// Declare the mimc hash metadata
+			}
 		}
-		committedRound++
-		totalNumRounds++
 	}
 
 	for round := 0; round <= totalNumRounds; round++ {
@@ -208,7 +229,6 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 			copy(concatDhQ[destStart:destStart+hashSize], sisHash)
 			leaf := mimc.HashVec(sisHash)
 			insertAt := committedRound*numOpenedCol + i
-			linearLeaves[insertAt] = leaf
 			merkleLeaves[insertAt] = leaf
 			merkleRoots[insertAt] = rooth
 			merklePositions[insertAt].SetInt64(int64(selectedCol))
@@ -236,11 +256,20 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 
 func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	roundQ := ctx.Columns.Q.Round()
+	// numRound denotes the total number of commitment rounds
+	// including SIS and non SIS rounds
 	numRound := ctx.VortexCtx.NumCommittedRounds()
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		numRound += 1
 	}
-	concatDhQSizeUnpadded := ctx.VortexCtx.SisParams.OutputSize() * ctx.VortexCtx.NbColsToOpen() * numRound
+	// Next we consider the number of rounds for which we apply the SIS hash
+	numRoundSis := ctx.VortexCtx.NumCommittedRoundsSis()
+	// We increase the sis round by 1 if sis is applied to the precomputed
+	if ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		numRoundSis += 1
+	}
+
+	concatDhQSizeUnpadded := ctx.VortexCtx.SisParams.OutputSize() * ctx.VortexCtx.NbColsToOpen() * numRoundSis
 	concatDhQSize := utils.NextPowerOfTwo(concatDhQSizeUnpadded)
 	leavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRound
 	leavesSize := utils.NextPowerOfTwo(leavesSizeUnpadded)
@@ -255,6 +284,11 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 		concatDhQSize:      concatDhQSize,
 		leavesSize:         leavesSize,
 		leavesSizeUnpadded: leavesSizeUnpadded,
+		mimcHashMetaData: mimcHashMetaData{
+			hashSizes:     make([]int, ctx.VortexCtx.MaxCommittedRoundNonSIS),
+			hashValues:    make([][]field.Element, ctx.VortexCtx.MaxCommittedRoundNonSIS),
+			hashPreimages: make([][][]field.Element, ctx.VortexCtx.MaxCommittedRoundNonSIS),
+		},
 	})
 
 	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
@@ -357,7 +391,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 	ctx.Columns.PreimagesCollapse = expr_handle.RandLinCombCol(
 		ctx.comp,
 		accessors.NewFromCoin(ctx.Coins.Collapse),
-		ctx.Columns.Preimages,
+		ctx.Columns.PreimagesSis,
 	)
 
 	// Consistency check between the collapsed preimage and UalphaQ
@@ -388,7 +422,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			accessors.NewConstant(field.NewElement(1<<ctx.SisKey().LogTwoBound)),
 			accessors.NewFromCoin(ctx.Coins.Alpha),
 			ctx.VortexCtx.SisParams.NumLimbs(),
-			ctx.Columns.WholePreimages[0].Size(),
+			ctx.Columns.WholePreimagesSis[0].Size(),
 		)
 
 		ctx.comp.RegisterVerifierAction(uAlphaQEval.Round(), &collapsingVerifierAction{
@@ -574,7 +608,10 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 	})
 
 	degree := ctx.SisKey().OutputSize()
-
+	// Todo: remove the commented code
+	// Also the paper needs to be updated
+	// with the identity 2P(X) = (X^n+1)Q(X) - (X^n-1)R(X) (check it in the code)
+	//
 	// And the final check
 	// check the folding of the polynomial is correct
 	// ctx.comp.InsertVerifier(round, func(run wizard.Runtime) error {

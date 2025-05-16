@@ -13,6 +13,20 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
+type commitmentMode int
+
+const (
+	// Denotes the Vortex mode when we don't apply
+	// self recursion
+	NonSelfRecursion commitmentMode = iota
+	// Denotes the Vortex mode when we apply
+	// self recursion and commit using SIS
+	SelfRecursionSIS
+	// Denotes the Vortex mode when we apply
+	// self recursion and commit using only MiMC
+	SelfRecursionMiMCOnly
+)
+
 // ReassignPrecomputedRootAction is a [wizard.ProverAction] that assigns the
 // precomputed Merkle root of the Vortex invokation. The action is defined
 // for round 0 only and only if the AddPrecomputedMerkleRootToPublicInputsOpt
@@ -38,9 +52,10 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 
 	return func(pr *wizard.ProverRuntime) {
 		var (
-			committedMatrix vortex.EncodedMatrix
-			tree            *smt.Tree
-			sisDigest       []field.Element
+			committedMatrix  vortex.EncodedMatrix
+			tree             *smt.Tree
+			sisAndMimcDigest []field.Element
+			mimcDigest       []field.Element
 		)
 		pols := ctx.getPols(pr, round)
 		// If there are no polynomials to commit to, we don't need to do anything
@@ -51,16 +66,22 @@ func (ctx *Ctx) AssignColumn(round int) func(*wizard.ProverRuntime) {
 		// We commit to the polynomials with SIS hashing if the number of polynomials
 		// is greater than the [ApplyToSISThreshold].
 		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
-			committedMatrix, tree, sisDigest = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
+			committedMatrix, tree, mimcDigest = ctx.VortexParams.CommitMerkleWithoutSIS(pols)
 		} else if ctx.RoundStatus[round] == IsSISApplied {
-			committedMatrix, tree, sisDigest = ctx.VortexParams.CommitMerkleWithSIS(pols)
+			committedMatrix, tree, sisAndMimcDigest = ctx.VortexParams.CommitMerkleWithSIS(pols)
 		}
 		pr.State.InsertNew(ctx.VortexProverStateName(round), committedMatrix)
 		pr.State.InsertNew(ctx.MerkleTreeName(round), tree)
 
 		// Only to be read by the self-recursion compiler.
 		if ctx.IsSelfrecursed {
-			pr.State.InsertNew(ctx.SisHashName(round), sisDigest)
+			// We need to store the SIS and MiMC digests in the prover state
+			// so that we can use them in the self-recursion compiler.
+			if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
+				pr.State.InsertNew(ctx.MIMCHashName(round), mimcDigest)
+			} else if ctx.RoundStatus[round] == IsSISApplied {
+				pr.State.InsertNew(ctx.SisHashName(round), sisAndMimcDigest)
+			}
 		}
 
 		// And assign the 1-sized column to contain the root
@@ -216,25 +237,28 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 
 	selectedCols := proof.Columns
 
-	// The columns are split by commitment round. So we need to
-	// restick them when we commit them.
-	for j := range entryList {
-		fullCol := []field.Element{}
-		for i := range selectedCols {
-			fullCol = append(fullCol, selectedCols[i][j]...)
-		}
-
-		// Converts it into a smart-vector and zero-pad it if necessary
-		var assignable smartvectors.SmartVector = smartvectors.NewRegular(fullCol)
-		if assignable.Len() < utils.NextPowerOfTwo(len(fullCol)) {
-			assignable = smartvectors.RightZeroPadded(fullCol, utils.NextPowerOfTwo(len(fullCol)))
-		}
-
-		pr.AssignColumn(ctx.Items.OpenedColumns[j].GetColID(), assignable)
-	}
+	// Assign the opened columns
+	ctx.assignOpenedColumns(pr, entryList, selectedCols, NonSelfRecursion)
 
 	packedMProofs := ctx.packMerkleProofs(proof.MerkleProofs)
 	pr.AssignColumn(ctx.Items.MerkleProofs.GetColID(), packedMProofs)
+	// Assign the SIS and non SIS selected columns
+	if ctx.IsSelfrecursed {
+		var (
+			sisProof    = vortex.OpeningProof{}
+			nonSisProof = vortex.OpeningProof{}
+		)
+		sisProof.Complete(entryList, committedMatricesSIS, treesSIS)
+		nonSisProof.Complete(entryList, committedMatricesNoSIS, treesNoSIS)
+		sisSelectedCols := sisProof.Columns
+		nonSisSelectedCols := nonSisProof.Columns
+		// Assign the opened columns
+		ctx.assignOpenedColumns(pr, entryList, sisSelectedCols, SelfRecursionSIS)
+		ctx.assignOpenedColumns(pr, entryList, nonSisSelectedCols, SelfRecursionMiMCOnly)
+		// Store the selected columns for the non sis round
+		//  in the prover state
+		ctx.storeSelectedColumnsForNonSisRounds(pr, nonSisSelectedCols)
+	}
 }
 
 // returns the list of all committed smartvectors for the given round
@@ -336,3 +360,70 @@ func (ctx *Ctx) unpackMerkleProofs(sv smartvectors.SmartVector, entryList []int)
 	}
 	return proofs
 }
+
+// assignOpenedColumns assign the opened columns for
+// both normal and self-recursion compilers
+func (ctx *Ctx) assignOpenedColumns(
+	pr *wizard.ProverRuntime,
+	entryList []int,
+	selectedCols [][][]field.Element,
+	mode commitmentMode) {
+	// The columns are split by commitment round. So we need to
+	// restick them when we commit them.
+	for j := range entryList {
+		fullCol := []field.Element{}
+		for i := range selectedCols {
+			fullCol = append(fullCol, selectedCols[i][j]...)
+		}
+
+		// Converts it into a smart-vector and zero-pad it if necessary
+		var assignable smartvectors.SmartVector = smartvectors.NewRegular(fullCol)
+		if assignable.Len() < utils.NextPowerOfTwo(len(fullCol)) {
+			assignable = smartvectors.RightZeroPadded(fullCol, utils.NextPowerOfTwo(len(fullCol)))
+		}
+		if mode == NonSelfRecursion {
+			pr.AssignColumn(ctx.Items.OpenedColumns[j].GetColID(), assignable)
+		} else if mode == SelfRecursionSIS {
+			pr.AssignColumn(ctx.Items.OpenedSISColumns[j].GetColID(), assignable)
+		} else if mode == SelfRecursionMiMCOnly {
+			pr.AssignColumn(ctx.Items.OpenedNonSISColumns[j].GetColID(), assignable)
+		}
+	}
+
+}
+
+// storeSelectedColumnsForNonSisRound stores the selected columns in the prover state
+// for the non SIS rounds which is to be used in the self-recursion compilers
+
+func (ctx *Ctx) storeSelectedColumnsForNonSisRounds(
+	pr *wizard.ProverRuntime,
+	selectedCols [][][]field.Element) {
+		// selectedColsQ[i][j][k] stores the jth selected non SIS
+		// round column of the ith round
+		selectedColsQ := make([][][]field.Element, ctx.NumCommittedRoundsNoSis())
+		// Sanity check
+		if len(selectedCols) != ctx.NumCommittedRoundsNoSis() {
+			utils.Panic(
+				"expected selectedCols to be of length %v, got %v",
+				ctx.NumCommittedRoundsNoSis(), len(selectedCols),
+			)
+		}
+		for i := range selectedCols {
+			// Sanity check
+			if len(selectedCols[i]) != ctx.NbColsToOpen() {
+				utils.Panic(
+					"expected selectedCols[%v] to be of length %v, got %v",
+					i, ctx.NbColsToOpen(), len(selectedCols[i]),
+				)
+			}
+			selectedColsQ[i] = make([][]field.Element, ctx.NbColsToOpen())
+			for j := range selectedCols[i] {
+				selectedColsQ[i][j] = make([]field.Element, len(selectedCols[i][j]))
+				copy(selectedColsQ[i][j], selectedCols[i][j])
+			}
+		}
+	// Store the selected columns in the prover state
+	pr.State.InsertNew(
+		ctx.SelectedColumnNonSISName(),
+		selectedColsQ)
+	}
