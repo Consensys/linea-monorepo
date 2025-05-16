@@ -253,6 +253,10 @@ type Ctx struct {
 		Q coin.Info
 		// Opened columns
 		OpenedColumns []ifaces.Column
+		// Opened SIS columns
+		OpenedSISColumns []ifaces.Column
+		// Opened non-SIS columns
+		OpenedNonSISColumns []ifaces.Column
 		// MerkleProof (only used with the MerkleProof version)
 		// We represents all the Merkle proof as specfied here:
 		MerkleProofs ifaces.Column
@@ -313,6 +317,8 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 			Ualpha        ifaces.Column
 			Q             coin.Info
 			OpenedColumns []ifaces.Column
+			OpenedSISColumns []ifaces.Column
+			OpenedNonSISColumns []ifaces.Column
 			MerkleProofs  ifaces.Column
 			MerkleRoots   []ifaces.Column
 		}{},
