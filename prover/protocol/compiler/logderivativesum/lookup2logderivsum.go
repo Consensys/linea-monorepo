@@ -11,15 +11,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
-
-func init() {
-	serialization.RegisterImplementation(assignLogDerivativeSumProverAction{})
-}
 
 // table is an alias for a list of column. We use it in the scope of the lookup
 // compiler as a shorthand to make the code more eye-parseable.
@@ -120,7 +115,7 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 	qName := ifaces.QueryIDf("GlobalLogDerivativeSum_%v", comp.SelfRecursionCount)
 	q := comp.InsertLogDerivativeSum(lastRound+1, qName, zCatalog)
 
-	comp.RegisterProverAction(lastRound+1, &assignLogDerivativeSumProverAction{
+	comp.RegisterProverAction(lastRound+1, &AssignLogDerivativeSumProverAction{
 		QName:     qName,
 		Q:         q,
 		Segmenter: seg,
@@ -138,14 +133,14 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 
 // assignLogDerivativeSumProverAction is the action to assign the log-derivative sum result.
 // It implements the [wizard.ProverAction] interface.
-type assignLogDerivativeSumProverAction struct {
+type AssignLogDerivativeSumProverAction struct {
 	QName     ifaces.QueryID
 	Q         query.LogDerivativeSum
 	Segmenter ColumnSegmenter
 }
 
 // Run executes the assignment of the log-derivative sum result.
-func (a *assignLogDerivativeSumProverAction) Run(run *wizard.ProverRuntime) {
+func (a *AssignLogDerivativeSumProverAction) Run(run *wizard.ProverRuntime) {
 	if a.Segmenter == nil {
 		run.AssignLogDerivSum(a.QName, field.Zero())
 		return

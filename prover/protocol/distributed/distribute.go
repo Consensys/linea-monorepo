@@ -79,6 +79,7 @@ func init() {
 	serialization.RegisterImplementation(LPPSegmentBoundaryCalculator{})
 	serialization.RegisterImplementation(permutation.AssignPermutationGrandProduct{})
 	serialization.RegisterImplementation(permutation.CheckGrandProductIsOne{})
+	serialization.RegisterImplementation(logderivativesum.AssignLogDerivativeSumProverAction{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
