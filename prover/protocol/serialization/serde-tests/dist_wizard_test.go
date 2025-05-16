@@ -120,3 +120,27 @@ func TestSerdeDefMods(t *testing.T) {
 		t.Errorf("mismatch in exported fields after DW Def.Mods serde")
 	}
 }
+
+func TestSerdeBootstrapper(t *testing.T) {
+	if dw == nil {
+		t.Fatal("distributed wizard is nil")
+	}
+
+	if dw.Bootstrapper == nil {
+		t.Fatal("Dist. Wizard default module i nil")
+	}
+
+	serBootstrap, err := serialization.SerializeCompiledIOP(dw.Bootstrapper)
+	if err != nil {
+		t.Fatalf("error during serializing distributed wizard bootstrapper:%s \n", err.Error())
+	}
+
+	deSerBootstrap, err := serialization.DeserializeCompiledIOP(serBootstrap)
+	if err != nil {
+		t.Fatalf("error during deserializing distributed wizard bootstrapper:%s \n", err.Error())
+	}
+
+	if !test_utils.CompareExportedFields(dw.Bootstrapper, deSerBootstrap) {
+		t.Errorf("mismatch in exported fields after DW Def.Mods serde")
+	}
+}

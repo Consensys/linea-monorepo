@@ -11,10 +11,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
+
+func init() {
+	serialization.RegisterImplementation(assignLogDerivativeSumProverAction{})
+}
 
 // table is an alias for a list of column. We use it in the scope of the lookup
 // compiler as a shorthand to make the code more eye-parseable.

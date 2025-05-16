@@ -76,6 +76,9 @@ func init() {
 	serialization.RegisterImplementation(ModuleGLAssignGL{})
 	serialization.RegisterImplementation(ModuleGLAssignSendReceiveGlobal{})
 	serialization.RegisterImplementation(ModuleGLCheckSendReceiveGlobal{})
+	serialization.RegisterImplementation(LPPSegmentBoundaryCalculator{})
+	serialization.RegisterImplementation(permutation.AssignPermutationGrandProduct{})
+	serialization.RegisterImplementation(permutation.CheckGrandProductIsOne{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
