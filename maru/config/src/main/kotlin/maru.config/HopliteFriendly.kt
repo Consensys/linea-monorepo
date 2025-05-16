@@ -15,18 +15,14 @@
  */
 package maru.config
 
-import com.sksamuel.hoplite.Masked
 import java.net.URL
-import maru.extensions.fromHexToByteArray
 
 data class ValidatorDtoToml(
-  val privateKey: Masked,
   val elClientEngineApiEndpoint: URL,
   val jwtSecretPath: String? = null,
 ) {
   fun domainFriendly(): Validator =
     Validator(
-      privateKey = privateKey.value.fromHexToByteArray(),
       engineApiClient = ApiEndpointDtoToml(elClientEngineApiEndpoint, jwtSecretPath).toDomain(),
     )
 }

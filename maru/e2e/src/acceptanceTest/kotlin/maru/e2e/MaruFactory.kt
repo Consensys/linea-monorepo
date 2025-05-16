@@ -22,10 +22,20 @@ import maru.app.MaruAppCli.Companion.loadConfig
 import maru.config.MaruConfigDtoToml
 import maru.consensus.config.JsonFriendlyForksSchedule
 
+const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX =
+  "0x080212201dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
+
 object MaruFactory {
   fun buildTestMaru(pragueTime: Long): MaruApp {
     val maruConfigResource = this::class.java.getResource("/config/maru.toml")
     val maruConfig = loadConfig<MaruConfigDtoToml>(listOf(File(maruConfigResource!!.path)))
+    Files.writeString(
+      maruConfig
+        .getUnsafe()
+        .domainFriendly()
+        .persistence.privateKeyPath,
+      VALIDATOR_PRIVATE_KEY_WITH_PREFIX,
+    )
     val consensusGenesisTemplate =
       this::class.java
         .getResource("/config/clique-to-prague.template")!!

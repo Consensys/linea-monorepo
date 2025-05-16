@@ -74,6 +74,7 @@ import org.hyperledger.besu.util.Subscribers
 
 class QbftProtocolFactory(
   private val beaconChain: BeaconChain,
+  private val privateKeyBytes: ByteArray,
   private val maruConfig: MaruConfig,
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
@@ -92,9 +93,8 @@ class QbftProtocolFactory(
       "communicationMargin can't be more than blockTimeSeconds"
     }
 
-    val validatorKey = maruConfig.validator!!.privateKey
     val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
-    val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(validatorKey))
+    val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(privateKeyBytes))
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
     val securityModule = KeyPairSecurityModule(keyPair)
     val nodeKey = NodeKey(securityModule)
