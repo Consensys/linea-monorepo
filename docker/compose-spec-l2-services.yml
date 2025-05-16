@@ -5,7 +5,7 @@ services:
   sequencer:
     hostname: sequencer
     container_name: sequencer
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-sepolia-3e31c8f}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16-20250508091155-5faa6cb}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     ports:
       - "8545:8545"
@@ -51,7 +51,7 @@ services:
     hostname: l2-node
     image: consensys/linea-geth:${ZKGETH_TAG:-0588665}
     platform: linux/amd64
-    profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
+    profiles: [ "l2-extra", "debug" ]
     depends_on:
       sequencer:
         condition: service_healthy
@@ -82,7 +82,7 @@ services:
   l2-node-besu:
     hostname: l2-node-besu
     container_name: l2-node-besu
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-sepolia-3e31c8f}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16-20250508091155-5faa6cb}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -129,7 +129,7 @@ services:
   traces-node:
     hostname: traces-node
     container_name: traces-node
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-sepolia-3e31c8f}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16-20250508091155-5faa6cb}
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
@@ -295,7 +295,7 @@ services:
       - l1network
 
   zkbesu-shomei:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-sepolia-3e31c8f}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16-20250508091155-5faa6cb}
     hostname: zkbesu-shomei
     container_name: zkbesu-shomei
     profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
@@ -418,7 +418,7 @@ services:
   transaction-exclusion-api:
     hostname: transaction-exclusion-api
     container_name: transaction-exclusion-api
-    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-052958b}
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-b0ea13b}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
@@ -511,7 +511,7 @@ services:
         ipv4_address: 10.10.10.205
 
   zkbesu-shomei-sr:
-    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-sepolia-3e31c8f}
+    image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16-20250508091155-5faa6cb}
     hostname: zkbesu-shomei-sr
     container_name: zkbesu-shomei-sr
     profiles: [ "external-to-monorepo", "staterecovery" ]
