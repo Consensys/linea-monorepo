@@ -120,14 +120,14 @@ type SelfRecursionCtx struct {
 		// ignored by the self-recursion compiler. Implictly it is repla-
 		// ced by the `Preimages`, which contains the preimages but in
 		// limb expanded form.
-		WholePreimages []ifaces.Column
+		WholePreimagesSis []ifaces.Column
 
 		// (Commitments, to compute)
 		//
-		// Preimages of the columns (in limb form) that have been opened.
+		// PreimagesSis of the columns (in limb form) that have been opened.
 		// This columns are concatenated "round-by-round" and the concate-
 		// nation is zero-padded at the end to the next power of two
-		Preimages []ifaces.Column
+		PreimagesSis []ifaces.Column
 
 		// (Verifier column)
 		//
@@ -227,7 +227,7 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 	ctx.Coins.Alpha = vortexCtx.Items.Alpha
 	ctx.Columns.Ualpha = vortexCtx.Items.Ualpha
 	ctx.Coins.Q = vortexCtx.Items.Q
-	ctx.Columns.WholePreimages = vortexCtx.Items.OpenedColumns
+	ctx.Columns.WholePreimagesSis = vortexCtx.Items.OpenedSISColumns
 	ctx.Columns.MerkleProofs = vortexCtx.Items.MerkleProofs
 
 	// Asserts all the roots have the status proof.
@@ -261,7 +261,7 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 
 	// And for the `WholePreimage`, we mark it as `Ignored` and make the
 	// same assumption that theirs status is `Proof`
-	for _, opened := range ctx.Columns.WholePreimages {
+	for _, opened := range ctx.Columns.WholePreimagesSis {
 		// Assume that the rounds commitments have a `Proof` status
 		if comp.Columns.Status(opened.GetColID()) != column.Proof {
 			utils.Panic(

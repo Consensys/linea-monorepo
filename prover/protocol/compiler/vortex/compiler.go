@@ -211,6 +211,8 @@ type Ctx struct {
 	CommittedRowsCountSIS int
 	NumCols               int
 	MaxCommittedRound     int
+	MaxCommittedRoundSIS   int
+	MaxCommittedRoundNonSIS int
 	VortexParams          *vortex.Params
 	SisParams             *ringsis.Params
 	// Optional parameter
@@ -460,11 +462,13 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 	if onlyMiMCApplied {
 		ctx.RoundStatus = append(ctx.RoundStatus, IsOnlyMiMCApplied)
 		ctx.CommitmentsByRoundsNonSIS.AppendToInner(round, coms...)
+		ctx.MaxCommittedRoundNonSIS = utils.Max(ctx.MaxCommittedRoundNonSIS, round)
 	} else {
 		ctx.RoundStatus = append(ctx.RoundStatus, IsSISApplied)
 		ctx.CommitmentsByRoundsSIS.AppendToInner(round, coms...)
 		// Increase the number of rows
 		ctx.CommittedRowsCountSIS += len(coms)
+		ctx.MaxCommittedRoundSIS = utils.Max(ctx.MaxCommittedRoundSIS, round)
 	}
 
 	ctx.CommitmentsByRounds.AppendToInner(round, coms...)
@@ -927,6 +931,24 @@ func (ctx *Ctx) commitPrecomputeds() {
 	ctx.Items.Precomputeds.MerkleRoot = ctx.comp.RegisterVerifyingKey(ctx.PrecomputedMerkleRootName(), smartvectors.NewConstant(root, 1))
 
 }
+
+// GetPrecomputedSelectedCol returns the selected column
+// of the precomputed columns stored as matrix
+func (ctx *Ctx) GetPrecomputedSelectedCol(index int) []field.Element {
+	if ctx.Items.Precomputeds.CommittedMatrix == nil {
+		utils.Panic("precomputed matrix is nil")
+	}
+
+	if index < 0 || index >= len(ctx.Items.Precomputeds.CommittedMatrix) {
+		utils.Panic("index out of range")
+	}
+	col := make([]field.Element, len(ctx.Items.Precomputeds.PrecomputedColums))
+
+	for i := 0; i < len(ctx.Items.Precomputeds.PrecomputedColums); i++ {
+		col[i] = ctx.Items.Precomputeds.CommittedMatrix[i].Get(index)
+	}
+	return col
+} 
 
 // startingRound returns the first round of definition for the Vortex
 // compilation. It corresponds to the smallest round at which one

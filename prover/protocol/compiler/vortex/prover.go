@@ -255,6 +255,9 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 		// Assign the opened columns
 		ctx.assignOpenedColumns(pr, entryList, sisSelectedCols, SelfRecursionSIS)
 		ctx.assignOpenedColumns(pr, entryList, nonSisSelectedCols, SelfRecursionMiMCOnly)
+		// Store the selected columns for the non sis round
+		//  in the prover state
+		ctx.storeSelectedColumnsForNonSisRounds(pr, nonSisSelectedCols)
 	}
 }
 
@@ -388,3 +391,39 @@ func (ctx *Ctx) assignOpenedColumns(
 	}
 
 }
+
+// storeSelectedColumnsForNonSisRound stores the selected columns in the prover state
+// for the non SIS rounds which is to be used in the self-recursion compilers
+
+func (ctx *Ctx) storeSelectedColumnsForNonSisRounds(
+	pr *wizard.ProverRuntime,
+	selectedCols [][][]field.Element) {
+		// selectedColsQ[i][j][k] stores the jth selected non SIS
+		// round column of the ith round
+		selectedColsQ := make([][][]field.Element, ctx.NumCommittedRoundsNoSis())
+		// Sanity check
+		if len(selectedCols) != ctx.NumCommittedRoundsNoSis() {
+			utils.Panic(
+				"expected selectedCols to be of length %v, got %v",
+				ctx.NumCommittedRoundsNoSis(), len(selectedCols),
+			)
+		}
+		for i := range selectedCols {
+			// Sanity check
+			if len(selectedCols[i]) != ctx.NbColsToOpen() {
+				utils.Panic(
+					"expected selectedCols[%v] to be of length %v, got %v",
+					i, ctx.NbColsToOpen(), len(selectedCols[i]),
+				)
+			}
+			selectedColsQ[i] = make([][]field.Element, ctx.NbColsToOpen())
+			for j := range selectedCols[i] {
+				selectedColsQ[i][j] = make([]field.Element, len(selectedCols[i][j]))
+				copy(selectedColsQ[i][j], selectedCols[i][j])
+			}
+		}
+	// Store the selected columns in the prover state
+	pr.State.InsertNew(
+		ctx.SelectedColumnNonSISName(),
+		selectedColsQ)
+	}

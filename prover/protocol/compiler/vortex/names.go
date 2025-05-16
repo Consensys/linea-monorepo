@@ -52,6 +52,15 @@ func (ctx *Ctx) MIMCHashName(round int) string {
 	return ctx.RunStateNamePrefix + "." + name
 }
 
+// SelectedColumnNonSISName returns a preformatted message representing the selected columns for the non SIS rounds
+func (ctx *Ctx) SelectedColumnNonSISName() string {
+	name := fmt.Sprintf("VORTEX_%v_SELECTED_COLS_NON_SIS", ctx.SelfRecursionCount)
+	if len(ctx.RunStateNamePrefix) == 0 {
+		return name
+	}
+	return ctx.RunStateNamePrefix + "." + name
+}
+
 // returns the name of a prover state for a given round of Vortex
 func (ctx *Ctx) VortexProverStateName(round int) string {
 	name := fmt.Sprintf("VORTEX_%v_PROVER_STATE_%v", ctx.SelfRecursionCount, round)
