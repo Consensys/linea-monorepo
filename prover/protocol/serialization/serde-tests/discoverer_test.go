@@ -30,6 +30,7 @@ func DeserializeDisc(data []byte) (distributed.ModuleDiscoverer, error) {
 		return nil, fmt.Errorf("failed to deserialize discoverer: %w", err)
 	}
 
+	fmt.Printf("DeserilizedVal:%v\n", deserializedDiscVal)
 	// Type assertion to ensure the deserialized value is of the correct type
 	deserializedDisc, ok := deserializedDiscVal.Interface().(distributed.ModuleDiscoverer)
 	if !ok {
@@ -108,6 +109,31 @@ func TestSerdeDisc(t *testing.T) {
 			Predivision:  1,
 		}
 	)
+
+	// Serialize the discoverer
+	discSer, err := SerializeDisc(disc)
+	if err != nil {
+		t.Fatalf("error during serializing discoverer: %s", err.Error())
+	}
+
+	// Deserialize the discoverer
+	deserializedDisc, err := DeserializeDisc(discSer)
+	if err != nil {
+		t.Fatalf("error during deserializing discoverer: %s", err.Error())
+	}
+
+	// Compare structs while ignoring unexported fields
+	if !test_utils.CompareExportedFields(disc, deserializedDisc) {
+		t.Fatalf("Mis-matched fields after serde discoverer (ignoring unexported fields)")
+	}
+}
+
+func TestSerdeDWModDisc(t *testing.T) {
+
+	disc := dw.Disc
+	if disc == nil {
+		t.Skipf("Module serializer is nil")
+	}
 
 	// Serialize the discoverer
 	discSer, err := SerializeDisc(disc)

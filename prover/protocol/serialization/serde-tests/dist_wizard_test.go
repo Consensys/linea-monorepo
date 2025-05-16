@@ -28,6 +28,7 @@ func TestSerdeDistWizard(t *testing.T) {
 	t.Run("TestSerdeGLs", TestSerdeGLs)
 	t.Run("TestSerdeDefaultModule", TestSerdeDefMods)
 	t.Run("TestSerdeBootstrapper", TestSerdeBootstrapper)
+	t.Run("TestSerdeModDisc", TestSerdeDWModDisc)
 }
 
 // TestSerdeModuleNames tests serialization and deserialization of the ModuleNames field.
