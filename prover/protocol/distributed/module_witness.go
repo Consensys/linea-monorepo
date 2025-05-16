@@ -267,37 +267,40 @@ func (mw *ModuleWitnessLPP) NextN0s(moduleLPP *ModuleLPP) []int {
 
 	for i := range newN0s {
 
-		// Note: the selector might be a non-natural column. Possibly a const-col.
-		selCol := args[i].Selector
+		for k := range args[i].Selectors {
 
-		if constCol, isConstCol := selCol.(verifiercol.ConstCol); isConstCol {
+			// Note: the selector might be a non-natural column. Possibly a const-col.
+			selCol := args[i].Selectors[k]
 
-			if constCol.F.IsZero() {
-				continue
+			if constCol, isConstCol := selCol.(verifiercol.ConstCol); isConstCol {
+
+				if constCol.F.IsZero() {
+					continue
+				}
+
+				if constCol.F.IsOne() {
+					newN0s[i] += constCol.Size()
+					continue
+				}
+
+				utils.Panic("the selector column has non-zero values: %v", constCol.F.String())
 			}
 
-			if constCol.F.IsOne() {
-				newN0s[i] += constCol.Size()
-				continue
+			// Expectedly, at this point. The column must be a natural column. We can't support
+			// shifted selector columns.
+			_ = selCol.(column.Natural)
+
+			selSV, ok := mw.Columns[selCol.GetColID()]
+			if !ok {
+				utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selCol, mw.ModuleNames, mw.ModuleIndex)
 			}
 
-			utils.Panic("the selector column has non-zero values: %v", constCol.F.String())
-		}
+			sel := selSV.IntoRegVecSaveAlloc()
 
-		// Expectedly, at this point. The column must be a natural column. We can't support
-		// shifted selector columns.
-		_ = selCol.(column.Natural)
-
-		selSV, ok := mw.Columns[selCol.GetColID()]
-		if !ok {
-			utils.Panic("selector: %v is missing from witness columns for module: %v index: %v", selCol, mw.ModuleNames, mw.ModuleIndex)
-		}
-
-		sel := selSV.IntoRegVecSaveAlloc()
-
-		for j := range sel {
-			if sel[j].IsOne() {
-				newN0s[i]++
+			for j := range sel[k] {
+				if sel[j].IsOne() {
+					newN0s[i]++
+				}
 			}
 		}
 	}

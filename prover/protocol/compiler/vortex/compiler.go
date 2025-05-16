@@ -898,7 +898,9 @@ func (ctx *Ctx) startingRound() int {
 // in the same order of appearance as in the query. The function ignores
 // the precomputed columns.
 func (ctx *Ctx) commitmentsAtRoundFromQuery(round int) []ifaces.ColID {
-	var res []ifaces.ColID
+
+	res := make([]ifaces.ColID, 0, len(ctx.Query.Pols))
+
 	for _, p := range ctx.Query.Pols {
 
 		if p.Round() != round {
@@ -927,7 +929,7 @@ func (ctx *Ctx) commitmentsAtRoundFromQuery(round int) []ifaces.ColID {
 // the precomputed columns.
 func (ctx *Ctx) commitmentsAtRoundFromQueryPrecomputed() []ifaces.ColID {
 
-	var res []ifaces.ColID
+	res := make([]ifaces.ColID, 0, len(ctx.Query.Pols))
 
 	for _, p := range ctx.Query.Pols {
 

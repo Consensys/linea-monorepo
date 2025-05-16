@@ -193,12 +193,12 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 	}
 
 	for _, rangeCs := range moduleInput.Range {
-		newCol := moduleGL.TranslateColumn(rangeCs.Handle, 0)
+		newCol := moduleGL.TranslateColumn(rangeCs.Handle)
 		moduleGL.Wiop.InsertRange(1, rangeCs.ID, newCol, rangeCs.B)
 	}
 
 	for _, localOpening := range moduleInput.LocalOpenings {
-		newCol := moduleGL.TranslateColumn(localOpening.Pol, 0)
+		newCol := moduleGL.TranslateColumn(localOpening.Pol)
 		moduleGL.Wiop.InsertLocalOpening(1, localOpening.ID, newCol)
 	}
 

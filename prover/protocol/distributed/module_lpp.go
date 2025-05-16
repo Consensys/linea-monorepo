@@ -356,26 +356,29 @@ func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
 
 // addCoinFromExpression scans the metadata of the expression looking
 // for coins and adds them to the [ModuleLPP] as [coin.FieldFromSeed].
-func (m *ModuleLPP) addCoinFromExpression(expr *symbolic.Expression) {
+func (m *ModuleLPP) addCoinFromExpression(exprs ...*symbolic.Expression) {
 
-	var (
-		board    = expr.Board()
-		metadata = board.ListVariableMetadata()
-	)
+	for _, expr := range exprs {
 
-	for i := range metadata {
+		var (
+			board    = expr.Board()
+			metadata = board.ListVariableMetadata()
+		)
 
-		switch meta := metadata[i].(type) {
+		for i := range metadata {
 
-		case coin.Info:
+			switch meta := metadata[i].(type) {
 
-			m.InsertCoin(meta.Name, meta.Round)
-			return
+			case coin.Info:
 
-		case ifaces.Accessor:
+				m.InsertCoin(meta.Name, meta.Round)
+				continue
 
-			m.addCoinFromAccessor(meta)
-			return
+			case ifaces.Accessor:
+
+				m.addCoinFromAccessor(meta)
+				continue
+			}
 		}
 	}
 }

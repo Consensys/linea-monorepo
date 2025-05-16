@@ -450,7 +450,11 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		case *query.Horner:
 			for _, part := range q.Parts {
-				group := append(column.ColumnsOfExpression(part.Coefficient), part.Selector)
+				group := []ifaces.Column{}
+				for k := range part.Coefficients {
+					group = append(group, column.ColumnsOfExpression(part.Coefficients[k])...)
+					group = append(group, part.Selectors[k])
+				}
 				toGroup = append(toGroup, rootsOfColumns(group))
 			}
 		}
