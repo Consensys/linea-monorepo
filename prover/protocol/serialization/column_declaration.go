@@ -6,9 +6,21 @@ import (
 	"reflect"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
+)
+
+var (
+	naturalType  = reflect.TypeOf(column.Natural{})
+	constColType = reflect.TypeOf(verifiercol.ConstCol{})
+
+	columnType          = reflect.TypeOf((*ifaces.Column)(nil)).Elem()
+	queryType           = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
+	metadataType        = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
+	manuallyShiftedType = reflect.TypeOf(&dedicated.ManuallyShifted{})
 )
 
 // serializableColumnDecl is used to represent a "natural" column, meaning a
@@ -79,7 +91,6 @@ func (c *serializableColumnDecl) intoNaturalAndRegister(comp *wizard.CompiledIOP
 // Column types can be either Natural or ManuallyShifted
 func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	concrete := v.Elem()
-
 	var data json.RawMessage
 	var err error
 	switch concrete.Type() {
@@ -95,6 +106,13 @@ func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, erro
 		shifted := v.Interface().(*dedicated.ManuallyShifted)
 		decl := intoSerializableManuallyShifted(shifted)
 		data, err = SerializeValue(reflect.ValueOf(decl), mode)
+		if err != nil {
+			return nil, err
+		}
+
+	case constColType:
+		col := v.Interface().(verifiercol.VerifierCol)
+		data, err = SerializeValue(reflect.ValueOf(col), mode)
 		if err != nil {
 			return nil, err
 		}

@@ -67,7 +67,7 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 		// which Z context should be used to handle a part of a given inclusion
 		// query.
 		zCatalog    = map[int]*query.LogDerivativeSumInput{}
-		proverTasks = make([]proverTaskAtRound, comp.NumRounds())
+		proverTasks = make([]ProverTaskAtRound, comp.NumRounds())
 	)
 
 	// Skip the compilation phase if no lookup constraint is being used. Otherwise

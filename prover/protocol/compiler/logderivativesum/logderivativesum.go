@@ -35,7 +35,7 @@ func CompileLogDerivativeSum(comp *wizard.CompiledIOP) {
 				LogDerivSumID: qName,
 			}
 			lastRound   = logDeriv.Round
-			proverTasks = make([]proverTaskAtRound, lastRound+1)
+			proverTasks = make([]ProverTaskAtRound, lastRound+1)
 		)
 
 		sizes := utils.SortedKeysOf(zEntries, func(i1, i2 int) bool { return i1 < i2 })

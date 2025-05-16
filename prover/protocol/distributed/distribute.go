@@ -80,6 +80,7 @@ func init() {
 	serialization.RegisterImplementation(permutation.AssignPermutationGrandProduct{})
 	serialization.RegisterImplementation(permutation.CheckGrandProductIsOne{})
 	serialization.RegisterImplementation(logderivativesum.AssignLogDerivativeSumProverAction{})
+	serialization.RegisterImplementation(logderivativesum.ProverTaskAtRound{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It

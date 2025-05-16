@@ -31,14 +31,6 @@ const (
 	NilString = "null"
 )
 
-var (
-	columnType          = reflect.TypeOf((*ifaces.Column)(nil)).Elem()
-	queryType           = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
-	naturalType         = reflect.TypeOf(column.Natural{})
-	metadataType        = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
-	manuallyShiftedType = reflect.TypeOf(&dedicated.ManuallyShifted{})
-)
-
 type structFieldCache struct {
 	fields []structField
 }
@@ -406,6 +398,8 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 		return deserializeColumnNatural(raw.Value, mode, comp, ifaceValue)
 	case "*dedicated.ManuallyShifted":
 		return deserializeManuallyShifted(raw.Value, mode, comp, ifaceValue)
+	case "verifiercol.ConstCol":
+		return deserializeStruct(raw.Value, mode, constColType, comp)
 	default:
 		return deserializeConcreteType(raw.Type, raw.Value, mode, comp, ifaceValue)
 	}
