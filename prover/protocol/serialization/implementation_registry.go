@@ -3,9 +3,11 @@ package serialization
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -126,8 +128,6 @@ func init() {
 	// Smartvectors
 	RegisterImplementation(smartvectors.Regular{})
 	RegisterImplementation(smartvectors.PaddedCircularWindow{})
-
-	// RegisterImplementation(expr.Term{})
 }
 
 // In order to save some space, we trim the prefix of the package path as this
@@ -139,6 +139,12 @@ const pkgPathPrefixToRemove = "github.com/consensys/linea-monorepo/prover"
 // of the struct `ImplementingStruct` where the struct can be anything we would
 // like to potentially unmarshal.
 var implementationRegistry = collection.NewMapping[string, reflect.Type]()
+
+// Global slice to hold types that should be ignored during serialization/deserialization.
+var IgnoreableTypes = []reflect.Type{
+	// Ignore gnark-circuit related params
+	reflect.TypeOf((*frontend.Variable)(nil)).Elem(),
+}
 
 // RegisterImplementation registers the type of the provided instance. This is
 // needed if the caller of the package wants to deserialize into an interface
@@ -227,6 +233,11 @@ func findRegisteredImplementation(pkgTypeName string) (reflect.Type, error) {
 	}
 
 	return foundType, nil
+}
+
+// IsIgnoreableField checks if the given type is one of the types to be ignored during serialization/deserialization.
+func IsIgnoreableType(t reflect.Type) bool {
+	return slices.Contains(IgnoreableTypes, t)
 }
 
 // Returns the full `<Type.PkgPath>#<Type.Name>#<nbIndirection>` of a type.

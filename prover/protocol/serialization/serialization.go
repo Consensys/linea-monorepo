@@ -161,13 +161,21 @@ func serializeArrayOrSlice(v reflect.Value, mode Mode) (json.RawMessage, error) 
 func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 
 	// fmt.Printf("Serializing Interface \n")
-	if mode == pureExprMode && v.Type() == metadataType {
+	typeOfV := v.Type()
+
+	// Return nil string for types that are to be purposefully ignored.
+	// For ex: Ignore Gnark circuit-related params
+	if IsIgnoreableType(typeOfV) {
+		return json.RawMessage(NilString), nil
+	}
+
+	if mode == pureExprMode && typeOfV == metadataType {
 		m := v.Interface().(symbolic.Metadata)
 		stringVar := symbolic.StringVar(m.String())
 		return SerializeValue(reflect.ValueOf(stringVar), mode)
 	}
 
-	if mode == DeclarationMode && v.Type() == columnType {
+	if mode == DeclarationMode && typeOfV == columnType {
 		return serializeColumnInterface(v, mode)
 	}
 
@@ -183,51 +191,65 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	}
 
 	// Note for warning signs here
-	concreteType := getPkgPathAndTypeNameIndirect(concrete.Interface())
-	_, err = findRegisteredImplementation(concreteType)
+	concreteTypeStr := getPkgPathAndTypeNameIndirect(concrete.Interface())
+	concreteType, err := findRegisteredImplementation(concreteTypeStr)
 	if err != nil {
-		logrus.Warnf("MISSING concrete type in implementation registry:%s \n", concreteType)
+		if !IsIgnoreableType(concreteType) {
+			logrus.Warnf("MISSING concrete type in implementation registry:%s \n", concreteTypeStr)
+		}
 	}
 
 	raw := map[string]interface{}{
-		"type":  concreteType,
+		"type":  concreteTypeStr,
 		"value": rawValue,
 	}
 	return serializeAnyWithCborPkg(raw)
 }
 
+// serializeStruct serializes a struct into JSON, ignoring certain fields based on the mode and type.
 func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	typeOfV := v.Type()
 
-	//fmt.Printf("Ser STRUCT\n")
+	// Return nil string for types that are to be purposefully ignored.
+	// For ex: Ignore Gnark circuit-related params
+	if IsIgnoreableType(typeOfV) {
+		logrus.Infof("Skipping serialization of %v", typeOfV)
+		return json.RawMessage(NilString), nil
+	}
+
+	// Handle ReferenceMode for naturalType
 	if mode == ReferenceMode && typeOfV == naturalType {
 		colID := v.Interface().(column.Natural).ID
 		return serializeAnyWithCborPkg(colID)
 	}
 
+	// Handle DeclarationMode for naturalType
 	if mode == DeclarationMode && typeOfV == naturalType {
-		//fmt.Printf("Entering here columnNatural struct\n")
 		col := v.Interface().(column.Natural)
 		decl := intoSerializableColDecl(&col)
 		return SerializeValue(reflect.ValueOf(decl), mode)
 	}
 
+	// Handle DeclarationMode for manuallyShiftedType
 	if mode == DeclarationMode && typeOfV == manuallyShiftedType {
 		shifted := v.Interface().(*dedicated.ManuallyShifted)
 		decl := intoSerializableManuallyShifted(shifted)
 		return SerializeValue(reflect.ValueOf(decl), mode)
 	}
 
+	// Handle ReferenceMode for queryType
 	if mode == ReferenceMode && typeOfV.Implements(queryType) {
 		queryID := v.Interface().(ifaces.Query).Name()
 		return serializeAnyWithCborPkg(queryID)
 	}
 
+	// Adjust mode for queryType or columnType
 	newMode := mode
 	if typeOfV.Implements(queryType) || typeOfV.Implements(columnType) {
 		newMode = ReferenceMode
 	}
 
+	// Serialize fields
 	cache := getStructFieldCache(typeOfV)
 	raw := make(map[string]json.RawMessage, len(cache.fields))
 	for _, f := range cache.fields {
@@ -348,14 +370,22 @@ func deserializeMap(data json.RawMessage, mode Mode, t reflect.Type, comp *wizar
 }
 
 func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
-	// Create a new reflect.Value for the interface type
-	ifaceValue := reflect.New(t).Elem()
+
+	if IsIgnoreableType(t) {
+		if bytes.Equal(data, []byte(NilString)) {
+			logrus.Infof("Skipping deserialization of %v", t)
+			return reflect.Zero(t), nil
+		}
+		return reflect.Value{}, fmt.Errorf("expected null or empty struct for %v, got: %v", t, data)
+	}
 
 	// Special case for pureExprMode and metadataType
 	if mode == pureExprMode && t == metadataType {
 		return deserializeStringVar(data, mode, comp)
 	}
 
+	// Create a new reflect.Value for the interface type
+	ifaceValue := reflect.New(t).Elem()
 	if bytes.Equal(data, []byte(NilString)) {
 		return ifaceValue, nil
 	}
@@ -432,9 +462,17 @@ func deserializePointer(data json.RawMessage, mode Mode, t reflect.Type, comp *w
 	return v.Addr(), nil
 }
 
+// deserializeStruct deserializes JSON into a struct, ignoring certain fields based on the mode and type.
 func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
 
-	//fmt.Printf("DeSer struct \n")
+	// Return zero value for ignoreable params
+	if IsIgnoreableType(t) {
+		if bytes.Equal(data, []byte(NilString)) {
+			logrus.Infof("Skipping deserialization of %v", t)
+			return reflect.Zero(t), nil
+		}
+		return reflect.Value{}, fmt.Errorf("expected null or empty struct for %v, got: %v", t, data)
+	}
 
 	// Handle ReferenceMode for naturalType
 	if mode == ReferenceMode && t == naturalType {

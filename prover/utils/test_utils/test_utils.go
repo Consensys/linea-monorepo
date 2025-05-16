@@ -21,6 +21,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 
 	"github.com/stretchr/testify/require"
@@ -396,6 +397,12 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 	if v1.Type() != v2.Type() {
 		fmt.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, v1.Type(), v2.Type())
 		return false
+	}
+
+	// Skip ignorable fields
+	if serialization.IsIgnoreableType(v1.Type()) {
+		fmt.Printf("Skipping comparison of ignoreable fields at %s\n", path)
+		return true
 	}
 
 	// Handle maps
