@@ -536,7 +536,8 @@ class L1DependentApp(
         config = BlobSubmissionCoordinator.Config(
           configs.blobSubmission.dbPollingInterval.toKotlinDuration(),
           configs.blobSubmission.proofSubmissionDelay.toKotlinDuration(),
-          configs.blobSubmission.maxBlobsToSubmitPerTick.toUInt()
+          configs.blobSubmission.maxBlobsToSubmitPerTick.toUInt(),
+          configs.blobSubmission.targetBlobsToSendPerTransaction.toUInt()
         ),
         blobsRepository = blobsRepository,
         aggregationsRepository = aggregationsRepository,
@@ -603,7 +604,8 @@ class L1DependentApp(
           feeHistoryBlockCount = configs.l2.feeHistoryBlockCount,
           feeHistoryRewardPercentile = configs.l2.feeHistoryRewardPercentile,
           transactionManager = l2TransactionManager,
-          smartContractErrors = smartContractErrors
+          smartContractErrors = smartContractErrors,
+          smartContractDeploymentBlockNumber = configs.l2.messageServiceDeploymentBlockNumber
         ),
         aggregationDeadlineDelay = configs.conflation.conflationDeadlineLastBlockConfirmationDelay.toKotlinDuration(),
         targetEndBlockNumbers = configs.proofAggregation.targetEndBlocks,
@@ -861,6 +863,7 @@ class L1DependentApp(
         l1ContractAddress = configs.l1.zkEvmContractAddress,
         l1EventPollingTimeout = configs.messageAnchoring.l1EventPollingTimeout,
         l1EventSearchBlockChunk = configs.messageAnchoring.l1EventSearchBlockChunk,
+        l1HighestBlockTag = configs.messageAnchoring.l1HighestBlockTag,
         l2HighestBlockTag = configs.messageAnchoring.l2HighestBlockTag,
         anchoringTickInterval = configs.messageAnchoring.anchoringTickInterval,
         messageQueueCapacity = configs.messageAnchoring.messageQueueCapacity,
@@ -879,7 +882,8 @@ class L1DependentApp(
         feeHistoryBlockCount = configs.l2.feeHistoryBlockCount,
         feeHistoryRewardPercentile = configs.l2.feeHistoryRewardPercentile,
         transactionManager = l2TransactionManager,
-        smartContractErrors = smartContractErrors
+        smartContractErrors = smartContractErrors,
+        smartContractDeploymentBlockNumber = configs.l2.messageServiceDeploymentBlockNumber
       )
     )
   } else {
