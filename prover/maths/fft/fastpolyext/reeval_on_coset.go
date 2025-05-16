@@ -81,7 +81,7 @@ func EvalXnMinusOneOnACoset(n, N int) []fext.Element {
 	t.Exp(t, nBigInt)
 
 	for i := 1; i < N/n; i++ {
-		res[i].MulByBase(&res[i-1], &t)
+		res[i].MulByElement(&res[i-1], &t)
 	}
 
 	var one fext.Element

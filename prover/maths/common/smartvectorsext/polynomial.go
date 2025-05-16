@@ -168,7 +168,7 @@ func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.
 	one := fext.One()
 
 	if len(oncoset) > 0 && oncoset[0] {
-		x.MulByBase(&x, &domain.FrMultiplicativeGenInv)
+		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)
 	}
 
 	/*
@@ -180,7 +180,7 @@ func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.
 	*/
 	denominator[0] = x
 	for i := 1; i < n; i++ {
-		denominator[i].MulByBase(&denominator[i-1], &domain.GeneratorInv)
+		denominator[i].MulByElement(&denominator[i-1], &domain.GeneratorInv)
 	}
 
 	for i := 0; i < n; i++ {
@@ -217,7 +217,7 @@ func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.
 
 	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
 	factor := new(fext.Element).Sub(xN, &one)
-	factor.MulByBase(factor, cardinalityInv)
+	factor.MulByElement(factor, cardinalityInv)
 
 	parallel.Execute(len(polys), func(start, stop int) {
 		for k := start; k < stop; k++ {

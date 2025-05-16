@@ -99,14 +99,14 @@ func Repeat(x fext.Element, n int) []fext.Element {
 func ForTest(xs ...int) []fext.Element {
 	res := make([]fext.Element, len(xs))
 	for i, x := range xs {
-		res[i].SetInt64(int64(x))
+		res[i].B0.A0[0] = uint32(x)
 	}
 	return res
 }
 
 // ForTestFromVect computes a vector of field extensions,
 // where each field extension is populated using one vector of size [fext.ExtensionDegree]
-func ForTestFromVect(xs ...[fext.ExtensionDegree]int) []fext.Element {
+func ForTestFromVect(xs ...[4]int) []fext.Element {
 	res := make([]fext.Element, len(xs))
 	for i, x := range xs {
 		res[i].SetFromVector(x)

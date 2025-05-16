@@ -46,7 +46,7 @@ func InterpolateGnark(api gnarkfext.API, poly []gnarkfext.Variable, x gnarkfext.
 	for i := 0; i < n; i++ {
 
 		if i > 0 {
-			omegaI = api.MulByBase(omegaI, domain.GeneratorInv)
+			omegaI = api.MulByElement(omegaI, domain.GeneratorInv)
 		}
 
 		// If the current term is the constant zero, we continue without generating
@@ -94,7 +94,7 @@ func InterpolateGnark(api gnarkfext.API, poly []gnarkfext.Variable, x gnarkfext.
 	*/
 	factor := xN
 	factor = api.Sub(factor, one)
-	factor = api.MulByBase(factor, domain.CardinalityInv)
+	factor = api.MulByElement(factor, domain.CardinalityInv)
 	res = api.Mul(res, factor)
 
 	return res

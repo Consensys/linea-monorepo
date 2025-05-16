@@ -32,20 +32,20 @@ func (z *Element) SetInt64Pair(v1, v2 int64) *Element {
 	return z // z.toMont()
 }
 
-func (z *Element) Uint64() (uint64, uint64) {
-	return z.A0.Bits()[0], z.A1.Bits()[0]
-}
+// func (z *Element) Uint64() (uint64, uint64) {
+// 	return z.A0.Bits()[0], z.A1.Bits()[0]
+// }
 
 func Butterfly(a, b *Element) {
 	field.Butterfly(&a.B0.A0, &b.B0.A0)
 	field.Butterfly(&a.B0.A1, &b.B0.A1)
 }
 
-func (z *Element) MulByBase(first *Element, second *Element) *Element {
-	z.B0.A0.Mul(&first.A0, second)
-	z.B0.A1.Mul(&first.A1, second)
-	return z
-}
+// func (z *Element) MulByElement(first *Element, second *Element) *Element {
+// 	z.B0.A0.Mul(&first.A0, second)
+// 	z.B0.A1.Mul(&first.A1, second)
+// 	return z
+// }
 
 func (z *Element) DivByBase(first *Element, second *Element) *Element {
 	z.B0.A0.Div(&first.A0, second)
