@@ -38,6 +38,7 @@ import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
+import net.consensys.linea.utils.Compressor;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
 import org.hyperledger.besu.plugin.services.BesuEvents;
@@ -72,6 +73,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
 
   private static final AtomicBoolean sharedRegisterTasksDone = new AtomicBoolean(false);
   private static final AtomicBoolean sharedStartTasksDone = new AtomicBoolean(false);
+
+  static {
+    // force the initialization of the gnark compress native library to fail fast in case of issues
+    Compressor.instance.compressedSize(new byte[1024]);
+  }
 
   private ServiceManager serviceManager;
 

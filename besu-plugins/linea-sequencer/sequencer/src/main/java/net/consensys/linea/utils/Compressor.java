@@ -18,12 +18,23 @@ package net.consensys.linea.utils;
 import linea.blob.BlobCompressor;
 import linea.blob.GoBackedBlobCompressor;
 import net.consensys.linea.blob.BlobCompressorVersion;
+import org.apache.logging.log4j.LogManager;
 
 public class Compressor {
-  public static BlobCompressor instance =
-      GoBackedBlobCompressor.getInstance(
-          BlobCompressorVersion.V1_0_1,
-          // 100KB to match coordinator config.
-          // However, is not relevant for the sequencer because it does not create blobs.
-          102400);
+  public static BlobCompressor instance;
+
+  static {
+    try {
+      instance =
+          GoBackedBlobCompressor.getInstance(
+              BlobCompressorVersion.V1_0_1,
+              // 100KB to match coordinator config.
+              // However, is not relevant for the sequencer because it does not create blobs.
+              102400);
+    } catch (Throwable t) {
+      LogManager.getLogger(Compressor.class)
+          .error("Failed to load GoBackedBlobCompressor. errorMessage={}", t.getMessage(), t);
+      throw new RuntimeException("Failed to load GoBackedBlobCompressor", t);
+    }
+  }
 }
