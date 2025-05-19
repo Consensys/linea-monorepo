@@ -12,10 +12,7 @@ const (
 	// RmaxOrderRoot
 	MaxOrderRoot uint64 = 24
 
-	// MultiplicativeGen represents a (small) field element which does not
-	// divide q - 1. It has the property that every element x of the field can
-	// be generated as [MultiplicativeGen] ** n == x. Here q denotes the modulus
-	// of the field.
+	// MultiplicativeGen generator of 𝔽ᵣ*
 	MultiplicativeGen uint64 = 3
 	// number of 32 bits words needed to represent a Element
 	Limbs = 1
