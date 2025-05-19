@@ -111,6 +111,8 @@ github.com/consensys/gnark-crypto v0.14.1-0.20241217134352-810063550bd4 h1:Kp6eg
 github.com/consensys/gnark-crypto v0.14.1-0.20241217134352-810063550bd4/go.mod h1:GMPeN3dUSslNBYJsK3WTjIGd3l0ccfMbcEh/d5knFrc=
 github.com/consensys/gnark-crypto v0.17.0 h1:vKDhZMOrySbpZDCvGMOELrHFv/A9mJ7+9I8HEfRZSkI=
 github.com/consensys/gnark-crypto v0.17.0/go.mod h1:A2URlMHUT81ifJ0UlLzSlm7TmnE3t7VxEThApdMukJw=
+github.com/consensys/gnark-crypto v0.17.1-0.20250502112255-56600883e0e9 h1:GlTrXOEDToAVMusTlRcyB7HAvecLPdaANb9EJhjzdCY=
+github.com/consensys/gnark-crypto v0.17.1-0.20250502112255-56600883e0e9/go.mod h1:L3mXGFTe1ZN+RSJ+CLjUt9x7PNdx8ubaYfDROyp2Z8c=
 github.com/consensys/gnark-crypto v0.17.1-0.20250514192607-642026c65b89 h1:T2kMeiRxS5ogykBNRgLRkjguOinRfdr/pLKAp6HzJ7c=
 github.com/consensys/gnark-crypto v0.17.1-0.20250514192607-642026c65b89/go.mod h1:L3mXGFTe1ZN+RSJ+CLjUt9x7PNdx8ubaYfDROyp2Z8c=
 github.com/consensys/go-corset v1.0.3 h1:CZ04qi9NaMkMJnfv19UUHGhEXJZwpDNrAo5fwDbT1OM=

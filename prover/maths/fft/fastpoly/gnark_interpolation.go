@@ -1,9 +1,9 @@
 package fastpoly
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
@@ -23,7 +23,7 @@ func InterpolateGnark(api frontend.API, poly []frontend.Variable, x frontend.Var
 
 	n := len(poly)
 	domain := fft.NewDomain(n)
-	one := field.One()
+	one := koalabear.One()
 
 	// Test that x is not a root of unity. In the other case, we would
 	// have to divide by zero. In practice this constraint is not necessary
@@ -44,7 +44,7 @@ func InterpolateGnark(api frontend.API, poly []frontend.Variable, x frontend.Var
 	for i := 0; i < n; i++ {
 
 		if i > 0 {
-			omegaI = api.Mul(omegaI, domain.GeneratorInv)
+			omegaI = api.Mul(omegaI, domain.GnarkDomain.GeneratorInv)
 		}
 
 		// If the current term is the constant zero, we continue without generating
@@ -89,7 +89,7 @@ func InterpolateGnark(api frontend.API, poly []frontend.Variable, x frontend.Var
 	*/
 	factor := xN
 	factor = api.Sub(factor, one)
-	factor = api.Mul(factor, domain.CardinalityInv)
+	factor = api.Mul(factor, domain.GnarkDomain.CardinalityInv)
 	res = api.Mul(res, factor)
 
 	return res

@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -30,10 +31,10 @@ func Interpolate(poly []field.Element, x fr.Element, oncoset ...bool) field.Elem
 	domain := fft.NewDomain(n)
 	denominator := make([]field.Element, n)
 
-	one := field.One()
+	one := koalabear.One()
 
 	if len(oncoset) > 0 && oncoset[0] {
-		x.Mul(&x, &domain.FrMultiplicativeGenInv)
+		x.Mul(&x, &domain.GnarkDomain.FrMultiplicativeGenInv)
 	}
 
 	/*

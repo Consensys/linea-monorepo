@@ -1,24 +1,26 @@
 package fft
 
+//todo: remove this? as bitreverse is tested in the gnark-crypto
 import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
+	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 )
 
 type bitReverseVariant struct {
 	name string
-	buf  []fr.Element
-	fn   func([]fr.Element)
+	buf  []koalabear.Element
+	fn   func([]koalabear.Element)
 }
 
 const maxSizeBitReverse = 1 << 23
 
 var bitReverse = []bitReverseVariant{
-	{name: "bitReverseNaive", buf: make([]fr.Element, maxSizeBitReverse), fn: bitReverseNaive},
-	{name: "BitReverse", buf: make([]fr.Element, maxSizeBitReverse), fn: BitReverse},
-	{name: "bitReverseCobraInPlace", buf: make([]fr.Element, maxSizeBitReverse), fn: bitReverseCobraInPlace},
+	{name: "bitReverseNaive", buf: make([]koalabear.Element, maxSizeBitReverse), fn: bitReverseNaive},
+	{name: "BitReverse", buf: make([]koalabear.Element, maxSizeBitReverse), fn: BitReverse},
+	{name: "bitReverseCobraInPlace", buf: make([]koalabear.Element, maxSizeBitReverse), fn: bitReverseCobraInPlace},
 }
 
 func TestBitReverse(t *testing.T) {

@@ -5,10 +5,10 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
 
@@ -45,12 +45,12 @@ func TestXMinusOneOnACoset(t *testing.T) {
 	/*
 		Compute (w_N)^{in} - 1
 	*/
-	one := field.One()
+	one := koalabear.One()
 	for i := 0; i < N; i++ {
 		domainN := fft.NewDomain(N)
-		expected := domainN.Generator
+		expected := domainN.GnarkDomain.Generator
 		expected.Exp(expected, big.NewInt(int64(i)))
-		expected.Mul(&expected, &domainN.FrMultiplicativeGen)
+		expected.Mul(&expected, &domainN.GnarkDomain.FrMultiplicativeGen)
 		expected.Exp(expected, big.NewInt(int64(n)))
 		expected.Sub(&expected, &one)
 
