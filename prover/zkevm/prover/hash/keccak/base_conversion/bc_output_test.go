@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -24,7 +25,7 @@ func makeTestCaseBaseConversionOutput() (
 		var (
 			comp      = build.CompiledIOP
 			size      = utils.NextPowerOfTwo(maxNumBlocks)
-			createCol = common.CreateColFn(comp, "BASE_CONVERSION_TEST", size)
+			createCol = common.CreateColFn(comp, "BASE_CONVERSION_TEST", size, pragmas.RightPadded)
 			limbsHi   = make([]ifaces.Column, numLimbsOutput)
 			limbsLo   = make([]ifaces.Column, numLimbsOutput)
 		)

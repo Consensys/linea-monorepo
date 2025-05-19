@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -37,7 +38,7 @@ func makeTestCaseCLDModule(uc generic.HashingUsecase) (
 		comp := build.CompiledIOP
 		imported = createImportationColumns(comp, size)
 
-		createCol := common.CreateColFn(comp, CLEANING, imported.Limb.Size())
+		createCol := common.CreateColFn(comp, CLEANING, imported.Limb.Size(), pragmas.RightPadded)
 		ctx = cleaningCtx{
 			CleanLimb: createCol("CleanLimb"),
 			Inputs: &cleaningInputs{

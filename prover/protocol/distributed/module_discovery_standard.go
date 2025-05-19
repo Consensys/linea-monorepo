@@ -9,6 +9,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -449,7 +450,11 @@ func (disc *QueryBasedModuleDiscoverer) Analyze(comp *wizard.CompiledIOP) {
 
 		case *query.Horner:
 			for _, part := range q.Parts {
-				group := append(column.ColumnsOfExpression(part.Coefficient), part.Selector)
+				group := []ifaces.Column{}
+				for k := range part.Coefficients {
+					group = append(group, column.ColumnsOfExpression(part.Coefficients[k])...)
+					group = append(group, part.Selectors[k])
+				}
 				toGroup = append(toGroup, rootsOfColumns(group))
 			}
 		}
@@ -622,6 +627,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		areAnyNonRegular  = false
 		areAnyLeftPadded  = false
 		areAnyRightPadded = false
+		areAnyFull        = false
 		firstLeftPadded   column.Natural
 		firstRightPadded  column.Natural
 		firstColumn       column.Natural
@@ -648,14 +654,33 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		}
 
 		var (
-			val           = col.GetColAssignment(run)
-			start, stop   = smartvectors.CoWindowRange(val)
-			isLeftPadded  = start == 0
-			isRightPadded = stop == size
-			density       = stop - start
+			val                  = col.GetColAssignment(run)
+			start, stop          = smartvectors.CoWindowRange(val)
+			isRightPadded        = start == 0
+			isLeftPadded         = stop == size
+			density              = stop - start
+			hasFullColumnPragma  = pragmas.IsFullColumn(col)
+			hasLeftPaddedPragma  = pragmas.IsLeftPadded(col)
+			hasRightPaddedPragma = pragmas.IsRightPadded(col)
 		)
 
-		if isLeftPadded && isRightPadded {
+		if hasFullColumnPragma {
+			areAnyFull = true
+			resMaxDensity = density
+			break
+		}
+
+		if hasLeftPaddedPragma {
+			areAnyLeftPadded = true
+			firstLeftPadded = col
+		}
+
+		if hasRightPaddedPragma {
+			areAnyRightPadded = true
+			firstRightPadded = col
+		}
+
+		if isRightPadded && isLeftPadded {
 			continue
 		} else {
 			areAnyNonRegular = true
@@ -665,17 +690,17 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		// areAnyLeftPadded flag. Otherwise, the panic condition stating that
 		// there should not be both left and right padded columns will be
 		// activated when we mix right-padded with a constant column.
-		if isLeftPadded && density > 0 {
-			areAnyLeftPadded = true
+		if isRightPadded && density > 0 {
+			areAnyRightPadded = true
 			firstLeftPadded = col
 		}
 
-		if isRightPadded {
-			areAnyRightPadded = true
+		if isLeftPadded {
+			areAnyLeftPadded = true
 			firstRightPadded = col
 		}
 
-		if !isLeftPadded && !isRightPadded {
+		if !isRightPadded && !isLeftPadded {
 			utils.Panic("column is neither left nor right padded, col=%v", col.ID)
 		}
 
@@ -684,7 +709,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		}
 	}
 
-	if !areAnyNonRegular {
+	if !areAnyNonRegular || areAnyFull {
 		start, stop := 0, size
 		mod.nbSegmentCacheMutex.Lock()
 		defer mod.nbSegmentCacheMutex.Unlock()
@@ -709,7 +734,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		totalSegmentedArea = segmentSize * localNbSegment
 	)
 
-	if areAnyLeftPadded {
+	if areAnyRightPadded {
 		start, stop := 0, totalSegmentedArea
 		mod.nbSegmentCacheMutex.Lock()
 		defer mod.nbSegmentCacheMutex.Unlock()
@@ -717,7 +742,7 @@ func (mod *QueryBasedModule) SegmentBoundaries(run *wizard.ProverRuntime, segmen
 		return start, stop
 	}
 
-	if areAnyRightPadded {
+	if areAnyLeftPadded {
 		start, stop := size-totalSegmentedArea, size
 		mod.nbSegmentCacheMutex.Lock()
 		defer mod.nbSegmentCacheMutex.Unlock()
@@ -963,4 +988,71 @@ func weightOfGroupOfQBModules(group []*QueryBasedModule) int {
 		weight += group[i].Weight(0)
 	}
 	return weight
+}
+
+// LPPSegmentBoundaryCalculator is an ad-hoc structure used to help the
+// inclusion compiler understanding which parts of the S columns to use
+// to compute the M columns.
+type LPPSegmentBoundaryCalculator struct {
+	Disc     *StandardModuleDiscoverer
+	LPPArity int
+	Cached   map[*wizard.ProverRuntime]map[ifaces.Column][2]int
+}
+
+func (ls *LPPSegmentBoundaryCalculator) SegmentBoundaryOf(run *wizard.ProverRuntime, col column.Natural) (int, int) {
+
+	var (
+		module      = ls.Disc.ModuleOf(col)
+		moduleNames = ls.Disc.ModuleList()
+		nbSegment   = -1
+		start, stop = ls.Disc.SegmentBoundaryOf(run, col)
+		newSize     = ls.Disc.NewSizeOf(col)
+		fullSize    = col.Size()
+	)
+
+	for i := range ls.Disc.modules {
+		if ls.Disc.modules[i].moduleName != module {
+			continue
+		}
+
+		var (
+			lppModuleID = i / ls.LPPArity
+			s0          = lppModuleID * ls.LPPArity
+			s1          = min(len(moduleNames), s0+ls.LPPArity)
+		)
+
+		nbSegment = NbSegmentOfModule(run, ls.Disc, moduleNames[s0:s1])
+	}
+
+	newLen := nbSegment * newSize
+
+	// The newLen cannot be smaller than the stop-start because the number of LPP
+	// segment for a column is always larger than the number of GL segments. This
+	// is a consequence of the fact that LPP modules are aggregates of GL modules
+	// and #moduleLpp.segments = max_i(#moduleGL_i.segments)
+	if newLen < stop-start {
+		utils.Panic("newLen=%v, stop=%v, start=%v", newLen, stop, start)
+	}
+
+	// Everything will be used. The case where newLen < stop-start is impossible due
+	// to the above sanity-check. If newLen > stop-start, then it means we need to
+	// extend the column (this is the OOB case in the [SegmentOfColumn] functions
+	// and we do not support that).
+	if start == 0 && stop == fullSize {
+		if stop != newLen {
+			utils.Panic("stop=%v, nbSegment=%v, newSize=%v, newLen=%v", stop, nbSegment, newSize, newLen)
+		}
+		return start, stop
+	}
+
+	if start == 0 {
+		return 0, newLen
+	}
+
+	if stop == fullSize {
+		return fullSize - newLen, fullSize
+	}
+
+	utils.Panic("start=%v, stop=%v, nbSegment=%v, newSize=%v, newLen=%v", start, stop, nbSegment, newSize, newLen)
+	return -1, -1 // Unreachable
 }

@@ -75,22 +75,24 @@ func (mt *moduleTranslator) InsertPrecomputed(col column.Natural, data smartvect
 //
 // The sizeHint argument is meant to deduce what the size of a translated
 // [verifiercol.ConstCol]
-func (mt *moduleTranslator) TranslateColumn(col ifaces.Column, sizeHint int) ifaces.Column {
+func (mt *moduleTranslator) TranslateColumn(col ifaces.Column) ifaces.Column {
 
 	switch c := col.(type) {
 	case column.Natural:
 		return mt.Wiop.Columns.GetHandle(c.ID)
 	case column.Shifted:
 		return column.Shifted{
-			Parent: mt.TranslateColumn(c.Parent, sizeHint),
+			Parent: mt.TranslateColumn(c.Parent),
 			Offset: c.Offset,
 		}
 	case verifiercol.ConstCol:
+
 		if c.IsBase() {
-			return verifiercol.NewConstantCol(c.Base, sizeHint)
+      return verifiercol.NewConstantCol(c.F, c.Size())
 		} else {
-			return verifiercol.NewConstantColExt(c.Ext, sizeHint)
+			return verifiercol.NewConstantColExt(c.Ext, c.Size())
 		}
+
 
 	default:
 		utils.Panic("unexpected type of column: type: %T, name: %v", col, col.GetColID())
@@ -99,14 +101,23 @@ func (mt *moduleTranslator) TranslateColumn(col ifaces.Column, sizeHint int) ifa
 	return nil
 }
 
+// TranslateColumnList returns a list of equivalent columns from the new module.
+// The function panics if the column cannot be resolved. It will happen if the
+// column has an expected type or is defined from not resolvable items.
+func (mt *moduleTranslator) TranslateColumnList(cols []ifaces.Column) []ifaces.Column {
+	res := make([]ifaces.Column, len(cols))
+	for i := range res {
+		res[i] = mt.TranslateColumn(cols[i])
+	}
+	return res
+}
+
 // TranslateExpression returns an expression corresponding to the provided
 // expression but in term of the input module. When the function encounters
 // a [verifiercol.Constcol] as part of the expression, it converts it into
 // a [symbolic.Constant] directly as this simplifies the later steps in the
 // process and is strictly equivalent.
 func (mt *moduleTranslator) TranslateExpression(expr *symbolic.Expression) *symbolic.Expression {
-
-	sizeHint := NewSizeOfExpr(mt.Disc, expr)
 
 	return expr.ReconstructBottomUpSingleThreaded(
 		func(e *symbolic.Expression, children []*symbolic.Expression) *symbolic.Expression {
@@ -130,7 +141,7 @@ func (mt *moduleTranslator) TranslateExpression(expr *symbolic.Expression) *symb
 							return symbolic.NewConstant(constcol.Ext)
 						}
 					}
-					newCol := mt.TranslateColumn(m, sizeHint)
+					newCol := mt.TranslateColumn(m)
 					return symbolic.NewVariable(newCol)
 				case coin.Info:
 					newCoin := mt.TranslateCoin(m)
@@ -143,6 +154,16 @@ func (mt *moduleTranslator) TranslateExpression(expr *symbolic.Expression) *symb
 			}
 		},
 	)
+}
+
+// TranslateExpressionList returns a list of equivalent expressions from the new
+// module.
+func (mt *moduleTranslator) TranslateExpressionList(exprs []*symbolic.Expression) []*symbolic.Expression {
+	res := make([]*symbolic.Expression, len(exprs))
+	for i := range res {
+		res[i] = mt.TranslateExpression(exprs[i])
+	}
+	return res
 }
 
 // TranslateCoin returns the equivalent coin from the new module.
@@ -174,7 +195,7 @@ func (mt *moduleTranslator) TranslateAccessor(acc ifaces.Accessor) ifaces.Access
 		return accessors.NewFromCoin(newCoin)
 
 	case *accessors.FromPublicColumn:
-		newCol := mt.TranslateColumn(a.Col, 1)
+		newCol := mt.TranslateColumn(a.Col)
 		return accessors.NewFromPublicColumn(newCol, a.Pos)
 
 	case *accessors.FromLocalOpeningYAccessor:
@@ -200,8 +221,8 @@ func (mt *moduleTranslator) InsertPlonkInWizard(oldQuery *query.PlonkInWizard) *
 
 	newQuery := &query.PlonkInWizard{
 		ID:           oldQuery.ID,
-		Data:         mt.TranslateColumn(oldQuery.Data, 0),
-		Selector:     mt.TranslateColumn(oldQuery.Selector, 0),
+		Data:         mt.TranslateColumn(oldQuery.Data),
+		Selector:     mt.TranslateColumn(oldQuery.Selector),
 		Circuit:      oldQuery.Circuit,
 		PlonkOptions: oldQuery.PlonkOptions,
 	}
@@ -304,13 +325,13 @@ func (mt *ModuleLPP) InsertHorner(
 	for _, oldPart := range parts {
 
 		newPart := query.HornerPart{
-			Coefficient:  mt.TranslateExpression(oldPart.Coefficient),
+			Coefficients: mt.TranslateExpressionList(oldPart.Coefficients),
 			SignNegative: oldPart.SignNegative,
-			Selector:     mt.TranslateColumn(oldPart.Selector, 0),
+			Selectors:    mt.TranslateColumnList(oldPart.Selectors),
 			X:            mt.TranslateAccessor(oldPart.X),
 		}
 
-		mt.addCoinFromExpression(newPart.Coefficient)
+		mt.addCoinFromExpression(newPart.Coefficients...)
 		mt.addCoinFromAccessor(newPart.X)
 
 		res.Parts = append(res.Parts, newPart)

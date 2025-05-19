@@ -212,7 +212,7 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 		prevHornerN1Hash          = field.Element{}
 		usedSharedRandomness      = field.Element{}
 		usedSharedRandomnessFound bool
-		computedSharedRandomness  = field.Element{}
+		collectedLPPCommitments   = make([]field.Element, 0)
 		mainErr                   error
 	)
 
@@ -220,7 +220,7 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 
 		var (
 			lppCommitment    = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0), i)
-			sharedRandomness = c.Recursion.GetPublicInputOfInstance(run, initialRandomnessPublicInput, i)
+			sharedRandomness = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+initialRandomnessPublicInput, i)
 			verifyingKey     = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+verifyingKeyPublicInput, i)
 			verifyingKey2    = c.Recursion.GetPublicInputOfInstance(run, verifyingKey2PublicInput, i)
 			logDerivativeSum = c.Recursion.GetPublicInputOfInstance(run, preRecursionPrefix+logDerivativeSumPublicInput, i)
@@ -273,12 +273,12 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 
 		if isLPP.IsOne() && usedSharedRandomnessFound {
 			if usedSharedRandomness != sharedRandomness {
-				mainErr = errors.Join(mainErr, errors.New("shared randomness mismatch"))
+				mainErr = errors.Join(mainErr, fmt.Errorf("shared randomness mismatch between different LPP segments: %v and %v", usedSharedRandomness.String(), sharedRandomness.String()))
 			}
 		}
 
 		if isGL.IsOne() {
-			computedSharedRandomness = cmimc.BlockCompression(computedSharedRandomness, lppCommitment)
+			collectedLPPCommitments = append(collectedLPPCommitments, lppCommitment)
 		}
 
 		prevHornerN1Hash = hornerN1Hash
@@ -291,8 +291,9 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 		}
 	}
 
+	computedSharedRandomness := GetSharedRandomness(collectedLPPCommitments)
 	if computedSharedRandomness != usedSharedRandomness {
-		mainErr = errors.Join(mainErr, errors.New("shared randomness mismatch"))
+		mainErr = errors.Join(mainErr, fmt.Errorf("shared randomness mismatch, between the one used in LPP and the hash of the LPP commitments computed by the GL: %v and %v", usedSharedRandomness.String(), computedSharedRandomness.String()))
 	}
 
 	if !allGrandProduct.IsOne() {
@@ -312,8 +313,169 @@ func (c *ConglomerateHolisticCheck) Run(run wizard.Runtime) error {
 
 // RunGnark is as [Run] but in a gnark circuit
 func (c *ConglomeratorCompilation) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	// unimplemented for now that we debug the RUN function.
-	panic("unimplemented")
+
+	var (
+		allGrandProduct           = frontend.Variable(1)
+		allLogDerivativeSum       = frontend.Variable(0)
+		allHornerSum              = frontend.Variable(0)
+		prevGlobalSent            = frontend.Variable(0)
+		prevHornerN1Hash          = frontend.Variable(0)
+		usedSharedRandomness      = frontend.Variable(0)
+		usedSharedRandomnessFound = frontend.Variable(0)
+		accumulativeLppHash       = frontend.Variable(0)
+	)
+
+	for i := 0; i < c.MaxNbProofs; i++ {
+
+		var (
+			lppCommitment    = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+fmt.Sprintf("%v_%v", lppMerkleRootPublicInput, 0), i)
+			sharedRandomness = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+initialRandomnessPublicInput, i)
+			verifyingKey     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+verifyingKeyPublicInput, i)
+			verifyingKey2    = c.Recursion.GetPublicInputOfInstanceGnark(api, run, verifyingKey2PublicInput, i)
+			logDerivativeSum = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+logDerivativeSumPublicInput, i)
+			grandProduct     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+grandProductPublicInput, i)
+			hornerSum        = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+hornerPublicInput, i)
+			hornerN0Hash     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+hornerN0HashPublicInput, i)
+			hornerN1Hash     = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+hornerN1HashPublicInput, i)
+			globalReceived   = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+globalReceiverPublicInput, i)
+			globalSent       = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+globalSenderPublicInput, i)
+			isFirst          = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+isFirstPublicInput, i)
+			isLast           = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+isLastPublicInput, i)
+			isLPP            = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+isLppPublicInput, i)
+			isGL             = c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+isGlPublicInput, i)
+
+			sameVerifyingKeyAsPrev, sameVerifyingKeyAsNext = frontend.Variable(0), frontend.Variable(0)
+		)
+
+		if i > 0 {
+			prevVerifyingKey := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+verifyingKeyPublicInput, i-1)
+			prevVerifyingKey2 := c.Recursion.GetPublicInputOfInstanceGnark(api, run, verifyingKey2PublicInput, i-1)
+
+			sameVerifyingKeyAsPrev = api.Mul(
+				api.IsZero(api.Sub(prevVerifyingKey, verifyingKey)),
+				api.IsZero(api.Sub(prevVerifyingKey2, verifyingKey2)),
+			)
+		}
+
+		if i < c.MaxNbProofs-1 {
+			nextVerifyingKey := c.Recursion.GetPublicInputOfInstanceGnark(api, run, preRecursionPrefix+verifyingKeyPublicInput, i+1)
+			nextVerifyingKey2 := c.Recursion.GetPublicInputOfInstanceGnark(api, run, verifyingKey2PublicInput, i+1)
+
+			sameVerifyingKeyAsNext = api.Mul(
+				api.IsZero(api.Sub(nextVerifyingKey, verifyingKey)),
+				api.IsZero(api.Sub(nextVerifyingKey2, verifyingKey2)),
+			)
+		}
+
+		// This emulates the following check:
+		//
+		// if isLPP.IsOne() && sameVerifyingKeyAsPrev && hornerN0Hash != prevHornerN1Hash {
+		// 	mainErr = errors.Join(mainErr, errors.New("horner-n0-hash mismatch"))
+		// }
+		api.AssertIsEqual(0,
+			api.Mul(
+				isLPP,
+				sameVerifyingKeyAsPrev,
+				api.Sub(hornerN0Hash, prevHornerN1Hash),
+			),
+		)
+
+		// This emulates the following check:
+		//
+		// if isGL.IsOne() && !sameVerifyingKeyAsPrev != isFirst.IsOne() {
+		// 	mainErr = errors.Join(mainErr, errors.New("isFirst is inconsistent with the verifying keys"))
+		// }
+		api.AssertIsEqual(0,
+			api.Mul(
+				isGL,
+				// these are already ensured to be boolean, that's why the check
+				// works. sameVerifyingKeyAsPrev is boolean as the product of two booleans
+				// and isFirst is enforced to be boolean thanks to being a public input
+				// of a whitelisted circuit which enforces it to be a boolean.
+				api.Sub(1, sameVerifyingKeyAsPrev, isFirst),
+			),
+		)
+
+		// This emulates the following check:
+		//
+		// if isGL.IsOne() && !sameVerifyingKeyAsNext != isLast.IsOne() {
+		// 	mainErr = errors.Join(mainErr, errors.New("isLast is inconsistent with the verifying keys"))
+		// }
+		api.AssertIsEqual(0,
+			api.Mul(
+				isGL,
+				// these are already ensured to be boolean, that's why the check
+				// works. sameVerifyingKeyAsNext is boolean as the product of two booleans
+				// and isLast is enforced to be boolean thanks to being a public input
+				// of a whitelisted circuit which enforces it to be a boolean.
+				api.Sub(1, sameVerifyingKeyAsNext, isLast),
+			),
+		)
+
+		// This emulates the following check:
+		//
+		// if isGL.IsOne() && sameVerifyingKeyAsPrev && globalReceived != prevGlobalSent {
+		// 	mainErr = errors.Join(mainErr, errors.New("global sent and receive don't match"))
+		// }
+		api.AssertIsEqual(0,
+			api.Mul(
+				isGL,
+				sameVerifyingKeyAsPrev,
+				api.Sub(globalReceived, prevGlobalSent),
+			),
+		)
+
+		// This emulates the following conditional updates:
+		//
+		// if isLPP.IsOne() && !usedSharedRandomnessFound {
+		// 	usedSharedRandomness = sharedRandomness
+		// 	usedSharedRandomnessFound = true
+		// }
+		isFirstUseOfRandomness := api.Mul(isLPP, api.Sub(1, usedSharedRandomnessFound))
+		usedSharedRandomness = api.Select(isFirstUseOfRandomness, sharedRandomness, usedSharedRandomness)
+		usedSharedRandomnessFound = api.Add(usedSharedRandomnessFound, isFirstUseOfRandomness)
+
+		// This emulates the following check:
+		//
+		// if isLPP.IsOne() && usedSharedRandomnessFound {
+		// 	if usedSharedRandomness != sharedRandomness {
+		// 		mainErr = errors.Join(mainErr, fmt.Errorf("shared randomness mismatch between different LPP segments: %v and %v", usedSharedRandomness.String(), sharedRandomness.String()))
+		// 	}
+		// }
+		api.AssertIsEqual(0,
+			api.Mul(
+				isLPP,
+				usedSharedRandomnessFound,
+				api.Sub(usedSharedRandomness, sharedRandomness),
+			),
+		)
+
+		// This emulates the following conditional append. As in a gnark circuit it is
+		// complicated to do a conditional append, we instead do a conditional hasher
+		// update.
+		//
+		// if isGL.IsOne() {
+		// 	collectedLPPCommitments = append(collectedLPPCommitments, lppCommitment)
+		// }
+		newAccIfUpdateNeeded := cmimc.GnarkBlockCompression(api, accumulativeLppHash, lppCommitment)
+		accumulativeLppHash = api.Select(isGL, newAccIfUpdateNeeded, accumulativeLppHash)
+
+		prevHornerN1Hash = hornerN1Hash
+		prevGlobalSent = globalSent
+
+		// Note: although the native version of the update conditions the update to
+		// be done only if we are scanning through an LPP instance, the other circuits
+		// are guaranteed to give the neutral element for the update. So, we can simplify
+		// the circuit a little bit.
+		allGrandProduct = api.Mul(allGrandProduct, grandProduct)
+		allHornerSum = api.Add(allHornerSum, hornerSum)
+		allLogDerivativeSum = api.Add(allLogDerivativeSum, logDerivativeSum)
+	}
+
+	api.AssertIsEqual(accumulativeLppHash, usedSharedRandomness)
+	api.AssertIsEqual(allGrandProduct, 1)
+	api.AssertIsEqual(allHornerSum, 0)
+	api.AssertIsEqual(allLogDerivativeSum, 0)
 }
 
 // Prove is the main entry point for the prover. It takes a compiled IOP and

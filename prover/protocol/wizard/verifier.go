@@ -198,7 +198,7 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element 
 
 	case *accessors.FromPublicColumn:
 		if a.Col.Status() == column.Proof {
-			return proof.Messages.MustGet(a.Col.ID).Get(0)
+			return proof.Messages.MustGet(a.Col.ID).Get(a.Pos)
 		}
 	case *accessors.FromLocalOpeningYAccessor:
 		return proof.QueriesParams.MustGet(a.Q.ID).(query.LocalOpeningParams).Y

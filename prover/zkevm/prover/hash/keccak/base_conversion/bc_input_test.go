@@ -6,6 +6,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -24,7 +25,7 @@ func makeTestCaseBaseConversionInput() (
 			comp      = build.CompiledIOP
 			keccak    = generic.KeccakUsecase
 			size      = utils.NextPowerOfTwo(keccak.NbOfLanesPerBlock() * numBlocks)
-			createCol = common.CreateColFn(comp, "BASE_CONVERSION_TEST", size)
+			createCol = common.CreateColFn(comp, "BASE_CONVERSION_TEST", size, pragmas.RightPadded)
 		)
 
 		inp := BlockBaseConversionInputs{

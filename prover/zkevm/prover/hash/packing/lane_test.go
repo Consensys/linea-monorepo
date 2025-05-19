@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
+	"github.com/consensys/linea-monorepo/prover/protocol/distributed/pragmas"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
@@ -47,7 +48,7 @@ func makeTestCaseLaneRepacking(uc generic.HashingUsecase) (
 			Imported:     imported,
 		}
 
-		createCol := common.CreateColFn(comp, "TEST_SPAGHETTI", size)
+		createCol := common.CreateColFn(comp, "TEST_SPAGHETTI", size, pragmas.RightPadded)
 		cleaning = cleaningCtx{
 			CleanLimb: createCol("CleanLimb"),
 			Inputs:    &cleaningInputs{imported: imported},

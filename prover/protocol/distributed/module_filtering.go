@@ -190,8 +190,11 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 			}
 			args := mf.FilterHornerParts(q)
 			for i := range args {
-				cols := column.ColumnsOfExpression(args[i].Coefficient)
-				cols = append(cols, args[i].Selector)
+				cols := []ifaces.Column{}
+				for k := range args[i].Selectors {
+					cols = append(cols, column.ColumnsOfExpression(args[i].Coefficients[k])...)
+					cols = append(cols, args[i].Selectors[k])
+				}
 				roots := column.RootsOf(cols, true)
 				for _, root := range roots {
 					fmi.addColumnLPP(root)
@@ -432,14 +435,14 @@ func (filter moduleFilter) FilterHornerParts(q *query.Horner) []query.HornerPart
 
 	for _, part := range q.Parts {
 
-		resolvedMod := ModuleOfList(
-			filter.Disc,
-			part.Coefficient,
-			symbolic.NewVariable(part.Selector),
-		)
+		exprList := []*symbolic.Expression{}
+		for k := range part.Selectors {
+			exprList = append(exprList, part.Coefficients[k])
+			exprList = append(exprList, symbolic.NewVariable(part.Selectors[k]))
+		}
 
+		resolvedMod := ModuleOfList(filter.Disc, exprList...)
 		resolvedMod.MustBeResolved()
-
 		if resolvedMod != filter.Module {
 			continue
 		}

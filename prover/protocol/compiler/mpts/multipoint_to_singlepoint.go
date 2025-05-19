@@ -121,14 +121,8 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 		// ignoring precomputed columns.
 		startingRound := getStartingRound(comp, polysByRound)
 
-		fmt.Printf("\tnbPrecomputedRounds: %v\n", len(polyPrecomputed))
-
 		polyPrecomputed = extendPWithShadowColumns(comp, 0,
 			ctx.numRow, polyPrecomputed, ctx.NumColumnProfilePrecomputed, true)
-
-		for round := startingRound; round < len(polysByRound); round++ {
-			fmt.Printf("\tnbCommitted: %v; profile: %v\n", len(polysByRound[round]), ctx.NumColumnProfileOpt[round-startingRound])
-		}
 
 		for round := startingRound; round < len(polysByRound); round++ {
 			polysByRound[round] = extendPWithShadowColumns(comp, round,
