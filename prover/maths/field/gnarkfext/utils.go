@@ -1,15 +1,25 @@
 package gnarkfext
 
-import "github.com/consensys/gnark/frontend"
+import (
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+)
 
-// One returns
+func FromValue(v fext.Element) E4 {
+	return E4{
+		B0: E2{A0: v.B0.A0, A1: v.B0.A1},
+		B1: E2{A0: v.B1.A0, A1: v.B1.A1},
+	}
+}
+
+// One returns 1
 func One() E4 {
 	return E4{
-		A0: E2{
+		B0: E2{
 			A0: 1,
 			A1: 0,
 		},
-		A1: E2{
+		B1: E2{
 			A0: 0,
 			A1: 0,
 		},
