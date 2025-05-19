@@ -16,3 +16,6 @@ func NewElement(v1 uint32, v2 uint32, v3 uint32, v4 uint32) Element {
 	z.B1.A1 = field.Element{v4}
 	return z
 }
+
+// var RootPowers = []int{1, -11} // ??
+var RootPowers = []int{1, 3} // ??
