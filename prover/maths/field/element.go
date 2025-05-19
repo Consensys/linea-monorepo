@@ -8,6 +8,27 @@ import (
 
 type Element = koalabear.Element
 
+const (
+	// RmaxOrderRoot
+	MaxOrderRoot uint64 = 24
+
+	// MultiplicativeGen represents a (small) field element which does not
+	// divide q - 1. It has the property that every element x of the field can
+	// be generated as [MultiplicativeGen] ** n == x. Here q denotes the modulus
+	// of the field.
+	MultiplicativeGen uint64 = 3
+	// number of 32 bits words needed to represent a Element
+	Limbs = 1
+	// Bits is the number of bits needed to represent a field element.
+	Bits = koalabear.Bits
+	// Bytes is the number of bytes needed to represent a field element.
+	Bytes = koalabear.Bytes
+)
+
+var (
+	RootOfUnity = NewFromString("1791270792")
+)
+
 // NewElement constructs a new field element corresponding to an integer.
 var NewElement = koalabear.NewElement
 var BatchInvert = koalabear.BatchInvert

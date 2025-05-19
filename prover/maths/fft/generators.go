@@ -11,7 +11,7 @@ var generators []field.Element = initGenerators()
 // Computes all the generators of the imbricated subgroups of roots of unity
 func initGenerators() []field.Element {
 
-	maxOrder := int(field.RootOfUnityOrder)
+	maxOrder := int(field.MaxOrderRoot)
 	generators := make([]field.Element, maxOrder+1)
 	generators[maxOrder] = field.RootOfUnity
 
@@ -25,7 +25,7 @@ func initGenerators() []field.Element {
 	}
 
 	if !generators[0].IsOne() {
-		utils.Panic("root_of_unity %v ^ (2 ^ %v) != 1", field.RootOfUnity, field.RootOfUnityOrder)
+		utils.Panic("root_of_unity %v ^ (2 ^ %v) != 1", field.RootOfUnity, field.MaxOrderRoot)
 	}
 
 	return generators
@@ -50,8 +50,8 @@ func GetOmega(domainSize int) field.Element {
 		Sanity-check : the domainSize should not excess the
 		maximal domain size
 	*/
-	if domainSize > (1 << field.RootOfUnityOrder) {
-		utils.Panic("Required a domain of size %v but the max is %v \n", domainSize, 1<<field.RootOfUnityOrder)
+	if domainSize > (1 << field.MaxOrderRoot) {
+		utils.Panic("Required a domain of size %v but the max is %v \n", domainSize, 1<<field.MaxOrderRoot)
 	}
 
 	order := utils.Log2Ceil(domainSize)
