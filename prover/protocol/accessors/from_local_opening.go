@@ -23,8 +23,7 @@ type FromLocalOpeningYAccessor struct {
 }
 
 func (l *FromLocalOpeningYAccessor) IsBase() bool {
-	//TODO implement me
-	panic("implement me")
+	return l.Q.Pol.IsBase()
 }
 
 func (l *FromLocalOpeningYAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {

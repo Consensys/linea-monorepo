@@ -167,3 +167,28 @@ func (cc ConstCol) IsBase() bool {
 		return false
 	}
 }
+
+func (cc ConstCol) IsZero() bool {
+	if cc.isBase {
+		return cc.Base.IsZero()
+	} else {
+		return cc.Ext.IsZero()
+	}
+}
+
+func (cc ConstCol) IsOne() bool {
+	if cc.isBase {
+		return cc.Base.IsOne()
+	} else {
+		return cc.Ext.IsOne()
+	}
+}
+
+// Returns the string representation of the underlying field element
+func (cc ConstCol) StringField() string {
+	if cc.isBase {
+		return cc.Base.String()
+	} else {
+		return cc.Ext.String()
+	}
+}

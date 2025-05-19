@@ -273,16 +273,16 @@ func (mw *ModuleWitnessLPP) NextN0s(moduleLPP *ModuleLPP) []int {
 
 			if constCol, isConstCol := selCol.(verifiercol.ConstCol); isConstCol {
 
-				if constCol.F.IsZero() {
+				if constCol.IsZero() {
 					continue
 				}
 
-				if constCol.F.IsOne() {
+				if constCol.IsOne() {
 					newN0s[i] += constCol.Size()
 					continue
 				}
 
-				utils.Panic("the selector column has non-zero values: %v", constCol.F.String())
+				utils.Panic("the selector column has non-zero values: %v", constCol.StringField())
 			}
 
 			// Expectedly, at this point. The column must be a natural column. We can't support
