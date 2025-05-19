@@ -18,6 +18,10 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var (
+	compiledIOPType = reflect.TypeOf((*wizard.CompiledIOP)(nil))
+)
+
 // rawCompiledIOP represents the serialized form of CompiledIOP.
 type rawCompiledIOP struct {
 	Columns                    [][]json.RawMessage `json:"columns"`

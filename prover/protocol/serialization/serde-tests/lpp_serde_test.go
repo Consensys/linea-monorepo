@@ -32,12 +32,12 @@ type rawModuleLPP struct {
 
 // TestSerdeLPP tests full serialization and deserialization of a ModuleLPP.
 func TestSerdeLPP(t *testing.T) {
-	serializedData, err := serializeModuleLPP(lpp)
+	serializedData, err := SerializeModuleLPP(lpp)
 	if err != nil {
 		t.Fatalf("Failed to serialize ModuleLPP: %v", err)
 	}
 
-	deserializedLPP, err := deserializeModuleLPP(serializedData)
+	deserializedLPP, err := DeserializeModuleLPP(serializedData)
 	if err != nil {
 		t.Fatalf("Failed to deserialize ModuleLPP: %v", err)
 	}
@@ -48,7 +48,7 @@ func TestSerdeLPP(t *testing.T) {
 }
 
 // serializeModuleLPP serializes a single ModuleLPP instance field-by-field.
-func serializeModuleLPP(lpp *distributed.ModuleLPP) ([]byte, error) {
+func SerializeModuleLPP(lpp *distributed.ModuleLPP) ([]byte, error) {
 	if lpp == nil {
 		return []byte(serialization.NilString), nil
 	}
@@ -145,8 +145,8 @@ func serializeModuleLPP(lpp *distributed.ModuleLPP) ([]byte, error) {
 	return serialization.SerializeAnyWithCborPkg(raw)
 }
 
-// deserializeModuleLPP deserializes a single ModuleLPP instance field-by-field.
-func deserializeModuleLPP(data []byte) (*distributed.ModuleLPP, error) {
+// DeserializeModuleLPP deserializes a single ModuleLPP instance field-by-field.
+func DeserializeModuleLPP(data []byte) (*distributed.ModuleLPP, error) {
 	if bytes.Equal(data, []byte(serialization.NilString)) {
 		return nil, nil
 	}
@@ -229,11 +229,11 @@ func deserializeModuleLPP(data []byte) (*distributed.ModuleLPP, error) {
 	return lpp, nil
 }
 
-// serializeModuleLPPs serializes a slice of ModuleLPP instances.
-func serializeModuleLPPs(lpps []*distributed.ModuleLPP) ([]byte, error) {
+// SerializeModuleLPPs serializes a slice of ModuleLPP instances.
+func SerializeModuleLPPs(lpps []*distributed.ModuleLPP) ([]byte, error) {
 	rawLPPs := make([]json.RawMessage, len(lpps))
 	for i, lpp := range lpps {
-		lppSer, err := serializeModuleLPP(lpp)
+		lppSer, err := SerializeModuleLPP(lpp)
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize ModuleLPP at index %d: %w", i, err)
 		}
@@ -242,8 +242,8 @@ func serializeModuleLPPs(lpps []*distributed.ModuleLPP) ([]byte, error) {
 	return serialization.SerializeAnyWithCborPkg(rawLPPs)
 }
 
-// deserializeModuleLPPs deserializes a slice of ModuleLPP instances.
-func deserializeModuleLPPs(data []byte) ([]*distributed.ModuleLPP, error) {
+// DeserializeModuleLPPs deserializes a slice of ModuleLPP instances.
+func DeserializeModuleLPPs(data []byte) ([]*distributed.ModuleLPP, error) {
 	var rawLPPs []json.RawMessage
 	if err := serialization.DeserializeAnyWithCborPkg(data, &rawLPPs); err != nil {
 		return nil, fmt.Errorf("failed to deserialize LPPs raw slice: %w", err)
@@ -251,7 +251,7 @@ func deserializeModuleLPPs(data []byte) ([]*distributed.ModuleLPP, error) {
 
 	lpps := make([]*distributed.ModuleLPP, len(rawLPPs))
 	for i, raw := range rawLPPs {
-		lpp, err := deserializeModuleLPP(raw)
+		lpp, err := DeserializeModuleLPP(raw)
 		if err != nil {
 			return nil, fmt.Errorf("failed to deserialize ModuleLPP at index %d: %w", i, err)
 		}

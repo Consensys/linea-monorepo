@@ -30,7 +30,7 @@ func DeserializeDisc(data []byte) (distributed.ModuleDiscoverer, error) {
 		return nil, fmt.Errorf("failed to deserialize discoverer: %w", err)
 	}
 
-	fmt.Printf("DeserilizedVal:%v\n", deserializedDiscVal)
+	// fmt.Printf("DeserilizedVal:%v\n", deserializedDiscVal)
 	// Type assertion to ensure the deserialized value is of the correct type
 	deserializedDisc, ok := deserializedDiscVal.Interface().(distributed.ModuleDiscoverer)
 	if !ok {

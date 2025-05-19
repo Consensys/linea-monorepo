@@ -199,37 +199,31 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 }
 
 // serializeStruct serializes a struct into JSON, ignoring certain fields based on the mode and type.
+// Includes special handling for *wizard.CompiledIOP fields.
 func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	typeOfV := v.Type()
 
-	// Return nil string for types that are to be purposefully ignored.
-	// For ex: Ignore Gnark circuit-related params
+	// Skip serialization for ignorable types
 	if IsIgnoreableType(typeOfV) {
 		logrus.Infof("Skipping serialization of %v", typeOfV)
 		return json.RawMessage(NilString), nil
 	}
 
-	// Handle ReferenceMode for naturalType
+	// Handle specific type/mode combinations (e.g., naturalType, queryType)
 	if mode == ReferenceMode && typeOfV == naturalType {
 		colID := v.Interface().(column.Natural).ID
 		return serializeAnyWithCborPkg(colID)
 	}
-
-	// Handle DeclarationMode for naturalType
 	if mode == DeclarationMode && typeOfV == naturalType {
 		col := v.Interface().(column.Natural)
 		decl := intoSerializableColDecl(&col)
 		return SerializeValue(reflect.ValueOf(decl), mode)
 	}
-
-	// Handle DeclarationMode for manuallyShiftedType
 	if mode == DeclarationMode && typeOfV == manuallyShiftedType {
 		shifted := v.Interface().(*dedicated.ManuallyShifted)
 		decl := intoSerializableManuallyShifted(shifted)
 		return SerializeValue(reflect.ValueOf(decl), mode)
 	}
-
-	// Handle ReferenceMode for queryType
 	if mode == ReferenceMode && typeOfV.Implements(queryType) {
 		queryID := v.Interface().(ifaces.Query).Name()
 		return serializeAnyWithCborPkg(queryID)
@@ -249,7 +243,25 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 			continue // Skip unexported fields
 		}
 
-		r, err := SerializeValue(v.FieldByName(f.name), newMode)
+		fieldValue := v.FieldByName(f.name)
+		fieldType := f.fieldType
+
+		// Special handling for *wizard.CompiledIOP fields
+		if fieldType == compiledIOPType {
+			if fieldValue.IsNil() {
+				raw[f.rawName] = []byte(NilString)
+			} else {
+				iopSer, err := SerializeCompiledIOP(fieldValue.Interface().(*wizard.CompiledIOP))
+				if err != nil {
+					return nil, fmt.Errorf("failed to serialize *wizard.CompiledIOP field %s: %w", f.name, err)
+				}
+				raw[f.rawName] = iopSer
+			}
+			continue
+		}
+
+		// Serialize other fields as usual
+		r, err := SerializeValue(fieldValue, newMode)
 		if err != nil {
 			return nil, fmt.Errorf("could not serialize struct field %v.%v: %w", typeOfV.String(), f.rawName, err)
 		}
@@ -456,10 +468,9 @@ func deserializePointer(data json.RawMessage, mode Mode, t reflect.Type, comp *w
 	return v.Addr(), nil
 }
 
-// deserializeStruct deserializes JSON into a struct, ignoring certain fields based on the mode and type.
+// deserializeStruct deserializes JSON into a struct, with special handling for *wizard.CompiledIOP fields.
 func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
-
-	// Return zero value for ignoreable params
+	// Handle ignorable types
 	if IsIgnoreableType(t) {
 		if bytes.Equal(data, []byte(NilString)) {
 			logrus.Infof("Skipping deserialization of %v", t)
@@ -468,7 +479,7 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		return reflect.Value{}, fmt.Errorf("expected null or empty struct for %v, got: %v", t, data)
 	}
 
-	// Handle ReferenceMode for naturalType
+	// Handle specific type/mode combinations (e.g., naturalType, queryType)
 	if mode == ReferenceMode && t == naturalType {
 		var colID ifaces.ColID
 		if err := deserializeAnyWithCborPkg(data, &colID); err != nil {
@@ -476,8 +487,6 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		}
 		return reflect.ValueOf(comp.Columns.GetHandle(colID)), nil
 	}
-
-	// Handle DeclarationMode for naturalType
 	if mode == DeclarationMode && t == naturalType {
 		rawType := reflect.TypeOf(&serializableColumnDecl{})
 		v, err := DeserializeValue(data, mode, rawType, comp)
@@ -486,8 +495,6 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		}
 		return reflect.ValueOf(v.Interface().(*serializableColumnDecl).intoNaturalAndRegister(comp)), nil
 	}
-
-	// Handle DeclarationMode for manuallyShiftedType
 	if mode == DeclarationMode && t == manuallyShiftedType {
 		rawType := reflect.TypeOf(&serializableManuallyShifted{})
 		v, err := DeserializeValue(data, mode, rawType, comp)
@@ -496,8 +503,6 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		}
 		return reflect.ValueOf(v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)), nil
 	}
-
-	// Handle ReferenceMode for queryType
 	if mode == ReferenceMode && t.Implements(queryType) {
 		var queryID ifaces.QueryID
 		if err := deserializeAnyWithCborPkg(data, &queryID); err != nil {
@@ -538,19 +543,36 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 			utils.Panic("Missing struct field %q.%v of type %q, provided sub-JSON: %v", t.String(), f.name, f.fieldType.String(), raw)
 		}
 
-		fieldValue, err := DeserializeValue(fieldRaw, newMode, f.fieldType, comp)
+		fieldType := f.fieldType
+
+		// Special handling for *wizard.CompiledIOP fields
+		if fieldType == compiledIOPType {
+			if bytes.Equal(fieldRaw, []byte(NilString)) {
+				v.FieldByName(f.name).Set(reflect.Zero(fieldType))
+			} else {
+				iop, err := DeserializeCompiledIOP(fieldRaw)
+				if err != nil {
+					return reflect.Value{}, fmt.Errorf("failed to deserialize *wizard.CompiledIOP field %s: %w", f.name, err)
+				}
+				v.FieldByName(f.name).Set(reflect.ValueOf(iop))
+			}
+			continue
+		}
+
+		// Deserialize other fields as usual
+		fieldValue, err := DeserializeValue(fieldRaw, newMode, fieldType, comp)
 		if err != nil {
-			utils.Panic("Could not deserialize struct field %q.%v of type %q: %v", t.String(), f.name, f.fieldType.String(), err)
+			utils.Panic("Could not deserialize struct field %q.%v of type %q: %v", t.String(), f.name, fieldType.String(), err)
 		}
 
 		// Handle zero (invalid) values
 		if !fieldValue.IsValid() {
-			v.FieldByName(f.name).Set(reflect.Zero(f.fieldType))
+			v.FieldByName(f.name).Set(reflect.Zero(fieldType))
 			continue
 		}
 
 		// Handle pointer types
-		if fieldValue.Type().Kind() == reflect.Ptr && fieldValue.Type().Elem() == f.fieldType {
+		if fieldValue.Type().Kind() == reflect.Ptr && fieldValue.Type().Elem() == fieldType {
 			fieldValue = fieldValue.Elem()
 		}
 

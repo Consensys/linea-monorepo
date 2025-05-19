@@ -30,9 +30,10 @@ func TestSerdeDistWizard(t *testing.T) {
 	t.Run("TestSerdeDefaultModule", TestSerdeDefMods)
 	t.Run("TestSerdeBootstrapper", TestSerdeBootstrapper)
 	t.Run("TestSerdeModDisc", TestSerdeDWModDisc)
-
 	t.Run("TestSerdeCompiledGLs", TestSerdeCompiledGLs)
 	t.Run("TestSerdeCompiledLPPs", TestSerdeCompiledLPPs)
+	t.Run("TestSerdeDWCompiledDef", TestSerdeDWCompiledDef)
+	t.Run("TestSerdeDWCompiledConglomeration", TestSerdeDWCompiledCong)
 }
 
 // TestSerdeModuleNames tests serialization and deserialization of the ModuleNames field.
@@ -71,12 +72,12 @@ func TestSerdeModuleNames(t *testing.T) {
 
 // TestSerdeLPPS tests full serialization and deserialization of the LPPs modules.
 func TestSerdeLPPs(t *testing.T) {
-	serializedData, err := serializeModuleLPPs(dw.LPPs)
+	serializedData, err := SerializeModuleLPPs(dw.LPPs)
 	if err != nil {
 		t.Fatalf("failed to serialize LPPs: %v", err)
 	}
 
-	deserializedLPPs, err := deserializeModuleLPPs(serializedData)
+	deserializedLPPs, err := DeserializeModuleLPPs(serializedData)
 	if err != nil {
 		t.Fatalf("failed to deserialize LPPs: %v", err)
 	}
@@ -164,4 +165,33 @@ func TestSerdeCompiledLPPs(t *testing.T) {
 	if len(dw.CompiledLPPs) == 0 {
 		fmt.Println("Skipping TestSerdeCompiledLPPs due to nil")
 	}
+}
+
+func TestSerdeDWCompiledDef(t *testing.T) {
+	compDef := dw.CompiledDefault
+	if compDef == nil {
+		t.Skipf("No need for serde test due to nil CompiledDefault")
+	}
+
+	compDefSer, err := SerializeRecursedSegmentCompilation(compDef)
+	if err != nil {
+		t.Errorf("error during serializing dist.wizard compiled default of type *distributed.RecursedSegmentCompilation")
+	}
+
+	deSerCompDef, err := DeserializeRecursedSegmentCompilation(compDefSer)
+	if err != nil {
+		t.Errorf("error during deserializing dist.wizard compiled default of type *distributed.RecursedSegmentCompilation")
+	}
+
+	if !test_utils.CompareExportedFields(compDef, deSerCompDef) {
+		t.Errorf("mismatch in exported fields after DWCompiledDefault serde")
+	}
+}
+
+func TestSerdeDWCompiledCong(t *testing.T) {
+	compDef := dw.CompiledConglomeration
+	if compDef == nil {
+		t.Skipf("No need for serde test due to nil CompiledConglomeration")
+	}
+
 }
