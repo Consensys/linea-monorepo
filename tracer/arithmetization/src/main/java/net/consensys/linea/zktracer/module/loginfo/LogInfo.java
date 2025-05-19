@@ -68,13 +68,13 @@ public class LogInfo implements Module {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Loginfo.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.loginfo().spillage();
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Loginfo.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.loginfo().headers(this.lineCount());
   }
 
   @Override
@@ -89,11 +89,11 @@ public class LogInfo implements Module {
     for (RlpTxrcptOperation tx : rlpTxnRcpt.operations().getAll()) {
       absTxNum += 1;
       if (tx.logs().isEmpty()) {
-        traceTxWoLog(absTxNum, absLogNum, absLogNumMax, trace.loginfo);
+        traceTxWoLog(absTxNum, absLogNum, absLogNumMax, trace.loginfo());
       } else {
         for (Log log : tx.logs()) {
           absLogNum += 1;
-          traceLog(log, absTxNum, absLogNum, absLogNumMax, trace.loginfo);
+          traceLog(log, absTxNum, absLogNum, absLogNumMax, trace.loginfo());
         }
       }
     }

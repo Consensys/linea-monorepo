@@ -180,13 +180,13 @@ public abstract class Hub implements Module {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Hub.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.hub().headers(this.lineCount());
   }
 
   @Override
   public void commit(Trace trace) {
-    state.commit(trace.hub);
+    state.commit(trace.hub());
   }
 
   @Override
@@ -195,8 +195,8 @@ public abstract class Hub implements Module {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Hub.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.hub().spillage();
   }
 
   /** List of all modules of the ZK-evm */

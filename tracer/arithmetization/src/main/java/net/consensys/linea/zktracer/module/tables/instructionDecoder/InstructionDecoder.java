@@ -106,13 +106,13 @@ public final class InstructionDecoder implements Module {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Instdecoder.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.instdecoder().spillage();
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Instdecoder.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.instdecoder().headers(this.lineCount());
   }
 
   @Override
@@ -124,11 +124,11 @@ public final class InstructionDecoder implements Module {
 
   protected void traceOpcode(final int i, final Trace trace) {
     final OpCodeData op = OpCode.of(i).getData();
-    traceFamily(op, trace.instdecoder);
-    traceStackSettings(op, trace.instdecoder);
-    traceBillingSettings(op, trace.instdecoder);
+    traceFamily(op, trace.instdecoder());
+    traceStackSettings(op, trace.instdecoder());
+    traceBillingSettings(op, trace.instdecoder());
     trace
-        .instdecoder
+        .instdecoder()
         .opcode(UnsignedByte.of(i))
         .isPush(op.isNonTrivialPush())
         .isJumpdest(op.isJumpDest())

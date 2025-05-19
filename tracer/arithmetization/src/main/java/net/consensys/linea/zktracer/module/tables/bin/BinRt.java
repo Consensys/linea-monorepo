@@ -41,19 +41,19 @@ public class BinRt implements Module {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Binreftable.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.binreftable().spillage();
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Binreftable.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.binreftable().headers(this.lineCount());
   }
 
   public void commit(Trace trace) {
     // AND
     UnsignedByte opCode = UnsignedByte.of(OpCode.AND.byteValue());
-    Trace.Binreftable binrt = trace.binreftable;
+    Trace.Binreftable binrt = trace.binreftable();
     //
     for (short input1 = 0; input1 <= 255; input1++) {
       final Bytes input1Bytes = Bytes.of(input1);

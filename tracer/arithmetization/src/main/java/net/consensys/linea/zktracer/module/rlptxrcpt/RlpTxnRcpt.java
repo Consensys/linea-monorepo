@@ -764,13 +764,13 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Rlptxrcpt.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.rlptxrcpt().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Rlptxrcpt.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.rlptxrcpt().spillage();
   }
 
   @Override
@@ -782,7 +782,7 @@ public class RlpTxnRcpt implements OperationListModule<RlpTxrcptOperation> {
 
     int absTxNum = 0;
     for (RlpTxrcptOperation op : operations.getAll()) {
-      traceOperation(op, ++absTxNum, absLogNumMax, trace.rlptxrcpt);
+      traceOperation(op, ++absTxNum, absLogNumMax, trace.rlptxrcpt());
     }
   }
 }

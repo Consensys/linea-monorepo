@@ -53,12 +53,12 @@ public class BlockTransactions implements Module {
   }
 
   @Override
-  public int spillage() {
+  public int spillage(Trace trace) {
     return 0;
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
     throw new UnsupportedOperationException("Not implemented");
   }
 }

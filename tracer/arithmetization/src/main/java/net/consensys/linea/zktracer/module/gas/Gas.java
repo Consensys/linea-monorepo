@@ -57,19 +57,19 @@ public class Gas implements OperationSetModule<GasOperation>, PostOpcodeDefer {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Gas.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.gas().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Gas.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.gas().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     for (GasOperation gasOperation : operations.sortOperations(new GasOperationComparator())) {
-      gasOperation.trace(trace.gas);
+      gasOperation.trace(trace.gas());
     }
   }
 

@@ -56,8 +56,8 @@ public class ShakiraData implements OperationListModule<ShakiraDataOperation> {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Shakiradata.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.shakiradata().spillage();
   }
 
   public void call(final ShakiraDataOperation operation) {
@@ -77,15 +77,15 @@ public class ShakiraData implements OperationListModule<ShakiraDataOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Shakiradata.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.shakiradata().headers(this.lineCount());
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (ShakiraDataOperation operation : operations.getAll()) {
-      operation.trace(trace.shakiradata, ++stamp);
+      operation.trace(trace.shakiradata(), ++stamp);
     }
   }
 

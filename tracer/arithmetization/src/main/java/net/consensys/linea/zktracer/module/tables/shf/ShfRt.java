@@ -40,13 +40,13 @@ public record ShfRt() implements Module {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Shfreftable.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.shfreftable().spillage();
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Shfreftable.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.shfreftable().headers(this.lineCount());
   }
 
   public void commit(Trace trace) {
@@ -54,7 +54,7 @@ public record ShfRt() implements Module {
       final UnsignedByte unsignedByteA = UnsignedByte.of(a);
       for (int uShp = 0; uShp <= 8; uShp++) {
         trace
-            .shfreftable
+            .shfreftable()
             .byte1(UnsignedByte.of(a))
             .las(unsignedByteA.shiftLeft(8 - uShp))
             .mshp(UnsignedByte.of(uShp))

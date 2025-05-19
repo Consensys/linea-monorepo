@@ -80,9 +80,9 @@ public interface Module {
    *
    * @return
    */
-  int spillage();
+  int spillage(Trace trace);
 
-  List<Trace.ColumnHeader> columnHeaders();
+  List<Trace.ColumnHeader> columnHeaders(Trace trace);
 
   default void commit(Trace trace) {
     throw new UnsupportedOperationException();

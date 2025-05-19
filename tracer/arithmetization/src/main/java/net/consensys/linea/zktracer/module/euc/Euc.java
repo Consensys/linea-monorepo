@@ -68,14 +68,14 @@ public class Euc implements OperationSetModule<EucOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Euc.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.euc().headers(this.lineCount());
   }
 
   @Override
   public void commit(Trace trace) {
     for (EucOperation eucOperation : operations.sortOperations(new EucOperationComparator())) {
-      eucOperation.trace(trace.euc);
+      eucOperation.trace(trace.euc());
     }
   }
 
@@ -87,8 +87,8 @@ public class Euc implements OperationSetModule<EucOperation> {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Euc.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.euc().spillage();
   }
 
   public EucOperation callEUC(final Bytes dividend, final Bytes divisor) {

@@ -51,20 +51,20 @@ public class Shf implements OperationSetModule<ShfOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Shf.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.shf().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Shf.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.shf().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (ShfOperation op : operations.sortOperations(new ShfOperationComparator())) {
-      op.trace(trace.shf, ++stamp);
+      op.trace(trace.shf(), ++stamp);
     }
   }
 }

@@ -41,20 +41,20 @@ public class Mxp implements OperationListModule<MxpOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Mxp.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.mxp().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Mxp.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.mxp().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (MxpOperation op : operations.getAll()) {
-      op.trace(++stamp, trace.mxp);
+      op.trace(++stamp, trace.mxp());
     }
   }
 

@@ -131,8 +131,8 @@ public class Wcp implements Module {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Wcp.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.wcp().headers(this.lineCount());
   }
 
   @Override
@@ -141,7 +141,7 @@ public class Wcp implements Module {
     final WcpOperationComparator comparator = new WcpOperationComparator();
     for (ModuleOperationStackedSet<WcpOperation> operationsSet : operations) {
       for (WcpOperation operation : operationsSet.sortOperations(comparator)) {
-        operation.trace(trace.wcp, ++stamp);
+        operation.trace(trace.wcp(), ++stamp);
       }
     }
   }
@@ -153,8 +153,8 @@ public class Wcp implements Module {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Wcp.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.wcp().spillage();
   }
 
   public boolean callLT(final Bytes32 arg1, final Bytes32 arg2) {

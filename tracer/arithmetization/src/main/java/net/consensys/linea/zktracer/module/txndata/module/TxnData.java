@@ -82,8 +82,8 @@ public abstract class TxnData implements OperationListModule<TxndataOperation> {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Txndata.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.txndata().spillage();
   }
 
   public BlockSnapshot currentBlock() {
@@ -95,8 +95,8 @@ public abstract class TxnData implements OperationListModule<TxndataOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Txndata.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.txndata().headers(this.lineCount());
   }
 
   @Override
@@ -104,7 +104,7 @@ public abstract class TxnData implements OperationListModule<TxndataOperation> {
     final int absTxNumMax = operations.size();
 
     for (TxndataOperation tx : operations.getAll()) {
-      tx.traceTx(trace.txndata, blocks.get(tx.getTx().getRelativeBlockNumber() - 1), absTxNumMax);
+      tx.traceTx(trace.txndata(), blocks.get(tx.getTx().getRelativeBlockNumber() - 1), absTxNumMax);
     }
   }
 }

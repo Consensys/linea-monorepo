@@ -49,22 +49,22 @@ public class Exp implements OperationSetModule<ExpOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Exp.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.exp().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Exp.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.exp().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (ExpOperation expOp : operations.sortOperations(new ExpOperationComparator())) {
-      expOp.traceComputation(++stamp, trace.exp);
-      expOp.traceMacro(stamp, trace.exp);
-      expOp.tracePreprocessing(stamp, trace.exp);
+      expOp.traceComputation(++stamp, trace.exp());
+      expOp.traceMacro(stamp, trace.exp());
+      expOp.tracePreprocessing(stamp, trace.exp());
     }
   }
 }

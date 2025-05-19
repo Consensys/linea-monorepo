@@ -41,7 +41,7 @@ public interface CountingOnlyModule extends Module {
   }
 
   @Override
-  default int spillage() {
+  default int spillage(Trace trace) {
     return 0;
   }
 
@@ -51,7 +51,7 @@ public interface CountingOnlyModule extends Module {
   }
 
   @Override
-  default List<Trace.ColumnHeader> columnHeaders() {
+  default List<Trace.ColumnHeader> columnHeaders(Trace trace) {
     throw new IllegalStateException("should never be called");
   }
 

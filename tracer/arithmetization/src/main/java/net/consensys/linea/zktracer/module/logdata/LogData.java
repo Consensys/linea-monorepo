@@ -61,8 +61,8 @@ public class LogData implements Module {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Logdata.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.logdata().spillage();
   }
 
   private int lineCountForLogData(RlpTxrcptOperation tx) {
@@ -82,8 +82,8 @@ public class LogData implements Module {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Logdata.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.logdata().headers(this.lineCount());
   }
 
   @Override
@@ -99,9 +99,9 @@ public class LogData implements Module {
         for (Log log : tx.logs()) {
           absLogNum += 1;
           if (log.getData().isEmpty()) {
-            traceLogWoData(absLogNum, absLogNumMax, trace.logdata);
+            traceLogWoData(absLogNum, absLogNumMax, trace.logdata());
           } else {
-            traceLog(log, absLogNum, absLogNumMax, trace.logdata);
+            traceLog(log, absLogNum, absLogNumMax, trace.logdata());
           }
         }
       }

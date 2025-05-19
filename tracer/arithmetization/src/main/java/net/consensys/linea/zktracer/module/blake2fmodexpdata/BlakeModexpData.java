@@ -67,20 +67,20 @@ public class BlakeModexpData implements OperationListModule<BlakeModexpDataOpera
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Blake2fmodexpdata.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.blake2fmodexpdata().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Blake2fmodexpdata.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.blake2fmodexpdata().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (BlakeModexpDataOperation o : operations.getAll()) {
-      o.trace(trace.blake2fmodexpdata, ++stamp);
+      o.trace(trace.blake2fmodexpdata(), ++stamp);
     }
   }
 }

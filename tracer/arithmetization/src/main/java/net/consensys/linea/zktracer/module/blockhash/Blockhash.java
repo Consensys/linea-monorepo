@@ -115,13 +115,13 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Blockhash.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.blockhash().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Blockhash.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.blockhash().spillage();
   }
 
   @Override
@@ -131,8 +131,8 @@ public class Blockhash implements OperationSetModule<BlockhashOperation>, PostOp
           op.blockhashRes() == Bytes32.ZERO
               ? this.blockHashMap.getOrDefault(op.blockhashArg(), Bytes32.ZERO)
               : op.blockhashRes();
-      op.traceMacro(trace.blockhash, blockhashVal);
-      op.tracePreprocessing(trace.blockhash);
+      op.traceMacro(trace.blockhash(), blockhashVal);
+      op.tracePreprocessing(trace.blockhash());
     }
   }
 }

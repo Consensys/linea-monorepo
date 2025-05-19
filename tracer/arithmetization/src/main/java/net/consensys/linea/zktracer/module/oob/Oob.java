@@ -72,20 +72,20 @@ public class Oob implements OperationSetModule<OobOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Oob.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.oob().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Oob.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.oob().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (OobOperation op : operations.getAll()) {
-      traceOperation(op, ++stamp, trace.oob);
+      traceOperation(op, ++stamp, trace.oob());
     }
   }
 }
