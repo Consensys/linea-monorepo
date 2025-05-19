@@ -1,6 +1,8 @@
 package field
 
 import (
+	"math/bits"
+
 	"github.com/consensys/gnark-crypto/field/koalabear"
 )
 
@@ -31,4 +33,27 @@ func NewFromString(s string) (res Element) {
 		panic(err)
 	}
 	return res
+}
+
+// ExpToInt sets z to x**k
+func ExpToInt(z *Element, x Element, k int) *Element {
+	if k == 0 {
+		return z.SetOne()
+	}
+
+	if k < 0 {
+		x.Inverse(&x)
+		k = -k
+	}
+
+	z.Set(&x)
+
+	for i := bits.Len(uint(k)) - 2; i >= 0; i-- {
+		z.Square(z)
+		if (k>>i)&1 == 1 {
+			z.Mul(z, &x)
+		}
+	}
+
+	return z
 }
