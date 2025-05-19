@@ -1,6 +1,10 @@
 package fext
 
-import "math/bits"
+import (
+	"math/bits"
+
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+)
 
 // One returns 1
 func One() Element {
@@ -65,6 +69,14 @@ func SetInt64Tuple(z *Element, v1, v2, v3, v4 int64) *Element {
 	z.B1.A0.SetInt64(v3)
 	z.B1.A1.SetInt64(v4)
 	return z // z.toMont()
+}
+
+// FromBase sets z = v
+func FromBase(z *Element, v *field.Element) {
+	z.B0.A0.Set(v)
+	z.B0.A1.SetZero()
+	z.B1.A0.SetZero()
+	z.B1.A1.SetZero()
 }
 
 // func (z *Element) Uint64() (uint64, uint64) {
