@@ -52,7 +52,7 @@ import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 public class ZkTracer implements ConflationAwareOperationTracer {
 
   /** Construct trace object. */
-  private final TraceLondon trace = new TraceLondon(); // FOR NOW
+  private final Trace trace;
 
   @Getter private final Hub hub;
   private final Optional<DebugMode> debugMode;
@@ -92,6 +92,11 @@ public class ZkTracer implements ConflationAwareOperationTracer {
           case SHANGHAI -> new ShanghaiHub(chain);
           case CANCUN -> new CancunHub(chain);
           case PRAGUE -> new PragueHub(chain);
+        };
+    this.trace =
+        switch (chain.fork) {
+          default -> new TraceLondon();
+            // case SHANGHAI -> new TraceShanghai();
         };
     final DebugMode.PinLevel debugLevel = new DebugMode.PinLevel();
     this.debugMode =
