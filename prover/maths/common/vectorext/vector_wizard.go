@@ -4,11 +4,9 @@ package vectorext
 
 import (
 	"fmt"
-	"math/rand/v2"
 
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -249,10 +247,10 @@ func PowerVec(x fext.Element, n int) []fext.Element {
 // IntoGnarkAssignment converts an array of field.Element into an array of
 // frontend.Variable that can be used to assign a vector of frontend.Variable
 // in a circuit or to generate a vector of constant in the circuit definition.
-func IntoGnarkAssignment(msgData []fext.Element) []gnarkfext.Variable {
-	assignedMsg := []gnarkfext.Variable{}
+func IntoGnarkAssignment(msgData []fext.Element) []gnarkfext.Element {
+	assignedMsg := []gnarkfext.Element{}
 	for _, x := range msgData {
-		assignedMsg = append(assignedMsg, gnarkfext.Variable{frontend.Variable(x.A0), frontend.Variable(x.A1)})
+		assignedMsg = append(assignedMsg, gnarkfext.FromValue(x))
 	}
 	return assignedMsg
 }
@@ -277,10 +275,10 @@ func Equal(a, b []fext.Element) bool {
 
 // PseudoRand generates a vector of field element with a given size using the
 // provided random number generator
-func PseudoRand(rng *rand.Rand, size int) []fext.Element {
+func PseudoRand(size int) []fext.Element {
 	slice := make([]fext.Element, size)
 	for i := range slice {
-		slice[i] = fext.PseudoRand(rng)
+		slice[i] = fext.RandomElement()
 	}
 	return slice
 }

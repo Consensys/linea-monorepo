@@ -9,3 +9,10 @@ func ToInt(e *Element) int {
 	}
 	return int(n) // #nosec G115 -- Checked for overflow
 }
+
+// PseudoRand generates a field using a pseudo-random number generator
+func RandomElement() Element {
+	var res Element
+	res.SetRandom()
+	return res
+}

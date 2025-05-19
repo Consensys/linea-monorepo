@@ -72,6 +72,13 @@ func FromBase(z *Element, v *field.Element) {
 	z.B1.A1.SetZero()
 }
 
+// PseudoRand generates a field using a pseudo-random number generator
+func RandomElement() Element {
+	var res Element
+	res.SetRandom()
+	return res
+}
+
 // func (z *Element) Uint64() (uint64, uint64) {
 // 	return z.A0.Bits()[0], z.A1.Bits()[0]
 // }

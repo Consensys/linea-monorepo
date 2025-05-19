@@ -25,65 +25,65 @@ var ext = getKoalaBearExtension()
 
 //	𝔽r⁴[v] = 𝔽r²/v²-u
 
-// E4 element in a quadratic extension
-type E4 struct {
+// Element element in a quadratic extension
+type Element struct {
 	B0, B1 E2
 }
 
 // SetZero returns a newly allocated element equal to 0
-func (e *E4) SetZero() *E4 {
+func (e *Element) SetZero() *Element {
 	e.B0.SetZero()
 	e.B1.SetZero()
 	return e
 }
 
 // SetOne returns a newly allocated element equal to 1
-func (e *E4) SetOne() *E4 {
+func (e *Element) SetOne() *Element {
 	e.B0.SetOne()
 	e.B1.SetZero()
 	return e
 }
 
 // IsZero returns 1 if the element is equal to 0 and 0 otherwise
-func (e *E4) IsZero(api frontend.API) frontend.Variable {
+func (e *Element) IsZero(api frontend.API) frontend.Variable {
 	return api.And(e.B0.IsZero(api), e.B1.IsZero(api))
 }
 
-func (e *E4) assign(e1 []frontend.Variable) {
+func (e *Element) assign(e1 []frontend.Variable) {
 	e.B0.assign(e1[:2])
 	e.B1.assign(e1[2:4])
 }
 
-// Neg negates a E4 elmt
-func (e *E4) Neg(api frontend.API, e1 E4) *E4 {
+// Neg negates a Element elmt
+func (e *Element) Neg(api frontend.API, e1 Element) *Element {
 	e.B0.Neg(api, e1.B0)
 	e.B1.Neg(api, e1.B1)
 	return e
 }
 
-// Add E4 elmts
-func (e *E4) Add(api frontend.API, e1, e2 E4) *E4 {
+// Add Element elmts
+func (e *Element) Add(api frontend.API, e1, e2 Element) *Element {
 	e.B0.Add(api, e1.B0, e2.B0)
 	e.B1.Add(api, e1.B1, e2.B1)
 	return e
 }
 
-// Double E4 elmt
-func (e *E4) Double(api frontend.API, e1 E4) *E4 {
+// Double Element elmt
+func (e *Element) Double(api frontend.API, e1 Element) *Element {
 	e.B0.Double(api, e1.B0)
 	e.B1.Double(api, e1.B1)
 	return e
 }
 
-// Sub E4 elmts
-func (e *E4) Sub(api frontend.API, e1, e2 E4) *E4 {
+// Sub Element elmts
+func (e *Element) Sub(api frontend.API, e1, e2 Element) *Element {
 	e.B0.Sub(api, e1.B0, e2.B0)
 	e.B1.Sub(api, e1.B1, e2.B1)
 	return e
 }
 
 // Mul e2 elmts
-func (e *E4) Mul(api frontend.API, e1, e2 E4) *E4 {
+func (e *Element) Mul(api frontend.API, e1, e2 Element) *Element {
 
 	var l1, l2 E2
 	l1.Add(api, e1.B0, e1.B1)
@@ -101,15 +101,15 @@ func (e *E4) Mul(api frontend.API, e1, e2 E4) *E4 {
 	e.B1.Sub(api, u, l31)
 
 	var l41 E2
-	// l41.Mul(api, bd, ext.qnrE4)
+	// l41.Mul(api, bd, ext.qnrElement)
 	l41.MulByNonResidue(api, bd)
 	e.B0.Add(api, ac, l41)
 
 	return e
 }
 
-// Square E4 elt
-func (e *E4) Square(api frontend.API, x E4) *E4 {
+// Square Element elt
+func (e *Element) Square(api frontend.API, x Element) *Element {
 
 	var c0, c1 E2
 	c0.Mul(api, x.B0, x.B0)     // x0^2
@@ -127,7 +127,7 @@ func (e *E4) Square(api frontend.API, x E4) *E4 {
 }
 
 // MulByFp multiplies an fp2 elmt by an fp elmt
-func (e *E4) MulByE2(api frontend.API, e1 E4, c E2) *E4 {
+func (e *Element) MulByE2(api frontend.API, e1 Element, c E2) *Element {
 	e.B0.Mul(api, e1.B0, c)
 	e.B1.Mul(api, e1.B1, c)
 	return e
@@ -135,22 +135,22 @@ func (e *E4) MulByE2(api frontend.API, e1 E4, c E2) *E4 {
 
 // MulByNonResidue multiplies an fp2 elmt by the imaginary elmt
 // ext.uSquare is the square of the imaginary root
-func (e *E4) MulByNonResidue(api frontend.API, e1 E4) *E4 {
+func (e *Element) MulByNonResidue(api frontend.API, e1 Element) *Element {
 	x := e1.B0
 	e.B0.MulByNonResidue(api, e.B1)
 	e.B1 = x
 	return e
 }
 
-// Conjugate conjugation of an E4 elmt
-func (e *E4) Conjugate(api frontend.API, e1 E4) *E4 {
+// Conjugate conjugation of an Element elmt
+func (e *Element) Conjugate(api frontend.API, e1 Element) *Element {
 	e.B0 = e1.B0
 	e.B1.Neg(api, e1.B1)
 	return e
 }
 
-// Inverse E4 elmts
-func (e *E4) Inverse(api frontend.API, e1 E4) *E4 {
+// Inverse Element elmts
+func (e *Element) Inverse(api frontend.API, e1 Element) *Element {
 
 	res, err := api.NewHint(inverseE4Hint, 4, e1.B0.A0, e1.B0.A1, e1.B1.A0, e1.B1.A1)
 	if err != nil {
@@ -158,7 +158,7 @@ func (e *E4) Inverse(api frontend.API, e1 E4) *E4 {
 		panic(err)
 	}
 
-	var e3, one E4
+	var e3, one Element
 	e3.assign(res[:4])
 	one.SetOne()
 
@@ -172,19 +172,19 @@ func (e *E4) Inverse(api frontend.API, e1 E4) *E4 {
 }
 
 // Assign a value to self (witness assignment)
-func (e *E4) Assign(a extensions.E4) {
+func (e *Element) Assign(a extensions.E4) {
 	e.B0.Assign(a.B0)
 	e.B1.Assign(a.B1)
 }
 
 // AssertIsEqual constraint self to be equal to other into the given constraint system
-func (e *E4) AssertIsEqual(api frontend.API, other E4) {
+func (e *Element) AssertIsEqual(api frontend.API, other Element) {
 	api.AssertIsEqual(e.B0, other.B0)
 	api.AssertIsEqual(e.B1, other.B1)
 }
 
 // Select sets e to r1 if b=1, r2 otherwise
-func (e *E4) Select(api frontend.API, b frontend.Variable, r1, r2 E4) *E4 {
+func (e *Element) Select(api frontend.API, b frontend.Variable, r1, r2 Element) *Element {
 
 	e.B0.Select(api, b, r1.B0, r2.B0)
 	e.B1.Select(api, b, r1.B1, r2.B1)

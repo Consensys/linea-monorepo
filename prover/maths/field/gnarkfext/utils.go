@@ -5,16 +5,16 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
-func FromValue(v fext.Element) E4 {
-	return E4{
+func FromValue(v fext.Element) Element {
+	return Element{
 		B0: E2{A0: v.B0.A0, A1: v.B0.A1},
 		B1: E2{A0: v.B1.A0, A1: v.B1.A1},
 	}
 }
 
 // One returns 1
-func One() E4 {
-	return E4{
+func One() Element {
+	return Element{
 		B0: E2{
 			A0: 1,
 			A1: 0,
@@ -27,7 +27,7 @@ func One() E4 {
 }
 
 // Exp exponentiation in gnark circuit, using the fast exponentiation
-func Exp(api frontend.API, x E4, n int) E4 {
+func Exp(api frontend.API, x Element, n int) Element {
 
 	if n < 0 {
 		x.Inverse(api, x)
@@ -42,7 +42,7 @@ func Exp(api frontend.API, x E4, n int) E4 {
 		return x
 	}
 
-	var x2 E4
+	var x2 Element
 	x2.Mul(api, x, x)
 	if n%2 == 0 {
 		return Exp(api, x2, n/2)

@@ -8,7 +8,7 @@ import (
 )
 
 // Evaluate a polynomial in lagrange basis on a gnark circuit
-func InterpolateGnark(api gnarkfext.API, poly []gnarkfext.Variable, x gnarkfext.Variable) gnarkfext.Variable {
+func InterpolateGnark(api gnarkfext.API, poly []gnarkfext.Element, x gnarkfext.Element) gnarkfext.Element {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
@@ -34,7 +34,7 @@ func InterpolateGnark(api gnarkfext.API, poly []gnarkfext.Variable, x gnarkfext.
 	// Compute the term-wise summand of the interpolation formula.
 	// This will allow the gnark solver to process the expensive
 	// inverses in parallel.
-	terms := make([]gnarkfext.Variable, n)
+	terms := make([]gnarkfext.Element, n)
 	skip := make([]bool, n)
 
 	// omegaMinI carries the domain's inverse root of unity generator raised to
@@ -66,7 +66,7 @@ func InterpolateGnark(api gnarkfext.API, poly []gnarkfext.Variable, x gnarkfext.
 		terms[i] = api.Mul(terms[i], poly[i])
 	}
 
-	nonNilTerms := make([]gnarkfext.Variable, 0, len(terms))
+	nonNilTerms := make([]gnarkfext.Element, 0, len(terms))
 	for i := range terms {
 		if skip[i] {
 			continue
@@ -76,7 +76,7 @@ func InterpolateGnark(api gnarkfext.API, poly []gnarkfext.Variable, x gnarkfext.
 	}
 
 	// Then sum all the terms
-	var res gnarkfext.Variable
+	var res gnarkfext.Element
 
 	switch {
 	case len(nonNilTerms) == 0:
