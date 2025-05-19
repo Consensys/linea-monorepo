@@ -96,7 +96,7 @@ func (pa AssignVortexOpenedCols) Run(run *wizard.ProverRuntime) {
 
 func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 
-	pis := cc.Ctx.PlonkCtx.Columns.PI
+	pis := cc.Ctx.plonkCtx.Columns.PI
 
 	for i := range pis {
 
@@ -151,7 +151,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 
 func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
-	pis := cc.Ctx.PlonkCtx.Columns.PI
+	pis := cc.Ctx.plonkCtx.Columns.PI
 
 	for i := range pis {
 

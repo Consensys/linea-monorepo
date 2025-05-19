@@ -144,6 +144,7 @@ var implementationRegistry = collection.NewMapping[string, reflect.Type]()
 var IgnoreableTypes = []reflect.Type{
 	// Ignore gnark-circuit related params
 	reflect.TypeOf((*frontend.Variable)(nil)).Elem(),
+	reflect.TypeOf((*frontend.Circuit)(nil)).Elem(),
 }
 
 // RegisterImplementation registers the type of the provided instance. This is

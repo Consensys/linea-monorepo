@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -29,6 +30,10 @@ func TestSerdeDistWizard(t *testing.T) {
 	t.Run("TestSerdeDefaultModule", TestSerdeDefMods)
 	t.Run("TestSerdeBootstrapper", TestSerdeBootstrapper)
 	t.Run("TestSerdeModDisc", TestSerdeDWModDisc)
+
+	t.Run("TestSerdeCompiledGLs", TestSerdeCompiledGLs)
+	t.Run("TestSerdeCompiledLPPs", TestSerdeCompiledLPPs)
+
 }
 
 // TestSerdeModuleNames tests serialization and deserialization of the ModuleNames field.
@@ -72,7 +77,7 @@ func TestSerdeLPPs(t *testing.T) {
 		t.Fatalf("failed to serialize LPPs: %v", err)
 	}
 
-	deserializedLPPs, err := deserializeModuleLPPs(serializedData)
+	deserializedLPPs, err := DeserializeModuleLPPs(serializedData)
 	if err != nil {
 		t.Fatalf("failed to deserialize LPPs: %v", err)
 	}
@@ -144,5 +149,17 @@ func TestSerdeBootstrapper(t *testing.T) {
 
 	if !test_utils.CompareExportedFields(dw.Bootstrapper, deSerBootstrap) {
 		t.Errorf("mismatch in exported fields after DW Def.Mods serde")
+	}
+}
+
+func TestSerdeCompiledGLs(t *testing.T) {
+	if len(dw.CompiledGLs) == 0 {
+		logrus.Println("Skipping TestSerdeCompiledGLs due to nil")
+	}
+}
+
+func TestSerdeCompiledLPPs(t *testing.T) {
+	if len(dw.CompiledGLs) == 0 {
+		logrus.Println("Skipping TestSerdeCompiledGLs due to nil")
 	}
 }

@@ -52,7 +52,7 @@ type Recursion struct {
 	// PlonkCtx is the [PlonkInWizard] context that we use to verify the
 	// non-vortex part of the input wizard proof. Namely, it runs all its
 	// verifier actions and the corresponding circuit assignments.
-	PlonkCtx *plonkinternal.CompilationCtx
+	plonkCtx *plonkinternal.CompilationCtx
 
 	// PcsCtx represents the compilation context to pass to the self-recursion
 	// context. For clarity, this is not the compilation context of the
@@ -187,7 +187,7 @@ func DefineRecursionOf(comp, inputComp *wizard.CompiledIOP, params Parameters) *
 	rec := &Recursion{
 		Name:             params.Name,
 		PcsCtx:           vortexCtxs,
-		PlonkCtx:         plonkCtx,
+		plonkCtx:         plonkCtx,
 		InputCompiledIOP: inputComp,
 	}
 
@@ -293,7 +293,7 @@ func (r *Recursion) Assign(run *wizard.ProverRuntime, _wit []Witness, _filling *
 		}
 	}
 
-	r.PlonkCtx.GetPlonkProverAction().Run(run, fullWitnesses)
+	r.plonkCtx.GetPlonkProverAction().Run(run, fullWitnesses)
 }
 
 // GetPublicInputOfInstance relative to one recursed module.
