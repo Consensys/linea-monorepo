@@ -2,10 +2,11 @@ package fastpolyext_test
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
 	"math/big"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -23,9 +24,9 @@ func TestReEvalOnCoset(t *testing.T) {
 	smaller = vectorext.ForTest(0, 1, 0, 0)
 	expectedLarger := vectorext.ZeroPad(smaller, 8)
 
-	fft.NewDomain(4).WithCoset().FFTExt(smaller, fft.DIF)
+	fft.NewDomain(4).FFTExt(smaller, fft.DIF)
 	fft.BitReverseExt(smaller)
-	fft.NewDomain(8).WithCoset().FFTExt(expectedLarger, fft.DIF, fft.OnCoset())
+	fft.NewDomain(8).FFTExt(expectedLarger, fft.DIF, fft.OnCoset())
 	fft.BitReverseExt(expectedLarger)
 
 	larger = fastpolyext.ReEvaluateOnLargerDomainCoset(smaller, 8)
@@ -48,9 +49,9 @@ func TestXMinusOneOnACoset(t *testing.T) {
 	one := field.One()
 	for i := 0; i < N; i++ {
 		domainN := fft.NewDomain(N)
-		expected := domainN.Generator
+		expected := domainN.GnarkDomain.Generator
 		expected.Exp(expected, big.NewInt(int64(i)))
-		expected.Mul(&expected, &domainN.FrMultiplicativeGen)
+		expected.Mul(&expected, &domainN.GnarkDomain.FrMultiplicativeGen)
 		expected.Exp(expected, big.NewInt(int64(n)))
 		expected.Sub(&expected, &one)
 

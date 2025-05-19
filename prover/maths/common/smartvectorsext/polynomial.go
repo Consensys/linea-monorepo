@@ -1,12 +1,13 @@
 package smartvectorsext
 
 import (
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -168,7 +169,7 @@ func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.
 	one := fext.One()
 
 	if len(oncoset) > 0 && oncoset[0] {
-		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)
+		x.MulByElement(&x, &domain.GnarkDomain.FrMultiplicativeGenInv)
 	}
 
 	/*
@@ -180,7 +181,7 @@ func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.
 	*/
 	denominator[0] = x
 	for i := 1; i < n; i++ {
-		denominator[i].MulByElement(&denominator[i-1], &domain.GeneratorInv)
+		denominator[i].MulByElement(&denominator[i-1], &domain.GnarkDomain.GeneratorInv)
 	}
 
 	for i := 0; i < n; i++ {
@@ -207,13 +208,13 @@ func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.
 
 		\sum_{x \in H}\frac{P(gx)}{D_x}
 	*/
-	denominator = fext.BatchInvert(denominator)
+	denominator = fext.BatchInvertE4(denominator)
 
 	// Precompute the value of x^n once outside the loop
 	xN := new(fext.Element).Exp(x, big.NewInt(int64(n)))
 
 	// Precompute the value of domain.CardinalityInv outside the loop
-	cardinalityInv := &domain.CardinalityInv
+	cardinalityInv := &domain.GnarkDomain.CardinalityInv
 
 	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
 	factor := new(fext.Element).Sub(xN, &one)

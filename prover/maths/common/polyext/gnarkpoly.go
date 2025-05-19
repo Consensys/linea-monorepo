@@ -3,7 +3,7 @@ package polyext
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 )
 
 // EvaluateLagrangeAnyDomainGnark mirrors [EvaluateLagrangesAnyDomain] but in

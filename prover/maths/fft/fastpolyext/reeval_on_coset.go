@@ -1,9 +1,10 @@
 package fastpolyext
 
 import (
+	"math/big"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"math/big"
 
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -39,7 +40,7 @@ func ReEvaluateOnLargerDomainCoset(poly []fext.Element, newLen int) []fext.Eleme
 	*/
 	large := vectorext.ZeroPad(small, newLen)
 	// memoized
-	domainLarge := fft.NewDomain(len(large)).WithCustomCoset(newLen/len(poly), 0)
+	domainLarge := fft.NewDomain(len(large))
 	domainLarge.FFTExt(large, fft.DIF, fft.OnCoset())
 	fft.BitReverseExt(large)
 
@@ -74,7 +75,7 @@ func EvalXnMinusOneOnACoset(n, N int) []fext.Element {
 	nBigInt := big.NewInt(int64(n))
 
 	res := make([]fext.Element, N/n)
-	res[0].SetUint64(field.MultiplicativeGen)
+	res[0].B0.A0.SetUint64(field.MultiplicativeGen)
 	res[0].Exp(res[0], nBigInt)
 
 	t := fft.GetOmega(N)

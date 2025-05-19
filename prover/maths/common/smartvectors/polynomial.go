@@ -167,7 +167,7 @@ func batchInterpolateSV(results []field.Element, computed []bool, polys [][]fiel
 	one := field.One()
 
 	if len(oncoset) > 0 && oncoset[0] {
-		x.Mul(&x, &domain.FrMultiplicativeGenInv)
+		x.Mul(&x, &domain.GnarkDomain.FrMultiplicativeGenInv)
 	}
 
 	/*
@@ -179,7 +179,7 @@ func batchInterpolateSV(results []field.Element, computed []bool, polys [][]fiel
 	*/
 	denominator[0] = x
 	for i := 1; i < n; i++ {
-		denominator[i].Mul(&denominator[i-1], &domain.GeneratorInv)
+		denominator[i].Mul(&denominator[i-1], &domain.GnarkDomain.GeneratorInv)
 	}
 
 	for i := 0; i < n; i++ {
@@ -212,7 +212,7 @@ func batchInterpolateSV(results []field.Element, computed []bool, polys [][]fiel
 	xN := new(field.Element).Exp(x, big.NewInt(int64(n)))
 
 	// Precompute the value of domain.CardinalityInv outside the loop
-	cardinalityInv := &domain.CardinalityInv
+	cardinalityInv := &domain.GnarkDomain.CardinalityInv
 
 	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
 	factor := new(field.Element).Sub(xN, &one)

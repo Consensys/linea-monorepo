@@ -1,14 +1,14 @@
 package fastpolyext
 
 import (
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkutilext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext" // Assuming gnarkfext has the Exp function
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Evaluate a polynomial in lagrange basis on a gnark circuit
-func InterpolateGnark(api gnarkfext.API, poly []gnarkfext.Element, x gnarkfext.Element) gnarkfext.Element {
+func InterpolateGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfext.Element) gnarkfext.Element {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
@@ -27,8 +27,7 @@ func InterpolateGnark(api gnarkfext.API, poly []gnarkfext.Element, x gnarkfext.E
 	// Test that x is not a root of unity. In the other case, we would
 	// have to divide by zero. In practice this constraint is not necessary
 	// (because the division constraint would be non-satisfiable anyway)
-	// But doing an explicit check clarifies the need.
-	xN := gnarkutilext.Exp(api, x, n)
+	xN := gnarkfext.Exp(api, x, n)
 	api.AssertIsDifferent(xN, gnarkfext.One())
 
 	// Compute the term-wise summand of the interpolation formula.
@@ -52,8 +51,8 @@ func InterpolateGnark(api gnarkfext.API, poly []gnarkfext.Element, x gnarkfext.E
 		// If the current term is the constant zero, we continue without generating
 		// constraints. As a result, 'terms' may contain nil elements. Therefore,
 		// we will need to remove them later
-		c1, isC1 := api.Inner.Compiler().ConstantValue(poly[i].A0)
-		c2, isC2 := api.Inner.Compiler().ConstantValue(poly[i].A1)
+		c1, isC1 := api.Compiler().ConstantValue(poly[i].B0)
+		c2, isC2 := api.Compiler().ConstantValue(poly[i].B1)
 		if isC1 && c1.IsInt64() && c1.Int64() == 0 && isC2 && c2.IsInt64() && c2.Int64() == 0 {
 			skip[i] = true
 			continue
@@ -80,7 +79,7 @@ func InterpolateGnark(api gnarkfext.API, poly []gnarkfext.Element, x gnarkfext.E
 
 	switch {
 	case len(nonNilTerms) == 0:
-		res = gnarkfext.NewZero()
+		res.SetZero()
 	case len(nonNilTerms) == 1:
 		res = nonNilTerms[0]
 	case len(nonNilTerms) == 2:

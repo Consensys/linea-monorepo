@@ -4,9 +4,10 @@ package smartvectorsext
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"math/big"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -194,7 +195,7 @@ func TestFuzzLinCombWithPoolCompare(t *testing.T) {
 
 func TestOpBasicEdgeCases(t *testing.T) {
 
-	two := fext.NewElement(2, fieldPaddingInt())
+	two := fext.NewElement(2, 0, 0, 0)
 	eight := new(fext.Element).Exp(two, big.NewInt(3))
 
 	testCases := []struct {
@@ -210,7 +211,7 @@ func TestOpBasicEdgeCases(t *testing.T) {
 				LeftPadded(vectorext.Repeat(two, 12), two, 16),
 				RightPadded(vectorext.Repeat(two, 12), two, 16),
 			},
-			expectedRes: NewRegularExt(vectorext.Repeat(fext.NewElement(6, 3*fieldPaddingInt()), 16)),
+			expectedRes: NewRegularExt(vectorext.Repeat(fext.NewElement(6, 0, 0, 0), 16)),
 			fn:          Add,
 		},
 		{
@@ -231,7 +232,7 @@ func TestOpBasicEdgeCases(t *testing.T) {
 				RightPadded(vectorext.Repeat(two, 12), two, 16),
 				NewRegularExt(vectorext.Repeat(two, 16)),
 			},
-			expectedRes: NewRegularExt(vectorext.Repeat(fext.NewElement(8, 4*fieldPaddingInt()), 16)),
+			expectedRes: NewRegularExt(vectorext.Repeat(fext.NewElement(8, 0, 0, 0), 16)),
 			fn:          Add,
 		},
 	}
@@ -278,12 +279,12 @@ func TestScalarMul(t *testing.T) {
 	}{
 		{
 			a: ForTestExt(1, 2, 1, 2, 1),
-			b: fext.NewElement(3, 1),
+			b: fext.NewElement(3, 1, 0, 0),
 			y: ForTestFromPairs(3, 1, 6, 2, 3, 1, 6, 2, 3, 1),
 		},
 		{
 			a: ForTestExt(1, 2, 1, 2, 1),
-			b: fext.NewElement(3, 0),
+			b: fext.NewElement(3, 0, 0, 0),
 			y: ForTestExt(3, 6, 3, 6, 3),
 		},
 	}

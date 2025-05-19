@@ -4,12 +4,13 @@ package smartvectorsext
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/stretchr/testify/assert"
@@ -175,7 +176,7 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
-	domain := fft.NewDomain(n).WithCoset()
+	domain := fft.NewDomain(n)
 
 	/*
 		Test without coset
@@ -223,8 +224,7 @@ func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
 
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
-	domain := fft.NewDomain(n).WithCoset()
-
+	domain := fft.NewDomain(n)
 	/*
 		Test without coset
 	*/
@@ -275,8 +275,7 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
 	expectedY3 := polyext.Eval(randPoly3, x)
-	domain := fft.NewDomain(n).WithCoset()
-
+	domain := fft.NewDomain(n)
 	/*
 		Test without coset
 	*/

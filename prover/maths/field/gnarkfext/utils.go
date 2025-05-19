@@ -5,6 +5,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
+// API is a wrapper of [frontend.API] with methods specialized for field
+// extension operations.
+type API struct {
+	Inner frontend.API
+}
+
 func FromValue(v fext.Element) Element {
 	return Element{
 		B0: E2{A0: v.B0.A0, A1: v.B0.A1},

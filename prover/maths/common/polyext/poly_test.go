@@ -1,14 +1,13 @@
 package polyext_test
 
 import (
+	"math/rand/v2"
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"math/rand/v2"
-	"testing"
-
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 
 	"github.com/stretchr/testify/require"
 )
@@ -17,13 +16,13 @@ func TestEval(t *testing.T) {
 	// Just a simple test vector
 	// (1+a)+(2+2a)X+(5+a)X^2+(12+2a)X^3
 	testVec := []fext.Element{
-		fext.NewElement(1, 1),
-		fext.NewElement(2, 2),
-		fext.NewElement(5, 1),
-		fext.NewElement(12, 2),
+		fext.NewElement(1, 1, 0, 0),
+		fext.NewElement(2, 2, 0, 0),
+		fext.NewElement(5, 1, 0, 0),
+		fext.NewElement(12, 2, 0, 0),
 	}
 
-	x := fext.NewElement(3, 4)
+	x := fext.NewElement(3, 4, 0, 0)
 
 	y := polyext.Eval(testVec, x)
 	// expanded form of the polynomial 128 a^4 + 1072 a^3 + 2056 a^2 + 1494 a + 376
@@ -168,7 +167,7 @@ func TestScalarMul(t *testing.T) {
 	t.Run("normal-vec", func(t *testing.T) {
 		var (
 			vec      = vectorext.ForTestFromPairs(1, 2, 3, 4, 2, 1)
-			x        = fext.NewElement(2, 1)
+			x        = fext.NewElement(2, 1, 0, 0)
 			expected = vectorext.ForTestFromPairs(
 				2+2*fext.RootPowers[1],
 				5,
@@ -185,7 +184,7 @@ func TestScalarMul(t *testing.T) {
 	t.Run("empty-vec", func(t *testing.T) {
 		var (
 			vec      = vectorext.ForTestFromPairs()
-			x        = fext.NewElement(2, 2)
+			x        = fext.NewElement(2, 2, 0, 0)
 			expected = vectorext.ForTestFromPairs()
 			res      = polyext.ScalarMul(vec, x)
 		)
@@ -198,8 +197,8 @@ func TestEvaluateLagrangeAnyDomain(t *testing.T) {
 
 	t.Run("single-point-domain", func(t *testing.T) {
 		var (
-			domain   = []fext.Element{{field.Zero(), field.Zero()}}
-			x        = fext.NewElement(42, 42)
+			domain   = []fext.Element{}
+			x        = fext.NewElement(42, 42, 0, 0)
 			ys       = polyext.EvaluateLagrangesAnyDomain(domain, x)
 			expected = vectorext.ForTestFromPairs(1, 0)
 		)
@@ -210,7 +209,7 @@ func TestEvaluateLagrangeAnyDomain(t *testing.T) {
 		var (
 			// the first lagrange poly is 1-X and the second one is X
 			domain   = vectorext.ForTestFromPairs(0, 0, 1, 0)
-			x        = fext.NewElement(42, 0)
+			x        = fext.NewElement(42, 0, 0, 0)
 			ys       = polyext.EvaluateLagrangesAnyDomain(domain, x)
 			expected = vectorext.ForTestFromPairs(-41, 0, 42, 0)
 		)

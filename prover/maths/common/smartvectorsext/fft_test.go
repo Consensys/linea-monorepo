@@ -4,10 +4,11 @@ package smartvectorsext
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -211,7 +212,8 @@ func TestFFTFuzzyEvaluation(t *testing.T) {
 					x.Mul(&omegacoset, &x)
 				}
 
-				wrappedX := fext.Element{x, field.Zero()}
+				var wrappedX fext.Element
+				wrappedX.B0.A0 = x
 				yCoeff := EvalCoeff(coeffs, wrappedX)
 				yFFT := evals.GetExt(i)
 
@@ -254,7 +256,7 @@ func TestFFTFuzzyConsistWithInterpolation(t *testing.T) {
 				t.Logf("Parameters are (vec %v - ratio %v - cosetID %v - evalAt %v", coeffs.Pretty(), ratio, cosetID, i)
 
 				var xCoeff fext.Element
-				xCoeff.SetInt64(2)
+				fext.SetInt64(&xCoeff, 2)
 
 				xVal := xCoeff
 

@@ -1,10 +1,11 @@
 package fastpolyext
 
 import (
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/stretchr/testify/require"
@@ -13,9 +14,9 @@ import (
 func TestInterpolation(t *testing.T) {
 	n := 4
 	randPoly := vectorext.ForTest(1, 2, 3, 4)
-	x := fext.NewElement(51, 0)
+	x := fext.NewElement(51, 0, 0, 0)
 	expectedY := polyext.Eval(randPoly, x)
-	domain := fft.NewDomain(n).WithCoset()
+	domain := fft.NewDomain(n)
 
 	/*
 		Test without coset
@@ -42,11 +43,11 @@ func TestBatchInterpolation(t *testing.T) {
 	n := 4
 	randPoly := vectorext.ForTest(1, 2, 3, 4)
 	randPoly2 := vectorext.ForTest(5, 6, 7, 8)
-	x := fext.NewElement(51, 0)
+	x := fext.NewElement(51, 0, 0, 0)
 
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
-	domain := fft.NewDomain(n).WithCoset()
+	domain := fft.NewDomain(n)
 
 	/*
 		Test without coset
@@ -98,7 +99,7 @@ func TestBatchInterpolationRootOfUnity(t *testing.T) {
 
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
-	domain := fft.NewDomain(n).WithCoset()
+	domain := fft.NewDomain(n)
 
 	/*
 		Test without coset

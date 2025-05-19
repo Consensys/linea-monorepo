@@ -19,3 +19,7 @@ func NewElement(v1 uint32, v2 uint32, v3 uint32, v4 uint32) Element {
 
 // var RootPowers = []int{1, -11} // ??
 var RootPowers = []int{1, 3} // ??
+
+func BatchInvertE4(a []Element) []Element {
+	return extensions.BatchInvertE4(a)
+}

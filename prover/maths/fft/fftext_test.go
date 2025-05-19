@@ -32,7 +32,7 @@ func TestFFTExt(t *testing.T) {
 	const maxSize = 1 << 10
 
 	nbCosets := 3
-	domainWithPrecompute := NewDomain(maxSize).WithCoset()
+	domainWithPrecompute := NewDomain(maxSize)
 
 	parameters := gopter.DefaultTestParameters()
 	parameters.MinSuccessfulTests = 5
@@ -238,7 +238,7 @@ func BenchmarkFFTExt(b *testing.B) {
 	for i := 8; i < 20; i++ {
 		sizeDomain := 1 << i
 		b.Run("fft 2**"+strconv.Itoa(i), func(b *testing.B) {
-			domain := NewDomain(sizeDomain).WithCoset()
+			domain := NewDomain(sizeDomain)
 			b.ResetTimer()
 			for j := 0; j < b.N; j++ {
 				domain.FFTExt(pol[:sizeDomain], DIT)
@@ -264,7 +264,7 @@ func BenchmarkFFTDITCosetReferenceExt(b *testing.B) {
 		pol[i] = pol[i-1]
 	}
 
-	domain := NewDomain(maxSize).WithCoset()
+	domain := NewDomain(maxSize)
 
 	b.ResetTimer()
 	for j := 0; j < b.N; j++ {

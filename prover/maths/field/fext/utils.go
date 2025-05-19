@@ -13,22 +13,14 @@ func One() Element {
 	return res
 }
 
-// SetUint64 sets z to v and returns z
-// ./field/fext/utils.go:3:// SetUint64 sets z to v and returns z
-// ./field/fext/utils.go:4:func SetUint64(z *Element, v uint64) *Element {
-// ./field/fext/utils.go:6:	z.B0.A0.SetUint64(v)
-// ./fft/new_domain.go:30:	domain.FrMultiplicativeGen.SetUint64(field.MultiplicativeGen)
-// ./fft/new_domain.go:36:	expoBig.SetUint64(expo)
-// ./fft/new_domain.go:40:	domain.CardinalityInv.SetUint64(uint64(m)).Inverse(&domain.CardinalityInv)
-// ./fft/fastpoly/reeval_on_coset.go:77:	res[0].SetUint64(field.MultiplicativeGen)
-// ./fft/fastpolyext/reeval_on_coset.go:77:	res[0].SetUint64(field.MultiplicativeGen)
-// ./fft/cosets.go:132:	a.SetUint64(field.MultiplicativeGen)
-func SetUint64(z *Element, v uint64) *Element {
-	//  sets z LSB to v (non-Montgomery form) and convert z to Montgomery form
-	z.B0.A0.SetUint64(v)
-	z.B0.A1.SetZero()
-	z.B1.SetZero()
-	return z // z.toMont()
+// SetZero sets an E4 elmt to zero
+func Zero() Element {
+	var res Element
+	return res
+}
+
+func Uint64(z *Element) (uint64, uint64, uint64, uint64) {
+	return uint64(z.B0.A0.Bits()[0]), uint64(z.B0.A1.Bits()[0]), uint64(z.B1.A0.Bits()[0]), uint64(z.B1.A1.Bits()[0])
 }
 
 // SetInt64 sets z to v and returns z

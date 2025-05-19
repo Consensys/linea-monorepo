@@ -7,7 +7,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -75,13 +74,14 @@ func Interpolate(poly []fext.Element, x fext.Element, oncoset ...bool) fext.Elem
 
 		\sum_{x \in H}\frac{P(gx)}{D_x}
 	*/
-	denominator = fext.BatchInvert(denominator)
+	denominator = fext.BatchInvertE4(denominator)
 	res := vectorext.ScalarProd(poly, denominator)
 
 	/*
 		Then multiply the res by a factor \frac{g^{1 - n}X^n -g}{n}
 	*/
-	wrappedCardinalityInv := fext.Element{domain.CardinalityInv, field.Zero()}
+	var wrappedCardinalityInv fext.Element
+	fext.FromBase(&wrappedCardinalityInv, &domain.GnarkDomain.CardinalityInv)
 
 	var factor fext.Element
 	factor.Exp(x, big.NewInt(int64(n)))
@@ -110,7 +110,8 @@ func BatchInterpolate(polys [][]fext.Element, x fext.Element, oncoset ...bool) [
 
 	one := fext.One()
 
-	wrappedFrMultiplicativeGenInv := fext.Element{domain.FrMultiplicativeGenInv, field.Zero()}
+	var wrappedFrMultiplicativeGenInv fext.Element
+	fext.FromBase(&wrappedFrMultiplicativeGenInv, &domain.GnarkDomain.FrMultiplicativeGenInv)
 
 	if len(oncoset) > 0 && oncoset[0] {
 		x.Mul(&x, &wrappedFrMultiplicativeGenInv)
@@ -123,7 +124,8 @@ func BatchInterpolate(polys [][]fext.Element, x fext.Element, oncoset ...bool) [
 			where H is the subgroup of the roots of unity (not the coset)
 			and g a field element such that gH is the coset
 	*/
-	wrappedGeneratorInv := fext.Element{domain.GeneratorInv, field.Zero()}
+	var wrappedGeneratorInv fext.Element
+	fext.FromBase(&wrappedGeneratorInv, &domain.GnarkDomain.GeneratorInv)
 
 	denominator[0] = x
 	for i := 1; i < n; i++ {
@@ -151,14 +153,14 @@ func BatchInterpolate(polys [][]fext.Element, x fext.Element, oncoset ...bool) [
 
 		\sum_{x \in H}\frac{P(gx)}{D_x}
 	*/
-	denominator = fext.BatchInvert(denominator)
+	denominator = fext.BatchInvertE4(denominator)
 
 	// Precompute the value of x^n once outside the loop
 	xN := new(fext.Element).Exp(x, big.NewInt(int64(n)))
 
 	// Precompute the value of domain.CardinalityInv outside the loop
-
-	wrappedCardinalityInv := fext.Element{domain.CardinalityInv, field.Zero()}
+	var wrappedCardinalityInv fext.Element
+	fext.FromBase(&wrappedCardinalityInv, &domain.GnarkDomain.CardinalityInv)
 
 	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
 	factor := new(fext.Element).Sub(xN, &one)
