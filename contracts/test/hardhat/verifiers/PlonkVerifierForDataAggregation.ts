@@ -1,14 +1,15 @@
 import { ethers } from "hardhat";
 import { toBeHex } from "ethers";
-import { IPlonkVerifier, Mimc, PlonkVerifierDev__factory } from "../../../typechain-types";
+import { expect } from "chai";
+import { IPlonkVerifier, Mimc, PlonkVerifierForDataAggregation__factory } from "../../../typechain-types";
 import { deployFromFactory } from "../common/deployment";
 import { expectEventDirectFromReceiptData, expectRevertWithCustomError } from "../common/helpers";
 
-describe("PlonkVerifierDev", () => {
+describe("PlonkVerifierForDataAggregation", () => {
   let mimc: Mimc;
 
   async function deployContract(params: IPlonkVerifier.ChainConfigurationParameterStruct[]) {
-    const factory = await ethers.getContractFactory("PlonkVerifierDev", {
+    const factory = await ethers.getContractFactory("PlonkVerifierForDataAggregation", {
       libraries: { Mimc: await mimc.getAddress() },
     });
     const verifier = await factory.deploy(params);
@@ -23,14 +24,14 @@ describe("PlonkVerifierDev", () => {
   describe("Deployment", () => {
     it("Should revert when no chain configuration has been provided", async () => {
       await expectRevertWithCustomError(
-        new PlonkVerifierDev__factory({ ["src/libraries/Mimc.sol:Mimc"]: await mimc.getAddress() }),
+        new PlonkVerifierForDataAggregation__factory({ ["src/libraries/Mimc.sol:Mimc"]: await mimc.getAddress() }),
         deployContract([]),
-        "ChainConfigurationNotSet",
+        "ChainConfigurationNotProvided",
       );
     });
 
-    it("Should deploy with one configuration value that has a first 0 bit.", async () => {
-      const chainId = toBeHex("0x4919", 32); // 0x4919 = 1337
+    it("Should deploy with one configuration value that has a first 0 bit", async () => {
+      const chainId = toBeHex(1337, 32);
 
       const params = [
         {
@@ -49,8 +50,8 @@ describe("PlonkVerifierDev", () => {
       ]);
     });
 
-    it("Should deploy with one configuration value that has a first non 0 bit.", async () => {
-      const chainId = ethers.toBeHex("0x8900000000000000000000000000000000000000000000000000000000000089", 32); // 0x4919 = 1337
+    it("Should deploy with one configuration value that has a first non 0 bit", async () => {
+      const chainId = toBeHex("0x8900000000000000000000000000000000000000000000000000000000000089", 32);
 
       const params = [
         {
@@ -74,9 +75,9 @@ describe("PlonkVerifierDev", () => {
       ]);
     });
 
-    it("Should deploy with multiple configuration values that have a first 0 bit.", async () => {
-      const chainId = toBeHex("0x4919", 32); // 0x4919 = 1337
-      const baseFee = toBeHex("0x07", 32);
+    it("Should deploy with multiple configuration values that have a first 0 bit", async () => {
+      const chainId = toBeHex(1337, 32);
+      const baseFee = toBeHex(7, 32);
       const l2MessageServiceAddress = toBeHex("0xe537D669CA013d86EBeF1D64e40fC74CADC91987", 32);
 
       const params = [
@@ -110,9 +111,9 @@ describe("PlonkVerifierDev", () => {
       ]);
     });
 
-    it("Should deploy with multiple configuration values that have a first non 0 bit.", async () => {
-      const chainId = toBeHex("0x8900000000000000000000000000000000000000000000000000000000000089", 32); // 0x4919 = 1337
-      const baseFee = toBeHex("0x07", 32);
+    it("Should deploy with multiple configuration values that have a first non 0 bit", async () => {
+      const chainId = toBeHex("0x8900000000000000000000000000000000000000000000000000000000000089", 32);
+      const baseFee = toBeHex(7, 32);
       const l2MessageServiceAddress = toBeHex("0xe537D669CA013d86EBeF1D64e40fC74CADC91987", 32);
 
       const params = [
@@ -153,6 +154,36 @@ describe("PlonkVerifierDev", () => {
           [l2MessageServiceAddress, "l2MessageServiceAddress"],
         ],
       ]);
+    });
+  });
+
+  describe("getChainConfiguration", () => {
+    it("Should return the chain configuration hash", async () => {
+      const chainId = toBeHex(1337, 32);
+      const baseFee = toBeHex(7, 32);
+      const l2MessageServiceAddress = toBeHex("0xe537D669CA013d86EBeF1D64e40fC74CADC91987", 32);
+
+      const params = [
+        {
+          value: chainId,
+          name: "chainId",
+        },
+        {
+          value: baseFee,
+          name: "baseFee",
+        },
+        {
+          value: l2MessageServiceAddress,
+          name: "l2MessageServiceAddress",
+        },
+      ];
+
+      const verifier = await deployContract(params);
+
+      const mimcPayload = ethers.concat([chainId, baseFee, l2MessageServiceAddress]);
+      const expectedConfigurationHash = await mimc.hash(mimcPayload);
+
+      expect(await verifier.getChainConfiguration()).to.be.equal(expectedConfigurationHash);
     });
   });
 });

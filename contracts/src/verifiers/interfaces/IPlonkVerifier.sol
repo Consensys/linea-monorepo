@@ -26,10 +26,15 @@ interface IPlonkVerifier {
   event ChainConfigurationSet(bytes32 chainConfigurationHash, ChainConfigurationParameter[] parameters);
 
   /**
-   * @notice Emitted when the chain configuration is not set.
+   * @notice Emitted when the chain configuration is not provided.
    * @dev This error is thrown when the contract is not configured with a chain configuration.
    */
-  error ChainConfigurationNotSet();
+  error ChainConfigurationNotProvided();
+
+  /**
+   * @notice Get the chain configuration.
+   */
+  function getChainConfiguration() external view returns (bytes32);
 
   /**
    * @notice Interface for verifier contracts.
