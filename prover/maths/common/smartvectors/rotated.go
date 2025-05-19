@@ -2,6 +2,7 @@ package smartvectors
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -62,7 +63,9 @@ func (r *Rotated) GetBase(n int) (field.Element, error) {
 // Returns a particular element of the vector
 func (r *Rotated) GetExt(n int) fext.Element {
 	temp, _ := r.v.GetBase(utils.PositiveMod(n+r.offset, r.Len()))
-	return *new(fext.Element).SetFromBase(&temp)
+	var res fext.Element
+	fext.FromBase(&res, &temp)
+	return res
 }
 
 func (r *Rotated) Get(n int) field.Element {
@@ -149,7 +152,7 @@ func (r *Rotated) WriteInSliceExt(s []fext.Element) {
 	temp := rotatedAsRegular(r)
 	for i := 0; i < temp.Len(); i++ {
 		elem, _ := temp.GetBase(i)
-		s[i].SetFromBase(&elem)
+		fext.FromBase(&s[i], &elem)
 	}
 }
 
@@ -179,7 +182,7 @@ func (r *Rotated) IntoRegVecSaveAllocExt() []fext.Element {
 	temp := *rotatedAsRegular(r)
 	res := make([]fext.Element, temp.Len())
 	for i := 0; i < temp.Len(); i++ {
-		res[i].SetFromBase(&temp[i])
+		fext.FromBase(&res[i], &temp[i])
 	}
 	return res
 }

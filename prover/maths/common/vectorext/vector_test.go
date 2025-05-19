@@ -18,7 +18,6 @@ func TestVectors(t *testing.T) {
 		// a, b and x are very common vectors in all the tests
 		a = vectorext.ForTestFromPairs(1, 2, 3, 4, 5, 6)
 		b = vectorext.ForTestFromPairs(3, 4, 5, 6, 7, 8)
-		var c int
 		x = fext.NewElement(2, 0)
 
 		// aBAndXMustNotChange asserts that a and b did not change as this is
