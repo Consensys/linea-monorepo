@@ -212,9 +212,9 @@ failures-warning-threshold = 1
 
 [l2-network-gas-pricing]
 disabled = false
-price-update-interval = "PT5S"
+price-update-interval = "PT12S"
 
-fee-history-block-count = 10
+fee-history-block-count = 50
 fee-history-reward-percentile = 15
 
 blob-submission-expected-execution-gas = 213000.0 # Lower to 120k as we improve efficiency
