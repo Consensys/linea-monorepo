@@ -181,7 +181,7 @@ services:
   postman:
     container_name: postman
     hostname: postman
-    image: consensys/linea-postman:${POSTMAN_TAG:-c332ec7}
+    image: consensys/linea-postman:${POSTMAN_TAG:-8a0bcc8}
     profiles: [ "l2", "debug" ]
     platform: linux/amd64
     restart: on-failure
@@ -409,7 +409,7 @@ services:
   transaction-exclusion-api:
     hostname: transaction-exclusion-api
     container_name: transaction-exclusion-api
-    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-c332ec7}
+    image: consensys/linea-transaction-exclusion-api:${TRANSACTION_EXCLUSION_API_TAG:-8a0bcc8}
     profiles: [ "l2", "debug" ]
     restart: on-failure
     depends_on:
