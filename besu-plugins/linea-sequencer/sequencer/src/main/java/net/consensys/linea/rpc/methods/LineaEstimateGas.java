@@ -50,10 +50,10 @@ import org.hyperledger.besu.datatypes.StateOverrideMap;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.exception.InvalidJsonRpcParameters;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.exception.InvalidJsonRpcRequestException;
-import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonCallParameter;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.parameters.JsonRpcParameter;
 import org.hyperledger.besu.ethereum.api.jsonrpc.internal.response.RpcErrorType;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.hyperledger.besu.ethereum.transaction.CallParameter;
 import org.hyperledger.besu.evm.frame.MessageFrame;
 import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.operation.SStoreOperation;
@@ -191,21 +191,20 @@ public class LineaEstimateGas {
     }
   }
 
-  private long calculateGasLimitUpperBound(
-      final JsonCallParameter callParameters, final long logId) {
-    if (callParameters.getFrom() != null) {
-      final var sender = callParameters.getFrom();
+  private long calculateGasLimitUpperBound(final CallParameter callParameters, final long logId) {
+    if (callParameters.getSender().isPresent()) {
+      final var sender = callParameters.getSender().get();
       final var maxGasPrice = calculateTxMaxGasPrice(callParameters);
       log.atTrace()
           .setMessage("[{}] Calculated max gas price {}")
           .addArgument(logId)
           .addArgument(maxGasPrice)
           .log();
-      if (maxGasPrice != null) {
+      if (!maxGasPrice.equals(Wei.ZERO)) {
         final Wei balance = getSenderBalance(sender, logId);
         if (balance.greaterThan(Wei.ZERO)) {
-          final var value = callParameters.getValue();
-          final var balanceForGas = value == null ? balance : balance.subtract(value);
+          final var value = callParameters.getValue().orElse(Wei.ZERO);
+          final var balanceForGas = balance.subtract(value);
           final var gasLimitForBalance = balanceForGas.divide(maxGasPrice).toUInt256();
           if (gasLimitForBalance.lessThan(maxTxGasLimit)) {
             final var gasLimitUpperBound = gasLimitForBalance.toLong();
@@ -246,8 +245,10 @@ public class LineaEstimateGas {
     return balance;
   }
 
-  private Wei calculateTxMaxGasPrice(final JsonCallParameter callParameters) {
-    return callParameters.getMaxFeePerGas().orElseGet(callParameters::getGasPrice);
+  private Wei calculateTxMaxGasPrice(final CallParameter callParameters) {
+    return callParameters
+        .getMaxFeePerGas()
+        .orElseGet(() -> callParameters.getGasPrice().orElse(Wei.ZERO));
   }
 
   private Wei getEstimatedPriorityFee(
@@ -271,7 +272,7 @@ public class LineaEstimateGas {
   }
 
   private Long estimateGasUsed(
-      final JsonCallParameter callParameters,
+      final CallParameter callParameters,
       final Optional<StateOverrideMap> maybeStateOverrides,
       final Transaction transaction,
       final Wei baseFee,
@@ -427,10 +428,10 @@ public class LineaEstimateGas {
                     RpcErrorType.PLUGIN_INTERNAL_ERROR, "Empty result from simulation"));
   }
 
-  private JsonCallParameter parseCallParameters(final Object[] params) {
-    final JsonCallParameter callParameters;
+  private CallParameter parseCallParameters(final Object[] params) {
+    final CallParameter callParameters;
     try {
-      callParameters = parameterParser.required(params, 0, JsonCallParameter.class);
+      callParameters = parameterParser.required(params, 0, CallParameter.class);
     } catch (JsonRpcParameter.JsonRpcParameterException e) {
       throw new InvalidJsonRpcParameters(
           "Invalid call parameters (index 0)", RpcErrorType.INVALID_CALL_PARAMS);
@@ -439,14 +440,14 @@ public class LineaEstimateGas {
     return callParameters;
   }
 
-  private void validateCallParameters(final JsonCallParameter callParameters) {
-    if (callParameters.getGasPrice() != null && isBaseFeeTransaction(callParameters)) {
+  private void validateCallParameters(final CallParameter callParameters) {
+    if (callParameters.getGasPrice().isPresent() && isBaseFeeTransaction(callParameters)) {
       throw new InvalidJsonRpcParameters(
           "gasPrice cannot be used with maxFeePerGas or maxPriorityFeePerGas or maxFeePerBlobGas");
     }
 
-    if (callParameters.getGasLimit() > 0
-        && callParameters.getGasLimit() > txValidatorConf.maxTxGasLimit()) {
+    final var gasLimit = callParameters.getGas().orElse(0L);
+    if (gasLimit > txValidatorConf.maxTxGasLimit()) {
       throw new InvalidJsonRpcParameters(
           "gasLimit above maximum of: " + txValidatorConf.maxTxGasLimit());
     }
@@ -461,7 +462,7 @@ public class LineaEstimateGas {
     }
   }
 
-  private boolean isBaseFeeTransaction(final JsonCallParameter callParameters) {
+  private boolean isBaseFeeTransaction(final CallParameter callParameters) {
     return (callParameters.getMaxFeePerGas().isPresent()
         || callParameters.getMaxPriorityFeePerGas().isPresent()
         || callParameters.getMaxFeePerBlobGas().isPresent());
@@ -487,28 +488,27 @@ public class LineaEstimateGas {
   }
 
   private Transaction createTransactionForSimulation(
-      final JsonCallParameter callParameters,
+      final CallParameter callParameters,
       final long maxTxGasLimit,
       final Wei baseFee,
       final long logId) {
 
     final var txBuilder =
         Transaction.builder()
-            .sender(callParameters.getFrom())
+            .sender(callParameters.getSender().orElse(Address.ZERO))
             .nonce(callParameters.getNonce().orElseGet(() -> getSenderNonce(callParameters, logId)))
-            .to(callParameters.getTo())
             .gasLimit(maxTxGasLimit)
-            .payload(
-                callParameters.getPayload() == null ? Bytes.EMPTY : callParameters.getPayload())
-            .value(callParameters.getValue() == null ? Wei.ZERO : callParameters.getValue())
+            .payload(callParameters.getPayload().orElse(Bytes.EMPTY))
+            .value(callParameters.getValue().orElse(Wei.ZERO))
             .signature(FAKE_SIGNATURE_FOR_SIZE_CALCULATION);
+
+    callParameters.getTo().ifPresent(txBuilder::to);
 
     if (isBaseFeeTransaction(callParameters)) {
       txBuilder.maxFeePerGas(callParameters.getMaxFeePerGas().orElse(Wei.ZERO));
       txBuilder.maxPriorityFeePerGas(callParameters.getMaxPriorityFeePerGas().orElse(Wei.ZERO));
     } else {
-      txBuilder.gasPrice(
-          callParameters.getGasPrice() != null ? callParameters.getGasPrice() : baseFee);
+      txBuilder.gasPrice(callParameters.getGasPrice().orElse(baseFee));
     }
 
     callParameters.getAccessList().ifPresent(txBuilder::accessList);
@@ -532,23 +532,29 @@ public class LineaEstimateGas {
     return txBuilder.build();
   }
 
-  private Long getSenderNonce(final JsonCallParameter callParameters, final long logId) {
-    final var sender = callParameters.getFrom();
-    final var resp =
-        rpcEndpointService.call(
-            "eth_getTransactionCount", new Object[] {sender.toHexString(), "latest"});
-    if (!resp.getType().equals(RpcResponseType.SUCCESS)) {
-      throw new PluginRpcEndpointException(new InternalError("Unable to query sender nonce"));
-    }
-    final Long nonce = Long.decode((String) resp.getResult());
-    log.atTrace()
-        .setMessage("[{}] eth_getTransactionCount response for {} is {}, nonce {}")
-        .addArgument(logId)
-        .addArgument(sender)
-        .addArgument(resp::getResult)
-        .addArgument(nonce)
-        .log();
-    return nonce;
+  private long getSenderNonce(final CallParameter callParameters, final long logId) {
+    return callParameters
+        .getSender()
+        .map(
+            sender -> {
+              final var resp =
+                  rpcEndpointService.call(
+                      "eth_getTransactionCount", new Object[] {sender.toHexString(), "latest"});
+              if (!resp.getType().equals(RpcResponseType.SUCCESS)) {
+                throw new PluginRpcEndpointException(
+                    new InternalError("Unable to query sender nonce"));
+              }
+              final Long nonce = Long.decode((String) resp.getResult());
+              log.atTrace()
+                  .setMessage("[{}] eth_getTransactionCount response for {} is {}, nonce {}")
+                  .addArgument(logId)
+                  .addArgument(sender)
+                  .addArgument(resp::getResult)
+                  .addArgument(nonce)
+                  .log();
+              return nonce;
+            })
+        .orElse(0L);
   }
 
   private ZkTracer createZkTracer(
