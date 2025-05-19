@@ -18,7 +18,7 @@ func TestVectors(t *testing.T) {
 		// a, b and x are very common vectors in all the tests
 		a = vectorext.ForTestFromPairs(1, 2, 3, 4, 5, 6)
 		b = vectorext.ForTestFromPairs(3, 4, 5, 6, 7, 8)
-		x = fext.NewElement(2, 0)
+		x = fext.NewElement(0, 0, 2, 0)
 
 		// aBAndXMustNotChange asserts that a and b did not change as this is
 		// a very common check in all the sub-tests.
@@ -32,7 +32,7 @@ func TestVectors(t *testing.T) {
 	t.Run("DeepCopy", func(t *testing.T) {
 		c := vectorext.DeepCopy(a)
 		assert.Equal(t, a, c, "the deep copied vector must be equal")
-		c[0] = fext.NewElement(40, 0)
+		c[0] = fext.NewElement(0, 0, 40, 0)
 		aBAndXMustNotChange(t)
 	})
 
@@ -97,7 +97,7 @@ func TestVectors(t *testing.T) {
 	})
 
 	t.Run("Constant", func(t *testing.T) {
-		y := fext.NewElement(1, 2)
+		y := fext.NewElement(0, 0, 1, 2)
 		c := vectorext.Repeat(y, 4)
 		assert.Equal(t, vectorext.ForTestFromPairs(1, 2, 1, 2, 1, 2, 1, 2), c)
 		aBAndXMustNotChange(t)
@@ -159,11 +159,16 @@ func TestVectors(t *testing.T) {
 
 	t.Run("IntoGnarkAssignment", func(t *testing.T) {
 		c := vectorext.IntoGnarkAssignment(a)
+		var tmp fext.Element
 		for i := range c {
-			first := c[i].A0.(field.Element)
-			second := c[i].A1.(field.Element)
-			assert.Equal(t, a[i].A0.String(), first.String())
-			assert.Equal(t, a[i].A1.String(), second.String())
+			tmp.B0.A0 = c[i].B0.A0.(field.Element)
+			tmp.B0.A1 = c[i].B0.A1.(field.Element)
+			tmp.B1.A0 = c[i].B1.A0.(field.Element)
+			tmp.B1.A1 = c[i].B1.A1.(field.Element)
+			assert.Equal(t, a[i].B0.A0.String(), tmp.B0.A0.String())
+			assert.Equal(t, a[i].B0.A1.String(), tmp.B0.A1.String())
+			assert.Equal(t, a[i].B1.A0.String(), tmp.B1.A0.String())
+			assert.Equal(t, a[i].B1.A1.String(), tmp.B1.A1.String())
 		}
 		aBAndXMustNotChange(t)
 	})
@@ -172,14 +177,14 @@ func TestVectors(t *testing.T) {
 
 func TestReverse(t *testing.T) {
 	vec := []fext.Element{
-		fext.NewElement(0, 0),
-		fext.NewElement(1, 0),
-		fext.NewElement(2, 0),
+		fext.NewElement(0, 0, 0, 0),
+		fext.NewElement(0, 0, 1, 0),
+		fext.NewElement(0, 0, 2, 0),
 	}
 	vectorext.Reverse(vec)
-	require.Equal(t, vec[0], fext.NewElement(2, 0))
-	require.Equal(t, vec[1], fext.NewElement(1, 0))
-	require.Equal(t, vec[2], fext.NewElement(0, 0))
+	require.Equal(t, vec[0], fext.NewElement(0, 0, 2, 0))
+	require.Equal(t, vec[1], fext.NewElement(0, 0, 1, 0))
+	require.Equal(t, vec[2], fext.NewElement(0, 0, 0, 0))
 }
 
 func TestScalarProd(t *testing.T) {
@@ -188,7 +193,7 @@ func TestScalarProd(t *testing.T) {
 			vectorext.ForTest(1, 2, 3, 4),
 			vectorext.ForTest(1, 2, 3, 4),
 		),
-		fext.NewElement(30, 0),
+		fext.NewElement(0, 0, 30, 0),
 	)
 }
 
