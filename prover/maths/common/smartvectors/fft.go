@@ -1,8 +1,9 @@
 package smartvectors
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -65,7 +66,7 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 
 	v.WriteInSlice(res.Regular)
 
-	domain := fft.NewDomain(v.Len())
+	domain := fft.NewDomain(uint64(v.Len()))
 
 	if decimation == fft.DIT {
 		// Optionally, bitReverse the input
@@ -143,7 +144,7 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 
 	v.WriteInSlice(res.Regular)
 
-	domain := fft.NewDomain(v.Len())
+	domain := fft.NewDomain(uint64(v.Len()))
 
 	if decimation == fft.DIF {
 		// Optionally, bitReverse the output

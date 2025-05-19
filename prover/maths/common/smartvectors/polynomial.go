@@ -3,9 +3,9 @@ package smartvectors
 import (
 	"math/big"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -161,13 +161,13 @@ func batchInterpolateSV(results []field.Element, computed []bool, polys [][]fiel
 		utils.Panic("only support powers of two but poly has length %v", len(polys))
 	}
 
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 	denominator := make([]field.Element, n)
 
 	one := field.One()
 
 	if len(oncoset) > 0 && oncoset[0] {
-		x.Mul(&x, &domain.GnarkDomain.FrMultiplicativeGenInv)
+		x.Mul(&x, &domain.FrMultiplicativeGenInv)
 	}
 
 	/*
@@ -179,7 +179,7 @@ func batchInterpolateSV(results []field.Element, computed []bool, polys [][]fiel
 	*/
 	denominator[0] = x
 	for i := 1; i < n; i++ {
-		denominator[i].Mul(&denominator[i-1], &domain.GnarkDomain.GeneratorInv)
+		denominator[i].Mul(&denominator[i-1], &domain.GeneratorInv)
 	}
 
 	for i := 0; i < n; i++ {
@@ -212,7 +212,7 @@ func batchInterpolateSV(results []field.Element, computed []bool, polys [][]fiel
 	xN := new(field.Element).Exp(x, big.NewInt(int64(n)))
 
 	// Precompute the value of domain.CardinalityInv outside the loop
-	cardinalityInv := &domain.GnarkDomain.CardinalityInv
+	cardinalityInv := &domain.CardinalityInv
 
 	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
 	factor := new(field.Element).Sub(xN, &one)

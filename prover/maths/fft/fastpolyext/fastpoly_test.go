@@ -1,12 +1,13 @@
 package fastpolyext_test
 
 import (
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/stretchr/testify/require"
 )
 
@@ -14,7 +15,7 @@ func TestMultiplication(t *testing.T) {
 
 	n := 8
 	// smallN := 6
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 
 	// Unitary X : multiplying by it results in identity
 	{

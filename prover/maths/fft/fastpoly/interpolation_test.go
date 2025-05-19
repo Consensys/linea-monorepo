@@ -3,9 +3,9 @@ package fastpoly
 import (
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +15,7 @@ func TestInterpolation(t *testing.T) {
 	randPoly := vector.ForTest(1, 2, 3, 4)
 	x := field.NewElement(51)
 	expectedY := poly.Eval(randPoly, x)
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 
 	/*
 		Test without coset
@@ -46,7 +46,7 @@ func TestBatchInterpolation(t *testing.T) {
 
 	expectedY := poly.Eval(randPoly, x)
 	expectedY2 := poly.Eval(randPoly2, x)
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 
 	/*
 		Test without coset
@@ -98,7 +98,7 @@ func TestBatchInterpolationRootOfUnity(t *testing.T) {
 
 	expectedY := poly.Eval(randPoly, x)
 	expectedY2 := poly.Eval(randPoly2, x)
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 
 	/*
 		Test without coset

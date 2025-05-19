@@ -9,7 +9,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_64_16"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	wfft "github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -20,7 +19,7 @@ func BenchmarkTransversalHash(b *testing.B) {
 		numRow          = 1024
 		numCols         = 1024
 		rng             = rand.New(utils.NewRandSource(786868)) // nolint
-		domain          = fft.NewDomain(64, fft.WithShift(wfft.GetOmega(64*2)))
+		domain          *fft.Domain
 		twiddles        = ringsis_64_16.PrecomputeTwiddlesCoset(domain.Generator, domain.FrMultiplicativeGen)
 		params          = ringsis.Params{LogTwoBound: 16, LogTwoDegree: 6}
 		numInputPerPoly = params.OutputSize() / (field.Bytes * 8 / params.LogTwoBound)
@@ -28,6 +27,11 @@ func BenchmarkTransversalHash(b *testing.B) {
 		numTestCases    = 1 << numInputPerPoly
 		numPoly         = numRow / numInputPerPoly
 	)
+	omega, err := fft.Generator(64 * 2)
+	if err != nil {
+		panic(err)
+	}
+	domain = fft.NewDomain(64, fft.WithShift(omega))
 
 	for tc := 0; tc < numTestCases; tc++ {
 

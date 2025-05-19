@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -55,7 +55,10 @@ func DeriveEvaluationPoint(
 		} else {
 			// If not, compute the shift on x and cache the result
 			n := h.Size()
-			omegaN := fft.GetOmega(n)
+			omegaN, err := fft.Generator(uint64(n))
+			if err != nil {
+				panic(err)
+			}
 			omegaN.Exp(omegaN, big.NewInt(int64(inner.Offset)))
 			derivedX.Mul(&x, &omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)

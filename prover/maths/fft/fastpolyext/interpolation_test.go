@@ -7,7 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +16,7 @@ func TestInterpolation(t *testing.T) {
 	randPoly := vectorext.ForTest(1, 2, 3, 4)
 	x := fext.NewElement(51, 0, 0, 0)
 	expectedY := polyext.Eval(randPoly, x)
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 
 	/*
 		Test without coset
@@ -24,7 +24,7 @@ func TestInterpolation(t *testing.T) {
 	onRoots := vectorext.DeepCopy(randPoly)
 	domain.FFTExt(onRoots, fft.DIF)
 
-	fft.BitReverseExt(onRoots)
+	fft.BitReverse(onRoots)
 	yOnRoots := Interpolate(onRoots, x)
 	require.Equal(t, expectedY.String(), yOnRoots.String())
 
@@ -33,7 +33,7 @@ func TestInterpolation(t *testing.T) {
 	*/
 	onCoset := vectorext.DeepCopy(randPoly)
 	domain.FFTExt(onCoset, fft.DIF, fft.OnCoset())
-	fft.BitReverseExt(onCoset)
+	fft.BitReverse(onCoset)
 	yOnCoset := Interpolate(onCoset, x, true)
 	require.Equal(t, expectedY.String(), yOnCoset.String())
 
@@ -47,7 +47,7 @@ func TestBatchInterpolation(t *testing.T) {
 
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 
 	/*
 		Test without coset
@@ -60,8 +60,8 @@ func TestBatchInterpolation(t *testing.T) {
 
 	domain.FFTExt(polys[0], fft.DIF)
 	domain.FFTExt(polys[1], fft.DIF)
-	fft.BitReverseExt(polys[0])
-	fft.BitReverseExt(polys[1])
+	fft.BitReverse(polys[0])
+	fft.BitReverse(polys[1])
 
 	yOnRoots := BatchInterpolate(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
@@ -78,8 +78,8 @@ func TestBatchInterpolation(t *testing.T) {
 
 	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
-	fft.BitReverseExt(onCosets[0])
-	fft.BitReverseExt(onCosets[1])
+	fft.BitReverse(onCosets[0])
+	fft.BitReverse(onCosets[1])
 
 	yOnCosets := BatchInterpolate(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
@@ -99,7 +99,7 @@ func TestBatchInterpolationRootOfUnity(t *testing.T) {
 
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 
 	/*
 		Test without coset
@@ -112,8 +112,8 @@ func TestBatchInterpolationRootOfUnity(t *testing.T) {
 
 	domain.FFTExt(polys[0], fft.DIF)
 	domain.FFTExt(polys[1], fft.DIF)
-	fft.BitReverseExt(polys[0])
-	fft.BitReverseExt(polys[1])
+	fft.BitReverse(polys[0])
+	fft.BitReverse(polys[1])
 
 	yOnRoots := BatchInterpolate(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
@@ -130,8 +130,8 @@ func TestBatchInterpolationRootOfUnity(t *testing.T) {
 
 	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
-	fft.BitReverseExt(onCosets[0])
-	fft.BitReverseExt(onCosets[1])
+	fft.BitReverse(onCosets[0])
+	fft.BitReverse(onCosets[1])
 
 	yOnCosets := BatchInterpolate(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())

@@ -2,20 +2,21 @@ package univariates
 
 import (
 	"fmt"
-	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
 	"math/big"
 	"reflect"
 	"runtime"
 	"sync"
 
+	ppool "github.com/consensys/linea-monorepo/prover/utils/parallel/pool"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/sirupsen/logrus"
 
+	field "github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -253,8 +254,9 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 
 			// Preallocate the value of the quotient
 			subQuotientReg  = sv.AllocateRegular(ctx.maxSize)
-			subQuotientCnst = field.Zero()
+			subQuotientCnst field.Element
 		)
+		subQuotientCnst.SetZero()
 
 		defer pool.TearDown()
 
@@ -295,11 +297,13 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 				Then gets the quotient by Z_{S_i}
 			*/
 			var rem field.Element
+			var zero field.Element
+			zero.SetZero()
 			for _, hpos := range ctx.xPoly[polHandle.GetColID()] {
 				h := hs[hpos]
 				polWitness, rem = sv.RuffiniQuoRem(polWitness, h)
 
-				if rem != field.Zero() {
+				if rem != zero {
 					/*
 						Panic mode, try re-evaluating the witness polynomial from
 						the original witness and see if there is a problem there
@@ -453,12 +457,14 @@ func (ctx mptsCtx) verifier(run *wizard.VerifierRuntime) error {
 	/*
 		The right hand \sum_i r^i P(x) - \sum X-
 	*/
-	right := field.Zero()
+	var zero field.Element
+	zero.SetZero()
+	right := zero
 	ri := field.One() // r^i
 
 	for i := range evalsPolys {
 
-		tmp := field.Zero()
+		tmp := zero
 
 		// tmp <- \sum_{x \in S_i} P_i(h) * L_h(x)
 		// tmp is (called ri(x)) in the paper
@@ -551,12 +557,14 @@ func (ctx mptsCtx) gnarkVerify(api frontend.API, c *wizard.WizardVerifierCircuit
 	/*
 		The right hand \sum_i r^i P(x) - \sum X-
 	*/
-	right := frontend.Variable(field.Zero())
+	var zero field.Element
+	zero.SetZero()
+	right := frontend.Variable(zero)
 	ri := frontend.Variable(field.One()) // r^i
 
 	for i := range evalsPolys {
 
-		tmp := frontend.Variable(field.Zero())
+		tmp := frontend.Variable(zero)
 
 		// tmp <- \sum_{x \in S_i} P_i(h) * L_h(x)
 		// tmp is (called ri(x)) in the paper

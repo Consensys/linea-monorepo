@@ -1,19 +1,20 @@
 package globalcs
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"math/big"
 	"reflect"
 	"runtime"
 	"sync"
 	"time"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/coin"
+	"github.com/consensys/linea-monorepo/prover/protocol/variables"
+
 	"github.com/sirupsen/logrus"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -306,10 +307,20 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 			Gen is a generator of F^*
 		*/
 		var (
-			omega        = fft.GetOmega(ctx.DomainSize)
-			omegaQNumCos = fft.GetOmega(ctx.DomainSize * maxRatio)
+			omega        field.Element
+			omegaQNumCos field.Element
 			omegaI       = field.NewElement(field.MultiplicativeGen)
 		)
+
+		omega, err := fft.Generator(uint64(
+			ctx.DomainSize))
+		if err != nil {
+			panic(err)
+		}
+		omegaQNumCos, err = fft.Generator(uint64(ctx.DomainSize * maxRatio))
+		if err != nil {
+			panic(err)
+		}
 
 		omegaQNumCos.Exp(omegaQNumCos, big.NewInt(int64(i)))
 		omegaI.Mul(&omegaI, &omegaQNumCos)

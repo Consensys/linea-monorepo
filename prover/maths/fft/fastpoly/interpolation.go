@@ -4,8 +4,8 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -27,13 +27,13 @@ func Interpolate(poly []field.Element, x field.Element, oncoset ...bool) field.E
 
 	n := len(poly)
 
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 	denominator := make([]field.Element, n)
 
 	one := koalabear.One()
 
 	if len(oncoset) > 0 && oncoset[0] {
-		x.Mul(&x, &domain.GnarkDomain.FrMultiplicativeGenInv)
+		x.Mul(&x, &domain.FrMultiplicativeGenInv)
 	}
 
 	/*
@@ -45,7 +45,7 @@ func Interpolate(poly []field.Element, x field.Element, oncoset ...bool) field.E
 	*/
 	denominator[0] = x
 	for i := 1; i < n; i++ {
-		denominator[i].Mul(&denominator[i-1], &domain.GnarkDomain.GeneratorInv)
+		denominator[i].Mul(&denominator[i-1], &domain.GeneratorInv)
 	}
 
 	for i := 0; i < n; i++ {
@@ -72,7 +72,7 @@ func Interpolate(poly []field.Element, x field.Element, oncoset ...bool) field.E
 	var factor field.Element
 	factor.Exp(x, big.NewInt(int64(n)))
 	factor.Sub(&factor, &one)
-	factor.Mul(&factor, &domain.GnarkDomain.CardinalityInv)
+	factor.Mul(&factor, &domain.CardinalityInv)
 	res.Mul(&res, &factor)
 
 	return res
@@ -91,13 +91,13 @@ func BatchInterpolate(polys [][]field.Element, x field.Element, oncoset ...bool)
 
 	n := len(poly)
 
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 	denominator := make([]field.Element, n)
 
 	one := field.One()
 
 	if len(oncoset) > 0 && oncoset[0] {
-		x.Mul(&x, &domain.GnarkDomain.FrMultiplicativeGenInv)
+		x.Mul(&x, &domain.FrMultiplicativeGenInv)
 	}
 
 	/*
@@ -109,7 +109,7 @@ func BatchInterpolate(polys [][]field.Element, x field.Element, oncoset ...bool)
 	*/
 	denominator[0] = x
 	for i := 1; i < n; i++ {
-		denominator[i].Mul(&denominator[i-1], &domain.GnarkDomain.GeneratorInv)
+		denominator[i].Mul(&denominator[i-1], &domain.GeneratorInv)
 	}
 
 	for i := 0; i < n; i++ {
@@ -139,7 +139,7 @@ func BatchInterpolate(polys [][]field.Element, x field.Element, oncoset ...bool)
 	xN := new(field.Element).Exp(x, big.NewInt(int64(n)))
 
 	// Precompute the value of domain.CardinalityInv outside the loop
-	cardinalityInv := &domain.GnarkDomain.CardinalityInv
+	cardinalityInv := &domain.CardinalityInv
 
 	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
 	factor := new(field.Element).Sub(xN, &one)

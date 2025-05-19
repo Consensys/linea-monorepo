@@ -3,8 +3,8 @@ package fastpoly_test
 import (
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 
@@ -15,7 +15,7 @@ func TestMultiplication(t *testing.T) {
 
 	n := 8
 	// smallN := 6
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 
 	// Unitary X : multiplying by it results in identity
 	{

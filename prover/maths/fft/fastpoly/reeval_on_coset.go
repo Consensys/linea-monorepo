@@ -4,8 +4,8 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -30,7 +30,7 @@ func ReEvaluateOnLargerDomainCoset(poly []field.Element, newLen int) []field.Ele
 
 	small := vector.DeepCopy(poly)
 	// memoized
-	domainSmall := fft.NewDomain(len(poly))
+	domainSmall := fft.NewDomain(uint64(len(poly)))
 	domainSmall.FFTInverse(small, fft.DIF)
 	fft.BitReverse(small)
 
@@ -39,7 +39,7 @@ func ReEvaluateOnLargerDomainCoset(poly []field.Element, newLen int) []field.Ele
 	*/
 	large := vector.ZeroPad(small, newLen)
 	// memoized
-	domainLarge := fft.NewDomain(len(large))
+	domainLarge := fft.NewDomain(uint64(len(large)))
 	domainLarge.FFT(large, fft.DIF, fft.OnCoset())
 	fft.BitReverse(large)
 
@@ -77,7 +77,10 @@ func EvalXnMinusOneOnACoset(n, N int) []field.Element {
 	res[0].SetUint64(field.MultiplicativeGen)
 	res[0].Exp(res[0], nBigInt)
 
-	t := fft.GetOmega(N)
+	t, err := fft.Generator(uint64(N))
+	if err != nil {
+		panic(err)
+	}
 	t.Exp(t, nBigInt)
 
 	for i := 1; i < N/n; i++ {

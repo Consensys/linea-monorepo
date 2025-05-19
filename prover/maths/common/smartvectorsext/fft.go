@@ -1,9 +1,9 @@
 package smartvectorsext
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -66,19 +66,19 @@ func FFT(v smartvectors.SmartVector, decimation fft.Decimation, bitReverse bool,
 
 	v.WriteInSliceExt(res.RegularExt)
 
-	domain := fft.NewDomain(v.Len())
+	domain := fft.NewDomain(uint64(v.Len()))
 
 	if decimation == fft.DIT {
 		// Optionally, bitReverse the input
 		if bitReverse {
-			fft.BitReverseExt(res.RegularExt)
+			fft.BitReverse(res.RegularExt)
 		}
 		domain.FFTExt(res.RegularExt, fft.DIT, fft.OnCoset())
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
 		domain.FFTExt(res.RegularExt, fft.DIF, fft.OnCoset())
 		if bitReverse {
-			fft.BitReverseExt(res.RegularExt)
+			fft.BitReverse(res.RegularExt)
 		}
 	}
 
@@ -144,18 +144,18 @@ func FFTInverse(v smartvectors.SmartVector, decimation fft.Decimation, bitRevers
 
 	v.WriteInSliceExt(res.RegularExt)
 
-	domain := fft.NewDomain(v.Len())
+	domain := fft.NewDomain(uint64(v.Len()))
 
 	if decimation == fft.DIF {
 		// Optionally, bitReverse the output
 		domain.FFTInverseExt(res.RegularExt, fft.DIF, fft.OnCoset())
 		if bitReverse {
-			fft.BitReverseExt(res.RegularExt)
+			fft.BitReverse(res.RegularExt)
 		}
 	} else {
 		// Likewise, the optionally rearrange the input in correct order
 		if bitReverse {
-			fft.BitReverseExt(res.RegularExt)
+			fft.BitReverse(res.RegularExt)
 		}
 		domain.FFTInverseExt(res.RegularExt, fft.DIT, fft.OnCoset())
 	}

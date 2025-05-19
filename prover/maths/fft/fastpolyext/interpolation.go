@@ -6,7 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -27,13 +27,13 @@ func Interpolate(poly []fext.Element, x fext.Element, oncoset ...bool) fext.Elem
 
 	n := len(poly)
 
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 	denominator := make([]fext.Element, n)
 
 	one := fext.One()
 
 	var wrappedFrMultiplicativeGenInv fext.Element
-	wrappedFrMultiplicativeGenInv.B0.A0 = domain.GnarkDomain.FrMultiplicativeGenInv
+	wrappedFrMultiplicativeGenInv.B0.A0 = domain.FrMultiplicativeGenInv
 	wrappedFrMultiplicativeGenInv.B0.A1.SetZero()
 	wrappedFrMultiplicativeGenInv.B1.A0.SetZero()
 	wrappedFrMultiplicativeGenInv.B1.A1.SetZero()
@@ -51,7 +51,7 @@ func Interpolate(poly []fext.Element, x fext.Element, oncoset ...bool) fext.Elem
 	*/
 	denominator[0] = x
 	var wrappedGeneratorInv fext.Element
-	wrappedGeneratorInv.B0.A0 = domain.GnarkDomain.GeneratorInv
+	wrappedGeneratorInv.B0.A0 = domain.GeneratorInv
 	wrappedGeneratorInv.B0.A1.SetZero()
 	wrappedGeneratorInv.B1.A0.SetZero()
 	wrappedGeneratorInv.B1.A1.SetZero()
@@ -81,7 +81,7 @@ func Interpolate(poly []fext.Element, x fext.Element, oncoset ...bool) fext.Elem
 		Then multiply the res by a factor \frac{g^{1 - n}X^n -g}{n}
 	*/
 	var wrappedCardinalityInv fext.Element
-	fext.FromBase(&wrappedCardinalityInv, &domain.GnarkDomain.CardinalityInv)
+	fext.FromBase(&wrappedCardinalityInv, &domain.CardinalityInv)
 
 	var factor fext.Element
 	factor.Exp(x, big.NewInt(int64(n)))
@@ -105,13 +105,13 @@ func BatchInterpolate(polys [][]fext.Element, x fext.Element, oncoset ...bool) [
 
 	n := len(poly)
 
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 	denominator := make([]fext.Element, n)
 
 	one := fext.One()
 
 	var wrappedFrMultiplicativeGenInv fext.Element
-	fext.FromBase(&wrappedFrMultiplicativeGenInv, &domain.GnarkDomain.FrMultiplicativeGenInv)
+	fext.FromBase(&wrappedFrMultiplicativeGenInv, &domain.FrMultiplicativeGenInv)
 
 	if len(oncoset) > 0 && oncoset[0] {
 		x.Mul(&x, &wrappedFrMultiplicativeGenInv)
@@ -125,7 +125,7 @@ func BatchInterpolate(polys [][]fext.Element, x fext.Element, oncoset ...bool) [
 			and g a field element such that gH is the coset
 	*/
 	var wrappedGeneratorInv fext.Element
-	fext.FromBase(&wrappedGeneratorInv, &domain.GnarkDomain.GeneratorInv)
+	fext.FromBase(&wrappedGeneratorInv, &domain.GeneratorInv)
 
 	denominator[0] = x
 	for i := 1; i < n; i++ {
@@ -160,7 +160,7 @@ func BatchInterpolate(polys [][]fext.Element, x fext.Element, oncoset ...bool) [
 
 	// Precompute the value of domain.CardinalityInv outside the loop
 	var wrappedCardinalityInv fext.Element
-	fext.FromBase(&wrappedCardinalityInv, &domain.GnarkDomain.CardinalityInv)
+	fext.FromBase(&wrappedCardinalityInv, &domain.CardinalityInv)
 
 	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
 	factor := new(fext.Element).Sub(xN, &one)

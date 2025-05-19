@@ -7,13 +7,13 @@ import (
 	"math/rand/v2"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis/ringsis_32_8"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	wfft "github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+
+	field "github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/stretchr/testify/require"
 )
 
@@ -64,7 +64,7 @@ func TestSmartVectorTransversalSisHash(t *testing.T) {
 		numReps   = 64
 		numCols   = 16
 		rng       = rand.New(rand.NewChaCha8([32]byte{}))
-		domain    = fft.NewDomain(32, fft.WithShift(wfft.GetOmega(32*2)))
+		domain    *fft.Domain
 		twiddles  = ringsis_32_8.PrecomputeTwiddlesCoset(domain.Generator, domain.FrMultiplicativeGen)
 		params    = ringsis.Params{LogTwoBound: 8, LogTwoDegree: 5}
 		testCases = [][]smartvectors.SmartVector{
@@ -72,6 +72,12 @@ func TestSmartVectorTransversalSisHash(t *testing.T) {
 			regularRandomTestVector(rng, 1, numCols),
 		}
 	)
+
+	omega,err:= fft.Generator(32*2)
+	if err != nil {
+		panic(err)
+	}
+	domain    = fft.NewDomain(32, fft.WithShift(omega))
 
 	for i := 0; i < numReps; i++ {
 		testCases = append(testCases, fullyRandomTestVector(rng, 1, numCols))

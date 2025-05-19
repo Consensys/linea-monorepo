@@ -3,10 +3,10 @@ package variables
 import (
 	"math/big"
 
+	field "github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
@@ -30,8 +30,14 @@ func (x X) String() string {
 // Returns an evaluation of the X, possibly over a coset. Pass
 // `EvalCoset(size, 0, 0, false)` to directly evaluate over a coset
 func (x X) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) sv.SmartVector {
-	omega := fft.GetOmega(size)
-	omegaQNumCos := fft.GetOmega(size * cosetRatio)
+	omega, err := fft.Generator(uint64(size))
+	if err != nil {
+		panic(err)
+	}
+	omegaQNumCos, err := fft.Generator(uint64(size * cosetRatio))
+	if err != nil {
+		panic(err)
+	}
 	omegaQNumCos.Exp(omegaQNumCos, big.NewInt(int64(cosetId)))
 
 	omegaI := field.One()

@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
@@ -153,7 +153,7 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 
 	expectedY := poly.Eval(randPoly, x)
 	expectedY2 := poly.Eval(randPoly2, x)
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 
 	/*
 		Test without coset
@@ -201,7 +201,7 @@ func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
 
 	expectedY := poly.Eval(randPoly, x)
 	expectedY2 := poly.Eval(randPoly2, x)
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 	/*
 		Test without coset
 	*/
@@ -252,7 +252,7 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	expectedY := poly.Eval(randPoly, x)
 	expectedY2 := poly.Eval(randPoly2, x)
 	expectedY3 := poly.Eval(randPoly3, x)
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 
 	/*
 		Test without coset

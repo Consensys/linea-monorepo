@@ -1,13 +1,13 @@
 package vortex
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	field "github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -105,8 +105,10 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr *wizard.WizardVerifierCircuit) (ys
 
 	// Also add the shadow evaluations into ysMap. Since the shadow columns
 	// are full-zeroes. We know that the evaluation will also always be zero
+	var zero field.Element
+	zero.SetZero()
 	for shadowID := range ctx.ShadowCols {
-		ysMap[shadowID] = field.Zero()
+		ysMap[shadowID] = zero
 	}
 
 	ys = [][]frontend.Variable{}

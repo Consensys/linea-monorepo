@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -163,13 +163,13 @@ func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.
 		utils.Panic("only support powers of two but poly has length %v", len(polys))
 	}
 
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 	denominator := make([]fext.Element, n)
 
 	one := fext.One()
 
 	if len(oncoset) > 0 && oncoset[0] {
-		x.MulByElement(&x, &domain.GnarkDomain.FrMultiplicativeGenInv)
+		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)
 	}
 
 	/*
@@ -181,7 +181,7 @@ func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.
 	*/
 	denominator[0] = x
 	for i := 1; i < n; i++ {
-		denominator[i].MulByElement(&denominator[i-1], &domain.GnarkDomain.GeneratorInv)
+		denominator[i].MulByElement(&denominator[i-1], &domain.GeneratorInv)
 	}
 
 	for i := 0; i < n; i++ {
@@ -214,7 +214,7 @@ func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.
 	xN := new(fext.Element).Exp(x, big.NewInt(int64(n)))
 
 	// Precompute the value of domain.CardinalityInv outside the loop
-	cardinalityInv := &domain.GnarkDomain.CardinalityInv
+	cardinalityInv := &domain.CardinalityInv
 
 	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
 	factor := new(fext.Element).Sub(xN, &one)

@@ -1,8 +1,8 @@
 package fastpolyext
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext" // Assuming gnarkfext has the Exp function
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -21,7 +21,7 @@ func InterpolateGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfext.El
 	}
 
 	n := len(poly)
-	domain := fft.NewDomain(n)
+	domain := fft.NewDomain(uint64(n))
 	one := gnarkfext.One()
 
 	// Test that x is not a root of unity. In the other case, we would
@@ -45,7 +45,7 @@ func InterpolateGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfext.El
 	for i := 0; i < n; i++ {
 
 		if i > 0 {
-			omegaI = api.MulByElement(omegaI, domain.GnarkDomain.GeneratorInv)
+			omegaI = api.MulByElement(omegaI, domain.GeneratorInv)
 		}
 
 		// If the current term is the constant zero, we continue without generating
@@ -93,7 +93,7 @@ func InterpolateGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfext.El
 	*/
 	factor := xN
 	factor = api.Sub(factor, one)
-	factor = api.MulByElement(factor, domain.GnarkDomain.CardinalityInv)
+	factor = api.MulByElement(factor, domain.CardinalityInv)
 	res = api.Mul(res, factor)
 
 	return res

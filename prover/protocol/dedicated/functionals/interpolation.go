@@ -3,9 +3,9 @@ package functionals
 import (
 	"fmt"
 
+	field "github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -47,7 +47,11 @@ func Interpolation(comp *wizard.CompiledIOP, name string, a ifaces.Accessor, p i
 	iV := ifaces.ColumnAsVariable(i)
 	iNext := ifaces.ColumnAsVariable(column.Shift(i, 1))
 	one := symbolic.NewConstant(1)
-	omega := symbolic.NewConstant(fft.GetOmega(p.Size()))
+	gen, err := fft.Generator(uint64(p.Size()))
+	if err != nil {
+		panic(err)
+	}
+	omega := symbolic.NewConstant(gen)
 	omegaMin1 := omega.Sub(one)
 
 	/*
@@ -105,7 +109,10 @@ func Interpolation(comp *wizard.CompiledIOP, name string, a ifaces.Accessor, p i
 		one := field.One()
 		p := p.GetColAssignment(assi)
 
-		omegaInv := fft.GetOmega(n)
+		omegaInv, err := fft.Generator(uint64(n))
+		if err != nil {
+			panic(err)
+		}
 		omegaInv.Inverse(&omegaInv)
 
 		// Compute the accumulator
