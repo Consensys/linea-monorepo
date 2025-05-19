@@ -21,3 +21,14 @@ func One() Element {
 	res.SetUint64(1)
 	return res
 }
+
+// NewFromString constructs a new field element from a string. The rules to
+// determine how the string is casted into a field elements are the one of
+// [fr.Element.SetString]
+func NewFromString(s string) (res Element) {
+	_, err := res.SetString(s)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
