@@ -12,7 +12,7 @@ import (
 var twiddleLock = sync.Mutex{}
 
 // The maximal order but as an int
-var maxOrderInt int = int(field.RootOfUnityOrder)
+var maxOrderInt int = int(field.MaxOrderRoot)
 
 // The twiddle and twiddleInv arrays are computed lazily
 var twiddles [][]field.Element = make([][]field.Element, 0, maxOrderInt+1)
