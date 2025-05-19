@@ -51,13 +51,6 @@ func SetInt64(z *Element, v int64) *Element {
 	return z // z.toMont()
 }
 
-// TODO Only used in maths/common/vectorext/vector_wizard.go:112, remove this function
-// func (z *Element) SetFromVector(inp [4]int) *Element {
-// 	z.B0.A0.SetInt64(int64(inp[0]))
-// 	z.B0.A1.SetInt64(int64(inp[1]))
-// 	return z // z.toMont()
-// }
-
 // SetInt64Pair sets z to the int64 pair corresponding to (v1, v2) and returns z
 // ./maths/common/smartvectorsext/polynomial_test.go:147:				SetInt64Pair(
 // ./maths/common/smartvectorsext/arithmetic_test.go:252:	sum := new(fext.Element).SetInt64Pair(int64(1+5*fext.RootPowers[1]), 10)

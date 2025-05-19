@@ -109,7 +109,10 @@ func ForTest(xs ...int) []fext.Element {
 func ForTestFromVect(xs ...[4]int) []fext.Element {
 	res := make([]fext.Element, len(xs))
 	for i, x := range xs {
-		res[i].SetFromVector(x)
+		res[i].B0.A0.SetInt64(int64(x[0]))
+		res[i].B0.A1.SetInt64(int64(x[1]))
+		res[i].B1.A0.SetInt64(int64(x[2]))
+		res[i].B1.A1.SetInt64(int64(x[3]))
 	}
 	return res
 }
@@ -123,7 +126,7 @@ func ForTestFromPairs(xs ...int) []fext.Element {
 	}
 	res := make([]fext.Element, len(xs)/2)
 	for i := 0; i < len(res); i++ {
-		res[i].SetInt64Pair(int64(xs[2*i]), int64(xs[2*i+1]))
+		fext.SetInt64Tuple(&res[i], 0, 0, int64(xs[2*i]), int64(xs[2*i+1]))
 	}
 	return res
 }
