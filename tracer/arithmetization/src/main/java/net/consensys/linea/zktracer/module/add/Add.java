@@ -58,20 +58,20 @@ public class Add implements OperationSetModule<AddOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Add.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.add().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Add.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.add().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (AddOperation op : sortOperations(new AddOperationComparator())) {
-      op.trace(++stamp, trace.add);
+      op.trace(++stamp, trace.add());
     }
   }
 

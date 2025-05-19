@@ -76,13 +76,13 @@ public class Mmio implements Module {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Mmio.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.mmio().spillage();
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Mmio.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.mmio().headers(this.lineCount());
   }
 
   @Override
@@ -105,7 +105,7 @@ public class Mmio implements Module {
                     .get(currentMmioInstNumber)
                     .mmioInstruction());
 
-        trace(trace.mmio, mmioData, ++stamp);
+        trace(trace.mmio(), mmioData, ++stamp);
       }
     }
   }

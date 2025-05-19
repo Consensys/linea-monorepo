@@ -60,21 +60,21 @@ public class Mul implements OperationSetModule<MulOperation> {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Mul.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.mul().spillage();
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Mul.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.mul().headers(this.lineCount());
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (MulOperation op : operations.sortOperations(new MulOperationComparator())) {
-      op.trace(trace.mul, ++stamp);
+      op.trace(trace.mul(), ++stamp);
     }
-    (new MulOperation(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO)).trace(trace.mul, stamp + 1);
+    (new MulOperation(OpCode.EXP, Bytes32.ZERO, Bytes32.ZERO)).trace(trace.mul(), stamp + 1);
   }
 }

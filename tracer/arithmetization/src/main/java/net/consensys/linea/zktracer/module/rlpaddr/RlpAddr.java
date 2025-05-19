@@ -307,20 +307,20 @@ public class RlpAddr implements OperationSetModule<RlpAddrOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Rlpaddr.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.rlpaddr().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Rlpaddr.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.rlpaddr().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (RlpAddrOperation op : operations.sortOperations(new RlpAddrOperationComparator())) {
-      traceOperation(op, ++stamp, trace.rlpaddr);
+      traceOperation(op, ++stamp, trace.rlpaddr());
     }
   }
 }

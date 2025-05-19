@@ -77,20 +77,20 @@ public class Stp implements OperationSetModule<StpOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Stp.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.stp().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Stp.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.stp().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (StpOperation operation : operations.sortOperations(new StpOperationComparator())) {
-      operation.trace(trace.stp, ++stamp);
+      operation.trace(trace.stp(), ++stamp);
     }
   }
 }

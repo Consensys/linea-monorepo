@@ -65,13 +65,13 @@ public class EcData implements OperationListModule<EcDataOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Ecdata.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.ecdata().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Ecdata.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.ecdata().spillage();
   }
 
   @Override
@@ -79,7 +79,7 @@ public class EcData implements OperationListModule<EcDataOperation> {
     int stamp = 0;
     long previousId = 0;
     for (EcDataOperation op : operations.getAll()) {
-      op.trace(trace.ecdata, ++stamp, previousId);
+      op.trace(trace.ecdata(), ++stamp, previousId);
       previousId = op.id();
     }
   }

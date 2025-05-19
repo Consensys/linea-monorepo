@@ -84,12 +84,12 @@ public class L2Block implements Module {
   }
 
   @Override
-  public int spillage() {
+  public int spillage(Trace trace) {
     return 0;
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
     throw new IllegalStateException("non-tracing module");
   }
 

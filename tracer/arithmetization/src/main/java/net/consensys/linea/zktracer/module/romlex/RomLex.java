@@ -288,8 +288,8 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
   }
 
   @Override
-  public int spillage() {
-    return Trace.Romlex.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.romlex().spillage();
   }
 
   @Override
@@ -299,8 +299,8 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Romlex.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.romlex().headers(this.lineCount());
   }
 
   @Override
@@ -309,7 +309,7 @@ public class RomLex implements OperationSetModule<RomOperation>, ContextEntryDef
 
     int cfi = 0;
     for (RomOperation operation : sortedOperations) {
-      traceOperation(operation, ++cfi, codeFragmentIndexInfinity, trace.romlex);
+      traceOperation(operation, ++cfi, codeFragmentIndexInfinity, trace.romlex());
     }
   }
 }

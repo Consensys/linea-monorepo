@@ -26,8 +26,9 @@ tasks.register('corsetExists') {
 
 // Allowing overriding the default zkevm.bin file.
 def ZKEVM_BIN = System.getenv("ZKEVM_BIN") ?: "zkevm.bin"
-// Specify where the trace file should be generated.
 def TRACE_FILE = "arithmetization/src/main/java/net/consensys/linea/zktracer/Trace.java"
+// Specify where the trace file should be generated.
+def LONDON_TRACE_FILE = "arithmetization/src/main/java/net/consensys/linea/zktracer/TraceLondon.java"
 // Specify package to use for trace file
 def TRACE_PKG = "net.consensys.linea.zktracer"
 
@@ -58,14 +59,33 @@ tasks.register('buildZkevmBin', Exec) {
     }
 }
 
-// Task which generates the Trace.java file using go-corset.
+// Task which generates the Trace.java interface using go-corset.
 tasks.register('buildTracer', Exec) {
-    group "Trace files generation"
+    group "Trace.java generation"
     dependsOn 'buildZkevmBin'
     // Locate target file
-    def traceJava = getRootProject().file(TRACE_FILE)    
+    def traceJava = getRootProject().file(TRACE_FILE)
     // Configure full path to zkevm.bin
     def zkevmBin = getRootProject().file('linea-constraints/' + ZKEVM_BIN)
-    // Run go-corset generation
-    commandLine 'go-corset','generate','-p',TRACE_PKG,'-o',traceJava,zkevmBin
+    // Generate trace interface
+    commandLine 'go-corset','generate','-p',TRACE_PKG,'-i',traceJava,zkevmBin
+}
+
+// Task which generates the TraceLondon.java file using go-corset.
+tasks.register('buildLondonTracer', Exec) {
+    group "TraceLondon.java generation"
+    dependsOn 'buildZkevmBin'
+    // Locate target file
+    def traceJava = getRootProject().file(LONDON_TRACE_FILE)        
+    // Configure full path to zkevm.bin
+    def zkevmBin = getRootProject().file('linea-constraints/' + ZKEVM_BIN)
+    // Generate trace class(es)
+    commandLine 'go-corset','generate','-p',TRACE_PKG,'-o',traceJava,'-e','Trace',zkevmBin
+}
+
+// Task which generates all trace files
+tasks.register('buildAllTracers') {
+    group "Trace files generation (all forks)"
+    dependsOn 'buildTracer'
+    dependsOn 'buildLondonTracer'    
 }

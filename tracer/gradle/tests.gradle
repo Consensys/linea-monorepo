@@ -304,4 +304,4 @@ tasks.register("jacocoUnitFastReplayWeeklyNightlyReferenceBlockchainAndStateTest
 
 // Configure default build task to require the tracer is built first.
 // This only makes sense for projects which need the tracer.
-compileJava.dependsOn 'buildTracer'
+compileJava.dependsOn 'buildAllTracers'

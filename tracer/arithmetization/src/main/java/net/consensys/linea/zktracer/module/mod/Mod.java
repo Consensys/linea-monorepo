@@ -52,20 +52,20 @@ public class Mod implements OperationSetModule<ModOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Mod.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.mod().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Mod.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.mod().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (ModOperation op : operations.sortOperations(new ModOperationComparator())) {
-      op.trace(trace.mod, ++stamp);
+      op.trace(trace.mod(), ++stamp);
     }
   }
 

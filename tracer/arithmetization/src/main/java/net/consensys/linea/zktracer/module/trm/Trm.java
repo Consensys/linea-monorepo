@@ -52,19 +52,19 @@ public class Trm implements OperationSetModule<TrmOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Trm.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.trm().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Trm.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.trm().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     for (TrmOperation operation : operations.sortOperations(new TrmOperationComparator())) {
-      operation.trace(trace.trm);
+      operation.trace(trace.trm());
     }
   }
 }

@@ -44,13 +44,13 @@ public class Rom implements Module {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Rom.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.rom().spillage();
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Rom.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.rom().headers(this.lineCount());
   }
 
   @Override
@@ -58,7 +58,7 @@ public class Rom implements Module {
     int codeFragmentIndex = 0;
     final int codeFragmentIndexInfinity = romLex.sortedOperations().size();
     for (RomOperation chunk : romLex.sortedOperations()) {
-      chunk.trace(trace.rom, ++codeFragmentIndex, codeFragmentIndexInfinity);
+      chunk.trace(trace.rom(), ++codeFragmentIndex, codeFragmentIndexInfinity);
     }
   }
 }

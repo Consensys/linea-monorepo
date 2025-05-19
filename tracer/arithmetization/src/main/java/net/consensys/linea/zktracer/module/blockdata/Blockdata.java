@@ -121,19 +121,19 @@ public class Blockdata implements Module {
   }
 
   @Override
-  public int spillage() {
-    return Trace.Blockdata.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.blockdata().spillage();
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Blockdata.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.blockdata().headers(this.lineCount());
   }
 
   @Override
   public void commit(Trace trace) {
     for (BlockdataOperation blockData : operations) {
-      blockData.trace(trace.blockdata);
+      blockData.trace(trace.blockdata());
     }
   }
 

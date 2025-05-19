@@ -1051,20 +1051,20 @@ public class RlpTxn implements OperationListModule<RlpTxnOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Rlptxn.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.rlptxn().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Rlptxn.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.rlptxn().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     int absTxNum = 0;
     for (RlpTxnOperation op : operations.getAll()) {
-      traceOperation(op, ++absTxNum, trace.rlptxn);
+      traceOperation(op, ++absTxNum, trace.rlptxn());
     }
   }
 }

@@ -46,13 +46,13 @@ public class Mmu implements OperationListModule<MmuOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Mmu.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.mmu().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Mmu.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.mmu().spillage();
   }
 
   @Override
@@ -65,7 +65,7 @@ public class Mmu implements OperationListModule<MmuOperation> {
       mmuOperation.getCFI();
       mmuOperation.fillLimb();
 
-      mmioStamp = mmuOperation.trace(++mmuStamp, mmioStamp, trace.mmu);
+      mmioStamp = mmuOperation.trace(++mmuStamp, mmioStamp, trace.mmu());
     }
   }
 

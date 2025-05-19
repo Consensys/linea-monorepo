@@ -76,20 +76,20 @@ public class Ext implements OperationSetModule<ExtOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Ext.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.ext().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Ext.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.ext().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (ExtOperation operation : operations.sortOperations(new ExtOperationComparator())) {
-      operation.trace(trace.ext, ++stamp);
+      operation.trace(trace.ext(), ++stamp);
     }
   }
 }

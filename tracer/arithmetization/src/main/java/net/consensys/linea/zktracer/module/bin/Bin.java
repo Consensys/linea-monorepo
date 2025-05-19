@@ -64,20 +64,20 @@ public class Bin implements OperationSetModule<BinOperation> {
   }
 
   @Override
-  public List<Trace.ColumnHeader> columnHeaders() {
-    return Trace.Bin.headers(this.lineCount());
+  public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
+    return trace.bin().headers(this.lineCount());
   }
 
   @Override
-  public int spillage() {
-    return Trace.Bin.SPILLAGE;
+  public int spillage(Trace trace) {
+    return trace.bin().spillage();
   }
 
   @Override
   public void commit(Trace trace) {
     int stamp = 0;
     for (BinOperation op : operations.sortOperations(new BinOperationComparator())) {
-      op.traceBinOperation(++stamp, trace.bin);
+      op.traceBinOperation(++stamp, trace.bin());
     }
   }
 }
