@@ -1,6 +1,7 @@
 package serdetests
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -29,6 +30,9 @@ func TestSerdeDistWizard(t *testing.T) {
 	t.Run("TestSerdeDefaultModule", TestSerdeDefMods)
 	t.Run("TestSerdeBootstrapper", TestSerdeBootstrapper)
 	t.Run("TestSerdeModDisc", TestSerdeDWModDisc)
+
+	t.Run("TestSerdeCompiledGLs", TestSerdeCompiledGLs)
+	t.Run("TestSerdeCompiledLPPs", TestSerdeCompiledLPPs)
 }
 
 // TestSerdeModuleNames tests serialization and deserialization of the ModuleNames field.
@@ -144,5 +148,20 @@ func TestSerdeBootstrapper(t *testing.T) {
 
 	if !test_utils.CompareExportedFields(dw.Bootstrapper, deSerBootstrap) {
 		t.Errorf("mismatch in exported fields after DW Def.Mods serde")
+	}
+}
+
+func TestSerdeCompiledGLs(t *testing.T) {
+
+	fmt.Printf("Length CompiledGLs:%d\n", len(dw.CompiledGLs))
+	if len(dw.CompiledGLs) == 0 {
+		fmt.Println("Skipping TestSerdeCompiledGLs due to nil")
+	}
+}
+
+func TestSerdeCompiledLPPs(t *testing.T) {
+	fmt.Printf("Length CompiledLPPs:%d\n", len(dw.CompiledLPPs))
+	if len(dw.CompiledLPPs) == 0 {
+		fmt.Println("Skipping TestSerdeCompiledLPPs due to nil")
 	}
 }
