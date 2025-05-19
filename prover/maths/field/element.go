@@ -10,6 +10,7 @@ type Element = koalabear.Element
 
 // NewElement constructs a new field element corresponding to an integer.
 var NewElement = koalabear.NewElement
+var BatchInvert = koalabear.BatchInvert
 
 // Zero returns the zero field element
 func Zero() Element {
