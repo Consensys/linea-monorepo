@@ -14,7 +14,7 @@ import (
 func TestInterpolation(t *testing.T) {
 	n := 4
 	randPoly := vectorext.ForTest(1, 2, 3, 4)
-	x := fext.NewElement(51, 0, 0, 0)
+	x := fext.NewElement(51, 1, 3, 4)
 	expectedY := polyext.Eval(randPoly, x)
 	domain := fft.NewDomain(uint64(n))
 

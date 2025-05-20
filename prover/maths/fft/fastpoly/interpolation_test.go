@@ -4,23 +4,28 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
+	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+
 	"github.com/stretchr/testify/require"
 )
-
-// TODO: remove?? as the interpolations are calling fastpolyext
 
 func TestInterpolation(t *testing.T) {
 	n := 4
 	randPoly := vector.ForTest(1, 2, 3, 4)
-	x1 := field.NewElement(51)
 
-	var x fext.Element
-	fext.FromBase(&x, &x1)
-	expectedY := poly.Eval(randPoly, x)
+	randpolyext := make([]fext.Element, len(randPoly))
+	for i := 0; i < len(randPoly); i++ {
+		fext.FromBase(&randpolyext[i], &randPoly[i])
+
+	}
+
+	x := fext.NewElement(1, 2, 3, 4)
+
+	expectedY := polyext.Eval(randpolyext, x)
+
 	domain := fft.NewDomain(uint64(n))
 
 	/*
@@ -48,10 +53,23 @@ func TestBatchInterpolation(t *testing.T) {
 	n := 4
 	randPoly := vector.ForTest(1, 2, 3, 4)
 	randPoly2 := vector.ForTest(5, 6, 7, 8)
-	x := field.NewElement(51)
 
-	expectedY := poly.Eval(randPoly, x)
-	expectedY2 := poly.Eval(randPoly2, x)
+	randpolyext := make([]fext.Element, len(randPoly))
+	for i := 0; i < len(randPoly); i++ {
+		fext.FromBase(&randpolyext[i], &randPoly[i])
+
+	}
+
+	randpolyext2 := make([]fext.Element, len(randPoly2))
+	for i := 0; i < len(randPoly2); i++ {
+		fext.FromBase(&randpolyext2[i], &randPoly2[i])
+
+	}
+
+	x := fext.NewElement(1, 2, 3, 4)
+
+	expectedY := polyext.Eval(randpolyext, x)
+	expectedY2 := polyext.Eval(randpolyext2, x)
 	domain := fft.NewDomain(uint64(n))
 
 	/*
@@ -99,11 +117,23 @@ func TestBatchInterpolationRootOfUnity(t *testing.T) {
 	randPoly := vector.ForTest(1, 2, 3, 4)
 	randPoly2 := vector.ForTest(5, 6, 7, 8)
 
-	// define x as a root of unity
-	x := field.One()
+	randpolyext := make([]fext.Element, len(randPoly))
+	for i := 0; i < len(randPoly); i++ {
+		fext.FromBase(&randpolyext[i], &randPoly[i])
 
-	expectedY := poly.Eval(randPoly, x)
-	expectedY2 := poly.Eval(randPoly2, x)
+	}
+
+	randpolyext2 := make([]fext.Element, len(randPoly2))
+	for i := 0; i < len(randPoly2); i++ {
+		fext.FromBase(&randpolyext2[i], &randPoly2[i])
+
+	}
+
+	// define x as a root of unity
+	x := fext.One()
+
+	expectedY := polyext.Eval(randpolyext, x)
+	expectedY2 := polyext.Eval(randpolyext2, x)
 	domain := fft.NewDomain(uint64(n))
 
 	/*

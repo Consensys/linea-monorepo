@@ -20,7 +20,7 @@ Interpolate(poly []E1, x E4)
 func Interpolate(poly []field.Element, x fext.Element, oncoset ...bool) fext.Element {
 	n := len(poly)
 	polyext := make([]fext.Element, n)
-	for i := 1; i < n; i++ {
+	for i := 0; i < n; i++ {
 		fext.FromBase(&polyext[i], &poly[i])
 	}
 
@@ -31,14 +31,14 @@ func Interpolate(poly []field.Element, x fext.Element, oncoset ...bool) fext.Ele
 func BatchInterpolate(polys [][]field.Element, x fext.Element, oncoset ...bool) []fext.Element {
 
 	n := len(polys)
-	m := len(polys)
+	m := len(polys[0])
 	polysext := make([][]fext.Element, n)
 	for i := 0; i < n; i++ {
 		polysext[i] = make([]fext.Element, m)
 	}
 
-	for i := 1; i < n; i++ {
-		for j := 1; j < m; j++ {
+	for i := 0; i < n; i++ {
+		for j := 0; j < m; j++ {
 			fext.FromBase(&polysext[i][j], &polys[i][j])
 		}
 

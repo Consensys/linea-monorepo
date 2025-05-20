@@ -28,6 +28,7 @@ func TestVectors(t *testing.T) {
 			require.Equal(t, "2", x.String(), "x must not change")
 		}
 	)
+	a = vector.ForTest(1, 2, 3, 4, 5)
 
 	t.Run("DeepCopy", func(t *testing.T) {
 		c := vector.DeepCopy(a)
@@ -164,7 +165,7 @@ func TestScalarProd(t *testing.T) {
 			vector.ForTest(1, 2, 3, 4),
 			vector.ForTest(1, 2, 3, 4),
 		),
-		koalabear.NewElement(30),
+		field.NewElement(30),
 	)
 }
 

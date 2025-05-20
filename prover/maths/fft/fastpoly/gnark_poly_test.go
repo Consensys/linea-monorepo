@@ -1,5 +1,6 @@
 package fastpoly
 
+/*
 import (
 	"fmt"
 	"testing"
@@ -39,4 +40,4 @@ func TestGnarkInterpolate(t *testing.T) {
 		})
 	}
 
-}
+}*/

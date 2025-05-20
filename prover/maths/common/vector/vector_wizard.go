@@ -242,9 +242,7 @@ func Equal(a, b []field.Element) bool {
 func PseudoRand(rng *rand.Rand, size int) []field.Element {
 	slice := make([]field.Element, size)
 	for i := range slice {
-		var r field.Element
-		r.SetRandom()
-		slice[i] = r
+		slice[i] = field.PseudoRand(rng)
 	}
 	return slice
 }
