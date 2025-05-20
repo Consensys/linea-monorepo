@@ -35,7 +35,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 	defer stop()
 
 	// cmdContext is the context we provide for the command execution. In
-	// spot-instance mode, the context is suborginated to the ctx.
+	// spot-instance mode, the context is subordinated to the ctx.
 	cmdContext := context.Background()
 	if cfg.Controller.SpotInstanceMode {
 		cmdContext = ctx
