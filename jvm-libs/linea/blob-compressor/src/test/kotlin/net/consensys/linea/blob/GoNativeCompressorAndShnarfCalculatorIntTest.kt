@@ -1,8 +1,12 @@
 package net.consensys.linea.blob
 
 import linea.blob.BlobCompressorVersion
+import linea.blob.CalculateShnarfResult
 import linea.blob.GoNativeBlobCompressor
 import linea.blob.GoNativeBlobCompressorFactory
+import linea.blob.GoNativeBlobShnarfCalculator
+import linea.blob.GoNativeShnarfCalculatorFactory
+import linea.blob.ShnarfCalculatorVersion
 import linea.kotlin.decodeHex
 import linea.kotlin.encodeHex
 import net.consensys.linea.nativecompressor.CompressorTestData
@@ -33,7 +37,7 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
         }
-      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V1_0_1)
+      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V1_2)
     }
 
     @Test
@@ -61,7 +65,7 @@ class GoNativeCompressorAndShnarfCalculatorIntTest {
           this.Init(DATA_LIMIT, GoNativeBlobCompressorFactory.dictionaryPath.toString())
           this.Reset()
         }
-      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V1_0_1)
+      shnarfCalculator = GoNativeShnarfCalculatorFactory.getInstance(ShnarfCalculatorVersion.V1_2)
     }
 
     @Test
