@@ -50,7 +50,7 @@ func (p *PaddedCircularWindowExt) Len() int {
 
 // Returns a queries position
 func (p *PaddedCircularWindowExt) GetBase(n int) (field.Element, error) {
-	return field.Zero(), fmt.Errorf(conversionError)
+	return field.Zero(), conversionError
 }
 
 func (p *PaddedCircularWindowExt) GetExt(n int) fext.Element {
@@ -343,7 +343,7 @@ func (w *PaddedCircularWindowExt) IntoRegVecSaveAlloc() []field.Element {
 }
 
 func (w *PaddedCircularWindowExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return nil, fmt.Errorf(conversionError)
+	return nil, conversionError
 }
 
 func (w *PaddedCircularWindowExt) IntoRegVecSaveAllocExt() []fext.Element {
