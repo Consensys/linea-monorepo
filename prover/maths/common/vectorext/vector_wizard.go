@@ -97,7 +97,7 @@ func Repeat(x fext.Element, n int) []fext.Element {
 func ForTest(xs ...int) []fext.Element {
 	res := make([]fext.Element, len(xs))
 	for i, x := range xs {
-		res[i].B0.A0[0] = uint32(x)
+		res[i].B0.A0.SetInt64(int64(x))
 	}
 	return res
 }

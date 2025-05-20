@@ -12,10 +12,10 @@ type Element = extensions.E4
 
 func NewElement(v1 uint32, v2 uint32, v3 uint32, v4 uint32) Element {
 	var z Element
-	z.B0.A0 = field.Element{v1}
-	z.B0.A1 = field.Element{v2}
-	z.B1.A0 = field.Element{v3}
-	z.B1.A1 = field.Element{v4}
+	z.B0.A0.SetInt64(int64(v1))
+	z.B0.A1.SetInt64(int64(v2))
+	z.B1.A0.SetInt64(int64(v3))
+	z.B1.A1.SetInt64(int64(v4))
 	return z
 }
 

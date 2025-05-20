@@ -18,14 +18,14 @@ func TestVectors(t *testing.T) {
 		// a, b and x are very common vectors in all the tests
 		a = vectorext.ForTestFromPairs(1, 2, 3, 4, 5, 6)
 		b = vectorext.ForTestFromPairs(3, 4, 5, 6, 7, 8)
-		x = fext.NewElement(0, 0, 2, 0)
+		x = fext.NewElement(2, 0, 0, 0)
 
 		// aBAndXMustNotChange asserts that a and b did not change as this is
 		// a very common check in all the sub-tests.
 		aBAndXMustNotChange = func(t *testing.T) {
 			require.Equal(t, vectorext.ForTestFromPairs(1, 2, 3, 4, 5, 6), a, "a must not change")
 			require.Equal(t, vectorext.ForTestFromPairs(3, 4, 5, 6, 7, 8), b, "b must not change")
-			require.Equal(t, "2+0*u", x.String(), "x must not change")
+			require.Equal(t, "2+0*u+(0+0*u)*v", x.String(), "x must not change")
 		}
 	)
 
@@ -199,7 +199,9 @@ func TestScalarProd(t *testing.T) {
 
 func TestForTest(t *testing.T) {
 	testcase := vectorext.ForTest(-1, 0, 1)
-	require.Equal(t, testcase[0].String(), "-1+0*u")
-	require.Equal(t, testcase[1].String(), "0+0*u")
-	require.Equal(t, testcase[2].String(), "1+0*u")
+	fmt.Printf("testcase=%v", testcase)
+
+	require.Equal(t, testcase[0].String(), "-1+0*u+(0+0*u)*v")
+	require.Equal(t, testcase[1].String(), "0+0*u+(0+0*u)*v")
+	require.Equal(t, testcase[2].String(), "1+0*u+(0+0*u)*v")
 }

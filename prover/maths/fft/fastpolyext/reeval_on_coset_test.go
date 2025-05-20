@@ -55,8 +55,7 @@ func TestXMinusOneOnACoset(t *testing.T) {
 		expected.Exp(expected, big.NewInt(int64(n)))
 		expected.Sub(&expected, &one)
 
-		fmt.Print("expected=", expected.String())
-		require.Equal(t, fmt.Sprintf("%s+0*u", expected.String()), res[i%ratio].String())
+		require.Equal(t, fmt.Sprintf("%s+0*u+(0+0*u)*v", expected.String()), res[i%ratio].String())
 	}
 
 }
