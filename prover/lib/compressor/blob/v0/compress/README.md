@@ -2,7 +2,7 @@
 `compress` implements a lightweight, deflate-like compression algorithm designed to have a simple, zk-friendly decompression algorithm.
 We also provide a [zk decompressor in `gnark`](https://github.com/Consensys/gnark/tree/master/std/compress). 
 
-`compress` is is an Apache 2.0 licensed project.
+`compress` is an Apache 2.0 licensed project.
 
 ## How to use
 The `Compressor` class in the `lzss` package does all the work.
