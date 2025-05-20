@@ -133,6 +133,28 @@ func (e *Element) MulByE2(api frontend.API, e1 Element, c E2) *Element {
 	return e
 }
 
+// MulByFp multiplies an Fp4 elmt by an fp elmt
+func (e *Element) MulByFp(api frontend.API, e1 Element, c frontend.Variable) *Element {
+	e.B0.MulByFp(api, e1.B0, c)
+	e.B1.MulByFp(api, e1.B0, c)
+	return e
+}
+
+// Sum sets e = e1 + e2 + e3...
+func (e *Element) Sum(api frontend.API, e1 Element, e2 Element, e3 ...Element) *Element {
+	e.Add(api, e1, e2)
+	for i := 0; i < len(e3); i++ {
+		e.Add(api, *e, e3[i])
+	}
+	return e
+}
+
+// AssertIsEqual asserts that e==e1
+func (e *Element) AssertIsEqual(api frontend.API, e1 Element) {
+	e.B0.AssertIsEqual(api, e1.B0)
+	e.B1.AssertIsEqual(api, e1.B1)
+}
+
 // MulByNonResidue multiplies an fp2 elmt by the imaginary elmt
 // ext.uSquare is the square of the imaginary root
 func (e *Element) MulByNonResidue(api frontend.API, e1 Element) *Element {
