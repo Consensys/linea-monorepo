@@ -11,6 +11,7 @@ library MessageHashing {
    * @notice Hashes messages using assembly for efficiency.
    * @dev Adding 0xc0 is to indicate the calldata offset relative to the memory being added to.
    * @dev If the calldata is not modulus 32, the extra bit needs to be added on at the end else the hash is wrong.
+   * @dev mcopy cannot be used due to limitations on L2. This will be modified in the future.
    * @param _from The from address.
    * @param _to The to address.
    * @param _fee The fee paid for delivery.
@@ -24,7 +25,7 @@ library MessageHashing {
     uint256 _fee,
     uint256 _valueSent,
     uint256 _messageNumber,
-    bytes calldata _calldata
+    bytes memory _calldata
   ) internal pure returns (bytes32 messageHash) {
     assembly {
       let mPtr := mload(0x40)
@@ -34,15 +35,26 @@ library MessageHashing {
       mstore(add(mPtr, 0x60), _valueSent)
       mstore(add(mPtr, 0x80), _messageNumber)
       mstore(add(mPtr, 0xa0), 0xc0)
-      mstore(add(mPtr, 0xc0), _calldata.length)
-      let rem := mod(_calldata.length, 0x20)
+      let dataLen := mload(_calldata)
+      mstore(add(mPtr, 0xc0), dataLen)
+
+      let dataPtr := add(_calldata, 0x20)
+      let destPtr := add(mPtr, 0xe0)
+      for {
+        let i := 0
+      } lt(i, dataLen) {
+        i := add(i, 0x20)
+      } {
+        mstore(add(destPtr, i), mload(add(dataPtr, i)))
+      }
+
+      let rem := mod(dataLen, 0x20)
       let extra := 0
       if iszero(iszero(rem)) {
         extra := sub(0x20, rem)
       }
 
-      calldatacopy(add(mPtr, 0xe0), _calldata.offset, _calldata.length)
-      messageHash := keccak256(mPtr, add(0xe0, add(_calldata.length, extra)))
+      messageHash := keccak256(mPtr, add(0xe0, add(dataLen, extra)))
     }
   }
 }
