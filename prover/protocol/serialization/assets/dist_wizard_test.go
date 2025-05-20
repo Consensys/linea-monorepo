@@ -18,8 +18,33 @@ var (
 		Affinities:   affinities,
 		Predivision:  1,
 	}
-	dw = distributed.DistributeWizard(zkEVM.WizardIOP, discoverer)
+	// dw = distributed.DistributeWizard(zkEVM.WizardIOP, discoverer)
+	dw = distributed.DistributeWizard(zkEVM.WizardIOP, discoverer).CompileSegments().Conglomerate(20)
 )
+
+// TestSerdeDistWizardFull tests full serialization and deserialization of DistributedWizard.
+func TestSerdeDistWizardFull(t *testing.T) {
+	if dw == nil {
+		t.Fatal("DistributedWizard is nil")
+	}
+
+	// Serialize the DistributedWizard
+	serData, err := SerializeDistWizard(dw)
+	if err != nil {
+		t.Fatalf("Failed to serialize DistributedWizard: %v", err)
+	}
+
+	// Deserialize the DistributedWizard
+	deserializedDW, err := DeserializeDistWizard(serData)
+	if err != nil {
+		t.Fatalf("Failed to deserialize DistributedWizard: %v", err)
+	}
+
+	// Compare exported fields
+	if !test_utils.CompareExportedFields(dw, deserializedDW) {
+		t.Errorf("Mismatch in exported fields after full DistributedWizard serde")
+	}
+}
 
 // TestSerdeDistWizard tests serialization and deserialization of DistributedWizard fields.
 func TestSerdeDistWizard(t *testing.T) {

@@ -18,7 +18,7 @@ type rawRecursedSegmentCompilation struct {
 	RecursionComp json.RawMessage `json:"recursionComp"`
 }
 
-// var recursionSegComp = dw.DefaultModule
+var recurSegComp = dw.CompiledGLs[0]
 
 // SerializeRecursedSegmentCompilation serializes a RecursedSegmentCompilation instance field-by-field.
 func SerializeRecursedSegmentCompilation(segComp *distributed.RecursedSegmentCompilation) ([]byte, error) {
