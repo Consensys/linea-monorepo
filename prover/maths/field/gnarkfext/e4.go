@@ -199,12 +199,6 @@ func (e *Element) Assign(a extensions.E4) {
 	e.B1.Assign(a.B1)
 }
 
-// AssertIsEqual constraint self to be equal to other into the given constraint system
-func (e *Element) AssertIsEqual(api frontend.API, other Element) {
-	api.AssertIsEqual(e.B0, other.B0)
-	api.AssertIsEqual(e.B1, other.B1)
-}
-
 // Select sets e to r1 if b=1, r2 otherwise
 func (e *Element) Select(api frontend.API, b frontend.Variable, r1, r2 Element) *Element {
 
