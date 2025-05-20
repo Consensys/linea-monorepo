@@ -2,7 +2,7 @@
 *.class
 
 # Log file
-*.log
+e2e/docker_logs/*
 
 # BlueJ files
 *.ctxt

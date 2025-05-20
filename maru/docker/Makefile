@@ -1,4 +1,5 @@
 docker-start:
+	$(MAKE) docker-pull
 	docker compose -f compose.yaml up -d
 
 docker-stop:
@@ -11,3 +12,6 @@ docker-clean:
 docker-clean-start:
 	$(MAKE) docker-clean
 	$(MAKE) docker-start
+
+docker-pull:
+	docker compose -f compose.yaml pull
