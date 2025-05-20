@@ -83,7 +83,7 @@ func (e *Element) Sub(api frontend.API, e1, e2 Element) *Element {
 }
 
 // Mul e2 elmts
-func (e *Element) Mul(api frontend.API, e1, e2 Element) *Element {
+func (e *Element) Mul(api frontend.API, e1, e2 Element, in ...Element) *Element {
 
 	var l1, l2 E2
 	l1.Add(api, e1.B0, e1.B1)
@@ -105,7 +105,11 @@ func (e *Element) Mul(api frontend.API, e1, e2 Element) *Element {
 	l41.MulByNonResidue(api, bd)
 	e.B0.Add(api, ac, l41)
 
-	return e
+	if len(in) > 0 {
+		return e.Mul(api, *e, in[0], in[1:]...)
+	} else {
+		return e
+	}
 }
 
 // Square Element elt
@@ -197,12 +201,6 @@ func (e *Element) Inverse(api frontend.API, e1 Element) *Element {
 func (e *Element) Assign(a extensions.E4) {
 	e.B0.Assign(a.B0)
 	e.B1.Assign(a.B1)
-}
-
-// AssertIsEqual constraint self to be equal to other into the given constraint system
-func (e *Element) AssertIsEqual(api frontend.API, other Element) {
-	api.AssertIsEqual(e.B0, other.B0)
-	api.AssertIsEqual(e.B1, other.B1)
 }
 
 // Select sets e to r1 if b=1, r2 otherwise

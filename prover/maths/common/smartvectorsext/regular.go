@@ -1,7 +1,6 @@
 package smartvectorsext
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -13,9 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-var (
-	conversionError = errors.New("smartvector holds field extensions, but a base element was requested")
-)
+const conversionError = "smartvector holds field extensions, but a base element was requested"
 
 // RegularExt is s normal vector in a nutshell
 type RegularExt []fext.Element
@@ -33,7 +30,7 @@ func (r *RegularExt) Len() int { return len(*r) }
 
 // GetBase returns a particular element of the vector
 func (r *RegularExt) GetBase(n int) (field.Element, error) {
-	return field.Zero(), conversionError
+	return field.Zero(), fmt.Errorf(conversionError)
 }
 
 func (r *RegularExt) GetExt(n int) fext.Element {
@@ -169,7 +166,7 @@ func (r *RegularExt) IntoRegVecSaveAlloc() []field.Element {
 }
 
 func (r *RegularExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return nil, conversionError
+	return nil, fmt.Errorf(conversionError)
 }
 
 func (r *RegularExt) IntoRegVecSaveAllocExt() []fext.Element {

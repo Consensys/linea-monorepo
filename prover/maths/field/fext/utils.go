@@ -71,28 +71,6 @@ func RandomElement() Element {
 	return res
 }
 
-// func (z *Element) Uint64() (uint64, uint64) {
-// 	return z.A0.Bits()[0], z.A1.Bits()[0]
-// }
-
-// func Butterfly(a, b *Element) {
-// 	field.Butterfly(&a.B0.A0, &b.B0.A0)
-// 	field.Butterfly(&a.B0.A1, &b.B0.A1)
-// }
-
-// func (z *Element) MulByElement(first *Element, second *Element) *Element {
-// 	z.B0.A0.Mul(&first.A0, second)
-// 	z.B0.A1.Mul(&first.A1, second)
-// 	return z
-// }
-
-// TODO Only used in FFT, remove this function
-// func (z *Element) DivByBase(first *Element, second *Element) *Element {
-// 	z.B0.A0.Div(&first.A0, second)
-// 	z.B0.A1.Div(&first.A1, second)
-// 	return z
-// }
-
 func ExpToInt(z *Element, x Element, k int) *Element {
 	if k == 0 {
 		return z.SetOne()

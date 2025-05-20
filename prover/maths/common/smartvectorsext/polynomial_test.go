@@ -144,10 +144,7 @@ func TestBivariatePolynomial(t *testing.T) {
 			x:         fext.NewElement(2, 1, 0, 0),
 			y:         fext.NewElement(3, 2, 0, 0),
 			numCoeffX: 2,
-			res: *new(fext.Element).
-				SetInt64Pair(
-					int64(44*fext.RootPowers[1]+38),
-					int64(8*fext.RootPowers[1]+74)),
+			res:       fext.NewElement(uint32(44*fext.RootPowers[1]+38), uint32(8*fext.RootPowers[1]+74), 0, 0),
 		},
 	}
 

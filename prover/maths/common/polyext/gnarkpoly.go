@@ -3,6 +3,7 @@ package polyext
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 )
 
@@ -10,23 +11,25 @@ import (
 // a gnark circuit. The same usage precautions applies for it.
 func EvaluateLagrangeAnyDomainGnark(api frontend.API, domain []gnarkfext.Element, x gnarkfext.Element) []gnarkfext.Element {
 
-	outerAPI := gnarkfext.API{Inner: api}
 	lagrange := make([]gnarkfext.Element, len(domain))
 
 	for i, hi := range domain {
-		lhix := gnarkfext.Element{field.One(), field.Zero()}
+		var lhix gnarkfext.Element
+		lhix.B0.A0 = field.One()
 		for j, hj := range domain {
 			if i == j {
 				// Skip it
 				continue
 			}
+			var factor, den gnarkfext.Element
+
 			// more convenient to store -h instead of h
-			factor := outerAPI.Sub(x, hj)
-			den := outerAPI.Sub(hi, hj) // so x - h
-			den = outerAPI.Inverse(den)
+			factor.Sub(api, x, hj)
+			den.Sub(api, hi, hj) // so x - h
+			den.Inverse(api, den)
 
 			// accumulate the product
-			lhix = outerAPI.Mul(lhix, factor, den)
+			lhix.Mul(api, lhix, factor, den)
 		}
 		lagrange[i] = lhix
 	}
@@ -38,11 +41,10 @@ func EvaluateLagrangeAnyDomainGnark(api frontend.API, domain []gnarkfext.Element
 // EvaluateUnivariateGnark evaluate a univariate polynomial in a gnark circuit.
 // It mirrors [Eval].
 func EvaluateUnivariateGnark(api frontend.API, pol []gnarkfext.Element, x gnarkfext.Element) gnarkfext.Element {
-	res := gnarkfext.Element{frontend.Variable(0), frontend.Variable(0)}
-	outerAPI := gnarkfext.API{Inner: api}
+	var res gnarkfext.Element
 	for i := len(pol) - 1; i >= 0; i-- {
-		res = outerAPI.Mul(res, x)
-		res = outerAPI.Add(res, pol[i])
+		res.Mul(api, res, x)
+		res.Add(api, res, pol[i])
 	}
 	return res
 }

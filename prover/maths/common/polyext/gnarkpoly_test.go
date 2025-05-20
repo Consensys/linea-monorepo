@@ -17,17 +17,31 @@ func TestGnarkEval(t *testing.T) {
 	t.Run("normal-poly", func(t *testing.T) {
 
 		def := func(api frontend.API) error {
-			outerAPI := gnarkfext.API{Inner: api}
 			var (
-				pol      = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(1, 2, 3, 4, -1, -2))
-				x        = gnarkfext.Element{2, 1}
+				pol = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(1, 2, 3, 4, -1, -2))
+				x   = gnarkfext.Element{
+					B0: gnarkfext.E2{
+						A0: 2,
+						A1: 1,
+					},
+					B1: gnarkfext.E2{
+						A0: 0,
+						A1: 0,
+					},
+				}
 				expected = gnarkfext.Element{
-					-5*fext.RootPowers[1] + 3,
-					-2*fext.RootPowers[1] + 1,
+					B0: gnarkfext.E2{
+						A0: -5*fext.RootPowers[1] + 3,
+						A1: -2*fext.RootPowers[1] + 1,
+					},
+					B1: gnarkfext.E2{
+						A0: 0,
+						A1: 0,
+					},
 				}
 				res = EvaluateUnivariateGnark(api, pol, x)
 			)
-			outerAPI.AssertIsEqual(expected, res)
+			expected.AssertIsEqual(api, res)
 			return nil
 		}
 
@@ -36,14 +50,21 @@ func TestGnarkEval(t *testing.T) {
 
 	t.Run("empty-poly", func(t *testing.T) {
 		def := func(api frontend.API) error {
-			outerAPI := gnarkfext.API{Inner: api}
 			var (
-				pol      = vectorext.IntoGnarkAssignment([]fext.Element{})
-				x        = gnarkfext.Element{2, 3}
-				expected = gnarkfext.NewZero()
+				pol = vectorext.IntoGnarkAssignment([]fext.Element{})
+				x   = gnarkfext.Element{B0: gnarkfext.E2{
+					A0: 2,
+					A1: 3,
+				},
+					B1: gnarkfext.E2{
+						A0: 0,
+						A1: 0,
+					},
+				}
+				expected gnarkfext.Element
 				res      = EvaluateUnivariateGnark(api, pol, x)
 			)
-			outerAPI.AssertIsEqual(expected, res)
+			expected.AssertIsEqual(api, res)
 			return nil
 		}
 		gnarkutil.AssertCircuitSolved(t, def)
@@ -56,17 +77,24 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 	t.Run("single-variable", func(t *testing.T) {
 
 		def := func(api frontend.API) error {
-			outerAPI := gnarkfext.API{Inner: api}
 			var (
-				domain   = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(0, 0))
-				x        = gnarkfext.Element{42, 0}
+				domain = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(0, 0))
+				x      = gnarkfext.Element{B0: gnarkfext.E2{
+					A0: 42,
+					A1: 0,
+				},
+					B1: gnarkfext.E2{
+						A0: 0,
+						A1: 0,
+					},
+				}
 				expected = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(1, 0))
 				res      = EvaluateLagrangeAnyDomainGnark(api, domain, x)
 			)
 
 			require.Len(t, res, len(expected))
 			for i := range expected {
-				outerAPI.AssertIsEqual(expected[i], res[i])
+				expected[i].AssertIsEqual(api, res[i])
 			}
 
 			return nil
@@ -78,17 +106,24 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 	t.Run("multiple-variable", func(t *testing.T) {
 
 		def := func(api frontend.API) error {
-			outerAPI := gnarkfext.API{Inner: api}
 			var (
-				domain   = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(0, 0, 1, 0))
-				x        = gnarkfext.Element{42, 0}
+				domain = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(0, 0, 1, 0))
+				x      = gnarkfext.Element{B0: gnarkfext.E2{
+					A0: 42,
+					A1: 0,
+				},
+					B1: gnarkfext.E2{
+						A0: 0,
+						A1: 0,
+					},
+				}
 				expected = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(-41, 0, 42, 0))
 				res      = EvaluateLagrangeAnyDomainGnark(api, domain, x)
 			)
 
 			require.Len(t, res, len(expected))
 			for i := range expected {
-				outerAPI.AssertIsEqual(expected[i], res[i])
+				expected[i].AssertIsEqual(api, res[i])
 			}
 
 			return nil

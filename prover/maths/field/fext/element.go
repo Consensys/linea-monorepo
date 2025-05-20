@@ -1,6 +1,8 @@
 package fext
 
 import (
+	"math/rand/v2"
+
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
@@ -22,4 +24,23 @@ var RootPowers = []int{1, 3} // ??
 
 func BatchInvertE4(a []Element) []Element {
 	return extensions.BatchInvertE4(a)
+}
+
+/*
+Currently, this function only sets the first coordinate of the field extension
+*/
+func NewFromString(s string) (res Element) {
+	res.B0.A0 = field.NewFromString(s)
+	return res
+}
+
+func PseudoRand(rng *rand.Rand) Element {
+
+	result := new(Element).SetZero()
+	result.B0.A0 = field.PseudoRand(rng)
+	result.B0.A1 = field.PseudoRand(rng)
+	result.B1.A0 = field.PseudoRand(rng)
+	result.B1.A1 = field.PseudoRand(rng)
+
+	return *result
 }
