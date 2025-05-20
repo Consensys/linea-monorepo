@@ -80,7 +80,6 @@ services:
     hostname: l2-node-besu
     container_name: l2-node-besu
     image: consensys/linea-besu-package:${BESU_PACKAGE_TAG:-beta-v2.1-rc16-20250520093448-845d1ac}
-    platform: "linux/amd64"
     profiles: [ "l2", "l2-bc", "debug", "external-to-monorepo" ]
     depends_on:
       sequencer:
