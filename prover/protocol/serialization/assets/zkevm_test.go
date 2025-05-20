@@ -1,4 +1,4 @@
-package serdetests
+package assets
 
 import (
 	"fmt"
@@ -14,8 +14,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/publicInput"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager"
 )
+
+var z = test_utils.GetZkEVM()
 
 // serializeValue serializes a value using the serialization package.
 func serializeValue(value interface{}) ([]byte, error) {
@@ -26,10 +29,29 @@ func serializeValue(value interface{}) ([]byte, error) {
 	return serializedData, nil
 }
 
-func TestSerdeZKEVM(t *testing.T) {
-	z := test_utils.GetZkEVM()
+func TestSerdeZkEVMFull(t *testing.T) {
 	if z == nil {
-		t.Fatal("GetZkEVM returned nil")
+		t.Skip("GetZKEVM() is nil")
+	}
+
+	serZkEVM, err := SerializeZkEVM(z)
+	if err != nil {
+		t.Fatal("error during serializing zkEVM")
+	}
+
+	deSerZkEVM, err := DeserializeZkEVM(serZkEVM)
+	if err != nil {
+		t.Fatal("error during deserializing zkEVM")
+	}
+
+	if !test_utils.CompareExportedFields(z, deSerZkEVM) {
+		t.Fatalf("Mis-matched fields after serde ZkEVM (ignoring unexported fields)")
+	}
+}
+
+func TestSerdeZKEVM(t *testing.T) {
+	if z == nil {
+		t.Fatal("GetZkEVM() returned nil")
 	}
 
 	// Run existing subtests for attributes
@@ -43,10 +65,47 @@ func TestSerdeZKEVM(t *testing.T) {
 	t.Run("ECDSA", TestSerdeECDSA)
 	t.Run("Modexp", TestSerdeModexp)
 	t.Run("Ecpair", TestSerdeEcpair)
+	t.Run("TestSerdePublicInput", TestSerdePublicInput)
+}
+
+func TestSerdePublicInput(t *testing.T) {
+
+	if z == nil {
+		t.Fatal("GetZkEVM returned nil")
+	}
+	if z.PublicInput == nil {
+		t.Fatal("PublicInput field is nil")
+	}
+	if z.WizardIOP == nil {
+		t.Fatal("WizardIOP field is nil")
+	}
+
+	// Serialize the original PublicInput
+	piSer, err := serialization.SerializeValue(reflect.ValueOf(z.PublicInput), serialization.DeclarationMode)
+	if err != nil {
+		t.Fatalf("Failed to serialize PublicInput: %v", err)
+	}
+
+	// Use the original WizardIOP as the context for deserialization
+	comp := z.WizardIOP
+
+	// Deserialize into a new PublicInput
+	deserializedVal, err := serialization.DeserializeValue(piSer, serialization.DeclarationMode, reflect.TypeOf(&publicInput.PublicInput{}), comp)
+	if err != nil {
+		t.Fatalf("Failed to deserialize PublicInput: %v", err)
+	}
+	deserialized, ok := deserializedVal.Interface().(*publicInput.PublicInput)
+	if !ok {
+		t.Fatalf("Deserialized value is not *publicInput.PublicInput: got %T", deserializedVal.Interface())
+	}
+
+	// Compare structs while ignoring unexported fields
+	if !test_utils.CompareExportedFields(z.PublicInput, deserialized) {
+		t.Fatalf("Mis-matched fields after serde PublicInput (ignoring unexported fields)")
+	}
 }
 
 func TestSerdeModexp(t *testing.T) {
-	z := test_utils.GetZkEVM()
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -80,7 +139,7 @@ func TestSerdeModexp(t *testing.T) {
 }
 
 func TestSerdeECDSA(t *testing.T) {
-	z := test_utils.GetZkEVM()
+
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -114,7 +173,7 @@ func TestSerdeECDSA(t *testing.T) {
 }
 
 func TestSerdeEcadd(t *testing.T) {
-	z := test_utils.GetZkEVM()
+
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -148,7 +207,7 @@ func TestSerdeEcadd(t *testing.T) {
 }
 
 func TestSerdeEcmul(t *testing.T) {
-	z := test_utils.GetZkEVM()
+
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -182,7 +241,7 @@ func TestSerdeEcmul(t *testing.T) {
 }
 
 func TestSerdeEcpair(t *testing.T) {
-	z := test_utils.GetZkEVM()
+
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -217,7 +276,7 @@ func TestSerdeEcpair(t *testing.T) {
 
 // TestArithmetization tests serialization and deserialization of the Arithmetization field.
 func TestSerdeArithmetization(t *testing.T) {
-	z := test_utils.GetZkEVM()
+
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -252,7 +311,7 @@ func TestSerdeArithmetization(t *testing.T) {
 
 // TestKeccak tests serialization and deserialization of the Keccak field.
 func TestSerdeKeccak(t *testing.T) {
-	z := test_utils.GetZkEVM()
+
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -287,7 +346,7 @@ func TestSerdeKeccak(t *testing.T) {
 
 // TestSha2 tests serialization and deserialization of the Sha2 field.
 func TestSerdeSha2(t *testing.T) {
-	z := test_utils.GetZkEVM()
+
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -322,7 +381,7 @@ func TestSerdeSha2(t *testing.T) {
 
 // TestCompiledIOP tests serialization and deserialization of the WizardIOP field.
 func TestSerdeCompiledIOP(t *testing.T) {
-	z := test_utils.GetZkEVM()
+
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -417,7 +476,7 @@ func TestSerdeCompiledIOP(t *testing.T) {
 
 // TestStateManager tests serialization and deserialization of the StateManager field.
 func TestSerdeStateManager(t *testing.T) {
-	z := test_utils.GetZkEVM()
+
 	if z == nil {
 		t.Fatal("GetZkEVM returned nil")
 	}
@@ -448,5 +507,4 @@ func TestSerdeStateManager(t *testing.T) {
 	if !test_utils.CompareExportedFields(z.StateManager, deserialized) {
 		t.Fatalf("Mis-matched fields after serde StateManager (ignoring unexported fields)")
 	}
-
 }

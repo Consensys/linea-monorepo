@@ -1,4 +1,4 @@
-package serdetests
+package assets
 
 import (
 	"fmt"
@@ -11,14 +11,14 @@ import (
 )
 
 var (
-	zkevm      = test_utils.GetZkEVM()
-	affinities = test_utils.GetAffinities(zkevm)
+	zkEVM      = test_utils.GetZkEVM()
+	affinities = test_utils.GetAffinities(zkEVM)
 	discoverer = &distributed.StandardModuleDiscoverer{
 		TargetWeight: 1 << 28,
 		Affinities:   affinities,
 		Predivision:  1,
 	}
-	dw = distributed.DistributeWizard(zkevm.WizardIOP, discoverer)
+	dw = distributed.DistributeWizard(zkEVM.WizardIOP, discoverer)
 )
 
 // TestSerdeDistWizard tests serialization and deserialization of DistributedWizard fields.
@@ -193,5 +193,4 @@ func TestSerdeDWCompiledCong(t *testing.T) {
 	if compDef == nil {
 		t.Skipf("No need for serde test due to nil CompiledConglomeration")
 	}
-
 }

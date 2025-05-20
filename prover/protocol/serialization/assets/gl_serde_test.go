@@ -1,4 +1,4 @@
-package serdetests
+package assets
 
 import (
 	"bytes"

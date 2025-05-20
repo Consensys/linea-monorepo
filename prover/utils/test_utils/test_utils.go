@@ -460,8 +460,8 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 		return equal
 	}
 
-	// Handle slices
-	if v1.Kind() == reflect.Slice {
+	// Handle slices or arrays
+	if v1.Kind() == reflect.Slice || v1.Kind() == reflect.Array {
 		if v1.Len() != v2.Len() {
 			fmt.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1, v2, v1.Type())
 			return false
@@ -478,7 +478,7 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 
 	// For other types, use DeepEqual and log if mismatched
 	if !reflect.DeepEqual(a, b) {
-		fmt.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
+		fmt.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type_v1: %v type_v2: %v)\n", path, a, b, v1.Type(), v2.Type())
 		return false
 	}
 	return true
