@@ -35,7 +35,7 @@ func TestScanByteStream(t *testing.T) {
 				mustDecodeHex("0x00112233445566778899aabbccddeeff"),
 			},
 			nbLimbsCols: 2,
-			bytesPerRow: totalLimbSize,
+			bytesPerRow: TotalLimbSize,
 		},
 		{
 			name: "4 limb columns (4 bytes per column)",
@@ -43,7 +43,7 @@ func TestScanByteStream(t *testing.T) {
 				mustDecodeHex("0x00112233445566778899aabbccddeeff"),
 			},
 			nbLimbsCols: 4,
-			bytesPerRow: totalLimbSize,
+			bytesPerRow: TotalLimbSize,
 		},
 		{
 			name: "8 limb columns (2 bytes per column)",
@@ -51,7 +51,7 @@ func TestScanByteStream(t *testing.T) {
 				mustDecodeHex("0x00112233445566778899aabbccddeeff"),
 			},
 			nbLimbsCols: 8,
-			bytesPerRow: totalLimbSize,
+			bytesPerRow: TotalLimbSize,
 		},
 		{
 			name: "16 limb columns (1 byte per column)",
@@ -59,7 +59,7 @@ func TestScanByteStream(t *testing.T) {
 				mustDecodeHex("0x00112233445566778899aabbccddeeff"),
 			},
 			nbLimbsCols: 16,
-			bytesPerRow: totalLimbSize,
+			bytesPerRow: TotalLimbSize,
 		},
 		{
 			name: "Mixed size streams with 4 columns",
@@ -69,7 +69,7 @@ func TestScanByteStream(t *testing.T) {
 				mustDecodeHex("0x00112233445566778899aabbccddeeff00"), // 17 bytes - spans multiple rows
 			},
 			nbLimbsCols: 4,
-			bytesPerRow: totalLimbSize,
+			bytesPerRow: TotalLimbSize,
 		},
 		{
 			name: "Uneven division with 3 columns",
@@ -77,7 +77,7 @@ func TestScanByteStream(t *testing.T) {
 				mustDecodeHex("0x00112233445566778899aabbccddeeff"), // 16 bytes
 			},
 			nbLimbsCols: 3, // 16/3 = 5.33 bytes per column
-			bytesPerRow: totalLimbSize,
+			bytesPerRow: TotalLimbSize,
 		},
 	}
 
@@ -134,7 +134,7 @@ func (tc *testCase) assignGdbFromStream(run *wizard.ProverRuntime, gdm *GenDataM
 		limbs[j] = common.NewVectorBuilder(gdm.Limbs[j])
 	}
 
-	maxBytesPerLimb := (totalLimbSize + nbCols - 1) / nbCols
+	maxBytesPerLimb := (TotalLimbSize + nbCols - 1) / nbCols
 
 	// Iterate over the streams in test case
 	for hashID, currStream := range tc.streams {

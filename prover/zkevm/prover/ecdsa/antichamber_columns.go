@@ -16,38 +16,28 @@ func (ac *antichamber) cols(withActive bool) []ifaces.Column {
 }
 
 func (ec *EcRecover) cols() []ifaces.Column {
-	return []ifaces.Column{
-		ec.EcRecoverID,
-		ec.Limb,
-		ec.SuccessBit,
-		ec.EcRecoverIndex,
-		ec.EcRecoverIsData,
-		ec.EcRecoverIsRes,
-	}
+	return append(
+		[]ifaces.Column{ec.EcRecoverID},
+		append(
+			ec.Limb[:],
+			ec.SuccessBit, ec.EcRecoverIndex, ec.EcRecoverIsData, ec.EcRecoverIsRes,
+		)...,
+	)
 }
 
 func (ad *Addresses) cols() []ifaces.Column {
-	return []ifaces.Column{
-		ad.AddressHiUntrimmed,
-		ad.AddressHi,
-		ad.AddressLo,
-	}
+	return append(ad.AddressUntrimmed[:], ad.Address[:]...)
 }
 
 func (ts *TxSignature) cols() []ifaces.Column {
-	return []ifaces.Column{
-		ts.IsTxHash,
-		ts.TxHashHi,
-		ts.TxHashLo,
-	}
+	return append([]ifaces.Column{ts.IsTxHash}, ts.TxHash[:]...)
 }
 
 func (ugd *UnalignedGnarkData) cols() []ifaces.Column {
-	return []ifaces.Column{
-		ugd.IsPublicKey,
-		ugd.GnarkIndex,
-		ugd.GnarkData,
-	}
+	return append(
+		[]ifaces.Column{ugd.IsPublicKey, ugd.GnarkIndex},
+		ugd.GnarkData[:]...,
+	)
 }
 
 func (ac *antichamber) unalignedGnarkDataSource() *unalignedGnarkDataSource {
@@ -60,7 +50,6 @@ func (ac *antichamber) unalignedGnarkDataSource() *unalignedGnarkDataSource {
 		SuccessBit: ac.EcRecover.SuccessBit,
 		IsData:     ac.EcRecover.EcRecoverIsData,
 		IsRes:      ac.EcRecover.EcRecoverIsRes,
-		TxHashHi:   ac.TxSignature.TxHashHi,
-		TxHashLo:   ac.TxSignature.TxHashLo,
+		TxHash:     ac.TxHash,
 	}
 }

@@ -2,19 +2,18 @@ package generic
 
 import (
 	"bytes"
-
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
 const (
-	// totalLimbSize is the total size of a limb in bytes.
-	totalLimbSize = 16
+	// TotalLimbSize is the total size of a limb in bytes.
+	TotalLimbSize = 16
 	// nbUnusedBytes is the number of unused bytes in of the limb
 	// represented by the field element. The field element is 32 bytes
 	// long, and the limb is 16 bytes long, so 16 bytes are unused.
-	nbUnusedBytes = field.Bytes - totalLimbSize
+	nbUnusedBytes = field.Bytes - TotalLimbSize
 )
 
 // GenericByteModule encodes the limbs with a left alignment approach as
@@ -63,8 +62,7 @@ func (gdm *GenDataModule) ScanStreams(run *wizard.ProverRuntime) [][]byte {
 		currHashNum field.Element
 	)
 
-	maxNbBytesPerLimb := (totalLimbSize + numСols - 1) / numСols
-
+	maxNbBytesPerLimb := (TotalLimbSize + numСols - 1) / numСols
 	limbs := make([][]field.Element, numСols)
 	for i := uint64(0); i < numСols; i++ {
 		limbs[i] = gdm.Limbs[i].GetColAssignment(run).IntoRegVecSaveAlloc()

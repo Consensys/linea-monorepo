@@ -1,6 +1,8 @@
 package ecdsa
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/crypto/keccak"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -8,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -18,7 +19,18 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
-// Address submodule is responsible for the columns holding the address of the sender,
+const (
+	// addressHiBytes is the size of the leftover from trimmed addressHi part (in bytes).
+	addressHiBytes = 4
+	// addressHiColumns is the number of addressHi columns.
+	addressHiColumns = addressHiBytes / LimbBytes
+	// addressTrimmedBytes size of the trimmed address part (in bytes).
+	addressTrimmedBytes = common.NbLimbU256 - addressHiBytes
+	// addressTrimmedColumns number of columns that represent the trimmed address part.
+	addressTrimmedColumns = addressTrimmedBytes / LimbBytes
+)
+
+// Addresses submodule is responsible for the columns holding the address of the sender,
 // and checking their consistency with the claimed public key
 // (since address is the truncated hash of public key).
 //
@@ -28,9 +40,8 @@ import (
 type Addresses struct {
 
 	// main columns
-	AddressHiUntrimmed ifaces.Column
-	AddressHi          ifaces.Column
-	AddressLo          ifaces.Column
+	AddressUntrimmed [common.NbLimbU256]ifaces.Column
+	Address          [common.NbLimbEthAddress]ifaces.Column
 
 	// filters over address columns
 	IsAddress            ifaces.Column
@@ -39,7 +50,7 @@ type Addresses struct {
 
 	// helper columns for intermediate computations/proofs
 
-	// filter over ecRecover; indicating only the AddressHi from EcRecoverIsRes
+	// filter over ecRecover; indicating only the AddressHi limbs from EcRecoverIsRes
 	// we need this columns just because projection query does not support expressions
 	// as filter. The shifted version of this column by 1 indicates the addressLo from
 	// ecrec.
@@ -56,30 +67,35 @@ type Addresses struct {
 	// a column of all 16 indicating that all 16 bytes of public key should be hashed.
 	Col16 ifaces.Column
 
-	// used as the hassID for hashing by keccak.
+	// used as the hashID for hashing by keccak.
 	HashNum ifaces.Column
-
-	// columns for decomposition and trimming the HashHi to AddressHi
-	LimbColumnsUntrimmed        byte32cmp.LimbColumns
-	ComputeLimbColumnsUntrimmed wizard.ProverAction
 
 	// providers for keccak, Providers contain the inputs and outputs of keccak hash.
 	Provider generic.GenericByteModule
 }
 
-// AddressHi is the trimming of HashHi, taking its last 4bytes.
-const trimmingSize = 4
-
 // newAddress creates an Address struct, declaring native columns and the constraints among them.
 func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antichamber, td *txnData) *Addresses {
 	createCol := createColFn(comp, NAME_ADDRESSES, size)
 	ecRecSize := ecRec.EcRecoverIsRes.Size()
+
+	// Create columns for every 16 bit limb of address
+	address := [common.NbLimbEthAddress]ifaces.Column{}
+	for i := 0; i < common.NbLimbEthAddress; i++ {
+		address[i] = createCol(fmt.Sprintf("ADDRESS_%d", i))
+	}
+
+	// Create columns for every 16 bit limb of addressUntrimmed
+	addressUntrimmed := [common.NbLimbU256]ifaces.Column{}
+	for i := 0; i < common.NbLimbU256; i++ {
+		addressUntrimmed[i] = createCol(fmt.Sprintf("ADRESS_UNTRIMMED_%d", i))
+	}
+
 	// declare the native columns
 	addr := &Addresses{
-		AddressHi:            createCol("ADDRESS_HI"),
-		AddressLo:            createCol("ADDRESS_LO"),
+		Address:              address,
+		AddressUntrimmed:     addressUntrimmed,
 		IsAddress:            createCol("IS_ADDRESS"),
-		AddressHiUntrimmed:   createCol("ADRESSHI_UNTRIMMED"),
 		Col16:                verifiercol.NewConstantCol(field.NewElement(16), size, "ecdsa-col16"),
 		IsAddressHiEcRec:     comp.InsertCommit(0, ifaces.ColIDf("ISADRESS_HI_ECREC"), ecRecSize),
 		IsAddressFromEcRec:   createCol("ISADRESS_FROM_ECREC"),
@@ -104,7 +120,7 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 		addr.HashNum,
 	)
 
-	// check the  trimming of hashHi  to the addressHi
+	// check the trimming of address limb columns to addressUntrimmed limb columns
 	addr.csAddressTrimming(comp)
 
 	// check that IsAddressHiEcRec is well-formed
@@ -112,35 +128,48 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 
 	// projection from ecRecover to address columns
 	// ecdata is already projected over our ecRecover. Thus, we only project from our ecrecover.
-	comp.InsertProjection(ifaces.QueryIDf("Project_AddressHi_EcRec"), query.ProjectionInput{ColumnA: []ifaces.Column{ecRec.Limb},
-		ColumnB: []ifaces.Column{addr.AddressHi},
-		FilterA: addr.IsAddressHiEcRec,
-		FilterB: addr.IsAddressFromEcRec})
+
+	// Check that first 6 elements (trimmed 12 bytes) of address higher part are all 0
+	for i := 0; i < addressTrimmedColumns; i++ {
+		comp.InsertGlobal(0, ifaces.QueryIDf("Trimmed_Bytes_Zeros_%d", i),
+			sym.Mul(addr.IsAddressHiEcRec, addr.IsAddressFromEcRec, ecRec.Limb[i]),
+		)
+	}
+
+	comp.InsertProjection(ifaces.QueryIDf("Project_AddressHi_EcRec"),
+		query.ProjectionInput{
+			ColumnA: ecRec.Limb[addressTrimmedColumns:],
+			ColumnB: addr.Address[:addressHiColumns],
+			FilterA: addr.IsAddressHiEcRec,
+			FilterB: addr.IsAddressFromEcRec,
+		},
+	)
 
 	comp.InsertProjection(ifaces.QueryIDf("Project_AddressLo_EcRec"),
-		query.ProjectionInput{ColumnA: []ifaces.Column{ecRec.Limb},
-			ColumnB: []ifaces.Column{addr.AddressLo},
-			FilterA: addr.IsAddressLoEcRec.Natural,
-			FilterB: addr.IsAddressFromEcRec})
+		query.ProjectionInput{
+			ColumnA: ecRec.Limb[:],
+			ColumnB: addr.Address[addressHiColumns:],
+			FilterA: column.Shift(addr.IsAddressHiEcRec, -1),
+			FilterB: addr.IsAddressFromEcRec,
+		},
+	)
 
 	// projection from txn-data to address columns
-	comp.InsertProjection(ifaces.QueryIDf("Project_AddressHi_TxnData"),
-		query.ProjectionInput{ColumnA: []ifaces.Column{td.FromHi},
-			ColumnB: []ifaces.Column{addr.AddressHi},
+	comp.InsertProjection(ifaces.QueryIDf("Project_AddressUntrimmed_TxnData"),
+		query.ProjectionInput{
+			ColumnA: td.From[:],
+			ColumnB: addressUntrimmed[:],
 			FilterA: td.IsFrom,
-			FilterB: addr.IsAddressFromTxnData})
-
-	comp.InsertProjection(ifaces.QueryIDf("Project_AddressLO_TxnData"),
-		query.ProjectionInput{ColumnA: []ifaces.Column{td.FromLo},
-			ColumnB: []ifaces.Column{addr.AddressLo},
-			FilterA: td.IsFrom,
-			FilterB: addr.IsAddressFromTxnData})
+			FilterB: addr.IsAddressFromTxnData,
+		},
+	)
 
 	// impose that hashNum = ac.ID + 1
 	comp.InsertGlobal(0, ifaces.QueryIDf("Hash_NUM_IS_ID"),
 		sym.Mul(ac.IsActive,
 			sym.Sub(addr.HashNum, ac.ID, 1)),
 	)
+
 	// assign the keccak provider
 	addr.Provider = addr.GetProvider(comp, addr.HashNum, ac.UnalignedGnarkData)
 
@@ -164,21 +193,11 @@ func (addr *Addresses) csIsAddressHiEcRec(comp *wizard.CompiledIOP, ecRec *EcRec
 			addr.IsAddressHiEcRec))
 }
 
-// The constraints for trimming the HashHi to AddressHi
+// The constraints for trimming the addressUntrimmed to address
 func (addr *Addresses) csAddressTrimming(comp *wizard.CompiledIOP) {
-
-	bitPerLimbs := 16
-	addr.LimbColumnsUntrimmed, addr.ComputeLimbColumnsUntrimmed = byte32cmp.Decompose(comp, addr.AddressHiUntrimmed, 8, bitPerLimbs)
-	// addr.LimbColumnsTrimmed, addr.computeLimbColumnsTrimmed = byte32cmp.Decompose(comp, addr.AddressHi, 2, 16)
-
-	// recompose two first limbs to get AddressHi
-	// since decomposition is in little-endian, but address is in big-endian, we get the first limbs.
-	a := addr.LimbColumnsUntrimmed.Limbs[0]
-	b := addr.LimbColumnsUntrimmed.Limbs[1]
-	pow2 := sym.NewConstant(1 << bitPerLimbs)
-	expr := sym.Add(a, sym.Mul(pow2, b))
-
-	comp.InsertGlobal(0, ifaces.QueryIDf("Address_Trimming"), sym.Sub(expr, addr.AddressHi))
+	for i := 0; i < common.NbLimbEthAddress; i++ {
+		comp.InsertGlobal(0, ifaces.QueryIDf("Address_Trimming_%d", i), sym.Sub(addr.Address[i], addr.AddressUntrimmed[i+addressTrimmedColumns]))
+	}
 }
 
 // It builds a provider from  public key extracted from Gnark-Data (as hash input) and addresses (as output).
@@ -189,11 +208,11 @@ func (addr *Addresses) GetProvider(comp *wizard.CompiledIOP, id ifaces.Column, u
 	return provider
 }
 
-// It builds a GenericByteModule from Address columns and Public-Key/GnarkData columns.
+// It builds a GenericByteModule from Address columns and Public-Key/GnarkDataLA columns.
 func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGnarkData) (pkModule generic.GenericByteModule) {
 	pkModule.Data = generic.GenDataModule{
 		HashNum: id,
-		Limb:    uaGnark.GnarkData,
+		Limbs:   uaGnark.GnarkDataLA[:],
 
 		// a column of all 16, since all the bytes of public key are used in hashing
 		NBytes: addr.Col16,
@@ -202,8 +221,8 @@ func (addr *Addresses) buildGenericModule(id ifaces.Column, uaGnark *UnalignedGn
 	}
 
 	pkModule.Info = generic.GenInfoModule{
-		HashHi:   addr.AddressHiUntrimmed,
-		HashLo:   addr.AddressLo,
+		HashHi:   addr.Address[:addressHiColumns],
+		HashLo:   addr.Address[addressHiColumns:],
 		IsHashHi: addr.IsAddress,
 		IsHashLo: addr.IsAddress,
 	}
@@ -255,57 +274,74 @@ func (addr *Addresses) assignMainColumns(
 	split := splitAt(nbEcRecover)
 	n := nbRowsPerEcRec
 
-	permTrace := keccak.GenerateTrace(pkModule.Data.ScanStreams(run))
+	streams := pkModule.Data.ScanStreams(run)
+	permTrace := keccak.GenerateTrace(streams)
 
-	hashHi := make([]field.Element, 0, len(permTrace.HashOutPut))
-	hashLo := make([]field.Element, 0, len(permTrace.HashOutPut))
+	// Initialize an array of addressUntrimmedColumns limbs columns
+	addressUntrimmedColumns := make([][]field.Element, 0, common.NbLimbU256)
+	for i := 0; i < common.NbLimbU256; i++ {
+		addressUntrimmedColumns = append(addressUntrimmedColumns, make([]field.Element, 0, len(permTrace.HashOutPut)))
+	}
+
+	// Initialize an array of address limbs columns
+	addressColumns := make([][]field.Element, 0, common.NbLimbEthAddress)
+	for i := 0; i < common.NbLimbEthAddress; i++ {
+		addressColumns = append(addressColumns, make([]field.Element, 0, len(permTrace.HashOutPut)))
+	}
+
 	isHash := make([]field.Element, 0, len(permTrace.HashOutPut))
-	trimmedHi := make([]field.Element, 0, len(permTrace.HashOutPut))
-
-	var v, w, u field.Element
 	for _, digest := range permTrace.HashOutPut {
-
-		hi := digest[:halfDigest]
-		lo := digest[halfDigest:]
-		trimmed := hi[halfDigest-trimmingSize:]
-
-		v.SetBytes(hi[:])
-		w.SetBytes(lo[:])
-		u.SetBytes(trimmed[:])
-
-		if len(hashHi) == split {
+		if len(addressColumns[len(addressColumns)-1]) == split {
 			n = nbRowsPerTxSign
 		}
-		repeatLO := vector.Repeat(w, n)
-		repeatHi := vector.Repeat(v, n)
-		repeatTrimmedHi := vector.Repeat(u, n)
+
+		// Initialize limb values for each column of addressUntrimmed
+		addressUntrimmed := SplitBytes(digest[:])
+		for j, limb := range addressUntrimmed {
+			var element field.Element
+			element.SetBytes(limb[:])
+
+			repeat := vector.Repeat(element, n)
+			addressUntrimmedColumns[j] = append(addressUntrimmedColumns[j], repeat...)
+		}
+
+		// Initialize limb values for each column of address
+		address := SplitBytes(digest[addressTrimmedBytes:])
+		for j, limb := range address {
+			var element field.Element
+			element.SetBytes(limb[:])
+
+			repeat := vector.Repeat(element, n)
+			addressColumns[j] = append(addressColumns[j], repeat...)
+		}
+
 		repeatIsTxHash := vector.Repeat(field.Zero(), n-1)
 
-		hashHi = append(hashHi, repeatHi...)
-		hashLo = append(hashLo, repeatLO...)
 		isHash = append(isHash, field.One())
 		isHash = append(isHash, repeatIsTxHash...)
-		trimmedHi = append(trimmedHi, repeatTrimmedHi...)
 	}
 
 	isFromEcRec := isHash[:split]
 	isFromTxnData := vector.Repeat(field.Zero(), split)
 	isFromTxnData = append(isFromTxnData, isHash[split:]...)
 
-	run.AssignColumn(addr.AddressHiUntrimmed.GetColID(), smartvectors.RightZeroPadded(hashHi, size))
-	run.AssignColumn(addr.AddressLo.GetColID(), smartvectors.RightZeroPadded(hashLo, size))
+	// Assign values to columns
+	// We do a reverse of address columns since the address was storing in big-endian format.
+	for i := 0; i < common.NbLimbU256; i++ {
+		run.AssignColumn(addr.AddressUntrimmed[i].GetColID(), smartvectors.RightZeroPadded(addressUntrimmedColumns[i], size))
+	}
+
+	for i := 0; i < common.NbLimbEthAddress; i++ {
+		run.AssignColumn(addr.Address[i].GetColID(), smartvectors.RightZeroPadded(addressColumns[i], size))
+	}
+
 	run.AssignColumn(addr.IsAddress.GetColID(), smartvectors.RightZeroPadded(isHash, size))
-	run.AssignColumn(addr.AddressHi.GetColID(), smartvectors.RightZeroPadded(trimmedHi, size))
 	run.AssignColumn(addr.IsAddressFromEcRec.GetColID(), smartvectors.RightZeroPadded(isFromEcRec, size))
 	run.AssignColumn(addr.IsAddressFromTxnData.GetColID(), smartvectors.RightZeroPadded(isFromTxnData, size))
-
 }
 
 // It assigns the helper columns
 func (addr *Addresses) assignHelperColumns(run *wizard.ProverRuntime, ecRec *EcRecover) {
-
-	// assign LimbColumns from decomposition via proverAction
-	addr.ComputeLimbColumnsUntrimmed.Run(run)
 
 	// assign isAddressHiEcRec
 	isRes := ecRec.EcRecoverIsRes.GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -345,9 +381,8 @@ func (td *txnData) csTxnData(comp *wizard.CompiledIOP) {
 
 // txndata represents the txn_data module from the arithmetization side.
 type txnData struct {
-	FromHi ifaces.Column
-	FromLo ifaces.Column
-	Ct     ifaces.Column
+	From [common.NbLimbU256]ifaces.Column
+	Ct   ifaces.Column
 
 	// helper column
 	IsFrom    ifaces.Column

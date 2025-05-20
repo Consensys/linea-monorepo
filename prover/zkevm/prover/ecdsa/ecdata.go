@@ -1,12 +1,14 @@
 package ecdsa
 
 import (
+	"fmt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	commoncs "github.com/consensys/linea-monorepo/prover/zkevm/prover/common/common_constraints"
 )
 
@@ -22,7 +24,7 @@ const (
 
 type EcRecover struct {
 	EcRecoverID     ifaces.Column
-	Limb            ifaces.Column
+	Limb            [common.NbLimbU128]ifaces.Column
 	SuccessBit      ifaces.Column
 	EcRecoverIndex  ifaces.Column
 	EcRecoverIsData ifaces.Column
@@ -37,7 +39,7 @@ type EcRecover struct {
 type ecDataSource struct {
 	CsEcrecover ifaces.Column
 	ID          ifaces.Column
-	Limb        ifaces.Column
+	Limb        [common.NbLimbU128]ifaces.Column
 	SuccessBit  ifaces.Column
 	Index       ifaces.Column
 	IsData      ifaces.Column
@@ -70,7 +72,6 @@ func newEcRecover(comp *wizard.CompiledIOP, limits *Settings, src *ecDataSource)
 	createCol := createColFn(comp, NAME_ECRECOVER, limits.sizeAntichamber())
 	res := &EcRecover{
 		EcRecoverID:       createCol("ECRECOVER_ID"),
-		Limb:              createCol("LIMB"),
 		SuccessBit:        createCol("SUCCESS_BIT"),
 		EcRecoverIndex:    createCol("ECRECOVER_INDEX"),
 		EcRecoverIsData:   createCol("ECRECOVER_IS_DATA"),
@@ -79,6 +80,11 @@ func newEcRecover(comp *wizard.CompiledIOP, limits *Settings, src *ecDataSource)
 
 		Settings: limits,
 	}
+
+	for i := 0; i < common.NbLimbU128; i++ {
+		res.Limb[i] = createCol(fmt.Sprintf("LIMB_%d", i))
+	}
+
 	res.csEcDataProjection(comp, src)
 	res.csConstraintAuxProjectionMask(comp)
 
@@ -92,33 +98,41 @@ func (ec *EcRecover) Assign(run *wizard.ProverRuntime, src *ecDataSource) {
 func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDataSource) {
 
 	var (
+		sourceLimb [common.NbLimbU128]ifaces.ColAssignment
+
 		nbInstances       = src.nbActualInstances(run)
 		currRow           = int(0)
 		sourceCsEcRecover = run.GetColumn(src.CsEcrecover.GetColID())
 		sourceID          = run.GetColumn(src.ID.GetColID())
-		sourceLimb        = run.GetColumn(src.Limb.GetColID())
 		sourceSuccessBit  = run.GetColumn(src.SuccessBit.GetColID())
 		sourceIndex       = run.GetColumn(src.Index.GetColID())
 		sourceIsData      = run.GetColumn(src.IsData.GetColID())
 		sourceIsRes       = run.GetColumn(src.IsRes.GetColID())
-		//
-		resEcRecoverID, resLimb, resSuccessBit, resEcRecoverIndex   []field.Element
+
+		resEcRecoverID, resSuccessBit, resEcRecoverIndex            []field.Element
 		resEcRecoverIsData, resEcRecoverIsRes, resAuxProjectionMask []field.Element
 	)
 
+	for i := 0; i < common.NbLimbU128; i++ {
+		sourceLimb[i] = run.GetColumn(src.Limb[i].GetColID())
+
+		if sourceID.Len() != sourceLimb[i].Len() || sourceLimb[i].Len() != sourceSuccessBit.Len() {
+			panic("all source limb columns must have the same length")
+		}
+	}
+
 	if sourceCsEcRecover.Len() != sourceID.Len() ||
-		sourceID.Len() != sourceLimb.Len() ||
-		sourceLimb.Len() != sourceSuccessBit.Len() ||
 		sourceSuccessBit.Len() != sourceIndex.Len() ||
 		sourceIndex.Len() != sourceIsData.Len() ||
 		sourceIsData.Len() != sourceIsRes.Len() {
 		panic("all source columns must have the same length")
 	}
 
+	var resElements [common.NbLimbU128][]field.Element
 	for i := 0; i < nbInstances; i++ {
 
 		var (
-			rowEcRecoverID, rowLimb, rowSuccessBit, rowEcRecoverIndex   [nbRowsPerEcRec]field.Element
+			rowEcRecoverID, rowSuccessBit, rowEcRecoverIndex,
 			rowEcRecoverIsData, rowEcRecoverIsRes, rowAuxProjectionMask [nbRowsPerEcRec]field.Element
 		)
 
@@ -130,10 +144,15 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 			}
 		}
 
+		var colElements [common.NbLimbU128][nbRowsPerEcRec]field.Element
 		for j := 0; j < nbRowsPerEcRecFetching; j++ {
 			sourceIdx := currRow + j
 			rowEcRecoverID[j] = sourceID.Get(sourceIdx)
-			rowLimb[j] = sourceLimb.Get(sourceIdx)
+
+			for k := 0; k < common.NbLimbU128; k++ {
+				colElements[k][j] = sourceLimb[k].Get(sourceIdx)
+			}
+
 			rowSuccessBit[j] = sourceSuccessBit.Get(sourceIdx)
 			rowEcRecoverIndex[j] = sourceIndex.Get(sourceIdx)
 			rowEcRecoverIsData[j] = sourceIsData.Get(sourceIdx)
@@ -146,7 +165,11 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 		currRow += nbRowsPerEcRecFetching
 
 		resEcRecoverID = append(resEcRecoverID, rowEcRecoverID[:]...)
-		resLimb = append(resLimb, rowLimb[:]...)
+
+		for j := 0; j < common.NbLimbU128; j++ {
+			resElements[j] = append(resElements[j], colElements[j][:]...)
+		}
+
 		resSuccessBit = append(resSuccessBit, rowSuccessBit[:]...)
 		resEcRecoverIndex = append(resEcRecoverIndex, rowEcRecoverIndex[:]...)
 		resEcRecoverIsData = append(resEcRecoverIsData, rowEcRecoverIsData[:]...)
@@ -157,7 +180,11 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 	// assign this submodule components
 	size := ec.Settings.sizeAntichamber()
 	run.AssignColumn(ec.EcRecoverID.GetColID(), smartvectors.RightZeroPadded(resEcRecoverID, size))
-	run.AssignColumn(ec.Limb.GetColID(), smartvectors.RightZeroPadded(resLimb, size))
+
+	for i := 0; i < common.NbLimbU128; i++ {
+		run.AssignColumn(ec.Limb[i].GetColID(), smartvectors.RightZeroPadded(resElements[i], size))
+	}
+
 	run.AssignColumn(ec.SuccessBit.GetColID(), smartvectors.RightZeroPadded(resSuccessBit, size))
 	run.AssignColumn(ec.EcRecoverIndex.GetColID(), smartvectors.RightZeroPadded(resEcRecoverIndex, size))
 	run.AssignColumn(ec.EcRecoverIsData.GetColID(), smartvectors.RightZeroPadded(resEcRecoverIsData, size))
@@ -166,11 +193,24 @@ func (ec *EcRecover) assignFromEcDataSource(run *wizard.ProverRuntime, src *ecDa
 }
 
 func (ec *EcRecover) csEcDataProjection(comp *wizard.CompiledIOP, src *ecDataSource) {
+	columnsA := append(
+		ec.Limb[:],
+		ec.EcRecoverID, ec.SuccessBit, ec.EcRecoverIndex, ec.EcRecoverIsData, ec.EcRecoverIsRes,
+	)
+
+	columnsB := append(
+		src.Limb[:],
+		src.ID, src.SuccessBit, src.Index, src.IsData, src.IsRes,
+	)
+
 	comp.InsertProjection(ifaces.QueryIDf("%v_PROJECT_ECDATA", NAME_ECRECOVER),
-		query.ProjectionInput{ColumnA: []ifaces.Column{ec.EcRecoverID, ec.Limb, ec.SuccessBit, ec.EcRecoverIndex, ec.EcRecoverIsData, ec.EcRecoverIsRes},
-			ColumnB: []ifaces.Column{src.ID, src.Limb, src.SuccessBit, src.Index, src.IsData, src.IsRes},
+		query.ProjectionInput{
+			ColumnA: columnsA,
+			ColumnB: columnsB,
 			FilterA: ec.AuxProjectionMask,
-			FilterB: src.CsEcrecover})
+			FilterB: src.CsEcrecover,
+		},
+	)
 }
 
 func (ec *EcRecover) csConstraintAuxProjectionMask(comp *wizard.CompiledIOP) {
