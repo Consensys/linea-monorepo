@@ -34,6 +34,13 @@ func runController(ctx context.Context, cfg *config.Config) {
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGTERM)
 	defer stop()
 
+	// cmdContext is the context we provide for the command execution. In
+	// spot-instance mode, the context is suborginated to the ctx.
+	cmdContext := context.Background()
+	if cfg.Controller.SpotInstanceMode {
+		cmdContext = ctx
+	}
+
 	go func() {
 		// This goroutine's raison d'etre is to log a message immediately when a
 		// cancellation request (e.g., ctx expiration/cancellation, SIGTERM, etc.)
@@ -70,9 +77,9 @@ func runController(ctx context.Context, cfg *config.Config) {
 				numRetrySoFar++
 				noJobFoundMsg := "found no jobs in the queue"
 				if numRetrySoFar > 5 {
-					cLog.Debugf(noJobFoundMsg)
+					cLog.Debug(noJobFoundMsg)
 				} else {
-					cLog.Infof(noJobFoundMsg)
+					cLog.Info(noJobFoundMsg)
 				}
 				continue
 			}
@@ -81,7 +88,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 			numRetrySoFar = 0
 
 			// Run the command (potentially retrying in large mode)
-			status := executor.Run(job)
+			status := executor.Run(cmdContext, job)
 
 			// createColumns the job according to the status we got
 			switch {
@@ -162,6 +169,24 @@ func runController(ctx context.Context, cfg *config.Config) {
 					cLog.Errorf(
 						"error renaming %v to %v: %v",
 						job.InProgressPath(), toLargePath, err,
+					)
+				}
+
+			case status.ExitCode == CodeKilledByUs:
+				// When receiving the killed-by-us code, the prover will put
+				// back the file in the queue. We do not immediately exit the
+				// loop as there is already a clause to exit the loop in case
+				// of sigterm at the top of the loop. So it will immediately
+				// exit as soon as we enter the next iteration.
+				cLog.Infof("Job %v was killed by us. Reputting it in the request folder", job.OriginalFile)
+
+				if err := os.Rename(job.InProgressPath(), job.OriginalPath()); err != nil {
+					// When that happens, the only thing left to do is to log
+					// the error and let the inprogress file where it is. It
+					// will likely require a human intervention.
+					cLog.Errorf(
+						"Error renaming %v to %v: %v",
+						job.InProgressPath(), job.OriginalPath(), err,
 					)
 				}
 
