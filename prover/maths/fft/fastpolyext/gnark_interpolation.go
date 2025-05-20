@@ -45,7 +45,8 @@ func InterpolateGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfext.El
 	for i := 0; i < n; i++ {
 
 		if i > 0 {
-			omegaI = api.MulByElement(omegaI, domain.GeneratorInv)
+			omegaI.MulByFp(api, omegaI, domain.GeneratorInv)
+
 		}
 
 		// If the current term is the constant zero, we continue without generating
@@ -58,11 +59,12 @@ func InterpolateGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfext.El
 			continue
 		}
 
-		xOmegaN := api.Mul(x, omegaI)
-		terms[i] = api.Sub(xOmegaN, gnarkfext.One())
+		var xOmegaN gnarkfext.Element
+		xOmegaN.Mul(api, x, omegaI)
+		terms[i].Sub(api, xOmegaN, gnarkfext.One())
 		// No point doing a batch inverse in a circuit
-		terms[i] = api.Inverse(terms[i])
-		terms[i] = api.Mul(terms[i], poly[i])
+		terms[i].Inverse(api, terms[i])
+		terms[i].Mul(api, terms[i], poly[i])
 	}
 
 	nonNilTerms := make([]gnarkfext.Element, 0, len(terms))
@@ -83,18 +85,18 @@ func InterpolateGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfext.El
 	case len(nonNilTerms) == 1:
 		res = nonNilTerms[0]
 	case len(nonNilTerms) == 2:
-		res = api.Add(nonNilTerms[0], nonNilTerms[1])
+		res.Add(api, nonNilTerms[0], nonNilTerms[1])
 	default:
-		res = api.Add(nonNilTerms[0], nonNilTerms[1], nonNilTerms[2:]...)
+		res.Sum(api, nonNilTerms[0], nonNilTerms[1], nonNilTerms[2:]...)
 	}
 
 	/*
 		Then multiply the res by a factor \frac{g^{1 - n}X^n -g}{n}
 	*/
 	factor := xN
-	factor = api.Sub(factor, one)
-	factor = api.MulByElement(factor, domain.CardinalityInv)
-	res = api.Mul(res, factor)
+	factor.Sub(api, factor, one)
+	factor.MulByFp(api, factor, domain.CardinalityInv)
+	res.Mul(api, res, factor)
 
 	return res
 
