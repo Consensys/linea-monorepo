@@ -28,7 +28,7 @@ func TestEval(t *testing.T) {
 	// expanded form of the polynomial 128 a^4 + 1072 a^3 + 2056 a^2 + 1494 a + 376
 	first := 128*fext.RootPowers[1]*fext.RootPowers[1] + 2056*fext.RootPowers[1] + 376
 	second := 1072*fext.RootPowers[1] + 1494
-	require.Equal(t, y, *new(fext.Element).SetInt64Pair(int64(first), int64(second)))
+	require.Equal(t, y, fext.NewElement(uint32(first), uint32(second), 0, 0))
 }
 
 func TestMul(t *testing.T) {

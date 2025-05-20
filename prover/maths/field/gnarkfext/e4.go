@@ -83,7 +83,7 @@ func (e *Element) Sub(api frontend.API, e1, e2 Element) *Element {
 }
 
 // Mul e2 elmts
-func (e *Element) Mul(api frontend.API, e1, e2 Element) *Element {
+func (e *Element) Mul(api frontend.API, e1, e2 Element, in ...Element) *Element {
 
 	var l1, l2 E2
 	l1.Add(api, e1.B0, e1.B1)
@@ -105,7 +105,11 @@ func (e *Element) Mul(api frontend.API, e1, e2 Element) *Element {
 	l41.MulByNonResidue(api, bd)
 	e.B0.Add(api, ac, l41)
 
-	return e
+	if len(in) > 0 {
+		return e.Mul(api, *e, in[0], in[1:]...)
+	} else {
+		return e
+	}
 }
 
 // Square Element elt

@@ -5,7 +5,7 @@ package ringsis_64_16
 import (
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
 )

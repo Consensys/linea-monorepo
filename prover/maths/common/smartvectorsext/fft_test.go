@@ -274,7 +274,11 @@ func TestFFTFuzzyConsistWithInterpolation(t *testing.T) {
 					omegacoset.Exp(omegacoset, big.NewInt(int64(cosetID)))
 					mulGen := field.NewElement(field.MultiplicativeGen)
 					omegacoset.Mul(&omegacoset, &mulGen)
-					xVal.DivByBase(&xVal, &omegacoset)
+					xVal.B0.A0.Div(&xVal.B0.A0, &omegacoset)
+					xVal.B0.A1.Div(&xVal.B0.A1, &omegacoset)
+					xVal.B1.A0.Div(&xVal.B1.A0, &omegacoset)
+					xVal.B1.A1.Div(&xVal.B1.A1, &omegacoset)
+
 				}
 
 				yCoeff := EvalCoeff(coeffs, xCoeff)

@@ -1,9 +1,13 @@
 package field
 
 import (
+	"math/big"
 	"math/bits"
+	"math/rand/v2"
+	"unsafe"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 type Element = koalabear.Element
@@ -24,22 +28,16 @@ const (
 
 var (
 	RootOfUnity = NewFromString("1791270792")
+	Modulus     = koalabear.Modulus
+	Butterfly   = koalabear.Butterfly
+	NewElement  = koalabear.NewElement
+	BatchInvert = koalabear.BatchInvert
+	One         = koalabear.One
 )
-
-// NewElement constructs a new field element corresponding to an integer.
-var NewElement = koalabear.NewElement
-var BatchInvert = koalabear.BatchInvert
 
 // Zero returns the zero field element
 func Zero() Element {
 	var res Element
-	return res
-}
-
-// One returns the one field element
-func One() Element {
-	var res Element
-	res.SetUint64(1)
 	return res
 }
 
@@ -75,4 +73,38 @@ func ExpToInt(z *Element, x Element, k int) *Element {
 	}
 
 	return z
+}
+
+// PseudoRand generates a field using a pseudo-random number generator
+func PseudoRand(rng *rand.Rand) Element {
+
+	var (
+		bigInt    = &big.Int{}
+		res       = Element{}
+		bareU32   = [1]uint32{rng.Uint32()}
+		bareBytes = *(*[4]byte)(unsafe.Pointer(&bareU32))
+	)
+
+	bigInt.SetBytes(bareBytes[:]).Mod(bigInt, Modulus())
+	res.SetBigInt(bigInt)
+	return res
+}
+
+// PseudoRandTruncated generates a field using a pseudo-random number generator
+func PseudoRandTruncated(rng *rand.Rand, sizeByte int) Element {
+
+	if sizeByte > 4 {
+		utils.Panic("supplied a byteSize larger than 4 (%v), this must be a mistake. Please check that the supplied value is not instead a BIT-size.", sizeByte)
+	}
+
+	var (
+		bigInt    = &big.Int{}
+		res       = Element{}
+		bareU32   = [1]uint32{rng.Uint32()}
+		bareBytes = *(*[4]byte)(unsafe.Pointer(&bareU32))
+	)
+
+	bigInt.SetBytes(bareBytes[:sizeByte]).Mod(bigInt, Modulus())
+	res.SetBigInt(bigInt)
+	return res
 }
