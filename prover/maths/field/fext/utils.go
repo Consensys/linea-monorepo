@@ -23,6 +23,17 @@ func Uint64(z *Element) (uint64, uint64, uint64, uint64) {
 	return uint64(z.B0.A0.Bits()[0]), uint64(z.B0.A1.Bits()[0]), uint64(z.B1.A0.Bits()[0]), uint64(z.B1.A1.Bits()[0])
 }
 
+// NewFromString sets the first coordinate to s
+func NewFromString(s string) Element {
+	var res Element
+	// TODO handle that properly
+	_, err := res.B0.A0.SetString(s)
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
 // SetInt64 sets z to v and returns z
 // ./common/smartvectorsext/fuzzing.go:195:		coeffField.SetInt64(int64(tcase.coeffs[i]))
 // ./common/smartvectorsext/arithmetic_op.go:95:		c.SetInt64(int64(coeff))
@@ -54,6 +65,16 @@ func SetInt64Tuple(z *Element, v1, v2, v3, v4 int64) *Element {
 	z.B1.A0.SetInt64(v3)
 	z.B1.A1.SetInt64(v4)
 	return z // z.toMont()
+}
+
+// FromInt64Tuple returns an Element from a tuple
+func FromInt64Tuple(v1, v2, v3, v4 int64) Element {
+	var res Element
+	res.B0.A0.SetInt64(v1)
+	res.B0.A1.SetInt64(v2)
+	res.B1.A0.SetInt64(v3)
+	res.B1.A1.SetInt64(v4)
+	return res
 }
 
 // FromBase sets z = v

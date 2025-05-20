@@ -2,6 +2,7 @@ package smartvectorsext
 
 import (
 	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -28,7 +29,7 @@ func (c *ConstantExt) Len() int { return c.length }
 
 // Returns an entry of the constant
 func (c *ConstantExt) GetBase(int) (field.Element, error) {
-	return field.Zero(), fmt.Errorf(conversionError)
+	return field.Zero(), conversionError
 }
 
 func (c *ConstantExt) GetExt(int) fext.Element { return c.val }
@@ -88,7 +89,7 @@ func (c *ConstantExt) IntoRegVecSaveAlloc() []field.Element {
 }
 
 func (c *ConstantExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return nil, fmt.Errorf(conversionError)
+	return nil, conversionError
 }
 
 func (c *ConstantExt) IntoRegVecSaveAllocExt() []fext.Element {
