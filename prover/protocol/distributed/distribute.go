@@ -7,9 +7,12 @@ import (
 	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
@@ -87,11 +90,28 @@ func init() {
 	serialization.RegisterImplementation(logderivativesum.ProverTaskAtRound{})
 	serialization.RegisterImplementation(vortex.VortexProverAction{})
 	serialization.RegisterImplementation(vortex.VortexVerifierAction{})
+	serialization.RegisterImplementation(vortex.ShadowRowProverAction{})
+	serialization.RegisterImplementation(vortex.ReassignPrecomputedRootAction{})
 	serialization.RegisterImplementation(functionals.CoeffEvalProverAction{})
 	serialization.RegisterImplementation(functionals.InterpolationProverAction{})
 	serialization.RegisterImplementation(functionals.EvalBivariateProverAction{})
+	serialization.RegisterImplementation(functionals.FoldProverAction{})
+	serialization.RegisterImplementation(functionals.FoldVerifierAction{})
 	serialization.RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
 	serialization.RegisterImplementation(selfrecursion.ConsistencyYsUalphaVerifierAction{})
+	serialization.RegisterImplementation(selfrecursion.FoldPhaseProverAction{})
+	serialization.RegisterImplementation(selfrecursion.PreimageLimbsProverAction{})
+	serialization.RegisterImplementation(selfrecursion.LinearHashMerkleProverAction{})
+	serialization.RegisterImplementation(selfrecursion.ColSelectionProverAction{})
+	serialization.RegisterImplementation(mpts.ShadowRowProverAction{})
+	serialization.RegisterImplementation(mpts.VerifierAction{})
+	serialization.RegisterImplementation(mpts.RandomPointEvaluation{})
+	serialization.RegisterImplementation(mpts.QuotientAccumulation{})
+
+	serialization.RegisterImplementation(globalcs.EvaluationProver{})
+	serialization.RegisterImplementation(globalcs.EvaluationVerifier{})
+
+	serialization.RegisterImplementation(innerproduct.VerifierForSize{})
 
 }
 

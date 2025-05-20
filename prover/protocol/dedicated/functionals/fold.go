@@ -14,7 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type foldProverAction struct {
+type FoldProverAction struct {
 	h           ifaces.Column
 	x           ifaces.Accessor
 	foldedName  ifaces.ColID
@@ -22,7 +22,7 @@ type foldProverAction struct {
 	foldedSize  int
 }
 
-func (a *foldProverAction) Run(assi *wizard.ProverRuntime) {
+func (a *FoldProverAction) Run(assi *wizard.ProverRuntime) {
 	h := a.h.GetColAssignment(assi)
 	x := a.x.GetVal(assi)
 
@@ -35,20 +35,20 @@ func (a *foldProverAction) Run(assi *wizard.ProverRuntime) {
 	assi.AssignColumn(a.foldedName, smartvectors.NewRegular(foldedVal))
 }
 
-type foldVerifierAction struct {
+type FoldVerifierAction struct {
 	foldedEvalAcc ifaces.Accessor
 	hEvalAcc      ifaces.Accessor
 	foldedName    ifaces.ColID
 }
 
-func (a *foldVerifierAction) Run(run wizard.Runtime) error {
+func (a *FoldVerifierAction) Run(run wizard.Runtime) error {
 	if a.foldedEvalAcc.GetVal(run) != a.hEvalAcc.GetVal(run) {
 		return fmt.Errorf("verifier of folding failed %v", a.foldedName)
 	}
 	return nil
 }
 
-func (a *foldVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+func (a *FoldVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
 	c := a.foldedEvalAcc.GetFrontendVariable(api, wvc)
 	c_ := a.hEvalAcc.GetFrontendVariable(api, wvc)
 	api.AssertIsEqual(c, c_)
@@ -66,7 +66,7 @@ func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDeg
 		logrus.Debugf("Unsafe, the coin is before the commitment : %v", foldedName)
 	}
 
-	comp.RegisterProverAction(round, &foldProverAction{
+	comp.RegisterProverAction(round, &FoldProverAction{
 		h:           h,
 		x:           x,
 		foldedName:  foldedName,
@@ -84,7 +84,7 @@ func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDeg
 	verRound := utils.Max(outerCoinAcc.Round(), foldedEvalAcc.Round())
 
 	// Check that the two evaluations yield the same result
-	comp.RegisterVerifierAction(verRound, &foldVerifierAction{
+	comp.RegisterVerifierAction(verRound, &FoldVerifierAction{
 		foldedEvalAcc: foldedEvalAcc,
 		hEvalAcc:      hEvalAcc,
 		foldedName:    foldedName,

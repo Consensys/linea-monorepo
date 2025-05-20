@@ -9,11 +9,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type splitProverAction struct {
+type SplitProverAction struct {
 	splittings []SummerizedAlliances
 }
 
-func (a *splitProverAction) Run(run *wizard.ProverRuntime) {
+func (a *SplitProverAction) Run(run *wizard.ProverRuntime) {
 	for round := range a.splittings {
 		// This is an iteration over a map so the order is non-deterministic
 		// but this does not matter here.
@@ -27,7 +27,7 @@ func Splitter(size int) func(*wizard.CompiledIOP) {
 	return func(comp *wizard.CompiledIOP) {
 		ctx := newSplitter(comp, size)
 		ctx.constraints()
-		comp.RegisterProverAction(comp.NumRounds()-1, &splitProverAction{
+		comp.RegisterProverAction(comp.NumRounds()-1, &SplitProverAction{
 			splittings: ctx.Splittings,
 		})
 	}

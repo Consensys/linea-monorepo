@@ -23,11 +23,11 @@ type stitchingContext struct {
 	Stitchings []SummerizedAlliances
 }
 
-type StichSubColumnsProverAction struct {
+type StitchSubColumnsProverAction struct {
 	stitchings []SummerizedAlliances
 }
 
-func (a *StichSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
+func (a *StitchSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	for round := range a.stitchings {
 		// This loop is not in deterministic order but this does not matter
 		// as this is purely for cleaning up.
@@ -48,7 +48,7 @@ func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 		ctx.constraints()
 
 		// it assigns the stitching columns and delete the assignment of the sub columns.
-		comp.RegisterProverAction(comp.NumRounds()-1, &StichSubColumnsProverAction{
+		comp.RegisterProverAction(comp.NumRounds()-1, &StitchSubColumnsProverAction{
 			stitchings: ctx.Stitchings,
 		})
 	}
@@ -69,12 +69,12 @@ func newStitcher(comp *wizard.CompiledIOP, minSize, maxSize int) stitchingContex
 	return res
 }
 
-type stitchColumnsProverAction struct {
+type StitchColumnsProverAction struct {
 	ctx   *stitchingContext
 	round int
 }
 
-func (a *stitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
+func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	stopTimer := profiling.LogTimer("stitching compiler")
 	defer stopTimer()
 	var maxSizeGroup int
@@ -195,7 +195,7 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 		}
 
 		// @Azam Precomputed ones are double assigned by this?
-		ctx.comp.RegisterProverAction(round, &stitchColumnsProverAction{
+		ctx.comp.RegisterProverAction(round, &StitchColumnsProverAction{
 			ctx:   ctx,
 			round: round,
 		})

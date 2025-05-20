@@ -31,13 +31,13 @@ type evaluationCtx struct {
 	EvalCoin      coin.Info
 }
 
-// evaluationProver wraps [evaluationCtx] to implement the [wizard.ProverAction]
+// EvaluationProver wraps [evaluationCtx] to implement the [wizard.ProverAction]
 // interface.
-type evaluationProver evaluationCtx
+type EvaluationProver evaluationCtx
 
-// evaluationVerifier wraps [evaluationCtx] to implement the [wizard.VerifierAction]
+// EvaluationVerifier wraps [evaluationCtx] to implement the [wizard.VerifierAction]
 // interface.
-type evaluationVerifier struct {
+type EvaluationVerifier struct {
 	evaluationCtx
 	skipped bool
 }
@@ -94,7 +94,7 @@ func declareUnivariateQueries(
 
 // Run computes the evaluation of the univariate queries and implements the
 // [wizard.ProverAction] interface.
-func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
+func (pa EvaluationProver) Run(run *wizard.ProverRuntime) {
 
 	var (
 		stoptimer = profiling.LogTimer("Evaluate the queries for the global constraints")
@@ -165,7 +165,7 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 }
 
 // Run evaluate the constraint and checks that
-func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
+func (ctx *EvaluationVerifier) Run(run wizard.Runtime) error {
 
 	var (
 		// Will be assigned to "X", the random point at which we check the constraint.
@@ -239,7 +239,7 @@ func (ctx *evaluationVerifier) Run(run wizard.Runtime) error {
 }
 
 // Verifier step, evaluate the constraint and checks that
-func (ctx *evaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+func (ctx *EvaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
 
 	// Will be assigned to "X", the random point at which we check the constraint.
 	r := c.GetRandomCoinField(ctx.EvalCoin.Name)
@@ -299,7 +299,7 @@ func (ctx *evaluationVerifier) RunGnark(api frontend.API, c wizard.GnarkRuntime)
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runtime, r field.Element) ([]field.Element, error) {
+func (ctx EvaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runtime, r field.Element) ([]field.Element, error) {
 
 	var (
 		// res stores the list of the recombined quotient evaluations for each
@@ -386,7 +386,7 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluation(run wizard.Runti
 
 // recombineQuotientSharesEvaluation returns the evaluations of the quotients
 // on point r
-func (ctx evaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r frontend.Variable) []frontend.Variable {
+func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api frontend.API, run wizard.GnarkRuntime, r frontend.Variable) []frontend.Variable {
 
 	var (
 		// res stores the list of the recombined quotient evaluations for each
@@ -467,10 +467,10 @@ func (ctx evaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 	return recombinedYs
 }
 
-func (ctx *evaluationVerifier) Skip() {
+func (ctx *EvaluationVerifier) Skip() {
 	ctx.skipped = true
 }
 
-func (ctx *evaluationVerifier) IsSkipped() bool {
+func (ctx *EvaluationVerifier) IsSkipped() bool {
 	return ctx.skipped
 }

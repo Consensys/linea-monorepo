@@ -13,10 +13,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -134,6 +138,16 @@ func init() {
 
 	RegisterImplementation(stitchsplit.ProveRoundProverAction{})
 	RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
+	RegisterImplementation(stitchsplit.StitchColumnsProverAction{})
+	RegisterImplementation(stitchsplit.StitchSubColumnsProverAction{})
+	RegisterImplementation(stitchsplit.SplitProverAction{})
+
+	RegisterImplementation(cleanup.CleanupProverAction{})
+	RegisterImplementation(mimc.LinearHashProverAction{})
+	RegisterImplementation(merkle.MerkleProofProverAction{})
+
+	RegisterImplementation(univariates.NaturalizeProverAction{})
+	RegisterImplementation(univariates.NaturalizeVerifierAction{})
 
 }
 
