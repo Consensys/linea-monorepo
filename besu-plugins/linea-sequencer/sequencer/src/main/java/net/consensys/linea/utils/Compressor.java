@@ -16,8 +16,8 @@
 package net.consensys.linea.utils;
 
 import linea.blob.BlobCompressor;
+import linea.blob.BlobCompressorVersion;
 import linea.blob.GoBackedBlobCompressor;
-import net.consensys.linea.blob.BlobCompressorVersion;
 import org.apache.logging.log4j.LogManager;
 
 public class Compressor {
@@ -27,7 +27,7 @@ public class Compressor {
     try {
       instance =
           GoBackedBlobCompressor.getInstance(
-              BlobCompressorVersion.V1_0_1,
+              BlobCompressorVersion.V1_2,
               // 100KB to match coordinator config.
               // However, is not relevant for the sequencer because it does not create blobs.
               102400);
