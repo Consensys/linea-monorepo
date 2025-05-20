@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
+// TODO: remove?? as the interpolations are calling fastpolyext
 func TestGnarkInterpolate(t *testing.T) {
 
 	testCases := [][]field.Element{

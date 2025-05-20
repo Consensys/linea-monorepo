@@ -1,14 +1,10 @@
 package fastpoly
 
 import (
-	"math/big"
+	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
-	"github.com/consensys/gnark-crypto/field/koalabear"
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
 /*
@@ -18,146 +14,35 @@ at a chosen x.
 
 As an input the user can specify that the inputs are given
 on a coset.
+
+Interpolate(poly []E1, x E4)
 */
-func Interpolate(poly []field.Element, x field.Element, oncoset ...bool) field.Element {
-
-	if !utils.IsPowerOfTwo(len(poly)) {
-		utils.Panic("only support powers of two but poly has length %v", len(poly))
-	}
-
+func Interpolate(poly []field.Element, x fext.Element, oncoset ...bool) fext.Element {
 	n := len(poly)
-
-	domain := fft.NewDomain(uint64(n))
-	denominator := make([]field.Element, n)
-
-	one := koalabear.One()
-
-	if len(oncoset) > 0 && oncoset[0] {
-		x.Mul(&x, &domain.FrMultiplicativeGenInv)
-	}
-
-	/*
-		First, we compute the denominator,
-
-		D_x = \frac{X}{x} - g for x \in H
-			where H is the subgroup of the roots of unity (not the coset)
-			and g a field element such that gH is the coset
-	*/
-	denominator[0] = x
+	polyext := make([]fext.Element, n)
 	for i := 1; i < n; i++ {
-		denominator[i].Mul(&denominator[i-1], &domain.GeneratorInv)
+		fext.FromBase(&polyext[i], &poly[i])
 	}
 
-	for i := 0; i < n; i++ {
-		denominator[i].Sub(&denominator[i], &one)
-		if denominator[i].IsZero() {
-			// edge-case : x is a root of unity of the domain. In this case, we can just return
-			// the associated value for poly
-			return poly[i]
-		}
-	}
-
-	/*
-		Then, we compute the sum between the inverse of the denominator
-		and the poly
-
-		\sum_{x \in H}\frac{P(gx)}{D_x}
-	*/
-	denominator = field.BatchInvert(denominator)
-	res := vector.ScalarProd(poly, denominator)
-
-	/*
-		Then multiply the res by a factor \frac{g^{1 - n}X^n -g}{n}
-	*/
-	var factor field.Element
-	factor.Exp(x, big.NewInt(int64(n)))
-	factor.Sub(&factor, &one)
-	factor.Mul(&factor, &domain.CardinalityInv)
-	res.Mul(&res, &factor)
-
-	return res
-
+	return fastpolyext.Interpolate(polyext, x, oncoset...)
 }
 
 // Batch version of Interpolate
-func BatchInterpolate(polys [][]field.Element, x field.Element, oncoset ...bool) []field.Element {
+func BatchInterpolate(polys [][]field.Element, x fext.Element, oncoset ...bool) []fext.Element {
 
-	results := make([]field.Element, len(polys))
-	poly := polys[0]
-
-	if !utils.IsPowerOfTwo(len(poly)) {
-		utils.Panic("only support powers of two but poly has length %v", len(poly))
-	}
-
-	n := len(poly)
-
-	domain := fft.NewDomain(uint64(n))
-	denominator := make([]field.Element, n)
-
-	one := field.One()
-
-	if len(oncoset) > 0 && oncoset[0] {
-		x.Mul(&x, &domain.FrMultiplicativeGenInv)
-	}
-
-	/*
-		First, we compute the denominator,
-
-		D_x = \frac{X}{x} - g for x \in H
-			where H is the subgroup of the roots of unity (not the coset)
-			and g a field element such that gH is the coset
-	*/
-	denominator[0] = x
-	for i := 1; i < n; i++ {
-		denominator[i].Mul(&denominator[i-1], &domain.GeneratorInv)
-	}
-
+	n := len(polys)
+	m := len(polys)
+	polysext := make([][]fext.Element, n)
 	for i := 0; i < n; i++ {
-		denominator[i].Sub(&denominator[i], &one)
-
-		if denominator[i].IsZero() {
-			// edge-case : x is a root of unity of the domain. In this case, we can just return
-			// the associated value for poly
-
-			for k := range polys {
-				results[k] = polys[k][i]
-			}
-
-			return results
-		}
+		polysext[i] = make([]fext.Element, m)
 	}
 
-	/*
-		Then, we compute the sum between the inverse of the denominator
-		and the poly
-
-		\sum_{x \in H}\frac{P(gx)}{D_x}
-	*/
-	denominator = field.BatchInvert(denominator)
-
-	// Precompute the value of x^n once outside the loop
-	xN := new(field.Element).Exp(x, big.NewInt(int64(n)))
-
-	// Precompute the value of domain.CardinalityInv outside the loop
-	cardinalityInv := &domain.CardinalityInv
-
-	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
-	factor := new(field.Element).Sub(xN, &one)
-	factor.Mul(factor, cardinalityInv)
-
-	parallel.Execute(len(polys), func(start, stop int) {
-		for k := start; k < stop; k++ {
-
-			// Compute the scalar product.
-			res := vector.ScalarProd(polys[k], denominator)
-
-			// Multiply res with factor.
-			res.Mul(&res, factor)
-
-			// Store the result.
-			results[k] = res
+	for i := 1; i < n; i++ {
+		for j := 1; j < m; j++ {
+			fext.FromBase(&polysext[i][j], &polys[i][j])
 		}
-	})
 
-	return results
+	}
+
+	return fastpolyext.BatchInterpolate(polysext, x, oncoset...)
 }

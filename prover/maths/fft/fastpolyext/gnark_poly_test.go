@@ -29,7 +29,10 @@ func TestGnarkInterpolate(t *testing.T) {
 				x := fext.NewElement(42, 0, 0, 0)
 				vec := vectorext.IntoGnarkAssignment(testCases[i])
 				expectedY := fastpolyext.Interpolate(testCases[i], x)
+				fmt.Print("expectedY=", expectedY)
+
 				computedY := fastpolyext.InterpolateGnark(api, vec, gnarkfext.FromValue(x))
+				fmt.Print("computedY=", computedY)
 				computedY.AssertIsEqual(api, gnarkfext.FromValue(expectedY))
 				return nil
 			}

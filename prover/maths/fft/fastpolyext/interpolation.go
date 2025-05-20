@@ -18,6 +18,8 @@ at a chosen x.
 
 As an input the user can specify that the inputs are given
 on a coset.
+
+Interpolate(poly []E4, x E4)
 */
 func Interpolate(poly []fext.Element, x fext.Element, oncoset ...bool) fext.Element {
 
@@ -33,10 +35,7 @@ func Interpolate(poly []fext.Element, x fext.Element, oncoset ...bool) fext.Elem
 	one := fext.One()
 
 	var wrappedFrMultiplicativeGenInv fext.Element
-	wrappedFrMultiplicativeGenInv.B0.A0 = domain.FrMultiplicativeGenInv
-	wrappedFrMultiplicativeGenInv.B0.A1.SetZero()
-	wrappedFrMultiplicativeGenInv.B1.A0.SetZero()
-	wrappedFrMultiplicativeGenInv.B1.A1.SetZero()
+	fext.FromBase(&wrappedFrMultiplicativeGenInv, &domain.FrMultiplicativeGenInv)
 
 	if len(oncoset) > 0 && oncoset[0] {
 		x.Mul(&x, &wrappedFrMultiplicativeGenInv)
@@ -51,10 +50,7 @@ func Interpolate(poly []fext.Element, x fext.Element, oncoset ...bool) fext.Elem
 	*/
 	denominator[0] = x
 	var wrappedGeneratorInv fext.Element
-	wrappedGeneratorInv.B0.A0 = domain.GeneratorInv
-	wrappedGeneratorInv.B0.A1.SetZero()
-	wrappedGeneratorInv.B1.A0.SetZero()
-	wrappedGeneratorInv.B1.A1.SetZero()
+	fext.FromBase(&wrappedGeneratorInv, &domain.GeneratorInv)
 	for i := 1; i < n; i++ {
 		denominator[i].Mul(&denominator[i-1], &wrappedGeneratorInv)
 	}

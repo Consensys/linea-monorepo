@@ -7,13 +7,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/require"
 )
+
+// TODO: remove?? as the interpolations are calling fastpolyext
 
 func TestInterpolation(t *testing.T) {
 	n := 4
 	randPoly := vector.ForTest(1, 2, 3, 4)
-	x := field.NewElement(51)
+	x1 := field.NewElement(51)
+
+	var x fext.Element
+	fext.FromBase(&x, &x1)
 	expectedY := poly.Eval(randPoly, x)
 	domain := fft.NewDomain(uint64(n))
 
