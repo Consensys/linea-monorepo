@@ -1,18 +1,30 @@
 package main
 
 /*
+#cgo CFLAGS: -I/opt/homebrew/opt/openjdk@21/include -I/opt/homebrew/opt/openjdk@21/include/darwin
+#cgo LDFLAGS: -L/opt/homebrew/Cellar/openjdk@21/21.0.6/libexec/openjdk.jdk/Contents/Home/lib/server -ljvm
 #include <jni.h>
+
+// Declare JNI functions
+jclass FindClass(JNIEnv *env, const char *name);
+jint ThrowNew(JNIEnv *env, jclass clazz, const char *msg);
+jbyteArray NewByteArray(JNIEnv *env, jsize len);
+void SetByteArrayRegion(JNIEnv *env, jbyteArray array, jsize start, jsize len, const jbyte *buf);
+jsize GetArrayLength(JNIEnv *env, jbyteArray array);
+jbyte *GetByteArrayElements(JNIEnv *env, jbyteArray array, jboolean *isCopy);
+void ReleaseByteArrayElements(JNIEnv *env, jbyteArray array, jbyte *buf, jint mode);
 */
 import "C"
+import (
+	"encoding/binary"
+	"fmt"
+	"sync"
+	"unsafe"
+)
 
 import (
 	"crypto/rand"
-	"encoding/binary"
-	"errors"
-	"fmt"
 	"slices"
-	"sync"
-	"unsafe"
 
 	blobv1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
@@ -42,7 +54,7 @@ var (
 func throw(env *C.JNIEnv, errorClass string, err error) {
 	// Get the MyCustomException class
 	exceptionClass := C.FindClass(env, C.CString(errorClass))
-	if exceptionClass == nil {
+	if unsafe.Pointer(exceptionClass) == nil {
 		// If the class is not found, throw a generic error
 		C.ThrowNew(env, C.FindClass(env, C.CString(runtimeExceptionJniClass)), C.CString("Exception class not found: "+errorClass))
 		return
@@ -71,10 +83,10 @@ func fromJniBytes(env *C.JNIEnv, bytes C.jbyteArray) []byte {
 func toJniBytes(env *C.JNIEnv, bytes []byte) C.jbyteArray {
 	// Create a new Java byte array in the JVM
 	jbyteArray := C.NewByteArray(env, C.jsize(len(bytes)))
-	if jbyteArray == nil {
+	if unsafe.Pointer(jbyteArray) == nil {
 		// If the array creation fails, throw an exception
 		throw(env, runtimeExceptionJniClass, fmt.Errorf("failed to create Java byte array"))
-		return nil
+		return jbyteArray
 	}
 
 	// Copy the compressed data into the Java byte array
@@ -112,7 +124,7 @@ func NewInstance(env *C.JNIEnv, dataLimit C.int, dictPath *C.char) C.int {
 		return -1
 	}
 
-	compressor, err := blobv1.NewBlobMaker(dataLimit, C.GoString(dictPath))
+	compressor, err := blobv1.NewBlobMaker(int(dataLimit), C.GoString(dictPath))
 	if err != nil {
 		throw(env, compressorErrorJniClass, err)
 		return -1
@@ -131,7 +143,7 @@ func NewInstance(env *C.JNIEnv, dataLimit C.int, dictPath *C.char) C.int {
 		BlobMaker: compressor,
 	}
 
-	return id
+	return C.int(id)
 }
 
 // Reset resets the compressor. Must be called between blobs.
@@ -222,7 +234,7 @@ func WorstCompressedBlockSize(env *C.JNIEnv, instanceID C.int, rlpBlock C.jbyteA
 	compressor := getInstance(env, instanceID)
 	defer compressor.Unlock()
 
-	_, n, err := compressor.WorstCompressedBlockSize(fromJniBytes(rlpBlock))
+	_, n, err := compressor.WorstCompressedBlockSize(fromJniBytes(env, rlpBlock))
 	if err != nil {
 		throw(env, compressorErrorJniClass, err)
 		return -1
@@ -241,7 +253,7 @@ func WorstCompressedTxSize(env *C.JNIEnv, instanceID C.int, rlpTx C.jbyteArray) 
 	compressor := getInstance(env, instanceID)
 	defer compressor.Unlock()
 
-	n, err := compressor.WorstCompressedTxSize(fromJniBytes(rlpTx))
+	n, err := compressor.WorstCompressedTxSize(fromJniBytes(env, rlpTx))
 	if err != nil {
 		throw(env, compressorErrorJniClass, err)
 		return -1
@@ -259,7 +271,7 @@ func RawCompressedSize(env *C.JNIEnv, instanceID C.int, input C.jbyteArray) C.in
 	compressor := getInstance(env, instanceID)
 	defer compressor.Unlock()
 
-	n, err := compressor.RawCompressedSize(fromJniBytes(input))
+	n, err := compressor.RawCompressedSize(fromJniBytes(env, input))
 	if err != nil {
 		throw(env, compressorErrorJniClass, err)
 		return -1
