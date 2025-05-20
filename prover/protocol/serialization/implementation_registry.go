@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
@@ -128,6 +129,12 @@ func init() {
 	// Smartvectors
 	RegisterImplementation(smartvectors.Regular{})
 	RegisterImplementation(smartvectors.PaddedCircularWindow{})
+	RegisterImplementation(smartvectors.Constant{})
+	RegisterImplementation(smartvectors.Pooled{})
+
+	RegisterImplementation(stitchsplit.ProveRoundProverAction{})
+	RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
+
 }
 
 // In order to save some space, we trim the prefix of the package path as this

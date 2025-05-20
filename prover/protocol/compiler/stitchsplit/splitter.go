@@ -50,12 +50,12 @@ func newSplitter(comp *wizard.CompiledIOP, size int) splitterContext {
 	return ctx
 }
 
-type proveRoundProverAction struct {
+type ProveRoundProverAction struct {
 	ctx   *splitterContext
 	round int
 }
 
-func (a *proveRoundProverAction) Run(run *wizard.ProverRuntime) {
+func (a *ProveRoundProverAction) Run(run *wizard.ProverRuntime) {
 	stopTimer := profiling.LogTimer("splitter compiler")
 	defer stopTimer()
 
@@ -139,7 +139,7 @@ func (ctx *splitterContext) ScanSplitCommit() {
 		if len(ctx.Splittings[round].ByBigCol) == 0 {
 			continue
 		}
-		ctx.comp.RegisterProverAction(round, &proveRoundProverAction{
+		ctx.comp.RegisterProverAction(round, &ProveRoundProverAction{
 			ctx:   ctx,
 			round: round,
 		})

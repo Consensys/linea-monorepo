@@ -25,7 +25,7 @@ const (
 	EVAL_BIVARIATE_GLOBAL               string = "GLOBAL"
 )
 
-type evalBivariateProverAction struct {
+type EvalBivariateProverAction struct {
 	name     string
 	pCom     ifaces.Column
 	x        ifaces.Accessor
@@ -34,7 +34,7 @@ type evalBivariateProverAction struct {
 	nPowX    int
 }
 
-func (a *evalBivariateProverAction) Run(assi *wizard.ProverRuntime) {
+func (a *EvalBivariateProverAction) Run(assi *wizard.ProverRuntime) {
 	xVal := a.x.GetVal(assi)
 	yxPow1mkVal := a.yxPow1mk.GetVal(assi)
 	p := a.pCom.GetColAssignment(assi)
@@ -138,7 +138,7 @@ func EvalCoeffBivariate(
 		hCom,
 	)
 
-	comp.RegisterProverAction(maxRound, &evalBivariateProverAction{
+	comp.RegisterProverAction(maxRound, &EvalBivariateProverAction{
 		name:     name,
 		pCom:     pCom,
 		x:        x,

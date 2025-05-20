@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
 // rawRecursedSegmentCompilation represents the serialized form of RecursedSegmentCompilation.
@@ -147,4 +149,28 @@ func DeserializeRecursedSegmentCompilation(data []byte) (*distributed.RecursedSe
 	}
 
 	return segComp, nil
+}
+
+// TestSerdeRecursedSegmentCompilation tests serialization and deserialization of a RecursedSegmentCompilation.
+func TestSerdeRecursedSegmentCompilation(t *testing.T) {
+	if dw == nil {
+		t.Fatal("DistributedWizard is nil")
+	}
+
+	// Serialize the RecursedSegmentCompilation
+	serializedData, err := SerializeRecursedSegmentCompilation(recurSegComp)
+	if err != nil {
+		t.Fatalf("Failed to serialize RecursedSegmentCompilation: %v", err)
+	}
+
+	// Deserialize the RecursedSegmentCompilation
+	deserializedSegComp, err := DeserializeRecursedSegmentCompilation(serializedData)
+	if err != nil {
+		t.Fatalf("Failed to deserialize RecursedSegmentCompilation: %v", err)
+	}
+
+	// Compare exported fields
+	if !test_utils.CompareExportedFields(recurSegComp, deserializedSegComp) {
+		t.Errorf("Mismatch in exported fields after RecursedSegmentCompilation serde")
+	}
 }

@@ -19,7 +19,7 @@ var (
 		Predivision:  1,
 	}
 	// dw = distributed.DistributeWizard(zkEVM.WizardIOP, discoverer)
-	dw = distributed.DistributeWizard(zkEVM.WizardIOP, discoverer).CompileSegments().Conglomerate(20)
+	dw = distributed.DistributeWizard(zkEVM.WizardIOP, discoverer).CompileSegments()
 )
 
 // TestSerdeDistWizardFull tests full serialization and deserialization of DistributedWizard.

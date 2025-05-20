@@ -22,14 +22,14 @@ const (
 	INTERPOLATION_GLOBAL        string = "INTERPOLATION_GLOBAL"
 )
 
-type interpolationProverAction struct {
+type InterpolationProverAction struct {
 	name string
 	a    ifaces.Accessor
 	p    ifaces.Column
 	n    int
 }
 
-func (a *interpolationProverAction) Run(assi *wizard.ProverRuntime) {
+func (a *InterpolationProverAction) Run(assi *wizard.ProverRuntime) {
 	aVal := a.a.GetVal(assi)
 	one := field.One()
 	p := a.p.GetColAssignment(assi)
@@ -144,7 +144,7 @@ func Interpolation(comp *wizard.CompiledIOP, name string, a ifaces.Accessor, p i
 		column.Shift(i, -1),
 	)
 
-	comp.RegisterProverAction(maxRound, &interpolationProverAction{
+	comp.RegisterProverAction(maxRound, &InterpolationProverAction{
 		name: name,
 		a:    a,
 		p:    p,

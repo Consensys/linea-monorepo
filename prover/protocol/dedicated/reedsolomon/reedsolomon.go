@@ -20,13 +20,13 @@ const (
 	REED_SOLOMON_BETA        string = "REED_SOLOMON_BETA"
 )
 
-type reedSolomonProverAction struct {
+type ReedSolomonProverAction struct {
 	h       ifaces.Column
 	coeff   ifaces.Column
 	codeDim int
 }
 
-func (a *reedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
+func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
 	witness := a.h.GetColAssignment(assi)
 	coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0, nil).SubVector(0, a.codeDim)
 	assi.AssignColumn(a.coeff.GetColID(), coeffs)
@@ -72,7 +72,7 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 
 	// Inserts the prover before calling the sub-wizard so that it is executed
 	// before the sub-prover's wizards.
-	comp.RegisterProverAction(round, &reedSolomonProverAction{
+	comp.RegisterProverAction(round, &ReedSolomonProverAction{
 		h:       h,
 		coeff:   coeff,
 		codeDim: codeDim,

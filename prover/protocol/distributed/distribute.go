@@ -12,6 +12,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
@@ -81,6 +85,14 @@ func init() {
 	serialization.RegisterImplementation(permutation.CheckGrandProductIsOne{})
 	serialization.RegisterImplementation(logderivativesum.AssignLogDerivativeSumProverAction{})
 	serialization.RegisterImplementation(logderivativesum.ProverTaskAtRound{})
+	serialization.RegisterImplementation(vortex.VortexProverAction{})
+	serialization.RegisterImplementation(vortex.VortexVerifierAction{})
+	serialization.RegisterImplementation(functionals.CoeffEvalProverAction{})
+	serialization.RegisterImplementation(functionals.InterpolationProverAction{})
+	serialization.RegisterImplementation(functionals.EvalBivariateProverAction{})
+	serialization.RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
+	serialization.RegisterImplementation(selfrecursion.ConsistencyYsUalphaVerifierAction{})
+
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It

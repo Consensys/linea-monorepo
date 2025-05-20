@@ -60,7 +60,7 @@ func (ctx stitchingContext) LocalOpening() {
 		newQ := ctx.comp.InsertLocalOpening(round, queryNameStitcher(q.ID), stitchingCol)
 
 		// Registers the prover's step responsible for assigning the new query
-		ctx.comp.RegisterProverAction(round, &assignLocalPointProverAction{
+		ctx.comp.RegisterProverAction(round, &AssignLocalPointProverAction{
 			qID:  q.ID,
 			newQ: newQ.ID,
 		})

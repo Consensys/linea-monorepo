@@ -44,6 +44,9 @@ type structField struct {
 var (
 	structCacheMu sync.RWMutex
 	structCache   = make(map[reflect.Type]*structFieldCache)
+
+	// snapshot map: Aids in debuggint to find missing concrete type implementation
+	snapshot = make(map[string]struct{})
 )
 
 func getStructFieldCache(t reflect.Type) *structFieldCache {
@@ -95,6 +98,9 @@ func SerializeValue(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		return SerializeValue(v.Elem(), mode)
 	case reflect.Struct:
 		return serializeStruct(v, mode)
+	case reflect.Func:
+		logrus.Debugf("Ignoring func type at value: %v", v)
+		return json.RawMessage(NilString), nil
 	default:
 		return nil, fmt.Errorf("unsupported type kind: %v", v.Kind())
 	}
@@ -182,12 +188,14 @@ func serializeInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		return nil, fmt.Errorf("could not serialize interface value of type %q: %w", v.Type().String(), err)
 	}
 
-	// Note for warning signs here
 	concreteTypeStr := getPkgPathAndTypeNameIndirect(concrete.Interface())
 	concreteType, err := findRegisteredImplementation(concreteTypeStr)
-	if err != nil {
-		if !IsIgnoreableType(concreteType) {
-			logrus.Warnf("MISSING concrete type in implementation registry:%s \n", concreteTypeStr)
+
+	if err != nil && !IsIgnoreableType(concreteType) {
+		// Check and warn if the concrete type is missing in the implementation registry
+		if _, exists := snapshot[concreteTypeStr]; !exists {
+			logrus.Warnf("MISSING concrete type in implementation registry: %s\n", concreteTypeStr)
+			snapshot[concreteTypeStr] = struct{}{} // This is to stop recurrent warnings
 		}
 	}
 
