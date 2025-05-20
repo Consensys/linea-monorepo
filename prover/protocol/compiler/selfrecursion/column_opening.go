@@ -264,13 +264,13 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 		ctx.VortexCtx.SisParams.OutputSize(), leavesSizeUnpadded, ctx.Columns.MerkleProofsLeaves)
 }
 
-type collapsingProverAction struct {
+type CollapsingProverAction struct {
 	ctx     *SelfRecursionCtx
 	eDualID ifaces.ColID
 	sisKey  *ringsis.Key
 }
 
-func (a *collapsingProverAction) Run(run *wizard.ProverRuntime) {
+func (a *CollapsingProverAction) Run(run *wizard.ProverRuntime) {
 	collapsedPreimage := a.ctx.Columns.PreimagesCollapse.GetColAssignment(run)
 	sisKey := a.sisKey
 
@@ -310,12 +310,12 @@ func (a *collapsingProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(a.eDualID, eDual)
 }
 
-type collapsingVerifierAction struct {
+type CollapsingVerifierAction struct {
 	uAlphaQEval  ifaces.Accessor
 	preImageEval ifaces.Accessor
 }
 
-func (a *collapsingVerifierAction) Run(run wizard.Runtime) error {
+func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
 	if a.uAlphaQEval.GetVal(run) != a.preImageEval.GetVal(run) {
 		l, r := a.uAlphaQEval.GetVal(run), a.preImageEval.GetVal(run)
 		return fmt.Errorf("consistency between u_alpha and the preimage: mismatch between uAlphaQEval=%v preimages=%v",
@@ -324,7 +324,7 @@ func (a *collapsingVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *collapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *CollapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	api.AssertIsEqual(
 		a.uAlphaQEval.GetFrontendVariable(api, run),
 		a.preImageEval.GetFrontendVariable(api, run),
@@ -391,7 +391,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			ctx.Columns.WholePreimages[0].Size(),
 		)
 
-		ctx.comp.RegisterVerifierAction(uAlphaQEval.Round(), &collapsingVerifierAction{
+		ctx.comp.RegisterVerifierAction(uAlphaQEval.Round(), &CollapsingVerifierAction{
 			uAlphaQEval:  uAlphaQEval,
 			preImageEval: preImageEval,
 		})
@@ -451,7 +451,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 	)
 
 	// And assign it
-	ctx.comp.RegisterProverAction(round, &collapsingProverAction{
+	ctx.comp.RegisterProverAction(round, &CollapsingProverAction{
 		ctx:     ctx,
 		eDualID: ctx.Columns.Edual.GetColID(),
 		sisKey:  ctx.SisKey(),
@@ -470,13 +470,13 @@ func (a *FoldPhaseProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignInnerProduct(a.ipQueryID, y)
 }
 
-type foldPhaseVerifierAction struct {
+type FoldPhaseVerifierAction struct {
 	ctx       *SelfRecursionCtx
 	ipQueryID ifaces.QueryID
 	degree    int
 }
 
-func (a *foldPhaseVerifierAction) Run(run wizard.Runtime) error {
+func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 	edual := a.ctx.Columns.Edual.GetColAssignment(run)
 	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignment(run)
 	rfold := run.GetRandomCoinField(a.ctx.Coins.Fold.Name)
@@ -502,7 +502,7 @@ func (a *foldPhaseVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *foldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	edual := a.ctx.Columns.Edual.GetColAssignmentGnark(run)
 	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
 	rfold := run.GetRandomCoinField(a.ctx.Coins.Fold.Name)
@@ -663,7 +663,7 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 	// 	api.AssertIsEqual(left, right)
 	// })
 
-	ctx.comp.RegisterVerifierAction(round, &foldPhaseVerifierAction{
+	ctx.comp.RegisterVerifierAction(round, &FoldPhaseVerifierAction{
 		ctx:       ctx,
 		ipQueryID: ctx.Queries.LatticeInnerProd.Name(),
 		degree:    degree,

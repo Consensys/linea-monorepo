@@ -17,9 +17,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -84,10 +87,17 @@ func init() {
 	serialization.RegisterImplementation(ModuleGLAssignSendReceiveGlobal{})
 	serialization.RegisterImplementation(ModuleGLCheckSendReceiveGlobal{})
 	serialization.RegisterImplementation(LPPSegmentBoundaryCalculator{})
+
+	serialization.RegisterImplementation(permutation.ProverTaskAtRound{})
 	serialization.RegisterImplementation(permutation.AssignPermutationGrandProduct{})
+	serialization.RegisterImplementation(permutation.FinalProductCheck{})
 	serialization.RegisterImplementation(permutation.CheckGrandProductIsOne{})
+
 	serialization.RegisterImplementation(logderivativesum.AssignLogDerivativeSumProverAction{})
+	serialization.RegisterImplementation(logderivativesum.CheckLogDerivativeSumMustBeZero{})
 	serialization.RegisterImplementation(logderivativesum.ProverTaskAtRound{})
+	serialization.RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
+
 	serialization.RegisterImplementation(vortex.VortexProverAction{})
 	serialization.RegisterImplementation(vortex.VortexVerifierAction{})
 	serialization.RegisterImplementation(vortex.ShadowRowProverAction{})
@@ -96,13 +106,24 @@ func init() {
 	serialization.RegisterImplementation(functionals.InterpolationProverAction{})
 	serialization.RegisterImplementation(functionals.EvalBivariateProverAction{})
 	serialization.RegisterImplementation(functionals.FoldProverAction{})
+	serialization.RegisterImplementation(functionals.FoldOuterProverAction{})
+	serialization.RegisterImplementation(functionals.FoldOuterVerifierAction{})
 	serialization.RegisterImplementation(functionals.FoldVerifierAction{})
+
 	serialization.RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
+	serialization.RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
+
+	serialization.RegisterImplementation(recursion.FakeColumn{})
+
+	serialization.RegisterImplementation(selfrecursion.CollapsingProverAction{})
+	serialization.RegisterImplementation(selfrecursion.CollapsingVerifierAction{})
 	serialization.RegisterImplementation(selfrecursion.ConsistencyYsUalphaVerifierAction{})
-	serialization.RegisterImplementation(selfrecursion.FoldPhaseProverAction{})
 	serialization.RegisterImplementation(selfrecursion.PreimageLimbsProverAction{})
 	serialization.RegisterImplementation(selfrecursion.LinearHashMerkleProverAction{})
 	serialization.RegisterImplementation(selfrecursion.ColSelectionProverAction{})
+	serialization.RegisterImplementation(selfrecursion.FoldPhaseProverAction{})
+	serialization.RegisterImplementation(selfrecursion.FoldPhaseVerifierAction{})
+
 	serialization.RegisterImplementation(mpts.ShadowRowProverAction{})
 	serialization.RegisterImplementation(mpts.VerifierAction{})
 	serialization.RegisterImplementation(mpts.RandomPointEvaluation{})
@@ -110,9 +131,17 @@ func init() {
 
 	serialization.RegisterImplementation(globalcs.EvaluationProver{})
 	serialization.RegisterImplementation(globalcs.EvaluationVerifier{})
+	serialization.RegisterImplementation(globalcs.QuotientCtx{})
 
+	serialization.RegisterImplementation(innerproduct.ProverTask{})
 	serialization.RegisterImplementation(innerproduct.VerifierForSize{})
 
+	serialization.RegisterImplementation(selector.SubsampleProverAction{})
+	serialization.RegisterImplementation(selector.SubsampleVerifierAction{})
+
+	serialization.RegisterImplementation(expr_handle.ExprHandleProverAction{})
+
+	serialization.RegisterImplementation(plonkinternal.CheckingActivators{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It

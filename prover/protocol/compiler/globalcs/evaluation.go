@@ -25,7 +25,7 @@ import (
 // evaluationCtx collects the compilation artefacts related to the evaluation
 // part of the Plonk quotient technique.
 type evaluationCtx struct {
-	quotientCtx
+	QuotientCtx
 	QuotientEvals []query.UnivariateEval
 	WitnessEval   query.UnivariateEval
 	EvalCoin      coin.Info
@@ -48,7 +48,7 @@ type EvaluationVerifier struct {
 // compiler.
 func declareUnivariateQueries(
 	comp *wizard.CompiledIOP,
-	qCtx quotientCtx,
+	qCtx QuotientCtx,
 ) evaluationCtx {
 
 	var (
@@ -57,7 +57,7 @@ func declareUnivariateQueries(
 		maxRatio    = utils.Max(ratios...)
 		queriesPols = make([][]ifaces.Column, maxRatio)
 		res         = evaluationCtx{
-			quotientCtx: qCtx,
+			QuotientCtx: qCtx,
 			EvalCoin: comp.InsertCoin(
 				round+1,
 				coin.Name(deriveName(comp, EVALUATION_RANDOMESS)),

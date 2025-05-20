@@ -141,6 +141,7 @@ func init() {
 	RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
 	RegisterImplementation(stitchsplit.StitchColumnsProverAction{})
 	RegisterImplementation(stitchsplit.StitchSubColumnsProverAction{})
+	RegisterImplementation(stitchsplit.QueryVerifierAction{})
 	RegisterImplementation(stitchsplit.SplitProverAction{})
 
 	RegisterImplementation(cleanup.CleanupProverAction{})

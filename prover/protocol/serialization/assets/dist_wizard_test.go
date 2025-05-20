@@ -18,7 +18,6 @@ var (
 		Affinities:   affinities,
 		Predivision:  1,
 	}
-	// dw = distributed.DistributeWizard(zkEVM.WizardIOP, discoverer)
 	dw = distributed.DistributeWizard(zkEVM.WizardIOP, discoverer).CompileSegments()
 )
 

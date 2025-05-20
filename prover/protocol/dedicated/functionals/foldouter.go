@@ -13,7 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type foldOuterProverAction struct {
+type FoldOuterProverAction struct {
 	h           ifaces.Column
 	x           ifaces.Accessor
 	foldedName  ifaces.ColID
@@ -22,7 +22,7 @@ type foldOuterProverAction struct {
 	foldedSize  int
 }
 
-func (a *foldOuterProverAction) Run(assi *wizard.ProverRuntime) {
+func (a *FoldOuterProverAction) Run(assi *wizard.ProverRuntime) {
 	h := a.h.GetColAssignment(assi)
 	x := a.x.GetVal(assi)
 
@@ -35,20 +35,20 @@ func (a *foldOuterProverAction) Run(assi *wizard.ProverRuntime) {
 	assi.AssignColumn(a.foldedName, foldedVal)
 }
 
-type foldOuterVerifierAction struct {
+type FoldOuterVerifierAction struct {
 	foldedEvalAcc ifaces.Accessor
 	hEvalAcc      ifaces.Accessor
 	foldedName    ifaces.ColID
 }
 
-func (a *foldOuterVerifierAction) Run(run wizard.Runtime) error {
+func (a *FoldOuterVerifierAction) Run(run wizard.Runtime) error {
 	if a.foldedEvalAcc.GetVal(run) != a.hEvalAcc.GetVal(run) {
 		return fmt.Errorf("verifier of folding failed %v", a.foldedName)
 	}
 	return nil
 }
 
-func (a *foldOuterVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *FoldOuterVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	c := a.foldedEvalAcc.GetFrontendVariable(api, run)
 	c_ := a.hEvalAcc.GetFrontendVariable(api, run)
 	api.AssertIsEqual(c, c_)
@@ -68,7 +68,7 @@ func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, out
 		logrus.Debugf("Unsafe, the coin is before the commitment : %v", foldedName)
 	}
 
-	comp.RegisterProverAction(round, &foldOuterProverAction{
+	comp.RegisterProverAction(round, &FoldOuterProverAction{
 		h:           h,
 		x:           x,
 		foldedName:  foldedName,
@@ -87,7 +87,7 @@ func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, out
 	verRound := utils.Max(innerCoinAcc.Round(), foldedEvalAcc.Round())
 
 	// Check that the two evaluations yield the same result
-	comp.RegisterVerifierAction(verRound, &foldOuterVerifierAction{
+	comp.RegisterVerifierAction(verRound, &FoldOuterVerifierAction{
 		foldedEvalAcc: foldedEvalAcc,
 		hEvalAcc:      hEvalAcc,
 		foldedName:    foldedName,

@@ -14,14 +14,18 @@ import (
 )
 
 var (
-	naturalType     = reflect.TypeOf(column.Natural{})
-	constColType    = reflect.TypeOf(verifiercol.ConstCol{})
-	expandedColType = reflect.TypeOf(verifiercol.ExpandedVerifCol{})
-
-	columnType          = reflect.TypeOf((*ifaces.Column)(nil)).Elem()
-	queryType           = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
-	metadataType        = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
+	naturalType         = reflect.TypeOf(column.Natural{})
+	shiftedColType      = reflect.TypeOf(column.Shifted{})
 	manuallyShiftedType = reflect.TypeOf(&dedicated.ManuallyShifted{})
+
+	vConstColType         = reflect.TypeOf(verifiercol.ConstCol{})
+	vExpandedColType      = reflect.TypeOf(verifiercol.ExpandedVerifCol{})
+	vFromAccessorType     = reflect.TypeOf(verifiercol.FromAccessors{})
+	vRepeatedAccessorType = reflect.TypeOf(verifiercol.RepeatedAccessor{})
+
+	columnType   = reflect.TypeOf((*ifaces.Column)(nil)).Elem()
+	queryType    = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
+	metadataType = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
 )
 
 // serializableColumnDecl is used to represent a "natural" column, meaning a
@@ -111,15 +115,35 @@ func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, erro
 			return nil, err
 		}
 
-	case constColType:
+	case vConstColType:
 		col := v.Interface().(verifiercol.VerifierCol)
 		data, err = SerializeValue(reflect.ValueOf(col), mode)
 		if err != nil {
 			return nil, err
 		}
 
-	case expandedColType:
+	case vExpandedColType:
 		col := v.Interface().(verifiercol.ExpandedVerifCol)
+		data, err = SerializeValue(reflect.ValueOf(col), mode)
+		if err != nil {
+			return nil, err
+		}
+	case vFromAccessorType:
+		col := v.Interface().(verifiercol.FromAccessors)
+		data, err = SerializeValue(reflect.ValueOf(col), mode)
+		if err != nil {
+			return nil, err
+		}
+
+	case vRepeatedAccessorType:
+		col := v.Interface().(verifiercol.RepeatedAccessor)
+		data, err = SerializeValue(reflect.ValueOf(col), mode)
+		if err != nil {
+			return nil, err
+		}
+
+	case shiftedColType:
+		col := v.Interface().(column.Shifted)
 		data, err = SerializeValue(reflect.ValueOf(col), mode)
 		if err != nil {
 			return nil, err

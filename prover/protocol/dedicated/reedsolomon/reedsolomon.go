@@ -32,13 +32,13 @@ func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
 	assi.AssignColumn(a.coeff.GetColID(), coeffs)
 }
 
-type reedSolomonVerifierAction struct {
+type ReedSolomonVerifierAction struct {
 	coeffCheck ifaces.Accessor
 	evalCheck  ifaces.Accessor
 	hColID     ifaces.ColID
 }
 
-func (a *reedSolomonVerifierAction) Run(run wizard.Runtime) error {
+func (a *ReedSolomonVerifierAction) Run(run wizard.Runtime) error {
 	y := a.coeffCheck.GetVal(run)
 	y_ := a.evalCheck.GetVal(run)
 	if y != y_ {
@@ -47,7 +47,7 @@ func (a *reedSolomonVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *reedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+func (a *ReedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
 	y := a.coeffCheck.GetFrontendVariable(api, wvc)
 	y_ := a.evalCheck.GetFrontendVariable(api, wvc)
 	api.AssertIsEqual(y, y_)
@@ -92,7 +92,7 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 		h,
 	)
 
-	comp.RegisterVerifierAction(round+1, &reedSolomonVerifierAction{
+	comp.RegisterVerifierAction(round+1, &ReedSolomonVerifierAction{
 		coeffCheck: coeffCheck,
 		evalCheck:  evalCheck,
 		hColID:     h.GetColID(),

@@ -70,7 +70,7 @@ func PlonkCheck(
 		comp.RegisterProverAction(round+1, lroCommitProverAction{CompilationCtx: ctx, proverStateLock: &sync.Mutex{}})
 	}
 
-	comp.RegisterVerifierAction(round, &checkingActivators{Cols: ctx.Columns.Activators})
+	comp.RegisterVerifierAction(round, &CheckingActivators{Cols: ctx.Columns.Activators})
 
 	logrus.
 		WithField("nbConstraints", ctx.Plonk.SPR.NbConstraints).
@@ -309,16 +309,16 @@ func (ctx *CompilationCtx) addCopyConstraint() {
 	)
 }
 
-// checkingActivators implements the [wizard.VerifierAction] interface and
+// CheckingActivators implements the [wizard.VerifierAction] interface and
 // checks that the [Activators] columns are correctly assigned
-type checkingActivators struct {
+type CheckingActivators struct {
 	Cols    []ifaces.Column
 	skipped bool
 }
 
-var _ wizard.VerifierAction = &checkingActivators{}
+var _ wizard.VerifierAction = &CheckingActivators{}
 
-func (ca *checkingActivators) Run(run wizard.Runtime) error {
+func (ca *CheckingActivators) Run(run wizard.Runtime) error {
 	for i := range ca.Cols {
 
 		curr := ca.Cols[i].GetColAssignmentAt(run, 0)
@@ -337,7 +337,7 @@ func (ca *checkingActivators) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (ca *checkingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (ca *CheckingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	for i := range ca.Cols {
 
 		curr := ca.Cols[i].GetColAssignmentGnarkAt(run, 0)
@@ -350,10 +350,10 @@ func (ca *checkingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime
 	}
 }
 
-func (ca *checkingActivators) Skip() {
+func (ca *CheckingActivators) Skip() {
 	ca.skipped = true
 }
 
-func (ca *checkingActivators) IsSkipped() bool {
+func (ca *CheckingActivators) IsSkipped() bool {
 	return ca.skipped
 }

@@ -63,7 +63,7 @@ func compile(comp *wizard.CompiledIOP, options ...Option) {
 		// in the same order as `sizes`.
 		// proverTaskCollaps indicates when we have more than one pair of inner-product with the same size
 		// and thus collapsing all pairs to a single column is required.
-		proverTaskNoCollaps, proverTaskCollpas proverTask
+		proverTaskNoCollaps, proverTaskCollpas ProverTask
 	)
 
 	for _, qName := range comp.QueriesParams.AllUnignoredKeys() {
