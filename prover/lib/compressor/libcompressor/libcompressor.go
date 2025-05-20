@@ -1,30 +1,48 @@
 package main
 
 /*
-#cgo CFLAGS: -I/opt/homebrew/opt/openjdk@21/include -I/opt/homebrew/opt/openjdk@21/include/darwin
 #cgo LDFLAGS: -L/opt/homebrew/Cellar/openjdk@21/21.0.6/libexec/openjdk.jdk/Contents/Home/lib/server -ljvm
+#cgo CFLAGS: -I/opt/homebrew/opt/openjdk@21/include
 #include <jni.h>
+#include <stdlib.h>
 
-// Declare JNI functions
-jclass FindClass(JNIEnv *env, const char *name);
-jint ThrowNew(JNIEnv *env, jclass clazz, const char *msg);
-jbyteArray NewByteArray(JNIEnv *env, jsize len);
-void SetByteArrayRegion(JNIEnv *env, jbyteArray array, jsize start, jsize len, const jbyte *buf);
-jsize GetArrayLength(JNIEnv *env, jbyteArray array);
-jbyte *GetByteArrayElements(JNIEnv *env, jbyteArray array, jboolean *isCopy);
-void ReleaseByteArrayElements(JNIEnv *env, jbyteArray array, jbyte *buf, jint mode);
+inline jint GetArrayLength(JNIEnv *env, jbyteArray array) {
+    return (*env)->GetArrayLength(env, array);
+}
+
+inline jbyte* GetByteArrayElements(JNIEnv *env, jbyteArray array, jboolean *isCopy) {
+    return (*env)->GetByteArrayElements(env, array, isCopy);
+}
+
+inline jclass FindClass(JNIEnv *env, const char *name) {
+    return (*env)->FindClass(env, name);
+}
+
+inline void ThrowNew(JNIEnv *env, jclass clazz, const char *message) {
+    (*env)->ThrowNew(env, clazz, message);
+}
+
+inline jbyteArray NewByteArray(JNIEnv *env, jsize length) {
+    return (*env)->NewByteArray(env, length);
+}
+
+inline void SetByteArrayRegion(JNIEnv *env, jbyteArray array, jsize start, jsize len, const jbyte *buf) {
+    (*env)->SetByteArrayRegion(env, array, start, len, buf);
+}
+
+inline void ReleaseByteArrayElements(JNIEnv *env, jbyteArray array, jbyte *elements, jint mode) {
+    (*env)->ReleaseByteArrayElements(env, array, elements, mode);
+}
 */
 import "C"
-import (
-	"encoding/binary"
-	"fmt"
-	"sync"
-	"unsafe"
-)
 
 import (
 	"crypto/rand"
+	"encoding/binary"
+	"fmt"
 	"slices"
+	"sync"
+	"unsafe"
 
 	blobv1 "github.com/consensys/linea-monorepo/prover/lib/compressor/blob/v1"
 )
@@ -52,16 +70,23 @@ var (
 )
 
 func throw(env *C.JNIEnv, errorClass string, err error) {
-	// Get the MyCustomException class
-	exceptionClass := C.FindClass(env, C.CString(errorClass))
+	errorClassC := C.CString(errorClass)
+	defer C.free(unsafe.Pointer(errorClassC))
+
+	errorMessageC := C.CString(err.Error())
+	defer C.free(unsafe.Pointer(errorMessageC))
+
+	// Use the JNIEnv pointer to call FindClass
+	exceptionClass := C.jclass(C.FindClass(env, errorClassC))
 	if unsafe.Pointer(exceptionClass) == nil {
-		// If the class is not found, throw a generic error
-		C.ThrowNew(env, C.FindClass(env, C.CString(runtimeExceptionJniClass)), C.CString("Exception class not found: "+errorClass))
+		runtimeExceptionClass := C.CString("java/lang/RuntimeException")
+		defer C.free(unsafe.Pointer(runtimeExceptionClass))
+
+		C.ThrowNew(env, C.FindClass(env, runtimeExceptionClass), errorMessageC)
 		return
 	}
 
-	// Throw the custom exception with the provided message
-	C.ThrowNew(env, exceptionClass, C.CString(err.Error()))
+	C.ThrowNew(env, exceptionClass, errorMessageC)
 }
 
 func fromJniBytes(env *C.JNIEnv, bytes C.jbyteArray) []byte {

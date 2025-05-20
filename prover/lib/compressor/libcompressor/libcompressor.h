@@ -19,6 +19,42 @@ typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 /* Start of preamble from import "C" comments.  */
 
 
+#line 3 "libcompressor.go"
+
+
+
+#include <jni.h>
+#include <stdlib.h>
+
+inline jint GetArrayLength(JNIEnv *env, jbyteArray array) {
+    return (*env)->GetArrayLength(env, array);
+}
+
+inline jbyte* GetByteArrayElements(JNIEnv *env, jbyteArray array, jboolean *isCopy) {
+    return (*env)->GetByteArrayElements(env, array, isCopy);
+}
+
+inline jclass FindClass(JNIEnv *env, const char *name) {
+    return (*env)->FindClass(env, name);
+}
+
+inline void ThrowNew(JNIEnv *env, jclass clazz, const char *message) {
+    (*env)->ThrowNew(env, clazz, message);
+}
+
+inline jbyteArray NewByteArray(JNIEnv *env, jsize length) {
+    return (*env)->NewByteArray(env, length);
+}
+
+inline void SetByteArrayRegion(JNIEnv *env, jbyteArray array, jsize start, jsize len, const jbyte *buf) {
+    (*env)->SetByteArrayRegion(env, array, start, len, buf);
+}
+
+inline void ReleaseByteArrayElements(JNIEnv *env, jbyteArray array, jbyte *elements, jint mode) {
+    (*env)->ReleaseByteArrayElements(env, array, elements, mode);
+}
+
+#line 1 "cgo-generated-wrapper"
 
 
 /* End of preamble from import "C" comments.  */
@@ -75,16 +111,15 @@ extern "C" {
 #endif
 
 
-// Init initializes the compressor.
+// NewInstance initializes the compressor.
 // The dataLimit argument is the maximum size of the compressed data.
-// Returns true if the compressor was initialized, false otherwise.
-// If false is returned, the Error() method will return a string describing the error.
+// Returns the instance ID if successful, or -1 if an error occurred.
 //
-extern GoUint8 Init(GoInt dataLimit, char* dictPath);
+extern int NewInstance(JNIEnv* env, int dataLimit, char* dictPath);
 
-// Reset resets the compressor. Must be called between each Blob.
+// Reset resets the compressor. Must be called between blobs.
 //
-extern void Reset();
+extern void Reset(JNIEnv* env, int instanceID);
 
 // Write appends the input to the compressed data.
 // The Go code doesn't keep a pointer to the input slice and the caller is free to modify it.
@@ -92,69 +127,47 @@ extern void Reset();
 //
 // The input []byte is interpreted as a RLP encoded Block.
 //
-extern GoUint8 Write(char* input, int inputLength);
+extern GoUint8 Write(JNIEnv* env, int instanceID, jbyteArray rlpBlock);
 
 // CanWrite behaves as Write, except that it doesn't append the input to the compressed data
 // (but return true if it could)
 //
-extern GoUint8 CanWrite(char* input, int inputLength);
-
-// Error returns the last encountered error.
-// If no error was encountered, returns nil.
-//
-extern char* Error();
+extern GoUint8 CanWrite(JNIEnv* env, int instanceID, jbyteArray rlpBlock);
 
 // StartNewBatch starts a new batch; must be called between each batch in the blob.
 //
-extern void StartNewBatch();
+extern void StartNewBatch(JNIEnv* env, int instanceID);
 
 // Len returns the length of the compressed data.
 //
-extern GoInt Len();
+extern int Len(JNIEnv* env, int instanceID);
 
 // Bytes returns the compressed data.
-// The caller is responsible for allocating the memory for the output slice.
-// Length of the output slice must equal the value returned by Len().
 //
-extern void Bytes(char* dataOut);
+extern jbyteArray Bytes(JNIEnv* env, int instanceID);
 
 // WorstCompressedBlockSize returns the size of the given block, as compressed by an "empty" blob maker.
 // That is, with more context, blob maker could compress the block further, but this function
 // returns the maximum size that can be achieved.
 //
 // The input is a RLP encoded block.
-// Returns the length of the compressed data, or -1 if an error occurred.
-// User must call Error() to get the error message.
 //
-// This function is thread-safe. Concurrent calls are allowed,
-// but the other functions may not be thread-safe.
-//
-extern int WorstCompressedBlockSize(char* input, int inputLength);
+extern int WorstCompressedBlockSize(JNIEnv* env, int instanceID, jbyteArray rlpBlock);
 
 // WorstCompressedTxSize returns the size of the given transaction, as compressed by an "empty" blob maker.
 // That is, with more context, blob maker could compress the transaction further, but this function
 // returns the maximum size that can be achieved.
 //
 // The input is a RLP encoded transaction.
-// Returns the length of the compressed data, or -1 if an error occurred.
-// User must call Error() to get the error message.
 //
-// This function is thread-safe. Concurrent calls are allowed,
-// but the other functions may not be thread-safe.
-//
-extern int WorstCompressedTxSize(char* input, int inputLength);
+extern int WorstCompressedTxSize(JNIEnv* env, int instanceID, jbyteArray rlpTx);
 
 // RawCompressedSize compresses the (raw) input and returns the length of the compressed data.
 // The returned length account for the "padding" used by the blob maker to
 // fit the data in field elements.
 // Input size must be less than 256kB.
-// If an error occurred, returns -1.
-// User must call Error() to get the error message.
 //
-// This function is thread-safe. Concurrent calls are allowed,
-// but the other functions are not thread-safe.
-//
-extern int RawCompressedSize(char* input, int inputLength);
+extern int RawCompressedSize(JNIEnv* env, int instanceID, jbyteArray input);
 
 #ifdef __cplusplus
 }
