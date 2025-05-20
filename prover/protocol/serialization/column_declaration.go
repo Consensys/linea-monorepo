@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	naturalType  = reflect.TypeOf(column.Natural{})
-	constColType = reflect.TypeOf(verifiercol.ConstCol{})
+	naturalType     = reflect.TypeOf(column.Natural{})
+	constColType    = reflect.TypeOf(verifiercol.ConstCol{})
+	expandedColType = reflect.TypeOf(verifiercol.ExpandedVerifCol{})
 
 	columnType          = reflect.TypeOf((*ifaces.Column)(nil)).Elem()
 	queryType           = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
@@ -112,6 +113,13 @@ func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, erro
 
 	case constColType:
 		col := v.Interface().(verifiercol.VerifierCol)
+		data, err = SerializeValue(reflect.ValueOf(col), mode)
+		if err != nil {
+			return nil, err
+		}
+
+	case expandedColType:
+		col := v.Interface().(verifiercol.ExpandedVerifCol)
 		data, err = SerializeValue(reflect.ValueOf(col), mode)
 		if err != nil {
 			return nil, err

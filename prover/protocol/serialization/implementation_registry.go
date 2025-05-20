@@ -34,6 +34,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/sirupsen/logrus"
 
 	ded "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
 )
@@ -337,6 +338,8 @@ func castAsString(key reflect.Value) (string, error) {
 		return fmt.Sprintf("%d", key.Int()), nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return fmt.Sprintf("%d", key.Uint()), nil
+	case reflect.Array:
+		return processArrayKeyForString(key)
 	default:
 		return "", fmt.Errorf("unsupported key type to be cast as string: %v", key.Type().Name())
 	}
@@ -359,7 +362,59 @@ func convertKeyToType(keyStr string, keyType reflect.Type) (reflect.Value, error
 			return reflect.Value{}, fmt.Errorf("cannot convert key %q to %v: %w", keyStr, keyType.Name(), err)
 		}
 		return reflect.ValueOf(keyUint).Convert(keyType), nil
+	case reflect.Array:
+		return processArrayKeyForType(keyStr, keyType)
 	default:
 		return reflect.Value{}, fmt.Errorf("unsupported map key type: %v", keyType.Name())
 	}
+}
+
+// processArrayKeyForString handles array keys for castAsString.
+func processArrayKeyForString(key reflect.Value) (string, error) {
+	typeStr := key.Type().Name()
+	logrus.Debugf("castAsString: Processing array key, type: %s, name: %s", typeStr, key.Type().Name())
+
+	if typeStr == "[4]uint64" || typeStr == "Element" {
+		logrus.Debugf("castAsString: Converting Element key: %v", key.Interface())
+		var elements []string
+		for i := 0; i < key.Len(); i++ {
+			elements = append(elements, fmt.Sprintf("%d", key.Index(i).Uint()))
+		}
+		result := fmt.Sprintf("[%s]", strings.Join(elements, ","))
+		logrus.Debugf("castAsString: Converted Element key to string: %s", result)
+		return result, nil
+	}
+
+	logrus.Errorf("castAsString: Unsupported array key type: %s (name: %s)", typeStr, key.Type().Name())
+	return "", fmt.Errorf("unsupported array key type: %s", key.Type().Name())
+}
+
+// processArrayKeyForType handles array keys for convertKeyToType.
+func processArrayKeyForType(keyStr string, keyType reflect.Type) (reflect.Value, error) {
+	typeStr := keyType.Name()
+	logrus.Debugf("convertKeyToType: Processing array key type: %s, name: %s", typeStr, keyType.Name())
+
+	if typeStr == "[4]uint64" || typeStr == "Element" {
+		logrus.Debugf("convertKeyToType: Parsing Element key string: %s", keyStr)
+		s := strings.Trim(keyStr, "[]")
+		parts := strings.Split(s, ",")
+		if len(parts) != 4 {
+			logrus.Errorf("convertKeyToType: Invalid Element key format %q, expected [x,y,z,w]", keyStr)
+			return reflect.Value{}, fmt.Errorf("invalid Element key format %q, expected [x,y,z,w]", keyStr)
+		}
+		var arr [4]uint64
+		for i, part := range parts {
+			val, err := strconv.ParseUint(strings.TrimSpace(part), 10, 64)
+			if err != nil {
+				logrus.Errorf("convertKeyToType: Cannot convert %q to uint64 in Element key: %v", part, err)
+				return reflect.Value{}, fmt.Errorf("cannot convert %q to uint64 in Element key: %w", part, err)
+			}
+			arr[i] = val
+		}
+		logrus.Debugf("convertKeyToType: Converted to Element key: %v", arr)
+		return reflect.ValueOf(arr).Convert(keyType), nil
+	}
+
+	logrus.Errorf("convertKeyToType: Unsupported array key type: %s (name: %s)", typeStr, keyType.Name())
+	return reflect.Value{}, fmt.Errorf("unsupported array key type: %s", keyType.Name())
 }
