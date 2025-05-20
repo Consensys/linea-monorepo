@@ -113,7 +113,7 @@ func runController(ctx context.Context, cfg *config.Config) {
 				if err := os.Rename(tmpRespFile, respFile); err != nil {
 					// @Alex: it is unclear how the rename operation could fail
 					// here. If this happens, we prefer removing the tmp file.
-					// Note that the operation is an `mv -f`
+					// Note that the operation is an `rm -f`.
 					os.Remove(tmpRespFile)
 
 					cLog.Errorf(
@@ -133,6 +133,8 @@ func runController(ctx context.Context, cfg *config.Config) {
 					// When that happens, the only thing left to do is to log
 					// the error and let the inprogress file where it is. It
 					// will likely require a human intervention.
+					//
+					// Note: this is assumedly an unreachable code path.
 					cLog.Errorf(
 						"Error renaming %v to %v: %v",
 						job.InProgressPath(), jobDone, err,
@@ -184,6 +186,8 @@ func runController(ctx context.Context, cfg *config.Config) {
 					// When that happens, the only thing left to do is to log
 					// the error and let the inprogress file where it is. It
 					// will likely require a human intervention.
+					//
+					// Note: this is assumedly an unreachable code path.
 					cLog.Errorf(
 						"Error renaming %v to %v: %v",
 						job.InProgressPath(), job.OriginalPath(), err,
@@ -203,6 +207,8 @@ func runController(ctx context.Context, cfg *config.Config) {
 					// When that happens, the only thing left to do is to log
 					// the error and let the inprogress file where it is. It
 					// will likely require a human intervention.
+					//
+					// Note: this is assumedly an unreachable code path.
 					cLog.Errorf(
 						"Error renaming %v to %v: %v",
 						job.InProgressPath(), jobFailed, err,
