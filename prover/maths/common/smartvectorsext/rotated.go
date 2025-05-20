@@ -57,7 +57,7 @@ func (r *RotatedExt) Len() int {
 
 // Returns a particular element of the vector
 func (r *RotatedExt) GetBase(n int) (field.Element, error) {
-	return field.Zero(), fmt.Errorf(conversionError)
+	return field.Zero(), conversionError
 }
 
 // Returns a particular element of the vector
@@ -165,7 +165,7 @@ func (r *RotatedExt) IntoRegVecSaveAlloc() []field.Element {
 }
 
 func (r *RotatedExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return nil, fmt.Errorf(conversionError)
+	return nil, conversionError
 }
 
 func (r *RotatedExt) IntoRegVecSaveAllocExt() []fext.Element {

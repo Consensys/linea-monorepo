@@ -4,12 +4,11 @@ import (
 	"fmt"
 
 	field "github.com/consensys/gnark-crypto/field/koalabear"
-	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -21,7 +20,7 @@ func ForTestExt(xs ...int) smartvectors.SmartVector {
 
 // ForTestFromVect computes a regular smartvector of field extensions,
 // where each field extension is populated using one vector of size [fext.ExtensionDegree]
-func ForTestFromVect(xs ...[fext.ExtensionDegree]int) smartvectors.SmartVector {
+func ForTestFromVect(xs ...[4]int) smartvectors.SmartVector {
 	return NewRegularExt(vectorext.ForTestFromVect(xs...))
 }
 
@@ -52,10 +51,7 @@ func IntoGnarkAssignment(sv smartvectors.SmartVector) []gnarkfext.Element {
 	res := make([]gnarkfext.Element, sv.Len())
 	for i := range res {
 		elem := sv.GetExt(i)
-		res[i] = gnarkfext.Element{
-			A0: frontend.Variable(elem.A0),
-			A1: frontend.Variable(elem.A1),
-		}
+		res[i] = gnarkfext.FromValue(elem)
 	}
 	return res
 }
