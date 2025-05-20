@@ -22,7 +22,7 @@ logcaptor = "2.11.0"
 # Runtime
 besu = "25.2.1-linea1"
 blobCompressor = "1.2.1"
-blobShnarfCalculator = "0.0.4"
+blobShnarfCalculator = "1.2.0"
 bouncycastle = "1.79"
 caffeine = "3.1.6"
 hoplite = "2.9.0"
