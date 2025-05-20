@@ -182,7 +182,7 @@ type Controller struct {
 	WorkerCmdTmpl      *template.Template `mapstructure:"-"`
 	WorkerCmdLargeTmpl *template.Template `mapstructure:"-"`
 
-	// SpotInstanceMode tells the controller to gracefully exit as soons as it
+	// SpotInstanceMode tells the controller to gracefully exit as soon as it
 	// receives a SIGTERM.
 	SpotInstanceMode bool `mapstructure:"spot_instance_mode"`
 }
