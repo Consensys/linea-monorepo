@@ -1,8 +1,7 @@
 package main
 
 /*
-#cgo LDFLAGS: -L/opt/homebrew/Cellar/openjdk@21/21.0.6/libexec/openjdk.jdk/Contents/Home/lib/server -ljvm
-#cgo CFLAGS: -I/opt/homebrew/opt/openjdk@21/include
+#cgo CFLAGS: -I/${JAVA_HOME}/include
 #include <jni.h>
 #include <stdlib.h>
 

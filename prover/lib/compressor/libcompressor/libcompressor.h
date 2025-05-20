@@ -22,7 +22,6 @@ typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 #line 3 "libcompressor.go"
 
 
-
 #include <jni.h>
 #include <stdlib.h>
 
