@@ -6,7 +6,9 @@ plugins {
 description = 'Java JNA wrapper for Linea Blob Shnarf Calculator implemented in GO Lang'
 
 dependencies {
-  api "net.java.dev.jna:jna:${libs.versions.jna.get()}"
+  compileOnly "net.java.dev.jna:jna:${libs.versions.jna.get()}"
+
+  testImplementation "net.java.dev.jna:jna:${libs.versions.jna.get()}"
   testImplementation project(":jvm-libs:generic:extensions:kotlin")
 }
 
@@ -26,7 +28,6 @@ def libsZipDownloadOutputDir = project.parent.layout.buildDirectory.asFile.get()
 
 task downloadNativeLibs {
   doLast {
-    fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v0.1.0/linea-blob-libs-v0.1.0.zip", "shnarf_calculator", libsZipDownloadOutputDir)
     fetchLibFromZip("https://github.com/Consensys/linea-monorepo/releases/download/blob-libs-v1.0.1/linea-blob-libs-v1.0.1.zip", "shnarf_calculator", libsZipDownloadOutputDir)
   }
 }

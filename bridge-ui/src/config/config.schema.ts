@@ -33,7 +33,9 @@ export const configSchema = z
     quickNodeApiKey: z.string().nonempty(),
     dynamicEnvironmentId: z.string().nonempty(),
     lifiApiKey: z.string().nonempty(),
+    lifiIntegrator: z.string().nonempty(),
     onRamperApiKey: z.string().nonempty(),
+    layerswapApiKey: z.string().nonempty(),
     tokenListUrls: z.object({
       mainnet: z.string().trim().url(),
       sepolia: z.string().trim().url(),

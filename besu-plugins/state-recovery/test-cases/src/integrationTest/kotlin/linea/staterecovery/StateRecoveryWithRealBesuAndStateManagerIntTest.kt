@@ -39,7 +39,7 @@ import kotlin.time.Duration.Companion.seconds
 class StateRecoveryWithRealBesuAndStateManagerIntTest {
   private val log = LogManager.getLogger("test.case.StateRecoverAppWithLocalStackIntTest")
   private lateinit var stateManagerClient: StateManagerClientV1
-  private val testDataDir = "testdata/coordinator/prover/v3"
+  private val testDataDir = "testdata/coordinator/prover/v3/stateRecovery"
   private val aggregationsAndBlobs: List<AggregationAndBlobs> = loadBlobsAndAggregationsSortedAndGrouped(
     blobsResponsesDir = "$testDataDir/compression/responses",
     aggregationsResponsesDir = "$testDataDir/aggregation/responses"
@@ -72,6 +72,7 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
     configureLoggers(
       rootLevel = Level.INFO,
       log.name to Level.DEBUG,
+      "net.consensys.linea.contract.Web3JContractAsyncHelper" to Level.WARN, // silence noisy gasPrice Caps logs
       "test.clients.l1.state-manager" to Level.DEBUG,
       "test.clients.l1.web3j-default" to Level.DEBUG
     )
@@ -110,7 +111,7 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
         contractClientForBlobSubmission = contractClientForBlobSubmission,
         contractClientForAggregationSubmission = contractClientForAggregationSubmission,
         aggregationsAndBlobs = aggregationsAndBlobs,
-        blobChunksMaxSize = 6,
+        blobChunksMaxSize = 9,
         l1Web3jClient = Web3jClientManager.l1Client,
         waitTimeout = 4.minutes,
         log = log

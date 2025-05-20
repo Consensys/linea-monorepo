@@ -2,7 +2,6 @@ package plonk
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -17,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/exit"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
@@ -96,7 +96,7 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 			// Don't use the fatal level here because we want to control the exit code
 			// to be 77.
 			logrus.Errorf("fatal=%v", err)
-			os.Exit(77)
+			exit.OnLimitOverflow()
 		}
 
 		if ci.InputFiller == nil {
@@ -134,7 +134,7 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 				return ci.witnesses[ii].Fill(ci.nbPublicInputs, 0, witnessFillers[ii])
 			})
 		}
-		go func() {
+		wg.Go(func() error {
 			var filled int
 			for j := 0; j < dataCol.Len(); j++ {
 				mask := maskCol.Get(j)
@@ -144,7 +144,7 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 				data := dataCol.Get(j)
 				select {
 				case <-ctx.Done():
-					return
+					return nil
 				case witnessFillers[filled/ci.nbPublicInputs] <- data:
 				}
 				filled++
@@ -160,7 +160,7 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 			for filled < ci.nbPublicInputs*ci.NbCircuitInstances {
 				select {
 				case <-ctx.Done():
-					return
+					return nil
 				case witnessFillers[filled/ci.nbPublicInputs] <- ci.InputFiller(filled/ci.nbPublicInputs, filled%ci.nbPublicInputs):
 				}
 				filled++
@@ -168,7 +168,9 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 					close(witnessFillers[(filled-1)/ci.nbPublicInputs])
 				}
 			}
-		}()
+
+			return nil
+		})
 		if err := wg.Wait(); err != nil {
 			utils.Panic("fill witness: %v", err.Error())
 			return

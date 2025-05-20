@@ -24,6 +24,7 @@ export const test = metaMaskFixtures(setup).extend<{
   selectTokenAndInputAmount: (tokenSymbol: string, amount: string) => Promise<void>;
   waitForNewTxAdditionToTxList: (txCountBeforeUpdate: number) => Promise<void>;
   waitForTxListUpdateForClaimTx: (claimTxCountBeforeUpdate: number) => Promise<void>;
+  openGasFeeModal: () => Promise<void>;
 
   // Metamask Actions - Should be ok to reuse within other fixture functions
   connectMetamaskToDapp: () => Promise<void>;
@@ -50,9 +51,9 @@ export const test = metaMaskFixtures(setup).extend<{
   // Bridge UI Actions
   clickNativeBridgeButton: async ({ page }, use) => {
     await use(async () => {
-      const nativeBridgeBtn = page.getByRole("link", { name: "Native Bridge", exact: true });
-      await nativeBridgeBtn.click();
-      return nativeBridgeBtn;
+      const nativeBridgeLink = page.getByTestId("nav-item-Native-Bridge");
+      await nativeBridgeLink.click();
+      return nativeBridgeLink;
     });
   },
   openNativeBridgeTransactionHistory: async ({ page }, use) => {
@@ -127,6 +128,14 @@ export const test = metaMaskFixtures(setup).extend<{
         tryCount++;
         await page.waitForTimeout(POLLING_INTERVAL);
       } while (!listUpdated && tryCount < maxTries);
+    });
+  },
+  openGasFeeModal: async ({ page }, use) => {
+    await use(async () => {
+      const gasFeeBtn = page.getByRole("button", { name: "fee-chain-icon" });
+      // bridge-ui-known-flaky-line - Unsure why, the gas fees may not load within 5s
+      await expect(gasFeeBtn).not.toContainText("0.00000000");
+      await gasFeeBtn.click();
     });
   },
 

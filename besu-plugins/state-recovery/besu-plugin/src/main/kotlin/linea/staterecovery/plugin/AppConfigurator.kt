@@ -2,19 +2,20 @@ package linea.staterecovery.plugin
 
 import build.linea.clients.StateManagerClientV1
 import build.linea.clients.StateManagerV1JsonRpcClient
-import build.linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import io.micrometer.core.instrument.MeterRegistry
 import io.vertx.core.Vertx
 import io.vertx.micrometer.backends.BackendRegistries
+import linea.contract.l1.Web3JLineaRollupSmartContractClientReadOnly
 import linea.domain.RetryConfig
+import linea.ethapi.EthLogsSearcherImpl
 import linea.staterecovery.BlockHeaderStaticFields
 import linea.staterecovery.ExecutionLayerClient
 import linea.staterecovery.StateRecoveryApp
 import linea.staterecovery.TransactionDetailsClient
 import linea.staterecovery.clients.VertxTransactionDetailsClient
 import linea.staterecovery.clients.blobscan.BlobScanClient
-import linea.web3j.Web3JLogsSearcher
 import linea.web3j.createWeb3jHttpClient
+import linea.web3j.ethapi.createEthApiClient
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.jsonrpc.client.VertxHttpJsonRpcClientFactory
 import net.consensys.linea.metrics.micrometer.MicrometerMetricsFacade
@@ -34,6 +35,7 @@ fun createAppAllInProcess(
   l1RequestRetryConfig: RetryConfig,
   blobScanEndpoint: URI,
   blobScanRequestRetryConfig: RetryConfig,
+  blobscanRequestRatelimitBackoffDelay: Duration?,
   blockHeaderStaticFields: BlockHeaderStaticFields,
   appConfig: StateRecoveryApp.Config
 ): StateRecoveryApp {
@@ -46,7 +48,8 @@ fun createAppAllInProcess(
     l1SuccessBackoffDelay = l1SuccessBackoffDelay,
     l1RequestRetryConfig = l1RequestRetryConfig,
     blobScanEndpoint = blobScanEndpoint,
-    blobScanRequestRetryConfig = blobScanRequestRetryConfig
+    blobScanRequestRetryConfig = blobScanRequestRetryConfig,
+    blobscanRequestRateLimitBackoffDelay = blobscanRequestRatelimitBackoffDelay
   ).let { clients ->
     val app = StateRecoveryApp(
       vertx = vertx,
@@ -65,7 +68,7 @@ fun createAppAllInProcess(
 
 data class AppClients(
   val lineaContractClient: Web3JLineaRollupSmartContractClientReadOnly,
-  val ethLogsSearcher: Web3JLogsSearcher,
+  val ethLogsSearcher: EthLogsSearcherImpl,
   val blobScanClient: BlobScanClient,
   val stateManagerClient: StateManagerClientV1,
   val transactionDetailsClient: TransactionDetailsClient
@@ -90,6 +93,7 @@ fun createAppClients(
   blobScanEndpoint: URI,
   blobScanRequestRetryConfig: RetryConfig = RetryConfig(backoffDelay = 1.seconds),
   stateManagerClientEndpoint: URI,
+  blobscanRequestRateLimitBackoffDelay: Duration? = null,
   stateManagerRequestRetry: RetryConfig = RetryConfig(backoffDelay = 1.seconds),
   zkStateManagerVersion: String = "2.3.0"
 ): AppClients {
@@ -102,15 +106,17 @@ fun createAppClients(
   )
   val ethLogsSearcher = run {
     val log = LogManager.getLogger("linea.plugin.staterecovery.clients.l1.logs-searcher")
-    Web3JLogsSearcher(
+    val web3jEthApiClient = createEthApiClient(
       vertx = vertx,
-      web3jClient = createWeb3jHttpClient(
-        rpcUrl = l1RpcEndpoint.toString(),
-        log = log
-      ),
-      config = Web3JLogsSearcher.Config(
-        loopSuccessBackoffDelay = l1SuccessBackoffDelay,
-        requestRetryConfig = l1RequestRetryConfig
+      rpcUrl = l1RpcEndpoint.toString(),
+      requestRetryConfig = l1RequestRetryConfig,
+      log = log
+    )
+    EthLogsSearcherImpl(
+      vertx = vertx,
+      ethApiClient = web3jEthApiClient,
+      config = EthLogsSearcherImpl.Config(
+        loopSuccessBackoffDelay = l1SuccessBackoffDelay
       ),
       log = log
     )
@@ -118,8 +124,9 @@ fun createAppClients(
   val blobScanClient = BlobScanClient.create(
     vertx = vertx,
     endpoint = blobScanEndpoint,
-    requestRetryConfig = blobScanRequestRetryConfig.toRequestRetryConfig(),
-    logger = LogManager.getLogger("linea.plugin.staterecovery.clients.l1.blob-scan")
+    requestRetryConfig = blobScanRequestRetryConfig,
+    logger = LogManager.getLogger("linea.plugin.staterecovery.clients.l1.blob-scan"),
+    rateLimitBackoffDelay = blobscanRequestRateLimitBackoffDelay
   )
   val jsonRpcClientFactory = VertxHttpJsonRpcClientFactory(vertx, MicrometerMetricsFacade(meterRegistry))
   val stateManagerClient: StateManagerClientV1 = StateManagerV1JsonRpcClient.create(

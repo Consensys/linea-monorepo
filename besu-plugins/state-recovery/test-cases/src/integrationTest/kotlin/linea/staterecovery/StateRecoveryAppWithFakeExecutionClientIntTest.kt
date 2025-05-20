@@ -49,7 +49,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
   private lateinit var appClients: AppClients
 
   private val testDataDir = run {
-    "testdata/coordinator/prover/v3"
+    "testdata/coordinator/prover/v3/stateRecovery"
   }
 
   private val l1RpcUrl = "http://localhost:8445"
@@ -106,14 +106,14 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
     configureLoggers(
       rootLevel = Level.INFO,
       log.name to Level.DEBUG,
-      "linea.testing.submission" to Level.DEBUG,
+      "linea.testing.submission" to Level.INFO,
       "net.consensys.linea.contract.Web3JContractAsyncHelper" to Level.WARN, // silence noisy gasPrice Caps logs
       "linea.staterecovery.BlobDecompressorToDomainV1" to Level.DEBUG,
       "linea.plugin.staterecovery.clients" to Level.INFO,
       "test.fake.clients.l1.fake-execution-layer" to Level.DEBUG,
-      "test.clients.l1.web3j-default" to Level.DEBUG,
-      "test.clients.l1.web3j.receipt-poller" to Level.TRACE,
-      "linea.staterecovery.datafetching" to Level.TRACE
+      "test.clients.l1.web3j-default" to Level.INFO,
+      "test.clients.l1.web3j.receipt-poller" to Level.INFO,
+      "linea.staterecovery.datafetching" to Level.INFO
     )
   }
 
@@ -137,7 +137,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
 
   private fun submitDataToL1ContactAndWaitExecution(
     aggregationsAndBlobs: List<AggregationAndBlobs> = this.aggregationsAndBlobs,
-    blobChunksSize: Int = 6,
+    blobChunksSize: Int = 9,
     waitTimeout: Duration = 4.minutes
   ) {
     submitBlobsAndAggregationsAndWaitExecution(
