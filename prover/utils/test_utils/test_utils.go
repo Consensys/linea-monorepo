@@ -405,6 +405,12 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 		return true
 	}
 
+	// Ignore Func
+	if v1.Kind() == reflect.Func {
+		// fmt.Println("Skipping comparision of reflect.Func type")
+		return true
+	}
+
 	// Handle maps
 	if v1.Kind() == reflect.Map {
 		if v1.Len() != v2.Len() {
