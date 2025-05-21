@@ -579,15 +579,6 @@ opcodes:
       delta: 0
       staticGas: G_JUMP_DEST
       flag4: true
-  - mnemonic: PUSH0
-    value: 0x5f
-    instructionFamily: PUSH_POP
-    stackSettings:
-      pattern: ZERO_ONE
-      alpha: 1
-      delta: 0
-      staticGas: G_BASE
-      flag3: true
   - mnemonic: PUSH1
     value: 0x60
     instructionFamily: PUSH_POP
@@ -1220,7 +1211,7 @@ opcodes:
     billing:
       byMxp:
         type: TYPE_4
-        wordPrice: G_CONST_INIT_CODE_WORD
+        wordPrice: G_KECCAK_256_WORD
   - mnemonic: CALL
     value: 0xf1
     instructionFamily: CALL
@@ -1288,7 +1279,7 @@ opcodes:
     billing:
       byWord:
         type: TYPE_4
-        wordPrice: G_CONST_INIT_CODE_WORD_CREATE2
+        wordPrice: G_KECCAK_256_WORD
   - mnemonic: STATICCALL
     value: 0xfa
     instructionFamily: CALL

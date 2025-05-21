@@ -169,16 +169,7 @@ public abstract class TxndataOperation extends ModuleOperation {
   void setShanghaiCallsToEucAndWcp() {}
 
   @Override
-  protected int computeLineCount() {
-    // Count the number of rows of each tx, only depending on the type of the transaction
-    return switch (tx.getBesuTransaction().getType()) {
-      case FRONTIER -> NB_ROWS_TYPE_0;
-      case ACCESS_LIST -> NB_ROWS_TYPE_1;
-      case EIP1559 -> NB_ROWS_TYPE_2;
-      default -> throw new RuntimeException(
-          "Transaction type not supported:" + tx.getBesuTransaction().getType());
-    };
-  }
+  protected abstract int computeLineCount();
 
   private void setRlptxnValues() {
     // i+0

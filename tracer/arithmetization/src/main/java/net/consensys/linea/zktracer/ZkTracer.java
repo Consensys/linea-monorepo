@@ -61,7 +61,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   @Getter private final List<Exception> tracingExceptions = new FiniteList<>(50);
 
   // Fields for metadata
-  private final ChainConfig chain;
+  @Getter private final ChainConfig chain;
 
   /**
    * Construct a ZkTracer for a given bridge configuration and chainId. This is used, for example,
@@ -89,6 +89,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     this.hub =
         switch (chain.fork) {
           case LONDON -> new LondonHub(chain);
+          case PARIS -> new ParisHub(chain);
           case SHANGHAI -> new ShanghaiHub(chain);
           case CANCUN -> new CancunHub(chain);
           case PRAGUE -> new PragueHub(chain);

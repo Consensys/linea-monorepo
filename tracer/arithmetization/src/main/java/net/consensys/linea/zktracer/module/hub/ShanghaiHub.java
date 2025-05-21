@@ -27,7 +27,7 @@ import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 import org.hyperledger.besu.evm.gascalculator.ShanghaiGasCalculator;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 
-public class ShanghaiHub extends LondonHub {
+public class ShanghaiHub extends ParisHub {
   public ShanghaiHub(ChainConfig chain) {
     super(chain);
   }

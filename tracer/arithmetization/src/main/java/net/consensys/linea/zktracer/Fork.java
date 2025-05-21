@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer;
 
 public enum Fork {
   LONDON,
+  PARIS,
   SHANGHAI,
   CANCUN,
   PRAGUE;
@@ -24,15 +25,28 @@ public enum Fork {
   public static String toString(Fork fork) {
     return switch (fork) {
       case LONDON -> "london";
+      case PARIS -> "paris";
       case SHANGHAI -> "shanghai";
       case CANCUN -> "cancun";
       case PRAGUE -> "prague";
     };
   }
 
+  /**
+   * Construct a fork instance from the name of a fork (e.g. "London", "Shanghai", etc). Observe
+   * that case does not matter here. Hence, "LONDON", "London", "london", "lonDon" are all suitable
+   * aliases for the LONDON instance.
+   *
+   * @param fork
+   * @return
+   */
+  public static Fork fromString(String fork) {
+    return Fork.valueOf(fork.toUpperCase());
+  }
+
   public static boolean isPostShanghai(Fork fork) {
     return switch (fork) {
-      case LONDON -> false;
+      case LONDON, PARIS -> false;
       case SHANGHAI, CANCUN, PRAGUE -> true;
     };
   }

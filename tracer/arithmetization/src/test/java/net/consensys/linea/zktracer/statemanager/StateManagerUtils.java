@@ -17,7 +17,7 @@ package net.consensys.linea.zktracer.statemanager;
 
 import java.util.*;
 
-import net.consensys.linea.zktracer.module.blockdata.Blockdata;
+import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.TraceFragment;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;

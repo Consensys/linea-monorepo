@@ -69,7 +69,10 @@ public enum GasConstants {
   // data for memory expansion, STP data for gas stipend <- made it its own type
   S_HUB(0),
   S_STP(0),
-  S_PREC_INFO(0);
+  S_PREC_INFO(0),
+  // EIP-3860: CREAE(2) are added GAS_CONST_INIT_CODE_WORD = 2 per word for the init code
+  G_CONST_INIT_CODE_WORD(GAS_CONST_INIT_CODE_WORD),
+  G_CONST_INIT_CODE_WORD_CREATE2(GAS_CONST_G_KECCAK_256_WORD + GAS_CONST_INIT_CODE_WORD);
 
   /** The gas price of the instruction family. */
   private final int cost;

@@ -53,8 +53,6 @@ import org.hyperledger.besu.evm.worldstate.WorldUpdater;
 public class ToyExecutionTools {
   private static final List<String> SPECS_PRIOR_TO_DELETING_EMPTY_ACCOUNTS =
       Arrays.asList("Frontier", "Homestead", "EIP150");
-  private static final CorsetValidator CORSET_VALIDATOR =
-      new CorsetValidator(ChainConfig.MAINNET_LONDON_TESTCONFIG);
 
   private ToyExecutionTools() {
     // utility class
@@ -175,7 +173,7 @@ public class ToyExecutionTools {
 
     ExecutionEnvironment.checkTracer(
         tracer,
-        CORSET_VALIDATOR,
+        new CorsetValidator(tracer.getChain()),
         Optional.of(log),
         // block number for first block
         blockHeader.getNumber(),
