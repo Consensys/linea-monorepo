@@ -35,7 +35,7 @@ func TestInterpolation(t *testing.T) {
 	domain.FFT(onRoots, fft.DIF)
 
 	fft.BitReverse(onRoots)
-	yOnRoots := EvaluateLagrange(onRoots, x)
+	yOnRoots := EvaluateLagrangeOnFext(onRoots, x)
 	require.Equal(t, expectedY.String(), yOnRoots.String())
 
 	/*
@@ -44,7 +44,7 @@ func TestInterpolation(t *testing.T) {
 	onCoset := vector.DeepCopy(randPoly)
 	domain.FFT(onCoset, fft.DIF, fft.OnCoset())
 	fft.BitReverse(onCoset)
-	yOnCoset := EvaluateLagrange(onCoset, x, true)
+	yOnCoset := EvaluateLagrangeOnFext(onCoset, x, true)
 	require.Equal(t, expectedY.String(), yOnCoset.String())
 
 }

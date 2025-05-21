@@ -27,8 +27,8 @@ func TestGnarkInterpolate(t *testing.T) {
 				var (
 					x         = fext.NewElement(1, 2, 3, 4)
 					vec       = vector.IntoGnarkAssignment(testCases[i])
-					expectedY = Interpolate(testCases[i], x)
-					computedY = InterpolateGnark(api, vec, x)
+					expectedY = EvaluateLagrangeOnFext(testCases[i], x)
+					computedY = EvaluateLagrangeGnark(api, vec, x)
 				)
 				api.AssertIsEqual(expectedY, computedY)
 				return nil

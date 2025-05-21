@@ -12,8 +12,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
-// EvaluateLagrange computes ∑_i L_i(x), i.e. evaluates p interpreted as a polynomial in Lagrange form
-func EvaluateLagrange(poly []field.Element, x fext.Element, oncoset ...bool) fext.Element {
+// EvaluateLagrangeOnFext computes ∑_i L_i(x), i.e. evaluates p interpreted as a polynomial in Lagrange form, and x lives in the extension
+func EvaluateLagrangeOnFext(poly []field.Element, x fext.Element, oncoset ...bool) fext.Element {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
@@ -57,6 +57,14 @@ func EvaluateLagrange(poly []field.Element, x fext.Element, oncoset ...bool) fex
 	}
 
 	return res
+}
+
+// EvaluateLagrange computes ∑_i L_i(x), i.e. evaluates p interpreted as a polynomial in Lagrange form, and x lives in the extension
+func EvaluateLagrange(poly []field.Element, x field.Element, oncoset ...bool) field.Element {
+	var xExt fext.Element
+	fext.FromBase(&xExt, &x)
+	res := EvaluateLagrangeOnFext(poly, xExt, oncoset...)
+	return res.B0.A0
 }
 
 // Batch version of Interpolate
