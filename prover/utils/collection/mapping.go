@@ -25,7 +25,7 @@ func (kv *Mapping[K, V]) MustGet(key K) V {
 	res, found := kv.innerMap[key]
 
 	if !found {
-		keyType := reflect.TypeOf(&key)
+		keyType := reflect.TypeOf(key)
 		keyTypeName := keyType.Name()
 		keyTypeStr := keyType.String()
 		keyTypeKind := keyType.Kind()
