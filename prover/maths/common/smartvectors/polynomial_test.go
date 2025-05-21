@@ -67,7 +67,7 @@ func TestFuzzPolynomial(t *testing.T) {
 
 			var oneExt fext.Element
 			oneExt.SetOne()
-			xa := Interpolate(a, oneExt)
+			xa := EvaluateLagrange(a, oneExt)
 			expecteda0 := a.Get(0)
 			assert.Equal(t, xa.String(), expecteda0.String())
 

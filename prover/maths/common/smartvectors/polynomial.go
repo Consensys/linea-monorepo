@@ -92,8 +92,8 @@ func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.E
 	return quo, rem
 }
 
-// Evaluate a polynomial in Lagrange basis
-func Interpolate(v SmartVector, x fext.Element, oncoset ...bool) field.Element {
+// EvaluateLagrange a polynomial in Lagrange basis
+func EvaluateLagrange(v SmartVector, x fext.Element, oncoset ...bool) field.Element {
 	switch con := v.(type) {
 	case *Constant:
 		return con.val
