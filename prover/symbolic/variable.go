@@ -46,6 +46,10 @@ func (v Variable) EvaluateExt([]sv.SmartVector, ...mempool.MemPool) sv.SmartVect
 	panic("we never call it for variables")
 }
 
+func (v Variable) EvaluateMixed([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
+	panic("we never call it for variables")
+}
+
 // GnarkEval implements the [Operator] interface. Yet, this panics if this is called.
 func (v Variable) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
 	panic("we never call it for variables")

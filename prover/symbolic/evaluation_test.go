@@ -22,7 +22,7 @@ func TestSimpleAddition(t *testing.T) {
 
 		t.Run("const-const", func(t *testing.T) {
 			// 2 + 3 = 5
-			res := b.EvaluateExt([]sv.SmartVector{
+			res := b.EvaluateMixed([]sv.SmartVector{
 				sv.NewConstantExt(fext.NewFromBaseInteger(2), 1),
 				sv.NewConstantExt(fext.NewFromBaseInteger(3), 1),
 			}).(*sv.ConstantExt).Val()
@@ -33,7 +33,7 @@ func TestSimpleAddition(t *testing.T) {
 		t.Run("const-vec", func(t *testing.T) {
 			// 2 + 1 = 3
 			// 2 + 5 = 7
-			res := b.Evaluate([]sv.SmartVector{
+			res := b.EvaluateMixed([]sv.SmartVector{
 				sv.NewConstantExt(fext.NewFromBaseInteger(2), 2),
 				sv.ForTestExt(1, 5),
 			}).(*sv.RegularExt)
@@ -44,7 +44,7 @@ func TestSimpleAddition(t *testing.T) {
 
 		t.Run("vec-vec", func(t *testing.T) {
 			// For large vectors
-			res := b.EvaluateExt([]sv.SmartVector{
+			res := b.EvaluateMixed([]sv.SmartVector{
 				sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(2), SIZE)),
 				sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), SIZE)),
 			}).(*sv.RegularExt)
@@ -67,7 +67,7 @@ func TestPythagoras(t *testing.T) {
 
 	{
 		// 2^2 + 3^2 = 13
-		res := b.EvaluateExt([]sv.SmartVector{
+		res := b.EvaluateMixed([]sv.SmartVector{
 			sv.NewConstantExt(fext.NewFromBaseInteger(2), 1),
 			sv.NewConstantExt(fext.NewFromBaseInteger(3), 1),
 		}).(*sv.ConstantExt).Val()
@@ -77,7 +77,7 @@ func TestPythagoras(t *testing.T) {
 
 	{
 		// A vector and a scalar
-		res := b.EvaluateExt([]sv.SmartVector{
+		res := b.EvaluateMixed([]sv.SmartVector{
 			sv.NewConstantExt(fext.NewFromBaseInteger(2), 1024),
 			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), 1024)),
 		}).(*sv.RegularExt)
@@ -90,7 +90,7 @@ func TestPythagoras(t *testing.T) {
 
 	{
 		// Two vectors
-		res := b.EvaluateExt([]sv.SmartVector{
+		res := b.EvaluateMixed([]sv.SmartVector{
 			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(2), 8192)),
 			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), 8192)),
 		}).(*sv.RegularExt)
@@ -111,7 +111,7 @@ func TestMulAdd(t *testing.T) {
 
 	{
 		// (2+2) * (3+3) = 24
-		res := b.EvaluateExt([]sv.SmartVector{
+		res := b.EvaluateMixed([]sv.SmartVector{
 			sv.NewConstantExt(fext.NewFromBaseInteger(2), 1),
 			sv.NewConstantExt(fext.NewFromBaseInteger(3), 1),
 		}).(*sv.ConstantExt).Val()
@@ -121,7 +121,7 @@ func TestMulAdd(t *testing.T) {
 
 	{
 		// A vector and a scalar
-		res := b.EvaluateExt([]sv.SmartVector{
+		res := b.EvaluateMixed([]sv.SmartVector{
 			sv.NewConstantExt(fext.NewFromBaseInteger(2), 1024),
 			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), 1024)),
 		}).(*sv.RegularExt)
@@ -134,7 +134,7 @@ func TestMulAdd(t *testing.T) {
 
 	{
 		// Two vectors
-		res := b.EvaluateExt([]sv.SmartVector{
+		res := b.EvaluateMixed([]sv.SmartVector{
 			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(2), 8192)),
 			sv.NewRegularExt(vectorext.Repeat(fext.NewFromBaseInteger(3), 8192)),
 		}).(*sv.RegularExt)
@@ -153,7 +153,7 @@ func TestBinaryConstraintWithLargeWindows(t *testing.T) {
 	expr2 := v.Mul(NewConstant("1").Sub(v))
 	boarded := expr2.Board()
 
-	res := boarded.EvaluateExt([]sv.SmartVector{
+	res := boarded.EvaluateMixed([]sv.SmartVector{
 		sv.NewPaddedCircularWindowExt(
 			vectorext.ForTest(0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
 			fext.Zero(),
@@ -186,10 +186,10 @@ func TestExpressionsContainAllCases(t *testing.T) {
 	*/
 	require.Equal(t, b.ListVariableMetadata(), []Metadata{StringVar("a"), StringVar("b")})
 
-	res := b.EvaluateExt([]sv.SmartVector{valA, valB}).(*sv.RegularExt).GetExt(0)
-	res0 := b.EvaluateExt([]sv.SmartVector{valA0, valB}).GetExt(0)
-	resW := b.EvaluateExt([]sv.SmartVector{valAW, valB}).GetExt(0)
-	resWShifted := b.EvaluateExt([]sv.SmartVector{valAWShifted, valB}).GetExt(0)
+	res := b.EvaluateMixed([]sv.SmartVector{valA, valB}).(*sv.RegularExt).GetExt(0)
+	res0 := b.EvaluateMixed([]sv.SmartVector{valA0, valB}).GetExt(0)
+	resW := b.EvaluateMixed([]sv.SmartVector{valAW, valB}).GetExt(0)
+	resWShifted := b.EvaluateMixed([]sv.SmartVector{valAWShifted, valB}).GetExt(0)
 
 	/*
 		Compare the result of the two evaluations

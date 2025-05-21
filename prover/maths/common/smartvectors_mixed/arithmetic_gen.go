@@ -25,7 +25,8 @@ func LinCombMixed(coeffs []int, svecs []sv.SmartVector, p ...mempool.MemPool) sv
 		return resBase
 	} else {
 		// sanity check that the base and extension vectors have the same length
-		if vecsBase[0].Len() != vecsExt[0].Len() {
+		// but only if the vecBase are present at all
+		if len(vecsBase) > 0 && vecsBase[0].Len() != vecsExt[0].Len() {
 			utils.Panic("base and extension vectors should have the same length")
 		}
 		// there are some extension vectors present
@@ -55,7 +56,8 @@ func ProductMixed(exponents []int, svecs []sv.SmartVector, p ...mempool.MemPool)
 		return resBase
 	} else {
 		// sanity check that the base and extension vectors have the same length
-		if vecsBase[0].Len() != vecsExt[0].Len() {
+		// but only if the vecBase are present at all
+		if len(vecsBase) > 0 && vecsBase[0].Len() != vecsExt[0].Len() {
 			utils.Panic("base and extension vectors should have the same length")
 		}
 		// there are some extension vectors present

@@ -131,3 +131,7 @@ func (PolyEval) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.Sm
 	x := inputs[0].(*sv.ConstantExt).GetExt(0)
 	return sv.PolyEvalExt(inputs[1:], x, p...)
 }
+
+func (PolyEval) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+	panic("PolyEval does not support mixed evaluation for now")
+}

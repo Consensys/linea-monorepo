@@ -60,10 +60,12 @@ func executeFuncOnBaseExt(
 	baseOperation func(vec ...sv.SmartVector) sv.SmartVector,
 	extOperation func(vec ...sv.SmartVector) sv.SmartVector,
 	finalOperation func(vec ...sv.SmartVector) sv.SmartVector,
+	neutralElement field.Element,
 ) sv.SmartVector {
 	vecsBase, vecsExt := SeparateBaseAndExtVectors(vecs)
 
-	var res sv.SmartVector = sv.NewConstant(field.Zero(), vecs[0].Len())
+	var res sv.SmartVector = sv.NewConstant(neutralElement, vecs[0].Len())
+
 	if len(vecsBase) > 0 {
 		res = baseOperation(vecsBase...)
 	}
@@ -149,6 +151,7 @@ func AddMixed(vecs ...sv.SmartVector) sv.SmartVector {
 		sv.Add,
 		sv.AddExt,
 		sv.AddExt,
+		field.Zero(),
 	)
 }
 
@@ -162,5 +165,6 @@ func MulMixed(vecs ...sv.SmartVector) sv.SmartVector {
 		sv.Mul,
 		sv.MulExt,
 		sv.MulExt,
+		field.One(),
 	)
 }

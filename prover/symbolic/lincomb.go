@@ -2,6 +2,7 @@ package symbolic
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"reflect"
@@ -104,6 +105,10 @@ func (lc LinComb) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.Sma
 
 func (lc LinComb) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 	return sv.LinCombExt(lc.Coeffs, inputs, p...)
+}
+
+func (lc LinComb) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+	return smartvectors_mixed.LinCombMixed(lc.Coeffs, inputs, p...)
 }
 
 // Validate implements the [Operator] interface

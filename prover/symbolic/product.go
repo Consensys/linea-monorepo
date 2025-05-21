@@ -3,6 +3,7 @@ package symbolic
 import (
 	"errors"
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkutilext"
@@ -207,4 +208,8 @@ func (prod Product) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Variable) 
 
 func (prod Product) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
 	return sv.ProductExt(prod.Exponents, inputs, p...)
+}
+
+func (prod Product) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+	return smartvectors_mixed.ProductMixed(prod.Exponents, inputs, p...)
 }

@@ -81,9 +81,9 @@ func TestReplayExpression(t *testing.T) {
 			require.Equal(t, metadatas[i].String()+"_", replayedMetadata[i].String())
 		}
 
-		eval := board.EvaluateExt(inputs)
-		replayedEval := replayedBoard.EvaluateExt(inputs_)
-		oldEval := oldBoard.EvaluateExt(inputs)
+		eval := board.EvaluateMixed(inputs)
+		replayedEval := replayedBoard.EvaluateMixed(inputs_)
+		oldEval := oldBoard.EvaluateMixed(inputs)
 
 		// The oldEval and eval should be consistent
 		require.Equal(t, eval.Pretty(), oldEval.Pretty())

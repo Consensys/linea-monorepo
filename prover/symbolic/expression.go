@@ -65,6 +65,7 @@ type Operator interface {
 	// EvaluateExt returns an evaluation of the operator from a list of assignments:
 	// one for each operand (children) of the expression.
 	EvaluateExt([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector
+	EvaluateMixed([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector
 	// Validate performs a sanity-check of the expression the Operator belongs
 	// to.
 	Validate(e *Expression) error

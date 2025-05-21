@@ -30,6 +30,10 @@ func (c Constant) EvaluateExt([]sv.SmartVector, ...mempool.MemPool) sv.SmartVect
 	panic("we never call EvaluateExt for a constant")
 }
 
+func (c Constant) EvaluateMixed([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector {
+	panic("we never call EvaluateMixed for a constant")
+}
+
 // GnarkEval implements the [Operator] interface.
 func (c Constant) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend.Variable {
 	panic("we never call it for a constant")

@@ -2,6 +2,7 @@ package symbolic
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"sync"
 
@@ -198,7 +199,7 @@ func (b *ExpressionBoard) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.Me
 	if totalSize < MaxChunkSize {
 		// never pass the pool here as the pool assumes that all vectors have a
 		// size of MaxChunkSize. Thus, it would not work here.
-		return b.evaluateSingleThread(inputs).DeepCopy()
+		return b.evaluateSingleThreadMixed(inputs).DeepCopy()
 	}
 
 	// This is the code-path that is used for benchmarking when the size of the
@@ -206,7 +207,7 @@ func (b *ExpressionBoard) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.Me
 	// multi-threaded option. The above condition cannot use the pool because we
 	// assume here that the pool has a vector size of exactly MaxChunkSize.
 	if totalSize == MaxChunkSize {
-		return b.evaluateSingleThreadExt(inputs, p...).DeepCopy()
+		return b.evaluateSingleThreadMixed(inputs, p...).DeepCopy()
 	}
 
 	if totalSize%MaxChunkSize != 0 {
@@ -214,57 +215,111 @@ func (b *ExpressionBoard) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.Me
 	}
 
 	numChunks := totalSize / MaxChunkSize
-	res := make([]fext.Element, totalSize)
 
-	parallel.ExecuteFromChan(numChunks, func(wg *sync.WaitGroup, id *parallel.AtomicCounter) {
+	resIsBase := sv.AreAllBase(inputs)
+	if resIsBase {
+		// we are dealing with base vectors
+		res := make([]field.Element, totalSize)
+		parallel.ExecuteFromChan(numChunks, func(wg *sync.WaitGroup, id *parallel.AtomicCounter) {
 
-		var pool []mempool.MemPool
-		if len(p) > 0 {
-			if _, ok := p[0].(*mempool.DebuggeableCall); !ok {
-				pool = append(pool, mempool.WrapsWithMemCache(p[0]))
-			}
-		}
-
-		chunkInputs := make([]sv.SmartVector, len(inputs))
-
-		for {
-			chunkID, ok := id.Next()
-			if !ok {
-				break
-			}
-
-			var (
-				chunkStart = chunkID * MaxChunkSize
-				chunkStop  = (chunkID + 1) * MaxChunkSize
-			)
-
-			for i, inp := range inputs {
-				chunkInputs[i] = inp.SubVector(chunkStart, chunkStop)
-				// Sanity-check : the output of SubVector must have the correct length
-				if chunkInputs[i].Len() != chunkStop-chunkStart {
-					utils.Panic("Subvector failed, subvector should have size %v but size is %v", chunkStop-chunkStart, chunkInputs[i].Len())
+			var pool []mempool.MemPool
+			if len(p) > 0 {
+				if _, ok := p[0].(*mempool.DebuggeableCall); !ok {
+					pool = append(pool, mempool.WrapsWithMemCache(p[0]))
 				}
 			}
 
-			// We don't parallelize evaluations where the inputs are all scalars
-			// Therefore the cast is safe.
-			chunkRes := b.evaluateSingleThreadExt(chunkInputs, pool...)
+			chunkInputs := make([]sv.SmartVector, len(inputs))
 
-			// No race condition here as each call write to different places
-			// of vec.
-			chunkRes.WriteInSliceExt(res[chunkStart:chunkStop])
+			for {
+				chunkID, ok := id.Next()
+				if !ok {
+					break
+				}
 
-			wg.Done()
-		}
+				var (
+					chunkStart = chunkID * MaxChunkSize
+					chunkStop  = (chunkID + 1) * MaxChunkSize
+				)
 
-		if len(p) > 0 {
-			if sa, ok := pool[0].(*mempool.SliceArena); ok {
-				sa.TearDown()
+				for i, inp := range inputs {
+					chunkInputs[i] = inp.SubVector(chunkStart, chunkStop)
+					// Sanity-check : the output of SubVector must have the correct length
+					if chunkInputs[i].Len() != chunkStop-chunkStart {
+						utils.Panic("Subvector failed, subvector should have size %v but size is %v", chunkStop-chunkStart, chunkInputs[i].Len())
+					}
+				}
+
+				// We don't parallelize evaluations where the inputs are all scalars
+				// Therefore the cast is safe.
+				chunkRes := b.evaluateSingleThreadMixed(chunkInputs, pool...)
+
+				// No race condition here as each call write to different places
+				// of vec.
+				chunkRes.WriteInSlice(res[chunkStart:chunkStop])
+
+				wg.Done()
 			}
-		}
-	})
 
-	return sv.NewRegularExt(res)
+			if len(p) > 0 {
+				if sa, ok := pool[0].(*mempool.SliceArena); ok {
+					sa.TearDown()
+				}
+			}
+		})
+		return sv.NewRegular(res)
+	} else {
+		// The result is an extension vector
+		res := make([]fext.Element, totalSize)
+		parallel.ExecuteFromChan(numChunks, func(wg *sync.WaitGroup, id *parallel.AtomicCounter) {
+
+			var pool []mempool.MemPool
+			if len(p) > 0 {
+				if _, ok := p[0].(*mempool.DebuggeableCall); !ok {
+					pool = append(pool, mempool.WrapsWithMemCache(p[0]))
+				}
+			}
+
+			chunkInputs := make([]sv.SmartVector, len(inputs))
+
+			for {
+				chunkID, ok := id.Next()
+				if !ok {
+					break
+				}
+
+				var (
+					chunkStart = chunkID * MaxChunkSize
+					chunkStop  = (chunkID + 1) * MaxChunkSize
+				)
+
+				for i, inp := range inputs {
+					chunkInputs[i] = inp.SubVector(chunkStart, chunkStop)
+					// Sanity-check : the output of SubVector must have the correct length
+					if chunkInputs[i].Len() != chunkStop-chunkStart {
+						utils.Panic("Subvector failed, subvector should have size %v but size is %v", chunkStop-chunkStart, chunkInputs[i].Len())
+					}
+				}
+
+				// We don't parallelize evaluations where the inputs are all scalars
+				// Therefore the cast is safe.
+				chunkRes := b.evaluateSingleThreadMixed(chunkInputs, pool...)
+
+				// No race condition here as each call write to different places
+				// of vec.
+				chunkRes.WriteInSliceExt(res[chunkStart:chunkStop])
+
+				wg.Done()
+			}
+
+			if len(p) > 0 {
+				if sa, ok := pool[0].(*mempool.SliceArena); ok {
+					sa.TearDown()
+				}
+			}
+		})
+		return sv.NewRegularExt(res)
+	}
 }
 
 // evaluateSingleThread evaluates a boarded expression. The inputs can be either
@@ -282,7 +337,7 @@ func (b *ExpressionBoard) evaluateSingleThreadMixed(inputs []sv.SmartVector, p .
 		for pil := range nodeAssignment[level] {
 
 			node := &nodeAssignment[level][pil]
-			nodeAssignment.evalExt(node, pool)
+			nodeAssignment.evalMixed(node, pool)
 		}
 	}
 
@@ -297,13 +352,21 @@ func (b *ExpressionBoard) evaluateSingleThreadMixed(inputs []sv.SmartVector, p .
 		panic("resbuf is nil")
 	}
 
-	// Deep-copy the last node and put resBuf back in the pool. It's cleanier
+	// Deep-copy the last node and put resBuf back in the pool. It's cleaner
 	// that way.
 	if hasPool {
-		if reg, ok := resBuf.(*sv.PooledExt); ok {
+		if reg, ok := resBuf.(*sv.Pooled); ok {
+			// we have a base Pooled smart vector
 			resGC := reg.DeepCopy()
 			reg.Free(pool)
 			resBuf = resGC
+		} else {
+			// check for an extension
+			if regExt, isPooledExtension := resBuf.(*sv.PooledExt); isPooledExtension {
+				resGC := regExt.DeepCopy()
+				regExt.Free(pool)
+				resBuf = resGC
+			}
 		}
 	}
 

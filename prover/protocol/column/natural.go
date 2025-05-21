@@ -133,9 +133,9 @@ func (n Natural) Status() Status {
 	return n.store.Status(n.ID)
 }
 
-
 func (n Natural) IsBase() bool {
 	return n.isBase
+}
 
 // SetPragma sets the pragma for a given column name.
 func (n Natural) SetPragma(pragma string, data any) {
