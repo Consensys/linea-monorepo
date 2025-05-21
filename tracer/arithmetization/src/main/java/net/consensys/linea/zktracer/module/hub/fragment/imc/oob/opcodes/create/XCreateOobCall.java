@@ -16,13 +16,14 @@
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.create;
 
 import static net.consensys.linea.zktracer.Trace.*;
-import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_CREATE;
+import static net.consensys.linea.zktracer.TraceShanghai.Oob.CT_MAX_XCREATE;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.module.txndata.moduleOperation.ShanghaiTxndataOperation.MAX_INIT_CODE_SIZE_BYTES;
 
 import lombok.Getter;
 import lombok.Setter;
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.TraceShanghai;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.oob.OobCall;
@@ -51,19 +52,23 @@ public class XCreateOobCall extends OobCall {
   }
 
   @Override
-  // TODO: CT_MAX_XCREATE
   public int ctMax() {
-    return CT_MAX_CREATE;
+    return CT_MAX_XCREATE;
   }
 
   @Override
   public Trace.Oob trace(Trace.Oob trace) {
-    return trace
-        // TODO: fix once we have 1 Trace.Java per fork
-        // .isXcreate(true)
-        .oobInst(OOB_INST_XCREATE)
-        .data1(codeSize.hi())
-        .data2(codeSize.lo());
+    try {
+      // At this stage, we use Shanghai trace columns so we cast the trace to Shanghai trace
+      var traceOobShanghai = (TraceShanghai.Oob) trace;
+      return traceOobShanghai
+          .isXcreate(true)
+          .oobInst(OOB_INST_XCREATE)
+          .data1(codeSize.hi())
+          .data2(codeSize.lo());
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Trace argument is not of type TraceShanghai.Oob", e);
+    }
   }
 
   @Override

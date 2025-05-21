@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.create;
 
-import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_CREATE_LONDON;
+import static net.consensys.linea.zktracer.TraceLondon.Oob.CT_MAX_CREATE;
 
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.oob.OobExoCall;
@@ -30,7 +30,7 @@ public class LondonCreateOobCall extends CreateOobCall {
 
   @Override
   public int ctMax() {
-    return CT_MAX_CREATE_LONDON;
+    return CT_MAX_CREATE;
   }
 
   protected void codeSizeSnapshot(final MessageFrame frame) {

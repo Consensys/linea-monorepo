@@ -15,12 +15,13 @@
 
 package net.consensys.linea.zktracer.module.hub.fragment.imc.oob.opcodes.create;
 
-import static net.consensys.linea.zktracer.Trace.Oob.CT_MAX_CREATE;
+import static net.consensys.linea.zktracer.TraceShanghai.Oob.CT_MAX_CREATE;
 import static net.consensys.linea.zktracer.module.oob.OobExoCall.callToLT;
 import static net.consensys.linea.zktracer.module.txndata.moduleOperation.ShanghaiTxndataOperation.MAX_INIT_CODE_SIZE_BYTES;
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
 import net.consensys.linea.zktracer.Trace;
+import net.consensys.linea.zktracer.TraceShanghai;
 import net.consensys.linea.zktracer.module.oob.OobExoCall;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import org.apache.tuweni.bytes.Bytes;
@@ -34,7 +35,6 @@ public class ShanghaiCreateOobCall extends LondonCreateOobCall {
 
   @Override
   public int ctMax() {
-    // TODO: CT_MAX_CREATE_SHANGHAI
     return CT_MAX_CREATE;
   }
 
@@ -43,13 +43,25 @@ public class ShanghaiCreateOobCall extends LondonCreateOobCall {
   }
 
   protected void traceOobData10column(Trace.Oob trace, long codeSize) {
-    // TODO: fix once we have 1 Trace.Java per fork
-    // trace.data10(Bytes.ofUnsignedLong(codeSize));
+    try {
+      // At this stage, we cast the trace to TraceShanghai as it can only be used if it's a Shanghai
+      // trace
+      var traceOobShanghai = (TraceShanghai.Oob) trace;
+      traceOobShanghai.data10(Bytes.ofUnsignedLong(codeSize));
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Trace argument is not of type TraceShanghai.Oob", e);
+    }
   }
 
   protected void traceHubData10column(Trace.Hub trace, long codeSize) {
-    // TODO: fix once we have 1 Trace.Java per fork
-    // trace.pMiscOobData10(Bytes.ofUnsignedLong(codeSize));
+    try {
+      // At this stage, we cast the trace to TraceShanghai as it can only be used if it's a Shanghai
+      // trace
+      var traceHubShanghai = (TraceShanghai.Hub) trace;
+      traceHubShanghai.pMiscOobData10(Bytes.ofUnsignedLong(codeSize));
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Trace argument is not of type TraceShanghai.Hub", e);
+    }
   }
 
   protected OobExoCall exceedsMaxInitCodeSize(Wcp wcp) {
