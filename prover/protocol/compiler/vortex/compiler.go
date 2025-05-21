@@ -948,7 +948,18 @@ func (ctx *Ctx) GetPrecomputedSelectedCol(index int) []field.Element {
 		col[i] = ctx.Items.Precomputeds.CommittedMatrix[i].Get(index)
 	}
 	return col
-} 
+}
+
+// GetNumPolsForNonSisRounds returns an integer
+// giving the number of polynomials for the given
+// non SIS round
+func (ctx *Ctx) GetNumPolsForNonSisRounds(round int) int {
+	// Sanity check
+	if ctx.RoundStatus[round] != IsOnlyMiMCApplied {
+		utils.Panic("Expected a non SIS round!")
+	}
+	return ctx.CommitmentsByRoundsNonSIS.LenOf(round)
+}
 
 // startingRound returns the first round of definition for the Vortex
 // compilation. It corresponds to the smallest round at which one

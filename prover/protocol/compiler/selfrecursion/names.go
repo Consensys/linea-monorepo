@@ -97,6 +97,30 @@ func (ctx *SelfRecursionCtx) concatenatedDhQ() ifaces.ColID {
 	return maybePrefix(ctx, name)
 }
 
+// Name of the concatenated MiMC hashes for the non SIS rounds
+func (ctx *SelfRecursionCtx) concatenatedMiMCHashes(round int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_CONCAT_MIMC_HASHES_%v_%v", ctx.SelfRecursionCnt, round)
+	return maybePrefix(ctx, name)
+}
+
+// Name of the concatenated preimages for the non SIS rounds
+func (ctx *SelfRecursionCtx) concatenatedMIMCPreimages(round int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_CONCAT_MIMC_PREIMAGES_%v_%v", ctx.SelfRecursionCnt, round)
+	return maybePrefix(ctx, name)
+}
+
+// Name of the concatenated hashes for the precomputed rounds
+func (ctx *SelfRecursionCtx) concatenatedPrecomputedHashes() ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_CONCAT_PRECOMPUTED_HASHES_%v", ctx.SelfRecursionCnt)
+	return maybePrefix(ctx, name)
+}
+
+// Name of the concatenated preimages for the precomputed rounds
+func (ctx *SelfRecursionCtx) concatenatedPrecomputedPreimages() ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_CONCAT_PRECOMPUTED_PREIMAGES_%v", ctx.SelfRecursionCnt)
+	return maybePrefix(ctx, name)
+}
+
 // Name of the MerkleLeaves
 func (ctx *SelfRecursionCtx) merkleLeavesName() ifaces.ColID {
 	name := ifaces.ColIDf("SELFRECURSION_MERKLE_LEAVES_%v", ctx.SelfRecursionCnt)
@@ -143,6 +167,13 @@ func (ctx *SelfRecursionCtx) positionGlue() ifaces.QueryID {
 // linear hash verifier.
 func (ctx *SelfRecursionCtx) linearHashVerificationName() string {
 	name := fmt.Sprintf("SELFRECURSION_LINEAR_HASH_VERIFICATION_%v", ctx.comp.SelfRecursionCount)
+	return maybePrefix(ctx, name)
+}
+
+// nonSisRoundLinearHashVerificationName returns the name passed to the wizard helper building the
+// non SIS round linear hash verifier.
+func (ctx *SelfRecursionCtx) nonSisRoundLinearHashVerificationName(round int) string {
+	name := fmt.Sprintf("SELFRECURSION_NON_SIS_ROUND_LINEAR_HASH_VERIFICATION_%v_%v", ctx.comp.SelfRecursionCount, round)
 	return maybePrefix(ctx, name)
 }
 

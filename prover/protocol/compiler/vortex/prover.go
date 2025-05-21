@@ -394,12 +394,11 @@ func (ctx *Ctx) assignOpenedColumns(
 
 // storeSelectedColumnsForNonSisRound stores the selected columns in the prover state
 // for the non SIS rounds which is to be used in the self-recursion compilers
-
 func (ctx *Ctx) storeSelectedColumnsForNonSisRounds(
 	pr *wizard.ProverRuntime,
 	selectedCols [][][]field.Element) {
-		// selectedColsQ[i][j][k] stores the jth selected non SIS
-		// round column of the ith round
+		// selectedColsQ[i][j][k] stores the jth selected
+		// column of the ith non SIS round
 		selectedColsQ := make([][][]field.Element, ctx.NumCommittedRoundsNoSis())
 		// Sanity check
 		if len(selectedCols) != ctx.NumCommittedRoundsNoSis() {

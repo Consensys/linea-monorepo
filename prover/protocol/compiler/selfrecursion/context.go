@@ -199,6 +199,20 @@ type SelfRecursionCtx struct {
 		// The folding of preimageCollapse by rFold
 		PreimageCollapseFold ifaces.Column
 	}
+	// mimcHashMetaData is a structure that holds the parameters
+	// for the linear hash check for the non SIS rounds
+	MIMCMetaData struct {
+	// Contains the number of polynomials for each non SIS round.
+	// It provides the "period" for the CheckLinearHash()
+	// for each non SIS round
+	ToHashSizes []int
+	// ConcatenatedhashValues[i] is the concatenated hash values
+	// for the ith non SIS round
+	ConcatenatedHashValues []ifaces.Column
+	// hashPreimages[i] stores the preimages of all MiMC hashes
+	// of the selected columns for the ith non SIS round
+	HashPreimages []ifaces.Column
+	}
 }
 
 // NewRecursionCtx returns a new recursion context taking a specified
