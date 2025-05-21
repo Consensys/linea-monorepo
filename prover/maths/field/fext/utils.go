@@ -56,16 +56,6 @@ func SetInt64Tuple(z *Element, v1, v2, v3, v4 int64) *Element {
 	return z // z.toMont()
 }
 
-// FromInt64Tuple returns an Element from a tuple
-func FromInt64Tuple(v1, v2, v3, v4 int64) Element {
-	var res Element
-	res.B0.A0.SetInt64(v1)
-	res.B0.A1.SetInt64(v2)
-	res.B1.A0.SetInt64(v3)
-	res.B1.A1.SetInt64(v4)
-	return res
-}
-
 // FromBase sets z = v
 func FromBase(z *Element, v *field.Element) {
 	z.B0.A0.Set(v)
