@@ -15,24 +15,26 @@
 
 package net.consensys.linea.zktracer.module.txndata.moduleOperation;
 
-import static net.consensys.linea.zktracer.Trace.Txndata.*;
+import static net.consensys.linea.zktracer.TraceLondon.Txndata.*;
 
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 
 public class LondonTxndataOperation extends TxndataOperation {
-  public LondonTxndataOperation(Wcp wcp, Euc euc, TransactionProcessingMetadata tx) {
-    super(wcp, euc, tx);
+
+  public LondonTxndataOperation(
+      Wcp wcp, Euc euc, TransactionProcessingMetadata tx, int nRowsTxMax) {
+    super(wcp, euc, tx, nRowsTxMax);
   }
 
   @Override
   protected int computeLineCount() {
     // Count the number of rows of each tx, only depending on the type of the transaction
     return switch (tx.getBesuTransaction().getType()) {
-      case FRONTIER -> NB_ROWS_TYPE_0_LONDON;
-      case ACCESS_LIST -> NB_ROWS_TYPE_1_LONDON;
-      case EIP1559 -> NB_ROWS_TYPE_2_LONDON;
+      case FRONTIER -> NB_ROWS_TYPE_0;
+      case ACCESS_LIST -> NB_ROWS_TYPE_1;
+      case EIP1559 -> NB_ROWS_TYPE_2;
       default -> throw new RuntimeException(
           "Transaction type not supported:" + tx.getBesuTransaction().getType());
     };
