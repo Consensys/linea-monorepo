@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -92,14 +93,14 @@ func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.E
 }
 
 // Evaluate a polynomial in Lagrange basis
-func Interpolate(v SmartVector, x field.Element, oncoset ...bool) field.Element {
+func Interpolate(v SmartVector, x fext.Element, oncoset ...bool) field.Element {
 	switch con := v.(type) {
 	case *Constant:
 		return con.val
 	}
 
 	// Maybe there is an optim for windowed here
-	res := make([]field.Element, v.Len())
+	res := make([]fext.Element, v.Len())
 	v.WriteInSlice(res)
 	return fastpoly.Interpolate(res, x, oncoset...)
 }

@@ -23,14 +23,6 @@ on a coset.
 Interpolate(poly []E1, x E4)
 */
 func Interpolate(poly []field.Element, x fext.Element, oncoset ...bool) fext.Element {
-	/*n := len(poly)
-	polyext := make([]fext.Element, n)
-	for i := 0; i < n; i++ {
-		fext.FromBase(&polyext[i], &poly[i])
-	}
-
-	return fastpolyext.Interpolate(polyext, x, oncoset...)
-	*/
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
 	}
