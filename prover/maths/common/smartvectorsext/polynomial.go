@@ -103,7 +103,7 @@ func Interpolate(v smartvectors.SmartVector, x fext.Element, oncoset ...bool) fe
 	// Maybe there is an optim for windowed here
 	res := make([]fext.Element, v.Len())
 	v.WriteInSliceExt(res)
-	return fastpolyext.Interpolate(res, x, oncoset...)
+	return fastpolyext.EvaluateLagrange(res, x, oncoset...)
 }
 
 // Batch-evaluate polynomials in Lagrange basis
@@ -208,7 +208,7 @@ func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.
 
 		\sum_{x \in H}\frac{P(gx)}{D_x}
 	*/
-	denominator = fext.BatchInvertE4(denominator)
+	denominator = fext.BatchInvert(denominator)
 
 	// Precompute the value of x^n once outside the loop
 	xN := new(fext.Element).Exp(x, big.NewInt(int64(n)))

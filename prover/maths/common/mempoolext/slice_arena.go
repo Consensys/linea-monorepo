@@ -1,20 +1,18 @@
 package mempoolext
 
-import (
-	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
-)
+import "github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 // SliceArena is a simple not-threadsafe arena implementation that uses a
 // mempool to carry its allocation. It will only put back free memory in the
 // the parent pool when TearDown is called.
 type SliceArena struct {
-	frees  []*[]extensions.E4
+	frees  []*[]fext.Element
 	parent MemPool
 }
 
 func WrapsWithMemCache(pool MemPool) *SliceArena {
 	return &SliceArena{
-		frees:  make([]*[]extensions.E4, 0, 1<<7),
+		frees:  make([]*[]fext.Element, 0, 1<<7),
 		parent: pool,
 	}
 }
@@ -24,7 +22,7 @@ func (m *SliceArena) Prewarm(nbPrewarm int) MemPool {
 	return m
 }
 
-func (m *SliceArena) Alloc() *[]extensions.E4 {
+func (m *SliceArena) Alloc() *[]fext.Element {
 
 	if len(m.frees) == 0 {
 		return m.parent.Alloc()
@@ -35,7 +33,7 @@ func (m *SliceArena) Alloc() *[]extensions.E4 {
 	return last
 }
 
-func (m *SliceArena) Free(v *[]extensions.E4) error {
+func (m *SliceArena) Free(v *[]fext.Element) error {
 	m.frees = append(m.frees, v)
 	return nil
 }

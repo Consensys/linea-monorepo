@@ -166,19 +166,19 @@ func BatchInvert(x smartvectors.SmartVector) smartvectors.SmartVector {
 		res := &PaddedCircularWindowExt{
 			totLen: v.totLen,
 			offset: v.offset,
-			window: fext.BatchInvertE4(v.window),
+			window: fext.BatchInvert(v.window),
 		}
 		res.paddingVal.Inverse(&v.paddingVal)
 		return res
 	case *RotatedExt:
 		return NewRotatedExt(
-			fext.BatchInvertE4(v.v.RegularExt),
+			fext.BatchInvert(v.v.RegularExt),
 			v.offset,
 		)
 	case *PooledExt:
-		return NewRegularExt(fext.BatchInvertE4(v.RegularExt))
+		return NewRegularExt(fext.BatchInvert(v.RegularExt))
 	case *RegularExt:
-		return NewRegularExt(fext.BatchInvertE4(*v))
+		return NewRegularExt(fext.BatchInvert(*v))
 	}
 
 	panic("unsupported type")

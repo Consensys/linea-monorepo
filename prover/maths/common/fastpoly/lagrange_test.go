@@ -12,40 +12,42 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInterpolation(t *testing.T) {
-	n := 4
-	randPoly := vector.ForTest(1, 2, 3, 4)
-
-	randpolyext := make([]fext.Element, len(randPoly))
-	for i := 0; i < len(randPoly); i++ {
-		fext.FromBase(&randpolyext[i], &randPoly[i])
-
+func randomPoly(size int) []field.Element {
+	res := make([]field.Element, size)
+	for i := 0; i < size; i++ {
+		res[i].SetRandom()
 	}
+	return res
+}
 
-	x := fext.NewElement(1, 2, 3, 4)
+func evalCanonical(p []field.Element, x field.Element) field.Element {
+	var res field.Element
+	for i := 0; i < len(p); i++ {
+		res.Mul(&res, &x).Add(&res, &p[len(p)-1-i])
+	}
+	return res
+}
 
-	expectedY := polyext.Eval(randpolyext, x)
+func TestEvaluateLagrange(t *testing.T) {
 
-	domain := fft.NewDomain(uint64(n))
+	size := 64
+	domain := fft.NewDomain(uint64(size))
+	p := randomPoly(size)
+	pLagrange := make([]field.Element, size)
+	copy(pLagrange, p)
+	domain.FFT(pLagrange, fft.DIF)
+	fft.BitReverse(pLagrange)
 
-	/*
-		Test without coset
-	*/
-	onRoots := vector.DeepCopy(randPoly)
-	domain.FFT(onRoots, fft.DIF)
+	var x field.Element
+	x.SetRandom()
 
-	fft.BitReverse(onRoots)
-	yOnRoots := Interpolate(onRoots, x)
-	require.Equal(t, expectedY.String(), yOnRoots.String())
+	u := evalCanonical(p, x)
+	v := EvaluateLagrange(pLagrange, x)
 
-	/*
-		Test with coset
-	*/
-	onCoset := vector.DeepCopy(randPoly)
-	domain.FFT(onCoset, fft.DIF, fft.OnCoset())
-	fft.BitReverse(onCoset)
-	yOnCoset := Interpolate(onCoset, x, true)
-	require.Equal(t, expectedY.String(), yOnCoset.String())
+	tt := u.Equal(&v)
+	if !tt {
+		t.Fatal("Evaluate Lagrange failed")
+	}
 
 }
 

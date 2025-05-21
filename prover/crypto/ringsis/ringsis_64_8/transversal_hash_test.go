@@ -12,14 +12,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	field  "github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 
 	"github.com/stretchr/testify/require"
 )
 
 // randomConstRow generates a random constant smart-vector
 func randomConstRow(rng *rand.Rand, size int) smartvectors.SmartVector {
-	return smartvectors.NewConstant(field.PseudoRand(rng), size)
+	return smartvectors.NewConstant(field.RandomElement(), size)
 }
 
 // randomRegularRow generates a random regular smart-vector

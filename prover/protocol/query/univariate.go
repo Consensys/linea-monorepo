@@ -6,8 +6,8 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -78,7 +78,7 @@ func (r UnivariateEval) Check(run ifaces.Runtime) error {
 
 	for k, pol := range r.Pols {
 		wit := pol.GetColAssignment(run)
-		actualY := smartvectors.Interpolate(wit, params.X)
+		actualY := smartvectors.EvaluateLagrange(wit, params.X)
 
 		if actualY != params.Ys[k] {
 			anyErr = true
@@ -99,7 +99,7 @@ func (r UnivariateEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
 	for k, pol := range r.Pols {
 		wit := pol.GetColAssignmentGnark(run)
-		actualY := fastpoly.InterpolateGnark(api, wit, params.X)
+		actualY := fastpoly.EvaluateLagrangeGnark(api, wit, params.X)
 		api.AssertIsEqual(actualY, params.Ys[k])
 	}
 }
