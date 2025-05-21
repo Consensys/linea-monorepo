@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -63,7 +64,10 @@ func TestFuzzPolynomial(t *testing.T) {
 			b := tcaseB.svecs[0]
 
 			// Try interpolating by one (should return the first element)
-			xa := Interpolate(a, field.One())
+
+			var oneExt fext.Element
+			oneExt.SetOne()
+			xa := Interpolate(a, oneExt)
 			expecteda0 := a.Get(0)
 			assert.Equal(t, xa.String(), expecteda0.String())
 
@@ -169,7 +173,9 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 	fft.BitReverse(polys[0])
 	fft.BitReverse(polys[1])
 
-	yOnRoots := fastpoly.BatchInterpolate(polys, x)
+	var xExt fext.Element
+	fext.FromBase(&xExt, &x)
+	yOnRoots := fastpoly.BatchInterpolate(polys, xExt)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -187,7 +193,8 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 	fft.BitReverse(onCosets[0])
 	fft.BitReverse(onCosets[1])
 
-	yOnCosets := fastpoly.BatchInterpolate(onCosets, x, true)
+	fext.FromBase(&xExt, &x)
+	yOnCosets := fastpoly.BatchInterpolate(onCosets, xExt, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 
@@ -216,7 +223,9 @@ func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
 	fft.BitReverse(polys[0])
 	fft.BitReverse(polys[1])
 
-	yOnRoots := fastpoly.BatchInterpolate(polys, x)
+	var xExt fext.Element
+	fext.FromBase(&xExt, &x)
+	yOnRoots := fastpoly.BatchInterpolate(polys, xExt)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -234,7 +243,8 @@ func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
 	fft.BitReverse(onCosets[0])
 	fft.BitReverse(onCosets[1])
 
-	yOnCosets := fastpoly.BatchInterpolate(onCosets, x, true)
+	fext.FromBase(&xExt, &x)
+	yOnCosets := fastpoly.BatchInterpolate(onCosets, xExt, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 }
@@ -272,7 +282,9 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	fft.BitReverse(polys[1])
 	fft.BitReverse(polys[2])
 
-	yOnRoots := fastpoly.BatchInterpolate(polys, x)
+	var xExt fext.Element
+	fext.FromBase(&xExt, &x)
+	yOnRoots := fastpoly.BatchInterpolate(polys, xExt)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 	require.Equal(t, expectedY3.String(), yOnRoots[2].String())
@@ -295,7 +307,8 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	fft.BitReverse(onCosets[1])
 	fft.BitReverse(onCosets[2])
 
-	yOnCosets := fastpoly.BatchInterpolate(onCosets, x, true)
+	fext.FromBase(&xExt, &x)
+	yOnCosets := fastpoly.BatchInterpolate(onCosets, xExt, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 	require.Equal(t, expectedY3.String(), yOnCosets[2].String())

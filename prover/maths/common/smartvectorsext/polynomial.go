@@ -103,7 +103,7 @@ func Interpolate(v smartvectors.SmartVector, x fext.Element, oncoset ...bool) fe
 	// Maybe there is an optim for windowed here
 	res := make([]fext.Element, v.Len())
 	v.WriteInSliceExt(res)
-	return fastpolyext.Interpolate(res, x, oncoset...)
+	return fastpolyext.EvaluateLagrange(res, x, oncoset...)
 }
 
 // Batch-evaluate polynomials in Lagrange basis

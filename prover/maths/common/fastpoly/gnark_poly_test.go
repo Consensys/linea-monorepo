@@ -1,18 +1,16 @@
 package fastpoly
 
-/*
 import (
 	"fmt"
 	"testing"
 
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
-// TODO: remove?? as the interpolations are calling fastpolyext
 func TestGnarkInterpolate(t *testing.T) {
 
 	testCases := [][]field.Element{
@@ -27,7 +25,7 @@ func TestGnarkInterpolate(t *testing.T) {
 
 			def := func(api frontend.API) error {
 				var (
-					x         = koalabear.NewElement(42)
+					x         = fext.NewElement(1, 2, 3, 4)
 					vec       = vector.IntoGnarkAssignment(testCases[i])
 					expectedY = Interpolate(testCases[i], x)
 					computedY = InterpolateGnark(api, vec, x)
@@ -40,4 +38,4 @@ func TestGnarkInterpolate(t *testing.T) {
 		})
 	}
 
-}*/
+}

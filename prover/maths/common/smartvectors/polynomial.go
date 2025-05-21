@@ -4,7 +4,7 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -93,18 +93,18 @@ func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.E
 }
 
 // Evaluate a polynomial in Lagrange basis
-func Interpolate(v SmartVector, x field.Element, oncoset ...bool) field.Element {
+func Interpolate(v SmartVector, x fext.Element, oncoset ...bool) field.Element {
 	switch con := v.(type) {
 	case *Constant:
 		return con.val
 	}
 
 	// Maybe there is an optim for windowed here
-	res := make([]field.Element, v.Len())
-	v.WriteInSlice(res)
+	res := make([]fext.Element, v.Len())
+	v.WriteInSliceExt(res)
 	var xExt fext.Element
-	fext.FromBase(&xExt, &x)
-	resExt := fastpoly.EvaluateLagrange(res, xExt, oncoset...)
+	// fext.FromBase(&xExt, &x)
+	resExt := fastpolyext.EvaluateLagrange(res, xExt, oncoset...)
 	return resExt.B0.A0
 }
 

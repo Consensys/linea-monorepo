@@ -15,7 +15,6 @@ import (
 // EvaluateLagrange computes ∑_i L_i(x), i.e. evaluates p interpreted as a polynomial in Lagrange form
 func EvaluateLagrange(poly []field.Element, x fext.Element, oncoset ...bool) fext.Element {
 
-	// TODO handle that properly
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
 	}
