@@ -34,8 +34,8 @@ func proverProveMultiPoint(run *wizard.ProverRuntime) {
 	run.AssignColumn(P2, p2)
 	c2 := run.GetRandomCoinField(COIN2)
 
-	y1 := smartvectors.Interpolate(p1, c1)
-	y2 := smartvectors.Interpolate(p2, c2)
+	y1 := smartvectors.EvaluateLagrange(p1, c1)
+	y2 := smartvectors.EvaluateLagrange(p2, c2)
 
 	run.AssignUnivariate(UNIV1, c1, y1)
 	run.AssignUnivariate(UNIV2, c2, y2)
