@@ -28,7 +28,7 @@ func NewFromString(s string) (res Element) {
 // var RootPowers = []int{1, -11} // ??
 var RootPowers = []int{1, 3} // ??
 
-func BatchInvertE4(a []Element) []Element {
+func BatchInvert(a []Element) []Element {
 	return extensions.BatchInvertE4(a)
 }
 

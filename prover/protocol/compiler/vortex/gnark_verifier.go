@@ -234,7 +234,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr *wizard.Wizar
 
 		val := pol.GetColAssignmentGnark(vr)
 
-		y := fastpoly.InterpolateGnark(api, val, params.X)
+		y := fastpoly.EvaluateLagrangeGnark(api, val, params.X)
 		api.AssertIsEqual(y, params.Ys[i])
 	}
 }

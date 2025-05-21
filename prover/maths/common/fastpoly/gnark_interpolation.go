@@ -8,8 +8,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
-// Evaluate a polynomial in lagrange basis on a gnark circuit
-func InterpolateGnark(api frontend.API, poly []frontend.Variable, x frontend.Variable) frontend.Variable {
+// EvaluateLagrangeGnark a polynomial in lagrange basis on a gnark circuit
+func EvaluateLagrangeGnark(api frontend.API, poly []frontend.Variable, x frontend.Variable) frontend.Variable {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))

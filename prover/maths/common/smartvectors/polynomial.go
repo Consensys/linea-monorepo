@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -101,7 +102,10 @@ func Interpolate(v SmartVector, x field.Element, oncoset ...bool) field.Element 
 	// Maybe there is an optim for windowed here
 	res := make([]field.Element, v.Len())
 	v.WriteInSlice(res)
-	return fastpoly.Interpolate(res, x, oncoset...)
+	var xExt fext.Element
+	fext.FromBase(&xExt, &x)
+	resExt := fastpoly.EvaluateLagrange(res, xExt, oncoset...)
+	return resExt.B0.A0
 }
 
 // Batch-evaluate polynomials in Lagrange basis
