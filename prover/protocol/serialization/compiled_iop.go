@@ -182,6 +182,7 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 	return serIOP, err
 }
 
+/*
 // DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns an error
 // if the marshalled object does not have the right format.
 func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
@@ -203,11 +204,6 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	// Deserialize Precomputed attribute
 	if err := deserializePrecomputed(raw, comp); err != nil {
 		return nil, fmt.Errorf("deserialize Precomputed: %w", err)
-	}
-
-	// Deserialize PcsCtxs attribute
-	if err := deserializePcsCtxs(raw, comp); err != nil {
-		return nil, fmt.Errorf("deserialize PcsCtxs: %w", err)
 	}
 
 	// Deserialize Artefacts attribute
@@ -245,7 +241,152 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	if err := deserializePublicInputs(raw, comp); err != nil {
 		return nil, err
 	}
+
+	// Deserialize PcsCtxs attribute
+	if err := deserializePcsCtxs(raw, comp); err != nil {
+		return nil, fmt.Errorf("deserialize PcsCtxs: %w", err)
+	}
 	return comp, nil
+}
+
+*/
+
+// DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns an error
+// if the marshalled object does not have the right format.
+func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
+	comp := NewEmptyCompiledIOP()
+	raw := &rawCompiledIOP{}
+	if err := deserializeAnyWithCborPkg(data, raw); err != nil {
+		return nil, fmt.Errorf("CBOR unmarshal failed: %w", err)
+	}
+
+	numRounds := len(raw.Columns)
+	if numRounds == 0 {
+		return comp, nil
+	}
+
+	// Set primitive fields
+	comp.DummyCompiled = raw.DummyCompiled
+	comp.SelfRecursionCount = raw.SelfRecursionCount
+
+	// Deserialize Precomputed attribute
+	if err := deserializePrecomputed(raw, comp); err != nil {
+		return nil, fmt.Errorf("deserialize Precomputed: %w", err)
+	}
+
+	// Deserialize FiatShamirSetup attribute
+	if err := deserializeFiatShamirSetup(raw, comp); err != nil {
+		return nil, err
+	}
+
+	// Deserialize round-specific attributes
+	var mu sync.Mutex
+	if err := deserializeColumnsAndCoins(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("columns and coins: %w", err)
+	}
+
+	// Deserialize queries sequentially
+	if err := deserializeQueriesSequential(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("queries: %w", err)
+	}
+
+	// Deserialize SubProverAction sequentially
+	if err := deserializeSubProverActionSequential(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("subProverAction: %w", err)
+	}
+
+	// Deserialize SubVerifierAction sequentially
+	if err := deserializeSubVerifierActionSequential(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("subVerifierAction: %w", err)
+	}
+
+	// Deserialize FiatShamirHooksPreSampling sequentially
+	if err := deserializeFSHookPSSequential(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("FiatShamirHookPreSampling: %w", err)
+	}
+
+	// Deserialize PublicInputs last
+	if err := deserializePublicInputs(raw, comp); err != nil {
+		return nil, err
+	}
+
+	// Deserialize PcsCtxs attribute
+	if err := deserializePcsCtxs(raw, comp); err != nil {
+		return nil, fmt.Errorf("deserialize PcsCtxs: %w", err)
+	}
+	return comp, nil
+}
+
+// deserializeSubProverActionSequential deserializes SubProvers for all rounds sequentially
+func deserializeSubProverActionSequential(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	for round := 0; round < numRounds; round++ {
+		if round >= len(raw.Subprovers) {
+			return fmt.Errorf("invalid round number %d, exceeds available SubProvers rounds", round)
+		}
+		if err := deserializeSubProvers(raw.Subprovers[round], round, comp, mu); err != nil {
+			return fmt.Errorf("round %d SubProvers: %w", round, err)
+		}
+	}
+	return nil
+}
+
+// deserializeSubVerifierActionSequential deserializes SubVerifiers for all rounds sequentially
+func deserializeSubVerifierActionSequential(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	for round := 0; round < numRounds; round++ {
+		if round >= len(raw.SubVerifiers) {
+			return fmt.Errorf("invalid round number %d, exceeds available SubVerifiers rounds", round)
+		}
+		if err := deserializeSubVerifiers(raw.SubVerifiers[round], round, comp, mu); err != nil {
+			return fmt.Errorf("round %d SubVerifiers: %w", round, err)
+		}
+	}
+	return nil
+}
+
+// deserializeFSHookPSSequential deserializes FiatShamirHooksPreSampling for all rounds sequentially
+func deserializeFSHookPSSequential(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	for round := 0; round < numRounds; round++ {
+		if round >= len(raw.FiatShamirHooksPreSampling) {
+			return fmt.Errorf("invalid round number %d, exceeds available FiatShamirHooksPreSampling rounds", round)
+		}
+		if err := deserializeFSHooks(raw.FiatShamirHooksPreSampling[round], round, comp, mu); err != nil {
+			return fmt.Errorf("round %d FiatShamirHooksPreSampling: %w", round, err)
+		}
+	}
+	return nil
+}
+
+func deserializeQueriesSequential(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	for round := 0; round < numRounds; round++ {
+		if round >= len(raw.QueriesNoParams) || round >= len(raw.QueriesParams) {
+			return fmt.Errorf("invalid round number %d, exceeds available rounds", round)
+		}
+		// Deserialize QueriesNoParams
+		for i, rawQ := range raw.QueriesNoParams[round] {
+			v, err := DeserializeValue(rawQ, DeclarationMode, queryType, comp)
+			if err != nil {
+				return fmt.Errorf("round %d, queryNoParams %d: %w", round, i, err)
+			}
+			q := v.Interface().(ifaces.Query)
+			logrus.Infof("Registering query %s in round %d", q.Name(), round)
+			mu.Lock()
+			comp.QueriesNoParams.AddToRound(round, q.Name(), q)
+			mu.Unlock()
+		}
+		// Deserialize QueriesParams
+		for i, rawQ := range raw.QueriesParams[round] {
+			v, err := DeserializeValue(rawQ, DeclarationMode, queryType, comp)
+			if err != nil {
+				return fmt.Errorf("round %d, queryParams %d: %w", round, i, err)
+			}
+			q := v.Interface().(ifaces.Query)
+			logrus.Infof("Registering query %s in round %d", q.Name(), round)
+			mu.Lock()
+			comp.QueriesParams.AddToRound(round, q.Name(), q)
+			mu.Unlock()
+		}
+	}
+	return nil
 }
 
 func serializeColumns(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, error) {
@@ -263,6 +404,7 @@ func serializeColumns(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, e
 	return rawCols, nil
 }
 
+/*
 func serializeQueries(register *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query], round int) ([]json.RawMessage, error) {
 	qNames := register.AllKeysAt(round)
 	rawQueries := make([]json.RawMessage, len(qNames))
@@ -276,6 +418,22 @@ func serializeQueries(register *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Qu
 		rawQueries[i] = r
 	}
 
+	return rawQueries, nil
+} */
+
+func serializeQueries(register *wizard.ByRoundRegister[ifaces.QueryID, ifaces.Query], round int) ([]json.RawMessage, error) {
+	qNames := register.AllKeysAt(round)
+	rawQueries := make([]json.RawMessage, len(qNames))
+
+	for i, qName := range qNames {
+		logrus.Infof("Serializing query %s in round %d", qName, round)
+		q := register.Data(qName)
+		r, err := SerializeValue(reflect.ValueOf(&q), DeclarationMode)
+		if err != nil {
+			return nil, fmt.Errorf("could not serialize query `%v` : %w", qName, err)
+		}
+		rawQueries[i] = r
+	}
 	return rawQueries, nil
 }
 
