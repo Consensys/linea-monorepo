@@ -27,14 +27,14 @@ func TestRuffini(t *testing.T) {
 	}{
 		{
 			q:           fext.NewElement(1, 0, 0, 0),
-			p:           ForTestFromPairs(3, 0, 0, 0, 1, 0),
-			expectedQuo: ForTestFromPairs(1, 0, 1, 0),
+			p:           ForTestFromQuaternarys(3, 0, 0, 0, 1, 0),
+			expectedQuo: ForTestFromQuaternarys(1, 0, 1, 0),
 			expectedRem: fext.NewElement(4, 0, 0, 0),
 		},
 		{
 			// 3 = 0 * (X - 1) + 3
 			q:           fext.NewElement(1, 0, 0, 0),
-			p:           ForTestFromPairs(3, 0),
+			p:           ForTestFromQuaternarys(3, 0),
 			expectedQuo: NewConstantExt(fext.Zero(), 1),
 			expectedRem: fext.NewElement(3, 0, 0, 0),
 		},
@@ -43,8 +43,8 @@ func TestRuffini(t *testing.T) {
 			// (x-(1+alpha))(x^2*(1+alpha)+(2+alpha))+5
 			// alpha is a square root used to build the extension field, i.e. alpha^2=fext.RootPowers[1]
 			q:           fext.NewElement(1, 1, 0, 0),
-			p:           ForTestFromPairs(-fext.RootPowers[1]+3, -3, 2, 1, -1-fext.RootPowers[1], -2, 1, 1),
-			expectedQuo: ForTestFromPairs(2, 1, 0, 0, 1, 1),
+			p:           ForTestFromQuaternarys(-fext.RootPowers[1]+3, -3, 2, 1, -1-fext.RootPowers[1], -2, 1, 1),
+			expectedQuo: ForTestFromQuaternarys(2, 1, 0, 0, 1, 1),
 			expectedRem: fext.NewElement(5, 0, 0, 0),
 		},
 	}
@@ -140,7 +140,7 @@ func TestBivariatePolynomial(t *testing.T) {
 		},
 		{
 			// P(X) = P1(X)+Y*P2(X)
-			v:         ForTestFromPairs(1, 1, 2, 2, 3, 3, 4, 4),
+			v:         ForTestFromQuaternarys(1, 1, 2, 2, 3, 3, 4, 4),
 			x:         fext.NewElement(2, 1, 0, 0),
 			y:         fext.NewElement(3, 2, 0, 0),
 			numCoeffX: 2,

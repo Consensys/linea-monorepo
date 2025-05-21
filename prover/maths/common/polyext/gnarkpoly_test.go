@@ -18,7 +18,7 @@ func TestGnarkEval(t *testing.T) {
 
 		def := func(api frontend.API) error {
 			var (
-				pol = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(1, 2, 3, 4, -1, -2))
+				pol = vectorext.IntoGnarkAssignment(vectorext.ForTestFromQuads(1, 2, 3, 4, -1, -2))
 				x   = gnarkfext.Element{
 					B0: gnarkfext.E2{
 						A0: 2,
@@ -78,7 +78,7 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 
 		def := func(api frontend.API) error {
 			var (
-				domain = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(0, 0))
+				domain = vectorext.IntoGnarkAssignment(vectorext.ForTestFromQuads(0, 0))
 				x      = gnarkfext.Element{B0: gnarkfext.E2{
 					A0: 42,
 					A1: 0,
@@ -88,7 +88,7 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 						A1: 0,
 					},
 				}
-				expected = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(1, 0))
+				expected = vectorext.IntoGnarkAssignment(vectorext.ForTestFromQuads(1, 0))
 				res      = EvaluateLagrangeAnyDomainGnark(api, domain, x)
 			)
 
@@ -107,7 +107,7 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 
 		def := func(api frontend.API) error {
 			var (
-				domain = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(0, 0, 1, 0))
+				domain = vectorext.IntoGnarkAssignment(vectorext.ForTestFromQuads(0, 0, 1, 0))
 				x      = gnarkfext.Element{B0: gnarkfext.E2{
 					A0: 42,
 					A1: 0,
@@ -117,7 +117,7 @@ func TestGnarkEvalAnyDomain(t *testing.T) {
 						A1: 0,
 					},
 				}
-				expected = vectorext.IntoGnarkAssignment(vectorext.ForTestFromPairs(-41, 0, 42, 0))
+				expected = vectorext.IntoGnarkAssignment(vectorext.ForTestFromQuads(-41, 0, 42, 0))
 				res      = EvaluateLagrangeAnyDomainGnark(api, domain, x)
 			)
 

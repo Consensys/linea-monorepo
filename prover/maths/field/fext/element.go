@@ -25,8 +25,8 @@ func NewFromString(s string) (res Element) {
 	return res
 }
 
-// var RootPowers = []int{1, -11} // ??
-var RootPowers = []int{1, 3} // ??
+// var RootPowers = []int{1, 3}, v^2=u and u^2=3.
+var RootPowers = []int{1, 3}
 
 func BatchInvertE4(a []Element) []Element {
 	return extensions.BatchInvertE4(a)

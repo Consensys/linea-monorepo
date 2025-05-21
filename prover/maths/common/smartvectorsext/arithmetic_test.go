@@ -248,8 +248,8 @@ func TestOpBasicEdgeCases(t *testing.T) {
 }
 
 func TestInnerProduct(t *testing.T) {
-	a := ForTestFromPairs(1, 1, 2, 1, 1, 1, 2, 1, 1, 1)
-	b := ForTestFromPairs(1, 1, -1, 1, 2, 1, -1, 1, 2, 1)
+	a := ForTestFromQuaternarys(1, 1, 2, 1, 1, 1, 2, 1, 1, 1)
+	b := ForTestFromQuaternarys(1, 1, -1, 1, 2, 1, -1, 1, 2, 1)
 	sum := fext.NewElement(uint32(1+5*fext.RootPowers[1]), 10, 0, 0)
 
 	testCases := []struct {
@@ -280,7 +280,7 @@ func TestScalarMul(t *testing.T) {
 		{
 			a: ForTestExt(1, 2, 1, 2, 1),
 			b: fext.NewElement(3, 1, 0, 0),
-			y: ForTestFromPairs(3, 1, 6, 2, 3, 1, 6, 2, 3, 1),
+			y: ForTestFromQuaternarys(3, 1, 6, 2, 3, 1, 6, 2, 3, 1),
 		},
 		{
 			a: ForTestExt(1, 2, 1, 2, 1),
