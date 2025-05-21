@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -98,6 +99,13 @@ func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, erro
 	concrete := v.Elem()
 	var data json.RawMessage
 	var err error
+
+	// Ignore fake columns in recursion
+	if concrete.Type().String() == "*recursion.FakeColumn" {
+		logrus.Debugf("ignoring *recursion.FakeColumn")
+		return json.RawMessage(NilString), nil
+	}
+
 	switch concrete.Type() {
 	case naturalType:
 		col := v.Interface().(column.Natural)

@@ -145,6 +145,7 @@ func init() {
 	RegisterImplementation(stitchsplit.SplitProverAction{})
 
 	RegisterImplementation(cleanup.CleanupProverAction{})
+
 	RegisterImplementation(mimc.LinearHashProverAction{})
 	RegisterImplementation(merkle.MerkleProofProverAction{})
 

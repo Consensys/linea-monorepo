@@ -28,6 +28,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
+
+	"github.com/consensys/gnark/constraint"
 )
 
 // lppGroupingArity indicates how many GL modules an LPP module relates to.
@@ -60,6 +62,10 @@ type DistributedWizard struct {
 	// each module.
 	Disc ModuleDiscoverer
 
+	// CompiledDefault stores the compiled default module and is set by calling
+	// [DistributedWizard.Compile]
+	CompiledDefault *RecursedSegmentCompilation
+
 	// CompiledGLs stores the compiled GL modules and is set by calling
 	// [DistributedWizard.Compile]
 	CompiledGLs []*RecursedSegmentCompilation
@@ -67,10 +73,6 @@ type DistributedWizard struct {
 	// CompiledLPPs stores the compiled LPP modules and is set by calling
 	// [DistributedWizard.Compile]
 	CompiledLPPs []*RecursedSegmentCompilation
-
-	// CompiledDefault stores the compiled default module and is set by calling
-	// [DistributedWizard.Compile]
-	CompiledDefault *RecursedSegmentCompilation
 
 	// CompiledConglomeration stores the compilation context of the
 	// conglomeration wizard.
@@ -114,6 +116,10 @@ func init() {
 	serialization.RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
 
 	serialization.RegisterImplementation(recursion.FakeColumn{})
+	serialization.RegisterImplementation(recursion.RecursionCircuit{})
+	serialization.RegisterImplementation(recursion.AssignVortexOpenedCols{})
+	serialization.RegisterImplementation(recursion.AssignVortexUAlpha{})
+	serialization.RegisterImplementation(recursion.ConsistencyCheck{})
 
 	serialization.RegisterImplementation(selfrecursion.CollapsingProverAction{})
 	serialization.RegisterImplementation(selfrecursion.CollapsingVerifierAction{})
@@ -142,6 +148,16 @@ func init() {
 	serialization.RegisterImplementation(expr_handle.ExprHandleProverAction{})
 
 	serialization.RegisterImplementation(plonkinternal.CheckingActivators{})
+
+	serialization.RegisterImplementation(cmimc.ExternalHasherBuilder{})
+	serialization.RegisterImplementation(cmimc.ExternalHasherFactory{})
+
+	serialization.RegisterImplementation(constraint.BlueprintGenericHint{})
+	serialization.RegisterImplementation(constraint.BlueprintGenericSparseR1C{})
+	serialization.RegisterImplementation(constraint.BlueprintSparseR1CAdd{})
+	serialization.RegisterImplementation(constraint.BlueprintSparseR1CMul{})
+	serialization.RegisterImplementation(constraint.BlueprintSparseR1CBool{})
+	serialization.RegisterImplementation(constraint.PlonkCommitments{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
@@ -207,6 +223,12 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 
 	dist.CompiledDefault = CompileSegment(dist.DefaultModule)
+
+	logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))   // 11
+	logrus.Infof("Number of LPP modules to compile:%d\n", len(dist.LPPs)) // 3
+
+	/* Temp: Comment out this code
+
 	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
 	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 
@@ -219,6 +241,9 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
 	}
 
+	logrus.Warningln("Temp commenting out compiling LPP modules")
+
+
 	for i := range dist.LPPs {
 		logrus.
 			WithField("module-name", dist.LPPs[i].ModuleNames()).
@@ -226,7 +251,7 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 			Info("compiling module")
 
 		dist.CompiledLPPs[i] = CompileSegment(dist.LPPs[i])
-	}
+	} */
 
 	return dist
 }
