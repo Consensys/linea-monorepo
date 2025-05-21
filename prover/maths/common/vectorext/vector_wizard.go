@@ -5,6 +5,7 @@ package vectorext
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -35,6 +36,13 @@ func ScalarProd(a, b []fext.Element) fext.Element {
 	// The length checks is done by gnark-crypto already
 	a_ := Vector(a)
 	res := a_.InnerProduct(Vector(b))
+	return res
+}
+
+func ScalarProdByElement(a []fext.Element, b []field.Element) fext.Element {
+	// The length checks is done by gnark-crypto already
+	a_ := Vector(a)
+	res := a_.InnerProductByElement(b)
 	return res
 }
 

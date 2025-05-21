@@ -16,6 +16,7 @@ package vectorext
 
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // Add adds two vectors element-wise and stores the result in self.
@@ -46,6 +47,13 @@ func (vector *Vector) Sum() (res extensions.E4) {
 // It panics if the vectors don't have the same length.
 func (vector *Vector) InnerProduct(other Vector) (res extensions.E4) {
 	innerProductVecGeneric(&res, *vector, other)
+	return
+}
+
+// InnerProduct computes the inner product of two vectors.
+// It panics if the vectors don't have the same length.
+func (vector *Vector) InnerProductByElement(other []field.Element) (res extensions.E4) {
+	innerProductVecByElement(&res, *vector, other)
 	return
 }
 

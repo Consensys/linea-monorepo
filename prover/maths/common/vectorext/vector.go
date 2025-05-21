@@ -26,6 +26,7 @@ import (
 	"unsafe"
 
 	"github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
@@ -284,6 +285,17 @@ func innerProductVecGeneric(res *fext.Element, a, b Vector) {
 	var tmp fext.Element
 	for i := 0; i < len(a); i++ {
 		tmp.Mul(&a[i], &b[i])
+		res.Add(res, &tmp)
+	}
+}
+
+func innerProductVecByElement(res *fext.Element, a Vector, b []field.Element) {
+	if len(a) != len(b) {
+		panic("vector.InnerProduct: vectors don't have the same length")
+	}
+	var tmp fext.Element
+	for i := 0; i < len(a); i++ {
+		tmp.MulByElement(&a[i], &b[i])
 		res.Add(res, &tmp)
 	}
 }
