@@ -21,7 +21,7 @@ on a coset.
 
 Interpolate(poly []E4, x E4)
 */
-func Interpolate(poly []fext.Element, x fext.Element, oncoset ...bool) fext.Element {
+func EvaluateLagrange(poly []fext.Element, x fext.Element, oncoset ...bool) fext.Element {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
