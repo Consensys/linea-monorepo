@@ -13,7 +13,7 @@
   <img src="https://codecov.io/gh/Consensys/linea-monorepo/graph/badge.svg?token=2TM55P0CGJ" alt="Codecov" height="20">
 </a>
 
-This is the principal Linea repository. It mainly includes the smart contracts covering Linea's core functions, the prover in charge of generating ZK proofs, the coordinator responsible for multiple orchestrations, and the Postman to execute bridge messages. 
+This is the principal Linea repository. It mainly includes the smart contracts covering Linea's core functions, the prover in charge of generating ZK proofs, the coordinator responsible for multiple orchestrations, and the Postman to execute bridge messages.
 
 It serves developers by making the Linea tech stack open source under the [Apache 2.0 license](LICENSE).
 
@@ -25,6 +25,8 @@ It serves developers by making the Linea tech stack open source under the [Apach
 ## Get started
 
 If you already have an understanding of the tech stack, use our [Get Started](docs/get-started.md) guide.
+
+For developers looking to build services locally (e.g., the coordinator), see our detailed [Local Development Guide](docs/local-development-guide.md).
 
 ## Looking for the Linea code?
 
@@ -54,7 +56,7 @@ Please keep in mind that we do not accept non-code contributions like fixing com
 
 1. [Create an issue](https://github.com/Consensys/linea-monorepo/issues)
 > If the proposed update is non-trivial, also tag us for discussion.
-2. Submit the update as a pull request from your [fork of this repo](https://github.com/Consensys/linea-monorepo/fork), and tag us for review. 
+2. Submit the update as a pull request from your [fork of this repo](https://github.com/Consensys/linea-monorepo/fork), and tag us for review.
 > Include the issue number in the pull request description and (optionally) in the branch name.
 
 Consider starting with a ["good first issue"](https://github.com/ConsenSys/linea-monorepo/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
