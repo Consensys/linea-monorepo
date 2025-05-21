@@ -43,6 +43,11 @@ var testComp = testRec.InputCompiledIOP
 
 func TestSerdeRecurIOP(t *testing.T) {
 
+	// fmt.Println("********Recur. Comp. IOP********************************************")
+	// pcsCtx := testComp.PcsCtxs
+	// fmt.Printf("reflec type(name):%s type(string):%s kind:%s of PcsCtx \n", reflect.TypeOf(pcsCtx).Name(), reflect.TypeOf(pcsCtx).String(), reflect.TypeOf(pcsCtx).Kind())
+	// fmt.Println("************FIN Recur. Comp. IOP******************************************")
+
 	serComp, err := serialization.SerializeCompiledIOP(testComp)
 	if err != nil {
 		t.Fatalf("error during ser. recursion input compiled-iop:%s\n", err.Error())

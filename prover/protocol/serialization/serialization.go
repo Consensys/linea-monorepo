@@ -254,9 +254,9 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		fieldValue := v.FieldByName(f.name)
 		fieldType := f.fieldType
 
-		// if f.name == "PcsCtx" {
-		// 	fmt.Printf("ser. struct with field name `PcsCtx` of type:%s in mode:%d\n", fieldType, newMode)
-		// }
+		if f.name == "PcsCtx" {
+			fmt.Printf("ser. struct with field name `PcsCtx` of type:%s in mode:%d\n", fieldType, newMode)
+		}
 
 		// Special handling for *wizard.CompiledIOP fields
 		if fieldType == compiledIOPType {
@@ -488,7 +488,6 @@ func deserializePointer(data json.RawMessage, mode Mode, t reflect.Type, comp *w
 	return v.Addr(), nil
 }
 
-/*
 // deserializeStruct deserializes JSON into a struct, with special handling for *wizard.CompiledIOP fields.
 func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
 	// Handle ignorable types
@@ -589,136 +588,6 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		// Handle zero (invalid) values
 		if !fieldValue.IsValid() {
 			v.FieldByName(f.name).Set(reflect.Zero(fieldType))
-			continue
-		}
-
-		// Handle pointer types
-		if fieldValue.Type().Kind() == reflect.Ptr && fieldValue.Type().Elem() == fieldType {
-			fieldValue = fieldValue.Elem()
-		}
-
-		v.FieldByName(f.name).Set(fieldValue)
-	}
-
-	return v, nil
-}
-
-*/
-
-func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
-	// Handle ignorable types
-	if IsIgnoreableType(t) {
-		if bytes.Equal(data, []byte(NilString)) {
-			logrus.Infof("Skipping deserialization of %v", t)
-			return reflect.Zero(t), nil
-		}
-		return reflect.Value{}, fmt.Errorf("expected null or empty struct for %v, got: %v", t, data)
-	}
-
-	// Handle specific type/mode combinations (e.g., naturalType, queryType)
-	if mode == ReferenceMode && t == naturalType {
-		var colID ifaces.ColID
-		if err := deserializeAnyWithCborPkg(data, &colID); err != nil {
-			return reflect.Value{}, fmt.Errorf("could not deserialize column ID: %w", err)
-		}
-		return reflect.ValueOf(comp.Columns.GetHandle(colID)), nil
-	}
-	if mode == DeclarationMode && t == naturalType {
-		rawType := reflect.TypeOf(&serializableColumnDecl{})
-		v, err := DeserializeValue(data, mode, rawType, comp)
-		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not deserialize column interface declaration: %w", err)
-		}
-		return reflect.ValueOf(v.Interface().(*serializableColumnDecl).intoNaturalAndRegister(comp)), nil
-	}
-	if mode == DeclarationMode && t == manuallyShiftedType {
-		rawType := reflect.TypeOf(&serializableManuallyShifted{})
-		v, err := DeserializeValue(data, mode, rawType, comp)
-		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not deserialize column interface declaration: %w", err)
-		}
-		return reflect.ValueOf(v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)), nil
-	}
-	if mode == ReferenceMode && t.Implements(queryType) {
-		var queryID ifaces.QueryID
-		if err := deserializeAnyWithCborPkg(data, &queryID); err != nil {
-			return reflect.Value{}, fmt.Errorf("could not deserialize query ID: %w", err)
-		}
-		logrus.Infof("Deferring query reference %s", queryID)
-		// Store the query ID in a placeholder struct
-		v := reflect.New(reflect.TypeOf(struct {
-			DeferredQueryID ifaces.QueryID
-		}{})).Elem()
-		v.FieldByName("DeferredQueryID").Set(reflect.ValueOf(queryID))
-		return v, nil
-	}
-
-	// Adjust mode for queryType or columnType
-	newMode := mode
-	if t.Implements(queryType) || t.Implements(columnType) {
-		newMode = ReferenceMode
-	}
-
-	// Decode raw map
-	var raw map[string]json.RawMessage
-	if err := deserializeAnyWithCborPkg(data, &raw); err != nil {
-		return reflect.Value{}, fmt.Errorf("could not deserialize struct type %q: %w", t.Name(), err)
-	}
-
-	// Deserialize fields
-	v := reflect.New(t).Elem()
-	cache := getStructFieldCache(t)
-
-	for _, f := range cache.fields {
-		if unicode.IsLower(rune(f.name[0])) {
-			continue // Skip unexported fields
-		}
-
-		fieldRaw, ok := raw[f.rawName]
-		if !ok {
-			utils.Panic("Missing struct field %q.%v of type %q, provided sub-JSON: %v", t.String(), f.name, f.fieldType.String(), raw)
-		}
-
-		fieldType := f.fieldType
-
-		// Special handling for *wizard.CompiledIOP fields
-		if fieldType == compiledIOPType {
-			if bytes.Equal(fieldRaw, []byte(NilString)) {
-				v.FieldByName(f.name).Set(reflect.Zero(fieldType))
-			} else {
-				iop, err := DeserializeCompiledIOP(fieldRaw)
-				if err != nil {
-					return reflect.Value{}, fmt.Errorf("failed to deserialize *wizard.CompiledIOP field %s: %w", f.name, err)
-				}
-				v.FieldByName(f.name).Set(reflect.ValueOf(iop))
-			}
-			continue
-		}
-
-		// Deserialize other fields
-		fieldValue, err := DeserializeValue(fieldRaw, newMode, fieldType, comp)
-		if err != nil {
-			utils.Panic("Could not deserialize struct field %q.%v of type %q: %v", t.String(), f.name, fieldType.String(), err)
-		}
-
-		// Handle zero (invalid) values
-		if !fieldValue.IsValid() {
-			v.FieldByName(f.name).Set(reflect.Zero(fieldType))
-			continue
-		}
-
-		// Resolve deferred query references
-		if fieldValue.Type() == reflect.TypeOf(struct {
-			DeferredQueryID ifaces.QueryID
-		}{}) {
-			queryID := fieldValue.FieldByName("DeferredQueryID").Interface().(ifaces.QueryID)
-			if comp.QueriesParams.Exists(queryID) {
-				v.FieldByName(f.name).Set(reflect.ValueOf(comp.QueriesParams.Data(queryID)))
-			} else if comp.QueriesNoParams.Exists(queryID) {
-				v.FieldByName(f.name).Set(reflect.ValueOf(comp.QueriesNoParams.Data(queryID)))
-			} else {
-				utils.Panic("Could not resolve deferred query ID: %v", queryID)
-			}
 			continue
 		}
 
