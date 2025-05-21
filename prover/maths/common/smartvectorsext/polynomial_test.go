@@ -27,24 +27,25 @@ func TestRuffini(t *testing.T) {
 	}{
 		{
 			q:           fext.NewElement(1, 0, 0, 0),
-			p:           ForTestFromQuads(3, 0, 0, 0, 1, 0),
-			expectedQuo: ForTestFromQuads(1, 0, 1, 0),
+			p:           ForTestFromQuads(3, 0, 0, 0, 1, 0, 0, 0),
+			expectedQuo: ForTestFromQuads(1, 0, 0, 0),
 			expectedRem: fext.NewElement(4, 0, 0, 0),
 		},
 		{
 			// 3 = 0 * (X - 1) + 3
 			q:           fext.NewElement(1, 0, 0, 0),
-			p:           ForTestFromQuads(3, 0),
+			p:           ForTestFromQuads(3, 0, 0, 0),
 			expectedQuo: NewConstantExt(fext.Zero(), 1),
 			expectedRem: fext.NewElement(3, 0, 0, 0),
 		},
 		{
-			// -α^2 - 3 α + α x^3 + x^3 - α^2 x^2 - 2 α x^2 - x^2 + α x + 2 x + 3 =
+			// (3 -α^2 - 3 α) + (2 + α) x + (- 1 - α^2 - 2 α)x^2 + (α +1)x^3 =
 			// (x-(1+alpha))(x^2*(1+alpha)+(2+alpha))+5
-			// alpha is a square root used to build the extension field, i.e. alpha^2=fext.RootPowers[1]
-			q:           fext.NewElement(1, 1, 0, 0),
-			p:           ForTestFromQuads(-fext.RootPowers[1]+3, -3, 2, 1, -1-fext.RootPowers[1], -2, 1, 1),
-			expectedQuo: ForTestFromQuads(2, 1, 0, 0, 1, 1),
+			// alpha is a square root used to build the extension field,
+			// i.e. alpha = v, alpha^2=u,
+			q:           fext.NewElement(1, 0, 1, 0),
+			p:           ForTestFromQuads(3, -1, -3, 0, 2, 0, 1, 0, -1, -1, -2, 0, 1, 0, 1, 0),
+			expectedQuo: ForTestFromQuads(2, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0),
 			expectedRem: fext.NewElement(5, 0, 0, 0),
 		},
 	}
@@ -140,11 +141,11 @@ func TestBivariatePolynomial(t *testing.T) {
 		},
 		{
 			// P(X) = P1(X)+Y*P2(X)
-			v:         ForTestFromQuads(1, 1, 2, 2, 3, 3, 4, 4),
-			x:         fext.NewElement(2, 1, 0, 0),
-			y:         fext.NewElement(3, 2, 0, 0),
+			v:         ForTestFromQuads(1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0),
+			x:         fext.NewElement(2, 0, 0, 0),
+			y:         fext.NewElement(3, 1, 2, 0),
 			numCoeffX: 2,
-			res:       fext.NewElement(int64(44*fext.RootPowers[1]+38), int64(8*fext.RootPowers[1]+74), 0, 0),
+			res:       fext.NewElement(38, 11, 22, 0),
 		},
 	}
 
