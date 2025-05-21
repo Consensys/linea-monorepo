@@ -1,7 +1,6 @@
 package fastpoly
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -12,13 +11,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
-
-func prettyprint(p []field.Element) {
-	for i := 0; i < len(p)-1; i++ {
-		fmt.Printf("%s*x**%d+", p[i].String(), i)
-	}
-	fmt.Printf("%s*x**%d\n", p[len(p)-1].String(), len(p)-1)
-}
 
 func randomPoly(size int) []field.Element {
 	res := make([]field.Element, size)
