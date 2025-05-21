@@ -75,6 +75,13 @@ func ExpToInt(z *Element, x Element, k int) *Element {
 	return z
 }
 
+// RandomElement returns a random element
+func RandomElement() Element {
+	var res Element
+	res.SetRandom()
+	return res
+}
+
 // PseudoRand generates a field using a pseudo-random number generator
 func PseudoRand(rng *rand.Rand) Element {
 
