@@ -5,6 +5,7 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark/constraint/solver"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
 func init() {
@@ -26,7 +27,7 @@ func inverseE2Hint(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
 }
 
 func inverseE4Hint(_ *big.Int, inputs []*big.Int, res []*big.Int) error {
-	var a, c extensions.E4
+	var a, c fext.Element
 
 	a.B0.A0.SetBigInt(inputs[0])
 	a.B0.A1.SetBigInt(inputs[1])

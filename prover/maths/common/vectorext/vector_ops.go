@@ -15,8 +15,8 @@
 package vectorext
 
 import (
-	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
 // Add adds two vectors element-wise and stores the result in self.
@@ -33,26 +33,26 @@ func (vector *Vector) Sub(a, b Vector) {
 
 // ScalarMul multiplies a vector by a scalar element-wise and stores the result in self.
 // It panics if the vectors don't have the same length.
-func (vector *Vector) ScalarMul(a Vector, b *extensions.E4) {
+func (vector *Vector) ScalarMul(a Vector, b *fext.Element) {
 	scalarMulVecGeneric(*vector, a, b)
 }
 
 // Sum computes the sum of all elements in the vector.
-func (vector *Vector) Sum() (res extensions.E4) {
+func (vector *Vector) Sum() (res fext.Element) {
 	sumVecGeneric(&res, *vector)
 	return
 }
 
 // InnerProduct computes the inner product of two vectors.
 // It panics if the vectors don't have the same length.
-func (vector *Vector) InnerProduct(other Vector) (res extensions.E4) {
+func (vector *Vector) InnerProduct(other Vector) (res fext.Element) {
 	innerProductVecGeneric(&res, *vector, other)
 	return
 }
 
 // InnerProduct computes the inner product of two vectors.
 // It panics if the vectors don't have the same length.
-func (vector *Vector) InnerProductByElement(other []field.Element) (res extensions.E4) {
+func (vector *Vector) InnerProductByElement(other []field.Element) (res fext.Element) {
 	innerProductVecByElement(&res, *vector, other)
 	return
 }

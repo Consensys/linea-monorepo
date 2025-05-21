@@ -2,15 +2,14 @@ package polyext
 
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
-	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // Eval evalutes P := \sum_{i<n}pol[i]X^i at x.
-func Eval(pol []extensions.E4, x extensions.E4) extensions.E4 {
-	var res extensions.E4
+func Eval(pol []fext.Element, x fext.Element) fext.Element {
+	var res fext.Element
 	for i := len(pol) - 1; i >= 0; i-- {
 		res.Mul(&res, &x)
 		res.Add(&res, &pol[i])
@@ -18,8 +17,8 @@ func Eval(pol []extensions.E4, x extensions.E4) extensions.E4 {
 	return res
 }
 
-func EvalOnBaseField(pol []extensions.E4, x koalabear.Element) extensions.E4 {
-	var res extensions.E4
+func EvalOnBaseField(pol []fext.Element, x koalabear.Element) fext.Element {
+	var res fext.Element
 
 	for i := len(pol) - 1; i >= 0; i-- {
 		res.B0.A0.Mul(&res.B0.A0, &x)
@@ -37,18 +36,18 @@ func EvalOnBaseField(pol []extensions.E4, x koalabear.Element) extensions.E4 {
 // FFT methods should be preferred to this end.
 //
 // The empty slice is understood as the zero polynomial. If provided on either
-// side the function returns []extensions.E4{}
-func Mul(a, b []extensions.E4) (res []extensions.E4) {
+// side the function returns []fext.Element{}
+func Mul(a, b []fext.Element) (res []fext.Element) {
 
 	if len(a) == 0 || len(b) == 0 {
-		return []extensions.E4{}
+		return []fext.Element{}
 	}
 
-	res = make([]extensions.E4, len(a)+len(b)-1)
+	res = make([]fext.Element, len(a)+len(b)-1)
 
 	for i := 0; i < len(a); i++ {
 		for j := 0; j < len(b); j++ {
-			var tmp extensions.E4
+			var tmp fext.Element
 			tmp.Mul(&a[i], &b[j])
 			res[i+j].Add(&res[i+j], &tmp)
 		}
@@ -61,9 +60,9 @@ func Mul(a, b []extensions.E4) (res []extensions.E4) {
 // The returned slice has length = max(len(a), len(b)).
 // The empty slice is understood as the zero polynomial and if both a and b are
 // empty, the function returns the empty slice.
-func Add(a, b []extensions.E4) (res []extensions.E4) {
+func Add(a, b []fext.Element) (res []fext.Element) {
 
-	res = make([]extensions.E4, utils.Max(len(a), len(b)))
+	res = make([]fext.Element, utils.Max(len(a), len(b)))
 	copy(res, a)
 	for i := range b {
 		res[i].Add(&res[i], &b[i])
@@ -73,8 +72,8 @@ func Add(a, b []extensions.E4) (res []extensions.E4) {
 }
 
 // ScalarMul multiplies a polynomials in coefficient form by a scalar.
-func ScalarMul(p []extensions.E4, x extensions.E4) (res []extensions.E4) {
-	res = make([]extensions.E4, len(p))
+func ScalarMul(p []fext.Element, x fext.Element) (res []fext.Element) {
+	res = make([]fext.Element, len(p))
 	vectorext.ScalarMul(res, p, x)
 	return res
 }
@@ -84,13 +83,13 @@ func ScalarMul(p []extensions.E4, x extensions.E4) (res []extensions.E4) {
 // schoolbook algorithm and is only relevant for small domains.
 //
 // The function panics if provided an empty domain.
-func EvaluateLagrangesAnyDomain(domain []extensions.E4, x extensions.E4) []extensions.E4 {
+func EvaluateLagrangesAnyDomain(domain []fext.Element, x fext.Element) []fext.Element {
 
 	if len(domain) == 0 {
 		utils.Panic("got provided an empty domain")
 	}
 
-	lagrange := make([]extensions.E4, len(domain))
+	lagrange := make([]fext.Element, len(domain))
 
 	for i := range domain {
 		// allocate outside of the loop to avoid memory aliasing in for loop

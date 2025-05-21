@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
 //	𝔽r²[u] = 𝔽r/u²-3
@@ -198,7 +199,7 @@ func (e *Element) Inverse(api frontend.API, e1 Element) *Element {
 }
 
 // Assign a value to self (witness assignment)
-func (e *Element) Assign(a extensions.E4) {
+func (e *Element) Assign(a fext.Element) {
 	e.B0.Assign(a.B0)
 	e.B1.Assign(a.B1)
 }
