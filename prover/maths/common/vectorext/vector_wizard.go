@@ -132,7 +132,7 @@ func ForTestFromQuads(xs ...int) []fext.Element {
 	}
 	res := make([]fext.Element, len(xs)/4)
 	for i := 0; i < len(res); i++ {
-		fext.SetInt64Tuple(&res[i], int64(xs[4*i]), int64(xs[4*i+1]), int64(xs[4*i+2]), int64(xs[4*i+3]))
+		res[i] = fext.NewElement(uint32(xs[4*i]), uint32(xs[4*i+1]), uint32(xs[4*i+2]), uint32(xs[4*i+3]))
 	}
 	return res
 }
