@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.Trace.EVM_INST_PUSH0;
 import static net.consensys.linea.zktracer.module.hub.HubProcessingPhase.TX_EXEC;
 import static net.consensys.linea.zktracer.module.hub.signals.Exceptions.*;
 import static net.consensys.linea.zktracer.module.hub.signals.TracedException.*;
+import static net.consensys.linea.zktracer.module.hub.signals.TracedException.MAX_CODE_SIZE_EXCEPTION;
 import static net.consensys.linea.zktracer.opcode.InstructionFamily.*;
 
 import java.math.BigInteger;
@@ -144,6 +145,14 @@ public class CommonFragmentValues {
       return;
     }
 
+    if (maxCodeSizeException(exceptions))
+    // the MaxCodeSize exceptions for return is already dealt before
+    {
+      checkArgument(opCode.isCreate());
+      setTracedException(MAX_CODE_SIZE_EXCEPTION);
+      return;
+    }
+
     if (Exceptions.memoryExpansionException(exceptions)) {
       checkArgument(opCode.mayTriggerMemoryExpansionException());
       setTracedException(TracedException.MEMORY_EXPANSION_EXCEPTION);
@@ -162,8 +171,7 @@ public class CommonFragmentValues {
   }
 
   public void setTracedException(TracedException tracedException) {
-    checkArgument(
-        this.tracedException == UNDEFINED); // || this.tracedException == tracedException);
+    checkArgument(this.tracedException == UNDEFINED);
     this.tracedException = tracedException;
   }
 
@@ -294,7 +302,7 @@ public class CommonFragmentValues {
         || tracedException() == TracedException.MEMORY_EXPANSION_EXCEPTION
         || tracedException() == TracedException.STATIC_FAULT
         || tracedException() == TracedException.INVALID_CODE_PREFIX
-        || tracedException() == TracedException.MAX_CODE_SIZE_EXCEPTION) {
+        || tracedException() == MAX_CODE_SIZE_EXCEPTION) {
       return 0;
     }
 

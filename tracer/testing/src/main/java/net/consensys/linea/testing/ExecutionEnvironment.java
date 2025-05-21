@@ -26,6 +26,7 @@ import java.util.Optional;
 import java.util.OptionalLong;
 
 import net.consensys.linea.corset.CorsetValidator;
+import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes32;
@@ -101,7 +102,7 @@ public class ExecutionEnvironment {
       long startBlock,
       long endBlock) {
     try {
-      String prefix = constructTestPrefix();
+      String prefix = constructTestPrefix(zkTracer.getChain());
       Path traceFilePath = Files.createTempFile(prefix, ".lt");
       zkTracer.writeToFile(traceFilePath, startBlock, endBlock);
       final Path finalTraceFilePath = traceFilePath;
@@ -197,19 +198,20 @@ public class ExecutionEnvironment {
    *
    * @return
    */
-  public static String constructTestPrefix() {
+  public static String constructTestPrefix(ChainConfig chain) {
+    String fork = chain.fork.toString();
+    //
     for (StackTraceElement ste : Thread.currentThread().getStackTrace()) {
       String className = ste.getClassName();
       if (className.endsWith("Test") || className.endsWith("Tests")) {
         // Yes, it is.  Now tidy up the name.
         String name = ste.getClassName().replace(LINEA_PACKAGE, "").replace(".", "_");
         // Done
-        return name + "_" + ste.getMethodName() + "_";
+        return name + "_" + ste.getMethodName() + "_" + fork.toLowerCase() + "_";
       }
     }
     // Failed, so return null.  This is fine as it just means the generate lt file will not have an
-    // informative
-    // prefix.
-    return null;
+    // informative prefix.
+    return fork;
   }
 }

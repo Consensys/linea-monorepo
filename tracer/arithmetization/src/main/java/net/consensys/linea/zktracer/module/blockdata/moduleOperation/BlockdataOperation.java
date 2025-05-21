@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.blockdata;
+package net.consensys.linea.zktracer.module.blockdata.moduleOperation;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.Trace.*;
@@ -46,7 +46,7 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 
 @Accessors(fluent = true)
 @Getter
-public class BlockdataOperation extends ModuleOperation {
+public abstract class BlockdataOperation extends ModuleOperation {
   private final Hub hub;
   private final Wcp wcp;
   private final Euc euc;
@@ -65,7 +65,7 @@ public class BlockdataOperation extends ModuleOperation {
   private final int relTxMax;
   @Getter private final int relBlock;
 
-  private EWord data;
+  protected EWord data;
   private EWord[] arg1;
   private EWord[] arg2;
   private Bytes[] res;
@@ -123,7 +123,7 @@ public class BlockdataOperation extends ModuleOperation {
         handleNumber();
       }
       case OpCode.DIFFICULTY -> {
-        handleDifficulty();
+        handleDifficultyOrPrevrandao();
       }
       case OpCode.GASLIMIT -> {
         handleGasLimit();
@@ -166,12 +166,7 @@ public class BlockdataOperation extends ModuleOperation {
     }
   }
 
-  private void handleDifficulty() {
-    data = EWord.of(blockHeader.getDifficulty().getAsBigInteger());
-
-    // row i
-    wcpCallToGEQ(0, data, EWord.ZERO);
-  }
+  protected abstract void handleDifficultyOrPrevrandao();
 
   private void handleGasLimit() {
     data = EWord.of(blockHeader.getGasLimit());
@@ -291,7 +286,7 @@ public class BlockdataOperation extends ModuleOperation {
     return wcpCallTo(w, arg1, arg2, WCP_INST_LEQ);
   }
 
-  private boolean wcpCallToGEQ(int w, EWord arg1, EWord arg2) {
+  boolean wcpCallToGEQ(int w, EWord arg1, EWord arg2) {
     return wcpCallTo(w, arg1, arg2, WCP_INST_GEQ);
   }
 

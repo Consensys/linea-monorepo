@@ -45,7 +45,7 @@ import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.module.add.Add;
 import net.consensys.linea.zktracer.module.bin.Bin;
 import net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpData;
-import net.consensys.linea.zktracer.module.blockdata.Blockdata;
+import net.consensys.linea.zktracer.module.blockdata.module.Blockdata;
 import net.consensys.linea.zktracer.module.blockhash.Blockhash;
 import net.consensys.linea.zktracer.module.ecdata.EcData;
 import net.consensys.linea.zktracer.module.euc.Euc;
@@ -382,7 +382,7 @@ public abstract class Hub implements Module {
             blockTransactions, keccak, l2L1Logs, l2l1ContractAddress, LogTopic.of(l2l1Topic));
     shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
     rlpAddr = new RlpAddr(this, trm, keccak);
-    blockdata = new Blockdata(this, wcp, euc, chain);
+    blockdata = setBlockData(this, wcp, euc, chain);
     mmu = new Mmu(euc, wcp);
     mmio = new Mmio(mmu);
 
@@ -1060,27 +1060,17 @@ public abstract class Hub implements Module {
     return blockStack.getBlockByRelativeBlockNumber(relativeBlockNumber).coinbaseAddress();
   }
 
-  protected GasCalculator setGasCalculator() {
-    throw new IllegalStateException("must be implemented");
-  }
+  protected abstract GasCalculator setGasCalculator();
 
-  protected TransactionStack setTransactionStack() {
-    throw new IllegalStateException("must be implemented");
-  }
+  protected abstract TransactionStack setTransactionStack();
 
-  protected TxnData setTxnData() {
-    throw new IllegalStateException("must be implemented");
-  }
+  protected abstract TxnData setTxnData();
 
-  protected void setInitializationSection(WorldView world) {
-    throw new IllegalStateException("must be implemented");
-  }
+  protected abstract Blockdata setBlockData(Hub hub, Wcp wcp, Euc euc, ChainConfig chain);
 
-  protected boolean coinbaseWarmthAtTxEnd() {
-    throw new IllegalStateException("must be implemented");
-  }
+  protected abstract void setInitializationSection(WorldView world);
 
-  protected void setCreateSection(final Hub hub, final MessageFrame frame) {
-    throw new IllegalStateException("must be implemented");
-  }
+  protected abstract boolean coinbaseWarmthAtTxEnd();
+
+  protected abstract void setCreateSection(final Hub hub, final MessageFrame frame);
 }

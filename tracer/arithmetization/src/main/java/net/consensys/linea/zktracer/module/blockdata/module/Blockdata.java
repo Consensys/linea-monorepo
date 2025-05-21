@@ -13,7 +13,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package net.consensys.linea.zktracer.module.blockdata;
+package net.consensys.linea.zktracer.module.blockdata.module;
 
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_DEPTH;
 import static net.consensys.linea.zktracer.Trace.LLARGE;
@@ -26,6 +26,7 @@ import lombok.RequiredArgsConstructor;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
+import net.consensys.linea.zktracer.module.blockdata.moduleOperation.BlockdataOperation;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.txndata.module.TxnData;
@@ -36,7 +37,7 @@ import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
 @RequiredArgsConstructor
-public class Blockdata implements Module {
+public abstract class Blockdata implements Module {
   private final Hub hub;
   private final Wcp wcp;
   private final Euc euc;
@@ -94,7 +95,7 @@ public class Blockdata implements Module {
         operations.isEmpty() ? null : operations.getLast().blockHeader();
     for (OpCode opCode : opCodes) {
       final BlockdataOperation operation =
-          new BlockdataOperation(
+          setBlockDataOperation(
               hub,
               blockHeader,
               previousBlockHeader,
@@ -107,6 +108,17 @@ public class Blockdata implements Module {
       operations.addLast(operation);
     }
   }
+
+  protected abstract BlockdataOperation setBlockDataOperation(
+      Hub hub,
+      BlockHeader blockHeader,
+      BlockHeader previousBlockHeader,
+      int nbOfTxsInBlock,
+      Wcp wcp,
+      Euc euc,
+      ChainConfig chain,
+      OpCode opCode,
+      long firstBlockNumber);
 
   @Override
   public void commitTransactionBundle() {}
@@ -137,7 +149,7 @@ public class Blockdata implements Module {
     }
   }
 
-  private TxnData txnData() {
+  TxnData txnData() {
     return hub.txnData();
   }
 }

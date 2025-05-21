@@ -120,7 +120,8 @@ public class GasProjector {
       case ADDMOD, MULMOD, JUMP -> new Mid(gc);
       case EXP -> new Exp(gc, frame);
       case SHA3 -> new Sha3(gc, frame);
-      case ADDRESS,
+      case PUSH0,
+          ADDRESS,
           ORIGIN,
           CALLER,
           CALLVALUE,

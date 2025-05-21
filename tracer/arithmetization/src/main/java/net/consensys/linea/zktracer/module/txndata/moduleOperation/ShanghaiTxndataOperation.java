@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.txndata.moduleOperation;
 
 import static net.consensys.linea.zktracer.Trace.*;
+import static net.consensys.linea.zktracer.Trace.Txndata.*;
 
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.txndata.TxnDataComparisonRecord;
@@ -29,6 +30,18 @@ public class ShanghaiTxndataOperation extends LondonTxndataOperation {
 
   public ShanghaiTxndataOperation(Wcp wcp, Euc euc, TransactionProcessingMetadata tx) {
     super(wcp, euc, tx);
+  }
+
+  @Override
+  protected int computeLineCount() {
+    // Count the number of rows of each tx, only depending on the type of the transaction
+    return switch (tx.getBesuTransaction().getType()) {
+      case FRONTIER -> NB_ROWS_TYPE_0_SHANGHAI;
+      case ACCESS_LIST -> NB_ROWS_TYPE_1_SHANGHAI;
+      case EIP1559 -> NB_ROWS_TYPE_2_SHANGHAI;
+      default -> throw new RuntimeException(
+          "Transaction type not supported:" + tx.getBesuTransaction().getType());
+    };
   }
 
   @Override

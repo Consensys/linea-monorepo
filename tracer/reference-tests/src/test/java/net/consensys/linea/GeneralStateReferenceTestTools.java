@@ -58,8 +58,6 @@ public class GeneralStateReferenceTestTools {
       ReferenceTestProtocolSchedules.create();
   private static final List<String> SPECS_PRIOR_TO_DELETING_EMPTY_ACCOUNTS =
       Arrays.asList("Frontier", "Homestead", "EIP150");
-  private static final CorsetValidator CORSET_VALIDATOR =
-      new CorsetValidator(ChainConfig.ETHEREUM_LONDON);
 
   private static MainnetTransactionProcessor transactionProcessor(final String name) {
     return protocolSpec(name).getTransactionProcessor();
@@ -281,7 +279,9 @@ public class GeneralStateReferenceTestTools {
             .getFeeMarket()
             .blobGasPricePerGas(blockHeader.getExcessBlobGas().orElse(BlobGas.ZERO));
 
-    final ZkTracer zkTracer = new ZkTracer(ChainConfig.ETHEREUM_LONDON);
+    final ChainConfig chain = ChainConfig.ETHEREUM_CHAIN(spec.getFork());
+    final CorsetValidator corsetValidator = new CorsetValidator(chain);
+    final ZkTracer zkTracer = new ZkTracer(chain);
     zkTracer.traceStartConflation(1);
     zkTracer.traceStartBlock(blockHeader, blockBody, blockHeader.getCoinbase());
 
@@ -339,7 +339,7 @@ public class GeneralStateReferenceTestTools {
 
     ExecutionEnvironment.checkTracer(
         zkTracer,
-        CORSET_VALIDATOR,
+        corsetValidator,
         Optional.of(log),
         // block number for first block
         blockHeader.getNumber(),
