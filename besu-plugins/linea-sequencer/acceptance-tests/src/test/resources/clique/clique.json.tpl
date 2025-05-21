@@ -1,18 +1,18 @@
 {
   "config": {
     "chainId": 1337,
-	"petersburgBlock":0,
-	"istanbulBlock":0,
-	"berlinBlock":0,
-	"londonBlock":0,
+    "petersburgBlock": 0,
+    "istanbulBlock": 0,
+    "berlinBlock": 0,
+    "londonBlock": 0,
     "clique": {
       "blockperiodseconds": %blockperiodseconds%,
       "epochlength": %epochlength%,
       "createemptyblocks": %createemptyblocks%
     }
   },
-    "zeroBaseFee": false,
-    "baseFeePerGas": "7",
+  "zeroBaseFee": false,
+  "baseFeePerGas": "7",
   "nonce": "0x0",
   "timestamp": "0x6391BFF3",
   "extraData": "%extraData%",

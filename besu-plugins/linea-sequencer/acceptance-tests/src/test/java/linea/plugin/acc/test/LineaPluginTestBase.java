@@ -104,7 +104,7 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
   public void setup() throws Exception {
     minerNode =
         createCliqueNodeWithExtraCliOptionsAndRpcApis(
-            "miner1", getCliqueOptions(), getTestCliOptions(), Set.of("LINEA", "MINER"));
+            "miner1", getCliqueOptions(), getTestCliOptions(), Set.of("LINEA", "MINER"), false);
     minerNode.setTransactionPoolConfiguration(
         ImmutableTransactionPoolConfiguration.builder()
             .from(TransactionPoolConfiguration.DEFAULT)
@@ -132,11 +132,12 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
     return Optional.empty();
   }
 
-  private BesuNode createCliqueNodeWithExtraCliOptionsAndRpcApis(
+  protected BesuNode createCliqueNodeWithExtraCliOptionsAndRpcApis(
       final String name,
       final CliqueOptions cliqueOptions,
       final List<String> extraCliOptions,
-      final Set<String> extraRpcApis)
+      final Set<String> extraRpcApis,
+      final boolean isEngineRpcEnabled)
       throws IOException {
     final NodeConfigurationFactory node = new NodeConfigurationFactory();
 
@@ -149,6 +150,7 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
             .inProcessRpcConfiguration(node.createInProcessRpcConfiguration(extraRpcApis))
             .devMode(false)
             .jsonRpcTxPool()
+            .engineRpcEnabled(isEngineRpcEnabled)
             .genesisConfigProvider(
                 validators -> Optional.of(provideGenesisConfig(validators, cliqueOptions)))
             .extraCLIOptions(extraCliOptions)
@@ -172,7 +174,7 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
     return besu.create(nodeConfBuilder.build());
   }
 
-  private String provideGenesisConfig(
+  protected String provideGenesisConfig(
       final Collection<? extends RunnableNode> validators, final CliqueOptions cliqueOptions) {
     final var genesis =
         GenesisConfigurationFactory.createCliqueGenesisConfig(validators, cliqueOptions).get();
@@ -182,7 +184,7 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
         .orElse(genesis);
   }
 
-  private String setGenesisCustomExtraData(final String genesis, final Bytes32 customExtraData) {
+  protected String setGenesisCustomExtraData(final String genesis, final Bytes32 customExtraData) {
     final var om = new ObjectMapper();
     final ObjectNode root;
     try {

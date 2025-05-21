@@ -60,6 +60,7 @@ dependencies {
   testImplementation project(':sequencer')
 
   testImplementation "${besuArtifactGroup}:besu-datatypes"
+  testImplementation "${besuArtifactGroup}.internal:clique"
   testImplementation "${besuArtifactGroup}.internal:api"
   testImplementation "${besuArtifactGroup}.internal:core"
   testImplementation "${besuArtifactGroup}.internal:dsl"
