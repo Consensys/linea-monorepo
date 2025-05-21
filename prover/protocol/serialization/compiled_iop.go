@@ -182,6 +182,7 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 	return serIOP, err
 }
 
+/*
 // DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns an error
 // if the marshalled object does not have the right format.
 func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
@@ -195,6 +196,8 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	if numRounds == 0 {
 		return comp, nil
 	}
+
+	logrus.Infof("Number of rounds in SerDe CompiledIOP:%d \n", numRounds)
 
 	// Set primitive fields
 	comp.DummyCompiled = raw.DummyCompiled
@@ -217,12 +220,15 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 
 	// Deserialize round-specific attributes in parallel
 	var mu sync.Mutex
-	if err := deserializeColumnsAndCoins(raw, comp, numRounds, &mu); err != nil {
-		return nil, fmt.Errorf("columns and coins: %w", err)
-	}
+
 	if err := deserializeQueries(raw, comp, numRounds); err != nil {
 		return nil, fmt.Errorf("queries: %w", err)
 	}
+
+	if err := deserializeColumnsAndCoins(raw, comp, numRounds, &mu); err != nil {
+		return nil, fmt.Errorf("columns and coins: %w", err)
+	}
+
 	if err := deserializeSubProverAction(raw, comp, numRounds, &mu); err != nil {
 		return nil, fmt.Errorf("error while decoding subProverAction: %w", err)
 	}
@@ -243,6 +249,93 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 
 	// EXPERIMENT: Move this to the last
 	// Deserialize PcsCtxs attribute
+	if err := deserializePcsCtxs(raw, comp); err != nil {
+		return nil, fmt.Errorf("deserialize PcsCtxs: %w", err)
+	}
+
+	return comp, nil
+} */
+
+// DeserializeCompiledIOP unmarshals a [wizard.CompiledIOP] object or returns an error
+// if the marshalled object does not have the right format.
+func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
+	comp := NewEmptyCompiledIOP()
+	raw := &rawCompiledIOP{}
+	if err := deserializeAnyWithCborPkg(data, raw); err != nil {
+		return nil, fmt.Errorf("CBOR unmarshal failed: %w", err)
+	}
+
+	numRounds := len(raw.Columns)
+	if numRounds == 0 {
+		return comp, nil
+	}
+
+	logrus.Infof("Number of rounds in SerDe CompiledIOP: %d\n", numRounds)
+
+	// Set primitive fields
+	comp.DummyCompiled = raw.DummyCompiled
+	comp.SelfRecursionCount = raw.SelfRecursionCount
+
+	// Deserialize non-round-specific fields first
+	if err := deserializePrecomputed(raw, comp); err != nil {
+		return nil, fmt.Errorf("deserialize Precomputed: %w", err)
+	}
+	if err := deserializeFiatShamirSetup(raw, comp); err != nil {
+		return nil, err
+	}
+
+	var mu sync.Mutex
+
+	// Process each round sequentially
+	for round := 0; round < numRounds; round++ {
+		// Ensure raw data slices are long enough
+		if round >= len(raw.Columns) || round >= len(raw.Coins) ||
+			round >= len(raw.QueriesNoParams) || round >= len(raw.QueriesParams) ||
+			round >= len(raw.Subprovers) || round >= len(raw.SubVerifiers) ||
+			round >= len(raw.FiatShamirHooksPreSampling) {
+			return nil, fmt.Errorf("round %d exceeds available data in rawCompiledIOP", round)
+		}
+
+		// 1. Deserialize Columns (needed by queries and possibly others)
+		if err := deserializeColumns(raw.Columns[round], round, comp, &mu); err != nil {
+			return nil, fmt.Errorf("round %d columns: %w", round, err)
+		}
+
+		// 2. Deserialize Coins (may be referenced by queries)
+		if err := deserializeCoins(raw.Coins[round], round, comp, &mu); err != nil {
+			return nil, fmt.Errorf("round %d coins: %w", round, err)
+		}
+
+		// 3. Deserialize Queries (depend on columns and possibly coins)
+		if err := deserializeQuery(raw.QueriesNoParams[round], round, &comp.QueriesNoParams, comp); err != nil {
+			return nil, fmt.Errorf("round %d queriesNoParams: %w", round, err)
+		}
+		if err := deserializeQuery(raw.QueriesParams[round], round, &comp.QueriesParams, comp); err != nil {
+			return nil, fmt.Errorf("round %d queriesParams: %w", round, err)
+		}
+
+		// 4. Deserialize SubProvers (may depend on columns, coins, queries)
+		if err := deserializeSubProvers(raw.Subprovers[round], round, comp, &mu); err != nil {
+			return nil, fmt.Errorf("round %d subProvers: %w", round, err)
+		}
+
+		// 5. Deserialize SubVerifiers (similar dependencies)
+		if err := deserializeSubVerifiers(raw.SubVerifiers[round], round, comp, &mu); err != nil {
+			return nil, fmt.Errorf("round %d subVerifiers: %w", round, err)
+		}
+
+		// 6. Deserialize FiatShamirHooksPreSampling (may depend on prior state)
+		if err := deserializeFSHooks(raw.FiatShamirHooksPreSampling[round], round, comp, &mu); err != nil {
+			return nil, fmt.Errorf("round %d fiatShamirHooksPreSampling: %w", round, err)
+		}
+	}
+
+	// Deserialize PublicInputs last (references column IDs)
+	if err := deserializePublicInputs(raw, comp); err != nil {
+		return nil, err
+	}
+
+	// Deserialize PcsCtxs last (may depend on the entire structure)
 	if err := deserializePcsCtxs(raw, comp); err != nil {
 		return nil, fmt.Errorf("deserialize PcsCtxs: %w", err)
 	}
@@ -525,54 +618,6 @@ func deserializePrecomputed(raw *rawCompiledIOP, comp *wizard.CompiledIOP) error
 	return nil
 }
 
-// deserializeSubProverAction deserializes SubProvers for all rounds in parallel
-func deserializeSubProverAction(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
-	work := func(start, stop int) {
-		for round := start; round < stop; round++ {
-			if round >= len(raw.Subprovers) {
-				utils.Panic("invalid round number %d, exceeds available SubProvers rounds", round)
-			}
-			if err := deserializeSubProvers(raw.Subprovers[round], round, comp, mu); err != nil {
-				utils.Panic("round %d SubProvers: %v", round, err)
-			}
-		}
-	}
-	parallel.ExecuteChunky(numRounds, work)
-	return nil
-}
-
-// deserializeSubVerifierAction: deserializes Subverifiers action for all rounds in parallel
-func deserializeSubVerifierAction(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
-	work := func(start, stop int) {
-		for round := start; round < stop; round++ {
-			if round >= len(raw.SubVerifiers) {
-				utils.Panic("invalid round number %d, exceeds available SubVerifiers rounds", round)
-			}
-			if err := deserializeSubVerifiers(raw.SubVerifiers[round], round, comp, mu); err != nil {
-				utils.Panic("round %d SubProvers: %v", round, err)
-			}
-		}
-	}
-	parallel.ExecuteChunky(numRounds, work)
-	return nil
-}
-
-// deserializeFSHookPS deserializes FiatShamirHooksPreSampling actions for all rounds in parallel
-func deserializeFSHookPS(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
-	work := func(start, stop int) {
-		for round := start; round < stop; round++ {
-			if round >= len(raw.FiatShamirHooksPreSampling) {
-				utils.Panic("invalid round number %d, exceeds available FiatShamirHooksPreSampling rounds", round)
-			}
-			if err := deserializeFSHooks(raw.FiatShamirHooksPreSampling[round], round, comp, mu); err != nil {
-				utils.Panic("round %d FiatShamirHooksPreSampling: %v", round, err)
-			}
-		}
-	}
-	parallel.ExecuteChunky(numRounds, work)
-	return nil
-}
-
 // deserializeFSHooks deserializes FiatShamirHooksPreSampling actions for a single round
 func deserializeFSHooks(rawFSHooks []json.RawMessage, round int, comp *wizard.CompiledIOP, mu *sync.Mutex) error {
 	for i, rawAction := range rawFSHooks {
@@ -618,6 +663,90 @@ func deserializeSubVerifiers(rawSubVerifiers []json.RawMessage, round int, comp 
 	return nil
 }
 
+/*
+func deserializeColumnsAndCoins(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		var wg sync.WaitGroup
+		for round := start; round < stop; round++ {
+			if round >= len(raw.Columns) || round >= len(raw.Coins) {
+				utils.Panic("invalid round number %d, exceeds available rounds", round)
+			}
+
+			wg.Add(2)
+
+			// Run deserializeCoins in parallel
+			go func(round int) {
+				defer wg.Done()
+				if err := deserializeCoins(raw.Coins[round], round, comp, mu); err != nil {
+					utils.Panic("round %d coins: %v", round, err)
+				}
+			}(round)
+
+			// Run deserializeColumns in parallel
+			go func(round int) {
+				defer wg.Done()
+				if err := deserializeColumns(raw.Columns[round], comp, mu); err != nil {
+					utils.Panic("round %d columns: %v", round, err)
+				}
+			}(round)
+		}
+		wg.Wait()
+	}
+
+	parallel.ExecuteChunky(numRounds, work)
+	return nil
+}
+
+func deserializeQueries(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		for round := start; round < stop; round++ {
+			if round >= len(raw.QueriesNoParams) || round >= len(raw.QueriesParams) {
+func deserializeColumnsAndCoins(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		var wg sync.WaitGroup
+		for round := start; round < stop; round++ {
+			if round >= len(raw.Columns) || round >= len(raw.Coins) {
+				utils.Panic("invalid round number %d, exceeds available rounds", round)
+			}
+
+			wg.Add(2)
+
+			// Run deserializeCoins in parallel
+			go func(round int) {
+				defer wg.Done()
+				if err := deserializeCoins(raw.Coins[round], round, comp, mu); err != nil {
+					utils.Panic("round %d coins: %v", round, err)
+				}
+			}(round)
+
+			// Run deserializeColumns in parallel
+			go func(round int) {
+				defer wg.Done()
+				if err := deserializeColumns(raw.Columns[round], comp, mu); err != nil {
+					utils.Panic("round %d columns: %v", round, err)
+				}
+			}(round)
+		}
+		wg.Wait()
+	}
+
+	parallel.ExecuteChunky(numRounds, work)
+	return nil
+}
+
+/*
+func deserializeQueries(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		for round := start; round < stop; round++ {
+			if round >= len(raw.QueriesNoParams) || round >= len(raw.QueriesParams) {
+				utils.Panic("invalid round number %d, exceeds available rounds", round)
+			}
+			if err := deserializeQuery(raw.QueriesNoParams[round], round, &comp.QueriesNoParams, comp, mu); err != nil {
+				utils.Panic("round %d queriesNoParams: %v", round, err)
+			}
+			if err := deserializeQuery(raw.QueriesParams[round], round, &comp.QueriesParams, comp, mu); err != nil {
+				utils.Panic("round %d queriesParams: %v", round, err)
+			}
 func deserializeColumnsAndCoins(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
 	work := func(start, stop int) {
 		var wg sync.WaitGroup
@@ -671,21 +800,6 @@ func deserializeQueries(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds
 	return nil
 } */
 
-func deserializeQueries(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int) error {
-	for round := 0; round < numRounds; round++ {
-		if round >= len(raw.QueriesNoParams) || round >= len(raw.QueriesParams) {
-			return fmt.Errorf("invalid round number %d, exceeds available rounds", round)
-		}
-		if err := deserializeQuery(raw.QueriesNoParams[round], round, &comp.QueriesNoParams, comp); err != nil {
-			return fmt.Errorf("round %d queriesNoParams: %w", round, err)
-		}
-		if err := deserializeQuery(raw.QueriesParams[round], round, &comp.QueriesParams, comp); err != nil {
-			return fmt.Errorf("round %d queriesParams: %w", round, err)
-		}
-	}
-	return nil
-}
-
 func deserializeCoins(rawCoins []json.RawMessage, round int, comp *wizard.CompiledIOP, mu *sync.Mutex) error {
 	for _, rawCoin := range rawCoins {
 		v, err := DeserializeValue(rawCoin, DeclarationMode, reflect.TypeOf(coin.Info{}), comp)
@@ -700,13 +814,15 @@ func deserializeCoins(rawCoins []json.RawMessage, round int, comp *wizard.Compil
 	return nil
 }
 
-func deserializeColumns(rawCols []json.RawMessage, comp *wizard.CompiledIOP, mu *sync.Mutex) error {
+func deserializeColumns(rawCols []json.RawMessage, round int, comp *wizard.CompiledIOP, mu *sync.Mutex) error {
 	for _, rawCol := range rawCols {
 		mu.Lock()
 		if _, err := DeserializeValue(rawCol, DeclarationMode, columnType, comp); err != nil {
 			mu.Unlock()
 			return err
 		}
+
+		// if comp.Columns.Exists)
 		mu.Unlock()
 	}
 	return nil
@@ -738,3 +854,89 @@ func deserializeQuery(rawQueries []json.RawMessage, round int, register *wizard.
 	}
 	return nil
 }
+
+/*
+// deserializeSubProverAction deserializes SubProvers for all rounds in parallel
+func deserializeSubProverAction(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		for round := start; round < stop; round++ {
+			if round >= len(raw.Subprovers) {
+				utils.Panic("invalid round number %d, exceeds available SubProvers rounds", round)
+			}
+			if err := deserializeSubProvers(raw.Subprovers[round], round, comp, mu); err != nil {
+				utils.Panic("round %d SubProvers: %v", round, err)
+			}
+		}
+	}
+	parallel.ExecuteChunky(numRounds, work)
+	return nil
+}
+
+// deserializeSubVerifierAction: deserializes Subverifiers action for all rounds in parallel
+func deserializeSubVerifierAction(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		for round := start; round < stop; round++ {
+			if round >= len(raw.SubVerifiers) {
+				utils.Panic("invalid round number %d, exceeds available SubVerifiers rounds", round)
+			}
+			if err := deserializeSubVerifiers(raw.SubVerifiers[round], round, comp, mu); err != nil {
+				utils.Panic("round %d SubProvers: %v", round, err)
+			}
+		}
+	}
+	parallel.ExecuteChunky(numRounds, work)
+	return nil
+}
+
+// deserializeFSHookPS deserializes FiatShamirHooksPreSampling actions for all rounds in parallel
+func deserializeFSHookPS(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		for round := start; round < stop; round++ {
+			if round >= len(raw.FiatShamirHooksPreSampling) {
+				utils.Panic("invalid round number %d, exceeds available FiatShamirHooksPreSampling rounds", round)
+			}
+			if err := deserializeFSHooks(raw.FiatShamirHooksPreSampling[round], round, comp, mu); err != nil {
+				utils.Panic("round %d FiatShamirHooksPreSampling: %v", round, err)
+			}
+		}
+	}
+	parallel.ExecuteChunky(numRounds, work)
+	return nil
+}
+
+
+func deserializeQueries(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int, mu *sync.Mutex) error {
+	work := func(start, stop int) {
+		for round := start; round < stop; round++ {
+			if round >= len(raw.QueriesNoParams) || round >= len(raw.QueriesParams) {
+				utils.Panic("invalid round number %d, exceeds available rounds", round)
+			}
+			if err := deserializeQuery(raw.QueriesNoParams[round], round, &comp.QueriesNoParams, comp, mu); err != nil {
+				utils.Panic("round %d queriesNoParams: %v", round, err)
+			}
+			if err := deserializeQuery(raw.QueriesParams[round], round, &comp.QueriesParams, comp, mu); err != nil {
+				utils.Panic("round %d queriesParams: %v", round, err)
+			}
+		}
+	}
+
+	parallel.ExecuteChunky(numRounds, work)
+	return nil
+}
+
+func deserializeQueries(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int) error {
+	for round := 0; round < numRounds; round++ {
+		if round >= len(raw.QueriesNoParams) || round >= len(raw.QueriesParams) {
+			return fmt.Errorf("invalid round number %d, exceeds available rounds", round)
+		}
+		if err := deserializeQuery(raw.QueriesNoParams[round], round, &comp.QueriesNoParams, comp); err != nil {
+			return fmt.Errorf("round %d queriesNoParams: %w", round, err)
+		}
+		if err := deserializeQuery(raw.QueriesParams[round], round, &comp.QueriesParams, comp); err != nil {
+			return fmt.Errorf("round %d queriesParams: %w", round, err)
+		}
+	}
+	return nil
+}
+
+*/
