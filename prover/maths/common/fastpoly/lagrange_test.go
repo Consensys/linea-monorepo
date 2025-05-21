@@ -1,6 +1,7 @@
 package fastpoly
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
@@ -12,40 +13,49 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInterpolation(t *testing.T) {
-	n := 4
-	randPoly := vector.ForTest(1, 2, 3, 4)
-
-	randpolyext := make([]fext.Element, len(randPoly))
-	for i := 0; i < len(randPoly); i++ {
-		fext.FromBase(&randpolyext[i], &randPoly[i])
-
+func prettyprint(p []field.Element) {
+	for i := 0; i < len(p)-1; i++ {
+		fmt.Printf("%s*x**%d+", p[i].String(), i)
 	}
+	fmt.Printf("%s*x**%d\n", p[len(p)-1].String(), len(p)-1)
+}
 
-	x := fext.NewElement(1, 2, 3, 4)
+func randomPoly(size int) []field.Element {
+	res := make([]field.Element, size)
+	for i := 0; i < size; i++ {
+		res[i].SetRandom()
+	}
+	return res
+}
 
-	expectedY := polyext.Eval(randpolyext, x)
+func evalCanonical(p []field.Element, x field.Element) field.Element {
+	var res field.Element
+	for i := 0; i < len(p); i++ {
+		res.Mul(&res, &x).Add(&res, &p[len(p)-1-i])
+	}
+	return res
+}
 
-	domain := fft.NewDomain(uint64(n))
+func TestEvaluateLagrange(t *testing.T) {
 
-	/*
-		Test without coset
-	*/
-	onRoots := vector.DeepCopy(randPoly)
-	domain.FFT(onRoots, fft.DIF)
+	size := 64
+	domain := fft.NewDomain(uint64(size))
+	p := randomPoly(size)
+	pLagrange := make([]field.Element, size)
+	copy(pLagrange, p)
+	domain.FFT(pLagrange, fft.DIF)
+	fft.BitReverse(pLagrange)
 
-	fft.BitReverse(onRoots)
-	yOnRoots := EvaluateLagrangeOnFext(onRoots, x)
-	require.Equal(t, expectedY.String(), yOnRoots.String())
+	var x field.Element
+	x.SetRandom()
 
-	/*
-		Test with coset
-	*/
-	onCoset := vector.DeepCopy(randPoly)
-	domain.FFT(onCoset, fft.DIF, fft.OnCoset())
-	fft.BitReverse(onCoset)
-	yOnCoset := EvaluateLagrangeOnFext(onCoset, x, true)
-	require.Equal(t, expectedY.String(), yOnCoset.String())
+	u := evalCanonical(p, x)
+	v := EvaluateLagrange(pLagrange, x)
+
+	tt := u.Equal(&v)
+	if !tt {
+		t.Fatal("Evaluate Lagrange failed")
+	}
 
 }
 
