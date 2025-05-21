@@ -535,6 +535,7 @@ services:
         (rm /opt/besu/plugins/linea-staterecovery-besu-plugin-v* || true) && \
         (rm /opt/besu/plugins/linea-finalized-tag-updater* || true) && \
         ls -lh /opt/besu/plugins && \
+        sed -i '/^CLASSPATH/c\CLASSPATH=/opt/besu/lib/\*\:/opt/besu/plugins/\*' /opt/besu/bin/besu-untuned && \
         /opt/besu/bin/besu-untuned \
         --config-file=/var/lib/besu/zkbesu-config.toml \
         --genesis-file=/var/lib/besu/genesis.json \
