@@ -47,6 +47,20 @@ func (ctx *SelfRecursionCtx) selectQInclusion() ifaces.QueryID {
 	return maybePrefix(ctx, name)
 }
 
+// Name of the sis round leaves and merkle leaves
+// inclusion query
+func (ctx *SelfRecursionCtx) sisRoundAndMerkleLeavesInclusion() ifaces.QueryID {
+	name := ifaces.QueryIDf("SELFRECURSION_SIS_ROUND_MERKLE_LEAVES_INCLUSION_%v", ctx.SelfRecursionCnt)
+	return maybePrefix(ctx, name)
+}
+
+// Name of the non sis round leaves and merkle leaves
+// inclusion query
+func (ctx *SelfRecursionCtx) nonSisRoundAndMerkleLeavesInclusion(round int) ifaces.QueryID {
+	name := ifaces.QueryIDf("SELFRECURSION_NON_SIS_ROUND_MERKLE_LEAVES_INCLUSION_%v_%v", ctx.SelfRecursionCnt, round)
+	return maybePrefix(ctx, name)
+}
+
 // Name of the collapse coin
 func (ctx *SelfRecursionCtx) collapseCoin() coin.Name {
 	name := coin.Namef("SELFRECURSION_COLLAPSE_COIN_%v", ctx.SelfRecursionCnt)
@@ -136,6 +150,12 @@ func (ctx *SelfRecursionCtx) merklePositionssName() ifaces.ColID {
 // Name of the MerkleRoots
 func (ctx *SelfRecursionCtx) merkleRootsName() ifaces.ColID {
 	name := ifaces.ColIDf("SELFRECURSION_MERKLE_ROOTS_%v", ctx.SelfRecursionCnt)
+	return maybePrefix(ctx, name)
+}
+
+// Name of the SIS rounds leaves
+func (ctx *SelfRecursionCtx) sisRoundLeavesName() ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_SIS_ROUND_LEAVES_%v", ctx.SelfRecursionCnt)
 	return maybePrefix(ctx, name)
 }
 

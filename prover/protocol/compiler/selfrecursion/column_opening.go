@@ -154,13 +154,15 @@ func (ctx *SelfRecursionCtx) ColSelection() {
 }
 
 type linearHashMerkleProverAction struct {
-	ctx                *SelfRecursionCtx
-	concatDhQSize      int
-	leavesSize         int
-	leavesSizeUnpadded int
-	numNonSisRound     int
-	hashValuesSize     int
-	hashPreimagesSize  []int
+	ctx                        *SelfRecursionCtx
+	concatDhQSize              int
+	leavesSize                 int
+	leavesSizeUnpadded         int
+	sisRoundLeavesSize         int
+	sisRoundLeavesSizeUnpadded int
+	numNonSisRound             int
+	hashValuesSize             int
+	hashPreimagesSize          []int
 }
 
 func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
@@ -169,12 +171,13 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	merkleLeaves := make([]field.Element, a.leavesSizeUnpadded)
 	merklePositions := make([]field.Element, a.leavesSizeUnpadded)
 	merkleRoots := make([]field.Element, a.leavesSizeUnpadded)
+	// The leaves for the SIS rounds
+	sisLeaves := make([]field.Element, 0, a.sisRoundLeavesSizeUnpadded)
 	// MiMC hash metadata for non SIS rounds
 	hashValues := make([][]field.Element, 0, a.numNonSisRound)
 	hashPreimages := make([][]field.Element, 0, a.numNonSisRound)
 
 	sisHashSize := a.ctx.VortexCtx.SisParams.OutputSize()
-	mimcHashSize := 1
 	numOpenedCol := a.ctx.VortexCtx.NbColsToOpen()
 	// For some reason, using a.ctx.comp.NumRounds() here does not work well here.
 	totalNumRounds := a.ctx.VortexCtx.MaxCommittedRound
@@ -193,6 +196,7 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 				leaf := mimc.HashVec(sisHash)
 				insertAt := i
 				merkleLeaves[insertAt] = leaf
+				sisLeaves = append(sisLeaves, leaf)
 				merkleRoots[insertAt] = rootPrecomp
 				merklePositions[insertAt].SetInt64(int64(selectedCol))
 			}
@@ -203,15 +207,16 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 			precompMimcHashValues := make([]field.Element, 0, numOpenedCol)
 			precompMimcHashPreimages := make([]field.Element, 0, numOpenedCol*len(a.ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
 			for i, selectedCol := range openingIndices {
-				srcStart := selectedCol * mimcHashSize
-				mimcHash := precompColMiMCHash[srcStart : srcStart+mimcHashSize]
+				srcStart := selectedCol
+				// MiMC hash is a single value
+				mimcHash := precompColMiMCHash[srcStart : srcStart+1]
+				leaf := mimcHash[0]
 				mimcPreimage := a.ctx.VortexCtx.GetPrecomputedSelectedCol(selectedCol)
-				leaf := mimc.HashVec(mimcPreimage)
 				insertAt := i
 				merkleLeaves[insertAt] = leaf
 				merkleRoots[insertAt] = rootPrecomp
 				merklePositions[insertAt].SetInt64(int64(selectedCol))
-				precompMimcHashValues = append(precompMimcHashValues, mimcHash...)
+				precompMimcHashValues = append(precompMimcHashValues, leaf)
 				precompMimcHashPreimages = append(precompMimcHashPreimages, mimcPreimage...)
 			}
 			// Append the hash values and preimages
@@ -241,6 +246,7 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 				leaf := mimc.HashVec(sisHash)
 				insertAt := committedRound*numOpenedCol + i
 				merkleLeaves[insertAt] = leaf
+				sisLeaves = append(sisLeaves, leaf)
 				merkleRoots[insertAt] = rooth
 				merklePositions[insertAt].SetInt64(int64(selectedCol))
 			}
@@ -264,7 +270,7 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 				continue
 			}
 			nonSisOpenedCols := nonSisOpenedColsSV.([][][]field.Element)
-			// Note nonSisOpenedCols contains the precomputed columns also
+			// Note nonSisOpenedCols contains the precomputed columns also if
 			// SIS is applied to the precomputed.
 			// However, we already have it, so we need to exclude it
 			if a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
@@ -275,15 +281,16 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 			mimcHashValues := make([]field.Element, 0, numOpenedCol)
 			mimcHashPreimages := make([]field.Element, 0, numOpenedCol*a.ctx.VortexCtx.GetNumPolsForNonSisRounds(round))
 			for i, selectedCol := range openingIndices {
-				srcStart := selectedCol * mimcHashSize
-				mimcHash := colMimcHash[srcStart : srcStart+mimcHashSize]
+				srcStart := selectedCol
+				// MiMC hash is a single value
+				mimcHash := colMimcHash[srcStart : srcStart+1]
 				mimcPreimage := nonSisOpenedCols[round][i]
-				leaf := mimc.HashVec(mimcPreimage)
+				leaf := mimcHash[0]
 				insertAt := committedRound*numOpenedCol + i
 				merkleLeaves[insertAt] = leaf
 				merkleRoots[insertAt] = rooth
 				merklePositions[insertAt].SetInt64(int64(selectedCol))
-				mimcHashValues = append(mimcHashValues, mimcHash...)
+				mimcHashValues = append(mimcHashValues, leaf)
 				mimcHashPreimages = append(mimcHashPreimages, mimcPreimage...)
 			}
 			// Append the hash values and preimages
@@ -312,6 +319,8 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(a.ctx.Columns.MerkleProofsLeaves.GetColID(), smartvectors.RightZeroPadded(merkleLeaves, a.leavesSize))
 	run.AssignColumn(a.ctx.Columns.MerkleProofPositions.GetColID(), smartvectors.RightZeroPadded(merklePositions, a.leavesSize))
 	run.AssignColumn(a.ctx.Columns.MerkleRoots.GetColID(), smartvectors.RightZeroPadded(merkleRoots, a.leavesSize))
+	run.AssignColumn(a.ctx.Columns.SisRoundLeaves.GetColID(), smartvectors.RightZeroPadded(sisLeaves, a.sisRoundLeavesSize))
+
 	// Assign the hash values and preimages
 	for i := 0; i < a.numNonSisRound; i++ {
 		run.AssignColumn(a.ctx.MIMCMetaData.ConcatenatedHashValues[i].GetColID(), smartvectors.RightZeroPadded(hashValues[i], a.hashValuesSize))
@@ -333,18 +342,26 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	if ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		numRoundSis += 1
 	}
-	// We also consider the number of non SIS rounds
+	// The number of non SIS rounds is the difference
+	// between the total number of rounds and the number of SIS rounds
 	numRoundNonSis := numRound - numRoundSis
 
+	// The total SIS hash length = size of a single SIS hash *
+	// total number of SIS hash per SIS round * number of SIS rounds
 	concatDhQSizeUnpadded := ctx.VortexCtx.SisParams.OutputSize() * ctx.VortexCtx.NbColsToOpen() * numRoundSis
 	concatDhQSize := utils.NextPowerOfTwo(concatDhQSizeUnpadded)
+	// The leaves are computed for both SIS and non SIS rounds
 	leavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRound
 	leavesSize := utils.NextPowerOfTwo(leavesSizeUnpadded)
+	// The leaves for SIS rounds
+	sisRoundLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundSis
+	sisRoundLeavesSize := utils.NextPowerOfTwo(sisRoundLeavesSizeUnpadded)
 
 	ctx.Columns.ConcatenatedDhQ = ctx.comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
 	ctx.Columns.MerkleProofsLeaves = ctx.comp.InsertCommit(roundQ, ctx.merkleLeavesName(), leavesSize)
 	ctx.Columns.MerkleProofPositions = ctx.comp.InsertCommit(roundQ, ctx.merklePositionssName(), leavesSize)
 	ctx.Columns.MerkleRoots = ctx.comp.InsertCommit(roundQ, ctx.merkleRootsName(), leavesSize)
+	ctx.Columns.SisRoundLeaves = ctx.comp.InsertCommit(roundQ, ctx.sisRoundLeavesName(), sisRoundLeavesSize)
 
 	// Register the linear hash columns for non sis rounds
 	// If SIS is not applied to the precomputed, we consider
@@ -352,45 +369,9 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	ctx.MIMCMetaData.ConcatenatedHashValues = make([]ifaces.Column, 0, numRoundNonSis)
 	ctx.MIMCMetaData.HashPreimages = make([]ifaces.Column, 0, numRoundNonSis)
 	ctx.MIMCMetaData.ToHashSizes = make([]int, 0, numRoundNonSis)
-	// Compute the concatenated hashes and preimages sizes
-	mimcHashColumnSize := utils.NextPowerOfTwo(ctx.VortexCtx.NbColsToOpen())
-	mimcPreimageColumnsSize := make([]int, 0, numRoundNonSis)
-	// Consider the precomputed round
-	if ctx.VortexCtx.IsSISAppliedToPrecomputed() {
-		precompPreimageSize := utils.NextPowerOfTwo(ctx.VortexCtx.NbColsToOpen() * len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
-		ctx.MIMCMetaData.ConcatenatedHashValues = append(ctx.MIMCMetaData.ConcatenatedHashValues, ctx.comp.InsertCommit(
-			roundQ,
-			ctx.concatenatedPrecomputedHashes(),
-			mimcHashColumnSize,
-		))
-		ctx.MIMCMetaData.HashPreimages = append(ctx.MIMCMetaData.HashPreimages, ctx.comp.InsertCommit(
-			roundQ,
-			ctx.concatenatedPrecomputedPreimages(),
-			precompPreimageSize,
-		))
-		mimcPreimageColumnsSize = append(mimcPreimageColumnsSize, precompPreimageSize)
-		ctx.MIMCMetaData.ToHashSizes = append(ctx.MIMCMetaData.ToHashSizes, len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
-	}
-	// Next, consider only the non SIS rounds
-	for i := 0; i <= ctx.VortexCtx.NumCommittedRounds(); i++ {
-		if ctx.VortexCtx.RoundStatus[i] == vortex.IsOnlyMiMCApplied {
-			RoundPreimageSize := utils.NextPowerOfTwo(ctx.VortexCtx.NbColsToOpen() * ctx.VortexCtx.GetNumPolsForNonSisRounds(i))
-			ctx.MIMCMetaData.ConcatenatedHashValues = append(ctx.MIMCMetaData.ConcatenatedHashValues, ctx.comp.InsertCommit(
-				roundQ,
-				ctx.concatenatedMiMCHashes(i),
-				mimcHashColumnSize,
-			))
 
-			ctx.MIMCMetaData.HashPreimages = append(ctx.MIMCMetaData.HashPreimages, ctx.comp.InsertCommit(
-				roundQ,
-				ctx.concatenatedMIMCPreimages(i),
-				RoundPreimageSize,
-			))
-
-			ctx.MIMCMetaData.ToHashSizes = append(ctx.MIMCMetaData.ToHashSizes, ctx.VortexCtx.GetNumPolsForNonSisRounds(i))
-			mimcPreimageColumnsSize = append(mimcPreimageColumnsSize, RoundPreimageSize)
-		}
-	}
+	// Register the linear hash columns for the non sis rounds
+	mimcHashColumnSize, mimcPreimageColumnsSize := ctx.registerMiMCMetaDataForNonSisRounds(numRoundNonSis, roundQ)
 
 	ctx.comp.RegisterProverAction(roundQ, &linearHashMerkleProverAction{
 		ctx:                ctx,
@@ -403,16 +384,118 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	})
 
 	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
+
+	// The Merkle proof verification is for both sis and non sis rounds
 	merkle.MerkleProofCheck(ctx.comp, ctx.merkleProofVerificationName(), depth, leavesSizeUnpadded,
 		ctx.Columns.MerkleProofs, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves, ctx.Columns.MerkleProofPositions)
+
+	// The linear hash verification is for only sis rounds
 	mimcW.CheckLinearHash(ctx.comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
-		ctx.VortexCtx.SisParams.OutputSize(), leavesSizeUnpadded, ctx.Columns.MerkleProofsLeaves)
+		ctx.VortexCtx.SisParams.OutputSize(), leavesSizeUnpadded, ctx.Columns.SisRoundLeaves)
+
 	// Register the linear hash verification for the non sis rounds
 	for i := 0; i < numRoundNonSis; i++ {
-		mimcW.CheckLinearHash(ctx.comp, ctx.nonSisRoundLinearHashVerificationName(i),ctx.MIMCMetaData.HashPreimages[i],
-			ctx.MIMCMetaData.ToHashSizes[i], ctx.VortexCtx.NbColsToOpen(), ctx.MIMCMetaData.ConcatenatedHashValues[i],)
+		mimcW.CheckLinearHash(ctx.comp, ctx.nonSisRoundLinearHashVerificationName(i), ctx.MIMCMetaData.HashPreimages[i],
+			ctx.MIMCMetaData.ToHashSizes[i], ctx.VortexCtx.NbColsToOpen(), ctx.MIMCMetaData.ConcatenatedHashValues[i])
+	}
+
+	// leafConsistency imposes lookup constraints between the sis
+	// and non sis rounds leaves with that of the merkle tree leaves.
+	ctx.leafConsistency(roundQ)
+}
+
+// registerMiMCMetaDataForNonSisRounds registers the metadata for the
+// for linear hash verification for the non SIS rounds
+// and return the mimcHashColumnSize
+// and the preimage column sizes per non sis round
+func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
+	numRoundNonSis int, roundQ int) (int, []int) {
+	// Compute the concatenated hashes and preimages sizes
+	var (
+		mimcHashColumnSize      = utils.NextPowerOfTwo(ctx.VortexCtx.NbColsToOpen())
+		mimcPreimageColumnsSize = make([]int, 0, numRoundNonSis)
+	)
+
+	// Consider the precomputed polynomials
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() && ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		precompPreimageSize := utils.NextPowerOfTwo(
+			ctx.VortexCtx.NbColsToOpen() *
+				len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
+
+		ctx.MIMCMetaData.ConcatenatedHashValues = append(ctx.MIMCMetaData.ConcatenatedHashValues,
+			ctx.comp.InsertCommit(
+				roundQ,
+				ctx.concatenatedPrecomputedHashes(),
+				mimcHashColumnSize,
+			))
+
+		ctx.MIMCMetaData.HashPreimages = append(ctx.MIMCMetaData.HashPreimages,
+			ctx.comp.InsertCommit(
+				roundQ,
+				ctx.concatenatedPrecomputedPreimages(),
+				precompPreimageSize,
+			))
+		mimcPreimageColumnsSize = append(mimcPreimageColumnsSize, precompPreimageSize)
+		ctx.MIMCMetaData.ToHashSizes = append(ctx.MIMCMetaData.ToHashSizes, len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
+	}
+	// Next, consider only the non SIS rounds
+	for i := 0; i <= ctx.VortexCtx.NumCommittedRounds(); i++ {
+		if ctx.VortexCtx.RoundStatus[i] == vortex.IsOnlyMiMCApplied {
+
+			roundPreimageSize := utils.NextPowerOfTwo(
+				ctx.VortexCtx.NbColsToOpen() *
+					ctx.VortexCtx.GetNumPolsForNonSisRounds(i))
+
+			ctx.MIMCMetaData.ConcatenatedHashValues = append(
+				ctx.MIMCMetaData.ConcatenatedHashValues,
+				ctx.comp.InsertCommit(
+					roundQ,
+					ctx.concatenatedMiMCHashes(i),
+					mimcHashColumnSize,
+				))
+
+			ctx.MIMCMetaData.HashPreimages = append(ctx.MIMCMetaData.HashPreimages, ctx.comp.InsertCommit(
+				roundQ,
+				ctx.concatenatedMIMCPreimages(i),
+				roundPreimageSize,
+			))
+
+			ctx.MIMCMetaData.ToHashSizes = append(ctx.MIMCMetaData.ToHashSizes, ctx.VortexCtx.GetNumPolsForNonSisRounds(i))
+			mimcPreimageColumnsSize = append(mimcPreimageColumnsSize, roundPreimageSize)
+		}
+	}
+	return mimcHashColumnSize, mimcPreimageColumnsSize
+}
+
+func (ctx *SelfRecursionCtx) leafConsistency(round int) {
+	// Lookup constrains between the SIS leaves
+	// and the Merkle leaves
+	ctx.comp.InsertInclusion(
+		round,
+		ctx.sisRoundAndMerkleLeavesInclusion(),
+		[]ifaces.Column{
+			ctx.Columns.MerkleProofsLeaves,
+		},
+		[]ifaces.Column{
+			ctx.Columns.SisRoundLeaves,
+		},
+	)
+	// Lookup constrains between the non SIS leaves
+	// and the Merkle leaves
+	for i := 0; i < len(ctx.MIMCMetaData.ConcatenatedHashValues); i++ {
+		ctx.comp.InsertInclusion(
+			round,
+			ctx.nonSisRoundAndMerkleLeavesInclusion(i),
+			[]ifaces.Column{
+				ctx.Columns.MerkleProofsLeaves,
+			},
+			[]ifaces.Column{
+				ctx.MIMCMetaData.ConcatenatedHashValues[i],
+			},
+		)
 	}
 }
+
 type collapsingProverAction struct {
 	ctx     *SelfRecursionCtx
 	eDualID ifaces.ColID

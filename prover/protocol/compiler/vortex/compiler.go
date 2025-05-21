@@ -958,7 +958,7 @@ func (ctx *Ctx) GetNumPolsForNonSisRounds(round int) int {
 	if ctx.RoundStatus[round] != IsOnlyMiMCApplied {
 		utils.Panic("Expected a non SIS round!")
 	}
-	return ctx.CommitmentsByRoundsNonSIS.LenOf(round)
+	return ctx.CommitmentsByRounds.LenOf(round)
 }
 
 // startingRound returns the first round of definition for the Vortex

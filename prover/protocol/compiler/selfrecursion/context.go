@@ -162,6 +162,12 @@ type SelfRecursionCtx struct {
 
 		// (Commitment, to compute)
 		//
+		// SisRoundLeaves is the leaves of the Merkle tree for the SIS rounds
+		// It is used for linear hash verification for SIS rounds
+		SisRoundLeaves ifaces.Column
+
+		// (Commitment, to compute)
+		//
 		// Represents the entries of the linear combination Ualpha selected
 		// by Q
 		UalphaQ ifaces.Column
