@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -361,15 +362,31 @@ func serializePrecomputed(comp *wizard.CompiledIOP, raw *rawCompiledIOP) error {
 
 // serializePcsCtxs serializes the PcsCtxs attribute into the rawCompiledIOP.
 func serializePcsCtxs(comp *wizard.CompiledIOP, raw *rawCompiledIOP) error {
-	if comp.PcsCtxs != nil {
-		serPcsCtxs, err := SerializeValue(reflect.ValueOf(comp.PcsCtxs), DeclarationMode)
-		if err != nil {
-			return fmt.Errorf("serialize PcsCtxs: %w", err)
-		}
-		raw.PcsCtxs = serPcsCtxs
-	} else {
+	if comp.PcsCtxs == nil {
 		raw.PcsCtxs = json.RawMessage(NilString)
+		logrus.Debug("Serialized PcsCtxs: nil")
+		return nil
 	}
+
+	pcsCtxsVal := reflect.ValueOf(comp.PcsCtxs)
+	if pcsCtxsVal.Kind() == reflect.Slice && pcsCtxsVal.Len() == 0 {
+		raw.PcsCtxs = json.RawMessage(NilString)
+		logrus.Debug("Serialized PcsCtxs: empty slice")
+		return nil
+	}
+
+	serPcsCtxs, err := SerializeValue(pcsCtxsVal, DeclarationMode)
+	if err != nil {
+		return fmt.Errorf("serialize PcsCtxs: %w", err)
+	}
+	if len(serPcsCtxs) == 0 {
+		logrus.Warn("Serialized PcsCtxs resulted in empty data")
+		raw.PcsCtxs = json.RawMessage(NilString)
+		return nil
+	}
+
+	logrus.Debugf("Serialized PcsCtxs: %v", string(serPcsCtxs))
+	raw.PcsCtxs = serPcsCtxs
 	return nil
 }
 
@@ -426,13 +443,39 @@ func deserializeFiatShamirSetup(raw *rawCompiledIOP, comp *wizard.CompiledIOP) e
 
 // deserializePcsCtxs deserializes the PcsCtxs attribute from the rawCompiledIOP.
 func deserializePcsCtxs(raw *rawCompiledIOP, comp *wizard.CompiledIOP) error {
-	if raw.PcsCtxs != nil && !bytes.Equal(raw.PcsCtxs, []byte(NilString)) {
-		pcsCtxsVal, err := DeserializeValue(raw.PcsCtxs, DeclarationMode, reflect.TypeOf((*any)(nil)).Elem(), comp)
-		if err != nil {
-			return fmt.Errorf("deserialize PcsCtxs: %w", err)
-		}
-		comp.PcsCtxs = pcsCtxsVal.Interface()
+	if raw.PcsCtxs == nil || bytes.Equal(raw.PcsCtxs, []byte(NilString)) {
+		comp.PcsCtxs = nil
+		logrus.Debug("Deserialized PcsCtxs: nil")
+		return nil
 	}
+
+	// Deserialize the raw data as an interface wrapper
+	var rawInterface struct {
+		Type  string          `json:"type"`
+		Value json.RawMessage `json:"value"`
+	}
+	if err := deserializeAnyWithCborPkg(raw.PcsCtxs, &rawInterface); err != nil {
+		return fmt.Errorf("deserialize PcsCtxs: failed to decode interface wrapper: %w", err)
+	}
+
+	logrus.Debugf("Deserializing PcsCtxs with type: %s", rawInterface.Type)
+
+	// Check if value is empty
+	if len(rawInterface.Value) == 0 || bytes.Equal(rawInterface.Value, []byte(NilString)) {
+		comp.PcsCtxs = nil
+		logrus.Debug("Deserialized PcsCtxs: empty value")
+		return nil
+	}
+
+	// Deserialize the value as a slice of *vortex.Ctx
+	pcsCtxsType := reflect.TypeOf([]*vortex.Ctx{})
+	pcsCtxsVal, err := DeserializeValue(rawInterface.Value, DeclarationMode, pcsCtxsType, comp)
+	if err != nil {
+		return fmt.Errorf("deserialize PcsCtxs: failed to deserialize value as []*vortex.Ctx: %w", err)
+	}
+
+	comp.PcsCtxs = pcsCtxsVal.Interface()
+	logrus.Debugf("Deserialized PcsCtxs: %v elements", reflect.ValueOf(comp.PcsCtxs).Len())
 	return nil
 }
 

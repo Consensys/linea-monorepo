@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
@@ -36,4 +37,23 @@ func TestSerdeRecursion(t *testing.T) {
 		t.Errorf("Original and deserialized Recursion structs don't match")
 	}
 
+}
+
+var testComp = testRec.InputCompiledIOP
+
+func TestSerdeRecurIOP(t *testing.T) {
+
+	serComp, err := serialization.SerializeCompiledIOP(testComp)
+	if err != nil {
+		t.Fatalf("error during ser. recursion input compiled-iop:%s\n", err.Error())
+	}
+
+	deSerComp, err := serialization.DeserializeCompiledIOP(serComp)
+	if err != nil {
+		t.Fatalf("error during deser. recursion input compiled-iop:%s\n", err.Error())
+	}
+
+	if !test_utils.CompareExportedFields(testComp, deSerComp) {
+		t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")
+	}
 }
