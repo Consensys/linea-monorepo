@@ -166,7 +166,8 @@ var implementationRegistry = collection.NewMapping[string, reflect.Type]()
 
 // Global slice to hold types that should be ignored during serialization/deserialization.
 var IgnoreableTypes = []reflect.Type{
-	// Ignore gnark-circuit related params
+	// Ignore gnark-circuit and its related params
+	reflect.TypeOf((*frontend.Circuit)(nil)).Elem(),
 	reflect.TypeOf((*frontend.Variable)(nil)).Elem(),
 }
 

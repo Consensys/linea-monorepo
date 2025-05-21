@@ -100,10 +100,12 @@ func init() {
 	serialization.RegisterImplementation(logderivativesum.ProverTaskAtRound{})
 	serialization.RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
 
+	serialization.RegisterImplementation(vortex.Ctx{})
 	serialization.RegisterImplementation(vortex.VortexProverAction{})
 	serialization.RegisterImplementation(vortex.VortexVerifierAction{})
 	serialization.RegisterImplementation(vortex.ShadowRowProverAction{})
 	serialization.RegisterImplementation(vortex.ReassignPrecomputedRootAction{})
+
 	serialization.RegisterImplementation(functionals.CoeffEvalProverAction{})
 	serialization.RegisterImplementation(functionals.InterpolationProverAction{})
 	serialization.RegisterImplementation(functionals.EvalBivariateProverAction{})

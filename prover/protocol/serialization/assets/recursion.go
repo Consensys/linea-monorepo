@@ -8,35 +8,35 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 )
 
-// rawRecursion represents the serialized form of Recursion
+// rawRecursion represents the serialized form of recursion.Recursion.
 type rawRecursion struct {
-	Name             string            `json:"name"`
-	Subscript        string            `json:"subscript"`
-	InputCompiledIOP json.RawMessage   `json:"inputCompiledIOP"`
-	Round            int               `json:"round"`
-	PlonkCtx         json.RawMessage   `json:"plonkCtx"`
-	PcsCtx           []json.RawMessage `json:"pcsCtx"`
+	Name             string
+	Subscript        string
+	InputCompiledIOP json.RawMessage
+	Round            int
+	PlonkCtx         json.RawMessage
+	PcsCtx           []json.RawMessage
 }
 
-// SerializeRecursion serializes a Recursion struct
-func SerializeRecursion(rec *recursion.Recursion) ([]byte, error) {
-	if rec == nil {
+// SerializeRecursion serializes a recursion.Recursion instance field-by-field.
+func SerializeRecursion(r *recursion.Recursion) ([]byte, error) {
+	if r == nil {
 		return []byte(serialization.NilString), nil
 	}
 
-	raw := rawRecursion{
-		Name:      rec.Name,
-		Subscript: rec.Subscript,
-		Round:     rec.Round,
-		PcsCtx:    make([]json.RawMessage, len(rec.PcsCtx)),
+	raw := &rawRecursion{
+		Name:      r.Name,
+		Subscript: r.Subscript,
+		Round:     r.Round,
 	}
 
-	// Handle InputCompiledIOP
-	if rec.InputCompiledIOP != nil {
-		iopSer, err := serialization.SerializeCompiledIOP(rec.InputCompiledIOP)
+	// Serialize InputCompiledIOP
+	if r.InputCompiledIOP != nil {
+		iopSer, err := serialization.SerializeCompiledIOP(r.InputCompiledIOP)
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize InputCompiledIOP: %w", err)
 		}
@@ -45,22 +45,24 @@ func SerializeRecursion(rec *recursion.Recursion) ([]byte, error) {
 		raw.InputCompiledIOP = []byte(serialization.NilString)
 	}
 
-	// Handle PlonkCtx
-	// if rec.plonkCtx != nil {
-	// 	ctxSer, err := SerializePlonkCompilationCtx(rec.PlonkCtx)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("failed to serialize PlonkCtx: %w", err)
-	// 	}
-	// 	raw.PlonkCtx = ctxSer
-	// } else {
-	// 	raw.PlonkCtx = []byte(serialization.NilString)
-	// }
+	// Serialize PlonkCtx
+	if r.PlonkCtx != nil {
+		//plonkSer, err := SerializeCompilationCtx(r.PlonkCtx)
+		plonkSer, err := serialization.SerializeValue(reflect.ValueOf(r.PlonkCtx), serialization.DeclarationMode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize PlonkCtx: %w", err)
+		}
+		raw.PlonkCtx = plonkSer
+	} else {
+		raw.PlonkCtx = []byte(serialization.NilString)
+	}
 
-	// Handle PcsCtx
-	if rec.PcsCtx != nil {
-		raw.PcsCtx = make([]json.RawMessage, len(rec.PcsCtx))
-		for i, ctx := range rec.PcsCtx {
+	// Serialize PcsCtx
+	if r.PcsCtx != nil {
+		raw.PcsCtx = make([]json.RawMessage, len(r.PcsCtx))
+		for i, ctx := range r.PcsCtx {
 			if ctx != nil {
+				// ctxSer, err := SerializeVortexCtx(ctx)
 				ctxSer, err := serialization.SerializeValue(reflect.ValueOf(ctx), serialization.DeclarationMode)
 				if err != nil {
 					return nil, fmt.Errorf("failed to serialize PcsCtx[%d]: %w", i, err)
@@ -70,12 +72,14 @@ func SerializeRecursion(rec *recursion.Recursion) ([]byte, error) {
 				raw.PcsCtx[i] = []byte(serialization.NilString)
 			}
 		}
+	} else {
+		raw.PcsCtx = nil
 	}
 
-	return serialization.SerializeAnyWithCborPkg(&raw)
+	return serialization.SerializeAnyWithCborPkg(raw)
 }
 
-// DeserializeRecursion deserializes into a Recursion struct
+// DeserializeRecursion deserializes a recursion.Recursion instance from CBOR-encoded data.
 func DeserializeRecursion(data []byte) (*recursion.Recursion, error) {
 	if bytes.Equal(data, []byte(serialization.NilString)) {
 		return nil, nil
@@ -86,100 +90,48 @@ func DeserializeRecursion(data []byte) (*recursion.Recursion, error) {
 		return nil, fmt.Errorf("failed to deserialize raw Recursion: %w", err)
 	}
 
-	rec := &recursion.Recursion{
+	r := &recursion.Recursion{
 		Name:      raw.Name,
 		Subscript: raw.Subscript,
 		Round:     raw.Round,
-		PcsCtx:    make([]*vortex.Ctx, len(raw.PcsCtx)),
 	}
 
-	// Handle InputCompiledIOP
+	comp := serialization.NewEmptyCompiledIOP()
+
+	// Deserialize InputCompiledIOP
 	if !bytes.Equal(raw.InputCompiledIOP, []byte(serialization.NilString)) {
 		iop, err := serialization.DeserializeCompiledIOP(raw.InputCompiledIOP)
 		if err != nil {
 			return nil, fmt.Errorf("failed to deserialize InputCompiledIOP: %w", err)
 		}
-		rec.InputCompiledIOP = iop
+		r.InputCompiledIOP = iop
+		comp = iop
 	}
 
-	// Handle PlonkCtx
-	// if !bytes.Equal(raw.PlonkCtx, []byte(serialization.NilString)) {
-	// 	ctx, err := deserializeCompilationCtx(raw.PlonkCtx)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("failed to deserialize PlonkCtx: %w", err)
-	// 	}
-	// 	rec.PlonkCtx = ctx
-	// }
+	// Deserialize PlonkCtx
+	if !bytes.Equal(raw.PlonkCtx, []byte(serialization.NilString)) {
+		// plonk, err := DeserializeCompilationCtx(raw.PlonkCtx)
+		plonk, err := serialization.DeserializeValue(raw.PlonkCtx, serialization.DeclarationMode, reflect.TypeOf(&plonkinternal.CompilationCtx{}), comp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to deserialize PlonkCtx: %w", err)
+		}
+		r.PlonkCtx = plonk.Interface().(*plonkinternal.CompilationCtx)
+	}
 
-	// Handle PcsCtx
+	// Deserialize PcsCtx
 	if raw.PcsCtx != nil {
-		rec.PcsCtx = make([]*vortex.Ctx, len(raw.PcsCtx))
-		for i, ctxData := range raw.PcsCtx {
-			if !bytes.Equal(ctxData, []byte(serialization.NilString)) {
-				comp := serialization.NewEmptyCompiledIOP()
-				ctxVal, err := serialization.DeserializeValue(ctxData, serialization.DeclarationMode, reflect.TypeOf(vortex.Ctx{}), comp)
+		r.PcsCtx = make([]*vortex.Ctx, len(raw.PcsCtx))
+		for i, ctxSer := range raw.PcsCtx {
+			if !bytes.Equal(ctxSer, []byte(serialization.NilString)) {
+				//ctx, err := DeserializeVortexCtx(ctxSer)
+				ctx, err := serialization.DeserializeValue(ctxSer, serialization.DeclarationMode, reflect.TypeOf(&vortex.Ctx{}), comp)
 				if err != nil {
 					return nil, fmt.Errorf("failed to deserialize PcsCtx[%d]: %w", i, err)
 				}
-				rec.PcsCtx[i] = ctxVal.Interface().(*vortex.Ctx)
+				r.PcsCtx[i] = ctx.Interface().(*vortex.Ctx)
 			}
 		}
 	}
 
-	return rec, nil
+	return r, nil
 }
-
-// serializeCompilationCtx serializes CompilationCtx excluding Plonk
-// func SerializePlonkCompilationCtx(ctx *plonkinternal.CompilationCtx) (json.RawMessage, error) {
-// 	if ctx == nil {
-// 		return []byte(serialization.NilString), nil
-// 	}
-
-// 	raw := rawCompilationCtx{
-// 		Name:           ctx.name,
-// 		Subscript:      ctx.subscript,
-// 		Round:          ctx.round,
-// 		MaxNbInstances: ctx.maxNbInstances,
-// 	}
-
-// 	// Serialize comp
-// 	if ctx.comp != nil {
-// 		compSer, err := serialization.SerializeCompiledIOP(ctx.comp)
-// 		if err != nil {
-// 			return nil, fmt.Errorf("failed to serialize Comp: %w", err)
-// 		}
-// 		raw.Comp = compSer
-// 	} else {
-// 		raw.Comp = []byte(serialization.NilString)
-// 	}
-
-// 	// Serialize Columns
-// 	columnsSer, err := serialization.SerializeValue(reflect.ValueOf(ctx.Columns), serialization.DeclarationMode)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to serialize Columns: %w", err)
-// 	}
-// 	raw.Columns = columnsSer
-
-// 	// Serialize RangeCheckOption
-// 	rangeCheckSer, err := serialization.SerializeValue(reflect.ValueOf(ctx.RangeCheckOption), serialization.DeclarationMode)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to serialize RangeCheckOption: %w", err)
-// 	}
-// 	raw.RangeCheckOption = rangeCheckSer
-
-// 	// Serialize FixedNbRowsOption
-// 	fixedRowsSer, err := serialization.SerializeValue(reflect.ValueOf(ctx.FixedNbRowsOption), serialization.DeclarationMode)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to serialize FixedNbRowsOption: %w", err)
-// 	}
-// 	raw.FixedNbRowsOption = fixedRowsSer
-
-// 	// Serialize ExternalHasherOption
-// 	hasherSer, err := serialization.SerializeValue(reflect.ValueOf(ctx.ExternalHasherOption), serialization.DeclarationMode)
-// 	if err != nil {
-// 		return nil, fmt.Errorf("failed to serialize ExternalHasherOption: %w", err)
-// 	}
-// 	raw.ExternalHasherOption = hasherSer
-
-// 	return serialization.SerializeAnyWithCborPkg(&raw)
-// }
