@@ -248,9 +248,17 @@ func TestOpBasicEdgeCases(t *testing.T) {
 }
 
 func TestInnerProduct(t *testing.T) {
-	a := ForTestFromQuaternarys(1, 1, 2, 1, 1, 1, 2, 1, 1, 1)
-	b := ForTestFromQuaternarys(1, 1, -1, 1, 2, 1, -1, 1, 2, 1)
-	sum := fext.NewElement(uint32(1+5*fext.RootPowers[1]), 10, 0, 0)
+	list_a := []int{1, 1, 2, 1, 1, 1, 2, 1}
+	list_b := []int{1, 1, -1, 1, 2, 1, -1, 1}
+	a := ForTestFromQuads(list_a...)
+	b := ForTestFromQuads(list_b...)
+	z1 := vectorext.ForTestCalculateQuadProduct(list_a[:4], list_b[0:4])
+	z2 := vectorext.ForTestCalculateQuadProduct(list_a[4:8], list_b[4:8])
+	for i := 0; i < len(z1); i++ {
+		z2[i] = z1[i] + z2[i]
+	}
+
+	sum := fext.NewElement(int64(z2[0]), int64(z2[1]), int64(z2[2]), int64(z2[3]))
 
 	testCases := []struct {
 		a, b smartvectors.SmartVector
@@ -278,17 +286,16 @@ func TestScalarMul(t *testing.T) {
 		y smartvectors.SmartVector
 	}{
 		{
-			a: ForTestExt(1, 2, 1, 2, 1),
-			b: fext.NewElement(3, 1, 0, 0),
-			y: ForTestFromQuaternarys(3, 1, 6, 2, 3, 1, 6, 2, 3, 1),
+			a: ForTestExt(1, 2, 1, 2),
+			b: fext.NewElement(3, 1, 2, 4),
+			y: ForTestFromQuads(3, 1, 2, 4, 6, 2, 4, 8, 3, 1, 2, 4, 6, 2, 4, 8),
 		},
 		{
-			a: ForTestExt(1, 2, 1, 2, 1),
+			a: ForTestExt(1, 2, 1, 2),
 			b: fext.NewElement(3, 0, 0, 0),
-			y: ForTestExt(3, 6, 3, 6, 3),
+			y: ForTestExt(3, 6, 3, 6),
 		},
 	}
-
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case-%v", i), func(t *testing.T) {
 			y := ScalarMul(testCase.a, testCase.b)

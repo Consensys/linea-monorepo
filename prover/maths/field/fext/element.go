@@ -10,7 +10,7 @@ import (
 // Embedding
 type Element = extensions.E4
 
-func NewElement(v1 uint32, v2 uint32, v3 uint32, v4 uint32) Element {
+func NewElement(v1, v2, v3, v4 int64) Element {
 	var z Element
 	z.B0.A0.SetInt64(int64(v1))
 	z.B0.A1.SetInt64(int64(v2))

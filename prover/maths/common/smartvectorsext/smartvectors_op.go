@@ -24,9 +24,9 @@ func ForTestFromVect(xs ...[4]int) smartvectors.SmartVector {
 	return NewRegularExt(vectorext.ForTestFromVect(xs...))
 }
 
-// ForTestFromQuaternarys groups the inputs into quaternarys and computes a regular smartvector of
+// ForTestFromQuads groups the inputs into quaternarys and computes a regular smartvector of
 // field extensions, where each field extension has the first four coordinates populated.
-func ForTestFromQuaternarys(xs ...int) smartvectors.SmartVector {
+func ForTestFromQuads(xs ...int) smartvectors.SmartVector {
 	return NewRegularExt(vectorext.ForTestFromQuads(xs...))
 }
 

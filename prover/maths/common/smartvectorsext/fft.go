@@ -42,7 +42,7 @@ func FFT(v smartvectors.SmartVector, decimation fft.Decimation, bitReverse bool,
 		if cosetID == 0 && cosetRatio == 0 {
 			// The FFT is a (c*N, 0, 0, ...), no matter the bitReverse or decimation
 			// It's a multiple of the first Lagrange polynomial.
-			constTerm := fext.NewElement(uint32(x.length), 0, 0, 0)
+			constTerm := fext.NewElement(int64(x.length), 0, 0, 0)
 			constTerm.Mul(&constTerm, &x.val)
 			return NewPaddedCircularWindowExt([]fext.Element{constTerm}, fext.Zero(), 0, x.length)
 		}
@@ -126,7 +126,7 @@ func FFTInverse(v smartvectors.SmartVector, decimation fft.Decimation, bitRevers
 		// The response is (c) = (c/N, c/N, c/N, ...)
 		interval := x.interval()
 		if interval.IntervalLen == 1 && interval.Start() == 0 && x.paddingVal.IsZero() {
-			constTerm := fext.NewElement(uint32(x.Len()), 0, 0, 0)
+			constTerm := fext.NewElement(int64(x.Len()), 0, 0, 0)
 			constTerm.Inverse(&constTerm)
 			constTerm.Mul(&constTerm, &x.window[0])
 			// In this case, the response is a constant vector
