@@ -131,7 +131,7 @@ class CliqueToPosTest {
     }
 
     private fun containerShortNameToFullId(containerShortName: String) =
-      "${qbftCluster.projectName().asString()}-$containerShortName-1"
+      "${qbftCluster.projectName().asString()}-$containerShortName"
 
     private val log: Logger = LogManager.getLogger(CliqueToPosTest::class.java)
 
@@ -187,18 +187,6 @@ class CliqueToPosTest {
           .pollInterval(1.seconds.toJavaDuration())
           .timeout(30.seconds.toJavaDuration())
       }
-
-    if (nodeName.contains("besu")) {
-      // Required to change validation rules from Clique to PostMerge
-      // TODO: investigate this issue more. It was working happen with Dummy Consensus
-      syncTarget(engineApiConfig, 5)
-      awaitCondition
-        .ignoreExceptions()
-        .alias(nodeName)
-        .untilAsserted {
-          assertNodeBlockHeight(nodeEthereumClient, 5L)
-        }
-    }
 
     awaitCondition
       .ignoreExceptions()

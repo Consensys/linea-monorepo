@@ -4,21 +4,23 @@ services:
 
   maru:
     # ./gradlew :app:installDist
-    # docker build app --build-context=libs=./app/build/install/app/lib/ --build-context=maru=./build/libs/ -t local/maru:latest
+    # docker build app --build-context=libs=./app/build/install/app/lib/ --build-context=maru=./app/build/libs/ -t local/maru:latest
     # command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/path/to/vertx-options.json', '-Dlog4j2.configurationFile=/path/to/log4j2-dev.xml']
-    image: local/maru:latest
+    #image: local/maru:latest
+    image: consensys/maru:${MARU_TAG:-0bd171f}
+    container_name: maru
     depends_on:
       - sequencer
       - follower-geth
-    command: [ 'java', '-jar', "maru.jar", '--genesis-file', 'configs/genesis-besu.json', '--config', 'configs/config.dev.toml' ]
+    command: [ 'java', '-jar', "maru.jar", '--besu-genesis-file', 'configs/genesis.json', '--config', 'configs/config.dev.toml' ]
     volumes:
       - ./maru/config.dev.toml:/opt/consensys/maru/configs/config.dev.toml:ro
       - ./maru/genesis.json:/opt/consensys/maru/configs/genesis.json:ro
-
+      - ./maru/key:/tmp/maru-db/private-key
+      - ./jwt:/opt/consensys/docker/jwt:ro
     ports:
       # Attach the IDE's remote java debugger to localhost:5005 to debug maru
       - "5005:5005"
-
     networks:
       - linea
 

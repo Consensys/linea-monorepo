@@ -39,22 +39,30 @@ jobs:
 
   testing:
     needs: [ filter-commit-changes ]
-    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
+    if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     uses: ./.github/workflows/testing.yml
     with:
-#      commit-tag: ${{ needs.store-image-name-and-tags.outputs.commit_tag }}
       consensus-client-changed: ${{ needs.filter-commit-changes.outputs.consensus-client }}
     secrets: inherit
 
   run-e2e-tests:
     needs: [ filter-commit-changes ]
-    if: ${{ always() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
+    if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
     concurrency:
       group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     uses: ./.github/workflows/e2e-tests.yml
     with:
-#      commit-tag: ${{ needs.store-image-name-and-tags.outputs.commit-tag }}
       e2e-tests-logs-dump: true
       has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
+    secrets: inherit
+
+  build-and-publish:
+    needs: [ testing, run-e2e-tests ]
+    if: ${{ always() && !cancelled() && (needs.testing.result == 'skipped' || needs.testing.result == 'success') && (needs.run-e2e-tests.result == 'skipped' || needs.run-e2e-tests.outputs.tests_outcome == 'success') }}
+    uses: ./.github/workflows/maru-build-and-publish.yml
+    with:
+      develop_tag: 'develop'
+      image_name: 'consensys/maru'
+      push_image: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
     secrets: inherit

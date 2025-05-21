@@ -1,0 +1,153 @@
+name: Build and Publish Maru Image
+
+on:
+  workflow_call:
+    inputs:
+      commit_tag:
+        required: false
+        type: string
+        default: ''
+      develop_tag:
+        required: true
+        type: string
+      image_name:
+        required: true
+        type: string
+      push_image:
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      DOCKERHUB_USERNAME:
+        required: false
+      DOCKERHUB_TOKEN:
+        required: false
+  workflow_dispatch:
+    inputs:
+      commit_tag:
+        description: 'Image tag, if not given, HEAD commit hash will be used'
+        required: false
+        type: string
+        default: ''
+      develop_tag:
+        description: 'Image tag will be "develop" if target branch is main'
+        required: true
+        type: choice
+        options:
+          - develop
+        default: 'develop'
+      image_name:
+        description: 'Image name'
+        required: true
+        type: string
+        default: 'consensys/maru'
+      push_image:
+        description: 'Toggle whether to push image to docker registry'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  actions: read
+  id-token: write
+  contents: write
+
+concurrency:
+  group: maru-build-and-publish-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  build-and-publish:
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
+    name: Maru build and publish
+    env:
+      COMMIT_TAG: ${{ inputs.commit_tag }}
+      DEVELOP_TAG: ${{ inputs.develop_tag }}
+      IMAGE_NAME: ${{ inputs.image_name }}
+      PUSH_IMAGE: ${{ inputs.push_image }}
+      TAGS: ${{ inputs.image_name }}:${{ inputs.commit_tag }}
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set commit tag if not given
+        if: ${{ inputs.commit_tag == '' }}
+        run: |
+          # For PR, GITHUB_SHA is NOT the last commit pushed onto the PR branch - https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows#pull_request
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            COMMIT_TAG=$(git rev-parse --short ${{ github.event.pull_request.head.sha }})
+          else
+            COMMIT_TAG=$(git rev-parse --short $GITHUB_SHA)
+          fi
+          echo "COMMIT_TAG=$COMMIT_TAG" >> $GITHUB_ENV
+          echo "TAGS=${{ env.IMAGE_NAME }}:$COMMIT_TAG" >> $GITHUB_ENV
+          echo "COMMIT_TAG: ${{ env.COMMIT_TAG }} $COMMIT_TAG"
+          echo "TAGS: ${{ env.TAGS }}"
+      - name: Set develop tag if main branch
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          echo "TAGS=${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }},${{ env.IMAGE_NAME }}:${{ env.DEVELOP_TAG }}" >> $GITHUB_ENV
+      - uses: actions/setup-java@8df1039502a15bceb9433410b1a100fbe190c53b #v4.5.0
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Setup Gradle
+        # Configure Gradle for optimal use in GiHub Actions, including caching of downloaded dependencies.
+        # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
+        uses: gradle/actions/setup-gradle@cc4fc85e6b35bafd578d5ffbc76a5518407e1af0 #v4.2.1
+      - name: Build dist
+        run: |
+          ./gradlew :app:installDist
+      - name: Login to Docker Hub
+        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx - local
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Docker meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+      - name: Build for testing
+        uses: docker/build-push-action@v6
+        if: ${{ env.PUSH_IMAGE == 'false' }}
+        with:
+          context: app
+          build-contexts: |
+            libs=./app/build/install/app/lib/
+            maru=./app/build/libs/
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }}
+      - name: Save Docker image as artifact
+        if: ${{ env.PUSH_IMAGE == 'false' }}
+        run: |
+          docker save ${{ env.IMAGE_NAME }}:${{ env.COMMIT_TAG }} | gzip > linea-maru-docker-image.tar.gz
+        shell: bash
+      - name: Upload Docker image artifact
+        if: ${{ env.PUSH_IMAGE == 'false' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: linea-maru
+          path: linea-maru-docker-image.tar.gz
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        if: ${{ env.PUSH_IMAGE == 'true' || github.event_name == 'workflow_dispatch' }}
+        with:
+          context: app
+          build-contexts: |
+            libs=./app/build/install/app/lib/
+            maru=./app/build/libs/
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.TAGS }}
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:buildcache,mode=max
+

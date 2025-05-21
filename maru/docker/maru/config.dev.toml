@@ -1,12 +1,15 @@
+[persistence]
+data-path="/tmp/maru-db"
+
 [sot-eth-endpoint]
 endpoint = "http://sequencer:8545"
 
 [qbft-options]
 communication-margin=100m
-data-path="/tmp/maru-db"
 
 [p2p-config]
 port = 3322
+ip-address = "127.0.0.1"
 
 [validator]
 private-key = "0x1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
@@ -14,7 +17,7 @@ min-time-between-get-payload-attempts=6000m
 el-client-engine-api-endpoint = "http://sequencer:8550"
 
 [follower-engine-apis]
-"follower-besu" = { endpoint = "http://follower-besu:9550" }
-"follower-erigon" = { endpoint = "http://follower-erigon:11551", jwt-secret-path = "../docker/jwt" }
-"follower-nethermind" = { endpoint = "http://follower-nethermind:10550", jwt-secret-path = "../docker/jwt" }
-"follower-geth" = { endpoint = "http://follower-geth:8561", jwt-secret-path = "../docker/jwt" }
+"follower-besu" = { endpoint = "http://follower-besu:8550" }
+"follower-erigon" = { endpoint = "http://follower-erigon:8551", jwt-secret-path = "../docker/jwt" }
+"follower-nethermind" = { endpoint = "http://follower-nethermind:8550", jwt-secret-path = "../docker/jwt" }
+"follower-geth" = { endpoint = "http://follower-geth:8551", jwt-secret-path = "../docker/jwt" }
