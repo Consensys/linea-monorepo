@@ -35,3 +35,18 @@ dependencies {
   testImplementation("org.hyperledger.besu.internal:plugins-rocksdb")
   testImplementation "org.jetbrains.kotlin:kotlin-test:2.1.0"
 }
+
+application {
+  mainClass = 'maru.app.CliEntrypoint'
+}
+
+jar {
+  archiveBaseName = 'maru'
+  manifest {
+    attributes(
+      'Class-Path': project.configurations.runtimeClasspath.collect { it.getName() }.findAll { it.endsWith('jar') }.join(' '),
+      'Main-Class': 'maru.app.CliEntrypoint',
+      'Multi-Release': 'true'
+      )
+  }
+}
