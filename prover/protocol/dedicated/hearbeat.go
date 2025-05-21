@@ -105,9 +105,15 @@ func cleanIsActive(isActiveAny any) (isActive *sym.Expression, fullyActive bool,
 		board := act.Board()
 		size = column.ExprIsOnSameLengthHandles(&board)
 	case verifiercol.ConstCol:
-		isActive = sym.NewConstant(act.F)
-		fullyActive = act.F.IsOne()
-		size = act.Size()
+		if act.IsBase() {
+			isActive = sym.NewConstant(act.Base)
+			fullyActive = act.Base.IsOne()
+			size = act.Size()
+		} else {
+			isActive = sym.NewConstant(act.Ext)
+			fullyActive = act.Ext.IsOne()
+			size = act.Size()
+		}
 	case ifaces.Column:
 		isActive = sym.NewVariable(act)
 		size = act.Size()

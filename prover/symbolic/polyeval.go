@@ -2,12 +2,13 @@ package symbolic
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
-	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -38,16 +39,17 @@ func NewPolyEval(x *Expression, coeffs []*Expression) *Expression {
 		return coeffs[0]
 	}
 
-	eshashes := []field.Element{}
+	eshashes := []fext.Element{}
 	for i := range coeffs {
 		eshashes = append(eshashes, coeffs[i].ESHash)
 	}
 
-	esh := poly.EvalUnivariate(eshashes, x.ESHash)
+	esh := polyext.EvalUnivariate(eshashes, x.ESHash)
+	children := append([]*Expression{x}, coeffs...)
 
 	return &Expression{
 		Operator: PolyEval{},
-		Children: append([]*Expression{x}, coeffs...),
+		Children: children,
 		ESHash:   esh,
 	}
 }
@@ -98,4 +100,38 @@ func (PolyEval) GnarkEval(api frontend.API, inputs []frontend.Variable) frontend
 	}
 
 	return res
+}
+
+/*
+EvaluateExt the expression in a gnark circuit
+Does not support vector evaluation
+*/
+func (PolyEval) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Variable) gnarkfext.Variable {
+	/*
+		We use the Horner method
+	*/
+	x := inputs[0]
+	res := inputs[len(inputs)-1]
+
+	outerApi := gnarkfext.NewExtApi(api)
+
+	for i := len(inputs) - 2; i >= 1; i-- {
+		res = outerApi.Mul(res, x)
+		c := inputs[i]
+		res = outerApi.Add(res, c)
+	}
+
+	return res
+}
+
+func (PolyEval) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+	// We assume that the first element is always a scalar
+	// Get the constant value. We use Get(0) to get the value, but any integer would
+	// also work provided it is also in range. 0 ensures that.
+	x := inputs[0].(*sv.ConstantExt).GetExt(0)
+	return sv.PolyEvalExt(inputs[1:], x, p...)
+}
+
+func (PolyEval) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
+	panic("PolyEval does not support mixed evaluation for now")
 }

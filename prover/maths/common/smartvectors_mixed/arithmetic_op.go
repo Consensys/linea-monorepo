@@ -1,9 +1,11 @@
-package smartvectorsext
+package smartvectors_mixed
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
+
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
 // operator represents a mathematical operation that can be performed between
@@ -24,63 +26,63 @@ import (
 // mitigated that we have a single function [processOperator] owning all the
 // "smartvector" logic and all the logic pertaining to doing additions,
 // multiplication etc.. is implemented by the [operator] interface.
-type operator interface {
+type operatorMixed interface {
 	// constIntoConst applies the operator over `res` and `(c, coeff)` and sets
 	// the result into res. This is specialized for the case where both res and
 	// x are scalars.
 	//
 	// 		res += x * coeff or res *= x^coeff
-	constIntoConst(res, x *fext.Element, coeff int)
+	constIntoConstExt(res *fext.Element, x *field.Element, coeff int)
 	// vecIntoVec applies the operator over `res` and `(c, coeff)` and sets
 	// the result into res. This is specialized for the case where both res and
 	// x are vectors.
 	//
 	// 		res += x * coeff or res *= x^coeff
-	vecIntoVec(res, x []fext.Element, coeff int)
+	vecIntoVecExt(res []fext.Element, x []field.Element, coeff int)
 	// VecIntoVec applies the operator over `res` and `(c, coeff)` and sets
 	// the result into res. This is specialized for the case where res is a
 	// vector and c is a constant.
 	//
 	// 		res += x * coeff or res *= x^coeff
-	constIntoVec(res []fext.Element, x *fext.Element, coeff int)
+	constIntoVecExt(res []fext.Element, x *field.Element, coeff int)
 	// constIntoTerm evaluates the operator over (x, coeff) and sets the result
 	// into `res`, overwriting it.
 	// It is specialized for the case where x and res are both scalars.
 	//
 	// 		res = x * coeff or res = x^coeff
-	constIntoTerm(res, x *fext.Element, coeff int)
+	constIntoTermExt(res *fext.Element, x *field.Element, coeff int)
 	// vecIntoTerm evaluates the operator over (x, coeff) and sets the result
 	// into `res`, overwriting it.
 	// It is specialized for the case where x and res are both vectors.
 	//
 	// 		res = x * coeff or res = x^coeff where x is a vector
-	vecIntoTerm(res, x []fext.Element, coeff int)
+	vecIntoTermExt(res []fext.Element, x []field.Element, coeff int)
 	// constTermIntoConst updates applies the operator over res and term and
 	// sets the result into res.
 	// This function is specialized for the case where the term and res are
 	// scalar.
 	//
 	// res += term or res *= term for constants
-	constTermIntoConst(res, term *fext.Element)
+	constTermIntoConstExt(res *fext.Element, term *field.Element)
 	// vecTermIntoVec updates applies the operator over res and term and
 	// sets the result into res.
 	// This function is specialized for the case where the term and res are
 	// vector.
 	//
 	// res += term or res *= term
-	vecTermIntoVec(res, term []fext.Element)
+	vecTermIntoVecExt(res []fext.Element, term []field.Element)
 	// constTermIntoVec updates a vector `res` by applying the operator over
 	// it
 	//
 	// res += term or res *= term
-	constTermIntoVec(res []fext.Element, term *fext.Element)
+	constTermIntoVecExt(res []fext.Element, term *field.Element)
 }
 
 // linCompOp is an implementation of the [operator] interface. It represents a
 // linear combination with coefficients.
-type linCombOp struct{}
+type linCombOpMixed struct{}
 
-func (linCombOp) constIntoConst(res, x *fext.Element, coeff int) {
+func (linCombOpMixed) constIntoConst(res, x *field.Element, coeff int) {
 	switch coeff {
 	case 1:
 		res.Add(res, x)
@@ -91,21 +93,21 @@ func (linCombOp) constIntoConst(res, x *fext.Element, coeff int) {
 	case -2:
 		res.Sub(res, x).Sub(res, x)
 	default:
-		var c fext.Element
+		var c field.Element
 		c.SetInt64(int64(coeff))
 		c.Mul(&c, x)
 		res.Add(res, &c)
 	}
 }
 
-func (linCombOp) vecIntoVec(res, x []fext.Element, coeff int) {
+func (linCombOpMixed) vecIntoVec(res, x []field.Element, coeff int) {
 	// Sanity-check
 	assertHasLength(len(res), len(x))
 	switch coeff {
 	case 1:
-		vectorext.Add(res, res, x)
+		vector.Add(res, res, x)
 	case -1:
-		vectorext.Sub(res, res, x)
+		vector.Sub(res, res, x)
 	case 2:
 		for i := range res {
 			res[i].Add(&res[i], &x[i]).Add(&res[i], &x[i])
@@ -115,7 +117,7 @@ func (linCombOp) vecIntoVec(res, x []fext.Element, coeff int) {
 			res[i].Sub(&res[i], &x[i]).Sub(&res[i], &x[i])
 		}
 	default:
-		var c, tmp fext.Element
+		var c, tmp field.Element
 		c.SetInt64(int64(coeff))
 		for i := range res {
 			tmp.Mul(&c, &x[i])
@@ -124,13 +126,13 @@ func (linCombOp) vecIntoVec(res, x []fext.Element, coeff int) {
 	}
 }
 
-func (linCombOp) constIntoVec(res []fext.Element, val *fext.Element, coeff int) {
-	var term fext.Element
-	linCombOp.constIntoTerm(linCombOp{}, &term, val, coeff)
-	linCombOp.constTermIntoVec(linCombOp{}, res, &term)
+func (linCombOpMixed) constIntoVec(res []field.Element, val *field.Element, coeff int) {
+	var term field.Element
+	linCombOpMixed.constIntoTerm(linCombOpMixed{}, &term, val, coeff)
+	linCombOpMixed.constTermIntoVec(linCombOpMixed{}, res, &term)
 }
 
-func (linCombOp) vecIntoTerm(term, x []fext.Element, coeff int) {
+func (linCombOpMixed) vecIntoTerm(term, x []field.Element, coeff int) {
 	switch coeff {
 	case 1:
 		copy(term, x)
@@ -139,13 +141,13 @@ func (linCombOp) vecIntoTerm(term, x []fext.Element, coeff int) {
 			term[i].Neg(&x[i])
 		}
 	case 2:
-		vectorext.Add(term, x, x)
+		vector.Add(term, x, x)
 	case -2:
 		for i := range term {
 			term[i].Add(&x[i], &x[i]).Neg(&term[i])
 		}
 	default:
-		var c fext.Element
+		var c field.Element
 		c.SetInt64(int64(coeff))
 		for i := range term {
 			term[i].Mul(&c, &x[i])
@@ -153,7 +155,7 @@ func (linCombOp) vecIntoTerm(term, x []fext.Element, coeff int) {
 	}
 }
 
-func (linCombOp) constIntoTerm(term, x *fext.Element, coeff int) {
+func (linCombOpMixed) constIntoTerm(term, x *field.Element, coeff int) {
 	switch coeff {
 	case 1:
 		term.Set(x)
@@ -164,30 +166,30 @@ func (linCombOp) constIntoTerm(term, x *fext.Element, coeff int) {
 	case -2:
 		term.Add(x, x).Neg(term)
 	default:
-		var c fext.Element
+		var c field.Element
 		c.SetInt64(int64(coeff))
 		term.Mul(&c, x)
 	}
 }
 
-func (linCombOp) constTermIntoConst(res, term *fext.Element) {
+func (linCombOpMixed) constTermIntoConst(res, term *field.Element) {
 	res.Add(res, term)
 }
 
-func (linCombOp) vecTermIntoVec(res, term []fext.Element) {
-	vectorext.Add(res, res, term)
+func (linCombOpMixed) vecTermIntoVec(res, term []field.Element) {
+	vector.Add(res, res, term)
 }
 
-func (linCombOp) constTermIntoVec(res []fext.Element, term *fext.Element) {
+func (linCombOpMixed) constTermIntoVec(res []field.Element, term *field.Element) {
 	for i := range res {
 		res[i].Add(&res[i], term)
 	}
 }
 
-type productOp struct{}
+type productOpMixed struct{}
 
 // res *= x ^coeff where both res and x are constants
-func (productOp) constIntoConst(res, x *fext.Element, coeff int) {
+func (productOpMixed) constIntoConst(res, x *field.Element, coeff int) {
 	switch coeff {
 	case 0:
 		// Nothing to do
@@ -196,19 +198,19 @@ func (productOp) constIntoConst(res, x *fext.Element, coeff int) {
 	case 2:
 		res.Mul(res, x).Mul(res, x)
 	case 3:
-		var tmp fext.Element
+		var tmp field.Element
 		tmp.Square(x)
 		tmp.Mul(&tmp, x)
 		res.Mul(res, &tmp)
 	default:
-		var tmp fext.Element
+		var tmp field.Element
 		tmp.Exp(*x, big.NewInt(int64(coeff)))
 		res.Mul(res, &tmp)
 	}
 }
 
 // res *= x ^coeff where both res and x are vectors
-func (productOp) vecIntoVec(res, x []fext.Element, coeff int) {
+func (productOpMixed) vecIntoVec(res, x []field.Element, coeff int) {
 
 	// Sanity-check
 	assertHasLength(len(res), len(x))
@@ -217,36 +219,36 @@ func (productOp) vecIntoVec(res, x []fext.Element, coeff int) {
 	case 0:
 		// Nothing to do
 	case 1:
-		vectorext.MulElementWise(res, res, x)
+		vector.MulElementWise(res, res, x)
 	case 2:
 		for i := range res {
 			res[i].Mul(&res[i], &x[i]).Mul(&res[i], &x[i])
 		}
 	case 3:
 		for i := range res {
-			var tmp fext.Element
+			var tmp field.Element
 			tmp.Square(&x[i])
 			tmp.Mul(&tmp, &x[i])
 			res[i].Mul(&res[i], &tmp)
 		}
 	default:
-		var tmp fext.Element
+		var tmp field.Element
 		for i := range res {
-			fext.ExpToInt(&tmp, x[i], coeff)
+			field.ExpToInt(&tmp, x[i], coeff)
 			res[i].Mul(&res[i], &tmp)
 		}
 	}
 }
 
 // res *= x ^coeff where res is a vector and x is a constant
-func (productOp) constIntoVec(res []fext.Element, x *fext.Element, coeff int) {
-	var term fext.Element
-	productOp.constIntoTerm(productOp{}, &term, x, coeff)
-	productOp.constTermIntoVec(productOp{}, res, &term)
+func (productOpMixed) constIntoVec(res []field.Element, x *field.Element, coeff int) {
+	var term field.Element
+	productOpMixed.constIntoTerm(productOpMixed{}, &term, x, coeff)
+	productOpMixed.constTermIntoVec(productOpMixed{}, res, &term)
 }
 
 // res = x ^ coeff where x is a constant
-func (productOp) constIntoTerm(res, x *fext.Element, coeff int) {
+func (productOpMixed) constIntoTerm(res, x *field.Element, coeff int) {
 	switch coeff {
 	case 0:
 		res.SetOne()
@@ -255,7 +257,7 @@ func (productOp) constIntoTerm(res, x *fext.Element, coeff int) {
 	case 2:
 		res.Square(x)
 	case 3:
-		var tmp fext.Element
+		var tmp field.Element
 		tmp.Square(x)
 		res.Mul(&tmp, x)
 	default:
@@ -264,18 +266,18 @@ func (productOp) constIntoTerm(res, x *fext.Element, coeff int) {
 }
 
 // res = x * coeff or res = x ^ coeff where x is a vector
-func (productOp) vecIntoTerm(res, x []fext.Element, coeff int) {
+func (productOpMixed) vecIntoTerm(res, x []field.Element, coeff int) {
 	switch coeff {
 	case 0:
-		vectorext.Fill(res, fext.One())
+		vector.Fill(res, field.One())
 	case 1:
 		copy(res, x)
 	case 2:
-		vectorext.MulElementWise(res, x, x)
+		vector.MulElementWise(res, x, x)
 	case 3:
 		for i := range res {
 			// Creating a new variable for the case where res and x are the same variable
-			var tmp fext.Element
+			var tmp field.Element
 			tmp.Square(&x[i])
 			res[i].Mul(&tmp, &x[i])
 		}
@@ -288,17 +290,17 @@ func (productOp) vecIntoTerm(res, x []fext.Element, coeff int) {
 }
 
 // res += term or res *= coeff for constants
-func (productOp) constTermIntoConst(res, term *fext.Element) {
+func (productOpMixed) constTermIntoConst(res, term *field.Element) {
 	res.Mul(res, term)
 }
 
 // res += term for vectors
-func (productOp) vecTermIntoVec(res, term []fext.Element) {
-	vectorext.MulElementWise(res, res, term)
+func (productOpMixed) vecTermIntoVec(res, term []field.Element) {
+	vector.MulElementWise(res, res, term)
 
 }
 
 // res += term where res is a vector and term is a constant
-func (productOp) constTermIntoVec(res []fext.Element, term *fext.Element) {
-	vectorext.ScalarMul(res, res, *term)
+func (productOpMixed) constTermIntoVec(res []field.Element, term *field.Element) {
+	vector.ScalarMul(res, res, *term)
 }

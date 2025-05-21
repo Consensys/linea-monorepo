@@ -1,7 +1,7 @@
 package symbolic
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -20,14 +20,14 @@ type ExpressionBoard struct {
 	// Maps nodes to their level in the DAG structure. The 32 MSB bits
 	// of the ID indicates the level and the LSB bits indicates the position
 	// in the level.
-	ESHashesToPos map[field.Element]nodeID
+	ESHashesToPos map[fext.Element]nodeID
 }
 
 // emptyBoard initializes a board with no Node in it.
 func emptyBoard() ExpressionBoard {
 	return ExpressionBoard{
 		Nodes:         [][]Node{},
-		ESHashesToPos: map[field.Element]nodeID{},
+		ESHashesToPos: map[fext.Element]nodeID{},
 	}
 }
 
@@ -61,7 +61,7 @@ type Node struct {
 		Two expression with the same ESHash are considered as equals. This helps expression
 		pruning.
 	*/
-	ESHash field.Element
+	ESHash fext.Element
 	// Operator contains the logic to evaluate an expression
 	Operator Operator
 }

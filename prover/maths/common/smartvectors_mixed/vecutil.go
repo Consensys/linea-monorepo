@@ -1,4 +1,4 @@
-package smartvectorsext
+package smartvectors_mixed
 
 import (
 	"github.com/consensys/linea-monorepo/prover/utils"

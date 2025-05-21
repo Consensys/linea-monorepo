@@ -1,4 +1,4 @@
-package smartvectorsext
+package smartvectors
 
 import (
 	"fmt"
@@ -6,20 +6,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/stretchr/testify/require"
 )
 
-func TestRotatedSubVector(t *testing.T) {
+func TestRotatedSubVectorExt(t *testing.T) {
 
 	size := 16
 	original := vector.Rand(size)
-	myVec := smartvectors.NewRegular(original)
+	myVec := NewRegular(original)
 
 	for offset := 0; offset < size; offset++ {
-		rotated := smartvectors.NewRotated(*myVec, offset)
+		rotated := NewRotated(*myVec, offset)
 		for start := 0; start < size; start++ {
 			for stop := start + 1; stop <= size; stop++ {
 
@@ -33,7 +32,7 @@ func TestRotatedSubVector(t *testing.T) {
 
 }
 
-func TestRotatedWriteInSlice(t *testing.T) {
+func TestRotatedWriteInSliceExt(t *testing.T) {
 
 	size := 16
 	original := vectorext.Rand(size)
@@ -50,7 +49,7 @@ func TestRotatedWriteInSlice(t *testing.T) {
 	}
 }
 
-func TestRotatedOffsetOverflow(t *testing.T) {
+func TestRotatedOffsetOverflowExt(t *testing.T) {
 	v := []fext.Element{fext.NewFromString("1"),
 		fext.NewFromString("2"),
 		fext.NewFromString("3"),
@@ -72,7 +71,7 @@ func TestRotatedOffsetOverflow(t *testing.T) {
 		"RotateRight should panic with 'offset is too large' message")
 }
 
-func TestRotateRightSimple(t *testing.T) {
+func TestRotateRightSimpleExt(t *testing.T) {
 	v := []fext.Element{fext.NewFromString("0"),
 		fext.NewFromString("1"),
 		fext.NewFromString("2"),

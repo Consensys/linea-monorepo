@@ -1,11 +1,11 @@
 package symbolic
 
 import (
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
 
 // regroupTerms takes a list of expressions and magnitudes and regroups the
-// childrens sharing the same ESH, adding their magnitudes. This is meant for
+// children sharing the same ESH, adding their magnitudes. This is meant for
 // expression simplification. It also returns separately the constants
 // term's values and their magnitudes if any are found. The function does not
 // attempt to regroup the constants it finds.
@@ -18,7 +18,7 @@ func regroupTerms(magnitudes []int, children []*Expression) (
 	regroupedMagnitudes []int,
 	regroupedChildren []*Expression,
 	constantMagnitudes []int,
-	constantValues []field.Element,
+	constantValues []fext.Element,
 ) {
 
 	if len(magnitudes) != len(children) {
@@ -26,10 +26,10 @@ func regroupTerms(magnitudes []int, children []*Expression) (
 	}
 
 	numChildren := len(children)
-	foundExpressions := make(map[field.Element]int, numChildren)
+	foundExpressions := make(map[fext.Element]int, numChildren)
 	regroupedChildren = make([]*Expression, 0, numChildren)
 	regroupedMagnitudes = make([]int, 0, numChildren)
-	constantValues = make([]field.Element, 0, numChildren)
+	constantValues = make([]fext.Element, 0, numChildren)
 	constantMagnitudes = make([]int, 0, numChildren)
 
 	for i := 0; i < numChildren; i++ {

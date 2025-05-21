@@ -59,3 +59,7 @@ func (x X) GnarkEvalNoCoset(size int) []frontend.Variable {
 	}
 	return res
 }
+
+func (x X) IsBase() bool {
+	return true
+}

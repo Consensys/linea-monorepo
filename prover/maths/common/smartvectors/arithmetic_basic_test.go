@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBatchInvert(t *testing.T) {
+func TestBatchInvertExt(t *testing.T) {
 
 	testCases := []SmartVector{
 		NewConstant(field.Zero(), 4),
@@ -62,7 +62,7 @@ func TestBatchInvert(t *testing.T) {
 	}
 }
 
-func TestIsZero(t *testing.T) {
+func TestIsZeroExt(t *testing.T) {
 
 	testCases := []SmartVector{
 		NewConstant(field.Zero(), 4),

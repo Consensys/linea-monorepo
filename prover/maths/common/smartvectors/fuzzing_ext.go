@@ -1,4 +1,4 @@
-package smartvectorsext
+package smartvectors
 
 import (
 	"fmt"
@@ -6,35 +6,34 @@ import (
 	"math/rand/v2"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-type smartVecType int
+type smartVecTypeExt int
 
 // The order matters : combining type x with type y implies that the result
 // will be of type max(x, y)
 const (
-	constantT smartVecType = iota
-	windowT
+	constantExtT smartVecTypeExt = iota
+	windowExtT
 	RegularExtT
 	RotatedExtT
 )
 
-var smartVecTypeList = []smartVecType{constantT, windowT, RegularExtT, RotatedExtT}
+var smartVecTypeListExt = []smartVecTypeExt{constantExtT, windowExtT, RegularExtT, RotatedExtT}
 
-type testCase struct {
+type testCaseExt struct {
 	name            string
-	svecs           []smartvectors.SmartVector
+	svecs           []SmartVector
 	coeffs          []int
-	expectedValue   smartvectors.SmartVector
+	expectedValue   SmartVector
 	evaluationPoint fext.Element // Only used for polynomial evaluation
 }
 
-func (tc testCase) String() string {
+func (tc testCaseExt) String() string {
 	res := "Testcase:\n"
 	res += "\tSVECS:\n"
 	for i := range tc.svecs {
@@ -45,7 +44,7 @@ func (tc testCase) String() string {
 	return res
 }
 
-type testCaseGen struct {
+type testCaseGenExt struct {
 	// Randomness parameters
 	seed int
 	gen  *rand.Rand
@@ -56,12 +55,12 @@ type testCaseGen struct {
 	windowWithLen        int
 	windowMustStartAfter int
 	// Allowed smart-vector types for this testcase
-	allowedTypes []smartVecType
+	allowedTypes []smartVecTypeExt
 }
 
-func newTestBuilder(seed int) *testCaseGen {
+func newTestBuilderExt(seed int) *testCaseGenExt {
 	// Use a deterministic randomness source
-	res := &testCaseGen{seed: seed}
+	res := &testCaseGenExt{seed: seed}
 	// #nosec G404 --we don't need a cryptographic RNG for fuzzing purpose
 	res.gen = rand.New(utils.NewRandSource(int64(seed)))
 
@@ -71,7 +70,7 @@ func newTestBuilder(seed int) *testCaseGen {
 	res.numVec = res.gen.IntN(8) + 1
 
 	// In the test, we may restrict the inputs vectors to have a certain type
-	allowedTypes := append([]smartVecType{}, smartVecTypeList...)
+	allowedTypes := append([]smartVecTypeExt{}, smartVecTypeListExt...)
 	res.gen.Shuffle(len(allowedTypes), func(i, j int) {
 		allowedTypes[i], allowedTypes[j] = allowedTypes[j], allowedTypes[i]
 	})
@@ -84,16 +83,16 @@ func newTestBuilder(seed int) *testCaseGen {
 	return res
 }
 
-func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
+func (gen *testCaseGenExt) NewTestCaseForProdExt() (tcase testCaseExt) {
 
 	tcase.name = fmt.Sprintf("fuzzy-with-seed-%v-prod", gen.seed)
-	tcase.svecs = make([]smartvectors.SmartVector, gen.numVec)
+	tcase.svecs = make([]SmartVector, gen.numVec)
 	tcase.coeffs = make([]int, gen.numVec)
 
 	// resVal will contain the value of the repeated in the expected result
 	// we will compute its value as we instantiate test vectors.
 	resVal := fext.One()
-	maxType := constantT
+	maxType := constantExtT
 
 	// For the windows, we need to track the dimension of the windows
 	winMinStart := gen.fullLen
@@ -116,14 +115,14 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 		resVal.Mul(&resVal, &tmp)
 
 		switch chosenType {
-		case constantT:
+		case constantExtT:
 			// Our implementation uses the convention that 0^0 == 0
 			// Even though, this case is avoided by the calling code.
 			if val.IsZero() && tcase.coeffs[i] != 0 {
 				hasConstZero = true
 			}
 			tcase.svecs[i] = NewConstantExt(val, gen.fullLen)
-		case windowT:
+		case windowExtT:
 			v := gen.genWindow(val, val)
 			tcase.svecs[i] = v
 			start := normalize(v.interval().Start(), gen.windowMustStartAfter, gen.fullLen)
@@ -152,9 +151,9 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 	switch {
 	case hasConstZero:
 		tcase.expectedValue = NewConstantExt(fext.Zero(), gen.fullLen)
-	case maxType == constantT:
+	case maxType == constantExtT:
 		tcase.expectedValue = NewConstantExt(resVal, gen.fullLen)
-	case maxType == windowT:
+	case maxType == windowExtT:
 		tcase.expectedValue = NewPaddedCircularWindowExt(
 			vectorext.Repeat(resVal, winMaxStop-winMinStart),
 			resVal,
@@ -168,16 +167,16 @@ func (gen *testCaseGen) NewTestCaseForProd() (tcase testCase) {
 	return tcase
 }
 
-func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
+func (gen *testCaseGenExt) NewTestCaseForLinCombExt() (tcase testCaseExt) {
 
 	tcase.name = fmt.Sprintf("fuzzy-with-seed-%v-lincomb", gen.seed)
-	tcase.svecs = make([]smartvectors.SmartVector, gen.numVec)
+	tcase.svecs = make([]SmartVector, gen.numVec)
 	tcase.coeffs = make([]int, gen.numVec)
 
 	// resVal will contain the value of the repeated in the expected result
 	// we will compute its value as we instantiate test vectors.
 	resVal := fext.Zero()
-	maxType := constantT
+	maxType := constantExtT
 
 	// For the windows, we need to track the dimension of the windows
 	winMinStart := gen.fullLen
@@ -197,9 +196,9 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 		resVal.Add(&resVal, &tmp)
 
 		switch chosenType {
-		case constantT:
+		case constantExtT:
 			tcase.svecs[i] = NewConstantExt(val, gen.fullLen)
-		case windowT:
+		case windowExtT:
 			v := gen.genWindow(val, val)
 			tcase.svecs[i] = v
 			start := normalize(v.interval().Start(), gen.windowMustStartAfter, gen.fullLen)
@@ -224,9 +223,9 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 	}
 
 	switch {
-	case maxType == constantT:
+	case maxType == constantExtT:
 		tcase.expectedValue = NewConstantExt(resVal, gen.fullLen)
-	case maxType == windowT:
+	case maxType == windowExtT:
 		tcase.expectedValue = NewPaddedCircularWindowExt(
 			vectorext.Repeat(resVal, winMaxStop-winMinStart),
 			resVal,
@@ -240,17 +239,17 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 	return tcase
 }
 
-func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
+func (gen *testCaseGenExt) NewTestCaseForPolyEvalExt() (tcase testCaseExt) {
 
 	tcase.name = fmt.Sprintf("fuzzy-with-seed-%v-poly-eval", gen.seed)
-	tcase.svecs = make([]smartvectors.SmartVector, gen.numVec)
+	tcase.svecs = make([]SmartVector, gen.numVec)
 	tcase.coeffs = make([]int, gen.numVec)
 	tcase.evaluationPoint.SetRandom()
 	x := tcase.evaluationPoint
 	vals := []fext.Element{}
 
 	// MaxType is used to determine what type should the result be
-	maxType := constantT
+	maxType := constantExtT
 
 	// For the windows, we need to track the dimension of the windows
 	winMinStart := gen.fullLen
@@ -265,9 +264,9 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 		maxType = utils.Max(maxType, chosenType)
 
 		switch chosenType {
-		case constantT:
+		case constantExtT:
 			tcase.svecs[i] = NewConstantExt(val, gen.fullLen)
-		case windowT:
+		case windowExtT:
 			v := gen.genWindow(val, val)
 			tcase.svecs[i] = v
 			start := normalize(v.interval().Start(), gen.windowMustStartAfter, gen.fullLen)
@@ -293,16 +292,16 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 	resVal := polyext.EvalUnivariate(vals, x)
 
 	switch {
-	case maxType == constantT:
+	case maxType == constantExtT:
 		tcase.expectedValue = NewConstantExt(resVal, gen.fullLen)
-	case maxType == RegularExtT || maxType == windowT || maxType == RotatedExtT:
+	case maxType == RegularExtT || maxType == windowExtT || maxType == RotatedExtT:
 		tcase.expectedValue = NewRegularExt(vectorext.Repeat(resVal, gen.fullLen))
 	}
 
 	return tcase
 }
 
-func (gen *testCaseGen) genValue() fext.Element {
+func (gen *testCaseGenExt) genValue() fext.Element {
 	// May increase the ceil of the generator to increase the probability to pick
 	// an actually random value.
 	switch gen.gen.IntN(4) {
@@ -316,7 +315,7 @@ func (gen *testCaseGen) genValue() fext.Element {
 
 }
 
-func (gen *testCaseGen) genWindow(val, paddingVal fext.Element) *PaddedCircularWindowExt {
+func (gen *testCaseGenExt) genWindow(val, paddingVal fext.Element) *PaddedCircularWindowExt {
 	start := gen.windowMustStartAfter + gen.gen.IntN(gen.windowWithLen)/2
 	maxStop := gen.windowWithLen + gen.windowMustStartAfter
 	winLen := gen.gen.IntN(maxStop - start)
@@ -326,11 +325,11 @@ func (gen *testCaseGen) genWindow(val, paddingVal fext.Element) *PaddedCircularW
 	return NewPaddedCircularWindowExt(vectorext.Repeat(val, winLen), paddingVal, start, gen.fullLen)
 }
 
-func (gen *testCaseGen) genRegularExt(val fext.Element) *RegularExt {
+func (gen *testCaseGenExt) genRegularExt(val fext.Element) *RegularExt {
 	return NewRegularExt(vectorext.Repeat(val, gen.fullLen))
 }
 
-func (gen *testCaseGen) genRotatedExt(val fext.Element) *RotatedExt {
+func (gen *testCaseGenExt) genRotatedExt(val fext.Element) *RotatedExt {
 	offset := gen.gen.IntN(gen.fullLen)
 	return NewRotatedExt(*gen.genRegularExt(val), offset)
 }
