@@ -170,7 +170,7 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 	randPoly := vectorext.ForTest(1, 2, 3, 4)
 	randPoly2 := vectorext.ForTest(1, 1, 1, 1)
 
-	x := fext.NewElement(51, 0, 0, 0)
+	x := fext.NewElement(51, 1, 2, 3)
 
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
@@ -218,7 +218,7 @@ func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
 	n := 4
 	randPoly := vectorext.ForTest(1, 1, 1, 1)
 	randPoly2 := vectorext.ForTest(2, 2, 2, 2)
-	x := fext.NewElement(51, 0, 0, 0)
+	x := fext.NewElement(51, 1, 2, 3)
 
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
@@ -268,8 +268,7 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	randPoly2 := vectorext.ForTest(1, 1, 1, 1)
 	randPoly3 := vectorext.ForTest(1, 2, 3, 4)
 
-	x := fext.NewElement(51, 0, 0, 0)
-
+	x := fext.NewElement(51, 1, 2, 3)
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
 	expectedY3 := polyext.Eval(randPoly3, x)

@@ -2,7 +2,6 @@ package smartvectors
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
-	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -89,40 +88,28 @@ func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.E
 	return quo, rem
 }
 
-// EvaluateLagrange a polynomial in Lagrange basis
-func EvaluateLagrange(v SmartVector, x field.Element, oncoset ...bool) field.Element {
+// EvaluateLagrangeOnFext a polynomial in Lagrange basis at an E4 point
+func EvaluateLagrangeOnFext(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	switch con := v.(type) {
 	case *Constant:
-		return con.val
+		var res fext.Element
+		fext.FromBase(&res, &con.val)
+		return res
 	}
 
 	// Maybe there is an optim for windowed here
 	poly := make([]field.Element, v.Len())
 	v.WriteInSlice(poly)
-	res := fastpoly.EvaluateLagrange(poly, x, oncoset...)
+	res := fastpoly.EvaluateLagrangeOnFext(poly, x, oncoset...)
 	return res
 }
 
-// EvaluateLagrangeOnFext a polynomial in Lagrange basis, where x lives in an extension
-func EvaluateLagrangeOnFext(v SmartVector, x fext.Element, oncoset ...bool) field.Element {
-	switch con := v.(type) {
-	case *Constant:
-		return con.val
-	}
-
-	// Maybe there is an optim for windowed here
-	poly := make([]fext.Element, v.Len())
-	v.WriteInSliceExt(poly)
-	resExt := fastpolyext.EvaluateLagrange(poly, x, oncoset...)
-	return resExt.B0.A0
-}
-
-// BatchEvaluateLagrange polynomials in Lagrange basis
-func BatchEvaluateLagrange(vs []SmartVector, x field.Element, oncoset ...bool) []field.Element {
+// BatchEvaluateLagrangeOnFext polynomials in Lagrange basis at an E4 point
+func BatchEvaluateLagrangeOnFext(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
 
 	var (
 		polys    = make([][]field.Element, len(vs))
-		results  = make([]field.Element, len(vs))
+		results  = make([]fext.Element, len(vs))
 		computed = make([]bool, len(vs))
 	)
 
@@ -132,7 +119,8 @@ func BatchEvaluateLagrange(vs []SmartVector, x field.Element, oncoset ...bool) [
 		for i := start; i < stop; i++ {
 			switch con := vs[i].(type) {
 			case *Constant:
-				results[i] = con.val
+				fext.FromBase(&results[i], &con.val)
+
 				computed[i] = true
 				continue
 			}
@@ -156,7 +144,7 @@ func BatchEvaluateLagrange(vs []SmartVector, x field.Element, oncoset ...bool) [
 	}
 
 	// batch evaluate, and replace already computed values from constant vectors
-	tmp := fastpoly.BatchEvaluateLagrange(polys, x, oncoset...)
+	tmp := fastpoly.BatchEvaluateLagrangeOnFext(polys, x, oncoset...)
 	for i := 0; i < len(polys); i++ {
 		if !computed[i] {
 			results[i].Set(&tmp[i])

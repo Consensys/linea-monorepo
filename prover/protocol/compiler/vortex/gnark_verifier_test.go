@@ -93,11 +93,11 @@ func TestVortexGnarkVerifier(t *testing.T) {
 				// assigned in the define phase
 				if i < numPrecomputeds && round == 0 {
 					p := pr.Spec.Precomputed.MustGet(row.GetColID())
-					ys[round*nPols+i] = smartvectors.EvaluateLagrange(p, x)
+					ys[round*nPols+i] = smartvectors.EvaluateLagrangeOnFext(p, x)
 					continue
 				}
 				p := smartvectors.Rand(polSize)
-				ys[round*nPols+i] = smartvectors.EvaluateLagrange(p, x)
+				ys[round*nPols+i] = smartvectors.EvaluateLagrangeOnFext(p, x)
 				pr.AssignColumn(row.GetColID(), p)
 			}
 		}

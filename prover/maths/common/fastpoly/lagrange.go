@@ -18,11 +18,10 @@ func EvaluateLagrangeOnFext(poly []field.Element, x fext.Element, oncoset ...boo
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
 	}
+	domain := fft.NewDomain(uint64(len(poly)))
 
-	// TODO handle the oncoset properly, using options
 	if len(oncoset) > 0 && oncoset[0] {
-		g := fft.GeneratorFullMultiplicativeGroup()
-		x.MulByElement(&x, &g)
+		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)
 	}
 
 	size := len(poly)
@@ -56,7 +55,6 @@ func EvaluateLagrangeOnFext(poly []field.Element, x fext.Element, oncoset ...boo
 		res.Add(&res, &tmp)
 		li.Mul(&li, &dens[i]).Mul(&li, &extomega)
 	}
-
 	return res
 }
 
@@ -86,10 +84,10 @@ func BatchEvaluateLagrangeOnFext(polys [][]field.Element, x fext.Element, oncose
 		panic(err)
 	}
 
-	// TODO handle the oncoset properly, using options
+	domain := fft.NewDomain(uint64(len(poly)))
+
 	if len(oncoset) > 0 && oncoset[0] {
-		g := fft.GeneratorFullMultiplicativeGroup()
-		x.MulByElement(&x, &g)
+		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)
 	}
 
 	lagrangeAtX := make([]fext.Element, size)
@@ -121,7 +119,6 @@ func BatchEvaluateLagrangeOnFext(polys [][]field.Element, x fext.Element, oncose
 			results[k] = vectorext.ScalarProdByElement(lagrangeAtX, polys[k])
 		}
 	})
-
 	return results
 }
 

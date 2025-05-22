@@ -54,10 +54,10 @@ func TestNaturalize(t *testing.T) {
 
 		x := field.NewElement(5)
 
-		y1 := smartvectors.EvaluateLagrange(p1, x)
-		y2 := smartvectors.EvaluateLagrange(p2, x)
-		y3 := smartvectors.EvaluateLagrange(p3, x)
-		y4 := smartvectors.EvaluateLagrange(p4, x)
+		y1 := smartvectors.EvaluateLagrangeOnFext(p1, x)
+		y2 := smartvectors.EvaluateLagrangeOnFext(p2, x)
+		y3 := smartvectors.EvaluateLagrangeOnFext(p3, x)
+		y4 := smartvectors.EvaluateLagrangeOnFext(p4, x)
 
 		p1s2 := P1S2.GetColAssignment(assi)
 
