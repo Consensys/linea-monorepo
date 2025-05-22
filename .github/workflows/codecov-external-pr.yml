@@ -15,7 +15,7 @@ jobs:
   get-commit-tag:
     if: github.event.workflow_run.head_repository.fork == true
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
-    name: Filter commit changes
+    name: get-commit-tag
     outputs:
       commit-tag: ${{ steps.compute-commit-tag.outputs.COMMIT_TAG }}
     steps:
