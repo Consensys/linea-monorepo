@@ -25,21 +25,28 @@ func TestEvaluateLagrange(t *testing.T) {
 	domain := fft.NewDomain(uint64(size))
 	p := randomPoly(size)
 	pLagrange := make([]field.Element, size)
-	copy(pLagrange, p)
-	domain.FFT(pLagrange, fft.DIF)
-	fft.BitReverse(pLagrange)
 
 	var x field.Element
 	x.SetRandom()
-
 	u := poly.Eval(p, x)
+
+	/*
+		Test without coset
+	*/
+	copy(pLagrange, p)
+	domain.FFT(pLagrange, fft.DIF)
+	fft.BitReverse(pLagrange)
 	v := EvaluateLagrange(pLagrange, x)
+	require.Equal(t, u.String(), v.String())
 
-	tt := u.Equal(&v)
-	if !tt {
-		t.Fatal("Evaluate Lagrange failed")
-	}
-
+	/*
+		Test with coset
+	*/
+	copy(pLagrange, p)
+	domain.FFT(pLagrange, fft.DIF, fft.OnCoset())
+	fft.BitReverse(pLagrange)
+	vOnCoset := EvaluateLagrange(pLagrange, x, true)
+	require.Equal(t, u.String(), vOnCoset.String())
 }
 
 func TestEvaluateLagrangeFext(t *testing.T) {
