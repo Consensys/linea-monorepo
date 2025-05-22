@@ -3,6 +3,7 @@ package poly
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -13,6 +14,21 @@ func Eval(pol []field.Element, x field.Element) field.Element {
 		res.Mul(&res, &x)
 		res.Add(&res, &pol[i])
 	}
+	return res
+}
+
+func EvalOnExtField(p []field.Element, x fext.Element) fext.Element {
+	var res fext.Element
+
+	randpolyext := make([]fext.Element, len(p))
+	for i := 0; i < len(p); i++ {
+		fext.FromBase(&randpolyext[i], &p[i])
+	}
+	for i := len(randpolyext) - 1; i >= 0; i-- {
+		res.Mul(&res, &x)
+		res.Add(&res, &randpolyext[i])
+	}
+
 	return res
 }
 

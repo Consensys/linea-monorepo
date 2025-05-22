@@ -51,8 +51,8 @@ func EvaluateLagrangeOnFext(poly []field.Element, x fext.Element, oncoset ...boo
 
 	var res fext.Element
 	for i := 0; i < size; i++ {
-		li.Mul(&li, &invdens[i])
-		tmp.MulByElement(&li, &poly[i]) // pᵢ *  ωⁱ/n * ( xⁿ-1)/(x-ωⁱ)
+		li.Mul(&li, &invdens[i])        // ( xⁿ-1)/n * 1/(x-ωⁱ)
+		tmp.MulByElement(&li, &poly[i]) // pᵢ *  ( xⁿ-1)/n * 1/(x-ωⁱ)
 		res.Add(&res, &tmp)
 		li.Mul(&li, &dens[i]).Mul(&li, &extomega)
 	}

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 )
@@ -12,14 +13,6 @@ func randomPoly(size int) []field.Element {
 	res := make([]field.Element, size)
 	for i := 0; i < size; i++ {
 		res[i].SetRandom()
-	}
-	return res
-}
-
-func evalCanonical(p []field.Element, x field.Element) field.Element {
-	var res field.Element
-	for i := 0; i < len(p); i++ {
-		res.Mul(&res, &x).Add(&res, &p[len(p)-1-i])
 	}
 	return res
 }
@@ -37,8 +30,31 @@ func TestEvaluateLagrange(t *testing.T) {
 	var x field.Element
 	x.SetRandom()
 
-	u := evalCanonical(p, x)
+	u := poly.Eval(p, x)
 	v := EvaluateLagrange(pLagrange, x)
+
+	tt := u.Equal(&v)
+	if !tt {
+		t.Fatal("Evaluate Lagrange failed")
+	}
+
+}
+
+func TestEvaluateLagrangeFext(t *testing.T) {
+
+	size := 64
+	domain := fft.NewDomain(uint64(size))
+	p := randomPoly(size)
+	pLagrange := make([]field.Element, size)
+	copy(pLagrange, p)
+	domain.FFT(pLagrange, fft.DIF)
+	fft.BitReverse(pLagrange)
+
+	var x fext.Element
+	x.SetRandom()
+
+	u := poly.EvalOnExtField(p, x)
+	v := EvaluateLagrangeOnFext(pLagrange, x)
 
 	tt := u.Equal(&v)
 	if !tt {
@@ -59,12 +75,12 @@ func TestBatchLagrangeEvaluation(t *testing.T) {
 	}
 
 	// sample a random point
-	x := field.RandomElement()
+	x := fext.RandomElement()
 
 	// compute canonical eval
-	canEval := make([]field.Element, nbPoly)
+	canEval := make([]fext.Element, nbPoly)
 	for i := 0; i < nbPoly; i++ {
-		canEval[i] = evalCanonical(polys[i], x)
+		canEval[i] = poly.EvalOnExtField(polys[i], x)
 	}
 
 	// change basis
@@ -75,13 +91,11 @@ func TestBatchLagrangeEvaluation(t *testing.T) {
 	}
 
 	// compute lagrange eval
-	var xExt fext.Element
-	fext.FromBase(&xExt, &x)
-	lagEvalExt := BatchEvaluateLagrangeOnFext(polys, xExt)
+	lagEvalExt := BatchEvaluateLagrangeOnFext(polys, x)
 
 	// check the result
 	for i := 0; i < nbPoly; i++ {
-		if !lagEvalExt[i].B0.A0.Equal(&canEval[i]) {
+		if !lagEvalExt[i].Equal(&canEval[i]) {
 			t.Fatal("Error batch evaluation")
 		}
 	}

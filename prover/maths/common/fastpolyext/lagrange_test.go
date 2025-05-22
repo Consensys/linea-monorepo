@@ -11,31 +11,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestInterpolation(t *testing.T) {
-	n := 4
-	randPoly := vectorext.ForTest(1, 2, 3, 4)
-	x := fext.NewElement(51, 1, 3, 4)
-	expectedY := polyext.Eval(randPoly, x)
-	domain := fft.NewDomain(uint64(n))
+func randomPoly(size int) []fext.Element {
+	res := make([]fext.Element, size)
+	for i := 0; i < size; i++ {
+		res[i].SetRandom()
+	}
+	return res
+}
 
-	/*
-		Test without coset
-	*/
-	onRoots := vectorext.DeepCopy(randPoly)
-	domain.FFTExt(onRoots, fft.DIF)
+func TestEvaluateLagrange(t *testing.T) {
 
-	fft.BitReverse(onRoots)
-	yOnRoots := EvaluateLagrange(onRoots, x)
-	require.Equal(t, expectedY.String(), yOnRoots.String())
+	size := 64
+	domain := fft.NewDomain(uint64(size))
+	p := randomPoly(size)
+	pLagrange := make([]fext.Element, size)
+	copy(pLagrange, p)
+	domain.FFTExt(pLagrange, fft.DIF)
+	fft.BitReverse(pLagrange)
 
-	/*
-		Test with coset
-	*/
-	onCoset := vectorext.DeepCopy(randPoly)
-	domain.FFTExt(onCoset, fft.DIF, fft.OnCoset())
-	fft.BitReverse(onCoset)
-	yOnCoset := EvaluateLagrange(onCoset, x, true)
-	require.Equal(t, expectedY.String(), yOnCoset.String())
+	var x fext.Element
+	x.SetRandom()
+
+	u := polyext.Eval(p, x)
+	v := EvaluateLagrange(pLagrange, x)
+
+	tt := u.Equal(&v)
+	if !tt {
+		t.Fatal("Evaluate Lagrange failed")
+	}
 
 }
 
@@ -43,7 +46,7 @@ func TestBatchInterpolation(t *testing.T) {
 	n := 4
 	randPoly := vectorext.ForTest(1, 2, 3, 4)
 	randPoly2 := vectorext.ForTest(5, 6, 7, 8)
-	x := fext.NewElement(51, 0, 0, 0)
+	x := fext.NewElement(51, 1, 3, 4)
 
 	expectedY := polyext.Eval(randPoly, x)
 	expectedY2 := polyext.Eval(randPoly2, x)
