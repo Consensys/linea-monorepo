@@ -283,6 +283,29 @@ func TestSelfRecursionLinComb(t *testing.T) {
 	}
 }
 
+func TestSelfRecursionLinearHashAndMerkle(t *testing.T) {
+	// Mute the logs
+	// logrus.SetLevel(logrus.FatalLevel)
+	testCases := testCaseGenerator()
+	for _, tc := range testCases {
+		t.Run(tc.Explainer, func(t *testing.T) {
+			logrus.Infof("Testing %s", tc.Explainer)
+			compiled := wizard.Compile(tc.Define,
+				vortex.Compile(
+					2,
+					vortex.WithOptionalSISHashingThreshold(9),
+				),
+				selfrecursion.SelfRecursionLinearHashAndMerkle,
+				dummy.Compile,
+			)
+			proof := wizard.Prove(compiled, tc.Prove)
+			valid := wizard.Verify(compiled, proof)
+
+			require.NoErrorf(t, valid, "the proof did not pass")
+		})
+	}
+}
+
 func TestSelfRecursionLinCombMultiLayered(t *testing.T) {
 	// Mute the logs
 	logrus.SetLevel(logrus.FatalLevel)

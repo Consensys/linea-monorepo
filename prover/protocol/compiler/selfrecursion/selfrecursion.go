@@ -65,3 +65,23 @@ func SelfRecursionProximityCheck(comp *wizard.CompiledIOP) {
 	// Update the self-recursion counter
 	comp.SelfRecursionCount++
 }
+
+// SelfRecursionLinearHashAndMerkle applies the self-recursion
+// compilation steps over a vortex compiled context, but only
+// the linear hash and merkle tree phase
+
+func SelfRecursionLinearHashAndMerkle(comp *wizard.CompiledIOP) {
+	logrus.Trace("started self-recursion (linear hash and merkle) compiler")
+	defer logrus.Trace("finished self-recursion (linear hash and merkle) compiler")
+	ctx := NewSelfRecursionCxt(comp)
+	// We only need to register I(X) for this step
+	ctx.RegistersI()
+	//   - Commits to a column containing the selected entries of
+	//     the linear combination Uα: `Uα,q`
+	//
+	//   - Performs the following lookup constraint:
+	//     `(q,Uα,q)⊂(I,Uα)`
+	ctx.ColSelection()
+	ctx.linearHashAndMerkle()
+	comp.SelfRecursionCount++
+}
