@@ -68,9 +68,10 @@ func EvaluateLagrange(poly []field.Element, x field.Element, oncoset ...bool) fi
 	return res.B0.A0
 }
 
-// Batch version of Interpolate
-func BatchInterpolate(polys [][]field.Element, x fext.Element, oncoset ...bool) []fext.Element {
+// BatchEvaluateLagrange batch version of EvaluateLagrangeOnFext
+func BatchEvaluateLagrange(polys [][]field.Element, x fext.Element, oncoset ...bool) []fext.Element {
 
+	// TODO should we check that the polynomials are of the same size ??
 	results := make([]fext.Element, len(polys))
 	poly := polys[0]
 
@@ -78,68 +79,46 @@ func BatchInterpolate(polys [][]field.Element, x fext.Element, oncoset ...bool) 
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
 	}
 
-	n := len(poly)
+	size := len(poly)
+	omega, err := fft.Generator(uint64(size))
+	if err != nil {
+		// TODO handle that properly
+		panic(err)
+	}
 
-	domain := fft.NewDomain(uint64(n))
-	denominator := make([]fext.Element, n)
-
-	one := fext.One()
-
+	// TODO handle the oncoset properly, using options
 	if len(oncoset) > 0 && oncoset[0] {
-		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)
+		g := fft.GeneratorFullMultiplicativeGroup()
+		x.MulByElement(&x, &g)
 	}
 
-	/*
-		First, we compute the denominator,
-
-		D_x = \frac{X}{x} - g for x ∈ H
-			where H is the subgroup of the roots of unity (not the coset)
-			and g a field element such that gH is the coset
-	*/
-	denominator[0] = x
-	for i := 1; i < n; i++ {
-		denominator[i].MulByElement(&denominator[i-1], &domain.GeneratorInv)
+	lagrangeAtX := make([]fext.Element, size)
+	var accw, one, extomega fext.Element
+	one.SetOne()
+	accw.SetOne()
+	fext.FromBase(&extomega, &omega)
+	dens := make([]fext.Element, size) // [x-1, x-ω, x-ω², ...]
+	for i := 0; i < size; i++ {
+		dens[i].Sub(&x, &accw)
+		accw.Mul(&accw, &extomega)
 	}
+	invdens := fext.BatchInvert(dens) // [1/x-1, 1/x-ω, 1/x-ω², ...]
+	var tmp fext.Element
+	tmp.Exp(x, big.NewInt(int64(size))).Sub(&tmp, &one) // xⁿ-1
+	fext.SetInt64(&lagrangeAtX[0], int64(size))
+	lagrangeAtX[0].Inverse(&lagrangeAtX[0])
+	lagrangeAtX[0].Mul(&tmp, &lagrangeAtX[0])        // 1/n * (xⁿ-1)
+	lagrangeAtX[0].Mul(&lagrangeAtX[0], &invdens[0]) // 1/n * (xⁿ-1)/(x-1)
 
-	for i := 0; i < n; i++ {
-		denominator[i].Sub(&denominator[i], &one)
-
-		if denominator[i].IsZero() {
-			// edge-case : x is a root of unity of the domain. In this case, we can just return
-			// the associated value for poly
-
-			for k := range polys {
-				fext.FromBase(&results[k], &polys[k][i])
-			}
-			return results
-		}
+	for i := 1; i < size; i++ {
+		lagrangeAtX[i].Mul(&lagrangeAtX[i-1], &dens[i-1]).
+			Mul(&lagrangeAtX[i], &invdens[i]).
+			Mul(&lagrangeAtX[i], &extomega)
 	}
-
-	/*
-		Then, we compute the sum between the inverse of the denominator
-		and the poly
-
-		∑_{x ∈ H}\frac{P(gx)}{D_x}
-	*/
-	denominator = fext.BatchInvert(denominator)
-
-	// Precompute the value of xⁿ once outside the loop
-	var factor fext.Element
-	factor.Exp(x, big.NewInt(int64(n)))
-	factor.Sub(&factor, &one)
-	factor.MulByElement(&factor, &domain.CardinalityInv)
 
 	parallel.Execute(len(polys), func(start, stop int) {
 		for k := start; k < stop; k++ {
-
-			// Compute the scalar product.
-			res := vectorext.ScalarProdByElement(denominator, polys[k])
-
-			// Multiply res with factor.
-			res.Mul(&res, &factor)
-
-			// Store the result.
-			results[k] = res
+			results[k] = vectorext.ScalarProdByElement(lagrangeAtX, polys[k])
 		}
 	})
 
