@@ -70,4 +70,4 @@ dependencies {
   testImplementation 'org.awaitility:awaitility'
 }
 
-apply from: rootProject.file("gradle/dist.gradle")
+apply from: project.parent.file("gradle/dist.gradle")
