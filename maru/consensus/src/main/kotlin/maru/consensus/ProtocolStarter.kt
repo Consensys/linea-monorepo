@@ -24,7 +24,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class ProtocolStarterBlockHandler(
   private val protocolStarter: ProtocolStarter,
-) : NewBlockHandler<Unit> {
+) : NewBlockHandler {
   override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<Unit> {
     val blockMetadata =
       BlockMetadata(

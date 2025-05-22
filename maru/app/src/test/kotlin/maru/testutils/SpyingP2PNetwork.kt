@@ -17,40 +17,38 @@ package maru.testutils
 
 import java.util.concurrent.CopyOnWriteArrayList
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
+import maru.p2p.Message
+import maru.p2p.MessageType
+import maru.p2p.P2PNetwork
+import maru.p2p.SealedBlockHandler
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.messagewrappers.BftMessage
-import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.consensus.qbft.core.messagedata.CommitMessageData
 import org.hyperledger.besu.consensus.qbft.core.messagedata.PrepareMessageData
 import org.hyperledger.besu.consensus.qbft.core.messagedata.ProposalMessageData
 import org.hyperledger.besu.consensus.qbft.core.messagedata.RoundChangeMessageData
-import org.hyperledger.besu.datatypes.Address
-import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData
+import tech.pegasys.teku.infrastructure.async.SafeFuture
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
-class SpyingValidatorMulticaster(
-  val validatorMulticaster: ValidatorMulticaster,
-) : ValidatorMulticaster {
+class SpyingP2PNetwork(
+  val p2pNetwork: P2PNetwork,
+) : P2PNetwork {
+  companion object {
+    private fun Message<*>.toBesuMessageData(): BesuMessageData {
+      require(this.type == MessageType.QBFT) {
+        "Unsupported message type: ${this.type}"
+      }
+      require(this.payload is BesuMessageData) {
+        "Message is QBFT, but its payload is of type: ${this.payload.javaClass}"
+      }
+      return this.payload as BesuMessageData
+    }
+  }
+
   private val log = LogManager.getLogger(this.javaClass)
   val emittedMessages = CopyOnWriteArrayList<BftMessage<*>>()
 
-  override fun send(message: MessageData) {
-    val decodedMessage = decodedMessage(message)
-    log.debug("Got new message {}", decodedMessage)
-    emittedMessages.add(decodedMessage)
-    validatorMulticaster.send(message)
-  }
-
-  override fun send(
-    message: MessageData,
-    denylist: Collection<Address>,
-  ) {
-    val decodedMessage = decodedMessage(message)
-    log.debug("Got new message {}", decodedMessage)
-    emittedMessages.add(decodedMessage)
-    validatorMulticaster.send(message, denylist)
-  }
-
-  private fun decodedMessage(message: MessageData): BftMessage<*> =
+  private fun decodedMessage(message: BesuMessageData): BftMessage<*> =
     when (message) {
       is CommitMessageData -> message.decode()
       is PrepareMessageData -> message.decode()
@@ -58,4 +56,19 @@ class SpyingValidatorMulticaster(
       is RoundChangeMessageData -> message.decode(QbftBlockCodecAdapter)
       else -> throw IllegalArgumentException("Unknown message $message, don't know how to decode!")
     }
+
+  override fun start(): SafeFuture<Unit> = SafeFuture.completedFuture(Unit)
+
+  override fun stop(): SafeFuture<Unit> = SafeFuture.completedFuture(Unit)
+
+  override fun broadcastMessage(message: Message<*>) {
+    val decodedMessage = decodedMessage(message.toBesuMessageData())
+    log.debug("Got new message {}", decodedMessage)
+    emittedMessages.add(decodedMessage)
+    p2pNetwork.broadcastMessage(message)
+  }
+
+  override fun subscribeToBlocks(subscriber: SealedBlockHandler) {
+    p2pNetwork.subscribeToBlocks(subscriber)
+  }
 }

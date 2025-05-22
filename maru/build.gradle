@@ -50,7 +50,7 @@ allprojects {
     // spotless check applied to build.gradle (groovy) files
     groovyGradle {
       target '*.gradle'
-      greclipse('4.26').configFile(rootProject.file('gradle/spotless/greclipse.properties'))
+      greclipse('4.31').configFile(rootProject.file('gradle/spotless/greclipse.properties'))
       endWithNewline()
     }
   }
@@ -97,7 +97,7 @@ allprojects {
   }
 
   // IntelliJ workaround to allow repeated debugging of unchanged code
-  tasks.withType(JavaExec) {
+  tasks.withType(JavaExec).configureEach {
     if (it.name.contains(".")) {
       outputs.upToDateWhen { false }
     }
@@ -165,39 +165,6 @@ allprojects {
 subprojects {
   apply plugin: "jacoco"
 
-  if (file('src/integration-test').directory) {
-    sourceSets {
-      integrationTest {
-        java {
-          compileClasspath += main.output
-          runtimeClasspath += main.output
-          srcDir file('src/integration-test/java')
-        }
-        resources.srcDir file('src/integration-test/resources')
-      }
-    }
-
-    //    if (file('src/test-support').directory) {
-    //      dependencies { integrationTestImplementation sourceSets.testSupport.output }
-    //    }
-
-    task integrationTest(type: Test, dependsOn: ["compileTestJava"]) {
-      group = "verification"
-      description = "Runs the Besu integration tests"
-
-      jvmArgs = [
-        '--add-opens',
-        'java.base/java.util=ALL-UNNAMED',
-        '--add-opens',
-        'java.base/java.util.concurrent=ALL-UNNAMED'
-      ]
-      testClassesDirs = sourceSets.integrationTest.output.classesDirs
-      classpath = sourceSets.integrationTest.runtimeClasspath
-      outputs.upToDateWhen { false }
-      useJUnitPlatform {}
-    }
-  }
-
   tasks.withType(Test) {
     // If GRADLE_MAX_TEST_FORKS is not set, use half the available processors
     maxParallelForks = (System.getenv('GRADLE_MAX_TEST_FORKS') ?: (Runtime.runtime.availableProcessors().intdiv(2) ?: 1)).toInteger()
@@ -219,7 +186,7 @@ subprojects {
     project.tasks.jacocoTestReport {
       if (project.tasks.findByName('acceptanceTest')) {
         executionData(tasks.named("acceptanceTest").get())
-        sourceSets(sourceSets["acceptanceTest"])
+        sourceSets(sourceSets.named("acceptanceTest").get())
       }
     }
 

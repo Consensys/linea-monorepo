@@ -36,7 +36,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class ElDelegatedConsensusFactory(
   private val ethereumJsonRpcClient: Web3j,
-  private val newBlockHandler: NewBlockHandler<*>,
+  private val newBlockHandler: NewBlockHandler,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): ElDelegatedConsensus =
     ElDelegatedConsensus(
@@ -48,7 +48,7 @@ class ElDelegatedConsensusFactory(
 
 class ElDelegatedConsensus(
   private val ethereumJsonRpcClient: Web3j,
-  private val onNewBlock: NewBlockHandler<*>,
+  private val onNewBlock: NewBlockHandler,
   private val blockTimeSeconds: Int,
 ) : Protocol {
   // Only for comparisons in the tests to set common ground

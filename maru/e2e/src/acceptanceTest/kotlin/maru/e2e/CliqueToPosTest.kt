@@ -37,7 +37,6 @@ import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.Validator
-import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.mappers.Mappers.toDomain
 import maru.serialization.rlp.RLPSerializers
 import maru.testutils.Web3jTransactionsHelper
@@ -213,7 +212,7 @@ class CliqueToPosTest {
       }
   }
 
-  private fun buildBlockImportHandler(engineApiConfig: ApiEndpointConfig): NewBlockHandler<ForkChoiceUpdatedResult> =
+  private fun buildBlockImportHandler(engineApiConfig: ApiEndpointConfig): NewBlockHandler =
     FollowerBeaconBlockImporter.create(Helpers.buildExecutionEngineClient(engineApiConfig, ElFork.Prague))
 
   private fun waitTillTimestamp(timestamp: Long) {

@@ -41,9 +41,9 @@ fun interface BeaconBlockImporter {
 class FollowerBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
-) : NewBlockHandler<ForkChoiceUpdatedResult> {
+) : NewBlockHandler {
   companion object {
-    fun create(executionLayerEngineApiClient: ExecutionLayerEngineApiClient): NewBlockHandler<ForkChoiceUpdatedResult> {
+    fun create(executionLayerEngineApiClient: ExecutionLayerEngineApiClient): NewBlockHandler {
       val executionLayerManager =
         JsonRpcExecutionLayerManager(
           executionLayerEngineApiClient = executionLayerEngineApiClient,

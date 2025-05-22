@@ -42,7 +42,7 @@ class TransactionalSealedBeaconBlockImporterTest {
   private var beaconBlockImporterResponse =
     SafeFuture.completedFuture(DataGenerators.randomValidForkChoiceUpdatedResult())
 
-  private lateinit var qbftBlockImporter: SealedBeaconBlockImporter
+  private lateinit var qbftBlockImporter: TransactionalSealedBeaconBlockImporter
   private lateinit var initialBeaconState: BeaconState
 
   @BeforeEach

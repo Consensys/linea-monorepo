@@ -24,7 +24,7 @@ import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 fun interface SealedBeaconBlockImporter {
-  fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<ForkChoiceUpdatedResult>
+  fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*>
 }
 
 /**
@@ -64,4 +64,15 @@ class TransactionalSealedBeaconBlockImporter(
       return SafeFuture.failedFuture(e)
     }
   }
+}
+
+/**
+ * Verifies the seal and delegates to another beaconBlockImporter
+ */
+class VerifyingSealedBeaconBlockImporter(
+  private val beaconBlockImporter: SealedBeaconBlockImporter,
+) : SealedBeaconBlockImporter {
+  // TODO: implement seal verification
+  override fun importBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> =
+    beaconBlockImporter.importBlock(sealedBeaconBlock)
 }
