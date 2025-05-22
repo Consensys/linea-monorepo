@@ -10,7 +10,7 @@ import (
 // Embedding
 type Element = extensions.E4
 
-func NewElement(v1 uint32, v2 uint32, v3 uint32, v4 uint32) Element {
+func NewElement(v1, v2, v3, v4 int64) Element {
 	var z Element
 	z.B0.A0.SetInt64(int64(v1))
 	z.B0.A1.SetInt64(int64(v2))
@@ -25,8 +25,8 @@ func NewFromString(s string) (res Element) {
 	return res
 }
 
-// var RootPowers = []int{1, -11} // ??
-var RootPowers = []int{1, 3} // ??
+// var RootPowers = []int{1, 3}, v^2=u and u^2=3.
+var RootPowers = []int{1, 3}
 
 func BatchInvert(a []Element) []Element {
 	return extensions.BatchInvertE4(a)

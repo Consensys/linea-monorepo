@@ -311,7 +311,7 @@ func (gen *testCaseGen) genValue() fext.Element {
 	case 1:
 		return fext.One()
 	default:
-		return fext.NewElement(uint32(gen.gen.Uint64()), uint32(0), uint32(0), uint32(0))
+		return fext.NewElement(int64(gen.gen.Uint64()), int64(0), int64(0), int64(0))
 	}
 
 }
