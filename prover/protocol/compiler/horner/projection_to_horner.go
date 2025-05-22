@@ -57,9 +57,9 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 
 		var (
 			qRound     = comp.QueriesNoParams.Round(qName)
-			widthA     = len(projection.Inp.ColumnsA)
-			widthB     = len(projection.Inp.ColumnsB)
-			numCols    = len(projection.Inp.ColumnsA[0])
+			widthA     = len(projection.Inp.A.Columns)
+			widthB     = len(projection.Inp.B.Columns)
+			numCols    = len(projection.Inp.A.Columns[0])
 			as         = make([]*sym.Expression, widthA)
 			bs         = make([]*sym.Expression, widthB)
 			selectorsA = make([]ifaces.Column, widthA)
@@ -76,28 +76,28 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 
 		for i := 0; i < widthA; i++ {
 
-			as[widthA-i-1] = sym.NewVariable(projection.Inp.ColumnsA[i][0])
+			as[widthA-i-1] = sym.NewVariable(projection.Inp.A.Columns[i][0])
 			if numCols > 1 {
-				as[widthA-i-1] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsA[i])
+				as[widthA-i-1] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.A.Columns[i])
 			}
 
 			// The reversal in the assignment is required due to the order
 			// in which the [Horner] query iterates over the coefficient in
 			// the multi-ary settings.
-			selectorsA[widthA-i-1] = projection.Inp.FiltersA[i]
+			selectorsA[widthA-i-1] = projection.Inp.B.Filters[i]
 		}
 
 		for i := 0; i < widthB; i++ {
 
-			bs[widthB-i-1] = sym.NewVariable(projection.Inp.ColumnsB[i][0])
+			bs[widthB-i-1] = sym.NewVariable(projection.Inp.B.Columns[i][0])
 			if numCols > 1 {
-				bs[widthB-i-1] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.ColumnsB[i])
+				bs[widthB-i-1] = wizardutils.RandLinCombColSymbolic(gamma, projection.Inp.B.Columns[i])
 			}
 
 			// The reversal in the assignment is required due to the order
 			// in which the [Horner] query iterates over the coefficient in
 			// the multi-ary settings.
-			selectorsB[widthB-i-1] = projection.Inp.FiltersB[i]
+			selectorsB[widthB-i-1] = projection.Inp.B.Filters[i]
 		}
 
 		parts = append(
