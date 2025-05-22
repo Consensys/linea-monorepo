@@ -193,34 +193,3 @@ func deserializeManuallyShifted(value json.RawMessage, mode Mode, comp *wizard.C
 	ifaceValue.Set(reflect.ValueOf(shifted))
 	return ifaceValue, nil
 }
-
-// GetAllColIDs returns all column IDs for a column, including embedded fields.
-func GetAllColIDs(col ifaces.Column) []ifaces.ColID {
-	var ids []ifaces.ColID
-	ids = append(ids, col.GetColID())
-
-	v := reflect.ValueOf(col)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-	if v.Kind() != reflect.Struct {
-		return ids
-	}
-
-	t := v.Type()
-	for i := 0; i < t.NumField(); i++ {
-		field := v.Field(i)
-		if !t.Field(i).IsExported() {
-			continue
-		}
-		if colField, ok := field.Interface().(ifaces.Column); ok {
-			ids = append(ids, GetAllColIDs(colField)...)
-		}
-		if field.Kind() == reflect.Struct {
-			if nestedCol, ok := field.Interface().(ifaces.Column); ok {
-				ids = append(ids, GetAllColIDs(nestedCol)...)
-			}
-		}
-	}
-	return ids
-}

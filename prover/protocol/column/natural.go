@@ -1,6 +1,8 @@
 package column
 
 import (
+	"reflect"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -102,4 +104,47 @@ func (n Natural) SetPragma(pragma string, data any) {
 // GetPragma returns the pragma for a given column name.
 func (n Natural) GetPragma(pragma string) (any, bool) {
 	return n.store.GetPragma(n.ID, pragma)
+}
+
+// GetAllColIDs recursively retrieves all column IDs from a column, including IDs from embedded fields.
+// It handles both the column itself and any nested fields that implement the `ifaces.Column` interface.
+func GetAllColIDs(col ifaces.Column) []ifaces.ColID {
+	// Initialize the slice of column IDs and add the ID of the current column.
+	var ids []ifaces.ColID
+	ids = append(ids, col.GetColID())
+
+	// Use reflection to inspect the column's type and value.
+	v := reflect.ValueOf(col)
+	// If the column is a pointer, dereference it to access the underlying value.
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	// If the column is not a struct, return the IDs collected so far.
+	if v.Kind() != reflect.Struct {
+		return ids
+	}
+
+	// Iterate over all fields of the struct using reflection.
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		field := v.Field(i)
+		// Skip unexported fields as they cannot be accessed.
+		if !t.Field(i).IsExported() {
+			continue
+		}
+
+		// If the field implements the ifaces.Column interface, recursively retrieve its column IDs.
+		if colField, ok := field.Interface().(ifaces.Column); ok {
+			ids = append(ids, GetAllColIDs(colField)...)
+		}
+
+		// If the field is a struct, check again if it implements the ifaces.Column interface.
+		if field.Kind() == reflect.Struct {
+			if nestedCol, ok := field.Interface().(ifaces.Column); ok {
+				ids = append(ids, GetAllColIDs(nestedCol)...)
+			}
+		}
+	}
+	// Return the accumulated column IDs.
+	return ids
 }

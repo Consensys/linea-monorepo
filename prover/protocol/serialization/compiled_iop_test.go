@@ -40,5 +40,4 @@ func TestCompiled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not encode: %v", err.Error())
 	}
-
 }
