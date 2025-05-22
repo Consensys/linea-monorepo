@@ -12,7 +12,6 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-import de.undercouch.gradle.tasks.download.Download
 
 tasks.register('sourcesJar', Jar) {
   dependsOn classes
