@@ -358,6 +358,29 @@ func processRound(
 	run *wizard.ProverRuntime,
 	openingIndices []int,
 ) {
+	// If there are non SIS rounds, we need to fetch the
+	// non SIS opened columns
+	var (
+		nonSisOpenedCols     [][][]field.Element
+		nonSisOpenedColsName string
+		nonSisRoundCount     = 0
+	)
+	if a.numNonSisRound > 0 {
+		nonSisOpenedColsName = a.ctx.VortexCtx.SelectedColumnNonSISName()
+		nonSisOpenedColsSV, found := run.State.TryGet(nonSisOpenedColsName)
+		if !found {
+			utils.Panic("nonSisOpenedColsName %v not found", nonSisOpenedColsName)
+		}
+		nonSisOpenedCols = nonSisOpenedColsSV.([][][]field.Element)
+		// Note nonSisOpenedCols contains the precomputed columns also if
+		// SIS is applied to the precomputed.
+		// However, we already have it, so we need to exclude it
+		if a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+			nonSisOpenedCols = nonSisOpenedCols[1:]
+		}
+	}
+
+	// The SIS and non SIS rounds are processed
 	for round := 0; round <= lmp.totalNumRounds; round++ {
 		if a.ctx.VortexCtx.RoundStatus[round] == vortex.IsSISApplied {
 			colSisHashName := a.ctx.VortexCtx.SisHashName(round)
@@ -392,19 +415,7 @@ func processRound(
 				utils.Panic("colMimcHashName %v not found", colMimcHashName)
 			}
 			colMimcHash := colMimcHashSV.([]field.Element)
-			// Fetch the MiMC preimages
-			nonSisOpenedColsName := a.ctx.VortexCtx.SelectedColumnNonSISName()
-			nonSisOpenedColsSV, found := run.State.TryGet(nonSisOpenedColsName)
-			if !found {
-				utils.Panic("nonSisOpenedColsName %v not found", nonSisOpenedColsName)
-			}
-			nonSisOpenedCols := nonSisOpenedColsSV.([][][]field.Element)
-			// Note nonSisOpenedCols contains the precomputed columns also if
-			// SIS is applied to the precomputed.
-			// However, we already have it, so we need to exclude it
-			if a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
-				nonSisOpenedCols = nonSisOpenedCols[1:]
-			}
+
 			// Fetch the root for the round
 			rooth := a.ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
 			mimcHashValues := make([]field.Element, 0, lmp.numOpenedCol)
@@ -413,7 +424,7 @@ func processRound(
 				srcStart := selectedCol
 				// MiMC hash is a single value
 				mimcHash := colMimcHash[srcStart : srcStart+1]
-				mimcPreimage := nonSisOpenedCols[round][i]
+				mimcPreimage := nonSisOpenedCols[nonSisRoundCount][i]
 				leaf := mimcHash[0]
 				insertAt := lmp.committedRound*lmp.numOpenedCol + i
 				lmp.merkleLeaves[insertAt] = leaf
@@ -426,11 +437,12 @@ func processRound(
 			lmp.nonSisLeaves = append(lmp.nonSisLeaves, mimcHashValues)
 			lmp.nonSisHashPreimages = append(lmp.nonSisHashPreimages, mimcHashPreimages)
 			run.State.TryDel(colMimcHashName)
-			run.State.TryDel(nonSisOpenedColsName)
 			lmp.committedRound++
-
+			nonSisRoundCount++
 		} else if a.ctx.VortexCtx.RoundStatus[round] == vortex.IsEmpty {
 			continue
 		}
 	}
+	// We can delete the non SIS opened columns now
+	run.State.TryDel(nonSisOpenedColsName)
 }
