@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -160,6 +161,8 @@ func init() {
 	serialization.RegisterImplementation(constraint.BlueprintSparseR1CMul{})
 	serialization.RegisterImplementation(constraint.BlueprintSparseR1CBool{})
 	serialization.RegisterImplementation(constraint.PlonkCommitments{})
+
+	serialization.RegisterImplementation(fr.Element{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It

@@ -479,17 +479,15 @@ func serializeFiatShamirSetup(comp *wizard.CompiledIOP, raw *rawCompiledIOP) err
 func serializeExtraData(comp *wizard.CompiledIOP, raw *rawCompiledIOP) error {
 	if comp.ExtraData == nil {
 		raw.ExtraData = json.RawMessage(NilString)
-		logrus.Debug("Serialized ExtraData: nil or empty")
 		return nil
 	}
 
-	data, err := json.Marshal(comp.ExtraData)
+	data, err := serializeMap(reflect.ValueOf(comp.ExtraData), DeclarationMode)
 	if err != nil {
 		return fmt.Errorf("serialize ExtraData: %w", err)
 	}
 
 	raw.ExtraData = data
-	logrus.Debugf("Serialized ExtraData: %d bytes", len(data))
 	return nil
 }
 
@@ -499,24 +497,15 @@ func serializeExtraData(comp *wizard.CompiledIOP, raw *rawCompiledIOP) error {
 func deserializeExtraData(raw *rawCompiledIOP, comp *wizard.CompiledIOP) error {
 	if raw.ExtraData == nil || bytes.Equal(raw.ExtraData, []byte(NilString)) {
 		comp.ExtraData = nil
-		logrus.Debug("Deserialized ExtraData: nil")
 		return nil
 	}
 
-	var extraData map[string]any
-	if err := json.Unmarshal(raw.ExtraData, &extraData); err != nil {
-		return fmt.Errorf("deserialize ExtraData: %w", err)
+	deSerExtradata, err := deserializeMap(raw.ExtraData, DeclarationMode, reflect.TypeOf(comp.ExtraData), comp)
+	if err != nil {
+		return fmt.Errorf("deserialize Extradata: %w", err)
 	}
 
-	// Special case: key= VERIFYING_KEY
-	// for key, val := range extraData {
-	// 	if key == "VERIFYING_KEY" {
-	// 		extraData[key] = val.(fr.Element)
-	// 	}
-	// }
-
-	comp.ExtraData = extraData
-	logrus.Debugf("Deserialized ExtraData: %d entries", len(extraData))
+	comp.ExtraData = deSerExtradata.Interface().(map[string]any)
 	return nil
 }
 
