@@ -11,17 +11,17 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
-// EvaluateLagrangeOnFext computes ∑_i L_i(x), i.e. evaluates p interpreted as a polynomial in Lagrange form
+// EvaluateLagrange computes ∑_i L_i(x), i.e. evaluates p interpreted as a polynomial in Lagrange form
 func EvaluateLagrange(poly []fext.Element, x fext.Element, oncoset ...bool) fext.Element {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
 	}
 
-	// TODO handle the oncoset properly, using options
+	domain := fft.NewDomain(uint64(len(poly)))
+
 	if len(oncoset) > 0 && oncoset[0] {
-		g := fft.GeneratorFullMultiplicativeGroup()
-		x.MulByElement(&x, &g)
+		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)
 	}
 
 	size := len(poly)
@@ -60,8 +60,8 @@ func EvaluateLagrange(poly []fext.Element, x fext.Element, oncoset ...bool) fext
 
 }
 
-// Batch version of Interpolate
-func BatchInterpolate(polys [][]fext.Element, x fext.Element, oncoset ...bool) []fext.Element {
+// Batch version of EvaluateLagrange
+func BatchEvaluateLagrange(polys [][]fext.Element, x fext.Element, oncoset ...bool) []fext.Element {
 
 	results := make([]fext.Element, len(polys))
 	poly := polys[0]

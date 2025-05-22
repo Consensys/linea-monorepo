@@ -25,119 +25,87 @@ func TestEvaluateLagrange(t *testing.T) {
 	domain := fft.NewDomain(uint64(size))
 	p := randomPoly(size)
 	pLagrange := make([]fext.Element, size)
-	copy(pLagrange, p)
-	domain.FFTExt(pLagrange, fft.DIF)
-	fft.BitReverse(pLagrange)
 
 	var x fext.Element
 	x.SetRandom()
-
 	u := polyext.Eval(p, x)
-	v := EvaluateLagrange(pLagrange, x)
 
-	tt := u.Equal(&v)
-	if !tt {
-		t.Fatal("Evaluate Lagrange failed")
+	/*
+		Test without coset
+	*/
+	copy(pLagrange, p)
+	domain.FFTExt(pLagrange, fft.DIF)
+	fft.BitReverse(pLagrange)
+	v := EvaluateLagrange(pLagrange, x)
+	require.Equal(t, u.String(), v.String())
+
+	/*
+		Test with coset
+	*/
+	copy(pLagrange, p)
+	domain.FFTExt(pLagrange, fft.DIF, fft.OnCoset())
+	fft.BitReverse(pLagrange)
+	vOnCoset := EvaluateLagrange(pLagrange, x, true)
+	require.Equal(t, u.String(), vOnCoset.String())
+}
+
+func TestBatchEvaluateLagrangeOnFext(t *testing.T) {
+
+	sizePoly := 64
+	nbPoly := 20
+
+	// sample a bunch of polynomials
+	polys := make([][]fext.Element, nbPoly)
+	for i := 0; i < nbPoly; i++ {
+		polys[i] = randomPoly(sizePoly)
 	}
 
-}
+	// sample a random point
+	x := fext.RandomElement()
 
-func TestBatchInterpolation(t *testing.T) {
-	n := 4
-	randPoly := vectorext.ForTest(1, 2, 3, 4)
-	randPoly2 := vectorext.ForTest(5, 6, 7, 8)
-	x := fext.NewElement(51, 1, 3, 4)
-
-	expectedY := polyext.Eval(randPoly, x)
-	expectedY2 := polyext.Eval(randPoly2, x)
-	domain := fft.NewDomain(uint64(n))
+	Eval := make([]fext.Element, nbPoly)
+	for i := 0; i < nbPoly; i++ {
+		Eval[i] = polyext.Eval(polys[i], x)
+	}
+	d := fft.NewDomain(uint64(sizePoly))
 
 	/*
 		Test without coset
 	*/
-	onRoots := vectorext.DeepCopy(randPoly)
-	onRoots2 := vectorext.DeepCopy(randPoly2)
-	polys := make([][]fext.Element, 2)
-	polys[0] = onRoots
-	polys[1] = onRoots2
+	onRoots := make([][]fext.Element, nbPoly)
 
-	domain.FFTExt(polys[0], fft.DIF)
-	domain.FFTExt(polys[1], fft.DIF)
-	fft.BitReverse(polys[0])
-	fft.BitReverse(polys[1])
+	for i := 0; i < nbPoly; i++ {
+		onRoots[i] = vectorext.DeepCopy(polys[i])
 
-	yOnRoots := BatchInterpolate(polys, x)
-	require.Equal(t, expectedY.String(), yOnRoots[0].String())
-	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
+		d.FFTExt(onRoots[i], fft.DIF)
+		fft.BitReverse(onRoots[i])
+	}
 
-	/*
-		Test with coset
-	*/
-	onCoset := vectorext.DeepCopy(randPoly)
-	onCoset2 := vectorext.DeepCopy(randPoly2)
-	onCosets := make([][]fext.Element, 2)
-	onCosets[0] = onCoset
-	onCosets[1] = onCoset2
+	// compute lagrange eval
+	lagEvalExt := BatchEvaluateLagrange(onRoots, x)
 
-	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
-	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
-	fft.BitReverse(onCosets[0])
-	fft.BitReverse(onCosets[1])
-
-	yOnCosets := BatchInterpolate(onCosets, x, true)
-	require.Equal(t, expectedY.String(), yOnCosets[0].String())
-	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
-
-}
-
-// edge-case : x is a root of unity of the domain. In this case, we can just return
-// the associated value for poly
-func TestBatchInterpolationRootOfUnity(t *testing.T) {
-	n := 4
-	randPoly := vectorext.ForTest(1, 2, 3, 4)
-	randPoly2 := vectorext.ForTest(5, 6, 7, 8)
-
-	// define x as a root of unity
-	x := fext.One()
-
-	expectedY := polyext.Eval(randPoly, x)
-	expectedY2 := polyext.Eval(randPoly2, x)
-	domain := fft.NewDomain(uint64(n))
-
-	/*
-		Test without coset
-	*/
-	onRoots := vectorext.DeepCopy(randPoly)
-	onRoots2 := vectorext.DeepCopy(randPoly2)
-	polys := make([][]fext.Element, 2)
-	polys[0] = onRoots
-	polys[1] = onRoots2
-
-	domain.FFTExt(polys[0], fft.DIF)
-	domain.FFTExt(polys[1], fft.DIF)
-	fft.BitReverse(polys[0])
-	fft.BitReverse(polys[1])
-
-	yOnRoots := BatchInterpolate(polys, x)
-	require.Equal(t, expectedY.String(), yOnRoots[0].String())
-	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
+	// check the result
+	for i := 0; i < nbPoly; i++ {
+		require.Equal(t, Eval[i].String(), lagEvalExt[i].String())
+	}
 
 	/*
 		Test with coset
 	*/
-	onCoset := vectorext.DeepCopy(randPoly)
-	onCoset2 := vectorext.DeepCopy(randPoly2)
-	onCosets := make([][]fext.Element, 2)
-	onCosets[0] = onCoset
-	onCosets[1] = onCoset2
+	onCosets := make([][]fext.Element, nbPoly)
 
-	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
-	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
-	fft.BitReverse(onCosets[0])
-	fft.BitReverse(onCosets[1])
+	for i := 0; i < nbPoly; i++ {
+		onCosets[i] = vectorext.DeepCopy(polys[i])
 
-	yOnCosets := BatchInterpolate(onCosets, x, true)
-	require.Equal(t, expectedY.String(), yOnCosets[0].String())
-	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
+		d.FFTExt(onCosets[i], fft.DIF, fft.OnCoset())
+		fft.BitReverse(onCosets[i])
+	}
 
+	// compute lagrange eval
+	lagEvalExtcoset := BatchEvaluateLagrange(onCosets, x, true)
+
+	// check the result
+	for i := 0; i < nbPoly; i++ {
+		require.Equal(t, Eval[i].String(), lagEvalExtcoset[i].String())
+	}
 }
