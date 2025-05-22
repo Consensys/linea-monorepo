@@ -208,13 +208,13 @@ type Ctx struct {
 
 	CommittedRowsCount int
 	// Committed rows count for the SIS rounds only
-	CommittedRowsCountSIS int
-	NumCols               int
-	MaxCommittedRound     int
-	MaxCommittedRoundSIS   int
+	CommittedRowsCountSIS   int
+	NumCols                 int
+	MaxCommittedRound       int
+	MaxCommittedRoundSIS    int
 	MaxCommittedRoundNonSIS int
-	VortexParams          *vortex.Params
-	SisParams             *ringsis.Params
+	VortexParams            *vortex.Params
+	SisParams               *ringsis.Params
 	// Optional parameter
 	NumOpenedCol int
 
@@ -315,14 +315,14 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 				Tree              *smt.Tree
 				DhWithMerkle      []field.Element
 			}
-			Alpha         coin.Info
-			Ualpha        ifaces.Column
-			Q             coin.Info
-			OpenedColumns []ifaces.Column
-			OpenedSISColumns []ifaces.Column
+			Alpha               coin.Info
+			Ualpha              ifaces.Column
+			Q                   coin.Info
+			OpenedColumns       []ifaces.Column
+			OpenedSISColumns    []ifaces.Column
 			OpenedNonSISColumns []ifaces.Column
-			MerkleProofs  ifaces.Column
-			MerkleRoots   []ifaces.Column
+			MerkleProofs        ifaces.Column
+			MerkleRoots         []ifaces.Column
 		}{},
 		// Declare the by rounds/sis rounds/non-sis rounds commitments
 		CommitmentsByRounds:       collection.NewVecVec[ifaces.ColID](),
@@ -625,6 +625,8 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 
 	// and registers the opened columns
 	numRows := utils.NextPowerOfTwo(ctx.CommittedRowsCount)
+	numRowsSIS := utils.NextPowerOfTwo(ctx.CommittedRowsCountSIS)
+	numRowsNonSIS := utils.NextPowerOfTwo(ctx.CommittedRowsCount - ctx.CommittedRowsCountSIS)
 	for col := 0; col < ctx.NbColsToOpen(); col++ {
 		openedCol := ctx.comp.InsertProof(
 			lastRound+2,
@@ -632,6 +634,22 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			numRows,
 		)
 		ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedCol)
+		if numRowsSIS != 0 {
+			openedColSIS := ctx.comp.InsertProof(
+				lastRound+2,
+				ctx.SelectedColSISName(col),
+				numRowsSIS,
+			)
+			ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
+		}
+		if numRowsNonSIS != 0 {
+			openedColNonSIS := ctx.comp.InsertProof(
+				lastRound+2,
+				ctx.SelectedColNonSISName(col),
+				numRowsNonSIS,
+			)
+			ctx.Items.OpenedNonSISColumns = append(ctx.Items.OpenedNonSISColumns, openedColNonSIS)
+		}
 	}
 
 	// In case of the Merkle-proof mode, we also registers the

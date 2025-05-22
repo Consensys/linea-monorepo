@@ -27,6 +27,15 @@ func (ctx *Ctx) SelectedColName(num int) ifaces.ColID {
 	return ifaces.ColIDf("VORTEX_%v_SELECTED_COL_#%v", ctx.SelfRecursionCount, num)
 }
 
+// return the name of the i-th randomly selected columns for SIS rounds
+func (ctx *Ctx) SelectedColSISName(num int) ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_%v_SELECTED_COL_SIS_#%v", ctx.SelfRecursionCount, num)
+}
+// return the name of the i-th randomly selected columns for non SIS rounds
+func (ctx *Ctx) SelectedColNonSISName(num int) ifaces.ColID {
+	return ifaces.ColIDf("VORTEX_%v_SELECTED_COL_NON_SIS_#%v", ctx.SelfRecursionCount, num)
+}
+
 // returns a formatted message name for the commitment of the given round
 func (ctx *Ctx) CommitmentName(round int) ifaces.ColID {
 	return ifaces.ColIDf("VORTEX_%v_COMMITMENT_ROUND_%v", ctx.SelfRecursionCount, round)

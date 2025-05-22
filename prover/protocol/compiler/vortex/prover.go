@@ -248,16 +248,22 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 			sisProof    = vortex.OpeningProof{}
 			nonSisProof = vortex.OpeningProof{}
 		)
-		sisProof.Complete(entryList, committedMatricesSIS, treesSIS)
-		nonSisProof.Complete(entryList, committedMatricesNoSIS, treesNoSIS)
-		sisSelectedCols := sisProof.Columns
-		nonSisSelectedCols := nonSisProof.Columns
-		// Assign the opened columns
-		ctx.assignOpenedColumns(pr, entryList, sisSelectedCols, SelfRecursionSIS)
-		ctx.assignOpenedColumns(pr, entryList, nonSisSelectedCols, SelfRecursionMiMCOnly)
-		// Store the selected columns for the non sis round
-		//  in the prover state
-		ctx.storeSelectedColumnsForNonSisRounds(pr, nonSisSelectedCols)
+		// Handle SIS round
+		if len(committedMatricesSIS) > 0 {
+			sisProof.Complete(entryList, committedMatricesSIS, treesSIS)
+			sisSelectedCols := sisProof.Columns
+			// Assign the opened columns
+			ctx.assignOpenedColumns(pr, entryList, sisSelectedCols, SelfRecursionSIS)
+		}
+		// Handle non SIS round
+		if len(committedMatricesNoSIS) > 0 {
+			nonSisProof.Complete(entryList, committedMatricesNoSIS, treesNoSIS)
+			nonSisSelectedCols := nonSisProof.Columns
+			ctx.assignOpenedColumns(pr, entryList, nonSisSelectedCols, SelfRecursionMiMCOnly)
+			// Store the selected columns for the non sis round
+			//  in the prover state
+			ctx.storeSelectedColumnsForNonSisRounds(pr, nonSisSelectedCols)
+		}
 	}
 }
 
@@ -397,32 +403,32 @@ func (ctx *Ctx) assignOpenedColumns(
 func (ctx *Ctx) storeSelectedColumnsForNonSisRounds(
 	pr *wizard.ProverRuntime,
 	selectedCols [][][]field.Element) {
-		// selectedColsQ[i][j][k] stores the jth selected
-		// column of the ith non SIS round
-		selectedColsQ := make([][][]field.Element, ctx.NumCommittedRoundsNoSis())
+	// selectedColsQ[i][j][k] stores the jth selected
+	// column of the ith non SIS round
+	selectedColsQ := make([][][]field.Element, ctx.NumCommittedRoundsNoSis())
+	// Sanity check
+	if len(selectedCols) != ctx.NumCommittedRoundsNoSis() {
+		utils.Panic(
+			"expected selectedCols to be of length %v, got %v",
+			ctx.NumCommittedRoundsNoSis(), len(selectedCols),
+		)
+	}
+	for i := range selectedCols {
 		// Sanity check
-		if len(selectedCols) != ctx.NumCommittedRoundsNoSis() {
+		if len(selectedCols[i]) != ctx.NbColsToOpen() {
 			utils.Panic(
-				"expected selectedCols to be of length %v, got %v",
-				ctx.NumCommittedRoundsNoSis(), len(selectedCols),
+				"expected selectedCols[%v] to be of length %v, got %v",
+				i, ctx.NbColsToOpen(), len(selectedCols[i]),
 			)
 		}
-		for i := range selectedCols {
-			// Sanity check
-			if len(selectedCols[i]) != ctx.NbColsToOpen() {
-				utils.Panic(
-					"expected selectedCols[%v] to be of length %v, got %v",
-					i, ctx.NbColsToOpen(), len(selectedCols[i]),
-				)
-			}
-			selectedColsQ[i] = make([][]field.Element, ctx.NbColsToOpen())
-			for j := range selectedCols[i] {
-				selectedColsQ[i][j] = make([]field.Element, len(selectedCols[i][j]))
-				copy(selectedColsQ[i][j], selectedCols[i][j])
-			}
+		selectedColsQ[i] = make([][]field.Element, ctx.NbColsToOpen())
+		for j := range selectedCols[i] {
+			selectedColsQ[i][j] = make([]field.Element, len(selectedCols[i][j]))
+			copy(selectedColsQ[i][j], selectedCols[i][j])
 		}
+	}
 	// Store the selected columns in the prover state
 	pr.State.InsertNew(
 		ctx.SelectedColumnNonSISName(),
 		selectedColsQ)
-	}
+}
