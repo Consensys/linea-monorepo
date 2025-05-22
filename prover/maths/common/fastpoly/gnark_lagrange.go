@@ -1,9 +1,9 @@
 package fastpoly
 
 import (
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
@@ -15,82 +15,41 @@ func EvaluateLagrangeGnark(api frontend.API, poly []frontend.Variable, x fronten
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
 	}
 
-	// When the poly is of length 1 it means it is a constant polynomial and its
-	// evaluation is trivial.
-	if len(poly) == 1 {
-		return poly[0]
+	size := len(poly)
+	omega, err := fft.Generator(uint64(size))
+	if err != nil {
+		// TODO handle that properly
+		panic(err)
 	}
 
-	n := len(poly)
-	domain := fft.NewDomain(uint64(n))
-	one := koalabear.One()
-
-	// Test that x is not a root of unity. In the other case, we would
-	// have to divide by zero. In practice this constraint is not necessary
-	// (because the division constraint would be non-satisfiable anyway)
-	// But doing an explicit check clarifies the need.
-	xN := gnarkutil.Exp(api, x, n)
-	api.AssertIsDifferent(xN, 1)
-
-	// Compute the term-wise summand of the interpolation formula.
-	// This will allow the gnark solver to process the expensive
-	// inverses in parallel.
-	terms := make([]frontend.Variable, n)
-
-	// omegaMinI carries the domain's inverse root of unity generator raised to
-	// the power I in the following loop. It is initialized with omega**0 = 1.
-	omegaI := frontend.Variable(1)
-
-	for i := 0; i < n; i++ {
-
-		if i > 0 {
-			omegaI = api.Mul(omegaI, domain.GeneratorInv)
-		}
-
-		// If the current term is the constant zero, we continue without generating
-		// constraints. As a result, 'terms' may contain nil elements. Therefore,
-		// we will need need to remove them later
-		if c, isC := api.Compiler().ConstantValue(poly[i]); isC && c.IsInt64() && c.Int64() == 0 {
-			continue
-		}
-
-		xOmegaN := api.Mul(x, omegaI)
-		terms[i] = api.Sub(xOmegaN, 1)
-		// No point doing a batch inverse in a circuit
-		terms[i] = api.Inverse(terms[i])
-		terms[i] = api.Mul(terms[i], poly[i])
+	var accw, one field.Element
+	one.SetOne()
+	accw.SetOne()
+	dens := make([]frontend.Variable, size) // [x-1, x-ω, x-ω², ...]
+	for i := 0; i < size; i++ {
+		dens[i] = api.Sub(&x, &accw)
+		accw.Mul(&accw, &omega)
+	}
+	invdens := make([]frontend.Variable, size) // [1/x-1, 1/x-ω, 1/x-ω², ...]
+	for i := 0; i < size; i++ {
+		invdens[i] = api.Inverse(dens[i])
 	}
 
-	nonNilTerms := make([]frontend.Variable, 0, len(terms))
-	for i := range terms {
-		if terms[i] == nil {
-			continue
-		}
+	var tmp frontend.Variable
+	tmp = gnarkutil.Exp(api, x, size)
+	tmp = api.Sub(&tmp, &one) // xⁿ-1
+	li := api.Inverse(size)
+	li = api.Mul(&tmp, &li) // 1/n * (xⁿ-1)
 
-		nonNilTerms = append(nonNilTerms, terms[i])
-	}
-
-	// Then sum all the terms
 	var res frontend.Variable
-
-	switch {
-	case len(nonNilTerms) == 0:
-		res = 0
-	case len(nonNilTerms) == 1:
-		res = nonNilTerms[0]
-	case len(nonNilTerms) == 2:
-		res = api.Add(nonNilTerms[0], nonNilTerms[1])
-	default:
-		res = api.Add(nonNilTerms[0], nonNilTerms[1], nonNilTerms[2:]...)
+	res = 0
+	for i := 0; i < size; i++ {
+		li = api.Mul(&li, &invdens[i])
+		tmp = api.Mul(&li, &poly[i]) // pᵢ *  ωⁱ/n * ( xⁿ-1)/(x-ωⁱ)
+		res = api.Add(&res, &tmp)
+		li = api.Mul(&li, &dens[i])
+		li = api.Mul(&li, &omega)
 	}
-
-	/*
-		Then multiply the res by a factor \frac{g^{1 - n}X^n -g}{n}
-	*/
-	factor := xN
-	factor = api.Sub(factor, one)
-	factor = api.Mul(factor, domain.CardinalityInv)
-	res = api.Mul(res, factor)
 
 	return res
 

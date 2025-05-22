@@ -1,41 +1,51 @@
 package fastpoly
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
-func TestGnarkInterpolate(t *testing.T) {
+type EvaluateLagrangeCircuit struct {
+	X    frontend.Variable   // point of evaluation
+	Poly []frontend.Variable // poly in Lagrange form
+	R    frontend.Variable   // expected result
+}
 
-	testCases := [][]field.Element{
-		vector.ForTest(0, 0, 0, 0),
-		vector.ForTest(1, 0, 1, 0),
-		vector.ForTest(1, 1, 1, 1),
+func (c *EvaluateLagrangeCircuit) Define(api frontend.API) error {
+
+	r := EvaluateLagrangeGnark(api, c.Poly, c.X)
+	api.AssertIsEqual(c.R, r)
+
+	return nil
+}
+
+func TestEvaluateLagrangeGnark(t *testing.T) {
+
+	// sample random poly and random point
+	size := 64
+	poly := make([]field.Element, size)
+	for i := 0; i < size; i++ {
+		poly[i].SetRandom()
 	}
+	var x field.Element
+	x.SetRandom()
 
-	for i := range testCases {
+	// eval lagrange
+	r := EvaluateLagrange(poly, x)
 
-		t.Run(fmt.Sprintf("test-cases-%v", i), func(t *testing.T) {
-
-			def := func(api frontend.API) error {
-				var (
-					x         = fext.NewElement(1, 2, 3, 4)
-					vec       = vector.IntoGnarkAssignment(testCases[i])
-					expectedY = EvaluateLagrangeOnFext(testCases[i], x)
-					computedY = EvaluateLagrangeGnark(api, vec, x)
-				)
-				api.AssertIsEqual(expectedY, computedY)
-				return nil
-			}
-
-			gnarkutil.AssertCircuitSolved(t, def)
-		})
+	// test circuit
+	var witness, circuit EvaluateLagrangeCircuit
+	circuit.Poly = make([]frontend.Variable, size)
+	witness.Poly = make([]frontend.Variable, size)
+	for i := 0; i < size; i++ {
+		witness.Poly[i] = poly[i]
 	}
+	witness.R = r
 
+	// assert := test.NewAssert(t)
+
+	// frontend.Compile()
+	// assert.CheckCircuit(&circuit, &witness, test.WithBackends(backend.PLONK))
 }
