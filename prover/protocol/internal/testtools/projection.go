@@ -162,7 +162,7 @@ func (tc *ProjectionTestcase) Define(comp *wizard.CompiledIOP) {
 
 	for i := range tc.FilterA {
 
-		inp.FiltersA = append(inp.FiltersA, comp.InsertCommit(
+		inp.A.Filters = append(inp.A.Filters, comp.InsertCommit(
 			0,
 			formatName[ifaces.ColID]("Projection", tc.Name, "filterA", i),
 			tc.FilterA[i].Len(),
@@ -177,12 +177,12 @@ func (tc *ProjectionTestcase) Define(comp *wizard.CompiledIOP) {
 			)
 		}
 
-		inp.ColumnsA = append(inp.ColumnsA, columnsA)
+		inp.A.Columns = append(inp.A.Columns, columnsA)
 	}
 
 	for i := range tc.FilterB {
 
-		inp.FiltersB = append(inp.FiltersB, comp.InsertCommit(
+		inp.B.Filters = append(inp.B.Filters, comp.InsertCommit(
 			0,
 			formatName[ifaces.ColID]("Projection", tc.Name, "filterB", i),
 			tc.FilterB[i].Len(),
@@ -197,7 +197,7 @@ func (tc *ProjectionTestcase) Define(comp *wizard.CompiledIOP) {
 			)
 		}
 
-		inp.ColumnsB = append(inp.ColumnsB, columnsB)
+		inp.B.Columns = append(inp.B.Columns, columnsB)
 	}
 
 	comp.InsertProjection(

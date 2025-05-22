@@ -55,21 +55,23 @@ type PlonkInWizard struct {
 	// rows of [PlonkInWizard.Data] corresponds to actual public inputs to the
 	// circuit to satisfy.
 	Selector ifaces.Column
-	// Circuit is the circuit to satisfy. The circuit must have zero "secret" values
-	// meaning that it should be fully assignable just from the public inputs.
+	// Circuit is the circuit to satisfy. The circuit must have zero "secret"
+	// values meaning that it should be fully assignable just from the public
+	// inputs.
 	Circuit frontend.Circuit
 
 	// PlonkOptions are optional options to pass to the circuit when building it
 	PlonkOptions []PlonkOption
 
-	// nbPublicInput is a lazily-loaded variable representing the number of public
-	// inputs in the circuit provided by the query. The variable is computed the
-	// first time [PlonkInWizard.GetNbPublicInputs] is called and saved there.
+	// nbPublicInput is a lazily-loaded variable representing the number of
+	// public inputs in the circuit provided by the query. The variable is
+	// computed the first time [PlonkInWizard.GetNbPublicInputs] is called and
+	// saved there.
 	nbPublicInputs int
 
 	// nbPublicInputs loaded is a flag indicating whether we need to compute the
-	// number of public input. It is not using [sync.Once] that way we don't need
-	// to initialize the value.
+	// number of public input. It is not using [sync.Once] that way we don't
+	// need to initialize the value.
 	nbPublicInputsLoaded bool
 }
 

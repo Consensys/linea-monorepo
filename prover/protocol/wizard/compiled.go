@@ -650,10 +650,10 @@ func (c *CompiledIOP) InsertProjection(id ifaces.QueryID, in any) query.Projecti
 
 	case query.ProjectionMultiAryInput:
 		round := max(
-			column.MaxRound(slices.Concat(in.ColumnsA...)...),
-			column.MaxRound(slices.Concat(in.ColumnsB...)...),
-			column.MaxRound(in.FiltersA...),
-			column.MaxRound(in.FiltersB...))
+			column.MaxRound(slices.Concat(in.A.Columns...)...),
+			column.MaxRound(slices.Concat(in.B.Columns...)...),
+			column.MaxRound(in.A.Filters...),
+			column.MaxRound(in.B.Filters...))
 		q = query.NewProjectionMultiAry(round, id, in)
 
 	default:

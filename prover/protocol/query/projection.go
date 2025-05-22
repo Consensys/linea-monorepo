@@ -41,21 +41,28 @@ type ProjectionInput struct {
 // ProjectionMultiAryInput is a collection of parameters to provide to a
 // [Projection] query in the general case.
 type ProjectionMultiAryInput struct {
-	// ColumnsA and ColumnsB are the columns of the left and right side.
-	// The lists are structured as list of projected tables, each list
-	// is processed left-to-right then top-to-bottom.
-	ColumnsA, ColumnsB [][]ifaces.Column
-	// FiltersA and FiltersB are the filters of the left-to-right side.
-	FiltersA, FiltersB []ifaces.Column
+	A ProjectionSideMultiAry
+	B ProjectionSideMultiAry
+}
+
+// ProjectionSideMultiAry is a collection of parameters to provide to a
+// [Projection] query in the general case.
+type ProjectionSideMultiAry struct {
+	Columns [][]ifaces.Column
+	Filters []ifaces.Column
 }
 
 // NewProjection constructs a projection. Will panic if it is mal-formed
 func NewProjection(round int, id ifaces.QueryID, inp ProjectionInput) Projection {
 	return NewProjectionMultiAry(round, id, ProjectionMultiAryInput{
-		ColumnsA: [][]ifaces.Column{inp.ColumnA},
-		ColumnsB: [][]ifaces.Column{inp.ColumnB},
-		FiltersA: []ifaces.Column{inp.FilterA},
-		FiltersB: []ifaces.Column{inp.FilterB},
+		A: ProjectionSideMultiAry{
+			Columns: [][]ifaces.Column{inp.ColumnA},
+			Filters: []ifaces.Column{inp.FilterA},
+		},
+		B: ProjectionSideMultiAry{
+			Columns: [][]ifaces.Column{inp.ColumnB},
+			Filters: []ifaces.Column{inp.FilterB},
+		},
 	})
 }
 
@@ -66,62 +73,62 @@ func NewProjectionMultiAry(
 	inp ProjectionMultiAryInput,
 ) Projection {
 
-	if len(inp.ColumnsA) == 0 || len(inp.ColumnsB) == 0 {
-		utils.Panic("A and B must have at least one table: len(A)=%v, len(B)=%v", len(inp.ColumnsA), len(inp.ColumnsB))
+	if len(inp.A.Columns) == 0 || len(inp.B.Columns) == 0 {
+		utils.Panic("A and B must have at least one table: len(A)=%v, len(B)=%v", len(inp.A.Columns), len(inp.B.Columns))
 	}
 
-	if len(inp.ColumnsA[0]) == 0 || len(inp.ColumnsB[0]) == 0 {
-		utils.Panic("A and B must have at least one column: len(A[0])=%v, len(B[0])=%v", len(inp.ColumnsA[0]), len(inp.ColumnsB[0]))
+	if len(inp.A.Columns[0]) == 0 || len(inp.B.Columns[0]) == 0 {
+		utils.Panic("A and B must have at least one column: len(A[0])=%v, len(B[0])=%v", len(inp.A.Columns[0]), len(inp.B.Columns[0]))
 	}
 
 	var (
-		numCols   = len(inp.ColumnsA[0])
-		numPartsA = len(inp.ColumnsA)
-		numPartsB = len(inp.ColumnsB)
-		sizeA     = inp.ColumnsA[0][0].Size()
-		sizeB     = inp.ColumnsB[0][0].Size()
+		numCols   = len(inp.A.Columns[0])
+		numPartsA = len(inp.A.Columns)
+		numPartsB = len(inp.B.Columns)
+		sizeA     = inp.A.Columns[0][0].Size()
+		sizeB     = inp.B.Columns[0][0].Size()
 	)
 
-	if len(inp.FiltersA) != numPartsA || len(inp.FiltersB) != numPartsB {
-		utils.Panic("A and B must have the same number of filters: len(A)=%v, len(B)=%v", len(inp.FiltersA), len(inp.FiltersB))
+	if len(inp.A.Filters) != numPartsA || len(inp.B.Filters) != numPartsB {
+		utils.Panic("A and B must have the same number of filters: len(A)=%v, len(B)=%v", len(inp.A.Filters), len(inp.B.Filters))
 	}
 
-	for i := range inp.ColumnsA {
-		if len(inp.ColumnsA[i]) != numCols {
-			utils.Panic("All table must have the same number of columns: len(A[%v])=%v, len(A[0])=%v", i, len(inp.ColumnsA[i]), numCols)
+	for i := range inp.A.Columns {
+		if len(inp.A.Columns[i]) != numCols {
+			utils.Panic("All table must have the same number of columns: len(A[%v])=%v, len(A[0])=%v", i, len(inp.A.Columns[i]), numCols)
 		}
 
-		size := ifaces.AssertSameLength(inp.ColumnsA[i]...)
+		size := ifaces.AssertSameLength(inp.A.Columns[i]...)
 
 		if i == 0 {
 			sizeA = size
 		}
 
 		if size != sizeA {
-			utils.Panic("All table must have the same number of columns: len(A[%v])=%v, len(A[0])=%v", i, len(inp.ColumnsA), numCols)
+			utils.Panic("All table must have the same number of columns: len(A[%v])=%v, len(A[0])=%v", i, len(inp.A.Columns), numCols)
 		}
 
-		if sizeA != inp.FiltersA[i].Size() {
+		if sizeA != inp.A.Filters[i].Size() {
 			utils.Panic("A[%v] and its filter do not have the same column sizes", i)
 		}
 	}
 
-	for i := range inp.ColumnsB {
-		if len(inp.ColumnsB[i]) != numCols {
-			utils.Panic("All table must have the same number of columns: len(B[%v])=%v, numCols=%v", i, len(inp.ColumnsB[i]), numCols)
+	for i := range inp.B.Columns {
+		if len(inp.B.Columns[i]) != numCols {
+			utils.Panic("All table must have the same number of columns: len(B[%v])=%v, numCols=%v", i, len(inp.B.Columns[i]), numCols)
 		}
 
-		size := ifaces.AssertSameLength(inp.ColumnsB[i]...)
+		size := ifaces.AssertSameLength(inp.B.Columns[i]...)
 
 		if i == 0 {
 			sizeB = size
 		}
 
 		if size != sizeB {
-			utils.Panic("All table must have the same number of columns: len(B[%v])=%v, len(B[0])=%v", i, len(inp.ColumnsB), numCols)
+			utils.Panic("All table must have the same number of columns: len(B[%v])=%v, len(B[0])=%v", i, len(inp.B.Columns), numCols)
 		}
 
-		if sizeB != inp.FiltersB[i].Size() {
+		if sizeB != inp.B.Filters[i].Size() {
 			utils.Panic("B[%v] and its filter do not have the same column sizes", i)
 		}
 	}
@@ -139,76 +146,8 @@ func (p Projection) Check(run ifaces.Runtime) error {
 
 	// The function is implemented by creating two iterator functions and
 	// checking that they yield the same values.
-	var (
-		aCurrPart, aCurrRow = 0, 0
-		bCurrPart, bCurrRow = 0, 0
-	)
-
-	nextA := func() ([]field.Element, bool) {
-		for {
-
-			if aCurrRow >= p.Inp.FiltersA[aCurrPart].Size() {
-				return nil, false
-			}
-
-			fa := p.Inp.FiltersA[aCurrPart].GetColAssignmentAt(run, aCurrRow)
-
-			if fa.IsZero() {
-				aCurrPart++
-				if aCurrPart == len(p.Inp.ColumnsA) {
-					aCurrPart = 0
-					aCurrRow++
-				}
-				continue
-			}
-
-			var res []field.Element
-			for _, col := range p.Inp.ColumnsA[aCurrPart] {
-				res = append(res, col.GetColAssignmentAt(run, aCurrRow))
-			}
-
-			aCurrPart++
-			if aCurrPart == len(p.Inp.ColumnsA) {
-				aCurrPart = 0
-				aCurrRow++
-			}
-
-			return res, true
-		}
-	}
-
-	nextB := func() ([]field.Element, bool) {
-		for {
-
-			if bCurrRow >= p.Inp.FiltersB[bCurrPart].Size() {
-				return nil, false
-			}
-
-			fb := p.Inp.FiltersB[bCurrPart].GetColAssignmentAt(run, bCurrRow)
-
-			if fb.IsZero() {
-				bCurrPart++
-				if bCurrPart == len(p.Inp.ColumnsB) {
-					bCurrPart = 0
-					bCurrRow++
-				}
-				continue
-			}
-
-			var res []field.Element
-			for _, col := range p.Inp.ColumnsB[bCurrPart] {
-				res = append(res, col.GetColAssignmentAt(run, bCurrRow))
-			}
-
-			bCurrPart++
-			if bCurrPart == len(p.Inp.ColumnsB) {
-				bCurrPart = 0
-				bCurrRow++
-			}
-
-			return res, true
-		}
-	}
+	nextA := p.Inp.A.NextIterator(run)
+	nextB := p.Inp.B.NextIterator(run)
 
 	for {
 		a, aOk := nextA()
@@ -257,28 +196,28 @@ func (p Projection) GetShiftedRelatedColumns() []ifaces.Column {
 
 	res := []ifaces.Column{}
 
-	for _, f := range p.Inp.FiltersA {
+	for _, f := range p.Inp.A.Filters {
 		if f.IsComposite() {
 			res = append(res, f)
 		}
 	}
 
-	for _, f := range p.Inp.FiltersB {
+	for _, f := range p.Inp.B.Filters {
 		if f.IsComposite() {
 			res = append(res, f)
 		}
 	}
 
-	for i := range p.Inp.ColumnsA {
-		for _, col := range p.Inp.ColumnsA[i] {
+	for i := range p.Inp.A.Columns {
+		for _, col := range p.Inp.A.Columns[i] {
 			if col.IsComposite() {
 				res = append(res, col)
 			}
 		}
 	}
 
-	for i := range p.Inp.ColumnsB {
-		for _, col := range p.Inp.ColumnsB[i] {
+	for i := range p.Inp.B.Columns {
+		for _, col := range p.Inp.B.Columns[i] {
 			if col.IsComposite() {
 				res = append(res, col)
 			}
@@ -286,4 +225,48 @@ func (p Projection) GetShiftedRelatedColumns() []ifaces.Column {
 	}
 
 	return res
+}
+
+// NextIterator returns an iterator over the selected values of A in the
+// assignment of the runtime. This function is useful as it addresses a common
+// pattern for assignments.
+func (p ProjectionSideMultiAry) NextIterator(run ifaces.Runtime) (next func() ([]field.Element, bool)) {
+
+	var (
+		currRow  = 0
+		currPart = 0
+	)
+
+	return func() ([]field.Element, bool) {
+		for {
+
+			if currRow >= p.Filters[currPart].Size() {
+				return nil, false
+			}
+
+			f := p.Filters[currPart].GetColAssignmentAt(run, currRow)
+
+			if f.IsZero() {
+				currPart++
+				if currPart == len(p.Columns) {
+					currPart = 0
+					currRow++
+				}
+				continue
+			}
+
+			var res []field.Element
+			for _, col := range p.Columns[currPart] {
+				res = append(res, col.GetColAssignmentAt(run, currRow))
+			}
+
+			currPart++
+			if currPart == len(p.Columns) {
+				currPart = 0
+				currRow++
+			}
+
+			return res, true
+		}
+	}
 }
