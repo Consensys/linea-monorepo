@@ -23,7 +23,6 @@ repositories {
 
 dependencies {
   implementation 'io.freefair.gradle:lombok-plugin:8.6'
-  implementation 'com.diffplug.spotless:spotless-plugin-gradle:6.25.0'
   implementation 'com.github.ben-manes:gradle-versions-plugin:0.51.0'
   implementation 'com.github.hierynomus.license:com.github.hierynomus.license.gradle.plugin:0.16.1'
   implementation 'io.spring.dependency-management:io.spring.dependency-management.gradle.plugin:1.1.5'

@@ -21,11 +21,11 @@ plugins {
   id 'org.web3j.solidity' version '0.5.0'
 }
 
-apply from: rootProject.file("gradle/java.gradle")
-apply from: rootProject.file("gradle/dependency-management.gradle")
-apply from: rootProject.file('gradle/common-dependencies.gradle')
-apply from: rootProject.file("gradle/tests.gradle")
-apply from: rootProject.file("gradle/lint.gradle")
+apply from: project.parent("gradle/java.gradle")
+apply from: project.parent("gradle/dependency-management.gradle")
+apply from: project.parent('gradle/common-dependencies.gradle')
+apply from: project.parent("gradle/tests.gradle")
+apply from: project.parent("gradle/lint.gradle")
 
 web3j {
   generatedPackageName = 'linea.plugin.acc.test.tests.web3j.generated'

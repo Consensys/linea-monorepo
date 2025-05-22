@@ -41,7 +41,7 @@ tasks.withType(JavaCompile) {
 // Takes the version, and if -SNAPSHOT is part of it replaces SNAPSHOT
 // with the git commit version.
 ext.calculateVersion = { ->
-  String version = rootProject.version
+  String version = project.version
   if (version.endsWith("-SNAPSHOT")) {
     version = version.replace("-SNAPSHOT", "-dev-${getCheckedOutGitCommitHash()}")
   }

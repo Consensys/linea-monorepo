@@ -13,30 +13,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-apply plugin: 'com.diffplug.spotless'
-spotless {
-  version "6.25.0"
-  java {
-    // This path needs to be relative to each project
-    target 'src/**/*.java'
-    targetExclude '**/src/test/java/**ReferenceTest**', '**/src/main/generated/**', '**/src/test/generated/**', '**/src/jmh/generated/**'
-    removeUnusedImports()
-    googleJavaFormat('1.22.0')
-    importOrder '\\#', 'java', 'javax', ''
-    trimTrailingWhitespace()
-    endWithNewline()
-  }
-  groovyGradle {
-    target '*.gradle'
-    greclipse('4.21').configFile(rootProject.file('gradle/formatter.properties'))
-    endWithNewline()
-  }
-  // Below this line are currently only license header tasks
-  format 'groovy', { target '**/src/*/grovy/**/*.groovy' }
-  format 'bash', { target '**/*.sh' }
-  format 'sol', { target '**/*.sol' }
-}
-
 javadoc {
   options.addStringOption('Xdoclint:all', '-quiet')
   options.addStringOption('Xwerror', '-html5')
