@@ -278,7 +278,7 @@ func TestFFTFuzzyConsistWithInterpolation(t *testing.T) {
 				// important case.
 				var xValExt fext.Element
 				fext.FromBase(&xValExt, &xVal)
-				yFFT := EvaluateLagrange(evals, xValExt, false)
+				yFFT := EvaluateLagrangeOnFext(evals, xValExt, false)
 
 				require.Equal(t, yCoeff.String(), yFFT.String())
 

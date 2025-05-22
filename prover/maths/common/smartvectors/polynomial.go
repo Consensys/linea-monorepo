@@ -90,23 +90,35 @@ func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.E
 }
 
 // EvaluateLagrange a polynomial in Lagrange basis
-func EvaluateLagrange(v SmartVector, x fext.Element, oncoset ...bool) field.Element {
+func EvaluateLagrange(v SmartVector, x field.Element, oncoset ...bool) field.Element {
 	switch con := v.(type) {
 	case *Constant:
 		return con.val
 	}
 
 	// Maybe there is an optim for windowed here
-	res := make([]fext.Element, v.Len())
-	v.WriteInSliceExt(res)
-	var xExt fext.Element
-	// fext.FromBase(&xExt, &x)
-	resExt := fastpolyext.EvaluateLagrange(res, xExt, oncoset...)
+	poly := make([]field.Element, v.Len())
+	v.WriteInSlice(poly)
+	res := fastpoly.EvaluateLagrange(poly, x, oncoset...)
+	return res
+}
+
+// EvaluateLagrangeOnFext a polynomial in Lagrange basis, where x lives in an extension
+func EvaluateLagrangeOnFext(v SmartVector, x fext.Element, oncoset ...bool) field.Element {
+	switch con := v.(type) {
+	case *Constant:
+		return con.val
+	}
+
+	// Maybe there is an optim for windowed here
+	poly := make([]fext.Element, v.Len())
+	v.WriteInSliceExt(poly)
+	resExt := fastpolyext.EvaluateLagrange(poly, x, oncoset...)
 	return resExt.B0.A0
 }
 
-// Batch-evaluate polynomials in Lagrange basis
-func BatchInterpolate(vs []SmartVector, x field.Element, oncoset ...bool) []field.Element {
+// BatchEvaluateLagrange polynomials in Lagrange basis
+func BatchEvaluateLagrange(vs []SmartVector, x field.Element, oncoset ...bool) []field.Element {
 
 	var (
 		polys    = make([][]field.Element, len(vs))

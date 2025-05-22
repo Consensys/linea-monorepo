@@ -67,7 +67,7 @@ func TestFuzzPolynomial(t *testing.T) {
 
 			var oneExt fext.Element
 			oneExt.SetOne()
-			xa := EvaluateLagrange(a, oneExt)
+			xa := EvaluateLagrangeOnFext(a, oneExt)
 			expecteda0 := a.Get(0)
 			assert.Equal(t, xa.String(), expecteda0.String())
 
@@ -200,7 +200,7 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 
 }
 
-func TestBatchEvaluateLagrangeOnlyConstantVector(t *testing.T) {
+func TestBatchEvaluateLagrangeOnFextOnlyConstantVector(t *testing.T) {
 	n := 4
 	randPoly := vector.ForTest(1, 1, 1, 1)
 	randPoly2 := vector.ForTest(2, 2, 2, 2)
