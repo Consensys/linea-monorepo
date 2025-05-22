@@ -37,7 +37,7 @@ jobs:
           distribution: temurin
 
       - name: Build and test
-        run: ./gradlew build
+        run: ./gradlew besu-plugins:linea-sequencer:build
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
@@ -66,7 +66,7 @@ jobs:
           distribution: temurin
 
       - name: Run acceptance tests
-        run: ./gradlew :acceptance-tests:acceptanceTests
+        run: ./gradlew besu-plugins:linea-sequencer:acceptance-tests:acceptanceTests
         env:
           JAVA_OPTS: -Dorg.gradle.daemon=false
 
@@ -88,4 +88,4 @@ jobs:
           distribution: temurin
           java-version: 21
       - name: spotless
-        run: ./gradlew --no-daemon --parallel clean spotlessCheck
+        run: ./gradlew --no-daemon --parallel clean besu-plugins:linea-sequencer:spotlessCheck
