@@ -27,7 +27,7 @@ func EvaluateLagrangeGnark(api frontend.API, poly []frontend.Variable, x fronten
 	accw.SetOne()
 	dens := make([]frontend.Variable, size) // [x-1, x-ω, x-ω², ...]
 	for i := 0; i < size; i++ {
-		dens[i] = api.Sub(&x, &accw)
+		dens[i] = api.Sub(x, accw)
 		accw.Mul(&accw, &omega)
 	}
 	invdens := make([]frontend.Variable, size) // [1/x-1, 1/x-ω, 1/x-ω², ...]
@@ -37,18 +37,18 @@ func EvaluateLagrangeGnark(api frontend.API, poly []frontend.Variable, x fronten
 
 	var tmp frontend.Variable
 	tmp = gnarkutil.Exp(api, x, size)
-	tmp = api.Sub(&tmp, &one) // xⁿ-1
+	tmp = api.Sub(tmp, one) // xⁿ-1
 	li := api.Inverse(size)
-	li = api.Mul(&tmp, &li) // 1/n * (xⁿ-1)
+	li = api.Mul(tmp, li) // 1/n * (xⁿ-1)
 
 	var res frontend.Variable
 	res = 0
 	for i := 0; i < size; i++ {
-		li = api.Mul(&li, &invdens[i])
-		tmp = api.Mul(&li, &poly[i]) // pᵢ *  ωⁱ/n * ( xⁿ-1)/(x-ωⁱ)
-		res = api.Add(&res, &tmp)
-		li = api.Mul(&li, &dens[i])
-		li = api.Mul(&li, &omega)
+		li = api.Mul(li, invdens[i])
+		tmp = api.Mul(li, poly[i]) // pᵢ *  ωⁱ/n * ( xⁿ-1)/(x-ωⁱ)
+		res = api.Add(res, tmp)
+		li = api.Mul(li, dens[i])
+		li = api.Mul(li, omega)
 	}
 
 	return res

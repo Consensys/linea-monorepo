@@ -3,8 +3,11 @@ package fastpoly
 import (
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/stretchr/testify/assert"
 )
 
 type EvaluateLagrangeCircuit struct {
@@ -43,9 +46,15 @@ func TestEvaluateLagrangeGnark(t *testing.T) {
 		witness.Poly[i] = poly[i]
 	}
 	witness.R = r
+	witness.X = x
 
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+	assert.NoError(t, err)
 	// assert := test.NewAssert(t)
 
-	// frontend.Compile()
+	fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
+	assert.NoError(t, err)
+	err = ccs.IsSolved(fullWitness)
+	assert.NoError(t, err)
 	// assert.CheckCircuit(&circuit, &witness, test.WithBackends(backend.PLONK))
 }
