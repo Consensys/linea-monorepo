@@ -62,7 +62,7 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 
 	// Store the information
 
-	parallel.Execute(pa.maxNbInstances, func(start, stop int) {
+	parallel.Execute(pa.MaxNbInstances, func(start, stop int) {
 		for i := start; i < stop; i++ {
 
 			if i >= numEffInstances {
@@ -127,7 +127,7 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 	ctx := CompilationCtx(pa.CompilationCtx)
 
-	parallel.Execute(ctx.maxNbInstances, func(start, stop int) {
+	parallel.Execute(ctx.MaxNbInstances, func(start, stop int) {
 		for i := start; i < stop; i++ {
 
 			// Retrieve the solsync. Not finding it means the instance is not
@@ -192,7 +192,7 @@ func (ctx CompilationCtx) runGnarkPlonkProver(
 	)
 
 	if err != nil {
-		utils.Panic("Error in the solver: circ=%v err=%v", ctx.name, err)
+		utils.Panic("Error in the solver: circ=%v err=%v", ctx.Name, err)
 	}
 
 	// Once the solver has finished, return the solution

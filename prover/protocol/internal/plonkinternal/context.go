@@ -35,20 +35,20 @@ type CompilationCtx struct {
 	// Name of the context. It is used to generate the column names and the
 	// queries name so that we can understad where they come from. Two instances
 	// of Plonk in wizard cannot have the same name.
-	name string
+	Name string
 	// subscript allows providing more context than [name]. It is used in the
 	// logs and in the name of the profiling assets. It is however not used as
 	// part of the name of generated wizard items.
-	subscript string
+	Subscript string
 	// Round at which we create the ctx
-	round int
+	Round int
 	// Number of instances of the circuit
-	maxNbInstances int
+	MaxNbInstances int
 
 	// Gnark related data
 	Plonk struct {
 		// The plonk circuit being integrated
-		Circuit frontend.Circuit
+		circuit frontend.Circuit
 		// The compiled circuit
 		Trace *plonkBLS12_377.Trace
 		// The sparse constrained system
@@ -136,22 +136,22 @@ func createCtx(
 
 	ctx = CompilationCtx{
 		comp:           comp,
-		name:           name,
-		round:          round,
-		maxNbInstances: maxNbInstance,
+		Name:           name,
+		Round:          round,
+		MaxNbInstances: maxNbInstance,
 	}
 
-	ctx.Plonk.Circuit = circuit
+	ctx.Plonk.circuit = circuit
 
 	for _, opt := range opts {
 		opt(&ctx)
 	}
 
 	logger := logrus.
-		WithField("subscript", ctx.subscript).
-		WithField("round", ctx.round).
-		WithField("maxNbInstances", ctx.maxNbInstances).
-		WithField("name", name)
+		WithField("subscript", ctx.Subscript).
+		WithField("round", ctx.Round).
+		WithField("maxNbInstances", ctx.MaxNbInstances).
+		WithField("name", ctx.Name)
 
 	logger.Debug("Plonk in Wizard compiling the circuit")
 
@@ -161,8 +161,8 @@ func createCtx(
 
 		fname := name
 
-		if len(ctx.subscript) > 0 {
-			fname = fname + "-" + ctx.subscript
+		if len(ctx.Subscript) > 0 {
+			fname = fname + "-" + ctx.Subscript
 		}
 
 		// This adds a nice pprof suffix
@@ -178,14 +178,14 @@ func createCtx(
 	switch {
 	case ctx.RangeCheckOption.Enabled:
 		var rcGetter func() [][2]int
-		ccs, rcGetter, compileErr = CompileCircuitWithRangeCheck(ctx.Plonk.Circuit, ctx.RangeCheckOption.AddGateForRangeCheck)
+		ccs, rcGetter, compileErr = CompileCircuitWithRangeCheck(ctx.Plonk.circuit, ctx.RangeCheckOption.AddGateForRangeCheck)
 		ctx.Plonk.RcGetter = rcGetter
 	case ctx.ExternalHasherOption.Enabled:
 		var hshGetter func() [][3][2]int
-		ccs, hshGetter, compileErr = CompileCircuitWithExternalHasher(ctx.Plonk.Circuit, true)
+		ccs, hshGetter, compileErr = CompileCircuitWithExternalHasher(ctx.Plonk.circuit, true)
 		ctx.Plonk.HashedGetter = hshGetter
 	case !ctx.ExternalHasherOption.Enabled && !ctx.RangeCheckOption.Enabled:
-		ccs, compileErr = CompileCircuitDefault(ctx.Plonk.Circuit)
+		ccs, compileErr = CompileCircuitDefault(ctx.Plonk.circuit)
 	}
 
 	if compileErr != nil {
@@ -254,6 +254,14 @@ func CompileCircuitWithExternalHasher(circ frontend.Circuit, addGates bool) (*cs
 	}
 
 	return ccsIface.(*cs.SparseR1CS), hshGetter, err
+}
+
+func (ctx *CompilationCtx) SetPlonkInternalIOP(comp *wizard.CompiledIOP) {
+	ctx.comp = comp
+}
+
+func (ctx *CompilationCtx) GetPlonkInternalIOP() *wizard.CompiledIOP {
+	return ctx.comp
 }
 
 // DomainSize returns the size of the domain. Meaning the size of the columns

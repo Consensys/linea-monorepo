@@ -12,6 +12,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 )
 
+var CHECK_COLUMN_NAME = "wizard-recursion_PI_0"
+
 // rawRecursion represents the serialized form of recursion.Recursion.
 type rawRecursion struct {
 	Name             string
@@ -47,7 +49,6 @@ func SerializeRecursion(r *recursion.Recursion) ([]byte, error) {
 
 	// Serialize PlonkCtx
 	if r.PlonkCtx != nil {
-		//plonkSer, err := SerializeCompilationCtx(r.PlonkCtx)
 		plonkSer, err := serialization.SerializeValue(reflect.ValueOf(r.PlonkCtx), serialization.DeclarationMode)
 		if err != nil {
 			return nil, fmt.Errorf("failed to serialize PlonkCtx: %w", err)
@@ -62,7 +63,6 @@ func SerializeRecursion(r *recursion.Recursion) ([]byte, error) {
 		raw.PcsCtx = make([]json.RawMessage, len(r.PcsCtx))
 		for i, ctx := range r.PcsCtx {
 			if ctx != nil {
-				// ctxSer, err := SerializeVortexCtx(ctx)
 				ctxSer, err := serialization.SerializeValue(reflect.ValueOf(ctx), serialization.DeclarationMode)
 				if err != nil {
 					return nil, fmt.Errorf("failed to serialize PcsCtx[%d]: %w", i, err)
@@ -96,34 +96,36 @@ func DeserializeRecursion(data []byte) (*recursion.Recursion, error) {
 		Round:     raw.Round,
 	}
 
-	comp := serialization.NewEmptyCompiledIOP()
-
-	// Deserialize InputCompiledIOP
+	// Deserialize InputCompiledIOP first to register all columns
 	if !bytes.Equal(raw.InputCompiledIOP, []byte(serialization.NilString)) {
 		iop, err := serialization.DeserializeCompiledIOP(raw.InputCompiledIOP)
 		if err != nil {
 			return nil, fmt.Errorf("failed to deserialize InputCompiledIOP: %w", err)
 		}
 		r.InputCompiledIOP = iop
-		comp = iop
+	} else {
+		return nil, fmt.Errorf("InputCompiledIOP is nil, cannot proceed with deserialization")
 	}
+
+	// Use InputCompiledIOP as comp for deserialization
+	comp := r.InputCompiledIOP
 
 	// Deserialize PlonkCtx
 	if !bytes.Equal(raw.PlonkCtx, []byte(serialization.NilString)) {
-		// plonk, err := DeserializeCompilationCtx(raw.PlonkCtx)
 		plonk, err := serialization.DeserializeValue(raw.PlonkCtx, serialization.DeclarationMode, reflect.TypeOf(&plonkinternal.CompilationCtx{}), comp)
 		if err != nil {
 			return nil, fmt.Errorf("failed to deserialize PlonkCtx: %w", err)
 		}
 		r.PlonkCtx = plonk.Interface().(*plonkinternal.CompilationCtx)
+		// Set PlonkCtx.comp to InputCompiledIOP to maintain consistency
+		r.PlonkCtx.SetPlonkInternalIOP(comp)
 	}
 
 	// Deserialize PcsCtx
 	if raw.PcsCtx != nil {
 		r.PcsCtx = make([]*vortex.Ctx, len(raw.PcsCtx))
 		for i, ctxSer := range raw.PcsCtx {
-			if !bytes.Equal(ctxSer, []byte(serialization.NilString)) {
-				//ctx, err := DeserializeVortexCtx(ctxSer)
+			if ctxSer != nil && !bytes.Equal(ctxSer, []byte(serialization.NilString)) {
 				ctx, err := serialization.DeserializeValue(ctxSer, serialization.DeclarationMode, reflect.TypeOf(&vortex.Ctx{}), comp)
 				if err != nil {
 					return nil, fmt.Errorf("failed to deserialize PcsCtx[%d]: %w", i, err)

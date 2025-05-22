@@ -36,11 +36,11 @@ func (ctx *CompilationCtx) addHashConstraint() {
 	eho.PosOldState = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionOS"), posOsSv)
 	eho.PosBlock = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionBL"), posBlSv)
 	eho.PosNewState = ctx.comp.InsertPrecomputed(ctx.colIDf("HashCheckPositionNS"), posNsSv)
-	eho.OldStates = make([]ifaces.Column, ctx.maxNbInstances)
-	eho.Blocks = make([]ifaces.Column, ctx.maxNbInstances)
-	eho.NewStates = make([]ifaces.Column, ctx.maxNbInstances)
+	eho.OldStates = make([]ifaces.Column, ctx.MaxNbInstances)
+	eho.Blocks = make([]ifaces.Column, ctx.MaxNbInstances)
+	eho.NewStates = make([]ifaces.Column, ctx.MaxNbInstances)
 
-	for i := 0; i < ctx.maxNbInstances; i++ {
+	for i := 0; i < ctx.MaxNbInstances; i++ {
 
 		var (
 			selector = verifiercol.NewRepeatedAccessor(
@@ -129,7 +129,7 @@ func (ctx *CompilationCtx) assignHashColumns(run *wizard.ProverRuntime) {
 		sizeHashing = len(posOs)
 	)
 
-	for i := 0; i < ctx.maxNbInstances; i++ {
+	for i := 0; i < ctx.MaxNbInstances; i++ {
 
 		var (
 			src = []smartvectors.SmartVector{

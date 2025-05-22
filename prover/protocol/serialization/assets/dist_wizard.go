@@ -12,6 +12,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/sirupsen/logrus"
 )
 
 // rawDistWizard represents the serialized form of DistributedWizard.
@@ -798,7 +799,7 @@ func SerializeDWDefMods(dm *distributed.DefaultModule) ([]byte, error) {
 		Cols:        serCol,
 		CompiledIOP: serCompIOP,
 	}
-
+	logrus.Printf("Ser Def.Module COL. CHECK:%v\n", dm.Wiop.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME)))
 	return serialization.SerializeAnyWithCborPkg(serDefmod)
 }
 
@@ -829,6 +830,8 @@ func DeserializeDWDefMods(data []byte) (*distributed.DefaultModule, error) {
 	}
 
 	dm.Wiop = iop
+
+	logrus.Printf("Deser Def.Module COL. CHECK:%v\n", dm.Wiop.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME)))
 
 	return dm, nil
 }
