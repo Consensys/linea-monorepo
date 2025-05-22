@@ -26,5 +26,6 @@ dependencies {
   implementation 'com.github.ben-manes:gradle-versions-plugin:0.51.0'
   implementation 'com.github.hierynomus.license:com.github.hierynomus.license.gradle.plugin:0.16.1'
   implementation 'io.spring.dependency-management:io.spring.dependency-management.gradle.plugin:1.1.5'
+  implementation 'de.undercouch.download:de.undercouch.download.gradle.plugin:5.6.0'
 }
 

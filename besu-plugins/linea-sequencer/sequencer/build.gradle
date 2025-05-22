@@ -17,7 +17,7 @@ plugins {
   id 'java'
   id 'java-library-distribution'
   id 'common-plugins'
-  alias(libs.plugins.download)
+  id 'de.undercouch.download'
 }
 
 group = 'net.consensys.linea.besu.plugin'
@@ -68,4 +68,4 @@ dependencies {
   testImplementation 'org.awaitility:awaitility'
 }
 
-apply from: project.parent.file("gradle/dist.gradle")
+apply from: rootProject.file("gradle/dist.gradle")
