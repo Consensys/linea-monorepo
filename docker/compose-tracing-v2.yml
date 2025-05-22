@@ -46,11 +46,6 @@ services:
       file: compose-spec-l2-services.yml
       service: traces-node
   
-  l2-node:
-    extends:
-      file: compose-spec-l2-services.yml
-      service: l2-node
-
   prover-v3:
     extends:
       file: compose-spec-l2-services.yml
