@@ -1,12 +1,9 @@
 package smartvectors
 
 import (
-	"math/big"
-
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -112,132 +109,47 @@ func EvaluateLagrange(v SmartVector, x fext.Element, oncoset ...bool) field.Elem
 func BatchInterpolate(vs []SmartVector, x field.Element, oncoset ...bool) []field.Element {
 
 	var (
-		polys         = make([][]field.Element, len(vs))
-		results       = make([]field.Element, len(vs))
-		computed      = make([]bool, len(vs))
-		totalConstant = 0
+		polys    = make([][]field.Element, len(vs))
+		results  = make([]field.Element, len(vs))
+		computed = make([]bool, len(vs))
 	)
 
-	// smartvector to []fr.element
+	// filter out constant vectors
+	indexNonConstantVector := -1
 	parallel.Execute(len(vs), func(start, stop int) {
 		for i := start; i < stop; i++ {
 			switch con := vs[i].(type) {
 			case *Constant:
-				// constant vectors
 				results[i] = con.val
 				computed[i] = true
-				totalConstant++
 				continue
 			}
 
 			// non-constant vectors
+			indexNonConstantVector = i
 			polys[i], _ = vs[i].IntoRegVecSaveAllocBase()
 		}
 	})
 
-	if totalConstant == len(vs) {
+	// all the vectors are constant, nothing to do more
+	if indexNonConstantVector == -1 {
 		return results
 	}
 
-	return batchInterpolateSV(results, computed, polys, x, oncoset...)
-}
-
-// Optimized batch interpolate for smart vectors.
-// This reduces the number of computation by pre-processing
-// constant vectors in advance in BatchInterpolate()
-func batchInterpolateSV(results []field.Element, computed []bool, polys [][]field.Element, x field.Element, oncoset ...bool) []field.Element {
-
-	n := 0
-	for i := range polys {
-		if len(polys[i]) > 0 {
-			n = len(polys[i])
+	// else, we put dummy copy at the constant vector indices, and call BatchEvaluateLagrange
+	for i := 0; i < len(polys); i++ {
+		if computed[i] {
+			polys[i] = polys[indexNonConstantVector]
 		}
 	}
 
-	if n == 0 {
-		// that's a possible edge-case and it can happen if all the input polys
-		// are constant smart-vectors. This is should be prevented by the the
-		// caller.
-		return results
-	}
-
-	if !utils.IsPowerOfTwo(n) {
-		utils.Panic("only support powers of two but poly has length %v", len(polys))
-	}
-
-	domain := fft.NewDomain(uint64(n))
-	denominator := make([]field.Element, n)
-
-	one := field.One()
-
-	if len(oncoset) > 0 && oncoset[0] {
-		x.Mul(&x, &domain.FrMultiplicativeGenInv)
-	}
-
-	/*
-		First, we compute the denominator,
-
-		D_x = \frac{X}{x} - g for x \in H
-			where H is the subgroup of the roots of unity (not the coset)
-			and g a field element such that gH is the coset
-	*/
-	denominator[0] = x
-	for i := 1; i < n; i++ {
-		denominator[i].Mul(&denominator[i-1], &domain.GeneratorInv)
-	}
-
-	for i := 0; i < n; i++ {
-		denominator[i].Sub(&denominator[i], &one)
-
-		if denominator[i].IsZero() {
-			// edge-case : x is a root of unity of the domain. In this case, we can just return
-			// the associated value for poly
-
-			for k := range polys {
-				if computed[k] {
-					continue
-				}
-				results[k] = polys[k][i]
-			}
-
-			return results
+	// batch evaluate, and replace already computed values from constant vectors
+	tmp := fastpoly.BatchEvaluateLagrange(polys, x, oncoset...)
+	for i := 0; i < len(polys); i++ {
+		if !computed[i] {
+			results[i].Set(&tmp[i])
 		}
 	}
-
-	/*
-		Then, we compute the sum between the inverse of the denominator
-		and the poly
-
-		\sum_{x \in H}\frac{P(gx)}{D_x}
-	*/
-	denominator = field.BatchInvert(denominator)
-
-	// Precompute the value of x^n once outside the loop
-	xN := new(field.Element).Exp(x, big.NewInt(int64(n)))
-
-	// Precompute the value of domain.CardinalityInv outside the loop
-	cardinalityInv := &domain.CardinalityInv
-
-	// Compute factor as (x^n - 1) * (1 / domain.Cardinality).
-	factor := new(field.Element).Sub(xN, &one)
-	factor.Mul(factor, cardinalityInv)
-
-	parallel.Execute(len(polys), func(start, stop int) {
-		for k := start; k < stop; k++ {
-
-			if computed[k] {
-				continue
-			}
-			// Compute the scalar product.
-			res := vector.ScalarProd(polys[k], denominator)
-
-			// Multiply res with factor.
-			res.Mul(&res, factor)
-
-			// Store the result.
-			results[k] = res
-		}
-	})
 
 	return results
 }
