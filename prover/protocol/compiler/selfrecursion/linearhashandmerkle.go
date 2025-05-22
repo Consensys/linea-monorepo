@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 )
 
 // linearHashAndMerkle verifies the following things:
@@ -364,7 +363,7 @@ func processRound(
 			colSisHashName := a.ctx.VortexCtx.SisHashName(round)
 			colSisHashSV, found := run.State.TryGet(colSisHashName)
 			if !found {
-				continue
+				utils.Panic("colSisHashName %v not found", colSisHashName)
 			}
 
 			rooth := a.ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
@@ -390,16 +389,14 @@ func processRound(
 			colMimcHashName := a.ctx.VortexCtx.MIMCHashName(round)
 			colMimcHashSV, found := run.State.TryGet(colMimcHashName)
 			if !found {
-				logrus.Infof("colMimcHashName %v not found", colMimcHashName)
-				continue
+				utils.Panic("colMimcHashName %v not found", colMimcHashName)
 			}
 			colMimcHash := colMimcHashSV.([]field.Element)
 			// Fetch the MiMC preimages
 			nonSisOpenedColsName := a.ctx.VortexCtx.SelectedColumnNonSISName()
 			nonSisOpenedColsSV, found := run.State.TryGet(nonSisOpenedColsName)
 			if !found {
-				logrus.Infof("nonSisOpenedColsName %v not found", nonSisOpenedColsName)
-				continue
+				utils.Panic("nonSisOpenedColsName %v not found", nonSisOpenedColsName)
 			}
 			nonSisOpenedCols := nonSisOpenedColsSV.([][][]field.Element)
 			// Note nonSisOpenedCols contains the precomputed columns also if

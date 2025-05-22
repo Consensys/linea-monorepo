@@ -293,7 +293,7 @@ func TestSelfRecursionLinearHashAndMerkle(t *testing.T) {
 			compiled := wizard.Compile(tc.Define,
 				vortex.Compile(
 					2,
-					vortex.WithOptionalSISHashingThreshold(9),
+					vortex.WithOptionalSISHashingThreshold(10),
 				),
 				selfrecursion.SelfRecursionLinearHashAndMerkle,
 				dummy.Compile,
