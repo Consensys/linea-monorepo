@@ -20,6 +20,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type PlonkCircuitInWizard struct {
+}
+
 // This flag control whether to activate the gnark profiling for the circuits. Please leave it
 // to "false" because (1) it generates a lot of data (2) it is extremely time consuming.
 const activateGnarkProfiling = false

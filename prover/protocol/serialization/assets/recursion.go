@@ -137,3 +137,21 @@ func DeserializeRecursion(data []byte) (*recursion.Recursion, error) {
 
 	return r, nil
 }
+
+func SerializePlonkCktInWizard(plonk *plonkinternal.PlonkCircuitInWizard) ([]byte, error) {
+	serPlonk, err := serialization.SerializeValue(reflect.ValueOf(&plonk), serialization.DeclarationMode)
+	if err != nil {
+		return nil, fmt.Errorf("error during ser plonk circuit in wizard: %s", err.Error())
+	}
+	return serPlonk, nil
+}
+
+func DeSerializePlonkCktInWizard(data []byte) (*plonkinternal.PlonkCircuitInWizard, error) {
+	comp := serialization.NewEmptyCompiledIOP()
+	deSerPlonk, err := serialization.DeserializeValue(data, serialization.DeclarationMode, reflect.TypeOf(&plonkinternal.PlonkCircuitInWizard{}), comp)
+	if err != nil {
+		return nil, fmt.Errorf("error during deser plonk circuit in wizard: %s", err.Error())
+	}
+	plonk := deSerPlonk.Interface().(*plonkinternal.PlonkCircuitInWizard)
+	return plonk, nil
+}

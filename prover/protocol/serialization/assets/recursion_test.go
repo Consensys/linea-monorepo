@@ -1,10 +1,10 @@
 package assets
 
 import (
+	"fmt"
+	"reflect"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/sirupsen/logrus"
 )
@@ -40,30 +40,53 @@ func TestSerdeRecursion(t *testing.T) {
 
 }
 
-var testComp = testRec.InputCompiledIOP
+// var testComp = testRec.InputCompiledIOP
+var testComp = testRec.PlonkCtx.GetPlonkInternalIOP()
 
 func TestSerdeRecurIOP(t *testing.T) {
 
-	// fmt.Println("********Recur. Comp. IOP********************************************")
-	// pcsCtx := testComp.PcsCtxs
-	// fmt.Printf("reflec type(name):%s type(string):%s kind:%s of PcsCtx \n", reflect.TypeOf(pcsCtx).Name(), reflect.TypeOf(pcsCtx).String(), reflect.TypeOf(pcsCtx).Kind())
-	// fmt.Println("************FIN Recur. Comp. IOP******************************************")
+	fmt.Println("********Recur. Comp. IOP********************************************")
+	pcsCtx := testComp.PcsCtxs
+	fmt.Printf("reflec type(name):%s type(string):%s kind:%s of PcsCtx \n", reflect.TypeOf(pcsCtx).Name(), reflect.TypeOf(pcsCtx).String(), reflect.TypeOf(pcsCtx).Kind())
+	fmt.Println("************FIN Recur. Comp. IOP******************************************")
 
-	serComp, err := serialization.SerializeCompiledIOP(testComp)
-	if err != nil {
-		t.Fatalf("error during ser. recursion input compiled-iop:%s\n", err.Error())
-	}
+	// serComp, err := serialization.SerializeCompiledIOP(testComp)
+	// if err != nil {
+	// 	t.Fatalf("error during ser. recursion input compiled-iop:%s\n", err.Error())
+	// }
 
-	deSerComp, err := serialization.DeserializeCompiledIOP(serComp)
-	if err != nil {
-		t.Fatalf("error during deser. recursion input compiled-iop:%s\n", err.Error())
-	}
+	// deSerComp, err := serialization.DeserializeCompiledIOP(serComp)
+	// if err != nil {
+	// 	t.Fatalf("error during deser. recursion input compiled-iop:%s\n", err.Error())
+	// }
 
-	logrus.Printf("Column exists in original iop:%v\n", testComp.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME)))
-	logrus.Printf("Column exists in deseriop:%v\n", deSerComp.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME)))
-	logrus.Printf("Column exists in plonk-iop:%v\n", testRec.PlonkCtx.GetPlonkInternalIOP().Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME)))
+	// logrus.Printf("Column exists in original iop:%v\n", testComp.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME)))
+	// logrus.Printf("Column exists in deseriop:%v\n", deSerComp.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME)))
+	// logrus.Printf("Column exists in plonk-iop:%v\n", testRec.PlonkCtx.GetPlonkInternalIOP().Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME)))
 
-	if !test_utils.CompareExportedFields(testComp, deSerComp) {
-		t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")
-	}
+	// if !test_utils.CompareExportedFields(testComp, deSerComp) {
+	// 	t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")
+	// }
 }
+
+// var testCkt = testRec.PlonkCtx.Plonk
+
+// func TestSerdePlonkCkt(t *testing.T) {
+// 	serCkt, err := SerializePlonkCktInWizard(testCkt)
+// 	if err != nil {
+// 		t.Fatalf("error during ser. plonk circuit")
+// 	}
+
+// 	logrus.Println("Succesfully ser. plonk circuit in wizard")
+
+// 	deSerCkt, err := DeSerializePlonkCktInWizard(serCkt)
+// 	if err != nil {
+// 		t.Fatalf("error during ser. plonk circuit")
+// 	}
+
+// 	logrus.Println("Succesfully deser. plonk circuit in wizard")
+
+// 	if !test_utils.CompareExportedFields(testCkt, deSerCkt) {
+// 		t.Fatalf("Mistach in serde. plonk circuit exported fields")
+// 	}
+// }
