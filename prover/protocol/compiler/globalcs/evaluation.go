@@ -115,7 +115,7 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 		}
 	})
 
-	ys := sv.BatchInterpolate(witnesses, r)
+	ys := sv.BatchEvaluateLagrangeOnFext(witnesses, r)
 	run.AssignUnivariate(pa.WitnessEval.QueryID, r, ys...)
 
 	/*
@@ -150,7 +150,7 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 			parallel.Execute(len(q.Pols), func(start, stop int) {
 				for i := start; i < stop; i++ {
 					c := q.Pols[i].GetColAssignment(run)
-					ys[i] = sv.Interpolate(c, evalPoint)
+					ys[i] = sv.EvaluateLagrangeOnFext(c, evalPoint)
 				}
 			})
 
