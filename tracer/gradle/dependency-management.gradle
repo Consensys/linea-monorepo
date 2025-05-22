@@ -55,7 +55,5 @@ dependencyManagement {
     }
 
     dependency 'com.google.code.gson:gson:2.11.0'
-
-    dependency 'com.slack.api:slack-api-client:1.32.1'
   }
 }
