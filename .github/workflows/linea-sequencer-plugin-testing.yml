@@ -1,17 +1,25 @@
-name: gradle
+name: linea-sequencer-plugin-testing
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+  workflow_call:
 
 env:
   CARGO_NET_GIT_FETCH_WITH_CLI: true
 
+concurrency:
+  group: linea-sequencer-plugin-testing-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
+  validation:
+    name: "Validation"
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gradle/actions/wrapper-validation@v4
+
   build:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
       - name: Install Go
         uses: actions/setup-go@v5
@@ -40,7 +48,7 @@ jobs:
           path: sequencer/build/libs
 
   acceptanceTest:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
     steps:
       - name: Install Go
         uses: actions/setup-go@v5
@@ -70,7 +78,7 @@ jobs:
           path: acceptance-tests/build/reports/tests/
 
   spotless:
-    runs-on: ubuntu-latest
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
