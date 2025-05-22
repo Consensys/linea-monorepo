@@ -94,7 +94,7 @@ func RuffiniQuoRem(p smartvectors.SmartVector, q fext.Element) (quo smartvectors
 }
 
 // Evaluate a polynomial in Lagrange basis
-func Interpolate(v smartvectors.SmartVector, x fext.Element, oncoset ...bool) fext.Element {
+func EvaluateLagrange(v smartvectors.SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	switch con := v.(type) {
 	case *ConstantExt:
 		return con.val

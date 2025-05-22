@@ -63,11 +63,10 @@ func TestFuzzPolynomial(t *testing.T) {
 			a := tcaseA.svecs[0]
 			b := tcaseB.svecs[0]
 
-			// Try interpolating by one (should return the first element)
-
-			var oneExt fext.Element
-			oneExt.SetOne()
-			xa := EvaluateLagrangeOnFext(a, oneExt)
+			// Try interpolating by zero (should return the first element)
+			var zeroExt fext.Element
+			zeroExt.SetZero()
+			xa := EvaluateLagrangeOnFext(a, zeroExt)
 			expecteda0 := a.GetExt(0)
 			assert.Equal(t, xa.String(), expecteda0.String())
 
