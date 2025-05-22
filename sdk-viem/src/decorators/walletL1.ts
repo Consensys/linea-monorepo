@@ -1,8 +1,8 @@
 import { Account, Chain, Client, Transport } from "viem";
-import { DepositParameters } from "../actions/deposit";
+import { deposit, DepositParameters, DepositReturnType } from "../actions/deposit";
 
 export type WalletActionsL1 = {
-  deposit: (args: DepositParameters) => void;
+  deposit: (args: DepositParameters) => Promise<DepositReturnType>;
 };
 
 export function walletActionsL1() {
@@ -12,8 +12,6 @@ export function walletActionsL1() {
   >(
     client: Client<Transport, chain, account>,
   ): WalletActionsL1 => ({
-    deposit: (args: DepositParameters) => {
-      console.log("Deposit called with args:", client, args);
-    },
+    deposit: (args: DepositParameters) => deposit(client, args),
   });
 }
