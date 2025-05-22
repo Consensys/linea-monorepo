@@ -17,5 +17,4 @@ plugins {
   id 'io.freefair.lombok'
   id 'com.github.ben-manes.versions'
   id 'io.spring.dependency-management'
-  id "de.undercouch.download"
 }
