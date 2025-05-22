@@ -173,7 +173,7 @@ func (r *Regular) IntoRegVecSaveAlloc() []field.Element {
 }
 
 func (r *Regular) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return (*r)[:], nil
+	return *r, nil
 }
 
 func (r *Regular) IntoRegVecSaveAllocExt() []fext.Element {
