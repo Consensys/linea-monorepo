@@ -63,4 +63,4 @@ observability_port=9546
 
 [type2-state-proof-provider]
 disabled=true
-endpoints=[]
+endpoints=["http://127.0.0.1:8889/"]
