@@ -1,0 +1,196 @@
+import { Account, BaseError, Chain, Client, Hex, parseEventLogs, Transport, zeroHash } from "viem";
+import { Proof } from "../types/proof";
+import { getMessageSentEvents } from "./getMessageSentEvents";
+import { getContractEvents, getTransactionReceipt } from "viem/actions";
+import { getBridgeContractAddresses } from "./getBridgeContractAddresses";
+import { SparseMerkleTree } from "../utils/merkle-tree/smt";
+
+export type GetMessageProofReturnType = Proof;
+
+export type GetMessageProofParameters<chain extends Chain | undefined, account extends Account | undefined> = {
+  l2Client: Client<Transport, chain, account>;
+  messageHash: Hex;
+};
+
+export async function getMessageProof<
+  chain extends Chain | undefined,
+  account extends Account | undefined,
+  chainL2 extends Chain | undefined,
+  accountL2 extends Account | undefined,
+>(
+  client: Client<Transport, chain, account>,
+  parameters: GetMessageProofParameters<chainL2, accountL2>,
+): Promise<GetMessageProofReturnType> {
+  const { l2Client, messageHash } = parameters;
+
+  const [messageSentEvent] = await getMessageSentEvents(l2Client, {
+    address: getBridgeContractAddresses(l2Client).l2MessageService,
+    args: { _messageHash: messageHash },
+  });
+
+  if (!messageSentEvent) {
+    throw new BaseError(`Message hash does not exist on L2. Message hash: ${messageHash}`);
+  }
+
+  const [l2MessagingBlockAnchoredEvent] = await getContractEvents(client, {
+    address: getBridgeContractAddresses(client).lineaRollup,
+    abi: [
+      {
+        anonymous: false,
+        inputs: [
+          {
+            indexed: true,
+            internalType: "uint256",
+            name: "l2Block",
+            type: "uint256",
+          },
+        ],
+        name: "L2MessagingBlockAnchored",
+        type: "event",
+      },
+    ] as const,
+    eventName: "L2MessagingBlockAnchored",
+    args: {
+      l2Block: messageSentEvent.blockNumber,
+    },
+    fromBlock: "earliest",
+    toBlock: "latest",
+  });
+
+  if (!l2MessagingBlockAnchoredEvent) {
+    throw new BaseError(`L2 block number ${messageSentEvent.blockNumber} has not been finalized on L1.`);
+  }
+
+  const finalizationInfo = await getFinalizationMessagingInfo(client, {
+    transactionHash: l2MessagingBlockAnchoredEvent.transactionHash,
+  });
+
+  const l2MessageHashesInBlockRange = (
+    await getMessageSentEvents(l2Client, {
+      address: getBridgeContractAddresses(l2Client).l2MessageService,
+      fromBlock: finalizationInfo.l2MessagingBlocksRange.startingBlock,
+      toBlock: finalizationInfo.l2MessagingBlocksRange.endBlock,
+    })
+  ).map((event) => event.messageHash);
+
+  if (l2MessageHashesInBlockRange.length === 0) {
+    throw new BaseError(`No MessageSent events found in this block range on L2.`);
+  }
+
+  const l2messages = getMessageSiblings(messageHash, l2MessageHashesInBlockRange, finalizationInfo.treeDepth);
+
+  const tree = new SparseMerkleTree(finalizationInfo.treeDepth);
+  for (const [index, leaf] of l2messages.entries()) {
+    tree.addLeaf(index, leaf);
+  }
+
+  if (!finalizationInfo.l2MerkleRoots.includes(tree.getRoot())) {
+    throw new BaseError("Merkle tree build failed.");
+  }
+
+  return tree.getProof(l2messages.indexOf(messageHash));
+}
+
+async function getFinalizationMessagingInfo<chain extends Chain | undefined, account extends Account | undefined>(
+  client: Client<Transport, chain, account>,
+  parameters: {
+    transactionHash: Hex;
+  },
+) {
+  const receipt = await getTransactionReceipt(client, { hash: parameters.transactionHash });
+  let treeDepth = 0;
+  const l2MerkleRoots: string[] = [];
+  const blocksNumber: number[] = [];
+
+  const filteredLogs = receipt.logs.filter(
+    (log) => log.address.toLowerCase() === getBridgeContractAddresses(client).lineaRollup.toLowerCase(),
+  );
+
+  const parsedLogs = parseEventLogs({
+    abi: [
+      {
+        anonymous: false,
+        inputs: [
+          {
+            indexed: true,
+            internalType: "bytes32",
+            name: "l2MerkleRoot",
+            type: "bytes32",
+          },
+          {
+            indexed: true,
+            internalType: "uint256",
+            name: "treeDepth",
+            type: "uint256",
+          },
+        ],
+        name: "L2MerkleRootAdded",
+        type: "event",
+      },
+      {
+        anonymous: false,
+        inputs: [
+          {
+            indexed: true,
+            internalType: "uint256",
+            name: "l2Block",
+            type: "uint256",
+          },
+        ],
+        name: "L2MessagingBlockAnchored",
+        type: "event",
+      },
+    ] as const,
+    eventName: ["L2MerkleRootAdded", "L2MessagingBlockAnchored"],
+    logs: filteredLogs,
+  });
+
+  for (const log of parsedLogs) {
+    if (log.eventName === "L2MerkleRootAdded") {
+      treeDepth = parseInt(log.args.treeDepth.toString());
+      l2MerkleRoots.push(log.args.l2MerkleRoot);
+    } else if (log.eventName === "L2MessagingBlockAnchored") {
+      blocksNumber.push(parseInt(log.args.l2Block.toString()));
+    }
+  }
+
+  if (l2MerkleRoots.length === 0) {
+    throw new BaseError(`No L2MerkleRootAdded events found in this transaction.`);
+  }
+
+  if (blocksNumber.length === 0) {
+    throw new BaseError(`No L2MessagingBlocksAnchored events found in this transaction.`);
+  }
+
+  return {
+    l2MessagingBlocksRange: {
+      startingBlock: BigInt(Math.min(...blocksNumber)),
+      endBlock: BigInt(Math.max(...blocksNumber)),
+    },
+    l2MerkleRoots,
+    treeDepth,
+  };
+}
+
+function getMessageSiblings(messageHash: Hex, messageHashes: Hex[], treeDepth: number): Hex[] {
+  const numberOfMessagesInTrees = 2 ** treeDepth;
+  const messageHashesLength = messageHashes.length;
+
+  const messageHashIndex = messageHashes.indexOf(messageHash);
+
+  if (messageHashIndex === -1) {
+    throw new BaseError("Message hash not found in messages.");
+  }
+
+  const start = Math.floor(messageHashIndex / numberOfMessagesInTrees) * numberOfMessagesInTrees;
+  const end = Math.min(messageHashesLength, start + numberOfMessagesInTrees);
+
+  const siblings = messageHashes.slice(start, end);
+
+  const remainder = siblings.length % numberOfMessagesInTrees;
+  if (remainder !== 0) {
+    siblings.push(...Array(numberOfMessagesInTrees - remainder).fill(zeroHash));
+  }
+
+  return siblings;
+}

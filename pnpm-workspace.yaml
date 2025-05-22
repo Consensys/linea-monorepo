@@ -2,6 +2,7 @@ packages:
   - 'contracts/**'
   - 'e2e/**'
   - 'sdk/**'
+  - 'sdk-viem/**'
   - 'postman/**'
   - 'operations/**'
   - 'bridge-ui/**'
