@@ -77,7 +77,7 @@ func TestBatchLagrangeEvaluation(t *testing.T) {
 	// compute lagrange eval
 	var xExt fext.Element
 	fext.FromBase(&xExt, &x)
-	lagEvalExt := BatchEvaluateLagrange(polys, xExt)
+	lagEvalExt := BatchEvaluateLagrangeOnFext(polys, xExt)
 
 	// check the result
 	for i := 0; i < nbPoly; i++ {

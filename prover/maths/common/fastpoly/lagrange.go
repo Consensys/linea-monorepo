@@ -68,8 +68,8 @@ func EvaluateLagrange(poly []field.Element, x field.Element, oncoset ...bool) fi
 	return res.B0.A0
 }
 
-// BatchEvaluateLagrange batch version of EvaluateLagrangeOnFext
-func BatchEvaluateLagrange(polys [][]field.Element, x fext.Element, oncoset ...bool) []fext.Element {
+// BatchEvaluateLagrangeOnFext batch version of EvaluateLagrangeOnFext
+func BatchEvaluateLagrangeOnFext(polys [][]field.Element, x fext.Element, oncoset ...bool) []fext.Element {
 
 	// TODO should we check that the polynomials are of the same size ??
 	results := make([]fext.Element, len(polys))
@@ -123,4 +123,16 @@ func BatchEvaluateLagrange(polys [][]field.Element, x fext.Element, oncoset ...b
 	})
 
 	return results
+}
+
+// BatchEvaluateLagrange batch evalute polys at x, where polys are in Lagrange basis
+func BatchEvaluateLagrange(polys [][]field.Element, x field.Element, oncoset ...bool) []field.Element {
+	var xExt fext.Element
+	fext.FromBase(&xExt, &x)
+	resExt := BatchEvaluateLagrangeOnFext(polys, xExt, oncoset...)
+	res := make([]field.Element, len(polys))
+	for i := 0; i < len(resExt); i++ {
+		res[i].Set(&resExt[i].B0.A0)
+	}
+	return res
 }
