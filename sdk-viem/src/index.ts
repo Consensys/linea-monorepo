@@ -1,57 +1,53 @@
-import { createPublicClient, http } from "viem";
-import { linea, mainnet } from "viem/chains";
-import { publicActionsL2 } from "./decorators/publicL2";
-import { publicActionsL1 } from "./decorators/publicL1";
-import { getTransactionReceiptByMessageHash } from "./actions/getTransactionReceiptByMessageHash";
+export { deposit } from "./actions/deposit";
+export type { DepositParameters, DepositReturnType } from "./actions/deposit";
 
-async function main() {
-  const l2Client = createPublicClient({
-    chain: linea,
-    transport: http("https://linea-mainnet.infura.io/v3/9d60b7d314be4567adf4530f4b9dd801"),
-  }).extend(publicActionsL2());
+export { getBlockExtraData } from "./actions/getBlockExtraData";
+export type { GetBlockExtraDataParameters, GetBlockExtraDataReturnType } from "./actions/getBlockExtraData";
 
-  const l1Client = createPublicClient({
-    chain: mainnet,
-    transport: http("https://mainnet.infura.io/v3/9d60b7d314be4567adf4530f4b9dd801"),
-  }).extend(publicActionsL1());
+export { getBridgeContractAddresses } from "./actions/getBridgeContractAddresses";
+export type { GetBridgeContractAddressesReturnType } from "./actions/getBridgeContractAddresses";
 
-  const proof = await l1Client.getMessageProof({
-    messageHash: "0xfc89f3eb8c72aa9dd0456b3ad276442c65aafead3f2a7b55fd425a8a32ca8b0c",
-    l2Client,
-  });
-  console.log("Message Proof:", proof);
+export { getL1ToL2MessageStatus } from "./actions/getL1ToL2MessageStatus";
+export type {
+  GetL1ToL2MessageStatusParameters,
+  GetL1ToL2MessageStatusReturnType,
+} from "./actions/getL1ToL2MessageStatus";
 
-  const status = await l2Client.getMessageStatus({
-    messageHash: "0xd674cee8ebd16feed8c5f8b1c9e617460d7752f50b40f660f9bc925e66086860",
-  });
+export { getL2ToL1MessageStatus } from "./actions/getL2ToL1MessageStatus";
+export type {
+  GetL2ToL1MessageStatusParameters,
+  GetL2ToL1MessageStatusReturnType,
+} from "./actions/getL2ToL1MessageStatus";
 
-  const l1Status = await l1Client.getMessageStatus({
-    l2Client,
-    messageHash: "0xdaf11ba86ecbed738c0ba2d82066997a361213b65a2c6b33ab769ba549d2bcd1",
-  });
+export { getMessageByMessageHash } from "./actions/getMessageByMessageHash";
+export type {
+  GetMessageByMessageHashParameters,
+  GetMessageByMessageHashReturnType,
+} from "./actions/getMessageByMessageHash";
 
-  console.log("Message Status:", status);
-  console.log("L1 Message Status:", l1Status);
+export { getMessageProof } from "./actions/getMessageProof";
+export type { GetMessageProofParameters, GetMessageProofReturnType } from "./actions/getMessageProof";
 
-  const l1Message = await l1Client.getTransactionReceiptByMessageHash({
-    messageHash: "0xd674cee8ebd16feed8c5f8b1c9e617460d7752f50b40f660f9bc925e66086860",
-  });
+export { getMessageSentEvents } from "./actions/getMessageSentEvents";
+export type { GetMessageSentEventsParameters, GetMessageSentEventsReturnType } from "./actions/getMessageSentEvents";
 
-  const l2Message = await getTransactionReceiptByMessageHash(l2Client, {
-    messageHash: "0xdaf11ba86ecbed738c0ba2d82066997a361213b65a2c6b33ab769ba549d2bcd1",
-  });
+export { getMessagesByTransactionHash } from "./actions/getMessagesByTransactionHash";
+export type {
+  GetMessagesByTransactionHashParameters,
+  GetMessagesByTransactionHashReturnType,
+} from "./actions/getMessagesByTransactionHash";
 
-  console.log({
-    l1Message,
-    l2Message,
-  });
-}
+export { getTransactionReceiptByMessageHash } from "./actions/getTransactionReceiptByMessageHash";
+export type {
+  GetTransactionReceiptByMessageHashParameters,
+  GetTransactionReceiptByMessageHashReturnType,
+} from "./actions/getTransactionReceiptByMessageHash";
 
-main()
-  .then(() => {
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error("Error:", error);
-    process.exit(1);
-  });
+export { publicActionsL1 } from "./decorators/publicL1";
+export type { PublicActionsL1 } from "./decorators/publicL1";
+
+export { publicActionsL2 } from "./decorators/publicL2";
+export type { PublicActionsL2 } from "./decorators/publicL2";
+
+export { walletActionsL1 } from "./decorators/walletL1";
+export type { WalletActionsL1 } from "./decorators/walletL1";
