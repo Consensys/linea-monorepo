@@ -11,7 +11,7 @@ fun ConfigLoaderBuilder.addCoordinatorTomlDecoders(): ConfigLoaderBuilder {
     .addDecoder(TomlKotlinDurationDecoder())
 }
 
-inline fun <reified T: Any>  parseConfig(toml: String): T {
+inline fun <reified T : Any> parseConfig(toml: String): T {
   return ConfigLoaderBuilder
     .default()
     .addCoordinatorTomlDecoders()
@@ -19,4 +19,3 @@ inline fun <reified T: Any>  parseConfig(toml: String): T {
     .build()
     .loadConfigOrThrow<T>()
 }
-

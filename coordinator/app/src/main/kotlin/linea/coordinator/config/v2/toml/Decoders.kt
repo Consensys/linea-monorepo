@@ -17,7 +17,7 @@ class TomlByteArrayHexDecoder : Decoder<ByteArray> {
     type: KType,
     context: DecoderContext
   ): ConfigResult<ByteArray> {
-    return when(node) {
+    return when (node) {
       is com.sksamuel.hoplite.StringNode -> runCatching {
         node.value.decodeHex()
       }.fold(
@@ -40,7 +40,7 @@ class TomlKotlinDurationDecoder : Decoder<Duration> {
     type: KType,
     context: DecoderContext
   ): ConfigResult<kotlin.time.Duration> {
-    return when(node) {
+    return when (node) {
       is com.sksamuel.hoplite.StringNode -> runCatching {
         Duration.parse(node.value)
       }.fold(
