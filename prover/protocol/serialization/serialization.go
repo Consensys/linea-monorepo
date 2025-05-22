@@ -251,12 +251,19 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 			continue // Skip unexported fields
 		}
 
+		// Skip fields with cbor:"-" tag
+		structField, _ := typeOfV.FieldByName(f.name)
+		if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
+			logrus.Printf("Skipping serialization of field:%s purposefully due to empty cbor tag\n", f.name)
+			continue
+		}
+
 		fieldValue := v.FieldByName(f.name)
 		fieldType := f.fieldType
 
-		if f.name == "PcsCtx" {
-			fmt.Printf("ser. struct with field name `PcsCtx` of type:%s in mode:%d\n", fieldType, newMode)
-		}
+		// if f.name == "PcsCtx" {
+		// 	fmt.Printf("ser. struct with field name `PcsCtx` of type:%s in mode:%d\n", fieldType, newMode)
+		// }
 
 		// Special handling for *wizard.CompiledIOP fields
 		if fieldType == compiledIOPType {
@@ -556,6 +563,13 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 	for _, f := range cache.fields {
 		if unicode.IsLower(rune(f.name[0])) {
 			continue // Skip unexported fields
+		}
+
+		// Skip fields with cbor:"-" tag
+		structField, _ := t.FieldByName(f.name)
+		if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
+			logrus.Printf("Skipping deserialization of field:%s purposefully due to empty cbor tag\n", f.name)
+			continue
 		}
 
 		fieldRaw, ok := raw[f.rawName]

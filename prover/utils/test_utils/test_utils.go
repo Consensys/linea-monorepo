@@ -407,7 +407,6 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 
 	// Ignore Func
 	if v1.Kind() == reflect.Func {
-		// fmt.Println("Skipping comparision of reflect.Func type")
 		return true
 	}
 
@@ -448,13 +447,18 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 	if v1.Kind() == reflect.Struct {
 		equal := true
 		for i := 0; i < v1.NumField(); i++ {
+			structField := v1.Type().Field(i)
 			// Skip unexported fields
-			if !v1.Type().Field(i).IsExported() {
+			if !structField.IsExported() {
+				continue
+			}
+			// Skip fields with cbor:"-" tag
+			if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
 				continue
 			}
 			f1 := v1.Field(i)
 			f2 := v2.Field(i)
-			fieldName := v1.Type().Field(i).Name
+			fieldName := structField.Name
 			fieldPath := fieldName
 			if path != "" {
 				fieldPath = path + "." + fieldName

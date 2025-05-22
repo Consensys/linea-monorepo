@@ -6,13 +6,14 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 )
 
-var CHECK_COLUMN_NAME = "wizard-recursion_PI_0"
+// var CHECK_COLUMN_NAME = "wizard-recursion_PI_0"
 
 // rawRecursion represents the serialized form of recursion.Recursion.
 type rawRecursion struct {
@@ -138,7 +139,7 @@ func DeserializeRecursion(data []byte) (*recursion.Recursion, error) {
 	return r, nil
 }
 
-func SerializePlonkCktInWizard(plonk *plonkinternal.PlonkCircuitInWizard) ([]byte, error) {
+func SerializePlonkCktInWizard(plonk frontend.Circuit) ([]byte, error) {
 	serPlonk, err := serialization.SerializeValue(reflect.ValueOf(&plonk), serialization.DeclarationMode)
 	if err != nil {
 		return nil, fmt.Errorf("error during ser plonk circuit in wizard: %s", err.Error())
@@ -146,12 +147,12 @@ func SerializePlonkCktInWizard(plonk *plonkinternal.PlonkCircuitInWizard) ([]byt
 	return serPlonk, nil
 }
 
-func DeSerializePlonkCktInWizard(data []byte) (*plonkinternal.PlonkCircuitInWizard, error) {
+func DeSerializePlonkCktInWizard(data []byte) (frontend.Circuit, error) {
 	comp := serialization.NewEmptyCompiledIOP()
-	deSerPlonk, err := serialization.DeserializeValue(data, serialization.DeclarationMode, reflect.TypeOf(&plonkinternal.PlonkCircuitInWizard{}), comp)
+	deSerPlonk, err := serialization.DeserializeValue(data, serialization.DeclarationMode, reflect.TypeOf((frontend.Circuit)(nil)).Elem(), comp)
 	if err != nil {
 		return nil, fmt.Errorf("error during deser plonk circuit in wizard: %s", err.Error())
 	}
-	plonk := deSerPlonk.Interface().(*plonkinternal.PlonkCircuitInWizard)
+	plonk := deSerPlonk.Interface().(frontend.Circuit)
 	return plonk, nil
 }

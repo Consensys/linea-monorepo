@@ -51,7 +51,7 @@ type CompilationCtx struct {
 	// Gnark related data
 	Plonk struct {
 		// The plonk circuit being integrated
-		circuit frontend.Circuit
+		Circuit frontend.Circuit
 		// The compiled circuit
 		Trace *plonkBLS12_377.Trace
 		// The sparse constrained system
@@ -66,7 +66,7 @@ type CompilationCtx struct {
 		// HashedGetter is a function that returns the list of rows which are tagged
 		// as range-checked.
 		HashedGetter func() [][3][2]int
-	}
+	} `cbor:"-"  json:"-"` // Skip plonk during CBOR/JSON serilization
 
 	// Columns
 	Columns struct {
@@ -144,7 +144,7 @@ func createCtx(
 		MaxNbInstances: maxNbInstance,
 	}
 
-	ctx.Plonk.circuit = circuit
+	ctx.Plonk.Circuit = circuit
 
 	for _, opt := range opts {
 		opt(&ctx)
@@ -181,14 +181,14 @@ func createCtx(
 	switch {
 	case ctx.RangeCheckOption.Enabled:
 		var rcGetter func() [][2]int
-		ccs, rcGetter, compileErr = CompileCircuitWithRangeCheck(ctx.Plonk.circuit, ctx.RangeCheckOption.AddGateForRangeCheck)
+		ccs, rcGetter, compileErr = CompileCircuitWithRangeCheck(ctx.Plonk.Circuit, ctx.RangeCheckOption.AddGateForRangeCheck)
 		ctx.Plonk.RcGetter = rcGetter
 	case ctx.ExternalHasherOption.Enabled:
 		var hshGetter func() [][3][2]int
-		ccs, hshGetter, compileErr = CompileCircuitWithExternalHasher(ctx.Plonk.circuit, true)
+		ccs, hshGetter, compileErr = CompileCircuitWithExternalHasher(ctx.Plonk.Circuit, true)
 		ctx.Plonk.HashedGetter = hshGetter
 	case !ctx.ExternalHasherOption.Enabled && !ctx.RangeCheckOption.Enabled:
-		ccs, compileErr = CompileCircuitDefault(ctx.Plonk.circuit)
+		ccs, compileErr = CompileCircuitDefault(ctx.Plonk.Circuit)
 	}
 
 	if compileErr != nil {
