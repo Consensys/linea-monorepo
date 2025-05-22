@@ -34,7 +34,7 @@ class MicrometerMetricsFacadeTest {
       tags = expectedTags
     )
     metricMeasureValue = 13L
-    val createdGauge = meterRegistry.find("linea.test.batch.some.metric").gauge()
+    val createdGauge = meterRegistry.find("linea.test.batch.some.metric").gauge()!!
     assertThat(createdGauge).isNotNull
     assertThat(createdGauge!!.value()).isEqualTo(13.0)
     metricMeasureValue = 2L
@@ -52,7 +52,7 @@ class MicrometerMetricsFacadeTest {
       description = "This is a test metric",
       tags = expectedTags
     )
-    val createdCounter = meterRegistry.find("linea.test.batch.some.metric").counter()
+    val createdCounter = meterRegistry.find("linea.test.batch.some.metric").counter()!!
     assertThat(createdCounter!!.count()).isEqualTo(0.0)
     assertThat(createdCounter).isNotNull
     counter.increment(13.0)
@@ -79,7 +79,7 @@ class MicrometerMetricsFacadeTest {
       baseUnit = "seconds"
     )
 
-    val createdHistogram = meterRegistry.find("linea.test.batch.some.metric").summary()
+    val createdHistogram = meterRegistry.find("linea.test.batch.some.metric").summary()!!
     assertThat(createdHistogram).isNotNull
     assertThat(createdHistogram!!.id.description).isEqualTo("This is a test metric")
     assertThat(createdHistogram.id.tags).isEqualTo(
@@ -119,7 +119,7 @@ class MicrometerMetricsFacadeTest {
     )
 
     timer.captureTime(::mockTimer)
-    val createdTimer = meterRegistry.find("linea.test.some.timer.metric").timer()
+    val createdTimer = meterRegistry.find("linea.test.some.timer.metric").timer()!!
     assertThat(createdTimer).isNotNull
     assertThat(createdTimer!!.id.description).isEqualTo("This is a test metric")
     assertThat(createdTimer.id.tags).isEqualTo(listOf(ImmutableTag("key1", "value1"), ImmutableTag("key2", "value2")))
@@ -146,7 +146,7 @@ class MicrometerMetricsFacadeTest {
     }
 
     timer.captureTime(::mockTimer)
-    val createdTimer = meterRegistry.find("linea.test.some.dynamictag.timer.metric").timer()
+    val createdTimer = meterRegistry.find("linea.test.some.dynamictag.timer.metric").timer()!!
     assertThat(createdTimer).isNotNull
     assertThat(createdTimer!!.id.description).isEqualTo("This is a test metric")
     assertThat(createdTimer.id.tags).isEqualTo(listOf(ImmutableTag("key", "value")))
@@ -168,7 +168,7 @@ class MicrometerMetricsFacadeTest {
       measurementSupplier = { metricMeasureValue },
       tags = listOf(Tag("key1", "value1"), Tag("key2", "value2"))
     )
-    val createdGauge = meterRegistry.find("some.gauge.metric").gauge()
+    val createdGauge = meterRegistry.find("some.gauge.metric").gauge()!!
     assertThat(createdGauge).isNotNull
   }
 
@@ -181,7 +181,7 @@ class MicrometerMetricsFacadeTest {
       description = "This is a test metric",
       tags = listOf(Tag("key1", "value1"), Tag("key2", "value2"))
     )
-    val createdCounter = meterRegistry.find("some.counter.metric").counter()
+    val createdCounter = meterRegistry.find("some.counter.metric").counter()!!
     assertThat(createdCounter).isNotNull
   }
 
@@ -195,7 +195,7 @@ class MicrometerMetricsFacadeTest {
       tags = listOf(Tag("key1", "value1"), Tag("key2", "value2")),
       baseUnit = "seconds"
     )
-    val createdHistogram = meterRegistry.find("some.histogram.metric").summary()
+    val createdHistogram = meterRegistry.find("some.histogram.metric").summary()!!
     assertThat(createdHistogram).isNotNull
   }
 
@@ -209,7 +209,7 @@ class MicrometerMetricsFacadeTest {
       tags = listOf(Tag("key1", "value1"), Tag("key2", "value2"))
     )
     timer.captureTime {}
-    val createdTimer = meterRegistry.find("some.timer.metric").timer()
+    val createdTimer = meterRegistry.find("some.timer.metric").timer()!!
     assertThat(createdTimer).isNotNull
   }
 
@@ -226,7 +226,7 @@ class MicrometerMetricsFacadeTest {
       "value"
     }
     timer.captureTime {}
-    val createdTimer = meterRegistry.find("some.dynamictag.timer.metric").timer()
+    val createdTimer = meterRegistry.find("some.dynamictag.timer.metric").timer()!!
     assertThat(createdTimer).isNotNull
   }
 }
