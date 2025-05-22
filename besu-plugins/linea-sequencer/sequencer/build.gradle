@@ -16,8 +16,10 @@
 plugins {
   id 'java'
   id 'java-library-distribution'
-  id 'common-plugins'
   id 'de.undercouch.download'
+  id 'io.freefair.lombok'
+  id 'com.github.ben-manes.versions'
+  id 'io.spring.dependency-management'
 }
 
 group = 'net.consensys.linea.besu.plugin'
