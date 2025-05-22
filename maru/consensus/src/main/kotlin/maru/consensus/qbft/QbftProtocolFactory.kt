@@ -20,7 +20,6 @@ import java.util.concurrent.Executors
 import kotlin.time.toJavaDuration
 import maru.config.MaruConfig
 import maru.consensus.ForkSpec
-import maru.consensus.NewBlockHandler
 import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ProtocolFactory
 import maru.consensus.StaticValidatorProvider
@@ -28,6 +27,7 @@ import maru.consensus.blockimport.BlockBuildingBeaconBlockImporter
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.consensus.blockimport.TransactionalSealedBeaconBlockImporter
 import maru.consensus.qbft.adapters.ForksScheduleAdapter
+import maru.consensus.qbft.adapters.P2PValidatorMulticaster
 import maru.consensus.qbft.adapters.ProposerSelectorAdapter
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
 import maru.consensus.qbft.adapters.QbftBlockImporterAdapter
@@ -37,7 +37,7 @@ import maru.consensus.qbft.adapters.QbftFinalStateAdapter
 import maru.consensus.qbft.adapters.QbftProtocolScheduleAdapter
 import maru.consensus.qbft.adapters.QbftValidatorModeTransitionLoggerAdapter
 import maru.consensus.qbft.adapters.QbftValidatorProviderAdapter
-import maru.consensus.qbft.adapters.toBeaconBlock
+import maru.consensus.qbft.adapters.toSealedBeaconBlock
 import maru.consensus.state.FinalizationState
 import maru.consensus.state.StateTransition
 import maru.consensus.state.StateTransitionImpl
@@ -48,16 +48,17 @@ import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
+import maru.p2p.P2PNetwork
+import maru.p2p.SealedBlockHandler
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
 import org.hyperledger.besu.consensus.common.bft.BlockTimer
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
-import org.hyperledger.besu.consensus.common.bft.Gossiper
 import org.hyperledger.besu.consensus.common.bft.MessageTracker
 import org.hyperledger.besu.consensus.common.bft.RoundTimer
-import org.hyperledger.besu.consensus.common.bft.network.ValidatorMulticaster
 import org.hyperledger.besu.consensus.common.bft.statemachine.FutureMessageBuffer
+import org.hyperledger.besu.consensus.qbft.core.network.QbftGossip
 import org.hyperledger.besu.consensus.qbft.core.payload.MessageFactory
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftBlockHeightManagerFactory
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftController
@@ -79,11 +80,10 @@ class QbftProtocolFactory(
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
-  private val newBlockHandler: NewBlockHandler<Unit>,
+  private val newBlockHandler: SealedBlockHandler,
   private val executionLayerManager: JsonRpcExecutionLayerManager,
   private val clock: Clock,
-  private val gossiper: Gossiper,
-  private val validatorMulticaster: ValidatorMulticaster,
+  private val p2PNetwork: P2PNetwork,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     require(maruConfig.validator != null) {
@@ -144,6 +144,7 @@ class QbftProtocolFactory(
         /* bftExecutors = */ bftExecutors,
       )
     val blockTimer = BlockTimer(bftEventQueue, besuForksSchedule, bftExecutors, clock)
+    val validatorMulticaster = P2PValidatorMulticaster(p2PNetwork)
     val finalState =
       QbftFinalStateAdapter(
         localAddress = localAddress,
@@ -160,7 +161,7 @@ class QbftProtocolFactory(
 
     val minedBlockObservers = Subscribers.create<QbftMinedBlockObserver>()
     minedBlockObservers.subscribe { qbftBlock ->
-      newBlockHandler.handleNewBlock(qbftBlock.toBeaconBlock())
+      newBlockHandler.handleSealedBlock(qbftBlock.toSealedBeaconBlock())
       bftEventQueue.add(QbftNewChainHead(qbftBlock.header))
     }
 
@@ -217,6 +218,7 @@ class QbftProtocolFactory(
         /* futureMessagesLimit = */ maruConfig.qbftOptions.futureMessagesLimit,
         /* chainHeight = */ chainHeaderNumber,
       )
+    val gossiper = QbftGossip(validatorMulticaster, blockCodec)
     val qbftController =
       QbftController(
         /* blockchain = */ blockChain,

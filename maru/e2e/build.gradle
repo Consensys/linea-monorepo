@@ -45,6 +45,9 @@ sourceSets {
   }
 }
 
+
+build.dependsOn compileAcceptanceTestKotlin
+
 tasks.register('acceptanceTest', Test) { test ->
   description = "Runs acceptance tests."
   group = "verification"

@@ -18,8 +18,11 @@ package maru.consensus.qbft.adapters
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
 import maru.core.SealedBeaconBlock
+import maru.p2p.Message
+import maru.p2p.MessageType
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlock
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockHeader
+import org.hyperledger.besu.ethereum.p2p.rlpx.wire.MessageData as BesuMessageData
 
 /**
  * Convert a QBFT block to a BeaconBlock
@@ -56,3 +59,9 @@ fun QbftBlockHeader.toBeaconBlockHeader(): BeaconBlockHeader {
   }
   return this.beaconBlockHeader
 }
+
+fun BesuMessageData.toDomain(): Message<BesuMessageData> =
+  Message(
+    type = MessageType.QBFT,
+    payload = this,
+  )
