@@ -63,7 +63,7 @@ func TestEvaluateLagrangeFext(t *testing.T) {
 
 }
 
-func TestBatchLagrangeEvaluation(t *testing.T) {
+func TestBatchEvaluateLagrangeOnFext(t *testing.T) {
 
 	sizePoly := 64
 	nbPoly := 20
@@ -78,9 +78,9 @@ func TestBatchLagrangeEvaluation(t *testing.T) {
 	x := fext.RandomElement()
 
 	// compute canonical eval
-	canEval := make([]fext.Element, nbPoly)
+	Eval := make([]fext.Element, nbPoly)
 	for i := 0; i < nbPoly; i++ {
-		canEval[i] = poly.EvalOnExtField(polys[i], x)
+		Eval[i] = poly.EvalOnExtField(polys[i], x)
 	}
 
 	// change basis
@@ -95,7 +95,7 @@ func TestBatchLagrangeEvaluation(t *testing.T) {
 
 	// check the result
 	for i := 0; i < nbPoly; i++ {
-		if !lagEvalExt[i].Equal(&canEval[i]) {
+		if !lagEvalExt[i].Equal(&Eval[i]) {
 			t.Fatal("Error batch evaluation")
 		}
 	}
