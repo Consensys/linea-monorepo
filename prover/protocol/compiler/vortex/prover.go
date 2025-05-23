@@ -407,10 +407,14 @@ func (ctx *Ctx) storeSelectedColumnsForNonSisRounds(
 	// column of the ith non SIS round
 	selectedColsQ := make([][][]field.Element, ctx.NumCommittedRoundsNoSis())
 	// Sanity check
-	if len(selectedCols) != ctx.NumCommittedRoundsNoSis() {
+	numNonSisRound := ctx.NumCommittedRoundsNoSis()
+	if !ctx.IsSISAppliedToPrecomputed() {
+		numNonSisRound++
+	}
+	if len(selectedCols) != numNonSisRound {
 		utils.Panic(
 			"expected selectedCols to be of length %v, got %v",
-			ctx.NumCommittedRoundsNoSis(), len(selectedCols),
+			numNonSisRound, len(selectedCols),
 		)
 	}
 	for i := range selectedCols {

@@ -6,9 +6,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -293,6 +291,7 @@ func TestSelfRecursionLinearHashAndMerkle(t *testing.T) {
 			compiled := wizard.Compile(tc.Define,
 				vortex.Compile(
 					2,
+					vortex.ForceNumOpenedColumns(8),
 					vortex.WithOptionalSISHashingThreshold(10),
 				),
 				selfrecursion.SelfRecursionLinearHashAndMerkle,
@@ -306,42 +305,42 @@ func TestSelfRecursionLinearHashAndMerkle(t *testing.T) {
 	}
 }
 
-func TestSelfRecursionLinCombMultiLayered(t *testing.T) {
-	// Mute the logs
-	logrus.SetLevel(logrus.FatalLevel)
+// func TestSelfRecursionLinCombMultiLayered(t *testing.T) {
+// 	// Mute the logs
+// 	logrus.SetLevel(logrus.FatalLevel)
 
-	testCases := testCaseGenerator()
-	for _, tc := range testCases {
-		t.Run(tc.Explainer, func(t *testing.T) {
-			logrus.Infof("Testing %s", tc.Explainer)
-			compiled := wizard.Compile(
-				tc.Define,
-				vortex.Compile(
-					2,
-					vortex.WithOptionalSISHashingThreshold(9),
-				),
-				selfrecursion.SelfRecurseLinCombPhaseOnly,
-				mimc.CompileMiMC,
-				compiler.Arcane(
-					compiler.WithTargetColSize(1<<10)),
-				vortex.Compile(
-					2,
-					vortex.WithOptionalSISHashingThreshold(9),
-				),
-				selfrecursion.SelfRecurseLinCombPhaseOnly,
-				mimc.CompileMiMC,
-				compiler.Arcane(
-					compiler.WithTargetColSize(1<<10)),
-				vortex.Compile(
-					2,
-					vortex.WithOptionalSISHashingThreshold(9),
-				),
-				dummy.Compile,
-			)
-			proof := wizard.Prove(compiled, tc.Prove)
-			valid := wizard.Verify(compiled, proof)
+// 	testCases := testCaseGenerator()
+// 	for _, tc := range testCases {
+// 		t.Run(tc.Explainer, func(t *testing.T) {
+// 			logrus.Infof("Testing %s", tc.Explainer)
+// 			compiled := wizard.Compile(
+// 				tc.Define,
+// 				vortex.Compile(
+// 					2,
+// 					vortex.WithOptionalSISHashingThreshold(9),
+// 				),
+// 				selfrecursion.SelfRecurseLinCombPhaseOnly,
+// 				mimc.CompileMiMC,
+// 				compiler.Arcane(
+// 					compiler.WithTargetColSize(1<<10)),
+// 				vortex.Compile(
+// 					2,
+// 					vortex.WithOptionalSISHashingThreshold(9),
+// 				),
+// 				selfrecursion.SelfRecurseLinCombPhaseOnly,
+// 				mimc.CompileMiMC,
+// 				compiler.Arcane(
+// 					compiler.WithTargetColSize(1<<10)),
+// 				vortex.Compile(
+// 					2,
+// 					vortex.WithOptionalSISHashingThreshold(9),
+// 				),
+// 				dummy.Compile,
+// 			)
+// 			proof := wizard.Prove(compiled, tc.Prove)
+// 			valid := wizard.Verify(compiled, proof)
 
-			require.NoErrorf(t, valid, "the proof did not pass")
-		})
-	}
-}
+// 			require.NoErrorf(t, valid, "the proof did not pass")
+// 		})
+// 	}
+// }

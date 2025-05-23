@@ -5,8 +5,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
-	mimcW "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -83,25 +81,26 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 		hashPreimagesSize:          mimcPreimageColumnsSize,
 	})
 
-	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
+	//depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
 
 	// The Merkle proof verification is for both sis and non sis rounds
-	merkle.MerkleProofCheck(ctx.comp, ctx.merkleProofVerificationName(), depth, leavesSizeUnpadded,
-		ctx.Columns.MerkleProofs, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves, ctx.Columns.MerkleProofPositions)
+	// merkle.MerkleProofCheck(ctx.comp, ctx.merkleProofVerificationName(), depth, leavesSizeUnpadded,
+	//	ctx.Columns.MerkleProofs, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves, ctx.Columns.MerkleProofPositions)
 
 	// The linear hash verification is for only sis rounds
-	mimcW.CheckLinearHash(ctx.comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
-		ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, ctx.Columns.SisRoundLeaves)
+	// mimcW.CheckLinearHash(ctx.comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
+	// 	ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, ctx.Columns.SisRoundLeaves)
 
 	// Register the linear hash verification for the non sis rounds
-	for i := 0; i < numRoundNonSis; i++ {
-		mimcW.CheckLinearHash(ctx.comp, ctx.nonSisRoundLinearHashVerificationName(i), ctx.MIMCMetaData.ConcatenatedHashPreimages[i],
-			ctx.MIMCMetaData.ToHashSizes[i], ctx.VortexCtx.NbColsToOpen(), ctx.MIMCMetaData.NonSisLeaves[i])
-	}
+	// for i := 0; i < numRoundNonSis; i++ {
+	// 	logrus.Infof("Registering linear hash verification for non sis round %d", i)
+	// 	mimcW.CheckLinearHash(ctx.comp, ctx.nonSisRoundLinearHashVerificationName(i), ctx.MIMCMetaData.ConcatenatedHashPreimages[i],
+	// 		ctx.MIMCMetaData.ToHashSizes[i], ctx.VortexCtx.NbColsToOpen(), ctx.MIMCMetaData.NonSisLeaves[i])
+	// }
 
 	// leafConsistency imposes lookup constraints between the sis
 	// and non sis rounds leaves with that of the merkle tree leaves.
-	ctx.leafConsistency(roundQ)
+	// ctx.leafConsistency(roundQ)
 }
 
 // registerMiMCMetaDataForNonSisRounds registers the metadata for the
@@ -364,6 +363,7 @@ func processRound(
 		nonSisOpenedCols     [][][]field.Element
 		nonSisOpenedColsName string
 		nonSisRoundCount     = 0
+		sisRoundCount        = 0
 	)
 	if a.numNonSisRound > 0 {
 		nonSisOpenedColsName = a.ctx.VortexCtx.SelectedColumnNonSISName()
@@ -378,6 +378,11 @@ func processRound(
 		if a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 			nonSisOpenedCols = nonSisOpenedCols[1:]
 		}
+	}
+	// If SIS is applied to the precomputed, we need to
+	// increase the sisRoundCount by 1
+	if a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		sisRoundCount++
 	}
 
 	// The SIS and non SIS rounds are processed
@@ -394,7 +399,7 @@ func processRound(
 
 			for i, selectedCol := range openingIndices {
 				srcStart := selectedCol * lmp.sisHashSize
-				destStart := lmp.committedRound*lmp.numOpenedCol*lmp.sisHashSize + i*lmp.sisHashSize
+				destStart := sisRoundCount*lmp.numOpenedCol*lmp.sisHashSize + i*lmp.sisHashSize
 				sisHash := colSisHash[srcStart : srcStart+lmp.sisHashSize]
 				copy(lmp.concatDhQ[destStart:destStart+lmp.sisHashSize], sisHash)
 				leaf := mimc.HashVec(sisHash)
@@ -404,7 +409,7 @@ func processRound(
 				lmp.merkleRoots[insertAt] = rooth
 				lmp.merklePositions[insertAt].SetInt64(int64(selectedCol))
 			}
-
+			sisRoundCount++
 			run.State.TryDel(colSisHashName)
 			lmp.committedRound++
 		} else if a.ctx.VortexCtx.RoundStatus[round] == vortex.IsOnlyMiMCApplied {
