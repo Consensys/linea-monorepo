@@ -11,12 +11,12 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/sirupsen/logrus"
 )
 
 var (
 	naturalType         = reflect.TypeOf(column.Natural{})
 	shiftedColType      = reflect.TypeOf(column.Shifted{})
+	fakecolType         = reflect.TypeOf(&column.FakeColumn{})
 	manuallyShiftedType = reflect.TypeOf(&dedicated.ManuallyShifted{})
 
 	vConstColType         = reflect.TypeOf(verifiercol.ConstCol{})
@@ -93,18 +93,29 @@ func (c *serializableColumnDecl) intoNaturalAndRegister(comp *wizard.CompiledIOP
 	return comp.InsertColumn(c.Round, c.Name, c.Size, c.Status)
 }
 
+// serializableFakeColumn is used to serialize/deserialize FakeColumn
+type serializableFakeColumn struct {
+	ID ifaces.ColID
+}
+
+func intoSerializableFakeColumn(fc *column.FakeColumn) *serializableFakeColumn {
+	return &serializableFakeColumn{
+		ID: fc.ID,
+	}
+}
+
+func (s *serializableFakeColumn) intoFakeColumn() *column.FakeColumn {
+	return &column.FakeColumn{
+		ID: s.ID,
+	}
+}
+
 // serializeColumnInterface handles serialization of column interfaces in DeclarationMode.
 // Column types can be either Natural or ManuallyShifted
 func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	concrete := v.Elem()
 	var data json.RawMessage
 	var err error
-
-	// Ignore fake columns in recursion
-	if concrete.Type().String() == "*recursion.FakeColumn" {
-		logrus.Debugf("ignoring *recursion.FakeColumn")
-		return json.RawMessage(NilString), nil
-	}
 
 	switch concrete.Type() {
 	case naturalType:
@@ -157,6 +168,14 @@ func serializeColumnInterface(v reflect.Value, mode Mode) (json.RawMessage, erro
 			return nil, err
 		}
 
+	case fakecolType:
+		col := v.Interface().(*column.FakeColumn)
+		decl := intoSerializableFakeColumn(col)
+		data, err = SerializeValue(reflect.ValueOf(decl), mode)
+		if err != nil {
+			return nil, err
+		}
+
 	default:
 		return nil, fmt.Errorf("unsupported column type in DeclarationMode: %s", concrete.Type().String())
 	}
@@ -191,5 +210,16 @@ func deserializeManuallyShifted(value json.RawMessage, mode Mode, comp *wizard.C
 	}
 	shifted := v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)
 	ifaceValue.Set(reflect.ValueOf(shifted))
+	return ifaceValue, nil
+}
+
+func deserializeFakeColumn(value json.RawMessage, mode Mode, comp *wizard.CompiledIOP, ifaceValue reflect.Value) (reflect.Value, error) {
+	rawType := reflect.TypeOf(&serializableFakeColumn{})
+	v, err := DeserializeValue(value, mode, rawType, comp)
+	if err != nil {
+		return reflect.Value{}, fmt.Errorf("could not deserialize FakeColumn: %w", err)
+	}
+	fake := v.Interface().(*serializableFakeColumn).intoFakeColumn()
+	ifaceValue.Set(reflect.ValueOf(fake))
 	return ifaceValue, nil
 }

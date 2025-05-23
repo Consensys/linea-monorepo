@@ -118,7 +118,7 @@ func init() {
 	serialization.RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
 	serialization.RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
 
-	serialization.RegisterImplementation(recursion.FakeColumn{})
+	serialization.RegisterImplementation(column.FakeColumn{})
 	serialization.RegisterImplementation(recursion.RecursionCircuit{})
 	serialization.RegisterImplementation(recursion.AssignVortexOpenedCols{})
 	serialization.RegisterImplementation(recursion.AssignVortexUAlpha{})

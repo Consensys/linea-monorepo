@@ -427,8 +427,10 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 	switch raw.Type {
 	case "column.Natural":
 		return deserializeColumnNatural(raw.Value, mode, comp, ifaceValue)
-	case "*dedicated.ManuallyShifted":
-		return deserializeManuallyShifted(raw.Value, mode, comp, ifaceValue)
+	case "column.Shifted":
+		return deserializeStruct(raw.Value, mode, shiftedColType, comp)
+	case "*column.FakeColumn":
+		return deserializeFakeColumn(raw.Value, mode, comp, ifaceValue)
 	case "verifiercol.ConstCol":
 		return deserializeStruct(raw.Value, mode, vConstColType, comp)
 	case "verifiercol.ExpandedVerifCol":
@@ -437,8 +439,8 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 		return deserializeStruct(raw.Value, mode, vFromAccessorType, comp)
 	case "verifiercol.RepeatedAccessor":
 		return deserializeStruct(raw.Value, mode, vRepeatedAccessorType, comp)
-	case "column.Shifted":
-		return deserializeStruct(raw.Value, mode, shiftedColType, comp)
+	case "*dedicated.ManuallyShifted":
+		return deserializeManuallyShifted(raw.Value, mode, comp, ifaceValue)
 	default:
 		return deserializeConcreteType(raw.Type, raw.Value, mode, comp, ifaceValue)
 	}

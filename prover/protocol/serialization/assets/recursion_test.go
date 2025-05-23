@@ -39,8 +39,11 @@ func TestSerdeRecursion(t *testing.T) {
 
 }
 
-// var testComp = testRec.InputCompiledIOP
-var testComp = testRec.PlonkCtx.GetPlonkInternalIOP()
+var (
+	testComp = testRec.InputCompiledIOP
+	testCkt  = testRec.PlonkCtx.Plonk.Circuit
+	//  testComp = testRec.PlonkCtx.GetPlonkInternalIOP()
+)
 
 func TestSerdeRecurIOP(t *testing.T) {
 
@@ -68,9 +71,11 @@ func TestSerdeRecurIOP(t *testing.T) {
 	}
 }
 
-var testCkt = testRec.PlonkCtx.Plonk.Circuit
-
 func TestSerdePlonkCkt(t *testing.T) {
+
+	// fmt.Println("Given circuit")
+	// fmt.Println(testCkt)
+
 	serCkt, err := SerializePlonkCktInWizard(testCkt)
 	if err != nil {
 		t.Fatalf("error during ser. plonk circuit")
@@ -78,7 +83,7 @@ func TestSerdePlonkCkt(t *testing.T) {
 
 	logrus.Println("Succesfully ser. plonk circuit in wizard")
 
-	deSerCkt, err := DeSerializePlonkCktInWizard(serCkt)
+	deSerCkt, err := DeSerializePlonkCktInWizard(serCkt, testComp)
 	if err != nil {
 		t.Fatalf("error during ser. plonk circuit")
 	}

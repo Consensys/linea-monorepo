@@ -1,4 +1,4 @@
-package recursion
+package column
 
 import (
 	"github.com/consensys/gnark/frontend"
