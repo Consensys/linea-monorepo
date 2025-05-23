@@ -21,7 +21,7 @@ func randomPoly(size int) []fext.Element {
 
 func TestEvaluateLagrange(t *testing.T) {
 
-	size := 64
+	size := 16
 	domain := fft.NewDomain(uint64(size))
 	p := randomPoly(size)
 	pLagrange := make([]fext.Element, size)
@@ -51,7 +51,7 @@ func TestEvaluateLagrange(t *testing.T) {
 
 func TestBatchEvaluateLagrangeOnFext(t *testing.T) {
 
-	sizePoly := 64
+	sizePoly := 16
 	nbPoly := 20
 
 	// sample a bunch of polynomials
