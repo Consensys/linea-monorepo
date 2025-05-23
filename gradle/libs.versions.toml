@@ -27,7 +27,7 @@ logcaptor = "2.11.0"
 
 # Runtime
 arithmetization="beta-v2.1-rc16.2"
-besu = "25.2.1-linea1" # TODO in later ticket - Update to latest 25.5.0-linea2
+besu = "25.5.0-linea2"
 blobCompressor = "1.2.2"
 blobShnarfCalculator = "1.2.0"
 bouncycastle = "1.79"
