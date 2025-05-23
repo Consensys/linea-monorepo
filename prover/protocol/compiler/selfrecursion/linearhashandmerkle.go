@@ -5,6 +5,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
+	mimcW "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -31,6 +33,7 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	}
 	// The number of non SIS rounds is the difference
 	// between the total number of rounds and the number of SIS rounds
+	// It is after considering the precomputed round
 	numRoundNonSis := numRound - numRoundSis
 	if numRoundSis == 0 {
 		utils.Panic("SIS is not applied to any round, we don't support this case")
@@ -53,19 +56,18 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	ctx.Columns.MerkleRoots = ctx.comp.InsertCommit(roundQ, ctx.merkleRootsName(), leavesSize)
 	ctx.Columns.SisRoundLeaves = ctx.comp.InsertCommit(roundQ, ctx.sisRoundLeavesName(), sisRoundLeavesSize)
 
-	// Register the linear hash columns for non sis rounds
-	// If SIS is not applied to the precomputed, we consider
-	// it to be the first non sis round
-	ctx.MIMCMetaData.NonSisLeaves = make([]ifaces.Column, 0, numRoundNonSis)
-	ctx.MIMCMetaData.ConcatenatedHashPreimages = make([]ifaces.Column, 0, numRoundNonSis)
-	ctx.MIMCMetaData.ToHashSizes = make([]int, 0, numRoundNonSis)
-
 	// Register the linear hash columns for the non sis rounds
 	var (
 		mimcHashColumnSize      int
 		mimcPreimageColumnsSize []int
 	)
 	if numRoundNonSis > 0 {
+		// Register the linear hash columns for non sis rounds
+		// If SIS is not applied to the precomputed, we consider
+		// it to be the first non sis round
+		ctx.MIMCMetaData.NonSisLeaves = make([]ifaces.Column, 0, numRoundNonSis)
+		ctx.MIMCMetaData.ConcatenatedHashPreimages = make([]ifaces.Column, 0, numRoundNonSis)
+		ctx.MIMCMetaData.ToHashSizes = make([]int, 0, numRoundNonSis)
 		mimcHashColumnSize, mimcPreimageColumnsSize = ctx.registerMiMCMetaDataForNonSisRounds(numRoundNonSis, roundQ)
 	}
 
@@ -81,26 +83,25 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 		hashPreimagesSize:          mimcPreimageColumnsSize,
 	})
 
-	//depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
+	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
 
 	// The Merkle proof verification is for both sis and non sis rounds
-	// merkle.MerkleProofCheck(ctx.comp, ctx.merkleProofVerificationName(), depth, leavesSizeUnpadded,
-	//	ctx.Columns.MerkleProofs, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves, ctx.Columns.MerkleProofPositions)
+	merkle.MerkleProofCheck(ctx.comp, ctx.merkleProofVerificationName(), depth, leavesSizeUnpadded,
+		ctx.Columns.MerkleProofs, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves, ctx.Columns.MerkleProofPositions)
 
-	// The linear hash verification is for only sis rounds
-	// mimcW.CheckLinearHash(ctx.comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
-	// 	ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, ctx.Columns.SisRoundLeaves)
+	// The below linear hash verification is for only sis rounds
+	mimcW.CheckLinearHash(ctx.comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
+		ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, ctx.Columns.SisRoundLeaves)
 
 	// Register the linear hash verification for the non sis rounds
-	// for i := 0; i < numRoundNonSis; i++ {
-	// 	logrus.Infof("Registering linear hash verification for non sis round %d", i)
-	// 	mimcW.CheckLinearHash(ctx.comp, ctx.nonSisRoundLinearHashVerificationName(i), ctx.MIMCMetaData.ConcatenatedHashPreimages[i],
-	// 		ctx.MIMCMetaData.ToHashSizes[i], ctx.VortexCtx.NbColsToOpen(), ctx.MIMCMetaData.NonSisLeaves[i])
-	// }
+	for i := 0; i < numRoundNonSis; i++ {
+		mimcW.CheckLinearHash(ctx.comp, ctx.nonSisRoundLinearHashVerificationName(i), ctx.MIMCMetaData.ConcatenatedHashPreimages[i],
+			ctx.MIMCMetaData.ToHashSizes[i], ctx.VortexCtx.NbColsToOpen(), ctx.MIMCMetaData.NonSisLeaves[i])
+	}
 
 	// leafConsistency imposes lookup constraints between the sis
 	// and non sis rounds leaves with that of the merkle tree leaves.
-	// ctx.leafConsistency(roundQ)
+	ctx.leafConsistency(roundQ)
 }
 
 // registerMiMCMetaDataForNonSisRounds registers the metadata for the
@@ -116,7 +117,7 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 	)
 
 	// Consider the precomputed polynomials
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() && ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() && !ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		precompPreimageSize := utils.NextPowerOfTwo(
 			ctx.VortexCtx.NbColsToOpen() *
 				len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
@@ -373,9 +374,10 @@ func processRound(
 		}
 		nonSisOpenedCols = nonSisOpenedColsSV.([][][]field.Element)
 		// Note nonSisOpenedCols contains the precomputed columns also if
-		// SIS is applied to the precomputed.
-		// However, we already have it, so we need to exclude it
-		if a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		// SIS is not applied to the precomputed.
+		// However, we already have it at the time of processing
+		// the precomputed round, so we need to exclude it
+		if a.ctx.VortexCtx.IsNonEmptyPrecomputed() && !a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 			nonSisOpenedCols = nonSisOpenedCols[1:]
 		}
 	}
@@ -386,7 +388,13 @@ func processRound(
 	}
 
 	// The SIS and non SIS rounds are processed
-	for round := 0; round <= lmp.totalNumRounds; round++ {
+	numRound := lmp.totalNumRounds
+	// We need to decrease the number of rounds by 1
+	// as precomputed round is considered seperately
+	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
+		numRound -= 1
+	}
+	for round := 0; round <= numRound; round++ {
 		if a.ctx.VortexCtx.RoundStatus[round] == vortex.IsSISApplied {
 			colSisHashName := a.ctx.VortexCtx.SisHashName(round)
 			colSisHashSV, found := run.State.TryGet(colSisHashName)

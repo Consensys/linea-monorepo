@@ -957,9 +957,6 @@ func (ctx *Ctx) GetPrecomputedSelectedCol(index int) []field.Element {
 		utils.Panic("precomputed matrix is nil")
 	}
 
-	if index < 0 || index >= len(ctx.Items.Precomputeds.CommittedMatrix) {
-		utils.Panic("index out of range")
-	}
 	col := make([]field.Element, len(ctx.Items.Precomputeds.PrecomputedColums))
 
 	for i := 0; i < len(ctx.Items.Precomputeds.PrecomputedColums); i++ {

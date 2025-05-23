@@ -403,14 +403,14 @@ func (ctx *Ctx) assignOpenedColumns(
 func (ctx *Ctx) storeSelectedColumnsForNonSisRounds(
 	pr *wizard.ProverRuntime,
 	selectedCols [][][]field.Element) {
-	// selectedColsQ[i][j][k] stores the jth selected
-	// column of the ith non SIS round
-	selectedColsQ := make([][][]field.Element, ctx.NumCommittedRoundsNoSis())
-	// Sanity check
 	numNonSisRound := ctx.NumCommittedRoundsNoSis()
-	if !ctx.IsSISAppliedToPrecomputed() {
+	if ctx.IsNonEmptyPrecomputed() && !ctx.IsSISAppliedToPrecomputed() {
 		numNonSisRound++
 	}
+	// selectedColsQ[i][j][k] stores the jth selected
+	// column of the ith non SIS round
+	selectedColsQ := make([][][]field.Element, numNonSisRound)
+	// Sanity check
 	if len(selectedCols) != numNonSisRound {
 		utils.Panic(
 			"expected selectedCols to be of length %v, got %v",
