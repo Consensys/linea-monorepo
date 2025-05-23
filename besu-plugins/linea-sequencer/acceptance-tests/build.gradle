@@ -28,7 +28,6 @@ def lineaSequencerProject = project(lineaSequencerProjectPath)
 apply from: lineaSequencerProject.file("gradle/java.gradle")
 apply from: lineaSequencerProject.file("gradle/dependency-management.gradle")
 apply from: lineaSequencerProject.file('gradle/common-dependencies.gradle')
-apply from: lineaSequencerProject.file("gradle/tests.gradle")
 apply from: lineaSequencerProject.file("gradle/lint.gradle")
 
 web3j {
@@ -42,7 +41,7 @@ solidity {
   version '0.8.19'
 }
 
-processTestResources.dependsOn(':acceptance-tests:generateTestContractWrappers')
+processTestResources.dependsOn("${lineaSequencerProjectPath}:acceptance-tests:generateTestContractWrappers")
 
 tasks.register('acceptanceTests', Test) {
   description = 'Runs acceptance tests.'
@@ -61,7 +60,7 @@ dependencies {
 
   implementation 'org.apache.logging.log4j:log4j-core'
 
-  testImplementation project(':besu-plugins:linea-sequencer:sequencer')
+  testImplementation project("${lineaSequencerProjectPath}:sequencer")
 
   testImplementation "${besuArtifactGroup}:besu-datatypes"
   testImplementation "${besuArtifactGroup}.internal:clique"
@@ -78,6 +77,7 @@ dependencies {
   testImplementation 'org.awaitility:awaitility'
 }
 
+// Do not run acceptance tests with ./gradlew test, only with ./gradlew acceptanceTests
 test.enabled = false
 
 jar {

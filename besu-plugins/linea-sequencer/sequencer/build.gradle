@@ -28,7 +28,6 @@ def lineaSequencerProject = project(lineaSequencerProjectPath)
 apply from: lineaSequencerProject.file("gradle/java.gradle")
 apply from: lineaSequencerProject.file("gradle/dependency-management.gradle")
 apply from: lineaSequencerProject.file('gradle/common-dependencies.gradle')
-apply from: lineaSequencerProject.file("gradle/tests.gradle")
 apply from: lineaSequencerProject.file("gradle/build-aliases.gradle")
 apply from: lineaSequencerProject.file("gradle/lint.gradle")
 
@@ -55,10 +54,10 @@ dependencies {
 
   implementation 'com.google.code.gson:gson'
 
-  implementation 'io.consensys.tuweni:tuweni-bytes'
-  implementation 'io.consensys.tuweni:tuweni-units'
-  implementation 'io.consensys.tuweni:tuweni-toml'
-
+  implementation 'io.consensys.tuweni:tuweni-bytes:2.7.0'
+  implementation 'io.consensys.tuweni:tuweni-units:2.7.0'
+  implementation 'io.consensys.tuweni:tuweni-toml:2.7.0'
+  
   implementation 'info.picocli:picocli'
 
   implementation 'net.consensys.linea.zktracer:arithmetization'
@@ -71,4 +70,4 @@ dependencies {
   testImplementation 'org.awaitility:awaitility'
 }
 
-apply from: project.parent.file("gradle/dist.gradle")
+apply from: lineaSequencerProject.file("gradle/dist.gradle")
