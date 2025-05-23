@@ -257,7 +257,7 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 
 			if len(rootsAll) > 1 {
 				rootWitness := run.GetColumn(rootsAll[rootID].GetColID())
-				newY := smartvectors.EvaluateLagrange(rootWitness, derivedXs[rootID])
+				newY := smartvectors.EvaluateLagrangeOnFext(rootWitness, derivedXs[rootID])
 				newYs[subQueryID] = append(newYs[subQueryID], newY)
 			} else {
 				newYs[subQueryID] = append(newYs[subQueryID], originalQuery.Ys[parentID])

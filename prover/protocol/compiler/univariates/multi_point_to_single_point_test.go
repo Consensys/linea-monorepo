@@ -44,8 +44,8 @@ func TestMPTS(t *testing.T) {
 		xa := field.NewElement(5)
 		xb := field.NewElement(6)
 
-		ya := smartvectors.EvaluateLagrange(p1, xa)
-		yb := smartvectors.EvaluateLagrange(p2, xb)
+		ya := smartvectors.EvaluateLagrangeOnFext(p1, xa)
+		yb := smartvectors.EvaluateLagrangeOnFext(p2, xb)
 
 		assi.AssignUnivariate(EVAL_A, xa, ya)
 		assi.AssignUnivariate(EVAL_B, xb, yb)

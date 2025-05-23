@@ -284,7 +284,7 @@ func TestFFTFuzzyConsistWithInterpolation(t *testing.T) {
 				yCoeff := EvalCoeff(coeffs, xCoeff)
 				// We already multiplied xVal by the multiplicative generator in the
 				// important case.
-				yFFT := Interpolate(evals, xVal, false)
+				yFFT := EvaluateLagrange(evals, xVal, false)
 
 				require.Equal(t, yCoeff.String(), yFFT.String())
 

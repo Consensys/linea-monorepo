@@ -63,12 +63,11 @@ func TestFuzzPolynomial(t *testing.T) {
 			a := tcaseA.svecs[0]
 			b := tcaseB.svecs[0]
 
-			// Try interpolating by one (should return the first element)
-
-			var oneExt fext.Element
-			oneExt.SetOne()
-			xa := EvaluateLagrangeOnFext(a, oneExt)
-			expecteda0 := a.Get(0)
+			// Try interpolating by zero (should return the first element)
+			var zeroExt fext.Element
+			zeroExt.SetZero()
+			xa := EvaluateLagrangeOnFext(a, zeroExt)
+			expecteda0 := a.GetExt(0)
 			assert.Equal(t, xa.String(), expecteda0.String())
 
 			// Get a random x to use as an evaluation point to check polynomial
@@ -150,15 +149,13 @@ func TestBivariatePolynomial(t *testing.T) {
 
 func TestBatchInterpolationWithConstantVector(t *testing.T) {
 	n := 4
-	randPoly := vector.ForTest(1, 2, 3, 4)
-	randPoly2 := vector.ForTest(1, 1, 1, 1)
+	randPoly := vector.ForTest(1, 1, 1, 1)
+	randPoly2 := vector.ForTest(2, 2, 2, 2)
+	x := fext.NewElement(51, 1, 2, 3)
 
-	x := field.NewElement(51)
-
-	expectedY := poly.Eval(randPoly, x)
-	expectedY2 := poly.Eval(randPoly2, x)
+	expectedY := poly.EvalOnExtField(randPoly, x)
+	expectedY2 := poly.EvalOnExtField(randPoly2, x)
 	domain := fft.NewDomain(uint64(n))
-
 	/*
 		Test without coset
 	*/
@@ -173,9 +170,7 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 	fft.BitReverse(polys[0])
 	fft.BitReverse(polys[1])
 
-	var xExt fext.Element
-	fext.FromBase(&xExt, &x)
-	yOnRoots := fastpoly.BatchEvaluateLagrangeOnFext(polys, xExt)
+	yOnRoots := fastpoly.BatchEvaluateLagrangeOnFext(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -193,21 +188,19 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 	fft.BitReverse(onCosets[0])
 	fft.BitReverse(onCosets[1])
 
-	fext.FromBase(&xExt, &x)
-	yOnCosets := fastpoly.BatchEvaluateLagrangeOnFext(onCosets, xExt, true)
+	yOnCosets := fastpoly.BatchEvaluateLagrangeOnFext(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
-
 }
 
 func TestBatchEvaluateLagrangeOnFextOnlyConstantVector(t *testing.T) {
 	n := 4
 	randPoly := vector.ForTest(1, 1, 1, 1)
 	randPoly2 := vector.ForTest(2, 2, 2, 2)
-	x := field.NewElement(51)
+	x := fext.NewElement(51, 1, 2, 3)
 
-	expectedY := poly.Eval(randPoly, x)
-	expectedY2 := poly.Eval(randPoly2, x)
+	expectedY := poly.EvalOnExtField(randPoly, x)
+	expectedY2 := poly.EvalOnExtField(randPoly2, x)
 	domain := fft.NewDomain(uint64(n))
 	/*
 		Test without coset
@@ -223,9 +216,7 @@ func TestBatchEvaluateLagrangeOnFextOnlyConstantVector(t *testing.T) {
 	fft.BitReverse(polys[0])
 	fft.BitReverse(polys[1])
 
-	var xExt fext.Element
-	fext.FromBase(&xExt, &x)
-	yOnRoots := fastpoly.BatchEvaluateLagrangeOnFext(polys, xExt)
+	yOnRoots := fastpoly.BatchEvaluateLagrangeOnFext(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -243,8 +234,7 @@ func TestBatchEvaluateLagrangeOnFextOnlyConstantVector(t *testing.T) {
 	fft.BitReverse(onCosets[0])
 	fft.BitReverse(onCosets[1])
 
-	fext.FromBase(&xExt, &x)
-	yOnCosets := fastpoly.BatchEvaluateLagrangeOnFext(onCosets, xExt, true)
+	yOnCosets := fastpoly.BatchEvaluateLagrangeOnFext(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 }
@@ -257,11 +247,11 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	randPoly2 := vector.ForTest(1, 1, 1, 1)
 	randPoly3 := vector.ForTest(1, 2, 3, 4)
 
-	x := field.NewElement(51)
+	x := fext.NewElement(51, 1, 2, 3)
 
-	expectedY := poly.Eval(randPoly, x)
-	expectedY2 := poly.Eval(randPoly2, x)
-	expectedY3 := poly.Eval(randPoly3, x)
+	expectedY := poly.EvalOnExtField(randPoly, x)
+	expectedY2 := poly.EvalOnExtField(randPoly2, x)
+	expectedY3 := poly.EvalOnExtField(randPoly3, x)
 	domain := fft.NewDomain(uint64(n))
 
 	/*
@@ -282,9 +272,7 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	fft.BitReverse(polys[1])
 	fft.BitReverse(polys[2])
 
-	var xExt fext.Element
-	fext.FromBase(&xExt, &x)
-	yOnRoots := fastpoly.BatchEvaluateLagrangeOnFext(polys, xExt)
+	yOnRoots := fastpoly.BatchEvaluateLagrangeOnFext(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 	require.Equal(t, expectedY3.String(), yOnRoots[2].String())
@@ -307,8 +295,7 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	fft.BitReverse(onCosets[1])
 	fft.BitReverse(onCosets[2])
 
-	fext.FromBase(&xExt, &x)
-	yOnCosets := fastpoly.BatchEvaluateLagrangeOnFext(onCosets, xExt, true)
+	yOnCosets := fastpoly.BatchEvaluateLagrangeOnFext(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 	require.Equal(t, expectedY3.String(), yOnCosets[2].String())

@@ -36,7 +36,7 @@ func TestVortexSingleRoundMerkle(t *testing.T) {
 		// assign the rows with random polynomials and collect the ys
 		for i, row := range rows {
 			p := smartvectors.Rand(polSize)
-			ys[i] = smartvectors.EvaluateLagrange(p, x)
+			ys[i] = smartvectors.EvaluateLagrangeOnFext(p, x)
 			pr.AssignColumn(row.GetColID(), p)
 		}
 
@@ -87,7 +87,7 @@ func TestVortexMultiRoundMerkle(t *testing.T) {
 
 			for i, row := range rows[round] {
 				p := smartvectors.Rand(polSize)
-				ys[round*nPols+i] = smartvectors.EvaluateLagrange(p, x)
+				ys[round*nPols+i] = smartvectors.EvaluateLagrangeOnFext(p, x)
 				pr.AssignColumn(row.GetColID(), p)
 			}
 		}
@@ -131,7 +131,7 @@ func TestVortexOneFullOneDryMerkle(t *testing.T) {
 
 		for i := 0; i < nPols; i++ {
 			p := smartvectors.Rand(polSize)
-			ys[i] = smartvectors.EvaluateLagrange(p, x)
+			ys[i] = smartvectors.EvaluateLagrangeOnFext(p, x)
 			pr.AssignColumn(rows[i].GetColID(), p)
 		}
 
@@ -140,7 +140,7 @@ func TestVortexOneFullOneDryMerkle(t *testing.T) {
 
 		// assign the dry-round-column
 		p := smartvectors.Rand(polSize)
-		ys[nPols] = smartvectors.EvaluateLagrange(p, x)
+		ys[nPols] = smartvectors.EvaluateLagrangeOnFext(p, x)
 		pr.AssignColumn(rows[nPols].GetColID(), p)
 
 		// finally assigns the query
@@ -180,7 +180,7 @@ func TestVortexSingleRoundMerkleNoSis(t *testing.T) {
 		// assign the rows with random polynomials and collect the ys
 		for i, row := range rows {
 			p := smartvectors.Rand(polSize)
-			ys[i] = smartvectors.EvaluateLagrange(p, x)
+			ys[i] = smartvectors.EvaluateLagrangeOnFext(p, x)
 			pr.AssignColumn(row.GetColID(), p)
 		}
 
@@ -231,7 +231,7 @@ func TestVortexMultiRoundMerkleNoSis(t *testing.T) {
 
 			for i, row := range rows[round] {
 				p := smartvectors.Rand(polSize)
-				ys[round*nPols+i] = smartvectors.EvaluateLagrange(p, x)
+				ys[round*nPols+i] = smartvectors.EvaluateLagrangeOnFext(p, x)
 				pr.AssignColumn(row.GetColID(), p)
 			}
 		}
@@ -275,7 +275,7 @@ func TestVortexOneFullOneDryMerkleNoSis(t *testing.T) {
 
 		for i := 0; i < nPols; i++ {
 			p := smartvectors.Rand(polSize)
-			ys[i] = smartvectors.EvaluateLagrange(p, x)
+			ys[i] = smartvectors.EvaluateLagrangeOnFext(p, x)
 			pr.AssignColumn(rows[i].GetColID(), p)
 		}
 
@@ -284,7 +284,7 @@ func TestVortexOneFullOneDryMerkleNoSis(t *testing.T) {
 
 		// assign the dry-round-column
 		p := smartvectors.Rand(polSize)
-		ys[nPols] = smartvectors.EvaluateLagrange(p, x)
+		ys[nPols] = smartvectors.EvaluateLagrangeOnFext(p, x)
 		pr.AssignColumn(rows[nPols].GetColID(), p)
 
 		// finally assigns the query

@@ -94,7 +94,7 @@ func RuffiniQuoRem(p smartvectors.SmartVector, q fext.Element) (quo smartvectors
 }
 
 // Evaluate a polynomial in Lagrange basis
-func Interpolate(v smartvectors.SmartVector, x fext.Element, oncoset ...bool) fext.Element {
+func EvaluateLagrange(v smartvectors.SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	switch con := v.(type) {
 	case *ConstantExt:
 		return con.val
@@ -107,7 +107,7 @@ func Interpolate(v smartvectors.SmartVector, x fext.Element, oncoset ...bool) fe
 }
 
 // Batch-evaluate polynomials in Lagrange basis
-func BatchInterpolate(vs []smartvectors.SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
+func BatchEvaluateLagrange(vs []smartvectors.SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
 
 	var (
 		polys         = make([][]fext.Element, len(vs))
@@ -137,13 +137,13 @@ func BatchInterpolate(vs []smartvectors.SmartVector, x fext.Element, oncoset ...
 		return results
 	}
 
-	return batchInterpolateSV(results, computed, polys, x, oncoset...)
+	return batchEvaluateLagrangeSV(results, computed, polys, x, oncoset...)
 }
 
 // Optimized batch interpolate for smart vectors.
 // This reduces the number of computation by pre-processing
-// constant vectors in advance in BatchInterpolate()
-func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.Element, x fext.Element, oncoset ...bool) []fext.Element {
+// constant vectors in advance in BatchEvaluateLagrange()
+func batchEvaluateLagrangeSV(results []fext.Element, computed []bool, polys [][]fext.Element, x fext.Element, oncoset ...bool) []fext.Element {
 
 	n := 0
 	for i := range polys {
