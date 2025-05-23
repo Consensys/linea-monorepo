@@ -259,7 +259,7 @@ type Ctx struct {
 		OpenedSISColumns []ifaces.Column
 		// Opened non-SIS columns
 		OpenedNonSISColumns []ifaces.Column
-		// MerkleProof (only used with the MerkleProof version)
+		// MerkleProofs
 		// We represents all the Merkle proof as specfied here:
 		MerkleProofs ifaces.Column
 		// The Merkle roots are represented by a size 1 column

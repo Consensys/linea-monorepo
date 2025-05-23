@@ -249,9 +249,9 @@ type linearHashMerkleProverActionBuilder struct {
 func newLinearHashMerkleProverActionBuilder(a *linearHashMerkleProverAction) *linearHashMerkleProverActionBuilder {
 	lmp := linearHashMerkleProverActionBuilder{}
 	lmp.concatDhQ = make([]field.Element, a.sisRoundLeavesSizeUnpadded*a.ctx.VortexCtx.SisParams.OutputSize())
-	lmp.merkleLeaves = make([]field.Element, a.leavesSizeUnpadded)
-	lmp.merklePositions = make([]field.Element, a.leavesSizeUnpadded)
-	lmp.merkleRoots = make([]field.Element, a.leavesSizeUnpadded)
+	lmp.merkleLeaves = make([]field.Element, 0, a.leavesSizeUnpadded)
+	lmp.merklePositions = make([]field.Element, 0, a.leavesSizeUnpadded)
+	lmp.merkleRoots = make([]field.Element, 0, a.leavesSizeUnpadded)
 	lmp.sisLeaves = make([]field.Element, 0, a.sisRoundLeavesSizeUnpadded)
 	lmp.nonSisLeaves = make([][]field.Element, 0, a.numNonSisRound)
 	lmp.nonSisHashPreimages = make([][]field.Element, 0, a.numNonSisRound)
@@ -317,28 +317,26 @@ func processPrecomputedRound(
 			sisHash := precompColSisHash[srcStart : srcStart+lmp.sisHashSize]
 			copy(lmp.concatDhQ[destStart:destStart+lmp.sisHashSize], sisHash)
 			leaf := mimc.HashVec(sisHash)
-			insertAt := i
-			lmp.merkleLeaves[insertAt] = leaf
+			lmp.merkleLeaves = append(lmp.merkleLeaves, leaf)
 			lmp.sisLeaves = append(lmp.sisLeaves, leaf)
-			lmp.merkleRoots[insertAt] = rootPrecomp
-			lmp.merklePositions[insertAt].SetInt64(int64(selectedCol))
+			lmp.merkleRoots = append(lmp.merkleRoots, rootPrecomp)
+			lmp.merklePositions = append(lmp.merklePositions, field.NewElement(uint64(selectedCol)))
 		}
 		lmp.committedRound++
 		lmp.totalNumRounds++
-	} else if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	} else {
 		precompColMiMCHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
 		precompMimcHashValues := make([]field.Element, 0, lmp.numOpenedCol)
 		precompMimcHashPreimages := make([]field.Element, 0, lmp.numOpenedCol*len(a.ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
-		for i, selectedCol := range openingIndices {
+		for selectedCol := range openingIndices {
 			srcStart := selectedCol
 			// MiMC hash is a single value
 			mimcHash := precompColMiMCHash[srcStart : srcStart+1]
 			leaf := mimcHash[0]
 			mimcPreimage := a.ctx.VortexCtx.GetPrecomputedSelectedCol(selectedCol)
-			insertAt := i
-			lmp.merkleLeaves[insertAt] = leaf
-			lmp.merkleRoots[insertAt] = rootPrecomp
-			lmp.merklePositions[insertAt].SetInt64(int64(selectedCol))
+			lmp.merkleLeaves = append(lmp.merkleLeaves, leaf)
+			lmp.merkleRoots = append(lmp.merkleRoots, rootPrecomp)
+			lmp.merklePositions = append(lmp.merklePositions, field.NewElement(uint64(selectedCol)))
 			precompMimcHashValues = append(precompMimcHashValues, leaf)
 			precompMimcHashPreimages = append(precompMimcHashPreimages, mimcPreimage...)
 		}
@@ -411,11 +409,10 @@ func processRound(
 				sisHash := colSisHash[srcStart : srcStart+lmp.sisHashSize]
 				copy(lmp.concatDhQ[destStart:destStart+lmp.sisHashSize], sisHash)
 				leaf := mimc.HashVec(sisHash)
-				insertAt := lmp.committedRound*lmp.numOpenedCol + i
-				lmp.merkleLeaves[insertAt] = leaf
+				lmp.merkleLeaves = append(lmp.merkleLeaves, leaf)
 				lmp.sisLeaves = append(lmp.sisLeaves, leaf)
-				lmp.merkleRoots[insertAt] = rooth
-				lmp.merklePositions[insertAt].SetInt64(int64(selectedCol))
+				lmp.merkleRoots = append(lmp.merkleRoots, rooth)
+				lmp.merklePositions = append(lmp.merklePositions, field.NewElement(uint64(selectedCol)))
 			}
 			sisRoundCount++
 			run.State.TryDel(colSisHashName)
@@ -439,10 +436,9 @@ func processRound(
 				mimcHash := colMimcHash[srcStart : srcStart+1]
 				mimcPreimage := nonSisOpenedCols[nonSisRoundCount][i]
 				leaf := mimcHash[0]
-				insertAt := lmp.committedRound*lmp.numOpenedCol + i
-				lmp.merkleLeaves[insertAt] = leaf
-				lmp.merkleRoots[insertAt] = rooth
-				lmp.merklePositions[insertAt].SetInt64(int64(selectedCol))
+				lmp.merkleLeaves = append(lmp.merkleLeaves, leaf)
+				lmp.merkleRoots = append(lmp.merkleRoots, rooth)
+				lmp.merklePositions = append(lmp.merklePositions, field.NewElement(uint64(selectedCol)))
 				mimcHashValues = append(mimcHashValues, leaf)
 				mimcHashPreimages = append(mimcHashPreimages, mimcPreimage...)
 			}
