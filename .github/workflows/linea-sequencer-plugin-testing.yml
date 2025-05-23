@@ -46,7 +46,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: distributions
-          path: sequencer/build/libs
+          path: besu-plugins/linea-sequencer/sequencer/build/libs
 
   acceptanceTest:
     name: "Linea Sequencer Plugin Acceptance Tests"
@@ -77,7 +77,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: acceptance-test-report
-          path: acceptance-tests/build/reports/tests/
+          path: besu-plugins/linea-sequencer/acceptance-tests/build/reports/tests/
 
   spotless:
     name: "Linea Sequencer Plugin Spotless Check"
