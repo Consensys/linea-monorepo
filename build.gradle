@@ -118,15 +118,6 @@ allprojects {
           indentWithSpaces(2)
           endWithNewline()
         }
-        // spotless check applied to .java files
-        java {
-          // This path needs to be relative to each project
-          target 'src/**/*.java'
-          targetExclude '**/src/test/java/**ReferenceTest**', '**/src/main/generated/**', '**/src/test/generated/**', '**/src/jmh/generated/**'
-          removeUnusedImports()
-          trimTrailingWhitespace()
-          endWithNewline()
-        }
       }
     }
   }

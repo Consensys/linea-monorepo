@@ -41,3 +41,14 @@ build {
 jar {
   enabled = false
 }
+
+// Spotless configuration specifically for linea-sequencer
+spotless {
+  java {
+    target 'src/**/*.java'
+    targetExclude '**/src/test/java/**ReferenceTest**', '**/src/main/generated/**', '**/src/test/generated/**', '**/src/jmh/generated/**'
+    removeUnusedImports()
+    trimTrailingWhitespace()
+    endWithNewline()
+  }
+}
