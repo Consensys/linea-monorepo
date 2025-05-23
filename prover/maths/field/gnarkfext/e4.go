@@ -138,7 +138,7 @@ func (e *Element) MulByE2(api frontend.API, e1 Element, c E2) *Element {
 // MulByFp multiplies an Fp4 elmt by an fp elmt
 func (e *Element) MulByFp(api frontend.API, e1 Element, c frontend.Variable) *Element {
 	e.B0.MulByFp(api, e1.B0, c)
-	e.B1.MulByFp(api, e1.B0, c)
+	e.B1.MulByFp(api, e1.B1, c)
 	return e
 }
 

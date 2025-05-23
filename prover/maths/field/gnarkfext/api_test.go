@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,18 +20,23 @@ type ApiCircuit struct {
 	ATimesB  Element
 	ASquare  Element
 	AExp     Element
+	AMulByFp Element
+	AInverse Element
+	fp       int
 	exponent int
 }
 
 func (c *ApiCircuit) Define(api frontend.API) error {
 
-	var aplusb, aminusb, nega, atimesb, asquare, aexp Element
+	var aplusb, aminusb, nega, atimesb, asquare, aexp, mulabyfp, ainverse Element
 	aplusb.Add(api, c.A, c.B)
 	aminusb.Sub(api, c.A, c.B)
 	nega.Neg(api, c.A)
 	atimesb.Mul(api, c.A, c.B)
 	asquare.Square(api, c.A)
 	aexp = Exp(api, c.A, c.exponent)
+	mulabyfp.MulByFp(api, c.A, c.fp)
+	ainverse.Inverse(api, c.A)
 
 	aplusb.AssertIsEqual(api, c.APlusB)
 	aminusb.AssertIsEqual(api, c.AMinusB)
@@ -38,6 +44,8 @@ func (c *ApiCircuit) Define(api frontend.API) error {
 	atimesb.AssertIsEqual(api, c.ATimesB)
 	asquare.AssertIsEqual(api, c.ASquare)
 	aexp.AssertIsEqual(api, c.AExp)
+	mulabyfp.AssertIsEqual(api, c.AMulByFp)
+	ainverse.AssertIsEqual(api, c.AInverse)
 
 	return nil
 }
@@ -65,9 +73,17 @@ func TestAPI(t *testing.T) {
 	tmp.Exp(a, big.NewInt(int64(exponent)))
 	witness.AExp = FromValue(tmp)
 	witness.exponent = exponent
+	fp := 101
+	var fpKoalabear field.Element
+	fpKoalabear.SetInt64(int64(fp))
+	tmp.MulByElement(&a, &fpKoalabear)
+	witness.AMulByFp = FromValue(tmp)
+	tmp.Inverse(&a)
+	witness.AInverse = FromValue(tmp)
 
 	var circuit ApiCircuit
 	circuit.exponent = exponent
+	circuit.fp = fp
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
 	assert.NoError(t, err)
