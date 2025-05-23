@@ -633,8 +633,8 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 		// evaluates both edual and dcollapse (seen as polynomial) by
 		// coefficients and fetch the result of the inner-product
 		yAlleged := run.GetInnerProductParams(ctx.preimagesAndAmergeIP()).Ys[0]
-		yDual := smartvectors.EvalCoeff(edual, rfold)
-		yActual := smartvectors.EvalCoeff(dcollapse, rfold)
+		yDual := smartvectors.EvalCoeffOnFext(edual, rfold)
+		yActual := smartvectors.EvalCoeffOnFext(dcollapse, rfold)
 
 		/*
 			If P(X) is of degree 2n

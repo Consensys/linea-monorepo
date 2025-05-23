@@ -46,7 +46,7 @@ func TestEvalCoeff(t *testing.T) {
 
 	xVal := savedRuntime.GetRandomCoinField(x.Name)
 	accY := acc.GetVal(savedRuntime)
-	expectedY := smartvectors.EvalCoeff(wp, xVal)
+	expectedY := smartvectors.EvalCoeffOnFext(wp, xVal)
 
 	require.Equal(t, accY, expectedY)
 

@@ -34,7 +34,7 @@ func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDeg
 		foldedVal := make([]field.Element, foldedSize)
 		for i := range foldedVal {
 			subH := h.SubVector(i*innerDegree, (i+1)*innerDegree)
-			foldedVal[i] = smartvectors.EvalCoeff(subH, x)
+			foldedVal[i] = smartvectors.EvalCoeffOnFext(subH, x)
 		}
 
 		assi.AssignColumn(foldedName, smartvectors.NewRegular(foldedVal))
