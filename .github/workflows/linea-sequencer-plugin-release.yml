@@ -8,8 +8,6 @@ on:
         required: true
         type: string
 
-# TODO in a later ticket - Work out best-practice permissions for this workflow
-
 jobs:
   build:
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
@@ -34,7 +32,7 @@ jobs:
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
-      # TODO in a later ticket - actions/create-release and actions/upload-release-asset are both archived
+      # TODO in later ticket - actions/create-release and actions/upload-release-asset are both archived
       # ncipollo/release-action@v1 is an actively-maintained alternative that can combine release creation and artifact upload
       - name: Draft Release
         id: create_release

@@ -63,10 +63,14 @@ dependencyManagement {
     }
 
     dependency "com.google.code.gson:gson:${libs.versions.gson.get()}"
+    
+    dependency "io.tmio:tuweni-bytes:${libs.versions.tuweni.get()}"
+    dependency "io.tmio:tuweni-units:${libs.versions.tuweni.get()}"
+    dependency "io.tmio:tuweni-toml:${libs.versions.tuweni.get()}"
 
     // ToDo: remove when fixed in Besu, force version to avoid conflict with previous version
-    dependency 'org.apache.logging.log4j:log4j-api:2.24.1'
-    dependency 'org.apache.logging.log4j:log4j-core:2.24.1'
+    dependency "org.apache.logging.log4j:log4j-api:${libs.versions.log4j.get()}"
+    dependency "org.apache.logging.log4j:log4j-core:${libs.versions.log4j.get()}"
 
     dependency "org.wiremock:wiremock:${libs.versions.wiremock.get()}"
   }
