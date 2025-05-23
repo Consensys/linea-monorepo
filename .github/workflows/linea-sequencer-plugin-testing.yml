@@ -12,13 +12,14 @@ concurrency:
 
 jobs:
   validation:
-    name: "Validation"
+    name: "Gradlew Wrapper Checksum Validation"
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
       - uses: actions/checkout@v4
       - uses: gradle/actions/wrapper-validation@v4
 
   build:
+    name: "Linea Sequencer Plugin Build"
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
       - name: Install Go
@@ -48,7 +49,8 @@ jobs:
           path: sequencer/build/libs
 
   acceptanceTest:
-    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-med
+    name: "Linea Sequencer Plugin Acceptance Tests"
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     steps:
       - name: Install Go
         uses: actions/setup-go@v5
@@ -78,6 +80,7 @@ jobs:
           path: acceptance-tests/build/reports/tests/
 
   spotless:
+    name: "Linea Sequencer Plugin Spotless Check"
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
       - name: Checkout Repo
