@@ -20,13 +20,14 @@ import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
 import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class ImmediateInvalid {
+public class ImmediateInvalid extends TracerTestBase {
 
   @Test
   void zeroValueTransferToInvalid() {
@@ -34,7 +35,7 @@ public class ImmediateInvalid {
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 0, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts);
+    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
   }
 
   @Test
@@ -43,7 +44,7 @@ public class ImmediateInvalid {
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 1, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts);
+    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
   }
 
   @Test
@@ -55,6 +56,6 @@ public class ImmediateInvalid {
     // we use the 1 on the stack after this successful CALL as the revert message size
     program.push(0).op(REVERT);
 
-    BytecodeRunner.of(program.compile()).run(accounts);
+    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
   }
 }

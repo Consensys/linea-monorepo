@@ -26,6 +26,7 @@ import static net.consensys.linea.zktracer.module.hub.signals.TracedException.OU
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -42,7 +43,7 @@ JUMPX & OOGX : JUMP, JUMPI
     - triggering JUMPX by jumping within the bytecode but not landing on a valid jump destination
  */
 @ExtendWith(UnitTestWatcher.class)
-public class JumpTest {
+public class JumpTest extends TracerTestBase {
   /**
    * Trigger a jump exception and an out of gas exception. Jump exception can be triggered by a jump
    * to an invalid destination (here 5) or outside of codesize (here 6)
@@ -64,7 +65,7 @@ public class JumpTest {
     // Calculate the gas cost to trigger OOGX on JUMP and not on the last but one opcode
     long gasCost = GAS_CONST_G_TRANSACTION + GAS_CONST_G_VERY_LOW;
 
-    bytecodeRunner.run(gasCost);
+    bytecodeRunner.run(gasCost, testInfo);
 
     // OOGX check happens before JUMPX in tracer
     assertEquals(
@@ -96,7 +97,7 @@ public class JumpTest {
     // Calculate the gas cost to trigger OOGX on JUMPI and not on the last but one opcode
     long gasCost = GAS_CONST_G_TRANSACTION + 2 * GAS_CONST_G_VERY_LOW;
 
-    bytecodeRunner.run(gasCost);
+    bytecodeRunner.run(gasCost, testInfo);
 
     // JUMPX check happens before OOGX in tracer
     assertEquals(

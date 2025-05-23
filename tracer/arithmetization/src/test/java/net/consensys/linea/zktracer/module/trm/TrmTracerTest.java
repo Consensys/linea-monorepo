@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.trm;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -27,7 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class TrmTracerTest {
+public class TrmTracerTest extends TracerTestBase {
   private final Bytes32 RANDOM_STRING_FROM_THE_INTERNET =
       Bytes32.fromHexString(
           "0x"
@@ -129,7 +130,7 @@ public class TrmTracerTest {
 
   void nonCall(Bytes bytes) {
     BytecodeRunner.of(BytecodeCompiler.newProgram().push(bytes).op(OpCode.EXTCODEHASH).compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -154,7 +155,7 @@ public class TrmTracerTest {
           .op(opCodeList.get((i + 2) % 3));
     }
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   void sevenArgCall(long rawAddr) {
@@ -169,7 +170,7 @@ public class TrmTracerTest {
                 .push(Bytes.fromHexString("0xffff")) // gas
                 .op(OpCode.CALL)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   void sampleDelegateCall(long rawAddr) {
@@ -183,6 +184,6 @@ public class TrmTracerTest {
                 .push(Bytes.fromHexString("0xffff")) // gas
                 .op(OpCode.DELEGATECALL)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 }

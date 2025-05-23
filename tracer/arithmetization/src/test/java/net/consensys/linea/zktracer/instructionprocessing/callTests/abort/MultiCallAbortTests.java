@@ -18,6 +18,7 @@ import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
@@ -27,7 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 /** CALL/ABORT's are revert sensitive. We test this with two CALL's. */
 @ExtendWith(UnitTestWatcher.class)
-public class MultiCallAbortTests {
+public class MultiCallAbortTests extends TracerTestBase {
 
   @Test
   void normalCallThenAbortedCallToEoaThenRevert() {
@@ -37,7 +38,7 @@ public class MultiCallAbortTests {
         program, CALL, 1000, Address.fromHexString(eoaAddress), 0, 0, 0, 0);
     program.push(6).push(7).op(REVERT);
     Bytes bytecode = program.compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   @Test
@@ -48,7 +49,7 @@ public class MultiCallAbortTests {
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 1, 0, 0, 0, 0);
     program.push(6).push(7).op(REVERT);
     Bytes bytecode = program.compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   @Test
@@ -60,7 +61,7 @@ public class MultiCallAbortTests {
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 0, 0, 0, 0, 0);
     program.push(6).push(7).op(REVERT);
     Bytes bytecode = program.compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   @Test
@@ -71,6 +72,6 @@ public class MultiCallAbortTests {
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 0, 0, 0, 0, 0);
     program.push(6).push(7).op(REVERT);
     Bytes bytecode = program.compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 }

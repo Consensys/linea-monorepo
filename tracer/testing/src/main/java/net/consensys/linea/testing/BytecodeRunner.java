@@ -35,6 +35,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.junit.jupiter.api.TestInfo;
 
 /**
  * A BytecodeRunner takes bytecode, then run it in a single transaction in a single block, and
@@ -65,43 +66,53 @@ public final class BytecodeRunner {
   @Setter private Consumer<ZkTracer> zkTracerValidator = zkTracer -> {};
 
   // Default run method
-  public void run() {
-    this.run(Wei.fromEth(1), (long) Trace.LINEA_BLOCK_GAS_LIMIT, List.of(), Bytes.EMPTY);
+  public void run(TestInfo testInfo) {
+    this.run(Wei.fromEth(1), (long) Trace.LINEA_BLOCK_GAS_LIMIT, List.of(), Bytes.EMPTY, testInfo);
   }
 
   // Ad-hoc senderBalance
-  public void run(Wei senderBalance) {
-    this.run(senderBalance, (long) Trace.LINEA_BLOCK_GAS_LIMIT, List.of(), Bytes.EMPTY);
+  public void run(Wei senderBalance, TestInfo testInfo) {
+    this.run(senderBalance, (long) Trace.LINEA_BLOCK_GAS_LIMIT, List.of(), Bytes.EMPTY, testInfo);
   }
 
   // Ad-hoc gasLimit
-  public void run(Long gasLimit) {
-    this.run(Wei.fromEth(1), gasLimit, List.of(), Bytes.EMPTY);
+  public void run(Long gasLimit, TestInfo testInfo) {
+    this.run(Wei.fromEth(1), gasLimit, List.of(), Bytes.EMPTY, testInfo);
   }
 
   // Ad-hoc senderBalance and gasLimit
-  public void run(Wei senderBalance, Long gasLimit) {
-    this.run(senderBalance, gasLimit, List.of(), Bytes.EMPTY);
+  public void run(Wei senderBalance, Long gasLimit, TestInfo testInfo) {
+    this.run(senderBalance, gasLimit, List.of(), Bytes.EMPTY, testInfo);
   }
 
   // Ad-hoc accounts
-  public void run(List<ToyAccount> additionalAccounts) {
-    this.run(Wei.fromEth(1), (long) Trace.LINEA_BLOCK_GAS_LIMIT, additionalAccounts, Bytes.EMPTY);
+  public void run(List<ToyAccount> additionalAccounts, TestInfo testInfo) {
+    this.run(
+        Wei.fromEth(1),
+        (long) Trace.LINEA_BLOCK_GAS_LIMIT,
+        additionalAccounts,
+        Bytes.EMPTY,
+        testInfo);
   }
 
   // Ad-hoc gasLimit and accounts
-  public void run(Long gasLimit, List<ToyAccount> additionalAccounts) {
-    this.run(Wei.fromEth(1), gasLimit, additionalAccounts, Bytes.EMPTY);
+  public void run(Long gasLimit, List<ToyAccount> additionalAccounts, TestInfo testInfo) {
+    this.run(Wei.fromEth(1), gasLimit, additionalAccounts, Bytes.EMPTY, testInfo);
   }
 
   // Ad-hoc senderBalance, gasLimit and accounts
-  public void run(Wei senderBalance, Long gasLimit, List<ToyAccount> additionalAccounts) {
-    this.run(senderBalance, gasLimit, additionalAccounts, Bytes.EMPTY);
+  public void run(
+      Wei senderBalance, Long gasLimit, List<ToyAccount> additionalAccounts, TestInfo testInfo) {
+    this.run(senderBalance, gasLimit, additionalAccounts, Bytes.EMPTY, testInfo);
   }
 
   // Ad-hoc senderBalance, gasLimit, accounts and payload
   public void run(
-      Wei senderBalance, Long gasLimit, List<ToyAccount> additionalAccounts, Bytes payload) {
+      Wei senderBalance,
+      Long gasLimit,
+      List<ToyAccount> additionalAccounts,
+      Bytes payload,
+      TestInfo testInfo) {
     checkArgument(byteCode != null, "byteCode cannot be empty");
 
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
@@ -147,7 +158,7 @@ public final class BytecodeRunner {
             .zkTracerValidator(zkTracerValidator)
             .transaction(tx)
             .build();
-    toyExecutionEnvironmentV2.run();
+    toyExecutionEnvironmentV2.run(testInfo);
   }
 
   /*

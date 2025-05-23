@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.MultiBlockExecutionEnvironment;
 import net.consensys.linea.testing.SmartContractUtils;
@@ -54,7 +55,7 @@ import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.generated.Uint256;
 
 @ExtendWith(UnitTestWatcher.class)
-class ExampleMultiBlockTest {
+class ExampleMultiBlockTest extends TracerTestBase {
 
   @Test
   void test() {

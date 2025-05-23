@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer.instructionprocessing;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -22,11 +23,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class ImmediateRevert {
+public class ImmediateRevert extends TracerTestBase {
 
   @Test
   void testImmediatePop() {
-    BytecodeRunner.of(BytecodeCompiler.newProgram().op(OpCode.POP).compile()).run();
+    BytecodeRunner.of(BytecodeCompiler.newProgram().op(OpCode.POP).compile()).run(testInfo);
   }
 
   @Test
@@ -41,6 +42,6 @@ public class ImmediateRevert {
                 .push(1) // value
                 .op(OpCode.CREATE)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 }

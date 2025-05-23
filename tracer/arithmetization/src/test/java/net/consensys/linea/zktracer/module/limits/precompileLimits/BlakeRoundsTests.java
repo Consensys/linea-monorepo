@@ -21,12 +21,13 @@ import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpD
 import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.limits.precompiles.BlakeRounds;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
 
-public class BlakeRoundsTests {
+public class BlakeRoundsTests extends TracerTestBase {
 
   private static final Bytes ONE = leftPadTo(Bytes.minimalBytes(1), BLAKE2f_R_SIZE);
   private static final Bytes ZERO = leftPadTo(Bytes.minimalBytes(0), BLAKE2f_R_SIZE);

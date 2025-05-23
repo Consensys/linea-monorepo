@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -34,7 +35,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class EcAddTest {
+public class EcAddTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("ecAddSource")
@@ -64,7 +65,7 @@ public class EcAddTest {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   private static Stream<Arguments> ecAddSource() {
@@ -107,7 +108,7 @@ public class EcAddTest {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     assertEquals(1, bytecodeRunner.getHub().ecAddEffectiveCall().lineCount());
   }
@@ -139,7 +140,7 @@ public class EcAddTest {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // check precompile limits line count
     assertEquals(1, bytecodeRunner.getHub().ecAddEffectiveCall().lineCount());

@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.instructionprocessing;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -23,7 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class StorageTest {
+public class StorageTest extends TracerTestBase {
 
   @Test
   void simpleSstoreSload() {
@@ -35,6 +36,6 @@ public class StorageTest {
                 .push(0xca7) // key
                 .op(OpCode.SLOAD)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 }

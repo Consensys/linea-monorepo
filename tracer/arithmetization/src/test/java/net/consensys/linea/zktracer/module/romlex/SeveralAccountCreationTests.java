@@ -16,10 +16,10 @@
 package net.consensys.linea.zktracer.module.romlex;
 
 import static net.consensys.linea.zktracer.Utils.*;
-import static net.consensys.linea.zktracer.module.mmu.RevertingLogsTests.*;
 
 import java.util.List;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -35,7 +35,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 
-public class SeveralAccountCreationTests {
+public class SeveralAccountCreationTests extends TracerTestBase {
 
   private static final Bytes INIT_CODE =
       BytecodeCompiler.newProgram()
@@ -108,7 +108,7 @@ public class SeveralAccountCreationTests {
         .accounts(List.of(senderAccount, create2Account, create2AndRevertAccount))
         .transactions(List.of(tx1, tx2))
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -146,6 +146,6 @@ public class SeveralAccountCreationTests {
         .accounts(List.of(senderAccount, recipientAccout, create2Account, create2AndRevertAccount))
         .transaction(tx)
         .build()
-        .run();
+        .run(testInfo);
   }
 }

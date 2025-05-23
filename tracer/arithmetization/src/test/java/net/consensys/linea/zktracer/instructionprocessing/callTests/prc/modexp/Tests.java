@@ -60,7 +60,7 @@ public class Tests extends PrecompileCallTests<CallParameters> {
             true);
 
     BytecodeCompiler rootCode = params.customPrecompileCallsSeparatedByReturnDataWipingOperation();
-    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode);
+    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, testInfo);
   }
 
   /** Non-parametric test to make sure things are working as expected. */
@@ -83,6 +83,6 @@ public class Tests extends PrecompileCallTests<CallParameters> {
             true);
 
     BytecodeCompiler rootCode = params.customPrecompileCallsSeparatedByReturnDataWipingOperation();
-    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode);
+    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, testInfo);
   }
 }

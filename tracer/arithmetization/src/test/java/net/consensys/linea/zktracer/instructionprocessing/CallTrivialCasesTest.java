@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer.instructionprocessing;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -23,7 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class CallTrivialCasesTest {
+public class CallTrivialCasesTest extends TracerTestBase {
   @Test
   void eoaCallScenarioTest() {
     final Bytes bytecode =
@@ -38,7 +39,7 @@ public class CallTrivialCasesTest {
             .op(OpCode.CALL)
             .op(OpCode.POP)
             .compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   @Test
@@ -55,7 +56,7 @@ public class CallTrivialCasesTest {
             .op(OpCode.CALL)
             .op(OpCode.POP)
             .compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   @Test
@@ -72,6 +73,6 @@ public class CallTrivialCasesTest {
             .op(OpCode.CALL)
             .op(OpCode.POP)
             .compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 }

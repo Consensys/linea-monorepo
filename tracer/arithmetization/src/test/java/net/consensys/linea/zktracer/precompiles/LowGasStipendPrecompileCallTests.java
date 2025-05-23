@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import com.google.common.base.Preconditions;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -56,7 +57,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-public class LowGasStipendPrecompileCallTests {
+public class LowGasStipendPrecompileCallTests extends TracerTestBase {
 
   // Enums for the different testing scenarios
   enum ValueCase {
@@ -204,7 +205,8 @@ public class LowGasStipendPrecompileCallTests {
         .push(gas) // gas
         .op(OpCode.CALL);
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
-    bytecodeRunner.run(61_000_000L, precompileAddress == MODEXP ? additionalAccounts : List.of());
+    bytecodeRunner.run(
+        61_000_000L, precompileAddress == MODEXP ? additionalAccounts : List.of(), testInfo);
   }
 
   static Stream<Arguments> lowGasStipendPrecompileCallTestSource() {

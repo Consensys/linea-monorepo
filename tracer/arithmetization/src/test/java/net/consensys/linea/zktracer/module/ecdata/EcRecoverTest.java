@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -38,13 +39,13 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class EcRecoverTest {
+public class EcRecoverTest extends TracerTestBase {
   @Test
   void testEcRecoverWithEmptyExt() {
     BytecodeRunner.of(
             Bytes.fromHexString(
                 "6080604052348015600f57600080fd5b5060476001601b6001620f00007ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe609360201b60201c565b605157605060ce565b5b60006040518060400160405280600e81526020017f7a6b2d65766d206973206c6966650000000000000000000000000000000000008152509050805160208201f35b600060405186815285602082015284604082015283606082015260008084608001836001610bb8fa9150608081016040525095945050505050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052600160045260246000fdfe"))
-        .run();
+        .run(testInfo);
   }
 
   @ParameterizedTest
@@ -82,7 +83,7 @@ public class EcRecoverTest {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     final EcData ecData = bytecodeRunner.getHub().ecData();
 
@@ -256,7 +257,7 @@ public class EcRecoverTest {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     final EcData ecData = bytecodeRunner.getHub().ecData();
 

@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -35,7 +36,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 @Tag("replay")
 @ExtendWith(UnitTestWatcher.class)
-public class ReplayTests {
+public class ReplayTests extends TracerTestBase {
 
   @Test
   void fatMxp() {

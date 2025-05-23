@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Random;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -38,7 +39,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class TestRlpAddress {
+public class TestRlpAddress extends TracerTestBase {
   private final Random rnd = new Random(666);
   private final RlpRandEdgeCase util = new RlpRandEdgeCase();
 
@@ -71,7 +72,7 @@ public class TestRlpAddress {
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -138,7 +139,7 @@ public class TestRlpAddress {
         .transaction(tx)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -194,7 +195,7 @@ public class TestRlpAddress {
         .transaction(tx)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   public static void fullCopyOfForeignByteCode(BytecodeCompiler program, Address foreignAddress) {

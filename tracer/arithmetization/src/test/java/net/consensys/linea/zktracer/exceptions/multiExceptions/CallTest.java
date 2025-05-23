@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -50,7 +51,7 @@ Note : As MXPX is a subcase of OOGX, we don't test MXPX & OOGX
  */
 
 @ExtendWith(UnitTestWatcher.class)
-public class CallTest {
+public class CallTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("addExistsAndIsWarmCallSource")
@@ -101,7 +102,7 @@ public class CallTest {
       BytecodeCompiler pgStaticCallToCode =
           getProgramStaticCallToCodeAddress(gasCostPlusCornerCase);
       bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-      bytecodeRunnerStaticCall.run(List.of(calleeAccount, CallProviderAccount));
+      bytecodeRunnerStaticCall.run(List.of(calleeAccount, CallProviderAccount), testInfo);
     } else {
       gasCost = bytecodeRunner.runOnlyForGasCost();
       // We calculate gas cost to trigger OOGX
@@ -111,7 +112,7 @@ public class CallTest {
       BytecodeCompiler pgStaticCallToCode =
           getProgramStaticCallToCodeAddress(gasCostPlusCornerCase);
       bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-      bytecodeRunnerStaticCall.run(gasCost + cornerCase, List.of(CallProviderAccount));
+      bytecodeRunnerStaticCall.run(gasCost + cornerCase, List.of(CallProviderAccount), testInfo);
     }
 
     assertEquals(
@@ -143,7 +144,7 @@ public class CallTest {
 
       // We run the program to static call the account with MXPX code
       BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-      bytecodeRunnerStaticCall.run(List.of(codeProviderAccount));
+      bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
 
       // Static check happens before MXPX
       assertEquals(

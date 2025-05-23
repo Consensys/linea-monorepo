@@ -33,6 +33,7 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestInfo;
 
 /**
  * Responsible for executing JUnit 5 dynamic tests for modules with the ability to configure custom
@@ -97,9 +98,9 @@ public class DynamicTests {
    * @return a {@link Stream} of {@link DynamicTest} ran by a {@link
    *     org.junit.jupiter.api.TestFactory}
    */
-  public Stream<DynamicTest> run() {
+  public Stream<DynamicTest> run(TestInfo testInfo) {
     return this.testCaseRegistry.stream()
-        .flatMap(e -> generateTestCases(e.name(), e.arguments(), e.customAssertions()));
+        .flatMap(e -> generateTestCases(e.name(), e.arguments(), e.customAssertions(), testInfo));
   }
 
   private List<OpCode> supportedOpCodes(Module module) {
@@ -165,7 +166,8 @@ public class DynamicTests {
   private Stream<DynamicTest> generateTestCases(
       final String testCaseName,
       final List<OpcodeCall> args,
-      final BiConsumer<OpCode, List<Bytes32>> customAssertions) {
+      final BiConsumer<OpCode, List<Bytes32>> customAssertions,
+      TestInfo testInfo) {
     return args.stream()
         .map(
             e -> {
@@ -178,7 +180,7 @@ public class DynamicTests {
                   testName,
                   () -> {
                     if (customAssertions == null) {
-                      ModuleTests.runTestWithOpCodeArgs(e.opCode(), e.args());
+                      ModuleTests.runTestWithOpCodeArgs(e.opCode(), e.args(), testInfo);
                     } else {
                       customAssertions.accept(e.opCode(), e.args());
                     }

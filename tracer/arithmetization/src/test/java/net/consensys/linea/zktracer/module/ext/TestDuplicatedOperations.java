@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.ext;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -26,7 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class TestDuplicatedOperations {
+public class TestDuplicatedOperations extends TracerTestBase {
   @Test
   void testDuplicate() {
     BytecodeRunner.of(
@@ -48,6 +49,6 @@ public class TestDuplicatedOperations {
             zkTracer -> {
               assertThat(zkTracer.getModulesLineCount().get("EXT")).isEqualTo(8);
             })
-        .run();
+        .run(testInfo);
   }
 }

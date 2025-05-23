@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -33,7 +34,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class JumpiTest {
+public class JumpiTest extends TracerTestBase {
 
   // NOTE: the bytecode we propose will at time use the following offsets (unless pcNew is large)
   // bytecode:
@@ -58,7 +59,7 @@ public class JumpiTest {
             .push(OpCode.JUMPDEST.byteValue()) // false JUMPDEST
             .compile();
     System.out.println(bytecode.toHexString());
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   private static Stream<Arguments> provideJumpiScenario() {

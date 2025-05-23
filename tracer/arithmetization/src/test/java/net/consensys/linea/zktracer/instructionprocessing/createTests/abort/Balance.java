@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.instructionprocessing.createTests.CreateType;
 import net.consensys.linea.zktracer.instructionprocessing.createTests.OffsetParameter;
@@ -36,7 +37,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class Balance {
+public class Balance extends TracerTestBase {
 
   /** The tests below are meant to trigger the "insufficientBalanceAbort" condition. */
   @ParameterizedTest
@@ -58,7 +59,7 @@ public class Balance {
         sizeParameter,
         salt01);
 
-    run(program);
+    run(program, testInfo);
   }
 
   /**
@@ -88,7 +89,7 @@ public class Balance {
       appendRevert(program, 2, 13);
     }
 
-    run(program);
+    run(program, testInfo);
   }
 
   @Test
@@ -113,7 +114,7 @@ public class Balance {
       appendRevert(program, 2, 13);
     }
 
-    run(program);
+    run(program, testInfo);
   }
 
   @Test
@@ -140,7 +141,7 @@ public class Balance {
       appendRevert(program, 2, 13);
     }
 
-    run(program);
+    run(program, testInfo);
   }
 
   /**
@@ -158,7 +159,7 @@ public class Balance {
     BytecodeCompiler program =
         rootLevelSuccessThenAbortCreateByteCodeCompiler(
             createType, offsetParameter, sizeParameter, reverts);
-    run(program);
+    run(program, testInfo);
   }
 
   @Test
@@ -166,7 +167,7 @@ public class Balance {
     BytecodeCompiler program =
         rootLevelSuccessThenAbortCreateByteCodeCompiler(
             CreateType.CREATE2, OffsetParameter.o_ZERO, SizeParameter.s_ZERO, false);
-    run(program);
+    run(program, testInfo);
   }
 
   BytecodeCompiler rootLevelSuccessThenAbortCreateByteCodeCompiler(

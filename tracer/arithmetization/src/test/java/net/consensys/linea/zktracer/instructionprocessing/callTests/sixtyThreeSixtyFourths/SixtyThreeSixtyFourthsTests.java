@@ -52,6 +52,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -77,7 +78,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * SPDX-License-Identifier: Apache-2.0
  */
 
-public class SixtyThreeSixtyFourthsTests {
+public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
 
   /*
   Cases to cover:
@@ -170,7 +171,7 @@ public class SixtyThreeSixtyFourthsTests {
     program.immediate(preCallProgram(ALTBN128_ADD, false, false, 0)).op(CALL);
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
-    bytecodeRunner.run(gasLimit);
+    bytecodeRunner.run(gasLimit, testInfo);
 
     assertNotEquals(
         OUT_OF_GAS_EXCEPTION,
@@ -219,7 +220,7 @@ public class SixtyThreeSixtyFourthsTests {
     program.immediate(preCallProgram(address, transfersValue, targetAddressExists, cds)).op(CALL);
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
-    bytecodeRunner.run(gasLimit, address == MODEXP ? additionalAccounts : List.of());
+    bytecodeRunner.run(gasLimit, address == MODEXP ? additionalAccounts : List.of(), testInfo);
 
     assertNotEquals(
         OUT_OF_GAS_EXCEPTION,

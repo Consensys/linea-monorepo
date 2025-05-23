@@ -28,6 +28,7 @@ import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
+import org.junit.jupiter.api.TestInfo;
 
 /**
  * The following class provides methods to run code in the following contexts:
@@ -90,9 +91,10 @@ public class CodeExecutionMethods {
    * Construct transaction with {@code transactionInitCode} as its init code.
    *
    * @param rootCode
+   * @param testInfo
    */
   public static void runMessageCallTransactionWithProvidedCodeAsRootCode(
-      BytecodeCompiler rootCode) {
+      BytecodeCompiler rootCode, TestInfo testInfo) {
 
     root.code(rootCode.compile());
 
@@ -103,16 +105,17 @@ public class CodeExecutionMethods {
         .accounts(listOfAccounts())
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
 
   /**
    * Construct transaction with {@code transactionInitCode} as its init code.
    *
    * @param transactionInitCode
+   * @param testInfo
    */
   public static void runDeploymentTransactionWithProvidedCodeAsInitCode(
-      BytecodeCompiler transactionInitCode) {
+      BytecodeCompiler transactionInitCode, TestInfo testInfo) {
 
     transaction.payload(transactionInitCode.compile()); // init code
 
@@ -121,7 +124,7 @@ public class CodeExecutionMethods {
         .accounts(listOfAccounts())
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
 
   /**
@@ -134,9 +137,10 @@ public class CodeExecutionMethods {
    *
    * @param foreignCode
    * @param embedRevertIntoInitCode
+   * @param testInfo
    */
   public static void runForeignByteCodeAsInitCode(
-      BytecodeCompiler foreignCode, boolean embedRevertIntoInitCode) {
+      BytecodeCompiler foreignCode, boolean embedRevertIntoInitCode, TestInfo testInfo) {
 
     foreignCodeOwner.code(foreignCode.compile());
 
@@ -151,7 +155,7 @@ public class CodeExecutionMethods {
         .accounts(listOfAccounts())
         .transaction(transaction.build())
         .build()
-        .run();
+        .run(testInfo);
   }
 
   /**
@@ -163,9 +167,10 @@ public class CodeExecutionMethods {
    *
    * @param providedCode
    * @param revertRoot
+   * @param testInfo
    */
   public static void runMessageCallToAccountEndowedWithProvidedCode(
-      BytecodeCompiler providedCode, boolean revertRoot) {
+      BytecodeCompiler providedCode, boolean revertRoot, TestInfo testInfo) {
 
     chadPrcEnjoyer.code(providedCode.compile());
 
@@ -180,7 +185,7 @@ public class CodeExecutionMethods {
         .accounts(listOfAccounts())
         .transaction(transaction.build())
         .build()
-        .run();
+        .run(testInfo);
   }
 
   /**
@@ -196,9 +201,10 @@ public class CodeExecutionMethods {
    *
    * @param foreignCode
    * @param rootReverts
+   * @param testInfo
    */
   public static void runCreateDeployingForeignCodeAndCallIntoIt(
-      BytecodeCompiler foreignCode, boolean rootReverts) {
+      BytecodeCompiler foreignCode, boolean rootReverts, TestInfo testInfo) {
 
     // ROOT code
     int key = 65537; // 0x 01 00 01
@@ -225,7 +231,7 @@ public class CodeExecutionMethods {
         .accounts(listOfAccounts())
         .transaction(transaction.build())
         .build()
-        .run();
+        .run(testInfo);
   }
 
   private static List<ToyAccount> listOfAccounts() {

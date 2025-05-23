@@ -30,12 +30,14 @@ dependencies {
   implementation "${besuArtifactGroup}.internal:testutil"
   implementation "${besuArtifactGroup}.internal:algorithms"
   implementation "${besuArtifactGroup}.internal:dsl"
-  implementation "org.awaitility:awaitility"
-  testImplementation group: "${besuArtifactGroup}.internal", name: "core", classifier: "test-support"
-
+  implementation "${besuArtifactGroup}:gnark"
+  implementation group: "${besuArtifactGroup}.internal", name: "core", classifier: "test-support", version: "${besuVersion}"
+  implementation "io.consensys.protocols.shomei:shomei:${shomeiVersion}"
+  implementation "io.consensys.protocols.shomei:shomei-server:${shomeiVersion}"
+  implementation 'io.micrometer:micrometer-registry-prometheus:1.11.1'
+  implementation 'org.awaitility:awaitility'
   implementation 'com.google.code.gson:gson'
   implementation 'com.google.guava:guava'
-
   implementation 'org.assertj:assertj-core'
   implementation 'org.junit.jupiter:junit-jupiter-api'
 }

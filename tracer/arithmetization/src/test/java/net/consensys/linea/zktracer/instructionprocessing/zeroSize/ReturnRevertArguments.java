@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
@@ -32,7 +33,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class ReturnRevertArguments {
+public class ReturnRevertArguments extends TracerTestBase {
 
   public String hugeOffset = "ff".repeat(32);
 
@@ -51,7 +52,7 @@ public class ReturnRevertArguments {
   void rootContextMessageCall(OpCode opCode) {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     zeroSizeReturnOrRevert(program, opCode);
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   /**
@@ -86,7 +87,7 @@ public class ReturnRevertArguments {
         .accounts(List.of(userAccount))
         .transaction(deploymentTransaction)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   /**
@@ -156,7 +157,7 @@ public class ReturnRevertArguments {
         .accounts(List.of(userAccount, callerAccount, calleeAccount))
         .transaction(transaction)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   /**
@@ -217,7 +218,7 @@ public class ReturnRevertArguments {
         .accounts(List.of(userAccount, creatorAccount))
         .transaction(transaction)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   /**

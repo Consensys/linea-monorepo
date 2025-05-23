@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ecrecov
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -36,7 +37,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * 3k for the callee + opcode costs on the order of 130 or so)
  */
 @ExtendWith(UnitTestWatcher.class)
-public class GasStipendTests {
+public class GasStipendTests extends TracerTestBase {
 
   // sufficient gas for PRC execution
   @ParameterizedTest
@@ -57,7 +58,7 @@ public class GasStipendTests {
         0,
         0);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @ParameterizedTest
@@ -78,7 +79,7 @@ public class GasStipendTests {
         0,
         0);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @ParameterizedTest
@@ -100,7 +101,7 @@ public class GasStipendTests {
         32);
     appendRevert(program, 0, 32);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @ParameterizedTest
@@ -121,7 +122,7 @@ public class GasStipendTests {
         0,
         0);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   // insufficient gas for PRC execution
@@ -143,7 +144,7 @@ public class GasStipendTests {
         0,
         0);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @ParameterizedTest
@@ -165,6 +166,6 @@ public class GasStipendTests {
         0,
         0);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 }

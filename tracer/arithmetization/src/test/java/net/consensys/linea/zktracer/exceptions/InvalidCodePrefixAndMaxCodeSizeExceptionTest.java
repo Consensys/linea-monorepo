@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -43,7 +44,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class InvalidCodePrefixAndMaxCodeSizeExceptionTest {
+public class InvalidCodePrefixAndMaxCodeSizeExceptionTest extends TracerTestBase {
 
   // Here it is attempted to trigger the INVALID_CODE_PREFIX exception using a deployment
   // transaction (fails)
@@ -81,7 +82,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest {
     ToyExecutionEnvironmentV2 toyExecutionEnvironment =
         ToyExecutionEnvironmentV2.builder().accounts(List.of(userAccount)).transaction(tx).build();
 
-    toyExecutionEnvironment.run();
+    toyExecutionEnvironment.run(testInfo);
 
     assertEquals(
         INVALID_CODE_PREFIX,
@@ -118,7 +119,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest {
     ToyExecutionEnvironmentV2 toyExecutionEnvironment =
         ToyExecutionEnvironmentV2.builder().accounts(List.of(userAccount)).transaction(tx).build();
 
-    toyExecutionEnvironment.run();
+    toyExecutionEnvironment.run(testInfo);
 
     assertEquals(
         TracedException.MAX_CODE_SIZE_EXCEPTION,
@@ -152,7 +153,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest {
         .op(OpCode.CREATE);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     assertEquals(
         INVALID_CODE_PREFIX,
@@ -180,7 +181,7 @@ public class InvalidCodePrefixAndMaxCodeSizeExceptionTest {
         .op(OpCode.CREATE);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     assertEquals(
         MAX_CODE_SIZE_EXCEPTION,

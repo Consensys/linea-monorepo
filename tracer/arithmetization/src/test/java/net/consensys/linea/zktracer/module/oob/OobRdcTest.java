@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.math.BigInteger;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -32,7 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class OobRdcTest {
+public class OobRdcTest extends TracerTestBase {
 
   public static final BigInteger TWO_POW_128_LEFT =
       BigInteger.ONE.shiftLeft(128).subtract(BigInteger.valueOf(100));
@@ -45,7 +46,7 @@ public class OobRdcTest {
     // maxPos = offset + size = 0 + 0 < rds = 32
     BytecodeCompiler program = initReturnDataCopyProgram(BigInteger.ZERO, BigInteger.ZERO);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -58,7 +59,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(12), BigInteger.valueOf(20));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -71,7 +72,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(3), BigInteger.valueOf(4));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -84,7 +85,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(0), BigInteger.valueOf(4));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -97,7 +98,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(3), BigInteger.valueOf(0));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -113,7 +114,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(10), BigInteger.valueOf(23));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -128,7 +129,7 @@ public class OobRdcTest {
     // maxPos = offset + size = 10 + TWO_POW_128_LEFT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(BigInteger.valueOf(10), TWO_POW_128_LEFT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -143,7 +144,7 @@ public class OobRdcTest {
     // maxPos = offset + size = 10 + TWO_POW_128_RIGHT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(BigInteger.valueOf(10), TWO_POW_128_RIGHT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -160,7 +161,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(33), BigInteger.valueOf(0));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -176,7 +177,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgram(BigInteger.valueOf(33), BigInteger.valueOf(23));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -191,7 +192,7 @@ public class OobRdcTest {
     // maxPos = offset + size = 33 + TWO_POW_128_LEFT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(BigInteger.valueOf(33), TWO_POW_128_LEFT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -206,7 +207,7 @@ public class OobRdcTest {
     // maxPos = offset + size = 33 + TWO_POW_128_RIGHT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(BigInteger.valueOf(33), TWO_POW_128_RIGHT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -222,7 +223,7 @@ public class OobRdcTest {
     // maxPos = offset + size = TWO_POW_128_LEFT + 0 > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_LEFT, BigInteger.valueOf(0));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -237,7 +238,7 @@ public class OobRdcTest {
     // maxPos = offset + size = TWO_POW_128_LEFT + 23 > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_LEFT, BigInteger.valueOf(23));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -252,7 +253,7 @@ public class OobRdcTest {
     // maxPos = offset + size = TWO_POW_128_LEFT + TWO_POW_128_LEFT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_LEFT, TWO_POW_128_LEFT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -267,7 +268,7 @@ public class OobRdcTest {
     // maxPos = offset + size = TWO_POW_128_LEFT + TWO_POW_128_RIGHT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_LEFT, TWO_POW_128_RIGHT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -283,7 +284,7 @@ public class OobRdcTest {
     // maxPos = offset + size = TWO_POW_128_RIGHT + 0 > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_RIGHT, BigInteger.valueOf(0));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -298,7 +299,7 @@ public class OobRdcTest {
     // maxPos = offset + size = TWO_POW_128_RIGHT + 23 > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_RIGHT, BigInteger.valueOf(23));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -313,7 +314,7 @@ public class OobRdcTest {
     // maxPos = offset + size = TWO_POW_128_Right + TWO_POW_128_LEFT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_RIGHT, TWO_POW_128_LEFT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -328,7 +329,7 @@ public class OobRdcTest {
     // maxPos = offset + size = TWO_POW_128_RIGHT + TWO_POW_128_RIGHT > 32 = rds
     BytecodeCompiler program = initReturnDataCopyProgram(TWO_POW_128_RIGHT, TWO_POW_128_RIGHT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -345,7 +346,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(BigInteger.ZERO, BigInteger.ZERO);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -359,7 +360,7 @@ public class OobRdcTest {
         initReturnDataCopyProgramUsingIdentityPrecompile(
             BigInteger.valueOf(12), BigInteger.valueOf(20));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
     System.out.println(bytecodeRunner.getHub().currentFrame().frame().getReturnData());
@@ -374,7 +375,7 @@ public class OobRdcTest {
         initReturnDataCopyProgramUsingIdentityPrecompile(
             BigInteger.valueOf(3), BigInteger.valueOf(4));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -388,7 +389,7 @@ public class OobRdcTest {
         initReturnDataCopyProgramUsingIdentityPrecompile(
             BigInteger.valueOf(0), BigInteger.valueOf(4));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -402,7 +403,7 @@ public class OobRdcTest {
         initReturnDataCopyProgramUsingIdentityPrecompile(
             BigInteger.valueOf(3), BigInteger.valueOf(0));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -419,7 +420,7 @@ public class OobRdcTest {
         initReturnDataCopyProgramUsingIdentityPrecompile(
             BigInteger.valueOf(10), BigInteger.valueOf(23));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
     System.out.println(bytecodeRunner.getHub().currentFrame().frame().getReturnData());
@@ -437,7 +438,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(BigInteger.valueOf(10), TWO_POW_128_LEFT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -454,7 +455,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(BigInteger.valueOf(10), TWO_POW_128_RIGHT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -473,7 +474,7 @@ public class OobRdcTest {
         initReturnDataCopyProgramUsingIdentityPrecompile(
             BigInteger.valueOf(33), BigInteger.valueOf(0));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -491,7 +492,7 @@ public class OobRdcTest {
         initReturnDataCopyProgramUsingIdentityPrecompile(
             BigInteger.valueOf(33), BigInteger.valueOf(23));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -508,7 +509,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(BigInteger.valueOf(33), TWO_POW_128_LEFT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -525,7 +526,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(BigInteger.valueOf(33), TWO_POW_128_RIGHT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -542,7 +543,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_LEFT, BigInteger.valueOf(0));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -558,7 +559,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_LEFT, BigInteger.valueOf(23));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -575,7 +576,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_LEFT, TWO_POW_128_LEFT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -592,7 +593,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_LEFT, TWO_POW_128_RIGHT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -609,7 +610,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_RIGHT, BigInteger.valueOf(0));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -626,7 +627,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_RIGHT, BigInteger.valueOf(23));
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -643,7 +644,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_RIGHT, TWO_POW_128_LEFT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 
@@ -660,7 +661,7 @@ public class OobRdcTest {
     BytecodeCompiler program =
         initReturnDataCopyProgramUsingIdentityPrecompile(TWO_POW_128_RIGHT, TWO_POW_128_RIGHT);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     Hub hub = bytecodeRunner.getHub();
 

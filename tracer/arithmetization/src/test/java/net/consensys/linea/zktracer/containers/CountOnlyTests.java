@@ -18,12 +18,13 @@ package net.consensys.linea.zktracer.containers;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class CountOnlyTests {
+public class CountOnlyTests extends TracerTestBase {
   @Test
   void testAddedToFront() {
     final CountOnlyOperation state = new CountOnlyOperation();

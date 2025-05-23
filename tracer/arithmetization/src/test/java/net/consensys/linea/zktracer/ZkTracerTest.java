@@ -19,11 +19,12 @@ import static net.consensys.linea.zktracer.ChainConfig.MAINNET_LONDON_TESTCONFIG
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class ZkTracerTest {
+public class ZkTracerTest extends TracerTestBase {
 
   @Test
   public void createNewTracer() {

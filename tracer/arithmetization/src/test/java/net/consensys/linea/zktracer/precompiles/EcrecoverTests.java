@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.precompiles;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -25,7 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class EcrecoverTests {
+public class EcrecoverTests extends TracerTestBase {
 
   @Test
   void basicEcrecoverTest() {
@@ -42,7 +43,7 @@ public class EcrecoverTests {
             .op(OpCode.POP)
             .compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // Check that the line count is made
     assertEquals(0, bytecodeRunner.getHub().ecRecoverEffectiveCall().lineCount());
@@ -63,7 +64,7 @@ public class EcrecoverTests {
             .op(OpCode.POP)
             .compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // Check that the line count is made
     assertEquals(0, bytecodeRunner.getHub().ecRecoverEffectiveCall().lineCount());

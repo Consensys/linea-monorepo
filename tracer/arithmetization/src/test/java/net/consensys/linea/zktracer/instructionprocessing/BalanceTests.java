@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.instructionprocessing;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -35,7 +36,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * of a reverted transaction, the recipient.
  */
 @ExtendWith(UnitTestWatcher.class)
-public class BalanceTests {
+public class BalanceTests extends TracerTestBase {
 
   @Test
   void unrevertedValueTransfer() {
@@ -45,7 +46,7 @@ public class BalanceTests {
         .transaction(stopTransaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -56,7 +57,7 @@ public class BalanceTests {
         .transaction(revertTransaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   KeyPair keyPair = new SECP256K1().generateKeyPair();

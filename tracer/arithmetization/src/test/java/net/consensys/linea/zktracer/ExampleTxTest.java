@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -33,7 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-class ExampleTxTest {
+class ExampleTxTest extends TracerTestBase {
 
   @Test
   void test() {
@@ -63,6 +64,6 @@ class ExampleTxTest {
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .build()
-        .run();
+        .run(testInfo);
   }
 }

@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.SmartContractUtils;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -51,7 +52,7 @@ import org.web3j.abi.datatypes.Function;
 import org.web3j.abi.datatypes.generated.Uint256;
 
 @ExtendWith(UnitTestWatcher.class)
-public class ExampleSolidityTest {
+public class ExampleSolidityTest extends TracerTestBase {
 
   @Test
   void testWithFrameworkEntrypoint() {
@@ -138,7 +139,7 @@ public class ExampleSolidityTest {
         .transaction(tx)
         .transactionProcessingResultValidator(resultValidator)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -187,7 +188,7 @@ public class ExampleSolidityTest {
         .transaction(tx)
         .transactionProcessingResultValidator(resultValidator)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -226,7 +227,7 @@ public class ExampleSolidityTest {
         .accounts(List.of(senderAccount, contractAccount))
         .transaction(tx)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -306,6 +307,6 @@ public class ExampleSolidityTest {
         .transaction(tx)
         .transactionProcessingResultValidator(resultValidator)
         .build()
-        .run();
+        .run(testInfo);
   }
 }

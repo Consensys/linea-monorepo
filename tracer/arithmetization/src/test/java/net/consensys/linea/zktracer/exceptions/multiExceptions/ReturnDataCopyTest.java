@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -37,7 +38,7 @@ Note : As MXPX is a subcase of OOGX, we don't test MXPX & OOGX
 */
 
 @ExtendWith(UnitTestWatcher.class)
-public class ReturnDataCopyTest {
+public class ReturnDataCopyTest extends TracerTestBase {
   @Test
   void rdcAndOogExceptionsReturnDataCopy() {
     boolean MXPX = true;
@@ -59,7 +60,7 @@ public class ReturnDataCopyTest {
     // We run the program with RDCX trigger and gasCost for OOGX
     BytecodeCompiler program = getProgramRDCFromStaticCallToCodeAccount(RDCX, !MXPX);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(gasCostWithRdcxAndOogx, List.of(codeProviderAccount));
+    bytecodeRunner.run(gasCostWithRdcxAndOogx, List.of(codeProviderAccount), testInfo);
 
     // RDCX check happens before OOGX in tracer
     assertEquals(
@@ -78,7 +79,7 @@ public class ReturnDataCopyTest {
     BytecodeCompiler program = getProgramRDCFromStaticCallToCodeAccount(RDCX, MXPX);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(List.of(codeProviderAccount));
+    bytecodeRunner.run(List.of(codeProviderAccount), testInfo);
 
     // RDCX check happens before MXPX in tracer
     assertEquals(

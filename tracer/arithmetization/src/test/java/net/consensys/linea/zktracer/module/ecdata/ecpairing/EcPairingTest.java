@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.ecdata.EcData;
@@ -41,6 +42,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -53,7 +55,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(EcPairingTestWatcher.class)
 @ExtendWith(UnitTestWatcher.class)
-public class EcPairingTest {
+public class EcPairingTest extends TracerTestBase {
   // https://github.com/Consensys/linea-arithmetization/issues/822
 
   // SMALL POINTS
@@ -128,7 +130,7 @@ public class EcPairingTest {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     assertLineCount(bytecodeRunner);
   }
@@ -169,7 +171,7 @@ public class EcPairingTest {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     assertLineCount(bytecodeRunner);
   }
@@ -178,7 +180,7 @@ public class EcPairingTest {
   @MethodSource("ecPairingSingleSource")
   void testEcPairingSingleForScenarioUsingMethodSource(
       String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe) {
-    testEcPairingSingleForScenario(Ax, Ay, BxIm, BxRe, ByIm, ByRe);
+    testEcPairingSingleForScenario(Ax, Ay, BxIm, BxRe, ByIm, ByRe, testInfo);
   }
 
   @Disabled // Useful only to test specific test cases in a CSV file
@@ -188,14 +190,14 @@ public class EcPairingTest {
           "/ecpairing/test_ec_pairing_single_for_scenario_using_method_source_failed_placeholder.csv")
   void testEcPairingSingleForScenarioUsingCsv(
       String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe) {
-    testEcPairingSingleForScenario(Ax, Ay, BxIm, BxRe, ByIm, ByRe);
+    testEcPairingSingleForScenario(Ax, Ay, BxIm, BxRe, ByIm, ByRe, testInfo);
   }
 
   // Body of:
   // testEcPairingSingleForScenarioUsingMethodSource
   // testEcPairingSingleForScenarioUsingCsv
   private static void testEcPairingSingleForScenario(
-      String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe) {
+      String Ax, String Ay, String BxIm, String BxRe, String ByIm, String ByRe, TestInfo testInfo) {
     // small point: (Ax,Ay)
     // large point: (BxRe + i*BxIm, ByRe + i*ByIm)
     BytecodeCompiler program =
@@ -229,7 +231,7 @@ public class EcPairingTest {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     assertLineCount(bytecodeRunner);
 
@@ -327,7 +329,7 @@ public class EcPairingTest {
 
     // Run the program
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // Set arguments for TestWatcher
     EcPairingArgumentsSingleton.getInstance().setArguments(description + "," + pairingsAsString);

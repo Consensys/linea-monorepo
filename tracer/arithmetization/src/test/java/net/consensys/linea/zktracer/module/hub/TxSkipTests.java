@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.types.AddressUtils.getCreateRawAddres
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
@@ -37,7 +38,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class TxSkipTests {
+public class TxSkipTests extends TracerTestBase {
 
   @Test
   void testUselessAccessListForTxSkip() {
@@ -201,7 +202,7 @@ public class TxSkipTests {
               // assertThat(zkTracer.getHub().lineCount()).isEqualTo(txs.size() * nbOfRowsTxSkip);
             })
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -235,7 +236,7 @@ public class TxSkipTests {
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -260,7 +261,7 @@ public class TxSkipTests {
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -293,7 +294,7 @@ public class TxSkipTests {
         .zkTracerValidator(zkTracer -> {})
         .coinbase(senderAddress)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -319,7 +320,7 @@ public class TxSkipTests {
         .zkTracerValidator(zkTracer -> {})
         .coinbase(senderAddress)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -354,7 +355,7 @@ public class TxSkipTests {
         .zkTracerValidator(zkTracer -> {})
         .coinbase(Address.BLAKE2B_F_COMPRESSION)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -379,7 +380,7 @@ public class TxSkipTests {
         .zkTracerValidator(zkTracer -> {})
         .coinbase(senderAddress)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -412,7 +413,7 @@ public class TxSkipTests {
         .zkTracerValidator(zkTracer -> {})
         .coinbase(depAddress)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -437,6 +438,6 @@ public class TxSkipTests {
         .zkTracerValidator(zkTracer -> {})
         .coinbase(Address.RIPEMD160)
         .build()
-        .run();
+        .run(testInfo);
   }
 }

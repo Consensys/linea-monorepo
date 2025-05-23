@@ -21,6 +21,7 @@ import static net.consensys.linea.zktracer.opcode.OpCodes.loadOpcodes;
 
 import java.util.Set;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.opcode.OpCodes;
 import org.apache.tuweni.bytes.Bytes;
@@ -31,7 +32,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.Mockito;
 
 /** ensure that OpCode are configured properly */
-class ExceptionsTest {
+class ExceptionsTest extends TracerTestBase {
   // TODO: clean the try/catch mechanism (see issue #1984)
   @ParameterizedTest
   @EnumSource(OpCode.class)

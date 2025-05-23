@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -34,7 +35,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class StaticExceptionTest {
+public class StaticExceptionTest extends TracerTestBase {
 
   @ParameterizedTest
   @ValueSource(ints = {0, 1})
@@ -70,7 +71,7 @@ public class StaticExceptionTest {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
 
-    bytecodeRunner.run(List.of(calleeAccount));
+    bytecodeRunner.run(List.of(calleeAccount), testInfo);
 
     if (value != 0) {
       assertEquals(
@@ -104,7 +105,7 @@ public class StaticExceptionTest {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
 
-    bytecodeRunner.run(List.of(calleeAccount));
+    bytecodeRunner.run(List.of(calleeAccount), testInfo);
 
     assertEquals(
         STATIC_FAULT,
@@ -136,7 +137,7 @@ public class StaticExceptionTest {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
 
-    bytecodeRunner.run(List.of(calleeAccount));
+    bytecodeRunner.run(List.of(calleeAccount), testInfo);
 
     assertEquals(
         STATIC_FAULT,
@@ -172,7 +173,7 @@ public class StaticExceptionTest {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
 
-    bytecodeRunner.run(List.of(calleeAccount));
+    bytecodeRunner.run(List.of(calleeAccount), testInfo);
 
     assertEquals(
         STATIC_FAULT,
@@ -212,7 +213,7 @@ public class StaticExceptionTest {
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
 
-    bytecodeRunner.run(List.of(calleeAccount));
+    bytecodeRunner.run(List.of(calleeAccount), testInfo);
 
     assertEquals(
         STATIC_FAULT,

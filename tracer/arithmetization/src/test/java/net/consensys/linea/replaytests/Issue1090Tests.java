@@ -18,13 +18,14 @@ import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @Tag("replay")
 @ExtendWith(UnitTestWatcher.class)
-public class Issue1090Tests {
+public class Issue1090Tests extends TracerTestBase {
 
   /**
    * This is an interesting block: at transaction 13 (which is a CONTRACT_CREATION transaction) the

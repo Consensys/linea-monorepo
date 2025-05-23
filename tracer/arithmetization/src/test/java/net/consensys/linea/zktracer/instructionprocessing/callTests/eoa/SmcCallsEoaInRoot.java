@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.hyperledger.besu.datatypes.Address;
@@ -33,7 +34,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * <p>- <b>scn/CALL_EOA_SUCCESS_WONT_REVERT</b>
  */
 @ExtendWith(UnitTestWatcher.class)
-public class SmcCallsEoaInRoot {
+public class SmcCallsEoaInRoot extends TracerTestBase {
 
   final String eoaAddress = "abcdef0123456789";
 
@@ -44,7 +45,7 @@ public class SmcCallsEoaInRoot {
     appendCall(bytecode, CALL, 0, Address.fromHexString(eoaAddress), 13, 2, 3, 4, 5);
     bytecode.op(POP).push(6).push(7).op(REVERT).compile();
 
-    BytecodeRunner.of(bytecode.compile()).run();
+    BytecodeRunner.of(bytecode.compile()).run(testInfo);
   }
 
   @Test
@@ -53,7 +54,7 @@ public class SmcCallsEoaInRoot {
     BytecodeCompiler bytecode = BytecodeCompiler.newProgram();
     appendCall(bytecode, CALL, 0, Address.fromHexString(eoaAddress), 13, 2, 3, 4, 5);
 
-    BytecodeRunner.of(bytecode.compile()).run();
+    BytecodeRunner.of(bytecode.compile()).run(testInfo);
   }
 
   @Test
@@ -63,7 +64,7 @@ public class SmcCallsEoaInRoot {
     fullBalanceCall(program, CALL, Address.fromHexString(eoaAddress), 1, 2, 3, 4);
     program.push(6).push(7).op(REVERT);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @Test
@@ -72,7 +73,7 @@ public class SmcCallsEoaInRoot {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     fullBalanceCall(program, CALL, Address.fromHexString(eoaAddress), 1, 2, 3, 4);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @Test
@@ -82,7 +83,7 @@ public class SmcCallsEoaInRoot {
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 0, 1, 2, 3, 4);
     program.op(POP).push(6).push(7).op(REVERT).compile();
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @Test
@@ -91,6 +92,6 @@ public class SmcCallsEoaInRoot {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 0, 1, 2, 3, 4);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 }

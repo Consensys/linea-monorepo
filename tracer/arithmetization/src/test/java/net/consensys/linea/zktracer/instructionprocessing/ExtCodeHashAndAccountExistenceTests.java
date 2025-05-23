@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.instructionprocessing;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.apache.tuweni.bytes.Bytes;
@@ -24,7 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class ExtCodeHashAndAccountExistenceTests {
+public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
   /**
    * EXTCODEHASH targets a precompile (which is DEAD initially) CALL the same precompile
    * transferring 1 Wei in the process. EXTCODEHASH targets the same precompile (which now isn't
@@ -54,7 +55,7 @@ public class ExtCodeHashAndAccountExistenceTests {
             .op(POP)
             .op(EXTCODESIZE) // will return 0
             .compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   /** same as above with ECRECOVER swapped for some random address (nice!) */
@@ -82,7 +83,7 @@ public class ExtCodeHashAndAccountExistenceTests {
             .op(POP)
             .op(EXTCODESIZE) // will return 0
             .compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   /**
@@ -109,7 +110,7 @@ public class ExtCodeHashAndAccountExistenceTests {
             .op(POP)
             .op(EXTCODESIZE) // will return 0
             .compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   /**
@@ -150,7 +151,7 @@ public class ExtCodeHashAndAccountExistenceTests {
             .op(POP)
             .op(EXTCODESIZE) // will return 0
             .compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   /**
@@ -200,7 +201,7 @@ public class ExtCodeHashAndAccountExistenceTests {
             .op(POP)
             .op(EXTCODESIZE) // will return 1
             .compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   /** Invoke EXTCODEHASH/EXTCODESIZE of oneself. */
@@ -216,6 +217,6 @@ public class ExtCodeHashAndAccountExistenceTests {
             .op(EXTCODESIZE) // will return 6
             .op(JUMPDEST) //
             .compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 }

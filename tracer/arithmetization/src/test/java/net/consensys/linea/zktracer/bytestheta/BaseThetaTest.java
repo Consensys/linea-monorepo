@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.bytestheta;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.types.Bytes16;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -30,7 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * BytesArray}, with support for high and low bytes' manipulation.
  */
 @ExtendWith(UnitTestWatcher.class)
-public class BaseThetaTest {
+public class BaseThetaTest extends TracerTestBase {
   @Test
   public void baseThetaTest() {
     Bytes firstByte = Bytes.fromHexString("0x000000000000000a");

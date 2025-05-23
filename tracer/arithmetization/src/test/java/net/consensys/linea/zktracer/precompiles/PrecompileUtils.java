@@ -35,13 +35,14 @@ import static net.consensys.linea.zktracer.Trace.WORD_SIZE_MO;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utilities.populateMemory;
 import static org.hyperledger.besu.datatypes.Address.*;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 
-public class PrecompileUtils {
+public class PrecompileUtils extends TracerTestBase {
 
   /**
    * Computes the precompile cost based on the precompile address, arguments size, and r value in

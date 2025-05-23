@@ -18,13 +18,14 @@ import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @Disabled
 @ExtendWith(UnitTestWatcher.class)
-public class LeosNewRangesSplitTests {
+public class LeosNewRangesSplitTests extends TracerTestBase {
   @Test
   void split_range_2258472_2258479() {
     replay(OLD_MAINNET_TESTCONFIG, "2258472-2258479.mainnet.json.gz");

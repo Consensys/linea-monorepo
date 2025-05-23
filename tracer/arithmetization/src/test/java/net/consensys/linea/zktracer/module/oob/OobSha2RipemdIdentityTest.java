@@ -25,6 +25,7 @@ import java.util.stream.IntStream;
 
 import com.google.common.io.BaseEncoding;
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -38,7 +39,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class OobSha2RipemdIdentityTest {
+public class OobSha2RipemdIdentityTest extends TracerTestBase {
   Random random = new Random(1L);
   static final int[] argSizes =
       new int[] {0, 1, 10, 20, 31, 32, 33, 63, 64, 65, 95, 96, 97, 127, 128, 129, 1000, 2000};
@@ -57,7 +58,7 @@ public class OobSha2RipemdIdentityTest {
     BytecodeCompiler program = programAndRetInfo.program();
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     String referenceComputedHash = sha256(data);
     final Hub hub = bytecodeRunner.getHub();
@@ -81,7 +82,7 @@ public class OobSha2RipemdIdentityTest {
     BytecodeCompiler program = programAndRetInfo.program();
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     String returnedData = bytecodeRunner.getHub().currentFrame().frame().getReturnData().toString();
     // System.out.println(returnedData);
@@ -99,7 +100,7 @@ public class OobSha2RipemdIdentityTest {
     BytecodeCompiler program = programAndRetInfo.program();
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     String referenceComputedHash = ripemd160(data);
     String prcComputedHash =
@@ -275,7 +276,7 @@ public class OobSha2RipemdIdentityTest {
     BytecodeCompiler program = programAndRetInfo.program();
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     String dataInMemory =
         bytecodeRunner

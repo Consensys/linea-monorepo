@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.module.hub.signals.TracedException.OU
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -38,7 +39,7 @@ InvalidCodePrefix & MaxCodeSize & OOGX : RETURN
  */
 
 @ExtendWith(UnitTestWatcher.class)
-public class ReturnTest {
+public class ReturnTest extends TracerTestBase {
   @Test
   void invalidCodePrefixAndOogExceptionForCreate() {
     // We run gas cost calculation on program without Invalid Code Prefix exception
@@ -56,7 +57,7 @@ public class ReturnTest {
     // We run program with Invalid Code Prefix and OOG exception
     long gasCostMinusOne = gascost - 2;
     BytecodeRunner bytecodeRunnerWithICP = BytecodeRunner.of(programWithICP.compile());
-    bytecodeRunnerWithICP.run(gasCostMinusOne);
+    bytecodeRunnerWithICP.run(gasCostMinusOne, testInfo);
 
     // OOGX check is done prior to Invalid Code Prefix exception in tracer
     assertEquals(
@@ -74,7 +75,7 @@ public class ReturnTest {
 
     BytecodeRunner bytecodeRunnerWithICPXAndMCSX =
         BytecodeRunner.of(programWithICPXAndMCSX.compile());
-    bytecodeRunnerWithICPXAndMCSX.run();
+    bytecodeRunnerWithICPXAndMCSX.run(testInfo);
 
     // Max Code Size Exception check is done prior to Invalid Code Prefix exception in tracer
     assertEquals(
@@ -110,7 +111,7 @@ public class ReturnTest {
     // 32027L = 3L PUSH + 3L PUSH + 6L MSTORE + 3L PUSH + 3L PUSH + 3L PUSH + 32000L CREATE +
     // ((32027-3-3-6-3-3-3-32000/64))(less than 0.5 so not adding gas) + 3L PUSH + 3L PUSH
     // 21000L for the intrinsic transaction cost
-    bytecodeRunner.run(32027L + 21000L);
+    bytecodeRunner.run(32027L + 21000L, testInfo);
 
     // Max Code Size Exception check before OOGX in tracer
     assertEquals(
@@ -134,7 +135,7 @@ public class ReturnTest {
     // ((32036-3-3-6-3-3-3-32000)/64)(less than 0.5 so not adding gas) + 3L PUSH + 3L PUSH + 6L
     // MSTORE8 + 3L PUSH + 3L PUSH
     // 21000L for the intrinsic transaction cost
-    bytecodeRunnerWithICPXAndMCSX.run(32039L + 21000L);
+    bytecodeRunnerWithICPXAndMCSX.run(32039L + 21000L, testInfo);
 
     // Max Code Size Exception check is done prior to OOGX and Invalid Code Prefix exception in
     // tracer

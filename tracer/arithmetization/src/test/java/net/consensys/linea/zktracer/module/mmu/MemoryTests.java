@@ -19,13 +19,14 @@ import static net.consensys.linea.testing.BytecodeCompiler.newProgram;
 
 import java.util.Random;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
 
-class MemoryTests {
+class MemoryTests extends TracerTestBase {
   private final Random rnd = new Random(666);
 
   @Test
@@ -44,22 +45,22 @@ class MemoryTests {
                 .push(6)
                 .op(OpCode.MLOAD)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
   void fastMload() {
-    BytecodeRunner.of(newProgram().push(34).push(0).op(OpCode.MLOAD).compile()).run();
+    BytecodeRunner.of(newProgram().push(34).push(0).op(OpCode.MLOAD).compile()).run(testInfo);
   }
 
   @Test
   void alignedMstore8() {
-    BytecodeRunner.of(newProgram().push(12).push(0).op(OpCode.MSTORE8).compile()).run();
+    BytecodeRunner.of(newProgram().push(12).push(0).op(OpCode.MSTORE8).compile()).run(testInfo);
   }
 
   @Test
   void nonAlignedMstore8() {
-    BytecodeRunner.of(newProgram().push(66872).push(35).op(OpCode.MSTORE8).compile()).run();
+    BytecodeRunner.of(newProgram().push(66872).push(35).op(OpCode.MSTORE8).compile()).run(testInfo);
   }
 
   @Test
@@ -72,7 +73,7 @@ class MemoryTests {
         .push(0x10)
         .push(0x30)
         .op(OpCode.RETURN);
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @Test
@@ -85,7 +86,7 @@ class MemoryTests {
         .push(0x10)
         .push(0x28)
         .op(OpCode.REVERT);
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @Test
@@ -115,7 +116,7 @@ class MemoryTests {
         .push(0x30)
         .op(OpCode.RETURN);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @Test
@@ -145,7 +146,7 @@ class MemoryTests {
         .push(0x30)
         .op(OpCode.REVERT);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @Test
@@ -157,6 +158,6 @@ class MemoryTests {
         .op(OpCode.MSTORE) // expand memory
         .op(OpCode.MSIZE); // call MSIZE on non-zero memory
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 }

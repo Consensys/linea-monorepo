@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -38,7 +39,7 @@ STATIC & OOSX : SSTORE
 STATIC & OOGX : SSTORE
  */
 @ExtendWith(UnitTestWatcher.class)
-public class SstoreTest {
+public class SstoreTest extends TracerTestBase {
   @Test
   public void staticAndOutOfSStoreExceptions() {
     BytecodeCompiler pg = BytecodeCompiler.newProgram();
@@ -53,7 +54,7 @@ public class SstoreTest {
         getProgramStaticCallToCodeAddress(gasCostToTriggerOutOfSStore);
 
     BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount));
+    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
 
     // Static check happens before outOfStore exception
     assertEquals(
@@ -79,7 +80,7 @@ public class SstoreTest {
 
     // Run with linea block gas limit so gas cost is passed to child without 63/64
     BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount));
+    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
 
     // Static check happens before OOGX in tracer
     assertEquals(

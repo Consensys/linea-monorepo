@@ -23,11 +23,13 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.instructionprocessing.createTests.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -35,7 +37,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class RootLevel {
+public class RootLevel extends TracerTestBase {
 
   public static String salt01 = "5a1701";
   public static String salt02 = "5a1702";
@@ -51,7 +53,7 @@ public class RootLevel {
         .push(1) // value
         .op(CREATE2);
 
-    run(program);
+    run(program, testInfo);
   }
 
   @ParameterizedTest
@@ -70,7 +72,7 @@ public class RootLevel {
       program.push(0).push(0).op(REVERT);
     }
 
-    run(program);
+    run(program, testInfo);
   }
 
   @ParameterizedTest
@@ -102,7 +104,7 @@ public class RootLevel {
       program.op(EXTCODEHASH); // we expect to see KECCAK(( ))
     }
 
-    run(program);
+    run(program, testInfo);
   }
 
   private static Stream<Arguments> createParametersForEmptyCreates() {
@@ -192,7 +194,7 @@ public class RootLevel {
     program.push(storageKey).op(SLOAD);
   }
 
-  public static void run(BytecodeCompiler program) {
-    BytecodeRunner.of(program).run();
+  public static void run(BytecodeCompiler program, TestInfo testInfo) {
+    BytecodeRunner.of(program).run(testInfo);
   }
 }

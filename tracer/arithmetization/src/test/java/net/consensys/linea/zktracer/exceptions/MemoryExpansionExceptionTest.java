@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.mxp.MxpTestUtils;
@@ -39,7 +40,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class MemoryExpansionExceptionTest {
+public class MemoryExpansionExceptionTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("memoryExpansionExceptionTestSource")
@@ -47,7 +48,7 @@ public class MemoryExpansionExceptionTest {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     new MxpTestUtils().triggerNonTrivialButMxpxOrRoobForOpCode(program, triggerRoob, opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
     assertEquals(
         MEMORY_EXPANSION_EXCEPTION,
         bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
@@ -62,7 +63,7 @@ public class MemoryExpansionExceptionTest {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     new MxpTestUtils().triggerNonTrivialButMxpxOrRoobForOpCode(program, triggerRoob, opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
     assertEquals(
         MEMORY_EXPANSION_EXCEPTION,
         bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());

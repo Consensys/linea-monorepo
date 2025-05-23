@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls
 import static net.consensys.linea.zktracer.opcode.OpCode.RETURNDATASIZE;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -36,7 +37,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * <p>- whether the operation is reverted or not (they all transfer value)
  */
 @ExtendWith(UnitTestWatcher.class)
-public class GasTests {
+public class GasTests extends TracerTestBase {
 
   @ParameterizedTest
   @EnumSource(
@@ -48,7 +49,7 @@ public class GasTests {
     appendCall(program, callOpCode, 0, Address.SHA256, 1_000_000, 0, 32 * 10 + 1, 7, 32);
     program.op(RETURNDATASIZE); // should return 0
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 
   @ParameterizedTest
@@ -62,7 +63,7 @@ public class GasTests {
     program.op(RETURNDATASIZE); // should return 0
     appendRevert(program, 1, 34);
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 
   @ParameterizedTest
@@ -74,7 +75,7 @@ public class GasTests {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     appendCall(program, callOpCode, 1_000_000, Address.SHA256, 1_000_000, 0, 32 * 10, 7, 32);
     program.op(RETURNDATASIZE); // should return 32
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 
   @ParameterizedTest
@@ -88,6 +89,6 @@ public class GasTests {
     program.op(RETURNDATASIZE); // should return 32
     appendRevert(program, 1, 34);
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 }

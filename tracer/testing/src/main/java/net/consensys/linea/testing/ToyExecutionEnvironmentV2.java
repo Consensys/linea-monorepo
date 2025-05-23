@@ -36,6 +36,7 @@ import org.hyperledger.besu.ethereum.core.Transaction;
 import org.hyperledger.besu.ethereum.mainnet.ProtocolSpec;
 import org.hyperledger.besu.ethereum.referencetests.GeneralStateTestCaseEipSpec;
 import org.hyperledger.besu.ethereum.referencetests.ReferenceTestWorldState;
+import org.junit.jupiter.api.TestInfo;
 
 @Builder
 @Slf4j
@@ -72,9 +73,13 @@ public class ToyExecutionEnvironmentV2 {
 
   private final ZkTracer tracer = new ZkTracer(UNIT_TEST_CHAIN);
 
-  public void run() {
-    if (!runWithBesuNode) {
-      final ProtocolSpec protocolSpec =
+  public void run(TestInfo testInfo) {
+    if (runWithBesuNode || System.getenv().containsKey("RUN_WITH_BESU_NODE")) {
+      new BesuExecutionTools(
+              Optional.of(testInfo), UNIT_TEST_CHAIN, coinbase, accounts, transactions)
+          .executeTest();
+    } else {
+      ProtocolSpec protocolSpec =
           ExecutionEnvironment.getProtocolSpec(UNIT_TEST_CHAIN.id, UNIT_TEST_CHAIN.fork);
       final GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
           this.buildGeneralStateTestCaseSpec(protocolSpec);
@@ -84,8 +89,6 @@ public class ToyExecutionEnvironmentV2 {
           tracer,
           transactionProcessingResultValidator,
           zkTracerValidator);
-    } else {
-      new BesuExecutionTools(UNIT_TEST_CHAIN, coinbase, accounts, transactions).executeTest();
     }
   }
 
@@ -100,10 +103,16 @@ public class ToyExecutionEnvironmentV2 {
   }
 
   public Hub getHub() {
+    if (runWithBesuNode || System.getenv().containsKey("RUN_WITH_BESU_NODE")) {
+      throw new IllegalStateException("Cannot get Hub when running with Besu node");
+    }
     return tracer.getHub();
   }
 
   public ZkTracer getZkTracer() {
+    if (runWithBesuNode || System.getenv().containsKey("RUN_WITH_BESU_NODE")) {
+      throw new IllegalStateException("Cannot get zkTracer when running with Besu node");
+    }
     return tracer;
   }
 

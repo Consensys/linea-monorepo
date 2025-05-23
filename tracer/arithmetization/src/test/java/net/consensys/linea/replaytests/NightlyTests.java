@@ -18,13 +18,14 @@ import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @Tag("nightly")
 @ExtendWith(UnitTestWatcher.class)
-public class NightlyTests {
+public class NightlyTests extends TracerTestBase {
   @Test
   void leoFailingRange() {
     replay(OLD_MAINNET_TESTCONFIG, "5389571-5389577.mainnet.json.gz");

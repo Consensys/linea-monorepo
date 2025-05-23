@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.google.common.base.Preconditions;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.MultiBlockExecutionEnvironment;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyTransaction;
@@ -31,7 +32,7 @@ import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 
-public class MultiBlockUtils {
+public class MultiBlockUtils extends TracerTestBase {
 
   public static void multiBlocksTest(List<Bytes> programs) {
     multiBlocksTest(programs, List.of());

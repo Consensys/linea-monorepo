@@ -18,6 +18,7 @@ import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -40,7 +41,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 @Tag("nightly")
 @ExtendWith(UnitTestWatcher.class)
-public class Issue1126Tests {
+public class Issue1126Tests extends TracerTestBase {
   @Test
   void issue_1126_3108622_3108633() { // 11 blocks
     replay(OLD_MAINNET_TESTCONFIG, "3108622-3108633.mainnet.json.gz");

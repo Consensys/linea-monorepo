@@ -23,6 +23,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.MultiBlockExecutionEnvironment;
 import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
@@ -31,7 +32,7 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 
-public class BlockwiseStorageTest {
+public class BlockwiseStorageTest extends TracerTestBase {
   TestContext tc;
 
   @Test

@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.experimental.Accessors;
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -42,7 +43,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 @Accessors(fluent = true)
 @Tag("weekly")
 @ExtendWith(UnitTestWatcher.class)
-public class ShfExtensiveTest {
+public class ShfExtensiveTest extends TracerTestBase {
 
   private static final List<Arguments> shfTestSourceList = new ArrayList<>();
   @Getter private static Stream<Arguments> shfWithMaskTestSource;
@@ -72,25 +73,25 @@ public class ShfExtensiveTest {
   @ParameterizedTest
   @MethodSource("shfTestSource")
   void shlTest(String value, int k, int l) {
-    shfProgramOf(value, OpCode.SHL).run();
+    shfProgramOf(value, OpCode.SHL).run(testInfo);
   }
 
   @ParameterizedTest
   @MethodSource("shfTestSource")
   void shrTest(String value, int k, int l) {
-    shfProgramOf(value, OpCode.SHR).run();
+    shfProgramOf(value, OpCode.SHR).run(testInfo);
   }
 
   @ParameterizedTest
   @MethodSource("shfTestSource")
   void sarTest(String value, int k, int l) {
-    shfProgramOf(value, OpCode.SAR).run();
+    shfProgramOf(value, OpCode.SAR).run(testInfo);
   }
 
   @ParameterizedTest
   @MethodSource("shfWithMaskTestSource")
   void sarWithMaskTest(String value, int k, int l, String XY) {
-    shfProgramOf(value, OpCode.SAR).run();
+    shfProgramOf(value, OpCode.SAR).run(testInfo);
   }
 
   private static Stream<Arguments> shfTestSource() {
@@ -166,7 +167,7 @@ public class ShfExtensiveTest {
   @MethodSource("shfExtensiveTestSource")
   void shfExtensiveTest(String shift, String value, OpCode opCode) {
     BytecodeRunner.of(BytecodeCompiler.newProgram().push(value).push(shift).op(opCode).compile())
-        .run();
+        .run(testInfo);
   }
 
   private static Stream<Arguments> shfExtensiveTestSource() {

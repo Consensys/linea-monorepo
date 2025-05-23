@@ -18,12 +18,13 @@ package net.consensys.linea.zktracer.types;
 import static org.junit.jupiter.api.Assertions.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-class BytecodeTest {
+class BytecodeTest extends TracerTestBase {
 
   @Test
   void getCodeHash() {

@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer.instructionprocessing;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -22,7 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class KeccakTests {
+public class KeccakTests extends TracerTestBase {
   @Test
   void singleEmptyKeccak() {
     BytecodeRunner.of(
@@ -32,7 +33,7 @@ public class KeccakTests {
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   /** computing KEC("ee ee ... ee"), aligned on 1st byte */
@@ -48,7 +49,7 @@ public class KeccakTests {
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   /** computing KEC("ee ee ... ee"), aligned on 0th byte */
@@ -64,7 +65,7 @@ public class KeccakTests {
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   /** computing KEC("ee") */
@@ -80,7 +81,7 @@ public class KeccakTests {
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -104,6 +105,6 @@ public class KeccakTests {
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 }

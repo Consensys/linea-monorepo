@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer.instructionprocessing;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -22,7 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class SimpleGasCalculatorTest {
+public class SimpleGasCalculatorTest extends TracerTestBase {
   @Test
   void simpleGasCalculatorTest() {
     BytecodeRunner.of(
@@ -38,6 +39,6 @@ public class SimpleGasCalculatorTest {
                 .push(0x80) // key
                 .op(OpCode.MLOAD)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 }

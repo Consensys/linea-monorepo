@@ -14,6 +14,8 @@ import java.time.LocalTime
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+import de.undercouch.gradle.tasks.download.Download
+
 
 apply plugin: 'jacoco'
 jacoco {
@@ -50,8 +52,8 @@ tasks.withType(Test).configureEach {
   }
 
   jvmArgs = [
-    '-XX:-UseGCOverheadLimit',
-    '-Xlog:gc',
+//    '-XX:-UseGCOverheadLimit',
+//    '-Xlog:gc',
     // Mockito and jackson-databind do some strange reflection during tests.
     // This suppresses an illegal access warning.
     '--add-opens',
@@ -105,7 +107,7 @@ tasks.withType(Test).configureEach {
     showFailed true
 
     // enable to see standard out and error streams inline with the test results
-    showStandardStreams true
+    showStandardStreams false
 
     // set to false to hide passed standard out and error streams
     showPassedStandardStreams false
@@ -127,7 +129,7 @@ jacocoTestReport {
 }
 
 tasks.test.configure {
-  dependsOn("copyPlugins")
+  dependsOn("copyTracerPlugin", "downloadShoemiBesuPlugin")
 
   delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
   mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
@@ -163,10 +165,51 @@ tasks.test.configure {
   finalizedBy(jacocoTestReport)
 }
 
-tasks.register("copyPlugins", Copy) {
+tasks.register("besuNodeTests", Test) {
+  forkEvery = 1
+  maxParallelForks = 3
+
+  dependsOn("copyTracerPlugin", "downloadShoemiBesuPlugin")
+
+  delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
+  System.setProperty("besu.plugins.dir",
+          System.getenv().getOrDefault("besu.plugins.dir",
+                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/plugins/"
+          )
+  )
+  System.setProperty("besu.traces.dir",
+          System.getenv().getOrDefault("besu.traces.dir",
+                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/traces/"
+          )
+  )
+
+
+  systemProperty("besu.traces.dir", System.getProperty("besu.traces.dir"))
+  systemProperty("besu.plugins.dir", System.getProperty("besu.plugins.dir"))
+  environment("RUN_WITH_BESU_NODE", true)
+
+  systemProperty("junit.jupiter.execution.parallel.enabled", false)
+  useJUnitPlatform {
+    excludeTags("nightly")
+    excludeTags("replay")
+    excludeTags("weekly")
+    excludeTags("prc-calltests")
+  }
+  finalizedBy(jacocoTestReport)
+}
+
+tasks.register("copyTracerPlugin", Copy) {
   dependsOn(project(":plugins").tasks.findByPath("jar"))
   from project(":plugins").tasks.findByPath("jar").outputs.files.collect()
   into "${System.getProperty("besu.plugins.dir")}"
+}
+
+tasks.register("downloadShoemiBesuPlugin", Download) {
+  src "${besuShomeiPluginBaseUrl}${besuShomeiPluginVersion}/besu-shomei-plugin-${besuShomeiPluginVersion}.jar"
+  dest "${System.getProperty("besu.plugins.dir")}"
+  overwrite false
 }
 
 tasks.register("fastReplayTests", Test) {

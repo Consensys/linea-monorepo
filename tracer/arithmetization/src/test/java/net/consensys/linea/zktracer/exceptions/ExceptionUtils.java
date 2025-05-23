@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.module.hub.signals.TracedException.OU
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -27,7 +28,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 
-public class ExceptionUtils {
+public class ExceptionUtils extends TracerTestBase {
 
   public static Address codeAddress = Address.fromHexString("c0de");
   public static Bytes topic1 =

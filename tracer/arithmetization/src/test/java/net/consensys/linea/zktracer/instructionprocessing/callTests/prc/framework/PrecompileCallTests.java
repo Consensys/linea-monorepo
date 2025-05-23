@@ -19,12 +19,14 @@ import static net.consensys.linea.zktracer.instructionprocessing.callTests.Utili
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.CodeExecutionMethods.*;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.CodeExecutionMethods.runCreateDeployingForeignCodeAndCallIntoIt;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.CodeExecutionMethods;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-public abstract class PrecompileCallTests<T extends PrecompileCallParameters> {
+public abstract class PrecompileCallTests<T extends PrecompileCallParameters>
+    extends TracerTestBase {
 
   /**
    * <b>MESSAGE_CALL_TRANSACTION</b> case.
@@ -39,7 +41,7 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters> {
         callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation();
     if (callParameter.willRevert()) revertWith(rootCode, 0, 5 * WORD_SIZE);
 
-    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode);
+    runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, testInfo);
   }
 
   /**
@@ -55,7 +57,7 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters> {
         callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation();
     if (callParameter.willRevert()) revertWith(txInitCode, 0, 0);
 
-    runDeploymentTransactionWithProvidedCodeAsInitCode(txInitCode);
+    runDeploymentTransactionWithProvidedCodeAsInitCode(txInitCode, testInfo);
   }
 
   /**
@@ -68,7 +70,8 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters> {
   public void messageCallFromRootTest(T callParameter) {
     BytecodeCompiler chadPrcEnjoyerCode =
         callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation();
-    runMessageCallToAccountEndowedWithProvidedCode(chadPrcEnjoyerCode, callParameter.willRevert());
+    runMessageCallToAccountEndowedWithProvidedCode(
+        chadPrcEnjoyerCode, callParameter.willRevert(), testInfo);
   }
 
   /**
@@ -86,7 +89,7 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters> {
   public void happyPathDuringCreate(T callParameter) {
     BytecodeCompiler foreignCode =
         callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation();
-    runForeignByteCodeAsInitCode(foreignCode, callParameter.willRevert());
+    runForeignByteCodeAsInitCode(foreignCode, callParameter.willRevert(), testInfo);
   }
 
   /**
@@ -99,6 +102,7 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters> {
   public void happyPathAfterCreate(T callParameter) {
     BytecodeCompiler chadPrcEnjoyerCode =
         callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation();
-    runCreateDeployingForeignCodeAndCallIntoIt(chadPrcEnjoyerCode, callParameter.willRevert());
+    runCreateDeployingForeignCodeAndCallIntoIt(
+        chadPrcEnjoyerCode, callParameter.willRevert(), testInfo);
   }
 }

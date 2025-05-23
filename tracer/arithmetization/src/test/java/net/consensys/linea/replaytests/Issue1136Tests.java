@@ -18,6 +18,7 @@ import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_SEPOLIA_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +43,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @Tag("replay")
 @Tag("nightly")
 @ExtendWith(UnitTestWatcher.class)
-public class Issue1136Tests {
+public class Issue1136Tests extends TracerTestBase {
 
   @Test
   void issue_1136_block_3110546() {

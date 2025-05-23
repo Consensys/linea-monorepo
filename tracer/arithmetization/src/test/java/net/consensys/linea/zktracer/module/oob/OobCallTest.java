@@ -22,6 +22,7 @@ import java.math.BigInteger;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -42,7 +43,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class OobCallTest {
+public class OobCallTest extends TracerTestBase {
 
   @Test
   void testCallSendValueGreaterThanBalanceHiNonZero() {
@@ -98,7 +99,7 @@ public class OobCallTest {
   void testRecursiveCallsWithBytecode() {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af1"));
-    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL);
+    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL, testInfo);
 
     final Hub hub = bytecodeRunner.getHub();
 
@@ -113,7 +114,7 @@ public class OobCallTest {
   void testRecursiveCallsWithBytecodeFollowedByStackUnderflow() {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af101"));
-    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL);
+    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL, testInfo);
 
     final Hub hub = bytecodeRunner.getHub();
 
@@ -125,7 +126,7 @@ public class OobCallTest {
   void testRecursiveCallsWithBytecodeFollowedByAddress() {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af130"));
-    bytecodeRunner.run(Wei.fromEth(400), (long) 21000 + 10000);
+    bytecodeRunner.run(Wei.fromEth(400), (long) 21000 + 10000, testInfo);
 
     final Hub hub = bytecodeRunner.getHub();
 
@@ -137,7 +138,7 @@ public class OobCallTest {
   void testRecursiveCallsWithBytecodeFollowedByExplicitStop() {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(Bytes.fromHexString("60006000600060006000305af100"));
-    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL);
+    bytecodeRunner.run(Wei.fromEth(400), 0xFFFFFFL, testInfo);
 
     final Hub hub = bytecodeRunner.getHub();
 
@@ -207,7 +208,7 @@ public class OobCallTest {
                 TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .build();
 
-    toyExecutionEnvironmentV2.run();
+    toyExecutionEnvironmentV2.run(testInfo);
 
     final Hub hub = toyExecutionEnvironmentV2.getHub();
 
@@ -260,7 +261,7 @@ public class OobCallTest {
                 TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .build();
 
-    toyExecutionEnvironmentV2.run();
+    toyExecutionEnvironmentV2.run(testInfo);
 
     final Hub hub = toyExecutionEnvironmentV2.getHub();
 

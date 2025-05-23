@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.Utils.*;
 
 import java.util.List;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
@@ -38,7 +39,7 @@ import org.junit.jupiter.api.Test;
  * and get reverted LOGX in order to tests that the MMU and LOG stamps work as intended wrt
  * reverting LOGX operations
  */
-public class RevertingLogsTests {
+public class RevertingLogsTests extends TracerTestBase {
 
   private static final Bytes TOPIC_1 =
       Bytes.fromHexString("0x000007031c100000000007031c100000000007031c100000000007031c100000");
@@ -172,6 +173,6 @@ public class RevertingLogsTests {
                 recipientAccount))
         .transaction(tx)
         .build()
-        .run();
+        .run(testInfo);
   }
 }

@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.precompiles;
 import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.BLAKE2f_HASH_OUTPUT_SIZE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -25,7 +26,7 @@ import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 
-public class BlakeTests {
+public class BlakeTests extends TracerTestBase {
   @Test
   void emptyBlakeTest() {
     final Bytes bytecode =
@@ -42,7 +43,7 @@ public class BlakeTests {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // check precompile limits line count
     assertEquals(0, bytecodeRunner.getHub().blakeEffectiveCall().lineCount());
@@ -77,7 +78,7 @@ public class BlakeTests {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // check precompile limits line count
     assertEquals(1, bytecodeRunner.getHub().blakeEffectiveCall().lineCount());
@@ -106,7 +107,7 @@ public class BlakeTests {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // check precompile limits line count
     assertEquals(0, bytecodeRunner.getHub().blakeEffectiveCall().lineCount());
@@ -135,7 +136,7 @@ public class BlakeTests {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // check precompile limits line count
     assertEquals(0, bytecodeRunner.getHub().blakeEffectiveCall().lineCount());

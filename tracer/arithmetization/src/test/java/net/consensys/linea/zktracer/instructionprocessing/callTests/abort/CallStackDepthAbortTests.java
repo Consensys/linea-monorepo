@@ -16,9 +16,9 @@ package net.consensys.linea.zktracer.instructionprocessing.callTests.abort;
 
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendRecursiveSelfCall;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.appendRevert;
-import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -31,7 +31,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * expansion costs. We will want to revert so we transfer value to see the effect of reverting.
  */
 @ExtendWith(UnitTestWatcher.class)
-public class CallStackDepthAbortTests {
+public class CallStackDepthAbortTests extends TracerTestBase {
   @ParameterizedTest
   @EnumSource(
       value = OpCode.class,
@@ -42,7 +42,7 @@ public class CallStackDepthAbortTests {
     appendRecursiveSelfCall(program, callOpCode);
     appendRevert(program, 6, 7);
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 
   @ParameterizedTest
@@ -54,6 +54,6 @@ public class CallStackDepthAbortTests {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     appendRecursiveSelfCall(program, callOpCode);
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 }

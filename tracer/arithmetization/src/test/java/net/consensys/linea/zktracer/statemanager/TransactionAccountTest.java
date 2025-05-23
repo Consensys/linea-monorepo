@@ -22,6 +22,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.MultiBlockExecutionEnvironment;
 import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.testing.generated.FrameworkEntrypoint;
@@ -30,7 +31,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Test;
 
-public class TransactionAccountTest {
+public class TransactionAccountTest extends TracerTestBase {
   TestContext tc;
 
   @Test
