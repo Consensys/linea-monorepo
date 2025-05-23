@@ -8,6 +8,8 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -38,6 +40,17 @@ type PlonkInWizardAligned struct {
 
 	// PlonkOptions are optional option to the plonk-in-wizard check
 	PlonkOptions []PlonkOption
+
+	// nbPublicInput is a lazily-loaded variable representing the number of
+	// public inputs in the circuit provided by the query. The variable is
+	// computed the first time [PlonkInWizard.GetNbPublicInputs] is called and
+	// saved there.
+	nbPublicInputs int
+
+	// nbPublicInputs loaded is a flag indicating whether we need to compute the
+	// number of public input. It is not using [sync.Once] that way we don't
+	// need to initialize the value.
+	nbPublicInputsLoaded bool
 }
 
 // Name implements the [ifaces.Query] interface.
@@ -109,4 +122,25 @@ mainLoop:
 	}
 
 	return errGroup.Wait()
+}
+
+// CheckGnark implements the [ifaces.Query] interface and will panic in this
+// construction because we do not have a good way to check the query within a
+// circuit
+func (q *PlonkInWizardAligned) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
+	utils.Panic("UNSUPPORTED : can't check a PlonkInWizard query directly into the circuit, query-name=%v", q.Name())
+}
+
+// GetNbPublicInputs returns the number of public inputs of the circuit provided
+// by the query.
+func (q *PlonkInWizardAligned) GetNbPublicInputs() int {
+	// The lazy loading does not need to be thread-safe as (1) it is not
+	// meant to be run concurrently and (2) the initialization is idempotent
+	// anyway.
+	if !q.nbPublicInputsLoaded {
+		q.nbPublicInputsLoaded = true
+		nbPub, _ := gnarkutil.CountVariables(q.Circuit)
+		q.nbPublicInputs = nbPub
+	}
+	return q.nbPublicInputs
 }
