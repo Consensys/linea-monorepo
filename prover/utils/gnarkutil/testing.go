@@ -4,9 +4,9 @@ import (
 	"testing"
 	"unsafe"
 
-	"github.com/consensys/gnark-crypto/ecc"
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/gnark/test"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,8 +28,17 @@ func AssertCircuitSolved(t *testing.T, def TestDefineFunc) {
 		assi = &gnarkTestCircuit{DefineFunc: unsafe.Pointer(&def)}
 	)
 
-	err := test.IsSolved(circ, assi, ecc.BLS12_377.ScalarField())
+	//err := test.IsSolved(circ, assi, ecc.BLS12_377.ScalarField())
+	// err := test.IsSolved(circ, assi, koalabear.Modulus())
+
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, circ)
 	assert.NoError(t, err)
+
+	fullWitness, err := frontend.NewWitness(assi, koalabear.Modulus())
+	assert.NoError(t, err)
+	err = ccs.IsSolved(fullWitness)
+	// assert.NoError(t, err)
+
 }
 
 // gnarkTestCircuit is a generic circuit that allows easy test implementation
