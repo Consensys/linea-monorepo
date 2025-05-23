@@ -47,13 +47,14 @@ repositories {
 
 apply plugin: 'io.spring.dependency-management'
 
+def lineaSequencerProject = project(lineaSequencerProjectPath)
 dependencyManagement {
   applyMavenExclusions = false
   generatedPomCustomization {
     enabled = false
   }
   imports {
-    mavenBom "${besuArtifactGroup}:bom:${libs.versions.besu.get()}"
+    mavenBom "${besuArtifactGroup}:bom:${lineaSequencerProject.besuVersion}"
   }
 
   dependencies {

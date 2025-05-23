@@ -205,7 +205,7 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
       final int num) {
     final String contractAddress = simpleStorage.getContractAddress();
     final String txData =
-        simpleStorage.set(RandomStringUtils.randomAlphabetic(num)).encodeFunctionCall();
+        simpleStorage.set(RandomStringUtils.secure().nextAlphabetic(num)).encodeFunctionCall();
     final List<String> hashes = new ArrayList<>();
     accounts.forEach(
         a -> {
@@ -433,7 +433,7 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
             DefaultGasProvider.GAS_PRICE,
             BigInteger.valueOf(MAX_TX_GAS_LIMIT),
             to,
-            RandomStringUtils.randomAlphabetic(num),
+            RandomStringUtils.secure().nextAlphabetic(num),
             BigInteger.ZERO)
         .getTransactionHash();
   }
