@@ -1,44 +1,59 @@
-package fastpolyext_test
+package fastpolyext
 
 import (
-	"fmt"
 	"testing"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
-
-	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
+	"github.com/stretchr/testify/assert"
 )
 
-func TestGnarkInterpolate(t *testing.T) {
+type EvaluateLagrangeCircuit struct {
+	X    gnarkfext.Element   // point of evaluation
+	Poly []gnarkfext.Element // poly in Lagrange form
+	R    gnarkfext.Element   // expected result
+}
 
-	testCases := [][]fext.Element{
-		vectorext.ForTest(0, 0, 0, 0),
-		vectorext.ForTest(1, 0, 1, 0),
-		vectorext.ForTest(1, 1, 1, 1),
+func (c *EvaluateLagrangeCircuit) Define(api frontend.API) error {
+
+	r := EvaluateLagrangeGnark(api, c.Poly, c.X)
+	c.R.AssertIsEqual(api, r)
+
+	return nil
+}
+
+func TestEvaluateLagrangeGnark(t *testing.T) {
+
+	// sample random poly and random point
+	size := 64
+	poly := make([]fext.Element, size)
+	for i := 0; i < size; i++ {
+		poly[i].SetRandom()
 	}
+	var x fext.Element
+	x.SetRandom()
 
-	for i := range testCases {
+	// eval lagrange
+	r := EvaluateLagrange(poly, x)
 
-		t.Run(fmt.Sprintf("test-cases-%v", i), func(t *testing.T) {
-
-			def := func(api frontend.API) error {
-				x := fext.NewElement(42, 0, 0, 0)
-				vec := vectorext.IntoGnarkAssignment(testCases[i])
-				expectedY := fastpolyext.EvaluateLagrange(testCases[i], x)
-				fmt.Print("expectedY=", expectedY)
-
-				computedY := fastpolyext.InterpolateGnark(api, vec, gnarkfext.FromValue(x))
-				fmt.Print("computedY=", computedY)
-				computedY.AssertIsEqual(api, gnarkfext.FromValue(expectedY))
-				return nil
-			}
-
-			gnarkutil.AssertCircuitSolved(t, def)
-		})
+	// test circuit
+	var witness, circuit EvaluateLagrangeCircuit
+	circuit.Poly = make([]gnarkfext.Element, size)
+	witness.Poly = make([]gnarkfext.Element, size)
+	for i := 0; i < size; i++ {
+		witness.Poly[i] = gnarkfext.FromValue(poly[i])
 	}
+	witness.R = gnarkfext.FromValue(r)
+	witness.X = gnarkfext.FromValue(x)
 
+	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
+	assert.NoError(t, err)
+
+	fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
+	assert.NoError(t, err)
+	err = ccs.IsSolved(fullWitness)
+	assert.NoError(t, err)
 }

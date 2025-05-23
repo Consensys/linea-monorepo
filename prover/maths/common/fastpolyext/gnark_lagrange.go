@@ -3,100 +3,54 @@ package fastpolyext
 import (
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext" // Assuming gnarkfext has the Exp function
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// Evaluate a polynomial in lagrange basis on a gnark circuit
-func InterpolateGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfext.Element) gnarkfext.Element {
+// EvaluateLagrangeGnark evaluates a polynomial in lagrange basis on a gnark circuit
+func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfext.Element) gnarkfext.Element {
 
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
 	}
 
-	// When the poly is of length 1 it means it is a constant polynomial and its
-	// evaluation is trivial.
-	if len(poly) == 1 {
-		return poly[0]
+	size := len(poly)
+	omega, err := fft.Generator(uint64(size))
+	if err != nil {
+		// TODO handle that properly
+		panic(err)
 	}
 
-	n := len(poly)
-	domain := fft.NewDomain(uint64(n))
-	one := gnarkfext.One()
-
-	// Test that x is not a root of unity. In the other case, we would
-	// have to divide by zero. In practice this constraint is not necessary
-	// (because the division constraint would be non-satisfiable anyway)
-	xN := gnarkfext.Exp(api, x, n)
-	api.AssertIsDifferent(xN, gnarkfext.One())
-
-	// Compute the term-wise summand of the interpolation formula.
-	// This will allow the gnark solver to process the expensive
-	// inverses in parallel.
-	terms := make([]gnarkfext.Element, n)
-	skip := make([]bool, n)
-
-	// omegaMinI carries the domain's inverse root of unity generator raised to
-	// the power I in the following loop. It is initialized with omega**0 = 1.
-	// omegaI := frontend.Variable(1)
-	omegaI := gnarkfext.One()
-	//wrappedGeneratorInv := fext.Element{domain.GeneratorInv, 0}
-
-	for i := 0; i < n; i++ {
-
-		if i > 0 {
-			omegaI.MulByFp(api, omegaI, domain.GeneratorInv)
-
-		}
-
-		// If the current term is the constant zero, we continue without generating
-		// constraints. As a result, 'terms' may contain nil elements. Therefore,
-		// we will need to remove them later
-		c1, isC1 := api.Compiler().ConstantValue(poly[i].B0)
-		c2, isC2 := api.Compiler().ConstantValue(poly[i].B1)
-		if isC1 && c1.IsInt64() && c1.Int64() == 0 && isC2 && c2.IsInt64() && c2.Int64() == 0 {
-			skip[i] = true
-			continue
-		}
-
-		var xOmegaN gnarkfext.Element
-		xOmegaN.Mul(api, x, omegaI)
-		terms[i].Sub(api, xOmegaN, gnarkfext.One())
-		// No point doing a batch inverse in a circuit
-		terms[i].Inverse(api, terms[i])
-		terms[i].Mul(api, terms[i], poly[i])
+	var accw, one field.Element
+	one.SetOne()
+	accw.SetOne()
+	dens := make([]gnarkfext.Element, size) // [x-1, x-ω, x-ω², ...]
+	for i := 0; i < size; i++ {
+		dens[i] = gnarkfext.FromBaseField(0)
+		dens[i].B0.A0 = api.Sub(x.B0.A0, accw) // accw lives in the base field
+		accw.Mul(&accw, &omega)
+	}
+	invdens := make([]gnarkfext.Element, size) // [1/x-1, 1/x-ω, 1/x-ω², ...]
+	for i := 0; i < size; i++ {
+		invdens[i].Inverse(api, dens[i])
 	}
 
-	nonNilTerms := make([]gnarkfext.Element, 0, len(terms))
-	for i := range terms {
-		if skip[i] {
-			continue
-		}
+	var tmp gnarkfext.Element
+	tmp = gnarkfext.Exp(api, x, size)
+	tmp.B0.A0 = api.Sub(tmp.B0.A0, one) // xⁿ-1
+	li := api.Inverse(size)
+	liExt := gnarkfext.FromBaseField(li)
+	liExt.Mul(api, tmp, liExt) // 1/n * (xⁿ-1)
 
-		nonNilTerms = append(nonNilTerms, terms[i])
+	res := gnarkfext.FromBaseField(0)
+	for i := 0; i < size; i++ {
+		liExt.Mul(api, liExt, invdens[i])
+		tmp.Mul(api, liExt, poly[i]) // pᵢ *  ωⁱ/n * ( xⁿ-1)/(x-ωⁱ)
+		res.Add(api, res, tmp)
+		liExt.Mul(api, liExt, dens[i])
+		liExt.MulByFp(api, liExt, omega)
 	}
-
-	// Then sum all the terms
-	var res gnarkfext.Element
-
-	switch {
-	case len(nonNilTerms) == 0:
-		res.SetZero()
-	case len(nonNilTerms) == 1:
-		res = nonNilTerms[0]
-	case len(nonNilTerms) == 2:
-		res.Add(api, nonNilTerms[0], nonNilTerms[1])
-	default:
-		res.Sum(api, nonNilTerms[0], nonNilTerms[1], nonNilTerms[2:]...)
-	}
-
-	/*
-		Then multiply the res by a factor \frac{g^{1 - n}X^n -g}{n}
-	*/
-	factor := xN
-	factor.Sub(api, factor, one)
-	factor.MulByFp(api, factor, domain.CardinalityInv)
-	res.Mul(api, res, factor)
 
 	return res
 

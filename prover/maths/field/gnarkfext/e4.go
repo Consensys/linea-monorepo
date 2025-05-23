@@ -116,17 +116,14 @@ func (e *Element) Mul(api frontend.API, e1, e2 Element, in ...Element) *Element 
 // Square Element elt
 func (e *Element) Square(api frontend.API, x Element) *Element {
 
-	var c0, c1 E2
-	c0.Mul(api, x.B0, x.B0)     // x0^2
-	c1.Mul(api, x.B1, x.B1)     // x1^2
-	c1.MulByNonResidue(api, c1) // qnr*x1^2
-	c0.Add(api, c0, c1)         // x0^2 + qnr*x1^2
-	c1.A0 = 2
-	c1.MulByNonResidue(api, c1) // 2*qnr
-	c1.Mul(api, c1, x.B0)       // 2*qnr*x0
-	c1.Mul(api, c1, x.B1)       // 2*qnr*x0*x1
-	e.B0 = c0                   // x0^2 + qnr*x1^2
-	e.B1 = c1                   // 2*qnr*x0*x1
+	var c0, c2, c3 E2
+	c0.Sub(api, x.B0, x.B1)
+	c3.MulByNonResidue(api, x.B1).Sub(api, x.B0, c3)
+	c2.Mul(api, x.B0, x.B1)
+	c0.Mul(api, c0, c3).Add(api, c0, c2)
+	e.B1.Double(api, c2)
+	c2.MulByNonResidue(api, c2)
+	e.B0.Add(api, c0, c2)
 
 	return e
 }

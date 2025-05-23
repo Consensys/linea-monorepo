@@ -11,6 +11,15 @@ type API struct {
 	Inner frontend.API
 }
 
+func FromBaseField(v frontend.Variable) Element {
+	var res Element
+	res.B0.A0 = v
+	res.B0.A1 = 0
+	res.B1.A0 = 0
+	res.B1.A1 = 0
+	return res
+}
+
 func FromValue(v fext.Element) Element {
 	return Element{
 		B0: E2{A0: v.B0.A0, A1: v.B0.A1},

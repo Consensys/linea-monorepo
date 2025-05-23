@@ -50,11 +50,9 @@ func TestEvaluateLagrangeGnark(t *testing.T) {
 
 	ccs, err := frontend.CompileU32(koalabear.Modulus(), scs.NewBuilder, &circuit)
 	assert.NoError(t, err)
-	// assert := test.NewAssert(t)
 
 	fullWitness, err := frontend.NewWitness(&witness, koalabear.Modulus())
 	assert.NoError(t, err)
 	err = ccs.IsSolved(fullWitness)
 	assert.NoError(t, err)
-	// assert.CheckCircuit(&circuit, &witness, test.WithBackends(backend.PLONK))
 }
