@@ -61,15 +61,11 @@ func SerializeRecursedSegmentCompilation(segComp *distributed.RecursedSegmentCom
 
 	// Serialize Recursion
 	if segComp.Recursion != nil {
-		fmt.Println("Need for Serde *Recursion")
-		// recSer, err := serialization.SerializeRecursion(segComp.Recursion)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("failed to serialize Recursion: %w", err)
-		// }
-		// raw.Recursion = recSer
-
-		// Temp
-		raw.Recursion = []byte(serialization.NilString)
+		recSer, err := SerializeRecursion(segComp.Recursion)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize Recursion: %w", err)
+		}
+		raw.Recursion = recSer
 	} else {
 		// fmt.Println("NOOO Need for Serde *Recursion")
 		raw.Recursion = []byte(serialization.NilString)
@@ -129,7 +125,7 @@ func DeserializeRecursedSegmentCompilation(data []byte) (*distributed.RecursedSe
 		segComp.DefaultModule = defMod
 	}
 
-	// Deserialize RecursionComp
+	// Deserialize RecursionComp first as Recursion references columns from there
 	if !bytes.Equal(raw.RecursionComp, []byte(serialization.NilString)) {
 		comp, err := serialization.DeserializeCompiledIOP(raw.RecursionComp)
 		if err != nil {

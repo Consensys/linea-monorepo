@@ -168,7 +168,7 @@ var implementationRegistry = collection.NewMapping[string, reflect.Type]()
 
 // Global slice to hold types that should be ignored during serialization/deserialization.
 var IgnoreableTypes = []reflect.Type{
-	// Ignore gnark frontend variables and plonk-in-wizard compliation
+	// Ignore gnark frontend variables and Plonk-in-wizard compliation
 	reflect.TypeOf((*frontend.Variable)(nil)).Elem(),
 	reflect.TypeOf(plonkinternal.Plonk{}),
 }

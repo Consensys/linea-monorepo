@@ -49,7 +49,7 @@ func TestSerdeRecursion(t *testing.T) {
 
 }
 
-func TestSerdeRecurIOP(t *testing.T) {
+func TestSerdeIOP(t *testing.T) {
 
 	// logrus.Printf("Column exists in recursion input iop:%v\n", testCompInput.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_1)))
 	// logrus.Printf("Column exists in recur-segment recur iop:%v\n", testCompRecur.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_1)))

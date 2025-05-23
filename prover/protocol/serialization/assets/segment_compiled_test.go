@@ -1,10 +1,10 @@
 package assets
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/sirupsen/logrus"
 )
 
 var recurSegComp = dw.CompiledDefault
@@ -21,7 +21,7 @@ func TestSerdeRecursedSegmentCompilation(t *testing.T) {
 		t.Fatalf("Failed to serialize RecursedSegmentCompilation: %v", err)
 	}
 
-	fmt.Println("Serialization of RecursedSegmentCompilation successful w/o recursion")
+	logrus.Println("Serialization of RecursedSegmentCompilation successful with recursion")
 
 	// Deserialize the RecursedSegmentCompilation
 	deserializedSegComp, err := DeserializeRecursedSegmentCompilation(serializedData)
@@ -29,7 +29,7 @@ func TestSerdeRecursedSegmentCompilation(t *testing.T) {
 		t.Fatalf("Failed to deserialize RecursedSegmentCompilation: %v", err)
 	}
 
-	fmt.Println("Deserialization of RecursedSegmentCompilation successful w/o recursion")
+	logrus.Println("Deserialization of RecursedSegmentCompilation successful with recursion")
 
 	// Compare exported fields
 	if !test_utils.CompareExportedFields(recurSegComp, deserializedSegComp) {
