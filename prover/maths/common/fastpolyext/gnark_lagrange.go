@@ -27,7 +27,7 @@ func EvaluateLagrangeGnark(api frontend.API, poly []gnarkfext.Element, x gnarkfe
 	accw.SetOne()
 	dens := make([]gnarkfext.Element, size) // [x-1, x-ω, x-ω², ...]
 	for i := 0; i < size; i++ {
-		dens[i] = gnarkfext.FromBaseField(0)
+		dens[i] = x
 		dens[i].B0.A0 = api.Sub(x.B0.A0, accw) // accw lives in the base field
 		accw.Mul(&accw, &omega)
 	}
