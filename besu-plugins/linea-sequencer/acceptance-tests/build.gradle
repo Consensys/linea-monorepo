@@ -16,12 +16,12 @@ import java.time.LocalTime
  */
 
 plugins {
-  id 'org.web3j' version '4.12.0'
-  id 'org.web3j.solidity' version '0.5.0'
-  id 'io.freefair.lombok' version '8.6'
-  id 'com.github.ben-manes.versions' version '0.51.0'
-  id 'io.spring.dependency-management' version '1.1.5'
-  id "de.undercouch.download" version '5.6.0'
+  alias(libs.plugins.web3j)
+  alias(libs.plugins.web3jSolidity)
+  alias(libs.plugins.lombok)
+  alias(libs.plugins.gradleVersions)
+  alias(libs.plugins.dependencyManagement)
+  alias(libs.plugins.download)
 }
 
 def lineaSequencerProject = project(lineaSequencerProjectPath)

@@ -16,7 +16,7 @@ buildscript {
 
 plugins {
   id 'java-library'
-  id 'com.github.jk1.dependency-license-report' version '2.9'
+  alias(libs.plugins.dependencyLicenseReport)
 }
 
 licenseReport {
@@ -41,4 +41,3 @@ build {
 jar {
   enabled = false
 }
-

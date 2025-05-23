@@ -62,12 +62,12 @@ dependencyManagement {
       entry "arithmetization"
     }
 
-    dependency 'com.google.code.gson:gson:2.11.0'
+    dependency "com.google.code.gson:gson:${libs.versions.gson.get()}"
 
     // ToDo: remove when fixed in Besu, force version to avoid conflict with previous version
     dependency 'org.apache.logging.log4j:log4j-api:2.24.1'
     dependency 'org.apache.logging.log4j:log4j-core:2.24.1'
 
-    dependency 'org.wiremock:wiremock:3.12.0'
+    dependency "org.wiremock:wiremock:${libs.versions.wiremock.get()}"
   }
 }

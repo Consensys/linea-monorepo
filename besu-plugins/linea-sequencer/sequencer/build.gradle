@@ -16,10 +16,10 @@
 plugins {
   id 'java'
   id 'java-library-distribution'
-  id 'io.freefair.lombok' version '8.6'
-  id 'com.github.ben-manes.versions' version '0.51.0'
-  id 'io.spring.dependency-management' version '1.1.5'
-  id "de.undercouch.download" version '5.6.0'
+  alias(libs.plugins.lombok)
+  alias(libs.plugins.gradleVersions)
+  alias(libs.plugins.dependencyManagement)
+  alias(libs.plugins.download)
 }
 
 group = 'net.consensys.linea.besu.plugin'
@@ -36,8 +36,8 @@ dependencies {
   annotationProcessor 'com.google.auto.service:auto-service'
   compileOnly 'com.google.auto.service:auto-service'
 
-  api "build.linea:blob-compressor:1.2.2"
-  api "build.linea.internal:kotlin:0.1.0"
+  api "build.linea:blob-compressor:${libs.versions.blobCompressor.get()}"
+  api "build.linea.internal:kotlin:${libs.versions.lineaKotlin.get()}"
 
   implementation "${besuArtifactGroup}:besu-datatypes"
   implementation "${besuArtifactGroup}:evm"
@@ -54,9 +54,10 @@ dependencies {
 
   implementation 'com.google.code.gson:gson'
 
-  implementation 'io.consensys.tuweni:tuweni-bytes:2.7.0'
-  implementation 'io.consensys.tuweni:tuweni-units:2.7.0'
-  implementation 'io.consensys.tuweni:tuweni-toml:2.7.0'
+  // TODO in later ticket - Can we use io.tmio:tuweni instead?
+  implementation "io.consensys.tuweni:tuweni-bytes:${libs.versions.consensysTuweni.get()}"
+  implementation "io.consensys.tuweni:tuweni-units:${libs.versions.consensysTuweni.get()}"
+  implementation "io.consensys.tuweni:tuweni-toml:${libs.versions.consensysTuweni.get()}"
 
   implementation 'info.picocli:picocli'
 
