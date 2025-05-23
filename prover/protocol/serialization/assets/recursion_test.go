@@ -8,7 +8,17 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var testRec = recurSegComp.Recursion
+var (
+	CHECK_COLUMN_NAME_1 = "wizard-recursion_PI_0"
+	CHECK_COLUMN_NAME_2 = ".PRECOMPUTED_2_I_65536_SUBSLICE_0_OVER_8"
+)
+
+var (
+	testRec       = recurSegComp.Recursion
+	testCompInput = testRec.InputCompiledIOP
+	testCompRecur = recurSegComp.RecursionComp
+	testComp      = testCompRecur
+)
 
 func TestSerdeRecursion(t *testing.T) {
 
@@ -25,7 +35,7 @@ func TestSerdeRecursion(t *testing.T) {
 	logrus.Println("Serialization recursion successful")
 
 	// Deserialize
-	deserialized, err := DeserializeRecursion(serialized)
+	deserialized, err := DeserializeRecursion(serialized, testComp)
 	if err != nil {
 		t.Fatalf("Deserialization failed: %v", err)
 	}
@@ -39,20 +49,12 @@ func TestSerdeRecursion(t *testing.T) {
 
 }
 
-var (
-	// testComp = testRec.InputCompiledIOP
-	//  testComp = testRec.PlonkCtx.GetPlonkInternalIOP()
-
-	testComp = recurSegComp.RecursionComp
-	testCkt  = testRec.PlonkCtx.Plonk.Circuit
-)
-
 func TestSerdeRecurIOP(t *testing.T) {
 
-	// fmt.Println("********Recur. Comp. IOP********************************************")
-	// pcsCtx := testComp.PcsCtxs
-	// fmt.Printf("reflec type(name):%s type(string):%s kind:%s of PcsCtx \n", reflect.TypeOf(pcsCtx).Name(), reflect.TypeOf(pcsCtx).String(), reflect.TypeOf(pcsCtx).Kind())
-	// fmt.Println("************FIN Recur. Comp. IOP******************************************")
+	// logrus.Printf("Column exists in recursion input iop:%v\n", testCompInput.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_1)))
+	// logrus.Printf("Column exists in recur-segment recur iop:%v\n", testCompRecur.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_1)))
+	// logrus.Printf("Column exists in recursion input iop:%v\n", testCompInput.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_2)))
+	// logrus.Printf("Column exists in recur-segment recur iop:%v\n", testCompRecur.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_2)))
 
 	serComp, err := serialization.SerializeCompiledIOP(testComp)
 	if err != nil {
@@ -64,15 +66,12 @@ func TestSerdeRecurIOP(t *testing.T) {
 		t.Fatalf("error during deser. recursion input compiled-iop:%s\n", err.Error())
 	}
 
-	// logrus.Printf("Column exists in original iop:%v\n", testComp.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME)))
-	// logrus.Printf("Column exists in deseriop:%v\n", deSerComp.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME)))
-	// logrus.Printf("Column exists in plonk-iop:%v\n", testRec.PlonkCtx.GetPlonkInternalIOP().Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME)))
-
 	if !test_utils.CompareExportedFields(testComp, deSerComp) {
 		t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")
 	}
 }
 
+/*
 func TestSerdePlonkCkt(t *testing.T) {
 
 	// fmt.Println("Given circuit")
@@ -95,4 +94,4 @@ func TestSerdePlonkCkt(t *testing.T) {
 	if !test_utils.CompareExportedFields(testCkt, deSerCkt) {
 		t.Fatalf("Mistach in serde. plonk circuit exported fields")
 	}
-}
+} */

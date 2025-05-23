@@ -129,15 +129,6 @@ func DeserializeRecursedSegmentCompilation(data []byte) (*distributed.RecursedSe
 		segComp.DefaultModule = defMod
 	}
 
-	// Deserialize Recursion
-	if !bytes.Equal(raw.Recursion, []byte(serialization.NilString)) {
-		rec, err := DeserializeRecursion(raw.Recursion)
-		if err != nil {
-			return nil, fmt.Errorf("failed to deserialize Recursion: %w", err)
-		}
-		segComp.Recursion = rec
-	}
-
 	// Deserialize RecursionComp
 	if !bytes.Equal(raw.RecursionComp, []byte(serialization.NilString)) {
 		comp, err := serialization.DeserializeCompiledIOP(raw.RecursionComp)
@@ -145,6 +136,15 @@ func DeserializeRecursedSegmentCompilation(data []byte) (*distributed.RecursedSe
 			return nil, fmt.Errorf("failed to deserialize RecursionComp: %w", err)
 		}
 		segComp.RecursionComp = comp
+	}
+
+	// Deserialize Recursion
+	if !bytes.Equal(raw.Recursion, []byte(serialization.NilString)) {
+		rec, err := DeserializeRecursion(raw.Recursion, segComp.RecursionComp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to deserialize Recursion: %w", err)
+		}
+		segComp.Recursion = rec
 	}
 
 	return segComp, nil

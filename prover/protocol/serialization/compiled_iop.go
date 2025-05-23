@@ -627,3 +627,18 @@ func deserializeFSHooks(rawFSHooks []json.RawMessage, round int, comp *wizard.Co
 	}
 	return nil
 }
+
+func CopyColumns(from, to *wizard.CompiledIOP) error {
+	numRounds := from.Columns.NumRounds()
+	for round := 0; round < numRounds; round++ {
+		// Retrieve all colIDs
+		colIDs := from.Columns.AllKeysAt(round)
+		for _, colID := range colIDs {
+			if !to.Columns.Exists(colID) {
+				col := from.Columns.GetHandle(colID).(column.Natural)
+				to.InsertColumn(round, colID, col.Size(), col.Status())
+			}
+		}
+	}
+	return nil
+}

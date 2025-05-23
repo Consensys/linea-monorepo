@@ -20,7 +20,23 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type PlonkCircuitInWizard struct {
+type Plonk struct {
+	// The plonk circuit being integrated
+	Circuit frontend.Circuit
+	// The compiled circuit
+	Trace *plonkBLS12_377.Trace
+	// The sparse constrained system
+	SPR *cs.SparseR1CS
+	// Domain to gets the polynomials in lagrange form
+	Domain *fft.Domain
+	// Options for the solver, may contain hint informations
+	// and so on.
+	SolverOpts []solver.Option
+	// Receives the list of rows which have to be marked containing range checks.
+	RcGetter func() [][2]int // the same for all circuits
+	// HashedGetter is a function that returns the list of rows which are tagged
+	// as range-checked.
+	HashedGetter func() [][3][2]int
 }
 
 // This flag control whether to activate the gnark profiling for the circuits. Please leave it
@@ -48,25 +64,7 @@ type CompilationCtx struct {
 	// Number of instances of the circuit
 	MaxNbInstances int
 
-	// Gnark related data
-	Plonk struct {
-		// The plonk circuit being integrated
-		Circuit frontend.Circuit
-		// The compiled circuit
-		Trace *plonkBLS12_377.Trace
-		// The sparse constrained system
-		SPR *cs.SparseR1CS
-		// Domain to gets the polynomials in lagrange form
-		Domain *fft.Domain
-		// Options for the solver, may contain hint informations
-		// and so on.
-		SolverOpts []solver.Option
-		// Receives the list of rows which have to be marked containing range checks.
-		RcGetter func() [][2]int // the same for all circuits
-		// HashedGetter is a function that returns the list of rows which are tagged
-		// as range-checked.
-		HashedGetter func() [][3][2]int
-	} `cbor:"-"  json:"-"` // Skip plonk during CBOR/JSON serilization
+	Plonk Plonk
 
 	// Columns
 	Columns struct {

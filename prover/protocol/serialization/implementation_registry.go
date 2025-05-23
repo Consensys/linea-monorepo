@@ -170,9 +170,7 @@ var implementationRegistry = collection.NewMapping[string, reflect.Type]()
 var IgnoreableTypes = []reflect.Type{
 	// Ignore gnark frontend variables and plonk-in-wizard compliation
 	reflect.TypeOf((*frontend.Variable)(nil)).Elem(),
-	reflect.TypeOf((*plonkinternal.CompilationCtx)(nil)),
-
-	// reflect.TypeOf((*frontend.Circuit)(nil)).Elem(),
+	reflect.TypeOf(plonkinternal.Plonk{}),
 }
 
 // RegisterImplementation registers the type of the provided instance. This is

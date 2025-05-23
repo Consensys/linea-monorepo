@@ -396,7 +396,7 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 
 	// Skip ignorable fields
 	if serialization.IsIgnoreableType(v1.Type()) {
-		logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
+		logrus.Printf("Skipping comparison of Ignorable type:%s at %s\n", v1.Type().String(), path)
 		return true
 	}
 
@@ -462,10 +462,10 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 				continue
 			}
 			// Skip fields with cbor:"-" tag
-			if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
-				logrus.Println("Skipping test comparisions for empty cbor/json tag")
-				continue
-			}
+			// if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
+			// 	logrus.Println("Skipping test comparisions for empty cbor/json tag")
+			// 	continue
+			// }
 			f1 := v1.Field(i)
 			f2 := v2.Field(i)
 			fieldName := structField.Name

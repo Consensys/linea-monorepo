@@ -213,7 +213,7 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 
 	// Skip serialization for ignorable types
 	if IsIgnoreableType(typeOfV) {
-		logrus.Infof("Skipping serialization of %v\n", typeOfV)
+		logrus.Infof("Skipping serialization of Ignorable type: %v\n", typeOfV)
 		return json.RawMessage(NilString), nil
 	}
 
@@ -251,12 +251,12 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 			continue // Skip unexported fields
 		}
 
-		// Skip fields with cbor:"-" tag
-		structField, _ := typeOfV.FieldByName(f.name)
-		if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
-			logrus.Printf("Skipping serialization of field:%s purposefully due to empty cbor tag\n", f.name)
-			continue
-		}
+		// // Skip fields with cbor:"-" tag
+		// structField, _ := typeOfV.FieldByName(f.name)
+		// if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
+		// 	logrus.Printf("Skipping serialization of field:%s purposefully due to empty cbor tag\n", f.name)
+		// 	continue
+		// }
 
 		fieldValue := v.FieldByName(f.name)
 		fieldType := f.fieldType
@@ -392,7 +392,7 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 
 	if IsIgnoreableType(t) {
 		if bytes.Equal(data, []byte(NilString)) {
-			logrus.Infof("Skipping deserialization of %v", t)
+			logrus.Infof("Skipping deserialization of Ignorable type: %v", t)
 			return reflect.Zero(t), nil
 		}
 		return reflect.Value{}, fmt.Errorf("expected null or empty struct for %v, got: %v", t, data)
@@ -498,7 +498,7 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 	// Handle ignorable types
 	if IsIgnoreableType(t) {
 		if bytes.Equal(data, []byte(NilString)) {
-			logrus.Infof("Skipping deserialization of %v", t)
+			logrus.Infof("Skipping deserialization of Ignorable type: %v", t)
 			return reflect.Zero(t), nil
 		}
 		return reflect.Value{}, fmt.Errorf("expected null or empty struct for %v, got: %v", t, data)
@@ -564,11 +564,11 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		}
 
 		// Skip fields with cbor:"-" tag
-		structField, _ := t.FieldByName(f.name)
-		if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
-			logrus.Printf("Skipping deserialization of field:%s purposefully due to empty cbor tag\n", f.name)
-			continue
-		}
+		// structField, _ := t.FieldByName(f.name)
+		// if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
+		// 	logrus.Printf("Skipping deserialization of field:%s purposefully due to empty cbor tag\n", f.name)
+		// 	continue
+		// }
 
 		fieldRaw, ok := raw[f.rawName]
 		if !ok {
