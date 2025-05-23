@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Random;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -43,7 +44,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class StpTest {
+public class StpTest extends TracerTestBase {
   /**
    * NOTE: Do not make this static as it will introduce non-deterministic behaviour into the testing
    * process.
@@ -78,7 +79,7 @@ public class StpTest {
         .transactions(transactions)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -101,7 +102,7 @@ public class StpTest {
         .transactions(txList)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   OpCode randOpCodeCall() {

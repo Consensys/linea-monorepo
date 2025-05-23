@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -33,7 +34,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class StackUnderflowExceptionTest {
+public class StackUnderflowExceptionTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("stackUnderflowExceptionSource")
@@ -45,7 +46,7 @@ public class StackUnderflowExceptionTest {
     }
     program.op(opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // the number of pushed arguments is less than the number of arguments required by the opcode
 

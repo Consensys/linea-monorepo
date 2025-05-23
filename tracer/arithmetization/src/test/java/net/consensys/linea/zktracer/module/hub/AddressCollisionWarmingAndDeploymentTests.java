@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -42,7 +43,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-public class AddressCollisionWarmingAndDeploymentTests {
+public class AddressCollisionWarmingAndDeploymentTests extends TracerTestBase {
 
   // ** This aims to test skipping, warming, initialization and finalization section, whith
   // scenarii:
@@ -187,7 +188,7 @@ public class AddressCollisionWarmingAndDeploymentTests {
         .coinbase(coinBaseAddress)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
 
   private void appendAccessListEntry(

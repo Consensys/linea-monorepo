@@ -19,6 +19,7 @@ import java.util.Random;
 import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -31,7 +32,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @Slf4j
-class ShfRtTracerTest {
+class ShfRtTracerTest extends TracerTestBase {
   private static final int TEST_REPETITIONS = 4;
 
   @ParameterizedTest(name = "{0}")
@@ -43,7 +44,7 @@ class ShfRtTracerTest {
                 .push(Bytes32.fromHexString("0x01"))
                 .immediate(opCodeValue)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -51,7 +52,7 @@ class ShfRtTracerTest {
     BytecodeRunner.of(
             Bytes.fromHexString(
                 "7faaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa7fa0000000000000000000000000000000000000000000000000000000000000001d"))
-        .run();
+        .run(testInfo);
   }
 
   @ParameterizedTest(name = "{0}")
@@ -66,7 +67,7 @@ class ShfRtTracerTest {
                 .push(payload[0])
                 .op(OpCode.SAR)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -77,7 +78,7 @@ class ShfRtTracerTest {
                 .immediate(Bytes32.fromHexStringLenient("0xb5"))
                 .op(OpCode.SAR)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   private static Stream<Arguments> provideRandomSarArguments() {

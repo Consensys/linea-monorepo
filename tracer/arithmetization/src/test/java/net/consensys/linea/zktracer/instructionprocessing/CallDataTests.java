@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.instructionprocessing;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -36,7 +37,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * sense. They aren't for message calls.
  */
 @ExtendWith(UnitTestWatcher.class)
-public class CallDataTests {
+public class CallDataTests extends TracerTestBase {
   // @Test
   // void transactionCallDataForMessageCallTest() {
   // }
@@ -54,7 +55,7 @@ public class CallDataTests {
         .transaction(transaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   // @Test

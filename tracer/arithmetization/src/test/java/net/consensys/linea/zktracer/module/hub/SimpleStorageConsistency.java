@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -36,7 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class SimpleStorageConsistency {
+public class SimpleStorageConsistency extends TracerTestBase {
 
   private final Address receiverAddress =
       Address.fromHexString("0x00000bad0000000000000000000000000000b077");
@@ -145,6 +146,6 @@ public class SimpleStorageConsistency {
         .transactions(txs)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
 }

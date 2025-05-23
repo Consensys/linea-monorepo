@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -33,7 +34,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 
-public class L2L1LogsTests {
+public class L2L1LogsTests extends TracerTestBase {
 
   @Test
   void twoSuccessfullL2l1Logs() {
@@ -86,7 +87,7 @@ public class L2L1LogsTests {
             .zkTracerValidator(zkTracer -> {})
             .build();
 
-    toyWorld.run();
+    toyWorld.run(testInfo);
 
     final L2L1Logs l2l1Logs = toyWorld.getHub().l2L1Logs();
 
@@ -170,7 +171,7 @@ public class L2L1LogsTests {
             .zkTracerValidator(zkTracer -> {})
             .build();
 
-    toyWorld.run();
+    toyWorld.run(testInfo);
 
     final L2L1Logs l2l1Logs = toyWorld.getHub().l2L1Logs();
 

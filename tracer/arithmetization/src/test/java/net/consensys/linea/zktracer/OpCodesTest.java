@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer;
 import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeDataList;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.InstructionFamily;
@@ -28,12 +29,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class OpCodesTest {
+public class OpCodesTest extends TracerTestBase {
 
   @Test
   public void AllOpCodesTest() {
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(getAllOpCodesProgram());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   private Bytes getAllOpCodesProgram() {

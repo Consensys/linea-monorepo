@@ -18,6 +18,7 @@ import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -27,7 +28,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class FailureWillRevertTest {
+public class FailureWillRevertTest extends TracerTestBase {
 
   /**
    * The following uses a smart contract that calls itself but stops after one iteration. At which
@@ -58,7 +59,7 @@ public class FailureWillRevertTest {
     selfCall(program, callOpCode, 0xffff, 0x10);
     appendRevert(program, 31, 7);
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 
   @Test
@@ -73,7 +74,7 @@ public class FailureWillRevertTest {
     sstoreAt(program, 0x00);
     appendRevert(program, 31, 7);
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 
   /**
@@ -87,7 +88,7 @@ public class FailureWillRevertTest {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     program.push(1).push(2).op(SWAP1).push(3).op(SWAP1);
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 
   /** Similar to {@link #singleSelfCallFailureWillRevertTest(OpCode)} but with two self calls. */
@@ -114,7 +115,7 @@ public class FailureWillRevertTest {
     selfCall(program, callOpCode, 0xffff, 0x01);
     appendRevert(program, 31, 7);
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 
   public void sloadFrom(BytecodeCompiler program, int storageKey) {

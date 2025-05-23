@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -41,7 +42,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-public class SelfdestructCoinbaseTests {
+public class SelfdestructCoinbaseTests extends TracerTestBase {
 
   /**
    * This test aims to test the SELFDESTRUCT of the COINBASE address in various scenarii: - root
@@ -146,7 +147,7 @@ public class SelfdestructCoinbaseTests {
         .zkTracerValidator(zkTracer -> {})
         .coinbase(depAddress)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   private static Stream<Arguments> selfDestructCoinbaseInputs() {

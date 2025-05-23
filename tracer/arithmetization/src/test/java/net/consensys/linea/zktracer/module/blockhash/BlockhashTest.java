@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -32,7 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class BlockhashTest {
+public class BlockhashTest extends TracerTestBase {
 
   @Test
   void severalBlockhash() {
@@ -124,7 +125,7 @@ public class BlockhashTest {
                 .op(OpCode.BLOCKHASH)
                 .op(OpCode.POP)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -139,7 +140,7 @@ public class BlockhashTest {
                 .op(OpCode.BLOCKHASH)
                 .op(OpCode.POP)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test

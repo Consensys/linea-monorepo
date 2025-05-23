@@ -18,6 +18,7 @@ import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -27,7 +28,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class DoubleCall {
+public class DoubleCall extends TracerTestBase {
 
   /** Same selfDestructorAddress */
   @ParameterizedTest
@@ -39,7 +40,7 @@ public class DoubleCall {
     appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress), 1, 0, 0, 0, 0);
     appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress), 2, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 
   @ParameterizedTest
@@ -52,7 +53,7 @@ public class DoubleCall {
     appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress), 2, 0, 0, 0, 0);
     program.op(REVERT); // N.B. The stack contains the two success bits
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 
   /** Different selfDestructorAddress */
@@ -65,7 +66,7 @@ public class DoubleCall {
     appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress), 1, 0, 0, 0, 0);
     appendCall(program, callOpCode, 0, Address.fromHexString(eoaAddress2), 2, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 
   @ParameterizedTest
@@ -79,6 +80,6 @@ public class DoubleCall {
     program.push(13).push(71); // the stack already contains two items but why not ...
     program.op(REVERT);
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 }

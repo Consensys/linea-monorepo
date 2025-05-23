@@ -18,13 +18,14 @@ import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_SEPOLIA_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @Tag("replay")
 @ExtendWith(UnitTestWatcher.class)
-public class Issue1145Tests {
+public class Issue1145Tests extends TracerTestBase {
 
   @Test
   public void issue_1145_block_3318494_ReturnPrecondition() {

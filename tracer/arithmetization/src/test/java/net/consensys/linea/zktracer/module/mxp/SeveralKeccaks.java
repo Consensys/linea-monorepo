@@ -15,6 +15,7 @@
 package net.consensys.linea.zktracer.module.mxp;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -22,12 +23,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class SeveralKeccaks {
+public class SeveralKeccaks extends TracerTestBase {
 
   @Test
   public void testMul() {
     BytecodeRunner.of(BytecodeCompiler.newProgram().push(32).push(7).op(OpCode.MUL).compile())
-        .run();
+        .run(testInfo);
   }
 
   /** For readability we write __ instead of 00 */
@@ -69,7 +70,7 @@ public class SeveralKeccaks {
                 .push(5)
                 .op(OpCode.SHA3) // KEC(0x00DEADBEEF)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -109,6 +110,6 @@ public class SeveralKeccaks {
                 .op(OpCode.SHA3)
                 .op(OpCode.POP)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 }

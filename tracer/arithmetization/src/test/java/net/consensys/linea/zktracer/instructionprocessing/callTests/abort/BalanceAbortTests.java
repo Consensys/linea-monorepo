@@ -18,6 +18,7 @@ import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -35,7 +36,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * up the target account.
  */
 @ExtendWith(UnitTestWatcher.class)
-public class BalanceAbortTests {
+public class BalanceAbortTests extends TracerTestBase {
 
   final String eoaAddress = "abcdef0123456789";
 
@@ -63,7 +64,7 @@ public class BalanceAbortTests {
         .op(EXTCODESIZE) // discounted pricing since warm
         .compile();
 
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 
   /**
@@ -85,6 +86,6 @@ public class BalanceAbortTests {
     appendInsufficientBalanceCall(
         program, callOpCode, 1000, Address.fromHexString(eoaAddress), 0, 0, 0, 0);
     program.push(6).push(7).op(REVERT);
-    BytecodeRunner.of(program).run();
+    BytecodeRunner.of(program).run(testInfo);
   }
 }

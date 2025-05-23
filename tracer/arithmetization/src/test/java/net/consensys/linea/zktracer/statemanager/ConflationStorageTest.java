@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.math.BigInteger;
 import java.util.*;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.module.hub.fragment.storage.StorageFragment;
 import net.consensys.linea.zktracer.types.EWord;
@@ -28,7 +29,7 @@ import org.apache.tuweni.bytes.Bytes32;
 import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.Test;
 
-public class ConflationStorageTest {
+public class ConflationStorageTest extends TracerTestBase {
   TestContext tc;
 
   @Test

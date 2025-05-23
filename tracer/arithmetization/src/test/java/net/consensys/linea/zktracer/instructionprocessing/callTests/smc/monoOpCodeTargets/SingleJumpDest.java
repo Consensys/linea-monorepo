@@ -20,6 +20,7 @@ import static net.consensys.linea.zktracer.opcode.OpCode.CALL;
 import static net.consensys.linea.zktracer.opcode.OpCode.REVERT;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.junit.jupiter.api.Test;
@@ -30,7 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * JUMPDEST opcode (which is costs gas).
  */
 @ExtendWith(UnitTestWatcher.class)
-public class SingleJumpDest {
+public class SingleJumpDest extends TracerTestBase {
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WONT_REVERT</b> scenario. */
   @Test
@@ -40,7 +41,7 @@ public class SingleJumpDest {
     appendCall(
         program, CALL, 10, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 0, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts);
+    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
   }
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WONT_REVERT</b> scenario. */
@@ -51,7 +52,7 @@ public class SingleJumpDest {
     appendCall(
         program, CALL, 10, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 1, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts);
+    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
   }
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WILL_REVERT</b> scenario. */
@@ -65,7 +66,7 @@ public class SingleJumpDest {
     // we use the 1 on the stack after this successful CALL as the revert message size
     program.push(0).op(REVERT);
 
-    BytecodeRunner.of(program.compile()).run(accounts);
+    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
   }
 
   // CALL reverts because of OOGX
@@ -78,7 +79,7 @@ public class SingleJumpDest {
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 0, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts);
+    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
   }
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_FAILURE_WONT_REVERT</b> scenario. */
@@ -88,7 +89,7 @@ public class SingleJumpDest {
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 1, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts);
+    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
   }
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_FAILURE_WILL_REVERT</b> scenario. */
@@ -101,6 +102,6 @@ public class SingleJumpDest {
     // we use the 1 on the stack after this successful CALL as the revert message size
     program.push(0).op(REVERT);
 
-    BytecodeRunner.of(program.compile()).run(accounts);
+    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
   }
 }

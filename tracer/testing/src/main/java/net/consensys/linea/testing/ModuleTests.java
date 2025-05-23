@@ -20,6 +20,7 @@ import java.util.List;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
+import org.junit.jupiter.api.TestInfo;
 
 /** Contains methods that execute module tests. */
 public class ModuleTests {
@@ -30,9 +31,10 @@ public class ModuleTests {
    * @param opCode opcode for which the test should be run
    * @param arguments args of the opcode for which the test should be run
    */
-  public static void runTestWithOpCodeArgs(final OpCode opCode, final List<Bytes32> arguments) {
+  public static void runTestWithOpCodeArgs(
+      final OpCode opCode, final List<Bytes32> arguments, TestInfo testInfo) {
     Bytes bytecode = BytecodeCompiler.newProgram().opAnd32ByteArgs(opCode, arguments).compile();
 
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 }

@@ -19,11 +19,12 @@ import static java.lang.Integer.MAX_VALUE;
 import static net.consensys.linea.zktracer.ChainConfig.MAINNET_LONDON_TESTCONFIG;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.limits.precompiles.ModexpEffectiveCall;
 import org.junit.jupiter.api.Test;
 
-public class ModexpIllegalOperationTests {
+public class ModexpIllegalOperationTests extends TracerTestBase {
   @Test
   void legalThenTwoIllegals() {
     final ZkTracer state = new ZkTracer(MAINNET_LONDON_TESTCONFIG);

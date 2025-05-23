@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.instructionprocessing.zeroSize;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -27,7 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class CallArgumentsMaybeRedundant {
+public class CallArgumentsMaybeRedundant extends TracerTestBase {
   /*
    * Copyright ConsenSys Inc.
    *
@@ -69,7 +70,8 @@ public class CallArgumentsMaybeRedundant {
             .code(calleeProgram.compile())
             .build();
 
-    BytecodeRunner.of(program.compile()).run(Wei.fromEth(1), 30000L, List.of(calleeAccount));
+    BytecodeRunner.of(program.compile())
+        .run(Wei.fromEth(1), 30000L, List.of(calleeAccount), testInfo);
     // TODO: this test is supposed to fail as the ones below, but it does not. Understand why
   }
 
@@ -103,7 +105,8 @@ public class CallArgumentsMaybeRedundant {
             .code(calleeProgram.compile())
             .build();
 
-    BytecodeRunner.of(program.compile()).run(Wei.fromEth(1), 30000L, List.of(calleeAccount));
+    BytecodeRunner.of(program.compile())
+        .run(Wei.fromEth(1), 30000L, List.of(calleeAccount), testInfo);
   }
 
   @Test
@@ -129,6 +132,7 @@ public class CallArgumentsMaybeRedundant {
             .code(calleeProgram.compile())
             .build();
 
-    BytecodeRunner.of(program.compile()).run(Wei.fromEth(1), 30000L, List.of(calleeAccount));
+    BytecodeRunner.of(program.compile())
+        .run(Wei.fromEth(1), 30000L, List.of(calleeAccount), testInfo);
   }
 }

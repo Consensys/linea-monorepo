@@ -28,6 +28,7 @@ import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -44,7 +45,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 @Slf4j
 @ExtendWith(UnitTestWatcher.class)
-public class OutOfGasExceptionTest {
+public class OutOfGasExceptionTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("outOfGasExceptionWithEmptyAccountsAndNoMemoryExpansionCostTestSource")
@@ -72,7 +73,7 @@ public class OutOfGasExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -156,10 +157,10 @@ public class OutOfGasExceptionTest {
               .address(Address.fromHexString("ca11ee"))
               .build();
       gasCost = bytecodeRunner.runOnlyForGasCost(List.of(calleeAccount));
-      bytecodeRunner.run(gasCost + cornerCase, List.of(calleeAccount));
+      bytecodeRunner.run(gasCost + cornerCase, List.of(calleeAccount), testInfo);
     } else {
       gasCost = bytecodeRunner.runOnlyForGasCost();
-      bytecodeRunner.run(gasCost + cornerCase);
+      bytecodeRunner.run(gasCost + cornerCase, testInfo);
     }
 
     if (value == 0) {
@@ -215,7 +216,7 @@ public class OutOfGasExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -243,7 +244,7 @@ public class OutOfGasExceptionTest {
     } else {
       gasCost = bytecodeRunner.runOnlyForGasCost();
     }
-    bytecodeRunner.run(gasCost);
+    bytecodeRunner.run(gasCost, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -275,7 +276,7 @@ public class OutOfGasExceptionTest {
       gasCost = bytecodeRunner.runOnlyForGasCost();
     }
 
-    bytecodeRunner.run(gasCost);
+    bytecodeRunner.run(gasCost, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);

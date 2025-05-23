@@ -19,13 +19,14 @@ import static net.consensys.linea.zktracer.ChainConfig.MAINNET_LONDON_TESTCONFIG
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.limits.precompiles.ModexpEffectiveCall;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class CountOnlyModuleTest {
+public class CountOnlyModuleTest extends TracerTestBase {
   @Test
   void test() {
     ZkTracer state = new ZkTracer(MAINNET_LONDON_TESTCONFIG);

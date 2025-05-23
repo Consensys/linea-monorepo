@@ -53,8 +53,6 @@ dependencies {
   implementation 'io.vertx:vertx-web'
 
   testImplementation project(path: ':testing')
-  testImplementation group: "${besuArtifactGroup}.internal", name: "core", classifier: "test-support"
-
   testImplementation 'org.junit.platform:junit-platform-launcher'
 }
 

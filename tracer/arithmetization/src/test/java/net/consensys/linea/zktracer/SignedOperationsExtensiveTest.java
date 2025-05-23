@@ -27,6 +27,7 @@ import java.util.stream.Stream;
 
 import lombok.experimental.Accessors;
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -39,14 +40,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 @Accessors(fluent = true)
 @Tag("weekly")
 @ExtendWith(UnitTestWatcher.class)
-public class SignedOperationsExtensiveTest {
+public class SignedOperationsExtensiveTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("signedComparisonsModDivTestSource")
   void signedComparisonsModDivTest(OpCode opCode, String a, String b) {
     BytecodeCompiler program = BytecodeCompiler.newProgram().push(b).push(a).op(opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   private static Stream<Arguments> signedComparisonsModDivTestSource() {
@@ -110,11 +111,11 @@ public class SignedOperationsExtensiveTest {
 
   @ParameterizedTest
   @MethodSource("signExtendTestSource")
-  private static void signExtendTest(String position, String value) {
+  private void signExtendTest(String position, String value) {
     BytecodeCompiler program =
         BytecodeCompiler.newProgram().push(value).push(position).op(OpCode.SIGNEXTEND);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   private static Stream<Arguments> signExtendTestSource() {

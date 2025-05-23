@@ -15,13 +15,14 @@
 
 package net.consensys.linea.zktracer.container.stacked;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.module.wcp.WcpOperation;
 import net.consensys.linea.zktracer.types.EWord;
 import org.apache.tuweni.bytes.Bytes32;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-class WcpOperationTests {
+class WcpOperationTests extends TracerTestBase {
 
   @Test
   void equals() {

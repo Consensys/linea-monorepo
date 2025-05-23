@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.module.hub;
 
 import java.util.List;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -25,7 +26,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Test;
 
-public class ZeroSizeCallDataOrReturnDataTest {
+public class ZeroSizeCallDataOrReturnDataTest extends TracerTestBase {
 
   @Test
   void zeroSizeHugeReturnAtOffsetTest() {
@@ -50,7 +51,8 @@ public class ZeroSizeCallDataOrReturnDataTest {
             .code(calleeProgram.compile())
             .build();
 
-    BytecodeRunner.of(program.compile()).run(Wei.fromEth(1), 30000L, List.of(calleeAccount));
+    BytecodeRunner.of(program.compile())
+        .run(Wei.fromEth(1), 30000L, List.of(calleeAccount), testInfo);
   }
 
   @Test
@@ -76,7 +78,8 @@ public class ZeroSizeCallDataOrReturnDataTest {
             .code(calleeProgram.compile())
             .build();
 
-    BytecodeRunner.of(program.compile()).run(Wei.fromEth(1), 30000L, List.of(calleeAccount));
+    BytecodeRunner.of(program.compile())
+        .run(Wei.fromEth(1), 30000L, List.of(calleeAccount), testInfo);
   }
 
   @Test
@@ -102,6 +105,7 @@ public class ZeroSizeCallDataOrReturnDataTest {
             .code(calleeProgram.compile())
             .build();
 
-    BytecodeRunner.of(program.compile()).run(Wei.fromEth(1), 30000L, List.of(calleeAccount));
+    BytecodeRunner.of(program.compile())
+        .run(Wei.fromEth(1), 30000L, List.of(calleeAccount), testInfo);
   }
 }

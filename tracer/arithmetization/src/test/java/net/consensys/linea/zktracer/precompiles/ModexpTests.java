@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -40,7 +41,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class ModexpTests {
+public class ModexpTests extends TracerTestBase {
 
   // some 10 decimal digit primes in the range [256 ** 3, 256 ** 4[
   // * 1081914797 ≡ 0x407CB5AD
@@ -68,7 +69,7 @@ public class ModexpTests {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // check precompile limits line count
     assertEquals(1, bytecodeRunner.getHub().modexpEffectiveCall().lineCount());
@@ -111,7 +112,7 @@ public class ModexpTests {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // check precompile limits line count
     assertEquals(1, bytecodeRunner.getHub().modexpEffectiveCall().lineCount());
@@ -128,7 +129,7 @@ public class ModexpTests {
         preparingBaseExponentAndModulusForModexpAndRunningVariousModexps(hexBase, hexExpn, hexModl);
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // check precompile limits line count
     assertTrue(bytecodeRunner.getHub().modexpEffectiveCall().lineCount() > 0);
@@ -145,7 +146,7 @@ public class ModexpTests {
         preparingBaseExponentAndModulusForModexpAndRunningVariousModexps(hexBase, hexExpn, hexModl);
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // check precompile limits line count
     assertTrue(bytecodeRunner.getHub().modexpEffectiveCall().lineCount() > 0);
@@ -251,7 +252,7 @@ public class ModexpTests {
       appendAllZeroCallDataModexpCalls(program, callDataSize);
     }
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   /**
@@ -298,7 +299,7 @@ public class ModexpTests {
         .transactions(transactions)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
 
   void appendAllZeroCallDataModexpCalls(BytecodeCompiler program, int callDataSize) {
@@ -345,7 +346,7 @@ public class ModexpTests {
             .op(OpCode.CALL)
             .op(OpCode.POP)
             .compile();
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   @Test
@@ -391,7 +392,7 @@ public class ModexpTests {
             .compile();
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
     try {
-      bytecodeRunner.run();
+      bytecodeRunner.run(testInfo);
     } catch (Exception e) {
       // This is expected as the modexp call is unprovable
       if (!e.getMessage().contains("Final CallScenario, CALL_PRC_UNDEFINED, is still undefined")) {

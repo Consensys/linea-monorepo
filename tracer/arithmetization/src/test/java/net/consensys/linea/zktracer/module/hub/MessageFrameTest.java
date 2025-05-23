@@ -18,6 +18,7 @@ package net.consensys.linea.zktracer.module.hub;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -29,7 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class MessageFrameTest {
+public class MessageFrameTest extends TracerTestBase {
 
   @Test
   void testCreate() {
@@ -49,7 +50,7 @@ public class MessageFrameTest {
         .op(OpCode.DUP1);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   @Test
@@ -70,6 +71,6 @@ public class MessageFrameTest {
             .code(Bytes.fromHexString("0x63deadbeef00"))
             .build();
 
-    bytecodeRunner.run(List.of(smartContractAccount));
+    bytecodeRunner.run(List.of(smartContractAccount), testInfo);
   }
 }

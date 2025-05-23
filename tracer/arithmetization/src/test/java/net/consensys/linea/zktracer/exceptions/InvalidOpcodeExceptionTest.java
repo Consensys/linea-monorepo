@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.hub.signals.TracedException;
@@ -33,14 +34,14 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class InvalidOpcodeExceptionTest {
+public class InvalidOpcodeExceptionTest extends TracerTestBase {
 
   @Test
   void invalidOpcodeExceptionTest() {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     program.op(OpCode.INVALID);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
     assertEquals(
         TracedException.INVALID_OPCODE,
         bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());
@@ -52,7 +53,7 @@ public class InvalidOpcodeExceptionTest {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     program.immediate(value);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
     assertEquals(
         TracedException.INVALID_OPCODE,
         bytecodeRunner.getHub().previousTraceSection().commonValues.tracedException());

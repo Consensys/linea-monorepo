@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -46,7 +47,7 @@ Note : As MXPX is a subcase of OOGX, we don't test MXPX & OOGX
  */
 
 @ExtendWith(UnitTestWatcher.class)
-public class LogsTest {
+public class LogsTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("logsOpCodesList")
@@ -67,7 +68,7 @@ public class LogsTest {
 
     // Run with linea block gas limit so gas cost is passed to child without 63/64
     BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount));
+    bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
 
     // Static check happens before OOGX in tracer
     assertEquals(
@@ -92,7 +93,7 @@ public class LogsTest {
 
       // We run the program to static call the account with MXPX code
       BytecodeRunner bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
-      bytecodeRunnerStaticCall.run(List.of(codeProviderAccount));
+      bytecodeRunnerStaticCall.run(List.of(codeProviderAccount), testInfo);
 
       // Static check happens before MXPX
       assertEquals(

@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.DynamicTests;
 import net.consensys.linea.testing.OpcodeCall;
 import net.consensys.linea.zktracer.container.module.Module;
@@ -34,7 +35,7 @@ import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class MxpTracerTest {
+public class MxpTracerTest extends TracerTestBase {
   // private static final Random RAND = new Random();
   private static final int TEST_REPETITIONS = 2;
   private static final Module MODULE = new Mxp();
@@ -47,7 +48,7 @@ public class MxpTracerTest {
         .testCase("simple mload arguments test", simpleMloadArgs())
         .testCase(
             "one of each type2 and type3 instruction MLOAD, MSTORE, MSTORE8", simpleType2And3Args())
-        .run();
+        .run(testInfo);
   }
 
   private List<OpcodeCall> provideNonRandomArguments() {

@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -32,7 +33,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-public class RipTests {
+public class RipTests extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("sizes")
@@ -58,7 +59,7 @@ public class RipTests {
             .compile();
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(bytecode);
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // check precompile limits line count
     // if size is 0, no RIP call is made

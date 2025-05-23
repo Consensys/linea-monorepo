@@ -25,6 +25,7 @@ import static net.consensys.linea.zktracer.types.Utils.leftPadTo;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -66,7 +67,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * nonce is again =1; deploying a new account at nonce 1;
  */
 @ExtendWith(UnitTestWatcher.class)
-public class CreateInducedFailureTest {
+public class CreateInducedFailureTest extends TracerTestBase {
 
   final Bytes tinyAddress1 = Bytes.fromHexString("badd1ec0de");
   final Bytes tinyAddress2 = Bytes.fromHexString("900d1ec0de");
@@ -270,6 +271,6 @@ public class CreateInducedFailureTest {
         .transactions(transactions)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
 }

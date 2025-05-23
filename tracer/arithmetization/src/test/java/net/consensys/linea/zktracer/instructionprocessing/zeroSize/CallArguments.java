@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.instructionprocessing.zeroSize;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -32,7 +33,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * focusing on CALLs only, we set CDO to zero whenever CDS ≡ 0, and similarly for R@0 and R@C.
  */
 @ExtendWith(UnitTestWatcher.class)
-public class CallArguments {
+public class CallArguments extends TracerTestBase {
 
   @ParameterizedTest
   @EnumSource(
@@ -41,7 +42,7 @@ public class CallArguments {
   void emptyCallDataAndReturnAtCall(OpCode callOpCode) {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     extremalCallContract(program, callOpCode, true, true);
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @ParameterizedTest
@@ -51,7 +52,7 @@ public class CallArguments {
   void emptyReturnAtCall(OpCode callOpCode) {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     extremalCallContract(program, callOpCode, false, true);
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   @ParameterizedTest
@@ -61,7 +62,7 @@ public class CallArguments {
   void emptyCallDataCall(OpCode callOpCode) {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     extremalCallContract(program, callOpCode, true, false);
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   private void extremalCallContract(

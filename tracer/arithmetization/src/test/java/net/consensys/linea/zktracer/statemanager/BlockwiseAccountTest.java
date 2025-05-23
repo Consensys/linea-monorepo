@@ -23,6 +23,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.MultiBlockExecutionEnvironment;
 import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
@@ -30,7 +31,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Test;
 
-public class BlockwiseAccountTest {
+public class BlockwiseAccountTest extends TracerTestBase {
   TestContext tc;
 
   @Test

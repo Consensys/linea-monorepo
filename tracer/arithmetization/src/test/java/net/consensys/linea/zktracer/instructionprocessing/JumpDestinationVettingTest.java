@@ -21,6 +21,7 @@ import java.util.Random;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -31,7 +32,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class JumpDestinationVettingTest {
+public class JumpDestinationVettingTest extends TracerTestBase {
   final Random random = new Random(1);
   final int N_JUMPS = 3;
 
@@ -60,7 +61,7 @@ public class JumpDestinationVettingTest {
     }
     Bytes bytecode = program.compile();
     System.out.println(bytecode.toHexString());
-    BytecodeRunner.of(bytecode).run();
+    BytecodeRunner.of(bytecode).run(testInfo);
   }
 
   public String generateDeceptivePush(int positionOfDeceptiveJumpDest, int pushKArgumentLength) {

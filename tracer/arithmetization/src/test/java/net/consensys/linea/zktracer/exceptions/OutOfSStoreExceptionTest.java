@@ -18,6 +18,7 @@ import static net.consensys.linea.zktracer.module.hub.signals.TracedException.OU
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.Trace;
@@ -27,7 +28,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class OutOfSStoreExceptionTest {
+public class OutOfSStoreExceptionTest extends TracerTestBase {
 
   @ParameterizedTest
   @ValueSource(
@@ -42,7 +43,7 @@ public class OutOfSStoreExceptionTest {
 
     program.push(0).push(0).op(OpCode.SSTORE);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run(21000L + 3L + 3L + remainingGasAfterPushes);
+    bytecodeRunner.run(21000L + 3L + 3L + remainingGasAfterPushes, testInfo);
     // 21000L is the intrinsic gas cost of a transaction and 3L is the gas cost of PUSH1
 
     if (remainingGasAfterPushes <= Trace.GAS_CONST_G_CALL_STIPEND) {

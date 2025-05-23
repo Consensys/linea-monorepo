@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.hyperledger.besu.datatypes.Address;
@@ -40,7 +41,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * selfDestructorAddress or not. We consider the reverted vs unreverted cases.
  */
 @ExtendWith(UnitTestWatcher.class)
-public class RepeatedSelfDestructsOfSameAccountTests {
+public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
 
   private ToyAccount toAccount;
   BytecodeCompiler toAccountCode = BytecodeCompiler.newProgram();
@@ -74,7 +75,7 @@ public class RepeatedSelfDestructsOfSameAccountTests {
         .accounts(List.of(userAccount, toAccount, selfDestructorAccount))
         .transaction(transaction())
         .build()
-        .run();
+        .run(testInfo);
   }
 
   /**
@@ -224,7 +225,7 @@ public class RepeatedSelfDestructsOfSameAccountTests {
         .accounts(List.of(userAccount, toAccount, selfDestructorAccount))
         .transaction(transaction)
         .build()
-        .run();
+        .run(testInfo);
     run(heir);
   }
 }

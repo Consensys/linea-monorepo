@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Random;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
@@ -39,7 +40,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class ContractModifyingStorageTest {
+public class ContractModifyingStorageTest extends TracerTestBase {
 
   /*
   - Initialization code is what you give in the payload of the transaction in case the "to" address is empty
@@ -94,7 +95,7 @@ public class ContractModifyingStorageTest {
     ToyExecutionEnvironmentV2 toyExecutionEnvironment =
         ToyExecutionEnvironmentV2.builder().accounts(List.of(userAccount)).transaction(tx).build();
 
-    toyExecutionEnvironment.run();
+    toyExecutionEnvironment.run(testInfo);
   }
 
   @Test
@@ -127,7 +128,7 @@ public class ContractModifyingStorageTest {
 
     // TODO: add transaction to invoke function
 
-    toyExecutionEnvironment.run();
+    toyExecutionEnvironment.run(testInfo);
   }
 
   private final Random rnd = new Random(666);
@@ -202,7 +203,7 @@ public class ContractModifyingStorageTest {
         .accounts(List.of(account1, account2, account3, account4, account5))
         .transactions(txList)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   // Temporary support function

@@ -25,7 +25,8 @@ import org.hyperledger.besu.datatypes.Wei;
 
 public class GenesisConfigBuilder {
   private static ObjectNode LINEA_CONFIG =
-      JsonUtil.objectNodeFromURL(GenesisConfigBuilder.class.getResource("/lineabesu.json"), true);
+      JsonUtil.objectNodeFromURL(
+          GenesisConfigBuilder.class.getResource("/BesuExecutionToolsGenesis.json"), true);
 
   private ObjectNode genesisRoot;
   private ObjectNode configNode;
@@ -83,6 +84,11 @@ public class GenesisConfigBuilder {
 
   public GenesisConfigBuilder setCoinbase(Address coinbase) {
     genesisRoot.put("coinbase", coinbase.toHexString());
+    return this;
+  }
+
+  public GenesisConfigBuilder setExtraData(String extraData) {
+    genesisRoot.put("extraData", extraData);
     return this;
   }
 

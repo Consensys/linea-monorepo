@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.testing.ToyTransaction.ToyTransactionBuilder;
 import net.consensys.linea.testing.generated.ContractC;
@@ -40,7 +41,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.web3j.abi.EventEncoder;
 
 @ExtendWith(UnitTestWatcher.class)
-public class InitCodeTests {
+public class InitCodeTests extends TracerTestBase {
 
   // This suite aims at testing advanced CREATE2 scenarii using smart contracts
   // ** CustomCreate2 **
@@ -213,7 +214,7 @@ public class InitCodeTests {
             .transactions(transactions)
             .transactionProcessingResultValidator(create2Validator)
             .build();
-    toyExecutionEnvironmentV2.run();
+    toyExecutionEnvironmentV2.run(testInfo);
 
     // Final check on the deployment number of ContractC
     // At start, deploymentNumber = 0

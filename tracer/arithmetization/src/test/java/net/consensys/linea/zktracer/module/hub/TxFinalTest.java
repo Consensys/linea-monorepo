@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.types.AddressUtils.getCreateRawAddres
 
 import java.util.List;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -33,7 +34,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 
-public class TxFinalTest {
+public class TxFinalTest extends TracerTestBase {
 
   // sender account
   private static final KeyPair senderKeyPair = new SECP256K1().generateKeyPair();
@@ -75,7 +76,7 @@ public class TxFinalTest {
         .coinbase(senderAddress)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -95,7 +96,7 @@ public class TxFinalTest {
         .coinbase(receiverAccount.getAddress())
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
 
   // TODO: add smcCallTripleCollision() {}, not possible before EIP-7702
@@ -119,7 +120,7 @@ public class TxFinalTest {
         .coinbase(senderAddress)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -139,7 +140,7 @@ public class TxFinalTest {
         .coinbase(depAddress)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
   // good luck for finding the right nonce ;) deploymentTripleCollision() {}
 }

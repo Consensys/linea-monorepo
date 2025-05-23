@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
@@ -42,7 +43,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 /** Those tests are intended to produce LT trace to test the HUB <-> Shomei lookups. */
 @Tag("weekly")
-public class HubShomeiTests {
+public class HubShomeiTests extends TracerTestBase {
 
   private static final Bytes32 key1 = Bytes32.repeat((byte) 1);
   private static final Bytes32 key2 = Bytes32.repeat((byte) 2);
@@ -118,7 +119,7 @@ public class HubShomeiTests {
             .transactions(List.of(tx1, tx2))
             .build();
 
-    executionEnvironmentV2.run();
+    executionEnvironmentV2.run(testInfo);
 
     final ZkTracer tracer = executionEnvironmentV2.getZkTracer();
     final Set<Address> addressSeen = tracer.getAddressesSeenByHubForRelativeBlock(1);
@@ -174,7 +175,7 @@ public class HubShomeiTests {
             .accounts(List.of(senderAccount, recipientAccount))
             .transaction(tx)
             .build();
-    executionEnvironmentV2.run();
+    executionEnvironmentV2.run(testInfo);
 
     final ZkTracer tracer = executionEnvironmentV2.getZkTracer();
     final Set<Address> addressSeen = tracer.getAddressesSeenByHubForRelativeBlock(1);

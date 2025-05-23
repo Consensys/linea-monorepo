@@ -12,23 +12,16 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
-package net.consensys.linea.replaytests;
+package net.consensys.linea.reporting;
 
-import static net.consensys.linea.replaytests.ReplayTestTools.replay;
-import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestInfo;
 
-import net.consensys.linea.UnitTestWatcher;
-import net.consensys.linea.reporting.TracerTestBase;
-import org.junit.jupiter.api.Tag;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+public class TracerTestBase {
+  public TestInfo testInfo;
 
-@Tag("replay")
-@ExtendWith(UnitTestWatcher.class)
-public class Issue1031Tests extends TracerTestBase {
-
-  @Test
-  void issue_1090_range_10_20() {
-    replay(OLD_MAINNET_TESTCONFIG, "10-20.mainnet.json.gz");
+  @BeforeEach
+  public void init(TestInfo testInfo) {
+    this.testInfo = testInfo;
   }
 }

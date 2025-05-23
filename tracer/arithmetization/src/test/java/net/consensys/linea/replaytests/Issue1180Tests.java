@@ -18,6 +18,7 @@ import static net.consensys.linea.replaytests.ReplayTestTools.replay;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -29,7 +30,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @Tag("nightly")
 @Tag("replay")
 @ExtendWith(UnitTestWatcher.class)
-public class Issue1180Tests {
+public class Issue1180Tests extends TracerTestBase {
 
   @Test
   void split_range_2321470_2321479() {
@@ -43,6 +44,6 @@ public class Issue1180Tests {
         .push("ffffffffffffffffffffffffffffffffffffffffffffffffffdc633cace676d7")
         .push("0000000000000000000000000000000000000000000000000000000000000000")
         .op(OpCode.SDIV);
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 }

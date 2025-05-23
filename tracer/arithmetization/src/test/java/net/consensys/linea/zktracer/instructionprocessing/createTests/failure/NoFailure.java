@@ -18,12 +18,13 @@ import static net.consensys.linea.zktracer.instructionprocessing.createTests.tri
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class NoFailure {
+public class NoFailure extends TracerTestBase {
 
   /**
    * The following tests runs two separate CREATE2 deployments with different SALT parameters. No
@@ -45,7 +46,7 @@ public class NoFailure {
         .push(1)
         .op(CREATE2);
 
-    run(program);
+    run(program, testInfo);
   }
 
   /**
@@ -66,6 +67,6 @@ public class NoFailure {
     loadFromStorage(program, 0xadd7);
     program.op(EQ); // we expect the result to be true
 
-    run(program);
+    run(program, testInfo);
   }
 }

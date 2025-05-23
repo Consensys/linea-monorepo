@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.exceptions;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -37,7 +38,7 @@ import org.junit.jupiter.api.Test;
  *
  * <p><b>Note.</b> All exceptions that we test are <b>stackUnderflowException</b>'s.
  */
-public class ExceptionAtContextReEntry {
+public class ExceptionAtContextReEntry extends TracerTestBase {
 
   /**
    * {@link #firstInstructionAfterResumingFromUnsuccessfulMessageCallIsExceptional} tests what
@@ -87,7 +88,7 @@ public class ExceptionAtContextReEntry {
     // a stackUnderflowException.
     program.op(ADD);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   /**
@@ -122,7 +123,7 @@ public class ExceptionAtContextReEntry {
     // a stackUnderflowException.
     program.op(ADD);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   /**
@@ -144,7 +145,7 @@ public class ExceptionAtContextReEntry {
     // stackUnderflowException.
     program.op(ADD);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   /**
@@ -169,6 +170,6 @@ public class ExceptionAtContextReEntry {
     // stackUnderflowException.
     program.op(ADD);
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 }

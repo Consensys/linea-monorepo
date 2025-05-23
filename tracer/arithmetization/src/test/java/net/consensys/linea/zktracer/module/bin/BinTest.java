@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.bin;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -24,11 +25,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class BinTest {
+public class BinTest extends TracerTestBase {
   @Test
   public void edgeCase() {
     BytecodeRunner.of(BytecodeCompiler.newProgram().push(0xf0).push(0xf0).op(OpCode.AND).compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -47,7 +48,7 @@ public class BinTest {
                 .push(UInt256.MAX_VALUE)
                 .op(OpCode.SIGNEXTEND)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -63,6 +64,6 @@ public class BinTest {
                 .op(OpCode.SIGNEXTEND)
                 .op(OpCode.POP)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 }

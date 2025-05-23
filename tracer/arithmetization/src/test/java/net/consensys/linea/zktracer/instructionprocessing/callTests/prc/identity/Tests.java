@@ -22,6 +22,7 @@ import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -36,7 +37,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class Tests {
+public class Tests extends TracerTestBase {
 
   // 512 random bytes
   final Bytes randBytes =
@@ -92,7 +93,7 @@ public class Tests {
         .accounts(List.of(byteSource, userAccount, identityCaller))
         .transaction(transaction)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   /**

@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.testing.ToyAccount;
@@ -33,7 +34,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class OutOfGasMemExpExceptionTest {
+public class OutOfGasMemExpExceptionTest extends TracerTestBase {
   /**
    * Trigger out of gas exception for a MSTORE operation with a gas limit that is too low to cover
    * the memory expansion
@@ -53,7 +54,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -78,7 +79,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -109,7 +110,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -133,7 +134,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost(calldata);
 
-    bytecodeRunner.run(Wei.fromEth(1), gasCost + cornerCase, List.of(), calldata);
+    bytecodeRunner.run(Wei.fromEth(1), gasCost + cornerCase, List.of(), calldata, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -158,7 +159,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -197,7 +198,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -225,7 +226,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost(List.of(codeOwnerAccount));
 
-    bytecodeRunner.run(gasCost + cornerCase, List.of(codeOwnerAccount));
+    bytecodeRunner.run(gasCost + cornerCase, List.of(codeOwnerAccount), testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -251,7 +252,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -272,7 +273,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost(List.of(returnDataProviderAccount));
 
-    bytecodeRunner.run(gasCost + cornerCase, List.of(returnDataProviderAccount));
+    bytecodeRunner.run(gasCost + cornerCase, List.of(returnDataProviderAccount), testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -298,7 +299,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -326,7 +327,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     if (cornerCase <= -6419) {
       assertEquals(
@@ -367,7 +368,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -392,7 +393,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -418,7 +419,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -445,7 +446,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);
@@ -473,7 +474,7 @@ public class OutOfGasMemExpExceptionTest {
 
     long gasCost = bytecodeRunner.runOnlyForGasCost();
 
-    bytecodeRunner.run(gasCost + cornerCase);
+    bytecodeRunner.run(gasCost + cornerCase, testInfo);
 
     ExceptionUtils.assertEqualsOutOfGasIfCornerCaseMinusOneElseAssertNotEquals(
         cornerCase, bytecodeRunner);

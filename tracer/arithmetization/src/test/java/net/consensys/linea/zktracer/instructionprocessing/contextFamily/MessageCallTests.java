@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
@@ -35,7 +36,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class MessageCallTests {
+public class MessageCallTests extends TracerTestBase {
 
   /**
    * This test serves to verify that context data is correctly initialized after a CALL-type
@@ -60,7 +61,7 @@ public class MessageCallTests {
         .accounts(accounts)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   /**

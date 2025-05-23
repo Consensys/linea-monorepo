@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.math.BigInteger;
 import java.util.*;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.MultiBlockExecutionEnvironment;
 import net.consensys.linea.testing.TransactionProcessingResultValidator;
 import net.consensys.linea.zktracer.module.hub.fragment.account.AccountFragment;
@@ -28,7 +29,7 @@ import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
 import org.junit.jupiter.api.Test;
 
-public class ConflationAccountTest {
+public class ConflationAccountTest extends TracerTestBase {
   TestContext tc;
 
   @Test

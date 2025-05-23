@@ -25,6 +25,7 @@ import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -42,7 +43,7 @@ import org.junit.jupiter.params.provider.EnumSource;
  * <b>CREATE2</b>'s.
  */
 @ExtendWith(UnitTestWatcher.class)
-public class NestedFailureTest {
+public class NestedFailureTest extends TracerTestBase {
 
   @ParameterizedTest
   @EnumSource(
@@ -120,6 +121,6 @@ public class NestedFailureTest {
         .accounts(List.of(userAccount, entryPointAccount, accountContainingInitCode))
         .transaction(transaction)
         .build()
-        .run();
+        .run(testInfo);
   }
 }

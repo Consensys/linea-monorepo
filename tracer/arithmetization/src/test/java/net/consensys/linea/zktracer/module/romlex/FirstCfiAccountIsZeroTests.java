@@ -19,6 +19,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import java.util.List;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -33,7 +34,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 
-public class FirstCfiAccountIsZeroTests {
+public class FirstCfiAccountIsZeroTests extends TracerTestBase {
   /**
    * This test checks that the strict lexicographic order of the ROM_LEX is working when the account
    * with CFI has Address 0, Deployment number 0 and deployment status 0.
@@ -74,7 +75,7 @@ public class FirstCfiAccountIsZeroTests {
             .zkTracerValidator(zkTracer -> {})
             .build();
 
-    test.run();
+    test.run(testInfo);
 
     checkArgument(test.getHub().romLex().lineCount() == 1);
   }

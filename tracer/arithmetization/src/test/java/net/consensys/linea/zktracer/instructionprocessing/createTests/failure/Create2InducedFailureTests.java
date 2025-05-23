@@ -18,6 +18,7 @@ import static net.consensys.linea.zktracer.instructionprocessing.createTests.tri
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import org.apache.tuweni.bytes.Bytes;
 import org.junit.jupiter.api.Test;
@@ -28,7 +29,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * tests are sequential in nature: one <b>CREATE2</b> after another.
  */
 @ExtendWith(UnitTestWatcher.class)
-public class Create2InducedFailureTests {
+public class Create2InducedFailureTests extends TracerTestBase {
 
   @Test
   void failureConditionNonceTest() {
@@ -46,7 +47,7 @@ public class Create2InducedFailureTests {
         .push(1)
         .op(CREATE2);
 
-    run(program);
+    run(program, testInfo);
   }
 
   /**
@@ -97,6 +98,6 @@ public class Create2InducedFailureTests {
         .push(1) // value
         .op(CREATE2); // second (attempted) deployment raises failure condition
 
-    run(program);
+    run(program, testInfo);
   }
 }

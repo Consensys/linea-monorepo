@@ -22,6 +22,7 @@ import java.util.stream.Stream;
 
 import kotlin.Pair;
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import org.junit.jupiter.api.Test;
@@ -31,14 +32,14 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith(UnitTestWatcher.class)
-public class RomTest {
+public class RomTest extends TracerTestBase {
 
   @ParameterizedTest
   @MethodSource("incompletePushRomTestSource")
   void incompletePushRomTest(int j, int k) {
     BytecodeCompiler program = BytecodeCompiler.newProgram();
     program.incompletePush(k, "ff".repeat(j));
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 
   private static Stream<Arguments> incompletePushRomTestSource() {
@@ -68,6 +69,6 @@ public class RomTest {
       program.incompletePush(k, "5b".repeat(j));
     }
 
-    BytecodeRunner.of(program.compile()).run();
+    BytecodeRunner.of(program.compile()).run(testInfo);
   }
 }

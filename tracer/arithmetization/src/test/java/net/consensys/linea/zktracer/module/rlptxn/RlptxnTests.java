@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Random;
 import java.util.stream.Stream;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -47,7 +48,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @Execution(ExecutionMode.CONCURRENT)
-public class RlptxnTests {
+public class RlptxnTests extends TracerTestBase {
 
   /**
    * This test is a parameterized test that tests the RLP encoding of a transaction, checking
@@ -116,7 +117,7 @@ public class RlptxnTests {
         .transaction(transaction)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run();
+        .run(testInfo);
   }
 
   private Stream<Arguments> rlpInputs() {

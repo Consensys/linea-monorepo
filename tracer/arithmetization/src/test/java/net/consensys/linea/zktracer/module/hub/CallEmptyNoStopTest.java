@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -37,7 +38,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 /** Ensure that calling a contract with empty code does not generate a virtual STOP trace */
 @ExtendWith(UnitTestWatcher.class)
-public class CallEmptyNoStopTest {
+public class CallEmptyNoStopTest extends TracerTestBase {
   @Test
   void test() {
     KeyPair keyPair = new SECP256K1().generateKeyPair();
@@ -85,6 +86,6 @@ public class CallEmptyNoStopTest {
                   .isEqualTo(11);
             })
         .build()
-        .run();
+        .run(testInfo);
   }
 }

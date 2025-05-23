@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.wcp;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -24,7 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class WcpEdgeCaseTest {
+public class WcpEdgeCaseTest extends TracerTestBase {
   @Test
   void testZeroAndHugeArgs() {
     BytecodeRunner.of(
@@ -33,7 +34,7 @@ public class WcpEdgeCaseTest {
                 .push(Bytes.EMPTY)
                 .op(OpCode.SLT)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -44,7 +45,7 @@ public class WcpEdgeCaseTest {
                 .push(Bytes.repeat((byte) 0xff, 32))
                 .op(OpCode.SLT)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -60,7 +61,7 @@ public class WcpEdgeCaseTest {
                         Bytes.of(0x59)))
                 .op(OpCode.SLT)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -73,6 +74,6 @@ public class WcpEdgeCaseTest {
                         "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe1859"))
                 .op(OpCode.SLT)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 }

@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.instructionprocessing;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -41,7 +42,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * in the relevant row.
  */
 @ExtendWith(UnitTestWatcher.class)
-public class EmptyDeploymentsInTheRootTest {
+public class EmptyDeploymentsInTheRootTest extends TracerTestBase {
 
   final Bytes initCodeEmptyDeployment =
       BytecodeCompiler.newProgram()
@@ -258,7 +259,7 @@ public class EmptyDeploymentsInTheRootTest {
         .transaction(transaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   /**

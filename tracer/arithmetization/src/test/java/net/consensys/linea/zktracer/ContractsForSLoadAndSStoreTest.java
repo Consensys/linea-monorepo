@@ -16,6 +16,7 @@ package net.consensys.linea.zktracer;
 
 import java.util.List;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
@@ -32,7 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-public class ContractsForSLoadAndSStoreTest {
+public class ContractsForSLoadAndSStoreTest extends TracerTestBase {
   // See https://github.com/Consensys/linea-tracer/issues/1660 for documentation
 
   /* NOTE: The contracts in this test class are compiled by using
@@ -86,7 +87,7 @@ public class ContractsForSLoadAndSStoreTest {
                 TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .build();
 
-    toyExecutionEnvironmentV2.run();
+    toyExecutionEnvironmentV2.run(testInfo);
   }
 
   @Test
@@ -256,6 +257,6 @@ public class ContractsForSLoadAndSStoreTest {
                 TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .build();
 
-    toyExecutionEnvironmentV2.run();
+    toyExecutionEnvironmentV2.run(testInfo);
   }
 }

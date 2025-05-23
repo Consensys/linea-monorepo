@@ -19,6 +19,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 
 import java.util.List;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -33,7 +34,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 
-public class NoCFIDuplicateTests {
+public class NoCFIDuplicateTests extends TracerTestBase {
 
   /**
    * This test checks that the ROM_LEX doesn't create duplicate of CFI when calling twice the same
@@ -84,7 +85,7 @@ public class NoCFIDuplicateTests {
             .zkTracerValidator(zkTracer -> {})
             .build();
 
-    test.run();
+    test.run(testInfo);
 
     checkArgument(test.getHub().romLex().lineCount() == 1);
   }

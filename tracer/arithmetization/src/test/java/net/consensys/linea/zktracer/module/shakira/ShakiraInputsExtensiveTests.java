@@ -27,6 +27,7 @@ import java.util.Random;
 import java.util.stream.Stream;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.module.limits.precompiles.Sha256Blocks;
@@ -46,7 +47,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @ExtendWith(UnitTestWatcher.class)
 @Execution(ExecutionMode.CONCURRENT)
-public class ShakiraInputsExtensiveTests {
+public class ShakiraInputsExtensiveTests extends TracerTestBase {
 
   private final Random SEED = new Random(666);
   private final List<Integer> SIZE =
@@ -71,7 +72,7 @@ public class ShakiraInputsExtensiveTests {
                 .op(CALLDATACOPY)
                 .immediate(instructionSpecificBytecode(size, offset, instruction))
                 .compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
 
     // check line Counting if SHA245 PRC is called
     if (instruction.isCall()) {

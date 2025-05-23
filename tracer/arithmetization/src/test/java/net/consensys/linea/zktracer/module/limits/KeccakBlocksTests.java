@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -34,7 +35,7 @@ import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
 import org.junit.jupiter.api.Test;
 
-public class KeccakBlocksTests {
+public class KeccakBlocksTests extends TracerTestBase {
 
   @Test
   void keccakCountTests() {
@@ -83,7 +84,7 @@ public class KeccakBlocksTests {
             .zkTracerValidator(zkTracer -> {})
             .build();
 
-    toyWorld.run();
+    toyWorld.run(testInfo);
 
     final Keccak keccak = toyWorld.getHub().keccak();
     final L2Block l2Block = toyWorld.getHub().l2Block();

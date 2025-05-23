@@ -26,6 +26,7 @@ import java.util.stream.Stream;
 
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -40,7 +41,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 @Slf4j
 @ExtendWith(UnitTestWatcher.class)
-public class ExpTest {
+public class ExpTest extends TracerTestBase {
   // Generates 128, 64, 2, 1 as LD (leading digit)
   // LD_INDICES | LD
   // ---------- | ---------------------
@@ -61,7 +62,7 @@ public class ExpTest {
   void testExpLogSingleCase() {
     BytecodeCompiler program = BytecodeCompiler.newProgram().push(2).push(10).op(OpCode.EXP);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   @Test
@@ -92,7 +93,7 @@ public class ExpTest {
             .op(OpCode.STATICCALL);
 
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   @ParameterizedTest
@@ -105,7 +106,7 @@ public class ExpTest {
     Bytes exponent = Bytes.fromHexString(ffBlock(k));
     BytecodeCompiler program = BytecodeCompiler.newProgram().push(exponent).push(10).op(OpCode.EXP);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   @ParameterizedTest
@@ -118,7 +119,7 @@ public class ExpTest {
     Bytes exponent = Bytes.fromHexString(ffAt(k));
     BytecodeCompiler program = BytecodeCompiler.newProgram().push(exponent).push(10).op(OpCode.EXP);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   @Disabled("We may want to run these long tests only during nightly builds")
@@ -131,7 +132,7 @@ public class ExpTest {
     Bytes wordAfterBase = Bytes.fromHexStringLenient(ffBlockWithLd(k, LDIndex));
     BytecodeCompiler program = initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   @Disabled("We may want to run these long tests only during nightly builds")
@@ -143,7 +144,7 @@ public class ExpTest {
     Bytes wordAfterBase = Bytes.fromHexStringLenient(ldAt(k, ldIndex));
     BytecodeCompiler program = initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   private static Stream<Arguments> testModexpLogSource() {
@@ -170,7 +171,7 @@ public class ExpTest {
     Bytes wordAfterBase = Bytes.fromHexStringLenient(ffBlockWithLd(k, ldIndex));
     BytecodeCompiler program = initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   @Test
@@ -183,7 +184,7 @@ public class ExpTest {
     Bytes wordAfterBase = Bytes.fromHexStringLenient(ldAt(k, ldIndex));
     BytecodeCompiler program = initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   @ParameterizedTest
@@ -194,7 +195,7 @@ public class ExpTest {
             "0000000000000000000000000000000000000000000000000000000000000000");
     BytecodeCompiler program = initProgramInvokingModexp(ebsCutoff, cdsCutoff, wordAfterBase);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
-    bytecodeRunner.run();
+    bytecodeRunner.run(testInfo);
   }
 
   private static Stream<Arguments> testModexpLogZerosCaseSource() {

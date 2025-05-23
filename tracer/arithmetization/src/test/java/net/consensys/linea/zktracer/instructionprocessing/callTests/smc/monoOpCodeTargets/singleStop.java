@@ -19,6 +19,7 @@ import static net.consensys.linea.zktracer.instructionprocessing.utilities.MonoO
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +29,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * opcode (which is free of charge). No value is transferred.
  */
 @ExtendWith(UnitTestWatcher.class)
-public class singleStop {
+public class singleStop extends TracerTestBase {
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WONT_REVERT</b> scenario. */
   @Test
@@ -37,7 +38,7 @@ public class singleStop {
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleStop.getAddress(), 0, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts);
+    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
   }
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WONT_REVERT</b> scenario. */
@@ -47,7 +48,7 @@ public class singleStop {
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleStop.getAddress(), 1, 0, 0, 0, 0);
 
-    BytecodeRunner.of(program.compile()).run(accounts);
+    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
   }
 
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WILL_REVERT</b> scenario. */
@@ -60,6 +61,6 @@ public class singleStop {
     // we use the 1 on the stack after this successful CALL as the revert message size
     program.push(0).op(REVERT);
 
-    BytecodeRunner.of(program.compile()).run(accounts);
+    BytecodeRunner.of(program.compile()).run(accounts, testInfo);
   }
 }

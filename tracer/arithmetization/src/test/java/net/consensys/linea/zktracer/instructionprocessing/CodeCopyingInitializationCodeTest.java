@@ -17,6 +17,7 @@ package net.consensys.linea.zktracer.instructionprocessing;
 import java.util.List;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -45,7 +46,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * href="https://github.com/Consensys/linea-tracer/issues/1482">this issue</a>.
  */
 @ExtendWith(UnitTestWatcher.class)
-public class CodeCopyingInitializationCodeTest {
+public class CodeCopyingInitializationCodeTest extends TracerTestBase {
 
   final Bytes initCodeSimple =
       BytecodeCompiler.newProgram()
@@ -184,7 +185,7 @@ public class CodeCopyingInitializationCodeTest {
         .transaction(transaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run();
+        .run(testInfo);
   }
 
   private Bytes deployerOf(Bytes initCode) {

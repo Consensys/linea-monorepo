@@ -21,6 +21,7 @@ import java.math.BigInteger;
 
 import lombok.RequiredArgsConstructor;
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.zktracer.container.ModuleOperation;
 import net.consensys.linea.zktracer.container.stacked.ModuleOperationStackedList;
 import net.consensys.linea.zktracer.module.add.AddOperation;
@@ -32,7 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class StackedListTests {
+public class StackedListTests extends TracerTestBase {
   private static final AddOperation ONE_PLUS_ONE =
       new AddOperation(
           OpCode.ADD,

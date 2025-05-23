@@ -16,6 +16,7 @@
 package net.consensys.linea.zktracer.module.add;
 
 import net.consensys.linea.UnitTestWatcher;
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.BytecodeRunner;
 import net.consensys.linea.zktracer.opcode.OpCode;
@@ -24,7 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(UnitTestWatcher.class)
-public class AddTest {
+public class AddTest extends TracerTestBase {
   @Test
   void testSmallZeroAdd() {
     BytecodeRunner.of(
@@ -33,7 +34,7 @@ public class AddTest {
                 .push(Bytes.EMPTY)
                 .op(OpCode.ADD)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -44,7 +45,7 @@ public class AddTest {
                 .push(Bytes.EMPTY)
                 .op(OpCode.SUB)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -55,7 +56,7 @@ public class AddTest {
                 .push(Bytes.fromHexString("0xE0E1E2E3E4E5E6E7E8E9EAEBECEDEEEF"))
                 .op(OpCode.ADD)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -66,7 +67,7 @@ public class AddTest {
                 .push(Bytes.of(2))
                 .op(OpCode.ADD)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -79,7 +80,7 @@ public class AddTest {
                     Bytes.concatenate(Bytes.repeat((byte) 0x02, 16), Bytes.repeat((byte) 0x01, 16)))
                 .op(OpCode.ADD)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -90,7 +91,7 @@ public class AddTest {
                 .push(Bytes.repeat((byte) 0xFF, 32))
                 .op(OpCode.SUB)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 
   @Test
@@ -101,6 +102,6 @@ public class AddTest {
                 .push(Bytes.of(2))
                 .op(OpCode.SUB)
                 .compile())
-        .run();
+        .run(testInfo);
   }
 }
