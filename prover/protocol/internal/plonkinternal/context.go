@@ -39,7 +39,7 @@ type CompilationCtx struct {
 	// queries name so that we can understad where they come from. Two instances
 	// of Plonk in wizard cannot have the same name.
 	Name string
-	// subscript allows providing more context than [name]. It is used in the
+	// Subscript allows providing more context than [name]. It is used in the
 	// logs and in the name of the profiling assets. It is however not used as
 	// part of the name of generated wizard items.
 	Subscript string
@@ -257,14 +257,6 @@ func CompileCircuitWithExternalHasher(circ frontend.Circuit, addGates bool) (*cs
 	}
 
 	return ccsIface.(*cs.SparseR1CS), hshGetter, err
-}
-
-func (ctx *CompilationCtx) SetPlonkInternalIOP(comp *wizard.CompiledIOP) {
-	ctx.comp = comp
-}
-
-func (ctx *CompilationCtx) GetPlonkInternalIOP() *wizard.CompiledIOP {
-	return ctx.comp
 }
 
 // DomainSize returns the size of the domain. Meaning the size of the columns

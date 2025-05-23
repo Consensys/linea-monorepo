@@ -135,7 +135,6 @@ func DeserializeRecursion(data []byte) (*recursion.Recursion, error) {
 			}
 		}
 	}
-
 	return r, nil
 }
 

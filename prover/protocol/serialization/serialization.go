@@ -261,10 +261,6 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		fieldValue := v.FieldByName(f.name)
 		fieldType := f.fieldType
 
-		// if f.name == "PcsCtx" {
-		// 	fmt.Printf("ser. struct with field name `PcsCtx` of type:%s in mode:%d\n", fieldType, newMode)
-		// }
-
 		// Special handling for *wizard.CompiledIOP fields
 		if fieldType == compiledIOPType {
 			if fieldValue.IsNil() {

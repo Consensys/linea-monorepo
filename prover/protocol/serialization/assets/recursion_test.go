@@ -40,9 +40,11 @@ func TestSerdeRecursion(t *testing.T) {
 }
 
 var (
-	testComp = testRec.InputCompiledIOP
-	testCkt  = testRec.PlonkCtx.Plonk.Circuit
+	// testComp = testRec.InputCompiledIOP
 	//  testComp = testRec.PlonkCtx.GetPlonkInternalIOP()
+
+	testComp = recurSegComp.RecursionComp
+	testCkt  = testRec.PlonkCtx.Plonk.Circuit
 )
 
 func TestSerdeRecurIOP(t *testing.T) {

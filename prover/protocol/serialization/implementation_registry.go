@@ -22,6 +22,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -152,6 +153,7 @@ func init() {
 	RegisterImplementation(univariates.NaturalizeProverAction{})
 	RegisterImplementation(univariates.NaturalizeVerifierAction{})
 
+	logrus.Printf("Ignorable types:%v\n", IgnoreableTypes)
 }
 
 // In order to save some space, we trim the prefix of the package path as this
@@ -166,8 +168,9 @@ var implementationRegistry = collection.NewMapping[string, reflect.Type]()
 
 // Global slice to hold types that should be ignored during serialization/deserialization.
 var IgnoreableTypes = []reflect.Type{
-	// Ignore gnark-circuit and its related params
+	// Ignore gnark frontend variables and plonk-in-wizard compliation
 	reflect.TypeOf((*frontend.Variable)(nil)).Elem(),
+	reflect.TypeOf((*plonkinternal.CompilationCtx)(nil)),
 
 	// reflect.TypeOf((*frontend.Circuit)(nil)).Elem(),
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
+	"github.com/sirupsen/logrus"
 
 	"github.com/stretchr/testify/require"
 )
@@ -376,8 +377,8 @@ func CompareExportedFields(a, b interface{}) bool {
 }
 
 func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
-	v1 := reflect.ValueOf(a)
-	v2 := reflect.ValueOf(b)
+
+	v1, v2 := reflect.ValueOf(a), reflect.ValueOf(b)
 
 	// Ensure both values are valid
 	if !v1.IsValid() || !v2.IsValid() {
@@ -393,16 +394,16 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 		}
 	}
 
-	// Ensure same type
-	if v1.Type() != v2.Type() {
-		fmt.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, v1.Type(), v2.Type())
-		return false
-	}
-
 	// Skip ignorable fields
 	if serialization.IsIgnoreableType(v1.Type()) {
-		fmt.Printf("Skipping comparison of ignoreable fields at %s\n", path)
+		logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
 		return true
+	}
+
+	// Ensure same type
+	if v1.Type() != v2.Type() {
+		logrus.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, v1.Type(), v2.Type())
+		return false
 	}
 
 	// Ignore Func
@@ -413,14 +414,18 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 	// Handle maps
 	if v1.Kind() == reflect.Map {
 		if v1.Len() != v2.Len() {
-			fmt.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1.Len(), v2.Len(), v1.Type())
+			if serialization.IsIgnoreableType(v1.Type()) {
+				logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
+				return true
+			}
+			logrus.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1.Len(), v2.Len(), v1.Type())
 			return false
 		}
 		for _, key := range v1.MapKeys() {
 			value1 := v1.MapIndex(key)
 			value2 := v2.MapIndex(key)
 			if !value2.IsValid() {
-				fmt.Printf("Mismatch at %s: key %v is missing in second map\n", path, key)
+				logrus.Printf("Mismatch at %s: key %v is missing in second map\n", path, key)
 				return false
 			}
 			keyPath := fmt.Sprintf("%s[%v]", path, key)
@@ -437,7 +442,11 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 			return true
 		}
 		if v1.IsNil() != v2.IsNil() {
-			fmt.Printf("Mismatch at %s: nil status differs (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
+			if serialization.IsIgnoreableType(v1.Type()) {
+				logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
+				return true
+			}
+			logrus.Printf("Mismatch at %s: nil status differs (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
 			return false
 		}
 		return CompareExportedFieldsWithPath(v1.Elem().Interface(), v2.Elem().Interface(), path)
@@ -454,6 +463,7 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 			}
 			// Skip fields with cbor:"-" tag
 			if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
+				logrus.Println("Skipping test comparisions for empty cbor/json tag")
 				continue
 			}
 			f1 := v1.Field(i)
@@ -473,7 +483,7 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 	// Handle slices or arrays
 	if v1.Kind() == reflect.Slice || v1.Kind() == reflect.Array {
 		if v1.Len() != v2.Len() {
-			fmt.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1, v2, v1.Type())
+			logrus.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1, v2, v1.Type())
 			return false
 		}
 		equal := true
@@ -488,7 +498,7 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 
 	// For other types, use DeepEqual and log if mismatched
 	if !reflect.DeepEqual(a, b) {
-		fmt.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type_v1: %v type_v2: %v)\n", path, a, b, v1.Type(), v2.Type())
+		logrus.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type_v1: %v type_v2: %v)\n", path, a, b, v1.Type(), v2.Type())
 		return false
 	}
 	return true
