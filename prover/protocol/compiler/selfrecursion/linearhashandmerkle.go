@@ -46,9 +46,11 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	// The leaves are computed for both SIS and non SIS rounds
 	leavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRound
 	leavesSize := utils.NextPowerOfTwo(leavesSizeUnpadded)
-	// The leaves for SIS rounds
+	// The leaves size for SIS rounds
 	sisRoundLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundSis
 	sisRoundLeavesSize := utils.NextPowerOfTwo(sisRoundLeavesSizeUnpadded)
+	// The leaves size for non SIS rounds
+	nonSisRoundLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundNonSis
 
 	ctx.Columns.ConcatenatedDhQ = ctx.comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
 	ctx.Columns.MerkleProofsLeaves = ctx.comp.InsertCommit(roundQ, ctx.merkleLeavesName(), leavesSize)
@@ -72,15 +74,16 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	}
 
 	ctx.comp.RegisterProverAction(roundQ, &linearHashMerkleProverAction{
-		ctx:                        ctx,
-		concatDhQSize:              concatDhQSize,
-		leavesSize:                 leavesSize,
-		leavesSizeUnpadded:         leavesSizeUnpadded,
-		sisRoundLeavesSize:         sisRoundLeavesSize,
-		sisRoundLeavesSizeUnpadded: sisRoundLeavesSizeUnpadded,
-		numNonSisRound:             numRoundNonSis,
-		hashValuesSize:             mimcHashColumnSize,
-		hashPreimagesSize:          mimcPreimageColumnsSize,
+		ctx:                           ctx,
+		concatDhQSize:                 concatDhQSize,
+		leavesSize:                    leavesSize,
+		leavesSizeUnpadded:            leavesSizeUnpadded,
+		sisRoundLeavesSize:            sisRoundLeavesSize,
+		sisRoundLeavesSizeUnpadded:    sisRoundLeavesSizeUnpadded,
+		nonSisRoundLeavesSizeUnpadded: nonSisRoundLeavesSizeUnpadded,
+		numNonSisRound:                numRoundNonSis,
+		hashValuesSize:                mimcHashColumnSize,
+		hashPreimagesSize:             mimcPreimageColumnsSize,
 	})
 
 	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
@@ -200,15 +203,16 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 
 // Implements the prover action interface
 type linearHashMerkleProverAction struct {
-	ctx                        *SelfRecursionCtx
-	concatDhQSize              int
-	leavesSize                 int
-	leavesSizeUnpadded         int
-	sisRoundLeavesSize         int
-	sisRoundLeavesSizeUnpadded int
-	numNonSisRound             int
-	hashValuesSize             int
-	hashPreimagesSize          []int
+	ctx                           *SelfRecursionCtx
+	concatDhQSize                 int
+	leavesSize                    int
+	leavesSizeUnpadded            int
+	sisRoundLeavesSize            int
+	sisRoundLeavesSizeUnpadded    int
+	nonSisRoundLeavesSizeUnpadded int
+	numNonSisRound                int
+	hashValuesSize                int
+	hashPreimagesSize             []int
 }
 
 // linearHashMerkleProverActionBuilder builds the assignment parameters
@@ -223,6 +227,17 @@ type linearHashMerkleProverActionBuilder struct {
 	merklePositions []field.Element
 	// The roots of the merkle tree
 	merkleRoots []field.Element
+	// The merkle proofs are aligned as (non sis, sis).
+	// Hence we need to align leaves, position and roots
+	// in the same way. Meaning we need to store them separately
+	// and append them later
+	merkleSisLeaves    []field.Element
+	merkleSisPositions []field.Element
+	merkleSisRoots     []field.Element
+	// Now the non sis round values
+	merkleNonSisLeaves    []field.Element
+	merkleNonSisPositions []field.Element
+	merkleNonSisRoots     []field.Element
 	// The leaves of the sis round matrices
 	sisLeaves []field.Element
 	// The leaves of the non sis round matrices.
@@ -252,6 +267,12 @@ func newLinearHashMerkleProverActionBuilder(a *linearHashMerkleProverAction) *li
 	lmp.merkleLeaves = make([]field.Element, 0, a.leavesSizeUnpadded)
 	lmp.merklePositions = make([]field.Element, 0, a.leavesSizeUnpadded)
 	lmp.merkleRoots = make([]field.Element, 0, a.leavesSizeUnpadded)
+	lmp.merkleSisLeaves = make([]field.Element, 0, a.sisRoundLeavesSizeUnpadded)
+	lmp.merkleSisPositions = make([]field.Element, 0, a.sisRoundLeavesSizeUnpadded)
+	lmp.merkleSisRoots = make([]field.Element, 0, a.sisRoundLeavesSizeUnpadded)
+	lmp.merkleNonSisLeaves = make([]field.Element, 0, a.nonSisRoundLeavesSizeUnpadded)
+	lmp.merkleNonSisPositions = make([]field.Element, 0, a.nonSisRoundLeavesSizeUnpadded)
+	lmp.merkleNonSisRoots = make([]field.Element, 0, a.nonSisRoundLeavesSizeUnpadded)
 	lmp.sisLeaves = make([]field.Element, 0, a.sisRoundLeavesSizeUnpadded)
 	lmp.nonSisLeaves = make([][]field.Element, 0, a.numNonSisRound)
 	lmp.nonSisHashPreimages = make([][]field.Element, 0, a.numNonSisRound)
@@ -285,6 +306,11 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 		utils.Panic("Committed rounds %v does not match the total number of committed rounds %v", lmp.committedRound, numCommittedRound)
 	}
 
+	// Append non sis and sis round leaves, roots, and positions
+	lmp.merkleLeaves = append(lmp.merkleNonSisLeaves, lmp.merkleSisLeaves...)
+	lmp.merkleRoots = append(lmp.merkleNonSisRoots, lmp.merkleSisRoots...)
+	lmp.merklePositions = append(lmp.merkleNonSisPositions, lmp.merkleSisPositions...)
+
 	// Assign columns using IDs from ctx.Columns
 	run.AssignColumn(a.ctx.Columns.ConcatenatedDhQ.GetColID(), smartvectors.RightZeroPadded(lmp.concatDhQ, a.concatDhQSize))
 	run.AssignColumn(a.ctx.Columns.MerkleProofsLeaves.GetColID(), smartvectors.RightZeroPadded(lmp.merkleLeaves, a.leavesSize))
@@ -317,10 +343,10 @@ func processPrecomputedRound(
 			sisHash := precompColSisHash[srcStart : srcStart+lmp.sisHashSize]
 			copy(lmp.concatDhQ[destStart:destStart+lmp.sisHashSize], sisHash)
 			leaf := mimc.HashVec(sisHash)
-			lmp.merkleLeaves = append(lmp.merkleLeaves, leaf)
+			lmp.merkleSisLeaves = append(lmp.merkleSisLeaves, leaf)
 			lmp.sisLeaves = append(lmp.sisLeaves, leaf)
-			lmp.merkleRoots = append(lmp.merkleRoots, rootPrecomp)
-			lmp.merklePositions = append(lmp.merklePositions, field.NewElement(uint64(selectedCol)))
+			lmp.merkleSisRoots = append(lmp.merkleSisRoots, rootPrecomp)
+			lmp.merkleSisPositions = append(lmp.merkleSisPositions, field.NewElement(uint64(selectedCol)))
 		}
 		lmp.committedRound++
 		lmp.totalNumRounds++
@@ -334,9 +360,15 @@ func processPrecomputedRound(
 			mimcHash := precompColMiMCHash[srcStart : srcStart+1]
 			leaf := mimcHash[0]
 			mimcPreimage := a.ctx.VortexCtx.GetPrecomputedSelectedCol(selectedCol)
-			lmp.merkleLeaves = append(lmp.merkleLeaves, leaf)
-			lmp.merkleRoots = append(lmp.merkleRoots, rootPrecomp)
-			lmp.merklePositions = append(lmp.merklePositions, field.NewElement(uint64(selectedCol)))
+			// Also compute the leaf from the column
+			// to check sanity
+			leaf_ := mimc.HashVec(mimcPreimage)
+			if leaf != leaf_ {
+				utils.Panic("MiMC hash of the precomputed column %v does not match the leaf %v", leaf_, leaf)
+			}
+			lmp.merkleNonSisLeaves = append(lmp.merkleNonSisLeaves, leaf)
+			lmp.merkleNonSisRoots = append(lmp.merkleNonSisRoots, rootPrecomp)
+			lmp.merkleNonSisPositions = append(lmp.merkleNonSisPositions, field.NewElement(uint64(selectedCol)))
 			precompMimcHashValues = append(precompMimcHashValues, leaf)
 			precompMimcHashPreimages = append(precompMimcHashPreimages, mimcPreimage...)
 		}
@@ -409,10 +441,10 @@ func processRound(
 				sisHash := colSisHash[srcStart : srcStart+lmp.sisHashSize]
 				copy(lmp.concatDhQ[destStart:destStart+lmp.sisHashSize], sisHash)
 				leaf := mimc.HashVec(sisHash)
-				lmp.merkleLeaves = append(lmp.merkleLeaves, leaf)
+				lmp.merkleSisLeaves = append(lmp.merkleSisLeaves, leaf)
 				lmp.sisLeaves = append(lmp.sisLeaves, leaf)
-				lmp.merkleRoots = append(lmp.merkleRoots, rooth)
-				lmp.merklePositions = append(lmp.merklePositions, field.NewElement(uint64(selectedCol)))
+				lmp.merkleSisRoots = append(lmp.merkleSisRoots, rooth)
+				lmp.merkleSisPositions = append(lmp.merkleSisPositions, field.NewElement(uint64(selectedCol)))
 			}
 			sisRoundCount++
 			run.State.TryDel(colSisHashName)
@@ -436,9 +468,15 @@ func processRound(
 				mimcHash := colMimcHash[srcStart : srcStart+1]
 				mimcPreimage := nonSisOpenedCols[nonSisRoundCount][i]
 				leaf := mimcHash[0]
-				lmp.merkleLeaves = append(lmp.merkleLeaves, leaf)
-				lmp.merkleRoots = append(lmp.merkleRoots, rooth)
-				lmp.merklePositions = append(lmp.merklePositions, field.NewElement(uint64(selectedCol)))
+				// Also compute the leaf from the column
+				// to check sanity
+				leaf_ := mimc.HashVec(mimcPreimage)
+				if leaf != leaf_ {
+					utils.Panic("MiMC hash of the non SIS column %v does not match the leaf %v", leaf_, leaf)
+				}
+				lmp.merkleNonSisLeaves = append(lmp.merkleNonSisLeaves, leaf)
+				lmp.merkleNonSisRoots = append(lmp.merkleNonSisRoots, rooth)
+				lmp.merkleNonSisPositions = append(lmp.merkleNonSisPositions, field.NewElement(uint64(selectedCol)))
 				mimcHashValues = append(mimcHashValues, leaf)
 				mimcHashPreimages = append(mimcHashPreimages, mimcPreimage...)
 			}
