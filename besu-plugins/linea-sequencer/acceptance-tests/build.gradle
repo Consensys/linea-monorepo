@@ -53,6 +53,7 @@ tasks.register('acceptanceTests', Test) {
   }
 
   maxParallelForks Runtime.runtime.availableProcessors()
+  systemProperties["junit.jupiter.execution.parallel.enabled"] = false
 }
 
 dependencies {
