@@ -53,11 +53,11 @@ dependencyManagement {
     enabled = false
   }
   imports {
-    mavenBom "${besuArtifactGroup}:bom:${besuVersion}"
+    mavenBom "${besuArtifactGroup}:bom:${libs.versions.besu.get()}"
   }
 
   dependencies {
-    dependencySet(group: "net.consensys.linea.zktracer", version: "${arithmetizationVersion}") {
+    dependencySet(group: "net.consensys.linea.zktracer", version: "${libs.versions.arithmetization.get()}") {
       entry "arithmetization"
     }
 

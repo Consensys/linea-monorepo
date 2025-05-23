@@ -24,12 +24,13 @@ plugins {
 
 group = 'net.consensys.linea.besu.plugin'
 
-apply from: project.parent.file("gradle/java.gradle")
-apply from: project.parent.file("gradle/dependency-management.gradle")
-apply from: project.parent.file('gradle/common-dependencies.gradle')
-apply from: project.parent.file("gradle/tests.gradle")
-apply from: project.parent.file("gradle/build-aliases.gradle")
-apply from: project.parent.file("gradle/lint.gradle")
+def lineaSequencerProject = project(lineaSequencerProjectPath)
+apply from: lineaSequencerProject.file("gradle/java.gradle")
+apply from: lineaSequencerProject.file("gradle/dependency-management.gradle")
+apply from: lineaSequencerProject.file('gradle/common-dependencies.gradle')
+apply from: lineaSequencerProject.file("gradle/tests.gradle")
+apply from: lineaSequencerProject.file("gradle/build-aliases.gradle")
+apply from: lineaSequencerProject.file("gradle/lint.gradle")
 
 dependencies {
   // annotationProcessor generates the file META-INF/services/org.hyperledger.besu.plugin.BesuPlugin

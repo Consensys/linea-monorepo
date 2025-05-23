@@ -13,6 +13,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+def lineaSequencerProject = project(lineaSequencerProjectPath)
+
 tasks.register('sourcesJar', Jar) {
   dependsOn classes
   archiveClassifier = 'sources'
@@ -25,13 +27,13 @@ tasks.register('javadocJar', Jar) {
   from javadoc.destinationDir
 }
 
-def besuDistTar = new File(new File(buildDir, "downloads"), project.besuFilename)
+def besuDistTar = new File(new File(buildDir, "downloads"), lineaSequencerProject.besuFilename)
 task downloadBesu {
     outputs.file(besuDistTar)
     doLast {
         try {
             download.run {
-                src project.besuUrl
+                src lineaSequencerProject.besuUrl
                 dest besuDistTar
                 onlyIfModified true
             }
@@ -41,11 +43,11 @@ task downloadBesu {
                             ? file("${findProperty('useLocalBesuDir')}".replaceFirst('^~', System.getProperty('user.home')))
                             : new File(projectDir, "../../besu")
 
-            def localBesuFile = new File("${localBesuDir.canonicalPath}/build/distributions/${project.besuFilename}")
+            def localBesuFile = new File("${localBesuDir.canonicalPath}/build/distributions/${lineaSequencerProject.besuFilename}")
 
-            logger.warn("Could not download " + project.besuUrl + " trying local copy from " + localBesuFile + " as fallback")
+            logger.warn("Could not download " + lineaSequencerProject.besuUrl + " trying local copy from " + localBesuFile + " as fallback")
             if (!file(localBesuFile).exists()) {
-                throw new GradleException("Could not download Besu distribution from: " + project.besuUrl +
+                throw new GradleException("Could not download Besu distribution from: " + lineaSequencerProject.besuUrl +
                         ", and could not find it locally at ${localBesuFile} either")
             }
 
@@ -64,7 +66,7 @@ task unTarBesu(type: Copy) {
     into besuDistTar.parentFile
 }
 
-def besuLibDir = new File(besuDistTar.parentFile, project.besuIdentifier + '/lib')
+def besuLibDir = new File(besuDistTar.parentFile, lineaSequencerProject.besuIdentifier + '/lib')
 def besuLibs = []
 
 def excludeBesuProvidedDeps = {
@@ -93,15 +95,15 @@ def excludeBesuProvidedDeps = {
 
 jar {
   dependsOn unTarBesu
-  archiveBaseName = distributionIdentifier
+  archiveBaseName = lineaSequencerProject.distributionIdentifier
   version = calculateVersion()
 
   manifest {
     attributes(
       'Specification-Title': 'arithmetization',
-      'Specification-Version': "${arithmetizationVersion}",
+      'Specification-Version': "${libs.versions.arithmetization.get()}",
       'Implementation-Title': 'arithmetization',
-      'Implementation-Version': "${arithmetizationVersion}"
+      'Implementation-Version': "${libs.versions.arithmetization.get()}"
     )
   }
 
@@ -122,9 +124,9 @@ jar {
 tasks.register('distPlugin', Zip) {
     dependsOn installDist
 
-    archiveBaseName = distributionIdentifier
+    archiveBaseName = lineaSequencerProject.distributionIdentifier
 
-    from("${buildDir}/libs/${distributionIdentifier}-${calculateVersion()}.jar")
+    from("${buildDir}/libs/${lineaSequencerProject.distributionIdentifier}-${calculateVersion()}.jar")
     from {
         configurations.runtimeClasspath.filter(
                 excludeBesuProvidedDeps)

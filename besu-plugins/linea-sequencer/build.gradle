@@ -2,9 +2,12 @@ import com.github.jk1.license.filter.LicenseBundleNormalizer
 
 buildscript {
   ext {
-    besuIdentifier = "besu-${besuVersion}"
+    distributionIdentifier = "linea-sequencer"
+    releaseVersion = "v2.1-rc16.2.4"
+    distributionBaseUrl = "https://github.com/Consensys/linea-besu-upstream/releases/download/"
+    besuIdentifier = "besu-${libs.versions.besu.get()}"
     besuFilename = "${besuIdentifier}.tar.gz"
-    besuUrl = "${distributionBaseUrl}${besuVersion}/${besuFilename}"
+    besuUrl = "${distributionBaseUrl}${libs.versions.besu.get()}/${besuFilename}"
     besuPluginsIdentifier = "${distributionIdentifier}-${version}"
     besuPluginDir = File.createTempDir("plugins")
   }
@@ -14,8 +17,6 @@ plugins {
   id 'java-library'
   id 'com.github.jk1.dependency-license-report' version '2.9'
 }
-
-version = project.hasProperty('releaseVersion') ? project.getProperty('releaseVersion') : 'snapshot'
 
 licenseReport {
   // This is for the allowed-licenses-file in checkLicense Task

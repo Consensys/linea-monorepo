@@ -38,10 +38,12 @@ tasks.withType(JavaCompile) {
   options.encoding = 'UTF-8'
 }
 
+def lineaSequencerProject = project(lineaSequencerProjectPath)
+
 // Takes the version, and if -SNAPSHOT is part of it replaces SNAPSHOT
 // with the git commit version.
 ext.calculateVersion = { ->
-  String version = project.version
+  String version = lineaSequencerProject.releaseVersion
   if (version.endsWith("-SNAPSHOT")) {
     version = version.replace("-SNAPSHOT", "-dev-${getCheckedOutGitCommitHash()}")
   }
