@@ -354,7 +354,7 @@ func processPrecomputedRound(
 		precompColMiMCHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
 		precompMimcHashValues := make([]field.Element, 0, lmp.numOpenedCol)
 		precompMimcHashPreimages := make([]field.Element, 0, lmp.numOpenedCol*len(a.ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
-		for selectedCol := range openingIndices {
+		for _, selectedCol := range openingIndices {
 			srcStart := selectedCol
 			// MiMC hash is a single value
 			mimcHash := precompColMiMCHash[srcStart : srcStart+1]
