@@ -9,6 +9,8 @@ import (
 
 var recurSegComp = dw.CompiledDefault
 
+// var recurSegComp = dw.CompiledGLs[0]
+
 // TestSerdeRecursedSegmentCompilation tests serialization and deserialization of a RecursedSegmentCompilation.
 func TestSerdeRecursedSegmentCompilation(t *testing.T) {
 	if dw == nil {

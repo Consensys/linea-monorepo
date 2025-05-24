@@ -28,7 +28,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 
 	"github.com/consensys/gnark/constraint"
 )
@@ -229,15 +228,17 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 
 	dist.CompiledDefault = CompileSegment(dist.DefaultModule)
 
+	/* Temp: Comment out this code
 	logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))   // 11
 	logrus.Infof("Number of LPP modules to compile:%d\n", len(dist.LPPs)) // 3
 
-	/* Temp: Comment out this code
-
 	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
-	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 
 	for i := range dist.GLs {
+		if i > 0 {
+			logrus.Warningf("Temp. breaking for faster compilation time after compiling just:%d GL modules\n", i)
+			break
+		}
 		logrus.
 			WithField("module-name", dist.GLs[i].definitionInput.ModuleName).
 			WithField("module-type", "LPP").
@@ -246,9 +247,11 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
 	}
 
+
+
 	logrus.Warningln("Temp commenting out compiling LPP modules")
 
-
+	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 	for i := range dist.LPPs {
 		logrus.
 			WithField("module-name", dist.LPPs[i].ModuleNames()).

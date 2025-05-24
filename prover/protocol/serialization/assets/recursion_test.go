@@ -2,6 +2,7 @@ package assets
 
 import (
 	"testing"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
@@ -56,15 +57,20 @@ func TestSerdeIOP(t *testing.T) {
 	// logrus.Printf("Column exists in recursion input iop:%v\n", testCompInput.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_2)))
 	// logrus.Printf("Column exists in recur-segment recur iop:%v\n", testCompRecur.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_2)))
 
+	startTime := time.Now()
 	serComp, err := serialization.SerializeCompiledIOP(testComp)
 	if err != nil {
 		t.Fatalf("error during ser. recursion input compiled-iop:%s\n", err.Error())
 	}
 
+	logrus.Printf("Serialization took %vs\n", time.Since(startTime).Seconds())
+
 	deSerComp, err := serialization.DeserializeCompiledIOP(serComp)
 	if err != nil {
 		t.Fatalf("error during deser. recursion input compiled-iop:%s\n", err.Error())
 	}
+
+	logrus.Printf("Deserialization took %vs\n", time.Since(startTime).Seconds())
 
 	if !test_utils.CompareExportedFields(testComp, deSerComp) {
 		t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")

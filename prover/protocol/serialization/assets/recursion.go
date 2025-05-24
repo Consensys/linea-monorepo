@@ -85,7 +85,7 @@ func DeserializeRecursion(data []byte, recurSegComp *wizard.CompiledIOP) (*recur
 	}
 
 	comp := serialization.NewEmptyCompiledIOP()
-	serialization.CopyColumns(recurSegComp, comp)
+	serialization.RegisterColumns(recurSegComp, comp)
 
 	var raw rawRecursion
 	if err := serialization.DeserializeAnyWithCborPkg(data, &raw); err != nil {
@@ -109,7 +109,7 @@ func DeserializeRecursion(data []byte, recurSegComp *wizard.CompiledIOP) (*recur
 		return nil, fmt.Errorf("InputCompiledIOP is nil, cannot proceed with deserialization")
 	}
 
-	serialization.CopyColumns(r.InputCompiledIOP, comp)
+	serialization.RegisterColumns(r.InputCompiledIOP, comp)
 
 	// Deserialize PlonkCtx
 	if !bytes.Equal(raw.PlonkCtx, []byte(serialization.NilString)) {

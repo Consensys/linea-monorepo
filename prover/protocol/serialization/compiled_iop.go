@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -161,7 +162,7 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 		return comp, nil
 	}
 
-	logrus.Infof("Number of rounds in SerDe CompiledIOP: %d", numRounds)
+	logrus.Infof("Number of rounds to serde in CompiledIOP: %d", numRounds)
 
 	comp.DummyCompiled = raw.DummyCompiled
 	comp.SelfRecursionCount = raw.SelfRecursionCount
@@ -184,6 +185,7 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 		return nil, fmt.Errorf("deserialize FiatShamirSetup: %w", err)
 	}
 
+	logrus.Println("Successfully deserialized CompiledIOP")
 	return comp, nil
 }
 
@@ -210,40 +212,27 @@ func serializeNonRoundData(comp *wizard.CompiledIOP, raw *rawCompiledIOP) error 
 }
 
 func registerAllColumns(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int) error {
+	startTime := time.Now()
 	for round := 0; round < numRounds; round++ {
 		if round >= len(raw.Columns) {
 			return fmt.Errorf("round %d exceeds available columns data", round)
 		}
 		for _, rawCol := range raw.Columns[round] {
-			v, err := DeserializeValue(rawCol, DeclarationMode, columnType, comp)
+			_, err := DeserializeValue(rawCol, DeclarationMode, columnType, comp)
 			if err != nil {
 				return fmt.Errorf("round %d first-pass column: %w", round, err)
 			}
-			col := v.Interface().(column.Natural)
-			colIDs := column.GetAllColIDs(col)
-			for _, colID := range colIDs {
-				if !comp.Columns.Exists(colID) {
-					comp.InsertColumn(round, colID, col.Size(), col.Status())
-					logrus.Infof("First-pass registered column %v in round %d", colID, round)
-				}
-			}
 		}
 	}
-
-	if err := deserializePrecomputed(raw, comp); err != nil {
-		return fmt.Errorf("deserialize Precomputed: %w", err)
-	}
-	for _, colID := range comp.Precomputed.ListAllKeys() {
-		if !comp.Columns.Exists(colID) {
-			comp.InsertColumn(0, colID, 0, column.Committed)
-			logrus.Infof("Registered precomputed column %v", colID)
-		}
-	}
-
+	logrus.Printf("RegisterAllColumns took %vs \n", time.Since(startTime).Seconds())
 	return nil
 }
 
 func deserializeNonRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP) error {
+	if err := deserializePrecomputed(raw, comp); err != nil {
+		return fmt.Errorf("deserialize Precomputed: %w", err)
+	}
+
 	if err := deserializePcsCtxs(raw, comp); err != nil {
 		return fmt.Errorf("deserialize PcsCtxs: %w", err)
 	}
@@ -266,7 +255,7 @@ func deserializeRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRoun
 			return fmt.Errorf("round %d exceeds available data in rawCompiledIOP", round)
 		}
 
-		if err := deserializeColumns(raw.Columns[round], round, comp); err != nil {
+		if err := deserializeColumns(raw.Columns[round], comp); err != nil {
 			return fmt.Errorf("round %d columns: %w", round, err)
 		}
 
@@ -298,22 +287,14 @@ func deserializeRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRoun
 
 func serializeColumns(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, error) {
 	cols := comp.Columns.AllHandlesAtRound(round)
-	rawCols := make([]json.RawMessage, 0, len(cols))
-	seen := make(map[ifaces.ColID]bool)
+	rawCols := make([]json.RawMessage, len(cols))
 
-	for _, col := range cols {
-		colIDs := column.GetAllColIDs(col)
-		for _, colID := range colIDs {
-			if seen[colID] {
-				continue
-			}
-			seen[colID] = true
-			r, err := SerializeValue(reflect.ValueOf(&col), DeclarationMode)
-			if err != nil {
-				return nil, fmt.Errorf("could not serialize column `%v`: %w", colID, err)
-			}
-			rawCols = append(rawCols, r)
+	for i, col := range cols {
+		r, err := SerializeValue(reflect.ValueOf(&col), DeclarationMode)
+		if err != nil {
+			return nil, fmt.Errorf("could not serialize column `%v` : %w", col.GetColID(), err)
 		}
+		rawCols[i] = r
 	}
 	return rawCols, nil
 }
@@ -548,21 +529,10 @@ func deserializeFiatShamirSetup(raw *rawCompiledIOP, comp *wizard.CompiledIOP) e
 	return nil
 }
 
-func deserializeColumns(rawCols []json.RawMessage, round int, comp *wizard.CompiledIOP) error {
+func deserializeColumns(rawCols []json.RawMessage, comp *wizard.CompiledIOP) error {
 	for _, rawCol := range rawCols {
-		v, err := DeserializeValue(rawCol, DeclarationMode, columnType, comp)
-		if err != nil {
-			return fmt.Errorf("failed to deserialize column: %w", err)
-		}
-		col := v.Interface().(column.Natural)
-		colIDs := column.GetAllColIDs(col)
-		for _, colID := range colIDs {
-			if !comp.Columns.Exists(colID) {
-				comp.InsertColumn(round, colID, col.Size(), col.Status())
-				logrus.Infof("Registered column %v in round %d", colID, round)
-			} else {
-				logrus.Debugf("Column %v already exists in round %d", colID, round)
-			}
+		if _, err := DeserializeValue(rawCol, DeclarationMode, columnType, comp); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -628,7 +598,8 @@ func deserializeFSHooks(rawFSHooks []json.RawMessage, round int, comp *wizard.Co
 	return nil
 }
 
-func CopyColumns(from, to *wizard.CompiledIOP) error {
+func RegisterColumns(from, to *wizard.CompiledIOP) error {
+	startTime := time.Now()
 	numRounds := from.Columns.NumRounds()
 	for round := 0; round < numRounds; round++ {
 		// Retrieve all colIDs
@@ -640,5 +611,6 @@ func CopyColumns(from, to *wizard.CompiledIOP) error {
 			}
 		}
 	}
+	logrus.Printf("Registering from -> to compiled took %vs", time.Since(startTime).Seconds())
 	return nil
 }
