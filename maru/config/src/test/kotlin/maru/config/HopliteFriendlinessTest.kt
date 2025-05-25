@@ -32,7 +32,6 @@ class HopliteFriendlinessTest {
     endpoint = "http://localhost:8545"
 
     [qbft-options]
-    communication-margin=100m
 
     [p2p-config]
     port = 3322
@@ -64,7 +63,7 @@ class HopliteFriendlinessTest {
             ApiEndpointDtoToml(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          qbftOptions = QbftOptions(100.milliseconds),
+          qbftOptions = QbftOptions(),
           p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validator =
             ValidatorDtoToml(
@@ -97,7 +96,7 @@ class HopliteFriendlinessTest {
             ApiEndpointDtoToml(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          qbftOptions = QbftOptions(100.milliseconds),
+          qbftOptions = QbftOptions(),
           p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validator =
             ValidatorDtoToml(
@@ -125,7 +124,7 @@ class HopliteFriendlinessTest {
             Validator(
               engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL(), "/secret/path"),
             ),
-          qbftOptions = QbftOptions(100.milliseconds),
+          qbftOptions = QbftOptions(),
           followers =
             FollowersConfig(
               mapOf(
@@ -149,7 +148,7 @@ class HopliteFriendlinessTest {
             ApiEndpointConfig(
               endpoint = URI.create("http://localhost:8545").toURL(),
             ),
-          qbftOptions = QbftOptions(100.milliseconds),
+          qbftOptions = QbftOptions(),
           p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
           validator =
             Validator(
@@ -165,7 +164,7 @@ class HopliteFriendlinessTest {
 
   private val qbftOptions =
     """
-    communication-margin=100m
+    min-block-build-time=200m
     data-path="/some/path"
     message-queue-limit = 1000
     round-expiry = 1000
@@ -181,7 +180,7 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         QbftOptions(
-          communicationMargin = 100.milliseconds,
+          minBlockBuildTime = 200.milliseconds,
           messageQueueLimit = 1000,
           roundExpiry = 1.seconds,
           duplicateMessageLimit = 100,

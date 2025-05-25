@@ -17,6 +17,9 @@ package maru.testutils.besu
 
 import java.util.Optional
 import org.hyperledger.besu.crypto.KeyPairUtil
+import org.hyperledger.besu.ethereum.core.AddressHelpers
+import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration
+import org.hyperledger.besu.ethereum.core.ImmutableMiningConfiguration.MutableInitValues
 import org.hyperledger.besu.ethereum.storage.keyvalue.KeyValueSegmentIdentifier
 import org.hyperledger.besu.plugin.services.storage.KeyValueStorageFactory
 import org.hyperledger.besu.plugin.services.storage.rocksdb.RocksDBKeyValueStorageFactory
@@ -30,9 +33,10 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.configuration.genesis.Gene
 object BesuFactory {
   private const val PRAGUE_GENESIS = "/el_prague.json"
   const val MIN_BLOCK_TIME = 1L
+  const val BLOCK_REBUILD_TIME = 50L
 
   fun buildTestBesu(genesisFile: String = GenesisConfigurationFactory.readGenesisFile(PRAGUE_GENESIS)): BesuNode =
-    BesuNodeFactory().createMinerNode("miner") { builder: BesuNodeConfigurationBuilder ->
+    BesuNodeFactory().createNode("miner") { builder: BesuNodeConfigurationBuilder ->
       val persistentStorageFactory: KeyValueStorageFactory =
         RocksDBKeyValueStorageFactory(
           RocksDBCLIOptions.create()::toDomainObject,
@@ -40,6 +44,21 @@ object BesuFactory {
           RocksDBMetricsFactory.PUBLIC_ROCKS_DB_METRICS,
         )
       val defaultSigner = KeyPairUtil.loadKeyPairFromResource("default-signer-key")
+      val miningConfiguration =
+        ImmutableMiningConfiguration
+          .builder()
+          .mutableInitValues(
+            MutableInitValues
+              .builder()
+              .coinbase(AddressHelpers.ofValue(1))
+              .isMiningEnabled(true)
+              .build(),
+          ).unstable(
+            ImmutableMiningConfiguration.Unstable
+              .builder()
+              .posBlockCreationRepetitionMinDuration(BLOCK_REBUILD_TIME)
+              .build(),
+          ).build()
       builder
         .storageImplementation(persistentStorageFactory)
         .genesisConfigProvider {
@@ -50,6 +69,9 @@ object BesuFactory {
         .bootnodeEligible(false)
         .engineRpcEnabled(true)
         .keyPair(defaultSigner)
+        .jsonRpcEnabled()
+        .webSocketEnabled()
+        .miningConfiguration(miningConfiguration)
     }
 
   fun buildSwitchableBesu(

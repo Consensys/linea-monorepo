@@ -67,7 +67,9 @@ class Web3jTransactionsHelper(
    * @return The transaction response
    */
   fun sendArbitraryTransaction(): EthSendTransaction {
-    val gasPrice = web3j.ethGasPrice().send().gasPrice
+    // gas price must be greater than the cost so that block value is greater than that of an empty block
+    // during transaction selection otherwise Besu will choose the initial empty block when rebuilding it
+    val gasPrice = web3j.ethGasPrice().send().gasPrice + BigInteger.ONE
     val gasLimit = BigInteger.valueOf(21000)
     val to = transactionManager.fromAddress
     return transactionManager.sendTransaction(gasPrice, gasLimit, to, "", BigInteger.ZERO)

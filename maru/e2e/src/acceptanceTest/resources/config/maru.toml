@@ -5,7 +5,6 @@ data-path="/tmp/maru-db"
 endpoint = "http://localhost:8545"
 
 [qbft-options]
-communication-margin=100m
 
 [p2p-config]
 port = 3322

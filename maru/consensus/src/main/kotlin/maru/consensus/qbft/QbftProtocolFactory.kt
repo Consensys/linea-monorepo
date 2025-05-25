@@ -89,9 +89,6 @@ class QbftProtocolFactory(
     require(maruConfig.validator != null) {
       "Validator configuration is not specified!"
     }
-    require(forkSpec.blockTimeSeconds * 1000 > maruConfig.qbftOptions.communicationMargin.inWholeMilliseconds) {
-      "communicationMargin can't be more than blockTimeSeconds"
-    }
 
     val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(privateKeyBytes))
@@ -127,10 +124,8 @@ class QbftProtocolFactory(
         blockBuilderIdentity = Validator(localAddress.toArray()),
         eagerQbftBlockCreatorConfig =
           EagerQbftBlockCreator.Config(
-            maruConfig.qbftOptions.communicationMargin,
+            maruConfig.qbftOptions.minBlockBuildTime,
           ),
-        nextBlockTimestampProvider = nextBlockTimestampProvider,
-        clock = clock,
       )
 
     val besuForksSchedule = ForksScheduleAdapter(forkSpec, maruConfig.qbftOptions)

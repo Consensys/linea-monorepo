@@ -90,7 +90,7 @@ class BlockBuildingBeaconBlockImporter(
   private val shouldBuildNextBlock: (BeaconState, ConsensusRoundIdentifier) -> Boolean,
   private val blockBuilderIdentity: Validator,
 ) : BeaconBlockImporter {
-  private val log: Logger = LogManager.getLogger(this::javaClass.name)
+  private val log: Logger = LogManager.getLogger(this::javaClass)
 
   override fun importBlock(
     beaconState: BeaconState,

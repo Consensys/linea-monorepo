@@ -16,6 +16,7 @@
 package maru.consensus
 
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.max
 import maru.core.BeaconBlock
 import maru.core.Protocol
 import org.apache.logging.log4j.LogManager
@@ -76,6 +77,12 @@ class ProtocolStarter(
         newProtocolWithFork,
       )
       currentProtocolWithFork?.protocol?.stop()
+
+      // Wait until timestamp is reached before starting new protocol
+      val timeTillFork = max((nextBlockTimestamp * 1000L) - System.currentTimeMillis(), 0)
+      log.debug("Waiting for {} ms until fork switch", timeTillFork)
+      Thread.sleep(timeTillFork)
+
       newProtocol.start()
     } else {
       log.trace("Block {} was produced, but the fork switch isn't required", { block.blockNumber })

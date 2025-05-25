@@ -48,7 +48,9 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import org.junit.jupiter.api.parallel.Isolated
 
+@Isolated
 class MaruQbftTest {
   private lateinit var cluster: Cluster
   private lateinit var besuNode: BesuNode

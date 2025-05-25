@@ -264,9 +264,9 @@ object EmptyBlockValidator : BlockValidator {
         block.beaconBlockBody.executionPayload.transactions
           .isNotEmpty(),
       ) {
-        "Block number=${block.beaconBlockHeader.number} " +
+        "Block is empty number=${block.beaconBlockHeader.number} " +
           "executionPayloadBlockNumber=${block.beaconBlockBody.executionPayload.blockNumber} " +
-          "hash=${block.beaconBlockHeader.hash.encodeHex()} is empty!"
+          "hash=${block.beaconBlockHeader.hash.encodeHex()}"
       },
     )
 }

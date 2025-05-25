@@ -15,14 +15,14 @@
  */
 package maru.consensus.qbft
 
-import java.time.Clock
-import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.ValidatorProvider
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
 import maru.core.Validator
 import maru.database.BeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.common.bft.blockcreation.ProposerSelector
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreatorFactory
 import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockCreator as BesuQbftBlockCreator
@@ -38,9 +38,10 @@ class QbftBlockCreatorFactory(
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val blockBuilderIdentity: Validator,
   private val eagerQbftBlockCreatorConfig: EagerQbftBlockCreator.Config,
-  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
-  private val clock: Clock,
 ) : QbftBlockCreatorFactory {
+  private val log: Logger = LogManager.getLogger(this.javaClass)
+  private var hasCreatedFirstBlockCreator = false
+
   override fun create(round: Int): BesuQbftBlockCreator {
     val delayedQbftBlockCreator =
       DelayedQbftBlockCreator(
@@ -50,15 +51,29 @@ class QbftBlockCreatorFactory(
         beaconChain = beaconChain,
         round = round,
       )
-    return EagerQbftBlockCreator(
-      manager = manager,
-      delegate = delayedQbftBlockCreator,
-      finalizationStateProvider = finalizationStateProvider,
-      blockBuilderIdentity = blockBuilderIdentity,
-      beaconChain = beaconChain,
-      nextBlockTimestampProvider = nextBlockTimestampProvider,
-      config = eagerQbftBlockCreatorConfig,
-      clock = clock,
-    )
+    val blockNumber = beaconChain.getLatestBeaconState().latestBeaconBlockHeader.number + 1u
+    val blockCreator = createBlockCreator(round, blockNumber, delayedQbftBlockCreator)
+    hasCreatedFirstBlockCreator = true
+    return blockCreator
   }
+
+  private fun createBlockCreator(
+    round: Int,
+    blockNumber: ULong,
+    delayedQbftBlockCreator: DelayedQbftBlockCreator,
+  ): BesuQbftBlockCreator =
+    if (round == 0 && hasCreatedFirstBlockCreator) {
+      log.debug("Using delayed block creator number={}, round={}", blockNumber, round)
+      delayedQbftBlockCreator
+    } else {
+      log.debug("Using eager block creator number={}, round={} ", blockNumber, round)
+      EagerQbftBlockCreator(
+        manager = manager,
+        delegate = delayedQbftBlockCreator,
+        finalizationStateProvider = finalizationStateProvider,
+        blockBuilderIdentity = blockBuilderIdentity,
+        beaconChain = beaconChain,
+        config = eagerQbftBlockCreatorConfig,
+      )
+    }
 }

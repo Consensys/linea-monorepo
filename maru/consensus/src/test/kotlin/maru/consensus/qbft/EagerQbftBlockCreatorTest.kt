@@ -21,10 +21,6 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
-import maru.consensus.ConsensusConfig
-import maru.consensus.ForkSpec
-import maru.consensus.ForksSchedule
-import maru.consensus.NextBlockTimestampProviderImpl
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
@@ -83,16 +79,6 @@ class EagerQbftBlockCreatorTest {
   private val validator = Validator(Random.nextBytes(20))
   private lateinit var executionLayerManager: ExecutionLayerManager
   private val validatorSet = DataGenerators.randomValidators() + validator
-  private val forksSchedule =
-    ForksSchedule(
-      setOf(
-        ForkSpec(
-          timestampSeconds = 0,
-          blockTimeSeconds = 1,
-          configuration = object : ConsensusConfig {},
-        ),
-      ),
-    )
 
   @BeforeEach
   fun beforeEach() {
@@ -153,7 +139,6 @@ class EagerQbftBlockCreatorTest {
         beaconChain = beaconChain,
         round = 1,
       )
-    val nextBlockTimestampProvider = NextBlockTimestampProviderImpl(clock, forksSchedule)
     val genesisBlockHash = sealedGenesisBeaconBlock.beaconBlock.beaconBlockBody.executionPayload.blockHash
     val eagerQbftBlockCreator =
       EagerQbftBlockCreator(
@@ -168,11 +153,9 @@ class EagerQbftBlockCreatorTest {
         blockBuilderIdentity = validator,
         config =
           EagerQbftBlockCreator.Config(
-            communicationMargin = 100.milliseconds,
+            minBlockBuildTime = 500.milliseconds,
           ),
         beaconChain = beaconChain,
-        nextBlockTimestampProvider = nextBlockTimestampProvider,
-        clock = clock,
       )
     createProposalToBeRejected(
       clock = clock,
@@ -247,73 +230,6 @@ class EagerQbftBlockCreatorTest {
     )
     assertThat(createdBlockBody.executionPayload.timestamp).isEqualTo(acceptedBlockTimestamp.toULong())
     assertThat(createdBlockBody.executionPayload.transactions).isNotEmpty
-  }
-
-  @Test
-  fun `creates an empty block, if there is no time left`() {
-    val genesisExecutionPayload =
-      ethApiClient.eth1Web3j
-        .ethGetBlockByNumber(
-          DefaultBlockParameter.valueOf("earliest"),
-          true,
-        ).send()
-        .block
-        .toDomain()
-    val parentBlock =
-      BeaconBlock(
-        beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(0U),
-        beaconBlockBody =
-          DataGenerators
-            .randomBeaconBlockBody()
-            .copy(executionPayload = genesisExecutionPayload),
-      )
-    val sealedGenesisBeaconBlock = SealedBeaconBlock(parentBlock, emptyList())
-    val parentHeader = QbftBlockHeaderAdapter(sealedGenesisBeaconBlock.beaconBlock.beaconBlockHeader)
-
-    val eagerQbftBlockCreator = setup(sealedGenesisBeaconBlock, parentHeader)
-    val communicationMargin = 100.milliseconds
-    setNextSecondMillis(1000 - communicationMargin.inWholeMilliseconds.toInt())
-
-    // Try to create an empty block instead of a non-empty proposal
-    val acceptedBlockTimestamp = (clock.millis() / 1000)
-    val createdBlock = eagerQbftBlockCreator.createBlock(acceptedBlockTimestamp, parentHeader)
-    val createdBeaconBlock = createdBlock.toBeaconBlock()
-
-    // block header fields
-    val createdBlockHeader = createdBeaconBlock.beaconBlockHeader
-    assertThat(createdBlockHeader.number).isEqualTo(1UL)
-    assertThat(createdBlockHeader.round).isEqualTo(1U)
-    assertThat(createdBlockHeader.timestamp).isEqualTo(acceptedBlockTimestamp.toULong())
-    assertThat(createdBlockHeader.proposer).isEqualTo(validator)
-
-    // block header roots
-    val stateRoot =
-      HashUtil.stateRoot(
-        BeaconState(
-          createdBeaconBlock.beaconBlockHeader.copy(stateRoot = BeaconBlockHeader.EMPTY_HASH),
-          validatorSet,
-        ),
-      )
-    assertThat(
-      createdBlockHeader.bodyRoot,
-    ).isEqualTo(
-      HashUtil.bodyRoot(createdBeaconBlock.beaconBlockBody),
-    )
-    assertThat(createdBlockHeader.stateRoot).isEqualTo(stateRoot)
-    assertThat(createdBlockHeader.parentRoot).isEqualTo(parentHeader.toBeaconBlockHeader().hash())
-    assertThat(
-      createdBeaconBlock.beaconBlockHeader.hash(),
-    ).isEqualTo(HashUtil.headerHash(createdBeaconBlock.beaconBlockHeader))
-
-    // block body fields
-    val createdBlockBody = createdBeaconBlock.beaconBlockBody
-    assertThat(
-      createdBlockBody.prevCommitSeals,
-    ).isEqualTo(
-      sealedGenesisBeaconBlock.commitSeals,
-    )
-    assertThat(createdBlockBody.executionPayload.timestamp).isEqualTo(acceptedBlockTimestamp.toULong())
-    assertThat(createdBlockBody.executionPayload.transactions).isEmpty()
   }
 
   private fun createProposalToBeRejected(

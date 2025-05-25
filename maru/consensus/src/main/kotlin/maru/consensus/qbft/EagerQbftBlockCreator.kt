@@ -15,10 +15,7 @@
  */
 package maru.consensus.qbft
 
-import java.time.Clock
-import kotlin.math.max
 import kotlin.time.Duration
-import maru.consensus.NextBlockTimestampProvider
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
@@ -43,14 +40,12 @@ class EagerQbftBlockCreator(
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val blockBuilderIdentity: Validator,
   private val beaconChain: BeaconChain,
-  private val nextBlockTimestampProvider: NextBlockTimestampProvider,
   private val config: Config,
-  private val clock: Clock,
 ) : QbftBlockCreator {
   private val log: Logger = LogManager.getLogger(this.javaClass)
 
   data class Config(
-    val communicationMargin: Duration,
+    val minBlockBuildTime: Duration,
   )
 
   override fun createBlock(
@@ -78,7 +73,7 @@ class EagerQbftBlockCreator(
       "Building new block, FCU result={}",
       blockBuildingTriggerResult,
     )
-    val sleepTime = computeSleepDurationMilliseconds(headerTimeStampSeconds)
+    val sleepTime = config.minBlockBuildTime.inWholeMilliseconds
     log.debug("Block building has started, sleeping for {} milliseconds", sleepTime)
     Thread.sleep(sleepTime)
     log.debug("Block building has finished, time to collect block building results")
@@ -90,11 +85,4 @@ class EagerQbftBlockCreator(
     roundNumber: Int,
     commitSeals: Collection<SECPSignature>,
   ): QbftBlock = DelayedQbftBlockCreator.createSealedBlock(block, roundNumber, commitSeals)
-
-  private fun computeSleepDurationMilliseconds(headerTimeStampSeconds: Long): Long {
-    val targetSleepTime =
-      (nextBlockTimestampProvider.nextTargetBlockUnixTimestamp(headerTimeStampSeconds)) * 1000 -
-        clock.millis() - config.communicationMargin.inWholeMilliseconds
-    return max(targetSleepTime, 0) // To avoid negative sleep time
-  }
 }
