@@ -1,9 +1,9 @@
 package net.consensys.zkevm.ethereum.coordination.blob
 
+import linea.blob.BlobCompressorVersion
+import linea.blob.GoNativeBlobCompressor
+import linea.blob.GoNativeBlobCompressorFactory
 import linea.kotlin.encodeHex
-import net.consensys.linea.blob.BlobCompressorVersion
-import net.consensys.linea.blob.GoNativeBlobCompressor
-import net.consensys.linea.blob.GoNativeBlobCompressorFactory
 import net.consensys.linea.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.TimerCapture
@@ -48,7 +48,7 @@ class GoBackedBlobCompressor private constructor(
     private var instance: GoBackedBlobCompressor? = null
 
     fun getInstance(
-      compressorVersion: BlobCompressorVersion = BlobCompressorVersion.V0_1_0,
+      compressorVersion: BlobCompressorVersion,
       dataLimit: UInt,
       metricsFacade: MetricsFacade
     ): GoBackedBlobCompressor {

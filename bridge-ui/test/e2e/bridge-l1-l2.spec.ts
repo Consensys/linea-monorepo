@@ -20,7 +20,6 @@ describe("L1 > L2 via Native Bridge", () => {
       clickNativeBridgeButton,
       clickFirstVisitModalConfirmButton,
     }) => {
-      await clickFirstVisitModalConfirmButton();
       const nativeBridgeBtn = await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
       await expect(nativeBridgeBtn).toBeVisible();
@@ -31,7 +30,6 @@ describe("L1 > L2 via Native Bridge", () => {
       clickNativeBridgeButton,
       clickFirstVisitModalConfirmButton,
     }) => {
-      await clickFirstVisitModalConfirmButton();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
@@ -44,7 +42,6 @@ describe("L1 > L2 via Native Bridge", () => {
       openNativeBridgeTransactionHistory,
       clickFirstVisitModalConfirmButton,
     }) => {
-      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
@@ -62,7 +59,6 @@ describe("L1 > L2 via Native Bridge", () => {
       toggleShowTestNetworksInNativeBridgeForm,
       clickFirstVisitModalConfirmButton,
     }) => {
-      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
@@ -86,7 +82,6 @@ describe("L1 > L2 via Native Bridge", () => {
       clickFirstVisitModalConfirmButton,
     }) => {
       test.setTimeout(60_000);
-      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
@@ -119,11 +114,13 @@ describe("L1 > L2 via Native Bridge", () => {
       toggleShowTestNetworksInNativeBridgeForm,
       selectTokenAndInputAmount,
       openGasFeeModal,
+      clickFirstVisitModalConfirmButton,
     }) => {
       test.setTimeout(60_000);
 
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 
@@ -154,11 +151,13 @@ describe("L1 > L2 via Native Bridge", () => {
       toggleShowTestNetworksInNativeBridgeForm,
       selectTokenAndInputAmount,
       openGasFeeModal,
+      clickFirstVisitModalConfirmButton,
     }) => {
       test.setTimeout(60_000);
 
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 
@@ -179,11 +178,13 @@ describe("L1 > L2 via Native Bridge", () => {
       selectTokenAndInputAmount,
       openGasFeeModal,
       switchToLineaSepolia,
+      clickFirstVisitModalConfirmButton,
     }) => {
       test.setTimeout(60_000);
 
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
+      await clickFirstVisitModalConfirmButton();
       await openNativeBridgeFormSettings();
       await toggleShowTestNetworksInNativeBridgeForm();
 
@@ -215,7 +216,6 @@ describe("L1 > L2 via Native Bridge", () => {
       clickFirstVisitModalConfirmButton,
     }) => {
       // Setup testnet UI
-      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
@@ -250,7 +250,6 @@ describe("L1 > L2 via Native Bridge", () => {
       clickFirstVisitModalConfirmButton,
     }) => {
       // Setup testnet UI
-      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();
@@ -284,7 +283,6 @@ describe("L1 > L2 via Native Bridge", () => {
       waitForTxListUpdateForClaimTx,
       clickFirstVisitModalConfirmButton,
     }) => {
-      await clickFirstVisitModalConfirmButton();
       await connectMetamaskToDapp();
       await clickNativeBridgeButton();
       await clickFirstVisitModalConfirmButton();

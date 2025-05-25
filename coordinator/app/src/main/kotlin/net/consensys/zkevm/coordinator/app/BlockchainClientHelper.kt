@@ -4,18 +4,10 @@ import io.vertx.core.Vertx
 import io.vertx.core.http.HttpVersion
 import io.vertx.ext.web.client.WebClientOptions
 import linea.web3j.SmartContractErrors
-import linea.web3j.gas.EIP1559GasProvider
 import linea.web3j.transactionmanager.AsyncFriendlyTransactionManager
-import net.consensys.linea.contract.L2MessageService
-import net.consensys.linea.contract.LineaRollupAsyncFriendly
 import net.consensys.linea.contract.l1.Web3JLineaRollupSmartContractClient
-import net.consensys.linea.contract.l2.L2MessageServiceGasLimitEstimate
-import net.consensys.linea.ethereum.gaspricing.FeesCalculator
-import net.consensys.linea.ethereum.gaspricing.FeesFetcher
-import net.consensys.linea.ethereum.gaspricing.WMAGasProvider
 import net.consensys.linea.httprest.client.VertxHttpRestClient
 import net.consensys.zkevm.coordinator.app.config.L1Config
-import net.consensys.zkevm.coordinator.app.config.L2Config
 import net.consensys.zkevm.coordinator.app.config.SignerConfig
 import net.consensys.zkevm.coordinator.clients.smartcontract.LineaRollupSmartContractClient
 import net.consensys.zkevm.ethereum.crypto.Web3SignerRestClient
@@ -59,33 +51,6 @@ fun createTransactionManager(
   return AsyncFriendlyTransactionManager(client, transactionSignService, -1L)
 }
 
-fun instantiateZkEvmContractClient(
-  l1Config: L1Config,
-  transactionManager: AsyncFriendlyTransactionManager,
-  gasFetcher: FeesFetcher,
-  priorityFeeCalculator: FeesCalculator,
-  client: Web3j,
-  smartContractErrors: SmartContractErrors
-): LineaRollupAsyncFriendly {
-  return LineaRollupAsyncFriendly.load(
-    l1Config.zkEvmContractAddress,
-    client,
-    transactionManager,
-    WMAGasProvider(
-      client.ethChainId().send().chainId.toLong(),
-      gasFetcher,
-      priorityFeeCalculator,
-      WMAGasProvider.Config(
-        gasLimit = l1Config.gasLimit,
-        maxFeePerGasCap = l1Config.maxFeePerGasCap,
-        maxPriorityFeePerGasCap = l1Config.maxPriorityFeePerGasCap,
-        maxFeePerBlobGasCap = l1Config.maxFeePerBlobGasCap
-      )
-    ),
-    smartContractErrors
-  )
-}
-
 fun createLineaRollupContractClient(
   l1Config: L1Config,
   transactionManager: AsyncFriendlyTransactionManager,
@@ -101,30 +66,5 @@ fun createLineaRollupContractClient(
     contractGasProvider = contractGasProvider,
     smartContractErrors = smartContractErrors,
     useEthEstimateGas = useEthEstimateGas
-  )
-}
-
-fun instantiateL2MessageServiceContractClient(
-  l2Config: L2Config,
-  transactionManager: AsyncFriendlyTransactionManager,
-  l2Client: Web3j,
-  smartContractErrors: SmartContractErrors
-): L2MessageService {
-  val gasProvider = EIP1559GasProvider(
-    l2Client,
-    EIP1559GasProvider.Config(
-      l2Config.gasLimit,
-      l2Config.maxFeePerGasCap,
-      l2Config.feeHistoryBlockCount,
-      l2Config.feeHistoryRewardPercentile
-    )
-  )
-
-  return L2MessageServiceGasLimitEstimate.load(
-    l2Config.messageServiceAddress,
-    l2Client,
-    transactionManager,
-    gasProvider,
-    smartContractErrors
   )
 }

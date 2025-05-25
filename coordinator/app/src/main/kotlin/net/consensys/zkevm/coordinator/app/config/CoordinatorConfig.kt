@@ -2,12 +2,12 @@ package net.consensys.zkevm.coordinator.app.config
 
 import com.sksamuel.hoplite.ConfigAlias
 import com.sksamuel.hoplite.Masked
+import linea.blob.BlobCompressorVersion
 import linea.domain.BlockParameter
 import linea.domain.assertIsValidAddress
 import linea.kotlin.assertIs32Bytes
 import linea.kotlin.decodeHex
 import linea.web3j.SmartContractErrors
-import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_FEE_HISTORIES_STORAGE_PERIOD
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_FEE_HISTORY_BLOCK_COUNT
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.MAX_REWARD_PERCENTILES_SIZE
@@ -15,15 +15,12 @@ import net.consensys.linea.ethereum.gaspricing.dynamiccap.TimeOfDayMultipliers
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.getAllTimeOfDayKeys
 import net.consensys.linea.jsonrpc.client.RequestRetryConfig
 import net.consensys.linea.traces.TracesCounters
-import net.consensys.linea.traces.TracesCountersV1
 import net.consensys.linea.traces.TracesCountersV2
-import net.consensys.linea.traces.TracingModuleV1
 import net.consensys.linea.traces.TracingModuleV2
 import net.consensys.zkevm.coordinator.app.L2NetworkGasPricingService
 import net.consensys.zkevm.coordinator.clients.prover.ProversConfig
 import java.math.BigInteger
 import java.net.URL
-import java.nio.file.Path
 import java.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
@@ -41,7 +38,6 @@ data class ConflationConfig(
   val conflationDeadlineCheckInterval: Duration,
   val conflationDeadlineLastBlockConfirmationDelay: Duration,
   val blocksLimit: Long? = null,
-  private var _tracesLimitsV1: TracesCountersV1?,
   private var _tracesLimitsV2: TracesCountersV2?,
   private var _smartContractErrors: SmartContractErrors?,
   val fetchBlocksLimit: Int,
@@ -62,9 +58,6 @@ data class ConflationConfig(
       ?.let { it.mapKeys { it.key.lowercase() } }
       ?: emptyMap()
   }
-
-  val tracesLimitsV1: TracesCounters
-    get() = _tracesLimitsV1 ?: throw IllegalStateException("Traces limits not defined!")
 
   val tracesLimitsV2: TracesCounters
     get() = _tracesLimitsV2 ?: throw IllegalStateException("Traces limits not defined!")
@@ -90,24 +83,49 @@ interface RetryConfig {
 data class RequestRetryConfigTomlFriendly(
   override val maxRetries: Int? = null,
   override val timeout: Duration? = null,
-  override val backoffDelay: Duration,
+  override val backoffDelay: Duration = 1.milliseconds.toJavaDuration(),
   val failuresWarningThreshold: Int = 0
 ) : RetryConfig {
   init {
     maxRetries?.also {
-      require(maxRetries > 0) { "maxRetries must be greater than zero. value=$maxRetries" }
+      require(maxRetries >= 1) { "maxRetries must be >=1. value=$maxRetries" }
     }
     timeout?.also {
-      require(timeout.toKotlinDuration() > 0.milliseconds) { "timeout must be >= 1ms. value=$timeout" }
+      require(timeout.toKotlinDuration() >= 1.milliseconds) { "timeout must be >= 1ms. value=$timeout" }
+    }
+    require(backoffDelay.toKotlinDuration() >= 1.milliseconds) {
+      "backoffDelay must be >= 1ms. value=$backoffDelay"
+    }
+    require(failuresWarningThreshold >= 0) {
+      "failuresWarningThreshold must be greater than or equal to 0. value=$failuresWarningThreshold"
     }
   }
 
-  internal val asDomain = RequestRetryConfig(
+  internal val asJsonRpcRetryConfig = RequestRetryConfig(
     maxRetries = maxRetries?.toUInt(),
     timeout = timeout?.toKotlinDuration(),
     backoffDelay = backoffDelay.toKotlinDuration(),
     failuresWarningThreshold = failuresWarningThreshold.toUInt()
   )
+
+  internal val asDomain: linea.domain.RetryConfig = linea.domain.RetryConfig(
+    maxRetries = maxRetries?.toUInt(),
+    timeout = timeout?.toKotlinDuration(),
+    backoffDelay = backoffDelay.toKotlinDuration(),
+    failuresWarningThreshold = failuresWarningThreshold.toUInt()
+  )
+
+  companion object {
+    fun endlessRetry(
+      backoffDelay: Duration,
+      failuresWarningThreshold: Int
+    ) = RequestRetryConfigTomlFriendly(
+      maxRetries = null,
+      timeout = null,
+      backoffDelay = backoffDelay,
+      failuresWarningThreshold = failuresWarningThreshold
+    )
+  }
 }
 
 data class PersistenceRetryConfig(
@@ -119,7 +137,7 @@ data class PersistenceRetryConfig(
 internal interface RequestRetryConfigurable {
   val requestRetry: RequestRetryConfigTomlFriendly
   val requestRetryConfig: RequestRetryConfig
-    get() = requestRetry.asDomain
+    get() = requestRetry.asJsonRpcRetryConfig
 }
 
 data class BlobCompressionConfig(
@@ -156,26 +174,11 @@ data class AggregationConfig(
 
 data class TracesConfig(
   val rawExecutionTracesVersion: String,
-  val expectedTracesApiVersion: String,
-  val counters: FunctionalityEndpoint,
-  val conflation: FunctionalityEndpoint,
-  val fileManager: FileManager,
-  val switchToLineaBesu: Boolean = false,
   val blobCompressorVersion: BlobCompressorVersion,
-  val expectedTracesApiVersionV2: String? = null,
-  val countersV2: FunctionalityEndpoint? = null,
-  val conflationV2: FunctionalityEndpoint? = null
+  val expectedTracesApiVersionV2: String,
+  val countersV2: FunctionalityEndpoint,
+  val conflationV2: FunctionalityEndpoint
 ) {
-  init {
-    if (switchToLineaBesu) {
-      require(expectedTracesApiVersionV2 != null) {
-        "expectedTracesApiVersionV2 is required when switching to linea besu for tracing"
-      }
-      require(countersV2 != null) { "countersV2 is required when switching to linea besu for tracing" }
-      require(conflationV2 != null) { "conflationV2 is required when switching to linea besu for tracing" }
-    }
-  }
-
   data class FunctionalityEndpoint(
     val endpoints: List<URL>,
     val requestLimitPerEndpoint: UInt,
@@ -185,15 +188,6 @@ data class TracesConfig(
       require(requestLimitPerEndpoint > 0u) { "requestLimitPerEndpoint must be greater than 0" }
     }
   }
-
-  data class FileManager(
-    val tracesFileExtension: String,
-    val rawTracesDirectory: Path,
-    val nonCanonicalRawTracesDirectory: Path,
-    val createNonCanonicalDirectory: Boolean,
-    val pollingInterval: Duration,
-    val tracesFileCreationWaitTimeout: Duration
-  )
 }
 
 data class StateManagerClientConfig(
@@ -214,16 +208,15 @@ data class BlobSubmissionConfig(
   val priorityFeePerGasUpperBound: ULong,
   val priorityFeePerGasLowerBound: ULong,
   val maxBlobsToSubmitPerTick: Int = maxBlobsToReturn,
-  // defaults to 6, not supported atm, preparatory work
-  val targetBlobsToSendPerTransaction: Int = 6,
+  val targetBlobsToSendPerTransaction: Int = 9,
   val useEthEstimateGas: Boolean = false,
   override var disabled: Boolean = false
 ) : FeatureToggleable {
   init {
     require(maxBlobsToReturn > 0) { "maxBlobsToReturn must be greater than 0" }
     require(maxBlobsToSubmitPerTick >= 0) { "submissionLimit must be greater or equal to 0" }
-    require(targetBlobsToSendPerTransaction in 1..6) {
-      "targetBlobsToSendPerTransaction must be between 1 and 6, value=$targetBlobsToSendPerTransaction"
+    require(targetBlobsToSendPerTransaction in 1..9) {
+      "targetBlobsToSendPerTransaction must be between 1 and 9, value=$targetBlobsToSendPerTransaction"
     }
   }
 }
@@ -300,6 +293,7 @@ data class L1Config(
 
 data class L2Config(
   val messageServiceAddress: String,
+  val messageServiceDeploymentBlockNumber: ULong? = null,
   val rpcEndpoint: URL,
   val gasLimit: ULong,
   val maxFeePerGasCap: ULong,
@@ -354,16 +348,6 @@ interface FeatureToggleable {
   val disabled: Boolean
   val enabled: Boolean
     get() = !disabled
-}
-
-data class MessageAnchoringServiceConfig(
-  val pollingInterval: Duration,
-  val maxMessagesToAnchor: UInt,
-  override var disabled: Boolean = false
-) : FeatureToggleable {
-  init {
-    require(maxMessagesToAnchor > 0u) { "maxMessagesToAnchor must be greater than 0" }
-  }
 }
 
 data class L1DynamicGasPriceCapServiceConfig(
@@ -495,13 +479,13 @@ data class SmartContractErrorCodesConfig(val smartContractErrors: SmartContractE
 data class GasPriceCapTimeOfDayMultipliersConfig(val gasPriceCapTimeOfDayMultipliers: TimeOfDayMultipliers)
 
 data class Type2StateProofProviderConfig(
+  override var disabled: Boolean = false,
   val endpoints: List<URL>,
   val l1QueryBlockTag: BlockParameter.Tag = BlockParameter.Tag.LATEST,
   val l1PollingInterval: Duration = Duration.ofSeconds(12),
   override val requestRetry: RequestRetryConfigTomlFriendly
-) : RequestRetryConfigurable
+) : FeatureToggleable, RequestRetryConfigurable
 
-data class TracesLimitsV1ConfigFile(val tracesLimits: Map<TracingModuleV1, UInt>)
 data class TracesLimitsV2ConfigFile(val tracesLimits: Map<TracingModuleV2, UInt>)
 
 //
@@ -527,7 +511,7 @@ data class CoordinatorConfigTomlDto(
   val conflation: ConflationConfig,
   val api: ApiConfig,
   val l2Signer: SignerConfig,
-  val messageAnchoringService: MessageAnchoringServiceConfig,
+  val messageAnchoring: MessageAnchoringConfigTomlDto = MessageAnchoringConfigTomlDto(),
   val l2NetworkGasPricing: L2NetworkGasPricingTomlDto,
   val l1DynamicGasPriceCapService: L1DynamicGasPriceCapServiceConfig,
   val testL1Disabled: Boolean = false,
@@ -551,7 +535,10 @@ data class CoordinatorConfigTomlDto(
     conflation = conflation,
     api = api,
     l2Signer = l2Signer,
-    messageAnchoringService = messageAnchoringService,
+    messageAnchoring = messageAnchoring.reified(
+      l1DefaultEndpoint = l1.rpcEndpoint,
+      l2DefaultEndpoint = l2.rpcEndpoint
+    ),
     l2NetworkGasPricingService =
     if (testL1Disabled || l2NetworkGasPricing.disabled) null else l2NetworkGasPricing.reified(),
     l1DynamicGasPriceCapService = l1DynamicGasPriceCapService,
@@ -578,7 +565,7 @@ data class CoordinatorConfig(
   val conflation: ConflationConfig,
   val api: ApiConfig,
   val l2Signer: SignerConfig,
-  val messageAnchoringService: MessageAnchoringServiceConfig,
+  val messageAnchoring: MessageAnchoringConfig,
   val l2NetworkGasPricingService: L2NetworkGasPricingService.Config?,
   val l1DynamicGasPriceCapService: L1DynamicGasPriceCapServiceConfig,
   val testL1Disabled: Boolean = false,
@@ -603,7 +590,7 @@ data class CoordinatorConfig(
     }
 
     if (testL1Disabled) {
-      messageAnchoringService.disabled = true
+      messageAnchoring.disabled = true
       l1DynamicGasPriceCapService.disabled = true
     }
   }

@@ -3,11 +3,7 @@ import { ethers } from "ethers";
 import { config } from "../tests-config";
 import { deployContract } from "../../common/deployments";
 import { DummyContract__factory, TestContract__factory } from "../../typechain";
-import {
-  etherToWei,
-  isSendBundleMethodNotFound,
-  sendTransactionsToGenerateTrafficWithInterval,
-} from "../../common/utils";
+import { etherToWei, sendTransactionsToGenerateTrafficWithInterval } from "../../common/utils";
 import { EMPTY_CONTRACT_CODE } from "../../common/constants";
 import { createTestLogger } from "../logger";
 
@@ -22,8 +18,6 @@ export default async (): Promise<void> => {
     await configureOnceOffPrerequisities();
   }
 
-  process.env.SHOULD_SKIP_BUNDLE_TESTS = (await isSendBundleMethodNotFound(config.getL2BesuNodeEndpoint()!)).toString();
-
   logger.info("Generating L2 traffic...");
   const pollingAccount = await config.getL2AccountManager().generateAccount(etherToWei("200"));
   const stopPolling = await sendTransactionsToGenerateTrafficWithInterval(pollingAccount, 2_000);
@@ -33,7 +27,7 @@ export default async (): Promise<void> => {
 
 async function configureOnceOffPrerequisities() {
   const account = config.getL1AccountManager().whaleAccount(0);
-  const l2Account = config.getL2AccountManager().whaleAccount(0);
+  const l2Account = config.getL2AccountManager().whaleAccount(0).connect(config.getL2SequencerProvider()!);
   const lineaRollup = config.getLineaRollupContract(account);
 
   const [l1AccountNonce, l2AccountNonce] = await Promise.all([account.getNonce(), l2Account.getNonce()]);

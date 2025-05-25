@@ -2,10 +2,10 @@ package net.consensys.zkevm.coordinator.app.config
 
 import com.github.michaelbull.result.getError
 import com.sksamuel.hoplite.Masked
+import linea.blob.BlobCompressorVersion
 import linea.coordinator.config.loadConfigs
 import linea.coordinator.config.loadConfigsOrError
 import linea.domain.BlockParameter
-import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.ethereum.gaspricing.BoundableFeeCalculator
 import net.consensys.linea.ethereum.gaspricing.staticcap.ExtraDataV1UpdaterImpl
 import net.consensys.linea.ethereum.gaspricing.staticcap.FeeHistoryFetcherImpl
@@ -30,6 +30,7 @@ import java.nio.file.Paths
 import java.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.toJavaDuration
 
 class CoordinatorConfigTest {
   companion object {
@@ -40,7 +41,6 @@ class CoordinatorConfigTest {
       conflationDeadlineCheckInterval = Duration.parse("PT3S"),
       conflationDeadlineLastBlockConfirmationDelay = Duration.parse("PT2S"),
       blocksLimit = 2,
-      _tracesLimitsV1 = expectedTracesCountersV1,
       _tracesLimitsV2 = expectedTracesLimitsV2,
       _smartContractErrors = mapOf(
         // L1 Linea Rollup
@@ -95,37 +95,24 @@ class CoordinatorConfigTest {
     )
 
     private val tracesConfig = TracesConfig(
-      switchToLineaBesu = false,
-      blobCompressorVersion = BlobCompressorVersion.V0_1_0,
+      blobCompressorVersion = BlobCompressorVersion.V1_2,
       rawExecutionTracesVersion = "0.2.0",
-      expectedTracesApiVersion = "0.2.0",
-      counters = TracesConfig.FunctionalityEndpoint(
-        listOf(
-          URI("http://traces-api:8080/").toURL()
-        ),
-        requestLimitPerEndpoint = 2U,
+      expectedTracesApiVersionV2 = "v0.8.0-rc8",
+      conflationV2 = TracesConfig.FunctionalityEndpoint(
+        endpoints = listOf(URI("http://traces-node:8545/").toURL()),
+        requestLimitPerEndpoint = 1U,
         requestRetry = RequestRetryConfigTomlFriendly(
           backoffDelay = Duration.parse("PT1S"),
           failuresWarningThreshold = 2
         )
       ),
-      conflation = TracesConfig.FunctionalityEndpoint(
-        endpoints = listOf(
-          URI("http://traces-api:8080/").toURL()
-        ),
-        requestLimitPerEndpoint = 2U,
+      countersV2 = TracesConfig.FunctionalityEndpoint(
+        endpoints = listOf(URI("http://traces-node:8545/").toURL()),
+        requestLimitPerEndpoint = 1U,
         requestRetry = RequestRetryConfigTomlFriendly(
           backoffDelay = Duration.parse("PT1S"),
           failuresWarningThreshold = 2
         )
-      ),
-      fileManager = TracesConfig.FileManager(
-        tracesFileExtension = "json.gz",
-        rawTracesDirectory = Path.of("/data/traces/raw"),
-        nonCanonicalRawTracesDirectory = Path.of("/data/traces/raw-non-canonical"),
-        createNonCanonicalDirectory = true,
-        pollingInterval = Duration.parse("PT1S"),
-        tracesFileCreationWaitTimeout = Duration.parse("PT2M")
       )
     )
 
@@ -157,7 +144,7 @@ class CoordinatorConfigTest {
       priorityFeePerGasUpperBound = 2000000000UL,
       priorityFeePerGasLowerBound = 200000000UL,
       proofSubmissionDelay = Duration.parse("PT1S"),
-      targetBlobsToSendPerTransaction = 6,
+      targetBlobsToSendPerTransaction = 9,
       useEthEstimateGas = false,
       disabled = false
     )
@@ -262,11 +249,6 @@ class CoordinatorConfigTest {
       web3j = Web3jConfig(Masked("0x4d01ae6487860981699236a58b68f807ee5f17b12df5740b85cf4c4653be0f55"))
     )
 
-    private val messageAnchoringServiceConfig = MessageAnchoringServiceConfig(
-      pollingInterval = Duration.parse("PT1S"),
-      maxMessagesToAnchor = 100U
-    )
-
     private val l2NetworkGasPricingRequestRetryConfig = RequestRetryConfig(
       maxRetries = 3u,
       timeout = 6.seconds,
@@ -367,7 +349,10 @@ class CoordinatorConfigTest {
       conflation = conflationConfig,
       api = apiConfig,
       l2Signer = l2SignerConfig,
-      messageAnchoringService = messageAnchoringServiceConfig,
+      messageAnchoring = MessageAnchoringConfigTomlDto().reified(
+        l1DefaultEndpoint = l1Config.rpcEndpoint,
+        l2DefaultEndpoint = l2Config.rpcEndpoint
+      ),
       l2NetworkGasPricingService = l2NetworkGasPricingServiceConfig,
       l1DynamicGasPriceCapService = l1DynamicGasPriceCapServiceConfig,
       proversConfig = proversConfig
@@ -388,7 +373,6 @@ class CoordinatorConfigTest {
         Path.of("../../config/coordinator/coordinator-local-dev.config.overrides.toml"),
         Path.of("../../config/coordinator/coordinator-local-dev.config-traces-v2.overrides.toml")
       ),
-      tracesLimitsFileV1 = Path.of("../../config/common/traces-limits-v1.toml"),
       tracesLimitsFileV2 = Path.of("../../config/common/traces-limits-v2.toml"),
       gasPriceCapTimeOfDayMultipliersFile = Path.of("../../config/common/gas-price-cap-time-of-day-multipliers.toml"),
       smartContractErrorsFile = Path.of("../../config/common/smart-contract-errors.toml")
@@ -406,7 +390,6 @@ class CoordinatorConfigTest {
   fun `should parse and consolidate configs`() {
     val configs = loadConfigs(
       coordinatorConfigFiles = listOf(pathToResource("configs/coordinator.config.toml")),
-      tracesLimitsFileV1 = pathToResource("configs/traces-limits-v1.toml"),
       tracesLimitsFileV2 = pathToResource("configs/traces-limits-v2.toml"),
       gasPriceCapTimeOfDayMultipliersFile = pathToResource("configs/gas-price-cap-time-of-day-multipliers.toml"),
       smartContractErrorsFile = pathToResource("configs/smart-contract-errors.toml")
@@ -423,7 +406,6 @@ class CoordinatorConfigTest {
         pathToResource("configs/coordinator.config.toml"),
         pathToResource("configs/coordinator-web3signer-override.config.toml")
       ),
-      tracesLimitsFileV1 = pathToResource("configs/traces-limits-v1.toml"),
       tracesLimitsFileV2 = pathToResource("configs/traces-limits-v2.toml"),
       gasPriceCapTimeOfDayMultipliersFile = pathToResource("configs/gas-price-cap-time-of-day-multipliers.toml"),
       smartContractErrorsFile = pathToResource("configs/smart-contract-errors.toml")
@@ -446,7 +428,6 @@ class CoordinatorConfigTest {
         pathToResource("configs/coordinator.config.toml"),
         pathToResource("configs/coordinator-traces-v2-override.config.toml")
       ),
-      tracesLimitsFileV1 = pathToResource("configs/traces-limits-v1.toml"),
       tracesLimitsFileV2 = pathToResource("configs/traces-limits-v2.toml"),
       gasPriceCapTimeOfDayMultipliersFile = pathToResource("configs/gas-price-cap-time-of-day-multipliers.toml"),
       smartContractErrorsFile = pathToResource("configs/smart-contract-errors.toml")
@@ -465,23 +446,10 @@ class CoordinatorConfigTest {
           )
         ),
         traces = tracesConfig.copy(
-          switchToLineaBesu = true,
-          blobCompressorVersion = BlobCompressorVersion.V1_0_1,
+          blobCompressorVersion = BlobCompressorVersion.V1_2,
           expectedTracesApiVersionV2 = "v0.8.0-rc8",
-          conflationV2 = tracesConfig.conflation.copy(
-            endpoints = listOf(URI("http://traces-node-v2:8545/").toURL()),
-            requestLimitPerEndpoint = 1U
-          ),
-          countersV2 = TracesConfig.FunctionalityEndpoint(
-            listOf(
-              URI("http://traces-node-v2:8545/").toURL()
-            ),
-            requestLimitPerEndpoint = 1U,
-            requestRetry = RequestRetryConfigTomlFriendly(
-              backoffDelay = Duration.parse("PT1S"),
-              failuresWarningThreshold = 2
-            )
-          )
+          conflationV2 = tracesConfig.conflationV2,
+          countersV2 = tracesConfig.countersV2
         ),
         proversConfig = proversConfig.copy(
           proverA = proversConfig.proverA.copy(
@@ -498,6 +466,20 @@ class CoordinatorConfigTest {
               responsesDirectory = Path.of("/data/prover/v3/aggregation/responses")
             )
           )
+        ),
+        messageAnchoring = MessageAnchoringConfigTomlDto().copy(
+          l1Endpoint = URI("http://l1-endpoint-for-anchoring:8545").toURL(),
+          l2Endpoint = URI("http://l2-endpoint-for-anchoring:8545").toURL(),
+          l1HighestBlockTag = BlockParameter.Tag.LATEST,
+          l1EventPollingInterval = 1.seconds.toJavaDuration(),
+          anchoringTickInterval = 1.seconds.toJavaDuration(),
+          l1RequestRetries = RequestRetryConfigTomlFriendly(
+            maxRetries = 10,
+            failuresWarningThreshold = 1
+          )
+        ).reified(
+          l1DefaultEndpoint = l1Config.rpcEndpoint,
+          l2DefaultEndpoint = l2Config.rpcEndpoint
         )
       )
 
@@ -510,7 +492,7 @@ class CoordinatorConfigTest {
       configFiles = listOf(pathToResource("configs/coordinator.config.toml"))
     )
 
-    assertThat(configsResult.getError()).contains("'extraField': Missing from config")
+    assertThat(configsResult.getError()).contains("'extraField': Missing String from config")
   }
 
   @Test
