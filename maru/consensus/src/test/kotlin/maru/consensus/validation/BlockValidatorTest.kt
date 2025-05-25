@@ -528,9 +528,9 @@ class BlockValidatorTest {
         ).get()
     val expectedResult =
       error(
-        "Block number=${validNewBlock.beaconBlockHeader.number} " +
+        "Block is empty number=${validNewBlock.beaconBlockHeader.number} " +
           "executionPayloadBlockNumber=${validNewBlock.beaconBlockBody.executionPayload.blockNumber} " +
-          "hash=${validNewBlock.beaconBlockHeader.hash.encodeHex()} is empty!",
+          "hash=${validNewBlock.beaconBlockHeader.hash.encodeHex()}",
       )
     assertThat(result).isEqualTo(expectedResult)
   }

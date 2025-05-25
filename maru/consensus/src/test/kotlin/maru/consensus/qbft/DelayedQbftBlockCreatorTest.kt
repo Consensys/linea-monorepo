@@ -148,7 +148,13 @@ class DelayedQbftBlockCreatorTest {
     whenever(proposerSelector.selectProposerForRound(ConsensusRoundIdentifier(11L, 0))).thenReturn(Address.ZERO)
 
     val blockCreator =
-      DelayedQbftBlockCreator(executionLayerManager, proposerSelector, validatorProvider, beaconChain, 0)
+      DelayedQbftBlockCreator(
+        executionLayerManager,
+        proposerSelector,
+        validatorProvider,
+        beaconChain,
+        0,
+      )
     assertThatThrownBy {
       blockCreator.createBlock(1000L, parentHeader)
     }.isInstanceOf(

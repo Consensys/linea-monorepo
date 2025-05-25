@@ -18,6 +18,7 @@ package maru.config
 import java.net.URL
 import java.nio.file.Path
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 data class Persistence(
@@ -76,8 +77,7 @@ data class Validator(
 }
 
 data class QbftOptions(
-  // Since we cannot finish block production instantly at expected time, we need to set some safety margin
-  val communicationMargin: Duration,
+  val minBlockBuildTime: Duration = 500.milliseconds,
   val messageQueueLimit: Int = 1000,
   val roundExpiry: Duration = 1.seconds,
   val duplicateMessageLimit: Int = 100,

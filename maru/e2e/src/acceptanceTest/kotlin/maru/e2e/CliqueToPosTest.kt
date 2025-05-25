@@ -24,6 +24,7 @@ import java.math.BigInteger
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
@@ -155,7 +156,7 @@ class CliqueToPosTest {
     }
 
     val postMergeBlock = getBlockByNumber(6)!!
-    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThan(parsePragueSwitchTimestamp())
+    assertThat(postMergeBlock.timestamp.toLong()).isGreaterThanOrEqualTo(parsePragueSwitchTimestamp())
     assertNodeBlockHeight(TestEnvironment.sequencerL2Client)
 
     waitForAllBlockHeightsToMatch()
@@ -216,13 +217,13 @@ class CliqueToPosTest {
     FollowerBeaconBlockImporter.create(Helpers.buildExecutionEngineClient(engineApiConfig, ElFork.Prague))
 
   private fun waitTillTimestamp(timestamp: Long) {
-    await.timeout(1.minutes.toJavaDuration()).pollInterval(5.seconds.toJavaDuration()).untilAsserted {
+    await.timeout(1.minutes.toJavaDuration()).pollInterval(500.milliseconds.toJavaDuration()).untilAsserted {
       val unixTimestamp = System.currentTimeMillis() / 1000
       log.info(
         "Waiting {} seconds for the Prague switch at timestamp $timestamp",
         timestamp - unixTimestamp,
       )
-      assertThat(unixTimestamp).isGreaterThan(timestamp)
+      assertThat(unixTimestamp).isGreaterThanOrEqualTo(timestamp)
     }
   }
 
