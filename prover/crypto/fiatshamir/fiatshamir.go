@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -61,7 +62,7 @@ func (s *State) SetState(f []field.Element) {
 
 // Update the Fiat-Shamir state with a one or more of field elements. The
 // function as no-op if the caller supplies no field elements.
-func (fs *State) Update(vec ...field.Element) {
+func (fs *State) Update(vec ...fext.Element) {
 	if len(vec) == 0 {
 		return
 	}

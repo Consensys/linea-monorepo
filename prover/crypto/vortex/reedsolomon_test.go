@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/stretchr/testify/require"
 )
 
@@ -17,7 +18,7 @@ func TestReedSolomonDoesNotChangeEvaluation(t *testing.T) {
 	_nPolys := 15
 	_blowUpFactor := 2
 
-	x := field.NewElement(478)
+	x := fext.RandomElement()
 
 	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, mimc.NewMiMC)
 	vec := smartvectors.Rand(1 << 10)
@@ -39,7 +40,7 @@ func TestReedSolomonConstant(t *testing.T) {
 	_nPolys := 15
 	_blowUpFactor := 2
 
-	x := field.NewElement(478)
+	x := fext.RandomElement()
 
 	params := NewParams(_blowUpFactor, polySize, _nPolys, ringsis.StdParams, mimc.NewMiMC)
 	vec := smartvectors.NewConstant(field.NewElement(42), polySize)

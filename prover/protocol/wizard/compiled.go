@@ -4,7 +4,7 @@ import (
 	// "reflect"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -117,7 +117,7 @@ type CompiledIOP struct {
 	// a description of all the columns and all the queries etc...
 	//
 	// For efficiency reasons, the fiatShamirSetup is derived using SHA2.
-	fiatShamirSetup field.Element
+	fiatShamirSetup fext.Element
 
 	// FunctionalPublic inputs lists the queries representing a public inputs
 	// and their identifiers

@@ -14,6 +14,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -359,6 +360,11 @@ func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
 	return run.getRandomCoinGeneric(name, coin.Field).(field.Element)
 }
 
+// GetRandomCoinField returns a fext element random.
+func (run *ProverRuntime) GetRandomCoinFext(name coin.Name) fext.Element {
+	return run.getRandomCoinGeneric(name, coin.Field).(fext.Element)
+}
+
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin. The
 // coin should be issued at the same round as it was registered. The same coin
 // can't be retrieved more than once. The coin should also have been registered
@@ -656,7 +662,7 @@ func (run *ProverRuntime) AssignInnerProduct(name ifaces.QueryID, ys ...field.El
 //   - no query with the name `name` are found in the [CompiledIOP] object.
 //   - parameters for this query have already been assigned
 //   - the assignment round is not the correct one
-func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x field.Element, ys ...field.Element) {
+func (run *ProverRuntime) AssignUnivariate(name ifaces.QueryID, x fext.Element, ys ...fext.Element) {
 
 	// Global prover locks for accessing the maps
 	run.lock.Lock()
