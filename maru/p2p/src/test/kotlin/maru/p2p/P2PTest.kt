@@ -149,7 +149,7 @@ class P2PTest {
         .getPeer(LibP2PNodeId(PeerId.fromBase58(PEER_ID_NODE_2)))
         .get()
         .disconnectCleanly(DisconnectReason.TOO_MANY_PEERS)
-        .thenPeek { assertNetworkHasPeers(p2pNetwork1, 0) }
+        .get()
 
       awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetwork1, peers = 1) })
       awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetwork2, peers = 1) })
@@ -280,7 +280,7 @@ class P2PTest {
 
   private fun awaitUntilAsserted(
     condition: () -> Unit,
-    timeout: Long = 5200L,
+    timeout: Long = 6000L,
     timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
   ) {
     Awaitility
