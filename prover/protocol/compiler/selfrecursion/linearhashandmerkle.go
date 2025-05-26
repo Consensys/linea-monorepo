@@ -15,8 +15,9 @@ import (
 // linearHashAndMerkle verifies the following things:
 // 1. The MiMC hash of the SIS digest for the sis rounds are correctly computed
 // 2. The MiMC hash of the selected columns for the non SIS rounds are correctly computed
-// 3. The Merkle proof is correctly verified for both SIS and non SIS rounds
+// 3. The Merkle proofs are correctly verified for both SIS and non SIS rounds
 // 4. The leaves of the SIS and non SIS rounds are consistent with the Merkle tree leaves
+// used for the Merkle proof verification.
 func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	roundQ := ctx.Columns.Q.Round()
 	// numRound denotes the total number of commitment rounds
@@ -35,9 +36,6 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	// between the total number of rounds and the number of SIS rounds
 	// It is after considering the precomputed round
 	numRoundNonSis := numRound - numRoundSis
-	if numRoundSis == 0 {
-		utils.Panic("SIS is not applied to any round, we don't support this case")
-	}
 
 	// The total SIS hash length = size of a single SIS hash *
 	// total number of SIS hash per SIS round * number of SIS rounds
@@ -52,11 +50,14 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 	// The leaves size for non SIS rounds
 	nonSisRoundLeavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRoundNonSis
 
-	ctx.Columns.ConcatenatedDhQ = ctx.comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
 	ctx.Columns.MerkleProofsLeaves = ctx.comp.InsertCommit(roundQ, ctx.merkleLeavesName(), leavesSize)
-	ctx.Columns.MerkleProofPositions = ctx.comp.InsertCommit(roundQ, ctx.merklePositionssName(), leavesSize)
+	ctx.Columns.MerkleProofPositions = ctx.comp.InsertCommit(roundQ, ctx.merklePositionsName(), leavesSize)
 	ctx.Columns.MerkleRoots = ctx.comp.InsertCommit(roundQ, ctx.merkleRootsName(), leavesSize)
-	ctx.Columns.SisRoundLeaves = ctx.comp.InsertCommit(roundQ, ctx.sisRoundLeavesName(), sisRoundLeavesSize)
+	// We commit to the below columns only if SIS is applied to any of the rounds including precomputed
+	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		ctx.Columns.ConcatenatedDhQ = ctx.comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
+		ctx.Columns.SisRoundLeaves = ctx.comp.InsertCommit(roundQ, ctx.sisRoundLeavesName(), sisRoundLeavesSize)
+	}
 
 	// Register the linear hash columns for the non sis rounds
 	var (
@@ -93,8 +94,10 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 		ctx.Columns.MerkleProofs, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves, ctx.Columns.MerkleProofPositions)
 
 	// The below linear hash verification is for only sis rounds
-	mimcW.CheckLinearHash(ctx.comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
-		ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, ctx.Columns.SisRoundLeaves)
+	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		mimcW.CheckLinearHash(ctx.comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
+			ctx.VortexCtx.SisParams.OutputSize(), sisRoundLeavesSizeUnpadded, ctx.Columns.SisRoundLeaves)
+	}
 
 	// Register the linear hash verification for the non sis rounds
 	for i := 0; i < numRoundNonSis; i++ {
@@ -175,16 +178,19 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 	// Lookup constrains between the SIS leaves
 	// and the Merkle leaves
-	ctx.comp.InsertInclusion(
-		round,
-		ctx.sisRoundAndMerkleLeavesInclusion(),
-		[]ifaces.Column{
-			ctx.Columns.MerkleProofsLeaves,
-		},
-		[]ifaces.Column{
-			ctx.Columns.SisRoundLeaves,
-		},
-	)
+	// This is only required if SIS is applied to any of the rounds
+	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		ctx.comp.InsertInclusion(
+			round,
+			ctx.sisRoundAndMerkleLeavesInclusion(),
+			[]ifaces.Column{
+				ctx.Columns.MerkleProofsLeaves,
+			},
+			[]ifaces.Column{
+				ctx.Columns.SisRoundLeaves,
+			},
+		)
+	}
 	// Lookup constrains between the non SIS leaves
 	// and the Merkle leaves
 	for i := 0; i < len(ctx.MIMCMetaData.NonSisLeaves); i++ {
@@ -278,7 +284,6 @@ func newLinearHashMerkleProverActionBuilder(a *linearHashMerkleProverAction) *li
 	lmp.nonSisHashPreimages = make([][]field.Element, 0, a.numNonSisRound)
 	lmp.sisHashSize = a.ctx.VortexCtx.SisParams.OutputSize()
 	lmp.numOpenedCol = a.ctx.VortexCtx.NbColsToOpen()
-	// For some reason, using a.ctx.comp.NumRounds() here does not work well here.
 	lmp.totalNumRounds = a.ctx.VortexCtx.MaxCommittedRound
 	lmp.committedRound = 0
 	return &lmp
@@ -312,11 +317,15 @@ func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	lmp.merklePositions = append(lmp.merkleNonSisPositions, lmp.merkleSisPositions...)
 
 	// Assign columns using IDs from ctx.Columns
-	run.AssignColumn(a.ctx.Columns.ConcatenatedDhQ.GetColID(), smartvectors.RightZeroPadded(lmp.concatDhQ, a.concatDhQSize))
 	run.AssignColumn(a.ctx.Columns.MerkleProofsLeaves.GetColID(), smartvectors.RightZeroPadded(lmp.merkleLeaves, a.leavesSize))
 	run.AssignColumn(a.ctx.Columns.MerkleProofPositions.GetColID(), smartvectors.RightZeroPadded(lmp.merklePositions, a.leavesSize))
 	run.AssignColumn(a.ctx.Columns.MerkleRoots.GetColID(), smartvectors.RightZeroPadded(lmp.merkleRoots, a.leavesSize))
-	run.AssignColumn(a.ctx.Columns.SisRoundLeaves.GetColID(), smartvectors.RightZeroPadded(lmp.sisLeaves, a.sisRoundLeavesSize))
+	// The below assignments are only done if SIS is applied to any of the rounds
+	if a.ctx.VortexCtx.NumCommittedRoundsSis() > 0 || a.ctx.VortexCtx.IsSISAppliedToPrecomputed() {
+		// Assign the concatenated SIS hashes
+		run.AssignColumn(a.ctx.Columns.ConcatenatedDhQ.GetColID(), smartvectors.RightZeroPadded(lmp.concatDhQ, a.concatDhQSize))
+		run.AssignColumn(a.ctx.Columns.SisRoundLeaves.GetColID(), smartvectors.RightZeroPadded(lmp.sisLeaves, a.sisRoundLeavesSize))
+	}
 
 	// Assign the hash values and preimages for the non SIS rounds
 	for i := 0; i < a.numNonSisRound; i++ {

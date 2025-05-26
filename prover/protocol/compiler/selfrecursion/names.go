@@ -142,7 +142,7 @@ func (ctx *SelfRecursionCtx) merkleLeavesName() ifaces.ColID {
 }
 
 // Name of the MerklePositions
-func (ctx *SelfRecursionCtx) merklePositionssName() ifaces.ColID {
+func (ctx *SelfRecursionCtx) merklePositionsName() ifaces.ColID {
 	name := ifaces.ColIDf("SELFRECURSION_MERKLE_POSITIONS_%v", ctx.SelfRecursionCnt)
 	return maybePrefix(ctx, name)
 }
