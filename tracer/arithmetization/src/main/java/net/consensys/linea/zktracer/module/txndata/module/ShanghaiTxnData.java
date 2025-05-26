@@ -15,7 +15,9 @@
 
 package net.consensys.linea.zktracer.module.txndata.module;
 
-import static net.consensys.linea.zktracer.TraceShanghai.Txndata.*;
+import static net.consensys.linea.zktracer.TraceShanghai.Txndata.NB_ROWS_TYPE_0;
+import static net.consensys.linea.zktracer.TraceShanghai.Txndata.NB_ROWS_TYPE_1;
+import static net.consensys.linea.zktracer.TraceShanghai.Txndata.NB_ROWS_TYPE_2;
 
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -24,8 +26,8 @@ import net.consensys.linea.zktracer.module.wcp.Wcp;
 import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
 
 public class ShanghaiTxnData extends LondonTxnData {
-  private static final int N_ROWS_TX_MAX_SHANGHAI =
-      Math.max(Math.max(NB_ROWS_TYPE_0, NB_ROWS_TYPE_1), NB_ROWS_TYPE_2);
+
+  private static final int NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST_SHANGHAI = 9;
 
   public ShanghaiTxnData(Hub hub, Wcp wcp, Euc euc) {
     super(hub, wcp, euc);
@@ -33,6 +35,15 @@ public class ShanghaiTxnData extends LondonTxnData {
 
   @Override
   public void traceEndTx(TransactionProcessingMetadata tx) {
-    operations().add(new ShanghaiTxndataOperation(wcp(), euc(), tx, N_ROWS_TX_MAX_SHANGHAI));
+    operations()
+        .add(
+            new ShanghaiTxndataOperation(
+                wcp(),
+                euc(),
+                tx,
+                NB_ROWS_TYPE_0,
+                NB_ROWS_TYPE_1,
+                NB_ROWS_TYPE_2,
+                NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST_SHANGHAI));
   }
 }

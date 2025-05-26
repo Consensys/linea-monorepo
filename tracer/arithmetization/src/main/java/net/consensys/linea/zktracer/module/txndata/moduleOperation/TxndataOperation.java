@@ -31,9 +31,6 @@ import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_1_RLP_TXN_PHASE_NU
 import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_1_RLP_TXN_PHASE_NUMBER_7;
 import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_2_RLP_TXN_PHASE_NUMBER_6;
 import static net.consensys.linea.zktracer.Trace.Txndata.TYPE_2_RLP_TXN_PHASE_NUMBER_7;
-import static net.consensys.linea.zktracer.TraceLondon.Txndata.NB_ROWS_TYPE_0;
-import static net.consensys.linea.zktracer.TraceLondon.Txndata.NB_ROWS_TYPE_1;
-import static net.consensys.linea.zktracer.TraceLondon.Txndata.NB_ROWS_TYPE_2;
 import static net.consensys.linea.zktracer.module.Util.getTxTypeAsInt;
 import static net.consensys.linea.zktracer.types.AddressUtils.highPart;
 import static net.consensys.linea.zktracer.types.AddressUtils.lowPart;
@@ -67,21 +64,39 @@ public abstract class TxndataOperation extends ModuleOperation {
   private static final Bytes EIP_2681_MAX_NONCE = bigIntegerToBytes(EIP2681_MAX_NONCE);
   private static final int NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST = 7;
 
+  private final int nbRowsType0;
+  private final int nbRowsType1;
+  private final int nbRowsType2;
   private final int nbRowsTxMax;
+  private final int nbWcpEucRowsFrontierAccessList;
   protected final List<TxnDataComparisonRecord> callsToEucAndWcp;
   private final ArrayList<RlptxnOutgoing> valuesToRlptxn;
   private final ArrayList<RlptxrcptOutgoing> valuesToRlpTxrcpt;
   private static final Bytes BYTES_MAX_REFUND_QUOTIENT = Bytes.of(MAX_REFUND_QUOTIENT);
 
-  public TxndataOperation(Wcp wcp, Euc euc, TransactionProcessingMetadata tx, int nbRowsTxMax) {
+  public TxndataOperation(
+      Wcp wcp,
+      Euc euc,
+      TransactionProcessingMetadata tx,
+      int nbRowsType0,
+      int nbRowsType1,
+      int nbRowsType2,
+      int nbWcpEucRowsFrontierAccessList) {
 
     this.wcp = wcp;
     this.euc = euc;
     this.tx = tx;
 
-    // The number of rows max depends on the fork so the parameter is passed in constructor and set
-    // to be used in setRlptxrcptValues function
-    this.nbRowsTxMax = nbRowsTxMax;
+    // The number of rows type0, type1, type2 and thereforeTxMax depends on the fork so the
+    // parameters are passed in constructor and set
+    // to be used in setter functions
+    this.nbRowsType0 = nbRowsType0;
+    this.nbRowsType1 = nbRowsType1;
+    this.nbRowsType2 = nbRowsType2;
+    this.nbRowsTxMax = Math.max(Math.max(nbRowsType0, nbRowsType1), nbRowsType2);
+    // The number of wcp and euc for frontier and access list type depends on the fork
+    // (post shanghai) two rows are added for limit and meter initcode
+    this.nbWcpEucRowsFrontierAccessList = nbWcpEucRowsFrontierAccessList;
     this.callsToEucAndWcp = new ArrayList<>(nbRowsTxMax);
     this.valuesToRlptxn = new ArrayList<>(nbRowsTxMax);
     this.valuesToRlpTxrcpt = new ArrayList<>(nbRowsTxMax);
@@ -141,12 +156,12 @@ public abstract class TxndataOperation extends ModuleOperation {
 
     switch (type) {
       case FRONTIER -> {
-        for (int i = NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST; i < NB_ROWS_TYPE_0; i++) {
+        for (int i = this.nbWcpEucRowsFrontierAccessList; i < this.nbRowsType0; i++) {
           callsToEucAndWcp.add(TxnDataComparisonRecord.empty());
         }
       }
       case ACCESS_LIST -> {
-        for (int i = NB_WCP_EUC_ROWS_FRONTIER_ACCESS_LIST; i < NB_ROWS_TYPE_1; i++) {
+        for (int i = this.nbWcpEucRowsFrontierAccessList; i < this.nbRowsType1; i++) {
           callsToEucAndWcp.add(TxnDataComparisonRecord.empty());
         }
       }
@@ -228,7 +243,7 @@ public abstract class TxndataOperation extends ModuleOperation {
                 (short) TYPE_0_RLP_TXN_PHASE_NUMBER_6,
                 Bytes.EMPTY,
                 Bytes.minimalBytes(tx.getEffectiveGasPrice())));
-        for (int i = 7; i < NB_ROWS_TYPE_0 + 1; i++) {
+        for (int i = 7; i < this.nbRowsType0 + 1; i++) {
           valuesToRlptxn.add(RlptxnOutgoing.empty());
         }
       }
@@ -247,7 +262,7 @@ public abstract class TxndataOperation extends ModuleOperation {
                 Bytes.ofUnsignedInt(tx.numberWarmedKey()),
                 Bytes.ofUnsignedInt(tx.numberWarmedAddress())));
 
-        for (int i = 8; i < NB_ROWS_TYPE_1 + 1; i++) {
+        for (int i = 8; i < this.nbRowsType1 + 1; i++) {
           valuesToRlptxn.add(RlptxnOutgoing.empty());
         }
       }
@@ -268,7 +283,7 @@ public abstract class TxndataOperation extends ModuleOperation {
                 Bytes.ofUnsignedInt(tx.numberWarmedKey()),
                 Bytes.ofUnsignedInt(tx.numberWarmedAddress())));
 
-        for (int i = 8; i < NB_ROWS_TYPE_2 + 1; i++) {
+        for (int i = 8; i < this.nbRowsType2 + 1; i++) {
           valuesToRlptxn.add(RlptxnOutgoing.empty());
         }
       }
@@ -288,7 +303,7 @@ public abstract class TxndataOperation extends ModuleOperation {
     this.valuesToRlpTxrcpt.add(
         RlptxrcptOutgoing.set(
             (short) RLP_RCPT_SUBPHASE_ID_CUMUL_GAS, tx.getAccumulatedGasUsedInBlock()));
-    // i+3 to i+MAX_NB_ROWS
+    // i+3 to i+nbRowsTxMax
     for (int ct = 3; ct < this.nbRowsTxMax; ct++) {
       this.valuesToRlpTxrcpt.add(RlptxrcptOutgoing.emptyValue());
     }
