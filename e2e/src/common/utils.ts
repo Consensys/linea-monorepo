@@ -343,14 +343,23 @@ export async function waitForEvents<
   fromBlock?: BlockTag,
   toBlock?: BlockTag,
   criteria?: (events: TypedEventLog<TEvent>[]) => Promise<TypedEventLog<TEvent>[]>,
+  timeoutMs: number = 2 * 60 * 1000,
 ): Promise<TypedEventLog<TEvent>[]> {
-  return (
-    (await awaitUntil(
-      async () => await getEvents(contract, eventFilter, fromBlock, toBlock, criteria),
-      (a: TypedEventLog<TEvent>[]) => a.length > 0,
-      pollingIntervalMs,
-    )) ?? []
+  const result = await awaitUntil(
+    async () => await getEvents(contract, eventFilter, fromBlock, toBlock, criteria),
+    (a: TypedEventLog<TEvent>[]) => a.length > 0,
+    pollingIntervalMs,
+    timeoutMs,
   );
+
+  if (result === null) {
+    throw new Error(
+      `Timeout waiting for events after ${timeoutMs}ms. Filter: ${JSON.stringify(eventFilter)}, ` +
+        `fromBlock: ${fromBlock}, toBlock: ${toBlock}, pollingInterval: ${pollingIntervalMs}ms`,
+    );
+  }
+
+  return result;
 }
 
 export function getFiles(directory: string, fileRegex: RegExp[]): string[] {
