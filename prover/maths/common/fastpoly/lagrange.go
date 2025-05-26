@@ -18,10 +18,10 @@ func EvaluateLagrangeOnFext(poly []field.Element, x fext.Element, oncoset ...boo
 	if !utils.IsPowerOfTwo(len(poly)) {
 		utils.Panic("only support powers of two but poly has length %v", len(poly))
 	}
-	domain := fft.NewDomain(uint64(len(poly)))
 
 	if len(oncoset) > 0 && oncoset[0] {
-		x.MulByElement(&x, &domain.FrMultiplicativeGenInv)
+		genFr := fft.GeneratorFullMultiplicativeGroup()
+		x.MulByElement(&x, &genFr)
 	}
 
 	size := len(poly)
