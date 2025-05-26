@@ -13,25 +13,6 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.p2p
+package maru.core
 
-import maru.core.SealedBeaconBlock
-
-enum class MessageType(
-  val code: Byte,
-) {
-  QBFT(0x01), // Won't be supported until Milestone 6
-  BLOCK(0x02),
-}
-
-data class Message<T : Any>(
-  val type: MessageType,
-  val payload: T,
-) {
-  init {
-    when (type) {
-      MessageType.QBFT -> Unit // require(payload is BftMessage≤*>) Not adding this to avoid dependency on QBFT
-      MessageType.BLOCK -> require(payload is SealedBeaconBlock)
-    }
-  }
-}
+val EMPTY_HASH = ByteArray(32)

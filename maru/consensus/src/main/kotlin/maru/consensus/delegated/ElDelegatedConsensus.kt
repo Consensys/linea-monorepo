@@ -23,6 +23,7 @@ import maru.consensus.ProtocolFactory
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
+import maru.core.EMPTY_HASH
 import maru.core.ExecutionPayload
 import maru.core.Protocol
 import maru.core.Validator
@@ -104,7 +105,7 @@ class ElDelegatedConsensus(
   }
 
   private fun wrapIntoDummyBeaconBlock(executionPayload: ExecutionPayload): BeaconBlock {
-    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptyList(), executionPayload = executionPayload)
+    val beaconBlockBody = BeaconBlockBody(prevCommitSeals = emptySet(), executionPayload = executionPayload)
 
     val beaconBlockHeader =
       BeaconBlockHeader(
@@ -112,9 +113,9 @@ class ElDelegatedConsensus(
         round = 0u,
         timestamp = executionPayload.timestamp,
         proposer = Validator(executionPayload.feeRecipient),
-        parentRoot = BeaconBlockHeader.EMPTY_HASH,
-        stateRoot = BeaconBlockHeader.EMPTY_HASH,
-        bodyRoot = BeaconBlockHeader.EMPTY_HASH,
+        parentRoot = EMPTY_HASH,
+        stateRoot = EMPTY_HASH,
+        bodyRoot = EMPTY_HASH,
         headerHashFunction = RLPSerializers.DefaultHeaderHashFunction,
       )
     return BeaconBlock(beaconBlockHeader, beaconBlockBody)

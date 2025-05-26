@@ -19,14 +19,14 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import maru.core.BeaconBlock
 import maru.core.SealedBeaconBlock
-import maru.p2p.SealedBlockHandler
+import maru.p2p.SealedBeaconBlockHandler
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class SealedBlockHandlerAdapter(
+class SealedBeaconBlockHandlerAdapter(
   val adaptee: NewBlockHandler,
-) : SealedBlockHandler {
+) : SealedBeaconBlockHandler {
   override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> =
     adaptee.handleNewBlock(sealedBeaconBlock.beaconBlock)
 }
@@ -76,41 +76,6 @@ abstract class CallAndForgetFutureMultiplexer<I, O>(
         .thenApply { }
     return SafeFuture.of(completableFuture)
   }
-}
-
-class NewSealedBlockHandlerMultiplexer(
-  handlersMap: Map<String, SealedBlockHandler>,
-  log: Logger = LogManager.getLogger(CallAndForgetFutureMultiplexer<*, *>::javaClass)!!,
-) : CallAndForgetFutureMultiplexer<SealedBeaconBlock, Unit>(
-    handlersMap = sealedBlockHandlersToGenericHandlers(handlersMap),
-    log = log,
-  ),
-  SealedBlockHandler {
-  companion object {
-    fun sealedBlockHandlersToGenericHandlers(
-      handlersMap: Map<String, SealedBlockHandler>,
-    ): Map<String, AsyncFunction<SealedBeaconBlock, Unit>> =
-      handlersMap.mapValues { newSealedBlockHandler ->
-        {
-          newSealedBlockHandler.value.handleSealedBlock(it).thenApply { }
-        }
-      }
-  }
-
-  override fun Logger.logError(
-    handlerName: String,
-    input: SealedBeaconBlock,
-    ex: Exception,
-  ) {
-    this.error(
-      "New sealed block handler $handlerName failed processing" +
-        "blockHash=${input.beaconBlock.beaconBlockHeader.hash}, number=${input.beaconBlock.beaconBlockHeader.number} " +
-        "executionPayloadBlockNumber=${input.beaconBlock.beaconBlockBody.executionPayload.blockNumber}!",
-      ex,
-    )
-  }
-
-  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> = handle(sealedBeaconBlock)
 }
 
 class NewBlockHandlerMultiplexer(

@@ -15,6 +15,7 @@
  */
 package maru.executionlayer.manager
 
+import maru.core.EMPTY_HASH
 import maru.core.ExecutionPayload
 import maru.extensions.encodeHex
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -49,7 +50,7 @@ data class ForkChoiceUpdatedResult(
 
 data class PayloadAttributes(
   val timestamp: Long,
-  val prevRandao: ByteArray = ByteArray(32),
+  val prevRandao: ByteArray = EMPTY_HASH,
   val suggestedFeeRecipient: ByteArray,
 ) {
   override fun equals(other: Any?): Boolean {

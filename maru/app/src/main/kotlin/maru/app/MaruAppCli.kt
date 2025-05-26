@@ -22,6 +22,7 @@ import com.sksamuel.hoplite.addFileSource
 import java.io.File
 import java.util.concurrent.Callable
 import maru.config.MaruConfigDtoToml
+import maru.consensus.config.ForkConfigDecoder
 import maru.consensus.config.JsonFriendlyForksSchedule
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.core.LoggerContext
@@ -47,6 +48,7 @@ class MaruAppCli : Callable<Int> {
       val confBuilder: ConfigLoaderBuilder =
         ConfigLoaderBuilder.Companion
           .empty()
+          .addDecoder(ForkConfigDecoder())
           .addDefaults()
           .withExplicitSealedTypes()
       for (configFile in configFiles.reversed()) {

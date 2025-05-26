@@ -13,18 +13,25 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.p2p
+package maru.consensus.qbft
 
-import maru.core.SealedBeaconBlock
-import tech.pegasys.teku.infrastructure.async.SafeFuture
+import maru.consensus.blockimport.SealedBeaconBlockImporter
+import maru.core.Protocol
+import maru.p2p.P2PNetwork
 
-class SealedBeaconBlockBroadcaster(
-  val p2PNetwork: P2PNetwork,
-) : SealedBlockHandler {
-  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> {
-    // TODO: New block message might need an intermediary wrapper in the future
-    val message = Message(MessageType.BLOCK, sealedBeaconBlock)
-    p2PNetwork.broadcastMessage(message)
-    return SafeFuture.completedFuture(Unit)
+class QbftConsensusFollower(
+  val p2pNetwork: P2PNetwork,
+  val blockImporter: SealedBeaconBlockImporter,
+) : Protocol {
+  private var subscriptionId: Int? = null
+
+  override fun start() {
+    subscriptionId = p2pNetwork.subscribeToBlocks(blockImporter::importBlock)
+  }
+
+  override fun stop() {
+    if (subscriptionId != null) {
+      p2pNetwork.unsubscribe(subscriptionId!!)
+    }
   }
 }

@@ -20,7 +20,7 @@ import maru.core.Protocol
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
 import org.hyperledger.besu.consensus.qbft.core.statemachine.QbftController
 
-class QbftConsensus(
+class QbftConsensusValidator(
   private val qbftController: QbftController,
   private val eventProcessor: QbftEventProcessor,
   private val bftExecutors: BftExecutors,

@@ -13,11 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.consensus
+package maru.consensus.blockimport
 
 import kotlin.text.contains
 import maru.core.ext.DataGenerators
-import maru.p2p.SealedBlockHandler
+import maru.p2p.SealedBeaconBlockHandler
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -29,20 +29,20 @@ import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class NewSealedBlockHandlerMultiplexerTest {
+class NewSealedBeaconBlockHandlerMultiplexerTest {
   @Test
   fun `should invoke all handlers for SealedBeaconBlock`() {
     val sealedBlock = DataGenerators.randomSealedBeaconBlock(1u)
     val handler1 =
-      mock<SealedBlockHandler> {
+      mock<SealedBeaconBlockHandler> {
         on { handleSealedBlock(any()) } doReturn SafeFuture.completedFuture(Unit)
       }
     val handler2 =
-      mock<SealedBlockHandler> {
+      mock<SealedBeaconBlockHandler> {
         on { handleSealedBlock(any()) } doReturn SafeFuture.completedFuture(Unit)
       }
     val multiplexer =
-      NewSealedBlockHandlerMultiplexer(
+      NewSealedBeaconBeaconBlockHandlerMultiplexer(
         mapOf("h1" to handler1, "h2" to handler2),
       )
 
@@ -58,11 +58,11 @@ class NewSealedBlockHandlerMultiplexerTest {
   fun `should log error if sealed handler throws`() {
     val sealedBlock = DataGenerators.randomSealedBeaconBlock(1u)
     val handler =
-      mock<SealedBlockHandler> {
+      mock<SealedBeaconBlockHandler> {
         on { handleSealedBlock(any()) } doThrow RuntimeException("fail")
       }
     val logger: Logger = mock()
-    val multiplexer = NewSealedBlockHandlerMultiplexer(mapOf(pair = "h" to handler), logger)
+    val multiplexer = NewSealedBeaconBeaconBlockHandlerMultiplexer(mapOf(pair = "h" to handler), logger)
 
     val future = multiplexer.handleSealedBlock(sealedBlock)
     future.join()

@@ -17,10 +17,11 @@ package maru.testutils
 
 import java.util.concurrent.CopyOnWriteArrayList
 import maru.consensus.qbft.adapters.QbftBlockCodecAdapter
+import maru.core.SealedBeaconBlock
 import maru.p2p.Message
 import maru.p2p.MessageType
 import maru.p2p.P2PNetwork
-import maru.p2p.SealedBlockHandler
+import maru.p2p.SealedBeaconBlockHandler
 import org.apache.logging.log4j.LogManager
 import org.hyperledger.besu.consensus.common.bft.messagewrappers.BftMessage
 import org.hyperledger.besu.consensus.qbft.core.messagedata.CommitMessageData
@@ -46,7 +47,8 @@ class SpyingP2PNetwork(
   }
 
   private val log = LogManager.getLogger(this.javaClass)
-  val emittedMessages = CopyOnWriteArrayList<BftMessage<*>>()
+  val emittedQbftMessages = CopyOnWriteArrayList<BftMessage<*>>()
+  val emittedBlockMessages = CopyOnWriteArrayList<SealedBeaconBlock>()
 
   private fun decodedMessage(message: BesuMessageData): BftMessage<*> =
     when (message) {
@@ -62,13 +64,20 @@ class SpyingP2PNetwork(
   override fun stop(): SafeFuture<Unit> = SafeFuture.completedFuture(Unit)
 
   override fun broadcastMessage(message: Message<*>) {
-    val decodedMessage = decodedMessage(message.toBesuMessageData())
-    log.debug("Got new message {}", decodedMessage)
-    emittedMessages.add(decodedMessage)
-    p2pNetwork.broadcastMessage(message)
+    when (message.type) {
+      MessageType.QBFT -> {
+        val decodedMessage = decodedMessage(message.toBesuMessageData())
+        log.debug("Got new message {}", decodedMessage)
+        emittedQbftMessages.add(decodedMessage)
+        p2pNetwork.broadcastMessage(message)
+      }
+      MessageType.BLOCK -> emittedBlockMessages.add(message.payload as SealedBeaconBlock)
+    }
   }
 
-  override fun subscribeToBlocks(subscriber: SealedBlockHandler) {
-    p2pNetwork.subscribeToBlocks(subscriber)
+  override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler): Int = p2pNetwork.subscribeToBlocks(subscriber)
+
+  override fun unsubscribe(subscriptionId: Int) {
+    p2pNetwork.unsubscribe(subscriptionId)
   }
 }

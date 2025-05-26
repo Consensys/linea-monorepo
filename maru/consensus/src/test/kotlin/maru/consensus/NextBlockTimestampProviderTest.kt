@@ -26,8 +26,8 @@ class NextBlockTimestampProviderTest {
   private val forksSchedule =
     ForksSchedule(
       listOf(
-        ForkSpec(0, 1, QbftConsensusConfig(ByteArray(20), ElFork.Prague)),
-        ForkSpec(10, 2, QbftConsensusConfig(ByteArray(20), ElFork.Prague)),
+        ForkSpec(0, 1, QbftConsensusConfig(ByteArray(20), validatorSet = emptySet(), ElFork.Prague)),
+        ForkSpec(10, 2, QbftConsensusConfig(ByteArray(20), validatorSet = emptySet(), ElFork.Prague)),
       ),
     )
   private val baseLastBlockTimestamp = 9L

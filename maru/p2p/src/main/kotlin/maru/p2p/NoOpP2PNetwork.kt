@@ -37,7 +37,12 @@ object NoOpP2PNetwork : P2PNetwork {
     log.debug("Doing nothing for message={}", message)
   }
 
-  override fun subscribeToBlocks(subscriber: SealedBlockHandler) {
+  override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler): Int {
     log.debug("Subscription called for subscriber={}", subscriber)
+    return 0
+  }
+
+  override fun unsubscribe(subscriptionId: Int) {
+    log.debug("Unsubscription called for subscriptionId={}", subscriptionId)
   }
 }

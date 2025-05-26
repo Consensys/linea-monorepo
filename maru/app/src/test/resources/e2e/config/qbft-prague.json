@@ -3,7 +3,8 @@
     "0": {
       "type": "qbft",
       "blockTimeSeconds": 1,
-      "feeRecipient": "0x0000000000000000000000000000000000000000",
+      "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
+      "feeRecipient": "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0",
       "elFork": "Prague"
     }
   }

@@ -13,25 +13,22 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.p2p
+package maru.testutils
 
 import maru.core.SealedBeaconBlock
+import maru.p2p.NoOpP2PNetwork
+import maru.p2p.P2PNetwork
+import maru.p2p.SealedBeaconBlockHandler
 
-enum class MessageType(
-  val code: Byte,
-) {
-  QBFT(0x01), // Won't be supported until Milestone 6
-  BLOCK(0x02),
-}
+class InjectableSealedBlocksFakeNetwork : P2PNetwork by NoOpP2PNetwork {
+  var handler: SealedBeaconBlockHandler? = null
 
-data class Message<T : Any>(
-  val type: MessageType,
-  val payload: T,
-) {
-  init {
-    when (type) {
-      MessageType.QBFT -> Unit // require(payload is BftMessage≤*>) Not adding this to avoid dependency on QBFT
-      MessageType.BLOCK -> require(payload is SealedBeaconBlock)
-    }
+  override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler): Int {
+    handler = subscriber
+    return 0
+  }
+
+  fun injectSealedBlock(sealedBlock: SealedBeaconBlock) {
+    handler!!.handleSealedBlock(sealedBlock)
   }
 }

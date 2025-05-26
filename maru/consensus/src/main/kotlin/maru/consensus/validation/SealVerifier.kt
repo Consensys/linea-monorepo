@@ -23,7 +23,8 @@ import maru.core.Seal
 import maru.core.Validator
 import org.apache.tuweni.bytes.Bytes
 import org.apache.tuweni.bytes.Bytes32
-import org.hyperledger.besu.crypto.AbstractSECP256
+import org.hyperledger.besu.crypto.SignatureAlgorithm
+import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.ethereum.core.Util
 
 interface SealVerifier {
@@ -38,7 +39,7 @@ interface SealVerifier {
 }
 
 class SCEP256SealVerifier(
-  private val signatureAlgorithm: AbstractSECP256,
+  private val signatureAlgorithm: SignatureAlgorithm = SignatureAlgorithmFactory.getInstance(),
 ) : SealVerifier {
   override fun extractValidator(
     seal: Seal,

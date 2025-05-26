@@ -35,7 +35,7 @@ fun interface BeaconBlockImporter {
   fun importBlock(
     beaconState: BeaconState,
     beaconBlock: BeaconBlock,
-  ): SafeFuture<ForkChoiceUpdatedResult>
+  ): SafeFuture<*>
 }
 
 class FollowerBeaconBlockImporter(

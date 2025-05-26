@@ -18,6 +18,7 @@ package maru.consensus.validation
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
+import com.github.michaelbull.result.getError
 import maru.consensus.ValidatorProvider
 import maru.consensus.qbft.ProposerSelector
 import maru.consensus.qbft.toConsensusRoundIdentifier
@@ -26,6 +27,7 @@ import maru.consensus.validation.BlockValidator.Companion.error
 import maru.core.BeaconBlock
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
+import maru.core.EMPTY_HASH
 import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.SealedBeaconBlock
@@ -73,7 +75,7 @@ class BlockValidatorTest {
       parentRoot = validCurrBlockHeader.hash,
       timestamp = validCurrBlockHeader.timestamp + 1u,
       bodyRoot = HashUtil.bodyRoot(validNewBlockBody),
-      stateRoot = BeaconBlockHeader.EMPTY_HASH,
+      stateRoot = EMPTY_HASH,
     )
   private val validNewStateRoot =
     HashUtil.stateRoot(
@@ -89,7 +91,7 @@ class BlockValidatorTest {
     InMemoryBeaconChain(currBeaconState).also {
       it
         .newUpdater()
-        .putSealedBeaconBlock(SealedBeaconBlock(validCurrBlock, emptyList()))
+        .putSealedBeaconBlock(SealedBeaconBlock(validCurrBlock, emptySet()))
         .commit()
     }
 
@@ -110,7 +112,30 @@ class BlockValidatorTest {
   private val stateTransition = StateTransitionImpl(validatorProvider)
 
   @Test
-  fun `test valid block`() {
+  fun `test validator's validation on a valid block`() {
+    val executionLayerEngineApiClient =
+      mock<ExecutionLayerManager> {
+        on { newPayload(any()) }.thenReturn(
+          SafeFuture.completedFuture(
+            DataGenerators.randomValidPayloadStatus(),
+          ),
+        )
+      }
+
+    val blockValidator =
+      BeaconBlockValidatorFactoryImpl(
+        beaconChain = beaconChain,
+        proposerSelector = proposerSelector,
+        stateTransition = stateTransition,
+        executionLayerManager = executionLayerEngineApiClient,
+      ).createValidatorForBlock(validNewBlock.beaconBlockHeader)
+    blockValidator.also {
+      assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
+    }
+  }
+
+  @Test
+  fun `test all the validations on a valid block`() {
     val stateRootValidator =
       StateRootValidator(stateTransition).also {
         assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
@@ -140,33 +165,6 @@ class BlockValidatorTest {
       BodyRootValidator().also {
         assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
       }
-
-    val sealVerifier =
-      object : SealVerifier {
-        override fun extractValidator(
-          seal: Seal,
-          beaconBlockHeader: BeaconBlockHeader,
-        ): Result<Validator, SealVerifier.SealValidationError> {
-          assertThat(beaconBlockHeader).isEqualTo(validCurrBlockHeader)
-          return when (seal) {
-            validNewBlockBody.prevCommitSeals[0] -> return Ok(validators[0])
-            validNewBlockBody.prevCommitSeals[1] -> return Ok(validators[1])
-            validNewBlockBody.prevCommitSeals[2] -> return Ok(validators[2])
-            else -> Err(SealVerifier.SealValidationError("Invalid seal"))
-          }
-        }
-      }
-
-    val prevCommitSealValidator =
-      PrevCommitSealValidator(
-        sealVerifier = sealVerifier,
-        beaconChain = beaconChain,
-        validatorProvider = validatorProvider,
-        config = PrevCommitSealValidator.Config(prevBlockOffset = 1u),
-      ).also {
-        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
-      }
-
     val executionLayerEngineApiClient =
       mock<ExecutionLayerManager> {
         on { newPayload(any()) }.thenReturn(
@@ -179,19 +177,48 @@ class BlockValidatorTest {
       ExecutionPayloadValidator(executionLayerEngineApiClient).also {
         assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
       }
+    val sealVerifier =
+      object : SealVerifier {
+        override fun extractValidator(
+          seal: Seal,
+          beaconBlockHeader: BeaconBlockHeader,
+        ): Result<Validator, SealVerifier.SealValidationError> {
+          assertThat(beaconBlockHeader).isEqualTo(validCurrBlockHeader)
+          return when (seal) {
+            validNewBlockBody.prevCommitSeals.elementAt(0) -> return Ok(validators[0])
+            validNewBlockBody.prevCommitSeals.elementAt(1) -> return Ok(validators[1])
+            validNewBlockBody.prevCommitSeals.elementAt(2) -> return Ok(validators[2])
+            else -> Err(SealVerifier.SealValidationError("Invalid seal"))
+          }
+        }
+      }
 
-    val blockValidators =
-      listOf(
-        stateRootValidator,
-        blockNumberValidator,
-        timestampValidator,
-        proposerValidator,
-        parentRootValidator,
-        bodyRootValidator,
-        prevCommitSealValidator,
-        executionPayloadValidator,
+    val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, sealVerifier)
+    val prevCommitSealValidator =
+      PrevCommitSealValidator(
+        beaconChain = beaconChain,
+        sealsVerifier = sealsVerifier,
+        config = PrevCommitSealValidator.Config(prevBlockOffset = 1u),
+      ).also {
+        assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
+      }
+    val blockValidator =
+      CompositeBlockValidator(
+        blockValidators =
+          listOf(
+            stateRootValidator,
+            blockNumberValidator,
+            timestampValidator,
+            proposerValidator,
+            parentRootValidator,
+            bodyRootValidator,
+            executionPayloadValidator,
+            EmptyBlockValidator,
+            prevCommitSealValidator,
+          ),
       )
-    CompositeBlockValidator(blockValidators).also {
+
+    blockValidator.also {
       assertThat(it.validateBlock(block = validNewBlock).get()).isEqualTo(BlockValidator.ok())
     }
   }
@@ -309,7 +336,7 @@ class BlockValidatorTest {
 
   @Test
   fun `test missing parent block state`() {
-    val nonExistentParentHash = ByteArray(32)
+    val nonExistentParentHash = EMPTY_HASH
     val invalidBlockHeader = validNewBlockHeader.copy(parentRoot = nonExistentParentHash)
     val invalidBlock = validNewBlock.copy(beaconBlockHeader = invalidBlockHeader)
     val proposerValidator = ProposerValidator(proposerSelector = proposerSelector, beaconChain = beaconChain)
@@ -357,79 +384,54 @@ class BlockValidatorTest {
   }
 
   @Test
-  fun `test not enough commit seals`() {
+  fun `seal verification error is propagated`() {
     assertThat(BftHelpers.calculateRequiredValidatorQuorum(3)).isEqualTo(2)
 
     val blockBodyWithEnoughSeals =
       validNewBlockBody.copy(
         prevCommitSeals =
-          listOf(
-            validNewBlockBody.prevCommitSeals[0],
-            validNewBlockBody.prevCommitSeals[1],
+          setOf(
+            validNewBlockBody.prevCommitSeals.elementAt(0),
+            validNewBlockBody.prevCommitSeals.elementAt(1),
           ),
       )
-
-    val blockBodyWithLessSeals =
-      validNewBlockBody.copy(
-        prevCommitSeals = listOf(validNewBlockBody.prevCommitSeals[0]),
-      )
-
-    val sealVerifier =
-      object : SealVerifier {
-        override fun extractValidator(
-          seal: Seal,
+    val expectedError = "Seal verification error!"
+    val sealsVerifier =
+      object : SealsVerifier {
+        override fun verifySeals(
+          seals: Set<Seal>,
           beaconBlockHeader: BeaconBlockHeader,
-        ): Result<Validator, SealVerifier.SealValidationError> =
-          when (seal) {
-            validNewBlockBody.prevCommitSeals[0] -> Ok(validators[0])
-            validNewBlockBody.prevCommitSeals[1] -> Ok(validators[1])
-            else -> Err(SealVerifier.SealValidationError("Invalid seal"))
-          }
+        ): SafeFuture<Result<Unit, String>> = SafeFuture.completedFuture(Err(expectedError))
       }
     val prevCommitSealValidator =
       PrevCommitSealValidator(
-        sealVerifier = sealVerifier,
         beaconChain = beaconChain,
-        validatorProvider = validatorProvider,
+        sealsVerifier = sealsVerifier,
         config = PrevCommitSealValidator.Config(prevBlockOffset = 1u),
       )
-    val validResult =
+    val invalidResult =
       prevCommitSealValidator
         .validateBlock(
           block = validNewBlock.copy(beaconBlockBody = blockBodyWithEnoughSeals),
         ).get()
-    assertThat(validResult).isEqualTo(BlockValidator.ok())
-
-    val inValidResult =
-      prevCommitSealValidator
-        .validateBlock(
-          block = validNewBlock.copy(beaconBlockBody = blockBodyWithLessSeals),
-        ).get()
-    val expectedResult =
-      error(
-        "Quorum threshold not met. " +
-          "committers=1 " +
-          "validators=3 " +
-          "quorumCount=2",
-      )
-    assertThat(inValidResult).isEqualTo(expectedResult)
+    assertThat(invalidResult).isInstanceOf(Err::class.java)
+    assertThat(invalidResult.getError()!!.message).contains(expectedError)
   }
 
   @Test
-  fun `test commit seals not from validator`() {
-    val sealVerifier =
-      object : SealVerifier {
-        override fun extractValidator(
-          seal: Seal,
+  fun `seals verification failed future is propagated`() {
+    val expectedMessage = "Test exception!"
+    val sealsVerifier =
+      object : SealsVerifier {
+        override fun verifySeals(
+          seals: Set<Seal>,
           beaconBlockHeader: BeaconBlockHeader,
-        ): Result<Validator, SealVerifier.SealValidationError> = Ok(nonValidatorNode)
+        ): SafeFuture<Result<Unit, String>> = SafeFuture.failedFuture(Exception(expectedMessage))
       }
-
     val prevCommitSealValidator =
       PrevCommitSealValidator(
-        sealVerifier = sealVerifier,
         beaconChain = beaconChain,
-        validatorProvider = validatorProvider,
+        sealsVerifier = sealsVerifier,
         config = PrevCommitSealValidator.Config(prevBlockOffset = 1u),
       )
 
@@ -438,14 +440,8 @@ class BlockValidatorTest {
         .validateBlock(
           block = validNewBlock,
         ).get()
-    val expectedResult =
-      error(
-        "Seal validator is not in the parent block's validator set " +
-          "seal=${validNewBlockBody.prevCommitSeals[0]} " +
-          "sealValidator=$nonValidatorNode " +
-          "validatorsForParentBlock=$validators",
-      )
-    assertThat(result).isEqualTo(expectedResult)
+    assertThat(result).isInstanceOf(Err::class.java)
+    assertThat(result.getError()!!.message).contains(expectedMessage)
   }
 
   @Test
@@ -458,11 +454,11 @@ class BlockValidatorTest {
         ): Result<Validator, SealVerifier.SealValidationError> = Err(SealVerifier.SealValidationError("Invalid seal"))
       }
 
+    val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, sealVerifier)
     val prevCommitSealValidator =
       PrevCommitSealValidator(
-        sealVerifier = sealVerifier,
         beaconChain = beaconChain,
-        validatorProvider = validatorProvider,
+        sealsVerifier = sealsVerifier,
         config = PrevCommitSealValidator.Config(prevBlockOffset = 1u),
       )
 

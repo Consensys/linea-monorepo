@@ -15,10 +15,13 @@
  */
 package maru.testutils.besu
 
+import org.apache.logging.log4j.Logger
+import org.assertj.core.api.Assertions.assertThat
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.eth.EthConditions
+import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.AccountTransactions
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.account.TransferTransaction
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.eth.EthTransactions
@@ -46,5 +49,22 @@ class BesuTransactionsHelper {
     val recipient = accounts.createAccount("recipient")
 
     return accountTransactions.createTransfer(whaleAccount, recipient, numberOfTransactions.toInt())
+  }
+
+  fun BesuNode.sendTransactionAndAssertExecution(
+    logger: Logger,
+    recipient: Account,
+    amount: Amount,
+  ) {
+    val transfer = this@BesuTransactionsHelper.createTransfer(recipient, amount)
+    val txHash = this.execute(transfer)
+    assertThat(txHash).isNotNull()
+    logger.info("Sending transaction {}, transaction data ", txHash)
+    this@BesuTransactionsHelper
+      .ethConditions
+      .expectSuccessfulTransactionReceipt(
+        txHash.toString(),
+      ).verify(this)
+    logger.info("Transaction {} was mined", txHash)
   }
 }

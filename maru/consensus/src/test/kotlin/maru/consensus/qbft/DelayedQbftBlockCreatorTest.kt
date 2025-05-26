@@ -22,8 +22,8 @@ import maru.consensus.qbft.adapters.QbftBlockHeaderAdapter
 import maru.consensus.qbft.adapters.toBeaconBlock
 import maru.consensus.qbft.adapters.toBeaconBlockHeader
 import maru.consensus.qbft.adapters.toSealedBeaconBlock
-import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
+import maru.core.EMPTY_HASH
 import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.Validator
@@ -88,7 +88,7 @@ class DelayedQbftBlockCreatorTest {
     val stateRoot =
       HashUtil.stateRoot(
         BeaconState(
-          createBeaconBlock.beaconBlockHeader.copy(stateRoot = BeaconBlockHeader.EMPTY_HASH),
+          createBeaconBlock.beaconBlockHeader.copy(stateRoot = EMPTY_HASH),
           validatorSet,
         ),
       )
@@ -166,7 +166,7 @@ class DelayedQbftBlockCreatorTest {
   fun `can create sealed block`() {
     val block = QbftBlockAdapter(DataGenerators.randomBeaconBlock(10U))
     val beaconBlock = block.toBeaconBlock()
-    val seals = listOf(SECPSignature.create(BigInteger.ONE, BigInteger.TWO, 0x00, BigInteger.valueOf(4)))
+    val seals = setOf(SECPSignature.create(BigInteger.ONE, BigInteger.TWO, 0x00, BigInteger.valueOf(4)))
     val round = 0
 
     val blockCreator =
@@ -204,7 +204,7 @@ class DelayedQbftBlockCreatorTest {
     ).isEqualTo(
       beaconBlock.beaconBlockBody.prevCommitSeals,
     )
-    val beaconSeals = seals.map { Seal(it.encodedBytes().toArrayUnsafe()) }
+    val beaconSeals = seals.map { Seal(it.encodedBytes().toArrayUnsafe()) }.toSet()
     assertThat(createdSealedBeaconBlock.commitSeals).isEqualTo(beaconSeals)
     assertThat(sealedBlockBody.executionPayload).isEqualTo(beaconBlock.beaconBlockBody.executionPayload)
   }

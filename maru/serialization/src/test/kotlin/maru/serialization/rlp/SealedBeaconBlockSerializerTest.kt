@@ -56,7 +56,7 @@ class SealedBeaconBlockSerializerTest {
     val beaconBlockHeader = DataGenerators.randomBeaconBlockHeader(Random.nextULong())
     val beaconBlockBody =
       BeaconBlockBody(
-        prevCommitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+        prevCommitSeals = buildSet(3) { add(Seal(Random.nextBytes(96))) },
         executionPayload = randomExecutionPayload(),
       )
     val sealedBlock =
@@ -66,7 +66,7 @@ class SealedBeaconBlockSerializerTest {
             beaconBlockHeader = beaconBlockHeader,
             beaconBlockBody = beaconBlockBody,
           ),
-        commitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+        commitSeals = buildSet(3) { add(Seal(Random.nextBytes(96))) },
       )
     val serializedData = sealedBlockSerializer.serialize(sealedBlock)
     val deserializedValue = sealedBlockSerializer.deserialize(serializedData)

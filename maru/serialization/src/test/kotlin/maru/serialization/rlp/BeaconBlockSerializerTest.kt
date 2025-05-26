@@ -49,7 +49,7 @@ class BeaconBlockSerializerTest {
     val beaconBLockHeader = DataGenerators.randomBeaconBlockHeader(Random.nextULong())
     val beaconBlockBody =
       BeaconBlockBody(
-        prevCommitSeals = buildList(3) { Seal(Random.nextBytes(96)) },
+        prevCommitSeals = buildSet(3) { add(Seal(Random.nextBytes(96))) },
         executionPayload = randomExecutionPayload(),
       )
     val testValue =

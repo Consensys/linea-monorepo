@@ -31,9 +31,10 @@ object MaruFactory {
   private val consensusConfigDir = "/e2e/config"
   private val pragueConsensusConfig = "$consensusConfigDir/qbft-prague.json"
   const val VALIDATOR_PRIVATE_KEY = "1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
-  const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX = "0x08021220" + VALIDATOR_PRIVATE_KEY
+  const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX = "0x08021220$VALIDATOR_PRIVATE_KEY"
+  const val VALIDATOR_ADDRESS = "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"
 
-  private fun buildMaruConfigString(
+  private fun buildMaruValidatorConfigString(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataPath: String,
@@ -41,10 +42,6 @@ object MaruFactory {
     """
     [persistence]
     data-path="$dataPath"
-    private-key-path="$dataPath/private-key"
-
-    [sot-eth-endpoint]
-    endpoint = "$ethereumJsonRpcUrl"
 
     [qbft-options]
 
@@ -53,8 +50,31 @@ object MaruFactory {
     ip-address = "127.0.0.1"
     static-peers = []
 
-    [validator]
-    el-client-engine-api-endpoint = "$engineApiRpc"
+    [payloadValidator]
+    engine-api-endpoint = { endpoint = "$engineApiRpc" }
+    eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
+    """.trimIndent()
+
+  private fun buildMaruFollowerConfigString(
+    ethereumJsonRpcUrl: String,
+    engineApiRpc: String,
+    dataPath: String,
+  ): String =
+    """
+    [persistence]
+    data-path="$dataPath"
+
+    [p2p-config]
+    port = 3322
+    ip-address = "127.0.0.1"
+    static-peers = []
+
+    [payload-validator]
+    engine-api-endpoint = { endpoint = "$engineApiRpc" }
+    eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
+
+    [follower-engine-apis]
+    follower1 = { endpoint = "$engineApiRpc" }
     """.trimIndent()
 
   private fun pickConsensusConfig(elFork: ElFork): String =
@@ -62,7 +82,7 @@ object MaruFactory {
       ElFork.Prague -> pragueConsensusConfig
     }
 
-  fun buildTestMaru(
+  fun buildTestMaruValidator(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     elFork: ElFork,
@@ -71,7 +91,34 @@ object MaruFactory {
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
-        buildMaruConfigString(
+        buildMaruValidatorConfigString(
+          ethereumJsonRpcUrl = ethereumJsonRpcUrl,
+          engineApiRpc = engineApiRpc,
+          dataPath = dataDir.toString(),
+        ),
+      )
+    Files.writeString(appConfig.domainFriendly().persistence.privateKeyPath, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
+
+    val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
+    val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
+
+    return MaruApp(
+      config = appConfig.domainFriendly(),
+      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
+      p2pNetwork = p2pNetwork,
+    )
+  }
+
+  fun buildTestMaruFollower(
+    ethereumJsonRpcUrl: String,
+    engineApiRpc: String,
+    elFork: ElFork,
+    dataDir: Path,
+    p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+  ): MaruApp {
+    val appConfig =
+      Utils.parseTomlConfig<MaruConfigDtoToml>(
+        buildMaruFollowerConfigString(
           ethereumJsonRpcUrl = ethereumJsonRpcUrl,
           engineApiRpc = engineApiRpc,
           dataPath = dataDir.toString(),
@@ -80,7 +127,6 @@ object MaruFactory {
     val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
     val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
 
-    Files.writeString(appConfig.domainFriendly().persistence.privateKeyPath, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
     return MaruApp(
       config = appConfig.domainFriendly(),
       beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
@@ -88,7 +134,7 @@ object MaruFactory {
     )
   }
 
-  fun buildTestMaruWithConsensusSwitch(
+  fun buildTestMaruValidatorWithConsensusSwitch(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataDir: Path,
@@ -97,12 +143,13 @@ object MaruFactory {
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
-        buildMaruConfigString(
+        buildMaruValidatorConfigString(
           ethereumJsonRpcUrl = ethereumJsonRpcUrl,
           engineApiRpc = engineApiRpc,
           dataPath = dataDir.toString(),
         ),
       )
+    Files.writeString(appConfig.domainFriendly().persistence.privateKeyPath, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
 
     // Build the genesis file string directly
     val genesisContent =
@@ -115,8 +162,9 @@ object MaruFactory {
           },
           "$switchTimestamp": {
             "type": "qbft",
+            "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
             "blockTimeSeconds": 1,
-            "feeRecipient": "0x0000000000000000000000000000000000000000",
+            "feeRecipient": "$VALIDATOR_ADDRESS",
             "elFork": "Prague"
           }
         }

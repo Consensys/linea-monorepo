@@ -15,6 +15,8 @@
  */
 package maru.core
 
+import maru.extensions.encodeHex
+
 data class Seal(
   val signature: ByteArray,
 ) {
@@ -28,4 +30,6 @@ data class Seal(
   }
 
   override fun hashCode(): Int = signature.contentHashCode()
+
+  override fun toString(): String = signature.encodeHex()
 }

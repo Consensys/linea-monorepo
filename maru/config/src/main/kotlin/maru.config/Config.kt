@@ -61,20 +61,10 @@ data class P2P(
   }
 }
 
-data class Validator(
-  val engineApiClient: ApiEndpointConfig,
-) {
-  override fun equals(other: Any?): Boolean {
-    if (this === other) return true
-    if (javaClass != other?.javaClass) return false
-
-    other as Validator
-
-    return engineApiClient == other.engineApiClient
-  }
-
-  override fun hashCode(): Int = engineApiClient.hashCode()
-}
+data class ValidatorElNode(
+  val ethApiEndpoint: ApiEndpointConfig,
+  val engineApiEndpoint: ApiEndpointConfig,
+)
 
 data class QbftOptions(
   val minBlockBuildTime: Duration = 500.milliseconds,
@@ -87,9 +77,8 @@ data class QbftOptions(
 
 data class MaruConfig(
   val persistence: Persistence,
-  val sotNode: ApiEndpointConfig,
-  val qbftOptions: QbftOptions,
+  val qbftOptions: QbftOptions?,
   val p2pConfig: P2P?,
-  val validator: Validator?,
+  val validatorElNode: ValidatorElNode,
   val followers: FollowersConfig,
 )

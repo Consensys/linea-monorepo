@@ -9,6 +9,7 @@ dependencies {
   implementation("org.hyperledger.besu.internal:core")
   implementation("org.hyperledger.besu.internal:merge")
   implementation("org.hyperledger.besu.internal:algorithms")
+  implementation("org.hyperledger.besu.internal:clique")
   implementation("org.hyperledger.besu.internal:plugins-rocksdb")
   implementation(group: 'org.hyperledger.besu.internal', name: 'core', classifier: 'test-support')
 

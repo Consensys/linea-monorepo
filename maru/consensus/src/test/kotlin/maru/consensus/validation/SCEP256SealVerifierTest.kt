@@ -21,13 +21,13 @@ import maru.core.Validator
 import maru.core.ext.DataGenerators
 import org.apache.tuweni.bytes.Bytes32
 import org.assertj.core.api.Assertions.assertThat
-import org.hyperledger.besu.crypto.SECP256R1
+import org.hyperledger.besu.crypto.SignatureAlgorithmFactory
 import org.hyperledger.besu.ethereum.core.Util
 import org.junit.jupiter.api.Test
 
 class SCEP256SealVerifierTest {
-  private val signatureAlgorithm = SECP256R1()
-  private val verifier = SCEP256SealVerifier(signatureAlgorithm)
+  private val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
+  private val verifier = SCEP256SealVerifier()
   private val keypair = signatureAlgorithm.generateKeyPair()
   private val validator = Validator(Util.publicKeyToAddress(keypair.publicKey).toArray())
 

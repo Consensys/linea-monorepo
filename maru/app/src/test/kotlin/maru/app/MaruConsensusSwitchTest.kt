@@ -24,7 +24,6 @@ import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
-import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
@@ -72,18 +71,6 @@ class MaruConsensusSwitchTest {
     maruNode.stop()
   }
 
-  private fun sendTransactionAndAssertExecution(
-    recipient: Account,
-    amount: Amount,
-  ) {
-    val transfer = transactionsHelper.createTransfer(recipient, amount)
-    val txHash = besuNode.execute(transfer)
-    assertThat(txHash).isNotNull()
-    log.info("Sending transaction {}, transaction data ", txHash)
-    transactionsHelper.ethConditions.expectSuccessfulTransactionReceipt(txHash.toString()).verify(besuNode)
-    log.info("Transaction {} was mined", txHash)
-  }
-
   @Test
   fun `Maru is capable of switching from Delegated to QBFT consensus without block pauses`() {
     val stackStartupMargin = 15
@@ -106,7 +93,7 @@ class MaruConsensusSwitchTest {
     val engineRpcUrl = besuNode.engineRpcUrl().get()
 
     maruNode =
-      MaruFactory.buildTestMaruWithConsensusSwitch(
+      MaruFactory.buildTestMaruValidatorWithConsensusSwitch(
         ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
         engineApiRpc = engineRpcUrl,
         dataDir = tmpDir.toPath(),
@@ -116,7 +103,13 @@ class MaruConsensusSwitchTest {
 
     log.info("Sending transactions")
     repeat(totalBlocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("pre-switch account"), Amount.ether(100))
+      transactionsHelper.run {
+        besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("pre-switch account"),
+          amount = Amount.ether(100),
+        )
+      }
     }
 
     currentTimestamp = System.currentTimeMillis() / 1000
