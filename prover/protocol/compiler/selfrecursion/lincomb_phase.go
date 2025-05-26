@@ -74,7 +74,7 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 
 			ys := ctx.Columns.Ys.GetColAssignment(run)
 			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
-			ysAlpha := smartvectors.EvalCoeff(ys, alpha)
+			ysAlpha := smartvectors.EvalCoeffOnFext(ys, alpha)
 			uAlphaX := ctx.Accessors.InterpolateUalphaX.GetVal(run)
 			if uAlphaX != ysAlpha {
 				return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass")

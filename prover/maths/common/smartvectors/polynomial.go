@@ -154,12 +154,21 @@ func BatchEvaluateLagrangeOnFext(vs []SmartVector, x fext.Element, oncoset ...bo
 	return results
 }
 
-// Evaluate a polynomial in coefficient basis
+// Evaluate a polynomial in coefficient basis at an E4 point
 func EvalCoeff(v SmartVector, x field.Element) field.Element {
 	// Maybe there is an optim for windowed here
 	res := make([]field.Element, v.Len())
 	v.WriteInSlice(res)
+
 	return poly.Eval(res, x)
+}
+
+// Evaluate a polynomial in coefficient basis at an E4 point
+func EvalCoeffOnFext(v SmartVector, x fext.Element) fext.Element {
+	// Maybe there is an optim for windowed here
+	res := make([]field.Element, v.Len())
+	v.WriteInSlice(res)
+	return poly.EvalOnExtField(res, x)
 }
 
 func EvalCoeffBivariate(v SmartVector, x field.Element, numCoeffX int, y field.Element) field.Element {

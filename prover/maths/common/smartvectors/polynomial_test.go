@@ -72,13 +72,13 @@ func TestFuzzPolynomial(t *testing.T) {
 
 			// Get a random x to use as an evaluation point to check polynomial
 			// identities
-			var x field.Element
+			var x fext.Element
 			x.SetRandom()
-			aX := EvalCoeff(a, x)
-			bX := EvalCoeff(b, x)
+			aX := EvalCoeffOnFext(a, x)
+			bX := EvalCoeffOnFext(b, x)
 
 			// Get the evaluations of a-n, b-a, a+b
-			var aSubBx, bSubAx, aPlusBx field.Element
+			var aSubBx, bSubAx, aPlusBx fext.Element
 			aSubBx.Sub(&aX, &bX)
 			bSubAx.Sub(&bX, &aX)
 			aPlusBx.Add(&aX, &bX)
@@ -90,10 +90,10 @@ func TestFuzzPolynomial(t *testing.T) {
 			aPlusb := PolyAdd(a, b)
 			bPlusa := PolyAdd(b, a)
 
-			aSubBxActual := EvalCoeff(aSubb, x)
-			bSubAxActual := EvalCoeff(bSuba, x)
-			aPlusbxActual := EvalCoeff(aPlusb, x)
-			bPlusaxActual := EvalCoeff(bPlusa, x)
+			aSubBxActual := EvalCoeffOnFext(aSubb, x)
+			bSubAxActual := EvalCoeffOnFext(bSuba, x)
+			aPlusbxActual := EvalCoeffOnFext(aPlusb, x)
+			bPlusaxActual := EvalCoeffOnFext(bPlusa, x)
 
 			t.Logf(
 				"Len of a %v, b %v, a+b %v, a-b %v, b-a %v",
