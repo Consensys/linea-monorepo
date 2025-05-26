@@ -1,6 +1,6 @@
 {
   "name": "@consensys/linea-native-libs",
-  "version": "0.1.0",
+  "version": "1.2.0",
   "description": "Linea native libs",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
