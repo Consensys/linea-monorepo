@@ -40,13 +40,15 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 	input := make([][]field.Element, numRows)
 	parallel.Execute(numRows, func(start, end int) {
 		for i := start; i < end; i++ {
+			input[i] = make([]field.Element, numCols)
 			for j := 0; j < numCols; j++ {
 				input[i][j] = ps[i].Get(j)
 			}
 		}
 	})
 
-	numSelectedColumns := 0 // a placeholder, not used in Merkle mode
+	// In Merkle mode, it's not used, so set to 0 as a placeholder.
+	numSelectedColumns := 0
 	params, err := vortex.NewParams(p.NbColumns, p.MaxNbRows, p.Key.GnarkInternal, p.BlowUpFactor, numSelectedColumns)
 	if err != nil {
 		utils.Panic(err.Error())
@@ -59,6 +61,7 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 
 	print("Vortex compiler: Commit DONE\n", proverState)
 
+	// Format Encoded Matrix for Return
 	encodedMatrix = make([]smartvectors.SmartVector, p.MaxNbRows)
 	for i := range encodedMatrix {
 		encodedMatrix[i] = smartvectors.NewRegular(proverState.EncodedMatrix[i*p.NbColumns : (i+1)*p.NbColumns])
