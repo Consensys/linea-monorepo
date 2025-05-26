@@ -22,7 +22,7 @@ var (
 	testRec       = recurSegComp.Recursion
 	testCompInput = testRec.InputCompiledIOP
 	testCompRecur = recurSegComp.RecursionComp
-	testComp      = testCompRecur
+	testComp      = testCompInput
 )
 
 func TestSerdeRecursion(t *testing.T) {

@@ -233,21 +233,34 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		return json.RawMessage(NilString), nil
 	}
 
-	// Handle specific type/mode combinations (e.g., naturalType, queryType)
+	// If we just want to encode a reference to a column that has been
+	// explicitly registered in the store. It suffices to provide a
+	// reference to the column. From that, we can load it in the store,
+	// that's why there is no need to serialize the full object; the ID
+	// is enough.
 	if mode == ReferenceMode && typeOfV == naturalType {
 		colID := v.Interface().(column.Natural).ID
 		return serializeAnyWithCborPkg(colID)
 	}
+
+	// Note that this is the same handling as in the interface-level
+	// handling. This can be triggered when passing the Column as initial
+	// input to the serializer.
 	if mode == DeclarationMode && typeOfV == naturalType {
 		col := v.Interface().(column.Natural)
 		decl := intoSerializableColDecl(&col)
 		return SerializeValue(reflect.ValueOf(decl), mode)
 	}
+
 	if mode == DeclarationMode && typeOfV == manuallyShiftedType {
 		shifted := v.Interface().(*dedicated.ManuallyShifted)
 		decl := intoSerializableManuallyShifted(shifted)
 		return SerializeValue(reflect.ValueOf(decl), mode)
 	}
+
+	// Likewise for if the type implements query, we can just deserialize
+	// looking up the query by name in the compiled IOP. So there is no need
+	// to include it in the serialized object. The ID is enough.
 	if mode == ReferenceMode && typeOfV.Implements(queryType) {
 		queryID := v.Interface().(ifaces.Query).Name()
 		return serializeAnyWithCborPkg(queryID)
@@ -422,12 +435,20 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 	}
 
 	// Create a new reflect.Value for the interface type
+	// Reminder; here the important thing is to ensure that the returned
+	// Value actually bears the requested interface type and not the
+	// concrete type.
 	ifaceValue := reflect.New(t).Elem()
 	if bytes.Equal(data, []byte(NilString)) {
 		return ifaceValue, nil
 	}
 
 	// Deserialize the raw JSON into a structured format
+	// Reminder: we serialize interfaces as
+	// {
+	// 		"type": "<pkg/path>.(<TypeName>)"
+	// 		"value": <rawJson of the concrete type>
+	// }
 	var raw struct {
 		Type  string          `json:"type"`
 		Value json.RawMessage `json:"value"`
@@ -523,6 +544,11 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 	}
 
 	// Handle specific type/mode combinations (e.g., naturalType, queryType)
+	// When the type is a natural column in reference mode, the serializer
+	// optimizes by just passing the column name. To deserialize, we need
+	// to parse the name and look up the column into `comp`. This works
+	// under the assumption that the column declaration are always
+	// deserialized before we deserialize the references to these columns.
 	if mode == ReferenceMode && t == naturalType {
 		var colID ifaces.ColID
 		if err := deserializeAnyWithCborPkg(data, &colID); err != nil {
@@ -546,11 +572,19 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		}
 		return reflect.ValueOf(v.Interface().(*serializableManuallyShifted).intoManuallyShifted(comp)), nil
 	}
+
+	// Likewise for if the type implements query, we can just deserialize
+	// looking up the query by name in the compiled IOP. So there is no need
+	// to include it in the serialized object. The ID is enough.
 	if mode == ReferenceMode && t.Implements(queryType) {
 		var queryID ifaces.QueryID
 		if err := deserializeAnyWithCborPkg(data, &queryID); err != nil {
 			return reflect.Value{}, fmt.Errorf("could not deserialize query ID: %w", err)
 		}
+		// Here, we would need to carefully inspect the type of the query to
+		// know where in where to look it for in compiled IOP. Instead, we
+		// go the easy way and just try in both QueriesParams and
+		// QueriesNoParams.
 		if comp.QueriesParams.Exists(queryID) {
 			return reflect.ValueOf(comp.QueriesParams.Data(queryID)), nil
 		}
@@ -590,13 +624,6 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		if unicode.IsLower(rune(f.name[0])) {
 			continue // Skip unexported fields
 		}
-
-		// Skip fields with cbor:"-" tag
-		// structField, _ := t.FieldByName(f.name)
-		// if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
-		// 	logrus.Printf("Skipping deserialization of field:%s purposefully due to empty cbor tag\n", f.name)
-		// 	continue
-		// }
 
 		fieldRaw, ok := raw[f.rawName]
 		if !ok {

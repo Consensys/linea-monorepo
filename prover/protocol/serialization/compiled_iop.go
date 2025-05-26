@@ -456,6 +456,9 @@ func serializeSubProverAction(comp *wizard.CompiledIOP, round int) ([]json.RawMe
 	actions := comp.SubProvers.GetOrEmpty(round)
 	rawActions := make([]json.RawMessage, len(actions))
 	for i, action := range actions {
+		logrus.Printf("Type of step:%d is :%v \n", i, reflect.TypeOf(action))
+		logrus.Printf("Type of *step:%d is: %v \n", i, reflect.TypeOf(&action))
+
 		r, err := SerializeValue(reflect.ValueOf(&action), DeclarationMode)
 		if err != nil {
 			return nil, fmt.Errorf("could not serialize ProverAction %d at round %d: %w", i, round, err)
