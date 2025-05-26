@@ -246,6 +246,7 @@ func deserializeNonRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP) erro
 	return nil
 }
 
+/*
 func deserializeRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int) error {
 	for round := 0; round < numRounds; round++ {
 		if round >= len(raw.Columns) || round >= len(raw.Coins) ||
@@ -282,6 +283,128 @@ func deserializeRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRoun
 			return fmt.Errorf("round %d fiatShamirHooksPreSampling: %w", round, err)
 		}
 	}
+	return nil
+} */
+
+// deserializeRoundData deserializes round-specific data in parallel, with synchronized updates to comp.
+func deserializeRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int) error {
+	startTime := time.Now()
+
+	// Thread-safe error collector
+	var (
+		mu     sync.Mutex
+		errors []error
+	)
+
+	// Mutex to synchronize updates to comp
+	var compMu sync.Mutex
+
+	// Work function to process a chunk of rounds
+	work := func(start, stop int) {
+		for round := start; round < stop; round++ {
+			if round >= len(raw.Columns) || round >= len(raw.Coins) ||
+				round >= len(raw.QueriesNoParams) || round >= len(raw.QueriesParams) ||
+				round >= len(raw.Subprovers) || round >= len(raw.SubVerifiers) ||
+				round >= len(raw.FiatShamirHooksPreSampling) {
+				mu.Lock()
+				errors = append(errors, fmt.Errorf("round %d exceeds available data in rawCompiledIOP", round))
+				mu.Unlock()
+				return
+			}
+
+			// Deserialize columns and update comp
+			compMu.Lock()
+			if err := deserializeColumns(raw.Columns[round], comp); err != nil {
+				compMu.Unlock()
+				mu.Lock()
+				errors = append(errors, fmt.Errorf("round %d columns: %w", round, err))
+				mu.Unlock()
+				return
+			}
+			compMu.Unlock()
+
+			// Deserialize coins and update comp
+			compMu.Lock()
+			if err := deserializeCoins(raw.Coins[round], round, comp); err != nil {
+				compMu.Unlock()
+				mu.Lock()
+				errors = append(errors, fmt.Errorf("round %d coins: %w", round, err))
+				mu.Unlock()
+				return
+			}
+			compMu.Unlock()
+
+			// Deserialize queriesParams and update comp
+			compMu.Lock()
+			if err := deserializeQuery(raw.QueriesParams[round], round, &comp.QueriesParams, comp); err != nil {
+				compMu.Unlock()
+				mu.Lock()
+				errors = append(errors, fmt.Errorf("round %d queriesParams: %w", round, err))
+				mu.Unlock()
+				return
+			}
+			compMu.Unlock()
+
+			// Deserialize queriesNoParams and update comp
+			compMu.Lock()
+			if err := deserializeQuery(raw.QueriesNoParams[round], round, &comp.QueriesNoParams, comp); err != nil {
+				compMu.Unlock()
+				mu.Lock()
+				errors = append(errors, fmt.Errorf("round %d queriesNoParams: %w", round, err))
+				mu.Unlock()
+				return
+			}
+			compMu.Unlock()
+
+			// Deserialize subProvers and update comp
+			compMu.Lock()
+			if err := deserializeSubProvers(raw.Subprovers[round], round, comp); err != nil {
+				compMu.Unlock()
+				mu.Lock()
+				errors = append(errors, fmt.Errorf("round %d subProvers: %w", round, err))
+				mu.Unlock()
+				return
+			}
+			compMu.Unlock()
+
+			// Deserialize subVerifiers and update comp
+			compMu.Lock()
+			if err := deserializeSubVerifiers(raw.SubVerifiers[round], round, comp); err != nil {
+				compMu.Unlock()
+				mu.Lock()
+				errors = append(errors, fmt.Errorf("round %d subVerifiers: %w", round, err))
+				mu.Unlock()
+				return
+			}
+			compMu.Unlock()
+
+			// Deserialize fiatShamirHooksPreSampling and update comp
+			compMu.Lock()
+			if err := deserializeFSHooks(raw.FiatShamirHooksPreSampling[round], round, comp); err != nil {
+				compMu.Unlock()
+				mu.Lock()
+				errors = append(errors, fmt.Errorf("round %d fiatShamirHooksPreSampling: %w", round, err))
+				mu.Unlock()
+				return
+			}
+			compMu.Unlock()
+
+			logrus.Debugf("Deserialized round %d successfully", round)
+		}
+	}
+
+	// Execute deserialization in parallel
+	parallel.ExecuteChunky(numRounds, work)
+
+	// Check for errors
+	mu.Lock()
+	defer mu.Unlock()
+	if len(errors) > 0 {
+		// Return the first error for simplicity, consistent with original behavior
+		return errors[0]
+	}
+
+	logrus.Printf("deserializeRoundData took %v seconds for %d rounds", time.Since(startTime).Seconds(), numRounds)
 	return nil
 }
 
@@ -611,6 +734,6 @@ func RegisterColumns(from, to *wizard.CompiledIOP) error {
 			}
 		}
 	}
-	logrus.Printf("Registering from -> to compiled took %vs", time.Since(startTime).Seconds())
+	logrus.Printf("Registering from -> to compiled IOP took %vs", time.Since(startTime).Seconds())
 	return nil
 }
