@@ -96,8 +96,10 @@ public class ZkTracer implements ConflationAwareOperationTracer {
         };
     this.trace =
         switch (chain.fork) {
-          default -> new TraceLondon();
-            // case SHANGHAI -> new TraceShanghai();
+          case LONDON -> new TraceLondon();
+          case SHANGHAI -> new TraceShanghai();
+          default -> throw new IllegalArgumentException(
+              "Fork config can only be LONDON or SHANGHAI for now");
         };
     final DebugMode.PinLevel debugLevel = new DebugMode.PinLevel();
     this.debugMode =

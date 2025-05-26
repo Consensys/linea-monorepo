@@ -30,8 +30,14 @@ public class ShanghaiTxndataOperation extends LondonTxndataOperation {
   private static final Bytes WORD_SIZE_BYTES = Bytes.ofUnsignedInt(WORD_SIZE);
 
   public ShanghaiTxndataOperation(
-      Wcp wcp, Euc euc, TransactionProcessingMetadata tx, int nbRowsTxMax) {
-    super(wcp, euc, tx, nbRowsTxMax);
+      Wcp wcp,
+      Euc euc,
+      TransactionProcessingMetadata tx,
+      int nbRowsType0,
+      int nbRowsType1,
+      int nbRowsType2,
+      int nbWcpEucRowsFrontierAccessList) {
+    super(wcp, euc, tx, nbRowsType0, nbRowsType1, nbRowsType2, nbWcpEucRowsFrontierAccessList);
   }
 
   @Override
