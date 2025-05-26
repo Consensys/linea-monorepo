@@ -57,16 +57,16 @@ func Mul(a, b []field.Element) (res []field.Element) {
 // The returned slice has length = max(len(a), len(b)).
 // The empty slice is understood as the zero polynomial and if both a and b are
 // empty, the function returns the empty slice.
-// func Add(a, b []field.Element) (res []field.Element) {
+func Add(a, b []field.Element) (res []field.Element) {
 
-// 	res = make([]field.Element, utils.Max(len(a), len(b)))
-// 	copy(res, a)
-// 	for i := range b {
-// 		res[i].Add(&res[i], &b[i])
-// 	}
+	res = make([]field.Element, utils.Max(len(a), len(b)))
+	copy(res, a)
+	for i := range b {
+		res[i].Add(&res[i], &b[i])
+	}
 
-// 	return res
-// }
+	return res
+}
 
 // ScalarMul returns x*(∑_i p[i]xⁱ)
 // TODO used only in /protocol/compiler/univariates/multi_to_single_point.go

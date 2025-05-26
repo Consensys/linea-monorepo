@@ -56,5 +56,5 @@ func (key *Key) MaxNumFieldHashable() int {
 // be hashed together in a single hash. This coincides with the total size of
 // the SIS key counting the field elements composing it.
 func (key *Key) maxNumLimbsHashable() int {
-	return key.modulusDegree() * len(key.gnarkInternal.A)
+	return key.modulusDegree() * len(key.GnarkInternal.A)
 }
