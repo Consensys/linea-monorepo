@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/sirupsen/logrus"
 )
 
 // rawRecursedSegmentCompilation represents the serialized form of RecursedSegmentCompilation.
@@ -87,6 +89,8 @@ func SerializeRecursedSegmentCompilation(segComp *distributed.RecursedSegmentCom
 
 // DeserializeRecursedSegmentCompilation deserializes a RecursedSegmentCompilation instance field-by-field.
 func DeserializeRecursedSegmentCompilation(data []byte) (*distributed.RecursedSegmentCompilation, error) {
+
+	startTime := time.Now()
 	if bytes.Equal(data, []byte(serialization.NilString)) {
 		return nil, nil
 	}
@@ -143,5 +147,6 @@ func DeserializeRecursedSegmentCompilation(data []byte) (*distributed.RecursedSe
 		segComp.Recursion = rec
 	}
 
+	logrus.Infof("Deser. RecursedSegmentComp took %v s\n", time.Since(startTime).Seconds())
 	return segComp, nil
 }

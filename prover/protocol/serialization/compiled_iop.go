@@ -246,7 +246,6 @@ func deserializeNonRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP) erro
 	return nil
 }
 
-/*
 func deserializeRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int) error {
 	for round := 0; round < numRounds; round++ {
 		if round >= len(raw.Columns) || round >= len(raw.Coins) ||
@@ -284,8 +283,9 @@ func deserializeRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRoun
 		}
 	}
 	return nil
-} */
+}
 
+/*
 // deserializeRoundData deserializes round-specific data in parallel, with synchronized updates to comp.
 func deserializeRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int) error {
 	startTime := time.Now()
@@ -406,7 +406,7 @@ func deserializeRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRoun
 
 	logrus.Printf("deserializeRoundData took %v seconds for %d rounds", time.Since(startTime).Seconds(), numRounds)
 	return nil
-}
+} */
 
 func serializeColumns(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, error) {
 	cols := comp.Columns.AllHandlesAtRound(round)

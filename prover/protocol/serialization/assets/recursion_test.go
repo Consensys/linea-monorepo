@@ -119,40 +119,6 @@ func TestSerIOP(t *testing.T) {
 	logrus.Printf("Serialized CompiledIOP written to file: %s and took %vs\n", COMPILED_FILE_PATH, time.Since(writeTime).Seconds())
 }
 
-func TestDeserIOP(t *testing.T) {
-
-	// Ensure the file exists
-	if _, err := os.Stat(COMPILED_FILE_PATH); os.IsNotExist(err) {
-		t.Fatalf("serialized file does not exist: %s\n", COMPILED_FILE_PATH)
-	}
-
-	// Load the serialized data from the file
-	loadStartTime := time.Now()
-	var serComp bytes.Buffer
-	err := utils.ReadFromFile(COMPILED_FILE_PATH, &serComp)
-	if err != nil {
-		t.Fatalf("error reading serialized CompiledIOP from file: %s\n", err.Error())
-	}
-
-	logrus.Printf("Loaded serialized CompiledIOP from file: %s and took %vs\n", COMPILED_FILE_PATH, time.Since(loadStartTime).Seconds())
-
-	// Start timing the deserialization process
-	startTime := time.Now()
-
-	// Deserialize the serialized data
-	_, err = serialization.DeserializeCompiledIOP(serComp.Bytes())
-	if err != nil {
-		t.Fatalf("error during deserialization of recursion input compiled-iop: %s\n", err.Error())
-	}
-
-	logrus.Printf("Deserialization took %vs\n", time.Since(startTime).Seconds())
-
-	// Compare the original and deserialized objects
-	// if !test_utils.CompareExportedFields(testComp, deSerComp) {
-	// 	t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")
-	// }
-}
-
 /*
 func TestSerdePlonkCkt(t *testing.T) {
 

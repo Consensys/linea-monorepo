@@ -45,7 +45,7 @@ var (
 	structCacheMu sync.RWMutex
 	structCache   = make(map[reflect.Type]*structFieldCache)
 
-	// snapshot map: Aids in debuggint to find missing concrete type implementation
+	// snapshot map: Aids in debugging to find missing concrete type implementation
 	snapshot = make(map[string]struct{})
 )
 
@@ -78,6 +78,12 @@ func getStructFieldCache(t reflect.Type) *structFieldCache {
 	return cache
 }
 
+// SerializeValue recursively serializes `v` into JSON. This function is
+// specially crafted to handle the special types occurring in the `protocol`
+// directory. It can be used in `DeclarationMode` where the [column.Natural]
+// are serialized as [serializableColumnDecl] objects or in the [referenceMode]
+// where the [ifaces.Query] and [column.Natural] objects are serialized using
+// only their ID.
 func SerializeValue(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	if !v.IsValid() || v.Interface() == nil {
 		return json.RawMessage(NilString), nil
@@ -106,6 +112,16 @@ func SerializeValue(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	}
 }
 
+// DeserializeValue recursively unmarshals `data` into a [reflect.Value] of
+// type matching the caller's target type `t`. It reverses the work of
+// [serializeValue]. It comes with the following subtleties:
+//
+//  1. `comp` of the function is mutated when run in [Declaration] mode over something
+//     that contains column type as it will register the columns within the provided
+//     `comp` object.
+//  2. If run with [ReferenceMode], it will expect all the potential references
+//     it finds to be references of objects that have been already unmarshalled
+//     in declaration mode.
 func DeserializeValue(data json.RawMessage, mode Mode, t reflect.Type, comp *wizard.CompiledIOP) (reflect.Value, error) {
 	if bytes.Equal(data, []byte(NilString)) {
 		return reflect.Zero(t), nil
@@ -237,7 +253,9 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		return serializeAnyWithCborPkg(queryID)
 	}
 
-	// Adjust mode for queryType or columnType
+	// If 'v' implements query or column, it may be the case that its
+	// components refer to other queries or columns. In that case, we should
+	// ensure that the serializer enters in reference mode.
 	newMode := mode
 	if typeOfV.Implements(queryType) || typeOfV.Implements(columnType) {
 		newMode = ReferenceMode
@@ -539,10 +557,20 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		if comp.QueriesNoParams.Exists(queryID) {
 			return reflect.ValueOf(comp.QueriesNoParams.Data(queryID)), nil
 		}
-		utils.Panic("Could not find requested query ID: %v", queryID)
+
+		// This means that the requested column ID is nowhere to be found
+		// in the compiled IOP and this is likely a bug in the serializer.
+		// If it happens, it might mean that the serializer is attempting
+		// to read the current reference before it read its declaration.
+		// This is the caller's responsibility to ensure that this is not
+		// the case.
+		utils.Panic("Could not find requested column ID: %v", queryID)
 	}
 
-	// Adjust mode for queryType or columnType
+	// If 'v' implements query or column, it may be the case that its
+	// components refer to other queries or columns. In that case, we should
+	// ensure that the deserializer enters in reference mode in the deeper
+	// steps of the recursion.
 	newMode := mode
 	if t.Implements(queryType) || t.Implements(columnType) {
 		newMode = ReferenceMode
