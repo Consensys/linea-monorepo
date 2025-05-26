@@ -25,7 +25,9 @@ import java.net.ServerSocket;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -96,9 +98,7 @@ public class BesuExecutionTools {
                         info.getDisplayName(),
                         randomUUID))
             .orElse(randomUUID)
-            .replace(' ', '_')
-            .replace(',', '_');
-
+            .replaceAll("[,.:<>|*?\\r\\n\\[\\]() ]", "_");
     this.testName = tmpTestName.substring(0, Math.min(tmpTestName.length(), 200));
     int besuPort = findFreePort();
     int shomeiPort = findFreePort();
@@ -113,7 +113,7 @@ public class BesuExecutionTools {
       this.testDataDir =
           Files.createDirectory(
               Path.of(System.getProperty("besu.traces.dir")).resolve(this.testName));
-      this.shomeiDataPath = Files.createDirectory(testDataDir.resolve("shomei"));
+      this.shomeiDataPath = Files.createTempDirectory("shomei");
       this.besuNode =
           BesuNodeBuilder.create(
               testName,
@@ -155,17 +155,22 @@ public class BesuExecutionTools {
                       besuNode.execute(
                           ethTransactions.sendRawTransaction(tx.encoded().toHexString())))
               .toList();
+      Map<String, Boolean> txReceiptProcessed = new HashMap<>();
       ConcurrentSet<Long> blockNumbers = new ConcurrentSet<>();
       waitFor(
-          10,
+          100,
           () -> {
             txHashes.forEach(
                 (txHash) -> {
+                  if (txReceiptProcessed.containsKey(txHash)) {
+                    return;
+                  }
                   var maybeTxReceipt =
                       besuNode.execute(ethTransactions.getTransactionReceipt(txHash));
                   assertThat(maybeTxReceipt).isPresent();
                   var txReceipt = maybeTxReceipt.get();
                   blockNumbers.add(txReceipt.getBlockNumber().longValue());
+                  txReceiptProcessed.put(txHash, true);
                   log.info(
                       "Executed transaction txHash={}, blockNumber={}",
                       txReceipt.getTransactionHash(),

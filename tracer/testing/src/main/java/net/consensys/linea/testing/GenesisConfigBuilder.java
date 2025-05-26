@@ -48,7 +48,7 @@ public class GenesisConfigBuilder {
 
     final ObjectNode accountNode =
         allocNode.withObjectProperty(genesisAccount.address().toHexString());
-    accountNode.put("nonce", genesisAccount.nonce());
+    accountNode.put("nonce", Long.toHexString(genesisAccount.nonce()));
     accountNode.put("balance", genesisAccount.balance().toHexString());
     accountNode.put("code", genesisAccount.code().toHexString());
 
