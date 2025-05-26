@@ -1,0 +1,119 @@
+package linea.coordinator.config.v2
+
+import com.sksamuel.hoplite.Masked
+import linea.coordinator.config.v2.toml.MessageAnchoringConfigToml
+import linea.coordinator.config.v2.toml.RequestRetriesToml
+import linea.coordinator.config.v2.toml.SignerConfigToml
+import linea.coordinator.config.v2.toml.parseConfig
+import linea.domain.BlockParameter
+import linea.kotlin.decodeHex
+import linea.kotlin.toURL
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+
+class MessageAnchoringConfigParsingTest {
+  companion object {
+    val toml = """
+    [message-anchoring]
+    disabled = false
+    l1-endpoint = "http://l1-el-node:8545"
+    l2-endpoint = "http://sequencer:8545"
+    l1-highest-block-tag="FINALIZED"
+    l2-highest-block-tag="LATEST" # optional, default to LATEST it shall not be necessary as Linea has instant finality
+    anchoring-tick-interval = "PT10S" # "polling-interval="PT10S"
+    messages-anchoring-chuck-size = 100 # limit of L1toL2 Messages to anchor in a single L2 transaction
+
+    [message-anchoring.l1-request-retries]
+    max-retries = 4
+    backoff-delay = "PT1S"
+    timeout = "PT6S"
+    failures-warning-threshold = 2
+
+    [message-anchoring.l2-request-retries]
+    max-retries = 5
+    backoff-delay = "PT0.1S"
+    timeout = "PT10S"
+    failures-warning-threshold = 3
+
+    [message-anchoring.l1-event-scraping]
+    polling-interval = "PT1S" #message-events-polling-interval
+    polling-timeout = "PT5S" #max-event-scraping-time
+    message-limit-pertick = 100
+    block-range-limit = 500
+
+    [message-anchoring.gas]
+    max-fee-per-gas-cap = 100000000000
+    gas-limit = 10000000
+    fee-history-block-count = 4
+    fee-history-reward-percentile = 15
+
+    [message-anchoring.signer]
+    # Web3j/Web3signer
+    type = "Web3j"
+
+    [message-anchoring.signer.web3j]
+    private-key = "0x0000000000000000000000000000000000000000000000000000000000000001"
+
+    [message-anchoring.signer.web3signer]
+    endpoint = "http://web3signer:9000"
+    max-pool-size = 11
+    keep-alive = true
+    public-key = "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+    """.trimIndent()
+
+    val expectedConfig =
+      MessageAnchoringConfigToml(
+        disabled = false,
+        l1Endpoint = "http://l1-el-node:8545".toURL(),
+        l2Endpoint = "http://sequencer:8545".toURL(),
+        l1HighestBlockTag = BlockParameter.Tag.FINALIZED,
+        l2HighestBlockTag = BlockParameter.Tag.LATEST,
+        anchoringTickInterval = 10.seconds,
+        l1RequestRetries = RequestRetriesToml(
+          maxRetries = 4u,
+          backoffDelay = 1.seconds,
+          timeout = 6.seconds,
+          failuresWarningThreshold = 2u
+        ),
+        l2RequestRetries = RequestRetriesToml(
+          maxRetries = 5u,
+          backoffDelay = 100.milliseconds,
+          timeout = 10.seconds,
+          failuresWarningThreshold = 3u
+        ),
+        gas = MessageAnchoringConfigToml.GasConfig(
+          maxFeePerGasCap = 100_000_000_000u,
+          gasLimit = 10_000_000u,
+          feeHistoryBlockCount = 4u,
+          feeHistoryRewardPercentile = 15u
+        ),
+        signer = SignerConfigToml(
+          type = SignerConfigToml.SignerType.WEB3J,
+          web3j = SignerConfigToml.Web3jConfig(
+            privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000001")
+          ),
+          web3signer = SignerConfigToml.Web3SignerConfig(
+            endpoint = "http://web3signer:9000".toURL(),
+            maxPoolSize = 11,
+            keepAlive = true,
+            publicKey = (
+              "0000000000000000000000000000000000000000000000000000000000000000" +
+                "0000000000000000000000000000000000000000000000000000000000000001"
+              ).decodeHex()
+          )
+        )
+      )
+  }
+
+  data class WrapperConfig(
+    val messageAnchoring: MessageAnchoringConfigToml
+  )
+
+  @Test
+  fun `should parse full state manager config`() {
+    assertThat(parseConfig<WrapperConfig>(toml).messageAnchoring)
+      .isEqualTo(expectedConfig)
+  }
+}

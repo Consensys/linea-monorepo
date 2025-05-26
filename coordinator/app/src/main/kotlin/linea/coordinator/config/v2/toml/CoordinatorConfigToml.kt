@@ -1,11 +1,16 @@
 package linea.coordinator.config.v2.toml
 
 import linea.domain.BlockParameter
-import java.net.URI
+import java.net.URL
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
-data class Protocol(
+data class DefaultsToml(
+  val l1Endpoint: URL,
+  val l2Endpoint: URL
+)
+
+data class ProtocolToml(
   val genesis: Genesis,
   val l1: LayerConfig,
   val l2: LayerConfig
@@ -14,6 +19,7 @@ data class Protocol(
     val genesisStateRootHash: ByteArray,
     val genesisShnarf: ByteArray
   ) {
+
     override fun equals(other: Any?): Boolean {
       if (this === other) return true
       if (javaClass != other?.javaClass) return false
@@ -35,29 +41,24 @@ data class Protocol(
 
   data class LayerConfig(
     val contractAddress: String,
-    val contractDeploymentBlockNumber: BlockParameter.BlockNumber?
+    val contractDeploymentBlockNumber: BlockParameter?
   )
 }
 
 data class ConflationToml(
   val disabled: Boolean = false,
   val blocksLimit: Int? = null,
-  val conflationCalculatorVersions: String? = null,
+  val conflationCalculatorVersion: String? = null,
   val conflationDeadline: Duration? = null,
   // val conflationDeadlineCheckInterval: Duration = Duration.ofSeconds(30),
   // val conflationDeadlineLastBlockConfirmationDelay: Duration = Duration.ofSeconds(24),
   val consistentNumberOfBlocksOnL1ToWait: Int = 32, // 1 epoch
-  val fetchBlocksLimit: Int? = null,
-  val l2BlockCreationEndpoint: URI? = null,
-  val l2LogsEndpoint: URI? = null,
+  val l2FetchBlocksLimit: UInt? = null,
+  val l2BlockCreationEndpoint: URL? = null,
+  val l2LogsEndpoint: URL? = null,
   val blobCompression: BlobCompressionToml,
   val proofAggregation: ProofAggregationToml
 ) {
-  // data class BatchesToml(
-  //     val blocksLimit: UInt? = null,
-  //     val conflationDeadline: Duration? = null,
-  // )
-
   data class BlobCompressionToml(
     val blobSizeLimit: ULong = 102400u,
     val handlerPollingInterval: Duration = 1.seconds,
@@ -65,11 +66,11 @@ data class ConflationToml(
   )
 
   data class ProofAggregationToml(
-    val aggregationProofLimit: ULong = 300u,
-    val aggregationDeadline: Duration? = null,
-    val aggregationDeadlineCheckInterval: Duration? = 30.seconds,
-    val aggregationCoordinatorPollingInterval: Duration? = 3.seconds,
-    val aggregationTragetEndBlockNumbers: List<ULong>? = null
+    val proofsLimit: ULong = 300u,
+    val deadline: Duration? = null,
+    val deadlineCheckInterval: Duration? = 30.seconds,
+    val coordinatorPollingInterval: Duration? = 3.seconds,
+    val targetEndBlocks: List<ULong>? = null
   )
 }
 
@@ -78,10 +79,10 @@ data class ProverToml(
   val fsInprogressRequestWritingSuffix: String = ".inprogress_coordinator_writing",
   val fsInprogressProvingSuffixPattern: String = "\\.inprogress\\.prover.*",
   val fsPollingInterval: Duration = 15.seconds,
-  val fsPollingTimeout: Duration?,
+  val fsPollingTimeout: Duration? = null,
   val execution: ProverDirectoriesToml,
-  val compression: ProverDirectoriesToml,
-  val aggregation: ProverDirectoriesToml,
+  val blobCompression: ProverDirectoriesToml,
+  val proofAggregation: ProverDirectoriesToml,
   val new: ProverToml? = null
 ) {
   data class ProverDirectoriesToml(
@@ -90,54 +91,48 @@ data class ProverToml(
   )
 }
 
-data class RequestRetriesToml(
-  val maxAttempts: UInt? = null,
-  val timeout: Duration? = null,
-  val backoffDelay: Duration = 1.seconds,
-  val failuresWarningThreshold: UInt? = null
-)
-
-open class ClientApiConfigToml(
-  open val endpoints: List<URI>,
-  open val requestLimitPerEndpoint: Unit? = null,
-  open val requestRetries: RequestRetriesToml? = null
+data class TracesToml(
+  val expectedTracesApiVersion: String,
+  val counters: ClientApiConfigToml,
+  val conflation: ClientApiConfigToml,
+  val switchBlockNumberInclusive: UInt? = null,
+  val new: TracesToml? = null
 ) {
-  override fun toString(): String {
-    return "ClientApiConfigToml(" +
-      "endpoints=$endpoints, " +
-      "requestLimitPerEndpoint=$requestLimitPerEndpoint, " +
-      "requestRetries=$requestRetries" +
-      ")"
+  data class ClientApiConfigToml(
+    val endpoints: List<URL>,
+    val requestLimitPerEndpoint: UInt? = null,
+    val requestRetries: RequestRetriesToml? = null
+  ) {
+    override fun toString(): String {
+      return "ClientApiConfigToml(" +
+        "endpoints=$endpoints, " +
+        "requestLimitPerEndpoint=$requestLimitPerEndpoint, " +
+        "requestRetries=$requestRetries" +
+        ")"
+    }
   }
 }
 
-data class TracesToml(
-  val rawExecutionTracesVersion: String,
-  val expectedTracesApiVersion: String,
-  val counters: ClientApiConfigToml,
-  val conflation: ClientApiConfigToml
+data class StateManagerToml(
+  val version: String,
+  val endpoints: List<URL>,
+  val requestLimitPerEndpoint: UInt? = null,
+  val requestRetries: RequestRetriesToml? = null
 )
 
-class StateManagerToml(
-  val version: String,
-  override val endpoints: List<URI>,
-  override val requestLimitPerEndpoint: Unit? = null,
-  override val requestRetries: RequestRetriesToml? = null
-) : ClientApiConfigToml(endpoints, requestLimitPerEndpoint, requestRetries)
-
-class Type2StateProofManagerToml(
+data class Type2StateProofManagerToml(
   val disabled: Boolean = false,
-  override val endpoints: List<URI>,
-  override val requestRetries: RequestRetriesToml? = null,
-  val l1HighestQueryBlockTag: BlockParameter? = null,
+  val endpoints: List<URL>,
+  val requestRetries: RequestRetriesToml? = null,
+  val l1QueryBlockTag: BlockParameter? = null,
   val l1PollingInterval: Duration = 6.seconds
-) : ClientApiConfigToml(endpoints, null, requestRetries)
+)
 
 data class L1FinalizationMonitor(
-  val l1Endpoint: URI?,
-  val l2Endpoint: URI?,
+  val l1Endpoint: URL?,
+  val l2Endpoint: URL?,
   val l1PollingInterval: Duration = 6.seconds,
-  val l1HighestQueryBlockTag: BlockParameter? = null,
+  val l1QueryBlockTag: BlockParameter? = null,
   val requestRetries: RequestRetriesToml
 )
 
@@ -145,8 +140,8 @@ data class L1SubmissionToml(
   val disabled: Boolean,
   val dynamicGasPriceCap: DynamicGasPriceCapToml,
   val fallbackGasPrice: FallbackGasPriceToml,
-  val blob: BlobConfig,
-  val aggregation: AggregationToml
+  val blob: BlobSubmissionConfigToml,
+  val aggregation: AggregationSubmissionToml
 ) {
   data class DynamicGasPriceCapToml(
     val disabled: Boolean,
@@ -157,106 +152,80 @@ data class L1SubmissionToml(
     data class GasPriceCapCalculationToml(
       val adjustmentConstant: Int,
       val blobAdjustmentConstant: Int,
-      val finalizationTargetMaxDelay: String,
-      val baseFeePerGasPercentileWindow: String,
-      val baseFeePerGasPercentileWindowLeeway: String,
-      val baseFeePerGasPercentile: Int,
+      val finalizationTargetMaxDelay: Duration,
+      val baseFeePerGasPercentileWindow: Duration,
+      val baseFeePerGasPercentileWindowLeeway: Duration,
+      val baseFeePerGasPercentile: UInt,
       val gasPriceCapsCheckCoefficient: Double
     )
 
     data class FeeHistoryFetcherConfig(
-      val fetchInterval: String,
-      val maxBlockCount: Int,
-      val rewardPercentiles: List<Int>
+      val fetchInterval: Duration,
+      val maxBlockCount: UInt,
+      val rewardPercentiles: List<UInt>
     )
 
     data class FeeHistoryStorageConfig(
-      val storagePeriod: String
+      val storagePeriod: Duration
     )
   }
 
   data class FallbackGasPriceToml(
-    val feeHistoryBlockCount: Int,
-    val feeHistoryRewardPercentile: Int
+    val feeHistoryBlockCount: UInt,
+    val feeHistoryRewardPercentile: UInt
   )
 
-  data class BlobConfig(
-    val disabled: Boolean,
-    val endpoint: String,
-    val submissionDelay: String,
-    val submissionTickInterval: String,
-    val maxSubmissionsPerTick: Int,
-    val dbMaxBlobsToReturn: Int,
-    val gas: GasConfig,
-    val signer: SignerConfig
+  data class GasConfigToml(
+    val gasLimit: UInt,
+    val maxFeePerGasCap: ULong,
+    val maxFeePerBlobGasCap: ULong? = null,
+    val fallback: FallbackGasConfig
   ) {
-    data class GasConfig(
-      val gasLimit: Int,
-      val maxFeePerGasCap: Long,
-      val maxFeePerBlobGasCap: Long,
-      val fallback: FallbackGasConfig
-    ) {
-      data class FallbackGasConfig(
-        val priorityFeePerGasUpperBound: Long,
-        val priorityFeePerGasLowerBound: Long
-      )
-    }
-
-    data class SignerConfig(
-      val type: String,
-      val web3j: Web3jConfig?,
-      val web3signer: Web3signerConfig?
-    ) {
-      data class Web3jConfig(
-        val privateKey: String
-      )
-
-      data class Web3signerConfig(
-        val endpoint: String,
-        val maxPoolSize: Int,
-        val keepAlive: Boolean,
-        val publicKey: String
-      )
-    }
+    data class FallbackGasConfig(
+      val priorityFeePerGasUpperBound: ULong,
+      val priorityFeePerGasLowerBound: ULong
+    )
   }
 
-  data class AggregationToml(
+  data class BlobSubmissionConfigToml(
     val disabled: Boolean,
-    val endpoint: String,
-    val submissionDelay: String,
-    val submissionTickInterval: String,
-    val maxSubmissionsPerTick: Int,
-    val gas: GasConfig,
-    val signer: SignerConfig
-  ) {
-    data class GasConfig(
-      val gasLimit: Int,
-      val maxFeePerGasCap: Long,
-      val fallback: FallbackGasConfig
-    ) {
-      data class FallbackGasConfig(
-        val priorityFeePerGasUpperBound: Long,
-        val priorityFeePerGasLowerBound: Long
-      )
-    }
+    val endpoint: URL,
+    val submissionDelay: Duration,
+    val submissionTickInterval: Duration,
+    val maxSubmissionTransactionsPerTick: UInt,
+    val targetBlobsPerTransaction: UInt,
+    val dbMaxBlobsToReturn: UInt,
+    val gas: GasConfigToml,
+    val signer: SignerConfigToml
+  )
 
-    data class SignerConfig(
-      val type: String,
-      val web3j: Web3jConfig?,
-      val web3signer: Web3signerConfig?
-    ) {
-      data class Web3jConfig(
-        val privateKey: String
-      )
-
-      data class Web3signerConfig(
-        val endpoint: String,
-        val maxPoolSize: Int,
-        val keepAlive: Boolean,
-        val publicKey: String
-      )
-    }
-  }
+  data class AggregationSubmissionToml(
+    val disabled: Boolean,
+    val endpoint: URL,
+    val submissionDelay: Duration,
+    val submissionTickInterval: Duration,
+    val maxSubmissionsPerTick: UInt,
+    val gas: GasConfigToml,
+    val signer: SignerConfigToml
+  )
 }
 
-class CoordinatorConfigToml
+data class ApiConfigToml(
+  val observabilityPort: UInt = 9545u
+)
+
+data class CoordinatorConfigFileToml(
+  val defaults: DefaultsToml?,
+  val protocol: ProtocolToml,
+  val conflation: ConflationToml,
+  val prover: ProverToml,
+  val traces: TracesToml,
+  val stateManager: StateManagerToml,
+  val type2StateProofProvider: Type2StateProofManagerToml,
+  val l1FinalizationMonitor: L1FinalizationMonitor,
+  val l1Submission: L1SubmissionToml,
+  val messageAnchoring: MessageAnchoringConfigToml,
+  val l2NetworkGasPricing: L2NetworkGasPricingConfigToml,
+  val database: DataBaseToml,
+  val api: ApiConfigToml
+)
