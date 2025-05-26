@@ -76,14 +76,15 @@ object DataGenerators {
     SealedBeaconBlock(
       beaconBlock = randomBeaconBlock(number),
       commitSeals =
-        (1..3).map {
-          Seal(Random.nextBytes(96))
-        },
+        (1..3)
+          .map {
+            Seal(Random.nextBytes(96))
+          }.toSet(),
     )
 
   fun randomBeaconBlockBody(numSeals: Int = 3): BeaconBlockBody =
     BeaconBlockBody(
-      prevCommitSeals = (1..numSeals).map { Seal(Random.nextBytes(96)) },
+      prevCommitSeals = (1..numSeals).map { Seal(Random.nextBytes(96)) }.toSet(),
       executionPayload = randomExecutionPayload(),
     )
 

@@ -23,6 +23,7 @@ import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
+import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -81,7 +82,7 @@ class TransactionalSealedBeaconBlockImporterTest {
       ),
     )
 
-    val result = qbftBlockImporter.importBlock(sealedBeaconBlock).get()
+    val result = qbftBlockImporter.importBlock(sealedBeaconBlock).get() as ForkChoiceUpdatedResult
     assertTrue(result.payloadStatus.status.isValid())
     assertThat(beaconChain.getLatestBeaconState()).isEqualTo(beaconState)
   }

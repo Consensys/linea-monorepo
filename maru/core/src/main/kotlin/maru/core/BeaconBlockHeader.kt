@@ -15,6 +15,8 @@
  */
 package maru.core
 
+import maru.extensions.encodeHex
+
 data class BeaconBlockHeader(
   val number: ULong,
   val round: UInt,
@@ -40,7 +42,15 @@ data class BeaconBlockHeader(
 
   fun hash(): ByteArray = hash
 
-  companion object {
-    val EMPTY_HASH = ByteArray(32)
-  }
+  override fun toString(): String =
+    """
+    BeaconBlockHeader(
+      number=$number,
+      round=$round,
+      timestamp=$timestamp,
+      proposer=$proposer,
+      parentRoot=${parentRoot.encodeHex()},
+      stateRoot=${stateRoot.encodeHex()},
+      bodyRoot=${bodyRoot.encodeHex()}
+    """.trimIndent()
 }

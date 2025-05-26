@@ -41,7 +41,7 @@ class SealedBeaconBlockSerializer(
     rlpInput.enterList()
 
     val beaconBlock = beaconBlockSerializer.readFrom(rlpInput)
-    val commitSeals = rlpInput.readList { sealSerializer.readFrom(rlpInput) }
+    val commitSeals = rlpInput.readList { sealSerializer.readFrom(rlpInput) }.toSet()
 
     rlpInput.leaveList()
 

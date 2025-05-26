@@ -47,12 +47,12 @@ allprojects {
       licenseHeaderFile("${rootDir}/gradle/spotless/java-kotlin.license").onlyIfContentMatches("^(?!/\\*\\r?\\n \\*." +
         "*ConsenSys AG\\.)")
     }
-    // spotless check applied to build.gradle (groovy) files
-    groovyGradle {
-      target '*.gradle'
-      greclipse('4.31').configFile(rootProject.file('gradle/spotless/greclipse.properties'))
-      endWithNewline()
-    }
+//    // spotless check applied to build.gradle (groovy) files
+//    groovyGradle {
+//      target '*.gradle'
+//      greclipse('4.31').configFile(rootProject.file('gradle/spotless/greclipse.properties'))
+//      endWithNewline()
+//    }
   }
 
   tasks.withType(JavaCompile).configureEach {

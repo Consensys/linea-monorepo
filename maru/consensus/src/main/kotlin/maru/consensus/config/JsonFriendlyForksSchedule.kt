@@ -15,47 +15,96 @@
  */
 package maru.consensus.config
 
+import com.sksamuel.hoplite.ArrayNode
+import com.sksamuel.hoplite.ConfigFailure
+import com.sksamuel.hoplite.ConfigResult
+import com.sksamuel.hoplite.DecoderContext
+import com.sksamuel.hoplite.MapNode
+import com.sksamuel.hoplite.Node
+import com.sksamuel.hoplite.decoder.Decoder
+import com.sksamuel.hoplite.fp.NonEmptyList
+import com.sksamuel.hoplite.fp.invalid
+import com.sksamuel.hoplite.fp.valid
+import com.sksamuel.hoplite.valueOrNull
+import kotlin.collections.component1
+import kotlin.collections.component2
+import kotlin.collections.map
+import kotlin.collections.toSet
+import kotlin.reflect.KType
 import maru.consensus.ConsensusConfig
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.qbft.QbftConsensusConfig
+import maru.core.Validator
 import maru.extensions.fromHexToByteArray
 
-data class JsonFriendlyForksSchedule(
-  val config: Map<String, Map<String, String>>,
-) {
-  fun domainFriendly(): ForksSchedule {
-    val forkSpecs: List<ForkSpec> =
-      config.map { (k, v) ->
-        val type = v["type"].toString()
-        val blockTimeSeconds = v["blockTimeSeconds"]!!.toInt()
-        ForkSpec(
-          k.toLong(),
-          blockTimeSeconds,
-          mapObjectToConfiguration(type, v),
-        )
+class ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
+  override fun decode(
+    node: Node,
+    type: KType,
+    context: DecoderContext,
+  ): ConfigResult<JsonFriendlyForksSchedule> {
+    val config = node["config"]
+    val forkSpecs =
+      (config as MapNode).map.map { (k, v) ->
+        val type = v["type"].valueOrNull()!!
+        val blockTimeSeconds = v["blocktimeseconds"].valueOrNull()!!.toInt()
+        mapObjectToConfiguration(type, v).map {
+          ForkSpec(
+            k.toLong(),
+            blockTimeSeconds,
+            it,
+          )
+        }
       }
-    return ForksSchedule(forkSpecs)
+    return if (forkSpecs.all { it.isValid() }) {
+      JsonFriendlyForksSchedule(forkSpecs.map { it.getUnsafe() }.toSet()).valid()
+    } else {
+      val failures = forkSpecs.filter { it.isInvalid() }.map { it.getInvalidUnsafe() }
+      ConfigFailure.MultipleFailures(NonEmptyList(failures)).invalid()
+    }
   }
 
   private fun mapObjectToConfiguration(
     type: String,
-    obj: Map<String, String>,
-  ): ConsensusConfig =
+    obj: Node,
+  ): ConfigResult<ConsensusConfig> =
     when (type) {
-      "delegated" -> {
-        ElDelegatedConsensus.ElDelegatedConfig
-      }
-
-      "qbft" -> {
+      "delegated" -> ElDelegatedConsensus.ElDelegatedConfig.valid()
+      "qbft" ->
         QbftConsensusConfig(
-          feeRecipient = obj["feeRecipient"]!!.fromHexToByteArray(),
-          elFork = ElFork.valueOf(obj["elFork"]!!),
-        )
-      }
+          feeRecipient = obj["feerecipient"].valueOrNull()!!.fromHexToByteArray(),
+          validatorSet =
+            (obj["validatorset"] as ArrayNode)
+              .elements
+              .map {
+                Validator(
+                  it.valueOrNull()!!.fromHexToByteArray(),
+                )
+              }.toSet(),
+          elFork = ElFork.valueOf(obj["elfork"].valueOrNull()!!),
+        ).valid()
 
-      else -> throw IllegalArgumentException("Unsupported fork type $type!")
+      else -> (ConfigFailure.UnsupportedCollectionType(obj, "Unsupported fork type $type!") as ConfigFailure).invalid()
     }
+
+  override fun supports(type: KType): Boolean = type.classifier == JsonFriendlyForksSchedule::class
+}
+
+data class JsonFriendlyForksSchedule(
+  val config: Set<ForkSpec>,
+) {
+  override fun equals(other: Any?): Boolean {
+    if (other !is JsonFriendlyForksSchedule) {
+      false
+    }
+    val otherTyped = other as JsonFriendlyForksSchedule
+    return config.containsAll(otherTyped.config) && config.size == otherTyped.config.size
+  }
+
+  fun domainFriendly(): ForksSchedule = ForksSchedule(config)
+
+  override fun hashCode(): Int = config.hashCode()
 }

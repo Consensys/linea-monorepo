@@ -15,18 +15,23 @@
  */
 package maru.app
 
-import java.io.File
+import com.github.michaelbull.result.Ok
 import maru.app.Checks.getMinedBlocks
 import maru.app.Checks.verifyBlockTime
 import maru.app.Checks.verifyBlockTimeWithAGapOn
 import maru.consensus.ElFork
+import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.toAddress
+import maru.consensus.validation.QuorumOfSealsVerifier
+import maru.consensus.validation.SCEP256SealVerifier
+import maru.core.Validator
 import maru.crypto.Crypto
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.testutils.MaruFactory
+import maru.testutils.MaruFactory.VALIDATOR_ADDRESS
+import maru.testutils.NetworkParticipantStack
 import maru.testutils.SpyingP2PNetwork
-import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -35,38 +40,28 @@ import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Commit
 import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Prepare
 import org.hyperledger.besu.consensus.qbft.core.messagewrappers.Proposal
 import org.hyperledger.besu.consensus.qbft.core.messagewrappers.RoundChange
-import org.hyperledger.besu.tests.acceptance.dsl.account.Account
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
-import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import org.junit.jupiter.api.parallel.Isolated
 
 @Isolated
-class MaruQbftTest {
+class MaruQbftValidatorTest {
   private lateinit var cluster: Cluster
-  private lateinit var besuNode: BesuNode
-  private lateinit var maruNode: MaruApp
+  private lateinit var networkParticipantStack: NetworkParticipantStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
-
-  @TempDir
-  private lateinit var tmpDir: File
   private lateinit var spyingP2pNetwork: SpyingP2PNetwork
 
   @BeforeEach
   fun setUp() {
-    val elFork = ElFork.Prague
     transactionsHelper = BesuTransactionsHelper()
-    besuNode = BesuFactory.buildTestBesu()
     cluster =
       Cluster(
         ClusterConfigurationBuilder().build(),
@@ -74,47 +69,31 @@ class MaruQbftTest {
         ThreadBesuNodeRunner(),
       )
 
-    cluster.start(besuNode)
-    val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
-    val engineRpcUrl = besuNode.engineRpcUrl().get()
     spyingP2pNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
-    maruNode =
-      MaruFactory.buildTestMaru(
-        ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
-        engineApiRpc = engineRpcUrl,
-        elFork = elFork,
-        dataDir = tmpDir.toPath(),
-        p2pNetwork = spyingP2pNetwork,
-      )
-    maruNode.start()
+    networkParticipantStack = NetworkParticipantStack(p2pNetwork = spyingP2pNetwork, cluster = cluster)
+    networkParticipantStack.maruApp.start()
   }
 
   @AfterEach
   fun tearDown() {
     cluster.close()
-    maruNode.stop()
-  }
-
-  private fun sendTransactionAndAssertExecution(
-    recipient: Account,
-    amount: Amount,
-  ) {
-    val transfer = transactionsHelper.createTransfer(recipient, amount)
-    val txHash = besuNode.execute(transfer)
-    assertThat(txHash).isNotNull()
-    log.info("Sending transaction {}, transaction data ", txHash)
-    transactionsHelper.ethConditions.expectSuccessfulTransactionReceipt(txHash.toString()).verify(besuNode)
-    log.info("Transaction {} was mined", txHash)
+    networkParticipantStack.maruApp.stop()
   }
 
   @Test
   fun `Maru is producing blocks with expected block time and emits messages`() {
     val blocksToProduce = 10
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+      transactionsHelper.run {
+        networkParticipantStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
     }
 
-    val blocks = besuNode.getMinedBlocks(blocksToProduce)
+    val blocks = networkParticipantStack.besuNode.getMinedBlocks(blocksToProduce)
     blocks.verifyBlockTime()
 
     // Need to wait because otherwise not all of the messages might be emitted at the time of a block being mined
@@ -137,28 +116,44 @@ class MaruQbftTest {
         .isTrue
     }
     allMessagesAreSignedByTheExpectedSigner()
+    allBlocksAreSignedByTheExpectedSigner()
   }
 
   private fun anyPrepareWithBlockNumber(blockNumber: Long): Boolean =
-    spyingP2pNetwork.emittedMessages.any {
+    spyingP2pNetwork.emittedQbftMessages.any {
       it is Prepare && it.roundIdentifier.sequenceNumber == blockNumber
     }
 
   private fun anyProposalWithBlockNumber(blockNumber: Long): Boolean =
-    spyingP2pNetwork.emittedMessages.any {
+    spyingP2pNetwork.emittedQbftMessages.any {
       it is Proposal && it.roundIdentifier.sequenceNumber == blockNumber
     }
 
   private fun anyCommitWithBlockNumber(blockNumber: Long): Boolean =
-    spyingP2pNetwork.emittedMessages.any {
+    spyingP2pNetwork.emittedQbftMessages.any {
       it is Commit && it.roundIdentifier.sequenceNumber == blockNumber
     }
+
+  private fun allBlocksAreSignedByTheExpectedSigner() {
+    val validatorProvider = StaticValidatorProvider(setOf(Validator(VALIDATOR_ADDRESS.fromHexToByteArray())))
+    val sealVerifier = SCEP256SealVerifier()
+    val sealsVerifier = QuorumOfSealsVerifier(validatorProvider = validatorProvider, sealVerifier)
+    spyingP2pNetwork.emittedBlockMessages.forEach { sealedBeaconBlock ->
+      val verificationResult =
+        sealsVerifier
+          .verifySeals(
+            sealedBeaconBlock.commitSeals,
+            sealedBeaconBlock.beaconBlock.beaconBlockHeader,
+          ).get()
+      assertThat(verificationResult).isEqualTo(Ok(Unit))
+    }
+  }
 
   // All blocks except the first must be produced within 0th round. Absence of transactions will trigger RoundChange
   // events post test
   private fun validateRoundChange(maxBlockNumber: Long) {
     val roundChangeMessages =
-      spyingP2pNetwork.emittedMessages.filter {
+      spyingP2pNetwork.emittedQbftMessages.filter {
         it is RoundChange
       }
     assertThat(roundChangeMessages).isNotEmpty()
@@ -176,7 +171,7 @@ class MaruQbftTest {
       Crypto
         .privateKeyToValidator(MaruFactory.VALIDATOR_PRIVATE_KEY.fromHexToByteArray())
         .toAddress()
-    spyingP2pNetwork.emittedMessages.forEach {
+    spyingP2pNetwork.emittedQbftMessages.forEach {
       assertThat(it.author)
         .withFailMessage { "Unexpected signer address for message=$it author=${it.author}" }
         .isEqualTo(validatorAddress)
@@ -187,36 +182,58 @@ class MaruQbftTest {
   fun `Maru works if Besu stops mid flight`() {
     val blocksToProduce = 5
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+      transactionsHelper.run {
+        networkParticipantStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
     }
     cluster.stop()
     Thread.sleep(3000)
-    cluster.start(besuNode)
+    cluster.start(networkParticipantStack.besuNode)
 
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+      transactionsHelper.run {
+        networkParticipantStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
     }
 
-    val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
+    val blocks = networkParticipantStack.besuNode.getMinedBlocks(blocksToProduce * 2)
     blocks.verifyBlockTimeWithAGapOn(blocksToProduce)
   }
 
   @Test
-  @Disabled
   fun `Maru works after restart`() {
-    // TODO: This test cannot work as the LibP2PNetwork is not able to restart
     val blocksToProduce = 5
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+      transactionsHelper.run {
+        networkParticipantStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
     }
-    maruNode.stop()
+    networkParticipantStack.maruApp.stop()
     Thread.sleep(3000)
-    maruNode.start()
+    networkParticipantStack.maruApp.start()
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+      transactionsHelper.run {
+        networkParticipantStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
     }
 
-    val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
+    val blocks = networkParticipantStack.besuNode.getMinedBlocks(blocksToProduce * 2)
     blocks.verifyBlockTimeWithAGapOn(blocksToProduce)
   }
 
@@ -224,27 +241,39 @@ class MaruQbftTest {
   fun `Maru works after recreation`() {
     val blocksToProduce = 5
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+      transactionsHelper.run {
+        networkParticipantStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
     }
-    maruNode.stop()
-    maruNode.close()
+    networkParticipantStack.maruApp.stop()
+    networkParticipantStack.maruApp.close()
 
     Thread.sleep(3000)
-    maruNode =
-      MaruFactory.buildTestMaru(
-        ethereumJsonRpcUrl = besuNode.jsonRpcBaseUrl().get(),
-        engineApiRpc = besuNode.engineRpcUrl().get(),
+    networkParticipantStack.maruApp =
+      MaruFactory.buildTestMaruValidator(
+        ethereumJsonRpcUrl = networkParticipantStack.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = networkParticipantStack.besuNode.engineRpcUrl().get(),
         elFork = ElFork.Prague,
-        dataDir = tmpDir.toPath(),
+        dataDir = networkParticipantStack.tmpDir,
       )
     // The difference from the previous test is that BeaconChain is instantiated with the Maru instance and it's not
     // affected by start and stop
-    maruNode.start()
+    networkParticipantStack.maruApp.start()
     repeat(blocksToProduce) {
-      sendTransactionAndAssertExecution(transactionsHelper.createAccount("another account"), Amount.ether(100))
+      transactionsHelper.run {
+        networkParticipantStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
     }
 
-    val blocks = besuNode.getMinedBlocks(blocksToProduce * 2)
+    val blocks = networkParticipantStack.besuNode.getMinedBlocks(blocksToProduce * 2)
 
     blocks.verifyBlockTimeWithAGapOn(blocksToProduce)
   }

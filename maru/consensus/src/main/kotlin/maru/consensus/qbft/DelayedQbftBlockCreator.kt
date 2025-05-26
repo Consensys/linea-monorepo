@@ -24,6 +24,7 @@ import maru.core.BeaconBlock
 import maru.core.BeaconBlockBody
 import maru.core.BeaconBlockHeader
 import maru.core.BeaconState
+import maru.core.EMPTY_HASH
 import maru.core.HashUtil
 import maru.core.Seal
 import maru.core.SealedBeaconBlock
@@ -59,9 +60,7 @@ class DelayedQbftBlockCreator(
       commitSeals: Collection<SECPSignature>,
     ): QbftBlock {
       val seals =
-        commitSeals.map {
-          Seal(it.encodedBytes().toArrayUnsafe())
-        }
+        commitSeals.map { Seal(it.encodedBytes().toArrayUnsafe()) }.toSet()
       val beaconBlock = qbftBlock.toBeaconBlock()
       val beaconBlockHeader = beaconBlock.beaconBlockHeader
       val updatedBlockHeader = beaconBlockHeader.copy(round = roundNumber.toUInt())
@@ -101,7 +100,7 @@ class DelayedQbftBlockCreator(
         timestamp = headerTimeStampSeconds.toULong(),
         proposer = Validator(proposer.toArrayUnsafe()),
         parentRoot = parentBeaconBlockHeader.hash(),
-        stateRoot = BeaconBlockHeader.EMPTY_HASH, // temporary state root to avoid circular dependency
+        stateRoot = EMPTY_HASH, // temporary state root to avoid circular dependency
         bodyRoot = HashUtil.bodyRoot(beaconBlockBody),
         headerHashFunction = HashUtil::headerHash,
       )

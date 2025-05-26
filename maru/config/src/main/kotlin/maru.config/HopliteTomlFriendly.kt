@@ -17,38 +17,40 @@ package maru.config
 
 import java.net.URL
 
-data class ValidatorDtoToml(
-  val elClientEngineApiEndpoint: URL,
-  val jwtSecretPath: String? = null,
+data class PayloadValidatorDto(
+  val engineApiEndpoint: ApiEndpointDto,
+  val ethApiEndpoint: ApiEndpointDto,
 ) {
-  fun domainFriendly(): Validator =
-    Validator(
-      engineApiClient = ApiEndpointDtoToml(elClientEngineApiEndpoint, jwtSecretPath).toDomain(),
+  fun domainFriendly(): ValidatorElNode =
+    ValidatorElNode(
+      ethApiEndpoint = ethApiEndpoint.domainFriendly(),
+      engineApiEndpoint = engineApiEndpoint.domainFriendly(),
     )
 }
 
-data class ApiEndpointDtoToml(
+data class ApiEndpointDto(
   val endpoint: URL,
   val jwtSecretPath: String? = null,
 ) {
-  fun toDomain(): ApiEndpointConfig = ApiEndpointConfig(endpoint = endpoint, jwtSecretPath = jwtSecretPath)
+  fun domainFriendly(): ApiEndpointConfig = ApiEndpointConfig(endpoint = endpoint, jwtSecretPath = jwtSecretPath)
 }
 
 data class MaruConfigDtoToml(
   private val persistence: Persistence,
-  private val qbftOptions: QbftOptions,
-  private val sotEthEndpoint: ApiEndpointDtoToml,
+  private val qbftOptions: QbftOptions?,
   private val p2pConfig: P2P?,
-  private val validator: ValidatorDtoToml?,
-  private val followerEngineApis: Map<String, ApiEndpointDtoToml>?,
+  private val payloadValidator: PayloadValidatorDto,
+  private val followerEngineApis: Map<String, ApiEndpointDto>?,
 ) {
   fun domainFriendly(): MaruConfig =
     MaruConfig(
       persistence = persistence,
       qbftOptions = qbftOptions,
-      sotNode = sotEthEndpoint.toDomain(),
       p2pConfig = p2pConfig,
-      validator = validator?.domainFriendly(),
-      followers = FollowersConfig(followers = followerEngineApis?.mapValues { it.value.toDomain() } ?: emptyMap()),
+      validatorElNode = payloadValidator.domainFriendly(),
+      followers =
+        FollowersConfig(
+          followers = followerEngineApis?.mapValues { it.value.domainFriendly() } ?: emptyMap(),
+        ),
     )
 }

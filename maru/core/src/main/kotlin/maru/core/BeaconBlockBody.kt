@@ -16,6 +16,6 @@
 package maru.core
 
 data class BeaconBlockBody(
-  val prevCommitSeals: List<Seal>,
+  val prevCommitSeals: Set<Seal>,
   val executionPayload: ExecutionPayload,
 )

@@ -27,9 +27,7 @@ class HopliteFriendlinessTest {
     """
     [persistence]
     data-path="/some/path"
-
-    [sot-eth-endpoint]
-    endpoint = "http://localhost:8545"
+    private-key-path = "/private-key/path"
 
     [qbft-options]
 
@@ -38,9 +36,9 @@ class HopliteFriendlinessTest {
     ip-address = "127.0.0.1"
     static-peers = []
 
-    [validator]
-    jwt-secret-path = "/secret/path"
-    el-client-engine-api-endpoint = "http://localhost:8555"
+    [payload-validator]
+    engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
+    eth-api-endpoint = { endpoint = "http://localhost:8545" }
     """.trimIndent()
   private val rawConfig =
     """
@@ -58,27 +56,31 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
-          persistence = Persistence(Path("/some/path")),
-          sotEthEndpoint =
-            ApiEndpointDtoToml(
-              endpoint = URI.create("http://localhost:8545").toURL(),
-            ),
-          qbftOptions = QbftOptions(),
+          persistence = Persistence(dataPath = Path("/some/path"), privateKeyPath = Path("/private-key/path")),
+          qbftOptions =
+            QbftOptions(),
           p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
-          validator =
-            ValidatorDtoToml(
-              elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
-              jwtSecretPath = "/secret/path",
+          payloadValidator =
+            PayloadValidatorDto(
+              ethApiEndpoint =
+                ApiEndpointDto(
+                  endpoint = URI.create("http://localhost:8545").toURL(),
+                ),
+              engineApiEndpoint =
+                ApiEndpointDto(
+                  endpoint = URI.create("http://localhost:8555").toURL(),
+                  jwtSecretPath = "/secret/path",
+                ),
             ),
           followerEngineApis =
             mapOf(
               "follower1" to
-                ApiEndpointDtoToml(
+                ApiEndpointDto(
                   URI.create("http://localhost:1234").toURL(),
                   jwtSecretPath =
                     "/secret/path",
                 ),
-              "follower2" to ApiEndpointDtoToml(URI.create("http://localhost:4321").toURL()),
+              "follower2" to ApiEndpointDto(URI.create("http://localhost:4321").toURL()),
             ),
         ),
       )
@@ -91,17 +93,20 @@ class HopliteFriendlinessTest {
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
-          persistence = Persistence(Path("/some/path")),
-          sotEthEndpoint =
-            ApiEndpointDtoToml(
-              endpoint = URI.create("http://localhost:8545").toURL(),
-            ),
+          persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           qbftOptions = QbftOptions(),
           p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
-          validator =
-            ValidatorDtoToml(
-              elClientEngineApiEndpoint = URI.create("http://localhost:8555").toURL(),
-              jwtSecretPath = "/secret/path",
+          payloadValidator =
+            PayloadValidatorDto(
+              ethApiEndpoint =
+                ApiEndpointDto(
+                  endpoint = URI.create("http://localhost:8545").toURL(),
+                ),
+              engineApiEndpoint =
+                ApiEndpointDto(
+                  endpoint = URI.create("http://localhost:8555").toURL(),
+                  jwtSecretPath = "/secret/path",
+                ),
             ),
           followerEngineApis = null,
         ),
@@ -114,15 +119,19 @@ class HopliteFriendlinessTest {
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
-          persistence = Persistence(Path("/some/path")),
-          sotNode =
-            ApiEndpointConfig(
-              endpoint = URI.create("http://localhost:8545").toURL(),
-            ),
+          persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
-          validator =
-            Validator(
-              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL(), "/secret/path"),
+          validatorElNode =
+            ValidatorElNode(
+              engineApiEndpoint =
+                ApiEndpointConfig(
+                  URI.create("http://localhost:8555").toURL(),
+                  jwtSecretPath = "/secret/path",
+                ),
+              ethApiEndpoint =
+                ApiEndpointConfig(
+                  endpoint = URI.create("http://localhost:8545").toURL(),
+                ),
             ),
           qbftOptions = QbftOptions(),
           followers =
@@ -143,16 +152,21 @@ class HopliteFriendlinessTest {
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
-          persistence = Persistence(Path("/some/path")),
-          sotNode =
-            ApiEndpointConfig(
-              endpoint = URI.create("http://localhost:8545").toURL(),
-            ),
-          qbftOptions = QbftOptions(),
+          persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
+          qbftOptions =
+            QbftOptions(),
           p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
-          validator =
-            Validator(
-              engineApiClient = ApiEndpointConfig(URI.create("http://localhost:8555").toURL(), "/secret/path"),
+          validatorElNode =
+            ValidatorElNode(
+              engineApiEndpoint =
+                ApiEndpointConfig(
+                  URI.create("http://localhost:8555").toURL(),
+                  jwtSecretPath = "/secret/path",
+                ),
+              ethApiEndpoint =
+                ApiEndpointConfig(
+                  endpoint = URI.create("http://localhost:8545").toURL(),
+                ),
             ),
           followers =
             FollowersConfig(
@@ -174,7 +188,7 @@ class HopliteFriendlinessTest {
     """.trimIndent()
 
   @Test
-  fun qbftOptionsAreParseable() {
+  fun validatorDutiesAreParseable() {
     val config =
       Utils.parseTomlConfig<QbftOptions>(qbftOptions)
     assertThat(config)

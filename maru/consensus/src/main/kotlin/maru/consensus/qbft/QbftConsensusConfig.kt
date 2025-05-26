@@ -17,9 +17,11 @@ package maru.consensus.qbft
 
 import maru.consensus.ConsensusConfig
 import maru.consensus.ElFork
+import maru.core.Validator
 
 data class QbftConsensusConfig(
   val feeRecipient: ByteArray,
+  val validatorSet: Set<Validator>,
   val elFork: ElFork,
 ) : ConsensusConfig {
   init {

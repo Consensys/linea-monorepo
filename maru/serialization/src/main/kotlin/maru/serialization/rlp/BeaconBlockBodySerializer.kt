@@ -41,7 +41,7 @@ class BeaconBlockBodySerializer(
   override fun readFrom(rlpInput: RLPInput): BeaconBlockBody {
     rlpInput.enterList()
 
-    val prevCommitSeals = rlpInput.readList { sealSerializer.readFrom(rlpInput) }
+    val prevCommitSeals = rlpInput.readList { sealSerializer.readFrom(rlpInput) }.toSet()
     val executionPayload = executionPayloadSerializer.readFrom(rlpInput)
 
     rlpInput.leaveList()

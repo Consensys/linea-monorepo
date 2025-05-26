@@ -23,6 +23,8 @@ import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
 import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.qbft.QbftConsensusConfig
+import maru.core.Validator
+import maru.extensions.fromHexToByteArray
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -40,6 +42,7 @@ class JsonFriendlyForksScheduleTest {
         },
         "4": {
           "type": "qbft",
+          "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
           "blockTimeSeconds": 6,
           "feeRecipient": "0x0000000000000000000000000000000000000000",
           "elFork": "Prague"
@@ -47,34 +50,6 @@ class JsonFriendlyForksScheduleTest {
       }
     }
     """.trimIndent()
-
-  @Test
-  fun genesisFileIsParseable() {
-    val config =
-      parseJsonConfig<JsonFriendlyForksSchedule>(
-        genesisConfig,
-      )
-    val expectedDelegatedConsensusMap =
-      mapOf(
-        "type" to "delegated",
-        "blockTimeSeconds" to "4",
-      )
-    val expectedQbftMap =
-      mapOf(
-        "type" to "qbft",
-        "blockTimeSeconds" to "6",
-        "feeRecipient" to "0x0000000000000000000000000000000000000000",
-        "elFork" to "Prague",
-      )
-    assertThat(config).isEqualTo(
-      JsonFriendlyForksSchedule(
-        mapOf(
-          "2" to expectedDelegatedConsensusMap,
-          "4" to expectedQbftMap,
-        ),
-      ),
-    )
-  }
 
   @Test
   fun genesisFileIsConvertableToDomain() {
@@ -87,7 +62,7 @@ class JsonFriendlyForksScheduleTest {
         setOf(
           ForkSpec(
             timestampSeconds = 2,
-            blockTimeSeconds = 2,
+            blockTimeSeconds = 4,
             ElDelegatedConsensus.ElDelegatedConfig,
           ),
           ForkSpec(
@@ -96,6 +71,7 @@ class JsonFriendlyForksScheduleTest {
             configuration =
               QbftConsensusConfig(
                 feeRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
+                validatorSet = setOf(Validator("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),
                 elFork = ElFork.Prague,
               ),
           ),
@@ -121,13 +97,14 @@ class JsonFriendlyForksScheduleTest {
     assertThatThrownBy {
       parseJsonConfig<JsonFriendlyForksSchedule>(
         invalidConfiguration,
-      ).domainFriendly()
+      )
     }.isInstanceOf(Exception::class.java)
   }
 
   private inline fun <reified T : Any> parseJsonConfig(json: String): T =
     ConfigLoaderBuilder
       .default()
+      .addDecoder(ForkConfigDecoder())
       .withExplicitSealedTypes()
       .addSource(JsonPropertySource(json))
       .build()

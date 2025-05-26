@@ -16,22 +16,15 @@
 package maru.p2p
 
 import maru.core.SealedBeaconBlock
+import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-enum class MessageType(
-  val code: Byte,
-) {
-  QBFT(0x01), // Won't be supported until Milestone 6
-  BLOCK(0x02),
-}
-
-data class Message<T : Any>(
-  val type: MessageType,
-  val payload: T,
-) {
-  init {
-    when (type) {
-      MessageType.QBFT -> Unit // require(payload is BftMessage≤*>) Not adding this to avoid dependency on QBFT
-      MessageType.BLOCK -> require(payload is SealedBeaconBlock)
-    }
+class SealedBeaconBeaconBlockBroadcaster(
+  val p2PNetwork: P2PNetwork,
+) : SealedBeaconBlockHandler {
+  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> {
+    // TODO: New block message might need an intermediary wrapper in the future
+    val message = Message(MessageType.BLOCK, sealedBeaconBlock)
+    p2PNetwork.broadcastMessage(message)
+    return SafeFuture.completedFuture(Unit)
   }
 }

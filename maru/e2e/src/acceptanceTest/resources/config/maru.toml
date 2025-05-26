@@ -1,17 +1,15 @@
 [persistence]
 data-path="/tmp/maru-db"
 
-[sot-eth-endpoint]
-endpoint = "http://localhost:8545"
-
 [qbft-options]
 
 [p2p-config]
 port = 3322
 ip-address = "127.0.0.1"
 
-[validator]
-el-client-engine-api-endpoint = "http://localhost:8550"
+[payload-validator]
+engine-api-endpoint = { endpoint = "http://localhost:8550" }
+eth-api-endpoint = { endpoint = "http://localhost:8545" }
 
 [follower-engine-apis]
 "follower-besu" = { endpoint = "http://localhost:9550" }
