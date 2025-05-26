@@ -56,3 +56,26 @@ class TomlKotlinDurationDecoder : Decoder<Duration> {
     return type.classifier == Duration::class
   }
 }
+
+class TomlSignerTypeDecoder : Decoder<SignerConfigToml.SignerType> {
+  override fun decode(
+    node: Node,
+    type: KType,
+    context: DecoderContext
+  ): ConfigResult<SignerConfigToml.SignerType> {
+    return when (node) {
+      is com.sksamuel.hoplite.StringNode -> runCatching {
+        SignerConfigToml.SignerType.valueOfIgnoreCase(node.value.lowercase())
+      }.fold(
+        { it.valid() },
+        { ConfigFailure.DecodeError(node, type).invalid() }
+      )
+
+      else -> { ConfigFailure.DecodeError(node, type).invalid() }
+    }
+  }
+
+  override fun supports(type: KType): Boolean {
+    return type.classifier == SignerConfigToml.SignerType::class
+  }
+}
