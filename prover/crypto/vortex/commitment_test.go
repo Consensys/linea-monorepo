@@ -44,8 +44,8 @@ func TestLinearCombination(t *testing.T) {
 
 	// Evaluate the two on a random-ish point. Should
 	// yield the same result.
-	y0 := smartvectors.EvaluateLagrangeOnFext(lc, x)
-	y1 := smartvectors.EvaluateLagrangeOnFext(proof.LinearCombination, x)
+	y0 := smartvectorsext.EvaluateLagrange(lc, x)
+	y1 := smartvectorsext.EvaluateLagrange(proof.LinearCombination, x)
 
 	require.Equal(t, y0, y1)
 }
@@ -61,8 +61,8 @@ var testCaseParameters = []*Params{
 func TestProver(t *testing.T) {
 
 	var (
-		x          = field.NewElement(478)
-		randomCoin = field.NewElement(1523)
+		x          = fext.RandomElement()
+		randomCoin = fext.RandomElement()
 		entryList  = []int{1, 7, 5, 6, 4, 5, 1, 2}
 	)
 
@@ -178,7 +178,7 @@ func TestProver(t *testing.T) {
 					numCommitments = len(testCase.NumPolysPerCommitment)
 					effPolySize    = params.NbColumns
 					polyLists      = make([][]smartvectors.SmartVector, numCommitments)
-					yLists         = make([][]field.Element, numCommitments)
+					yLists         = make([][]fext.Element, numCommitments)
 					roots          = make([]types.Bytes32, numCommitments)
 					trees          = make([]*smt.Tree, numCommitments)
 				)
@@ -190,7 +190,7 @@ func TestProver(t *testing.T) {
 				for i := range polyLists {
 					// Polynomials to commit to
 					polys := make([]smartvectors.SmartVector, testCase.NumPolysPerCommitment[i])
-					ys := make([]field.Element, testCase.NumPolysPerCommitment[i])
+					ys := make([]fext.Element, testCase.NumPolysPerCommitment[i])
 					for j := range polys {
 						polys[j] = smartvectors.Rand(effPolySize)
 

@@ -7,8 +7,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
+	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
@@ -35,14 +37,14 @@ type VerifierInputs struct {
 	// MerkleRoots are the commitment to verify the opening for
 	MerkleRoots []types.Bytes32
 	// X is the univariate evaluation point
-	X field.Element
+	X fext.Element
 	// Ys are the alleged evaluation at point X
-	Ys [][]field.Element
+	Ys [][]fext.Element
 	// OpeningProof contains the messages of the prover
 	OpeningProof OpeningProof
 	// RandomCoin is the random coin sampled by the verifier to be used to
 	// construct the linear combination of the columns.
-	RandomCoin field.Element
+	RandomCoin fext.Element
 	// EntryList is the random coin representing the columns to open.
 	EntryList []int
 }
@@ -125,13 +127,13 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 		}
 
 		// Check the linear combination is consistent with the opened column
-		y := poly.Eval(fullCol, v.RandomCoin)
+		y := poly.EvalOnExtField(fullCol, v.RandomCoin)
 
 		if selectedColID > linearCombination.Len() {
 			return fmt.Errorf("entry overflows the size of the linear combination")
 		}
 
-		if y != linearCombination.Get(selectedColID) {
+		if y != linearCombination.GetExt(selectedColID) {
 			other := linearCombination.Get(selectedColID)
 			return fmt.Errorf("the linear combination is inconsistent %v : %v", y.String(), other.String())
 		}
@@ -148,7 +150,7 @@ func (v *VerifierInputs) checkStatement() (err error) {
 	var (
 		Yjoined     = utils.Join(v.Ys...)
 		alphaY      = smartvectors.EvaluateLagrangeOnFext(v.OpeningProof.LinearCombination, v.X)
-		alphaYProme = poly.Eval(Yjoined, v.RandomCoin)
+		alphaYProme = polyext.Eval(Yjoined, v.RandomCoin)
 	)
 
 	if alphaY != alphaYProme {

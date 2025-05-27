@@ -213,8 +213,8 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 				smallWit[i] = small[i].GetColAssignment(run)
 			}
 
-			gamma := run.GetRandomCoinField(gamma.Name)
-			rPrime = smartvectors.PolyEval(smallWit, gamma)
+			gamma := run.GetRandomCoinFext(gamma.Name)
+			rPrime = smartvectorsext.PolyEval(smallWit, gamma)
 		}
 
 		accSmallWit := make([]field.Element, lenSmall)

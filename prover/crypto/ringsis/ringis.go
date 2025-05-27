@@ -67,7 +67,7 @@ func GenerateKey(params Params, maxNumFieldToHash int) Key {
 // to the sum sum_i A[i]*m Mod X^{d}+1
 //
 // It is equivalent to calling r.Write(element.Marshal()); outBytes = r.Sum(nil);
-func (s *Key) Hash(v []field.Element) []field.Element {
+func (s *Key) Hash(v []fr.Element) []fr.Element {
 
 	// since hashing writes into internal buffers
 	// we need to guard against races conditions.

@@ -9,9 +9,10 @@ import (
 
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
+
+	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/gnark/std/hash"
@@ -21,6 +22,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
@@ -29,12 +31,12 @@ import (
 // ------------------------------------------------------------
 // test computeLagrange
 
-func evalPoly(p []fr.Element, z fr.Element) fr.Element {
-	var res fr.Element
+func evalPoly(p []field.Element, z fext.Element) fext.Element {
+	var res fext.Element
 	n := len(p)
 	for i := 0; i < len(p); i++ {
 		res.Mul(&res, &z)
-		res.Add(&res, &p[n-1-i])
+		res.Add(&res, &fext.FromBase(p[n-1-i]))
 	}
 	return res
 }
