@@ -15,7 +15,7 @@ import (
 
 var (
 	COMPILED_IOP_FILE_PATH   = "../bin/dw_compiled_def_iop.bin"
-	DW_COMPILED_DEFAULT_PATH = "../bin/dw_compiled_def.bin"
+	DW_COMPILED_DEFAULT_PATH = "../bin/dw_compiled_def_min.bin"
 )
 
 func testDeserFromFile(t *testing.T, binFile string) {
@@ -25,7 +25,7 @@ func testDeserFromFile(t *testing.T, binFile string) {
 	}
 
 	// Start CPU profiling
-	f, err := os.Create("cpu-compiled-default.prof")
+	f, err := os.Create("cpu-compiled-min.prof")
 	if err != nil {
 		t.Fatalf("could not create CPU profile: %v", err)
 	}

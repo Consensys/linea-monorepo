@@ -144,45 +144,6 @@ func serializeRoundData(comp *wizard.CompiledIOP, raw *rawCompiledIOP, round int
 	mu.Unlock()
 }
 
-func DeRecurCompIOP(data []byte, comp *wizard.CompiledIOP) (*wizard.CompiledIOP, error) {
-	startTime := time.Now()
-	raw := &rawCompiledIOP{}
-	if err := deserializeAnyWithCborPkg(data, raw); err != nil {
-		return nil, fmt.Errorf("CBOR unmarshal failed: %w", err)
-	}
-
-	numRounds := len(raw.Columns)
-	if numRounds == 0 {
-		return comp, nil
-	}
-
-	logrus.Infof("Number of rounds to serde in CompiledIOP: %d", numRounds)
-
-	comp.DummyCompiled = raw.DummyCompiled
-	comp.SelfRecursionCount = raw.SelfRecursionCount
-
-	// Register all column IDs first to ensure queries/subprovers can reference them. Structure deserialization
-	// to pre-register all referenced data (e.g., columns) before processing dependent fields.
-	if err := registerAllColumns(raw, comp, numRounds); err != nil {
-		return nil, fmt.Errorf("register columns: %w", err)
-	}
-
-	if err := deserializeNonRoundData(raw, comp); err != nil {
-		return nil, err
-	}
-
-	if err := deserializeRoundData(raw, comp, numRounds); err != nil {
-		return nil, err
-	}
-
-	if err := deserializeFiatShamirSetup(raw, comp); err != nil {
-		return nil, fmt.Errorf("deserialize FiatShamirSetup: %w", err)
-	}
-
-	logrus.Printf("Successfully deserialized CompiledIOP and took %vs \n", time.Since(startTime).Seconds())
-	return comp, nil
-}
-
 // DeserializeCompiledIOP unmarshals a wizard.CompiledIOP object from CBOR.
 func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 	startTime := time.Now()
