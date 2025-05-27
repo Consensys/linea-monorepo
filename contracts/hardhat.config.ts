@@ -16,6 +16,7 @@ import "./scripts/operational/tasks/setVerifierAddressTask";
 import "./scripts/operational/tasks/setMessageServiceOnTokenBridgeTask";
 
 import "solidity-docgen";
+import { overrides } from "./hardhat_overrides";
 
 dotenv.config();
 
@@ -62,18 +63,8 @@ const config: HardhatUserConfig = {
           evmVersion: "cancun",
         },
       },
-      {
-        version: "0.8.19",
-        settings: {
-          viaIR: useViaIR,
-          optimizer: {
-            enabled: true,
-            runs: 10_000,
-          },
-          evmVersion: "london",
-        },
-      },
     ],
+    overrides: overrides,
   },
   namedAccounts: {
     deployer: {
