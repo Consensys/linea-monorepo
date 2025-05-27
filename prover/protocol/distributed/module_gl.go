@@ -263,14 +263,14 @@ func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *Mo
 	return moduleGL
 }
 
-func (m *ModuleGL) GetModuleTranslator() moduleTranslator {
-	return m.moduleTranslator
-}
+// func (m *ModuleGL) GetModuleTranslator() moduleTranslator {
+// 	return m.moduleTranslator
+// }
 
-func (m *ModuleGL) SetModuleTranslator(comp *wizard.CompiledIOP, disc ModuleDiscoverer) {
-	m.moduleTranslator.Wiop = comp
-	m.moduleTranslator.Disc = disc
-}
+// func (m *ModuleGL) SetModuleTranslator(comp *wizard.CompiledIOP, disc ModuleDiscoverer) {
+// 	m.moduleTranslator.Wiop = comp
+// 	m.moduleTranslator.Disc = disc
+// }
 
 // GetMainProverStep returns a [wizard.ProverStep] running [Assign] passing
 // the provided [ModuleWitness] argument.

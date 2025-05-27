@@ -287,28 +287,27 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		}
 
 		fieldType := f.fieldType
-		if fieldType == compiledIOPType {
-			logrus.Infof("Ignoring a struct field name:%s of type *wizard.CompiledIOP in ref. mode\n", f.name)
-			continue
-		}
+		// if fieldType == compiledIOPType {
+		// 	logrus.Infof("Ignoring a struct field name:%s of type *wizard.CompiledIOP in ref. mode\n", f.name)
+		// 	continue
+		// }
 
 		fieldValue := v.FieldByName(f.name)
-		/*
 
-			// Special handling for *wizard.CompiledIOP fields
-			if fieldType == compiledIOPType {
-				if fieldValue.IsNil() {
-					raw[f.rawName] = []byte(NilString)
-				} else {
-					logrus.Infof("Ser. a struct field name:%s of type *wizard.CompiledIOP \n", f.name)
-					iopSer, err := SerializeCompiledIOP(fieldValue.Interface().(*wizard.CompiledIOP))
-					if err != nil {
-						return nil, fmt.Errorf("failed to serialize *wizard.CompiledIOP field %s: %w", f.name, err)
-					}
-					raw[f.rawName] = iopSer
+		// Special handling for *wizard.CompiledIOP fields
+		if fieldType == compiledIOPType {
+			if fieldValue.IsNil() {
+				raw[f.rawName] = []byte(NilString)
+			} else {
+				logrus.Infof("Ser. a field name:%s of type *wizard.CompiledIOP embedded within a struct \n", f.name)
+				iopSer, err := SerializeCompiledIOP(fieldValue.Interface().(*wizard.CompiledIOP))
+				if err != nil {
+					return nil, fmt.Errorf("failed to serialize *wizard.CompiledIOP field %s: %w", f.name, err)
 				}
-				continue
-			} */
+				raw[f.rawName] = iopSer
+			}
+			continue
+		}
 
 		// Serialize other fields as usual
 		r, err := SerializeValue(fieldValue, newMode)
@@ -630,32 +629,31 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 		}
 
 		fieldType := f.fieldType
-		if fieldType == compiledIOPType {
-			logrus.Infof("Ignoring Deser. a struct field name:%s of type *wizard.CompiledIOP  in ref. mode\n", f.name)
-			// newMode = ReferenceMode
-			continue
-		}
+		// if fieldType == compiledIOPType {
+		// 	logrus.Infof("Ignoring Deser. a struct field name:%s of type *wizard.CompiledIOP  in ref. mode\n", f.name)
+		// 	// newMode = ReferenceMode
+		// 	continue
+		// }
 
 		fieldRaw, ok := raw[f.rawName]
 		if !ok {
 			utils.Panic("Missing struct field %q.%v of type %q, provided sub-JSON: %v", t.String(), f.name, f.fieldType.String(), raw)
 		}
 
-		/*
-			// Special handling for *wizard.CompiledIOP fields => ex: RecursionComp
-			if fieldType == compiledIOPType {
-				if bytes.Equal(fieldRaw, []byte(NilString)) {
-					v.FieldByName(f.name).Set(reflect.Zero(fieldType))
-				} else {
-					logrus.Infof("Deser. a struct field name:%s of type *wizard.CompiledIOP \n", f.name)
-					iop, err := DeserializeCompiledIOP(fieldRaw)
-					if err != nil {
-						return reflect.Value{}, fmt.Errorf("failed to deserialize *wizard.CompiledIOP field %s: %w", f.name, err)
-					}
-					v.FieldByName(f.name).Set(reflect.ValueOf(iop))
+		// Special handling for *wizard.CompiledIOP fields => ex: RecursionComp
+		if fieldType == compiledIOPType {
+			if bytes.Equal(fieldRaw, []byte(NilString)) {
+				v.FieldByName(f.name).Set(reflect.Zero(fieldType))
+			} else {
+				logrus.Infof("Deser. field name:%s of type *wizard.CompiledIOP embedded within a struct\n", f.name)
+				iop, err := DeserializeCompiledIOP(fieldRaw)
+				if err != nil {
+					return reflect.Value{}, fmt.Errorf("failed to deserialize *wizard.CompiledIOP field %s: %w", f.name, err)
 				}
-				continue
-			} */
+				v.FieldByName(f.name).Set(reflect.ValueOf(iop))
+			}
+			continue
+		}
 
 		// Deserialize other fields as usual
 		fieldValue, err := DeserializeValue(fieldRaw, newMode, fieldType, comp)

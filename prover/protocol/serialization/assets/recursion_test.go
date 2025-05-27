@@ -58,7 +58,8 @@ func TestSerdeIOP(t *testing.T) {
 	// logrus.Printf("Column exists in recursion input iop:%v\n", testCompInput.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_1)))
 	// logrus.Printf("Column exists in recur-segment recur iop:%v\n", testCompRecur.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_1)))
 	// logrus.Printf("Column exists in recursion input iop:%v\n", testCompInput.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_2)))
-	// logrus.Printf("Column exists in recur-segment recur iop:%v\n", testCompRecur.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_2)))
+
+	// logrus.Printf("Length of PcsCtx:%d\n", len(testCompRecur.PcsCtxs))
 
 	startTime := time.Now()
 	serComp, err := serialization.SerializeCompiledIOP(testComp)

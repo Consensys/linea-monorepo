@@ -3,6 +3,7 @@ package tests
 import (
 	"bytes"
 	"os"
+	"runtime/pprof" // Add pprof import
 	"testing"
 	"time"
 
@@ -17,17 +18,27 @@ var (
 	DW_COMPILED_DEFAULT_PATH = "../bin/dw_compiled_def.bin"
 )
 
-// Parametrized test function for deserialization using switch case
 func testDeserFromFile(t *testing.T, binFile string) {
 	// Ensure the file exists
 	if _, err := os.Stat(binFile); os.IsNotExist(err) {
 		t.Fatalf("serialized file does not exist: %s\n", binFile)
 	}
 
+	// Start CPU profiling
+	f, err := os.Create("cpu-compiled-default.prof")
+	if err != nil {
+		t.Fatalf("could not create CPU profile: %v", err)
+	}
+	defer f.Close()
+	if err := pprof.StartCPUProfile(f); err != nil {
+		t.Fatalf("could not start CPU profile: %v", err)
+	}
+	defer pprof.StopCPUProfile()
+
 	// Load the serialized data from the file
 	loadStartTime := time.Now()
 	var serComp bytes.Buffer
-	err := utils.ReadFromFile(binFile, &serComp)
+	err = utils.ReadFromFile(binFile, &serComp)
 	if err != nil {
 		t.Fatalf("error reading serialized data from file: %s\n", err.Error())
 	}
@@ -58,10 +69,10 @@ func testDeserFromFile(t *testing.T, binFile string) {
 	}
 }
 
-func TestDeCompIOP(t *testing.T) {
-	testDeserFromFile(t, COMPILED_IOP_FILE_PATH)
-}
-
 func TestDeRecurSegComp(t *testing.T) {
 	testDeserFromFile(t, DW_COMPILED_DEFAULT_PATH)
+}
+
+func TestDeCompIOP(t *testing.T) {
+	testDeserFromFile(t, COMPILED_IOP_FILE_PATH)
 }

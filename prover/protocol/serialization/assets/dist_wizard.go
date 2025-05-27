@@ -283,26 +283,29 @@ func SerializeModuleLPP(lpp *distributed.ModuleLPP) ([]byte, error) {
 
 	raw := &rawModuleLPP{}
 
-	// Serialize CompiledIOP first (includes Columns store)
-	comp := lpp.GetModuleTranslator().Wiop
-	if comp == nil {
-		return nil, fmt.Errorf("ModuleLPP has nil CompiledIOP")
-	}
+	/*
+		// Serialize CompiledIOP first (includes Columns store)
+		comp := lpp.GetModuleTranslator().Wiop
+		if comp == nil {
+			return nil, fmt.Errorf("ModuleLPP has nil CompiledIOP")
+		}
 
-	compSer, err := serialization.SerializeCompiledIOP(comp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize CompiledIOP: %w", err)
-	}
-	raw.CompiledIOP = compSer
+		compSer, err := serialization.SerializeCompiledIOP(comp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize CompiledIOP: %w", err)
+		}
+		raw.CompiledIOP = compSer
 
-	// Serialize disc
-	disc := lpp.GetModuleTranslator().Disc
-	serComp, err := SerializeDisc(disc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize LPP module discoverer:%w", err)
-	}
+		// Serialize disc
+		disc := lpp.GetModuleTranslator().Disc
+		serComp, err := SerializeDisc(disc)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize LPP module discoverer:%w", err)
+		}
 
-	raw.Disc = serComp
+		raw.Disc = serComp
+
+	*/
 
 	// Serialize InitialFiatShamirState
 	if lpp.InitialFiatShamirState != nil {
@@ -387,18 +390,23 @@ func DeserializeModuleLPP(data []byte) (*distributed.ModuleLPP, error) {
 	// Initialize ModuleLPP
 	lpp := &distributed.ModuleLPP{}
 
-	// Deserialize CompiledIOP first (includes Columns store)
-	comp, err := serialization.DeserializeCompiledIOP(raw.CompiledIOP)
-	if err != nil {
-		return nil, fmt.Errorf("failed to deserialize CompiledIOP: %w", err)
-	}
+	/*
+		// Deserialize CompiledIOP first (includes Columns store)
+		comp, err := serialization.DeserializeCompiledIOP(raw.CompiledIOP)
+		if err != nil {
+			return nil, fmt.Errorf("failed to deserialize CompiledIOP: %w", err)
+		}
 
-	disc, err := DeserializeDisc(raw.Disc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to deserialize LPP module discoverer: %w", err)
-	}
-	lpp.SetModuleTranslator(comp, disc)
 
+		disc, err := DeserializeDisc(raw.Disc)
+		if err != nil {
+			return nil, fmt.Errorf("failed to deserialize LPP module discoverer: %w", err)
+		}
+		lpp.SetModuleTranslator(comp, disc)
+
+	*/
+
+	comp := serialization.NewEmptyCompiledIOP()
 	// Deserialize InitialFiatShamirState (depends on Columns)
 	if !bytes.Equal(raw.InitialFiatShamirState, []byte(serialization.NilString)) {
 		ifsVal, err := serialization.DeserializeValue(raw.InitialFiatShamirState, serialization.DeclarationMode, reflect.TypeOf(column.Natural{}), comp)
@@ -512,25 +520,27 @@ func SerializeModuleGL(gl *distributed.ModuleGL) ([]byte, error) {
 
 	raw := &rawModuleGL{}
 
-	// Serialize CompiledIOP
-	comp := gl.GetModuleTranslator().Wiop
-	if comp == nil {
-		return nil, fmt.Errorf("ModuleGL has nil CompiledIOP")
-	}
+	/*
+		// Serialize CompiledIOP
+		comp := gl.GetModuleTranslator().Wiop
+		if comp == nil {
+			return nil, fmt.Errorf("ModuleGL has nil CompiledIOP")
+		}
 
-	compSer, err := serialization.SerializeCompiledIOP(comp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize CompiledIOP: %w", err)
-	}
-	raw.CompiledIOP = compSer
+		compSer, err := serialization.SerializeCompiledIOP(comp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize CompiledIOP: %w", err)
+		}
+		raw.CompiledIOP = compSer
 
-	// Serialize Disc
-	disc := gl.GetModuleTranslator().Disc
-	serComp, err := SerializeDisc(disc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize GL module discoverer: %w", err)
-	}
-	raw.Disc = serComp
+		// Serialize Disc
+		disc := gl.GetModuleTranslator().Disc
+		serComp, err := SerializeDisc(disc)
+		if err != nil {
+			return nil, fmt.Errorf("failed to serialize GL module discoverer: %w", err)
+		}
+		raw.Disc = serComp
+	*/
 
 	// Serialize IsFirst
 	if gl.IsFirst != nil {
@@ -648,18 +658,22 @@ func DeserializeModuleGL(data []byte) (*distributed.ModuleGL, error) {
 	// Initialize ModuleGL
 	gl := &distributed.ModuleGL{}
 
-	// Deserialize CompiledIOP
-	comp, err := serialization.DeserializeCompiledIOP(raw.CompiledIOP)
-	if err != nil {
-		return nil, fmt.Errorf("failed to deserialize CompiledIOP: %w", err)
-	}
+	/*
+		// Deserialize CompiledIOP
+		comp, err := serialization.DeserializeCompiledIOP(raw.CompiledIOP)
+		if err != nil {
+			return nil, fmt.Errorf("failed to deserialize CompiledIOP: %w", err)
+		}
 
-	disc, err := DeserializeDisc(raw.Disc)
-	if err != nil {
-		return nil, fmt.Errorf("failed to deserialize GL module discoverer: %w", err)
-	}
-	gl.SetModuleTranslator(comp, disc)
+		disc, err := DeserializeDisc(raw.Disc)
+		if err != nil {
+			return nil, fmt.Errorf("failed to deserialize GL module discoverer: %w", err)
+		}
+		gl.SetModuleTranslator(comp, disc)
 
+	*/
+
+	comp := serialization.NewEmptyCompiledIOP()
 	// Deserialize IsFirst
 	if !bytes.Equal(raw.IsFirst, []byte(serialization.NilString)) {
 		isFirstVal, err := serialization.DeserializeValue(raw.IsFirst, serialization.DeclarationMode, reflect.TypeOf(column.Natural{}), comp)
