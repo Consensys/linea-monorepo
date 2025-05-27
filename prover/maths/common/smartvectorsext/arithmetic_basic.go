@@ -64,6 +64,7 @@ func InnerProduct(a, b smartvectors.SmartVector) fext.Element {
 }
 
 // PolyEval returns a [SmartVector] computed as:
+// A linear combination of the polynomials `vecs` with random challenge `x`.
 //
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //

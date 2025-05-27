@@ -47,7 +47,7 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 		}
 	})
 
-	// In Merkle mode, it's not used, so set to 0 as a placeholder.
+	// In Commit phase, it's not used, so set to 0 as a placeholder. numSelectedColumns is only used in the Open phase
 	numSelectedColumns := 0
 	params, err := vortex.NewParams(p.NbColumns, p.MaxNbRows, p.Key.GnarkInternal, p.BlowUpFactor, numSelectedColumns)
 	if err != nil {
@@ -67,5 +67,6 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 		encodedMatrix[i] = smartvectors.NewRegular(proverState.EncodedMatrix[i*p.NbColumns : (i+1)*p.NbColumns])
 	}
 
+	//TODO: check if we need to consider the case where noSisTransversalHash is called
 	return encodedMatrix, proverState.MerkleTree, proverState.SisHashes
 }

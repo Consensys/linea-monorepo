@@ -3,7 +3,9 @@ package vortex
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -40,7 +42,7 @@ type OpeningProof struct {
 // list of the committed matrices. This contrasts with the API of the other
 // functions and is motivated by the fact that this is simpler to construct in
 // our settings.
-func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, randomCoin field.Element) *OpeningProof {
+func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, randomCoin fext.Element) *OpeningProof {
 	proof := OpeningProof{}
 
 	if len(committedSV) == 0 {
@@ -57,7 +59,7 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 		}
 		// Collect the result in the larger slice at the end
 
-		subResult := smartvectors.PolyEval(subTask, randomCoin)
+		subResult := smartvectorsext.PolyEval(subTask, randomCoin)
 		subResult.WriteInSlice(linComb[start:stop])
 	})
 

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
@@ -261,15 +262,15 @@ func TestLogDerivativeLookupRandomLinComb(t *testing.T) {
 	prover := func(run *wizard.ProverRuntime) {
 		// assign a and b
 
-		coin := run.GetRandomCoinField("COIN")
+		coin := run.GetRandomCoinFext("COIN")
 
 		a := col1.GetColAssignment(run)
 		b := col2.GetColAssignment(run)
-		lc := smartvectors.PolyEval([]smartvectors.SmartVector{a, b}, coin)
+		lc := smartvectorsext.PolyEval([]smartvectors.SmartVector{a, b}, coin)
 
 		run.AssignColumn("LC", lc)
 
-		run.GetRandomCoinField("COIN1")
+		run.GetRandomCoinFext("COIN1")
 
 		colQ := smartvectors.ForTest(0, 1, 2, 3, 4, 5, 6, 7)
 		run.AssignColumn("Q", colQ)

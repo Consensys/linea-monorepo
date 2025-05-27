@@ -9,7 +9,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
@@ -21,21 +23,21 @@ func TestLinearCombination(t *testing.T) {
 	polySize := 1 << 10
 	blowUpFactor := 2
 
-	x := field.NewElement(478)
-	randomCoin := field.NewElement(1523)
+	x := fext.RandomElement()
+	randomCoin := fext.RandomElement()
 
 	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, mimc.NewMiMC)
 
 	// Polynomials to commit to
 	polys := make([]smartvectors.SmartVector, nPolys)
-	ys := make([]field.Element, nPolys)
+	ys := make([]fext.Element, nPolys)
 	for i := range polys {
 		polys[i] = smartvectors.Rand(polySize)
 		ys[i] = smartvectors.EvaluateLagrangeOnFext(polys[i], x)
 	}
 
 	// Make a linear combination of the poly
-	lc := smartvectors.PolyEval(polys, randomCoin)
+	lc := smartvectorsext.PolyEval(polys, randomCoin)
 
 	// Generate the proof
 	proof := params.InitOpeningWithLC(polys, randomCoin)
