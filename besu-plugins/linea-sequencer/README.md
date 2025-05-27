@@ -20,8 +20,7 @@ Discover [existing plugins](docs/plugins.md) and understand the [plugin release 
 ## Looking for the Linea code?
 
 Linea's stack is made up of multiple repositories, these include:
-- This repo, [linea-sequencer](https://github.com/Consensys/linea-sequencer): A set of Linea-Besu plugins for the sequencer and RPC nodes
-- [linea-monorepo](https://github.com/Consensys/linea-monorepo): The main repository for the Linea stack & network 
+- This repo, [linea-monorepo](https://github.com/Consensys/linea-monorepo): main repository for the Linea stack & network
 - [besu](https://github.com/hyperledger/besu): Besu client
 - [linea-tracer](https://github.com/Consensys/linea-tracer): Linea-Besu plugin which produces the traces that the constraint system applies and that serve as inputs to the prover
 - [linea-constraints](https://github.com/Consensys/linea-constraints): Implementation of the constraint system from the specification
@@ -42,12 +41,12 @@ Contributions are welcome!
 ### Guidelines for Non-Code and other Trivial Contributions
 Please keep in mind that we do not accept non-code contributions like fixing comments, typos or some other trivial fixes. Although we appreciate the extra help, managing lots of these small contributions is unfeasible, and puts extra pressure in our continuous delivery systems (running all tests, etc). Feel free to open an issue pointing any of those errors, and we will batch them into a single change.
 
-1. [Create an issue](https://github.com/Consensys/linea-sequencer/issues).
+1. [Create an issue](https://github.com/Consensys/linea-monorepo/issues).
 > If the proposed update requires input, also tag us for discussion.
-2. Submit the update as a pull request from your [fork of this repo](https://github.com/Consensys/linea-sequencer/fork), and tag us for review. 
+2. Submit the update as a pull request from your [fork of this repo](https://github.com/Consensys/linea-monorepo/fork), and tag us for review. 
 > Include the issue number in the pull request description and (optionally) in the branch name.
 
-Consider starting with a ["good first issue"](https://github.com/ConsenSys/linea-sequencer/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
+Consider starting with a ["good first issue"](https://github.com/ConsenSys/linea-monorepo/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22).
 
 Before contributing, ensure you're familiar with:
 

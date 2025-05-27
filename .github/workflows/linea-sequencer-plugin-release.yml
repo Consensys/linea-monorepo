@@ -28,7 +28,7 @@ jobs:
           cache: 'gradle'
 
       - name: Build artifacts
-        run: ./gradlew besu-plugins:linea-sequencer:artifacts -PreleaseNativeLibs -PreleaseVersion=${{ github.event.inputs.version }}
+        run: ./gradlew besu-plugins:linea-sequencer:artifacts -PreleaseVersion=${{ github.event.inputs.version }}
         env:
           JAVA_OPTS: -Xmx2g -Dorg.gradle.daemon=false
 
