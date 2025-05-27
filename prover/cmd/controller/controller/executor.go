@@ -234,6 +234,8 @@ func runCmd(ctx context.Context, cmd string, job *Job, retry bool) Status {
 
 	go func() {
 
+		// Since the channel is used for sending only once and only in this
+		// goroutine, we can safely close it.
 		defer close(done)
 
 		// Lock on the process until it finishes
