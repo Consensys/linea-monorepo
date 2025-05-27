@@ -73,11 +73,11 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 
 	// This regroups all the constants into a global constant with a coefficient
 	// of 1.
-	var c, t fext.Element
-	c.SetOne()
+	var t fext.GenericFieldElem
+	c := fext.GenericFieldOne()
 	for i := range constExponents {
-		t.Exp(constVal[i], big.NewInt(int64(constExponents[i])))
-		c.Mul(&c, &t)
+		t.Exp(&constVal[i], big.NewInt(int64(constExponents[i])))
+		c.Mul(&t)
 	}
 
 	if !c.IsOne() {
@@ -98,30 +98,30 @@ func NewProduct(items []*Expression, exponents []int) *Expression {
 	e := &Expression{
 		Operator: Product{Exponents: exponents},
 		Children: items,
-		ESHash:   fext.One(),
+		ESHash:   *fext.GenericFieldOne(),
 		IsBase:   computeIsBaseFromChildren(items),
 	}
 
 	for i := range e.Children {
-		var tmp fext.Element
+		tmp := fext.GenericFieldOne()
 		switch {
 		case exponents[i] == 1:
-			e.ESHash.Mul(&e.ESHash, &e.Children[i].ESHash)
+			e.ESHash.Mul(&e.Children[i].ESHash)
 		case exponents[i] == 2:
 			tmp.Square(&e.Children[i].ESHash)
-			e.ESHash.Mul(&e.ESHash, &tmp)
+			e.ESHash.Mul(tmp)
 		case exponents[i] == 3:
 			tmp.Square(&e.Children[i].ESHash)
-			tmp.Mul(&tmp, &e.Children[i].ESHash)
-			e.ESHash.Mul(&e.ESHash, &tmp)
+			tmp.Mul(&e.Children[i].ESHash)
+			e.ESHash.Mul(tmp)
 		case exponents[i] == 4:
 			tmp.Square(&e.Children[i].ESHash)
-			tmp.Square(&tmp)
-			e.ESHash.Mul(&e.ESHash, &tmp)
+			tmp.Square(tmp)
+			e.ESHash.Mul(tmp)
 		default:
 			exponent := big.NewInt(int64(exponents[i]))
-			tmp.Exp(e.Children[i].ESHash, exponent)
-			e.ESHash.Mul(&e.ESHash, &tmp)
+			tmp.Exp(&e.Children[i].ESHash, exponent)
+			e.ESHash.Mul(tmp)
 		}
 	}
 

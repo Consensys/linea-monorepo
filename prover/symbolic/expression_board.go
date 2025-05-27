@@ -20,14 +20,14 @@ type ExpressionBoard struct {
 	// Maps nodes to their level in the DAG structure. The 32 MSB bits
 	// of the ID indicates the level and the LSB bits indicates the position
 	// in the level.
-	ESHashesToPos map[fext.Element]nodeID
+	ESHashesToPos map[fext.GenericFieldElem]nodeID
 }
 
 // emptyBoard initializes a board with no Node in it.
 func emptyBoard() ExpressionBoard {
 	return ExpressionBoard{
 		Nodes:         [][]Node{},
-		ESHashesToPos: map[fext.Element]nodeID{},
+		ESHashesToPos: map[fext.GenericFieldElem]nodeID{},
 	}
 }
 
@@ -61,7 +61,7 @@ type Node struct {
 		Two expression with the same ESHash are considered as equals. This helps expression
 		pruning.
 	*/
-	ESHash fext.Element
+	ESHash fext.GenericFieldElem
 	// Operator contains the logic to evaluate an expression
 	Operator Operator
 }

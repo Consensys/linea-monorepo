@@ -39,12 +39,12 @@ func NewPolyEval(x *Expression, coeffs []*Expression) *Expression {
 		return coeffs[0]
 	}
 
-	eshashes := []fext.Element{}
+	eshashes := []fext.GenericFieldElem{}
 	for i := range coeffs {
 		eshashes = append(eshashes, coeffs[i].ESHash)
 	}
 
-	esh := polyext.EvalUnivariate(eshashes, x.ESHash)
+	esh := polyext.EvalUnivariateMixed(eshashes, x.ESHash)
 	children := append([]*Expression{x}, coeffs...)
 
 	return &Expression{
@@ -133,5 +133,9 @@ func (PolyEval) EvaluateExt(inputs []sv.SmartVector, p ...mempool.MemPool) sv.Sm
 }
 
 func (PolyEval) EvaluateMixed(inputs []sv.SmartVector, p ...mempool.MemPool) sv.SmartVector {
-	panic("PolyEval does not support mixed evaluation for now")
+	if sv.AreAllBase(inputs) {
+		return PolyEval{}.Evaluate(inputs, p...)
+	} else {
+		return PolyEval{}.EvaluateExt(inputs, p...)
+	}
 }

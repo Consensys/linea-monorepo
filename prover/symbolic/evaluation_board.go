@@ -41,7 +41,7 @@ func (b *ExpressionBoard) prepareNodeAssignments(inputs []sv.SmartVector) boardA
 		switch op := b.Nodes[0][i].Operator.(type) {
 		case Constant:
 			// The constants are identified to constant vectors
-			nodeAssignments[0][i].Value = sv.NewConstantExt(op.Val, length)
+			nodeAssignments[0][i].Value = sv.ToConstantSmartvector(&op.Val, length)
 		case Variable:
 			// Sanity-check the input should have the correct length
 			if inputs[inputCursor].Len() != length {

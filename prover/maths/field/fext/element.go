@@ -400,6 +400,13 @@ func (z *Element) SetInterface(i1 interface{}) (*Element, error) {
 			return nil, errors.New("can't set fext.Element with <nil>")
 		}
 		return z.Set(c1), nil
+	case GenericFieldElem:
+		return z.Set(&c1.ext), nil
+	case *GenericFieldElem:
+		if c1 == nil {
+			return nil, errors.New("can't set fext.Element with <nil>")
+		}
+		return z.Set(&c1.ext), nil
 	case field.Element:
 		return z.SetFromBase(&c1), nil
 	case *field.Element:

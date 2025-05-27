@@ -13,7 +13,7 @@ import (
 
 // Constant is an implementation of [Operator] which represents a constant value
 type Constant struct {
-	Val fext.Element
+	Val fext.GenericFieldElem
 }
 
 // Degree implements the [Operator] interface
@@ -52,10 +52,12 @@ func NewConstant(val interface{}) *Expression {
 		panic(err)
 	}
 
+	newHash := fext.NewMinimalESHashFromExt(&x)
+	//Create the expression
 	res := &Expression{
-		Operator: Constant{Val: x},
+		Operator: Constant{Val: *newHash},
 		Children: []*Expression{},
-		ESHash:   *new(fext.Element).Set(&x),
+		ESHash:   *new(fext.GenericFieldElem).Set(newHash),
 		IsBase:   x.IsBase(),
 	}
 	return res

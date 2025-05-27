@@ -206,7 +206,7 @@ func (e *FromExprAccessor) GetFrontendVariableBase(api frontend.API, circ ifaces
 
 		return e.Boarded.GnarkEval(api, inputs), nil
 	} else {
-		return nil, fmt.Errorf("requested a Base element from a col over field extensions")
+		return nil, fmt.Errorf("requested a base element from a col over field extensions")
 	}
 }
 

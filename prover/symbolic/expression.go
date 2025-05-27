@@ -19,7 +19,7 @@ import (
 // [ExpressionBoard] expression.
 type anchoredExpression struct {
 	Board  *ExpressionBoard
-	ESHash fext.Element
+	ESHash fext.GenericFieldElem
 }
 
 // Expression represents a symbolic arithmetic expression. Expression can be
@@ -46,7 +46,7 @@ type Expression struct {
 	// 		- ESHash(a * b) = ESHash(a) * ESHash(b)
 	// 		- ESHash(c: Constant) = c
 	// 		- ESHash(a: variable) = H(a.String())
-	ESHash fext.Element
+	ESHash fext.GenericFieldElem
 	// Children stores the list of all the sub-expressions the current
 	// Expression uses as operands.
 	Children []*Expression
@@ -91,7 +91,7 @@ func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
 
 	/*
 		Check if the expression is a duplicate of another expression bearing
-		the same ESHash and
+		the same GenericFieldElem and
 	*/
 	if _, ok := b.ESHashesToPos[f.ESHash]; ok {
 		return anchoredExpression{Board: b, ESHash: f.ESHash}
@@ -170,14 +170,14 @@ func (e *Expression) ValidateExt() error {
 
 	eshashes := make([]sv.SmartVector, len(e.Children))
 	for i := range e.Children {
-		eshashes[i] = sv.NewConstantExt(e.Children[i].ESHash, 1)
+		eshashes[i] = sv.NewConstantExt(e.Children[i].ESHash.GetExt(), 1)
 	}
 
 	if len(e.Children) > 0 {
 		// The cast back to sv.Constant is not functionally important but is an
 		// easy sanity check.
 		expectedESH := e.Operator.EvaluateExt(eshashes).(*sv.ConstantExt).GetExt(0)
-		if expectedESH != e.ESHash {
+		if !e.ESHash.IsEqualExt(&expectedESH) {
 			return fmt.Errorf("esh mismatch %v %v", expectedESH.String(), e.ESHash.String())
 		}
 	}

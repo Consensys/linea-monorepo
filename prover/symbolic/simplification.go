@@ -18,7 +18,7 @@ func regroupTerms(magnitudes []int, children []*Expression) (
 	regroupedMagnitudes []int,
 	regroupedChildren []*Expression,
 	constantMagnitudes []int,
-	constantValues []fext.Element,
+	constantValues []fext.GenericFieldElem,
 ) {
 
 	if len(magnitudes) != len(children) {
@@ -26,10 +26,10 @@ func regroupTerms(magnitudes []int, children []*Expression) (
 	}
 
 	numChildren := len(children)
-	foundExpressions := make(map[fext.Element]int, numChildren)
+	foundExpressions := make(map[fext.GenericFieldElem]int, numChildren)
 	regroupedChildren = make([]*Expression, 0, numChildren)
 	regroupedMagnitudes = make([]int, 0, numChildren)
-	constantValues = make([]fext.Element, 0, numChildren)
+	constantValues = make([]fext.GenericFieldElem, 0, numChildren)
 	constantMagnitudes = make([]int, 0, numChildren)
 
 	for i := 0; i < numChildren; i++ {

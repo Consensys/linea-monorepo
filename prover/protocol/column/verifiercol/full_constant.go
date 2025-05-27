@@ -72,7 +72,7 @@ func (cc ConstCol) GetColAssignmentAtBase(_ ifaces.Runtime, _ int) (field.Elemen
 	if cc.isBase {
 		return cc.Base, nil
 	} else {
-		return field.Zero(), fmt.Errorf("requested a Base element from a verifier col over field extensions")
+		return field.Zero(), fmt.Errorf("requested a base element from a verifier col over field extensions")
 	}
 }
 
@@ -97,7 +97,7 @@ func (cc ConstCol) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]fronten
 		}
 		return res, nil
 	} else {
-		return nil, fmt.Errorf("requested Base elements but column defined over field extensions")
+		return nil, fmt.Errorf("requested base elements but column defined over field extensions")
 	}
 }
 
@@ -119,7 +119,7 @@ func (cc ConstCol) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) fro
 	if cc.isBase {
 		return cc.Base
 	} else {
-		panic("requested a Base element from a verifier col over field extensions")
+		panic("requested a base element from a verifier col over field extensions")
 	}
 }
 
@@ -128,7 +128,7 @@ func (cc ConstCol) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int)
 	if cc.isBase {
 		return cc.Base, nil
 	} else {
-		return field.Zero(), fmt.Errorf("requested a Base element from a verifier col over field extensions")
+		return field.Zero(), fmt.Errorf("requested a base element from a verifier col over field extensions")
 	}
 }
 

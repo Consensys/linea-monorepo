@@ -334,7 +334,7 @@ func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Vari
 	for i := range b.Nodes[0] {
 		switch op := b.Nodes[0][i].Operator.(type) {
 		case Constant:
-			intermediateRes[0][i] = gnarkfext.ExtToVariable(op.Val)
+			intermediateRes[0][i] = gnarkfext.ExtToVariable(op.Val.GetExt())
 		case Variable:
 			intermediateRes[0][i] = inputs[inputCursor]
 			inputCursor++

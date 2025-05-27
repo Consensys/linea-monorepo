@@ -48,11 +48,12 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 
 	// This regroups all the constants into a global constant with a coefficient
 	// of 1.
-	var c, t fext.Element
+	var t fext.GenericFieldElem
+	c := fext.GenericFieldZero()
 	for i := range constCoeffs {
 		t.SetInt64(int64(constCoeffs[i]))
-		t.Mul(&constVal[i], &t)
-		c.Add(&c, &t)
+		t.Mul(&constVal[i])
+		c.Add(&t)
 	}
 
 	if !c.IsZero() {
@@ -80,13 +81,14 @@ func NewLinComb(items []*Expression, coeffs []int) *Expression {
 	// Now we need to assign the ESH
 	eshashes := make([]sv.SmartVector, len(e.Children))
 	for i := range e.Children {
-		eshashes[i] = sv.NewConstantExt(e.Children[i].ESHash, 1)
+		eshashes[i] = sv.ToConstantSmartvector(&e.Children[i].ESHash, 1)
 	}
 
 	if len(items) > 0 {
 		// The cast back to sv.Constant is not functionally important but is an easy
 		// sanity check.
-		e.ESHash = e.Operator.EvaluateExt(eshashes).(*sv.ConstantExt).GetExt(0)
+		evalResult := e.Operator.EvaluateMixed(eshashes)
+		e.ESHash.Set(sv.GetFirstElemOfSmartvector(evalResult))
 	}
 
 	return e

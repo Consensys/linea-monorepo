@@ -103,7 +103,7 @@ func TestRegroupTerms(t *testing.T) {
 		InputMagn  []int
 		OutputVars []*Expression
 		OutputMagn []int
-		ConstVars  []fext.Element
+		ConstVars  []fext.GenericFieldElem
 		ConstMagn  []int
 		Op         Operator
 	}{
@@ -112,7 +112,7 @@ func TestRegroupTerms(t *testing.T) {
 			InputMagn:  []int{1, 1, 1, 1, 1, 1, 1},
 			OutputVars: []*Expression{a, b, c},
 			OutputMagn: []int{2, 2, 2},
-			ConstVars:  []fext.Element{fext.Zero()},
+			ConstVars:  []fext.GenericFieldElem{*fext.GenericFieldZero()},
 			ConstMagn:  []int{1},
 		},
 	}

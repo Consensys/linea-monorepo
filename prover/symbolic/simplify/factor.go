@@ -102,7 +102,7 @@ func factorizeExpression(expr *sym.Expression, iteration int) *sym.Expression {
 // children that are already in the children set.
 func rankChildren(
 	parents []*sym.Expression,
-	childrenSet map[fext.Element]*sym.Expression,
+	childrenSet map[fext.GenericFieldElem]*sym.Expression,
 ) []*sym.Expression {
 
 	// List all the grand-children of the expression whose parents are
@@ -112,7 +112,7 @@ func rankChildren(
 	// The risk if it happens is that it gets caught by the validation checks
 	// at the end of the factorization routine. The preallocation value is
 	// purely heuristic to avoid successive allocations.
-	var relevantGdChildrenCnt map[fext.Element]int
+	var relevantGdChildrenCnt map[fext.GenericFieldElem]int
 	var uniqueChildrenList []*sym.Expression
 
 	for _, p := range parents {
@@ -136,7 +136,7 @@ func rankChildren(
 			}
 
 			if relevantGdChildrenCnt == nil {
-				relevantGdChildrenCnt = make(map[fext.Element]int, len(parents)+2)
+				relevantGdChildrenCnt = make(map[fext.GenericFieldElem]int, len(parents)+2)
 				uniqueChildrenList = make([]*sym.Expression, 0, len(parents)+2)
 			}
 
@@ -164,10 +164,10 @@ func rankChildren(
 // than one parent. The finding is based on a greedy algorithm. We iteratively
 // add nodes in the group so that the number of common parents decreases as
 // slowly as possible.
-func findGdChildrenGroup(expr *sym.Expression) map[fext.Element]*sym.Expression {
+func findGdChildrenGroup(expr *sym.Expression) map[fext.GenericFieldElem]*sym.Expression {
 
 	curParents := expr.Children
-	childrenSet := map[fext.Element]*sym.Expression{}
+	childrenSet := map[fext.GenericFieldElem]*sym.Expression{}
 
 	ranked := rankChildren(curParents, childrenSet)
 
@@ -198,11 +198,11 @@ func findGdChildrenGroup(expr *sym.Expression) map[fext.Element]*sym.Expression 
 }
 
 // filterParentsWithChildren returns a filtered list of parents who have at
-// least one child with the given ESHash. The function allocates a new list
+// least one child with the given GenericFieldElem. The function allocates a new list
 // of parents and returns it without mutating he original list.
 func filterParentsWithChildren(
 	parents []*sym.Expression,
-	childEsh fext.Element,
+	childEsh fext.GenericFieldElem,
 ) []*sym.Expression {
 
 	res := make([]*sym.Expression, 0, len(parents))
@@ -222,7 +222,7 @@ func filterParentsWithChildren(
 // determine the best common factor.
 func factorLinCompFromGroup(
 	lincom *sym.Expression,
-	group map[fext.Element]*sym.Expression,
+	group map[fext.GenericFieldElem]*sym.Expression,
 ) *sym.Expression {
 
 	var (
@@ -286,7 +286,7 @@ func factorLinCompFromGroup(
 //
 // Fortunately, this is guaranteed if the expression was constructed via
 // [sym.NewLinComb] or [sym.NewProduct] which is almost mandatory.
-func isFactored(e *sym.Expression, exponentsOfGroup map[fext.Element]int) (
+func isFactored(e *sym.Expression, exponentsOfGroup map[fext.GenericFieldElem]int) (
 	factored *sym.Expression,
 	success bool,
 ) {
@@ -326,13 +326,13 @@ func isFactored(e *sym.Expression, exponentsOfGroup map[fext.Element]int) (
 // have the whole group as children.
 func optimRegroupExponents(
 	parents []*sym.Expression,
-	group map[fext.Element]*sym.Expression,
+	group map[fext.GenericFieldElem]*sym.Expression,
 ) (
-	exponentMap map[fext.Element]int,
+	exponentMap map[fext.GenericFieldElem]int,
 	groupedTerm *sym.Expression,
 ) {
 
-	exponentMap = make(map[fext.Element]int, 16)
+	exponentMap = make(map[fext.GenericFieldElem]int, 16)
 	canonTermList := make([]*sym.Expression, 0, 16) // built in deterministic order
 
 	for _, p := range parents {
@@ -345,7 +345,7 @@ func optimRegroupExponents(
 
 		// Used to sanity-check that all the nodes of the group have been
 		// reached through this parent.
-		matched := make(map[fext.Element]int, len(p.Children))
+		matched := make(map[fext.GenericFieldElem]int, len(p.Children))
 
 		for i, c := range p.Children {
 			if _, ingroup := group[c.ESHash]; !ingroup {

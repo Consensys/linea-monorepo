@@ -15,11 +15,11 @@ func (f *Expression) IsMul() bool {
 /*
 IsConstant returns true if it is a constant and return its value if so
 */
-func (f *Expression) IsConstant() (bool, fext.Element) {
+func (f *Expression) IsConstant() (bool, fext.GenericFieldElem) {
 	if cons, ok := f.Operator.(Constant); ok {
 		return ok, cons.Val
 	}
-	return false, fext.Zero()
+	return false, *fext.GenericFieldZero()
 }
 
 /*
