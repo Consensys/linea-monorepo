@@ -14,15 +14,12 @@
  */
 pragma solidity >=0.7.0 <0.9.0;
 
-contract SimpleStorage {
-    string data;
+contract DummyAdder {
+    uint sum;
 
-    function set(string memory value) public {
-        require(bytes(value).length != 0);
-        data = value;
-    }
-
-    function get() public view returns (string memory) {
-        return data;
+    function add(int count) public {
+        for (int i = 0; i < count; i++) {
+            sum++;
+        }
     }
 }

@@ -240,9 +240,10 @@ public class EstimateGasTest extends LineaPluginTestBase {
     final var reqLinea = new LineaEstimateGasRequest(callParams, stateOverrides);
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
     assertThat(respLinea.hasError()).isTrue();
+    assertThat(respLinea.getError().getCode()).isEqualTo(-32004);
     assertThat(respLinea.getError().getMessage())
         .isEqualTo(
-            "transaction up-front cost 0x208cbab601 exceeds transaction sender account balance 0x0");
+            "Upfront cost exceeds account balance (transaction up-front cost 0x208cbab601 exceeds transaction sender account balance 0x0)");
   }
 
   @Test
@@ -425,7 +426,8 @@ public class EstimateGasTest extends LineaPluginTestBase {
     final var respLinea = reqLinea.execute(minerNode.nodeRequests());
     assertThat(respLinea.getCode()).isEqualTo(-32000);
     assertThat(respLinea.getMessage())
-        .isEqualTo("Failed transaction, reason: Invalid opcode: 0xc8");
+        .isEqualTo(
+            "Transaction processing could not be completed due to an exception (Invalid opcode: 0xc8)");
   }
 
   @Test

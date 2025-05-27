@@ -3,9 +3,6 @@ name: linea-sequencer-plugin-testing
 on:
   workflow_call:
 
-env:
-  CARGO_NET_GIT_FETCH_WITH_CLI: true
-
 concurrency:
   group: linea-sequencer-plugin-testing-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
@@ -22,12 +19,6 @@ jobs:
     name: "Linea Sequencer Plugin Build"
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-small
     steps:
-      - name: Install Go
-        uses: actions/setup-go@v5
-
-      - name: Set up GCC
-        uses: egor-tensin/setup-gcc@v1
-
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -52,12 +43,6 @@ jobs:
     name: "Linea Sequencer Plugin Acceptance Tests"
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-large
     steps:
-      - name: Install Go
-        uses: actions/setup-go@v5
-
-      - name: Set up GCC
-        uses: egor-tensin/setup-gcc@v1
-
       - name: Checkout repository
         uses: actions/checkout@v4
 

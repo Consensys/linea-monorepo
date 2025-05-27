@@ -18,7 +18,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
-import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
+import linea.plugin.acc.test.tests.web3j.generated.DummyAdder;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
 import org.junit.jupiter.api.Test;
 import org.web3j.crypto.Credentials;
@@ -44,11 +44,11 @@ public class TransactionTraceLimitTest extends LineaPluginTestBase {
 
   @Test
   public void transactionsMinedInSeparateBlocksTest() throws Exception {
-    final SimpleStorage simpleStorage = deploySimpleStorage();
+    final DummyAdder dummyAdder = deployDummyAdder();
     final Web3j web3j = minerNode.nodeRequests().eth();
-    final String contractAddress = simpleStorage.getContractAddress();
+    final String contractAddress = dummyAdder.getContractAddress();
     final Credentials credentials = Credentials.create(Accounts.GENESIS_ACCOUNT_ONE_PRIVATE_KEY);
-    final String txData = simpleStorage.add(BigInteger.valueOf(100)).encodeFunctionCall();
+    final String txData = dummyAdder.add(BigInteger.valueOf(100)).encodeFunctionCall();
 
     final ArrayList<String> hashes = new ArrayList<>(5);
     for (int i = 0; i < 5; i++) {

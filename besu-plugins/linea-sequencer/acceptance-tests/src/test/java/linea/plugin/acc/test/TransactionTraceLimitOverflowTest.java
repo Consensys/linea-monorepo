@@ -18,7 +18,7 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
-import linea.plugin.acc.test.tests.web3j.generated.SimpleStorage;
+import linea.plugin.acc.test.tests.web3j.generated.DummyAdder;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Account;
 import org.hyperledger.besu.tests.acceptance.dsl.account.Accounts;
@@ -49,10 +49,10 @@ public class TransactionTraceLimitOverflowTest extends LineaPluginTestBase {
 
   @Test
   public void transactionOverModuleLineCountRemoved() throws Exception {
-    final SimpleStorage simpleStorage = deploySimpleStorage();
+    final DummyAdder dummyAdder = deployDummyAdder();
     final Web3j web3j = minerNode.nodeRequests().eth();
-    final String contractAddress = simpleStorage.getContractAddress();
-    final String txData = simpleStorage.add(BigInteger.valueOf(100)).encodeFunctionCall();
+    final String contractAddress = dummyAdder.getContractAddress();
+    final String txData = dummyAdder.add(BigInteger.valueOf(100)).encodeFunctionCall();
 
     // this tx will not be selected since it goes above the line count limit
     // but selection should go on and select the next one
