@@ -59,8 +59,6 @@ func TestSerdeIOP(t *testing.T) {
 	// logrus.Printf("Column exists in recur-segment recur iop:%v\n", testCompRecur.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_1)))
 	// logrus.Printf("Column exists in recursion input iop:%v\n", testCompInput.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_2)))
 
-	// logrus.Printf("Length of PcsCtx:%d\n", len(testCompRecur.PcsCtxs))
-
 	startTime := time.Now()
 	serComp, err := serialization.SerializeCompiledIOP(testComp)
 	if err != nil {
@@ -81,28 +79,27 @@ func TestSerdeIOP(t *testing.T) {
 	}
 }
 
-// func TestSerdeRecurIOP(t *testing.T) {
-// 	startTime := time.Now()
-// 	serComp, err := serialization.SerializeCompiledIOP(testCompRecur)
-// 	if err != nil {
-// 		t.Fatalf("error during ser. recursion input compiled-iop:%s\n", err.Error())
-// 	}
+func TestSerdeIOPV2(t *testing.T) {
 
-// 	logrus.Printf("Serialization took %vs\n", time.Since(startTime).Seconds())
+	startTime := time.Now()
+	serComp, err := serialization.SerializeCompiledIOPV2(testComp)
+	if err != nil {
+		t.Fatalf("error during ser. recursion input compiled-iop:%s\n", err.Error())
+	}
 
-// 	comp := serialization.NewEmptyCompiledIOP()
-// 	serialization.RegisterColumns(testCompRecur, comp)
-// 	deSerComp, err := serialization.DeRecurCompIOP(serComp, comp)
-// 	if err != nil {
-// 		t.Fatalf("error during deser. recursion input compiled-iop:%s\n", err.Error())
-// 	}
+	logrus.Printf("Serialization took %vs\n", time.Since(startTime).Seconds())
 
-// 	logrus.Printf("Deserialization took %vs\n", time.Since(startTime).Seconds())
+	deSerComp, err := serialization.DeserializeCompiledIOP(serComp)
+	if err != nil {
+		t.Fatalf("error during deser. recursion input compiled-iop:%s\n", err.Error())
+	}
 
-// 	if !test_utils.CompareExportedFields(testCompRecur, deSerComp) {
-// 		t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")
-// 	}
-// }
+	logrus.Printf("Deserialization took %vs\n", time.Since(startTime).Seconds())
+
+	if !test_utils.CompareExportedFields(testComp, deSerComp) {
+		t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")
+	}
+}
 
 var COMPILED_FILE_PATH = "bin/serialized_compiled_iop.bin"
 

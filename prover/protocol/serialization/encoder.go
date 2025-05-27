@@ -1,14 +1,14 @@
-package v2
+package serialization
 
 import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/fxamacker/cbor/v2"
+	"github.com/sirupsen/logrus"
 )
 
 type objectType uint8
@@ -25,8 +25,8 @@ type Serializer struct {
 	typeMap    map[string]int
 	Types      []string `cbor:"types,omitempty"`
 	columnMap  map[ifaces.ColID]int
-	Columns    [][]byte        `cbor:"columns,omitempty"`
-	MainObject *rawCompiledIOP `cbor:"main_object,omitempty"`
+	Columns    [][]byte          `cbor:"columns,omitempty"`
+	MainObject *rawCompiledIOPV2 `cbor:"main_object,omitempty"`
 }
 
 type BackReference struct {
@@ -34,7 +34,7 @@ type BackReference struct {
 	ID   int        `cbor:"i"`
 }
 
-type rawCompiledIOP struct {
+type rawCompiledIOPV2 struct {
 	Columns [][]cbor.RawMessage `cbor:"columns"`
 }
 
@@ -43,22 +43,21 @@ type SerializableInterface struct {
 	V []byte `cbor:"v"`
 }
 
-type serializableColumn struct {
+type serializableColumnV2 struct {
 	Name     string `cbor:"name"`
 	Round    int8   `cbor:"round"`
 	Status   int8   `cbor:"status"`
 	Log2Size int8   `cbor:"log2Size"`
 }
 
-var decMode, _ = cbor.DecOptions{IndefLength: cbor.IndefLengthForbidden}.DecMode()
-
-func MarshalCompIOP(comp *wizard.CompiledIOP) ([]byte, error) {
+func SerializeCompiledIOPV2(comp *wizard.CompiledIOP) ([]byte, error) {
 	ser := &Serializer{
 		typeMap:    make(map[string]int),
 		columnMap:  make(map[ifaces.ColID]int),
-		MainObject: &rawCompiledIOP{},
+		MainObject: &rawCompiledIOPV2{},
 	}
 	numRound := comp.NumRounds()
+	logrus.Printf("No. of rounds:%d \n", numRound)
 
 	for round := 0; round < numRound; round++ {
 		cols := comp.Columns.AllHandlesAtRound(round)
@@ -72,17 +71,16 @@ func MarshalCompIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 		}
 		ser.MainObject.Columns = append(ser.MainObject.Columns, rawCols)
 	}
-
-	return cbor.Marshal(ser)
+	return serializeAnyWithCborPkg(ser)
 }
 
-func UnmarshalCompIOP(data []byte) (*wizard.CompiledIOP, error) {
+func DeserializeCompiledIOPV2(data []byte) (*wizard.CompiledIOP, error) {
 	var ser Serializer
-	if err := decMode.Unmarshal(data, &ser); err != nil {
+	if err := deserializeAnyWithCborPkg(data, &ser); err != nil {
 		return nil, fmt.Errorf("failed to decode Serializer: %v", err)
 	}
 
-	comp := serialization.NewEmptyCompiledIOP()
+	comp := NewEmptyCompiledIOP()
 	for round, rawCols := range ser.MainObject.Columns {
 		for _, colData := range rawCols {
 			if err := ser.UnmarshalColumn(colData, comp); err != nil {
@@ -101,9 +99,10 @@ func (ser *Serializer) MarshalColumn(iCol ifaces.Column) ([]byte, error) {
 	}
 
 	if _, ok := ser.columnMap[col.ID]; !ok {
+		logrus.Printf("Back ref does not exist for colID:%s \n", col.ID)
 		newPos := len(ser.Columns)
 		ser.columnMap[col.ID] = newPos
-		serColumn := serializableColumn{
+		serColumn := serializableColumnV2{
 			Name:     string(col.GetColID()),
 			Round:    int8(col.Round()),
 			Status:   int8(col.Status()),
@@ -115,6 +114,8 @@ func (ser *Serializer) MarshalColumn(iCol ifaces.Column) ([]byte, error) {
 			return nil, fmt.Errorf("could not marshal column, n=%q err=%v", col.ID, err)
 		}
 		ser.Columns = append(ser.Columns, marshaled)
+	} else {
+		logrus.Printf("Back ref already exists for colID:%s \n", col.ID)
 	}
 
 	pos := ser.columnMap[col.ID]
@@ -127,7 +128,7 @@ func (ser *Serializer) MarshalColumn(iCol ifaces.Column) ([]byte, error) {
 
 func (ser *Serializer) UnmarshalColumn(data []byte, comp *wizard.CompiledIOP) error {
 	var backRef BackReference
-	if err := decMode.Unmarshal(data, &backRef); err != nil {
+	if err := deserializeAnyWithCborPkg(data, &backRef); err != nil {
 		return fmt.Errorf("failed to decode BackReference: %v", err)
 	}
 
@@ -140,8 +141,8 @@ func (ser *Serializer) UnmarshalColumn(data []byte, comp *wizard.CompiledIOP) er
 	}
 
 	colData := ser.Columns[backRef.ID]
-	var serCol serializableColumn
-	if err := decMode.Unmarshal(colData, &serCol); err != nil {
+	var serCol serializableColumnV2
+	if err := deserializeAnyWithCborPkg(colData, &serCol); err != nil {
 		return fmt.Errorf("failed to decode serializableColumn at ID %d: %v", backRef.ID, err)
 	}
 

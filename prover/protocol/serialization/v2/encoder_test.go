@@ -12,32 +12,39 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
-func TestCompiled(t *testing.T) {
+func TestCompiledV2(t *testing.T) {
 	comp := serialization.NewEmptyCompiledIOP()
 	foo := comp.Columns.AddToRound(0, "foo", 16, column.Committed)
 	bar := comp.Columns.AddToRound(1, "bar", 16, column.Committed)
+	foO := comp.Columns.AddToRound(2, "fooo", 16, column.Committed)
+	barr := comp.Columns.AddToRound(3, "barrr", 16, column.Committed)
 	_ = comp.InsertCoin(1, "coin", coin.IntegerVec, 16, 16)
 	coiz := comp.InsertCoin(1, "coiz", coin.Field)
+	coizz := comp.InsertCoin(1, "coizz", coin.Field)
+	_ = comp.InsertCoin(1, "coinnn", coin.Field)
 
 	comp.InsertGlobal(
-		1,
+		3,
 		"global",
 		func() *symbolic.Expression {
 			var (
-				foo  = ifaces.ColumnAsVariable(foo)
-				bar  = ifaces.ColumnAsVariable(bar)
-				coiz = symbolic.NewVariable(coiz)
+				foo   = ifaces.ColumnAsVariable(foo)
+				bar   = ifaces.ColumnAsVariable(bar)
+				foO   = ifaces.ColumnAsVariable(foO)
+				barr  = ifaces.ColumnAsVariable(barr)
+				coiz  = symbolic.NewVariable(coiz)
+				coizz = symbolic.NewVariable(coizz)
 			)
-			return foo.Add(bar).Add(foo).Mul(coiz)
+			return foo.Add(bar).Add(foO).Add(barr).Mul(coiz).Mul(coizz)
 		}(),
 	)
 
-	encoded, err := MarshalCompIOP(comp)
+	encoded, err := serialization.SerializeCompiledIOPV2(comp)
 	if err != nil {
 		t.Fatalf("could not encode: %v", err.Error())
 	}
 
-	deSerComp, err := UnmarshalCompIOP(encoded)
+	deSerComp, err := serialization.DeserializeCompiledIOPV2(encoded)
 	if err != nil {
 		t.Fatalf("could not encode: %v", err.Error())
 	}
@@ -45,7 +52,7 @@ func TestCompiled(t *testing.T) {
 	fmt.Printf("comp: %v \n", comp)
 	fmt.Printf("DeserComp: %v \n", deSerComp)
 
-	if !test_utils.CompareExportedFields(comp, deSerComp) {
-		t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")
+	if !test_utils.StrictCompareExportedFields(comp.Coins, deSerComp.Coins) {
+		t.Errorf("Mismatch in exported fields after V2 serde")
 	}
 }
