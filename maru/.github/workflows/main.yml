@@ -48,21 +48,32 @@ jobs:
   run-e2e-tests:
     needs: [ filter-commit-changes ]
     if: ${{ always() && !cancelled() && needs.filter-commit-changes.outputs.has-changes-requiring-build == 'true' }}
-    concurrency:
-      group: run-e2e-tests-${{ github.workflow }}-${{ github.ref }}
-      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     uses: ./.github/workflows/e2e-tests.yml
     with:
       e2e-tests-logs-dump: true
       has-changes-requiring-build: ${{ needs.filter-commit-changes.outputs.has-changes-requiring-build }}
     secrets: inherit
 
-  build-and-publish:
-    needs: [ testing, run-e2e-tests ]
-    if: ${{ always() && !cancelled() && (needs.testing.result == 'skipped' || needs.testing.result == 'success') && (needs.run-e2e-tests.result == 'skipped' || needs.run-e2e-tests.outputs.tests_outcome == 'success') }}
+  build-for-testing:
+    if: ${{ always() && !cancelled() }}
     uses: ./.github/workflows/maru-build-and-publish.yml
     with:
       develop_tag: 'develop'
       image_name: 'consensys/maru'
-      push_image: ${{ github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' }}
+      push_image: false
+
+  maru-image-smoke-test:
+    needs: [ build-for-testing ]
+    uses: ./.github/workflows/smoke-tests.yml
+    with:
+      commit-tag: ${{ needs.build-for-testing.outputs.commit_tag }}
+
+  build-and-publish:
+    needs: [ maru-image-smoke-test ]
+    if: ${{ always() && !cancelled() && needs.maru-image-smoke-test.result == 'success' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main') }}
+    uses: ./.github/workflows/maru-build-and-publish.yml
+    with:
+      develop_tag: 'develop'
+      image_name: 'consensys/maru'
+      push_image: true
     secrets: inherit

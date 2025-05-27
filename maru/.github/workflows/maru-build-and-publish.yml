@@ -17,6 +17,9 @@ on:
         required: false
         type: boolean
         default: false
+    outputs:
+      commit_tag:
+        value: ${{ jobs.build-and-publish.outputs.commit_tag }}
     secrets:
       DOCKERHUB_USERNAME:
         required: false
@@ -68,6 +71,8 @@ jobs:
       TAGS: ${{ inputs.image_name }}:${{ inputs.commit_tag }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    outputs:
+      commit_tag: ${{ env.COMMIT_TAG }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,8 +87,7 @@ jobs:
           fi
           echo "COMMIT_TAG=$COMMIT_TAG" >> $GITHUB_ENV
           echo "TAGS=${{ env.IMAGE_NAME }}:$COMMIT_TAG" >> $GITHUB_ENV
-          echo "COMMIT_TAG: ${{ env.COMMIT_TAG }} $COMMIT_TAG"
-          echo "TAGS: ${{ env.TAGS }}"
+          echo "COMMIT_TAG=$COMMIT_TAG"
       - name: Set develop tag if main branch
         if: ${{ github.ref == 'refs/heads/main' }}
         run: |
