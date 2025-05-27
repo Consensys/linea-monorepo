@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	VortexCompiler "github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -49,12 +50,12 @@ func (ctx *SelfRecursionCtx) RegistersAh() {
 	// We need the length of total number of SIS rounds
 	ahLength := ctx.VortexCtx.CommitmentsByRoundsSIS.Len()
 	// Consider the precomputed columns.
-	// We increase ahLength only if SIS is applied to 
+	// We increase ahLength only if SIS is applied to
 	// the precomputed columns.
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() && ctx.VortexCtx.IsSISAppliedToPrecomputed(){
+	if ctx.VortexCtx.IsNonEmptyPrecomputed() && ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		ahLength += 1
 	}
-	ah := make([]ifaces.Column, ahLength)
+	ah := make([]ifaces.Column, 0, ahLength)
 
 	// Tracks the number of rows already committed with SIS as we arrive in this
 	// round
@@ -79,75 +80,53 @@ func (ctx *SelfRecursionCtx) RegistersAh() {
 			panic("the ring-SIS polynomials are not fully used")
 		}
 
-		// Registers the commitment key (if this matches an existing key
+		// Registers the commitment key, if this matches an existing key
 		// then the preexisting precomputed key is reused.
-		ah[0] = ctx.comp.InsertPrecomputed(
+		ah = append(ah, ctx.comp.InsertPrecomputed(
 			ctx.ahName(ctx.SisKey(), roundStartAt, numPrecomputeds, maxSize),
 			flattenedKeyChunk(ctx.SisKey(), roundStartAt, numPrecomputeds, maxSize),
-		)
+		))
 
 		// And update the value of the start
 		roundStartAt += numPrecomputeds
 	}
-	// Offset for the precomputed polys
-	precompOffset := 0
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() && ctx.VortexCtx.IsSISAppliedToPrecomputed() {
-		precompOffset += 1
-	}
 
-	for i, comsInRoundsI := range ctx.VortexCtx.CommitmentsByRoundsSIS.Inner() {
+	for i, comsInRoundsI := range ctx.VortexCtx.CommitmentsByRounds.Inner() {
+		// We need to consider only the SIS rounds
+		if ctx.VortexCtx.RoundStatus[i] == VortexCompiler.IsSISApplied {
+			// Sanity-check : if coms in rounds has length zero then the
+			// associated Dh should be nil. That happens when the examinated round
+			// is an "empty" round or when it has been self-recursed already.
+			if (len(comsInRoundsI) == 0) != (ctx.Columns.Rooth[i] == nil) {
+				utils.Panic("nilness mismatch for round=%v #coms-in-round=%v vs root-is-nil=%v", i, len(comsInRoundsI), ctx.Columns.Rooth[i] == nil)
+			}
 
-		// Sanity-check : if coms in rounds has length zero then the
-		// associated Dh should be nil. That happens when the examinated round
-		// is a "dry" round or when it has been self-recursed already.
-		if (len(comsInRoundsI) == 0) != (ctx.Columns.Rooth[i] == nil) {
-			utils.Panic("nilness mismatch for round=%v #coms-in-round=%v vs root-is-nil=%v", i, len(comsInRoundsI), ctx.Columns.Rooth[i] == nil)
+			// Check if there is no rows to commit
+			if len(comsInRoundsI) == 0 {
+				// and ah[i] is nil
+				utils.Panic("We don't expect no polynomials to commit in a SIS round")
+			}
+
+			// The Vortex compiler is supposed to add "shadow columns" ensuring that
+			// every round (counting the precomputations as a round) uses ring-SIS
+			// polynomials fully. Otherwise, the compilation will not be able to
+			// be successful.
+			if (len(comsInRoundsI)*ctx.SisKey().NumLimbs())%(1<<ctx.SisKey().LogTwoDegree) > 0 {
+				panic("the ring-SIS polynomials are not fully used")
+			}
+
+			// Registers the commitment key (if this matches an existing key
+			// then the preexisting precomputed key is reused).
+			ah = append(ah, ctx.comp.InsertPrecomputed(
+				ctx.ahName(ctx.SisKey(), roundStartAt, len(comsInRoundsI), maxSize),
+				flattenedKeyChunk(ctx.SisKey(), roundStartAt, len(comsInRoundsI), maxSize),
+			))
+
+			// And update the value of the start
+			roundStartAt += len(comsInRoundsI)
 		}
-
-		// Check if there is no rows to commit
-		if len(comsInRoundsI) == 0 {
-			// and ah[i] is nil
-			continue
-		}
-
-		// The Vortex compiler is supposed to add "shadow columns" ensuring that
-		// every round (counting the precomputations as a round) uses ring-SIS
-		// polynomials fully. Otherwise, the compilation will not be able to
-		// be successful.
-		if (len(comsInRoundsI)*ctx.SisKey().NumLimbs())%(1<<ctx.SisKey().LogTwoDegree) > 0 {
-			panic("the ring-SIS polynomials are not fully used")
-		}
-
-		// Registers the commitment key (if this matches an existing key
-		// then the preexisting precomputed key is reused).
-		ah[i+precompOffset] = ctx.comp.InsertPrecomputed(
-			ctx.ahName(ctx.SisKey(), roundStartAt, len(comsInRoundsI), maxSize),
-			flattenedKeyChunk(ctx.SisKey(), roundStartAt, len(comsInRoundsI), maxSize),
-		)
-
-		// And update the value of the start
-		roundStartAt += len(comsInRoundsI)
 	}
-
-	ctx.Columns.Ah = ah
-
-	// It's cleaner for us to have len(dH) == len(aH), so we enforces that
-	// by `nil` appending the two slices so that they have the same size at
-	// the end
-	// Todo: to check if the below code needs modification
-	// for the optional SIS hash feature.
-	for len(ctx.Columns.Ah) < len(ctx.Columns.Rooth) {
-		ctx.Columns.Ah = append(ctx.Columns.Ah, nil)
-	}
-
-	for len(ctx.Columns.Rooth) < len(ctx.Columns.Ah) {
-		ctx.Columns.Rooth = append(ctx.Columns.Rooth, nil)
-	}
-
-	// And normally, they have the same length now
-	if len(ctx.Columns.Ah) != len(ctx.Columns.Rooth) {
-		panic("ah and dh should have had the same length now")
-	}
+		ctx.Columns.Ah = ah
 }
 
 // Returns the laid out keys
