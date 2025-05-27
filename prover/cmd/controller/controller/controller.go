@@ -50,7 +50,12 @@ func runController(ctx context.Context, cfg *config.Config) {
 		// SIGTERM is received, there would be no log entry about the signal
 		// until the proof completes.
 		<-ctx.Done()
-		cLog.Infoln("Received cancellation request, will exit as soon as possible or once current proof task is complete.")
+
+		if cfg.Controller.SpotInstanceMode {
+			cLog.Infoln("Received cancellation request. Killing the ongoing process and exiting immediately after.")
+		} else {
+			cLog.Infoln("Received cancellation request, will exit as soon as possible or once current proof task is complete.")
+		}
 	}()
 
 	for {
