@@ -20,12 +20,15 @@ import {
   GetTransactionReceiptByMessageHashParameters,
   GetTransactionReceiptByMessageHashReturnType,
 } from "../actions/getTransactionReceiptByMessageHash";
+import { L1Provider } from "@consensys/linea-sdk-core";
+import { FunctionOnly } from "../types/misc";
 
-export type PublicActionsL1 = {
-  getMessageProof<chain extends Chain | undefined, account extends Account | undefined>(
-    args: GetMessageProofParameters<chain, account>,
-  ): Promise<GetMessageProofReturnType>;
-  getMessageStatus<chain extends Chain | undefined, account extends Account | undefined>(
+export type PublicActionsL1<
+  chain extends Chain | undefined = Chain | undefined,
+  account extends Account | undefined = Account | undefined,
+> = FunctionOnly<L1Provider> & {
+  getMessageProof(args: GetMessageProofParameters<chain, account>): Promise<GetMessageProofReturnType>;
+  getL2ToL1MessageStatus<chain extends Chain | undefined, account extends Account | undefined>(
     args: GetL2ToL1MessageStatusParameters<chain, account>,
   ): Promise<GetL2ToL1MessageStatusReturnType>;
   getMessageByMessageHash(args: GetMessageByMessageHashParameters): Promise<GetMessageByMessageHashReturnType>;
@@ -43,11 +46,13 @@ export function publicActionsL1() {
     account extends Account | undefined = Account | undefined,
   >(
     client: Client<Transport, chain, account>,
-  ): PublicActionsL1 => ({
-    getMessageProof: (args) => getMessageProof(client, args),
-    getMessageStatus: (args) => getL2ToL1MessageStatus(client, args),
-    getMessageByMessageHash: (args) => getMessageByMessageHash(client, args),
-    getMessagesByTransactionHash: (args) => getMessagesByTransactionHash(client, args),
-    getTransactionReceiptByMessageHash: (args) => getTransactionReceiptByMessageHash(client, args),
-  });
+  ): PublicActionsL1<chain, account> => {
+    return {
+      getMessageProof: (args) => getMessageProof(client, args),
+      getL2ToL1MessageStatus: (args) => getL2ToL1MessageStatus(client, args),
+      getMessageByMessageHash: (args) => getMessageByMessageHash(client, args),
+      getMessagesByTransactionHash: (args) => getMessagesByTransactionHash(client, args),
+      getTransactionReceiptByMessageHash: (args) => getTransactionReceiptByMessageHash(client, args),
+    };
+  };
 }

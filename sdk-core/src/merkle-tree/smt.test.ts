@@ -1,32 +1,35 @@
-import { Hex, toHex } from "viem";
+import { Hex } from "../types/misc";
 import { SparseMerkleTree } from "./smt";
+import { encodePacked, keccak256 } from "viem";
+
+const hash = (left: Hex, right: Hex): Hex => keccak256(encodePacked(["bytes32", "bytes32"], [left, right]));
 
 describe("SparseMerkleTree", () => {
   describe("Initialization", () => {
     it("should throw an error if depth <= 1", () => {
-      expect(() => new SparseMerkleTree(1)).toThrow("Merkle tree depth must be greater than 1");
+      expect(() => new SparseMerkleTree(1, hash)).toThrow("Merkle tree depth must be greater than 1");
     });
 
     it("should return initialized tree", () => {
-      const tree = new SparseMerkleTree(5);
+      const tree = new SparseMerkleTree(5, hash);
       expect(tree.getRoot()).toEqual("0x0eb01ebfc9ed27500cd4dfc979272d1f0913cc9f66540d7e8005811109e1cf2d");
     });
   });
 
   describe("getLeaf", () => {
     it("should throw an error when leaf index is lower than 0", () => {
-      const tree = new SparseMerkleTree(5);
+      const tree = new SparseMerkleTree(5, hash);
       expect(() => tree.getLeaf(-1)).toThrow("Leaf index is out of range");
     });
 
     it("should throw an error when leaf index is greater than 2 ** depth", () => {
-      const tree = new SparseMerkleTree(5);
+      const tree = new SparseMerkleTree(5, hash);
       expect(() => tree.getLeaf(2 ** 5 + 1)).toThrow("Leaf index is out of range");
     });
 
     it("should return leaf", () => {
-      const tree = new SparseMerkleTree(5);
-      const messageHash = toHex("32", { size: 32 });
+      const tree = new SparseMerkleTree(5, hash);
+      const messageHash = "0x0000000000000000000000000000000000000000000000000000000000000032";
       tree.addLeaf(0, messageHash);
 
       expect(tree.getLeaf(0)).toEqual(messageHash);
@@ -35,7 +38,7 @@ describe("SparseMerkleTree", () => {
 
   describe("getRoot", () => {
     it("should return merkle root", () => {
-      const tree = new SparseMerkleTree(5);
+      const tree = new SparseMerkleTree(5, hash);
       const messageHashes: Hex[] = [
         "0x0000000000000000000000000000000000000000000000000000000000000000",
         "0x1111111111111111111111111111111111111111111111111111111111111111",
@@ -54,7 +57,7 @@ describe("SparseMerkleTree", () => {
 
   describe("addLeaf", () => {
     it("should add a new leaf to the tree", () => {
-      const tree = new SparseMerkleTree(5);
+      const tree = new SparseMerkleTree(5, hash);
       const messageHashes: Hex[] = [
         "0x0000000000000000000000000000000000000000000000000000000000000000",
         "0x1111111111111111111111111111111111111111111111111111111111111111",
@@ -75,17 +78,17 @@ describe("SparseMerkleTree", () => {
 
   describe("getProof", () => {
     it("should throw an error when leaf index is lower than 0", () => {
-      const tree = new SparseMerkleTree(5);
+      const tree = new SparseMerkleTree(5, hash);
       expect(() => tree.getProof(-1)).toThrow("Leaf index is out of range");
     });
 
     it("should throw an error when leaf index is greater than 2 ** depth", () => {
-      const tree = new SparseMerkleTree(5);
+      const tree = new SparseMerkleTree(5, hash);
       expect(() => tree.getProof(2 ** 5 + 1)).toThrow("Leaf index is out of range");
     });
 
     it("should throw an error when leaf value is empty", () => {
-      const tree = new SparseMerkleTree(5);
+      const tree = new SparseMerkleTree(5, hash);
       expect(() => tree.getProof(0)).toThrow("Leaf does not exist");
     });
 
@@ -131,7 +134,7 @@ describe("SparseMerkleTree", () => {
         ],
       },
     ])("should return the proof for leaf with index $leafIndex", ({ leafIndex, expectedProof }) => {
-      const tree = new SparseMerkleTree(5);
+      const tree = new SparseMerkleTree(5, hash);
       const messageHashes: Hex[] = [
         "0x0000000000000000000000000000000000000000000000000000000000000000",
         "0x1111111111111111111111111111111111111111111111111111111111111111",

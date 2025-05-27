@@ -1,5 +1,5 @@
 import { Account, BaseError, Chain, Client, Hex, Transport } from "viem";
-import { OnChainMessageStatus } from "../types/message";
+import { OnChainMessageStatus } from "@consensys/linea-sdk-core";
 import { getMessageSentEvents } from "./getMessageSentEvents";
 import { getContractEvents, readContract } from "viem/actions";
 import { getBridgeContractAddresses } from "./getBridgeContractAddresses";
@@ -34,14 +34,7 @@ export async function getL2ToL1MessageStatus<
       abi: [
         {
           anonymous: false,
-          inputs: [
-            {
-              indexed: true,
-              internalType: "uint256",
-              name: "l2Block",
-              type: "uint256",
-            },
-          ],
+          inputs: [{ indexed: true, internalType: "uint256", name: "l2Block", type: "uint256" }],
           name: "L2MessagingBlockAnchored",
           type: "event",
         },
@@ -57,13 +50,7 @@ export async function getL2ToL1MessageStatus<
       address: getBridgeContractAddresses(client).lineaRollup,
       abi: [
         {
-          inputs: [
-            {
-              internalType: "uint256",
-              name: "_messageNumber",
-              type: "uint256",
-            },
-          ],
+          inputs: [{ internalType: "uint256", name: "_messageNumber", type: "uint256" }],
           name: "isMessageClaimed",
           outputs: [
             {

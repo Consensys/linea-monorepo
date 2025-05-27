@@ -1,12 +1,14 @@
-import { Account, BlockTag, Chain, Client, GetBlockParameters, Hex, hexToNumber, slice, Transport } from "viem";
+import { parseBlockExtraData } from "@consensys/linea-sdk-core";
+import { Account, BaseError, BlockTag, Chain, Client, GetBlockParameters, Prettify, Transport } from "viem";
 import { getBlock } from "viem/actions";
+import { linea, lineaSepolia } from "viem/chains";
 
-export type GetBlockExtraDataReturnType = {
+export type GetBlockExtraDataReturnType = Prettify<{
   version: number;
   fixedCost: number;
   variableCost: number;
   ethGasPrice: number;
-};
+}>;
 
 export type GetBlockExtraDataParameters<blockTag extends BlockTag = "latest"> = Omit<
   GetBlockParameters<false, blockTag>,
@@ -21,20 +23,11 @@ export async function getBlockExtraData<
   client: Client<Transport, chain, account>,
   parameters: GetBlockExtraDataParameters<blockTag>,
 ): Promise<GetBlockExtraDataReturnType> {
+  if (client.chain?.id !== linea.id && client.chain?.id !== lineaSepolia.id) {
+    throw new BaseError("Client chain is not Linea or Linea Sepolia");
+  }
+
   const block = await getBlock(client, parameters as GetBlockParameters<false, blockTag>);
 
-  const version = slice(block.extraData, 0, 1) as Hex;
-  const fixedCost = slice(block.extraData, 1, 5) as Hex;
-  const variableCost = slice(block.extraData, 5, 9) as Hex;
-  const ethGasPrice = slice(block.extraData, 9, 13) as Hex;
-
-  // Original values are in Kwei; convert them back to wei
-  const extraData = {
-    version: hexToNumber(version),
-    fixedCost: hexToNumber(fixedCost) * 1000,
-    variableCost: hexToNumber(variableCost) * 1000,
-    ethGasPrice: hexToNumber(ethGasPrice) * 1000,
-  };
-
-  return extraData;
+  return parseBlockExtraData(block.extraData);
 }

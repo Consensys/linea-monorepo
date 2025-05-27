@@ -1,5 +1,6 @@
-import { BaseError, encodePacked, Hex, keccak256, zeroHash } from "viem";
-import { Proof } from "../../types/proof";
+import { zeroHash } from "../constants/bytes";
+import { MessageProof } from "../types/message";
+import { Hex } from "../types/misc";
 
 /**
  * A sparse Merkle tree implementation using 1-based flat indexing.
@@ -34,6 +35,8 @@ import { Proof } from "../../types/proof";
 export class SparseMerkleTree {
   /** Tree depth (number of levels to leaves) */
   private depth: number;
+  /** Hash function to use for hashing nodes */
+  private hashFn: (left: Hex, right: Hex) => Hex;
   /** Map storing only non-default node hashes keyed by their flat-tree index */
   private nodeMap = new Map<bigint, Hex>();
 
@@ -51,11 +54,12 @@ export class SparseMerkleTree {
    * @param depth The depth of the tree (must be > 1).
    * @throws If depth <= 1.
    */
-  constructor(depth: number) {
+  constructor(depth: number, hashFn: (left: Hex, right: Hex) => Hex) {
     if (depth <= 1) {
-      throw new BaseError("Merkle tree depth must be greater than 1");
+      throw new Error("Merkle tree depth must be greater than 1");
     }
 
+    this.hashFn = hashFn;
     this.depth = depth;
     this.zeroHashes = this.buildZeroHashes(depth);
     // Seed the root (index 1) to the empty-tree root
@@ -79,9 +83,9 @@ export class SparseMerkleTree {
   /**
    * Get the current Merkle root (hash at index 1).
    *
-   * @returns {string} The root hash of the Merkle tree.
+   * @returns {Hex} The root hash of the Merkle tree.
    */
-  public getRoot(): string {
+  public getRoot(): Hex {
     return this.nodeMap.get(1n)!;
   }
 
@@ -93,7 +97,7 @@ export class SparseMerkleTree {
    * @returns {string} The hash of the two child node values.
    */
   private hash(left: Hex, right: Hex): Hex {
-    return keccak256(encodePacked(["bytes32", "bytes32"], [left, right]));
+    return this.hashFn(left, right);
   }
 
   /**
@@ -105,7 +109,7 @@ export class SparseMerkleTree {
    */
   private leafNodeIndex(idx: number): bigint {
     if (idx < 0 || idx >= 1 << this.depth) {
-      throw new BaseError("Leaf index is out of range");
+      throw new Error("Leaf index is out of range");
     }
     // Flat-tree leaf index: 2^depth + idx
     return (1n << BigInt(this.depth)) + BigInt(idx);
@@ -197,13 +201,13 @@ export class SparseMerkleTree {
    * @throws If idx out of range or leaf is unset.
    * @returns {Proof} An object containing the proof elements, the root hash, and the leaf index.
    */
-  public getProof(idx: number): Proof {
+  public getProof(idx: number): MessageProof {
     const leafIdx = this.leafNodeIndex(idx);
 
     const leafHash = this.nodeMap.get(leafIdx) ?? this.fallbackHash(0);
 
     if (leafHash === this.fallbackHash(0)) {
-      throw new BaseError("Leaf does not exist");
+      throw new Error("Leaf does not exist");
     }
 
     const proof: Hex[] = [];

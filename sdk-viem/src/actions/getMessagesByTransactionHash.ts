@@ -1,22 +1,13 @@
 import { Account, BaseError, Chain, Client, Hex, parseEventLogs, toEventSignature, Transport } from "viem";
 import { getTransactionReceipt } from "viem/actions";
+import { ExtendedMessage } from "@consensys/linea-sdk-core";
 import { LINEA_MESSAGE_SERVICE_CONTRACTS } from "../constants/address";
 
 export type GetMessagesByTransactionHashParameters = {
   transactionHash: Hex;
 };
 
-export type GetMessagesByTransactionHashReturnType = {
-  from: Hex;
-  to: Hex;
-  fee: bigint;
-  value: bigint;
-  nonce: bigint;
-  calldata: Hex;
-  messageHash: Hex;
-  transactionHash: Hex;
-  blockNumber: bigint;
-}[];
+export type GetMessagesByTransactionHashReturnType = ExtendedMessage[];
 
 export async function getMessagesByTransactionHash<
   chain extends Chain | undefined,

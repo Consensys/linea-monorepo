@@ -3,6 +3,7 @@ packages:
   - 'e2e/**'
   - 'sdk/**'
   - 'sdk-viem/**'
+  - 'sdk-core/**'
   - 'postman/**'
   - 'operations/**'
   - 'bridge-ui/**'

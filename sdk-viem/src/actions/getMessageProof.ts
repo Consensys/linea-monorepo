@@ -1,11 +1,21 @@
-import { Account, BaseError, Chain, Client, Hex, parseEventLogs, Transport, zeroHash } from "viem";
-import { Proof } from "../types/proof";
+import {
+  Account,
+  BaseError,
+  Chain,
+  Client,
+  encodePacked,
+  Hex,
+  keccak256,
+  parseEventLogs,
+  Transport,
+  zeroHash,
+} from "viem";
+import { MessageProof, SparseMerkleTree } from "@consensys/linea-sdk-core";
 import { getMessageSentEvents } from "./getMessageSentEvents";
 import { getContractEvents, getTransactionReceipt } from "viem/actions";
 import { getBridgeContractAddresses } from "./getBridgeContractAddresses";
-import { SparseMerkleTree } from "../utils/merkle-tree/smt";
 
-export type GetMessageProofReturnType = Proof;
+export type GetMessageProofReturnType = MessageProof;
 
 export type GetMessageProofParameters<chain extends Chain | undefined, account extends Account | undefined> = {
   l2Client: Client<Transport, chain, account>;
@@ -79,7 +89,9 @@ export async function getMessageProof<
 
   const l2messages = getMessageSiblings(messageHash, l2MessageHashesInBlockRange, finalizationInfo.treeDepth);
 
-  const tree = new SparseMerkleTree(finalizationInfo.treeDepth);
+  const tree = new SparseMerkleTree(finalizationInfo.treeDepth, (left: Hex, right: Hex) =>
+    keccak256(encodePacked(["bytes32", "bytes32"], [left, right])),
+  );
   for (const [index, leaf] of l2messages.entries()) {
     tree.addLeaf(index, leaf);
   }
