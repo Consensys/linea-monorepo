@@ -41,6 +41,22 @@ type rawCompiledIOP struct {
 	FiatShamirSetup            json.RawMessage     `json:"fiatShamirSetup"`
 	PublicInputs               json.RawMessage     `json:"publicInputs"`
 	ExtraData                  json.RawMessage     `json:"extraData"`
+
+	mu sync.Mutex
+}
+
+func initializeRawCompiledIOP(comp *wizard.CompiledIOP, numRounds int) *rawCompiledIOP {
+	return &rawCompiledIOP{
+		Columns:                    make([][]json.RawMessage, numRounds),
+		QueriesParams:              make([][]json.RawMessage, numRounds),
+		QueriesNoParams:            make([][]json.RawMessage, numRounds),
+		Coins:                      make([][]json.RawMessage, numRounds),
+		Subprovers:                 make([][]json.RawMessage, numRounds),
+		SubVerifiers:               make([][]json.RawMessage, numRounds),
+		FiatShamirHooksPreSampling: make([][]json.RawMessage, numRounds),
+		DummyCompiled:              comp.DummyCompiled,
+		SelfRecursionCount:         comp.SelfRecursionCount,
+	}
 }
 
 // NewEmptyCompiledIOP initializes an empty CompiledIOP object.
@@ -70,83 +86,65 @@ func NewEmptyCompiledIOP() *wizard.CompiledIOP {
 //		if err != nil {
 //			panic(err)
 func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
+	serTime := time.Now()
 	numRounds := comp.NumRounds()
 	if numRounds == 0 {
 		return serializeAnyWithCborPkg(&rawCompiledIOP{})
 	}
 
-	raw := &rawCompiledIOP{
-		Columns:                    make([][]json.RawMessage, numRounds),
-		QueriesParams:              make([][]json.RawMessage, numRounds),
-		QueriesNoParams:            make([][]json.RawMessage, numRounds),
-		Coins:                      make([][]json.RawMessage, numRounds),
-		Subprovers:                 make([][]json.RawMessage, numRounds),
-		SubVerifiers:               make([][]json.RawMessage, numRounds),
-		FiatShamirHooksPreSampling: make([][]json.RawMessage, numRounds),
-		DummyCompiled:              comp.DummyCompiled,
-		SelfRecursionCount:         comp.SelfRecursionCount,
-	}
+	raw := initializeRawCompiledIOP(comp, numRounds)
 
 	if err := serializeNonRoundData(comp, raw); err != nil {
 		return nil, err
 	}
 
-	// Serialize round-specific data in parallel
+	serializeRoundSpecificData(comp, raw, numRounds)
+	serIOP, err := serializeAnyWithCborPkg(raw)
+	logrus.Infof("Successfully serialized compiled IOP and took %vs", time.Since(serTime).Seconds())
+	return serIOP, err
+}
+
+func serializeRoundSpecificData(comp *wizard.CompiledIOP, raw *rawCompiledIOP, numRounds int) {
 	var mu sync.Mutex
 	work := func(start, stop int) {
 		for round := start; round < stop; round++ {
-			cols, err := serializeColumns(comp, round)
-			if err != nil {
-				utils.Panic("round %d: serialize columns: %v", round, err)
-			}
-
-			qParams, err := serializeQueries(&comp.QueriesParams, round)
-			if err != nil {
-				utils.Panic("round %d: serialize queries params: %v", round, err)
-			}
-
-			qNoParams, err := serializeQueries(&comp.QueriesNoParams, round)
-			if err != nil {
-				utils.Panic("round %d: serialize queries no params: %v", round, err)
-			}
-
-			coins, err := serializeCoins(comp, round)
-			if err != nil {
-				utils.Panic("round %d: serialize coins: %v", round, err)
-			}
-
-			subProvers, err := serializeSubProverAction(comp, round)
-			if err != nil {
-				utils.Panic("round %d: serialize SubProvers: %v", round, err)
-			}
-
-			subVerifiers, err := serializeSubVerifierAction(comp, round)
-			if err != nil {
-				utils.Panic("round %d: serialize SubVerifiers: %v", round, err)
-			}
-
-			fiatShamirHooks, err := serializeFSHookPS(comp, round)
-			if err != nil {
-				utils.Panic("round %d: serialize FiatShamirHookPreSampling: %v", round, err)
-			}
-
-			mu.Lock()
-			raw.Columns[round] = cols
-			raw.QueriesParams[round] = qParams
-			raw.QueriesNoParams[round] = qNoParams
-			raw.Coins[round] = coins
-			raw.Subprovers[round] = subProvers
-			raw.SubVerifiers[round] = subVerifiers
-			raw.FiatShamirHooksPreSampling[round] = fiatShamirHooks
-			mu.Unlock()
+			serializeRoundData(comp, raw, round, &mu)
 		}
 	}
-
 	parallel.ExecuteChunky(numRounds, work)
+}
 
-	serIOP, err := serializeAnyWithCborPkg(raw)
-	logrus.Info("Successfully serialized compiled IOP")
-	return serIOP, err
+func serializeRoundData(comp *wizard.CompiledIOP, raw *rawCompiledIOP, round int, mu *sync.Mutex) {
+	cols, err := serializeColumns(comp, round)
+	handleSerializationError("columns", round, err)
+
+	qParams, err := serializeQueries(&comp.QueriesParams, round)
+	handleSerializationError("queries params", round, err)
+
+	qNoParams, err := serializeQueries(&comp.QueriesNoParams, round)
+	handleSerializationError("queries no params", round, err)
+
+	coins, err := serializeCoins(comp, round)
+	handleSerializationError("coins", round, err)
+
+	subProvers, err := serializeSubProverAction(comp, round)
+	handleSerializationError("SubProvers", round, err)
+
+	subVerifiers, err := serializeSubVerifierAction(comp, round)
+	handleSerializationError("SubVerifiers", round, err)
+
+	fiatShamirHooks, err := serializeFSHookPS(comp, round)
+	handleSerializationError("FiatShamirHookPreSampling", round, err)
+
+	mu.Lock()
+	raw.Columns[round] = cols
+	raw.QueriesParams[round] = qParams
+	raw.QueriesNoParams[round] = qNoParams
+	raw.Coins[round] = coins
+	raw.Subprovers[round] = subProvers
+	raw.SubVerifiers[round] = subVerifiers
+	raw.FiatShamirHooksPreSampling[round] = fiatShamirHooks
+	mu.Unlock()
 }
 
 // DeserializeCompiledIOP unmarshals a wizard.CompiledIOP object from CBOR.
@@ -285,129 +283,6 @@ func deserializeRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRoun
 	return nil
 }
 
-/*
-// deserializeRoundData deserializes round-specific data in parallel, with synchronized updates to comp.
-func deserializeRoundData(raw *rawCompiledIOP, comp *wizard.CompiledIOP, numRounds int) error {
-	startTime := time.Now()
-
-	// Thread-safe error collector
-	var (
-		mu     sync.Mutex
-		errors []error
-	)
-
-	// Mutex to synchronize updates to comp
-	var compMu sync.Mutex
-
-	// Work function to process a chunk of rounds
-	work := func(start, stop int) {
-		for round := start; round < stop; round++ {
-			if round >= len(raw.Columns) || round >= len(raw.Coins) ||
-				round >= len(raw.QueriesNoParams) || round >= len(raw.QueriesParams) ||
-				round >= len(raw.Subprovers) || round >= len(raw.SubVerifiers) ||
-				round >= len(raw.FiatShamirHooksPreSampling) {
-				mu.Lock()
-				errors = append(errors, fmt.Errorf("round %d exceeds available data in rawCompiledIOP", round))
-				mu.Unlock()
-				return
-			}
-
-			// Deserialize columns and update comp
-			compMu.Lock()
-			if err := deserializeColumns(raw.Columns[round], comp); err != nil {
-				compMu.Unlock()
-				mu.Lock()
-				errors = append(errors, fmt.Errorf("round %d columns: %w", round, err))
-				mu.Unlock()
-				return
-			}
-			compMu.Unlock()
-
-			// Deserialize coins and update comp
-			compMu.Lock()
-			if err := deserializeCoins(raw.Coins[round], round, comp); err != nil {
-				compMu.Unlock()
-				mu.Lock()
-				errors = append(errors, fmt.Errorf("round %d coins: %w", round, err))
-				mu.Unlock()
-				return
-			}
-			compMu.Unlock()
-
-			// Deserialize queriesParams and update comp
-			compMu.Lock()
-			if err := deserializeQuery(raw.QueriesParams[round], round, &comp.QueriesParams, comp); err != nil {
-				compMu.Unlock()
-				mu.Lock()
-				errors = append(errors, fmt.Errorf("round %d queriesParams: %w", round, err))
-				mu.Unlock()
-				return
-			}
-			compMu.Unlock()
-
-			// Deserialize queriesNoParams and update comp
-			compMu.Lock()
-			if err := deserializeQuery(raw.QueriesNoParams[round], round, &comp.QueriesNoParams, comp); err != nil {
-				compMu.Unlock()
-				mu.Lock()
-				errors = append(errors, fmt.Errorf("round %d queriesNoParams: %w", round, err))
-				mu.Unlock()
-				return
-			}
-			compMu.Unlock()
-
-			// Deserialize subProvers and update comp
-			compMu.Lock()
-			if err := deserializeSubProvers(raw.Subprovers[round], round, comp); err != nil {
-				compMu.Unlock()
-				mu.Lock()
-				errors = append(errors, fmt.Errorf("round %d subProvers: %w", round, err))
-				mu.Unlock()
-				return
-			}
-			compMu.Unlock()
-
-			// Deserialize subVerifiers and update comp
-			compMu.Lock()
-			if err := deserializeSubVerifiers(raw.SubVerifiers[round], round, comp); err != nil {
-				compMu.Unlock()
-				mu.Lock()
-				errors = append(errors, fmt.Errorf("round %d subVerifiers: %w", round, err))
-				mu.Unlock()
-				return
-			}
-			compMu.Unlock()
-
-			// Deserialize fiatShamirHooksPreSampling and update comp
-			compMu.Lock()
-			if err := deserializeFSHooks(raw.FiatShamirHooksPreSampling[round], round, comp); err != nil {
-				compMu.Unlock()
-				mu.Lock()
-				errors = append(errors, fmt.Errorf("round %d fiatShamirHooksPreSampling: %w", round, err))
-				mu.Unlock()
-				return
-			}
-			compMu.Unlock()
-
-			logrus.Debugf("Deserialized round %d successfully", round)
-		}
-	}
-
-	// Execute deserialization in parallel
-	parallel.ExecuteChunky(numRounds, work)
-
-	// Check for errors
-	mu.Lock()
-	defer mu.Unlock()
-	if len(errors) > 0 {
-		// Return the first error for simplicity, consistent with original behavior
-		return errors[0]
-	}
-
-	logrus.Printf("deserializeRoundData took %v seconds for %d rounds", time.Since(startTime).Seconds(), numRounds)
-	return nil
-} */
-
 func serializeColumns(comp *wizard.CompiledIOP, round int) ([]json.RawMessage, error) {
 	cols := comp.Columns.AllHandlesAtRound(round)
 	rawCols := make([]json.RawMessage, len(cols))
@@ -456,8 +331,8 @@ func serializeSubProverAction(comp *wizard.CompiledIOP, round int) ([]json.RawMe
 	actions := comp.SubProvers.GetOrEmpty(round)
 	rawActions := make([]json.RawMessage, len(actions))
 	for i, action := range actions {
-		logrus.Printf("Type of step:%d is :%v \n", i, reflect.TypeOf(action))
-		logrus.Printf("Type of *step:%d is: %v \n", i, reflect.TypeOf(&action))
+		// logrus.Printf("Type of step:%d is :%v \n", i, reflect.TypeOf(action))
+		// logrus.Printf("Type of *step:%d is: %v \n", i, reflect.TypeOf(&action))
 
 		r, err := SerializeValue(reflect.ValueOf(&action), DeclarationMode)
 		if err != nil {
@@ -739,4 +614,10 @@ func RegisterColumns(from, to *wizard.CompiledIOP) error {
 	}
 	logrus.Printf("Registering from -> to compiled IOP took %vs", time.Since(startTime).Seconds())
 	return nil
+}
+
+func handleSerializationError(context string, round int, err error) {
+	if err != nil {
+		utils.Panic("round %d: serialize %s: %v", round, context, err)
+	}
 }

@@ -239,6 +239,7 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	// that's why there is no need to serialize the full object; the ID
 	// is enough.
 	if mode == ReferenceMode && typeOfV == naturalType {
+		logrus.Println("Ser. columns in ref. mode")
 		colID := v.Interface().(column.Natural).ID
 		return serializeAnyWithCborPkg(colID)
 	}
@@ -247,6 +248,7 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	// handling. This can be triggered when passing the Column as initial
 	// input to the serializer.
 	if mode == DeclarationMode && typeOfV == naturalType {
+		logrus.Println("Ser. columns in declaration mode")
 		col := v.Interface().(column.Natural)
 		decl := intoSerializableColDecl(&col)
 		return SerializeValue(reflect.ValueOf(decl), mode)
@@ -262,6 +264,7 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	// looking up the query by name in the compiled IOP. So there is no need
 	// to include it in the serialized object. The ID is enough.
 	if mode == ReferenceMode && typeOfV.Implements(queryType) {
+		logrus.Println("Ser. query in ref. mode")
 		queryID := v.Interface().(ifaces.Query).Name()
 		return serializeAnyWithCborPkg(queryID)
 	}
@@ -271,6 +274,7 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	// ensure that the serializer enters in reference mode.
 	newMode := mode
 	if typeOfV.Implements(queryType) || typeOfV.Implements(columnType) {
+		logrus.Printf("Setting newmode columns from mode:%d in ref. mode \n", newMode)
 		newMode = ReferenceMode
 	}
 
@@ -281,13 +285,6 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 		if unicode.IsLower(rune(f.name[0])) {
 			continue // Skip unexported fields
 		}
-
-		// // Skip fields with cbor:"-" tag
-		// structField, _ := typeOfV.FieldByName(f.name)
-		// if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
-		// 	logrus.Printf("Skipping serialization of field:%s purposefully due to empty cbor tag\n", f.name)
-		// 	continue
-		// }
 
 		fieldValue := v.FieldByName(f.name)
 		fieldType := f.fieldType
