@@ -229,7 +229,7 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 
 	// Skip serialization for ignorable types
 	if IsIgnoreableType(typeOfV) {
-		logrus.Infof("Skipping serialization of Ignorable type: %v\n", typeOfV)
+		logrus.Warnf("Skipping serialization of Ignorable type: %v\n", typeOfV)
 		return json.RawMessage(NilString), nil
 	}
 
@@ -239,7 +239,7 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	// that's why there is no need to serialize the full object; the ID
 	// is enough.
 	if mode == ReferenceMode && typeOfV == naturalType {
-		logrus.Println("Ser. columns in ref. mode")
+		// logrus.Println("Ser. columns in ref. mode")
 		colID := v.Interface().(column.Natural).ID
 		return serializeAnyWithCborPkg(colID)
 	}
@@ -248,7 +248,7 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	// handling. This can be triggered when passing the Column as initial
 	// input to the serializer.
 	if mode == DeclarationMode && typeOfV == naturalType {
-		logrus.Println("Ser. columns in declaration mode")
+		// logrus.Println("Ser. columns in declaration mode")
 		col := v.Interface().(column.Natural)
 		decl := intoSerializableColDecl(&col)
 		return SerializeValue(reflect.ValueOf(decl), mode)
@@ -264,7 +264,7 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	// looking up the query by name in the compiled IOP. So there is no need
 	// to include it in the serialized object. The ID is enough.
 	if mode == ReferenceMode && typeOfV.Implements(queryType) {
-		logrus.Println("Ser. query in ref. mode")
+		//logrus.Println("Ser. query in ref. mode")
 		queryID := v.Interface().(ifaces.Query).Name()
 		return serializeAnyWithCborPkg(queryID)
 	}
@@ -274,7 +274,7 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 	// ensure that the serializer enters in reference mode.
 	newMode := mode
 	if typeOfV.Implements(queryType) || typeOfV.Implements(columnType) {
-		logrus.Printf("Setting newmode columns from mode:%d in ref. mode \n", newMode)
+		// logrus.Printf("Setting newmode columns from mode:%d in ref. mode \n", newMode)
 		newMode = ReferenceMode
 	}
 
@@ -286,22 +286,29 @@ func serializeStruct(v reflect.Value, mode Mode) (json.RawMessage, error) {
 			continue // Skip unexported fields
 		}
 
-		fieldValue := v.FieldByName(f.name)
 		fieldType := f.fieldType
-
-		// Special handling for *wizard.CompiledIOP fields
 		if fieldType == compiledIOPType {
-			if fieldValue.IsNil() {
-				raw[f.rawName] = []byte(NilString)
-			} else {
-				iopSer, err := SerializeCompiledIOP(fieldValue.Interface().(*wizard.CompiledIOP))
-				if err != nil {
-					return nil, fmt.Errorf("failed to serialize *wizard.CompiledIOP field %s: %w", f.name, err)
-				}
-				raw[f.rawName] = iopSer
-			}
+			logrus.Infof("Ignoring a struct field name:%s of type *wizard.CompiledIOP in ref. mode\n", f.name)
 			continue
 		}
+
+		fieldValue := v.FieldByName(f.name)
+		/*
+
+			// Special handling for *wizard.CompiledIOP fields
+			if fieldType == compiledIOPType {
+				if fieldValue.IsNil() {
+					raw[f.rawName] = []byte(NilString)
+				} else {
+					logrus.Infof("Ser. a struct field name:%s of type *wizard.CompiledIOP \n", f.name)
+					iopSer, err := SerializeCompiledIOP(fieldValue.Interface().(*wizard.CompiledIOP))
+					if err != nil {
+						return nil, fmt.Errorf("failed to serialize *wizard.CompiledIOP field %s: %w", f.name, err)
+					}
+					raw[f.rawName] = iopSer
+				}
+				continue
+			} */
 
 		// Serialize other fields as usual
 		r, err := SerializeValue(fieldValue, newMode)
@@ -420,7 +427,7 @@ func deserializeInterface(data json.RawMessage, mode Mode, t reflect.Type, comp 
 
 	if IsIgnoreableType(t) {
 		if bytes.Equal(data, []byte(NilString)) {
-			logrus.Infof("Skipping deserialization of Ignorable type: %v", t)
+			logrus.Warnf("Skipping deserialization of Ignorable type: %v", t)
 			return reflect.Zero(t), nil
 		}
 		return reflect.Value{}, fmt.Errorf("expected null or empty struct for %v, got: %v", t, data)
@@ -534,7 +541,7 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 	// Handle ignorable types
 	if IsIgnoreableType(t) {
 		if bytes.Equal(data, []byte(NilString)) {
-			logrus.Infof("Skipping deserialization of Ignorable type: %v", t)
+			logrus.Warnf("Skipping deserialization of Ignorable type: %v", t)
 			return reflect.Zero(t), nil
 		}
 		return reflect.Value{}, fmt.Errorf("expected null or empty struct for %v, got: %v", t, data)
@@ -622,26 +629,33 @@ func deserializeStruct(data json.RawMessage, mode Mode, t reflect.Type, comp *wi
 			continue // Skip unexported fields
 		}
 
+		fieldType := f.fieldType
+		if fieldType == compiledIOPType {
+			logrus.Infof("Ignoring Deser. a struct field name:%s of type *wizard.CompiledIOP  in ref. mode\n", f.name)
+			// newMode = ReferenceMode
+			continue
+		}
+
 		fieldRaw, ok := raw[f.rawName]
 		if !ok {
 			utils.Panic("Missing struct field %q.%v of type %q, provided sub-JSON: %v", t.String(), f.name, f.fieldType.String(), raw)
 		}
 
-		fieldType := f.fieldType
-
-		// Special handling for *wizard.CompiledIOP fields
-		if fieldType == compiledIOPType {
-			if bytes.Equal(fieldRaw, []byte(NilString)) {
-				v.FieldByName(f.name).Set(reflect.Zero(fieldType))
-			} else {
-				iop, err := DeserializeCompiledIOP(fieldRaw)
-				if err != nil {
-					return reflect.Value{}, fmt.Errorf("failed to deserialize *wizard.CompiledIOP field %s: %w", f.name, err)
+		/*
+			// Special handling for *wizard.CompiledIOP fields => ex: RecursionComp
+			if fieldType == compiledIOPType {
+				if bytes.Equal(fieldRaw, []byte(NilString)) {
+					v.FieldByName(f.name).Set(reflect.Zero(fieldType))
+				} else {
+					logrus.Infof("Deser. a struct field name:%s of type *wizard.CompiledIOP \n", f.name)
+					iop, err := DeserializeCompiledIOP(fieldRaw)
+					if err != nil {
+						return reflect.Value{}, fmt.Errorf("failed to deserialize *wizard.CompiledIOP field %s: %w", f.name, err)
+					}
+					v.FieldByName(f.name).Set(reflect.ValueOf(iop))
 				}
-				v.FieldByName(f.name).Set(reflect.ValueOf(iop))
-			}
-			continue
-		}
+				continue
+			} */
 
 		// Deserialize other fields as usual
 		fieldValue, err := DeserializeValue(fieldRaw, newMode, fieldType, comp)

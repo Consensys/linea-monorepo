@@ -22,7 +22,7 @@ var (
 	testRec       = recurSegComp.Recursion
 	testCompInput = testRec.InputCompiledIOP
 	testCompRecur = recurSegComp.RecursionComp
-	testComp      = testCompInput
+	testComp      = testCompRecur
 )
 
 func TestSerdeRecursion(t *testing.T) {
@@ -66,7 +66,6 @@ func TestSerdeIOP(t *testing.T) {
 		t.Fatalf("error during ser. recursion input compiled-iop:%s\n", err.Error())
 	}
 
-	logrus.Printf("Writing ser. CompiledIOP to file")
 	logrus.Printf("Serialization took %vs\n", time.Since(startTime).Seconds())
 
 	deSerComp, err := serialization.DeserializeCompiledIOP(serComp)
@@ -77,6 +76,29 @@ func TestSerdeIOP(t *testing.T) {
 	logrus.Printf("Deserialization took %vs\n", time.Since(startTime).Seconds())
 
 	if !test_utils.CompareExportedFields(testComp, deSerComp) {
+		t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")
+	}
+}
+
+func TestSerdeRecurIOP(t *testing.T) {
+	startTime := time.Now()
+	serComp, err := serialization.SerializeCompiledIOP(testCompRecur)
+	if err != nil {
+		t.Fatalf("error during ser. recursion input compiled-iop:%s\n", err.Error())
+	}
+
+	logrus.Printf("Serialization took %vs\n", time.Since(startTime).Seconds())
+
+	comp := serialization.NewEmptyCompiledIOP()
+	serialization.RegisterColumns(testCompRecur, comp)
+	deSerComp, err := serialization.DeRecurCompIOP(serComp, comp)
+	if err != nil {
+		t.Fatalf("error during deser. recursion input compiled-iop:%s\n", err.Error())
+	}
+
+	logrus.Printf("Deserialization took %vs\n", time.Since(startTime).Seconds())
+
+	if !test_utils.CompareExportedFields(testCompRecur, deSerComp) {
 		t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")
 	}
 }

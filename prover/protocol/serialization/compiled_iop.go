@@ -41,8 +41,6 @@ type rawCompiledIOP struct {
 	FiatShamirSetup            json.RawMessage     `json:"fiatShamirSetup"`
 	PublicInputs               json.RawMessage     `json:"publicInputs"`
 	ExtraData                  json.RawMessage     `json:"extraData"`
-
-	mu sync.Mutex
 }
 
 func initializeRawCompiledIOP(comp *wizard.CompiledIOP, numRounds int) *rawCompiledIOP {
@@ -93,12 +91,11 @@ func SerializeCompiledIOP(comp *wizard.CompiledIOP) ([]byte, error) {
 	}
 
 	raw := initializeRawCompiledIOP(comp, numRounds)
-
 	if err := serializeNonRoundData(comp, raw); err != nil {
 		return nil, err
 	}
-
 	serializeRoundSpecificData(comp, raw, numRounds)
+
 	serIOP, err := serializeAnyWithCborPkg(raw)
 	logrus.Infof("Successfully serialized compiled IOP and took %vs", time.Since(serTime).Seconds())
 	return serIOP, err
@@ -147,8 +144,48 @@ func serializeRoundData(comp *wizard.CompiledIOP, raw *rawCompiledIOP, round int
 	mu.Unlock()
 }
 
+func DeRecurCompIOP(data []byte, comp *wizard.CompiledIOP) (*wizard.CompiledIOP, error) {
+	startTime := time.Now()
+	raw := &rawCompiledIOP{}
+	if err := deserializeAnyWithCborPkg(data, raw); err != nil {
+		return nil, fmt.Errorf("CBOR unmarshal failed: %w", err)
+	}
+
+	numRounds := len(raw.Columns)
+	if numRounds == 0 {
+		return comp, nil
+	}
+
+	logrus.Infof("Number of rounds to serde in CompiledIOP: %d", numRounds)
+
+	comp.DummyCompiled = raw.DummyCompiled
+	comp.SelfRecursionCount = raw.SelfRecursionCount
+
+	// Register all column IDs first to ensure queries/subprovers can reference them. Structure deserialization
+	// to pre-register all referenced data (e.g., columns) before processing dependent fields.
+	if err := registerAllColumns(raw, comp, numRounds); err != nil {
+		return nil, fmt.Errorf("register columns: %w", err)
+	}
+
+	if err := deserializeNonRoundData(raw, comp); err != nil {
+		return nil, err
+	}
+
+	if err := deserializeRoundData(raw, comp, numRounds); err != nil {
+		return nil, err
+	}
+
+	if err := deserializeFiatShamirSetup(raw, comp); err != nil {
+		return nil, fmt.Errorf("deserialize FiatShamirSetup: %w", err)
+	}
+
+	logrus.Printf("Successfully deserialized CompiledIOP and took %vs \n", time.Since(startTime).Seconds())
+	return comp, nil
+}
+
 // DeserializeCompiledIOP unmarshals a wizard.CompiledIOP object from CBOR.
 func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
+	startTime := time.Now()
 	comp := NewEmptyCompiledIOP()
 	raw := &rawCompiledIOP{}
 	if err := deserializeAnyWithCborPkg(data, raw); err != nil {
@@ -183,7 +220,7 @@ func DeserializeCompiledIOP(data []byte) (*wizard.CompiledIOP, error) {
 		return nil, fmt.Errorf("deserialize FiatShamirSetup: %w", err)
 	}
 
-	logrus.Println("Successfully deserialized CompiledIOP")
+	logrus.Printf("Successfully deserialized CompiledIOP and took %vs \n", time.Since(startTime).Seconds())
 	return comp, nil
 }
 

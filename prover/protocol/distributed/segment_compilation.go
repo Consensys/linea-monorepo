@@ -57,10 +57,10 @@ type RecursedSegmentCompilation struct {
 	// ModuleDefault is optional and is set if the segment is default module
 	// segment.
 	DefaultModule *DefaultModule
-	// Recursion is the wizard construction context of the recursed wizard.
-	Recursion *recursion.Recursion
 	// RecursionComp is the compiled IOP of the recursed wizard.
 	RecursionComp *wizard.CompiledIOP
+	// Recursion is the wizard construction context of the recursed wizard.
+	Recursion *recursion.Recursion
 }
 
 // CompileSegment applies all the compilation steps required to compile an LPP
