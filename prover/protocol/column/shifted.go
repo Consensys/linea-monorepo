@@ -1,8 +1,11 @@
 package column
 
 import (
+	"fmt"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
@@ -122,11 +125,43 @@ func (s Shifted) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Varia
 	return res
 }
 
+func (s Shifted) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+	if s.IsBase() {
+		parent := s.Parent.GetColAssignmentGnark(run) // [a b c d e f g h]
+		res := make([]frontend.Variable, len(parent))
+		for i := range res {
+			posParent := utils.PositiveMod(i+s.Offset, len(parent))
+			res[i] = parent[posParent]
+		}
+		return res, nil
+	} else {
+		return nil, fmt.Errorf("requested base elements but column is defined over the extension")
+	}
+}
+
+func (s Shifted) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
+	parent := s.Parent.GetColAssignmentGnarkExt(run) // [a b c d e f g h]
+	res := make([]gnarkfext.Variable, len(parent))
+	for i := range res {
+		posParent := utils.PositiveMod(i+s.Offset, len(parent))
+		res[i] = parent[posParent]
+	}
+	return res
+}
+
 // GetColAssignmentAt gets a particular entry of the shifted column. The query
 // is delegated to the underlying column and the requested position is shifted
 // according to the offset. This implements the [ifaces.Column] interface.
 func (s Shifted) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
 	return s.Parent.GetColAssignmentAt(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
+}
+
+func (s Shifted) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	return s.Parent.GetColAssignmentAtBase(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
+}
+
+func (s Shifted) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	return s.Parent.GetColAssignmentAtExt(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
 }
 
 // GetColAssignmentGnarkAt gets the witness from the parent and performs a shift in the gnark circuit
@@ -135,9 +170,21 @@ func (s Shifted) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) front
 	return s.Parent.GetColAssignmentGnarkAt(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
 }
 
+func (s Shifted) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+	return s.Parent.GetColAssignmentGnarkAtBase(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
+}
+
+func (s Shifted) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
+	return s.Parent.GetColAssignmentGnarkAtExt(run, utils.PositiveMod(pos+s.Offset, s.Parent.Size()))
+}
+
 // String returns the ID of the column as a string and implements [ifaces.Column]
 // and [github.com/consensys/linea-monorepo/prover/symbolic.Metadata]. It returns the same as [GetColID] but as a string
 // (required by Metadata).
 func (s Shifted) String() string {
 	return string(s.GetColID())
+}
+
+func (s Shifted) IsBase() bool {
+	return s.Parent.IsBase()
 }

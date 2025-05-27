@@ -23,6 +23,15 @@ func EvalUnivariate(pol []fext.Element, x fext.Element) fext.Element {
 	return res
 }
 
+func EvalUnivariateMixed(pol []fext.GenericFieldElem, x fext.GenericFieldElem) fext.GenericFieldElem {
+	res := fext.GenericFieldZero()
+	for i := len(pol) - 1; i >= 0; i-- {
+		res.Mul(&x)
+		res.Add(&pol[i])
+	}
+	return *res
+}
+
 func EvalUnivariateBase(pol []fext.Element, x field.Element) fext.Element {
 	wrappedX := fext.Element{x, field.Zero()}
 	return EvalUnivariate(pol, wrappedX)

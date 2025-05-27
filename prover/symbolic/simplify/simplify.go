@@ -23,7 +23,7 @@ func AutoSimplify(expr *sym.Expression) *sym.Expression {
 		autoFactorize,
 	}
 
-	// To ensure at every stage that the ESHash is never altered.
+	// To ensure at every stage that the GenericFieldELem is never altered.
 	initESH := expr.ESHash
 
 	res := expr

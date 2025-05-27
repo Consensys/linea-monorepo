@@ -227,3 +227,8 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 
 	return sv.NewRegular(res)
 }
+
+func (t PeriodicSample) IsBase() bool {
+
+	return true
+}

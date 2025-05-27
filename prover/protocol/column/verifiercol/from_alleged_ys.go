@@ -1,6 +1,8 @@
 package verifiercol
 
 import (
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
 	"strings"
 
 	"github.com/consensys/gnark/frontend"
@@ -24,6 +26,41 @@ type FromYs struct {
 	Query query.UnivariateEval
 	// Remember the round in which the query was made
 	Round_ int
+}
+
+func (fys FromYs) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Variable {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (fys FromYs) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Variable {
+	//TODO implement me
+	panic("implement me")
 }
 
 // Construct a new column from a univariate query and a list of of ifaces.ColID

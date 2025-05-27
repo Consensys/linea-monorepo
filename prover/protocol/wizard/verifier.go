@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -189,7 +190,12 @@ func (proof Proof) GetPublicInput(comp *CompiledIOP, name string) field.Element 
 
 	switch a := publicInputsAccessor.(type) {
 	case *accessors.FromConstAccessor:
-		return a.F
+		if a.IsBase() {
+			return a.Base
+		} else {
+			panic("Requested a base element from a public input that is a field extension")
+		}
+
 	case *accessors.FromPublicColumn:
 		if a.Col.Status() == column.Proof {
 			return proof.Messages.MustGet(a.Col.ID).Get(a.Pos)
@@ -296,6 +302,15 @@ func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
 	}
 	// If this panics, it means we generates the coins wrongly
 	return run.Coins.MustGet(name).(field.Element)
+}
+
+func (run *VerifierRuntime) GetRandomCoinFieldExt(name coin.Name) fext.Element {
+	infos := run.Spec.Coins.Data(name)
+	if infos.Type != coin.FieldExt {
+		utils.Panic("Coin was registered as %v but got %v", infos.Type, coin.FieldExt)
+	}
+	// If this panics, it means we generates the coins wrongly
+	return run.Coins.MustGet(name).(fext.Element)
 }
 
 // GetRandomCoinFromSeed returns a field element random based on the seed.
@@ -451,6 +466,31 @@ func (run VerifierRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element
 	}
 
 	return wit.Get(pos)
+}
+
+func (run *VerifierRuntime) GetColumnAtBase(name ifaces.ColID, pos int) (field.Element, error) {
+	run.Spec.Columns.MustHaveName(name)
+	wit := run.Columns.MustGet(name)
+
+	if pos >= wit.Len() || pos < 0 {
+		utils.Panic("asked pos %v for vector of size %v", pos, wit)
+	}
+
+	if _, err := wit.GetBase(0); err == nil {
+		return wit.GetBase(pos)
+	} else {
+		return field.Zero(), err
+	}
+
+}
+func (run *VerifierRuntime) GetColumnAtExt(name ifaces.ColID, pos int) fext.Element {
+	run.Spec.Columns.MustHaveName(name)
+	wit := run.Columns.MustGet(name)
+
+	if pos >= wit.Len() || pos < 0 {
+		utils.Panic("asked pos %v for vector of size %v", pos, wit)
+	}
+	return wit.GetExt(pos)
 }
 
 // GetParams extracts the parameters of a query. Will panic if no

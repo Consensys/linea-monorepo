@@ -1,19 +1,16 @@
-package smartvectorsext
+package smartvectors
 
 import (
 	"fmt"
+	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"iter"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
-	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
-
-const conversionError = "smartvector holds field extensions, but a base element was requested"
 
 // RegularExt is s normal vector in a nutshell
 type RegularExt []fext.Element
@@ -47,7 +44,7 @@ func (r *RegularExt) Get(n int) field.Element {
 }
 
 // SubVector returns a subvector of the regular type
-func (r *RegularExt) SubVector(start, stop int) smartvectors.SmartVector {
+func (r *RegularExt) SubVector(start, stop int) SmartVector {
 	if start > stop {
 		utils.Panic("Negative length are not allowed")
 	}
@@ -59,7 +56,7 @@ func (r *RegularExt) SubVector(start, stop int) smartvectors.SmartVector {
 }
 
 // RotateRight rotates the vector into a new one
-func (r *RegularExt) RotateRight(offset int) smartvectors.SmartVector {
+func (r *RegularExt) RotateRight(offset int) SmartVector {
 	resSlice := make(RegularExt, r.Len())
 
 	if offset == 0 {
@@ -104,11 +101,11 @@ func (r *RegularExt) Pretty() string {
 	return fmt.Sprintf("Regular[%v]", vectorext.Prettify(*r))
 }
 
-func processRegularOnlyExt(op operator, svecs []smartvectors.SmartVector, coeffs []int, p ...mempoolext.MemPool) (result *PooledExt, numMatches int) {
+func processRegularOnlyExt(op operator, svecs []SmartVector, coeffs []int, p ...mempool.MemPool) (result *PooledExt, numMatches int) {
 
 	length := svecs[0].Len()
 
-	pool, hasPool := mempoolext.ExtractCheckOptionalStrict(length, p...)
+	pool, hasPool := mempool.ExtractCheckOptionalStrict(length, p...)
 
 	var resvec *PooledExt
 
@@ -121,11 +118,11 @@ func processRegularOnlyExt(op operator, svecs []smartvectors.SmartVector, coeffs
 		// In case the current vec is Rotated, we reduce it to a regular form
 		// NB : this could use the pool.
 		if rot, ok := svec.(*RotatedExt); ok {
-			svec = rotatedAsRegular(rot)
+			svec = rotatedAsRegularExt(rot)
 		}
 
-		if pooled, ok := svec.(*smartvectors.Pooled); ok {
-			svec = &pooled.Regular
+		if pooled, ok := svec.(*PooledExt); ok {
+			svec = &pooled.RegularExt
 		}
 
 		if reg, ok := svec.(*RegularExt); ok {
@@ -141,11 +138,11 @@ func processRegularOnlyExt(op operator, svecs []smartvectors.SmartVector, coeffs
 				}
 
 				isFirst = false
-				op.vecIntoTerm(resvec.RegularExt, *reg, coeffs[i])
+				op.vecExtIntoTermExt(resvec.RegularExt, *reg, coeffs[i])
 				continue
 			}
 
-			op.vecIntoVec(resvec.RegularExt, *reg, coeffs[i])
+			op.vecExtIntoVecExt(resvec.RegularExt, *reg, coeffs[i])
 		}
 	}
 
@@ -156,7 +153,7 @@ func processRegularOnlyExt(op operator, svecs []smartvectors.SmartVector, coeffs
 	return resvec, numMatches
 }
 
-func (r *RegularExt) DeepCopy() smartvectors.SmartVector {
+func (r *RegularExt) DeepCopy() SmartVector {
 	return NewRegularExt(vectorext.DeepCopy(*r))
 }
 
@@ -196,17 +193,17 @@ type PooledExt struct {
 	poolPtr *[]fext.Element
 }
 
-func AllocFromPoolExt(pool mempoolext.MemPool) *PooledExt {
-	poolPtr := pool.Alloc()
+func AllocFromPoolExt(pool mempool.MemPool) *PooledExt {
+	poolPtr := pool.AllocExt()
 	return &PooledExt{
 		RegularExt: *poolPtr,
 		poolPtr:    poolPtr,
 	}
 }
 
-func (p *PooledExt) Free(pool mempoolext.MemPool) {
+func (p *PooledExt) Free(pool mempool.MemPool) {
 	if p.poolPtr != nil {
-		pool.Free(p.poolPtr)
+		pool.FreeExt(p.poolPtr)
 	}
 	p.poolPtr = nil
 	p.RegularExt = nil

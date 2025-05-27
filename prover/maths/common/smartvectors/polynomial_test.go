@@ -47,7 +47,7 @@ func TestRuffini(t *testing.T) {
 
 }
 
-func TestFuzzPolynomial(t *testing.T) {
+func TestFuzzPolynomialExt(t *testing.T) {
 
 	for i := 0; i < FuzzIteration; i++ {
 
@@ -110,7 +110,7 @@ func TestFuzzPolynomial(t *testing.T) {
 	}
 }
 
-func TestBivariatePolynomial(t *testing.T) {
+func TestBivariatePolynomialExt(t *testing.T) {
 
 	testCases := []struct {
 		v         SmartVector
@@ -144,7 +144,7 @@ func TestBivariatePolynomial(t *testing.T) {
 
 }
 
-func TestBatchInterpolationWithConstantVector(t *testing.T) {
+func TestBatchInterpolationWithConstantVectorExt(t *testing.T) {
 	n := 4
 	randPoly := vector.ForTest(1, 2, 3, 4)
 	randPoly2 := vector.ForTest(1, 1, 1, 1)
@@ -193,7 +193,7 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 
 }
 
-func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
+func TestBatchInterpolateOnlyConstantVectorExt(t *testing.T) {
 	n := 4
 	randPoly := vector.ForTest(1, 1, 1, 1)
 	randPoly2 := vector.ForTest(2, 2, 2, 2)
@@ -242,7 +242,7 @@ func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
 
 // three vectors to see if range check and continue statement
 // for edge cases works as expected
-func TestBatchInterpolationThreeVectors(t *testing.T) {
+func TestBatchInterpolationThreeVectorsExt(t *testing.T) {
 	n := 4
 	randPoly := vector.ForTest(1, 2, 3, 4)
 	randPoly2 := vector.ForTest(1, 1, 1, 1)

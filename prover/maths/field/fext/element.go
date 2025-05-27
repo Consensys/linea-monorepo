@@ -19,11 +19,13 @@ package fext
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"math/big"
 	"math/bits"
 	"math/rand/v2"
+	"reflect"
 
 	"strings"
 
@@ -363,4 +365,132 @@ func PseudoRand(rng *rand.Rand) Element {
 	y := field.PseudoRand(rng)
 	result := new(Element).SetZero()
 	return *result.Add(result, &Element{x, y})
+}
+
+func NewFromBase(base field.Element) Element {
+	return Element{
+		A0: base,
+		A1: field.Zero(),
+	}
+}
+
+func NewFromBaseElements(base1 field.Element, base2 field.Element) Element {
+	return Element{
+		A0: base1,
+		A1: base2,
+	}
+}
+
+func NewFromBaseInteger(base1 uint64) Element {
+	return Element{
+		A0: field.NewElement(base1),
+		A1: field.Zero(),
+	}
+}
+func (z *Element) SetInterface(i1 interface{}) (*Element, error) {
+	if i1 == nil {
+		return nil, errors.New("can't set fr.Element with <nil>")
+	}
+
+	switch c1 := i1.(type) {
+	case Element:
+		return z.Set(&c1), nil
+	case *Element:
+		if c1 == nil {
+			return nil, errors.New("can't set fext.Element with <nil>")
+		}
+		return z.Set(c1), nil
+	case GenericFieldElem:
+		return z.Set(&c1.ext), nil
+	case *GenericFieldElem:
+		if c1 == nil {
+			return nil, errors.New("can't set fext.Element with <nil>")
+		}
+		return z.Set(&c1.ext), nil
+	case field.Element:
+		return z.SetFromBase(&c1), nil
+	case *field.Element:
+		if c1 == nil {
+			return nil, errors.New("can't set fext.Element with <nil>")
+		}
+		return z.SetFromBase(c1), nil
+	case uint8:
+		return z.SetUint64(uint64(c1)), nil
+	case uint16:
+		return z.SetUint64(uint64(c1)), nil
+	case uint32:
+		return z.SetUint64(uint64(c1)), nil
+	case uint:
+		return z.SetUint64(uint64(c1)), nil
+	case uint64:
+		return z.SetUint64(c1), nil
+	case int8:
+		return z.SetInt64(int64(c1)), nil
+	case int16:
+		return z.SetInt64(int64(c1)), nil
+	case int32:
+		return z.SetInt64(int64(c1)), nil
+	case int64:
+		return z.SetInt64(c1), nil
+	case int:
+		return z.SetInt64(int64(c1)), nil
+	case string:
+		z.A0.SetString(c1)
+		z.A1.SetZero()
+		return z, nil
+	case *big.Int:
+		if c1 == nil {
+			return nil, errors.New("can't set fr.Element with <nil>")
+		}
+		z.A0.SetBigInt(c1)
+		return z, nil
+	case big.Int:
+		z.A0.SetBigInt(&c1)
+		return z, nil
+	case []byte:
+		return z.SetBytes(c1), nil
+	default:
+		return nil, errors.New("can't set fr.Element from type " + reflect.TypeOf(i1).String())
+	}
+}
+
+// SetBigIntFromBase sets the first coordinate from the big.Int input, and overrides the second coordinate
+// to 0
+func (z *Element) SetBigIntFromBase(v *big.Int) *Element {
+	z.A0.SetBigInt(v)
+	z.A1.SetZero()
+	return z
+}
+
+/*
+IsBase checks if the field extensionElement is a base element.
+An Element is considered a base element if all coordinates are 0 except for the first one.
+*/
+func (z *Element) IsBase() bool {
+	if z.A1.IsZero() {
+		return true
+	} else {
+		return false
+	}
+
+}
+
+func (z *Element) Text(base int) string {
+	if base < 2 || base > 36 {
+		panic("invalid base")
+	}
+	if z == nil {
+		return "<nil>"
+	}
+
+	res := fmt.Sprintf("%s + %s*u", z.A0.Text(base), z.A1.Text(base))
+	return res
+}
+
+func (z *Element) GetBase() (field.Element, error) {
+	if z.IsBase() {
+		return z.A0, nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested a base element but the field extension is not a wrapped field element")
+	}
 }

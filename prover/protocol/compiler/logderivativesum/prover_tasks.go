@@ -343,7 +343,8 @@ func (z ZAssignmentTask) Run(run *wizard.ProverRuntime) {
 			}
 
 			if len(numeratorMetadata) > 0 {
-				numerator = column.EvalExprColumn(run, z.ZNumeratorBoarded[frag]).IntoRegVecSaveAlloc()
+				evalResult := column.EvalExprColumn(run, z.ZNumeratorBoarded[frag])
+				numerator, _ = evalResult.IntoRegVecSaveAllocBase()
 			}
 
 			for k := range packedZ {

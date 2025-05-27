@@ -86,7 +86,14 @@ func (mt *moduleTranslator) TranslateColumn(col ifaces.Column) ifaces.Column {
 			Offset: c.Offset,
 		}
 	case verifiercol.ConstCol:
-		return verifiercol.NewConstantCol(c.F, c.Size())
+
+		if c.IsBase() {
+      return verifiercol.NewConstantCol(c.F, c.Size())
+		} else {
+			return verifiercol.NewConstantColExt(c.Ext, c.Size())
+		}
+
+
 	default:
 		utils.Panic("unexpected type of column: type: %T, name: %v", col, col.GetColID())
 	}
@@ -128,7 +135,11 @@ func (mt *moduleTranslator) TranslateExpression(expr *symbolic.Expression) *symb
 					// constant col.
 					root := column.RootParents(m)
 					if constcol, isconst := root.(verifiercol.ConstCol); isconst {
-						return symbolic.NewConstant(constcol.F)
+						if constcol.IsBase() {
+							return symbolic.NewConstant(constcol.Base)
+						} else {
+							return symbolic.NewConstant(constcol.Ext)
+						}
 					}
 					newCol := mt.TranslateColumn(m)
 					return symbolic.NewVariable(newCol)

@@ -1,8 +1,7 @@
-package smartvectorsext
+package smartvectors
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -13,9 +12,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
-// Add two vectors representing polynomials in coefficient form.
+// AddExt two vectors representing polynomials in coefficient form.
 // a and b may have different sizes
-func PolyAdd(a, b smartvectors.SmartVector) smartvectors.SmartVector {
+func PolyAddExt(a, b SmartVector) SmartVector {
 
 	small, large := a, b
 	if a.Len() > b.Len() {
@@ -32,7 +31,7 @@ func PolyAdd(a, b smartvectors.SmartVector) smartvectors.SmartVector {
 	return NewRegularExt(res)
 }
 
-func PolySub(a, b smartvectors.SmartVector) smartvectors.SmartVector {
+func PolySubExt(a, b SmartVector) SmartVector {
 
 	maxLen := utils.Max(a.Len(), b.Len())
 	res := make([]fext.Element, maxLen)
@@ -58,7 +57,7 @@ Ruffini division
 
 Supports &p == quo
 */
-func RuffiniQuoRem(p smartvectors.SmartVector, q fext.Element) (quo smartvectors.SmartVector, rem fext.Element) {
+func RuffiniQuoRemExt(p SmartVector, q fext.Element) (quo SmartVector, rem fext.Element) {
 
 	// The case where "p" is zero is assumed to be impossible as every type of
 	// smart-vector strongly forbid dealing with zero length smart-vectors.
@@ -93,7 +92,7 @@ func RuffiniQuoRem(p smartvectors.SmartVector, q fext.Element) (quo smartvectors
 }
 
 // Evaluate a polynomial in Lagrange basis
-func Interpolate(v smartvectors.SmartVector, x fext.Element, oncoset ...bool) fext.Element {
+func InterpolateExt(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	switch con := v.(type) {
 	case *ConstantExt:
 		return con.val
@@ -106,7 +105,7 @@ func Interpolate(v smartvectors.SmartVector, x fext.Element, oncoset ...bool) fe
 }
 
 // Batch-evaluate polynomials in Lagrange basis
-func BatchInterpolate(vs []smartvectors.SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
+func BatchInterpolateExt(vs []SmartVector, x fext.Element, oncoset ...bool) []fext.Element {
 
 	var (
 		polys         = make([][]fext.Element, len(vs))
@@ -136,13 +135,13 @@ func BatchInterpolate(vs []smartvectors.SmartVector, x fext.Element, oncoset ...
 		return results
 	}
 
-	return batchInterpolateSV(results, computed, polys, x, oncoset...)
+	return batchInterpolateSVExt(results, computed, polys, x, oncoset...)
 }
 
 // Optimized batch interpolate for smart vectors.
 // This reduces the number of computation by pre-processing
 // constant vectors in advance in BatchInterpolate()
-func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.Element, x fext.Element, oncoset ...bool) []fext.Element {
+func batchInterpolateSVExt(results []fext.Element, computed []bool, polys [][]fext.Element, x fext.Element, oncoset ...bool) []fext.Element {
 
 	n := 0
 	for i := range polys {
@@ -240,14 +239,14 @@ func batchInterpolateSV(results []fext.Element, computed []bool, polys [][]fext.
 }
 
 // Evaluate a polynomial in coefficient basis
-func EvalCoeff(v smartvectors.SmartVector, x fext.Element) fext.Element {
+func EvalCoeffExt(v SmartVector, x fext.Element) fext.Element {
 	// Maybe there is an optim for windowed here
 	res := make([]fext.Element, v.Len())
 	v.WriteInSliceExt(res)
 	return polyext.EvalUnivariate(res, x)
 }
 
-func EvalCoeffBivariate(v smartvectors.SmartVector, x fext.Element, numCoeffX int, y fext.Element) fext.Element {
+func EvalCoeffBivariateExt(v SmartVector, x fext.Element, numCoeffX int, y fext.Element) fext.Element {
 
 	if v.Len()%numCoeffX != 0 {
 		panic("size of v and nb coeff x are inconsistent")

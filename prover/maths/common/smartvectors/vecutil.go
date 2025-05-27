@@ -37,3 +37,25 @@ func assertStrictPositiveLen(l int) {
 		logrus.Panicf("FORBIDDEN : Got a negative length %v", l)
 	}
 }
+
+// IsBase returns true if the vector type is a base vector
+// will return false even if it is an extension that contains a base element wrapped
+// inside an extension
+func IsBase(vec SmartVector) bool {
+	_, isBaseError := vec.GetBase(0)
+	if isBaseError == nil {
+		return true
+	} else {
+		return false
+	}
+}
+
+// return true if all the vectors are base vectors
+func AreAllBase(inp []SmartVector) bool {
+	for _, v := range inp {
+		if !IsBase(v) {
+			return false
+		}
+	}
+	return true
+}
