@@ -47,22 +47,6 @@ const config: HardhatUserConfig = {
           evmVersion: "prague",
         },
       },
-      /**
-       * Maintain for Mimc contract
-       * src/libraries/Mimc.sol (0.8.25)
-       * src/libraries/SparseMerkleProof.sol (0.8.25)
-       */
-      {
-        version: "0.8.25",
-        settings: {
-          viaIR: useViaIR,
-          optimizer: {
-            enabled: true,
-            runs: 10_000,
-          },
-          evmVersion: "cancun",
-        },
-      },
     ],
     overrides: overrides,
   },
