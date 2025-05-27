@@ -502,7 +502,7 @@ func TestSelfRecursionLinComb(t *testing.T) {
 
 func TestSelfRecursionLinearHashAndMerkle(t *testing.T) {
 	// Mute the logs
-	logrus.SetLevel(logrus.FatalLevel)
+	// logrus.SetLevel(logrus.FatalLevel)
 	testCases := testCaseGenerator()
 	for _, tc := range testCases {
 		t.Run(tc.Explainer, func(t *testing.T) {

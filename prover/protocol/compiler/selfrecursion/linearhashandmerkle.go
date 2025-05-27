@@ -5,6 +5,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
 	mimcW "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -176,35 +177,30 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 }
 
 func (ctx *SelfRecursionCtx) leafConsistency(round int) {
-	// Lookup constrains between the SIS leaves
+	// Fixed permutation constraint between the SIS and non SIS leaves
 	// and the Merkle leaves
-	// This is only required if SIS is applied to any of the rounds
+	cleanLeaves := ctx.MIMCMetaData.NonSisLeaves
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
-		ctx.comp.InsertInclusion(
-			round,
-			ctx.sisRoundAndMerkleLeavesInclusion(),
-			[]ifaces.Column{
-				ctx.Columns.MerkleProofsLeaves,
-			},
-			[]ifaces.Column{
-				ctx.Columns.SisRoundLeaves,
-			},
-		)
+		cleanLeaves = append(cleanLeaves, ctx.Columns.SisRoundLeaves)
 	}
-	// Lookup constrains between the non SIS leaves
-	// and the Merkle leaves
-	for i := 0; i < len(ctx.MIMCMetaData.NonSisLeaves); i++ {
-		ctx.comp.InsertInclusion(
-			round,
-			ctx.nonSisRoundAndMerkleLeavesInclusion(i),
-			[]ifaces.Column{
-				ctx.Columns.MerkleProofsLeaves,
-			},
-			[]ifaces.Column{
-				ctx.MIMCMetaData.NonSisLeaves[i],
-			},
-		)
+	stackedCleanLeaves := dedicated.StackColumn(ctx.comp, cleanLeaves)
+
+	// Next we compute the identity permutation
+	s := make([]field.Element, stackedCleanLeaves.Column.Size())
+	for i := range s {
+		s[i] = field.One()
 	}
+	s_smart := smartvectors.NewRegular(s)
+
+	// Insert the fixed permutation constraint
+	ctx.comp.InsertFixedPermutation(
+		round,
+		ifaces.QueryID("LEAF_CONSISTENCY"),
+		[]ifaces.ColAssignment{s_smart},
+		[]ifaces.Column{stackedCleanLeaves.Column},
+		[]ifaces.Column{ctx.Columns.MerkleProofsLeaves},
+	)
+
 }
 
 // Implements the prover action interface

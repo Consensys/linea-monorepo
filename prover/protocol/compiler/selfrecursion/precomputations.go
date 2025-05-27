@@ -124,6 +124,8 @@ func (ctx *SelfRecursionCtx) RegistersAh() {
 
 			// And update the value of the start
 			roundStartAt += len(comsInRoundsI)
+		} else {
+			continue
 		}
 	}
 		ctx.Columns.Ah = ah
