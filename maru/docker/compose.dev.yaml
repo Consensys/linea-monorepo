@@ -1,4 +1,4 @@
-#docker compose -f docker/compose.yml -f docker/compose.dev.overrides.yml
+#docker compose -f docker/compose.yml -f docker/compose.dev.yml
 
 services:
 
@@ -7,7 +7,7 @@ services:
     # docker build app --build-context=libs=./app/build/install/app/lib/ --build-context=maru=./app/build/libs/ -t local/maru:latest
     # command: [ 'java', '-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005','-Dvertx.configurationFile=/path/to/vertx-options.json', '-Dlog4j2.configurationFile=/path/to/log4j2-dev.xml']
     #image: local/maru:latest
-    image: consensys/maru:${MARU_TAG:-0bd171f}
+    image: consensys/maru:${MARU_TAG:-2687246}
     container_name: maru
     depends_on:
       - sequencer
@@ -15,12 +15,11 @@ services:
     command: [ 'java', '-jar', "maru.jar", '--besu-genesis-file', 'configs/genesis.json', '--config', 'configs/config.dev.toml' ]
     volumes:
       - ./maru/config.dev.toml:/opt/consensys/maru/configs/config.dev.toml:ro
-      - ./maru/genesis.json:/opt/consensys/maru/configs/genesis.json:ro
-      - ./maru/key:/tmp/maru-db/private-key
+      - ./initialization/genesis-maru.json:/opt/consensys/maru/configs/genesis.json:ro
+      - ./maru/0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0.key:/tmp/maru-db/private-key
       - ./jwt:/opt/consensys/docker/jwt:ro
     ports:
       # Attach the IDE's remote java debugger to localhost:5005 to debug maru
       - "5005:5005"
     networks:
       - linea
-

@@ -13,6 +13,9 @@ pre-commit:
 run-e2e-test:
 	./gradlew acceptanceTest
 
+run-e2e-test-use-maru-container:
+	./gradlew acceptanceTest -PuseMaruContainer=true
+
 clean:
 	./gradlew clean
 
@@ -22,3 +25,6 @@ build-local-image:
 
 run-local-image:
 	docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d
+
+run-local-image-partial:
+	docker compose -f docker/compose.yaml -f docker/compose.dev.yaml up -d maru
