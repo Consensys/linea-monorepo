@@ -199,6 +199,13 @@ func runController(ctx context.Context, cfg *config.Config) {
 					)
 				}
 
+				// As an edge-case, it's possible (in theory) that the process
+				// completes exactly when we receive the kill signal. So we
+				// could end up in a situation where the tmp-response file
+				// exists. In that case, we simply delete it before exiting to
+				// keep the FS clean.
+				os.Remove(job.TmpResponseFile(cfg))
+
 			// Failure case
 			default:
 				// Move the inprogress to the done directory
