@@ -35,6 +35,7 @@ const config: HardhatUserConfig = {
   },
   solidity: {
     // NB: double check the autoupdate shell script version complies to the latest solidity version if you add a new one.
+    /// @dev Please see the overrides file for a list of files not targetting the default EVM version of Prague.
     compilers: [
       {
         version: "0.8.30",
