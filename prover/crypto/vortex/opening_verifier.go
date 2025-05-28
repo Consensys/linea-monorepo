@@ -127,7 +127,7 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 		}
 
 		// Check the linear combination is consistent with the opened column
-		y := poly.EvalOnExtField(fullCol, v.RandomCoin)
+		y := poly.EvalOnExtField(fullCol, v.RandomCoin) // Proximity check: compute sum col_i[j] alpha^j
 
 		if selectedColID > linearCombination.Len() {
 			return fmt.Errorf("entry overflows the size of the linear combination")
@@ -149,8 +149,8 @@ func (v *VerifierInputs) checkStatement() (err error) {
 	// Check the consistency of Ys and proof.Linear combination
 	var (
 		Yjoined     = utils.Join(v.Ys...)
-		alphaY      = smartvectors.EvaluateLagrangeOnFext(v.OpeningProof.LinearCombination, v.X)
-		alphaYProme = polyext.Eval(Yjoined, v.RandomCoin)
+		alphaY      = smartvectors.EvaluateLagrangeOnFext(v.OpeningProof.LinearCombination, v.X) // Evaluation check: compute Pu(x)
+		alphaYProme = polyext.Eval(Yjoined, v.RandomCoin)                                        // Evaluation check: compute sum y_i alpha^i
 	)
 
 	if alphaY != alphaYProme {
