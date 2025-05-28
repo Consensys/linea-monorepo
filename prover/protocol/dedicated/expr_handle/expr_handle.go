@@ -91,7 +91,7 @@ func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, name ...str
 			case coin.Info:
 				// Implicitly, the coin has to be a field element in the expression
 				// It will panic if not
-				x := run.GetRandomCoinField(meta.Name)
+				x := run.GetRandomCoinFext(meta.Name)
 				evalInputs[k] = sv.NewConstant(x, length)
 			case variables.X:
 				evalInputs[k] = meta.EvalCoset(length, 0, 1, false)

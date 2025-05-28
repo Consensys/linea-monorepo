@@ -142,7 +142,7 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 			w := meta.GetColAssignment(run)
 			evalInputs[k] = w
 		case coin.Info:
-			evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(meta.Name), cs.DomainSize)
+			evalInputs[k] = sv.NewConstant(run.GetRandomCoinFext(meta.Name), cs.DomainSize)
 		case variables.X:
 			evalInputs[k] = meta.EvalCoset(cs.DomainSize, 0, 1, false)
 		case variables.PeriodicSample:
@@ -345,7 +345,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 			w := meta.GetColAssignmentGnark(run)
 			evalInputs[k] = w
 		case coin.Info:
-			evalInputs[k] = gnarkutil.ConstantedVariable(run.GetRandomCoinField(meta.Name), cs.DomainSize)
+			evalInputs[k] = gnarkutil.ConstantedVariable(run.GetRandomCoinFext(meta.Name), cs.DomainSize)
 		case variables.X:
 			evalInputs[k] = meta.GnarkEvalNoCoset(cs.DomainSize)
 		case variables.PeriodicSample:

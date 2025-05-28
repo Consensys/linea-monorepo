@@ -227,12 +227,12 @@ func (run *VerifierRuntime) generateAllRandomCoins() {
 
 }
 
-// GetRandomCoinField returns a field element random. The coin should be issued
+// GetRandomCoinFext returns a field element random. The coin should be issued
 // at the same round as it was registered. The same coin can't be retrieved more
 // than once. The coin should also have been registered as a field element
 // before doing this call. Will also trigger the "goNextRound" logic if
 // appropriate.
-func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
+func (run *VerifierRuntime) GetRandomCoinFext(name coin.Name) field.Element {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type

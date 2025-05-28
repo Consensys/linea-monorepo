@@ -2,7 +2,7 @@ package ifaces
 
 import (
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
 
@@ -18,7 +18,7 @@ type Accessor interface {
 	Name() string
 	// GetVal returns the value represented by the Accessor from a [Runtime]
 	// object.
-	GetVal(run Runtime) field.Element
+	GetVal(run Runtime) fext.Element
 	// GetFrontendVariable is as [Accessor.GetVal] but in a gnark circuit.
 	GetFrontendVariable(api frontend.API, c GnarkRuntime) frontend.Variable
 	// Round returns the definition round of the accessor.

@@ -98,7 +98,7 @@ func (pa evaluationProver) Run(run *wizard.ProverRuntime) {
 
 	var (
 		stoptimer = profiling.LogTimer("Evaluate the queries for the global constraints")
-		r         = run.GetRandomCoinField(pa.EvalCoin.Name)
+		r         = run.GetRandomCoinFext(pa.EvalCoin.Name)
 		witnesses = make([]sv.SmartVector, len(pa.AllInvolvedColumns))
 	)
 
@@ -174,7 +174,7 @@ func (ctx *evaluationVerifier) Run(run *wizard.VerifierRuntime) error {
 
 	var (
 		// Will be assigned to "X", the random point at which we check the constraint.
-		r = run.GetRandomCoinField(ctx.EvalCoin.Name)
+		r = run.GetRandomCoinFext(ctx.EvalCoin.Name)
 		// Map all the evaluations and checks the evaluations points
 		mapYs = make(map[ifaces.ColID]field.Element)
 		// Get the parameters
@@ -216,7 +216,7 @@ func (ctx *evaluationVerifier) Run(run *wizard.VerifierRuntime) error {
 			case ifaces.Column:
 				evalInputs[k] = sv.NewConstant(mapYs[metadata.GetColID()], 1)
 			case coin.Info:
-				evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), 1)
+				evalInputs[k] = sv.NewConstant(run.GetRandomCoinFext(metadata.Name), 1)
 			case variables.X:
 				evalInputs[k] = sv.NewConstant(r, 1)
 			case variables.PeriodicSample:
@@ -247,7 +247,7 @@ func (ctx *evaluationVerifier) Run(run *wizard.VerifierRuntime) error {
 func (ctx *evaluationVerifier) RunGnark(api frontend.API, c *wizard.WizardVerifierCircuit) {
 
 	// Will be assigned to "X", the random point at which we check the constraint.
-	r := c.GetRandomCoinField(ctx.EvalCoin.Name)
+	r := c.GetRandomCoinFext(ctx.EvalCoin.Name)
 	annulator := gnarkutil.Exp(api, r, ctx.DomainSize)
 	quotientYs := ctx.recombineQuotientSharesEvaluationGnark(api, c, r)
 	params := c.GetUnivariateParams(ctx.WitnessEval.QueryID)
@@ -278,7 +278,7 @@ func (ctx *evaluationVerifier) RunGnark(api frontend.API, c *wizard.WizardVerifi
 			case ifaces.Column:
 				evalInputs[k] = mapYs[metadata.GetColID()]
 			case coin.Info:
-				evalInputs[k] = c.GetRandomCoinField(metadata.Name)
+				evalInputs[k] = c.GetRandomCoinFext(metadata.Name)
 			case variables.X:
 				evalInputs[k] = r
 			case variables.PeriodicSample:

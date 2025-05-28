@@ -70,7 +70,7 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 		// TODO: modify gnark-crypto to make TransversalHash accessible
 		colHashes = vortex.TransversalHash(codewords, p.Key.GnarkInternal, sizeCodeWord)
 	} else {
-		//  size of colHashes is sizeCodeWord,
+		//  size of colHashes is expected to be sizeCodeWord * 8, then we can pack every 8 koalabear.Element to Bytes32
 		colHashes = p.noSisTransversalHash(encodedMatrix)
 	}
 
@@ -88,7 +88,10 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 	} else {
 		leaves = make([]types.Bytes32, sizeCodeWord)
 		for i := range leaves {
-			leaves[i] = colHashes[i].Bytes()
+			currentChunkSlice := colHashes[8*i : 8*(i+1)]
+			var currentChunkArray [8]field.Element
+			copy(currentChunkArray[:], currentChunkSlice)
+			leaves[i] = types.HashToBytes32(currentChunkArray)
 		}
 	}
 
@@ -117,6 +120,7 @@ func (p *Params) hashSisHash(colHashes []field.Element) (bytes32Leaves []types.B
 	bytes32Leaves = make([]types.Bytes32, sizeCodeWord)
 	sisKeySize := p.Key.GnarkInternal.Degree
 
+	// Poseidon2 blocksize 16
 	const blockSize = 16
 	if sizeCodeWord%blockSize == 0 {
 		// we hash by blocks of 16 to leverage optimized SIMD implementation

@@ -177,7 +177,7 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 		// AccLarge
 		prev := field.Zero()
 		accLargeWit := make([]field.Element, lenLarge)
-		alpha_ := run.GetRandomCoinField(alpha.Name)
+		alpha_ := run.GetRandomCoinFext(alpha.Name)
 
 		for hashID := 0; hashID < lenSmall; hashID++ {
 			for i := 0; i < period; i++ {

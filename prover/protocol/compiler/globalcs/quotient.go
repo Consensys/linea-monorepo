@@ -459,7 +459,7 @@ func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
 					value, _ := computedReeval.Load(metadata.GetColID())
 					evalInputs[k] = value.(sv.SmartVector)
 				case coin.Info:
-					evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), ctx.DomainSize)
+					evalInputs[k] = sv.NewConstant(run.GetRandomCoinFext(metadata.Name), ctx.DomainSize)
 				case variables.X:
 					evalInputs[k] = metadata.EvalCoset(ctx.DomainSize, i, maxRatio, true)
 				case variables.PeriodicSample:
