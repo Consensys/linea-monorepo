@@ -3,73 +3,79 @@
 
 ## Objective
 
-The purpose of this document is to illustrate the idea behind the L1 dynamic gas pricing mechanism, the coordinator’s configurations for the L1 dynamic gas pricing feature, and the steps to enable it.
+The purpose of this document is to illustrate the idea behind the L1 dynamic gas pricing mechanism, it's corresponding coordinator configurations, and the steps to enable it.
 
 ## Motivation
-The goal is to reduce our L1 costs by optimizing the price at which we send transactions (blob submission, finalization) to L1 whilst being within our SLA for finalization/withdrawals.
+The goal is to reduce L1 costs by optimizing the gas price at which we send transactions (blob submission, finalization) to L1 whilst being within our SLA for finalization/withdrawals.
 
 ## Scope
 
-We propose a mechanism which updates the L1 gas price every hour based upon the time elapsed since the firstL2 block in each aggregation, and the time of day/week to account for when we expect L1 prices to be lower/higher.
+We propose a mechanism that updates the L1 gas price every hour based on the time elapsed since the first L2 block in each aggregation, and the time of day/week to account for when we expect L1 prices to be lower/higher.
 
-The L1 data submission transaction accounts for 99.5% of our total L1 cost overhead, of which there is now no artificial delay for submission, therefore giving a longer window of flexibility to post at an optimal L1 gas price and be within the SLA time.
+This would help reduce the L1 costs given that the L1 data submission transaction accounts for the major part of our total L1 cost overhead. There is now no artificial delay for submission, giving a longer window of flexibility to post at an optimal L1 gas price and be within the SLA time.
 
 ### Formula
 
-The formula to determine the current L1 gas price `threshold` in gwei is:
+The formula to determine the current L1 gas price `threshold` is:
 
 `threshold = p10GasPricePastWeek (1 + adjustmentConstant * TDM * (elapsedTimeSinceAggregationFirstBlock/ SLA)^2 )`
 
 Where:
 
-The `p10GasPricePastWeek` monitors the 10th percentile of the L1 gas price across the last week. Will likely require a dB to store data in. This helps us keep track of latest price trends
+The `p10GasPricePastWeek` monitors the 10th percentile of the L1 gas price across the last week. This requires a dB to help keep track of the latest price trends by storing the fee history data
 
 The `elapsedTimeSinceAggregationFirstBlock` is calculated by taking the difference between the current timestamp and the timestamp of the first L2 block which is to be finalized on L1 by the current aggregation
 
-`SLA` = 32 hours (configurable). Includes any legal delays
+`SLA` = 16 hours (configurable). Includes any legal delays
 
-There is a max cap of 100 gwei (as shown in the config sample below) for the blob submission and the max cap for finalization is 2x the max cap for blob submission (this means 200 gwei at initial settings). This should be configurable and the L1 price can not go above this to protect from spikes or the formula going out of control. Therefore, we should also have a fallback mechanism where we can override the L1 gas price to be a static price as it is currently implemented today.
+There are global caps for maxFeePerGas and maxPriorityFeePerGas (i.e. set by `l1.max-fee-per-gas-cap` and `l1.max-priority-fee-per-gas-cap` respectively from coordinator configs) for blob submission and the same set of max caps for finalization are 2x the max caps for blob submission. This should be configurable and the L1 gas price can not go above this to protect from spikes or if the formula goes out of control
 
 The `adjustmentConstant` is used to adjust the exponential increase in gas price. The higher the constant the faster the gas price increases as the `elapsedTimeSinceAggregationFirstBlock` increases = 25 (configurable)
 
 `TDM` stands for "Time of Day Mutliplier" and has a range of values between 0.25 - 1.75. When we expect the L1 gas price to be low, for example on a Saturday night, the `TDM` will be at it's highest because we want to increase the rate at which we increase the threshold to try and settle within this time window. The value will be at it's lowest during peak L1 gas price times, for example, on a Tuesday afternoon, because we know it is likely to be expensive during this window. (Here's the [toml file in repo](https://github.com/Consensys/linea-monorepo/blob/01925cd1e519b44f94f450964d271ae05735db22/config/common/gas-price-cap-time-of-day-multipliers.toml#L16))
 
-Here's the final version of the formulas: (assuming the "percentile" is set as 10% and "finalization cap multiplier" is 2.0)
 
-*Aggregation Finalization*:
+The implementation of the above equation can be found [here](https://github.com/Consensys/linea-monorepo/blob/main/coordinator/ethereum/gas-pricing/dynamic-cap/src/main/kotlin/net/consensys/linea/ethereum/gaspricing/dynamiccap/GasPriceCapCalculatorImpl.kt)
+
+### Here's the final version of the formulas:
+- *Assuming the "percentile" is set as 10% and "finalization cap multiplier" is 2.0*
+
+#### Aggregation Finalization
+[implementation](https://github.com/Consensys/linea-monorepo/blob/main/coordinator/ethereum/gas-pricing/dynamic-cap/src/main/kotlin/net/consensys/linea/ethereum/gaspricing/dynamiccap/GasPriceCapProviderForFinalization.kt)
 ``` 
-baseFeeCap = p10(baseFeePastWeek) * (1 + adjustmentConstant * TDM * (elapsedTimeFirstBlock / SLA)^2 )
-priorityFeeCap = average(p10rewardsPastWeek) * (1 + adjustmentConstant * TDM * (elapsedTimeFirstBlock / SLA)^2 )
+baseFeeCap = p10(baseFeePastWeek) * (1 + adjustmentConstant * TDM * (elapsedTimeSinceAggregationFirstBlock / SLA)^2 )
+priorityFeeCap = average(p10rewardsPastWeek) * (1 + adjustmentConstant * TDM * (elapsedTimeSinceAggregationFirstBlock / SLA)^2 )
 
 maxPriorityFeePerGas = min(priorityFeeCap, priority-fee-per-gas-upper-bound * 2)
 maxFeePerGas = min(baseFeeCap + maxPriorityFeePerGas, max-fee-per-gas-cap * 2)
 ```
 
-*Blob Submission*:
+#### Blob Submission 
+[implementation](https://github.com/Consensys/linea-monorepo/blob/main/coordinator/ethereum/gas-pricing/dynamic-cap/src/main/kotlin/net/consensys/linea/ethereum/gaspricing/dynamiccap/GasPriceCapProviderForDataSubmission.kt)
 ```
-baseFeeCap = p10(baseFeePastWeek) * (1 + adjustmentConstant * TDM * (elapsedTimeFirstBlock / SLA)^2 )
-priorityFeeCap = average(p10rewardsPastWeek) * (1 + adjustmentConstant * TDM * (elapsedTimeFirstBlock / SLA)^2 )
-blobBaseFeeCap = p10(blobBaseFeePastWeek) * (1 + blobAdjustmentConstant * blobTDM * (elapsedTimeFirstBlock / SLA)^2 )
+baseFeeCap = p10(baseFeePastWeek) * (1 + adjustmentConstant * TDM * (elapsedTimeSinceAggregationFirstBlock / SLA)^2 )
+priorityFeeCap = average(p10rewardsPastWeek) * (1 + adjustmentConstant * TDM * (elapsedTimeSinceAggregationFirstBlock / SLA)^2 )
+blobBaseFeeCap = p10(blobBaseFeePastWeek) * (1 + blobAdjustmentConstant * blobTDM * (elapsedTimeSinceAggregationFirstBlock / SLA)^2 )
 
 maxPriorityFeePerGas = min(priorityFeeCap, priority-fee-per-gas-upper-bound)
 maxFeePerGas = min(baseFeeCap + maxPriorityFeePerGas, max-fee-per-gas-cap)
 maxFeePerBlobGas= min(blobBaseFeeCap, max-fee-per-blob-gas-cap)
 ```
 
-Also note that, we will submit blob-carrying txns on L1 only if the dynamic gas prices are no less than the current base gas prices on L1, in order to cope with "100% replacement penalty" for blob-carrying txns. 
+Also note that, we will submit blob-carrying txns on L1 only if the dynamic gas prices are no less than the current base gas prices on L1, in order to cope with "100% replacement penalty" for blob-carrying txns.
 
 ## Related coordinator configurations
 
 ```jsx
 [l1-dynamic-gas-price-cap-service]
-disabled=false //if false, dynamic gas price cap will be enabled, and if true, gas price cap will be behaved as static just like before
+disabled=false //if false, dynamic gas price cap will be enabled, and if true, gas price cap will behave as static just like before
 
 [l1-dynamic-gas-price-cap-service.gas-price-cap-calculation]
 adjustment-constant=25 //used in the dynamic gas price cap equation
 blob-adjustment-constant=25 //used in the dynamic gas price cap equation
-finalization-target-max-delay="PT32H" //used in the dynamic gas price cap equation which is derived by our service level agreement that a L2 block should be finalized on L1 within 32 hours
+finalization-target-max-delay="PT16H" //used in the dynamic gas price cap equation which is derived by our service level agreement that a L2 block should be finalized on L1 within 16 hours
 gas-fee-percentile-window="P7D" //used by fee history repository to calculate the p10(baseFeePastWeek)
-gas-fee-percentile-window-leeway="PT10M" //used by gas price cap provider to determine whether the currently cached fee history data is enough for gas price cap calculation, e.g. this means 50400 - 50 = 50350 blocks of fee history data from the past 7 days would be sufficient to proceed the calculation
+gas-fee-percentile-window-leeway="PT10M" //used by gas price cap provider to determine whether the currently cached fee history data is enough for gas price cap calculation, e.g. this means 50400 - 50 = 50350 blocks of fee history data from the past 7 days would be sufficient to proceed the calculation; otherwise, will fallback to static gas pricing mechanism
 gas-fee-percentile=10.0 //used by fee history repository to calculate the p10(baseFeePastWeek)
 gas-price-caps-check-coefficient=0.9 //used for multiplying the dynamic gas price caps and check if they are higher than the current base gas fees on L1, this normally should be less than 1.0
 historic-base-fee-per-blob-gas-lower-bound=500000000 //used as lower bound for p10(baseFeePerBlobGasPastWeek) from the dynamic gas price cap equation
@@ -89,7 +95,7 @@ storage-period="P14D" //MAX storage period for fee history repository to prune d
 gas-price-cap-multiplier-for-finalization=2.0 //gas price cap multiplier for finalization tx, since after this feature deployed, the gas price caps of finalization would always be n times that of data submission, regardless of whether the dynamic gas price cap service is enabled or not
 ```
 
-Related configs for max caps of L1 gas fees (under `[l1]` section):
+Related configs for max caps of L1 gas fees (under the `[l1]` section):
 
 - `max-fee-per-gas-cap` if we want to change the max cap of `maxFeePerGas`
 - `max-fee-per-blob-gas-cap` if we want to change the max cap of `maxFeePerBlobGas`
@@ -104,7 +110,7 @@ Related configs for max caps of L1 gas fees (under `[l1]` section):
 
 ## Steps to verify
 
-Once the L1 dynamic gas pricing mechanism is enabled, it might take some time for the database to store enough fee history data, i.e. it needs at least the last 7 days of fee history data from the current L1 block.
+Once the L1 dynamic gas pricing mechanism is enabled, it might take some time (few minutes) for the database to store enough fee history data, i.e. it needs to retrieve at least the last 7 days of fee history data from the current L1 block.
 
 The effects would be as following:
 
@@ -117,7 +123,7 @@ The effects would be as following:
 - If we see the following in the coordinator logs, then it indicates the L1 dynamic gas pricing mechanism is effective:
     - `finalizeBlocks gas price caps: blobCarrying=false maxPriorityFeePerGas=0.001129593 GWei, dynamicMaxPriorityFeePerGas=3.823859529 GWei, maxFeePerGas=0.038442435 GWei, dynamicMaxFeePerGas=3.824274318 GWei`
     - `submitBlobs gas price caps: blobCarrying=true maxPriorityFeePerGas=2.0 GWei, dynamicMaxPriorityFeePerGas=3.812889071 GWei, maxFeePerGas=2.035904418 GWei, dynamicMaxFeePerGas=3.81330267 GWei, maxFeePerBlobGas=5000.0 GWei, dynamicMaxFeePerBlobGas=3.251486911 GWei` 
-- If we see  `Not enough fee history data for gas price cap update`, then it means the fee history data in database is not sufficient, and the gas pricing mechanism will be fallback to the usual mechanism
+- If we see  `Not enough fee history data for gas price cap update`, then it means the fee history data in database is not sufficient, and the gas pricing mechanism will be fallback to the static gas pricing mechanism, i.e. using the global caps (`l1.max-fee-per-gas-cap`, `l1.max-fee-per-blob-gas-cap`, `l1.max-priority-fee-per-gas-cap`) directly
 - If we see the followings in the log on `eth_call`:
     - `eth_call for blob submission failed: blob=[13513839..13514420]582 errorMessage=maxFeePerGas less than block base fee: address 0x47C63d1E391FcB3dCdC40C4d7fA58ADb172f8c38, maxFeePerGas: 20033351340, baseFee: 21544625157 (supplied gas 1000000)`
     - `eth_call for blob submission failed: blob=[18690037..18690464]428 errorMessage=maxFeePerBlobGas less than block blob gas fee: address 0x46d2F319fd42165D4318F099E143dEA8124E9E3e maxFeePerBlobGas: 4350230936, blobBaseFee: 4474834655 (supplied gas 1100000)`
