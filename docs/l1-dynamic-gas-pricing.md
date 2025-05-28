@@ -134,4 +134,16 @@ The effects would be as following:
     - `replacement transaction underpriced: new tx gas fee cap 40733292344 <= 32144797253 queued + 100% replacement penalty`
     - `replacement transaction underpriced: new tx blob gas fee cap 485826427361 <= 243239997227 queued + 100% replacement penalty`
     
-    It means the pending blob-carrying transaction was not able to be replaced with the current dynamic gas prices due to the “100% replacement penalty” for blob-carrying transactions (see [here](https://github.com/colinlyguo/EIP-4844-dev-usage?tab=readme-ov-file#:~:text=Due%20to%20blob%20pool%27s%20constraints)), which in most case is normal, as the dynamic gas prices would eventually climb up to be doubled as the pending ones within a reasonable timeframe (e.g. long before the 32 hours SLA) 
+    It means the pending blob-carrying transaction was not able to be replaced with the current dynamic gas prices due to the “100% replacement penalty” for blob-carrying transactions (see [here](https://github.com/colinlyguo/EIP-4844-dev-usage?tab=readme-ov-file#:~:text=Due%20to%20blob%20pool%27s%20constraints)), which in most case is normal, as the dynamic gas prices would eventually climb up to be doubled as the pending ones within a reasonable timeframe (e.g. long before the 32 hours SLA)
+
+**Coordinator Metrics**
+
+The following Prometheus metrics are exposed by Coordinator for L1 dynamic gas pricing:
+
+- linea_gas_price_cap_l1_blobsubmission_maxfeepergascap
+- linea_gas_price_cap_l1_blobsubmission_maxfeeperblobgascap
+- linea_gas_price_cap_l1_blobsubmission_maxpriorityfeepergascap
+- linea_gas_price_cap_l1_finalization_maxfeepergascap
+- linea_gas_price_cap_l1_finalization_maxpriorityfeepergascap
+
+They are all as Gauge metrics and will only be updated upon L1 tx submissions, therefore please be caution that if they were being flat or zero for a long period of time, then it might indicate that L1 dynamic gas pricing was not being used (e.g. due to fee history retrieval errors) or there were no transactions to submit on L1 (e.g. due to L2 block retrieval errors or provers not able to generate new compression/aggregation proofs)
