@@ -49,6 +49,11 @@ public final class Create2 extends GasProjection {
   }
 
   @Override
+  public long initCode() {
+    return gc.initcodeCost((int) initCodeLength);
+  }
+
+  @Override
   public long largestOffset() {
     return initCodeLength == 0 ? 0 : Words.clampedAdd(initCodeOffset, initCodeLength);
   }
