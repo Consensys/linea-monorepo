@@ -1,45 +1,45 @@
 package column
 
 import (
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"fmt"
+
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 )
 
 // PackedStore is a serialization-friendly intermediate struct used for
 // serializing a column store.
-type PackedStore struct {
-	IndicesByName map[string]int `cbor:"n"`
-	ByRounds      [][]struct{}   `cbor:"r"`
+type PackedStore [][]*storedColumnInfo
+
+// Pack packs the store into a [PackedStore]
+func (s *Store) Pack() PackedStore {
+	res := make(PackedStore, s.byRounds.Len())
+	for i := 0; i < s.byRounds.Len(); i++ {
+		res[i] = s.byRounds.MustGet(i)
+	}
+	return res
 }
 
 // PackedNatural is serialization-friendly intermediate structure that is
 // use to represent a natural column.
 type PackedNatural struct {
-	Name                string         `cbor:"n"`
-	Round               int8           `cbor:"r"`
-	Status              int8           `cbor:"s"`
-	Log2Size            int8           `cbor:"z"`
-	CompiledIOP         int8           `cbor:"i"`
-	PosInRound          int8           `cbor:"p"`
-	IncludeInProverFS   bool           `cbor:"f"`
-	ExcludeFromProverFS bool           `cbor:"e"`
-	Pragmas             map[string]any `cbor:"g,omitempty"`
+	Store    *Store       `cbor:"s"`
+	Round    int          `cbor:"r"`
+	Position int          `cbor:"p"`
+	ID       ifaces.ColID `cbor:"i"`
 }
 
 // Pack packs a [Natural] into a [PackedNatural]
 func (nat Natural) Pack() PackedNatural {
-
-	infos := nat.store.info(nat.ID)
-
 	return PackedNatural{
-		Name:                string(nat.ID),
-		Round:               int8(nat.Round()),
-		Status:              int8(nat.Status()),
-		Log2Size:            int8(utils.Log2Ceil(nat.Size())),
-		CompiledIOP:         0,
-		PosInRound:          int8(nat.position.posInRound),
-		IncludeInProverFS:   infos.IncludeInProverFS,
-		ExcludeFromProverFS: infos.ExcludeFromProverFS,
-		Pragmas:             infos.Pragmas,
+		Store:    nat.store,
+		Round:    nat.position.round,
+		Position: nat.position.posInRound,
+		ID:       nat.ID,
 	}
+}
 
+// PackedIdentifier returns an identifier that won't conflict with the
+// serialization of a [PackedNatural].
+func (nat Natural) PackedIdentifier() string {
+	return string(nat.ID) + fmt.Sprintf("%p", nat.store)
 }

@@ -23,6 +23,7 @@ const (
 	QueryBackReference
 	QueryIDBackReference
 	CompiledIOPBackReference
+	StoreBackReference
 )
 
 var (
@@ -30,8 +31,10 @@ var (
 	TypeOfColumnID      = reflect.TypeOf(ifaces.ColID(""))
 	TypeOfCoin          = reflect.TypeOf(coin.Info{})
 	TypeOfCoinID        = reflect.TypeOf(coin.Name(""))
-	TypeOfQuery         = reflect.TypeOf((*ifaces.Query)(nil))
+	TypeOfQuery         = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
 	TypeOfQueryID       = reflect.TypeOf(ifaces.QueryID(""))
+	TypeOfCompiledIOP   = reflect.TypeOf((*wizard.CompiledIOP)(nil))
+	TypeOfStore         = reflect.TypeOf((*column.Store)(nil))
 )
 
 type BackReference struct {
@@ -40,13 +43,16 @@ type BackReference struct {
 }
 
 type Serializer struct {
-	PreMarshaledObject *MarshalizableObject
+	PreMarshaledObject *PackedObject
 	TypeMap            map[string]int
 	StructSchemaMap    map[string]int
 	CoinMap            map[string]int
 	ColumnMap          map[string]int
+	ColumnIdMap        map[string]int
 	QueryMap           map[string]int
+	QueryIDMap         map[string]int
 	CompiledIOPs       map[*wizard.CompiledIOP]int
+	Stores             map[*column.Store]int
 	CurrentCompiledIOP int
 }
 
@@ -56,33 +62,29 @@ type Deserializer struct {
 	Queries               []*ifaces.Query
 	CompiledIOP           []*wizard.CompiledIOP
 	CurrentCompiledIOP    *wizard.CompiledIOP
-	PreUnmarshalledObject *MarshalizableObject
+	PreUnmarshalledObject *PackedObject
 }
 
-type MarshalizableObject struct {
+type PackedObject struct {
 	Types        []string                    `cbor:"t"`
 	StructSchema []MarshalizableStructSchema `cbor:"s"`
-	Columns      []MarshalizableColumn       `cbor:"c"`
-	Coins        []MarshalizableCoin         `cbor:"o"`
+	ColumnIDs    []string                    `cbor:"id"`
+	Columns      []MarshalizableStructObject `cbor:"c"`
+	CoinIDs      []string                    `cbor:"i"`
+	Coins        []PackedCoin                `cbor:"o"`
+	QueryIDs     []string                    `cbor:"w"`
+	Store        [][]any                     `cbor:"st"`
 	Queries      []any                       `cbor:"q"`
-	CompiledIOP  []any                       `cbor:"i"`
+	CompiledIOP  []any                       `cbor:"a"`
 	Payload      []byte                      `cbor:"p"`
 }
 
-type MarshalizableIFace struct {
+type PackedIFace struct {
 	Type     int `cbor:"t"`
 	Concrete any `cbor:"c"`
 }
 
-type MarshalizableColumn struct {
-	Name        string `cbor:"n"`
-	Round       int8   `cbor:"r"`
-	Status      int8   `cbor:"s"`
-	Log2Size    int8   `cbor:"z"`
-	CompiledIOP int8   `cbor:"i"`
-}
-
-type MarshalizableCoin struct {
+type PackedCoin struct {
 	Type        int8   `cbor:"t"`
 	Size        int    `cbor:"s,omitempty"`
 	UpperBound  int32  `cbor:"u,omitempty"`
@@ -92,13 +94,13 @@ type MarshalizableCoin struct {
 }
 
 type MarshalizableStructSchema struct {
-	Type   string
+	Type   string   `cbor:"t"`
 	Fields []string `cbor:"f"`
 }
 
 type MarshalizableStructObject []any
 
-func (s *Serializer) MarshalValue(v reflect.Value) any {
+func (s *Serializer) PackValue(v reflect.Value) any {
 
 	// This captures the case where the value is nil to begin with
 	if !v.IsValid() || v.Interface() == nil {
@@ -109,17 +111,21 @@ func (s *Serializer) MarshalValue(v reflect.Value) any {
 
 	switch {
 	case typeOfV == TypeOfColumnNatural:
-		return s.MarshalColumn(v.Interface().(column.Natural))
+		return s.PackColumn(v.Interface().(column.Natural))
 	case typeOfV == TypeOfColumnID:
-		return s.MarshalColumnID(v.Interface().(ifaces.ColID))
+		return s.PackColumnID(v.Interface().(ifaces.ColID))
 	case typeOfV == TypeOfCoin:
-		return s.MarshalCoin(v.Interface().(coin.Info))
+		return s.PackCoin(v.Interface().(coin.Info))
 	case typeOfV == TypeOfCoinID:
-		return s.MarshalCoinID(v.Interface().(coin.Name))
+		return s.PackCoinID(v.Interface().(coin.Name))
 	case typeOfV == TypeOfQuery:
-		return s.MarshalQuery(v.Interface().(ifaces.Query))
+		return s.PackQuery(v.Interface().(ifaces.Query))
 	case typeOfV == TypeOfQueryID:
-		return s.MarshalQueryID(v.Interface().(ifaces.QueryID))
+		return s.PackQueryID(v.Interface().(ifaces.QueryID))
+	case typeOfV == TypeOfCompiledIOP:
+		return s.PackCompiledIOP(v.Interface().(*wizard.CompiledIOP))
+	case typeOfV == TypeOfStore:
+		return s.PackStore(v.Interface().(*column.Store))
 	}
 
 	switch v.Kind() {
@@ -128,67 +134,54 @@ func (s *Serializer) MarshalValue(v reflect.Value) any {
 		reflect.Uint32, reflect.Uint64, reflect.String:
 		return v.Interface()
 	case reflect.Array, reflect.Slice:
-		return s.MarshalArrayOrSlice(v)
+		return s.PackArrayOrSlice(v)
 	case reflect.Interface:
-		return s.MarshalInterface(v)
+		return s.PackInterface(v)
 	case reflect.Map:
-		return s.MarshalMap(v)
+		return s.PackMap(v)
 	case reflect.Pointer:
-		return s.MarshalValue(v.Elem())
+		return s.PackValue(v.Elem())
 	case reflect.Struct:
-		return s.MarshalStructObject(v)
+		return s.PackStructObject(v)
 	default:
 		panic(fmt.Sprintf("unsupported type kind: %v", v.Kind()))
 	}
 }
 
-func (s *Serializer) MarshalColumn(c column.Natural) BackReference {
+func (s *Serializer) PackColumn(c column.Natural) BackReference {
 
-	if _, ok := s.ColumnMap[string(c.ID)]; !ok {
-		s.PreMarshaledObject.Columns = append(s.PreMarshaledObject.Columns, s.AsMarshalizableColumn(c))
-		s.ColumnMap[string(c.ID)] = len(s.PreMarshaledObject.Columns) - 1
+	cid := c.PackedIdentifier()
+
+	if _, ok := s.ColumnMap[string(cid)]; !ok {
+		packed := c.Pack()
+		marshaled := s.PackStructObject(reflect.ValueOf(packed))
+		s.PreMarshaledObject.Columns = append(s.PreMarshaledObject.Columns, marshaled)
+		s.ColumnMap[string(cid)] = len(s.PreMarshaledObject.Columns) - 1
 	}
 
 	return BackReference{
 		Type: ColumnBackReference,
-		ID:   s.ColumnMap[string(c.ID)],
+		ID:   s.ColumnMap[string(cid)],
 	}
 }
 
-func (s *Serializer) MarshalCompiledIOP(comp *wizard.CompiledIOP) any {
+func (s *Serializer) PackColumnID(c ifaces.ColID) BackReference {
 
-	if _, ok := s.CompiledIOPs[comp]; !ok {
-		id := len(s.PreMarshaledObject.CompiledIOP) - 1
-		oldCompiledIOP := s.CurrentCompiledIOP
-		s.CurrentCompiledIOP = id
-		obj := s.MarshalStructObject(reflect.ValueOf(comp))
-		s.CurrentCompiledIOP = oldCompiledIOP
-		s.PreMarshaledObject.CompiledIOP = append(s.PreMarshaledObject.CompiledIOP, obj)
-		s.CompiledIOPs[comp] = id
-	}
-
-	return BackReference{
-		Type: CompiledIOPBackReference,
-		ID:   s.CompiledIOPs[comp],
-	}
-}
-
-func (s *Serializer) MarshalColumnID(c ifaces.ColID) BackReference {
-
-	if _, ok := s.ColumnMap[string(c)]; !ok {
-		utils.Panic("serializing a column ID for an unknown column: %v", c)
+	if _, ok := s.ColumnIdMap[string(c)]; !ok {
+		s.PreMarshaledObject.ColumnIDs = append(s.PreMarshaledObject.ColumnIDs, string(c))
+		s.ColumnIdMap[string(c)] = len(s.PreMarshaledObject.ColumnIDs) - 1
 	}
 
 	return BackReference{
 		Type: ColumnIDBackReference,
-		ID:   s.ColumnMap[string(c)],
+		ID:   s.ColumnIdMap[string(c)],
 	}
 }
 
-func (s *Serializer) MarshalCoin(c coin.Info) BackReference {
+func (s *Serializer) PackCoin(c coin.Info) BackReference {
 
 	if _, ok := s.CoinMap[string(c.Name)]; !ok {
-		s.PreMarshaledObject.Coins = append(s.PreMarshaledObject.Coins, s.AsMarshalizableCoin(c))
+		s.PreMarshaledObject.Coins = append(s.PreMarshaledObject.Coins, s.AsPackedCoin(c))
 		s.CoinMap[string(c.Name)] = len(s.PreMarshaledObject.Coins) - 1
 	}
 
@@ -198,7 +191,7 @@ func (s *Serializer) MarshalCoin(c coin.Info) BackReference {
 	}
 }
 
-func (s *Serializer) MarshalCoinID(c coin.Name) BackReference {
+func (s *Serializer) PackCoinID(c coin.Name) BackReference {
 
 	if _, ok := s.CoinMap[string(c)]; !ok {
 		utils.Panic("serializing a coin ID for an unknown coin: %v", c)
@@ -210,7 +203,7 @@ func (s *Serializer) MarshalCoinID(c coin.Name) BackReference {
 	}
 }
 
-func (s *Serializer) MarshalQuery(q ifaces.Query) BackReference {
+func (s *Serializer) PackQuery(q ifaces.Query) BackReference {
 
 	if _, ok := s.QueryMap[string(q.Name())]; !ok {
 
@@ -229,11 +222,11 @@ func (s *Serializer) MarshalQuery(q ifaces.Query) BackReference {
 			query.Permutation,
 			query.LocalConstraint,
 			query.LocalOpening:
-			obj = s.MarshalStructObject(reflect.ValueOf(q))
+			obj = s.PackStructObject(reflect.ValueOf(q))
 		case *query.PlonkInWizard:
-			obj = s.MarshalStructObject(reflect.ValueOf(*q))
+			obj = s.PackStructObject(reflect.ValueOf(*q))
 		case *query.Horner:
-			obj = s.MarshalStructObject(reflect.ValueOf(*q))
+			obj = s.PackStructObject(reflect.ValueOf(*q))
 		}
 
 		s.PreMarshaledObject.Queries = append(s.PreMarshaledObject.Queries, obj)
@@ -246,10 +239,11 @@ func (s *Serializer) MarshalQuery(q ifaces.Query) BackReference {
 	}
 }
 
-func (s *Serializer) MarshalQueryID(q ifaces.QueryID) BackReference {
+func (s *Serializer) PackQueryID(q ifaces.QueryID) BackReference {
 
 	if _, ok := s.QueryMap[string(q)]; !ok {
-		utils.Panic("serializing a query ID for an unknown query: %v", q)
+		s.PreMarshaledObject.QueryIDs = append(s.PreMarshaledObject.QueryIDs, string(q))
+		s.QueryIDMap[string(q)] = len(s.PreMarshaledObject.QueryIDs) - 1
 	}
 
 	return BackReference{
@@ -258,27 +252,45 @@ func (s *Serializer) MarshalQueryID(q ifaces.QueryID) BackReference {
 	}
 }
 
-// MarshalArrayOrSlice serializes arrays or slices by recursively serializing each element.
-func (s *Serializer) MarshalArrayOrSlice(v reflect.Value) []any {
+func (s *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) any {
+
+	if _, ok := s.CompiledIOPs[comp]; !ok {
+		obj := s.PackStructObject(reflect.ValueOf(*comp))
+		s.PreMarshaledObject.CompiledIOP = append(s.PreMarshaledObject.CompiledIOP, obj)
+		s.CompiledIOPs[comp] = len(s.PreMarshaledObject.CompiledIOP) - 1
+	}
+
+	return BackReference{
+		Type: CompiledIOPBackReference,
+		ID:   s.CompiledIOPs[comp],
+	}
+}
+
+func (ser *Serializer) PackStore(s *column.Store) any {
+
+	if _, ok := ser.Stores[s]; !ok {
+		obj := ser.PackStructObject(reflect.ValueOf(*s))
+		ser.PreMarshaledObject.Store = append(ser.PreMarshaledObject.Store, obj)
+		ser.Stores[s] = len(ser.PreMarshaledObject.Store) - 1
+	}
+
+	return BackReference{
+		Type: StoreBackReference,
+		ID:   ser.Stores[s],
+	}
+}
+
+// PackArrayOrSlice serializes arrays or slices by recursively serializing each element.
+func (s *Serializer) PackArrayOrSlice(v reflect.Value) []any {
 	res := make([]any, v.Len())
 	for i := 0; i < v.Len(); i++ {
-		res[i] = s.MarshalValue(v.Index(i))
+		res[i] = s.PackValue(v.Index(i))
 	}
 	return res
 }
 
-func (s *Serializer) AsMarshalizableColumn(c column.Natural) MarshalizableColumn {
-	return MarshalizableColumn{
-		Name:        string(c.ID),
-		Round:       int8(c.Round()),
-		Status:      int8(c.Status()),
-		Log2Size:    int8(utils.Log2Ceil(c.Size())),
-		CompiledIOP: int8(s.CurrentCompiledIOP),
-	}
-}
-
-func (s *Serializer) AsMarshalizableCoin(c coin.Info) MarshalizableCoin {
-	return MarshalizableCoin{
+func (s *Serializer) AsPackedCoin(c coin.Info) PackedCoin {
+	return PackedCoin{
 		Type:        int8(c.Type),
 		Size:        c.Size,
 		UpperBound:  int32(c.UpperBound),
@@ -288,7 +300,7 @@ func (s *Serializer) AsMarshalizableCoin(c coin.Info) MarshalizableCoin {
 	}
 }
 
-func (s *Serializer) MarshalizableStructSchema(t reflect.Type) (marshalizable MarshalizableStructSchema, index int) {
+func (s *Serializer) PackStructSchema(t reflect.Type) (marshalizable MarshalizableStructSchema, index int) {
 
 	if t.Kind() != reflect.Struct {
 		utils.Panic("s.Kind() != reflect.Struct, type=%v", t.String())
@@ -317,7 +329,7 @@ func (s *Serializer) MarshalizableStructSchema(t reflect.Type) (marshalizable Ma
 	return marshalizable, positionOfType
 }
 
-func (s *Serializer) MarshalInterface(v reflect.Value) any {
+func (s *Serializer) PackInterface(v reflect.Value) any {
 
 	var (
 		concrete          = v.Elem()
@@ -329,13 +341,13 @@ func (s *Serializer) MarshalInterface(v reflect.Value) any {
 		s.TypeMap[cleanConcreteType] = len(s.PreMarshaledObject.Types) - 1
 	}
 
-	return MarshalizableIFace{
+	return PackedIFace{
 		Type:     s.TypeMap[cleanConcreteType],
-		Concrete: s.MarshalValue(concrete),
+		Concrete: s.PackValue(concrete),
 	}
 }
 
-func (s *Serializer) MarshalStructObject(obj reflect.Value) MarshalizableStructObject {
+func (s *Serializer) PackStructObject(obj reflect.Value) MarshalizableStructObject {
 
 	if obj.Kind() != reflect.Struct {
 		utils.Panic("obj.Kind() != reflect.Struct, type=%v", obj.Type().String())
@@ -348,10 +360,10 @@ func (s *Serializer) MarshalStructObject(obj reflect.Value) MarshalizableStructO
 	// declare the fields in the same order.
 	for i := 0; i < obj.NumField(); i++ {
 		field := obj.Field(i)
-		values[i] = s.MarshalValue(field)
+		values[i] = s.PackValue(field)
 	}
 
-	s.MarshalizableStructSchema(obj.Type())
+	s.PackStructSchema(obj.Type())
 
 	// Importantly, we want to be sure that all the component have been
 	// converted before we convert the current type. That way, we can ensure
@@ -361,7 +373,7 @@ func (s *Serializer) MarshalStructObject(obj reflect.Value) MarshalizableStructO
 	return values
 }
 
-func (s *Serializer) MarshalMap(obj reflect.Value) map[string]any {
+func (s *Serializer) PackMap(obj reflect.Value) map[string]any {
 
 	if obj.Kind() != reflect.Map {
 		utils.Panic("obj.Kind() != reflect.Map, type=%v", obj.Type().String())
@@ -388,7 +400,7 @@ func (s *Serializer) MarshalMap(obj reflect.Value) map[string]any {
 	res := make(map[string]any, len(keys))
 	for _, keyString := range keyStrings {
 		k := keyMap[keyString]
-		res[keyString] = s.MarshalValue(obj.MapIndex(k))
+		res[keyString] = s.PackValue(obj.MapIndex(k))
 	}
 
 	return res
@@ -429,5 +441,6 @@ func (s *Deserializer) UnmarshalColumn(v []any) (column.Natural, error) {
 
 	// Here, it is the first time we encounter the column. We need to unpack it
 	// from the pre-unmarshalled object.
+	panic("unimplemented")
 
 }
