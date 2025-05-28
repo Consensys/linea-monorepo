@@ -1218,7 +1218,7 @@ opcodes:
       forbiddenInStatic: true
       flag1: true
     billing:
-      byMxp:
+      byWord:
         type: TYPE_4
         wordPrice: G_CONST_INIT_CODE_WORD
   - mnemonic: CALL
