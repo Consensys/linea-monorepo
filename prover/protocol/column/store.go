@@ -320,11 +320,11 @@ func (s *Store) AllHandlesAtRound(round int) []ifaces.Column {
 	roundInfos := s.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.Column, len(roundInfos))
 	for posInRound, info := range roundInfos {
-		res[posInRound] = Natural{
-			ID:       info.ID,
-			position: columnPosition{round: round, posInRound: posInRound},
-			store:    s,
-		}
+		res[posInRound] = newNatural(
+			info.ID,
+			columnPosition{round: round, posInRound: posInRound},
+			s,
+		)
 	}
 	return res
 }
@@ -341,11 +341,11 @@ func (s *Store) AllHandlesAtRoundUnignored(round int) []ifaces.Column {
 			continue
 		}
 
-		res = append(res, Natural{
-			ID:       info.ID,
-			position: columnPosition{round: round, posInRound: posInRound},
-			store:    s,
-		})
+		res = append(res, newNatural(
+			info.ID,
+			columnPosition{round: round, posInRound: posInRound},
+			s,
+		))
 	}
 	return res
 }
@@ -357,11 +357,7 @@ Panic if not found.
 func (s *Store) GetHandle(name ifaces.ColID) ifaces.Column {
 	// Note that this panics if the entry is not present
 	position := s.indicesByNames.MustGet(name)
-	return Natural{
-		ID:       name,
-		position: position,
-		store:    s,
-	}
+	return newNatural(name, position, s)
 }
 
 // Panics if the store does not have the name registered

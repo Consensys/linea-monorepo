@@ -1,9 +1,8 @@
 package column
 
 import (
-	"fmt"
-
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/google/uuid"
 )
 
 // PackedStore is a serialization-friendly intermediate struct used for
@@ -40,6 +39,6 @@ func (nat Natural) Pack() PackedNatural {
 
 // PackedIdentifier returns an identifier that won't conflict with the
 // serialization of a [PackedNatural].
-func (nat Natural) PackedIdentifier() string {
-	return string(nat.ID) + fmt.Sprintf("%p", nat.store)
+func (nat Natural) UUID() uuid.UUID {
+	return nat.uuid
 }
