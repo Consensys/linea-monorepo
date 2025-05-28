@@ -18,14 +18,14 @@ const (
 	EVAL_COEFF_GLOBAL               string = "EVAL_COEFF_GLOBAL"
 )
 
-type coeffEvalProverAction struct {
+type CoeffEvalProverAction struct {
 	name   string
 	x      coin.Info
 	pol    ifaces.Column
 	length int
 }
 
-func (a *coeffEvalProverAction) Run(assi *wizard.ProverRuntime) {
+func (a *CoeffEvalProverAction) Run(assi *wizard.ProverRuntime) {
 	x := assi.GetRandomCoinField(a.x.Name)
 	p := a.pol.GetColAssignment(assi)
 
@@ -83,7 +83,7 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 		hornerPoly,
 	)
 
-	comp.RegisterProverAction(maxRound, &coeffEvalProverAction{
+	comp.RegisterProverAction(maxRound, &CoeffEvalProverAction{
 		name:   name,
 		x:      x,
 		pol:    pol,

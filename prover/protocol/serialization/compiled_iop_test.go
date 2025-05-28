@@ -10,7 +10,7 @@ import (
 )
 
 func TestCompiled(t *testing.T) {
-	comp := newEmptyCompiledIOP()
+	comp := NewEmptyCompiledIOP()
 	foo := comp.Columns.AddToRound(0, "foo", 16, column.Committed)
 	bar := comp.Columns.AddToRound(1, "bar", 16, column.Committed)
 	_ = comp.InsertCoin(1, "coin", coin.IntegerVec, 16, 16)
@@ -40,5 +40,4 @@ func TestCompiled(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not encode: %v", err.Error())
 	}
-
 }

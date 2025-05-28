@@ -6,7 +6,7 @@ type Option func(*CompilationCtx)
 // WithSubscript allows setting the [Subscript] of the plonk circuit.
 func WithSubscript(subscript string) Option {
 	return func(c *CompilationCtx) {
-		c.subscript = subscript
+		c.Subscript = subscript
 	}
 }
 

@@ -60,7 +60,7 @@ func (ctx stitchingContext) LocalOpening() {
 		newQ := ctx.comp.InsertLocalOpening(round, queryNameStitcher(q.ID), stitchingCol)
 
 		// Registers the prover's step responsible for assigning the new query
-		ctx.comp.RegisterProverAction(round, &assignLocalPointProverAction{
+		ctx.comp.RegisterProverAction(round, &AssignLocalPointProverAction{
 			qID:  q.ID,
 			newQ: newQ.ID,
 		})
@@ -240,15 +240,15 @@ func (ctx *stitchingContext) adjustExpression(
 	return newExpr
 }
 
-type queryVerifierAction struct {
+type QueryVerifierAction struct {
 	q ifaces.Query
 }
 
-func (a *queryVerifierAction) Run(vr wizard.Runtime) error {
+func (a *QueryVerifierAction) Run(vr wizard.Runtime) error {
 	return a.q.Check(vr)
 }
 
-func (a *queryVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+func (a *QueryVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
 	a.q.CheckGnark(api, wvc)
 }
 
@@ -258,7 +258,7 @@ func insertVerifier(
 	round int,
 ) {
 	// Register the VerifierAction instead of using a closure
-	comp.RegisterVerifierAction(round, &queryVerifierAction{
+	comp.RegisterVerifierAction(round, &QueryVerifierAction{
 		q: q,
 	})
 }

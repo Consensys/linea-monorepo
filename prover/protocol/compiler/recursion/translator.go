@@ -72,7 +72,7 @@ func (comp *compTranslator) AddColumnAtRound(col ifaces.Column, fake bool, round
 	prefixedName := addPrefixToID(comp.Prefix, col.GetColID())
 
 	if fake {
-		return &FakeColumn{ID: prefixedName}
+		return &column.FakeColumn{ID: prefixedName}
 	}
 
 	if _, isVCol := col.(verifiercol.VerifierCol); isVCol {

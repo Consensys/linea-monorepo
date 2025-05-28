@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
 // TestConglomerationBasic generates a conglomeration proof and checks if it is valid
@@ -61,10 +62,10 @@ func TestConglomeration(t *testing.T) {
 	// t.Skipf("the test is a development/debug/integration test. It is not needed for CI")
 
 	var (
-		zkevm = GetZkEVM()
+		zkevm = test_utils.GetZkEVM()
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   GetAffinities(zkevm),
+			Affinities:   test_utils.GetAffinities(zkevm),
 			Predivision:  1,
 		}
 
@@ -95,7 +96,7 @@ func TestConglomeration(t *testing.T) {
 	t.Logf("[%v] running the bootstrapper\n", time.Now())
 
 	var (
-		witness     = GetZkevmWitness(req, cfg)
+		witness     = test_utils.GetZkevmWitness(req, cfg)
 		runtimeBoot = wizard.RunProver(distWizard.Bootstrapper, zkevm.GetMainProverStep(witness))
 	)
 

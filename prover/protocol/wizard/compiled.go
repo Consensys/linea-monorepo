@@ -67,14 +67,14 @@ type CompiledIOP struct {
 	// the user and the compilers and their role is to assign the columns and
 	// parametrizable's queries parameters during the prover runtime of the
 	// protocol.
-	subProvers collection.VecVec[ProverAction]
+	SubProvers collection.VecVec[ProverAction]
 
 	// subVerifier stores all the steps that need to be performed by the verifier
 	// explicitly. The role of the verifier function's is to implement all the
 	// manual checks that the verifier has to perform. This is useful when a check
 	// cannot be represented in term of query but, when possible, queries should
 	// always be preferred to express a relation that the witness must satisfy.
-	subVerifiers collection.VecVec[VerifierAction]
+	SubVerifiers collection.VecVec[VerifierAction]
 
 	// FiatShamirHooksPreSampling is an action that is run during the FS sampling,
 	// before sampling the random coins and thus, before every verifier action in
@@ -584,7 +584,7 @@ func (c *CompiledIOP) RegisterVerifyingKey(name ifaces.ColID, witness ifaces.Col
 func (c *CompiledIOP) RegisterProverAction(round int, action ProverAction) {
 	// This is purely to not break the current provers in the middle of the
 	// switch.
-	c.subProvers.AppendToInner(round, action)
+	c.SubProvers.AppendToInner(round, action)
 }
 
 // RegisterVerifierAction registers an action to be accomplished by the verifier
@@ -592,7 +592,7 @@ func (c *CompiledIOP) RegisterProverAction(round int, action ProverAction) {
 func (c *CompiledIOP) RegisterVerifierAction(round int, action VerifierAction) {
 	// This is purely to not break the current provers in the middle of the
 	// switch.
-	c.subVerifiers.AppendToInner(round, action)
+	c.SubVerifiers.AppendToInner(round, action)
 }
 
 // Register a GrandProduct query
@@ -734,5 +734,5 @@ func (c *CompiledIOP) InsertHornerQuery(round int, id ifaces.QueryID, parts []qu
 }
 
 func (c *CompiledIOP) GetSubVerifiers() collection.VecVec[VerifierAction] {
-	return c.subVerifiers
+	return c.SubVerifiers
 }

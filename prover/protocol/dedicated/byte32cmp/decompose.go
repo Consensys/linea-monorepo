@@ -147,24 +147,24 @@ func Decompose(comp *wizard.CompiledIOP, col any, numLimbs int, bitPerLimbs int,
 		IsBigEndian: false,
 	}
 
-	return res, &decompositionCtx{
+	return res, &DecompositionCtx{
 		original:   boarded,
 		decomposed: res,
 	}
 
 }
 
-// decompositionCtx implements the [wizard.ProverAction] interface and is
+// DecompositionCtx implements the [wizard.ProverAction] interface and is
 // responsible for assigning the limbs of the column. It should be called
 // before trying to use the values of the limbs and after the original column
 // has been assigned.
-type decompositionCtx struct {
+type DecompositionCtx struct {
 	original   sym.ExpressionBoard
 	decomposed LimbColumns
 }
 
 // Run implements the [wizard.ProverAction] interface
-func (d *decompositionCtx) Run(run *wizard.ProverRuntime) {
+func (d *DecompositionCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
 		numLimbs     = len(d.decomposed.Limbs)

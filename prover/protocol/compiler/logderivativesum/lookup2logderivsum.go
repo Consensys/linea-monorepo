@@ -67,7 +67,7 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 		// which Z context should be used to handle a part of a given inclusion
 		// query.
 		zCatalog    = map[int]*query.LogDerivativeSumInput{}
-		proverTasks = make([]proverTaskAtRound, comp.NumRounds())
+		proverTasks = make([]ProverTaskAtRound, comp.NumRounds())
 	)
 
 	// Skip the compilation phase if no lookup constraint is being used. Otherwise
@@ -115,7 +115,7 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 	qName := ifaces.QueryIDf("GlobalLogDerivativeSum_%v", comp.SelfRecursionCount)
 	q := comp.InsertLogDerivativeSum(lastRound+1, qName, zCatalog)
 
-	comp.RegisterProverAction(lastRound+1, &assignLogDerivativeSumProverAction{
+	comp.RegisterProverAction(lastRound+1, &AssignLogDerivativeSumProverAction{
 		QName:     qName,
 		Q:         q,
 		Segmenter: seg,
@@ -133,14 +133,14 @@ func compileLookupIntoLogDerivativeSum(comp *wizard.CompiledIOP, seg ColumnSegme
 
 // assignLogDerivativeSumProverAction is the action to assign the log-derivative sum result.
 // It implements the [wizard.ProverAction] interface.
-type assignLogDerivativeSumProverAction struct {
+type AssignLogDerivativeSumProverAction struct {
 	QName     ifaces.QueryID
 	Q         query.LogDerivativeSum
 	Segmenter ColumnSegmenter
 }
 
 // Run executes the assignment of the log-derivative sum result.
-func (a *assignLogDerivativeSumProverAction) Run(run *wizard.ProverRuntime) {
+func (a *AssignLogDerivativeSumProverAction) Run(run *wizard.ProverRuntime) {
 	if a.Segmenter == nil {
 		run.AssignLogDerivSum(a.QName, field.Zero())
 		return

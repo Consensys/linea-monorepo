@@ -130,7 +130,7 @@ func compileForSize(
 	)
 
 	lastRound := comp.NumRounds() - 1
-	comp.RegisterVerifierAction(lastRound, &verifierForSize{
+	comp.RegisterVerifierAction(lastRound, &VerifierForSize{
 		Queries:          queries,
 		SummationOpening: ctx.SummationOpening,
 		BatchOpening:     batchingCoin,

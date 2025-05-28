@@ -106,14 +106,14 @@ func prefixWithLinearHash(comp *wizard.CompiledIOP, name, msg string, args ...an
 	return fmt.Sprintf("%v.LINEAR_HASH_%v_"+msg, args...)
 }
 
-type linearHashProverAction struct {
+type LinearHashProverAction struct {
 	ctx             *linearHashCtx
 	oldStateID      ifaces.ColID
 	newStateID      ifaces.ColID
 	newStateCleanID ifaces.ColID
 }
 
-func (a *linearHashProverAction) Run(run *wizard.ProverRuntime) {
+func (a *LinearHashProverAction) Run(run *wizard.ProverRuntime) {
 	blocksWit := a.ctx.ToHash.GetColAssignment(run)
 	olds := make([]field.Element, a.ctx.Period*a.ctx.NumHash)
 	news := make([]field.Element, a.ctx.Period*a.ctx.NumHash)
@@ -164,7 +164,7 @@ func (ctx *linearHashCtx) HashingCols() {
 		ctx.ToHash.Size(),
 	)
 
-	ctx.comp.RegisterProverAction(ctx.Round, &linearHashProverAction{
+	ctx.comp.RegisterProverAction(ctx.Round, &LinearHashProverAction{
 		ctx:             ctx,
 		oldStateID:      ctx.OldState.GetColID(),
 		newStateID:      ctx.NewState.GetColID(),

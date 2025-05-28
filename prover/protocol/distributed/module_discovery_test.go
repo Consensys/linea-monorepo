@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 )
 
 func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
 
 	var (
-		zkevm = GetZkEVM()
+		zkevm = test_utils.GetZkEVM()
 		disc  = &QueryBasedModuleDiscoverer{}
 	)
 
@@ -79,10 +80,10 @@ func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
 func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 
 	var (
-		zkevm = GetZkEVM()
+		zkevm = test_utils.GetZkEVM()
 		disc  = &StandardModuleDiscoverer{
 			TargetWeight: 1 << 28,
-			Affinities:   GetAffinities(zkevm),
+			Affinities:   test_utils.GetAffinities(zkevm),
 			Predivision:  16,
 		}
 	)

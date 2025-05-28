@@ -20,25 +20,25 @@ const (
 	REED_SOLOMON_BETA        string = "REED_SOLOMON_BETA"
 )
 
-type reedSolomonProverAction struct {
+type ReedSolomonProverAction struct {
 	h       ifaces.Column
 	coeff   ifaces.Column
 	codeDim int
 }
 
-func (a *reedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
+func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
 	witness := a.h.GetColAssignment(assi)
 	coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0, nil).SubVector(0, a.codeDim)
 	assi.AssignColumn(a.coeff.GetColID(), coeffs)
 }
 
-type reedSolomonVerifierAction struct {
+type ReedSolomonVerifierAction struct {
 	coeffCheck ifaces.Accessor
 	evalCheck  ifaces.Accessor
 	hColID     ifaces.ColID
 }
 
-func (a *reedSolomonVerifierAction) Run(run wizard.Runtime) error {
+func (a *ReedSolomonVerifierAction) Run(run wizard.Runtime) error {
 	y := a.coeffCheck.GetVal(run)
 	y_ := a.evalCheck.GetVal(run)
 	if y != y_ {
@@ -47,7 +47,7 @@ func (a *reedSolomonVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *reedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+func (a *ReedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
 	y := a.coeffCheck.GetFrontendVariable(api, wvc)
 	y_ := a.evalCheck.GetFrontendVariable(api, wvc)
 	api.AssertIsEqual(y, y_)
@@ -72,7 +72,7 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 
 	// Inserts the prover before calling the sub-wizard so that it is executed
 	// before the sub-prover's wizards.
-	comp.RegisterProverAction(round, &reedSolomonProverAction{
+	comp.RegisterProverAction(round, &ReedSolomonProverAction{
 		h:       h,
 		coeff:   coeff,
 		codeDim: codeDim,
@@ -92,7 +92,7 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 		h,
 	)
 
-	comp.RegisterVerifierAction(round+1, &reedSolomonVerifierAction{
+	comp.RegisterVerifierAction(round+1, &ReedSolomonVerifierAction{
 		coeffCheck: coeffCheck,
 		evalCheck:  evalCheck,
 		hColID:     h.GetColID(),

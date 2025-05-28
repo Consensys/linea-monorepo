@@ -267,12 +267,12 @@ func (ctx *Ctx) explicitPublicEvaluation(vr wizard.Runtime) error {
 	return nil
 }
 
-type shadowRowProverAction struct {
+type ShadowRowProverAction struct {
 	name ifaces.ColID
 	size int
 }
 
-func (a *shadowRowProverAction) Run(run *wizard.ProverRuntime) {
+func (a *ShadowRowProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(a.name, smartvectors.NewConstant(field.Zero(), a.size))
 }
 
@@ -284,7 +284,7 @@ func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces
 	name := ifaces.ColIDf("VORTEX_%v_SHADOW_ROUND_%v_ID_%v", comp.SelfRecursionCount, round, id)
 	col := comp.InsertCommit(round, name, size)
 
-	comp.RegisterProverAction(round, &shadowRowProverAction{
+	comp.RegisterProverAction(round, &ShadowRowProverAction{
 		name: name,
 		size: size,
 	})

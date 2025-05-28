@@ -15,13 +15,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
-// multiLimbCmp is a dedicated wizard which can compare two [LimbColumns] and
+// MultiLimbCmp is a dedicated wizard which can compare two [LimbColumns] and
 // thereby constructing indicator columns indicating whether the first operand
 // is lower, greater or if the two operands are equals.
 //
 // This object implements the [wizard.ProverAction] interface and is meant to
 // be run to compute the assignment of the returned column by [CmpMultiLimbs].
-type multiLimbCmp struct {
+type MultiLimbCmp struct {
 
 	// isGreater and isLower are columns to be assigned by the context. The
 	// reason isEqual is missing is because its handling is defered
@@ -99,7 +99,7 @@ func CmpMultiLimbs(comp *wizard.CompiledIOP, a, b LimbColumns) (isGreater, isEqu
 		round           = max(roundA, column.MaxRound(b.Limbs...))
 		numLimbs        = len(a.Limbs)
 		numBitsPerLimbs = a.LimbBitSize
-		ctx             = &multiLimbCmp{
+		ctx             = &MultiLimbCmp{
 			isGreater:          comp.InsertCommit(round, ifaces.ColIDf(ctxName("IS_GREATER")), nRows),
 			isLower:            comp.InsertCommit(round, ifaces.ColIDf(ctxName("IS_LOWER")), nRows),
 			nonNegativeSyndrom: comp.InsertCommit(round, ifaces.ColIDf(ctxName("MUST_BE_POSITIVE")), nRows),
@@ -173,7 +173,7 @@ func CmpMultiLimbs(comp *wizard.CompiledIOP, a, b LimbColumns) (isGreater, isEqu
 }
 
 // Run implements the [wizard.ProverAction] interface.
-func (mCmp *multiLimbCmp) Run(run *wizard.ProverRuntime) {
+func (mCmp *MultiLimbCmp) Run(run *wizard.ProverRuntime) {
 
 	// This will assign the per-limbs comparision contexts
 	parallel.Execute(len(mCmp.subCtxs), func(start, stop int) {

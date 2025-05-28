@@ -15,7 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-type subsampleProverAction struct {
+type SubsampleProverAction struct {
 	large        []ifaces.Column
 	small        []ifaces.Column
 	accLarge     ifaces.Column
@@ -30,7 +30,7 @@ type subsampleProverAction struct {
 	needGamma    bool
 }
 
-func (a *subsampleProverAction) Run(run *wizard.ProverRuntime) {
+func (a *SubsampleProverAction) Run(run *wizard.ProverRuntime) {
 	r := a.large[0].GetColAssignment(run)
 	if a.needGamma {
 		largeWit := make([]smartvectors.SmartVector, len(a.large))
@@ -88,12 +88,12 @@ func (a *subsampleProverAction) Run(run *wizard.ProverRuntime) {
 	run.AssignLocalPoint(a.accSmallLast, prev)
 }
 
-type subsampleVerifierAction struct {
+type SubsampleVerifierAction struct {
 	accLargeLast ifaces.QueryID
 	accSmallLast ifaces.QueryID
 }
 
-func (a *subsampleVerifierAction) Run(run wizard.Runtime) error {
+func (a *SubsampleVerifierAction) Run(run wizard.Runtime) error {
 	resAccLast := run.GetLocalPointEvalParams(a.accLargeLast)
 	expectedResAccLast := run.GetLocalPointEvalParams(a.accSmallLast)
 	if resAccLast.Y != expectedResAccLast.Y {
@@ -102,7 +102,7 @@ func (a *subsampleVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *subsampleVerifierAction) RunGnark(frontend frontend.API, run wizard.GnarkRuntime) {
+func (a *SubsampleVerifierAction) RunGnark(frontend frontend.API, run wizard.GnarkRuntime) {
 	resAccLast := run.GetLocalPointEvalParams(a.accLargeLast)
 	expectedResAccLast := run.GetLocalPointEvalParams(a.accSmallLast)
 	frontend.AssertIsEqual(resAccLast.Y, expectedResAccLast.Y)
@@ -251,7 +251,7 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 	)
 
 	// And assign them
-	comp.RegisterProverAction(round+1, &subsampleProverAction{
+	comp.RegisterProverAction(round+1, &SubsampleProverAction{
 		large:        large,
 		small:        small,
 		accLarge:     accLarge,
@@ -266,7 +266,7 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 		needGamma:    needGamma,
 	})
 
-	comp.RegisterVerifierAction(round+1, &subsampleVerifierAction{
+	comp.RegisterVerifierAction(round+1, &SubsampleVerifierAction{
 		accLargeLast: accLargeLast.ID,
 		accSmallLast: accSmallLast.ID,
 	})

@@ -38,24 +38,24 @@ const (
 	IsSISApplied
 )
 
-type vortexProverAction struct {
+type VortexProverAction struct {
 	ctx Ctx
 	fn  func(*wizard.ProverRuntime)
 }
 
-func (a *vortexProverAction) Run(run *wizard.ProverRuntime) {
+func (a *VortexProverAction) Run(run *wizard.ProverRuntime) {
 	a.fn(run)
 }
 
-type vortexVerifierAction struct {
+type VortexVerifierAction struct {
 	ctx Ctx
 }
 
-func (a *vortexVerifierAction) Run(run wizard.Runtime) error {
+func (a *VortexVerifierAction) Run(run wizard.Runtime) error {
 	return a.ctx.explicitPublicEvaluation(run) // Adjust based on context; see note below
 }
 
-func (a *vortexVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+func (a *VortexVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
 	a.ctx.gnarkExplicitPublicEvaluation(api, c) // Adjust based on context; see note below
 }
 
@@ -109,7 +109,7 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		// registers all the commitments
 		for round := 0; round <= lastRound; round++ {
 			ctx.compileRound(round)
-			comp.RegisterProverAction(round, &vortexProverAction{
+			comp.RegisterProverAction(round, &VortexProverAction{
 				ctx: ctx,
 				fn:  ctx.AssignColumn(round),
 			})
@@ -123,21 +123,21 @@ func Compile(blowUpFactor int, options ...VortexOp) func(*wizard.CompiledIOP) {
 		ctx.registerOpeningProof(lastRound)
 
 		// Registers the prover and verifier steps
-		comp.RegisterProverAction(lastRound+1, &vortexProverAction{
+		comp.RegisterProverAction(lastRound+1, &VortexProverAction{
 			ctx: ctx,
 			fn:  ctx.ComputeLinearComb,
 		})
-		comp.RegisterProverAction(lastRound+2, &vortexProverAction{
+		comp.RegisterProverAction(lastRound+2, &VortexProverAction{
 			ctx: ctx,
 			fn:  ctx.OpenSelectedColumns,
 		})
 		// This is separated from GnarkVerify because, when doing full-recursion
 		// , we want to recurse this verifier step but not [ctx.Verify] which is
 		// already handled by the self-recursion mechanism.
-		comp.RegisterVerifierAction(lastRound, &vortexVerifierAction{
+		comp.RegisterVerifierAction(lastRound, &VortexVerifierAction{
 			ctx: ctx,
 		})
-		comp.RegisterVerifierAction(lastRound+2, &vortexVerifierAction{
+		comp.RegisterVerifierAction(lastRound+2, &VortexVerifierAction{
 			ctx: ctx,
 		})
 

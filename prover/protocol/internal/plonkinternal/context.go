@@ -20,6 +20,25 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type Plonk struct {
+	// The plonk circuit being integrated
+	Circuit frontend.Circuit
+	// The compiled circuit
+	Trace *plonkBLS12_377.Trace
+	// The sparse constrained system
+	SPR *cs.SparseR1CS
+	// Domain to gets the polynomials in lagrange form
+	Domain *fft.Domain
+	// Options for the solver, may contain hint informations
+	// and so on.
+	SolverOpts []solver.Option
+	// Receives the list of rows which have to be marked containing range checks.
+	RcGetter func() [][2]int // the same for all circuits
+	// HashedGetter is a function that returns the list of rows which are tagged
+	// as range-checked.
+	HashedGetter func() [][3][2]int
+}
+
 // This flag control whether to activate the gnark profiling for the circuits. Please leave it
 // to "false" because (1) it generates a lot of data (2) it is extremely time consuming.
 const activateGnarkProfiling = false
@@ -35,35 +54,17 @@ type CompilationCtx struct {
 	// Name of the context. It is used to generate the column names and the
 	// queries name so that we can understad where they come from. Two instances
 	// of Plonk in wizard cannot have the same name.
-	name string
-	// subscript allows providing more context than [name]. It is used in the
+	Name string
+	// Subscript allows providing more context than [name]. It is used in the
 	// logs and in the name of the profiling assets. It is however not used as
 	// part of the name of generated wizard items.
-	subscript string
+	Subscript string
 	// Round at which we create the ctx
-	round int
+	Round int
 	// Number of instances of the circuit
-	maxNbInstances int
+	MaxNbInstances int
 
-	// Gnark related data
-	Plonk struct {
-		// The plonk circuit being integrated
-		Circuit frontend.Circuit
-		// The compiled circuit
-		Trace *plonkBLS12_377.Trace
-		// The sparse constrained system
-		SPR *cs.SparseR1CS
-		// Domain to gets the polynomials in lagrange form
-		Domain *fft.Domain
-		// Options for the solver, may contain hint informations
-		// and so on.
-		SolverOpts []solver.Option
-		// Receives the list of rows which have to be marked containing range checks.
-		RcGetter func() [][2]int // the same for all circuits
-		// HashedGetter is a function that returns the list of rows which are tagged
-		// as range-checked.
-		HashedGetter func() [][3][2]int
-	}
+	Plonk Plonk
 
 	// Columns
 	Columns struct {
@@ -136,9 +137,9 @@ func createCtx(
 
 	ctx = CompilationCtx{
 		comp:           comp,
-		name:           name,
-		round:          round,
-		maxNbInstances: maxNbInstance,
+		Name:           name,
+		Round:          round,
+		MaxNbInstances: maxNbInstance,
 	}
 
 	ctx.Plonk.Circuit = circuit
@@ -148,10 +149,10 @@ func createCtx(
 	}
 
 	logger := logrus.
-		WithField("subscript", ctx.subscript).
-		WithField("round", ctx.round).
-		WithField("maxNbInstances", ctx.maxNbInstances).
-		WithField("name", name)
+		WithField("subscript", ctx.Subscript).
+		WithField("round", ctx.Round).
+		WithField("maxNbInstances", ctx.MaxNbInstances).
+		WithField("name", ctx.Name)
 
 	logger.Debug("Plonk in Wizard compiling the circuit")
 
@@ -161,8 +162,8 @@ func createCtx(
 
 		fname := name
 
-		if len(ctx.subscript) > 0 {
-			fname = fname + "-" + ctx.subscript
+		if len(ctx.Subscript) > 0 {
+			fname = fname + "-" + ctx.Subscript
 		}
 
 		// This adds a nice pprof suffix

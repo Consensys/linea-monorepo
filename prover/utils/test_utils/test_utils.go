@@ -18,6 +18,12 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	snarkHash "github.com/consensys/gnark/std/hash"
+	"github.com/consensys/linea-monorepo/prover/backend/execution"
+	"github.com/consensys/linea-monorepo/prover/config"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/zkevm"
+	"github.com/sirupsen/logrus"
 
 	"github.com/stretchr/testify/require"
 )
@@ -362,4 +368,257 @@ func GetRepoRootPath() (string, error) {
 	}
 	i += len(repoName)
 	return wd[:i], nil
+}
+
+// compareExportedFields checks if two values are equal, ignoring unexported fields, including in nested structs.
+// It logs mismatched fields with their paths and values.
+func CompareExportedFields(a, b interface{}) bool {
+	return CompareExportedFieldsWithPath(a, b, "")
+}
+
+func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
+
+	v1, v2 := reflect.ValueOf(a), reflect.ValueOf(b)
+
+	// Ensure both values are valid
+	if !v1.IsValid() || !v2.IsValid() {
+		// Treat nil and zero values as equivalent
+		if !v1.IsValid() && !v2.IsValid() {
+			return true
+		}
+		if !v1.IsValid() {
+			v1 = reflect.Zero(v2.Type())
+		}
+		if !v2.IsValid() {
+			v2 = reflect.Zero(v1.Type())
+		}
+	}
+
+	// Skip ignorable fields
+	if serialization.IsIgnoreableType(v1.Type()) {
+		logrus.Printf("Skipping comparison of Ignorable type:%s at %s\n", v1.Type().String(), path)
+		return true
+	}
+
+	// Ensure same type
+	if v1.Type() != v2.Type() {
+		logrus.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, v1.Type(), v2.Type())
+		return false
+	}
+
+	// Ignore Func
+	if v1.Kind() == reflect.Func {
+		return true
+	}
+
+	// Handle maps
+	if v1.Kind() == reflect.Map {
+		if v1.Len() != v2.Len() {
+			if serialization.IsIgnoreableType(v1.Type()) {
+				logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
+				return true
+			}
+			logrus.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1.Len(), v2.Len(), v1.Type())
+			return false
+		}
+		for _, key := range v1.MapKeys() {
+			value1 := v1.MapIndex(key)
+			value2 := v2.MapIndex(key)
+			if !value2.IsValid() {
+				logrus.Printf("Mismatch at %s: key %v is missing in second map\n", path, key)
+				return false
+			}
+			keyPath := fmt.Sprintf("%s[%v]", path, key)
+			if !CompareExportedFieldsWithPath(value1.Interface(), value2.Interface(), keyPath) {
+				return false
+			}
+		}
+		// logrus.Infof("Comparing map at %s: len(v1)=%d, len(v2)=%d", path, v1.Len(), v2.Len())
+		return true
+	}
+
+	// Handle pointers by dereferencing
+	if v1.Kind() == reflect.Ptr {
+		if v1.IsNil() && v2.IsNil() {
+			return true
+		}
+		if v1.IsNil() != v2.IsNil() {
+			if serialization.IsIgnoreableType(v1.Type()) {
+				logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
+				return true
+			}
+			logrus.Printf("Mismatch at %s: nil status differs (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
+			return false
+		}
+		return CompareExportedFieldsWithPath(v1.Elem().Interface(), v2.Elem().Interface(), path)
+	}
+
+	// Handle structs
+	if v1.Kind() == reflect.Struct {
+		equal := true
+		for i := 0; i < v1.NumField(); i++ {
+			structField := v1.Type().Field(i)
+			// Skip unexported fields
+			if !structField.IsExported() {
+				continue
+			}
+
+			f1 := v1.Field(i)
+			f2 := v2.Field(i)
+			fieldName := structField.Name
+			fieldPath := fieldName
+			if path != "" {
+				fieldPath = path + "." + fieldName
+			}
+			if !CompareExportedFieldsWithPath(f1.Interface(), f2.Interface(), fieldPath) {
+				equal = false
+			}
+		}
+		return equal
+	}
+
+	// Handle slices or arrays
+	if v1.Kind() == reflect.Slice || v1.Kind() == reflect.Array {
+		if v1.Len() != v2.Len() {
+			logrus.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1, v2, v1.Type())
+			return false
+		}
+		equal := true
+		for i := 0; i < v1.Len(); i++ {
+			elemPath := fmt.Sprintf("%s[%d]", path, i)
+			if !CompareExportedFieldsWithPath(v1.Index(i).Interface(), v2.Index(i).Interface(), elemPath) {
+				equal = false
+			}
+		}
+		return equal
+	}
+
+	// For other types, use DeepEqual and log if mismatched
+	if !reflect.DeepEqual(a, b) {
+		logrus.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type_v1: %v type_v2: %v)\n", path, a, b, v1.Type(), v2.Type())
+		return false
+	}
+	return true
+}
+
+// GetZkevmWitness returns a [zkevm.Witness]
+func GetZkevmWitness(req *execution.Request, cfg *config.Config) *zkevm.Witness {
+	out := execution.CraftProverOutput(cfg, req)
+	witness := execution.NewWitness(cfg, req, &out)
+	return witness.ZkEVM
+}
+
+// GetZKEVM returns a [zkevm.ZkEvm] with its trace limits inflated so that it
+// can be used as input for the package functions. The zkevm is returned
+// without any compilation.
+func GetZkEVM() *zkevm.ZkEvm {
+
+	// This are the config trace-limits from sepolia. All multiplied by 16.
+	traceLimits := &config.TracesLimits{
+		Add:                                  1 << 19,
+		Bin:                                  1 << 18,
+		Blake2Fmodexpdata:                    1 << 14,
+		Blockdata:                            1 << 12,
+		Blockhash:                            1 << 12,
+		Ecdata:                               1 << 18,
+		Euc:                                  1 << 16,
+		Exp:                                  1 << 14,
+		Ext:                                  1 << 20,
+		Gas:                                  1 << 16,
+		Hub:                                  1 << 21,
+		Logdata:                              1 << 16,
+		Loginfo:                              1 << 12,
+		Mmio:                                 1 << 21,
+		Mmu:                                  1 << 21,
+		Mod:                                  1 << 17,
+		Mul:                                  1 << 16,
+		Mxp:                                  1 << 19,
+		Oob:                                  1 << 18,
+		Rlpaddr:                              1 << 12,
+		Rlptxn:                               1 << 17,
+		Rlptxrcpt:                            1 << 17,
+		Rom:                                  1 << 22,
+		Romlex:                               1 << 12,
+		Shakiradata:                          1 << 15,
+		Shf:                                  1 << 16,
+		Stp:                                  1 << 14,
+		Trm:                                  1 << 15,
+		Txndata:                              1 << 14,
+		Wcp:                                  1 << 18,
+		Binreftable:                          1 << 20,
+		Shfreftable:                          1 << 12,
+		Instdecoder:                          1 << 9,
+		PrecompileEcrecoverEffectiveCalls:    1 << 9,
+		PrecompileSha2Blocks:                 1 << 9,
+		PrecompileRipemdBlocks:               0,
+		PrecompileModexpEffectiveCalls:       1 << 10,
+		PrecompileModexpEffectiveCalls4096:   1 << 4,
+		PrecompileEcaddEffectiveCalls:        1 << 6,
+		PrecompileEcmulEffectiveCalls:        1 << 6,
+		PrecompileEcpairingEffectiveCalls:    1 << 4,
+		PrecompileEcpairingMillerLoops:       1 << 4,
+		PrecompileEcpairingG2MembershipCalls: 1 << 4,
+		PrecompileBlakeEffectiveCalls:        0,
+		PrecompileBlakeRounds:                0,
+		BlockKeccak:                          1 << 13,
+		BlockL1Size:                          100_000,
+		BlockL2L1Logs:                        16,
+		BlockTransactions:                    1 << 8,
+		ShomeiMerkleProofs:                   1 << 14,
+	}
+
+	return zkevm.FullZKEVMWithSuite(traceLimits, zkevm.CompilationSuite{}, &config.Config{})
+}
+
+// GetAffinities returns a list of affinities for the following modules. This
+// affinities regroup how the modules are grouped.
+//
+//	ecadd / ecmul / ecpairing
+//	hub / hub.scp / hub.acp
+//	everything related to keccak
+func GetAffinities(z *zkevm.ZkEvm) [][]column.Natural {
+
+	return [][]column.Natural{
+		{
+			z.Ecmul.AlignedGnarkData.IsActive.(column.Natural),
+			z.Ecadd.AlignedGnarkData.IsActive.(column.Natural),
+			z.Ecpair.AlignedFinalExpCircuit.IsActive.(column.Natural),
+			z.Ecpair.AlignedG2MembershipData.IsActive.(column.Natural),
+			z.Ecpair.AlignedMillerLoopCircuit.IsActive.(column.Natural),
+		},
+		{
+			z.WizardIOP.Columns.GetHandle("hub.HUB_STAMP").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("hub.scp_ADDRESS_HI").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("hub.acp_ADDRESS_HI").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("hub.ccp_HUB_STAMP").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("hub.envcp_HUB_STAMP").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("hub.stkcp_PEEK_AT_STACK_POW_4").(column.Natural),
+		},
+		{
+			z.WizardIOP.Columns.GetHandle("KECCAK_IMPORT_PAD_HASH_NUM").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("CLEANING_KECCAK_CleanLimb").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("DECOMPOSITION_KECCAK_Decomposed_Len_0").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("KECCAK_FILTERS_SPAGHETTI").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("LANE_KECCAK_Lane").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("KECCAKF_IS_ACTIVE_").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("KECCAKF_BLOCK_BASE_2_0").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("KECCAK_OVER_BLOCKS_TAGS_0").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("HASH_OUTPUT_Hash_Lo").(column.Natural),
+		},
+		{
+			z.WizardIOP.Columns.GetHandle("SHA2_IMPORT_PAD_HASH_NUM").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("DECOMPOSITION_SHA2_Decomposed_Len_0").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("LENGTH_CONSISTENCY_SHA2_BYTE_LEN_0_0").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("SHA2_FILTERS_SPAGHETTI").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("LANE_SHA2_Lane").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("Coefficient_SHA2").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("SHA2_OVER_BLOCK_IS_ACTIVE").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("SHA2_OVER_BLOCK_SHA2_COMPRESSION_CIRCUIT_IS_ACTIVE").(column.Natural),
+		},
+		{
+			z.WizardIOP.Columns.GetHandle("mmio.CN_ABC").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("mmio.MMIO_STAMP").(column.Natural),
+			z.WizardIOP.Columns.GetHandle("mmu.STAMP").(column.Natural),
+		},
+	}
 }

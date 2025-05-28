@@ -9,13 +9,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// proverTask implements the [wizard.ProverAction] interface and as such
+// ProverTask implements the [wizard.ProverAction] interface and as such
 // implements the prover work of the compilation step. It works by calling
 // in parallel the prover tasks of the sub-compilation steps.
-type proverTask []*contextForSize
+type ProverTask []*contextForSize
 
 // Run implements the [wizard.ProverAction] interface.
-func (p proverTask) Run(run *wizard.ProverRuntime) {
+func (p ProverTask) Run(run *wizard.ProverRuntime) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(len(p))

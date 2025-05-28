@@ -54,12 +54,12 @@ func (ctx *SelfRecursionCtx) defineYs() {
 	ctx.Columns.Ys = verifiercol.NewFromYs(ctx.comp, ctx.VortexCtx.Query, ranges)
 }
 
-type consistencyYsUalphaVerifierAction struct {
+type ConsistencyYsUalphaVerifierAction struct {
 	ctx                *SelfRecursionCtx
 	interpolateUalphaX ifaces.Accessor
 }
 
-func (a *consistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
+func (a *ConsistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 	ys := a.ctx.Columns.Ys.GetColAssignment(run)
 	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
 	ysAlpha := smartvectors.EvalCoeff(ys, alpha)
@@ -70,7 +70,7 @@ func (a *consistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (a *consistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (a *ConsistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	ys := a.ctx.Columns.Ys.GetColAssignmentGnark(run)
 	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
 	uAlphaX := a.interpolateUalphaX.GetFrontendVariable(api, run)
@@ -92,7 +92,7 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 	round := ctx.Accessors.InterpolateUalphaX.Round()
 
 	// And let the verifier check that they should be both equal
-	ctx.comp.RegisterVerifierAction(round, &consistencyYsUalphaVerifierAction{
+	ctx.comp.RegisterVerifierAction(round, &ConsistencyYsUalphaVerifierAction{
 		ctx:                ctx,
 		interpolateUalphaX: ctx.Accessors.InterpolateUalphaX,
 	})

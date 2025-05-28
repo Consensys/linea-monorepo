@@ -9,11 +9,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type splitProverAction struct {
+type SplitProverAction struct {
 	splittings []SummerizedAlliances
 }
 
-func (a *splitProverAction) Run(run *wizard.ProverRuntime) {
+func (a *SplitProverAction) Run(run *wizard.ProverRuntime) {
 	for round := range a.splittings {
 		// This is an iteration over a map so the order is non-deterministic
 		// but this does not matter here.
@@ -27,7 +27,7 @@ func Splitter(size int) func(*wizard.CompiledIOP) {
 	return func(comp *wizard.CompiledIOP) {
 		ctx := newSplitter(comp, size)
 		ctx.constraints()
-		comp.RegisterProverAction(comp.NumRounds()-1, &splitProverAction{
+		comp.RegisterProverAction(comp.NumRounds()-1, &SplitProverAction{
 			splittings: ctx.Splittings,
 		})
 	}
@@ -50,12 +50,12 @@ func newSplitter(comp *wizard.CompiledIOP, size int) splitterContext {
 	return ctx
 }
 
-type proveRoundProverAction struct {
+type ProveRoundProverAction struct {
 	ctx   *splitterContext
 	round int
 }
 
-func (a *proveRoundProverAction) Run(run *wizard.ProverRuntime) {
+func (a *ProveRoundProverAction) Run(run *wizard.ProverRuntime) {
 	stopTimer := profiling.LogTimer("splitter compiler")
 	defer stopTimer()
 
@@ -139,7 +139,7 @@ func (ctx *splitterContext) ScanSplitCommit() {
 		if len(ctx.Splittings[round].ByBigCol) == 0 {
 			continue
 		}
-		ctx.comp.RegisterProverAction(round, &proveRoundProverAction{
+		ctx.comp.RegisterProverAction(round, &ProveRoundProverAction{
 			ctx:   ctx,
 			round: round,
 		})

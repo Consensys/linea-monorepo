@@ -36,7 +36,7 @@ func TestAlignment(t *testing.T) {
 			DataToCircuit:      ct.GetCommit(build, "DATA"),
 			DataToCircuitMask:  ct.GetCommit(build, "DATA_MASK"),
 			NbCircuitInstances: nbCircuitInstances,
-			InputFiller:        func(circuitInstance, inputIndex int) field.Element { return field.NewElement(uint64(inputIndex + 1)) },
+			inputFiller:        func(circuitInstance, inputIndex int) field.Element { return field.NewElement(uint64(inputIndex + 1)) },
 		}
 		alignment = DefineAlignment(build.CompiledIOP, toAlign)
 	}, dummy.Compile)

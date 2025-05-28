@@ -13,19 +13,19 @@ func CleanUp(comp *wizard.CompiledIOP) {
 	colToRemove := comp.Columns.AllKeysIgnored()
 
 	// Register the prover action to remove unrequired data
-	comp.RegisterProverAction(lastRound, &cleanupProverAction{
+	comp.RegisterProverAction(lastRound, &CleanupProverAction{
 		columnsToRemove: colToRemove,
 	})
 }
 
-// cleanupProverAction is the action to remove ignored columns.
+// CleanupProverAction is the action to remove ignored columns.
 // It implements the [wizard.ProverAction] interface.
-type cleanupProverAction struct {
+type CleanupProverAction struct {
 	columnsToRemove []ifaces.ColID
 }
 
 // Run executes the cleanup by removing ignored columns from the runtime.
-func (a *cleanupProverAction) Run(run *wizard.ProverRuntime) {
+func (a *CleanupProverAction) Run(run *wizard.ProverRuntime) {
 	// Remove all the ignored columns
 	for _, col := range a.columnsToRemove {
 		run.Columns.TryDel(col)

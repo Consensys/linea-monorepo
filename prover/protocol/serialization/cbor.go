@@ -45,6 +45,14 @@ func initCBORDecMode() {
 	}
 }
 
+func SerializeAnyWithCborPkg(x any) (json.RawMessage, error) {
+	return serializeAnyWithCborPkg(x)
+}
+
+func DeserializeAnyWithCborPkg(data json.RawMessage, x any) error {
+	return deserializeAnyWithCborPkg(data, x)
+}
+
 // serializeAnyWithCborPkg serializes an interface{} object into CBOR using a pooled buffer.
 // It will return an error on failure and is meant to be used on data and types that controlled
 // by the current package.

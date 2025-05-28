@@ -42,7 +42,7 @@ func (pa noCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []wi
 
 	var (
 		ctx             = CompilationCtx(pa)
-		maxNbInstance   = pa.maxNbInstances
+		maxNbInstance   = pa.MaxNbInstances
 		numEffInstances = len(fullWitnesses)
 	)
 

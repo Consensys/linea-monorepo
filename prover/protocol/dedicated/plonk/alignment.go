@@ -59,10 +59,10 @@ type CircuitAlignmentInput struct {
 	// PlonkOptions are optional options to the plonk-in-wizard checker. See [Option].
 	PlonkOptions []query.PlonkOption
 
-	// InputFiller returns an element to pad in the public input for the
+	// inputFiller returns an element to pad in the public input for the
 	// circuit in case DataToCircuitMask is not full length of the circuit
 	// input. If it is nil, then we use zero value.
-	InputFiller func(circuitInstance, inputIndex int) field.Element
+	inputFiller func(circuitInstance, inputIndex int) field.Element
 
 	witnesses       []witness.Witness
 	witnessesOnce   sync.Once
@@ -78,12 +78,18 @@ func (ci *CircuitAlignmentInput) NbInstances() int {
 	return ci.NbCircuitInstances
 }
 
+func (ci *CircuitAlignmentInput) RegisterInputFiller(inputFillerFn func(circuitInstance, inputIndex int) field.Element) {
+	ci.inputFiller = inputFillerFn
+}
+
 // prepareWitnesses prepares the witnesses for every circuit instance. It is
 // called inside the Once so that we do not prepare the witnesses multiple
 // times. Safe to call multiple times, it is idepotent after first call.
 // The function checks how many instances of the circuit are called and panics
 // if this uncovers an overflow.
 func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
+
+	// fmt.Printf("CALLING InputFiller from %s \n Value:%s", ,ci.InputFiller)
 
 	nbPublicInputs, _ := gnarkutil.CountVariables(ci.Circuit)
 
@@ -96,8 +102,8 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 			os.Exit(77)
 		}
 
-		if ci.InputFiller == nil {
-			ci.InputFiller = func(_, _ int) field.Element { return field.Zero() }
+		if ci.inputFiller == nil {
+			ci.inputFiller = func(_, _ int) field.Element { return field.Zero() }
 		}
 		// the number of inputs here we deduce -- we divide all masked values by the number of instances.
 		dataCol := ci.DataToCircuit.GetColAssignment(run)
@@ -158,7 +164,7 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 				select {
 				case <-ctx.Done():
 					return
-				case witnessFillers[filled/nbPublicInputs] <- ci.InputFiller(filled/nbPublicInputs, filled%nbPublicInputs):
+				case witnessFillers[filled/nbPublicInputs] <- ci.inputFiller(filled/nbPublicInputs, filled%nbPublicInputs):
 				}
 				filled++
 				if filled%nbPublicInputs == 0 {
@@ -364,8 +370,8 @@ func (a *Alignment) assignCircData(run *wizard.ProverRuntime) {
 
 	if nbDataLastInstance > 0 {
 		for i := nbDataLastInstance; i < nbInput; i++ {
-			if a.InputFiller != nil {
-				dataChan <- a.InputFiller(lastEffInstance, i)
+			if a.inputFiller != nil {
+				dataChan <- a.inputFiller(lastEffInstance, i)
 			} else {
 				dataChan <- field.Zero()
 			}

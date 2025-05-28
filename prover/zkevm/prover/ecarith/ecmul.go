@@ -60,8 +60,10 @@ func newEcMul(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMulSource, pl
 		Circuit:            NewECMulCircuit(limits),
 		NbCircuitInstances: limits.NbCircuitInstances,
 		PlonkOptions:       plonkOptions,
-		InputFiller:        nil, // not necessary: 0 * (0,0) = (0,0) with complete arithmetic
+		// InputFiller:        nil, // not necessary: 0 * (0,0) = (0,0) with complete arithmetic
 	}
+
+	toAlign.RegisterInputFiller(nil)
 	res := &EcMul{
 		EcDataMulSource:  src,
 		AlignedGnarkData: plonk.DefineAlignment(comp, toAlign),

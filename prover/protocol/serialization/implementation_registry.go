@@ -3,24 +3,46 @@ package serialization
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/bigrange"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
+	"github.com/sirupsen/logrus"
+
+	ded "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
 )
 
 func init() {
 	// This registers all the types that we may need to deserialize
-	// as interfaces implementations. Cases of interfaces that are relevant
+	// as interface implementations. Cases of interfaces that are relevant
 	// are:
 	//
 	// 		- symbolic.Operator
@@ -28,16 +50,25 @@ func init() {
 	//      - ifaces.Column
 	//  	- ifaces.Query
 	//
+
+	// Interfaces
 	RegisterImplementation(ifaces.ColID(""))
 	RegisterImplementation(ifaces.QueryID(""))
-	RegisterImplementation(coin.Name(""))
+
+	// Coins and Columns
 	RegisterImplementation(column.Natural{})
 	RegisterImplementation(column.Shifted{})
+	RegisterImplementation(coin.Name(""))
+	RegisterImplementation(coin.Info{})
+
+	// Verifier columns
 	RegisterImplementation(verifiercol.ConstCol{})
 	RegisterImplementation(verifiercol.FromYs{})
 	RegisterImplementation(verifiercol.FromAccessors{})
 	RegisterImplementation(verifiercol.ExpandedVerifCol{})
 	RegisterImplementation(verifiercol.RepeatedAccessor{})
+
+	// Queries
 	RegisterImplementation(query.FixedPermutation{})
 	RegisterImplementation(query.GlobalConstraint{})
 	RegisterImplementation(query.Inclusion{})
@@ -48,12 +79,22 @@ func init() {
 	RegisterImplementation(query.Permutation{})
 	RegisterImplementation(query.Range{})
 	RegisterImplementation(query.UnivariateEval{})
+	RegisterImplementation(query.Projection{})
+	RegisterImplementation(query.PlonkInWizard{})
+	RegisterImplementation(query.LocalOpening{})
+	RegisterImplementation(query.LogDerivativeSum{})
+	RegisterImplementation(query.GrandProduct{})
+	RegisterImplementation(query.Horner{})
+
+	// Symbolic
 	RegisterImplementation(symbolic.Variable{})
 	RegisterImplementation(symbolic.Constant{})
 	RegisterImplementation(symbolic.Product{})
 	RegisterImplementation(symbolic.LinComb{})
 	RegisterImplementation(symbolic.PolyEval{})
-	RegisterImplementation(coin.Info{})
+	RegisterImplementation(symbolic.StringVar(""))
+
+	// Accessors
 	RegisterImplementation(accessors.FromCoinAccessor{})
 	RegisterImplementation(accessors.FromConstAccessor{})
 	RegisterImplementation(accessors.FromExprAccessor{})
@@ -61,9 +102,58 @@ func init() {
 	RegisterImplementation(accessors.FromLocalOpeningYAccessor{})
 	RegisterImplementation(accessors.FromPublicColumn{})
 	RegisterImplementation(accessors.FromUnivXAccessor{})
+	RegisterImplementation(accessors.FromLogDerivSumAccessor{})
+	RegisterImplementation(accessors.FromGrandProductAccessor{})
+	RegisterImplementation(accessors.FromHornerAccessorFinalValue{})
+
+	// Variables
 	RegisterImplementation(variables.X{})
 	RegisterImplementation(variables.PeriodicSample{})
-	RegisterImplementation(symbolic.StringVar(""))
+
+	// Circuit implementations
+	RegisterImplementation(ecdsa.MultiEcRecoverCircuit{})
+	RegisterImplementation(modexp.ModExpCircuit{})
+	RegisterImplementation(ecarith.MultiECAddCircuit{})
+	RegisterImplementation(ecarith.MultiECMulCircuit{})
+	RegisterImplementation(ecpair.MultiG2GroupcheckCircuit{})
+	RegisterImplementation(ecpair.MultiMillerLoopMulCircuit{})
+	RegisterImplementation(ecpair.MultiMillerLoopFinalExpCircuit{})
+	RegisterImplementation(sha2.SHA2Circuit{})
+
+	// Dedicated and common types
+	RegisterImplementation(byte32cmp.MultiLimbCmp{})
+	RegisterImplementation(byte32cmp.DecompositionCtx{})
+	RegisterImplementation(dedicated.IsZeroCtx{})
+	RegisterImplementation(common.HashingCtx{})
+
+	// Prover actions (added to fix missing concrete type warnings)
+	RegisterImplementation(byte32cmp.Bytes32CmpProverAction{})
+	RegisterImplementation(bigrange.BigRangeProverAction{})
+	RegisterImplementation(ded.AssignPIPProverAction{})
+	RegisterImplementation(keccak.ShakiraProverAction{})
+
+	// Smartvectors
+	RegisterImplementation(smartvectors.Regular{})
+	RegisterImplementation(smartvectors.PaddedCircularWindow{})
+	RegisterImplementation(smartvectors.Constant{})
+	RegisterImplementation(smartvectors.Pooled{})
+
+	RegisterImplementation(stitchsplit.ProveRoundProverAction{})
+	RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
+	RegisterImplementation(stitchsplit.StitchColumnsProverAction{})
+	RegisterImplementation(stitchsplit.StitchSubColumnsProverAction{})
+	RegisterImplementation(stitchsplit.QueryVerifierAction{})
+	RegisterImplementation(stitchsplit.SplitProverAction{})
+
+	RegisterImplementation(cleanup.CleanupProverAction{})
+
+	RegisterImplementation(mimc.LinearHashProverAction{})
+	RegisterImplementation(merkle.MerkleProofProverAction{})
+
+	RegisterImplementation(univariates.NaturalizeProverAction{})
+	RegisterImplementation(univariates.NaturalizeVerifierAction{})
+
+	logrus.Printf("Ignorable types:%v\n", IgnoreableTypes)
 }
 
 // In order to save some space, we trim the prefix of the package path as this
@@ -75,6 +165,13 @@ const pkgPathPrefixToRemove = "github.com/consensys/linea-monorepo/prover"
 // of the struct `ImplementingStruct` where the struct can be anything we would
 // like to potentially unmarshal.
 var implementationRegistry = collection.NewMapping[string, reflect.Type]()
+
+// Global slice to hold types that should be ignored during serialization/deserialization.
+var IgnoreableTypes = []reflect.Type{
+	// Ignore gnark frontend variables and Plonk-in-wizard compliation
+	reflect.TypeOf((*frontend.Variable)(nil)).Elem(),
+	reflect.TypeOf(plonkinternal.Plonk{}),
+}
 
 // RegisterImplementation registers the type of the provided instance. This is
 // needed if the caller of the package wants to deserialize into an interface
@@ -165,6 +262,11 @@ func findRegisteredImplementation(pkgTypeName string) (reflect.Type, error) {
 	return foundType, nil
 }
 
+// IsIgnoreableField checks if the given type is one of the types to be ignored during serialization/deserialization.
+func IsIgnoreableType(t reflect.Type) bool {
+	return slices.Contains(IgnoreableTypes, t)
+}
+
 // Returns the full `<Type.PkgPath>#<Type.Name>#<nbIndirection>` of a type.
 // Caller can either provide an instance of the desired type or a reflect.Type
 // of it.
@@ -232,12 +334,92 @@ func getPkgPathAndTypeName(x any) string {
 	return strings.TrimPrefix(pkgPath, pkgPathPrefixToRemove) + "#" + typeName
 }
 
-// castAsString returns the string value of a [reflect.String] kind
-// [reflect.Value]. It will return an error if the value does not have the right
-// kind.
-func castAsString(v reflect.Value) (string, error) {
-	if v.Kind() != reflect.String {
-		return "", fmt.Errorf("expected a string kind value: got %q", v.String())
+// castAsString converts a reflect.Value key to a string representation.
+func castAsString(key reflect.Value) (string, error) {
+	switch key.Kind() {
+	case reflect.String:
+		return key.String(), nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return fmt.Sprintf("%d", key.Int()), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return fmt.Sprintf("%d", key.Uint()), nil
+	case reflect.Array:
+		return processArrayKeyForString(key)
+	default:
+		return "", fmt.Errorf("unsupported key type to be cast as string: %v", key.Type().Name())
 	}
-	return v.String(), nil
+}
+
+// convertKeyToType converts a string key from serialized data to the target key type.
+func convertKeyToType(keyStr string, keyType reflect.Type) (reflect.Value, error) {
+	switch keyType.Kind() {
+	case reflect.String:
+		return reflect.ValueOf(keyStr).Convert(keyType), nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		keyInt, err := strconv.ParseInt(keyStr, 10, 64)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("cannot convert key %q to %v: %w", keyStr, keyType.Name(), err)
+		}
+		return reflect.ValueOf(keyInt).Convert(keyType), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		keyUint, err := strconv.ParseUint(keyStr, 10, 64)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("cannot convert key %q to %v: %w", keyStr, keyType.Name(), err)
+		}
+		return reflect.ValueOf(keyUint).Convert(keyType), nil
+	case reflect.Array:
+		return processArrayKeyForType(keyStr, keyType)
+	default:
+		return reflect.Value{}, fmt.Errorf("unsupported map key type: %v", keyType.Name())
+	}
+}
+
+// processArrayKeyForString handles array keys for castAsString.
+func processArrayKeyForString(key reflect.Value) (string, error) {
+	typeStr := key.Type().Name()
+	logrus.Debugf("castAsString: Processing array key, type: %s, name: %s", typeStr, key.Type().Name())
+
+	if typeStr == "[4]uint64" || typeStr == "Element" {
+		logrus.Debugf("castAsString: Converting Element key: %v", key.Interface())
+		var elements []string
+		for i := 0; i < key.Len(); i++ {
+			elements = append(elements, fmt.Sprintf("%d", key.Index(i).Uint()))
+		}
+		result := fmt.Sprintf("[%s]", strings.Join(elements, ","))
+		logrus.Debugf("castAsString: Converted Element key to string: %s", result)
+		return result, nil
+	}
+
+	logrus.Errorf("castAsString: Unsupported array key type: %s (name: %s)", typeStr, key.Type().Name())
+	return "", fmt.Errorf("unsupported array key type: %s", key.Type().Name())
+}
+
+// processArrayKeyForType handles array keys for convertKeyToType.
+func processArrayKeyForType(keyStr string, keyType reflect.Type) (reflect.Value, error) {
+	typeStr := keyType.Name()
+	logrus.Debugf("convertKeyToType: Processing array key type: %s, name: %s", typeStr, keyType.Name())
+
+	if typeStr == "[4]uint64" || typeStr == "Element" {
+		logrus.Debugf("convertKeyToType: Parsing Element key string: %s", keyStr)
+		s := strings.Trim(keyStr, "[]")
+		parts := strings.Split(s, ",")
+		if len(parts) != 4 {
+			logrus.Errorf("convertKeyToType: Invalid Element key format %q, expected [x,y,z,w]", keyStr)
+			return reflect.Value{}, fmt.Errorf("invalid Element key format %q, expected [x,y,z,w]", keyStr)
+		}
+		var arr [4]uint64
+		for i, part := range parts {
+			val, err := strconv.ParseUint(strings.TrimSpace(part), 10, 64)
+			if err != nil {
+				logrus.Errorf("convertKeyToType: Cannot convert %q to uint64 in Element key: %v", part, err)
+				return reflect.Value{}, fmt.Errorf("cannot convert %q to uint64 in Element key: %w", part, err)
+			}
+			arr[i] = val
+		}
+		logrus.Debugf("convertKeyToType: Converted to Element key: %v", arr)
+		return reflect.ValueOf(arr).Convert(keyType), nil
+	}
+
+	logrus.Errorf("convertKeyToType: Unsupported array key type: %s (name: %s)", typeStr, keyType.Name())
+	return reflect.Value{}, fmt.Errorf("unsupported array key type: %s", keyType.Name())
 }

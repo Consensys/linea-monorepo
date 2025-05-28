@@ -42,7 +42,7 @@ import (
 func PlonkCheck(
 	comp *wizard.CompiledIOP,
 	name string,
-	round int,
+	Round int,
 	circuit frontend.Circuit,
 	maxNbInstance int,
 	// function to call to get an assignment
@@ -50,7 +50,7 @@ func PlonkCheck(
 ) *CompilationCtx {
 
 	// Create the ctx
-	ctx := createCtx(comp, name, round, circuit, maxNbInstance, options...)
+	ctx := createCtx(comp, name, Round, circuit, maxNbInstance, options...)
 
 	// And registers the columns + constraints
 	ctx.commitGateColumns()
@@ -67,14 +67,14 @@ func PlonkCheck(
 	}
 
 	if ctx.HasCommitment() {
-		comp.RegisterProverAction(round+1, lroCommitProverAction{CompilationCtx: ctx, proverStateLock: &sync.Mutex{}})
+		comp.RegisterProverAction(Round+1, lroCommitProverAction{CompilationCtx: ctx, proverStateLock: &sync.Mutex{}})
 	}
 
-	comp.RegisterVerifierAction(round, &checkingActivators{Cols: ctx.Columns.Activators})
+	comp.RegisterVerifierAction(Round, &CheckingActivators{Cols: ctx.Columns.Activators})
 
 	logrus.
 		WithField("nbConstraints", ctx.Plonk.SPR.NbConstraints).
-		WithField("maxNbInstances", maxNbInstance).
+		WithField("MaxNbInstances", maxNbInstance).
 		WithField("name", name).
 		WithField("hasCommitment", ctx.HasCommitment()).
 		Info("compiled Plonk in Wizard circuit")
@@ -103,52 +103,52 @@ func (ctx *CompilationCtx) commitGateColumns() {
 		ctx.RangeCheckOption.RcO = ctx.comp.InsertPrecomputed(ctx.colIDf("RcO"), smartvectors.RightZeroPadded(PcRcO, nbRow))
 	}
 
-	ctx.Columns.L = make([]ifaces.Column, ctx.maxNbInstances)
-	ctx.Columns.R = make([]ifaces.Column, ctx.maxNbInstances)
-	ctx.Columns.O = make([]ifaces.Column, ctx.maxNbInstances)
-	ctx.Columns.Activators = make([]ifaces.Column, ctx.maxNbInstances)
-	ctx.Columns.PI = make([]ifaces.Column, ctx.maxNbInstances)
-	ctx.Columns.TinyPI = make([]ifaces.Column, ctx.maxNbInstances)
-	ctx.Columns.Cp = make([]ifaces.Column, ctx.maxNbInstances)
+	ctx.Columns.L = make([]ifaces.Column, ctx.MaxNbInstances)
+	ctx.Columns.R = make([]ifaces.Column, ctx.MaxNbInstances)
+	ctx.Columns.O = make([]ifaces.Column, ctx.MaxNbInstances)
+	ctx.Columns.Activators = make([]ifaces.Column, ctx.MaxNbInstances)
+	ctx.Columns.PI = make([]ifaces.Column, ctx.MaxNbInstances)
+	ctx.Columns.TinyPI = make([]ifaces.Column, ctx.MaxNbInstances)
+	ctx.Columns.Cp = make([]ifaces.Column, ctx.MaxNbInstances)
 
 	if ctx.HasCommitment() {
 		// Selector for the commitment
 		ctx.Columns.Qcp = ctx.comp.InsertPrecomputed(ctx.colIDf("QCP"), iopToSV(ctx.Plonk.Trace.Qcp[0], nbRow))
 
-		// First round, for the committed value and the PI
-		for i := 0; i < ctx.maxNbInstances; i++ {
+		// First Round, for the committed value and the PI
+		for i := 0; i < ctx.MaxNbInstances; i++ {
 			if ctx.TinyPISize() > 0 {
-				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.round, ctx.colIDf("PI_%v", i), ctx.TinyPISize())
+				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), ctx.TinyPISize())
 				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow)
 			}
-			ctx.Columns.Cp[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("Cp_%v", i), nbRow)
-			ctx.Columns.Activators[i] = ctx.comp.InsertProof(ctx.round, ctx.colIDf("ACTIVATOR_%v", i), 1)
+			ctx.Columns.Cp[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("Cp_%v", i), nbRow)
+			ctx.Columns.Activators[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("ACTIVATOR_%v", i), 1)
 		}
 
 		// Second rounds, after sampling HCP
-		ctx.Columns.Hcp = ctx.comp.InsertCoin(ctx.round+1, coin.Name(ctx.Sprintf("HCP")), coin.Field)
+		ctx.Columns.Hcp = ctx.comp.InsertCoin(ctx.Round+1, coin.Name(ctx.Sprintf("HCP")), coin.Field)
 
 		// And assigns the LRO polynomials
-		for i := 0; i < ctx.maxNbInstances; i++ {
-			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.round+1, ctx.colIDf("L_%v", i), nbRow)
-			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.round+1, ctx.colIDf("R_%v", i), nbRow)
-			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.round+1, ctx.colIDf("O_%v", i), nbRow)
+		for i := 0; i < ctx.MaxNbInstances; i++ {
+			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("L_%v", i), nbRow)
+			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("R_%v", i), nbRow)
+			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.Round+1, ctx.colIDf("O_%v", i), nbRow)
 		}
 	} else {
-		// Else no additional selector, and just commit to LRO + PI at the same round
-		for i := 0; i < ctx.maxNbInstances; i++ {
+		// Else no additional selector, and just commit to LRO + PI at the same Round
+		for i := 0; i < ctx.MaxNbInstances; i++ {
 			if ctx.TinyPISize() > 0 {
-				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.round, ctx.colIDf("PI_%v", i), ctx.TinyPISize())
+				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), ctx.TinyPISize())
 				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow)
 			}
-			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("L_%v", i), nbRow)
-			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("R_%v", i), nbRow)
-			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.round, ctx.colIDf("O_%v", i), nbRow)
-			ctx.Columns.Activators[i] = ctx.comp.InsertColumn(ctx.round, ctx.colIDf("ACTIVATOR_%v", i), 1, column.Proof)
+			ctx.Columns.L[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("L_%v", i), nbRow)
+			ctx.Columns.R[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("R_%v", i), nbRow)
+			ctx.Columns.O[i] = ctx.comp.InsertCommit(ctx.Round, ctx.colIDf("O_%v", i), nbRow)
+			ctx.Columns.Activators[i] = ctx.comp.InsertColumn(ctx.Round, ctx.colIDf("ACTIVATOR_%v", i), 1, column.Proof)
 		}
 	}
 }
@@ -206,7 +206,7 @@ func (ctx *CompilationCtx) extractPermutationColumns() {
 // add gate constraint
 func (ctx *CompilationCtx) addGateConstraint() {
 
-	for i := 0; i < ctx.maxNbInstances; i++ {
+	for i := 0; i < ctx.MaxNbInstances; i++ {
 
 		// Declare the expression
 		exp := sym.Add(
@@ -218,7 +218,7 @@ func (ctx *CompilationCtx) addGateConstraint() {
 			ctx.Columns.Qk,
 		)
 
-		roundLRO := ctx.round
+		roundLRO := ctx.Round
 
 		// Optionally add a commitment
 		if ctx.HasCommitment() {
@@ -309,16 +309,16 @@ func (ctx *CompilationCtx) addCopyConstraint() {
 	)
 }
 
-// checkingActivators implements the [wizard.VerifierAction] interface and
+// CheckingActivators implements the [wizard.VerifierAction] interface and
 // checks that the [Activators] columns are correctly assigned
-type checkingActivators struct {
+type CheckingActivators struct {
 	Cols    []ifaces.Column
 	skipped bool
 }
 
-var _ wizard.VerifierAction = &checkingActivators{}
+var _ wizard.VerifierAction = &CheckingActivators{}
 
-func (ca *checkingActivators) Run(run wizard.Runtime) error {
+func (ca *CheckingActivators) Run(run wizard.Runtime) error {
 	for i := range ca.Cols {
 
 		curr := ca.Cols[i].GetColAssignmentAt(run, 0)
@@ -337,7 +337,7 @@ func (ca *checkingActivators) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (ca *checkingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (ca *CheckingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	for i := range ca.Cols {
 
 		curr := ca.Cols[i].GetColAssignmentGnarkAt(run, 0)
@@ -350,10 +350,10 @@ func (ca *checkingActivators) RunGnark(api frontend.API, run wizard.GnarkRuntime
 	}
 }
 
-func (ca *checkingActivators) Skip() {
+func (ca *CheckingActivators) Skip() {
 	ca.skipped = true
 }
 
-func (ca *checkingActivators) IsSkipped() bool {
+func (ca *CheckingActivators) IsSkipped() bool {
 	return ca.skipped
 }

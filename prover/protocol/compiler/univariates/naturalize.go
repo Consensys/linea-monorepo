@@ -19,23 +19,23 @@ const (
 	NATURALIZE string = "NATURALIZE"
 )
 
-type naturalizeProverAction struct {
+type NaturalizeProverAction struct {
 	ctx naturalizationCtx
 }
 
-func (a *naturalizeProverAction) Run(run *wizard.ProverRuntime) {
+func (a *NaturalizeProverAction) Run(run *wizard.ProverRuntime) {
 	a.ctx.prove(run)
 }
 
-type naturalizeVerifierAction struct {
+type NaturalizeVerifierAction struct {
 	ctx naturalizationCtx
 }
 
-func (a *naturalizeVerifierAction) Run(run wizard.Runtime) error {
+func (a *NaturalizeVerifierAction) Run(run wizard.Runtime) error {
 	return a.ctx.Verify(run)
 }
 
-func (a *naturalizeVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+func (a *NaturalizeVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
 	a.ctx.GnarkVerify(api, c)
 }
 
@@ -121,12 +121,12 @@ func Naturalize(comp *wizard.CompiledIOP) {
 				And assigns them
 			*/
 			// comp.SubProvers.AppendToInner(roundID, ctx.prove)
-			comp.RegisterProverAction(roundID, &naturalizeProverAction{
+			comp.RegisterProverAction(roundID, &NaturalizeProverAction{
 				ctx: ctx,
 			})
 
 			// comp.InsertVerifier(roundID, ctx.Verify, ctx.GnarkVerify)
-			comp.RegisterVerifierAction(roundID, &naturalizeVerifierAction{
+			comp.RegisterVerifierAction(roundID, &NaturalizeVerifierAction{
 				ctx: ctx,
 			})
 		}

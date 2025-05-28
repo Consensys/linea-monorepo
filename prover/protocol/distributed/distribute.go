@@ -4,19 +4,32 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/logderivativesum"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/selector"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/internal/plonkinternal"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
+
+	"github.com/consensys/gnark/constraint"
 )
 
 // lppGroupingArity indicates how many GL modules an LPP module relates to.
@@ -49,6 +62,10 @@ type DistributedWizard struct {
 	// each module.
 	Disc ModuleDiscoverer
 
+	// CompiledDefault stores the compiled default module and is set by calling
+	// [DistributedWizard.Compile]
+	CompiledDefault *RecursedSegmentCompilation
+
 	// CompiledGLs stores the compiled GL modules and is set by calling
 	// [DistributedWizard.Compile]
 	CompiledGLs []*RecursedSegmentCompilation
@@ -57,13 +74,94 @@ type DistributedWizard struct {
 	// [DistributedWizard.Compile]
 	CompiledLPPs []*RecursedSegmentCompilation
 
-	// CompiledDefault stores the compiled default module and is set by calling
-	// [DistributedWizard.Compile]
-	CompiledDefault *RecursedSegmentCompilation
-
 	// CompiledConglomeration stores the compilation context of the
 	// conglomeration wizard.
 	CompiledConglomeration *ConglomeratorCompilation
+}
+
+func init() {
+	serialization.RegisterImplementation(AssignLPPQueries{})
+	serialization.RegisterImplementation(SetInitialFSHash{})
+	serialization.RegisterImplementation(CheckNxHash{})
+	serialization.RegisterImplementation(StandardModuleDiscoverer{})
+	serialization.RegisterImplementation(LppWitnessAssignment{})
+	serialization.RegisterImplementation(ModuleGLAssignGL{})
+	serialization.RegisterImplementation(ModuleGLAssignSendReceiveGlobal{})
+	serialization.RegisterImplementation(ModuleGLCheckSendReceiveGlobal{})
+	serialization.RegisterImplementation(LPPSegmentBoundaryCalculator{})
+
+	serialization.RegisterImplementation(permutation.ProverTaskAtRound{})
+	serialization.RegisterImplementation(permutation.AssignPermutationGrandProduct{})
+	serialization.RegisterImplementation(permutation.FinalProductCheck{})
+	serialization.RegisterImplementation(permutation.CheckGrandProductIsOne{})
+
+	serialization.RegisterImplementation(logderivativesum.AssignLogDerivativeSumProverAction{})
+	serialization.RegisterImplementation(logderivativesum.CheckLogDerivativeSumMustBeZero{})
+	serialization.RegisterImplementation(logderivativesum.ProverTaskAtRound{})
+	serialization.RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
+
+	serialization.RegisterImplementation(vortex.Ctx{})
+	serialization.RegisterImplementation(vortex.VortexProverAction{})
+	serialization.RegisterImplementation(vortex.VortexVerifierAction{})
+	serialization.RegisterImplementation(vortex.ShadowRowProverAction{})
+	serialization.RegisterImplementation(vortex.ReassignPrecomputedRootAction{})
+
+	serialization.RegisterImplementation(functionals.CoeffEvalProverAction{})
+	serialization.RegisterImplementation(functionals.InterpolationProverAction{})
+	serialization.RegisterImplementation(functionals.EvalBivariateProverAction{})
+	serialization.RegisterImplementation(functionals.FoldProverAction{})
+	serialization.RegisterImplementation(functionals.FoldOuterProverAction{})
+	serialization.RegisterImplementation(functionals.FoldOuterVerifierAction{})
+	serialization.RegisterImplementation(functionals.FoldVerifierAction{})
+
+	serialization.RegisterImplementation(reedsolomon.ReedSolomonProverAction{})
+	serialization.RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
+
+	serialization.RegisterImplementation(column.FakeColumn{})
+	serialization.RegisterImplementation(recursion.RecursionCircuit{})
+	serialization.RegisterImplementation(recursion.AssignVortexOpenedCols{})
+	serialization.RegisterImplementation(recursion.AssignVortexUAlpha{})
+	serialization.RegisterImplementation(recursion.ConsistencyCheck{})
+
+	serialization.RegisterImplementation(selfrecursion.CollapsingProverAction{})
+	serialization.RegisterImplementation(selfrecursion.CollapsingVerifierAction{})
+	serialization.RegisterImplementation(selfrecursion.ConsistencyYsUalphaVerifierAction{})
+	serialization.RegisterImplementation(selfrecursion.PreimageLimbsProverAction{})
+	serialization.RegisterImplementation(selfrecursion.LinearHashMerkleProverAction{})
+	serialization.RegisterImplementation(selfrecursion.ColSelectionProverAction{})
+	serialization.RegisterImplementation(selfrecursion.FoldPhaseProverAction{})
+	serialization.RegisterImplementation(selfrecursion.FoldPhaseVerifierAction{})
+
+	serialization.RegisterImplementation(mpts.ShadowRowProverAction{})
+	serialization.RegisterImplementation(mpts.VerifierAction{})
+	serialization.RegisterImplementation(mpts.RandomPointEvaluation{})
+	serialization.RegisterImplementation(mpts.QuotientAccumulation{})
+
+	serialization.RegisterImplementation(globalcs.EvaluationProver{})
+	serialization.RegisterImplementation(globalcs.EvaluationVerifier{})
+	serialization.RegisterImplementation(globalcs.QuotientCtx{})
+
+	serialization.RegisterImplementation(innerproduct.ProverTask{})
+	serialization.RegisterImplementation(innerproduct.VerifierForSize{})
+
+	serialization.RegisterImplementation(selector.SubsampleProverAction{})
+	serialization.RegisterImplementation(selector.SubsampleVerifierAction{})
+
+	serialization.RegisterImplementation(expr_handle.ExprHandleProverAction{})
+
+	serialization.RegisterImplementation(plonkinternal.CheckingActivators{})
+
+	serialization.RegisterImplementation(cmimc.ExternalHasherBuilder{})
+	serialization.RegisterImplementation(cmimc.ExternalHasherFactory{})
+
+	serialization.RegisterImplementation(constraint.BlueprintGenericHint{})
+	serialization.RegisterImplementation(constraint.BlueprintGenericSparseR1C{})
+	serialization.RegisterImplementation(constraint.BlueprintSparseR1CAdd{})
+	serialization.RegisterImplementation(constraint.BlueprintSparseR1CMul{})
+	serialization.RegisterImplementation(constraint.BlueprintSparseR1CBool{})
+	serialization.RegisterImplementation(constraint.PlonkCommitments{})
+
+	serialization.RegisterImplementation(fr.Element{})
 }
 
 // DistributeWizard returns a [DistributedWizard] from a [wizard.CompiledIOP]. It
@@ -129,10 +227,18 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 
 	dist.CompiledDefault = CompileSegment(dist.DefaultModule)
+
+	/* Temp: Comment out this code
+	logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))   // 11
+	logrus.Infof("Number of LPP modules to compile:%d\n", len(dist.LPPs)) // 3
+
 	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
-	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 
 	for i := range dist.GLs {
+		if i > 0 {
+			logrus.Warningf("Temp. breaking for faster compilation time after compiling just:%d GL modules\n", i)
+			break
+		}
 		logrus.
 			WithField("module-name", dist.GLs[i].definitionInput.ModuleName).
 			WithField("module-type", "LPP").
@@ -141,6 +247,11 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
 	}
 
+
+
+	logrus.Warningln("Temp commenting out compiling LPP modules")
+
+	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 	for i := range dist.LPPs {
 		logrus.
 			WithField("module-name", dist.LPPs[i].ModuleNames()).
@@ -148,7 +259,7 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 			Info("compiling module")
 
 		dist.CompiledLPPs[i] = CompileSegment(dist.LPPs[i])
-	}
+	} */
 
 	return dist
 }

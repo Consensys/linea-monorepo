@@ -18,14 +18,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type exprHandleProverAction struct {
+type ExprHandleProverAction struct {
 	boarded    symbolic.ExpressionBoard
 	handleName ifaces.ColID
 	domainSize int
 	maxRound   int
 }
 
-func (a *exprHandleProverAction) Run(run *wizard.ProverRuntime) {
+func (a *ExprHandleProverAction) Run(run *wizard.ProverRuntime) {
 	logrus.Tracef("running the expr handle assignment for %v, (round %v)", a.handleName, a.maxRound)
 	metadatas := a.boarded.ListVariableMetadata()
 
@@ -162,7 +162,7 @@ func ExprHandle(comp *wizard.CompiledIOP, expr *symbolic.Expression, name ...str
 	// }
 	//comp.SubProvers.AppendToInner(maxRound, prover)
 
-	comp.RegisterProverAction(maxRound, &exprHandleProverAction{
+	comp.RegisterProverAction(maxRound, &ExprHandleProverAction{
 		boarded:    boarded,
 		handleName: ifaces.ColID(handleName),
 		domainSize: cs.DomainSize,
