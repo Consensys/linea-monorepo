@@ -6,11 +6,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic/testdata"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	"github.com/stretchr/testify/assert"
-	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
 
 func TestAddress(t *testing.T) {
@@ -50,7 +50,6 @@ func TestAddress(t *testing.T) {
 		}
 
 		copy(uaGnark.GnarkData[:], gbmGnark.Limbs)
-		copy(uaGnark.GnarkDataLA[:], uaGnark.GnarkData[:])
 
 		ac.UnalignedGnarkData = uaGnark
 

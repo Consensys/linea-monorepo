@@ -135,6 +135,7 @@ func (tc *testCase) assignGdbFromStream(run *wizard.ProverRuntime, gdm *GenDataM
 	}
 
 	maxBytesPerLimb := (TotalLimbSize + nbCols - 1) / nbCols
+	nbUnusedBytes := field.Bytes - maxBytesPerLimb
 
 	// Iterate over the streams in test case
 	for hashID, currStream := range tc.streams {

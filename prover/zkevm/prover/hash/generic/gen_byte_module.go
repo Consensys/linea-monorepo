@@ -10,10 +10,6 @@ import (
 const (
 	// TotalLimbSize is the total size of a limb in bytes.
 	TotalLimbSize = 16
-	// nbUnusedBytes is the number of unused bytes in of the limb
-	// represented by the field element. The field element is 32 bytes
-	// long, and the limb is 16 bytes long, so 16 bytes are unused.
-	nbUnusedBytes = field.Bytes - TotalLimbSize
 )
 
 // GenericByteModule encodes the limbs with a left alignment approach as
@@ -63,6 +59,11 @@ func (gdm *GenDataModule) ScanStreams(run *wizard.ProverRuntime) [][]byte {
 	)
 
 	maxNbBytesPerLimb := (TotalLimbSize + numСols - 1) / numСols
+
+	// considering left-alignment approach, nbUnusedBytes is the number
+	// of unused bytes of the limb represented by the field element
+	nbUnusedBytes := field.Bytes - maxNbBytesPerLimb
+
 	limbs := make([][]field.Element, numСols)
 	for i := uint64(0); i < numСols; i++ {
 		limbs[i] = gdm.Limbs[i].GetColAssignment(run).IntoRegVecSaveAlloc()

@@ -87,11 +87,8 @@ func GenerateAndAssignGenDataModule(run *wizard.ProverRuntime, gdm *generic.GenD
 		dividedLimbs := SplitBytes(limbBytes[16:], 16/len(gdm.Limbs))
 
 		for j, limb := range dividedLimbs {
-			var bytes [16]byte
-			copy(bytes[:], limb)
-
 			var l field.Element
-			l.SetBytes(bytes[:])
+			l.SetBytes(limb[:])
 
 			limbs[j] = append(limbs[j], l)
 		}

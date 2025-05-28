@@ -30,7 +30,6 @@ type UnalignedGnarkData struct {
 	GnarkIndex          ifaces.Column
 	GnarkPublicKeyIndex ifaces.Column
 	GnarkData           [common.NbLimbU128]ifaces.Column
-	GnarkDataLA         [common.NbLimbU128]ifaces.Column
 
 	// auxiliary columns
 	IsIndex0     ifaces.Column
@@ -79,7 +78,6 @@ func newUnalignedGnarkData(comp *wizard.CompiledIOP, size int, src *unalignedGna
 	}
 
 	for i := 0; i < common.NbLimbU128; i++ {
-		res.GnarkDataLA[i] = createCol(fmt.Sprintf("GNARK_DATA_LA_%d", i))
 		res.GnarkData[i] = createCol(fmt.Sprintf("GNARK_DATA_%d", i))
 	}
 
@@ -88,7 +86,6 @@ func newUnalignedGnarkData(comp *wizard.CompiledIOP, size int, src *unalignedGna
 	res.csProjectionEcRecover(comp, src)
 	res.csTxHash(comp, src)
 	res.csTxEcRecoverBit(comp, src)
-	res.csGnarkDataLeftAligned(comp, src)
 
 	// we do not have to constrain the public key as it will be done in the
 	// address sub-module
@@ -143,7 +140,6 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 	}
 
 	var resIsPublicKey, resGnarkIndex, resGnarkPkIndex []field.Element
-	var resGnarkDataLA [common.NbLimbU128][]field.Element
 	var resGnarkData [common.NbLimbU128][]field.Element
 	var txCount = 0
 
@@ -318,7 +314,6 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 
 		for j := 0; j < common.NbLimbU128; j++ {
 			resGnarkData[j] = append(resGnarkData[j], make([]field.Element, prependZeroCount)...)
-			resGnarkDataLA[j] = append(resGnarkDataLA[j], make([]field.Element, prependZeroCount)...)
 		}
 
 		// Assign limb elements column by column
@@ -331,7 +326,6 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 			elementLA.SetBytes(bytes[:])
 
 			resGnarkData[j%common.NbLimbU128] = append(resGnarkData[j%common.NbLimbU128], rows[j])
-			resGnarkDataLA[j%common.NbLimbU128] = append(resGnarkDataLA[j%common.NbLimbU128], elementLA)
 		}
 	}
 	// pad the vectors to the full size. It is expected in the hashing module
@@ -345,10 +339,8 @@ func (d *UnalignedGnarkData) assignUnalignedGnarkData(run *wizard.ProverRuntime,
 	run.AssignColumn(d.GnarkPublicKeyIndex.GetColID(), smartvectors.RightZeroPadded(resGnarkPkIndex, d.Size))
 
 	for j := 0; j < common.NbLimbU128; j++ {
-		resGnarkDataLA[j] = append(resGnarkDataLA[j], make([]field.Element, d.Size-len(resGnarkDataLA[j]))...)
 		resGnarkData[j] = append(resGnarkData[j], make([]field.Element, d.Size-len(resGnarkData[j]))...)
 
-		run.AssignColumn(d.GnarkDataLA[j].GetColID(), smartvectors.RightZeroPadded(resGnarkDataLA[j], d.Size))
 		run.AssignColumn(d.GnarkData[j].GetColID(), smartvectors.RightZeroPadded(resGnarkData[j], d.Size))
 	}
 }
@@ -496,19 +488,6 @@ func (d *UnalignedGnarkData) csTxEcRecoverBit(comp *wizard.CompiledIOP, src *una
 			ROUND_NR,
 			ifaces.QueryIDf("%v_%v_%d", NAME_UNALIGNED_GNARKDATA, "ECRECOVERBIT", i),
 			sym.Mul(d.IsIndex13, src.Source, d.GnarkData[i]),
-		)
-	}
-}
-
-func (d *UnalignedGnarkData) csGnarkDataLeftAligned(comp *wizard.CompiledIOP, src *unalignedGnarkDataSource) {
-	// Ensures that GnarkDataLA is the same as GnarkData with some byte offset. The offset is performed by multiplying
-	// GnarkData by 2 ** (8 * gnarkDataLeftAlignmentOffset) where 8 - is the number of bits to shift.
-
-	for i := 0; i < common.NbLimbU128; i++ {
-		comp.InsertGlobal(
-			ROUND_NR,
-			ifaces.QueryIDf("%v_%v_%d", NAME_UNALIGNED_GNARKDATA, "LEFT_ALIGNEMENT", i),
-			sym.Sub(sym.Mul(d.GnarkData[i], sym.Pow(2, gnarkDataLeftAlignmentOffset)), d.GnarkDataLA[i]),
 		)
 	}
 }
