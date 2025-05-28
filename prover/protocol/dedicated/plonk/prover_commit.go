@@ -138,7 +138,7 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 			// Inject the coin which will be assigned to the randomness
 			solsync := solsync_.(solverSync)
-			solsync.randChan <- run.GetRandomCoinField(ctx.Columns.Hcp.Name)
+			solsync.randChan <- run.GetRandomCoinFext(ctx.Columns.Hcp.Name)
 			close(solsync.randChan)
 
 			// And we block until the solver has completely finished

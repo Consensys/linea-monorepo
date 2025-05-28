@@ -63,7 +63,7 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 	comp.SubProvers.AppendToInner(maxRound, func(assi *wizard.ProverRuntime) {
 
 		// Get the value of the coin and of pol
-		x := assi.GetRandomCoinField(x.Name)
+		x := assi.GetRandomCoinFext(x.Name)
 		p := pol.GetColAssignment(assi)
 
 		// Now needs to evaluate the Horner poly

@@ -242,10 +242,10 @@ func (c *WizardVerifierCircuit) generateAllRandomCoins(api frontend.API) {
 	}
 }
 
-// GetRandomCoinField returns the preassigned value of a random coin as
+// GetRandomCoinFext returns the preassigned value of a random coin as
 // [frontend.Variable]. The implementation implicitly checks that the field
-// element is of the right type. It mirrors [VerifierRuntime.GetRandomCoinField]
-func (c *WizardVerifierCircuit) GetRandomCoinField(name coin.Name) frontend.Variable {
+// element is of the right type. It mirrors [VerifierRuntime.GetRandomCoinFext]
+func (c *WizardVerifierCircuit) GetRandomCoinFext(name coin.Name) frontend.Variable {
 	/*
 		Early check, ensures the coin has been registered at all
 		and that it has the correct type

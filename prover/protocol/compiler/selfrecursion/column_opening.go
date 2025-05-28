@@ -629,7 +629,7 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 		dcollapse := ctx.Columns.DhQCollapse.GetColAssignment(run)
 
 		// the folding coin
-		rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
+		rfold := run.GetRandomCoinFext(ctx.Coins.Fold.Name)
 
 		// evaluates both edual and dcollapse (seen as polynomial) by
 		// coefficients and fetch the result of the inner-product
@@ -674,7 +674,7 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 		dcollapse := ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
 
 		// the folding coin
-		rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
+		rfold := run.GetRandomCoinFext(ctx.Coins.Fold.Name)
 
 		// evaluates both edual and dcollapse (seen as polynomial) by
 		// coefficients and fetch the result of the inner-product

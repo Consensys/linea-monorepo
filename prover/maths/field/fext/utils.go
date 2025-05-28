@@ -1,8 +1,10 @@
 package fext
 
 import (
+	"encoding/binary"
 	"math/bits"
 
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
@@ -78,4 +80,34 @@ func ExpToInt(z *Element, x Element, k int) *Element {
 	}
 
 	return z
+}
+
+// Bytes returns the value of z as a big-endian byte array
+// TODO: check if this way is correct
+// the output is 16 bytes, not Bytes32
+func Bytes(z *Element) (res [field.Bytes * 4]byte) {
+	var result [field.Bytes * 4]byte
+
+	valBytes := z.B0.A0.Bytes()
+	copy(result[0:field.Bytes], valBytes[:])
+
+	valBytes = z.B0.A1.Bytes()
+	copy(result[field.Bytes:2*field.Bytes], valBytes[:])
+
+	valBytes = z.B1.A0.Bytes()
+	copy(result[2*field.Bytes:3*field.Bytes], valBytes[:])
+
+	valBytes = z.B1.A1.Bytes()
+	copy(result[3*field.Bytes:4*field.Bytes], valBytes[:])
+
+	return result
+}
+
+func SetBytes(data []byte) Element {
+	var res Element
+	res.B0.A0 = koalabear.Element{binary.BigEndian.Uint32(data[0:4])}
+	res.B0.A1 = koalabear.Element{binary.BigEndian.Uint32(data[4:8])}
+	res.B1.A0 = koalabear.Element{binary.BigEndian.Uint32(data[8:12])}
+	res.B1.A1 = koalabear.Element{binary.BigEndian.Uint32(data[12:16])}
+	return res
 }

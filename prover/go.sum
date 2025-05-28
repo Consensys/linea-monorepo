@@ -107,6 +107,8 @@ github.com/consensys/gnark v0.12.0 h1:XgQ1kh2R6fHuf5fBYl+i7TxR+QTbGQuZaaqqkk5nLO
 github.com/consensys/gnark v0.12.0/go.mod h1:WDvuIQ8qrRvWT9NhTrib84WeLVBSGhSTrbQBXs1yR5w=
 github.com/consensys/gnark v0.12.1-0.20250514073836-781518d6846f h1:Mxbx1mF5G19eL6vvttLIO0kPsGoXYsPCOxrjX545V40=
 github.com/consensys/gnark v0.12.1-0.20250514073836-781518d6846f/go.mod h1:ixgF209R5mle5ADd/7/vvuxpixraSq8NmEVC+Fk6eeY=
+github.com/consensys/gnark v0.12.1-0.20250520143221-6b578ec25c2b h1:diNH8HMSEYO7+ImKfx0NgBNQN7pj55ecp90lOpd7qOc=
+github.com/consensys/gnark v0.12.1-0.20250520143221-6b578ec25c2b/go.mod h1:ixgF209R5mle5ADd/7/vvuxpixraSq8NmEVC+Fk6eeY=
 github.com/consensys/gnark-crypto v0.14.1-0.20241217134352-810063550bd4 h1:Kp6egjRqKZf4469dfAWqFe6gi3MRs4VvNHmTfEjUlS8=
 github.com/consensys/gnark-crypto v0.14.1-0.20241217134352-810063550bd4/go.mod h1:GMPeN3dUSslNBYJsK3WTjIGd3l0ccfMbcEh/d5knFrc=
 github.com/consensys/gnark-crypto v0.17.0 h1:vKDhZMOrySbpZDCvGMOELrHFv/A9mJ7+9I8HEfRZSkI=

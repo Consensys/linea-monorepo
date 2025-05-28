@@ -214,8 +214,8 @@ Prover for the collapse step - compute Acollapse and Bcollapse
 func (t *fixedPermutationCtx) proverColapsStep() wizard.ProverStep {
 	return func(run *wizard.ProverRuntime) {
 		stopTimer := profiling.LogTimer("exPermutation prover - colaps step %v", t.q.ID)
-		alphaWit := run.GetRandomCoinField(t.ALPHA)
-		betaWit := run.GetRandomCoinField(t.BETA)
+		alphaWit := run.GetRandomCoinFext(t.ALPHA)
+		betaWit := run.GetRandomCoinFext(t.BETA)
 
 		var betaVec sv.SmartVector = sv.NewConstant(betaWit, t.N)
 		var aWit sv.SmartVector = sv.NewConstant(field.One(), t.N)

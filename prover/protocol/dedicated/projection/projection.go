@@ -224,7 +224,7 @@ func (pa projectionProverAction) Run(run *wizard.ProverRuntime) {
 		b       = wizardutils.EvalExprColumn(run, pa.BBoard).IntoRegVecSaveAlloc()
 		fA      = pa.FilterA.GetColAssignment(run).IntoRegVecSaveAlloc()
 		fB      = pa.FilterB.GetColAssignment(run).IntoRegVecSaveAlloc()
-		x       = run.GetRandomCoinField(pa.EvalCoin.Name)
+		x       = run.GetRandomCoinFext(pa.EvalCoin.Name)
 		hornerA = cmptHorner(a, fA, x)
 		hornerB = cmptHorner(b, fB, x)
 	)

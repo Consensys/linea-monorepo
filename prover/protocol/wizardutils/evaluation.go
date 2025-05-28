@@ -32,7 +32,7 @@ func EvalExprColumn(run *wizard.ProverRuntime, board symbolic.ExpressionBoard) s
 		case ifaces.Column:
 			inputs[i] = m.GetColAssignment(run)
 		case coin.Info:
-			v := run.GetRandomCoinField(m.Name)
+			v := run.GetRandomCoinFext(m.Name)
 			inputs[i] = smartvectors.NewConstant(v, length)
 		case ifaces.Accessor:
 			v := m.GetVal(run)

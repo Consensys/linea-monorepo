@@ -44,7 +44,7 @@ func (ctx *Ctx) Verify(vr *wizard.VerifierRuntime) error {
 	}
 
 	proof := &vortex.OpeningProof{}
-	randomCoin := vr.GetRandomCoinField(ctx.LinCombRandCoinName())
+	randomCoin := vr.GetRandomCoinFext(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
 	proof.LinearCombination = vr.GetColumn(ctx.LinCombName())

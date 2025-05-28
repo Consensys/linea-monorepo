@@ -219,7 +219,7 @@ func TestGlobalMixedRounds(t *testing.T) {
 		assi.AssignColumn(a0.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
 		assi.AssignColumn(a1.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
 		assi.AssignColumn(a2.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
-		_ = assi.GetRandomCoinField("COIN") // triggers going to the next round
+		_ = assi.GetRandomCoinFext("COIN") // triggers going to the next round
 		assi.AssignColumn(b0.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
 		assi.AssignColumn(b1.GetColID(), smartvectors.ForTest(1, 1, 2, 3))
 		assi.AssignColumn(b2.GetColID(), smartvectors.ForTest(1, 1, 2, 3))

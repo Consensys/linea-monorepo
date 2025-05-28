@@ -73,7 +73,7 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 		func(run *wizard.VerifierRuntime) error {
 
 			ys := ctx.Columns.Ys.GetColAssignment(run)
-			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
+			alpha := run.GetRandomCoinFext(ctx.Coins.Alpha.Name)
 			ysAlpha := smartvectors.EvalCoeffOnFext(ys, alpha)
 			uAlphaX := ctx.Accessors.InterpolateUalphaX.GetVal(run)
 			if uAlphaX != ysAlpha {
@@ -83,7 +83,7 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 		},
 		func(api frontend.API, run *wizard.WizardVerifierCircuit) {
 			ys := ctx.Columns.Ys.GetColAssignmentGnark(run)
-			alpha := run.GetRandomCoinField(ctx.Coins.Alpha.Name)
+			alpha := run.GetRandomCoinFext(ctx.Coins.Alpha.Name)
 			uAlphaX := ctx.Accessors.InterpolateUalphaX.GetFrontendVariable(api, run)
 			ysAlpha := poly.EvaluateUnivariateGnark(api, ys, alpha)
 			api.AssertIsEqual(uAlphaX, ysAlpha)

@@ -82,7 +82,7 @@ func TestVortexMultiRoundMerkle(t *testing.T) {
 			// let the prover know that it is free to go to the next
 			// round by sampling the coin.
 			if round != 0 {
-				_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+				_ = pr.GetRandomCoinFext(coin.Namef("COIN_%v", round))
 			}
 
 			for i, row := range rows[round] {
@@ -136,7 +136,7 @@ func TestVortexOneFullOneDryMerkle(t *testing.T) {
 		}
 
 		// trigger the go to next round by querying the dummy random coin
-		_ = pr.GetRandomCoinField("DUMMY_COIN")
+		_ = pr.GetRandomCoinFext("DUMMY_COIN")
 
 		// assign the dry-round-column
 		p := smartvectors.Rand(polSize)
@@ -226,7 +226,7 @@ func TestVortexMultiRoundMerkleNoSis(t *testing.T) {
 			// let the prover know that it is free to go to the next
 			// round by sampling the coin.
 			if round != 0 {
-				_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+				_ = pr.GetRandomCoinFext(coin.Namef("COIN_%v", round))
 			}
 
 			for i, row := range rows[round] {
@@ -280,7 +280,7 @@ func TestVortexOneFullOneDryMerkleNoSis(t *testing.T) {
 		}
 
 		// trigger the go to next round by querying the dummy random coin
-		_ = pr.GetRandomCoinField("DUMMY_COIN")
+		_ = pr.GetRandomCoinFext("DUMMY_COIN")
 
 		// assign the dry-round-column
 		p := smartvectors.Rand(polSize)

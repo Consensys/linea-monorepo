@@ -58,7 +58,7 @@ func GenerateKey(params Params, maxNumFieldToHash int) Key {
 		Params:        params,
 		twiddleCosets: nil,
 	}
-
+	//TODO: check if PrecomputeTwiddlesCoset does the same as the coset computation in fft?
 	return res
 }
 
@@ -176,6 +176,7 @@ func (s Key) HashModXnMinus1(limbs []field.Element) []field.Element {
 
 	// also account for the Montgommery issue : in gnark's implementation
 	// the key is implictly multiplied by RInv
+	// TODO: double check here later if there is some test error, I removed MulRInv as RInv=1
 
 	return r
 }

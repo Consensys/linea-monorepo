@@ -9,7 +9,6 @@ import (
 
 	"testing"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 
 	"github.com/consensys/gnark-crypto/ecc"
@@ -36,7 +35,9 @@ func evalPoly(p []field.Element, z fext.Element) fext.Element {
 	n := len(p)
 	for i := 0; i < len(p); i++ {
 		res.Mul(&res, &z)
-		res.Add(&res, &fext.FromBase(p[n-1-i]))
+		var temp fext.Element
+		fext.FromBase(&temp, &p[n-1-i])
+		res.Add(&res, &temp)
 	}
 	return res
 }
@@ -64,7 +65,7 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 
 	s := 16
 	d := fft.NewDomain(uint64(s))
-	var zeta fr.Element
+	var zeta fext.Element
 	zeta.SetRandom()
 
 	// prepare witness
@@ -72,7 +73,7 @@ func TestComputeLagrangeCircuit(t *testing.T) {
 	witness.Zeta = zeta.String()
 	witness.Li = make([]frontend.Variable, s)
 	for i := 0; i < s; i++ {
-		buf := make([]fr.Element, s)
+		buf := make([]field.Element, s)
 		buf[i].SetOne()
 		d.FFTInverse(buf, fft.DIF)
 		fft.BitReverse(buf)
@@ -131,11 +132,11 @@ func TestFFTInverseCircuit(t *testing.T) {
 	d := fft.NewDomain(uint64(s))
 
 	// prepare witness
-	p := make([]fr.Element, s)
+	p := make([]field.Element, s)
 	for i := 0; i < s; i++ {
 		p[i].SetRandom()
 	}
-	r := make([]fr.Element, s)
+	r := make([]field.Element, s)
 	copy(r, p)
 	d.FFTInverse(r, fft.DIF)
 	fft.BitReverse(r)
@@ -192,7 +193,7 @@ func TestAssertIsCodeWord(t *testing.T) {
 	size := 2048
 	d := fft.NewDomain(uint64(size))
 	rate := 2
-	p := make([]fr.Element, size)
+	p := make([]field.Element, size)
 	for i := 0; i < (size / rate); i++ {
 		p[i].SetRandom()
 	}
@@ -252,16 +253,18 @@ func TestInterpolateCircuit(t *testing.T) {
 
 	// generate witness
 	size := 16
-	p := make([]fr.Element, size)
+	p := make([]field.Element, size)
 	for i := 0; i < size; i++ {
 		p[i].SetRandom()
 	}
-	var x fr.Element
+	var x fext.Element
 	x.SetRandom()
-	var r fr.Element
+	var r fext.Element
 	for i := 0; i < size; i++ {
 		r.Mul(&r, &x)
-		r.Add(&r, &p[len(p)-1-i])
+		var temp fext.Element
+		fext.FromBase(&temp, &p[len(p)-1-i])
+		r.Add(&r, &temp)
 	}
 
 	d := fft.NewDomain(uint64(size))
@@ -302,26 +305,26 @@ func TestInterpolateCircuit(t *testing.T) {
 
 func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPolys, polySize, blowUpFactor int) (
 	proof *OpeningProof,
-	randomCoin field.Element,
-	x field.Element,
-	yLists [][]field.Element,
+	randomCoin fext.Element,
+	x fext.Element,
+	yLists [][]fext.Element,
 	entryList []int,
 	roots []types.Bytes32,
 ) {
 
-	x = field.NewElement(478)
-	randomCoin = field.NewElement(1523)
+	x = fext.RandomElement()
+	randomCoin = fext.RandomElement()
 	entryList = []int{1, 5, 19, 645}
 
 	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, mimc.NewMiMC)
 	params.RemoveSis(mimc.NewMiMC)
 
 	polyLists := make([][]smartvectors.SmartVector, nCommitments)
-	yLists = make([][]field.Element, nCommitments)
+	yLists = make([][]fext.Element, nCommitments)
 	for j := range polyLists {
 		// Polynomials to commit to
 		polys := make([]smartvectors.SmartVector, nPolys)
-		ys := make([]field.Element, nPolys)
+		ys := make([]fext.Element, nPolys)
 		for i := range polys {
 			polys[i] = smartvectors.Rand(polySize)
 			ys[i] = smartvectors.EvaluateLagrangeOnFext(polys[i], x)

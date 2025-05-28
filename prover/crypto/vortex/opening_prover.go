@@ -3,7 +3,6 @@ package vortex
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -59,7 +58,7 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 		}
 		// Collect the result in the larger slice at the end
 
-		subResult := smartvectorsext.PolyEval(subTask, randomCoin)
+		subResult := smartvectors.PolyEval(subTask, randomCoin) // TODO: update smartvectors.PolyEval
 		subResult.WriteInSlice(linComb[start:stop])
 	})
 

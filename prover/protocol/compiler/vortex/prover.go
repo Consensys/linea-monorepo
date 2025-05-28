@@ -67,7 +67,7 @@ func (ctx *Ctx) ComputeLinearComb(pr *wizard.ProverRuntime) {
 	}
 
 	// And get the randomness
-	randomCoinLC := pr.GetRandomCoinField(ctx.LinCombRandCoinName())
+	randomCoinLC := pr.GetRandomCoinFext(ctx.LinCombRandCoinName())
 
 	// and compute and assign the random linear combination of the rows
 	proof := ctx.VortexParams.InitOpeningWithLC(committedSV, randomCoinLC)

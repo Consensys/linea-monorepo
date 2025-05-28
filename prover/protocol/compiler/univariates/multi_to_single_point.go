@@ -231,7 +231,7 @@ func (ctx mptsCtx) accumulateQuotients(run *wizard.ProverRuntime) {
 	// Track all the duplicates to have a nice error message.
 	ctx.assertNoDuplicateXAssignment(run)
 
-	r := run.GetRandomCoinField(ctx.LinCombCoeff)
+	r := run.GetRandomCoinFext(ctx.LinCombCoeff)
 
 	// Preallocate the value of the quotient
 	var (
@@ -384,7 +384,7 @@ func (ctx mptsCtx) claimEvaluation(run *wizard.ProverRuntime) {
 	/*
 		Get the evaluation point
 	*/
-	x := run.GetRandomCoinField(ctx.EvaluationPoint)
+	x := run.GetRandomCoinFext(ctx.EvaluationPoint)
 	polys := append(ctx.polys, ctx.Quotients...)
 
 	ys := make([]field.Element, len(polys))
@@ -410,9 +410,9 @@ func (ctx mptsCtx) verifier(run *wizard.VerifierRuntime) error {
 	)
 
 	// `x` is the random evaluation point
-	x := run.GetRandomCoinField(ctx.EvaluationPoint)
+	x := run.GetRandomCoinFext(ctx.EvaluationPoint)
 	// `r` is the linear combination factor to accumulate the quotient
-	r := run.GetRandomCoinField(ctx.LinCombCoeff)
+	r := run.GetRandomCoinFext(ctx.LinCombCoeff)
 
 	// Compute the lagrange polynomials
 	lagrange := poly.EvaluateLagrangesAnyDomain(hs, x)
@@ -526,9 +526,9 @@ func (ctx mptsCtx) gnarkVerify(api frontend.API, c *wizard.WizardVerifierCircuit
 	ys, hs := ctx.getYsHsGnark(c)
 
 	// `x` is the random evaluation point
-	x := c.GetRandomCoinField(ctx.EvaluationPoint)
+	x := c.GetRandomCoinFext(ctx.EvaluationPoint)
 	// `r` is the linear combination factor to accumulate the quotient
-	r := c.GetRandomCoinField(ctx.LinCombCoeff)
+	r := c.GetRandomCoinFext(ctx.LinCombCoeff)
 
 	// Compute the lagrange polynomials
 	lagrange := poly.EvaluateLagrangeAnyDomainGnark(api, hs, x)

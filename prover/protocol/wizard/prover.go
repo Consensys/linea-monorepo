@@ -102,7 +102,7 @@ type ProverRuntime struct {
 	// as the ProverRuntime unfolds the prover steps round after rounds.
 	//
 	// The user should not directly access this field and fall back to using the
-	// dedicated methods [ProverRuntime.GetRandomCoinField] or
+	// dedicated methods [ProverRuntime.GetRandomCoinFext] or
 	// [ProverRuntime.GetRandomCoinIntegerVec].
 	Coins collection.Mapping[coin.Name, interface{}]
 
@@ -351,16 +351,11 @@ func (run ProverRuntime) GetColumnAt(name ifaces.ColID, pos int) field.Element {
 	return wit.Get(pos)
 }
 
-// GetRandomCoinField returns a field element random. The coin should be issued
+// GetRandomCoinFext returns a fext element random. The coin should be issued
 // at the same round as it was registered. The same coin can't be retrieved more
 // than once. The coin should also have been registered as a field element
 // before doing this call. Will also trigger the "goNextRound" logic if
 // appropriate.
-func (run *ProverRuntime) GetRandomCoinField(name coin.Name) field.Element {
-	return run.getRandomCoinGeneric(name, coin.Field).(field.Element)
-}
-
-// GetRandomCoinField returns a fext element random.
 func (run *ProverRuntime) GetRandomCoinFext(name coin.Name) fext.Element {
 	return run.getRandomCoinGeneric(name, coin.Field).(fext.Element)
 }

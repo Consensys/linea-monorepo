@@ -62,7 +62,7 @@ func (s *State) SetState(f []field.Element) {
 
 // Update the Fiat-Shamir state with a one or more of field elements. The
 // function as no-op if the caller supplies no field elements.
-func (fs *State) Update(vec ...fext.Element) {
+func (fs *State) Update(vec ...field.Element) {
 	if len(vec) == 0 {
 		return
 	}
@@ -70,6 +70,30 @@ func (fs *State) Update(vec ...fext.Element) {
 	// Marshal the elements in a vector of bytes
 	for _, f := range vec {
 		bytes := f.Bytes()
+		_, err := fs.hasher.Write(bytes[:])
+		if err != nil {
+			// This normally happens if the bytes that we provide do not represent
+			// a field element. In our case, the bytes are computed by ourselves
+			// from the caller's field element so the error is not possible. Hence,
+			// the assertion.
+			panic("Hashing is not supposed to fail")
+		}
+	}
+
+	// Increase the transcript counter
+	fs.TranscriptSize += len(vec)
+}
+
+// Update the Fiat-Shamir state with a one or more of field elements. The
+// function as no-op if the caller supplies no field elements.
+func (fs *State) UpdateExt(vec ...fext.Element) {
+	if len(vec) == 0 {
+		return
+	}
+
+	// Marshal the elements in a vector of bytes
+	for _, f := range vec {
+		bytes := fext.Bytes(&f)
 		_, err := fs.hasher.Write(bytes[:])
 		if err != nil {
 			// This normally happens if the bytes that we provide do not represent
@@ -103,18 +127,27 @@ func (fs *State) UpdateSV(sv smartvectors.SmartVector) {
 		return
 	}
 
-	vec := make([]field.Element, sv.Len())
-	sv.WriteInSlice(vec)
-	fs.Update(vec...)
+	if smartvectors.CheckSmartVectorElementType(sv) == 2 {
+		vec := make([]fext.Element, sv.Len())
+		sv.WriteInSliceExt(vec)
+		fs.UpdateExt(vec...)
+
+	} else if smartvectors.CheckSmartVectorElementType(sv) == 1 {
+		vec := make([]field.Element, sv.Len())
+		sv.WriteInSlice(vec)
+		fs.Update(vec...)
+	} else {
+		return
+	}
 }
 
 // RandomField generates and returns a single field element from the Fiat-Shamir
 // transcript.
-func (fs *State) RandomField() field.Element {
+func (fs *State) RandomField() fext.Element {
 	defer fs.safeguardUpdate()
 	challBytes := fs.hasher.Sum(nil)
-	var res field.Element
-	res.SetBytes(challBytes)
+	var res fext.Element
+	res = fext.SetBytes(challBytes)
 
 	// increase the counter by one
 	fs.NumCoinGenerated++
@@ -211,5 +244,5 @@ func (fs *State) RandomManyIntegers(num, upperBound int) []int {
 //
 // This is implemented by adding a 0 in the transcript.
 func (fs *State) safeguardUpdate() {
-	fs.Update(field.NewElement(0))
+	fs.UpdateExt(fext.NewElement(0, 0, 0, 0))
 }

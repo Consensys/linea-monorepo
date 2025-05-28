@@ -14,8 +14,8 @@ type Runtime interface {
 	GetColumn(ColID) ColAssignment
 	// GetColumnAt returns a particular position of an assigned column.
 	GetColumnAt(ColID, int) field.Element
-	// GetRandomCoinField returns the value of a random challenge coin
-	GetRandomCoinField(name coin.Name) field.Element
+	// GetRandomCoinFext returns the value of a random challenge coin
+	GetRandomCoinFext(name coin.Name) field.Element
 	// GetRandomCoinIntegerVec returns the value of a coin.IntegerVec coin
 	GetRandomCoinIntegerVec(name coin.Name) []int
 	// GetParams returns the runtime parameters of a query
@@ -29,8 +29,8 @@ type GnarkRuntime interface {
 	GetColumn(ColID) []frontend.Variable
 	// GetColumnAt is as [Runtime.GetColumnAt] but in a gnark circuit
 	GetColumnAt(ColID, int) frontend.Variable
-	// GetRandomCoinField is as [Runtime.GetRandomCoinField] but in a gnark circuit
-	GetRandomCoinField(name coin.Name) frontend.Variable
+	// GetRandomCoinFext is as [Runtime.GetRandomCoinFext] but in a gnark circuit
+	GetRandomCoinFext(name coin.Name) frontend.Variable
 	// GetRandomCoinIntegerVec is as [Runtime.GetRandomCoinIntegerVec] but in a gnark circuit
 	GetRandomCoinIntegerVec(name coin.Name) []frontend.Variable
 	// GetParams is as [Runtime.GetParams] but in a gnark circuit
