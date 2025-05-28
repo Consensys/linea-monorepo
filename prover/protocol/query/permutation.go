@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -101,7 +102,7 @@ func (r Permutation) Check(run ifaces.Runtime) error {
 				tab[col] = aOrB[frag][col].GetColAssignment(run)
 			}
 
-			collapsed := smartvectorsext.PolyEval(append(tab, gamma), randAlpha)
+			collapsed := smartvectors.PolyEval(append(tab, gamma), randAlpha) // TODO: update smartvectors.PolyEval
 
 			for row := 0; row < collapsed.Len(); row++ {
 				tmp := collapsed.Get(row)

@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -171,7 +170,7 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 			}
 
 			gamma := run.GetRandomCoinFext(gamma.Name)
-			r = smartvectorsext.PolyEval(largeWit, gamma)
+			r = smartvectors.PolyEval(largeWit, gamma) // TODO: update smartvectors.PolyEval
 		}
 
 		// AccLarge
@@ -214,7 +213,7 @@ func CheckSubsample(comp *wizard.CompiledIOP, name string, large, small []ifaces
 			}
 
 			gamma := run.GetRandomCoinFext(gamma.Name)
-			rPrime = smartvectorsext.PolyEval(smallWit, gamma)
+			rPrime = smartvectors.PolyEval(smallWit, gamma) // TODO: update smartvectors.PolyEval
 		}
 
 		accSmallWit := make([]field.Element, lenSmall)

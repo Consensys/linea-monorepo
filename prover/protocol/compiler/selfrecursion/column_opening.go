@@ -8,7 +8,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -558,7 +557,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 		}
 
 		colPowT := collapsePowT.GetVal(run)
-		eDual := smartvectorsext.PolyEval(subDuals, colPowT)
+		eDual := smartvectors.PolyEval(subDuals, colPowT) // TODO: update smartvectors.PolyEval
 
 		run.AssignColumn(ctx.Columns.Edual.GetColID(), eDual)
 	})

@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -40,7 +39,7 @@ func FoldOuter(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, out
 		}
 
 		// Assign the folding as the RLC of the chunks using powers of x
-		foldedVal := smartvectorsext.PolyEval(innerChunks, x)
+		foldedVal := smartvectors.PolyEval(innerChunks, x) // TODO: update smartvectors.PolyEval
 		assi.AssignColumn(foldedName, foldedVal)
 	})
 
