@@ -7,7 +7,6 @@
 *.swp
 *.log
 *.jar
-*.pem
 
 .classpath
 .DS_Store
