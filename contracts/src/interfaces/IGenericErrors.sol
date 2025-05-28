@@ -18,11 +18,6 @@ interface IGenericErrors {
   error ZeroHashNotAllowed();
 
   /**
-   * @dev Thrown when array lengths are mismatched.
-   */
-  error ArrayLengthsDoNotMatch();
-
-  /**
    * @dev Thrown when a parameter is zero.
    */
   error ZeroValueNotAllowed();
