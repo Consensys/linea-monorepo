@@ -18,6 +18,23 @@ func (s *Store) Pack() PackedStore {
 	return res
 }
 
+func (p PackedStore) Unpack() *Store {
+	store := NewStore()
+	for rnd, arr := range p {
+		for _, info := range arr {
+			store.byRounds.AppendToInner(rnd, info)
+			store.indicesByNames.InsertNew(
+				info.ID,
+				columnPosition{
+					round:      rnd,
+					posInRound: store.byRounds.LenOf(rnd),
+				},
+			)
+		}
+	}
+	return &store
+}
+
 // PackedNatural is serialization-friendly intermediate structure that is
 // use to represent a natural column.
 type PackedNatural struct {
@@ -35,6 +52,14 @@ func (nat Natural) Pack() PackedNatural {
 		Position: nat.position.posInRound,
 		ID:       nat.ID,
 	}
+}
+
+func (unpacked PackedNatural) Unpack() Natural {
+	return newNatural(
+		unpacked.ID,
+		columnPosition{round: unpacked.Round, posInRound: unpacked.Position},
+		unpacked.Store,
+	)
 }
 
 // PackedIdentifier returns an identifier that won't conflict with the
