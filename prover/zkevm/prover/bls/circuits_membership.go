@@ -8,53 +8,84 @@ import (
 	"github.com/consensys/gnark/std/math/emulated"
 )
 
-type C1CurveCheckInstance struct {
+// -- checks for being on curve
+
+type C1IsOnCurveInstance struct {
 	// P is the purported C1 element
 	P g1ElementWizard
 	// IsSuccess is 1 if the check is successful, 0 otherwise
 	IsSuccess frontend.Variable
 }
 
-func (c *C1CurveCheckInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
+func (c *C1IsOnCurveInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
 	P := c.P.ToG1Element(api, fp)
-	res := pairing.IsOnG1(&P)
+	res := pairing.IsOnCurve(&P)
 	api.AssertIsEqual(res, c.IsSuccess)
 
 	return nil
 }
 
-type G1GroupCheckInstance struct {
+// -- checks for small group non-membership. We perform membership checks inside the main circuits. This is only for asserting invalid inputs for MSM and PAIRING.
+
+type G1NonMembershipInstance struct {
 	// P is the purported G1 element
 	P g1ElementWizard
-	// IsSuccess is 1 if the check is successful, 0 otherwise
-	IsSuccess frontend.Variable
 }
 
-type C2CurveCheckInstance struct {
+func (c *G1NonMembershipInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
+	P := c.P.ToG1Element(api, fp)
+	pairing.AssertIsNotOnG1(&P)
+	return nil
+}
+
+// -- checks for being on twist
+
+type C2IsOnCurveInstance struct {
 	// Q is the purported C2 element
 	Q g2ElementWizard
 	// IsSuccess is 1 if the check is successful, 0 otherwise
 	IsSuccess frontend.Variable
 }
 
-type G2GroupCheckInstance struct {
+func (c *C2IsOnCurveInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
+	Q := c.Q.ToG2Element(api, fp)
+	res := pairing.IsOnG2(&Q)
+	api.AssertIsEqual(res, c.IsSuccess)
+
+	return nil
+}
+
+// -- checks for large group non-membership.
+type G2NonMembershipInstance struct {
 	// Q is the purported G2 element
 	Q g2ElementWizard
 	// IsSuccess is 1 if the check is successful, 0 otherwise
 	IsSuccess frontend.Variable
 }
 
-type MultiC1CircuitCheckCircuit struct {
-	Instance []C1CurveCheckInstance `gnark:",public"`
+func (c *G2NonMembershipInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
+	Q := c.Q.ToG2Element(api, fp)
+	pairing.AssertIsNotOnG2(&Q)
+	return nil
 }
 
-func newC1CurveCheckCircuit(nbInstances int) *MultiC1CircuitCheckCircuit {
-	return &MultiC1CircuitCheckCircuit{
-		Instance: make([]C1CurveCheckInstance, nbInstances),
+// -- circuit which performs multiple checks
+
+type checkableInstance interface {
+	C1IsOnCurveInstance | G2NonMembershipInstance | C2IsOnCurveInstance | G1NonMembershipInstance
+	Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error
+}
+
+type multiCheckableCircuit[T checkableInstance] struct {
+	Instance []T `gnark:",public"`
+}
+
+func newMultiCheckableCircuit[T checkableInstance](nbInstances int) *multiCheckableCircuit[T] {
+	return &multiCheckableCircuit[T]{
+		Instance: make([]T, nbInstances),
 	}
 }
-
-func (c *MultiC1CircuitCheckCircuit) Define(api frontend.API) error {
+func (c *multiCheckableCircuit[T]) Define(api frontend.API) error {
 	fp, err := emulated.NewField[sw_bls12381.BaseField](api)
 	if err != nil {
 		return fmt.Errorf("new field emulation: %w", err)
