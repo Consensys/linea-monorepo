@@ -3,6 +3,7 @@ package v2
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -10,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
+	"github.com/sirupsen/logrus"
 )
 
 func TestCompiledV2(t *testing.T) {
@@ -52,7 +54,28 @@ func TestCompiledV2(t *testing.T) {
 	fmt.Printf("comp: %v \n", comp)
 	fmt.Printf("DeserComp: %v \n", deSerComp)
 
-	if !test_utils.StrictCompareExportedFields(comp.Coins, deSerComp.Coins) {
+	if !test_utils.CompareExportedFields(comp.Coins, deSerComp.Coins) {
 		t.Errorf("Mismatch in exported fields after V2 serde")
+	}
+}
+
+func TestSerdeIOPV2(t *testing.T) {
+	startTime := time.Now()
+	serComp, err := SerializeCompiledIOPV2(testCompInput)
+	if err != nil {
+		t.Fatalf("error during ser. compiled-iop:%s\n", err.Error())
+	}
+
+	logrus.Printf("Serialization took %vs\n", time.Since(startTime).Seconds())
+
+	deSerComp, err := DeserializeCompiledIOPV2(serComp)
+	if err != nil {
+		t.Fatalf("error during deser. input compiled-iop:%s\n", err.Error())
+	}
+
+	logrus.Printf("Deserialization took %vs\n", time.Since(startTime).Seconds())
+
+	if !test_utils.CompareExportedFields(testCompInput.Columns, deSerComp.Columns) {
+		t.Errorf("Mismatch in exported fields after serde IOP")
 	}
 }

@@ -433,7 +433,7 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 				return false
 			}
 		}
-		logrus.Infof("Comparing map at %s: len(v1)=%d, len(v2)=%d", path, v1.Len(), v2.Len())
+		// logrus.Infof("Comparing map at %s: len(v1)=%d, len(v2)=%d", path, v1.Len(), v2.Len())
 		return true
 	}
 
@@ -462,11 +462,7 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 			if !structField.IsExported() {
 				continue
 			}
-			// Skip fields with cbor:"-" tag
-			// if cborTag, ok := structField.Tag.Lookup("cbor"); ok && cborTag == "-" {
-			// 	logrus.Println("Skipping test comparisions for empty cbor/json tag")
-			// 	continue
-			// }
+
 			f1 := v1.Field(i)
 			f2 := v2.Field(i)
 			fieldName := structField.Name
@@ -503,105 +499,6 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 		return false
 	}
 	return true
-}
-
-// StrictCompareExportedFields performs a deep comparison of exported fields of two values.
-// It logs every field it checks and reports mismatches with full path context.
-func StrictCompareExportedFields(a, b interface{}) bool {
-	return strictCompareWithPath(reflect.ValueOf(a), reflect.ValueOf(b), "")
-}
-
-func strictCompareWithPath(v1, v2 reflect.Value, path string) bool {
-	// Handle invalid (e.g., nil) values
-	if !v1.IsValid() || !v2.IsValid() {
-		if !v1.IsValid() && !v2.IsValid() {
-			logrus.Infof("Both nil at %s", path)
-			return true
-		}
-		logrus.Errorf("Mismatch at %s: one is nil, the other is not", path)
-		return false
-	}
-
-	// Dereference pointers
-	for v1.Kind() == reflect.Ptr && !v1.IsNil() {
-		v1 = v1.Elem()
-	}
-	for v2.Kind() == reflect.Ptr && !v2.IsNil() {
-		v2 = v2.Elem()
-	}
-
-	// Handle interface unwrapping
-	if v1.Kind() == reflect.Interface && !v1.IsNil() {
-		v1 = v1.Elem()
-	}
-	if v2.Kind() == reflect.Interface && !v2.IsNil() {
-		v2 = v2.Elem()
-	}
-
-	if v1.Type() != v2.Type() {
-		logrus.Errorf("Mismatch at %s: type mismatch (%v vs %v)", path, v1.Type(), v2.Type())
-		return false
-	}
-
-	switch v1.Kind() {
-	case reflect.Struct:
-		for i := 0; i < v1.NumField(); i++ {
-			field := v1.Type().Field(i)
-			if !field.IsExported() {
-				continue
-			}
-			fieldPath := path + "." + field.Name
-			if path == "" {
-				fieldPath = field.Name
-			}
-			if !strictCompareWithPath(v1.Field(i), v2.Field(i), fieldPath) {
-				return false
-			}
-		}
-		return true
-
-	case reflect.Map:
-		if v1.Len() != v2.Len() {
-			logrus.Errorf("Mismatch at %s: map lengths differ (%d vs %d)", path, v1.Len(), v2.Len())
-			return false
-		}
-		for _, key := range v1.MapKeys() {
-			val1 := v1.MapIndex(key)
-			val2 := v2.MapIndex(key)
-			if !val2.IsValid() {
-				logrus.Errorf("Mismatch at %s: key %v missing in second map", path, key)
-				return false
-			}
-			if !strictCompareWithPath(val1, val2, fmt.Sprintf("%s[%v]", path, key)) {
-				return false
-			}
-		}
-		return true
-
-	case reflect.Slice, reflect.Array:
-		if v1.Len() != v2.Len() {
-			logrus.Errorf("Mismatch at %s: slice lengths differ (%d vs %d)", path, v1.Len(), v2.Len())
-			return false
-		}
-		for i := 0; i < v1.Len(); i++ {
-			if !strictCompareWithPath(v1.Index(i), v2.Index(i), fmt.Sprintf("%s[%d]", path, i)) {
-				return false
-			}
-		}
-		return true
-
-	case reflect.Func:
-		// Skip comparison of function fields
-		logrus.Infof("Skipping function comparison at %s", path)
-		return true
-
-	default:
-		if !reflect.DeepEqual(v1.Interface(), v2.Interface()) {
-			logrus.Errorf("Mismatch at %s: %v != %v (type: %v)", path, v1.Interface(), v2.Interface(), v1.Type())
-			return false
-		}
-		return true
-	}
 }
 
 // GetZkevmWitness returns a [zkevm.Witness]

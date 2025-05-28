@@ -22,7 +22,7 @@ var (
 	testRec       = recurSegComp.Recursion
 	testCompInput = testRec.InputCompiledIOP
 	testCompRecur = recurSegComp.RecursionComp
-	testComp      = testCompRecur
+	TestComp      = testCompRecur
 )
 
 func TestSerdeRecursion(t *testing.T) {
@@ -40,7 +40,7 @@ func TestSerdeRecursion(t *testing.T) {
 	logrus.Println("Serialization recursion successful")
 
 	// Deserialize
-	deserialized, err := DeserializeRecursion(serialized, testComp)
+	deserialized, err := DeserializeRecursion(serialized, TestComp)
 	if err != nil {
 		t.Fatalf("Deserialization failed: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestSerdeIOP(t *testing.T) {
 	// logrus.Printf("Column exists in recursion input iop:%v\n", testCompInput.Columns.Exists(ifaces.ColID(CHECK_COLUMN_NAME_2)))
 
 	startTime := time.Now()
-	serComp, err := serialization.SerializeCompiledIOP(testComp)
+	serComp, err := serialization.SerializeCompiledIOP(TestComp)
 	if err != nil {
 		t.Fatalf("error during ser. recursion input compiled-iop:%s\n", err.Error())
 	}
@@ -74,7 +74,7 @@ func TestSerdeIOP(t *testing.T) {
 
 	logrus.Printf("Deserialization took %vs\n", time.Since(startTime).Seconds())
 
-	if !test_utils.CompareExportedFields(testComp, deSerComp) {
+	if !test_utils.CompareExportedFields(TestComp, deSerComp) {
 		t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")
 	}
 }
@@ -98,8 +98,8 @@ func TestSerIOP(t *testing.T) {
 	// Start timing the serialization process
 	startTime := time.Now()
 
-	// Serialize the `testComp` object
-	serComp, err := serialization.SerializeCompiledIOP(testComp)
+	// Serialize the `TestComp` object
+	serComp, err := serialization.SerializeCompiledIOP(TestComp)
 	if err != nil {
 		t.Fatalf("error during serialization of recursion input compiled-iop: %s\n", err.Error())
 	}
@@ -130,7 +130,7 @@ func TestSerdePlonkCkt(t *testing.T) {
 
 	logrus.Println("Succesfully ser. plonk circuit in wizard")
 
-	deSerCkt, err := DeSerializePlonkCktInWizard(serCkt, testComp)
+	deSerCkt, err := DeSerializePlonkCktInWizard(serCkt, TestComp)
 	if err != nil {
 		t.Fatalf("error during ser. plonk circuit")
 	}
