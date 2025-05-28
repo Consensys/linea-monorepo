@@ -9,7 +9,7 @@ require (
 	github.com/consensys/bavard v0.1.31-0.20250406004941-2db259e4b582
 	github.com/consensys/compress v0.2.5
 	github.com/consensys/gnark v0.12.1-0.20250514073836-781518d6846f
-	github.com/consensys/gnark-crypto v0.17.1-0.20250514192607-642026c65b89
+	github.com/consensys/gnark-crypto v0.17.1-0.20250528124741-df975784a60b
 	github.com/consensys/go-corset v1.0.3
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
 	github.com/dlclark/regexp2 v1.11.2
