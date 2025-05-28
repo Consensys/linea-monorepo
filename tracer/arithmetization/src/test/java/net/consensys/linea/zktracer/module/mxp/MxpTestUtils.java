@@ -118,12 +118,13 @@ public class MxpTestUtils {
     // Keep generating random values until we are in the mxpx && roob case or in the mxpx && !roob
     // case
     do {
-      size1 = getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
+      // For creates, we trigger mxpx with the offset to avoid triggering a max code size exception
+      // that takes precedence on mxpx, so size1 is set to a small value (1)
+      size1 = opCode.isCreate() ? EWord.of(1) : getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
       size2 = getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
       offset1 = getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
       offset2 = getRandomBigIntegerByBytesSize(0, MAX_BYTE_SIZE);
 
-      // size2 is irrelevant for this case
       mxpx = isMxpx(mxpType, size1, offset1, size2, offset2);
       roob = isRoob(mxpType, size1, offset1, size2, offset2);
     } while (!(triggerRoob && mxpx && roob) && !(!triggerRoob && mxpx && !roob));
