@@ -158,6 +158,6 @@ func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 	return infos
 }
 
-func (info Info) PackingIdentifier() string {
-	return string(info.Name) + fmt.Sprintf("%v", info.uuid)
+func (info Info) UUID() uuid.UUID {
+	return info.uuid
 }
