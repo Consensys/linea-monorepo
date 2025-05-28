@@ -258,13 +258,13 @@ func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *
 
 		// This has to be the first thing we declare as this runs [frontend.Compile]
 		// internally.
-		plonkInWizardQ = &query.PlonkInWizard{
-			ID:           ifaces.QueryID(toAlign.Name),
-			Circuit:      toAlign.Circuit,
-			PlonkOptions: toAlign.PlonkOptions,
-			Selector:     isActive,
-			Data:         alignedData,
-		}
+		plonkInWizardQ = query.NewPlonkInWizard(
+			ifaces.QueryID(toAlign.Name),
+			alignedData,
+			isActive,
+			toAlign.Circuit,
+			toAlign.PlonkOptions,
+		)
 	)
 
 	comp.InsertPlonkInWizard(plonkInWizardQ)

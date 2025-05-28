@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/google/uuid"
 )
 
 // The GrandProduct query is obtained by processing all the permuation queries specific to a target module.
@@ -24,10 +25,15 @@ type GrandProductInput struct {
 // GrandProduct is a query for computing the grand-product of several vector expressions. The
 // query returns a unique field element result.
 type GrandProduct struct {
+	grandProduct
+}
+
+type grandProduct struct {
 	Round int
 	ID    ifaces.QueryID
 	// The list of the inputs of the query, grouped by sizes
 	Inputs map[int]*GrandProductInput
+	uuid   uuid.UUID
 }
 
 type GrandProductParams struct {
@@ -79,9 +85,12 @@ func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryI
 	}
 
 	return GrandProduct{
-		Round:  round,
-		Inputs: inp,
-		ID:     id,
+		grandProduct{
+			Round:  round,
+			Inputs: inp,
+			ID:     id,
+			uuid:   uuid.New(),
+		},
 	}
 }
 

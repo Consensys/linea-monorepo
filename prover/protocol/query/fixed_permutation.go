@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/google/uuid"
 )
 
 /*
@@ -18,6 +19,10 @@ import (
 where a fixed permutation is applied between target vectors
 i.e.,A* = A0||...||An, B* = B0||...||Bn and B* = s(A*) for the fixed permutation s */
 type FixedPermutation struct {
+	fixedPermutation
+}
+
+type fixedPermutation struct {
 	ID ifaces.QueryID
 	//splittings
 	A, B []ifaces.Column
@@ -29,6 +34,9 @@ type FixedPermutation struct {
 
 	//fixed  permutation
 	S []ifaces.ColAssignment
+
+	// uuid is an internal UUID used for the serialization process
+	uuid uuid.UUID
 }
 
 /*
@@ -46,10 +54,13 @@ func NewFixedPermutation(id ifaces.QueryID, S []ifaces.ColAssignment, a, b []ifa
 	}
 
 	return FixedPermutation{
-		ID: id,
-		A:  a,
-		B:  b,
-		S:  S,
+		fixedPermutation: fixedPermutation{
+			ID:   id,
+			A:    a,
+			B:    b,
+			S:    S,
+			uuid: uuid.New(),
+		},
 	}
 }
 

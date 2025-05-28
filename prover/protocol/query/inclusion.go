@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/google/uuid"
 )
 
 // Inclusion describes an inclusion query (a.k.a. a lookup constraint). The
@@ -16,6 +17,10 @@ import (
 // tables. The query can additionally feature an fragmented table meaning that
 // the including “table" to consider is the union of two tables.
 type Inclusion struct {
+	inclusion
+}
+
+type inclusion struct {
 	// Included represents the table over which the constraint applies. The
 	// columns must be a non-zero collection of columns of the same size.
 	Included []ifaces.Column
@@ -40,6 +45,8 @@ type Inclusion struct {
 	// The slices is indexed per number of fragment, in the non-fragmented case,
 	// consider there is only a single segment.
 	IncludingFilter []ifaces.Column
+
+	uuid uuid.UUID
 }
 
 // NewInclusion constructs an inclusion. Will panic if it is mal-formed
@@ -117,7 +124,14 @@ func NewInclusion(
 		}
 	}
 
-	return Inclusion{Included: included, Including: including, ID: id, IncludedFilter: includedFilter, IncludingFilter: includingFilter}
+	return Inclusion{inclusion{
+		Included:        included,
+		Including:       including,
+		ID:              id,
+		IncludedFilter:  includedFilter,
+		IncludingFilter: includingFilter,
+		uuid:            uuid.New(),
+	}}
 }
 
 // Name implements the [ifaces.Query] interface

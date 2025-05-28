@@ -42,13 +42,13 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) 
 	}
 
 	var (
-		round = comp.QueriesNoParams.Round(q.ID)
-		sid   = make([]ifaces.Column, len(q.A))
-		s     = make([]ifaces.Column, len(q.S))
-		perm  = query.Permutation{
-			ID: q.Name() + "_FIXED_PERM",
-		}
-		cnt = 0
+		round  = comp.QueriesNoParams.Round(q.ID)
+		sid    = make([]ifaces.Column, len(q.A))
+		s      = make([]ifaces.Column, len(q.S))
+		permID = q.Name() + "_FIXED_PERM"
+		permA  = [][]ifaces.Column{}
+		permB  = [][]ifaces.Column{}
+		cnt    = 0
 	)
 
 	for i := range s {
@@ -56,7 +56,7 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) 
 		if column.StatusOf(q.B[i]).IsPublic() {
 			comp.Columns.SetStatus(s[i].GetColID(), column.VerifyingKey)
 		}
-		perm.B = append(perm.B, []ifaces.Column{q.B[i], s[i]})
+		permB = append(permB, []ifaces.Column{q.B[i], s[i]})
 	}
 
 	for i := range q.A {
@@ -65,11 +65,11 @@ func reduceFixedPermutation(comp *wizard.CompiledIOP, q query.FixedPermutation) 
 		if column.StatusOf(q.A[i]).IsPublic() {
 			comp.Columns.SetStatus(sid[i].GetColID(), column.VerifyingKey)
 		}
-		perm.A = append(perm.A, []ifaces.Column{q.A[i], sid[i]})
+		permA = append(permA, []ifaces.Column{q.A[i], sid[i]})
 		cnt += size
 	}
 
-	comp.InsertFragmentedPermutation(round, perm.ID, perm.A, perm.B)
+	comp.InsertFragmentedPermutation(round, permID, permA, permB)
 }
 
 func deriveNamePerm(r string, queryName ifaces.QueryID, i int) ifaces.ColID {

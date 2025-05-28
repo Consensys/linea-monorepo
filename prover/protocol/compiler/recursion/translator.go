@@ -119,10 +119,10 @@ func (comp *compTranslator) TranslateColumnSet(cols map[ifaces.ColID]struct{}) m
 // and names.
 func (comp *compTranslator) AddUniEval(round int, q query.UnivariateEval) query.UnivariateEval {
 
-	res := query.UnivariateEval{
-		Pols:    comp.AddColumnList(q.Pols, true, round),
-		QueryID: addPrefixToID(comp.Prefix, q.QueryID),
-	}
+	res := query.NewUnivariateEval(
+		addPrefixToID(comp.Prefix, q.QueryID),
+		comp.AddColumnList(q.Pols, true, round)...,
+	)
 
 	comp.Target.QueriesParams.AddToRound(round, res.QueryID, res)
 	return res

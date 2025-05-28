@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/google/uuid"
 )
 
 // HornerPart represents a part of a Horner evaluation query.
@@ -60,12 +61,17 @@ type HornerPart struct {
 // that the summation is not just computed vertically but left-to-right
 // then top-to-bottom over a range of expressions.
 type Horner struct {
+	horner
+}
+
+type horner struct {
 	// Round is the round of definition of the query
 	Round int
 	// ID is the identifier of the query in the [wizard.CompiledIOP]
 	ID ifaces.QueryID
 	// Parts are the parts of the query
 	Parts []HornerPart
+	uuid  uuid.UUID
 }
 
 // HornerParamsParts represents the parameters for a part of a [Horner]
@@ -119,9 +125,12 @@ func NewHorner(round int, id ifaces.QueryID, parts []HornerPart) Horner {
 	}
 
 	return Horner{
-		Round: round,
-		ID:    id,
-		Parts: parts,
+		horner{
+			Round: round,
+			ID:    id,
+			Parts: parts,
+			uuid:  uuid.New(),
+		},
 	}
 }
 

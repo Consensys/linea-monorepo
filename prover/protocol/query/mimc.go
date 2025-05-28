@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/google/uuid"
 )
 
 var _ ifaces.Query = MiMC{}
@@ -25,12 +26,17 @@ And the compression function uses the Miyaguchi's construction
 https://en.wikipedia.org/wiki/One-way_compression_function#Miyaguchi.E2.80.93Preneel
 */
 type MiMC struct {
+	mimcInternal
+}
+
+type mimcInternal struct {
 	// The columns on which the query applies
 	Blocks, OldState, NewState ifaces.Column
 	// Selector is an optional column that disables the query on rows where the selector is 0
 	Selector ifaces.Column
 	// The name of the query
-	ID ifaces.QueryID
+	ID   ifaces.QueryID
+	uuid uuid.UUID
 }
 
 // Name implements the [ifaces.Query] interface
@@ -62,11 +68,14 @@ func NewMiMC(id ifaces.QueryID, block, oldState, newState ifaces.Column, selecto
 	}
 
 	return MiMC{
-		OldState: oldState,
-		NewState: newState,
-		Blocks:   block,
-		Selector: selector,
-		ID:       id,
+		mimcInternal{
+			OldState: oldState,
+			NewState: newState,
+			Blocks:   block,
+			Selector: selector,
+			ID:       id,
+			uuid:     uuid.New(),
+		},
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
+	"github.com/google/uuid"
 )
 
 var _ ifaces.Query = &PlonkInWizard{}
@@ -46,6 +47,10 @@ var _ ifaces.Query = &PlonkInWizard{}
 // instance is not used and 1 indicates it is. The query does not enforce any
 // constraints on the Selector column.
 type PlonkInWizard struct {
+	plonkInWizard
+}
+
+type plonkInWizard struct {
 	// ID is the unique identifier of the query
 	ID ifaces.QueryID
 	// Data is the column storing the values to provide as the public inputs of
@@ -71,6 +76,28 @@ type PlonkInWizard struct {
 	// number of public input. It is not using [sync.Once] that way we don't need
 	// to initialize the value.
 	nbPublicInputsLoaded bool
+
+	uuid uuid.UUID
+}
+
+func NewPlonkInWizard(
+	ID ifaces.QueryID,
+	Data ifaces.Column,
+	Selector ifaces.Column,
+	Circuit frontend.Circuit,
+	PlonkOptions []PlonkOption,
+) *PlonkInWizard {
+
+	return &PlonkInWizard{
+		plonkInWizard{
+			ID:           ID,
+			Data:         Data,
+			Selector:     Selector,
+			Circuit:      Circuit,
+			PlonkOptions: PlonkOptions,
+			uuid:         uuid.New(),
+		},
+	}
 }
 
 // PlonkOption represents a an option for the compilation of the circuit. One

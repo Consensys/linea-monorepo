@@ -211,7 +211,7 @@ func TestSerializeValue(t *testing.T) {
 			}
 		}(),
 		{
-			V:           coin.Info{Type: coin.IntegerVec, Size: 16, UpperBound: 16, Name: "foo", Round: 1},
+			V:           coin.NewInfo("foo", coin.IntegerVec, 16, 16, 1),
 			Expected:    "\xa5dnameDcfoodsizeA\x10dtypeA\x01eroundA\x01jupperBoundA\x10",
 			Mode:        ReferenceMode,
 			CompiledIOP: nil,

@@ -14,6 +14,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/google/uuid"
 )
 
 // LogDerivativeSumInput stores the input to the query
@@ -30,9 +31,14 @@ type LogDerivativeSumInput struct {
 // N_{i,j} is  the i-th element of the underlying column of  j-th Numerator
 // D_{i,j} is  the i-th element of the underlying column of  j-th Denominator
 type LogDerivativeSum struct {
+	logDerivativeSum
+}
+
+type logDerivativeSum struct {
 	Round  int
 	Inputs map[int]*LogDerivativeSumInput
 	ID     ifaces.QueryID
+	uuid   uuid.UUID
 }
 
 // the result of the global Sum
@@ -91,9 +97,12 @@ func NewLogDerivativeSum(round int, inp map[int]*LogDerivativeSumInput, id iface
 	}
 
 	return LogDerivativeSum{
-		Round:  round,
-		Inputs: inp,
-		ID:     id,
+		logDerivativeSum{
+			Round:  round,
+			Inputs: inp,
+			ID:     id,
+			uuid:   uuid.New(),
+		},
 	}
 
 }

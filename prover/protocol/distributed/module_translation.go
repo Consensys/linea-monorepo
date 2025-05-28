@@ -208,13 +208,13 @@ func (mt *moduleTranslator) TranslateQueryParam(query ifaces.Query) ifaces.Query
 // by translating all the related columns
 func (mt *moduleTranslator) InsertPlonkInWizard(oldQuery *query.PlonkInWizard) *query.PlonkInWizard {
 
-	newQuery := &query.PlonkInWizard{
-		ID:           oldQuery.ID,
-		Data:         mt.TranslateColumn(oldQuery.Data),
-		Selector:     mt.TranslateColumn(oldQuery.Selector),
-		Circuit:      oldQuery.Circuit,
-		PlonkOptions: oldQuery.PlonkOptions,
-	}
+	newQuery := query.NewPlonkInWizard(
+		oldQuery.ID,
+		mt.TranslateColumn(oldQuery.Data),
+		mt.TranslateColumn(oldQuery.Selector),
+		oldQuery.Circuit,
+		oldQuery.PlonkOptions,
+	)
 
 	mt.Wiop.InsertPlonkInWizard(newQuery)
 	return newQuery
@@ -228,11 +228,7 @@ func (mt *ModuleLPP) InsertLogDerivative(
 	logDerivativeArgs [][2]*symbolic.Expression,
 ) query.LogDerivativeSum {
 
-	res := query.LogDerivativeSum{
-		Round:  round,
-		ID:     id,
-		Inputs: map[int]*query.LogDerivativeSumInput{},
-	}
+	resInputs := map[int]*query.LogDerivativeSumInput{}
 
 	for _, numDenPair := range logDerivativeArgs {
 
@@ -245,18 +241,18 @@ func (mt *ModuleLPP) InsertLogDerivative(
 		mt.addCoinFromExpression(num)
 		mt.addCoinFromExpression(den)
 
-		if _, hasSize := res.Inputs[size]; !hasSize {
-			res.Inputs[size] = &query.LogDerivativeSumInput{
+		if _, hasSize := resInputs[size]; !hasSize {
+			resInputs[size] = &query.LogDerivativeSumInput{
 				Size: size,
 			}
 		}
 
-		newInp := res.Inputs[size]
+		newInp := resInputs[size]
 		newInp.Numerator = append(newInp.Numerator, mt.TranslateExpression(num))
 		newInp.Denominator = append(newInp.Denominator, mt.TranslateExpression(den))
 	}
 
-	return mt.Wiop.InsertLogDerivativeSum(res.Round, res.ID, res.Inputs)
+	return mt.Wiop.InsertLogDerivativeSum(round, id, resInputs)
 }
 
 // InsertGrandProduct inserts a new GrandProduct query in the target compiled IOP
@@ -267,11 +263,7 @@ func (mt *ModuleLPP) InsertGrandProduct(
 	args [][2]*symbolic.Expression,
 ) query.GrandProduct {
 
-	res := query.GrandProduct{
-		ID:     id,
-		Round:  round,
-		Inputs: make(map[int]*query.GrandProductInput),
-	}
+	resInputs := make(map[int]*query.GrandProductInput)
 
 	for _, numDenPair := range args {
 
@@ -284,18 +276,18 @@ func (mt *ModuleLPP) InsertGrandProduct(
 		mt.addCoinFromExpression(num)
 		mt.addCoinFromExpression(den)
 
-		if _, hasSize := res.Inputs[size]; !hasSize {
-			res.Inputs[size] = &query.GrandProductInput{
+		if _, hasSize := resInputs[size]; !hasSize {
+			resInputs[size] = &query.GrandProductInput{
 				Size: size,
 			}
 		}
 
-		newInp := res.Inputs[size]
+		newInp := resInputs[size]
 		newInp.Numerators = append(newInp.Numerators, mt.TranslateExpression(num))
 		newInp.Denominators = append(newInp.Denominators, mt.TranslateExpression(den))
 	}
 
-	return mt.Wiop.InsertGrandProduct(res.Round, res.ID, res.Inputs)
+	return mt.Wiop.InsertGrandProduct(round, id, resInputs)
 }
 
 // InsertHorner inserts a new Horner query in the target compiled IOP
@@ -306,10 +298,7 @@ func (mt *ModuleLPP) InsertHorner(
 	parts []query.HornerPart,
 ) query.Horner {
 
-	res := query.Horner{
-		Round: round,
-		ID:    id,
-	}
+	newParts := []query.HornerPart{}
 
 	for _, oldPart := range parts {
 
@@ -322,11 +311,10 @@ func (mt *ModuleLPP) InsertHorner(
 
 		mt.addCoinFromExpression(newPart.Coefficients...)
 		mt.addCoinFromAccessor(newPart.X)
-
-		res.Parts = append(res.Parts, newPart)
+		newParts = append(newParts, newPart)
 	}
 
-	return mt.Wiop.InsertHornerQuery(res.Round, res.ID, res.Parts)
+	return mt.Wiop.InsertHornerQuery(round, id, parts)
 }
 
 func (mt *moduleTranslator) InsertCoin(name coin.Name, round int) {
@@ -335,11 +323,6 @@ func (mt *moduleTranslator) InsertCoin(name coin.Name, round int) {
 		return
 	}
 
-	newInfo := coin.Info{
-		Name:  name,
-		Type:  coin.FieldFromSeed,
-		Round: round,
-	}
-
+	newInfo := coin.NewInfo(name, coin.FieldFromSeed, round)
 	mt.Wiop.Coins.AddToRound(round, name, newInfo)
 }

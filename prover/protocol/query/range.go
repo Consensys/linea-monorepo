@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/google/uuid"
 )
 
 /*
@@ -16,11 +17,16 @@ be within range [0, B)
 Where B is a power of two
 */
 type Range struct {
+	rangeInternal
+}
+
+type rangeInternal struct {
 	ID ifaces.QueryID
 	// Maybe we should enforce that the handle is a natural one here
 	Handle ifaces.Column
 	// Upper-bound
-	B int
+	B    int
+	uuid uuid.UUID
 }
 
 /*
@@ -28,9 +34,12 @@ Constructor for range constraints also makes the input validation
 */
 func NewRange(id ifaces.QueryID, h ifaces.Column, b int) Range {
 	return Range{
-		ID:     id,
-		B:      b,
-		Handle: h,
+		rangeInternal{
+			ID:     id,
+			B:      b,
+			Handle: h,
+			uuid:   uuid.New(),
+		},
 	}
 }
 
