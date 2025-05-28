@@ -8,7 +8,7 @@ require (
 	github.com/bits-and-blooms/bitset v1.22.0
 	github.com/consensys/bavard v0.1.31-0.20250406004941-2db259e4b582
 	github.com/consensys/compress v0.2.5
-	github.com/consensys/gnark v0.12.0
+	github.com/consensys/gnark v0.12.1-0.20250520143221-6b578ec25c2b
 	github.com/consensys/gnark-crypto v0.17.1-0.20250528093929-0517915476d2
 	github.com/consensys/go-corset v1.0.3
 	github.com/crate-crypto/go-kzg-4844 v1.1.0

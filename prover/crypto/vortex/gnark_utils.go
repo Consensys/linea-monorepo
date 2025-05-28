@@ -15,7 +15,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/crate-crypto/go-ipa/bandersnatch/fr"
 	"github.com/sirupsen/logrus"
 )
 
@@ -53,7 +52,7 @@ func FFTInverseKoalaBear(_ *big.Int, inputs []*big.Int, results []*big.Int) erro
 // It is assumed that p is correctly sized.
 func FFTInverse(api frontend.API, p []frontend.Variable, genInv field.Element, cardinality uint64) ([]frontend.Variable, error) {
 
-	var cardInverse fr.Element
+	var cardInverse field.Element
 	cardInverse.SetUint64(cardinality).Inverse(&cardInverse)
 
 	// res of the fft inverse
