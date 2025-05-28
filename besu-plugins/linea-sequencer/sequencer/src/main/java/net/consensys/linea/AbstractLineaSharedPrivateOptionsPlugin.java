@@ -32,6 +32,8 @@ import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.config.LineaTransactionValidatorCliOptions;
 import net.consensys.linea.config.LineaTransactionValidatorConfiguration;
+import net.consensys.linea.config.LivenessPluginCliOptions;
+import net.consensys.linea.config.LivenessPluginConfiguration;
 import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
 import net.consensys.linea.plugins.config.LineaTracerSharedCliOptions;
@@ -103,6 +105,8 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
     configMap.put(
         LineaTransactionValidatorCliOptions.CONFIG_KEY,
         LineaTransactionValidatorCliOptions.create().asPluginConfig());
+    configMap.put(
+        LivenessPluginCliOptions.CONFIG_KEY, LivenessPluginCliOptions.create().asPluginConfig());
     return configMap;
   }
 
@@ -152,6 +156,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   public LineaTransactionValidatorConfiguration transactionValidatorConfiguration() {
     return (LineaTransactionValidatorConfiguration)
         getConfigurationByKey(LineaTransactionValidatorCliOptions.CONFIG_KEY).optionsConfig();
+  }
+
+  public LivenessPluginConfiguration livenessPluginConfiguration() {
+    return (LivenessPluginConfiguration)
+        getConfigurationByKey(LivenessPluginCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   @Override
