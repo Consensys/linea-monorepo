@@ -37,46 +37,45 @@ var (
 	TypeOfStore         = reflect.TypeOf((*column.Store)(nil))
 )
 
-type BackReference struct {
-	Type BackReferenceType `cbor:"t"`
-	ID   int               `cbor:"i"`
-}
+type BackReference int
 
 type Serializer struct {
 	PreMarshaledObject *PackedObject
 	TypeMap            map[string]int
 	StructSchemaMap    map[string]int
 	CoinMap            map[string]int
+	CoinIdMap          map[string]int
 	ColumnMap          map[string]int
 	ColumnIdMap        map[string]int
 	QueryMap           map[string]int
 	QueryIDMap         map[string]int
 	CompiledIOPs       map[*wizard.CompiledIOP]int
 	Stores             map[*column.Store]int
-	CurrentCompiledIOP int
 }
 
 type Deserializer struct {
+	TypeMap               map[string]int
+	StructSchemaMap       map[string]int
 	Columns               []*column.Natural
 	Coins                 []*coin.Info
 	Queries               []*ifaces.Query
 	CompiledIOP           []*wizard.CompiledIOP
-	CurrentCompiledIOP    *wizard.CompiledIOP
+	Store                 []*column.Store
 	PreUnmarshalledObject *PackedObject
 }
 
 type PackedObject struct {
-	Types        []string                    `cbor:"t"`
-	StructSchema []MarshalizableStructSchema `cbor:"s"`
-	ColumnIDs    []string                    `cbor:"id"`
-	Columns      []MarshalizableStructObject `cbor:"c"`
-	CoinIDs      []string                    `cbor:"i"`
-	Coins        []PackedCoin                `cbor:"o"`
-	QueryIDs     []string                    `cbor:"w"`
-	Store        [][]any                     `cbor:"st"`
-	Queries      []any                       `cbor:"q"`
-	CompiledIOP  []any                       `cbor:"a"`
-	Payload      []byte                      `cbor:"p"`
+	Types        []string             `cbor:"t"`
+	StructSchema []PackedStructSchema `cbor:"s"`
+	ColumnIDs    []string             `cbor:"id"`
+	Columns      []PackedStructObject `cbor:"c"`
+	CoinIDs      []string             `cbor:"i"`
+	Coins        []PackedCoin         `cbor:"o"`
+	QueryIDs     []string             `cbor:"w"`
+	Store        [][]any              `cbor:"st"`
+	Queries      []any                `cbor:"q"`
+	CompiledIOP  []any                `cbor:"a"`
+	Payload      []byte               `cbor:"p"`
 }
 
 type PackedIFace struct {
@@ -93,12 +92,12 @@ type PackedCoin struct {
 	CompiledIOP int8   `cbor:"i"`
 }
 
-type MarshalizableStructSchema struct {
+type PackedStructSchema struct {
 	Type   string   `cbor:"t"`
 	Fields []string `cbor:"f"`
 }
 
-type MarshalizableStructObject []any
+type PackedStructObject []any
 
 func (s *Serializer) PackValue(v reflect.Value) any {
 
@@ -148,6 +147,38 @@ func (s *Serializer) PackValue(v reflect.Value) any {
 	}
 }
 
+func (de *Deserializer) UnpackValue(v any, t reflect.Type) (reflect.Value, error) {
+
+	if v == nil {
+		return reflect.Zero(t), nil
+	}
+
+	switch t.Kind() {
+	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
+		reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
+		reflect.Uint32, reflect.Uint64, reflect.String:
+		v := reflect.New(t).Elem()
+		v.Set(reflect.ValueOf(v.Interface()))
+		return v, nil
+	case reflect.Array, reflect.Slice:
+		return de.UnpackArrayOrSlice(v.([]any), t)
+	case reflect.Map:
+		return de.UnpackMap(v.(map[string]any), t)
+	case reflect.Interface:
+		panic("unimplemented")
+	case reflect.Pointer:
+		return de.UnpackPointer(v, t)
+	case reflect.Struct:
+		if v_, ok := v.(PackedStructObject); ok {
+			v = []any(v_)
+		}
+		return de.UnpackStructObject(v.([]any), t)
+	default:
+		return reflect.Value{}, fmt.Errorf("unsupported type kind: %v", t.Kind())
+	}
+
+}
+
 func (s *Serializer) PackColumn(c column.Natural) BackReference {
 
 	cid := c.PackedIdentifier()
@@ -159,10 +190,9 @@ func (s *Serializer) PackColumn(c column.Natural) BackReference {
 		s.ColumnMap[string(cid)] = len(s.PreMarshaledObject.Columns) - 1
 	}
 
-	return BackReference{
-		Type: ColumnBackReference,
-		ID:   s.ColumnMap[string(cid)],
-	}
+	return BackReference(
+		s.ColumnMap[string(cid)],
+	)
 }
 
 func (s *Serializer) PackColumnID(c ifaces.ColID) BackReference {
@@ -172,10 +202,18 @@ func (s *Serializer) PackColumnID(c ifaces.ColID) BackReference {
 		s.ColumnIdMap[string(c)] = len(s.PreMarshaledObject.ColumnIDs) - 1
 	}
 
-	return BackReference{
-		Type: ColumnIDBackReference,
-		ID:   s.ColumnIdMap[string(c)],
+	return BackReference(s.ColumnIdMap[string(c)])
+
+}
+
+func (de *Deserializer) UnpackColumnID(v BackReference) (reflect.Value, error) {
+
+	if v < 0 || int(v) >= len(de.PreUnmarshalledObject.ColumnIDs) {
+		return reflect.Value{}, fmt.Errorf("invalid column ID: %v", v)
 	}
+
+	res := ifaces.ColID(de.PreUnmarshalledObject.ColumnIDs[v])
+	return reflect.ValueOf(res), nil
 }
 
 func (s *Serializer) PackCoin(c coin.Info) BackReference {
@@ -185,22 +223,26 @@ func (s *Serializer) PackCoin(c coin.Info) BackReference {
 		s.CoinMap[string(c.Name)] = len(s.PreMarshaledObject.Coins) - 1
 	}
 
-	return BackReference{
-		Type: CoinBackReference,
-		ID:   s.CoinMap[string(c.Name)],
-	}
+	return BackReference(s.CoinMap[string(c.Name)])
 }
 
 func (s *Serializer) PackCoinID(c coin.Name) BackReference {
 
-	if _, ok := s.CoinMap[string(c)]; !ok {
-		utils.Panic("serializing a coin ID for an unknown coin: %v", c)
+	if _, ok := s.CoinIdMap[string(c)]; !ok {
+		s.PreMarshaledObject.CoinIDs = append(s.PreMarshaledObject.CoinIDs, string(c))
+		s.CoinIdMap[string(c)] = len(s.PreMarshaledObject.CoinIDs) - 1
 	}
 
-	return BackReference{
-		Type: CoinIDBackReference,
-		ID:   s.CoinMap[string(c)],
+	return BackReference(s.CoinMap[string(c)])
+}
+
+func (s *Deserializer) UnpackedCoinID(v BackReference) (reflect.Value, error) {
+
+	if v < 0 || int(v) >= len(s.PreUnmarshalledObject.CoinIDs) {
+		return reflect.Value{}, fmt.Errorf("invalid coin ID: %v", v)
 	}
+
+	return reflect.ValueOf(s.PreUnmarshalledObject.CoinIDs[v]), nil
 }
 
 func (s *Serializer) PackQuery(q ifaces.Query) BackReference {
@@ -233,10 +275,7 @@ func (s *Serializer) PackQuery(q ifaces.Query) BackReference {
 		s.QueryMap[string(q.Name())] = len(s.PreMarshaledObject.Queries) - 1
 	}
 
-	return BackReference{
-		Type: QueryBackReference,
-		ID:   s.QueryMap[string(q.Name())],
-	}
+	return BackReference(s.QueryMap[string(q.Name())])
 }
 
 func (s *Serializer) PackQueryID(q ifaces.QueryID) BackReference {
@@ -246,10 +285,8 @@ func (s *Serializer) PackQueryID(q ifaces.QueryID) BackReference {
 		s.QueryIDMap[string(q)] = len(s.PreMarshaledObject.QueryIDs) - 1
 	}
 
-	return BackReference{
-		Type: QueryIDBackReference,
-		ID:   s.QueryMap[string(q)],
-	}
+	return BackReference(s.QueryMap[string(q)])
+
 }
 
 func (s *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) any {
@@ -260,10 +297,8 @@ func (s *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) any {
 		s.CompiledIOPs[comp] = len(s.PreMarshaledObject.CompiledIOP) - 1
 	}
 
-	return BackReference{
-		Type: CompiledIOPBackReference,
-		ID:   s.CompiledIOPs[comp],
-	}
+	return BackReference(s.CompiledIOPs[comp])
+
 }
 
 func (ser *Serializer) PackStore(s *column.Store) any {
@@ -274,10 +309,8 @@ func (ser *Serializer) PackStore(s *column.Store) any {
 		ser.Stores[s] = len(ser.PreMarshaledObject.Store) - 1
 	}
 
-	return BackReference{
-		Type: StoreBackReference,
-		ID:   ser.Stores[s],
-	}
+	return BackReference(ser.Stores[s])
+
 }
 
 // PackArrayOrSlice serializes arrays or slices by recursively serializing each element.
@@ -289,18 +322,45 @@ func (s *Serializer) PackArrayOrSlice(v reflect.Value) []any {
 	return res
 }
 
+func (de *Deserializer) UnpackArrayOrSlice(v []any, t reflect.Type) (reflect.Value, error) {
+
+	var res reflect.Value
+
+	switch t.Kind() {
+	case reflect.Array:
+		res = reflect.New(t).Elem()
+		if t.Len() != len(v) {
+			return reflect.Value{}, fmt.Errorf("failed to deserialize to %q, size mismatch: %d != %d", t.Name(), len(v), t.Len())
+		}
+	case reflect.Slice:
+		res = reflect.MakeSlice(t, len(v), len(v))
+	default:
+		return reflect.Value{}, fmt.Errorf("failed to deserialize to %q, expected array or slice", t.Name())
+	}
+
+	subType := t.Elem()
+	for i := 0; i < len(v); i++ {
+		subV, err := de.UnpackValue(v[i], subType)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("failed to deserialize to %q, error in element %d: %w", t.Name(), i, err)
+		}
+		res.Index(i).Set(subV)
+	}
+
+	return res, nil
+}
+
 func (s *Serializer) AsPackedCoin(c coin.Info) PackedCoin {
 	return PackedCoin{
-		Type:        int8(c.Type),
-		Size:        c.Size,
-		UpperBound:  int32(c.UpperBound),
-		Name:        string(c.Name),
-		Round:       c.Round,
-		CompiledIOP: int8(s.CurrentCompiledIOP),
+		Type:       int8(c.Type),
+		Size:       c.Size,
+		UpperBound: int32(c.UpperBound),
+		Name:       string(c.Name),
+		Round:      c.Round,
 	}
 }
 
-func (s *Serializer) PackStructSchema(t reflect.Type) (marshalizable MarshalizableStructSchema, index int) {
+func (s *Serializer) PackStructSchema(t reflect.Type) (schema PackedStructSchema) {
 
 	if t.Kind() != reflect.Struct {
 		utils.Panic("s.Kind() != reflect.Struct, type=%v", t.String())
@@ -309,24 +369,24 @@ func (s *Serializer) PackStructSchema(t reflect.Type) (marshalizable Marshalizab
 	cleanTypeString := getPkgPathAndTypeName(s)
 
 	if i, ok := s.StructSchemaMap[cleanTypeString]; ok {
-		return s.PreMarshaledObject.StructSchema[i], i
+		return s.PreMarshaledObject.StructSchema[i]
 	}
 
-	marshalizable = MarshalizableStructSchema{
+	schema = PackedStructSchema{
 		Type:   cleanTypeString,
 		Fields: make([]string, t.NumField()),
 	}
 
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		marshalizable.Fields[i] = field.Name
+		schema.Fields[i] = field.Name
 	}
 
 	positionOfType := len(s.PreMarshaledObject.StructSchema)
 	s.StructSchemaMap[cleanTypeString] = positionOfType
-	s.PreMarshaledObject.StructSchema = append(s.PreMarshaledObject.StructSchema, marshalizable)
+	s.PreMarshaledObject.StructSchema = append(s.PreMarshaledObject.StructSchema, schema)
 
-	return marshalizable, positionOfType
+	return schema
 }
 
 func (s *Serializer) PackInterface(v reflect.Value) any {
@@ -347,7 +407,7 @@ func (s *Serializer) PackInterface(v reflect.Value) any {
 	}
 }
 
-func (s *Serializer) PackStructObject(obj reflect.Value) MarshalizableStructObject {
+func (s *Serializer) PackStructObject(obj reflect.Value) PackedStructObject {
 
 	if obj.Kind() != reflect.Struct {
 		utils.Panic("obj.Kind() != reflect.Struct, type=%v", obj.Type().String())
@@ -371,6 +431,46 @@ func (s *Serializer) PackStructObject(obj reflect.Value) MarshalizableStructObje
 	// information on the dependant struct. This is necessary for seria-
 	// lization.
 	return values
+}
+
+func (de *Deserializer) UnpackStructObject(v PackedStructObject, t reflect.Type) (reflect.Value, error) {
+
+	if t.Kind() != reflect.Struct {
+		return reflect.Value{}, fmt.Errorf("invalid type: %v", t.String())
+	}
+
+	var (
+		cleanType    = getPkgPathAndTypeName(t)
+		schemaID, ok = de.StructSchemaMap[cleanType]
+	)
+
+	if !ok {
+		return reflect.Value{}, fmt.Errorf("invalid type: %v, it was not found in the schema", t.String())
+	}
+
+	var (
+		res    = reflect.New(t).Elem()
+		schema = de.PreUnmarshalledObject.StructSchema[schemaID]
+	)
+
+	for i := range v {
+
+		_, ok := t.FieldByName(schema.Fields[i])
+		if !ok {
+			return reflect.Value{}, fmt.Errorf("invalid field name: %v, it was not found in the struct", schema.Fields[i], t.String())
+		}
+
+		field := res.FieldByName(schema.Fields[i])
+		value, err := de.UnpackValue(v[i], field.Type())
+
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("could not deserialize field %q type=%v, err=%w", schema.Fields[i], field.Type().String(), err)
+		}
+
+		field.Set(value)
+	}
+
+	return res, nil
 }
 
 func (s *Serializer) PackMap(obj reflect.Value) map[string]any {
@@ -406,41 +506,45 @@ func (s *Serializer) PackMap(obj reflect.Value) map[string]any {
 	return res
 }
 
-// UnpackBackReference unpacks a backreference.
-func UnpackBackReference(v []any) (BackReference, error) {
+func (de *Deserializer) UnpackMap(v map[string]any, t reflect.Type) (reflect.Value, error) {
 
-	if len(v) != 2 {
-		return BackReference{}, fmt.Errorf("invalid backreference: %v", v)
+	if t.Kind() != reflect.Map {
+		return reflect.Value{}, fmt.Errorf("invalid type: %v", t.String())
 	}
 
-	return BackReference{
-		Type: v[0].(BackReferenceType),
-		ID:   v[1].(int),
-	}, nil
+	var (
+		typeOfKey   = t.Key()
+		typeOfValue = t.Elem()
+		res         = reflect.MakeMap(t)
+	)
+
+	for key, val := range v {
+		k, err := de.UnpackValue(key, typeOfKey)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("could not deserialize map key %q type=%v, err=%w", key, typeOfKey.String(), err)
+		}
+
+		v, err := de.UnpackValue(val, typeOfValue)
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("could not deserialize map value %q type=%v, err=%w", val, typeOfValue.String(), err)
+		}
+
+		res.SetMapIndex(k, v)
+	}
+
+	return res, nil
 }
 
-// UnmarshalColumn unpacks a column. It expects v to represent a backreference.
-func (s *Deserializer) UnmarshalColumn(v []any) (column.Natural, error) {
+func (de *Deserializer) UnpackPointer(v any, t reflect.Type) (reflect.Value, error) {
 
-	backRef, err := UnpackBackReference(v)
+	if t.Kind() != reflect.Ptr {
+		return reflect.Value{}, fmt.Errorf("invalid type: %v, expected a pointer", t.String())
+	}
+
+	value, err := de.UnpackValue(v, t.Elem())
 	if err != nil {
-		return column.Natural{}, fmt.Errorf("could not deserialize column, %v", err)
+		return reflect.Value{}, fmt.Errorf("could not deserialize pointer type=%v, err=%w", t.Elem().String(), err)
 	}
 
-	if backRef.Type != ColumnBackReference {
-		return column.Natural{}, fmt.Errorf("invalid backreference type: %v", backRef.Type)
-	}
-
-	if backRef.ID >= len(s.Columns) {
-		return column.Natural{}, fmt.Errorf("invalid backreference ID: %v, #columns: %v", backRef.ID, len(s.Columns))
-	}
-
-	if s.Columns[backRef.ID] != nil {
-		return *s.Columns[backRef.ID], nil
-	}
-
-	// Here, it is the first time we encounter the column. We need to unpack it
-	// from the pre-unmarshalled object.
-	panic("unimplemented")
-
+	return value.Addr(), nil
 }

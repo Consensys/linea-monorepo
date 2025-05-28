@@ -133,3 +133,7 @@ func (m MiMC) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 		api.AssertIsEqual(newState, recomputed)
 	}
 }
+
+func (m MiMC) UUID() uuid.UUID {
+	return m.uuid
+}

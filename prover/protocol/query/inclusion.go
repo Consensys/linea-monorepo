@@ -280,3 +280,7 @@ func (i Inclusion) GetShiftedRelatedColumns() []ifaces.Column {
 
 	return res
 }
+
+func (i Inclusion) UUID() uuid.UUID {
+	return i.uuid
+}

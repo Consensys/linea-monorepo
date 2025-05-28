@@ -109,3 +109,7 @@ func (r UnivariateEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 		api.AssertIsEqual(actualY, params.Ys[k])
 	}
 }
+
+func (r UnivariateEval) UUID() uuid.UUID {
+	return r.uuid
+}

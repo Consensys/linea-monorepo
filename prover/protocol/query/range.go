@@ -79,3 +79,7 @@ func (r Range) Check(run ifaces.Runtime) error {
 func (r Range) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }
+
+func (r Range) UUID() uuid.UUID {
+	return r.uuid
+}

@@ -137,3 +137,7 @@ func (r InnerProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 		api.AssertIsEqual(expecteds.Ys[i], actualIP)
 	}
 }
+
+func (r InnerProduct) UUID() uuid.UUID {
+	return r.uuid
+}

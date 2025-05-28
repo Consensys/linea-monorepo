@@ -404,3 +404,7 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 
 	return res, nil
 }
+
+func (q logDerivativeSum) UUID() uuid.UUID {
+	return q.uuid
+}

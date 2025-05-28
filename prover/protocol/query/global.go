@@ -382,3 +382,7 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 	// Update the value of omega^i
 	omegaI.Mul(&omegaI, &omega)
 }
+
+func (cs GlobalConstraint) UUID() uuid.UUID {
+	return cs.uuid
+}

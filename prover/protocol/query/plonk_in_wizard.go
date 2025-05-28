@@ -279,3 +279,7 @@ func (piw *PlonkInWizard) CheckMask(mask smartvectors.SmartVector) error {
 
 	return nil
 }
+
+func (piw *PlonkInWizard) UUID() uuid.UUID {
+	return piw.uuid
+}

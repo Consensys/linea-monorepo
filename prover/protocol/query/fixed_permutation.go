@@ -128,3 +128,7 @@ func checkFixedPermutation(a, b []ifaces.ColAssignment, s []ifaces.ColAssignment
 func (f FixedPermutation) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }
+
+func (f fixedPermutation) UUID() uuid.UUID {
+	return f.uuid
+}

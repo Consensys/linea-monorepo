@@ -70,3 +70,7 @@ func (r LocalOpening) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	actualY := r.Pol.GetColAssignmentGnarkAt(run, 0)
 	api.AssertIsEqual(params.Y, actualY)
 }
+
+func (r LocalOpening) UUID() uuid.UUID {
+	return r.uuid
+}

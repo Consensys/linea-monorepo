@@ -296,3 +296,7 @@ func (h *Horner) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 func (h *HornerPart) Size() int {
 	return h.size
 }
+
+func (h *Horner) UUID() uuid.UUID {
+	return h.uuid
+}

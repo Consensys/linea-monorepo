@@ -293,3 +293,7 @@ func (p Projection) GetShiftedRelatedColumns() []ifaces.Column {
 
 	return res
 }
+
+func (p Projection) UUID() uuid.UUID {
+	return p.uuid
+}

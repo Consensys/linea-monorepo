@@ -211,3 +211,7 @@ func (g GrandProduct) Check(run ifaces.Runtime) error {
 func (g GrandProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	utils.Panic("Unimplemented")
 }
+
+func (g GrandProduct) UUID() uuid.UUID {
+	return g.uuid
+}

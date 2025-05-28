@@ -220,3 +220,7 @@ func (p Permutation) GetShiftedRelatedColumns() []ifaces.Column {
 
 	return res
 }
+
+func (p Permutation) UUID() uuid.UUID {
+	return p.uuid
+}

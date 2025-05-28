@@ -176,3 +176,7 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 	res := board.GnarkEval(api, inputs)
 	api.AssertIsEqual(res, 0)
 }
+
+func (cs LocalConstraint) UUID() uuid.UUID {
+	return cs.uuid
+}
