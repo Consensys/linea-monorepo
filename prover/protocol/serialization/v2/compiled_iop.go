@@ -32,19 +32,20 @@ type BackReference struct {
 
 // Serializer holds state for encoding and decoding a CompiledIOP.
 type Serializer struct {
-	typeMap   map[string]int       // Used for managing custom types (unused here, but prepared for extension)
+	typeMap map[string]int // Used for managing custom types (unused here, but prepared for extension)
+
 	columnMap map[ifaces.ColID]int // Maps column ID to its index in Columns
 	coinMap   map[coin.Name]int    // Maps coin name to its index in coins
 
 	Types []string `cbor:"types,omitempty"` // optional list of custom types (not used currently)
 
-	// Columns stores the actual serialized form of each unique column.
-	// Each column is only serialized once and referenced later.
+	// Columns/Coins stores the actual serialized form of each unique column/coin.
+	// Each column/coins is only serialized once and referenced later.
 	Columns [][]byte `cbor:"columns,omitempty"`
 	Coins   [][]byte `cbor:"coins,omitempty"`
 
-	// BackRefs contains per-round column backreferences. Each entry in the outer slice is a round;
-	// Each inner slice contains CBOR-encoded BackReferences to its object such as Columns, Coins, Queries etc.
+	// BackRefs contains per-round backreferences. Each entry in the outer slice is a round; Each inner slice
+	// contains CBOR-encoded backReferences to its object such as Columns, Coins, Queries etc.
 	ColumnBackRefs [][]cbor.RawMessage `cbor:"column_ref,omitempty"`
 	CoinBackRefs   [][]cbor.RawMessage `cbor:"coin_ref,omitempty"`
 }

@@ -75,7 +75,11 @@ func TestSerdeIOPV2(t *testing.T) {
 
 	logrus.Printf("Deserialization took %vs\n", time.Since(startTime).Seconds())
 
-	if !test_utils.CompareExportedFields(testCompInput.Columns, deSerComp.Columns) {
+	if !test_utils.CompareExportedFields(testCompRecur.Columns, deSerComp.Columns) {
+		t.Errorf("Mismatch in exported fields after serde IOP")
+	}
+
+	if !test_utils.CompareExportedFields(testCompRecur.Coins, deSerComp.Coins) {
 		t.Errorf("Mismatch in exported fields after serde IOP")
 	}
 }
