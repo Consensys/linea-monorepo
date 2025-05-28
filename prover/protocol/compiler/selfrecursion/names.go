@@ -183,6 +183,13 @@ func (ctx *SelfRecursionCtx) nonSisRoundLinearHashVerificationName(round int) st
 	return maybePrefix(ctx, name)
 }
 
+//leafConsistencyName returns the name passed to the wizard helper building the
+// leaf consistency verifier.
+func (ctx *SelfRecursionCtx) leafConsistencyName() ifaces.QueryID {
+	name := ifaces.QueryIDf("SELFRECURSION_LINEAR_HASH_LEAF_CONSISTENCY_%v", ctx.comp.SelfRecursionCount)
+	return maybePrefix(ctx, name)
+}
+
 // maybePrefix adds the prefix if defined in the context
 func maybePrefix[T ~string](ctx *SelfRecursionCtx, name T) T {
 	return T(ctx.NamePrefix+".") + name

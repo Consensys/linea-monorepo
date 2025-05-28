@@ -106,7 +106,7 @@ func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
 			ctx.MIMCMetaData.ToHashSizes[i], ctx.VortexCtx.NbColsToOpen(), ctx.MIMCMetaData.NonSisLeaves[i])
 	}
 
-	// leafConsistency imposes lookup constraints between the sis
+	// leafConsistency imposes fixed permutation constraints between the sis
 	// and non sis rounds leaves with that of the merkle tree leaves.
 	ctx.leafConsistency(roundQ)
 }
@@ -179,23 +179,31 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 	// Fixed permutation constraint between the SIS and non SIS leaves
 	// and the Merkle leaves
+	// cleanLeaves = (nonSisLeaves || sisLeaves) is checked to be identical to
+	// the Merkle leaves.
 	cleanLeaves := ctx.MIMCMetaData.NonSisLeaves
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		cleanLeaves = append(cleanLeaves, ctx.Columns.SisRoundLeaves)
 	}
 	stackedCleanLeaves := dedicated.StackColumn(ctx.comp, cleanLeaves)
 
+	// Register prover action for the stacked column
+	ctx.comp.RegisterProverAction(round, &dedicated.StackedColumn{
+		Column: stackedCleanLeaves.Column,
+		Source: cleanLeaves,
+	})
+
 	// Next we compute the identity permutation
 	s := make([]field.Element, stackedCleanLeaves.Column.Size())
 	for i := range s {
-		s[i] = field.One()
+		s[i].SetInt64(int64(i))
 	}
 	s_smart := smartvectors.NewRegular(s)
 
 	// Insert the fixed permutation constraint
 	ctx.comp.InsertFixedPermutation(
 		round,
-		ifaces.QueryID("LEAF_CONSISTENCY"),
+		ctx.leafConsistencyName(),
 		[]ifaces.ColAssignment{s_smart},
 		[]ifaces.Column{stackedCleanLeaves.Column},
 		[]ifaces.Column{ctx.Columns.MerkleProofsLeaves},
