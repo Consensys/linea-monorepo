@@ -70,6 +70,8 @@ type MultiLimbAdd struct {
 	mask *sym.Expression
 	// See [wizard.CompiledIOP.InsertGlobal] for more details.
 	noBoundCancel bool
+	// isAddition defines whether we need to apply an addition or subtraction.
+	isAddition    bool
 }
 
 // NewMultiLimbAdd creates a new MultiLimbAdd module. It return the LimbColumns
@@ -77,7 +79,7 @@ type MultiLimbAdd struct {
 //
 // If the result columns are provided in input, then the same columns are returned
 // and no new are created.
-func NewMultiLimbAdd(comp *wizard.CompiledIOP, inp *MultiLimbAddIn) (LimbColumns, wizard.ProverAction) {
+func NewMultiLimbAdd(comp *wizard.CompiledIOP, inp *MultiLimbAddIn, isAdd bool) (LimbColumns, wizard.ProverAction) {
 	if !inp.ALimbs.IsBigEndian {
 		utils.Panic("MultiLimbAdd only supports big-endian limbs")
 	}
@@ -115,6 +117,7 @@ func NewMultiLimbAdd(comp *wizard.CompiledIOP, inp *MultiLimbAddIn) (LimbColumns
 			Limbs: make([]ifaces.Column, len(inp.ALimbs.Limbs)-1),
 		},
 		noBoundCancel: inp.NoBoundCancel,
+		isAddition:    isAdd,
 	}
 
 	for i := range res.carry.Limbs {
@@ -122,7 +125,12 @@ func NewMultiLimbAdd(comp *wizard.CompiledIOP, inp *MultiLimbAddIn) (LimbColumns
 			ifaces.ColIDf("%v_ADD_COL_TO_LIMBS_CARRY_%v", inp.Name, i), numRows)
 	}
 
-	res.csAddition(comp)
+	if isAdd {
+		res.csAddition(comp, res.aLimbs, res.bLimbs, res.result)
+	} else {
+		res.csAddition(comp, res.result, res.bLimbs, res.aLimbs)
+	}
+
 	res.csRangeChecks(comp)
 
 	return result, res
@@ -152,9 +160,9 @@ func (m *MultiLimbAdd) csRangeChecks(comp *wizard.CompiledIOP) {
 	}
 }
 
-func (m *MultiLimbAdd) csAddition(comp *wizard.CompiledIOP) {
-	limbMax := field.NewElement(uint64(1) << m.aLimbs.LimbBitSize)
-	lastLimbIdx := len(m.aLimbs.Limbs) - 1
+func (m *MultiLimbAdd) csAddition(comp *wizard.CompiledIOP, aLimbs, bLimbs, resultLimbs LimbColumns) {
+	limbMax := field.NewElement(uint64(1) << aLimbs.LimbBitSize)
+	lastLimbIdx := len(aLimbs.Limbs) - 1
 
 	// Mask binary check
 	// mask * (1 - mask)
@@ -169,8 +177,8 @@ func (m *MultiLimbAdd) csAddition(comp *wizard.CompiledIOP) {
 			sym.Mul(
 				m.mask,
 				sym.Sub(
-					m.result.Limbs[lastLimbIdx],
-					sym.Add(m.aLimbs.Limbs[lastLimbIdx], m.bLimbs.Limbs[lastLimbIdx]),
+					resultLimbs.Limbs[lastLimbIdx],
+					sym.Add(aLimbs.Limbs[lastLimbIdx], bLimbs.Limbs[lastLimbIdx]),
 				),
 			),
 			m.noBoundCancel,
@@ -179,7 +187,7 @@ func (m *MultiLimbAdd) csAddition(comp *wizard.CompiledIOP) {
 		return
 	}
 
-	abLenOffset := len(m.aLimbs.Limbs) - len(m.bLimbs.Limbs)
+	abLenOffset := len(aLimbs.Limbs) - len(bLimbs.Limbs)
 
 	// Constraint for the least significant limb
 	// result[last] + carry[last-1] * 2^limbBitSize = a[last] + b[last]
@@ -187,8 +195,8 @@ func (m *MultiLimbAdd) csAddition(comp *wizard.CompiledIOP) {
 		sym.Mul(
 			m.mask,
 			sym.Sub(
-				sym.Add(m.result.Limbs[lastLimbIdx], sym.Mul(limbMax, m.carry.Limbs[lastLimbIdx-1])),
-				sym.Add(m.aLimbs.Limbs[lastLimbIdx], m.bLimbs.Limbs[lastLimbIdx-abLenOffset]),
+				sym.Add(resultLimbs.Limbs[lastLimbIdx], sym.Mul(limbMax, m.carry.Limbs[lastLimbIdx-1])),
+				sym.Add(aLimbs.Limbs[lastLimbIdx], bLimbs.Limbs[lastLimbIdx-abLenOffset]),
 			),
 		),
 		m.noBoundCancel,
@@ -198,16 +206,16 @@ func (m *MultiLimbAdd) csAddition(comp *wizard.CompiledIOP) {
 	// result[i] + carry[i-1] * 2^limbBitSize = a[i] + b[i] + carry[i]
 	for i := lastLimbIdx - 1; i > 0; i-- {
 		// The number of limbs in bLimbs may be less than in aLimbs
-		scndOp := sym.Add(m.aLimbs.Limbs[i], m.carry.Limbs[i])
+		scndOp := sym.Add(aLimbs.Limbs[i], m.carry.Limbs[i])
 		if lastLimbIdx-i > abLenOffset {
-			scndOp = sym.Add(scndOp, m.bLimbs.Limbs[i-abLenOffset])
+			scndOp = sym.Add(scndOp, bLimbs.Limbs[i-abLenOffset])
 		}
 
 		comp.InsertGlobal(0, ifaces.QueryIDf("%v_ADD_COL_TO_LIMBS_CONSTRAINT_%v", m.name, i),
 			sym.Mul(
 				m.mask,
 				sym.Sub(
-					sym.Add(m.result.Limbs[i], sym.Mul(limbMax, m.carry.Limbs[i-1])),
+					sym.Add(resultLimbs.Limbs[i], sym.Mul(limbMax, m.carry.Limbs[i-1])),
 					scndOp,
 				),
 			),
@@ -216,9 +224,9 @@ func (m *MultiLimbAdd) csAddition(comp *wizard.CompiledIOP) {
 	}
 
 	// The number of limbs in bLimbs may be less than in aLimbs
-	scndOp := sym.Add(m.aLimbs.Limbs[0], m.carry.Limbs[0])
-	if len(m.aLimbs.Limbs) == len(m.bLimbs.Limbs) {
-		scndOp = sym.Add(scndOp, m.bLimbs.Limbs[0])
+	scndOp := sym.Add(aLimbs.Limbs[0], m.carry.Limbs[0])
+	if len(aLimbs.Limbs) == len(bLimbs.Limbs) {
+		scndOp = sym.Add(scndOp, bLimbs.Limbs[0])
 	}
 
 	// Constraint for the most significant limb (no carry out)
@@ -227,7 +235,7 @@ func (m *MultiLimbAdd) csAddition(comp *wizard.CompiledIOP) {
 		sym.Mul(
 			m.mask,
 			sym.Sub(
-				m.result.Limbs[0],
+				resultLimbs.Limbs[0],
 				scndOp,
 			),
 		),
@@ -238,6 +246,14 @@ func (m *MultiLimbAdd) csAddition(comp *wizard.CompiledIOP) {
 // Run executes the addition of a column to the limbs, assigning the
 // results to the result and carry columns.
 func (m *MultiLimbAdd) Run(run *wizard.ProverRuntime) {
+	if m.isAddition {
+		m.runAddition(run)
+	} else {
+		m.runSubtraction(run)
+	}
+}
+
+func (m *MultiLimbAdd) runAddition(run *wizard.ProverRuntime) {
 	aLimbs := make([][]field.Element, len(m.aLimbs.Limbs))
 	for i := range m.aLimbs.Limbs {
 		aLimbs[i] = m.aLimbs.Limbs[i].GetColAssignment(run).IntoRegVecSaveAlloc()
@@ -305,6 +321,101 @@ func (m *MultiLimbAdd) Run(run *wizard.ProverRuntime) {
 		if len(m.aLimbs.Limbs) > 1 && res != nil {
 			sum = aLimbs[0][row].Uint64() + bLimbs[0][row].Uint64() + carryVals[0]
 			res[0].PushField(field.NewElement(sum))
+		}
+	}
+
+	for i := range res {
+		res[i].PadAndAssign(run, field.Zero())
+	}
+
+	for i := range carry {
+		carry[i].PadAndAssign(run, field.Zero())
+	}
+}
+
+func (m *MultiLimbAdd) runSubtraction(run *wizard.ProverRuntime) {
+	aLimbs := make([][]field.Element, len(m.aLimbs.Limbs))
+	for i := range m.aLimbs.Limbs {
+		aLimbs[i] = m.aLimbs.Limbs[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+
+	bLimbs := make([][]field.Element, len(m.bLimbs.Limbs))
+	for i := range m.bLimbs.Limbs {
+		bLimbs[i] = m.bLimbs.Limbs[i].GetColAssignment(run).IntoRegVecSaveAlloc()
+	}
+
+	var res []*common.VectorBuilder
+	if !m.withResult {
+		res = make([]*common.VectorBuilder, len(m.result.Limbs))
+		for i := range m.result.Limbs {
+			res[i] = common.NewVectorBuilder(m.result.Limbs[i])
+		}
+	}
+
+	carry := make([]*common.VectorBuilder, len(m.carry.Limbs))
+	for i := range m.carry.Limbs {
+		carry[i] = common.NewVectorBuilder(m.carry.Limbs[i])
+	}
+
+	limbMax := uint64(1) << m.aLimbs.LimbBitSize
+	lastLimbIdx := len(m.aLimbs.Limbs) - 1
+	lastCarryIdx := len(m.carry.Limbs) - 1
+
+	nbRows := m.bLimbs.Limbs[0].Size()
+	for row := 0; row < nbRows; row++ {
+		carryVals := make([]uint64, len(m.carry.Limbs))
+
+		aLimbUint64 := aLimbs[lastLimbIdx][row].Uint64()
+		bLimbUint64 := uint64(0)
+		if lastLimbIdx < len(bLimbs) {
+			bLimbUint64 = bLimbs[lastLimbIdx][row].Uint64()
+		}
+
+		carryValue := uint64(0)
+		if len(m.aLimbs.Limbs) > 1 {
+			carryVals[lastCarryIdx] = 0
+			if bLimbUint64 > aLimbUint64 {
+				carryValue = limbMax
+				carryVals[lastCarryIdx] = 1
+			}
+
+			carry[lastCarryIdx].PushField(field.NewElement(carryVals[lastCarryIdx]))
+		}
+
+		if res != nil {
+			sub := carryValue + aLimbUint64 - bLimbUint64
+			res[lastLimbIdx].PushField(field.NewElement(sub))
+		}
+
+		// Process intermediate limbs
+		for i := lastLimbIdx - 1; i > 0; i-- {
+			aLimbUint64 = aLimbs[i][row].Uint64()
+			bLimbUint64 = uint64(0)
+			if lastLimbIdx < len(bLimbs) {
+				bLimbUint64 = bLimbs[i][row].Uint64()
+			}
+
+			carryValue = 0
+			if len(m.aLimbs.Limbs) > 1 {
+				carryVals[i-1] = 0
+				if bLimbUint64+carryVals[i] > aLimbUint64 {
+					carryValue = limbMax
+					carryVals[i-1] = 1
+				}
+
+				carry[i-1].PushField(field.NewElement(carryVals[i-1]))
+			}
+
+			if res != nil {
+				sub := carryValue + aLimbUint64 - bLimbUint64 - carryVals[i]
+				res[i].PushField(field.NewElement(sub))
+			}
+		}
+
+		// Process the most significant limb
+		if len(m.aLimbs.Limbs) > 1 && res != nil {
+			sub := aLimbs[0][row].Uint64() - bLimbs[0][row].Uint64() - carryVals[0]
+			res[0].PushField(field.NewElement(sub % limbMax))
 		}
 	}
 
