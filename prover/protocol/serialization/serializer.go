@@ -11,6 +11,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/google/uuid"
 )
 
 type BackReferenceType int8
@@ -40,17 +41,17 @@ var (
 type BackReference int
 
 type Serializer struct {
-	PreMarshaledObject *PackedObject
-	TypeMap            map[string]int
-	StructSchemaMap    map[string]int
-	CoinMap            map[string]int
-	CoinIdMap          map[string]int
-	ColumnMap          map[string]int
-	ColumnIdMap        map[string]int
-	QueryMap           map[string]int
-	QueryIDMap         map[string]int
-	CompiledIOPs       map[*wizard.CompiledIOP]int
-	Stores             map[*column.Store]int
+	PackedObject    *PackedObject
+	typeMap         map[string]int
+	structSchemaMap map[string]int
+	coinMap         map[uuid.UUID]int
+	coinIdMap       map[string]int
+	columnMap       map[uuid.UUID]int
+	columnIdMap     map[string]int
+	queryMap        map[uuid.UUID]int
+	queryIDMap      map[string]int
+	compiledIOPs    map[*wizard.CompiledIOP]int
+	Stores          map[*column.Store]int
 }
 
 type Deserializer struct {
@@ -183,26 +184,26 @@ func (s *Serializer) PackColumn(c column.Natural) BackReference {
 
 	cid := c.PackedIdentifier()
 
-	if _, ok := s.ColumnMap[string(cid)]; !ok {
+	if _, ok := s.columnMap[string(cid)]; !ok {
 		packed := c.Pack()
 		marshaled := s.PackStructObject(reflect.ValueOf(packed))
-		s.PreMarshaledObject.Columns = append(s.PreMarshaledObject.Columns, marshaled)
-		s.ColumnMap[string(cid)] = len(s.PreMarshaledObject.Columns) - 1
+		s.PackedObject.Columns = append(s.PackedObject.Columns, marshaled)
+		s.columnMap[string(cid)] = len(s.PackedObject.Columns) - 1
 	}
 
 	return BackReference(
-		s.ColumnMap[string(cid)],
+		s.columnMap[string(cid)],
 	)
 }
 
 func (s *Serializer) PackColumnID(c ifaces.ColID) BackReference {
 
-	if _, ok := s.ColumnIdMap[string(c)]; !ok {
-		s.PreMarshaledObject.ColumnIDs = append(s.PreMarshaledObject.ColumnIDs, string(c))
-		s.ColumnIdMap[string(c)] = len(s.PreMarshaledObject.ColumnIDs) - 1
+	if _, ok := s.columnIdMap[string(c)]; !ok {
+		s.PackedObject.ColumnIDs = append(s.PackedObject.ColumnIDs, string(c))
+		s.columnIdMap[string(c)] = len(s.PackedObject.ColumnIDs) - 1
 	}
 
-	return BackReference(s.ColumnIdMap[string(c)])
+	return BackReference(s.columnIdMap[string(c)])
 
 }
 
@@ -218,22 +219,22 @@ func (de *Deserializer) UnpackColumnID(v BackReference) (reflect.Value, error) {
 
 func (s *Serializer) PackCoin(c coin.Info) BackReference {
 
-	if _, ok := s.CoinMap[string(c.Name)]; !ok {
-		s.PreMarshaledObject.Coins = append(s.PreMarshaledObject.Coins, s.AsPackedCoin(c))
-		s.CoinMap[string(c.Name)] = len(s.PreMarshaledObject.Coins) - 1
+	if _, ok := s.coinMap[string(c.Name)]; !ok {
+		s.PackedObject.Coins = append(s.PackedObject.Coins, s.AsPackedCoin(c))
+		s.coinMap[string(c.Name)] = len(s.PackedObject.Coins) - 1
 	}
 
-	return BackReference(s.CoinMap[string(c.Name)])
+	return BackReference(s.coinMap[string(c.Name)])
 }
 
 func (s *Serializer) PackCoinID(c coin.Name) BackReference {
 
-	if _, ok := s.CoinIdMap[string(c)]; !ok {
-		s.PreMarshaledObject.CoinIDs = append(s.PreMarshaledObject.CoinIDs, string(c))
-		s.CoinIdMap[string(c)] = len(s.PreMarshaledObject.CoinIDs) - 1
+	if _, ok := s.coinIdMap[string(c)]; !ok {
+		s.PackedObject.CoinIDs = append(s.PackedObject.CoinIDs, string(c))
+		s.coinIdMap[string(c)] = len(s.PackedObject.CoinIDs) - 1
 	}
 
-	return BackReference(s.CoinMap[string(c)])
+	return BackReference(s.coinMap[string(c)])
 }
 
 func (s *Deserializer) UnpackedCoinID(v BackReference) (reflect.Value, error) {
@@ -247,7 +248,7 @@ func (s *Deserializer) UnpackedCoinID(v BackReference) (reflect.Value, error) {
 
 func (s *Serializer) PackQuery(q ifaces.Query) BackReference {
 
-	if _, ok := s.QueryMap[string(q.Name())]; !ok {
+	if _, ok := s.queryMap[string(q.Name())]; !ok {
 
 		var obj any
 
@@ -271,33 +272,33 @@ func (s *Serializer) PackQuery(q ifaces.Query) BackReference {
 			obj = s.PackStructObject(reflect.ValueOf(*q))
 		}
 
-		s.PreMarshaledObject.Queries = append(s.PreMarshaledObject.Queries, obj)
-		s.QueryMap[string(q.Name())] = len(s.PreMarshaledObject.Queries) - 1
+		s.PackedObject.Queries = append(s.PackedObject.Queries, obj)
+		s.queryMap[string(q.Name())] = len(s.PackedObject.Queries) - 1
 	}
 
-	return BackReference(s.QueryMap[string(q.Name())])
+	return BackReference(s.queryMap[string(q.Name())])
 }
 
 func (s *Serializer) PackQueryID(q ifaces.QueryID) BackReference {
 
-	if _, ok := s.QueryMap[string(q)]; !ok {
-		s.PreMarshaledObject.QueryIDs = append(s.PreMarshaledObject.QueryIDs, string(q))
-		s.QueryIDMap[string(q)] = len(s.PreMarshaledObject.QueryIDs) - 1
+	if _, ok := s.queryMap[string(q)]; !ok {
+		s.PackedObject.QueryIDs = append(s.PackedObject.QueryIDs, string(q))
+		s.queryIDMap[string(q)] = len(s.PackedObject.QueryIDs) - 1
 	}
 
-	return BackReference(s.QueryMap[string(q)])
+	return BackReference(s.queryMap[string(q)])
 
 }
 
 func (s *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) any {
 
-	if _, ok := s.CompiledIOPs[comp]; !ok {
+	if _, ok := s.compiledIOPs[comp]; !ok {
 		obj := s.PackStructObject(reflect.ValueOf(*comp))
-		s.PreMarshaledObject.CompiledIOP = append(s.PreMarshaledObject.CompiledIOP, obj)
-		s.CompiledIOPs[comp] = len(s.PreMarshaledObject.CompiledIOP) - 1
+		s.PackedObject.CompiledIOP = append(s.PackedObject.CompiledIOP, obj)
+		s.compiledIOPs[comp] = len(s.PackedObject.CompiledIOP) - 1
 	}
 
-	return BackReference(s.CompiledIOPs[comp])
+	return BackReference(s.compiledIOPs[comp])
 
 }
 
@@ -305,8 +306,8 @@ func (ser *Serializer) PackStore(s *column.Store) any {
 
 	if _, ok := ser.Stores[s]; !ok {
 		obj := ser.PackStructObject(reflect.ValueOf(*s))
-		ser.PreMarshaledObject.Store = append(ser.PreMarshaledObject.Store, obj)
-		ser.Stores[s] = len(ser.PreMarshaledObject.Store) - 1
+		ser.PackedObject.Store = append(ser.PackedObject.Store, obj)
+		ser.Stores[s] = len(ser.PackedObject.Store) - 1
 	}
 
 	return BackReference(ser.Stores[s])
@@ -368,8 +369,8 @@ func (s *Serializer) PackStructSchema(t reflect.Type) (schema PackedStructSchema
 
 	cleanTypeString := getPkgPathAndTypeName(s)
 
-	if i, ok := s.StructSchemaMap[cleanTypeString]; ok {
-		return s.PreMarshaledObject.StructSchema[i]
+	if i, ok := s.structSchemaMap[cleanTypeString]; ok {
+		return s.PackedObject.StructSchema[i]
 	}
 
 	schema = PackedStructSchema{
@@ -382,9 +383,9 @@ func (s *Serializer) PackStructSchema(t reflect.Type) (schema PackedStructSchema
 		schema.Fields[i] = field.Name
 	}
 
-	positionOfType := len(s.PreMarshaledObject.StructSchema)
-	s.StructSchemaMap[cleanTypeString] = positionOfType
-	s.PreMarshaledObject.StructSchema = append(s.PreMarshaledObject.StructSchema, schema)
+	positionOfType := len(s.PackedObject.StructSchema)
+	s.structSchemaMap[cleanTypeString] = positionOfType
+	s.PackedObject.StructSchema = append(s.PackedObject.StructSchema, schema)
 
 	return schema
 }
@@ -396,13 +397,13 @@ func (s *Serializer) PackInterface(v reflect.Value) any {
 		cleanConcreteType = getPkgPathAndTypeName(concrete.Interface())
 	)
 
-	if _, ok := s.TypeMap[cleanConcreteType]; !ok {
-		s.PreMarshaledObject.Types = append(s.PreMarshaledObject.Types, cleanConcreteType)
-		s.TypeMap[cleanConcreteType] = len(s.PreMarshaledObject.Types) - 1
+	if _, ok := s.typeMap[cleanConcreteType]; !ok {
+		s.PackedObject.Types = append(s.PackedObject.Types, cleanConcreteType)
+		s.typeMap[cleanConcreteType] = len(s.PackedObject.Types) - 1
 	}
 
 	return PackedIFace{
-		Type:     s.TypeMap[cleanConcreteType],
+		Type:     s.typeMap[cleanConcreteType],
 		Concrete: s.PackValue(concrete),
 	}
 }

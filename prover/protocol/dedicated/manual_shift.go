@@ -25,7 +25,7 @@ import (
 // more or less be used in the same way. It will need to need to be assigned
 // if the value is already available.
 type ManuallyShifted struct {
-	column.Natural
+	Natural column.Natural
 	// Root points to the original "unshifted version" of the column.
 	Root ifaces.Column
 	// Offset is the shift to apply to Root. A negative value is a "forward"
@@ -93,7 +93,7 @@ func (m ManuallyShifted) Assign(run *wizard.ProverRuntime) {
 // GetColAssignment overrides the main [Natural.GetColAssignment] by
 // running [Assign] if needed.
 func (m ManuallyShifted) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignment {
-	if pr, isPR := run.(*wizard.ProverRuntime); isPR && !pr.Columns.Exists(m.ID) {
+	if pr, isPR := run.(*wizard.ProverRuntime); isPR && !pr.Columns.Exists(m.Natural.ID) {
 		m.Assign(pr)
 	}
 	return m.Natural.GetColAssignment(run)
@@ -102,7 +102,7 @@ func (m ManuallyShifted) GetColAssignment(run ifaces.Runtime) ifaces.ColAssignme
 // GetColAssignmentAt overrides the main [Natural.GetColAssignmentAt] by
 // running [Assign] if needed.
 func (m ManuallyShifted) GetColAssignmentAt(run ifaces.Runtime, pos int) field.Element {
-	if pr, isPR := run.(*wizard.ProverRuntime); isPR && !pr.Columns.Exists(m.ID) {
+	if pr, isPR := run.(*wizard.ProverRuntime); isPR && !pr.Columns.Exists(m.Natural.ID) {
 		m.Assign(pr)
 	}
 	return m.Natural.GetColAssignmentAt(run, pos)
