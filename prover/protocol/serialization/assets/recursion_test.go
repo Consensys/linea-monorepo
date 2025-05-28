@@ -79,28 +79,6 @@ func TestSerdeIOP(t *testing.T) {
 	}
 }
 
-func TestSerdeIOPV2(t *testing.T) {
-
-	startTime := time.Now()
-	serComp, err := serialization.SerializeCompiledIOPV2(testComp)
-	if err != nil {
-		t.Fatalf("error during ser. recursion input compiled-iop:%s\n", err.Error())
-	}
-
-	logrus.Printf("Serialization took %vs\n", time.Since(startTime).Seconds())
-
-	deSerComp, err := serialization.DeserializeCompiledIOP(serComp)
-	if err != nil {
-		t.Fatalf("error during deser. recursion input compiled-iop:%s\n", err.Error())
-	}
-
-	logrus.Printf("Deserialization took %vs\n", time.Since(startTime).Seconds())
-
-	if !test_utils.CompareExportedFields(testComp, deSerComp) {
-		t.Errorf("Mismatch in exported fields after RecursedCompiledIOP serde")
-	}
-}
-
 var COMPILED_FILE_PATH = "bin/serialized_compiled_iop.bin"
 
 func ensureAssetsDirectory(dirName string) error {

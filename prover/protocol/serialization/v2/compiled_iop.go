@@ -1,10 +1,11 @@
-package serialization
+package v2
 
 import (
 	"fmt"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/fxamacker/cbor/v2"
@@ -22,10 +23,12 @@ const (
 )
 
 type Serializer struct {
-	typeMap    map[string]int
-	Types      []string `cbor:"types,omitempty"`
-	columnMap  map[ifaces.ColID]int
-	Columns    [][]byte          `cbor:"columns,omitempty"`
+	typeMap map[string]int
+	Types   []string `cbor:"types,omitempty"`
+
+	columnMap map[ifaces.ColID]int
+	Columns   [][]byte `cbor:"columns,omitempty"`
+
 	MainObject *rawCompiledIOPV2 `cbor:"main_object,omitempty"`
 }
 
@@ -71,16 +74,16 @@ func SerializeCompiledIOPV2(comp *wizard.CompiledIOP) ([]byte, error) {
 		}
 		ser.MainObject.Columns = append(ser.MainObject.Columns, rawCols)
 	}
-	return serializeAnyWithCborPkg(ser)
+	return serialization.SerializeAnyWithCborPkg(ser)
 }
 
 func DeserializeCompiledIOPV2(data []byte) (*wizard.CompiledIOP, error) {
 	var ser Serializer
-	if err := deserializeAnyWithCborPkg(data, &ser); err != nil {
+	if err := serialization.DeserializeAnyWithCborPkg(data, &ser); err != nil {
 		return nil, fmt.Errorf("failed to decode Serializer: %v", err)
 	}
 
-	comp := NewEmptyCompiledIOP()
+	comp := serialization.NewEmptyCompiledIOP()
 	for round, rawCols := range ser.MainObject.Columns {
 		for _, colData := range rawCols {
 			if err := ser.UnmarshalColumn(colData, comp); err != nil {
@@ -128,7 +131,7 @@ func (ser *Serializer) MarshalColumn(iCol ifaces.Column) ([]byte, error) {
 
 func (ser *Serializer) UnmarshalColumn(data []byte, comp *wizard.CompiledIOP) error {
 	var backRef BackReference
-	if err := deserializeAnyWithCborPkg(data, &backRef); err != nil {
+	if err := serialization.DeserializeAnyWithCborPkg(data, &backRef); err != nil {
 		return fmt.Errorf("failed to decode BackReference: %v", err)
 	}
 
@@ -142,7 +145,7 @@ func (ser *Serializer) UnmarshalColumn(data []byte, comp *wizard.CompiledIOP) er
 
 	colData := ser.Columns[backRef.ID]
 	var serCol serializableColumnV2
-	if err := deserializeAnyWithCborPkg(colData, &serCol); err != nil {
+	if err := serialization.DeserializeAnyWithCborPkg(colData, &serCol); err != nil {
 		return fmt.Errorf("failed to decode serializableColumn at ID %d: %v", backRef.ID, err)
 	}
 

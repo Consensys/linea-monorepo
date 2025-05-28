@@ -39,12 +39,12 @@ func TestCompiledV2(t *testing.T) {
 		}(),
 	)
 
-	encoded, err := serialization.SerializeCompiledIOPV2(comp)
+	encoded, err := SerializeCompiledIOPV2(comp)
 	if err != nil {
 		t.Fatalf("could not encode: %v", err.Error())
 	}
 
-	deSerComp, err := serialization.DeserializeCompiledIOPV2(encoded)
+	deSerComp, err := DeserializeCompiledIOPV2(encoded)
 	if err != nil {
 		t.Fatalf("could not encode: %v", err.Error())
 	}
