@@ -182,17 +182,17 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (reflect.Value, error
 
 func (s *Serializer) PackColumn(c column.Natural) BackReference {
 
-	cid := c.PackedIdentifier()
+	cid := c.UUID()
 
-	if _, ok := s.columnMap[string(cid)]; !ok {
+	if _, ok := s.columnMap[cid]; !ok {
 		packed := c.Pack()
 		marshaled := s.PackStructObject(reflect.ValueOf(packed))
 		s.PackedObject.Columns = append(s.PackedObject.Columns, marshaled)
-		s.columnMap[string(cid)] = len(s.PackedObject.Columns) - 1
+		s.columnMap[cid] = len(s.PackedObject.Columns) - 1
 	}
 
 	return BackReference(
-		s.columnMap[string(cid)],
+		s.columnMap[cid],
 	)
 }
 
@@ -219,12 +219,12 @@ func (de *Deserializer) UnpackColumnID(v BackReference) (reflect.Value, error) {
 
 func (s *Serializer) PackCoin(c coin.Info) BackReference {
 
-	if _, ok := s.coinMap[string(c.Name)]; !ok {
+	if _, ok := s.coinMap[c.UUID()]; !ok {
 		s.PackedObject.Coins = append(s.PackedObject.Coins, s.AsPackedCoin(c))
-		s.coinMap[string(c.Name)] = len(s.PackedObject.Coins) - 1
+		s.coinMap[c.UUID()] = len(s.PackedObject.Coins) - 1
 	}
 
-	return BackReference(s.coinMap[string(c.Name)])
+	return BackReference(s.coinMap[c.UUID()])
 }
 
 func (s *Serializer) PackCoinID(c coin.Name) BackReference {
@@ -234,7 +234,7 @@ func (s *Serializer) PackCoinID(c coin.Name) BackReference {
 		s.coinIdMap[string(c)] = len(s.PackedObject.CoinIDs) - 1
 	}
 
-	return BackReference(s.coinMap[string(c)])
+	return BackReference(s.coinIdMap[string(c)])
 }
 
 func (s *Deserializer) UnpackedCoinID(v BackReference) (reflect.Value, error) {
@@ -248,7 +248,7 @@ func (s *Deserializer) UnpackedCoinID(v BackReference) (reflect.Value, error) {
 
 func (s *Serializer) PackQuery(q ifaces.Query) BackReference {
 
-	if _, ok := s.queryMap[string(q.Name())]; !ok {
+	if _, ok := s.queryMap[q.UUID()]; !ok {
 
 		var obj any
 
@@ -273,20 +273,20 @@ func (s *Serializer) PackQuery(q ifaces.Query) BackReference {
 		}
 
 		s.PackedObject.Queries = append(s.PackedObject.Queries, obj)
-		s.queryMap[string(q.Name())] = len(s.PackedObject.Queries) - 1
+		s.queryMap[q.UUID()] = len(s.PackedObject.Queries) - 1
 	}
 
-	return BackReference(s.queryMap[string(q.Name())])
+	return BackReference(s.queryMap[q.UUID()])
 }
 
 func (s *Serializer) PackQueryID(q ifaces.QueryID) BackReference {
 
-	if _, ok := s.queryMap[string(q)]; !ok {
+	if _, ok := s.queryIDMap[string(q)]; !ok {
 		s.PackedObject.QueryIDs = append(s.PackedObject.QueryIDs, string(q))
 		s.queryIDMap[string(q)] = len(s.PackedObject.QueryIDs) - 1
 	}
 
-	return BackReference(s.queryMap[string(q)])
+	return BackReference(s.queryIDMap[string(q)])
 
 }
 
