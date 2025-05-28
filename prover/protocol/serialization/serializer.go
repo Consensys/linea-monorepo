@@ -143,6 +143,25 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (reflect.Value, error
 		return reflect.Zero(t), nil
 	}
 
+	switch {
+	case t == TypeOfColumnNatural:
+		return de.UnpackColumn(v.(BackReference))
+	case t == TypeOfColumnID:
+		return de.UnpackColumnID(v.(BackReference))
+	case t == TypeOfCoin:
+		return de.UnpackCoin(v.(BackReference))
+	case t == TypeOfCoinID:
+		return de.UnpackCoinID(v.(BackReference))
+	case t.Implements(TypeOfQuery) && t.Kind() != reflect.Interface:
+		return de.UnpackQuery(v.(BackReference), t)
+	case t == TypeOfQueryID:
+		return de.UnpackQueryID(v.(BackReference))
+	case t == TypeOfCompiledIOP:
+		return de.UnpackCompiledIOP(v.(BackReference))
+	case t == TypeOfStore:
+		return de.UnpackStore(v.(BackReference))
+	}
+
 	switch t.Kind() {
 	case reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32,
 		reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16,
@@ -155,7 +174,7 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (reflect.Value, error
 	case reflect.Map:
 		return de.UnpackMap(v.(map[string]any), t)
 	case reflect.Interface:
-		panic("unimplemented")
+		return de.UnpackInterface(v.(map[string]any), t)
 	case reflect.Pointer:
 		return de.UnpackPointer(v, t)
 	case reflect.Struct:
@@ -291,7 +310,7 @@ func (s *Serializer) PackCoinID(c coin.Name) BackReference {
 	return BackReference(s.coinIdMap[string(c)])
 }
 
-func (s *Deserializer) UnpackedCoinID(v BackReference) (reflect.Value, error) {
+func (s *Deserializer) UnpackCoinID(v BackReference) (reflect.Value, error) {
 
 	if v < 0 || int(v) >= len(s.PreUnmarshalledObject.CoinIDs) {
 		return reflect.Value{}, fmt.Errorf("invalid coin ID: %v", v)
