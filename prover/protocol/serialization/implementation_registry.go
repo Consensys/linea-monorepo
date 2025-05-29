@@ -135,6 +135,7 @@ func init() {
 
 	// Dedicated and common types
 	RegisterImplementation(byte32cmp.MultiLimbCmp{})
+	RegisterImplementation(byte32cmp.OneLimbCmpCtx{})
 	RegisterImplementation(byte32cmp.DecompositionCtx{})
 	RegisterImplementation(dedicated.IsZeroCtx{})
 	RegisterImplementation(common.HashingCtx{})

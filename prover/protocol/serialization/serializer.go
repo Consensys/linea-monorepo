@@ -754,7 +754,7 @@ func (de *Deserializer) UnpackInterface(pi map[interface{}]interface{}, t reflec
 	)
 
 	if !ok || int(ctype) >= len(de.PackedObject.Types) {
-		return reflect.Value{}, fmt.Errorf("invalid type: %v", ctype)
+		return reflect.Value{}, fmt.Errorf("invalid packed interface, it does not have a valid type integer: %v", ctype)
 	}
 
 	cleanConcreteType := de.PackedObject.Types[ctype]
@@ -928,7 +928,7 @@ func (s *Serializer) PackMap(obj reflect.Value) (map[any]any, error) {
 // It collects errors for keys and values.
 func (de *Deserializer) UnpackMap(v map[any]any, t reflect.Type) (reflect.Value, error) {
 	if t.Kind() != reflect.Map {
-		return reflect.Value{}, fmt.Errorf("invalid type: %v", t.String())
+		return reflect.Value{}, fmt.Errorf("invalid map type: %v", t.String())
 	}
 
 	var (
