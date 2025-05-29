@@ -31,4 +31,9 @@ func TestZkEVM(t *testing.T) {
 	})
 
 	t.Logf("serialization=%v deserialization=%v buffer-size=%v", serTime, desTime, len(b))
+
+	t.Logf("Running sanity checks on deserialized object: Comparing if the values matched before and after serialization")
+	if !serialization.CompareExportedFields(z, d) {
+		t.Fatalf("Mismatch in exported fields of ZkEVM during serde")
+	}
 }

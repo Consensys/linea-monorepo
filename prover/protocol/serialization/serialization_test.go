@@ -220,7 +220,7 @@ func TestSerdeValue(t *testing.T) {
 	}
 }
 
-// compareExportedFields checks if two values are equal, ignoring unexported fields, including in nested structs.
+// CompareExportedFields checks if two values are equal, ignoring unexported fields, including in nested structs.
 // It logs mismatched fields with their paths and values.
 func CompareExportedFields(a, b interface{}) bool {
 	return CompareExportedFieldsWithPath(a, b, "")
