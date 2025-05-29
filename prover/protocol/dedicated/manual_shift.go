@@ -3,6 +3,7 @@ package dedicated
 import (
 	"fmt"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -106,4 +107,36 @@ func (m ManuallyShifted) GetColAssignmentAt(run ifaces.Runtime, pos int) field.E
 		m.Assign(pr)
 	}
 	return m.Natural.GetColAssignmentAt(run, pos)
+}
+
+func (m ManuallyShifted) GetColAssignmentGnark(run ifaces.GnarkRuntime) []frontend.Variable {
+	return m.Natural.GetColAssignmentGnark(run)
+}
+
+func (m ManuallyShifted) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) frontend.Variable {
+	return m.Natural.GetColAssignmentGnarkAt(run, pos)
+}
+
+func (m ManuallyShifted) GetColID() ifaces.ColID {
+	return m.Natural.GetColID()
+}
+
+func (m ManuallyShifted) IsComposite() bool {
+	return m.Natural.IsComposite()
+}
+
+func (m ManuallyShifted) MustExists() {
+	m.Natural.MustExists()
+}
+
+func (m ManuallyShifted) Round() int {
+	return m.Natural.Round()
+}
+
+func (m ManuallyShifted) Size() int {
+	return m.Natural.Size()
+}
+
+func (m ManuallyShifted) String() string {
+	return m.Natural.String()
 }
