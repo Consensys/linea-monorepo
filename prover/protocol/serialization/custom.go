@@ -97,6 +97,15 @@ func marshalExpression(ser *Serializer, val reflect.Value) (any, error) {
 
 	e := val.Interface().(*symbolic.Expression)
 
+	// This possible when the expression is nil but its pointer is an initialized
+	// value. This can happen for an non-used pointer field in a struct. In that
+	// case, we just return nil. This won't be caught by the first condition of
+	// PackValue because the pointer itself does exists, it's the pointed value
+	// that does not.
+	if e == nil {
+		return nil, nil
+	}
+
 	switch op := e.Operator.(type) {
 
 	case symbolic.Variable:
