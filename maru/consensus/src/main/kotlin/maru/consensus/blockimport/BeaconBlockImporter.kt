@@ -26,6 +26,7 @@ import maru.executionlayer.client.ExecutionLayerEngineApiClient
 import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
+import maru.p2p.ValidationResult
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.consensus.common.bft.ConsensusRoundIdentifier
@@ -41,9 +42,9 @@ fun interface BeaconBlockImporter {
 class FollowerBeaconBlockImporter(
   private val executionLayerManager: ExecutionLayerManager,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
-) : NewBlockHandler {
+) : NewBlockHandler<ValidationResult> {
   companion object {
-    fun create(executionLayerEngineApiClient: ExecutionLayerEngineApiClient): NewBlockHandler {
+    fun create(executionLayerEngineApiClient: ExecutionLayerEngineApiClient): NewBlockHandler<ValidationResult> {
       val executionLayerManager =
         JsonRpcExecutionLayerManager(
           executionLayerEngineApiClient = executionLayerEngineApiClient,
@@ -62,7 +63,7 @@ class FollowerBeaconBlockImporter(
 
   private val log = LogManager.getLogger(this.javaClass)
 
-  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<ForkChoiceUpdatedResult> {
+  override fun handleNewBlock(beaconBlock: BeaconBlock): SafeFuture<ValidationResult> {
     val executionPayload = beaconBlock.beaconBlockBody.executionPayload
     return executionLayerManager
       .newPayload(executionPayload)
@@ -78,7 +79,9 @@ class FollowerBeaconBlockImporter(
             headHash = beaconBlock.beaconBlockBody.executionPayload.blockHash,
             safeHash = finalizationState.safeBlockHash,
             finalizedHash = finalizationState.finalizedBlockHash,
-          )
+          ).thenApply {
+            ValidationResult.fromForkChoiceUpdatedResult(it)
+          }
       }
   }
 }

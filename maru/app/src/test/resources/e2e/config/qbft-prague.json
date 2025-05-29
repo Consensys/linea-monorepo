@@ -1,4 +1,5 @@
 {
+  "chainId": 1337,
   "config": {
     "0": {
       "type": "qbft",

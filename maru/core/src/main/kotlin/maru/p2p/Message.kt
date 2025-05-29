@@ -17,21 +17,40 @@ package maru.p2p
 
 import maru.core.SealedBeaconBlock
 
-enum class MessageType(
-  val code: Byte,
-) {
-  QBFT(0x01), // Won't be supported until Milestone 6
-  BLOCK(0x02),
+enum class Version : Comparable<Version> {
+  V1,
+}
+
+enum class MessageType {
+  QBFT, // Won't be supported until Milestone 6
+  BEACON_BLOCK,
 }
 
 data class Message<T : Any>(
   val type: MessageType,
+  val version: Version = Version.V1,
   val payload: T,
 ) {
   init {
     when (type) {
       MessageType.QBFT -> Unit // require(payload is BftMessage≤*>) Not adding this to avoid dependency on QBFT
-      MessageType.BLOCK -> require(payload is SealedBeaconBlock)
+      MessageType.BEACON_BLOCK -> require(payload is SealedBeaconBlock)
     }
   }
+}
+
+interface TopicIdGenerator {
+  fun topicId(
+    messageType: MessageType,
+    version: Version,
+  ): String
+}
+
+class LineaTopicIdGenerator(
+  private val chainId: UInt,
+) : TopicIdGenerator {
+  override fun topicId(
+    messageType: MessageType,
+    version: Version,
+  ): String = "/linea/$chainId/${messageType.toString().lowercase()}/$version"
 }

@@ -34,6 +34,7 @@ import io.libp2p.security.secio.SecIoSecureChannel
 import io.libp2p.transport.tcp.TcpTransport
 import java.util.Optional
 import kotlin.random.Random
+import maru.p2p.topics.SealedBlocksTopicHandler
 import org.apache.tuweni.bytes.Bytes
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
 import pubsub.pb.Rpc
@@ -52,23 +53,22 @@ import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 
-object P2PNetworkFactory {
+object Libp2pNetworkFactory {
   fun build(
     privateKey: PrivKey,
     port: String,
     ipAddress: String,
+    sealedBlocksTopicHandler: SealedBlocksTopicHandler,
+    sealedBlocksTopicId: String,
   ): P2PNetwork<Peer> {
-    val addr = Multiaddr("/ip4/$ipAddress/tcp/$port")
-
-    return setupP2PNetwork(privateKey, addr)
-  }
-
-  private fun setupP2PNetwork(
-    privateKey: PrivKey,
-    ipv4Address: Multiaddr,
-  ): P2PNetwork<Peer> {
+    val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val rpcMethod = MaruRpcMethod()
-    val gossipTopicHandlers = GossipTopicHandlers() // TODO: add handlers for topics as needed
+    val gossipTopicHandlers = GossipTopicHandlers()
+
+    gossipTopicHandlers.add(
+      sealedBlocksTopicId,
+      sealedBlocksTopicHandler,
+    )
 
     val gossipParams = GossipParamsBuilder().heartbeatInterval(1.seconds).build()
     val gossipRouterBuilder =
@@ -112,15 +112,17 @@ object P2PNetworkFactory {
 
     val advertisedAddresses = listOf(ipv4Address)
 
-    return LibP2PNetwork(
-      privateKey,
-      libP2PNodeId,
-      host,
-      peerManager,
-      advertisedAddresses,
-      gossipNetwork,
-      listOf(1),
-    )
+    val p2pNetwork =
+      LibP2PNetwork(
+        /* privKey = */ privateKey,
+        /* nodeId = */ libP2PNodeId,
+        /* host = */ host,
+        /* peerManager = */ peerManager,
+        /* advertisedAddresses = */ advertisedAddresses,
+        /* gossipNetwork = */ gossipNetwork,
+        /* listenPorts = */ listOf(1),
+      )
+    return p2pNetwork
   }
 
   private fun getMessageFactory(

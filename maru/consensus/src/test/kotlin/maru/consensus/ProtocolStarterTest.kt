@@ -38,6 +38,8 @@ class ProtocolStarterTest {
     }
   }
 
+  private val chainId = 1337u
+
   private val protocol1 = StubProtocol()
   private val protocol2 = StubProtocol()
 
@@ -61,6 +63,7 @@ class ProtocolStarterTest {
   fun `ProtocolStarter kickstarts the protocol based on the latest known block metadata`() {
     val forksSchedule =
       ForksSchedule(
+        chainId,
         listOf(
           forkSpec1,
           forkSpec2,
@@ -84,6 +87,7 @@ class ProtocolStarterTest {
   fun `ProtocolStarter doesn't re-create the existing protocol`() {
     val forksSchedule =
       ForksSchedule(
+        chainId,
         listOf(
           forkSpec1,
           forkSpec2,
@@ -109,6 +113,7 @@ class ProtocolStarterTest {
   fun `ProtocolStarter re-creates the protocol when the switch is needed`() {
     val forksSchedule =
       ForksSchedule(
+        chainId,
         listOf(
           forkSpec1,
           forkSpec2,
@@ -140,6 +145,7 @@ class ProtocolStarterTest {
   fun `if latest block is far in the past, current time takes precedence`() {
     val forksSchedule =
       ForksSchedule(
+        chainId,
         listOf(
           forkSpec1,
           forkSpec2,

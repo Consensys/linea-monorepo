@@ -50,4 +50,5 @@ jobs:
             sleep $INTERVAL_SECONDS
           done
           echo "Timeout of $TIMEOUT_SECONDS seconds reached. String '$SEARCH_STRING' not found in logs."
+          echo $LOGS
           exit 1

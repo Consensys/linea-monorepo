@@ -18,12 +18,12 @@ package maru.p2p
 import maru.core.SealedBeaconBlock
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
-class SealedBeaconBeaconBlockBroadcaster(
+class SealedBeaconBlockBroadcaster(
   val p2PNetwork: P2PNetwork,
-) : SealedBeaconBlockHandler {
-  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<*> {
+) : SealedBeaconBlockHandler<Unit> {
+  override fun handleSealedBlock(sealedBeaconBlock: SealedBeaconBlock): SafeFuture<Unit> {
     // TODO: New block message might need an intermediary wrapper in the future
-    val message = Message(MessageType.BLOCK, sealedBeaconBlock)
+    val message = Message(MessageType.BEACON_BLOCK, payload = sealedBeaconBlock)
     p2PNetwork.broadcastMessage(message)
     return SafeFuture.completedFuture(Unit)
   }

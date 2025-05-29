@@ -32,7 +32,6 @@ import maru.testutils.NetworkParticipantStack
 import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
-import org.awaitility.Awaitility.await
 import org.awaitility.kotlin.await
 import org.hyperledger.besu.tests.acceptance.dsl.blockchain.Amount
 import org.hyperledger.besu.tests.acceptance.dsl.condition.net.NetConditions
@@ -67,16 +66,21 @@ class MaruFollowerTest {
     injectableSealedBlocksFakeNetwork = InjectableSealedBlocksFakeNetwork()
     val validatorP2PNetwork =
       object : P2PNetwork by NoOpP2PNetwork {
-        override fun broadcastMessage(message: Message<*>) {
-          if (message.type == MessageType.BLOCK) {
-            SafeFuture.runAsync {
-              // To untie Validator's callstack from follower's concerns
-              injectableSealedBlocksFakeNetwork.injectSealedBlock(
-                message.payload as SealedBeaconBlock,
-              )
-            }
+        override fun broadcastMessage(message: Message<*>): SafeFuture<Unit> =
+          if (message.type == MessageType.BEACON_BLOCK) {
+            SafeFuture
+              .of(
+                SafeFuture
+                  .runAsync {
+                    // To untie Validator's callstack from follower's concerns
+                    injectableSealedBlocksFakeNetwork.injectSealedBlock(
+                      message.payload as SealedBeaconBlock,
+                    )
+                  },
+              ).thenApply { }
+          } else {
+            SafeFuture.completedFuture(Unit)
           }
-        }
       }
     validatorStack = NetworkParticipantStack(cluster = cluster, p2pNetwork = validatorP2PNetwork)
     followerStack =

@@ -15,7 +15,6 @@
  */
 package maru.consensus.blockimport
 
-import kotlin.test.assertTrue
 import maru.consensus.state.StateTransition
 import maru.core.BeaconBlock
 import maru.core.BeaconState
@@ -23,7 +22,7 @@ import maru.core.ext.DataGenerators
 import maru.database.BeaconChain
 import maru.database.InMemoryBeaconChain
 import maru.executionlayer.manager.ExecutionLayerManager
-import maru.executionlayer.manager.ForkChoiceUpdatedResult
+import maru.p2p.ValidationResult
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -70,7 +69,7 @@ class TransactionalSealedBeaconBlockImporterTest {
   }
 
   @Test
-  fun `importBlock returns true on successful import`() {
+  fun `importBlock returns success on successful import`() {
     val sealedBeaconBlock = DataGenerators.randomSealedBeaconBlock(2UL)
     val beaconState = DataGenerators.randomBeaconState(2UL)
 
@@ -82,8 +81,8 @@ class TransactionalSealedBeaconBlockImporterTest {
       ),
     )
 
-    val result = qbftBlockImporter.importBlock(sealedBeaconBlock).get() as ForkChoiceUpdatedResult
-    assertTrue(result.payloadStatus.status.isValid())
+    val result = qbftBlockImporter.importBlock(sealedBeaconBlock).get()
+    assertThat(result).isEqualTo(ValidationResult.Companion.Valid)
     assertThat(beaconChain.getLatestBeaconState()).isEqualTo(beaconState)
   }
 
@@ -115,9 +114,9 @@ class TransactionalSealedBeaconBlockImporterTest {
     beaconBlockImporterResponse = SafeFuture.failedFuture(expectedException)
     val stateBeforeTransition = beaconChain.getLatestBeaconState()
 
-    val result = qbftBlockImporter.importBlock(sealedBeaconBlock)
+    val result = qbftBlockImporter.importBlock(sealedBeaconBlock).get()
 
-    assertThat(result.exceptionNow()).isEqualTo(expectedException)
+    assertThat(result).isEqualTo(ValidationResult.Companion.Invalid(expectedException.toString(), expectedException))
     val stateAfterTransition = beaconChain.getLatestBeaconState()
     assertThat(stateBeforeTransition).isEqualTo(stateAfterTransition)
   }

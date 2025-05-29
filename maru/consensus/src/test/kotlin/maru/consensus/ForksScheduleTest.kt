@@ -21,6 +21,7 @@ import org.junit.jupiter.api.assertThrows
 
 class ForksScheduleTest {
   private val consensusConfig = object : ConsensusConfig {}
+  private val expectedChainId = 1337u
 
   @Test
   fun `test getForkByTimestamp returns correct fork`() {
@@ -29,7 +30,7 @@ class ForksScheduleTest {
     val fork3 = ForkSpec(3L, 3, consensusConfig)
     val forks = listOf(fork1, fork2, fork3)
 
-    val schedule = ForksSchedule(forks)
+    val schedule = ForksSchedule(expectedChainId, forks)
 
     assertThat(schedule.getForkByTimestamp(1L)).isEqualTo(fork1)
     assertThat(schedule.getForkByTimestamp(2L)).isEqualTo(fork2)
@@ -42,7 +43,7 @@ class ForksScheduleTest {
     val fork2 = ForkSpec(2000L, 20, consensusConfig)
     val forks = listOf(fork1, fork2)
 
-    val schedule = ForksSchedule(forks)
+    val schedule = ForksSchedule(expectedChainId, forks)
 
     val exception =
       assertThrows<IllegalArgumentException> {
@@ -67,8 +68,8 @@ class ForksScheduleTest {
     val forks1 = listOf(fork1, fork2)
     val forks2 = listOf(fork1, fork2)
 
-    val schedule1 = ForksSchedule(forks1)
-    val schedule2 = ForksSchedule(forks2)
+    val schedule1 = ForksSchedule(expectedChainId, forks1)
+    val schedule2 = ForksSchedule(expectedChainId, forks2)
 
     assertThat(schedule1).isEqualTo(schedule2)
     assertThat(schedule1.hashCode()).isEqualTo(schedule2.hashCode())
@@ -82,8 +83,8 @@ class ForksScheduleTest {
     val forks1 = listOf(fork1, fork2)
     val forks2 = listOf(fork1, fork3)
 
-    val schedule1 = ForksSchedule(forks1)
-    val schedule2 = ForksSchedule(forks2)
+    val schedule1 = ForksSchedule(expectedChainId, forks1)
+    val schedule2 = ForksSchedule(expectedChainId, forks2)
 
     assertThat(schedule1).isNotEqualTo(schedule2)
     assertThat(schedule1.hashCode()).isNotEqualTo(schedule2.hashCode())

@@ -33,16 +33,17 @@ object NoOpP2PNetwork : P2PNetwork {
         log.debug("NoopP2PNetwork stopped")
       }.thenApply { }
 
-  override fun broadcastMessage(message: Message<*>) {
+  override fun broadcastMessage(message: Message<*>): SafeFuture<Unit> {
     log.debug("Doing nothing for message={}", message)
+    return SafeFuture.completedFuture(Unit)
   }
 
-  override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler): Int {
+  override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
     log.debug("Subscription called for subscriber={}", subscriber)
     return 0
   }
 
-  override fun unsubscribe(subscriptionId: Int) {
+  override fun unsubscribeFromBlocks(subscriptionId: Int) {
     log.debug("Unsubscription called for subscriptionId={}", subscriptionId)
   }
 }

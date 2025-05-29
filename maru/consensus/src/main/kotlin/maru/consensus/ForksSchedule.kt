@@ -35,6 +35,7 @@ data class ForkSpec(
 }
 
 class ForksSchedule(
+  val chainId: UInt,
   forks: Collection<ForkSpec>,
 ) {
   private val forks: NavigableSet<ForkSpec> =
