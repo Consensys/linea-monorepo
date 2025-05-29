@@ -21,9 +21,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
-	"github.com/sirupsen/logrus"
 
 	"github.com/stretchr/testify/require"
 )
@@ -370,137 +368,6 @@ func GetRepoRootPath() (string, error) {
 	return wd[:i], nil
 }
 
-// compareExportedFields checks if two values are equal, ignoring unexported fields, including in nested structs.
-// It logs mismatched fields with their paths and values.
-func CompareExportedFields(a, b interface{}) bool {
-	return CompareExportedFieldsWithPath(a, b, "")
-}
-
-func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
-
-	v1, v2 := reflect.ValueOf(a), reflect.ValueOf(b)
-
-	// Ensure both values are valid
-	if !v1.IsValid() || !v2.IsValid() {
-		// Treat nil and zero values as equivalent
-		if !v1.IsValid() && !v2.IsValid() {
-			return true
-		}
-		if !v1.IsValid() {
-			v1 = reflect.Zero(v2.Type())
-		}
-		if !v2.IsValid() {
-			v2 = reflect.Zero(v1.Type())
-		}
-	}
-
-	// Skip ignorable fields
-	if serialization.IsIgnoreableType(v1.Type()) {
-		logrus.Printf("Skipping comparison of Ignorable type:%s at %s\n", v1.Type().String(), path)
-		return true
-	}
-
-	// Ensure same type
-	if v1.Type() != v2.Type() {
-		logrus.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, v1.Type(), v2.Type())
-		return false
-	}
-
-	// Ignore Func
-	if v1.Kind() == reflect.Func {
-		return true
-	}
-
-	// Handle maps
-	if v1.Kind() == reflect.Map {
-		if v1.Len() != v2.Len() {
-			if serialization.IsIgnoreableType(v1.Type()) {
-				logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
-				return true
-			}
-			logrus.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1.Len(), v2.Len(), v1.Type())
-			return false
-		}
-		for _, key := range v1.MapKeys() {
-			value1 := v1.MapIndex(key)
-			value2 := v2.MapIndex(key)
-			if !value2.IsValid() {
-				logrus.Printf("Mismatch at %s: key %v is missing in second map\n", path, key)
-				return false
-			}
-			keyPath := fmt.Sprintf("%s[%v]", path, key)
-			if !CompareExportedFieldsWithPath(value1.Interface(), value2.Interface(), keyPath) {
-				return false
-			}
-		}
-		// logrus.Infof("Comparing map at %s: len(v1)=%d, len(v2)=%d", path, v1.Len(), v2.Len())
-		return true
-	}
-
-	// Handle pointers by dereferencing
-	if v1.Kind() == reflect.Ptr {
-		if v1.IsNil() && v2.IsNil() {
-			return true
-		}
-		if v1.IsNil() != v2.IsNil() {
-			if serialization.IsIgnoreableType(v1.Type()) {
-				logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
-				return true
-			}
-			logrus.Printf("Mismatch at %s: nil status differs (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
-			return false
-		}
-		return CompareExportedFieldsWithPath(v1.Elem().Interface(), v2.Elem().Interface(), path)
-	}
-
-	// Handle structs
-	if v1.Kind() == reflect.Struct {
-		equal := true
-		for i := 0; i < v1.NumField(); i++ {
-			structField := v1.Type().Field(i)
-			// Skip unexported fields
-			if !structField.IsExported() {
-				continue
-			}
-
-			f1 := v1.Field(i)
-			f2 := v2.Field(i)
-			fieldName := structField.Name
-			fieldPath := fieldName
-			if path != "" {
-				fieldPath = path + "." + fieldName
-			}
-			if !CompareExportedFieldsWithPath(f1.Interface(), f2.Interface(), fieldPath) {
-				equal = false
-			}
-		}
-		return equal
-	}
-
-	// Handle slices or arrays
-	if v1.Kind() == reflect.Slice || v1.Kind() == reflect.Array {
-		if v1.Len() != v2.Len() {
-			logrus.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1, v2, v1.Type())
-			return false
-		}
-		equal := true
-		for i := 0; i < v1.Len(); i++ {
-			elemPath := fmt.Sprintf("%s[%d]", path, i)
-			if !CompareExportedFieldsWithPath(v1.Index(i).Interface(), v2.Index(i).Interface(), elemPath) {
-				equal = false
-			}
-		}
-		return equal
-	}
-
-	// For other types, use DeepEqual and log if mismatched
-	if !reflect.DeepEqual(a, b) {
-		logrus.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type_v1: %v type_v2: %v)\n", path, a, b, v1.Type(), v2.Type())
-		return false
-	}
-	return true
-}
-
 // GetZkevmWitness returns a [zkevm.Witness]
 func GetZkevmWitness(req *execution.Request, cfg *config.Config) *zkevm.Witness {
 	out := execution.CraftProverOutput(cfg, req)
@@ -620,5 +487,76 @@ func GetAffinities(z *zkevm.ZkEvm) [][]column.Natural {
 			z.WizardIOP.Columns.GetHandle("mmio.MMIO_STAMP").(column.Natural),
 			z.WizardIOP.Columns.GetHandle("mmu.STAMP").(column.Natural),
 		},
+	}
+}
+
+func PrettyPrint(v reflect.Value, indent int) string {
+	if !v.IsValid() {
+		return "<invalid>"
+	}
+
+	// Dereference pointers
+	for v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return "<nil>"
+		}
+		v = v.Elem()
+	}
+
+	// Handle interfaces
+	if v.Kind() == reflect.Interface {
+		return PrettyPrint(v.Elem(), indent)
+	}
+
+	switch v.Kind() {
+	case reflect.Struct:
+		var b strings.Builder
+		t := v.Type()
+		ind := strings.Repeat("  ", indent)
+		b.WriteString(fmt.Sprintf("%s%s {\n", ind, t.Name()))
+		for i := 0; i < v.NumField(); i++ {
+			field := v.Field(i)
+			fieldType := t.Field(i)
+			fieldName := fieldType.Name
+			if !field.CanInterface() {
+				b.WriteString(fmt.Sprintf("%s  %s: <unexported>\n", ind, fieldName))
+				continue
+			}
+			fieldStr := PrettyPrint(field, indent+1)
+			b.WriteString(fmt.Sprintf("%s  %s: %s\n", ind, fieldName, fieldStr))
+		}
+		b.WriteString(fmt.Sprintf("%s}", ind))
+		return b.String()
+
+	case reflect.Slice, reflect.Array:
+		var b strings.Builder
+		b.WriteString("[")
+		for i := 0; i < v.Len(); i++ {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			b.WriteString(PrettyPrint(v.Index(i), indent))
+		}
+		b.WriteString("]")
+		return b.String()
+
+	case reflect.Map:
+		var b strings.Builder
+		b.WriteString("{")
+		for _, key := range v.MapKeys() {
+			val := v.MapIndex(key)
+			if !key.CanInterface() || !val.CanInterface() {
+				continue
+			}
+			b.WriteString(fmt.Sprintf("%s: %s, ", PrettyPrint(key, indent), PrettyPrint(val, indent)))
+		}
+		b.WriteString("}")
+		return b.String()
+
+	default:
+		if v.CanInterface() {
+			return fmt.Sprintf("%#v", v.Interface())
+		}
+		return "<unexported>"
 	}
 }
