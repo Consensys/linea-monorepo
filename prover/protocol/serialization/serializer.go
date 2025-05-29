@@ -238,8 +238,6 @@ func (s *Serializer) PackValue(v reflect.Value) (any, error) {
 
 	typeOfV := v.Type()
 
-	fmt.Printf("type of v = %v\n", typeOfV.String())
-
 	// Identify custom codexes
 	if codex, ok := CustomCodexes[typeOfV]; ok {
 		return codex.Ser(s, v)
