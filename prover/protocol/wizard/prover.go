@@ -304,7 +304,7 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 	}
 
 	// Pass the precomputed polynomials
-	for key, val := range c.Precomputed.InnerMap() {
+	for key, val := range c.Precomputed.GetInnerMap() {
 		runtime.Columns.InsertNew(key, val)
 	}
 

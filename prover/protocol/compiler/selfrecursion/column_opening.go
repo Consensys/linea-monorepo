@@ -291,7 +291,7 @@ func (a *CollapsingProverAction) Run(run *wizard.ProverRuntime) {
 		roundStartAt += numPrecomputeds
 	}
 
-	for _, comsInRoundI := range a.ctx.VortexCtx.CommitmentsByRounds.Inner() {
+	for _, comsInRoundI := range a.ctx.VortexCtx.CommitmentsByRounds.GetInner() {
 		if len(comsInRoundI) == 0 {
 			continue
 		}

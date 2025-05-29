@@ -48,7 +48,7 @@ func (ctx *SelfRecursionCtx) defineYs() {
 		}
 		ranges = append(ranges, precompColIds...)
 	}
-	for _, colIDs := range ctx.VortexCtx.CommitmentsByRounds.Inner() {
+	for _, colIDs := range ctx.VortexCtx.CommitmentsByRounds.GetInner() {
 		ranges = append(ranges, colIDs...)
 	}
 	ctx.Columns.Ys = verifiercol.NewFromYs(ctx.comp, ctx.VortexCtx.Query, ranges)

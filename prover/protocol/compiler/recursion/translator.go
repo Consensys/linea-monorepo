@@ -91,7 +91,7 @@ func (comp *compTranslator) AddColumnVecVec(cols collection.VecVec[ifaces.ColID]
 
 	res := collection.NewVecVec[ifaces.ColID]()
 
-	for r, vec := range cols.Inner() {
+	for r, vec := range cols.GetInner() {
 		for _, c := range vec {
 
 			prefixedName := addPrefixToID(comp.Prefix, c)

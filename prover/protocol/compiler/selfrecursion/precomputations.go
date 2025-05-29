@@ -89,7 +89,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 		precompOffset += 1
 	}
 
-	for i, comsInRoundsI := range ctx.VortexCtx.CommitmentsByRounds.Inner() {
+	for i, comsInRoundsI := range ctx.VortexCtx.CommitmentsByRounds.GetInner() {
 
 		// Sanity-check : if coms in rounds has length zero then the
 		// associated Dh should be nil. That happens when the examinated round
