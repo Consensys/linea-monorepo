@@ -199,7 +199,7 @@ func Density(v SmartVector) int {
 	case *Constant:
 		return 0
 	case *PaddedCircularWindow:
-		return len(w.window)
+		return len(w.Window_)
 	case *Regular:
 		return len(*w)
 	case *Rotated:
@@ -220,10 +220,10 @@ func PaddingOrientationOf(v SmartVector) (int, error) {
 
 	switch w := v.(type) {
 	case *PaddedCircularWindow:
-		if w.offset == 0 {
+		if w.Offset_ == 0 {
 			return 1, nil
 		}
-		if w.offset+len(w.window) == w.totLen {
+		if w.Offset_+len(w.Window_) == w.TotLen_ {
 			return -1, nil
 		}
 	default:
@@ -249,7 +249,7 @@ func WindowBase(v SmartVector) ([]field.Element, error) {
 	case *Constant:
 		return []field.Element{}, nil
 	case *PaddedCircularWindow:
-		return w.window, nil
+		return w.Window_, nil
 	case *Regular:
 		return *w, nil
 	case *Rotated:
@@ -264,9 +264,9 @@ func WindowExt(v SmartVector) []fext.Element {
 	case *Constant:
 		return []fext.Element{}
 	case *PaddedCircularWindow:
-		temp := make([]fext.Element, len(w.window))
-		for i := 0; i < len(w.window); i++ {
-			elem := w.window[i]
+		temp := make([]fext.Element, len(w.Window_))
+		for i := 0; i < len(w.Window_); i++ {
+			elem := w.Window_[i]
 			temp[i].SetFromBase(&elem)
 		}
 		return temp
@@ -293,7 +293,7 @@ func PaddingVal(v SmartVector) (val field.Element, hasPadding bool) {
 	case *Constant:
 		return w.val, true
 	case *PaddedCircularWindow:
-		return w.paddingVal, true
+		return w.PaddingVal_, true
 	default:
 		return field.Element{}, false
 	}
@@ -313,7 +313,7 @@ func TryReduceSize(v SmartVector) (new SmartVector, totalSaving int) {
 		}
 
 		if res, ok := tryIntoRightPadded(*w); ok {
-			return res, len(*w) - len(res.window)
+			return res, len(*w) - len(res.Window_)
 		}
 
 		return v, 0
@@ -408,9 +408,9 @@ func FromCompactWithShape(v SmartVector, compact []field.Element) SmartVector {
 		return NewConstant(compact[0], v.Len())
 	case *PaddedCircularWindow:
 		// right-padded
-		if w.offset == 0 {
+		if w.Offset_ == 0 {
 
-			if len(w.window) != len(compact)-1 {
+			if len(w.Window_) != len(compact)-1 {
 				panic("unexpected shape for padded circular window")
 			}
 
@@ -420,9 +420,9 @@ func FromCompactWithShape(v SmartVector, compact []field.Element) SmartVector {
 		}
 
 		// left-padded
-		if w.offset+len(w.window) == w.totLen {
+		if w.Offset_+len(w.Window_) == w.TotLen_ {
 
-			if len(w.window) != len(compact)-1 {
+			if len(w.Window_) != len(compact)-1 {
 				panic("unexpected shape for padded circular window")
 			}
 

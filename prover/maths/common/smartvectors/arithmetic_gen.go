@@ -87,8 +87,8 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector, p ...mempoo
 	if matchedWindow > 0 && matchedConst > 0 {
 		switch w := windowRes.(type) {
 		case *PaddedCircularWindow:
-			op.constTermIntoVec(w.window, &constRes.val)
-			op.constTermIntoConst(&w.paddingVal, &constRes.val)
+			op.constTermIntoVec(w.Window_, &constRes.val)
+			op.constTermIntoConst(&w.PaddingVal_, &constRes.val)
 		case *Regular:
 			op.constTermIntoVec(*w, &constRes.val)
 		}
@@ -135,16 +135,16 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector, p ...mempoo
 
 		// The windows rolls over
 		if interval.DoesWrapAround() {
-			op.vecTermIntoVec(regvec[:interval.Stop()], windowRes.window[length-interval.Start():])
-			op.vecTermIntoVec(regvec[interval.Start():], windowRes.window[:length-interval.Start()])
-			op.constTermIntoVec(regvec[interval.Stop():interval.Start()], &windowRes.paddingVal)
+			op.vecTermIntoVec(regvec[:interval.Stop()], windowRes.Window_[length-interval.Start():])
+			op.vecTermIntoVec(regvec[interval.Start():], windowRes.Window_[:length-interval.Start()])
+			op.constTermIntoVec(regvec[interval.Stop():interval.Start()], &windowRes.PaddingVal_)
 			return regularRes
 		}
 
 		// Else, no roll-over
-		op.vecTermIntoVec(regvec[interval.Start():interval.Stop()], windowRes.window)
-		op.constTermIntoVec(regvec[:interval.Start()], &windowRes.paddingVal)
-		op.constTermIntoVec(regvec[interval.Stop():], &windowRes.paddingVal)
+		op.vecTermIntoVec(regvec[interval.Start():interval.Stop()], windowRes.Window_)
+		op.constTermIntoVec(regvec[:interval.Start()], &windowRes.PaddingVal_)
+		op.constTermIntoVec(regvec[interval.Stop():], &windowRes.PaddingVal_)
 		return regularRes
 	}
 }
