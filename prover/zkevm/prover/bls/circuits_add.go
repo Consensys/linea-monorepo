@@ -1,0 +1,166 @@
+package bls
+
+import (
+	"fmt"
+
+	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/gnark/std/algebra/emulated/sw_bls12381"
+	"github.com/consensys/gnark/std/algebra/emulated/sw_emulated"
+	"github.com/consensys/gnark/std/math/emulated"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/plonk"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+)
+
+const (
+	NAME_BLS_G1_ADD = "BLS_G1_ADD_INTEGRATION"
+)
+
+const (
+	nbRowsPerG1Add = 3 * nbG1Limbs // 2 for the inputs, 1 for the output
+	nbRowsPerG2Add = 3 * nbG2Limbs // 2 for the inputs, 1 for the output
+)
+
+type BlsAddDataSource struct {
+	CsAdd  ifaces.Column
+	Limb   ifaces.Column
+	Index  ifaces.Column
+	IsData ifaces.Column
+	IsRes  ifaces.Column
+}
+
+func newAddDataSource(comp *wizard.CompiledIOP, g group) *BlsAddDataSource {
+	var selectorCs ifaces.Column
+	switch g {
+	case G1:
+		selectorCs = comp.Columns.GetHandle("bls.CIRCUIT_SELECTOR_BLS_G1_ADD")
+	case G2:
+		selectorCs = comp.Columns.GetHandle("bls.CIRCUIT_SELECTOR_BLS_G2_ADD")
+	default:
+		panic("unknown group for bls add data source")
+	}
+	return &BlsAddDataSource{
+		CsAdd:  selectorCs,
+		Limb:   comp.Columns.GetHandle("bls.LIMB"),
+		Index:  comp.Columns.GetHandle("bls.INDEX"),
+		IsData: comp.Columns.GetHandle("bls.IS_BLS_ADD_DATA"),
+		IsRes:  comp.Columns.GetHandle("bls.IS_BLS_ADD_RESULT"),
+	}
+}
+
+type BlsAdd struct {
+	*BlsAddDataSource
+	AlignedGnarkData *plonk.Alignment
+
+	size int
+	*Limits
+	group
+}
+
+func newAdd(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsAddDataSource, plonkOptions []plonk.Option) *BlsAdd {
+	size := limits.sizeAddIntegration(g)
+
+	toAlign := &plonk.CircuitAlignmentInput{
+		Name:               NAME_BLS_G1_ADD + "_ALIGNMENT",
+		Round:              ROUND_NR,
+		DataToCircuitMask:  src.CsAdd,
+		DataToCircuit:      src.Limb,
+		Circuit:            NewAddCircuit(g, limits),
+		NbCircuitInstances: limits.nbAddCircuitInstances(g),
+		PlonkOptions:       plonkOptions,
+	}
+
+	return &BlsAdd{
+		BlsAddDataSource: src,
+		AlignedGnarkData: plonk.DefineAlignment(comp, toAlign),
+		size:             size,
+		Limits:           limits,
+		group:            g,
+	}
+}
+
+func NewG1AddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsAdd {
+	return newAdd(
+		comp,
+		G1,
+		limits,
+		newAddDataSource(comp, G1),
+		[]plonk.Option{plonk.WithRangecheck(16, 6, true)},
+	)
+}
+
+func NewG2AddZkEvm(comp *wizard.CompiledIOP, limits *Limits) *BlsAdd {
+	return newAdd(
+		comp,
+		G2,
+		limits,
+		newAddDataSource(comp, G2),
+		[]plonk.Option{plonk.WithRangecheck(16, 6, true)},
+	)
+}
+
+type MultiAddCircuit[C convertable[T], T element] struct {
+	Instances []AddInstance[C, T]
+}
+
+func NewAddCircuit(g group, limits *Limits) frontend.Circuit {
+	switch g {
+	case G1:
+		return &MultiAddCircuit[g1ElementWizard, sw_bls12381.G1Affine]{Instances: make([]AddInstance[g1ElementWizard, sw_bls12381.G1Affine], limits.NbG1AddInputInstances)}
+	case G2:
+		return &MultiAddCircuit[g2ElementWizard, sw_bls12381.G2Affine]{Instances: make([]AddInstance[g2ElementWizard, sw_bls12381.G2Affine], limits.NbG2AddInputInstances)}
+	default:
+		panic(fmt.Sprintf("unknown group for bls add circuit: %v", g))
+	}
+}
+
+type AddInstance[C convertable[T], T element] struct {
+	InputLeft, InputRight C
+	Res                   C
+}
+
+func (c *MultiAddCircuit[C, T]) Define(api frontend.API) error {
+	f, err := emulated.NewField[sw_bls12381.BaseField](api)
+	if err != nil {
+		return fmt.Errorf("new field: %w", err)
+	}
+	nbInstances := len(c.Instances)
+	As, Bs, Rs := make([]T, nbInstances), make([]T, nbInstances), make([]T, nbInstances)
+	for i := range c.Instances {
+		As[i] = c.Instances[i].InputLeft.ToElement(api, f)
+		Bs[i] = c.Instances[i].InputRight.ToElement(api, f)
+		Rs[i] = c.Instances[i].Res.ToElement(api, f)
+	}
+	var t T
+	switch any(t).(type) {
+	case sw_bls12381.G1Affine:
+		// TODO: update evmprecompiles to take the result as input and then use that
+		curve, err := sw_emulated.New[emulated.BLS12381Fp, emulated.BLS12381Fr](api, sw_emulated.GetBLS12381Params())
+		if err != nil {
+			return fmt.Errorf("get curve: %w", err)
+		}
+		for i := 0; i < nbInstances; i++ {
+			tAs := any(&As[i]).(*sw_bls12381.G1Affine)
+			tBs := any(&Bs[i]).(*sw_bls12381.G1Affine)
+			tRs := any(&Rs[i]).(*sw_bls12381.G1Affine)
+			curve.AssertIsOnCurve(tAs)
+			curve.AssertIsOnCurve(tBs)
+			res := curve.AddUnified(any(&As[i]).(*sw_bls12381.G1Affine), any(&Bs[i]).(*sw_bls12381.G1Affine))
+			curve.AssertIsEqual(res, tRs)
+		}
+	case sw_bls12381.G2Affine:
+		// TODO: update evmprecompiles to take the result as input and then use that
+		g2 := sw_bls12381.NewG2(api)
+		for i := 0; i < nbInstances; i++ {
+			tAs := any(&As[i]).(*sw_bls12381.G2Affine)
+			tBs := any(&Bs[i]).(*sw_bls12381.G2Affine)
+			tRs := any(&Rs[i]).(*sw_bls12381.G2Affine)
+			g2.AssertIsOnTwist(tAs)
+			g2.AssertIsOnTwist(tBs)
+			res := g2.AddUnified(tAs, tBs)
+			g2.AssertIsEqual(res, tRs)
+		}
+	}
+
+	return nil
+}

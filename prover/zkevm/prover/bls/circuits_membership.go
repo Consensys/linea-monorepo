@@ -17,8 +17,8 @@ type C1IsOnCurveInstance struct {
 	IsSuccess frontend.Variable
 }
 
-func (c *C1IsOnCurveInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
-	P := c.P.ToG1Element(api, fp)
+func (c C1IsOnCurveInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
+	P := c.P.ToElement(api, fp)
 	res := pairing.IsOnCurve(&P)
 	api.AssertIsEqual(res, c.IsSuccess)
 
@@ -32,8 +32,8 @@ type G1NonMembershipInstance struct {
 	P g1ElementWizard
 }
 
-func (c *G1NonMembershipInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
-	P := c.P.ToG1Element(api, fp)
+func (c G1NonMembershipInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
+	P := c.P.ToElement(api, fp)
 	pairing.AssertIsNotOnG1(&P)
 	return nil
 }
@@ -47,8 +47,8 @@ type C2IsOnCurveInstance struct {
 	IsSuccess frontend.Variable
 }
 
-func (c *C2IsOnCurveInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
-	Q := c.Q.ToG2Element(api, fp)
+func (c C2IsOnCurveInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
+	Q := c.Q.ToElement(api, fp)
 	res := pairing.IsOnG2(&Q)
 	api.AssertIsEqual(res, c.IsSuccess)
 
@@ -63,8 +63,8 @@ type G2NonMembershipInstance struct {
 	IsSuccess frontend.Variable
 }
 
-func (c *G2NonMembershipInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
-	Q := c.Q.ToG2Element(api, fp)
+func (c G2NonMembershipInstance) Check(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField], pairing *sw_bls12381.Pairing) error {
+	Q := c.Q.ToElement(api, fp)
 	pairing.AssertIsNotOnG2(&Q)
 	return nil
 }
@@ -85,6 +85,7 @@ func newMultiCheckableCircuit[T checkableInstance](nbInstances int) *multiChecka
 		Instance: make([]T, nbInstances),
 	}
 }
+
 func (c *multiCheckableCircuit[T]) Define(api frontend.API) error {
 	fp, err := emulated.NewField[sw_bls12381.BaseField](api)
 	if err != nil {

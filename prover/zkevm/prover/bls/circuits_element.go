@@ -26,7 +26,7 @@ type g1ElementWizard struct {
 	P [nbG1Limbs]frontend.Variable
 }
 
-func (c *g1ElementWizard) ToG1Element(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) sw_bls12381.G1Affine {
+func (c g1ElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) sw_bls12381.G1Affine {
 	PXlimbs := make([]frontend.Variable, fpParams.NbLimbs())
 	PYlimbs := make([]frontend.Variable, fpParams.NbLimbs())
 
@@ -51,7 +51,7 @@ type g2ElementWizard struct {
 	Q [nbG2Limbs]frontend.Variable
 }
 
-func (c *g2ElementWizard) ToG2Element(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) sw_bls12381.G2Affine {
+func (c g2ElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) sw_bls12381.G2Affine {
 	QXAlimbs := make([]frontend.Variable, fpParams.NbLimbs())
 	QXBlimbs := make([]frontend.Variable, fpParams.NbLimbs())
 	QYAlimbs := make([]frontend.Variable, fpParams.NbLimbs())
@@ -91,7 +91,7 @@ type gtElementWizard struct {
 	T [nbGtLimbs]frontend.Variable
 }
 
-func (c *gtElementWizard) ToGTElement(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) sw_bls12381.GTEl {
+func (c gtElementWizard) ToElement(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) sw_bls12381.GTEl {
 	A0Limbs := make([]frontend.Variable, fpParams.NbLimbs())
 	A1Limbs := make([]frontend.Variable, fpParams.NbLimbs())
 	A2Limbs := make([]frontend.Variable, fpParams.NbLimbs())
@@ -140,4 +140,13 @@ func (c *gtElementWizard) ToGTElement(api frontend.API, fp *emulated.Field[sw_bl
 		A11: *fp.NewElement(A11Limbs),
 	}
 	return T
+}
+
+type element interface {
+	sw_bls12381.G1Affine | sw_bls12381.G2Affine | sw_bls12381.GTEl
+}
+
+type convertable[T element] interface {
+	g1ElementWizard | g2ElementWizard | gtElementWizard
+	ToElement(api frontend.API, fp *emulated.Field[sw_bls12381.BaseField]) T
 }
