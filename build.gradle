@@ -118,11 +118,9 @@ allprojects {
           indentWithSpaces(2)
           endWithNewline()
         }
-      }
 
-      // TODO in later ticket - apply these linting rules to all monorepo projects
-      if (subproject.path.startsWith(':besu-plugins:linea-sequencer')) {
-        subproject.spotless {
+        // TODO in later ticket - apply these linting rules to all monorepo projects
+        // if (subproject.path.startsWith(':besu-plugins:linea-sequencer')) {
           java {
             target 'src/**/*.java'
             targetExclude '**/src/test/java/**ReferenceTest**', '**/src/main/generated/**', '**/src/test/generated/**', '**/src/jmh/generated/**'
@@ -130,7 +128,7 @@ allprojects {
             trimTrailingWhitespace()
             endWithNewline()
           }
-        }
+        // }
       }
     }
   }
