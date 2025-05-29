@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
@@ -304,7 +305,17 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 	if v1.Kind() == reflect.Struct {
 		equal := true
 		for i := 0; i < v1.NumField(); i++ {
+
 			structField := v1.Type().Field(i)
+
+			// When the field is has the omitted tag, we skip it there without
+			// any warning.
+			if tag, hasTag := structField.Tag.Lookup(serdeStructTag); hasTag {
+				if strings.Contains(tag, serdeStructTagOmit) {
+					continue
+				}
+			}
+
 			// Skip unexported fields
 			if !structField.IsExported() {
 				continue

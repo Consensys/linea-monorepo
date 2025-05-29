@@ -105,6 +105,7 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 		if ci.inputFiller == nil {
 			ci.inputFiller = func(_, _ int) field.Element { return field.Zero() }
 		}
+
 		// the number of inputs here we deduce -- we divide all masked values by the number of instances.
 		dataCol := ci.DataToCircuit.GetColAssignment(run)
 		maskCol := ci.DataToCircuitMask.GetColAssignment(run)
