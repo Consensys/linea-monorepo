@@ -34,7 +34,7 @@ type LogDerivativeSum struct {
 	Round  int
 	Inputs map[int]*LogDerivativeSumInput
 	ID     ifaces.QueryID
-	uuid   uuid.UUID
+	uuid   uuid.UUID `serde:"omit"`
 }
 
 // the result of the global Sum

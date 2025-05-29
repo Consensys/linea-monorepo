@@ -33,7 +33,7 @@ type grandProduct struct {
 	ID    ifaces.QueryID
 	// The list of the inputs of the query, grouped by sizes
 	Inputs map[int]*GrandProductInput
-	uuid   uuid.UUID
+	uuid   uuid.UUID `serde:"omit"`
 }
 
 type GrandProductParams struct {

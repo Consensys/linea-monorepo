@@ -19,7 +19,7 @@ type InnerProduct struct {
 	A    ifaces.Column
 	Bs   []ifaces.Column
 	ID   ifaces.QueryID
-	uuid uuid.UUID
+	uuid uuid.UUID `serde:"omit"`
 }
 
 // Inner product params

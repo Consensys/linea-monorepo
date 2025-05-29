@@ -24,7 +24,7 @@ type LocalConstraint struct {
 	*symbolic.Expression
 	ID         ifaces.QueryID
 	DomainSize int
-	uuid       uuid.UUID
+	uuid       uuid.UUID `serde:"omit"`
 }
 
 // Construct a new local constraint

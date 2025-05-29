@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
+	"strings"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -14,6 +15,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
+)
+
+var (
+	serdeStructTag     = "serde"
+	serdeStructTagOmit = "omit"
 )
 
 // Global type constants for reflection-based type checking.
@@ -813,6 +819,17 @@ func (s *Serializer) PackStructObject(obj reflect.Value) (PackedStructObject, er
 	for i := 0; i < obj.NumField(); i++ {
 		field := obj.Field(i)
 
+		// When the field is has the omitted tag, we skip it there without any
+		// warning.
+		if tag, hasTag := obj.Type().Field(i).Tag.Lookup(serdeStructTag); hasTag {
+			if strings.Contains(tag, serdeStructTagOmit) {
+				continue
+			}
+		}
+
+		// By caution, we emit a warning when finding an unexported field. To
+		// help the caller understand that we might omit something that he would
+		// not want to.
 		if !obj.Type().Field(i).IsExported() {
 			s.warnf(fmt.Sprintf("field %v.%v is not exported", obj.Type().String(), obj.Type().Field(i).Name))
 			continue
@@ -870,6 +887,14 @@ func (de *Deserializer) UnpackStructObject(v PackedStructObject, t reflect.Type)
 		structField, ok := t.FieldByName(schema.Fields[i])
 		if !ok {
 			return reflect.Value{}, fmt.Errorf("invalid field name: %v, it was not found in the struct %v", schema.Fields[i], t.String())
+		}
+
+		// When the field is has the omitted tag, we skip it there without any
+		// warning.
+		if tag, hasTag := structField.Tag.Lookup(serdeStructTag); hasTag {
+			if strings.Contains(tag, serdeStructTagOmit) {
+				continue
+			}
 		}
 
 		if !structField.IsExported() {

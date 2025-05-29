@@ -22,7 +22,7 @@ type Range struct {
 	Handle ifaces.Column
 	// Upper-bound
 	B    int
-	uuid uuid.UUID
+	uuid uuid.UUID `serde:"omit"`
 }
 
 /*

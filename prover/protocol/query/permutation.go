@@ -22,7 +22,7 @@ type Permutation struct {
 	A, B [][]ifaces.Column
 	// ID is the string indentifier of the query.
 	ID   ifaces.QueryID
-	uuid uuid.UUID
+	uuid uuid.UUID `serde:"omit"`
 }
 
 // NewPermutation constructs a new permutation query and performs all the

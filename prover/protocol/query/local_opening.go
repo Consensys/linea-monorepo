@@ -15,7 +15,7 @@ import (
 type LocalOpening struct {
 	Pol  ifaces.Column
 	ID   ifaces.QueryID
-	uuid uuid.UUID
+	uuid uuid.UUID `serde:"omit"`
 }
 
 // Contains the result of a local opening

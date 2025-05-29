@@ -67,7 +67,7 @@ type Horner struct {
 	ID ifaces.QueryID
 	// Parts are the parts of the query
 	Parts []HornerPart
-	uuid  uuid.UUID
+	uuid  uuid.UUID `serde:"omit"`
 }
 
 // HornerParamsParts represents the parameters for a part of a [Horner]

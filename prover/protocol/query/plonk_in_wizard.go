@@ -73,7 +73,7 @@ type PlonkInWizard struct {
 	// to initialize the value.
 	nbPublicInputsLoaded bool
 
-	uuid uuid.UUID
+	uuid uuid.UUID `serde:"omit"`
 }
 
 func NewPlonkInWizard(

@@ -27,7 +27,7 @@ type Projection struct {
 	Round int
 	ID    ifaces.QueryID
 	Inp   ProjectionMultiAryInput
-	uuid  uuid.UUID
+	uuid  uuid.UUID `serde:"omit"`
 }
 
 // ProjectionInput is a collection of parameters to provide to a [Projection]

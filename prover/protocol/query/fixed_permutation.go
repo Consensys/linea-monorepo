@@ -32,7 +32,7 @@ type FixedPermutation struct {
 	S []ifaces.ColAssignment
 
 	// uuid is an internal UUID used for the serialization process
-	uuid uuid.UUID
+	uuid uuid.UUID `serde:"omit"`
 }
 
 /*

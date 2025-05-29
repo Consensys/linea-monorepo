@@ -33,7 +33,7 @@ type MiMC struct {
 	Selector ifaces.Column
 	// The name of the query
 	ID   ifaces.QueryID
-	uuid uuid.UUID
+	uuid uuid.UUID `serde:"omit"`
 }
 
 // Name implements the [ifaces.Query] interface

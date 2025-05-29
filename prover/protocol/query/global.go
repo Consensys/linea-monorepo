@@ -46,7 +46,7 @@ type GlobalConstraint struct {
 	*/
 	NoBoundCancel bool
 
-	uuid uuid.UUID
+	uuid uuid.UUID `serde:"omit"`
 }
 
 /*

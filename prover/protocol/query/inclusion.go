@@ -43,7 +43,7 @@ type Inclusion struct {
 	// consider there is only a single segment.
 	IncludingFilter []ifaces.Column
 
-	uuid uuid.UUID
+	uuid uuid.UUID `serde:"omit"`
 }
 
 // NewInclusion constructs an inclusion. Will panic if it is mal-formed

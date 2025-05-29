@@ -19,7 +19,7 @@ import (
 type UnivariateEval struct {
 	Pols    []ifaces.Column
 	QueryID ifaces.QueryID
-	uuid    uuid.UUID
+	uuid    uuid.UUID `serde:"omit"`
 }
 
 // Parameters for an univariate evaluation
