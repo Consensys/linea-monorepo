@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
-	"sort"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -564,12 +563,17 @@ func (de *Deserializer) UnpackQueryID(v BackReference) (reflect.Value, error) {
 // PackCompiledIOP serializes a wizard.CompiledIOP, returning a BackReference to its index in PackedObject.CompiledIOP.
 func (s *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) (any, error) {
 	if _, ok := s.compiledIOPs[comp]; !ok {
+		// We can have recursive references to compiled IOPs, so we need to
+		// reserve the back-reference before attempting at unpacking it. That
+		// way, the recursive attempts at packing will cache-hit without
+		// creating an infinite loop.
+		s.compiledIOPs[comp] = len(s.PackedObject.CompiledIOP)
 		obj, err := s.PackStructObject(reflect.ValueOf(*comp))
 		if err != nil {
 			return nil, fmt.Errorf("could not pack compiled IOP: %w", err)
 		}
+
 		s.PackedObject.CompiledIOP = append(s.PackedObject.CompiledIOP, obj)
-		s.compiledIOPs[comp] = len(s.PackedObject.CompiledIOP) - 1
 	}
 
 	return BackReference(s.compiledIOPs[comp]), nil
@@ -881,64 +885,70 @@ func (de *Deserializer) UnpackStructObject(v PackedStructObject, t reflect.Type)
 }
 
 // PackMap serializes a map with string keys, returning a map[any]any.
-// It sorts keys for deterministic encoding and collects errors.
+// It sorts keys for deterministic encoding and collects errors. The map is
+// packed as an array of tuples.
 func (s *Serializer) PackMap(obj reflect.Value) (map[any]any, error) {
 	if obj.Kind() != reflect.Map {
 		return nil, fmt.Errorf("obj.Kind() != reflect.Map, type=%v", obj.Type().String())
 	}
 
 	var (
-		keys       = obj.MapKeys()
-		keyStrings = make([]string, 0, len(keys))
-		keyMap     = make(map[string]reflect.Value, len(keys))
+		keys         = obj.MapKeys()
+		packedKeys   = make([]any, len(keys))
+		packedValues = make([]any, len(keys))
+		globalErr    error
 	)
 
-	for _, k := range keys {
-		keyString := k.String()
-		keyStrings = append(keyStrings, keyString)
-		keyMap[keyString] = k
-	}
+	for i, key := range keys {
 
-	// Needed for deterministic encoding
-	sort.Strings(keyStrings)
-
-	var (
-		res       = make(map[any]any, len(keys))
-		globalErr error
-	)
-
-	for _, keyString := range keyStrings {
-		k := keyMap[keyString]
-		rk, err := s.PackValue(obj.MapIndex(k))
+		packedKey, err := s.PackValue(key)
 		if err != nil {
-			globalErr = errors.Join(globalErr, fmt.Errorf("key %q type=%v: %w", keyString, k.Type().String(), err))
+			globalErr = errors.Join(globalErr, fmt.Errorf("key type=%v: %w", key.Type().String(), err))
 			continue
 		}
-		res[keyString] = rk
+
+		val := obj.MapIndex(key)
+		packedValue, err := s.PackValue(val)
+		if err != nil {
+			globalErr = errors.Join(globalErr, fmt.Errorf("key=%++v, value=%++v type=%v: %w", key.Interface(), val.Interface(), val.Type().String(), err))
+			continue
+		}
+
+		packedKeys[i] = packedKey
+		packedValues[i] = packedValue
 	}
 
 	if globalErr != nil {
 		return nil, fmt.Errorf("failed to pack map, type=%v: %w", obj.Type().String(), globalErr)
 	}
 
-	return res, nil
+	return map[any]any{
+		"k": packedKeys,
+		"v": packedValues,
+	}, nil
 }
 
 // UnpackMap deserializes a map[any]any into a map of the target type.
 // It collects errors for keys and values.
-func (de *Deserializer) UnpackMap(v map[any]any, t reflect.Type) (reflect.Value, error) {
+func (de *Deserializer) UnpackMap(packedMap map[any]any, t reflect.Type) (reflect.Value, error) {
 	if t.Kind() != reflect.Map {
 		return reflect.Value{}, fmt.Errorf("invalid map type: %v", t.String())
 	}
 
 	var (
-		typeOfKey   = t.Key()
-		typeOfValue = t.Elem()
-		res         = reflect.MakeMap(t)
-		globalErr   error
+		typeOfKey    = t.Key()
+		typeOfValue  = t.Elem()
+		packedKeys   = packedMap["k"].([]any)
+		packedValues = packedMap["v"].([]any)
+		res          = reflect.MakeMap(t)
+		globalErr    error
 	)
 
-	for key, val := range v {
+	for i := range packedKeys {
+
+		key := packedKeys[i]
+		val := packedValues[i]
+
 		k, err := de.UnpackValue(key, typeOfKey)
 		if err != nil {
 			return reflect.Value{}, fmt.Errorf("could not deserialize map key %q type=%v, err=%w", key, typeOfKey.String(), err)

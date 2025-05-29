@@ -66,11 +66,11 @@ func marshalFieldElement(_ *Serializer, val reflect.Value) (any, error) {
 }
 
 func unmarshalFieldElement(_ *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
-
 	f, err := unmarshalBigInt(nil, val, TypeOfBigInt)
 	if err != nil {
 		return reflect.Value{}, err
 	}
+
 	var fe field.Element
 	fe.SetBigInt(f.Interface().(*big.Int))
 	return reflect.ValueOf(fe), nil
