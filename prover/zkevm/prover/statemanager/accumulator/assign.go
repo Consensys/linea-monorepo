@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/statemanager/splitter"
+
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/accumulator"
@@ -20,8 +23,8 @@ import (
 type leafOpenings struct {
 	prev []field.Element
 	next []field.Element
-	hKey []field.Element
-	hVal []field.Element
+	hKey [common.NbLimbU256][]field.Element
+	hVal [common.NbLimbU256][]field.Element
 }
 
 // assignmentBuilder is used to build the assignment of the [Module] module
@@ -35,12 +38,12 @@ type assignmentBuilder struct {
 	// leaves stores the assignment of the column holding the leaves (so the
 	// hash of the leaf openings) for which we give the merkle proof. This corresponds to the
 	// [Accumulator.Cols.Leaves] column.
-	leaves []field.Element
+	leaves [common.NbLimbU256][]field.Element
 	// positions stores the positions of the leaves in the merkle tree for which we give the Merkle proof. This corresponds to the [Accumulator.Cols.Positions] column.
-	positions []field.Element
+	positions [common.NbLimbU64][]field.Element
 	// roots stores the roots of the merkle tree. This corresponds
 	// to the [Accumulator.Cols.Roots] column.
-	roots []field.Element
+	roots [common.NbLimbU256][]field.Element
 	// proofs stores the path and siblings of the merkle proof. Those siblings corresponds
 	// to the [Accumulator.Cols.Proofs] column.
 	proofs []smt.Proof
@@ -51,7 +54,7 @@ type assignmentBuilder struct {
 	isActive []field.Element
 	// accumulatorCounter counts the number of rows in the accumulator. It is used to check the
 	// sequentiality of leaves and roots in accumulator and the merkle module
-	accumulatorCounter []field.Element
+	accumulatorCounter [common.NbLimbU64][]field.Element
 	// isFirst is one at the first row of any operation. This corresponds to the [Accumulator.IsFirst] column
 	isFirst []field.Element
 	// isInsert is one when we have an INSERT operation. It is
@@ -70,11 +73,11 @@ type assignmentBuilder struct {
 	// zero otherwise. This corresponds to the [Accumulator.Cols.IsReadNonZero] column
 	isReadNonZero []field.Element
 	// hKey is the hash of the key of the trace. This corresponds to the [Accumulator.Column.HKey]
-	hKey []field.Element
+	hKey [common.NbLimbU256][]field.Element
 	// hKeyMinus is the hash of the key of the previous leaf. This corresponds to the [Accumulator.Column.HKeyMinus]
-	hKeyMinus []field.Element
+	hKeyMinus [common.NbLimbU256][]field.Element
 	// hKeyPlus is the hash of the key of the next leaf. This corresponds to the [Accumulator.Column.HKeyPlus]
-	hKeyPlus []field.Element
+	hKeyPlus [common.NbLimbU256][]field.Element
 	// Pointer check columns
 	// leafMinusIndex is the index of the minus leaf for INSERT, READZERO, and DELETE. This corresponds to the [Accumulator.Column.LeafMinusIndex]
 	leafMinusIndex []field.Element
@@ -94,44 +97,54 @@ type assignmentBuilder struct {
 	// Prev, Next, HKey, HVal of a leaf. This corresponds to the [Accumulator.Column.LeafOpening]
 	leafOpening leafOpenings
 	// interm is a slice containing 3 intermediate hash states. This corresponds to the [Accumulator.Column.Interm]
-	interm [][]field.Element
+	interm [common.NbLimbU256][][]field.Element
 	// leafHash contains sequential MiMC hashes of leafOpening. It matches with Leaves except when there is empty leaf. This corresponds to the [Accumulator.Column.LeafHashes]
-	leafHashes []field.Element
+	leafHashes [common.NbLimbU256][]field.Element
 	// isEmptyLeaf is one when Leaves contains empty leaf and does not match with LeafHash
 	isEmptyLeaf []field.Element
 	// nextFreeNode contains the nextFreeNode for each row of every operation
-	nextFreeNode []field.Element
+	nextFreeNode [common.NbLimbU64][]field.Element
 	// insertionPath is the path of a newly inserted leaf when INSERT happens,
 	// it is zero otherwise
-	insertionPath []field.Element
+	insertionPath [common.NbLimbU64][]field.Element
 	// isInsertRow3 is one for row 3 of INSERT operation
 	isInsertRow3 []field.Element
 	// intermTopRoot contains the intermediate MiMC state hash
-	intermTopRoot []field.Element
+	intermTopRoot [common.NbLimbU256][]field.Element
 	// topRoot contains the MiMC hash of SubTreeRoot and NextFreeNode
-	topRoot []field.Element
+	topRoot [common.NbLimbU256][]field.Element
 }
 
 // newAssignmentBuilder returns an empty builder
 func newAssignmentBuilder(s Settings) *assignmentBuilder {
 	amb := assignmentBuilder{}
 	amb.Settings = s
-	amb.leaves = make([]field.Element, 0, amb.NumRows())
-	amb.positions = make([]field.Element, 0, amb.NumRows())
-	amb.roots = make([]field.Element, 0, amb.NumRows())
+
+	for i := 0; i < common.NbLimbU256; i++ {
+		amb.roots[i] = make([]field.Element, 0, amb.NumRows())
+		amb.leaves[i] = make([]field.Element, 0, amb.NumRows())
+		amb.hKey[i] = make([]field.Element, 0, amb.NumRows())
+		amb.hKeyMinus[i] = make([]field.Element, 0, amb.NumRows())
+		amb.hKeyPlus[i] = make([]field.Element, 0, amb.NumRows())
+	}
+
+	for i := 0; i < len(amb.positions); i++ {
+		amb.positions[i] = make([]field.Element, 0, amb.NumRows())
+
+		amb.nextFreeNode[i] = make([]field.Element, 0, amb.NumRows())
+		amb.insertionPath[i] = make([]field.Element, 0, amb.NumRows())
+		amb.accumulatorCounter[i] = make([]field.Element, 0, amb.NumRows())
+	}
+
 	amb.proofs = make([]smt.Proof, 0, amb.NumRows())
 	amb.useNextMerkleProof = make([]field.Element, 0, amb.NumRows())
 	amb.isActive = make([]field.Element, 0, amb.NumRows())
-	amb.accumulatorCounter = make([]field.Element, 0, amb.NumRows())
 	amb.isFirst = make([]field.Element, 0, amb.NumRows())
 	amb.isInsert = make([]field.Element, 0, amb.NumRows())
 	amb.isDelete = make([]field.Element, 0, amb.NumRows())
 	amb.isUpdate = make([]field.Element, 0, amb.NumRows())
 	amb.isReadZero = make([]field.Element, 0, amb.NumRows())
 	amb.isReadNonZero = make([]field.Element, 0, amb.NumRows())
-	amb.hKey = make([]field.Element, 0, amb.NumRows())
-	amb.hKeyMinus = make([]field.Element, 0, amb.NumRows())
-	amb.hKeyPlus = make([]field.Element, 0, amb.NumRows())
 	amb.leafMinusIndex = make([]field.Element, 0, amb.NumRows())
 	amb.leafMinusNext = make([]field.Element, 0, amb.NumRows())
 	amb.leafPlusIndex = make([]field.Element, 0, amb.NumRows())
@@ -141,19 +154,23 @@ func newAssignmentBuilder(s Settings) *assignmentBuilder {
 	amb.leafDeletedNext = make([]field.Element, 0, amb.NumRows())
 	amb.leafOpening.prev = make([]field.Element, 0, amb.NumRows())
 	amb.leafOpening.next = make([]field.Element, 0, amb.NumRows())
-	amb.leafOpening.hKey = make([]field.Element, 0, amb.NumRows())
-	amb.leafOpening.hVal = make([]field.Element, 0, amb.NumRows())
-	amb.interm = make([][]field.Element, 3)
-	for i := 0; i < len(amb.interm); i++ {
-		amb.interm[i] = make([]field.Element, 0, amb.NumRows())
+
+	for i := 0; i < common.NbLimbU256; i++ {
+		amb.leafHashes[i] = make([]field.Element, 0, amb.NumRows())
+
+		amb.leafOpening.hKey[i] = make([]field.Element, 0, amb.NumRows())
+		amb.leafOpening.hVal[i] = make([]field.Element, 0, amb.NumRows())
+		amb.intermTopRoot[i] = make([]field.Element, 0, amb.NumRows())
+		amb.topRoot[i] = make([]field.Element, 0, amb.NumRows())
+
+		amb.interm[i] = make([][]field.Element, 3)
+		for j := 0; j < len(amb.interm[i]); j++ {
+			amb.interm[i][j] = make([]field.Element, 0, amb.NumRows())
+		}
 	}
-	amb.leafHashes = make([]field.Element, 0, amb.NumRows())
+
 	amb.isEmptyLeaf = make([]field.Element, 0, amb.NumRows())
-	amb.nextFreeNode = make([]field.Element, 0, amb.NumRows())
-	amb.insertionPath = make([]field.Element, 0, amb.NumRows())
 	amb.isInsertRow3 = make([]field.Element, 0, amb.NumRows())
-	amb.intermTopRoot = make([]field.Element, 0, amb.NumRows())
-	amb.topRoot = make([]field.Element, 0, amb.NumRows())
 
 	return &amb
 }
@@ -218,23 +235,34 @@ func (am *Module) Assign(
 	cols := am.Cols
 
 	cols.Proofs.Assign(run, builder.proofs)
-	run.AssignColumn(cols.Roots.GetColID(), smartvectors.RightZeroPadded(builder.roots, paddedSize))
-	run.AssignColumn(cols.Positions.GetColID(), smartvectors.RightZeroPadded(builder.positions, paddedSize))
-	run.AssignColumn(cols.Leaves.GetColID(), smartvectors.RightZeroPadded(builder.leaves, paddedSize))
+
+	for i := 0; i < len(cols.Positions); i++ {
+		run.AssignColumn(cols.Positions[i].GetColID(), smartvectors.RightZeroPadded(builder.positions[i], paddedSize))
+
+		// Assignment for NextFreeNode checking columns
+		run.AssignColumn(cols.NextFreeNode[i].GetColID(), smartvectors.RightZeroPadded(builder.nextFreeNode[i], paddedSize))
+		run.AssignColumn(cols.InsertionPath[i].GetColID(), smartvectors.RightZeroPadded(builder.insertionPath[i], paddedSize))
+		run.AssignColumn(cols.AccumulatorCounter[i].GetColID(), smartvectors.RightZeroPadded(builder.accumulatorCounter[i], paddedSize))
+	}
+
+	for i := 0; i < common.NbLimbU256; i++ {
+		run.AssignColumn(cols.Roots[i].GetColID(), smartvectors.RightZeroPadded(builder.roots[i], paddedSize))
+		run.AssignColumn(cols.Leaves[i].GetColID(), smartvectors.RightZeroPadded(builder.leaves[i], paddedSize))
+
+		// assignments for the sandwitch check columns
+		run.AssignColumn(cols.HKey[i].GetColID(), smartvectors.RightZeroPadded(builder.hKey[i], paddedSize))
+		run.AssignColumn(cols.HKeyMinus[i].GetColID(), smartvectors.RightZeroPadded(builder.hKeyMinus[i], paddedSize))
+		run.AssignColumn(cols.HKeyPlus[i].GetColID(), smartvectors.RightZeroPadded(builder.hKeyPlus[i], paddedSize))
+	}
+
 	run.AssignColumn(cols.UseNextMerkleProof.GetColID(), smartvectors.RightZeroPadded(builder.useNextMerkleProof, paddedSize))
 	run.AssignColumn(cols.IsActiveAccumulator.GetColID(), smartvectors.RightZeroPadded(builder.isActive, paddedSize))
-	run.AssignColumn(cols.AccumulatorCounter.GetColID(), smartvectors.RightZeroPadded(builder.accumulatorCounter, paddedSize))
 	run.AssignColumn(cols.IsFirst.GetColID(), smartvectors.RightZeroPadded(builder.isFirst, paddedSize))
 	run.AssignColumn(cols.IsInsert.GetColID(), smartvectors.RightZeroPadded(builder.isInsert, paddedSize))
 	run.AssignColumn(cols.IsDelete.GetColID(), smartvectors.RightZeroPadded(builder.isDelete, paddedSize))
 	run.AssignColumn(cols.IsUpdate.GetColID(), smartvectors.RightZeroPadded(builder.isUpdate, paddedSize))
 	run.AssignColumn(cols.IsReadZero.GetColID(), smartvectors.RightZeroPadded(builder.isReadZero, paddedSize))
 	run.AssignColumn(cols.IsReadNonZero.GetColID(), smartvectors.RightZeroPadded(builder.isReadNonZero, paddedSize))
-
-	// assignments for the sandwitch check columns
-	run.AssignColumn(cols.HKey.GetColID(), smartvectors.RightZeroPadded(builder.hKey, paddedSize))
-	run.AssignColumn(cols.HKeyMinus.GetColID(), smartvectors.RightZeroPadded(builder.hKeyMinus, paddedSize))
-	run.AssignColumn(cols.HKeyPlus.GetColID(), smartvectors.RightZeroPadded(builder.hKeyPlus, paddedSize))
 
 	// assignments for the pointer check columns
 	run.AssignColumn(cols.LeafMinusIndex.GetColID(), smartvectors.RightZeroPadded(builder.leafMinusIndex, paddedSize))
@@ -249,8 +277,6 @@ func (am *Module) Assign(
 	am.assignLeaf(run, builder)
 
 	// Assignment for NextFreeNode checking columns
-	run.AssignColumn(cols.NextFreeNode.GetColID(), smartvectors.RightZeroPadded(builder.nextFreeNode, paddedSize))
-	run.AssignColumn(cols.InsertionPath.GetColID(), smartvectors.RightZeroPadded(builder.insertionPath, paddedSize))
 	run.AssignColumn(cols.IsInsertRow3.GetColID(), smartvectors.RightZeroPadded(builder.isInsertRow3, paddedSize))
 
 	// Assign TopRoot hash checking columns
@@ -274,16 +300,19 @@ func (am *Module) assignLeaf(
 	)
 
 	run.AssignColumn(cols.IsEmptyLeaf.GetColID(), smartvectors.RightZeroPadded(builder.isEmptyLeaf, paddedSize))
-	run.AssignColumn(cols.Interm[0].GetColID(), smartvectors.RightPadded(builder.interm[0], intermZero, paddedSize))
-	run.AssignColumn(cols.Interm[1].GetColID(), smartvectors.RightPadded(builder.interm[1], intermOne, paddedSize))
-	run.AssignColumn(cols.Interm[2].GetColID(), smartvectors.RightPadded(builder.interm[2], intermTwo, paddedSize))
 
 	run.AssignColumn(cols.LeafOpenings.Prev.GetColID(), smartvectors.RightZeroPadded(builder.leafOpening.prev, paddedSize))
 	run.AssignColumn(cols.LeafOpenings.Next.GetColID(), smartvectors.RightZeroPadded(builder.leafOpening.next, paddedSize))
-	run.AssignColumn(cols.LeafOpenings.HKey.GetColID(), smartvectors.RightZeroPadded(builder.leafOpening.hKey, paddedSize))
-	run.AssignColumn(cols.LeafOpenings.HVal.GetColID(), smartvectors.RightZeroPadded(builder.leafOpening.hVal, paddedSize))
 
-	run.AssignColumn(cols.LeafHashes.GetColID(), smartvectors.RightPadded(builder.leafHashes, leaf, paddedSize))
+	for i := 0; i < common.NbLimbU256; i++ {
+		run.AssignColumn(cols.LeafHashes[i].GetColID(), smartvectors.RightPadded(builder.leafHashes[i], leaf, paddedSize))
+		run.AssignColumn(cols.Interm[i][0].GetColID(), smartvectors.RightPadded(builder.interm[i][0], intermZero, paddedSize))
+		run.AssignColumn(cols.Interm[i][1].GetColID(), smartvectors.RightPadded(builder.interm[i][1], intermOne, paddedSize))
+		run.AssignColumn(cols.Interm[i][2].GetColID(), smartvectors.RightPadded(builder.interm[i][2], intermTwo, paddedSize))
+
+		run.AssignColumn(cols.LeafOpenings.HKey[i].GetColID(), smartvectors.RightZeroPadded(builder.leafOpening.hKey[i], paddedSize))
+		run.AssignColumn(cols.LeafOpenings.HVal[i].GetColID(), smartvectors.RightZeroPadded(builder.leafOpening.hVal[i], paddedSize))
+	}
 }
 
 func (am *Module) assignTopRootCols(
@@ -296,8 +325,10 @@ func (am *Module) assignTopRootCols(
 	intermTopRootPad := mimc.BlockCompression(field.Zero(), field.Zero())
 	topRootPad := mimc.BlockCompression(intermTopRootPad, field.Zero())
 
-	run.AssignColumn(cols.IntermTopRoot.GetColID(), smartvectors.RightPadded(builder.intermTopRoot, intermTopRootPad, paddedSize))
-	run.AssignColumn(cols.TopRoot.GetColID(), smartvectors.RightPadded(builder.topRoot, topRootPad, paddedSize))
+	for i := 0; i < common.NbLimbU256; i++ {
+		run.AssignColumn(cols.IntermTopRoot[i].GetColID(), smartvectors.RightPadded(builder.intermTopRoot[i], intermTopRootPad, paddedSize))
+		run.AssignColumn(cols.TopRoot[i].GetColID(), smartvectors.RightPadded(builder.topRoot[i], topRootPad, paddedSize))
+	}
 }
 
 // This is a low level function used by all the operations (INSERT, UPDATE, DELETE, READ-ZERO, and READ-NONZERO)
@@ -325,17 +356,51 @@ func (a *assignmentBuilder) pushRow(
 	if err := rootFr.SetBytesCanonical(root[:]); err != nil {
 		panic(err)
 	}
-	a.positions = append(a.positions, field.NewElement(uint64(proof.Path)))
-	a.roots = append(a.roots, rootFr)
-	a.proofs = append(a.proofs, proof)
+
+	rootFrLimbs := splitter.SplitElement(rootFr)
+	for i, limb := range rootFrLimbs {
+		a.roots[i] = append(a.roots[i], limb)
+	}
+
+	// Insert Row 3 operations
+	isInsRow3 := field.Zero()
+	insPath := field.Zero()
+	if isInsertRow3 {
+		isInsRow3 = field.One()
+		insPath = field.NewElement(uint64(proof.Path))
+	}
+	insPathLimbs := splitter.SplitElement(insPath)
+	a.isInsertRow3 = append(a.isInsertRow3, isInsRow3)
+
+	// accumulatorCounter will increment when a new row is pushed
+	accumulatorCounterLimbs := splitter.SplitElement(field.NewElement(uint64(len(a.accumulatorCounter[0]))))
+
+	posLimbs := splitter.SplitElement(field.NewElement(uint64(proof.Path)))
 	nextFreeNodeFr := field.NewElement(uint64(nextFreeNode))
-	a.nextFreeNode = append(a.nextFreeNode, nextFreeNodeFr)
+	nextFreeNodeFrLimbs := splitter.SplitElement(nextFreeNodeFr)
+	u64Offset := len(posLimbs) - len(a.positions)
+	for i, posLimb := range posLimbs[u64Offset:] {
+		a.positions[i] = append(a.positions[i], posLimb)
+		a.nextFreeNode[i] = append(a.nextFreeNode[i], nextFreeNodeFrLimbs[i+u64Offset])
+
+		a.insertionPath[i] = append(a.insertionPath[i], insPathLimbs[i+u64Offset])
+
+		// accumulatorCounter will increment when a new row is pushed
+		a.accumulatorCounter[i] = append(a.accumulatorCounter[i], accumulatorCounterLimbs[i+u64Offset])
+	}
+
+	a.proofs = append(a.proofs, proof)
 
 	// We assign intermTopRoot = MiMC(zero, root), and topRoot = MiMC(interm, nextFreeNode)
 	intermTopRootFr := mimc.BlockCompression(field.Zero(), nextFreeNodeFr)
 	topRootFr := mimc.BlockCompression(intermTopRootFr, rootFr)
-	a.intermTopRoot = append(a.intermTopRoot, intermTopRootFr)
-	a.topRoot = append(a.topRoot, topRootFr)
+
+	intermTopRootFrLimbs := splitter.SplitElement(intermTopRootFr)
+	topRootFrLimbs := splitter.SplitElement(topRootFr)
+	for i := 0; i < common.NbLimbU256; i++ {
+		a.intermTopRoot[i] = append(a.intermTopRoot[i], intermTopRootFrLimbs[i])
+		a.topRoot[i] = append(a.topRoot[i], topRootFrLimbs[i])
+	}
 
 	// IsFirst
 	isF := field.Zero()
@@ -349,15 +414,6 @@ func (a *assignmentBuilder) pushRow(
 		isIns = field.One()
 	}
 	a.isInsert = append(a.isInsert, isIns)
-	// Insert Row 3 operations
-	isInsRow3 := field.Zero()
-	insPath := field.Zero()
-	if isInsertRow3 {
-		isInsRow3 = field.One()
-		insPath = field.NewElement(uint64(proof.Path))
-	}
-	a.isInsertRow3 = append(a.isInsertRow3, isInsRow3)
-	a.insertionPath = append(a.insertionPath, insPath)
 	// Delete operation
 	isDel := field.Zero()
 	if isDelete {
@@ -400,15 +456,14 @@ func (a *assignmentBuilder) pushRow(
 	// values will be appended during the padding phase.
 	a.isActive = append(a.isActive, field.One())
 
-	// accumulatorCounter will increment when a new row is pushed
-	a.accumulatorCounter = append(a.accumulatorCounter, field.NewElement(uint64(len(a.accumulatorCounter))))
-
 	// if Sandwitch check is disabled then we append zero values to
 	// hKey, hKeyPlus, hKeyMinus
 	if !isSandwitchEnabled {
-		a.hKey = append(a.hKey, field.Zero())
-		a.hKeyMinus = append(a.hKeyMinus, field.Zero())
-		a.hKeyPlus = append(a.hKeyPlus, field.Zero())
+		for i := 0; i < common.NbLimbU256; i++ {
+			a.hKey[i] = append(a.hKey[i], field.Zero())
+			a.hKeyMinus[i] = append(a.hKeyMinus[i], field.Zero())
+			a.hKeyPlus[i] = append(a.hKeyPlus[i], field.Zero())
+		}
 	}
 
 	// if Pointer check is disabled then we append zero values to
@@ -442,13 +497,25 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		leaf := mimc.BlockCompression(intermTwo, hValFr)
 		a.leafOpening.prev = append(a.leafOpening.prev, prevFr)
 		a.leafOpening.next = append(a.leafOpening.next, nextFr)
-		a.leafOpening.hKey = append(a.leafOpening.hKey, hKeyFr)
-		a.leafOpening.hVal = append(a.leafOpening.hVal, hValFr)
-		a.interm[0] = append(a.interm[0], intermZero)
-		a.interm[1] = append(a.interm[1], intermOne)
-		a.interm[2] = append(a.interm[2], intermTwo)
-		a.leafHashes = append(a.leafHashes, leaf)
-		a.leaves = append(a.leaves, leaf)
+
+		leafLimbs := splitter.SplitElement(leaf)
+		hKeyFrLimbs := splitter.SplitElement(hKeyFr)
+		hValFrLimbs := splitter.SplitElement(hValFr)
+		intermZeroLimbs := splitter.SplitElement(intermZero)
+		intermOneLimbs := splitter.SplitElement(intermOne)
+		intermTwoLimbs := splitter.SplitElement(intermTwo)
+		for i := 0; i < common.NbLimbU256; i++ {
+			a.leaves[i] = append(a.leaves[i], leafLimbs[i])
+			a.leafHashes[i] = append(a.leafHashes[i], leafLimbs[i])
+
+			a.leafOpening.hKey[i] = append(a.leafOpening.hKey[i], hKeyFrLimbs[i])
+			a.leafOpening.hVal[i] = append(a.leafOpening.hVal[i], hValFrLimbs[i])
+
+			a.interm[i][0] = append(a.interm[i][0], intermZeroLimbs[i])
+			a.interm[i][1] = append(a.interm[i][1], intermOneLimbs[i])
+			a.interm[i][2] = append(a.interm[i][2], intermTwoLimbs[i])
+		}
+
 		isEmpty := field.Zero()
 		a.isEmptyLeaf = append(a.isEmptyLeaf, isEmpty)
 	} else {
@@ -458,12 +525,7 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		leaf := mimc.BlockCompression(intermTwo, field.Zero())
 		a.leafOpening.prev = append(a.leafOpening.prev, field.Zero())
 		a.leafOpening.next = append(a.leafOpening.next, field.Zero())
-		a.leafOpening.hKey = append(a.leafOpening.hKey, field.Zero())
-		a.leafOpening.hVal = append(a.leafOpening.hVal, field.Zero())
-		a.interm[0] = append(a.interm[0], intermZero)
-		a.interm[1] = append(a.interm[1], intermOne)
-		a.interm[2] = append(a.interm[2], intermTwo)
-		a.leafHashes = append(a.leafHashes, leaf)
+
 		// We insert an empty leaf in the Leaves column in this case
 		emptyLeafBytes32 := types.Bytes32{}
 		emptyLeafBytes := emptyLeafBytes32[:]
@@ -471,7 +533,24 @@ func (a *assignmentBuilder) computeLeaf(leafOpening accumulator.LeafOpening, isE
 		if err := emptyLeafFr.SetBytesCanonical(emptyLeafBytes[:]); err != nil {
 			panic(err)
 		}
-		a.leaves = append(a.leaves, emptyLeafFr)
+
+		leafLimbs := splitter.SplitElement(emptyLeafFr)
+		leafHashesLimbs := splitter.SplitElement(leaf)
+		intermZeroLimbs := splitter.SplitElement(intermZero)
+		intermOneLimbs := splitter.SplitElement(intermOne)
+		intermTwoLimbs := splitter.SplitElement(intermTwo)
+		for i := 0; i < common.NbLimbU256; i++ {
+			a.leaves[i] = append(a.leaves[i], leafLimbs[i])
+			a.leafHashes[i] = append(a.leafHashes[i], leafHashesLimbs[i])
+
+			a.leafOpening.hKey[i] = append(a.leafOpening.hKey[i], field.Zero())
+			a.leafOpening.hVal[i] = append(a.leafOpening.hVal[i], field.Zero())
+
+			a.interm[i][0] = append(a.interm[i][0], intermZeroLimbs[i])
+			a.interm[i][1] = append(a.interm[i][1], intermOneLimbs[i])
+			a.interm[i][2] = append(a.interm[i][2], intermTwoLimbs[i])
+		}
+
 		isEmpty := field.One()
 		a.isEmptyLeaf = append(a.isEmptyLeaf, isEmpty)
 	}
@@ -576,9 +655,15 @@ func pushInsertionRows[K, V io.WriterTo](
 	if err := hKeyPlusFr.SetBytesCanonical(trace.OldOpenPlus.HKey[:]); err != nil {
 		panic(err)
 	}
-	a.hKey = append(a.hKey, hKeyFr)
-	a.hKeyMinus = append(a.hKeyMinus, hKeyMinusFr)
-	a.hKeyPlus = append(a.hKeyPlus, hKeyPlusFr)
+
+	hKeyFrLimbs := splitter.SplitElement(hKeyFr)
+	hKeyMinusFrLimbs := splitter.SplitElement(hKeyMinusFr)
+	hKeyPlusFrLimbs := splitter.SplitElement(hKeyPlusFr)
+	for i := 0; i < common.NbLimbU256; i++ {
+		a.hKey[i] = append(a.hKey[i], hKeyFrLimbs[i])
+		a.hKeyMinus[i] = append(a.hKeyMinus[i], hKeyMinusFrLimbs[i])
+		a.hKeyPlus[i] = append(a.hKeyPlus[i], hKeyPlusFrLimbs[i])
+	}
 
 	// Pointer assignment for row 1
 	a.leafMinusNext = append(a.leafMinusNext, field.NewElement(uint64(trace.OldOpenMinus.Next)))
@@ -908,9 +993,16 @@ func pushReadZeroRows[K, V io.WriterTo](
 	if err := hKeyPlusFr.SetBytesCanonical(trace.OpeningPlus.HKey[:]); err != nil {
 		panic(err)
 	}
-	a.hKey = append(a.hKey, hKeyFr)
-	a.hKeyMinus = append(a.hKeyMinus, hKeyMinusFr)
-	a.hKeyPlus = append(a.hKeyPlus, hKeyPlusFr)
+
+	hKeyFrLimbs := splitter.SplitElement(hKeyFr)
+	hKeyMinusFrLimbs := splitter.SplitElement(hKeyMinusFr)
+	hKeyPlusFrLimbs := splitter.SplitElement(hKeyPlusFr)
+	for i := 0; i < common.NbLimbU256; i++ {
+		a.hKey[i] = append(a.hKey[i], hKeyFrLimbs[i])
+		a.hKeyMinus[i] = append(a.hKeyMinus[i], hKeyMinusFrLimbs[i])
+		a.hKeyPlus[i] = append(a.hKeyPlus[i], hKeyPlusFrLimbs[i])
+	}
+
 	// Pointer assignment for row1
 	a.leafMinusNext = append(a.leafMinusNext, field.NewElement(uint64(trace.OpeningMinus.Next)))
 	a.leafMinusIndex = append(a.leafMinusIndex, field.NewElement(uint64(trace.ProofMinus.Path)))

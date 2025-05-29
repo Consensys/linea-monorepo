@@ -1,6 +1,7 @@
 package accumulator
 
 import (
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/backend/execution/statemanager"
@@ -55,8 +56,10 @@ func TestAssignInsert(t *testing.T) {
 	assert.Equal(t, builder.roots[1], builder.roots[2])
 	assert.Equal(t, builder.roots[3], builder.roots[4])
 	assert.Equal(t, builder.positions[0], builder.positions[1])
-	assert.Equal(t, builder.positions[2], builder.positions[3])
-	assert.Equal(t, builder.positions[4], builder.positions[5])
+	for i := 0; i < len(builder.positions); i++ {
+		assert.Equal(t, builder.positions[i][2], builder.positions[i][3])
+		assert.Equal(t, builder.positions[i][4], builder.positions[i][5])
+	}
 	assertCorrectMerkleProof(t, builder)
 	// Verify the Merkle proofs along with the reuse in the wizard
 	assertCorrectMerkleProofsUsingWizard(t, builder)
@@ -130,8 +133,10 @@ func TestAssignDelete(t *testing.T) {
 	}
 
 	assert.Equal(t, builder.positions[0], builder.positions[1])
-	assert.Equal(t, builder.positions[2], builder.positions[3])
-	assert.Equal(t, builder.positions[4], builder.positions[5])
+	for i := 0; i < len(builder.positions); i++ {
+		assert.Equal(t, builder.positions[i][2], builder.positions[i][3])
+		assert.Equal(t, builder.positions[i][4], builder.positions[i][5])
+	}
 	assertCorrectMerkleProof(t, builder)
 	// Verify the Merkle proofs along with the reuse in the wizard
 	assertCorrectMerkleProofsUsingWizard(t, builder)
@@ -202,8 +207,11 @@ func TestAssignReadNonZero(t *testing.T) {
 
 func assertCorrectMerkleProof(t *testing.T, builder *assignmentBuilder) {
 	proofs := builder.proofs
+
 	for i, proof := range proofs {
-		assert.Equal(t, true, proof.Verify(statemanager.MIMC_CONFIG, builder.leaves[i].Bytes(), builder.roots[i].Bytes()))
+		for j, limbCol := range builder.leaves {
+			assert.Equal(t, true, proof.Verify(statemanager.MIMC_CONFIG, limbCol[i].Bytes(), builder.roots[j][i].Bytes()))
+		}
 	}
 }
 
@@ -246,9 +254,15 @@ func assertCorrectMerkleProofsUsingWizard(t *testing.T, builder *assignmentBuild
 	prove := func(run *wizard.ProverRuntime) {
 
 		proofcol.Assign(run, builder.proofs)
-		run.AssignColumn("ROOTS", smartvectors.RightZeroPadded(builder.roots, size))
-		run.AssignColumn("LEAVES", smartvectors.RightZeroPadded(builder.leaves, size))
-		run.AssignColumn("POS", smartvectors.RightZeroPadded(builder.positions, size))
+
+		for i := 0; i < common.NbLimbU256; i++ {
+			run.AssignColumn(ifaces.ColIDf("ROOTS_%d", i), smartvectors.RightZeroPadded(builder.roots[i], size))
+			run.AssignColumn(ifaces.ColIDf("LEAVES_%d", i), smartvectors.RightZeroPadded(builder.leaves[i], size))
+		}
+
+		for i := 0; i < len(builder.positions); i++ {
+			run.AssignColumn(ifaces.ColIDf("POS_%d", i), smartvectors.RightZeroPadded(builder.positions[i], size))
+		}
 		run.AssignColumn("REUSE_NEXT_PROOF", smartvectors.RightZeroPadded(builder.useNextMerkleProof, size))
 		run.AssignColumn("IS_ACTIVE", smartvectors.RightZeroPadded(builder.isActive, size))
 

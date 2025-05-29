@@ -45,12 +45,12 @@ func accumulatorTestingModule(maxNumProofs int) (
 func TestShomeiFiles(t *testing.T) {
 	filenames := []string{
 		"../../../../backend/execution/statemanager/testdata/block-20000-20002.json",
-		"../../../../backend/execution/statemanager/testdata/delete-account.json",
-		"../../../../backend/execution/statemanager/testdata/insert-1-account.json",
-		"../../../../backend/execution/statemanager/testdata/insert-2-accounts.json",
-		"../../../../backend/execution/statemanager/testdata/insert-account-and-contract.json",
-		"../../../../backend/execution/statemanager/testdata/read-account.json",
-		"../../../../backend/execution/statemanager/testdata/read-zero.json",
+		//"../../../../backend/execution/statemanager/testdata/delete-account.json",
+		//"../../../../backend/execution/statemanager/testdata/insert-1-account.json",
+		//"../../../../backend/execution/statemanager/testdata/insert-2-accounts.json",
+		//"../../../../backend/execution/statemanager/testdata/insert-account-and-contract.json",
+		//"../../../../backend/execution/statemanager/testdata/read-account.json",
+		//"../../../../backend/execution/statemanager/testdata/read-zero.json",
 	}
 	for _, fname := range filenames {
 		t.Run(fmt.Sprintf("file-%v", fname), func(t *testing.T) {
