@@ -21,23 +21,24 @@ import (
 // These define the reflect.Type of key protocol-specific types, used to identify
 // special types during serialization and deserialization.
 var (
-	TypeOfColumnNatural     = reflect.TypeOf(column.Natural{})
-	TypeOfColumnID          = reflect.TypeOf(ifaces.ColID(""))
-	TypeOfCoin              = reflect.TypeOf(coin.Info{})
-	TypeOfCoinID            = reflect.TypeOf(coin.Name(""))
-	TypeOfQuery             = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
-	TypeOfQueryID           = reflect.TypeOf(ifaces.QueryID(""))
-	TypeOfCompiledIOP       = reflect.TypeOf(&wizard.CompiledIOP{})
-	TypeOfStore             = reflect.TypeOf(&column.Store{})
-	TypeOfPackedColumn      = reflect.TypeOf(column.PackedNatural{})
-	TypeOfPackedStore       = reflect.TypeOf(column.PackedStore{})
-	TypeOfVariableMetadata  = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
-	TypeOfArrayOfExpr       = reflect.TypeOf([]*symbolic.Expression{})
-	TypeOfExpression        = reflect.TypeOf(&symbolic.Expression{})
-	TypeOfArrayOfInt        = reflect.TypeOf([]int{})
-	TypeOfFieldElement      = reflect.TypeOf(field.Element{})
-	TypeOfBigInt            = reflect.TypeOf(&big.Int{})
-	TypeOfArrOfFieldElement = reflect.TypeOf([]field.Element{})
+	TypeOfColumnNatural      = reflect.TypeOf(column.Natural{})
+	TypeOfColumnID           = reflect.TypeOf(ifaces.ColID(""))
+	TypeOfCoin               = reflect.TypeOf(coin.Info{})
+	TypeOfCoinID             = reflect.TypeOf(coin.Name(""))
+	TypeOfQuery              = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
+	TypeOfQueryID            = reflect.TypeOf(ifaces.QueryID(""))
+	TypeOfCompiledIOPPointer = reflect.TypeOf(&wizard.CompiledIOP{})
+	TypeOfCompiledIOP        = reflect.TypeOf(wizard.CompiledIOP{})
+	TypeOfStore              = reflect.TypeOf(&column.Store{})
+	TypeOfPackedColumn       = reflect.TypeOf(column.PackedNatural{})
+	TypeOfPackedStore        = reflect.TypeOf(column.PackedStore{})
+	TypeOfVariableMetadata   = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
+	TypeOfArrayOfExpr        = reflect.TypeOf([]*symbolic.Expression{})
+	TypeOfExpression         = reflect.TypeOf(&symbolic.Expression{})
+	TypeOfArrayOfInt         = reflect.TypeOf([]int{})
+	TypeOfFieldElement       = reflect.TypeOf(field.Element{})
+	TypeOfBigInt             = reflect.TypeOf(&big.Int{})
+	TypeOfArrOfFieldElement  = reflect.TypeOf([]field.Element{})
 )
 
 // BackReference represents an integer index into PackedObject arrays (e.g., Columns, Coins).
@@ -257,7 +258,7 @@ func (s *Serializer) PackValue(v reflect.Value) (any, error) {
 		return s.PackQuery(v.Interface().(ifaces.Query))
 	case typeOfV == TypeOfQueryID:
 		return s.PackQueryID(v.Interface().(ifaces.QueryID))
-	case typeOfV == TypeOfCompiledIOP:
+	case typeOfV == TypeOfCompiledIOPPointer:
 		return s.PackCompiledIOP(v.Interface().(*wizard.CompiledIOP))
 	case typeOfV == TypeOfStore:
 		return s.PackStore(v.Interface().(*column.Store))
@@ -312,7 +313,7 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 		return de.UnpackQuery(backReferenceFromCBORInt(v), t)
 	case t == TypeOfQueryID:
 		return de.UnpackQueryID(backReferenceFromCBORInt(v))
-	case t == TypeOfCompiledIOP:
+	case t == TypeOfCompiledIOPPointer:
 		return de.UnpackCompiledIOP(backReferenceFromCBORInt(v))
 	case t == TypeOfStore:
 		return de.UnpackStore(backReferenceFromCBORInt(v))
