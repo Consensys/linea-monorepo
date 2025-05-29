@@ -65,7 +65,10 @@ func NewZkEVM(
 		define = func(b *wizard.Builder) {
 			res = newZkEVM(b, &settings)
 		}
-		wizardIOP = wizard.Compile(define, settings.CompilationSuite...).BootstrapFiatShamir(settings.Metadata, serialization.SerializeCompiledIOP)
+		ser = func(wizardIOP *wizard.CompiledIOP) ([]byte, error) {
+			return serialization.Serialize(wizardIOP)
+		}
+		wizardIOP = wizard.Compile(define, settings.CompilationSuite...).BootstrapFiatShamir(settings.Metadata, ser)
 	)
 
 	res.WizardIOP = wizardIOP

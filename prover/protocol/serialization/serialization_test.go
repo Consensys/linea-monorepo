@@ -35,13 +35,11 @@ func TestSerializeValue(t *testing.T) {
 	testCases := []struct {
 		V           any
 		Expected    string
-		Mode        Mode
 		CompiledIOP *wizard.CompiledIOP
 	}{
 		{
 			V:        "someRandomString",
 			Expected: "psomeRandomString",
-			Mode:     DeclarationMode,
 		},
 		{
 			V: func() any {
@@ -49,7 +47,6 @@ func TestSerializeValue(t *testing.T) {
 				return &s
 			}(),
 			Expected: "tsomeIndirectedString",
-			Mode:     DeclarationMode,
 		},
 		{
 			V: func() any {
@@ -59,7 +56,6 @@ func TestSerializeValue(t *testing.T) {
 				return &s
 			}(),
 			Expected: "\xa2dtypei#string#0evalueUtsomeStringUnderIface",
-			Mode:     DeclarationMode,
 		},
 		{
 			V: func() any {
@@ -72,39 +68,34 @@ func TestSerializeValue(t *testing.T) {
 		{
 			V:        ifaces.QueryID("QueryID"),
 			Expected: "gQueryID",
-			Mode:     DeclarationMode,
 		},
 		func() struct {
 			V           any
 			Expected    string
-			Mode        Mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
-			comp := NewEmptyCompiledIOP()
+			comp := wizard.NewCompiledIOP()
 			nat := comp.InsertColumn(0, "myNaturalColumn", 16, column.Committed)
 			var v any = &nat
 
 			return struct {
 				V           any
 				Expected    string
-				Mode        Mode
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           v,
 				Expected:    "\xa2dtypex\x1a/protocol/column#Natural#0evaluePomyNaturalColumn",
-				Mode:        ReferenceMode,
 				CompiledIOP: comp,
 			}
 		}(),
 		func() struct {
 			V           any
 			Expected    string
-			Mode        Mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
-			comp := NewEmptyCompiledIOP()
+			comp := wizard.NewCompiledIOP()
 			nat := comp.InsertColumn(0, "myNaturalColumn", 16, column.Committed)
 			nat = column.Shift(nat, 2)
 			var v any = &nat
@@ -112,23 +103,20 @@ func TestSerializeValue(t *testing.T) {
 			return struct {
 				V           any
 				Expected    string
-				Mode        Mode
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           v,
 				Expected:    "\xa2dtypex\x1a/protocol/column#Shifted#0evalueXL\xa2foffsetA\x02fparentX9\xa2dtypex\x1a/protocol/column#Natural#0evaluePomyNaturalColumn",
-				Mode:        ReferenceMode,
 				CompiledIOP: comp,
 			}
 		}(),
 		func() struct {
 			V           any
 			Expected    string
-			Mode        Mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
-			comp := NewEmptyCompiledIOP()
+			comp := wizard.NewCompiledIOP()
 
 			col := verifiercol.NewConcatTinyColumns(
 				comp,
@@ -142,23 +130,20 @@ func TestSerializeValue(t *testing.T) {
 			return struct {
 				V           any
 				Expected    string
-				Mode        Mode
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &col,
 				Expected:    "\xa2dtypex,/protocol/column/verifiercol#FromAccessors#0evalueX\xfe\xa4dsizeA\beroundA\x00gpaddingI\x84A\x00A\x00A\x00A\x00iaccessorsXЃXC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBaacposA\x00XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBabcposA\x00XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBaccposA\x00",
-				Mode:        ReferenceMode,
 				CompiledIOP: comp,
 			}
 		}(),
 		func() struct {
 			V           any
 			Expected    string
-			Mode        Mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
-			comp := NewEmptyCompiledIOP()
+			comp := wizard.NewCompiledIOP()
 
 			var (
 				a                   = comp.InsertColumn(0, "a", 16, column.Committed)
@@ -171,23 +156,20 @@ func TestSerializeValue(t *testing.T) {
 			return struct {
 				V           any
 				Expected    string
-				Mode        Mode
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &univ,
 				Expected:    "\xa2dtypex /protocol/query#UnivariateEval#0evalueY\x01a\xa2dpolsY\x01J\x83X+\xa2dtypex\x1a/protocol/column#Natural#0evalueBaaXh\xa2dtypex\x1a/protocol/column#Shifted#0evalueX>\xa2foffsetA\x02fparentX+\xa2dtypex\x1a/protocol/column#Natural#0evalueBaaX\xb0\xa2dtypex,/protocol/column/verifiercol#FromAccessors#0evalueXt\xa4dsizeA\x04eroundA\x00gpaddingI\x84A\x00A\x00A\x00A\x00iaccessorsXF\x81XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBabcposA\x00gqueryIdEduniv",
-				Mode:        DeclarationMode,
 				CompiledIOP: comp,
 			}
 		}(),
 		func() struct {
 			V           any
 			Expected    string
-			Mode        Mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
-			comp := NewEmptyCompiledIOP()
+			comp := wizard.NewCompiledIOP()
 
 			var (
 				a      = comp.InsertColumn(0, "a", 16, column.Committed)
@@ -201,19 +183,16 @@ func TestSerializeValue(t *testing.T) {
 			return struct {
 				V           any
 				Expected    string
-				Mode        Mode
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &fromYs,
 				Expected:    "\xa2dtypex%/protocol/column/verifiercol#FromYs#0evalueXx\xa3equeryEduniveroundA\x00frangesXZ\x84BaaMlSHIFT_2_16_aBabXCxAFROM_ACCESSORS_FROM_COLUMN_POSITION_ACCESSOR_b_0_PADDING=0_SIZE=4",
-				Mode:        ReferenceMode,
 				CompiledIOP: comp,
 			}
 		}(),
 		{
 			V:           coin.NewInfo("foo", coin.IntegerVec, 16, 16, 1),
 			Expected:    "\xa5dnameDcfoodsizeA\x10dtypeA\x01eroundA\x01jupperBoundA\x10",
-			Mode:        ReferenceMode,
 			CompiledIOP: nil,
 		},
 	}
@@ -221,15 +200,17 @@ func TestSerializeValue(t *testing.T) {
 	for i := range testCases {
 		t.Run(fmt.Sprintf("test-case-%v", i), func(t *testing.T) {
 
-			v := reflect.ValueOf(testCases[i].V)
-			msg, err := SerializeValue(v, testCases[i].Mode)
+			msg, err := Serialize(testCases[i].V)
 			require.NoError(t, err)
-			require.Equal(t, testCases[i].Expected, string(msg), "wrong serialization")
 
-			deserialized, err := DeserializeValue(msg, testCases[i].Mode, v.Type(), testCases[i].CompiledIOP)
+			fmt.Printf("testcase=%v, msg=%v\n", i, string(msg))
+
+			unmarshaled := reflect.New(reflect.TypeOf(testCases[i].V)).Interface()
+			err = Deserialize(msg, unmarshaled)
 			require.NoError(t, err)
-			require.Equal(t, testCases[i].V, deserialized.Interface(), "wrong deserialization")
+
+			unmarshalledDereferenced := reflect.ValueOf(unmarshaled).Elem().Interface()
+			require.Equal(t, testCases[i].V, unmarshalledDereferenced, "wrong deserialization, \n\tleft=%++v\n\tright=%++v", testCases[i].V, unmarshalledDereferenced)
 		})
 	}
-
 }

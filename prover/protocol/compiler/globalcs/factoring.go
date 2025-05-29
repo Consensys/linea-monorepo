@@ -84,28 +84,19 @@ func (s *serializableExpr) ReadFrom(r io.Reader) (int64, error) {
 		return 0, fmt.Errorf("error while [io.ReadAll]: %w", err)
 	}
 
-	exprVal, err := serialization.DeserializeValue(
-		buf,
-		serialization.ReferenceMode,
-		reflect.TypeOf(&symbolic.Expression{}),
-		s.Comp,
-	)
-
-	if err != nil {
-		return 0, fmt.Errorf("DeserializeValue returned an error for expression: %w", err)
+	exprVal := &symbolic.Expression{}
+	if err := serialization.Deserialize(buf, exprVal); err != nil {
+		return 0, fmt.Errorf("could not deserialize the expression: %w", err)
 	}
 
-	s.Expr = exprVal.Interface().(*symbolic.Expression)
+	s.Expr = exprVal
 	return int64(len(buf)), nil
 }
 
 // WriteTo implements the [io.WriterTo] and thus the [wizard.Artefact] interface.
 func (s *serializableExpr) WriteTo(w io.Writer) (int64, error) {
 
-	blob, err := serialization.SerializeValue(
-		reflect.ValueOf(s.Expr),
-		serialization.ReferenceMode,
-	)
+	blob, err := serialization.Serialize(reflect.ValueOf(s.Expr))
 
 	if err != nil {
 		return 0, fmt.Errorf("could not serialize the expression with SerializeValue: %w", err)
