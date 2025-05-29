@@ -586,14 +586,25 @@ func (s *Deserializer) UnpackCompiledIOP(v BackReference) (reflect.Value, error)
 	}
 
 	if s.CompiledIOPs[v] == nil {
+
+		// Something to be aware of is that CompiledIOPs usually contains
+		// reference to themselves internally. Thus, if we don't cache a pointer
+		// to the compiledIOP, the deserialization will go into an infinite loop.
+		// To prevent that, we set a pointer to a zero value and it will be
+		// cached when the compiled IOP is unpacked. The pointed value is then
+		// assigned after the unpacking. With this approach, the ptr to the
+		// compiledIOP can immediately be returned for the recursive calls.
+		ptr := &wizard.CompiledIOP{}
+		s.CompiledIOPs[v] = ptr
+
 		packedCompiledIOP := s.PackedObject.CompiledIOP[v]
 		compiledIOP, err := s.UnpackStructObject(packedCompiledIOP, TypeOfCompiledIOP)
 		if err != nil {
 			return reflect.Value{}, fmt.Errorf("could not scan the unpacked compiled IOP: %w", err)
 		}
 
-		c := compiledIOP.Addr().Interface().(*wizard.CompiledIOP)
-		s.CompiledIOPs[v] = c
+		c := compiledIOP.Interface().(wizard.CompiledIOP)
+		*ptr = c
 	}
 
 	return reflect.ValueOf(s.CompiledIOPs[v]), nil
