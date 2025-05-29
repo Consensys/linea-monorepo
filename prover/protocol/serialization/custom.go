@@ -100,7 +100,9 @@ func marshalExpression(ser *Serializer, val reflect.Value) (any, error) {
 	switch op := e.Operator.(type) {
 
 	case symbolic.Variable:
-		m, em := ser.PackArrayOrSlice(reflect.ValueOf(op.Metadata))
+
+		metaValue := reflect.ValueOf(op.Metadata).Convert(TypeOfVariableMetadata)
+		m, em := ser.PackInterface(metaValue)
 		if em != nil {
 			return nil, fmt.Errorf("could not marshal expression variable metadata: %w", em)
 		}
