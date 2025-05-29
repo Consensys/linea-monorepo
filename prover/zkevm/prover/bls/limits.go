@@ -1,6 +1,19 @@
 package bls
 
+import "github.com/consensys/linea-monorepo/prover/utils"
+
 type Limits struct {
+	NbG1AddInputInstances   int
+	NbG1AddCircuitInstances int
+
+	NbG2AddInputInstances   int
+	NbG2AddCircuitInstances int
+
+	NbG1MulInputInstances   int
+	NbG1MulCircuitInstances int
+	NbG2MulInputInstances   int
+	NbG2MulCircuitInstances int
+
 	// Number of inputs per Miller loop circuits. Counted without the last
 	// Miller loop which is done in the final exponentiation part.
 	NbMillerLoopInputInstances int
@@ -21,6 +34,39 @@ type Limits struct {
 	NbG2MembershipInputInstances int
 	// Number of G2 subgroup membership circuits
 	NbG2MembershipCircuits int
+}
+
+func (l *Limits) sizeAddIntegration(g group) int {
+	switch g {
+	case G1:
+		return utils.NextPowerOfTwo(l.NbG1AddInputInstances*nbRowsPerG1Add) * utils.NextPowerOfTwo(l.NbG1AddCircuitInstances)
+	case G2:
+		return utils.NextPowerOfTwo(l.NbG2AddInputInstances*nbRowsPerG2Add) * utils.NextPowerOfTwo(l.NbG2AddCircuitInstances)
+	default:
+		panic("unknown group for bls add integration size")
+	}
+}
+
+func (l *Limits) sizeMulIntegration(g group) int {
+	switch g {
+	case G1:
+		return utils.NextPowerOfTwo(l.NbG1MulInputInstances*nbRowsPerG1Mul) * utils.NextPowerOfTwo(l.NbG1MulCircuitInstances)
+	case G2:
+		return utils.NextPowerOfTwo(l.NbG2MulInputInstances*nbRowsPerG2Mul) * utils.NextPowerOfTwo(l.NbG2MulCircuitInstances)
+	default:
+		panic("unknown group for bls mul integration size")
+	}
+}
+
+func (l *Limits) nbAddCircuitInstances(g group) int {
+	switch g {
+	case G1:
+		return l.NbG1AddCircuitInstances
+	case G2:
+		return l.NbG2AddCircuitInstances
+	default:
+		panic("unknown group for bls add circuit instances")
+	}
 }
 
 func (l *Limits) nbMillerLoops() int {
