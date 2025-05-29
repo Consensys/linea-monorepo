@@ -74,9 +74,9 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *optionSet) {
 	*/
 	comp.RegisterProverAction(numRounds-1, &dummyVerifierProverAction{
 		comp:                     comp,
-		queriesParamsToCompile:   queriesParamsToCompile,
-		queriesNoParamsToCompile: queriesNoParamsToCompile,
-		os:                       os,
+		QueriesParamsToCompile:   queriesParamsToCompile,
+		QueriesNoParamsToCompile: queriesNoParamsToCompile,
+		Os:                       os,
 	})
 }
 
@@ -84,9 +84,9 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *optionSet) {
 // It implements the [wizard.ProverAction] interface.
 type dummyVerifierProverAction struct {
 	comp                     *wizard.CompiledIOP
-	queriesParamsToCompile   []ifaces.QueryID
-	queriesNoParamsToCompile []ifaces.QueryID
-	os                       *optionSet
+	QueriesParamsToCompile   []ifaces.QueryID
+	QueriesNoParamsToCompile []ifaces.QueryID
+	Os                       *optionSet
 }
 
 // Run executes the dummy verification by checking all queries.
@@ -99,9 +99,9 @@ func (a *dummyVerifierProverAction) Run(run *wizard.ProverRuntime) {
 	/*
 		Test all the query with parameters
 	*/
-	parallel.Execute(len(a.queriesParamsToCompile), func(start, stop int) {
+	parallel.Execute(len(a.QueriesParamsToCompile), func(start, stop int) {
 		for i := start; i < stop; i++ {
-			name := a.queriesParamsToCompile[i]
+			name := a.QueriesParamsToCompile[i]
 			lock.Lock()
 			q := a.comp.QueriesParams.Data(name)
 			lock.Unlock()
@@ -120,9 +120,9 @@ func (a *dummyVerifierProverAction) Run(run *wizard.ProverRuntime) {
 	/*
 		Test the queries without parameters
 	*/
-	parallel.Execute(len(a.queriesNoParamsToCompile), func(start, stop int) {
+	parallel.Execute(len(a.QueriesNoParamsToCompile), func(start, stop int) {
 		for i := start; i < stop; i++ {
-			name := a.queriesNoParamsToCompile[i]
+			name := a.QueriesNoParamsToCompile[i]
 			lock.Lock()
 			q := a.comp.QueriesNoParams.Data(name)
 			lock.Unlock()
@@ -138,6 +138,6 @@ func (a *dummyVerifierProverAction) Run(run *wizard.ProverRuntime) {
 	})
 
 	if finalErr != nil {
-		utils.Panic("dummy.Compile brought errors: msg=%v: err=%v", a.os.msg, finalErr.Error())
+		utils.Panic("dummy.Compile brought errors: msg=%v: err=%v", a.Os.msg, finalErr.Error())
 	}
 }

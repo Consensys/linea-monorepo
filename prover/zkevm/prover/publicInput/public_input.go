@@ -58,7 +58,7 @@ type PublicInput struct {
 
 // AuxiliaryModules are intermediary modules needed to assign the data in the PublicInput
 type AuxiliaryModules struct {
-	fetchedL2L1, fetchedRollingMsg, fetchedRollingHash logs.ExtractedData
+	FetchedL2L1, FetchedRollingMsg, FetchedRollingHash logs.ExtractedData
 	logSelectors                                       logs.Selectors
 	blockTxnMetadata                                   fetch.BlockTxnMetadata
 	txnDataFetcher                                     fetch.TxnDataFetcher
@@ -238,9 +238,9 @@ func newPublicInput(
 		ChainIDNBytes:      rlpFetcher.NBytesChainID,
 		Inputs:             *inp,
 		Aux: AuxiliaryModules{
-			fetchedL2L1:              fetchedL2L1,
-			fetchedRollingMsg:        fetchedRollingMsg,
-			fetchedRollingHash:       fetchedRollingHash,
+			FetchedL2L1:              fetchedL2L1,
+			FetchedRollingMsg:        fetchedRollingMsg,
+			FetchedRollingHash:       fetchedRollingHash,
 			logSelectors:             logSelectors,
 			blockTxnMetadata:         blockTxnMeta,
 			txnDataFetcher:           txnDataFetcher,
@@ -269,11 +269,11 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	fetch.AssignTimestampFetcher(run, pub.TimestampFetcher, inp.BlockData)
 	// assign the log modules
 	aux.logSelectors.Assign(run, l2BridgeAddress)
-	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.fetchedL2L1, logs.L2L1)
-	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.fetchedRollingMsg, logs.RollingMsgNo)
-	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.fetchedRollingHash, logs.RollingHash)
-	logs.AssignHasher(run, pub.LogHasher, aux.fetchedL2L1)
-	logs.AssignRollingSelector(run, pub.RollingHashFetcher, aux.fetchedRollingHash, aux.fetchedRollingMsg)
+	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.FetchedL2L1, logs.L2L1)
+	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.FetchedRollingMsg, logs.RollingMsgNo)
+	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.FetchedRollingHash, logs.RollingHash)
+	logs.AssignHasher(run, pub.LogHasher, aux.FetchedL2L1)
+	logs.AssignRollingSelector(run, pub.RollingHashFetcher, aux.FetchedRollingHash, aux.FetchedRollingMsg)
 	// assign the root hash fetcher
 	fetch.AssignRootHashFetcher(run, pub.RootHashFetcher, *inp.StateSummary)
 	// assign the execution data collector's necessary fetchers

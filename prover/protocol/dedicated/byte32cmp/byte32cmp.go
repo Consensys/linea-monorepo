@@ -8,13 +8,13 @@ import (
 )
 
 type Bytes32CmpProverAction struct {
-	bcp *BytesCmpCtx
+	Bcp *BytesCmpCtx
 }
 
 func (a *Bytes32CmpProverAction) Run(run *wizard.ProverRuntime) {
-	colA := a.bcp.columnA.GetColAssignment(run)
-	colB := a.bcp.columnB.GetColAssignment(run)
-	a.bcp.assign(run, colA, colB)
+	colA := a.Bcp.ColumnA.GetColAssignment(run)
+	colB := a.Bcp.ColumnB.GetColAssignment(run)
+	a.Bcp.assign(run, colA, colB)
 }
 
 func Bytes32Cmp(
@@ -31,13 +31,13 @@ func Bytes32Cmp(
 ) {
 	bcp := BytesCmpCtx{}
 	round := column.MaxRound(columnA, columnB)
-	bcp.round = round
-	bcp.columnA = columnA
-	bcp.columnB = columnB
-	bcp.activeRow = activeRow
+	bcp.Round = round
+	bcp.ColumnA = columnA
+	bcp.ColumnB = columnB
+	bcp.ActiveRow = activeRow
 	comp.RegisterProverAction(round, &Bytes32CmpProverAction{
 		// Must pass pointer here
-		bcp: &bcp,
+		Bcp: &bcp,
 	})
 	// We do call the assign function before define to avoid the race condition with
 	// the bigrange module
