@@ -25,36 +25,52 @@ type CustomCodex struct {
 	Des  func(des *Deserializer, val any, t reflect.Type) (reflect.Value, error)
 }
 
-var CustomCodexes = []CustomCodex{
-	{
+var CustomCodexes = map[reflect.Type]CustomCodex{}
+
+func init() {
+
+	CustomCodexes[TypeOfBigInt] = CustomCodex{
 		Type: TypeOfBigInt,
 		Ser:  marshalBigInt,
 		Des:  unmarshalBigInt,
-	},
-	{
+	}
+
+	CustomCodexes[TypeOfFieldElement] = CustomCodex{
 		Type: TypeOfFieldElement,
 		Ser:  marshalFieldElement,
 		Des:  unmarshalFieldElement,
-	},
-	{
+	}
+
+	CustomCodexes[TypeOfExpression] = CustomCodex{
 		Type: TypeOfExpression,
 		Ser:  marshalExpression,
 		Des:  unmarshalExpression,
-	},
+	}
 }
 
 func marshalFieldElement(_ *Serializer, val reflect.Value) (any, error) {
+
 	f := val.Interface().(field.Element)
-	res := &big.Int{}
-	f.BigInt(res)
-	return f, nil
+	neg := new(field.Element).Neg(&f)
+
+	if neg.IsUint64() {
+		return -int64(neg.Uint64()), nil
+	}
+
+	bi := &big.Int{}
+	f.BigInt(bi)
+	return marshalBigInt(nil, reflect.ValueOf(bi))
 }
 
 func unmarshalFieldElement(_ *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
-	f := val.(*big.Int)
+
+	f, err := unmarshalBigInt(nil, val, TypeOfBigInt)
+	if err != nil {
+		return reflect.Value{}, err
+	}
 	var fe field.Element
-	fe.SetBigInt(f)
-	return reflect.ValueOf(f), nil
+	fe.SetBigInt(f.Interface().(*big.Int))
+	return reflect.ValueOf(fe), nil
 }
 
 func marshalBigInt(_ *Serializer, val reflect.Value) (any, error) {
@@ -62,7 +78,16 @@ func marshalBigInt(_ *Serializer, val reflect.Value) (any, error) {
 }
 
 func unmarshalBigInt(_ *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
-	return reflect.ValueOf(val.(*big.Int)), nil
+	switch v := val.(type) {
+	case big.Int:
+		return reflect.ValueOf(&v), nil
+	case int64:
+		return reflect.ValueOf(big.NewInt(v)), nil
+	case uint64:
+		return reflect.ValueOf(new(big.Int).SetUint64(v)), nil
+	default:
+		return reflect.Value{}, fmt.Errorf("invalid type: %T, value: %++v", val, val)
+	}
 }
 
 func marshalExpression(ser *Serializer, val reflect.Value) (any, error) {

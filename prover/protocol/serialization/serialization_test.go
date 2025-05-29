@@ -2,6 +2,7 @@ package serialization
 
 import (
 	"fmt"
+	"math/big"
 	"reflect"
 	"testing"
 
@@ -34,20 +35,16 @@ func TestSerdeValue(t *testing.T) {
 	RegisterImplementation(query.UnivariateEval{})
 
 	testCases := []struct {
-		V           any
-		Expected    string
-		CompiledIOP *wizard.CompiledIOP
+		V any
 	}{
 		{
-			V:        "someRandomString",
-			Expected: "psomeRandomString",
+			V: "someRandomString",
 		},
 		{
 			V: func() any {
 				var s = ifaces.ColID("someIndirectedString")
 				return &s
 			}(),
-			Expected: "tsomeIndirectedString",
 		},
 		{
 			V: func() any {
@@ -56,7 +53,6 @@ func TestSerdeValue(t *testing.T) {
 				var s any = string("someStringUnderIface")
 				return &s
 			}(),
-			Expected: "\xa2dtypei#string#0evalueUtsomeStringUnderIface",
 		},
 		{
 			V: func() any {
@@ -64,16 +60,12 @@ func TestSerdeValue(t *testing.T) {
 				var s any = &id
 				return &s
 			}(),
-			Expected: "\xa2dtypex\x18/protocol/ifaces#ColID#1evalueRqnewTypeUnderIface",
 		},
 		{
-			V:        ifaces.QueryID("QueryID"),
-			Expected: "gQueryID",
+			V: ifaces.QueryID("QueryID"),
 		},
 		func() struct {
-			V           any
-			Expected    string
-			CompiledIOP *wizard.CompiledIOP
+			V any
 		} {
 
 			comp := wizard.NewCompiledIOP()
@@ -81,19 +73,13 @@ func TestSerdeValue(t *testing.T) {
 			var v any = &nat
 
 			return struct {
-				V           any
-				Expected    string
-				CompiledIOP *wizard.CompiledIOP
+				V any
 			}{
-				V:           v,
-				Expected:    "\xa2dtypex\x1a/protocol/column#Natural#0evaluePomyNaturalColumn",
-				CompiledIOP: comp,
+				V: v,
 			}
 		}(),
 		func() struct {
-			V           any
-			Expected    string
-			CompiledIOP *wizard.CompiledIOP
+			V any
 		} {
 
 			comp := wizard.NewCompiledIOP()
@@ -102,19 +88,13 @@ func TestSerdeValue(t *testing.T) {
 			var v any = &nat
 
 			return struct {
-				V           any
-				Expected    string
-				CompiledIOP *wizard.CompiledIOP
+				V any
 			}{
-				V:           v,
-				Expected:    "\xa2dtypex\x1a/protocol/column#Shifted#0evalueXL\xa2foffsetA\x02fparentX9\xa2dtypex\x1a/protocol/column#Natural#0evaluePomyNaturalColumn",
-				CompiledIOP: comp,
+				V: v,
 			}
 		}(),
 		func() struct {
-			V           any
-			Expected    string
-			CompiledIOP *wizard.CompiledIOP
+			V any
 		} {
 
 			comp := wizard.NewCompiledIOP()
@@ -129,19 +109,13 @@ func TestSerdeValue(t *testing.T) {
 			)
 
 			return struct {
-				V           any
-				Expected    string
-				CompiledIOP *wizard.CompiledIOP
+				V any
 			}{
-				V:           &col,
-				Expected:    "\xa2dtypex,/protocol/column/verifiercol#FromAccessors#0evalueX\xfe\xa4dsizeA\beroundA\x00gpaddingI\x84A\x00A\x00A\x00A\x00iaccessorsXЃXC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBaacposA\x00XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBabcposA\x00XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBaccposA\x00",
-				CompiledIOP: comp,
+				V: &col,
 			}
 		}(),
 		func() struct {
-			V           any
-			Expected    string
-			CompiledIOP *wizard.CompiledIOP
+			V any
 		} {
 
 			comp := wizard.NewCompiledIOP()
@@ -155,19 +129,13 @@ func TestSerdeValue(t *testing.T) {
 			)
 
 			return struct {
-				V           any
-				Expected    string
-				CompiledIOP *wizard.CompiledIOP
+				V any
 			}{
-				V:           &univ,
-				Expected:    "\xa2dtypex /protocol/query#UnivariateEval#0evalueY\x01a\xa2dpolsY\x01J\x83X+\xa2dtypex\x1a/protocol/column#Natural#0evalueBaaXh\xa2dtypex\x1a/protocol/column#Shifted#0evalueX>\xa2foffsetA\x02fparentX+\xa2dtypex\x1a/protocol/column#Natural#0evalueBaaX\xb0\xa2dtypex,/protocol/column/verifiercol#FromAccessors#0evalueXt\xa4dsizeA\x04eroundA\x00gpaddingI\x84A\x00A\x00A\x00A\x00iaccessorsXF\x81XC\xa2dtypex&/protocol/accessors#FromPublicColumn#1evalueN\xa2ccolBabcposA\x00gqueryIdEduniv",
-				CompiledIOP: comp,
+				V: &univ,
 			}
 		}(),
 		func() struct {
-			V           any
-			Expected    string
-			CompiledIOP *wizard.CompiledIOP
+			V any
 		} {
 
 			comp := wizard.NewCompiledIOP()
@@ -182,19 +150,31 @@ func TestSerdeValue(t *testing.T) {
 			)
 
 			return struct {
-				V           any
-				Expected    string
-				CompiledIOP *wizard.CompiledIOP
+				V any
 			}{
-				V:           &fromYs,
-				Expected:    "\xa2dtypex%/protocol/column/verifiercol#FromYs#0evalueXx\xa3equeryEduniveroundA\x00frangesXZ\x84BaaMlSHIFT_2_16_aBabXCxAFROM_ACCESSORS_FROM_COLUMN_POSITION_ACCESSOR_b_0_PADDING=0_SIZE=4",
-				CompiledIOP: comp,
+				V: &fromYs,
 			}
 		}(),
 		{
-			V:           coin.NewInfo("foo", coin.IntegerVec, 16, 16, 1),
-			Expected:    "\xa5dnameDcfoodsizeA\x10dtypeA\x01eroundA\x01jupperBoundA\x10",
-			CompiledIOP: nil,
+			V: coin.NewInfo("foo", coin.IntegerVec, 16, 16, 1),
+		},
+		{
+			V: big.NewInt(0),
+		},
+		{
+			V: big.NewInt(1),
+		},
+		{
+			V: big.NewInt(-1),
+		},
+		{
+			V: func() any {
+				v, ok := new(big.Int).SetString("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 0)
+				if !ok {
+					panic("bigint does not work")
+				}
+				return v
+			}(),
 		},
 	}
 

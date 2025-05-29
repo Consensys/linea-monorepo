@@ -237,6 +237,13 @@ func (s *Serializer) PackValue(v reflect.Value) (any, error) {
 
 	typeOfV := v.Type()
 
+	fmt.Printf("type of v = %v\n", typeOfV.String())
+
+	// Identify custom codexes
+	if codex, ok := CustomCodexes[typeOfV]; ok {
+		return codex.Ser(s, v)
+	}
+
 	// Handle protocol-specific types.
 	switch {
 	case typeOfV == TypeOfColumnNatural:
@@ -285,6 +292,11 @@ func (s *Serializer) PackValue(v reflect.Value) (any, error) {
 func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e error) {
 	if v == nil {
 		return reflect.Zero(t), nil
+	}
+
+	// Identify custom codexes
+	if codex, ok := CustomCodexes[t]; ok {
+		return codex.Des(de, v, t)
 	}
 
 	// Handle protocol-specific types.
