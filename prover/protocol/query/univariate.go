@@ -17,10 +17,6 @@ import (
 
 // Multiple polynomials, one point
 type UnivariateEval struct {
-	univariateEval
-}
-
-type univariateEval struct {
 	Pols    []ifaces.Column
 	QueryID ifaces.QueryID
 	uuid    uuid.UUID
@@ -55,7 +51,7 @@ func NewUnivariateEval(id ifaces.QueryID, pols ...ifaces.Column) UnivariateEval 
 		}
 	}
 
-	return UnivariateEval{univariateEval{QueryID: id, Pols: pols, uuid: uuid.New()}}
+	return UnivariateEval{QueryID: id, Pols: pols, uuid: uuid.New()}
 }
 
 // Name implements the [ifaces.Query] interface

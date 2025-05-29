@@ -24,10 +24,6 @@ import (
 // of values instead of just values. In that case, all parts of the two sides
 // of multi-ary projection must have the same number of columns.
 type Projection struct {
-	projection
-}
-
-type projection struct {
 	Round int
 	ID    ifaces.QueryID
 	Inp   ProjectionMultiAryInput
@@ -132,7 +128,7 @@ func NewProjectionMultiAry(
 		}
 	}
 
-	return Projection{projection{Round: round, ID: id, Inp: inp, uuid: uuid.New()}}
+	return Projection{Round: round, ID: id, Inp: inp, uuid: uuid.New()}
 }
 
 // Name implements the [ifaces.Query] interface

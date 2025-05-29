@@ -17,10 +17,7 @@ import (
 // tables. The query can additionally feature an fragmented table meaning that
 // the including “table" to consider is the union of two tables.
 type Inclusion struct {
-	inclusion
-}
 
-type inclusion struct {
 	// Included represents the table over which the constraint applies. The
 	// columns must be a non-zero collection of columns of the same size.
 	Included []ifaces.Column
@@ -124,14 +121,14 @@ func NewInclusion(
 		}
 	}
 
-	return Inclusion{inclusion{
+	return Inclusion{
 		Included:        included,
 		Including:       including,
 		ID:              id,
 		IncludedFilter:  includedFilter,
 		IncludingFilter: includingFilter,
 		uuid:            uuid.New(),
-	}}
+	}
 }
 
 // Name implements the [ifaces.Query] interface

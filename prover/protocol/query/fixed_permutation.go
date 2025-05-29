@@ -19,10 +19,6 @@ import (
 where a fixed permutation is applied between target vectors
 i.e.,A* = A0||...||An, B* = B0||...||Bn and B* = s(A*) for the fixed permutation s */
 type FixedPermutation struct {
-	fixedPermutation
-}
-
-type fixedPermutation struct {
 	ID ifaces.QueryID
 	//splittings
 	A, B []ifaces.Column
@@ -54,13 +50,11 @@ func NewFixedPermutation(id ifaces.QueryID, S []ifaces.ColAssignment, a, b []ifa
 	}
 
 	return FixedPermutation{
-		fixedPermutation: fixedPermutation{
-			ID:   id,
-			A:    a,
-			B:    b,
-			S:    S,
-			uuid: uuid.New(),
-		},
+		ID:   id,
+		A:    a,
+		B:    b,
+		S:    S,
+		uuid: uuid.New(),
 	}
 }
 
@@ -129,6 +123,6 @@ func (f FixedPermutation) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 	panic("UNSUPPORTED : can't check an inclusion query directly into the circuit")
 }
 
-func (f fixedPermutation) UUID() uuid.UUID {
+func (f FixedPermutation) UUID() uuid.UUID {
 	return f.uuid
 }

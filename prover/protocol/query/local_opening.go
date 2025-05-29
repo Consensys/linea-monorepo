@@ -13,10 +13,6 @@ import (
 
 // Queries the opening of a handle at zero
 type LocalOpening struct {
-	localOpening
-}
-
-type localOpening struct {
 	Pol  ifaces.Column
 	ID   ifaces.QueryID
 	uuid uuid.UUID
@@ -39,7 +35,7 @@ func NewLocalOpening(id ifaces.QueryID, pol ifaces.Column) LocalOpening {
 		utils.Panic("Assigned a polynomial name with an empty length")
 	}
 
-	return LocalOpening{localOpening{ID: id, Pol: pol, uuid: uuid.New()}}
+	return LocalOpening{ID: id, Pol: pol, uuid: uuid.New()}
 }
 
 // Name implements the [ifaces.Query] interface

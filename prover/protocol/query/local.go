@@ -21,9 +21,6 @@ import (
 // in order to obtain evaluations at different points, the vector should be shifted first
 // and the constraint applied after
 type LocalConstraint struct {
-	localConstraint
-}
-type localConstraint struct {
 	*symbolic.Expression
 	ID         ifaces.QueryID
 	DomainSize int
@@ -73,7 +70,7 @@ func NewLocalConstraint(id ifaces.QueryID, expr *symbolic.Expression) LocalConst
 		utils.Panic("All commitment given had a length of zero")
 	}
 
-	res := LocalConstraint{localConstraint{Expression: expr, ID: id, DomainSize: domainSize, uuid: uuid.New()}}
+	res := LocalConstraint{Expression: expr, ID: id, DomainSize: domainSize, uuid: uuid.New()}
 	return res
 }
 

@@ -26,10 +26,7 @@ For instance A[i - 1] * B[i] = A[i] for all i \in 0..1000. The expression can al
 use random coins as variables.
 */
 type GlobalConstraint struct {
-	globalConstraint
-}
 
-type globalConstraint struct {
 	/*
 		Symbolic expression representing the global constraint
 	*/
@@ -72,11 +69,9 @@ func NewGlobalConstraint(id ifaces.QueryID, expr *symbolic.Expression, noBoundCa
 	expr.AssertValid()
 
 	res := GlobalConstraint{
-		globalConstraint{
-			Expression: expr,
-			ID:         id,
-			uuid:       uuid.New(),
-		},
+		Expression: expr,
+		ID:         id,
+		uuid:       uuid.New(),
 	}
 
 	if len(noBoundCancel) > 0 {

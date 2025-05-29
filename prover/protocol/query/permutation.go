@@ -16,10 +16,6 @@ import (
 // described in a fractioned way: the table is the union of the rows of several
 // tables.
 type Permutation struct {
-	permutation
-}
-
-type permutation struct {
 	// A and B represent the tables on both sides of the argument. The
 	// permutation can be fractionned (len(A) = len(B) > 1) and it can be
 	// multi-column (len(A[*]) = len(B[*]) > 1.
@@ -66,7 +62,7 @@ func NewPermutation(id ifaces.QueryID, a, b [][]ifaces.Column) Permutation {
 		utils.Panic("a and b must have the same total number of rows")
 	}
 
-	return Permutation{permutation{A: a, B: b, ID: id, uuid: uuid.New()}}
+	return Permutation{A: a, B: b, ID: id, uuid: uuid.New()}
 }
 
 // Name implements the [ifaces.Query] interface

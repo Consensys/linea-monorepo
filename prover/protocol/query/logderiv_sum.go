@@ -31,10 +31,6 @@ type LogDerivativeSumInput struct {
 // N_{i,j} is  the i-th element of the underlying column of  j-th Numerator
 // D_{i,j} is  the i-th element of the underlying column of  j-th Denominator
 type LogDerivativeSum struct {
-	logDerivativeSum
-}
-
-type logDerivativeSum struct {
 	Round  int
 	Inputs map[int]*LogDerivativeSumInput
 	ID     ifaces.QueryID
@@ -97,14 +93,11 @@ func NewLogDerivativeSum(round int, inp map[int]*LogDerivativeSumInput, id iface
 	}
 
 	return LogDerivativeSum{
-		logDerivativeSum{
-			Round:  round,
-			Inputs: inp,
-			ID:     id,
-			uuid:   uuid.New(),
-		},
+		Round:  round,
+		Inputs: inp,
+		ID:     id,
+		uuid:   uuid.New(),
 	}
-
 }
 
 // Name implements the [ifaces.Query] interface
@@ -405,6 +398,6 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 	return res, nil
 }
 
-func (q logDerivativeSum) UUID() uuid.UUID {
+func (q LogDerivativeSum) UUID() uuid.UUID {
 	return q.uuid
 }

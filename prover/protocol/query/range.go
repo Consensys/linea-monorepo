@@ -17,10 +17,6 @@ be within range [0, B)
 Where B is a power of two
 */
 type Range struct {
-	rangeInternal
-}
-
-type rangeInternal struct {
 	ID ifaces.QueryID
 	// Maybe we should enforce that the handle is a natural one here
 	Handle ifaces.Column
@@ -34,12 +30,10 @@ Constructor for range constraints also makes the input validation
 */
 func NewRange(id ifaces.QueryID, h ifaces.Column, b int) Range {
 	return Range{
-		rangeInternal{
-			ID:     id,
-			B:      b,
-			Handle: h,
-			uuid:   uuid.New(),
-		},
+		ID:     id,
+		B:      b,
+		Handle: h,
+		uuid:   uuid.New(),
 	}
 }
 

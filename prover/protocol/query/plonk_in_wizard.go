@@ -47,10 +47,6 @@ var _ ifaces.Query = &PlonkInWizard{}
 // instance is not used and 1 indicates it is. The query does not enforce any
 // constraints on the Selector column.
 type PlonkInWizard struct {
-	plonkInWizard
-}
-
-type plonkInWizard struct {
 	// ID is the unique identifier of the query
 	ID ifaces.QueryID
 	// Data is the column storing the values to provide as the public inputs of
@@ -89,14 +85,12 @@ func NewPlonkInWizard(
 ) *PlonkInWizard {
 
 	return &PlonkInWizard{
-		plonkInWizard{
-			ID:           ID,
-			Data:         Data,
-			Selector:     Selector,
-			Circuit:      Circuit,
-			PlonkOptions: PlonkOptions,
-			uuid:         uuid.New(),
-		},
+		ID:           ID,
+		Data:         Data,
+		Selector:     Selector,
+		Circuit:      Circuit,
+		PlonkOptions: PlonkOptions,
+		uuid:         uuid.New(),
 	}
 }
 

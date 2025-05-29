@@ -16,10 +16,6 @@ import (
 
 // Represent a batch of inner-product <a, b0>, <a, b1>, <a, b2> ...
 type InnerProduct struct {
-	innerproduct
-}
-
-type innerproduct struct {
 	A    ifaces.Column
 	Bs   []ifaces.Column
 	ID   ifaces.QueryID
@@ -63,7 +59,7 @@ func NewInnerProduct(id ifaces.QueryID, a ifaces.Column, bs ...ifaces.Column) In
 		bsSet.Insert(b.GetColID())
 	}
 
-	return InnerProduct{innerproduct{ID: id, A: a, Bs: bs, uuid: uuid.New()}}
+	return InnerProduct{ID: id, A: a, Bs: bs, uuid: uuid.New()}
 }
 
 // Constructor for fixed point univariate evaluation query parameters
