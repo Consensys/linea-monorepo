@@ -1,13 +1,17 @@
 package serialization
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"reflect"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/fxamacker/cbor/v2"
+	"github.com/pierrec/lz4/v4"
 )
 
 const (
@@ -46,18 +50,17 @@ func init() {
 		Ser:  marshalExpression,
 		Des:  unmarshalExpression,
 	}
+
+	CustomCodexes[TypeOfArrOfFieldElement] = CustomCodex{
+		Type: TypeOfArrOfFieldElement,
+		Ser:  marshalArrayOfFieldElement,
+		Des:  unmarshalArrayOfFieldElement,
+	}
 }
 
 func marshalFieldElement(_ *Serializer, val reflect.Value) (any, error) {
-
 	f := val.Interface().(field.Element)
-	neg := new(field.Element).Neg(&f)
-
-	if neg.IsUint64() {
-		return -int64(neg.Uint64()), nil
-	}
-
-	bi := &big.Int{}
+	bi := fieldToSmallBigInt(f)
 	f.BigInt(bi)
 	return marshalBigInt(nil, reflect.ValueOf(bi))
 }
@@ -237,4 +240,80 @@ func unmarshalExpression(des *Deserializer, val any, _ reflect.Type) (reflect.Va
 		return reflect.Value{}, fmt.Errorf("unsupported expression operator: %v", opType)
 
 	}
+}
+
+func marshalArrayOfFieldElement(_ *Serializer, val reflect.Value) (any, error) {
+
+	var (
+		v           = val.Interface().([]field.Element)
+		buffer      = &bytes.Buffer{}
+		lz4Encoder  = lz4.NewWriter(buffer)
+		cborEncoder = cbor.NewEncoder(lz4Encoder)
+	)
+
+	// The header of the array is its size
+	if err := cborEncoder.Encode(uint64(len(v))); err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < len(v); i++ {
+		bi := fieldToSmallBigInt(v[i])
+		if err := cborEncoder.Encode(bi); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := lz4Encoder.Close(); err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
+
+func unmarshalArrayOfFieldElement(_ *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+
+	var (
+		buffer      = bytes.NewReader(val.([]byte))
+		lz4Decoder  = lz4.NewReader(buffer)
+		cborDecoder = cbor.NewDecoder(lz4Decoder)
+	)
+
+	// The header of the encoded array is its size as a uint64
+	size := uint64(0)
+	if err := cborDecoder.Decode(&size); err != nil {
+		return reflect.Value{}, err
+	}
+
+	v := make([]field.Element, 0, size)
+	for {
+		var bi big.Int
+		if err := cborDecoder.Decode(&bi); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return reflect.Value{}, err
+		}
+
+		f := field.Element{}
+		f.SetBigInt(&bi)
+		v = append(v, f)
+	}
+
+	return reflect.ValueOf(v), nil
+}
+
+// This converts the field.Element to a smaller big.Int. This is done to
+// reduce the size of the CBOR encoding. The backward conversion is automatically
+// done [field.SetBigInt] as it handles negative values.
+func fieldToSmallBigInt(v field.Element) *big.Int {
+
+	neg := new(field.Element).Neg(&v)
+	if neg.IsUint64() {
+		n := neg.Uint64()
+		return new(big.Int).SetInt64(int64(n))
+	}
+
+	bi := &big.Int{}
+	v.BigInt(bi)
+	return bi
 }

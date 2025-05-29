@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -14,6 +15,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
@@ -175,6 +177,24 @@ func TestSerdeValue(t *testing.T) {
 				}
 				return v
 			}(),
+		},
+		{
+			V: field.NewElement(0),
+		},
+		{
+			V: field.NewElement(1),
+		},
+		{
+			V: func() any {
+				v, err := new(field.Element).SetString("0x00ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff")
+				if err != nil {
+					utils.Panic("field does not work: %v", err)
+				}
+				return v
+			}(),
+		},
+		{
+			V: vector.ForTest(0, 1, 2, 3, 4, 5, 5, 6, 7),
 		},
 	}
 
