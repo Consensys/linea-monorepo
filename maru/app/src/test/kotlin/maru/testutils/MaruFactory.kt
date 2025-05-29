@@ -34,7 +34,7 @@ object MaruFactory {
   const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX = "0x08021220$VALIDATOR_PRIVATE_KEY"
   const val VALIDATOR_ADDRESS = "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"
 
-  private fun buildMaruValidatorConfigString(
+  private fun buildMaruValidatorConfigStringWithoutP2P(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataPath: String,
@@ -45,17 +45,12 @@ object MaruFactory {
 
     [qbft-options]
 
-    [p2p-config]
-    port = 3322
-    ip-address = "127.0.0.1"
-    static-peers = []
-
     [payloadValidator]
     engine-api-endpoint = { endpoint = "$engineApiRpc" }
     eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
     """.trimIndent()
 
-  private fun buildMaruFollowerConfigString(
+  private fun buildMaruFollowerConfigStringWithoutP2P(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
     dataPath: String,
@@ -63,11 +58,6 @@ object MaruFactory {
     """
     [persistence]
     data-path="$dataPath"
-
-    [p2p-config]
-    port = 3322
-    ip-address = "127.0.0.1"
-    static-peers = []
 
     [payload-validator]
     engine-api-endpoint = { endpoint = "$engineApiRpc" }
@@ -91,7 +81,7 @@ object MaruFactory {
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
-        buildMaruValidatorConfigString(
+        buildMaruValidatorConfigStringWithoutP2P(
           ethereumJsonRpcUrl = ethereumJsonRpcUrl,
           engineApiRpc = engineApiRpc,
           dataPath = dataDir.toString(),
@@ -118,7 +108,7 @@ object MaruFactory {
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
-        buildMaruFollowerConfigString(
+        buildMaruFollowerConfigStringWithoutP2P(
           ethereumJsonRpcUrl = ethereumJsonRpcUrl,
           engineApiRpc = engineApiRpc,
           dataPath = dataDir.toString(),
@@ -143,7 +133,7 @@ object MaruFactory {
   ): MaruApp {
     val appConfig =
       Utils.parseTomlConfig<MaruConfigDtoToml>(
-        buildMaruValidatorConfigString(
+        buildMaruValidatorConfigStringWithoutP2P(
           ethereumJsonRpcUrl = ethereumJsonRpcUrl,
           engineApiRpc = engineApiRpc,
           dataPath = dataDir.toString(),
@@ -155,6 +145,7 @@ object MaruFactory {
     val genesisContent =
       """
       {
+        "chainId": 1337,
         "config": {
           "0": {
             "type": "delegated",

@@ -28,7 +28,7 @@ import org.hyperledger.besu.consensus.qbft.core.types.QbftBlockImporter
  * The import is transactional, I.e. all or nothing approach
  */
 class QbftBlockImporterAdapter(
-  private val sealedBeaconBlockImporter: SealedBeaconBlockImporter,
+  private val sealedBeaconBlockImporter: SealedBeaconBlockImporter<*>,
 ) : QbftBlockImporter {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 

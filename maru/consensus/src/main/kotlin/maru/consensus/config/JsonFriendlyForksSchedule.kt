@@ -46,11 +46,12 @@ class ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
     type: KType,
     context: DecoderContext,
   ): ConfigResult<JsonFriendlyForksSchedule> {
+    val chainId = node.getString("chainid").toUInt()
     val config = node["config"]
     val forkSpecs =
       (config as MapNode).map.map { (k, v) ->
-        val type = v["type"].valueOrNull()!!
-        val blockTimeSeconds = v["blocktimeseconds"].valueOrNull()!!.toInt()
+        val type = v.getString("type")
+        val blockTimeSeconds = v.getString("blocktimeseconds").toInt()
         mapObjectToConfiguration(type, v).map {
           ForkSpec(
             k.toLong(),
@@ -60,12 +61,14 @@ class ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
         }
       }
     return if (forkSpecs.all { it.isValid() }) {
-      JsonFriendlyForksSchedule(forkSpecs.map { it.getUnsafe() }.toSet()).valid()
+      JsonFriendlyForksSchedule(chainId, forkSpecs.map { it.getUnsafe() }.toSet()).valid()
     } else {
       val failures = forkSpecs.filter { it.isInvalid() }.map { it.getInvalidUnsafe() }
       ConfigFailure.MultipleFailures(NonEmptyList(failures)).invalid()
     }
   }
+
+  private fun Node.getString(key: String): String = this[key].valueOrNull()!!
 
   private fun mapObjectToConfiguration(
     type: String,
@@ -75,7 +78,7 @@ class ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
       "delegated" -> ElDelegatedConsensus.ElDelegatedConfig.valid()
       "qbft" ->
         QbftConsensusConfig(
-          feeRecipient = obj["feerecipient"].valueOrNull()!!.fromHexToByteArray(),
+          feeRecipient = obj.getString("feerecipient").fromHexToByteArray(),
           validatorSet =
             (obj["validatorset"] as ArrayNode)
               .elements
@@ -84,7 +87,7 @@ class ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
                   it.valueOrNull()!!.fromHexToByteArray(),
                 )
               }.toSet(),
-          elFork = ElFork.valueOf(obj["elfork"].valueOrNull()!!),
+          elFork = ElFork.valueOf(obj.getString("elfork")),
         ).valid()
 
       else -> (ConfigFailure.UnsupportedCollectionType(obj, "Unsupported fork type $type!") as ConfigFailure).invalid()
@@ -94,6 +97,7 @@ class ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
 }
 
 data class JsonFriendlyForksSchedule(
+  val chainId: UInt,
   val config: Set<ForkSpec>,
 ) {
   override fun equals(other: Any?): Boolean {
@@ -104,7 +108,7 @@ data class JsonFriendlyForksSchedule(
     return config.containsAll(otherTyped.config) && config.size == otherTyped.config.size
   }
 
-  fun domainFriendly(): ForksSchedule = ForksSchedule(config)
+  fun domainFriendly(): ForksSchedule = ForksSchedule(chainId, config)
 
   override fun hashCode(): Int = config.hashCode()
 }

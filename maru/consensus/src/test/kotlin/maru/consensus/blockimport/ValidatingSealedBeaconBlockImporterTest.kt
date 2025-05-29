@@ -22,6 +22,7 @@ import maru.consensus.validation.BeaconBlockValidatorFactory
 import maru.consensus.validation.BlockValidator
 import maru.consensus.validation.SealsVerifier
 import maru.core.ext.DataGenerators
+import maru.p2p.ValidationResult
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -41,11 +42,16 @@ class ValidatingSealedBeaconBlockImporterTest {
   fun `importBlock succeeds when seals and block are valid`() {
     val sealsVerifier = SealsVerifier { _, _ -> SafeFuture.completedFuture(Ok(Unit)) }
     val blockValidatorFactory = BeaconBlockValidatorFactory { blockValidator(Ok(Unit)) }
-    val beaconBlockImporter = SealedBeaconBlockImporter { _ -> SafeFuture.completedFuture("imported") }
+    val beaconBlockImporter =
+      SealedBeaconBlockImporter { _ ->
+        SafeFuture.completedFuture(
+          ValidationResult.Companion.Valid as ValidationResult,
+        )
+      }
 
     val importer = ValidatingSealedBeaconBlockImporter(sealsVerifier, beaconBlockImporter, blockValidatorFactory)
     val result = importer.importBlock(sealedBeaconBlock).get()
-    assertThat(result).isEqualTo(Ok("imported"))
+    assertThat(result).isEqualTo(ValidationResult.Companion.Valid)
   }
 
   @Test
@@ -53,15 +59,16 @@ class ValidatingSealedBeaconBlockImporterTest {
     val sealsVerifier = SealsVerifier { _, _ -> SafeFuture.completedFuture(Err("seal error")) }
     val blockValidatorFactory = BeaconBlockValidatorFactory { blockValidator(Ok(Unit)) }
     var called = false
+    val expectedValidationResult: ValidationResult = ValidationResult.Companion.Invalid("seal error")
     val beaconBlockImporter =
       SealedBeaconBlockImporter { _ ->
         called = true
-        SafeFuture.completedFuture(Unit)
+        SafeFuture.completedFuture(expectedValidationResult)
       }
 
     val importer = ValidatingSealedBeaconBlockImporter(sealsVerifier, beaconBlockImporter, blockValidatorFactory)
     val result = importer.importBlock(sealedBeaconBlock).get()
-    assertThat(result).isEqualTo(Err("seal error"))
+    assertThat(result).isEqualTo(expectedValidationResult)
     assertThat(called).isFalse()
   }
 
@@ -76,12 +83,12 @@ class ValidatingSealedBeaconBlockImporterTest {
     val beaconBlockImporter =
       SealedBeaconBlockImporter { _ ->
         called = true
-        SafeFuture.completedFuture("imported")
+        SafeFuture.completedFuture(ValidationResult.Companion.Valid as ValidationResult)
       }
 
     val importer = ValidatingSealedBeaconBlockImporter(sealsVerifier, beaconBlockImporter, blockValidatorFactory)
     val result = importer.importBlock(sealedBeaconBlock).get()
-    assertThat(result).isEqualTo(Err("block error"))
+    assertThat(result).isEqualTo(ValidationResult.Companion.Invalid("block error"))
     assertThat(called).isFalse()
   }
 
@@ -89,7 +96,13 @@ class ValidatingSealedBeaconBlockImporterTest {
   fun `importBlock handles exception and does not throw`() {
     val sealsVerifier = SealsVerifier { _, _ -> throw RuntimeException("fail") }
     val blockValidatorFactory = BeaconBlockValidatorFactory { blockValidator(Ok(Unit)) }
-    val beaconBlockImporter = SealedBeaconBlockImporter { _ -> SafeFuture.completedFuture(Unit) }
+    val beaconBlockImporter =
+      SealedBeaconBlockImporter { _ ->
+        SafeFuture.completedFuture(
+          ValidationResult.Companion
+            .Valid as ValidationResult,
+        )
+      }
 
     val importer = ValidatingSealedBeaconBlockImporter(sealsVerifier, beaconBlockImporter, blockValidatorFactory)
     assertThatThrownBy { importer.importBlock(sealedBeaconBlock).get() }

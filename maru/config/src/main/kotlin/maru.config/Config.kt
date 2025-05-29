@@ -39,6 +39,7 @@ data class P2P(
   val ipAddress: String,
   val port: String,
   val staticPeers: List<String> = emptyList(),
+  val reconnectDelay: Duration = 5.seconds,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

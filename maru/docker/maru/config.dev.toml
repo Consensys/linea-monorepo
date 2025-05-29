@@ -3,7 +3,6 @@ data-path="/tmp/maru-db"
 private-key-path="/tmp/maru-db/private-key"
 
 [qbft-options]
-communication-margin=100m
 
 [p2p-config]
 port = 3322

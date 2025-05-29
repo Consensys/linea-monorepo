@@ -51,6 +51,7 @@ import maru.executionlayer.manager.ExecutionLayerManager
 import maru.executionlayer.manager.JsonRpcExecutionLayerManager
 import maru.p2p.P2PNetwork
 import maru.p2p.SealedBeaconBlockHandler
+import maru.p2p.ValidationResult
 import org.apache.tuweni.bytes.Bytes32
 import org.hyperledger.besu.consensus.common.bft.BftEventQueue
 import org.hyperledger.besu.consensus.common.bft.BftExecutors
@@ -81,14 +82,13 @@ class QbftValidatorFactory(
   private val metricsSystem: MetricsSystem,
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val nextBlockTimestampProvider: NextBlockTimestampProvider,
-  private val newBlockHandler: SealedBeaconBlockHandler,
+  private val newBlockHandler: SealedBeaconBlockHandler<*>,
   private val executionLayerManager: JsonRpcExecutionLayerManager,
   private val clock: Clock,
   private val p2PNetwork: P2PNetwork,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {
     val protocolConfig = forkSpec.configuration as QbftConsensusConfig
-
     val signatureAlgorithm = SignatureAlgorithmFactory.getInstance()
     val privateKey = signatureAlgorithm.createPrivateKey(Bytes32.wrap(privateKeyBytes))
     val keyPair = signatureAlgorithm.createKeyPair(privateKey)
@@ -241,7 +241,7 @@ class QbftValidatorFactory(
     localNodeIdentity: Validator,
     beaconChain: BeaconChain,
     stateTransition: StateTransition,
-  ): SealedBeaconBlockImporter {
+  ): SealedBeaconBlockImporter<ValidationResult> {
     val finalizationStateProvider = { beaconBlockBody: BeaconBlockBody ->
       val hash = beaconBlockBody.executionPayload.blockHash
       FinalizationState(hash, hash)

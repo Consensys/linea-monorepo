@@ -21,6 +21,7 @@ import maru.p2p.SealedBeaconBlockHandler
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.doReturn
@@ -34,16 +35,16 @@ class NewSealedBeaconBlockHandlerMultiplexerTest {
   fun `should invoke all handlers for SealedBeaconBlock`() {
     val sealedBlock = DataGenerators.randomSealedBeaconBlock(1u)
     val handler1 =
-      mock<SealedBeaconBlockHandler> {
+      mock<SealedBeaconBlockHandler<Unit>> {
         on { handleSealedBlock(any()) } doReturn SafeFuture.completedFuture(Unit)
       }
     val handler2 =
-      mock<SealedBeaconBlockHandler> {
+      mock<SealedBeaconBlockHandler<Unit>> {
         on { handleSealedBlock(any()) } doReturn SafeFuture.completedFuture(Unit)
       }
     val multiplexer =
-      NewSealedBeaconBeaconBlockHandlerMultiplexer(
-        mapOf("h1" to handler1, "h2" to handler2),
+      NewSealedBeaconBlockHandlerMultiplexer<Unit>(
+        handlersMap = mapOf("h1" to handler1, "h2" to handler2),
       )
 
     val future = multiplexer.handleSealedBlock(sealedBlock)
@@ -55,19 +56,22 @@ class NewSealedBeaconBlockHandlerMultiplexerTest {
   }
 
   @Test
-  fun `should log error if sealed handler throws`() {
+  fun `should log and throw error if sealed handler throws`() {
     val sealedBlock = DataGenerators.randomSealedBeaconBlock(1u)
     val handler =
-      mock<SealedBeaconBlockHandler> {
+      mock<SealedBeaconBlockHandler<Unit>> {
         on { handleSealedBlock(any()) } doThrow RuntimeException("fail")
       }
     val logger: Logger = mock()
-    val multiplexer = NewSealedBeaconBeaconBlockHandlerMultiplexer(mapOf(pair = "h" to handler), logger)
+    val multiplexer =
+      NewSealedBeaconBlockHandlerMultiplexer<Unit>(
+        handlersMap = mapOf(pair = "h" to handler),
+        log = logger,
+      )
 
-    val future = multiplexer.handleSealedBlock(sealedBlock)
-    future.join()
-    // No exception should propagate, error is logged
-    assertThat(future.isDone).isTrue()
+    assertThrows<Throwable> {
+      multiplexer.handleSealedBlock(sealedBlock).get()
+    }
     verify(logger).error(
       argThat<String> {
         contains("New sealed block handler h failed processing") &&

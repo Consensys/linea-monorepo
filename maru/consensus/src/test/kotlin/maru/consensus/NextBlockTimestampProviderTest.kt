@@ -23,8 +23,10 @@ import maru.consensus.qbft.QbftConsensusConfig
 import org.assertj.core.api.Assertions.assertThat
 
 class NextBlockTimestampProviderTest {
+  private val chainId = 1337u
   private val forksSchedule =
     ForksSchedule(
+      chainId,
       listOf(
         ForkSpec(0, 1, QbftConsensusConfig(ByteArray(20), validatorSet = emptySet(), ElFork.Prague)),
         ForkSpec(10, 2, QbftConsensusConfig(ByteArray(20), validatorSet = emptySet(), ElFork.Prague)),

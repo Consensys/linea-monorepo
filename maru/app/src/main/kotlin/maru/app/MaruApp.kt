@@ -31,7 +31,7 @@ import maru.consensus.ProtocolStarterBlockHandler
 import maru.consensus.SealedBeaconBlockHandlerAdapter
 import maru.consensus.Web3jMetadataProvider
 import maru.consensus.blockimport.FollowerBeaconBlockImporter
-import maru.consensus.blockimport.NewSealedBeaconBeaconBlockHandlerMultiplexer
+import maru.consensus.blockimport.NewSealedBeaconBlockHandlerMultiplexer
 import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
@@ -39,7 +39,10 @@ import maru.core.Protocol
 import maru.database.kv.KvDatabaseFactory
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
-import maru.p2p.SealedBeaconBeaconBlockBroadcaster
+import maru.p2p.P2PNetworkImpl
+import maru.p2p.SealedBeaconBlockBroadcaster
+import maru.p2p.ValidationResult
+import maru.serialization.rlp.RLPSerializers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.hyperledger.besu.metrics.noop.NoOpMetricsSystem
@@ -50,7 +53,8 @@ class MaruApp(
   config: MaruConfig,
   beaconGenesisConfig: ForksSchedule,
   clock: Clock = Clock.systemUTC(),
-  val p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+  // This will only be used if config.p2pConfig is undefined
+  private var p2pNetwork: P2PNetwork = NoOpP2PNetwork,
 ) : AutoCloseable {
   private val log: Logger = LogManager.getLogger(this::javaClass)
 
@@ -58,8 +62,6 @@ class MaruApp(
     GeneratingFilePrivateKeySource(
       config.persistence.privateKeyPath.toString(),
     ).privateKeyBytes.toArray()
-
-//  private var p2pManager: P2PManager? = null
 
   init {
     if (!config.persistence.privateKeyPath
@@ -82,13 +84,15 @@ class MaruApp(
     }
     log.info(config.toString())
 
-//    config.p2pConfig?.let {
-//      p2pManager =
-//        P2PManager(
-//          privateKeyBytes = privateKeyBytes,
-//          p2pConfig = config.p2pConfig!!,
-//        )
-//    }
+    config.p2pConfig?.let {
+      p2pNetwork =
+        P2PNetworkImpl(
+          privateKeyBytes = privateKeyBytes,
+          p2pConfig = config.p2pConfig!!,
+          chainId = beaconGenesisConfig.chainId,
+          serializer = RLPSerializers.SealedBeaconBlockSerializer,
+        )
+    }
   }
 
   private val ethereumJsonRpcClient =
@@ -100,7 +104,7 @@ class MaruApp(
   private val lastBlockMetadataCache: LatestBlockMetadataCache =
     LatestBlockMetadataCache(asyncMetadataProvider.getLatestBlockMetadata())
   private val metadataProviderCacheUpdater =
-    NewBlockHandler { beaconBlock ->
+    NewBlockHandler<Unit> { beaconBlock ->
       val blockMetadata = BlockMetadata.fromBeaconBlock(beaconBlock)
       lastBlockMetadataCache.updateLatestBlockMetadata(blockMetadata)
       SafeFuture.completedFuture(Unit)
@@ -127,21 +131,21 @@ class MaruApp(
       )
   private val protocolStarter = createProtocolStarter(config, beaconGenesisConfig, clock)
 
-  private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler> =
+  private fun createFollowerHandlers(followers: FollowersConfig): Map<String, NewBlockHandler<Unit>> =
     followers.followers
       .mapValues {
         val engineApiClient = Helpers.buildExecutionEngineClient(it.value, ElFork.Prague)
-        FollowerBeaconBlockImporter.create(engineApiClient)
+        FollowerBeaconBlockImporter.create(engineApiClient) as NewBlockHandler<Unit>
       }
 
   fun start() {
-//    p2pManager?.start()
+    p2pNetwork.start()
     protocolStarter.start()
     log.info("Maru is up")
   }
 
   fun stop() {
-//    p2pManager?.stop()
+    p2pNetwork.stop()
     protocolStarter.stop()
     log.info("Maru is down")
   }
@@ -162,27 +166,32 @@ class MaruApp(
     clock: Clock,
   ): Protocol {
     val metadataCacheUpdaterHandlerEntry = "latest block metadata updater" to metadataProviderCacheUpdater
-    val delegatedConsensusNewBlockHandler =
-      NewBlockHandlerMultiplexer(
-        mapOf(metadataCacheUpdaterHandlerEntry),
-      )
 
-    val qbftConsensusBeaconBlockHandler =
-      NewBlockHandlerMultiplexer(createFollowerHandlers(config.followers) + metadataCacheUpdaterHandlerEntry)
-    val adaptedBeaconBlockImporter = SealedBeaconBlockHandlerAdapter(qbftConsensusBeaconBlockHandler)
-    val sealedBlockHandlers =
-      mapOf(
-        "beacon block handlers" to adaptedBeaconBlockImporter,
-        "p2p broadcast sealed beacon block handler" to SealedBeaconBeaconBlockBroadcaster(p2pNetwork),
-      )
-    val sealedBlockHandlerMultiplexer = NewSealedBeaconBeaconBlockHandlerMultiplexer(sealedBlockHandlers)
+    val followerHandlersMap: Map<String, NewBlockHandler<Unit>> =
+      createFollowerHandlers(config.followers)
+    val followerBlockHandlers = followerHandlersMap + metadataCacheUpdaterHandlerEntry
+    val blockImportHandlers =
+      NewBlockHandlerMultiplexer(followerBlockHandlers)
+    val adaptedBeaconBlockImporter = SealedBeaconBlockHandlerAdapter(blockImportHandlers)
+
     val beaconChainInitialization =
       BeaconChainInitialization(
         executionLayerClient = ethereumJsonRpcClient.eth1Web3j,
         beaconChain = beaconChain,
       )
+
     val qbftFactory =
       if (config.qbftOptions != null) {
+        val sealedBlockHandlers =
+          mutableMapOf(
+            "beacon block handlers" to adaptedBeaconBlockImporter,
+            "p2p broadcast sealed beacon block handler" to
+              SealedBeaconBlockBroadcaster(p2pNetwork),
+          )
+        val sealedBlockHandlerMultiplexer =
+          NewSealedBeaconBlockHandlerMultiplexer<Unit>(
+            handlersMap = sealedBlockHandlers,
+          )
         QbftProtocolFactoryWithBeaconChainInitialization(
           qbftOptions = config.qbftOptions!!,
           privateKeyBytes = privateKeyBytesWithoutPrefix(),
@@ -200,34 +209,46 @@ class MaruApp(
         QbftFollowerFactory(
           p2PNetwork = p2pNetwork,
           beaconChain = beaconChain,
-          newBlockHandler = qbftConsensusBeaconBlockHandler,
+          newBlockHandler = blockImportHandlers,
           validatorElNodeConfig = config.validatorElNode,
           beaconChainInitialization = beaconChainInitialization,
         )
       }
-    return ProtocolStarter(
-      forksSchedule = beaconGenesisConfig,
-      protocolFactory =
-        OmniProtocolFactory(
-          elDelegatedConsensusFactory =
-            ElDelegatedConsensusFactory(
-              ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
-              newBlockHandler = delegatedConsensusNewBlockHandler,
-            ),
-          qbftConsensusFactory = qbftFactory,
-        ),
-      metadataProvider = lastBlockMetadataCache,
-      nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
-    ).also {
-      val protocolStarterBlockHandlerEntry = "protocol starter" to ProtocolStarterBlockHandler(it)
-      delegatedConsensusNewBlockHandler.addHandler(
-        protocolStarterBlockHandlerEntry.first,
-        protocolStarterBlockHandlerEntry.second::handleNewBlock,
+    val delegatedConsensusNewBlockHandler =
+      NewBlockHandlerMultiplexer(
+        mapOf(metadataCacheUpdaterHandlerEntry),
       )
-      qbftConsensusBeaconBlockHandler.addHandler(
-        protocolStarterBlockHandlerEntry.first,
-        protocolStarterBlockHandlerEntry.second::handleNewBlock,
+
+    val protocolStarter =
+      ProtocolStarter(
+        forksSchedule = beaconGenesisConfig,
+        protocolFactory =
+          OmniProtocolFactory(
+            elDelegatedConsensusFactory =
+              ElDelegatedConsensusFactory(
+                ethereumJsonRpcClient = ethereumJsonRpcClient.eth1Web3j,
+                newBlockHandler = delegatedConsensusNewBlockHandler,
+              ),
+            qbftConsensusFactory = qbftFactory,
+          ),
+        metadataProvider = lastBlockMetadataCache,
+        nextBlockTimestampProvider = nextTargetBlockTimestampProvider,
       )
+
+    val protocolStarterBlockHandlerEntry = "protocol starter" to ProtocolStarterBlockHandler(protocolStarter)
+    delegatedConsensusNewBlockHandler.addHandler(
+      protocolStarterBlockHandlerEntry.first,
+    ) {
+      protocolStarterBlockHandlerEntry.second.handleNewBlock(it)
     }
+    blockImportHandlers.addHandler(
+      protocolStarterBlockHandlerEntry.first,
+    ) {
+      protocolStarterBlockHandlerEntry.second
+        .handleNewBlock(it)
+        .thenApply { ValidationResult.Companion.Valid }
+    }
+
+    return protocolStarter
   }
 }

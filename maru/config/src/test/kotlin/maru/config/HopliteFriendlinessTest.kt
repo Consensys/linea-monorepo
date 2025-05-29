@@ -35,6 +35,7 @@ class HopliteFriendlinessTest {
     port = 3322
     ip-address = "127.0.0.1"
     static-peers = []
+    reconnect-delay = 500m
 
     [payload-validator]
     engine-api-endpoint = { endpoint = "http://localhost:8555", jwt-secret-path = "/secret/path" }
@@ -59,7 +60,13 @@ class HopliteFriendlinessTest {
           persistence = Persistence(dataPath = Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           qbftOptions =
             QbftOptions(),
-          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
+          p2pConfig =
+            P2P(
+              ipAddress = "127.0.0.1",
+              port = "3322",
+              staticPeers = emptyList(),
+              reconnectDelay = 500.milliseconds,
+            ),
           payloadValidator =
             PayloadValidatorDto(
               ethApiEndpoint =
@@ -94,8 +101,15 @@ class HopliteFriendlinessTest {
       .isEqualTo(
         MaruConfigDtoToml(
           persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
-          qbftOptions = QbftOptions(),
-          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
+          qbftOptions =
+            QbftOptions(),
+          p2pConfig =
+            P2P(
+              ipAddress = "127.0.0.1",
+              port = "3322",
+              staticPeers = emptyList(),
+              reconnectDelay = 500.milliseconds,
+            ),
           payloadValidator =
             PayloadValidatorDto(
               ethApiEndpoint =
@@ -120,7 +134,13 @@ class HopliteFriendlinessTest {
       .isEqualTo(
         MaruConfig(
           persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
-          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
+          p2pConfig =
+            P2P(
+              ipAddress = "127.0.0.1",
+              port = "3322",
+              staticPeers = emptyList(),
+              reconnectDelay = 500.milliseconds,
+            ),
           validatorElNode =
             ValidatorElNode(
               engineApiEndpoint =
@@ -133,7 +153,8 @@ class HopliteFriendlinessTest {
                   endpoint = URI.create("http://localhost:8545").toURL(),
                 ),
             ),
-          qbftOptions = QbftOptions(),
+          qbftOptions =
+            QbftOptions(),
           followers =
             FollowersConfig(
               mapOf(
@@ -155,7 +176,13 @@ class HopliteFriendlinessTest {
           persistence = Persistence(Path("/some/path"), privateKeyPath = Path("/private-key/path")),
           qbftOptions =
             QbftOptions(),
-          p2pConfig = P2P(ipAddress = "127.0.0.1", port = "3322", staticPeers = emptyList()),
+          p2pConfig =
+            P2P(
+              ipAddress = "127.0.0.1",
+              port = "3322",
+              staticPeers = emptyList(),
+              reconnectDelay = 500.milliseconds,
+            ),
           validatorElNode =
             ValidatorElNode(
               engineApiEndpoint =

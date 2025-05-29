@@ -20,6 +20,7 @@ import maru.core.ext.DataGenerators
 import org.apache.logging.log4j.Logger
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.doReturn
@@ -33,11 +34,11 @@ class NewBlockHandlerMultiplexerTest {
   fun `should invoke all handlers for BeaconBlock`() {
     val block = DataGenerators.randomBeaconBlock(1u)
     val handler1 =
-      mock<NewBlockHandler> {
+      mock<NewBlockHandler<Unit>> {
         on { handleNewBlock(any()) } doReturn SafeFuture.completedFuture(Unit)
       }
     val handler2 =
-      mock<NewBlockHandler> {
+      mock<NewBlockHandler<Unit>> {
         on { handleNewBlock(any()) } doReturn SafeFuture.completedFuture(Unit)
       }
     val multiplexer =
@@ -54,19 +55,18 @@ class NewBlockHandlerMultiplexerTest {
   }
 
   @Test
-  fun `should log error if handler throws`() {
+  fun `should log and throw error if handler throws`() {
     val block = DataGenerators.randomBeaconBlock(1u)
     val handler =
-      mock<NewBlockHandler> {
+      mock<NewBlockHandler<Unit>> {
         on { handleNewBlock(any()) } doThrow RuntimeException("fail")
       }
     val logger: Logger = mock<Logger>()
     val multiplexer = NewBlockHandlerMultiplexer(handlersMap = mapOf(pair = "h" to handler), log = logger)
 
-    val future = multiplexer.handleNewBlock(block)
-    future.join()
-    // No exception should propagate, error is logged
-    assertThat(future.isDone).isTrue()
+    assertThrows<Throwable> {
+      multiplexer.handleNewBlock(block).get()
+    }
     verify(logger).error(
       argThat<String> {
         contains("New block handler h failed processing") &&

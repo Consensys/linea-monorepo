@@ -40,7 +40,7 @@ class QbftProtocolFactoryWithBeaconChainInitialization(
   private val finalizationStateProvider: (BeaconBlockBody) -> FinalizationState,
   private val beaconChain: BeaconChain,
   private val nextTargetBlockTimestampProvider: NextBlockTimestampProvider,
-  private val newBlockHandler: SealedBeaconBlockHandler,
+  private val newBlockHandler: SealedBeaconBlockHandler<*>,
   private val clock: Clock,
   private val p2pNetwork: P2PNetwork,
   private val beaconChainInitialization: BeaconChainInitialization,

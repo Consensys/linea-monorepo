@@ -18,10 +18,11 @@ package maru.consensus.qbft
 import maru.consensus.blockimport.SealedBeaconBlockImporter
 import maru.core.Protocol
 import maru.p2p.P2PNetwork
+import maru.p2p.ValidationResult
 
 class QbftConsensusFollower(
   val p2pNetwork: P2PNetwork,
-  val blockImporter: SealedBeaconBlockImporter,
+  val blockImporter: SealedBeaconBlockImporter<ValidationResult>,
 ) : Protocol {
   private var subscriptionId: Int? = null
 
@@ -31,7 +32,7 @@ class QbftConsensusFollower(
 
   override fun stop() {
     if (subscriptionId != null) {
-      p2pNetwork.unsubscribe(subscriptionId!!)
+      p2pNetwork.unsubscribeFromBlocks(subscriptionId!!)
     }
   }
 }
