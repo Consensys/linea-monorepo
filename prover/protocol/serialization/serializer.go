@@ -3,28 +3,37 @@ package serialization
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"reflect"
 	"sort"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
 )
 
 var (
-	TypeOfColumnNatural = reflect.TypeOf(column.Natural{})
-	TypeOfColumnID      = reflect.TypeOf(ifaces.ColID(""))
-	TypeOfCoin          = reflect.TypeOf(coin.Info{})
-	TypeOfCoinID        = reflect.TypeOf(coin.Name(""))
-	TypeOfQuery         = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
-	TypeOfQueryID       = reflect.TypeOf(ifaces.QueryID(""))
-	TypeOfCompiledIOP   = reflect.TypeOf((*wizard.CompiledIOP)(nil))
-	TypeOfStore         = reflect.TypeOf((*column.Store)(nil))
-	TypeOfPackedColumn  = reflect.TypeOf(column.PackedNatural{})
-	TypeOfPackedStore   = reflect.TypeOf(column.PackedStore{})
+	TypeOfColumnNatural    = reflect.TypeOf(column.Natural{})
+	TypeOfColumnID         = reflect.TypeOf(ifaces.ColID(""))
+	TypeOfCoin             = reflect.TypeOf(coin.Info{})
+	TypeOfCoinID           = reflect.TypeOf(coin.Name(""))
+	TypeOfQuery            = reflect.TypeOf((*ifaces.Query)(nil)).Elem()
+	TypeOfQueryID          = reflect.TypeOf(ifaces.QueryID(""))
+	TypeOfCompiledIOP      = reflect.TypeOf(&wizard.CompiledIOP{})
+	TypeOfStore            = reflect.TypeOf(&column.Store{})
+	TypeOfPackedColumn     = reflect.TypeOf(column.PackedNatural{})
+	TypeOfPackedStore      = reflect.TypeOf(column.PackedStore{})
+	TypeOfVariableMetadata = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
+	TypeOfArrayOfExpr      = reflect.TypeOf([]*symbolic.Expression{})
+	TypeOfExpression       = reflect.TypeOf(&symbolic.Expression{})
+	TypeOfArrayOfInt       = reflect.TypeOf([]int{})
+	TypeOfFieldElement     = reflect.TypeOf(field.Element{})
+	TypeOfBigInt           = reflect.TypeOf(&big.Int{})
 )
 
 type BackReference int
