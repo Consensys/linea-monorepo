@@ -51,6 +51,19 @@ func init() {
 	//  	- ifaces.Query
 	//
 
+	// The primitive types. Useful when serializing "any" objects
+	RegisterImplementation(bool(false))
+	RegisterImplementation(int8(0))
+	RegisterImplementation(int16(0))
+	RegisterImplementation(int32(0))
+	RegisterImplementation(int64(0))
+	RegisterImplementation(int(0))
+	RegisterImplementation(uint8(0))
+	RegisterImplementation(uint16(0))
+	RegisterImplementation(uint32(0))
+	RegisterImplementation(uint64(0))
+	RegisterImplementation(uint(0))
+
 	// Interfaces
 	RegisterImplementation(ifaces.ColID(""))
 	RegisterImplementation(ifaces.QueryID(""))
