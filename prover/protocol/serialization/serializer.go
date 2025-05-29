@@ -274,7 +274,7 @@ func (s *Serializer) PackValue(v reflect.Value) (any, error) {
 	case reflect.Struct:
 		return s.PackStructObject(v)
 	default:
-		// Panic for unsupported types (consider returning error in future).
+		// Panic for unsupported types
 		panic(fmt.Sprintf("unsupported type kind: %v", v.Kind()))
 	}
 }

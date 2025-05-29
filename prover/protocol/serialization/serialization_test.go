@@ -198,7 +198,7 @@ func TestSerdeValue(t *testing.T) {
 		},
 	}
 
-	for i := 0; i < len(testCases); i++ {
+	for i := range testCases {
 		t.Run(fmt.Sprintf("test-case-%v", i), func(t *testing.T) {
 
 			msg, err := Serialize(testCases[i].V)
