@@ -74,10 +74,10 @@ typechain-types/
 /contracts/deployments/zkevm_dev
 /contracts/lib/forge-std/
 
-/jvm-libs/linea/blob-compressor/**/linux-aarch64
-/jvm-libs/linea/blob-compressor/**/linux-x86-64
-/jvm-libs/linea/blob-compressor/**/darwin-aarch64
-/jvm-libs/linea/blob-compressor/**/darwin-x86-64
+/jvm-libs/**/linux-aarch64
+/jvm-libs/**/linux-x86-64
+/jvm-libs/**/darwin-aarch64
+/jvm-libs/**/darwin-x86-64
 
 /prover/.direnv/
 /prover/.envrc
