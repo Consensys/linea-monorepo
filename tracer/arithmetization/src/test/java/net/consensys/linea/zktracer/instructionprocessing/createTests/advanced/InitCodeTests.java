@@ -249,7 +249,7 @@ public class InitCodeTests extends TracerTestBase {
   /// /////////////////////////////////////////////////////////////////////////////////////////////
   /// Common helpers
   /// Create transactions with payloads/values for the same user and the same to account
-  List<Transaction> getTransactions(
+  public static List<Transaction> getTransactions(
       ToyAccount to, ToyAccount userAccount, List<Bytes> payloads, List<Long> values) {
 
     checkArgument(payloads.size() == values.size());
