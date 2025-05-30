@@ -380,7 +380,7 @@ type Attributes struct {
 	private  string // unexported field
 }
 
-func TestSerdeStruct(t *testing.T) {
+func TestSerdeSampleStruct(t *testing.T) {
 	p1 := &Person{
 		Name: "Alice",
 		Age:  28,
