@@ -1,10 +1,11 @@
-package serialization
+package serialization_test
 
 import (
 	"math/big"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 )
 
 // TestFieldElementSerialization tests round-trip serialization of field.Element and []field.Element.
@@ -48,14 +49,14 @@ func TestSerdeFE(t *testing.T) {
 	for _, tt := range singleTests {
 		t.Run("Single_"+tt.name, func(t *testing.T) {
 			// Serialize
-			bytes, err := Serialize(tt.val)
+			bytes, err := serialization.Serialize(tt.val)
 			if err != nil {
 				t.Errorf("failed to serialize field.Element: %v", err)
 				return
 			}
 			// Deserialize
 			var result field.Element
-			err = Deserialize(bytes, &result)
+			err = serialization.Deserialize(bytes, &result)
 			if err != nil {
 				t.Errorf("failed to deserialize field.Element: %v", err)
 				return
@@ -100,14 +101,14 @@ func TestSerdeFE(t *testing.T) {
 	for _, tt := range arrayTests {
 		t.Run("Array_"+tt.name, func(t *testing.T) {
 			// Serialize
-			bytes, err := Serialize(tt.val)
+			bytes, err := serialization.Serialize(tt.val)
 			if err != nil {
 				t.Errorf("failed to serialize []field.Element: %v", err)
 				return
 			}
 			// Deserialize
 			var result []field.Element
-			err = Deserialize(bytes, &result)
+			err = serialization.Deserialize(bytes, &result)
 			if err != nil {
 				t.Errorf("failed to deserialize []field.Element: %v", err)
 				return

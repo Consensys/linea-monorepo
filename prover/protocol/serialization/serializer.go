@@ -20,8 +20,8 @@ import (
 )
 
 var (
-	serdeStructTag     = "serde"
-	serdeStructTagOmit = "omit"
+	SerdeStructTag     = "serde"
+	SerdeStructTagOmit = "omit"
 )
 
 // Global type constants for reflection-based type checking.
@@ -874,8 +874,8 @@ func (s *Serializer) PackStructObject(obj reflect.Value) (PackedStructObject, er
 
 		// When the field is has the omitted tag, we skip it there without any
 		// warning.
-		if tag, hasTag := obj.Type().Field(i).Tag.Lookup(serdeStructTag); hasTag {
-			if strings.Contains(tag, serdeStructTagOmit) {
+		if tag, hasTag := obj.Type().Field(i).Tag.Lookup(SerdeStructTag); hasTag {
+			if strings.Contains(tag, SerdeStructTagOmit) {
 				continue
 			}
 		}
@@ -944,8 +944,8 @@ func (de *Deserializer) UnpackStructObject(v PackedStructObject, t reflect.Type)
 
 		// When the field is has the omitted tag, we skip it there without any
 		// warning.
-		if tag, hasTag := structField.Tag.Lookup(serdeStructTag); hasTag {
-			if strings.Contains(tag, serdeStructTagOmit) {
+		if tag, hasTag := structField.Tag.Lookup(SerdeStructTag); hasTag {
+			if strings.Contains(tag, SerdeStructTagOmit) {
 				continue
 			}
 		}
