@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.19;
+pragma solidity 0.8.30;
 
 import { ReentrancyGuardUpgradeable } from "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import { IMessageService } from "../../interfaces/IMessageService.sol";
@@ -173,12 +173,7 @@ abstract contract L2MessageServiceV1 is
    * @param _to The recipient of the message and gas refund.
    * @param _calldata The calldata of the message.
    */
-  modifier distributeFees(
-    uint256 _feeInWei,
-    address _to,
-    bytes calldata _calldata,
-    address _feeRecipient
-  ) {
+  modifier distributeFees(uint256 _feeInWei, address _to, bytes calldata _calldata, address _feeRecipient) {
     //pre-execution
     uint256 startingGas = gasleft();
     _;
