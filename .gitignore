@@ -10,6 +10,20 @@
 *.pem
 *.tsbuildinfo
 *.out
+*.cbor
+*.pprof
+*.trace
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.iml
+*.test
+*.lisp
+*.cov.tmp
+*.iws
+*.ipr
 
 .classpath
 .DS_Store
@@ -29,13 +43,23 @@
 .vercel
 .vertx
 .run/**.run.xml
+.gocache
+.vscode
+.idea
+.ipynb_checkpoints
 
+atlassian-ide-plugin.xml
+circuit.bin
+coverage.html
+debug.log
+lispified
 local.properties
 next-env.d.ts
 npm-debug.log*
 tsconfig.build.tsbuildinfo
 yarn-debug.log*
 yarn-error.log*
+proving_key.bin
 
 .cache-synpress/
 .externalToolBuilders/
@@ -43,6 +67,7 @@ yarn-error.log*
 .idea/
 .next/
 .recommenders/
+.idea_modules/
 
 **/src/*/generated
 **/.direnv
@@ -59,7 +84,7 @@ target/
 tmp/
 typechain/
 typechain-types/
-!operations/bin/
+__pycache__/
 
 /besu-plugins/linea-sequencer/**/site
 
@@ -79,21 +104,42 @@ typechain-types/
 /jvm-libs/**/darwin-aarch64
 /jvm-libs/**/darwin-x86-64
 
-/prover/.direnv/
-/prover/.envrc
-/prover/testdata/
+/prover/**/*.csv
+/prover/**/testdata/
+# Testdata, otherwise that's 400MB of data downloaded
+/prover/**/integration-testing/testdata/prover-requests/
+/prover/**/vendor/
 /prover/zkevm/zkevm.bin
+/prover/prover-assets/**
+/prover/**/profiling
+/prover/**/large_data
+/prover/**/test-data
+/prover/**/cmake-build-*/
+/prover/cmd/contract-gen/contract-gen
+/prover/cmd/contract-gen/docker/**
+/prover/integration/full-mode/**/config/prover-aggregation.toml
+/prover/**/*-*-zkProof.json
+/prover/**/prover/zkevm/arithmetization/zkevm.bin
 
 /sdk/.nyc_output/
 /sdk/scripts/contractAddresses.json
 /sdk/src/lib/**/*.js
 /sdk/scripts/*.js
 /sdk/postman.db
+
+/ts-libs/**/lib/**/*.so
+/ts-libs/**/lib/**/*.dylib
+
+!.gitkeep
+!operations/bin/
+# Authorize the kzg srs folder
+!prover/prover-assets/kzgsrs/**
+!prover/symbolic/testdata/**/*.csv
+!prover/symbolic/testdata/**/*.tar.gz
+# except for single-round bin
+!prover/**/single_round/bin/
+# Various logging outputs
+!prover/**/testdata/**/*.csv
+!prover/**/utils/profiling
+!prover/**/verifying_key.bin
 !/sdk/src/lib/compressor/bin
-
-/prover/cmd/contract-gen/contract-gen
-/prover/cmd/contract-gen/docker/**
-/prover/integration/full-mode/**/config/prover-aggregation.toml
-
-ts-libs/**/lib/**/*.so
-ts-libs/**/lib/**/*.dylib
