@@ -21,12 +21,6 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.app.Checks.getMinedBlocks
 import maru.consensus.ElFork
-import maru.core.SealedBeaconBlock
-import maru.p2p.Message
-import maru.p2p.MessageType
-import maru.p2p.NoOpP2PNetwork
-import maru.p2p.P2PNetwork
-import maru.testutils.InjectableSealedBlocksFakeNetwork
 import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
 import maru.testutils.besu.BesuTransactionsHelper
@@ -42,7 +36,6 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.web3j.protocol.core.DefaultBlockParameter
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class MaruFollowerTest {
   private lateinit var cluster: Cluster
@@ -50,7 +43,6 @@ class MaruFollowerTest {
   private lateinit var followerStack: NetworkParticipantStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
-  private lateinit var injectableSealedBlocksFakeNetwork: InjectableSealedBlocksFakeNetwork
 
   @BeforeEach
   fun setUp() {
@@ -63,40 +55,28 @@ class MaruFollowerTest {
         ThreadBesuNodeRunner(),
       )
 
-    injectableSealedBlocksFakeNetwork = InjectableSealedBlocksFakeNetwork()
-    val validatorP2PNetwork =
-      object : P2PNetwork by NoOpP2PNetwork {
-        override fun broadcastMessage(message: Message<*>): SafeFuture<Unit> =
-          if (message.type == MessageType.BEACON_BLOCK) {
-            SafeFuture
-              .of(
-                SafeFuture
-                  .runAsync {
-                    // To untie Validator's callstack from follower's concerns
-                    injectableSealedBlocksFakeNetwork.injectSealedBlock(
-                      message.payload as SealedBeaconBlock,
-                    )
-                  },
-              ).thenApply { }
-          } else {
-            SafeFuture.completedFuture(Unit)
-          }
+    validatorStack =
+      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
+        MaruFactory.buildTestMaruValidatorWithP2p(
+          ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
+          engineApiRpc = engineRpcUrl,
+          elFork = elFork,
+          dataDir = tmpDir,
+        )
       }
-    validatorStack = NetworkParticipantStack(cluster = cluster, p2pNetwork = validatorP2PNetwork)
+    validatorStack.maruApp.start()
     followerStack =
       NetworkParticipantStack(
         cluster = cluster,
-        p2pNetwork = injectableSealedBlocksFakeNetwork,
       ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
         MaruFactory.buildTestMaruFollower(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           elFork = elFork,
           dataDir = tmpDir,
-          p2pNetwork = p2pNetwork,
+          validatorP2pPort = validatorStack.p2pPort,
         )
       }
-    validatorStack.maruApp.start()
     followerStack.maruApp.start()
   }
 
@@ -142,7 +122,7 @@ class MaruFollowerTest {
 
     await
       .pollDelay(100.milliseconds.toJavaDuration())
-      .timeout(1.seconds.toJavaDuration())
+      .timeout(5.seconds.toJavaDuration())
       .untilAsserted {
         val blocksProducedByQbftValidator = validatorStack.besuNode.getMinedBlocks(blocksToProduce)
         val blocksImportedByFollower = followerStack.besuNode.getMinedBlocks(blocksToProduce)

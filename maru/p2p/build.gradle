@@ -19,6 +19,7 @@ plugins {
 
 dependencies {
   implementation(project(":config"))
+  implementation(project(":crypto"))
 
   implementation "io.libp2p:jvm-libp2p"
   implementation "tech.pegasys.teku.internal:p2p"

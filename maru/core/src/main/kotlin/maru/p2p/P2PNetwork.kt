@@ -20,6 +20,8 @@ import maru.executionlayer.manager.ExecutionPayloadStatus
 import maru.executionlayer.manager.ForkChoiceUpdatedResult
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
+const val LINEA_DOMAIN = "linea"
+
 // Mimicking ValidationResultCode for P2P communication
 enum class ValidationResultCode {
   ACCEPT,
@@ -95,4 +97,6 @@ interface P2PNetwork {
   fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int
 
   fun unsubscribeFromBlocks(subscriptionId: Int)
+
+  val port: UInt
 }

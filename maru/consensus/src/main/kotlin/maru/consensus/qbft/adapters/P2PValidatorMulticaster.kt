@@ -34,7 +34,7 @@ class P2PValidatorMulticaster(
    * @param message The message to send.
    */
   override fun send(message: MessageData) {
-    p2pNetwork.broadcastMessage(message.toDomain())
+    p2pNetwork.broadcastMessage(message.toDomain()).get()
   }
 
   /**

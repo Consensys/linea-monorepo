@@ -34,7 +34,7 @@ class NetworkParticipantStack(
     tmpDir,
     p2pNetwork,
     ->
-    MaruFactory.buildTestMaruValidator(
+    MaruFactory.buildTestMaruValidatorWithoutP2p(
       ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
       engineApiRpc = engineRpcUrl,
       elFork = elFork,
@@ -60,4 +60,7 @@ class NetworkParticipantStack(
     maruApp.stop()
     besuNode.stop()
   }
+
+  val p2pPort: UInt
+    get() = maruApp.p2pPort()
 }

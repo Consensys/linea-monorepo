@@ -254,7 +254,7 @@ class MaruQbftValidatorTest {
 
     Thread.sleep(3000)
     networkParticipantStack.maruApp =
-      MaruFactory.buildTestMaruValidator(
+      MaruFactory.buildTestMaruValidatorWithoutP2p(
         ethereumJsonRpcUrl = networkParticipantStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = networkParticipantStack.besuNode.engineRpcUrl().get(),
         elFork = ElFork.Prague,

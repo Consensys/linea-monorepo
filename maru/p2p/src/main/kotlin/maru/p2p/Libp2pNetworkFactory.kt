@@ -53,14 +53,21 @@ import tech.pegasys.teku.networking.p2p.network.PeerHandler
 import tech.pegasys.teku.networking.p2p.peer.Peer
 import tech.pegasys.teku.networking.p2p.reputation.ReputationManager
 
-object Libp2pNetworkFactory {
+data class TekuLibP2PNetwork(
+  val p2PNetwork: P2PNetwork<Peer>,
+  val host: Host,
+)
+
+class Libp2pNetworkFactory(
+  private val domain: String,
+) {
   fun build(
     privateKey: PrivKey,
     port: String,
     ipAddress: String,
     sealedBlocksTopicHandler: SealedBlocksTopicHandler,
     sealedBlocksTopicId: String,
-  ): P2PNetwork<Peer> {
+  ): TekuLibP2PNetwork {
     val ipv4Address = Multiaddr("/ip4/$ipAddress/tcp/$port")
     val rpcMethod = MaruRpcMethod()
     val gossipTopicHandlers = GossipTopicHandlers()
@@ -98,8 +105,7 @@ object Libp2pNetworkFactory {
         ReputationManager.NOOP,
         listOf<PeerHandler>(MaruPeerHandler()),
         listOf(rpcHandler),
-        { _ -> 50.0 }, // TODO: I guess we need a scoring function here
-      )
+      ) { _ -> 50.0 } // TODO: I guess we need a scoring function here
 
     val host =
       createHost(
@@ -120,9 +126,9 @@ object Libp2pNetworkFactory {
         /* peerManager = */ peerManager,
         /* advertisedAddresses = */ advertisedAddresses,
         /* gossipNetwork = */ gossipNetwork,
-        /* listenPorts = */ listOf(1),
+        /* listenPorts = */ listOf(port.toInt()),
       )
-    return p2pNetwork
+    return TekuLibP2PNetwork(p2pNetwork, host)
   }
 
   private fun getMessageFactory(
@@ -137,7 +143,14 @@ object Libp2pNetworkFactory {
       gossipTopicHandlers
         .getHandlerForTopic(topic)
         .map { handler -> handler.prepareMessage(payload, arrivalTimestamp) }
-        .orElse(MaruPreparedGossipMessage(payload, arrivalTimestamp))
+        .orElse(
+          MaruPreparedGossipMessage(
+            origMessage = payload,
+            arrTimestamp = arrivalTimestamp,
+            domain = domain,
+            topicId = topic,
+          ),
+        )
 
     return PreparedPubsubMessage(msg, preparedMessage)
   }

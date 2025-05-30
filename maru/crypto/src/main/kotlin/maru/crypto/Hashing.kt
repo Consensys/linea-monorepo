@@ -13,23 +13,19 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.testutils
+package maru.crypto
 
-import maru.core.SealedBeaconBlock
-import maru.p2p.NoOpP2PNetwork
-import maru.p2p.P2PNetwork
-import maru.p2p.SealedBeaconBlockHandler
-import maru.p2p.ValidationResult
+import java.security.MessageDigest
+import org.apache.tuweni.bytes.Bytes
+import org.hyperledger.besu.datatypes.Hash
 
-class InjectableSealedBlocksFakeNetwork : P2PNetwork by NoOpP2PNetwork {
-  var handler: SealedBeaconBlockHandler<ValidationResult>? = null
+object Hashing {
+  fun shortShaHash(inputData: ByteArray): ByteArray = sha256(inputData).slice(0 until 20).toByteArray()
 
-  override fun subscribeToBlocks(subscriber: SealedBeaconBlockHandler<ValidationResult>): Int {
-    handler = subscriber
-    return 0
+  private fun sha256(input: ByteArray): ByteArray {
+    val digest: MessageDigest = MessageDigest.getInstance("SHA-256")
+    return digest.digest(input)
   }
 
-  fun injectSealedBlock(sealedBlock: SealedBeaconBlock) {
-    handler!!.handleSealedBlock(sealedBlock)
-  }
+  fun keccak(serializedBytes: ByteArray): ByteArray = Hash.hash(Bytes.wrap(serializedBytes)).toArray()
 }
