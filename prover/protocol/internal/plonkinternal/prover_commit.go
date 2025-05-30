@@ -1,6 +1,7 @@
 package plonkinternal
 
 import (
+	"fmt"
 	"math/big"
 	"sync"
 
@@ -34,7 +35,7 @@ type (
 	// BBS22 commitment feature, to assign the Cp and PI polynomials so that the
 	// BBS22 randomness can be derived.
 	initialBBSProverAction struct {
-		CompilationCtx
+		GenericPlonkProverAction
 		proverStateLock *sync.Mutex
 	}
 	// lrCommitProverAction is a wrapper-type for [compilationCtx] implementing the
@@ -42,7 +43,7 @@ type (
 	// commitment feature, to assign the LRO polynomials once the BBS22
 	// randomness has been derived.
 	lroCommitProverAction struct {
-		CompilationCtx
+		GenericPlonkProverAction
 		proverStateLock *sync.Mutex
 	}
 )
@@ -56,7 +57,7 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 	}
 
 	var (
-		ctx             = CompilationCtx(pa.CompilationCtx)
+		ctx             = pa
 		numEffInstances = len(fullWitnesses)
 	)
 
@@ -82,7 +83,7 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 			// Store the channels in the runtime so that we can
 			// access them in later rounds
 			pa.proverStateLock.Lock()
-			run.State.InsertNew(ctx.Sprintf("SOLSYNC_%v", i), solSync)
+			run.State.InsertNew(fmt.Sprintf("%v_SOLSYNC", pa.Columns.L[i].GetColID()), solSync)
 			pa.proverStateLock.Unlock()
 
 			// Create the witness assignment. As we expect circuits with only
@@ -94,11 +95,11 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 				utils.Panic("[witness.Public()] returned an error: %v", err)
 			}
 
-			if ctx.TinyPISize() > 0 {
+			if tinyPISize(ctx.SPR) > 0 {
 				// Convert public witness to smart-vector
 				pubWitSV := smartvectors.RightZeroPadded(
 					[]field.Element(pubWitness.Vector().(fr.Vector)),
-					ctx.TinyPISize(),
+					tinyPISize(ctx.SPR),
 				)
 
 				// Assign the public witness
@@ -125,7 +126,7 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 // Run implements the [wizard.ProverAction] interface
 func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 
-	ctx := CompilationCtx(pa.CompilationCtx)
+	ctx := pa
 
 	parallel.Execute(ctx.MaxNbInstances, func(start, stop int) {
 		for i := start; i < stop; i++ {
@@ -133,8 +134,8 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 			// Retrieve the solsync. Not finding it means the instance is not
 			// used.
 			pa.proverStateLock.Lock()
-			solsync_, foundSolSync := run.State.TryGet(ctx.Sprintf("SOLSYNC_%v", i))
-			run.State.TryDel(ctx.Sprintf("SOLSYNC_%v", i))
+			solsync_, foundSolSync := run.State.TryGet(fmt.Sprintf("%v_SOLSYNC", pa.Columns.L[i].GetColID()))
+			run.State.TryDel(fmt.Sprintf("%v_SOLSYNC", pa.Columns.L[i].GetColID()))
 			pa.proverStateLock.Unlock()
 
 			if !foundSolSync {
@@ -162,7 +163,7 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 	})
 
-	if ctx.RangeCheckOption.Enabled && !ctx.RangeCheckOption.wasCancelled {
+	if ctx.RangeCheckOption.Enabled && !ctx.RangeCheckOption.WasCancelled {
 		ctx.assignRangeChecked(run)
 	}
 
@@ -172,7 +173,7 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 }
 
 // Run the gnark solver and put the result in solSync.solChan
-func (ctx CompilationCtx) runGnarkPlonkProver(
+func (ctx *GenericPlonkProverAction) runGnarkPlonkProver(
 	witness witness.Witness,
 	solSync *solverSync,
 ) {
@@ -181,7 +182,7 @@ func (ctx CompilationCtx) runGnarkPlonkProver(
 	commitHintID := solver.GetHintID(fcs.Bsb22CommitmentComputePlaceholder)
 
 	// Solve the circuit
-	sol_, err := ctx.Plonk.SPR.Solve(
+	sol_, err := ctx.SPR.Solve(
 		witness,
 		// Inject our special hint for the commitment. It's goal is to
 		// force the solver to pause once the commitment
@@ -214,7 +215,7 @@ func (ctx CompilationCtx) runGnarkPlonkProver(
 // , pass it to a channel and pause. It will resume in a later stage of the
 // Wizard proving runtime to complete the solving once the the challenge to
 // return is available.
-func (ctx *CompilationCtx) solverCommitmentHint(
+func (ctx *GenericPlonkProverAction) solverCommitmentHint(
 	// Channel through which the committed poly is obtained
 	pi2Chan chan []field.Element,
 	// Channel through which the randomness is injected back
@@ -227,8 +228,8 @@ func (ctx *CompilationCtx) solverCommitmentHint(
 		// constructed as follows. All "non-committed" wires are zero and
 		// the only non-committed values are
 		var (
-			pi2    = make([]field.Element, ctx.DomainSize())
-			spr    = ctx.Plonk.SPR
+			pi2    = make([]field.Element, ctx.DomainSize)
+			spr    = ctx.SPR
 			offset = spr.GetNbPublicVariables()
 			// The first input of the function Hint function does not correspond
 			// to a committed wire but to a position to use in the
@@ -262,7 +263,7 @@ func (ctx *CompilationCtx) solverCommitmentHint(
 }
 
 // Return whether the current circuit uses api.Commit
-func (ctx *CompilationCtx) HasCommitment() bool {
+func (ctx *compilationCtx) HasCommitment() bool {
 	// goes through all the type casting and accesses
 	commitmentsInfo := ctx.
 		Plonk.SPR.
@@ -279,7 +280,7 @@ func (ctx *CompilationCtx) HasCommitment() bool {
 // Returns the Plonk commitment info of the compiled gnark circuit. This is used
 // derive information such as which wires are being committed and how many
 // commitments there are.
-func (ctx *CompilationCtx) CommitmentInfo() globalCs.PlonkCommitment {
+func (ctx *compilationCtx) CommitmentInfo() globalCs.PlonkCommitment {
 	// goes through all the type casting and accesses
 	commitmentsInfo := ctx.
 		Plonk.SPR.

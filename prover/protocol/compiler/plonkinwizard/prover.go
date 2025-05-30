@@ -14,7 +14,7 @@ type circAssignment struct{ *context }
 type assignSelOpening struct{ *context }
 
 func (a *circAssignment) Run(run *wizard.ProverRuntime) {
-	a.PlonkCtx.GetPlonkProverAction().Run(run, a.getWitnesses(run))
+	a.PlonkProverAction.Run(run, a.getWitnesses(run))
 	a.StackedCircuitData.Run(run)
 }
 
@@ -23,7 +23,7 @@ func (a circAssignment) getWitnesses(run *wizard.ProverRuntime) []witness.Witnes
 	var (
 		data           = a.Q.Data.GetColAssignment(run).IntoRegVecSaveAlloc()
 		sel            = a.Q.Selector.GetColAssignment(run).IntoRegVecSaveAlloc()
-		nbPublic       = a.PlonkCtx.Plonk.SPR.GetNbPublicVariables()
+		nbPublic       = a.NbPublicVariable
 		nbPublicPadded = utils.NextPowerOfTwo(nbPublic)
 		witnesses      = make([]witness.Witness, 0, a.Q.Data.Size()/nbPublicPadded)
 	)

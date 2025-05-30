@@ -19,7 +19,7 @@ func (c *checkActivatorAndMask) Run(run wizard.Runtime) error {
 		var (
 			localOpening = run.GetLocalPointEvalParams(c.SelOpenings[i].ID)
 			valOpened    = localOpening.Y
-			valActiv     = c.PlonkCtx.Columns.Activators[i].GetColAssignment(run).Get(0)
+			valActiv     = c.Activators[i].GetColAssignment(run).Get(0)
 		)
 
 		if valOpened != valActiv {
@@ -37,7 +37,7 @@ func (c *checkActivatorAndMask) RunGnark(api frontend.API, run wizard.GnarkRunti
 	for i := range c.SelOpenings {
 		var (
 			valOpened = run.GetLocalPointEvalParams(c.SelOpenings[i].ID).Y
-			valActiv  = c.PlonkCtx.Columns.Activators[i].GetColAssignmentGnarkAt(run, 0)
+			valActiv  = c.Activators[i].GetColAssignmentGnarkAt(run, 0)
 		)
 
 		api.AssertIsEqual(valOpened, valActiv)

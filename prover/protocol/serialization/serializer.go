@@ -1,12 +1,14 @@
 package serialization
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
 	"strings"
 
+	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -18,8 +20,8 @@ import (
 )
 
 var (
-	serdeStructTag     = "serde"
-	serdeStructTagOmit = "omit"
+	SerdeStructTag     = "serde"
+	SerdeStructTagOmit = "omit"
 )
 
 // Global type constants for reflection-based type checking.
@@ -44,6 +46,7 @@ var (
 	TypeOfFieldElement       = reflect.TypeOf(field.Element{})
 	TypeOfBigInt             = reflect.TypeOf(&big.Int{})
 	TypeOfArrOfFieldElement  = reflect.TypeOf([]field.Element{})
+	TypeOfPlonkCirc          = reflect.TypeOf(&cs.SparseR1CS{})
 )
 
 // BackReference represents an integer index into PackedObject arrays (e.g., Columns, Coins).
@@ -64,19 +67,21 @@ type Serializer struct {
 	queryIDMap      map[string]int              // Maps query IDs to indices in PackedObject.QueryIDs.
 	compiledIOPs    map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
 	Stores          map[*column.Store]int       // Maps Store pointers to indices in PackedObject.Store.
-	Warnings        []string                    // Collects warnings (e.g., unexported fields) for debugging.
+	circuitMap      map[*cs.SparseR1CS]int
+	Warnings        []string // Collects warnings (e.g., unexported fields) for debugging.
 }
 
 // Deserializer manages the deserialization process, reconstructing objects from a PackedObject.
 // It caches reconstructed objects to resolve back-references and collects warnings.
 type Deserializer struct {
+	PackedObject    *PackedObject         // The input structure to deserialize.
 	StructSchemaMap map[string]int        // Maps struct type names to indices in PackedObject.StructSchema.
 	Columns         []*column.Natural     // Cache of deserialized columns, indexed by BackReference.
 	Coins           []*coin.Info          // Cache of deserialized coins.
 	Queries         []*ifaces.Query       // Cache of deserialized queries.
 	CompiledIOPs    []*wizard.CompiledIOP // Cache of deserialized CompiledIOPs.
 	Stores          []*column.Store       // Cache of deserialized stores.
-	PackedObject    *PackedObject         // The input structure to deserialize.
+	Circuits        []*cs.SparseR1CS      // Cache of deserialized circuits.
 	Warnings        []string              // Collects warnings for debugging.
 }
 
@@ -93,6 +98,7 @@ type PackedObject struct {
 	Queries      []PackedStructObject `cbor:"q"`  // Serialized queries.
 	Store        [][]any              `cbor:"st"` // Serialized stores (as arrays).
 	CompiledIOP  []PackedStructObject `cbor:"a"`  // Serialized CompiledIOPs.
+	Circuits     [][]byte             `cbor:"cr"` // Serialized circuits.
 	Payload      []byte               `cbor:"p"`  // CBOR-encoded root value.
 }
 
@@ -104,12 +110,12 @@ type PackedIFace struct {
 
 // PackedCoin is a compact representation of coin.Info, optimized for CBOR encoding.
 type PackedCoin struct {
-	Type        int8   `cbor:"t"`           // Coin type (e.g., Random, Fixed).
-	Size        int    `cbor:"s,omitempty"` // Coin size (optional).
-	UpperBound  int32  `cbor:"u,omitempty"` // Upper bound for coin (optional).
-	Name        string `cbor:"n"`           // Coin name.
-	Round       int    `cbor:"r"`           // Round number.
-	CompiledIOP int8   `cbor:"i"`           // Unused (placeholder for CompiledIOP index).
+	Type       int8   `cbor:"t"`           // Coin type (e.g., Random, Fixed).
+	Size       int    `cbor:"s,omitempty"` // Coin size (optional).
+	UpperBound int32  `cbor:"u,omitempty"` // Upper bound for coin (optional).
+	Name       string `cbor:"n"`           // Coin name.
+	Round      int    `cbor:"r"`           // Round number.
+	// CompiledIOP int8   `cbor:"i"`           // Unused (placeholder for CompiledIOP index).
 }
 
 // PackedStructSchema defines a struct’s type and field names for deserialization.
@@ -121,12 +127,8 @@ type PackedStructSchema struct {
 // PackedStructObject is a slice of serialized field values for a struct.
 type PackedStructObject []any
 
-// Serialize is the entry point for serializing any value into CBOR-encoded bytes.
-// It packs the value into a PackedObject.Payload, encodes the PackedObject, and returns the result.
-// Warnings are printed for debugging.
-func Serialize(v any) ([]byte, error) {
-	// Initialize a new Serializer with empty maps and a PackedObject.
-	ser := &Serializer{
+func NewSerializer() *Serializer {
+	return &Serializer{
 		PackedObject:    &PackedObject{},
 		typeMap:         map[string]int{},
 		structSchemaMap: map[string]int{},
@@ -139,6 +141,14 @@ func Serialize(v any) ([]byte, error) {
 		compiledIOPs:    map[*wizard.CompiledIOP]int{},
 		Stores:          map[*column.Store]int{},
 	}
+}
+
+// Serialize is the entry point for serializing any value into CBOR-encoded bytes.
+// It packs the value into a PackedObject.Payload, encodes the PackedObject, and returns the result.
+// Warnings are printed for debugging.
+func Serialize(v any) ([]byte, error) {
+	// Initialize a new Serializer with empty maps and a PackedObject.
+	ser := NewSerializer()
 
 	// Pack the input value.
 	payload, err := ser.PackValue(reflect.ValueOf(v))
@@ -170,6 +180,18 @@ func Serialize(v any) ([]byte, error) {
 	return bytesOfV, nil
 }
 
+func NewDeserializer(packedObject *PackedObject) *Deserializer {
+	return &Deserializer{
+		StructSchemaMap: make(map[string]int, len(packedObject.StructSchema)),
+		Columns:         make([]*column.Natural, len(packedObject.Columns)),
+		Coins:           make([]*coin.Info, len(packedObject.Coins)),
+		Queries:         make([]*ifaces.Query, len(packedObject.Queries)),
+		CompiledIOPs:    make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
+		Stores:          make([]*column.Store, len(packedObject.Store)),
+		PackedObject:    packedObject,
+	}
+}
+
 // Deserialize is the entry point for deserializing CBOR-encoded bytes into a pointer.
 // It decodes the bytes into a PackedObject, unpacks the Payload, and sets the result into v.
 // Warnings are printed for debugging.
@@ -188,15 +210,7 @@ func Deserialize(bytes []byte, v any) error {
 	}
 
 	// Initialize a Deserializer with pre-allocated caches.
-	deser := &Deserializer{
-		StructSchemaMap: make(map[string]int, len(packedObject.StructSchema)),
-		Columns:         make([]*column.Natural, len(packedObject.Columns)),
-		Coins:           make([]*coin.Info, len(packedObject.Coins)),
-		Queries:         make([]*ifaces.Query, len(packedObject.Queries)),
-		CompiledIOPs:    make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
-		Stores:          make([]*column.Store, len(packedObject.Store)),
-		PackedObject:    packedObject,
-	}
+	deser := NewDeserializer(packedObject)
 
 	var (
 		payloadRoot any
@@ -267,6 +281,8 @@ func (s *Serializer) PackValue(v reflect.Value) (any, error) {
 		return s.PackCompiledIOP(v.Interface().(*wizard.CompiledIOP))
 	case typeOfV == TypeOfStore:
 		return s.PackStore(v.Interface().(*column.Store))
+	case typeOfV == TypeOfPlonkCirc:
+		return s.PackPlonkCircuit(v.Interface().(*cs.SparseR1CS))
 	}
 
 	// Handle generic Go types.
@@ -304,6 +320,8 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 		return codex.Des(de, v, t)
 	}
 
+	// logrus.Printf("CompiledIOP type=%v \n", TypeOfCompiledIOPPointer)
+	// logrus.Printf("Received type=%v \n", t)
 	// Handle protocol-specific types.
 	switch {
 	case t == TypeOfColumnNatural:
@@ -322,6 +340,8 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 		return de.UnpackCompiledIOP(backReferenceFromCBORInt(v))
 	case t == TypeOfStore:
 		return de.UnpackStore(backReferenceFromCBORInt(v))
+	case t == TypeOfPlonkCirc:
+		return de.UnpackPlonkCircuit(backReferenceFromCBORInt(v))
 	}
 
 	// Handle generic Go types.
@@ -331,6 +351,7 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 		reflect.Uint32, reflect.Uint64, reflect.String:
 		return de.UnpackPrimitive(v, t), nil
 	case reflect.Array, reflect.Slice:
+		//logrus.Printf("Trying Unpacking array or slice")
 		return de.UnpackArrayOrSlice(v.([]any), t)
 	case reflect.Map:
 		v := v.(map[any]any)
@@ -651,6 +672,41 @@ func (de *Deserializer) UnpackStore(v BackReference) (reflect.Value, error) {
 	return reflect.ValueOf(de.Stores[v]), nil
 }
 
+// PackPlonkCircuit serializes a plonk circuit using gnark's optimized serialization
+// algoritm. The serialized object is stored in the table [PackedObject.Circuit]
+// table and the
+func (s *Serializer) PackPlonkCircuit(circuit *cs.SparseR1CS) (BackReference, error) {
+
+	if _, ok := s.circuitMap[circuit]; !ok {
+		buf := &bytes.Buffer{}
+		circuit.WriteTo(buf)
+		s.PackedObject.Circuits = append(s.PackedObject.Circuits, buf.Bytes())
+		s.circuitMap[circuit] = len(s.PackedObject.Circuits) - 1
+	}
+
+	return BackReference(s.circuitMap[circuit]), nil
+}
+
+// UnpackPlonkCircuit deserializes a circuit from a BackReference, caching the result.
+func (de *Deserializer) UnpackPlonkCircuit(v BackReference) (reflect.Value, error) {
+	if v < 0 || int(v) >= len(de.PackedObject.Circuits) {
+		return reflect.Value{}, fmt.Errorf("invalid circuit: %v", v)
+	}
+
+	if de.Circuits[v] == nil {
+		circ := &cs.SparseR1CS{}
+		packedCircuit := de.PackedObject.Circuits[v]
+		r := bytes.NewReader(packedCircuit)
+		if _, err := circ.ReadFrom(r); err != nil {
+			return reflect.Value{}, fmt.Errorf("could not scan the unpacked circuit: %w", err)
+		}
+
+		de.Circuits[v] = circ
+	}
+
+	return reflect.ValueOf(de.Circuits[v]), nil
+}
+
 // PackArrayOrSlice serializes arrays or slices by recursively serializing each element.
 // It collects errors for all elements and returns a combined error if any fail.
 func (s *Serializer) PackArrayOrSlice(v reflect.Value) ([]any, error) {
@@ -821,8 +877,8 @@ func (s *Serializer) PackStructObject(obj reflect.Value) (PackedStructObject, er
 
 		// When the field is has the omitted tag, we skip it there without any
 		// warning.
-		if tag, hasTag := obj.Type().Field(i).Tag.Lookup(serdeStructTag); hasTag {
-			if strings.Contains(tag, serdeStructTagOmit) {
+		if tag, hasTag := obj.Type().Field(i).Tag.Lookup(SerdeStructTag); hasTag {
+			if strings.Contains(tag, SerdeStructTagOmit) {
 				continue
 			}
 		}
@@ -891,8 +947,8 @@ func (de *Deserializer) UnpackStructObject(v PackedStructObject, t reflect.Type)
 
 		// When the field is has the omitted tag, we skip it there without any
 		// warning.
-		if tag, hasTag := structField.Tag.Lookup(serdeStructTag); hasTag {
-			if strings.Contains(tag, serdeStructTagOmit) {
+		if tag, hasTag := structField.Tag.Lookup(SerdeStructTag); hasTag {
+			if strings.Contains(tag, SerdeStructTagOmit) {
 				continue
 			}
 		}
