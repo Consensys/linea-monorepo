@@ -17,7 +17,8 @@
     "resolveJsonModule": true,
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
-    "removeComments": true
+    "removeComments": true,
+    "skipLibCheck": true
   },
   "exclude": ["node_modules", "dist", "*.d.ts"]
 }
