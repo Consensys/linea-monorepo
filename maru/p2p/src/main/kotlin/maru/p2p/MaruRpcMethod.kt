@@ -19,10 +19,8 @@ import org.apache.tuweni.bytes.Bytes
 import tech.pegasys.teku.networking.p2p.rpc.RpcMethod
 import tech.pegasys.teku.networking.p2p.rpc.RpcRequestHandler
 
-private const val LINEA = "linea"
-
 class MaruRpcMethod : RpcMethod<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcResponseHandler> {
-  override fun getIds(): MutableList<String> = mutableListOf(LINEA)
+  override fun getIds(): MutableList<String> = mutableListOf(LINEA_DOMAIN)
 
   override fun createIncomingRequestHandler(protocolId: String): RpcRequestHandler {
     val maruRpcRequestHandler = MaruIncomingRpcRequestHandler()
@@ -49,7 +47,7 @@ class MaruRpcMethod : RpcMethod<MaruOutgoingRpcRequestHandler, Bytes, MaruRpcRes
     }
     val rpcMethod: MaruRpcMethod =
       other as MaruRpcMethod
-    return LINEA == rpcMethod.ids.first()
+    return LINEA_DOMAIN == rpcMethod.ids.first()
   }
 
   override fun hashCode(): Int = 42

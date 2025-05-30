@@ -19,6 +19,7 @@ plugins {
 
 dependencies {
   implementation(project(":core"))
+  implementation(project(":crypto"))
   implementation(project(":jvm-libs:extensions"))
   implementation "io.tmio:tuweni-bytes"
   implementation "org.hyperledger.besu.internal:rlp"

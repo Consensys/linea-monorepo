@@ -24,7 +24,7 @@ import maru.serialization.rlp.RLPSerializers
 import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatNoException
-import org.awaitility.Awaitility
+import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.parallel.Execution
 import org.junit.jupiter.api.parallel.ExecutionMode
@@ -87,8 +87,8 @@ class P2PTest {
 
       p2PNetworkImpl1.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
     } finally {
       p2PNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
@@ -118,13 +118,13 @@ class P2PTest {
 
       p2PNetworkImpl1.addStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
       p2PNetworkImpl1.removeStaticPeer(MultiaddrPeerAddress.fromAddress(PEER_ADDRESS_NODE_2))
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 0) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 0) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 0) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 0) }
     } finally {
       p2PNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
@@ -152,8 +152,8 @@ class P2PTest {
 
       p2pNetworkImpl2.start()
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
     } finally {
       p2PNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
@@ -181,13 +181,13 @@ class P2PTest {
 
       p2pNetworkImpl2.start()
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
       p2PNetworkImpl1.dropPeer(PEER_ID_NODE_2, DisconnectReason.TOO_MANY_PEERS)
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
     } finally {
       p2PNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
@@ -213,22 +213,24 @@ class P2PTest {
     try {
       p2pNetworkImpl1.start()
 
-      val blockReceived = SafeFuture<SealedBeaconBlock>()
+      val blocksReceived = mutableListOf<SealedBeaconBlock>()
       p2pNetworkImpl2.start()
       p2pNetworkImpl2.subscribeToBlocks {
-        blockReceived.complete(it)
+        blocksReceived.add(it)
         SafeFuture.completedFuture(ValidationResult.Companion.Valid)
       }
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pNetworkImpl2, peers = 1) }
 
-      val randomBlockMessage = DataGenerators.randomBlockMessage()
-      p2pNetworkImpl1.broadcastMessage(randomBlockMessage).get()
+      val randomBlockMessage1 = DataGenerators.randomBlockMessage()
+      p2pNetworkImpl1.broadcastMessage(randomBlockMessage1).get()
+      val randomBlockMessage2 = DataGenerators.randomBlockMessage()
+      p2pNetworkImpl1.broadcastMessage(randomBlockMessage2).get()
 
-      assertThat(
-        blockReceived.get(100, TimeUnit.MILLISECONDS),
-      ).isEqualTo(randomBlockMessage.payload)
+      awaitUntilAsserted {
+        assertThat(blocksReceived).hasSameElementsAs(listOf(randomBlockMessage1.payload, randomBlockMessage2.payload))
+      }
     } finally {
       p2pNetworkImpl1.stop()
       p2pNetworkImpl2.stop()
@@ -271,8 +273,8 @@ class P2PTest {
         SafeFuture.completedFuture(ValidationResult.Companion.Valid)
       }
 
-      awaitUntilAsserted({ assertNetworkIsConnectedToPeer(p2PNetworkImpl1, PEER_ID_NODE_2) })
-      awaitUntilAsserted({ assertNetworkIsConnectedToPeer(p2PNetworkImpl3, PEER_ID_NODE_2) })
+      awaitUntilAsserted { assertNetworkIsConnectedToPeer(p2PNetworkImpl1, PEER_ID_NODE_2) }
+      awaitUntilAsserted { assertNetworkIsConnectedToPeer(p2PNetworkImpl3, PEER_ID_NODE_2) }
 
       assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1)
       assertNetworkHasPeers(network = p2PNetworkImpl2, peers = 2)
@@ -315,8 +317,8 @@ class P2PTest {
 
       p2pManagerImpl2.start()
 
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) })
-      awaitUntilAsserted({ assertNetworkHasPeers(network = p2pManagerImpl2, peers = 1) })
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2PNetworkImpl1, peers = 1) }
+      awaitUntilAsserted { assertNetworkHasPeers(network = p2pManagerImpl2, peers = 1) }
 
       val request = Bytes.wrap(byteArrayOf(0, 0, 1, 2, 3, 4))
       val maruRpcResponseHandler = MaruRpcResponseHandler()
@@ -343,12 +345,11 @@ class P2PTest {
   }
 
   private fun awaitUntilAsserted(
-    condition: () -> Unit,
     timeout: Long = 6000L,
     timeUnit: TimeUnit = TimeUnit.MILLISECONDS,
+    condition: () -> Unit,
   ) {
-    Awaitility
-      .await()
+    await()
       .timeout(timeout, timeUnit)
       .untilAsserted(condition)
   }

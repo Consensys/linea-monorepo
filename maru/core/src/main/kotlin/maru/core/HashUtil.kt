@@ -19,7 +19,7 @@ import maru.serialization.Serializer
 
 typealias HeaderHashFunction = (BeaconBlockHeader) -> ByteArray
 
-interface Hasher {
+fun interface Hasher {
   fun hash(serializedBytes: ByteArray): ByteArray
 }
 

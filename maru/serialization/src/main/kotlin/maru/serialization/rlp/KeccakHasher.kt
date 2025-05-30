@@ -16,9 +16,8 @@
 package maru.serialization.rlp
 
 import maru.core.Hasher
-import org.apache.tuweni.bytes.Bytes
-import org.hyperledger.besu.datatypes.Hash
+import maru.crypto.Hashing
 
 object KeccakHasher : Hasher {
-  override fun hash(serializedBytes: ByteArray): ByteArray = Hash.hash(Bytes.wrap(serializedBytes)).toArray()
+  override fun hash(serializedBytes: ByteArray): ByteArray = Hashing.keccak(serializedBytes)
 }
