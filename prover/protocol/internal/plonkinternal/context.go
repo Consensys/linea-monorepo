@@ -93,7 +93,7 @@ type CompilationCtx struct {
 		NbBits               int
 		NbLimbs              int
 		AddGateForRangeCheck bool
-		limbDecomposition    []wizard.ProverAction
+		LimbDecomposition    []wizard.ProverAction
 		// Selector for range checking from a column
 		RcL, RcR, RcO ifaces.Column
 		// RangeChecked stores the values to be range-checked
@@ -204,9 +204,9 @@ func createCtx(
 		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk())
 	}
 
-	ctx.Plonk.Trace = plonkBLS12_377.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
+	traces := plonkBLS12_377.NewTrace(ctx.Plonk.SPR, ctx.Plonk.Domain)
 
-	ctx.buildPermutation(ctx.Plonk.SPR, ctx.Plonk.Trace) // no part of BuildTrace
+	ctx.buildPermutation(ctx.Plonk.SPR, traces) // no part of BuildTrace
 
 	logger.
 		WithField("nbConstraints", ccs.GetNbConstraints()).

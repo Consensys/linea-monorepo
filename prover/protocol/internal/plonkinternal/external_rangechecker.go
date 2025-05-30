@@ -159,7 +159,7 @@ func (ctx *CompilationCtx) addRangeCheckConstraint() {
 	}
 
 	ctx.RangeCheckOption.RangeChecked = make([]ifaces.Column, len(ctx.Columns.L))
-	ctx.RangeCheckOption.limbDecomposition = make([]wizard.ProverAction, len(ctx.Columns.L))
+	ctx.RangeCheckOption.LimbDecomposition = make([]wizard.ProverAction, len(ctx.Columns.L))
 
 	for i := range ctx.Columns.L {
 
@@ -199,7 +199,7 @@ func (ctx *CompilationCtx) addRangeCheckConstraint() {
 			rcO,
 		)
 
-		_, ctx.RangeCheckOption.limbDecomposition[i] = byte32cmp.Decompose(
+		_, ctx.RangeCheckOption.LimbDecomposition[i] = byte32cmp.Decompose(
 			ctx.comp,
 			rangeChecked,
 			ctx.RangeCheckOption.NbLimbs,
@@ -258,7 +258,7 @@ func (ctx *CompilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
 				)
 			}
 
-			ctx.RangeCheckOption.limbDecomposition[i].Run(run)
+			ctx.RangeCheckOption.LimbDecomposition[i].Run(run)
 		}
 	})
 }
