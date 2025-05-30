@@ -69,6 +69,17 @@ func (l *Limits) nbAddCircuitInstances(g group) int {
 	}
 }
 
+func (l *Limits) nbMulCircuitInstances(g group) int {
+	switch g {
+	case G1:
+		return l.NbG1MulCircuitInstances
+	case G2:
+		return l.NbG2MulCircuitInstances
+	default:
+		panic("unknown group for bls mul circuit instances")
+	}
+}
+
 func (l *Limits) nbMillerLoops() int {
 	return l.NbMillerLoopInputInstances * l.NbMillerLoopCircuits
 }

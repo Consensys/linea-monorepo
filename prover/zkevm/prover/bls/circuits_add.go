@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	NAME_BLS_G1_ADD = "BLS_G1_ADD_INTEGRATION"
+	NAME_BLS_ADD = "BLS_ADD"
 )
 
 const (
@@ -61,7 +61,7 @@ func newAdd(comp *wizard.CompiledIOP, g group, limits *Limits, src *BlsAddDataSo
 	size := limits.sizeAddIntegration(g)
 
 	toAlign := &plonk.CircuitAlignmentInput{
-		Name:               NAME_BLS_G1_ADD + "_ALIGNMENT",
+		Name:               fmt.Sprintf("%s_%s_ALIGNMENT", NAME_BLS_ADD, g.String()),
 		Round:              ROUND_NR,
 		DataToCircuitMask:  src.CsAdd,
 		DataToCircuit:      src.Limb,
