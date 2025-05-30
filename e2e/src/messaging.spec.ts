@@ -136,17 +136,29 @@ describe("Messaging test suite", () => {
       const [messageSentEvent] = receipt.logs.filter((log) => log.topics[0] === MESSAGE_SENT_EVENT_SIGNATURE);
       const messageHash = messageSentEvent.topics[3];
       logger.debug(`L1 message sent. messageHash=${messageHash} transaction=${JSON.stringify(tx)}`);
+      logger.info(
+        `L1 message sent successfully. messageHash=${messageHash} txHash=${tx.hash} blockNumber=${receipt.blockNumber}`,
+      );
 
       logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
+      logger.info(`Starting to wait for MessageClaimed event on L2 with 5 minute timeout. messageHash=${messageHash}`);
       const l2MessageService = config.getL2MessageServiceContract();
       const [messageClaimedEvent] = await waitForEvents(
         l2MessageService,
         l2MessageService.filters.MessageClaimed(messageHash),
+        500,
+        undefined,
+        undefined,
+        undefined,
+        5 * 60 * 1000,
       );
 
       expect(messageClaimedEvent).toBeDefined();
       logger.debug(
         `Message claimed on L2. messageHash=${messageClaimedEvent.args._messageHash} transactionHash=${messageClaimedEvent.transactionHash}`,
+      );
+      logger.info(
+        `MessageClaimed event received successfully on L2. messageHash=${messageClaimedEvent.args._messageHash} txHash=${messageClaimedEvent.transactionHash} blockNumber=${messageClaimedEvent.blockNumber}`,
       );
     },
     100_000,
@@ -172,10 +184,16 @@ describe("Messaging test suite", () => {
       logger.debug(`L1 message sent. messageHash=${messageHash} transactionHash=${tx.hash}`);
 
       logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
+      logger.info(`Starting to wait for MessageClaimed event on L2 with 5 minute timeout. messageHash=${messageHash}`);
       const l2MessageService = config.getL2MessageServiceContract();
       const [messageClaimedEvent] = await waitForEvents(
         l2MessageService,
         l2MessageService.filters.MessageClaimed(messageHash),
+        500,
+        undefined,
+        undefined,
+        undefined,
+        5 * 60 * 1000,
       );
       expect(messageClaimedEvent).toBeDefined();
       logger.debug(
@@ -206,10 +224,16 @@ describe("Messaging test suite", () => {
       logger.debug(`L1 message sent. messageHash=${messageHash} transactionHash=${tx.hash}`);
 
       logger.debug(`Waiting for MessageClaimed event on L2. messageHash=${messageHash}`);
+      logger.info(`Starting to wait for MessageClaimed event on L2 with 5 minute timeout. messageHash=${messageHash}`);
       const l2MessageService = config.getL2MessageServiceContract();
       const [messageClaimedEvent] = await waitForEvents(
         l2MessageService,
         l2MessageService.filters.MessageClaimed(messageHash),
+        500,
+        undefined,
+        undefined,
+        undefined,
+        5 * 60 * 1000,
       );
       expect(messageClaimedEvent).toBeDefined();
       logger.debug(
