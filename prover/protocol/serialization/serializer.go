@@ -20,8 +20,8 @@ import (
 )
 
 var (
-	serdeStructTag     = "serde"
-	serdeStructTagOmit = "omit"
+	SerdeStructTag     = "serde"
+	SerdeStructTagOmit = "omit"
 )
 
 // Global type constants for reflection-based type checking.
@@ -110,12 +110,12 @@ type PackedIFace struct {
 
 // PackedCoin is a compact representation of coin.Info, optimized for CBOR encoding.
 type PackedCoin struct {
-	Type        int8   `cbor:"t"`           // Coin type (e.g., Random, Fixed).
-	Size        int    `cbor:"s,omitempty"` // Coin size (optional).
-	UpperBound  int32  `cbor:"u,omitempty"` // Upper bound for coin (optional).
-	Name        string `cbor:"n"`           // Coin name.
-	Round       int    `cbor:"r"`           // Round number.
-	CompiledIOP int8   `cbor:"i"`           // Unused (placeholder for CompiledIOP index).
+	Type       int8   `cbor:"t"`           // Coin type (e.g., Random, Fixed).
+	Size       int    `cbor:"s,omitempty"` // Coin size (optional).
+	UpperBound int32  `cbor:"u,omitempty"` // Upper bound for coin (optional).
+	Name       string `cbor:"n"`           // Coin name.
+	Round      int    `cbor:"r"`           // Round number.
+	// CompiledIOP int8   `cbor:"i"`           // Unused (placeholder for CompiledIOP index).
 }
 
 // PackedStructSchema defines a struct’s type and field names for deserialization.
@@ -127,12 +127,8 @@ type PackedStructSchema struct {
 // PackedStructObject is a slice of serialized field values for a struct.
 type PackedStructObject []any
 
-// Serialize is the entry point for serializing any value into CBOR-encoded bytes.
-// It packs the value into a PackedObject.Payload, encodes the PackedObject, and returns the result.
-// Warnings are printed for debugging.
-func Serialize(v any) ([]byte, error) {
-	// Initialize a new Serializer with empty maps and a PackedObject.
-	ser := &Serializer{
+func NewSerializer() *Serializer {
+	return &Serializer{
 		PackedObject:    &PackedObject{},
 		typeMap:         map[string]int{},
 		structSchemaMap: map[string]int{},
@@ -145,6 +141,14 @@ func Serialize(v any) ([]byte, error) {
 		compiledIOPs:    map[*wizard.CompiledIOP]int{},
 		Stores:          map[*column.Store]int{},
 	}
+}
+
+// Serialize is the entry point for serializing any value into CBOR-encoded bytes.
+// It packs the value into a PackedObject.Payload, encodes the PackedObject, and returns the result.
+// Warnings are printed for debugging.
+func Serialize(v any) ([]byte, error) {
+	// Initialize a new Serializer with empty maps and a PackedObject.
+	ser := NewSerializer()
 
 	// Pack the input value.
 	payload, err := ser.PackValue(reflect.ValueOf(v))
@@ -176,6 +180,18 @@ func Serialize(v any) ([]byte, error) {
 	return bytesOfV, nil
 }
 
+func NewDeserializer(packedObject *PackedObject) *Deserializer {
+	return &Deserializer{
+		StructSchemaMap: make(map[string]int, len(packedObject.StructSchema)),
+		Columns:         make([]*column.Natural, len(packedObject.Columns)),
+		Coins:           make([]*coin.Info, len(packedObject.Coins)),
+		Queries:         make([]*ifaces.Query, len(packedObject.Queries)),
+		CompiledIOPs:    make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
+		Stores:          make([]*column.Store, len(packedObject.Store)),
+		PackedObject:    packedObject,
+	}
+}
+
 // Deserialize is the entry point for deserializing CBOR-encoded bytes into a pointer.
 // It decodes the bytes into a PackedObject, unpacks the Payload, and sets the result into v.
 // Warnings are printed for debugging.
@@ -194,15 +210,7 @@ func Deserialize(bytes []byte, v any) error {
 	}
 
 	// Initialize a Deserializer with pre-allocated caches.
-	deser := &Deserializer{
-		StructSchemaMap: make(map[string]int, len(packedObject.StructSchema)),
-		Columns:         make([]*column.Natural, len(packedObject.Columns)),
-		Coins:           make([]*coin.Info, len(packedObject.Coins)),
-		Queries:         make([]*ifaces.Query, len(packedObject.Queries)),
-		CompiledIOPs:    make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
-		Stores:          make([]*column.Store, len(packedObject.Store)),
-		PackedObject:    packedObject,
-	}
+	deser := NewDeserializer(packedObject)
 
 	var (
 		payloadRoot any
@@ -312,6 +320,8 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 		return codex.Des(de, v, t)
 	}
 
+	// logrus.Printf("CompiledIOP type=%v \n", TypeOfCompiledIOPPointer)
+	// logrus.Printf("Received type=%v \n", t)
 	// Handle protocol-specific types.
 	switch {
 	case t == TypeOfColumnNatural:
@@ -341,6 +351,7 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 		reflect.Uint32, reflect.Uint64, reflect.String:
 		return de.UnpackPrimitive(v, t), nil
 	case reflect.Array, reflect.Slice:
+		//logrus.Printf("Trying Unpacking array or slice")
 		return de.UnpackArrayOrSlice(v.([]any), t)
 	case reflect.Map:
 		v := v.(map[any]any)
@@ -866,8 +877,8 @@ func (s *Serializer) PackStructObject(obj reflect.Value) (PackedStructObject, er
 
 		// When the field is has the omitted tag, we skip it there without any
 		// warning.
-		if tag, hasTag := obj.Type().Field(i).Tag.Lookup(serdeStructTag); hasTag {
-			if strings.Contains(tag, serdeStructTagOmit) {
+		if tag, hasTag := obj.Type().Field(i).Tag.Lookup(SerdeStructTag); hasTag {
+			if strings.Contains(tag, SerdeStructTagOmit) {
 				continue
 			}
 		}
@@ -936,8 +947,8 @@ func (de *Deserializer) UnpackStructObject(v PackedStructObject, t reflect.Type)
 
 		// When the field is has the omitted tag, we skip it there without any
 		// warning.
-		if tag, hasTag := structField.Tag.Lookup(serdeStructTag); hasTag {
-			if strings.Contains(tag, serdeStructTagOmit) {
+		if tag, hasTag := structField.Tag.Lookup(SerdeStructTag); hasTag {
+			if strings.Contains(tag, SerdeStructTagOmit) {
 				continue
 			}
 		}

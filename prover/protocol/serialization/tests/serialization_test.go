@@ -1,10 +1,9 @@
-package serialization
+package serialization_test
 
 import (
 	"fmt"
 	"math/big"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
@@ -16,27 +15,25 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
+	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/stretchr/testify/require"
 )
 
 func TestSerdeValue(t *testing.T) {
 
-	backupRegistryAndReset()
-	defer restoreRegistryFromBackup()
-
-	RegisterImplementation(string(""))
-	RegisterImplementation(ifaces.ColID(""))
-	RegisterImplementation(column.Natural{})
-	RegisterImplementation(column.Shifted{})
-	RegisterImplementation(verifiercol.ConstCol{})
-	RegisterImplementation(verifiercol.FromYs{})
-	RegisterImplementation(verifiercol.FromAccessors{})
-	RegisterImplementation(accessors.FromPublicColumn{})
-	RegisterImplementation(accessors.FromConstAccessor{})
-	RegisterImplementation(query.UnivariateEval{})
+	serialization.RegisterImplementation(string(""))
+	serialization.RegisterImplementation(ifaces.ColID(""))
+	serialization.RegisterImplementation(column.Natural{})
+	serialization.RegisterImplementation(column.Shifted{})
+	serialization.RegisterImplementation(verifiercol.ConstCol{})
+	serialization.RegisterImplementation(verifiercol.FromYs{})
+	serialization.RegisterImplementation(verifiercol.FromAccessors{})
+	serialization.RegisterImplementation(accessors.FromPublicColumn{})
+	serialization.RegisterImplementation(accessors.FromConstAccessor{})
+	serialization.RegisterImplementation(query.UnivariateEval{})
 
 	testCases := []struct {
 		V any
@@ -203,161 +200,22 @@ func TestSerdeValue(t *testing.T) {
 	for i := range testCases {
 		t.Run(fmt.Sprintf("test-case-%v", i), func(t *testing.T) {
 
-			msg, err := Serialize(testCases[i].V)
+			msg, err := serialization.Serialize(testCases[i].V)
 			require.NoError(t, err)
 
 			fmt.Printf("testcase=%v, msg=%v\n", i, string(msg))
 
 			unmarshaled := reflect.New(reflect.TypeOf(testCases[i].V)).Interface()
-			err = Deserialize(msg, unmarshaled)
+			err = serialization.Deserialize(msg, unmarshaled)
 			require.NoError(t, err)
 
 			unmarshalledDereferenced := reflect.ValueOf(unmarshaled).Elem().Interface()
-			if !CompareExportedFields(testCases[i].V, unmarshalledDereferenced) {
+			if !test_utils.CompareExportedFields(testCases[i].V, unmarshalledDereferenced) {
 				t.Errorf("Mismatch in exported fields after full serde value")
 			}
 
 		})
 	}
-}
-
-// CompareExportedFields checks if two values are equal, ignoring unexported fields, including in nested structs.
-// It logs mismatched fields with their paths and values.
-func CompareExportedFields(a, b interface{}) bool {
-	return CompareExportedFieldsWithPath(a, b, "")
-}
-
-func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
-	v1, v2 := reflect.ValueOf(a), reflect.ValueOf(b)
-	// Ensure both values are valid
-	if !v1.IsValid() || !v2.IsValid() {
-		// Treat nil and zero values as equivalent
-		if !v1.IsValid() && !v2.IsValid() {
-			return true
-		}
-		if !v1.IsValid() {
-			v1 = reflect.Zero(v2.Type())
-		}
-		if !v2.IsValid() {
-			v2 = reflect.Zero(v1.Type())
-		}
-	}
-
-	// Skip ignorable fields
-	if IsIgnoreableType(v1.Type()) {
-		logrus.Printf("Skipping comparison of Ignorable type:%s at %s\n", v1.Type().String(), path)
-		return true
-	}
-
-	// Ensure same type
-	if v1.Type() != v2.Type() {
-		logrus.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, v1.Type(), v2.Type())
-		return false
-	}
-
-	// Ignore Func
-	if v1.Kind() == reflect.Func {
-		return true
-	}
-
-	// Handle maps
-	if v1.Kind() == reflect.Map {
-		if v1.Len() != v2.Len() {
-			if IsIgnoreableType(v1.Type()) {
-				logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
-				return true
-			}
-			logrus.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1.Len(), v2.Len(), v1.Type())
-			return false
-		}
-		for _, key := range v1.MapKeys() {
-			value1 := v1.MapIndex(key)
-			value2 := v2.MapIndex(key)
-			if !value2.IsValid() {
-				logrus.Printf("Mismatch at %s: key %v is missing in second map\n", path, key)
-				return false
-			}
-			keyPath := fmt.Sprintf("%s[%v]", path, key)
-			if !CompareExportedFieldsWithPath(value1.Interface(), value2.Interface(), keyPath) {
-				return false
-			}
-		}
-		// logrus.Infof("Comparing map at %s: len(v1)=%d, len(v2)=%d", path, v1.Len(), v2.Len())
-		return true
-	}
-
-	// Handle pointers by dereferencing
-	if v1.Kind() == reflect.Ptr {
-		if v1.IsNil() && v2.IsNil() {
-			return true
-		}
-		if v1.IsNil() != v2.IsNil() {
-			if IsIgnoreableType(v1.Type()) {
-				logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
-				return true
-			}
-			logrus.Printf("Mismatch at %s: nil status differs (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
-			return false
-		}
-		return CompareExportedFieldsWithPath(v1.Elem().Interface(), v2.Elem().Interface(), path)
-	}
-
-	// Handle structs
-	if v1.Kind() == reflect.Struct {
-		equal := true
-		for i := 0; i < v1.NumField(); i++ {
-
-			structField := v1.Type().Field(i)
-
-			// When the field is has the omitted tag, we skip it there without
-			// any warning.
-			if tag, hasTag := structField.Tag.Lookup(serdeStructTag); hasTag {
-				if strings.Contains(tag, serdeStructTagOmit) {
-					continue
-				}
-			}
-
-			// Skip unexported fields
-			if !structField.IsExported() {
-				continue
-			}
-
-			f1 := v1.Field(i)
-			f2 := v2.Field(i)
-			fieldName := structField.Name
-			fieldPath := fieldName
-			if path != "" {
-				fieldPath = path + "." + fieldName
-			}
-			if !CompareExportedFieldsWithPath(f1.Interface(), f2.Interface(), fieldPath) {
-				equal = false
-			}
-		}
-		return equal
-	}
-
-	// Handle slices or arrays
-	if v1.Kind() == reflect.Slice || v1.Kind() == reflect.Array {
-		if v1.Len() != v2.Len() {
-			logrus.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1, v2, v1.Type())
-			return false
-		}
-		equal := true
-		for i := 0; i < v1.Len(); i++ {
-			elemPath := fmt.Sprintf("%s[%d]", path, i)
-			if !CompareExportedFieldsWithPath(v1.Index(i).Interface(), v2.Index(i).Interface(), elemPath) {
-				equal = false
-			}
-		}
-		return equal
-	}
-
-	// For other types, use DeepEqual and log if mismatched
-	if !reflect.DeepEqual(a, b) {
-		logrus.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type_v1: %v type_v2: %v)\n", path, a, b, v1.Type(), v2.Type())
-		return false
-	}
-	return true
 }
 
 type Team struct {
@@ -413,15 +271,15 @@ func TestSerdeSampleStruct(t *testing.T) {
 	}
 
 	// Serialize
-	teamBytes, err := Serialize(team)
+	teamBytes, err := serialization.Serialize(team)
 	require.NoError(t, err)
 
 	// Deserialize
 	var deserializedTeam Team
-	err = Deserialize(teamBytes, &deserializedTeam)
+	err = serialization.Deserialize(teamBytes, &deserializedTeam)
 	require.NoError(t, err)
 
-	if !CompareExportedFields(team, deserializedTeam) {
+	if !test_utils.CompareExportedFields(team, deserializedTeam) {
 		t.Errorf("expected team and deserializedTeam to be equal")
 	}
 }

@@ -317,11 +317,10 @@ func unmarshalArrayOfFieldElement(_ *Deserializer, val any, _ reflect.Type) (ref
 // reduce the size of the CBOR encoding. The backward conversion is automatically
 // done [field.SetBigInt] as it handles negative values.
 func fieldToSmallBigInt(v field.Element) *big.Int {
-
 	neg := new(field.Element).Neg(&v)
 	if neg.IsUint64() {
 		n := neg.Uint64()
-		return new(big.Int).SetInt64(int64(n))
+		return new(big.Int).SetInt64(-int64(n))
 	}
 
 	bi := &big.Int{}
