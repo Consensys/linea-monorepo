@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -16,8 +15,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
-	mimcW "github.com/consensys/linea-monorepo/prover/protocol/dedicated/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -28,21 +25,21 @@ import (
 // Specifies the column opening phase
 func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	// Registers the limb expanded version of the preimages
-	ctx.colSelection()
-	ctx.linearHashAndMerkle()
+	ctx.ColSelection()
+	ctx.LinearHashAndMerkle()
 	ctx.RootHashGlue()
 	ctx.GluePositions()
-	ctx.registersPreimageLimbs()
+	ctx.RegistersSisPreimageLimbs()
 	ctx.collapsingPhase()
 	ctx.foldPhase()
 }
 
-// Registers the preimage limbs
+// Registers the preimage limbs for the SIS rounds.
 //
-// Get the preimages (preimage0,preimage1,…,preimaget−1)And range-check
+// Get the preimages (preimage0,preimage1,…,preimaget−1) And range-check
 // each of them on the ring-SIS bound
-func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
-	wholes := ctx.Columns.WholePreimages
+func (ctx *SelfRecursionCtx) RegistersSisPreimageLimbs() {
+	wholes := ctx.Columns.WholePreimagesSis
 	sisParams := ctx.VortexCtx.SisParams
 
 	limbs := make([]ifaces.Column, len(wholes))
@@ -63,7 +60,7 @@ func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
 		)
 	}
 
-	ctx.Columns.Preimages = limbs
+	ctx.Columns.PreimagesSis = limbs
 
 	ctx.comp.RegisterProverAction(round, &preimageLimbsProverAction{
 		ctx:   ctx,
@@ -80,7 +77,7 @@ type preimageLimbsProverAction struct {
 func (a *preimageLimbsProverAction) Run(run *wizard.ProverRuntime) {
 	parallel.Execute(len(a.limbs), func(start, end int) {
 		for i := start; i < end; i++ {
-			whole := a.ctx.Columns.WholePreimages[i].GetColAssignment(run)
+			whole := a.ctx.Columns.WholePreimagesSis[i].GetColAssignment(run)
 			whole_ := smartvectors.IntoRegVec(whole)
 			expanded_ := a.ctx.SisKey().LimbSplit(whole_)
 			expanded := smartvectors.NewRegular(expanded_)
@@ -116,7 +113,7 @@ func (a *colSelectionProverAction) Run(run *wizard.ProverRuntime) {
 //
 //   - Performs the following lookup constraint:
 //     `(q,Uα,q)⊂(I,Uα)`
-func (ctx *SelfRecursionCtx) colSelection() {
+func (ctx *SelfRecursionCtx) ColSelection() {
 
 	// Build the column q, (auto-assigned)
 	ctx.Columns.Q = verifiercol.NewFromIntVecCoin(ctx.comp, ctx.Coins.Q)
@@ -149,119 +146,6 @@ func (ctx *SelfRecursionCtx) colSelection() {
 			ctx.Columns.UalphaQ,
 		},
 	)
-}
-
-type linearHashMerkleProverAction struct {
-	ctx                *SelfRecursionCtx
-	concatDhQSize      int
-	leavesSize         int
-	leavesSizeUnpadded int
-}
-
-func (a *linearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
-	openingIndices := run.GetRandomCoinIntegerVec(a.ctx.Coins.Q.Name)
-	concatDhQ := make([]field.Element, a.leavesSizeUnpadded*a.ctx.VortexCtx.SisParams.OutputSize())
-	linearLeaves := make([]field.Element, a.leavesSizeUnpadded)
-	merkleLeaves := make([]field.Element, a.leavesSizeUnpadded)
-	merklePositions := make([]field.Element, a.leavesSizeUnpadded)
-	merkleRoots := make([]field.Element, a.leavesSizeUnpadded)
-
-	hashSize := a.ctx.VortexCtx.SisParams.OutputSize()
-	numOpenedCol := a.ctx.VortexCtx.NbColsToOpen()
-	// For some reason, using a.ctx.comp.NumRounds() here does not work well here.
-	totalNumRounds := a.ctx.VortexCtx.MaxCommittedRound
-	committedRound := 0
-
-	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
-		rootPrecomp := a.ctx.Columns.precompRoot.GetColAssignment(run).Get(0)
-		precompColSisHash := a.ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
-		for i, selectedCol := range openingIndices {
-			srcStart := selectedCol * hashSize
-			destStart := i * hashSize
-			sisHash := precompColSisHash[srcStart : srcStart+hashSize]
-			copy(concatDhQ[destStart:destStart+hashSize], sisHash)
-			leaf := mimc.HashVec(sisHash)
-			insertAt := i
-			linearLeaves[insertAt] = leaf
-			merkleLeaves[insertAt] = leaf
-			merkleRoots[insertAt] = rootPrecomp
-			merklePositions[insertAt].SetInt64(int64(selectedCol))
-		}
-		committedRound++
-		totalNumRounds++
-	}
-
-	for round := 0; round <= totalNumRounds; round++ {
-		colSisHashName := a.ctx.VortexCtx.SisHashName(round)
-		colSisHashSV, found := run.State.TryGet(colSisHashName)
-		if !found {
-			continue
-		}
-
-		rooth := a.ctx.Columns.Rooth[round].GetColAssignment(run).Get(0)
-		colSisHash := colSisHashSV.([]field.Element)
-
-		for i, selectedCol := range openingIndices {
-			srcStart := selectedCol * hashSize
-			destStart := committedRound*numOpenedCol*hashSize + i*hashSize
-			sisHash := colSisHash[srcStart : srcStart+hashSize]
-			copy(concatDhQ[destStart:destStart+hashSize], sisHash)
-			leaf := mimc.HashVec(sisHash)
-			insertAt := committedRound*numOpenedCol + i
-			linearLeaves[insertAt] = leaf
-			merkleLeaves[insertAt] = leaf
-			merkleRoots[insertAt] = rooth
-			merklePositions[insertAt].SetInt64(int64(selectedCol))
-		}
-
-		run.State.TryDel(colSisHashName)
-		committedRound++
-	}
-
-	numCommittedRound := a.ctx.VortexCtx.NumCommittedRounds()
-	if a.ctx.VortexCtx.IsNonEmptyPrecomputed() {
-		numCommittedRound += 1
-	}
-
-	if committedRound != numCommittedRound {
-		utils.Panic("Committed rounds %v does not match the total number of committed rounds %v", committedRound, numCommittedRound)
-	}
-
-	// Assign columns using IDs from ctx.Columns
-	run.AssignColumn(a.ctx.Columns.ConcatenatedDhQ.GetColID(), smartvectors.RightZeroPadded(concatDhQ, a.concatDhQSize))
-	run.AssignColumn(a.ctx.Columns.MerkleProofsLeaves.GetColID(), smartvectors.RightZeroPadded(merkleLeaves, a.leavesSize))
-	run.AssignColumn(a.ctx.Columns.MerkleProofPositions.GetColID(), smartvectors.RightZeroPadded(merklePositions, a.leavesSize))
-	run.AssignColumn(a.ctx.Columns.MerkleRoots.GetColID(), smartvectors.RightZeroPadded(merkleRoots, a.leavesSize))
-}
-
-func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
-	roundQ := ctx.Columns.Q.Round()
-	numRound := ctx.VortexCtx.NumCommittedRounds()
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
-		numRound += 1
-	}
-	concatDhQSizeUnpadded := ctx.VortexCtx.SisParams.OutputSize() * ctx.VortexCtx.NbColsToOpen() * numRound
-	concatDhQSize := utils.NextPowerOfTwo(concatDhQSizeUnpadded)
-	leavesSizeUnpadded := ctx.VortexCtx.NbColsToOpen() * numRound
-	leavesSize := utils.NextPowerOfTwo(leavesSizeUnpadded)
-
-	ctx.Columns.ConcatenatedDhQ = ctx.comp.InsertCommit(roundQ, ctx.concatenatedDhQ(), concatDhQSize)
-	ctx.Columns.MerkleProofsLeaves = ctx.comp.InsertCommit(roundQ, ctx.merkleLeavesName(), leavesSize)
-	ctx.Columns.MerkleProofPositions = ctx.comp.InsertCommit(roundQ, ctx.merklePositionssName(), leavesSize)
-	ctx.Columns.MerkleRoots = ctx.comp.InsertCommit(roundQ, ctx.merkleRootsName(), leavesSize)
-
-	ctx.comp.RegisterProverAction(roundQ, &linearHashMerkleProverAction{
-		ctx:                ctx,
-		concatDhQSize:      concatDhQSize,
-		leavesSize:         leavesSize,
-		leavesSizeUnpadded: leavesSizeUnpadded,
-	})
-
-	depth := utils.Log2Ceil(ctx.VortexCtx.NumEncodedCols())
-	merkle.MerkleProofCheck(ctx.comp, ctx.merkleProofVerificationName(), depth, leavesSizeUnpadded,
-		ctx.Columns.MerkleProofs, ctx.Columns.MerkleRoots, ctx.Columns.MerkleProofsLeaves, ctx.Columns.MerkleProofPositions)
-	mimcW.CheckLinearHash(ctx.comp, ctx.linearHashVerificationName(), ctx.Columns.ConcatenatedDhQ,
-		ctx.VortexCtx.SisParams.OutputSize(), leavesSizeUnpadded, ctx.Columns.MerkleProofsLeaves)
 }
 
 type collapsingProverAction struct {
@@ -357,7 +241,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 	ctx.Columns.PreimagesCollapse = expr_handle.RandLinCombCol(
 		ctx.comp,
 		accessors.NewFromCoin(ctx.Coins.Collapse),
-		ctx.Columns.Preimages,
+		ctx.Columns.PreimagesSis,
 	)
 
 	// Consistency check between the collapsed preimage and UalphaQ
@@ -388,7 +272,7 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			accessors.NewConstant(field.NewElement(1<<ctx.SisKey().LogTwoBound)),
 			accessors.NewFromCoin(ctx.Coins.Alpha),
 			ctx.VortexCtx.SisParams.NumLimbs(),
-			ctx.Columns.WholePreimages[0].Size(),
+			ctx.Columns.WholePreimagesSis[0].Size(),
 		)
 
 		ctx.comp.RegisterVerifierAction(uAlphaQEval.Round(), &collapsingVerifierAction{
@@ -574,7 +458,10 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 	})
 
 	degree := ctx.SisKey().OutputSize()
-
+	// Todo: remove the commented code
+	// Also the paper needs to be updated
+	// with the identity 2P(X) = (X^n+1)Q(X) - (X^n-1)R(X) (check it in the code)
+	//
 	// And the final check
 	// check the folding of the polynomial is correct
 	// ctx.comp.InsertVerifier(round, func(run wizard.Runtime) error {
