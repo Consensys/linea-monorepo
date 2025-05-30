@@ -13,13 +13,13 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// linearHashAndMerkle verifies the following things:
+// LinearHashAndMerkle verifies the following things:
 // 1. The MiMC hash of the SIS digest for the sis rounds are correctly computed
 // 2. The MiMC hash of the selected columns for the non SIS rounds are correctly computed
 // 3. The Merkle proofs are correctly verified for both SIS and non SIS rounds
 // 4. The leaves of the SIS and non SIS rounds are consistent with the Merkle tree leaves
 // used for the Merkle proof verification.
-func (ctx *SelfRecursionCtx) linearHashAndMerkle() {
+func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 	roundQ := ctx.Columns.Q.Round()
 	// numRound denotes the total number of commitment rounds
 	// including SIS and non SIS rounds
@@ -200,7 +200,10 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 	}
 	s_smart := smartvectors.NewRegular(s)
 
-	// Insert the fixed permutation constraint
+	// Insert the fixed permutation constraint.
+	// Here we assume that the number of opened columns for Vortex
+	// is a power of two. If that is not the case, the below
+	// constraint is supposed to fail
 	ctx.comp.InsertFixedPermutation(
 		round,
 		ctx.leafConsistencyName(),

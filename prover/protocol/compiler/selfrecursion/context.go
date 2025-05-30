@@ -118,7 +118,7 @@ type SelfRecursionCtx struct {
 		//
 		// Preimages of the selected columns in whole form. Is set to be
 		// ignored by the self-recursion compiler. Implictly it is repla-
-		// ced by the `Preimages`, which contains the preimages but in
+		// ced by the `PreimagesSis`, which contains the preimages but in
 		// limb expanded form.
 		WholePreimagesSis []ifaces.Column
 

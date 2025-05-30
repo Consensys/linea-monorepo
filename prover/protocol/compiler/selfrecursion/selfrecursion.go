@@ -61,7 +61,7 @@ func SelfRecursionProximityCheck(comp *wizard.CompiledIOP) {
 	//     `(q,Uα,q)⊂(I,Uα)`
 	ctx.ColSelection()
 	// Add the evaluation check
-	
+
 	// Update the self-recursion counter
 	comp.SelfRecursionCount++
 }
@@ -82,6 +82,6 @@ func SelfRecursionLinearHashAndMerkle(comp *wizard.CompiledIOP) {
 	//   - Performs the following lookup constraint:
 	//     `(q,Uα,q)⊂(I,Uα)`
 	ctx.ColSelection()
-	ctx.linearHashAndMerkle()
+	ctx.LinearHashAndMerkle()
 	comp.SelfRecursionCount++
 }

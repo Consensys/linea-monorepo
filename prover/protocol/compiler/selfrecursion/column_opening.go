@@ -26,19 +26,19 @@ import (
 func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	// Registers the limb expanded version of the preimages
 	ctx.ColSelection()
-	ctx.linearHashAndMerkle()
+	ctx.LinearHashAndMerkle()
 	ctx.RootHashGlue()
 	ctx.GluePositions()
-	ctx.registersPreimageLimbs()
+	ctx.RegistersSisPreimageLimbs()
 	ctx.collapsingPhase()
 	ctx.foldPhase()
 }
 
-// Registers the preimage limbs
+// Registers the preimage limbs for the SIS rounds.
 //
-// Get the preimages (preimage0,preimage1,…,preimaget−1)And range-check
+// Get the preimages (preimage0,preimage1,…,preimaget−1) And range-check
 // each of them on the ring-SIS bound
-func (ctx *SelfRecursionCtx) registersPreimageLimbs() {
+func (ctx *SelfRecursionCtx) RegistersSisPreimageLimbs() {
 	wholes := ctx.Columns.WholePreimagesSis
 	sisParams := ctx.VortexCtx.SisParams
 
