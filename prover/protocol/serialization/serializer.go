@@ -127,12 +127,8 @@ type PackedStructSchema struct {
 // PackedStructObject is a slice of serialized field values for a struct.
 type PackedStructObject []any
 
-// Serialize is the entry point for serializing any value into CBOR-encoded bytes.
-// It packs the value into a PackedObject.Payload, encodes the PackedObject, and returns the result.
-// Warnings are printed for debugging.
-func Serialize(v any) ([]byte, error) {
-	// Initialize a new Serializer with empty maps and a PackedObject.
-	ser := &Serializer{
+func NewSerializer() *Serializer {
+	return &Serializer{
 		PackedObject:    &PackedObject{},
 		typeMap:         map[string]int{},
 		structSchemaMap: map[string]int{},
@@ -145,6 +141,14 @@ func Serialize(v any) ([]byte, error) {
 		compiledIOPs:    map[*wizard.CompiledIOP]int{},
 		Stores:          map[*column.Store]int{},
 	}
+}
+
+// Serialize is the entry point for serializing any value into CBOR-encoded bytes.
+// It packs the value into a PackedObject.Payload, encodes the PackedObject, and returns the result.
+// Warnings are printed for debugging.
+func Serialize(v any) ([]byte, error) {
+	// Initialize a new Serializer with empty maps and a PackedObject.
+	ser := NewSerializer()
 
 	// Pack the input value.
 	payload, err := ser.PackValue(reflect.ValueOf(v))
@@ -176,6 +180,18 @@ func Serialize(v any) ([]byte, error) {
 	return bytesOfV, nil
 }
 
+func NewDeserializer(packedObject *PackedObject) *Deserializer {
+	return &Deserializer{
+		StructSchemaMap: make(map[string]int, len(packedObject.StructSchema)),
+		Columns:         make([]*column.Natural, len(packedObject.Columns)),
+		Coins:           make([]*coin.Info, len(packedObject.Coins)),
+		Queries:         make([]*ifaces.Query, len(packedObject.Queries)),
+		CompiledIOPs:    make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
+		Stores:          make([]*column.Store, len(packedObject.Store)),
+		PackedObject:    packedObject,
+	}
+}
+
 // Deserialize is the entry point for deserializing CBOR-encoded bytes into a pointer.
 // It decodes the bytes into a PackedObject, unpacks the Payload, and sets the result into v.
 // Warnings are printed for debugging.
@@ -194,15 +210,7 @@ func Deserialize(bytes []byte, v any) error {
 	}
 
 	// Initialize a Deserializer with pre-allocated caches.
-	deser := &Deserializer{
-		StructSchemaMap: make(map[string]int, len(packedObject.StructSchema)),
-		Columns:         make([]*column.Natural, len(packedObject.Columns)),
-		Coins:           make([]*coin.Info, len(packedObject.Coins)),
-		Queries:         make([]*ifaces.Query, len(packedObject.Queries)),
-		CompiledIOPs:    make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
-		Stores:          make([]*column.Store, len(packedObject.Store)),
-		PackedObject:    packedObject,
-	}
+	deser := NewDeserializer(packedObject)
 
 	var (
 		payloadRoot any
