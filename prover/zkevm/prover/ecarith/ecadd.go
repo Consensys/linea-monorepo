@@ -59,11 +59,10 @@ func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, pl
 		Circuit:            NewECAddCircuit(limits),
 		NbCircuitInstances: limits.NbCircuitInstances,
 		PlonkOptions:       plonkOptions,
-		// InputFiller:         nil, // not necessary: 0 * (0,0) = (0,0) with complete arithmetic
+		// This resolves to the statement (0, 0) + (0, 0) = (0, 0), which is
+		// correct as (0, 0) encodes the point at infinity.
+		InputFillerKey: "",
 	}
-
-	// Register circuit alignment input fillers
-	toAlign.RegisterInputFiller(nil)
 
 	res := &EcAdd{
 		EcDataAddSource:  src,

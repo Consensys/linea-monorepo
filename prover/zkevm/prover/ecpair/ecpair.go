@@ -125,31 +125,30 @@ func newECPair(comp *wizard.CompiledIOP, limits *Limits, ecSource *ECPairSource)
 // enforcing the pairing checks.
 func (ec *ECPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *ECPair {
 	alignInputMillerLoop := &plonk.CircuitAlignmentInput{
-		Round:             roundNr,
-		Name:              nameAlignmentMillerLoop,
-		DataToCircuit:     ec.UnalignedPairingData.Limb,
-		DataToCircuitMask: ec.UnalignedPairingData.ToMillerLoopCircuitMask,
-		Circuit:           newMultiMillerLoopMulCircuit(ec.NbMillerLoopInputInstances),
-		//InputFiller:        inputFillerMillerLoop,
+		Round:              roundNr,
+		Name:               nameAlignmentMillerLoop,
+		DataToCircuit:      ec.UnalignedPairingData.Limb,
+		DataToCircuitMask:  ec.UnalignedPairingData.ToMillerLoopCircuitMask,
+		Circuit:            newMultiMillerLoopMulCircuit(ec.NbMillerLoopInputInstances),
+		InputFillerKey:     inputFillerMillerLoopKey,
 		PlonkOptions:       options,
 		NbCircuitInstances: ec.NbMillerLoopCircuits,
 	}
-	alignInputMillerLoop.RegisterInputFiller(inputFillerMillerLoop)
+
 	ec.AlignedMillerLoopCircuit = plonk.DefineAlignment(comp, alignInputMillerLoop)
 
 	alignInputFinalExp := &plonk.CircuitAlignmentInput{
-		Round:             roundNr,
-		Name:              nameAlignmentFinalExp,
-		DataToCircuit:     ec.UnalignedPairingData.Limb,
-		DataToCircuitMask: ec.UnalignedPairingData.ToFinalExpCircuitMask,
-		Circuit:           newMultiMillerLoopFinalExpCircuit(ec.NbFinalExpInputInstances),
-		// InputFiller:        inputFillerFinalExp,
+		Round:              roundNr,
+		Name:               nameAlignmentFinalExp,
+		DataToCircuit:      ec.UnalignedPairingData.Limb,
+		DataToCircuitMask:  ec.UnalignedPairingData.ToFinalExpCircuitMask,
+		Circuit:            newMultiMillerLoopFinalExpCircuit(ec.NbFinalExpInputInstances),
+		InputFillerKey:     inputFillerFinalExpKey,
 		PlonkOptions:       options,
 		NbCircuitInstances: ec.NbFinalExpCircuits,
 	}
-	alignInputFinalExp.RegisterInputFiller(inputFillerFinalExp)
-	ec.AlignedFinalExpCircuit = plonk.DefineAlignment(comp, alignInputFinalExp)
 
+	ec.AlignedFinalExpCircuit = plonk.DefineAlignment(comp, alignInputFinalExp)
 	return ec
 }
 
@@ -157,18 +156,17 @@ func (ec *ECPair) WithPairingCircuit(comp *wizard.CompiledIOP, options ...query.
 // enforcing the G2 membership checks.
 func (ec *ECPair) WithG2MembershipCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *ECPair {
 	alignInputG2Membership := &plonk.CircuitAlignmentInput{
-		Round:             roundNr,
-		Name:              nameAlignmentG2Subgroup,
-		DataToCircuit:     ec.UnalignedG2MembershipData.Limb,
-		DataToCircuitMask: ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
-		Circuit:           newMultiG2GroupcheckCircuit(ec.NbG2MembershipInputInstances),
-		//InputFiller:        inputFillerG2Membership,
+		Round:              roundNr,
+		Name:               nameAlignmentG2Subgroup,
+		DataToCircuit:      ec.UnalignedG2MembershipData.Limb,
+		DataToCircuitMask:  ec.UnalignedG2MembershipData.ToG2MembershipCircuitMask,
+		Circuit:            newMultiG2GroupcheckCircuit(ec.NbG2MembershipInputInstances),
+		InputFillerKey:     inputFillerG2MembershipKey,
 		PlonkOptions:       options,
 		NbCircuitInstances: ec.NbG2MembershipCircuits,
 	}
-	alignInputG2Membership.RegisterInputFiller(inputFillerG2Membership)
-	ec.AlignedG2MembershipData = plonk.DefineAlignment(comp, alignInputG2Membership)
 
+	ec.AlignedG2MembershipData = plonk.DefineAlignment(comp, alignInputG2Membership)
 	return ec
 }
 

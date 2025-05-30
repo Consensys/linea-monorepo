@@ -123,7 +123,7 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 		PlonkOptions:       inputs.plonkOptions,
 		NbCircuitInstances: settings.NbCircuitInstances,
 	}
-	toAlign.RegisterInputFiller(inputFiller)
+
 	res.AlignedGnarkData = plonk.DefineAlignment(comp, toAlign)
 
 	// root module constraints
