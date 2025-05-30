@@ -1,12 +1,14 @@
 package serialization
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"math/big"
 	"reflect"
 	"strings"
 
+	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -44,6 +46,7 @@ var (
 	TypeOfFieldElement       = reflect.TypeOf(field.Element{})
 	TypeOfBigInt             = reflect.TypeOf(&big.Int{})
 	TypeOfArrOfFieldElement  = reflect.TypeOf([]field.Element{})
+	TypeOfPlonkCirc          = reflect.TypeOf(&cs.SparseR1CS{})
 )
 
 // BackReference represents an integer index into PackedObject arrays (e.g., Columns, Coins).
@@ -64,19 +67,21 @@ type Serializer struct {
 	queryIDMap      map[string]int              // Maps query IDs to indices in PackedObject.QueryIDs.
 	compiledIOPs    map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
 	Stores          map[*column.Store]int       // Maps Store pointers to indices in PackedObject.Store.
-	Warnings        []string                    // Collects warnings (e.g., unexported fields) for debugging.
+	circuitMap      map[*cs.SparseR1CS]int
+	Warnings        []string // Collects warnings (e.g., unexported fields) for debugging.
 }
 
 // Deserializer manages the deserialization process, reconstructing objects from a PackedObject.
 // It caches reconstructed objects to resolve back-references and collects warnings.
 type Deserializer struct {
+	PackedObject    *PackedObject         // The input structure to deserialize.
 	StructSchemaMap map[string]int        // Maps struct type names to indices in PackedObject.StructSchema.
 	Columns         []*column.Natural     // Cache of deserialized columns, indexed by BackReference.
 	Coins           []*coin.Info          // Cache of deserialized coins.
 	Queries         []*ifaces.Query       // Cache of deserialized queries.
 	CompiledIOPs    []*wizard.CompiledIOP // Cache of deserialized CompiledIOPs.
 	Stores          []*column.Store       // Cache of deserialized stores.
-	PackedObject    *PackedObject         // The input structure to deserialize.
+	Circuits        []*cs.SparseR1CS      // Cache of deserialized circuits.
 	Warnings        []string              // Collects warnings for debugging.
 }
 
@@ -93,6 +98,7 @@ type PackedObject struct {
 	Queries      []PackedStructObject `cbor:"q"`  // Serialized queries.
 	Store        [][]any              `cbor:"st"` // Serialized stores (as arrays).
 	CompiledIOP  []PackedStructObject `cbor:"a"`  // Serialized CompiledIOPs.
+	Circuits     [][]byte             `cbor:"cr"` // Serialized circuits.
 	Payload      []byte               `cbor:"p"`  // CBOR-encoded root value.
 }
 
@@ -267,6 +273,8 @@ func (s *Serializer) PackValue(v reflect.Value) (any, error) {
 		return s.PackCompiledIOP(v.Interface().(*wizard.CompiledIOP))
 	case typeOfV == TypeOfStore:
 		return s.PackStore(v.Interface().(*column.Store))
+	case typeOfV == TypeOfPlonkCirc:
+		return s.PackPlonkCircuit(v.Interface().(*cs.SparseR1CS))
 	}
 
 	// Handle generic Go types.
@@ -322,6 +330,8 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 		return de.UnpackCompiledIOP(backReferenceFromCBORInt(v))
 	case t == TypeOfStore:
 		return de.UnpackStore(backReferenceFromCBORInt(v))
+	case t == TypeOfPlonkCirc:
+		return de.UnpackPlonkCircuit(backReferenceFromCBORInt(v))
 	}
 
 	// Handle generic Go types.
@@ -649,6 +659,41 @@ func (de *Deserializer) UnpackStore(v BackReference) (reflect.Value, error) {
 	}
 
 	return reflect.ValueOf(de.Stores[v]), nil
+}
+
+// PackPlonkCircuit serializes a plonk circuit using gnark's optimized serialization
+// algoritm. The serialized object is stored in the table [PackedObject.Circuit]
+// table and the
+func (s *Serializer) PackPlonkCircuit(circuit *cs.SparseR1CS) (BackReference, error) {
+
+	if _, ok := s.circuitMap[circuit]; !ok {
+		buf := &bytes.Buffer{}
+		circuit.WriteTo(buf)
+		s.PackedObject.Circuits = append(s.PackedObject.Circuits, buf.Bytes())
+		s.circuitMap[circuit] = len(s.PackedObject.Circuits) - 1
+	}
+
+	return BackReference(s.circuitMap[circuit]), nil
+}
+
+// UnpackPlonkCircuit deserializes a circuit from a BackReference, caching the result.
+func (de *Deserializer) UnpackPlonkCircuit(v BackReference) (reflect.Value, error) {
+	if v < 0 || int(v) >= len(de.PackedObject.Circuits) {
+		return reflect.Value{}, fmt.Errorf("invalid circuit: %v", v)
+	}
+
+	if de.Circuits[v] == nil {
+		circ := &cs.SparseR1CS{}
+		packedCircuit := de.PackedObject.Circuits[v]
+		r := bytes.NewReader(packedCircuit)
+		if _, err := circ.ReadFrom(r); err != nil {
+			return reflect.Value{}, fmt.Errorf("could not scan the unpacked circuit: %w", err)
+		}
+
+		de.Circuits[v] = circ
+	}
+
+	return reflect.ValueOf(de.Circuits[v]), nil
 }
 
 // PackArrayOrSlice serializes arrays or slices by recursively serializing each element.
