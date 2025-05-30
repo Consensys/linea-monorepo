@@ -61,7 +61,7 @@ typechain/
 typechain-types/
 !operations/bin/
 
-besu-plugins/linea-sequencer/**/site
+/besu-plugins/linea-sequencer/**/site
 
 /bridge-ui/.env*.local
 /bridge-ui/cache
@@ -73,6 +73,11 @@ besu-plugins/linea-sequencer/**/site
 /contracts/**/cache
 /contracts/deployments/zkevm_dev
 /contracts/lib/forge-std/
+
+/jvm-libs/linea/blob-compressor/**/linux-aarch64
+/jvm-libs/linea/blob-compressor/**/linux-x86-64
+/jvm-libs/linea/blob-compressor/**/darwin-aarch64
+/jvm-libs/linea/blob-compressor/**/darwin-x86-64
 
 /prover/.direnv/
 /prover/.envrc
