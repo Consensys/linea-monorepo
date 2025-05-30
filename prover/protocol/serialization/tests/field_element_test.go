@@ -1,6 +1,7 @@
 package serialization_test
 
 import (
+	"crypto/rand"
 	"math/big"
 	"testing"
 
@@ -8,9 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 )
 
-// TestFieldElementSerialization tests round-trip serialization of field.Element and []field.Element.
 func TestSerdeFE(t *testing.T) {
-	// Helper to create a field.Element from a big.Int
 	newFieldElement := func(n int64) field.Element {
 		var f field.Element
 		f.SetBigInt(big.NewInt(n))
@@ -22,46 +21,40 @@ func TestSerdeFE(t *testing.T) {
 		name string
 		val  field.Element
 	}{
+		{"Zero", field.Element{0, 0, 0, 0}},
+		{"Small", newFieldElement(42)},
+		{"Large", newFieldElement(1 << 60)},
 		{
-			name: "Zero",
-			val:  field.Element{0, 0, 0, 0},
-		},
-		{
-			name: "Small",
-			val:  newFieldElement(42),
-		},
-		{
-			name: "Large",
-			val:  newFieldElement(1 << 60),
-		},
-		{
-			name: "ModulusMinusOne",
-			val: func() field.Element {
+			"ModulusMinusOne",
+			func() field.Element {
 				var f field.Element
 				f.SetOne()
 				f.Neg(&f) // modulus - 1
 				return f
 			}(),
 		},
+		{
+			"Random",
+			func() field.Element {
+				var f field.Element
+				b := make([]byte, 32)
+				_, _ = rand.Read(b)
+				f.SetBytes(b)
+				return f
+			}(),
+		},
 	}
 
-	// Test single field.Element
 	for _, tt := range singleTests {
 		t.Run("Single_"+tt.name, func(t *testing.T) {
-			// Serialize
 			bytes, err := serialization.Serialize(tt.val)
 			if err != nil {
-				t.Errorf("failed to serialize field.Element: %v", err)
-				return
+				t.Fatalf("serialize error: %v", err)
 			}
-			// Deserialize
 			var result field.Element
-			err = serialization.Deserialize(bytes, &result)
-			if err != nil {
-				t.Errorf("failed to deserialize field.Element: %v", err)
-				return
+			if err := serialization.Deserialize(bytes, &result); err != nil {
+				t.Fatalf("deserialize error: %v", err)
 			}
-			// Compare
 			if result != tt.val {
 				t.Errorf("mismatch: got %v, want %v", result, tt.val)
 			}
@@ -73,57 +66,112 @@ func TestSerdeFE(t *testing.T) {
 		name string
 		val  []field.Element
 	}{
+		{"Empty", []field.Element{}},
+		{"Single", []field.Element{newFieldElement(42)}},
+		{"Multiple", []field.Element{
+			newFieldElement(0),
+			newFieldElement(42),
+			newFieldElement(1 << 60),
+			func() field.Element {
+				var f field.Element
+				f.SetOne()
+				f.Neg(&f)
+				return f
+			}(),
+		}},
 		{
-			name: "Empty",
-			val:  []field.Element{},
+			"Repeated",
+			[]field.Element{
+				newFieldElement(123),
+				newFieldElement(123),
+				newFieldElement(123),
+			},
 		},
 		{
-			name: "Single",
-			val:  []field.Element{newFieldElement(42)},
-		},
-		{
-			name: "Multiple",
-			val: []field.Element{
-				newFieldElement(0),
-				newFieldElement(42),
-				newFieldElement(1 << 60),
+			"BoundaryNearModulus",
+			[]field.Element{
 				func() field.Element {
 					var f field.Element
 					f.SetOne()
 					f.Neg(&f)
 					return f
 				}(),
+				newFieldElement(1),
 			},
+		},
+		{
+			"LargeArray",
+			func() []field.Element {
+				arr := make([]field.Element, 1000)
+				for i := 0; i < len(arr); i++ {
+					arr[i] = newFieldElement(int64(i * i))
+				}
+				return arr
+			}(),
+		},
+		{
+			"RandomElements",
+			func() []field.Element {
+				arr := make([]field.Element, 100)
+				for i := range arr {
+					var f field.Element
+					b := make([]byte, 32)
+					_, _ = rand.Read(b)
+					f.SetBytes(b)
+					arr[i] = f
+				}
+				return arr
+			}(),
 		},
 	}
 
-	// Test []field.Element
 	for _, tt := range arrayTests {
 		t.Run("Array_"+tt.name, func(t *testing.T) {
-			// Serialize
 			bytes, err := serialization.Serialize(tt.val)
 			if err != nil {
-				t.Errorf("failed to serialize []field.Element: %v", err)
-				return
+				t.Fatalf("serialize error: %v", err)
 			}
-			// Deserialize
 			var result []field.Element
-			err = serialization.Deserialize(bytes, &result)
-			if err != nil {
-				t.Errorf("failed to deserialize []field.Element: %v", err)
-				return
+			if err := serialization.Deserialize(bytes, &result); err != nil {
+				t.Fatalf("deserialize error: %v", err)
 			}
-			// Compare lengths
 			if len(result) != len(tt.val) {
-				t.Errorf("length mismatch: got %d, want %d", len(result), len(tt.val))
-				return
+				t.Fatalf("length mismatch: got %d, want %d", len(result), len(tt.val))
 			}
-			// Compare elements
 			for i := range tt.val {
 				if result[i] != tt.val[i] {
 					t.Errorf("element %d mismatch: got %v, want %v", i, result[i], tt.val[i])
 				}
 			}
 		})
+	}
+}
+
+func TestFieldElementLimbMismatch(t *testing.T) {
+	// Construct a field.Element with known limb values
+	original := [4]uint64{
+		4432961018360255618, // limb 0
+		1234567890123456789, // limb 1
+		9876543210987654321, // limb 2
+		1111111111111111111, // limb 3
+	}
+
+	// Serialize it
+	bytes, err := serialization.Serialize(original)
+	if err != nil {
+		t.Fatalf("failed to serialize: %v", err)
+	}
+
+	// Deserialize it
+	var result [4]uint64
+	if err := serialization.Deserialize(bytes, &result); err != nil {
+		t.Fatalf("failed to deserialize: %v", err)
+	}
+
+	// Compare limbs manually and print diff
+	for i := 0; i < 4; i++ {
+		if result[i] != original[i] {
+			t.Errorf("field.Element limb mismatch at [%d]: got %d, want %d", i, result[i], original[i])
+		}
 	}
 }

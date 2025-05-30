@@ -17,7 +17,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -111,12 +110,12 @@ type PackedIFace struct {
 
 // PackedCoin is a compact representation of coin.Info, optimized for CBOR encoding.
 type PackedCoin struct {
-	Type        int8   `cbor:"t"`           // Coin type (e.g., Random, Fixed).
-	Size        int    `cbor:"s,omitempty"` // Coin size (optional).
-	UpperBound  int32  `cbor:"u,omitempty"` // Upper bound for coin (optional).
-	Name        string `cbor:"n"`           // Coin name.
-	Round       int    `cbor:"r"`           // Round number.
-	CompiledIOP int8   `cbor:"i"`           // Unused (placeholder for CompiledIOP index).
+	Type       int8   `cbor:"t"`           // Coin type (e.g., Random, Fixed).
+	Size       int    `cbor:"s,omitempty"` // Coin size (optional).
+	UpperBound int32  `cbor:"u,omitempty"` // Upper bound for coin (optional).
+	Name       string `cbor:"n"`           // Coin name.
+	Round      int    `cbor:"r"`           // Round number.
+	// CompiledIOP int8   `cbor:"i"`           // Unused (placeholder for CompiledIOP index).
 }
 
 // PackedStructSchema defines a struct’s type and field names for deserialization.
@@ -148,7 +147,6 @@ func NewSerializer() *Serializer {
 // It packs the value into a PackedObject.Payload, encodes the PackedObject, and returns the result.
 // Warnings are printed for debugging.
 func Serialize(v any) ([]byte, error) {
-
 	// Initialize a new Serializer with empty maps and a PackedObject.
 	ser := NewSerializer()
 
@@ -213,6 +211,7 @@ func Deserialize(bytes []byte, v any) error {
 
 	// Initialize a Deserializer with pre-allocated caches.
 	deser := NewDeserializer(packedObject)
+
 	var (
 		payloadRoot any
 		payloadType = reflect.TypeOf(v).Elem() // Target type (dereferenced).
@@ -316,13 +315,13 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 		return reflect.Zero(t), nil
 	}
 
-	logrus.Infof("Expected CompiledIOPPointer type: %T Got: %T", TypeOfCompiledIOPPointer, t)
-
 	// Identify custom codexes
 	if codex, ok := CustomCodexes[t]; ok {
 		return codex.Des(de, v, t)
 	}
 
+	// logrus.Printf("CompiledIOP type=%v \n", TypeOfCompiledIOPPointer)
+	// logrus.Printf("Received type=%v \n", t)
 	// Handle protocol-specific types.
 	switch {
 	case t == TypeOfColumnNatural:
@@ -352,6 +351,7 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 		reflect.Uint32, reflect.Uint64, reflect.String:
 		return de.UnpackPrimitive(v, t), nil
 	case reflect.Array, reflect.Slice:
+		//logrus.Printf("Trying Unpacking array or slice")
 		return de.UnpackArrayOrSlice(v.([]any), t)
 	case reflect.Map:
 		v := v.(map[any]any)
@@ -887,7 +887,7 @@ func (s *Serializer) PackStructObject(obj reflect.Value) (PackedStructObject, er
 		// help the caller understand that we might omit something that he would
 		// not want to.
 		if !obj.Type().Field(i).IsExported() {
-			s.warnf(fmt.Sprintf("(PackstructObject) field %v.%v is not exported", obj.Type().String(), obj.Type().Field(i).Name))
+			s.warnf(fmt.Sprintf("field %v.%v is not exported", obj.Type().String(), obj.Type().Field(i).Name))
 			continue
 		}
 
@@ -954,7 +954,7 @@ func (de *Deserializer) UnpackStructObject(v PackedStructObject, t reflect.Type)
 		}
 
 		if !structField.IsExported() {
-			de.warnf(fmt.Sprintf("(Unpackstruct) field %v.%v is not exported", t.String(), structField.Name))
+			de.warnf(fmt.Sprintf("field %v.%v is not exported", t.String(), structField.Name))
 			continue
 		}
 

@@ -571,6 +571,7 @@ func CompareExportedFields(a, b interface{}) bool {
 
 func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 	v1, v2 := reflect.ValueOf(a), reflect.ValueOf(b)
+
 	// Ensure both values are valid
 	if !v1.IsValid() || !v2.IsValid() {
 		// Treat nil and zero values as equivalent
@@ -697,6 +698,7 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 	// For other types, use DeepEqual and log if mismatched
 	if !reflect.DeepEqual(a, b) {
 		logrus.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type_v1: %v type_v2: %v)\n", path, a, b, v1.Type(), v2.Type())
+		panic("fail fast")
 		return false
 	}
 	return true
