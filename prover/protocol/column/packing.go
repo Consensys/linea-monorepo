@@ -21,13 +21,13 @@ func (s *Store) Pack() PackedStore {
 func (p PackedStore) Unpack() *Store {
 	store := NewStore()
 	for rnd, arr := range p {
-		for _, info := range arr {
+		for pir, info := range arr {
 			store.byRounds.AppendToInner(rnd, info)
 			store.indicesByNames.InsertNew(
 				info.ID,
 				columnPosition{
 					round:      rnd,
-					posInRound: store.byRounds.LenOf(rnd),
+					posInRound: pir,
 				},
 			)
 		}
