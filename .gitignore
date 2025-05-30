@@ -9,6 +9,7 @@
 *.jar
 *.pem
 *.tsbuildinfo
+*.out
 
 .classpath
 .DS_Store
@@ -29,6 +30,7 @@
 .vertx
 .run/**.run.xml
 
+local.properties
 next-env.d.ts
 npm-debug.log*
 tsconfig.build.tsbuildinfo
@@ -58,6 +60,8 @@ tmp/
 typechain/
 typechain-types/
 !operations/bin/
+
+besu-plugins/linea-sequencer/**/site
 
 /bridge-ui/.env*.local
 /bridge-ui/cache
