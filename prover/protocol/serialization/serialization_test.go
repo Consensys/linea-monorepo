@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -357,4 +358,70 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 		return false
 	}
 	return true
+}
+
+type Team struct {
+	Name      string
+	CreatedAt time.Time
+	Members   []*Person
+	Metadata  map[string]interface{}
+	privateID string // unexported field
+}
+
+type Person struct {
+	Name       string
+	Age        int
+	Attributes Attributes
+}
+
+type Attributes struct {
+	Nickname string
+	Score    int
+	private  string // unexported field
+}
+
+func TestSerdeStruct(t *testing.T) {
+	p1 := &Person{
+		Name: "Alice",
+		Age:  28,
+		Attributes: Attributes{
+			Nickname: "Ace",
+			Score:    95,
+			private:  "secret-1",
+		},
+	}
+	p2 := &Person{
+		Name: "Bob",
+		Age:  35,
+		Attributes: Attributes{
+			Nickname: "Builder",
+			Score:    88,
+			private:  "secret-2",
+		},
+	}
+
+	team := Team{
+		Name:      "DevTeam",
+		CreatedAt: time.Now().Truncate(time.Second),
+		Members:   []*Person{p1, p2},
+		Metadata: map[string]interface{}{
+			"department": "Engineering",
+			"active":     true,
+			"head":       p1.Name,
+		},
+		privateID: "internal-uuid-1234",
+	}
+
+	// Serialize
+	teamBytes, err := Serialize(team)
+	require.NoError(t, err)
+
+	// Deserialize
+	var deserializedTeam Team
+	err = Deserialize(teamBytes, &deserializedTeam)
+	require.NoError(t, err)
+
+	if !CompareExportedFields(team, deserializedTeam) {
+		t.Errorf("expected team and deserializedTeam to be equal")
+	}
 }

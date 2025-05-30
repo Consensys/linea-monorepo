@@ -63,6 +63,7 @@ func init() {
 	RegisterImplementation(uint32(0))
 	RegisterImplementation(uint64(0))
 	RegisterImplementation(uint(0))
+	RegisterImplementation(string(""))
 
 	// Interfaces
 	RegisterImplementation(ifaces.ColID(""))
