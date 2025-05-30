@@ -42,13 +42,13 @@ func makeTestCaseCLDModule(uc generic.HashingUsecase) (
 		ctx = cleaningCtx{
 			CleanLimb: createCol("CleanLimb"),
 			Inputs: &cleaningInputs{
-				imported: imported,
-				lookup:   NewLookupTables(comp)},
+				Imported: imported,
+				Lookup:   NewLookupTables(comp)},
 		}
 
 		inp := decompositionInputs{
-			param:       uc,
-			cleaningCtx: ctx,
+			Param:       uc,
+			CleaningCtx: ctx,
 		}
 
 		decomposed = newDecomposition(comp, inp)

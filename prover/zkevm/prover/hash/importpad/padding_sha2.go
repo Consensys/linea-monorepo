@@ -24,7 +24,7 @@ type sha2PaddingAssignmentBuilder struct {
 
 // newSha2Padder declares all the constraints ensuring the imported byte strings
 // are properly padded following the specification of Sha2.
-func (ipad *importation) newSha2Padder(comp *wizard.CompiledIOP) padder {
+func (ipad *Importation) newSha2Padder(comp *wizard.CompiledIOP) padder {
 
 	// The padding structure is
 	//

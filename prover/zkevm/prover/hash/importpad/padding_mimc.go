@@ -19,7 +19,7 @@ type mimcPadderAssignmentBuilder struct{}
 
 // newMimcPadder creates the constraints ensuring that the zero-padding and
 // returns an object helping with the assignment.
-func (ipad *importation) newMimcPadder(comp *wizard.CompiledIOP) padder {
+func (ipad *Importation) newMimcPadder(comp *wizard.CompiledIOP) padder {
 
 	// The padding values are all zero
 	comp.InsertGlobal(0,

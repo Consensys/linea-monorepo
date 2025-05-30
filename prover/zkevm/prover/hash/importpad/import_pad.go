@@ -26,12 +26,12 @@ type ImportAndPadInputs struct {
 	PaddingStrategy generic.HashingUsecase
 }
 
-// importation stores the wizard compilation context to instantiate the
+// Importation stores the wizard compilation context to instantiate the
 // functionality of [ImportAndPad]: e.g. it stores all the intermediate columns
 // and constraints and implements the [wizard.ProverAction] interface. The
-// [importation.Run] function is responsible for assigning all the generated
+// [Importation.Run] function is responsible for assigning all the generated
 // columns.
-type importation struct {
+type Importation struct {
 
 	// Inputs tracks the input structure used for instantiating this [Importation]
 	Inputs         ImportAndPadInputs
@@ -82,10 +82,10 @@ type padderAssignmentBuilder interface {
 
 // ImportAndPad defines and constrains the Importation and the padding of a
 // group of generic byte module following a prespecified padding strategy.
-func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int) *importation {
+func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int) *Importation {
 
 	var (
-		res = &importation{
+		res = &Importation{
 			Inputs:         inp,
 			HashNum:        comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_HASH_NUM", inp.Name), numRows),
 			Limbs:          comp.InsertCommit(0, ifaces.ColIDf("%v_IMPORT_PAD_LIMBS", inp.Name), numRows),
@@ -195,7 +195,7 @@ func ImportAndPad(comp *wizard.CompiledIOP, inp ImportAndPadInputs, numRows int)
 }
 
 // Run performs the assignment of the Importation module.
-func (imp *importation) Run(run *wizard.ProverRuntime) {
+func (imp *Importation) Run(run *wizard.ProverRuntime) {
 
 	var (
 		sha2Count = 0

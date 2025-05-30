@@ -31,9 +31,9 @@ type KeccakZkEVM struct {
 	SuppProverSteps []wizard.ProverAction
 
 	// The [wizard.ProverAction] for submodules.
-	pa_accData wizard.ProverAction
-	pa_accInfo wizard.ProverAction
-	pa_keccak  wizard.ProverAction
+	Pa_accData wizard.ProverAction
+	Pa_accInfo wizard.ProverAction
+	Pa_keccak  wizard.ProverAction
 }
 
 func NewKeccakZkEVM(comp *wizard.CompiledIOP, settings Settings, providersFromEcdsa []generic.GenericByteModule) *KeccakZkEVM {
@@ -90,9 +90,9 @@ func newKeccakZkEvm(comp *wizard.CompiledIOP, settings Settings, providers []gen
 	)
 
 	res := &KeccakZkEVM{
-		pa_accData: accData,
-		pa_accInfo: accInfo,
-		pa_keccak:  keccak,
+		Pa_accData: accData,
+		Pa_accInfo: accInfo,
+		Pa_keccak:  keccak,
 		Settings:   &settings,
 	}
 	return res
@@ -106,9 +106,9 @@ func (k *KeccakZkEVM) Run(run *wizard.ProverRuntime) {
 		action.Run(run)
 	}
 
-	k.pa_accData.Run(run)
-	k.pa_accInfo.Run(run)
-	k.pa_keccak.Run(run)
+	k.Pa_accData.Run(run)
+	k.Pa_accInfo.Run(run)
+	k.Pa_keccak.Run(run)
 }
 
 // getShakiraArithmetization returns a [generic.GenericByteModule] representing

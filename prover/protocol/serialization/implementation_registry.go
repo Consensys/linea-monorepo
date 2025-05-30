@@ -32,7 +32,10 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecarith"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecdsa"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/ecpair"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
+	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/sirupsen/logrus"
@@ -167,6 +170,12 @@ func init() {
 
 	RegisterImplementation(univariates.NaturalizeProverAction{})
 	RegisterImplementation(univariates.NaturalizeVerifierAction{})
+
+	RegisterImplementation(gen_acc.GenericDataAccumulator{})
+	RegisterImplementation(gen_acc.GenericInfoAccumulator{})
+	RegisterImplementation(keccak.KeccakSingleProvider{})
+	RegisterImplementation(importpad.Importation{})
+	RegisterImplementation(packing.Packing{})
 
 	logrus.Printf("Ignorable types:%v\n", IgnoreableTypes)
 }
@@ -343,7 +352,10 @@ func getPkgPathAndTypeName(x any) string {
 	)
 
 	if len(typeName) == 0 {
-		utils.Panic("got an untyped parameter `(%T)(%v)`; this is not supported", x, x)
+		// If the type is not named, we won't be able to resolve it as an
+		// interface. We still return a reflect.Repr as it is still useful in
+		// case it is used for packing a struct object.
+		return refType.String()
 	}
 
 	return strings.TrimPrefix(pkgPath, pkgPathPrefixToRemove) + "#" + typeName

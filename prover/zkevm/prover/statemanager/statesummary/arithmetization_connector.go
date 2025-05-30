@@ -37,15 +37,15 @@ func (ss *Module) ConnectToHub(comp *wizard.CompiledIOP, acp, scp HubColumnSet) 
 	accountIntegrationDefineInitial(comp, *ss, acp)
 	accountIntegrationDefineFinal(comp, *ss, acp)
 
-	ss.arithmetizationLink = al
+	ss.ArithmetizationLink = al
 }
 
 func (ss *Module) assignArithmetizationLink(run *wizard.ProverRuntime) {
 
-	storageIntegrationAssignInitial(run, *ss, ss.arithmetizationLink.Scp)
-	storageIntegrationAssignFinal(run, *ss, ss.arithmetizationLink.Scp)
-	accountIntegrationAssignInitial(run, *ss, ss.arithmetizationLink.Acp)
-	accountIntegrationAssignFinal(run, *ss, ss.arithmetizationLink.Acp)
+	storageIntegrationAssignInitial(run, *ss, ss.ArithmetizationLink.Scp)
+	storageIntegrationAssignFinal(run, *ss, ss.ArithmetizationLink.Scp)
+	accountIntegrationAssignInitial(run, *ss, ss.ArithmetizationLink.Acp)
+	accountIntegrationAssignFinal(run, *ss, ss.ArithmetizationLink.Acp)
 
 	// @alex: this should be commonized utility or should be simplified to not
 	// use a closure because the closure is used only once.
@@ -63,15 +63,15 @@ func (ss *Module) assignArithmetizationLink(run *wizard.ProverRuntime) {
 	}
 
 	runConcurrent([]wizard.ProverAction{
-		ss.arithmetizationLink.scpSelector.ComputeSelectorMinDeplBlock,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorMaxDeplBlock,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueHi,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueLo,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueNextHi,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorEmptySTValueNextLo,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorSTKeyDiffHi,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorSTKeyDiffLo,
-		ss.arithmetizationLink.scpSelector.ComputeSelectorBlockNoDiff,
+		ss.ArithmetizationLink.scpSelector.ComputeSelectorMinDeplBlock,
+		ss.ArithmetizationLink.scpSelector.ComputeSelectorMaxDeplBlock,
+		ss.ArithmetizationLink.scpSelector.ComputeSelectorEmptySTValueHi,
+		ss.ArithmetizationLink.scpSelector.ComputeSelectorEmptySTValueLo,
+		ss.ArithmetizationLink.scpSelector.ComputeSelectorEmptySTValueNextHi,
+		ss.ArithmetizationLink.scpSelector.ComputeSelectorEmptySTValueNextLo,
+		ss.ArithmetizationLink.scpSelector.ComputeSelectorSTKeyDiffHi,
+		ss.ArithmetizationLink.scpSelector.ComputeSelectorSTKeyDiffLo,
+		ss.ArithmetizationLink.scpSelector.ComputeSelectorBlockNoDiff,
 	})
 
 }

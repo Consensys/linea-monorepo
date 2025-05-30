@@ -59,13 +59,13 @@ type PublicInput struct {
 // AuxiliaryModules are intermediary modules needed to assign the data in the PublicInput
 type AuxiliaryModules struct {
 	FetchedL2L1, FetchedRollingMsg, FetchedRollingHash logs.ExtractedData
-	logSelectors                                       logs.Selectors
-	blockTxnMetadata                                   fetch.BlockTxnMetadata
-	txnDataFetcher                                     fetch.TxnDataFetcher
-	rlpTxnFetcher                                      fetch.RlpTxnFetcher
-	execDataCollector                                  *edc.ExecutionDataCollector
-	execDataCollectorPadding                           wizard.ProverAction
-	execDataCollectorPacking                           pack.Packing
+	LogSelectors                                       logs.Selectors
+	BlockTxnMetadata                                   fetch.BlockTxnMetadata
+	TxnDataFetcher                                     fetch.TxnDataFetcher
+	RlpTxnFetcher                                      fetch.RlpTxnFetcher
+	ExecDataCollector                                  *edc.ExecutionDataCollector
+	ExecDataCollectorPadding                           wizard.ProverAction
+	ExecDataCollectorPacking                           pack.Packing
 }
 
 // Settings contains options for proving and verifying that the public inputs are computed properly.
@@ -241,13 +241,13 @@ func newPublicInput(
 			FetchedL2L1:              fetchedL2L1,
 			FetchedRollingMsg:        fetchedRollingMsg,
 			FetchedRollingHash:       fetchedRollingHash,
-			logSelectors:             logSelectors,
-			blockTxnMetadata:         blockTxnMeta,
-			txnDataFetcher:           txnDataFetcher,
-			rlpTxnFetcher:            rlpFetcher,
-			execDataCollector:        execDataCollector,
-			execDataCollectorPadding: padding,
-			execDataCollectorPacking: *packingMod,
+			LogSelectors:             logSelectors,
+			BlockTxnMetadata:         blockTxnMeta,
+			TxnDataFetcher:           txnDataFetcher,
+			RlpTxnFetcher:            rlpFetcher,
+			ExecDataCollector:        execDataCollector,
+			ExecDataCollectorPadding: padding,
+			ExecDataCollectorPacking: *packingMod,
 		},
 	}
 
@@ -268,22 +268,22 @@ func (pub *PublicInput) Assign(run *wizard.ProverRuntime, l2BridgeAddress common
 	// assign the timestamp module
 	fetch.AssignTimestampFetcher(run, pub.TimestampFetcher, inp.BlockData)
 	// assign the log modules
-	aux.logSelectors.Assign(run, l2BridgeAddress)
-	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.FetchedL2L1, logs.L2L1)
-	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.FetchedRollingMsg, logs.RollingMsgNo)
-	logs.AssignExtractedData(run, inp.LogCols, aux.logSelectors, aux.FetchedRollingHash, logs.RollingHash)
+	aux.LogSelectors.Assign(run, l2BridgeAddress)
+	logs.AssignExtractedData(run, inp.LogCols, aux.LogSelectors, aux.FetchedL2L1, logs.L2L1)
+	logs.AssignExtractedData(run, inp.LogCols, aux.LogSelectors, aux.FetchedRollingMsg, logs.RollingMsgNo)
+	logs.AssignExtractedData(run, inp.LogCols, aux.LogSelectors, aux.FetchedRollingHash, logs.RollingHash)
 	logs.AssignHasher(run, pub.LogHasher, aux.FetchedL2L1)
 	logs.AssignRollingSelector(run, pub.RollingHashFetcher, aux.FetchedRollingHash, aux.FetchedRollingMsg)
 	// assign the root hash fetcher
 	fetch.AssignRootHashFetcher(run, pub.RootHashFetcher, *inp.StateSummary)
 	// assign the execution data collector's necessary fetchers
-	fetch.AssignBlockTxnMetadata(run, aux.blockTxnMetadata, inp.TxnData)
-	fetch.AssignTxnDataFetcher(run, aux.txnDataFetcher, inp.TxnData)
-	fetch.AssignRlpTxnFetcher(run, &aux.rlpTxnFetcher, inp.RlpTxn)
+	fetch.AssignBlockTxnMetadata(run, aux.BlockTxnMetadata, inp.TxnData)
+	fetch.AssignTxnDataFetcher(run, aux.TxnDataFetcher, inp.TxnData)
+	fetch.AssignRlpTxnFetcher(run, &aux.RlpTxnFetcher, inp.RlpTxn)
 	// assign the ExecutionDataCollector
-	edc.AssignExecutionDataCollector(run, aux.execDataCollector, pub.TimestampFetcher, aux.blockTxnMetadata, aux.txnDataFetcher, aux.rlpTxnFetcher, blockHashList)
-	aux.execDataCollectorPadding.Run(run)
-	aux.execDataCollectorPacking.Run(run)
+	edc.AssignExecutionDataCollector(run, aux.ExecDataCollector, pub.TimestampFetcher, aux.BlockTxnMetadata, aux.TxnDataFetcher, aux.RlpTxnFetcher, blockHashList)
+	aux.ExecDataCollectorPadding.Run(run)
+	aux.ExecDataCollectorPacking.Run(run)
 	pub.ExecMiMCHasher.AssignHasher(run)
 	pub.Extractor.Run(run)
 }
@@ -322,8 +322,8 @@ func (pi *PublicInput) generateExtractor(comp *wizard.CompiledIOP) {
 		LastRollingHashUpdateNumber:  createNewLocalOpening(pi.RollingHashFetcher.LastMessageNo),
 		ChainID:                      createNewLocalOpening(pi.ChainID),
 		NBytesChainID:                createNewLocalOpening(pi.ChainIDNBytes),
-		L2MessageServiceAddrHi:       createNewLocalOpening(pi.Aux.logSelectors.L2BridgeAddressColHI),
-		L2MessageServiceAddrLo:       createNewLocalOpening(pi.Aux.logSelectors.L2BridgeAddressColLo),
+		L2MessageServiceAddrHi:       createNewLocalOpening(pi.Aux.LogSelectors.L2BridgeAddressColHI),
+		L2MessageServiceAddrLo:       createNewLocalOpening(pi.Aux.LogSelectors.L2BridgeAddressColLo),
 	}
 
 	comp.PublicInputs = append(comp.PublicInputs,

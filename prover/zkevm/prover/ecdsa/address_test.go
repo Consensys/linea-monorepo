@@ -57,7 +57,7 @@ func TestAddress(t *testing.T) {
 
 		// define keccak (columns and constraints)
 		keccakInp := keccak.KeccakSingleProviderInput{
-			Provider:      addr.provider,
+			Provider:      addr.Provider,
 			MaxNumKeccakF: nbKeccakF,
 		}
 		m = keccak.NewKeccakSingleProvider(comp, keccakInp)

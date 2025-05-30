@@ -29,7 +29,7 @@ type EcMul struct {
 	*EcDataMulSource
 	AlignedGnarkData *plonk.Alignment
 
-	size int
+	Size int
 	*Limits
 }
 
@@ -68,7 +68,7 @@ func newEcMul(comp *wizard.CompiledIOP, limits *Limits, src *EcDataMulSource, pl
 	res := &EcMul{
 		EcDataMulSource:  src,
 		AlignedGnarkData: plonk.DefineAlignment(comp, toAlign),
-		size:             size,
+		Size:             size,
 	}
 
 	return res

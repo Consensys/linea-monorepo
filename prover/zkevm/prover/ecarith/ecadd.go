@@ -28,7 +28,7 @@ type EcAdd struct {
 	*EcDataAddSource
 	AlignedGnarkData *plonk.Alignment
 
-	size int
+	Size int
 	*Limits
 }
 
@@ -67,7 +67,7 @@ func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, pl
 	res := &EcAdd{
 		EcDataAddSource:  src,
 		AlignedGnarkData: plonk.DefineAlignment(comp, toAlign),
-		size:             size,
+		Size:             size,
 	}
 
 	return res

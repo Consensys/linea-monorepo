@@ -7,7 +7,7 @@ import (
 )
 
 type EcdsaZkEvm struct {
-	ant *antichamber
+	Ant *antichamber
 }
 
 func NewEcdsaZkEvm(
@@ -15,7 +15,7 @@ func NewEcdsaZkEvm(
 	settings *Settings,
 ) *EcdsaZkEvm {
 	return &EcdsaZkEvm{
-		ant: newAntichamber(
+		Ant: newAntichamber(
 			comp,
 			&antichamberInput{
 				settings:     settings,
@@ -29,11 +29,11 @@ func NewEcdsaZkEvm(
 }
 
 func (e *EcdsaZkEvm) Assign(run *wizard.ProverRuntime, txSig TxSignatureGetter, nbTx int) {
-	e.ant.assign(run, txSig, nbTx)
+	e.Ant.assign(run, txSig, nbTx)
 }
 
 func (e *EcdsaZkEvm) GetProviders() []generic.GenericByteModule {
-	return e.ant.Providers
+	return e.Ant.Providers
 }
 
 func getEcdataArithmetization(comp *wizard.CompiledIOP) *ecDataSource {

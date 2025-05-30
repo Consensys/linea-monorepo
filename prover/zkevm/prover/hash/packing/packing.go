@@ -127,13 +127,13 @@ func spaghettiMaker(comp *wizard.CompiledIOP, decomposed decomposition, isNewHas
 
 	var (
 		isNewHashTable []ifaces.Column
-		size           = decomposed.size
+		size           = decomposed.Size
 		zeroCol        = verifiercol.NewConstantCol(field.Zero(), size)
 	)
 
 	// build isNewHash
 	isNewHashTable = append(isNewHashTable, isNewHash)
-	for i := 1; i < decomposed.nbSlices; i++ {
+	for i := 1; i < decomposed.NbSlices; i++ {
 		isNewHashTable = append(isNewHashTable, zeroCol)
 	}
 
@@ -141,13 +141,13 @@ func spaghettiMaker(comp *wizard.CompiledIOP, decomposed decomposition, isNewHas
 	inp := spaghettifier.SpaghettificationInput{
 		Name: decomposed.Inputs.Name,
 		ContentMatrix: [][]ifaces.Column{
-			decomposed.decomposedLimbs,
-			decomposed.decomposedLen,
-			decomposed.decomposedLenPowers,
+			decomposed.DecomposedLimbs,
+			decomposed.DecomposedLen,
+			decomposed.DecomposedLenPowers,
 			isNewHashTable,
 		},
-		Filter:        decomposed.filter,
-		SpaghettiSize: decomposed.size,
+		Filter:        decomposed.Filter,
+		SpaghettiSize: decomposed.Size,
 	}
 	// declare ProverAction for Spaghettification
 	pa := spaghettifier.Spaghettify(comp, inp)
@@ -158,7 +158,7 @@ func spaghettiMaker(comp *wizard.CompiledIOP, decomposed decomposition, isNewHas
 		decLenSp:        pa.ContentSpaghetti[1],
 		decLenPowerSp:   pa.ContentSpaghetti[2],
 		newHashSp:       pa.ContentSpaghetti[3],
-		spaghettiSize:   decomposed.size,
+		spaghettiSize:   decomposed.Size,
 		filterSpaghetti: pa.FilterSpaghetti,
 	}
 

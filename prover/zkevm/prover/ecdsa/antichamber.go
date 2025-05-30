@@ -61,12 +61,12 @@ type antichamber struct {
 
 	*EcRecover
 	*Addresses
-	*txSignature
+	*TxSignature
 	*UnalignedGnarkData
 	AlignedGnarkData *plonk.Alignment
 
-	// size of AntiChamber
-	size int
+	// Size of AntiChamber
+	Size int
 
 	// providers for keccak, Providers contain the inputs and outputs of keccak hash.
 	Providers []generic.GenericByteModule
@@ -102,15 +102,15 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 		Source:     createCol("SOURCE"),
 		Inputs:     inputs,
 
-		size: size,
+		Size: size,
 	}
 
 	// declare submodules
 	txSignInputs := txSignatureInputs{
 		RlpTxn: inputs.rlpTxn,
-		ac:     res,
+		Ac:     res,
 	}
-	res.txSignature = newTxSignatures(comp, txSignInputs)
+	res.TxSignature = newTxSignatures(comp, txSignInputs)
 	res.EcRecover = newEcRecover(comp, inputs.settings, inputs.ecSource)
 	res.UnalignedGnarkData = newUnalignedGnarkData(comp, size, res.unalignedGnarkDataSource())
 	res.Addresses = newAddress(comp, size, res.EcRecover, res, inputs.txSource)
@@ -139,7 +139,7 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 	res.EcRecover.csConstrainAuxProjectionMaskConsistency(comp, res.Source, res.IsFetching)
 
 	// assign keccak providers
-	res.Providers = append([]generic.GenericByteModule{res.Addresses.provider}, res.txSignature.provider)
+	res.Providers = append([]generic.GenericByteModule{res.Addresses.Provider}, res.TxSignature.Provider)
 
 	return res
 }
@@ -162,9 +162,9 @@ func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter
 	)
 	ac.assignAntichamber(run, nbActualEcRecover, nbTx)
 	ac.EcRecover.Assign(run, ecSrc)
-	ac.txSignature.assignTxSignature(run, nbActualEcRecover)
+	ac.TxSignature.assignTxSignature(run, nbActualEcRecover)
 	ac.UnalignedGnarkData.Assign(run, ac.unalignedGnarkDataSource(), txGet)
-	ac.Addresses.assignAddress(run, nbActualEcRecover, ac.size, ac, ac.EcRecover, ac.UnalignedGnarkData, txSource)
+	ac.Addresses.assignAddress(run, nbActualEcRecover, ac.Size, ac, ac.EcRecover, ac.UnalignedGnarkData, txSource)
 	ac.AlignedGnarkData.Assign(run)
 }
 
@@ -183,18 +183,18 @@ func (ac *antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInsta
 		maxNbTx        = ac.Inputs.settings.MaxNbTx
 	)
 
-	if nbRowsPerEcRec*maxNbEcRecover+nbRowsPerTxSign*maxNbTx > ac.size {
-		utils.Panic("not enough space in antichamber to store all the data. Need %d, got %d", 24*maxNbEcRecover+15*maxNbTx, ac.size)
+	if nbRowsPerEcRec*maxNbEcRecover+nbRowsPerTxSign*maxNbTx > ac.Size {
+		utils.Panic("not enough space in antichamber to store all the data. Need %d, got %d", 24*maxNbEcRecover+15*maxNbTx, ac.Size)
 	}
 	// prepare root module columns
 	// for ecrecover case we need 10+14 rows (fetchin and pushing). For TX we need 1+14
 
 	// allocate the columns for preparing the assignment
-	resIsActive := make([]field.Element, ac.size)
-	resID := make([]field.Element, ac.size)
-	resIsPushing := make([]field.Element, ac.size)
-	resIsFetching := make([]field.Element, ac.size)
-	resSource := make([]field.Element, ac.size)
+	resIsActive := make([]field.Element, ac.Size)
+	resID := make([]field.Element, ac.Size)
+	resIsPushing := make([]field.Element, ac.Size)
+	resIsFetching := make([]field.Element, ac.Size)
+	resSource := make([]field.Element, ac.Size)
 
 	var idxInstance uint64
 	for i := 0; i < nbEcRecInstances; i++ {
