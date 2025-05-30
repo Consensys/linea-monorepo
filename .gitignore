@@ -93,6 +93,7 @@ typechain-types/
 
 /prover/cmd/contract-gen/contract-gen
 /prover/cmd/contract-gen/docker/**
+/prover/integration/full-mode/**/config/prover-aggregation.toml
 
 ts-libs/**/lib/**/*.so
 ts-libs/**/lib/**/*.dylib
