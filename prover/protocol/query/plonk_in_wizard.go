@@ -66,12 +66,12 @@ type PlonkInWizard struct {
 	// nbPublicInput is a lazily-loaded variable representing the number of public
 	// inputs in the circuit provided by the query. The variable is computed the
 	// first time [PlonkInWizard.GetNbPublicInputs] is called and saved there.
-	nbPublicInputs int
+	nbPublicInputs int `serde:"omit"`
 
 	// nbPublicInputs loaded is a flag indicating whether we need to compute the
 	// number of public input. It is not using [sync.Once] that way we don't need
 	// to initialize the value.
-	nbPublicInputsLoaded bool
+	nbPublicInputsLoaded bool `serde:"omit"`
 
 	uuid uuid.UUID `serde:"omit"`
 }
