@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -147,6 +148,7 @@ func NewSerializer() *Serializer {
 // It packs the value into a PackedObject.Payload, encodes the PackedObject, and returns the result.
 // Warnings are printed for debugging.
 func Serialize(v any) ([]byte, error) {
+
 	// Initialize a new Serializer with empty maps and a PackedObject.
 	ser := NewSerializer()
 
@@ -211,7 +213,6 @@ func Deserialize(bytes []byte, v any) error {
 
 	// Initialize a Deserializer with pre-allocated caches.
 	deser := NewDeserializer(packedObject)
-
 	var (
 		payloadRoot any
 		payloadType = reflect.TypeOf(v).Elem() // Target type (dereferenced).
@@ -314,6 +315,8 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 	if v == nil {
 		return reflect.Zero(t), nil
 	}
+
+	logrus.Infof("Expected CompiledIOPPointer type: %T Got: %T", TypeOfCompiledIOPPointer, t)
 
 	// Identify custom codexes
 	if codex, ok := CustomCodexes[t]; ok {
@@ -884,7 +887,7 @@ func (s *Serializer) PackStructObject(obj reflect.Value) (PackedStructObject, er
 		// help the caller understand that we might omit something that he would
 		// not want to.
 		if !obj.Type().Field(i).IsExported() {
-			s.warnf(fmt.Sprintf("field %v.%v is not exported", obj.Type().String(), obj.Type().Field(i).Name))
+			s.warnf(fmt.Sprintf("(PackstructObject) field %v.%v is not exported", obj.Type().String(), obj.Type().Field(i).Name))
 			continue
 		}
 
@@ -951,7 +954,7 @@ func (de *Deserializer) UnpackStructObject(v PackedStructObject, t reflect.Type)
 		}
 
 		if !structField.IsExported() {
-			de.warnf(fmt.Sprintf("field %v.%v is not exported", t.String(), structField.Name))
+			de.warnf(fmt.Sprintf("(Unpackstruct) field %v.%v is not exported", t.String(), structField.Name))
 			continue
 		}
 

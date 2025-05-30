@@ -5,9 +5,9 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -20,24 +20,41 @@ func runSerdeTest(t *testing.T, input interface{}, output interface{}, name stri
 	var b []byte
 	var err error
 
-	// Measure serialization time
-	serTime := profiling.TimeIt(func() {
-		b, err = serialization.Serialize(input)
-		if err != nil {
-			t.Fatalf("Error during serialization of %s: %v", name, err)
-		}
-	})
+	/*
+		// Measure serialization time
+		serTime := profiling.TimeIt(func() {
+			logrus.Printf("Starting to serialize:%s \n", name)
+			b, err = serialization.Serialize(input)
+			if err != nil {
+				t.Fatalf("Error during serialization of %s: %v", name, err)
+			}
+		})
 
-	// Measure deserialization time
-	desTime := profiling.TimeIt(func() {
-		err = serialization.Deserialize(b, output)
-		if err != nil {
-			t.Fatalf("Error during deserialization of %s: %v", name, err)
-		}
-	})
+		// Measure deserialization time
+		desTime := profiling.TimeIt(func() {
+			logrus.Printf("Starting to deserialize:%s\n", name)
+			err = serialization.Deserialize(b, output)
+			if err != nil {
+				t.Fatalf("Error during deserialization of %s: %v", name, err)
+			}
+		})
 
-	// Log results
-	t.Logf("%s serialization=%v deserialization=%v buffer-size=%v", name, serTime, desTime, len(b))
+		// Log results
+		t.Logf("%s serialization=%v deserialization=%v buffer-size=%v", name, serTime, desTime, len(b))
+
+	*/
+
+	logrus.Printf("Starting to serialize:%s \n", name)
+	b, err = serialization.Serialize(input)
+	if err != nil {
+		t.Fatalf("Error during serialization of %s: %v", name, err)
+	}
+
+	logrus.Printf("Starting to deserialize:%s\n", name)
+	err = serialization.Deserialize(b, output)
+	if err != nil {
+		t.Fatalf("Error during deserialization of %s: %v", name, err)
+	}
 
 	// Sanity check: Compare exported fields
 	t.Logf("Running sanity checks on deserialized object: Comparing if the values matched before and after serialization")
