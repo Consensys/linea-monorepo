@@ -47,7 +47,7 @@ func PlonkCheck(
 	maxNbInstance int,
 	// function to call to get an assignment
 	options ...Option,
-) *CompilationCtx {
+) *compilationCtx {
 
 	// Create the ctx
 	ctx := createCtx(comp, name, Round, circuit, maxNbInstance, options...)
@@ -67,7 +67,10 @@ func PlonkCheck(
 	}
 
 	if ctx.HasCommitment() {
-		comp.RegisterProverAction(Round+1, lroCommitProverAction{CompilationCtx: ctx, proverStateLock: &sync.Mutex{}})
+		comp.RegisterProverAction(Round+1, lroCommitProverAction{
+			GenericPlonkProverAction: ctx.GenericPlonkProverAction(),
+			proverStateLock:          &sync.Mutex{},
+		})
 	}
 
 	comp.RegisterVerifierAction(Round, &CheckingActivators{Cols: ctx.Columns.Activators})
@@ -84,16 +87,16 @@ func PlonkCheck(
 
 // This function registers the Plonk gate's columns inside of the wizard. It
 // does not add any constraints whatsoever.
-func (ctx *CompilationCtx) commitGateColumns() {
+func (ctx *compilationCtx) commitGateColumns() {
 
 	nbRow := ctx.DomainSize()
 
 	// Declare and pre-assign the selector columns
-	ctx.Columns.Ql = ctx.comp.InsertPrecomputed(ctx.colIDf("QL"), iopToSV(ctx.Plonk.Trace.Ql, nbRow))
-	ctx.Columns.Qr = ctx.comp.InsertPrecomputed(ctx.colIDf("QR"), iopToSV(ctx.Plonk.Trace.Qr, nbRow))
-	ctx.Columns.Qo = ctx.comp.InsertPrecomputed(ctx.colIDf("QO"), iopToSV(ctx.Plonk.Trace.Qo, nbRow))
-	ctx.Columns.Qm = ctx.comp.InsertPrecomputed(ctx.colIDf("QM"), iopToSV(ctx.Plonk.Trace.Qm, nbRow))
-	ctx.Columns.Qk = ctx.comp.InsertPrecomputed(ctx.colIDf("QK"), iopToSV(ctx.Plonk.Trace.Qk, nbRow))
+	ctx.Columns.Ql = ctx.comp.InsertPrecomputed(ctx.colIDf("QL"), iopToSV(ctx.Plonk.trace.Ql, nbRow))
+	ctx.Columns.Qr = ctx.comp.InsertPrecomputed(ctx.colIDf("QR"), iopToSV(ctx.Plonk.trace.Qr, nbRow))
+	ctx.Columns.Qo = ctx.comp.InsertPrecomputed(ctx.colIDf("QO"), iopToSV(ctx.Plonk.trace.Qo, nbRow))
+	ctx.Columns.Qm = ctx.comp.InsertPrecomputed(ctx.colIDf("QM"), iopToSV(ctx.Plonk.trace.Qm, nbRow))
+	ctx.Columns.Qk = ctx.comp.InsertPrecomputed(ctx.colIDf("QK"), iopToSV(ctx.Plonk.trace.Qk, nbRow))
 
 	// Declare and pre-assign the rangecheck selectors
 	if ctx.RangeCheckOption.Enabled && !ctx.RangeCheckOption.wasCancelled {
@@ -113,12 +116,12 @@ func (ctx *CompilationCtx) commitGateColumns() {
 
 	if ctx.HasCommitment() {
 		// Selector for the commitment
-		ctx.Columns.Qcp = ctx.comp.InsertPrecomputed(ctx.colIDf("QCP"), iopToSV(ctx.Plonk.Trace.Qcp[0], nbRow))
+		ctx.Columns.Qcp = ctx.comp.InsertPrecomputed(ctx.colIDf("QCP"), iopToSV(ctx.Plonk.trace.Qcp[0], nbRow))
 
 		// First Round, for the committed value and the PI
 		for i := 0; i < ctx.MaxNbInstances; i++ {
-			if ctx.TinyPISize() > 0 {
-				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), ctx.TinyPISize())
+			if tinyPISize(ctx.Plonk.SPR) > 0 {
+				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR))
 				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow)
@@ -139,8 +142,8 @@ func (ctx *CompilationCtx) commitGateColumns() {
 	} else {
 		// Else no additional selector, and just commit to LRO + PI at the same Round
 		for i := 0; i < ctx.MaxNbInstances; i++ {
-			if ctx.TinyPISize() > 0 {
-				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), ctx.TinyPISize())
+			if tinyPISize(ctx.Plonk.SPR) > 0 {
+				ctx.Columns.TinyPI[i] = ctx.comp.InsertProof(ctx.Round, ctx.colIDf("PI_%v", i), tinyPISize(ctx.Plonk.SPR))
 				ctx.Columns.PI[i] = verifiercol.NewConcatTinyColumns(ctx.comp, nbRow, field.Zero(), ctx.Columns.TinyPI[i])
 			} else {
 				ctx.Columns.PI[i] = verifiercol.NewConstantCol(field.Zero(), nbRow)
@@ -173,13 +176,13 @@ func iopToSV(pol *iop.Polynomial, nbRow int) smartvectors.SmartVector {
 // [plonk.newExternalRangeChecker] to obtain the result in "[]field.Element"
 // form and then it converts it into assignable smartvectors after having
 // checked a few hypothesis.
-func (ctx *CompilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO []field.Element) {
+func (ctx *compilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO []field.Element) {
 	v := [3][]field.Element{
 		make([]field.Element, ctx.DomainSize()),
 		make([]field.Element, ctx.DomainSize()),
 		make([]field.Element, ctx.DomainSize()),
 	}
-	sls := ctx.Plonk.RcGetter()
+	sls := ctx.Plonk.rcGetter()
 	for _, ss := range sls {
 		v[ss[1]][ss[0]].SetInt64(1)
 	}
@@ -188,10 +191,10 @@ func (ctx *CompilationCtx) rcGetterToSV() (PcRcL, PcRcR, PcRcO []field.Element) 
 }
 
 // extractPermutationColumns computes and tracks the values for ctx.Columns.S
-func (ctx *CompilationCtx) extractPermutationColumns() {
+func (ctx *compilationCtx) extractPermutationColumns() {
 	for i := range ctx.Columns.S {
 		// Directly use the ints from the trace instead of the fresh Plonk ones
-		si := ctx.Plonk.Trace.S[i*ctx.DomainSize() : (i+1)*ctx.DomainSize()]
+		si := ctx.Plonk.trace.S[i*ctx.DomainSize() : (i+1)*ctx.DomainSize()]
 		sField := make([]field.Element, len(si))
 		for j := range sField {
 			sField[j].SetInt64(si[j])
@@ -204,7 +207,7 @@ func (ctx *CompilationCtx) extractPermutationColumns() {
 }
 
 // add gate constraint
-func (ctx *CompilationCtx) addGateConstraint() {
+func (ctx *compilationCtx) addGateConstraint() {
 
 	for i := 0; i < ctx.MaxNbInstances; i++ {
 
@@ -254,7 +257,7 @@ func (ctx *CompilationCtx) addGateConstraint() {
 }
 
 // add add the copy constraint
-func (ctx *CompilationCtx) addCopyConstraint() {
+func (ctx *compilationCtx) addCopyConstraint() {
 
 	// Creates a special handle for the permutation by
 	// computing a linear combination of the columns

@@ -134,7 +134,7 @@ func (builder *externalRangeChecker) Compiler() frontend.Compiler {
 
 // addRangeCheckConstraints adds the wizard constraints implementing the range-checks
 // requested by the gnark circuit.
-func (ctx *CompilationCtx) addRangeCheckConstraint() {
+func (ctx *compilationCtx) addRangeCheckConstraint() {
 
 	var (
 		round                            = ctx.Columns.L[0].Round()
@@ -208,15 +208,15 @@ func (ctx *CompilationCtx) addRangeCheckConstraint() {
 	}
 }
 
-func (ctx *CompilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
+func (ctx *GenericPlonkProverAction) assignRangeChecked(run *wizard.ProverRuntime) {
 
 	var (
 		rcL      = ctx.RangeCheckOption.RcL
 		rcR      = ctx.RangeCheckOption.RcR
 		rcO      = ctx.RangeCheckOption.RcO
-		rcLValue = ctx.comp.Precomputed.MustGet(rcL.GetColID()).IntoRegVecSaveAlloc()
-		rcRValue = ctx.comp.Precomputed.MustGet(rcR.GetColID()).IntoRegVecSaveAlloc()
-		rcOValue = ctx.comp.Precomputed.MustGet(rcO.GetColID()).IntoRegVecSaveAlloc()
+		rcLValue = run.Spec.Precomputed.MustGet(rcL.GetColID()).IntoRegVecSaveAlloc()
+		rcRValue = run.Spec.Precomputed.MustGet(rcR.GetColID()).IntoRegVecSaveAlloc()
+		rcOValue = run.Spec.Precomputed.MustGet(rcO.GetColID()).IntoRegVecSaveAlloc()
 	)
 
 	parallel.Execute(len(ctx.RangeCheckOption.RangeChecked), func(start, stop int) {

@@ -15,9 +15,17 @@ import (
 type context struct {
 	// Q is the query handled by the current compilation context
 	Q *query.PlonkInWizard
-	// PlonkCtx is the compilation context relative to the plonk
-	// circuit satisfaction.
-	PlonkCtx *plonkinternal.CompilationCtx
+	// TinyPIs are the columns containing the public inputs of the plonk
+	// instances
+	TinyPIs []ifaces.Column
+	// Activators are the binary length-1 columns that are used to indicate the
+	// activation of a particular plonk instance.
+	Activators []ifaces.Column
+	// PlonkProverAction is the prover action running the plonk circuit solver
+	PlonkProverAction plonkinternal.PlonkInWizardProverAction
+	// NbPublicVariable stores the number of public variables in the Plonk
+	// circuit.
+	NbPublicVariable int
 	// SelOpenings are the local constraints responsible for
 	// checking the activators are well-set w.r.t to the circuit mask
 	SelOpenings []query.LocalOpening
@@ -93,14 +101,18 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard, minimalRound
 	var (
 		round          = max(q.Data.Round(), q.Selector.Round(), minimalRound)
 		maxNbInstances = q.GetMaxNbCircuitInstances()
+		plonkCtx       = plonkinternal.PlonkCheck(comp, string(q.ID), round, q.Circuit, maxNbInstances, plonkOptions...)
 		ctx            = &context{
-			Q:            q,
-			PlonkCtx:     plonkinternal.PlonkCheck(comp, string(q.ID), round, q.Circuit, maxNbInstances, plonkOptions...),
-			MinimalRound: round,
+			Q:                 q,
+			MinimalRound:      round,
+			TinyPIs:           plonkCtx.Columns.TinyPI,
+			Activators:        plonkCtx.Columns.Activators,
+			PlonkProverAction: plonkCtx.GetPlonkProverAction(),
+			NbPublicVariable:  plonkCtx.Plonk.SPR.GetNbPublicVariables(),
 		}
 	)
 
-	ctx.StackedCircuitData = dedicated.StackColumn(comp, ctx.PlonkCtx.Columns.TinyPI)
+	ctx.StackedCircuitData = dedicated.StackColumn(comp, ctx.TinyPIs)
 
 	checkActivators(comp, ctx)
 	checkPublicInputs(comp, ctx)
@@ -126,7 +138,7 @@ func checkActivators(comp *wizard.CompiledIOP, ctx *context) {
 		openings   = make([]query.LocalOpening, ctx.Q.GetMaxNbCircuitInstances())
 		mask       = ctx.Q.Selector
 		offset     = utils.NextPowerOfTwo(ctx.Q.GetNbPublicInputs())
-		activators = ctx.PlonkCtx.Columns.Activators
+		activators = ctx.Activators
 		round      = max(activators[0].Round(), ctx.MinimalRound)
 	)
 
