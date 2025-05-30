@@ -566,10 +566,11 @@ func PrettyPrint(v reflect.Value, indent int) string {
 // CompareExportedFields checks if two values are equal, ignoring unexported fields, including in nested structs.
 // It logs mismatched fields with their paths and values.
 func CompareExportedFields(a, b interface{}) bool {
-	return CompareExportedFieldsWithPath(a, b, "")
+	cachedPtrs := make(map[uintptr]struct{})
+	return CompareExportedFieldsWithPath(cachedPtrs, a, b, "")
 }
 
-func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
+func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b interface{}, path string) bool {
 	v1, v2 := reflect.ValueOf(a), reflect.ValueOf(b)
 
 	// Ensure both values are valid
@@ -621,7 +622,7 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 				return false
 			}
 			keyPath := fmt.Sprintf("%s[%v]", path, key)
-			if !CompareExportedFieldsWithPath(value1.Interface(), value2.Interface(), keyPath) {
+			if !CompareExportedFieldsWithPath(cachedPtrs, value1.Interface(), value2.Interface(), keyPath) {
 				return false
 			}
 		}
@@ -631,9 +632,11 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 
 	// Handle pointers by dereferencing
 	if v1.Kind() == reflect.Ptr {
+
 		if v1.IsNil() && v2.IsNil() {
 			return true
 		}
+
 		if v1.IsNil() != v2.IsNil() {
 			if serialization.IsIgnoreableType(v1.Type()) {
 				logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
@@ -642,7 +645,13 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 			logrus.Printf("Mismatch at %s: nil status differs (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
 			return false
 		}
-		return CompareExportedFieldsWithPath(v1.Elem().Interface(), v2.Elem().Interface(), path)
+
+		if _, cacheHit := cachedPtrs[v1.Pointer()]; cacheHit {
+			return true
+		}
+
+		cachedPtrs[v1.Pointer()] = struct{}{}
+		return CompareExportedFieldsWithPath(cachedPtrs, v1.Elem().Interface(), v2.Elem().Interface(), path)
 	}
 
 	// Handle structs
@@ -672,7 +681,7 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 			if path != "" {
 				fieldPath = path + "." + fieldName
 			}
-			if !CompareExportedFieldsWithPath(f1.Interface(), f2.Interface(), fieldPath) {
+			if !CompareExportedFieldsWithPath(cachedPtrs, f1.Interface(), f2.Interface(), fieldPath) {
 				equal = false
 			}
 		}
@@ -688,7 +697,7 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 		equal := true
 		for i := 0; i < v1.Len(); i++ {
 			elemPath := fmt.Sprintf("%s[%d]", path, i)
-			if !CompareExportedFieldsWithPath(v1.Index(i).Interface(), v2.Index(i).Interface(), elemPath) {
+			if !CompareExportedFieldsWithPath(cachedPtrs, v1.Index(i).Interface(), v2.Index(i).Interface(), elemPath) {
 				equal = false
 			}
 		}
@@ -699,7 +708,6 @@ func CompareExportedFieldsWithPath(a, b interface{}, path string) bool {
 	if !reflect.DeepEqual(a, b) {
 		logrus.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type_v1: %v type_v2: %v)\n", path, a, b, v1.Type(), v2.Type())
 		panic("fail fast")
-		return false
 	}
 	return true
 }
