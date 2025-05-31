@@ -226,7 +226,7 @@ func Deserialize(bytes []byte, v any) error {
 
 	// Decode the Payload into a root value.
 	if err := decodeWithCBOR(packedObject.Payload, &payloadRoot); err != nil {
-		return fmt.Errorf("could not deserialize the payload, payload=%v, err=%w", packedObject.Payload, err)
+		return fmt.Errorf("could not deserialize the payload, payload=%v, err=%w", string(packedObject.Payload), err)
 	}
 
 	// Register struct schemas in StructSchemaMap.
