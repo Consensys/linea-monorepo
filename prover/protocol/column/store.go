@@ -4,6 +4,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
+	"github.com/google/uuid"
 )
 
 // Store registers [Natural] for structs that can return the infos given a name
@@ -58,6 +59,10 @@ type storedColumnInfo struct {
 	// Pragmas is a free map that users can use to store whatever they want,
 	// it can be used to store compile-time information.
 	Pragmas map[string]interface{} `cbor:"g,omitempty"`
+
+	// uuid is a unique identifier for the stored column. It is used for
+	// serialization.
+	uuid uuid.UUID `serde:"omit"`
 }
 
 // AddToRound constructs a [Natural], registers it in the [Store] and returns
@@ -83,7 +88,7 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 
 	// Constructing at the beginning does the validation early on
 	nat := newNatural(name, position, s)
-	infos := &storedColumnInfo{Size: size, ID: name, Status: status, Pragmas: make(map[string]interface{})}
+	infos := &storedColumnInfo{Size: size, ID: name, Status: status, uuid: uuid.New(), Pragmas: make(map[string]interface{})}
 
 	// Panic if the entry already exist
 	s.indicesByNames.InsertNew(name, position)

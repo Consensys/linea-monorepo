@@ -11,7 +11,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/google/uuid"
 )
 
 const (
@@ -32,7 +31,7 @@ func newNatural(name ifaces.ColID, position columnPosition, store *Store) Natura
 	if store == nil {
 		utils.Panic("null store (%v)", name)
 	}
-	return Natural{ID: name, position: position, store: store, uuid: uuid.New()}
+	return Natural{ID: name, position: position, store: store}
 }
 
 // RootParents returns the underlying base [Natural] of the current handle.

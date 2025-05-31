@@ -65,5 +65,5 @@ func (unpacked PackedNatural) Unpack() Natural {
 // PackedIdentifier returns an identifier that won't conflict with the
 // serialization of a [PackedNatural].
 func (nat Natural) UUID() uuid.UUID {
-	return nat.uuid
+	return nat.store.info(nat.ID).uuid
 }

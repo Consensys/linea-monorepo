@@ -4,7 +4,6 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
-	"github.com/google/uuid"
 
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -22,8 +21,6 @@ type Natural struct {
 	// to fetch static informations about the column such as its size or its
 	// status.
 	store *Store
-
-	uuid uuid.UUID
 }
 
 // Size returns the size of the column, as required by the [ifaces.Column]
