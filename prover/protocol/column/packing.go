@@ -32,7 +32,7 @@ func (p PackedStore) Unpack() *Store {
 			)
 		}
 	}
-	return &store
+	return store
 }
 
 // PackedNatural is serialization-friendly intermediate structure that is

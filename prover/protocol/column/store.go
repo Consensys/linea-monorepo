@@ -20,8 +20,8 @@ type Store struct {
 }
 
 // NewStore constructs an empty Store object
-func NewStore() Store {
-	return Store{
+func NewStore() *Store {
+	return &Store{
 		indicesByNames: collection.NewMapping[ifaces.ColID, columnPosition](),
 		byRounds:       collection.NewVecVec[*storedColumnInfo](),
 	}
