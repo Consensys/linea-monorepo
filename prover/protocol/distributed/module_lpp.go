@@ -32,14 +32,14 @@ var (
 // of the LPP part of a module.
 type ModuleLPP struct {
 
-	// moduleTranslator is the translator for the GL part of the module
+	// ModuleTranslator is the translator for the GL part of the module
 	// it also has the ownership of the [wizard.Compiled] IOP built for
 	// this module.
-	moduleTranslator
+	ModuleTranslator
 
-	// definitionInputs stores the [FilteredModuleInputs] that was used
+	// DefinitionInputs stores the [FilteredModuleInputs] that was used
 	// to generate the module.
-	definitionInputs []FilteredModuleInputs
+	DefinitionInputs []FilteredModuleInputs
 
 	// InitialFiatShamirState is the state at which to start the FiatShamir
 	// computation
@@ -112,11 +112,11 @@ func BuildModuleLPP(moduleInput []FilteredModuleInputs) *ModuleLPP {
 func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) *ModuleLPP {
 
 	moduleLPP := &ModuleLPP{
-		moduleTranslator: moduleTranslator{
+		ModuleTranslator: ModuleTranslator{
 			Wiop: builder.CompiledIOP,
 			Disc: moduleInputs[0].Disc,
 		},
-		definitionInputs:       moduleInputs,
+		DefinitionInputs:       moduleInputs,
 		InitialFiatShamirState: builder.InsertProof(0, "INITIAL_FIATSHAMIR_STATE", 1),
 	}
 
@@ -274,7 +274,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 // ModuleNames returns the list of the module names of the [ModuleLPP].
 func (m *ModuleLPP) ModuleNames() []ModuleName {
 	res := make([]ModuleName, 0)
-	for _, definitionInput := range m.definitionInputs {
+	for _, definitionInput := range m.DefinitionInputs {
 		res = append(res, definitionInput.ModuleName)
 	}
 	return res
@@ -328,7 +328,7 @@ func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
 
 	// Note @alex: It should be fine to look only at m.definitionInputs[round]
 	// instead of scanning through all the definitionInputs.
-	for _, definitionInput := range m.definitionInputs {
+	for _, definitionInput := range m.DefinitionInputs {
 
 		// [definitionInput.Columns] stores the list of columns to assign.
 		// Though, it stores the columns as in the origin CompiledIOP so we
@@ -414,7 +414,7 @@ func (a AssignLPPQueries) Run(run *wizard.ProverRuntime) {
 	moduleWitness := run.State.MustGet(moduleWitnessKey).(*ModuleWitnessLPP)
 	run.State.Del(moduleWitnessKey)
 
-	logDerivativeArgs, grandProductArgs, hornerArgs := getQueryArgs(a.definitionInputs)
+	logDerivativeArgs, grandProductArgs, hornerArgs := getQueryArgs(a.DefinitionInputs)
 
 	if len(hornerArgs) > 0 {
 		hornerParams := a.getHornerParams(run, moduleWitness.N0Values)

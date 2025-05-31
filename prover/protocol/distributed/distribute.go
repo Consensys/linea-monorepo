@@ -8,6 +8,8 @@ import (
 	cmimc "github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/cleanup"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/globalcs"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/horner"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/innerproduct"
@@ -15,8 +17,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mimc"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/mpts"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/permutation"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/plonkinwizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/recursion"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/selfrecursion"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/univariates"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/expr_handle"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
@@ -28,8 +33,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
-
-	"github.com/consensys/gnark/constraint"
 )
 
 // lppGroupingArity indicates how many GL modules an LPP module relates to.
@@ -90,19 +93,61 @@ func init() {
 	serialization.RegisterImplementation(ModuleGLCheckSendReceiveGlobal{})
 	serialization.RegisterImplementation(LPPSegmentBoundaryCalculator{})
 
-	serialization.RegisterImplementation(permutation.ProverTaskAtRound{})
-	serialization.RegisterImplementation(permutation.AssignPermutationGrandProduct{})
-	serialization.RegisterImplementation(permutation.FinalProductCheck{})
-	serialization.RegisterImplementation(permutation.CheckGrandProductIsOne{})
-
+	serialization.RegisterImplementation(cleanup.CleanupProverAction{})
+	serialization.RegisterImplementation(dummy.DummyVerifierAction{})
+	serialization.RegisterImplementation(dummy.DummyProverAction{})
+	serialization.RegisterImplementation(globalcs.EvaluationProver{})
+	serialization.RegisterImplementation(globalcs.EvaluationVerifier{})
+	serialization.RegisterImplementation(globalcs.QuotientCtx{})
+	serialization.RegisterImplementation(horner.AssignHornerCtx{})
+	serialization.RegisterImplementation(horner.AssignHornerIP{})
+	serialization.RegisterImplementation(horner.AssignHornerQuery{})
+	serialization.RegisterImplementation(horner.CheckHornerQuery{})
+	serialization.RegisterImplementation(innerproduct.ProverTask{})
+	serialization.RegisterImplementation(innerproduct.VerifierForSize{})
 	serialization.RegisterImplementation(logderivativesum.AssignLogDerivativeSumProverAction{})
 	serialization.RegisterImplementation(logderivativesum.CheckLogDerivativeSumMustBeZero{})
 	serialization.RegisterImplementation(logderivativesum.ProverTaskAtRound{})
 	serialization.RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
+	serialization.RegisterImplementation(mimc.MimcContext{})
+	serialization.RegisterImplementation(mpts.QuotientAccumulation{})
+	serialization.RegisterImplementation(mpts.RandomPointEvaluation{})
+	serialization.RegisterImplementation(mpts.ShadowRowProverAction{})
+	serialization.RegisterImplementation(mpts.VerifierAction{})
+	serialization.RegisterImplementation(permutation.ProverTaskAtRound{})
+	serialization.RegisterImplementation(permutation.AssignPermutationGrandProduct{})
+	serialization.RegisterImplementation(permutation.FinalProductCheck{})
+	serialization.RegisterImplementation(permutation.CheckGrandProductIsOne{})
+	serialization.RegisterImplementation(plonkinwizard.AssignSelOpening{})
+	serialization.RegisterImplementation(plonkinwizard.CheckActivatorAndMask{})
+	serialization.RegisterImplementation(plonkinwizard.CircAssignment{})
+	serialization.RegisterImplementation(recursion.RecursionCircuit{})
+	serialization.RegisterImplementation(recursion.AssignVortexOpenedCols{})
+	serialization.RegisterImplementation(recursion.AssignVortexUAlpha{})
+	serialization.RegisterImplementation(recursion.ConsistencyCheck{})
+	serialization.RegisterImplementation(selfrecursion.ColSelectionProverAction{})
+	serialization.RegisterImplementation(selfrecursion.CollapsingProverAction{})
+	serialization.RegisterImplementation(selfrecursion.CollapsingVerifierAction{})
+	serialization.RegisterImplementation(selfrecursion.ConsistencyYsUalphaVerifierAction{})
+	serialization.RegisterImplementation(selfrecursion.FoldPhaseProverAction{})
+	serialization.RegisterImplementation(selfrecursion.FoldPhaseVerifierAction{})
+	serialization.RegisterImplementation(selfrecursion.LinearHashMerkleProverAction{})
+	serialization.RegisterImplementation(selfrecursion.PreimageLimbsProverAction{})
+	serialization.RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
+	serialization.RegisterImplementation(stitchsplit.ProveRoundProverAction{})
+	serialization.RegisterImplementation(stitchsplit.QueryVerifierAction{})
+	serialization.RegisterImplementation(stitchsplit.SplitProverAction{})
+	serialization.RegisterImplementation(stitchsplit.StitchColumnsProverAction{})
+	serialization.RegisterImplementation(stitchsplit.StitchSubColumnsProverAction{})
+	serialization.RegisterImplementation(univariates.NaturalizeProverAction{})
+	serialization.RegisterImplementation(univariates.NaturalizeVerifierAction{})
 
 	serialization.RegisterImplementation(vortex.Ctx{})
-	serialization.RegisterImplementation(vortex.VortexProverAction{})
+	serialization.RegisterImplementation(vortex.ColumnAssignmentProverAction{})
+	serialization.RegisterImplementation(vortex.OpenSelectedColumnsProverAction{})
+	serialization.RegisterImplementation(vortex.LinearCombinationComputationProverAction{})
 	serialization.RegisterImplementation(vortex.VortexVerifierAction{})
+	serialization.RegisterImplementation(vortex.ExplicitPolynomialEval{})
 	serialization.RegisterImplementation(vortex.ShadowRowProverAction{})
 	serialization.RegisterImplementation(vortex.ReassignPrecomputedRootAction{})
 
@@ -118,31 +163,6 @@ func init() {
 	serialization.RegisterImplementation(reedsolomon.ReedSolomonVerifierAction{})
 
 	serialization.RegisterImplementation(column.FakeColumn{})
-	serialization.RegisterImplementation(recursion.RecursionCircuit{})
-	serialization.RegisterImplementation(recursion.AssignVortexOpenedCols{})
-	serialization.RegisterImplementation(recursion.AssignVortexUAlpha{})
-	serialization.RegisterImplementation(recursion.ConsistencyCheck{})
-
-	serialization.RegisterImplementation(selfrecursion.CollapsingProverAction{})
-	serialization.RegisterImplementation(selfrecursion.CollapsingVerifierAction{})
-	serialization.RegisterImplementation(selfrecursion.ConsistencyYsUalphaVerifierAction{})
-	serialization.RegisterImplementation(selfrecursion.PreimageLimbsProverAction{})
-	serialization.RegisterImplementation(selfrecursion.LinearHashMerkleProverAction{})
-	serialization.RegisterImplementation(selfrecursion.ColSelectionProverAction{})
-	serialization.RegisterImplementation(selfrecursion.FoldPhaseProverAction{})
-	serialization.RegisterImplementation(selfrecursion.FoldPhaseVerifierAction{})
-
-	serialization.RegisterImplementation(mpts.ShadowRowProverAction{})
-	serialization.RegisterImplementation(mpts.VerifierAction{})
-	serialization.RegisterImplementation(mpts.RandomPointEvaluation{})
-	serialization.RegisterImplementation(mpts.QuotientAccumulation{})
-
-	serialization.RegisterImplementation(globalcs.EvaluationProver{})
-	serialization.RegisterImplementation(globalcs.EvaluationVerifier{})
-	serialization.RegisterImplementation(globalcs.QuotientCtx{})
-
-	serialization.RegisterImplementation(innerproduct.ProverTask{})
-	serialization.RegisterImplementation(innerproduct.VerifierForSize{})
 
 	serialization.RegisterImplementation(selector.SubsampleProverAction{})
 	serialization.RegisterImplementation(selector.SubsampleVerifierAction{})
@@ -154,12 +174,12 @@ func init() {
 	serialization.RegisterImplementation(cmimc.ExternalHasherBuilder{})
 	serialization.RegisterImplementation(cmimc.ExternalHasherFactory{})
 
-	serialization.RegisterImplementation(constraint.BlueprintGenericHint{})
-	serialization.RegisterImplementation(constraint.BlueprintGenericSparseR1C{})
-	serialization.RegisterImplementation(constraint.BlueprintSparseR1CAdd{})
-	serialization.RegisterImplementation(constraint.BlueprintSparseR1CMul{})
-	serialization.RegisterImplementation(constraint.BlueprintSparseR1CBool{})
-	serialization.RegisterImplementation(constraint.PlonkCommitments{})
+	// serialization.RegisterImplementation(constraint.BlueprintGenericHint{})
+	// serialization.RegisterImplementation(constraint.BlueprintGenericSparseR1C{})
+	// serialization.RegisterImplementation(constraint.BlueprintSparseR1CAdd{})
+	// serialization.RegisterImplementation(constraint.BlueprintSparseR1CMul{})
+	// serialization.RegisterImplementation(constraint.BlueprintSparseR1CBool{})
+	// serialization.RegisterImplementation(constraint.PlonkCommitments{})
 
 	serialization.RegisterImplementation(fr.Element{})
 }

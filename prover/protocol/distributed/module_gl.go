@@ -33,14 +33,14 @@ const (
 // of the GL part of a module.
 type ModuleGL struct {
 
-	// moduleTranslator is the translator for the GL part of the module
+	// ModuleTranslator is the translator for the GL part of the module
 	// it also has the ownership of the [wizard.Compiled] IOP built for
 	// this module.
-	moduleTranslator
+	ModuleTranslator
 
-	// definitionInput stores the [FilteredModuleInputs] that was used
+	// DefinitionInput stores the [FilteredModuleInputs] that was used
 	// to generate the module.
-	definitionInput *FilteredModuleInputs
+	DefinitionInput *FilteredModuleInputs
 
 	// IsFirst is a column of length one storing a binary value indicating
 	// if the current (vertical) instance of the module is the first one.
@@ -143,11 +143,11 @@ func BuildModuleGL(moduleInput *FilteredModuleInputs) *ModuleGL {
 func NewModuleGL(builder *wizard.Builder, moduleInput *FilteredModuleInputs) *ModuleGL {
 
 	moduleGL := &ModuleGL{
-		moduleTranslator: moduleTranslator{
+		ModuleTranslator: ModuleTranslator{
 			Wiop: builder.CompiledIOP,
 			Disc: moduleInput.Disc,
 		},
-		definitionInput:         moduleInput,
+		DefinitionInput:         moduleInput,
 		IsFirst:                 builder.InsertProof(0, "GL_IS_FIRST", 1),
 		IsLast:                  builder.InsertProof(0, "GL_IS_LAST", 1),
 		SentValuesGlobalMap:     map[string]int{},
@@ -298,7 +298,7 @@ func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
 		// stores the columns as in the origin CompiledIOP so we cannot
 		// directly use them to refer to columns of the current IOP.
 		// Yet, the column share the same names.
-		columns = m.definitionInput.Columns
+		columns = m.DefinitionInput.Columns
 	)
 
 	run.State.InsertNew(moduleWitnessKey, witness)
@@ -307,7 +307,7 @@ func (m *ModuleGL) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessGL) {
 
 		colName := col.GetColID()
 
-		if _, ok := m.definitionInput.ColumnsLPPSet[colName]; !ok {
+		if _, ok := m.DefinitionInput.ColumnsLPPSet[colName]; !ok {
 			continue
 		}
 
@@ -760,14 +760,14 @@ func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
 		// stores the columns as in the origin CompiledIOP so we cannot
 		// directly use them to refer to columns of the current IOP.
 		// Yet, the column share the same names.
-		columns = a.definitionInput.Columns
+		columns = a.DefinitionInput.Columns
 	)
 
 	for _, col := range columns {
 
 		colName := col.GetColID()
 
-		if _, ok := a.definitionInput.ColumnsLPPSet[colName]; ok {
+		if _, ok := a.DefinitionInput.ColumnsLPPSet[colName]; ok {
 			// We can't assign LPP columns as they (normally) have already
 			// been assigned at this point.
 			continue
@@ -793,9 +793,9 @@ func (a *ModuleGLAssignGL) Run(run *wizard.ProverRuntime) {
 		delete(witness.Columns, colName)
 	}
 
-	for i := range a.definitionInput.LocalOpenings {
-		newLo := run.GetLocalPointEval(a.definitionInput.LocalOpenings[i].ID)
+	for i := range a.DefinitionInput.LocalOpenings {
+		newLo := run.GetLocalPointEval(a.DefinitionInput.LocalOpenings[i].ID)
 		y := newLo.Pol.GetColAssignmentAt(run, 0)
-		run.AssignLocalPoint(a.definitionInput.LocalOpenings[i].ID, y)
+		run.AssignLocalPoint(a.DefinitionInput.LocalOpenings[i].ID, y)
 	}
 }

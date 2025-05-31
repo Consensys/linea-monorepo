@@ -1,6 +1,7 @@
 package distributed
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -60,10 +61,10 @@ func TestQueryBasedDiscoveryOnZkEVM(t *testing.T) {
 			modules = []ModuleName{}
 		)
 
-		for i := range disc.modules {
-			mod := disc.modules[i]
-			if mod.ds.Has(nat) {
-				modules = append(modules, mod.moduleName)
+		for i := range disc.Modules {
+			mod := disc.Modules[i]
+			if mod.Ds.Has(nat) {
+				modules = append(modules, mod.ModuleName)
 			}
 		}
 
@@ -88,10 +89,12 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 		}
 	)
 
-	precompileInitialWizard(zkevm.WizardIOP, nil)
+	precompileInitialWizard(zkevm.WizardIOP, disc)
 
 	// The test is to make sure that this function returns
 	disc.Analyze(zkevm.WizardIOP)
+
+	fmt.Printf("%++v\n", disc)
 
 	allCols := zkevm.WizardIOP.Columns.AllKeys()
 	for _, colName := range allCols {
@@ -119,11 +122,11 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 			modules = []ModuleName{}
 		)
 
-		for i := range disc.modules {
-			mod := disc.modules[i]
-			for k := range mod.subModules {
-				if mod.subModules[k].ds.Has(nat) {
-					modules = append(modules, mod.moduleName)
+		for i := range disc.Modules {
+			mod := disc.Modules[i]
+			for k := range mod.SubModules {
+				if mod.SubModules[k].Ds.Has(nat) {
+					modules = append(modules, mod.ModuleName)
 				}
 			}
 		}
@@ -139,7 +142,7 @@ func TestStandardDiscoveryOnZkEVM(t *testing.T) {
 
 	t.Logf("totalNumber of columns: %v", len(zkevm.WizardIOP.Columns.AllKeys()))
 
-	for _, mod := range disc.modules {
-		t.Logf("module=%v weight=%v numcol=%v\n", mod.moduleName, mod.Weight(), disc.NumColumnOf(mod.moduleName))
+	for _, mod := range disc.Modules {
+		t.Logf("module=%v weight=%v numcol=%v\n", mod.ModuleName, mod.Weight(), disc.NumColumnOf(mod.ModuleName))
 	}
 }

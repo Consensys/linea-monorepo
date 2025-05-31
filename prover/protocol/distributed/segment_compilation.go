@@ -80,7 +80,7 @@ func CompileSegment(mod any) *RecursedSegmentCompilation {
 	case *ModuleGL:
 		modIOP = m.Wiop
 		res.ModuleGL = m
-		subscript = string(m.definitionInput.ModuleName)
+		subscript = string(m.DefinitionInput.ModuleName)
 	case *ModuleLPP:
 		modIOP = m.Wiop
 		res.ModuleLPP = m

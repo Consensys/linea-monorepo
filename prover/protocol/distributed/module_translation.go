@@ -13,9 +13,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// moduleTranslator is a utily struct wrapping a [wizard.CompiledIOP] and
+// ModuleTranslator is a utily struct wrapping a [wizard.CompiledIOP] and
 // implements the logic to build it and to translate it.
-type moduleTranslator struct {
+type ModuleTranslator struct {
 	Disc ModuleDiscoverer
 	Wiop *wizard.CompiledIOP
 }
@@ -31,7 +31,7 @@ type moduleTranslator struct {
 //
 // IsLPP indicates if the column is part of the LPP part of the module and is
 // inserted at round 1. Otherwise, it is inserted at round 0.
-func (mt *moduleTranslator) InsertColumn(col column.Natural, atRound int) ifaces.Column {
+func (mt *ModuleTranslator) InsertColumn(col column.Natural, atRound int) ifaces.Column {
 
 	if col.Round() != 0 {
 		utils.Panic("cannot translate a column with non-zero round %v", col.Round())
@@ -51,7 +51,7 @@ func (mt *moduleTranslator) InsertColumn(col column.Natural, atRound int) ifaces
 
 // InsertPrecomputed is as [InsertColumn] but specificially works for precomputed
 // columns.
-func (mt *moduleTranslator) InsertPrecomputed(col column.Natural, data smartvectors.SmartVector) ifaces.Column {
+func (mt *ModuleTranslator) InsertPrecomputed(col column.Natural, data smartvectors.SmartVector) ifaces.Column {
 
 	if col.Round() != 0 {
 		utils.Panic("cannot translate a column with non-zero round %v", col.Round())
@@ -75,7 +75,7 @@ func (mt *moduleTranslator) InsertPrecomputed(col column.Natural, data smartvect
 //
 // The sizeHint argument is meant to deduce what the size of a translated
 // [verifiercol.ConstCol]
-func (mt *moduleTranslator) TranslateColumn(col ifaces.Column) ifaces.Column {
+func (mt *ModuleTranslator) TranslateColumn(col ifaces.Column) ifaces.Column {
 
 	switch c := col.(type) {
 	case column.Natural:
@@ -97,7 +97,7 @@ func (mt *moduleTranslator) TranslateColumn(col ifaces.Column) ifaces.Column {
 // TranslateColumnList returns a list of equivalent columns from the new module.
 // The function panics if the column cannot be resolved. It will happen if the
 // column has an expected type or is defined from not resolvable items.
-func (mt *moduleTranslator) TranslateColumnList(cols []ifaces.Column) []ifaces.Column {
+func (mt *ModuleTranslator) TranslateColumnList(cols []ifaces.Column) []ifaces.Column {
 	res := make([]ifaces.Column, len(cols))
 	for i := range res {
 		res[i] = mt.TranslateColumn(cols[i])
@@ -110,7 +110,7 @@ func (mt *moduleTranslator) TranslateColumnList(cols []ifaces.Column) []ifaces.C
 // a [verifiercol.Constcol] as part of the expression, it converts it into
 // a [symbolic.Constant] directly as this simplifies the later steps in the
 // process and is strictly equivalent.
-func (mt *moduleTranslator) TranslateExpression(expr *symbolic.Expression) *symbolic.Expression {
+func (mt *ModuleTranslator) TranslateExpression(expr *symbolic.Expression) *symbolic.Expression {
 
 	return expr.ReconstructBottomUpSingleThreaded(
 		func(e *symbolic.Expression, children []*symbolic.Expression) *symbolic.Expression {
@@ -147,7 +147,7 @@ func (mt *moduleTranslator) TranslateExpression(expr *symbolic.Expression) *symb
 
 // TranslateExpressionList returns a list of equivalent expressions from the new
 // module.
-func (mt *moduleTranslator) TranslateExpressionList(exprs []*symbolic.Expression) []*symbolic.Expression {
+func (mt *ModuleTranslator) TranslateExpressionList(exprs []*symbolic.Expression) []*symbolic.Expression {
 	res := make([]*symbolic.Expression, len(exprs))
 	for i := range res {
 		res[i] = mt.TranslateExpression(exprs[i])
@@ -158,7 +158,7 @@ func (mt *moduleTranslator) TranslateExpressionList(exprs []*symbolic.Expression
 // TranslateCoin returns the equivalent coin from the new module.
 // The function looks for a coin with the same name and inserts it
 // as a [coin.FieldFromSeed] if it is not found.
-func (mt *moduleTranslator) TranslateCoin(info coin.Info) coin.Info {
+func (mt *ModuleTranslator) TranslateCoin(info coin.Info) coin.Info {
 	if !mt.Wiop.Coins.Exists(info.Name) {
 		mt.Wiop.InsertCoin(1, info.Name, coin.FieldFromSeed)
 	}
@@ -166,7 +166,7 @@ func (mt *moduleTranslator) TranslateCoin(info coin.Info) coin.Info {
 }
 
 // TranslateAccessor returns an equivalent from the new module.
-func (mt *moduleTranslator) TranslateAccessor(acc ifaces.Accessor) ifaces.Accessor {
+func (mt *ModuleTranslator) TranslateAccessor(acc ifaces.Accessor) ifaces.Accessor {
 
 	switch a := acc.(type) {
 
@@ -200,13 +200,13 @@ func (mt *moduleTranslator) TranslateAccessor(acc ifaces.Accessor) ifaces.Access
 
 // TranslateQueryParam returns an equivalent query from the new module.
 // The function will only look for queries with the same name.
-func (mt *moduleTranslator) TranslateQueryParam(query ifaces.Query) ifaces.Query {
+func (mt *ModuleTranslator) TranslateQueryParam(query ifaces.Query) ifaces.Query {
 	return mt.Wiop.QueriesParams.Data(query.Name())
 }
 
 // InsertPlonkInWizard inserts a new PlonkInWizard query in the target compiled IOP
 // by translating all the related columns
-func (mt *moduleTranslator) InsertPlonkInWizard(oldQuery *query.PlonkInWizard) *query.PlonkInWizard {
+func (mt *ModuleTranslator) InsertPlonkInWizard(oldQuery *query.PlonkInWizard) *query.PlonkInWizard {
 
 	newQuery := query.NewPlonkInWizard(
 		oldQuery.ID,
@@ -317,7 +317,7 @@ func (mt *ModuleLPP) InsertHorner(
 	return mt.Wiop.InsertHornerQuery(round, id, parts)
 }
 
-func (mt *moduleTranslator) InsertCoin(name coin.Name, round int) {
+func (mt *ModuleTranslator) InsertCoin(name coin.Name, round int) {
 
 	if mt.Wiop.Coins.Exists(name) {
 		return
