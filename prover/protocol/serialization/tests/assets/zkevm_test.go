@@ -5,10 +5,8 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
-	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/utils/test_utils"
-	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 )
 
@@ -18,7 +16,9 @@ var (
 )
 
 // Helper function for serialization and deserialization tests
-func runSerdeTest(t *testing.T, input interface{}, output interface{}, name string) {
+func runSerdeTest(t *testing.T, input interface{}, name string) {
+
+	var output = reflect.New(reflect.TypeOf(input).Elem()).Interface()
 	var b []byte
 	var err error
 
@@ -53,11 +53,9 @@ func runSerdeTest(t *testing.T, input interface{}, output interface{}, name stri
 }
 
 func TestSerdeZkEVM(t *testing.T) {
-	opType := &zkevm.ZkEvm{}
-	runSerdeTest(t, z, &opType, "ZkEVM")
+	runSerdeTest(t, z, "ZkEVM")
 }
 
 func TestSerdeIOP(t *testing.T) {
-	opType := &wizard.CompiledIOP{}
-	runSerdeTest(t, iop, &opType, "CompiledIOP")
+	runSerdeTest(t, iop, "CompiledIOP")
 }
