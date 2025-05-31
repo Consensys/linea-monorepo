@@ -18,7 +18,7 @@ var (
 // Helper function for serialization and deserialization tests
 func runSerdeTest(t *testing.T, input interface{}, name string) {
 
-	var output = reflect.New(reflect.TypeOf(input).Elem()).Interface()
+	var output = reflect.New(reflect.TypeOf(input)).Interface()
 	var b []byte
 	var err error
 

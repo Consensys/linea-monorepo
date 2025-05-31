@@ -47,4 +47,6 @@ func TestDistributedWizard(t *testing.T) {
 	for i := range dist.CompiledLPPs {
 		runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i))
 	}
+
+	runSerdeTest(t, dist.CompiledConglomeration, "DistributedWizard.CompiledConglomeration")
 }

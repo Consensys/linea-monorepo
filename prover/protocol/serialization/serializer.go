@@ -883,6 +883,11 @@ func (s *Serializer) PackStructObject(obj reflect.Value) (PackedStructObject, er
 	for i := 0; i < obj.NumField(); i++ {
 		field := obj.Field(i)
 
+		// Definitely not something we can accept
+		if obj.Type().Field(i).Type == reflect.TypeOf(reflect.Value{}) {
+			utils.Panic("field type is reflect.Value, %v.%v", obj.Type().String(), obj.Type().Field(i).Name)
+		}
+
 		// When the field is has the omitted tag, we skip it there without any
 		// warning.
 		if tag, hasTag := obj.Type().Field(i).Tag.Lookup(SerdeStructTag); hasTag {

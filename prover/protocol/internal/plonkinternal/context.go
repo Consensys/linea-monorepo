@@ -198,9 +198,9 @@ func createCtx(
 		utils.Panic("plonk-in-wizard: the number of constraints of the circuit outweight the fixed number of rows. fixed-nb-row=%v domain-size=%v", ctx.FixedNbRowsOption.NbRow, ctx.DomainSizePlonk())
 	}
 
-	traces := plonkBLS12_377.NewTrace(ctx.Plonk.SPR, fftDomain)
+	ctx.Plonk.trace = plonkBLS12_377.NewTrace(ctx.Plonk.SPR, fftDomain)
 
-	ctx.buildPermutation(ctx.Plonk.SPR, traces) // no part of BuildTrace
+	ctx.buildPermutation(ctx.Plonk.SPR, ctx.Plonk.trace) // no part of BuildTrace
 
 	logger.
 		WithField("nbConstraints", ccs.GetNbConstraints()).
