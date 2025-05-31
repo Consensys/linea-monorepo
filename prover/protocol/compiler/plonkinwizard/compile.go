@@ -11,8 +11,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// context stores the compilation context for a single PlonkInWizard query
-type context struct {
+// Context stores the compilation Context for a single PlonkInWizard query
+type Context struct {
 	// Q is the query handled by the current compilation context
 	Q *query.PlonkInWizard
 	// TinyPIs are the columns containing the public inputs of the plonk
@@ -102,7 +102,7 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard, minimalRound
 		round          = max(q.Data.Round(), q.Selector.Round(), minimalRound)
 		maxNbInstances = q.GetMaxNbCircuitInstances()
 		plonkCtx       = plonkinternal.PlonkCheck(comp, string(q.ID), round, q.Circuit, maxNbInstances, plonkOptions...)
-		ctx            = &context{
+		ctx            = &Context{
 			Q:                 q,
 			MinimalRound:      round,
 			TinyPIs:           plonkCtx.Columns.TinyPI,
@@ -117,12 +117,12 @@ func compileQuery(comp *wizard.CompiledIOP, q *query.PlonkInWizard, minimalRound
 	checkActivators(comp, ctx)
 	checkPublicInputs(comp, ctx)
 
-	comp.RegisterProverAction(round, &circAssignment{context: ctx})
+	comp.RegisterProverAction(round, &CircAssignment{Context: ctx})
 }
 
 // checkPublicInputs adds the constraints ensuring that the public inputs are
 // consistent with the one of the PlonkCtx.
-func checkPublicInputs(comp *wizard.CompiledIOP, ctx *context) {
+func checkPublicInputs(comp *wizard.CompiledIOP, ctx *Context) {
 	comp.InsertGlobal(
 		max(ctx.MinimalRound, ctx.Q.GetRound()),
 		ifaces.QueryIDf("%v_PUBLIC_INPUTS", ctx.Q.ID),
@@ -132,7 +132,7 @@ func checkPublicInputs(comp *wizard.CompiledIOP, ctx *context) {
 
 // checkActivators adds the constraints checking the activators are well-set w.r.t
 // to the circuit mask column. See [compilationCtx.Columns.Activators].
-func checkActivators(comp *wizard.CompiledIOP, ctx *context) {
+func checkActivators(comp *wizard.CompiledIOP, ctx *Context) {
 
 	var (
 		openings   = make([]query.LocalOpening, ctx.Q.GetMaxNbCircuitInstances())
@@ -150,7 +150,7 @@ func checkActivators(comp *wizard.CompiledIOP, ctx *context) {
 		)
 	}
 
-	comp.RegisterProverAction(round, &assignSelOpening{context: ctx})
-	comp.RegisterVerifierAction(round, &checkActivatorAndMask{context: ctx})
+	comp.RegisterProverAction(round, &AssignSelOpening{Context: ctx})
+	comp.RegisterVerifierAction(round, &CheckActivatorAndMask{Context: ctx})
 	ctx.SelOpenings = openings
 }

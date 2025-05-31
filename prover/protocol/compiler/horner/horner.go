@@ -18,9 +18,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 )
 
-// hornerCtx is a compilation artefact generated during the execution of the
+// HornerCtx is a compilation artefact generated during the execution of the
 // [CompileHorner] compiler.
-type hornerCtx struct {
+type HornerCtx struct {
 	// Column is the accumulating column used to check the computation of a
 	// horner value for one [HornerPart].
 	AccumulatingCols [][]ifaces.Column
@@ -38,17 +38,17 @@ type hornerCtx struct {
 	Q *query.Horner
 }
 
-// assignHornerCtx is a [wizard.ProverAction] assigning the local openings of
+// AssignHornerCtx is a [wizard.ProverAction] assigning the local openings of
 // the Horner accumulating columns and the accumulating columns themselves.
 // The function also sanity-checks the parameters assignment.
-type assignHornerCtx struct {
-	hornerCtx
+type AssignHornerCtx struct {
+	HornerCtx
 }
 
-// assignHornerIP is a [wizard.ProverAction] assigning the inner-products of
+// AssignHornerIP is a [wizard.ProverAction] assigning the inner-products of
 // the Horner compilation.
-type assignHornerIP struct {
-	hornerCtx
+type AssignHornerIP struct {
+	HornerCtx
 }
 
 // checkHornerResult is [wizard.VerifierAction] responsible for checking that
@@ -56,7 +56,7 @@ type assignHornerIP struct {
 // and checking that the final result is correctly computed by inspecting the
 // local openings.
 type checkHornerResult struct {
-	hornerCtx
+	HornerCtx
 	skipped bool
 }
 
@@ -84,7 +84,7 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 
 	var (
 		round = q.Round
-		ctx   = hornerCtx{
+		ctx   = HornerCtx{
 			Q: q,
 		}
 		iPRound = 0
@@ -170,12 +170,12 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 		ctx.CountingInnerProducts = append(ctx.CountingInnerProducts, ip)
 	}
 
-	comp.RegisterProverAction(iPRound, assignHornerIP{ctx})
-	comp.RegisterProverAction(q.Round, assignHornerCtx{ctx})
-	comp.RegisterVerifierAction(q.Round, &checkHornerResult{hornerCtx: ctx})
+	comp.RegisterProverAction(iPRound, AssignHornerIP{ctx})
+	comp.RegisterProverAction(q.Round, AssignHornerCtx{ctx})
+	comp.RegisterVerifierAction(q.Round, &checkHornerResult{HornerCtx: ctx})
 }
 
-func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
+func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
 		params = run.GetHornerParams(a.Q.ID)
@@ -245,7 +245,7 @@ func (a assignHornerCtx) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-func (a assignHornerIP) Run(run *wizard.ProverRuntime) {
+func (a AssignHornerIP) Run(run *wizard.ProverRuntime) {
 
 	for i := range a.Q.Parts {
 

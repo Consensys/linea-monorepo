@@ -72,7 +72,7 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *optionSet) {
 		One step to be run at the end, by verifying every constraint
 		"a la mano"
 	*/
-	comp.RegisterProverAction(numRounds-1, &dummyVerifierProverAction{
+	comp.RegisterProverAction(numRounds-1, &DummyProverAction{
 		comp:                     comp,
 		QueriesParamsToCompile:   queriesParamsToCompile,
 		QueriesNoParamsToCompile: queriesNoParamsToCompile,
@@ -80,9 +80,9 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *optionSet) {
 	})
 }
 
-// dummyVerifierProverAction is the action to verify queries at the prover level.
+// DummyProverAction is the action to verify queries at the prover level.
 // It implements the [wizard.ProverAction] interface.
-type dummyVerifierProverAction struct {
+type DummyProverAction struct {
 	comp                     *wizard.CompiledIOP
 	QueriesParamsToCompile   []ifaces.QueryID
 	QueriesNoParamsToCompile []ifaces.QueryID
@@ -90,7 +90,7 @@ type dummyVerifierProverAction struct {
 }
 
 // Run executes the dummy verification by checking all queries.
-func (a *dummyVerifierProverAction) Run(run *wizard.ProverRuntime) {
+func (a *DummyProverAction) Run(run *wizard.ProverRuntime) {
 	logrus.Infof("started to run the dummy verifier")
 
 	var finalErr error

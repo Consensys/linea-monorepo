@@ -92,7 +92,8 @@ func (pa AssignVortexOpenedCols) Run(run *wizard.ProverRuntime) {
 	for _, ctx := range pa.Ctxs.PcsCtx {
 		// Since all the context of the pcs is translated, this does not
 		// need to run over a translated prover runtime.
-		ctx.OpenSelectedColumns(run)
+		pa := vortex.OpenSelectedColumnsProverAction{Ctx: ctx}
+		pa.Run(run)
 	}
 }
 

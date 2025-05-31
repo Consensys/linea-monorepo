@@ -10,12 +10,12 @@ import (
 // ShadowRowProverAction is a prover action that assigns a shadow column
 // to zero
 type ShadowRowProverAction struct {
-	name ifaces.ColID
-	size int
+	Name ifaces.ColID
+	Size int
 }
 
 func (a *ShadowRowProverAction) Run(run *wizard.ProverRuntime) {
-	run.AssignColumn(a.name, smartvectors.NewConstant(field.Zero(), a.size))
+	run.AssignColumn(a.Name, smartvectors.NewConstant(field.Zero(), a.Size))
 }
 
 // A shadow row is a row filled with zeroes that we **may** add at the end of
@@ -27,8 +27,8 @@ func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces
 	col := comp.InsertCommit(round, name, size)
 
 	comp.RegisterProverAction(round, &ShadowRowProverAction{
-		name: name,
-		size: size,
+		Name: name,
+		Size: size,
 	})
 
 	return col

@@ -37,7 +37,7 @@ func (ctx *SelfRecursionCtx) registersI() {
 	for k := range i {
 		i[k].SetUint64(uint64(k))
 	}
-	ctx.Columns.I = ctx.comp.InsertPrecomputed(ctx.iName(nBColEncoded), smartvectors.NewRegular(i))
+	ctx.Columns.I = ctx.Comp.InsertPrecomputed(ctx.iName(nBColEncoded), smartvectors.NewRegular(i))
 }
 
 // Registers the key shards, since some rounds are dried, some of the
@@ -75,7 +75,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 
 		// Registers the commitment key (if this matches an existing key
 		// then the preexisting precomputed key is reused.
-		ah[0] = ctx.comp.InsertPrecomputed(
+		ah[0] = ctx.Comp.InsertPrecomputed(
 			ctx.ahName(ctx.SisKey(), roundStartAt, numPrecomputeds, maxSize),
 			FlattenedKeyChunk(ctx.SisKey(), roundStartAt, numPrecomputeds, maxSize),
 		)
@@ -114,7 +114,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 
 		// Registers the commitment key (if this matches an existing key
 		// then the preexisting precomputed key is reused).
-		ah[i+precompOffset] = ctx.comp.InsertPrecomputed(
+		ah[i+precompOffset] = ctx.Comp.InsertPrecomputed(
 			ctx.ahName(ctx.SisKey(), roundStartAt, len(comsInRoundsI), maxSize),
 			FlattenedKeyChunk(ctx.SisKey(), roundStartAt, len(comsInRoundsI), maxSize),
 		)

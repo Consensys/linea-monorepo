@@ -14,7 +14,7 @@ import (
 type SelfRecursionCtx struct {
 
 	// Pointer to the compiled IOP
-	comp *wizard.CompiledIOP
+	Comp *wizard.CompiledIOP
 
 	// Context of the past vortex compiler that we are skipping
 	VortexCtx *vortex.Ctx
@@ -207,7 +207,7 @@ type SelfRecursionCtx struct {
 func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix string) SelfRecursionCtx {
 
 	ctx := SelfRecursionCtx{
-		comp:             comp,
+		Comp:             comp,
 		VortexCtx:        vortexCtx,
 		SelfRecursionCnt: comp.SelfRecursionCount,
 		NamePrefix:       prefix,

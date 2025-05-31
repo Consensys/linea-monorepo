@@ -3,7 +3,6 @@ package globalcs
 import (
 	"fmt"
 	"io"
-	"reflect"
 	"sync"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -41,7 +40,7 @@ func factorExpression(comp *wizard.CompiledIOP, expr *symbolic.Expression) *symb
 		flattenedExpr = flattenExpr(expr)
 		eshStr        = flattenedExpr.ESHash.Text(16)
 		cacheKey      = "global-cs-" + eshStr
-		wrapper       = &serializableExpr{Comp: comp}
+		wrapper       = &serializableExpr{}
 	)
 
 	found, err := comp.Artefacts.TryLoad(cacheKey, wrapper)
@@ -63,11 +62,6 @@ func factorExpression(comp *wizard.CompiledIOP, expr *symbolic.Expression) *symb
 // serializableExpr wraps [symbolic.Expression] and implements the [wizard.Artefact]
 // interface.
 type serializableExpr struct {
-	// Comp points to the underlying [*wizard.CompiledIOP] object, it is necessary
-	// for deserializing as the blob only contains the column names. The CompiledIOP
-	// object is used to infer the concrete column and thus instantiate the encoded
-	// expression.
-	Comp *wizard.CompiledIOP
 	Expr *symbolic.Expression
 }
 
@@ -84,19 +78,17 @@ func (s *serializableExpr) ReadFrom(r io.Reader) (int64, error) {
 		return 0, fmt.Errorf("error while [io.ReadAll]: %w", err)
 	}
 
-	exprVal := &symbolic.Expression{}
-	if err := serialization.Deserialize(buf, exprVal); err != nil {
+	if err := serialization.Deserialize(buf, s); err != nil {
 		return 0, fmt.Errorf("could not deserialize the expression: %w", err)
 	}
 
-	s.Expr = exprVal
 	return int64(len(buf)), nil
 }
 
 // WriteTo implements the [io.WriterTo] and thus the [wizard.Artefact] interface.
 func (s *serializableExpr) WriteTo(w io.Writer) (int64, error) {
 
-	blob, err := serialization.Serialize(reflect.ValueOf(s.Expr))
+	blob, err := serialization.Serialize(*s)
 
 	if err != nil {
 		return 0, fmt.Errorf("could not serialize the expression with SerializeValue: %w", err)

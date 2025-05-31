@@ -7,14 +7,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// checkActivatorAndMask is an implementation of [wizard.VerifierAction] and is
+// CheckActivatorAndMask is an implementation of [wizard.VerifierAction] and is
 // used to embody the verifier checks added by [checkActivators].
-type checkActivatorAndMask struct {
-	*context
+type CheckActivatorAndMask struct {
+	*Context
 	skipped bool
 }
 
-func (c *checkActivatorAndMask) Run(run wizard.Runtime) error {
+func (c *CheckActivatorAndMask) Run(run wizard.Runtime) error {
 	for i := range c.SelOpenings {
 		var (
 			localOpening = run.GetLocalPointEvalParams(c.SelOpenings[i].ID)
@@ -33,7 +33,7 @@ func (c *checkActivatorAndMask) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *checkActivatorAndMask) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckActivatorAndMask) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	for i := range c.SelOpenings {
 		var (
 			valOpened = run.GetLocalPointEvalParams(c.SelOpenings[i].ID).Y
@@ -44,10 +44,10 @@ func (c *checkActivatorAndMask) RunGnark(api frontend.API, run wizard.GnarkRunti
 	}
 }
 
-func (c *checkActivatorAndMask) Skip() {
+func (c *CheckActivatorAndMask) Skip() {
 	c.skipped = true
 }
 
-func (c *checkActivatorAndMask) IsSkipped() bool {
+func (c *CheckActivatorAndMask) IsSkipped() bool {
 	return c.skipped
 }

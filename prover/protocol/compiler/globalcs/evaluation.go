@@ -22,9 +22,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// evaluationCtx collects the compilation artefacts related to the evaluation
+// EvaluationCtx collects the compilation artefacts related to the evaluation
 // part of the Plonk quotient technique.
-type evaluationCtx struct {
+type EvaluationCtx struct {
 	QuotientCtx
 	QuotientEvals []query.UnivariateEval
 	WitnessEval   query.UnivariateEval
@@ -33,12 +33,12 @@ type evaluationCtx struct {
 
 // EvaluationProver wraps [evaluationCtx] to implement the [wizard.ProverAction]
 // interface.
-type EvaluationProver evaluationCtx
+type EvaluationProver EvaluationCtx
 
 // EvaluationVerifier wraps [evaluationCtx] to implement the [wizard.VerifierAction]
 // interface.
 type EvaluationVerifier struct {
-	evaluationCtx
+	EvaluationCtx
 	skipped bool
 }
 
@@ -49,14 +49,14 @@ type EvaluationVerifier struct {
 func declareUnivariateQueries(
 	comp *wizard.CompiledIOP,
 	qCtx QuotientCtx,
-) evaluationCtx {
+) EvaluationCtx {
 
 	var (
 		round       = qCtx.QuotientShares[0][0].Round()
 		ratios      = qCtx.Ratios
 		maxRatio    = utils.Max(ratios...)
 		queriesPols = make([][]ifaces.Column, maxRatio)
-		res         = evaluationCtx{
+		res         = EvaluationCtx{
 			QuotientCtx: qCtx,
 			EvalCoin: comp.InsertCoin(
 				round+1,

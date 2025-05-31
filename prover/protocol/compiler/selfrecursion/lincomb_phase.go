@@ -26,7 +26,7 @@ func (ctx *SelfRecursionCtx) RowLinearCombinationPhase() {
 
 	// The reed-solomon check
 	reedsolomon.CheckReedSolomon(
-		ctx.comp,
+		ctx.Comp,
 		ctx.VortexCtx.BlowUpFactor,
 		ctx.Columns.Ualpha)
 
@@ -51,7 +51,7 @@ func (ctx *SelfRecursionCtx) defineYs() {
 	for _, colIDs := range ctx.VortexCtx.CommitmentsByRounds.GetInner() {
 		ranges = append(ranges, colIDs...)
 	}
-	ctx.Columns.Ys = verifiercol.NewFromYs(ctx.comp, ctx.VortexCtx.Query, ranges)
+	ctx.Columns.Ys = verifiercol.NewFromYs(ctx.Comp, ctx.VortexCtx.Query, ranges)
 }
 
 type ConsistencyYsUalphaVerifierAction struct {
@@ -83,16 +83,16 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 
 	// Defer the interpolation of Ualpha to a dedicated wizard
 	ctx.Accessors.InterpolateUalphaX = functionals.Interpolation(
-		ctx.comp,
+		ctx.Comp,
 		ctx.interpolateUAlphaX(),
-		accessors.NewUnivariateX(ctx.VortexCtx.Query, ctx.comp.QueriesParams.Round(ctx.VortexCtx.Query.QueryID)),
+		accessors.NewUnivariateX(ctx.VortexCtx.Query, ctx.Comp.QueriesParams.Round(ctx.VortexCtx.Query.QueryID)),
 		ctx.Columns.Ualpha,
 	)
 
 	round := ctx.Accessors.InterpolateUalphaX.Round()
 
 	// And let the verifier check that they should be both equal
-	ctx.comp.RegisterVerifierAction(round, &ConsistencyYsUalphaVerifierAction{
+	ctx.Comp.RegisterVerifierAction(round, &ConsistencyYsUalphaVerifierAction{
 		ctx:                ctx,
 		interpolateUalphaX: ctx.Accessors.InterpolateUalphaX,
 	})

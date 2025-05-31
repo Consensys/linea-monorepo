@@ -20,7 +20,7 @@ const (
 )
 
 type NaturalizeProverAction struct {
-	ctx naturalizationCtx
+	ctx NaturalizationCtx
 }
 
 func (a *NaturalizeProverAction) Run(run *wizard.ProverRuntime) {
@@ -28,7 +28,7 @@ func (a *NaturalizeProverAction) Run(run *wizard.ProverRuntime) {
 }
 
 type NaturalizeVerifierAction struct {
-	ctx naturalizationCtx
+	ctx NaturalizationCtx
 }
 
 func (a *NaturalizeVerifierAction) Run(run wizard.Runtime) error {
@@ -107,12 +107,12 @@ func Naturalize(comp *wizard.CompiledIOP) {
 			/*
 				Create the context
 			*/
-			ctx := naturalizationCtx{
-				q:                q,
-				roundID:          roundID,
-				subQueriesNames:  []ifaces.QueryID{},
-				polsPerSubQuery:  [][]ifaces.Column{},
-				reprToSubQueryID: make(map[string]int),
+			ctx := NaturalizationCtx{
+				Q:                q,
+				RoundID:          roundID,
+				SubQueriesNames:  []ifaces.QueryID{},
+				PolsPerSubQuery:  [][]ifaces.Column{},
+				ReprToSubQueryID: make(map[string]int),
 			}
 
 			ctx.registersTheNewQueries(comp)
@@ -137,31 +137,31 @@ func Naturalize(comp *wizard.CompiledIOP) {
 Code-factorization utility struct. It holds the compilation context for a
 single univariate query
 */
-type naturalizationCtx struct {
-	q       query.UnivariateEval
-	roundID int
+type NaturalizationCtx struct {
+	Q       query.UnivariateEval
+	RoundID int
 	/*
 		Make the list of the roots and of the prefixes, the list is deduplicated.
 		IE: we guarantee that a sub-query cannot reference several time the same
 		poly.
 	*/
-	deduplicatedReprs []string
-	subQueriesNames   []ifaces.QueryID
-	polsPerSubQuery   [][]ifaces.Column
-	reprToSubQueryID  map[string]int
+	DeduplicatedReprs []string
+	SubQueriesNames   []ifaces.QueryID
+	PolsPerSubQuery   [][]ifaces.Column
+	ReprToSubQueryID  map[string]int
 }
 
 /*
 Registers the new query
 */
-func (ctx *naturalizationCtx) registersTheNewQueries(comp *wizard.CompiledIOP) {
+func (ctx *NaturalizationCtx) registersTheNewQueries(comp *wizard.CompiledIOP) {
 
 	/*
 		Prevents including the same polynomial with the same repr in the
 		query. Otherwise, there would be an issue.
 	*/
 	alreadySeen := make(map[string]struct{})
-	for _, pol := range ctx.q.Pols {
+	for _, pol := range ctx.Q.Pols {
 
 		repr := column.DownStreamBranch(pol)
 		root := column.RootParents(pol)
@@ -172,26 +172,26 @@ func (ctx *naturalizationCtx) registersTheNewQueries(comp *wizard.CompiledIOP) {
 		}
 
 		// Initialization routine to add a new sub-query if necesary
-		if _, ok := ctx.reprToSubQueryID[repr]; !ok {
-			queryID := len(ctx.subQueriesNames)
-			ctx.reprToSubQueryID[repr] = queryID
-			newQueryName := deriveName[ifaces.QueryID](comp, NATURALIZE, ctx.q.QueryID, repr)
-			ctx.deduplicatedReprs = append(ctx.deduplicatedReprs, repr)
-			ctx.subQueriesNames = append(ctx.subQueriesNames, newQueryName)
-			ctx.polsPerSubQuery = append(ctx.polsPerSubQuery, []ifaces.Column{})
+		if _, ok := ctx.ReprToSubQueryID[repr]; !ok {
+			queryID := len(ctx.SubQueriesNames)
+			ctx.ReprToSubQueryID[repr] = queryID
+			newQueryName := deriveName[ifaces.QueryID](comp, NATURALIZE, ctx.Q.QueryID, repr)
+			ctx.DeduplicatedReprs = append(ctx.DeduplicatedReprs, repr)
+			ctx.SubQueriesNames = append(ctx.SubQueriesNames, newQueryName)
+			ctx.PolsPerSubQuery = append(ctx.PolsPerSubQuery, []ifaces.Column{})
 		}
 
 		alreadySeen[repr+rootName] = struct{}{}
-		queryID := ctx.reprToSubQueryID[repr]
+		queryID := ctx.ReprToSubQueryID[repr]
 		// Add the current derived root-handle to the proper derived query
-		ctx.polsPerSubQuery[queryID] = append(ctx.polsPerSubQuery[queryID], root)
+		ctx.PolsPerSubQuery[queryID] = append(ctx.PolsPerSubQuery[queryID], root)
 	}
 
 	/*
 		Registers the queries
 	*/
-	for queryID, qName := range ctx.subQueriesNames {
-		comp.InsertUnivariate(ctx.roundID, qName, ctx.polsPerSubQuery[queryID])
+	for queryID, qName := range ctx.SubQueriesNames {
+		comp.InsertUnivariate(ctx.RoundID, qName, ctx.PolsPerSubQuery[queryID])
 		// The result of the query is ditched from the FS state because in
 		// all scenarios. The result of the opening is (and is checked to be)
 		// identical to the result of the original univariate query. Hence, it
@@ -202,11 +202,11 @@ func (ctx *naturalizationCtx) registersTheNewQueries(comp *wizard.CompiledIOP) {
 	/*
 		sanity-check post-conditions
 	*/
-	if len(ctx.subQueriesNames) != len(ctx.polsPerSubQuery) {
+	if len(ctx.SubQueriesNames) != len(ctx.PolsPerSubQuery) {
 		panic("mismatch in the sizes in the context")
 	}
 
-	if len(ctx.subQueriesNames) == 0 {
+	if len(ctx.SubQueriesNames) == 0 {
 		panic("registered no subqueries")
 	}
 }
@@ -214,12 +214,12 @@ func (ctx *naturalizationCtx) registersTheNewQueries(comp *wizard.CompiledIOP) {
 /*
 Generates assignment for the new query
 */
-func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
+func (ctx *NaturalizationCtx) prove(run *wizard.ProverRuntime) {
 
 	// At this time, the originalQuery query should be assigned already
-	originalQuery := run.GetUnivariateParams(ctx.q.QueryID)
+	originalQuery := run.GetUnivariateParams(ctx.Q.QueryID)
 
-	if len(ctx.subQueriesNames) == 0 {
+	if len(ctx.SubQueriesNames) == 0 {
 		panic("subqueries forgotten somehow forgotten\n")
 	}
 
@@ -240,7 +240,7 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 	alreadySeenPolyX := make(map[string]struct{})
 	alreadySeenX := make(map[string]struct{})
 
-	for parentID, pol := range ctx.q.Pols {
+	for parentID, pol := range ctx.Q.Pols {
 		repr := column.DownStreamBranch(pol)
 		rootsAll := column.RootParents(pol)
 
@@ -256,10 +256,10 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 
 		// If useful register a new query
 		if _, ok := alreadySeenX[repr]; !ok {
-			if ctx.reprToSubQueryID[repr] != len(newXs) {
+			if ctx.ReprToSubQueryID[repr] != len(newXs) {
 				utils.Panic(
 					"(while compiling %v) expected the subQueryID %v to be equal to len(newXs) but got %v",
-					ctx.q.QueryID, ctx.reprToSubQueryID[repr], len(newXs),
+					ctx.Q.QueryID, ctx.ReprToSubQueryID[repr], len(newXs),
 				)
 			}
 			newXs = append(newXs, derivedXs)
@@ -279,7 +279,7 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 				as from the parent query.
 		*/
 
-		subQueryID := ctx.reprToSubQueryID[repr]
+		subQueryID := ctx.ReprToSubQueryID[repr]
 		newYs[subQueryID] = append(newYs[subQueryID], originalQuery.Ys[parentID])
 		alreadySeenPolyX[repr] = struct{}{}
 	}
@@ -287,26 +287,26 @@ func (ctx *naturalizationCtx) prove(run *wizard.ProverRuntime) {
 	/*
 		Assign the new univariate queries
 	*/
-	for queryID, qName := range ctx.subQueriesNames {
+	for queryID, qName := range ctx.SubQueriesNames {
 		run.AssignUnivariate(qName, newXs[queryID], newYs[queryID]...)
 	}
 }
 
-func (ctx naturalizationCtx) Verify(run wizard.Runtime) error {
+func (ctx NaturalizationCtx) Verify(run wizard.Runtime) error {
 
 	// Get the original query
-	originalQuery := run.GetUnivariateEval(ctx.q.QueryID)
-	originalQueryParams := run.GetUnivariateParams(ctx.q.QueryID)
+	originalQuery := run.GetUnivariateEval(ctx.Q.QueryID)
+	originalQueryParams := run.GetUnivariateParams(ctx.Q.QueryID)
 
 	// Collect the subqueries and the collection in finalYs evaluations
 	subQueries := []query.UnivariateEval{}
 	subQueriesParams := []query.UnivariateEvalParams{}
 	finalYs := collection.NewMapping[string, field.Element]()
 
-	for qID, qName := range ctx.subQueriesNames {
+	for qID, qName := range ctx.SubQueriesNames {
 		subQueries = append(subQueries, run.GetUnivariateEval(qName))
 		subQueriesParams = append(subQueriesParams, run.GetUnivariateParams(qName))
-		repr := ctx.deduplicatedReprs[qID]
+		repr := ctx.DeduplicatedReprs[qID]
 		for j, derivedY := range subQueriesParams[qID].Ys {
 			finalYs.InsertNew(column.DerivedYRepr(repr, subQueries[qID].Pols[j]), derivedY)
 		}
@@ -334,7 +334,7 @@ func (ctx naturalizationCtx) Verify(run wizard.Runtime) error {
 			continue
 		}
 
-		qID := ctx.reprToSubQueryID[subrepr]
+		qID := ctx.ReprToSubQueryID[subrepr]
 		submittedX := subQueriesParams[qID].X
 
 		if recoveredX != submittedX {
@@ -354,21 +354,21 @@ func (ctx naturalizationCtx) Verify(run wizard.Runtime) error {
 
 }
 
-func (ctx naturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime) {
+func (ctx NaturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime) {
 
 	// Get the original query
-	originalQuery := c.GetUnivariateEval(ctx.q.QueryID)
-	originalQueryParams := c.GetUnivariateParams(ctx.q.QueryID)
+	originalQuery := c.GetUnivariateEval(ctx.Q.QueryID)
+	originalQueryParams := c.GetUnivariateParams(ctx.Q.QueryID)
 
 	// Collect the subqueries and the collection in finalYs evaluations
 	subQueries := []query.UnivariateEval{}
 	subQueriesParams := []query.GnarkUnivariateEvalParams{}
 	finalYs := collection.NewMapping[string, frontend.Variable]()
 
-	for qID, qName := range ctx.subQueriesNames {
+	for qID, qName := range ctx.SubQueriesNames {
 		subQueries = append(subQueries, c.GetUnivariateEval(qName))
 		subQueriesParams = append(subQueriesParams, c.GetUnivariateParams(qName))
-		repr := ctx.deduplicatedReprs[qID]
+		repr := ctx.DeduplicatedReprs[qID]
 		for j, derivedY := range subQueriesParams[qID].Ys {
 			finalYs.InsertNew(column.DerivedYRepr(repr, subQueries[qID].Pols[j]), derivedY)
 		}
@@ -396,7 +396,7 @@ func (ctx naturalizationCtx) GnarkVerify(api frontend.API, c wizard.GnarkRuntime
 			continue
 		}
 
-		qID := ctx.reprToSubQueryID[subrepr]
+		qID := ctx.ReprToSubQueryID[subrepr]
 		submittedX := subQueriesParams[qID].X
 		// Or it is a mismatch between the evaluation queries and the derived query
 		api.AssertIsEqual(recoveredX[0], submittedX)
