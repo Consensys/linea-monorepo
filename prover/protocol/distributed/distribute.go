@@ -249,8 +249,8 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 
 	dist.CompiledDefault = CompileSegment(dist.DefaultModule)
 
-	logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))   // 11
-	logrus.Infof("Number of LPP modules to compile:%d\n", len(dist.LPPs)) // 3
+	logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))
+	logrus.Infof("Number of LPP modules to compile:%d\n", len(dist.LPPs))
 
 	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
 
