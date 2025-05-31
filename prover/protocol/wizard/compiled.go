@@ -38,7 +38,7 @@ type CompiledIOP struct {
 	// Columns registers and stores the Columns (ie: messages for the oracle)
 	// of the protocol. This includes the committed vectors, the proof messages,
 	// the preprocessed commitments that intervene in the protocol.
-	Columns column.Store
+	Columns *column.Store
 
 	// QueriesParams registers and stores all the parametrizable queries of the
 	// specified protocol. By "parametrizable", we mean the queries for which

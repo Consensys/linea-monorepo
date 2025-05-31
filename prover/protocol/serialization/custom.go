@@ -10,6 +10,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/fxamacker/cbor/v2"
 	"github.com/pierrec/lz4/v4"
 )
@@ -55,6 +56,12 @@ func init() {
 		Type: TypeOfArrOfFieldElement,
 		Ser:  marshalArrayOfFieldElement,
 		Des:  unmarshalArrayOfFieldElement,
+	}
+
+	CustomCodexes[TypeOfArithmetization] = CustomCodex{
+		Type: TypeOfArithmetization,
+		Ser:  marshalArithmetization,
+		Des:  unmarshalArithmetization,
 	}
 }
 
@@ -311,6 +318,40 @@ func unmarshalArrayOfFieldElement(_ *Deserializer, val any, _ reflect.Type) (ref
 	}
 
 	return reflect.ValueOf(v), nil
+}
+
+func marshalArithmetization(ser *Serializer, val reflect.Value) (any, error) {
+
+	res, err := ser.PackStructObject(val)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal arithmetization: %w", err)
+	}
+
+	return res, nil
+}
+
+func unmarshalArithmetization(des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+
+	if v_, ok := val.(PackedStructObject); ok {
+		val = []any(v_)
+	}
+
+	res, err := des.UnpackStructObject(val.([]any), TypeOfArithmetization)
+	if err != nil {
+		return reflect.Value{}, fmt.Errorf("could not unmarshal arithmetization: %w", err)
+	}
+
+	arith := res.Interface().(arithmetization.Arithmetization)
+
+	schema, meta, err := arithmetization.UnmarshalZkEVMBin(arith.ZkEVMBin, arith.Settings.OptimisationLevel)
+	if err != nil {
+		return reflect.Value{}, fmt.Errorf("could not unmarshal arithmetization: %w", err)
+	}
+
+	arith.Schema = schema
+	arith.Metadata = meta
+
+	return reflect.ValueOf(arith), nil
 }
 
 // This converts the field.Element to a smaller big.Int. This is done to

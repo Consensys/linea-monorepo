@@ -16,6 +16,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/google/uuid"
 )
 
@@ -36,7 +37,7 @@ var (
 	TypeOfQueryID            = reflect.TypeOf(ifaces.QueryID(""))
 	TypeOfCompiledIOPPointer = reflect.TypeOf(&wizard.CompiledIOP{})
 	TypeOfCompiledIOP        = reflect.TypeOf(wizard.CompiledIOP{})
-	TypeOfStore              = reflect.TypeOf(&column.Store{})
+	TypeOfStorePtr           = reflect.TypeOf(&column.Store{})
 	TypeOfPackedColumn       = reflect.TypeOf(column.PackedNatural{})
 	TypeOfPackedStore        = reflect.TypeOf(column.PackedStore{})
 	TypeOfVariableMetadata   = reflect.TypeOf((*symbolic.Metadata)(nil)).Elem()
@@ -47,6 +48,7 @@ var (
 	TypeOfBigInt             = reflect.TypeOf(&big.Int{})
 	TypeOfArrOfFieldElement  = reflect.TypeOf([]field.Element{})
 	TypeOfPlonkCirc          = reflect.TypeOf(&cs.SparseR1CS{})
+	TypeOfArithmetization    = reflect.TypeOf(arithmetization.Arithmetization{})
 )
 
 // BackReference represents an integer index into PackedObject arrays (e.g., Columns, Coins).
@@ -281,7 +283,7 @@ func (s *Serializer) PackValue(v reflect.Value) (any, error) {
 		return s.PackQueryID(v.Interface().(ifaces.QueryID))
 	case typeOfV == TypeOfCompiledIOPPointer:
 		return s.PackCompiledIOP(v.Interface().(*wizard.CompiledIOP))
-	case typeOfV == TypeOfStore:
+	case typeOfV == TypeOfStorePtr:
 		return s.PackStore(v.Interface().(*column.Store))
 	case typeOfV == TypeOfPlonkCirc:
 		return s.PackPlonkCircuit(v.Interface().(*cs.SparseR1CS))
@@ -341,7 +343,7 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 		return de.UnpackQueryID(backReferenceFromCBORInt(v))
 	case t == TypeOfCompiledIOPPointer:
 		return de.UnpackCompiledIOP(backReferenceFromCBORInt(v))
-	case t == TypeOfStore:
+	case t == TypeOfStorePtr:
 		return de.UnpackStore(backReferenceFromCBORInt(v))
 	case t == TypeOfPlonkCirc:
 		return de.UnpackPlonkCircuit(backReferenceFromCBORInt(v))
