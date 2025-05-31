@@ -46,11 +46,11 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 	var (
 		size                  = utils.NextPowerOfTwo(pckInp.PackingParam.NbOfLanesPerBlock() * pckInp.MaxNumBlocks)
 		createCol             = common.CreateColFn(comp, LANE+"_"+pckInp.Name, size, pragmas.RightPadded)
-		isFirstSliceOfNewHash = spaghetti.newHashSp
+		isFirstSliceOfNewHash = spaghetti.NewHashSp
 		maxValue              = pckInp.PackingParam.LaneSizeBytes()
-		decomposedLenSp       = spaghetti.decLenSp
-		pa                    = dedicated.AccumulateUpToMax(comp, maxValue, decomposedLenSp, spaghetti.filterSpaghetti)
-		spaghettiSize         = spaghetti.spaghettiSize
+		decomposedLenSp       = spaghetti.DecLenSp
+		pa                    = dedicated.AccumulateUpToMax(comp, maxValue, decomposedLenSp, spaghetti.FilterSpaghetti)
+		spaghettiSize         = spaghetti.SpaghettiSize
 	)
 
 	l := laneRepacking{
@@ -93,8 +93,8 @@ func newLane(comp *wizard.CompiledIOP, spaghetti spaghettiCtx, pckInp PackingInp
 // it declares the constraints over coefficients.
 func (l *laneRepacking) csCoeff(comp *wizard.CompiledIOP, s spaghettiCtx) {
 	var (
-		partialCoeff = s.decLenPowerSp // decomposedLenPowers in spaghetti form.
-		isActive     = s.filterSpaghetti
+		partialCoeff = s.DecLenPowerSp // decomposedLenPowers in spaghetti form.
+		isActive     = s.FilterSpaghetti
 	)
 
 	// coeff[last-active-row] = 1
@@ -130,7 +130,7 @@ func (l *laneRepacking) csRecomposeToLanes(comp *wizard.CompiledIOP, s spaghetti
 	//ipTaker[i] = (decomposedLimbs[i] * coeff[i]) + ipTracker[i+1]* (1- isLaneComplete[i+1])
 	// Constraints on the Partitioned Inner-Products
 	ipTracker := dedicated.InsertPartitionedIP(comp, l.Inputs.PckInp.Name+"_PIP_For_LaneRePacking",
-		s.decLimbSp,
+		s.DecLimbSp,
 		l.Coeff,
 		l.IsLaneComplete,
 	)
@@ -146,7 +146,7 @@ func (l *laneRepacking) csRecomposeToLanes(comp *wizard.CompiledIOP, s spaghetti
 // It assigns the columns specific to the submodule
 func (l *laneRepacking) Assign(run *wizard.ProverRuntime) {
 	// assign the spaghetti forms
-	l.Inputs.Spaghetti.pa.Run(run)
+	l.Inputs.Spaghetti.PA.Run(run)
 	// assign the IsMax column from  the ProverAction (AccumulateUpToMax).
 	l.PAAccUpToMax.Run(run)
 	// assign coeff
@@ -162,10 +162,10 @@ func (l *laneRepacking) assignCoeff(
 	var (
 		isLaneComplete       = l.IsLaneComplete.GetColAssignment(run).IntoRegVecSaveAlloc()
 		size                 = len(isLaneComplete)
-		decomposedLenPowerSp = l.Inputs.Spaghetti.decLenPowerSp
+		decomposedLenPowerSp = l.Inputs.Spaghetti.DecLenPowerSp
 		partialCoeff         = decomposedLenPowerSp.GetColAssignment(run).IntoRegVecSaveAlloc()
 		one                  = field.One()
-		isActive             = l.Inputs.Spaghetti.filterSpaghetti.GetColAssignment(run).IntoRegVecSaveAlloc()
+		isActive             = l.Inputs.Spaghetti.FilterSpaghetti.GetColAssignment(run).IntoRegVecSaveAlloc()
 	)
 
 	//partialCoeff := decomposedLenPowers

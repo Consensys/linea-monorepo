@@ -59,6 +59,7 @@ type Serializer struct {
 	PackedObject    *PackedObject               // The output structure containing serialized data.
 	typeMap         map[string]int              // Maps type names to indices in PackedObject.Types.
 	structSchemaMap map[string]int              // Maps struct type names to indices in PackedObject.StructSchema.
+	pointerMap      map[uintptr]int             // Maps pointer values to indices in PackedObject.Pointers.
 	coinMap         map[uuid.UUID]int           // Maps coin UUIDs to indices in PackedObject.Coins.
 	coinIdMap       map[string]int              // Maps coin IDs to indices in PackedObject.CoinIDs.
 	columnMap       map[uuid.UUID]int           // Maps column UUIDs to indices in PackedObject.Columns.
@@ -76,6 +77,7 @@ type Serializer struct {
 type Deserializer struct {
 	PackedObject    *PackedObject         // The input structure to deserialize.
 	StructSchemaMap map[string]int        // Maps struct type names to indices in PackedObject.StructSchema.
+	PointedValues   []reflect.Value       // Maps pointer values to indices in PackedObject.Pointers.
 	Columns         []*column.Natural     // Cache of deserialized columns, indexed by BackReference.
 	Coins           []*coin.Info          // Cache of deserialized coins.
 	Queries         []*ifaces.Query       // Cache of deserialized queries.
@@ -88,18 +90,19 @@ type Deserializer struct {
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
-	Types        []string             `cbor:"t"`  // Type names for interfaces.
-	StructSchema []PackedStructSchema `cbor:"s"`  // Schemas for structs (type and field names).
-	ColumnIDs    []string             `cbor:"id"` // String IDs for columns.
-	Columns      []PackedStructObject `cbor:"c"`  // Serialized columns (as PackedStructObject).
-	CoinIDs      []string             `cbor:"i"`  // String IDs for coins.
-	Coins        []PackedCoin         `cbor:"o"`  // Serialized coins.
-	QueryIDs     []string             `cbor:"w"`  // String IDs for queries.
-	Queries      []PackedStructObject `cbor:"q"`  // Serialized queries.
-	Store        [][]any              `cbor:"st"` // Serialized stores (as arrays).
-	CompiledIOP  []PackedStructObject `cbor:"a"`  // Serialized CompiledIOPs.
-	Circuits     [][]byte             `cbor:"cr"` // Serialized circuits.
-	Payload      []byte               `cbor:"p"`  // CBOR-encoded root value.
+	Types         []string             `cbor:"t"`  // Type names for interfaces.
+	StructSchema  []PackedStructSchema `cbor:"s"`  // Schemas for structs (type and field names).
+	PointedValues []any                `cbor:"u"`  // Serialized pointers (as PackedIFace).
+	ColumnIDs     []string             `cbor:"id"` // String IDs for columns.
+	Columns       []PackedStructObject `cbor:"c"`  // Serialized columns (as PackedStructObject).
+	CoinIDs       []string             `cbor:"i"`  // String IDs for coins.
+	Coins         []PackedCoin         `cbor:"o"`  // Serialized coins.
+	QueryIDs      []string             `cbor:"w"`  // String IDs for queries.
+	Queries       []PackedStructObject `cbor:"q"`  // Serialized queries.
+	Store         [][]any              `cbor:"st"` // Serialized stores (as arrays).
+	CompiledIOP   []PackedStructObject `cbor:"a"`  // Serialized CompiledIOPs.
+	Circuits      [][]byte             `cbor:"cr"` // Serialized circuits.
+	Payload       []byte               `cbor:"p"`  // CBOR-encoded root value.
 }
 
 // PackedIFace serializes an interface value, storing its type index and concrete value.
@@ -115,7 +118,6 @@ type PackedCoin struct {
 	UpperBound int32  `cbor:"u,omitempty"` // Upper bound for coin (optional).
 	Name       string `cbor:"n"`           // Coin name.
 	Round      int    `cbor:"r"`           // Round number.
-	// CompiledIOP int8   `cbor:"i"`           // Unused (placeholder for CompiledIOP index).
 }
 
 // PackedStructSchema defines a struct’s type and field names for deserialization.
@@ -132,6 +134,7 @@ func NewSerializer() *Serializer {
 		PackedObject:    &PackedObject{},
 		typeMap:         map[string]int{},
 		structSchemaMap: map[string]int{},
+		pointerMap:      map[uintptr]int{},
 		coinMap:         map[uuid.UUID]int{},
 		coinIdMap:       map[string]int{},
 		columnMap:       map[uuid.UUID]int{},
@@ -183,11 +186,13 @@ func Serialize(v any) ([]byte, error) {
 func NewDeserializer(packedObject *PackedObject) *Deserializer {
 	return &Deserializer{
 		StructSchemaMap: make(map[string]int, len(packedObject.StructSchema)),
+		PointedValues:   make([]reflect.Value, len(packedObject.PointedValues)),
 		Columns:         make([]*column.Natural, len(packedObject.Columns)),
 		Coins:           make([]*coin.Info, len(packedObject.Coins)),
 		Queries:         make([]*ifaces.Query, len(packedObject.Queries)),
 		CompiledIOPs:    make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
 		Stores:          make([]*column.Store, len(packedObject.Store)),
+		Circuits:        make([]*cs.SparseR1CS, len(packedObject.Circuits)),
 		PackedObject:    packedObject,
 	}
 }
@@ -219,7 +224,7 @@ func Deserialize(bytes []byte, v any) error {
 
 	// Decode the Payload into a root value.
 	if err := decodeWithCBOR(packedObject.Payload, &payloadRoot); err != nil {
-		return fmt.Errorf("could not deserialize the payload, err=%w", err)
+		return fmt.Errorf("could not deserialize the payload, payload=%v, err=%w", packedObject.Payload, err)
 	}
 
 	// Register struct schemas in StructSchemaMap.
@@ -237,9 +242,6 @@ func Deserialize(bytes []byte, v any) error {
 	for i := range deser.Warnings {
 		fmt.Println(deser.Warnings[i])
 	}
-
-	// Debugging output (remove in production).
-	fmt.Printf("value of res = %v, value of v = %T\n", res.Type(), v)
 
 	// Set the result into the provided pointer.
 	valueOfV := reflect.ValueOf(v)
@@ -298,7 +300,7 @@ func (s *Serializer) PackValue(v reflect.Value) (any, error) {
 	case reflect.Map:
 		return s.PackMap(v)
 	case reflect.Pointer:
-		return s.PackValue(v.Elem())
+		return s.PackPointer(v)
 	case reflect.Struct:
 		return s.PackStructObject(v)
 	default:
@@ -311,6 +313,7 @@ func (s *Serializer) PackValue(v reflect.Value) (any, error) {
 // It resolves back-references for protocol-specific types and handles generic types.
 // Returns the deserialized reflect.Value or an error.
 func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e error) {
+
 	if v == nil {
 		return reflect.Zero(t), nil
 	}
@@ -357,8 +360,11 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 		v := v.(map[any]any)
 		return de.UnpackMap(v, t)
 	case reflect.Interface:
-		v := v.(map[interface{}]any)
-		return de.UnpackInterface(v, t)
+		v_, ok := v.(map[interface{}]any)
+		if !ok {
+			return reflect.Value{}, fmt.Errorf("expected %v to be of type map[interface{}]any, was=%T", v, v)
+		}
+		return de.UnpackInterface(v_, t)
 	case reflect.Pointer:
 		return de.UnpackPointer(v, t)
 	case reflect.Struct:
@@ -935,6 +941,10 @@ func (de *Deserializer) UnpackStructObject(v PackedStructObject, t reflect.Type)
 		schema = de.PackedObject.StructSchema[schemaID]
 	)
 
+	if len(v) != len(schema.Fields) {
+		return reflect.Value{}, fmt.Errorf("invalid number of fields: %v, expected %v, type=%v", len(v), len(schema.Fields), t.String())
+	}
+
 	// To ease debugging, all the errors for all the fields are joined and
 	// wrapped in a single error.
 	var globalErr error
@@ -1063,28 +1073,79 @@ func (de *Deserializer) UnpackMap(packedMap map[any]any, t reflect.Type) (reflec
 	return res, nil
 }
 
+// PackPointer serializes a pointer value.
+func (s *Serializer) PackPointer(v reflect.Value) (any, error) {
+
+	if v.Kind() != reflect.Ptr {
+		return reflect.Value{}, fmt.Errorf("invalid type: %v, expected a pointer", v.Type().String())
+	}
+
+	if v.IsNil() {
+		return nil, nil
+	}
+
+	if _, ok := s.pointerMap[v.Pointer()]; !ok {
+
+		// nil is appended just so that the recursive calls do not also use the
+		// same backref for different objects. Also, we preemptively assign the
+		// backref in the map to prevent infinite-loop with recursive data
+		// structure (e.g. circular pointer references).
+		backRef := len(s.PackedObject.PointedValues)
+		s.pointerMap[v.Pointer()] = backRef
+		s.PackedObject.PointedValues = append(s.PackedObject.PointedValues, nil)
+
+		packedElem, err := s.PackValue(v.Elem())
+		if err != nil {
+			return nil, fmt.Errorf("could not pack pointer value, type=%v: %w", v.Type().String(), err)
+		}
+
+		s.PackedObject.PointedValues[backRef] = packedElem
+	}
+
+	return BackReference(s.pointerMap[v.Pointer()]), nil
+}
+
 // UnpackPointer deserializes a pointer value, ensuring the result is addressable.
 func (de *Deserializer) UnpackPointer(v any, t reflect.Type) (reflect.Value, error) {
+
 	if t.Kind() != reflect.Ptr {
 		return reflect.Value{}, fmt.Errorf("invalid type: %v, expected a pointer", t.String())
 	}
 
-	value, err := de.UnpackValue(v, t.Elem())
-	if err != nil {
-		return reflect.Value{}, fmt.Errorf("could not deserialize pointer type=%v, err=%w", t.Elem().String(), err)
+	if v == nil {
+		// This returns a nil-pointer of the target type.
+		return reflect.Zero(t), nil
 	}
 
-	if value.CanAddr() {
-		return value.Addr(), nil
+	backRefInt, ok := v.(uint64)
+	if !ok {
+		return reflect.Value{}, fmt.Errorf("pointer type=%v is not a BackReference nor a nil value, got=%++v", t.String(), v)
+	}
+	backRef := BackReference(backRefInt)
+
+	if backRef < 0 || int(backRef) >= len(de.PackedObject.PointedValues) {
+		return reflect.Value{}, fmt.Errorf("invalid pointer: %v", v)
 	}
 
-	// If the value cannot be addressed, it means that it is a temp value. And
-	// we can attempt to fix this by resetting the value to what we wanted.
-	// Note that reflect.New returns a pointer to the provided type, which is
-	// what we wanted.
-	res := reflect.New(t.Elem())
-	res.Elem().Set(value)
-	return res, nil
+	if (de.PointedValues[backRef] == reflect.Value{}) {
+
+		// To guards against infinite recursion, we preemptively assign a
+		// pointer value that we will use for subsequent occurence of the same
+		// backreference. This can happen when ser/de a structure with recursive
+		// pointers.
+		ptrValue := reflect.New(t.Elem())
+		de.PointedValues[backRef] = ptrValue
+
+		packedElem := de.PackedObject.PointedValues[backRef]
+		elem, err := de.UnpackValue(packedElem, t.Elem())
+		if err != nil {
+			return reflect.Value{}, fmt.Errorf("could not unpack pointer type=%v, err=%w", t.Elem().String(), err)
+		}
+
+		ptrValue.Elem().Set(elem)
+	}
+
+	return de.PointedValues[backRef], nil
 }
 
 // UnpackPrimitive converts a primitive value to the target type using reflection.

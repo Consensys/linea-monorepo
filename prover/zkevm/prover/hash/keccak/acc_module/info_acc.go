@@ -26,18 +26,18 @@ type GenericInfoAccumulator struct {
 	Provider generic.GenInfoModule
 
 	// filter indicating where each original module is located over the stitched one
-	sFilters []ifaces.Column
+	SFilters []ifaces.Column
 
 	// the active part of the stitching module
 	IsActive ifaces.Column
 
 	// max number of rows for the stitched module
-	size int
+	Size int
 }
 
 func NewGenericInfoAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorInputs) *GenericInfoAccumulator {
 	info := &GenericInfoAccumulator{
-		size:   utils.NextPowerOfTwo(inp.MaxNumKeccakF),
+		Size:   utils.NextPowerOfTwo(inp.MaxNumKeccakF),
 		Inputs: &inp,
 	}
 
@@ -46,9 +46,9 @@ func NewGenericInfoAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 
 	// sFilter[i] starts immediately after sFilters[i-1].
 	s := sym.NewConstant(0)
-	for i := 0; i < len(info.sFilters); i++ {
-		commonconstraints.MustBeActivationColumns(comp, info.sFilters[i], sym.Sub(1, s))
-		s = sym.Add(s, info.sFilters[i])
+	for i := 0; i < len(info.SFilters); i++ {
+		commonconstraints.MustBeActivationColumns(comp, info.SFilters[i], sym.Sub(1, s))
+		s = sym.Add(s, info.SFilters[i])
 	}
 
 	comp.InsertGlobal(0, ifaces.QueryIDf("ADDs_UP_TO_IS_ACTIVE_Info"),
@@ -64,26 +64,26 @@ func NewGenericInfoAccumulator(comp *wizard.CompiledIOP, inp GenericAccumulatorI
 			query.ProjectionInput{ColumnA: []ifaces.Column{gbm.HashHi},
 				ColumnB: []ifaces.Column{info.Provider.HashHi},
 				FilterA: gbm.IsHashHi,
-				FilterB: info.sFilters[i]})
+				FilterB: info.SFilters[i]})
 
 		comp.InsertProjection(ifaces.QueryIDf("Stitch_Modules_Lo_%v", i),
 			query.ProjectionInput{ColumnA: []ifaces.Column{gbm.HashLo},
 				ColumnB: []ifaces.Column{info.Provider.HashLo},
 				FilterA: gbm.IsHashLo,
-				FilterB: info.sFilters[i]})
+				FilterB: info.SFilters[i]})
 	}
 	return info
 }
 
 // declare columns
 func (info *GenericInfoAccumulator) declareColumns(comp *wizard.CompiledIOP, nbProviders int) {
-	createCol := common.CreateColFn(comp, GENERIC_ACCUMULATOR, info.size, pragmas.RightPadded)
+	createCol := common.CreateColFn(comp, GENERIC_ACCUMULATOR, info.Size, pragmas.RightPadded)
 
 	info.IsActive = createCol("IsActive_Info")
 
-	info.sFilters = make([]ifaces.Column, nbProviders)
+	info.SFilters = make([]ifaces.Column, nbProviders)
 	for i := 0; i < nbProviders; i++ {
-		info.sFilters[i] = createCol("sFilterOut_%v", i)
+		info.SFilters[i] = createCol("sFilterOut_%v", i)
 	}
 
 	info.Provider.HashHi = createCol("Hash_Hi")
@@ -127,12 +127,12 @@ func (info *GenericInfoAccumulator) Run(run *wizard.ProverRuntime) {
 
 	//assign sFilters
 	for i := range providers {
-		run.AssignColumn(info.sFilters[i].GetColID(), smartvectors.RightZeroPadded(sFilters[i], info.size))
+		run.AssignColumn(info.SFilters[i].GetColID(), smartvectors.RightZeroPadded(sFilters[i], info.Size))
 	}
 
 	// populate and assign isActive
 	isActive := vector.Repeat(field.One(), len(sFilters[0]))
-	run.AssignColumn(info.IsActive.GetColID(), smartvectors.RightZeroPadded(isActive, info.size))
+	run.AssignColumn(info.IsActive.GetColID(), smartvectors.RightZeroPadded(isActive, info.Size))
 
 	// populate Provider
 	var sHashHi, sHashLo []field.Element
@@ -151,8 +151,8 @@ func (info *GenericInfoAccumulator) Run(run *wizard.ProverRuntime) {
 		}
 	}
 
-	run.AssignColumn(info.Provider.HashHi.GetColID(), smartvectors.RightZeroPadded(sHashHi, info.size))
-	run.AssignColumn(info.Provider.HashLo.GetColID(), smartvectors.RightZeroPadded(sHashLo, info.size))
+	run.AssignColumn(info.Provider.HashHi.GetColID(), smartvectors.RightZeroPadded(sHashHi, info.Size))
+	run.AssignColumn(info.Provider.HashLo.GetColID(), smartvectors.RightZeroPadded(sHashLo, info.Size))
 
 }
 

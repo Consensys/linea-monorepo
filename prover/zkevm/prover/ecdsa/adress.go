@@ -125,15 +125,15 @@ func newAddress(comp *wizard.CompiledIOP, size int, ecRec *EcRecover, ac *antich
 
 	// projection from txn-data to address columns
 	comp.InsertProjection(ifaces.QueryIDf("Project_AddressHi_TxnData"),
-		query.ProjectionInput{ColumnA: []ifaces.Column{td.fromHi},
+		query.ProjectionInput{ColumnA: []ifaces.Column{td.FromHi},
 			ColumnB: []ifaces.Column{addr.AddressHi},
-			FilterA: td.isFrom,
+			FilterA: td.IsFrom,
 			FilterB: addr.IsAddressFromTxnData})
 
 	comp.InsertProjection(ifaces.QueryIDf("Project_AddressLO_TxnData"),
-		query.ProjectionInput{ColumnA: []ifaces.Column{td.fromLo},
+		query.ProjectionInput{ColumnA: []ifaces.Column{td.FromLo},
 			ColumnB: []ifaces.Column{addr.AddressLo},
-			FilterA: td.isFrom,
+			FilterA: td.IsFrom,
 			FilterB: addr.IsAddressFromTxnData})
 
 	// impose that hashNum = ac.ID + 1
@@ -220,7 +220,7 @@ func (addr *Addresses) assignAddress(
 	td *txnData,
 ) {
 	// assign td.isFrom
-	td.pa_IsZero.Run(run)
+	td.Pa_IsZero.Run(run)
 
 	// assign HashNum
 	var (
@@ -332,16 +332,16 @@ func splitAt(nbEcRecover int) int {
 func (td *txnData) csTxnData(comp *wizard.CompiledIOP) {
 
 	//  isFrom == 1 iff ct==1
-	td.isFrom, td.pa_IsZero = dedicated.IsZero(comp, sym.Sub(td.ct, 1))
+	td.IsFrom, td.Pa_IsZero = dedicated.IsZero(comp, sym.Sub(td.Ct, 1))
 }
 
 // txndata represents the txn_data module from the arithmetization side.
 type txnData struct {
-	fromHi ifaces.Column
-	fromLo ifaces.Column
-	ct     ifaces.Column
+	FromHi ifaces.Column
+	FromLo ifaces.Column
+	Ct     ifaces.Column
 
 	// helper column
-	isFrom    ifaces.Column
-	pa_IsZero wizard.ProverAction
+	IsFrom    ifaces.Column
+	Pa_IsZero wizard.ProverAction
 }

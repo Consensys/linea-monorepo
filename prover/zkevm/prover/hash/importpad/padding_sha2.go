@@ -11,8 +11,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/generic"
 )
 
-// sha2Padder implements the [padder] interface for the SHA2 hash function.
-type sha2Padder struct {
+// Sha2Padder implements the [padder] interface for the SHA2 hash function.
+type Sha2Padder struct {
 	AccInsertedBytes ifaces.Column
 }
 
@@ -80,7 +80,7 @@ func (ipad *Importation) newSha2Padder(comp *wizard.CompiledIOP) padder {
 
 	var (
 		numRows = ipad.Limbs.Size()
-		pad     = &sha2Padder{
+		pad     = &Sha2Padder{
 			AccInsertedBytes: comp.InsertCommit(0,
 				ifaces.ColIDf("%v_SHA2_ACC_INSERTED_BYTES", ipad.Inputs.Name),
 				numRows,
@@ -188,7 +188,7 @@ func (ipad *Importation) newSha2Padder(comp *wizard.CompiledIOP) padder {
 	return pad
 }
 
-func (sp *sha2Padder) pushPaddingRows(byteStringSize int, ipad *importationAssignmentBuilder) {
+func (sp *Sha2Padder) pushPaddingRows(byteStringSize int, ipad *importationAssignmentBuilder) {
 
 	var (
 		blocksize      = generic.Sha2Usecase.BlockSizeBytes()

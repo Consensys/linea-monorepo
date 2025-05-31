@@ -35,12 +35,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/importpad"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak"
 	gen_acc "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/acc_module"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/keccak/base_conversion"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/sha2"
 	"github.com/consensys/linea-monorepo/prover/zkevm/prover/modexp"
 	"github.com/sirupsen/logrus"
 
 	ded "github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/hash/packing/dedicated/spaghettifier"
 )
 
 func init() {
@@ -176,6 +178,16 @@ func init() {
 	RegisterImplementation(keccak.KeccakSingleProvider{})
 	RegisterImplementation(importpad.Importation{})
 	RegisterImplementation(packing.Packing{})
+	RegisterImplementation(ded.LengthConsistencyCtx{})
+	RegisterImplementation(ded.AccumulateUpToMaxCtx{})
+	RegisterImplementation(importpad.Importation{})
+	RegisterImplementation(spaghettifier.Spaghettification{})
+	RegisterImplementation(importpad.Sha2Padder{})
+	RegisterImplementation(importpad.MimcPadder{})
+	RegisterImplementation(importpad.KeccakPadder{})
+	RegisterImplementation(base_conversion.HashBaseConversion{})
+	RegisterImplementation(base_conversion.BlockBaseConversion{})
+	RegisterImplementation(base_conversion.DecompositionCtx{})
 
 	logrus.Printf("Ignorable types:%v\n", IgnoreableTypes)
 }

@@ -44,11 +44,11 @@ func createColFn(comp *wizard.CompiledIOP, rootName string, size int) func(name 
 }
 
 type antichamberInput struct {
-	ecSource     *ecDataSource
-	txSource     *txnData
-	rlpTxn       generic.GenDataModule
-	settings     *Settings
-	plonkOptions []query.PlonkOption
+	EcSource     *ecDataSource
+	TxSource     *txnData
+	RlpTxn       generic.GenDataModule
+	Settings     *Settings
+	PlonkOptions []query.PlonkOption
 }
 
 type antichamber struct {
@@ -85,11 +85,11 @@ func (l *Settings) sizeAntichamber() int {
 
 func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *antichamber {
 
-	settings := inputs.settings
+	settings := inputs.Settings
 	if settings.MaxNbEcRecover+settings.MaxNbTx > settings.NbInputInstance*settings.NbCircuitInstances {
 		utils.Panic("the number of supported instances %v should be %v + %v", settings.NbInputInstance*settings.NbCircuitInstances, settings.MaxNbEcRecover, settings.MaxNbTx)
 	}
-	size := inputs.settings.sizeAntichamber()
+	size := inputs.Settings.sizeAntichamber()
 	createCol := createColFn(comp, NAME_ANTICHAMBER, size)
 
 	// declare the native columns
@@ -107,20 +107,20 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 
 	// declare submodules
 	txSignInputs := txSignatureInputs{
-		RlpTxn: inputs.rlpTxn,
+		RlpTxn: inputs.RlpTxn,
 		Ac:     res,
 	}
 	res.TxSignature = newTxSignatures(comp, txSignInputs)
-	res.EcRecover = newEcRecover(comp, inputs.settings, inputs.ecSource)
+	res.EcRecover = newEcRecover(comp, inputs.Settings, inputs.EcSource)
 	res.UnalignedGnarkData = newUnalignedGnarkData(comp, size, res.unalignedGnarkDataSource())
-	res.Addresses = newAddress(comp, size, res.EcRecover, res, inputs.txSource)
+	res.Addresses = newAddress(comp, size, res.EcRecover, res, inputs.TxSource)
 	toAlign := &plonk.CircuitAlignmentInput{
 		Name:               NAME_GNARK_DATA,
 		Round:              ROUND_NR,
 		DataToCircuit:      res.UnalignedGnarkData.GnarkData,
 		DataToCircuitMask:  res.IsPushing,
 		Circuit:            newMultiEcRecoverCircuit(settings.NbInputInstance),
-		PlonkOptions:       inputs.plonkOptions,
+		PlonkOptions:       inputs.PlonkOptions,
 		NbCircuitInstances: settings.NbCircuitInstances,
 	}
 
@@ -156,8 +156,8 @@ func newAntichamber(comp *wizard.CompiledIOP, inputs *antichamberInput) *anticha
 // it has to be provided as an input.
 func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter, nbTx int) {
 	var (
-		ecSrc             = ac.Inputs.ecSource
-		txSource          = ac.Inputs.txSource
+		ecSrc             = ac.Inputs.EcSource
+		txSource          = ac.Inputs.TxSource
 		nbActualEcRecover = ecSrc.nbActualInstances(run)
 	)
 	ac.assignAntichamber(run, nbActualEcRecover, nbTx)
@@ -179,8 +179,8 @@ func (ac *antichamber) assign(run *wizard.ProverRuntime, txGet TxSignatureGetter
 func (ac *antichamber) assignAntichamber(run *wizard.ProverRuntime, nbEcRecInstances, nbTxInstances int) {
 
 	var (
-		maxNbEcRecover = ac.Inputs.settings.MaxNbEcRecover
-		maxNbTx        = ac.Inputs.settings.MaxNbTx
+		maxNbEcRecover = ac.Inputs.Settings.MaxNbEcRecover
+		maxNbTx        = ac.Inputs.Settings.MaxNbTx
 	)
 
 	if nbRowsPerEcRec*maxNbEcRecover+nbRowsPerTxSign*maxNbTx > ac.Size {

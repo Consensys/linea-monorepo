@@ -18,11 +18,11 @@ func NewEcdsaZkEvm(
 		Ant: newAntichamber(
 			comp,
 			&antichamberInput{
-				settings:     settings,
-				ecSource:     getEcdataArithmetization(comp),
-				txSource:     getTxnDataArithmetization(comp),
-				rlpTxn:       getRlpTxnArithmetization(comp),
-				plonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
+				Settings:     settings,
+				EcSource:     getEcdataArithmetization(comp),
+				TxSource:     getTxnDataArithmetization(comp),
+				RlpTxn:       getRlpTxnArithmetization(comp),
+				PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
 			},
 		),
 	}
@@ -50,9 +50,9 @@ func getEcdataArithmetization(comp *wizard.CompiledIOP) *ecDataSource {
 
 func getTxnDataArithmetization(comp *wizard.CompiledIOP) *txnData {
 	td := &txnData{
-		fromHi: comp.Columns.GetHandle("txndata.FROM_HI"),
-		fromLo: comp.Columns.GetHandle("txndata.FROM_LO"),
-		ct:     comp.Columns.GetHandle("txndata.CT"),
+		FromHi: comp.Columns.GetHandle("txndata.FROM_HI"),
+		FromLo: comp.Columns.GetHandle("txndata.FROM_LO"),
+		Ct:     comp.Columns.GetHandle("txndata.CT"),
 	}
 	return td
 }

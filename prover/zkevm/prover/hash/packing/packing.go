@@ -115,12 +115,12 @@ func (pck *Packing) Run(run *wizard.ProverRuntime) {
 // it stores the inputs /outputs of spaghettifier used in the Packing module.
 type spaghettiCtx struct {
 	// ContentSpaghetti
-	decLimbSp, decLenSp, decLenPowerSp ifaces.Column
-	newHashSp                          ifaces.Column
+	DecLimbSp, DecLenSp, DecLenPowerSp ifaces.Column
+	NewHashSp                          ifaces.Column
 	// FilterSpaghetti
-	filterSpaghetti ifaces.Column
-	pa              wizard.ProverAction
-	spaghettiSize   int
+	FilterSpaghetti ifaces.Column
+	PA              wizard.ProverAction
+	SpaghettiSize   int
 }
 
 func spaghettiMaker(comp *wizard.CompiledIOP, decomposed decomposition, isNewHash ifaces.Column) spaghettiCtx {
@@ -153,13 +153,13 @@ func spaghettiMaker(comp *wizard.CompiledIOP, decomposed decomposition, isNewHas
 	pa := spaghettifier.Spaghettify(comp, inp)
 
 	s := spaghettiCtx{
-		pa:              pa,
-		decLimbSp:       pa.ContentSpaghetti[0],
-		decLenSp:        pa.ContentSpaghetti[1],
-		decLenPowerSp:   pa.ContentSpaghetti[2],
-		newHashSp:       pa.ContentSpaghetti[3],
-		spaghettiSize:   decomposed.Size,
-		filterSpaghetti: pa.FilterSpaghetti,
+		PA:              pa,
+		DecLimbSp:       pa.ContentSpaghetti[0],
+		DecLenSp:        pa.ContentSpaghetti[1],
+		DecLenPowerSp:   pa.ContentSpaghetti[2],
+		NewHashSp:       pa.ContentSpaghetti[3],
+		SpaghettiSize:   decomposed.Size,
+		FilterSpaghetti: pa.FilterSpaghetti,
 	}
 
 	return s

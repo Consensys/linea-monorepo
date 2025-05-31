@@ -19,7 +19,7 @@ import (
 // arithmetization.
 type arithmetizationLink struct {
 	Acp, Scp    HubColumnSet
-	scpSelector scpSelector
+	ScpSelector scpSelector
 }
 
 // ConnectToHub generates all the constraints attesting that the state-summary
@@ -29,11 +29,11 @@ func (ss *Module) ConnectToHub(comp *wizard.CompiledIOP, acp, scp HubColumnSet) 
 	al := &arithmetizationLink{
 		Acp:         acp,
 		Scp:         scp,
-		scpSelector: newScpSelector(comp, scp),
+		ScpSelector: newScpSelector(comp, scp),
 	}
 
-	storageIntegrationDefineInitial(comp, *ss, scp, al.scpSelector)
-	storageIntegrationDefineFinal(comp, *ss, scp, al.scpSelector)
+	storageIntegrationDefineInitial(comp, *ss, scp, al.ScpSelector)
+	storageIntegrationDefineFinal(comp, *ss, scp, al.ScpSelector)
 	accountIntegrationDefineInitial(comp, *ss, acp)
 	accountIntegrationDefineFinal(comp, *ss, acp)
 
@@ -63,15 +63,15 @@ func (ss *Module) assignArithmetizationLink(run *wizard.ProverRuntime) {
 	}
 
 	runConcurrent([]wizard.ProverAction{
-		ss.ArithmetizationLink.scpSelector.ComputeSelectorMinDeplBlock,
-		ss.ArithmetizationLink.scpSelector.ComputeSelectorMaxDeplBlock,
-		ss.ArithmetizationLink.scpSelector.ComputeSelectorEmptySTValueHi,
-		ss.ArithmetizationLink.scpSelector.ComputeSelectorEmptySTValueLo,
-		ss.ArithmetizationLink.scpSelector.ComputeSelectorEmptySTValueNextHi,
-		ss.ArithmetizationLink.scpSelector.ComputeSelectorEmptySTValueNextLo,
-		ss.ArithmetizationLink.scpSelector.ComputeSelectorSTKeyDiffHi,
-		ss.ArithmetizationLink.scpSelector.ComputeSelectorSTKeyDiffLo,
-		ss.ArithmetizationLink.scpSelector.ComputeSelectorBlockNoDiff,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorMinDeplBlock,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorMaxDeplBlock,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueHi,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueLo,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueNextHi,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorEmptySTValueNextLo,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorSTKeyDiffHi,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorSTKeyDiffLo,
+		ss.ArithmetizationLink.ScpSelector.ComputeSelectorBlockNoDiff,
 	})
 
 }

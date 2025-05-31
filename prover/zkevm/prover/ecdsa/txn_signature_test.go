@@ -34,7 +34,7 @@ func TestTxnSignature(t *testing.T) {
 					IsActive:   createCol("Is_Active"),
 					Source:     createCol("Source"),
 					Size:       size,
-					Inputs:     &antichamberInput{settings: settings},
+					Inputs:     &antichamberInput{Settings: settings},
 				},
 				RlpTxn: testdata.CreateGenDataModule(comp, "RLP_TXN", 128),
 			}
@@ -69,8 +69,8 @@ var rlpTxnTest = makeTestCase{
 func (txSign TxSignature) assigntxSignInputs(run *wizard.ProverRuntime, c makeTestCase) {
 
 	var (
-		nbEcRec    = txSign.Inputs.Ac.Inputs.settings.MaxNbEcRecover
-		nbTxn      = txSign.Inputs.Ac.Inputs.settings.MaxNbTx
+		nbEcRec    = txSign.Inputs.Ac.Inputs.Settings.MaxNbEcRecover
+		nbTxn      = txSign.Inputs.Ac.Inputs.Settings.MaxNbTx
 		isFetching = common.NewVectorBuilder(txSign.Inputs.Ac.IsFetching)
 		isActive   = common.NewVectorBuilder(txSign.Inputs.Ac.IsActive)
 		source     = common.NewVectorBuilder(txSign.Inputs.Ac.Source)
