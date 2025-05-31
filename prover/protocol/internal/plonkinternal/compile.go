@@ -91,8 +91,6 @@ func (ctx *compilationCtx) commitGateColumns() {
 
 	nbRow := ctx.DomainSize()
 
-	fmt.Printf("ctx=%v ctx.Columns.Ql=%v ctx.comp=%v ctx.Plonk.trace=%v\n", ctx, ctx.Columns, ctx.comp, ctx.Plonk.trace)
-
 	// Declare and pre-assign the selector columns
 	ctx.Columns.Ql = ctx.comp.InsertPrecomputed(ctx.colIDf("QL"), iopToSV(ctx.Plonk.trace.Ql, nbRow))
 	ctx.Columns.Qr = ctx.comp.InsertPrecomputed(ctx.colIDf("QR"), iopToSV(ctx.Plonk.trace.Qr, nbRow))
