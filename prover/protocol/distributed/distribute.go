@@ -255,10 +255,6 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
 
 	for i := range dist.GLs {
-		if i > 0 {
-			logrus.Warningf("Temp. breaking for faster compilation time after compiling just:%d GL modules\n", i)
-			break
-		}
 		logrus.
 			WithField("module-name", dist.GLs[i].DefinitionInput.ModuleName).
 			WithField("module-type", "LPP").
