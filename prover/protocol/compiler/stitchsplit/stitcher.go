@@ -117,16 +117,18 @@ func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-// ScanStitchCommit scans compiler trace and classifies the sub columns eligible to the stitching.
-// It then stitches the sub columns, commits to them and update stitchingContext.
-// It also forces the compiler to set the status of the sub columns to 'ignored'.
-// since the sub columns are technically replaced with their stitching.
+// ScanStitchCommit scans compiler trace and classifies the sub columns eligible
+// to the stitching. It then stitches the sub columns, commits to them and
+// update stitchingContext. It also forces the compiler to set the status of the
+// sub columns to 'ignored'. since the sub columns are technically replaced with
+// their stitching.
 func (ctx *StitchingContext) ScanStitchCommit() {
 	for round := 0; round < ctx.Comp.NumRounds(); round++ {
 
-		// scan the compiler trace to find the eligible columns for stitching. The
-		// sorting is critical to ensure that the stitching happens in deterministic
-		// order and that the columns are created in the same order.
+		// scan the compiler trace to find the eligible columns for stitching.
+		// The sorting is critical to ensure that the stitching happens in
+		// deterministic order and that the columns are created in the same
+		// order.
 		columnsBySize := scanAndClassifyEligibleColumns(*ctx, round)
 		sizes := utils.SortedKeysOf(columnsBySize, func(a, b int) bool {
 			return a < b
@@ -141,7 +143,8 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 			)
 
 			// collect the the columns with valid status; Precomputed, committed
-			// verifierDefined is valid but is not present in the compiler trace we handle it directly during the constraints.
+			// verifierDefined is valid but is not present in the compiler trace
+			// we handle it directly during the constraints.
 			for _, col := range cols {
 				status := ctx.Comp.Columns.Status(col.GetColID())
 				switch status {
@@ -151,7 +154,8 @@ func (ctx *StitchingContext) ScanStitchCommit() {
 					committedCols = append(committedCols, col)
 
 				default:
-					// note that status of verifercol/ veriferDefined is not available via compiler trace.
+					// note that status of verifercol/ veriferDefined is not
+					// available via compiler trace.
 					utils.Panic("found the column %v with the invalid status %v for stitching", col.GetColID(), status.String())
 				}
 
@@ -233,6 +237,7 @@ func scanAndClassifyEligibleColumns(ctx StitchingContext, round int) map[int][]i
 			ctx.makeColumnPublic(col, status)
 			continue
 		}
+
 		// Initialization clause of `sizes`
 		if _, ok := columnsBySize[col.Size()]; !ok {
 			columnsBySize[col.Size()] = []ifaces.Column{}
