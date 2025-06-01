@@ -53,6 +53,7 @@ func (fc *FakeColumn) GetColAssignmentGnarkAt(run ifaces.GnarkRuntime, pos int) 
 	panic("unimplemented")
 }
 
+// The fake column is interpreted as composite column so that
 func (fc *FakeColumn) IsComposite() bool {
-	panic("unimplemented")
+	return true
 }
