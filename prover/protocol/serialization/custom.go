@@ -6,7 +6,9 @@ import (
 	"io"
 	"math/big"
 	"reflect"
+	"strings"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/fxamacker/cbor/v2"
@@ -46,6 +48,12 @@ func init() {
 		Type: TypeOfArithmetization,
 		Ser:  marshalArithmetization,
 		Des:  unmarshalArithmetization,
+	}
+
+	CustomCodexes[TypeOfFrontendVariable] = CustomCodex{
+		Type: TypeOfFrontendVariable,
+		Ser:  marshalFrontendVariable,
+		Des:  unmarshalFrontendVariable,
 	}
 }
 
@@ -176,6 +184,80 @@ func unmarshalArithmetization(des *Deserializer, val any, _ reflect.Type) (refle
 	arith.Metadata = meta
 
 	return reflect.ValueOf(arith), nil
+}
+
+func marshalFrontendVariable(ser *Serializer, val reflect.Value) (any, error) {
+
+	var (
+		variable = val.Interface().(frontend.Variable)
+		bi       = &big.Int{}
+	)
+
+	switch v := variable.(type) {
+	case int:
+		bi.SetInt64(int64(v))
+	case uint:
+		bi.SetUint64(uint64(v))
+	case int64:
+		bi.SetInt64(int64(v))
+	case uint64:
+		bi.SetUint64(v)
+	case int32:
+		bi.SetInt64(int64(v))
+	case uint32:
+		bi.SetUint64(uint64(v))
+	case int16:
+		bi.SetInt64(int64(v))
+	case uint16:
+		bi.SetUint64(uint64(v))
+	case int8:
+		bi.SetInt64(int64(v))
+	case uint8:
+		bi.SetUint64(uint64(v))
+	case field.Element:
+		bi = fieldToSmallBigInt(v)
+	case big.Int:
+		*bi = v
+	case *big.Int:
+		bi = v
+	case string:
+		bi.SetString(v, 0)
+	default:
+		if variable == nil {
+			return nil, nil
+		}
+
+		// The check cannot be done on val.Type as it would return
+		// [frontend.Variable]. The check is somewhat fragile as it rely on
+		// the type name and the package name. We return nil in that case, be
+		// -cause it signifies that the variable belongs to a circuit that has
+		// been compiled by gnark. That information is not relevant to
+		// serialize.
+		if strings.Contains(reflect.TypeOf(variable).String(), "expr.Term") {
+			return nil, nil
+		}
+
+		return nil, fmt.Errorf("invalid type for a frontend variable: %T, value: %++v, type.string=%v: ", variable, variable, reflect.TypeOf(variable).String())
+	}
+
+	res, err := marshalBigInt(ser, reflect.ValueOf(bi))
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal frontend variable: %w", err)
+	}
+
+	return res, nil
+}
+
+func unmarshalFrontendVariable(des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+
+	bi, err := unmarshalBigInt(des, val, TypeOfBigInt)
+	if err != nil {
+		return reflect.Value{}, fmt.Errorf("could not unmarshal frontend variable: %w", err)
+	}
+
+	v := reflect.New(TypeOfFrontendVariable).Elem()
+	v.Set(reflect.ValueOf(bi))
+	return v, nil
 }
 
 // This converts the field.Element to a smaller big.Int. This is done to
