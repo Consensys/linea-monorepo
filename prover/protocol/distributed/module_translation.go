@@ -314,7 +314,7 @@ func (mt *ModuleLPP) InsertHorner(
 		newParts = append(newParts, newPart)
 	}
 
-	return mt.Wiop.InsertHornerQuery(round, id, parts)
+	return mt.Wiop.InsertHornerQuery(round, id, newParts)
 }
 
 func (mt *ModuleTranslator) InsertCoin(name coin.Name, round int) {
