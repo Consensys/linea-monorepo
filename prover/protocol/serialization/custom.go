@@ -3,12 +3,15 @@ package serialization
 import (
 	"bytes"
 	"fmt"
+	"hash"
 	"io"
 	"math/big"
 	"reflect"
 	"strings"
 
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/fxamacker/cbor/v2"
@@ -54,6 +57,18 @@ func init() {
 		Type: TypeOfFrontendVariable,
 		Ser:  marshalFrontendVariable,
 		Des:  unmarshalFrontendVariable,
+	}
+
+	CustomCodexes[TypeOfHashFuncGenerator] = CustomCodex{
+		Type: TypeOfHashFuncGenerator,
+		Ser:  marshalHashGenerator,
+		Des:  unmarshalHashGenerator,
+	}
+
+	CustomCodexes[TypeOfHashTypeHasher] = CustomCodex{
+		Type: TypeOfHashTypeHasher,
+		Ser:  marshalHashTypeHasher,
+		Des:  unmarshalHashTypeHasher,
 	}
 }
 
@@ -258,6 +273,25 @@ func unmarshalFrontendVariable(path string, des *Deserializer, val any, _ reflec
 	v := reflect.New(TypeOfFrontendVariable).Elem()
 	v.Set(reflect.ValueOf(bi))
 	return v, nil
+}
+
+func marshalHashGenerator(path string, ser *Serializer, val reflect.Value) (any, error) {
+	return nil, nil
+}
+
+func unmarshalHashGenerator(path string, des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+	f := func() hash.Hash {
+		return mimc.NewMiMC()
+	}
+	return reflect.ValueOf(f), nil
+}
+
+func marshalHashTypeHasher(path string, ser *Serializer, val reflect.Value) (any, error) {
+	return nil, nil
+}
+
+func unmarshalHashTypeHasher(path string, des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+	return reflect.ValueOf(hashtypes.MiMC), nil
 }
 
 // This converts the field.Element to a smaller big.Int. This is done to
