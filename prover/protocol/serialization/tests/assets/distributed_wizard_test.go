@@ -35,18 +35,15 @@ func TestDistributedWizard(t *testing.T) {
 	dist := GetDistributed()
 
 	runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper")
-
 	runSerdeTest(t, dist.DefaultModule, "DistributedWizard.DefaultModule")
-
 	runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer")
+	runSerdeTest(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault")
 
 	for i := range dist.CompiledGLs {
 		runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i))
 	}
-
 	for i := range dist.CompiledLPPs {
 		runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i))
 	}
-
 	runSerdeTest(t, dist.CompiledConglomeration, "DistributedWizard.CompiledConglomeration")
 }
