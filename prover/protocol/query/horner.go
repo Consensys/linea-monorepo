@@ -32,7 +32,7 @@ type HornerPart struct {
 	X ifaces.Accessor
 	// size indicates the size of which the horner part is running.
 	// It is lazily computed thanks to the Size() column.
-	size int
+	size int `serde:"omit"`
 }
 
 // Horner represents a Horner evaluation query. The query returns
