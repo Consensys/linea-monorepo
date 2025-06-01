@@ -42,10 +42,12 @@ func NewInnerProduct(id ifaces.QueryID, a ifaces.Column, bs ...ifaces.Column) In
 		utils.Panic("Inner-product %v declared without bs", id)
 	}
 
+	a.MustExists()
 	length := a.Size()
 
 	for _, b := range bs {
 
+		b.MustExists()
 		if b.Size() != length {
 			utils.Panic("bad size for %v, expected %v but got %v", b.GetColID(), b.Size(), length)
 		}
