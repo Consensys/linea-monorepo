@@ -113,12 +113,6 @@ type CompiledIOP struct {
 	// derive unique names for when the self-recursion is called several time.
 	SelfRecursionCount int
 
-	// Artefacts is a generic data-store that can be used to serialize
-	// compilation data. For instance, this is used to cache the factorized
-	// grand global constraint expression as the factorization is an expensive
-	// process. An artefact must satisfy the io.ReadWriteTo interface.
-	Artefacts artefactCache
-
 	// FiatShamirSetup stores an initial value to use to bootstrap the Fiat-Shamir
 	// transcript. This value is obtained by hashing diverse meta-data of the
 	// describing the wizard: a version number, the description of the field,
