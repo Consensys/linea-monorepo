@@ -196,6 +196,7 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 
 	distributedWizard := &DistributedWizard{
 		Bootstrapper: precompileInitialWizard(comp, disc),
+		Disc:         disc,
 	}
 
 	disc.Analyze(distributedWizard.Bootstrapper)
@@ -255,9 +256,14 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
 
 	for i := range dist.GLs {
+
+		if i > 0 {
+			continue
+		}
+
 		logrus.
 			WithField("module-name", dist.GLs[i].DefinitionInput.ModuleName).
-			WithField("module-type", "LPP").
+			WithField("module-type", "GL").
 			Info("compiling module")
 
 		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
@@ -265,9 +271,14 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 
 	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 	for i := range dist.LPPs {
+
+		if i > 0 {
+			continue
+		}
+
 		logrus.
 			WithField("module-name", dist.LPPs[i].ModuleNames()).
-			WithField("module-type", "GL").
+			WithField("module-type", "LPP").
 			Info("compiling module")
 
 		dist.CompiledLPPs[i] = CompileSegment(dist.LPPs[i])
