@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	cs "github.com/consensys/gnark/constraint/bls12-377"
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
@@ -50,6 +51,7 @@ var (
 	TypeOfArrOfFieldElement  = reflect.TypeOf([]field.Element{})
 	TypeOfPlonkCirc          = reflect.TypeOf(&cs.SparseR1CS{})
 	TypeOfArithmetization    = reflect.TypeOf(arithmetization.Arithmetization{})
+	TypeOfFrontendVariable   = reflect.TypeOf((*frontend.Variable)(nil)).Elem()
 )
 
 // BackReference represents an integer index into PackedObject arrays (e.g., Columns, Coins).
@@ -284,7 +286,7 @@ func (s *Serializer) PackValue(v reflect.Value) (any, error) {
 		return s.PackCoin(v.Interface().(coin.Info))
 	case typeOfV == TypeOfCoinID:
 		return s.PackCoinID(v.Interface().(coin.Name))
-	case typeOfV.Implements(TypeOfQuery) && typeOfV.Kind() != reflect.Interface:
+	case typeOfV.Implements(TypeOfQuery) && typeOfV.Kind() != reflect.Interface && !(typeOfV.Kind() == reflect.Ptr && typeOfV.Elem().Implements(TypeOfQuery)):
 		return s.PackQuery(v.Interface().(ifaces.Query))
 	case typeOfV == TypeOfQueryID:
 		return s.PackQueryID(v.Interface().(ifaces.QueryID))
@@ -295,7 +297,11 @@ func (s *Serializer) PackValue(v reflect.Value) (any, error) {
 	case typeOfV == TypeOfPlonkCirc:
 		return s.PackPlonkCircuit(v.Interface().(*cs.SparseR1CS))
 	case typeOfV == TypeOfExpressionPtr:
-		return s.PackExpression(v.Interface().(*symbolic.Expression))
+		expr := v.Interface().(*symbolic.Expression)
+		if expr == nil {
+			return nil, nil
+		}
+		return s.PackExpression(expr)
 	}
 
 	// Handle generic Go types.
@@ -346,7 +352,7 @@ func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e e
 		return de.UnpackCoin(backReferenceFromCBORInt(v))
 	case t == TypeOfCoinID:
 		return de.UnpackCoinID(backReferenceFromCBORInt(v))
-	case t.Implements(TypeOfQuery) && t.Kind() != reflect.Interface:
+	case t.Implements(TypeOfQuery) && t.Kind() != reflect.Interface && !(t.Kind() == reflect.Ptr && t.Elem().Implements(TypeOfQuery)):
 		return de.UnpackQuery(backReferenceFromCBORInt(v), t)
 	case t == TypeOfQueryID:
 		return de.UnpackQueryID(backReferenceFromCBORInt(v))
