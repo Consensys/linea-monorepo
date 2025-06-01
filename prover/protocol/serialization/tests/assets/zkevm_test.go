@@ -2,6 +2,7 @@ package assets
 
 import (
 	"reflect"
+	"runtime/debug"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
@@ -17,6 +18,20 @@ var (
 
 // Helper function for serialization and deserialization tests
 func runSerdeTest(t *testing.T, input interface{}, name string) {
+
+	// In case the test panics, log the error but do not let the panic
+	// interrupt the test.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("Panic during serialization/deserialization of %s: %v", name, r)
+			debug.PrintStack()
+		}
+	}()
+
+	if input == nil {
+		t.Error("test input is nil")
+		return
+	}
 
 	var output = reflect.New(reflect.TypeOf(input)).Interface()
 	var b []byte
@@ -48,7 +63,7 @@ func runSerdeTest(t *testing.T, input interface{}, name string) {
 
 	outputDeref := reflect.ValueOf(output).Elem().Interface()
 	if !test_utils.CompareExportedFields(input, outputDeref) {
-		t.Fatalf("Mismatch in exported fields of %s during serde", name)
+		t.Errorf("Mismatch in exported fields of %s during serde", name)
 	}
 }
 
