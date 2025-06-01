@@ -8,6 +8,7 @@ import (
 	"math/big"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
@@ -69,6 +70,12 @@ func init() {
 		Type: TypeOfHashTypeHasher,
 		Ser:  marshalHashTypeHasher,
 		Des:  unmarshalHashTypeHasher,
+	}
+
+	CustomCodexes[reflect.TypeOf(sync.Mutex{})] = CustomCodex{
+		Type: reflect.TypeOf(sync.Mutex{}),
+		Ser:  marshalAsNil,
+		Des:  unmarshalAsZero,
 	}
 }
 
@@ -292,6 +299,19 @@ func marshalHashTypeHasher(path string, ser *Serializer, val reflect.Value) (any
 
 func unmarshalHashTypeHasher(path string, des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
 	return reflect.ValueOf(hashtypes.MiMC), nil
+}
+
+// marshalAsNil is a custom serialization function that marshals the given value to nil.
+// It is used for types that are not meant to be serialized, such as functions.
+func marshalAsNil(_ string, _ *Serializer, _ reflect.Value) (any, error) {
+	return nil, nil
+}
+
+// unmarshalAsZero is a custom deserialization function that unmarshals the
+// given value to zero. It is meant for the type that are not intended to be
+// serialized.
+func unmarshalAsZero(path string, des *Deserializer, val any, t reflect.Type) (reflect.Value, error) {
+	return reflect.Zero(t), nil
 }
 
 // This converts the field.Element to a smaller big.Int. This is done to
