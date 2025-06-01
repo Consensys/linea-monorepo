@@ -25,10 +25,6 @@ type GrandProductInput struct {
 // GrandProduct is a query for computing the grand-product of several vector expressions. The
 // query returns a unique field element result.
 type GrandProduct struct {
-	grandProduct
-}
-
-type grandProduct struct {
 	Round int
 	ID    ifaces.QueryID
 	// The list of the inputs of the query, grouped by sizes
@@ -85,12 +81,10 @@ func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryI
 	}
 
 	return GrandProduct{
-		grandProduct{
-			Round:  round,
-			Inputs: inp,
-			ID:     id,
-			uuid:   uuid.New(),
-		},
+		Round:  round,
+		Inputs: inp,
+		ID:     id,
+		uuid:   uuid.New(),
 	}
 }
 
