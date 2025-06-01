@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/accessors"
@@ -277,6 +278,45 @@ func TestSerdeValue(t *testing.T) {
 				d := comp.InsertColumn(0, "d", 16, column.Committed)
 				return symbolic.Add(symbolic.Mul(symbolic.Add(a, b), symbolic.Add(c, d)), symbolic.NewConstant(1))
 			}(),
+		},
+		{
+			Name: "mimc-query",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Committed)
+				b := comp.InsertColumn(0, "b", 16, column.Committed)
+				c := comp.InsertColumn(0, "c", 16, column.Committed)
+				return comp.InsertMiMC(0, "mimc", a, b, c, nil)
+			}(),
+		},
+		{
+			Name: "nil-expression",
+			V: func() any {
+				return struct {
+					E *symbolic.Expression
+				}{}
+			}(),
+		},
+		{
+			Name: "map-with-column-as-key",
+			V: func() any {
+				comp := wizard.NewCompiledIOP()
+				a := comp.InsertColumn(0, "a", 16, column.Committed).(column.Natural)
+				b := comp.InsertColumn(0, "b", 16, column.Committed).(column.Natural)
+				return map[column.Natural]string{a: "a", b: "b"}
+			}(),
+		},
+		{
+			Name: "frontend-variables",
+			V:    frontend.Variable(0),
+		},
+		{
+			Name: "frontend-variables",
+			V:    frontend.Variable(12),
+		},
+		{
+			Name: "frontend-variables",
+			V:    frontend.Variable(-10),
 		},
 	}
 
