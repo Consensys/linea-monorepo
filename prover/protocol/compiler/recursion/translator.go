@@ -118,14 +118,9 @@ func (comp *compTranslator) TranslateColumnSet(cols map[ifaces.ColID]struct{}) m
 // AddUniEval returns a copied UnivariateEval query with fake columns
 // and names.
 func (comp *compTranslator) AddUniEval(round int, q query.UnivariateEval) query.UnivariateEval {
-
-	res := query.NewUnivariateEval(
-		addPrefixToID(comp.Prefix, q.QueryID),
-		comp.AddColumnList(q.Pols, true, round)...,
-	)
-
-	comp.Target.QueriesParams.AddToRound(round, res.QueryID, res)
-	return res
+	queryID := addPrefixToID(comp.Prefix, q.QueryID)
+	pols := comp.AddColumnList(q.Pols, true, round)
+	return comp.Target.InsertUnivariate(round, queryID, pols)
 }
 
 // AddCoin adds a random coin with a prefixed name in the compiled IOP
