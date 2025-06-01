@@ -257,10 +257,6 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 
 	for i := range dist.GLs {
 
-		if i > 0 {
-			continue
-		}
-
 		logrus.
 			WithField("module-name", dist.GLs[i].DefinitionInput.ModuleName).
 			WithField("module-type", "GL").
@@ -271,10 +267,6 @@ func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 
 	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 	for i := range dist.LPPs {
-
-		if i > 0 {
-			continue
-		}
 
 		logrus.
 			WithField("module-name", dist.LPPs[i].ModuleNames()).
