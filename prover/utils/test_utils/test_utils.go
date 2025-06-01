@@ -21,6 +21,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/execution"
 	"github.com/consensys/linea-monorepo/prover/config"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
@@ -614,6 +615,16 @@ func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b interfa
 			logrus.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1.Len(), v2.Len(), v1.Type())
 			return false
 		}
+
+		// The module discoverer uses map[ifaces.Column] and map[column.Natural]
+		// Theses use pointers
+		switch v1.Type().Key() {
+		case serialization.TypeOfColumnNatural:
+			return true
+		case reflect.TypeFor[ifaces.Column]():
+			return true
+		}
+
 		for _, key := range v1.MapKeys() {
 			value1 := v1.MapIndex(key)
 			value2 := v2.MapIndex(key)
@@ -707,7 +718,7 @@ func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b interfa
 	// For other types, use DeepEqual and log if mismatched
 	if !reflect.DeepEqual(a, b) {
 		logrus.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type_v1: %v type_v2: %v)\n", path, a, b, v1.Type(), v2.Type())
-		panic("fail fast")
+		return false
 	}
 	return true
 }
