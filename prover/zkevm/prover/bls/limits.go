@@ -34,6 +34,12 @@ type Limits struct {
 	NbG2MembershipInputInstances int
 	// Number of G2 subgroup membership circuits
 	NbG2MembershipCircuits int
+
+	NbG1MapToInputInstances   int
+	NbG1MapToCircuitInstances int
+
+	NbG2MapToInputInstances   int
+	NbG2MapToCircuitInstances int
 }
 
 func (l *Limits) sizeAddIntegration(g group) int {

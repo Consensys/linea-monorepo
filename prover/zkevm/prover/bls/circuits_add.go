@@ -126,6 +126,7 @@ func (c *MultiAddCircuit[C, T]) Define(api frontend.API) error {
 	}
 	nbInstances := len(c.Instances)
 	As, Bs, Rs := make([]T, nbInstances), make([]T, nbInstances), make([]T, nbInstances)
+	// TODO: move this part into the main loop below. Then we don't need to type assert
 	for i := range c.Instances {
 		As[i] = c.Instances[i].InputLeft.ToElement(api, f)
 		Bs[i] = c.Instances[i].InputRight.ToElement(api, f)
