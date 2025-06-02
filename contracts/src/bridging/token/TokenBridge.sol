@@ -144,12 +144,21 @@ contract TokenBridge is
     InitializationData calldata _initializationData
   )
     external
+    virtual
     nonZeroAddress(_initializationData.messageService)
     nonZeroAddress(_initializationData.tokenBeacon)
     nonZeroChainId(_initializationData.sourceChainId)
     nonZeroChainId(_initializationData.targetChainId)
     initializer
   {
+    __TokenBridge_init(_initializationData);
+  }
+
+  /**
+   * @notice Initializes TokenBridge and underlying service dependencies - used for new networks only.
+   * @param _initializationData The initial data used for initializing the TokenBridge contract.
+   */
+  function __TokenBridge_init(InitializationData calldata _initializationData) internal {
     __ReentrancyGuard_init();
     __MessageServiceBase_init(_initializationData.messageService);
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
@@ -209,12 +218,24 @@ contract TokenBridge is
     address _token,
     uint256 _amount,
     address _recipient
-  ) public payable nonZeroAddress(_token) nonZeroAddress(_recipient) nonZeroAmount(_amount) nonReentrant {
-    _requireTypeAndGeneralNotPaused(PauseType.INITIATE_TOKEN_BRIDGING);
+  ) public payable nonReentrant whenTypeNotPaused(PauseType.INITIATE_TOKEN_BRIDGING) {
+    _bridgeToken(_token, _amount, _recipient);
+  }
+
+  /**
+   * @notice This function is the internal implementation of bridgeToken.
+   * @param _token The address of the token to be bridged.
+   * @param _amount The amount of the token to be bridged.
+   * @param _recipient The address that will receive the tokens on the other chain.
+   */
+  function _bridgeToken(
+    address _token,
+    uint256 _amount,
+    address _recipient
+  ) internal virtual nonZeroAddress(_token) nonZeroAddress(_recipient) nonZeroAmount(_amount) {
     uint256 sourceChainIdCache = sourceChainId;
     address nativeMappingValue = nativeToBridgedToken[sourceChainIdCache][_token];
     if (nativeMappingValue == RESERVED_STATUS) {
-      // Token is reserved
       revert ReservedToken(_token);
     }
 
@@ -228,11 +249,8 @@ contract TokenBridge is
     } else {
       // Token is native
 
-      // For tokens with special fee logic, ensure that only the amount received
-      // by the bridge will be minted on the target chain.
-      uint256 balanceBefore = IERC20Upgradeable(_token).balanceOf(address(this));
-      IERC20Upgradeable(_token).safeTransferFrom(msg.sender, address(this), _amount);
-      _amount = IERC20Upgradeable(_token).balanceOf(address(this)) - balanceBefore;
+      _amount = _tranferTokensToEscrow(_token, _amount);
+
       nativeToken = _token;
 
       if (nativeMappingValue == EMPTY) {
@@ -256,6 +274,29 @@ contract TokenBridge is
   }
 
   /**
+   * @notice Transfers the token to the escrow address (default address(this)).
+   * @param _token The address of the token to be bridged.
+   * @param _amount The amount of the token to be bridged.
+   * @return amount The real amount being transferred to the recipient.
+   */
+  function _tranferTokensToEscrow(address _token, uint256 _amount) internal virtual returns (uint256 amount) {
+    // For tokens with special fee logic, ensure that only the amount received by the bridge will be minted on the target chain.
+    address escrowAddress = _getEscrowAddress(_token);
+    uint256 balanceBefore = IERC20Upgradeable(_token).balanceOf(escrowAddress);
+    IERC20Upgradeable(_token).safeTransferFrom(msg.sender, escrowAddress, _amount);
+    amount = IERC20Upgradeable(_token).balanceOf(escrowAddress) - balanceBefore;
+  }
+
+  /**
+   * @notice Retrieves the escrow address (default address(this)).
+   * @param _token The address of the token to be bridged.
+   * @return escrowAddress The address of where the bridged local token will be kept.
+   */
+  function _getEscrowAddress(address _token) internal virtual returns (address escrowAddress) {
+    escrowAddress = address(this);
+  }
+
+  /**
    * @notice Similar to `bridgeToken` function but allows to pass additional
    *   permit data to do the ERC-20 approval in a single transaction.
    * @notice _permit can fail silently, don't rely on this function passing as a form
@@ -272,11 +313,11 @@ contract TokenBridge is
     uint256 _amount,
     address _recipient,
     bytes calldata _permitData
-  ) external payable {
+  ) external payable virtual nonReentrant whenTypeNotPaused(PauseType.INITIATE_TOKEN_BRIDGING) {
     if (_permitData.length != 0) {
       _permit(_token, _permitData);
     }
-    bridgeToken(_token, _amount, _recipient);
+    _bridgeToken(_token, _amount, _recipient);
   }
 
   /**
@@ -298,11 +339,22 @@ contract TokenBridge is
     bytes calldata _tokenMetadata
   )
     external
+    virtual
     nonReentrant
     onlyMessagingService
     onlyAuthorizedRemoteSender
     whenTypeAndGeneralNotPaused(PauseType.COMPLETE_TOKEN_BRIDGING)
   {
+    _completeBridging(_nativeToken, _amount, _recipient, _chainId, _tokenMetadata);
+  }
+
+  function _completeBridging(
+    address _nativeToken,
+    uint256 _amount,
+    address _recipient,
+    uint256 _chainId,
+    bytes calldata _tokenMetadata
+  ) internal virtual {
     address nativeMappingValue = nativeToBridgedToken[_chainId][_nativeToken];
     address bridgedToken;
 
