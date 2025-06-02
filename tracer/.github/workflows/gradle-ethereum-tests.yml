@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "0 23 * * 1-5"
   workflow_dispatch:
+    inputs:
+      test_filter:
+        description: Filter tests to run (via Gradle)
+        required: false
+        type: string
+        default: "GeneralStateReferenceTest_*"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -27,9 +33,9 @@ jobs:
           JAVA_OPTS: -Dorg.gradle.daemon=false
 
       - name: Run General State Reference Tests
-        run: GOMEMLIMIT=20GiB ./gradlew referenceGeneralStateTests
+        run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew referenceGeneralStateTests -x spotlessCheck --tests "${{ inputs.test_filter || 'GeneralStateReferenceTest_*' }}"
         env:
-          REFERENCE_TESTS_PARALLELISM: 4
+          REFERENCE_TESTS_PARALLELISM: 3
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --air
