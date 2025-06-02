@@ -17,7 +17,8 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noErrorTruncation": true,
-    "exactOptionalPropertyTypes": true
+    "exactOptionalPropertyTypes": true,
+    "noEmit": false
   },
   "exclude": ["node_modules", "dist", "*.d.ts"]
 }
