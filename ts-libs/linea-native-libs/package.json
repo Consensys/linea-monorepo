@@ -39,14 +39,14 @@
     "@ts-bridge/cli": "^0.1.4",
     "@ts-bridge/shims": "^0.1.1",
     "@types/ffi-napi": "^4.0.10",
-    "@types/jest": "^29.5.12",
+    "@types/jest": "catalog:",
     "@types/ref-napi": "^3.0.12",
     "@types/unzipper": "^0.10.9",
-    "dotenv": "^16.4.5",
+    "dotenv": "catalog:",
     "ethers": "^6.13.1",
-    "jest": "^29.7.0",
+    "jest": "catalog:",
     "jest-it-up": "^3.1.0",
-    "ts-jest": "^29.1.5",
+    "ts-jest": "catalog:",
     "unzipper": "^0.12.1"
   },
   "dependencies": {
