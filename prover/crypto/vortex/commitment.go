@@ -37,10 +37,6 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 	numRows := len(ps)
 	numCols := utils.NextPowerOfTwo(p.NbColumns)
 	sizeCodeWord := p.NumEncodedCols()
-	params, err := vortex.NewParams(p.NbColumns, p.MaxNbRows, p.Key.GnarkInternal, p.BlowUpFactor, 0)
-	if err != nil {
-		utils.Panic(err.Error())
-	}
 
 	logrus.Infof("Vortex compiler: RS encoding nrows=%v of ncol=%v to codeword-size=%v", numRows, numCols, numCols*p.BlowUpFactor)
 
@@ -55,7 +51,6 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 	})
 
 	// In Commit phase, it's not used, so set to 0 as a placeholder. numSelectedColumns is only used in the Open phase
-	numSelectedColumns := 0
 
 	options := make([]vortex.Option, 0, 2)
 	if p.HashFunc != nil {
@@ -64,9 +59,6 @@ func (p *Params) CommitMerkle(ps []smartvectors.SmartVector) (encodedMatrix Enco
 	if p.NoSisHashFunc != nil {
 		options = append(options, vortex.WithNoSis(p.NoSisHashFunc()))
 	}
-	params, err := vortex.NewParams(p.NbColumns, p.MaxNbRows, p.Key.GnarkInternal, p.BlowUpFactor, numSelectedColumns, options...)
-	if err != nil {
-		utils.Panic(err.Error())
 
 	logrus.Infof("Vortex compiler: SIS hashing DONE")
 

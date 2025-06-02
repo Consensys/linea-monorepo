@@ -3,6 +3,7 @@ package vortex
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -49,7 +50,7 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 	}
 
 	// Compute the linear combination
-	linComb := make([]field.Element, params.NbColumns)
+	linComb := make([]fext.Element, params.NbColumns)
 
 	parallel.ExecuteChunky(len(linComb), func(start, stop int) {
 		subTask := make([]smartvectors.SmartVector, 0, len(committedSV))
@@ -58,11 +59,11 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 		}
 		// Collect the result in the larger slice at the end
 
-		subResult := smartvectors.PolyEval(subTask, randomCoin) // TODO: update smartvectors.PolyEval
-		subResult.WriteInSlice(linComb[start:stop])
+		subResult := smartvectorsext.PolyEval(subTask, randomCoin)
+		subResult.WriteInSliceExt(linComb[start:stop])
 	})
 
-	linCombSV := smartvectors.NewRegular(linComb)
+	linCombSV := smartvectorsext.NewRegularExt(linComb)
 	proof.LinearCombination = params.rsEncode(linCombSV, nil)
 	return &proof
 }

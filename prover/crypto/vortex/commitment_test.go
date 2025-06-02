@@ -10,7 +10,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -270,7 +269,7 @@ func TestVerifierNegative(t *testing.T) {
 			{
 				Explainer: "Increment the first y",
 				Func: func(v *VerifierInputs) bool {
-					one := field.One()
+					one := fext.One()
 					v.Ys[0][0].Add(&v.Ys[0][0], &one)
 					return true
 				},
@@ -303,14 +302,14 @@ func TestVerifierNegative(t *testing.T) {
 					}
 					y := v.Ys[0][len(v.Ys[0])-1]
 					v.Ys[0] = v.Ys[0][:len(v.Ys[0])-1]
-					v.Ys[1] = append([]field.Element{y}, v.Ys[1]...)
+					v.Ys[1] = append([]fext.Element{y}, v.Ys[1]...)
 					return true
 				},
 			},
 			{
 				Explainer: "Bump the X value",
 				Func: func(v *VerifierInputs) bool {
-					one := field.One()
+					one := fext.One()
 					v.X.Add(&v.X, &one)
 					return true
 				},
@@ -438,13 +437,13 @@ func TestVerifierNegative(t *testing.T) {
 		) *VerifierInputs {
 
 			var (
-				x              = field.NewElement(43)
-				randomCoin     = field.NewElement(393280)
+				x              = fext.RandomElement()
+				randomCoin     = fext.RandomElement()
 				entryList      = []int{1, 2, 3, 4, 5, 6, 7, 8}
 				numCommitments = len(numPolyPerCommitment)
 				effPolySize    = params.NbColumns
 				polyLists      = make([][]smartvectors.SmartVector, numCommitments)
-				yLists         = make([][]field.Element, numCommitments)
+				yLists         = make([][]fext.Element, numCommitments)
 				roots          = make([]types.Bytes32, numCommitments)
 				trees          = make([]*smt.Tree, numCommitments)
 			)
@@ -452,7 +451,7 @@ func TestVerifierNegative(t *testing.T) {
 			for i := range polyLists {
 				// Polynomials to commit to
 				polys := make([]smartvectors.SmartVector, numPolyPerCommitment[i])
-				ys := make([]field.Element, numPolyPerCommitment[i])
+				ys := make([]fext.Element, numPolyPerCommitment[i])
 				for j := range polys {
 					polys[j] = smartvectors.Rand(effPolySize)
 
