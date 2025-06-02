@@ -218,7 +218,7 @@ contract TokenBridge is
     address _token,
     uint256 _amount,
     address _recipient
-  ) public payable virtual nonReentrant whenTypeNotPaused(PauseType.INITIATE_TOKEN_BRIDGING) {
+  ) public payable virtual nonReentrant whenTypeAndGeneralNotPaused(PauseType.INITIATE_TOKEN_BRIDGING) {
     _bridgeToken(_token, _amount, _recipient);
   }
 
@@ -313,7 +313,7 @@ contract TokenBridge is
     uint256 _amount,
     address _recipient,
     bytes calldata _permitData
-  ) external payable virtual nonReentrant whenTypeNotPaused(PauseType.INITIATE_TOKEN_BRIDGING) {
+  ) external payable virtual nonReentrant whenTypeAndGeneralNotPaused(PauseType.INITIATE_TOKEN_BRIDGING) {
     if (_permitData.length != 0) {
       _permit(_token, _permitData);
     }
