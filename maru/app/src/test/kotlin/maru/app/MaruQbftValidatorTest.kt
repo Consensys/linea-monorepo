@@ -16,9 +16,6 @@
 package maru.app
 
 import com.github.michaelbull.result.Ok
-import maru.app.Checks.getMinedBlocks
-import maru.app.Checks.verifyBlockTime
-import maru.app.Checks.verifyBlockTimeWithAGapOn
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.toAddress
 import maru.consensus.validation.QuorumOfSealsVerifier
@@ -26,6 +23,9 @@ import maru.consensus.validation.SCEP256SealVerifier
 import maru.core.Validator
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
+import maru.testutils.Checks.getMinedBlocks
+import maru.testutils.Checks.verifyBlockTime
+import maru.testutils.Checks.verifyBlockTimeWithAGapOn
 import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
 import maru.testutils.SpyingP2PNetwork

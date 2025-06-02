@@ -13,11 +13,11 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.app
+package maru.testutils
 
 import java.math.BigInteger
 import maru.testutils.besu.BesuFactory
-import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions
 import org.hyperledger.besu.tests.acceptance.dsl.node.BesuNode
 import org.web3j.protocol.core.DefaultBlockParameter
 import org.web3j.protocol.core.methods.response.EthBlock
@@ -40,9 +40,10 @@ object Checks {
   fun List<EthBlock.Block>.verifyBlockTime() {
     val timestampsSeconds = this.subList(1, this.size - 1).map { it.timestamp.toLong() }
     timestampsSeconds.reduceIndexed { index, prevTimestamp, timestamp ->
-      assertThat(prevTimestamp).isLessThan(timestamp)
+      Assertions.assertThat(prevTimestamp).isLessThan(timestamp)
       val actualBlockTime = timestamp - prevTimestamp
-      assertThat(actualBlockTime)
+      Assertions
+        .assertThat(actualBlockTime)
         .withFailMessage("Timestamps: $timestampsSeconds")
         .isEqualTo(BesuFactory.MIN_BLOCK_TIME)
       timestamp

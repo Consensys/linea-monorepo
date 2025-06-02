@@ -23,6 +23,7 @@ import io.libp2p.core.crypto.marshalPrivateKey
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.time.Duration.Companion.milliseconds
 import maru.app.MaruApp
 import maru.config.ApiEndpointConfig
 import maru.config.FollowersConfig
@@ -42,6 +43,10 @@ import maru.p2p.P2PNetwork
  * The same MaruFactory should be used per network. Otherwise, validators won't match between Maru instances
  */
 class MaruFactory {
+  companion object {
+    val defaultReconnectDelay = 500.milliseconds
+  }
+
   private val validatorPrivateKeyWithPrefix = generatePrivateKey()
   private val validatorPrivateKeyWithPrefixString = marshalPrivateKey(validatorPrivateKeyWithPrefix).encodeHex()
   private val validatorNodeId = PeerId.fromPubKey(validatorPrivateKeyWithPrefix.publicKey())
@@ -102,7 +107,10 @@ class MaruFactory {
     p2pNetwork: P2PNetwork = NoOpP2PNetwork,
   ): MaruApp = MaruApp(config = config, beaconGenesisConfig = beaconGenesisConfig, p2pNetwork = p2pNetwork)
 
-  private fun buildP2pConfig(validatorPortForStaticPeering: UInt?): P2P {
+  private fun buildP2pConfig(
+    p2pPort: UInt = 0u,
+    validatorPortForStaticPeering: UInt? = null,
+  ): P2P {
     val staticPeers =
       if (validatorPortForStaticPeering != null) {
         val validatorPeer = "/ip4/127.0.0.1/tcp/$validatorPortForStaticPeering/p2p/$validatorNodeId"
@@ -110,7 +118,7 @@ class MaruFactory {
       } else {
         emptyList()
       }
-    return P2P("127.0.0.1", port = 0u, staticPeers = staticPeers)
+    return P2P("127.0.0.1", port = p2pPort, staticPeers = staticPeers, reconnectDelay = defaultReconnectDelay)
   }
 
   private fun buildFollowersConfig(engineApiRpc: String): FollowersConfig =
@@ -138,8 +146,9 @@ class MaruFactory {
     engineApiRpc: String,
     dataDir: Path,
     p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+    p2pPort: UInt = 0u,
   ): MaruApp {
-    val p2pConfig = buildP2pConfig(null)
+    val p2pConfig = buildP2pConfig(p2pPort = p2pPort, validatorPortForStaticPeering = null)
     val config =
       buildMaruConfig(
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
@@ -159,7 +168,7 @@ class MaruFactory {
     dataDir: Path,
     validatorPortForStaticPeering: UInt?,
   ): MaruApp {
-    val p2pConfig = buildP2pConfig(validatorPortForStaticPeering)
+    val p2pConfig = buildP2pConfig(validatorPortForStaticPeering = validatorPortForStaticPeering)
     val followers = buildFollowersConfig(engineApiRpc)
     val config =
       buildMaruConfig(

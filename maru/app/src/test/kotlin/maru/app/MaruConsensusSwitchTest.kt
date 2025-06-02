@@ -17,8 +17,8 @@ package maru.app
 
 import java.io.File
 import java.math.BigInteger
-import maru.app.Checks.getMinedBlocks
-import maru.app.Checks.verifyBlockTimeWithAGapOn
+import maru.testutils.Checks.getMinedBlocks
+import maru.testutils.Checks.verifyBlockTimeWithAGapOn
 import maru.testutils.MaruFactory
 import maru.testutils.besu.BesuFactory
 import maru.testutils.besu.BesuTransactionsHelper

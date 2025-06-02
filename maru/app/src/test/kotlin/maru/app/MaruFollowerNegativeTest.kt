@@ -19,10 +19,10 @@ import kotlin.test.Test
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import maru.app.Checks.getMinedBlocks
 import maru.core.Seal
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.ValidationResult
+import maru.testutils.Checks.getMinedBlocks
 import maru.testutils.InjectableSealedBlocksFakeNetwork
 import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
