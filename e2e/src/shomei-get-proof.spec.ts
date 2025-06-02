@@ -46,28 +46,30 @@ describe("Shomei Linea get proof test suite", () => {
         100000,
       );
 
-      const getZkEVMStateMerkleProofResponse = await lineaShomeiClient.rollupGetZkEVMStateMerkleProofV0(
+      const {
+        result: { zkEndStateRootHash },
+      } = await lineaShomeiClient.rollupGetZkEVMStateMerkleProofV0(
         Number(currentL2BlockNumber),
         Number(currentL2BlockNumber),
         shomeiImageTag,
       );
 
-      expect(getZkEVMStateMerkleProofResponse.result.zkEndStateRootHash).toBeDefined();
+      expect(zkEndStateRootHash).toBeDefined();
 
       const l2SparseMerkleProofContract = config.getL2SparseMerkleProofContract();
       const isValid = await l2SparseMerkleProofContract.verifyProof(
         getProofResponse.result.accountProof.proof.proofRelatedNodes,
         getProofResponse.result.accountProof.leafIndex,
-        getZkEVMStateMerkleProofResponse.result.zkEndStateRootHash,
+        zkEndStateRootHash,
       );
 
       expect(isValid).toBeTruthy();
 
+      // Modify the last hex character of the original state root hash should verify the same proof as invalid
       const modifiedStateRootHash =
-        getZkEVMStateMerkleProofResponse.result.zkEndStateRootHash.slice(0, -1) +
-        ((parseInt(getZkEVMStateMerkleProofResponse.result.zkEndStateRootHash.slice(-1), 16) + 1) % 16).toString(16);
+        zkEndStateRootHash.slice(0, -1) + ((parseInt(zkEndStateRootHash.slice(-1), 16) + 1) % 16).toString(16);
 
-      logger.debug(`originalStateRootHash=${getZkEVMStateMerkleProofResponse.result.zkEndStateRootHash}`);
+      logger.debug(`originalStateRootHash=${zkEndStateRootHash}`);
       logger.debug(`modifiedStateRootHash=${modifiedStateRootHash}`);
 
       const isInvalid = !(await l2SparseMerkleProofContract.verifyProof(
