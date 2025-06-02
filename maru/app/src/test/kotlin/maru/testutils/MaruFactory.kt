@@ -15,262 +15,178 @@
  */
 package maru.testutils
 
-import java.io.File
+import io.libp2p.core.PeerId
+import io.libp2p.core.crypto.KeyType
+import io.libp2p.core.crypto.PrivKey
+import io.libp2p.core.crypto.generateKeyPair
+import io.libp2p.core.crypto.marshalPrivateKey
+import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import maru.app.MaruApp
-import maru.app.MaruAppCli.Companion.loadConfig
-import maru.config.MaruConfigDtoToml
-import maru.config.Utils
-import maru.consensus.ElFork
-import maru.consensus.config.JsonFriendlyForksSchedule
+import maru.config.ApiEndpointConfig
+import maru.config.FollowersConfig
+import maru.config.MaruConfig
+import maru.config.P2P
+import maru.config.Persistence
+import maru.config.QbftOptions
+import maru.config.ValidatorElNode
+import maru.consensus.ForksSchedule
+import maru.consensus.config.Utils
+import maru.crypto.Crypto
+import maru.extensions.encodeHex
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 
-object MaruFactory {
-  private val consensusConfigDir = "/e2e/config"
-  private val pragueConsensusConfig = "$consensusConfigDir/qbft-prague.json"
-  const val VALIDATOR_PRIVATE_KEY = "1dd171cec7e2995408b5513004e8207fe88d6820aeff0d82463b3e41df251aae"
-  const val VALIDATOR_PRIVATE_KEY_WITH_PREFIX = "0x08021220$VALIDATOR_PRIVATE_KEY"
-  const val VALIDATOR_ADDRESS = "0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"
-  const val VALIDATOR_NODE_ID = "16Uiu2HAmFjVuJoKD6sobrxwyJyysM1rgCsfWKzFLwvdB2HKuHwTg"
-
-  private fun buildMaruValidatorConfigStringWithoutP2P(
-    ethereumJsonRpcUrl: String,
-    engineApiRpc: String,
-    dataPath: String,
-  ): String =
+/**
+ * The same MaruFactory should be used per network. Otherwise, validators won't match between Maru instances
+ */
+class MaruFactory {
+  private val validatorPrivateKeyWithPrefix = generatePrivateKey()
+  private val validatorPrivateKeyWithPrefixString = marshalPrivateKey(validatorPrivateKeyWithPrefix).encodeHex()
+  private val validatorNodeId = PeerId.fromPubKey(validatorPrivateKeyWithPrefix.publicKey())
+  val qbftValidator =
+    Crypto.privateKeyToValidator(Crypto.privateKeyBytesWithoutPrefix(validatorPrivateKeyWithPrefix.bytes()))
+  val validatorAddress = qbftValidator.address.encodeHex()
+  private val genesisFileWithoutSwitch =
     """
-    [persistence]
-    data-path="$dataPath"
-
-    [qbft-options]
-
-    [payloadValidator]
-    engine-api-endpoint = { endpoint = "$engineApiRpc" }
-    eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
-    """.trimIndent()
-
-  private fun buildMaruValidatorConfigStringWithP2P(
-    ethereumJsonRpcUrl: String,
-    engineApiRpc: String,
-    dataPath: String,
-    validatorP2pPort: UInt = 0u,
-  ): String =
-    """
-    [persistence]
-    data-path="$dataPath"
-
-    [p2p-config]
-    port = $validatorP2pPort
-    ip-address = "127.0.0.1"
-    static-peers = []
-
-    [qbft-options]
-
-    [payloadValidator]
-    engine-api-endpoint = { endpoint = "$engineApiRpc" }
-    eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
-    """.trimIndent()
-
-  private fun buildMaruFollowerConfigStringWithP2pNetwork(
-    ethereumJsonRpcUrl: String,
-    engineApiRpc: String,
-    dataPath: String,
-    validatorP2pPort: UInt,
-  ): String =
-    """
-    [persistence]
-    data-path="$dataPath"
-
-    [p2p-config]
-    port = 0
-    ip-address = "127.0.0.1"
-    static-peers = ["/ip4/127.0.0.1/tcp/$validatorP2pPort/p2p/$VALIDATOR_NODE_ID"]
-
-    [payload-validator]
-    engine-api-endpoint = { endpoint = "$engineApiRpc" }
-    eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
-
-    [follower-engine-apis]
-    follower1 = { endpoint = "$engineApiRpc" }
-    """.trimIndent()
-
-  private fun buildMaruFollowerConfigStringWithoutP2pNetwork(
-    ethereumJsonRpcUrl: String,
-    engineApiRpc: String,
-    dataPath: String,
-  ): String =
-    """
-    [persistence]
-    data-path="$dataPath"
-
-    [payloadValidator]
-    engine-api-endpoint = { endpoint = "$engineApiRpc" }
-    eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
-    """.trimIndent()
-
-  private fun buildMaruFollowerConfigString(
-    ethereumJsonRpcUrl: String,
-    engineApiRpc: String,
-    dataPath: String,
-    validatorP2pPort: UInt,
-  ): String =
-    """
-    [persistence]
-    data-path="$dataPath"
-
-    [p2p-config]
-    port = 0
-    ip-address = "127.0.0.1"
-    static-peers = ["/ip4/127.0.0.1/tcp/$validatorP2pPort/p2p/$VALIDATOR_NODE_ID"]
-
-    [payload-validator]
-    engine-api-endpoint = { endpoint = "$engineApiRpc" }
-    eth-api-endpoint = { endpoint = "$ethereumJsonRpcUrl" }
-
-    [follower-engine-apis]
-    follower1 = { endpoint = "$engineApiRpc" }
-    """.trimIndent()
-
-  private fun pickConsensusConfig(elFork: ElFork): String =
-    when (elFork) {
-      ElFork.Prague -> pragueConsensusConfig
+    {
+      "chainId": 1337,
+      "config": {
+        "0": {
+          "type": "qbft",
+          "blockTimeSeconds": 1,
+          "validatorSet": ["$validatorAddress"],
+          "feeRecipient": "$validatorAddress",
+          "elFork": "Prague"
+        }
+      }
     }
 
-  fun buildTestMaruValidatorWithoutP2p(
+    """.trimIndent()
+
+  private val beaconGenesisConfig: ForksSchedule =
+    run {
+      Utils.parseBeaconChainConfig(genesisFileWithoutSwitch).domainFriendly()
+    }
+
+  private fun generatePrivateKey(): PrivKey = generateKeyPair(KeyType.SECP256K1).component1()
+
+  private fun buildMaruConfig(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
-    elFork: ElFork,
+    dataDir: Path,
+    p2pConfig: P2P? = null,
+    followers: FollowersConfig = FollowersConfig(emptyMap()),
+    qbftOptions: QbftOptions? = null,
+  ): MaruConfig =
+    MaruConfig(
+      Persistence(dataPath = dataDir),
+      qbftOptions = qbftOptions,
+      validatorElNode =
+        ValidatorElNode(
+          ethApiEndpoint = ApiEndpointConfig(URI.create(ethereumJsonRpcUrl).toURL()),
+          engineApiEndpoint = ApiEndpointConfig(URI.create(engineApiRpc).toURL()),
+        ),
+      p2pConfig = p2pConfig,
+      followers = followers,
+    )
+
+  private fun writeValidatorPrivateKey(config: MaruConfig) {
+    Files.writeString(config.persistence.privateKeyPath, validatorPrivateKeyWithPrefixString)
+  }
+
+  private fun buildApp(
+    config: MaruConfig,
+    beaconGenesisConfig: ForksSchedule = this.beaconGenesisConfig,
+    p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+  ): MaruApp = MaruApp(config = config, beaconGenesisConfig = beaconGenesisConfig, p2pNetwork = p2pNetwork)
+
+  private fun buildP2pConfig(validatorPortForStaticPeering: UInt?): P2P {
+    val staticPeers =
+      if (validatorPortForStaticPeering != null) {
+        val validatorPeer = "/ip4/127.0.0.1/tcp/$validatorPortForStaticPeering/p2p/$validatorNodeId"
+        listOf(validatorPeer)
+      } else {
+        emptyList()
+      }
+    return P2P("127.0.0.1", port = 0u, staticPeers = staticPeers)
+  }
+
+  private fun buildFollowersConfig(engineApiRpc: String): FollowersConfig =
+    FollowersConfig(mapOf("validator-el-node" to ApiEndpointConfig(URI.create(engineApiRpc).toURL())))
+
+  fun buildTestMaruValidatorWithoutP2pPeering(
+    ethereumJsonRpcUrl: String,
+    engineApiRpc: String,
     dataDir: Path,
     p2pNetwork: P2PNetwork = NoOpP2PNetwork,
   ): MaruApp {
-    val appConfig =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(
-        buildMaruValidatorConfigStringWithoutP2P(
-          ethereumJsonRpcUrl = ethereumJsonRpcUrl,
-          engineApiRpc = engineApiRpc,
-          dataPath = dataDir.toString(),
-        ),
+    val config =
+      buildMaruConfig(
+        ethereumJsonRpcUrl = ethereumJsonRpcUrl,
+        engineApiRpc = engineApiRpc,
+        dataDir = dataDir,
+        qbftOptions = QbftOptions(),
       )
-    Files.writeString(appConfig.domainFriendly().persistence.privateKeyPath, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
-
-    val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
-    val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
-
-    return MaruApp(
-      config = appConfig.domainFriendly(),
-      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
-      p2pNetwork = p2pNetwork,
-    )
+    writeValidatorPrivateKey(config)
+    return buildApp(config, p2pNetwork = p2pNetwork)
   }
 
-  fun buildTestMaruValidatorWithP2p(
+  fun buildTestMaruValidatorWithP2pPeering(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
-    elFork: ElFork,
-    dataDir: Path,
-    p2pNetwork: P2PNetwork = NoOpP2PNetwork,
-    validatorP2pPort: UInt,
-  ): MaruApp {
-    val appConfig =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(
-        buildMaruValidatorConfigStringWithP2P(
-          ethereumJsonRpcUrl = ethereumJsonRpcUrl,
-          engineApiRpc = engineApiRpc,
-          dataPath = dataDir.toString(),
-          validatorP2pPort = validatorP2pPort,
-        ),
-      )
-    Files.writeString(appConfig.domainFriendly().persistence.privateKeyPath, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
-
-    val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
-    val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
-
-    return MaruApp(
-      config = appConfig.domainFriendly(),
-      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
-      p2pNetwork = p2pNetwork,
-    )
-  }
-
-  fun buildTestMaruFollowerWithP2pNetwork(
-    ethereumJsonRpcUrl: String,
-    engineApiRpc: String,
-    elFork: ElFork,
-    dataDir: Path,
-    validatorP2pPort: UInt = 0u,
-    p2pNetwork: P2PNetwork = NoOpP2PNetwork,
-  ): MaruApp {
-    val appConfig =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(
-        buildMaruFollowerConfigStringWithP2pNetwork(
-          ethereumJsonRpcUrl = ethereumJsonRpcUrl,
-          engineApiRpc = engineApiRpc,
-          dataPath = dataDir.toString(),
-          validatorP2pPort = validatorP2pPort,
-        ),
-      )
-    val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
-    val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
-
-    return MaruApp(
-      config = appConfig.domainFriendly(),
-      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
-      p2pNetwork = p2pNetwork,
-    )
-  }
-
-  fun buildTestMaruFollowerWithoutP2pNetwork(
-    ethereumJsonRpcUrl: String,
-    engineApiRpc: String,
-    elFork: ElFork,
     dataDir: Path,
     p2pNetwork: P2PNetwork = NoOpP2PNetwork,
   ): MaruApp {
-    val appConfig =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(
-        buildMaruFollowerConfigStringWithoutP2pNetwork(
-          ethereumJsonRpcUrl = ethereumJsonRpcUrl,
-          engineApiRpc = engineApiRpc,
-          dataPath = dataDir.toString(),
-        ),
+    val p2pConfig = buildP2pConfig(null)
+    val config =
+      buildMaruConfig(
+        ethereumJsonRpcUrl = ethereumJsonRpcUrl,
+        engineApiRpc = engineApiRpc,
+        dataDir = dataDir,
+        p2pConfig = p2pConfig,
+        followers = FollowersConfig(emptyMap()),
+        qbftOptions = QbftOptions(),
       )
-    Files.writeString(appConfig.domainFriendly().persistence.privateKeyPath, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
-
-    val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
-    val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
-
-    return MaruApp(
-      config = appConfig.domainFriendly(),
-      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
-      p2pNetwork = p2pNetwork,
-    )
+    writeValidatorPrivateKey(config)
+    return buildApp(config = config, p2pNetwork = p2pNetwork)
   }
 
-  fun buildTestMaruFollower(
+  fun buildTestMaruFollowerWithP2pPeering(
     ethereumJsonRpcUrl: String,
     engineApiRpc: String,
-    elFork: ElFork,
     dataDir: Path,
-    validatorP2pPort: UInt,
+    validatorPortForStaticPeering: UInt?,
   ): MaruApp {
-    val appConfig =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(
-        buildMaruFollowerConfigString(
-          ethereumJsonRpcUrl = ethereumJsonRpcUrl,
-          engineApiRpc = engineApiRpc,
-          dataPath = dataDir.toString(),
-          validatorP2pPort = validatorP2pPort,
-        ),
+    val p2pConfig = buildP2pConfig(validatorPortForStaticPeering)
+    val followers = buildFollowersConfig(engineApiRpc)
+    val config =
+      buildMaruConfig(
+        ethereumJsonRpcUrl = ethereumJsonRpcUrl,
+        engineApiRpc = engineApiRpc,
+        dataDir = dataDir,
+        p2pConfig = p2pConfig,
+        followers = followers,
       )
-    val consensusGenesisResource = this::class.java.getResource(pickConsensusConfig(elFork))
-    val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(File(consensusGenesisResource!!.path)))
+    return buildApp(config)
+  }
 
-    return MaruApp(
-      config = appConfig.domainFriendly(),
-      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
-    )
+  fun buildTestMaruFollowerWithoutP2pPeering(
+    ethereumJsonRpcUrl: String,
+    engineApiRpc: String,
+    dataDir: Path,
+    p2pNetwork: P2PNetwork = NoOpP2PNetwork,
+  ): MaruApp {
+    val followers = buildFollowersConfig(engineApiRpc)
+    val config =
+      buildMaruConfig(
+        ethereumJsonRpcUrl = ethereumJsonRpcUrl,
+        engineApiRpc = engineApiRpc,
+        dataDir = dataDir,
+        followers = followers,
+      )
+    return buildApp(config, p2pNetwork = p2pNetwork)
   }
 
   fun buildTestMaruValidatorWithConsensusSwitch(
@@ -280,17 +196,14 @@ object MaruFactory {
     switchTimestamp: Long,
     p2pNetwork: P2PNetwork = NoOpP2PNetwork,
   ): MaruApp {
-    val appConfig =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(
-        buildMaruValidatorConfigStringWithoutP2P(
-          ethereumJsonRpcUrl = ethereumJsonRpcUrl,
-          engineApiRpc = engineApiRpc,
-          dataPath = dataDir.toString(),
-        ),
+    val config =
+      buildMaruConfig(
+        ethereumJsonRpcUrl = ethereumJsonRpcUrl,
+        engineApiRpc = engineApiRpc,
+        dataDir = dataDir,
+        qbftOptions = QbftOptions(),
       )
-    Files.writeString(appConfig.domainFriendly().persistence.privateKeyPath, VALIDATOR_PRIVATE_KEY_WITH_PREFIX)
-
-    // Build the genesis file string directly
+    writeValidatorPrivateKey(config)
     val genesisContent =
       """
       {
@@ -302,25 +215,15 @@ object MaruFactory {
           },
           "$switchTimestamp": {
             "type": "qbft",
-            "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
             "blockTimeSeconds": 1,
-            "feeRecipient": "$VALIDATOR_ADDRESS",
+            "validatorSet": ["$validatorAddress"],
+            "feeRecipient": "$validatorAddress",
             "elFork": "Prague"
           }
         }
       }
       """.trimIndent()
-
-    val tempFile = Files.createTempFile("clique-to-qbft", ".json").toFile()
-    tempFile.deleteOnExit()
-    tempFile.writeText(genesisContent)
-
-    val beaconGenesisConfig = loadConfig<JsonFriendlyForksSchedule>(listOf(tempFile))
-
-    return MaruApp(
-      config = appConfig.domainFriendly(),
-      beaconGenesisConfig = beaconGenesisConfig.getUnsafe().domainFriendly(),
-      p2pNetwork = p2pNetwork,
-    )
+    val beaconGenesisConfig = Utils.parseBeaconChainConfig(genesisContent).domainFriendly()
+    return buildApp(config, beaconGenesisConfig = beaconGenesisConfig, p2pNetwork = p2pNetwork)
   }
 }

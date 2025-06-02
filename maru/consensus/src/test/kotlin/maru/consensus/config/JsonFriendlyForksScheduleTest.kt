@@ -15,9 +15,6 @@
  */
 package maru.consensus.config
 
-import com.sksamuel.hoplite.ConfigLoaderBuilder
-import com.sksamuel.hoplite.ExperimentalHoplite
-import com.sksamuel.hoplite.json.JsonPropertySource
 import maru.consensus.ElFork
 import maru.consensus.ForkSpec
 import maru.consensus.ForksSchedule
@@ -30,7 +27,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 
-@OptIn(ExperimentalHoplite::class)
 class JsonFriendlyForksScheduleTest {
   private val genesisConfig =
     """
@@ -55,9 +51,10 @@ class JsonFriendlyForksScheduleTest {
   @Test
   fun genesisFileIsConvertableToDomain() {
     val config =
-      parseJsonConfig<JsonFriendlyForksSchedule>(
-        genesisConfig,
-      ).domainFriendly()
+      Utils
+        .parseBeaconChainConfig(
+          genesisConfig,
+        ).domainFriendly()
     assertThat(config).isEqualTo(
       ForksSchedule(
         1337u,
@@ -97,18 +94,9 @@ class JsonFriendlyForksScheduleTest {
       }
       """.trimIndent()
     assertThatThrownBy {
-      parseJsonConfig<JsonFriendlyForksSchedule>(
+      Utils.parseBeaconChainConfig(
         invalidConfiguration,
       )
     }.isInstanceOf(Exception::class.java)
   }
-
-  private inline fun <reified T : Any> parseJsonConfig(json: String): T =
-    ConfigLoaderBuilder
-      .default()
-      .addDecoder(ForkConfigDecoder())
-      .withExplicitSealedTypes()
-      .addSource(JsonPropertySource(json))
-      .build()
-      .loadConfigOrThrow<T>()
 }

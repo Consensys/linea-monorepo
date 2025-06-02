@@ -20,7 +20,6 @@ import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.app.Checks.getMinedBlocks
-import maru.consensus.ElFork
 import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
 import maru.testutils.besu.BesuTransactionsHelper
@@ -43,10 +42,10 @@ class MaruFollowerTest {
   private lateinit var followerStack: NetworkParticipantStack
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
+  private val maruFactory = MaruFactory()
 
   @BeforeEach
   fun setUp() {
-    val elFork = ElFork.Prague
     transactionsHelper = BesuTransactionsHelper()
     cluster =
       Cluster(
@@ -56,26 +55,23 @@ class MaruFollowerTest {
       )
 
     validatorStack =
-      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
-        MaruFactory.buildTestMaruValidatorWithP2p(
+      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+        maruFactory.buildTestMaruValidatorWithP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
-          elFork = elFork,
           dataDir = tmpDir,
-          validatorP2pPort = 0u,
         )
       }
     validatorStack.maruApp.start()
     followerStack =
       NetworkParticipantStack(
         cluster = cluster,
-      ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
-        MaruFactory.buildTestMaruFollowerWithP2pNetwork(
+      ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+        maruFactory.buildTestMaruFollowerWithP2pPeering(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
-          elFork = elFork,
           dataDir = tmpDir,
-          validatorP2pPort = validatorStack.p2pPort,
+          validatorPortForStaticPeering = validatorStack.p2pPort,
         )
       }
     followerStack.maruApp.start()

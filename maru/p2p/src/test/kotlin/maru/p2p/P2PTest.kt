@@ -39,9 +39,9 @@ class P2PTest {
 
     private const val IPV4 = "127.0.0.1"
 
-    private const val PORT1 = "9234"
-    private const val PORT2 = "9235"
-    private const val PORT3 = "9236"
+    private const val PORT1 = 9234u
+    private const val PORT2 = 9235u
+    private const val PORT3 = 9236u
 
     private const val PRIVATE_KEY1: String =
       "0x0802122012c0b113e2b0c37388e2b484112e13f05c92c4471e3ee1dfaa368fa5045325b2"

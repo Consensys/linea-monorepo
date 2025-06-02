@@ -15,6 +15,14 @@
 
 plugins {
   id 'maru.kotlin-library-conventions'
+  id 'java-test-fixtures'
+}
+
+sourceSets {
+  testFixtures {
+    compileClasspath += sourceSets.main.compileClasspath
+    runtimeClasspath += sourceSets.main.runtimeClasspath
+  }
 }
 
 dependencies {

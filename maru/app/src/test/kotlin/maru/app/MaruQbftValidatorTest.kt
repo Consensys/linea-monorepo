@@ -19,17 +19,14 @@ import com.github.michaelbull.result.Ok
 import maru.app.Checks.getMinedBlocks
 import maru.app.Checks.verifyBlockTime
 import maru.app.Checks.verifyBlockTimeWithAGapOn
-import maru.consensus.ElFork
 import maru.consensus.StaticValidatorProvider
 import maru.consensus.qbft.toAddress
 import maru.consensus.validation.QuorumOfSealsVerifier
 import maru.consensus.validation.SCEP256SealVerifier
 import maru.core.Validator
-import maru.crypto.Crypto
 import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.testutils.MaruFactory
-import maru.testutils.MaruFactory.VALIDATOR_ADDRESS
 import maru.testutils.NetworkParticipantStack
 import maru.testutils.SpyingP2PNetwork
 import maru.testutils.besu.BesuTransactionsHelper
@@ -58,6 +55,7 @@ class MaruQbftValidatorTest {
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
   private lateinit var spyingP2pNetwork: SpyingP2PNetwork
+  private val maruFactory = MaruFactory()
 
   @BeforeEach
   fun setUp() {
@@ -70,7 +68,15 @@ class MaruQbftValidatorTest {
       )
 
     spyingP2pNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
-    networkParticipantStack = NetworkParticipantStack(p2pNetwork = spyingP2pNetwork, cluster = cluster)
+    networkParticipantStack =
+      NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir ->
+        maruFactory.buildTestMaruValidatorWithoutP2pPeering(
+          ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
+          engineApiRpc = engineRpcUrl,
+          dataDir = tmpDir,
+          p2pNetwork = spyingP2pNetwork,
+        )
+      }
     networkParticipantStack.maruApp.start()
   }
 
@@ -135,7 +141,7 @@ class MaruQbftValidatorTest {
     }
 
   private fun allBlocksAreSignedByTheExpectedSigner() {
-    val validatorProvider = StaticValidatorProvider(setOf(Validator(VALIDATOR_ADDRESS.fromHexToByteArray())))
+    val validatorProvider = StaticValidatorProvider(setOf(Validator(maruFactory.validatorAddress.fromHexToByteArray())))
     val sealVerifier = SCEP256SealVerifier()
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider = validatorProvider, sealVerifier)
     spyingP2pNetwork.emittedBlockMessages.forEach { sealedBeaconBlock ->
@@ -167,14 +173,10 @@ class MaruQbftValidatorTest {
   }
 
   private fun allMessagesAreSignedByTheExpectedSigner() {
-    val validatorAddress =
-      Crypto
-        .privateKeyToValidator(MaruFactory.VALIDATOR_PRIVATE_KEY.fromHexToByteArray())
-        .toAddress()
     spyingP2pNetwork.emittedQbftMessages.forEach {
       assertThat(it.author)
         .withFailMessage { "Unexpected signer address for message=$it author=${it.author}" }
-        .isEqualTo(validatorAddress)
+        .isEqualTo(maruFactory.qbftValidator.toAddress())
     }
   }
 
@@ -254,10 +256,9 @@ class MaruQbftValidatorTest {
 
     Thread.sleep(3000)
     networkParticipantStack.maruApp =
-      MaruFactory.buildTestMaruValidatorWithoutP2p(
+      maruFactory.buildTestMaruValidatorWithoutP2pPeering(
         ethereumJsonRpcUrl = networkParticipantStack.besuNode.jsonRpcBaseUrl().get(),
         engineApiRpc = networkParticipantStack.besuNode.engineRpcUrl().get(),
-        elFork = ElFork.Prague,
         dataDir = networkParticipantStack.tmpDir,
       )
     // The difference from the previous test is that BeaconChain is instantiated with the Maru instance and it's not

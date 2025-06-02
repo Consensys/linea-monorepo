@@ -15,6 +15,9 @@
  */
 package maru.config
 
+import com.sksamuel.hoplite.ConfigLoaderBuilder
+import com.sksamuel.hoplite.ExperimentalHoplite
+import com.sksamuel.hoplite.toml.TomlPropertySource
 import java.net.URI
 import kotlin.io.path.Path
 import kotlin.time.Duration.Companion.milliseconds
@@ -22,6 +25,7 @@ import kotlin.time.Duration.Companion.seconds
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 
+@OptIn(ExperimentalHoplite::class)
 class HopliteFriendlinessTest {
   private val emptyFollowersConfig =
     """
@@ -53,7 +57,7 @@ class HopliteFriendlinessTest {
   @Test
   fun appConfigFileIsParseable() {
     val config =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(rawConfig)
+      parseTomlConfig<MaruConfigDtoToml>(rawConfig)
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
@@ -63,7 +67,7 @@ class HopliteFriendlinessTest {
           p2pConfig =
             P2P(
               ipAddress = "127.0.0.1",
-              port = "3322",
+              port = 3322u,
               staticPeers = emptyList(),
               reconnectDelay = 500.milliseconds,
             ),
@@ -96,7 +100,7 @@ class HopliteFriendlinessTest {
   @Test
   fun supportsEmptyFollowers() {
     val config =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfig)
+      parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfig)
     assertThat(config)
       .isEqualTo(
         MaruConfigDtoToml(
@@ -106,7 +110,7 @@ class HopliteFriendlinessTest {
           p2pConfig =
             P2P(
               ipAddress = "127.0.0.1",
-              port = "3322",
+              port = 3322u,
               staticPeers = emptyList(),
               reconnectDelay = 500.milliseconds,
             ),
@@ -129,7 +133,7 @@ class HopliteFriendlinessTest {
 
   @Test
   fun appConfigFileIsConvertableToDomain() {
-    val config = Utils.parseTomlConfig<MaruConfigDtoToml>(rawConfig)
+    val config = parseTomlConfig<MaruConfigDtoToml>(rawConfig)
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
@@ -137,7 +141,7 @@ class HopliteFriendlinessTest {
           p2pConfig =
             P2P(
               ipAddress = "127.0.0.1",
-              port = "3322",
+              port = 3322u,
               staticPeers = emptyList(),
               reconnectDelay = 500.milliseconds,
             ),
@@ -169,7 +173,7 @@ class HopliteFriendlinessTest {
   @Test
   fun emptyFollowersAreConvertableToDomain() {
     val config =
-      Utils.parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfig)
+      parseTomlConfig<MaruConfigDtoToml>(emptyFollowersConfig)
     assertThat(config.domainFriendly())
       .isEqualTo(
         MaruConfig(
@@ -179,7 +183,7 @@ class HopliteFriendlinessTest {
           p2pConfig =
             P2P(
               ipAddress = "127.0.0.1",
-              port = "3322",
+              port = 3322u,
               staticPeers = emptyList(),
               reconnectDelay = 500.milliseconds,
             ),
@@ -217,7 +221,7 @@ class HopliteFriendlinessTest {
   @Test
   fun validatorDutiesAreParseable() {
     val config =
-      Utils.parseTomlConfig<QbftOptions>(qbftOptions)
+      parseTomlConfig<QbftOptions>(qbftOptions)
     assertThat(config)
       .isEqualTo(
         QbftOptions(
@@ -230,4 +234,12 @@ class HopliteFriendlinessTest {
         ),
       )
   }
+
+  inline fun <reified T : Any> parseTomlConfig(toml: String): T =
+    ConfigLoaderBuilder
+      .default()
+      .withExplicitSealedTypes()
+      .addSource(TomlPropertySource(toml))
+      .build()
+      .loadConfigOrThrow<T>()
 }

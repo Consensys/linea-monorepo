@@ -63,7 +63,7 @@ class Libp2pNetworkFactory(
 ) {
   fun build(
     privateKey: PrivKey,
-    port: String,
+    port: UInt,
     ipAddress: String,
     sealedBlocksTopicHandler: SealedBlocksTopicHandler,
     sealedBlocksTopicId: String,
