@@ -482,7 +482,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     bytes calldata _aggregatedProof,
     uint256 _proofType,
     FinalizationDataV3 calldata _finalizationData
-  ) external whenTypeAndGeneralNotPaused(PauseType.FINALIZATION) onlyRole(OPERATOR_ROLE) {
+  ) external virtual whenTypeAndGeneralNotPaused(PauseType.FINALIZATION) onlyRole(OPERATOR_ROLE) {
     if (_aggregatedProof.length == 0) {
       revert ProofIsEmpty();
     }
@@ -517,7 +517,7 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   function _finalizeBlocks(
     FinalizationDataV3 calldata _finalizationData,
     uint256 _lastFinalizedBlock
-  ) internal returns (bytes32 finalShnarf) {
+  ) internal virtual returns (bytes32 finalShnarf) {
     _validateL2ComputedRollingHash(_finalizationData.l1RollingHashMessageNumber, _finalizationData.l1RollingHash);
 
     if (

@@ -158,7 +158,7 @@ contract TokenBridge is
    * @notice Initializes TokenBridge and underlying service dependencies - used for new networks only.
    * @param _initializationData The initial data used for initializing the TokenBridge contract.
    */
-  function __TokenBridge_init(InitializationData calldata _initializationData) internal {
+  function __TokenBridge_init(InitializationData calldata _initializationData) internal virtual {
     __ReentrancyGuard_init();
     __MessageServiceBase_init(_initializationData.messageService);
     __PauseManager_init(_initializationData.pauseTypeRoles, _initializationData.unpauseTypeRoles);
@@ -218,7 +218,7 @@ contract TokenBridge is
     address _token,
     uint256 _amount,
     address _recipient
-  ) public payable nonReentrant whenTypeNotPaused(PauseType.INITIATE_TOKEN_BRIDGING) {
+  ) public payable virtual nonReentrant whenTypeNotPaused(PauseType.INITIATE_TOKEN_BRIDGING) {
     _bridgeToken(_token, _amount, _recipient);
   }
 
@@ -604,7 +604,7 @@ contract TokenBridge is
    * @param _token ERC-20 token address
    * @param _permitData Raw data of the call `permit` of the token
    */
-  function _permit(address _token, bytes calldata _permitData) internal {
+  function _permit(address _token, bytes calldata _permitData) internal virtual {
     if (bytes4(_permitData[:4]) != _PERMIT_SELECTOR)
       revert InvalidPermitData(bytes4(_permitData[:4]), _PERMIT_SELECTOR);
     // Decode the permit data
