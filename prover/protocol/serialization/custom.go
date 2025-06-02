@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"hash"
 	"io"
+	"math"
 	"math/big"
 	"reflect"
 	"strings"
@@ -321,7 +322,10 @@ func fieldToSmallBigInt(v field.Element) *big.Int {
 	neg := new(field.Element).Neg(&v)
 	if neg.IsUint64() {
 		n := neg.Uint64()
-		return new(big.Int).SetInt64(-int64(n))
+		unsafe := n > math.MaxInt64
+		if !unsafe {
+			return new(big.Int).SetInt64(-int64(n))
+		}
 	}
 
 	bi := &big.Int{}
