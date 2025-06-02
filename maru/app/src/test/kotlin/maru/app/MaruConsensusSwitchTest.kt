@@ -48,6 +48,7 @@ class MaruConsensusSwitchTest {
   private lateinit var maruNode: MaruApp
   private lateinit var transactionsHelper: BesuTransactionsHelper
   private val log = LogManager.getLogger(this.javaClass)
+  private val maruFactory = MaruFactory()
 
   @TempDir
   private lateinit var tmpDir: File
@@ -93,7 +94,7 @@ class MaruConsensusSwitchTest {
     val engineRpcUrl = besuNode.engineRpcUrl().get()
 
     maruNode =
-      MaruFactory.buildTestMaruValidatorWithConsensusSwitch(
+      maruFactory.buildTestMaruValidatorWithConsensusSwitch(
         ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
         engineApiRpc = engineRpcUrl,
         dataDir = tmpDir.toPath(),

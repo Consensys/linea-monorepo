@@ -13,19 +13,20 @@
    See the License for the specific language governing permissions and
    limitations under the License.
  */
-package maru.config
+package maru.consensus.config
 
 import com.sksamuel.hoplite.ConfigLoaderBuilder
 import com.sksamuel.hoplite.ExperimentalHoplite
-import com.sksamuel.hoplite.toml.TomlPropertySource
+import com.sksamuel.hoplite.json.JsonPropertySource
 
 @OptIn(ExperimentalHoplite::class)
 object Utils {
-  inline fun <reified T : Any> parseTomlConfig(toml: String): T =
+  fun parseBeaconChainConfig(json: String): JsonFriendlyForksSchedule =
     ConfigLoaderBuilder
       .default()
+      .addDecoder(ForkConfigDecoder())
       .withExplicitSealedTypes()
-      .addSource(TomlPropertySource(toml))
+      .addSource(JsonPropertySource(json))
       .build()
-      .loadConfigOrThrow<T>()
+      .loadConfigOrThrow<JsonFriendlyForksSchedule>()
 }

@@ -18,30 +18,12 @@ package maru.testutils
 import java.nio.file.Files
 import java.nio.file.Path
 import maru.app.MaruApp
-import maru.consensus.ElFork
-import maru.p2p.NoOpP2PNetwork
-import maru.p2p.P2PNetwork
 import maru.testutils.besu.BesuFactory
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 
 class NetworkParticipantStack(
-  elFork: ElFork = ElFork.Prague,
-  p2pNetwork: P2PNetwork = NoOpP2PNetwork,
   cluster: Cluster,
-  maruBuilder: (String, String, Path, P2PNetwork) -> MaruApp = {
-    ethereumJsonRpcBaseUrl,
-    engineRpcUrl,
-    tmpDir,
-    p2pNetwork,
-    ->
-    MaruFactory.buildTestMaruValidatorWithoutP2p(
-      ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
-      engineApiRpc = engineRpcUrl,
-      elFork = elFork,
-      dataDir = tmpDir,
-      p2pNetwork = p2pNetwork,
-    )
-  },
+  maruBuilder: (ethereumJsonRpcBaseUrl: String, engineRpcUrl: String, tmpDir: Path) -> MaruApp,
 ) {
   val besuNode = BesuFactory.buildTestBesu()
   val tmpDir: Path =
@@ -53,7 +35,7 @@ class NetworkParticipantStack(
       cluster.start(besuNode)
       val ethereumJsonRpcBaseUrl = besuNode.jsonRpcBaseUrl().get()
       val engineRpcUrl = besuNode.engineRpcUrl().get()
-      maruBuilder(ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork)
+      maruBuilder(ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir)
     }
 
   fun stop() {

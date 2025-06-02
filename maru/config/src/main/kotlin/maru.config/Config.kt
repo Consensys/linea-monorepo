@@ -37,7 +37,7 @@ data class FollowersConfig(
 
 data class P2P(
   val ipAddress: String,
-  val port: String,
+  val port: UInt,
   val staticPeers: List<String> = emptyList(),
   val reconnectDelay: Duration = 5.seconds,
 ) {

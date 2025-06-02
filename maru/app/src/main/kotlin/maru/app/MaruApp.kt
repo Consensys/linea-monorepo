@@ -37,6 +37,7 @@ import maru.consensus.delegated.ElDelegatedConsensusFactory
 import maru.consensus.state.FinalizationState
 import maru.core.BeaconBlockBody
 import maru.core.Protocol
+import maru.crypto.Crypto
 import maru.database.kv.KvDatabaseFactory
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
@@ -166,12 +167,6 @@ class MaruApp(
     beaconChain.close()
   }
 
-  private fun privateKeyBytesWithoutPrefix() =
-    privateKeyBytes
-      .slice(
-        privateKeyBytes.size - 32..privateKeyBytes.size - 1,
-      ).toByteArray()
-
   private fun createProtocolStarter(
     config: MaruConfig,
     beaconGenesisConfig: ForksSchedule,
@@ -206,7 +201,7 @@ class MaruApp(
           )
         QbftProtocolFactoryWithBeaconChainInitialization(
           qbftOptions = config.qbftOptions!!,
-          privateKeyBytes = privateKeyBytesWithoutPrefix(),
+          privateKeyBytes = Crypto.privateKeyBytesWithoutPrefix(privateKeyBytes),
           validatorElNodeConfig = config.validatorElNode,
           metricsSystem = metricsSystem,
           finalizationStateProvider = finalizationStateProviderStub,
