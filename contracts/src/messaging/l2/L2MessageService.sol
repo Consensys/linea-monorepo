@@ -40,7 +40,34 @@ contract L2MessageService is AccessControlUpgradeable, L2MessageServiceV1, L2Mes
     RoleAddress[] calldata _roleAddresses,
     PauseTypeRole[] calldata _pauseTypeRoleAssignments,
     PauseTypeRole[] calldata _unpauseTypeRoleAssignments
-  ) external initializer {
+  ) external virtual initializer {
+    __L2MessageService_init(
+      _rateLimitPeriod,
+      _rateLimitAmount,
+      _defaultAdmin,
+      _roleAddresses,
+      _pauseTypeRoleAssignments,
+      _unpauseTypeRoleAssignments
+    );
+  }
+
+  /**
+   * @notice Initializes underlying message service dependencies.
+   * @param _rateLimitPeriod The period to rate limit against.
+   * @param _rateLimitAmount The limit allowed for withdrawing the period.
+   * @param _defaultAdmin The account to be given DEFAULT_ADMIN_ROLE on initialization.
+   * @param _roleAddresses The list of addresses to grant roles to.
+   * @param _pauseTypeRoleAssignments The list of pause type roles.
+   * @param _unpauseTypeRoleAssignments The list of unpause type roles.
+   */
+  function __L2MessageService_init(
+    uint256 _rateLimitPeriod,
+    uint256 _rateLimitAmount,
+    address _defaultAdmin,
+    RoleAddress[] calldata _roleAddresses,
+    PauseTypeRole[] calldata _pauseTypeRoleAssignments,
+    PauseTypeRole[] calldata _unpauseTypeRoleAssignments
+  ) internal virtual {
     __ERC165_init();
     __Context_init();
     __AccessControl_init();
