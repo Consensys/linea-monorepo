@@ -37,9 +37,10 @@ class BeaconBlockValidatorFactoryImpl(
   private val proposerValidator = ProposerValidator(proposerSelector, beaconChain)
 
   override fun createValidatorForBlock(beaconBlockHeader: BeaconBlockHeader): BlockValidator {
-    val parentBlock = beaconChain.getSealedBeaconBlock(beaconBlockHeader.number - 1UL)
+    val parentBeaconBlockNumber = beaconBlockHeader.number - 1UL
+    val parentBlock = beaconChain.getSealedBeaconBlock(parentBeaconBlockNumber)
     if (parentBlock == null) {
-      throw IllegalArgumentException("Expected block for header number=${beaconBlockHeader.number} isn't found!")
+      throw IllegalArgumentException("Expected block for header number=$parentBeaconBlockNumber isn't found!")
     } else {
       val parentHeader = parentBlock.beaconBlock.beaconBlockHeader
       return CompositeBlockValidator(

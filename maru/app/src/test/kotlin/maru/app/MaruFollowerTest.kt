@@ -19,7 +19,7 @@ import kotlin.test.Test
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
-import maru.app.Checks.getMinedBlocks
+import maru.testutils.Checks.getMinedBlocks
 import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
 import maru.testutils.besu.BesuTransactionsHelper
@@ -117,6 +117,186 @@ class MaruFollowerTest {
       }
     }
 
+    checkValidatorAndFollowerBlocks(blocksToProduce)
+  }
+
+  @Test
+  fun `Maru follower is able to import blocks after going down`() {
+    val validatorGenesis =
+      validatorStack.besuNode
+        .nodeRequests()
+        .eth()
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("earliest"),
+          false,
+        ).send()
+        .block
+    val followerGenesis =
+      followerStack.besuNode
+        .nodeRequests()
+        .eth()
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("earliest"),
+          false,
+        ).send()
+        .block
+    assertThat(validatorGenesis).isEqualTo(followerGenesis)
+
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    // This is here mainly to wait until block propagation is complete
+    checkValidatorAndFollowerBlocks(blocksToProduce)
+
+    followerStack.maruApp.stop()
+    followerStack.maruApp.close()
+    followerStack.maruApp =
+      maruFactory.buildTestMaruFollowerWithP2pPeering(
+        ethereumJsonRpcUrl = followerStack.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = followerStack.besuNode.engineRpcUrl().get(),
+        dataDir = followerStack.tmpDir,
+        validatorPortForStaticPeering = validatorStack.p2pPort,
+      )
+    followerStack.maruApp.start()
+
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    checkValidatorAndFollowerBlocks(blocksToProduce * 2)
+  }
+
+  @Test
+  fun `Maru follower is able to import blocks after Validator stack goes down`() {
+    val validatorGenesis =
+      validatorStack.besuNode
+        .nodeRequests()
+        .eth()
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("earliest"),
+          false,
+        ).send()
+        .block
+    val followerGenesis =
+      followerStack.besuNode
+        .nodeRequests()
+        .eth()
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("earliest"),
+          false,
+        ).send()
+        .block
+    assertThat(validatorGenesis).isEqualTo(followerGenesis)
+
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    val validatorP2pPort = validatorStack.p2pPort
+    // This is here mainly to wait until block propagation is complete
+    checkValidatorAndFollowerBlocks(blocksToProduce)
+
+    validatorStack.maruApp.stop()
+    validatorStack.maruApp.close()
+    validatorStack.maruApp =
+      maruFactory.buildTestMaruValidatorWithP2pPeering(
+        ethereumJsonRpcUrl = validatorStack.besuNode.jsonRpcBaseUrl().get(),
+        engineApiRpc = validatorStack.besuNode.engineRpcUrl().get(),
+        dataDir = validatorStack.tmpDir,
+        p2pPort = validatorP2pPort,
+      )
+    validatorStack.maruApp.start()
+    // TODO: This is to guarantee reconnection. It should actually go away once syncing is implemented
+    Thread.sleep(MaruFactory.defaultReconnectDelay.inWholeMilliseconds)
+
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    checkValidatorAndFollowerBlocks(blocksToProduce * 2)
+  }
+
+  @Test
+  fun `Maru follower is able to import blocks after its validator el node goes down`() {
+    val validatorGenesis =
+      validatorStack.besuNode
+        .nodeRequests()
+        .eth()
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("earliest"),
+          false,
+        ).send()
+        .block
+    val followerGenesis =
+      followerStack.besuNode
+        .nodeRequests()
+        .eth()
+        .ethGetBlockByNumber(
+          DefaultBlockParameter.valueOf("earliest"),
+          false,
+        ).send()
+        .block
+    assertThat(validatorGenesis).isEqualTo(followerGenesis)
+
+    val blocksToProduce = 5
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    // This is here mainly to wait until block propagation is complete
+    checkValidatorAndFollowerBlocks(blocksToProduce)
+
+    cluster.stop()
+    Thread.sleep(3000)
+    cluster.start(followerStack.besuNode)
+
+    repeat(blocksToProduce) {
+      transactionsHelper.run {
+        validatorStack.besuNode.sendTransactionAndAssertExecution(
+          logger = log,
+          recipient = createAccount("another account"),
+          amount = Amount.ether(100),
+        )
+      }
+    }
+
+    checkValidatorAndFollowerBlocks(blocksToProduce * 2)
+  }
+
+  private fun checkValidatorAndFollowerBlocks(blocksToProduce: Int) {
     await
       .pollDelay(100.milliseconds.toJavaDuration())
       .timeout(5.seconds.toJavaDuration())
