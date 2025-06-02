@@ -815,12 +815,12 @@ func (de *Deserializer) UnpackArrayOrSlice(path string, v []any, t reflect.Type)
 	case reflect.Array:
 		res = reflect.New(t).Elem()
 		if t.Len() != len(v) {
-			return reflect.Value{}, fmt.Errorf("failed to deserialize to %q, size mismatch: %d != %d, path=%v", t.Name(), len(v), t.Len(), path)
+			return reflect.Value{}, fmt.Errorf("failed to deserialize to %q, size mismatch: %d != %d, path=%v", t.String(), len(v), t.Len(), path)
 		}
 	case reflect.Slice:
 		res = reflect.MakeSlice(t, len(v), len(v))
 	default:
-		return reflect.Value{}, fmt.Errorf("failed to deserialize to %q, expected array or slice, path=%v", t.Name(), path)
+		return reflect.Value{}, fmt.Errorf("failed to deserialize to %q, expected array or slice, path=%v", t.String(), path)
 	}
 
 	var globalErr error
@@ -829,7 +829,7 @@ func (de *Deserializer) UnpackArrayOrSlice(path string, v []any, t reflect.Type)
 	for i := 0; i < len(v); i++ {
 		subV, err := de.UnpackValue(path+fmt.Sprintf("[%d]", i), v[i], subType)
 		if err != nil {
-			err := fmt.Errorf("failed to deserialize to %q, error in element %d: %w", t.Name(), i, err)
+			err := fmt.Errorf("failed to deserialize to %q, error in element %d: %w", subType.String(), i, err)
 			globalErr = errors.Join(globalErr, err)
 			continue
 		}
@@ -843,35 +843,35 @@ func (de *Deserializer) UnpackArrayOrSlice(path string, v []any, t reflect.Type)
 	return res, nil
 }
 
-// PackStructSchema creates a PackedStructSchema for a struct type, registering it in PackedObject.StructSchema.
-// It returns the schema or an error if the type is not a struct.
-func (s *Serializer) PackStructSchema(t reflect.Type) (schema PackedStructSchema, err error) {
-	if t.Kind() != reflect.Struct {
-		return PackedStructSchema{}, fmt.Errorf("s.Kind() != reflect.Struct, type=%v", t.String())
-	}
+// // PackStructSchema creates a PackedStructSchema for a struct type, registering it in PackedObject.StructSchema.
+// // It returns the schema or an error if the type is not a struct.
+// func (s *Serializer) PackStructSchema(t reflect.Type) (schema PackedStructSchema, err error) {
+// 	if t.Kind() != reflect.Struct {
+// 		return PackedStructSchema{}, fmt.Errorf("s.Kind() != reflect.Struct, type=%v", t.String())
+// 	}
 
-	cleanTypeString := getPkgPathAndTypeName(t)
+// 	cleanTypeString := getPkgPathAndTypeName(t)
 
-	if i, ok := s.structSchemaMap[cleanTypeString]; ok {
-		return s.PackedObject.StructSchema[i], nil
-	}
+// 	if i, ok := s.structSchemaMap[cleanTypeString]; ok {
+// 		return s.PackedObject.StructSchema[i], nil
+// 	}
 
-	schema = PackedStructSchema{
-		Type:   cleanTypeString,
-		Fields: make([]string, t.NumField()),
-	}
+// 	schema = PackedStructSchema{
+// 		Type:   cleanTypeString,
+// 		Fields: make([]string, t.NumField()),
+// 	}
 
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		schema.Fields[i] = field.Name
-	}
+// 	for i := 0; i < t.NumField(); i++ {
+// 		field := t.Field(i)
+// 		schema.Fields[i] = field.Name
+// 	}
 
-	positionOfType := len(s.PackedObject.StructSchema)
-	s.structSchemaMap[cleanTypeString] = positionOfType
-	s.PackedObject.StructSchema = append(s.PackedObject.StructSchema, schema)
+// 	positionOfType := len(s.PackedObject.StructSchema)
+// 	s.structSchemaMap[cleanTypeString] = positionOfType
+// 	s.PackedObject.StructSchema = append(s.PackedObject.StructSchema, schema)
 
-	return schema, nil
-}
+// 	return schema, nil
+// }
 
 // PackInterface serializes an interface value, storing its type index and concrete value in a PackedIFace.
 // It ensures the concrete type is registered and returns an error if not.
@@ -955,13 +955,14 @@ func (s *Serializer) PackStructObject(path string, obj reflect.Value) (PackedStr
 
 		// Definitely not something we can accept
 		if obj.Type().Field(i).Type == reflect.TypeOf(reflect.Value{}) {
-			utils.Panic("field type is reflect.Value, %v.%v, path=%v", obj.Type().String(), obj.Type().Field(i).Name, path)
+			return nil, fmt.Errorf("field type is reflect.Value, %v.%v, path=%v", obj.Type().String(), obj.Type().Field(i).Name, path)
 		}
 
 		// When the field is has the omitted tag, we skip it there without any
 		// warning.
 		if tag, hasTag := obj.Type().Field(i).Tag.Lookup(SerdeStructTag); hasTag {
 			if strings.Contains(tag, SerdeStructTagOmit) {
+				// implicitly, we leave values[i] as nil
 				continue
 			}
 		}
@@ -970,7 +971,8 @@ func (s *Serializer) PackStructObject(path string, obj reflect.Value) (PackedStr
 		// help the caller understand that we might omit something that he would
 		// not want to.
 		if !obj.Type().Field(i).IsExported() {
-			s.warnf(fmt.Sprintf("field %v.%v is not exported", obj.Type().String(), obj.Type().Field(i).Name))
+			s.warnf(fmt.Sprintf("field %v.%v is not exported, path=%v", obj.Type().String(), obj.Type().Field(i).Name, path))
+			// implicitly, we leave values[i] as nil
 			continue
 		}
 
@@ -985,9 +987,9 @@ func (s *Serializer) PackStructObject(path string, obj reflect.Value) (PackedStr
 		return PackedStructObject{}, fmt.Errorf("failed to pack struct object, type=%v: %w", obj.Type().String(), globalErr)
 	}
 
-	if _, err := s.PackStructSchema(obj.Type()); err != nil {
-		return PackedStructObject{}, fmt.Errorf("failed to pack struct schema: path=%v, err=%w", path, err)
-	}
+	// if _, err := s.PackStructSchema(obj.Type()); err != nil {
+	// 	return PackedStructObject{}, fmt.Errorf("failed to pack struct schema: path=%v, err=%w", path, err)
+	// }
 
 	// Importantly, we want to be sure that all the component have been
 	// converted before we convert the current type. That way, we can ensure
@@ -1005,36 +1007,20 @@ func (de *Deserializer) UnpackStructObject(path string, v PackedStructObject, t 
 	}
 
 	var (
-		cleanType    = getPkgPathAndTypeName(t)
-		schemaID, ok = de.StructSchemaMap[cleanType]
+		res = reflect.New(t).Elem()
 	)
 
-	if !ok {
-		return reflect.Value{}, fmt.Errorf("invalid type: %v, it was not found in the schema, path=%v", t.String(), path)
-	}
-
-	var (
-		res    = reflect.New(t).Elem()
-		schema = de.PackedObject.StructSchema[schemaID]
-	)
-
-	if len(v) != len(schema.Fields) {
-		return reflect.Value{}, fmt.Errorf("invalid number of fields: %v, expected %v, type=%v, path=%v", len(v), len(schema.Fields), t.String(), path)
+	if len(v) != t.NumField() {
+		return reflect.Value{}, fmt.Errorf("invalid number of fields: %v, expected %v, type=%v, path=%v", len(v), t.NumField(), t.String(), path)
 	}
 
 	// To ease debugging, all the errors for all the fields are joined and
 	// wrapped in a single error.
 	var globalErr error
 
-	for i := range v {
-		structField, ok := t.FieldByName(schema.Fields[i])
-		if !ok {
-			errors.Join(
-				globalErr,
-				fmt.Errorf("invalid field name: %v, it was not found in the struct %v, path=%v", schema.Fields[i], t.String(), path),
-			)
-			continue
-		}
+	for i := 0; i < t.NumField(); i++ {
+
+		structField := t.Field(i)
 
 		// When the field is has the omitted tag, we skip it there without any
 		// warning.
@@ -1049,11 +1035,17 @@ func (de *Deserializer) UnpackStructObject(path string, v PackedStructObject, t 
 			continue
 		}
 
-		field := res.FieldByName(schema.Fields[i])
-		value, err := de.UnpackValue(path+"."+schema.Fields[i], v[i], field.Type())
+		field := res.FieldByName(structField.Name)
+		value, err := de.UnpackValue(path+"."+structField.Name, v[i], field.Type())
 		if err != nil {
-			err = fmt.Errorf("field %q type=%v, err=%w", schema.Fields[i], field.Type().String(), err)
+			err = fmt.Errorf("field %q type=%v, err=%w", structField.Name, field.Type().String(), err)
 			globalErr = errors.Join(globalErr, err)
+			continue
+		}
+
+		if field.Type() != value.Type() {
+			e := fmt.Errorf("field %q type=%v, value type=%v, path=%v", structField.Name, field.Type().String(), value.Type().String(), path+"."+structField.Name)
+			globalErr = errors.Join(globalErr, e)
 			continue
 		}
 

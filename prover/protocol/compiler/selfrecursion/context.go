@@ -319,5 +319,5 @@ func assertVortexCompiled(comp *wizard.CompiledIOP) *vortex.Ctx {
 
 // Accessor for the SIS key
 func (ctx *SelfRecursionCtx) SisKey() *ringsis.Key {
-	return &ctx.VortexCtx.VortexParams.Key
+	return ctx.VortexCtx.VortexParams.Key
 }

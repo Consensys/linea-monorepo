@@ -210,7 +210,7 @@ type GProof struct {
 
 // Gnark params
 type GParams struct {
-	Key         ringsis.Key
+	Key         *ringsis.Key
 	HasherFunc  func(frontend.API) (hash.FieldHasher, error)
 	NoSisHasher func(frontend.API) (hash.FieldHasher, error)
 }

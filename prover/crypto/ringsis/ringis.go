@@ -43,7 +43,7 @@ type Key struct {
 
 // GenerateKey generates a ring-SIS key from a set of a [Params] and a max
 // number of elements to hash
-func GenerateKey(params Params, maxNumFieldToHash int) Key {
+func GenerateKey(params Params, maxNumFieldToHash int) *Key {
 
 	// Sanity-check : if the logTwoBound is larger or equal than 64 it can
 	// create overflows as we cast the small-norm limbs into
@@ -56,7 +56,7 @@ func GenerateKey(params Params, maxNumFieldToHash int) Key {
 		panic(err)
 	}
 
-	res := Key{
+	res := &Key{
 		lock:          &sync.Mutex{},
 		gnarkInternal: rsis,
 		Params:        params,
