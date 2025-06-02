@@ -175,12 +175,10 @@ func init() {
 	serialization.RegisterImplementation(cmimc.ExternalHasherBuilder{})
 	serialization.RegisterImplementation(cmimc.ExternalHasherFactory{})
 
-	// serialization.RegisterImplementation(constraint.BlueprintGenericHint{})
-	// serialization.RegisterImplementation(constraint.BlueprintGenericSparseR1C{})
-	// serialization.RegisterImplementation(constraint.BlueprintSparseR1CAdd{})
-	// serialization.RegisterImplementation(constraint.BlueprintSparseR1CMul{})
-	// serialization.RegisterImplementation(constraint.BlueprintSparseR1CBool{})
-	// serialization.RegisterImplementation(constraint.PlonkCommitments{})
+	serialization.RegisterImplementation(plonkinternal.CheckingActivators{})
+	serialization.RegisterImplementation(plonkinternal.InitialBBSProverAction{})
+	serialization.RegisterImplementation(plonkinternal.PlonkNoCommitProverAction{})
+	serialization.RegisterImplementation(plonkinternal.LROCommitProverAction{})
 
 	serialization.RegisterImplementation(fr.Element{})
 }
@@ -249,6 +247,10 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
 
 	dist.CompiledDefault = CompileSegment(dist.DefaultModule)
+
+	if true {
+		return dist
+	}
 
 	logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))
 	logrus.Infof("Number of LPP modules to compile:%d\n", len(dist.LPPs))
