@@ -7,7 +7,8 @@
     "emitDecoratorMetadata": true,
     "composite": true,
     "removeComments": false,
-    "isolatedModules": true
+    "isolatedModules": false,
+    "exactOptionalPropertyTypes": false
   },
   "exclude": ["./dist", "**/node_modules"]
 }
