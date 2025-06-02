@@ -92,7 +92,6 @@ abstract contract L1MessageService is
     _claimMessageWithProof(_params);
   }
 
-
   /**
    * @notice Claims and delivers a cross-chain message using a Merkle proof.
    * @param _params Collection of claim data with proof and supporting data.
@@ -133,7 +132,7 @@ abstract contract L1MessageService is
       revert InvalidMerkleProof();
     }
 
-     TRANSIENT_MESSAGE_SENDER = _params.from;
+    TRANSIENT_MESSAGE_SENDER = _params.from;
 
     (bool callSuccess, bytes memory returnData) = _params.to.call{ value: _params.value }(_params.data);
     if (!callSuccess) {
