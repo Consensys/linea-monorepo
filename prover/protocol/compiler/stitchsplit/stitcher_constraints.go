@@ -241,15 +241,15 @@ func (ctx *StitchingContext) adjustExpression(
 }
 
 type QueryVerifierAction struct {
-	q ifaces.Query
+	Q ifaces.Query
 }
 
 func (a *QueryVerifierAction) Run(vr wizard.Runtime) error {
-	return a.q.Check(vr)
+	return a.Q.Check(vr)
 }
 
 func (a *QueryVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
-	a.q.CheckGnark(api, wvc)
+	a.Q.CheckGnark(api, wvc)
 }
 
 func insertVerifier(
@@ -259,6 +259,6 @@ func insertVerifier(
 ) {
 	// Register the VerifierAction instead of using a closure
 	comp.RegisterVerifierAction(round, &QueryVerifierAction{
-		q: q,
+		Q: q,
 	})
 }

@@ -65,12 +65,12 @@ type MultipointToSinglepointCompilation struct {
 	// newQuery.
 	AddUnconstrainedColumnsOpt bool
 
-	// numRow is the number of rows in the columns that are compiled. The
+	// NumRow is the number of rows in the columns that are compiled. The
 	// value is lazily evaluated and the evaluation procedure sanity-checks
 	// that all the columns has the same number of rows. The value of this
 	// field should not be accessed directly and the caller should instead
 	// use getNumRow().
-	numRow int
+	NumRow int
 
 	// NewQuery is the query that is produced by the compilation, also named
 	// the "Grail" query in the paper. The evaluation spans overall the
@@ -122,11 +122,11 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 		startingRound := getStartingRound(comp, polysByRound)
 
 		polyPrecomputed = extendPWithShadowColumns(comp, 0,
-			ctx.numRow, polyPrecomputed, ctx.NumColumnProfilePrecomputed, true)
+			ctx.NumRow, polyPrecomputed, ctx.NumColumnProfilePrecomputed, true)
 
 		for round := startingRound; round < len(polysByRound); round++ {
 			polysByRound[round] = extendPWithShadowColumns(comp, round,
-				ctx.numRow, polysByRound[round], ctx.NumColumnProfileOpt[round-startingRound], false)
+				ctx.NumRow, polysByRound[round], ctx.NumColumnProfileOpt[round-startingRound], false)
 		}
 
 	}
@@ -149,7 +149,7 @@ func compileMultipointToSinglepoint(comp *wizard.CompiledIOP, options []Option) 
 	ctx.Quotient = comp.InsertCommit(
 		ctx.getNumRound(comp),
 		ifaces.ColIDf("MPTS_QUOTIENT_%v", comp.SelfRecursionCount),
-		ctx.numRow,
+		ctx.NumRow,
 	)
 
 	ctx.EvaluationPoint = comp.InsertCoin(
@@ -185,17 +185,17 @@ func (ctx *MultipointToSinglepointCompilation) setMaxNumberOfRowsOf(columns []if
 	for i := 1; i < len(columns); i++ {
 		numRow = max(numRow, columns[i].Size())
 	}
-	ctx.numRow = numRow
+	ctx.NumRow = numRow
 	return numRow
 }
 
 // getNumRow returns the number of rows and panics if the field is not set
 // in the context.
 func (ctx *MultipointToSinglepointCompilation) getNumRow() int {
-	if ctx.numRow == 0 {
+	if ctx.NumRow == 0 {
 		utils.Panic("the number of rows is not set")
 	}
-	return ctx.numRow
+	return ctx.NumRow
 }
 
 // getNumRound returns the number of rounds that are compiled. This is also

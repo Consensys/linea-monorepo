@@ -31,7 +31,7 @@ type AssignVortexOpenedCols struct {
 // the public-inputs of the plonk-in-wizard circuits.
 type ConsistencyCheck struct {
 	Ctx       *Recursion
-	isSkipped bool
+	isSkipped bool `serde:"omit"`
 	PIs       []ifaces.Column
 }
 

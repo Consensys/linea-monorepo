@@ -55,15 +55,15 @@ func (ctx *SelfRecursionCtx) defineYs() {
 }
 
 type ConsistencyYsUalphaVerifierAction struct {
-	ctx                *SelfRecursionCtx
-	interpolateUalphaX ifaces.Accessor
+	Ctx                *SelfRecursionCtx
+	InterpolateUalphaX ifaces.Accessor
 }
 
 func (a *ConsistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
-	ys := a.ctx.Columns.Ys.GetColAssignment(run)
-	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
+	ys := a.Ctx.Columns.Ys.GetColAssignment(run)
+	alpha := run.GetRandomCoinField(a.Ctx.Coins.Alpha.Name)
 	ysAlpha := smartvectors.EvalCoeff(ys, alpha)
-	uAlphaX := a.interpolateUalphaX.GetVal(run)
+	uAlphaX := a.InterpolateUalphaX.GetVal(run)
 	if uAlphaX != ysAlpha {
 		return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass, ysAlphaX=%v uAlphaX=%v", ysAlpha.String(), uAlphaX.String())
 	}
@@ -71,9 +71,9 @@ func (a *ConsistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *ConsistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	ys := a.ctx.Columns.Ys.GetColAssignmentGnark(run)
-	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
-	uAlphaX := a.interpolateUalphaX.GetFrontendVariable(api, run)
+	ys := a.Ctx.Columns.Ys.GetColAssignmentGnark(run)
+	alpha := run.GetRandomCoinField(a.Ctx.Coins.Alpha.Name)
+	uAlphaX := a.InterpolateUalphaX.GetFrontendVariable(api, run)
 	ysAlpha := poly.EvaluateUnivariateGnark(api, ys, alpha)
 	api.AssertIsEqual(uAlphaX, ysAlpha)
 }
@@ -93,7 +93,7 @@ func (ctx *SelfRecursionCtx) consistencyBetweenYsAndUalpha() {
 
 	// And let the verifier check that they should be both equal
 	ctx.Comp.RegisterVerifierAction(round, &ConsistencyYsUalphaVerifierAction{
-		ctx:                ctx,
-		interpolateUalphaX: ctx.Accessors.InterpolateUalphaX,
+		Ctx:                ctx,
+		InterpolateUalphaX: ctx.Accessors.InterpolateUalphaX,
 	})
 }

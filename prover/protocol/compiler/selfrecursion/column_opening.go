@@ -311,13 +311,13 @@ func (a *CollapsingProverAction) Run(run *wizard.ProverRuntime) {
 }
 
 type CollapsingVerifierAction struct {
-	uAlphaQEval  ifaces.Accessor
-	preImageEval ifaces.Accessor
+	UAlphaQEval  ifaces.Accessor
+	PreImageEval ifaces.Accessor
 }
 
 func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
-	if a.uAlphaQEval.GetVal(run) != a.preImageEval.GetVal(run) {
-		l, r := a.uAlphaQEval.GetVal(run), a.preImageEval.GetVal(run)
+	if a.UAlphaQEval.GetVal(run) != a.PreImageEval.GetVal(run) {
+		l, r := a.UAlphaQEval.GetVal(run), a.PreImageEval.GetVal(run)
 		return fmt.Errorf("consistency between u_alpha and the preimage: mismatch between uAlphaQEval=%v preimages=%v",
 			l.String(), r.String())
 	}
@@ -326,8 +326,8 @@ func (a *CollapsingVerifierAction) Run(run wizard.Runtime) error {
 
 func (a *CollapsingVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	api.AssertIsEqual(
-		a.uAlphaQEval.GetFrontendVariable(api, run),
-		a.preImageEval.GetFrontendVariable(api, run),
+		a.UAlphaQEval.GetFrontendVariable(api, run),
+		a.PreImageEval.GetFrontendVariable(api, run),
 	)
 }
 
@@ -392,8 +392,8 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 		)
 
 		ctx.Comp.RegisterVerifierAction(uAlphaQEval.Round(), &CollapsingVerifierAction{
-			uAlphaQEval:  uAlphaQEval,
-			preImageEval: preImageEval,
+			UAlphaQEval:  uAlphaQEval,
+			PreImageEval: preImageEval,
 		})
 	}
 
@@ -471,22 +471,22 @@ func (a *FoldPhaseProverAction) Run(run *wizard.ProverRuntime) {
 }
 
 type FoldPhaseVerifierAction struct {
-	ctx       *SelfRecursionCtx
-	ipQueryID ifaces.QueryID
-	degree    int
+	Ctx       *SelfRecursionCtx
+	IpQueryID ifaces.QueryID
+	Degree    int
 }
 
 func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
-	edual := a.ctx.Columns.Edual.GetColAssignment(run)
-	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignment(run)
-	rfold := run.GetRandomCoinField(a.ctx.Coins.Fold.Name)
-	yAlleged := run.GetInnerProductParams(a.ipQueryID).Ys[0]
+	edual := a.Ctx.Columns.Edual.GetColAssignment(run)
+	dcollapse := a.Ctx.Columns.DhQCollapse.GetColAssignment(run)
+	rfold := run.GetRandomCoinField(a.Ctx.Coins.Fold.Name)
+	yAlleged := run.GetInnerProductParams(a.IpQueryID).Ys[0]
 	yDual := smartvectors.EvalCoeff(edual, rfold)
 	yActual := smartvectors.EvalCoeff(dcollapse, rfold)
 
 	var xN, xNminus1, xNplus1 field.Element
 	one := field.One()
-	xN.Exp(rfold, big.NewInt(int64(a.degree)))
+	xN.Exp(rfold, big.NewInt(int64(a.Degree)))
 	xNminus1.Sub(&xN, &one)
 	xNplus1.Add(&xN, &one)
 
@@ -503,15 +503,15 @@ func (a *FoldPhaseVerifierAction) Run(run wizard.Runtime) error {
 }
 
 func (a *FoldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
-	edual := a.ctx.Columns.Edual.GetColAssignmentGnark(run)
-	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
-	rfold := run.GetRandomCoinField(a.ctx.Coins.Fold.Name)
-	yAlleged := run.GetInnerProductParams(a.ipQueryID).Ys[0]
+	edual := a.Ctx.Columns.Edual.GetColAssignmentGnark(run)
+	dcollapse := a.Ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
+	rfold := run.GetRandomCoinField(a.Ctx.Coins.Fold.Name)
+	yAlleged := run.GetInnerProductParams(a.IpQueryID).Ys[0]
 	yDual := poly.EvaluateUnivariateGnark(api, edual, rfold)
 	yActual := poly.EvaluateUnivariateGnark(api, dcollapse, rfold)
 
 	one := field.One()
-	xN := gnarkutil.Exp(api, rfold, a.degree)
+	xN := gnarkutil.Exp(api, rfold, a.Degree)
 	xNminus1 := api.Sub(xN, one)
 	xNplus1 := api.Add(xN, one)
 
@@ -664,8 +664,8 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 	// })
 
 	ctx.Comp.RegisterVerifierAction(round, &FoldPhaseVerifierAction{
-		ctx:       ctx,
-		ipQueryID: ctx.Queries.LatticeInnerProd.Name(),
-		degree:    degree,
+		Ctx:       ctx,
+		IpQueryID: ctx.Queries.LatticeInnerProd.Name(),
+		Degree:    degree,
 	})
 }

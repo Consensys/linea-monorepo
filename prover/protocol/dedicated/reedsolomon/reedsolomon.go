@@ -21,35 +21,35 @@ const (
 )
 
 type ReedSolomonProverAction struct {
-	h       ifaces.Column
-	coeff   ifaces.Column
-	codeDim int
+	H       ifaces.Column
+	Coeff   ifaces.Column
+	CodeDim int
 }
 
 func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
-	witness := a.h.GetColAssignment(assi)
-	coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0, nil).SubVector(0, a.codeDim)
-	assi.AssignColumn(a.coeff.GetColID(), coeffs)
+	witness := a.H.GetColAssignment(assi)
+	coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0, nil).SubVector(0, a.CodeDim)
+	assi.AssignColumn(a.Coeff.GetColID(), coeffs)
 }
 
 type ReedSolomonVerifierAction struct {
-	coeffCheck ifaces.Accessor
-	evalCheck  ifaces.Accessor
-	hColID     ifaces.ColID
+	CoeffCheck ifaces.Accessor
+	EvalCheck  ifaces.Accessor
+	HColID     ifaces.ColID
 }
 
 func (a *ReedSolomonVerifierAction) Run(run wizard.Runtime) error {
-	y := a.coeffCheck.GetVal(run)
-	y_ := a.evalCheck.GetVal(run)
+	y := a.CoeffCheck.GetVal(run)
+	y_ := a.EvalCheck.GetVal(run)
 	if y != y_ {
-		return fmt.Errorf("reed-solomon check failed - %v is not a codeword", a.hColID)
+		return fmt.Errorf("reed-solomon check failed - %v is not a codeword", a.HColID)
 	}
 	return nil
 }
 
 func (a *ReedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
-	y := a.coeffCheck.GetFrontendVariable(api, wvc)
-	y_ := a.evalCheck.GetFrontendVariable(api, wvc)
+	y := a.CoeffCheck.GetFrontendVariable(api, wvc)
+	y_ := a.EvalCheck.GetFrontendVariable(api, wvc)
 	api.AssertIsEqual(y, y_)
 }
 
@@ -73,9 +73,9 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 	// Inserts the prover before calling the sub-wizard so that it is executed
 	// before the sub-prover's wizards.
 	comp.RegisterProverAction(round, &ReedSolomonProverAction{
-		h:       h,
-		coeff:   coeff,
-		codeDim: codeDim,
+		H:       h,
+		Coeff:   coeff,
+		CodeDim: codeDim,
 	})
 
 	coeffCheck := functionals.CoeffEval(
@@ -93,9 +93,9 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 	)
 
 	comp.RegisterVerifierAction(round+1, &ReedSolomonVerifierAction{
-		coeffCheck: coeffCheck,
-		evalCheck:  evalCheck,
-		hColID:     h.GetColID(),
+		CoeffCheck: coeffCheck,
+		EvalCheck:  evalCheck,
+		HColID:     h.GetColID(),
 	})
 
 }

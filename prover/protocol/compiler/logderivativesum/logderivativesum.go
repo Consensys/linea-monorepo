@@ -85,7 +85,7 @@ type FinalEvaluationCheck struct {
 	// query ID
 	LogDerivSumID ifaces.QueryID
 	// skip verifier action
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 // Run implements the [wizard.VerifierAction]

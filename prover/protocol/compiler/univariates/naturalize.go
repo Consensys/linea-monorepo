@@ -20,11 +20,11 @@ const (
 )
 
 type NaturalizeProverAction struct {
-	ctx NaturalizationCtx
+	Ctx NaturalizationCtx
 }
 
 func (a *NaturalizeProverAction) Run(run *wizard.ProverRuntime) {
-	a.ctx.prove(run)
+	a.Ctx.prove(run)
 }
 
 type NaturalizeVerifierAction struct {
@@ -122,7 +122,7 @@ func Naturalize(comp *wizard.CompiledIOP) {
 			*/
 			// comp.SubProvers.AppendToInner(roundID, ctx.prove)
 			comp.RegisterProverAction(roundID, &NaturalizeProverAction{
-				ctx: ctx,
+				Ctx: ctx,
 			})
 
 			// comp.InsertVerifier(roundID, ctx.Verify, ctx.GnarkVerify)

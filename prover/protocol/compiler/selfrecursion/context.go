@@ -10,6 +10,123 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+type Columns struct {
+	// (Precomputed)
+	//
+	// I(X) interpolates (0, 1, 2, 3, 4, ...., nb encoded columns)
+	I ifaces.Column
+
+	// (Precomputed)
+	//
+	// SIS key chunks indexed by rounds. Since some rounds may be
+	// dried some of the Ah are `nil`
+	Ah []ifaces.Column
+
+	// (Commitments round-by-round, already computed)
+	//
+	// Round-by-rounds commitments root hashes. Since some rounds
+	// may be dried some of the RoundDigest can be `nil`
+	Rooth []ifaces.Column
+
+	// Precomputed roots
+	precompRoot ifaces.Column
+
+	// (Verifier column)
+	//
+	// Gathers the claimed evaluations to be proven
+	Ys ifaces.Column
+
+	// (Commitment, already computed)
+	//
+	// LinearCombination claimed by the verifier
+	Ualpha ifaces.Column
+
+	// (Proof, already computed)
+	//
+	// Preimages of the selected columns in whole form. Is set to be
+	// ignored by the self-recursion compiler. Implictly it is repla-
+	// ced by the `Preimages`, which contains the preimages but in
+	// limb expanded form.
+	WholePreimages []ifaces.Column
+
+	// (Commitments, to compute)
+	//
+	// Preimages of the columns (in limb form) that have been opened.
+	// This columns are concatenated "round-by-round" and the concate-
+	// nation is zero-padded at the end to the next power of two
+	Preimages []ifaces.Column
+
+	// (Verifier column)
+	//
+	// Gathers the selected columns to open
+	Q ifaces.Column
+
+	// (Commitment, to compute)
+	//
+	// Represents the merged digest entries selected by Q. It must be zero
+	// padded. The ordering is (D_{h=0,q0}, D_{h=0, q1}, ..., D_{h=1, q0}, D_{h=0, q1}, ..., D_{h=numRound, q{t-1}})
+	ConcatenatedDhQ ifaces.Column
+
+	// (Commitment, to assign from the proof)
+	//
+	// (MerkleProofs, positions to open)
+	MerkleProofs ifaces.Column
+
+	// (Commitment, to assign)
+	//
+	// Leaves to be verified by the proof (must be zero padded)
+	MerkleProofsLeaves ifaces.Column
+
+	// (Commitment, to compute)
+	//
+	// Position openings for the Merkle proofs
+	MerkleProofPositions ifaces.Column
+
+	// (Commitment, to compute)
+	//
+	// Roots hashes for the Merkle proofs
+	MerkleRoots ifaces.Column
+
+	// (Commitment, to compute)
+	//
+	// Represents the entries of the linear combination Ualpha selected
+	// by Q
+	UalphaQ ifaces.Column
+
+	// (Auto-computed)
+	//
+	// The linear combination of the preimages by rCollapse
+	PreimagesCollapse ifaces.Column
+
+	// (Auto-computed)
+	//
+	// The folding of ConcatenatedDhQ by rCollapse
+	DhQCollapse ifaces.Column
+
+	// (Auto-computed)
+	//
+	// The linear combination of Ah by \sum_i [A_h]_i * (r_\text{collapse}^{t})^i
+	// where the sum is defined over the non-zero entries of A_h and t is the number
+	// of opened columns.
+	ACollapsed ifaces.Column
+
+	// (To evaluate)
+	//
+	// The dual sis hash of the collapsed preimage by Amerge
+	// It is seen as the "dual" of DhQCollapse
+	Edual ifaces.Column
+
+	// (Auto-computed)
+	//
+	// The folding of Amerge by rFold
+	ACollapseFold ifaces.Column
+
+	// (Auto-computed)
+	//
+	// The folding of preimageCollapse by rFold
+	PreimageCollapseFold ifaces.Column
+}
+
 // Defines a context of self-recursion
 type SelfRecursionCtx struct {
 
@@ -83,122 +200,7 @@ type SelfRecursionCtx struct {
 	}
 
 	// List all the columns interacting with the current protocol
-	Columns struct {
-		// (Precomputed)
-		//
-		// I(X) interpolates (0, 1, 2, 3, 4, ...., nb encoded columns)
-		I ifaces.Column
-
-		// (Precomputed)
-		//
-		// SIS key chunks indexed by rounds. Since some rounds may be
-		// dried some of the Ah are `nil`
-		Ah []ifaces.Column
-
-		// (Commitments round-by-round, already computed)
-		//
-		// Round-by-rounds commitments root hashes. Since some rounds
-		// may be dried some of the RoundDigest can be `nil`
-		Rooth []ifaces.Column
-
-		// Precomputed roots
-		precompRoot ifaces.Column
-
-		// (Verifier column)
-		//
-		// Gathers the claimed evaluations to be proven
-		Ys ifaces.Column
-
-		// (Commitment, already computed)
-		//
-		// LinearCombination claimed by the verifier
-		Ualpha ifaces.Column
-
-		// (Proof, already computed)
-		//
-		// Preimages of the selected columns in whole form. Is set to be
-		// ignored by the self-recursion compiler. Implictly it is repla-
-		// ced by the `Preimages`, which contains the preimages but in
-		// limb expanded form.
-		WholePreimages []ifaces.Column
-
-		// (Commitments, to compute)
-		//
-		// Preimages of the columns (in limb form) that have been opened.
-		// This columns are concatenated "round-by-round" and the concate-
-		// nation is zero-padded at the end to the next power of two
-		Preimages []ifaces.Column
-
-		// (Verifier column)
-		//
-		// Gathers the selected columns to open
-		Q ifaces.Column
-
-		// (Commitment, to compute)
-		//
-		// Represents the merged digest entries selected by Q. It must be zero
-		// padded. The ordering is (D_{h=0,q0}, D_{h=0, q1}, ..., D_{h=1, q0}, D_{h=0, q1}, ..., D_{h=numRound, q{t-1}})
-		ConcatenatedDhQ ifaces.Column
-
-		// (Commitment, to assign from the proof)
-		//
-		// (MerkleProofs, positions to open)
-		MerkleProofs ifaces.Column
-
-		// (Commitment, to assign)
-		//
-		// Leaves to be verified by the proof (must be zero padded)
-		MerkleProofsLeaves ifaces.Column
-
-		// (Commitment, to compute)
-		//
-		// Position openings for the Merkle proofs
-		MerkleProofPositions ifaces.Column
-
-		// (Commitment, to compute)
-		//
-		// Roots hashes for the Merkle proofs
-		MerkleRoots ifaces.Column
-
-		// (Commitment, to compute)
-		//
-		// Represents the entries of the linear combination Ualpha selected
-		// by Q
-		UalphaQ ifaces.Column
-
-		// (Auto-computed)
-		//
-		// The linear combination of the preimages by rCollapse
-		PreimagesCollapse ifaces.Column
-
-		// (Auto-computed)
-		//
-		// The folding of ConcatenatedDhQ by rCollapse
-		DhQCollapse ifaces.Column
-
-		// (Auto-computed)
-		//
-		// The linear combination of Ah by \sum_i [A_h]_i * (r_\text{collapse}^{t})^i
-		// where the sum is defined over the non-zero entries of A_h and t is the number
-		// of opened columns.
-		ACollapsed ifaces.Column
-
-		// (To evaluate)
-		//
-		// The dual sis hash of the collapsed preimage by Amerge
-		// It is seen as the "dual" of DhQCollapse
-		Edual ifaces.Column
-
-		// (Auto-computed)
-		//
-		// The folding of Amerge by rFold
-		ACollapseFold ifaces.Column
-
-		// (Auto-computed)
-		//
-		// The folding of preimageCollapse by rFold
-		PreimageCollapseFold ifaces.Column
-	}
+	Columns Columns
 }
 
 // NewRecursionCtx returns a new recursion context taking a specified

@@ -316,7 +316,7 @@ func (ctx *compilationCtx) addCopyConstraint() {
 // checks that the [Activators] columns are correctly assigned
 type CheckingActivators struct {
 	Cols    []ifaces.Column
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 var _ wizard.VerifierAction = &CheckingActivators{}

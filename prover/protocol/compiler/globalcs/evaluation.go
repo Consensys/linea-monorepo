@@ -39,7 +39,7 @@ type EvaluationProver EvaluationCtx
 // interface.
 type EvaluationVerifier struct {
 	EvaluationCtx
-	skipped bool
+	Skipped bool
 }
 
 // declareUnivariateQueries declares the univariate queries over all the quotient
@@ -468,9 +468,9 @@ func (ctx EvaluationVerifier) recombineQuotientSharesEvaluationGnark(api fronten
 }
 
 func (ctx *EvaluationVerifier) Skip() {
-	ctx.skipped = true
+	ctx.Skipped = true
 }
 
 func (ctx *EvaluationVerifier) IsSkipped() bool {
-	return ctx.skipped
+	return ctx.Skipped
 }

@@ -107,22 +107,22 @@ func prefixWithLinearHash(comp *wizard.CompiledIOP, name, msg string, args ...an
 }
 
 type LinearHashProverAction struct {
-	ctx             *linearHashCtx
-	oldStateID      ifaces.ColID
-	newStateID      ifaces.ColID
-	newStateCleanID ifaces.ColID
+	Ctx             *linearHashCtx
+	OldStateID      ifaces.ColID
+	NewStateID      ifaces.ColID
+	NewStateCleanID ifaces.ColID
 }
 
 func (a *LinearHashProverAction) Run(run *wizard.ProverRuntime) {
-	blocksWit := a.ctx.ToHash.GetColAssignment(run)
-	olds := make([]field.Element, a.ctx.Period*a.ctx.NumHash)
-	news := make([]field.Element, a.ctx.Period*a.ctx.NumHash)
+	blocksWit := a.Ctx.ToHash.GetColAssignment(run)
+	olds := make([]field.Element, a.Ctx.Period*a.Ctx.NumHash)
+	news := make([]field.Element, a.Ctx.Period*a.Ctx.NumHash)
 
-	parallel.Execute(a.ctx.NumHash, func(start, stop int) {
+	parallel.Execute(a.Ctx.NumHash, func(start, stop int) {
 		for hashID := start; hashID < stop; hashID++ {
 			old := field.Zero()
-			for i := 0; i < a.ctx.Period; i++ {
-				pos := hashID*a.ctx.Period + i
+			for i := 0; i < a.Ctx.Period; i++ {
+				pos := hashID*a.Ctx.Period + i
 				currentBlock := blocksWit.Get(pos)
 				new := mimc.BlockCompression(old, currentBlock)
 				olds[pos] = old
@@ -133,13 +133,13 @@ func (a *LinearHashProverAction) Run(run *wizard.ProverRuntime) {
 	})
 
 	padNew := mimc.BlockCompression(field.Zero(), field.Zero())
-	oldSV := smartvectors.RightZeroPadded(olds, a.ctx.ToHash.Size())
-	newSV := smartvectors.RightPadded(news, padNew, a.ctx.ToHash.Size())
-	newCleanSV := smartvectors.RightZeroPadded(vector.DeepCopy(news), a.ctx.ToHash.Size())
+	oldSV := smartvectors.RightZeroPadded(olds, a.Ctx.ToHash.Size())
+	newSV := smartvectors.RightPadded(news, padNew, a.Ctx.ToHash.Size())
+	newCleanSV := smartvectors.RightZeroPadded(vector.DeepCopy(news), a.Ctx.ToHash.Size())
 
-	run.AssignColumn(a.oldStateID, oldSV)
-	run.AssignColumn(a.newStateID, newSV)
-	run.AssignColumn(a.newStateCleanID, newCleanSV)
+	run.AssignColumn(a.OldStateID, oldSV)
+	run.AssignColumn(a.NewStateID, newSV)
+	run.AssignColumn(a.NewStateCleanID, newCleanSV)
 }
 
 // Declares assign and constraints the columns OldStates and NewStates
@@ -165,10 +165,10 @@ func (ctx *linearHashCtx) HashingCols() {
 	)
 
 	ctx.comp.RegisterProverAction(ctx.Round, &LinearHashProverAction{
-		ctx:             ctx,
-		oldStateID:      ctx.OldState.GetColID(),
-		newStateID:      ctx.NewState.GetColID(),
-		newStateCleanID: ctx.NewStateClean.GetColID(),
+		Ctx:             ctx,
+		OldStateID:      ctx.OldState.GetColID(),
+		NewStateID:      ctx.NewState.GetColID(),
+		NewStateCleanID: ctx.NewStateClean.GetColID(),
 	})
 
 	// And registers queries for the initial values

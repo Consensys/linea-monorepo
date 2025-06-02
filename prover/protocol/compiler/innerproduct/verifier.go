@@ -20,7 +20,7 @@ type VerifierForSize struct {
 	SummationOpening query.LocalOpening
 	// BatchOpening is the challenge used for the linear combination
 	BatchOpening coin.Info
-	skipped      bool
+	skipped      bool `serde:"omit"`
 }
 
 // Run implements [wizard.VerifierAction]

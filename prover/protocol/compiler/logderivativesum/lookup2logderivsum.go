@@ -203,7 +203,7 @@ func pushToZCatalog(stc SingleTableCtx, zCatalog map[int]*query.LogDerivativeSum
 // It checks that the log-derivative sum result is zero.
 type CheckLogDerivativeSumMustBeZero struct {
 	Q       query.LogDerivativeSum
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 func (c *CheckLogDerivativeSumMustBeZero) Run(run wizard.Runtime) error {
