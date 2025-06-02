@@ -3,9 +3,9 @@ name: Testing CI
 on:
   workflow_call:
     inputs:
-#      commit-tag:
-#        required: true
-#        type: string
+      #      commit-tag:
+      #        required: true
+      #        type: string
       consensus-client-changed:
         required: true
         type: string
@@ -26,7 +26,7 @@ jobs:
       COMMIT_TAG: ${{ inputs.commit_tag }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-    runs-on: [gha-runner-scale-set-ubuntu-22.04-amd64-med]
+    runs-on: [ gha-runner-scale-set-ubuntu-22.04-amd64-med ]
     name: Consensus client tests
     steps:
       - name: Checkout
@@ -40,16 +40,16 @@ jobs:
       - name: Build consensus and Unit tests
         run: |
           make build
-#      - name: Login to Docker Hub
-#        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
-#        uses: docker/login-action@v3
-#        with:
-#          username: ${{ secrets.DOCKERHUB_USERNAME }}
-#          password: ${{ secrets.DOCKERHUB_TOKEN }}
-#      - name: Run integration tests
-#        timeout-minutes: 15
-#        run: |
-#          ./gradlew app:integrationTestAllNeeded
+      #      - name: Login to Docker Hub
+      #        if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
+      #        uses: docker/login-action@v3
+      #        with:
+      #          username: ${{ secrets.DOCKERHUB_USERNAME }}
+      #          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      #      - name: Run integration tests
+      #        timeout-minutes: 15
+      #        run: |
+      #          ./gradlew app:integrationTestAllNeeded
       - name: Run Jacoco
         run: |
           ./gradlew jacocoAggregatedReport
@@ -60,13 +60,13 @@ jobs:
           if-no-files-found: error
           path: |
             ${{ github.workspace }}/build/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml
-#      - name: Upload coverage to Codecov
-#        uses: codecov/codecov-action@v5
-#        with:
-#          fail_ci_if_error: true
-#          files: ${{ github.workspace }}/build/reports/jacoco/jacocoRootReport/jacocoRootReport.xml
-#          flags: kotlin
-#          os: linux
-#          name: codecov
-#          verbose: true
-#          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          fail_ci_if_error: true
+          files: ${{ github.workspace }}/build/reports/jacoco/jacocoAggregatedReport/jacocoAggregatedReport.xml
+          flags: kotlin
+          os: linux
+          name: codecov
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
