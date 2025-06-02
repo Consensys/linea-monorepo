@@ -57,7 +57,7 @@ web3j {
 solidity {
   optimize = false
   prettyJson = true
-  evmVersion = EVMVersion.LONDON
+  evmVersion = EVMVersion.LONDON // TODO: how to make it dynamic ?
 }
 
 yul {
