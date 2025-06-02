@@ -43,7 +43,7 @@
     "@types/ref-napi": "^3.0.12",
     "@types/unzipper": "^0.10.9",
     "dotenv": "catalog:",
-    "ethers": "^6.13.1",
+    "ethers": "catalog:",
     "jest": "catalog:",
     "jest-it-up": "^3.1.0",
     "ts-jest": "catalog:",

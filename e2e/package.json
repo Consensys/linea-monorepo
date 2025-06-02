@@ -25,7 +25,7 @@
     "async-mutex": "^0.5.0",
     "child_process": "1.0.2",
     "dotenv": "catalog:",
-    "ethers": "6.13.3",
+    "ethers": "catalog:",
     "jest": "catalog:",
     "ts-jest": "catalog:",
     "typechain": "catalog:",

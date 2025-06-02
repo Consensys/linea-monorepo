@@ -24,7 +24,7 @@
     "better-sqlite3": "11.6.0",
     "class-validator": "0.14.1",
     "dotenv": "catalog:",
-    "ethers": "6.13.4",
+    "ethers": "catalog:",
     "express": "5.1.0",
     "filtrex": "3.1.0",
     "pg": "8.13.1",
