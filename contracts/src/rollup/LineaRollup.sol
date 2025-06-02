@@ -79,7 +79,10 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
   /// @dev This address is granted the OPERATOR_ROLE after six months of finalization inactivity by the current operators.
   address public fallbackOperator;
 
-  /// @dev Total contract storage is 11 slots.
+  /// @dev Keep 50 free storage slots for inheriting contracts.
+  uint256[50] private __gap_LineaRollup;
+
+  /// @dev Total contract storage is 61 slots.
 
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
@@ -93,7 +96,11 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
    * @dev Note: This is used for new testnets and local/CI testing, and will not replace existing proxy based contracts.
    * @param _initializationData The initial data used for proof verification.
    */
-  function initialize(InitializationData calldata _initializationData) external initializer {
+  function initialize(InitializationData calldata _initializationData) external virtual initializer {
+    __LineaRollup_init(_initializationData);
+  }
+
+  function __LineaRollup_init(InitializationData calldata _initializationData) internal virtual {
     if (_initializationData.defaultVerifier == address(0)) {
       revert ZeroAddressNotAllowed();
     }
@@ -138,7 +145,6 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     currentFinalizedShnarf = genesisShnarf;
     currentFinalizedState = _computeLastFinalizedState(0, EMPTY_HASH, _initializationData.genesisTimestamp);
   }
-
   /**
    * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings and fallback operator.
    * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
@@ -244,7 +250,21 @@ contract LineaRollup is AccessControlUpgradeable, ZkEvmV2, L1MessageService, Per
     BlobSubmission[] calldata _blobSubmissions,
     bytes32 _parentShnarf,
     bytes32 _finalBlobShnarf
-  ) external whenTypeAndGeneralNotPaused(PauseType.BLOB_SUBMISSION) onlyRole(OPERATOR_ROLE) {
+  ) external virtual whenTypeAndGeneralNotPaused(PauseType.BLOB_SUBMISSION) onlyRole(OPERATOR_ROLE) {
+    _submitBlobs(_blobSubmissions, _parentShnarf, _finalBlobShnarf);
+  }
+
+  /**
+   * @notice Submit one or more EIP-4844 blobs.
+   * @param _blobSubmissions The data for blob submission including proofs and required polynomials.
+   * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
+   * @param _finalBlobShnarf The expected final shnarf post computation of all the blob shnarfs.
+   */
+  function _submitBlobs(
+    BlobSubmission[] calldata _blobSubmissions,
+    bytes32 _parentShnarf,
+    bytes32 _finalBlobShnarf
+  ) internal virtual {
     if (_blobSubmissions.length == 0) {
       revert BlobSubmissionDataIsMissing();
     }
