@@ -29,7 +29,7 @@ concurrency:
 
 jobs:
   blockchain-reference-tests:
-    runs-on: [ubuntu-latest-128]
+    runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -63,10 +63,10 @@ jobs:
         run: mv ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/failedBlockchainReferenceTests.json ${{ github.workspace }}/tmp/${{ steps.extract_branch.outputs.branch }}/failedBlockchainReferenceTests-input.json
 
       - name: Run reference blockchain tests
-        run: GOMEMLIMIT=20GiB ./gradlew referenceBlockchainTests -x spotlessCheck --tests "${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}"
+        run: GOMAXPROCS=10 GOMEMLIMIT=20GiB ./gradlew referenceBlockchainTests -x spotlessCheck --tests "${{ inputs.test_filter || 'BlockchainReferenceTest_*' }}"
         timeout-minutes: 360
         env:
-          REFERENCE_TESTS_PARALLELISM: 4
+          REFERENCE_TESTS_PARALLELISM: 3
           JAVA_OPTS: -Dorg.gradle.daemon=false
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air

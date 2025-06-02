@@ -62,10 +62,6 @@ tasks.register('referenceBlockchainTests', Test) {
   dependsOn generateBlockchainReferenceTests
   environment.put("REFERENCE_TEST_OUTCOME_OUTPUT_FILE", "BlockchainReferenceTestOutcome.json")
 
-  boolean isCiServer = System.getenv().containsKey("CI")
-  minHeapSize = isCiServer ? "8g" :"4g"
-  maxHeapSize = isCiServer ? "32g" : "8g"
-
   useJUnitPlatform {
     includeTags("BlockchainReferenceTest")
   }
@@ -89,10 +85,6 @@ tasks.register('referenceGeneralStateTests', Test) {
   useJUnitPlatform {
     includeTags("GeneralStateReferenceTest")
   }
-
-  boolean isCiServer = System.getenv().containsKey("CI")
-  minHeapSize = "4g"
-  maxHeapSize = isCiServer ? "32g" : "8g"
 }
 
 tasks.register("jacocoReferenceGeneralStateTestsReport", JacocoReport) {
@@ -108,10 +100,14 @@ tasks.register("jacocoReferenceGeneralStateTestsReport", JacocoReport) {
   tasks.named("referenceGeneralStateTests"),
   tasks.named("referenceBlockchainTests"),
 ].forEach {
-  it.configure {
+   it.configure {
+    // Configure resource limits    
+    boolean isCiServer = System.getenv().containsKey("CI")
+    minHeapSize = "256m"
+    maxHeapSize = isCiServer ? "32g" : "8g"           
     // Configure parallelism
     environment.put("blockchain", System.getenv("blockchain") ?: "Ethereum")
-    systemProperty("junit.jupiter.execution.timeout.default", "15 m")  // 5 minutes
+    systemProperty("junit.jupiter.execution.timeout.default", "15 m")
     systemProperty("junit.jupiter.execution.parallel.enabled", "true")
     systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
     systemProperty("junit.jupiter.execution.parallel.mode.classes.default", "concurrent")
