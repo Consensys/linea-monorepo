@@ -17,7 +17,6 @@ package net.consensys.linea.testing;
 
 import static net.consensys.linea.zktracer.ChainConfig.OLD_MAINNET_TESTCONFIG;
 import static net.consensys.linea.zktracer.ChainConfig.OLD_SEPOLIA_TESTCONFIG;
-import static net.consensys.linea.zktracer.Fork.LONDON;
 
 import java.io.File;
 import java.io.IOException;
@@ -196,7 +195,7 @@ public class ReplayExecutionEnvironment {
     MutableWorldState world = initWorld(conflation);
     // Construct the transaction processor
     final MainnetTransactionProcessor transactionProcessor =
-        ExecutionEnvironment.getProtocolSpec(chain.id, LONDON).getTransactionProcessor();
+        ExecutionEnvironment.getProtocolSpec(chain.id, chain.fork).getTransactionProcessor();
     // Begin
     tracer.traceStartConflation(conflation.blocks().size());
     //

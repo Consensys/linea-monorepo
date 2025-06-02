@@ -24,7 +24,6 @@ import java.util.function.Consumer;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.corset.CorsetValidator;
-import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkTracer;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
@@ -185,6 +184,7 @@ public class ToyExecutionTools {
   public static long executeTestOnlyForGasCost(
       final GeneralStateTestCaseEipSpec spec,
       final ProtocolSpec protocolSpec,
+      final ZkTracer tracer,
       final List<ToyAccount> accounts) {
     final MutableWorldState worldState = spec.getInitialWorldState();
     final WorldUpdater worldStateUpdater = worldState.updater();
@@ -223,12 +223,11 @@ public class ToyExecutionTools {
 
     Deque<MessageFrame> messageFrameStack = initialMessageFrame.getMessageFrameStack();
     while (!messageFrameStack.isEmpty()) {
-      processor.process(
-          messageFrameStack.peekFirst(), new ZkTracer(ChainConfig.MAINNET_LONDON_TESTCONFIG));
+      processor.process(messageFrameStack.peekFirst(), tracer);
     }
 
     final long intrinsicTxCostWithNoAccessOrDelegationCost =
-        evm.getGasCalculator().transactionIntrinsicGasCost(tx, 0);
+        tracer.getHub().gasCalculator.transactionIntrinsicGasCost(tx, 0);
 
     return LINEA_BLOCK_GAS_LIMIT
         - initialMessageFrame.getRemainingGas()

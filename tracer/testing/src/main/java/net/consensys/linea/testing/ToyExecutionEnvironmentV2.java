@@ -99,7 +99,7 @@ public class ToyExecutionEnvironmentV2 {
         this.buildGeneralStateTestCaseSpec(protocolSpec);
 
     return ToyExecutionTools.executeTestOnlyForGasCost(
-        generalStateTestCaseEipSpec, protocolSpec, this.accounts);
+        generalStateTestCaseEipSpec, protocolSpec, tracer, this.accounts);
   }
 
   public Hub getHub() {

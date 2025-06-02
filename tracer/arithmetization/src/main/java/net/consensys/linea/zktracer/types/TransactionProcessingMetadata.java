@@ -66,6 +66,7 @@ public abstract class TransactionProcessingMetadata {
   final BigInteger initialBalance;
 
   final long dataCost;
+  final long initCodeCost;
   final long accessListCost;
 
   /* g in the EYP, defined by g = TG - g0 */
@@ -153,10 +154,12 @@ public abstract class TransactionProcessingMetadata {
     // - the contract creation cost in case of deployment
     // - the baseline gas (gas for access lists and 7702 authorizations) is set to zero, because we
     // only consider the cost of the transaction payload
+    initCodeCost = hub.gasCalculator.initcodeCost(besuTransaction.getPayload().size());
     dataCost =
         hub.gasCalculator.transactionIntrinsicGasCost(besuTransaction, 0)
             - GAS_CONST_G_TRANSACTION
-            - (isDeployment ? GAS_CONST_G_CREATE : 0);
+            - (isDeployment ? GAS_CONST_G_CREATE : 0)
+            - (isDeployment ? initCodeCost : 0);
     accessListCost =
         besuTransaction.getAccessList().map(hub.gasCalculator::accessListGasCost).orElse(0L);
     initiallyAvailableGas = getInitiallyAvailableGas();
@@ -222,6 +225,7 @@ public abstract class TransactionProcessingMetadata {
   public long getUpfrontGasCost() {
     return dataCost
         + (isDeployment ? GAS_CONST_G_CREATE : 0)
+        + (isDeployment ? initCodeCost : 0)
         + GAS_CONST_G_TRANSACTION
         + accessListCost;
   }

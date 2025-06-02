@@ -59,7 +59,7 @@ public class ShanghaiTxndataOperation extends LondonTxndataOperation {
       callsToEucAndWcp.add(
           TxnDataComparisonRecord.callToLeq(
               wcp,
-              Bytes.of(tx.getBesuTransaction().getPayload().size()),
+              Bytes.ofUnsignedInt(tx.getBesuTransaction().getPayload().size()),
               MAX_INIT_CODE_SIZE_BYTES));
       // row 3
       final Bytes divisor =
