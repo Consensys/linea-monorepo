@@ -588,12 +588,6 @@ func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b interfa
 		}
 	}
 
-	// Skip ignorable fields
-	if serialization.IsIgnoreableType(v1.Type()) {
-		logrus.Printf("Skipping comparison of Ignorable type:%s at %s\n", v1.Type().String(), path)
-		return true
-	}
-
 	// Ensure same type
 	if v1.Type() != v2.Type() {
 		logrus.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, v1.Type(), v2.Type())
@@ -608,10 +602,6 @@ func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b interfa
 	// Handle maps
 	if v1.Kind() == reflect.Map {
 		if v1.Len() != v2.Len() {
-			if serialization.IsIgnoreableType(v1.Type()) {
-				logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
-				return true
-			}
 			logrus.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1.Len(), v2.Len(), v1.Type())
 			return false
 		}
@@ -649,10 +639,6 @@ func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b interfa
 		}
 
 		if v1.IsNil() != v2.IsNil() {
-			if serialization.IsIgnoreableType(v1.Type()) {
-				logrus.Printf("Skipping comparison of ignoreable types at %s\n", path)
-				return true
-			}
 			logrus.Printf("Mismatch at %s: nil status differs (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
 			return false
 		}
