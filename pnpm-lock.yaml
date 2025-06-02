@@ -206,13 +206,6 @@ importers:
         version: 1.86.0
 
   contracts:
-    dependencies:
-      solidity-coverage:
-        specifier: 0.8.16
-        version: 0.8.16(hardhat@2.24.0(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))
-      solidity-docgen:
-        specifier: 0.6.0-beta.36
-        version: 0.6.0-beta.36(hardhat@2.24.0(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))
     devDependencies:
       '@ethereumjs/util':
         specifier: 9.0.3
@@ -298,6 +291,12 @@ importers:
       solhint:
         specifier: 5.0.5
         version: 5.0.5(typescript@5.4.5)
+      solidity-coverage:
+        specifier: 0.8.16
+        version: 0.8.16(hardhat@2.24.0(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))
+      solidity-docgen:
+        specifier: 0.6.0-beta.36
+        version: 0.6.0-beta.36(hardhat@2.24.0(bufferutil@4.0.8)(ts-node@10.9.2(@types/node@22.7.5)(typescript@5.4.5))(typescript@5.4.5)(utf-8-validate@5.0.10))
       yargs:
         specifier: 'catalog:'
         version: 17.7.2
