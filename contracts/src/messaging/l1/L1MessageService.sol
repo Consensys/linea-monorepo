@@ -61,6 +61,12 @@ abstract contract L1MessageService is
     _sendMessage(_to, _fee, _calldata);
   }
 
+  /**
+   * @notice Adds a message for sending cross-chain and emits MessageSent.
+   * @param _to The address the message is intended for.
+   * @param _fee The fee being paid for the message delivery.
+   * @param _calldata The calldata to pass to the recipient.
+   */
   function _sendMessage(address _to, uint256 _fee, bytes calldata _calldata) internal virtual {
     if (_to == address(0)) {
       revert ZeroAddressNotAllowed();
