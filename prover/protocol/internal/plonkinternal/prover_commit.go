@@ -34,23 +34,23 @@ type (
 	// the interface [wizard.ProverAction]. It is responsible, when using the
 	// BBS22 commitment feature, to assign the Cp and PI polynomials so that the
 	// BBS22 randomness can be derived.
-	initialBBSProverAction struct {
+	InitialBBSProverAction struct {
 		GenericPlonkProverAction
-		proverStateLock *sync.Mutex
+		ProverStateLock *sync.Mutex
 	}
 	// lrCommitProverAction is a wrapper-type for [compilationCtx] implementing the
 	// interface [wizard.ProverAction]. It is responsible, when using the BBS22
 	// commitment feature, to assign the LRO polynomials once the BBS22
 	// randomness has been derived.
-	lroCommitProverAction struct {
+	LROCommitProverAction struct {
 		GenericPlonkProverAction
-		proverStateLock *sync.Mutex
+		ProverStateLock *sync.Mutex
 	}
 )
 
 // Run initializes the circuit assignment in the case where the the circuit uses
 // BBS22 commitment.
-func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
+func (pa InitialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
 
 	if pa.ExternalHasherOption.Enabled {
 		solver.RegisterHint(mimc.MimcHintfunc)
@@ -82,9 +82,9 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 
 			// Store the channels in the runtime so that we can
 			// access them in later rounds
-			pa.proverStateLock.Lock()
+			pa.ProverStateLock.Lock()
 			run.State.InsertNew(fmt.Sprintf("%v_SOLSYNC", pa.Columns.L[i].GetColID()), solSync)
-			pa.proverStateLock.Unlock()
+			pa.ProverStateLock.Unlock()
 
 			// Create the witness assignment. As we expect circuits with only
 			// public-inputs and (zero) private inputs, we can safely expect
@@ -124,7 +124,7 @@ func (pa initialBBSProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []
 }
 
 // Run implements the [wizard.ProverAction] interface
-func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
+func (pa LROCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 	ctx := pa
 
@@ -133,10 +133,10 @@ func (pa lroCommitProverAction) Run(run *wizard.ProverRuntime) {
 
 			// Retrieve the solsync. Not finding it means the instance is not
 			// used.
-			pa.proverStateLock.Lock()
+			pa.ProverStateLock.Lock()
 			solsync_, foundSolSync := run.State.TryGet(fmt.Sprintf("%v_SOLSYNC", pa.Columns.L[i].GetColID()))
 			run.State.TryDel(fmt.Sprintf("%v_SOLSYNC", pa.Columns.L[i].GetColID()))
-			pa.proverStateLock.Unlock()
+			pa.ProverStateLock.Unlock()
 
 			if !foundSolSync {
 				zeroCol := smartvectors.NewConstant(field.Zero(), ctx.Columns.L[i].Size())

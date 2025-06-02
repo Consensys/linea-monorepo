@@ -21,10 +21,10 @@ type PlonkInWizardProverAction interface {
 }
 
 var (
-	_ PlonkInWizardProverAction = plonkNoCommitProverAction{}
+	_ PlonkInWizardProverAction = PlonkNoCommitProverAction{}
 )
 
-type plonkNoCommitProverAction struct {
+type PlonkNoCommitProverAction struct {
 	GenericPlonkProverAction
 }
 
@@ -38,7 +38,7 @@ type plonkNoCommitProverAction struct {
 // solution.
 //
 // It implements the [PlonkInWizardProverAction] interface.
-func (pa plonkNoCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
+func (pa PlonkNoCommitProverAction) Run(run *wizard.ProverRuntime, fullWitnesses []witness.Witness) {
 
 	var (
 		ctx             = pa
