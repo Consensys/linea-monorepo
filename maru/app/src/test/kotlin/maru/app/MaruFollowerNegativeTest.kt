@@ -21,8 +21,13 @@ import kotlin.time.Duration.Companion.seconds
 import kotlin.time.toJavaDuration
 import maru.app.Checks.getMinedBlocks
 import maru.consensus.ElFork
+import maru.core.Seal
+import maru.p2p.NoOpP2PNetwork
+import maru.p2p.ValidationResult
+import maru.testutils.InjectableSealedBlocksFakeNetwork
 import maru.testutils.MaruFactory
 import maru.testutils.NetworkParticipantStack
+import maru.testutils.SpyingP2PNetwork
 import maru.testutils.besu.BesuTransactionsHelper
 import org.apache.logging.log4j.LogManager
 import org.assertj.core.api.Assertions.assertThat
@@ -33,63 +38,34 @@ import org.hyperledger.besu.tests.acceptance.dsl.node.ThreadBesuNodeRunner
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.Cluster
 import org.hyperledger.besu.tests.acceptance.dsl.node.cluster.ClusterConfigurationBuilder
 import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
 import org.web3j.protocol.core.DefaultBlockParameter
 
-class MaruFollowerTest {
-  private lateinit var cluster: Cluster
-  private lateinit var validatorStack: NetworkParticipantStack
-  private lateinit var followerStack: NetworkParticipantStack
-  private lateinit var transactionsHelper: BesuTransactionsHelper
+class MaruFollowerNegativeTest {
+  private val cluster: Cluster =
+    Cluster(
+      ClusterConfigurationBuilder().build(),
+      NetConditions(NetTransactions()),
+      ThreadBesuNodeRunner(),
+    )
+
+  private val transactionsHelper: BesuTransactionsHelper = BesuTransactionsHelper()
   private val log = LogManager.getLogger(this.javaClass)
+  val elFork = ElFork.Prague
 
-  @BeforeEach
-  fun setUp() {
-    val elFork = ElFork.Prague
-    transactionsHelper = BesuTransactionsHelper()
-    cluster =
-      Cluster(
-        ClusterConfigurationBuilder().build(),
-        NetConditions(NetTransactions()),
-        ThreadBesuNodeRunner(),
-      )
-
-    validatorStack =
+  @Test
+  fun `Maru follower doesn't import blocks without proper signature`() {
+    val spyingP2PNetwork = SpyingP2PNetwork(NoOpP2PNetwork)
+    val validatorStack =
       NetworkParticipantStack(cluster = cluster) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
-        MaruFactory.buildTestMaruValidatorWithP2p(
+        MaruFactory.buildTestMaruValidatorWithoutP2p(
           ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
           engineApiRpc = engineRpcUrl,
           elFork = elFork,
           dataDir = tmpDir,
-          validatorP2pPort = 0u,
+          p2pNetwork = spyingP2PNetwork,
         )
       }
     validatorStack.maruApp.start()
-    followerStack =
-      NetworkParticipantStack(
-        cluster = cluster,
-      ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
-        MaruFactory.buildTestMaruFollowerWithP2pNetwork(
-          ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
-          engineApiRpc = engineRpcUrl,
-          elFork = elFork,
-          dataDir = tmpDir,
-          validatorP2pPort = validatorStack.p2pPort,
-        )
-      }
-    followerStack.maruApp.start()
-  }
-
-  @AfterEach
-  fun tearDown() {
-    cluster.close()
-    followerStack.stop()
-    validatorStack.stop()
-  }
-
-  @Test
-  fun `Maru follower is able to import blocks`() {
     val validatorGenesis =
       validatorStack.besuNode
         .nodeRequests()
@@ -99,6 +75,21 @@ class MaruFollowerTest {
           false,
         ).send()
         .block
+
+    val followerP2PNetwork = InjectableSealedBlocksFakeNetwork()
+    val followerStack =
+      NetworkParticipantStack(
+        cluster = cluster,
+      ) { ethereumJsonRpcBaseUrl, engineRpcUrl, tmpDir, p2pNetwork ->
+        MaruFactory.buildTestMaruFollowerWithoutP2pNetwork(
+          ethereumJsonRpcUrl = ethereumJsonRpcBaseUrl,
+          engineApiRpc = engineRpcUrl,
+          elFork = elFork,
+          dataDir = tmpDir,
+          p2pNetwork = followerP2PNetwork,
+        )
+      }
+    followerStack.maruApp.start()
     val followerGenesis =
       followerStack.besuNode
         .nodeRequests()
@@ -110,7 +101,7 @@ class MaruFollowerTest {
         .block
     assertThat(validatorGenesis).isEqualTo(followerGenesis)
 
-    val blocksToProduce = 5
+    val blocksToProduce = 1
     repeat(blocksToProduce) {
       transactionsHelper.run {
         validatorStack.besuNode.sendTransactionAndAssertExecution(
@@ -126,8 +117,15 @@ class MaruFollowerTest {
       .timeout(5.seconds.toJavaDuration())
       .untilAsserted {
         val blocksProducedByQbftValidator = validatorStack.besuNode.getMinedBlocks(blocksToProduce)
-        val blocksImportedByFollower = followerStack.besuNode.getMinedBlocks(blocksToProduce)
-        assertThat(blocksImportedByFollower).isEqualTo(blocksProducedByQbftValidator)
+        assertThat(blocksProducedByQbftValidator).hasSize(1)
       }
+
+    val originalSealedBlock = spyingP2PNetwork.emittedBlockMessages.first()
+    val originalSeal = originalSealedBlock.commitSeals.toList().first()
+    val alternatedSignature = originalSeal.signature.reversed().toByteArray()
+    val blockWithWrongSeal = originalSealedBlock.copy(commitSeals = setOf(Seal(alternatedSignature)))
+    val result = followerP2PNetwork.injectSealedBlock(blockWithWrongSeal).get()
+
+    assertThat(result).isInstanceOf(ValidationResult.Companion.Invalid::class.java)
   }
 }
