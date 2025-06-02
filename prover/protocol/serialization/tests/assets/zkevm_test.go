@@ -56,7 +56,7 @@ func runSerdeTest(t *testing.T, input interface{}, name string) {
 	})
 
 	// Log results
-	t.Logf("%s serialization=%v deserialization=%v buffer-size=%v", name, serTime, desTime, len(b))
+	t.Logf("%s serialization=%v deserialization=%v buffer-size=%v \n", name, serTime, desTime, len(b))
 
 	// Sanity check: Compare exported fields
 	t.Logf("Running sanity checks on deserialized object: Comparing if the values matched before and after serialization")

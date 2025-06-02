@@ -11,6 +11,7 @@ import (
 
 	cs "github.com/consensys/gnark/constraint/bls12-377"
 	"github.com/consensys/gnark/frontend"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
@@ -56,6 +57,7 @@ var (
 	TypeOfFrontendVariable   = reflect.TypeOf((*frontend.Variable)(nil)).Elem()
 	TypeOfHashFuncGenerator  = reflect.TypeOf(func() hash.Hash { return nil })
 	TypeOfHashTypeHasher     = reflect.TypeOf(func() hashtypes.Hasher { return hashtypes.Hasher{} })
+	TypeOfRingSisKeyPtr      = reflect.TypeOf(&ringsis.Key{})
 )
 
 // BackReference represents an integer index into PackedObject arrays (e.g., Columns, Coins).

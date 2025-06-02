@@ -13,6 +13,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
+	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
@@ -78,6 +79,33 @@ func init() {
 		Ser:  marshalAsNil,
 		Des:  unmarshalAsZero,
 	}
+
+	CustomCodexes[TypeOfRingSisKeyPtr] = CustomCodex{
+		Type: TypeOfRingSisKeyPtr,
+		Ser:  marshalRingSisKey,
+		Des:  unmarshalRingSisKey,
+	}
+}
+
+func marshalRingSisKey(path string, _ *Serializer, val reflect.Value) (any, error) {
+	key := val.Interface().(*ringsis.Key)
+	keyGenParams := key.KeyGen
+	serParams, err := SerializeAnyWithCborPkg(keyGenParams)
+	if err != nil {
+		return nil, err
+	}
+	return serParams, err
+}
+
+func unmarshalRingSisKey(path string, des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+	var keyGenParams ringsis.KeyGen
+	if err := DeserializeAnyWithCborPkg(val.([]byte), &keyGenParams); err != nil {
+		return reflect.Value{}, err
+	}
+
+	innerParams := keyGenParams.Params
+	ringSiskey := ringsis.GenerateKey(*innerParams, keyGenParams.MaxNumFieldToHash)
+	return reflect.ValueOf(ringSiskey), nil
 }
 
 func marshalFieldElement(path string, _ *Serializer, val reflect.Value) (any, error) {
