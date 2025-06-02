@@ -127,6 +127,7 @@ func (c *MultiMulCircuit[C, T]) Define(api frontend.API) error {
 	}
 	nbInstances := len(c.Instances)
 	Cs, Ps, Ns := make([]T, nbInstances), make([]T, nbInstances), make([]T, nbInstances)
+	// TODO: move this part into the main loop below. Then we don't need to type assert
 	for i := range c.Instances {
 		Cs[i] = c.Instances[i].CurrentAccumulator.ToElement(api, f)
 		Ps[i] = c.Instances[i].Point.ToElement(api, f)

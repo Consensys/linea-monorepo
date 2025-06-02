@@ -52,6 +52,33 @@ func (c *MillerLoopMulInstance) Check(api frontend.API, fp *emulated.Field[sw_bl
 	return evmprecompiles.ECPairBLSMillerLoopAndMul(api, prev, p, q, current)
 }
 
+type MultiMillerLoopFinalExpCircuit struct {
+	Instances []MillerLoopFinalExpInstance `gnark:",public"`
+}
+
+func newMultiMillerLoopFinalExpCircuit(limits *Limits) *MultiMillerLoopFinalExpCircuit {
+	return &MultiMillerLoopFinalExpCircuit{
+		Instances: make([]MillerLoopFinalExpInstance, limits.NbFinalExpInputInstances),
+	}
+}
+
+func (c *MultiMillerLoopFinalExpCircuit) Define(api frontend.API) error {
+	fp, err := emulated.NewField[sw_bls12381.BaseField](api)
+	if err != nil {
+		return fmt.Errorf("new field: %w", err)
+	}
+	pairing, err := sw_bls12381.NewPairing(api)
+	if err != nil {
+		return fmt.Errorf("new pairing: %w", err)
+	}
+	for i := range c.Instances {
+		if err := c.Instances[i].Check(api, fp, pairing); err != nil {
+			return fmt.Errorf("check instance %d: %w", i, err)
+		}
+	}
+	return nil
+}
+
 type MillerLoopFinalExpInstance struct {
 	Prev     gtElementWizard
 	P        g1ElementWizard
