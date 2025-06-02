@@ -73,6 +73,8 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
       - name: Run e2e tests
         id: run_e2e_tests
         timeout-minutes: 8
