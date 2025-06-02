@@ -2,10 +2,11 @@ package smartvectorsext
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -27,15 +28,15 @@ func TestBatchInvert(t *testing.T) {
 		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.Zero(), 0, 8),
 		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.Zero(), 0, 8),
 		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.Zero(), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.NewElement(42, 43), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.NewElement(42, 43), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.NewElement(42, 43), 0, 8),
+		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.NewElement(42, 43, 0, 0), 0, 8),
+		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.NewElement(42, 43, 0, 0), 0, 8),
+		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.NewElement(42, 43, 0, 0), 0, 8),
 		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.Zero(), 2, 8),
 		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.Zero(), 2, 8),
 		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.Zero(), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.NewElement(42, 43), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.NewElement(42, 43), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.NewElement(42, 43), 2, 8),
+		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.NewElement(42, 43, 0, 0), 2, 8),
+		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.NewElement(42, 43, 0, 0), 2, 8),
+		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.NewElement(42, 43, 0, 0), 2, 8),
 	}
 
 	for i := range testCases {
@@ -80,15 +81,15 @@ func TestIsZero(t *testing.T) {
 		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.Zero(), 0, 8),
 		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.Zero(), 0, 8),
 		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.Zero(), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.NewElement(42, 43), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.NewElement(42, 43), 0, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.NewElement(42, 43), 0, 8),
+		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.NewElement(42, 43, 0, 0), 0, 8),
+		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.NewElement(42, 43, 0, 0), 0, 8),
+		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.NewElement(42, 43, 0, 0), 0, 8),
 		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.Zero(), 2, 8),
 		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.Zero(), 2, 8),
 		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.Zero(), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.NewElement(42, 43), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.NewElement(42, 43), 2, 8),
-		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.NewElement(42, 43), 2, 8),
+		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 0, 0), fext.NewElement(42, 43, 0, 0), 2, 8),
+		NewPaddedCircularWindowExt(vectorext.ForTest(0, 0, 1, 1), fext.NewElement(42, 43, 0, 0), 2, 8),
+		NewPaddedCircularWindowExt(vectorext.ForTest(1, 1, 2, 2), fext.NewElement(42, 43, 0, 0), 2, 8),
 	}
 
 	for i := range testCases {
@@ -105,15 +106,20 @@ func TestIsZero(t *testing.T) {
 				)
 
 				if y == fext.Zero() {
-					a, b := x.Uint64()
+					a, b, c, d := fext.Uint64(&x)
 					assert.Equal(t, uint64(1), a)
 					assert.Equal(t, uint64(0), b)
+					assert.Equal(t, uint64(0), c)
+					assert.Equal(t, uint64(0), d)
+
 				}
 
 				if y != fext.Zero() {
-					a, b := x.Uint64()
+					a, b, c, d := fext.Uint64(&x)
 					assert.Equal(t, uint64(0), a)
 					assert.Equal(t, uint64(0), b)
+					assert.Equal(t, uint64(0), c)
+					assert.Equal(t, uint64(0), d)
 				}
 
 				if t.Failed() {

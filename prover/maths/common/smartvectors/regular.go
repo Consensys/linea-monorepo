@@ -2,8 +2,6 @@ package smartvectors
 
 import (
 	"fmt"
-	"iter"
-	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -24,16 +22,23 @@ func NewRegular(v []field.Element) *Regular {
 	return &res
 }
 
-// Returns the length of the regular vector
+// Len returns the length of the regular vector
 func (r *Regular) Len() int { return len(*r) }
 
-// Returns a particular element of the vector
-func (r *Regular) GetBase(n int) (field.Element, error) { return (*r)[n], nil }
-
-func (r *Regular) GetExt(n int) fext.Element {
-	return *new(fext.Element).SetFromBase(&(*r)[n])
+// GetBase returns the n-th entry element of the vector
+// TODO why does this function exist ?
+func (r *Regular) GetBase(n int) (field.Element, error) {
+	return (*r)[n], nil
 }
 
+// GetExt returns the n-th element interpreted as an element on the extension
+func (r *Regular) GetExt(n int) fext.Element {
+	var res fext.Element
+	fext.FromBase(&res, &(*r)[n])
+	return res
+}
+
+// Get TODO same as GetBase ??
 func (r *Regular) Get(n int) field.Element {
 	res, err := r.GetBase(n)
 	if err != nil {
@@ -93,23 +98,12 @@ func (r *Regular) WriteInSliceExt(s []fext.Element) {
 	assertHasLength(len(s), len(*r))
 	for i := 0; i < len(s); i++ {
 		elem, _ := r.GetBase(i)
-		s[i].SetFromBase(&elem)
+		fext.FromBase(&s[i], &elem)
 	}
 }
 
 func (r *Regular) Pretty() string {
 	return fmt.Sprintf("Regular[%v]", vector.Prettify(*r))
-}
-
-// IterateCompact returns an iterator over the elements of the Regular.
-func (r *Regular) IterateCompact() iter.Seq[field.Element] {
-	return slices.Values(*r)
-}
-
-// IterateSkipPadding returns an interator over all the elements of the
-// smart-vector.
-func (r *Regular) IterateSkipPadding() iter.Seq[field.Element] {
-	return r.IterateCompact()
 }
 
 func processRegularOnly(op operator, svecs []SmartVector, coeffs []int, p ...mempool.MemPool) (result *Pooled, numMatches int) {
@@ -179,20 +173,17 @@ func (r *Regular) IntoRegVecSaveAlloc() []field.Element {
 }
 
 func (r *Regular) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return (*r)[:], nil
+	return *r, nil
 }
 
 func (r *Regular) IntoRegVecSaveAllocExt() []fext.Element {
 	temp := make([]fext.Element, r.Len())
 	for i := 0; i < r.Len(); i++ {
 		elem, _ := r.GetBase(i)
-		temp[i].SetFromBase(&elem)
+		// temp[i].SetFromBase(&elem)
+		fext.FromBase(&temp[i], &elem)
 	}
 	return temp
-}
-
-func (r *Regular) GetPtr(n int) *field.Element {
-	return &(*r)[n]
 }
 
 type Pooled struct {

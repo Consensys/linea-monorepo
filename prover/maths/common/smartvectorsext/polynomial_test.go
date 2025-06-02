@@ -4,14 +4,15 @@ package smartvectorsext
 
 import (
 	"fmt"
+	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,26 +26,27 @@ func TestRuffini(t *testing.T) {
 		expectedRem fext.Element
 	}{
 		{
-			q:           fext.NewElement(1, 0),
-			p:           ForTestFromPairs(3, 0, 0, 0, 1, 0),
-			expectedQuo: ForTestFromPairs(1, 0, 1, 0),
-			expectedRem: fext.NewElement(4, 0),
+			q:           fext.NewElement(1, 0, 0, 0),
+			p:           ForTestFromQuads(3, 0, 0, 0, 1, 0, 0, 0),
+			expectedQuo: ForTestFromQuads(1, 0, 0, 0),
+			expectedRem: fext.NewElement(4, 0, 0, 0),
 		},
 		{
 			// 3 = 0 * (X - 1) + 3
-			q:           fext.NewElement(1, 0),
-			p:           ForTestFromPairs(3, 0),
+			q:           fext.NewElement(1, 0, 0, 0),
+			p:           ForTestFromQuads(3, 0, 0, 0),
 			expectedQuo: NewConstantExt(fext.Zero(), 1),
-			expectedRem: fext.NewElement(3, 0),
+			expectedRem: fext.NewElement(3, 0, 0, 0),
 		},
 		{
-			// -α^2 - 3 α + α x^3 + x^3 - α^2 x^2 - 2 α x^2 - x^2 + α x + 2 x + 3 =
+			// (3 -α^2 - 3 α) + (2 + α) x + (- 1 - α^2 - 2 α)x^2 + (α +1)x^3 =
 			// (x-(1+alpha))(x^2*(1+alpha)+(2+alpha))+5
-			// alpha is a square root used to build the extension field, i.e. alpha^2=fext.RootPowers[1]
-			q:           fext.NewElement(1, 1),
-			p:           ForTestFromPairs(-fext.RootPowers[1]+3, -3, 2, 1, -1-fext.RootPowers[1], -2, 1, 1),
-			expectedQuo: ForTestFromPairs(2, 1, 0, 0, 1, 1),
-			expectedRem: fext.NewElement(5, 0),
+			// alpha is a square root used to build the extension field,
+			// i.e. alpha = v, alpha^2=u,
+			q:           fext.NewElement(1, 0, 1, 0),
+			p:           ForTestFromQuads(3, -1, -3, 0, 2, 0, 1, 0, -1, -1, -2, 0, 1, 0, 1, 0),
+			expectedQuo: ForTestFromQuads(2, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0),
+			expectedRem: fext.NewElement(5, 0, 0, 0),
 		},
 	}
 
@@ -73,7 +75,9 @@ func TestFuzzPolynomial(t *testing.T) {
 			b := tcaseB.svecs[0]
 
 			// Try interpolating by one (should return the first element)
-			xa := Interpolate(a, fext.One())
+			var zeroExt fext.Element
+			zeroExt.SetZero()
+			xa := EvaluateLagrange(a, zeroExt)
 			expecteda0 := a.GetExt(0)
 			assert.Equal(t, xa.String(), expecteda0.String())
 
@@ -132,21 +136,18 @@ func TestBivariatePolynomial(t *testing.T) {
 		{
 			// P(X) = P1(X)+Y*P2(X) = (1+4)+(3+8)Y = 5+11Y = 5+33 = 38
 			v:         ForTestExt(1, 2, 3, 4),
-			x:         fext.NewElement(2, 0),
-			y:         fext.NewElement(3, 0),
+			x:         fext.NewElement(2, 0, 0, 0),
+			y:         fext.NewElement(3, 0, 0, 0),
 			numCoeffX: 2,
-			res:       fext.NewElement(38, 0),
+			res:       fext.NewElement(38, 0, 0, 0),
 		},
 		{
 			// P(X) = P1(X)+Y*P2(X)
-			v:         ForTestFromPairs(1, 1, 2, 2, 3, 3, 4, 4),
-			x:         fext.NewElement(2, 1),
-			y:         fext.NewElement(3, 2),
+			v:         ForTestFromQuads(1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0),
+			x:         fext.NewElement(2, 0, 0, 0),
+			y:         fext.NewElement(3, 1, 2, 0),
 			numCoeffX: 2,
-			res: *new(fext.Element).
-				SetInt64Pair(
-					int64(44*fext.RootPowers[1]+38),
-					int64(8*fext.RootPowers[1]+74)),
+			res:       fext.NewElement(38, 11, 22, 0),
 		},
 	}
 
@@ -171,11 +172,11 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 	randPoly := vectorext.ForTest(1, 2, 3, 4)
 	randPoly2 := vectorext.ForTest(1, 1, 1, 1)
 
-	x := fext.NewElement(51, fieldPaddingInt())
+	x := fext.NewElement(51, 1, 2, 3)
 
-	expectedY := polyext.EvalUnivariate(randPoly, x)
-	expectedY2 := polyext.EvalUnivariate(randPoly2, x)
-	domain := fft.NewDomain(n).WithCoset()
+	expectedY := polyext.Eval(randPoly, x)
+	expectedY2 := polyext.Eval(randPoly2, x)
+	domain := fft.NewDomain(uint64(n))
 
 	/*
 		Test without coset
@@ -188,10 +189,10 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 
 	domain.FFTExt(polys[0], fft.DIF)
 	domain.FFTExt(polys[1], fft.DIF)
-	fft.BitReverseExt(polys[0])
-	fft.BitReverseExt(polys[1])
+	fft.BitReverse(polys[0])
+	fft.BitReverse(polys[1])
 
-	yOnRoots := fastpolyext.BatchInterpolate(polys, x)
+	yOnRoots := fastpolyext.BatchEvaluateLagrange(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -206,25 +207,24 @@ func TestBatchInterpolationWithConstantVector(t *testing.T) {
 
 	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
-	fft.BitReverseExt(onCosets[0])
-	fft.BitReverseExt(onCosets[1])
+	fft.BitReverse(onCosets[0])
+	fft.BitReverse(onCosets[1])
 
-	yOnCosets := fastpolyext.BatchInterpolate(onCosets, x, true)
+	yOnCosets := fastpolyext.BatchEvaluateLagrange(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 
 }
 
-func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
+func TestBatchEvaluateLagrangeOnlyConstantVector(t *testing.T) {
 	n := 4
 	randPoly := vectorext.ForTest(1, 1, 1, 1)
 	randPoly2 := vectorext.ForTest(2, 2, 2, 2)
-	x := fext.NewElement(51, fieldPaddingInt())
+	x := fext.NewElement(51, 1, 2, 3)
 
-	expectedY := polyext.EvalUnivariate(randPoly, x)
-	expectedY2 := polyext.EvalUnivariate(randPoly2, x)
-	domain := fft.NewDomain(n).WithCoset()
-
+	expectedY := polyext.Eval(randPoly, x)
+	expectedY2 := polyext.Eval(randPoly2, x)
+	domain := fft.NewDomain(uint64(n))
 	/*
 		Test without coset
 	*/
@@ -236,10 +236,10 @@ func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
 
 	domain.FFTExt(polys[0], fft.DIF)
 	domain.FFTExt(polys[1], fft.DIF)
-	fft.BitReverseExt(polys[0])
-	fft.BitReverseExt(polys[1])
+	fft.BitReverse(polys[0])
+	fft.BitReverse(polys[1])
 
-	yOnRoots := fastpolyext.BatchInterpolate(polys, x)
+	yOnRoots := fastpolyext.BatchEvaluateLagrange(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 
@@ -254,10 +254,10 @@ func TestBatchInterpolateOnlyConstantVector(t *testing.T) {
 
 	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
-	fft.BitReverseExt(onCosets[0])
-	fft.BitReverseExt(onCosets[1])
+	fft.BitReverse(onCosets[0])
+	fft.BitReverse(onCosets[1])
 
-	yOnCosets := fastpolyext.BatchInterpolate(onCosets, x, true)
+	yOnCosets := fastpolyext.BatchEvaluateLagrange(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 }
@@ -270,13 +270,11 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	randPoly2 := vectorext.ForTest(1, 1, 1, 1)
 	randPoly3 := vectorext.ForTest(1, 2, 3, 4)
 
-	x := fext.NewElement(51, fieldPaddingInt())
-
-	expectedY := polyext.EvalUnivariate(randPoly, x)
-	expectedY2 := polyext.EvalUnivariate(randPoly2, x)
-	expectedY3 := polyext.EvalUnivariate(randPoly3, x)
-	domain := fft.NewDomain(n).WithCoset()
-
+	x := fext.NewElement(51, 1, 2, 3)
+	expectedY := polyext.Eval(randPoly, x)
+	expectedY2 := polyext.Eval(randPoly2, x)
+	expectedY3 := polyext.Eval(randPoly3, x)
+	domain := fft.NewDomain(uint64(n))
 	/*
 		Test without coset
 	*/
@@ -291,11 +289,11 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	domain.FFTExt(polys[0], fft.DIF)
 	domain.FFTExt(polys[1], fft.DIF)
 	domain.FFTExt(polys[2], fft.DIF)
-	fft.BitReverseExt(polys[0])
-	fft.BitReverseExt(polys[1])
-	fft.BitReverseExt(polys[2])
+	fft.BitReverse(polys[0])
+	fft.BitReverse(polys[1])
+	fft.BitReverse(polys[2])
 
-	yOnRoots := fastpolyext.BatchInterpolate(polys, x)
+	yOnRoots := fastpolyext.BatchEvaluateLagrange(polys, x)
 	require.Equal(t, expectedY.String(), yOnRoots[0].String())
 	require.Equal(t, expectedY2.String(), yOnRoots[1].String())
 	require.Equal(t, expectedY3.String(), yOnRoots[2].String())
@@ -314,11 +312,11 @@ func TestBatchInterpolationThreeVectors(t *testing.T) {
 	domain.FFTExt(onCosets[0], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[1], fft.DIF, fft.OnCoset())
 	domain.FFTExt(onCosets[2], fft.DIF, fft.OnCoset())
-	fft.BitReverseExt(onCosets[0])
-	fft.BitReverseExt(onCosets[1])
-	fft.BitReverseExt(onCosets[2])
+	fft.BitReverse(onCosets[0])
+	fft.BitReverse(onCosets[1])
+	fft.BitReverse(onCosets[2])
 
-	yOnCosets := fastpolyext.BatchInterpolate(onCosets, x, true)
+	yOnCosets := fastpolyext.BatchEvaluateLagrange(onCosets, x, true)
 	require.Equal(t, expectedY.String(), yOnCosets[0].String())
 	require.Equal(t, expectedY2.String(), yOnCosets[1].String())
 	require.Equal(t, expectedY3.String(), yOnCosets[2].String())

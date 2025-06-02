@@ -2,7 +2,6 @@ package smartvectorsext
 
 import (
 	"fmt"
-	"iter"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
@@ -58,7 +57,7 @@ func (r *RotatedExt) Len() int {
 
 // Returns a particular element of the vector
 func (r *RotatedExt) GetBase(n int) (field.Element, error) {
-	return field.Zero(), fmt.Errorf(conversionError)
+	return field.Zero(), conversionError
 }
 
 // Returns a particular element of the vector
@@ -166,7 +165,7 @@ func (r *RotatedExt) IntoRegVecSaveAlloc() []field.Element {
 }
 
 func (r *RotatedExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return nil, fmt.Errorf(conversionError)
+	return nil, conversionError
 }
 
 func (r *RotatedExt) IntoRegVecSaveAllocExt() []fext.Element {
@@ -176,18 +175,6 @@ func (r *RotatedExt) IntoRegVecSaveAllocExt() []fext.Element {
 		res[i].Set(&temp[i])
 	}
 	return res
-}
-
-func (r *RotatedExt) IterateCompact() iter.Seq[field.Element] {
-	panic("not available for extensions")
-}
-
-func (c *RotatedExt) IterateSkipPadding() iter.Seq[field.Element] {
-	panic("not available for extensions")
-}
-
-func (c *RotatedExt) GetPtr(n int) *field.Element {
-	panic("not available for extensions")
 }
 
 // SoftRotate converts v into a [SmartVector] representing the same

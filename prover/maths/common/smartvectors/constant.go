@@ -2,8 +2,6 @@ package smartvectors
 
 import (
 	"fmt"
-	"iter"
-	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -25,13 +23,22 @@ func NewConstant(val field.Element, length int) *Constant {
 	return &Constant{val: val, length: length}
 }
 
-// Return the length of the smart-vector
-func (c *Constant) Len() int { return c.length }
+// Len returns the length of the smart-vector
+func (c *Constant) Len() int {
+	return c.length
+}
 
-// Returns an entry of the constant
-func (c *Constant) GetBase(int) (field.Element, error) { return c.val, nil }
+// GetBase returns an entry of the constant
+func (c *Constant) GetBase(int) (field.Element, error) {
+	return c.val, nil
+}
 
-func (c *Constant) GetExt(int) fext.Element { return *new(fext.Element).SetFromBase(&c.val) }
+// GetExt returns the value of the constant casted as an element on the extension
+func (c *Constant) GetExt(int) fext.Element {
+	var res fext.Element
+	fext.FromBase(&res, &c.val)
+	return res
+}
 
 func (r *Constant) Get(n int) field.Element {
 	res, err := r.GetBase(n)
@@ -39,10 +46,6 @@ func (r *Constant) Get(n int) field.Element {
 		panic(err)
 	}
 	return res
-}
-
-func (r *Constant) GetPtr(n int) *field.Element {
-	return &r.val
 }
 
 // Returns a subvector
@@ -74,7 +77,7 @@ func (c *Constant) WriteInSlice(s []field.Element) {
 
 func (c *Constant) WriteInSliceExt(s []fext.Element) {
 	for i := 0; i < len(s); i++ {
-		s[i].SetFromBase(&c.val)
+		fext.FromBase(&s[i], &c.val)
 	}
 }
 
@@ -108,19 +111,8 @@ func (c *Constant) IntoRegVecSaveAllocExt() []fext.Element {
 	res := make([]fext.Element, len(temp))
 	for i := 0; i < len(temp); i++ {
 		elem := temp[i]
-		res[i].SetFromBase(&elem)
+		// res[i].SetFromBase(&elem)
+		fext.FromBase(&res[i], &elem)
 	}
 	return res
-}
-
-// IterateCompact returns an iterator returning a single time the constant
-// value.
-func (c *Constant) IterateCompact() iter.Seq[field.Element] {
-	return slices.Values([]field.Element{c.val})
-}
-
-// IterateSkipPadding returns an empty iterator as the whole content of a
-// [Constant] is padding.
-func (c *Constant) IterateSkipPadding() iter.Seq[field.Element] {
-	return slices.Values([]field.Element{})
 }

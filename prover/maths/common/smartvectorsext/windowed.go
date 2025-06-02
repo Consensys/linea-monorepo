@@ -1,9 +1,7 @@
 package smartvectorsext
 
 import (
-	"errors"
 	"fmt"
-	"iter"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
@@ -52,7 +50,7 @@ func (p *PaddedCircularWindowExt) Len() int {
 
 // Returns a queries position
 func (p *PaddedCircularWindowExt) GetBase(n int) (field.Element, error) {
-	return field.Zero(), errors.New(conversionError)
+	return field.Zero(), conversionError
 }
 
 func (p *PaddedCircularWindowExt) GetExt(n int) fext.Element {
@@ -345,22 +343,10 @@ func (w *PaddedCircularWindowExt) IntoRegVecSaveAlloc() []field.Element {
 }
 
 func (w *PaddedCircularWindowExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return nil, errors.New(conversionError)
+	return nil, conversionError
 }
 
 func (w *PaddedCircularWindowExt) IntoRegVecSaveAllocExt() []fext.Element {
 	res := IntoRegVecExt(w)
 	return res
-}
-
-func (w *PaddedCircularWindowExt) IterateCompact() iter.Seq[field.Element] {
-	panic("not available for extensions")
-}
-
-func (c *PaddedCircularWindowExt) IterateSkipPadding() iter.Seq[field.Element] {
-	panic("not available for extensions")
-}
-
-func (w *PaddedCircularWindowExt) GetPtr(n int) *field.Element {
-	panic("not available for extensions")
 }

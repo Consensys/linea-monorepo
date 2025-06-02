@@ -4,9 +4,10 @@ package smartvectorsext
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"math/big"
 	"testing"
+
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempoolext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -194,7 +195,7 @@ func TestFuzzLinCombWithPoolCompare(t *testing.T) {
 
 func TestOpBasicEdgeCases(t *testing.T) {
 
-	two := fext.NewElement(2, fieldPaddingInt())
+	two := fext.NewElement(2, 0, 0, 0)
 	eight := new(fext.Element).Exp(two, big.NewInt(3))
 
 	testCases := []struct {
@@ -210,7 +211,7 @@ func TestOpBasicEdgeCases(t *testing.T) {
 				LeftPadded(vectorext.Repeat(two, 12), two, 16),
 				RightPadded(vectorext.Repeat(two, 12), two, 16),
 			},
-			expectedRes: NewRegularExt(vectorext.Repeat(fext.NewElement(6, 3*fieldPaddingInt()), 16)),
+			expectedRes: NewRegularExt(vectorext.Repeat(fext.NewElement(6, 0, 0, 0), 16)),
 			fn:          Add,
 		},
 		{
@@ -231,7 +232,7 @@ func TestOpBasicEdgeCases(t *testing.T) {
 				RightPadded(vectorext.Repeat(two, 12), two, 16),
 				NewRegularExt(vectorext.Repeat(two, 16)),
 			},
-			expectedRes: NewRegularExt(vectorext.Repeat(fext.NewElement(8, 4*fieldPaddingInt()), 16)),
+			expectedRes: NewRegularExt(vectorext.Repeat(fext.NewElement(8, 0, 0, 0), 16)),
 			fn:          Add,
 		},
 	}
@@ -247,9 +248,17 @@ func TestOpBasicEdgeCases(t *testing.T) {
 }
 
 func TestInnerProduct(t *testing.T) {
-	a := ForTestFromPairs(1, 1, 2, 1, 1, 1, 2, 1, 1, 1)
-	b := ForTestFromPairs(1, 1, -1, 1, 2, 1, -1, 1, 2, 1)
-	sum := new(fext.Element).SetInt64Pair(int64(1+5*fext.RootPowers[1]), 10)
+	list_a := []int{1, 1, 2, 1, 1, 1, 2, 1}
+	list_b := []int{1, 1, -1, 1, 2, 1, -1, 1}
+	a := ForTestFromQuads(list_a...)
+	b := ForTestFromQuads(list_b...)
+	z1 := vectorext.ForTestCalculateQuadProduct(list_a[:4], list_b[0:4])
+	z2 := vectorext.ForTestCalculateQuadProduct(list_a[4:8], list_b[4:8])
+	for i := 0; i < len(z1); i++ {
+		z2[i] = z1[i] + z2[i]
+	}
+
+	sum := fext.NewElement(int64(z2[0]), int64(z2[1]), int64(z2[2]), int64(z2[3]))
 
 	testCases := []struct {
 		a, b smartvectors.SmartVector
@@ -258,7 +267,7 @@ func TestInnerProduct(t *testing.T) {
 		{
 			a: a,
 			b: b,
-			y: *sum,
+			y: sum,
 		},
 	}
 
@@ -277,17 +286,16 @@ func TestScalarMul(t *testing.T) {
 		y smartvectors.SmartVector
 	}{
 		{
-			a: ForTestExt(1, 2, 1, 2, 1),
-			b: fext.NewElement(3, 1),
-			y: ForTestFromPairs(3, 1, 6, 2, 3, 1, 6, 2, 3, 1),
+			a: ForTestExt(1, 2, 1, 2),
+			b: fext.NewElement(3, 1, 2, 4),
+			y: ForTestFromQuads(3, 1, 2, 4, 6, 2, 4, 8, 3, 1, 2, 4, 6, 2, 4, 8),
 		},
 		{
-			a: ForTestExt(1, 2, 1, 2, 1),
-			b: fext.NewElement(3, 0),
-			y: ForTestExt(3, 6, 3, 6, 3),
+			a: ForTestExt(1, 2, 1, 2),
+			b: fext.NewElement(3, 0, 0, 0),
+			y: ForTestExt(3, 6, 3, 6),
 		},
 	}
-
 	for i, testCase := range testCases {
 		t.Run(fmt.Sprintf("case-%v", i), func(t *testing.T) {
 			y := ScalarMul(testCase.a, testCase.b)

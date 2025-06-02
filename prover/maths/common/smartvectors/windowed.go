@@ -2,8 +2,6 @@ package smartvectors
 
 import (
 	"fmt"
-	"iter"
-	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -50,21 +48,6 @@ func (p *PaddedCircularWindow) Len() int {
 	return p.totLen
 }
 
-// Offset returns the offset of the PCW
-func (p *PaddedCircularWindow) Offset() int {
-	return p.offset
-}
-
-// Windows returns the length of the window of the PCQ
-func (p *PaddedCircularWindow) Window() []field.Element {
-	return p.window
-}
-
-// PaddingVal returns the value used for padding the window
-func (p *PaddedCircularWindow) PaddingVal() field.Element {
-	return p.paddingVal
-}
-
 // Returns a queries position
 func (p *PaddedCircularWindow) GetBase(n int) (field.Element, error) {
 	// Check if the queried index is in the window
@@ -78,7 +61,9 @@ func (p *PaddedCircularWindow) GetBase(n int) (field.Element, error) {
 
 func (p *PaddedCircularWindow) GetExt(n int) fext.Element {
 	elem, _ := p.GetBase(n)
-	return *new(fext.Element).SetFromBase(&elem)
+	var res fext.Element
+	fext.FromBase(&res, &elem)
+	return res
 }
 
 func (r *PaddedCircularWindow) Get(n int) field.Element {
@@ -215,47 +200,13 @@ func (p *PaddedCircularWindow) WriteInSliceExt(buff []fext.Element) {
 	p.WriteInSlice(temp)
 	for i := 0; i < len(buff); i++ {
 		elem := temp[i]
-		buff[i].SetFromBase(&elem)
+		fext.FromBase(&buff[i], &elem)
 	}
 
 }
 
 func (p *PaddedCircularWindow) Pretty() string {
 	return fmt.Sprintf("Windowed[totlen=%v offset=%v, paddingVal=%v, window=%v]", p.totLen, p.offset, p.paddingVal.String(), vector.Prettify(p.window))
-}
-
-// IterateCompact returns an iterator over the elements of the PaddedCircularWindow
-// in a "compact" way. It can behave in 3 different ways:
-//   - (left-padded): the iterator will first return one element for the padding value
-//     and then the elements of the window.
-//   - (right-padded): the iterator will first return the elements of the window
-//     and then one element for the padding value.
-//   - (others): the iterator will not try to be smart and will return the elements
-func (p *PaddedCircularWindow) IterateCompact() iter.Seq[field.Element] {
-
-	if p.offset > 0 && p.offset+len(p.window) != p.totLen {
-		all := p.IntoRegVecSaveAlloc()
-		return slices.Values(all)
-	}
-
-	its := []iter.Seq[field.Element]{}
-
-	if p.offset > 0 {
-		its = append(its, slices.Values([]field.Element{p.paddingVal}))
-	}
-
-	its = append(its, slices.Values(p.window))
-
-	if p.offset+len(p.window) < p.totLen {
-		its = append(its, slices.Values([]field.Element{p.paddingVal}))
-	}
-
-	return utils.ChainIterators(its...)
-}
-
-// IterateSkipPadding returns an iterator over the windows of the PaddedCircularWindow
-func (p *PaddedCircularWindow) IterateSkipPadding() iter.Seq[field.Element] {
-	return slices.Values(p.window)
 }
 
 func (p *PaddedCircularWindow) interval() CircularInterval {
@@ -414,23 +365,7 @@ func (w *PaddedCircularWindow) IntoRegVecSaveAllocExt() []fext.Element {
 	res := make([]fext.Element, len(temp))
 	for i := 0; i < len(temp); i++ {
 		elem := temp[i]
-		res[i].SetFromBase(&elem)
+		fext.FromBase(&res[i], &elem)
 	}
 	return res
-}
-
-func (w *PaddedCircularWindow) GetPtr(n int) *field.Element {
-
-	// This normalizes the position of n with respect to the start of the
-	// window.
-	n = n - w.offset
-	if n < 0 {
-		n += w.totLen
-	}
-
-	if n < len(w.window) {
-		return &w.window[n]
-	}
-
-	return &w.paddingVal
 }

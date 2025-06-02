@@ -1,20 +1,14 @@
 package polyext
 
 import (
+	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// EvalUnivariate evaluates a univariate polynomial `pol` given as a vector of
-// coefficients. Coefficients are for increasing degree monomials: meaning that
-// pol[0] is the constant term and pol[len(pol) - 1] is the highest degree term.
-// The evaluation is done using the Horner method.
-//
-// If the empty slice is provided, it is understood as the zero polynomial and
-// the function returns zero.
-func EvalUnivariate(pol []fext.Element, x fext.Element) fext.Element {
+// Eval evalutes P := \sum_{i<n}pol[i]X^i at x.
+func Eval(pol []fext.Element, x fext.Element) fext.Element {
 	var res fext.Element
 	for i := len(pol) - 1; i >= 0; i-- {
 		res.Mul(&res, &x)
@@ -23,9 +17,14 @@ func EvalUnivariate(pol []fext.Element, x fext.Element) fext.Element {
 	return res
 }
 
-func EvalUnivariateBase(pol []fext.Element, x field.Element) fext.Element {
-	wrappedX := fext.Element{x, field.Zero()}
-	return EvalUnivariate(pol, wrappedX)
+func EvalOnBaseField(pol []fext.Element, x koalabear.Element) fext.Element {
+	var res fext.Element
+
+	for i := len(pol) - 1; i >= 0; i-- {
+		res.B0.A0.Mul(&res.B0.A0, &x)
+		res.Add(&res, &pol[i])
+	}
+	return res
 }
 
 // Mul multiplies two polynomials expressed by their coefficients using the

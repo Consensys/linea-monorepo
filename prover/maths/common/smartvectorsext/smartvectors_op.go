@@ -2,12 +2,13 @@ package smartvectorsext
 
 import (
 	"fmt"
-	"github.com/consensys/gnark/frontend"
+
+	field "github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext/gnarkfext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -19,14 +20,14 @@ func ForTestExt(xs ...int) smartvectors.SmartVector {
 
 // ForTestFromVect computes a regular smartvector of field extensions,
 // where each field extension is populated using one vector of size [fext.ExtensionDegree]
-func ForTestFromVect(xs ...[fext.ExtensionDegree]int) smartvectors.SmartVector {
+func ForTestFromVect(xs ...[4]int) smartvectors.SmartVector {
 	return NewRegularExt(vectorext.ForTestFromVect(xs...))
 }
 
-// ForTestFromPairs groups the inputs into pairs and computes a regular smartvector of
-// field extensions, where each field extension has only the first two coordinates populated.
-func ForTestFromPairs(xs ...int) smartvectors.SmartVector {
-	return NewRegularExt(vectorext.ForTestFromPairs(xs...))
+// ForTestFromQuads groups the inputs into quaternarys and computes a regular smartvector of
+// field extensions, where each field extension has the first four coordinates populated.
+func ForTestFromQuads(xs ...int) smartvectors.SmartVector {
+	return NewRegularExt(vectorext.ForTestFromQuads(xs...))
 }
 
 // IntoRegVec converts a smart-vector into a normal vec. The resulting vector
@@ -46,14 +47,11 @@ func IntoRegVecExt(s smartvectors.SmartVector) []fext.Element {
 }
 
 // IntoGnarkAssignment converts a smart-vector into a gnark assignment
-func IntoGnarkAssignment(sv smartvectors.SmartVector) []gnarkfext.Variable {
-	res := make([]gnarkfext.Variable, sv.Len())
+func IntoGnarkAssignment(sv smartvectors.SmartVector) []gnarkfext.Element {
+	res := make([]gnarkfext.Element, sv.Len())
 	for i := range res {
 		elem := sv.GetExt(i)
-		res[i] = gnarkfext.Variable{
-			A0: frontend.Variable(elem.A0),
-			A1: frontend.Variable(elem.A1),
-		}
+		res[i] = gnarkfext.FromValue(elem)
 	}
 	return res
 }

@@ -1,8 +1,6 @@
 package mempoolext
 
-import (
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
-)
+import "github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
 // SliceArena is a simple not-threadsafe arena implementation that uses a
 // mempool to carry its allocation. It will only put back free memory in the

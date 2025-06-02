@@ -1,8 +1,8 @@
 package smartvectorsext
 
 import (
+	"errors"
 	"fmt"
-	"iter"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
@@ -13,7 +13,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-const conversionError = "smartvector holds field extensions, but a base element was requested"
+var (
+	conversionError = errors.New("smartvector holds field extensions, but a base element was requested")
+)
 
 // RegularExt is s normal vector in a nutshell
 type RegularExt []fext.Element
@@ -31,7 +33,7 @@ func (r *RegularExt) Len() int { return len(*r) }
 
 // GetBase returns a particular element of the vector
 func (r *RegularExt) GetBase(n int) (field.Element, error) {
-	return field.Zero(), fmt.Errorf(conversionError)
+	return field.Zero(), conversionError
 }
 
 func (r *RegularExt) GetExt(n int) fext.Element {
@@ -167,28 +169,16 @@ func (r *RegularExt) IntoRegVecSaveAlloc() []field.Element {
 }
 
 func (r *RegularExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return nil, fmt.Errorf(conversionError)
+	return nil, conversionError
 }
 
 func (r *RegularExt) IntoRegVecSaveAllocExt() []fext.Element {
 	temp := make([]fext.Element, r.Len())
 	for i := 0; i < r.Len(); i++ {
 		elem, _ := r.GetBase(i)
-		temp[i].SetFromBase(&elem)
+		fext.FromBase(&temp[i], &elem)
 	}
 	return temp
-}
-
-func (r *RegularExt) IterateCompact() iter.Seq[field.Element] {
-	panic("not available for extensions")
-}
-
-func (c *RegularExt) IterateSkipPadding() iter.Seq[field.Element] {
-	panic("not available for extensions")
-}
-
-func (c *RegularExt) GetPtr(n int) *field.Element {
-	panic("not available for extensions")
 }
 
 type PooledExt struct {

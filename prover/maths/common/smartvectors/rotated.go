@@ -2,8 +2,6 @@ package smartvectors
 
 import (
 	"fmt"
-	"iter"
-	"slices"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 
@@ -65,7 +63,9 @@ func (r *Rotated) GetBase(n int) (field.Element, error) {
 // Returns a particular element of the vector
 func (r *Rotated) GetExt(n int) fext.Element {
 	temp, _ := r.v.GetBase(utils.PositiveMod(n+r.offset, r.Len()))
-	return *new(fext.Element).SetFromBase(&temp)
+	var res fext.Element
+	fext.FromBase(&res, &temp)
+	return res
 }
 
 func (r *Rotated) Get(n int) field.Element {
@@ -74,11 +74,6 @@ func (r *Rotated) Get(n int) field.Element {
 		panic(err)
 	}
 	return res
-}
-
-func (r *Rotated) GetPtr(n int) *field.Element {
-	pos := utils.PositiveMod(n+r.offset, r.Len())
-	return &r.v.Regular[pos]
 }
 
 // Returns a particular element. The subvector is taken at indices
@@ -157,7 +152,7 @@ func (r *Rotated) WriteInSliceExt(s []fext.Element) {
 	temp := rotatedAsRegular(r)
 	for i := 0; i < temp.Len(); i++ {
 		elem, _ := temp.GetBase(i)
-		s[i].SetFromBase(&elem)
+		fext.FromBase(&s[i], &elem)
 	}
 }
 
@@ -187,27 +182,9 @@ func (r *Rotated) IntoRegVecSaveAllocExt() []fext.Element {
 	temp := *rotatedAsRegular(r)
 	res := make([]fext.Element, temp.Len())
 	for i := 0; i < temp.Len(); i++ {
-		res[i].SetFromBase(&temp[i])
+		fext.FromBase(&res[i], &temp[i])
 	}
 	return res
-}
-
-func (r *Rotated) IntoRegVec() []field.Element {
-	return *rotatedAsRegular(r)
-}
-
-// IterateCompact returns an iterator over the elements of the Rotated.
-// It is not very smart as it reallocate the slice but that should not
-// matter as this is never called in practice.
-func (r *Rotated) IterateCompact() iter.Seq[field.Element] {
-	all := r.IntoRegVec()
-	return slices.Values(all)
-}
-
-// IterateSkipPadding returns an interator over all the elements of the
-// smart-vector. The function reallocates under the hood.
-func (r *Rotated) IterateSkipPadding() iter.Seq[field.Element] {
-	return r.IterateCompact()
 }
 
 // SoftRotate converts v into a [SmartVector] representing the same

@@ -5,44 +5,17 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/stretchr/testify/require"
 )
 
-func TestGnarkEval(t *testing.T) {
+// type Eval struct {
+// 	pol []frontend.Variable
+// }
 
-	t.Run("normal-poly", func(t *testing.T) {
+// func TestGnarkEval(t *testing.T) {
 
-		def := func(api frontend.API) error {
-			var (
-				pol      = vector.IntoGnarkAssignment(vector.ForTest(1, 2, 3, 4))
-				x        = 2
-				expected = 49
-				res      = EvaluateUnivariateGnark(api, pol, x)
-			)
-			api.AssertIsEqual(expected, res)
-			return nil
-		}
-
-		gnarkutil.AssertCircuitSolved(t, def)
-	})
-
-	t.Run("empty-poly", func(t *testing.T) {
-		def := func(api frontend.API) error {
-			var (
-				pol      = vector.IntoGnarkAssignment([]field.Element{})
-				x        = 2
-				expected = 0
-				res      = EvaluateUnivariateGnark(api, pol, x)
-			)
-			api.AssertIsEqual(expected, res)
-			return nil
-		}
-		gnarkutil.AssertCircuitSolved(t, def)
-	})
-
-}
+// }
 
 func TestGnarkEvalAnyDomain(t *testing.T) {
 

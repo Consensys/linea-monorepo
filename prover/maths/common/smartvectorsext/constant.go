@@ -2,7 +2,6 @@ package smartvectorsext
 
 import (
 	"fmt"
-	"iter"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -30,7 +29,7 @@ func (c *ConstantExt) Len() int { return c.length }
 
 // Returns an entry of the constant
 func (c *ConstantExt) GetBase(int) (field.Element, error) {
-	return field.Zero(), fmt.Errorf(conversionError)
+	return field.Zero(), conversionError
 }
 
 func (c *ConstantExt) GetExt(int) fext.Element { return c.val }
@@ -90,22 +89,10 @@ func (c *ConstantExt) IntoRegVecSaveAlloc() []field.Element {
 }
 
 func (c *ConstantExt) IntoRegVecSaveAllocBase() ([]field.Element, error) {
-	return nil, fmt.Errorf(conversionError)
+	return nil, conversionError
 }
 
 func (c *ConstantExt) IntoRegVecSaveAllocExt() []fext.Element {
 	res := smartvectors.IntoRegVecExt(c)
 	return res
-}
-
-func (c *ConstantExt) IterateCompact() iter.Seq[field.Element] {
-	panic("not available for extensions")
-}
-
-func (c *ConstantExt) IterateSkipPadding() iter.Seq[field.Element] {
-	panic("not available for extensions")
-}
-
-func (c *ConstantExt) GetPtr(n int) *field.Element {
-	panic("not available for extensions")
 }

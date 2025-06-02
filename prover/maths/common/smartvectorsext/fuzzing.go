@@ -192,7 +192,7 @@ func (gen *testCaseGen) NewTestCaseForLinComb() (tcase testCase) {
 
 		// Update the expected res value
 		var tmp, coeffField fext.Element
-		coeffField.SetInt64(int64(tcase.coeffs[i]))
+		fext.SetInt64(&coeffField, int64(tcase.coeffs[i]))
 		tmp.Mul(&val, &coeffField)
 		resVal.Add(&resVal, &tmp)
 
@@ -290,7 +290,7 @@ func (gen *testCaseGen) NewTestCaseForPolyEval() (tcase testCase) {
 	if winMaxStop-winMinStart > gen.windowWithLen {
 		utils.Panic("inconsistent window dimension %v %v with gen %++v", winMinStart, winMaxStop, gen)
 	}
-	resVal := polyext.EvalUnivariate(vals, x)
+	resVal := polyext.Eval(vals, x)
 
 	switch {
 	case maxType == constantT:
@@ -311,7 +311,7 @@ func (gen *testCaseGen) genValue() fext.Element {
 	case 1:
 		return fext.One()
 	default:
-		return fext.NewElement(uint64(gen.gen.Uint64()), fieldPaddingInt())
+		return fext.NewElement(int64(gen.gen.Uint64()), int64(0), int64(0), int64(0))
 	}
 
 }

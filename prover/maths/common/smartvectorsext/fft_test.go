@@ -4,12 +4,13 @@ package smartvectorsext
 
 import (
 	"fmt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"math/big"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -200,18 +201,25 @@ func TestFFTFuzzyEvaluation(t *testing.T) {
 				i := builder.gen.IntN(coeffs.Len())
 				t.Logf("Parameters are (vec %v - ratio %v - cosetID %v - evalAt %v", coeffs.Pretty(), ratio, cosetID, i)
 
-				x := fft.GetOmega(evals.Len())
+				x, err := fft.Generator(uint64(evals.Len()))
+				if err != nil {
+					panic(err)
+				}
 				x.Exp(x, big.NewInt(int64(i)))
 
 				if oncoset {
-					omegacoset := fft.GetOmega(evals.Len() * ratio)
+					omegacoset, err := fft.Generator(uint64(evals.Len() * ratio))
+					if err != nil {
+						panic(err)
+					}
 					omegacoset.Exp(omegacoset, big.NewInt(int64(cosetID)))
 					mulGen := field.NewElement(field.MultiplicativeGen)
 					omegacoset.Mul(&omegacoset, &mulGen)
 					x.Mul(&omegacoset, &x)
 				}
 
-				wrappedX := fext.Element{x, field.Zero()}
+				var wrappedX fext.Element
+				wrappedX.B0.A0 = x
 				yCoeff := EvalCoeff(coeffs, wrappedX)
 				yFFT := evals.GetExt(i)
 
@@ -254,22 +262,29 @@ func TestFFTFuzzyConsistWithInterpolation(t *testing.T) {
 				t.Logf("Parameters are (vec %v - ratio %v - cosetID %v - evalAt %v", coeffs.Pretty(), ratio, cosetID, i)
 
 				var xCoeff fext.Element
-				xCoeff.SetInt64(2)
+				fext.SetInt64(&xCoeff, 2)
 
 				xVal := xCoeff
 
 				if oncoset {
-					omegacoset := fft.GetOmega(evals.Len() * ratio)
+					omegacoset, err := fft.Generator(uint64(evals.Len() * ratio))
+					if err != nil {
+						panic(err)
+					}
 					omegacoset.Exp(omegacoset, big.NewInt(int64(cosetID)))
 					mulGen := field.NewElement(field.MultiplicativeGen)
 					omegacoset.Mul(&omegacoset, &mulGen)
-					xVal.DivByBase(&xVal, &omegacoset)
+					xVal.B0.A0.Div(&xVal.B0.A0, &omegacoset)
+					xVal.B0.A1.Div(&xVal.B0.A1, &omegacoset)
+					xVal.B1.A0.Div(&xVal.B1.A0, &omegacoset)
+					xVal.B1.A1.Div(&xVal.B1.A1, &omegacoset)
+
 				}
 
 				yCoeff := EvalCoeff(coeffs, xCoeff)
 				// We already multiplied xVal by the multiplicative generator in the
 				// important case.
-				yFFT := Interpolate(evals, xVal, false)
+				yFFT := EvaluateLagrange(evals, xVal, false)
 
 				require.Equal(t, yCoeff.String(), yFFT.String())
 
