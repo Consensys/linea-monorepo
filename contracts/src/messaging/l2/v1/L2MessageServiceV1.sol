@@ -138,7 +138,7 @@ abstract contract L2MessageServiceV1 is
     virtual
     nonReentrant
     distributeFees(_fee, _to, _calldata, _feeRecipient)
-    whenTypeNotPaused(PauseType.L1_L2)
+    whenTypeAndGeneralNotPaused(PauseType.L1_L2)
   {
     _claimMessage(_from, _to, _fee, _value, _calldata, _nonce);
   }
