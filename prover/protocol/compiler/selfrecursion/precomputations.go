@@ -61,7 +61,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 
 		// Sanity-check : if coms in precomputeds have length zero then the
 		// associated Dh should be nil
-		if (numPrecomputeds == 0) != (ctx.Columns.precompRoot == nil) {
+		if (numPrecomputeds == 0) != (ctx.Columns.PrecompRoot == nil) {
 			panic("nilness mismatch for precomputeds")
 		}
 

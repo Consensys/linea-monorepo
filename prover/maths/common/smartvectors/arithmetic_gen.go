@@ -69,7 +69,7 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector, p ...mempoo
 
 	// Special-case : if the operation is a product and the constRes is
 	// zero, we can early return zero ignoring the rest.
-	if _, ok := op.(productOp); ok && constRes != nil && constRes.val.IsZero() {
+	if _, ok := op.(productOp); ok && constRes != nil && constRes.Value.IsZero() {
 		return constRes
 	}
 
@@ -87,10 +87,10 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector, p ...mempoo
 	if matchedWindow > 0 && matchedConst > 0 {
 		switch w := windowRes.(type) {
 		case *PaddedCircularWindow:
-			op.constTermIntoVec(w.Window_, &constRes.val)
-			op.constTermIntoConst(&w.PaddingVal_, &constRes.val)
+			op.constTermIntoVec(w.Window_, &constRes.Value)
+			op.constTermIntoConst(&w.PaddingVal_, &constRes.Value)
 		case *Regular:
-			op.constTermIntoVec(*w, &constRes.val)
+			op.constTermIntoVec(*w, &constRes.Value)
 		}
 	}
 
@@ -114,7 +114,7 @@ func processOperator(op operator, coeffs []int, svecs []SmartVector, p ...mempoo
 	case matchedRegular+matchedConst == totalToMatch:
 		// In this case, there are no windowed in the list. This means we only
 		// need to merge the const one into the regular one before returning
-		op.constTermIntoVec(regularRes.Regular, &constRes.val)
+		op.constTermIntoVec(regularRes.Regular, &constRes.Value)
 		return regularRes
 	default:
 
@@ -157,11 +157,11 @@ func processConstOnly(op operator, svecs []SmartVector, coeffs []int) (constRes 
 		if cnst, ok := svec.(*Constant); ok {
 			if numMatches < 1 {
 				// First one, no need to add it into constVal since constVal is zero
-				op.constIntoTerm(&constVal, &cnst.val, coeffs[i])
+				op.constIntoTerm(&constVal, &cnst.Value, coeffs[i])
 				numMatches++
 				continue
 			}
-			op.constIntoConst(&constVal, &cnst.val, coeffs[i])
+			op.constIntoConst(&constVal, &cnst.Value, coeffs[i])
 			numMatches++
 		}
 	}
@@ -170,5 +170,5 @@ func processConstOnly(op operator, svecs []SmartVector, coeffs []int) (constRes 
 		return nil, 0
 	}
 
-	return &Constant{val: constVal, length: svecs[0].Len()}, numMatches
+	return &Constant{Value: constVal, Length: svecs[0].Len()}, numMatches
 }

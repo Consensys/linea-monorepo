@@ -16,7 +16,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	// Insert precomputed roots
 	rootHashesClean := []ifaces.Column{}
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
-		precompRoots := ctx.Columns.precompRoot
+		precompRoots := ctx.Columns.PrecompRoot
 		if precompRoots == nil {
 			utils.Panic("Precomputed root should not be nil! That's because, we are in commit to precomputed mode.")
 		}

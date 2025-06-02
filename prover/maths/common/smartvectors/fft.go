@@ -33,7 +33,7 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 	*/
 	switch x := v.(type) {
 	case *Constant:
-		if x.val.IsZero() {
+		if x.Value.IsZero() {
 			// The fft of the zero vec is zero
 			return x.DeepCopy()
 		}
@@ -41,9 +41,9 @@ func FFT(v SmartVector, decimation fft.Decimation, bitReverse bool, cosetRatio i
 		if cosetID == 0 && cosetRatio == 0 {
 			// The FFT is a (c*N, 0, 0, ...), no matter the bitReverse or decimation
 			// It's a multiple of the first Lagrange polynomial.
-			constTerm := field.NewElement(uint64(x.length))
-			constTerm.Mul(&constTerm, &x.val)
-			return NewPaddedCircularWindow([]field.Element{constTerm}, field.Zero(), 0, x.length)
+			constTerm := field.NewElement(uint64(x.Length))
+			constTerm.Mul(&constTerm, &x.Value)
+			return NewPaddedCircularWindow([]field.Element{constTerm}, field.Zero(), 0, x.Length)
 		}
 	case *PaddedCircularWindow:
 		// The polynomial is the constant polynomial, response does not depends on the decimation
@@ -116,14 +116,14 @@ func FFTInverse(v SmartVector, decimation fft.Decimation, bitReverse bool, coset
 	*/
 	switch x := v.(type) {
 	case *Constant:
-		if x.val.IsZero() {
+		if x.Value.IsZero() {
 			// The fft inverse of the zero vec is zero
 			return x.DeepCopy()
 		}
 
 		if cosetID == 0 && cosetRatio == 0 {
 			// It's the constant polynomial. If it is not on coset then there is a trick
-			return NewPaddedCircularWindow([]field.Element{x.val}, field.Zero(), 0, x.length)
+			return NewPaddedCircularWindow([]field.Element{x.Value}, field.Zero(), 0, x.Length)
 		}
 
 	case *PaddedCircularWindow:

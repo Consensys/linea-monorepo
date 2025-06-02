@@ -29,7 +29,7 @@ type Columns struct {
 	Rooth []ifaces.Column
 
 	// Precomputed roots
-	precompRoot ifaces.Column
+	PrecompRoot ifaces.Column
 
 	// (Verifier column)
 	//
@@ -224,7 +224,7 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 	ctx.Columns.Rooth = vortexCtx.Items.MerkleRoots
 	// precomputed Merkle roots are stored in a separate entity than rooth
 	if vortexCtx.IsNonEmptyPrecomputed() {
-		ctx.Columns.precompRoot = vortexCtx.Items.Precomputeds.MerkleRoot
+		ctx.Columns.PrecompRoot = vortexCtx.Items.Precomputeds.MerkleRoot
 	}
 	ctx.Coins.Alpha = vortexCtx.Items.Alpha
 	ctx.Columns.Ualpha = vortexCtx.Items.Ualpha

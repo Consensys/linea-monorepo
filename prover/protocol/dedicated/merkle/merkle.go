@@ -78,7 +78,7 @@ func merkleProofCheck(
 	// define the compute module
 	cm := ComputeMod{}
 	cm.Cols.Proof = proofs
-	cm.withOptProofReuseCheck = useNextProof
+	cm.WithOptProofReuseCheck = useNextProof
 	if useNextProof {
 		cm.Cols.UseNextMerkleProof = useNextMerkleProof
 		cm.Cols.IsActiveAccumulator = isActiveAccumulator

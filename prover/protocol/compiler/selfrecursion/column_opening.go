@@ -173,7 +173,7 @@ func (a *LinearHashMerkleProverAction) Run(run *wizard.ProverRuntime) {
 	committedRound := 0
 
 	if a.Ctx.VortexCtx.IsNonEmptyPrecomputed() {
-		rootPrecomp := a.Ctx.Columns.precompRoot.GetColAssignment(run).Get(0)
+		rootPrecomp := a.Ctx.Columns.PrecompRoot.GetColAssignment(run).Get(0)
 		precompColSisHash := a.Ctx.VortexCtx.Items.Precomputeds.DhWithMerkle
 		for i, selectedCol := range openingIndices {
 			srcStart := selectedCol * hashSize

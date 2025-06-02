@@ -197,7 +197,7 @@ func (r *Regular) GetPtr(n int) *field.Element {
 
 type Pooled struct {
 	Regular
-	poolPtr *[]field.Element
+	poolPtr *[]field.Element `serde:"omit"`
 }
 
 func AllocFromPool(pool mempool.MemPool) *Pooled {

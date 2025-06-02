@@ -87,7 +87,7 @@ func PolyEval(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result
 	if hasOnlyConst {
 		v := make([]field.Element, len(vecs))
 		for i := 0; i < len(vecs); i++ {
-			v[i] = vecs[i].(*Constant).val
+			v[i] = vecs[i].(*Constant).Value
 		}
 
 		y := poly.EvalUnivariate(v, x)
@@ -133,7 +133,7 @@ func PolyEval(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result
 		switch casted := v.(type) {
 		case *Constant:
 			anyCon = true
-			tmpF.Mul(&casted.val, &xPow)
+			tmpF.Mul(&casted.Value, &xPow)
 			resCon.Add(&resCon, &tmpF)
 		case *Regular:
 			anyReg = true
@@ -180,8 +180,8 @@ func BatchInvert(x SmartVector) SmartVector {
 
 	switch v := x.(type) {
 	case *Constant:
-		res := &Constant{length: v.length}
-		res.val.Inverse(&v.val)
+		res := &Constant{Length: v.Length}
+		res.Value.Inverse(&v.Value)
 		return res
 	case *PaddedCircularWindow:
 		res := &PaddedCircularWindow{
@@ -211,9 +211,9 @@ func IsZero(x SmartVector) SmartVector {
 	switch v := x.(type) {
 
 	case *Constant:
-		res := &Constant{length: v.length}
-		if v.val == field.Zero() {
-			res.val = field.One()
+		res := &Constant{Length: v.Length}
+		if v.Value == field.Zero() {
+			res.Value = field.One()
 		}
 		return res
 
@@ -291,8 +291,8 @@ func Sum(a SmartVector) (res field.Element) {
 		return res
 
 	case *Constant:
-		res := field.NewElement(uint64(v.length))
-		res.Mul(&res, &v.val)
+		res := field.NewElement(uint64(v.Length))
+		res.Mul(&res, &v.Value)
 		return res
 
 	case *Rotated:

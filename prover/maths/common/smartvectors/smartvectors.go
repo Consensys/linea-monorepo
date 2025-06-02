@@ -291,7 +291,7 @@ func WindowExt(v SmartVector) []fext.Element {
 func PaddingVal(v SmartVector) (val field.Element, hasPadding bool) {
 	switch w := v.(type) {
 	case *Constant:
-		return w.val, true
+		return w.Value, true
 	case *PaddedCircularWindow:
 		return w.PaddingVal_, true
 	default:

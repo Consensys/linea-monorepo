@@ -28,15 +28,15 @@ func (a *NaturalizeProverAction) Run(run *wizard.ProverRuntime) {
 }
 
 type NaturalizeVerifierAction struct {
-	ctx NaturalizationCtx
+	Ctx NaturalizationCtx
 }
 
 func (a *NaturalizeVerifierAction) Run(run wizard.Runtime) error {
-	return a.ctx.Verify(run)
+	return a.Ctx.Verify(run)
 }
 
 func (a *NaturalizeVerifierAction) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
-	a.ctx.GnarkVerify(api, c)
+	a.Ctx.GnarkVerify(api, c)
 }
 
 /*
@@ -127,7 +127,7 @@ func Naturalize(comp *wizard.CompiledIOP) {
 
 			// comp.InsertVerifier(roundID, ctx.Verify, ctx.GnarkVerify)
 			comp.RegisterVerifierAction(roundID, &NaturalizeVerifierAction{
-				ctx: ctx,
+				Ctx: ctx,
 			})
 		}
 	}
