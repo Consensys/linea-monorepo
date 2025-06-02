@@ -46,20 +46,24 @@ class QuorumOfSealsVerifier(
         val validSealIssuers =
           seals
             .map {
-              val sealedValidator = sealVerifier.extractValidator(it, beaconBlockHeader)
-              when (sealedValidator) {
-                is Err -> {
-                  return@thenApply Err(sealedValidator.error.message)
-                }
-
-                is Ok ->
-                  if (sealedValidator.value in expectedValidatorSet) {
-                    sealedValidator.value
-                  } else {
-                    return@thenApply Err(
-                      "validator=${sealedValidator.value} isn't in the expectedValidatorSet=$expectedValidatorSet",
-                    )
+              try {
+                val sealedValidator = sealVerifier.extractValidator(it, beaconBlockHeader)
+                when (sealedValidator) {
+                  is Err -> {
+                    return@thenApply Err(sealedValidator.error.message)
                   }
+
+                  is Ok ->
+                    if (sealedValidator.value in expectedValidatorSet) {
+                      sealedValidator.value
+                    } else {
+                      return@thenApply Err(
+                        "validator=${sealedValidator.value} isn't in the expectedValidatorSet=$expectedValidatorSet",
+                      )
+                    }
+                }
+              } catch (ex: Throwable) {
+                return@thenApply Err(ex.message!!)
               }
             }.toSet()
 

@@ -17,6 +17,7 @@ package maru.consensus.validation
 
 import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
+import com.github.michaelbull.result.Result
 import maru.consensus.ValidatorProvider
 import maru.core.BeaconBlockHeader
 import maru.core.Seal
@@ -100,18 +101,37 @@ class SealsVerifierTest {
 
   @Test
   fun `test invalid seal extraction`() {
+    val expectedMessage = "Invalid seal"
     val sealVerifier =
       object : SealVerifier {
         override fun extractValidator(
           seal: Seal,
           beaconBlockHeader: BeaconBlockHeader,
-        ) = Err(SealVerifier.SealValidationError("Invalid seal"))
+        ) = Err(SealVerifier.SealValidationError(expectedMessage))
       }
     val invalidSeal = Seal(ByteArray(32) { 12 })
     val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, sealVerifier)
-    val result = sealsVerifier.verifySeals(setOf(invalidSeal), beaconBlockHeader).get()
+    val result = sealsVerifier.verifySeals(setOf(invalidSeal, validSeal2), beaconBlockHeader).get()
     assertThat(result).isInstanceOf(Err::class.java)
     val error = (result as Err).error
-    assertThat(error).isEqualTo("Invalid seal")
+    assertThat(error).isEqualTo(expectedMessage)
+  }
+
+  @Test
+  fun `test failing seal extraction`() {
+    val expectedMessage = "test exception"
+    val sealVerifier =
+      object : SealVerifier {
+        override fun extractValidator(
+          seal: Seal,
+          beaconBlockHeader: BeaconBlockHeader,
+        ): Result<Validator, SealVerifier.SealValidationError> = throw RuntimeException(expectedMessage)
+      }
+    val invalidSeal = Seal(ByteArray(32) { 12 })
+    val sealsVerifier = QuorumOfSealsVerifier(validatorProvider, sealVerifier)
+    val result = sealsVerifier.verifySeals(setOf(invalidSeal, validSeal2), beaconBlockHeader).get()
+    assertThat(result).isInstanceOf(Err::class.java)
+    val error = (result as Err).error
+    assertThat(error).isEqualTo(expectedMessage)
   }
 }
