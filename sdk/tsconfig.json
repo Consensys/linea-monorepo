@@ -2,12 +2,12 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
-    "strictPropertyInitialization": false,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "composite": true,
     "removeComments": false,
     "isolatedModules": false,
+    "strictPropertyInitialization": false,
     "exactOptionalPropertyTypes": false
   },
   "exclude": ["./dist", "**/node_modules"]
