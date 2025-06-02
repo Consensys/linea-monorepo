@@ -204,6 +204,11 @@ type SelfRecursionCtx struct {
 		//
 		// The folding of preimageCollapse by rFold
 		PreimageCollapseFold ifaces.Column
+		
+		// CollapsedPreimagesNonSis gives  collaped non SIS preimages.
+		// They are concatenated round-by-round and zero-padded
+		// to the next power of two.
+		CollapsedPreimagesNonSis ifaces.Column
 	}
 	// mimcHashMetaData is a structure that holds the parameters
 	// for the linear hash check for the non SIS rounds

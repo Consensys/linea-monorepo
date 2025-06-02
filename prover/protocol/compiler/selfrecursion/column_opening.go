@@ -17,6 +17,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/functionals"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -30,7 +31,7 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	ctx.RootHashGlue()
 	ctx.GluePositions()
 	ctx.RegistersSisPreimageLimbs()
-	ctx.collapsingPhase()
+	ctx.CollapsingPhase()
 	ctx.foldPhase()
 }
 
@@ -228,7 +229,7 @@ Collapsing phase
 - Collapse all the preimages
   - PreimageCollapse := \sum_{i} P_{i} (collapse)^i
 */
-func (ctx *SelfRecursionCtx) collapsingPhase() {
+func (ctx *SelfRecursionCtx) CollapsingPhase() {
 
 	// starting one round after Q is sampled
 	round := ctx.Columns.Q.Round() + 1
@@ -253,6 +254,31 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			ctx.Columns.UalphaQ,
 		)
 
+		// The collapsed preimage for the non SIS rounds
+		ctx.Columns.CollapsedPreimagesNonSis = expr_handle.RandLinCombCol(
+			ctx.comp,
+			accessors.NewFromCoin(ctx.Coins.Collapse),
+			ctx.MIMCMetaData.ConcatenatedHashPreimages,
+		)
+
+		// The random linear combination of the collapsed preimage
+		// for the non SIS rounds
+		preImageNonSisEval := functionals.CoeffEval(
+			ctx.comp,
+			ctx.constencyUalphaQPreimageRight(),
+			ctx.Coins.Alpha,
+			ctx.Columns.CollapsedPreimagesNonSis,
+		)
+
+		// offset denotes the running power of alpha in the BivariateEval for the
+		// sis round preimages
+		offset := 0
+		for i := range ctx.MIMCMetaData.ToHashSizes {
+			// We add the number of polynomials per non SIS round
+			// to the offset
+			offset += ctx.MIMCMetaData.ToHashSizes[i]
+		}
+
 		/*
 			- The preimages are given in the form of several columns of the form:
 			  [limb0, limb1, ..., limbL-1, limb0, ... limbL-1, ...], each field element is represented by
@@ -265,19 +291,31 @@ func (ctx *SelfRecursionCtx) collapsingPhase() {
 			  evaluation point, we get a bivariate polynomial evaluation
 		*/
 
-		preImageEval := functionals.EvalCoeffBivariate(
+		preImageSisEval := functionals.EvalCoeffBivariate(
 			ctx.comp,
 			ctx.constencyUalphaQPreimageRight(),
 			ctx.Columns.PreimagesCollapse,
 			accessors.NewConstant(field.NewElement(1<<ctx.SisKey().LogTwoBound)),
 			accessors.NewFromCoin(ctx.Coins.Alpha),
 			ctx.VortexCtx.SisParams.NumLimbs(),
-			ctx.Columns.WholePreimagesSis[0].Size(),
+			ctx.Columns.PreimagesSis[0].Size(),
+		)
+
+		// preImageEval := preimageNonSisEval + alpha^offset * preImageSisEval
+		preImageEval := symbolic.Add(
+			preImageNonSisEval,
+			symbolic.Mul(
+				symbolic.Pow(
+					accessors.NewFromCoin(ctx.Coins.Alpha),
+					offset,
+				),
+				preImageSisEval,
+			),
 		)
 
 		ctx.comp.RegisterVerifierAction(uAlphaQEval.Round(), &collapsingVerifierAction{
 			uAlphaQEval:  uAlphaQEval,
-			preImageEval: preImageEval,
+			preImageEval: accessors.NewFromExpression(preImageEval, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt)),
 		})
 	}
 
