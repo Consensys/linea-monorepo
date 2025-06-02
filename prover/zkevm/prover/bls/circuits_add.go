@@ -115,8 +115,8 @@ func NewAddCircuit(g group, limits *Limits) frontend.Circuit {
 }
 
 type AddInstance[C convertable[T], T element] struct {
-	InputLeft, InputRight C
-	Res                   C
+	InputLeft, InputRight C `gnark:",public"`
+	Res                   C `gnark:",public"`
 }
 
 func (c *MultiAddCircuit[C, T]) Define(api frontend.API) error {
@@ -140,26 +140,28 @@ func (c *MultiAddCircuit[C, T]) Define(api frontend.API) error {
 			return fmt.Errorf("get curve: %w", err)
 		}
 		for i := 0; i < nbInstances; i++ {
-			tAs := any(&As[i]).(*sw_bls12381.G1Affine)
-			tBs := any(&Bs[i]).(*sw_bls12381.G1Affine)
-			tRs := any(&Rs[i]).(*sw_bls12381.G1Affine)
-			curve.AssertIsOnCurve(tAs)
-			curve.AssertIsOnCurve(tBs)
+			tAsi := any(&As[i]).(*sw_bls12381.G1Affine)
+			tBsi := any(&Bs[i]).(*sw_bls12381.G1Affine)
+			tRsi := any(&Rs[i]).(*sw_bls12381.G1Affine)
+			curve.AssertIsOnCurve(tAsi)
+			curve.AssertIsOnCurve(tBsi)
 			res := curve.AddUnified(any(&As[i]).(*sw_bls12381.G1Affine), any(&Bs[i]).(*sw_bls12381.G1Affine))
-			curve.AssertIsEqual(res, tRs)
+			curve.AssertIsEqual(res, tRsi)
 		}
 	case sw_bls12381.G2Affine:
 		// TODO: update evmprecompiles to take the result as input and then use that
 		g2 := sw_bls12381.NewG2(api)
 		for i := 0; i < nbInstances; i++ {
-			tAs := any(&As[i]).(*sw_bls12381.G2Affine)
-			tBs := any(&Bs[i]).(*sw_bls12381.G2Affine)
-			tRs := any(&Rs[i]).(*sw_bls12381.G2Affine)
-			g2.AssertIsOnTwist(tAs)
-			g2.AssertIsOnTwist(tBs)
-			res := g2.AddUnified(tAs, tBs)
-			g2.AssertIsEqual(res, tRs)
+			tAsi := any(&As[i]).(*sw_bls12381.G2Affine)
+			tBsi := any(&Bs[i]).(*sw_bls12381.G2Affine)
+			tRsi := any(&Rs[i]).(*sw_bls12381.G2Affine)
+			g2.AssertIsOnTwist(tAsi)
+			g2.AssertIsOnTwist(tBsi)
+			res := g2.AddUnified(tAsi, tBsi)
+			g2.AssertIsEqual(res, tRsi)
 		}
+	default:
+		return fmt.Errorf("unknown element type %T for bls add circuit", t)
 	}
 
 	return nil
