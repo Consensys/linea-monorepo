@@ -29,7 +29,7 @@ import kotlin.time.toJavaDuration
 import kotlin.time.toKotlinDuration
 
 data class ApiConfig(
-  val observabilityPort: UInt
+  val observabilityPort: UInt,
 )
 
 data class ConflationConfig(
@@ -42,7 +42,7 @@ data class ConflationConfig(
   private var _smartContractErrors: SmartContractErrors?,
   val fetchBlocksLimit: Int,
   @ConfigAlias("conflation-target-end-block-numbers")
-  private val _conflationTargetEndBlockNumbers: List<Long> = emptyList()
+  private val _conflationTargetEndBlockNumbers: List<Long> = emptyList(),
 ) {
 
   init {
@@ -84,7 +84,7 @@ data class RequestRetryConfigTomlFriendly(
   override val maxRetries: Int? = null,
   override val timeout: Duration? = null,
   override val backoffDelay: Duration = 1.milliseconds.toJavaDuration(),
-  val failuresWarningThreshold: Int = 0
+  val failuresWarningThreshold: Int = 0,
 ) : RetryConfig {
   init {
     maxRetries?.also {
@@ -118,7 +118,7 @@ data class RequestRetryConfigTomlFriendly(
   companion object {
     fun endlessRetry(
       backoffDelay: Duration,
-      failuresWarningThreshold: Int
+      failuresWarningThreshold: Int,
     ) = RequestRetryConfigTomlFriendly(
       maxRetries = null,
       timeout = null,
@@ -131,7 +131,7 @@ data class RequestRetryConfigTomlFriendly(
 data class PersistenceRetryConfig(
   override val maxRetries: Int? = null,
   override val backoffDelay: Duration = 1.seconds.toJavaDuration(),
-  override val timeout: Duration? = 10.minutes.toJavaDuration()
+  override val timeout: Duration? = 10.minutes.toJavaDuration(),
 ) : RetryConfig
 
 internal interface RequestRetryConfigurable {
@@ -144,7 +144,7 @@ data class BlobCompressionConfig(
   val blobSizeLimit: Int,
   @ConfigAlias("batches-limit")
   private val _batchesLimit: Int? = null,
-  val handlerPollingInterval: Duration
+  val handlerPollingInterval: Duration,
 ) {
   init {
     _batchesLimit?.also {
@@ -163,7 +163,7 @@ data class AggregationConfig(
   val deadlineCheckInterval: Duration,
   val aggregationSizeMultipleOf: Int = 1,
   @ConfigAlias("target-end-blocks")
-  private val _targetEndBlocks: List<Long> = emptyList()
+  private val _targetEndBlocks: List<Long> = emptyList(),
 ) {
   val targetEndBlocks: List<ULong> = _targetEndBlocks.map { it.toULong() }
 
@@ -177,12 +177,12 @@ data class TracesConfig(
   val blobCompressorVersion: BlobCompressorVersion,
   val expectedTracesApiVersionV2: String,
   val countersV2: FunctionalityEndpoint,
-  val conflationV2: FunctionalityEndpoint
+  val conflationV2: FunctionalityEndpoint,
 ) {
   data class FunctionalityEndpoint(
     val endpoints: List<URL>,
     val requestLimitPerEndpoint: UInt,
-    override val requestRetry: RequestRetryConfigTomlFriendly
+    override val requestRetry: RequestRetryConfigTomlFriendly,
   ) : RequestRetryConfigurable {
     init {
       require(requestLimitPerEndpoint > 0u) { "requestLimitPerEndpoint must be greater than 0" }
@@ -194,7 +194,7 @@ data class StateManagerClientConfig(
   val version: String,
   val endpoints: List<URL>,
   val requestLimitPerEndpoint: UInt,
-  override val requestRetry: RequestRetryConfigTomlFriendly
+  override val requestRetry: RequestRetryConfigTomlFriendly,
 ) : RequestRetryConfigurable {
   init {
     require(requestLimitPerEndpoint > 0u) { "requestLimitPerEndpoint must be greater than 0" }
@@ -210,7 +210,7 @@ data class BlobSubmissionConfig(
   val maxBlobsToSubmitPerTick: Int = maxBlobsToReturn,
   val targetBlobsToSendPerTransaction: Int = 9,
   val useEthEstimateGas: Boolean = false,
-  override var disabled: Boolean = false
+  override var disabled: Boolean = false,
 ) : FeatureToggleable {
   init {
     require(maxBlobsToReturn > 0) { "maxBlobsToReturn must be greater than 0" }
@@ -226,7 +226,7 @@ data class AggregationFinalizationConfig(
   val maxAggregationsToFinalizePerTick: Int,
   val proofSubmissionDelay: Duration,
   val useEthEstimateGas: Boolean = false,
-  override var disabled: Boolean = false
+  override var disabled: Boolean = false,
 ) : FeatureToggleable {
   init {
     require(maxAggregationsToFinalizePerTick > 0) {
@@ -243,7 +243,7 @@ data class DatabaseConfig(
   val schema: String,
   val readPoolSize: Int,
   val readPipeliningLimit: Int,
-  val transactionalPoolSize: Int
+  val transactionalPoolSize: Int,
 )
 
 data class L1Config(
@@ -268,7 +268,7 @@ data class L1Config(
   val blockTime: Duration = Duration.parse("PT12S"),
   @ConfigAlias("eth-fee-history-endpoint") private val _ethFeeHistoryEndpoint: URL?,
   @ConfigAlias("genesis-state-root-hash") private val _genesisStateRootHash: String,
-  @ConfigAlias("genesis-shnarf-v6") private val _genesisShnarfV6: String
+  @ConfigAlias("genesis-shnarf-v6") private val _genesisShnarfV6: String,
 ) {
   val ethFeeHistoryEndpoint: URL
     get() = _ethFeeHistoryEndpoint ?: rpcEndpoint
@@ -303,7 +303,7 @@ data class L2Config(
   val lastHashSearchWindow: UInt,
   val anchoringReceiptPollingInterval: Duration,
   val maxReceiptRetries: UInt,
-  val newBlockPollingInterval: Duration
+  val newBlockPollingInterval: Duration,
 ) {
   init {
     messageServiceAddress.assertIsValidAddress("messageServiceAddress")
@@ -313,11 +313,11 @@ data class L2Config(
 data class SignerConfig(
   val type: Type,
   val web3signer: Web3SignerConfig?,
-  val web3j: Web3jConfig?
+  val web3j: Web3jConfig?,
 ) {
   enum class Type {
     Web3j,
-    Web3Signer
+    Web3Signer,
   }
 
   init {
@@ -334,14 +334,14 @@ data class SignerConfig(
 }
 
 data class Web3jConfig(
-  val privateKey: Masked
+  val privateKey: Masked,
 )
 
 data class Web3SignerConfig(
   val endpoint: String,
   val maxPoolSize: UInt,
   val keepAlive: Boolean,
-  val publicKey: String
+  val publicKey: String,
 )
 
 interface FeatureToggleable {
@@ -354,7 +354,7 @@ data class L1DynamicGasPriceCapServiceConfig(
   val gasPriceCapCalculation: GasPriceCapCalculation,
   val feeHistoryFetcher: FeeHistoryFetcher,
   val feeHistoryStorage: FeeHistoryStorage,
-  override var disabled: Boolean = false
+  override var disabled: Boolean = false,
 ) : FeatureToggleable {
   data class GasPriceCapCalculation(
     val adjustmentConstant: UInt,
@@ -366,7 +366,7 @@ data class L1DynamicGasPriceCapServiceConfig(
     val gasPriceCapsCheckCoefficient: Double,
     val historicBaseFeePerBlobGasLowerBound: ULong,
     val historicAvgRewardConstant: ULong?,
-    val timeOfDayMultipliers: TimeOfDayMultipliers?
+    val timeOfDayMultipliers: TimeOfDayMultipliers?,
   ) {
     init {
       timeOfDayMultipliers?.also {
@@ -404,7 +404,7 @@ data class L1DynamicGasPriceCapServiceConfig(
   }
 
   data class FeeHistoryStorage(
-    val storagePeriod: Duration
+    val storagePeriod: Duration,
   ) {
     init {
       require(storagePeriod <= MAX_FEE_HISTORIES_STORAGE_PERIOD.toJavaDuration()) {
@@ -418,7 +418,7 @@ data class L1DynamicGasPriceCapServiceConfig(
     val maxBlockCount: UInt,
     val rewardPercentiles: List<Double>,
     val numOfBlocksBeforeLatest: UInt = 4U,
-    val endpoint: URL?
+    val endpoint: URL?,
   ) {
     init {
       require(
@@ -483,7 +483,7 @@ data class Type2StateProofProviderConfig(
   val endpoints: List<URL>,
   val l1QueryBlockTag: BlockParameter.Tag = BlockParameter.Tag.LATEST,
   val l1PollingInterval: Duration = Duration.ofSeconds(12),
-  override val requestRetry: RequestRetryConfigTomlFriendly
+  override val requestRetry: RequestRetryConfigTomlFriendly,
 ) : FeatureToggleable, RequestRetryConfigurable
 
 data class TracesLimitsV2ConfigFile(val tracesLimits: Map<TracingModuleV2, UInt>)
@@ -515,7 +515,7 @@ data class CoordinatorConfigTomlDto(
   val l2NetworkGasPricing: L2NetworkGasPricingTomlDto,
   val l1DynamicGasPriceCapService: L1DynamicGasPriceCapServiceConfig,
   val testL1Disabled: Boolean = false,
-  val prover: ProverConfigTomlDto
+  val prover: ProverConfigTomlDto,
 ) {
   fun reified(): CoordinatorConfig = CoordinatorConfig(
     l2InclusiveBlockNumberToStopAndFlushAggregation = l2InclusiveBlockNumberToStopAndFlushAggregation,
@@ -569,7 +569,7 @@ data class CoordinatorConfig(
   val l2NetworkGasPricingService: L2NetworkGasPricingService.Config?,
   val l1DynamicGasPriceCapService: L1DynamicGasPriceCapServiceConfig,
   val testL1Disabled: Boolean = false,
-  val proversConfig: ProversConfig
+  val proversConfig: ProversConfig,
 ) {
   init {
     if (l2InclusiveBlockNumberToStopAndFlushAggregation != null) {

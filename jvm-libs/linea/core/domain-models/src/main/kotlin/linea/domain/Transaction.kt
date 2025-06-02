@@ -9,7 +9,7 @@ enum class TransactionType(private val typeValue: Int) {
   ACCESS_LIST(1),
   EIP1559(2),
   BLOB(3), // Not supported by Linea atm, but here for completeness
-  DELEGATE_CODE(4) // Not supported by Linea atm, but here for completeness
+  DELEGATE_CODE(4), // Not supported by Linea atm, but here for completeness
   ;
 
   val serializedType: Byte
@@ -66,7 +66,7 @@ data class Transaction(
   val gasPrice: ULong?, // null for EIP-1559 transactions
   val maxFeePerGas: ULong? = null, // null for EIP-1559 transactions
   val maxPriorityFeePerGas: ULong? = null, // null for non EIP-1559 transactions
-  val accessList: List<AccessListEntry>? // null non for EIP-2930 transactions
+  val accessList: List<AccessListEntry>?, // null non for EIP-2930 transactions
 ) {
   companion object {
     // companion object to allow static extension functions
@@ -141,7 +141,7 @@ data class Transaction(
 
 data class AccessListEntry(
   val address: ByteArray,
-  val storageKeys: List<ByteArray>
+  val storageKeys: List<ByteArray>,
 ) {
 
   override fun toString(): String {

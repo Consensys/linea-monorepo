@@ -249,7 +249,7 @@ class GasPriceCapFeeHistoryFetcherImplTest {
   }
 
   private fun createFeeHistoryFetcherImpl(
-    l1Web3jServiceMock: Web3jBlobExtended
+    l1Web3jServiceMock: Web3jBlobExtended,
   ): GasPriceCapFeeHistoryFetcherImpl {
     return GasPriceCapFeeHistoryFetcherImpl(
       l1Web3jServiceMock,

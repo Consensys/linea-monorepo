@@ -28,12 +28,12 @@ class L2NetworkGasPricingService(
   httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
   l1Web3jClient: Web3j,
   l1Web3jService: Web3jBlobExtended,
-  config: Config
+  config: Config,
 ) : LongRunningService {
   data class LegacyGasPricingCalculatorConfig(
     val transactionCostCalculatorConfig: TransactionCostCalculator.Config?,
     val naiveGasPricingCalculatorConfig: GasUsageRatioWeightedAverageFeesCalculator.Config?,
-    val legacyGasPricingCalculatorBounds: BoundableFeeCalculator.Config
+    val legacyGasPricingCalculatorBounds: BoundableFeeCalculator.Config,
   )
 
   data class Config(
@@ -46,7 +46,7 @@ class L2NetworkGasPricingService(
     val variableFeesCalculatorConfig: VariableFeesCalculator.Config,
     val variableFeesCalculatorBounds: BoundableFeeCalculator.Config,
     val extraDataCalculatorConfig: MinerExtraDataV1CalculatorImpl.Config,
-    val extraDataUpdaterConfig: ExtraDataV1UpdaterImpl.Config
+    val extraDataUpdaterConfig: ExtraDataV1UpdaterImpl.Config,
   )
   private val log = LogManager.getLogger(this::class.java)
 

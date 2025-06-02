@@ -29,12 +29,12 @@ class JsonRpcRequestRetryerV2(
   private val requestObjectMapper: ObjectMapper = objectMapper,
   private val shallRetryRequestsClientBasePredicate: Predicate<Result<Any?, Throwable>>,
   private val log: Logger = LogManager.getLogger(JsonRpcRequestRetryer::class.java),
-  private val failuresLogLevel: Level = Level.WARN
+  private val failuresLogLevel: Level = Level.WARN,
 ) {
   fun <T> makeRequest(
     request: JsonRpcRequest,
     shallRetryRequestPredicate: Predicate<Result<T, Throwable>>,
-    resultMapper: (Any?) -> T
+    resultMapper: (Any?) -> T,
   ): SafeFuture<T> {
     return makeRequestWithRetryer(request, resultMapper, shallRetryRequestPredicate)
   }
@@ -48,7 +48,7 @@ class JsonRpcRequestRetryerV2(
   private fun <T> makeRequestWithRetryer(
     request: JsonRpcRequest,
     resultMapper: (Any?) -> T,
-    shallRetryRequestPredicate: Predicate<Result<T, Throwable>>
+    shallRetryRequestPredicate: Predicate<Result<T, Throwable>>,
   ): SafeFuture<T> {
     val lastException = AtomicReference<Throwable>()
     val retriesCount = AtomicInteger(0)
@@ -97,7 +97,7 @@ class JsonRpcRequestRetryerV2(
 
   companion object {
     fun <T> unfoldResultValueOrException(
-      response: Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>
+      response: Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>,
     ): Result<T, Throwable> {
       @Suppress("UNCHECKED_CAST")
       return response

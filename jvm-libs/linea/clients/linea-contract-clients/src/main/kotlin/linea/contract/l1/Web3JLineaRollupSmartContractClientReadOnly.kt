@@ -23,7 +23,7 @@ private val fakeCredentials = Credentials.create(ByteArray(32).encodeHex())
 open class Web3JLineaRollupSmartContractClientReadOnly(
   val web3j: Web3j,
   val contractAddress: String,
-  private val log: Logger = LogManager.getLogger(Web3JLineaRollupSmartContractClientReadOnly::class.java)
+  private val log: Logger = LogManager.getLogger(Web3JLineaRollupSmartContractClientReadOnly::class.java),
 ) : LineaRollupSmartContractClientReadOnly {
 
   protected fun contractClientAtBlock(blockParameter: BlockParameter): LineaRollupV6 {

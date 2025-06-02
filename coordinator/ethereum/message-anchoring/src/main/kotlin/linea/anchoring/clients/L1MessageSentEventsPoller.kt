@@ -25,7 +25,7 @@ class L1MessageSentEventsPoller(
   private val l1BlockSearchChuck: UInt,
   private val l1HighestBlock: BlockParameter,
   private val l2HighestBlock: BlockParameter,
-  private val log: Logger = LogManager.getLogger(L1MessageSentEventsPoller::class.java)
+  private val log: Logger = LogManager.getLogger(L1MessageSentEventsPoller::class.java),
 ) : PeriodicPollingService(
   vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,

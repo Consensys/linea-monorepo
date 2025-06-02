@@ -11,7 +11,7 @@ import kotlin.time.toKotlinDuration
 data class PluginConfig(
   val l1SmartContractAddress: Address,
   val l1RpcEndpoint: URL,
-  val l1PollingInterval: kotlin.time.Duration
+  val l1PollingInterval: kotlin.time.Duration,
 ) {
   init {
     require(l1PollingInterval >= 1.seconds) { "Polling interval=$l1PollingInterval must be greater that 1s." }

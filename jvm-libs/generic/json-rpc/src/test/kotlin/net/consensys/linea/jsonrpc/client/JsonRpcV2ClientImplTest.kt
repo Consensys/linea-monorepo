@@ -71,7 +71,7 @@ class JsonRpcV2ClientImplTest {
   private fun retryConfig(
     maxRetries: UInt = 2u,
     timeout: Duration = 8.seconds, // bellow 2s we may have flacky tests when running whole test suite in parallel
-    backoffDelay: Duration = 5.milliseconds
+    backoffDelay: Duration = 5.milliseconds,
   ) = RequestRetryConfig(
     maxRetries = maxRetries,
     timeout = timeout,
@@ -82,7 +82,7 @@ class JsonRpcV2ClientImplTest {
     responseObjectMapper: ObjectMapper = defaultObjectMapper,
     requestObjectMapper: ObjectMapper = defaultObjectMapper,
     retryConfig: RequestRetryConfig = defaultRetryConfig,
-    shallRetryRequestsClientBasePredicate: Predicate<Result<Any?, Throwable>> = Predicate { false }
+    shallRetryRequestsClientBasePredicate: Predicate<Result<Any?, Throwable>> = Predicate { false },
   ): JsonRpcV2Client {
     wiremock = WireMockServer(WireMockConfiguration.options().dynamicPort())
     wiremock.start()
@@ -103,7 +103,7 @@ class JsonRpcV2ClientImplTest {
     responseObjectMapper: ObjectMapper = defaultObjectMapper,
     requestObjectMapper: ObjectMapper = defaultObjectMapper,
     retryConfig: RequestRetryConfig = defaultRetryConfig,
-    shallRetryRequestsClientBasePredicate: Predicate<Result<Any?, Throwable>> = Predicate { false }
+    shallRetryRequestsClientBasePredicate: Predicate<Result<Any?, Throwable>> = Predicate { false },
   ): JsonRpcV2Client {
     return factory.createJsonRpcV2Client(
       endpoints = uris,
@@ -180,7 +180,7 @@ class JsonRpcV2ClientImplTest {
     val name: String,
     val email: String,
     val address: ByteArray,
-    val value: ULong
+    val value: ULong,
   )
 
   @Test

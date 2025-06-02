@@ -10,12 +10,12 @@ import java.util.concurrent.atomic.AtomicReference
 
 class FeeHistoriesRepositoryImpl(
   private val config: Config,
-  private val feeHistoriesDao: FeeHistoriesDao
+  private val feeHistoriesDao: FeeHistoriesDao,
 ) : FeeHistoriesRepositoryWithCache {
   data class Config(
     val rewardPercentiles: List<Double>,
     val minBaseFeePerBlobGasToCache: ULong? = null,
-    val fixedAverageRewardToCache: ULong? = null
+    val fixedAverageRewardToCache: ULong? = null,
   ) {
     init {
       require(rewardPercentiles.isNotEmpty()) {
@@ -57,7 +57,7 @@ class FeeHistoriesRepositoryImpl(
 
   override fun findBaseFeePerGasAtPercentile(
     percentile: Double,
-    fromBlockNumber: Long
+    fromBlockNumber: Long,
   ): SafeFuture<ULong?> {
     return feeHistoriesDao.findBaseFeePerGasAtPercentile(
       percentile,
@@ -67,7 +67,7 @@ class FeeHistoriesRepositoryImpl(
 
   override fun findBaseFeePerBlobGasAtPercentile(
     percentile: Double,
-    fromBlockNumber: Long
+    fromBlockNumber: Long,
   ): SafeFuture<ULong?> {
     return feeHistoriesDao.findBaseFeePerBlobGasAtPercentile(
       percentile,
@@ -77,7 +77,7 @@ class FeeHistoriesRepositoryImpl(
 
   override fun findAverageRewardAtPercentile(
     rewardPercentile: Double,
-    fromBlockNumber: Long
+    fromBlockNumber: Long,
   ): SafeFuture<ULong?> {
     return feeHistoriesDao.findAverageRewardAtPercentile(
       rewardPercentile,
@@ -91,7 +91,7 @@ class FeeHistoriesRepositoryImpl(
 
   override fun getNumOfFeeHistoriesFromBlockNumber(
     rewardPercentile: Double,
-    fromBlockNumber: Long
+    fromBlockNumber: Long,
   ): SafeFuture<Int> {
     return feeHistoriesDao.getNumOfFeeHistoriesFromBlockNumber(
       rewardPercentile,
@@ -105,7 +105,7 @@ class FeeHistoriesRepositoryImpl(
 
   override fun cacheNumOfFeeHistoriesFromBlockNumber(
     rewardPercentile: Double,
-    fromBlockNumber: Long
+    fromBlockNumber: Long,
   ): SafeFuture<Int> {
     return feeHistoriesDao.getNumOfFeeHistoriesFromBlockNumber(
       rewardPercentile,
@@ -121,7 +121,7 @@ class FeeHistoriesRepositoryImpl(
 
   override fun cachePercentileGasFees(
     percentile: Double,
-    fromBlockNumber: Long
+    fromBlockNumber: Long,
   ): SafeFuture<Unit> {
     return findBaseFeePerGasAtPercentile(
       percentile,
@@ -152,7 +152,7 @@ class FeeHistoriesRepositoryImpl(
   }
 
   override fun deleteFeeHistoriesUpToBlockNumber(
-    blockNumberInclusive: Long
+    blockNumberInclusive: Long,
   ): SafeFuture<Int> {
     return feeHistoriesDao.deleteFeeHistoriesUpToBlockNumber(blockNumberInclusive)
   }

@@ -48,7 +48,7 @@ private fun validateIsListParams(request: JsonRpcRequest): Result<JsonRpcRequest
 }
 
 class SaveRejectedTransactionRequestHandlerV1(
-  private val transactionExclusionService: TransactionExclusionServiceV1
+  private val transactionExclusionService: TransactionExclusionServiceV1,
 ) : JsonRpcRequestHandler {
   enum class RequestParams(val paramName: String) {
     TX_REJECTION_STAGE("txRejectionStage"),
@@ -56,7 +56,7 @@ class SaveRejectedTransactionRequestHandlerV1(
     REASON_MESSAGE("reasonMessage"),
     TRANSACTION_RLP("transactionRLP"),
     BLOCK_NUMBER("blockNumber"),
-    OVERFLOWS("overflows")
+    OVERFLOWS("overflows"),
   }
 
   private fun validateMapParamsPresence(requestMapParams: Map<*, *>) {
@@ -96,7 +96,7 @@ class SaveRejectedTransactionRequestHandlerV1(
   override fun invoke(
     user: User?,
     request: JsonRpcRequest,
-    requestJson: JsonObject
+    requestJson: JsonObject,
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
     val rejectedTransaction = try {
       val parsingResult = validateIsMapOrListParams(request).flatMap { validatedRequest ->
@@ -143,7 +143,7 @@ class SaveRejectedTransactionRequestHandlerV1(
 }
 
 class GetTransactionExclusionStatusRequestHandlerV1(
-  private val transactionExclusionService: TransactionExclusionServiceV1
+  private val transactionExclusionService: TransactionExclusionServiceV1,
 ) : JsonRpcRequestHandler {
   private fun parseListParamsToTxHash(requestListParams: List<Any?>): ByteArray {
     if (requestListParams.size != 1) {
@@ -157,7 +157,7 @@ class GetTransactionExclusionStatusRequestHandlerV1(
   override fun invoke(
     user: User?,
     request: JsonRpcRequest,
-    requestJson: JsonObject
+    requestJson: JsonObject,
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
     val txHash = try {
       val parsingResult = validateIsListParams(request).flatMap { validatedRequest ->

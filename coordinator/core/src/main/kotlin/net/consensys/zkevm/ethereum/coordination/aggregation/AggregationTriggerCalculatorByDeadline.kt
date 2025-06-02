@@ -18,13 +18,13 @@ import kotlin.time.Duration.Companion.seconds
 class AggregationTriggerCalculatorByDeadline(
   private val config: Config,
   private val clock: Clock = Clock.System,
-  private val latestBlockProvider: SafeBlockProvider
+  private val latestBlockProvider: SafeBlockProvider,
 ) : DeferredAggregationTriggerCalculator {
   data class Config(val aggregationDeadline: Duration, val aggregationDeadlineDelay: Duration)
 
   data class InFlightAggregation(
     val aggregationStartTimeStamp: Instant,
-    val blobsToAggregate: BlobsToAggregate
+    val blobsToAggregate: BlobsToAggregate,
   )
 
   private var inFlightAggregation: InFlightAggregation? = null
@@ -111,7 +111,7 @@ class AggregationTriggerCalculatorByDeadline(
 class AggregationTriggerCalculatorByDeadlineRunner(
   private val vertx: Vertx,
   private val config: Config,
-  private val aggregationTriggerByDeadline: AggregationTriggerCalculatorByDeadline
+  private val aggregationTriggerByDeadline: AggregationTriggerCalculatorByDeadline,
 ) : DeferredAggregationTriggerCalculator by aggregationTriggerByDeadline, LongRunningService {
   data class Config(val deadlineCheckInterval: Duration)
 

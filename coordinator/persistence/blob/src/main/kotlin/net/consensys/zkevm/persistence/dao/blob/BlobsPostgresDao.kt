@@ -25,7 +25,7 @@ class BlobsPostgresDao(
   config: Config,
   connection: SqlClient,
   log: Logger = LogManager.getLogger(BlobsPostgresDao::class.java),
-  private val clock: Clock = Clock.System
+  private val clock: Clock = Clock.System,
 ) : BlobsDao {
   private val queryLog = SQLQueryLogger(log)
   data class Config(val maxBlobsToReturn: UInt)
@@ -170,7 +170,7 @@ class BlobsPostgresDao(
   }
 
   private fun getConsecutiveBlobsFromBlockNumber(
-    startingBlockNumberInclusive: ULong
+    startingBlockNumberInclusive: ULong,
   ): SafeFuture<List<BlobRecord>> {
     return selectQuery
       .execute(
@@ -187,7 +187,7 @@ class BlobsPostgresDao(
 
   override fun getConsecutiveBlobsFromBlockNumber(
     startingBlockNumberInclusive: ULong,
-    endBlockCreatedBefore: Instant
+    endBlockCreatedBefore: Instant,
   ): SafeFuture<List<BlobRecord>> {
     return getConsecutiveBlobsFromBlockNumber(startingBlockNumberInclusive)
       .thenApply { blobs ->
@@ -206,7 +206,7 @@ class BlobsPostgresDao(
   }
 
   override fun findBlobByEndBlockNumber(
-    endBlockNumber: ULong
+    endBlockNumber: ULong,
   ): SafeFuture<BlobRecord?> {
     return selectBlobByEndBlockNumberQuery
       .execute(Tuple.of(endBlockNumber.toLong()))
@@ -216,7 +216,7 @@ class BlobsPostgresDao(
   }
 
   override fun deleteBlobsUpToEndBlockNumber(
-    endBlockNumberInclusive: ULong
+    endBlockNumberInclusive: ULong,
   ): SafeFuture<Int> {
     return deleteUptoQuery
       .execute(Tuple.of(endBlockNumberInclusive.toLong()))

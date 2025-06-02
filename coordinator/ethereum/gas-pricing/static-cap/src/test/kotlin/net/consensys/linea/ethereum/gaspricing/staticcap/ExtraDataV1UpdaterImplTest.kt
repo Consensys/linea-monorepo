@@ -109,7 +109,7 @@ class ExtraDataV1UpdaterImplTest {
   private fun verifyRequest(
     wiremock: WireMockServer,
     requestOriginEndpoint: URL,
-    request: JsonObject
+    request: JsonObject,
   ) {
     wiremock.verify(
       RequestPatternBuilder.newRequestPattern()

@@ -8,7 +8,7 @@ class TransactionDetail(
   val walletId: Int,
   val nonce: BigInteger,
   @Transient val ethSendTransactionRequest: Request<*, EthSendTransaction>,
-  val expectedOutcome: ExpectedOutcome = ExpectedOutcome.SUCCESS
+  val expectedOutcome: ExpectedOutcome = ExpectedOutcome.SUCCESS,
 ) {
   var hash: String? = null
 }

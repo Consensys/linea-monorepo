@@ -18,7 +18,7 @@ class MinMineableFeesPricerService(
   private val feesFetcher: FeesFetcher,
   private val feesCalculator: FeesCalculator,
   private val gasPriceUpdater: GasPriceUpdater,
-  private val log: Logger = LogManager.getLogger(MinMineableFeesPricerService::class.java)
+  private val log: Logger = LogManager.getLogger(MinMineableFeesPricerService::class.java),
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,

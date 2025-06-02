@@ -54,7 +54,7 @@ class RejectedTransactionCleanupServiceTest {
   @Test
   @Timeout(2, timeUnit = TimeUnit.SECONDS)
   fun `when rejectedTransactionCleanupService starts, deleteRejectedTransaction should be called`(
-    testContext: VertxTestContext
+    testContext: VertxTestContext,
   ) {
     rejectedTransactionCleanupService.start()
       .thenApply {

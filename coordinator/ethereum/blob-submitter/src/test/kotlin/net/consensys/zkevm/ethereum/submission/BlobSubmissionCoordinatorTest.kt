@@ -71,7 +71,7 @@ class BlobSubmissionCoordinatorTest {
     blobsGrouperForSubmission = spy(object : BlobsGrouperForSubmission {
       override fun chunkBlobs(
         blobsIntervals: List<BlobRecord>,
-        aggregations: BlockIntervals
+        aggregations: BlockIntervals,
       ): List<List<BlobRecord>> = chunkBlobs(blobsIntervals, aggregations, targetChunkSize = 6)
     })
 

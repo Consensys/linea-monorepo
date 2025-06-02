@@ -36,7 +36,7 @@ class LoadBalancingJsonRpcClientTest {
   private val requestId: AtomicInteger = AtomicInteger(0)
   private fun rpcRequest(
     method: String = "eth_blockNumber",
-    params: List<Any> = emptyList()
+    params: List<Any> = emptyList(),
   ): JsonRpcRequestListParams = JsonRpcRequestListParams("2.0", requestId.incrementAndGet(), method, params)
 
   @BeforeEach
@@ -159,7 +159,7 @@ class LoadBalancingJsonRpcClientTest {
     numberOfRpcClients: Int,
     maxInflightRequestsPerRpcClient: UInt,
     numberOfThreads: Int,
-    numberOfRequestPerThread: Int
+    numberOfRequestPerThread: Int,
   ) {
     val executor = Executors.newCachedThreadPool()
     val producersStartBarrier = CyclicBarrier(numberOfThreads + 1)
@@ -195,7 +195,7 @@ class LoadBalancingJsonRpcClientTest {
     val loadBalancer: LoadBalancingJsonRpcClient,
     val numberOfRequests: Int,
     val startBarrier: CyclicBarrier,
-    val responsesReceivedLatch: CountDownLatch
+    val responsesReceivedLatch: CountDownLatch,
   ) : Runnable {
     private var responsesHandledAtomic = AtomicInteger(0)
     fun responsesHandled(): Int = responsesHandledAtomic.get()
@@ -230,7 +230,7 @@ class LoadBalancingJsonRpcClientTest {
   private class FakeJsonRpcClient(val id: Int) : JsonRpcClient {
     override fun makeRequest(
       request: JsonRpcRequest,
-      resultMapper: (Any?) -> Any?
+      resultMapper: (Any?) -> Any?,
     ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
       val promise = Promise.promise<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>()
       val paramsList = request.params as List<*>
@@ -255,7 +255,7 @@ class LoadBalancingJsonRpcClientTest {
 
   private fun JsonRpcClient.replyWithDelay(
     delayInMilliseconds: Long,
-    result: Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>
+    result: Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>,
   ): Promise<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
     val promise = Promise.promise<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>()
     val answer: Answer<Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>> = Answer {

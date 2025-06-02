@@ -9,7 +9,7 @@ import org.apache.logging.log4j.Logger
 open class AverageWeightedFeesCalculator(
   val feeListFetcher: (FeeHistory) -> List<ULong>,
   val ratioListFetcher: (FeeHistory) -> List<Double>,
-  val log: Logger
+  val log: Logger,
 ) : FeesCalculator {
   override fun calculateFees(feeHistory: FeeHistory): Double {
     val feeList = feeListFetcher(feeHistory)

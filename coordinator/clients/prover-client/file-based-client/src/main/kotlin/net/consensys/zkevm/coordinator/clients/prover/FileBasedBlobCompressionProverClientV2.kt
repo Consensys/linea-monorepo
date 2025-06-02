@@ -28,7 +28,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class FileBasedBlobCompressionProverClientV2(
   val config: FileBasedProverConfig,
   val vertx: Vertx,
-  jsonObjectMapper: ObjectMapper = JsonSerialization.proofResponseMapperV1
+  jsonObjectMapper: ObjectMapper = JsonSerialization.proofResponseMapperV1,
 ) :
   GenericFileBasedProverClient<
     BlobCompressionProofRequest,

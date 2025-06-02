@@ -36,7 +36,7 @@ data class ProofToFinalizeJsonResponse(
   val l2MerkleTreesDepth: Int,
   @JsonSerialize(using = ByteArraySerializer::class)
   @JsonDeserialize(using = ByteArrayDeserializer::class)
-  val l2MessagingBlocksOffsets: ByteArray
+  val l2MessagingBlocksOffsets: ByteArray,
 ) {
 
   fun toDomainObject(): ProofToFinalize {

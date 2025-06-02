@@ -21,7 +21,7 @@ class ExecutionLayerInProcessClient(
   private val blockchainService: BlockchainService,
   private val stateRecoveryModeManager: RecoveryModeManager,
   private val stateRecoveryStatusPersistence: RecoveryStatusPersistence,
-  private val blockImporter: BlockImporter
+  private val blockImporter: BlockImporter,
 ) : ExecutionLayerClient {
   companion object {
     fun create(
@@ -29,7 +29,7 @@ class ExecutionLayerInProcessClient(
       simulatorService: BlockSimulationService,
       synchronizationService: SynchronizationService,
       stateRecoveryModeManager: RecoveryModeManager,
-      stateRecoveryStatusPersistence: RecoveryStatusPersistence
+      stateRecoveryStatusPersistence: RecoveryStatusPersistence,
     ): ExecutionLayerInProcessClient {
       return ExecutionLayerInProcessClient(
         blockchainService = blockchainService,

@@ -8,7 +8,7 @@ import org.apache.logging.log4j.Logger
 
 class AggregationTriggerCalculatorByTargetBlockNumbers(
   targetEndBlockNumbers: List<ULong>,
-  private val log: Logger = LogManager.getLogger(SyncAggregationTriggerCalculator::class.java)
+  private val log: Logger = LogManager.getLogger(SyncAggregationTriggerCalculator::class.java),
 ) : SyncAggregationTriggerCalculator {
   private val endBlockNumbers = targetEndBlockNumbers.sorted()
   private var firstBlobWasConsumed: Boolean = false

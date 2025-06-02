@@ -37,7 +37,7 @@ fun createAppAllInProcess(
   blobScanRequestRetryConfig: RetryConfig,
   blobscanRequestRatelimitBackoffDelay: Duration?,
   blockHeaderStaticFields: BlockHeaderStaticFields,
-  appConfig: StateRecoveryApp.Config
+  appConfig: StateRecoveryApp.Config,
 ): StateRecoveryApp {
   return createAppClients(
     vertx = vertx,
@@ -71,7 +71,7 @@ data class AppClients(
   val ethLogsSearcher: EthLogsSearcherImpl,
   val blobScanClient: BlobScanClient,
   val stateManagerClient: StateManagerClientV1,
-  val transactionDetailsClient: TransactionDetailsClient
+  val transactionDetailsClient: TransactionDetailsClient,
 )
 
 fun RetryConfig.toRequestRetryConfig(): RequestRetryConfig {
@@ -95,7 +95,7 @@ fun createAppClients(
   stateManagerClientEndpoint: URI,
   blobscanRequestRateLimitBackoffDelay: Duration? = null,
   stateManagerRequestRetry: RetryConfig = RetryConfig(backoffDelay = 1.seconds),
-  zkStateManagerVersion: String = "2.3.0"
+  zkStateManagerVersion: String = "2.3.0",
 ): AppClients {
   val lineaContractClient = Web3JLineaRollupSmartContractClientReadOnly(
     contractAddress = smartContractAddress,

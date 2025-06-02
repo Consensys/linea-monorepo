@@ -27,7 +27,7 @@ import kotlin.time.toJavaDuration
 class ProverClientFactoryTest {
   private fun buildProversConfig(
     tmpDir: Path,
-    switchBlockNumber: Int? = null
+    switchBlockNumber: Int? = null,
   ): ProversConfig {
     fun buildProverConfig(proverDir: Path): ProverConfig {
       return ProverConfig(
@@ -98,7 +98,7 @@ class ProverClientFactoryTest {
   @BeforeEach
   fun beforeEach(
     vertx: Vertx,
-    @TempDir tmpDir: Path
+    @TempDir tmpDir: Path,
   ) {
     this.vertx = vertx
     this.testTmpDir = tmpDir

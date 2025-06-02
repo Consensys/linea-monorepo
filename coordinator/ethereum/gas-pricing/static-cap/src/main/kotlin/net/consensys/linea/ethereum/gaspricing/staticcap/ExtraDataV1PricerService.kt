@@ -17,7 +17,7 @@ class ExtraDataV1PricerService(
   private val feesFetcher: FeesFetcher,
   private val minerExtraDataCalculatorImpl: MinerExtraDataV1CalculatorImpl,
   private val extraDataUpdater: ExtraDataUpdater,
-  private val log: Logger = LogManager.getLogger(ExtraDataV1PricerService::class.java)
+  private val log: Logger = LogManager.getLogger(ExtraDataV1PricerService::class.java),
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,

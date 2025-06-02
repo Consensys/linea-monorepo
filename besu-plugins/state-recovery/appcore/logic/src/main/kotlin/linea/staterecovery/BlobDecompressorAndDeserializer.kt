@@ -24,14 +24,14 @@ interface BlobDecompressorAndDeserializer {
    */
   fun decompress(
     startBlockNumber: ULong,
-    blobs: List<ByteArray>
+    blobs: List<ByteArray>,
   ): SafeFuture<List<BlockFromL1RecoveredData>>
 }
 
 data class BlockHeaderStaticFields(
   val coinbase: ByteArray,
   val gasLimit: ULong = 2_000_000_000UL,
-  val difficulty: ULong = 2UL
+  val difficulty: ULong = 2UL,
 ) {
   companion object {
     val localDev = BlockHeaderStaticFields(
@@ -69,11 +69,11 @@ class BlobDecompressorToDomainV1(
   val staticFields: BlockHeaderStaticFields,
   val vertx: Vertx,
   val decoder: BinaryDecoder<Block> = BesuRlpBlobDecoder,
-  val logger: Logger = LogManager.getLogger(BlobDecompressorToDomainV1::class.java)
+  val logger: Logger = LogManager.getLogger(BlobDecompressorToDomainV1::class.java),
 ) : BlobDecompressorAndDeserializer {
   override fun decompress(
     startBlockNumber: ULong,
-    blobs: List<ByteArray>
+    blobs: List<ByteArray>,
   ): SafeFuture<List<BlockFromL1RecoveredData>> {
     var blockNumber = startBlockNumber
     val startTime = Clock.System.now()

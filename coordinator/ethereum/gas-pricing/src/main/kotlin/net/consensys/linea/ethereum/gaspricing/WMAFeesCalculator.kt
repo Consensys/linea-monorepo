@@ -11,11 +11,11 @@ import org.apache.logging.log4j.Logger
  *  (sumOf(reward[i] * ratio[i] * (i+1)) / sumOf(ratio[i] * (i+1))) * priorityFeeWmaCoefficient
  */
 class WMAFeesCalculator(
-  private val config: Config
+  private val config: Config,
 ) : FeesCalculator {
   data class Config(
     val baseFeeCoefficient: Double,
-    val priorityFeeWmaCoefficient: Double
+    val priorityFeeWmaCoefficient: Double,
   )
 
   private val log: Logger = LogManager.getLogger(this::class.java)

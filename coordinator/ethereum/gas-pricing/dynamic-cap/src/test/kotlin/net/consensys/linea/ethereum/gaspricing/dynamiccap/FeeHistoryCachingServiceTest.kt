@@ -56,7 +56,7 @@ class FeeHistoryCachingServiceTest {
 
   private fun createFeeHistoryCachingService(
     vertx: Vertx,
-    mockedL1FeeHistoriesRepository: FeeHistoriesRepositoryWithCache
+    mockedL1FeeHistoriesRepository: FeeHistoriesRepositoryWithCache,
   ): FeeHistoryCachingService {
     return FeeHistoryCachingService(
       config = FeeHistoryCachingService.Config(

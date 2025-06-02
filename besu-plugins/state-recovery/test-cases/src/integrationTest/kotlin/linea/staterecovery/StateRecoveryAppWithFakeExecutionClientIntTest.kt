@@ -118,7 +118,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
   }
 
   fun instantiateStateRecoveryApp(
-    debugForceSyncStopBlockNumber: ULong? = null
+    debugForceSyncStopBlockNumber: ULong? = null,
   ): StateRecoveryApp {
     return StateRecoveryApp(
       vertx = vertx,
@@ -138,7 +138,7 @@ class StateRecoveryAppWithFakeExecutionClientIntTest {
   private fun submitDataToL1ContactAndWaitExecution(
     aggregationsAndBlobs: List<AggregationAndBlobs> = this.aggregationsAndBlobs,
     blobChunksSize: Int = 9,
-    waitTimeout: Duration = 4.minutes
+    waitTimeout: Duration = 4.minutes,
   ) {
     submitBlobsAndAggregationsAndWaitExecution(
       contractClientForBlobSubmission = contractClientForBlobSubmissions,

@@ -34,7 +34,7 @@ open class TestRunner(
   private val l1RpcUrl: String,
   private val blobScanUrl: String,
   private val blobScanRatelimitBackoffDelay: Duration? = 1.seconds,
-  private val debugForceSyncStopBlockNumber: ULong = ULong.MAX_VALUE
+  private val debugForceSyncStopBlockNumber: ULong = ULong.MAX_VALUE,
 ) {
   private val log = LogManager.getLogger("test.case.TestRunner")
   val appConfig = StateRecoveryApp.Config(
@@ -91,7 +91,7 @@ open class TestRunner(
   }
 
   fun run(
-    timeout: kotlin.time.Duration = 10.minutes
+    timeout: kotlin.time.Duration = 10.minutes,
   ) {
     log.info("Running test case")
     stateRecoverApp.start().get()

@@ -18,7 +18,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class ZkProofCreationCoordinatorImpl(
   private val executionProverClient: ExecutionProverClientV2,
   private val messageServiceAddress: String,
-  private val l2EthApiClient: EthApiClient
+  private val l2EthApiClient: EthApiClient,
 ) : ZkProofCreationCoordinator {
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val messageEventsTopics: List<String> = listOf(
@@ -49,7 +49,7 @@ class ZkProofCreationCoordinatorImpl(
 
   override fun createZkProof(
     blocksConflation: BlocksConflation,
-    traces: BlocksTracesConflated
+    traces: BlocksTracesConflated,
   ): SafeFuture<Batch> {
     val startBlockNumber = blocksConflation.blocks.first().number
     val endBlockNumber = blocksConflation.blocks.last().number

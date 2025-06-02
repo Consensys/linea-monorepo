@@ -17,7 +17,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class DeadlineConflationCalculatorRunner(
   private val conflationDeadlineCheckInterval: Duration,
-  private val delegate: ConflationCalculatorByTimeDeadline
+  private val delegate: ConflationCalculatorByTimeDeadline,
 ) : DeferredTriggerConflationCalculator by delegate, LongRunningService {
 
   private lateinit var timerInstance: Timer
@@ -49,14 +49,14 @@ class ConflationCalculatorByTimeDeadline(
   private var lastBlockNumber: ULong,
   private val clock: Clock = Clock.System,
   private val latestBlockProvider: SafeBlockProvider,
-  val log: Logger = LogManager.getLogger(ConflationCalculatorByTimeDeadline::class.java)
+  val log: Logger = LogManager.getLogger(ConflationCalculatorByTimeDeadline::class.java),
 ) : DeferredTriggerConflationCalculator {
   data class Config(
     val conflationDeadline: Duration,
     // this is to avoid triggering conflation on the last block while new is being created
     // which is a false positive, network has activity.
     // it should be 2*blocktime
-    val conflationDeadlineLastBlockConfirmationDelay: Duration
+    val conflationDeadlineLastBlockConfirmationDelay: Duration,
   )
 
   override val id: String = ConflationTrigger.TIME_LIMIT.name
@@ -120,7 +120,7 @@ class ConflationCalculatorByTimeDeadline(
   }
 
   override fun copyCountersTo(
-    counters: ConflationCounters
+    counters: ConflationCounters,
   ) {
     // nothing to do here
   }

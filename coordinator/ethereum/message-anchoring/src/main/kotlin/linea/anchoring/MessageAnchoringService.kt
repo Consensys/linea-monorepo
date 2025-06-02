@@ -24,7 +24,7 @@ class MessageAnchoringService(
   private val maxMessagesToAnchorPerL2Transaction: UInt,
   private val l2HighestBlockTag: BlockParameter,
   anchoringTickInterval: Duration,
-  private val log: Logger = LogManager.getLogger(MessageAnchoringService::class.java)
+  private val log: Logger = LogManager.getLogger(MessageAnchoringService::class.java),
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = anchoringTickInterval.inWholeMilliseconds,

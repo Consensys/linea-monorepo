@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 class TracesGeneratorJsonRpcClientV2(
   private val rpcClient: JsonRpcClient,
-  private val config: Config
+  private val config: Config,
 ) :
   TracesCountersClientV2, TracesConflationClientV2 {
   constructor(
@@ -25,7 +25,7 @@ class TracesGeneratorJsonRpcClientV2(
     rpcClient: JsonRpcClient,
     config: Config,
     retryConfig: RequestRetryConfig,
-    log: Logger = LogManager.getLogger(TracesGeneratorJsonRpcClientV2::class.java)
+    log: Logger = LogManager.getLogger(TracesGeneratorJsonRpcClientV2::class.java),
   ) : this(
     JsonRpcRequestRetryer(
       vertx,
@@ -40,13 +40,13 @@ class TracesGeneratorJsonRpcClientV2(
   )
 
   data class Config(
-    val expectedTracesApiVersion: String
+    val expectedTracesApiVersion: String,
   )
 
   private var id = AtomicInteger(0)
 
   override fun getTracesCounters(
-    blockNumber: ULong
+    blockNumber: ULong,
   ): SafeFuture<Result<GetTracesCountersResponse, ErrorResponse<TracesServiceErrorType>>> {
     val jsonRequest =
       JsonRpcRequestListParams(
@@ -74,7 +74,7 @@ class TracesGeneratorJsonRpcClientV2(
 
   override fun generateConflatedTracesToFile(
     startBlockNumber: ULong,
-    endBlockNumber: ULong
+    endBlockNumber: ULong,
   ): SafeFuture<Result<GenerateTracesResponse, ErrorResponse<TracesServiceErrorType>>> {
     val jsonRequest =
       JsonRpcRequestListParams(

@@ -65,7 +65,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
 
   private fun setupTest(
     vertx: Vertx,
-    smartContractVersion: LineaContractVersion
+    smartContractVersion: LineaContractVersion,
   ) {
     // V6 is always used, this is left for when V7 is implemented.
     if (listOf(LineaContractVersion.V6).contains(smartContractVersion).not()) {
@@ -169,7 +169,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
   private fun testSubmission(
     vertx: Vertx,
     testContext: VertxTestContext,
-    smartContractVersion: LineaContractVersion
+    smartContractVersion: LineaContractVersion,
   ) {
     setupTest(vertx, smartContractVersion)
 
@@ -209,7 +209,7 @@ class BlobAndAggregationFinalizationIntTest : CleanDbTestSuiteParallel() {
   @Timeout(3, timeUnit = TimeUnit.MINUTES)
   fun `submission works with contract V6`(
     vertx: Vertx,
-    testContext: VertxTestContext
+    testContext: VertxTestContext,
   ) {
     testSubmission(vertx, testContext, LineaContractVersion.V6)
   }

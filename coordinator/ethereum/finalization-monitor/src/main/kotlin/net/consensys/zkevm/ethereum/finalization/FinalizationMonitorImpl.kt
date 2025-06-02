@@ -21,7 +21,7 @@ class FinalizationMonitorImpl(
   private val contract: LineaRollupSmartContractClientReadOnly,
   private val l2Client: Web3j,
   private val vertx: Vertx,
-  private val log: Logger = LogManager.getLogger(FinalizationMonitor::class.java)
+  private val log: Logger = LogManager.getLogger(FinalizationMonitor::class.java),
 ) : FinalizationMonitor, PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
@@ -29,7 +29,7 @@ class FinalizationMonitorImpl(
 ) {
   data class Config(
     val pollingInterval: Duration = 500.milliseconds,
-    val l1QueryBlockTag: BlockParameter.Tag = BlockParameter.Tag.FINALIZED
+    val l1QueryBlockTag: BlockParameter.Tag = BlockParameter.Tag.FINALIZED,
   )
 
   private val finalizationHandlers:
@@ -114,7 +114,7 @@ class FinalizationMonitorImpl(
 
   override fun addFinalizationHandler(
     handlerName: String,
-    handler: FinalizationHandler
+    handler: FinalizationHandler,
   ) {
     synchronized(finalizationHandlers) {
       finalizationHandlers[handlerName] = handler

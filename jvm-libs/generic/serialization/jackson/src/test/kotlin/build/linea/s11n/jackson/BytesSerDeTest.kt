@@ -78,7 +78,7 @@ class BytesSerDeTest {
     val nullByte: Byte?,
     val someByte: Byte,
     val minByte: Byte,
-    val maxByte: Byte
+    val maxByte: Byte,
   ) {
     override fun equals(other: Any?): Boolean {
       if (this === other) return true

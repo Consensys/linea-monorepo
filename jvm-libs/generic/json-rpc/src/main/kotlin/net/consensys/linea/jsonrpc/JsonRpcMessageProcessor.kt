@@ -42,7 +42,7 @@ fun Result<*, *>.isSuccess(): Boolean = this is Ok
 private data class RequestContext(
   val id: Any,
   val method: String,
-  val result: Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>
+  val result: Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>,
 )
 
 /**
@@ -55,7 +55,7 @@ class JsonRpcMessageProcessor(
   private val requestParser: JsonRpcRequestParser = Companion::parseRequest,
   private val log: Logger = LogManager.getLogger(JsonRpcMessageProcessor::class.java),
   private val responseResultObjectMapper: ObjectMapper = jacksonObjectMapper().registerModules(VertxModule()),
-  private val rpcEnvelopeObjectMapper: ObjectMapper = jacksonObjectMapper()
+  private val rpcEnvelopeObjectMapper: ObjectMapper = jacksonObjectMapper(),
 ) : JsonRpcMessageHandler {
   init {
     DatabindCodec.mapper().registerKotlinModule()
@@ -66,7 +66,7 @@ class JsonRpcMessageProcessor(
 
   private fun handleAndMeasureRequestProcessing(
     user: User?,
-    requestJsonStr: String
+    requestJsonStr: String,
   ): Future<String> {
     return Future.fromCompletionStage(
       metricsFacade.createDynamicTagTimer<Triple<String?, String, Boolean>>(
@@ -130,7 +130,7 @@ class JsonRpcMessageProcessor(
   private fun handleMessageRequests(
     user: User?,
     parsingResults: List<Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse>>,
-    methodTag: String
+    methodTag: String,
   ): Future<Triple<String?, String, Boolean>> {
     var allSuccessful = true
     val executionFutures: List<Future<RequestContext>> =
@@ -184,7 +184,7 @@ class JsonRpcMessageProcessor(
   }
 
   private fun measureRequestParsing(
-    json: Any
+    json: Any,
   ): Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse> {
     return metricsFacade.createDynamicTagTimer(
       name = "jsonrpc.serialization.request",
@@ -216,7 +216,7 @@ class JsonRpcMessageProcessor(
   private fun handleAndMeasureRequestHandling(
     user: User?,
     jsonRpcRequest: JsonRpcRequest,
-    requestJson: JsonObject
+    requestJson: JsonObject,
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
     return metricsFacade.createSimpleTimer<Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>>(
       name = "jsonrpc.processing.logic",
@@ -240,7 +240,7 @@ class JsonRpcMessageProcessor(
   private fun callRequestHandlerAndCatchError(
     user: User?,
     jsonRpcRequest: JsonRpcRequest,
-    requestJson: JsonObject
+    requestJson: JsonObject,
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
     val promise = Promise.promise<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>()
 

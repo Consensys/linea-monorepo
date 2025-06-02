@@ -31,7 +31,7 @@ class BlobCompressionProofCoordinator(
   private val blobZkStateProvider: BlobZkStateProvider,
   private val config: Config,
   private val blobCompressionProofHandler: BlobCompressionProofHandler,
-  metricsFacade: MetricsFacade
+  metricsFacade: MetricsFacade,
 ) : BlobCreationHandler, LongRunningService {
   private val log: Logger = LogManager.getLogger(this::class.java)
   private val defaultQueueCapacity = 1000 // Should be more than blob submission limit
@@ -65,7 +65,7 @@ class BlobCompressionProofCoordinator(
   }
 
   data class Config(
-    val pollingInterval: Duration
+    val pollingInterval: Duration,
   )
 
   @Synchronized
@@ -128,7 +128,7 @@ class BlobCompressionProofCoordinator(
     kzgProofContract: ByteArray,
     kzgProofSideCar: ByteArray,
     blobStartBlockTime: Instant,
-    blobEndBlockTime: Instant
+    blobEndBlockTime: Instant,
   ): SafeFuture<Unit> {
     val proofRequest = BlobCompressionProofRequest(
       compressedData = compressedData,

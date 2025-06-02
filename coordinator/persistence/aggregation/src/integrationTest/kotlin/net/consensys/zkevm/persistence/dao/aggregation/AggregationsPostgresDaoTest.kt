@@ -704,7 +704,7 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
   }
 
   private fun performInsertTest(
-    aggregation: Aggregation
+    aggregation: Aggregation,
   ): RowSet<Row>? {
     aggregationsPostgresDaoImpl.saveNewAggregation(aggregation).get()
     val dbContent = DbQueries.getTableContent(sqlClient, DbQueries.aggregationsTable).execute().get()
@@ -726,7 +726,7 @@ class AggregationsPostgresDaoTest : CleanDbTestSuiteParallel() {
   }
 
   private fun insertBatch(
-    batch: Batch
+    batch: Batch,
   ): SafeFuture<Unit> {
     return batchesPostgresDaoImpl.saveNewBatch(batch)
   }

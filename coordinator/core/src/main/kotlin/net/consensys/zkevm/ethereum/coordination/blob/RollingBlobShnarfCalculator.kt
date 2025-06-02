@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicReference
 data class RollingBlobShnarfResult(
   val shnarfResult: ShnarfResult,
   val parentBlobHash: ByteArray,
-  val parentBlobShnarf: ByteArray
+  val parentBlobShnarf: ByteArray,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -44,14 +44,14 @@ data class RollingBlobShnarfResult(
 class RollingBlobShnarfCalculator(
   private val blobShnarfCalculator: BlobShnarfCalculator,
   private val blobsRepository: BlobsRepository,
-  private val genesisShnarf: ByteArray
+  private val genesisShnarf: ByteArray,
 ) {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
   private data class ParentBlobData(
     val endBlockNumber: ULong,
     val blobHash: ByteArray,
-    val blobShnarf: ByteArray
+    val blobShnarf: ByteArray,
   )
 
   private var parentBlobDataReference: AtomicReference<ParentBlobData?> = AtomicReference(null)
@@ -107,7 +107,7 @@ class RollingBlobShnarfCalculator(
     compressedData: ByteArray,
     parentStateRootHash: ByteArray,
     finalStateRootHash: ByteArray,
-    conflationOrder: BlockIntervals
+    conflationOrder: BlockIntervals,
   ): SafeFuture<RollingBlobShnarfResult> {
     val blobBlockRange = BlockInterval.between(
       conflationOrder.startingBlockNumber,

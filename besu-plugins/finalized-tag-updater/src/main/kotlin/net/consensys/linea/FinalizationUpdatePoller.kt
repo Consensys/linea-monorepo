@@ -16,7 +16,7 @@ import kotlin.time.Duration.Companion.seconds
 
 data class FinalizationUpdatePollerConfig(
   val pollingInterval: Duration = 12.seconds,
-  val blockTag: BlockParameter
+  val blockTag: BlockParameter,
 ) {
   init {
     require(pollingInterval >= 0.seconds) {
@@ -30,7 +30,7 @@ class FinalizationUpdatePoller(
   private val config: FinalizationUpdatePollerConfig,
   private val lineaRollup: Web3JLineaRollupSmartContractClientReadOnly,
   private val finalizationHandler: (ULong) -> CompletableFuture<*>,
-  private val log: Logger = LogManager.getLogger(FinalizationUpdatePoller::class.java)
+  private val log: Logger = LogManager.getLogger(FinalizationUpdatePoller::class.java),
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,

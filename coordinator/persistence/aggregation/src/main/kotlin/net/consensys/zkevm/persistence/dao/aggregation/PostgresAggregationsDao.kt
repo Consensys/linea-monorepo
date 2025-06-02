@@ -24,7 +24,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class PostgresAggregationsDao(
   connection: SqlClient,
-  private val clock: Clock = Clock.System
+  private val clock: Clock = Clock.System,
 ) : AggregationsDao {
   private val log = LogManager.getLogger(this.javaClass.name)
   private val queryLog = SQLQueryLogger(log)
@@ -193,11 +193,11 @@ class PostgresAggregationsDao(
     val blobExpectedShnarf: ByteArray,
     val batchesCount: UInt,
     val batchStartBlockNumber: ULong,
-    val batchEndBlockNumber: ULong
+    val batchEndBlockNumber: ULong,
   )
 
   override fun findConsecutiveProvenBlobs(
-    fromBlockNumber: Long
+    fromBlockNumber: Long,
   ): SafeFuture<List<BlobAndBatchCounters>> {
     return selectBatchesAndBlobsForAggregation
       .execute(Tuple.of(fromBlockNumber))
@@ -276,7 +276,7 @@ class PostgresAggregationsDao(
   override fun getProofsToFinalize(
     fromBlockNumber: Long,
     finalEndBlockCreatedBefore: Instant,
-    maximumNumberOfProofs: Int
+    maximumNumberOfProofs: Int,
   ): SafeFuture<List<ProofToFinalize>> {
     return selectAggregations
       .execute(
@@ -295,7 +295,7 @@ class PostgresAggregationsDao(
   }
 
   override fun findHighestConsecutiveEndBlockNumber(
-    fromBlockNumber: Long
+    fromBlockNumber: Long,
   ): SafeFuture<Long?> {
     return selectAggregations
       .execute(

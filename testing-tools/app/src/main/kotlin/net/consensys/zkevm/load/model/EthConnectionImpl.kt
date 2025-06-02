@@ -55,7 +55,7 @@ class EthConnectionImpl(url: String?) : EthConnection {
   override fun ethSendRawTransaction(
     rawTransaction: RawTransaction?,
     sourceWallet: Wallet,
-    chainId: Int
+    chainId: Int,
   ): Request<*, EthSendTransaction> {
     val signedMessage = TransactionEncoder.signMessage(rawTransaction, chainId.toLong(), sourceWallet.credentials)
     val hexValue = Numeric.toHexString(signedMessage)
@@ -64,7 +64,7 @@ class EthConnectionImpl(url: String?) : EthConnection {
 
   override fun ethGetTransactionCount(
     sourceOfFundsAddress: String?,
-    defaultBlockParameterName: DefaultBlockParameterName?
+    defaultBlockParameterName: DefaultBlockParameterName?,
   ): BigInteger {
     return web3.ethGetTransactionCount(sourceOfFundsAddress, defaultBlockParameterName).send().transactionCount
   }
@@ -122,7 +122,7 @@ class EthConnectionImpl(url: String?) : EthConnection {
       Collectors.toMap(
         { (key): Map.Entry<Wallet, List<TransactionDetail>> -> key },
         Function<Map.Entry<Wallet, List<TransactionDetail>>, BigInteger> { (key, value):
-        Map.Entry<Wallet, List<TransactionDetail>>
+        Map.Entry<Wallet, List<TransactionDetail>>,
           ->
           val sorted =
             value.stream().sorted { s: TransactionDetail, t: TransactionDetail -> 1 * s.nonce.compareTo(t.nonce) }
@@ -321,14 +321,14 @@ interface EthConnection {
   fun ethSendRawTransaction(
     rawTransaction: RawTransaction?,
     sourceWallet: Wallet,
-    chainId: Int
+    chainId: Int,
   ): Request<*, EthSendTransaction>
 
   fun getBalance(sourceWallet: Wallet): BigInteger?
   fun getNonce(encodedAddress: String?): BigInteger
   fun ethGetTransactionCount(
     sourceOfFundsAddress: String?,
-    defaultBlockParameterName: DefaultBlockParameterName?
+    defaultBlockParameterName: DefaultBlockParameterName?,
   ): BigInteger
 
   fun estimateGas(transaction: Transaction): BigInteger

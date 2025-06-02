@@ -48,7 +48,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
     transactionRLP: ByteArray = defaultRejectedTransaction.transactionRLP,
     reasonMessage: String = defaultRejectedTransaction.reasonMessage,
     overflows: List<ModuleOverflow> = defaultRejectedTransaction.overflows,
-    transactionInfo: TransactionInfo = defaultRejectedTransaction.transactionInfo
+    transactionInfo: TransactionInfo = defaultRejectedTransaction.transactionInfo,
   ): RejectedTransaction {
     return RejectedTransaction(
       txRejectionStage = txRejectionStage,
@@ -83,7 +83,7 @@ class RejectedTransactionsPostgresDaoTest : CleanDbTestSuiteParallel() {
   }
 
   private fun performInsertTest(
-    rejectedTransaction: RejectedTransaction
+    rejectedTransaction: RejectedTransaction,
   ) {
     rejectedTransactionsPostgresDao.saveNewRejectedTransaction(rejectedTransaction).get()
 

@@ -19,7 +19,7 @@ class EIP1559GasProvider(private val web3jClient: Web3j, private val config: Con
     val gasLimit: ULong,
     val maxFeePerGasCap: ULong,
     val feeHistoryBlockCount: UInt,
-    val feeHistoryRewardPercentile: Double
+    val feeHistoryRewardPercentile: Double,
   )
 
   private val chainId: Long = web3jClient.ethChainId().send().chainId.toLong()

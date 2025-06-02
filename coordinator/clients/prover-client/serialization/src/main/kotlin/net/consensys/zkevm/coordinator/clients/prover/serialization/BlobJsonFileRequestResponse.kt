@@ -66,11 +66,11 @@ data class BlobCompressionProofJsonRequest(
   val kzgProofContract: ByteArray,
   @JsonProperty("kzgProofSidecar")
   @JsonSerialize(using = ByteArraySerializer::class)
-  val kzgProofSidecar: ByteArray
+  val kzgProofSidecar: ByteArray,
 ) {
   companion object {
     fun fromDomainObject(
-      request: BlobCompressionProofRequest
+      request: BlobCompressionProofRequest,
     ): BlobCompressionProofJsonRequest {
       return BlobCompressionProofJsonRequest(
         compressedData = request.compressedData,
@@ -152,7 +152,7 @@ data class BlobCompressionProofJsonResponse(
   @JsonProperty("kzgProofSidecar")
   @JsonDeserialize(using = ByteArrayDeserializer::class)
   @JsonSerialize(using = ByteArraySerializer::class)
-  val kzgProofSidecar: ByteArray = ByteArray(0)
+  val kzgProofSidecar: ByteArray = ByteArray(0),
 ) {
 
   fun toDomainObject(): BlobCompressionProof {

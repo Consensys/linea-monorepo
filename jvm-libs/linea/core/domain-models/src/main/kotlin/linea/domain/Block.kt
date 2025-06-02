@@ -25,7 +25,7 @@ data class BlockData<TxData>(
   val nonce: ULong,
   val baseFeePerGas: ULong? = null, // Optional field for EIP-1559 blocks
   val transactions: List<TxData> = emptyList(), // List of transaction hashes
-  val ommers: List<ByteArray> = emptyList() // List of uncle block hashes
+  val ommers: List<ByteArray> = emptyList(), // List of uncle block hashes
 ) {
   companion object {
     // companion object  to allow static extension functions
@@ -144,7 +144,7 @@ data class BlockData<TxData>(
 data class BlockHeaderSummary(
   val number: ULong,
   val hash: ByteArray,
-  val timestamp: Instant
+  val timestamp: Instant,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

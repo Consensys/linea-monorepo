@@ -31,7 +31,7 @@ class BlobSubmissionCoordinator(
   private val clock: Clock,
   private val blobSubmissionFilter: AsyncFilter<BlobRecord>,
   private val blobsGrouperForSubmission: BlobsGrouperForSubmission,
-  private val log: Logger = LogManager.getLogger(BlobSubmissionCoordinator::class.java)
+  private val log: Logger = LogManager.getLogger(BlobSubmissionCoordinator::class.java),
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
@@ -41,7 +41,7 @@ class BlobSubmissionCoordinator(
     val pollingInterval: Duration,
     val proofSubmissionDelay: Duration,
     val maxBlobsToSubmitPerTick: UInt,
-    val targetBlobsToSubmitPerTx: UInt
+    val targetBlobsToSubmitPerTx: UInt,
   ) {
     init {
       require(maxBlobsToSubmitPerTick > 0u) {
@@ -155,14 +155,14 @@ class BlobSubmissionCoordinator(
 
   private fun blobBelongsToAnyAggregation(
     blobRecord: BlobRecord,
-    proofsToFinalize: List<ProofToFinalize>
+    proofsToFinalize: List<ProofToFinalize>,
   ): Boolean {
     return proofsToFinalize
       .any { blobRecord.startBlockNumber in it.startBlockNumber..it.endBlockNumber }
   }
 
   private fun submitBlobsAfterEthCall(
-    blobsChunks: List<List<BlobRecord>>
+    blobsChunks: List<List<BlobRecord>>,
   ): SafeFuture<Unit> {
     return blobSubmitter
       .submitBlobCall(blobsChunks.first())
@@ -200,7 +200,7 @@ class BlobSubmissionCoordinator(
       alreadySubmittedBlobsFilter: AsyncFilter<BlobRecord>,
       blobSubmittedEventDispatcher: Consumer<BlobSubmittedEvent>,
       vertx: Vertx,
-      clock: Clock
+      clock: Clock,
     ): BlobSubmissionCoordinator {
       val blobsGrouperForSubmission: BlobsGrouperForSubmission = BlobsGrouperForSubmissionSwitcherByTargetBock(
         eip4844TargetBlobsPerTx = config.targetBlobsToSubmitPerTx,

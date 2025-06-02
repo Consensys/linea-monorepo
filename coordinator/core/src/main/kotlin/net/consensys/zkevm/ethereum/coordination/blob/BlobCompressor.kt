@@ -33,14 +33,14 @@ interface BlobCompressor {
     val blockAppended: Boolean,
     val compressedSizeBefore: Int,
     // even when block is not appended, compressedSizeAfter should as if it was appended
-    val compressedSizeAfter: Int
+    val compressedSizeAfter: Int,
   )
 }
 
 class GoBackedBlobCompressor private constructor(
   internal val goNativeBlobCompressor: GoNativeBlobCompressor,
   private val dataLimit: UInt,
-  private val metricsFacade: MetricsFacade
+  private val metricsFacade: MetricsFacade,
 ) : BlobCompressor {
 
   companion object {
@@ -50,7 +50,7 @@ class GoBackedBlobCompressor private constructor(
     fun getInstance(
       compressorVersion: BlobCompressorVersion,
       dataLimit: UInt,
-      metricsFacade: MetricsFacade
+      metricsFacade: MetricsFacade,
     ): GoBackedBlobCompressor {
       if (instance == null) {
         synchronized(this) {
@@ -151,7 +151,7 @@ class FakeBlobCompressor(
   // 1 means no compression
   // 0.5 means compressed data is 50% smaller than original
   // 1.1 means compressed data is 10% bigger than original
-  private val fakeCompressionRatio: Double = 1.0
+  private val fakeCompressionRatio: Double = 1.0,
 ) : BlobCompressor {
   val log = LogManager.getLogger(FakeBlobCompressor::class.java)
 

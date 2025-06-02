@@ -4,7 +4,7 @@ fun createAggregation(
   startBlockNumber: Long? = null,
   endBlockNumber: Long? = null,
   batchCount: Long = 1,
-  aggregationProof: ProofToFinalize? = null
+  aggregationProof: ProofToFinalize? = null,
 ): Aggregation {
   require(
     (startBlockNumber != null && endBlockNumber != null) ||
@@ -30,7 +30,7 @@ fun createAggregation(
   aggregationProof: ProofToFinalize = createProofToFinalize(
     firstBlockNumber = (parentAggregation.endBlockNumber + 1UL).toLong(),
     finalBlockNumber = endBlockNumber,
-  )
+  ),
 ): Aggregation {
   return createAggregation(
     batchCount = batchCount,

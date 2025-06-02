@@ -32,21 +32,21 @@ interface BlobCompressor {
     val blockAppended: Boolean,
     val compressedSizeBefore: Int,
     // even when block is not appended, compressedSizeAfter should as if it was appended
-    val compressedSizeAfter: Int
+    val compressedSizeAfter: Int,
   )
 
   fun compressedSize(data: ByteArray): Int
 }
 
 class GoBackedBlobCompressor private constructor(
-  internal val goNativeBlobCompressor: GoNativeBlobCompressor
+  internal val goNativeBlobCompressor: GoNativeBlobCompressor,
 ) : BlobCompressor {
 
   companion object {
     @JvmStatic
     fun getInstance(
       compressorVersion: BlobCompressorVersion,
-      dataLimit: Int
+      dataLimit: Int,
     ): GoBackedBlobCompressor {
       require(dataLimit > 0) { "dataLimit=$dataLimit must be greater than 0" }
 

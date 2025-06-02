@@ -24,7 +24,7 @@ internal class SubmissionEventsFetchingTask(
   private val submissionEventsQueue: ConcurrentLinkedQueue<FinalizationAndDataEventsV3>,
   private val queueLimit: Int,
   private val debugForceSyncStopBlockNumber: ULong?,
-  private val log: Logger = LogManager.getLogger(SubmissionEventsFetchingTask::class.java)
+  private val log: Logger = LogManager.getLogger(SubmissionEventsFetchingTask::class.java),
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = l1PollingInterval.inWholeMilliseconds,

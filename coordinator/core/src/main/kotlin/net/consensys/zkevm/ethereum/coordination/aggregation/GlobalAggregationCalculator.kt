@@ -14,7 +14,7 @@ class GlobalAggregationCalculator(
   private val syncAggregationTrigger: List<SyncAggregationTriggerCalculator>,
   private val deferredAggregationTrigger: List<DeferredAggregationTriggerCalculator>,
   metricsFacade: MetricsFacade,
-  private val aggregationSizeMultipleOf: UInt
+  private val aggregationSizeMultipleOf: UInt,
 ) : AggregationCalculator {
   private var aggregationHandler: AggregationHandler = AggregationHandler.NOOP_HANDLER
 

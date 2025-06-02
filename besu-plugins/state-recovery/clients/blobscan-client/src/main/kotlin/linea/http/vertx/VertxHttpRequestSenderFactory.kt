@@ -13,7 +13,7 @@ object VertxHttpRequestSenderFactory {
     rateLimitBackoffDelay: Duration? = null,
     retryableErrorCodes: Set<Int> = setOf(429, 503, 504),
     logFormatter: VertxHttpLoggingFormatter,
-    baseRequestSender: VertxHttpRequestSender
+    baseRequestSender: VertxHttpRequestSender,
   ): VertxHttpRequestSender {
     val rateLimitedSender = rateLimitBackoffDelay
       ?.let {
@@ -45,7 +45,7 @@ object VertxHttpRequestSenderFactory {
     requestResponseLogLevel: Level = Level.TRACE,
     failuresLogLevel: Level = Level.DEBUG,
     retryableErrorCodes: Set<Int> = setOf(429, 503, 504),
-    logFormatter: VertxHttpLoggingFormatter
+    logFormatter: VertxHttpLoggingFormatter,
   ): VertxHttpRequestSender {
     val requestLogger = VertxRestRequestLogger(
       log = logger,

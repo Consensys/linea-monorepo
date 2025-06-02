@@ -23,7 +23,7 @@ fun createBlock(
   extraData: ByteArray = ByteArrayExt.random32(),
   baseFeePerGas: ULong = 7UL,
   transactionsRoot: ByteArray = ByteArrayExt.random32(),
-  transactions: List<Transaction> = emptyList()
+  transactions: List<Transaction> = emptyList(),
 ): Block {
   return Block(
     number = number,
@@ -76,12 +76,12 @@ class EthGetBlockResponseDTO(
   val size: ULong,
   val totalDifficulty: ULong,
   val transactions: List<ByteArray>,
-  val uncles: List<ByteArray> = emptyList()
+  val uncles: List<ByteArray> = emptyList(),
 )
 
 fun Block?.toEthGetBlockResponse(
   size: ULong = 10UL * 1024UL,
-  totalDifficulty: ULong = this?.difficulty ?: 0UL
+  totalDifficulty: ULong = this?.difficulty ?: 0UL,
 ): EthGetBlockResponseDTO? {
   if (this == null) return null
   return EthGetBlockResponseDTO(

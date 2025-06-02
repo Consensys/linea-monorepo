@@ -178,7 +178,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
     numberOfBlobs: Int,
     conflationStep: ULong = 10UL,
     startBlockNumber: ULong,
-    startBlockTime: Instant
+    startBlockTime: Instant,
   ): List<Blob> {
     var currentBlockNumber = startBlockNumber
     var currentBlockTime = startBlockTime
@@ -206,7 +206,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
 
   @Test
   fun `handle blob event and update blob record with blob compression proof`(
-    testContext: VertxTestContext
+    testContext: VertxTestContext,
   ) {
     val prevBlobRecord = createBlobRecord(
       startBlockNumber = expectedStartBlock,
@@ -274,7 +274,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
 
   @Test
   fun `handle blob event and update blob record with blob compression proof when prev blob record not found`(
-    testContext: VertxTestContext
+    testContext: VertxTestContext,
   ) {
     val blobEventStartBlock = expectedEndBlock + 1UL
     val blobEventEndBlock = expectedEndBlock + 100UL
@@ -310,7 +310,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
 
   @Test
   fun `handle blob events and update blob record with blob compression proof with correct parent blob data`(
-    testContext: VertxTestContext
+    testContext: VertxTestContext,
   ) {
     val prevBlobRecord = createBlobRecord(
       startBlockNumber = expectedStartBlock,
@@ -360,7 +360,7 @@ class BlobCompressionProofCoordinatorIntTest : CleanDbTestSuiteParallel() {
 
   @Test
   fun `test blob handle failures re-queue's the blob`(
-    testContext: VertxTestContext
+    testContext: VertxTestContext,
   ) {
     val prevBlobRecord = createBlobRecord(
       startBlockNumber = expectedStartBlock,

@@ -10,7 +10,7 @@ data class Wallet(
   val credentials: Credentials,
   val id: Int,
   @Transient val theoreticalNonce: AtomicReference<BigInteger>,
-  var initialNonce: BigInteger?
+  var initialNonce: BigInteger?,
 ) {
   val address: String = credentials.address
 

@@ -17,7 +17,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 class ExtraDataV1UpdaterImpl(
   httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
-  config: Config
+  config: Config,
 ) : ExtraDataUpdater {
   companion object {
     const val SET_MINER_EXTRA_DATA_METHOD_NAME = "miner_setExtraData"
@@ -25,7 +25,7 @@ class ExtraDataV1UpdaterImpl(
 
   data class Config(
     val sequencerEndpoint: URL,
-    val retryConfig: RequestRetryConfig
+    val retryConfig: RequestRetryConfig,
   )
 
   private val id: AtomicLong = AtomicLong(0)

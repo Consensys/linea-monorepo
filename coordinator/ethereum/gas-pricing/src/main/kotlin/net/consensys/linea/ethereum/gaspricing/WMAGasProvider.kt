@@ -12,14 +12,14 @@ class WMAGasProvider(
   private val chainId: Long,
   private val feesFetcher: FeesFetcher,
   private val priorityFeeCalculator: FeesCalculator,
-  private val config: Config
+  private val config: Config,
 ) :
   AtomicContractEIP1559GasProvider, EIP4844GasProvider {
   data class Config(
     val gasLimit: ULong,
     val maxFeePerGasCap: ULong,
     val maxFeePerBlobGasCap: ULong,
-    val maxPriorityFeePerGasCap: ULong
+    val maxPriorityFeePerGasCap: ULong,
   )
 
   private fun getRecentFees(): EIP4844GasFees {

@@ -19,7 +19,7 @@ fun assertTxSuccess(
   submissionType: String,
   l1Web3jClient: Web3j,
   timeout: Duration = 1.minutes,
-  log: Logger = LogManager.getLogger("linea.testing.submission")
+  log: Logger = LogManager.getLogger("linea.testing.submission"),
 ) {
   l1Web3jClient.waitForTxReceipt(
     txHash = txHash,
@@ -40,7 +40,7 @@ fun assertTxsSuccess(
   submissionType: String,
   l1Web3jClient: Web3j,
   timeout: Duration = 1.minutes,
-  log: Logger = LogManager.getLogger("linea.testing.submission")
+  log: Logger = LogManager.getLogger("linea.testing.submission"),
 ) {
   SafeFuture.supplyAsync {
     txsAndInterval.forEach { (txHash, interval) ->
@@ -62,7 +62,7 @@ fun submitBlobs(
   blobChunksSize: Int = 9,
   awaitForPreviousTxBeforeSubmittingNext: Boolean = false,
   l1Web3jClient: Web3j,
-  log: Logger
+  log: Logger,
 ): List<Pair<String, List<BlobRecord>>> {
   require(blobChunksSize in 1..9) { "blobChunksSize must be between 1..9" }
 
@@ -97,7 +97,7 @@ fun submitBlobsAndAggregationsAndWaitExecution(
   blobChunksMaxSize: Int = 9,
   l1Web3jClient: Web3j,
   waitTimeout: Duration = 2.minutes,
-  log: Logger = LogManager.getLogger("linea.testing.submission")
+  log: Logger = LogManager.getLogger("linea.testing.submission"),
 ) {
   val blobSubmissions = submitBlobs(
     contractClientForBlobSubmission,

@@ -19,7 +19,7 @@ internal class BlobsFetchingTask(
   private val submissionEventsQueue: ConcurrentLinkedQueue<FinalizationAndDataEventsV3>,
   private val compressedBlobsQueue: ConcurrentLinkedQueue<SubmissionEventsAndData<ByteArray>>,
   private val compressedBlobsQueueLimit: Int,
-  private val log: Logger = LogManager.getLogger(BlobsFetchingTask::class.java)
+  private val log: Logger = LogManager.getLogger(BlobsFetchingTask::class.java),
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,
@@ -50,7 +50,7 @@ internal class BlobsFetchingTask(
   }
 
   private fun fetchBlobsOfSubmissionEvents(
-    submissionEvents: FinalizationAndDataEventsV3
+    submissionEvents: FinalizationAndDataEventsV3,
   ): SafeFuture<List<ByteArray>> {
     return SafeFuture.collectAll(
       submissionEvents.dataSubmittedEvents

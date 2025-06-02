@@ -131,7 +131,7 @@ class StateRecoveryWithRealBesuAndStateManagerIntTest {
 
   private fun assertBesuAndShomeiRecoveredAsExpected(
     targetAggregationAndBlobs: AggregationAndBlobs,
-    timeout: Duration
+    timeout: Duration,
   ) {
     val targetAggregation = targetAggregationAndBlobs.aggregation!!
     val expectedZkEndStateRootHash = targetAggregationAndBlobs.blobs.last().blobCompressionProof!!.finalStateRootHash

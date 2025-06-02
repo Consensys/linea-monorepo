@@ -100,7 +100,7 @@ interface GoNativeBlobCompressor {
 interface GoNativeBlobCompressorJnaLib : GoNativeBlobCompressor, Library
 
 enum class BlobCompressorVersion(val version: String) {
-  V1_2("v1.2.0")
+  V1_2("v1.2.0"),
 }
 
 class GoNativeBlobCompressorFactory {
@@ -116,7 +116,7 @@ class GoNativeBlobCompressorFactory {
 
     @JvmStatic
     fun getInstance(
-      version: BlobCompressorVersion
+      version: BlobCompressorVersion,
     ): GoNativeBlobCompressor {
       synchronized(loadedVersions) {
         return loadedVersions[version]

@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
 
 class ConflationServiceImpl(
   private val calculator: TracesConflationCalculator,
-  metricsFacade: MetricsFacade
+  metricsFacade: MetricsFacade,
 ) :
   ConflationService {
   private val log: Logger = LogManager.getLogger(this::class.java)
@@ -23,7 +23,7 @@ class ConflationServiceImpl(
 
   data class PayloadAndBlockCounters(
     val block: Block,
-    val blockCounters: BlockCounters
+    val blockCounters: BlockCounters,
   ) : Comparable<PayloadAndBlockCounters> {
     override fun compareTo(other: PayloadAndBlockCounters): Int {
       return this.block.number.compareTo(other.block.number)

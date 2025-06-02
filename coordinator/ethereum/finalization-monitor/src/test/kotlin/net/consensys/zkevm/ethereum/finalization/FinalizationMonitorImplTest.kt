@@ -152,7 +152,7 @@ class FinalizationMonitorImplTest {
   @Test
   fun finalizationUpdatesDontCrashTheWholeMonitorInCaseOfErrors(
     vertx: Vertx,
-    testContext: VertxTestContext
+    testContext: VertxTestContext,
   ) {
     var blockNumber = 0
     whenever(contractMock.finalizedL2BlockNumber(any())).thenAnswer {

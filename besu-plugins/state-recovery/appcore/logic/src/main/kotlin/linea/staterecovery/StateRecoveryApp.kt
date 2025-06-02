@@ -28,7 +28,7 @@ class StateRecoveryApp(
   private val transactionDetailsClient: TransactionDetailsClient,
   private val blockHeaderStaticFields: BlockHeaderStaticFields,
   // configs
-  private val config: Config
+  private val config: Config,
 ) : LongRunningService {
   data class Config(
     val smartContractAddress: String,
@@ -43,7 +43,7 @@ class StateRecoveryApp(
      * this is meant for testing purposes, not production
      */
     val overridingRecoveryStartBlockNumber: ULong? = null,
-    val debugForceSyncStopBlockNumber: ULong? = null
+    val debugForceSyncStopBlockNumber: ULong? = null,
   ) {
     companion object {
       val lineaMainnet = Config(

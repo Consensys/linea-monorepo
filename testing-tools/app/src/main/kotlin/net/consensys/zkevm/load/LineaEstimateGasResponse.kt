@@ -42,7 +42,7 @@ class LineaEstimateGasResponse : Response<LineaEstimateGasResponse.GasEstimation
         @Throws(IOException::class)
         override fun deserialize(
           jsonParser: JsonParser,
-          deserializationContext: DeserializationContext
+          deserializationContext: DeserializationContext,
         ): GasEstimationSerialized? {
           return if (jsonParser.currentToken != JsonToken.VALUE_NULL) {
             objectReader.readValue(jsonParser, GasEstimationSerialized::class.java)

@@ -41,7 +41,7 @@ class Web3JContractAsyncHelper(
   val transactionManager: AsyncFriendlyTransactionManager,
   private val contractGasProvider: ContractGasProvider,
   private val smartContractErrors: SmartContractErrors,
-  private val useEthEstimateGas: Boolean
+  private val useEthEstimateGas: Boolean,
 ) {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
@@ -54,7 +54,7 @@ class Web3JContractAsyncHelper(
   private fun getGasLimit(
     function: Function,
     blobs: List<Blob>? = null,
-    blobVersionedHashes: List<ByteArray>? = null
+    blobVersionedHashes: List<ByteArray>? = null,
   ): SafeFuture<BigInteger> {
     return if (useEthEstimateGas) {
       getEthEstimatedGas(
@@ -72,7 +72,7 @@ class Web3JContractAsyncHelper(
   private fun getEthEstimatedGas(
     encodedFunction: String,
     blobs: List<Blob>? = null,
-    blobVersionedHashes: List<ByteArray>? = null
+    blobVersionedHashes: List<ByteArray>? = null,
   ): SafeFuture<BigInteger?> {
     return if (blobs != null && blobVersionedHashes != null) {
       createEip4844FunctionCallTransaction(encodedFunction, blobs, blobVersionedHashes)
@@ -106,7 +106,7 @@ class Web3JContractAsyncHelper(
   }
 
   private fun createFunctionCallTransaction(
-    encodedFunction: String
+    encodedFunction: String,
   ): Transaction {
     return Transaction.createFunctionCallTransaction(
       transactionManager.fromAddress,
@@ -121,7 +121,7 @@ class Web3JContractAsyncHelper(
   private fun createEip4844FunctionCallTransaction(
     encodedFunction: String,
     blobs: List<Blob>,
-    blobVersionedHashes: List<ByteArray>
+    blobVersionedHashes: List<ByteArray>,
   ): Eip4844Transaction {
     return Eip4844Transaction.createFunctionCallTransaction(
       from = transactionManager.fromAddress,
@@ -139,7 +139,7 @@ class Web3JContractAsyncHelper(
   private fun createEip4844Transaction(
     function: Function,
     blobs: List<Blob>,
-    gasPriceCaps: GasPriceCaps? = null
+    gasPriceCaps: GasPriceCaps? = null,
   ): SafeFuture<Eip4844Transaction> {
     require(blobs.size in 1..9) { "Blobs size=${blobs.size} must be between 1 and 9." }
 
@@ -170,7 +170,7 @@ class Web3JContractAsyncHelper(
   }
 
   private fun getEip1559GasFees(
-    functionName: String
+    functionName: String,
   ): EIP1559GasFees {
     return when (contractGasProvider) {
       is AtomicContractEIP1559GasProvider -> contractGasProvider.getEIP1559GasFees()
@@ -193,7 +193,7 @@ class Web3JContractAsyncHelper(
   @Synchronized
   fun sendTransaction(
     function: Function,
-    weiValue: BigInteger
+    weiValue: BigInteger,
   ): EthSendTransaction {
     val encodedData = FunctionEncoder.encode(function)
     val sendRawTransactionResult: EthSendTransaction =
@@ -227,7 +227,7 @@ class Web3JContractAsyncHelper(
     function: Function,
     weiValue: BigInteger,
     gasPriceCaps: GasPriceCaps? = null,
-    gasLimit: BigInteger
+    gasLimit: BigInteger,
   ): CompletableFuture<EthSendTransaction> {
     val transaction = if (isGasProviderSupportedEIP1559()) {
       val (maxPriorityFeePerGas, maxFeePerGas) = getEip1559GasFees(function.name)
@@ -269,7 +269,7 @@ class Web3JContractAsyncHelper(
   fun sendTransactionAsync(
     function: Function,
     weiValue: BigInteger,
-    gasPriceCaps: GasPriceCaps? = null
+    gasPriceCaps: GasPriceCaps? = null,
   ): CompletableFuture<EthSendTransaction> {
     return getGasLimit(function)
       .thenCompose { gasLimit ->
@@ -281,7 +281,7 @@ class Web3JContractAsyncHelper(
   fun sendTransactionAfterEthCallAsync(
     function: Function,
     weiValue: BigInteger,
-    gasPriceCaps: GasPriceCaps? = null
+    gasPriceCaps: GasPriceCaps? = null,
   ): CompletableFuture<EthSendTransaction> {
     return getGasLimit(function)
       .thenCompose { gasLimit ->
@@ -295,7 +295,7 @@ class Web3JContractAsyncHelper(
   fun sendBlobCarryingTransactionAndGetTxHash(
     function: Function,
     blobs: List<ByteArray>,
-    gasPriceCaps: GasPriceCaps?
+    gasPriceCaps: GasPriceCaps?,
   ): SafeFuture<String> {
     require(blobs.size in 1..9) { "Blobs size=${blobs.size} must be between 1 and 9." }
     return sendBlobCarryingTransaction(function, BigInteger.ZERO, blobs.toWeb3jTxBlob(), gasPriceCaps)
@@ -307,7 +307,7 @@ class Web3JContractAsyncHelper(
     function: Function,
     weiValue: BigInteger,
     blobs: List<Blob>,
-    gasPriceCaps: GasPriceCaps? = null
+    gasPriceCaps: GasPriceCaps? = null,
   ): SafeFuture<EthSendTransaction> {
     val blobVersionedHashes = blobs
       .map { BlobUtils.kzgToVersionedHash(BlobUtils.getCommitment(it)).toArray() }
@@ -347,7 +347,7 @@ class Web3JContractAsyncHelper(
   @Synchronized
   fun executeRemoteCallTransaction(
     function: Function,
-    weiValue: BigInteger
+    weiValue: BigInteger,
   ): RemoteFunctionCall<TransactionReceipt> {
     val encodedData = FunctionEncoder.encode(function)
     val transactionSent = sendTransaction(function, weiValue)
@@ -356,14 +356,14 @@ class Web3JContractAsyncHelper(
 
   @Synchronized
   fun executeRemoteCallTransaction(
-    function: Function
+    function: Function,
   ): RemoteFunctionCall<TransactionReceipt> {
     return executeRemoteCallTransaction(function, BigInteger.ZERO)
   }
 
   fun executeEthCall(
     function: Function,
-    overrideGasLimit: BigInteger? = null
+    overrideGasLimit: BigInteger? = null,
   ): SafeFuture<String?> {
     return (overrideGasLimit?.let { SafeFuture.completedFuture(overrideGasLimit) } ?: getGasLimit(function))
       .thenCompose { gasLimit ->
@@ -383,7 +383,7 @@ class Web3JContractAsyncHelper(
   fun executeBlobEthCall(
     function: Function,
     blobs: List<ByteArray>,
-    gasPriceCaps: GasPriceCaps?
+    gasPriceCaps: GasPriceCaps?,
   ): SafeFuture<String?> {
     return createEip4844Transaction(
       function,
@@ -401,7 +401,7 @@ class Web3JContractAsyncHelper(
     maxFeePerBlobGas: ULong? = null,
     dynamicMaxPriorityFeePerGas: ULong?,
     dynamicMaxFeePerGas: ULong?,
-    dynamicMaxFeePerBlobGas: ULong? = null
+    dynamicMaxFeePerBlobGas: ULong? = null,
   ) {
     val withBlob = maxFeePerBlobGas != null || dynamicMaxFeePerBlobGas != null
     log.info(

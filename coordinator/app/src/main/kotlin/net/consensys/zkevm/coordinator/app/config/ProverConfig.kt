@@ -19,7 +19,7 @@ data class ProverConfigTomlDto(
   val execution: FileSystemTomlDto,
   val blobCompression: FileSystemTomlDto,
   val proofAggregation: FileSystemTomlDto,
-  val new: ProverConfigTomlDto? = null
+  val new: ProverConfigTomlDto? = null,
 ) {
   private fun asProverConfig(): ProverConfig {
     return ProverConfig(
@@ -67,7 +67,7 @@ data class FileSystemTomlDto(
   internal var fsInprogressRequestWritingSuffix: String?,
   internal var fsInprogressProvingSuffixPattern: String?,
   internal var fsPollingInterval: Duration?,
-  internal var fsPollingTimeout: Duration?
+  internal var fsPollingTimeout: Duration?,
 ) {
   internal fun reifyWithRootDefaults(rootConfig: ProverConfigTomlDto) {
     fsInprogressRequestWritingSuffix = fsInprogressRequestWritingSuffix

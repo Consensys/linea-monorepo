@@ -22,7 +22,7 @@ class StateSynchronizerService(
   private val blockImporterAndStateVerifier: BlockImporterAndStateVerifier,
   private val pollingInterval: Duration,
   private val debugForceSyncStopBlockNumber: ULong?,
-  private val log: Logger = LogManager.getLogger(StateSynchronizerService::class.java)
+  private val log: Logger = LogManager.getLogger(StateSynchronizerService::class.java),
 ) : PeriodicPollingService(
   vertx = vertx,
   log = log,
@@ -135,7 +135,7 @@ class StateSynchronizerService(
 
   private fun importBlocksAndAssertStateroot(
     decompressedBlocksToImport: List<BlockFromL1RecoveredData>,
-    dataFinalizedV3: DataFinalizedV3
+    dataFinalizedV3: DataFinalizedV3,
   ): SafeFuture<Unit> {
     val blockInterval = CommonDomainFunctions.blockIntervalString(
       decompressedBlocksToImport.first().header.blockNumber,
@@ -151,7 +151,7 @@ class StateSynchronizerService(
   }
 
   private fun filterOutBlocksAlreadyImportedAndBeyondStopSync(
-    blocks: List<BlockFromL1RecoveredData>
+    blocks: List<BlockFromL1RecoveredData>,
   ): SafeFuture<List<BlockFromL1RecoveredData>> {
     return elClient.getBlockNumberAndHash(blockParameter = BlockParameter.Tag.LATEST)
       .thenApply { headBlock ->
@@ -165,7 +165,7 @@ class StateSynchronizerService(
 
   private fun assertStateMatches(
     importResult: ImportResult,
-    finalizedV3: DataFinalizedV3
+    finalizedV3: DataFinalizedV3,
   ): SafeFuture<Unit> {
     if (importResult.blockNumber != finalizedV3.endBlockNumber) {
       log.info(

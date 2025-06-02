@@ -58,7 +58,7 @@ class BlobsPostgresDaoTest : CleanDbTestSuiteParallel() {
   }
 
   private fun performInsertTest(
-    blobRecord: BlobRecord
+    blobRecord: BlobRecord,
   ): RowSet<Row>? {
     blobsPostgresDao.saveNewBlob(blobRecord).get()
     val dbContent = blobsContentQuery().execute().get()

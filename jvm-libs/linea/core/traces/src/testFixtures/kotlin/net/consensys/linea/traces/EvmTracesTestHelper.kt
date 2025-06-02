@@ -5,7 +5,7 @@ import kotlin.random.nextUInt
 
 fun fakeTracesCountersV2(
   defaultValue: UInt?,
-  moduleValue: Map<TracingModuleV2, UInt> = emptyMap()
+  moduleValue: Map<TracingModuleV2, UInt> = emptyMap(),
 ): TracesCountersV2 {
   return TracesCountersV2(
     TracingModuleV2.entries.associateWith {

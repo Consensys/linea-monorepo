@@ -38,7 +38,7 @@ class BlockToBatchSubmissionCoordinatorTest {
   private fun createBlockToBatchSubmissionCoordinator(
     vertx: Vertx,
     conflationService: ConflationService = defaultConflationService,
-    log: Logger = LogManager.getLogger(this::class.java)
+    log: Logger = LogManager.getLogger(this::class.java),
   ): BlockToBatchSubmissionCoordinator {
     val tracesCountersClient =
       mock<TracesCountersClientV2>().also {

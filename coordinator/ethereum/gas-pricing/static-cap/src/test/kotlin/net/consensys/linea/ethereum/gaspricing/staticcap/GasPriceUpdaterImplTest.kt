@@ -118,7 +118,7 @@ class GasPriceUpdaterImplTest {
   @Test
   @Timeout(10, timeUnit = TimeUnit.SECONDS)
   fun gasPriceUpdaterImpl_setsPriceOnGethAndBesu(
-    testContext: VertxTestContext
+    testContext: VertxTestContext,
   ) {
     testPriceUpdateForEndpoints(testContext, gethRecipients, besuRecipients)
   }
@@ -126,7 +126,7 @@ class GasPriceUpdaterImplTest {
   @Test
   @Timeout(10, timeUnit = TimeUnit.SECONDS)
   fun gasPriceUpdaterImpl_setsPriceOnGethOnly(
-    testContext: VertxTestContext
+    testContext: VertxTestContext,
   ) {
     testPriceUpdateForEndpoints(testContext, gethRecipients = gethRecipients, besuRecipients = emptyList())
   }
@@ -134,7 +134,7 @@ class GasPriceUpdaterImplTest {
   @Test
   @Timeout(10, timeUnit = TimeUnit.SECONDS)
   fun gasPriceUpdaterImpl_setsPriceOnBesuOnly(
-    testContext: VertxTestContext
+    testContext: VertxTestContext,
   ) {
     testPriceUpdateForEndpoints(testContext, gethRecipients = emptyList(), besuRecipients = besuRecipients)
   }
@@ -142,7 +142,7 @@ class GasPriceUpdaterImplTest {
   private fun testPriceUpdateForEndpoints(
     testContext: VertxTestContext,
     gethRecipients: List<URL>,
-    besuRecipients: List<URL>
+    besuRecipients: List<URL>,
   ) {
     val gasPrice = 10uL
     gethRecipients.forEach { endpoint -> wiremockStubForPost(wiremock, endpoint, setPriceSuccessResponse) }
@@ -172,7 +172,7 @@ class GasPriceUpdaterImplTest {
   private fun wiremockStubForPost(
     wiremock: WireMockServer,
     requestOriginEndpoint: URL,
-    response: JsonObject
+    response: JsonObject,
   ) {
     wiremock.stubFor(
       WireMock.post(requestOriginEndpoint.path)
@@ -191,7 +191,7 @@ class GasPriceUpdaterImplTest {
   private fun verifyRequest(
     wiremock: WireMockServer,
     requestOriginEndpoint: URL,
-    request: JsonObject
+    request: JsonObject,
   ) {
     wiremock.verify(
       RequestPatternBuilder.newRequestPattern()

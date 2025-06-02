@@ -13,7 +13,7 @@ import net.consensys.zkevm.coordinator.clients.ProverClient
 class ProverClientFactory(
   private val vertx: Vertx,
   private val config: ProversConfig,
-  metricsFacade: MetricsFacade
+  metricsFacade: MetricsFacade,
 ) {
   private val executionWaitingResponsesMetric = GaugeAggregator()
   private val blobWaitingResponsesMetric = GaugeAggregator()
@@ -43,7 +43,7 @@ class ProverClientFactory(
 
   fun executionProverClient(
     tracesVersion: String,
-    stateManagerVersion: String
+    stateManagerVersion: String,
   ): ExecutionProverClientV2 {
     return createClient(
       proverAConfig = config.proverA.execution,
@@ -89,7 +89,7 @@ class ProverClientFactory(
     proverAConfig: FileBasedProverConfig,
     proverBConfig: FileBasedProverConfig?,
     switchBlockNumberInclusive: ULong?,
-    clientBuilder: (FileBasedProverConfig) -> ProverClient<ProofRequest, ProofResponse>
+    clientBuilder: (FileBasedProverConfig) -> ProverClient<ProofRequest, ProofResponse>,
   ): ProverClient<ProofRequest, ProofResponse>
     where ProofRequest : BlockInterval {
     return if (switchBlockNumberInclusive != null) {

@@ -17,7 +17,7 @@ object ResourcesUtil {
   fun copyResourceToTmpDir(
     resourcePath: String,
     classLoader: ClassLoader,
-    tmpDirPrefix: String = "linea-resources-"
+    tmpDirPrefix: String = "linea-resources-",
   ): Path {
     val fileDestination = File(
       Files.createTempDirectory(tmpDirPrefix)

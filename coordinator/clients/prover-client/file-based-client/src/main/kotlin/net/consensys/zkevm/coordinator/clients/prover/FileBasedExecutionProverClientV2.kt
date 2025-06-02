@@ -26,7 +26,7 @@ data class BatchExecutionProofRequestDto(
   val tracesEngineVersion: String,
   val type2StateManagerVersion: String?,
   val zkStateMerkleProof: ArrayNode,
-  val blocksData: List<RlpBridgeLogsDto>
+  val blocksData: List<RlpBridgeLogsDto>,
 )
 
 data class RlpBridgeLogsDto(val rlp: String, val bridgeLogs: List<BridgeLogsDto>)
@@ -40,7 +40,7 @@ data class BridgeLogsDto(
   val blockNumber: String,
   val address: String,
   val data: String,
-  val topics: List<String>
+  val topics: List<String>,
 ) {
   companion object {
     fun fromDomainObject(ethLog: EthLog): BridgeLogsDto {
@@ -60,7 +60,7 @@ data class BridgeLogsDto(
 }
 
 internal class ExecutionProofRequestDtoMapper(
-  private val encoder: BlockEncoder = BlockRLPEncoder
+  private val encoder: BlockEncoder = BlockRLPEncoder,
 ) : (BatchExecutionProofRequestV1) -> SafeFuture<BatchExecutionProofRequestDto> {
   override fun invoke(request: BatchExecutionProofRequestV1): SafeFuture<BatchExecutionProofRequestDto> {
     val blocksData = request.blocks.map { block ->
@@ -107,7 +107,7 @@ class FileBasedExecutionProverClientV2(
       tracesVersion = tracesVersion,
       stateManagerVersion = stateManagerVersion,
     ),
-  executionProofResponseFileNameProvider: ProverFileNameProvider = ExecutionProofResponseFileNameProvider
+  executionProofResponseFileNameProvider: ProverFileNameProvider = ExecutionProofResponseFileNameProvider,
 ) :
   GenericFileBasedProverClient<
     BatchExecutionProofRequestV1,
@@ -131,7 +131,7 @@ class FileBasedExecutionProverClientV2(
 
   override fun parseResponse(
     responseFilePath: Path,
-    proofIndex: ProofIndex
+    proofIndex: ProofIndex,
   ): SafeFuture<BatchExecutionProofResponse> {
     return SafeFuture.completedFuture(
       BatchExecutionProofResponse(

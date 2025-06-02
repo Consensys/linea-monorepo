@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicReference
 class FetchAndValidationRunner(
   val vertx: Vertx = Vertx.vertx(),
   val rpcUrl: String,
-  val log: Logger = LogManager.getLogger(FetchAndValidationRunner::class.java)
+  val log: Logger = LogManager.getLogger(FetchAndValidationRunner::class.java),
 ) {
   val web3j: Web3j = createWeb3jHttpClient(
     rpcUrl = rpcUrl,
@@ -45,7 +45,7 @@ class FetchAndValidationRunner(
     startBlockNumber: ULong,
     endBlockNumber: ULong? = null,
     chuckSize: UInt = 100U,
-    rlpEncodingDecodingOnly: Boolean = false
+    rlpEncodingDecodingOnly: Boolean = false,
   ): SafeFuture<*> {
     targetEndBlockNumber.set(endBlockNumber)
     return blocksFetcher.consumeBlocks(

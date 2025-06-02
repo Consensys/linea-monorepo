@@ -12,12 +12,12 @@ interface AggregationL2StateProvider {
 
 class AggregationL2StateProviderImpl(
   private val ethApiClient: EthApiClient,
-  private val messageService: L2MessageServiceSmartContractClientReadOnly
+  private val messageService: L2MessageServiceSmartContractClientReadOnly,
 ) : AggregationL2StateProvider {
 
   private data class AnchoredMessage(
     val messageNumber: ULong,
-    val rollingHash: ByteArray
+    val rollingHash: ByteArray,
   )
 
   private fun getLastAnchoredMessage(blockNumber: ULong): SafeFuture<AnchoredMessage> {

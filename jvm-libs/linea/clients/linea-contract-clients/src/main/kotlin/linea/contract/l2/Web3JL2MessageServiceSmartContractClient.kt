@@ -31,7 +31,7 @@ class Web3JL2MessageServiceSmartContractClient(
   private val contractAddress: String,
   private val web3jContractHelper: Web3JContractAsyncHelper,
   private val deploymentBlockNumberProvider: ContractDeploymentBlockNumberProvider,
-  private val log: Logger = LogManager.getLogger(Web3JL2MessageServiceSmartContractClient::class.java)
+  private val log: Logger = LogManager.getLogger(Web3JL2MessageServiceSmartContractClient::class.java),
 ) : L2MessageServiceSmartContractClient {
   companion object {
     fun create(
@@ -43,7 +43,7 @@ class Web3JL2MessageServiceSmartContractClient(
       feeHistoryRewardPercentile: Double,
       transactionManager: AsyncFriendlyTransactionManager,
       smartContractErrors: SmartContractErrors,
-      smartContractDeploymentBlockNumber: ULong?
+      smartContractDeploymentBlockNumber: ULong?,
     ): Web3JL2MessageServiceSmartContractClient {
       val gasProvider = EIP1559GasProvider(
         web3jClient = web3jClient,
@@ -142,7 +142,7 @@ class Web3JL2MessageServiceSmartContractClient(
 
   override fun getRollingHashByL1MessageNumber(
     block: BlockParameter,
-    l1MessageNumber: ULong
+    l1MessageNumber: ULong,
   ): SafeFuture<ByteArray> {
     return contractClientAtBlock(block, L2MessageService::class.java)
       .l1RollingHashes(l1MessageNumber.toBigInteger())
@@ -153,7 +153,7 @@ class Web3JL2MessageServiceSmartContractClient(
     messageHashes: List<ByteArray>,
     startingMessageNumber: ULong,
     finalMessageNumber: ULong,
-    finalRollingHash: ByteArray
+    finalRollingHash: ByteArray,
   ): SafeFuture<String> {
     return anchorL1L2MessageHashesV2(
       messageHashes = messageHashes,
@@ -167,7 +167,7 @@ class Web3JL2MessageServiceSmartContractClient(
     messageHashes: List<ByteArray>,
     startingMessageNumber: BigInteger,
     finalMessageNumber: BigInteger,
-    finalRollingHash: ByteArray
+    finalRollingHash: ByteArray,
   ): SafeFuture<String> {
     val function = buildAnchorL1L2MessageHashesV1(
       messageHashes = messageHashes,

@@ -21,13 +21,13 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.atomic.AtomicInteger
 
 class ShomeiClient(
-  private val rpcClient: JsonRpcClient
+  private val rpcClient: JsonRpcClient,
 ) : RollupForkChoiceUpdatedClient {
   constructor(
     vertx: Vertx,
     rpcClient: JsonRpcClient,
     retryConfig: RequestRetryConfig,
-    log: Logger = LogManager.getLogger(ShomeiClient::class.java)
+    log: Logger = LogManager.getLogger(ShomeiClient::class.java),
   ) : this(
     JsonRpcRequestRetryer(
       vertx,

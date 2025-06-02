@@ -22,7 +22,7 @@ import java.net.URI
 class StateManagerV1JsonRpcClient(
   private val rpcClient: JsonRpcV2Client,
   private val zkStateManagerVersion: String,
-  private val log: Logger = LogManager.getLogger(StateManagerV1JsonRpcClient::class.java)
+  private val log: Logger = LogManager.getLogger(StateManagerV1JsonRpcClient::class.java),
 ) : StateManagerClientV1 {
 
   companion object {
@@ -32,7 +32,7 @@ class StateManagerV1JsonRpcClient(
       maxInflightRequestsPerClient: UInt,
       requestRetry: RequestRetryConfig,
       zkStateManagerVersion: String,
-      logger: Logger = LogManager.getLogger(StateManagerV1JsonRpcClient::class.java)
+      logger: Logger = LogManager.getLogger(StateManagerV1JsonRpcClient::class.java),
     ): StateManagerV1JsonRpcClient {
       return StateManagerV1JsonRpcClient(
         rpcClient = rpcClientFactory.createJsonRpcV2Client(
@@ -77,7 +77,7 @@ class StateManagerV1JsonRpcClient(
   }
 
   override fun rollupGetStateMerkleProofWithTypedError(
-    blockInterval: BlockInterval
+    blockInterval: BlockInterval,
   ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
     return rollupGetStateMerkleProof(blockInterval)
       .handleComposed { result, th ->
@@ -94,7 +94,7 @@ class StateManagerV1JsonRpcClient(
   }
 
   private fun mapErrorResponse(
-    jsonRpcErrorResponse: JsonRpcErrorResponseException
+    jsonRpcErrorResponse: JsonRpcErrorResponseException,
   ): ErrorResponse<StateManagerErrorType> {
     val errorType =
       try {
@@ -120,7 +120,7 @@ class StateManagerV1JsonRpcClient(
   }
 
   private fun parseZkEVMStateMerkleProofResponse(
-    result: Any?
+    result: Any?,
   ): GetZkEVMStateMerkleProofResponse {
     result as JsonNode
     return GetZkEVMStateMerkleProofResponse(

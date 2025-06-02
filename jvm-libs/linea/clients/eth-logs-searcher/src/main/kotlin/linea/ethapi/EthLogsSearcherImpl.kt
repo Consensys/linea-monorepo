@@ -30,10 +30,10 @@ class EthLogsSearcherImpl(
   val ethApiClient: EthApiClient,
   val config: Config = Config(),
   val clock: Clock = Clock.System,
-  val log: Logger = LogManager.getLogger(EthLogsSearcherImpl::class.java)
+  val log: Logger = LogManager.getLogger(EthLogsSearcherImpl::class.java),
 ) : EthLogsSearcher, EthLogsClient by ethApiClient {
   data class Config(
-    val loopSuccessBackoffDelay: Duration = 1.milliseconds
+    val loopSuccessBackoffDelay: Duration = 1.milliseconds,
   )
 
   override fun findLog(
@@ -42,7 +42,7 @@ class EthLogsSearcherImpl(
     chunkSize: Int,
     address: String,
     topics: List<String>,
-    shallContinueToSearch: (EthLog) -> SearchDirection?
+    shallContinueToSearch: (EthLog) -> SearchDirection?,
   ): SafeFuture<EthLog?> {
     require(chunkSize > 0) { "chunkSize=$chunkSize must be greater than 0" }
 
@@ -73,7 +73,7 @@ class EthLogsSearcherImpl(
     topics: List<String?>,
     chunkSize: UInt,
     searchTimeout: Duration,
-    stopAfterTargetLogsCount: UInt?
+    stopAfterTargetLogsCount: UInt?,
   ): SafeFuture<EthLogsSearcher.LogSearchResult> {
     require(chunkSize > 0u) { "chunkSize=$chunkSize must be greater than 0" }
 
@@ -105,7 +105,7 @@ class EthLogsSearcherImpl(
     topics: List<String?>,
     chunkSize: UInt,
     searchTimeout: Duration,
-    logsSoftLimit: UInt?
+    logsSoftLimit: UInt?,
   ): SafeFuture<EthLogsSearcher.LogSearchResult> {
     val cursor = ConsecutiveSearchCursor(fromBlock, toBlock, chunkSize.toInt(), SearchDirection.FORWARD)
 
@@ -166,7 +166,7 @@ class EthLogsSearcherImpl(
     chunkSize: Int,
     address: String,
     topics: List<String>,
-    shallContinueToSearchPredicate: (EthLog) -> SearchDirection?
+    shallContinueToSearchPredicate: (EthLog) -> SearchDirection?,
   ): SafeFuture<EthLog?> {
     val cursor = BinarySearchCursor(fromBlock, toBlock, chunkSize)
     log.trace("searching between blocks={}", CommonDomainFunctions.blockIntervalString(fromBlock, toBlock))
@@ -211,7 +211,7 @@ class EthLogsSearcherImpl(
     toBlock: ULong,
     address: String,
     topics: List<String>,
-    shallContinueToSearchPredicate: (EthLog) -> SearchDirection?
+    shallContinueToSearchPredicate: (EthLog) -> SearchDirection?,
   ): SafeFuture<SearchResult> {
     return getLogs(
       fromBlock = fromBlock.toBlockParameter(),
@@ -239,7 +239,7 @@ class EthLogsSearcherImpl(
 
   private fun getAbsoluteBlockNumbers(
     fromBlock: BlockParameter,
-    toBlock: BlockParameter
+    toBlock: BlockParameter,
   ): SafeFuture<Pair<ULong, ULong>> {
     return SafeFuture.collectAll(
       getBlockParameterNumber(fromBlock),

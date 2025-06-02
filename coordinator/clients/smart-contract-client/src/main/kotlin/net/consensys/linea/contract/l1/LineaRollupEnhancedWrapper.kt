@@ -15,7 +15,7 @@ internal class LineaRollupEnhancedWrapper(
   web3j: Web3j,
   transactionManager: AsyncFriendlyTransactionManager,
   contractGasProvider: ContractGasProvider,
-  private val web3jContractHelper: Web3JContractAsyncHelper
+  private val web3jContractHelper: Web3JContractAsyncHelper,
 ) : LineaRollupV6(
   contractAddress,
   web3j,
@@ -25,12 +25,12 @@ internal class LineaRollupEnhancedWrapper(
   @Synchronized
   override fun executeRemoteCallTransaction(
     function: Function,
-    weiValue: BigInteger
+    weiValue: BigInteger,
   ): RemoteFunctionCall<TransactionReceipt> = web3jContractHelper.executeRemoteCallTransaction(function, weiValue)
 
   @Synchronized
   override fun executeRemoteCallTransaction(
-    function: Function
+    function: Function,
   ): RemoteFunctionCall<TransactionReceipt> = web3jContractHelper.executeRemoteCallTransaction(
     function,
     BigInteger.ZERO,

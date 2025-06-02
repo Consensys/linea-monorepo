@@ -25,7 +25,7 @@ data class PluginConfig(
   val blobscanRequestRatelimitBackoffDelay: kotlin.time.Duration?,
   val shomeiEndpoint: URI,
   val overridingRecoveryStartBlockNumber: ULong? = null,
-  val debugForceSyncStopBlockNumber: ULong? = null
+  val debugForceSyncStopBlockNumber: ULong? = null,
 ) {
   init {
     require(l1PollingInterval >= 1.milliseconds) { "Polling interval=$l1PollingInterval must be greater than 1ms." }

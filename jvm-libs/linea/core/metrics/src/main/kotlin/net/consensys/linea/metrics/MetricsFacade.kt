@@ -13,7 +13,7 @@ enum class LineaMetricsCategory {
   BLOB,
   CONFLATION,
   GAS_PRICE_CAP,
-  TX_EXCLUSION_API
+  TX_EXCLUSION_API,
   ;
 
   override fun toString(): String {
@@ -42,14 +42,14 @@ interface MetricsFacade {
     name: String,
     description: String,
     measurementSupplier: Supplier<Number>,
-    tags: List<Tag> = emptyList()
+    tags: List<Tag> = emptyList(),
   )
 
   fun createCounter(
     category: LineaMetricsCategory? = null,
     name: String,
     description: String,
-    tags: List<Tag> = emptyList()
+    tags: List<Tag> = emptyList(),
   ): Counter
 
   fun createHistogram(
@@ -58,14 +58,14 @@ interface MetricsFacade {
     description: String,
     tags: List<Tag> = emptyList(),
     isRatio: Boolean = false,
-    baseUnit: String? = null
+    baseUnit: String? = null,
   ): Histogram
 
   fun <T> createSimpleTimer(
     category: LineaMetricsCategory? = null,
     name: String,
     description: String,
-    tags: List<Tag> = emptyList()
+    tags: List<Tag> = emptyList(),
   ): TimerCapture<T>
 
   fun <T> createDynamicTagTimer(
@@ -74,7 +74,7 @@ interface MetricsFacade {
     description: String,
     tagKey: String,
     tagValueExtractorOnError: Function<Throwable, String>,
-    tagValueExtractor: Function<T, String>
+    tagValueExtractor: Function<T, String>,
   ): TimerCapture<T>
 }
 

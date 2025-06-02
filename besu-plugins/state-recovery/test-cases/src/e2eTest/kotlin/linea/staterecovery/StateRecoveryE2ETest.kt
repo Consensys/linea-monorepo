@@ -98,7 +98,7 @@ class StateRecoveryE2ETest {
 
   @Test
   fun `should recover from middle of chain and be resilient to node restarts`(
-    vertx: Vertx
+    vertx: Vertx,
   ) {
     // Part A:
     // we shall have multiple finalizations on L1
@@ -244,7 +244,7 @@ class StateRecoveryE2ETest {
   }
 
   private fun sendTxToL2(
-    keepSendingPredicate: () -> Boolean
+    keepSendingPredicate: () -> Boolean,
   ) {
     val account = L2AccountManager.generateAccount()
     val txManager = L2AccountManager.getTransactionManager(account)

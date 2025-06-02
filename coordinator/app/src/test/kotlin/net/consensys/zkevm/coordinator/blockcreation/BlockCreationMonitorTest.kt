@@ -62,7 +62,7 @@ class BlockCreationMonitorTest {
   }
 
   private class LastProvenBlockNumberProviderDouble(
-    initialValue: ULong
+    initialValue: ULong,
   ) : LastProvenBlockNumberProviderAsync {
     var lastProvenBlock: AtomicLong = AtomicLong(initialValue.toLong())
     override fun getLastProvenBlockNumber(): SafeFuture<Long> {
@@ -73,7 +73,7 @@ class BlockCreationMonitorTest {
   fun createBlockCreationMonitor(
     startingBlockNumberExclusive: Long = 99,
     blockCreationListener: BlockCreationListener = this.blockCreationListener,
-    config: BlockCreationMonitor.Config = this.config
+    config: BlockCreationMonitor.Config = this.config,
   ): BlockCreationMonitor {
     return BlockCreationMonitor(
       this.vertx,
@@ -116,7 +116,7 @@ class BlockCreationMonitorTest {
     startBlockNumber: ULong,
     numberOfBlocks: Int,
     startBlockHash: ByteArray = ByteArrayExt.random32(),
-    startBlockParentHash: ByteArray = ByteArrayExt.random32()
+    startBlockParentHash: ByteArray = ByteArrayExt.random32(),
   ): List<Block> {
     var blockHash = startBlockHash
     var parentHash = startBlockParentHash

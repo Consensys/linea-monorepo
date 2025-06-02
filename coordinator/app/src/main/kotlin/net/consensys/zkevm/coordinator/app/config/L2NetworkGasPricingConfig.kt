@@ -19,7 +19,7 @@ import kotlin.time.toKotlinDuration
 data class SampleTransactionGasPricingTomlDto(
   val plainTransferCostMultiplier: Double = 1.0,
   val compressedTxSize: Int = 125,
-  val expectedGas: Int = 21000
+  val expectedGas: Int = 21000,
 )
 
 data class LegacyGasPricingTomlDto(
@@ -28,11 +28,11 @@ data class LegacyGasPricingTomlDto(
   val naiveGasPricing: NaiveGasPricingTomlDto?,
   val sampleTransactionGasPricing: SampleTransactionGasPricingTomlDto = SampleTransactionGasPricingTomlDto(),
   val gasPriceUpperBound: ULong,
-  val gasPriceLowerBound: ULong
+  val gasPriceLowerBound: ULong,
 ) {
   enum class Type {
     Naive,
-    SampleTransaction
+    SampleTransaction,
   }
 
   init {
@@ -49,7 +49,7 @@ data class LegacyGasPricingTomlDto(
 data class NaiveGasPricingTomlDto(
   val baseFeeCoefficient: Double,
   val priorityFeeCoefficient: Double,
-  val baseFeeBlobCoefficient: Double
+  val baseFeeBlobCoefficient: Double,
 )
 
 data class VariableCostPricingTomlDto(
@@ -57,7 +57,7 @@ data class VariableCostPricingTomlDto(
   val legacyFeesMultiplier: Double,
   val margin: Double,
   val variableCostUpperBound: ULong,
-  val variableCostLowerBound: ULong
+  val variableCostLowerBound: ULong,
 ) {
   init {
     require(variableCostUpperBound >= variableCostLowerBound) {
@@ -69,7 +69,7 @@ data class VariableCostPricingTomlDto(
 data class JsonRpcPricingPropagationTomlDto(
   override var disabled: Boolean = false,
   val gethGasPriceUpdateRecipients: List<URL>,
-  val besuGasPriceUpdateRecipients: List<URL>
+  val besuGasPriceUpdateRecipients: List<URL>,
 ) : FeatureToggleable {
   init {
     require(disabled || (gethGasPriceUpdateRecipients.isNotEmpty() || besuGasPriceUpdateRecipients.isNotEmpty())) {
@@ -81,7 +81,7 @@ data class JsonRpcPricingPropagationTomlDto(
 
 data class ExtraDataPricingPropagationTomlDto(
   override var disabled: Boolean = false,
-  val extraDataUpdateRecipient: URL
+  val extraDataUpdateRecipient: URL,
 ) : FeatureToggleable
 
 data class L2NetworkGasPricingTomlDto(
@@ -99,7 +99,7 @@ data class L2NetworkGasPricingTomlDto(
   val legacy: LegacyGasPricingTomlDto,
   val variableCostPricing: VariableCostPricingTomlDto,
   val jsonRpcPricingPropagation: JsonRpcPricingPropagationTomlDto?,
-  val extraDataPricingPropagation: ExtraDataPricingPropagationTomlDto
+  val extraDataPricingPropagation: ExtraDataPricingPropagationTomlDto,
 ) : FeatureToggleable, RequestRetryConfigurable {
   init {
     require(feeHistoryBlockCount > 0) { "feeHistoryBlockCount must be greater than 0" }

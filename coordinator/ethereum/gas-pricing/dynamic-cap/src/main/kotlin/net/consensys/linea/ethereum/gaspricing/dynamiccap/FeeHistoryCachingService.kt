@@ -14,7 +14,7 @@ class FeeHistoryCachingService(
   private val web3jClient: Web3j,
   private val feeHistoryFetcher: GasPriceCapFeeHistoryFetcher,
   private val feeHistoriesRepository: FeeHistoriesRepositoryWithCache,
-  private val log: Logger = LogManager.getLogger(FeeHistoryCachingService::class.java)
+  private val log: Logger = LogManager.getLogger(FeeHistoryCachingService::class.java),
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
@@ -26,7 +26,7 @@ class FeeHistoryCachingService(
     val gasFeePercentile: Double,
     val feeHistoryWindowInBlocks: UInt,
     val feeHistoryStoragePeriodInBlocks: UInt,
-    val numOfBlocksBeforeLatest: UInt
+    val numOfBlocksBeforeLatest: UInt,
   )
 
   private fun fetchAndSaveFeeHistories(maxL1BlockNumberToFetch: Long): SafeFuture<Unit> {

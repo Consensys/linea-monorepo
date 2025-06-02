@@ -22,12 +22,12 @@ class ProofGeneratingConflationHandlerImpl(
   private val zkProofProductionCoordinator: ZkProofCreationCoordinator,
   private val batchProofHandler: BatchProofHandler,
   private val vertx: Vertx,
-  private val config: Config
+  private val config: Config,
 ) : ConflationHandler {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
   data class Config(
-    val conflationAndProofGenerationRetryInterval: Duration
+    val conflationAndProofGenerationRetryInterval: Duration,
   )
 
   override fun handleConflatedBatch(conflation: BlocksConflation): SafeFuture<*> {
@@ -104,7 +104,7 @@ class ProofGeneratingConflationHandlerImpl(
 }
 
 internal fun assertConsecutiveBlocksRange(
-  blocks: List<Block>
+  blocks: List<Block>,
 ): Result<ULongRange, IllegalArgumentException> {
   if (blocks.isEmpty()) {
     return Err(IllegalArgumentException("Empty list of blocks"))

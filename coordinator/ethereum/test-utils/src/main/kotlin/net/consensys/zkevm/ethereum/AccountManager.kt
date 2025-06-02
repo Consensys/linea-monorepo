@@ -27,7 +27,7 @@ import kotlin.time.Duration.Companion.seconds
 
 data class Account(
   private val _privateKey: String,
-  private val _address: String
+  private val _address: String,
 ) {
   val privateKey: String
     get() = _privateKey.replace("0x", "")
@@ -37,7 +37,7 @@ data class Account(
 
 data class AccountTransactionManager(
   val account: Account,
-  val txManager: AsyncFriendlyTransactionManager
+  val txManager: AsyncFriendlyTransactionManager,
 ) {
   val address: String
     get() = account.address
@@ -61,7 +61,7 @@ fun readGenesisFileAccounts(genesisJson: Map<String, Any>): List<Account> {
 
 fun getTransactionManager(
   web3JClient: Web3j,
-  privateKey: String
+  privateKey: String,
 ): AsyncFriendlyTransactionManager {
   val credentials = Credentials.create(privateKey.replace("0x", ""))
   val receiptPoller = PollingTransactionReceiptProcessor(web3JClient, 100, 4000)
@@ -89,7 +89,7 @@ private open class WhaleBasedAccountManager(
   genesisFile: Path,
   val clock: Clock = Clock.System,
   val testWorkerIdProvider: () -> Long = { ProcessHandle.current().pid() },
-  val log: Logger = LogManager.getLogger(WhaleBasedAccountManager::class.java)
+  val log: Logger = LogManager.getLogger(WhaleBasedAccountManager::class.java),
 ) : AccountManager {
   private val whaleAccounts: List<Account>
   final override val chainId: Long
@@ -238,7 +238,7 @@ object L2AccountManager : AccountManager by WhaleBasedAccountManager(
 fun <R, T : Response<R>> retry(
   timeout: Duration = 30.seconds,
   retryInterval: Duration = 1.seconds,
-  action: () -> T
+  action: () -> T,
 ): R {
   val start = Clock.System.now()
   var response: T? = null

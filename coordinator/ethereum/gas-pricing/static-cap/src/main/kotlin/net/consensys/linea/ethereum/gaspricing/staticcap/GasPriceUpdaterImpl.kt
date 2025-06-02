@@ -8,12 +8,12 @@ import java.net.URL
 
 class GasPriceUpdaterImpl(
   private val httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
-  private val config: Config
+  private val config: Config,
 ) : GasPriceUpdater {
   data class Config(
     val gethEndpoints: List<URL>,
     val besuEndPoints: List<URL>,
-    val retryConfig: RequestRetryConfig
+    val retryConfig: RequestRetryConfig,
   ) {
     init {
       require(gethEndpoints.isNotEmpty() || besuEndPoints.isNotEmpty()) {
@@ -40,7 +40,7 @@ class GasPriceUpdaterImpl(
 
   private fun createPriceUpdater(
     endpoints: List<URL>,
-    setMinerGasPriceMethodName: String
+    setMinerGasPriceMethodName: String,
   ): GenericGasPriceUpdater? {
     if (endpoints.isEmpty()) return null
 
