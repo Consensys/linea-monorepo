@@ -15,7 +15,9 @@
     "noFallthroughCasesInSwitch": true,
     "removeComments": true,
     "skipLibCheck": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "noErrorTruncation": true,
+    "exactOptionalPropertyTypes": true
   },
   "exclude": ["node_modules", "dist", "*.d.ts"]
 }
