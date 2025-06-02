@@ -18,7 +18,6 @@ catalog:
   jest: 29.7.0
   jest-mock-extended: 3.0.7
   prettier: 3.5.3
-  rimraf: 5.0.10
   ts-jest: 29.3.4
   typechain: 8.3.2
   winston: 3.17.0

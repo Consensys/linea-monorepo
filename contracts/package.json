@@ -36,7 +36,7 @@
     "@safe-global/safe-core-sdk-types": "4.0.2",
     "@typechain/hardhat": "9.1.0",
     "@types/diff": "5.2.0",
-    "@types/yargs": "17.0.32",
+    "@types/yargs": "catalog:",
     "c-kzg": "2.1.2",
     "chai": "4.1.1",
     "colors": "1.4.0",
@@ -51,7 +51,7 @@
     "node-gyp": "10.1.0",
     "prettier-plugin-solidity": "1.4.2",
     "solhint": "5.0.5",
-    "yargs": "17.7.2"
+    "yargs": "catalog:"
   },
   "dependencies": {
     "solidity-coverage": "0.8.16",
