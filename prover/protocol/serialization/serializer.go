@@ -356,8 +356,6 @@ func (de *Deserializer) UnpackValue(path string, v any, t reflect.Type) (r refle
 		return codex.Des(path, de, v, t)
 	}
 
-	// logrus.Printf("CompiledIOP type=%v \n", TypeOfCompiledIOPPointer)
-	// logrus.Printf("Received type=%v \n", t)
 	// Handle protocol-specific types.
 	switch {
 	case t == TypeOfColumnNatural:
@@ -389,7 +387,6 @@ func (de *Deserializer) UnpackValue(path string, v any, t reflect.Type) (r refle
 		reflect.Uint32, reflect.Uint64, reflect.String:
 		return de.UnpackPrimitive(v, t), nil
 	case reflect.Array, reflect.Slice:
-		//logrus.Printf("Trying Unpacking array or slice")
 		return de.UnpackArrayOrSlice(path, v.([]any), t)
 	case reflect.Map:
 		v := v.(map[any]any)
@@ -792,7 +789,7 @@ func (s *Serializer) PackArrayOrSlice(path string, v reflect.Value) ([]any, erro
 	var globalErr error
 
 	for i := 0; i < v.Len(); i++ {
-		ri, err := s.PackValue(path+fmt.Sprintf("[%d]", i), v.Index(i))
+		ri, err := s.PackValue("", v.Index(i))
 		if err != nil {
 			globalErr = errors.Join(globalErr, fmt.Errorf("position %d: %w", i, err))
 		}
@@ -827,7 +824,7 @@ func (de *Deserializer) UnpackArrayOrSlice(path string, v []any, t reflect.Type)
 
 	subType := t.Elem()
 	for i := 0; i < len(v); i++ {
-		subV, err := de.UnpackValue(path+fmt.Sprintf("[%d]", i), v[i], subType)
+		subV, err := de.UnpackValue("", v[i], subType)
 		if err != nil {
 			err := fmt.Errorf("failed to deserialize to %q, error in element %d: %w", subType.String(), i, err)
 			globalErr = errors.Join(globalErr, err)
@@ -842,36 +839,6 @@ func (de *Deserializer) UnpackArrayOrSlice(path string, v []any, t reflect.Type)
 
 	return res, nil
 }
-
-// // PackStructSchema creates a PackedStructSchema for a struct type, registering it in PackedObject.StructSchema.
-// // It returns the schema or an error if the type is not a struct.
-// func (s *Serializer) PackStructSchema(t reflect.Type) (schema PackedStructSchema, err error) {
-// 	if t.Kind() != reflect.Struct {
-// 		return PackedStructSchema{}, fmt.Errorf("s.Kind() != reflect.Struct, type=%v", t.String())
-// 	}
-
-// 	cleanTypeString := getPkgPathAndTypeName(t)
-
-// 	if i, ok := s.structSchemaMap[cleanTypeString]; ok {
-// 		return s.PackedObject.StructSchema[i], nil
-// 	}
-
-// 	schema = PackedStructSchema{
-// 		Type:   cleanTypeString,
-// 		Fields: make([]string, t.NumField()),
-// 	}
-
-// 	for i := 0; i < t.NumField(); i++ {
-// 		field := t.Field(i)
-// 		schema.Fields[i] = field.Name
-// 	}
-
-// 	positionOfType := len(s.PackedObject.StructSchema)
-// 	s.structSchemaMap[cleanTypeString] = positionOfType
-// 	s.PackedObject.StructSchema = append(s.PackedObject.StructSchema, schema)
-
-// 	return schema, nil
-// }
 
 // PackInterface serializes an interface value, storing its type index and concrete value in a PackedIFace.
 // It ensures the concrete type is registered and returns an error if not.
