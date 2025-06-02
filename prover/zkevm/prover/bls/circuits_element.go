@@ -9,6 +9,9 @@ import (
 )
 
 const (
+	// BLS scalar field is 255 bits, and we use 2 limbs of 128 bits to represent
+	nbFrLimbs = 2 // (x_1, x_0) MSB order
+
 	// BLS base field is 381 bits, and we use 4 limbs of 128 bits to represent
 	// it. However, the highest limb is always zero, but the arithmetization
 	// keeps it for nice alignment. We pass it to the circuit but check
@@ -21,6 +24,20 @@ const (
 )
 
 var fpParams sw_bls12381.BaseField
+
+type scalarElementWizard struct {
+	S [nbFpLimbs]frontend.Variable
+}
+
+func (c scalarElementWizard) ToElement(api frontend.API) sw_bls12381.Scalar {
+	// gnark represents the BLS12-381 Fp element on 2 limbs of 128 bits.
+	// Arithmetization uses 2 limbs of 128 bits, but the MSB limb is always 0.
+	Slimbs := make([]frontend.Variable, fpParams.NbLimbs())
+	Slimbs[len(Slimbs)-2], Slimbs[len(Slimbs)-1] = bitslice.Partition(api, c.S[1], 64, bitslice.WithNbDigits(128))
+	return sw_bls12381.Scalar{
+		A0: *fpParams.NewElement(Slimbs),
+	}
+}
 
 type g1ElementWizard struct {
 	P [nbG1Limbs]frontend.Variable
