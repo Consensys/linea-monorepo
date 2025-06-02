@@ -168,7 +168,7 @@ class ConflationCalculatorByExecutionTracesTest {
 
   private fun blockCounters(
     tracesCounters: TracesCounters,
-    blockNumber: ULong = 1uL,
+    blockNumber: ULong = 1uL
   ): BlockCounters {
     return BlockCounters(
       blockNumber = blockNumber,

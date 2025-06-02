@@ -17,7 +17,7 @@ object TracesClientResponsesParser {
   private val log: Logger = LogManager.getLogger(this::class.java)
 
   internal fun mapErrorResponseV2(
-    jsonRpcErrorResponse: JsonRpcErrorResponse,
+    jsonRpcErrorResponse: JsonRpcErrorResponse
   ): ErrorResponse<TracesServiceErrorType> {
     val errorType: TracesServiceErrorType = runCatching {
       TracesServiceErrorType.valueOf(jsonRpcErrorResponse.error.data.toString().substringBefore(':'))
@@ -27,7 +27,7 @@ object TracesClientResponsesParser {
   }
 
   internal fun parseTracesCounterResponseV2(
-    jsonRpcResponse: JsonRpcSuccessResponse,
+    jsonRpcResponse: JsonRpcSuccessResponse
   ): GetTracesCountersResponse {
     val result = jsonRpcResponse.result as JsonObject
 
@@ -71,7 +71,7 @@ object TracesClientResponsesParser {
   }
 
   internal fun parseConflatedTracesToFileResponse(
-    jsonRpcResponse: JsonRpcSuccessResponse,
+    jsonRpcResponse: JsonRpcSuccessResponse
   ): GenerateTracesResponse {
     val result = jsonRpcResponse.result as JsonObject
     return GenerateTracesResponse(

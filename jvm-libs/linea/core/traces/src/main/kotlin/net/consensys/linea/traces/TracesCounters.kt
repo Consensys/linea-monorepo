@@ -15,7 +15,7 @@ interface TracesCounters {
 
 abstract class TracesCountersImpl internal constructor(
   private val countersMap: Map<out TracingModule, UInt>,
-  private val modules: List<TracingModule>,
+  private val modules: List<TracingModule>
 ) : TracesCounters {
   init {
     require(countersMap.size == modules.size && countersMap.keys.containsAll(modules)) {

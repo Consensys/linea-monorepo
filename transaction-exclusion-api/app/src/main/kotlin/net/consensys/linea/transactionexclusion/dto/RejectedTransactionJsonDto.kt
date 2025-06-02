@@ -8,7 +8,7 @@ import net.consensys.linea.transactionexclusion.app.api.ArgumentParser
 data class ModuleOverflowJsonDto(
   val count: Long,
   val limit: Long,
-  val module: String,
+  val module: String
 ) {
   // Jackson ObjectMapper requires a default constructor
   constructor() : this(0L, 0L, "")
@@ -37,7 +37,7 @@ data class RejectedTransactionJsonDto(
   val blockNumber: String?,
   val transactionRLP: String,
   val reasonMessage: String,
-  val overflows: Any,
+  val overflows: Any
 ) {
   // Jackson ObjectMapper requires a default constructor
   constructor() : this("", "", null, "", "", Any())

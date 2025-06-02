@@ -84,7 +84,7 @@ class SmartContractCalls(private val ethConnection: EthConnection) {
     sourceWallet: Wallet,
     contractCode: CreateContract,
     chainId: Int,
-    details: ExecutionDetails,
+    details: ExecutionDetails
   ): String {
     val contractCreationTx =
       getCreateContractTransaction(sourceWallet, contractCode.byteCode, chainId)
@@ -117,7 +117,7 @@ class SmartContractCalls(private val ethConnection: EthConnection) {
   fun getCreateContractTransaction(
     sourceWallet: Wallet,
     contractCode: String?,
-    chainId: Int,
+    chainId: Int
   ): TransactionDetail {
     val nonce = sourceWallet.theoreticalNonceValue
     sourceWallet.incrementTheoreticalNonce()
@@ -162,7 +162,7 @@ class SmartContractCalls(private val ethConnection: EthConnection) {
     sourceWallet: Wallet,
     encodedFunction: String,
     txCount: Int,
-    chainId: Int,
+    chainId: Int
   ): Map<Wallet, List<TransactionDetail>> {
     val txs: MutableList<TransactionDetail> = ArrayList()
 

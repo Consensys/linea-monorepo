@@ -28,7 +28,7 @@ data class MessageAnchoringConfigTomlDto(
   ),
   val anchoringTickInterval: Duration = 2.seconds.toJavaDuration(),
   val messageQueueCapacity: Int = 10_000,
-  val maxMessagesToAnchorPerL2Transaction: Int = 100,
+  val maxMessagesToAnchorPerL2Transaction: Int = 100
 ) {
   init {
     require(messageQueueCapacity > 0) {
@@ -56,7 +56,7 @@ data class MessageAnchoringConfigTomlDto(
 
   fun reified(
     l1DefaultEndpoint: URL,
-    l2DefaultEndpoint: URL,
+    l2DefaultEndpoint: URL
   ): MessageAnchoringConfig {
     return MessageAnchoringConfig(
       disabled = disabled,
@@ -91,5 +91,5 @@ data class MessageAnchoringConfig(
   val l1EventSearchBlockChunk: UInt,
   val anchoringTickInterval: kotlin.time.Duration,
   val messageQueueCapacity: UInt,
-  val maxMessagesToAnchorPerL2Transaction: UInt,
+  val maxMessagesToAnchorPerL2Transaction: UInt
 ) : FeatureToggleable

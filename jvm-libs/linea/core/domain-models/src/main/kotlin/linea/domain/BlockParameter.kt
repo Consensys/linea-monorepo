@@ -40,7 +40,7 @@ sealed interface BlockParameter {
     LATEST("latest"),
     EARLIEST("earliest"),
     SAFE("safe"),
-    FINALIZED("finalized"),
+    FINALIZED("finalized")
     ;
 
     override fun getTag(): String = value

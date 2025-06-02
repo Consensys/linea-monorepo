@@ -16,7 +16,7 @@ import kotlin.time.TimeSource
 fun httpResponse(
   statusCode: Int = 200,
   statusMessage: String = "OK",
-  body: Buffer = Buffer.buffer(),
+  body: Buffer = Buffer.buffer()
 ): HttpResponse<Buffer> {
   return HttpResponseImpl(
     /* version = */
@@ -44,7 +44,7 @@ class FakeRequestSender(
       responseLogMaxSize = null,
       requestResponseLogLevel = Level.DEBUG,
       log = LogManager.getLogger(FakeRequestSender::class.java),
-    ),
+    )
 ) : VertxHttpRequestSender {
   private val monotonicClock = TimeSource.Monotonic
   private var lastRequestTime = monotonicClock.markNow()

@@ -7,7 +7,7 @@ import linea.staterecovery.DataFinalizedV3
 
 fun getLastFinalizationOnL1(
   logsSearcher: EthLogsSearcherImpl,
-  contractAddress: String,
+  contractAddress: String
 ): EthLogEvent<DataFinalizedV3> {
   return getFinalizationsOnL1(logsSearcher, contractAddress)
     .lastOrNull()
@@ -16,7 +16,7 @@ fun getLastFinalizationOnL1(
 
 fun getFinalizationsOnL1(
   logsSearcher: EthLogsSearcherImpl,
-  contractAddress: String,
+  contractAddress: String
 ): List<EthLogEvent<DataFinalizedV3>> {
   return logsSearcher.getLogs(
     fromBlock = BlockParameter.Tag.EARLIEST,

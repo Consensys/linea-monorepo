@@ -36,7 +36,7 @@ class AsyncFriendlyTransactionManager : RawTransactionManager {
   constructor(
     web3j: Web3j,
     txSignService: TxSignService,
-    chainId: Long,
+    chainId: Long
   ) : super(web3j, txSignService, chainId) {
     this.web3j = web3j
     resetNonce().get()
@@ -50,7 +50,7 @@ class AsyncFriendlyTransactionManager : RawTransactionManager {
   constructor(
     web3j: Web3j,
     credentials: Credentials,
-    transactionReceiptProcessor: TransactionReceiptProcessor,
+    transactionReceiptProcessor: TransactionReceiptProcessor
   ) : super(web3j, credentials, -1, transactionReceiptProcessor) {
     this.web3j = web3j
     resetNonce().get()
@@ -60,7 +60,7 @@ class AsyncFriendlyTransactionManager : RawTransactionManager {
     web3j: Web3j,
     credentials: Credentials,
     chainId: Long,
-    transactionReceiptProcessor: TransactionReceiptProcessor,
+    transactionReceiptProcessor: TransactionReceiptProcessor
   ) : super(web3j, credentials, chainId, transactionReceiptProcessor) {
     this.web3j = web3j
     resetNonce().get()
@@ -100,7 +100,7 @@ class AsyncFriendlyTransactionManager : RawTransactionManager {
     function: Function,
     encodedData: String,
     weiValue: BigInteger,
-    transactionSent: EthSendTransaction,
+    transactionSent: EthSendTransaction
   ): RemoteFunctionCall<TransactionReceipt> {
     return RemoteFunctionCall(function) {
       val receipt = processResponse(transactionSent)
@@ -133,7 +133,7 @@ class AsyncFriendlyTransactionManager : RawTransactionManager {
     to: String,
     value: BigInteger,
     data: String,
-    maxFeePerBlobGas: BigInteger,
+    maxFeePerBlobGas: BigInteger
   ): RawTransaction {
     return RawTransaction.createTransaction(
       blobs,
@@ -157,7 +157,7 @@ class AsyncFriendlyTransactionManager : RawTransactionManager {
     gasLimit: BigInteger,
     to: String,
     value: BigInteger,
-    data: String,
+    data: String
   ): RawTransaction {
     return RawTransaction.createTransaction(
       chainId,
@@ -177,7 +177,7 @@ class AsyncFriendlyTransactionManager : RawTransactionManager {
     gasLimit: BigInteger,
     to: String,
     value: BigInteger,
-    data: String,
+    data: String
   ): RawTransaction {
     return RawTransaction.createTransaction(
       nonce,

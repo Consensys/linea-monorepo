@@ -9,7 +9,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class RetryingPostgresAggregationsDao(
   private val delegate: PostgresAggregationsDao,
-  private val persistenceRetryer: PersistenceRetryer,
+  private val persistenceRetryer: PersistenceRetryer
 ) : AggregationsDao {
   override fun findConsecutiveProvenBlobs(fromBlockNumber: Long): SafeFuture<List<BlobAndBatchCounters>> {
     return persistenceRetryer.retryQuery(
@@ -24,7 +24,7 @@ class RetryingPostgresAggregationsDao(
   override fun getProofsToFinalize(
     fromBlockNumber: Long,
     finalEndBlockCreatedBefore: Instant,
-    maximumNumberOfProofs: Int,
+    maximumNumberOfProofs: Int
   ): SafeFuture<List<ProofToFinalize>> {
     return persistenceRetryer.retryQuery(
       {
@@ -38,7 +38,7 @@ class RetryingPostgresAggregationsDao(
   }
 
   override fun findHighestConsecutiveEndBlockNumber(
-    fromBlockNumber: Long,
+    fromBlockNumber: Long
   ): SafeFuture<Long?> {
     return persistenceRetryer.retryQuery(
       {

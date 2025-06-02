@@ -16,7 +16,7 @@ event RollingHashUpdated(uint256 indexed messageNumber, bytes32 indexed rollingH
 data class L1RollingHashUpdatedEvent(
   val messageNumber: ULong, // Unique indexed message number for the message
   val rollingHash: ByteArray, // Rolling hash computed for the current message number
-  val messageHash: ByteArray, // Hash of the message parameters
+  val messageHash: ByteArray // Hash of the message parameters
 ) {
 
   companion object {

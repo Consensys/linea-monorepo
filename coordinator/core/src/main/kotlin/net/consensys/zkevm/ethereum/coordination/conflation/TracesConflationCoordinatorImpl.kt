@@ -16,18 +16,18 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class TracesConflationCoordinatorImpl(
   private val tracesConflationClient: TracesConflationClientV2,
-  private val zkStateClient: StateManagerClientV1,
+  private val zkStateClient: StateManagerClientV1
 ) : TracesConflationCoordinator {
   private val log: Logger = LogManager.getLogger(this::class.java)
   private fun requestConflatedTraces(
-    blockRange: ULongRange,
+    blockRange: ULongRange
   ): SafeFuture<GenerateTracesResponse> {
     return tracesConflationClient
       .generateConflatedTracesToFile(
         startBlockNumber = blockRange.first(),
         endBlockNumber = blockRange.last(),
       )
-      .thenCompose { result: Result<GenerateTracesResponse, ErrorResponse<TracesServiceErrorType>>,
+      .thenCompose { result: Result<GenerateTracesResponse, ErrorResponse<TracesServiceErrorType>>
         ->
         result.mapBoth(
           { SafeFuture.completedFuture(it) },
@@ -40,7 +40,7 @@ class TracesConflationCoordinatorImpl(
   }
 
   private fun requestStateMerkleProof(
-    blockRange: ULongRange,
+    blockRange: ULongRange
   ): SafeFuture<GetZkEVMStateMerkleProofResponse> {
     return zkStateClient.makeRequest(
       GetStateMerkleProofRequest(BlockInterval(blockRange.first(), blockRange.last())),
@@ -48,7 +48,7 @@ class TracesConflationCoordinatorImpl(
   }
 
   override fun conflateExecutionTraces(
-    blockRange: ULongRange,
+    blockRange: ULongRange
   ): SafeFuture<BlocksTracesConflated> {
     return requestConflatedTraces(blockRange).thenCompose { tracesConflationResult: GenerateTracesResponse ->
       // these 2 requests can be done in parallel, but traces-api is much slower to respond so

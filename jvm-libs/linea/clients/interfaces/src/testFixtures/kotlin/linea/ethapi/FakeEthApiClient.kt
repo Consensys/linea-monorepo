@@ -27,7 +27,7 @@ class FakeEthApiClient(
     BlockParameter.Tag.PENDING to 0UL,
   ),
   private val topicsTranslation: Map<String, String> = emptyMap(),
-  private val log: Logger = LogManager.getLogger(FakeEthApiClient::class.java),
+  private val log: Logger = LogManager.getLogger(FakeEthApiClient::class.java)
 ) : EthApiClient {
   private val blockTags: MutableMap<BlockParameter.Tag, ULong> = initialTagsBlocks.toMutableMap()
   private val logsDb: MutableList<EthLog> = mutableListOf()
@@ -126,7 +126,7 @@ class FakeEthApiClient(
   }
 
   override fun findBlockByNumberWithoutTransactionsData(
-    blockParameter: BlockParameter,
+    blockParameter: BlockParameter
   ): SafeFuture<BlockWithTxHashes?> {
     return findBlockByNumber(blockParameter).thenApply { block -> block?.toBlockWithRandomTxHashes() }
   }
@@ -136,7 +136,7 @@ class FakeEthApiClient(
   }
 
   private fun generateFakeBlock(
-    blockNumber: ULong,
+    blockNumber: ULong
   ): Block {
     val parentBlock = blocksDb[blockNumber - 1UL]
     val timestamp = genesisTimestamp + (blockTime * blockNumber.toInt())
@@ -152,7 +152,7 @@ class FakeEthApiClient(
     fromBlock: BlockParameter,
     toBlock: BlockParameter,
     address: String,
-    topics: List<String?>,
+    topics: List<String?>
   ): SafeFuture<List<EthLog>> {
     val addressBytes = address.decodeHex()
     val topicsFilter = topics.map { it?.decodeHex() }
@@ -184,7 +184,7 @@ class FakeEthApiClient(
 
   private fun findLogsInRange(
     fromBlock: BlockParameter,
-    toBlock: BlockParameter,
+    toBlock: BlockParameter
   ): List<EthLog> {
     return logsDb.filter { isInRange(it.blockNumber, fromBlock, toBlock) }
   }
@@ -192,7 +192,7 @@ class FakeEthApiClient(
   private fun isInRange(
     blockNumber: ULong,
     fromBlock: BlockParameter,
-    toBlock: BlockParameter,
+    toBlock: BlockParameter
   ): Boolean {
     val fromBlockNumber: ULong = blockParameterToBlockNumber(fromBlock)
     val toBlockNumber: ULong = blockParameterToBlockNumber(toBlock)
@@ -201,7 +201,7 @@ class FakeEthApiClient(
   }
 
   private fun blockParameterToBlockNumber(
-    blockParameter: BlockParameter,
+    blockParameter: BlockParameter
   ): ULong {
     return when (blockParameter) {
       is BlockParameter.Tag -> blockTags[blockParameter]
@@ -214,7 +214,7 @@ class FakeEthApiClient(
   companion object {
     fun matchesTopicFilter(
       logTopics: List<ByteArray>,
-      topicsFilter: List<ByteArray?>,
+      topicsFilter: List<ByteArray?>
     ): Boolean {
       if (topicsFilter.size > logTopics.size) return false
 

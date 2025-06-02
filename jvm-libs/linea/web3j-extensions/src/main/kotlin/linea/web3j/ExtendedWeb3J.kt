@@ -56,7 +56,7 @@ class ExtendedWeb3JImpl(override val web3jClient: Web3j) : ExtendedWeb3J {
   }
 
   override fun ethGetBlockTimestampByNumber(
-    blockNumber: Long,
+    blockNumber: Long
   ): SafeFuture<BigInteger> {
     return SafeFuture.of(
       web3jClient

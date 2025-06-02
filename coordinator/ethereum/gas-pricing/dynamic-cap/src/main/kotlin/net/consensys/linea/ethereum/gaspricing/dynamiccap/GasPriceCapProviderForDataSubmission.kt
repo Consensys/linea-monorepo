@@ -10,12 +10,12 @@ import java.util.concurrent.atomic.AtomicReference
 class GasPriceCapProviderForDataSubmission(
   private val config: Config,
   private val gasPriceCapProvider: GasPriceCapProvider,
-  metricsFacade: MetricsFacade,
+  metricsFacade: MetricsFacade
 ) : GasPriceCapProvider {
   data class Config(
     val maxPriorityFeePerGasCap: ULong,
     val maxFeePerGasCap: ULong,
-    val maxFeePerBlobGasCap: ULong,
+    val maxFeePerBlobGasCap: ULong
   )
   private var lastGasPriceCap: AtomicReference<GasPriceCaps?> = AtomicReference(null)
 

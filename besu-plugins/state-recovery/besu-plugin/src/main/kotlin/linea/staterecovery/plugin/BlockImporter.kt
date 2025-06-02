@@ -23,7 +23,7 @@ class BlockImporter(
   private val synchronizationService: SynchronizationService,
   private val blockHashLookup: BlockHashLookupWithRecoverySupport = BlockHashLookupWithRecoverySupport(
     lookbackWindow = 256UL,
-  ),
+  )
 ) {
   private val log = LogManager.getLogger(BlockImporter::class.java)
   private val chainId = blockchainService.chainId.orElseThrow().toULong()
@@ -40,7 +40,7 @@ class BlockImporter(
   }
 
   private fun executeBlockWithTransactionsWithoutSignature(
-    block: BlockFromL1RecoveredData,
+    block: BlockFromL1RecoveredData
   ): PluginBlockSimulationResult {
     log.trace(
       "simulating import block={} blockHash={}",
@@ -108,7 +108,7 @@ class BlockImporter(
   companion object {
     fun createOverrides(
       blockFromBlob: BlockFromL1RecoveredData,
-      blockHashLookup: (Long) -> Hash,
+      blockHashLookup: (Long) -> Hash
     ): BlockOverrides {
       return BlockOverrides.builder()
         .blockHash(Hash.wrap(Bytes32.wrap(blockFromBlob.header.blockHash)))
@@ -124,7 +124,7 @@ class BlockImporter(
 
     fun createOverrides(
       blockHeader: BlockHeader,
-      blockHashLookup: (Long) -> Hash,
+      blockHashLookup: (Long) -> Hash
     ): BlockOverrides {
       return BlockOverrides.builder()
         .feeRecipient(blockHeader.coinbase)

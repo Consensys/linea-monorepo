@@ -34,7 +34,7 @@ class VertxHttpJsonRpcClient(
   private val responseObjectMapper: ObjectMapper = objectMapper,
   private val log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
   private val requestResponseLogLevel: Level = Level.TRACE,
-  private val failuresLogLevel: Level = Level.DEBUG,
+  private val failuresLogLevel: Level = Level.DEBUG
 ) : JsonRpcClient {
   private val requestOptions = RequestOptions().apply {
     setMethod(HttpMethod.POST)
@@ -54,7 +54,7 @@ class VertxHttpJsonRpcClient(
 
   override fun makeRequest(
     request: JsonRpcRequest,
-    resultMapper: (Any?) -> Any?,
+    resultMapper: (Any?) -> Any?
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
     val json = serializeRequest(request)
 
@@ -102,7 +102,7 @@ class VertxHttpJsonRpcClient(
   private fun handleResponse(
     requestBody: String,
     httpResponse: HttpClientResponse,
-    resultMapper: (Any?) -> Any?,
+    resultMapper: (Any?) -> Any?
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
     var isError = false
     var responseBody = ""
@@ -163,7 +163,7 @@ class VertxHttpJsonRpcClient(
     response: HttpClientResponse,
     requestBody: String,
     responseBody: String,
-    failureCause: Throwable? = null,
+    failureCause: Throwable? = null
   ) {
     val logLevel = if (isError) failuresLogLevel else requestResponseLogLevel
     if (isError && log.level != requestResponseLogLevel) {
@@ -184,7 +184,7 @@ class VertxHttpJsonRpcClient(
 
   private fun logRequestFailure(
     requestBody: String,
-    failureCause: Throwable,
+    failureCause: Throwable
   ) {
     log.log(
       failuresLogLevel,

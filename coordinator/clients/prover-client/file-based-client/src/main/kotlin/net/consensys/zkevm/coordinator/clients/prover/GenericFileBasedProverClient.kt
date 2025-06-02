@@ -34,7 +34,7 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
   private val requestMapper: (Request) -> SafeFuture<RequestDto>,
   private val responseMapper: (ResponseDto) -> Response,
   private val proofTypeLabel: String,
-  private val log: Logger = LogManager.getLogger(GenericFileBasedProverClient::class.java),
+  private val log: Logger = LogManager.getLogger(GenericFileBasedProverClient::class.java)
 ) : Supplier<Number>
   where Request : BlockInterval,
         Response : Any,
@@ -110,7 +110,7 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
   }
 
   private fun waitForResponse(
-    responseFilePath: Path,
+    responseFilePath: Path
   ): SafeFuture<Path> {
     return fileMonitor.monitor(responseFilePath).thenCompose {
       if (it is Err) {
@@ -130,7 +130,7 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
   }
 
   private fun findRequestFileIfAlreadyInFileSystem(
-    requestFileName: String,
+    requestFileName: String
   ): SafeFuture<String?> {
     return fileMonitor.findFile(
       directory = config.requestsDirectory,
@@ -140,7 +140,7 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
 
   protected open fun parseResponse(
     responseFilePath: Path,
-    proofIndex: ProofIndex,
+    proofIndex: ProofIndex
   ): SafeFuture<Response> {
     return fileReader.read(responseFilePath)
       .thenCompose { result ->
@@ -171,7 +171,7 @@ open class GenericFileBasedProverClient<Request, Response, RequestDto, ResponseD
 
     fun createDirectoryIfNotExists(
       directory: Path,
-      log: Logger = LogManager.getLogger(GenericFileBasedProverClient::class.java),
+      log: Logger = LogManager.getLogger(GenericFileBasedProverClient::class.java)
     ) {
       try {
         if (directory.notExists()) {

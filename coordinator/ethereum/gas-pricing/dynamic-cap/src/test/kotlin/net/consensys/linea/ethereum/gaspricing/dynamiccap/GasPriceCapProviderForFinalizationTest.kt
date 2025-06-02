@@ -43,7 +43,7 @@ class GasPriceCapProviderForFinalizationTest {
       maxPriorityFeePerGasCap = maxPriorityFeePerGasCap,
       maxFeePerGasCap = maxFeePerGasCap,
       gasPriceCapMultiplier = gasPriceCapMultiplier,
-    ),
+    )
   ): GasPriceCapProviderForFinalization {
     mockedGasPriceCapProvider = mock<GasPriceCapProvider> {
       on { getGasPriceCaps(any()) } doReturn SafeFuture.completedFuture(returnRawGasPriceCaps)

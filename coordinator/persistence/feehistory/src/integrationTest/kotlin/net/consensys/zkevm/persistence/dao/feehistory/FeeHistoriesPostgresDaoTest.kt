@@ -29,7 +29,7 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
     initialBaseFeePerBlobGas: ULong,
     initialBlobGasUsedRatio: UInt,
     feeHistoryBlockCount: UInt,
-    rewardPercentilesCount: Int,
+    rewardPercentilesCount: Int
   ): FeeHistory {
     return FeeHistory(
       oldestBlock = oldestBlockNumber,
@@ -77,7 +77,7 @@ class FeeHistoriesPostgresDaoTest : CleanDbTestSuiteParallel() {
 
   private fun performInsertTest(
     feeHistory: FeeHistory,
-    rewardPercentiles: List<Double>,
+    rewardPercentiles: List<Double>
   ): RowSet<Row>? {
     feeHistoriesPostgresDao.saveNewFeeHistory(feeHistory, rewardPercentiles).get()
     val dbContent = feeHistoriesContentQuery().execute().get()

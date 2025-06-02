@@ -25,11 +25,11 @@ internal class L1MessageSentEventsFetcher(
   private val l1SmartContractAddress: String,
   private val l1EventsSearcher: EthLogsSearcher,
   private val l1HighestBlock: BlockParameter,
-  private val log: Logger = LogManager.getLogger(L1MessageSentEventsFetcher::class.java),
+  private val log: Logger = LogManager.getLogger(L1MessageSentEventsFetcher::class.java)
 ) {
   private data class LastSearch(
     val highestL1AlreadySearchedBlockNumber: ULong,
-    val lastStartingMessageNumber: ULong,
+    val lastStartingMessageNumber: ULong
   )
 
   private val lastSearch = AtomicReference(
@@ -43,7 +43,7 @@ internal class L1MessageSentEventsFetcher(
     startingMessageNumber: ULong,
     targetMessagesToFetch: UInt,
     fetchTimeout: Duration,
-    blockChunkSize: UInt,
+    blockChunkSize: UInt
   ): SafeFuture<List<EthLogEvent<MessageSentEvent>>> {
     require(startingMessageNumber >= lastSearch.get().lastStartingMessageNumber) {
       "startingMessageNumber=$startingMessageNumber must greater than " +
@@ -86,7 +86,7 @@ internal class L1MessageSentEventsFetcher(
 
   private fun findL1RollingHashUpdatedEvent(
     fromBlock: ULong,
-    messageNumber: ULong,
+    messageNumber: ULong
   ): SafeFuture<EthLogEvent<L1RollingHashUpdatedEvent>?> {
     return l1EventsSearcher.getLogs(
       fromBlock = fromBlock.toBlockParameter(),

@@ -25,7 +25,7 @@ class BlockCreationMonitor(
   private val blockCreationListener: BlockCreationListener,
   private val lastProvenBlockNumberProviderAsync: LastProvenBlockNumberProviderAsync,
   private val config: Config,
-  private val log: Logger = LogManager.getLogger(BlockCreationMonitor::class.java),
+  private val log: Logger = LogManager.getLogger(BlockCreationMonitor::class.java)
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
@@ -36,7 +36,7 @@ class BlockCreationMonitor(
     val blocksToFinalization: Long,
     val blocksFetchLimit: Long,
     val startingBlockWaitTimeout: Duration = 14.days,
-    val lastL2BlockNumberToProcessInclusive: ULong? = null,
+    val lastL2BlockNumberToProcessInclusive: ULong? = null
   )
 
   private val _nexBlockNumberToFetch: AtomicLong = AtomicLong(startingBlockNumberExclusive + 1)

@@ -15,7 +15,7 @@ class HttpJsonRpcServer(
   private val port: UInt,
   private val path: String,
   private val requestHandler: Handler<RoutingContext>,
-  val serverName: String = "",
+  val serverName: String = ""
 ) : AbstractVerticle() {
   private val log: Logger = LogManager.getLogger(this.javaClass)
   private lateinit var httpServer: HttpServer

@@ -38,7 +38,7 @@ class BlobScanClientTest {
         addMockServiceRequestListener(object : RequestListener {
           override fun requestReceived(
             request: com.github.tomakehurst.wiremock.http.Request,
-            response: com.github.tomakehurst.wiremock.http.Response,
+            response: com.github.tomakehurst.wiremock.http.Response
           ) {
             // to debug
             // println("request: ${request.url}")
@@ -140,7 +140,7 @@ class BlobScanClientTest {
 
   private fun successResponseBody(
     blobId: String,
-    blobData: String,
+    blobData: String
   ): String {
     return """
       {

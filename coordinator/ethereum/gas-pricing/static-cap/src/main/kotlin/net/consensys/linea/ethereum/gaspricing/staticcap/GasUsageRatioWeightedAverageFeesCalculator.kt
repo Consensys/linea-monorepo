@@ -13,14 +13,14 @@ import org.apache.logging.log4j.Logger
  * L2FinalGasPrice = L2BaseGasPrice + WeightedL2BlobGasPrice
  */
 class GasUsageRatioWeightedAverageFeesCalculator(
-  val config: Config,
+  val config: Config
 ) : FeesCalculator {
   data class Config(
     val baseFeeCoefficient: Double,
     val priorityFeeCoefficient: Double,
     val baseFeeBlobCoefficient: Double,
     val blobSubmissionExpectedExecutionGas: Int,
-    val expectedBlobGas: Int,
+    val expectedBlobGas: Int
   )
 
   private val log: Logger = LogManager.getLogger(this::class.java)
@@ -51,7 +51,7 @@ class GasUsageRatioWeightedAverageFeesCalculator(
   private fun calculateExecutionGasPrice(
     feeHistory: FeeHistory,
     baseFeePerGasList: List<ULong>,
-    priorityFeesPerGasList: List<ULong>,
+    priorityFeesPerGasList: List<ULong>
   ): Double {
     var gasUsageRatioList = feeHistory.gasUsedRatio
     var gasUsageRatiosSum = gasUsageRatioList.sumOf { it }
@@ -78,7 +78,7 @@ class GasUsageRatioWeightedAverageFeesCalculator(
 
   private fun calculateWeightedBlobGasPrice(
     feeHistory: FeeHistory,
-    baseFeePerBlobGasList: List<ULong>,
+    baseFeePerBlobGasList: List<ULong>
   ): Double {
     val blobGasUsageRatio = if (feeHistory.blobGasUsedRatio.sumOf { it }.compareTo(0.0) == 0) {
       log.warn(

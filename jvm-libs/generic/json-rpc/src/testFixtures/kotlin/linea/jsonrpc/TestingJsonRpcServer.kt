@@ -36,7 +36,7 @@ open class TestingJsonRpcServer(
   loggerName: String = serverName,
   val vertx: Vertx = Vertx.vertx(),
   val responseObjectMapper: ObjectMapper = jacksonObjectMapper(),
-  responsesArtificialDelay: Duration? = null,
+  responsesArtificialDelay: Duration? = null
 ) {
   val log: Logger = LogManager.getLogger(loggerName)
   private var httpServer: HttpJsonRpcServer = createHttpServer(port)
@@ -100,7 +100,7 @@ open class TestingJsonRpcServer(
   private fun handleRequest(
     user: User?,
     jsonRpcRequest: JsonRpcRequest,
-    requestJson: JsonObject,
+    requestJson: JsonObject
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
     // need this otherwise kotlin compiler/IDE struggle to infer the type
     val result: Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> = (
@@ -141,7 +141,7 @@ open class TestingJsonRpcServer(
    */
   fun handle(
     method: String,
-    methodHandler: (jsonRpcRequest: JsonRpcRequest) -> Any?,
+    methodHandler: (jsonRpcRequest: JsonRpcRequest) -> Any?
   ) {
     handlers[method] = methodHandler
   }

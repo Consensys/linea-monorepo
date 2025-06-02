@@ -14,7 +14,7 @@ interface BlobDecompressor {
 internal class Adapter(
   private val delegate: GoNativeBlobDecompressorJnaBinding,
   private val maxExpectedCompressionRatio: Int = 20,
-  dictionaries: List<Path>,
+  dictionaries: List<Path>
 ) : BlobDecompressor {
   init {
     delegate.Init()
@@ -81,7 +81,7 @@ internal interface GoNativeBlobDecompressorJnaBinding {
 internal interface GoNativeBlobDecompressorJnaLib : GoNativeBlobDecompressorJnaBinding, Library
 
 enum class BlobDecompressorVersion(val version: String) {
-  V1_2_0("v1.2.0"),
+  V1_2_0("v1.2.0")
 }
 
 class GoNativeBlobDecompressorFactory {
@@ -97,7 +97,7 @@ class GoNativeBlobDecompressorFactory {
     private fun getLibFileName(version: String) = "blob_decompressor_jna_$version"
 
     fun getInstance(
-      version: BlobDecompressorVersion,
+      version: BlobDecompressorVersion
     ): BlobDecompressor {
       val libFile = Native.extractFromResourcePath(
         getLibFileName(version.version),

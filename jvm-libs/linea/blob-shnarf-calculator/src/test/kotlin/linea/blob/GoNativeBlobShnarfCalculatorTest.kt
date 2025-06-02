@@ -48,7 +48,7 @@ class GoNativeBlobShnarfCalculatorTest {
   }
 
   fun testCalculateShnarfEip4844Disabled(
-    calculator: GoNativeBlobShnarfCalculator,
+    calculator: GoNativeBlobShnarfCalculator
   ) {
     testCalculate(calculator, eip4844Enabled = false) { result ->
       Assertions.assertNotNull(result.commitment)
@@ -61,7 +61,7 @@ class GoNativeBlobShnarfCalculatorTest {
   }
 
   fun testCalculateShnarfEip4844Enabled(
-    calculator: GoNativeBlobShnarfCalculator,
+    calculator: GoNativeBlobShnarfCalculator
   ) {
     testCalculate(calculator, eip4844Enabled = true) { result ->
       Assertions.assertNotNull(result.commitment)
@@ -76,7 +76,7 @@ class GoNativeBlobShnarfCalculatorTest {
   private fun testCalculate(
     calculator: GoNativeBlobShnarfCalculator,
     eip4844Enabled: Boolean,
-    assertResultFn: (CalculateShnarfResult) -> Unit = {},
+    assertResultFn: (CalculateShnarfResult) -> Unit = {}
   ) {
     val result = calculator.CalculateShnarf(
       eip4844Enabled = eip4844Enabled,

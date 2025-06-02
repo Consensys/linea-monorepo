@@ -23,7 +23,7 @@ fun createProofToFinalize(
   parentAggregationLastBlockTimestamp: Instant = parentAggregationProof?.finalTimestamp
     ?: startBlockTime.minus(2.seconds),
   finalTimestamp: Instant = startBlockTime.plus((2L * (finalBlockNumber - firstBlockNumber)).seconds),
-  l2MessagingBlockOffsets: ByteArray = ByteArray(32),
+  l2MessagingBlockOffsets: ByteArray = ByteArray(32)
 ): ProofToFinalize {
   return ProofToFinalize(
     aggregatedProof = Random.nextBytes(32).setFirstByteToZero(),
@@ -51,7 +51,7 @@ fun createProofToFinalizeFromBlobs(
   parentStateRootHash: ByteArray = parentBlob?.blobCompressionProof?.finalStateRootHash
     ?: Random.nextBytes(32).setFirstByteToZero(),
   dataParentHash: ByteArray = parentBlob?.blobCompressionProof?.dataHash
-    ?: Random.nextBytes(32).setFirstByteToZero(),
+    ?: Random.nextBytes(32).setFirstByteToZero()
 ): ProofToFinalize {
   return createProofToFinalize(
     firstBlockNumber = blobRecords.first().startBlockNumber.toLong(),
@@ -69,7 +69,7 @@ fun createProofToFinalizeFromBlobs(
 fun createProofToFinalizeFromBlobs(
   blobsByAggregation: List<List<BlobRecord>>,
   parentStateRootHash: ByteArray = Random.nextBytes(32),
-  dataParentHash: ByteArray = Random.nextBytes(32),
+  dataParentHash: ByteArray = Random.nextBytes(32)
 ): List<ProofToFinalize> {
   val firstAggregationProof = createProofToFinalizeFromBlobs(
     blobRecords = blobsByAggregation.first(),

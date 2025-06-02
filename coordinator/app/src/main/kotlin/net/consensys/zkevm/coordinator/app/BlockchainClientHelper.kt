@@ -23,7 +23,7 @@ import java.net.URI
 fun createTransactionManager(
   vertx: Vertx,
   signerConfig: SignerConfig,
-  client: Web3j,
+  client: Web3j
 ): AsyncFriendlyTransactionManager {
   val transactionSignService = when (signerConfig.type) {
     SignerConfig.Type.Web3j -> {
@@ -57,7 +57,7 @@ fun createLineaRollupContractClient(
   contractGasProvider: ContractGasProvider,
   web3jClient: Web3j,
   smartContractErrors: SmartContractErrors,
-  useEthEstimateGas: Boolean,
+  useEthEstimateGas: Boolean
 ): LineaRollupSmartContractClient {
   return Web3JLineaRollupSmartContractClient.load(
     contractAddress = l1Config.zkEvmContractAddress,

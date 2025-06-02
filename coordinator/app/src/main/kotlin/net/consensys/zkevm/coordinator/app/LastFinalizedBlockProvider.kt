@@ -27,7 +27,7 @@ class L1BasedLastFinalizedBlockProvider(
   private val lineaRollupSmartContractClient: LineaRollupSmartContractClientReadOnly,
   private val consistentNumberOfBlocksOnL1: UInt,
   private val numberOfRetries: UInt = Int.MAX_VALUE.toUInt(),
-  private val pollingInterval: Duration = 2.seconds,
+  private val pollingInterval: Duration = 2.seconds
 ) : LastFinalizedBlockProvider {
   private val log: Logger = LogManager.getLogger(this::class.java)
 

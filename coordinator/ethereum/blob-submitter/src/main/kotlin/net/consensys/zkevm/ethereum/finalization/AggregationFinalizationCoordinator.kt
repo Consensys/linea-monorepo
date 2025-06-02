@@ -25,7 +25,7 @@ class AggregationFinalizationCoordinator(
   private val aggregationSubmitter: AggregationSubmitter,
   private val vertx: Vertx,
   private val clock: Clock,
-  private val log: Logger = LogManager.getLogger(AggregationFinalizationCoordinator::class.java),
+  private val log: Logger = LogManager.getLogger(AggregationFinalizationCoordinator::class.java)
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
@@ -33,7 +33,7 @@ class AggregationFinalizationCoordinator(
 ) {
   class Config(
     val pollingInterval: Duration,
-    val proofSubmissionDelay: Duration,
+    val proofSubmissionDelay: Duration
   )
 
   override fun action(): SafeFuture<Unit> {
@@ -70,7 +70,7 @@ class AggregationFinalizationCoordinator(
   }
 
   private fun fetchAggregationStartAndEndBlob(
-    proofToFinalize: ProofToFinalize?,
+    proofToFinalize: ProofToFinalize?
   ): SafeFuture<ProofEdgeBlobs?> {
     return if (proofToFinalize == null) {
       SafeFuture.completedFuture(null)
@@ -98,7 +98,7 @@ class AggregationFinalizationCoordinator(
   }
 
   private fun fetchAggregationData(
-    lastFinalizedBlockNumber: ULong,
+    lastFinalizedBlockNumber: ULong
   ): SafeFuture<AggregationData?> {
     return aggregationsRepository.getProofsToFinalize(
       fromBlockNumber = lastFinalizedBlockNumber.toLong() + 1,
@@ -153,7 +153,7 @@ class AggregationFinalizationCoordinator(
   }
 
   private fun finalizeAggregationAfterEthCall(
-    aggregationData: AggregationData,
+    aggregationData: AggregationData
   ): SafeFuture<Unit> {
     return aggregationSubmitter.submitAggregationAfterEthCall(
       aggregationProof = aggregationData.aggregationProof,
@@ -173,13 +173,13 @@ class AggregationFinalizationCoordinator(
     val aggregationEndBlob: BlobRecord,
     val parentShnarf: ByteArray,
     val parentL1RollingHash: ByteArray,
-    val parentL1RollingHashMessageNumber: Long,
+    val parentL1RollingHashMessageNumber: Long
   ) {
     companion object {
       fun genesis(
         aggregationProof: ProofToFinalize,
         aggregationEndBlob: BlobRecord,
-        parentShnarf: ByteArray,
+        parentShnarf: ByteArray
       ): AggregationData {
         return AggregationData(
           aggregationProof = aggregationProof,
@@ -195,7 +195,7 @@ class AggregationFinalizationCoordinator(
   private data class ProofEdgeBlobs(
     val proof: ProofToFinalize,
     val startBlob: BlobRecord,
-    val endBlob: BlobRecord,
+    val endBlob: BlobRecord
   )
 
   companion object {
@@ -207,7 +207,7 @@ class AggregationFinalizationCoordinator(
       alreadySubmittedBlobFilter: AsyncFilter<BlobRecord>,
       aggregationSubmitter: AggregationSubmitter,
       vertx: Vertx,
-      clock: Clock,
+      clock: Clock
     ): AggregationFinalizationCoordinator {
       return AggregationFinalizationCoordinator(
         config = config,

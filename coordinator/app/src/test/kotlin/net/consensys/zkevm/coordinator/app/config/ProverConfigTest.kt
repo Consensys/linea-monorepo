@@ -13,7 +13,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class ProverConfigTest {
   data class Config(
-    val prover: ProverConfigTomlDto,
+    val prover: ProverConfigTomlDto
   )
 
   private fun parseConfig(toml: String): ProversConfig {

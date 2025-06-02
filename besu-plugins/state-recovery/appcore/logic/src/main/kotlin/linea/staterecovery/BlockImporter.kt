@@ -10,7 +10,7 @@ import kotlin.time.Duration.Companion.seconds
 
 data class ImportResult(
   val blockNumber: ULong,
-  val zkStateRootHash: ByteArray,
+  val zkStateRootHash: ByteArray
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -39,7 +39,7 @@ class BlockImporterAndStateVerifierV1(
   private val vertx: Vertx,
   private val elClient: ExecutionLayerClient,
   private val stateManagerClient: StateManagerClientV1,
-  private val stateManagerImportTimeoutPerBlock: Duration,
+  private val stateManagerImportTimeoutPerBlock: Duration
 ) : BlockImporterAndStateVerifier {
   override fun importBlocks(blocks: List<BlockFromL1RecoveredData>): SafeFuture<ImportResult> {
     val sortedBlocks = blocks.sortedBy { it.header.blockNumber }
@@ -62,7 +62,7 @@ class BlockImporterAndStateVerifierV1(
 
   private fun getBlockStateRootHash(
     blockNumber: ULong,
-    timeout: Duration,
+    timeout: Duration
   ): SafeFuture<ByteArray> {
     return AsyncRetryer
       .retry(

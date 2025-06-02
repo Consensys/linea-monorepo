@@ -21,7 +21,7 @@ fun Web3j.waitForTxReceipt(
   expectedStatus: String? = null,
   timeout: Duration = 5.seconds,
   pollingInterval: Duration = 500.milliseconds,
-  log: Logger = LogManager.getLogger("linea.web3j.waitForTxReceipt"),
+  log: Logger = LogManager.getLogger("linea.web3j.waitForTxReceipt")
 ): TransactionReceipt {
   val waitLimit = System.currentTimeMillis() + timeout.inWholeMilliseconds
   log.debug("polling tx receipt txHash=$txHash")

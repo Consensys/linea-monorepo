@@ -28,7 +28,7 @@ import kotlin.time.Duration.Companion.seconds
  */
 data class SubmissionEventsAndData<T>(
   val submissionEvents: FinalizationAndDataEventsV3,
-  val data: List<T>,
+  val data: List<T>
 )
 
 class SubmissionsFetchingTask(
@@ -44,7 +44,7 @@ class SubmissionsFetchingTask(
   private val compressedBlobsQueueLimit: Int,
   private val targetDecompressedBlobsQueueLimit: Int,
   private val debugForceSyncStopBlockNumber: ULong?,
-  private val log: Logger = LogManager.getLogger(SubmissionsFetchingTask::class.java),
+  private val log: Logger = LogManager.getLogger(SubmissionsFetchingTask::class.java)
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = l1PollingInterval.inWholeMilliseconds,
@@ -136,7 +136,7 @@ class SubmissionsFetchingTask(
 
   @Synchronized
   fun pruneQueueForElementsUpToInclusive(
-    elHeadBlockNumber: ULong,
+    elHeadBlockNumber: ULong
   ) {
     decompressedBlocksQueue.removeIf {
       it.submissionEvents.dataFinalizedEvent.event.endBlockNumber <= elHeadBlockNumber

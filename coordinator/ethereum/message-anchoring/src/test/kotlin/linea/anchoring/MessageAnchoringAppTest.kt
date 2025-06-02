@@ -62,7 +62,7 @@ class MessageAnchoringAppTest {
     l1EventPollingTimeout: Duration = 2.seconds,
     l1SuccessBackoffDelay: Duration = 1.milliseconds,
     messageQueueCapacity: UInt = 100u,
-    maxMessagesToAnchorPerL2Transaction: UInt = 10u,
+    maxMessagesToAnchorPerL2Transaction: UInt = 10u
   ): MessageAnchoringApp {
     return MessageAnchoringApp(
       vertx = vertx,
@@ -85,7 +85,7 @@ class MessageAnchoringAppTest {
   }
 
   private fun addLogsToFakeEthClient(
-    logs: List<L1MessageSentV1EthLogs>,
+    logs: List<L1MessageSentV1EthLogs>
   ) {
     l1Client.setLogs(logs.map { listOf(it.l1RollingHashUpdated.log, it.messageSent.log) }.flatten())
   }
@@ -282,7 +282,7 @@ class MessageAnchoringAppTest {
   private fun createL1MessageSentV1Logs(
     l1BlocksWithMessages: List<ULong>,
     numberOfMessagesPerBlock: Int,
-    startingMessageNumber: ULong = 1UL,
+    startingMessageNumber: ULong = 1UL
   ): List<L1MessageSentV1EthLogs> {
     val ethLogs = mutableListOf<L1MessageSentV1EthLogs>()
     var messageNumber = startingMessageNumber

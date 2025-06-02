@@ -57,7 +57,7 @@ class GasPriceCapProviderImplTest {
     l2ExtendedWeb3JClient: ExtendedWeb3J = mockedL2ExtendedWeb3JClient,
     feeHistoriesRepository: FeeHistoriesRepositoryWithCache = mockedL1FeeHistoriesRepository,
     gasPriceCapCalculator: GasPriceCapCalculator = this.gasPriceCapCalculator,
-    clock: Clock = mockedClock,
+    clock: Clock = mockedClock
   ): GasPriceCapProviderImpl {
     return GasPriceCapProviderImpl(
       config = GasPriceCapProviderImpl.Config(

@@ -25,7 +25,7 @@ class GlobalBlobAwareConflationCalculator(
   private val blobCalculator: ConflationCalculatorByDataCompressed,
   private val batchesLimit: UInt,
   private val metricsFacade: MetricsFacade,
-  private val log: Logger = LogManager.getLogger(GlobalBlobAwareConflationCalculator::class.java),
+  private val log: Logger = LogManager.getLogger(GlobalBlobAwareConflationCalculator::class.java)
 ) : TracesConflationCalculator {
   private var conflationHandler: (ConflationCalculationResult) -> SafeFuture<*> = NOOP_CONSUMER
   private var blobHandler: BlobCreationHandler = NOOP_BLOB_HANDLER

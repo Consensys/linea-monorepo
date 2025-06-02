@@ -120,7 +120,7 @@ class MinMineableFeesPricerServiceIntegrationTest {
   @Timeout(5, timeUnit = TimeUnit.MINUTES)
   fun `miner set gas price are sent to recipients correctly and underpriced txn is pending`(
     vertx: Vertx,
-    testContext: VertxTestContext,
+    testContext: VertxTestContext
   ) {
     // we need this mocked web3j client because the gas fee history in layer 1 is full of zeros initially
     val l1Web3jClientMock = mock<Web3j>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
@@ -210,7 +210,7 @@ class MinMineableFeesPricerServiceIntegrationTest {
   @Timeout(90, timeUnit = TimeUnit.SECONDS)
   fun `underpriced txn is mined after miner gas price set to a lower value`(
     vertx: Vertx,
-    testContext: VertxTestContext,
+    testContext: VertxTestContext
   ) {
     var l1LatestBlockNumber = BigInteger.valueOf(2)
     val l1Web3jClientMock = mock<Web3j>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS)
@@ -276,7 +276,7 @@ class MinMineableFeesPricerServiceIntegrationTest {
   @Timeout(90, timeUnit = TimeUnit.SECONDS)
   fun `txn with max fee per gas as current gas price is sent to l2-node and is mined correctly`(
     vertx: Vertx,
-    testContext: VertxTestContext,
+    testContext: VertxTestContext
   ) {
     val l2NodeGasPrice = l2NodeWeb3jClient.ethGasPrice().send().gasPrice // 165000001
 
@@ -317,7 +317,7 @@ class MinMineableFeesPricerServiceIntegrationTest {
     initialReward: ULong,
     initialBaseFeePerGas: ULong,
     initialGasUsedRatio: UInt,
-    feeHistoryBlockCount: UInt,
+    feeHistoryBlockCount: UInt
   ): EthFeeHistory {
     val feeHistory = EthFeeHistory.FeeHistory()
     feeHistory.setReward((initialReward until initialReward + feeHistoryBlockCount).map { listOf(it.toString()) })
@@ -337,7 +337,7 @@ class MinMineableFeesPricerServiceIntegrationTest {
   private fun initialiseServices(
     vertx: Vertx,
     l1Web3jClient: Web3j,
-    initialGasPrice: ULong? = null,
+    initialGasPrice: ULong? = null
   ): MinMineableFeesPricerService {
     val feesFetcher: FeesFetcher = FeeHistoryFetcherImpl(
       web3jClient = l1Web3jClient,

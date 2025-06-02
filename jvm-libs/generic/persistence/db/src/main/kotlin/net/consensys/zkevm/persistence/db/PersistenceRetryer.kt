@@ -10,12 +10,12 @@ import kotlin.time.Duration
 open class PersistenceRetryer(
   private val vertx: Vertx,
   private val config: Config,
-  private val log: Logger = LogManager.getLogger(PersistenceRetryer::class.java),
+  private val log: Logger = LogManager.getLogger(PersistenceRetryer::class.java)
 ) {
   data class Config(
     val backoffDelay: Duration,
     val maxRetries: Int? = null,
-    val timeout: Duration? = null,
+    val timeout: Duration? = null
   )
 
   fun <T> retryQuery(
@@ -34,7 +34,7 @@ open class PersistenceRetryer(
           error,
         )
       }
-    },
+    }
   ): SafeFuture<T> {
     return AsyncRetryer.retry(
       vertx = vertx,

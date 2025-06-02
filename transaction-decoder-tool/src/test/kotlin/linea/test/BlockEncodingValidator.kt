@@ -29,7 +29,7 @@ class BlockEncodingValidator(
   val compressorVersion: BlobCompressorVersion = BlobCompressorVersion.V1_2,
   val decompressorVersion: BlobDecompressorVersion = BlobDecompressorVersion.V1_2_0,
   val blobSizeLimitBytes: UInt = BLOB_COMPRESSOR_SIZE,
-  val log: Logger = LogManager.getLogger(BlockEncodingValidator::class.java),
+  val log: Logger = LogManager.getLogger(BlockEncodingValidator::class.java)
 ) : PeriodicPollingService(vertx, pollingIntervalMs = 1.milliseconds.inWholeMilliseconds, log = log) {
 
   val compressor = GoBackedBlobCompressor.getInstance(compressorVersion, blobSizeLimitBytes.toInt())
@@ -136,7 +136,7 @@ fun <T> ConcurrentLinkedQueue<T>.pull(elementsLimit: Int): List<T> {
 fun assertBlock(
   decompressedBlock: org.hyperledger.besu.ethereum.core.Block,
   originalBlock: org.hyperledger.besu.ethereum.core.Block,
-  log: Logger = LogManager.getLogger("test.assert.Block"),
+  log: Logger = LogManager.getLogger("test.assert.Block")
 ) {
   // on decompression, the hash is placed as parentHash because besu recomputes the hash
   // but custom decoder overrides hash calculation to use parentHash

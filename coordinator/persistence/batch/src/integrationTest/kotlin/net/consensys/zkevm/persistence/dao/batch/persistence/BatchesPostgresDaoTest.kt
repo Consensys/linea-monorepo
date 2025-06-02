@@ -79,7 +79,7 @@ class BatchesPostgresDaoTest : CleanDbTestSuiteParallel() {
   }
 
   private fun performInsertTest(
-    batch: Batch,
+    batch: Batch
   ): RowSet<Row>? {
     batchesDao.saveNewBatch(batch).get()
     val dbContent = batchesContentQuery().execute().get()

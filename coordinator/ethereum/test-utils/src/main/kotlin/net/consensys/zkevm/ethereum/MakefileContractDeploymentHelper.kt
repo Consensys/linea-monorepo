@@ -17,12 +17,12 @@ internal val l2MessageServiceAddressPattern = Pattern.compile(
 
 data class DeployedContract(
   val address: String,
-  val blockNumber: Long,
+  val blockNumber: Long
 )
 
 fun getDeployedAddress(
   commandResult: CommandResult,
-  addressPattern: Pattern,
+  addressPattern: Pattern
 ): DeployedContract {
   val lines = commandResult.stdOutLines.toList().asReversed()
   return getDeployedAddress(lines, addressPattern)
@@ -30,7 +30,7 @@ fun getDeployedAddress(
 
 fun getDeployedAddress(
   cmdStdoutLines: List<String>,
-  addressPattern: Pattern,
+  addressPattern: Pattern
 ): DeployedContract {
   val matcher: Matcher? = cmdStdoutLines
     .firstOrNull { line -> addressPattern.matcher(line).find() }
@@ -50,7 +50,7 @@ fun getDeployedAddress(
 private fun deployContract(
   command: String,
   env: Map<String, String> = emptyMap(),
-  addressPattern: Pattern,
+  addressPattern: Pattern
 ): SafeFuture<DeployedContract> {
   return Runner.executeCommand(
     command = command,
@@ -76,7 +76,7 @@ private fun deployContract(
 fun makeDeployLineaRollup(
   deploymentPrivateKey: String? = null,
   operatorsAddresses: List<String>,
-  contractVersion: LineaContractVersion,
+  contractVersion: LineaContractVersion
 ): SafeFuture<DeployedContract> {
   val env = mutableMapOf(
     "LINEA_ROLLUP_OPERATORS" to operatorsAddresses.joinToString(","),
@@ -97,7 +97,7 @@ fun makeDeployLineaRollup(
 
 fun makeDeployL2MessageService(
   deploymentPrivateKey: String? = null,
-  anchorOperatorAddresses: String,
+  anchorOperatorAddresses: String
 ): SafeFuture<DeployedContract> {
   val env = mutableMapOf(
     "L2MSGSERVICE_L1L2_MESSAGE_SETTER" to anchorOperatorAddresses,

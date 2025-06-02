@@ -6,7 +6,7 @@ import linea.domain.BlockInterval
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class BlobZkStateProviderImpl(
-  private val zkStateClient: StateManagerClientV1,
+  private val zkStateClient: StateManagerClientV1
 ) : BlobZkStateProvider {
   override fun getBlobZKState(blockRange: ULongRange): SafeFuture<BlobZkState> {
     return zkStateClient

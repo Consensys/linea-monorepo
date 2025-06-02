@@ -15,7 +15,7 @@ fun inProgressFilePattern(fileName: String, inProgressSuffix: String): String {
 
 class FileWriter(
   private val vertx: Vertx,
-  private val mapper: ObjectMapper,
+  private val mapper: ObjectMapper
 ) {
   fun write(data: Any, filePath: Path, inProgressSuffix: String?): SafeFuture<Path> {
     return vertx

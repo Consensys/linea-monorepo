@@ -26,7 +26,7 @@ data class ShnarfResult(
   val expectedShnarf: ByteArray,
   val commitment: ByteArray,
   val kzgProofContract: ByteArray,
-  val kzgProofSideCar: ByteArray,
+  val kzgProofSideCar: ByteArray
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -65,13 +65,13 @@ interface BlobShnarfCalculator {
     parentStateRootHash: ByteArray,
     finalStateRootHash: ByteArray,
     prevShnarf: ByteArray,
-    conflationOrder: BlockIntervals,
+    conflationOrder: BlockIntervals
   ): ShnarfResult
 }
 
 class GoBackedBlobShnarfCalculator(
   private val delegate: GoNativeBlobShnarfCalculator,
-  private val metricsFacade: MetricsFacade,
+  private val metricsFacade: MetricsFacade
 ) : BlobShnarfCalculator {
   constructor(version: ShnarfCalculatorVersion, metricsFacade: MetricsFacade) :
     this(GoNativeShnarfCalculatorFactory.getInstance(version), metricsFacade)
@@ -90,7 +90,7 @@ class GoBackedBlobShnarfCalculator(
     parentStateRootHash: ByteArray,
     finalStateRootHash: ByteArray,
     prevShnarf: ByteArray,
-    conflationOrder: BlockIntervals,
+    conflationOrder: BlockIntervals
   ): ShnarfResult {
     val compressedDataB64 = Base64.getEncoder().encodeToString(compressedData)
     log.trace(
@@ -156,7 +156,7 @@ class FakeBlobShnarfCalculator : BlobShnarfCalculator {
     parentStateRootHash: ByteArray,
     finalStateRootHash: ByteArray,
     prevShnarf: ByteArray,
-    conflationOrder: BlockIntervals,
+    conflationOrder: BlockIntervals
   ): ShnarfResult {
     return ShnarfResult(
       dataHash = Random.nextBytes(32),

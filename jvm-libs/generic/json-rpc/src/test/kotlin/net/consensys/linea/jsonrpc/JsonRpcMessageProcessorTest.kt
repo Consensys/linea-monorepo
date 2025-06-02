@@ -38,7 +38,7 @@ class JsonRpcMessageProcessorTest {
 
   @Test
   fun `handleMessage should catch exceptions and return internal error`(
-    testContext: VertxTestContext,
+    testContext: VertxTestContext
   ) {
     val request = buildJsonRpcRequest(method = "eth_blockNumber")
     val processor = JsonRpcMessageProcessor(
@@ -60,7 +60,7 @@ class JsonRpcMessageProcessorTest {
 
   @Test
   fun `handleMessage should return error when message can't be deserialized`(
-    testContext: VertxTestContext,
+    testContext: VertxTestContext
   ) {
     val jsonStr = "{ bad json }"
     val future = processor(null, jsonStr)
@@ -75,7 +75,7 @@ class JsonRpcMessageProcessorTest {
 
   @Test
   fun `handleMessage should return error when message contains invalid JSON-RPC request`(
-    testContext: VertxTestContext,
+    testContext: VertxTestContext
   ) {
     val jsonStr = Json.encode(JsonArray().add(JsonObject()))
     val future = processor(null, jsonStr)
@@ -92,7 +92,7 @@ class JsonRpcMessageProcessorTest {
 
   @Test
   fun `handleMessage bulk should return error when one message is invalid JSON-RPC request`(
-    testContext: VertxTestContext,
+    testContext: VertxTestContext
   ) {
     val requests =
       listOf(
@@ -116,7 +116,7 @@ class JsonRpcMessageProcessorTest {
 
   @Test
   fun `handleMessage should execute single JSON-RPC request and return success response`(
-    testContext: VertxTestContext,
+    testContext: VertxTestContext
   ) {
     val request = buildJsonRpcRequest(method = "eth_blockNumber")
     processor(null, request.toString())
@@ -130,7 +130,7 @@ class JsonRpcMessageProcessorTest {
 
   @Test
   fun `handleMessage should execute bulk JSON-RPC requests and return success response`(
-    testContext: VertxTestContext,
+    testContext: VertxTestContext
   ) {
     val requests =
       listOf(
@@ -171,7 +171,7 @@ class JsonRpcMessageProcessorTest {
 
   @Test
   fun `handleMessage should return error when any of the requests fail`(
-    testContext: VertxTestContext,
+    testContext: VertxTestContext
   ) {
     val requests =
       listOf(
@@ -307,7 +307,7 @@ class JsonRpcMessageProcessorTest {
   private fun buildJsonRpcRequest(
     id: Int = 1,
     method: String = "eth_blockNumber",
-    vararg params: Any,
+    vararg params: Any
   ): JsonObject {
     return JsonObject()
       .put("jsonrpc", "2.0")
@@ -319,7 +319,7 @@ class JsonRpcMessageProcessorTest {
   private fun assertResult(
     responseStr: String,
     expectedResult: JsonObject,
-    originalRequest: JsonObject,
+    originalRequest: JsonObject
   ) {
     val response = JsonObject(responseStr)
     assertThat(response.getValue("id")).isEqualTo(originalRequest.getValue("id"))
@@ -330,7 +330,7 @@ class JsonRpcMessageProcessorTest {
   private fun assertError(
     responseStr: String,
     expectedError: Any,
-    originalRequest: JsonObject? = null,
+    originalRequest: JsonObject? = null
   ) {
     val response = JsonObject(responseStr)
     originalRequest?.let {

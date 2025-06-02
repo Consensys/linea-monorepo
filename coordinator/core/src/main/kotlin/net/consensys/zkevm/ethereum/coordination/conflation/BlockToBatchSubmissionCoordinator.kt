@@ -24,10 +24,10 @@ class BlockToBatchSubmissionCoordinator(
   private val tracesCountersClient: TracesCountersClientV2,
   private val vertx: Vertx,
   private val encoder: BlockEncoder,
-  private val log: Logger = LogManager.getLogger(BlockToBatchSubmissionCoordinator::class.java),
+  private val log: Logger = LogManager.getLogger(BlockToBatchSubmissionCoordinator::class.java)
 ) : BlockCreationListener {
   private fun getTracesCounters(
-    block: Block,
+    block: Block
   ): SafeFuture<GetTracesCountersResponse> {
     return tracesCountersClient
       .getTracesCounters(block.number)

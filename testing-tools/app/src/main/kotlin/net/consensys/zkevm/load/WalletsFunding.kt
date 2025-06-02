@@ -17,7 +17,7 @@ import java.util.function.Consumer
 
 class WalletsFunding(
   private val ethConnection: EthConnection,
-  private val sourceOfFundsWallet: Wallet,
+  private val sourceOfFundsWallet: Wallet
 ) {
 
   @Throws(IOException::class)
@@ -25,7 +25,7 @@ class WalletsFunding(
     wallets: Map<Int, Wallet>,
     payloadSize: Int,
     chainId: Int,
-    nbTransfers: Int,
+    nbTransfers: Int
   ): Map<Wallet, List<TransactionDetail>> {
     val payload = Util.generateRandomPayloadOfSize(payloadSize)
     return generateTxsWithPayload(
@@ -40,7 +40,7 @@ class WalletsFunding(
     wallets: Map<Int, Wallet>,
     payLoad: String,
     chainId: Int,
-    nbTransfers: Int,
+    nbTransfers: Int
   ): MutableMap<Wallet, List<TransactionDetail>> {
     val result: MutableMap<Wallet, List<TransactionDetail>> = HashMap()
 
@@ -99,7 +99,7 @@ class WalletsFunding(
   @Throws(IOException::class)
   fun generateUnderPricedTxs(
     wallets: Map<Int, Wallet>,
-    chainId: Int,
+    chainId: Int
   ): Map<Wallet, List<TransactionDetail>> {
     val gasUnderPriced = ethConnection.ethGasPrice().multiply(BigInteger.valueOf(80))
       .divide(BigInteger.valueOf(100))
@@ -136,7 +136,7 @@ class WalletsFunding(
     chainId: Int,
     gasPerCall: BigInteger,
     gasPricePerCall: BigInteger,
-    valuePerCall: BigInteger,
+    valuePerCall: BigInteger
   ): Map<Wallet, List<TransactionDetail>> {
     val balance = ethConnection.getBalance(sourceWallet)
     logger.info("[FUNDING] source of funds balance is {}.", balance)
@@ -199,7 +199,7 @@ class WalletsFunding(
     gasPrice: BigInteger,
     gasLimit: BigInteger,
     initialAmount: BigInteger,
-    chainId: Int,
+    chainId: Int
   ): Request<*, EthSendTransaction> {
     val rawTransaction = RawTransaction.createEtherTransaction(
       nonce,
@@ -216,7 +216,7 @@ class WalletsFunding(
     wallets: Map<Int, Wallet>,
     valueToTransfer: BigInteger,
     nbTransactions: Int,
-    chainId: Int,
+    chainId: Int
   ): Map<Wallet, MutableList<TransactionDetail>> {
     // check wallet balance, it helps to ensure wallets exist.
     wallets.values.forEach(Consumer { a: Wallet? -> ethConnection.getBalance(a!!) })
@@ -243,7 +243,7 @@ class WalletsFunding(
     value: BigInteger,
     nbTransactions: Int,
     initialNoncePerWallet: Map<Wallet, List<TransactionDetail>>,
-    chainId: Int,
+    chainId: Int
   ): Map<Wallet, MutableList<TransactionDetail>> {
     val transactions: MutableMap<Wallet, MutableList<TransactionDetail>> = HashMap()
     val gasPrice = ethConnection.ethGasPrice()
@@ -280,7 +280,7 @@ class WalletsFunding(
     wallets: Map<Int, Wallet>,
     wallet: Wallet,
     walletId: Int,
-    i: Int,
+    i: Int
   ): String {
     val walletDestinationId = (walletId + i + 1) % wallets.size
     logger.debug(

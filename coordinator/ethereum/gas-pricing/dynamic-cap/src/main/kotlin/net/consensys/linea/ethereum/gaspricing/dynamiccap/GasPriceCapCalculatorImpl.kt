@@ -13,7 +13,7 @@ class GasPriceCapCalculatorImpl : GasPriceCapCalculator {
     adjustmentConstant: UInt,
     finalizationTargetMaxDelay: Duration,
     elapsedTimeSinceBlockTimestamp: Duration,
-    timeOfDayMultiplier: Double,
+    timeOfDayMultiplier: Double
   ): Double {
     val finalizationDelayMultiplier = elapsedTimeSinceBlockTimestamp.inWholeSeconds.toDouble()
       .div(finalizationTargetMaxDelay.inWholeSeconds.toDouble()).pow(2)
@@ -27,7 +27,7 @@ class GasPriceCapCalculatorImpl : GasPriceCapCalculator {
     finalizationTargetMaxDelay: Duration,
     historicGasPriceCap: ULong,
     elapsedTimeSinceBlockTimestamp: Duration,
-    timeOfDayMultiplier: Double,
+    timeOfDayMultiplier: Double
   ): ULong {
     require(finalizationTargetMaxDelay > Duration.ZERO) {
       "finalizationTargetMaxDelay duration must be longer than zero second." +

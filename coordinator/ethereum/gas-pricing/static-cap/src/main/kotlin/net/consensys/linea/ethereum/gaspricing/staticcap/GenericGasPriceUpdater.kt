@@ -22,11 +22,11 @@ import java.util.concurrent.atomic.AtomicLong
 class GenericGasPriceUpdater(
   httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
   config: Config,
-  private val setMinerGasPriceMethodName: String,
+  private val setMinerGasPriceMethodName: String
 ) : GasPriceUpdater {
   class Config(
     val endpoints: List<URL>,
-    val retryConfig: RequestRetryConfig,
+    val retryConfig: RequestRetryConfig
   ) {
     init {
       require(endpoints.isNotEmpty()) { "At least one endpoint is required" }
@@ -51,7 +51,7 @@ class GenericGasPriceUpdater(
   }
 
   private fun fireAndForget(
-    gasPrice: ULong,
+    gasPrice: ULong
   ): Future<Unit> {
     val jsonRequest = JsonRpcRequestListParams(
       jsonrpc = "2.0",
@@ -83,7 +83,7 @@ class GenericGasPriceUpdater(
       endpoints: List<URL>,
       methodsToRetry: Set<String>,
       retryConfig: RequestRetryConfig,
-      log: Logger,
+      log: Logger
     ): JsonRpcRequestFanOut {
       val rpcClients: List<JsonRpcClient> = endpoints.map { endpoint ->
         httpJsonRpcClientFactory.createWithRetries(

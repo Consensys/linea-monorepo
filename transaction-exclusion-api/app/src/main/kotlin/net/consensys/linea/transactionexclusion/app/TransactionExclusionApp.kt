@@ -30,12 +30,12 @@ data class DbConnectionConfig(
   val host: String,
   val port: Int,
   val username: String,
-  val password: Masked,
+  val password: Masked
 )
 
 data class DbCleanupConfig(
   val pollingInterval: Duration,
-  val storagePeriod: Duration,
+  val storagePeriod: Duration
 )
 
 data class DatabaseConfig(
@@ -46,19 +46,19 @@ data class DatabaseConfig(
   val schema: String = "linea_transaction_exclusion",
   val readPoolSize: Int = 10,
   val readPipeliningLimit: Int = 10,
-  val transactionalPoolSize: Int = 10,
+  val transactionalPoolSize: Int = 10
 )
 
 data class AppConfig(
   val api: ApiConfig,
   val database: DatabaseConfig,
-  val dataQueryableWindowSinceRejectedTimestamp: Duration,
+  val dataQueryableWindowSinceRejectedTimestamp: Duration
 )
 
 data class PersistenceRetryConfig(
   val maxRetries: Int? = null,
   val backoffDelay: Duration = 1.seconds.toJavaDuration(),
-  val timeout: Duration? = 20.seconds.toJavaDuration(),
+  val timeout: Duration? = 20.seconds.toJavaDuration()
 )
 
 class TransactionExclusionApp(config: AppConfig) {
@@ -157,7 +157,7 @@ class TransactionExclusionApp(config: AppConfig) {
     schema: String,
     transactionalPoolSize: Int,
     readPipeliningLimit: Int,
-    skipMigration: Boolean = false,
+    skipMigration: Boolean = false
   ): SqlClient {
     val dbVersion = "3"
     if (!skipMigration) {

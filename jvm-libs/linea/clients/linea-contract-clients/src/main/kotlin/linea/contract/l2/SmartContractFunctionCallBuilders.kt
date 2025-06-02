@@ -13,7 +13,7 @@ internal fun buildAnchorL1L2MessageHashesV1(
   messageHashes: List<ByteArray>,
   startingMessageNumber: BigInteger,
   finalMessageNumber: BigInteger,
-  finalRollingHash: ByteArray,
+  finalRollingHash: ByteArray
 ): Function {
   return Function(
     /* name = */

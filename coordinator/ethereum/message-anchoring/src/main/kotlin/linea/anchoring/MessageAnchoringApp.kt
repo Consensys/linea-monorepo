@@ -21,7 +21,7 @@ class MessageAnchoringApp(
   private val vertx: Vertx,
   private val config: Config,
   l1EthApiClient: EthApiClient,
-  private val l2MessageService: L2MessageServiceSmartContractClient,
+  private val l2MessageService: L2MessageServiceSmartContractClient
 ) : LongRunningService {
   data class Config(
     val l1RequestRetryConfig: RetryConfig,
@@ -34,7 +34,7 @@ class MessageAnchoringApp(
     val l1EventPollingTimeout: Duration = 5.seconds,
     val l1EventSearchBlockChunk: UInt = 1000u,
     val messageQueueCapacity: UInt = 10_000u,
-    val maxMessagesToAnchorPerL2Transaction: UInt = 100u,
+    val maxMessagesToAnchorPerL2Transaction: UInt = 100u
   )
 
   private val l1EthLogsSearcher: EthLogsSearcher =

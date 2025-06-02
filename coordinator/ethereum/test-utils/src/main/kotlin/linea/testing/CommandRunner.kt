@@ -14,7 +14,7 @@ import kotlin.time.Duration.Companion.minutes
 data class CommandResult(
   val exitCode: Int,
   val stdOutLines: List<String>,
-  val stdErrLines: List<String>,
+  val stdErrLines: List<String>
 ) {
   val isSuccess: Boolean = exitCode == 0
   val stdOutStr: String
@@ -30,7 +30,7 @@ object Runner {
     envVars: Map<String, String> = emptyMap(),
     executionDir: File = getPathTo("Makefile").parent.toFile(),
     timeout: Duration = 1.minutes,
-    log: Logger = LogManager.getLogger(Runner::class.java),
+    log: Logger = LogManager.getLogger(Runner::class.java)
   ): SafeFuture<CommandResult> {
     val processBuilder = ProcessBuilder("/bin/sh", "-c", command)
     processBuilder.directory(executionDir)
@@ -88,7 +88,7 @@ object Runner {
     envVars: Map<String, String> = emptyMap(),
     executionDir: File = getPathTo("Makefile").parent.toFile(),
     timeout: Duration = 1.minutes,
-    log: Logger = LogManager.getLogger(Runner::class.java),
+    log: Logger = LogManager.getLogger(Runner::class.java)
   ): SafeFuture<CommandResult> {
     return executeCommand(command, envVars, executionDir, timeout, log)
       .thenCompose { execResult ->

@@ -56,7 +56,7 @@ class GlobalAggregationCalculatorTest {
     targetBlockNumbers: List<Int>? = null,
     aggregationSizeMultipleOf: Int = 1,
     metricsFacade: MetricsFacade = mock<MetricsFacade>(defaultAnswer = Mockito.RETURNS_DEEP_STUBS),
-    aggregationHandler: AggregationHandler = AggregationHandler.NOOP_HANDLER,
+    aggregationHandler: AggregationHandler = AggregationHandler.NOOP_HANDLER
   ): GlobalAggregationCalculator {
     val syncAggregationTriggers = mutableListOf<SyncAggregationTriggerCalculator>()
       .apply {
@@ -93,7 +93,7 @@ class GlobalAggregationCalculatorTest {
     endBlockNumber: ULong,
     numberOfBatches: UInt = 1u,
     startBlockTimestamp: Instant = fixedClock.now(),
-    endBlockTimestamp: Instant = fixedClock.now().plus(2.seconds.times((endBlockNumber - startBlockNumber).toInt())),
+    endBlockTimestamp: Instant = fixedClock.now().plus(2.seconds.times((endBlockNumber - startBlockNumber).toInt()))
   ): BlobCounters {
     return BlobCounters(
       numberOfBatches = numberOfBatches,
@@ -561,7 +561,7 @@ class GlobalAggregationCalculatorTest {
     aggregationSizeMultipleOf: Int,
     blobs: List<BlobCounters>,
     proofsLimit: Int,
-    expectedAggregations: List<BlobsToAggregate>,
+    expectedAggregations: List<BlobsToAggregate>
   ) {
     val actualAggregations = mutableListOf<BlobsToAggregate>()
     val globalAggregationCalculator = aggregationCalculator(
@@ -728,7 +728,7 @@ class GlobalAggregationCalculatorTest {
       val aggregationSizeMultipleOf: Int,
       val blobs: List<BlobCounters>,
       val proofsLimit: Int,
-      val expectedAggregations: List<BlobsToAggregate>,
+      val expectedAggregations: List<BlobsToAggregate>
     )
 
     private fun checkAggregationSizesNotExceedingMaxAggregationSize(endSize: UInt, maxAggregationSize: UInt) {

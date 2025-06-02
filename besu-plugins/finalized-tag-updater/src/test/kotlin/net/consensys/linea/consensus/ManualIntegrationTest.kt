@@ -11,7 +11,7 @@ import kotlin.time.Duration.Companion.seconds
 
 class FakeEngineBlockTagUpdater : EngineBlockTagUpdater {
   override fun lineaUpdateFinalizedBlockV1(
-    finalizedBlockNumber: Long,
+    finalizedBlockNumber: Long
   ) {
     println("Linea finalized block update: blockNumber=$finalizedBlockNumber")
   }

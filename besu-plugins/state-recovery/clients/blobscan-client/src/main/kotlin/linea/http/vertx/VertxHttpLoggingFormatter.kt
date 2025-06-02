@@ -9,7 +9,7 @@ interface VertxHttpLoggingFormatter {
   fun toLogString(
     request: HttpRequest<Buffer>,
     response: HttpResponse<Buffer>? = null,
-    failureCause: Throwable? = null,
+    failureCause: Throwable? = null
   ): String
 }
 
@@ -29,7 +29,7 @@ fun HttpRequest<*>.fullUri(): String {
 class VertxRestLoggingFormatter(
   private val includeFullUri: Boolean = false,
   private val uriTransformer: (String) -> String = { it },
-  private val responseLogMaxSize: UInt? = null,
+  private val responseLogMaxSize: UInt? = null
 ) : VertxHttpLoggingFormatter {
   fun HttpRequest<*>.uriToLog(): String {
     return if (includeFullUri) {
@@ -46,7 +46,7 @@ class VertxRestLoggingFormatter(
   override fun toLogString(
     request: HttpRequest<Buffer>,
     response: HttpResponse<Buffer>?,
-    failureCause: Throwable?,
+    failureCause: Throwable?
   ): String {
     return if (failureCause != null) {
       String.format(

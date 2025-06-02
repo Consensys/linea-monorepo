@@ -16,7 +16,7 @@ class RecoveryModeManager(
   private val miningService: MiningService,
   private val recoveryStatePersistence: RecoveryStatusPersistence,
   private val debugForceSyncStopBlockNumber: ULong? = null,
-  headBlockNumber: ULong,
+  headBlockNumber: ULong
 ) :
   BesuEvents.BlockAddedListener {
   private val log: Logger = LogManager.getLogger(RecoveryModeManager::class.java.name)
@@ -71,7 +71,7 @@ class RecoveryModeManager(
 
   private fun hasReachedTargetBlock(
     headBlockNumber: ULong = this.headBlockNumber,
-    targetBlockNumber: ULong? = this.targetBlockNumber,
+    targetBlockNumber: ULong? = this.targetBlockNumber
   ): Boolean {
     return (headBlockNumber + 1u) >= (targetBlockNumber ?: ULong.MAX_VALUE)
   }

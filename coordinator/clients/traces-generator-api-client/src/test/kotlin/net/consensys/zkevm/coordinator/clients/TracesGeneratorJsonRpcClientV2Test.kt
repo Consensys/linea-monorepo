@@ -49,7 +49,7 @@ class TracesGeneratorJsonRpcClientV2Test {
   private val tracesCountersValid: Map<String, Long> =
     TracingModuleV2.values()
       .fold(mutableMapOf()) { acc: MutableMap<String, Long>,
-                              evmModule: TracingModuleV2,
+                              evmModule: TracingModuleV2
         ->
         acc[evmModule.name] = Random.nextUInt(0u, UInt.MAX_VALUE).toLong()
         acc

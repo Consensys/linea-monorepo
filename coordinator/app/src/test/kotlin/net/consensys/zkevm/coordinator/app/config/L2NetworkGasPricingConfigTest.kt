@@ -21,7 +21,7 @@ import kotlin.time.toJavaDuration
 
 class L2NetworkGasPricingConfigTest {
   data class Config(
-    val l2NetworkGasPricing: L2NetworkGasPricingTomlDto,
+    val l2NetworkGasPricing: L2NetworkGasPricingTomlDto
   )
 
   private fun parseConfig(toml: String): L2NetworkGasPricingTomlDto {

@@ -10,7 +10,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class RecordsCleanupFinalizationHandler(
   private val batchesRepository: BatchesRepository,
   private val blobsRepository: BlobsRepository,
-  private val aggregationsRepository: AggregationsRepository,
+  private val aggregationsRepository: AggregationsRepository
 ) : FinalizationHandler {
   override fun handleUpdate(update: FinalizationMonitor.FinalizationUpdate): SafeFuture<*> {
     // We do not need to keep batches, blobs and aggregation objects in the DB that are not needed after finalization.

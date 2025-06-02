@@ -24,7 +24,7 @@ fun mapToDomainWithTxHashes(web3jBlock: EthBlock.Block): BlockWithTxHashes {
 }
 
 fun mapFullTxDataToDomain(
-  web3jBlock: EthBlock.Block,
+  web3jBlock: EthBlock.Block
 ): List<Transaction> {
   if (web3jBlock.transactions.isNotEmpty() && web3jBlock.transactions[0] !is EthBlock.TransactionObject) {
     throw IllegalArgumentException(
@@ -36,7 +36,7 @@ fun mapFullTxDataToDomain(
 }
 
 fun mapTxHashToByteArray(
-  web3jBlock: EthBlock.Block,
+  web3jBlock: EthBlock.Block
 ): List<ByteArray> {
   if (web3jBlock.transactions.isNotEmpty() && web3jBlock.transactions[0] !is EthBlock.TransactionHash) {
     throw IllegalArgumentException(

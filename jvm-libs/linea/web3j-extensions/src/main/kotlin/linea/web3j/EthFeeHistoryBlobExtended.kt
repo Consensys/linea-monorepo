@@ -31,7 +31,7 @@ class EthFeeHistoryBlobExtended : Response<EthFeeHistoryBlobExtended.FeeHistoryB
     val baseFeePerGas: List<String>,
     val gasUsedRatio: List<Double>,
     val baseFeePerBlobGas: List<String>,
-    val blobGasUsedRatio: List<Double>,
+    val blobGasUsedRatio: List<Double>
   ) {
     constructor() : this(
       oldestBlock = "",
@@ -83,7 +83,7 @@ class EthFeeHistoryBlobExtended : Response<EthFeeHistoryBlobExtended.FeeHistoryB
 
     override fun deserialize(
       jsonParser: JsonParser,
-      deserializationContext: DeserializationContext,
+      deserializationContext: DeserializationContext
     ): FeeHistoryBlobExtended? {
       return if (jsonParser.currentToken != JsonToken.VALUE_NULL) {
         objectReader.readValue(jsonParser, FeeHistoryBlobExtended::class.java)
@@ -98,7 +98,7 @@ class Web3jBlobExtended(private val web3jService: Web3jService) {
   fun ethFeeHistoryWithBlob(
     blockCount: Int,
     newestBlock: DefaultBlockParameter,
-    rewardPercentiles: List<Double>,
+    rewardPercentiles: List<Double>
   ): Request<*, EthFeeHistoryBlobExtended> {
     return Request(
       "eth_feeHistory",

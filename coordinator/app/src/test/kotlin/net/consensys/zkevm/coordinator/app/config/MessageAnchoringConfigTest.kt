@@ -14,7 +14,7 @@ class MessageAnchoringConfigTest {
   private val l1DefaultEndpoint = URI("http://l1-default-rpc-endpoint:8545").toURL()
   private val l2DefaultEndpoint = URI("http://l2-default-rpc-endpoint:8545").toURL()
   data class Config(
-    val messageAnchoring: MessageAnchoringConfigTomlDto = MessageAnchoringConfigTomlDto(),
+    val messageAnchoring: MessageAnchoringConfigTomlDto = MessageAnchoringConfigTomlDto()
   )
 
   private fun parseConfig(toml: String): MessageAnchoringConfig {

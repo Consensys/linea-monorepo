@@ -18,7 +18,7 @@ internal class BlobDecompressionTask(
   private val rawBlobsQueue: ConcurrentLinkedQueue<SubmissionEventsAndData<ByteArray>>,
   private val decompressedBlocksQueue: ConcurrentLinkedQueue<SubmissionEventsAndData<BlockFromL1RecoveredData>>,
   private val decompressedFinalizationQueueLimit: Supplier<Int>,
-  private val log: Logger = LogManager.getLogger(SubmissionsFetchingTask::class.java),
+  private val log: Logger = LogManager.getLogger(SubmissionsFetchingTask::class.java)
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = pollingInterval.inWholeMilliseconds,

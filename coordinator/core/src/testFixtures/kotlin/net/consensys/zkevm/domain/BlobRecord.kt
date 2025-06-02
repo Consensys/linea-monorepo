@@ -34,7 +34,7 @@ fun createBlobRecord(
   startBlockTime: Instant? = null,
   batchesCount: UInt = 1U,
   parentBlobRecord: BlobRecord? = null,
-  blobCompressionProof: BlobCompressionProof? = null,
+  blobCompressionProof: BlobCompressionProof? = null
 ): BlobRecord {
   require(
     blobCompressionProof != null ||
@@ -93,7 +93,7 @@ fun createBlobRecords(
   blobsIntervals: BlockIntervals,
   parentDataHash: ByteArray = Random.nextBytes(32),
   parentShnarf: ByteArray = Random.nextBytes(32),
-  parentStateRootHash: ByteArray = Random.nextBytes(32),
+  parentStateRootHash: ByteArray = Random.nextBytes(32)
 ): List<BlobRecord> {
   val firstBlob = createBlobRecord(
     startBlockNumber = blobsIntervals.startingBlockNumber,
@@ -119,7 +119,7 @@ fun createBlobRecords(
 
 fun createBlobRecords(
   compressionProofs: List<BlobCompressionProof>,
-  firstBlockStartBlockTime: Instant = Clock.System.now().trimToSecondPrecision(),
+  firstBlockStartBlockTime: Instant = Clock.System.now().trimToSecondPrecision()
 ): List<BlobRecord> {
   require(compressionProofs.isNotEmpty()) { "At least one compression proof must be provided" }
   val sortedCompressionProofs = compressionProofs.sortedBy { it.conflationOrder.startingBlockNumber }
@@ -145,7 +145,7 @@ fun createBlobRecords(
 
 fun createBlobRecordFromBatches(
   batches: List<Batch>,
-  blobCompressionProof: BlobCompressionProof? = null,
+  blobCompressionProof: BlobCompressionProof? = null
 ): BlobRecord {
   val startBlockNumber = batches.first().startBlockNumber
   val endBlockNumber = batches.last().endBlockNumber

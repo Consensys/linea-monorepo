@@ -20,10 +20,10 @@ class TransactionExclusionServiceV1Impl(
   private val config: Config,
   private val repository: RejectedTransactionsDao,
   metricsFacade: MetricsFacade,
-  private val clock: Clock = Clock.System,
+  private val clock: Clock = Clock.System
 ) : TransactionExclusionServiceV1 {
   data class Config(
-    val rejectedTimestampWithinDuration: Duration,
+    val rejectedTimestampWithinDuration: Duration
   )
 
   private val txRejectionCounter = metricsFacade.createCounter(
@@ -33,7 +33,7 @@ class TransactionExclusionServiceV1Impl(
   )
 
   override fun saveRejectedTransaction(
-    rejectedTransaction: RejectedTransaction,
+    rejectedTransaction: RejectedTransaction
   ): SafeFuture<
     Result<SaveRejectedTransactionStatus, TransactionExclusionError>,
     > {
@@ -57,7 +57,7 @@ class TransactionExclusionServiceV1Impl(
   }
 
   override fun getTransactionExclusionStatus(
-    txHash: ByteArray,
+    txHash: ByteArray
   ): SafeFuture<Result<RejectedTransaction?, TransactionExclusionError>> {
     return this.repository.findRejectedTransactionByTxHash(
       txHash = txHash,

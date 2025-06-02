@@ -15,7 +15,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 class BatchesPostgresDao(
   connection: SqlClient,
-  private val clock: Clock = Clock.System,
+  private val clock: Clock = Clock.System
 ) : BatchesDao {
   private val log = LogManager.getLogger(this.javaClass.name)
   private val queryLog = SQLQueryLogger(log)
@@ -120,7 +120,7 @@ class BatchesPostgresDao(
   }
 
   override fun findHighestConsecutiveEndBlockNumberFromBlockNumber(
-    startingBlockNumberInclusive: Long,
+    startingBlockNumberInclusive: Long
   ): SafeFuture<Long?> {
     val params = listOf(startingBlockNumberInclusive)
     queryLog.log(Level.TRACE, findHighestConsecutiveEndBlockNumberSql, params)
@@ -133,7 +133,7 @@ class BatchesPostgresDao(
   }
 
   override fun deleteBatchesUpToEndBlockNumber(
-    endBlockNumberInclusive: Long,
+    endBlockNumberInclusive: Long
   ): SafeFuture<Int> {
     return deleteUptoQuery
       .execute(

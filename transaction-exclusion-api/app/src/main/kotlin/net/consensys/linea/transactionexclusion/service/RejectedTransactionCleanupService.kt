@@ -14,7 +14,7 @@ class RejectedTransactionCleanupService(
   private val config: Config,
   private val repository: RejectedTransactionsDao,
   private val clock: Clock = Clock.System,
-  private val log: Logger = LogManager.getLogger(RejectedTransactionCleanupService::class.java),
+  private val log: Logger = LogManager.getLogger(RejectedTransactionCleanupService::class.java)
 ) : PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
@@ -22,7 +22,7 @@ class RejectedTransactionCleanupService(
 ) {
   data class Config(
     val pollingInterval: Duration,
-    val storagePeriod: Duration,
+    val storagePeriod: Duration
   )
 
   override fun action(): SafeFuture<*> {

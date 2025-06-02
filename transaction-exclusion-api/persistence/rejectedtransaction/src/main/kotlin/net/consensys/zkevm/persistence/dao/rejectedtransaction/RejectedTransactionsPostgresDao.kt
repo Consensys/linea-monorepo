@@ -22,7 +22,7 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class RejectedTransactionsPostgresDao(
   private val readConnection: SqlClient,
   private val writeConnection: SqlClient,
-  private val clock: Clock = Clock.System,
+  private val clock: Clock = Clock.System
 ) : RejectedTransactionsDao {
   private val log = LogManager.getLogger(this.javaClass.name)
   private val queryLog = SQLQueryLogger(log)
@@ -168,7 +168,7 @@ class RejectedTransactionsPostgresDao(
 
   override fun findRejectedTransactionByTxHash(
     txHash: ByteArray,
-    notRejectedBefore: Instant,
+    notRejectedBefore: Instant
   ): SafeFuture<RejectedTransaction?> {
     return selectSqlQuery
       .execute(
@@ -183,7 +183,7 @@ class RejectedTransactionsPostgresDao(
   }
 
   override fun deleteRejectedTransactions(
-    createdBefore: Instant,
+    createdBefore: Instant
   ): SafeFuture<Int> {
     return deleteRejectedTransactionsSqlQuery
       .execute(Tuple.of(createdBefore.toEpochMilliseconds()))

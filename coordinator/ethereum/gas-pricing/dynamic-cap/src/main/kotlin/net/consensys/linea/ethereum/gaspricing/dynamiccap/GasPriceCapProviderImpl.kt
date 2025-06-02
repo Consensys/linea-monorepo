@@ -20,7 +20,7 @@ class GasPriceCapProviderImpl(
   private val l2ExtendedWeb3JClient: ExtendedWeb3J,
   private val feeHistoriesRepository: FeeHistoriesRepositoryWithCache,
   private val gasPriceCapCalculator: GasPriceCapCalculator,
-  private val clock: Clock = Clock.System,
+  private val clock: Clock = Clock.System
 ) : GasPriceCapProvider {
   data class Config(
     val enabled: Boolean,
@@ -31,7 +31,7 @@ class GasPriceCapProviderImpl(
     val adjustmentConstant: UInt,
     val blobAdjustmentConstant: UInt,
     val finalizationTargetMaxDelay: Duration,
-    val gasPriceCapsCoefficient: Double,
+    val gasPriceCapsCoefficient: Double
   )
 
   private val log: Logger = LogManager.getLogger(this::class.java)
@@ -82,7 +82,7 @@ class GasPriceCapProviderImpl(
   }
 
   private fun calculateGasPriceCapsHelper(
-    targetL2BlockNumber: Long,
+    targetL2BlockNumber: Long
   ): SafeFuture<GasPriceCaps?> {
     return if (isEnoughDataForGasPriceCapCalculation()) {
       l2ExtendedWeb3JClient.ethGetBlockTimestampByNumber(targetL2BlockNumber).thenApply {

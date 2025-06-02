@@ -42,7 +42,7 @@ class GasPriceCapProviderForDataSubmissionTest {
       maxPriorityFeePerGasCap = expectedMaxPriorityFeePerGasCap,
       maxFeePerGasCap = expectedMaxFeePerGasCap,
       maxFeePerBlobGasCap = expectedMaxFeePerBlobGasCap,
-    ),
+    )
   ): GasPriceCapProviderForDataSubmission {
     mockedGasPriceCapProvider = mock<GasPriceCapProvider> {
       on { getGasPriceCaps(any()) } doReturn SafeFuture.completedFuture(returnRawGasPriceCaps)

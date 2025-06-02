@@ -17,7 +17,7 @@ import java.util.Arrays
 
 internal fun buildSubmitBlobsFunction(
   version: LineaContractVersion,
-  blobs: List<BlobRecord>,
+  blobs: List<BlobRecord>
 ): Function {
   return when (version) {
     LineaContractVersion.V6 -> buildSubmitBlobsFunctionV6(blobs)
@@ -25,7 +25,7 @@ internal fun buildSubmitBlobsFunction(
 }
 
 internal fun buildSubmitBlobsFunctionV6(
-  blobs: List<BlobRecord>,
+  blobs: List<BlobRecord>
 ): Function {
   val blobsSubmissionData = blobs.map { blob ->
     val blobCompressionProof = blob.blobCompressionProof!!
@@ -68,7 +68,7 @@ fun buildFinalizeBlocksFunction(
   aggregationProof: ProofToFinalize,
   aggregationLastBlob: BlobRecord,
   parentL1RollingHash: ByteArray,
-  parentL1RollingHashMessageNumber: Long,
+  parentL1RollingHashMessageNumber: Long
 ): Function {
   when (version) {
     LineaContractVersion.V6 -> {
@@ -86,7 +86,7 @@ internal fun buildFinalizeBlockFunctionV6(
   aggregationProof: ProofToFinalize,
   aggregationLastBlob: BlobRecord,
   parentL1RollingHash: ByteArray,
-  parentL1RollingHashMessageNumber: Long,
+  parentL1RollingHashMessageNumber: Long
 ): Function {
   val aggregationEndBlobInfo = LineaRollupV6.ShnarfData(
     /*parentShnarf*/

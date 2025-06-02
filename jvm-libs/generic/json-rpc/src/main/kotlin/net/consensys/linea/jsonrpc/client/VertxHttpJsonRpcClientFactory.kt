@@ -30,7 +30,7 @@ interface JsonRpcClientFactory {
     shallRetryRequestsClientBasePredicate: Predicate<Result<Any?, Throwable>> = Predicate { it is Err },
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = Level.TRACE,
-    failuresLogLevel: Level = Level.DEBUG,
+    failuresLogLevel: Level = Level.DEBUG
   ): JsonRpcV2Client
 }
 
@@ -39,7 +39,7 @@ class VertxHttpJsonRpcClientFactory(
   private val metricsFacade: MetricsFacade,
   private val requestResponseLogLevel: Level = Level.TRACE,
   private val failuresLogLevel: Level = Level.DEBUG,
-  private val requestIdSupplier: Supplier<Any> = SequentialIdSupplier.singleton,
+  private val requestIdSupplier: Supplier<Any> = SequentialIdSupplier.singleton
 ) : JsonRpcClientFactory {
   fun create(
     endpoint: URL,
@@ -49,7 +49,7 @@ class VertxHttpJsonRpcClientFactory(
     responseObjectMapper: ObjectMapper = objectMapper,
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = this.requestResponseLogLevel,
-    failuresLogLevel: Level = this.failuresLogLevel,
+    failuresLogLevel: Level = this.failuresLogLevel
   ): VertxHttpJsonRpcClient {
     val clientOptions =
       HttpClientOptions()
@@ -79,7 +79,7 @@ class VertxHttpJsonRpcClientFactory(
     responseObjectMapper: ObjectMapper = objectMapper,
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = this.requestResponseLogLevel,
-    failuresLogLevel: Level = this.failuresLogLevel,
+    failuresLogLevel: Level = this.failuresLogLevel
   ): JsonRpcClient {
     return LoadBalancingJsonRpcClient.create(
       endpoints.map { endpoint ->
@@ -108,7 +108,7 @@ class VertxHttpJsonRpcClientFactory(
     responseObjectMapper: ObjectMapper = objectMapper,
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = this.requestResponseLogLevel,
-    failuresLogLevel: Level = this.failuresLogLevel,
+    failuresLogLevel: Level = this.failuresLogLevel
   ): JsonRpcClient {
     val rpcClient = create(
       endpoint = endpoint,
@@ -143,7 +143,7 @@ class VertxHttpJsonRpcClientFactory(
     responseObjectMapper: ObjectMapper = objectMapper,
     log: Logger = LogManager.getLogger(VertxHttpJsonRpcClient::class.java),
     requestResponseLogLevel: Level = this.requestResponseLogLevel,
-    failuresLogLevel: Level = this.failuresLogLevel,
+    failuresLogLevel: Level = this.failuresLogLevel
   ): JsonRpcClient {
     val loadBalancingClient = createWithLoadBalancing(
       endpoints = endpoints,
@@ -179,7 +179,7 @@ class VertxHttpJsonRpcClientFactory(
     shallRetryRequestsClientBasePredicate: Predicate<Result<Any?, Throwable>>,
     log: Logger,
     requestResponseLogLevel: Level,
-    failuresLogLevel: Level,
+    failuresLogLevel: Level
   ): JsonRpcV2Client {
     assert(endpoints.isNotEmpty()) { "endpoints set is empty " }
     assert(endpoints.size == endpoints.toSet().size) {

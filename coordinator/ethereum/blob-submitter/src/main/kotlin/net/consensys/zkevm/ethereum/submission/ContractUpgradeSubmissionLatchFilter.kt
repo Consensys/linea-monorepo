@@ -12,7 +12,7 @@ class ContractUpgradeSubmissionLatchFilter<T : BlockInterval>(
   private val l2SwitchBlockNumber: ULong? = null,
   private val contractVersionProvider: ContractVersionProvider<LineaContractVersion>,
   private val currentContractVersion: LineaContractVersion,
-  private val expectedNewContractVersion: LineaContractVersion,
+  private val expectedNewContractVersion: LineaContractVersion
 ) : AsyncFilter<T> {
   private val log = LogManager.getLogger(this::class.java)
   private val latchEnabled = AtomicBoolean(false)

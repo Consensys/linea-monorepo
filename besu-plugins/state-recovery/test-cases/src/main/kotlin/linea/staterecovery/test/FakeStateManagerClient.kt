@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 open class FakeStateManagerClient(
   _blocksStateRootHashes: Map<ULong, ByteArray> = emptyMap(),
-  var headBlockNumber: ULong = _blocksStateRootHashes.keys.maxOrNull() ?: 0UL,
+  var headBlockNumber: ULong = _blocksStateRootHashes.keys.maxOrNull() ?: 0UL
 ) : StateManagerClientV1 {
   open val blocksStateRootHashes: MutableMap<ULong, ByteArray> =
     ConcurrentHashMap<ULong, ByteArray>(_blocksStateRootHashes)
@@ -43,7 +43,7 @@ open class FakeStateManagerClient(
   }
 
   override fun rollupGetStateMerkleProofWithTypedError(
-    blockInterval: BlockInterval,
+    blockInterval: BlockInterval
   ): SafeFuture<Result<GetZkEVMStateMerkleProofResponse, ErrorResponse<StateManagerErrorType>>> {
     // For state recovery, we just need the endStateRootHash
     return getStateRootHash(blockInterval.endBlockNumber)
@@ -61,7 +61,7 @@ open class FakeStateManagerClient(
 }
 
 class FakeStateManagerClientBasedOnBlobsRecords(
-  val blobRecords: List<BlobRecord>,
+  val blobRecords: List<BlobRecord>
 ) : FakeStateManagerClient(
   _blocksStateRootHashes = blobRecords
     .associate { it.endBlockNumber to it.blobCompressionProof!!.finalStateRootHash },
@@ -70,7 +70,7 @@ class FakeStateManagerClientBasedOnBlobsRecords(
 class FakeStateManagerClientReadFromL1(
   headBlockNumber: ULong,
   val logsSearcher: EthLogsSearcher,
-  val contractAddress: String,
+  val contractAddress: String
 ) : FakeStateManagerClient(
   headBlockNumber = headBlockNumber,
 ) {

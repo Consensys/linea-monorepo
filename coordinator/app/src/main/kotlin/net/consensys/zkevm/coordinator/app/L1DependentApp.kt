@@ -116,7 +116,7 @@ class L1DependentApp(
   private val aggregationsRepository: AggregationsRepository,
   l1FeeHistoriesRepository: FeeHistoriesRepositoryWithCache,
   private val smartContractErrors: SmartContractErrors,
-  private val metricsFacade: MetricsFacade,
+  private val metricsFacade: MetricsFacade
 ) : LongRunningService {
   private val log = LogManager.getLogger(this::class.java)
 
@@ -338,7 +338,7 @@ class L1DependentApp(
 
   private fun createCalculatorsForBlobsAndConflation(
     logger: Logger,
-    compressedBlobCalculator: ConflationCalculatorByDataCompressed,
+    compressedBlobCalculator: ConflationCalculatorByDataCompressed
   ): List<ConflationCalculator> {
     val calculators: MutableList<ConflationCalculator> =
       mutableListOf(
@@ -1029,7 +1029,7 @@ class L1DependentApp(
       lastConsecutiveAggregatedBlockNumber: ULong,
       batchesRepository: BatchesRepository,
       blobsRepository: BlobsRepository,
-      aggregationsRepository: AggregationsRepository,
+      aggregationsRepository: AggregationsRepository
     ): SafeFuture<*> {
       val blockNumberInclusiveToDeleteFrom = lastProcessedBlockNumber + 1u
       val cleanupBatches = batchesRepository.deleteBatchesAfterBlockNumber(blockNumberInclusiveToDeleteFrom.toLong())
@@ -1046,7 +1046,7 @@ class L1DependentApp(
      */
     fun resumeConflationFrom(
       aggregationsRepository: AggregationsRepository,
-      lastFinalizedBlock: ULong,
+      lastFinalizedBlock: ULong
     ): SafeFuture<ULong> {
       return aggregationsRepository
         .findConsecutiveProvenBlobs(lastFinalizedBlock.toLong() + 1)
@@ -1061,7 +1061,7 @@ class L1DependentApp(
 
     fun resumeAggregationFrom(
       aggregationsRepository: AggregationsRepository,
-      lastFinalizedBlock: ULong,
+      lastFinalizedBlock: ULong
     ): SafeFuture<ULong> {
       return aggregationsRepository
         .findHighestConsecutiveEndBlockNumber(lastFinalizedBlock.toLong() + 1)
@@ -1075,7 +1075,7 @@ class L1DependentApp(
       httpJsonRpcClientFactory: VertxHttpJsonRpcClientFactory,
       lineaRollupClient: LineaRollupSmartContractClientReadOnly,
       l2Web3jClient: Web3j,
-      vertx: Vertx,
+      vertx: Vertx
     ): LongRunningService {
       if (type2StateProofProviderConfig == null ||
         type2StateProofProviderConfig.disabled ||

@@ -15,7 +15,7 @@ internal val NOOP_CONSUMER: (ConflationCalculationResult) -> SafeFuture<*> =
 
 internal data class InflightConflation(
   var startBlockNumber: ULong?,
-  var counters: ConflationCounters,
+  var counters: ConflationCounters
 ) {
 
   fun toConflationResult(endBlockNumber: ULong, trigger: ConflationTrigger): ConflationCalculationResult {
@@ -42,7 +42,7 @@ class GlobalBlockConflationCalculator(
   syncCalculators: List<ConflationCalculator>,
   deferredTriggerConflationCalculators: List<DeferredTriggerConflationCalculator>,
   private val emptyTracesCounters: TracesCounters,
-  private val log: Logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java),
+  private val log: Logger = LogManager.getLogger(GlobalBlockConflationCalculator::class.java)
 ) : TracesConflationCalculator, ConflationTriggerConsumer {
   private var conflationConsumer: (ConflationCalculationResult) -> SafeFuture<*> = NOOP_CONSUMER
   private var inflightConflation: InflightConflation = InflightConflation.empty(emptyTracesCounters)

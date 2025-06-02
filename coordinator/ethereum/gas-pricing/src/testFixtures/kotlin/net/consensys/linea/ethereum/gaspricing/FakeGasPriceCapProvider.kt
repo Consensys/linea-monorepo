@@ -11,7 +11,7 @@ val defaultGasPriceCaps = GasPriceCaps(
 )
 
 class FakeGasPriceCapProvider(
-  private val gasPriceCaps: GasPriceCaps = defaultGasPriceCaps,
+  private val gasPriceCaps: GasPriceCaps = defaultGasPriceCaps
 ) : GasPriceCapProvider {
   override fun getGasPriceCaps(targetL2BlockNumber: Long): SafeFuture<GasPriceCaps?> {
     return SafeFuture.completedFuture(gasPriceCaps)

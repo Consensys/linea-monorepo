@@ -6,7 +6,7 @@ import net.consensys.linea.transactionexclusion.TransactionExclusionError
 
 enum class TransactionExclusionErrorCodes(val code: Int, val message: String) {
   // App/System/Server' error codes
-  SERVER_ERROR(-32000, "Server error"),
+  SERVER_ERROR(-32000, "Server error")
   ;
 
   fun toErrorObject(data: Any? = null): JsonRpcError {

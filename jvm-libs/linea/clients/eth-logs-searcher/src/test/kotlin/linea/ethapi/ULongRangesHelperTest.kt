@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 internal fun generateEffectiveIntervals(
   blocksWithLogs: List<ULongRange>,
   filterFromBlock: ULong,
-  filterToBlock: ULong,
+  filterToBlock: ULong
 ): List<ULongRange> {
   // if blocksWithLogs is [10..19, 25..29, 40..49] and filter.fromBlock=15 and filter.toBlock=45
   // then we will return logs for blocks [15..19, 25..29, 40..45]

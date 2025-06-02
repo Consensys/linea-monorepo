@@ -15,7 +15,7 @@ interface LastProvenBlockNumberProviderSync {
 
 class BatchesRepoBasedLastProvenBlockNumberProvider(
   startingBlockNumberExclusive: Long,
-  private val batchesRepository: BatchesRepository,
+  private val batchesRepository: BatchesRepository
 ) : LastProvenBlockNumberProviderAsync, LastProvenBlockNumberProviderSync {
   private var latestL1FinalizedBlock: AtomicLong = AtomicLong(startingBlockNumberExclusive)
   private var lastProvenBlock: AtomicLong = AtomicLong(startingBlockNumberExclusive)

@@ -21,13 +21,13 @@ data class AggregationProofRequestDto(
   val compressionProofs: List<String>,
   val parentAggregationLastBlockTimestamp: Long,
   val parentAggregationLastL1RollingHashMessageNumber: Long,
-  val parentAggregationLastL1RollingHash: String,
+  val parentAggregationLastL1RollingHash: String
 ) {
   companion object {
     fun fromDomainObject(
       proofsToAggregate: ProofsToAggregate,
       executionProofResponseFileNameProvider: ProverFileNameProvider,
-      compressionProofResponseFileNameProvider: ProverFileNameProvider,
+      compressionProofResponseFileNameProvider: ProverFileNameProvider
     ): AggregationProofRequestDto {
       val executionProofsResponseFiles = proofsToAggregate.executionProofs
         .toIntervalList()
@@ -65,7 +65,7 @@ data class AggregationProofRequestDto(
 
 internal class AggregationRequestDtoMapper(
   private val executionProofResponseFileNameProvider: ProverFileNameProvider,
-  private val compressionProofResponseFileNameProvider: ProverFileNameProvider,
+  private val compressionProofResponseFileNameProvider: ProverFileNameProvider
 ) : (ProofsToAggregate) -> SafeFuture<AggregationProofRequestDto> {
   override fun invoke(proofsToAggregate: ProofsToAggregate): SafeFuture<AggregationProofRequestDto> {
     return SafeFuture.completedFuture(
@@ -95,7 +95,7 @@ class FileBasedProofAggregationClientV2(
   hashFunction: HashFunction = Sha256HashFunction(),
   executionProofResponseFileNameProvider: ProverFileNameProvider = ExecutionProofResponseFileNameProvider,
   compressionProofResponseFileNameProvider: ProverFileNameProvider = CompressionProofResponseFileNameProvider,
-  jsonObjectMapper: ObjectMapper = JsonSerialization.proofResponseMapperV1,
+  jsonObjectMapper: ObjectMapper = JsonSerialization.proofResponseMapperV1
 ) :
   GenericFileBasedProverClient<
     ProofsToAggregate,
@@ -128,7 +128,7 @@ class FileBasedProofAggregationClientV2(
     fun createProofIndexProviderFn(
       hashFunction: HashFunction,
       executionProofResponseFileNameProvider: ProverFileNameProvider = ExecutionProofResponseFileNameProvider,
-      compressionProofResponseFileNameProvider: ProverFileNameProvider = CompressionProofResponseFileNameProvider,
+      compressionProofResponseFileNameProvider: ProverFileNameProvider = CompressionProofResponseFileNameProvider
     ): (ProofsToAggregate) -> ProofIndex {
       return { request: ProofsToAggregate ->
 

@@ -36,7 +36,7 @@ class ProofAggregationCoordinatorService(
   private val proofAggregationClient: ProofAggregationProverClientV2,
   private val aggregationL2StateProvider: AggregationL2StateProvider,
   private val log: Logger = LogManager.getLogger(ProofAggregationCoordinatorService::class.java),
-  private val provenAggregationEndBlockNumberConsumer: Consumer<ULong> = Consumer<ULong> { },
+  private val provenAggregationEndBlockNumberConsumer: Consumer<ULong> = Consumer<ULong> { }
 ) : AggregationHandler, PeriodicPollingService(
   vertx = vertx,
   pollingIntervalMs = config.pollingInterval.inWholeMilliseconds,
@@ -44,7 +44,7 @@ class ProofAggregationCoordinatorService(
 ) {
   data class Config(
     val pollingInterval: Duration,
-    val proofsLimit: UInt,
+    val proofsLimit: UInt
   )
 
   private val pendingBlobs = ConcurrentLinkedQueue<BlobAndBatchCounters>()
@@ -236,7 +236,7 @@ class ProofAggregationCoordinatorService(
       targetEndBlockNumbers: List<ULong>,
       metricsFacade: MetricsFacade,
       provenAggregationEndBlockNumberConsumer: Consumer<ULong>,
-      aggregationSizeMultipleOf: UInt,
+      aggregationSizeMultipleOf: UInt
     ): LongRunningService {
       val aggregationCalculatorByDeadline =
         AggregationTriggerCalculatorByDeadline(

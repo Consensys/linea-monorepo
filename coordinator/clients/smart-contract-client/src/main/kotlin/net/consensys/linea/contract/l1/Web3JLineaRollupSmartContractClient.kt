@@ -26,7 +26,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
   private val transactionManager: AsyncFriendlyTransactionManager,
   private val web3jContractHelper: Web3JContractAsyncHelper,
   private val web3jLineaClient: LineaRollupV6,
-  private val log: Logger = LogManager.getLogger(Web3JLineaRollupSmartContractClient::class.java),
+  private val log: Logger = LogManager.getLogger(Web3JLineaRollupSmartContractClient::class.java)
 ) : Web3JLineaRollupSmartContractClientReadOnly(
   contractAddress = contractAddress,
   web3j = web3j,
@@ -41,7 +41,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
       transactionManager: AsyncFriendlyTransactionManager,
       contractGasProvider: ContractGasProvider,
       smartContractErrors: SmartContractErrors,
-      useEthEstimateGas: Boolean = false,
+      useEthEstimateGas: Boolean = false
     ): Web3JLineaRollupSmartContractClient {
       val web3JContractAsyncHelper = Web3JContractAsyncHelper(
         contractAddress = contractAddress,
@@ -73,7 +73,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
       credentials: Credentials,
       contractGasProvider: ContractGasProvider,
       smartContractErrors: SmartContractErrors,
-      useEthEstimateGas: Boolean,
+      useEthEstimateGas: Boolean
     ): Web3JLineaRollupSmartContractClient {
       return load(
         contractAddress,
@@ -112,7 +112,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
    */
   override fun submitBlobs(
     blobs: List<BlobRecord>,
-    gasPriceCaps: GasPriceCaps?,
+    gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String> {
     return getVersion()
       .thenCompose { version ->
@@ -127,7 +127,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
 
   override fun submitBlobsEthCall(
     blobs: List<BlobRecord>,
-    gasPriceCaps: GasPriceCaps?,
+    gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String?> {
     return getVersion()
       .thenCompose { version ->
@@ -145,7 +145,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
     aggregationLastBlob: BlobRecord,
     parentL1RollingHash: ByteArray,
     parentL1RollingHashMessageNumber: Long,
-    gasPriceCaps: GasPriceCaps?,
+    gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String> {
     return getVersion()
       .thenCompose { version ->
@@ -166,7 +166,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
     aggregation: ProofToFinalize,
     aggregationLastBlob: BlobRecord,
     parentL1RollingHash: ByteArray,
-    parentL1RollingHashMessageNumber: Long,
+    parentL1RollingHashMessageNumber: Long
   ): SafeFuture<String?> {
     return getVersion()
       .thenCompose { version ->
@@ -186,7 +186,7 @@ class Web3JLineaRollupSmartContractClient internal constructor(
     aggregationLastBlob: BlobRecord,
     parentL1RollingHash: ByteArray,
     parentL1RollingHashMessageNumber: Long,
-    gasPriceCaps: GasPriceCaps?,
+    gasPriceCaps: GasPriceCaps?
   ): SafeFuture<String> {
     return getVersion()
       .thenCompose { version ->

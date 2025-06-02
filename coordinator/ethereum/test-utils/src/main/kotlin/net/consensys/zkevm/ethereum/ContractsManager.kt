@@ -19,7 +19,7 @@ data class LineaRollupDeploymentResult(
   val contractDeploymentAccount: Account,
   val contractDeploymentBlockNumber: ULong,
   val rollupOperators: List<AccountTransactionManager>,
-  val rollupOperatorClient: LineaRollupSmartContractClient,
+  val rollupOperatorClient: LineaRollupSmartContractClient
 ) {
   val rollupOperator: AccountTransactionManager
     get() = rollupOperators.first()
@@ -28,12 +28,12 @@ data class LineaRollupDeploymentResult(
 data class L2MessageServiceDeploymentResult(
   val contractAddress: String,
   val contractDeploymentBlockNumber: ULong,
-  val anchorerOperator: AccountTransactionManager,
+  val anchorerOperator: AccountTransactionManager
 )
 
 data class ContactsDeploymentResult(
   val lineaRollup: LineaRollupDeploymentResult,
-  val l2MessageService: L2MessageServiceDeploymentResult,
+  val l2MessageService: L2MessageServiceDeploymentResult
 )
 
 interface ContractsManager {
@@ -43,7 +43,7 @@ interface ContractsManager {
    */
   fun deployLineaRollup(
     numberOfOperators: Int = 1,
-    contractVersion: LineaContractVersion,
+    contractVersion: LineaContractVersion
   ): SafeFuture<LineaRollupDeploymentResult>
 
   fun deployL2MessageService(): SafeFuture<L2MessageServiceDeploymentResult>
@@ -51,7 +51,7 @@ interface ContractsManager {
   fun deployRollupAndL2MessageService(
     dataCompressionAndProofAggregationMigrationBlock: ULong = 1000UL,
     numberOfOperators: Int = 1,
-    l1ContractVersion: LineaContractVersion = LineaContractVersion.V6,
+    l1ContractVersion: LineaContractVersion = LineaContractVersion.V6
   ): SafeFuture<ContactsDeploymentResult>
 
   fun connectToLineaRollupContract(
@@ -64,7 +64,7 @@ interface ContractsManager {
       maxFeePerBlobGas = 1_000UL.gwei,
       gasLimit = 1_000_000uL,
     ),
-    smartContractErrors: SmartContractErrors? = null,
+    smartContractErrors: SmartContractErrors? = null
   ): LineaRollupSmartContractClient
 
   companion object {
@@ -87,7 +87,7 @@ object MakeFileDelegatedContractsManager : ContractsManager {
 
   override fun deployLineaRollup(
     numberOfOperators: Int,
-    contractVersion: LineaContractVersion,
+    contractVersion: LineaContractVersion
   ): SafeFuture<LineaRollupDeploymentResult> {
     val newAccounts = L1AccountManager.generateAccounts(numberOfOperators)
     val contractDeploymentAccount = newAccounts.first()
@@ -152,7 +152,7 @@ object MakeFileDelegatedContractsManager : ContractsManager {
   override fun deployRollupAndL2MessageService(
     dataCompressionAndProofAggregationMigrationBlock: ULong,
     numberOfOperators: Int,
-    l1ContractVersion: LineaContractVersion,
+    l1ContractVersion: LineaContractVersion
   ): SafeFuture<ContactsDeploymentResult> {
     return deployLineaRollup(numberOfOperators, l1ContractVersion)
       .thenCombine(deployL2MessageService()) { lineaRollupDeploymentResult, l2MessageServiceDeploymentResult ->
@@ -167,7 +167,7 @@ object MakeFileDelegatedContractsManager : ContractsManager {
     contractAddress: String,
     transactionManager: AsyncFriendlyTransactionManager,
     gasProvider: ContractEIP1559GasProvider,
-    smartContractErrors: SmartContractErrors?,
+    smartContractErrors: SmartContractErrors?
   ): LineaRollupSmartContractClient {
     return Web3JLineaRollupSmartContractClient.load(
       contractAddress,

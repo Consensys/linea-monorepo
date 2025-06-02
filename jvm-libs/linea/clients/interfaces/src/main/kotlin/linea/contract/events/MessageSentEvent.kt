@@ -34,7 +34,7 @@ data class MessageSentEvent(
   val fee: BigInteger, // Fee paid in Wei
   val value: BigInteger, // Value sent in Wei
   val calldata: ByteArray, // Calldata passed to the recipient
-  val messageHash: ByteArray, // Hash of the message parameters
+  val messageHash: ByteArray // Hash of the message parameters
 ) : Comparable<MessageSentEvent> {
   companion object {
     const val topic = "0xe856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c"

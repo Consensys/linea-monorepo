@@ -18,7 +18,7 @@ class ConflationCalculatorByExecutionTraces(
   val tracesCountersLimit: TracesCounters,
   private val emptyTracesCounters: TracesCounters,
   metricsFacade: MetricsFacade,
-  private val log: Logger = LogManager.getLogger(ConflationCalculatorByExecutionTraces::class.java),
+  private val log: Logger = LogManager.getLogger(ConflationCalculatorByExecutionTraces::class.java)
 ) : ConflationCalculator {
   private val overflownTracesMetricsCounters = HashMap<TracingModule, Counter>().also {
     tracesCountersLimit.entries()
@@ -67,7 +67,7 @@ class ConflationCalculatorByExecutionTraces(
   }
 
   private fun isOversizedBlockOnTopOfNonEmptyConflation(
-    countersAfterConflation: TracesCounters,
+    countersAfterConflation: TracesCounters
   ): Boolean {
     return !countersAfterConflation.allTracesWithinLimits(tracesCountersLimit) &&
       inprogressTracesCounters != emptyTracesCounters
@@ -82,7 +82,7 @@ class ConflationCalculatorByExecutionTraces(
   }
 
   override fun copyCountersTo(
-    counters: ConflationCounters,
+    counters: ConflationCounters
   ) {
     counters.tracesCounters = inprogressTracesCounters
   }

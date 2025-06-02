@@ -54,7 +54,7 @@ class LineaBesuEngineBlockTagUpdater(private val blockchainService: BlockchainSe
   }
 
   override fun lineaUpdateFinalizedBlockV1(
-    finalizedBlockNumber: Long,
+    finalizedBlockNumber: Long
   ) {
     val updateSuccess = setFinalizedAndSafeBlock(finalizedBlockNumber)
     log.debug("Linea safe/finalized block update: blockNumber={} success={}", finalizedBlockNumber, updateSuccess)
@@ -62,10 +62,10 @@ class LineaBesuEngineBlockTagUpdater(private val blockchainService: BlockchainSe
 }
 
 class LineaL1FinalizationUpdater(
-  private val engineBlockTagUpdater: EngineBlockTagUpdater,
+  private val engineBlockTagUpdater: EngineBlockTagUpdater
 ) {
   fun handleL1Finalization(
-    finalizedBlockNumber: ULong,
+    finalizedBlockNumber: ULong
   ): CompletableFuture<Unit> {
     runCatching {
       engineBlockTagUpdater
@@ -80,7 +80,7 @@ class LineaL1FinalizationUpdater(
 class LineaL1FinalizationUpdaterService(
   vertx: Vertx,
   config: PluginConfig,
-  engineBlockTagUpdater: EngineBlockTagUpdater,
+  engineBlockTagUpdater: EngineBlockTagUpdater
 ) : LongRunningService {
   private val web3j = Web3j.build(
     HttpService(

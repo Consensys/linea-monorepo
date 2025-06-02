@@ -16,7 +16,7 @@ class AverageWeightedFeesCalculatorTest {
   fun `test AverageWeightedFeesCalculator`(
     @Suppress("UNUSED_PARAMETER") name: String,
     expectedWeightedAverage: Double,
-    feeHistory: FeeHistory,
+    feeHistory: FeeHistory
   ) {
     val mockLog = mock<Logger>()
     val feeList = { fh: FeeHistory -> fh.baseFeePerGas }
@@ -31,7 +31,7 @@ class AverageWeightedFeesCalculatorTest {
   fun `test AverageWeightedBaseFeesCalculator`(
     @Suppress("UNUSED_PARAMETER") name: String,
     expectedWeightedAverage: Double,
-    feeHistory: FeeHistory,
+    feeHistory: FeeHistory
   ) {
     val actualWeightedAverage = AverageWeightedBaseFeesCalculator.calculateFees(feeHistory)
     assertThat(actualWeightedAverage).isEqualTo(expectedWeightedAverage)
@@ -42,7 +42,7 @@ class AverageWeightedFeesCalculatorTest {
   fun `test AverageWeightedPriorityFeesCalculator`(
     @Suppress("UNUSED_PARAMETER") name: String,
     expectedWeightedAverage: Double,
-    feeHistory: FeeHistory,
+    feeHistory: FeeHistory
   ) {
     val actualWeightedAverage = AverageWeightedPriorityFeesCalculator.calculateFees(feeHistory)
     assertThat(actualWeightedAverage).isEqualTo(expectedWeightedAverage)
@@ -53,7 +53,7 @@ class AverageWeightedFeesCalculatorTest {
   fun `test AverageWeightedBlobBaseFeesCalculator`(
     @Suppress("UNUSED_PARAMETER") name: String,
     expectedWeightedAverage: Double,
-    feeHistory: FeeHistory,
+    feeHistory: FeeHistory
   ) {
     val actualWeightedAverage = AverageWeightedBlobBaseFeesCalculator.calculateFees(feeHistory)
     assertThat(actualWeightedAverage).isEqualTo(expectedWeightedAverage)
@@ -66,7 +66,7 @@ class AverageWeightedFeesCalculatorTest {
       val feeHistory: FeeHistory,
       val weightedAverageBaseFee: Double,
       val weightedAveragePriorityFee: Double,
-      val weightedAverageBlobBaseFee: Double,
+      val weightedAverageBlobBaseFee: Double
     )
 
     private val feeHistoryTestCases = listOf(

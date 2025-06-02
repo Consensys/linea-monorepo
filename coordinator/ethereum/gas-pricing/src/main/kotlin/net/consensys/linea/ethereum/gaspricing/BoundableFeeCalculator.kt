@@ -8,12 +8,12 @@ import org.apache.logging.log4j.Logger
 
 class BoundableFeeCalculator(
   val config: Config,
-  private val feesCalculator: FeesCalculator,
+  private val feesCalculator: FeesCalculator
 ) : FeesCalculator {
   data class Config(
     val feeUpperBound: Double,
     val feeLowerBound: Double,
-    val feeMargin: Double,
+    val feeMargin: Double
   ) {
     init {
       require(feeUpperBound >= 0.0 && feeLowerBound >= 0.0 && feeMargin >= 0.0) {

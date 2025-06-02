@@ -39,7 +39,7 @@ class LineaSubmissionEventsClientIntTest {
   private lateinit var submissionEventsFetcher: LineaRollupSubmissionEventsClient
 
   private fun setupTest(
-    vertx: Vertx,
+    vertx: Vertx
   ) {
     configureLoggers(
       rootLevel = Level.INFO,
@@ -82,7 +82,7 @@ class LineaSubmissionEventsClientIntTest {
 
   private fun createSubmissionEventsClient(
     vertx: Vertx,
-    contractAddress: String,
+    contractAddress: String
   ): LineaRollupSubmissionEventsClient {
     val log = LogManager.getLogger("test.clients.l1.events-fetcher")
     val eventsFetcherWeb3jClient = Web3jClientManager.buildL1Client(
@@ -169,7 +169,7 @@ class LineaSubmissionEventsClientIntTest {
   }
 
   private fun getExpectedSubmissionEventsFromRecords(
-    aggregationsAndBlobs: List<AggregationAndBlobs>,
+    aggregationsAndBlobs: List<AggregationAndBlobs>
   ): List<Pair<DataFinalizedV3, List<DataSubmittedV3>>> {
     return aggregationsAndBlobs
       .filter { it.aggregation != null }

@@ -103,7 +103,7 @@ class SubmissionsFetchingTaskIntTest {
   fun createFetcherTask(
     l2StartBlockNumber: ULong,
     debugForceSyncStopBlockNumber: ULong? = null,
-    queuesSizeLimit: Int = 2,
+    queuesSizeLimit: Int = 2
   ): SubmissionsFetchingTask {
     val l1EventsClient = LineaSubmissionEventsClientImpl(
       logsSearcher = appClients.ethLogsSearcher,
@@ -136,7 +136,7 @@ class SubmissionsFetchingTaskIntTest {
   private fun submitDataToL1ContactAndWaitExecution(
     aggregationsAndBlobs: List<AggregationAndBlobs> = this.aggregationsAndBlobs,
     blobChunksSize: Int = 9,
-    waitTimeout: Duration = 4.minutes,
+    waitTimeout: Duration = 4.minutes
   ) {
     submitBlobsAndAggregationsAndWaitExecution(
       contractClientForBlobSubmission = contractClientForBlobSubmissions,
@@ -177,7 +177,7 @@ class SubmissionsFetchingTaskIntTest {
 
   private fun assertSubmissionsAreCorrectlyFetched(
     l2StartBlockNumber: ULong,
-    debugForceSyncStopBlockNumber: ULong? = null,
+    debugForceSyncStopBlockNumber: ULong? = null
   ) {
     val submissionsFetcher = createFetcherTask(
       l2StartBlockNumber = l2StartBlockNumber,
@@ -241,7 +241,7 @@ class SubmissionsFetchingTaskIntTest {
 
   fun assertFetchedData(
     fetchedData: SubmissionEventsAndData<BlockFromL1RecoveredData>,
-    sotAggregationData: AggregationAndBlobs,
+    sotAggregationData: AggregationAndBlobs
   ) {
     assertEventMatchesAggregation(
       fetchedData.submissionEvents.dataFinalizedEvent.event,
@@ -255,7 +255,7 @@ class SubmissionsFetchingTaskIntTest {
 
   fun assertEventMatchesAggregation(
     event: DataFinalizedV3,
-    aggregation: Aggregation,
+    aggregation: Aggregation
   ) {
     assertThat(event.startBlockNumber).isEqualTo(aggregation.startBlockNumber)
     assertThat(event.endBlockNumber).isEqualTo(aggregation.endBlockNumber)

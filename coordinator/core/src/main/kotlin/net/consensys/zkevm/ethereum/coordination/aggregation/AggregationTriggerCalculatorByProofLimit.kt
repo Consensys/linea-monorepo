@@ -8,7 +8,7 @@ class AggregationTriggerCalculatorByProofLimit(private val maxProofsPerAggregati
 
   data class InFlightAggregation(
     val proofsCount: UInt,
-    val blobsToAggregate: BlobsToAggregate,
+    val blobsToAggregate: BlobsToAggregate
   )
 
   private var inFlightAggregation: InFlightAggregation? = null
