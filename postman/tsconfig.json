@@ -1,7 +1,6 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "lib": ["ES2021", "DOM"],
     "noEmit": false,
     "strictPropertyInitialization": false,
     "experimentalDecorators": true,

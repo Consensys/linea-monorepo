@@ -2,7 +2,6 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "exactOptionalPropertyTypes": true,
-    "lib": ["ES2020"],
     "noErrorTruncation": true,
     "noUncheckedIndexedAccess": true,
     "composite": true,
