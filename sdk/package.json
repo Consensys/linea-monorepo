@@ -19,7 +19,7 @@
     "test": "npx jest --bail --detectOpenHandles --forceExit"
   },
   "dependencies": {
-    "ethers": "catalog:",
+    "ethers": "6.13.4",
     "lru-cache": "11.0.2"
   },
   "devDependencies": {
