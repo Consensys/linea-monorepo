@@ -1,7 +1,6 @@
 package cleanup
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
@@ -12,22 +11,12 @@ func CleanUp(comp *wizard.CompiledIOP) {
 	// Get the list of all ignored columns
 	colToRemove := comp.Columns.AllKeysIgnored()
 
-	// Register the prover action to remove unrequired data
-	comp.RegisterProverAction(lastRound, &cleanupProverAction{
-		columnsToRemove: colToRemove,
+	// The prover removes all the "now unrequired data"
+	comp.SubProvers.AppendToInner(lastRound, func(run *wizard.ProverRuntime) {
+		// Remove all the ignored columns
+		for _, col := range colToRemove {
+			run.Columns.TryDel(col)
+		}
 	})
-}
 
-// cleanupProverAction is the action to remove ignored columns.
-// It implements the [wizard.ProverAction] interface.
-type cleanupProverAction struct {
-	columnsToRemove []ifaces.ColID
-}
-
-// Run executes the cleanup by removing ignored columns from the runtime.
-func (a *cleanupProverAction) Run(run *wizard.ProverRuntime) {
-	// Remove all the ignored columns
-	for _, col := range a.columnsToRemove {
-		run.Columns.TryDel(col)
-	}
 }

@@ -15,7 +15,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	// Get the list of the root hashes (without the non-appended ones)
 	// Insert precomputed roots
 	rootHashesClean := []ifaces.Column{}
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if ctx.VortexCtx.IsCommitToPrecomputed() {
 		precompRoots := ctx.Columns.precompRoot
 		if precompRoots == nil {
 			utils.Panic("Precomputed root should not be nil! That's because, we are in commit to precomputed mode.")
@@ -31,7 +31,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 
 	numCommittedRound := ctx.VortexCtx.NumCommittedRounds()
 	// numCommittedRound increses by 1 if we commit to the precomputeds
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if ctx.VortexCtx.IsCommitToPrecomputed() {
 		numCommittedRound += 1
 	}
 
@@ -59,7 +59,7 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 
 	numRootsPadded := len(rootHashVecParts)
 
-	rootHashVecParts = utils.RepeatSlice(
+	rootHashVecParts = utils.ConstantSlice(
 		rootHashVecParts,
 		totalRoots/len(rootHashVecParts),
 	)
@@ -150,7 +150,7 @@ func (ctx SelfRecursionCtx) GluePositions() {
 	sizePositionVec := positionVec.Size()
 	numCommittedRound := ctx.VortexCtx.NumCommittedRounds()
 	// numCommittedRound increses by 1 if we commit to the precomputeds
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if ctx.VortexCtx.IsCommitToPrecomputed() {
 		numCommittedRound += 1
 	}
 	numActive := sizeSmallPos * numCommittedRound
@@ -160,7 +160,7 @@ func (ctx SelfRecursionCtx) GluePositions() {
 	// of merklePos (otherwise, we can't do the fixed permutation
 	// check).
 	positionVec = verifiercol.NewFromAccessors(
-		utils.RepeatSlice(
+		utils.ConstantSlice(
 			positionVec.(verifiercol.FromAccessors).Accessors,
 			merklePos.Size()/sizePositionVec,
 		),

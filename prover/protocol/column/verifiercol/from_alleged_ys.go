@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 // compile check to enforce the struct to belong to the corresponding interface
@@ -39,9 +39,10 @@ func NewFromYs(comp *wizard.CompiledIOP, q query.UnivariateEval, ranges []ifaces
 		nameMap[polName.GetColID()] = struct{}{}
 	}
 
+	// No make the explicit check
 	for _, rangeName := range ranges {
 		if _, ok := nameMap[rangeName]; !ok && !strings.Contains(string(rangeName), "SHADOW") {
-			utils.Panic("NewFromYs : %v is not part of the query %v", rangeName, q.QueryID)
+			logrus.Debugf("NewFromYs : %v is not part of the query %v. It will be zeroized", rangeName, q.QueryID)
 		}
 	}
 

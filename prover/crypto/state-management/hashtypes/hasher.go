@@ -39,9 +39,10 @@ func Keccak() Hasher {
 
 // Create a new MiMC hasher
 func MiMC() Hasher {
-	maxVal := field.NewFromString("-1")
+	var maxVal [8]field.Element
+	maxVal[7] = field.NewFromString("4")
 	return Hasher{
 		Hash:     mimc.NewMiMC(),
-		maxValue: maxVal.Bytes(),
+		maxValue: HashToBytes32(maxVal), // TODO: what's the maxValue of MiMC hasher
 	}
 }

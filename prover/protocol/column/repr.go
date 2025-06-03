@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -32,7 +32,7 @@ func DeriveEvaluationPoint(
 	upstream string,
 	cachedXs collection.Mapping[string, field.Element],
 	x field.Element,
-) (xRes field.Element) {
+) (xRes []field.Element) {
 
 	if !h.IsComposite() {
 		// Just return x and cache it if necessary
@@ -42,7 +42,7 @@ func DeriveEvaluationPoint(
 			// Else register the result in the cache
 			cachedXs.InsertNew(newUpstream, x)
 		}
-		return x
+		return []field.Element{x}
 	}
 
 	switch inner := h.(type) {
@@ -55,7 +55,10 @@ func DeriveEvaluationPoint(
 		} else {
 			// If not, compute the shift on x and cache the result
 			n := h.Size()
-			omegaN := fft.GetOmega(n)
+			omegaN, err := fft.Generator(uint64(n))
+			if err != nil {
+				panic(err)
+			}
 			omegaN.Exp(omegaN, big.NewInt(int64(inner.Offset)))
 			derivedX.Mul(&x, &omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)
@@ -109,15 +112,15 @@ func VerifyYConsistency(
 
 // Returns all subbranches starting from the current node (including the
 // current node). It counts as a list of unique identifiers for the derivation path.
-func DownStreamBranch(node ifaces.Column) string {
+func AllDownStreamBranches(node ifaces.Column) []string {
 
 	if !node.IsComposite() {
-		return getNodeRepr(node)
+		return []string{getNodeRepr(node)}
 	}
 
 	switch inner := node.(type) {
 	case Shifted:
-		downStreams := DownStreamBranch(inner.Parent)
+		downStreams := AllDownStreamBranches(inner.Parent)
 		return prependNodeToDownstream(inner, downStreams)
 	default:
 		panic("unreachable")
@@ -133,9 +136,14 @@ func appendNodeToUpstream(upstream string, node ifaces.Column) string {
 	return fmt.Sprintf("%v_%v", upstream, getNodeRepr(node))
 }
 
-func prependNodeToDownstream(node ifaces.Column, downstream string) string {
+func prependNodeToDownstream(node ifaces.Column, downstream []string) []string {
+	res := []string{}
 	nodeRepr := getNodeRepr(node)
-	return fmt.Sprintf("%v_%v", nodeRepr, downstream)
+	for _, d := range downstream {
+		newbranch := fmt.Sprintf("%v_%v", nodeRepr, d)
+		res = append(res, newbranch)
+	}
+	return res
 }
 
 func DerivedYRepr(upstream string, currNode ifaces.Column) string {

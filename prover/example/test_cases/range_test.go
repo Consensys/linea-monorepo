@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/protocol/compiler/stitchsplit"
+	"github.com/consensys/linea-monorepo/prover/protocol/compiler/splitter"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
@@ -15,7 +15,7 @@ func defineRange(build *wizard.Builder) {
 	// P2 := build.RegisterCommit(P2, 8) // overshadows P2
 	// P3 := build.RegisterCommit(P3, 8) // overshadows P3
 	build.Range(RANGE1, P1, 16)
-	// build.Range(RANGE2, P2.Repeat(2), 16)
+	// build.Range(RANGE2, P2.Constant(2), 16)
 	// build.Range(RANGE3, commitment.Interleave(P1, P3), 32)
 	// build.Range(RANGE4, P3.Shift(1), 16)
 }
@@ -27,5 +27,5 @@ func proveRange(run *wizard.ProverRuntime) {
 }
 
 func TestRange(t *testing.T) {
-	checkSolved(t, defineRange, proveRange, join(ALL_SPECIALS, compilationSuite{stitchsplit.Splitter(8)}, DUMMY), true)
+	checkSolved(t, defineRange, proveRange, join(ALL_SPECIALS, compilationSuite{splitter.SplitColumns(8)}, DUMMY), true)
 }

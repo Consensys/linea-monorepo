@@ -1,7 +1,6 @@
 package localcs
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -22,10 +21,9 @@ func ReduceLocalConstraint(comp *wizard.CompiledIOP, q query.LocalConstraint, ro
 	*/
 	comp.QueriesNoParams.MarkAsIgnored(q.ID)
 
-	var (
-		domainSize = 0
-		board      = q.Board()
-	)
+	domainSize := 0
+
+	board := q.Board()
 
 	for _, metadataInterface := range board.ListVariableMetadata() {
 		if metadata, ok := metadataInterface.(ifaces.Column); ok {
@@ -34,18 +32,19 @@ func ReduceLocalConstraint(comp *wizard.CompiledIOP, q query.LocalConstraint, ro
 		}
 	}
 
-	var (
-		min      = query.MinMaxOffset(q.Expression).Min
-		lagrange = variables.Lagrange(domainSize, min)
-		newExpr  = symbolic.Mul(
-			column.ShiftExpr(q.Expression, -min),
-			lagrange,
-		)
-		newName = deriveName[ifaces.QueryID]("LOCAL", q.ID, "QUERY")
-	)
-
+	lagrange := LagrangeOne(domainSize)
+	newExpr := q.Expression.Mul(lagrange)
+	newName := deriveName[ifaces.QueryID]("LOCAL", q.ID, "QUERY")
 	// Make sure to never cancel the bounds here. It is a waste of
 	// arithmetic degree + it wrongfully cancels on the last entry
 	// if the local constraints involves a `-1` position
 	comp.InsertGlobal(round, newName, newExpr, true)
+}
+
+/*
+Returns a symnolic expression that evaluates (X^N - 1) / (X - 1)
+(requires that N is a power of two)
+*/
+func LagrangeOne(n int) *symbolic.Expression {
+	return variables.NewPeriodicSample(n, 0)
 }

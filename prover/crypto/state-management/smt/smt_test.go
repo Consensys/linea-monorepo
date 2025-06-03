@@ -5,7 +5,7 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
@@ -103,14 +103,21 @@ func TestBuildFromScratch(t *testing.T) {
 
 	config := &smt.Config{
 		HashFunc: hashtypes.Keccak,
-		Depth:    10,
+		Depth:    8,
 	}
 
 	// Generate random field elements and cast them into Bytes32es
-	leavesFr := vector.Rand(1 << config.Depth)
-	leaves := make([]Bytes32, len(leavesFr))
+	// every 8 field elements forms a leaf
+	leavesFr := make([]field.Element, 8*(1<<config.Depth))
+	for i := 0; i < len(leavesFr); i++ {
+		leavesFr[i] = field.RandomElement()
+	}
+
+	leaves := make([]Bytes32, len(leavesFr)/8)
 	for i := range leaves {
-		leaves[i] = Bytes32(leavesFr[i].Bytes())
+		var arr [8]field.Element
+		copy(arr[:], leavesFr[8*i:8*i+8])
+		leaves[i] = HashToBytes32(arr)
 	}
 
 	// And generate the

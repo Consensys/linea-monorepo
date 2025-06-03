@@ -5,7 +5,9 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -81,8 +83,8 @@ func (r Permutation) Check(run ifaces.Runtime) error {
 	var (
 		numCol    = len(r.A[0])
 		prods     = []field.Element{field.One(), field.One()}
-		randGamma = field.Element{}
-		randAlpha = field.Element{}
+		randGamma = fext.Element{}
+		randAlpha = fext.Element{}
 	)
 
 	randGamma.SetRandom()
@@ -93,14 +95,14 @@ func (r Permutation) Check(run ifaces.Runtime) error {
 			var (
 				tab        = make([]ifaces.ColAssignment, numCol)
 				numRowFrag = aOrB[frag][0].Size()
-				gamma      = smartvectors.NewConstant(randGamma, numRowFrag)
+				gamma      = smartvectorsext.NewConstantExt(randGamma, numRowFrag)
 			)
 
 			for col := range aOrB[frag] {
 				tab[col] = aOrB[frag][col].GetColAssignment(run)
 			}
 
-			collapsed := smartvectors.PolyEval(append(tab, gamma), randAlpha)
+			collapsed := smartvectors.PolyEval(append(tab, gamma), randAlpha) // TODO: update smartvectors.PolyEval
 
 			for row := 0; row < collapsed.Len(); row++ {
 				tmp := collapsed.Get(row)
@@ -180,37 +182,4 @@ func CheckPermutation(a, b []ifaces.ColAssignment) error {
 // to check the query within a circuit
 func (p Permutation) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	panic("UNSUPPORTED : can't check an permutation query directly into the circuit")
-}
-
-// GetShiftedRelatedColumns returns the list of the [HornerParts.Selectors]
-// found in the query. This is used to check if the query is compatible with
-// Wizard distribution.
-//
-// Note: the fact that this method is implemented makes [Inclusion] satisfy
-// an anonymous interface that is matched to detect queries that are
-// incompatible with wizard distribution. So we should not rename or remove
-// this implementation without doing the corresponding changes in the
-// distributed package. Otherwise, this will silence the checks that we are
-// doing.
-func (p Permutation) GetShiftedRelatedColumns() []ifaces.Column {
-
-	res := []ifaces.Column{}
-
-	for frag := range p.A {
-		for _, col := range p.A[frag] {
-			if col.IsComposite() {
-				res = append(res, col)
-			}
-		}
-	}
-
-	for frag := range p.B {
-		for _, col := range p.B[frag] {
-			if col.IsComposite() {
-				res = append(res, col)
-			}
-		}
-	}
-
-	return res
 }

@@ -32,32 +32,14 @@ func (ctx *Ctx) CommitmentName(round int) ifaces.ColID {
 	return ifaces.ColIDf("VORTEX_%v_COMMITMENT_ROUND_%v", ctx.SelfRecursionCount, round)
 }
 
-// SisHashName returns a preformatted message representing the Sis hash digests
-// for each round that we store in the state.
-func (ctx *Ctx) SisHashName(round int) string {
-	name := fmt.Sprintf("VORTEX_%v_SIS_HASH_%v", ctx.SelfRecursionCount, round)
-	if len(ctx.RunStateNamePrefix) == 0 {
-		return name
-	}
-	return ctx.RunStateNamePrefix + "." + name
-}
-
 // returns the name of a prover state for a given round of Vortex
 func (ctx *Ctx) VortexProverStateName(round int) string {
-	name := fmt.Sprintf("VORTEX_%v_PROVER_STATE_%v", ctx.SelfRecursionCount, round)
-	if len(ctx.RunStateNamePrefix) == 0 {
-		return name
-	}
-	return ctx.RunStateNamePrefix + "." + name
+	return fmt.Sprintf("VORTEX_%v_PROVER_STATE_%v", ctx.SelfRecursionCount, round)
 }
 
 // returns the name of a prover state for a given round of Vortex
 func (ctx *Ctx) MerkleTreeName(round int) string {
-	name := fmt.Sprintf("VORTEX_%v_MERKLE_TREE_%v", ctx.SelfRecursionCount, round)
-	if len(ctx.RunStateNamePrefix) == 0 {
-		return name
-	}
-	return ctx.RunStateNamePrefix + "." + name
+	return fmt.Sprintf("VORTEX_%v_MERKLE_TREE_%v", ctx.SelfRecursionCount, round)
 }
 
 // returns the name of the vector containing all the Merkle proofs
@@ -67,7 +49,7 @@ func (ctx *Ctx) MerkleProofName() ifaces.ColID {
 
 // returns the name of the vector containing all the Merkle proofs
 func (ctx *Ctx) MerkleRootName(round int) ifaces.ColID {
-	return ifaces.ColIDf("VORTEX_%v_MERKLEROOT_%v", ctx.SelfRecursionCount, round-ctx.startingRound())
+	return ifaces.ColIDf("VORTEX_%v_MERKLEROOT_%v", ctx.SelfRecursionCount, round)
 }
 
 // returns the name of the precomputed commitment when Merkle is not applied

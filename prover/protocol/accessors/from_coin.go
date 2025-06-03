@@ -26,8 +26,8 @@ type FromCoinAccessor struct {
 // [coin.Info]. The supplied [coin.Info] must be of type [coin.Field] or the
 // function panics.
 func NewFromCoin(info coin.Info) ifaces.Accessor {
-	if info.Type != coin.Field && info.Type != coin.FieldFromSeed {
-		utils.Panic("NewFromCoin expects a [coin.Field] or a [coin.FieldFromSeed] `info`, got `%v`", info.Type)
+	if info.Type != coin.Field {
+		utils.Panic("NewFromCoin expects a coin.Field `info`, got `%v`", info.Type)
 	}
 	return &FromCoinAccessor{
 		Info: info,
@@ -46,12 +46,12 @@ func (c *FromCoinAccessor) String() string {
 
 // GetVal implements [ifaces.Accessor]
 func (c *FromCoinAccessor) GetVal(run ifaces.Runtime) field.Element {
-	return run.GetRandomCoinField(c.Info.Name)
+	return run.GetRandomCoinFext(c.Info.Name)
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (c *FromCoinAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
-	return circ.GetRandomCoinField(c.Info.Name)
+	return circ.GetRandomCoinFext(c.Info.Name)
 }
 
 // AsVariable implements the [ifaces.Accessor] interface

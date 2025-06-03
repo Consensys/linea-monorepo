@@ -6,10 +6,10 @@ import (
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
@@ -95,8 +95,8 @@ func CmpMultiLimbs(comp *wizard.CompiledIOP, a, b LimbColumns) (isGreater, isEqu
 
 	var (
 		isBigEndian     = a.IsBigEndian
-		roundA          = column.MaxRound(a.Limbs...)
-		round           = max(roundA, column.MaxRound(b.Limbs...))
+		roundA          = wizardutils.MaxRound(a.Limbs...)
+		round           = max(roundA, wizardutils.MaxRound(b.Limbs...))
 		numLimbs        = len(a.Limbs)
 		numBitsPerLimbs = a.LimbBitSize
 		ctx             = &multiLimbCmp{
@@ -192,7 +192,7 @@ func (mCmp *multiLimbCmp) Run(run *wizard.ProverRuntime) {
 	}()
 
 	var (
-		syndrom   = column.EvalExprColumn(run, mCmp.syndromBoard)
+		syndrom   = wizardutils.EvalExprColumn(run, mCmp.syndromBoard)
 		isGreater = make([]field.Element, mCmp.isGreater.Size())
 		isLower   = make([]field.Element, mCmp.isLower.Size())
 		nnSyndrom = make([]field.Element, mCmp.isLower.Size())

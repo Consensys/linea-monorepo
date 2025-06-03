@@ -55,7 +55,7 @@ const (
 	// protocol. Meaning that this is not part of the proof.
 	//
 	// Deprecated: we don't really use this to create public inputs.
-	_
+	PublicInput
 	// VerifyingKey indicates the column is defined offline during the definition
 	// of the protocol or the compilation and that the column is directly
 	// available to the verifier. It is preferable to avoid tagging large
@@ -82,6 +82,8 @@ func (s Status) String() string {
 		return "PROOF"
 	case Precomputed:
 		return "PRECOMPUTED"
+	case PublicInput:
+		return "PUBLIC_INPUT"
 	case VerifyingKey:
 		return "VERIFYING_KEY"
 	case VerifierDefined:
@@ -93,7 +95,7 @@ func (s Status) String() string {
 // IsPublic returns true if the column is visible to the verifier
 func (s Status) IsPublic() bool {
 	switch s {
-	case Proof, VerifyingKey, VerifierDefined:
+	case Proof, PublicInput, VerifyingKey, VerifierDefined:
 		return true
 	default:
 		return false

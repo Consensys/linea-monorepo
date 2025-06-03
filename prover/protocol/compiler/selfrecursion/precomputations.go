@@ -45,7 +45,7 @@ func (ctx *SelfRecursionCtx) registersI() {
 func (ctx *SelfRecursionCtx) registersAh() {
 	ahLength := ctx.VortexCtx.CommitmentsByRounds.Len()
 	// Consider the precomputed columns
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if ctx.VortexCtx.IsCommitToPrecomputed() {
 		ahLength += 1
 	}
 	ah := make([]ifaces.Column, ahLength)
@@ -56,7 +56,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 	roundStartAt := 0
 
 	// Consider the precomputed columns
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if ctx.VortexCtx.IsCommitToPrecomputed() {
 		numPrecomputeds := len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums)
 
 		// Sanity-check : if coms in precomputeds have length zero then the
@@ -85,7 +85,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 	}
 	// Offset for the precomputed polys
 	precompOffset := 0
-	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
+	if ctx.VortexCtx.IsCommitToPrecomputed() {
 		precompOffset += 1
 	}
 
@@ -95,7 +95,7 @@ func (ctx *SelfRecursionCtx) registersAh() {
 		// associated Dh should be nil. That happens when the examinated round
 		// is a "dry" round or when it has been self-recursed already.
 		if (len(comsInRoundsI) == 0) != (ctx.Columns.Rooth[i] == nil) {
-			utils.Panic("nilness mismatch for round=%v #coms-in-round=%v vs root-is-nil=%v", i, len(comsInRoundsI), ctx.Columns.Rooth[i] == nil)
+			panic("nilness mismatch")
 		}
 
 		// Check if there is no rows to commit

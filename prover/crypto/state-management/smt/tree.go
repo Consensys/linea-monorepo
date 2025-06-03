@@ -25,7 +25,7 @@ type Tree struct {
 	Root types.Bytes32
 	// OccupiedLeaves continuously list of the occupied leaves. For the toy
 	// implementation we track all the leaves.
-	OccupiedLeaves []types.Bytes32
+	OccupiedLeaves []types.Bytes32 // TODO: each leave is a [8]koalabear.Element?
 	// Occupied not stores all the node with a non-trivial value in the tree.
 	//
 	// Does not include the root. (So there are 39 levels and not 40).

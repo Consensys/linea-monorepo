@@ -5,8 +5,7 @@ import (
 	"math/big"
 	"math/bits"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/constraint/solver"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
@@ -14,7 +13,9 @@ import (
 	"github.com/consensys/gnark/std/multicommit"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -23,16 +24,16 @@ var (
 
 // Register fft inverse hint
 func init() {
-	solver.RegisterHint(FFTInverseBLS12377)
+	solver.RegisterHint(FFTInverseKoalaBear)
 }
 
-// FFTInverseBLS12377 hint for the inverse FFT on BN254 (the frField is harcoded...)
-func FFTInverseBLS12377(_ *big.Int, inputs []*big.Int, results []*big.Int) error {
+// FFTInverseKoalaBear hint for the inverse FFT on koalabear
+func FFTInverseKoalaBear(_ *big.Int, inputs []*big.Int, results []*big.Int) error {
 
 	// TODO store this somewhere (global variable or something, shouldn't regenerate it at each call)
 	d := fft.NewDomain(uint64(len(inputs)), fft.WithoutPrecompute())
 
-	v := make([]fr.Element, len(inputs))
+	v := make([]field.Element, len(inputs))
 	for i := 0; i < len(inputs); i++ {
 		v[i].SetBigInt(inputs[i])
 	}
@@ -49,16 +50,13 @@ func FFTInverseBLS12377(_ *big.Int, inputs []*big.Int, results []*big.Int) error
 
 // computes fft^-1(p) where the fft is done on <generator>, a set of size cardinality.
 // It is assumed that p is correctly sized.
-//
-// The fft is hardcoded with bls12-377 for now, to be more efficient than bigInt...
-// It is assumed that p is of size cardinality.
-func FFTInverse(api frontend.API, p []frontend.Variable, genInv fr.Element, cardinality uint64) ([]frontend.Variable, error) {
+func FFTInverse(api frontend.API, p []frontend.Variable, genInv field.Element, cardinality uint64) ([]frontend.Variable, error) {
 
-	var cardInverse fr.Element
+	var cardInverse field.Element
 	cardInverse.SetUint64(cardinality).Inverse(&cardInverse)
 
 	// res of the fft inverse
-	res, err := api.Compiler().NewHint(FFTInverseBLS12377, len(p), p...)
+	res, err := api.Compiler().NewHint(FFTInverseKoalaBear, len(p), p...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +69,7 @@ func FFTInverse(api frontend.API, p []frontend.Variable, genInv fr.Element, card
 			ec := gnarkEvalCanonical(api, res, x)
 
 			// evaluation Lagrange
-			var gen fr.Element
+			var gen field.Element
 			gen.Inverse(&genInv)
 			lagranges := gnarkComputeLagrangeAtZ(api, x, gen, cardinality)
 			var el frontend.Variable
@@ -103,7 +101,7 @@ func gnarkEvalCanonical(api frontend.API, p []frontend.Variable, z frontend.Vari
 	return res
 }
 
-func gnarkInterpolate(api frontend.API, p []frontend.Variable, z frontend.Variable, gen fr.Element, cardinality uint64) frontend.Variable {
+func gnarkInterpolate(api frontend.API, p []frontend.Variable, z frontend.Variable, gen field.Element, cardinality uint64) frontend.Variable {
 
 	var res frontend.Variable
 	res = 0
@@ -120,7 +118,7 @@ func gnarkInterpolate(api frontend.API, p []frontend.Variable, z frontend.Variab
 // computeLagrange returns Lᵢ(ζ) for i=1..n
 // with lᵢ(ζ) = ωⁱ/n*(ζⁿ-1)/(ζ - ωⁱ)
 // (the g stands for gnark)
-func gnarkComputeLagrangeAtZ(api frontend.API, z frontend.Variable, gen fr.Element, cardinality uint64) []frontend.Variable {
+func gnarkComputeLagrangeAtZ(api frontend.API, z frontend.Variable, gen field.Element, cardinality uint64) []frontend.Variable {
 
 	res := make([]frontend.Variable, cardinality)
 	tb := bits.TrailingZeros(uint(cardinality))
@@ -143,7 +141,7 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z frontend.Variable, gen fr.Eleme
 	res[0] = api.Div(res[0], cardinality)
 
 	// res[i] <- res[i-1] * (ζ-ωⁱ⁻¹)/(ζ-ωⁱ) * ω
-	var accOmega fr.Element
+	var accOmega field.Element
 	accOmega.SetOne()
 
 	for i := uint64(1); i < cardinality; i++ {
@@ -160,8 +158,8 @@ func gnarkComputeLagrangeAtZ(api frontend.API, z frontend.Variable, gen fr.Eleme
 // Checks that p is a polynomial of degree < cardinality/rate
 // * p polynomial of size cardinality
 // * genInv inverse of the generator of the subgroup of size cardinality
-// * rate of the RS code
-func assertIsCodeWord(api frontend.API, p []frontend.Variable, genInv fr.Element, cardinality, rate uint64) error {
+// * rate rate of the RS code
+func assertIsCodeWord(api frontend.API, p []frontend.Variable, genInv field.Element, cardinality, rate uint64) error {
 
 	if uint64(len(p)) != cardinality {
 		return ErrPNotOfSizeCardinality
@@ -230,6 +228,7 @@ func GnarkVerifyCommon(
 ) ([][]frontend.Variable, error) {
 
 	// check the linear combination is a codeword
+	logrus.Infof("Checking the code membership")
 	api.Compiler().Defer(func(api frontend.API) error {
 		return assertIsCodeWord(
 			api,
@@ -241,6 +240,7 @@ func GnarkVerifyCommon(
 	})
 
 	// Check the consistency of Ys and proof.Linearcombination
+	logrus.Infof("Checking the consistency between ys and the linear combination")
 	yjoined := utils.Join(ys...)
 	alphaY := gnarkInterpolate(
 		api,

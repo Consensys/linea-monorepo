@@ -17,8 +17,8 @@ func TestFiatShamirSafeguardUpdate(t *testing.T) {
 
 	fs := NewMiMCFiatShamir()
 
-	a := fs.RandomField()
-	b := fs.RandomField()
+	a := fs.RandomFext()
+	b := fs.RandomFext()
 
 	// Two consecutive call to fs do not return the same result
 	require.NotEqual(t, a.String(), b.String())
@@ -64,26 +64,26 @@ func TestBatchUpdates(t *testing.T) {
 	fs.Update(field.NewElement(2))
 	fs.Update(field.NewElement(2))
 	fs.Update(field.NewElement(1))
-	expectedVal := fs.RandomField()
+	expectedVal := fs.RandomFext()
 
 	t.Run("for a variadic call", func(t *testing.T) {
 		fs := NewMiMCFiatShamir()
 		fs.Update(field.NewElement(2), field.NewElement(2), field.NewElement(1))
-		actualValue := fs.RandomField()
+		actualValue := fs.RandomFext()
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for slice of field elements", func(t *testing.T) {
 		fs := NewMiMCFiatShamir()
 		fs.UpdateVec(vector.ForTest(2, 2, 1))
-		actualValue := fs.RandomField()
+		actualValue := fs.RandomFext()
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
 	t.Run("for multi-slice of field elements", func(t *testing.T) {
 		fs := NewMiMCFiatShamir()
 		fs.UpdateVec(vector.ForTest(2, 2), vector.ForTest(1))
-		actualValue := fs.RandomField()
+		actualValue := fs.RandomFext()
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 
@@ -91,7 +91,7 @@ func TestBatchUpdates(t *testing.T) {
 		sv := smartvectors.RightPadded(vector.ForTest(2, 2), field.NewElement(1), 3)
 		fs := NewMiMCFiatShamir()
 		fs.UpdateSV(sv)
-		actualValue := fs.RandomField()
+		actualValue := fs.RandomFext()
 		assert.Equal(t, expectedVal.String(), actualValue.String())
 	})
 

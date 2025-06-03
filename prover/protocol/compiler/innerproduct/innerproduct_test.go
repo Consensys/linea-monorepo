@@ -32,11 +32,11 @@ func TestInnerProduct(t *testing.T) {
 				run.AssignColumn(name, c.b[i])
 			}
 			run.AssignInnerProduct(c.qName, c.expected...)
-			run.GetRandomCoinField(coin.Namef("Coin_%v", j))
+			run.GetRandomCoinFext(coin.Namef("Coin_%v", j))
 		}
 	}
 
-	comp := wizard.Compile(define, Compile(), dummy.Compile)
+	comp := wizard.Compile(define, Compile, dummy.Compile)
 	proof := wizard.Prove(comp, prover)
 	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
 }

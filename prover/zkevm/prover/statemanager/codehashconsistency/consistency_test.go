@@ -119,8 +119,8 @@ func TestCaseGeneration(t *testing.T) {
 	randRow := func() [3]field.Element {
 		row := [3]field.Element{}
 		row[0] = field.PseudoRand(rng)
-		row[1] = field.PseudoRandTruncated(rng, 16)
-		row[2] = field.PseudoRandTruncated(rng, 16)
+		row[1] = field.PseudoRandTruncated(rng, 2)
+		row[2] = field.PseudoRandTruncated(rng, 2)
 		return row
 	}
 

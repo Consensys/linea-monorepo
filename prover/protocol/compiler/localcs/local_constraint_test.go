@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func testCaseFibonnaci() (wizard.DefineFunc, wizard.MainProverStep) {
+func testCaseFibonnaci() (wizard.DefineFunc, wizard.ProverStep) {
 
 	var (
 		P1 ifaces.ColID   = "P1"

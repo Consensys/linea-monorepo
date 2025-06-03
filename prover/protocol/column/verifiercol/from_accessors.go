@@ -150,7 +150,3 @@ func (f FromAccessors) Split(_ *wizard.CompiledIOP, from, to int) ifaces.Column 
 		Size_:     to - from,
 	}
 }
-
-func (f FromAccessors) GetFromAccessorsFields() (accs []ifaces.Accessor, padding field.Element) {
-	return f.Accessors, f.Padding
-}

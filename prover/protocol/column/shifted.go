@@ -57,7 +57,7 @@ func Shift(parent ifaces.Column, offset int) ifaces.Column {
 		Special case, the parent is already shiifted, in that case
 		we normalize the handle by using a single shift. This is not
 		only an optimization : the splitting compiler does not support
-		having Shift(Repeat(Shift)).
+		having Shift(Constant(Shift)).
 	*/
 	if parentShift, ok := parent.(Shifted); ok {
 		totalOffset := parentShift.Offset + offset

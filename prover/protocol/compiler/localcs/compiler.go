@@ -25,9 +25,6 @@ func deriveName[R ~string](context string, q ifaces.QueryID, name string) R {
 Compiles the local constraints
 */
 func Compile(comp *wizard.CompiledIOP) {
-
-	compileOpeningsToConstraints(comp)
-
 	numRounds := comp.NumRounds()
 
 	/*

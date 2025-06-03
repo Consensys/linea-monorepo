@@ -7,6 +7,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"golang.org/x/crypto/blake2b"
 )
@@ -84,6 +85,30 @@ func (fs *State) Update(vec ...field.Element) {
 	fs.TranscriptSize += len(vec)
 }
 
+// Update the Fiat-Shamir state with a one or more of field elements. The
+// function as no-op if the caller supplies no field elements.
+func (fs *State) UpdateExt(vec ...fext.Element) {
+	if len(vec) == 0 {
+		return
+	}
+
+	// Marshal the elements in a vector of bytes
+	for _, f := range vec {
+		bytes := fext.Bytes(&f)
+		_, err := fs.hasher.Write(bytes[:])
+		if err != nil {
+			// This normally happens if the bytes that we provide do not represent
+			// a field element. In our case, the bytes are computed by ourselves
+			// from the caller's field element so the error is not possible. Hence,
+			// the assertion.
+			panic("Hashing is not supposed to fail")
+		}
+	}
+
+	// Increase the transcript counter
+	fs.TranscriptSize += len(vec)
+}
+
 // UpdateVec updates the Fiat-Shamir state by passing one of more slices of
 // field elements.
 func (fs *State) UpdateVec(vecs ...[]field.Element) {
@@ -103,9 +128,18 @@ func (fs *State) UpdateSV(sv smartvectors.SmartVector) {
 		return
 	}
 
-	vec := make([]field.Element, sv.Len())
-	sv.WriteInSlice(vec)
-	fs.Update(vec...)
+	if smartvectors.CheckSmartVectorElementType(sv) == 2 {
+		vec := make([]fext.Element, sv.Len())
+		sv.WriteInSliceExt(vec)
+		fs.UpdateExt(vec...)
+
+	} else if smartvectors.CheckSmartVectorElementType(sv) == 1 {
+		vec := make([]field.Element, sv.Len())
+		sv.WriteInSlice(vec)
+		fs.Update(vec...)
+	} else {
+		return
+	}
 }
 
 // RandomField generates and returns a single field element from the Fiat-Shamir
@@ -121,7 +155,20 @@ func (fs *State) RandomField() field.Element {
 	return res
 }
 
-// RandomField generates and returns a single field element from the seed and the given name.
+// RandomFext generates and returns a single fext element from the Fiat-Shamir
+// transcript.
+func (fs *State) RandomFext() fext.Element {
+	defer fs.safeguardUpdate()
+	challBytes := fs.hasher.Sum(nil)
+	var res fext.Element
+	res = fext.SetBytes(challBytes)
+
+	// increase the counter by one
+	fs.NumCoinGenerated++
+	return res
+}
+
+// RandomFieldFromSeed generates and returns a single field element from the seed and the given name.
 func (fs *State) RandomFieldFromSeed(seed field.Element, name string) field.Element {
 
 	// The first step encodes the 'name' into a single field element. The
@@ -153,6 +200,8 @@ func (fs *State) RandomFieldFromSeed(seed field.Element, name string) field.Elem
 	fs.NumCoinGenerated++
 	return *res
 }
+
+// TODO: RandomFextFromSeed generates and returns a single fext element from the seed and the given name.
 
 // RandomManyIntegers returns a list of challenge small integers. That is, a
 // list of positive integer bounded by `upperBound`. The upperBound is strict
@@ -244,5 +293,5 @@ func (fs *State) RandomManyIntegers(num, upperBound int) []int {
 //
 // This is implemented by adding a 0 in the transcript.
 func (fs *State) safeguardUpdate() {
-	fs.Update(field.NewElement(0))
+	fs.UpdateExt(fext.NewElement(0, 0, 0, 0))
 }

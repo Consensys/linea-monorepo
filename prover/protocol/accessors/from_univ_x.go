@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -42,7 +42,7 @@ func (u *FromUnivXAccessor) String() string {
 }
 
 // GetVal implements [ifaces.Accessor]
-func (u *FromUnivXAccessor) GetVal(run ifaces.Runtime) field.Element {
+func (u *FromUnivXAccessor) GetVal(run ifaces.Runtime) fext.Element {
 	params := run.GetParams(u.Q.QueryID).(query.UnivariateEvalParams)
 	return params.X
 }

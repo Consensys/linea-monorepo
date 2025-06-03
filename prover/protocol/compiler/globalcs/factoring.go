@@ -12,7 +12,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/symbolic/simplify"
 	"github.com/consensys/linea-monorepo/prover/utils"
-	"github.com/sirupsen/logrus"
 )
 
 // factorExpressionList applies [factorExpression] over a list of expressions
@@ -47,13 +46,13 @@ func factorExpression(comp *wizard.CompiledIOP, expr *symbolic.Expression) *symb
 	found, err := comp.Artefacts.TryLoad(cacheKey, wrapper)
 
 	if err != nil {
-		utils.Panic("could not deserialize the cached expression: %v", err)
+		utils.Panic("could not deserialize the cached expression")
 	}
 
 	if !found {
 		wrapper.Expr = simplify.AutoSimplify(flattenedExpr)
 		if err := comp.Artefacts.Store(cacheKey, wrapper); err != nil {
-			logrus.Warnf("could not cache the factored expression: %v", err.Error())
+			utils.Panic("could not cache the factored expression: %v", err.Error())
 		}
 	}
 

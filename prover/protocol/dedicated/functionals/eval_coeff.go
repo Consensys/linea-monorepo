@@ -18,29 +18,6 @@ const (
 	EVAL_COEFF_GLOBAL               string = "EVAL_COEFF_GLOBAL"
 )
 
-type coeffEvalProverAction struct {
-	name   string
-	x      coin.Info
-	pol    ifaces.Column
-	length int
-}
-
-func (a *coeffEvalProverAction) Run(assi *wizard.ProverRuntime) {
-	x := assi.GetRandomCoinField(a.x.Name)
-	p := a.pol.GetColAssignment(assi)
-
-	h := make([]field.Element, a.length)
-	h[a.length-1] = p.Get(a.length - 1)
-
-	for i := a.length - 2; i >= 0; i-- {
-		pi := p.Get(i)
-		h[i].Mul(&h[i+1], &x).Add(&h[i], &pi)
-	}
-
-	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.name, EVAL_COEFF_POLY), smartvectors.NewRegular(h))
-	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.name, EVAL_COEFF_FIXED_POINT_BEGIN), h[0])
-}
-
 // Create a dedicated wizard to perform an evaluation in coefficient basis.
 // Returns an accessor for the value of the polynomial. Takes an expression
 // as input.
@@ -83,11 +60,23 @@ func CoeffEval(comp *wizard.CompiledIOP, name string, x coin.Info, pol ifaces.Co
 		hornerPoly,
 	)
 
-	comp.RegisterProverAction(maxRound, &coeffEvalProverAction{
-		name:   name,
-		x:      x,
-		pol:    pol,
-		length: length,
+	comp.SubProvers.AppendToInner(maxRound, func(assi *wizard.ProverRuntime) {
+
+		// Get the value of the coin and of pol
+		x := assi.GetRandomCoinFext(x.Name)
+		p := pol.GetColAssignment(assi)
+
+		// Now needs to evaluate the Horner poly
+		h := make([]field.Element, length)
+		h[length-1] = p.Get(length - 1)
+
+		for i := length - 2; i >= 0; i-- {
+			pi := p.Get(i)
+			h[i].Mul(&h[i+1], &x).Add(&h[i], &pi)
+		}
+
+		assi.AssignColumn(ifaces.ColIDf("%v_%v", name, EVAL_COEFF_POLY), smartvectors.NewRegular(h))
+		assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", name, EVAL_COEFF_FIXED_POINT_BEGIN), h[0])
 	})
 
 	return accessors.NewLocalOpeningAccessor(localOpening, maxRound)

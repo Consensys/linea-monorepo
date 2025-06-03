@@ -1,21 +1,20 @@
 package vortex
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	field "github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
-	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
+func (ctx *Ctx) GnarkVerify(api frontend.API, vr *wizard.WizardVerifierCircuit) {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -28,18 +27,24 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 	roots := []frontend.Variable{}
 
 	// Append the precomputed roots when IsCommitToPrecomputed is true
-	if ctx.IsNonEmptyPrecomputed() {
+	if ctx.IsCommitToPrecomputed() {
 		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
 		roots = append(roots, precompRootSv[0])
 	}
 
 	// Collect all the commitments : rounds by rounds
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		// There are not included in the commitments so there is no
+		// commitement to look for.
+		if ctx.isDry(round) {
+			continue
+		}
+
 		rootSv := vr.GetColumn(ctx.MerkleRootName(round)) // len 1 smart vector
 		roots = append(roots, rootSv[0])
 	}
 
-	randomCoin := vr.GetRandomCoinField(ctx.LinCombRandCoinName())
+	randomCoin := vr.GetRandomCoinFext(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
 	proof := vortex.GProof{}
@@ -56,13 +61,8 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 
 	// function that will defer the hashing to gkr
 	factoryHasherFunc := func(_ frontend.API) (hash.FieldHasher, error) {
-		factory := vr.GetHasherFactory()
-		if factory != nil {
-			h := vr.GetHasherFactory().NewHasher()
-			return h, nil
-		}
-		h, err := mimc.NewMiMC(api)
-		return &h, err
+		h := vr.HasherFactory.NewHasher()
+		return h, nil
 	}
 
 	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
@@ -71,7 +71,11 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 	// pass the parameters for a merkle-mode sis verification
 	params := vortex.GParams{}
 	params.HasherFunc = factoryHasherFunc
-	params.Key = ctx.VortexParams.Key
+	if ctx.ReplaceSisByMimc {
+		params.NoSisHasher = factoryHasherFunc
+	} else {
+		params.Key = ctx.VortexParams.Key
+	}
 
 	vortex.GnarkVerifyOpeningWithMerkleProof(
 		api,
@@ -87,7 +91,7 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]frontend.Variable) {
+func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr *wizard.WizardVerifierCircuit) (ys [][]frontend.Variable) {
 
 	query := ctx.Query
 	params := vr.GetUnivariateParams(ctx.Query.QueryID)
@@ -100,22 +104,17 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 	}
 
 	// Also add the shadow evaluations into ysMap. Since the shadow columns
-	// are full-zeroes. We know that the evaluation will also always be zero.
-	//
-	// The sorting is necessary to ensure that the iteration below happens in
-	// deterministic order over the [ShadowCols] map.
-	shadowIDs := utils.SortedKeysOf(ctx.ShadowCols, func(a, b ifaces.ColID) bool {
-		return a < b
-	})
-
-	for _, shadowID := range shadowIDs {
-		ysMap[shadowID] = field.Zero()
+	// are full-zeroes. We know that the evaluation will also always be zero
+	var zero field.Element
+	zero.SetZero()
+	for shadowID := range ctx.ShadowCols {
+		ysMap[shadowID] = zero
 	}
 
 	ys = [][]frontend.Variable{}
 
 	// add ys for precomputed when IsCommitToPrecomputed is true
-	if ctx.IsNonEmptyPrecomputed() {
+	if ctx.IsCommitToPrecomputed() {
 		names := make([]ifaces.ColID, len(ctx.Items.Precomputeds.PrecomputedColums))
 		for i, poly := range ctx.Items.Precomputeds.PrecomputedColums {
 			names[i] = poly.GetColID()
@@ -136,6 +135,11 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 
 	// Get the list of the polynomials
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		// again, skip the dry rounds
+		if ctx.isDry(round) {
+			continue
+		}
+
 		names := ctx.CommitmentsByRounds.MustGet(round)
 		ysRounds := make([]frontend.Variable, len(names))
 		for i, name := range names {
@@ -159,7 +163,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 
 // Returns the opened columns from the messages. The returned columns are
 // split "by-commitment-round".
-func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRuntime) [][][]frontend.Variable {
+func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr *wizard.WizardVerifierCircuit) [][][]frontend.Variable {
 
 	// Collect the columns : first extract the full columns
 	// Bear in mind that the prover messages are zero-padded
@@ -173,7 +177,7 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 	roundStartAt := 0
 
 	// Process precomputed
-	if ctx.IsNonEmptyPrecomputed() {
+	if ctx.IsCommitToPrecomputed() {
 		openedPrecompCols := make([][]frontend.Variable, ctx.NbColsToOpen())
 		numPrecomputeds := len(ctx.Items.Precomputeds.PrecomputedColums)
 		for j := 0; j < ctx.NbColsToOpen(); j++ {
@@ -186,6 +190,11 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 	}
 
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
+		// again, skip the dry rounds
+		if ctx.isDry(round) {
+			continue
+		}
+
 		openedSubColumnsForRound := make([][]frontend.Variable, ctx.NbColsToOpen())
 		numRowsForRound := ctx.getNbCommittedRows(round)
 		for j := 0; j < ctx.NbColsToOpen(); j++ {
@@ -206,38 +215,27 @@ func (ctx *Ctx) GnarkRecoverSelectedColumns(api frontend.API, vr wizard.GnarkRun
 }
 
 // Evaluates explicitly the public polynomials (proof, vk, public inputs)
-func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkRuntime) {
+func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr *wizard.WizardVerifierCircuit) {
 
-	var (
-		params     = vr.GetUnivariateParams(ctx.Query.QueryID)
-		polys      = make([][]frontend.Variable, 0)
-		expectedYs = make([]frontend.Variable, 0)
-	)
+	params := vr.GetUnivariateParams(ctx.Query.QueryID)
 
 	for i, pol := range ctx.Query.Pols {
 
-		// If the column is a VerifierDefined column, then it is directly
-		// concerned by direct verification but we cannot access its status.
-		// status so we need a hierarchical check to make sure we can access
-		// its status.
-		if _, isVerifierCol := pol.(verifiercol.VerifierCol); !isVerifierCol {
+		// If the column is a VerifierDefined column, then it is
+		// directly concerned by direct verification but we can
+		// access its witness or status so we need a specific check.
+		if _, ok := pol.(verifiercol.VerifierCol); !ok {
 			status := ctx.comp.Columns.Status(pol.GetColID())
 			if !status.IsPublic() {
-				// then, its not concerned by direct evaluation because the
-				// evaluation is implicitly checked by the invokation of the
-				// Vortex protocol.
+				// then, its not concerned by direct evaluation
 				continue
 			}
 		}
 
-		polys = append(polys, pol.GetColAssignmentGnark(vr))
-		expectedYs = append(expectedYs, params.Ys[i])
-	}
+		val := pol.GetColAssignmentGnark(vr)
 
-	ys := fastpoly.BatchInterpolateGnark(api, polys, params.X)
-
-	for i := range polys {
-		api.AssertIsEqual(ys[i], expectedYs[i])
+		y := fastpoly.EvaluateLagrangeGnark(api, val, params.X)
+		api.AssertIsEqual(y, params.Ys[i])
 	}
 }
 
@@ -246,7 +244,7 @@ func (ctx *Ctx) unpackMerkleProofsGnark(sv []frontend.Variable, entryList []fron
 
 	depth := utils.Log2Ceil(ctx.NumEncodedCols()) // depth of the Merkle-tree
 	numComs := ctx.NumCommittedRounds()
-	if ctx.IsNonEmptyPrecomputed() {
+	if ctx.IsCommitToPrecomputed() {
 		numComs += 1
 	}
 

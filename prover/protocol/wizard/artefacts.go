@@ -44,31 +44,31 @@ func (a artefactCache) TryLoad(key string, obj Artefact) (found bool, parseErr e
 	)
 
 	if errors.Is(fCheckErr, os.ErrNotExist) {
-		logrus.Debugf("attempted to open the cache-key=%v, was missing", fpath)
+		logrus.Infof("attempted to open the cache-key=%v, was missing", fpath)
 		return false, nil
 	}
 
 	if fCheckErr != nil {
 		// This can happen if the directory does not exists
-		logrus.Debugf("attempted to open the cache-key=%v err=%v", fpath, fCheckErr.Error())
+		logrus.Infof("attempted to open the cache-key=%v err=%v", fpath, fCheckErr.Error())
 		return false, fmt.Errorf("CheckFilePath failed: %w", fCheckErr)
 	}
 
 	f, readErr := os.Open(fpath)
 
 	if readErr != nil {
-		logrus.Debugf("attempted to open the cache-key=%v err=read-file-failed:%v", fpath, readErr.Error())
+		logrus.Infof("attempted to open the cache-key=%v err=read-file-failed:%v", fpath, readErr.Error())
 		return false, fmt.Errorf("ReadFile failed: %w", readErr)
 	}
 
 	_, parseErr = obj.ReadFrom(f)
 
 	if parseErr != nil {
-		logrus.Debugf("attempted to open the cache-key=%v err=read-from-failed:%v", fpath, parseErr.Error())
+		logrus.Infof("attempted to open the cache-key=%v err=read-from-failed:%v", fpath, parseErr.Error())
 		return false, fmt.Errorf("ReadFrom failed: %w", parseErr)
 	}
 
-	logrus.Debugf("cache-key found cache-key=%v", fpath)
+	logrus.Infof("cache-key found cache-key=%v", fpath)
 
 	return true, nil
 }
@@ -87,8 +87,8 @@ func (a artefactCache) Store(key string, obj Artefact) error {
 		return fmt.Errorf("the file %q already exists", fpath)
 	}
 
-	logrus.Debugf("Started writing the global constraint in the cache")
-	defer logrus.Debugf("Done writing the global constraint in the cache")
+	logrus.Infof("Started writing the global constraint in the cache")
+	defer logrus.Infof("Done writing the global constraint in the cache")
 
 	f := files.MustOverwrite(writingPath)
 	if _, writeErr := obj.WriteTo(f); writeErr != nil {

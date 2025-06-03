@@ -22,7 +22,7 @@ In particular, Builder provides the utilities to
   - Declare random coins
   - Declare queries
 
-@alex: we should deprecate this and directly embed the "round"
+Deprecated: @alex: we should deprecate this and directly embed the "round"
 tracking capability within the [CompiledIOP] struct. The round-tracking
 mechanism does not allow for a smooth way to decompose the user's protocol into
 sub-protocols that spans on multiple rounds efficiently as a new round will be
@@ -52,49 +52,24 @@ Compile an IOP from a protocol definition
 func Compile(define DefineFunc, compilers ...func(*CompiledIOP)) *CompiledIOP {
 	builder := newBuilder()
 	define(&builder)
-	comp := builder.CompiledIOP
-	return ContinueCompilation(comp, compilers...)
-}
-
-// ContinueCompilation continues a set of compilation steps over a initial CompiledIOP object.
-func ContinueCompilation(rootComp *CompiledIOP, compilers ...func(*CompiledIOP)) *CompiledIOP {
 	/*
 		For sanity, we need to ensure the protocol is well formed. All
 		registers should have the same number of rounds. The simplest to
 		iron this out after the define function. We still make sure than
 		no more rounds are allocated anywhere.
 	*/
-	comp := rootComp
+	comp := builder.CompiledIOP
 	numRounds := comp.NumRounds()
 
-	comp.EqualizeRounds(numRounds)
+	builder.equalizeRounds(numRounds)
 
 	for _, compiler := range compilers {
 		compiler(comp)
 		numRounds := comp.NumRounds()
-		comp.EqualizeRounds(numRounds)
+		builder.equalizeRounds(numRounds)
 	}
 
-	if comp.subProvers.Len() < comp.NumRounds() {
-		utils.Panic("There are coin sampling rounds that are not followed by an action of the prover. numRoundProver=%v numRoundCoins=%v",
-			comp.subProvers.Len(), comp.NumRounds(),
-		)
-	}
-
-	return comp
-}
-
-// NewCompiledIOP initializes a CompiledIOP object.
-func NewCompiledIOP() *CompiledIOP {
-	CompiledIOP := &CompiledIOP{
-		Columns:         column.NewStore(),
-		QueriesParams:   NewRegister[ifaces.QueryID, ifaces.Query](),
-		QueriesNoParams: NewRegister[ifaces.QueryID, ifaces.Query](),
-		Coins:           NewRegister[coin.Name, coin.Info](),
-		Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
-		ExtraData:       make(map[string]interface{}),
-	}
-	return CompiledIOP
+	return builder.CompiledIOP
 }
 
 /*
@@ -102,7 +77,13 @@ Creates a new builder for a new IOP
 */
 func newBuilder() Builder {
 	return Builder{
-		CompiledIOP:    NewCompiledIOP(),
+		CompiledIOP: &CompiledIOP{
+			Columns:         column.NewStore(),
+			QueriesParams:   NewRegister[ifaces.QueryID, ifaces.Query](),
+			QueriesNoParams: NewRegister[ifaces.QueryID, ifaces.Query](),
+			Coins:           NewRegister[coin.Name, coin.Info](),
+			Precomputed:     collection.NewMapping[ifaces.ColID, ifaces.ColAssignment](),
+		},
 		currRound:      0,
 		fsStateIsDirty: true,
 	}
@@ -265,7 +246,8 @@ func (b *Builder) LocalOpening(name ifaces.QueryID, pol ifaces.Column) query.Loc
 Equalizes the length of all the structure so that they all have the same
 numbers of rounds
 */
-func (comp *CompiledIOP) EqualizeRounds(numRounds int) {
+func (b *Builder) equalizeRounds(numRounds int) {
+	comp := b.CompiledIOP
 
 	helpMsg := "If you are seeing this message it's probably because you insert queries one round too late."
 
@@ -304,24 +286,16 @@ func (comp *CompiledIOP) EqualizeRounds(numRounds int) {
 	/*
 		Check and reserve for the provers
 	*/
-	if comp.subProvers.Len() > numRounds {
-		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the prover. %v", numRounds, comp.subProvers.Len(), helpMsg)
+	if comp.SubProvers.Len() > numRounds {
+		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the prover. %v", numRounds, comp.SubProvers.Len(), helpMsg)
 	}
-	comp.subProvers.Reserve(numRounds)
+	comp.SubProvers.Reserve(numRounds)
 
 	/*
 		Check and reserve for the verifiers
 	*/
-	if comp.subVerifiers.Len() > numRounds {
-		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the verifier. %v", numRounds, comp.subVerifiers.Len(), helpMsg)
+	if comp.SubVerifiers.Len() > numRounds {
+		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the verifier. %v", numRounds, comp.SubVerifiers.Len(), helpMsg)
 	}
-	comp.subVerifiers.Reserve(numRounds)
-
-	/*
-		Check and reserve for the FiatShamirHooksPreSampling
-	*/
-	if comp.FiatShamirHooksPreSampling.Len() > numRounds {
-		utils.Panic("Bug : numRounds is %v but %v rounds are registered for the FiatShamirHooksPreSampling. %v", numRounds, comp.FiatShamirHooksPreSampling.Len(), helpMsg)
-	}
-	comp.FiatShamirHooksPreSampling.Reserve(numRounds)
+	comp.SubVerifiers.Reserve(numRounds)
 }

@@ -1,21 +1,11 @@
 package byte32cmp
 
 import (
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
-
-type bytes32CmpProverAction struct {
-	bcp *BytesCmpCtx
-}
-
-func (a *bytes32CmpProverAction) Run(run *wizard.ProverRuntime) {
-	colA := a.bcp.columnA.GetColAssignment(run)
-	colB := a.bcp.columnB.GetColAssignment(run)
-	a.bcp.assign(run, colA, colB)
-}
 
 func Bytes32Cmp(
 	// compiled IOP
@@ -30,16 +20,19 @@ func Bytes32Cmp(
 	activeRow *symbolic.Expression,
 ) {
 	bcp := BytesCmpCtx{}
-	round := column.MaxRound(columnA, columnB)
+	round := wizardutils.MaxRound(columnA, columnB)
 	bcp.round = round
 	bcp.columnA = columnA
 	bcp.columnB = columnB
 	bcp.activeRow = activeRow
-	comp.RegisterProverAction(round, &bytes32CmpProverAction{
-		// Must pass pointer here
-		bcp: &bcp,
+	// assigns the module
+	comp.SubProvers.AppendToInner(round, func(run *wizard.ProverRuntime) {
+		colA := columnA.GetColAssignment(run)
+		colB := columnB.GetColAssignment(run)
+		bcp.assign(run, colA, colB)
 	})
 	// We do call the assign function before define to avoid the race condition with
 	// the bigrange module
 	bcp.Define(comp, numLimbs, bitPerLimbs, name)
+
 }

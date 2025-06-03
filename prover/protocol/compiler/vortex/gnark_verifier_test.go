@@ -9,7 +9,7 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/scs"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -22,7 +22,7 @@ import (
 Wraps the wizard verification gnark into a circuit
 */
 type VortexTestCircuit struct {
-	C wizard.VerifierCircuit
+	C wizard.WizardVerifierCircuit
 }
 
 /*
@@ -39,7 +39,7 @@ Returns an assignment from a wizard proof
 */
 func assignTestCircuit(comp *wizard.CompiledIOP, proof wizard.Proof) *VortexTestCircuit {
 	return &VortexTestCircuit{
-		C: *wizard.AssignVerifierCircuit(comp, proof, 0),
+		C: *wizard.GetWizardVerifierCircuitAssignment(comp, proof),
 	}
 }
 
@@ -78,26 +78,26 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	}
 
 	prove := func(pr *wizard.ProverRuntime) {
-		ys := make([]field.Element, len(rows)*len(rows[0]))
-		x := field.NewElement(57) // the evaluation point
+		ys := make([]fext.Element, len(rows)*len(rows[0]))
+		x := fext.RandomElement() // the evaluation point
 
 		// assign the rows with random polynomials and collect the ys
 		for round := range rows {
 			// let the prover know that it is free to go to the next
 			// round by sampling the coin.
 			if round != 0 {
-				_ = pr.GetRandomCoinField(coin.Namef("COIN_%v", round))
+				_ = pr.GetRandomCoinFext(coin.Namef("COIN_%v", round))
 			}
 			for i, row := range rows[round] {
 				// For round 0 we need (numPolys - numPrecomputeds) polys, as the precomputed are
 				// assigned in the define phase
 				if i < numPrecomputeds && round == 0 {
 					p := pr.Spec.Precomputed.MustGet(row.GetColID())
-					ys[round*nPols+i] = smartvectors.Interpolate(p, x)
+					ys[round*nPols+i] = smartvectors.EvaluateLagrangeOnFext(p, x)
 					continue
 				}
 				p := smartvectors.Rand(polSize)
-				ys[round*nPols+i] = smartvectors.Interpolate(p, x)
+				ys[round*nPols+i] = smartvectors.EvaluateLagrangeOnFext(p, x)
 				pr.AssignColumn(row.GetColID(), p)
 			}
 		}
@@ -107,7 +107,10 @@ func TestVortexGnarkVerifier(t *testing.T) {
 
 	compiled := wizard.Compile(
 		define,
-		vortex.Compile(4),
+		vortex.Compile(
+			4,
+			vortex.ReplaceSisByMimc(),
+		),
 	)
 	proof := wizard.Prove(compiled, prove)
 
@@ -120,7 +123,13 @@ func TestVortexGnarkVerifier(t *testing.T) {
 	// Allocate the circuit
 	circ := VortexTestCircuit{}
 	{
-		c := wizard.AllocateWizardCircuit(compiled, 0)
+		c, err := wizard.AllocateWizardCircuit(compiled)
+		if err != nil {
+			// The only error case acknowledged here is that the returned circuit
+			// is empty. In that case, there is simply no point to run the verification.
+			return
+		}
+
 		circ.C = *c
 	}
 

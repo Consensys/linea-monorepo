@@ -80,7 +80,7 @@ func TestFromIntVec(t *testing.T) {
 
 				// Compile with the full suite
 				compiled := wizard.Compile(defineInclu,
-					compiler.Arcane(compiler.WithTargetColSize(tc.Split)),
+					compiler.Arcane(tc.Split, tc.Split, true),
 					vortex.Compile(2),
 				)
 
@@ -104,18 +104,18 @@ func TestFromIntVecWithPadding(t *testing.T) {
 
 	testcases := []struct {
 		CoinSize, Split int
-		Shift, Repeat   int
+		Shift, Constant   int
 		PaddingVal      field.Element
 	}{
-		{CoinSize: 12, Split: 8, Shift: 1, Repeat: 0},
-		{CoinSize: 12, Split: 8, Shift: 0, Repeat: 2},
-		{CoinSize: 12, Split: 8, Shift: 1, Repeat: 2},
-		{CoinSize: 12, Split: 16, Shift: 1, Repeat: 0},
-		{CoinSize: 12, Split: 16, Shift: 0, Repeat: 2},
-		{CoinSize: 12, Split: 16, Shift: 1, Repeat: 2},
-		{CoinSize: 12, Split: 32, Shift: 1, Repeat: 0},
-		{CoinSize: 12, Split: 32, Shift: 0, Repeat: 2},
-		{CoinSize: 12, Split: 32, Shift: 1, Repeat: 2},
+		{CoinSize: 12, Split: 8, Shift: 1, Constant: 0},
+		{CoinSize: 12, Split: 8, Shift: 0, Constant: 2},
+		{CoinSize: 12, Split: 8, Shift: 1, Constant: 2},
+		{CoinSize: 12, Split: 16, Shift: 1, Constant: 0},
+		{CoinSize: 12, Split: 16, Shift: 0, Constant: 2},
+		{CoinSize: 12, Split: 16, Shift: 1, Constant: 2},
+		{CoinSize: 12, Split: 32, Shift: 1, Constant: 0},
+		{CoinSize: 12, Split: 32, Shift: 0, Constant: 2},
+		{CoinSize: 12, Split: 32, Shift: 1, Constant: 2},
 	}
 
 	// A test vector that is only here for technical reasons. If it is not
@@ -161,7 +161,7 @@ func TestFromIntVecWithPadding(t *testing.T) {
 
 				// Compile with the full suite
 				compiled := wizard.Compile(defineInclu,
-					compiler.Arcane(compiler.WithTargetColSize(tc.Split)),
+					compiler.Arcane(tc.Split, tc.Split, true),
 					vortex.Compile(2),
 					dummy.Compile,
 				)

@@ -6,7 +6,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -47,18 +46,18 @@ func TestWizarldutils(t *testing.T) {
 		run.AssignColumn("P1", col1)
 		run.AssignColumn("P2", col2)
 
-		run.GetRandomCoinField(coin.Namef("Coin"))
+		run.GetRandomCoinFext(coin.Namef("Coin"))
 
-		res1Wit := column.EvalExprColumn(run, res1.Board()).IntoRegVecSaveAlloc()
-		res11Wit := column.EvalExprColumn(run, res11.Board()).IntoRegVecSaveAlloc()
+		res1Wit := EvalExprColumn(run, res1.Board()).IntoRegVecSaveAlloc()
+		res11Wit := EvalExprColumn(run, res11.Board()).IntoRegVecSaveAlloc()
 		for i := range res11Wit {
 			if res1Wit[i].Cmp(&res11Wit[i]) != 0 {
 				panic("err")
 			}
 		}
 
-		res2Wit := column.EvalExprColumn(run, res2.Board()).IntoRegVecSaveAlloc()
-		res22Wit := column.EvalExprColumn(run, res22.Board()).IntoRegVecSaveAlloc()
+		res2Wit := EvalExprColumn(run, res2.Board()).IntoRegVecSaveAlloc()
+		res22Wit := EvalExprColumn(run, res22.Board()).IntoRegVecSaveAlloc()
 		for i := range res11Wit {
 			if res2Wit[i].Cmp(&res22Wit[i]) != 0 {
 				panic("err")
