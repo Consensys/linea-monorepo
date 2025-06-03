@@ -10,13 +10,12 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
-	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/projection"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
-	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/utils/gnarkutil"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
@@ -58,7 +57,7 @@ type CircuitAlignmentInput struct {
 	NbCircuitInstances int
 
 	// PlonkOptions are optional options to the plonk-in-wizard checker. See [Option].
-	PlonkOptions []Option
+	PlonkOptions []query.PlonkOption
 
 	// InputFiller returns an element to pad in the public input for the
 	// circuit in case DataToCircuitMask is not full length of the circuit
@@ -68,10 +67,6 @@ type CircuitAlignmentInput struct {
 	witnesses       []witness.Witness
 	witnessesOnce   sync.Once
 	numEffWitnesses int
-
-	// nbPublicInputs is the number of public inputs for the circuit. It is
-	// computed from the circuit and then stored here for later use.
-	nbPublicInputs int
 
 	// circMaskOpenings are local opening queries over the ToCircuitMask that
 	// we use to checks that the "activators" of the Plonk in Wizard are
@@ -90,6 +85,8 @@ func (ci *CircuitAlignmentInput) NbInstances() int {
 // if this uncovers an overflow.
 func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 
+	nbPublicInputs, _ := gnarkutil.CountVariables(ci.Circuit)
+
 	ci.witnessesOnce.Do(func() {
 
 		if err := ci.checkNbCircuitInvocation(run); err != nil {
@@ -107,7 +104,7 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 		maskCol := ci.DataToCircuitMask.GetColAssignment(run)
 		// first we count how many inputs we actually have
 		totalInputs := 0
-		for i := 0; i < maskCol.Len() && totalInputs < ci.nbPublicInputs*ci.NbCircuitInstances; i++ {
+		for i := 0; i < maskCol.Len() && totalInputs < nbPublicInputs*ci.NbCircuitInstances; i++ {
 			selector := maskCol.Get(i)
 			if selector.IsOne() {
 				totalInputs++
@@ -131,10 +128,10 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 			}
 			witnessFillers[i] = make(chan any)
 			wg.Go(func() error {
-				return ci.witnesses[ii].Fill(ci.nbPublicInputs, 0, witnessFillers[ii])
+				return ci.witnesses[ii].Fill(nbPublicInputs, 0, witnessFillers[ii])
 			})
 		}
-		wg.Go(func() error {
+		go func() {
 			var filled int
 			for j := 0; j < dataCol.Len(); j++ {
 				mask := maskCol.Get(j)
@@ -144,33 +141,31 @@ func (ci *CircuitAlignmentInput) prepareWitnesses(run *wizard.ProverRuntime) {
 				data := dataCol.Get(j)
 				select {
 				case <-ctx.Done():
-					return nil
-				case witnessFillers[filled/ci.nbPublicInputs] <- data:
+					return
+				case witnessFillers[filled/nbPublicInputs] <- data:
 				}
 				filled++
-				if filled%ci.nbPublicInputs == 0 {
-					close(witnessFillers[(filled-1)/ci.nbPublicInputs])
+				if filled%nbPublicInputs == 0 {
+					close(witnessFillers[(filled-1)/nbPublicInputs])
 				}
 			}
 
 			if filled > 0 {
-				ci.numEffWitnesses = utils.DivCeil(filled-1, ci.nbPublicInputs)
+				ci.numEffWitnesses = utils.DivCeil(filled-1, nbPublicInputs)
 			}
 
-			for filled < ci.nbPublicInputs*ci.NbCircuitInstances {
+			for filled < nbPublicInputs*ci.NbCircuitInstances {
 				select {
 				case <-ctx.Done():
-					return nil
-				case witnessFillers[filled/ci.nbPublicInputs] <- ci.InputFiller(filled/ci.nbPublicInputs, filled%ci.nbPublicInputs):
+					return
+				case witnessFillers[filled/nbPublicInputs] <- ci.InputFiller(filled/nbPublicInputs, filled%nbPublicInputs):
 				}
 				filled++
-				if filled%ci.nbPublicInputs == 0 {
-					close(witnessFillers[(filled-1)/ci.nbPublicInputs])
+				if filled%nbPublicInputs == 0 {
+					close(witnessFillers[(filled-1)/nbPublicInputs])
 				}
 			}
-
-			return nil
-		})
+		}()
 		if err := wg.Wait(); err != nil {
 			utils.Panic("fill witness: %v", err.Error())
 			return
@@ -199,8 +194,9 @@ func (ci *CircuitAlignmentInput) NumEffWitnesses(run *wizard.ProverRuntime) int 
 func (ci *CircuitAlignmentInput) checkNbCircuitInvocation(run *wizard.ProverRuntime) error {
 
 	var (
-		mask  = ci.DataToCircuitMask.GetColAssignment(run).IntoRegVecSaveAlloc()
-		count = 0
+		mask              = ci.DataToCircuitMask.GetColAssignment(run).IntoRegVecSaveAlloc()
+		count             = 0
+		nbPublicInputs, _ = gnarkutil.CountVariables(ci.Circuit)
 	)
 
 	for i := range mask {
@@ -209,10 +205,10 @@ func (ci *CircuitAlignmentInput) checkNbCircuitInvocation(run *wizard.ProverRunt
 		}
 	}
 
-	if count > ci.nbPublicInputs*ci.NbCircuitInstances {
+	if count > nbPublicInputs*ci.NbCircuitInstances {
 		return fmt.Errorf(
 			"[circuit-alignement] too many inputs circuit=%v nb-public-input-required=%v nb-public-input-per-circuit=%v nb-circuits-available=%v nb-circuit-required=%v",
-			ci.Name, count, ci.nbPublicInputs, ci.NbCircuitInstances, utils.DivCeil(count, ci.nbPublicInputs),
+			ci.Name, count, nbPublicInputs, ci.NbCircuitInstances, utils.DivCeil(count, nbPublicInputs),
 		)
 	}
 
@@ -231,106 +227,66 @@ type Alignment struct {
 	// CircuitInput is the aligned input to the circuit with every instance
 	// input padded to power of two.
 	CircuitInput ifaces.Column
-	// FullCircuitInputMask is a precomputed column which masks all public inputs for the circuit.
-	FullCircuitInputMask ifaces.Column
 	// ActualCircuitInputMask is an assigned column which masks public inputs
 	// for the circuit coming from the alignment input.
-	ActualCircuitInputMask ifaces.Column
-	// NbInput indicates the actual number of inputs for a circuit. Property of
-	// this structure as we obtain it after compiling the circuit.
-	NbInput int
-	// totalSize is the total size of the concatenated padded PI columns for all
-	// circuit instances.
-	totalSize int
-	// plonkInWizardCtx stores the Plonk-in-Wizard context and is used during the
-	// assignment phase to ensure that PI gets assigned.
-	plonkInWizardCtx compilationCtx
+	ActualCircuitInputMask *dedicated.RepeatedPattern
+	// PlonkQuery is the query enforcing that the circuit is satisfied
+	PlonkQuery *query.PlonkInWizard
 }
 
 // DefineAlignment allows to align data from a column with a mask to PI input
 // column of PLONK-in-Wizard instance.
 func DefineAlignment(comp *wizard.CompiledIOP, toAlign *CircuitAlignmentInput) *Alignment {
 
-	// This has to be the first thing we declare as this runs [frontend.Compile]
-	// internally.
-	plonkInWizardCtx := PlonkCheck(
-		comp,
-		toAlign.Name,
-		toAlign.Round,
-		toAlign.Circuit,
-		toAlign.NbInstances(),
-		toAlign.PlonkOptions...,
-	)
-
 	// compute the constant mask
-	nbPublicInputs := plonkInWizardCtx.Plonk.SPR.GetNbPublicVariables()
+	nbPublicInputs, _ := gnarkutil.CountVariables(toAlign.Circuit)
 	if nbPublicInputs == 0 {
 		utils.Panic("cannot connect a circuit with no public inputs: %v", nbPublicInputs)
 	}
 
-	// zero value is zero
-	if toAlign.nbPublicInputs == 0 {
-		toAlign.nbPublicInputs = plonkInWizardCtx.Plonk.SPR.GetNbPublicVariables()
-	}
-
 	var (
-		maskValue       = getCircuitMaskValue(toAlign.nbPublicInputs, toAlign.NbCircuitInstances)
-		mask            = comp.InsertPrecomputed(ifaces.ColIDf("%v_FULL_PI_MASK", toAlign.Name), maskValue)
-		totalColumnSize = maskValue.Len()
+		totalColumnSize = utils.NextPowerOfTwo(nbPublicInputs) * utils.NextPowerOfTwo(toAlign.NbCircuitInstances)
 		isActive        = comp.InsertCommit(toAlign.Round, ifaces.ColIDf("%v_IS_ACTIVE", toAlign.Name), totalColumnSize)
-		actualMask      = comp.InsertCommit(toAlign.Round, ifaces.ColIDf("%v_ACTUAL_PI_MASK", toAlign.Name), totalColumnSize)
-		alignedData     = plonkInWizardCtx.ConcatenatedTinyPIs(totalColumnSize)
+		actualMask      = dedicated.NewRepeatedPattern(comp, toAlign.Round, getCircuitMaskValuePattern(nbPublicInputs), isActive)
+		alignedData     = comp.InsertCommit(toAlign.Round, ifaces.ColIDf("%v_PI", toAlign.Name), totalColumnSize)
+
+		// This has to be the first thing we declare as this runs [frontend.Compile]
+		// internally.
+		plonkInWizardQ = &query.PlonkInWizard{
+			ID:           ifaces.QueryID(toAlign.Name),
+			Circuit:      toAlign.Circuit,
+			PlonkOptions: toAlign.PlonkOptions,
+			Selector:     isActive,
+			Data:         alignedData,
+		}
 	)
+
+	comp.InsertPlonkInWizard(plonkInWizardQ)
 
 	res := &Alignment{
 		CircuitAlignmentInput:  toAlign,
 		IsActive:               isActive,
 		CircuitInput:           alignedData,
-		FullCircuitInputMask:   mask,
 		ActualCircuitInputMask: actualMask,
-		NbInput:                nbPublicInputs,
-		totalSize:              totalColumnSize,
-		plonkInWizardCtx:       plonkInWizardCtx,
+		PlonkQuery:             plonkInWizardQ,
 	}
 
-	res.csIsActive(comp)
 	res.csProjection(comp)
-	res.csProjectionSelector(comp)
-	res.checkActivators(comp)
 
 	return res
-}
-
-// csIsActive adds the cosntraints ensuring that the [Alignment.IsActive] column
-// is well-formed. Namely, that this is a sequence of 1s followed by a sequence
-// of 0s.
-func (a *Alignment) csIsActive(comp *wizard.CompiledIOP) {
-	// IsActive is binary column
-	comp.InsertGlobal(a.Round, ifaces.QueryIDf("%v_IS_ACTIVE_BINARY", a.Name), symbolic.Mul(a.IsActive, symbolic.Sub(a.IsActive, 1)))
-	// IS_ACTIVE_{i} == 0 -> IS_ACTIVE_{i+1} == 0 and IS_ACTIVE_{i} == 1 -> IS_ACTIVE_{i+1} == or IS_ACTIVE_{i+1} == 0
-	comp.InsertGlobal(a.Round, ifaces.QueryIDf("%v_IS_ACTIVE_SWITCH", a.Name), symbolic.Sub(a.IsActive, symbolic.Mul(a.IsActive, column.Shift(a.IsActive, -1))))
 }
 
 // csProjection ensures the data in the [Alignment.Data] column is the same as
 // the data provided by the [Alignment.CircuitInput].
 func (a *Alignment) csProjection(comp *wizard.CompiledIOP) {
-	projection.InsertProjection(comp, ifaces.QueryIDf("%v_PROJECTION", a.Name), []ifaces.Column{a.DataToCircuit}, []ifaces.Column{a.CircuitInput}, a.DataToCircuitMask, a.ActualCircuitInputMask)
-}
-
-// csProjectionSelector constraints that the projection selection
-// [Alignment.ActualCircuitInputMask] is well-formed. This ensures that the
-// imported data are correctly imported "in-front" of the public inputs of the
-// Plonk.
-func (a *Alignment) csProjectionSelector(comp *wizard.CompiledIOP) {
-	// ACTUAL_PI_MASK = IS_ACTIVE * STATIC_PI_MASK
-	comp.InsertGlobal(a.Round, ifaces.QueryIDf("%v_ACTUAL_SUBSET", a.Name), symbolic.Sub(a.ActualCircuitInputMask, symbolic.Mul(a.IsActive, a.FullCircuitInputMask)))
+	comp.InsertProjection(ifaces.QueryIDf("%v_PROJECTION", a.Name), query.ProjectionInput{ColumnA: []ifaces.Column{a.DataToCircuit}, ColumnB: []ifaces.Column{a.CircuitInput}, FilterA: a.DataToCircuitMask, FilterB: a.ActualCircuitInputMask.Natural})
 }
 
 // Assign assigns the colums in the Alignment structure at runtime.
 func (a *Alignment) Assign(run *wizard.ProverRuntime) {
-	a.plonkInWizardCtx.GetPlonkProverAction().Run(run, a.CircuitAlignmentInput)
 	a.assignMasks(run)
 	a.assignCircMaskOpenings(run)
+	a.assignCircData(run)
 }
 
 // assignMasks assigns the [Alignment.IsActive] and the [Alignment.ActualCircuitInputMask]
@@ -339,16 +295,17 @@ func (a *Alignment) assignMasks(run *wizard.ProverRuntime) {
 	// we want to assign IS_ACTIVE and ACTUAL_MASK columns. We can construct
 	// them at the same time from the precomputed mask and selector.
 	var (
-		fullCircMaskAssignment = a.FullCircuitInputMask.GetColAssignment(run)
-		dataToCircAssignment   = a.DataToCircuitMask.GetColAssignment(run)
+		totalSize            = a.IsActive.Size()
+		dataToCircAssignment = a.DataToCircuitMask.GetColAssignment(run)
 		// totalInputs stores the total number of public inputs to assign within
 		// the assignment circuit.
 		totalInputs = 0
 		// totalAligned counts the number of public inputs that have been assigned
 		// in the alignement module.
-		totalAligned             = 0
-		isActiveAssignment       = make([]field.Element, a.totalSize)
-		actualCircMaskAssignment = make([]field.Element, a.totalSize)
+		totalAligned         = 0
+		isActiveAssignment   = make([]field.Element, totalSize)
+		nbPublicInputs, _    = gnarkutil.CountVariables(a.Circuit)
+		nbPublicInputsPadded = utils.NextPowerOfTwo(nbPublicInputs)
 	)
 
 	for i := 0; i < dataToCircAssignment.Len(); i++ {
@@ -361,17 +318,80 @@ func (a *Alignment) assignMasks(run *wizard.ProverRuntime) {
 	// we have the number of 1 selector column elements. We must have
 	// same number of ones in the ACTUAL_MASK column. And at the same time the
 	// first time we have STATIC_MASK != ALIGNED_MASK, we set IS_ACTIVE to zero.
-	for i := 0; i < a.totalSize && totalAligned < totalInputs; i++ {
-		fullMask := fullCircMaskAssignment.Get(i)
-		if fullMask.IsOne() {
-			actualCircMaskAssignment[i].SetOne()
+	for i := 0; i < totalSize; i++ {
+
+		if totalAligned >= totalInputs {
+			isActiveAssignment = isActiveAssignment[:i:i]
+			break
+		}
+
+		isActiveAssignment[i].SetOne()
+
+		if i%nbPublicInputsPadded < nbPublicInputs {
 			totalAligned++
 		}
-		isActiveAssignment[i].SetOne()
 	}
 
-	run.AssignColumn(a.IsActive.GetColID(), smartvectors.NewRegular(isActiveAssignment))
-	run.AssignColumn(a.ActualCircuitInputMask.GetColID(), smartvectors.NewRegular(actualCircMaskAssignment))
+	run.AssignColumn(a.IsActive.GetColID(), smartvectors.RightZeroPadded(isActiveAssignment, totalSize))
+	a.ActualCircuitInputMask.Assign(run)
+}
+
+// assignCircData assigns the [Alignment.CircuitInput] column.
+func (a *Alignment) assignCircData(run *wizard.ProverRuntime) {
+
+	var (
+		unalignedInputs   = a.CircuitAlignmentInput.DataToCircuit.GetColAssignment(run).IntoRegVecSaveAlloc()
+		unalignedSelector = a.CircuitAlignmentInput.DataToCircuitMask.GetColAssignment(run).IntoRegVecSaveAlloc()
+		nbInput           = a.PlonkQuery.GetNbPublicInputs()
+		nbInputsPadded    = utils.NextPowerOfTwo(nbInput)
+		maxNbInstances    = a.PlonkQuery.GetMaxNbCircuitInstances()
+		res               = make([]field.Element, nbInputsPadded*maxNbInstances)
+		dataChan          = make(chan field.Element, nbInputsPadded*maxNbInstances)
+		nbActualData      = 0
+	)
+
+	for i := range unalignedInputs {
+		if unalignedSelector[i].IsOne() {
+			dataChan <- unalignedInputs[i]
+			nbActualData++
+		}
+	}
+
+	var (
+		lastEffInstance    = nbActualData / nbInput
+		nbDataLastInstance = nbActualData % nbInput
+	)
+
+	if nbDataLastInstance > 0 {
+		for i := nbDataLastInstance; i < nbInput; i++ {
+			if a.InputFiller != nil {
+				dataChan <- a.InputFiller(lastEffInstance, i)
+			} else {
+				dataChan <- field.Zero()
+			}
+		}
+	}
+
+	close(dataChan)
+
+assignmentLoop:
+	for i := 0; i < maxNbInstances*nbInputsPadded; i += nbInputsPadded {
+		for k := 0; k < nbInput; k++ {
+			x, ok := <-dataChan
+
+			// if the channel is closed on the first position, then
+			// we stop right here and do not start a new instance.
+			if !ok && k == 0 {
+				res = res[:i+k]
+				break assignmentLoop
+			}
+
+			res[i+k] = x
+		}
+	}
+
+	run.AssignColumn(a.CircuitInput.GetColID(), smartvectors.RightZeroPadded(res, nbInputsPadded*maxNbInstances))
+
 }
 
 // assignCircMaskOpenings assigns the openings queries over the actualCircMaskAssignment
@@ -382,90 +402,19 @@ func (a *Alignment) assignCircMaskOpenings(run *wizard.ProverRuntime) {
 	}
 }
 
-// getCircuitMaskValue returns the static assignment of the precomputed columns
-// to be assigned to [Alignment.FullCircuitInputMask].
-func getCircuitMaskValue(nbPublicInputPerCircuit, nbCircuitInstance int) smartvectors.SmartVector {
+// getCircuitMaskValue returns a slices of the form 1 1 1 .. 1 1 0 0 .. 0 with
+// [nbPublicInputnbPublicInputPerCircuit] 1s and zero-padded to the next power
+// of two.
+func getCircuitMaskValuePattern(nbPublicInputPerCircuit int) []field.Element {
 
 	var (
 		piLen     = utils.NextPowerOfTwo(nbPublicInputPerCircuit)
-		maskValue = make([]field.Element, utils.NextPowerOfTwo(piLen*nbCircuitInstance))
+		maskValue = make([]field.Element, utils.NextPowerOfTwo(piLen))
 	)
 
-	for i := 0; i < nbCircuitInstance; i++ {
-		for j := 0; j < nbPublicInputPerCircuit; j++ {
-			maskValue[piLen*i+j] = field.One()
-		}
+	for i := 0; i < nbPublicInputPerCircuit; i++ {
+		maskValue[i] = field.One()
 	}
 
-	return smartvectors.NewRegular(maskValue)
-}
-
-// checkActivators adds the constraints checking the activators are well-set w.r.t
-// to the circuit mask column. See [compilationCtx.Columns.Activators].
-func (ci *Alignment) checkActivators(comp *wizard.CompiledIOP) {
-
-	var (
-		openings   = make([]query.LocalOpening, ci.NbCircuitInstances)
-		mask       = ci.ActualCircuitInputMask
-		offset     = utils.NextPowerOfTwo(ci.nbPublicInputs)
-		activators = ci.plonkInWizardCtx.Columns.Activators
-		round      = activators[0].Round()
-	)
-
-	for i := range openings {
-		openings[i] = comp.InsertLocalOpening(
-			round,
-			ifaces.QueryIDf("%v_ACTIVATOR_LOCAL_OP_%v", ci.Name, i),
-			column.Shift(mask, i*offset),
-		)
-	}
-
-	ci.circMaskOpenings = openings
-
-	comp.RegisterVerifierAction(ci.Round, &checkActivatorAndMask{Alignment: *ci})
-}
-
-// checkActivatorAndMask is an implementation of [wizard.VerifierAction] and is
-// used to embody the verifier checks added by [checkActivators].
-type checkActivatorAndMask struct {
-	Alignment
-	skipped bool
-}
-
-func (c *checkActivatorAndMask) Run(run *wizard.VerifierRuntime) error {
-	for i := range c.circMaskOpenings {
-		var (
-			localOpening = run.GetLocalPointEvalParams(c.circMaskOpenings[i].ID)
-			valOpened    = localOpening.Y
-			valActiv     = c.plonkInWizardCtx.Columns.Activators[i].GetColAssignment(run).Get(0)
-		)
-
-		if valOpened != valActiv {
-			return fmt.Errorf(
-				"%v: activator does not match the circMask %v (activator=%v, mask=%v)",
-				c.Name, i, valActiv.String(), valOpened.String(),
-			)
-		}
-	}
-
-	return nil
-}
-
-func (c *checkActivatorAndMask) RunGnark(api frontend.API, run *wizard.WizardVerifierCircuit) {
-	for i := range c.circMaskOpenings {
-		var (
-			valOpened = run.GetLocalPointEvalParams(c.circMaskOpenings[i].ID).Y
-			valActiv  = c.plonkInWizardCtx.Columns.Activators[i].GetColAssignmentGnarkAt(run, 0)
-		)
-
-		api.AssertIsEqual(valOpened, valActiv)
-	}
-}
-
-func (c *checkActivatorAndMask) Skip() {
-	c.skipped = true
-}
-
-func (c *checkActivatorAndMask) IsSkipped() bool {
-	return c.skipped
+	return maskValue
 }

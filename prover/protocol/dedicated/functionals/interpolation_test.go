@@ -56,7 +56,7 @@ func TestInterpolate(t *testing.T) {
 
 	xVal := x.GetVal(savedRuntime)
 	accY := acc.GetVal(savedRuntime)
-	expectedY := smartvectors.EvaluateLagrangeOnFext(wp, xVal)
+	expectedY := smartvectors.Interpolate(wp, xVal)
 
 	require.Equal(t, accY, expectedY)
 

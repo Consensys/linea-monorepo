@@ -14,7 +14,7 @@ const (
 )
 
 /*
-Converts all the oracle commmitments into messages
+Converts all the oracle commitments into messages
 and ask the verifier to manually verify all queries.
 
 Primary use-case is testing.
@@ -60,34 +60,30 @@ func LazyCommit(comp *wizard.CompiledIOP) {
 	}
 
 	/*
-		Make the prover send all commitment he made as message.
+		Make the prover send all commitments he made as message.
 		Is done round by round.
 	*/
-	for roundID_ := 0; roundID_ < numRounds; roundID_++ {
-
-		/*
-			Capture the roundID in a separate variable, to capture it in the
-			closure. If we don't do that, all steps are going to run the last round
-			because the `roundID_` is captured but not its value.
-		*/
-		roundID := roundID_
-		prover := func(run *wizard.ProverRuntime) {
-
-			/*
-				The commitments
-			*/
-			for _, com := range comsAllRounds[roundID] {
-				run.AssignColumn(renameComToLazyMsg(com), smartvectors.AllocateRegular(LAZY_COMMIT_SIZE))
-			}
-		}
-
-		/*
-			And append each to the result. This functions will later be
-			called during the `Prover`
-		*/
-		comp.SubProvers.AppendToInner(roundID, prover)
+	for roundID := 0; roundID < numRounds; roundID++ {
+		comp.RegisterProverAction(roundID, &lazyCommitProverAction{
+			commitments: comsAllRounds[roundID],
+		})
 	}
+}
 
+// lazyCommitProverAction is the action to assign lazy commitments as messages.
+// It implements the [wizard.ProverAction] interface.
+type lazyCommitProverAction struct {
+	commitments []ifaces.ColID
+}
+
+// Run assigns the commitments as messages in the prover runtime.
+func (a *lazyCommitProverAction) Run(run *wizard.ProverRuntime) {
+	/*
+		The commitments
+	*/
+	for _, com := range a.commitments {
+		run.AssignColumn(renameComToLazyMsg(com), smartvectors.AllocateRegular(LAZY_COMMIT_SIZE))
+	}
 }
 
 func renameComToLazyMsg(name ifaces.ColID) ifaces.ColID {

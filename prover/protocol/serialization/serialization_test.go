@@ -35,7 +35,7 @@ func TestSerializeValue(t *testing.T) {
 	testCases := []struct {
 		V           any
 		Expected    string
-		Mode        mode
+		Mode        Mode
 		CompiledIOP *wizard.CompiledIOP
 	}{
 		{
@@ -82,7 +82,7 @@ func TestSerializeValue(t *testing.T) {
 		func() struct {
 			V           any
 			Expected    string
-			Mode        mode
+			Mode        Mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
@@ -93,7 +93,7 @@ func TestSerializeValue(t *testing.T) {
 			return struct {
 				V           any
 				Expected    string
-				Mode        mode
+				Mode        Mode
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           v,
@@ -105,7 +105,7 @@ func TestSerializeValue(t *testing.T) {
 		func() struct {
 			V           any
 			Expected    string
-			Mode        mode
+			Mode        Mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
@@ -117,7 +117,7 @@ func TestSerializeValue(t *testing.T) {
 			return struct {
 				V           any
 				Expected    string
-				Mode        mode
+				Mode        Mode
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           v,
@@ -129,7 +129,7 @@ func TestSerializeValue(t *testing.T) {
 		func() struct {
 			V           any
 			Expected    string
-			Mode        mode
+			Mode        Mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
@@ -147,7 +147,7 @@ func TestSerializeValue(t *testing.T) {
 			return struct {
 				V           any
 				Expected    string
-				Mode        mode
+				Mode        Mode
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &col,
@@ -159,7 +159,7 @@ func TestSerializeValue(t *testing.T) {
 		func() struct {
 			V           any
 			Expected    string
-			Mode        mode
+			Mode        Mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
@@ -176,7 +176,7 @@ func TestSerializeValue(t *testing.T) {
 			return struct {
 				V           any
 				Expected    string
-				Mode        mode
+				Mode        Mode
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &univ,
@@ -188,7 +188,7 @@ func TestSerializeValue(t *testing.T) {
 		func() struct {
 			V           any
 			Expected    string
-			Mode        mode
+			Mode        Mode
 			CompiledIOP *wizard.CompiledIOP
 		} {
 
@@ -206,7 +206,7 @@ func TestSerializeValue(t *testing.T) {
 			return struct {
 				V           any
 				Expected    string
-				Mode        mode
+				Mode        Mode
 				CompiledIOP *wizard.CompiledIOP
 			}{
 				V:           &fromYs,

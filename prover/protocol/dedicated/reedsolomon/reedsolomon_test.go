@@ -3,8 +3,8 @@ package reedsolomon_test
 import (
 	"testing"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/reedsolomon"
@@ -27,7 +27,7 @@ func TestReedSolomon(t *testing.T) {
 	}
 
 	compiled := wizard.Compile(definer,
-		compiler.Arcane(8, 8),
+		compiler.Arcane(compiler.WithStitcherMinSize(8), compiler.WithTargetColSize(8)),
 		dummy.Compile,
 	)
 

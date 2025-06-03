@@ -22,17 +22,14 @@ func TestConcatTinyColRange(t *testing.T) {
 
 	testcases := []struct {
 		NumCols, Split int
-		Shift, Constant  int
+		Shift          int
 	}{
-		{NumCols: 16, Split: 8, Shift: 1, Constant: 0},
-		{NumCols: 16, Split: 8, Shift: 0, Constant: 2},
-		{NumCols: 16, Split: 8, Shift: 1, Constant: 2},
-		{NumCols: 16, Split: 16, Shift: 1, Constant: 0},
-		{NumCols: 16, Split: 16, Shift: 0, Constant: 2},
-		{NumCols: 16, Split: 16, Shift: 1, Constant: 2},
-		{NumCols: 16, Split: 32, Shift: 1, Constant: 0},
-		{NumCols: 16, Split: 32, Shift: 0, Constant: 2},
-		{NumCols: 16, Split: 32, Shift: 1, Constant: 2},
+		{NumCols: 16, Split: 8, Shift: 1},
+		{NumCols: 16, Split: 8, Shift: 0},
+		{NumCols: 16, Split: 16, Shift: 1},
+		{NumCols: 16, Split: 16, Shift: 0},
+		{NumCols: 16, Split: 32, Shift: 1},
+		{NumCols: 16, Split: 32, Shift: 0},
 	}
 
 	for _, tc := range testcases {
@@ -82,7 +79,7 @@ func TestConcatTinyColRange(t *testing.T) {
 
 				// Compile with the full suite
 				compiled := wizard.Compile(define,
-					compiler.Arcane(2, 2, true),
+					compiler.Arcane(compiler.WithTargetColSize(16)),
 					dummy.Compile,
 				)
 
@@ -106,17 +103,12 @@ func TestConcatTinyColWithPaddingRange(t *testing.T) {
 
 	testcases := []struct {
 		NumCols, PaddedSize, Split int
-		Shift, Constant              int
+		Shift                      int
 	}{
-		{NumCols: 12, PaddedSize: 16, Split: 8, Shift: 1, Constant: 0},
-		{NumCols: 12, PaddedSize: 16, Split: 8, Shift: 0, Constant: 2},
-		{NumCols: 12, PaddedSize: 16, Split: 8, Shift: 1, Constant: 2},
-		{NumCols: 12, PaddedSize: 16, Split: 16, Shift: 1, Constant: 0},
-		{NumCols: 12, PaddedSize: 16, Split: 16, Shift: 0, Constant: 2},
-		{NumCols: 12, PaddedSize: 16, Split: 16, Shift: 1, Constant: 2},
-		{NumCols: 12, PaddedSize: 16, Split: 32, Shift: 1, Constant: 0},
-		{NumCols: 12, PaddedSize: 16, Split: 32, Shift: 0, Constant: 2},
-		{NumCols: 12, PaddedSize: 16, Split: 32, Shift: 1, Constant: 2},
+		{NumCols: 12, PaddedSize: 16, Split: 16, Shift: 1},
+		{NumCols: 12, PaddedSize: 16, Split: 16, Shift: 0},
+		{NumCols: 12, PaddedSize: 16, Split: 32, Shift: 1},
+		{NumCols: 12, PaddedSize: 16, Split: 32, Shift: 0},
 	}
 
 	for _, tc := range testcases {
@@ -166,7 +158,7 @@ func TestConcatTinyColWithPaddingRange(t *testing.T) {
 
 				// Compile with the full suite
 				compiled := wizard.Compile(define,
-					compiler.Arcane(tc.Split, tc.Split, true),
+					compiler.Arcane(compiler.WithTargetColSize(tc.Split)),
 					dummy.Compile,
 				)
 

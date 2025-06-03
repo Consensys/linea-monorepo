@@ -25,6 +25,36 @@ const (
 	EVAL_BIVARIATE_GLOBAL               string = "GLOBAL"
 )
 
+type evalBivariateProverAction struct {
+	name     string
+	pCom     ifaces.Column
+	x        ifaces.Accessor
+	yxPow1mk XYPow1MinNAccessor
+	length   int
+	nPowX    int
+}
+
+func (a *evalBivariateProverAction) Run(assi *wizard.ProverRuntime) {
+	xVal := a.x.GetVal(assi)
+	yxPow1mkVal := a.yxPow1mk.GetVal(assi)
+	p := a.pCom.GetColAssignment(assi)
+
+	h := make([]field.Element, a.length)
+	h[a.length-1] = p.Get(a.length - 1)
+
+	for i := a.length - 2; i >= 0; i-- {
+		pi := p.Get(i)
+		if (i+1)%a.nPowX == 0 {
+			h[i].Mul(&h[i+1], &yxPow1mkVal).Add(&h[i], &pi)
+			continue
+		}
+		h[i].Mul(&h[i+1], &xVal).Add(&h[i], &pi)
+	}
+
+	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.name, EVAL_BIVARIATE_POLY), smartvectors.NewRegular(h))
+	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
+}
+
 /*
 EvalCoeffBivariate creates a dedicated wizard to perform an evaluation in coefficient form
 of a bivariate polynomial in x and y of degree respectively k and l.
@@ -108,30 +138,13 @@ func EvalCoeffBivariate(
 		hCom,
 	)
 
-	comp.SubProvers.AppendToInner(maxRound, func(assi *wizard.ProverRuntime) {
-
-		// Get the value of the coin and of pol
-		x, yx_pow_1mk := x.GetVal(assi), yx_pow_1mk_acc.GetVal(assi)
-		p := pCom.GetColAssignment(assi)
-
-		// Now needs to evaluate the Horner poly
-		h := make([]field.Element, length)
-		h[length-1] = p.Get(length - 1)
-
-		for i := length - 2; i >= 0; i-- {
-			pi := p.Get(i)
-
-			// Transition to a new "power of y"
-			if (i+1)%nPowX == 0 {
-				h[i].Mul(&h[i+1], &yx_pow_1mk).Add(&h[i], &pi)
-				continue
-			}
-
-			h[i].Mul(&h[i+1], &x).Add(&h[i], &pi)
-		}
-
-		assi.AssignColumn(ifaces.ColIDf("%v_%v", name, EVAL_BIVARIATE_POLY), smartvectors.NewRegular(h))
-		assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", name, EVAL_BIVARIATE_FIXED_POINT_BEGIN), h[0])
+	comp.RegisterProverAction(maxRound, &evalBivariateProverAction{
+		name:     name,
+		pCom:     pCom,
+		x:        x,
+		yxPow1mk: yx_pow_1mk_acc,
+		length:   length,
+		nPowX:    nPowX,
 	})
 
 	return accessors.NewLocalOpeningAccessor(finalLocalOpening, maxRound)

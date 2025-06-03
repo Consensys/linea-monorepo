@@ -38,15 +38,17 @@ func TestEvalCoeff(t *testing.T) {
 	}
 
 	compiled := wizard.Compile(definer,
-		compiler.Arcane(1<<4, 1<<4),
+		compiler.Arcane(
+			compiler.WithTargetColSize(1<<4),
+		),
 		dummy.Compile,
 	)
 
 	proof := wizard.Prove(compiled, prover)
 
-	xVal := savedRuntime.GetRandomCoinFext(x.Name)
+	xVal := savedRuntime.GetRandomCoinField(x.Name)
 	accY := acc.GetVal(savedRuntime)
-	expectedY := smartvectors.EvalCoeffOnFext(wp, xVal)
+	expectedY := smartvectors.EvalCoeff(wp, xVal)
 
 	require.Equal(t, accY, expectedY)
 

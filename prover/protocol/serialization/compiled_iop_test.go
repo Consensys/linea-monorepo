@@ -10,7 +10,6 @@ import (
 )
 
 func TestCompiled(t *testing.T) {
-
 	comp := newEmptyCompiledIOP()
 	foo := comp.Columns.AddToRound(0, "foo", 16, column.Committed)
 	bar := comp.Columns.AddToRound(1, "bar", 16, column.Committed)

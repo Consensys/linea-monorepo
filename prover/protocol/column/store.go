@@ -49,6 +49,15 @@ type storedColumnInfo struct {
 	// FullRecursion. This field is only meaningfull for [Ignored] columns as
 	// they are excluded by default.
 	IncludeInProverFS bool
+	// ExcludeFromProverFS states the prover should not include the column in
+	// his FS transcript. This overrides [IncludeInProverFS], meaning that if
+	// [IncludeInProverFS] is true but ExcludeFromProverFS is true, the column
+	// will still be excluded from the transcript. This is used explicit FS
+	// compilation.
+	ExcludeFromProverFS bool
+	// Pragmas is a free map that users can use to store whatever they want,
+	// it can be used to store compile-time information.
+	Pragmas map[string]interface{}
 }
 
 // AddToRound constructs a [Natural], registers it in the [Store] and returns
@@ -74,7 +83,7 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 
 	// Constructing at the beginning does the validation early on
 	nat := newNatural(name, position, s)
-	infos := &storedColumnInfo{Size: size, ID: name, Status: status}
+	infos := &storedColumnInfo{Size: size, ID: name, Status: status, Pragmas: make(map[string]interface{})}
 
 	// Panic if the entry already exist
 	s.indicesByNames.InsertNew(name, position)
@@ -87,7 +96,7 @@ func (s *Store) AddToRound(round int, name ifaces.ColID, size int, status Status
 // the requested column is a [Natural].
 func (s *Store) GetSize(n ifaces.ColID) int {
 	if s == nil {
-		panic("null pointer here")
+		panic("column with a null pointer to the [Store]")
 	}
 	info := s.info(n)
 	return info.Size
@@ -96,7 +105,7 @@ func (s *Store) GetSize(n ifaces.ColID) int {
 // AllKeysAt returns the list of all keys for a given round. The result follows
 // the insertion order of insertion) (=assignment order)
 func (r *Store) AllKeysAt(round int) []ifaces.ColID {
-	rnd := r.byRounds.MustGet(round)
+	rnd := r.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.ColID, len(rnd))
 	for i := range rnd {
 		res[i] = rnd[i].ID
@@ -107,7 +116,7 @@ func (r *Store) AllKeysAt(round int) []ifaces.ColID {
 // Returns the list of all the [ifaces.ColID] tagged with the [Committed] status so far
 // at a given round. The order of the returned slice follows the insertion order.
 func (r *Store) AllKeysCommittedAt(round int) []ifaces.ColID {
-	rnd := r.byRounds.MustGet(round)
+	rnd := r.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.ColID, 0, len(rnd))
 
 	for i, info := range rnd {
@@ -123,7 +132,7 @@ func (r *Store) AllKeysCommittedAt(round int) []ifaces.ColID {
 // AllHandleCommittedAt returns the list of all the [Committed] columns so far
 // at a given round. The returned slice is ordered by order of insertion.
 func (r *Store) AllHandleCommittedAt(round int) []ifaces.Column {
-	rnd := r.byRounds.MustGet(round)
+	rnd := r.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.Column, 0, len(rnd))
 
 	for i, info := range rnd {
@@ -139,7 +148,7 @@ func (r *Store) AllHandleCommittedAt(round int) []ifaces.Column {
 // AllKeysIgnoredAt returns the list of all the [Ignored] columns ids so far at a
 // given round. The returned slice is ordered by order of insertion.
 func (r *Store) AllKeysIgnoredAt(round int) []ifaces.ColID {
-	rnd := r.byRounds.MustGet(round)
+	rnd := r.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.ColID, 0, len(rnd))
 
 	for i, info := range rnd {
@@ -165,26 +174,13 @@ func (r *Store) AllKeysProof() []ifaces.ColID {
 	return res
 }
 
-// AllKeysPublicInput returns the list of the [PublicInput] column's ID ordered
-// by rounds and then by order ot insertion.
-func (r *Store) AllKeysPublicInput() []ifaces.ColID {
-	res := []ifaces.ColID{}
-
-	for round := 0; round < r.NumRounds(); round++ {
-		proof := r.AllKeysPublicInputAt(round)
-		res = append(res, proof...)
-	}
-
-	return res
-}
-
 // AllKeysCommitted returns the list of all the IDs of the all the [Committed]
 // columns ordered by rounds and then by IDs.
 func (r *Store) AllKeysCommitted() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
 	for round := 0; round < r.NumRounds(); round++ {
-		for _, info := range r.byRounds.MustGet(round) {
+		for _, info := range r.byRounds.GetOrEmpty(round) {
 			if info.Status != Committed {
 				continue
 			}
@@ -200,7 +196,7 @@ func (r *Store) AllKeysIgnored() []ifaces.ColID {
 	res := []ifaces.ColID{}
 
 	for round := 0; round < r.NumRounds(); round++ {
-		for _, info := range r.byRounds.MustGet(round) {
+		for _, info := range r.byRounds.GetOrEmpty(round) {
 			if info.Status != Ignored {
 				continue
 			}
@@ -215,26 +211,10 @@ func (r *Store) AllKeysIgnored() []ifaces.ColID {
 // given round. The returned list is ordered by order of insertion.
 func (r *Store) AllKeysProofAt(round int) []ifaces.ColID {
 	res := []ifaces.ColID{}
-	rnd := r.byRounds.MustGet(round)
+	rnd := r.byRounds.GetOrEmpty(round)
 
 	for i, info := range rnd {
 		if info.Status != Proof {
-			continue
-		}
-		res = append(res, rnd[i].ID)
-	}
-
-	return res
-}
-
-// AllKeysPublicInputAt returns the list of all the prover messages in a given
-// round. The resulting slice is ordered by order of insertion.
-func (r *Store) AllKeysPublicInputAt(round int) []ifaces.ColID {
-	res := []ifaces.ColID{}
-	rnd := r.byRounds.MustGet(round)
-
-	for i, info := range rnd {
-		if info.Status != PublicInput {
 			continue
 		}
 		res = append(res, rnd[i].ID)
@@ -263,6 +243,12 @@ func (r *Store) AllPrecomputed() []ifaces.ColID {
 // ordered by rounds and then by order of insertion.
 func (r *Store) AllVerifyingKey() []ifaces.ColID {
 	res := []ifaces.ColID{}
+
+	// This supports the case where the compiled-IOP does not store any column.
+	if r.byRounds.Len() == 0 {
+		return []ifaces.ColID{}
+	}
+
 	rnd := r.byRounds.MustGet(0) // precomputed are always at round zero
 
 	for i, info := range rnd {
@@ -331,7 +317,7 @@ func (r *Store) ReserveFor(newLen int) {
 Returns all handle stores at a given round
 */
 func (s *Store) AllHandlesAtRound(round int) []ifaces.Column {
-	roundInfos := s.byRounds.MustGet(round)
+	roundInfos := s.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.Column, len(roundInfos))
 	for posInRound, info := range roundInfos {
 		res[posInRound] = Natural{
@@ -347,7 +333,7 @@ func (s *Store) AllHandlesAtRound(round int) []ifaces.Column {
 Returns all handle stores at a given round
 */
 func (s *Store) AllHandlesAtRoundUnignored(round int) []ifaces.Column {
-	roundInfos := s.byRounds.MustGet(round)
+	roundInfos := s.byRounds.GetOrEmpty(round)
 	res := make([]ifaces.Column, 0, len(roundInfos))
 
 	for posInRound, info := range roundInfos {
@@ -429,16 +415,18 @@ func assertCorrectStatusTransition(old, new Status) {
 		return
 	}
 
+	// This whitelists a case in the recursion on a specific case. Namely,
+	// the precomputed Merkle root is converted into a proof column.
+	if old == VerifyingKey && new == Proof {
+		return
+	}
+
 	switch {
 	// Verifying keys element are always computed offline no matter whats
 	case old == VerifyingKey && new != VerifyingKey:
 		forbiddenTransition = true
 	// If it's ignored, it's ignored
 	case old == Ignored && new != Ignored:
-		forbiddenTransition = true
-	// You can't change the status of the public inputs because that would
-	// change the statement of the zkEVM.
-	case old == PublicInput && new != PublicInput:
 		forbiddenTransition = true
 	// It's a special status and cannot be changed.
 	case old == VerifierDefined && new != VerifierDefined:
@@ -460,23 +448,50 @@ func (s *Store) IgnoreButKeepInProverTranscript(colName ifaces.ColID) {
 	in.IncludeInProverFS = true
 }
 
-// IsIgnoredAndNotKeptInTranscript indicates whether the column can be ignored
-// from the transcript and is used during the Fiat-Shamir randomness generation.
-func (s *Store) IsIgnoredAndNotKeptInTranscript(colName ifaces.ColID) bool {
+// ExcludeFromProverFS marks a column as excluded from the FS transcript but
+// without changing its status. This is used as part of the conglomeration
+// where the imported columns take part in a separate FS transcript from the
+// canonical of the host wizard.
+func (s *Store) ExcludeFromProverFS(colName ifaces.ColID) {
 	in := s.info(colName)
-	return in.Status == Ignored && !in.IncludeInProverFS
+	in.ExcludeFromProverFS = true
 }
 
-// AllKeysProofsOrIgnoredButKeptInProverTranscript returns the list of the
-// columns to be used as part of the FS transcript.
-func (s *Store) AllKeysProofsOrIgnoredButKeptInProverTranscript(round int) []ifaces.ColID {
+// isExcludedFromProverFS returns true if the passed column ID relates to a column
+// that does not take part in the FS transcript.
+func (in *storedColumnInfo) isExcludedFromProverFS() bool {
+
+	if in.ExcludeFromProverFS {
+		return true
+	}
+
+	if in.Status.IsPublic() {
+		return false
+	}
+
+	if in.IncludeInProverFS {
+		return false
+	}
+
+	return true
+}
+
+// IsExplicitlyExcludedFromProverFS returns true if the passed column ID relates to
+// a column explicitly marked as excluded from the FS transcript.
+func (s *Store) IsExplicitlyExcludedFromProverFS(colName ifaces.ColID) bool {
+	info := s.info(colName)
+	return info.ExcludeFromProverFS
+}
+
+// AllKeysInProverTranscript returns the list of the columns to
+// be used as part of the FS transcript.
+func (s *Store) AllKeysInProverTranscript(round int) []ifaces.ColID {
 	res := []ifaces.ColID{}
-	rnd := s.byRounds.MustGet(round) // precomputed are always at round zero
+	rnd := s.byRounds.GetOrEmpty(round) // precomputed are always at round zero
 
 	for i, info := range rnd {
 
-		ok := (info.Status == Proof) || (info.Status == Ignored && info.IncludeInProverFS)
-		if !ok {
+		if info.isExcludedFromProverFS() {
 			continue
 		}
 
@@ -484,4 +499,15 @@ func (s *Store) AllKeysProofsOrIgnoredButKeptInProverTranscript(round int) []ifa
 	}
 
 	return res
+}
+
+// SetPragma sets the pragma for a given column name.
+func (s *Store) SetPragma(name ifaces.ColID, pragma string, data any) {
+	s.info(name).Pragmas[pragma] = data
+}
+
+// GetPragma returns the pragma for a given column name.
+func (s *Store) GetPragma(name ifaces.ColID, pragma string) (any, bool) {
+	res, ok := s.info(name).Pragmas[pragma]
+	return res, ok
 }

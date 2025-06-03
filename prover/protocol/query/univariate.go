@@ -6,9 +6,9 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
@@ -22,8 +22,8 @@ type UnivariateEval struct {
 
 // Parameters for an univariate evaluation
 type UnivariateEvalParams struct {
-	X  fext.Element
-	Ys []fext.Element
+	X  field.Element
+	Ys []field.Element
 }
 
 /*
@@ -58,7 +58,7 @@ func (r UnivariateEval) Name() ifaces.QueryID {
 }
 
 // Constructor for non-fixed point univariate evaluation query parameters
-func NewUnivariateEvalParams(x fext.Element, ys ...fext.Element) UnivariateEvalParams {
+func NewUnivariateEvalParams(x field.Element, ys ...field.Element) UnivariateEvalParams {
 	return UnivariateEvalParams{X: x, Ys: ys}
 }
 
@@ -78,7 +78,7 @@ func (r UnivariateEval) Check(run ifaces.Runtime) error {
 
 	for k, pol := range r.Pols {
 		wit := pol.GetColAssignment(run)
-		actualY := smartvectors.EvaluateLagrangeOnFext(wit, params.X)
+		actualY := smartvectors.Interpolate(wit, params.X)
 
 		if actualY != params.Ys[k] {
 			anyErr = true
@@ -99,7 +99,7 @@ func (r UnivariateEval) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 
 	for k, pol := range r.Pols {
 		wit := pol.GetColAssignmentGnark(run)
-		actualY := fastpoly.EvaluateLagrangeGnark(api, wit, params.X)
+		actualY := fastpoly.InterpolateGnark(api, wit, params.X)
 		api.AssertIsEqual(actualY, params.Ys[k])
 	}
 }

@@ -43,14 +43,19 @@ func NewLocalConstraint(id ifaces.QueryID, expr *symbolic.Expression) LocalConst
 	*/
 	board := expr.Board()
 	metadatas := board.ListVariableMetadata()
+	var firstColumn ifaces.Column
 	for _, metadataInterface := range metadatas {
 		if metadata, ok := metadataInterface.(ifaces.Column); ok {
 			if !foundAny {
 				foundAny = true
 				domainSize = metadata.Size()
+				firstColumn = metadata
 			}
 			if metadata.Size() != domainSize {
-				utils.Panic("Unsupported : Local constraints with heterogeneous domain size")
+				utils.Panic(
+					"Unsupported : Local constraints with heterogeneous domain size; %v has size %v but %v has size %v",
+					firstColumn.GetColID(), domainSize, metadata.GetColID(), metadata.Size(),
+				)
 			}
 		}
 	}
@@ -91,7 +96,7 @@ func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 			val := metadata.GetColAssignmentAt(run, 0)
 			inputs[i] = sv.NewConstant(val, 1)
 		case coin.Info:
-			inputs[i] = sv.NewConstant(run.GetRandomCoinFext(metadata.Name), 1)
+			inputs[i] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), 1)
 		case variables.PeriodicSample:
 			v := field.One()
 			if metadata.Offset != 0 {
@@ -150,7 +155,7 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 			val := metadata.GetColAssignmentGnarkAt(run, 0)
 			inputs[i] = val
 		case coin.Info:
-			inputs[i] = run.GetRandomCoinFext(metadata.Name)
+			inputs[i] = run.GetRandomCoinField(metadata.Name)
 		case variables.X, variables.PeriodicSample:
 			utils.Panic("In local constraint %v, Local constraints using X are not handled so far", cs.ID)
 		case ifaces.Accessor:

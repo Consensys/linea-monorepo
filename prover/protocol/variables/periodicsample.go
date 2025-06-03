@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -15,10 +15,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-/*
-Refers to an abstract value that is 0 on every entries and one
-on every entries i such that i % T == 0
-*/
+// Refers to an abstract value that is 0 on every entries and one
+// on every entries i such that i % T == 0
 type PeriodicSample struct {
 	T      int
 	Offset int // Should be < T
@@ -27,6 +25,9 @@ type PeriodicSample struct {
 // Constructs a new PeriodicSample, will panic if the offset it larger
 // than T
 func NewPeriodicSample(period, offset int) *symbolic.Expression {
+
+	offset = utils.PositiveMod(offset, period)
+
 	if !utils.IsPowerOfTwo(period) {
 		utils.Panic("non power of two period %v", period)
 	}
@@ -45,6 +46,11 @@ func NewPeriodicSample(period, offset int) *symbolic.Expression {
 	})
 }
 
+// Lagrange returns a PeriodicSampling representing a Lagrange polynomial
+func Lagrange(n, pos int) *symbolic.Expression {
+	return NewPeriodicSample(n, pos)
+}
+
 // to implement symbolic.Metadata
 func (t PeriodicSample) String() string {
 	// Double append/prepend to avoid confusion
@@ -55,9 +61,7 @@ func (t PeriodicSample) EvalAtOnDomain(pos int) field.Element {
 	if pos%t.T == t.Offset {
 		return field.One()
 	}
-	var zero field.Element
-	zero.SetZero()
-	return zero
+	return field.Zero()
 }
 
 // Evaluates the expression outside of the domain
@@ -72,11 +76,7 @@ func (t PeriodicSample) EvalAtOutOfDomain(size int, x field.Element) field.Eleme
 	// If there is an offset in the sample we also adjust here
 	if t.Offset > 0 {
 		var shift field.Element
-		omega, err := fft.Generator(uint64(n))
-		if err != nil {
-			panic(err)
-		}
-		evalPoint.Mul(&evalPoint, shift.Exp(omega, big.NewInt(int64(-t.Offset))))
+		evalPoint.Mul(&evalPoint, shift.Exp(fft.GetOmega(n), big.NewInt(int64(-t.Offset))))
 	}
 
 	var denominator, numerator field.Element
@@ -110,11 +110,7 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x fro
 
 	// If there is an offset in the sample we also adjust here
 	if t.Offset > 0 {
-		omega, err := fft.Generator(uint64(n))
-		if err != nil {
-			panic(err)
-		}
-		x = api.Mul(x, gnarkutil.Exp(api, omega, -t.Offset))
+		x = api.Mul(x, gnarkutil.Exp(api, fft.GetOmega(n), -t.Offset))
 	}
 
 	denominator := gnarkutil.Exp(api, x, l)
@@ -179,20 +175,14 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 
 	// Skip if there is no coset ratio
 	if cosetRatio > 0 {
-		omegaN, err := fft.Generator(uint64(n * cosetRatio))
-		if err != nil {
-			panic(err)
-		}
+		omegaN := fft.GetOmega(n * cosetRatio)
 		omegaN.Exp(omegaN, big.NewInt(int64(cosetId)))
 		a.Mul(&a, &omegaN)
 	}
 
 	// If there is an offset in the sample we also adjust here
 	if t.Offset > 0 {
-		omegalInv, err := fft.Generator(uint64(n))
-		if err != nil {
-			panic(err)
-		}
+		omegalInv := fft.GetOmega(n)
 		omegalInv.Exp(omegalInv, big.NewInt(int64(-t.Offset)))
 		a.Mul(&a, &omegalInv)
 	}
@@ -201,10 +191,8 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	var al, an field.Element
 	al.Exp(a, big.NewInt(int64(l)))
 	an.Exp(a, big.NewInt(int64(n)))
-	omegal, err := fft.Generator(uint64(t.T)) // It's the canonical t-root of unity
-	if err != nil {
-		panic(err)
-	}
+	omegal := fft.GetOmega(t.T) // It's the canonical t-root of unity
+
 	// Denominator
 	denominator := make([]field.Element, t.T)
 	denominator[0] = al

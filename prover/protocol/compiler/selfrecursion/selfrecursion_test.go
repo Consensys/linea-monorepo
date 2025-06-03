@@ -148,7 +148,7 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 		if tc.IsCommitPrecomp {
 			for i := 0; i < tc.NumPrecomp; i++ {
 				p := run.Spec.Precomputed.MustGet(precompColName(i))
-				ys[i] = smartvectors.EvaluateLagrangeOnFext(p, x)
+				ys[i] = smartvectors.Interpolate(p, x)
 			}
 		}
 
@@ -171,11 +171,11 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 			for i := start; i < stop; i++ {
 				v := smartvectors.Rand(tc.PolSize)
 				run.AssignColumn(dummyColName(i), v)
-				ys[i] = smartvectors.EvaluateLagrangeOnFext(v, x)
+				ys[i] = smartvectors.Interpolate(v, x)
 			}
 
 			if round < tc.NumRound-1 {
-				_ = run.GetRandomCoinFext(dummyCoinName(round))
+				_ = run.GetRandomCoinField(dummyCoinName(round))
 			}
 		}
 
@@ -232,7 +232,8 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 			),
 			selfrecursion.SelfRecurse,
 			mimc.CompileMiMC,
-			compiler.Arcane(1<<8, 1<<10, false),
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<10)),
 			vortex.Compile(
 				2,
 				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
@@ -240,7 +241,8 @@ func TestSelfRecursionMultiLayered(t *testing.T) {
 			),
 			selfrecursion.SelfRecurse,
 			mimc.CompileMiMC,
-			compiler.Arcane(1<<11, 1<<13, false),
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<13)),
 			vortex.Compile(
 				2,
 				vortex.ForceNumOpenedColumns(tc.NumOpenCol),
@@ -295,7 +297,8 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 
 	logrus.SetLevel(logrus.FatalLevel)
 
-	tc := TestCase{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0], NumPrecomp: 4, IsCommitPrecomp: true}
+	tc := TestCase{Numpoly: 32, NumRound: 3, PolSize: 32, NumOpenCol: 16, SisInstance: sisInstances[0],
+		NumPrecomp: 4, IsCommitPrecomp: true}
 	t.Run(fmt.Sprintf("testcase-%++v", tc), func(subT *testing.T) {
 		define, prove := generateProtocol(tc)
 
@@ -308,7 +311,8 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 			),
 			selfrecursion.SelfRecurse,
 			mimc.CompileMiMC,
-			compiler.Arcane(1<<8, 1<<10, false),
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<10)),
 			vortex.Compile(
 				2,
 				vortex.ForceNumOpenedColumns(16),
@@ -316,7 +320,8 @@ func TestSelfRecursionPrecompMultiLayered(t *testing.T) {
 			),
 			selfrecursion.SelfRecurse,
 			mimc.CompileMiMC,
-			compiler.Arcane(1<<11, 1<<13, false),
+			compiler.Arcane(
+				compiler.WithTargetColSize(1<<13)),
 			vortex.Compile(
 				2,
 				vortex.ForceNumOpenedColumns(16),
