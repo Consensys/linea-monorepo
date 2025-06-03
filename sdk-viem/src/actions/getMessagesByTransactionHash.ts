@@ -1,7 +1,6 @@
 import { Account, BaseError, Chain, Client, Hex, parseEventLogs, toEventSignature, Transport } from "viem";
 import { getTransactionReceipt } from "viem/actions";
-import { ExtendedMessage } from "@consensys/linea-sdk-core";
-import { LINEA_MESSAGE_SERVICE_CONTRACTS } from "../constants/address";
+import { ExtendedMessage, getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
 
 export type GetMessagesByTransactionHashParameters = {
   transactionHash: Hex;
@@ -27,7 +26,7 @@ export async function getMessagesByTransactionHash<
 
   const logs = receipt.logs.filter(
     (log) =>
-      log.address === LINEA_MESSAGE_SERVICE_CONTRACTS[chainId] &&
+      log.address === getContractsAddressesByChainId(chainId).messageService &&
       log.topics[0] === toEventSignature("MessageSent(address,address,uint256,uint256,uint256,bytes,bytes32)"),
   );
 

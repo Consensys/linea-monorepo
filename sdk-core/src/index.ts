@@ -8,4 +8,5 @@ export type {
 } from "./types/provider";
 export { parseBlockExtraData } from "./utils/block";
 export { formatMessageStatus } from "./utils/message";
+export { getContractsAddressesByChainId } from "./utils/contract";
 export type { OnChainMessageStatus, ExtendedMessage, MessageProof } from "./types/message";

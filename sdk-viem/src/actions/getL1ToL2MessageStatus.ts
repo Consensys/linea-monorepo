@@ -1,7 +1,6 @@
 import { Account, Chain, Client, Hex, Transport } from "viem";
 import { readContract } from "viem/actions";
-import { formatMessageStatus, OnChainMessageStatus } from "@consensys/linea-sdk-core";
-import { getBridgeContractAddresses } from "./getBridgeContractAddresses";
+import { formatMessageStatus, getContractsAddressesByChainId, OnChainMessageStatus } from "@consensys/linea-sdk-core";
 
 export type GetL1ToL2MessageStatusReturnType = OnChainMessageStatus;
 
@@ -15,7 +14,11 @@ export async function getL1ToL2MessageStatus<chain extends Chain | undefined, ac
 ): Promise<GetL1ToL2MessageStatusReturnType> {
   const { messageHash } = parameters;
 
-  const { l2MessageService } = getBridgeContractAddresses(client);
+  if (!client.chain) {
+    throw new Error("Client chain is required to get L1 to L2 message status.");
+  }
+
+  const l2MessageService = getContractsAddressesByChainId(client.chain.id).destinationChainMessageService;
 
   const status = await readContract(client, {
     address: l2MessageService,

@@ -1,11 +1,11 @@
 export { deposit } from "./actions/deposit";
 export type { DepositParameters, DepositReturnType } from "./actions/deposit";
 
+export { withdraw } from "./actions/withdraw";
+export type { WithdrawParameters, WithdrawReturnType } from "./actions/withdraw";
+
 export { getBlockExtraData } from "./actions/getBlockExtraData";
 export type { GetBlockExtraDataParameters, GetBlockExtraDataReturnType } from "./actions/getBlockExtraData";
-
-export { getBridgeContractAddresses } from "./actions/getBridgeContractAddresses";
-export type { GetBridgeContractAddressesReturnType } from "./actions/getBridgeContractAddresses";
 
 export { getL1ToL2MessageStatus } from "./actions/getL1ToL2MessageStatus";
 export type {
@@ -51,3 +51,6 @@ export type { PublicActionsL2 } from "./decorators/publicL2";
 
 export { walletActionsL1 } from "./decorators/walletL1";
 export type { WalletActionsL1 } from "./decorators/walletL1";
+
+export { walletActionsL2 } from "./decorators/walletL2";
+export type { WalletActionsL2 } from "./decorators/walletL2";

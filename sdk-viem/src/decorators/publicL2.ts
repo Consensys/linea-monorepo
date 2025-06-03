@@ -27,7 +27,7 @@ import {
 } from "../actions/getTransactionReceiptByMessageHash";
 import { FunctionOnly } from "../types/misc";
 
-type PublicActionsL2<chain extends Chain | undefined = Chain | undefined> = FunctionOnly<L2Provider> & {
+export type PublicActionsL2<chain extends Chain | undefined = Chain | undefined> = FunctionOnly<L2Provider> & {
   getBlockExtraData(args: GetBlockExtraDataParameters): Promise<GetBlockExtraDataReturnType>;
   getL1ToL2MessageStatus(args: GetL1ToL2MessageStatusParameters): Promise<GetL1ToL2MessageStatusReturnType>;
   getMessageByMessageHash(args: GetMessageByMessageHashParameters): Promise<GetMessageByMessageHashReturnType>;

@@ -1,8 +1,7 @@
 import { Account, BaseError, Chain, Client, Hex, Transport } from "viem";
-import { OnChainMessageStatus } from "@consensys/linea-sdk-core";
-import { getMessageSentEvents } from "./getMessageSentEvents";
 import { getContractEvents, readContract } from "viem/actions";
-import { getBridgeContractAddresses } from "./getBridgeContractAddresses";
+import { getContractsAddressesByChainId, OnChainMessageStatus } from "@consensys/linea-sdk-core";
+import { getMessageSentEvents } from "./getMessageSentEvents";
 
 export type GetL2ToL1MessageStatusParameters<chain extends Chain | undefined, account extends Account | undefined> = {
   l2Client: Client<Transport, chain, account>;
@@ -22,15 +21,20 @@ export async function getL2ToL1MessageStatus<
 ): Promise<GetL2ToL1MessageStatusReturnType> {
   const { l2Client, messageHash } = parameters;
 
+  if (!client.chain) {
+    throw new BaseError("Client is required to get L2 to L1 message status.");
+  }
+
   const [messageSentEvent] = await getMessageSentEvents(l2Client, { args: { _messageHash: messageHash } });
 
   if (!messageSentEvent) {
     throw new BaseError(`Message hash does not exist on L2. Message hash: ${messageHash}`);
   }
+  const lineaRollupAddress = getContractsAddressesByChainId(client.chain.id).messageService;
 
   const [[l2MessagingBlockAnchoredEvent], isMessageClaimed] = await Promise.all([
     getContractEvents(client, {
-      address: getBridgeContractAddresses(client).lineaRollup,
+      address: lineaRollupAddress,
       abi: [
         {
           anonymous: false,
@@ -47,18 +51,12 @@ export async function getL2ToL1MessageStatus<
       toBlock: "latest",
     }),
     readContract(client, {
-      address: getBridgeContractAddresses(client).lineaRollup,
+      address: lineaRollupAddress,
       abi: [
         {
           inputs: [{ internalType: "uint256", name: "_messageNumber", type: "uint256" }],
           name: "isMessageClaimed",
-          outputs: [
-            {
-              internalType: "bool",
-              name: "isClaimed",
-              type: "bool",
-            },
-          ],
+          outputs: [{ internalType: "bool", name: "isClaimed", type: "bool" }],
           stateMutability: "view",
           type: "function",
         },

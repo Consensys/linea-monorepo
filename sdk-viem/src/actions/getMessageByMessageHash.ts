@@ -1,6 +1,6 @@
 import { Account, BaseError, Chain, Client, Hex, Transport } from "viem";
 import { getContractEvents } from "viem/actions";
-import { LINEA_MESSAGE_SERVICE_CONTRACTS } from "../constants/address";
+import { getContractsAddressesByChainId } from "@consensys/linea-sdk-core";
 
 export type GetMessageByMessageHashParameters = {
   messageHash: Hex;
@@ -31,7 +31,7 @@ export async function getMessageByMessageHash<chain extends Chain | undefined, a
   }
 
   const [event] = await getContractEvents(client, {
-    address: LINEA_MESSAGE_SERVICE_CONTRACTS[chainId],
+    address: getContractsAddressesByChainId(chainId).messageService,
     abi: [
       {
         anonymous: false,

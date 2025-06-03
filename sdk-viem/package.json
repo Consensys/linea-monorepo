@@ -12,7 +12,8 @@
     "lint:ts:fix": "npx eslint --fix '**/*.ts'",
     "prettier": "prettier -c '**/*.ts'",
     "prettier:fix": "prettier -w '**/*.ts'",
-    "lint:fix": "pnpm run lint:ts:fix && pnpm run prettier:fix"
+    "lint:fix": "pnpm run lint:ts:fix && pnpm run prettier:fix",
+    "clean": "rimraf dist node_modules coverage"
   },
   "keywords": [],
   "dependencies": {

@@ -10,10 +10,9 @@ import {
   Transport,
   zeroHash,
 } from "viem";
-import { MessageProof, SparseMerkleTree } from "@consensys/linea-sdk-core";
+import { getContractsAddressesByChainId, MessageProof, SparseMerkleTree } from "@consensys/linea-sdk-core";
 import { getMessageSentEvents } from "./getMessageSentEvents";
 import { getContractEvents, getTransactionReceipt } from "viem/actions";
-import { getBridgeContractAddresses } from "./getBridgeContractAddresses";
 
 export type GetMessageProofReturnType = MessageProof;
 
@@ -33,8 +32,18 @@ export async function getMessageProof<
 ): Promise<GetMessageProofReturnType> {
   const { l2Client, messageHash } = parameters;
 
+  if (!l2Client.chain) {
+    throw new BaseError("L2 client is required to get message proof.");
+  }
+
+  if (!client.chain) {
+    throw new BaseError("L2 client is required to get message proof.");
+  }
+
+  const l2MessageServiceAddress = getContractsAddressesByChainId(l2Client.chain.id).messageService;
+
   const [messageSentEvent] = await getMessageSentEvents(l2Client, {
-    address: getBridgeContractAddresses(l2Client).l2MessageService,
+    address: l2MessageServiceAddress,
     args: { _messageHash: messageHash },
   });
 
@@ -42,19 +51,14 @@ export async function getMessageProof<
     throw new BaseError(`Message hash does not exist on L2. Message hash: ${messageHash}`);
   }
 
+  const lineaRollupAddress = getContractsAddressesByChainId(client.chain.id).messageService;
+
   const [l2MessagingBlockAnchoredEvent] = await getContractEvents(client, {
-    address: getBridgeContractAddresses(client).lineaRollup,
+    address: lineaRollupAddress,
     abi: [
       {
         anonymous: false,
-        inputs: [
-          {
-            indexed: true,
-            internalType: "uint256",
-            name: "l2Block",
-            type: "uint256",
-          },
-        ],
+        inputs: [{ indexed: true, internalType: "uint256", name: "l2Block", type: "uint256" }],
         name: "L2MessagingBlockAnchored",
         type: "event",
       },
@@ -73,11 +77,12 @@ export async function getMessageProof<
 
   const finalizationInfo = await getFinalizationMessagingInfo(client, {
     transactionHash: l2MessagingBlockAnchoredEvent.transactionHash,
+    lineaRollupAddress,
   });
 
   const l2MessageHashesInBlockRange = (
     await getMessageSentEvents(l2Client, {
-      address: getBridgeContractAddresses(l2Client).l2MessageService,
+      address: l2MessageServiceAddress,
       fromBlock: finalizationInfo.l2MessagingBlocksRange.startingBlock,
       toBlock: finalizationInfo.l2MessagingBlocksRange.endBlock,
     })
@@ -106,6 +111,7 @@ export async function getMessageProof<
 async function getFinalizationMessagingInfo<chain extends Chain | undefined, account extends Account | undefined>(
   client: Client<Transport, chain, account>,
   parameters: {
+    lineaRollupAddress: Hex;
     transactionHash: Hex;
   },
 ) {
@@ -115,7 +121,7 @@ async function getFinalizationMessagingInfo<chain extends Chain | undefined, acc
   const blocksNumber: number[] = [];
 
   const filteredLogs = receipt.logs.filter(
-    (log) => log.address.toLowerCase() === getBridgeContractAddresses(client).lineaRollup.toLowerCase(),
+    (log) => log.address.toLowerCase() === parameters.lineaRollupAddress.toLowerCase(),
   );
 
   const parsedLogs = parseEventLogs({
@@ -123,32 +129,15 @@ async function getFinalizationMessagingInfo<chain extends Chain | undefined, acc
       {
         anonymous: false,
         inputs: [
-          {
-            indexed: true,
-            internalType: "bytes32",
-            name: "l2MerkleRoot",
-            type: "bytes32",
-          },
-          {
-            indexed: true,
-            internalType: "uint256",
-            name: "treeDepth",
-            type: "uint256",
-          },
+          { indexed: true, internalType: "bytes32", name: "l2MerkleRoot", type: "bytes32" },
+          { indexed: true, internalType: "uint256", name: "treeDepth", type: "uint256" },
         ],
         name: "L2MerkleRootAdded",
         type: "event",
       },
       {
         anonymous: false,
-        inputs: [
-          {
-            indexed: true,
-            internalType: "uint256",
-            name: "l2Block",
-            type: "uint256",
-          },
-        ],
+        inputs: [{ indexed: true, internalType: "uint256", name: "l2Block", type: "uint256" }],
         name: "L2MessagingBlockAnchored",
         type: "event",
       },
