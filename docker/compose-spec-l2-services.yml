@@ -183,7 +183,6 @@ services:
     hostname: postman
     image: consensys/linea-postman:${POSTMAN_TAG:-8a0bcc8}
     profiles: [ "l2", "debug" ]
-    platform: linux/amd64
     restart: on-failure
     ports:
       - "9090:3000"
@@ -369,7 +368,7 @@ services:
     image: consensys/linea-shomei:2.3.0
     hostname: shomei-frontend
     container_name: shomei-frontend
-    profiles: [ "l2", "l2-bc" ]
+    profiles: [ "l2", "l2-bc", "external-to-monorepo" ]
     depends_on:
       zkbesu-shomei:
         condition: service_started
