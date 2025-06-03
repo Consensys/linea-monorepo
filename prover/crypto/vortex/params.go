@@ -36,10 +36,10 @@ type Params struct {
 	// HashFunc is an optional function that returns a `hash.Hash` it is used
 	// when vortex is used in "Merkle-tree" mode. In this case, the hash
 	// function is mandatory.
-	HashFunc func() hash.Hash
-	// NoSisHashFunc is an optional hash function that is used in place of the
+	MerkleHashFunc func() hash.Hash
+	// LeafHashFunc is an optional hash function that is used in place of the
 	// SIS. If it is set,
-	NoSisHashFunc func() hash.Hash
+	LeafHashFunc func() hash.Hash
 }
 
 // NewParams creates and returns a [Params]:
@@ -79,11 +79,11 @@ func NewParams(
 			fft.NewDomain(uint64(nbColumns)),
 			fft.NewDomain(uint64(blowUpFactor * nbColumns)),
 		},
-		NbColumns:    nbColumns,
-		MaxNbRows:    maxNbRows,
-		BlowUpFactor: blowUpFactor,
-		Key:          ringsis.GenerateKey(sisParams, maxNbRows),
-		HashFunc:     merkleHashFunc,
+		NbColumns:      nbColumns,
+		MaxNbRows:      maxNbRows,
+		BlowUpFactor:   blowUpFactor,
+		Key:            ringsis.GenerateKey(sisParams, maxNbRows),
+		MerkleHashFunc: merkleHashFunc,
 	}
 
 	return res
@@ -102,12 +102,12 @@ func (p *Params) RemoveSis(h func() hash.Hash) *Params {
 		utils.Panic("provided a nil, no-SIS hash function")
 	}
 
-	p.NoSisHashFunc = h
+	p.LeafHashFunc = h
 	p.Key = ringsis.Key{} // and remove the key
 	return p
 }
 
 // HasSisReplacement returns true if the parameters are set to not use SIS
 func (p *Params) HasSisReplacement() bool {
-	return p.NoSisHashFunc != nil
+	return p.LeafHashFunc != nil
 }

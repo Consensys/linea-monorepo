@@ -169,7 +169,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 	var (
 		mTreeHashConfig = &smt.Config{
 			HashFunc: func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: v.Params.HashFunc()}
+				return hashtypes.Hasher{Hash: v.Params.MerkleHashFunc()}
 			},
 			Depth: utils.Log2Ceil(v.Params.NumEncodedCols()),
 		}
@@ -194,7 +194,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 					sisHash = v.Params.Key.Hash(selectedSubCol)
 					// hasher used to hash the SIS hash (and thus not a hasher
 					// based on SIS)
-					hasher = v.Params.HashFunc()
+					hasher = v.Params.MerkleHashFunc()
 				)
 
 				hasher.Reset()
@@ -206,7 +206,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 
 			} else {
 
-				hasher := v.Params.NoSisHashFunc()
+				hasher := v.Params.LeafHashFunc()
 				hasher.Reset()
 				for k := range selectedSubCol {
 					xBytes := selectedSubCol[k].Bytes()
