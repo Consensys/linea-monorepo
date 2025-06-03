@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 
-import { MessageServiceBase } from "../../messaging/MessageServiceBase.sol";
+import { MessageServiceBase } from "../../../../messaging/MessageServiceBase.sol";
 
 contract L2GenericBridge is MessageServiceBase {
   // initialize etc

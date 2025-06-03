@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 
-import { MessageServiceBase } from "../../messaging/MessageServiceBase.sol";
+import { MessageServiceBase } from "../../../../messaging/MessageServiceBase.sol";
 
 // Contract could be made upgradable with access control etc by implementors.
 contract L1GenericBridge is MessageServiceBase {
