@@ -118,7 +118,7 @@ func unmarshalRingSisKey(path string, des *Deserializer, val any, _ reflect.Type
 
 func marshalFieldElement(path string, _ *Serializer, val reflect.Value) (any, error) {
 	f := val.Interface().(field.Element)
-	bi := FieldToSmallBigInt(f)
+	bi := fieldToSmallBigInt(f)
 	f.BigInt(bi)
 	return marshalBigInt(path, nil, reflect.ValueOf(bi))
 }
@@ -166,7 +166,7 @@ func marshalArrayOfFieldElement(path string, _ *Serializer, val reflect.Value) (
 	}
 
 	for i := 0; i < len(v); i++ {
-		bi := FieldToSmallBigInt(v[i])
+		bi := fieldToSmallBigInt(v[i])
 		if err := cborEncoder.Encode(bi); err != nil {
 			return nil, err
 		}
@@ -270,7 +270,7 @@ func marshalFrontendVariable(path string, ser *Serializer, val reflect.Value) (a
 	case uint8:
 		bi.SetUint64(uint64(v))
 	case field.Element:
-		bi = FieldToSmallBigInt(v)
+		bi = fieldToSmallBigInt(v)
 	case big.Int:
 		*bi = v
 	case *big.Int:
@@ -350,7 +350,7 @@ func unmarshalAsZero(path string, des *Deserializer, val any, t reflect.Type) (r
 // This converts the field.Element to a smaller big.Int. This is done to
 // reduce the size of the CBOR encoding. The backward conversion is automatically
 // done [field.SetBigInt] as it handles negative values.
-func FieldToSmallBigInt(v field.Element) *big.Int {
+func fieldToSmallBigInt(v field.Element) *big.Int {
 	neg := new(field.Element).Neg(&v)
 	if neg.IsUint64() {
 		n := neg.Uint64()

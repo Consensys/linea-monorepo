@@ -64,7 +64,7 @@ type ModuleLPP struct {
 // SetInitialFSHash sets the initial FiatShamir state
 type SetInitialFSHash struct {
 	ModuleLPP
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 // AssignLPPQueries is a [wizard.ProverAction] responsible for assigning the LPP
@@ -77,14 +77,14 @@ type AssignLPPQueries struct {
 // and N1Hash values.
 type CheckNxHash struct {
 	ModuleLPP
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 // LppWitnessAssignment is a [wizard.ProverAction] responsible for assigning the
 // LPP witness values at round "round".
 type LppWitnessAssignment struct {
 	ModuleLPP
-	round int
+	Round int
 }
 
 // BuildModuleLPP builds a [ModuleLPP] from scratch from a [FilteredModuleInputs].
@@ -262,7 +262,7 @@ func NewModuleLPP(builder *wizard.Builder, moduleInputs []FilteredModuleInputs) 
 	}
 
 	for round := 1; round < len(moduleInputs); round++ {
-		moduleLPP.Wiop.RegisterProverAction(round, LppWitnessAssignment{ModuleLPP: *moduleLPP, round: round})
+		moduleLPP.Wiop.RegisterProverAction(round, LppWitnessAssignment{ModuleLPP: *moduleLPP, Round: round})
 	}
 
 	moduleLPP.Wiop.RegisterProverAction(startingRound, &AssignLPPQueries{*moduleLPP})
@@ -314,7 +314,7 @@ func (m *ModuleLPP) Assign(run *wizard.ProverRuntime, witness *ModuleWitnessLPP)
 		smartvectors.NewConstant(witness.InitialFiatShamirState, 1),
 	)
 
-	a := LppWitnessAssignment{ModuleLPP: *m, round: 0}
+	a := LppWitnessAssignment{ModuleLPP: *m, Round: 0}
 	a.Run(run)
 }
 
@@ -323,7 +323,7 @@ func (a LppWitnessAssignment) Run(run *wizard.ProverRuntime) {
 	var (
 		witness = run.State.MustGet(moduleWitnessKey).(*ModuleWitnessLPP)
 		m       = a.ModuleLPP
-		round   = a.round
+		round   = a.Round
 	)
 
 	// Note @alex: It should be fine to look only at m.definitionInputs[round]

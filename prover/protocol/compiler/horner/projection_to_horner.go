@@ -40,7 +40,7 @@ type AssignHornerQuery struct {
 // the value of a Horner query.
 type CheckHornerQuery struct {
 	ProjectionContext
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 // ProjectionToHorner is a compilation step that compiles [query.Projection] queries

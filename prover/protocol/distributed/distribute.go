@@ -97,35 +97,45 @@ func init() {
 	serialization.RegisterImplementation(cleanup.CleanupProverAction{})
 	serialization.RegisterImplementation(dummy.DummyVerifierAction{})
 	serialization.RegisterImplementation(dummy.DummyProverAction{})
+
 	serialization.RegisterImplementation(globalcs.EvaluationProver{})
 	serialization.RegisterImplementation(globalcs.EvaluationVerifier{})
 	serialization.RegisterImplementation(globalcs.QuotientCtx{})
+
 	serialization.RegisterImplementation(horner.AssignHornerCtx{})
 	serialization.RegisterImplementation(horner.AssignHornerIP{})
 	serialization.RegisterImplementation(horner.AssignHornerQuery{})
 	serialization.RegisterImplementation(horner.CheckHornerQuery{})
+	serialization.RegisterImplementation(horner.CheckHornerResult{})
+
 	serialization.RegisterImplementation(innerproduct.ProverTask{})
 	serialization.RegisterImplementation(innerproduct.VerifierForSize{})
+
 	serialization.RegisterImplementation(logderivativesum.AssignLogDerivativeSumProverAction{})
 	serialization.RegisterImplementation(logderivativesum.CheckLogDerivativeSumMustBeZero{})
 	serialization.RegisterImplementation(logderivativesum.ProverTaskAtRound{})
 	serialization.RegisterImplementation(logderivativesum.FinalEvaluationCheck{})
+
 	serialization.RegisterImplementation(mimc.MimcContext{})
 	serialization.RegisterImplementation(mpts.QuotientAccumulation{})
 	serialization.RegisterImplementation(mpts.RandomPointEvaluation{})
 	serialization.RegisterImplementation(mpts.ShadowRowProverAction{})
 	serialization.RegisterImplementation(mpts.VerifierAction{})
+
 	serialization.RegisterImplementation(permutation.ProverTaskAtRound{})
 	serialization.RegisterImplementation(permutation.AssignPermutationGrandProduct{})
 	serialization.RegisterImplementation(permutation.FinalProductCheck{})
 	serialization.RegisterImplementation(permutation.CheckGrandProductIsOne{})
+
 	serialization.RegisterImplementation(plonkinwizard.AssignSelOpening{})
 	serialization.RegisterImplementation(plonkinwizard.CheckActivatorAndMask{})
 	serialization.RegisterImplementation(plonkinwizard.CircAssignment{})
+
 	serialization.RegisterImplementation(recursion.RecursionCircuit{})
 	serialization.RegisterImplementation(recursion.AssignVortexOpenedCols{})
 	serialization.RegisterImplementation(recursion.AssignVortexUAlpha{})
 	serialization.RegisterImplementation(recursion.ConsistencyCheck{})
+
 	serialization.RegisterImplementation(selfrecursion.ColSelectionProverAction{})
 	serialization.RegisterImplementation(selfrecursion.CollapsingProverAction{})
 	serialization.RegisterImplementation(selfrecursion.CollapsingVerifierAction{})
@@ -134,12 +144,14 @@ func init() {
 	serialization.RegisterImplementation(selfrecursion.FoldPhaseVerifierAction{})
 	serialization.RegisterImplementation(selfrecursion.LinearHashMerkleProverAction{})
 	serialization.RegisterImplementation(selfrecursion.PreimageLimbsProverAction{})
+
 	serialization.RegisterImplementation(stitchsplit.AssignLocalPointProverAction{})
 	serialization.RegisterImplementation(stitchsplit.ProveRoundProverAction{})
 	serialization.RegisterImplementation(stitchsplit.QueryVerifierAction{})
 	serialization.RegisterImplementation(stitchsplit.SplitProverAction{})
 	serialization.RegisterImplementation(stitchsplit.StitchColumnsProverAction{})
 	serialization.RegisterImplementation(stitchsplit.StitchSubColumnsProverAction{})
+
 	serialization.RegisterImplementation(univariates.NaturalizeProverAction{})
 	serialization.RegisterImplementation(univariates.NaturalizeVerifierAction{})
 
@@ -245,28 +257,20 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 
 // CompileModules applies the compilation steps to each modules identically.
 func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
+	// dist.CompiledDefault = CompileSegment(dist.DefaultModule)
+	// logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))
 
-	dist.CompiledDefault = CompileSegment(dist.DefaultModule)
-	// Temp returning early
-	if true {
-		return dist
-	}
+	// dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
+	// for i := range dist.GLs {
+	// 	logrus.
+	// 		WithField("module-name", dist.GLs[i].DefinitionInput.ModuleName).
+	// 		WithField("module-type", "GL").
+	// 		Info("compiling module")
 
-	logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))
+	// 	dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
+	// }
+
 	logrus.Infof("Number of LPP modules to compile:%d\n", len(dist.LPPs))
-
-	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
-
-	for i := range dist.GLs {
-
-		logrus.
-			WithField("module-name", dist.GLs[i].DefinitionInput.ModuleName).
-			WithField("module-type", "GL").
-			Info("compiling module")
-
-		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
-	}
-
 	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 	for i := range dist.LPPs {
 

@@ -132,12 +132,6 @@ type PackedCoin struct {
 	Round      int    `cbor:"r"`           // Round number.
 }
 
-// PackedStructSchema defines a struct’s type and field names for deserialization.
-type PackedStructSchema struct {
-	Type   string   `cbor:"t"` // Type name (e.g., "pkg.Type").
-	Fields []string `cbor:"f"` // Field names in declaration order.
-}
-
 // PackedStructObject is a slice of serialized field values for a struct.
 type PackedStructObject []any
 
@@ -267,7 +261,6 @@ func (s *Serializer) PackValue(path string, v reflect.Value) (any, error) {
 	}
 
 	typeOfV := v.Type()
-
 	// Identify custom codexes
 	if codex, ok := CustomCodexes[typeOfV]; ok {
 		return codex.Ser(path, s, v)
@@ -946,10 +939,6 @@ func (s *Serializer) PackStructObject(path string, obj reflect.Value) (PackedStr
 	if globalErr != nil {
 		return PackedStructObject{}, fmt.Errorf("failed to pack struct object, type=%v: %w", obj.Type().String(), globalErr)
 	}
-
-	// if _, err := s.PackStructSchema(obj.Type()); err != nil {
-	// 	return PackedStructObject{}, fmt.Errorf("failed to pack struct schema: path=%v, err=%w", path, err)
-	// }
 
 	// Importantly, we want to be sure that all the component have been
 	// converted before we convert the current type. That way, we can ensure
