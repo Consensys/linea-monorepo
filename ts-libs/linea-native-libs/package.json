@@ -1,29 +1,22 @@
 {
   "name": "@consensys/linea-native-libs",
-  "version": "0.1.0",
+  "version": "1.2.0",
   "description": "Linea native libs",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.mts",
-        "default": "./dist/index.mjs"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
-    },
-    "./package.json": "./package.json"
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.cts",
   "files": [
     "dist"
   ],
   "scripts": {
     "postbuild": "bash ./src/scripts/build.sh",
-    "build": "ts-bridge --project tsconfig.build.json --clean",
+    "build": "tsup --tsconfig tsconfig.build.json",
     "clean": "rimraf dist build coverage node_modules",
     "test": "jest --bail --detectOpenHandles --forceExit && jest-it-up",
     "lint:ts": "npx eslint '**/*.ts'",
@@ -36,20 +29,17 @@
   "license": "MIT",
   "devDependencies": {
     "@jest/globals": "catalog:",
-    "@ts-bridge/cli": "^0.1.4",
-    "@ts-bridge/shims": "^0.1.1",
-    "@types/ffi-napi": "^4.0.10",
     "@types/jest": "catalog:",
-    "@types/ref-napi": "^3.0.12",
-    "@types/unzipper": "^0.10.9",
+    "@types/unzipper": "0.10.11",
     "dotenv": "catalog:",
-    "ethers": "catalog:",
     "jest": "catalog:",
-    "jest-it-up": "^3.1.0",
+    "jest-it-up": "4.0.1",
     "ts-jest": "catalog:",
-    "unzipper": "^0.12.1"
+    "tsup": "8.4.0",
+    "unzipper": "0.12.3",
+    "viem": "2.29.1"
   },
   "dependencies": {
-    "koffi": "^2.9.0"
+    "koffi": "2.11.0"
   }
 }
