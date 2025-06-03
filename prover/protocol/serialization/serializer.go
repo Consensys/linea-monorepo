@@ -2,11 +2,11 @@ package serialization
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"hash"
 	"math/big"
 	"reflect"
+	"strconv"
 	"strings"
 
 	cs "github.com/consensys/gnark/constraint/bls12-377"
@@ -19,7 +19,6 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
-	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
 	"github.com/google/uuid"
 )
@@ -156,14 +155,14 @@ func NewSerializer() *Serializer {
 // Serialize is the entry point for serializing any value into CBOR-encoded bytes.
 // It packs the value into a PackedObject.Payload, encodes the PackedObject, and returns the result.
 // Warnings are printed for debugging.
-func Serialize(v any) ([]byte, error) {
+func Serialize(v any) (bytesOfV []byte, err error) {
 	// Initialize a new Serializer with empty maps and a PackedObject.
 	ser := NewSerializer()
 
 	// Pack the input value.
-	payload, err := ser.PackValue(".", reflect.ValueOf(v))
-	if err != nil {
-		return nil, fmt.Errorf("could not pack the value: %w", err)
+	payload, errV := ser.PackValue(reflect.ValueOf(v))
+	if errV != nil {
+		return nil, newSerdeErrorf("could not pack the value: %w", err)
 	}
 
 	// Print any warnings (e.g., unexported fields).
@@ -182,7 +181,7 @@ func Serialize(v any) ([]byte, error) {
 	packedObject.Payload = bytesOfPayload
 
 	// CBOR-encode the entire PackedObject.
-	bytesOfV, err := encodeWithCBOR(packedObject)
+	bytesOfV, err = encodeWithCBOR(packedObject)
 	if err != nil {
 		return nil, fmt.Errorf("could not encode the packedObject with CBOR: %v", err)
 	}
@@ -235,7 +234,7 @@ func Deserialize(bytes []byte, v any) error {
 	}
 
 	// Unpack the root value into the target type.
-	res, err := deser.UnpackValue(".", payloadRoot, payloadType)
+	res, err := deser.UnpackValue(payloadRoot, payloadType)
 	if err != nil {
 		return fmt.Errorf("could not deserialize the payload, err=%w", err)
 	}
@@ -254,7 +253,7 @@ func Deserialize(bytes []byte, v any) error {
 // PackValue recursively serializes a reflect.Value into a serializable form.
 // It handles protocol-specific types (e.g., columns, coins) and generic types (e.g., structs, slices).
 // Returns the serialized value or an error.
-func (s *Serializer) PackValue(path string, v reflect.Value) (any, error) {
+func (s *Serializer) PackValue(v reflect.Value) (any, *serdeError) {
 	// This captures the case where the value is nil to begin with
 	if !v.IsValid() || v.Interface() == nil {
 		return nil, nil
@@ -263,47 +262,47 @@ func (s *Serializer) PackValue(path string, v reflect.Value) (any, error) {
 	typeOfV := v.Type()
 	// Identify custom codexes
 	if codex, ok := CustomCodexes[typeOfV]; ok {
-		return codex.Ser(path, s, v)
+		return codex.Ser(s, v)
 	}
 
 	// Handle protocol-specific types.
 	switch {
 	case typeOfV == TypeOfColumnNatural:
-		return s.PackColumn(path, v.Interface().(column.Natural))
+		return s.PackColumn(v.Interface().(column.Natural))
 	case typeOfV == TypeOfColumnID:
-		return s.PackColumnID(path, v.Interface().(ifaces.ColID))
+		return s.PackColumnID(v.Interface().(ifaces.ColID))
 	case typeOfV == TypeOfCoin:
-		return s.PackCoin(path, v.Interface().(coin.Info))
+		return s.PackCoin(v.Interface().(coin.Info))
 	case typeOfV == TypeOfCoinID:
-		return s.PackCoinID(path, v.Interface().(coin.Name))
+		return s.PackCoinID(v.Interface().(coin.Name))
 	case typeOfV.Implements(TypeOfQuery) && typeOfV.Kind() != reflect.Interface && !(typeOfV.Kind() == reflect.Ptr && typeOfV.Elem().Implements(TypeOfQuery)):
-		return s.PackQuery(path, v.Interface().(ifaces.Query))
+		return s.PackQuery(v.Interface().(ifaces.Query))
 	case typeOfV == TypeOfQueryID:
-		return s.PackQueryID(path, v.Interface().(ifaces.QueryID))
+		return s.PackQueryID(v.Interface().(ifaces.QueryID))
 	case typeOfV == TypeOfCompiledIOPPointer:
 		unpacked := v.Interface().(*wizard.CompiledIOP)
 		if unpacked == nil {
 			return nil, nil
 		}
-		return s.PackCompiledIOP(path, unpacked)
+		return s.PackCompiledIOP(unpacked)
 	case typeOfV == TypeOfStorePtr:
 		unpacked := v.Interface().(*column.Store)
 		if unpacked == nil {
 			return nil, nil
 		}
-		return s.PackStore(path, unpacked)
+		return s.PackStore(unpacked)
 	case typeOfV == TypeOfPlonkCirc:
 		unpacked := v.Interface().(*cs.SparseR1CS)
 		if unpacked == nil {
 			return nil, nil
 		}
-		return s.PackPlonkCircuit(path, unpacked)
+		return s.PackPlonkCircuit(unpacked)
 	case typeOfV == TypeOfExpressionPtr:
 		unpacked := v.Interface().(*symbolic.Expression)
 		if unpacked == nil {
 			return nil, nil
 		}
-		return s.PackExpression(path, unpacked)
+		return s.PackExpression(unpacked)
 	}
 
 	// Handle generic Go types.
@@ -313,25 +312,25 @@ func (s *Serializer) PackValue(path string, v reflect.Value) (any, error) {
 		reflect.Uint32, reflect.Uint64, reflect.String:
 		return v.Interface(), nil
 	case reflect.Array, reflect.Slice:
-		return s.PackArrayOrSlice(path, v)
+		return s.PackArrayOrSlice(v)
 	case reflect.Interface:
-		return s.PackInterface(path, v)
+		return s.PackInterface(v)
 	case reflect.Map:
-		return s.PackMap(path, v)
+		return s.PackMap(v)
 	case reflect.Pointer:
-		return s.PackPointer(path, v)
+		return s.PackPointer(v)
 	case reflect.Struct:
-		return s.PackStructObject(path, v)
+		return s.PackStructObject(v)
 	default:
 		// Panic for unsupported types
-		return nil, fmt.Errorf("unsupported type kind: %v, path=%v", v.Kind(), path)
+		return nil, newSerdeErrorf("unsupported type kind: %v", v.Kind())
 	}
 }
 
 // UnpackValue recursively deserializes a value into a target reflect.Type.
 // It resolves back-references for protocol-specific types and handles generic types.
 // Returns the deserialized reflect.Value or an error.
-func (de *Deserializer) UnpackValue(path string, v any, t reflect.Type) (r reflect.Value, e error) {
+func (de *Deserializer) UnpackValue(v any, t reflect.Type) (r reflect.Value, e *serdeError) {
 
 	if v == nil {
 		return reflect.Zero(t), nil
@@ -339,31 +338,31 @@ func (de *Deserializer) UnpackValue(path string, v any, t reflect.Type) (r refle
 
 	// Identify custom codexes
 	if codex, ok := CustomCodexes[t]; ok {
-		return codex.Des(path, de, v, t)
+		return codex.Des(de, v, t)
 	}
 
 	// Handle protocol-specific types.
 	switch {
 	case t == TypeOfColumnNatural:
-		return de.UnpackColumn(path, backReferenceFromCBORInt(v))
+		return de.UnpackColumn(backReferenceFromCBORInt(v))
 	case t == TypeOfColumnID:
-		return de.UnpackColumnID(path, backReferenceFromCBORInt(v))
+		return de.UnpackColumnID(backReferenceFromCBORInt(v))
 	case t == TypeOfCoin:
-		return de.UnpackCoin(path, backReferenceFromCBORInt(v))
+		return de.UnpackCoin(backReferenceFromCBORInt(v))
 	case t == TypeOfCoinID:
-		return de.UnpackCoinID(path, backReferenceFromCBORInt(v))
+		return de.UnpackCoinID(backReferenceFromCBORInt(v))
 	case t.Implements(TypeOfQuery) && t.Kind() != reflect.Interface && !(t.Kind() == reflect.Ptr && t.Elem().Implements(TypeOfQuery)):
-		return de.UnpackQuery(path, backReferenceFromCBORInt(v), t)
+		return de.UnpackQuery(backReferenceFromCBORInt(v), t)
 	case t == TypeOfQueryID:
-		return de.UnpackQueryID(path, backReferenceFromCBORInt(v))
+		return de.UnpackQueryID(backReferenceFromCBORInt(v))
 	case t == TypeOfCompiledIOPPointer:
-		return de.UnpackCompiledIOP(path, backReferenceFromCBORInt(v))
+		return de.UnpackCompiledIOP(backReferenceFromCBORInt(v))
 	case t == TypeOfStorePtr:
-		return de.UnpackStore(path, backReferenceFromCBORInt(v))
+		return de.UnpackStore(backReferenceFromCBORInt(v))
 	case t == TypeOfPlonkCirc:
-		return de.UnpackPlonkCircuit(path, backReferenceFromCBORInt(v))
+		return de.UnpackPlonkCircuit(backReferenceFromCBORInt(v))
 	case t == TypeOfExpressionPtr:
-		return de.UnpackExpression(path, backReferenceFromCBORInt(v))
+		return de.UnpackExpression(backReferenceFromCBORInt(v))
 	}
 
 	// Handle generic Go types.
@@ -373,38 +372,38 @@ func (de *Deserializer) UnpackValue(path string, v any, t reflect.Type) (r refle
 		reflect.Uint32, reflect.Uint64, reflect.String:
 		return de.UnpackPrimitive(v, t), nil
 	case reflect.Array, reflect.Slice:
-		return de.UnpackArrayOrSlice(path, v.([]any), t)
+		return de.UnpackArrayOrSlice(v.([]any), t)
 	case reflect.Map:
 		v := v.(map[any]any)
-		return de.UnpackMap(path, v, t)
+		return de.UnpackMap(v, t)
 	case reflect.Interface:
 		v_, ok := v.(map[interface{}]any)
 		if !ok {
-			return reflect.Value{}, fmt.Errorf("expected %v to be of type map[interface{}]any, was=%T, path=%v", v, v, path)
+			return reflect.Value{}, newSerdeErrorf("expected %v to be of type map[interface{}]any, was=%T", v, v)
 		}
-		return de.UnpackInterface(path, v_, t)
+		return de.UnpackInterface(v_, t)
 	case reflect.Pointer:
-		return de.UnpackPointer(path, v, t)
+		return de.UnpackPointer(v, t)
 	case reflect.Struct:
 		if v_, ok := v.(PackedStructObject); ok {
 			v = []any(v_)
 		}
-		return de.UnpackStructObject(path, v.([]any), t)
+		return de.UnpackStructObject(v.([]any), t)
 	default:
-		return reflect.Value{}, fmt.Errorf("unsupported type kind: %v, path=%v", t.Kind(), path)
+		return reflect.Value{}, newSerdeErrorf("unsupported type kind: %v", t.Kind())
 	}
 }
 
 // PackColumn serializes a column.Natural, returning a BackReference to its index in PackedObject.Columns.
 // It ensures columns are serialized once, using UUIDs for deduplication.
-func (s *Serializer) PackColumn(path string, c column.Natural) (BackReference, error) {
+func (s *Serializer) PackColumn(c column.Natural) (BackReference, *serdeError) {
 	cid := c.UUID()
 
 	if _, ok := s.columnMap[cid]; !ok {
 		packed := c.Pack()
-		marshaled, err := s.PackStructObject(path+".(column)", reflect.ValueOf(packed))
+		marshaled, err := s.PackStructObject(reflect.ValueOf(packed))
 		if err != nil {
-			return 0, fmt.Errorf("could not marshal column column=%q: err=%w", cid, err)
+			return 0, err.wrapPath("(column)")
 		}
 		s.PackedObject.Columns = append(s.PackedObject.Columns, marshaled)
 		s.columnMap[cid] = len(s.PackedObject.Columns) - 1
@@ -417,18 +416,18 @@ func (s *Serializer) PackColumn(path string, c column.Natural) (BackReference, e
 
 // UnpackColumn deserializes a column.Natural from a BackReference.
 // It caches the result to maintain object identity.
-func (de *Deserializer) UnpackColumn(path string, v BackReference) (reflect.Value, error) {
+func (de *Deserializer) UnpackColumn(v BackReference) (reflect.Value, *serdeError) {
 	if v < 0 || int(v) >= len(de.PackedObject.Columns) {
-		return reflect.Value{}, fmt.Errorf("invalid column: %v", v)
+		return reflect.Value{}, newSerdeErrorf("invalid column backreference: %v", v)
 	}
 
 	// It's the first time that 'd' sees the column: it unpacks it from the
 	// pre-unmarshalled object
 	if de.Columns[v] == nil {
 		packedStruct := de.PackedObject.Columns[v]
-		packedNatVal, err := de.UnpackStructObject(path+".(column)", packedStruct, TypeOfPackedColumn)
+		packedNatVal, err := de.UnpackStructObject(packedStruct, TypeOfPackedColumn)
 		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not scan the unpacked column: %w", err)
+			return reflect.Value{}, err.wrapPath("(column)")
 		}
 
 		packedNat := packedNatVal.Interface().(column.PackedNatural)
@@ -440,7 +439,7 @@ func (de *Deserializer) UnpackColumn(path string, v BackReference) (reflect.Valu
 }
 
 // PackColumnID serializes an ifaces.ColID (string), returning a BackReference to its index in PackedObject.ColumnIDs.
-func (s *Serializer) PackColumnID(path string, c ifaces.ColID) (BackReference, error) {
+func (s *Serializer) PackColumnID(c ifaces.ColID) (BackReference, *serdeError) {
 	if _, ok := s.columnIdMap[string(c)]; !ok {
 		s.PackedObject.ColumnIDs = append(s.PackedObject.ColumnIDs, string(c))
 		s.columnIdMap[string(c)] = len(s.PackedObject.ColumnIDs) - 1
@@ -450,9 +449,9 @@ func (s *Serializer) PackColumnID(path string, c ifaces.ColID) (BackReference, e
 }
 
 // UnpackColumnID deserializes an ifaces.ColID from a BackReference.
-func (de *Deserializer) UnpackColumnID(path string, v BackReference) (reflect.Value, error) {
+func (de *Deserializer) UnpackColumnID(v BackReference) (reflect.Value, *serdeError) {
 	if v < 0 || int(v) >= len(de.PackedObject.ColumnIDs) {
-		return reflect.Value{}, fmt.Errorf("invalid column ID: %v, path=%v", v, path)
+		return reflect.Value{}, newSerdeErrorf("invalid column-ID backreference: %v", v)
 	}
 
 	res := ifaces.ColID(de.PackedObject.ColumnIDs[v])
@@ -460,7 +459,7 @@ func (de *Deserializer) UnpackColumnID(path string, v BackReference) (reflect.Va
 }
 
 // PackCoin serializes a coin.Info, returning a BackReference to its index in PackedObject.Coins.
-func (s *Serializer) PackCoin(path string, c coin.Info) (BackReference, error) {
+func (s *Serializer) PackCoin(c coin.Info) (BackReference, *serdeError) {
 	if _, ok := s.coinMap[c.UUID()]; !ok {
 		s.PackedObject.Coins = append(s.PackedObject.Coins, s.AsPackedCoin(c))
 		s.coinMap[c.UUID()] = len(s.PackedObject.Coins) - 1
@@ -470,9 +469,9 @@ func (s *Serializer) PackCoin(path string, c coin.Info) (BackReference, error) {
 }
 
 // UnpackCoin deserializes a coin.Info from a BackReference, caching the result.
-func (de *Deserializer) UnpackCoin(path string, v BackReference) (reflect.Value, error) {
+func (de *Deserializer) UnpackCoin(v BackReference) (reflect.Value, *serdeError) {
 	if v < 0 || int(v) >= len(de.PackedObject.Coins) {
-		return reflect.Value{}, fmt.Errorf("invalid coin back-reference=%v, path=%v", v, path)
+		return reflect.Value{}, newSerdeErrorf("invalid coin back-reference=%v", v)
 	}
 
 	if de.Coins[v] == nil {
@@ -511,7 +510,7 @@ func (s *Serializer) AsPackedCoin(c coin.Info) PackedCoin {
 }
 
 // PackCoinID serializes a coin.Name (string), returning a BackReference to its index in PackedObject.CoinIDs.
-func (s *Serializer) PackCoinID(path string, c coin.Name) (BackReference, error) {
+func (s *Serializer) PackCoinID(c coin.Name) (BackReference, *serdeError) {
 	if _, ok := s.coinIdMap[string(c)]; !ok {
 		s.PackedObject.CoinIDs = append(s.PackedObject.CoinIDs, string(c))
 		s.coinIdMap[string(c)] = len(s.PackedObject.CoinIDs) - 1
@@ -521,9 +520,9 @@ func (s *Serializer) PackCoinID(path string, c coin.Name) (BackReference, error)
 }
 
 // UnpackCoinID deserializes a coin.Name from a BackReference.
-func (s *Deserializer) UnpackCoinID(path string, v BackReference) (reflect.Value, error) {
+func (s *Deserializer) UnpackCoinID(v BackReference) (reflect.Value, *serdeError) {
 	if v < 0 || int(v) >= len(s.PackedObject.CoinIDs) {
-		return reflect.Value{}, fmt.Errorf("invalid coin ID back reference: %v, path=%v", v, path)
+		return reflect.Value{}, newSerdeErrorf("invalid coin ID back reference: %v", v)
 	}
 
 	res := coin.Name(s.PackedObject.CoinIDs[v])
@@ -531,16 +530,16 @@ func (s *Deserializer) UnpackCoinID(path string, v BackReference) (reflect.Value
 }
 
 // PackQuery serializes an ifaces.Query, returning a BackReference to its index in PackedObject.Queries.
-func (s *Serializer) PackQuery(path string, q ifaces.Query) (BackReference, error) {
+func (s *Serializer) PackQuery(q ifaces.Query) (BackReference, *serdeError) {
 	if _, ok := s.queryMap[q.UUID()]; !ok {
 		valueOfQ := reflect.ValueOf(q)
 		if valueOfQ.Type().Kind() == reflect.Ptr {
 			valueOfQ = valueOfQ.Elem()
 		}
 
-		obj, err := s.PackStructObject(path+".(query)", valueOfQ)
+		obj, err := s.PackStructObject(valueOfQ)
 		if err != nil {
-			return 0, fmt.Errorf("could not pack query, type=%T : %w", q, err)
+			return 0, err.wrapPath("(query)")
 		}
 		s.PackedObject.Queries = append(s.PackedObject.Queries, obj)
 		s.queryMap[q.UUID()] = len(s.PackedObject.Queries) - 1
@@ -550,25 +549,25 @@ func (s *Serializer) PackQuery(path string, q ifaces.Query) (BackReference, erro
 }
 
 // UnpackQuery deserializes an ifaces.Query from a BackReference, ensuring it matches the target type.
-func (de *Deserializer) UnpackQuery(path string, v BackReference, t reflect.Type) (reflect.Value, error) {
+func (de *Deserializer) UnpackQuery(v BackReference, t reflect.Type) (reflect.Value, *serdeError) {
 	typeConcrete := t
 	if t.Kind() == reflect.Ptr {
 		typeConcrete = t.Elem()
 	}
 
 	if !t.Implements(TypeOfQuery) || typeConcrete.Kind() != reflect.Struct {
-		return reflect.Value{}, fmt.Errorf("invalid query type: %v, path=%v", t.String(), path)
+		return reflect.Value{}, newSerdeErrorf("invalid query type: %v", t.String())
 	}
 
 	if v < 0 || int(v) >= len(de.PackedObject.Queries) {
-		return reflect.Value{}, fmt.Errorf("invalid query backreference: %v, path=%v", v, path)
+		return reflect.Value{}, newSerdeErrorf("invalid query backreference: %v", v)
 	}
 
 	if de.Queries[v] == nil {
 		packedQuery := de.PackedObject.Queries[v]
-		query, err := de.UnpackStructObject(path+".(query)", packedQuery, typeConcrete)
+		query, err := de.UnpackStructObject(packedQuery, typeConcrete)
 		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not scan the unpacked query: %w", err)
+			return reflect.Value{}, err.wrapPath("(query)")
 		}
 
 		if t.Kind() == reflect.Ptr {
@@ -585,14 +584,14 @@ func (de *Deserializer) UnpackQuery(path string, v BackReference, t reflect.Type
 	)
 
 	if qValue.Type() != t {
-		return reflect.Value{}, fmt.Errorf("the deserialized query does not have the expected type, %v != %v, path=%v", t.String(), qValue.Type().String(), path)
+		return reflect.Value{}, newSerdeErrorf("the deserialized query does not have the expected type, %v != %v", t.String(), qValue.Type().String())
 	}
 
 	return qValue, nil
 }
 
 // PackQueryID serializes an ifaces.QueryID (string), returning a BackReference to its index in PackedObject.QueryIDs.
-func (s *Serializer) PackQueryID(path string, q ifaces.QueryID) (BackReference, error) {
+func (s *Serializer) PackQueryID(q ifaces.QueryID) (BackReference, *serdeError) {
 	if _, ok := s.queryIDMap[string(q)]; !ok {
 		s.PackedObject.QueryIDs = append(s.PackedObject.QueryIDs, string(q))
 		s.queryIDMap[string(q)] = len(s.PackedObject.QueryIDs) - 1
@@ -602,9 +601,9 @@ func (s *Serializer) PackQueryID(path string, q ifaces.QueryID) (BackReference, 
 }
 
 // UnpackQueryID deserializes an ifaces.QueryID from a BackReference.
-func (de *Deserializer) UnpackQueryID(path string, v BackReference) (reflect.Value, error) {
+func (de *Deserializer) UnpackQueryID(v BackReference) (reflect.Value, *serdeError) {
 	if v < 0 || int(v) >= len(de.PackedObject.QueryIDs) {
-		return reflect.Value{}, fmt.Errorf("invalid query-ID backreference: %v, path=%v", v, path)
+		return reflect.Value{}, newSerdeErrorf("invalid query-ID backreference: %v", v)
 	}
 
 	res := ifaces.QueryID(de.PackedObject.QueryIDs[v])
@@ -612,16 +611,16 @@ func (de *Deserializer) UnpackQueryID(path string, v BackReference) (reflect.Val
 }
 
 // PackCompiledIOP serializes a wizard.CompiledIOP, returning a BackReference to its index in PackedObject.CompiledIOP.
-func (s *Serializer) PackCompiledIOP(path string, comp *wizard.CompiledIOP) (any, error) {
+func (s *Serializer) PackCompiledIOP(comp *wizard.CompiledIOP) (any, *serdeError) {
 	if _, ok := s.compiledIOPs[comp]; !ok {
 		// We can have recursive references to compiled IOPs, so we need to
 		// reserve the back-reference before attempting at unpacking it. That
 		// way, the recursive attempts at packing will cache-hit without
 		// creating an infinite loop.
 		s.compiledIOPs[comp] = len(s.PackedObject.CompiledIOP)
-		obj, err := s.PackStructObject(path, reflect.ValueOf(*comp))
+		obj, err := s.PackStructObject(reflect.ValueOf(*comp))
 		if err != nil {
-			return nil, fmt.Errorf("could not pack compiled IOP: %w", err)
+			return nil, err.wrapPath("(compiled-IOP)")
 		}
 
 		s.PackedObject.CompiledIOP = append(s.PackedObject.CompiledIOP, obj)
@@ -631,9 +630,9 @@ func (s *Serializer) PackCompiledIOP(path string, comp *wizard.CompiledIOP) (any
 }
 
 // UnpackCompiledIOP deserializes a wizard.CompiledIOP from a BackReference, caching the result.
-func (s *Deserializer) UnpackCompiledIOP(path string, v BackReference) (reflect.Value, error) {
+func (s *Deserializer) UnpackCompiledIOP(v BackReference) (reflect.Value, *serdeError) {
 	if v < 0 || int(v) >= len(s.PackedObject.CompiledIOP) {
-		return reflect.Value{}, fmt.Errorf("invalid compiled-IOP backreference: %v, path=%v", v, path)
+		return reflect.Value{}, newSerdeErrorf("invalid compiled-IOP backreference: %v", v)
 	}
 
 	if s.CompiledIOPs[v] == nil {
@@ -649,9 +648,9 @@ func (s *Deserializer) UnpackCompiledIOP(path string, v BackReference) (reflect.
 		s.CompiledIOPs[v] = ptr
 
 		packedCompiledIOP := s.PackedObject.CompiledIOP[v]
-		compiledIOP, err := s.UnpackStructObject(path, packedCompiledIOP, TypeOfCompiledIOP)
+		compiledIOP, err := s.UnpackStructObject(packedCompiledIOP, TypeOfCompiledIOP)
 		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not scan the unpacked compiled IOP: %w", err)
+			return reflect.Value{}, err.wrapPath("(compiled-IOP)")
 		}
 
 		c := compiledIOP.Interface().(wizard.CompiledIOP)
@@ -662,12 +661,12 @@ func (s *Deserializer) UnpackCompiledIOP(path string, v BackReference) (reflect.
 }
 
 // PackStore serializes a column.Store, returning a BackReference to its index in PackedObject.Store.
-func (ser *Serializer) PackStore(path string, s *column.Store) (BackReference, error) {
+func (ser *Serializer) PackStore(s *column.Store) (BackReference, *serdeError) {
 	if _, ok := ser.Stores[s]; !ok {
 		packedStore := s.Pack()
-		obj, err := ser.PackArrayOrSlice(path, reflect.ValueOf(packedStore))
+		obj, err := ser.PackArrayOrSlice(reflect.ValueOf(packedStore))
 		if err != nil {
-			return 0, fmt.Errorf("could not pack store: %w", err)
+			return 0, err.wrapPath("(store)")
 		}
 		ser.PackedObject.Store = append(ser.PackedObject.Store, obj)
 		ser.Stores[s] = len(ser.PackedObject.Store) - 1
@@ -677,16 +676,16 @@ func (ser *Serializer) PackStore(path string, s *column.Store) (BackReference, e
 }
 
 // UnpackStore deserializes a column.Store from a BackReference, caching the result.
-func (de *Deserializer) UnpackStore(path string, v BackReference) (reflect.Value, error) {
+func (de *Deserializer) UnpackStore(v BackReference) (reflect.Value, *serdeError) {
 	if v < 0 || int(v) >= len(de.PackedObject.Store) {
-		return reflect.Value{}, fmt.Errorf("invalid store backreference: %v, path=%v", v, path)
+		return reflect.Value{}, newSerdeErrorf("invalid store backreference: %v", v)
 	}
 
 	if de.Stores[v] == nil {
 		preStore := de.PackedObject.Store[v]
-		storeArr, err := de.UnpackArrayOrSlice(path, preStore, TypeOfPackedStore)
+		storeArr, err := de.UnpackArrayOrSlice(preStore, TypeOfPackedStore)
 		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not scan the unpacked store: %w", err)
+			return reflect.Value{}, err.wrapPath("(store)")
 		}
 
 		pStore := storeArr.Interface().(column.PackedStore)
@@ -699,7 +698,7 @@ func (de *Deserializer) UnpackStore(path string, v BackReference) (reflect.Value
 // PackPlonkCircuit serializes a plonk circuit using gnark's optimized serialization
 // algoritm. The serialized object is stored in the table [PackedObject.Circuit]
 // table and the
-func (s *Serializer) PackPlonkCircuit(path string, circuit *cs.SparseR1CS) (BackReference, error) {
+func (s *Serializer) PackPlonkCircuit(circuit *cs.SparseR1CS) (BackReference, *serdeError) {
 
 	if _, ok := s.circuitMap[circuit]; !ok {
 		buf := &bytes.Buffer{}
@@ -712,9 +711,9 @@ func (s *Serializer) PackPlonkCircuit(path string, circuit *cs.SparseR1CS) (Back
 }
 
 // UnpackPlonkCircuit deserializes a circuit from a BackReference, caching the result.
-func (de *Deserializer) UnpackPlonkCircuit(path string, v BackReference) (reflect.Value, error) {
+func (de *Deserializer) UnpackPlonkCircuit(v BackReference) (reflect.Value, *serdeError) {
 	if v < 0 || int(v) >= len(de.PackedObject.Circuits) {
-		return reflect.Value{}, fmt.Errorf("invalid circuit backreference: %v, path=%v", v, path)
+		return reflect.Value{}, newSerdeErrorf("invalid circuit backreference: %v", v)
 	}
 
 	if de.Circuits[v] == nil {
@@ -722,7 +721,7 @@ func (de *Deserializer) UnpackPlonkCircuit(path string, v BackReference) (reflec
 		packedCircuit := de.PackedObject.Circuits[v]
 		r := bytes.NewReader(packedCircuit)
 		if _, err := circ.ReadFrom(r); err != nil {
-			return reflect.Value{}, fmt.Errorf("could not scan the unpacked circuit path=%v, err=%w", path, err)
+			return reflect.Value{}, newSerdeErrorf("could not scan the unpacked circuit, err=%w", err)
 		}
 
 		de.Circuits[v] = circ
@@ -734,11 +733,11 @@ func (de *Deserializer) UnpackPlonkCircuit(path string, v BackReference) (reflec
 // PackExpression packs a symbolic expression by caching the packed expression
 // in the table [PackedObject.Expressions] table and returning a BackReference
 // to it. The expression is cached using its ESHash.
-func (s *Serializer) PackExpression(path string, e *symbolic.Expression) (BackReference, error) {
+func (s *Serializer) PackExpression(e *symbolic.Expression) (BackReference, *serdeError) {
 	if _, ok := s.ExprMap[e.ESHash]; !ok {
-		packed, err := s.PackStructObject(path, reflect.ValueOf(*e))
+		packed, err := s.PackStructObject(reflect.ValueOf(*e))
 		if err != nil {
-			return 0, fmt.Errorf("could not pack expression: %w", err)
+			return 0, err
 		}
 		s.PackedObject.Expressions = append(s.PackedObject.Expressions, packed)
 		s.ExprMap[e.ESHash] = len(s.PackedObject.Expressions) - 1
@@ -749,16 +748,16 @@ func (s *Serializer) PackExpression(path string, e *symbolic.Expression) (BackRe
 
 // UnpackExpression unpacks an expression from a BackReference, using the cached
 // result if possible or unpacking the underlying expression and then caching it.
-func (d *Deserializer) UnpackExpression(path string, v BackReference) (reflect.Value, error) {
+func (d *Deserializer) UnpackExpression(v BackReference) (reflect.Value, *serdeError) {
 	if v < 0 || int(v) >= len(d.PackedObject.Expressions) {
-		return reflect.Value{}, fmt.Errorf("invalid expression backreference: %v, path=%v", v, path)
+		return reflect.Value{}, newSerdeErrorf("invalid expression backreference: %v", v)
 	}
 
 	if d.Expressions[v] == nil {
 		preExpr := d.PackedObject.Expressions[v]
-		expr, err := d.UnpackStructObject(path, preExpr, TypeOfExpression)
+		expr, err := d.UnpackStructObject(preExpr, TypeOfExpression)
 		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not scan the unpacked expression: %w", err)
+			return reflect.Value{}, err
 		}
 
 		unpacked := expr.Interface().(symbolic.Expression)
@@ -770,20 +769,20 @@ func (d *Deserializer) UnpackExpression(path string, v BackReference) (reflect.V
 
 // PackArrayOrSlice serializes arrays or slices by recursively serializing each element.
 // It collects errors for all elements and returns a combined error if any fail.
-func (s *Serializer) PackArrayOrSlice(path string, v reflect.Value) ([]any, error) {
+func (s *Serializer) PackArrayOrSlice(v reflect.Value) ([]any, *serdeError) {
 	res := make([]any, v.Len())
-	var globalErr error
+	globalErr := &serdeError{}
 
 	for i := 0; i < v.Len(); i++ {
-		ri, err := s.PackValue("", v.Index(i))
+		ri, err := s.PackValue(v.Index(i))
 		if err != nil {
-			globalErr = errors.Join(globalErr, fmt.Errorf("position %d: %w", i, err))
+			globalErr.appendError(err.wrapPath("[" + strconv.Itoa(i) + "]"))
 		}
 		res[i] = ri
 	}
 
-	if globalErr != nil {
-		return nil, fmt.Errorf("failed to serialize array or slice: %w", globalErr)
+	if !globalErr.isEmpty() {
+		return nil, globalErr
 	}
 
 	return res, nil
@@ -791,35 +790,34 @@ func (s *Serializer) PackArrayOrSlice(path string, v reflect.Value) ([]any, erro
 
 // UnpackArrayOrSlice deserializes arrays or slices, reconstructing elements into the target type.
 // It collects errors for all elements and returns a combined error if any fail.
-func (de *Deserializer) UnpackArrayOrSlice(path string, v []any, t reflect.Type) (reflect.Value, error) {
+func (de *Deserializer) UnpackArrayOrSlice(v []any, t reflect.Type) (reflect.Value, *serdeError) {
 	var res reflect.Value
 
 	switch t.Kind() {
 	case reflect.Array:
 		res = reflect.New(t).Elem()
 		if t.Len() != len(v) {
-			return reflect.Value{}, fmt.Errorf("failed to deserialize to %q, size mismatch: %d != %d, path=%v", t.String(), len(v), t.Len(), path)
+			return reflect.Value{}, newSerdeErrorf("failed to deserialize to %q, size mismatch: %d != %d", t.String(), len(v), t.Len())
 		}
 	case reflect.Slice:
 		res = reflect.MakeSlice(t, len(v), len(v))
 	default:
-		return reflect.Value{}, fmt.Errorf("failed to deserialize to %q, expected array or slice, path=%v", t.String(), path)
+		return reflect.Value{}, newSerdeErrorf("failed to deserialize to %q, expected array or slice", t.String())
 	}
 
-	var globalErr error
+	globalErr := &serdeError{}
 
 	subType := t.Elem()
 	for i := 0; i < len(v); i++ {
-		subV, err := de.UnpackValue("", v[i], subType)
+		subV, err := de.UnpackValue(v[i], subType)
 		if err != nil {
-			err := fmt.Errorf("failed to deserialize to %q, error in element %d: %w", subType.String(), i, err)
-			globalErr = errors.Join(globalErr, err)
+			globalErr.appendError(err.wrapPath("[" + strconv.Itoa(i) + "]"))
 			continue
 		}
 		res.Index(i).Set(subV)
 	}
 
-	if globalErr != nil {
+	if !globalErr.isEmpty() {
 		return reflect.Value{}, globalErr
 	}
 
@@ -828,14 +826,14 @@ func (de *Deserializer) UnpackArrayOrSlice(path string, v []any, t reflect.Type)
 
 // PackInterface serializes an interface value, storing its type index and concrete value in a PackedIFace.
 // It ensures the concrete type is registered and returns an error if not.
-func (s *Serializer) PackInterface(path string, v reflect.Value) (any, error) {
+func (s *Serializer) PackInterface(v reflect.Value) (any, *serdeError) {
 	var (
 		concrete          = v.Elem()
 		cleanConcreteType = getPkgPathAndTypeNameIndirect(concrete.Interface())
 	)
 
 	if _, err := findRegisteredImplementation(cleanConcreteType); err != nil {
-		return nil, fmt.Errorf("attempted to serialize unregistered type repr=%q type=%v path=%v: %w", cleanConcreteType, concrete.Type().String(), path, err)
+		return nil, newSerdeErrorf("attempted to serialize unregistered type repr=%q type=%v: %v", cleanConcreteType, concrete.Type().String(), err)
 	}
 
 	if _, ok := s.typeMap[cleanConcreteType]; !ok {
@@ -843,9 +841,9 @@ func (s *Serializer) PackInterface(path string, v reflect.Value) (any, error) {
 		s.typeMap[cleanConcreteType] = len(s.PackedObject.Types) - 1
 	}
 
-	packedConcrete, err := s.PackValue(path+".(interface)", concrete)
+	packedConcrete, err := s.PackValue(concrete)
 	if err != nil {
-		return nil, fmt.Errorf("could not marshal concrete interface value, type=%v: %w", concrete.Type().String(), err)
+		return nil, err.wrapPath("(interface)")
 	}
 
 	return PackedIFace{
@@ -855,29 +853,29 @@ func (s *Serializer) PackInterface(path string, v reflect.Value) (any, error) {
 }
 
 // UnpackInterface deserializes an interface value from a map, resolving the concrete type and value.
-func (de *Deserializer) UnpackInterface(path string, pi map[interface{}]interface{}, t reflect.Type) (reflect.Value, error) {
+func (de *Deserializer) UnpackInterface(pi map[interface{}]interface{}, t reflect.Type) (reflect.Value, *serdeError) {
 	var (
 		ctype, ok = pi["t"].(uint64)
 		concrete  = pi["c"]
 	)
 
 	if !ok || int(ctype) >= len(de.PackedObject.Types) {
-		return reflect.Value{}, fmt.Errorf("invalid packed interface, it does not have a valid type integer: %v, path=%v", ctype, path)
+		return reflect.Value{}, newSerdeErrorf("invalid packed interface, it does not have a valid type integer: %v", ctype)
 	}
 
 	cleanConcreteType := de.PackedObject.Types[ctype]
 	refType, err := findRegisteredImplementation(cleanConcreteType)
 	if err != nil {
-		return reflect.Value{}, fmt.Errorf("unregistered type %q: %w, path=%v", cleanConcreteType, err, path)
+		return reflect.Value{}, newSerdeErrorf("unregistered type %q for interface: %w", cleanConcreteType, err)
 	}
 
 	if !refType.Implements(t) {
-		return reflect.Value{}, fmt.Errorf("the resolved type does not implement the target interface, %v ~ %v, path=%v", refType.String(), t.String(), path)
+		return reflect.Value{}, newSerdeErrorf("the resolved type does not implement the target interface, %v ~ %v", refType.String(), t.String())
 	}
 
-	cres, err := de.UnpackValue(path+".(interface)", concrete, refType)
-	if err != nil {
-		return reflect.Value{}, fmt.Errorf("could not deserialize interface object, type=%v, err=%w", t.String(), err)
+	cres, errV := de.UnpackValue(concrete, refType)
+	if errV != nil {
+		return reflect.Value{}, errV.wrapPath("(interface)")
 	}
 
 	// Create a new reflect.Value for the interface type
@@ -892,13 +890,13 @@ func (de *Deserializer) UnpackInterface(path string, pi map[interface{}]interfac
 
 // PackStructObject serializes a struct as a PackedStructObject (slice of field values).
 // It skips unexported fields, logs warnings, and registers the schema.
-func (s *Serializer) PackStructObject(path string, obj reflect.Value) (PackedStructObject, error) {
+func (s *Serializer) PackStructObject(obj reflect.Value) (PackedStructObject, *serdeError) {
 	if obj.Kind() != reflect.Struct {
-		utils.Panic("obj.Kind() != reflect.Struct, type=%v, path=%v", obj.Type().String(), path)
+		return nil, newSerdeErrorf("obj.Kind() != reflect.Struct, type=%v", obj.Type().String())
 	}
 
 	values := make([]any, obj.NumField())
-	var globalErr error
+	globalErr := &serdeError{}
 
 	// Note, since we don't want to register the schema before going through
 	// all the components, we have to rely on the fact that schema and this loop
@@ -908,7 +906,7 @@ func (s *Serializer) PackStructObject(path string, obj reflect.Value) (PackedStr
 
 		// Definitely not something we can accept
 		if obj.Type().Field(i).Type == reflect.TypeOf(reflect.Value{}) {
-			return nil, fmt.Errorf("field type is reflect.Value, %v.%v, path=%v", obj.Type().String(), obj.Type().Field(i).Name, path)
+			return nil, newSerdeErrorf("field type is reflect.Value, %v.%v", obj.Type().String(), obj.Type().Field(i).Name)
 		}
 
 		// When the field is has the omitted tag, we skip it there without any
@@ -924,20 +922,21 @@ func (s *Serializer) PackStructObject(path string, obj reflect.Value) (PackedStr
 		// help the caller understand that we might omit something that he would
 		// not want to.
 		if !obj.Type().Field(i).IsExported() {
-			s.warnf(fmt.Sprintf("field %v.%v is not exported, path=%v", obj.Type().String(), obj.Type().Field(i).Name, path))
+			s.warnf(fmt.Sprintf("field %v.%v is not exported", obj.Type().String(), obj.Type().Field(i).Name))
 			// implicitly, we leave values[i] as nil
 			continue
 		}
 
-		vi, err := s.PackValue(path+"."+obj.Type().Field(i).Name, field)
+		vi, err := s.PackValue(field)
 		if err != nil {
-			globalErr = errors.Join(globalErr, fmt.Errorf("field name=%s type=%v: %w", obj.Type().Field(i).Name, field.Type().String(), err))
+			prefix := "." + obj.Type().Field(i).Name
+			globalErr.appendError(err.wrapPath(prefix))
 		}
 		values[i] = vi
 	}
 
-	if globalErr != nil {
-		return PackedStructObject{}, fmt.Errorf("failed to pack struct object, type=%v: %w", obj.Type().String(), globalErr)
+	if !globalErr.isEmpty() {
+		return PackedStructObject{}, newSerdeErrorf("failed to pack struct object, type=%v: %w", obj.Type().String(), globalErr)
 	}
 
 	// Importantly, we want to be sure that all the component have been
@@ -950,9 +949,9 @@ func (s *Serializer) PackStructObject(path string, obj reflect.Value) (PackedStr
 
 // UnpackStructObject deserializes a PackedStructObject into a struct, using the schema to map fields.
 // It skips unexported fields, logs warnings, and collects errors.
-func (de *Deserializer) UnpackStructObject(path string, v PackedStructObject, t reflect.Type) (reflect.Value, error) {
+func (de *Deserializer) UnpackStructObject(v PackedStructObject, t reflect.Type) (reflect.Value, *serdeError) {
 	if t.Kind() != reflect.Struct {
-		return reflect.Value{}, fmt.Errorf("invalid type: %v, path=%v", t.String(), path)
+		return reflect.Value{}, newSerdeErrorf("invalid type: %v", t.String())
 	}
 
 	var (
@@ -960,12 +959,12 @@ func (de *Deserializer) UnpackStructObject(path string, v PackedStructObject, t 
 	)
 
 	if len(v) != t.NumField() {
-		return reflect.Value{}, fmt.Errorf("invalid number of fields: %v, expected %v, type=%v, path=%v", len(v), t.NumField(), t.String(), path)
+		return reflect.Value{}, newSerdeErrorf("invalid number of fields: %v, expected %v, type=%v", len(v), t.NumField(), t.String())
 	}
 
 	// To ease debugging, all the errors for all the fields are joined and
 	// wrapped in a single error.
-	var globalErr error
+	globalErr := &serdeError{}
 
 	for i := 0; i < t.NumField(); i++ {
 
@@ -985,24 +984,25 @@ func (de *Deserializer) UnpackStructObject(path string, v PackedStructObject, t 
 		}
 
 		field := res.FieldByName(structField.Name)
-		value, err := de.UnpackValue(path+"."+structField.Name, v[i], field.Type())
+		value, err := de.UnpackValue(v[i], field.Type())
 		if err != nil {
-			err = fmt.Errorf("field %q type=%v, err=%w", structField.Name, field.Type().String(), err)
-			globalErr = errors.Join(globalErr, err)
+			prefix := "." + structField.Name
+			globalErr.appendError(err.wrapPath(prefix))
 			continue
 		}
 
 		if field.Type() != value.Type() {
-			e := fmt.Errorf("field %q type=%v, value type=%v, path=%v", structField.Name, field.Type().String(), value.Type().String(), path+"."+structField.Name)
-			globalErr = errors.Join(globalErr, e)
+			err := newSerdeErrorf("field type mismatch: %v != %v", field.Type().String(), value.Type().String())
+			prefix := "." + structField.Name
+			globalErr.appendError(err.wrapPath(prefix))
 			continue
 		}
 
 		field.Set(value)
 	}
 
-	if globalErr != nil {
-		return reflect.Value{}, fmt.Errorf("failed to deserialize struct: %w", globalErr)
+	if !globalErr.isEmpty() {
+		return reflect.Value{}, newSerdeErrorf("failed to deserialize struct: %w", globalErr)
 	}
 
 	return res, nil
@@ -1011,30 +1011,32 @@ func (de *Deserializer) UnpackStructObject(path string, v PackedStructObject, t 
 // PackMap serializes a map with string keys, returning a map[any]any.
 // It sorts keys for deterministic encoding and collects errors. The map is
 // packed as an array of tuples.
-func (s *Serializer) PackMap(path string, obj reflect.Value) (map[any]any, error) {
+func (s *Serializer) PackMap(obj reflect.Value) (map[any]any, *serdeError) {
 	if obj.Kind() != reflect.Map {
-		return nil, fmt.Errorf("obj.Kind() != reflect.Map, type=%v, path=%v", obj.Type().String(), path)
+		return nil, newSerdeErrorf("obj.Kind() != reflect.Map, type=%v", obj.Type().String())
 	}
 
 	var (
 		keys         = obj.MapKeys()
 		packedKeys   = make([]any, len(keys))
 		packedValues = make([]any, len(keys))
-		globalErr    error
+		globalErr    = &serdeError{}
 	)
 
 	for i, key := range keys {
 
-		packedKey, err := s.PackValue(path+fmt.Sprintf(".keys[%d]", i), key)
+		packedKey, err := s.PackValue(key)
 		if err != nil {
-			globalErr = errors.Join(globalErr, fmt.Errorf("key type=%v: %w", key.Type().String(), err))
+			prefix := fmt.Sprintf(".keys[%d]", i)
+			globalErr.appendError(err.wrapPath(prefix))
 			continue
 		}
 
 		val := obj.MapIndex(key)
-		packedValue, err := s.PackValue(path+fmt.Sprintf("[%v]", key.Interface()), val)
+		packedValue, err := s.PackValue(val)
 		if err != nil {
-			globalErr = errors.Join(globalErr, fmt.Errorf("key=%++v, value=%++v type=%v: %w", key.Interface(), val.Interface(), val.Type().String(), err))
+			prefix := fmt.Sprintf("[%v]", key.Interface())
+			globalErr.appendError(err.wrapPath(prefix))
 			continue
 		}
 
@@ -1042,8 +1044,8 @@ func (s *Serializer) PackMap(path string, obj reflect.Value) (map[any]any, error
 		packedValues[i] = packedValue
 	}
 
-	if globalErr != nil {
-		return nil, fmt.Errorf("failed to pack map, type=%v: %w", obj.Type().String(), globalErr)
+	if !globalErr.isEmpty() {
+		return nil, newSerdeErrorf("failed to pack map, type=%v: %w", obj.Type().String(), globalErr)
 	}
 
 	return map[any]any{
@@ -1054,9 +1056,9 @@ func (s *Serializer) PackMap(path string, obj reflect.Value) (map[any]any, error
 
 // UnpackMap deserializes a map[any]any into a map of the target type.
 // It collects errors for keys and values.
-func (de *Deserializer) UnpackMap(path string, packedMap map[any]any, t reflect.Type) (reflect.Value, error) {
+func (de *Deserializer) UnpackMap(packedMap map[any]any, t reflect.Type) (reflect.Value, *serdeError) {
 	if t.Kind() != reflect.Map {
-		return reflect.Value{}, fmt.Errorf("invalid map type: %v, path=%v", t.String(), path)
+		return reflect.Value{}, newSerdeErrorf("invalid map type: %v", t.String())
 	}
 
 	var (
@@ -1065,7 +1067,7 @@ func (de *Deserializer) UnpackMap(path string, packedMap map[any]any, t reflect.
 		packedKeys   = packedMap["k"].([]any)
 		packedValues = packedMap["v"].([]any)
 		res          = reflect.MakeMap(t)
-		globalErr    error
+		globalErr    = &serdeError{}
 	)
 
 	for i := range packedKeys {
@@ -1073,33 +1075,35 @@ func (de *Deserializer) UnpackMap(path string, packedMap map[any]any, t reflect.
 		key := packedKeys[i]
 		val := packedValues[i]
 
-		k, err := de.UnpackValue(path+fmt.Sprintf(".keys[%d]", i), key, typeOfKey)
+		k, err := de.UnpackValue(key, typeOfKey)
 		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not deserialize map key %q type=%v, err=%w", key, typeOfKey.String(), err)
+			prefix := fmt.Sprintf(".keys[%d]", i)
+			globalErr.appendError(err.wrapPath(prefix))
+			continue
 		}
 
-		v, err := de.UnpackValue(path+fmt.Sprintf("[%v]", k.Interface()), val, typeOfValue)
+		v, err := de.UnpackValue(val, typeOfValue)
 		if err != nil {
-			err = fmt.Errorf("could not deserialize map value %q type=%v, err=%w", val, typeOfValue.String(), err)
-			globalErr = errors.Join(globalErr, err)
+			prefix := fmt.Sprintf("[%v]", k.Interface())
+			globalErr.appendError(err.wrapPath(prefix))
 			continue
 		}
 
 		res.SetMapIndex(k, v)
 	}
 
-	if globalErr != nil {
-		return reflect.Value{}, fmt.Errorf("failed to deserialize map: %w", globalErr)
+	if !globalErr.isEmpty() {
+		return reflect.Value{}, newSerdeErrorf("failed to deserialize map: %w", globalErr)
 	}
 
 	return res, nil
 }
 
 // PackPointer serializes a pointer value.
-func (s *Serializer) PackPointer(path string, v reflect.Value) (any, error) {
+func (s *Serializer) PackPointer(v reflect.Value) (any, *serdeError) {
 
 	if v.Kind() != reflect.Ptr {
-		return reflect.Value{}, fmt.Errorf("invalid type: %v, expected a pointer, path=%v", v.Type().String(), path)
+		return reflect.Value{}, newSerdeErrorf("invalid type: %v, expected a pointer", v.Type().String())
 	}
 
 	if v.IsNil() {
@@ -1116,9 +1120,9 @@ func (s *Serializer) PackPointer(path string, v reflect.Value) (any, error) {
 		s.pointerMap[v.Pointer()] = backRef
 		s.PackedObject.PointedValues = append(s.PackedObject.PointedValues, nil)
 
-		packedElem, err := s.PackValue(path+".(pointer)", v.Elem())
+		packedElem, err := s.PackValue(v.Elem())
 		if err != nil {
-			return nil, fmt.Errorf("could not pack pointer value, type=%v: %w", v.Type().String(), err)
+			return nil, err.wrapPath("(pointer)")
 		}
 
 		s.PackedObject.PointedValues[backRef] = packedElem
@@ -1128,10 +1132,10 @@ func (s *Serializer) PackPointer(path string, v reflect.Value) (any, error) {
 }
 
 // UnpackPointer deserializes a pointer value, ensuring the result is addressable.
-func (de *Deserializer) UnpackPointer(path string, v any, t reflect.Type) (reflect.Value, error) {
+func (de *Deserializer) UnpackPointer(v any, t reflect.Type) (reflect.Value, *serdeError) {
 
 	if t.Kind() != reflect.Ptr {
-		return reflect.Value{}, fmt.Errorf("invalid type: %v, expected a pointer", t.String())
+		return reflect.Value{}, newSerdeErrorf("invalid type: %v, expected a pointer", t.String())
 	}
 
 	if v == nil {
@@ -1141,12 +1145,12 @@ func (de *Deserializer) UnpackPointer(path string, v any, t reflect.Type) (refle
 
 	backRefInt, ok := v.(uint64)
 	if !ok {
-		return reflect.Value{}, fmt.Errorf("pointer type=%v is not a BackReference nor a nil value, got=%++v, path=%v", t.String(), v, path)
+		return reflect.Value{}, newSerdeErrorf("pointer type=%v is not a BackReference nor a nil value, got=%++v", t.String(), v)
 	}
 	backRef := BackReference(backRefInt)
 
 	if backRef < 0 || int(backRef) >= len(de.PackedObject.PointedValues) {
-		return reflect.Value{}, fmt.Errorf("invalid pointer: %v, path=%v", v, path)
+		return reflect.Value{}, newSerdeErrorf("invalid pointer backreference: %v", v)
 	}
 
 	if (de.PointedValues[backRef] == reflect.Value{}) {
@@ -1159,9 +1163,9 @@ func (de *Deserializer) UnpackPointer(path string, v any, t reflect.Type) (refle
 		de.PointedValues[backRef] = ptrValue
 
 		packedElem := de.PackedObject.PointedValues[backRef]
-		elem, err := de.UnpackValue(path+".(pointer)", packedElem, t.Elem())
+		elem, err := de.UnpackValue(packedElem, t.Elem())
 		if err != nil {
-			return reflect.Value{}, fmt.Errorf("could not unpack pointer type=%v, err=%w", t.Elem().String(), err)
+			return reflect.Value{}, err.wrapPath("(pointer)")
 		}
 
 		ptrValue.Elem().Set(elem)
