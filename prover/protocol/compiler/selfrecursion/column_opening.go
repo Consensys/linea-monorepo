@@ -329,7 +329,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 					preImageSisEval,
 				),
 			)
-			accessors.NewFromExpression(preImageEvalSymb, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt))
+			preImageEval = accessors.NewFromExpression(preImageEvalSymb, fmt.Sprintf("PREIMAGE_EVAL_%v", ctx.SelfRecursionCnt))
 		} else if len(ctx.MIMCMetaData.ToHashSizes) > 0 && ctx.Columns.ConcatenatedDhQ == nil {
 			preImageEval = preImageNonSisEval
 		} else if len(ctx.MIMCMetaData.ToHashSizes) == 0 && ctx.Columns.ConcatenatedDhQ != nil {
