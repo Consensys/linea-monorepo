@@ -46,12 +46,12 @@ func (c *FromCoinAccessor) String() string {
 
 // GetVal implements [ifaces.Accessor]
 func (c *FromCoinAccessor) GetVal(run ifaces.Runtime) field.Element {
-	return run.GetRandomCoinField(c.Info.Name)
+	return run.GetRandomCoinFext(c.Info.Name)
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
 func (c *FromCoinAccessor) GetFrontendVariable(_ frontend.API, circ ifaces.GnarkRuntime) frontend.Variable {
-	return circ.GetRandomCoinField(c.Info.Name)
+	return circ.GetRandomCoinFext(c.Info.Name)
 }
 
 // AsVariable implements the [ifaces.Accessor] interface

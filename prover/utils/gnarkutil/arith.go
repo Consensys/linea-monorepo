@@ -2,7 +2,7 @@ package gnarkutil
 
 import "github.com/consensys/gnark/frontend"
 
-func RepeatedVariable(x frontend.Variable, n int) []frontend.Variable {
+func ConstantedVariable(x frontend.Variable, n int) []frontend.Variable {
 	res := make([]frontend.Variable, n)
 	for i := range res {
 		res[i] = x

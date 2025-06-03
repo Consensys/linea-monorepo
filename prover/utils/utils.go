@@ -195,8 +195,8 @@ func RightPad[T any](s []T, n int) []T {
 	return RightPadWith(s, n, padWith)
 }
 
-// RepeatSlice returns the concatenation of `s` with itself `n` times
-func RepeatSlice[T any](s []T, n int) []T {
+// ConstantSlice returns the concatenation of `s` with itself `n` times
+func ConstantSlice[T any](s []T, n int) []T {
 	res := make([]T, 0, n*len(s))
 	for i := 0; i < n; i++ {
 		res = append(res, s...)

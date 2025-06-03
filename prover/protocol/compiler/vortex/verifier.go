@@ -68,7 +68,7 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	isSISReplacedByMiMC := append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
-	randomCoin := vr.GetRandomCoinField(ctx.LinCombRandCoinName())
+	randomCoin := vr.GetRandomCoinFext(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
 	proof.LinearCombination = vr.GetColumn(ctx.LinCombName())
@@ -258,7 +258,7 @@ func (ctx *Ctx) explicitPublicEvaluation(vr wizard.Runtime) error {
 
 		val := pol.GetColAssignment(vr)
 
-		y := smartvectors.Interpolate(val, params.X)
+		y := smartvectors.EvaluateLagrangeOnFext(val, params.X)
 		if y != params.Ys[i] {
 			return fmt.Errorf("inconsistent evaluation")
 		}

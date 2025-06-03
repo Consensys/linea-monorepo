@@ -6,7 +6,9 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -43,7 +45,7 @@ func NewPolyEval(x *Expression, coeffs []*Expression) *Expression {
 		eshashes = append(eshashes, coeffs[i].ESHash)
 	}
 
-	esh := poly.EvalUnivariate(eshashes, x.ESHash)
+	esh := poly.Eval(eshashes, x.ESHash)
 
 	return &Expression{
 		Operator: PolyEval{},
@@ -66,8 +68,8 @@ func (PolyEval) Evaluate(inputs []sv.SmartVector, p ...mempool.MemPool) sv.Smart
 	// We assume that the first element is always a scalar
 	// Get the constant value. We use Get(0) to get the value, but any integer would
 	// also work provided it is also in range. 0 ensures that.
-	x := inputs[0].(*sv.Constant).Get(0)
-	return sv.PolyEval(inputs[1:], x, p...)
+	x := inputs[0].(*smartvectorsext.ConstantExt).GetExt(0)
+	return smartvectors.PolyEval(inputs[1:], x, p...) // TODO: update smartvectors.PolyEval
 }
 
 /*

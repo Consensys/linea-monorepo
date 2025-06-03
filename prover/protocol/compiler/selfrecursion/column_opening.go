@@ -305,7 +305,7 @@ func (a *collapsingProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	colPowT := accessors.NewExponent(a.ctx.Coins.Collapse, a.ctx.VortexCtx.NbColsToOpen()).GetVal(run)
-	eDual := smartvectors.PolyEval(subDuals, colPowT)
+	eDual := smartvectors.PolyEval(subDuals, colPowT) // TODO: update smartvectors.PolyEval
 
 	run.AssignColumn(a.eDualID, eDual)
 }
@@ -479,7 +479,7 @@ type foldPhaseVerifierAction struct {
 func (a *foldPhaseVerifierAction) Run(run wizard.Runtime) error {
 	edual := a.ctx.Columns.Edual.GetColAssignment(run)
 	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignment(run)
-	rfold := run.GetRandomCoinField(a.ctx.Coins.Fold.Name)
+	rfold := run.GetRandomCoinFext(a.ctx.Coins.Fold.Name)
 	yAlleged := run.GetInnerProductParams(a.ipQueryID).Ys[0]
 	yDual := smartvectors.EvalCoeff(edual, rfold)
 	yActual := smartvectors.EvalCoeff(dcollapse, rfold)
@@ -505,7 +505,7 @@ func (a *foldPhaseVerifierAction) Run(run wizard.Runtime) error {
 func (a *foldPhaseVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	edual := a.ctx.Columns.Edual.GetColAssignmentGnark(run)
 	dcollapse := a.ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
-	rfold := run.GetRandomCoinField(a.ctx.Coins.Fold.Name)
+	rfold := run.GetRandomCoinFext(a.ctx.Coins.Fold.Name)
 	yAlleged := run.GetInnerProductParams(a.ipQueryID).Ys[0]
 	yDual := poly.EvaluateUnivariateGnark(api, edual, rfold)
 	yActual := poly.EvaluateUnivariateGnark(api, dcollapse, rfold)
@@ -584,7 +584,7 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 	// 	dcollapse := ctx.Columns.DhQCollapse.GetColAssignment(run)
 
 	// 	// the folding coin
-	// 	rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
+	// 	rfold := run.GetRandomCoinFext(ctx.Coins.Fold.Name)
 
 	// 	// evaluates both edual and dcollapse (seen as polynomial) by
 	// 	// coefficients and fetch the result of the inner-product
@@ -629,7 +629,7 @@ func (ctx *SelfRecursionCtx) foldPhase() {
 	// 	dcollapse := ctx.Columns.DhQCollapse.GetColAssignmentGnark(run)
 
 	// 	// the folding coin
-	// 	rfold := run.GetRandomCoinField(ctx.Coins.Fold.Name)
+	// 	rfold := run.GetRandomCoinFext(ctx.Coins.Fold.Name)
 
 	// 	// evaluates both edual and dcollapse (seen as polynomial) by
 	// 	// coefficients and fetch the result of the inner-product

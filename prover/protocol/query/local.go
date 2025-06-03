@@ -96,7 +96,7 @@ func (cs LocalConstraint) Check(run ifaces.Runtime) error {
 			val := metadata.GetColAssignmentAt(run, 0)
 			inputs[i] = sv.NewConstant(val, 1)
 		case coin.Info:
-			inputs[i] = sv.NewConstant(run.GetRandomCoinField(metadata.Name), 1)
+			inputs[i] = sv.NewConstant(run.GetRandomCoinFext(metadata.Name), 1)
 		case variables.PeriodicSample:
 			v := field.One()
 			if metadata.Offset != 0 {
@@ -155,7 +155,7 @@ func (cs LocalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) 
 			val := metadata.GetColAssignmentGnarkAt(run, 0)
 			inputs[i] = val
 		case coin.Info:
-			inputs[i] = run.GetRandomCoinField(metadata.Name)
+			inputs[i] = run.GetRandomCoinFext(metadata.Name)
 		case variables.X, variables.PeriodicSample:
 			utils.Panic("In local constraint %v, Local constraints using X are not handled so far", cs.ID)
 		case ifaces.Accessor:

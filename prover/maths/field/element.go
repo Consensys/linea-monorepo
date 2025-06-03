@@ -35,6 +35,23 @@ var (
 	One         = koalabear.One
 )
 
+var montConstant = NewFromString("33554430")
+var montConstantInv = NewFromString("1057030144")
+
+// MulR multiplies by montConstant, where montConstant is the Montgommery constant
+func MulR(x Element) Element {
+	var res Element
+	res.Mul(&x, &montConstant)
+	return res
+}
+
+// MulRInv multiplies the field element by R^-1, where R is the Montgommery constant
+func MulRInv(x Element) Element {
+	var res Element
+	res.Mul(&x, &montConstantInv)
+	return res
+}
+
 // Zero returns the zero field element
 func Zero() Element {
 	var res Element

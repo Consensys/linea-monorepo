@@ -3,7 +3,7 @@ package query
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
-	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 )
 
 // A gnark circuit version of the LocalOpeningResult
@@ -57,7 +57,7 @@ func (p InnerProduct) GnarkAllocate() GnarkInnerProductParams {
 }
 
 func (p InnerProductParams) GnarkAssign() GnarkInnerProductParams {
-	return GnarkInnerProductParams{Ys: vector.IntoGnarkAssignment(p.Ys)}
+	return GnarkInnerProductParams{Ys: vectorext.IntoGnarkAssignment(p.Ys)}
 }
 
 // A gnark circuit version of univariate eval params
@@ -73,7 +73,7 @@ func (p UnivariateEval) GnarkAllocate() GnarkUnivariateEvalParams {
 
 // Returns a gnark assignment for the present parameters
 func (p UnivariateEvalParams) GnarkAssign() GnarkUnivariateEvalParams {
-	return GnarkUnivariateEvalParams{Ys: vector.IntoGnarkAssignment(p.Ys), X: p.X}
+	return GnarkUnivariateEvalParams{Ys: vectorext.IntoGnarkAssignment(p.Ys), X: p.X}
 }
 
 // GnarkAllocate allocates a [GnarkHornerParams] with the right dimensions

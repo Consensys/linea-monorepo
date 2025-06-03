@@ -148,7 +148,7 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 		if tc.IsCommitPrecomp {
 			for i := 0; i < tc.NumPrecomp; i++ {
 				p := run.Spec.Precomputed.MustGet(precompColName(i))
-				ys[i] = smartvectors.Interpolate(p, x)
+				ys[i] = smartvectors.EvaluateLagrangeOnFext(p, x)
 			}
 		}
 
@@ -171,11 +171,11 @@ func generateProtocol(tc TestCase) (define func(*wizard.Builder), prove func(*wi
 			for i := start; i < stop; i++ {
 				v := smartvectors.Rand(tc.PolSize)
 				run.AssignColumn(dummyColName(i), v)
-				ys[i] = smartvectors.Interpolate(v, x)
+				ys[i] = smartvectors.EvaluateLagrangeOnFext(v, x)
 			}
 
 			if round < tc.NumRound-1 {
-				_ = run.GetRandomCoinField(dummyCoinName(round))
+				_ = run.GetRandomCoinFext(dummyCoinName(round))
 			}
 		}
 

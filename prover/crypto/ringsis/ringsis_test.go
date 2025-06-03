@@ -302,6 +302,12 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 		}
 	}
 
+	// Since the Ag are normally assumed to work with non-montgomery limbs
+	// (when doing normal hashing)
+	for j := range res {
+		res[j] = field.MulRInv(res[j])
+	}
+
 	key.GnarkInternal.Domain.FFTInverse(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1)) // -> reduces mod Xᵈ+1
 	return res
 }

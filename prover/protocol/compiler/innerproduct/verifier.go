@@ -43,8 +43,8 @@ func (v *verifierForSize) Run(run wizard.Runtime) error {
 	}
 
 	if len(ys) > 1 {
-		batchingCoin := run.GetRandomCoinField(v.BatchOpening.Name)
-		expected = poly.EvalUnivariate(ys, batchingCoin)
+		batchingCoin := run.GetRandomCoinFext(v.BatchOpening.Name)
+		expected = poly.Eval(ys, batchingCoin)
 	}
 
 	if len(ys) <= 1 {
@@ -78,7 +78,7 @@ func (v *verifierForSize) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	}
 
 	if len(ys) > 1 {
-		batchingCoin := run.GetRandomCoinField(v.BatchOpening.Name)
+		batchingCoin := run.GetRandomCoinFext(v.BatchOpening.Name)
 		expected = poly.EvaluateUnivariateGnark(api, ys, batchingCoin)
 	}
 

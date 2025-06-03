@@ -5,7 +5,9 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -81,8 +83,8 @@ func (r Permutation) Check(run ifaces.Runtime) error {
 	var (
 		numCol    = len(r.A[0])
 		prods     = []field.Element{field.One(), field.One()}
-		randGamma = field.Element{}
-		randAlpha = field.Element{}
+		randGamma = fext.Element{}
+		randAlpha = fext.Element{}
 	)
 
 	randGamma.SetRandom()
@@ -93,14 +95,14 @@ func (r Permutation) Check(run ifaces.Runtime) error {
 			var (
 				tab        = make([]ifaces.ColAssignment, numCol)
 				numRowFrag = aOrB[frag][0].Size()
-				gamma      = smartvectors.NewConstant(randGamma, numRowFrag)
+				gamma      = smartvectorsext.NewConstant(randGamma, numRowFrag)
 			)
 
 			for col := range aOrB[frag] {
 				tab[col] = aOrB[frag][col].GetColAssignment(run)
 			}
 
-			collapsed := smartvectors.PolyEval(append(tab, gamma), randAlpha)
+			collapsed := smartvectors.PolyEval(append(tab, gamma), randAlpha) // TODO: update smartvectors.PolyEval
 
 			for row := 0; row < collapsed.Len(); row++ {
 				tmp := collapsed.Get(row)

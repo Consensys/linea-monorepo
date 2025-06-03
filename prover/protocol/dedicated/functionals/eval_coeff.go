@@ -26,7 +26,7 @@ type coeffEvalProverAction struct {
 }
 
 func (a *coeffEvalProverAction) Run(assi *wizard.ProverRuntime) {
-	x := assi.GetRandomCoinField(a.x.Name)
+	x := assi.GetRandomCoinFext(a.x.Name)
 	p := a.pol.GetColAssignment(assi)
 
 	h := make([]field.Element, a.length)

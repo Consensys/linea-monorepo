@@ -5,7 +5,6 @@ import (
 
 	"github.com/consensys/gnark-crypto/field/koalabear/sis"
 
-	fr "github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -67,14 +66,14 @@ func GenerateKey(params Params, maxNumFieldToHash int) Key {
 // to the sum sum_i A[i]*m Mod X^{d}+1
 //
 // It is equivalent to calling r.Write(element.Marshal()); outBytes = r.Sum(nil);
-func (s *Key) Hash(v []fr.Element) []fr.Element {
+func (s *Key) Hash(v []field.Element) []field.Element {
 
 	// since hashing writes into internal buffers
 	// we need to guard against races conditions.
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	result := make([]fr.Element, s.GnarkInternal.Degree)
+	result := make([]field.Element, s.GnarkInternal.Degree)
 	err := s.GnarkInternal.Hash(v, result)
 
 	if err != nil {
@@ -90,7 +89,7 @@ func (s *Key) Hash(v []fr.Element) []fr.Element {
 func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 
 	vr := sis.NewLimbIterator(sis.NewVectorIterator(vReg), s.LogTwoBound/8)
-	m := make([]fr.Element, len(vReg)*fr.Bytes*8/s.LogTwoBound)
+	m := make([]field.Element, len(vReg)*s.NumLimbs())
 	var ok bool
 	for i := 0; i < len(m); i++ {
 		m[i][0], ok = vr.NextLimb()
@@ -99,9 +98,10 @@ func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 		}
 	}
 	// The limbs are in regular form, we reconvert them back into montgommery
-	// form, as rinv = 1 in the montgommery form. no need to multiply by
-	// RInv.
-
+	// form
+	for i := 0; i < len(m); i++ {
+		m[i] = field.MulR(m[i])
+	}
 	return m
 }
 
