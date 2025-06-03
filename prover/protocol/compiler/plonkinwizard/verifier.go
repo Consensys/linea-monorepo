@@ -11,7 +11,7 @@ import (
 // used to embody the verifier checks added by [checkActivators].
 type CheckActivatorAndMask struct {
 	*Context
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 func (c *CheckActivatorAndMask) Run(run wizard.Runtime) error {

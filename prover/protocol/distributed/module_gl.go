@@ -108,7 +108,7 @@ type ModuleGLAssignSendReceiveGlobal struct {
 // [ReceivedValuesGlobalHash] are correctly computed.
 type ModuleGLCheckSendReceiveGlobal struct {
 	*ModuleGL
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 // ModuleGLAssignGL is a [wizard.ProverAction] responsible for assigning the
