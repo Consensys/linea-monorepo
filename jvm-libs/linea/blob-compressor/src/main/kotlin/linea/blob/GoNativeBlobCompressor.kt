@@ -100,13 +100,14 @@ interface GoNativeBlobCompressor {
 interface GoNativeBlobCompressorJnaLib : GoNativeBlobCompressor, Library
 
 enum class BlobCompressorVersion(val version: String) {
-  V1_2("v1.2.0")
+  V1_2("v1.2.0"),
 }
 
 class GoNativeBlobCompressorFactory {
   companion object {
     private const val DICTIONARY_NAME = "compressor-dictionaries/v2025-04-21.bin"
-    val dictionaryPath = copyResourceToTmpDir(DICTIONARY_NAME, GoNativeBlobCompressorFactory::class.java.classLoader)
+    val dictionaryPath =
+      copyResourceToTmpDir(DICTIONARY_NAME, GoNativeBlobCompressorFactory::class.java.classLoader)
 
     private fun getLibFileName(version: String) = "blob_compressor_jna_$version"
 
@@ -115,7 +116,7 @@ class GoNativeBlobCompressorFactory {
 
     @JvmStatic
     fun getInstance(
-      version: BlobCompressorVersion
+      version: BlobCompressorVersion,
     ): GoNativeBlobCompressor {
       synchronized(loadedVersions) {
         return loadedVersions[version]
@@ -125,9 +126,16 @@ class GoNativeBlobCompressorFactory {
     }
 
     private fun loadLib(version: BlobCompressorVersion): GoNativeBlobCompressor {
+      val extractedLibFile = Native.extractFromResourcePath(
+        getLibFileName(version.version),
+        GoNativeBlobCompressorFactory::class.java.classLoader,
+      )
+
       return Native.load(
-        /* name = */ Native.extractFromResourcePath(getLibFileName(version.version)).toString(),
-        /* interfaceClass = */ GoNativeBlobCompressorJnaLib::class.java
+        /* name = */
+        extractedLibFile.toString(),
+        /* interfaceClass = */
+        GoNativeBlobCompressorJnaLib::class.java,
       )
     }
   }
