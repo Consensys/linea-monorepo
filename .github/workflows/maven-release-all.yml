@@ -5,7 +5,7 @@ on:
       version:
         required: false
         type: string
-        description: 'Release version: e.g "1.0.0". Defaults to 0.0.<YYYYmmDDHHMM> if not provided'
+        description: 'Release version: e.g "1.0.0". Defaults to 0.0.<YYYYmmDDHHMMSS> if not provided'
 
 jobs:
   release:
@@ -14,7 +14,7 @@ jobs:
       - name: Set version
         id: name
         run: |
-          TIMESTAMP=`date -u +'%Y%m%d%H%M'`
+          TIMESTAMP=`date -u +'%Y%m%d%H%M%S'`
           INPUT_VERSION=${{ github.event.inputs.version }}
           if [ -z "$INPUT_VERSION" ]; then
             VERSION="0.0.$TIMESTAMP"
@@ -38,10 +38,8 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      # Configure Gradle for optimal use in GiHub Actions, including caching of downloaded dependencies.
-      # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@8379f6a1328ee0e06e2bb424dadb7b159856a326 # 4.4.0
 
       - name: Clean
         # ./gradlew clean is necessary because the build is cached
