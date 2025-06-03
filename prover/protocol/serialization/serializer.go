@@ -68,9 +68,8 @@ type BackReference int
 // Serializer manages the serialization process, packing objects into a PackedObject.
 // It tracks references to objects (e.g., columns, coins) and collects warnings for non-fatal issues.
 type Serializer struct {
-	PackedObject *PackedObject  // The output structure containing serialized data.
-	typeMap      map[string]int // Maps type names to indices in PackedObject.Types.
-	//structSchemaMap map[string]int              // Maps struct type names to indices in PackedObject.StructSchema.
+	PackedObject *PackedObject               // The output structure containing serialized data.
+	typeMap      map[string]int              // Maps type names to indices in PackedObject.Types.
 	pointerMap   map[uintptr]int             // Maps pointer values to indices in PackedObject.Pointers.
 	coinMap      map[uuid.UUID]int           // Maps coin UUIDs to indices in PackedObject.Coins.
 	coinIdMap    map[string]int              // Maps coin IDs to indices in PackedObject.CoinIDs.
@@ -105,7 +104,6 @@ type Deserializer struct {
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
 	Types         []string             `cbor:"a"` // Type names for interfaces.
-	StructSchema  []PackedStructSchema `cbor:"b"` // Schemas for structs (type and field names).
 	PointedValues []any                `cbor:"c"` // Serialized pointers (as PackedIFace).
 	ColumnIDs     []string             `cbor:"d"` // String IDs for columns.
 	Columns       []PackedStructObject `cbor:"e"` // Serialized columns (as PackedStructObject).
@@ -133,12 +131,6 @@ type PackedCoin struct {
 	UpperBound int32  `cbor:"u,omitempty"` // Upper bound for coin (optional).
 	Name       string `cbor:"n"`           // Coin name.
 	Round      int    `cbor:"r"`           // Round number.
-}
-
-// PackedStructSchema defines a struct’s type and field names for deserialization.
-type PackedStructSchema struct {
-	Type   string   `cbor:"t"` // Type name (e.g., "pkg.Type").
-	Fields []string `cbor:"f"` // Field names in declaration order.
 }
 
 // PackedStructObject is a slice of serialized field values for a struct.
@@ -270,7 +262,6 @@ func (s *Serializer) PackValue(path string, v reflect.Value) (any, error) {
 	}
 
 	typeOfV := v.Type()
-
 	// Identify custom codexes
 	if codex, ok := CustomCodexes[typeOfV]; ok {
 		return codex.Ser(path, s, v)
@@ -949,10 +940,6 @@ func (s *Serializer) PackStructObject(path string, obj reflect.Value) (PackedStr
 	if globalErr != nil {
 		return PackedStructObject{}, fmt.Errorf("failed to pack struct object, type=%v: %w", obj.Type().String(), globalErr)
 	}
-
-	// if _, err := s.PackStructSchema(obj.Type()); err != nil {
-	// 	return PackedStructObject{}, fmt.Errorf("failed to pack struct schema: path=%v, err=%w", path, err)
-	// }
 
 	// Importantly, we want to be sure that all the component have been
 	// converted before we convert the current type. That way, we can ensure
