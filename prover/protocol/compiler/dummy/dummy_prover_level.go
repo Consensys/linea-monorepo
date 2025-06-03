@@ -13,22 +13,22 @@ import (
 )
 
 // Option is an option for the compiler
-type Option func(*optionSet)
+type Option func(*OptionSet)
 
 // WithMsg tells the [CompileAtProverLvl] to use the given message
 // in the panic messages in case it fails. This is handy to differentiate
 // which invokation of the compiler failed.
 func WithMsg(msg string) Option {
-	return func(o *optionSet) {
-		o.msg = msg
+	return func(o *OptionSet) {
+		o.Msg = msg
 	}
 }
 
-// optionSet is a set of options that can be passed to the compiler.
-type optionSet struct {
-	// msg is an identifier shown in the panic message of the [CompileAtProverLvl]
+// OptionSet is a set of options that can be passed to the compiler.
+type OptionSet struct {
+	// Msg is an identifier shown in the panic message of the [CompileAtProverLvl]
 	// to help identifying which invokation of the compiler failed.
-	msg string
+	Msg string
 }
 
 // CompileAtProverLvl instantiate the oracle as the prover. Meaning that the
@@ -41,7 +41,7 @@ type optionSet struct {
 // at prover level, the "errors" result in panics. This makes it not very
 // suitable for established unit-tests where we want to analyze the errors.
 func CompileAtProverLvl(opts ...Option) func(*wizard.CompiledIOP) {
-	os := &optionSet{}
+	os := &OptionSet{}
 	for _, opt := range opts {
 		opt(os)
 	}
@@ -50,7 +50,7 @@ func CompileAtProverLvl(opts ...Option) func(*wizard.CompiledIOP) {
 	}
 }
 
-func compileAtProverLvl(comp *wizard.CompiledIOP, os *optionSet) {
+func compileAtProverLvl(comp *wizard.CompiledIOP, os *OptionSet) {
 
 	/*
 		Registers all declared commitments and query parameters
@@ -73,7 +73,7 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *optionSet) {
 		"a la mano"
 	*/
 	comp.RegisterProverAction(numRounds-1, &DummyProverAction{
-		comp:                     comp,
+		Comp:                     comp,
 		QueriesParamsToCompile:   queriesParamsToCompile,
 		QueriesNoParamsToCompile: queriesNoParamsToCompile,
 		Os:                       os,
@@ -83,10 +83,10 @@ func compileAtProverLvl(comp *wizard.CompiledIOP, os *optionSet) {
 // DummyProverAction is the action to verify queries at the prover level.
 // It implements the [wizard.ProverAction] interface.
 type DummyProverAction struct {
-	comp                     *wizard.CompiledIOP
+	Comp                     *wizard.CompiledIOP
 	QueriesParamsToCompile   []ifaces.QueryID
 	QueriesNoParamsToCompile []ifaces.QueryID
-	Os                       *optionSet
+	Os                       *OptionSet
 }
 
 // Run executes the dummy verification by checking all queries.
@@ -103,7 +103,7 @@ func (a *DummyProverAction) Run(run *wizard.ProverRuntime) {
 		for i := start; i < stop; i++ {
 			name := a.QueriesParamsToCompile[i]
 			lock.Lock()
-			q := a.comp.QueriesParams.Data(name)
+			q := a.Comp.QueriesParams.Data(name)
 			lock.Unlock()
 			if err := q.Check(run); err != nil {
 				err = fmt.Errorf("%v\nfailed %v - %v", finalErr, name, err)
@@ -124,7 +124,7 @@ func (a *DummyProverAction) Run(run *wizard.ProverRuntime) {
 		for i := start; i < stop; i++ {
 			name := a.QueriesNoParamsToCompile[i]
 			lock.Lock()
-			q := a.comp.QueriesNoParams.Data(name)
+			q := a.Comp.QueriesNoParams.Data(name)
 			lock.Unlock()
 			if err := q.Check(run); err != nil {
 				err = fmt.Errorf("%v\nfailed %v - %v", finalErr, name, err)
@@ -138,6 +138,6 @@ func (a *DummyProverAction) Run(run *wizard.ProverRuntime) {
 	})
 
 	if finalErr != nil {
-		utils.Panic("dummy.Compile brought errors: msg=%v: err=%v", a.Os.msg, finalErr.Error())
+		utils.Panic("dummy.Compile brought errors: msg=%v: err=%v", a.Os.Msg, finalErr.Error())
 	}
 }
