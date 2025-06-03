@@ -23,6 +23,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
+	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/zkevm"
 	"github.com/sirupsen/logrus"
 
@@ -568,62 +569,97 @@ func PrettyPrint(v reflect.Value, indent int) string {
 // It logs mismatched fields with their paths and values.
 func CompareExportedFields(a, b interface{}) bool {
 	cachedPtrs := make(map[uintptr]struct{})
-	return CompareExportedFieldsWithPath(cachedPtrs, a, b, "")
+	return CompareExportedFieldsWithPath(cachedPtrs, reflect.ValueOf(a), reflect.ValueOf(b), "")
 }
 
-func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b interface{}, path string) bool {
-	v1, v2 := reflect.ValueOf(a), reflect.ValueOf(b)
+func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b reflect.Value, path string) bool {
 
 	// Ensure both values are valid
-	if !v1.IsValid() || !v2.IsValid() {
+	if !a.IsValid() || !b.IsValid() {
 		// Treat nil and zero values as equivalent
-		if !v1.IsValid() && !v2.IsValid() {
+		if !a.IsValid() && !b.IsValid() {
 			return true
 		}
-		if !v1.IsValid() {
-			v1 = reflect.Zero(v2.Type())
+		if !a.IsValid() {
+			a = reflect.Zero(b.Type())
 		}
-		if !v2.IsValid() {
-			v2 = reflect.Zero(v1.Type())
+		if !b.IsValid() {
+			b = reflect.Zero(a.Type())
 		}
 	}
 
 	// Ensure same type
-	if v1.Type() != v2.Type() {
-		logrus.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a, b, v1.Type(), v2.Type())
+	if a.Type() != b.Type() {
+		logrus.Printf("Mismatch at %s: types differ (v1: %v, v2: %v, types: %v, %v)\n", path, a.Interface(), b.Interface(), a.Type(), b.Type())
 		return false
 	}
 
-	// Ignore Func
-	if v1.Kind() == reflect.Func {
+	// Specialized handler for expressions
+	if a.Type() == reflect.TypeFor[*symbolic.Expression]() {
+
+		a := a.Interface().(*symbolic.Expression)
+		b := b.Interface().(*symbolic.Expression)
+
+		if (a == nil) != (b == nil) {
+			logrus.Printf("Mismatch at %s: one value is nil, the other is not\n", path)
+			return false
+		}
+
+		errA, errB := a.Validate(), b.Validate()
+		if errA != nil || errB != nil {
+			logrus.Printf("One of the expressions is invalid: path=%v errA=%v, errB=%v\n", path, errA, errB)
+			return false
+		}
+
+		if a.ESHash != b.ESHash {
+			logrus.Printf("Mismatch at %s: hashes differ (v1: %v, v2: %v)\n", path, a.ESHash.Text(16), b.ESHash.Text(16))
+			return false
+		}
+
 		return true
 	}
 
+	if a.Type() == reflect.TypeFor[frontend.Variable]() {
+		return true
+	}
+
+	// Ignore Func
+	if a.Kind() == reflect.Func {
+		return true
+	}
+
+	// Handle interfaces
+	if a.Kind() == reflect.Interface {
+		a = a.Elem()
+		b = b.Elem()
+		return CompareExportedFieldsWithPath(cachedPtrs, a, b, path+".(interface)")
+	}
+
 	// Handle maps
-	if v1.Kind() == reflect.Map {
-		if v1.Len() != v2.Len() {
-			logrus.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1.Len(), v2.Len(), v1.Type())
+	if a.Kind() == reflect.Map {
+		if a.Len() != b.Len() {
+			logrus.Printf("Mismatch at %s: map lengths differ (v1: %v, v2: %v, type: %v)\n", path, a.Len(), b.Len(), a.Type())
 			return false
 		}
 
 		// The module discoverer uses map[ifaces.Column] and map[column.Natural]
 		// Theses use pointers
-		switch v1.Type().Key() {
+		switch a.Type().Key() {
 		case serialization.TypeOfColumnNatural:
 			return true
 		case reflect.TypeFor[ifaces.Column]():
 			return true
 		}
 
-		for _, key := range v1.MapKeys() {
-			value1 := v1.MapIndex(key)
-			value2 := v2.MapIndex(key)
-			if !value2.IsValid() {
+		for _, key := range a.MapKeys() {
+			a := a.MapIndex(key)
+			b := b.MapIndex(key)
+			if !b.IsValid() {
 				logrus.Printf("Mismatch at %s: key %v is missing in second map\n", path, key)
 				return false
 			}
 			keyPath := fmt.Sprintf("%s[%v]", path, key)
-			if !CompareExportedFieldsWithPath(cachedPtrs, value1.Interface(), value2.Interface(), keyPath) {
+			if !CompareExportedFieldsWithPath(cachedPtrs, a, b, keyPath) {
 				return false
 			}
 		}
@@ -632,31 +668,31 @@ func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b interfa
 	}
 
 	// Handle pointers by dereferencing
-	if v1.Kind() == reflect.Ptr {
+	if a.Kind() == reflect.Ptr {
 
-		if v1.IsNil() && v2.IsNil() {
+		if a.IsNil() && b.IsNil() {
 			return true
 		}
 
-		if v1.IsNil() != v2.IsNil() {
-			logrus.Printf("Mismatch at %s: nil status differs (v1: %v, v2: %v, type: %v)\n", path, a, b, v1.Type())
+		if a.IsNil() != b.IsNil() {
+			logrus.Printf("Mismatch at %s: nil status differs (v1: %v, v2: %v, type: %v)\n", path, a, b, a.Type())
 			return false
 		}
 
-		if _, cacheHit := cachedPtrs[v1.Pointer()]; cacheHit {
+		if _, cacheHit := cachedPtrs[a.Pointer()]; cacheHit {
 			return true
 		}
 
-		cachedPtrs[v1.Pointer()] = struct{}{}
-		return CompareExportedFieldsWithPath(cachedPtrs, v1.Elem().Interface(), v2.Elem().Interface(), path)
+		cachedPtrs[a.Pointer()] = struct{}{}
+		return CompareExportedFieldsWithPath(cachedPtrs, a.Elem(), b.Elem(), path)
 	}
 
 	// Handle structs
-	if v1.Kind() == reflect.Struct {
+	if a.Kind() == reflect.Struct {
 		equal := true
-		for i := 0; i < v1.NumField(); i++ {
+		for i := 0; i < a.NumField(); i++ {
 
-			structField := v1.Type().Field(i)
+			structField := a.Type().Field(i)
 
 			// When the field is has the omitted tag, we skip it there without
 			// any warning.
@@ -671,14 +707,14 @@ func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b interfa
 				continue
 			}
 
-			f1 := v1.Field(i)
-			f2 := v2.Field(i)
+			f1 := a.Field(i)
+			f2 := b.Field(i)
 			fieldName := structField.Name
 			fieldPath := fieldName
 			if path != "" {
 				fieldPath = path + "." + fieldName
 			}
-			if !CompareExportedFieldsWithPath(cachedPtrs, f1.Interface(), f2.Interface(), fieldPath) {
+			if !CompareExportedFieldsWithPath(cachedPtrs, f1, f2, fieldPath) {
 				equal = false
 			}
 		}
@@ -686,15 +722,15 @@ func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b interfa
 	}
 
 	// Handle slices or arrays
-	if v1.Kind() == reflect.Slice || v1.Kind() == reflect.Array {
-		if v1.Len() != v2.Len() {
-			logrus.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, v1, v2, v1.Type())
+	if a.Kind() == reflect.Slice || a.Kind() == reflect.Array {
+		if a.Len() != b.Len() {
+			logrus.Printf("Mismatch at %s: slice lengths differ (v1: %v, v2: %v, type: %v)\n", path, a, b, a.Type())
 			return false
 		}
 		equal := true
-		for i := 0; i < v1.Len(); i++ {
+		for i := 0; i < a.Len(); i++ {
 			elemPath := fmt.Sprintf("%s[%d]", path, i)
-			if !CompareExportedFieldsWithPath(cachedPtrs, v1.Index(i).Interface(), v2.Index(i).Interface(), elemPath) {
+			if !CompareExportedFieldsWithPath(cachedPtrs, a.Index(i), b.Index(i), elemPath) {
 				equal = false
 			}
 		}
@@ -702,8 +738,8 @@ func CompareExportedFieldsWithPath(cachedPtrs map[uintptr]struct{}, a, b interfa
 	}
 
 	// For other types, use DeepEqual and log if mismatched
-	if !reflect.DeepEqual(a, b) {
-		logrus.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type_v1: %v type_v2: %v)\n", path, a, b, v1.Type(), v2.Type())
+	if !reflect.DeepEqual(a.Interface(), b.Interface()) {
+		logrus.Printf("Mismatch at %s: values differ (v1: %v, v2: %v, type_v1: %v type_v2: %v)\n", path, a.Interface(), b.Interface(), a.Type(), b.Type())
 		return false
 	}
 	return true
