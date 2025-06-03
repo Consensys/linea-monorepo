@@ -61,12 +61,14 @@ jobs:
       develop_tag: 'develop'
       image_name: 'consensys/maru'
       push_image: false
+    secrets: inherit
 
   maru-image-smoke-test:
     needs: [ build-for-testing ]
     uses: ./.github/workflows/smoke-tests.yml
     with:
       commit-tag: ${{ needs.build-for-testing.outputs.commit_tag }}
+    secrets: inherit
 
   build-and-publish:
     needs: [ maru-image-smoke-test ]
