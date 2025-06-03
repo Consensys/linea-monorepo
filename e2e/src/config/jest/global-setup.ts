@@ -59,7 +59,7 @@ async function configureOnceOffPrerequisities() {
 
   const l2MimcContractAddress = await l2MimcContract.getAddress();
   const l2SparseMerkleProofContract = await deployContract(
-    new SparseMerkleProof__factory({ __$74b919ba2e0614cc63c63c81358550d998$__: l2MimcContractAddress }),
+    new SparseMerkleProof__factory({ "contracts/Mimc.sol:Mimc": l2MimcContractAddress }),
     l2Account,
     [{ nonce: l2AccountNonce + 3 }],
   );

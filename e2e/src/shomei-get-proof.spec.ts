@@ -37,7 +37,7 @@ describe("Shomei Linea get proof test suite", () => {
 
       logger.debug(`currentL2BlockNumber=${currentL2BlockNumber}`);
 
-      const provingAddress = "0xfe3b557e8fb62b89f4916b721be55ceb828dbd73";
+      const provingAddress = "0xfe3b557e8fb62b89f4916b721be55ceb828dbd73"; // from genesis file
       const getProofResponse = await awaitUntil(
         async () =>
           lineaShomeiFrontenedClient.lineaGetProof(provingAddress, [], "0x" + currentL2BlockNumber!.toString(16)),
