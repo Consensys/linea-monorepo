@@ -36,7 +36,7 @@ func TestLinearCombination(t *testing.T) {
 	}
 
 	// Make a linear combination of the poly
-	lc := smartvectorsext.PolyEval(polys, randomCoin)
+	lc := smartvectors.PolyEvalExt(polys, randomCoin)
 
 	// Generate the proof
 	proof := params.InitOpeningWithLC(polys, randomCoin)
@@ -223,7 +223,7 @@ func TestProver(t *testing.T) {
 				// Commits to it
 				committedMatrices := make([]EncodedMatrix, numCommitments)
 				for i := range trees {
-					committedMatrices[i], trees[i], _ = params.CommitMerkle(polyLists[i])
+					committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
 					roots[i] = trees[i].Root
 				}
 
@@ -471,7 +471,7 @@ func TestVerifierNegative(t *testing.T) {
 			// Commits to it
 			committedMatrices := make([]EncodedMatrix, numCommitments)
 			for i := range trees {
-				committedMatrices[i], trees[i], _ = params.CommitMerkle(polyLists[i])
+				committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
 				roots[i] = trees[i].Root
 			}
 

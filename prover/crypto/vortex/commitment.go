@@ -90,9 +90,13 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 		// colHashes stores the MiMC hashes
 		// of the columns.
 		colHashes = p.noSisTransversalHash(encodedMatrix)
-		leaves := make([]types.Bytes32, len(colHashes))
+		sizeCodeWord := p.NumEncodedCols()
+		leaves := make([]types.Bytes32, sizeCodeWord)
 		for i := range leaves {
-			leaves[i] = colHashes[i].Bytes()
+			currentChunkSlice := colHashes[8*i : 8*(i+1)]
+			var currentChunkArray [8]field.Element
+			copy(currentChunkArray[:], currentChunkSlice)
+			leaves[i] = types.HashToBytes32(currentChunkArray)
 		}
 
 		tree = smt.BuildComplete(
