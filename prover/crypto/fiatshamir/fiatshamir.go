@@ -6,6 +6,7 @@ import (
 	"github.com/consensys/gnark-crypto/hash"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -128,18 +129,15 @@ func (fs *State) UpdateSV(sv smartvectors.SmartVector) {
 		return
 	}
 
-	if smartvectors.CheckSmartVectorElementType(sv) == 2 {
+	if !smartvectors_mixed.IsBase(sv) {
 		vec := make([]fext.Element, sv.Len())
 		sv.WriteInSliceExt(vec)
 		fs.UpdateExt(vec...)
 
-	} else if smartvectors.CheckSmartVectorElementType(sv) == 1 {
-		vec := make([]field.Element, sv.Len())
-		sv.WriteInSlice(vec)
-		fs.Update(vec...)
-	} else {
-		return
 	}
+	vec := make([]field.Element, sv.Len())
+	sv.WriteInSlice(vec)
+	fs.Update(vec...)
 }
 
 // RandomField generates and returns a single field element from the Fiat-Shamir

@@ -54,23 +54,6 @@ type SmartVector interface {
 	IntoRegVecSaveAllocExt() []fext.Element
 }
 
-// Function to check the type of elements stored in a SmartVector
-func CheckSmartVectorElementType(sv SmartVector) int {
-	// Attempt to get a base element. If it errors with conversionError, it's an fext.Element vector.
-	_, err := sv.GetBase(0) // Try getting the first element
-	if err != nil && err.Error() == conversionError {
-		fmt.Printf("SmartVector (%T) stores fext.Element values.\n", sv)
-		return 2
-	} else if err == nil {
-		fmt.Printf("SmartVector (%T) stores field.Element values.\n", sv)
-		return 1
-	} else {
-		// Some other error, or a SmartVector of length 0
-		fmt.Printf("SmartVector (%T) content type uncertain or error: %v\n", sv, err)
-		return 0
-	}
-}
-
 // AllocateRegular returns a newly allocated smart-vector
 func AllocateRegular(n int) SmartVector {
 	return NewRegular(make([]field.Element, n))
