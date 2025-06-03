@@ -61,8 +61,8 @@ type consistencyYsUalphaVerifierAction struct {
 
 func (a *consistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 	ys := a.ctx.Columns.Ys.GetColAssignment(run)
-	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
-	ysAlpha := smartvectors.EvalCoeff(ys, alpha)
+	alpha := run.GetRandomCoinFext(a.ctx.Coins.Alpha.Name)
+	ysAlpha := smartvectors.EvalCoeffOnFext(ys, alpha)
 	uAlphaX := a.interpolateUalphaX.GetVal(run)
 	if uAlphaX != ysAlpha {
 		return fmt.Errorf("ConsistencyBetweenYsAndUalpha did not pass, ysAlphaX=%v uAlphaX=%v", ysAlpha.String(), uAlphaX.String())
@@ -72,7 +72,7 @@ func (a *consistencyYsUalphaVerifierAction) Run(run wizard.Runtime) error {
 
 func (a *consistencyYsUalphaVerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	ys := a.ctx.Columns.Ys.GetColAssignmentGnark(run)
-	alpha := run.GetRandomCoinField(a.ctx.Coins.Alpha.Name)
+	alpha := run.GetRandomCoinFext(a.ctx.Coins.Alpha.Name)
 	uAlphaX := a.interpolateUalphaX.GetFrontendVariable(api, run)
 	ysAlpha := poly.EvaluateUnivariateGnark(api, ys, alpha)
 	api.AssertIsEqual(uAlphaX, ysAlpha)

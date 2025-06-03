@@ -1,14 +1,14 @@
 package vortex
 
 import (
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
+	field "github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/std/hash"
 	"github.com/consensys/gnark/std/hash/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/crypto/vortex"
-	"github.com/consensys/linea-monorepo/prover/maths/fft/fastpoly"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -39,7 +39,7 @@ func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
 		roots = append(roots, rootSv[0])
 	}
 
-	randomCoin := vr.GetRandomCoinField(ctx.LinCombRandCoinName())
+	randomCoin := vr.GetRandomCoinFext(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
 	proof := vortex.GProof{}
@@ -99,6 +99,8 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 		ysMap[query.Pols[i].GetColID()] = params.Ys[i]
 	}
 
+	var zero field.Element
+	zero.SetZero()
 	// Also add the shadow evaluations into ysMap. Since the shadow columns
 	// are full-zeroes. We know that the evaluation will also always be zero.
 	//
@@ -109,7 +111,7 @@ func (ctx *Ctx) gnarkGetYs(_ frontend.API, vr wizard.GnarkRuntime) (ys [][]front
 	})
 
 	for _, shadowID := range shadowIDs {
-		ysMap[shadowID] = field.Zero()
+		ysMap[shadowID] = zero
 	}
 
 	ys = [][]frontend.Variable{}
@@ -234,7 +236,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 		expectedYs = append(expectedYs, params.Ys[i])
 	}
 
-	ys := fastpoly.BatchInterpolateGnark(api, polys, params.X)
+	ys := fastpoly.EvaluateLagrangeGnark(api, polys, params.X)
 
 	for i := range polys {
 		api.AssertIsEqual(ys[i], expectedYs[i])

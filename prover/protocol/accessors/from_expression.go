@@ -103,7 +103,7 @@ func (e *FromExprAccessor) GetVal(run ifaces.Runtime) field.Element {
 			inputs[i] = smartvectors.NewConstant(x, 1)
 		case coin.Info:
 			// this is always fine because all coins are public
-			x := run.GetRandomCoinField(castedMetadata.Name)
+			x := run.GetRandomCoinFext(castedMetadata.Name)
 			inputs[i] = smartvectors.NewConstant(x, 1)
 		default:
 			utils.Panic("unsupported type %T", m)
@@ -124,7 +124,7 @@ func (e *FromExprAccessor) GetFrontendVariable(api frontend.API, circ ifaces.Gna
 		case ifaces.Accessor:
 			inputs[i] = castedMetadata.GetFrontendVariable(api, circ)
 		case coin.Info:
-			inputs[i] = circ.GetRandomCoinField(castedMetadata.Name)
+			inputs[i] = circ.GetRandomCoinFext(castedMetadata.Name)
 		default:
 			utils.Panic("unsupported type %T", m)
 		}

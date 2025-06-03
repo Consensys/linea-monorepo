@@ -298,6 +298,8 @@ func (run *VerifierRuntime) GetRandomCoinField(name coin.Name) field.Element {
 	return run.Coins.MustGet(name).(field.Element)
 }
 
+// TODO: GetRandomCoinFext
+
 // GetRandomCoinFromSeed returns a field element random based on the seed.
 func (run *VerifierRuntime) GetRandomCoinFromSeed(name coin.Name) field.Element {
 	/*

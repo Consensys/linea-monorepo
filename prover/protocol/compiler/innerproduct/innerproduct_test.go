@@ -32,7 +32,7 @@ func TestInnerProduct(t *testing.T) {
 				run.AssignColumn(name, c.b[i])
 			}
 			run.AssignInnerProduct(c.qName, c.expected...)
-			run.GetRandomCoinField(coin.Namef("Coin_%v", j))
+			run.GetRandomCoinFext(coin.Namef("Coin_%v", j))
 		}
 	}
 

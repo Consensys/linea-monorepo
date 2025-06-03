@@ -47,7 +47,7 @@ func TestWizarldutils(t *testing.T) {
 		run.AssignColumn("P1", col1)
 		run.AssignColumn("P2", col2)
 
-		run.GetRandomCoinField(coin.Namef("Coin"))
+		run.GetRandomCoinFext(coin.Namef("Coin"))
 
 		res1Wit := column.EvalExprColumn(run, res1.Board()).IntoRegVecSaveAlloc()
 		res11Wit := column.EvalExprColumn(run, res11.Board()).IntoRegVecSaveAlloc()

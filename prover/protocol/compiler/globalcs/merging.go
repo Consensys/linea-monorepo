@@ -4,8 +4,8 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+	field "github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -145,7 +145,7 @@ func getBoundCancelledExpression(cs query.GlobalConstraint) *symbolic.Expression
 		res         = cs.Expression
 		domainSize  = cs.DomainSize
 		x           = variables.NewXVar()
-		omega       = fft.GetOmega(domainSize)
+		omega       field.Element
 		// factors is a list of expression to multiply to obtain the return expression. It
 		// is initialized with "only" the initial expression and we iteratively add the
 		// terms (X-i) to it. At the end, we call [sym.Mul] a single time. This structure
@@ -154,7 +154,10 @@ func getBoundCancelledExpression(cs query.GlobalConstraint) *symbolic.Expression
 		// for every factor and this were making the function have a quadratic/cubic runtime.
 		factors = make([]any, 0, utils.Abs(cancelRange.Max)+utils.Abs(cancelRange.Min)+1)
 	)
-
+	omega, err := fft.Generator(uint64(domainSize))
+	if err != nil {
+		panic(err)
+	}
 	factors = append(factors, res)
 
 	// appendFactor appends an expressions representing $X-\rho^i$ to [factors]

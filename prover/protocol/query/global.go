@@ -5,10 +5,10 @@ import (
 	"math"
 	"reflect"
 
+	field "github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -120,7 +120,10 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 		of the constraint. Its size coincide with the size of the domain
 		of evaluation. For each value of `i`, X will evaluate to omega^i.
 	*/
-	omega := fft.GetOmega(cs.DomainSize)
+	omega, err := fft.Generator(uint64(cs.DomainSize))
+	if err != nil {
+		panic(err)
+	}
 	omegaI := field.One()
 
 	// precomputations of the powers of omega, can be optimized if useful
@@ -139,7 +142,7 @@ func (cs GlobalConstraint) Check(run ifaces.Runtime) error {
 			w := meta.GetColAssignment(run)
 			evalInputs[k] = w
 		case coin.Info:
-			evalInputs[k] = sv.NewConstant(run.GetRandomCoinField(meta.Name), cs.DomainSize)
+			evalInputs[k] = sv.NewConstant(run.GetRandomCoinFext(meta.Name), cs.DomainSize)
 		case variables.X:
 			evalInputs[k] = meta.EvalCoset(cs.DomainSize, 0, 1, false)
 		case variables.PeriodicSample:
@@ -320,7 +323,10 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 		of the constraint. Its size coincide with the size of the domain
 		of evaluation. For each value of `i`, X will evaluate to omega^i.
 	*/
-	omega := fft.GetOmega(cs.DomainSize)
+	omega, err := fft.Generator(uint64(cs.DomainSize))
+	if err != nil {
+		panic(err)
+	}
 	omegaI := field.One()
 
 	// precomputations of the powers of omega, can be optimized if useful
@@ -339,13 +345,13 @@ func (cs GlobalConstraint) CheckGnark(api frontend.API, run ifaces.GnarkRuntime)
 			w := meta.GetColAssignmentGnark(run)
 			evalInputs[k] = w
 		case coin.Info:
-			evalInputs[k] = gnarkutil.RepeatedVariable(run.GetRandomCoinField(meta.Name), cs.DomainSize)
+			evalInputs[k] = gnarkutil.ConstantedVariable(run.GetRandomCoinFext(meta.Name), cs.DomainSize)
 		case variables.X:
 			evalInputs[k] = meta.GnarkEvalNoCoset(cs.DomainSize)
 		case variables.PeriodicSample:
 			evalInputs[k] = meta.GnarkEvalNoCoset(cs.DomainSize)
 		case ifaces.Accessor:
-			evalInputs[k] = gnarkutil.RepeatedVariable(meta.GetFrontendVariable(api, run), cs.DomainSize)
+			evalInputs[k] = gnarkutil.ConstantedVariable(meta.GetFrontendVariable(api, run), cs.DomainSize)
 		default:
 			utils.Panic("Not a variable type %v in query %v", reflect.TypeOf(metadataInterface), cs.ID)
 		}

@@ -421,6 +421,8 @@ func (c *VerifierCircuit) GetRandomCoinField(name coin.Name) frontend.Variable {
 	return c.Coins.MustGet(name).(frontend.Variable)
 }
 
+// TODO: GetRandomCoinFext
+
 // GetRandomCoinIntegerVec returns a pre-sampled integer vec random coin as an
 // array of [frontend.Variable]. The implementation implicitly checks that the
 // requested coin does indeed have the type [coin.IntegerVec] and panics if not.

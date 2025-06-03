@@ -4,9 +4,9 @@ import (
 	"math/big"
 	"testing"
 
+	field "github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/dummy"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/variables"
@@ -119,7 +119,8 @@ func TestPeriodicSampleVanillaEval(t *testing.T) {
 
 				// Test the vanilla evaluation
 				one := field.One()
-				zero := field.Zero()
+				var zero field.Element
+				zero.SetZero()
 				for i := 0; i < vanillaEval.Len(); i++ {
 					y := vanillaEval.Get(i)
 					if i%period == offset {
@@ -189,7 +190,7 @@ func TestPeriodicSampleEvalAtConsistentWithEval(t *testing.T) {
 				vanillaEval := sampling.EvalCoset(domain, 0, 1, false)
 
 				x := field.NewElement(420691966156)
-				yExpected := smartvectors.Interpolate(vanillaEval, x)
+				yExpected := smartvectors.EvaluateLagrangeOnFext(vanillaEval, x)
 				yActual := sampling.EvalAtOutOfDomain(domain, x)
 
 				require.Equal(t, yExpected.String(), yActual.String())
@@ -217,7 +218,10 @@ func TestPeriodicSampleEvalAtOnDomain(t *testing.T) {
 					// Eval at should not work
 					if pos == offset {
 						require.Panics(t, func() {
-							x := fft.GetOmega(domain)
+							x, err := fft.Generator(uint64(domain))
+							if err != nil {
+								panic(err)
+							}
 							x.Exp(x, big.NewInt(int64(pos)))
 
 							// This should equates 0/1
@@ -227,7 +231,8 @@ func TestPeriodicSampleEvalAtOnDomain(t *testing.T) {
 
 					// But EvalAt on domain should
 					v := sampling.EvalAtOnDomain(pos)
-					expectedV := field.Zero()
+					var expectedV field.Element
+					expectedV.SetZero()
 					if offset == pos {
 						expectedV.SetOne()
 					}

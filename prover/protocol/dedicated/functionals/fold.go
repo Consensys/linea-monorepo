@@ -29,7 +29,7 @@ func (a *foldProverAction) Run(assi *wizard.ProverRuntime) {
 	foldedVal := make([]field.Element, a.foldedSize)
 	for i := range foldedVal {
 		subH := h.SubVector(i*a.innerDegree, (i+1)*a.innerDegree)
-		foldedVal[i] = smartvectors.EvalCoeff(subH, x)
+		foldedVal[i] = smartvectors.EvalCoeffOnFext(subH, x)
 	}
 
 	assi.AssignColumn(a.foldedName, smartvectors.NewRegular(foldedVal))

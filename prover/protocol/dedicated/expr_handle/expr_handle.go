@@ -5,8 +5,9 @@ import (
 	"reflect"
 
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
-	"github.com/consensys/linea-monorepo/prover/maths/field"
+
+	field "github.com/consensys/gnark-crypto/field/koalabear"
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -40,7 +41,10 @@ func (a *exprHandleProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	evalInputs := make([]sv.SmartVector, len(metadatas))
-	omega := fft.GetOmega(a.domainSize)
+	omega, err := fft.Generator(uint64(a.domainSize))
+	if err != nil {
+		panic(err)
+	}
 	omegaI := field.One()
 	omegas := make([]field.Element, a.domainSize)
 	for i := 0; i < a.domainSize; i++ {
@@ -54,7 +58,7 @@ func (a *exprHandleProverAction) Run(run *wizard.ProverRuntime) {
 			w := meta.GetColAssignment(run)
 			evalInputs[k] = w
 		case coin.Info:
-			x := run.GetRandomCoinField(meta.Name)
+			x := run.GetRandomCoinFext(meta.Name)
 			evalInputs[k] = sv.NewConstant(x, a.domainSize)
 		case variables.X:
 			evalInputs[k] = meta.EvalCoset(a.domainSize, 0, 1, false)
