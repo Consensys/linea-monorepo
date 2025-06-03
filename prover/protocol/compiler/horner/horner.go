@@ -51,13 +51,13 @@ type AssignHornerIP struct {
 	HornerCtx
 }
 
-// checkHornerResult is [wizard.VerifierAction] responsible for checking that
+// CheckHornerResult is [wizard.VerifierAction] responsible for checking that
 // the values of n1 are correct (by checking the consistency with the IP queries)
 // and checking that the final result is correctly computed by inspecting the
 // local openings.
-type checkHornerResult struct {
+type CheckHornerResult struct {
 	HornerCtx
-	skipped bool
+	skipped bool `serde:"omit"`
 }
 
 // CompileHoner compiles the [query.Horner] queries one by one by "transforming"
@@ -172,7 +172,7 @@ func compileHornerQuery(comp *wizard.CompiledIOP, q *query.Horner) {
 
 	comp.RegisterProverAction(iPRound, AssignHornerIP{ctx})
 	comp.RegisterProverAction(q.Round, AssignHornerCtx{ctx})
-	comp.RegisterVerifierAction(q.Round, &checkHornerResult{HornerCtx: ctx})
+	comp.RegisterVerifierAction(q.Round, &CheckHornerResult{HornerCtx: ctx})
 }
 
 func (a AssignHornerCtx) Run(run *wizard.ProverRuntime) {
@@ -267,7 +267,7 @@ func (a AssignHornerIP) Run(run *wizard.ProverRuntime) {
 
 }
 
-func (c *checkHornerResult) Run(run wizard.Runtime) error {
+func (c *CheckHornerResult) Run(run wizard.Runtime) error {
 
 	var (
 		hornerQuery  = c.Q
@@ -332,7 +332,7 @@ func (c *checkHornerResult) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		hornerQuery  = c.Q
@@ -378,11 +378,11 @@ func (c *checkHornerResult) RunGnark(api frontend.API, run wizard.GnarkRuntime) 
 	api.AssertIsEqual(res, hornerParams.FinalResult)
 }
 
-func (c *checkHornerResult) Skip() {
+func (c *CheckHornerResult) Skip() {
 	c.skipped = true
 }
 
-func (c *checkHornerResult) IsSkipped() bool {
+func (c *CheckHornerResult) IsSkipped() bool {
 	return c.skipped
 }
 
