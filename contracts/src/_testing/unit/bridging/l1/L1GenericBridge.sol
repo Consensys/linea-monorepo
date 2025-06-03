@@ -2,10 +2,11 @@
 pragma solidity 0.8.30;
 
 import { MessageServiceBase } from "../../../../messaging/MessageServiceBase.sol";
+import { L2GenericBridge } from "../l2/L2GenericBridge.sol"; // Ideally a simple interface.
 
 // Contract could be made upgradable with access control etc by implementors.
 contract L1GenericBridge is MessageServiceBase {
-  uint256 private constant withdrawalDelay;
+  uint256 public withdrawalDelay;
   address public escrowAddress;
 
   enum BridingStatus {

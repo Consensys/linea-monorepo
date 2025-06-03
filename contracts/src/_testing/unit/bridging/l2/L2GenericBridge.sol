@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import { MessageServiceBase } from "../../../../messaging/MessageServiceBase.sol";
+import { L1GenericBridge } from "../l1/L1GenericBridge.sol"; // Ideally a simple interface.
 
 contract L2GenericBridge is MessageServiceBase {
   // initialize etc
