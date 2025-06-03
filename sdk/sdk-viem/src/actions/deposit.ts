@@ -46,6 +46,65 @@ export type DepositParameters<
 
 export type DepositReturnType = SendTransactionReturnType;
 
+/**
+ * Deposits tokens from L1 to L2 or ETH if `token` is set to `zeroAddress`.
+ *
+ * @param client - Client to use
+ * @param parameters - {@link DepositParameters}
+ * @returns hash - The [Transaction](https://viem.sh/docs/glossary/terms#transaction) hash. {@link DepositReturnType}
+ *
+ * @example
+ * import { createPublicClient, http, zeroAddress } from 'viem'
+ * import { privateKeyToAccount } from 'viem/accounts'
+ * import { mainnet, linea } from 'viem/chains'
+ * import { deposit } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createPublicClient({
+ *   chain: mainnet,
+ *   transport: http(),
+ * });
+ *
+ * const l2Client = createPublicClient({
+ *   chain: linea,
+ *   transport: http(),
+ * });
+ *
+ * const hash = await deposit(client, {
+ *     l2Client,
+ *     account: privateKeyToAccount('0x…'),
+ *     amount: 1_000_000_000_000n,
+ *     token: zeroAddress, // Use zeroAddress for ETH
+ *     to: '0xRecipientAddress',
+ *     data: '0x', // Optional data
+ *     fee: 100_000_000n, // Optional fee
+ * });
+ *
+ * @example Account Hoisting
+ * import { createPublicClient, createWalletClient, http, zeroAddress } from 'viem'
+ * import { privateKeyToAccount } from 'viem/accounts'
+ * import { mainnet, linea } from 'viem/chains'
+ * import { deposit } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createWalletClient({
+ *   account: privateKeyToAccount('0x…'),
+ *   chain: mainnet,
+ *   transport: http(),
+ * });
+ *
+ * const l2Client = createPublicClient({
+ *  chain: linea,
+ *  transport: http(),
+ * });
+ *
+ * const hash = await deposit(client, {
+ *     l2Client
+ *     amount: 1_000_000_000_000n,
+ *     token: zeroAddress, // Use zeroAddress for ETH
+ *     to: '0xRecipientAddress',
+ *     data: '0x', // Optional data
+ *     fee: 100_000_000n, // Optional fee
+ * });
+ */
 export async function deposit<
   chain extends Chain | undefined,
   account extends Account | undefined,

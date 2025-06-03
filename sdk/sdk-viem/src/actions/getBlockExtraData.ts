@@ -15,6 +15,27 @@ export type GetBlockExtraDataParameters<blockTag extends BlockTag = "latest"> = 
   "includeTransactions"
 >;
 
+/**
+ * Returns fomatted linea block extra data.
+ *
+ * @returns Formatted linea block extra data.
+ * @param client - Client to use
+ * @param args - {@link GetBlockExtraDataParameters}
+ *
+ * @example
+ * import { createPublicClient, http } from 'viem'
+ * import { linea } from 'viem/chains'
+ * import { getBlockExtraData } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createPublicClient({
+ *   chain: linea,
+ *   transport: http(),
+ * });
+ *
+ * const blockExtraData = await getBlockExtraData(client, {
+ *   blockTag: 'latest',
+ * });
+ */
 export async function getBlockExtraData<
   chain extends Chain | undefined,
   account extends Account | undefined,

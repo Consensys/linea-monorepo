@@ -37,6 +37,51 @@ export type WithdrawParameters<
 
 export type WithdrawReturnType = SendTransactionReturnType;
 
+/**
+ * Withdraws tokens from L2 to L1 or ETH if `token` is set to `zeroAddress`.
+ *
+ * @param client - Client to use
+ * @param parameters - {@link WithdrawParameters}
+ * @returns hash - The [Transaction](https://viem.sh/docs/glossary/terms#transaction) hash. {@link WithdrawReturnType}
+ *
+ * @example
+ * import { createPublicClient, http, zeroAddress } from 'viem'
+ * import { privateKeyToAccount } from 'viem/accounts'
+ * import { linea } from 'viem/chains'
+ * import { withdraw } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createPublicClient({
+ *   chain: linea,
+ *   transport: http(),
+ * });
+ *
+ * const hash = await withdraw(client, {
+ *     account: privateKeyToAccount('0x…'),
+ *     amount: 1_000_000_000_000n,
+ *     token: zeroAddress, // Use zeroAddress for ETH
+ *     to: '0xRecipientAddress',
+ *     data: '0x', // Optional data
+ * });
+ *
+ * @example Account Hoisting
+ * import { createPublicClient, createWalletClient, http, zeroAddress } from 'viem'
+ * import { privateKeyToAccount } from 'viem/accounts'
+ * import { linea } from 'viem/chains'
+ * import { withdraw } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createWalletClient({
+ *   account: privateKeyToAccount('0x…'),
+ *   chain: linea,
+ *   transport: http(),
+ * });
+ *
+ * const hash = await withdraw(client, {
+ *     amount: 1_000_000_000_000n,
+ *     token: zeroAddress, // Use zeroAddress for ETH
+ *     to: '0xRecipientAddress',
+ *     data: '0x', // Optional data
+ * });
+ */
 export async function withdraw<
   chain extends Chain | undefined,
   account extends Account | undefined,
@@ -49,6 +94,7 @@ export async function withdraw<
   const { account: account_ = client.account, token, amount, to, data, ...tx } = parameters;
 
   const account = account_ ? parseAccount(account_) : client.account;
+
   if (!account) {
     throw new BaseError("Account is required to send a transaction");
   }

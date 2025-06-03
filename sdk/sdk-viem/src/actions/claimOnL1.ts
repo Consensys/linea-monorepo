@@ -18,8 +18,7 @@ import {
 import { GetAccountParameter } from "../types/account";
 import { parseAccount } from "viem/utils";
 import { sendTransaction } from "viem/actions";
-import { getContractsAddressesByChainId, MessageProof } from "@consensys/linea-sdk-core";
-import { Message } from "@consensys/linea-sdk-core/src/types/message";
+import { getContractsAddressesByChainId, MessageProof, Message } from "@consensys/linea-sdk-core";
 
 export type ClaimOnL1Parameters<
   chain extends Chain | undefined = Chain | undefined,

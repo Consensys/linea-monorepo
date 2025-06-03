@@ -21,6 +21,33 @@ export type GetMessageProofParameters<chain extends Chain | undefined, account e
   messageHash: Hex;
 };
 
+/**
+ * Returns the proof of a message sent from L2 to L1.
+ *
+ * @returns The proof of a message sent from L2 to L1.
+ * @param client - Client to use
+ * @param args - {@link GetMessageProofParameters}
+ *
+ * @example
+ * import { createPublicClient, http } from 'viem'
+ * import { mainnet, linea } from 'viem/chains'
+ * import { getMessageProof } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createPublicClient({
+ *   chain: mainnet,
+ *   transport: http(),
+ * });
+ *
+ * const l2Client = createPublicClient({
+ *  chain: linea,
+ *  transport: http(),
+ * });
+ *
+ * const messageProof = await getMessageProof(client, {
+ *   l2Client,
+ *   messageHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+ * });
+ */
 export async function getMessageProof<
   chain extends Chain | undefined,
   account extends Account | undefined,

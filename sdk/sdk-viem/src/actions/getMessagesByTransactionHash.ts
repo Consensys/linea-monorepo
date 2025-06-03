@@ -8,6 +8,27 @@ export type GetMessagesByTransactionHashParameters = {
 
 export type GetMessagesByTransactionHashReturnType = ExtendedMessage[];
 
+/**
+ * Returns the details of messages sent in a transaction by its hash.
+ *
+ * @returns The details of messages sent in the transaction.
+ * @param client - Client to use
+ * @param args - {@link GetMessagesByTransactionHashParameters}
+ *
+ * @example
+ * import { createPublicClient, http } from 'viem'
+ * import { linea } from 'viem/chains'
+ * import { getMessagesByTransactionHash } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createPublicClient({
+ *   chain: linea,
+ *   transport: http(),
+ * });
+ *
+ * const messages = await getMessagesByTransactionHash(client, {
+ *   transactionHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+ * });
+ */
 export async function getMessagesByTransactionHash<
   chain extends Chain | undefined,
   account extends Account | undefined,

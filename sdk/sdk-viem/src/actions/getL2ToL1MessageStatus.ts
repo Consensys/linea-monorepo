@@ -10,6 +10,33 @@ export type GetL2ToL1MessageStatusParameters<chain extends Chain | undefined, ac
 
 export type GetL2ToL1MessageStatusReturnType = OnChainMessageStatus;
 
+/**
+ * Returns the status of an L2 to L1 message on Linea.
+ *
+ * @returns The status of the L2 to L1 message.
+ * @param client - Client to use
+ * @param args - {@link GetL2ToL1MessageStatusParameters}
+ *
+ * @example
+ * import { createPublicClient, http } from 'viem'
+ * import { mainnet, linea } from 'viem/chains'
+ * import { getL2ToL1MessageStatus } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createPublicClient({
+ *   chain: mainnet,
+ *   transport: http(),
+ * });
+ *
+ * const l2Client = createPublicClient({
+ *  chain: linea,
+ *  transport: http(),
+ * });
+ *
+ * const messageStatus = await getL2ToL1MessageStatus(client, {
+ *   l2Client,
+ *   messageHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+ * });
+ */
 export async function getL2ToL1MessageStatus<
   chain extends Chain | undefined,
   account extends Account | undefined,

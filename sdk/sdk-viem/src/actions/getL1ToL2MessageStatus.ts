@@ -8,6 +8,27 @@ export type GetL1ToL2MessageStatusParameters = {
   messageHash: Hex;
 };
 
+/**
+ * Returns the status of an L1 to L2 message on Linea.
+ *
+ * @returns The status of the L1 to L2 message.
+ * @param client - Client to use
+ * @param args - {@link GetL1ToL2MessageStatusParameters}
+ *
+ * @example
+ * import { createPublicClient, http } from 'viem'
+ * import { linea } from 'viem/chains'
+ * import { getL1ToL2MessageStatus } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createPublicClient({
+ *   chain: linea,
+ *   transport: http(),
+ * });
+ *
+ * const messageStatus = await getL1ToL2MessageStatus(client, {
+ *   messageHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+ * });
+ */
 export async function getL1ToL2MessageStatus<chain extends Chain | undefined, account extends Account | undefined>(
   client: Client<Transport, chain, account>,
   parameters: GetL1ToL2MessageStatusParameters,

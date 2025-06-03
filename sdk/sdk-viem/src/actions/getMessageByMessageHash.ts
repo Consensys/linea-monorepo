@@ -18,6 +18,27 @@ export type GetMessageByMessageHashReturnType = {
   blockNumber: bigint;
 };
 
+/**
+ * Returns the details of a message by its hash.
+ *
+ * @returns The details of a message.
+ * @param client - Client to use
+ * @param args - {@link GetMessageByMessageHashParameters}
+ *
+ * @example
+ * import { createPublicClient, http } from 'viem'
+ * import { linea } from 'viem/chains'
+ * import { getMessageByMessageHash } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createPublicClient({
+ *   chain: linea,
+ *   transport: http(),
+ * });
+ *
+ * const message = await getMessageByMessageHash(client, {
+ *   messageHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+ * });
+ */
 export async function getMessageByMessageHash<chain extends Chain | undefined, account extends Account | undefined>(
   client: Client<Transport, chain, account>,
   parameters: GetMessageByMessageHashParameters,

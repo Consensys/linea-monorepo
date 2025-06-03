@@ -9,6 +9,27 @@ export type GetTransactionReceiptByMessageHashParameters = {
 export type GetTransactionReceiptByMessageHashReturnType<chain extends Chain | undefined> =
   GetTransactionReceiptReturnType<chain>;
 
+/**
+ * Returns the transaction receipt for a message sent by its message hash.
+ *
+ * @returns The transaction receipt of the message.
+ * @param client - Client to use
+ * @param args - {@link GetTransactionReceiptByMessageHashParameters}
+ *
+ * @example
+ * import { createPublicClient, http } from 'viem'
+ * import { linea } from 'viem/chains'
+ * import { getTransactionReceiptByMessageHash } from '@consensys/linea-sdk-viem'
+ *
+ * const client = createPublicClient({
+ *   chain: linea,
+ *   transport: http(),
+ * });
+ *
+ * const transactionReceipt = await getTransactionReceiptByMessageHash(client, {
+ *   transactionHash: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
+ * });
+ */
 export async function getTransactionReceiptByMessageHash<
   chain extends Chain | undefined,
   account extends Account | undefined,
