@@ -90,6 +90,10 @@ public class ReplayExecutionEnvironment {
   private final TransactionProcessingResultValidator transactionProcessingResultValidator =
       TransactionProcessingResultValidator.EMPTY_VALIDATOR;
 
+  @Builder.Default private final String filename = null;
+
+  @Builder.Default private final boolean runWithBesuNode = false;
+
   private final ZkTracer zkTracer;
 
   public void checkTracer(String inputFilePath, long startBlock, long endBlock) {
@@ -116,6 +120,10 @@ public class ReplayExecutionEnvironment {
       conflation = gson.fromJson(replayFile, ConflationSnapshot.class);
     } catch (Exception e) {
       log.error(e.getMessage());
+      return;
+    }
+    if (runWithBesuNode || System.getenv().containsKey("RUN_WITH_BESU_NODE")) {
+      executeOnBesu(chain, conflation, this.useCoinbaseAddressFromBlockHeader, this.filename);
       return;
     }
     this.executeFrom(chain, conflation);
@@ -181,6 +189,52 @@ public class ReplayExecutionEnvironment {
     if (debugBlockCapturer) {
       writeCaptureToFile(chain, conflation, capturer);
     }
+  }
+
+  private static void executeOnBesu(
+      final ChainConfig chain,
+      final ConflationSnapshot conflation,
+      final Boolean useCoinbaseAddressFromBlockHeader,
+      final String filename) {
+    Map<String, ToyAccount> accounts = new HashMap<>();
+    for (AccountSnapshot account : conflation.accounts()) {
+      Address addr = Address.fromHexString(account.address());
+      ToyAccount toyAccount =
+          ToyAccount.builder()
+              .address(addr)
+              .nonce(account.nonce())
+              .balance(Wei.fromHexString(account.balance()))
+              .code(Bytes.fromHexString(account.code()))
+              .build();
+
+      accounts.put(addr.toHexString(), toyAccount);
+    }
+
+    for (StorageSnapshot storage : conflation.storage()) {
+      Address addr = Address.fromHexString(storage.address());
+      UInt256 key = UInt256.fromHexString(storage.key());
+      UInt256 value = UInt256.fromHexString(storage.value());
+      if (!value.isZero()) {
+        accounts.get(addr.toHexString()).setStorageValue(key, value);
+      }
+    }
+
+    BlockHeader firstHeader = conflation.blocks().getFirst().header().toBlockHeader();
+    Address coinbase =
+        useCoinbaseAddressFromBlockHeader
+            ? firstHeader.getCoinbase()
+            : CliqueHelpers.getProposerOfBlock(firstHeader);
+
+    List<Transaction> transactions = new ArrayList<>();
+    for (BlockSnapshot blockSnapshot : conflation.blocks()) {
+      for (TransactionSnapshot txs : blockSnapshot.txs()) {
+        final Transaction tx = txs.toTransaction();
+        transactions.add(tx);
+      }
+    }
+    new BesuExecutionTools(
+            filename, chain, coinbase, accounts.values().stream().toList(), transactions)
+        .executeTest();
   }
 
   private static void executeFrom(

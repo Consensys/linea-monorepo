@@ -81,22 +81,15 @@ public class BesuExecutionTools {
   private final String testName;
 
   public BesuExecutionTools(
-      Optional<TestInfo> testInfo,
+      String testName,
       ChainConfig chainConfig,
       Address coinbase,
       List<ToyAccount> accounts,
       List<Transaction> transactions) {
     String randomUUID = UUID.randomUUID().toString();
     String tmpTestName =
-        testInfo
-            .map(
-                info ->
-                    String.format(
-                        "%s-%s-%s-%s",
-                        info.getTestClass().get().getSimpleName(),
-                        info.getTestMethod().get().getName(),
-                        info.getDisplayName(),
-                        randomUUID))
+        Optional.ofNullable(testName)
+            .map(name -> String.format("%s-%s", name, randomUUID))
             .orElse(randomUUID)
             .replaceAll("[,.:<>|*?\\r\\n\\[\\]() ]", "_");
     this.testName = tmpTestName.substring(0, Math.min(tmpTestName.length(), 200));
@@ -134,6 +127,27 @@ public class BesuExecutionTools {
             .build();
     this.corsetValidator = new CorsetValidator(chainConfig);
     this.transactions = transactions;
+  }
+
+  private static String getTestName(Optional<TestInfo> testInfo) {
+    return testInfo
+        .map(
+            info ->
+                String.format(
+                    "%s-%s-%s",
+                    info.getTestClass().get().getSimpleName(),
+                    info.getTestMethod().get().getName(),
+                    info.getDisplayName()))
+        .orElse(null);
+  }
+
+  public BesuExecutionTools(
+      Optional<TestInfo> testInfo,
+      ChainConfig chainConfig,
+      Address coinbase,
+      List<ToyAccount> accounts,
+      List<Transaction> transactions) {
+    this(getTestName(testInfo), chainConfig, coinbase, accounts, transactions);
   }
 
   public void executeTest() {
