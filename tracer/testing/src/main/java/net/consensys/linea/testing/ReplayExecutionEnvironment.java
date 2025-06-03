@@ -244,9 +244,10 @@ public class ReplayExecutionEnvironment {
       final boolean txResultChecking,
       final boolean useCoinbaseAddressFromBlockHeader,
       final TransactionProcessingResultValidator resultValidator) {
-    BlockHashLookup blockHashLookup = conflation.toBlockHashLookup();
+    final BlockHashLookup blockHashLookup = conflation.toBlockHashLookup();
     // Initialise world state from conflation
-    MutableWorldState world = initWorld(conflation);
+    final MutableWorldState world = initWorld(conflation);
+    world.persist(null);
     // Construct the transaction processor
     final MainnetTransactionProcessor transactionProcessor =
         ExecutionEnvironment.getProtocolSpec(chain.id, chain.fork).getTransactionProcessor();
