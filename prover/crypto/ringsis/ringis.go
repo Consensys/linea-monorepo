@@ -1,6 +1,7 @@
 package ringsis
 
 import (
+	"math/big"
 	"sync"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/sis"
@@ -90,7 +91,7 @@ func (s *Key) Hash(v []fr.Element) []fr.Element {
 func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 
 	vr := sis.NewLimbIterator(sis.NewVectorIterator(vReg), s.LogTwoBound/8)
-	m := make([]fr.Element, len(vReg)*fr.Bytes*8/s.LogTwoBound)
+	m := make([]fr.Element, len(vReg)*s.NumLimbs())
 	var ok bool
 	for i := 0; i < len(m); i++ {
 		m[i][0], ok = vr.NextLimb()
@@ -102,6 +103,17 @@ func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
 	// form, as rinv = 1 in the montgommery form. no need to multiply by
 	// RInv.
 
+	var montConstant field.Element
+	var bMontConstant big.Int
+	bMontConstant.SetUint64(1)
+	bMontConstant.Lsh(&bMontConstant, field.Bytes*8)
+	montConstant.SetBigInt(&bMontConstant)
+
+	for i := 0; i < len(m); i++ {
+		m[i].Mul(&m[i], &montConstant)
+		//fmt.Printf("limbs%d=%v\n",i, m[i].String())
+
+	}
 	return m
 }
 

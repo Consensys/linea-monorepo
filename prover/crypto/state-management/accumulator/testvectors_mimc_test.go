@@ -45,25 +45,25 @@ func TestEmptyAccumulatorMiMC(t *testing.T) {
 		leafOpening := acc.Data.MustGet(1).LeafOpening
 		require.Equal(
 			t,
-			"LeafOpening{Prev: 0, Next: 1, HKey: 0x12ab655e9a2ca55660b44d1e5c37b00159aa76fed00000010a11800000000000, HVal: 0x0000000000000000000000000000000000000000000000000000000000000000}",
+			"LeafOpening{Prev: 0, Next: 1, HKey: 0x0000000000000000000000000000000000000000000000000000000000000004, HVal: 0x0000000000000000000000000000000000000000000000000000000000000000}",
 			leafOpening.String(),
 		)
 
 		// also check its hash value
-		require.Equal(t, "0x10ba2286f648a549b50ea5f1b6e1155d22c31eb4727c241e76c420200cd5dbe0", leafOpening.Hash(acc.Config()).Hex())
+		require.Equal(t, "0x01a75770e6c729c25ac937ce764981172a6f607a88a426ca899f7e7cc0a388c3", leafOpening.Hash(acc.Config()).Hex())
 	}
 
 	// root of the subtree (e.g. exluding the next free node)
 	require.Equal(
 		t,
-		"0x0951bfcd4ac808d195af8247140b906a4379b3f2d37ec66e34d2f4a5d35fa166",
+		"0x0019bac937884e30b9e32bd240265b58fa099243c6637e2178ce48f5e1fd7ca9",
 		acc.SubTreeRoot().Hex(),
 	)
 
 	// root of the complete accumulator (e.g including the last node)
 	require.Equal(
 		t,
-		"0x07977874126658098c066972282d4c85f230520af3847e297fe7524f976873e5",
+		"0x12a634819ef8758b61e1f904422d526e7b7008fd3d3204740487598d451d9cfd",
 		acc.TopRoot().Hex(),
 	)
 }
