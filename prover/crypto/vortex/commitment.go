@@ -48,7 +48,7 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 
 	timeTree := profiling.TimeIt(func() {
 		// Hash the SIS digests to obtain the leaves of the Merkle tree.
-		leaves := p.hashSisHash(colHashes)
+		leaves := p.computeLeavesWithSis(colHashes)
 
 		tree = smt.BuildComplete(
 			leaves,
@@ -141,10 +141,10 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 	return encodedMatrix
 }
 
-// hashSisHash is used to hash the individual SIS hashes stored in colHashes.
+// computeLeavesWithSis is used to hash the individual SIS hashes stored in colHashes.
 // The function is reserved for the case where no NoSisHasher is provided to
 // parameters of Vortex.
-func (p *Params) hashSisHash(colHashes []field.Element) (leaves []types.Bytes32) {
+func (p *Params) computeLeavesWithSis(colHashes []field.Element) (leaves []types.Bytes32) {
 
 	// Case with SIS, the columns hashes all fit on several field.element
 	// in that case, we need to hash them further. before merkleizing them.
