@@ -276,7 +276,7 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 			ctx.Columns.CollapsedPreimagesNonSis = expr_handle.RandLinCombCol(
 				ctx.comp,
 				accessors.NewFromCoin(ctx.Coins.Collapse),
-				ctx.MIMCMetaData.ConcatenatedHashPreimages,
+				ctx.Columns.WholePreimagesNonSis,
 			)
 
 			preImageNonSisEval = functionals.CoeffEval(

@@ -116,11 +116,15 @@ type SelfRecursionCtx struct {
 
 		// (Proof, already computed)
 		//
-		// Preimages of the selected columns in whole form. Is set to be
+		// Preimages of the selected columns in whole form for the SIS rounds. Is set to be
 		// ignored by the self-recursion compiler. Implictly it is repla-
 		// ced by the `PreimagesSis`, which contains the preimages but in
 		// limb expanded form.
 		WholePreimagesSis []ifaces.Column
+
+		// (Proof, already computed)
+		WholePreimagesNonSis []ifaces.Column
+
 
 		// (Commitments, to compute)
 		//
@@ -253,6 +257,7 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 	ctx.Columns.Ualpha = vortexCtx.Items.Ualpha
 	ctx.Coins.Q = vortexCtx.Items.Q
 	ctx.Columns.WholePreimagesSis = vortexCtx.Items.OpenedSISColumns
+	ctx.Columns.WholePreimagesNonSis = vortexCtx.Items.OpenedNonSISColumns
 	ctx.Columns.MerkleProofs = vortexCtx.Items.MerkleProofs
 
 	// Asserts all the roots have the status proof.
@@ -298,6 +303,22 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 			)
 		}
 		comp.Columns.SetStatus(opened.GetColID(), column.Ignored)
+	}
+
+	// For the non-SIS preimages, we mark them as Committed
+	for _, opened := range ctx.Columns.WholePreimagesNonSis {
+		// Assume that the rounds commitments have a `Proof` status
+		if comp.Columns.Status(opened.GetColID()) != column.Proof {
+			utils.Panic(
+				"Assumed the non-SIS preimages %v to be %v but status is %v (recursion context is %v)",
+				opened.GetColID(),
+				column.Proof.String(),
+				comp.Columns.Status(opened.GetColID()),
+				ctx.SelfRecursionCnt,
+			)
+		}
+		// Mark them as Committed
+		comp.Columns.SetStatus(opened.GetColID(), column.Committed)
 	}
 
 	// And mark the merkle proof column as a Proof message
