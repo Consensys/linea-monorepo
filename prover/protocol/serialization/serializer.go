@@ -68,44 +68,41 @@ type BackReference int
 // Serializer manages the serialization process, packing objects into a PackedObject.
 // It tracks references to objects (e.g., columns, coins) and collects warnings for non-fatal issues.
 type Serializer struct {
-	PackedObject    *PackedObject               // The output structure containing serialized data.
-	typeMap         map[string]int              // Maps type names to indices in PackedObject.Types.
-	structSchemaMap map[string]int              // Maps struct type names to indices in PackedObject.StructSchema.
-	pointerMap      map[uintptr]int             // Maps pointer values to indices in PackedObject.Pointers.
-	coinMap         map[uuid.UUID]int           // Maps coin UUIDs to indices in PackedObject.Coins.
-	coinIdMap       map[string]int              // Maps coin IDs to indices in PackedObject.CoinIDs.
-	columnMap       map[uuid.UUID]int           // Maps column UUIDs to indices in PackedObject.Columns.
-	columnIdMap     map[string]int              // Maps column IDs to indices in PackedObject.ColumnIDs.
-	queryMap        map[uuid.UUID]int           // Maps query UUIDs to indices in PackedObject.Queries.
-	queryIDMap      map[string]int              // Maps query IDs to indices in PackedObject.QueryIDs.
-	compiledIOPs    map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
-	Stores          map[*column.Store]int       // Maps Store pointers to indices in PackedObject.Store.
-	circuitMap      map[*cs.SparseR1CS]int      // Maps circuit pointers to indices in PackedObject.Circuits.
-	ExprMap         map[field.Element]int       // Maps expression pointers to indices in PackedObject.Expressions
-	Warnings        []string                    // Collects warnings (e.g., unexported fields) for debugging.
+	PackedObject *PackedObject               // The output structure containing serialized data.
+	typeMap      map[string]int              // Maps type names to indices in PackedObject.Types.
+	pointerMap   map[uintptr]int             // Maps pointer values to indices in PackedObject.Pointers.
+	coinMap      map[uuid.UUID]int           // Maps coin UUIDs to indices in PackedObject.Coins.
+	coinIdMap    map[string]int              // Maps coin IDs to indices in PackedObject.CoinIDs.
+	columnMap    map[uuid.UUID]int           // Maps column UUIDs to indices in PackedObject.Columns.
+	columnIdMap  map[string]int              // Maps column IDs to indices in PackedObject.ColumnIDs.
+	queryMap     map[uuid.UUID]int           // Maps query UUIDs to indices in PackedObject.Queries.
+	queryIDMap   map[string]int              // Maps query IDs to indices in PackedObject.QueryIDs.
+	compiledIOPs map[*wizard.CompiledIOP]int // Maps CompiledIOP pointers to indices in PackedObject.CompiledIOP.
+	Stores       map[*column.Store]int       // Maps Store pointers to indices in PackedObject.Store.
+	circuitMap   map[*cs.SparseR1CS]int      // Maps circuit pointers to indices in PackedObject.Circuits.
+	ExprMap      map[field.Element]int       // Maps expression pointers to indices in PackedObject.Expressions
+	Warnings     []string                    // Collects warnings (e.g., unexported fields) for debugging.
 }
 
 // Deserializer manages the deserialization process, reconstructing objects from a PackedObject.
 // It caches reconstructed objects to resolve back-references and collects warnings.
 type Deserializer struct {
-	PackedObject    *PackedObject          // The input structure to deserialize.
-	StructSchemaMap map[string]int         // Maps struct type names to indices in PackedObject.StructSchema.
-	PointedValues   []reflect.Value        // Maps pointer values to indices in PackedObject.Pointers.
-	Columns         []*column.Natural      // Cache of deserialized columns, indexed by BackReference.
-	Coins           []*coin.Info           // Cache of deserialized coins.
-	Queries         []*ifaces.Query        // Cache of deserialized queries.
-	CompiledIOPs    []*wizard.CompiledIOP  // Cache of deserialized CompiledIOPs.
-	Stores          []*column.Store        // Cache of deserialized stores.
-	Circuits        []*cs.SparseR1CS       // Cache of deserialized circuits.
-	Expressions     []*symbolic.Expression // Cache of deserialized expressions
-	Warnings        []string               // Collects warnings for debugging.
+	PackedObject  *PackedObject          // The input structure to deserialize.
+	PointedValues []reflect.Value        // Maps pointer values to indices in PackedObject.Pointers.
+	Columns       []*column.Natural      // Cache of deserialized columns, indexed by BackReference.
+	Coins         []*coin.Info           // Cache of deserialized coins.
+	Queries       []*ifaces.Query        // Cache of deserialized queries.
+	CompiledIOPs  []*wizard.CompiledIOP  // Cache of deserialized CompiledIOPs.
+	Stores        []*column.Store        // Cache of deserialized stores.
+	Circuits      []*cs.SparseR1CS       // Cache of deserialized circuits.
+	Expressions   []*symbolic.Expression // Cache of deserialized expressions
+	Warnings      []string               // Collects warnings for debugging.
 }
 
 // PackedObject is the serialized representation of data, designed for CBOR encoding.
 // It stores type metadata, objects, and a payload for the root serialized value.
 type PackedObject struct {
 	Types         []string             `cbor:"a"` // Type names for interfaces.
-	StructSchema  []PackedStructSchema `cbor:"b"` // Schemas for structs (type and field names).
 	PointedValues []any                `cbor:"c"` // Serialized pointers (as PackedIFace).
 	ColumnIDs     []string             `cbor:"d"` // String IDs for columns.
 	Columns       []PackedStructObject `cbor:"e"` // Serialized columns (as PackedStructObject).
@@ -146,20 +143,19 @@ type PackedStructObject []any
 
 func NewSerializer() *Serializer {
 	return &Serializer{
-		PackedObject:    &PackedObject{},
-		typeMap:         map[string]int{},
-		structSchemaMap: map[string]int{},
-		pointerMap:      map[uintptr]int{},
-		coinMap:         map[uuid.UUID]int{},
-		coinIdMap:       map[string]int{},
-		columnMap:       map[uuid.UUID]int{},
-		columnIdMap:     map[string]int{},
-		queryMap:        map[uuid.UUID]int{},
-		queryIDMap:      map[string]int{},
-		compiledIOPs:    map[*wizard.CompiledIOP]int{},
-		Stores:          map[*column.Store]int{},
-		circuitMap:      map[*cs.SparseR1CS]int{},
-		ExprMap:         map[field.Element]int{},
+		PackedObject: &PackedObject{},
+		typeMap:      map[string]int{},
+		pointerMap:   map[uintptr]int{},
+		coinMap:      map[uuid.UUID]int{},
+		coinIdMap:    map[string]int{},
+		columnMap:    map[uuid.UUID]int{},
+		columnIdMap:  map[string]int{},
+		queryMap:     map[uuid.UUID]int{},
+		queryIDMap:   map[string]int{},
+		compiledIOPs: map[*wizard.CompiledIOP]int{},
+		Stores:       map[*column.Store]int{},
+		circuitMap:   map[*cs.SparseR1CS]int{},
+		ExprMap:      map[field.Element]int{},
 	}
 }
 
@@ -202,16 +198,15 @@ func Serialize(v any) ([]byte, error) {
 
 func NewDeserializer(packedObject *PackedObject) *Deserializer {
 	return &Deserializer{
-		StructSchemaMap: make(map[string]int, len(packedObject.StructSchema)),
-		PointedValues:   make([]reflect.Value, len(packedObject.PointedValues)),
-		Columns:         make([]*column.Natural, len(packedObject.Columns)),
-		Coins:           make([]*coin.Info, len(packedObject.Coins)),
-		Queries:         make([]*ifaces.Query, len(packedObject.Queries)),
-		CompiledIOPs:    make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
-		Stores:          make([]*column.Store, len(packedObject.Store)),
-		Circuits:        make([]*cs.SparseR1CS, len(packedObject.Circuits)),
-		Expressions:     make([]*symbolic.Expression, len(packedObject.Expressions)),
-		PackedObject:    packedObject,
+		PointedValues: make([]reflect.Value, len(packedObject.PointedValues)),
+		Columns:       make([]*column.Natural, len(packedObject.Columns)),
+		Coins:         make([]*coin.Info, len(packedObject.Coins)),
+		Queries:       make([]*ifaces.Query, len(packedObject.Queries)),
+		CompiledIOPs:  make([]*wizard.CompiledIOP, len(packedObject.CompiledIOP)),
+		Stores:        make([]*column.Store, len(packedObject.Store)),
+		Circuits:      make([]*cs.SparseR1CS, len(packedObject.Circuits)),
+		Expressions:   make([]*symbolic.Expression, len(packedObject.Expressions)),
+		PackedObject:  packedObject,
 	}
 }
 
@@ -243,11 +238,6 @@ func Deserialize(bytes []byte, v any) error {
 	// Decode the Payload into a root value.
 	if err := decodeWithCBOR(packedObject.Payload, &payloadRoot); err != nil {
 		return fmt.Errorf("could not deserialize the payload, payload=%v, err=%w", string(packedObject.Payload), err)
-	}
-
-	// Register struct schemas in StructSchemaMap.
-	for i, t := range packedObject.StructSchema {
-		deser.StructSchemaMap[t.Type] = i
 	}
 
 	// Unpack the root value into the target type.
