@@ -174,8 +174,8 @@ type SelfRecursionCtx struct {
 
 		// (Auto-computed)
 		//
-		// The linear combination of the preimages by rCollapse
-		PreimagesCollapse ifaces.Column
+		// The linear combination of the sis preimages by rCollapse
+		PreimagesSisCollapse ifaces.Column
 
 		// (Auto-computed)
 		//
@@ -204,7 +204,7 @@ type SelfRecursionCtx struct {
 		//
 		// The folding of preimageCollapse by rFold
 		PreimageCollapseFold ifaces.Column
-		
+
 		// CollapsedPreimagesNonSis gives  collaped non SIS preimages.
 		// They are concatenated round-by-round and zero-padded
 		// to the next power of two.
