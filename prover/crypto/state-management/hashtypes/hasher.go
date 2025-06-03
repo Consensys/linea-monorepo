@@ -4,6 +4,7 @@ import (
 	"hash"
 
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/mimc"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	. "github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -38,18 +39,10 @@ func Keccak() Hasher {
 
 // Create a new MiMC hasher
 func MiMC() Hasher {
-	//maxVal := field.NewFromString("-1")
+	var maxVal [8]field.Element
+	maxVal[7] = field.NewFromString("4")
 	return Hasher{
-		Hash: mimc.NewMiMC(),
-		maxValue: Bytes32{
-			255, 255, 255, 255,
-			255, 255, 255, 255,
-			255, 255, 255, 255,
-			255, 255, 255, 255,
-			255, 255, 255, 255,
-			255, 255, 255, 255,
-			255, 255, 255, 255,
-			255, 255, 255, 255,
-		}, // TODO: what's the maxValue of MiMC hasher
+		Hash:     mimc.NewMiMC(),
+		maxValue: HashToBytes32(maxVal), // TODO: what's the maxValue of MiMC hasher
 	}
 }
