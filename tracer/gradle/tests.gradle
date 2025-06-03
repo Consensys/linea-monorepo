@@ -229,6 +229,41 @@ tasks.register("fastReplayTests", Test) {
   finalizedBy(jacocoFastReplayTestsReport)
 }
 
+tasks.register("besuNodeFastReplayTests", Test) {
+  forkEvery = 1
+  maxParallelForks = 3
+
+  dependsOn("copyTracerPlugin", "downloadShoemiBesuPlugin")
+
+  delete("${project.getLayout().getBuildDirectory().get()}/besu/traces")
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/traces")
+  mkdir("${project.getLayout().getBuildDirectory().get()}/besu/plugins")
+  System.setProperty("besu.plugins.dir",
+          System.getenv().getOrDefault("besu.plugins.dir",
+                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/plugins/"
+          )
+  )
+  System.setProperty("besu.traces.dir",
+          System.getenv().getOrDefault("besu.traces.dir",
+                  "${project.getLayout().getBuildDirectory().get().toString()}/besu/traces/"
+          )
+  )
+
+
+  systemProperty("besu.traces.dir", System.getProperty("besu.traces.dir"))
+  systemProperty("besu.plugins.dir", System.getProperty("besu.plugins.dir"))
+  environment("RUN_WITH_BESU_NODE", true)
+
+  systemProperty("junit.jupiter.execution.parallel.enabled", false)
+  useJUnitPlatform {
+    includeTags("replay")
+    excludeTags("nightly")
+    excludeTags("weekly")
+  }
+  finalizedBy(jacocoTestReport)
+}
+
+
 tasks.register("jacocoFastReplayTestsReport", JacocoReport) {
   reports {
     xml.required = true

@@ -82,6 +82,7 @@ public class ReplayTestTools {
       throw new RuntimeException(e);
     }
     ReplayExecutionEnvironment.builder()
+        .filename(filename)
         .zkTracer(new ZkTracer(chain))
         .txResultChecking(resultChecking)
         .build()
