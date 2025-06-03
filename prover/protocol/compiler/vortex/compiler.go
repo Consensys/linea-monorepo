@@ -686,7 +686,6 @@ func (ctx *Ctx) NumEncodedCols() int {
 // We check if there are non zero numbers of precomputed columns to commit to.
 func (ctx *Ctx) IsNonEmptyPrecomputed() bool {
 	if len(ctx.Items.Precomputeds.PrecomputedColums) > 0 {
-		logrus.Infof("We are committing to #%v precomputed columns", len(ctx.Items.Precomputeds.PrecomputedColums))
 		return true
 	} else {
 		return false
@@ -815,7 +814,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 			Warnf("Found unconstrained columns. Skipping them and mark them as ignored")
 		return
 	}
-
+	logrus.Infof("We are committing to #%v precomputed columns", len(ctx.Items.Precomputeds.PrecomputedColums))
 	log.Info("processed the precomputed columns")
 }
 

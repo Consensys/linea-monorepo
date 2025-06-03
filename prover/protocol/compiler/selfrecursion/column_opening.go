@@ -30,7 +30,11 @@ func (ctx *SelfRecursionCtx) ColumnOpeningPhase() {
 	ctx.LinearHashAndMerkle()
 	ctx.RootHashGlue()
 	ctx.GluePositions()
-	ctx.RegistersSisPreimageLimbs()
+	// We need this only when there are non zero number
+	// of SIS rounds
+	if ctx.Columns.ConcatenatedDhQ != nil {
+		ctx.RegistersSisPreimageLimbs()
+	}
 	ctx.CollapsingPhase()
 	// The fold phase is only needed if there are non-zero
 	// number of SIS rounds
@@ -245,11 +249,15 @@ func (ctx *SelfRecursionCtx) CollapsingPhase() {
 
 	// Declare the linear combination of the preimages by collapse coin
 	// aka, the collapsed preimage
-	ctx.Columns.PreimagesSisCollapse = expr_handle.RandLinCombCol(
-		ctx.comp,
-		accessors.NewFromCoin(ctx.Coins.Collapse),
-		ctx.Columns.PreimagesSis,
-	)
+	// We need this only if there are
+	// non-zero number of SIS rounds
+	if ctx.Columns.ConcatenatedDhQ != nil {
+		ctx.Columns.PreimagesSisCollapse = expr_handle.RandLinCombCol(
+			ctx.comp,
+			accessors.NewFromCoin(ctx.Coins.Collapse),
+			ctx.Columns.PreimagesSis,
+		)
+	}
 
 	// Consistency check between the collapsed preimage and UalphaQ
 	{
