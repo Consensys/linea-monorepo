@@ -87,22 +87,31 @@ func init() {
 	}
 }
 
-func marshalRingSisKey(path string, _ *Serializer, val reflect.Value) (any, error) {
+func marshalRingSisKey(path string, ser *Serializer, val reflect.Value) (any, error) {
 	key := val.Interface().(*ringsis.Key)
 	keyGenParams := key.KeyGen
-	serParams, err := SerializeAnyWithCborPkg(keyGenParams)
+	res, err := ser.PackStructObject(path, reflect.ValueOf(*keyGenParams))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not marshal ring-sis key: %w", err)
 	}
-	return serParams, err
+	return res, nil
 }
 
 func unmarshalRingSisKey(path string, des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
-	var keyGenParams ringsis.KeyGen
-	if err := DeserializeAnyWithCborPkg(val.([]byte), &keyGenParams); err != nil {
-		return reflect.Value{}, err
+
+	if v_, ok := val.(PackedStructObject); ok {
+		val = []any(v_)
 	}
 
+	res, err := des.UnpackStructObject(path, val.([]any), TypeofRingSisKeyGenParam)
+	if err != nil {
+		return reflect.Value{}, fmt.Errorf("could not unpack struct object for ring-sis key: %w", err)
+	}
+
+	keyGenParams, ok := res.Interface().(ringsis.KeyGen)
+	if !ok {
+		return reflect.Value{}, fmt.Errorf("could not cast to ringsis.KeyGen: %w", err)
+	}
 	innerParams := keyGenParams.Params
 	ringSiskey := ringsis.GenerateKey(*innerParams, keyGenParams.MaxNumFieldToHash)
 	return reflect.ValueOf(ringSiskey), nil
@@ -214,7 +223,6 @@ func marshalArithmetization(path string, ser *Serializer, val reflect.Value) (an
 }
 
 func unmarshalArithmetization(path string, des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
-
 	if v_, ok := val.(PackedStructObject); ok {
 		val = []any(v_)
 	}
@@ -225,15 +233,12 @@ func unmarshalArithmetization(path string, des *Deserializer, val any, _ reflect
 	}
 
 	arith := res.Interface().(arithmetization.Arithmetization)
-
 	schema, meta, err := arithmetization.UnmarshalZkEVMBin(arith.ZkEVMBin, arith.Settings.OptimisationLevel)
 	if err != nil {
 		return reflect.Value{}, fmt.Errorf("could not unmarshal arithmetization: %w", err)
 	}
-
 	arith.Schema = schema
 	arith.Metadata = meta
-
 	return reflect.ValueOf(arith), nil
 }
 

@@ -58,6 +58,7 @@ var (
 	TypeOfHashFuncGenerator  = reflect.TypeOf(func() hash.Hash { return nil })
 	TypeOfHashTypeHasher     = reflect.TypeOf(func() hashtypes.Hasher { return hashtypes.Hasher{} })
 	TypeOfRingSisKeyPtr      = reflect.TypeOf(&ringsis.Key{})
+	TypeofRingSisKeyGenParam = reflect.TypeOf(ringsis.KeyGen{})
 )
 
 // BackReference represents an integer index into PackedObject arrays (e.g., Columns, Coins).
