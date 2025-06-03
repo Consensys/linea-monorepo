@@ -3,8 +3,8 @@ package vortex
 import (
 	"hash"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
-	"github.com/consensys/linea-monorepo/prover/maths/fft"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
@@ -82,8 +82,8 @@ func NewParams(
 
 	res := &Params{
 		Domains: [2]*fft.Domain{
-			fft.NewDomain(nbColumns),
-			fft.NewDomain(blowUpFactor * nbColumns),
+			fft.NewDomain(uint64(nbColumns)),
+			fft.NewDomain(uint64(blowUpFactor * nbColumns)),
 		},
 		NbColumns:      nbColumns,
 		MaxNbRows:      maxNbRows,

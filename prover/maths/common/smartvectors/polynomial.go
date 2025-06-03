@@ -88,6 +88,23 @@ func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.E
 	return quo, rem
 }
 
+// EvaluateLagrange a polynomial in Lagrange basis at an field point
+func EvaluateLagrange(v SmartVector, x field.Element, oncoset ...bool) field.Element {
+	switch v.(type) {
+	case *Constant:
+		var res field.Element
+		// fext.FromBase(&res, &con.val)
+		return res
+	}
+
+	// Maybe there is an optim for windowed here
+	poly := make([]field.Element, v.Len())
+	v.WriteInSlice(poly)
+	// res := fastpoly.EvaluateLagrangeOnFext(poly, x, oncoset...)
+	res := fastpoly.EvaluateLagrange(poly, x, oncoset...)
+	return res
+}
+
 // EvaluateLagrangeOnFext a polynomial in Lagrange basis at an E4 point
 func EvaluateLagrangeOnFext(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
 	switch con := v.(type) {
