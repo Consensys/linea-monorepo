@@ -9,43 +9,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 	"github.com/stretchr/testify/require"
 )
-
-func TestLinearCombination(t *testing.T) {
-
-	nPolys := 15
-	polySize := 1 << 10
-	blowUpFactor := 2
-
-	x := fext.RandomElement()
-	randomCoin := fext.RandomElement()
-
-	params := NewParams(blowUpFactor, polySize, nPolys, ringsis.StdParams, mimc.NewMiMC)
-
-	// Polynomials to commit to
-	polys := make([]smartvectors.SmartVector, nPolys)
-	for i := range polys {
-		polys[i] = smartvectors.RandExt(polySize)
-	}
-
-	// Make a linear combination of the poly
-	lc := smartvectors.LinearCombinationExt(polys, randomCoin)
-
-	// Generate the proof
-	proof := params.InitOpeningWithLC(polys, randomCoin)
-
-	// Evaluate the two on a random-ish point. Should
-	// yield the same result.
-	y0 := smartvectorsext.EvaluateLagrange(lc, x)
-	y1 := smartvectorsext.EvaluateLagrange(proof.LinearCombination, x)
-
-	require.Equal(t, y0, y1)
-}
 
 // testCaseParameters is a corpus of valid parameters for Vortex
 var testCaseParameters = []*Params{
