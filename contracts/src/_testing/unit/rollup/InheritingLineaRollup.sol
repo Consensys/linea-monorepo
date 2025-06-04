@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.30;
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { LineaRollup } from "../../../rollup/LineaRollup.sol";
+import { LineaRollupBase } from "../../../rollup/LineaRollupBase.sol";
 import { L1MessageService } from "../../../messaging/l1/L1MessageService.sol";
 import { IMessageService } from "../../../messaging/interfaces/IMessageService.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
-contract InheritingRollup is LineaRollup  {
+contract InheritingRollup is LineaRollupBase {
   error DirectETHSendingDisallowed();
   error FeeSendingDisallowed();
   error OnlyAllowedSendersToRemoteReceiver();
@@ -32,7 +32,7 @@ contract InheritingRollup is LineaRollup  {
     _disableInitializers();
   }
 
-  function initialize(InitializationData calldata _initializationData) external virtual override initializer {
+  function initialize(InitializationData calldata _initializationData) external initializer {
     __LineaRollup_init(_initializationData);
   }
 

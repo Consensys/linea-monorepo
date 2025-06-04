@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.30;
+pragma solidity ^0.8.30;
 
 import { IPauseManager } from "../../security/pausing/interfaces/IPauseManager.sol";
 import { IPermissionsManager } from "../../security/access/interfaces/IPermissionsManager.sol";
@@ -9,7 +9,7 @@ import { IPermissionsManager } from "../../security/access/interfaces/IPermissio
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-interface ILineaRollup {
+interface ILineaRollupBase {
   /**
    * @notice Initialization data structure for the LineaRollup contract.
    * @param initialStateRootHash The initial state root hash at initialization used for proof verification.
