@@ -6,7 +6,7 @@ require (
 	github.com/bits-and-blooms/bitset v1.20.0
 	github.com/consensys/bavard v0.1.31-0.20250406004941-2db259e4b582
 	github.com/consensys/compress v0.2.5
-	github.com/consensys/gnark v0.12.1-0.20250528235348-f3dde1a651a2
+	github.com/consensys/gnark v0.12.1-0.20250603205411-435aefbe0dea
 	github.com/consensys/gnark-crypto v0.17.1-0.20250528013212-404f8e5110fa
 	github.com/consensys/go-corset v1.0.7
 	github.com/crate-crypto/go-kzg-4844 v1.1.0
