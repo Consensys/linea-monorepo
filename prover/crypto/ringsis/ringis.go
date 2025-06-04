@@ -1,14 +1,8 @@
 package ringsis
 
 import (
-	"bytes"
-	"encoding/binary"
-	"io"
-	"math"
 	"runtime"
-	"sync"
 
-	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/fft"
 	"github.com/consensys/gnark-crypto/ecc/bls12-377/fr/sis"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -29,9 +23,6 @@ const (
 // Key encapsulates the public parameters of an instance of the ring-SIS hash
 // instance.
 type Key struct {
-	// lock guards the access to the SIS key and prevents the user from hashing
-	// concurrently with the same SIS key.
-	lock *sync.Mutex
 	// gnarkInternal stores the SIS key itself and some precomputed domain
 	// twiddles.
 	gnarkInternal *sis.RSis
@@ -62,7 +53,6 @@ func GenerateKey(params Params, maxNumFieldToHash int) Key {
 	}
 
 	res := Key{
-		lock:          &sync.Mutex{},
 		gnarkInternal: rsis,
 		Params:        params,
 	}
@@ -103,57 +93,24 @@ func (s *Key) Ag() [][]field.Element {
 //
 // It is equivalent to calling r.Write(element.Marshal()); outBytes = r.Sum(nil);
 func (s *Key) Hash(v []field.Element) []field.Element {
-
-	// since hashing writes into internal buffers
-	// we need to guard against races conditions.
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	// write the input as byte
-	s.gnarkInternal.Reset()
-	for i := range v {
-		_, err := s.gnarkInternal.Write(v[i].Marshal())
-		if err != nil {
-			panic(err)
-		}
-	}
-	sum := s.gnarkInternal.Sum(make([]byte, 0, field.Bytes*s.OutputSize()))
-
-	// unmarshal the result
-	var rlen [4]byte
-	if len(sum) > math.MaxUint32*fr.Bytes {
-		panic("slice too long")
-	}
-	binary.BigEndian.PutUint32(rlen[:], uint32(len(sum)/fr.Bytes)) // #nosec G115 -- Overflow checked
-	reader := io.MultiReader(bytes.NewReader(rlen[:]), bytes.NewReader(sum))
-	var result fr.Vector
-	_, err := result.ReadFrom(reader)
-	if err != nil {
-		panic(err)
-	}
-
+	result := make([]field.Element, s.gnarkInternal.Degree)
+	s.gnarkInternal.Hash(v, result)
 	return result
 }
 
 // LimbSplit breaks down the entries of `v` into short limbs representing
 // `LogTwoBound` bits each. The function then flatten and flatten them in a
-// vector, casted as field elements in Montgommery form.
+// vector, casted as field elements in Montgomery form.
 func (s *Key) LimbSplit(vReg []field.Element) []field.Element {
-
-	writer := bytes.Buffer{}
-	for i := range vReg {
-		b := vReg[i].Bytes() // big endian serialization
-		writer.Write(b[:])
-	}
-
-	buf := writer.Bytes()
+	vRegIterator := sis.NewVectorIterator(vReg)
+	limbIterator := sis.NewLimbIterator(vRegIterator, s.LogTwoBound/8)
 	m := make([]field.Element, len(vReg)*s.NumLimbs())
-	sis.LimbDecomposeBytes(buf, m, s.LogTwoBound)
-
-	// The limbs are in regular form, we reconvert them back into montgommery
-	// form
 	for i := range m {
-		m[i] = field.MulR(m[i])
+		b, ok := limbIterator.NextLimb()
+		if !ok {
+			utils.Panic("LimbIterator returned less limbs than expected, expected %d, got %d", len(m), i)
+		}
+		m[i].SetUint64(b)
 	}
 
 	return m
@@ -326,41 +283,20 @@ func (s *Key) TransversalHash(v []smartvectors.SmartVector) []field.Element {
 	res := make([]field.Element, numCols*s.OutputSize())
 
 	// Will contain keys per threads
-	keys := make([]*Key, runtime.GOMAXPROCS(0))
 	buffers := make([][]field.Element, runtime.GOMAXPROCS(0))
 
 	parallel.ExecuteThreadAware(
 		numCols,
 		func(threadID int) {
-			keys[threadID] = s.CopyWithFreshBuffer()
 			buffers[threadID] = make([]field.Element, numRows)
 		},
 		func(col, threadID int) {
 			buffer := buffers[threadID]
-			key := keys[threadID]
 			for row := 0; row < numRows; row++ {
 				buffer[row] = v[row].Get(col)
 			}
-			copy(res[col*key.OutputSize():(col+1)*key.OutputSize()], key.Hash(buffer))
+			copy(res[col*s.OutputSize():(col+1)*s.OutputSize()], s.Hash(buffer))
 		})
 
 	return res
-}
-
-// CopyWithFreshBuffer creates a copy of the key with fresh buffers. Shallow
-// copies the the key itself.
-func (s *Key) CopyWithFreshBuffer() *Key {
-
-	// Since hashing consumes and mutates the buffer stored internally in
-	// `gnarkInternal` go race had figured there might be a race condition
-	// possibility.
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	clonedRsis := s.gnarkInternal.CopyWithFreshBuffer()
-	return &Key{
-		lock:          &sync.Mutex{},
-		gnarkInternal: &clonedRsis,
-		Params:        s.Params,
-	}
 }
