@@ -51,8 +51,7 @@ public class ModexpCallDataSizeOobCall extends OobCall {
   @Override
   public void setInputData(MessageFrame frame, Hub hub) {
     final OpCode opCode = getOpCode(frame);
-    final int cdsIndex = opCode.callHasValueArgument() ? 4 : 3;
-    cds = EWord.of(frame.getStackItem(cdsIndex));
+    cds = EWord.of(frame.getStackItem(opCode.callCdsStackIndex()));
   }
 
   @Override

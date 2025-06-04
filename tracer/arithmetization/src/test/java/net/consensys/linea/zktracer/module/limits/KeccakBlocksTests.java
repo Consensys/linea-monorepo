@@ -87,7 +87,7 @@ public class KeccakBlocksTests extends TracerTestBase {
     toyWorld.run(testInfo);
 
     final Keccak keccak = toyWorld.getHub().keccak();
-    final L2Block l2Block = toyWorld.getHub().l2Block();
+    final L1BlockSizeOld l1BlockSize = toyWorld.getHub().l1BlockSize();
 
     // check lineCount of Keccak
     final int txRlpSize = tx.encoded().size();
@@ -104,6 +104,6 @@ public class KeccakBlocksTests extends TracerTestBase {
             + Address.SIZE
             // nbBlock * (TIMESTAMP_BYTESIZE + Hash.SIZE + NB_TX_IN_BLOCK_BYTESIZE)
             + 38,
-        l2Block.lineCount());
+        l1BlockSize.lineCount());
   }
 }

@@ -25,9 +25,12 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import lombok.Builder;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import org.hyperledger.besu.datatypes.*;
@@ -73,13 +76,15 @@ public class ToyExecutionEnvironmentV2 {
 
   private final ZkTracer tracer = new ZkTracer(UNIT_TEST_CHAIN);
 
+  @Setter @Getter public ZkCounter zkCounter;
+
   public void run(TestInfo testInfo) {
     if (runWithBesuNode || System.getenv().containsKey("RUN_WITH_BESU_NODE")) {
       new BesuExecutionTools(
               Optional.of(testInfo), UNIT_TEST_CHAIN, coinbase, accounts, transactions)
           .executeTest();
     } else {
-      ProtocolSpec protocolSpec =
+      final ProtocolSpec protocolSpec =
           ExecutionEnvironment.getProtocolSpec(UNIT_TEST_CHAIN.id, UNIT_TEST_CHAIN.fork);
       final GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
           this.buildGeneralStateTestCaseSpec(protocolSpec);
@@ -90,6 +95,21 @@ public class ToyExecutionEnvironmentV2 {
           transactionProcessingResultValidator,
           zkTracerValidator);
     }
+  }
+
+  public void runForCounting() {
+    zkCounter = new ZkCounter(UNIT_TEST_CHAIN.bridgeConfiguration);
+
+    final ProtocolSpec protocolSpec =
+        ExecutionEnvironment.getProtocolSpec(UNIT_TEST_CHAIN.id, UNIT_TEST_CHAIN.fork);
+    final GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
+        this.buildGeneralStateTestCaseSpec(protocolSpec);
+    ToyExecutionTools.executeTest(
+        generalStateTestCaseEipSpec,
+        protocolSpec,
+        zkCounter,
+        transactionProcessingResultValidator,
+        zkTracerValidator);
   }
 
   public long runForGasCost() {

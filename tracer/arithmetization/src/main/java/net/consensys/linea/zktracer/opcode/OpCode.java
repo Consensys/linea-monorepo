@@ -260,14 +260,21 @@ public enum OpCode {
     return isCall() || isCreate();
   }
 
-  public boolean callHasNoValueArgument() {
-    checkArgument(isCall());
-    return this == OpCode.DELEGATECALL || this == OpCode.STATICCALL;
+  public boolean callHasValueArgument() {
+    checkArgument(isCall(), "Expected any CALL opcode, got %s", this);
+    return this == CALL || this == CALLCODE;
   }
 
-  public boolean callHasValueArgument() {
-    checkArgument(isCall());
-    return this == OpCode.CALL || this == OpCode.CALLCODE;
+  public short callCdoStackIndex() {
+    return (short) (callHasValueArgument() ? 3 : 2);
+  }
+
+  public short callCdsStackIndex() {
+    return (short) (callHasValueArgument() ? 4 : 3);
+  }
+
+  public short callReturnAtCapacityStackIndex() {
+    return (short) (callHasValueArgument() ? 6 : 5);
   }
 
   /**

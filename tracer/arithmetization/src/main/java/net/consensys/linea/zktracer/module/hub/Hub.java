@@ -74,7 +74,7 @@ import net.consensys.linea.zktracer.module.hub.state.TransactionStack;
 import net.consensys.linea.zktracer.module.hub.transients.Transients;
 import net.consensys.linea.zktracer.module.limits.BlockTransactions;
 import net.consensys.linea.zktracer.module.limits.Keccak;
-import net.consensys.linea.zktracer.module.limits.L2Block;
+import net.consensys.linea.zktracer.module.limits.L1BlockSizeOld;
 import net.consensys.linea.zktracer.module.limits.L2L1Logs;
 import net.consensys.linea.zktracer.module.limits.precompiles.BlakeEffectiveCall;
 import net.consensys.linea.zktracer.module.limits.precompiles.BlakeRounds;
@@ -281,7 +281,7 @@ public abstract class Hub implements Module {
         ripemdBlocks,
         blakeEffectiveCall,
         blakeRounds,
-        l2Block,
+        l1BlockSize,
         l2L1Logs);
   }
 
@@ -307,7 +307,7 @@ public abstract class Hub implements Module {
           ecPairingMillerLoops,
           ecPairingFinalExponentiations);
 
-  @Getter private final L2Block l2Block;
+  @Getter private final L1BlockSizeOld l1BlockSize;
   @Getter private final L2L1Logs l2L1Logs;
 
   /** list of module than can be modified during execution */
@@ -377,8 +377,8 @@ public abstract class Hub implements Module {
     }
     l2L1Logs = new L2L1Logs();
     keccak = new Keccak(ecRecoverEffectiveCall, blockTransactions);
-    l2Block =
-        new L2Block(
+    l1BlockSize =
+        new L1BlockSizeOld(
             blockTransactions, keccak, l2L1Logs, l2l1ContractAddress, LogTopic.of(l2l1Topic));
     shakiraData = new ShakiraData(wcp, sha256Blocks, keccak, ripemdBlocks);
     rlpAddr = new RlpAddr(this, trm, keccak);

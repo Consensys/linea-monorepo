@@ -65,11 +65,9 @@ public class ModexpPricingOobCall extends OobCall {
   @Override
   public void setInputData(MessageFrame frame, Hub hub) {
     final OpCode opCode = getOpCode(frame);
-    final int returnAtCapacityIndex = opCode.callHasValueArgument() ? 6 : 5;
-    setReturnAtCapacity(EWord.of(frame.getStackItem(returnAtCapacityIndex)));
+    setReturnAtCapacity(EWord.of(frame.getStackItem(opCode.callReturnAtCapacityStackIndex())));
 
-    final int cdsIndex = opCode.callHasValueArgument() ? 4 : 3;
-    final int cds = clampedToInt(frame.getStackItem(cdsIndex));
+    final int cds = clampedToInt(frame.getStackItem(opCode.callCdsStackIndex()));
 
     setExponentLog(BigInteger.valueOf(computeExponentLog(metadata, cds)));
 

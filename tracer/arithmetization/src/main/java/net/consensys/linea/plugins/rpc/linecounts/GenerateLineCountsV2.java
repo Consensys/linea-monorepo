@@ -27,11 +27,9 @@ import net.consensys.linea.plugins.BesuServiceProvider;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.Validator;
-import net.consensys.linea.zktracer.Fork;
-import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.json.JsonConverter;
 import org.hyperledger.besu.plugin.ServiceManager;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
@@ -44,7 +42,6 @@ public class GenerateLineCountsV2 {
   private static final Cache<Long, Map<String, Integer>> CACHE =
       CacheBuilder.newBuilder().maximumSize(CACHE_SIZE).build();
 
-  private final Fork fork;
   private final RequestLimiter requestLimiter;
   private final ServiceManager besuContext;
   private TraceService traceService;
@@ -98,22 +95,16 @@ public class GenerateLineCountsV2 {
                 .computeIfAbsent(
                     requestedBlockNumber,
                     blockNumber -> {
-                      final ZkTracer tracer =
-                          new ZkTracer(
-                              fork,
-                              l1L2BridgeSharedConfiguration,
-                              BesuServiceProvider.getBesuService(
-                                      besuContext, BlockchainService.class)
-                                  .getChainId()
-                                  .orElseThrow());
+                      final ZkCounter counter = new ZkCounter(l1L2BridgeSharedConfiguration);
+
                       traceService.trace(
                           blockNumber,
                           blockNumber,
-                          worldStateBeforeTracing -> tracer.traceStartConflation(1),
-                          tracer::traceEndConflation,
-                          tracer);
+                          worldStateBeforeTracing -> counter.traceStartConflation(1),
+                          counter::traceEndConflation,
+                          counter);
 
-                      return tracer.getModulesLineCount();
+                      return counter.getModulesLineCount();
                     }));
 
     log.info("Line count for {} returned in {}", requestedBlockNumber, sw);

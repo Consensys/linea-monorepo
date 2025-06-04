@@ -23,26 +23,27 @@ import lombok.experimental.Accessors;
 import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.container.module.Module;
 import net.consensys.linea.zktracer.container.stacked.CountOnlyOperation;
-import net.consensys.linea.zktracer.types.TransactionProcessingMetadata;
+import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
+import org.hyperledger.besu.datatypes.Transaction;
 import org.hyperledger.besu.evm.log.Log;
-import org.hyperledger.besu.evm.log.LogTopic;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 @Accessors(fluent = true)
 @Getter
 @RequiredArgsConstructor
-public class L2Block implements Module {
+public class L1BlockSize implements Module {
 
-  private final BlockTransactions blockTransactions;
-  private final Keccak keccak;
   private final L2L1Logs l2l1Logs;
   private final Address l2l1Address;
-  private final LogTopic l2l1Topic;
+  private final Bytes l2l1Topic;
 
   private final short TIMESTAMP_BYTESIZE = 32 / 8;
   private final short NB_TX_IN_BLOCK_BYTESIZE = 16 / 8;
+
+  /** A simple counter for the number of transactions */
+  private final CountOnlyOperation numberOfTransactions = new CountOnlyOperation();
 
   /** The byte size of the RLP-encoded transaction of the conflation */
   private final CountOnlyOperation sizesRlpEncodedTxs = new CountOnlyOperation();
@@ -60,12 +61,14 @@ public class L2Block implements Module {
 
   @Override
   public void commitTransactionBundle() {
+    numberOfTransactions.commitTransactionBundle();
     sizesRlpEncodedTxs.commitTransactionBundle();
     l2l1LogSizes.commitTransactionBundle();
   }
 
   @Override
   public void popTransactionBundle() {
+    numberOfTransactions.popTransactionBundle();
     sizesRlpEncodedTxs.popTransactionBundle();
     l2l1LogSizes.popTransactionBundle();
   }
@@ -77,7 +80,7 @@ public class L2Block implements Module {
 
         // Calculates the data size related to the abi encoding of the list of the
         // from addresses. The field is a simple array of bytes20.
-        + blockTransactions.lineCount() * Address.SIZE
+        + numberOfTransactions.lineCount() * Address.SIZE
 
         // Calculates the data size related to the block
         + nbBlock * (TIMESTAMP_BYTESIZE + Hash.SIZE + NB_TX_IN_BLOCK_BYTESIZE);
@@ -85,17 +88,18 @@ public class L2Block implements Module {
 
   @Override
   public int spillage(Trace trace) {
-    return 0;
+    throw new IllegalStateException("should never be called");
   }
 
   @Override
   public List<Trace.ColumnHeader> columnHeaders(Trace trace) {
-    throw new IllegalStateException("non-tracing module");
+    throw new IllegalStateException("should never be called");
   }
 
-  @Override
-  public void traceEndTx(TransactionProcessingMetadata tx) {
-    for (Log log : tx.getLogs()) {
+  public void traceEndTx(Transaction tx, List<Log> logs) {
+    numberOfTransactions.add(1);
+
+    for (Log log : logs) {
       if (isL2L1Log(log)) {
         l2l1LogSizes.add(log.getData().size());
         // The L2L1Logs module counts only the number of L2->L1 logs
@@ -109,14 +113,8 @@ public class L2Block implements Module {
     // overhead for each transaction (32 bytes for an offset, and 32 bytes for
     // to encode the length of each sub bytes array). This overhead is also
     // incurred by the top-level array, hence the +1.
-    final int txDataSize = tx.getBesuTransaction().encoded().size();
+    final int txDataSize = tx.encoded().size();
     sizesRlpEncodedTxs.add(txDataSize);
-    // Counts the number of Keccak from tx RLPs, used both for both the signature verification and
-    // the public input computation.
-    keccak.updateTally(txDataSize);
-    // Counts the number of Keccak from tx RLPs preimage (RLP of the transaction wo the signature)
-    final int txPreimageByteSize = tx.getBesuTransaction().encodedPreimage().size();
-    keccak.updateTally(txPreimageByteSize);
   }
 
   @Override

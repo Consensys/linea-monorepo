@@ -57,8 +57,7 @@ public class ModexpExtractOobCall extends OobCall {
   @Override
   public void setInputData(MessageFrame frame, Hub hub) {
     final OpCode opCode = getOpCode(frame);
-    final int cdsIndex = opCode.callHasValueArgument() ? 4 : 3;
-    setCds(EWord.of(frame.getStackItem(cdsIndex)));
+    setCds(EWord.of(frame.getStackItem(opCode.callCdsStackIndex())));
   }
 
   @Override
