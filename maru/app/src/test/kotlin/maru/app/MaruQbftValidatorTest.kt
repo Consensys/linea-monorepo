@@ -46,9 +46,7 @@ import org.hyperledger.besu.tests.acceptance.dsl.transaction.net.NetTransactions
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.parallel.Isolated
 
-@Isolated
 class MaruQbftValidatorTest {
   private lateinit var cluster: Cluster
   private lateinit var networkParticipantStack: NetworkParticipantStack

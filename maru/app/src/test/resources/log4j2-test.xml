@@ -11,10 +11,10 @@
     </Logger>
 <!--    <Logger name="org.hyperledger.besu.ethereum.blockcreation" level="TRACE"/>-->
     <Logger name="org.hyperledger.besu.ethereum.api.jsonrpc.internal.methods.ExecutionEngineJsonRpcMethod"
-            level="TRACE"/>
+            level="INFO"/>
 <!--    <Logger name="org.hyperledger.besu.consensus.merge.blockcreation.MergeCoordinator"-->
 <!--            level="TRACE"/>-->
-    <Logger name="org.hyperledger.besu" level="DEBUG"/>
+    <Logger name="org.hyperledger.besu" level="INFO"/>
     <Logger name="org.hyperledger.besu.consensus.qbft" level="TRACE"/>
     <Root level="INFO" additivity="false">
       <appender-ref ref="console"/>
