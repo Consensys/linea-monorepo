@@ -814,7 +814,6 @@ func (ctx *Ctx) processStatusPrecomputed() {
 			Warnf("Found unconstrained columns. Skipping them and mark them as ignored")
 		return
 	}
-	logrus.Infof("We are committing to #%v precomputed columns", len(ctx.Items.Precomputeds.PrecomputedColums))
 	log.Info("processed the precomputed columns")
 }
 
