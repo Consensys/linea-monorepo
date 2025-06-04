@@ -40,28 +40,13 @@ var testCasesKey = []struct {
 		Size:   576,
 		Params: StdParams,
 	},
-	// TODO @gbotrel confirm with @AlexandreBelling we don't need to test these cases
-	// {
-	// 	Size: 43,
-	// 	Params: Params{
-	// 		LogTwoBound:  1,
-	// 		LogTwoDegree: 1,
-	// 	},
-	// },
-	// {
-	// 	Size: 23,
-	// 	Params: Params{
-	// 		LogTwoBound:  1,
-	// 		LogTwoDegree: 1,
-	// 	},
-	// },
-	// {
-	// 	Size: 256,
-	// 	Params: Params{
-	// 		LogTwoBound:  1,
-	// 		LogTwoDegree: 1,
-	// 	},
-	// },
+	{
+		Size: 43,
+		Params: Params{
+			LogTwoBound:  8,
+			LogTwoDegree: 6,
+		},
+	},
 }
 
 func TestKeyMaxNumFieldHashable(t *testing.T) {
