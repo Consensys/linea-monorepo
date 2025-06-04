@@ -2,7 +2,6 @@ package serialization
 
 import (
 	"bytes"
-	"fmt"
 	"hash"
 	"io"
 	"math/big"
@@ -23,8 +22,8 @@ import (
 // CustomCodex represents an optional behavior for a specific type
 type CustomCodex struct {
 	Type reflect.Type
-	Ser  func(path string, ser *Serializer, val reflect.Value) (any, error)
-	Des  func(path string, des *Deserializer, val any, t reflect.Type) (reflect.Value, error)
+	Ser  func(ser *Serializer, val reflect.Value) (any, *serdeError)
+	Des  func(des *Deserializer, val any, t reflect.Type) (reflect.Value, *serdeError)
 }
 
 var CustomCodexes = map[reflect.Type]CustomCodex{}
@@ -86,45 +85,45 @@ func init() {
 	}
 }
 
-func marshalRingSisKey(path string, ser *Serializer, val reflect.Value) (any, error) {
+func marshalRingSisKey(ser *Serializer, val reflect.Value) (any, *serdeError) {
 	key := val.Interface().(*ringsis.Key)
 	keyGenParams := key.KeyGen
-	res, err := ser.PackStructObject(path, reflect.ValueOf(*keyGenParams))
+	res, err := ser.PackStructObject(reflect.ValueOf(*keyGenParams))
 	if err != nil {
-		return nil, fmt.Errorf("could not marshal ring-sis key: %w", err)
+		return nil, newSerdeErrorf("could not marshal ring-sis key: %w", err)
 	}
 	return res, nil
 }
 
-func unmarshalRingSisKey(path string, des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+func unmarshalRingSisKey(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 
 	if v_, ok := val.(PackedStructObject); ok {
 		val = []any(v_)
 	}
 
-	res, err := des.UnpackStructObject(path, val.([]any), TypeofRingSisKeyGenParam)
+	res, err := des.UnpackStructObject(val.([]any), TypeofRingSisKeyGenParam)
 	if err != nil {
-		return reflect.Value{}, fmt.Errorf("could not unpack struct object for ring-sis key: %w", err)
+		return reflect.Value{}, newSerdeErrorf("could not unpack struct object for ring-sis key: %w", err)
 	}
 
 	keyGenParams, ok := res.Interface().(ringsis.KeyGen)
 	if !ok {
-		return reflect.Value{}, fmt.Errorf("could not cast to ringsis.KeyGen: %w", err)
+		return reflect.Value{}, newSerdeErrorf("could not cast to ringsis.KeyGen: %w", err)
 	}
 	innerParams := keyGenParams.Params
 	ringSiskey := ringsis.GenerateKey(*innerParams, keyGenParams.MaxNumFieldToHash)
 	return reflect.ValueOf(ringSiskey), nil
 }
 
-func marshalFieldElement(path string, _ *Serializer, val reflect.Value) (any, error) {
+func marshalFieldElement(_ *Serializer, val reflect.Value) (any, *serdeError) {
 	f := val.Interface().(field.Element)
 	bi := fieldToSmallBigInt(f)
 	f.BigInt(bi)
-	return marshalBigInt(path, nil, reflect.ValueOf(bi))
+	return marshalBigInt(nil, reflect.ValueOf(bi))
 }
 
-func unmarshalFieldElement(path string, _ *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
-	f, err := unmarshalBigInt(path, nil, val, TypeOfBigInt)
+func unmarshalFieldElement(_ *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
+	f, err := unmarshalBigInt(nil, val, TypeOfBigInt)
 	if err != nil {
 		return reflect.Value{}, err
 	}
@@ -134,11 +133,11 @@ func unmarshalFieldElement(path string, _ *Deserializer, val any, _ reflect.Type
 	return reflect.ValueOf(fe), nil
 }
 
-func marshalBigInt(path string, _ *Serializer, val reflect.Value) (any, error) {
+func marshalBigInt(_ *Serializer, val reflect.Value) (any, *serdeError) {
 	return val.Interface().(*big.Int), nil
 }
 
-func unmarshalBigInt(path string, _ *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+func unmarshalBigInt(_ *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 	switch v := val.(type) {
 	case big.Int:
 		return reflect.ValueOf(&v), nil
@@ -147,11 +146,11 @@ func unmarshalBigInt(path string, _ *Deserializer, val any, _ reflect.Type) (ref
 	case uint64:
 		return reflect.ValueOf(new(big.Int).SetUint64(v)), nil
 	default:
-		return reflect.Value{}, fmt.Errorf("invalid type: %T, value: %++v", val, val)
+		return reflect.Value{}, newSerdeErrorf("invalid type: %T, value: %++v", val, val)
 	}
 }
 
-func marshalArrayOfFieldElement(path string, _ *Serializer, val reflect.Value) (any, error) {
+func marshalArrayOfFieldElement(_ *Serializer, val reflect.Value) (any, *serdeError) {
 
 	var (
 		v           = val.Interface().([]field.Element)
@@ -162,24 +161,24 @@ func marshalArrayOfFieldElement(path string, _ *Serializer, val reflect.Value) (
 
 	// The header of the array is its size
 	if err := cborEncoder.Encode(uint64(len(v))); err != nil {
-		return nil, err
+		return nil, newSerdeErrorf("error encoding array of field element: %v", err.Error())
 	}
 
 	for i := 0; i < len(v); i++ {
 		bi := fieldToSmallBigInt(v[i])
 		if err := cborEncoder.Encode(bi); err != nil {
-			return nil, err
+			return nil, newSerdeErrorf("error encoding array of field element: %v", err.Error())
 		}
 	}
 
 	if err := lz4Encoder.Close(); err != nil {
-		return nil, err
+		return nil, newSerdeErrorf("error closing lz4 encoder: %v", err.Error())
 	}
 
 	return buffer.Bytes(), nil
 }
 
-func unmarshalArrayOfFieldElement(path string, _ *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+func unmarshalArrayOfFieldElement(_ *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 
 	var (
 		buffer      = bytes.NewReader(val.([]byte))
@@ -190,7 +189,7 @@ func unmarshalArrayOfFieldElement(path string, _ *Deserializer, val any, _ refle
 	// The header of the encoded array is its size as a uint64
 	size := uint64(0)
 	if err := cborDecoder.Decode(&size); err != nil {
-		return reflect.Value{}, err
+		return reflect.Value{}, newSerdeErrorf("error decoding array of field element: %v", err.Error())
 	}
 
 	v := make([]field.Element, 0, size)
@@ -200,7 +199,7 @@ func unmarshalArrayOfFieldElement(path string, _ *Deserializer, val any, _ refle
 			if err == io.EOF {
 				break
 			}
-			return reflect.Value{}, err
+			return reflect.Value{}, newSerdeErrorf("error decoding array of field element: %v", err.Error())
 		}
 
 		f := field.Element{}
@@ -211,37 +210,37 @@ func unmarshalArrayOfFieldElement(path string, _ *Deserializer, val any, _ refle
 	return reflect.ValueOf(v), nil
 }
 
-func marshalArithmetization(path string, ser *Serializer, val reflect.Value) (any, error) {
+func marshalArithmetization(ser *Serializer, val reflect.Value) (any, *serdeError) {
 
-	res, err := ser.PackStructObject(path, val)
+	res, err := ser.PackStructObject(val)
 	if err != nil {
-		return nil, fmt.Errorf("could not marshal arithmetization: %w", err)
+		return nil, newSerdeErrorf("could not marshal arithmetization: %w", err)
 	}
 
 	return res, nil
 }
 
-func unmarshalArithmetization(path string, des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+func unmarshalArithmetization(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 	if v_, ok := val.(PackedStructObject); ok {
 		val = []any(v_)
 	}
 
-	res, err := des.UnpackStructObject(path, val.([]any), TypeOfArithmetization)
+	res, err := des.UnpackStructObject(val.([]any), TypeOfArithmetization)
 	if err != nil {
-		return reflect.Value{}, fmt.Errorf("could not unmarshal arithmetization: %w", err)
+		return reflect.Value{}, newSerdeErrorf("could not unmarshal arithmetization: %w", err)
 	}
 
 	arith := res.Interface().(arithmetization.Arithmetization)
-	schema, meta, err := arithmetization.UnmarshalZkEVMBin(arith.ZkEVMBin, arith.Settings.OptimisationLevel)
-	if err != nil {
-		return reflect.Value{}, fmt.Errorf("could not unmarshal arithmetization: %w", err)
+	schema, meta, errA := arithmetization.UnmarshalZkEVMBin(arith.ZkEVMBin, arith.Settings.OptimisationLevel)
+	if errA != nil {
+		return reflect.Value{}, newSerdeErrorf("could not unmarshal arithmetization: %w", err)
 	}
 	arith.Schema = schema
 	arith.Metadata = meta
 	return reflect.ValueOf(arith), nil
 }
 
-func marshalFrontendVariable(path string, ser *Serializer, val reflect.Value) (any, error) {
+func marshalFrontendVariable(ser *Serializer, val reflect.Value) (any, *serdeError) {
 
 	var (
 		variable = val.Interface().(frontend.Variable)
@@ -292,22 +291,22 @@ func marshalFrontendVariable(path string, ser *Serializer, val reflect.Value) (a
 			return nil, nil
 		}
 
-		return nil, fmt.Errorf("invalid type for a frontend variable: %T, value: %++v, type.string=%v, path=%v", variable, variable, reflect.TypeOf(variable).String(), path)
+		return nil, newSerdeErrorf("invalid type for a frontend variable: %T, value: %++v, type.string=%v", variable, variable, reflect.TypeOf(variable).String())
 	}
 
-	res, err := marshalBigInt(path, ser, reflect.ValueOf(bi))
+	res, err := marshalBigInt(ser, reflect.ValueOf(bi))
 	if err != nil {
-		return nil, fmt.Errorf("could not marshal frontend variable: %w, path=%v", err, path)
+		return nil, newSerdeErrorf("could not marshal frontend variable: %w", err)
 	}
 
 	return res, nil
 }
 
-func unmarshalFrontendVariable(path string, des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+func unmarshalFrontendVariable(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 
-	bi, err := unmarshalBigInt(path, des, val, TypeOfBigInt)
+	bi, err := unmarshalBigInt(des, val, TypeOfBigInt)
 	if err != nil {
-		return reflect.Value{}, fmt.Errorf("could not unmarshal frontend variable: %w", err)
+		return reflect.Value{}, newSerdeErrorf("could not unmarshal frontend variable: %w", err)
 	}
 
 	v := reflect.New(TypeOfFrontendVariable).Elem()
@@ -315,35 +314,35 @@ func unmarshalFrontendVariable(path string, des *Deserializer, val any, _ reflec
 	return v, nil
 }
 
-func marshalHashGenerator(path string, ser *Serializer, val reflect.Value) (any, error) {
+func marshalHashGenerator(ser *Serializer, val reflect.Value) (any, *serdeError) {
 	return nil, nil
 }
 
-func unmarshalHashGenerator(path string, des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+func unmarshalHashGenerator(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 	f := func() hash.Hash {
 		return mimc.NewMiMC()
 	}
 	return reflect.ValueOf(f), nil
 }
 
-func marshalHashTypeHasher(path string, ser *Serializer, val reflect.Value) (any, error) {
+func marshalHashTypeHasher(ser *Serializer, val reflect.Value) (any, *serdeError) {
 	return nil, nil
 }
 
-func unmarshalHashTypeHasher(path string, des *Deserializer, val any, _ reflect.Type) (reflect.Value, error) {
+func unmarshalHashTypeHasher(des *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
 	return reflect.ValueOf(hashtypes.MiMC), nil
 }
 
 // marshalAsNil is a custom serialization function that marshals the given value to nil.
 // It is used for types that are not meant to be serialized, such as functions.
-func marshalAsNil(_ string, _ *Serializer, _ reflect.Value) (any, error) {
+func marshalAsNil(_ *Serializer, _ reflect.Value) (any, *serdeError) {
 	return nil, nil
 }
 
 // unmarshalAsZero is a custom deserialization function that unmarshals the
 // given value to zero. It is meant for the type that are not intended to be
 // serialized.
-func unmarshalAsZero(path string, des *Deserializer, val any, t reflect.Type) (reflect.Value, error) {
+func unmarshalAsZero(des *Deserializer, val any, t reflect.Type) (reflect.Value, *serdeError) {
 	return reflect.Zero(t), nil
 }
 
