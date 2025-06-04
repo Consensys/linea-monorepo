@@ -843,7 +843,7 @@ func (s *Serializer) PackInterface(v reflect.Value) (any, *serdeError) {
 
 	packedConcrete, err := s.PackValue(concrete)
 	if err != nil {
-		return nil, err.wrapPath("(interface)")
+		return nil, err.wrapPath("(" + concrete.Type().String() + ")")
 	}
 
 	return PackedIFace{
@@ -875,7 +875,7 @@ func (de *Deserializer) UnpackInterface(pi map[interface{}]interface{}, t reflec
 
 	cres, errV := de.UnpackValue(concrete, refType)
 	if errV != nil {
-		return reflect.Value{}, errV.wrapPath("(interface)")
+		return reflect.Value{}, errV.wrapPath("(" + refType.String() + ")")
 	}
 
 	// Create a new reflect.Value for the interface type
@@ -936,7 +936,7 @@ func (s *Serializer) PackStructObject(obj reflect.Value) (PackedStructObject, *s
 	}
 
 	if !globalErr.isEmpty() {
-		return PackedStructObject{}, newSerdeErrorf("failed to pack struct object, type=%v: %w", obj.Type().String(), globalErr)
+		return PackedStructObject{}, globalErr
 	}
 
 	// Importantly, we want to be sure that all the component have been
@@ -1002,7 +1002,7 @@ func (de *Deserializer) UnpackStructObject(v PackedStructObject, t reflect.Type)
 	}
 
 	if !globalErr.isEmpty() {
-		return reflect.Value{}, newSerdeErrorf("failed to deserialize struct: %w", globalErr)
+		return reflect.Value{}, globalErr
 	}
 
 	return res, nil
@@ -1045,7 +1045,7 @@ func (s *Serializer) PackMap(obj reflect.Value) (map[any]any, *serdeError) {
 	}
 
 	if !globalErr.isEmpty() {
-		return nil, newSerdeErrorf("failed to pack map, type=%v: %w", obj.Type().String(), globalErr)
+		return nil, globalErr
 	}
 
 	return map[any]any{
@@ -1093,7 +1093,7 @@ func (de *Deserializer) UnpackMap(packedMap map[any]any, t reflect.Type) (reflec
 	}
 
 	if !globalErr.isEmpty() {
-		return reflect.Value{}, newSerdeErrorf("failed to deserialize map: %w", globalErr)
+		return reflect.Value{}, globalErr
 	}
 
 	return res, nil
