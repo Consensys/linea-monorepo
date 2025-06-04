@@ -2,19 +2,6 @@ include:
   - compose-tracing-v2.yml
 
 services:
-  coordinator:
-    extends:
-      file: compose-spec-l2-services.yml
-      service: coordinator
-    environment:
-      config__override__l1-submission__blob__signer__type: "web3signer"
-      config__override__l1-submission__aggregation__signer__type: "web3signer"
-
-  web3signer:
-    extends:
-      file: compose-spec-l2-services.yml
-      service: web3signer
-
   l2-node-besu:
     extends:
       file: compose-spec-l2-services.yml
