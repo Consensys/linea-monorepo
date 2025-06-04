@@ -1,13 +1,16 @@
 import { Account, Chain, Client, Transport } from "viem";
 import { L1WalletClient } from "@consensys/linea-sdk-core";
 import { deposit, DepositParameters, DepositReturnType } from "../actions/deposit";
-import { FunctionOnly } from "../types/misc";
+import { StrictFunctionOnly } from "../types/misc";
 import { claimOnL1, ClaimOnL1Parameters, ClaimOnL1ReturnType } from "../actions/claimOnL1";
 
-export type WalletActionsL1 = FunctionOnly<L1WalletClient> & {
-  deposit: (args: DepositParameters) => Promise<DepositReturnType>;
-  claimOnL1: (args: ClaimOnL1Parameters) => Promise<ClaimOnL1ReturnType>;
-};
+export type WalletActionsL1 = StrictFunctionOnly<
+  L1WalletClient,
+  {
+    deposit: (args: DepositParameters) => Promise<DepositReturnType>;
+    claimOnL1: (args: ClaimOnL1Parameters) => Promise<ClaimOnL1ReturnType>;
+  }
+>;
 
 export function walletActionsL1() {
   return <

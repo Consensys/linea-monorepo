@@ -25,19 +25,22 @@ import {
   GetTransactionReceiptByMessageHashParameters,
   GetTransactionReceiptByMessageHashReturnType,
 } from "../actions/getTransactionReceiptByMessageHash";
-import { FunctionOnly } from "../types/misc";
+import { StrictFunctionOnly } from "../types/misc";
 
-export type PublicActionsL2<chain extends Chain | undefined = Chain | undefined> = FunctionOnly<L2PublicClient> & {
-  getBlockExtraData(args: GetBlockExtraDataParameters): Promise<GetBlockExtraDataReturnType>;
-  getL1ToL2MessageStatus(args: GetL1ToL2MessageStatusParameters): Promise<GetL1ToL2MessageStatusReturnType>;
-  getMessageByMessageHash(args: GetMessageByMessageHashParameters): Promise<GetMessageByMessageHashReturnType>;
-  getMessagesByTransactionHash(
-    args: GetMessagesByTransactionHashParameters,
-  ): Promise<GetMessagesByTransactionHashReturnType>;
-  getTransactionReceiptByMessageHash(
-    args: GetTransactionReceiptByMessageHashParameters,
-  ): Promise<GetTransactionReceiptByMessageHashReturnType<chain>>;
-};
+export type PublicActionsL2<chain extends Chain | undefined = Chain | undefined> = StrictFunctionOnly<
+  L2PublicClient,
+  {
+    getBlockExtraData(args: GetBlockExtraDataParameters): Promise<GetBlockExtraDataReturnType>;
+    getL1ToL2MessageStatus(args: GetL1ToL2MessageStatusParameters): Promise<GetL1ToL2MessageStatusReturnType>;
+    getMessageByMessageHash(args: GetMessageByMessageHashParameters): Promise<GetMessageByMessageHashReturnType>;
+    getMessagesByTransactionHash(
+      args: GetMessagesByTransactionHashParameters,
+    ): Promise<GetMessagesByTransactionHashReturnType>;
+    getTransactionReceiptByMessageHash(
+      args: GetTransactionReceiptByMessageHashParameters,
+    ): Promise<GetTransactionReceiptByMessageHashReturnType<chain>>;
+  }
+>;
 
 export function publicActionsL2() {
   return <

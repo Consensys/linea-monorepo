@@ -1,13 +1,16 @@
 import { Account, Chain, Client, Transport } from "viem";
 import { withdraw, WithdrawParameters, WithdrawReturnType } from "../actions/withdraw";
-import { FunctionOnly } from "../types/misc";
+import { StrictFunctionOnly } from "../types/misc";
 import { L2WalletClient } from "@consensys/linea-sdk-core";
 import { claimOnL2, ClaimOnL2Parameters, ClaimOnL2ReturnType } from "../actions/claimOnL2";
 
-export type WalletActionsL2 = FunctionOnly<L2WalletClient> & {
-  withdraw: (args: WithdrawParameters) => Promise<WithdrawReturnType>;
-  claimOnL2: (args: ClaimOnL2Parameters) => Promise<ClaimOnL2ReturnType>;
-};
+export type WalletActionsL2 = StrictFunctionOnly<
+  L2WalletClient,
+  {
+    withdraw: (args: WithdrawParameters) => Promise<WithdrawReturnType>;
+    claimOnL2: (args: ClaimOnL2Parameters) => Promise<ClaimOnL2ReturnType>;
+  }
+>;
 
 export function walletActionsL2() {
   return <

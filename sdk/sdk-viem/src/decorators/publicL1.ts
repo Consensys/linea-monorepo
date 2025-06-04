@@ -21,24 +21,27 @@ import {
   GetTransactionReceiptByMessageHashReturnType,
 } from "../actions/getTransactionReceiptByMessageHash";
 import { L1PublicClient } from "@consensys/linea-sdk-core";
-import { FunctionOnly } from "../types/misc";
+import { StrictFunctionOnly } from "../types/misc";
 
 export type PublicActionsL1<
   chain extends Chain | undefined = Chain | undefined,
   account extends Account | undefined = Account | undefined,
-> = FunctionOnly<L1PublicClient> & {
-  getMessageProof(args: GetMessageProofParameters<chain, account>): Promise<GetMessageProofReturnType>;
-  getL2ToL1MessageStatus<chain extends Chain | undefined, account extends Account | undefined>(
-    args: GetL2ToL1MessageStatusParameters<chain, account>,
-  ): Promise<GetL2ToL1MessageStatusReturnType>;
-  getMessageByMessageHash(args: GetMessageByMessageHashParameters): Promise<GetMessageByMessageHashReturnType>;
-  getMessagesByTransactionHash(
-    args: GetMessagesByTransactionHashParameters,
-  ): Promise<GetMessagesByTransactionHashReturnType>;
-  getTransactionReceiptByMessageHash<chain extends Chain | undefined>(
-    args: GetTransactionReceiptByMessageHashParameters,
-  ): Promise<GetTransactionReceiptByMessageHashReturnType<chain>>;
-};
+> = StrictFunctionOnly<
+  L1PublicClient,
+  {
+    getMessageProof(args: GetMessageProofParameters<chain, account>): Promise<GetMessageProofReturnType>;
+    getL2ToL1MessageStatus<chain extends Chain | undefined, account extends Account | undefined>(
+      args: GetL2ToL1MessageStatusParameters<chain, account>,
+    ): Promise<GetL2ToL1MessageStatusReturnType>;
+    getMessageByMessageHash(args: GetMessageByMessageHashParameters): Promise<GetMessageByMessageHashReturnType>;
+    getMessagesByTransactionHash(
+      args: GetMessagesByTransactionHashParameters,
+    ): Promise<GetMessagesByTransactionHashReturnType>;
+    getTransactionReceiptByMessageHash<chain extends Chain | undefined>(
+      args: GetTransactionReceiptByMessageHashParameters,
+    ): Promise<GetTransactionReceiptByMessageHashReturnType<chain>>;
+  }
+>;
 
 export function publicActionsL1() {
   return <
