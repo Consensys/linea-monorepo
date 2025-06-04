@@ -86,7 +86,7 @@ class MaruFactory {
     qbftOptions: QbftOptions? = null,
   ): MaruConfig =
     MaruConfig(
-      Persistence(dataPath = dataDir),
+      persistence = Persistence(dataPath = dataDir),
       qbftOptions = qbftOptions,
       validatorElNode =
         ValidatorElNode(
@@ -135,7 +135,7 @@ class MaruFactory {
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
-        qbftOptions = QbftOptions(),
+        qbftOptions = QbftOptions(minBlockBuildTime = 200.milliseconds),
       )
     writeValidatorPrivateKey(config)
     return buildApp(config, p2pNetwork = p2pNetwork)
