@@ -89,15 +89,7 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 	timeTree := profiling.TimeIt(func() {
 		// colHashes stores the MiMC hashes
 		// of the columns.
-		colHashes = p.noSisTransversalHash(encodedMatrix)
-		sizeCodeWord := p.NumEncodedCols()
-		leaves := make([]types.Bytes32, sizeCodeWord)
-		for i := range leaves {
-			currentChunkSlice := colHashes[8*i : 8*(i+1)]
-			var currentChunkArray [8]field.Element
-			copy(currentChunkArray[:], currentChunkSlice)
-			leaves[i] = types.HashToBytes32(currentChunkArray)
-		}
+		leaves := p.noSisTransversalHash(encodedMatrix)
 
 		tree = smt.BuildComplete(
 			leaves,
@@ -178,7 +170,7 @@ func (p *Params) computeLeavesWithSis(colHashes []field.Element) (leaves []types
 }
 
 // Uses the no-sis hash function to hash the columns
-func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Element {
+func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []types.Bytes32 {
 
 	// Assert that all smart-vectors have the same numCols
 	numCols := v[0].Len()
@@ -191,7 +183,7 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Elem
 
 	numRows := len(v)
 
-	res := make([]field.Element, numCols)
+	res := make([]types.Bytes32, numCols)
 	hashers := make([]hash.Hash, runtime.GOMAXPROCS(0))
 
 	parallel.ExecuteThreadAware(
@@ -208,8 +200,8 @@ func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []field.Elem
 				hasher.Write(xBytes[:])
 			}
 
-			digest := hasher.Sum(nil)
-			res[col].SetBytes(digest)
+			h := hasher.Sum(nil)
+			copy(res[col][:], h[:])
 		},
 	)
 
