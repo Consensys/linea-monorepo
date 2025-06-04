@@ -179,12 +179,9 @@ func (s Key) HashModXnMinus1(limbs []field.Element) []field.Element {
 
 	// also account for the Montgommery issue : in gnark's implementation
 	// the key is implictly multiplied by RInv
-	// todo: remove?
-	/*
-		for i := range r {
-			r[i] = field.MulRInv(r[i])
-		}
-	*/
+	for i := range r {
+		r[i] = field.MulRInv(r[i])
+	}
 
 	return r
 }
@@ -200,7 +197,11 @@ func (s Key) HashModXnMinus1(limbs []field.Element) []field.Element {
 func (s *Key) FlattenedKey() []field.Element {
 	res := make([]field.Element, 0, s.maxNumLimbsHashable())
 	for i := range s.GnarkInternal.A {
-		res = append(res, s.GnarkInternal.A[i]...)
+		for j := range s.GnarkInternal.A[i] {
+			t := s.GnarkInternal.A[i][j]
+			t = field.MulRInv(t)
+			res = append(res, t)
+		}
 	}
 	return res
 }

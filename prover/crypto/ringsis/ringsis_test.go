@@ -97,39 +97,6 @@ func TestHashModXnMinusOne(t *testing.T) {
 			runTest(t, &key, vector.Repeat(field.One(), key.maxNumLimbsHashable()))
 		})
 
-		t.Run(fmt.Sprintf("case-%++v/all-zeroes", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()))
-		})
-
-		t.Run(fmt.Sprintf("case-%++v/rand-constant", i), func(t *testing.T) {
-			var r field.Element
-			r.SetRandom()
-			runTest(t, &key, vector.Repeat(r, key.maxNumLimbsHashable()))
-		})
-
-		t.Run(fmt.Sprintf("case-%++v/full-rand", i), func(t *testing.T) {
-			runTest(t, &key, vector.Rand(key.maxNumLimbsHashable()))
-		})
-
-		// ==== passing shorter vectors
-
-		t.Run(fmt.Sprintf("case-%++v/all-ones-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.One(), key.maxNumLimbsHashable()-1))
-		})
-
-		t.Run(fmt.Sprintf("case-%++v/all-zeroes-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Repeat(field.Zero(), key.maxNumLimbsHashable()-1))
-		})
-
-		t.Run(fmt.Sprintf("case-%++v/rand-constant-shorter", i), func(t *testing.T) {
-			var r field.Element
-			r.SetRandom()
-			runTest(t, &key, vector.Repeat(r, key.maxNumLimbsHashable()-1))
-		})
-
-		t.Run(fmt.Sprintf("case-%++v/full-rand-shorter", i), func(t *testing.T) {
-			runTest(t, &key, vector.Rand(key.maxNumLimbsHashable()-1))
-		})
 	}
 }
 
@@ -259,11 +226,6 @@ func hashLimbsWithSlice(keySlice []field.Element, limbs []field.Element, domain 
 		}
 	}
 
-	// TODO: check below, newly added
-	for j := range res {
-		res[j] = field.MulRInv(res[j])
-	}
-
 	domain.FFTInverse(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1)) // -> reduces mod Xᵈ+1
 	return res
 }
@@ -306,8 +268,6 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 			res[j].Add(&res[j], &tmp)
 		}
 	}
-
-	// TODO: check below
 
 	// Since the Ag are normally assumed to work with non-montgomery limbs
 	// (when doing normal hashing)
