@@ -20,21 +20,21 @@ data class ConflationToml(
   val l2BlockCreationEndpoint: URL? = null,
   val l2LogsEndpoint: URL? = null,
   val blobCompression: BlobCompressionToml = BlobCompressionToml(),
-  val proofAggregation: ProofAggregationToml = ProofAggregationToml()
+  val proofAggregation: ProofAggregationToml = ProofAggregationToml(),
 ) {
 
   data class BlobCompressionToml(
     val blobSizeLimit: UInt = 102400u,
     val handlerPollingInterval: Duration = 1.seconds,
     val batchesLimit: UInt? = null,
-    val blobCompressorVersion: BlobCompressorVersion = BlobCompressorVersion.V1_2
+    val blobCompressorVersion: BlobCompressorVersion = BlobCompressorVersion.V1_2,
   ) {
     fun reified(): ConflationConfig.BlobCompression {
       return ConflationConfig.BlobCompression(
         blobSizeLimit = this.blobSizeLimit,
         handlerPollingInterval = this.handlerPollingInterval,
         batchesLimit = this.batchesLimit,
-        blobCompressorVersion = this.blobCompressorVersion
+        blobCompressorVersion = this.blobCompressorVersion,
       )
     }
   }
@@ -45,7 +45,7 @@ data class ConflationToml(
     val deadlineCheckInterval: Duration = 30.seconds,
     val coordinatorPollingInterval: Duration = 3.seconds,
     val targetEndBlocks: List<ULong>? = null,
-    val aggregationSizeMultipleOf: UInt = 1u
+    val aggregationSizeMultipleOf: UInt = 1u,
   ) {
     fun reified(): ConflationConfig.ProofAggregation {
       return ConflationConfig.ProofAggregation(
@@ -54,14 +54,14 @@ data class ConflationToml(
         deadlineCheckInterval = this.deadlineCheckInterval,
         coordinatorPollingInterval = this.coordinatorPollingInterval,
         targetEndBlocks = this.targetEndBlocks,
-        aggregationSizeMultipleOf = this.aggregationSizeMultipleOf
+        aggregationSizeMultipleOf = this.aggregationSizeMultipleOf,
       )
     }
   }
 
   fun reified(
     l2DefaultEndpoint: URL? = null,
-    tracesCountersLimitsV2: TracesCountersV2
+    tracesCountersLimitsV2: TracesCountersV2,
   ): ConflationConfig {
     return ConflationConfig(
       disabled = this.disabled,
@@ -74,14 +74,14 @@ data class ConflationToml(
       consistentNumberOfBlocksOnL1ToWait = this.consistentNumberOfBlocksOnL1ToWait,
       l2FetchBlocksLimit = this.l2FetchBlocksLimit ?: UInt.MAX_VALUE,
       l2Endpoint = this.l2BlockCreationEndpoint ?: l2DefaultEndpoint ?: throw IllegalArgumentException(
-        "l2 endpoint config missing"
+        "l2 endpoint config missing",
       ),
       l2GetLogsEndpoint = this.l2LogsEndpoint ?: l2DefaultEndpoint ?: throw IllegalArgumentException(
-        "l2 endpoint config missing"
+        "l2 endpoint config missing",
       ),
       blobCompression = this.blobCompression.reified(),
       proofAggregation = this.proofAggregation.reified(),
-      tracesCountersLimitsV2 = tracesCountersLimitsV2
+      tracesCountersLimitsV2 = tracesCountersLimitsV2,
     )
   }
 }

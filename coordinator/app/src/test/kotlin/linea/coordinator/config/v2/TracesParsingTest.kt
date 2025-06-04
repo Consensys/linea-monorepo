@@ -58,8 +58,8 @@ class TracesParsingTest {
         requestRetries = RequestRetriesToml(
           maxRetries = 40u,
           backoffDelay = 1.seconds,
-          failuresWarningThreshold = 2u
-        )
+          failuresWarningThreshold = 2u,
+        ),
       ),
       conflation = TracesToml.ClientApiConfigToml(
         endpoints = listOf(URI.create("http://traces-api-2:8080/").toURL()),
@@ -67,8 +67,8 @@ class TracesParsingTest {
         requestRetries = RequestRetriesToml(
           maxRetries = 30u,
           backoffDelay = 3.seconds,
-          failuresWarningThreshold = 4u
-        )
+          failuresWarningThreshold = 4u,
+        ),
       ),
       new = TracesToml(
         expectedTracesApiVersion = "2.0.0",
@@ -79,8 +79,8 @@ class TracesParsingTest {
           requestRetries = RequestRetriesToml(
             maxRetries = 4u,
             backoffDelay = 1.seconds,
-            failuresWarningThreshold = 2u
-          )
+            failuresWarningThreshold = 2u,
+          ),
         ),
         conflation = TracesToml.ClientApiConfigToml(
           endpoints = listOf("http://traces-api-v2-21:8080/", "http://traces-api-v2-22:8080/").map { it.toURL() },
@@ -88,10 +88,10 @@ class TracesParsingTest {
           requestRetries = RequestRetriesToml(
             maxRetries = 55u,
             backoffDelay = 50.seconds,
-            failuresWarningThreshold = 50u
-          )
-        )
-      )
+            failuresWarningThreshold = 50u,
+          ),
+        ),
+      ),
     )
 
     val tomlMinimal = """
@@ -111,8 +111,8 @@ class TracesParsingTest {
         requestRetries = RequestRetriesToml(
           maxRetries = null,
           backoffDelay = 1.seconds,
-          failuresWarningThreshold = 3u
-        )
+          failuresWarningThreshold = 3u,
+        ),
       ),
       conflation = TracesToml.ClientApiConfigToml(
         endpoints = listOf(URI.create("http://traces-api-2:8080/").toURL()),
@@ -120,14 +120,14 @@ class TracesParsingTest {
         requestRetries = RequestRetriesToml(
           maxRetries = null,
           backoffDelay = 1.seconds,
-          failuresWarningThreshold = 3u
-        )
-      )
+          failuresWarningThreshold = 3u,
+        ),
+      ),
     )
   }
 
   data class WrapperConfig(
-    val traces: TracesToml
+    val traces: TracesToml,
   )
 
   @Test
@@ -141,22 +141,22 @@ class TracesParsingTest {
     max-retries = 6
     backoff-delay = "PT3S"
     failures-warning-threshold = 4
-        """.trimIndent()
-      )
+        """.trimIndent(),
+      ),
     )
       .isEqualTo(
         TracesToml.ClientApiConfigToml(
           endpoints = listOf(
             "http://traces-api-1:8080/".toURL(),
-            "http://traces-api-2:8080/".toURL()
+            "http://traces-api-2:8080/".toURL(),
           ),
           requestLimitPerEndpoint = 2u,
           requestRetries = RequestRetriesToml(
             maxRetries = 6u,
             backoffDelay = 3.seconds,
-            failuresWarningThreshold = 4u
-          )
-        )
+            failuresWarningThreshold = 4u,
+          ),
+        ),
       )
   }
 

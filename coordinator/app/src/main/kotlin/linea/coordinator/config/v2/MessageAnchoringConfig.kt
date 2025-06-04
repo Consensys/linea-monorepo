@@ -13,20 +13,20 @@ data class MessageAnchoringConfig(
   val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED,
   val l1RequestRetries: RetryConfig = RetryConfig.endlessRetry(
     backoffDelay = 1.seconds,
-    failuresWarningThreshold = 3u
+    failuresWarningThreshold = 3u,
   ),
   val l1EventScrapping: L1EventScrapping = L1EventScrapping(),
   val l2Endpoint: URL,
   val l2HighestBlockTag: BlockParameter = BlockParameter.Tag.LATEST,
   val l2RequestRetries: RetryConfig = RetryConfig.endlessRetry(
     backoffDelay = 1.seconds,
-    failuresWarningThreshold = 3u
+    failuresWarningThreshold = 3u,
   ),
   val anchoringTickInterval: Duration = 2.seconds,
   val messageQueueCapacity: UInt = 10_000u,
   val maxMessagesToAnchorPerL2Transaction: UInt = 100u,
   val signer: SignerConfig,
-  val gas: GasConfig = GasConfig()
+  val gas: GasConfig = GasConfig(),
 ) : FeatureToggle {
   init {
     require(messageQueueCapacity >= 1u) {
@@ -44,7 +44,7 @@ data class MessageAnchoringConfig(
     val pollingInterval: Duration = 2.seconds,
     val pollingTimeout: Duration = 5.seconds,
     val ethLogsSearchSuccessBackoffDelay: Duration = 1.milliseconds,
-    val ethLogsSearchBlockChunkSize: UInt = 1000u
+    val ethLogsSearchBlockChunkSize: UInt = 1000u,
   ) {
     init {
       require(pollingInterval >= 1.milliseconds) {
@@ -66,6 +66,6 @@ data class MessageAnchoringConfig(
     val maxFeePerGasCap: ULong = 100_000_000_000uL, // 100 gwei
     val gasLimit: ULong = 2_500_000uL,
     val feeHistoryBlockCount: UInt = 4u,
-    val feeHistoryRewardPercentile: UInt = 15u
+    val feeHistoryRewardPercentile: UInt = 15u,
   )
 }

@@ -6,11 +6,11 @@ import kotlin.time.Duration
 data class ProtocolConfig(
   val genesis: Genesis,
   val l1: Layer1Config,
-  val l2: Layer2Config
+  val l2: Layer2Config,
 ) {
   data class Genesis(
     val genesisStateRootHash: ByteArray,
-    val genesisShnarf: ByteArray
+    val genesisShnarf: ByteArray,
   ) {
 
     override fun equals(other: Any?): Boolean {
@@ -34,11 +34,11 @@ data class ProtocolConfig(
 
   data class Layer1Config(
     val contractAddress: String,
-    val blockTime: Duration
+    val blockTime: Duration,
   )
 
   data class Layer2Config(
     val contractAddress: String,
-    val contractDeploymentBlockNumber: BlockParameter.BlockNumber?
+    val contractDeploymentBlockNumber: BlockParameter.BlockNumber?,
   )
 }

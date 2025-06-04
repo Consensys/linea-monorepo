@@ -24,16 +24,16 @@ class ProtocolParsingTest {
     val config = ProtocolToml(
       genesis = ProtocolToml.Genesis(
         genesisStateRootHash = "0x0000000000000000000000000000000000000000000000000000000000000001".decodeHex(),
-        genesisShnarf = "0x0000000000000000000000000000000000000000000000000000000000000002".decodeHex()
+        genesisShnarf = "0x0000000000000000000000000000000000000000000000000000000000000002".decodeHex(),
       ),
       l1 = ProtocolToml.Layer1Config(
         contractAddress = "0x0000000000000000000000000000000000000001",
-        blockTime = 2.seconds
+        blockTime = 2.seconds,
       ),
       l2 = ProtocolToml.Layer2Config(
         contractAddress = "0x0000000000000000000000000000000000000002",
-        contractDeploymentBlockNumber = 1UL
-      )
+        contractDeploymentBlockNumber = 1UL,
+      ),
     )
 
     val tomlMinimal = """
@@ -49,16 +49,16 @@ class ProtocolParsingTest {
     val configMinimal = ProtocolToml(
       genesis = ProtocolToml.Genesis(
         genesisStateRootHash = "0x0000000000000000000000000000000000000000000000000000000000000001".decodeHex(),
-        genesisShnarf = "0x0000000000000000000000000000000000000000000000000000000000000002".decodeHex()
+        genesisShnarf = "0x0000000000000000000000000000000000000000000000000000000000000002".decodeHex(),
       ),
       l1 = ProtocolToml.Layer1Config(
         contractAddress = "0x0000000000000000000000000000000000000001",
-        blockTime = 12.seconds
+        blockTime = 12.seconds,
       ),
       l2 = ProtocolToml.Layer2Config(
         contractAddress = "0x0000000000000000000000000000000000000002",
-        contractDeploymentBlockNumber = null
-      )
+        contractDeploymentBlockNumber = null,
+      ),
     )
   }
 

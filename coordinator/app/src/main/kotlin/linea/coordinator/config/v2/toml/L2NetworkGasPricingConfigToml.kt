@@ -16,10 +16,10 @@ data class L2NetworkGasPricingConfigToml(
   val extraDataUpdateRequestRetries: RequestRetriesToml = RequestRetriesToml(
     timeout = 8.seconds,
     backoffDelay = 1.seconds,
-    failuresWarningThreshold = 3u
+    failuresWarningThreshold = 3u,
   ),
   val dynamicGasPricing: DynamicGasPricingToml,
-  val flatRateGasPricing: FlatRateGasPricingToml
+  val flatRateGasPricing: FlatRateGasPricingToml,
 ) {
   init {
     require(feeHistoryBlockCount > 0u) { "feeHistoryBlockCount=$feeHistoryBlockCount must be greater than 0" }
@@ -33,7 +33,7 @@ data class L2NetworkGasPricingConfigToml(
     val blobSubmissionExpectedExecutionGas: ULong,
     val variableCostUpperBound: ULong,
     val variableCostLowerBound: ULong,
-    val margin: Double
+    val margin: Double,
   ) {
     fun reified(): L2NetworkGasPricingConfig.DynamicGasPricing {
       return L2NetworkGasPricingConfig.DynamicGasPricing(
@@ -41,7 +41,7 @@ data class L2NetworkGasPricingConfigToml(
         blobSubmissionExpectedExecutionGas = this.blobSubmissionExpectedExecutionGas,
         variableCostUpperBound = this.variableCostUpperBound,
         variableCostLowerBound = this.variableCostLowerBound,
-        margin = this.margin
+        margin = this.margin,
       )
     }
   }
@@ -51,7 +51,7 @@ data class L2NetworkGasPricingConfigToml(
     val gasPriceUpperBound: ULong,
     val plainTransferCostMultiplier: Double = 1.0,
     val compressedTxSize: UInt = 125u,
-    val expectedGas: UInt = 21000u
+    val expectedGas: UInt = 21000u,
   ) {
     fun reified(): L2NetworkGasPricingConfig.FlatRateGasPricing {
       return L2NetworkGasPricingConfig.FlatRateGasPricing(
@@ -59,13 +59,13 @@ data class L2NetworkGasPricingConfigToml(
         gasPriceUpperBound = this.gasPriceUpperBound,
         plainTransferCostMultiplier = this.plainTransferCostMultiplier,
         compressedTxSize = this.compressedTxSize,
-        expectedGas = this.expectedGas
+        expectedGas = this.expectedGas,
       )
     }
   }
 
   fun reified(
-    l1DefaultEndpoint: URL?
+    l1DefaultEndpoint: URL?,
   ): L2NetworkGasPricingConfig {
     return L2NetworkGasPricingConfig(
       disabled = disabled,
@@ -77,7 +77,7 @@ data class L2NetworkGasPricingConfigToml(
       flatRateGasPricing = this.flatRateGasPricing.reified(),
       extraDataUpdateEndpoint = this.extraDataUpdateEndpoint,
       extraDataUpdateRequestRetries = this.extraDataUpdateRequestRetries.asDomain,
-      l1Endpoint = this.l1Endpoint ?: l1DefaultEndpoint ?: throw AssertionError("l1Endpoint must be set")
+      l1Endpoint = this.l1Endpoint ?: l1DefaultEndpoint ?: throw AssertionError("l1Endpoint must be set"),
     )
   }
 }

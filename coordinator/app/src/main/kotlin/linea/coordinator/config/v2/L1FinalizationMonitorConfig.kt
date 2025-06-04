@@ -9,5 +9,5 @@ data class L1FinalizationMonitorConfig(
   val l1Endpoint: URL,
   val l2Endpoint: URL,
   val l1PollingInterval: Duration = 6.seconds,
-  val l1QueryBlockTag: BlockParameter.Tag = BlockParameter.Tag.FINALIZED
+  val l1QueryBlockTag: BlockParameter.Tag = BlockParameter.Tag.FINALIZED,
 )

@@ -8,7 +8,7 @@ data class L1SubmissionConfig(
   val dynamicGasPriceCap: DynamicGasPriceCapConfig,
   val fallbackGasPrice: FallbackGasPriceConfig,
   val blob: BlobSubmissionConfig,
-  val aggregation: AggregationSubmissionConfig
+  val aggregation: AggregationSubmissionConfig,
 ) : FeatureToggle {
   override val disabled: Boolean
     get() = blob.disabled && aggregation.disabled
@@ -17,7 +17,7 @@ data class L1SubmissionConfig(
     override val disabled: Boolean,
     val gasPriceCapCalculation: GasPriceCapCalculationConfig,
     val feeHistoryFetcher: FeeHistoryFetcherConfig,
-    val timeOfDayMultipliers: TimeOfDayMultipliers
+    val timeOfDayMultipliers: TimeOfDayMultipliers,
   ) : FeatureToggle {
     data class GasPriceCapCalculationConfig(
       val adjustmentConstant: UInt,
@@ -27,7 +27,7 @@ data class L1SubmissionConfig(
       val baseFeePerGasPercentileWindowLeeway: Duration,
       val baseFeePerGasPercentile: UInt,
       val gasPriceCapsCheckCoefficient: Double,
-      val timeOfTheDayMultipliers: Map<String, Double>
+      val timeOfTheDayMultipliers: Map<String, Double>,
     )
 
     data class FeeHistoryFetcherConfig(
@@ -36,13 +36,13 @@ data class L1SubmissionConfig(
       val maxBlockCount: UInt,
       val rewardPercentiles: List<UInt>,
       val numOfBlocksBeforeLatest: UInt,
-      val storagePeriod: Duration
+      val storagePeriod: Duration,
     )
   }
 
   data class FallbackGasPriceConfig(
     val feeHistoryBlockCount: UInt,
-    val feeHistoryRewardPercentile: UInt
+    val feeHistoryRewardPercentile: UInt,
   )
 
   data class GasConfig(
@@ -50,11 +50,11 @@ data class L1SubmissionConfig(
     val maxFeePerGasCap: ULong,
     val maxPriorityFeePerGasCap: ULong,
     val maxFeePerBlobGasCap: ULong? = null,
-    val fallback: FallbackGasConfig
+    val fallback: FallbackGasConfig,
   ) {
     data class FallbackGasConfig(
       val priorityFeePerGasUpperBound: ULong,
-      val priorityFeePerGasLowerBound: ULong
+      val priorityFeePerGasLowerBound: ULong,
     )
   }
 
@@ -67,7 +67,7 @@ data class L1SubmissionConfig(
     val targetBlobsPerTransaction: UInt,
     val dbMaxBlobsToReturn: UInt,
     val gas: GasConfig,
-    val signer: SignerConfig
+    val signer: SignerConfig,
   ) : FeatureToggle
 
   data class AggregationSubmissionConfig(
@@ -77,6 +77,6 @@ data class L1SubmissionConfig(
     val submissionTickInterval: Duration,
     val maxSubmissionsPerTick: UInt,
     val gas: GasConfig,
-    val signer: SignerConfig
+    val signer: SignerConfig,
   ) : FeatureToggle
 }

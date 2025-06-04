@@ -42,7 +42,7 @@ inline fun <reified T : Any> parseConfig(toml: String): T {
 
 @OptIn(ExperimentalHoplite::class)
 inline fun <reified T : Any> loadConfigsOrError(
-  configFiles: List<Path>
+  configFiles: List<Path>,
 ): Result<T, String> {
   val confBuilder: ConfigLoaderBuilder = ConfigLoaderBuilder
     .empty()
@@ -66,7 +66,7 @@ fun logErrorIfPresent(
   configName: String,
   configFiles: List<Path>,
   configLoadingResult: Result<Any?, String>,
-  logger: Logger
+  logger: Logger,
 ) {
   if (configLoadingResult is Err) {
     logger.error("Failed to load $configName from files=$configFiles with error=${configLoadingResult.error}")
@@ -76,7 +76,7 @@ fun logErrorIfPresent(
 inline fun <reified T : Any> loadConfigsAndLogErrors(
   configFiles: List<Path>,
   configName: String,
-  logger: Logger = LogManager.getLogger("linea.coordinator.config")
+  logger: Logger = LogManager.getLogger("linea.coordinator.config"),
 ): Result<T, String> {
   return loadConfigsOrError<T>(configFiles)
     .also { logErrorIfPresent(configName, configFiles, it, logger) }
@@ -87,7 +87,7 @@ fun loadConfigsOrError(
   tracesLimitsFileV2: Path,
   gasPriceCapTimeOfDayMultipliersFile: Path,
   smartContractErrorsFile: Path,
-  logger: Logger = LogManager.getLogger("linea.coordinator.config")
+  logger: Logger = LogManager.getLogger("linea.coordinator.config"),
 ): Result<CoordinatorConfigToml, String> {
   val coordinatorBaseConfigs =
     loadConfigsAndLogErrors<CoordinatorConfigFileToml>(coordinatorConfigFiles, "coordinator", logger)
@@ -97,18 +97,18 @@ fun loadConfigsOrError(
     loadConfigsAndLogErrors<GasPriceCapTimeOfDayMultipliersConfigFileToml>(
       listOf(gasPriceCapTimeOfDayMultipliersFile),
       "l1 submission gas prices caps",
-      logger
+      logger,
     )
   val smartContractErrorsConfig = loadConfigsAndLogErrors<SmartContractErrorCodesConfigFileToml>(
     listOf(smartContractErrorsFile),
     "smart contract errors",
-    logger
+    logger,
   )
   val configError = listOf(
     coordinatorBaseConfigs,
     tracesLimitsV2Configs,
     gasPriceCapTimeOfDayMultipliersConfig,
-    smartContractErrorsConfig
+    smartContractErrorsConfig,
   )
     .find { it is Err }
 
@@ -121,7 +121,7 @@ fun loadConfigsOrError(
     configs = coordinatorBaseConfigs.get()!!,
     tracesLimitsV2 = tracesLimitsV2Configs.get()!!,
     l1DynamicGasPriceCapTimeOfDayMultipliers = gasPriceCapTimeOfDayMultipliersConfig.get(),
-    smartContractErrors = smartContractErrorsConfig.get()
+    smartContractErrors = smartContractErrorsConfig.get(),
   )
   return Ok(finalConfig)
 }
@@ -131,14 +131,14 @@ fun loadConfigs(
   tracesLimitsFileV2: Path,
   gasPriceCapTimeOfDayMultipliersFile: Path,
   smartContractErrorsFile: Path,
-  logger: Logger = LogManager.getLogger("linea.coordinator.config")
+  logger: Logger = LogManager.getLogger("linea.coordinator.config"),
 ): CoordinatorConfig {
   loadConfigsOrError(
     coordinatorConfigFiles,
     tracesLimitsFileV2,
     gasPriceCapTimeOfDayMultipliersFile,
     smartContractErrorsFile,
-    logger
+    logger,
   ).let {
     return it
       .getOrElse { throw RuntimeException("Invalid configurations: $it") }

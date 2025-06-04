@@ -17,8 +17,8 @@ data class DataBaseToml(
   val persistenceRetries: RequestRetriesToml = RequestRetriesToml(
     backoffDelay = 1.seconds,
     timeout = 10.minutes,
-    failuresWarningThreshold = 3u
-  )
+    failuresWarningThreshold = 3u,
+  ),
 ) {
   fun reified(): DatabaseConfig {
     return DatabaseConfig(
@@ -30,7 +30,7 @@ data class DataBaseToml(
       readPoolSize = this.readPoolSize,
       readPipeliningLimit = this.readPipeliningLimit,
       transactionalPoolSize = this.transactionalPoolSize,
-      persistenceRetries = this.persistenceRetries.asDomain
+      persistenceRetries = this.persistenceRetries.asDomain,
     )
   }
 }

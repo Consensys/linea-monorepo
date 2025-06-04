@@ -8,7 +8,7 @@ class TestHelper {
     fun pathToResource(resource: String): Path {
       return Paths.get(
         this::class.java.classLoader.getResource(resource)?.toURI()
-          ?: error("Resource not found: $resource")
+          ?: error("Resource not found: $resource"),
       )
     }
   }

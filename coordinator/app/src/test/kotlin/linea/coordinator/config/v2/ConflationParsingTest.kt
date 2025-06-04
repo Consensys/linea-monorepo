@@ -48,15 +48,15 @@ class ConflationParsingTest {
       blobCompression = ConflationToml.BlobCompressionToml(
         blobSizeLimit = 102_400U,
         handlerPollingInterval = 1.seconds,
-        batchesLimit = 1u
+        batchesLimit = 1u,
       ),
       proofAggregation = ConflationToml.ProofAggregationToml(
         proofsLimit = 3u,
         deadline = 60.seconds,
         coordinatorPollingInterval = 2.seconds,
         deadlineCheckInterval = 8.seconds,
-        targetEndBlocks = listOf(10uL, 20uL, 30_000uL)
-      )
+        targetEndBlocks = listOf(10uL, 20uL, 30_000uL),
+      ),
     )
 
     val tomlMinimal = """
@@ -73,26 +73,26 @@ class ConflationParsingTest {
       blobCompression = ConflationToml.BlobCompressionToml(
         blobSizeLimit = 102_400U,
         handlerPollingInterval = 1.seconds,
-        batchesLimit = null
+        batchesLimit = null,
       ),
       proofAggregation = ConflationToml.ProofAggregationToml(
         proofsLimit = 300u,
         deadline = null,
         deadlineCheckInterval = 30.seconds,
         coordinatorPollingInterval = 3.seconds,
-        targetEndBlocks = null
-      )
+        targetEndBlocks = null,
+      ),
     )
   }
 
   data class WrapperConfig(
-    val conflation: ConflationToml = ConflationToml()
+    val conflation: ConflationToml = ConflationToml(),
   )
 
   @Test
   fun `should parse conflation toml configs - full`() {
     assertThat(
-      parseConfig<WrapperConfig>(toml).conflation
+      parseConfig<WrapperConfig>(toml).conflation,
     )
       .isEqualTo(config)
   }
@@ -100,7 +100,7 @@ class ConflationParsingTest {
   @Test
   fun `should parse conflation toml configs - minimal`() {
     assertThat(
-      parseConfig<WrapperConfig>(tomlMinimal).conflation
+      parseConfig<WrapperConfig>(tomlMinimal).conflation,
     )
       .isEqualTo(configMinimal)
   }

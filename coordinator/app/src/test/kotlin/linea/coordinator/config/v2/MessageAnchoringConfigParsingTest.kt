@@ -75,24 +75,24 @@ class MessageAnchoringConfigParsingTest {
           maxRetries = 4u,
           backoffDelay = 1.seconds,
           timeout = 6.seconds,
-          failuresWarningThreshold = 2u
+          failuresWarningThreshold = 2u,
         ),
         l2RequestRetries = RequestRetriesToml(
           maxRetries = 5u,
           backoffDelay = 100.milliseconds,
           timeout = 10.seconds,
-          failuresWarningThreshold = 3u
+          failuresWarningThreshold = 3u,
         ),
         gas = MessageAnchoringConfigToml.GasConfig(
           maxFeePerGasCap = 100_000_000_000u,
           gasLimit = 10_000_000u,
           feeHistoryBlockCount = 4u,
-          feeHistoryRewardPercentile = 15u
+          feeHistoryRewardPercentile = 15u,
         ),
         signer = SignerConfigToml(
           type = SignerConfigToml.SignerType.WEB3J,
           web3j = SignerConfigToml.Web3jConfig(
-            privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000001")
+            privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000001"),
           ),
           web3signer = SignerConfigToml.Web3SignerConfig(
             endpoint = "http://web3signer:9000".toURL(),
@@ -101,9 +101,9 @@ class MessageAnchoringConfigParsingTest {
             publicKey = (
               "0000000000000000000000000000000000000000000000000000000000000000" +
                 "0000000000000000000000000000000000000000000000000000000000000001"
-              ).decodeHex()
-          )
-        )
+              ).decodeHex(),
+          ),
+        ),
       )
 
     val tomlMinimal = """
@@ -126,32 +126,32 @@ class MessageAnchoringConfigParsingTest {
           maxRetries = null,
           backoffDelay = 1.seconds,
           timeout = null,
-          failuresWarningThreshold = 3u
+          failuresWarningThreshold = 3u,
         ),
         l2RequestRetries = RequestRetriesToml(
           maxRetries = null,
           backoffDelay = 1.seconds,
           timeout = 8.seconds,
-          failuresWarningThreshold = 3u
+          failuresWarningThreshold = 3u,
         ),
         gas = MessageAnchoringConfigToml.GasConfig(
           maxFeePerGasCap = 100_000_000_000u,
           gasLimit = 2_500_000u,
           feeHistoryBlockCount = 4u,
-          feeHistoryRewardPercentile = 15u
+          feeHistoryRewardPercentile = 15u,
         ),
         signer = SignerConfigToml(
           type = SignerConfigToml.SignerType.WEB3J,
           web3j = SignerConfigToml.Web3jConfig(
-            privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000001")
+            privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000001"),
           ),
-          web3signer = null
-        )
+          web3signer = null,
+        ),
       )
   }
 
   data class WrapperConfig(
-    val messageAnchoring: MessageAnchoringConfigToml
+    val messageAnchoring: MessageAnchoringConfigToml,
   )
 
   @Test

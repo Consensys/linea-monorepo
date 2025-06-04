@@ -21,13 +21,13 @@ data class ConflationConfig(
   val l2GetLogsEndpoint: URL,
   val blobCompression: BlobCompression = BlobCompression(),
   val proofAggregation: ProofAggregation = ProofAggregation(),
-  val tracesCountersLimitsV2: TracesCountersV2
+  val tracesCountersLimitsV2: TracesCountersV2,
 ) : FeatureToggle {
   data class BlobCompression(
     val blobSizeLimit: UInt = 102400u,
     val handlerPollingInterval: Duration = 1.seconds,
     val batchesLimit: UInt? = null,
-    val blobCompressorVersion: BlobCompressorVersion = BlobCompressorVersion.V1_2
+    val blobCompressorVersion: BlobCompressorVersion = BlobCompressorVersion.V1_2,
   )
 
   data class ProofAggregation(
@@ -36,6 +36,6 @@ data class ConflationConfig(
     val deadlineCheckInterval: Duration = 30.seconds,
     val coordinatorPollingInterval: Duration = 3.seconds,
     val targetEndBlocks: List<ULong>? = null,
-    val aggregationSizeMultipleOf: UInt = 1u
+    val aggregationSizeMultipleOf: UInt = 1u,
   )
 }

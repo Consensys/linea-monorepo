@@ -11,8 +11,8 @@ data class Type2StateProofManagerConfig(
   val endpoints: List<URL>,
   val requestRetries: RetryConfig = RetryConfig.endlessRetry(
     backoffDelay = 1.seconds,
-    failuresWarningThreshold = 3u
+    failuresWarningThreshold = 3u,
   ),
   val l1QueryBlockTag: BlockParameter.Tag = BlockParameter.Tag.FINALIZED,
-  val l1PollingInterval: Duration = 6.seconds
+  val l1PollingInterval: Duration = 6.seconds,
 ) : FeatureToggle

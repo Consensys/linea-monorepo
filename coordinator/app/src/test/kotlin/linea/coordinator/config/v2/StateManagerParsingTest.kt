@@ -28,8 +28,8 @@ class StateManagerParsingTest {
       requestRetries = RequestRetriesToml(
         maxRetries = 5u,
         backoffDelay = 2.seconds,
-        failuresWarningThreshold = 2u
-      )
+        failuresWarningThreshold = 2u,
+      ),
     )
 
     val tomlMinimal = """
@@ -45,13 +45,13 @@ class StateManagerParsingTest {
       requestRetries = RequestRetriesToml(
         maxRetries = null,
         backoffDelay = 1.seconds,
-        failuresWarningThreshold = 3u
-      )
+        failuresWarningThreshold = 3u,
+      ),
     )
   }
 
   data class WrapperConfig(
-    val stateManager: StateManagerToml
+    val stateManager: StateManagerToml,
   )
 
   @Test

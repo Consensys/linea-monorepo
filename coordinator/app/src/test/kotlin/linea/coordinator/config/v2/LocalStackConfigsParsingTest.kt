@@ -14,11 +14,11 @@ class LocalStackConfigsParsingTest {
       coordinatorConfigFiles = listOf(
         Path.of("../../config/coordinator/coordinator-config-v2.toml"),
         Path.of("../../config/coordinator/coordinator-config-v2-override-local-dev.toml"),
-        Path.of("../../config/coordinator/coordinator-config-v2-override-web3signer.toml")
+        Path.of("../../config/coordinator/coordinator-config-v2-override-web3signer.toml"),
       ),
       tracesLimitsFileV2 = Path.of("../../config/common/traces-limits-v2.toml"),
       gasPriceCapTimeOfDayMultipliersFile = Path.of("../../config/common/gas-price-cap-time-of-day-multipliers.toml"),
-      smartContractErrorsFile = Path.of("../../config/common/smart-contract-errors.toml")
+      smartContractErrorsFile = Path.of("../../config/common/smart-contract-errors.toml"),
     ).also { configs ->
       // just small assertion to ensure that the configs are loaded and overridden correctly
       assertThat(configs.database.host).isEqualTo("127.0.0.1")

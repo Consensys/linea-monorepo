@@ -17,14 +17,14 @@ class TomlByteArrayHexDecoder : Decoder<ByteArray> {
   override fun decode(
     node: Node,
     type: KType,
-    context: DecoderContext
+    context: DecoderContext,
   ): ConfigResult<ByteArray> {
     return when (node) {
       is StringNode -> runCatching {
         node.value.decodeHex()
       }.fold(
         { it.valid() },
-        { ConfigFailure.DecodeError(node, type).invalid() }
+        { ConfigFailure.DecodeError(node, type).invalid() },
       )
 
       else -> { ConfigFailure.DecodeError(node, type).invalid() }
@@ -40,14 +40,14 @@ class TomlKotlinDurationDecoder : Decoder<Duration> {
   override fun decode(
     node: Node,
     type: KType,
-    context: DecoderContext
+    context: DecoderContext,
   ): ConfigResult<Duration> {
     return when (node) {
       is StringNode -> runCatching {
         Duration.parse(node.value)
       }.fold(
         { it.valid() },
-        { ConfigFailure.DecodeError(node, type).invalid() }
+        { ConfigFailure.DecodeError(node, type).invalid() },
       )
 
       else -> { ConfigFailure.DecodeError(node, type).invalid() }
@@ -63,14 +63,14 @@ class TomlSignerTypeDecoder : Decoder<SignerConfigToml.SignerType> {
   override fun decode(
     node: Node,
     type: KType,
-    context: DecoderContext
+    context: DecoderContext,
   ): ConfigResult<SignerConfigToml.SignerType> {
     return when (node) {
       is StringNode -> runCatching {
         SignerConfigToml.SignerType.valueOfIgnoreCase(node.value.lowercase())
       }.fold(
         { it.valid() },
-        { ConfigFailure.DecodeError(node, type).invalid() }
+        { ConfigFailure.DecodeError(node, type).invalid() },
       )
 
       else -> { ConfigFailure.DecodeError(node, type).invalid() }

@@ -17,6 +17,6 @@ data class DatabaseConfig(
   val persistenceRetries: RetryConfig = RetryConfig(
     backoffDelay = 1.seconds,
     timeout = 10.minutes,
-    failuresWarningThreshold = 3u
-  )
+    failuresWarningThreshold = 3u,
+  ),
 )

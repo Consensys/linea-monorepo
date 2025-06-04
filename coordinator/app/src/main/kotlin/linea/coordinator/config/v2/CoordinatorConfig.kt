@@ -16,5 +16,5 @@ data class CoordinatorConfig(
   val l2NetworkGasPricing: L2NetworkGasPricingConfig? = null,
   val database: DatabaseConfig,
   val api: ApiConfig,
-  val smartContractErrors: SmartContractErrors
+  val smartContractErrors: SmartContractErrors,
 )

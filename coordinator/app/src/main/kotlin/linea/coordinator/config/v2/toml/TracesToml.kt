@@ -9,15 +9,15 @@ data class TracesToml(
   val counters: ClientApiConfigToml,
   val conflation: ClientApiConfigToml,
   val switchBlockNumberInclusive: UInt? = null,
-  val new: TracesToml? = null
+  val new: TracesToml? = null,
 ) {
   data class ClientApiConfigToml(
     val endpoints: List<URL>,
     val requestLimitPerEndpoint: UInt = UInt.MAX_VALUE,
     val requestRetries: RequestRetriesToml = RequestRetriesToml.endlessRetry(
       backoffDelay = 1.seconds,
-      failuresWarningThreshold = 3u
-    )
+      failuresWarningThreshold = 3u,
+    ),
   ) {
     override fun toString(): String {
       return "ClientApiConfigToml(" +
@@ -34,13 +34,13 @@ data class TracesToml(
       counters = TracesConfig.ClientApiConfig(
         endpoints = counters.endpoints,
         requestLimitPerEndpoint = counters.requestLimitPerEndpoint,
-        requestRetries = counters.requestRetries.asDomain
+        requestRetries = counters.requestRetries.asDomain,
       ),
       conflation = TracesConfig.ClientApiConfig(
         endpoints = conflation.endpoints,
         requestLimitPerEndpoint = conflation.requestLimitPerEndpoint,
-        requestRetries = conflation.requestRetries.asDomain
-      )
+        requestRetries = conflation.requestRetries.asDomain,
+      ),
       /*
       switchBlockNumberInclusive = switchBlockNumberInclusive,
       new = new?.let { newTracesConfig ->

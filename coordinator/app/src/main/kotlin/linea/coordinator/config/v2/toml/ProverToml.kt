@@ -17,11 +17,11 @@ data class ProverToml(
   val blobCompression: ProverDirectoriesToml,
   val proofAggregation: ProverDirectoriesToml,
   val switchBlockNumberInclusive: ULong? = null,
-  val new: ProverToml? = null
+  val new: ProverToml? = null,
 ) {
   data class ProverDirectoriesToml(
     val fsRequestsDirectory: String,
-    val fsResponsesDirectory: String
+    val fsResponsesDirectory: String,
   )
 
   fun reified(): ProversConfig {
@@ -33,7 +33,7 @@ data class ProverToml(
           inprogressProvingSuffixPattern = this.fsInprogressProvingSuffixPattern,
           inprogressRequestWritingSuffix = this.fsInprogressRequestWritingSuffix,
           pollingInterval = this.fsPollingInterval,
-          pollingTimeout = this.fsPollingTimeout
+          pollingTimeout = this.fsPollingTimeout,
         ),
         blobCompression = FileBasedProverConfig(
           requestsDirectory = Path.of(this.blobCompression.fsRequestsDirectory),
@@ -41,7 +41,7 @@ data class ProverToml(
           inprogressProvingSuffixPattern = this.fsInprogressProvingSuffixPattern,
           inprogressRequestWritingSuffix = this.fsInprogressRequestWritingSuffix,
           pollingInterval = this.fsPollingInterval,
-          pollingTimeout = this.fsPollingTimeout
+          pollingTimeout = this.fsPollingTimeout,
 
         ),
         proofAggregation = FileBasedProverConfig(
@@ -50,8 +50,8 @@ data class ProverToml(
           inprogressProvingSuffixPattern = this.fsInprogressProvingSuffixPattern,
           inprogressRequestWritingSuffix = this.fsInprogressRequestWritingSuffix,
           pollingInterval = this.fsPollingInterval,
-          pollingTimeout = this.fsPollingTimeout
-        )
+          pollingTimeout = this.fsPollingTimeout,
+        ),
       ),
       switchBlockNumberInclusive = this.switchBlockNumberInclusive ?: this.new?.switchBlockNumberInclusive,
       proverB = this.new?.let { newProverConfig ->
@@ -62,7 +62,7 @@ data class ProverToml(
             inprogressProvingSuffixPattern = newProverConfig.fsInprogressProvingSuffixPattern,
             inprogressRequestWritingSuffix = newProverConfig.fsInprogressRequestWritingSuffix,
             pollingInterval = newProverConfig.fsPollingInterval,
-            pollingTimeout = newProverConfig.fsPollingTimeout
+            pollingTimeout = newProverConfig.fsPollingTimeout,
           ),
           blobCompression = FileBasedProverConfig(
             requestsDirectory = Path.of(newProverConfig.blobCompression.fsRequestsDirectory),
@@ -70,7 +70,7 @@ data class ProverToml(
             inprogressProvingSuffixPattern = newProverConfig.fsInprogressProvingSuffixPattern,
             inprogressRequestWritingSuffix = newProverConfig.fsInprogressRequestWritingSuffix,
             pollingInterval = newProverConfig.fsPollingInterval,
-            pollingTimeout = newProverConfig.fsPollingTimeout
+            pollingTimeout = newProverConfig.fsPollingTimeout,
 
           ),
           proofAggregation = FileBasedProverConfig(
@@ -79,10 +79,10 @@ data class ProverToml(
             inprogressProvingSuffixPattern = newProverConfig.fsInprogressProvingSuffixPattern,
             inprogressRequestWritingSuffix = newProverConfig.fsInprogressRequestWritingSuffix,
             pollingInterval = newProverConfig.fsPollingInterval,
-            pollingTimeout = newProverConfig.fsPollingTimeout
-          )
+            pollingTimeout = newProverConfig.fsPollingTimeout,
+          ),
         )
-      }
+      },
     )
   }
 }

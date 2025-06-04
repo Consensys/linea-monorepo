@@ -41,8 +41,8 @@ class DataBaseConfigParsingTest {
         maxRetries = 3u,
         backoffDelay = 1.seconds,
         timeout = 40.seconds,
-        failuresWarningThreshold = 2u
-      )
+        failuresWarningThreshold = 2u,
+      ),
     )
 
     val tomlMinimal = """
@@ -65,13 +65,13 @@ class DataBaseConfigParsingTest {
         maxRetries = null,
         backoffDelay = 1.seconds,
         timeout = 10.minutes,
-        failuresWarningThreshold = 3u
-      )
+        failuresWarningThreshold = 3u,
+      ),
     )
   }
 
   data class WrapperConfig(
-    val database: DataBaseToml
+    val database: DataBaseToml,
   )
 
   @Test

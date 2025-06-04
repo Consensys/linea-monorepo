@@ -8,7 +8,7 @@ import java.net.URL
 data class SignerConfigToml(
   val type: SignerType,
   val web3j: Web3jConfig?,
-  val web3signer: Web3SignerConfig?
+  val web3signer: Web3SignerConfig?,
 ) {
   init {
     when {
@@ -24,7 +24,8 @@ data class SignerConfigToml(
 
   enum class SignerType(val mame: String) {
     WEB3J("web3j"),
-    WEB3SIGNER("web3signer");
+    WEB3SIGNER("web3signer"),
+    ;
 
     companion object {
       fun valueOfIgnoreCase(name: String): SignerType {
@@ -41,7 +42,7 @@ data class SignerConfigToml(
   }
 
   data class Web3jConfig(
-    val privateKey: Masked
+    val privateKey: Masked,
   ) {
     init {
       runCatching {
@@ -68,7 +69,7 @@ data class SignerConfigToml(
     val endpoint: URL,
     val publicKey: ByteArray,
     val maxPoolSize: Int = 10,
-    val keepAlive: Boolean = true
+    val keepAlive: Boolean = true,
   ) {
     init {
       require(publicKey.size == 64) { "publicKey must be 64 bytes (128 hex characters)" }
@@ -107,9 +108,9 @@ data class SignerConfigToml(
           endpoint = it.endpoint,
           publicKey = it.publicKey,
           maxPoolSize = it.maxPoolSize,
-          keepAlive = it.keepAlive
+          keepAlive = it.keepAlive,
         )
-      }
+      },
     )
   }
 }

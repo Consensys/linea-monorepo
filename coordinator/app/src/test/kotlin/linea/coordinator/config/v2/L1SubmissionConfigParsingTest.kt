@@ -114,7 +114,7 @@ class L1SubmissionConfigParsingTest {
             baseFeePerGasPercentileWindow = 7.days,
             baseFeePerGasPercentileWindowLeeway = 10.minutes,
             baseFeePerGasPercentile = 10u,
-            gasPriceCapsCheckCoefficient = 0.9
+            gasPriceCapsCheckCoefficient = 0.9,
           ),
           feeHistoryFetcher = L1SubmissionConfigToml.DynamicGasPriceCapToml.FeeHistoryFetcherConfig(
             l1Endpoint = "http://l1-node:8545".toURL(),
@@ -122,12 +122,12 @@ class L1SubmissionConfigParsingTest {
             maxBlockCount = 1000u,
             rewardPercentiles = listOf(10, 20, 30, 40, 50, 60, 70, 80, 90, 100).map { it.toUInt() },
             numOfBlocksBeforeLatest = 2u,
-            storagePeriod = 10.days
-          )
+            storagePeriod = 10.days,
+          ),
         ),
         fallbackGasPrice = L1SubmissionConfigToml.FallbackGasPriceToml(
           feeHistoryBlockCount = 10u,
-          feeHistoryRewardPercentile = 15u
+          feeHistoryRewardPercentile = 15u,
         ),
         blob = L1SubmissionConfigToml.BlobSubmissionConfigToml(
           disabled = false,
@@ -144,13 +144,13 @@ class L1SubmissionConfigParsingTest {
             maxPriorityFeePerGasCap = 10_000_000_000u,
             fallback = L1SubmissionConfigToml.GasConfigToml.FallbackGasConfig(
               priorityFeePerGasUpperBound = 20_000_000_000u,
-              priorityFeePerGasLowerBound = 2_000_000_000u
-            )
+              priorityFeePerGasLowerBound = 2_000_000_000u,
+            ),
           ),
           signer = SignerConfigToml(
             type = SignerConfigToml.SignerType.WEB3J,
             web3j = SignerConfigToml.Web3jConfig(
-              privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000001")
+              privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000001"),
             ),
             web3signer = SignerConfigToml.Web3SignerConfig(
               endpoint = "http://web3signer:9000".toURL(),
@@ -159,9 +159,9 @@ class L1SubmissionConfigParsingTest {
                   "0000000000000000000000000000000000000000000000000000000000000001"
                 ).decodeHex(),
               maxPoolSize = 10,
-              keepAlive = true
-            )
-          )
+              keepAlive = true,
+            ),
+          ),
         ),
         aggregation = L1SubmissionConfigToml.AggregationSubmissionToml(
           disabled = false,
@@ -176,13 +176,13 @@ class L1SubmissionConfigParsingTest {
             maxPriorityFeePerGasCap = 10_000_000_001u,
             fallback = L1SubmissionConfigToml.GasConfigToml.FallbackGasConfig(
               priorityFeePerGasUpperBound = 20_000_000_001u,
-              priorityFeePerGasLowerBound = 2_000_000_001u
-            )
+              priorityFeePerGasLowerBound = 2_000_000_001u,
+            ),
           ),
           signer = SignerConfigToml(
             type = SignerConfigToml.SignerType.WEB3SIGNER,
             web3j = SignerConfigToml.Web3jConfig(
-              privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000002")
+              privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000002"),
             ),
             web3signer = SignerConfigToml.Web3SignerConfig(
               endpoint = "http://web3signer:9000".toURL(),
@@ -191,10 +191,10 @@ class L1SubmissionConfigParsingTest {
                   "0000000000000000000000000000000000000000000000000000000000000002"
                 ).decodeHex(),
               maxPoolSize = 10,
-              keepAlive = true
-            )
-          )
-        )
+              keepAlive = true,
+            ),
+          ),
+        ),
       )
 
     val tomlMinimal = """
@@ -260,19 +260,19 @@ class L1SubmissionConfigParsingTest {
             baseFeePerGasPercentileWindow = 7.days,
             baseFeePerGasPercentileWindowLeeway = 10.minutes,
             baseFeePerGasPercentile = 10u,
-            gasPriceCapsCheckCoefficient = 0.9
+            gasPriceCapsCheckCoefficient = 0.9,
           ),
           feeHistoryFetcher = L1SubmissionConfigToml.DynamicGasPriceCapToml.FeeHistoryFetcherConfig(
             fetchInterval = 3.seconds,
             maxBlockCount = 1000u,
             rewardPercentiles = listOf(10, 20, 30, 40, 50, 60, 70, 80, 90, 100).map { it.toUInt() },
             numOfBlocksBeforeLatest = 4u,
-            storagePeriod = 10.days
-          )
+            storagePeriod = 10.days,
+          ),
         ),
         fallbackGasPrice = L1SubmissionConfigToml.FallbackGasPriceToml(
           feeHistoryBlockCount = 10u,
-          feeHistoryRewardPercentile = 15u
+          feeHistoryRewardPercentile = 15u,
         ),
         blob = L1SubmissionConfigToml.BlobSubmissionConfigToml(
           disabled = false,
@@ -289,16 +289,16 @@ class L1SubmissionConfigParsingTest {
             maxPriorityFeePerGasCap = 10_000_000_000u,
             fallback = L1SubmissionConfigToml.GasConfigToml.FallbackGasConfig(
               priorityFeePerGasUpperBound = 20_000_000_000u,
-              priorityFeePerGasLowerBound = 2_000_000_000u
-            )
+              priorityFeePerGasLowerBound = 2_000_000_000u,
+            ),
           ),
           signer = SignerConfigToml(
             type = SignerConfigToml.SignerType.WEB3J,
             web3j = SignerConfigToml.Web3jConfig(
-              privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000001")
+              privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000001"),
             ),
-            web3signer = null
-          )
+            web3signer = null,
+          ),
         ),
         aggregation = L1SubmissionConfigToml.AggregationSubmissionToml(
           disabled = false,
@@ -313,8 +313,8 @@ class L1SubmissionConfigParsingTest {
             maxPriorityFeePerGasCap = 10_000_000_010u,
             fallback = L1SubmissionConfigToml.GasConfigToml.FallbackGasConfig(
               priorityFeePerGasUpperBound = 20_000_000_001u,
-              priorityFeePerGasLowerBound = 2_000_000_001u
-            )
+              priorityFeePerGasLowerBound = 2_000_000_001u,
+            ),
           ),
           signer = SignerConfigToml(
             type = SignerConfigToml.SignerType.WEB3SIGNER,
@@ -326,15 +326,15 @@ class L1SubmissionConfigParsingTest {
                   "0000000000000000000000000000000000000000000000000000000000000002"
                 ).decodeHex(),
               maxPoolSize = 10,
-              keepAlive = true
-            )
-          )
-        )
+              keepAlive = true,
+            ),
+          ),
+        ),
       )
   }
 
   data class WrapperConfig(
-    val l1Submission: L1SubmissionConfigToml
+    val l1Submission: L1SubmissionConfigToml,
   )
 
   @Test

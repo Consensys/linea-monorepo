@@ -22,7 +22,7 @@ class L1FinalizationMonitorParsingTest {
       l1Endpoint = "http://l1-el-node:8545".toURL(),
       l2Endpoint = "http://sequencer:8545".toURL(),
       l1PollingInterval = 1.seconds,
-      l1QueryBlockTag = BlockParameter.Tag.FINALIZED
+      l1QueryBlockTag = BlockParameter.Tag.FINALIZED,
     )
 
     val tomlMinimal = """
@@ -35,12 +35,12 @@ class L1FinalizationMonitorParsingTest {
       l1Endpoint = "http://l1-el-node:8545".toURL(),
       l2Endpoint = "http://sequencer:8545".toURL(),
       l1PollingInterval = 6.seconds,
-      l1QueryBlockTag = BlockParameter.Tag.FINALIZED
+      l1QueryBlockTag = BlockParameter.Tag.FINALIZED,
     )
   }
 
   data class WrapperConfig(
-    val l1FinalizationMonitor: L1FinalizationMonitorConfigToml
+    val l1FinalizationMonitor: L1FinalizationMonitorConfigToml,
   )
 
   @Test

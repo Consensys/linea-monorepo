@@ -5,7 +5,7 @@ import java.net.URL
 data class SignerConfig(
   val type: SignerType,
   val web3j: Web3jConfig?,
-  val web3signer: Web3SignerConfig?
+  val web3signer: Web3SignerConfig?,
 ) {
   init {
     when {
@@ -21,11 +21,11 @@ data class SignerConfig(
 
   enum class SignerType() {
     WEB3J,
-    WEB3SIGNER;
+    WEB3SIGNER,
   }
 
   data class Web3jConfig(
-    val privateKey: ByteArray
+    val privateKey: ByteArray,
   ) {
     override fun equals(other: Any?): Boolean {
       if (this === other) return true
@@ -49,7 +49,7 @@ data class SignerConfig(
     val endpoint: URL,
     val publicKey: ByteArray,
     val maxPoolSize: Int = 10,
-    val keepAlive: Boolean = true
+    val keepAlive: Boolean = true,
   ) {
     override fun equals(other: Any?): Boolean {
       if (this === other) return true

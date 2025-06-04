@@ -36,7 +36,7 @@ class CoordinatorConfigTest {
       messageAnchoring = MessageAnchoringConfigParsingTest.config,
       l2NetworkGasPricing = L2NetWorkingGasPricingConfigParsingTest.config,
       database = DataBaseConfigParsingTest.config,
-      api = ApiConfigParsingTest.config
+      api = ApiConfigParsingTest.config,
     )
     assertThat(parseConfig<CoordinatorConfigFileToml>(toml)).isEqualTo(config)
   }
@@ -71,7 +71,7 @@ class CoordinatorConfigTest {
       messageAnchoring = MessageAnchoringConfigParsingTest.configMinimal,
       l2NetworkGasPricing = L2NetWorkingGasPricingConfigParsingTest.configMinimal,
       database = DataBaseConfigParsingTest.configMinimal,
-      api = ApiConfigParsingTest.configMinimal
+      api = ApiConfigParsingTest.configMinimal,
     )
 
     assertThat(parseConfig<CoordinatorConfigFileToml>(toml)).isEqualTo(config)

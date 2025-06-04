@@ -47,32 +47,32 @@ class ProverParsingTest {
       fsPollingTimeout = 10.minutes,
       execution = ProverToml.ProverDirectoriesToml(
         fsRequestsDirectory = "/data/prover/v2/execution/requests",
-        fsResponsesDirectory = "/data/prover/v2/execution/responses"
+        fsResponsesDirectory = "/data/prover/v2/execution/responses",
       ),
       blobCompression = ProverToml.ProverDirectoriesToml(
         fsRequestsDirectory = "/data/prover/v2/compression/requests",
-        fsResponsesDirectory = "/data/prover/v2/compression/responses"
+        fsResponsesDirectory = "/data/prover/v2/compression/responses",
       ),
       proofAggregation = ProverToml.ProverDirectoriesToml(
         fsRequestsDirectory = "/data/prover/v2/aggregation/requests",
-        fsResponsesDirectory = "/data/prover/v2/aggregation/responses"
+        fsResponsesDirectory = "/data/prover/v2/aggregation/responses",
       ),
       new = ProverToml(
         switchBlockNumberInclusive = 1_000u,
         version = "v3.0.0",
         execution = ProverToml.ProverDirectoriesToml(
           fsRequestsDirectory = "/data/prover/v3/execution/requests",
-          fsResponsesDirectory = "/data/prover/v3/execution/responses"
+          fsResponsesDirectory = "/data/prover/v3/execution/responses",
         ),
         blobCompression = ProverToml.ProverDirectoriesToml(
           fsRequestsDirectory = "/data/prover/v3/compression/requests",
-          fsResponsesDirectory = "/data/prover/v3/compression/responses"
+          fsResponsesDirectory = "/data/prover/v3/compression/responses",
         ),
         proofAggregation = ProverToml.ProverDirectoriesToml(
           fsRequestsDirectory = "/data/prover/v3/aggregation/requests",
-          fsResponsesDirectory = "/data/prover/v3/aggregation/responses"
-        )
-      )
+          fsResponsesDirectory = "/data/prover/v3/aggregation/responses",
+        ),
+      ),
     )
 
     val tomlMinimal = """
@@ -92,34 +92,34 @@ class ProverParsingTest {
       version = "v2.0.0",
       execution = ProverToml.ProverDirectoriesToml(
         fsRequestsDirectory = "/data/prover/v2/execution/requests",
-        fsResponsesDirectory = "/data/prover/v2/execution/responses"
+        fsResponsesDirectory = "/data/prover/v2/execution/responses",
       ),
       blobCompression = ProverToml.ProverDirectoriesToml(
         fsRequestsDirectory = "/data/prover/v2/compression/requests",
-        fsResponsesDirectory = "/data/prover/v2/compression/responses"
+        fsResponsesDirectory = "/data/prover/v2/compression/responses",
       ),
       proofAggregation = ProverToml.ProverDirectoriesToml(
         fsRequestsDirectory = "/data/prover/v2/aggregation/requests",
-        fsResponsesDirectory = "/data/prover/v2/aggregation/responses"
-      )
+        fsResponsesDirectory = "/data/prover/v2/aggregation/responses",
+      ),
     )
   }
 
   data class WrapperConfig(
-    val prover: ProverToml
+    val prover: ProverToml,
   )
 
   @Test
   fun `should parse prover toml configs - full`() {
     assertThat(
-      parseConfig<WrapperConfig>(toml).prover
+      parseConfig<WrapperConfig>(toml).prover,
     ).isEqualTo(config)
   }
 
   @Test
   fun `should parse conflation toml configs and provide defaults`() {
     assertThat(
-      parseConfig<WrapperConfig>(tomlMinimal).prover
+      parseConfig<WrapperConfig>(tomlMinimal).prover,
     ).isEqualTo(configMinimal)
   }
 }

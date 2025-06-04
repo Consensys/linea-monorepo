@@ -16,7 +16,7 @@ class DefaultsParsingTest {
 
     val config = DefaultsToml(
       l1Endpoint = "http://l1-el-node:8545".toURL(),
-      l2Endpoint = "http://sequencer:8545".toURL()
+      l2Endpoint = "http://sequencer:8545".toURL(),
     )
 
     val tomlMinimal = """
@@ -24,7 +24,7 @@ class DefaultsParsingTest {
 
     val configMinimal = DefaultsToml(
       l1Endpoint = null,
-      l2Endpoint = null
+      l2Endpoint = null,
     )
   }
   internal data class WrapperConfig(val defaults: DefaultsToml = DefaultsToml())

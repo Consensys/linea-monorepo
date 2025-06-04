@@ -9,7 +9,7 @@ data class RequestRetriesToml(
   val maxRetries: UInt? = null,
   val timeout: Duration? = null,
   val backoffDelay: Duration = 1.seconds,
-  val failuresWarningThreshold: UInt? = null
+  val failuresWarningThreshold: UInt? = null,
 ) {
   init {
     maxRetries?.also {
@@ -30,25 +30,25 @@ data class RequestRetriesToml(
     maxRetries = maxRetries?.toUInt(),
     timeout = timeout,
     backoffDelay = backoffDelay,
-    failuresWarningThreshold = failuresWarningThreshold?.toUInt() ?: 0u
+    failuresWarningThreshold = failuresWarningThreshold?.toUInt() ?: 0u,
   )
 
   internal val asDomain: linea.domain.RetryConfig = linea.domain.RetryConfig(
     maxRetries = maxRetries?.toUInt(),
     timeout = timeout,
     backoffDelay = backoffDelay,
-    failuresWarningThreshold = failuresWarningThreshold?.toUInt() ?: 0u
+    failuresWarningThreshold = failuresWarningThreshold?.toUInt() ?: 0u,
   )
 
   companion object {
     fun endlessRetry(
       backoffDelay: Duration,
-      failuresWarningThreshold: UInt
+      failuresWarningThreshold: UInt,
     ) = RequestRetriesToml(
       maxRetries = null,
       timeout = null,
       backoffDelay = backoffDelay,
-      failuresWarningThreshold = failuresWarningThreshold
+      failuresWarningThreshold = failuresWarningThreshold,
     )
   }
 }

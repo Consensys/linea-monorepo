@@ -31,8 +31,8 @@ class Type2StateProofProviderParsingTest {
       requestRetries = RequestRetriesToml(
         maxRetries = 3u,
         backoffDelay = 1.seconds,
-        failuresWarningThreshold = 2u
-      )
+        failuresWarningThreshold = 2u,
+      ),
     )
 
     val tomlMinimal = """
@@ -48,13 +48,13 @@ class Type2StateProofProviderParsingTest {
       requestRetries = RequestRetriesToml(
         maxRetries = null,
         backoffDelay = 1.seconds,
-        failuresWarningThreshold = 3u
-      )
+        failuresWarningThreshold = 3u,
+      ),
     )
   }
 
   data class WrapperConfig(
-    val type2StateProofProvider: Type2StateProofManagerToml
+    val type2StateProofProvider: Type2StateProofManagerToml,
   )
 
   @Test

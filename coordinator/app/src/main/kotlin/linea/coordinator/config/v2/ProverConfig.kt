@@ -12,10 +12,10 @@ data class ProverConfig(
   val execution: ProverDirectoriesToml,
   val blobCompression: ProverDirectoriesToml,
   val proofAggregation: ProverDirectoriesToml,
-  val new: ProverConfig? = null
+  val new: ProverConfig? = null,
 ) {
   data class ProverDirectoriesToml(
     val fsRequestsDirectory: String,
-    val fsResponsesDirectory: String
+    val fsResponsesDirectory: String,
   )
 }

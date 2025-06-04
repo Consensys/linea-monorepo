@@ -8,6 +8,6 @@ fun RetryConfig.toJsonRpcRetry(): RequestRetryConfig {
     maxRetries = maxRetries,
     timeout = timeout,
     backoffDelay = backoffDelay,
-    failuresWarningThreshold = failuresWarningThreshold
+    failuresWarningThreshold = failuresWarningThreshold,
   )
 }

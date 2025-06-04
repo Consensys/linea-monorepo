@@ -11,10 +11,10 @@ data class Type2StateProofManagerToml(
   val endpoints: List<URL>,
   val requestRetries: RequestRetriesToml = RequestRetriesToml.endlessRetry(
     backoffDelay = 1.seconds,
-    failuresWarningThreshold = 3u
+    failuresWarningThreshold = 3u,
   ),
   val l1QueryBlockTag: BlockParameter.Tag = BlockParameter.Tag.FINALIZED,
-  val l1PollingInterval: Duration = 6.seconds
+  val l1PollingInterval: Duration = 6.seconds,
 ) {
   fun reified(): Type2StateProofManagerConfig {
     return Type2StateProofManagerConfig(
@@ -22,7 +22,7 @@ data class Type2StateProofManagerToml(
       endpoints = this.endpoints,
       requestRetries = this.requestRetries.asDomain,
       l1QueryBlockTag = this.l1QueryBlockTag,
-      l1PollingInterval = this.l1PollingInterval
+      l1PollingInterval = this.l1PollingInterval,
     )
   }
 }

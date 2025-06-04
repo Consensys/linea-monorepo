@@ -13,7 +13,7 @@ class ApiConfigParsingTest {
     """.trimIndent()
 
     val config = ApiConfigToml(
-      observabilityPort = 9546u
+      observabilityPort = 9546u,
     )
 
     val tomlMinimal = """
@@ -21,12 +21,12 @@ class ApiConfigParsingTest {
     """.trimIndent()
 
     val configMinimal = ApiConfigToml(
-      observabilityPort = 9545u
+      observabilityPort = 9545u,
     )
   }
 
   data class WrapperConfig(
-    val api: ApiConfigToml = ApiConfigToml()
+    val api: ApiConfigToml = ApiConfigToml(),
   )
 
   @Test

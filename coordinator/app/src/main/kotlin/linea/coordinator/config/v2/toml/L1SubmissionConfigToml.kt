@@ -13,13 +13,13 @@ data class L1SubmissionConfigToml(
   val dynamicGasPriceCap: DynamicGasPriceCapToml,
   val fallbackGasPrice: FallbackGasPriceToml,
   val blob: BlobSubmissionConfigToml,
-  val aggregation: AggregationSubmissionToml
+  val aggregation: AggregationSubmissionToml,
 ) {
 
   data class DynamicGasPriceCapToml(
     val disabled: Boolean = false,
     val gasPriceCapCalculation: GasPriceCapCalculationToml,
-    val feeHistoryFetcher: FeeHistoryFetcherConfig = FeeHistoryFetcherConfig()
+    val feeHistoryFetcher: FeeHistoryFetcherConfig = FeeHistoryFetcherConfig(),
   ) {
     data class GasPriceCapCalculationToml(
       val adjustmentConstant: UInt,
@@ -28,10 +28,10 @@ data class L1SubmissionConfigToml(
       val baseFeePerGasPercentileWindow: Duration,
       val baseFeePerGasPercentileWindowLeeway: Duration,
       val baseFeePerGasPercentile: UInt,
-      val gasPriceCapsCheckCoefficient: Double
+      val gasPriceCapsCheckCoefficient: Double,
     ) {
       fun reified(
-        timeOfTheDayMultipliers: TimeOfDayMultipliers
+        timeOfTheDayMultipliers: TimeOfDayMultipliers,
       ): GasPriceCapCalculationConfig {
         return GasPriceCapCalculationConfig(
           adjustmentConstant = this.adjustmentConstant,
@@ -41,7 +41,7 @@ data class L1SubmissionConfigToml(
           baseFeePerGasPercentileWindowLeeway = this.baseFeePerGasPercentileWindowLeeway,
           baseFeePerGasPercentile = this.baseFeePerGasPercentile,
           gasPriceCapsCheckCoefficient = this.gasPriceCapsCheckCoefficient,
-          timeOfTheDayMultipliers = timeOfTheDayMultipliers
+          timeOfTheDayMultipliers = timeOfTheDayMultipliers,
         )
       }
     }
@@ -52,10 +52,10 @@ data class L1SubmissionConfigToml(
       val maxBlockCount: UInt = 1000u,
       val rewardPercentiles: List<UInt> = listOf(10u, 20u, 30u, 40u, 50u, 60u, 70u, 80u, 90u, 100u),
       val numOfBlocksBeforeLatest: UInt = 4u,
-      val storagePeriod: Duration = 10.days
+      val storagePeriod: Duration = 10.days,
     ) {
       fun reified(
-        defaultL1Endpoint: URL?
+        defaultL1Endpoint: URL?,
       ): L1SubmissionConfig.DynamicGasPriceCapConfig.FeeHistoryFetcherConfig {
         return L1SubmissionConfig.DynamicGasPriceCapConfig.FeeHistoryFetcherConfig(
           l1Endpoint = this.l1Endpoint ?: defaultL1Endpoint ?: throw AssertionError("l1Endpoint config missing"),
@@ -63,7 +63,7 @@ data class L1SubmissionConfigToml(
           maxBlockCount = this.maxBlockCount,
           rewardPercentiles = this.rewardPercentiles,
           numOfBlocksBeforeLatest = this.numOfBlocksBeforeLatest,
-          storagePeriod = this.storagePeriod
+          storagePeriod = this.storagePeriod,
         )
       }
     }
@@ -71,7 +71,7 @@ data class L1SubmissionConfigToml(
 
   data class FallbackGasPriceToml(
     val feeHistoryBlockCount: UInt,
-    val feeHistoryRewardPercentile: UInt
+    val feeHistoryRewardPercentile: UInt,
   )
 
   data class GasConfigToml(
@@ -79,11 +79,11 @@ data class L1SubmissionConfigToml(
     val maxFeePerGasCap: ULong,
     val maxFeePerBlobGasCap: ULong? = null,
     val maxPriorityFeePerGasCap: ULong,
-    val fallback: FallbackGasConfig
+    val fallback: FallbackGasConfig,
   ) {
     data class FallbackGasConfig(
       val priorityFeePerGasUpperBound: ULong,
-      val priorityFeePerGasLowerBound: ULong
+      val priorityFeePerGasLowerBound: ULong,
     )
 
     fun reified(): L1SubmissionConfig.GasConfig {
@@ -94,8 +94,8 @@ data class L1SubmissionConfigToml(
         maxFeePerBlobGasCap = this.maxFeePerBlobGasCap,
         fallback = L1SubmissionConfig.GasConfig.FallbackGasConfig(
           priorityFeePerGasLowerBound = this.fallback.priorityFeePerGasLowerBound,
-          priorityFeePerGasUpperBound = this.fallback.priorityFeePerGasUpperBound
-        )
+          priorityFeePerGasUpperBound = this.fallback.priorityFeePerGasUpperBound,
+        ),
       )
     }
   }
@@ -111,7 +111,7 @@ data class L1SubmissionConfigToml(
     val targetBlobsPerTransaction: UInt = 8u,
     val dbMaxBlobsToReturn: UInt = 100u,
     val gas: GasConfigToml,
-    val signer: SignerConfigToml
+    val signer: SignerConfigToml,
   )
 
   data class AggregationSubmissionToml(
@@ -121,23 +121,23 @@ data class L1SubmissionConfigToml(
     val submissionTickInterval: Duration = 24.seconds,
     val maxSubmissionsPerTick: UInt = 1u,
     val gas: GasConfigToml,
-    val signer: SignerConfigToml
+    val signer: SignerConfigToml,
   )
 
   fun reified(
     l1DefaultEndpoint: URL?,
-    timeOfDayMultipliers: TimeOfDayMultipliers
+    timeOfDayMultipliers: TimeOfDayMultipliers,
   ): L1SubmissionConfig {
     return L1SubmissionConfig(
       dynamicGasPriceCap = L1SubmissionConfig.DynamicGasPriceCapConfig(
         disabled = this.dynamicGasPriceCap.disabled,
         gasPriceCapCalculation = this.dynamicGasPriceCap.gasPriceCapCalculation.reified(timeOfDayMultipliers),
         feeHistoryFetcher = this.dynamicGasPriceCap.feeHistoryFetcher.reified(l1DefaultEndpoint),
-        timeOfDayMultipliers = timeOfDayMultipliers
+        timeOfDayMultipliers = timeOfDayMultipliers,
       ),
       fallbackGasPrice = L1SubmissionConfig.FallbackGasPriceConfig(
         feeHistoryBlockCount = this.fallbackGasPrice.feeHistoryBlockCount,
-        feeHistoryRewardPercentile = this.fallbackGasPrice.feeHistoryRewardPercentile
+        feeHistoryRewardPercentile = this.fallbackGasPrice.feeHistoryRewardPercentile,
       ),
       blob = L1SubmissionConfig.BlobSubmissionConfig(
         disabled = this.blob.disabled,
@@ -148,7 +148,7 @@ data class L1SubmissionConfigToml(
         targetBlobsPerTransaction = this.blob.targetBlobsPerTransaction,
         dbMaxBlobsToReturn = this.blob.dbMaxBlobsToReturn,
         gas = this.blob.gas.reified(),
-        signer = this.blob.signer.reified()
+        signer = this.blob.signer.reified(),
       ),
       aggregation = L1SubmissionConfig.AggregationSubmissionConfig(
         disabled = this.aggregation.disabled,
@@ -158,8 +158,8 @@ data class L1SubmissionConfigToml(
         submissionTickInterval = this.aggregation.submissionTickInterval,
         maxSubmissionsPerTick = this.aggregation.maxSubmissionsPerTick,
         gas = this.aggregation.gas.reified(),
-        signer = this.aggregation.signer.reified()
-      )
+        signer = this.aggregation.signer.reified(),
+      ),
     )
   }
 }

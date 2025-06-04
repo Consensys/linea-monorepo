@@ -13,7 +13,7 @@ data class MessageAnchoringConfigToml(
   val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED,
   val l1RequestRetries: RequestRetriesToml = RequestRetriesToml.endlessRetry(
     backoffDelay = 1.seconds,
-    failuresWarningThreshold = 3u
+    failuresWarningThreshold = 3u,
   ),
   val l1EventScrapping: L1EventScrapping = L1EventScrapping(),
   val l2Endpoint: URL? = null,
@@ -22,13 +22,13 @@ data class MessageAnchoringConfigToml(
     maxRetries = null,
     backoffDelay = 1.seconds,
     timeout = 8.seconds,
-    failuresWarningThreshold = 3u
+    failuresWarningThreshold = 3u,
   ),
   val anchoringTickInterval: Duration = 10.seconds,
   val messageQueueCapacity: Int = 10_000,
   val maxMessagesToAnchorPerL2Transaction: Int = 100,
   val signer: SignerConfigToml,
-  val gas: GasConfig = GasConfig()
+  val gas: GasConfig = GasConfig(),
 ) {
   init {
     require(messageQueueCapacity >= 1) {
@@ -47,7 +47,7 @@ data class MessageAnchoringConfigToml(
     val pollingInterval: Duration = 2.seconds,
     val pollingTimeout: Duration = 5.seconds,
     val ethLogsSearchSuccessBackoffDelay: Duration = 1.milliseconds,
-    val ethLogsSearchBlockChunkSize: UInt = 1000u
+    val ethLogsSearchBlockChunkSize: UInt = 1000u,
   ) {
     init {
 
@@ -70,12 +70,12 @@ data class MessageAnchoringConfigToml(
     val maxFeePerGasCap: ULong = 100_000_000_000uL, // 100 gwei
     val gasLimit: ULong = 2_500_000uL,
     val feeHistoryBlockCount: UInt = 4u,
-    val feeHistoryRewardPercentile: UInt = 15u
+    val feeHistoryRewardPercentile: UInt = 15u,
   )
 
   fun reified(
     l1DefaultEndpoint: URL?,
-    l2DefaultEndpoint: URL?
+    l2DefaultEndpoint: URL?,
   ): MessageAnchoringConfig {
     return MessageAnchoringConfig(
       disabled = disabled,
@@ -89,7 +89,7 @@ data class MessageAnchoringConfigToml(
         pollingInterval = l1EventScrapping.pollingInterval,
         pollingTimeout = l1EventScrapping.pollingTimeout,
         ethLogsSearchSuccessBackoffDelay = l1EventScrapping.ethLogsSearchSuccessBackoffDelay,
-        ethLogsSearchBlockChunkSize = l1EventScrapping.ethLogsSearchBlockChunkSize
+        ethLogsSearchBlockChunkSize = l1EventScrapping.ethLogsSearchBlockChunkSize,
       ),
       anchoringTickInterval = anchoringTickInterval,
       messageQueueCapacity = messageQueueCapacity.toUInt(),
@@ -99,8 +99,8 @@ data class MessageAnchoringConfigToml(
         maxFeePerGasCap = gas.maxFeePerGasCap,
         gasLimit = gas.gasLimit,
         feeHistoryBlockCount = gas.feeHistoryBlockCount,
-        feeHistoryRewardPercentile = gas.feeHistoryRewardPercentile
-      )
+        feeHistoryRewardPercentile = gas.feeHistoryRewardPercentile,
+      ),
     )
   }
 }

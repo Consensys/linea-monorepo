@@ -56,21 +56,21 @@ class L2NetWorkingGasPricingConfigParsingTest {
         maxRetries = 3u,
         timeout = 6.seconds,
         backoffDelay = 1.seconds,
-        failuresWarningThreshold = 2u
+        failuresWarningThreshold = 2u,
       ),
       dynamicGasPricing = L2NetworkGasPricingConfigToml.DynamicGasPricingToml(
         l1BlobGas = 131072UL, // 2^17
         blobSubmissionExpectedExecutionGas = 213000UL, // Lower to 120k as we improve efficiency
         variableCostUpperBound = 10_000_000_001UL, // ~10 GWEI
         variableCostLowerBound = 90_000_001UL, // ~0.09 GWEI
-        margin = 4.0
+        margin = 4.0,
       ),
       flatRateGasPricing = L2NetworkGasPricingConfigToml.FlatRateGasPricingToml(
         gasPriceUpperBound = 10_000_000_000UL, // 10 GWEI
         gasPriceLowerBound = 90_000_000UL, // 0.09 GWEI
         compressedTxSize = 125u,
-        expectedGas = 21000u
-      )
+        expectedGas = 21000u,
+      ),
     )
 
     val tomlMinimal = """
@@ -107,26 +107,26 @@ class L2NetWorkingGasPricingConfigParsingTest {
         maxRetries = null,
         timeout = 8.seconds,
         backoffDelay = 1.seconds,
-        failuresWarningThreshold = 3u
+        failuresWarningThreshold = 3u,
       ),
       dynamicGasPricing = L2NetworkGasPricingConfigToml.DynamicGasPricingToml(
         l1BlobGas = 131072UL, // 2^17
         blobSubmissionExpectedExecutionGas = 213000UL, // Lower to 120k as we improve efficiency
         variableCostUpperBound = 10_000_000_001UL, // ~10 GWEI
         variableCostLowerBound = 90_000_001UL, // ~0.09 GWEI
-        margin = 4.0
+        margin = 4.0,
       ),
       flatRateGasPricing = L2NetworkGasPricingConfigToml.FlatRateGasPricingToml(
         gasPriceUpperBound = 10_000_000_000UL, // 10 GWEI
         gasPriceLowerBound = 90_000_000UL, // 0.09 GWEI
         compressedTxSize = 125u,
-        expectedGas = 21000u
-      )
+        expectedGas = 21000u,
+      ),
     )
   }
 
   data class WrapperConfig(
-    val l2NetworkGasPricing: L2NetworkGasPricingConfigToml
+    val l2NetworkGasPricing: L2NetworkGasPricingConfigToml,
   )
 
   @Test

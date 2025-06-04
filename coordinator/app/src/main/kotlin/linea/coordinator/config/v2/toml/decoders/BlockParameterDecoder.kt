@@ -17,7 +17,7 @@ open class AbstractBlockParameterDecoder<T : BlockParameter> : Decoder<T> {
   override fun supports(type: KType): Boolean = type.classifier in listOf(
     BlockParameter::class,
     BlockParameter.Tag::class,
-    BlockParameter.BlockNumber::class
+    BlockParameter.BlockNumber::class,
   )
 
   override fun decode(node: Node, type: KType, context: DecoderContext): ConfigResult<T> {
@@ -26,14 +26,14 @@ open class AbstractBlockParameterDecoder<T : BlockParameter> : Decoder<T> {
         BlockParameter.parse(node.value)
       }.fold(
         { (it as T).valid() },
-        { ConfigFailure.DecodeError(node, type).invalid() }
+        { ConfigFailure.DecodeError(node, type).invalid() },
       )
 
       is LongNode -> runCatching {
         BlockParameter.fromNumber(node.value)
       }.fold(
         { (it as T).valid() },
-        { ConfigFailure.DecodeError(node, type).invalid() }
+        { ConfigFailure.DecodeError(node, type).invalid() },
       )
 
       else -> ConfigFailure.DecodeError(node, type).invalid()

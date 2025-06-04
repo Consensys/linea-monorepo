@@ -29,9 +29,9 @@ class SignerConfigParsingTest {
       web3jExample = SignerConfigToml(
         type = SignerConfigToml.SignerType.WEB3J,
         web3j = SignerConfigToml.Web3jConfig(
-          privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000001")
+          privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000001"),
         ),
-        web3signer = null
+        web3signer = null,
       ),
       web3SignerExample = SignerConfigToml(
         type = SignerConfigToml.SignerType.WEB3SIGNER,
@@ -43,15 +43,15 @@ class SignerConfigParsingTest {
               "0000000000000000000000000000000000000000000000000000000000000001"
             ).decodeHex(),
           maxPoolSize = 10,
-          keepAlive = true
-        )
-      )
+          keepAlive = true,
+        ),
+      ),
     )
   }
 
   data class WrapperConfig(
     val web3jExample: SignerConfigToml,
-    val web3SignerExample: SignerConfigToml
+    val web3SignerExample: SignerConfigToml,
   )
 
   @Test

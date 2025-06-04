@@ -14,14 +14,14 @@ data class L2NetworkGasPricingConfig(
   val flatRateGasPricing: FlatRateGasPricing,
   val extraDataUpdateEndpoint: URL,
   val extraDataUpdateRequestRetries: RetryConfig,
-  val l1Endpoint: URL
+  val l1Endpoint: URL,
 ) : FeatureToggle {
   data class DynamicGasPricing(
     val l1BlobGas: ULong,
     val blobSubmissionExpectedExecutionGas: ULong,
     val variableCostUpperBound: ULong,
     val variableCostLowerBound: ULong,
-    val margin: Double
+    val margin: Double,
   )
 
   data class FlatRateGasPricing(
@@ -29,6 +29,6 @@ data class L2NetworkGasPricingConfig(
     val gasPriceUpperBound: ULong,
     val plainTransferCostMultiplier: Double = 1.0,
     val compressedTxSize: UInt = 125u,
-    val expectedGas: UInt = 21000u
+    val expectedGas: UInt = 21000u,
   )
 }
