@@ -2,6 +2,7 @@ package assets
 
 import (
 	"fmt"
+	"runtime"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/protocol/distributed"
@@ -58,5 +59,10 @@ func TestDistributedWizard(t *testing.T) {
 		})
 	}
 
-	runSerdeTest(t, dist.CompiledConglomeration, "DistributedWizard.CompiledConglomeration")
+	// To save memory
+	cong := dist.CompiledConglomeration
+	dist = nil
+	runtime.GC()
+
+	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration")
 }
