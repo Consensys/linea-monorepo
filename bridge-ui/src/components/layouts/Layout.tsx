@@ -8,7 +8,6 @@ import { Theme } from "@/types";
 import Image from "next/image";
 import styles from "./layout.module.scss";
 import InternalNav from "../internal-nav";
-import getConfig from "next/config";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { sdkHasLoaded } = useDynamicContext();
