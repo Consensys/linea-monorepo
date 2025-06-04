@@ -59,7 +59,7 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 		}
 		// Collect the result in the larger slice at the end
 
-		subResult := smartvectors.PolyEvalExt(subTask, randomCoin)
+		subResult := smartvectors.LinearCombinationExt(subTask, randomCoin)
 		subResult.WriteInSliceExt(linComb[start:stop])
 	})
 

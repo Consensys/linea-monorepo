@@ -239,7 +239,7 @@ func (gen *testCaseGenExt) NewTestCaseForLinCombExt() (tcase testCaseExt) {
 	return tcase
 }
 
-func (gen *testCaseGenExt) NewTestCaseForPolyEvalExt() (tcase testCaseExt) {
+func (gen *testCaseGenExt) NewTestCaseForLinearCombinationExt() (tcase testCaseExt) {
 
 	tcase.name = fmt.Sprintf("fuzzy-with-seed-%v-poly-eval", gen.seed)
 	tcase.svecs = make([]SmartVector, gen.numVec)

@@ -34,7 +34,7 @@ func TestLinearCombination(t *testing.T) {
 	}
 
 	// Make a linear combination of the poly
-	lc := smartvectors.PolyEvalExt(polys, randomCoin)
+	lc := smartvectors.LinearCombinationExt(polys, randomCoin)
 
 	// Generate the proof
 	proof := params.InitOpeningWithLC(polys, randomCoin)
