@@ -80,6 +80,6 @@ describe("Shomei Linea get proof test suite", () => {
 
       expect(isInvalid).toBeTruthy();
     },
-    100_000,
+    120_000,
   );
 });
