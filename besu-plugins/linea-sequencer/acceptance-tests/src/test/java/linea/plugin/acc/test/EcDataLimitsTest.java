@@ -28,7 +28,6 @@ import linea.plugin.acc.test.tests.web3j.generated.EcAdd;
 import linea.plugin.acc.test.tests.web3j.generated.EcMul;
 import linea.plugin.acc.test.tests.web3j.generated.EcPairing;
 import linea.plugin.acc.test.tests.web3j.generated.EcRecover;
-import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
@@ -146,7 +145,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   private static Stream<Arguments> ecPairingLimitsTestSource() {
     Map<String, Integer> moduleLimits =
         ModuleLineCountValidator.createLimitModules(
-            new LineaTracerConfiguration(getResourcePath("/moduleLimits.toml")));
+            getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS =
         moduleLimits.get("PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS");
     final int PRECOMPILE_ECPAIRING_MILLER_LOOPS =
@@ -299,7 +298,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   public void ecAddLimitTest() throws Exception {
     Map<String, Integer> moduleLimits =
         ModuleLineCountValidator.createLimitModules(
-            new LineaTracerConfiguration(getResourcePath("/moduleLimits.toml")));
+            getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_ECADD_EFFECTIVE_CALLS =
         moduleLimits.get("PRECOMPILE_ECADD_EFFECTIVE_CALLS");
 
@@ -392,7 +391,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   public void ecMulLimitTest() throws Exception {
     Map<String, Integer> moduleLimits =
         ModuleLineCountValidator.createLimitModules(
-            new LineaTracerConfiguration(getResourcePath("/moduleLimits.toml")));
+            getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_ECMUL_EFFECTIVE_CALLS =
         moduleLimits.get("PRECOMPILE_ECMUL_EFFECTIVE_CALLS");
 
@@ -481,7 +480,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   public void ecRecoverLimitTest() throws Exception {
     Map<String, Integer> moduleLimits =
         ModuleLineCountValidator.createLimitModules(
-            new LineaTracerConfiguration(getResourcePath("/moduleLimits.toml")));
+            getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS =
         moduleLimits.get("PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS");
 

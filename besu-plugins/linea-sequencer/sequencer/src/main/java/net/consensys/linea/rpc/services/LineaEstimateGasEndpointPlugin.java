@@ -15,7 +15,6 @@
 
 package net.consensys.linea.rpc.services;
 
-import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.createLimitModules;
 
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
@@ -66,8 +65,7 @@ public class LineaEstimateGasEndpointPlugin extends AbstractLineaRequiredPlugin 
         lineaRpcConfiguration(),
         transactionPoolValidatorConfiguration(),
         profitabilityConfiguration(),
-        createLimitModules(tracerConfiguration()),
-        l1L2BridgeSharedConfiguration());
+        l1L2BridgeSharedConfiguration(), tracerConfiguration());
   }
 
   @Override

@@ -16,7 +16,6 @@
 package net.consensys.linea.sequencer.txpoolvalidation;
 
 import static net.consensys.linea.metrics.LineaMetricCategory.TX_POOL_PROFITABILITY;
-import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.createLimitModules;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -111,7 +110,7 @@ public class LineaTransactionPoolValidatorPlugin extends AbstractLineaRequiredPl
               transactionPoolValidatorConfiguration(),
               profitabilityConfiguration(),
               deniedAddresses,
-              createLimitModules(tracerConfiguration()),
+              tracerConfiguration(),
               l1L2BridgeSharedConfiguration(),
               rejectedTxJsonRpcManager));
 

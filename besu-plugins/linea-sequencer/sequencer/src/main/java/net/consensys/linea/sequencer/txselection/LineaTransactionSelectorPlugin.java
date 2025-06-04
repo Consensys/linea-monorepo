@@ -16,7 +16,6 @@
 package net.consensys.linea.sequencer.txselection;
 
 import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITABILITY;
-import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator.createLimitModules;
 
 import java.util.Optional;
 
@@ -97,7 +96,6 @@ public class LineaTransactionSelectorPlugin extends AbstractLineaRequiredPlugin 
             l1L2BridgeSharedConfiguration(),
             profitabilityConfiguration(),
             tracerConfiguration(),
-            createLimitModules(tracerConfiguration()),
             rejectedTxJsonRpcManager,
             maybeProfitabilityMetrics,
             bundlePoolService));
