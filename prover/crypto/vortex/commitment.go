@@ -146,12 +146,10 @@ func (p *Params) computeLeavesWithSis(colHashes []field.Element) (leaves []types
 	leaves = make([]types.Bytes32, numChunks)
 
 	parallel.Execute(numChunks, func(start, stop int) {
-		// Create the hasher in the parallel setting to avoid race conditions.
 		hasher := p.LeafHashFunc()
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 			hasher.Reset()
-
 			for i := 0; i < chunkSize; i++ {
 				fbytes := colHashes[startChunk+i].Bytes()
 				hasher.Write(fbytes[:])
@@ -185,6 +183,7 @@ func (p *Params) transversalHashWithoutSIS(v []smartvectors.SmartVector) []types
 	parallel.Execute(nbCols, func(start, stop int) {
 		hasher := p.LeafHashFunc()
 		for col := start; col < stop; col++ {
+			hasher.Reset()
 			for row := 0; row < nbRows; row++ {
 				cur := v[row].Get(col)
 				curBytes := cur.Bytes()
