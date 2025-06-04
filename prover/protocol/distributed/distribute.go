@@ -84,6 +84,7 @@ type DistributedWizard struct {
 }
 
 func init() {
+
 	serialization.RegisterImplementation(AssignLPPQueries{})
 	serialization.RegisterImplementation(SetInitialFSHash{})
 	serialization.RegisterImplementation(CheckNxHash{})
@@ -93,6 +94,8 @@ func init() {
 	serialization.RegisterImplementation(ModuleGLAssignSendReceiveGlobal{})
 	serialization.RegisterImplementation(ModuleGLCheckSendReceiveGlobal{})
 	serialization.RegisterImplementation(LPPSegmentBoundaryCalculator{})
+	serialization.RegisterImplementation(ConglomerateHolisticCheck{})
+	serialization.RegisterImplementation(ConglomerationAssignHolisticCheckColumn{})
 
 	serialization.RegisterImplementation(cleanup.CleanupProverAction{})
 	serialization.RegisterImplementation(dummy.DummyVerifierAction{})
@@ -257,23 +260,22 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 
 // CompileModules applies the compilation steps to each modules identically.
 func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
-	// dist.CompiledDefault = CompileSegment(dist.DefaultModule)
-	// logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))
+	dist.CompiledDefault = CompileSegment(dist.DefaultModule)
 
-	// dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
-	// for i := range dist.GLs {
-	// 	logrus.
-	// 		WithField("module-name", dist.GLs[i].DefinitionInput.ModuleName).
-	// 		WithField("module-type", "GL").
-	// 		Info("compiling module")
+	logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))
+	dist.CompiledGLs = make([]*RecursedSegmentCompilation, len(dist.GLs))
+	for i := range dist.GLs {
+		logrus.
+			WithField("module-name", dist.GLs[i].DefinitionInput.ModuleName).
+			WithField("module-type", "GL").
+			Info("compiling module")
 
-	// 	dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
-	// }
+		dist.CompiledGLs[i] = CompileSegment(dist.GLs[i])
+	}
 
 	logrus.Infof("Number of LPP modules to compile:%d\n", len(dist.LPPs))
 	dist.CompiledLPPs = make([]*RecursedSegmentCompilation, len(dist.LPPs))
 	for i := range dist.LPPs {
-
 		logrus.
 			WithField("module-name", dist.LPPs[i].ModuleNames()).
 			WithField("module-type", "LPP").

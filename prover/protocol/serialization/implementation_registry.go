@@ -102,6 +102,9 @@ func init() {
 	RegisterImplementation(query.Horner{})
 	RegisterImplementation(query.LocalOpeningParams{})
 	RegisterImplementation(query.UnivariateEvalParams{})
+	RegisterImplementation(query.GrandProductParams{})
+	RegisterImplementation(query.InnerProductParams{})
+	RegisterImplementation(query.LogDerivSumParams{})
 
 	// Symbolic
 	RegisterImplementation(symbolic.Variable{})
@@ -173,16 +176,22 @@ func init() {
 
 	RegisterImplementation(gen_acc.GenericDataAccumulator{})
 	RegisterImplementation(gen_acc.GenericInfoAccumulator{})
+
 	RegisterImplementation(keccak.KeccakSingleProvider{})
-	RegisterImplementation(importpad.Importation{})
+
 	RegisterImplementation(packing.Packing{})
+
 	RegisterImplementation(ded.LengthConsistencyCtx{})
 	RegisterImplementation(ded.AccumulateUpToMaxCtx{})
-	RegisterImplementation(importpad.Importation{})
+
 	RegisterImplementation(spaghettifier.Spaghettification{})
+
 	RegisterImplementation(importpad.Sha2Padder{})
 	RegisterImplementation(importpad.MimcPadder{})
 	RegisterImplementation(importpad.KeccakPadder{})
+	RegisterImplementation(importpad.Importation{})
+	RegisterImplementation(importpad.Importation{})
+
 	RegisterImplementation(base_conversion.HashBaseConversion{})
 	RegisterImplementation(base_conversion.BlockBaseConversion{})
 	RegisterImplementation(base_conversion.DecompositionCtx{})
