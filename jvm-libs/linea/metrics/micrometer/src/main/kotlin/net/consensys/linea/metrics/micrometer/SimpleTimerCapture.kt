@@ -3,7 +3,6 @@ package net.consensys.linea.metrics.micrometer
 import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
-import net.consensys.linea.metrics.TimerCapture
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
 
@@ -13,7 +12,7 @@ import java.util.concurrent.CompletableFuture
  * captures TODO: In order to improve performance, Timer instances can be cached into a thread safe
  * Map
  */
-class SimpleTimerCapture<T> : AbstractTimerCapture<T>, TimerCapture<T> {
+class SimpleTimerCapture<T> : AbstractTimerCapture<T> {
   constructor(meterRegistry: MeterRegistry, name: String) : super(meterRegistry, name)
   constructor(
     meterRegistry: MeterRegistry,

@@ -26,7 +26,7 @@ class MicrometerMetricsFacadeTest {
     metricsFacade = MicrometerMetricsFacade(
       meterRegistry,
       metricsPrefix = "linea.test",
-      commonTags = listOf(Tag("version", "1.0.1")),
+      allMetricsCommonTags = listOf(Tag("version", "1.0.1")),
     )
   }
 
@@ -182,7 +182,7 @@ class MicrometerMetricsFacadeTest {
   }
 
   @Test
-  fun `createGauge creates gauge with correct name when metrics prefix and category are absent`() {
+  fun `createGauge creates gauge with correct name when metrics prefix is absent`() {
     val metricMeasureValue = 0L
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade = MicrometerMetricsFacade(meterRegistry)
@@ -198,7 +198,7 @@ class MicrometerMetricsFacadeTest {
   }
 
   @Test
-  fun `createCounter creates counter with correct name when metrics prefix and category are absent`() {
+  fun `createCounter creates counter with correct name when metrics prefix is absent`() {
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade = MicrometerMetricsFacade(meterRegistry)
     metricsFacade.createCounter(
@@ -212,7 +212,7 @@ class MicrometerMetricsFacadeTest {
   }
 
   @Test
-  fun `createHistogram creates histogram with correct name when metrics prefix and category are absent`() {
+  fun `createHistogram creates histogram with correct name when metrics prefix is absent`() {
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade = MicrometerMetricsFacade(meterRegistry)
     metricsFacade.createHistogram(
@@ -227,7 +227,7 @@ class MicrometerMetricsFacadeTest {
   }
 
   @Test
-  fun `createSimpleTimer creates timer with correct name when metrics prefix and category are absent`() {
+  fun `createSimpleTimer creates timer with correct name when metrics prefix is absent`() {
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade = MicrometerMetricsFacade(meterRegistry)
     val timer = metricsFacade.createSimpleTimer<Unit>(
@@ -242,7 +242,7 @@ class MicrometerMetricsFacadeTest {
   }
 
   @Test
-  fun `createDynamicTagTimer creates timer with correct name when metrics prefix and category are absent`() {
+  fun `createDynamicTagTimer creates timer with correct name when metrics prefix is absent`() {
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade = MicrometerMetricsFacade(meterRegistry)
     val timer = metricsFacade.createDynamicTagTimer<Unit>(
@@ -257,5 +257,64 @@ class MicrometerMetricsFacadeTest {
     timer.captureTime {}
     val createdTimer = meterRegistry.find("test.category.some.dynamictag.timer.metric").timer()
     assertThat(createdTimer).isNotNull
+  }
+
+  @Test
+  fun `counter provider creates multiple counters`() {
+    val counterProvider = metricsFacade.createCounterProvider(
+      category = TestCategory.TEST_CATEGORY,
+      name = "request.counter",
+      description = "This is a test counter provider",
+      commonTags = listOf(Tag("apitype", "engine_prague")),
+    )
+    val counter1 = counterProvider.withTags(listOf(Tag("method", "getPayload")))
+    val counter2 = counterProvider.withTags(listOf(Tag("method", "newPayload")))
+    counter1.increment(5.0)
+    counter2.increment(3.0)
+
+    val createdCounter1 = meterRegistry
+      .find("linea.test.test.category.request.counter")
+      .tags("method", "getPayload")
+      .counter()
+
+    val createdCounter2 = meterRegistry
+      .find("linea.test.test.category.request.counter")
+      .tags("method", "newPayload")
+      .counter()
+
+    assertThat(createdCounter1).isNotNull
+    assertThat(createdCounter2).isNotNull
+    assertThat(createdCounter1!!.count()).isEqualTo(5.0)
+    assertThat(createdCounter2!!.count()).isEqualTo(3.0)
+  }
+
+  @Test
+  fun `timer provider creates multiple counters`() {
+    val timerProvider = metricsFacade.createTimerProvider(
+      category = TestCategory.TEST_CATEGORY,
+      name = "request.latency",
+      description = "This is a test counter provider",
+      commonTags = listOf(Tag("apitype", "engine_prague")),
+    )
+    val timer1 = timerProvider.withTags(listOf(Tag("method", "getPayload")))
+    val timer2 = timerProvider.withTags(listOf(Tag("method", "newPayload")))
+
+    timer1.captureTime { Thread.sleep(2) }
+    timer2.captureTime { Thread.sleep(10) }
+
+    val createdTimer1 = meterRegistry
+      .find("linea.test.test.category.request.latency")
+      .tags("method", "getPayload")
+      .timer()
+
+    val createdTimer2 = meterRegistry
+      .find("linea.test.test.category.request.latency")
+      .tags("method", "newPayload")
+      .timer()
+
+    assertThat(createdTimer1).isNotNull
+    assertThat(createdTimer1!!.totalTime(TimeUnit.MILLISECONDS)).isBetween(2.0, 10.0)
+    assertThat(createdTimer2).isNotNull
+    assertThat(createdTimer2!!.totalTime(TimeUnit.MILLISECONDS)).isBetween(10.0, 20.0)
   }
 }
