@@ -3,7 +3,6 @@ l1-endpoint = "http://127.0.0.1:8445"
 l2-endpoint = "http://127.0.0.1:8545"
 
 [prover]
-version = "v2.0.0"
 [prover.execution]
 fs-requests-directory = "tmp/local/prover/v3/execution/requests"
 fs-responses-directory = "tmp/local/prover/v3/execution/responses"
@@ -11,8 +10,8 @@ fs-responses-directory = "tmp/local/prover/v3/execution/responses"
 fs-requests-directory = "tmp/local/prover/v3/compression/requests"
 fs-responses-directory = "tmp/local/prover/v3/compression/responses"
 [prover.proof-aggregation]
-fs-requests-directory = "tmp/local/prover/v2/aggregation/requests"
-fs-responses-directory = "tmp/local/prover/v2/aggregation/responses"
+fs-requests-directory = "tmp/local/prover/v3/aggregation/requests"
+fs-responses-directory = "tmp/local/prover/v3/aggregation/responses"
 
 [traces]
 [traces.counters]
