@@ -39,7 +39,7 @@ func (a *subsampleProverAction) Run(run *wizard.ProverRuntime) {
 			largeWit[i] = a.large[i].GetColAssignment(run)
 		}
 		gamma := run.GetRandomCoinFext(a.gamma.Name)
-		r = smartvectors.PolyEval(largeWit, gamma) // TODO: update smartvectors.PolyEval
+		r = smartvectors.PolyEval(largeWit, gamma) // TODO@yao: update smartvectors.PolyEval
 	}
 
 	prev := field.Zero()
@@ -71,7 +71,7 @@ func (a *subsampleProverAction) Run(run *wizard.ProverRuntime) {
 			smallWit[i] = a.small[i].GetColAssignment(run)
 		}
 		gamma := run.GetRandomCoinFext(a.gamma.Name)
-		rPrime = smartvectors.PolyEval(smallWit, gamma) // TODO: update smartvectors.PolyEval
+		rPrime = smartvectors.PolyEval(smallWit, gamma) // TODO@yao: update smartvectors.PolyEval
 	}
 
 	accSmallWit := make([]field.Element, a.lenSmall)

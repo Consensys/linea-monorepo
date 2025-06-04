@@ -31,7 +31,7 @@ func (a *foldOuterProverAction) Run(assi *wizard.ProverRuntime) {
 		innerChunks[i] = h.SubVector(i*a.innerDegree, (i+1)*a.innerDegree)
 	}
 
-	foldedVal := smartvectors.PolyEval(innerChunks, x) // TODO: update smartvectors.PolyEval
+	foldedVal := smartvectors.PolyEval(innerChunks, x) // TODO@yao: update smartvectors.PolyEval
 	assi.AssignColumn(a.foldedName, foldedVal)
 }
 

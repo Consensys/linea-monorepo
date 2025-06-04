@@ -265,7 +265,7 @@ func TestLogDerivativeLookupRandomLinComb(t *testing.T) {
 
 		a := col1.GetColAssignment(run)
 		b := col2.GetColAssignment(run)
-		lc := smartvectors.PolyEval([]smartvectors.SmartVector{a, b}, coin)
+		lc := smartvectors.PolyEval([]smartvectors.SmartVector{a, b}, coin) //TODO@yao: update smartvectors.PolyEval
 
 		run.AssignColumn("LC", lc)
 

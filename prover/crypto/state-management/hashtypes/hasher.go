@@ -43,6 +43,6 @@ func MiMC() Hasher {
 	maxVal[7] = field.NewFromString("4")
 	return Hasher{
 		Hash:     mimc.NewMiMC(),
-		maxValue: HashToBytes32(maxVal), // TODO: what's the maxValue of MiMC hasher
+		maxValue: HashToBytes32(maxVal), // TODO@yao: what's the maxValue of MiMC hasher
 	}
 }

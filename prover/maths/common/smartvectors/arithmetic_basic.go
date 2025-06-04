@@ -66,7 +66,7 @@ func InnerProduct(a, b SmartVector) field.Element {
 //	result = vecs[0] + vecs[1] * x + vecs[2] * x^2 + vecs[3] * x^3 + ...
 //
 // where `x` is a scalar and `vecs[i]` are [SmartVector]
-// TODO: smartvectors.PolyEval should compute the case for x fext.Element, and vecs are []field.Element
+// TODO@yao: smartvectors.PolyEval should compute the case for x fext.Element, and vecs are []field.Element
 func PolyEval(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result SmartVector) {
 
 	if len(vecs) == 0 {

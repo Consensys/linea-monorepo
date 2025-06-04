@@ -199,7 +199,7 @@ func (fs *State) RandomFieldFromSeed(seed field.Element, name string) field.Elem
 	return *res
 }
 
-// TODO: RandomFextFromSeed generates and returns a single fext element from the seed and the given name.
+// TODO@yao: RandomFextFromSeed generates and returns a single fext element from the seed and the given name.
 
 // RandomManyIntegers returns a list of challenge small integers. That is, a
 // list of positive integer bounded by `upperBound`. The upperBound is strict

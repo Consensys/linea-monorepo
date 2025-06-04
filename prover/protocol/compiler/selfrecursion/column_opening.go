@@ -305,7 +305,7 @@ func (a *collapsingProverAction) Run(run *wizard.ProverRuntime) {
 	}
 
 	colPowT := accessors.NewExponent(a.ctx.Coins.Collapse, a.ctx.VortexCtx.NbColsToOpen()).GetVal(run)
-	eDual := smartvectors.PolyEval(subDuals, colPowT) // TODO: update smartvectors.PolyEval
+	eDual := smartvectors.PolyEval(subDuals, colPowT) // TODO@yao: update smartvectors.PolyEval
 
 	run.AssignColumn(a.eDualID, eDual)
 }
