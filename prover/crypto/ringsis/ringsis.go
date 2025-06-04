@@ -179,7 +179,12 @@ func (s Key) HashModXnMinus1(limbs []field.Element) []field.Element {
 
 	// also account for the Montgommery issue : in gnark's implementation
 	// the key is implictly multiplied by RInv
-	// TODO: double check here later if there is some test error, I removed MulRInv as RInv=1
+	// todo: remove?
+	/*
+		for i := range r {
+			r[i] = field.MulRInv(r[i])
+		}
+	*/
 
 	return r
 }

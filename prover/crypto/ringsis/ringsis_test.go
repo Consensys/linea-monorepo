@@ -259,6 +259,11 @@ func hashLimbsWithSlice(keySlice []field.Element, limbs []field.Element, domain 
 		}
 	}
 
+	// TODO: check below, newly added
+	for j := range res {
+		res[j] = field.MulRInv(res[j])
+	}
+
 	domain.FFTInverse(res, fft.DIT, fft.OnCoset(), fft.WithNbTasks(1)) // -> reduces mod Xᵈ+1
 	return res
 }
@@ -302,8 +307,11 @@ func (key *Key) hashFromLimbs(limbs []field.Element) []field.Element {
 		}
 	}
 
+	// TODO: check below
+
 	// Since the Ag are normally assumed to work with non-montgomery limbs
 	// (when doing normal hashing)
+
 	for j := range res {
 		res[j] = field.MulRInv(res[j])
 	}
