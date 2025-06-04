@@ -122,7 +122,9 @@ contract RLN {
         require(index < SET_SIZE, "RLN, register: set is full");
         require(amount >= MINIMAL_DEPOSIT, "RLN, register: amount is lower than minimal deposit");
         require(amount % MINIMAL_DEPOSIT == 0, "RLN, register: amount should be a multiple of minimal deposit");
-        require(members[identityCommitment].userAddress == address(0), "RLN, register: idCommitment already registered");
+        require(
+            members[identityCommitment].userAddress == address(0), "RLN, register: idCommitment already registered"
+        );
 
         uint256 messageLimit = amount / MINIMAL_DEPOSIT;
         require(messageLimit <= MAXIMAL_RATE, "RLN, register: message limit cannot be more than MAXIMAL_RATE");

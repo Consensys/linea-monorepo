@@ -232,7 +232,9 @@ contract MathTest is StakeManagerTest {
         assertEq(_maxTotalMP(10e18, 0), 50e18, "wrong max total MP");
         assertEq(_maxTotalMP(10e18, streamer.MIN_LOCKUP_PERIOD()), 52_465_753_424_657_534_246, "wrong max total MP");
         assertEq(
-            _maxTotalMP(10e18, streamer.MIN_LOCKUP_PERIOD() + 13 days), 52_821_917_808_219_178_082, "wrong max total MP"
+            _maxTotalMP(10e18, streamer.MIN_LOCKUP_PERIOD() + 13 days),
+            52_821_917_808_219_178_082,
+            "wrong max total MP"
         );
         assertEq(_maxTotalMP(100e18, 0), 500e18, "wrong max total MP");
     }

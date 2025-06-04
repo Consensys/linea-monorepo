@@ -27,7 +27,9 @@ abstract contract BaseNFTMetadataGenerator is INFTMetadataGenerator, Ownable {
 
         string memory propName = string(abi.encodePacked(baseName, Strings.toHexString(account)));
         string memory propDescription = string(
-            abi.encodePacked(baseDescription, Strings.toHexString(account), " with balance ", Strings.toString(balance))
+            abi.encodePacked(
+                baseDescription, Strings.toHexString(account), " with balance ", Strings.toString(balance)
+            )
         );
 
         (string memory imageField, string memory imageURI) = generateImageURI(account, balance);
