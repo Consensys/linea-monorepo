@@ -1,6 +1,7 @@
 package smartvectors
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
@@ -224,6 +225,7 @@ func TestFuzzPolyEvalWithPoolCompareExt(t *testing.T) {
 			// PolyEvalExt() without pool
 			polyEval := PolyEvalExt(tcase.svecs, tcase.evaluationPoint)
 
+			fmt.Printf("tcase.svecs=%s", tcase.svecs)
 			// check if PolyEvalExt() with pool = PolyEvalExt() without pool
 			require.Equal(t, polyEvalWithPool.Pretty(), polyEval.Pretty(), "PolyEvalExt() w/ and w/o pool are different")
 

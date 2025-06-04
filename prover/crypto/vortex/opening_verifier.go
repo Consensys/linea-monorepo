@@ -90,7 +90,7 @@ func VerifyOpening(v *VerifierInputs) error {
 		}
 	}
 
-	if err := v.Params.isCodeword(v.OpeningProof.LinearCombination); err != nil {
+	if err := v.Params.isCodewordExt(v.OpeningProof.LinearCombination); err != nil {
 		return err
 	}
 

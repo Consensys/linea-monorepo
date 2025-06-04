@@ -8,6 +8,7 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vector"
+	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -70,6 +71,13 @@ func Copy(into *SmartVector, x SmartVector) {
 func Rand(n int) SmartVector {
 	v := vector.Rand(n)
 	return NewRegular(v)
+}
+
+// Rand creates a vector with random entries. Used for testing. Should not be
+// used to generate secrets. Not reproducible.
+func RandExt(n int) SmartVector {
+	v := vectorext.Rand(n)
+	return NewRegularExt(v)
 }
 
 // Rand creates a vector with random entries. Used for testing. Should not be

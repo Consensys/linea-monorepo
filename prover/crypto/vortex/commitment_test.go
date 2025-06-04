@@ -29,10 +29,8 @@ func TestLinearCombination(t *testing.T) {
 
 	// Polynomials to commit to
 	polys := make([]smartvectors.SmartVector, nPolys)
-	ys := make([]fext.Element, nPolys)
 	for i := range polys {
-		polys[i] = smartvectors.Rand(polySize)
-		ys[i] = smartvectors.EvaluateLagrangeOnFext(polys[i], x)
+		polys[i] = smartvectors.RandExt(polySize)
 	}
 
 	// Make a linear combination of the poly
