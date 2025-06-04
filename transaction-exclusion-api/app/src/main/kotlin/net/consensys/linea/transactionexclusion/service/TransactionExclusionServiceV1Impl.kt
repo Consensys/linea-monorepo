@@ -4,7 +4,7 @@ import com.github.michaelbull.result.Err
 import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import kotlinx.datetime.Clock
-import net.consensys.linea.metrics.LineaMetricsCategory
+import net.consensys.linea.transactionexclusion.metrics.LineaMetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.transactionexclusion.ErrorType
 import net.consensys.linea.transactionexclusion.RejectedTransaction
