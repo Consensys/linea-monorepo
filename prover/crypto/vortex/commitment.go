@@ -1,9 +1,6 @@
 package vortex
 
 import (
-	"hash"
-	"runtime"
-
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
@@ -89,7 +86,7 @@ func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedM
 	timeTree := profiling.TimeIt(func() {
 		// colHashes stores the MiMC hashes
 		// of the columns.
-		leaves := p.noSisTransversalHash(encodedMatrix)
+		leaves := p.transversalHashWithoutSIS(encodedMatrix)
 
 		tree = smt.BuildComplete(
 			leaves,
@@ -170,40 +167,33 @@ func (p *Params) computeLeavesWithSis(colHashes []field.Element) (leaves []types
 }
 
 // Uses the no-sis hash function to hash the columns
-func (p *Params) noSisTransversalHash(v []smartvectors.SmartVector) []types.Bytes32 {
+func (p *Params) transversalHashWithoutSIS(v []smartvectors.SmartVector) []types.Bytes32 {
 
 	// Assert that all smart-vectors have the same numCols
-	numCols := v[0].Len()
+	nbCols := v[0].Len()
 	for i := range v {
-		if v[i].Len() != numCols {
+		if v[i].Len() != nbCols {
 			utils.Panic("Unexpected : all inputs smart-vectors should have the same length the first one has length %v, but #%v has length %v",
-				numCols, i, v[i].Len())
+				nbCols, i, v[i].Len())
 		}
 	}
 
-	numRows := len(v)
+	nbRows := len(v)
 
-	res := make([]types.Bytes32, numCols)
-	hashers := make([]hash.Hash, runtime.GOMAXPROCS(0))
+	res := make([]types.Bytes32, nbCols)
 
-	parallel.ExecuteThreadAware(
-		numCols,
-		func(threadID int) {
-			hashers[threadID] = p.LeafHashFunc()
-		},
-		func(col, threadID int) {
-			hasher := hashers[threadID]
-			hasher.Reset()
-			for row := 0; row < numRows; row++ {
-				x := v[row].Get(col)
-				xBytes := x.Bytes()
-				hasher.Write(xBytes[:])
+	parallel.Execute(nbCols, func(start, stop int) {
+		hasher := p.LeafHashFunc()
+		for col := start; col < stop; col++ {
+			for row := 0; row < nbRows; row++ {
+				cur := v[row].Get(col)
+				curBytes := cur.Bytes()
+				hasher.Write(curBytes[:])
 			}
-
-			h := hasher.Sum(nil)
-			copy(res[col][:], h[:])
-		},
-	)
+			tmp := hasher.Sum(nil)
+			copy(res[col][:], tmp[:])
+		}
+	})
 
 	return res
 }
