@@ -164,9 +164,7 @@ library RlpEncoder {
       encodedBytes := mload(0x40)
       let sectionStart := 0
       let sectionLength := 128
-      for {
-
-      } gt(sectionLength, 7) {
+      for {} gt(sectionLength, 7) {
         sectionLength := shr(1, sectionLength)
       } {
         if iszero(shr(sub(256, add(sectionLength, sectionStart)), _uintValue)) {
@@ -212,11 +210,7 @@ library RlpEncoder {
         let temp := _itemLength
         let lengthOfLength := 0
 
-        for {
-
-        } gt(temp, 0) {
-
-        } {
+        for {} gt(temp, 0) {} {
           lengthOfLength := add(lengthOfLength, 1)
           temp := shr(8, temp)
         }
