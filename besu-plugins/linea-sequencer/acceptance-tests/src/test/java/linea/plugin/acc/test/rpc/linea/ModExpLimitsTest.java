@@ -17,7 +17,6 @@ import java.util.Map;
 import linea.plugin.acc.test.LineaPluginTestBase;
 import linea.plugin.acc.test.TestCommandLineOptionsBuilder;
 import linea.plugin.acc.test.tests.web3j.generated.ModExp;
-import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator;
 import org.apache.tuweni.bytes.Bytes;
 import org.hyperledger.besu.datatypes.Hash;
@@ -47,7 +46,7 @@ public class ModExpLimitsTest extends LineaPluginTestBase {
   public void modExpLimitTest() throws Exception {
     Map<String, Integer> moduleLimits =
         ModuleLineCountValidator.createLimitModules(
-            new LineaTracerConfiguration(getResourcePath("/moduleLimits.toml")));
+            getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_MODEXP_EFFECTIVE_CALLS =
         moduleLimits.get("PRECOMPILE_MODEXP_EFFECTIVE_CALLS");
 
