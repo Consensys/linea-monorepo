@@ -98,8 +98,8 @@ func (ctx *SelfRecursionCtx) concatenatedDhQ() ifaces.ColID {
 }
 
 // Name of the concatenated MiMC hashes for the non SIS rounds
-func (ctx *SelfRecursionCtx) concatenatedMiMCHashes(round int) ifaces.ColID {
-	name := ifaces.ColIDf("SELFRECURSION_CONCAT_MIMC_HASHES_%v_%v", ctx.SelfRecursionCnt, round)
+func (ctx *SelfRecursionCtx) nonSisLeaves(round int) ifaces.ColID {
+	name := ifaces.ColIDf("SELFRECURSION_NON_SIS_LEAVES_%v_%v", ctx.SelfRecursionCnt, round)
 	return maybePrefix(ctx, name)
 }
 
@@ -183,7 +183,7 @@ func (ctx *SelfRecursionCtx) nonSisRoundLinearHashVerificationName(round int) st
 	return maybePrefix(ctx, name)
 }
 
-//leafConsistencyName returns the name passed to the wizard helper building the
+// leafConsistencyName returns the name passed to the wizard helper building the
 // leaf consistency verifier.
 func (ctx *SelfRecursionCtx) leafConsistencyName() ifaces.QueryID {
 	name := ifaces.QueryIDf("SELFRECURSION_LINEAR_HASH_LEAF_CONSISTENCY_%v", ctx.comp.SelfRecursionCount)

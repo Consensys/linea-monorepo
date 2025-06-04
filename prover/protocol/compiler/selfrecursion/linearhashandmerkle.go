@@ -146,7 +146,7 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 		ctx.MIMCMetaData.ToHashSizes = append(ctx.MIMCMetaData.ToHashSizes, len(ctx.VortexCtx.Items.Precomputeds.PrecomputedColums))
 	}
 	// Next, consider only the non SIS rounds
-	for i := 0; i < ctx.VortexCtx.NumCommittedRounds(); i++ {
+	for i := range ctx.VortexCtx.RoundStatus {
 		if ctx.VortexCtx.RoundStatus[i] == vortex.IsOnlyMiMCApplied {
 
 			roundPreimageSize := utils.NextPowerOfTwo(
@@ -157,7 +157,7 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 				ctx.MIMCMetaData.NonSisLeaves,
 				ctx.comp.InsertCommit(
 					roundQ,
-					ctx.concatenatedMiMCHashes(i),
+					ctx.nonSisLeaves(i),
 					mimcHashColumnSize,
 				))
 
