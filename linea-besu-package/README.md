@@ -71,6 +71,18 @@ bin/besu --profile=advanced-mainnet --plugin-linea-l1-rpc-endpoint=YOUR_L1_RPC_E
 
 4. The docker image (i.e. default as `consensys/linea-besu-package:local`) should be created locally 
 
+### Note: 
+
+To build with specific platform with specific image tag, do the following:
+```
+make clean && PLATFORM=linux/amd64 TAG=xxx make build
+```
+
+To run the e2e test locally with the built `linea-besu-package` image, do the following:
+```
+TAG=xxx make run-e2e-test
+```
+
 ## How-To Release
 
 1. Make a branch with changes to `linea-besu-package/versions.env` as needed
