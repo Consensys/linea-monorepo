@@ -3,20 +3,19 @@ package serialization
 import (
 	"bytes"
 	"hash"
-	"io"
 	"math/big"
 	"reflect"
 	"strings"
 	"sync"
 
+	"github.com/consensys/gnark-crypto/utils/unsafe"
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/zkevm/arithmetization"
-	"github.com/fxamacker/cbor/v2"
-	"github.com/pierrec/lz4/v4"
 )
 
 // CustomCodex represents an optional behavior for a specific type
@@ -83,6 +82,12 @@ func init() {
 		Ser:  marshalRingSisKey,
 		Des:  unmarshalRingSisKey,
 	}
+
+	CustomCodexes[reflect.TypeOf(smartvectors.Regular{})] = CustomCodex{
+		Type: reflect.TypeOf(smartvectors.Regular{}),
+		Ser:  marshalArrayOfFieldElement,
+		Des:  unmarshalArrayOfFieldElement,
+	}
 }
 
 func marshalRingSisKey(ser *Serializer, val reflect.Value) (any, *serdeError) {
@@ -123,6 +128,7 @@ func marshalFieldElement(_ *Serializer, val reflect.Value) (any, *serdeError) {
 }
 
 func unmarshalFieldElement(_ *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
+
 	f, err := unmarshalBigInt(nil, val, TypeOfBigInt)
 	if err != nil {
 		return reflect.Value{}, err
@@ -153,58 +159,34 @@ func unmarshalBigInt(_ *Deserializer, val any, _ reflect.Type) (reflect.Value, *
 func marshalArrayOfFieldElement(_ *Serializer, val reflect.Value) (any, *serdeError) {
 
 	var (
-		v           = val.Interface().([]field.Element)
-		buffer      = &bytes.Buffer{}
-		lz4Encoder  = lz4.NewWriter(buffer)
-		cborEncoder = cbor.NewEncoder(lz4Encoder)
+		buffer = &bytes.Buffer{}
 	)
 
-	// The header of the array is its size
-	if err := cborEncoder.Encode(uint64(len(v))); err != nil {
-		return nil, newSerdeErrorf("error encoding array of field element: %v", err.Error())
+	v, ok := val.Interface().([]field.Element)
+	if !ok {
+		v = []field.Element(val.Interface().(smartvectors.Regular))
 	}
 
-	for i := 0; i < len(v); i++ {
-		bi := fieldToSmallBigInt(v[i])
-		if err := cborEncoder.Encode(bi); err != nil {
-			return nil, newSerdeErrorf("error encoding array of field element: %v", err.Error())
-		}
-	}
-
-	if err := lz4Encoder.Close(); err != nil {
-		return nil, newSerdeErrorf("error closing lz4 encoder: %v", err.Error())
+	if err := unsafe.WriteSlice(buffer, v); err != nil {
+		return nil, newSerdeErrorf("could not marshal array of field element: %w", err)
 	}
 
 	return buffer.Bytes(), nil
 }
 
-func unmarshalArrayOfFieldElement(_ *Deserializer, val any, _ reflect.Type) (reflect.Value, *serdeError) {
+func unmarshalArrayOfFieldElement(_ *Deserializer, val any, t reflect.Type) (reflect.Value, *serdeError) {
 
 	var (
-		buffer      = bytes.NewReader(val.([]byte))
-		lz4Decoder  = lz4.NewReader(buffer)
-		cborDecoder = cbor.NewDecoder(lz4Decoder)
+		buffer = bytes.NewReader(val.([]byte))
 	)
 
-	// The header of the encoded array is its size as a uint64
-	size := uint64(0)
-	if err := cborDecoder.Decode(&size); err != nil {
-		return reflect.Value{}, newSerdeErrorf("error decoding array of field element: %v", err.Error())
+	v, _, err := unsafe.ReadSlice[[]field.Element, field.Element](buffer)
+	if err != nil {
+		return reflect.Value{}, newSerdeErrorf("could not unmarshal array of field element: %w", err)
 	}
 
-	v := make([]field.Element, 0, size)
-	for {
-		var bi big.Int
-		if err := cborDecoder.Decode(&bi); err != nil {
-			if err == io.EOF {
-				break
-			}
-			return reflect.Value{}, newSerdeErrorf("error decoding array of field element: %v", err.Error())
-		}
-
-		f := field.Element{}
-		f.SetBigInt(&bi)
-		v = append(v, f)
+	if t == reflect.TypeOf(smartvectors.Regular{}) {
+		return reflect.ValueOf(smartvectors.Regular(v)), nil
 	}
 
 	return reflect.ValueOf(v), nil
