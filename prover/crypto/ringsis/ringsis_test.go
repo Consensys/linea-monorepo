@@ -40,27 +40,28 @@ var testCasesKey = []struct {
 		Size:   576,
 		Params: StdParams,
 	},
-	{
-		Size: 43,
-		Params: Params{
-			LogTwoBound:  1,
-			LogTwoDegree: 1,
-		},
-	},
-	{
-		Size: 23,
-		Params: Params{
-			LogTwoBound:  1,
-			LogTwoDegree: 1,
-		},
-	},
-	{
-		Size: 256,
-		Params: Params{
-			LogTwoBound:  1,
-			LogTwoDegree: 1,
-		},
-	},
+	// XXX(ivokub): disabled tests as gnark-crypto implementation does not support non-multiples of 8 LogTwoBound
+	// {
+	// 	Size: 43,
+	// 	Params: Params{
+	// 		LogTwoBound:  1,
+	// 		LogTwoDegree: 1,
+	// 	},
+	// },
+	// {
+	// 	Size: 23,
+	// 	Params: Params{
+	// 		LogTwoBound:  1,
+	// 		LogTwoDegree: 1,
+	// 	},
+	// },
+	// {
+	// 	Size: 256,
+	// 	Params: Params{
+	// 		LogTwoBound:  1,
+	// 		LogTwoDegree: 1,
+	// 	},
+	// },
 }
 
 func TestKeyMaxNumFieldHashable(t *testing.T) {
