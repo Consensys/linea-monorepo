@@ -34,6 +34,23 @@ class Type2StateProofProviderParsingTest {
         failuresWarningThreshold = 2u
       )
     )
+
+    val tomlMinimal = """
+     [type2-state-proof-provider]
+     endpoints = ["http://shomei-frontend-i1:8888/", "http://shomei-frontend-i2:8888/"]
+    """.trimIndent()
+
+    val configMinimal = Type2StateProofManagerToml(
+      disabled = false,
+      endpoints = listOf("http://shomei-frontend-i1:8888/".toURL(), "http://shomei-frontend-i2:8888/".toURL()),
+      l1QueryBlockTag = BlockParameter.Tag.FINALIZED,
+      l1PollingInterval = 6.seconds,
+      requestRetries = RequestRetriesToml(
+        maxRetries = null,
+        backoffDelay = 1.seconds,
+        failuresWarningThreshold = 3u
+      )
+    )
   }
 
   data class WrapperConfig(
@@ -41,8 +58,14 @@ class Type2StateProofProviderParsingTest {
   )
 
   @Test
-  fun `should parse full state manager config`() {
+  fun `should parse type2-state-proof-provider full config`() {
     assertThat(parseConfig<WrapperConfig>(toml).type2StateProofProvider)
       .isEqualTo(config)
+  }
+
+  @Test
+  fun `should parse type2-state-proof-provider minimal config`() {
+    assertThat(parseConfig<WrapperConfig>(tomlMinimal).type2StateProofProvider)
+      .isEqualTo(configMinimal)
   }
 }

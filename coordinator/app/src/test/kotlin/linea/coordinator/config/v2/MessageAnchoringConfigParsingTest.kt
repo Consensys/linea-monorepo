@@ -63,7 +63,7 @@ class MessageAnchoringConfigParsingTest {
     public-key = "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
     """.trimIndent()
 
-    val expectedConfig =
+    val config =
       MessageAnchoringConfigToml(
         disabled = false,
         l1Endpoint = "http://l1-el-node:8545".toURL(),
@@ -105,6 +105,49 @@ class MessageAnchoringConfigParsingTest {
           )
         )
       )
+
+    val tomlMinimal = """
+    [message-anchoring]
+    [message-anchoring.signer]
+    type = "Web3j"
+    [message-anchoring.signer.web3j]
+    private-key = "0x0000000000000000000000000000000000000000000000000000000000000001"
+    """.trimIndent()
+
+    val configMinimal =
+      MessageAnchoringConfigToml(
+        disabled = false,
+        l1Endpoint = null,
+        l2Endpoint = null,
+        l1HighestBlockTag = BlockParameter.Tag.FINALIZED,
+        l2HighestBlockTag = BlockParameter.Tag.LATEST,
+        anchoringTickInterval = 10.seconds,
+        l1RequestRetries = RequestRetriesToml(
+          maxRetries = null,
+          backoffDelay = 1.seconds,
+          timeout = null,
+          failuresWarningThreshold = 3u
+        ),
+        l2RequestRetries = RequestRetriesToml(
+          maxRetries = null,
+          backoffDelay = 1.seconds,
+          timeout = 8.seconds,
+          failuresWarningThreshold = 3u
+        ),
+        gas = MessageAnchoringConfigToml.GasConfig(
+          maxFeePerGasCap = 100_000_000_000u,
+          gasLimit = 2_500_000u,
+          feeHistoryBlockCount = 4u,
+          feeHistoryRewardPercentile = 15u
+        ),
+        signer = SignerConfigToml(
+          type = SignerConfigToml.SignerType.WEB3J,
+          web3j = SignerConfigToml.Web3jConfig(
+            privateKey = Masked("0x0000000000000000000000000000000000000000000000000000000000000001")
+          ),
+          web3signer = null
+        )
+      )
   }
 
   data class WrapperConfig(
@@ -112,8 +155,14 @@ class MessageAnchoringConfigParsingTest {
   )
 
   @Test
-  fun `should parse full state manager config`() {
+  fun `should parse message anchoring full config`() {
     assertThat(parseConfig<WrapperConfig>(toml).messageAnchoring)
-      .isEqualTo(expectedConfig)
+      .isEqualTo(config)
+  }
+
+  @Test
+  fun `should parse message anchoring minimal config`() {
+    assertThat(parseConfig<WrapperConfig>(tomlMinimal).messageAnchoring)
+      .isEqualTo(configMinimal)
   }
 }

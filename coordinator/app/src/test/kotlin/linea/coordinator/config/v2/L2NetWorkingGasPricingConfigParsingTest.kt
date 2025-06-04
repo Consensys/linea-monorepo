@@ -11,83 +11,116 @@ import kotlin.time.Duration.Companion.seconds
 class L2NetWorkingGasPricingConfigParsingTest {
   companion object {
     val toml = """
-    [l2-network-gas-pricing] # old [dynamic-gas-price-service]
+    [l2-network-gas-pricing]
     disabled = false
     price-update-interval = "PT12S"
     fee-history-block-count = 50
     fee-history-reward-percentile = 15
-    min-mineable-fees-enabled = true
-    extra-data-enabled = true
-    ## Usend un both extraDataPricerService and minMineableFeesCalculator,
+    ## Used un both extraDataPricerService and minMineableFeesCalculator,
     # extraDataPricerService just uses minMineableFeesCalculator as delegate to get legacy fees
     gas-price-upper-bound = 10000000000 # 10 GWEI
     gas-price-lower-bound = 90000000 # 0.09 GWEI
     gas-price-fixed-cost = 3000000
-
-    # Defaults to expected-blob-gas
-    #bytes-per-data-submission=131072.0 # 2^17
-    [l2-network-gas-pricing.request-retries]
+    l1-endpoint="http://l1-el-node:8545/"
+    extra-data-update-endpoint = "http://sequencer:8545/"
+    [l2-network-gas-pricing.extra-data-update-request-retries]
     max-retries = 3
     timeout = "PT6S"
     backoff-delay = "PT1S"
     failures-warning-threshold = 2
 
-    [l2-network-gas-pricing.extra-data] # TODO: find proper name for "new", maybe "2D"
-    l1-blob-gas = 131072.0 # 2^17 # expected-l1-blob-gas previous name: expected-blob-gas
-    blob-submission-expected-execution-gas = 213000.0 # Lower to 120k as we improve efficiency
+    [l2-network-gas-pricing.flat-rate-gas-pricing]
+    gas-price-upper-bound = 10000000000 # 10 GWEI
+    gas-price-lower-bound = 90000000 # 0.09 GWEI
+    compressed-tx-size = 125
+    expected-gas = 21000
+    cost-multiplier = 1.0
+
+    [l2-network-gas-pricing.dynamic-gas-pricing]
+    l1-blob-gas = 131072 # 2^17
+    blob-submission-expected-execution-gas = 213000 # Lower to 120k as we improve efficiency
     variable-cost-upper-bound = 10000000001 # ~10 GWEI
     variable-cost-lower-bound = 90000001  # ~0.09 GWEI
     margin = 4.0
-    extra-data-update-endpoint = "http://sequencer:8545/"
-
-    [l2-network-gas-pricing.min-mineable] # current legacy implementation
-    base-fee-coefficient = 0.1
-    priority-fee-coefficient = 1.0
-    base-fee-blob-coefficient = 0.1
-    legacy-fees-multiplier = 1.2
-    geth-gas-price-update-endpoints = [
-      "http://traces-node:8545/",
-      "http://l2-node:8545/"
-    ]
-    besu-gas-price-update-endpoints = [
-      "http://sequencer:8545/"
-    ]
     """.trimIndent()
 
-    val expectedConfig = L2NetworkGasPricingConfigToml(
+    val config = L2NetworkGasPricingConfigToml(
       disabled = false,
       priceUpdateInterval = 12.seconds,
       feeHistoryBlockCount = 50u,
       feeHistoryRewardPercentile = 15u,
-      minMineableFeesEnabled = true,
-      extraDataEnabled = true,
-      gasPriceUpperBound = 10_000_000_000UL,
-      gasPriceLowerBound = 90_000_000UL,
       gasPriceFixedCost = 3_000_000UL,
-      requestRetries = RequestRetriesToml(
+      l1Endpoint = "http://l1-el-node:8545/".toURL(),
+      extraDataUpdateEndpoint = "http://sequencer:8545/".toURL(),
+      extraDataUpdateRequestRetries = RequestRetriesToml(
         maxRetries = 3u,
         timeout = 6.seconds,
         backoffDelay = 1.seconds,
         failuresWarningThreshold = 2u
       ),
-      extraData = L2NetworkGasPricingConfigToml.ExtraData(
-        l1BlobGas = 131072.0, // 2^17
-        blobSubmissionExpectedExecutionGas = 213000.0, // Lower to 120k as we improve efficiency
-        variableCostUpperBound = 10_000_000_001L, // ~10 GWEI
-        variableCostLowerBound = 90_000_001L, // ~0.09 GWEI
-        margin = 4.0,
-        extraDataUpdateEndpoint = "http://sequencer:8545/".toURL()
+      dynamicGasPricing = L2NetworkGasPricingConfigToml.DynamicGasPricingToml(
+        l1BlobGas = 131072UL, // 2^17
+        blobSubmissionExpectedExecutionGas = 213000UL, // Lower to 120k as we improve efficiency
+        variableCostUpperBound = 10_000_000_001UL, // ~10 GWEI
+        variableCostLowerBound = 90_000_001UL, // ~0.09 GWEI
+        margin = 4.0
       ),
-      minMineable = L2NetworkGasPricingConfigToml.MinMineable(
-        baseFeeCoefficient = 0.1,
-        priorityFeeCoefficient = 1.0,
-        baseFeeBlobCoefficient = 0.1,
-        legacyFeesMultiplier = 1.2,
-        gethGasPriceUpdateEndpoints = listOf(
-          "http://traces-node:8545/".toURL(),
-          "http://l2-node:8545/".toURL()
-        ),
-        besuGasPriceUpdateEndpoints = listOf("http://sequencer:8545/".toURL())
+      flatRateGasPricing = L2NetworkGasPricingConfigToml.FlatRateGasPricingToml(
+        gasPriceUpperBound = 10_000_000_000UL, // 10 GWEI
+        gasPriceLowerBound = 90_000_000UL, // 0.09 GWEI
+        compressedTxSize = 125u,
+        expectedGas = 21000u
+      )
+    )
+
+    val tomlMinimal = """
+    [l2-network-gas-pricing]
+    gas-price-upper-bound = 10000000000 # 10 GWEI
+    gas-price-lower-bound = 90000000 # 0.09 GWEI
+    gas-price-fixed-cost = 3000000
+    extra-data-update-endpoint = "http://sequencer:8545/"
+
+    [l2-network-gas-pricing.flat-rate-gas-pricing]
+    gas-price-upper-bound = 10000000000 # 10 GWEI
+    gas-price-lower-bound = 90000000 # 0.09 GWEI
+    compressed-tx-size = 125
+    expected-gas = 21000
+    cost-multiplier = 1.0
+
+    [l2-network-gas-pricing.dynamic-gas-pricing]
+    l1-blob-gas = 131072 # 2^17
+    blob-submission-expected-execution-gas = 213000 # Lower to 120k as we improve efficiency
+    variable-cost-upper-bound = 10000000001 # ~10 GWEI
+    variable-cost-lower-bound = 90000001  # ~0.09 GWEI
+    margin = 4.0
+    """.trimIndent()
+
+    val configMinimal = L2NetworkGasPricingConfigToml(
+      disabled = false,
+      priceUpdateInterval = 12.seconds,
+      feeHistoryBlockCount = 1000u,
+      feeHistoryRewardPercentile = 15u,
+      gasPriceFixedCost = 3_000_000UL,
+      l1Endpoint = null,
+      extraDataUpdateEndpoint = "http://sequencer:8545/".toURL(),
+      extraDataUpdateRequestRetries = RequestRetriesToml(
+        maxRetries = null,
+        timeout = 8.seconds,
+        backoffDelay = 1.seconds,
+        failuresWarningThreshold = 3u
+      ),
+      dynamicGasPricing = L2NetworkGasPricingConfigToml.DynamicGasPricingToml(
+        l1BlobGas = 131072UL, // 2^17
+        blobSubmissionExpectedExecutionGas = 213000UL, // Lower to 120k as we improve efficiency
+        variableCostUpperBound = 10_000_000_001UL, // ~10 GWEI
+        variableCostLowerBound = 90_000_001UL, // ~0.09 GWEI
+        margin = 4.0
+      ),
+      flatRateGasPricing = L2NetworkGasPricingConfigToml.FlatRateGasPricingToml(
+        gasPriceUpperBound = 10_000_000_000UL, // 10 GWEI
+        gasPriceLowerBound = 90_000_000UL, // 0.09 GWEI
+        compressedTxSize = 125u,
+        expectedGas = 21000u
       )
     )
   }
@@ -97,8 +130,14 @@ class L2NetWorkingGasPricingConfigParsingTest {
   )
 
   @Test
-  fun `should parse full state manager config`() {
+  fun `should parse l2 network gaspricing full config`() {
     assertThat(parseConfig<WrapperConfig>(toml).l2NetworkGasPricing)
-      .isEqualTo(expectedConfig)
+      .isEqualTo(config)
+  }
+
+  @Test
+  fun `should parse l2 network gaspricing minimal config`() {
+    assertThat(parseConfig<WrapperConfig>(tomlMinimal).l2NetworkGasPricing)
+      .isEqualTo(configMinimal)
   }
 }

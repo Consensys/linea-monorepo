@@ -1,12 +1,14 @@
-package linea.coordinator.config.v2.toml
+package linea.coordinator.config.v2.toml.decoders
 
 import com.sksamuel.hoplite.ConfigFailure
 import com.sksamuel.hoplite.ConfigResult
 import com.sksamuel.hoplite.DecoderContext
 import com.sksamuel.hoplite.Node
+import com.sksamuel.hoplite.StringNode
 import com.sksamuel.hoplite.decoder.Decoder
 import com.sksamuel.hoplite.fp.invalid
 import com.sksamuel.hoplite.fp.valid
+import linea.coordinator.config.v2.toml.SignerConfigToml
 import linea.kotlin.decodeHex
 import kotlin.reflect.KType
 import kotlin.time.Duration
@@ -18,7 +20,7 @@ class TomlByteArrayHexDecoder : Decoder<ByteArray> {
     context: DecoderContext
   ): ConfigResult<ByteArray> {
     return when (node) {
-      is com.sksamuel.hoplite.StringNode -> runCatching {
+      is StringNode -> runCatching {
         node.value.decodeHex()
       }.fold(
         { it.valid() },
@@ -39,9 +41,9 @@ class TomlKotlinDurationDecoder : Decoder<Duration> {
     node: Node,
     type: KType,
     context: DecoderContext
-  ): ConfigResult<kotlin.time.Duration> {
+  ): ConfigResult<Duration> {
     return when (node) {
-      is com.sksamuel.hoplite.StringNode -> runCatching {
+      is StringNode -> runCatching {
         Duration.parse(node.value)
       }.fold(
         { it.valid() },
@@ -64,7 +66,7 @@ class TomlSignerTypeDecoder : Decoder<SignerConfigToml.SignerType> {
     context: DecoderContext
   ): ConfigResult<SignerConfigToml.SignerType> {
     return when (node) {
-      is com.sksamuel.hoplite.StringNode -> runCatching {
+      is StringNode -> runCatching {
         SignerConfigToml.SignerType.valueOfIgnoreCase(node.value.lowercase())
       }.fold(
         { it.valid() },

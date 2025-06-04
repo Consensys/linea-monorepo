@@ -93,6 +93,37 @@ class TracesParsingTest {
         )
       )
     )
+
+    val tomlMinimal = """
+    [traces]
+    expected-traces-api-version = "1.2.0"
+    [traces.counters]
+    endpoints = ["http://traces-api-1:8080/"]
+    [traces.conflation]
+    endpoints = ["http://traces-api-2:8080/"]
+    """.trimIndent()
+
+    val configMinimal = TracesToml(
+      expectedTracesApiVersion = "1.2.0",
+      counters = TracesToml.ClientApiConfigToml(
+        endpoints = listOf(URI.create("http://traces-api-1:8080/").toURL()),
+        requestLimitPerEndpoint = UInt.MAX_VALUE,
+        requestRetries = RequestRetriesToml(
+          maxRetries = null,
+          backoffDelay = 1.seconds,
+          failuresWarningThreshold = 3u
+        )
+      ),
+      conflation = TracesToml.ClientApiConfigToml(
+        endpoints = listOf(URI.create("http://traces-api-2:8080/").toURL()),
+        requestLimitPerEndpoint = UInt.MAX_VALUE,
+        requestRetries = RequestRetriesToml(
+          maxRetries = null,
+          backoffDelay = 1.seconds,
+          failuresWarningThreshold = 3u
+        )
+      )
+    )
   }
 
   data class WrapperConfig(
@@ -133,5 +164,11 @@ class TracesParsingTest {
   fun `should parse traces full config`() {
     assertThat(parseConfig<WrapperConfig>(toml).traces)
       .isEqualTo(config)
+  }
+
+  @Test
+  fun `should parse traces minimal config`() {
+    assertThat(parseConfig<WrapperConfig>(tomlMinimal).traces)
+      .isEqualTo(configMinimal)
   }
 }

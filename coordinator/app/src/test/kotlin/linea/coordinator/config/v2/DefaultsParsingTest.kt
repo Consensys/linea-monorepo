@@ -18,13 +18,24 @@ class DefaultsParsingTest {
       l1Endpoint = "http://l1-el-node:8545".toURL(),
       l2Endpoint = "http://sequencer:8545".toURL()
     )
+
+    val tomlMinimal = """
+    """.trimIndent()
+
+    val configMinimal = DefaultsToml(
+      l1Endpoint = null,
+      l2Endpoint = null
+    )
+  }
+  internal data class WrapperConfig(val defaults: DefaultsToml = DefaultsToml())
+
+  @Test
+  fun `should parse defaults full configs`() {
+    assertThat(parseConfig<WrapperConfig>(toml).defaults).isEqualTo(config)
   }
 
   @Test
-  fun `should parse protocol configs`() {
-    data class WrapperConfig(
-      val defaults: DefaultsToml
-    )
-    assertThat(parseConfig<WrapperConfig>(toml).defaults).isEqualTo(config)
+  fun `should parse defaults minimal configs`() {
+    assertThat(parseConfig<WrapperConfig>(tomlMinimal).defaults).isEqualTo(configMinimal)
   }
 }

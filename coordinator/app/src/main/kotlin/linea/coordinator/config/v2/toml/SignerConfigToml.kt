@@ -1,6 +1,7 @@
 package linea.coordinator.config.v2.toml
 
 import com.sksamuel.hoplite.Masked
+import linea.coordinator.config.v2.SignerConfig
 import linea.kotlin.decodeHex
 import java.net.URL
 
@@ -29,6 +30,12 @@ data class SignerConfigToml(
       fun valueOfIgnoreCase(name: String): SignerType {
         return SignerType.entries.firstOrNull { it.mame.equals(name, ignoreCase = true) }
           ?: throw IllegalArgumentException("Unknown signer type: $name")
+      }
+    }
+    fun reified(): SignerConfig.SignerType {
+      return when (this) {
+        WEB3J -> SignerConfig.SignerType.WEB3J
+        WEB3SIGNER -> SignerConfig.SignerType.WEB3SIGNER
       }
     }
   }
@@ -89,5 +96,20 @@ data class SignerConfigToml(
       result = 31 * result + publicKey.contentHashCode()
       return result
     }
+  }
+
+  fun reified(): SignerConfig {
+    return SignerConfig(
+      type = type.reified(),
+      web3j = web3j?.let { SignerConfig.Web3jConfig(it.privateKey.value.decodeHex()) },
+      web3signer = web3signer?.let {
+        SignerConfig.Web3SignerConfig(
+          endpoint = it.endpoint,
+          publicKey = it.publicKey,
+          maxPoolSize = it.maxPoolSize,
+          keepAlive = it.keepAlive
+        )
+      }
+    )
   }
 }

@@ -9,20 +9,33 @@ class ApiConfigParsingTest {
   companion object {
     val toml = """
       [api]
-      observability = 9545
+      observability-port = 9546
     """.trimIndent()
 
     val config = ApiConfigToml(
+      observabilityPort = 9546u
+    )
+
+    val tomlMinimal = """
+
+    """.trimIndent()
+
+    val configMinimal = ApiConfigToml(
       observabilityPort = 9545u
     )
   }
 
   data class WrapperConfig(
-    val api: ApiConfigToml
+    val api: ApiConfigToml = ApiConfigToml()
   )
 
   @Test
-  fun `should parse full state manager config`() {
+  fun `should parse api full config`() {
     assertThat(parseConfig<WrapperConfig>(toml).api).isEqualTo(config)
+  }
+
+  @Test
+  fun `should parse api minimal config`() {
+    assertThat(parseConfig<WrapperConfig>(tomlMinimal).api).isEqualTo(configMinimal)
   }
 }

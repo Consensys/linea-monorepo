@@ -1,0 +1,8 @@
+[l1-submission.blob.signer]
+type = "Web3signer"
+
+[l1-submission.aggregation.signer]
+type = "Web3signer"
+
+[message-anchoring.signer]
+type = "Web3signer"

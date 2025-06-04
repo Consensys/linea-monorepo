@@ -31,6 +31,23 @@ class StateManagerParsingTest {
         failuresWarningThreshold = 2u
       )
     )
+
+    val tomlMinimal = """
+      [state-manager]
+      version = "2.2.0"
+      endpoints = ["http://shomei:8888/"]
+    """.trimIndent()
+
+    val configMinimal = StateManagerToml(
+      version = "2.2.0",
+      endpoints = listOf("http://shomei:8888/".toURL()),
+      requestLimitPerEndpoint = UInt.MAX_VALUE,
+      requestRetries = RequestRetriesToml(
+        maxRetries = null,
+        backoffDelay = 1.seconds,
+        failuresWarningThreshold = 3u
+      )
+    )
   }
 
   data class WrapperConfig(
@@ -38,8 +55,14 @@ class StateManagerParsingTest {
   )
 
   @Test
-  fun `should parse full state manager config`() {
+  fun `should parse state manager full config`() {
     assertThat(parseConfig<WrapperConfig>(toml).stateManager)
       .isEqualTo(config)
+  }
+
+  @Test
+  fun `should parse state manager minimal config`() {
+    assertThat(parseConfig<WrapperConfig>(tomlMinimal).stateManager)
+      .isEqualTo(configMinimal)
   }
 }
