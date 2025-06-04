@@ -18,7 +18,7 @@ import (
 
 // Compile-time sanity check the satisfaction of the interface RangeChecker by
 // externalRangeChecker
-var _ frontend.Rangechecker = &externalRangeChecker{}
+var _ frontend.Rangechecker = (*externalRangeChecker)(nil)
 
 // externalRangeChecker wraps the frontend.Builder. We require that the builder
 // also implements [frontend.Committer].
