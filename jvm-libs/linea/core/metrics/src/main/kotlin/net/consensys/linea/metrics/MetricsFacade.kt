@@ -28,7 +28,7 @@ interface TimerCapture<T> {
 
 interface MetricsFacade {
   fun createGauge(
-    category: MetricsCategory? = null,
+    category: MetricsCategory,
     name: String,
     description: String,
     measurementSupplier: Supplier<Number>,
@@ -36,14 +36,14 @@ interface MetricsFacade {
   )
 
   fun createCounter(
-    category: MetricsCategory? = null,
+    category: MetricsCategory,
     name: String,
     description: String,
     tags: List<Tag> = emptyList(),
   ): Counter
 
   fun createHistogram(
-    category: MetricsCategory? = null,
+    category: MetricsCategory,
     name: String,
     description: String,
     tags: List<Tag> = emptyList(),
@@ -52,14 +52,14 @@ interface MetricsFacade {
   ): Histogram
 
   fun <T> createSimpleTimer(
-    category: MetricsCategory? = null,
+    category: MetricsCategory,
     name: String,
     description: String,
     tags: List<Tag> = emptyList(),
   ): TimerCapture<T>
 
   fun <T> createDynamicTagTimer(
-    category: MetricsCategory? = null,
+    category: MetricsCategory,
     name: String,
     description: String,
     tagKey: String,

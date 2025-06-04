@@ -26,7 +26,7 @@ class MicrometerMetricsFacadeTest {
     metricsFacade = MicrometerMetricsFacade(
       meterRegistry,
       metricsPrefix = "linea.test",
-      defaultTags = listOf(Tag("version", "1.0.1")),
+      commonTags = listOf(Tag("version", "1.0.1")),
     )
   }
 
@@ -131,13 +131,14 @@ class MicrometerMetricsFacadeTest {
 
     val expectedTags = listOf(Tag("key1", "value1"), Tag("key2", "value2"))
     val timer = metricsFacade.createSimpleTimer<Unit>(
+      category = TestCategory.TEST_CATEGORY,
       name = "some.timer.metric",
       description = "This is a test metric",
       tags = expectedTags,
     )
 
     timer.captureTime(::mockTimer)
-    val createdTimer = meterRegistry.find("linea.test.some.timer.metric").timer()
+    val createdTimer = meterRegistry.find("linea.test.test.category.some.timer.metric").timer()
     assertThat(createdTimer).isNotNull
     assertThat(createdTimer!!.id.description).isEqualTo("This is a test metric")
     assertThat(
@@ -159,6 +160,7 @@ class MicrometerMetricsFacadeTest {
     }
 
     val timer = metricsFacade.createDynamicTagTimer<Unit>(
+      category = TestCategory.TEST_CATEGORY,
       name = "some.dynamictag.timer.metric",
       description = "This is a test metric",
       tagKey = "key",
@@ -168,7 +170,7 @@ class MicrometerMetricsFacadeTest {
     }
 
     timer.captureTime(::mockTimer)
-    val createdTimer = meterRegistry.find("linea.test.some.dynamictag.timer.metric").timer()
+    val createdTimer = meterRegistry.find("linea.test.test.category.some.dynamictag.timer.metric").timer()
     assertThat(createdTimer).isNotNull
     assertThat(createdTimer!!.id.description).isEqualTo("This is a test metric")
     assertThat(createdTimer.id.tags).containsAll(listOf(ImmutableTag("version", "1.0.1"), ImmutableTag("key", "value")))
@@ -185,12 +187,13 @@ class MicrometerMetricsFacadeTest {
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade = MicrometerMetricsFacade(meterRegistry)
     metricsFacade.createGauge(
+      category = TestCategory.TEST_CATEGORY,
       name = "some.gauge.metric",
       description = "This is a test metric",
       measurementSupplier = { metricMeasureValue },
       tags = listOf(Tag("key1", "value1"), Tag("key2", "value2")),
     )
-    val createdGauge = meterRegistry.find("some.gauge.metric").gauge()
+    val createdGauge = meterRegistry.find("test.category.some.gauge.metric").gauge()
     assertThat(createdGauge).isNotNull
   }
 
@@ -199,11 +202,12 @@ class MicrometerMetricsFacadeTest {
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade = MicrometerMetricsFacade(meterRegistry)
     metricsFacade.createCounter(
+      category = TestCategory.TEST_CATEGORY,
       name = "some.counter.metric",
       description = "This is a test metric",
       tags = listOf(Tag("key1", "value1"), Tag("key2", "value2")),
     )
-    val createdCounter = meterRegistry.find("some.counter.metric").counter()
+    val createdCounter = meterRegistry.find("test.category.some.counter.metric").counter()
     assertThat(createdCounter).isNotNull
   }
 
@@ -212,12 +216,13 @@ class MicrometerMetricsFacadeTest {
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade = MicrometerMetricsFacade(meterRegistry)
     metricsFacade.createHistogram(
+      category = TestCategory.TEST_CATEGORY,
       name = "some.histogram.metric",
       description = "This is a test metric",
       tags = listOf(Tag("key1", "value1"), Tag("key2", "value2")),
       baseUnit = "seconds",
     )
-    val createdHistogram = meterRegistry.find("some.histogram.metric").summary()
+    val createdHistogram = meterRegistry.find("test.category.some.histogram.metric").summary()
     assertThat(createdHistogram).isNotNull
   }
 
@@ -226,12 +231,13 @@ class MicrometerMetricsFacadeTest {
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade = MicrometerMetricsFacade(meterRegistry)
     val timer = metricsFacade.createSimpleTimer<Unit>(
+      category = TestCategory.TEST_CATEGORY,
       name = "some.timer.metric",
       description = "This is a test metric",
       tags = listOf(Tag("key1", "value1"), Tag("key2", "value2")),
     )
     timer.captureTime {}
-    val createdTimer = meterRegistry.find("some.timer.metric").timer()
+    val createdTimer = meterRegistry.find("test.category.some.timer.metric").timer()
     assertThat(createdTimer).isNotNull
   }
 
@@ -240,6 +246,7 @@ class MicrometerMetricsFacadeTest {
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade = MicrometerMetricsFacade(meterRegistry)
     val timer = metricsFacade.createDynamicTagTimer<Unit>(
+      category = TestCategory.TEST_CATEGORY,
       name = "some.dynamictag.timer.metric",
       description = "This is a test metric",
       tagKey = "key",
@@ -248,7 +255,7 @@ class MicrometerMetricsFacadeTest {
       "value"
     }
     timer.captureTime {}
-    val createdTimer = meterRegistry.find("some.dynamictag.timer.metric").timer()
+    val createdTimer = meterRegistry.find("test.category.some.dynamictag.timer.metric").timer()
     assertThat(createdTimer).isNotNull
   }
 }

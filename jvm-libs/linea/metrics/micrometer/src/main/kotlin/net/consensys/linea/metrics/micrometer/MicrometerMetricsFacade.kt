@@ -17,7 +17,7 @@ import io.micrometer.core.instrument.Timer as MicrometerTimer
 class MicrometerMetricsFacade(
   private val registry: MeterRegistry,
   private val metricsPrefix: String? = null,
-  private val defaultTags: List<Tag> = emptyList(),
+  private val commonTags: List<Tag> = emptyList(),
 ) : MetricsFacade {
   companion object {
     private val validBaseUnits = listOf(
@@ -38,78 +38,64 @@ class MicrometerMetricsFacade(
 
   init {
     if (metricsPrefix != null) requireValidMicrometerName(metricsPrefix)
-    defaultTags.forEach { requireValidMicrometerName(it.key) }
+    commonTags.forEach { requireValidMicrometerName(it.key) }
   }
 
-  private fun metricHandle(category: MetricsCategory?, metricName: String): String {
+  private fun metricHandle(category: MetricsCategory, metricName: String): String {
     val prefixName = if (metricsPrefix == null) "" else "$metricsPrefix."
-    val categoryName = if (category == null) "" else "${category.toValidMicrometerName()}."
+    val categoryName = "${category.toValidMicrometerName()}."
     return "$prefixName$categoryName$metricName"
   }
 
+  private fun flattenTags(tags: List<Tag>): List<String> {
+    tags.forEach { requireValidMicrometerName(it.key) }
+    return (tags + commonTags).flatMap {
+      listOf(it.key, it.value)
+    }
+  }
+
   override fun createGauge(
-    category: MetricsCategory?,
+    category: MetricsCategory,
     name: String,
     description: String,
     measurementSupplier: Supplier<Number>,
     tags: List<Tag>,
   ) {
-    if (category != null) requireValidMicrometerName(category.toValidMicrometerName())
+    requireValidMicrometerName(category.toValidMicrometerName())
     requireValidMicrometerName(name)
     val builder = Gauge.builder(metricHandle(category, name), measurementSupplier)
-    if (tags.isNotEmpty() || defaultTags.isNotEmpty()) {
-      val allTags = tags + defaultTags
-      val flatTags = allTags.flatMap {
-        requireValidMicrometerName(it.key)
-        listOf(it.key, it.value)
-      }
-      builder.tags(*flatTags.toTypedArray())
-    }
+    flattenTags(tags).takeIf { it.isNotEmpty() }?.let { builder.tags(*it.toTypedArray()) }
     builder.description(description)
     builder.register(registry)
   }
 
   override fun createCounter(
-    category: MetricsCategory?,
+    category: MetricsCategory,
     name: String,
     description: String,
     tags: List<Tag>,
   ): Counter {
-    if (category != null) requireValidMicrometerName(category.toValidMicrometerName())
+    requireValidMicrometerName(category.toValidMicrometerName())
     requireValidMicrometerName(name)
     val builder = MicrometerCounter.builder(metricHandle(category, name))
-    if (tags.isNotEmpty() || defaultTags.isNotEmpty()) {
-      val allTags = tags + defaultTags
-      val flatTags = allTags.flatMap {
-        requireValidMicrometerName(it.key)
-        listOf(it.key, it.value)
-      }
-      builder.tags(*flatTags.toTypedArray())
-    }
+    flattenTags(tags).takeIf { it.isNotEmpty() }?.let { builder.tags(*it.toTypedArray()) }
     builder.description(description)
     return MicrometerCounterAdapter(builder.register(registry))
   }
 
   override fun createHistogram(
-    category: MetricsCategory?,
+    category: MetricsCategory,
     name: String,
     description: String,
     tags: List<Tag>,
     isRatio: Boolean,
     baseUnit: String?,
   ): Histogram {
-    if (category != null) requireValidMicrometerName(category.toValidMicrometerName())
+    requireValidMicrometerName(category.toValidMicrometerName())
     requireValidMicrometerName(name)
     if (baseUnit != null) requireValidBaseUnit(baseUnit)
     val distributionSummaryBuilder = DistributionSummary.builder(metricHandle(category, name))
-    if (tags.isNotEmpty() || defaultTags.isNotEmpty()) {
-      val allTags = tags + defaultTags
-      val flatTags = allTags.flatMap {
-        requireValidMicrometerName(it.key)
-        listOf(it.key, it.value)
-      }
-      distributionSummaryBuilder.tags(*flatTags.toTypedArray())
-    }
+    flattenTags(tags).takeIf { it.isNotEmpty() }?.let { distributionSummaryBuilder.tags(*it.toTypedArray()) }
     distributionSummaryBuilder.description(description)
     distributionSummaryBuilder.baseUnit(baseUnit)
     if (isRatio) {
@@ -120,36 +106,29 @@ class MicrometerMetricsFacade(
   }
 
   override fun <T> createSimpleTimer(
-    category: MetricsCategory?,
+    category: MetricsCategory,
     name: String,
     description: String,
     tags: List<Tag>,
   ): TimerCapture<T> {
-    if (category != null) requireValidMicrometerName(category.toValidMicrometerName())
+    requireValidMicrometerName(category.toValidMicrometerName())
     requireValidMicrometerName(name)
     val builder = MicrometerTimer.builder(metricHandle(category, name))
-    if (tags.isNotEmpty() || defaultTags.isNotEmpty()) {
-      val allTags = tags + defaultTags
-      val flatTags = allTags.flatMap {
-        requireValidMicrometerName(it.key)
-        listOf(it.key, it.value)
-      }
-      builder.tags(*flatTags.toTypedArray())
-    }
+    flattenTags(tags).takeIf { it.isNotEmpty() }?.let { builder.tags(*it.toTypedArray()) }
     builder.description(description)
 
     return SimpleTimerCapture(registry, builder)
   }
 
   override fun <T> createDynamicTagTimer(
-    category: MetricsCategory?,
+    category: MetricsCategory,
     name: String,
     description: String,
     tagKey: String,
     tagValueExtractorOnError: Function<Throwable, String>,
     tagValueExtractor: Function<T, String>,
   ): TimerCapture<T> {
-    if (category != null) requireValidMicrometerName(category.toValidMicrometerName())
+    requireValidMicrometerName(category.toValidMicrometerName())
     requireValidMicrometerName(name)
     requireValidMicrometerName(tagKey)
     val dynamicTagTimerCapture = DynamicTagTimerCapture<T>(registry, metricHandle(category, name))
@@ -157,7 +136,7 @@ class MicrometerMetricsFacade(
       .setTagKey(tagKey)
       .setTagValueExtractor(tagValueExtractor)
       .setTagValueExtractorOnError(tagValueExtractorOnError)
-    defaultTags.forEach { dynamicTagTimerCapture.setTag(it.key, it.value) }
+    commonTags.forEach { dynamicTagTimerCapture.setTag(it.key, it.value) }
     return dynamicTagTimerCapture
   }
 }
