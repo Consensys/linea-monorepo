@@ -49,7 +49,7 @@ public class NoCFIDuplicateTests extends TracerTestBase {
         ToyAccount.builder().balance(Wei.fromEth(0xffff)).nonce(128).address(senderAddress).build();
 
     final Bytes bytecode =
-        BytecodeCompiler.newProgram().push(256).push(255).op(OpCode.SLT).compile();
+        BytecodeCompiler.newProgram(testInfo).push(256).push(255).op(OpCode.SLT).compile();
 
     final ToyAccount recipientAccount =
         ToyAccount.builder()
@@ -79,13 +79,13 @@ public class NoCFIDuplicateTests extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 test =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(List.of(senderAccount, recipientAccount))
             .transactions(List.of(tx1, tx2))
             .zkTracerValidator(zkTracer -> {})
             .build();
 
-    test.run(testInfo);
+    test.run();
 
     checkArgument(test.getHub().romLex().lineCount() == 1);
   }

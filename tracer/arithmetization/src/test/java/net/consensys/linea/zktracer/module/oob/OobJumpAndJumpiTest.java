@@ -49,7 +49,7 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
   @Test
   void testJumpSequenceSuccessTrivial() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendJump(EWord.of(35), program);
     appendStop(program);
@@ -77,7 +77,7 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
   @Test
   void testJumpSequenceSuccessBackAndForth() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendJump(EWord.of(71), program);
     appendStop(program);
@@ -105,7 +105,7 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
   @Test
   void testJumpSequenceFailingNoJumpdestTrivial() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendJump(EWord.of(35), program);
     appendStop(program);
@@ -134,7 +134,7 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
   @Test
   void testJumpSequenceFailingOobTrivial() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendJump(EWord.of(35), program);
     appendStop(program);
@@ -259,7 +259,7 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
   @Test
   void testJumpiSequenceSuccessTrivial() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendJumpi(EWord.of(68), EWord.of(1), program);
     appendStop(program);
@@ -287,7 +287,7 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
   @Test
   void testJumpiSequenceSuccessBackAndForth() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendJumpi(EWord.of(137), EWord.of(1), program);
     appendStop(program);
@@ -315,7 +315,7 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
   @Test
   void testJumpiSequenceFailingNoJumpdestTrivial() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendJumpi(EWord.of(68), EWord.of(1), program);
     appendStop(program);
@@ -344,7 +344,7 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
   @Test
   void testJumpiSequenceFailingOobTrivial() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendJumpi(EWord.of(68), EWord.of(1), program);
     appendStop(program);
@@ -374,7 +374,7 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
   @Test
   void testNoJumpi() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendJumpi(EWord.of(68), EWord.of(0), program); // jumpCondition is 0, that means no JUMPI
     appendStop(program);
@@ -393,7 +393,7 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
   @Test
   void testJumpiHiNonZero() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     EWord jumpCondition = EWord.of(TWO_POW_128_MINUS_ONE, BigInteger.ZERO);
     appendJumpi(EWord.of(68), jumpCondition, program);
@@ -413,7 +413,7 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
   @Test
   void testJumpiLoNonZero() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     EWord jumpCondition = EWord.of(BigInteger.valueOf(0), TWO_POW_128_MINUS_ONE);
     appendJumpi(EWord.of(68), jumpCondition, program);
@@ -433,7 +433,7 @@ public class OobJumpAndJumpiTest extends TracerTestBase {
 
   @Test
   void testJumpiHiLoNonZero() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     EWord jumpCondition = EWord.of(TWO_POW_128_MINUS_ONE, TWO_POW_128_MINUS_ONE);
     appendJumpi(EWord.of(68), jumpCondition, program);

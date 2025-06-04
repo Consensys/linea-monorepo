@@ -29,7 +29,7 @@ public class StorageTest extends TracerTestBase {
   @Test
   void simpleSstoreSload() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(0x666) // value
                 .push(0xca7) // key
                 .op(OpCode.SSTORE)

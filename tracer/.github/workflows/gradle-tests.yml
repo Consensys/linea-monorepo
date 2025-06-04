@@ -54,6 +54,9 @@ jobs:
   # Unit Tests
   # ==================================================================
   unit-tests:
+    strategy:
+      matrix:
+        zkevm_fork: [LONDON, SHANGHAI]
     needs: [ build ]
     runs-on: gha-runner-scale-set-ubuntu-22.04-amd64-xxl
     steps:
@@ -74,26 +77,27 @@ jobs:
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air
           UNIT_TESTS_PARALLELISM: 4
+          ZKEVM_FORK: ${{ matrix.zkevm_fork }}
 
       - name: Upload test report
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: unit-tests-report
+          name: unit-tests-report-${{ matrix.zkevm_fork }}
           path: arithmetization/build/reports/tests/**/*
 
       - name: Upload jacoco unit tests coverage report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-unit-tests-coverage-report
+          name: jacoco-unit-tests-coverage-report-${{ matrix.zkevm_fork }}
           path: arithmetization/build/reports/jacoco/test/**/*
 
       - name: Upload jacoco unit tests exec file
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: jacoco-unit-tests-exec-file
+          name: jacoco-unit-tests-exec-file-${{ matrix.zkevm_fork }}
           path: arithmetization/build/jacoco/test.exec
 
   # ==================================================================
@@ -120,6 +124,7 @@ jobs:
           REPLAY_TESTS_PARALLELISM: 4
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -b1024 -v --ansi-escapes=false --report --air
+          ZKEVM_FORK: LONDON
 
       - name: Upload test report
         if: ${{ always() }}

@@ -186,14 +186,14 @@ public class MultipleCallsRevertingTest extends TracerTestBase {
     transactions.add(txToInitiateCalls);
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(accounts)
             .transactions(transactions)
             .transactionProcessingResultValidator(
                 TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .build();
 
-    toyExecutionEnvironmentV2.run(testInfo);
+    toyExecutionEnvironmentV2.run();
   }
 
   private static Stream<Arguments> contractForSLoadAndSStoreTestSource() {

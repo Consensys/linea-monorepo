@@ -140,12 +140,14 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
                               false,
                               BytecodeRunner.of(preCallProgram(address, false, false, 0))
                                   .runOnlyForGasCost(
-                                      address == MODEXP ? additionalAccounts : List.of()));
+                                      address == MODEXP ? additionalAccounts : List.of(),
+                                      testInfo));
                           put(
                               true,
                               BytecodeRunner.of(preCallProgram(address, false, true, 0))
                                   .runOnlyForGasCost(
-                                      address == MODEXP ? additionalAccounts : List.of()));
+                                      address == MODEXP ? additionalAccounts : List.of(),
+                                      testInfo));
                         }
                       }));
 
@@ -166,7 +168,7 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
     // Whenever transferValue = true, gas is enough
     // so we only test the case in which transferValue = false
 
-    final BytecodeCompiler program = BytecodeCompiler.newProgram();
+    final BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     program.immediate(preCallProgram(ALTBN128_ADD, false, false, 0)).op(CALL);
 
@@ -216,7 +218,7 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
       boolean transfersValue,
       boolean targetAddressExists,
       int cds) {
-    final BytecodeCompiler program = BytecodeCompiler.newProgram();
+    final BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program.immediate(preCallProgram(address, transfersValue, targetAddressExists, cds)).op(CALL);
 
     final BytecodeRunner bytecodeRunner = BytecodeRunner.of(program);
@@ -271,7 +273,7 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
   // Support methods
   static Bytes preCallProgram(
       Address address, boolean transfersValue, boolean targetAddressExists, int cds) {
-    return BytecodeCompiler.newProgram()
+    return BytecodeCompiler.newProgram(testInfo)
         .immediate(expandMemoryTo2048Words())
         .immediate(targetAddressExists ? successfullySummonIntoExistence(address) : Bytes.EMPTY)
         .immediate(
@@ -287,7 +289,11 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
 
   static Bytes expandMemoryTo(int words) {
     checkArgument(words >= 1);
-    return BytecodeCompiler.newProgram().push((words - 1) * WORD_SIZE).op(MLOAD).op(POP).compile();
+    return BytecodeCompiler.newProgram(testInfo)
+        .push((words - 1) * WORD_SIZE)
+        .op(MLOAD)
+        .op(POP)
+        .compile();
   }
 
   static Bytes successfullySummonIntoExistence(Address address) {
@@ -301,14 +307,14 @@ public class SixtyThreeSixtyFourthsTests extends TracerTestBase {
   }
 
   static Bytes call(Bytes gas, Address address, int cds, boolean transfersValue) {
-    return BytecodeCompiler.newProgram()
+    return BytecodeCompiler.newProgram(testInfo)
         .immediate(pushCallArguments(gas, address, cds, transfersValue))
         .op(CALL)
         .compile();
   }
 
   static Bytes pushCallArguments(Bytes gas, Address address, int cds, boolean transfersValue) {
-    return BytecodeCompiler.newProgram()
+    return BytecodeCompiler.newProgram(testInfo)
         .push(0) // returnAtCapacity
         .push(0) // returnAtOffset
         .push(cds) // callDataSize

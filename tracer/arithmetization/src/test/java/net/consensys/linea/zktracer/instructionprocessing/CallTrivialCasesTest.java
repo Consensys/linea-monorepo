@@ -28,7 +28,7 @@ public class CallTrivialCasesTest extends TracerTestBase {
   @Test
   void eoaCallScenarioTest() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(0)
             .push(0)
             .push(0)
@@ -45,7 +45,7 @@ public class CallTrivialCasesTest extends TracerTestBase {
   @Test
   void eoaCallWithCallDataAndReturnDataCapacityTest() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(0x31)
             .push(0x11)
             .push(0x22)
@@ -62,7 +62,7 @@ public class CallTrivialCasesTest extends TracerTestBase {
   @Test
   void eoaCallScenarioTestZeroCalleeGas() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(0)
             .push(0)
             .push(0)

@@ -14,14 +14,28 @@
  */
 package net.consensys.linea.reporting;
 
+import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.Fork;
+import org.hyperledger.besu.datatypes.Address;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 
 public class TracerTestBase {
-  public TestInfo testInfo;
+  public static TestInfoWithChainConfig testInfo = new TestInfoWithChainConfig();
+  public Address add;
 
   @BeforeEach
   public void init(TestInfo testInfo) {
-    this.testInfo = testInfo;
+      TracerTestBase.testInfo.chainConfig =
+            switch (System.getProperty("unit.replay.tests.fork")) {
+              case "LONDON" -> ChainConfig.MAINNET_TESTCONFIG(Fork.LONDON);
+              case "PARIS" -> ChainConfig.MAINNET_TESTCONFIG(Fork.PARIS);
+              case "SHANGHAI" -> ChainConfig.MAINNET_TESTCONFIG(Fork.SHANGHAI);
+              case "CANCUN" -> ChainConfig.MAINNET_TESTCONFIG(Fork.CANCUN);
+              case "PRAGUE" -> ChainConfig.MAINNET_TESTCONFIG(Fork.PRAGUE);
+              default -> throw new IllegalArgumentException(
+                  "Unknown fork: " + System.getProperty("unit.replay.tests.fork"));
+            };
+    TracerTestBase.testInfo.testInfo = testInfo;
   }
 }

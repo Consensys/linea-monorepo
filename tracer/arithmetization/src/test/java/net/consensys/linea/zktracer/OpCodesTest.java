@@ -38,7 +38,7 @@ public class OpCodesTest extends TracerTestBase {
   }
 
   private Bytes getAllOpCodesProgram() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     for (OpCodeData opCodeData : opCodeDataList) {
       if (opCodeData != null) {
         if (opCodeData.instructionFamily() != InstructionFamily.HALT

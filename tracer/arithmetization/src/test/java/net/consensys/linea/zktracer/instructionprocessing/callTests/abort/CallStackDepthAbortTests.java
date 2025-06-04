@@ -38,7 +38,7 @@ public class CallStackDepthAbortTests extends TracerTestBase {
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
   void attemptAtCallStackDepthAbortWillRevert(OpCode callOpCode) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     appendRecursiveSelfCall(program, callOpCode);
     appendRevert(program, 6, 7);
 
@@ -51,7 +51,7 @@ public class CallStackDepthAbortTests extends TracerTestBase {
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
   void attemptAtCallStackDepthAbort(OpCode callOpCode) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     appendRecursiveSelfCall(program, callOpCode);
 
     BytecodeRunner.of(program).run(testInfo);

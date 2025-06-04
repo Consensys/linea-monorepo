@@ -45,7 +45,7 @@ public class SignedOperationsExtensiveTest extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("signedComparisonsModDivTestSource")
   void signedComparisonsModDivTest(OpCode opCode, String a, String b) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram().push(b).push(a).op(opCode);
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo).push(b).push(a).op(opCode);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(testInfo);
   }
@@ -113,7 +113,7 @@ public class SignedOperationsExtensiveTest extends TracerTestBase {
   @MethodSource("signExtendTestSource")
   private void signExtendTest(String position, String value) {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram().push(value).push(position).op(OpCode.SIGNEXTEND);
+        BytecodeCompiler.newProgram(testInfo).push(value).push(position).op(OpCode.SIGNEXTEND);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(testInfo);
   }

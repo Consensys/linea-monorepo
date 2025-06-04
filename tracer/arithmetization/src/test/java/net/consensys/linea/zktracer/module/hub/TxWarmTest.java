@@ -55,7 +55,7 @@ public class TxWarmTest extends TracerTestBase {
       ToyAccount.builder()
           .balance(Wei.fromEth(1))
           .address(Address.fromHexString("0xdead000000000000000000000000000beef"))
-          .code(BytecodeCompiler.newProgram().push(1).push(0).op(OpCode.ADD).compile())
+          .code(BytecodeCompiler.newProgram(testInfo).push(1).push(0).op(OpCode.ADD).compile())
           .build();
 
   @Test
@@ -108,12 +108,12 @@ public class TxWarmTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -132,12 +132,12 @@ public class TxWarmTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -158,12 +158,12 @@ public class TxWarmTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -184,17 +184,18 @@ public class TxWarmTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
   void warmDeploymentAddress() {
-    final Bytes initCode = BytecodeCompiler.newProgram().push(1).push(0).op(OpCode.SLT).compile();
+    final Bytes initCode =
+        BytecodeCompiler.newProgram(testInfo).push(1).push(0).op(OpCode.SLT).compile();
 
     final Address depAddress =
         Address.extract(getCreateRawAddress(senderAddress, senderAccount.getNonce()));
@@ -215,11 +216,11 @@ public class TxWarmTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 }

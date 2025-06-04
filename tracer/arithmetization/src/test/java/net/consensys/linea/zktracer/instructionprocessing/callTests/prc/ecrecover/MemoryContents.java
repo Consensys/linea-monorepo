@@ -18,6 +18,7 @@ import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ecadd.MemoryContents.RND;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ecadd.MemoryContents.WORD_HEX_SIZE;
 
+import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallMemoryContents;
 
@@ -122,7 +123,7 @@ public enum MemoryContents implements PrecompileCallMemoryContents {
    *
    * @return
    */
-  public BytecodeCompiler memoryContents() {
+  public BytecodeCompiler memoryContents(TestInfoWithChainConfig testInfo) {
 
     // we switch with every call
     switchVariant();
@@ -130,40 +131,49 @@ public enum MemoryContents implements PrecompileCallMemoryContents {
     switch (this) {
       case ZEROS -> {
         final String ZERO_WORD = "00".repeat(WORD_SIZE);
-        return new EcRecoverTuple(ZERO_WORD, ZERO_WORD, ZERO_WORD, ZERO_WORD).memoryContents(false);
+        return new EcRecoverTuple(ZERO_WORD, ZERO_WORD, ZERO_WORD, ZERO_WORD)
+            .memoryContents(false, testInfo);
       }
       case WELL_FORMED -> {
         return variant
-            ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1.memoryContents(false)
-            : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2.memoryContents(false);
+            ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1.memoryContents(false, testInfo)
+            : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2.memoryContents(false, testInfo);
       }
       case MALFORMED_AT_7f_BUT_SALVAGEABLE -> {
         return variant
-            ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1.memoryContents(true)
-            : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2.memoryContents(true);
+            ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1.memoryContents(true, testInfo)
+            : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2.memoryContents(true, testInfo);
       }
       case INVALID_V -> {
         return variant
-            ? INVALID_V_TUPLE_1.memoryContents(false)
-            : INVALID_V_TUPLE_2.memoryContents(false);
+            ? INVALID_V_TUPLE_1.memoryContents(false, testInfo)
+            : INVALID_V_TUPLE_2.memoryContents(false, testInfo);
       }
       case BOUNDARY_R -> {
         return variant
-            ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1.replaceR(true).memoryContents(false)
-            : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2.replaceR(false).memoryContents(false);
+            ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1
+                .replaceR(true)
+                .memoryContents(false, testInfo)
+            : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2
+                .replaceR(false)
+                .memoryContents(false, testInfo);
       }
       case BOUNDARY_S -> {
         return variant
-            ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1.replaceS(true).memoryContents(false)
-            : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2.replaceS(false).memoryContents(false);
+            ? VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_1
+                .replaceS(true)
+                .memoryContents(false, testInfo)
+            : VALID_TUPLE_WHERE_THE_FINAL_BYTE_OF_S_IS_ZERO_2
+                .replaceS(false)
+                .memoryContents(false, testInfo);
       }
       case RANDOM -> {
-        return RANDOM_TUPLE.memoryContents(false);
+        return RANDOM_TUPLE.memoryContents(false, testInfo);
       }
       case MALLEABLE -> {
         return variant
-            ? EVM_CODES_EXAMPLE.memoryContents(false)
-            : EVM_CODES_EXAMPLE_MALLEABLE.memoryContents(false);
+            ? EVM_CODES_EXAMPLE.memoryContents(false, testInfo)
+            : EVM_CODES_EXAMPLE_MALLEABLE.memoryContents(false, testInfo);
       }
       default -> throw new RuntimeException("Unknown MemoryContentsParameter");
     }

@@ -29,6 +29,7 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
+import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
@@ -44,7 +45,8 @@ import org.junit.jupiter.api.TestInfo;
 @Builder
 @Slf4j
 public class ToyExecutionEnvironmentV2 {
-  public static final ChainConfig UNIT_TEST_CHAIN = MAINNET_TESTCONFIG(LONDON);
+  @Builder.Default public final ChainConfig unitTestsChain = MAINNET_TESTCONFIG(LONDON);
+  public final TestInfo testInfo;
   public static final Address DEFAULT_COINBASE_ADDRESS =
       Address.fromHexString("0xc019ba5e00000000c019ba5e00000000c019ba5e");
   public static final long DEFAULT_BLOCK_NUMBER = 6678980;
@@ -74,18 +76,25 @@ public class ToyExecutionEnvironmentV2 {
 
   @Builder.Default private final Consumer<ZkTracer> zkTracerValidator = x -> {};
 
-  private final ZkTracer tracer = new ZkTracer(UNIT_TEST_CHAIN);
-
+  private ZkTracer tracer;
   @Setter @Getter public ZkCounter zkCounter;
 
-  public void run(TestInfo testInfo) {
+  public static ToyExecutionEnvironmentV2.ToyExecutionEnvironmentV2Builder builder(
+      TestInfoWithChainConfig testInfo) {
+    return new ToyExecutionEnvironmentV2Builder()
+        .unitTestsChain(testInfo.chainConfig)
+        .testInfo(testInfo.testInfo)
+        .tracer(new ZkTracer(testInfo.chainConfig));
+  }
+
+  public void run() {
     if (runWithBesuNode || System.getenv().containsKey("RUN_WITH_BESU_NODE")) {
       new BesuExecutionTools(
-              Optional.of(testInfo), UNIT_TEST_CHAIN, coinbase, accounts, transactions)
+              Optional.of(testInfo), unitTestsChain, coinbase, accounts, transactions)
           .executeTest();
     } else {
-      final ProtocolSpec protocolSpec =
-          ExecutionEnvironment.getProtocolSpec(UNIT_TEST_CHAIN.id, UNIT_TEST_CHAIN.fork);
+      ProtocolSpec protocolSpec =
+          ExecutionEnvironment.getProtocolSpec(unitTestsChain.id, unitTestsChain.fork);
       final GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
           this.buildGeneralStateTestCaseSpec(protocolSpec);
       ToyExecutionTools.executeTest(
@@ -98,10 +107,10 @@ public class ToyExecutionEnvironmentV2 {
   }
 
   public void runForCounting() {
-    zkCounter = new ZkCounter(UNIT_TEST_CHAIN.bridgeConfiguration);
+    zkCounter = new ZkCounter(unitTestsChain.bridgeConfiguration);
 
     final ProtocolSpec protocolSpec =
-        ExecutionEnvironment.getProtocolSpec(UNIT_TEST_CHAIN.id, UNIT_TEST_CHAIN.fork);
+        ExecutionEnvironment.getProtocolSpec(unitTestsChain.id, unitTestsChain.fork);
     final GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
         this.buildGeneralStateTestCaseSpec(protocolSpec);
     ToyExecutionTools.executeTest(
@@ -114,7 +123,7 @@ public class ToyExecutionEnvironmentV2 {
 
   public long runForGasCost() {
     final ProtocolSpec protocolSpec =
-        ExecutionEnvironment.getProtocolSpec(UNIT_TEST_CHAIN.id, UNIT_TEST_CHAIN.fork);
+        ExecutionEnvironment.getProtocolSpec(unitTestsChain.id, unitTestsChain.fork);
     final GeneralStateTestCaseEipSpec generalStateTestCaseEipSpec =
         this.buildGeneralStateTestCaseSpec(protocolSpec);
 

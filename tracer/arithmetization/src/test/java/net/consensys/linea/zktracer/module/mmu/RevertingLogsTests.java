@@ -41,92 +41,92 @@ import org.junit.jupiter.api.Test;
  */
 public class RevertingLogsTests extends TracerTestBase {
 
-  private static final Bytes TOPIC_1 =
-      Bytes.fromHexString("0x000007031c100000000007031c100000000007031c100000000007031c100000");
-
-  private static final Bytes TOPIC_2 =
-      Bytes.fromHexString("0x000007031c200000000007031c200000000007031c200000000007031c200000");
-
-  private static final Bytes TOPIC_3 =
-      Bytes.fromHexString("0x000007031c300000000007031c300000000007031c300000000007031c300000");
-
-  private static final Bytes TOPIC_4 =
-      Bytes.fromHexString("0x000007031c400000000007031c400000000007031c400000000007031c400000");
-
-  private static final Bytes LOG0 =
-      newProgram()
-          .push(18) // size
-          .push(0x1) // offset
-          .op(OpCode.LOG0)
-          .compile();
-
-  private static final Bytes LOG1 =
-      newProgram()
-          .push(TOPIC_1)
-          .push(18) // size
-          .push(0x1) // offset
-          .op(OpCode.LOG1)
-          .compile();
-
-  private static final Bytes LOG2 =
-      newProgram()
-          .push(TOPIC_2) // topic 2
-          .push(TOPIC_1) // topic 1
-          .push(18) // size
-          .push(0x1) // offset
-          .op(OpCode.LOG2)
-          .compile();
-
-  private static final Bytes LOG3 =
-      newProgram()
-          .push(TOPIC_3) // topic 3
-          .push(TOPIC_2) // topic 2
-          .push(TOPIC_1) // topic 1
-          .push(18) // size
-          .push(0x1) // offset
-          .op(OpCode.LOG3)
-          .compile();
-
-  private static final Bytes LOG4 =
-      newProgram()
-          .push(TOPIC_4) // topic 4
-          .push(TOPIC_3) // topic 3
-          .push(TOPIC_2) // topic 2
-          .push(TOPIC_1) // topic 1
-          .push(18) // size
-          .push(0x1) // offset
-          .op(OpCode.LOG4)
-          .compile();
-
-  private static final Bytes SELFREVERT_LOG_BYTECODE =
-      newProgram().immediate(POPULATE_MEMORY).immediate(LOG3).immediate(REVERT).compile();
-
-  private static final Bytes NON_REVERTING_LOG_BYTECODE =
-      newProgram().immediate(POPULATE_MEMORY).immediate(LOG4).compile();
-
-  private static final ToyAccount nonRevertingLogSMC =
-      ToyAccount.builder()
-          .address(Address.fromHexString("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
-          .code(NON_REVERTING_LOG_BYTECODE)
-          .balance(Wei.of(98989898))
-          .build();
-
-  private static final ToyAccount selfRevertingLogSMC =
-      ToyAccount.builder()
-          .address(Address.fromHexString("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
-          .code(SELFREVERT_LOG_BYTECODE)
-          .balance(Wei.of(1235678))
-          .build();
-
-  private static final ToyAccount callNonRevertLogAndSelfRevert =
-      ToyAccount.builder()
-          .address(Address.fromHexString("0xcccccccccccccccccccccccccccccccccccccccc"))
-          .code(Bytes.concatenate(call(nonRevertingLogSMC.getAddress(), false), REVERT))
-          .balance(Wei.of(10000))
-          .build();
-
   @Test
   void mixtureOfRevertedLogs() {
+
+    final Bytes TOPIC_1 =
+        Bytes.fromHexString("0x000007031c100000000007031c100000000007031c100000000007031c100000");
+
+    final Bytes TOPIC_2 =
+        Bytes.fromHexString("0x000007031c200000000007031c200000000007031c200000000007031c200000");
+
+    final Bytes TOPIC_3 =
+        Bytes.fromHexString("0x000007031c300000000007031c300000000007031c300000000007031c300000");
+
+    final Bytes TOPIC_4 =
+        Bytes.fromHexString("0x000007031c400000000007031c400000000007031c400000000007031c400000");
+
+    final Bytes LOG0 =
+        newProgram(testInfo)
+            .push(18) // size
+            .push(0x1) // offset
+            .op(OpCode.LOG0)
+            .compile();
+
+    final Bytes LOG1 =
+        newProgram(testInfo)
+            .push(TOPIC_1)
+            .push(18) // size
+            .push(0x1) // offset
+            .op(OpCode.LOG1)
+            .compile();
+
+    final Bytes LOG2 =
+        newProgram(testInfo)
+            .push(TOPIC_2) // topic 2
+            .push(TOPIC_1) // topic 1
+            .push(18) // size
+            .push(0x1) // offset
+            .op(OpCode.LOG2)
+            .compile();
+
+    final Bytes LOG3 =
+        newProgram(testInfo)
+            .push(TOPIC_3) // topic 3
+            .push(TOPIC_2) // topic 2
+            .push(TOPIC_1) // topic 1
+            .push(18) // size
+            .push(0x1) // offset
+            .op(OpCode.LOG3)
+            .compile();
+
+    final Bytes LOG4 =
+        newProgram(testInfo)
+            .push(TOPIC_4) // topic 4
+            .push(TOPIC_3) // topic 3
+            .push(TOPIC_2) // topic 2
+            .push(TOPIC_1) // topic 1
+            .push(18) // size
+            .push(0x1) // offset
+            .op(OpCode.LOG4)
+            .compile();
+
+    final Bytes SELFREVERT_LOG_BYTECODE =
+        newProgram(testInfo).immediate(POPULATE_MEMORY).immediate(LOG3).immediate(REVERT).compile();
+
+    final Bytes NON_REVERTING_LOG_BYTECODE =
+        newProgram(testInfo).immediate(POPULATE_MEMORY).immediate(LOG4).compile();
+
+    final ToyAccount nonRevertingLogSMC =
+        ToyAccount.builder()
+            .address(Address.fromHexString("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"))
+            .code(NON_REVERTING_LOG_BYTECODE)
+            .balance(Wei.of(98989898))
+            .build();
+
+    final ToyAccount selfRevertingLogSMC =
+        ToyAccount.builder()
+            .address(Address.fromHexString("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"))
+            .code(SELFREVERT_LOG_BYTECODE)
+            .balance(Wei.of(1235678))
+            .build();
+
+    final ToyAccount callNonRevertLogAndSelfRevert =
+        ToyAccount.builder()
+            .address(Address.fromHexString("0xcccccccccccccccccccccccccccccccccccccccc"))
+            .code(Bytes.concatenate(call(nonRevertingLogSMC.getAddress(), false), REVERT))
+            .balance(Wei.of(10000))
+            .build();
 
     final KeyPair keyPair = new SECP256K1().generateKeyPair();
     final Address senderAddress =
@@ -163,7 +163,7 @@ public class RevertingLogsTests extends TracerTestBase {
             .to(recipientAccount)
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(
             List.of(
                 senderAccount,
@@ -173,6 +173,6 @@ public class RevertingLogsTests extends TracerTestBase {
                 recipientAccount))
         .transaction(tx)
         .build()
-        .run(testInfo);
+        .run();
   }
 }

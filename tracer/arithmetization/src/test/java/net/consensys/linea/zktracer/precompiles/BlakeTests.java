@@ -30,7 +30,7 @@ public class BlakeTests extends TracerTestBase {
   @Test
   void emptyBlakeTest() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(0)
             .push(0)
             .push(0)
@@ -55,7 +55,7 @@ public class BlakeTests extends TracerTestBase {
     final int round = 10;
 
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(Bytes.fromHexString("0x0badb077")) // value, some random data to hash
             .push(5) // offset
             .op(OpCode.MSTORE)
@@ -88,7 +88,7 @@ public class BlakeTests extends TracerTestBase {
   @Test
   void wrongFInputTest() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(Bytes.fromHexString("0x0badb077")) // value, some random data to hash
             .push(5) // offset
             .op(OpCode.MSTORE)
@@ -117,7 +117,7 @@ public class BlakeTests extends TracerTestBase {
   @Test
   void notEnoughGasBlakeTest() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(Bytes.fromHexString("0x0badb077")) // value, some random data to hash
             .push(5) // offset
             .op(OpCode.MSTORE)

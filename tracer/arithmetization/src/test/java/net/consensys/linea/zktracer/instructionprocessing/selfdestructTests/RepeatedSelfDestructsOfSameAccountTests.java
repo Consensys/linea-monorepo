@@ -44,7 +44,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
 
   private ToyAccount toAccount;
-  BytecodeCompiler toAccountCode = BytecodeCompiler.newProgram();
+  BytecodeCompiler toAccountCode = BytecodeCompiler.newProgram(testInfo);
   private ToyAccount selfDestructorAccount;
 
   private void buildToAccount() {
@@ -69,13 +69,13 @@ public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
   }
 
   private void run(Heir heir) {
-    selfDestructorAccount = basicSelfDestructor(heir, Optional.empty());
+    selfDestructorAccount = basicSelfDestructor(heir, Optional.empty(), testInfo);
     buildToAccount();
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(userAccount, toAccount, selfDestructorAccount))
         .transaction(transaction())
         .build()
-        .run(testInfo);
+        .run();
   }
 
   /**
@@ -210,7 +210,7 @@ public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
   @ParameterizedTest
   @EnumSource(Heir.class)
   public void basicSelfDestruct(Heir heir) {
-    selfDestructorAccount = basicSelfDestructor(heir, Optional.empty());
+    selfDestructorAccount = basicSelfDestructor(heir, Optional.empty(), testInfo);
     buildToAccount();
     Transaction transaction =
         ToyTransaction.builder()
@@ -221,11 +221,11 @@ public class RepeatedSelfDestructsOfSameAccountTests extends TracerTestBase {
             .gasLimit(500_000L)
             .value(Wei.of(0xeeff))
             .build();
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(userAccount, toAccount, selfDestructorAccount))
         .transaction(transaction)
         .build()
-        .run(testInfo);
+        .run();
     run(heir);
   }
 }

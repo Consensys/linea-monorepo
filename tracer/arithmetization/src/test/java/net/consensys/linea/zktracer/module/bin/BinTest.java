@@ -28,14 +28,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class BinTest extends TracerTestBase {
   @Test
   public void edgeCase() {
-    BytecodeRunner.of(BytecodeCompiler.newProgram().push(0xf0).push(0xf0).op(OpCode.AND).compile())
+    BytecodeRunner.of(
+            BytecodeCompiler.newProgram(testInfo).push(0xf0).push(0xf0).op(OpCode.AND).compile())
         .run(testInfo);
   }
 
   @Test
   void testSignedSignextend() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(UInt256.MAX_VALUE)
                 .push(UInt256.MAX_VALUE)
                 .op(OpCode.SIGNEXTEND)
@@ -54,7 +55,7 @@ public class BinTest extends TracerTestBase {
   @Test
   void testSignextendRef() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(0xFF)
                 .push(0)
                 .op(OpCode.SIGNEXTEND)

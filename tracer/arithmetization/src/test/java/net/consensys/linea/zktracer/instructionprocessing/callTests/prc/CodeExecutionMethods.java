@@ -22,13 +22,13 @@ import static org.hyperledger.besu.datatypes.TransactionType.FRONTIER;
 
 import java.util.List;
 
+import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
 import net.consensys.linea.testing.ToyTransaction;
 import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Wei;
-import org.junit.jupiter.api.TestInfo;
 
 /**
  * The following class provides methods to run code in the following contexts:
@@ -94,18 +94,18 @@ public class CodeExecutionMethods {
    * @param testInfo
    */
   public static void runMessageCallTransactionWithProvidedCodeAsRootCode(
-      BytecodeCompiler rootCode, TestInfo testInfo) {
+      BytecodeCompiler rootCode, TestInfoWithChainConfig testInfo) {
 
     root.code(rootCode.compile());
 
     transaction.to(root.build());
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .transaction(transaction.build())
         .accounts(listOfAccounts())
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   /**
@@ -115,16 +115,16 @@ public class CodeExecutionMethods {
    * @param testInfo
    */
   public static void runDeploymentTransactionWithProvidedCodeAsInitCode(
-      BytecodeCompiler transactionInitCode, TestInfo testInfo) {
+      BytecodeCompiler transactionInitCode, TestInfoWithChainConfig testInfo) {
 
     transaction.payload(transactionInitCode.compile()); // init code
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .transaction(transaction.build())
         .accounts(listOfAccounts())
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   /**
@@ -140,22 +140,24 @@ public class CodeExecutionMethods {
    * @param testInfo
    */
   public static void runForeignByteCodeAsInitCode(
-      BytecodeCompiler foreignCode, boolean embedRevertIntoInitCode, TestInfo testInfo) {
+      BytecodeCompiler foreignCode,
+      boolean embedRevertIntoInitCode,
+      TestInfoWithChainConfig testInfo) {
 
     foreignCodeOwner.code(foreignCode.compile());
 
-    BytecodeCompiler rootCode = BytecodeCompiler.newProgram();
+    BytecodeCompiler rootCode = BytecodeCompiler.newProgram(testInfo);
     copyForeignCodeAndRunItAsInitCode(rootCode, foreignCodeOwnerAddress);
     if (embedRevertIntoInitCode) revertWith(rootCode, 0, 0);
     root.code(rootCode.compile());
 
     transaction.to(root.build());
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(listOfAccounts())
         .transaction(transaction.build())
         .build()
-        .run(testInfo);
+        .run();
   }
 
   /**
@@ -170,22 +172,22 @@ public class CodeExecutionMethods {
    * @param testInfo
    */
   public static void runMessageCallToAccountEndowedWithProvidedCode(
-      BytecodeCompiler providedCode, boolean revertRoot, TestInfo testInfo) {
+      BytecodeCompiler providedCode, boolean revertRoot, TestInfoWithChainConfig testInfo) {
 
     chadPrcEnjoyer.code(providedCode.compile());
 
-    BytecodeCompiler rootCode = BytecodeCompiler.newProgram();
+    BytecodeCompiler rootCode = BytecodeCompiler.newProgram(testInfo);
     appendCallTo(rootCode, CALL, chadPrcEnjoyerAddress);
     if (revertRoot) revertWith(rootCode, 0, 0); // we let the ROOT revert
     root.code(rootCode.compile());
 
     transaction.to(root.build());
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(listOfAccounts())
         .transaction(transaction.build())
         .build()
-        .run(testInfo);
+        .run();
   }
 
   /**
@@ -204,11 +206,11 @@ public class CodeExecutionMethods {
    * @param testInfo
    */
   public static void runCreateDeployingForeignCodeAndCallIntoIt(
-      BytecodeCompiler foreignCode, boolean rootReverts, TestInfo testInfo) {
+      BytecodeCompiler foreignCode, boolean rootReverts, TestInfoWithChainConfig testInfo) {
 
     // ROOT code
     int key = 65537; // 0x 01 00 01
-    BytecodeCompiler rootCode = BytecodeCompiler.newProgram();
+    BytecodeCompiler rootCode = BytecodeCompiler.newProgram(testInfo);
     copyForeignCodeAndRunItAsInitCode(rootCode, initCodeOwnerAddress);
     sstoreTopOfStackTo(rootCode, key); // store deployment address
     pushSeveral(rootCode, 0, 0, 0, 0, 0); // zero value
@@ -218,7 +220,7 @@ public class CodeExecutionMethods {
     root.code(rootCode.compile());
 
     // init code owner code
-    BytecodeCompiler initCode = BytecodeCompiler.newProgram();
+    BytecodeCompiler initCode = BytecodeCompiler.newProgram(testInfo);
     copyForeignCodeAndReturnIt(initCode, foreignCodeOwnerAddress);
     initCodeOwner.code(initCode.compile());
 
@@ -227,11 +229,11 @@ public class CodeExecutionMethods {
 
     transaction.to(root.build());
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(listOfAccounts())
         .transaction(transaction.build())
         .build()
-        .run(testInfo);
+        .run();
   }
 
   private static List<ToyAccount> listOfAccounts() {

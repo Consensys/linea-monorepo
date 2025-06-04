@@ -75,7 +75,7 @@ public class MultiBlockUtils extends TracerTestBase {
     }
 
     MultiBlockExecutionEnvironment.MultiBlockExecutionEnvironmentBuilder builder =
-        MultiBlockExecutionEnvironment.builder()
+        MultiBlockExecutionEnvironment.builder(testInfo)
             .accounts(
                 Stream.concat(senderAccounts.stream(), receiverAccounts.stream())
                     .collect(Collectors.toList()));

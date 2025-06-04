@@ -54,7 +54,7 @@ public class TransactionAccountTest extends TracerTestBase {
 
     // prepare a multi-block execution of transactions
     final MultiBlockExecutionEnvironment multiBlockEnv =
-        MultiBlockExecutionEnvironment.builder()
+        MultiBlockExecutionEnvironment.builder(testInfo)
             // initialize accounts
             .accounts(
                 List.of(

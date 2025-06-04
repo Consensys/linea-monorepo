@@ -15,7 +15,6 @@
 
 package net.consensys.linea.testing;
 
-import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.UNIT_TEST_CHAIN;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.opcode.OpCodes.loadOpcodes;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -27,6 +26,8 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.consensys.linea.reporting.TestInfoWithChainConfig;
+import net.consensys.linea.zktracer.Fork;
 import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -44,9 +45,29 @@ public class BytecodeCompiler {
    *
    * @return an instance of {@link BytecodeCompiler}
    */
-  public static BytecodeCompiler newProgram() {
-    loadOpcodes(UNIT_TEST_CHAIN.fork);
-    return new BytecodeCompiler();
+  public static BytecodeCompiler newProgram(TestInfoWithChainConfig testInfo) {
+    return switch (testInfo.chainConfig.fork) {
+      case Fork.LONDON -> {
+        loadOpcodes(Fork.LONDON);
+        yield new BytecodeCompiler();
+      }
+      case PARIS -> {
+        loadOpcodes(Fork.PARIS);
+        yield new BytecodeCompiler();
+      }
+      case SHANGHAI -> {
+        loadOpcodes(Fork.SHANGHAI);
+        yield new BytecodeCompiler();
+      }
+      case CANCUN -> {
+        loadOpcodes(Fork.CANCUN);
+        yield new BytecodeCompiler();
+      }
+      case PRAGUE -> {
+        loadOpcodes(Fork.PRAGUE);
+        yield new BytecodeCompiler();
+      }
+    };
   }
 
   private static Bytes toBytes(final int x) {

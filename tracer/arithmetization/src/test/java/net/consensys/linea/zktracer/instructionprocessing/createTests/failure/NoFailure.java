@@ -33,7 +33,7 @@ public class NoFailure extends TracerTestBase {
   @Test
   void noFailureConditionTest() {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program
         .push(salt01)
         .push(0)
@@ -56,7 +56,7 @@ public class NoFailure extends TracerTestBase {
   @Test
   void noFailureConditionDespiteNonzeroBalanceTest() {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     precomputeDeploymentAddressOfEmptyInitCodeCreate2(program, salt01);
     storeAt(program, 0xadd7);

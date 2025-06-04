@@ -56,7 +56,7 @@ public class ModexpTests extends TracerTestBase {
   @Test
   void basicModexpTest() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(0)
             .push(0)
             .push(0)
@@ -81,7 +81,7 @@ public class ModexpTests extends TracerTestBase {
     final int exp = 5;
     final int mod = 7;
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(1)
             .push(BBS_MIN_OFFSET)
             .op(OpCode.MSTORE)
@@ -220,7 +220,7 @@ public class ModexpTests extends TracerTestBase {
     int baseOffset = 64 + bbs;
     int expnOffset = 64 + bbs + ebs;
     int modlOffset = 64 + bbs + ebs + mbs;
-    return BytecodeCompiler.newProgram()
+    return BytecodeCompiler.newProgram(testInfo)
         .push(byteSize(hexBase))
         .push("00")
         .op(OpCode.MSTORE) // this sets bbs = 4
@@ -245,7 +245,7 @@ public class ModexpTests extends TracerTestBase {
 
   @Test
   void variationsOnEmptyCalls() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     List<Integer> callDataSizeList = List.of(0, 1, 31, 32, 33, 63, 64, 65, 95, 96, 97, 128);
     for (int callDataSize : callDataSizeList) {
@@ -294,12 +294,12 @@ public class ModexpTests extends TracerTestBase {
 
     List<ToyAccount> accounts = List.of(userAccount, recipientAccount);
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(accounts)
         .transactions(transactions)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   void appendAllZeroCallDataModexpCalls(BytecodeCompiler program, int callDataSize) {
@@ -318,7 +318,7 @@ public class ModexpTests extends TracerTestBase {
   // We trigger a ModexpData MMU Call where the sourceOffset = referenceSize for the MmuCall
   void referenceSizeEqualsSourceOffset() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             // bbs = 2
             .push(Bytes32.leftPad(Bytes.of(2)))
             .push(0) // offset
@@ -353,7 +353,7 @@ public class ModexpTests extends TracerTestBase {
   // This test a modexp call with bbs > 512
   void unprovableModexp() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             // bbs = 513
             .push(Bytes32.leftPad(Bytes.minimalBytes(513)))
             .push(0) // offset

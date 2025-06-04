@@ -41,23 +41,23 @@ public class BalanceTests extends TracerTestBase {
   @Test
   void unrevertedValueTransfer() {
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(accounts)
         .transaction(stopTransaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
   void revertedValueTransferTest() {
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(accounts)
         .transaction(revertTransaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   KeyPair keyPair = new SECP256K1().generateKeyPair();
@@ -73,7 +73,8 @@ public class BalanceTests extends TracerTestBase {
           .address(Address.fromHexString("0xadd7e55"))
           .build();
 
-  Bytes revertByteCode = BytecodeCompiler.newProgram().push(0).push(0).op(OpCode.REVERT).compile();
+  Bytes revertByteCode =
+      BytecodeCompiler.newProgram(testInfo).push(0).push(0).op(OpCode.REVERT).compile();
 
   ToyAccount revertAccount =
       ToyAccount.builder()

@@ -127,11 +127,11 @@ public class StorageNoOpTests extends TracerTestBase {
             factorySmc, userAccount, List.of(deployPayload, callMainMethod), List.of(0L, 0L));
 
     final ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(List.of(userAccount, factorySmc))
             .transactions(transactions)
             .build();
-    toyExecutionEnvironmentV2.run(testInfo);
+    toyExecutionEnvironmentV2.run();
   }
 
   private enum TouchStorage {

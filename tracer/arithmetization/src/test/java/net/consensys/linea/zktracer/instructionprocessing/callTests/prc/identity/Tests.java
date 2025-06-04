@@ -66,7 +66,7 @@ public class Tests extends TracerTestBase {
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
   void nontrivialCallDataIdentityTest(OpCode callOpCode) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     fullCodeCopyOf(program, byteSource);
     appendCall(
         program,
@@ -89,11 +89,11 @@ public class Tests extends TracerTestBase {
             .to(identityCaller)
             .value(Wei.of(7_000_000_000L))
             .build();
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(byteSource, userAccount, identityCaller))
         .transaction(transaction)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   /**

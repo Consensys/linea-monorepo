@@ -182,7 +182,7 @@ public class TxSkipTests extends TracerTestBase {
             deploymentWithEmptyInit,
             deploymentWithEmptyInitAndUselessAccessList);
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(
             List.of(
                 coinbaseAccount,
@@ -202,7 +202,7 @@ public class TxSkipTests extends TracerTestBase {
               // assertThat(zkTracer.getHub().lineCount()).isEqualTo(txs.size() * nbOfRowsTxSkip);
             })
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -231,12 +231,12 @@ public class TxSkipTests extends TracerTestBase {
             .gasLimit(100000L)
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(coinbaseAccount, senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -256,12 +256,12 @@ public class TxSkipTests extends TracerTestBase {
             .value(Wei.of(123))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -288,13 +288,13 @@ public class TxSkipTests extends TracerTestBase {
             .value(Wei.of(123))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .coinbase(senderAddress)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -314,13 +314,13 @@ public class TxSkipTests extends TracerTestBase {
             .value(Wei.of(123))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .coinbase(senderAddress)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -349,13 +349,13 @@ public class TxSkipTests extends TracerTestBase {
             .value(Wei.of(123))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .coinbase(Address.BLAKE2B_F_COMPRESSION)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -374,13 +374,13 @@ public class TxSkipTests extends TracerTestBase {
             .gasLimit(100000L)
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .coinbase(senderAddress)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -407,13 +407,13 @@ public class TxSkipTests extends TracerTestBase {
             .nonce((long) nonce)
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .coinbase(depAddress)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -432,12 +432,12 @@ public class TxSkipTests extends TracerTestBase {
             .gasLimit(100000L)
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .zkTracerValidator(zkTracer -> {})
         .coinbase(Address.RIPEMD160)
         .build()
-        .run(testInfo);
+        .run();
   }
 }

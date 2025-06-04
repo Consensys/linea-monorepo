@@ -41,7 +41,7 @@ public class SmcCallsEoaInRoot extends TracerTestBase {
   @Test
   void transfersSomeValueWillRevertTest() {
 
-    BytecodeCompiler bytecode = BytecodeCompiler.newProgram();
+    BytecodeCompiler bytecode = BytecodeCompiler.newProgram(testInfo);
     appendCall(bytecode, CALL, 0, Address.fromHexString(eoaAddress), 13, 2, 3, 4, 5);
     bytecode.op(POP).push(6).push(7).op(REVERT).compile();
 
@@ -51,7 +51,7 @@ public class SmcCallsEoaInRoot extends TracerTestBase {
   @Test
   void transfersSomeValueWontRevertTest() {
 
-    BytecodeCompiler bytecode = BytecodeCompiler.newProgram();
+    BytecodeCompiler bytecode = BytecodeCompiler.newProgram(testInfo);
     appendCall(bytecode, CALL, 0, Address.fromHexString(eoaAddress), 13, 2, 3, 4, 5);
 
     BytecodeRunner.of(bytecode.compile()).run(testInfo);
@@ -60,7 +60,7 @@ public class SmcCallsEoaInRoot extends TracerTestBase {
   @Test
   void transfersAllValueWillRevertTest() {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     fullBalanceCall(program, CALL, Address.fromHexString(eoaAddress), 1, 2, 3, 4);
     program.push(6).push(7).op(REVERT);
 
@@ -70,7 +70,7 @@ public class SmcCallsEoaInRoot extends TracerTestBase {
   @Test
   void transfersAllValueWontRevertTest() {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     fullBalanceCall(program, CALL, Address.fromHexString(eoaAddress), 1, 2, 3, 4);
 
     BytecodeRunner.of(program.compile()).run(testInfo);
@@ -79,7 +79,7 @@ public class SmcCallsEoaInRoot extends TracerTestBase {
   @Test
   void transfersNoValueWillRevertTest() {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 0, 1, 2, 3, 4);
     program.op(POP).push(6).push(7).op(REVERT).compile();
 
@@ -89,7 +89,7 @@ public class SmcCallsEoaInRoot extends TracerTestBase {
   @Test
   void transfersNoValueWontRevertTest() {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     appendCall(program, CALL, 0, Address.fromHexString(eoaAddress), 0, 1, 2, 3, 4);
 
     BytecodeRunner.of(program.compile()).run(testInfo);

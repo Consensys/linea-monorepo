@@ -42,7 +42,7 @@ public class JumpTest extends TracerTestBase {
   @MethodSource("provideJumpScenario")
   void jumpScenarioTest(String description, String pcNew) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(pcNew)
             .op(OpCode.JUMP)
             .op(OpCode.INVALID)
@@ -74,7 +74,7 @@ public class JumpTest extends TracerTestBase {
   @Test
   void simplestJumpiTest() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(1) // pc = 0, 1
             .push(8) // pc = 2, 3
             .op(OpCode.JUMPI) // pc = 4

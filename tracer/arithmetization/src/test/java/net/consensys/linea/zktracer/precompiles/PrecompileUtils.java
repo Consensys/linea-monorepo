@@ -144,7 +144,7 @@ public class PrecompileUtils extends TracerTestBase {
   }
 
   public static Bytes prepareBlake2F(int rLeadingByte, int offset) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     prepareBlake2F(program, rLeadingByte, offset);
     return program.compile();
   }
@@ -155,7 +155,7 @@ public class PrecompileUtils extends TracerTestBase {
   }
 
   static Bytes prepareSha256Ripemd160Id(int nWords, int offset) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     prepareSha256Ripemd160Id(program, nWords, offset);
     return program.compile();
   }
@@ -183,7 +183,7 @@ public class PrecompileUtils extends TracerTestBase {
   }
 
   public static Bytes prepareModexp(Bytes modexpInput, int targetOffset, Address codeOwnerAddress) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     prepareModexp(program, modexpInput, targetOffset, codeOwnerAddress);
     return program.compile();
   }

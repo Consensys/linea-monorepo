@@ -80,14 +80,14 @@ public class ContractsForSLoadAndSStoreTest extends TracerTestBase {
     List<ToyAccount> accounts = List.of(userAccount, contractAccount);
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(accounts)
             .transactions(List.of(txToInitiateRecursiveCalls))
             .transactionProcessingResultValidator(
                 TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .build();
 
-    toyExecutionEnvironmentV2.run(testInfo);
+    toyExecutionEnvironmentV2.run();
   }
 
   @Test
@@ -243,7 +243,7 @@ public class ContractsForSLoadAndSStoreTest extends TracerTestBase {
             contractAccountE);
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(accounts)
             .transactions(
                 List.of(
@@ -257,6 +257,6 @@ public class ContractsForSLoadAndSStoreTest extends TracerTestBase {
                 TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .build();
 
-    toyExecutionEnvironmentV2.run(testInfo);
+    toyExecutionEnvironmentV2.run();
   }
 }

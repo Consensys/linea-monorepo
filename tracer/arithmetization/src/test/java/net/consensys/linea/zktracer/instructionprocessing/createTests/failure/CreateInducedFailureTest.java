@@ -78,7 +78,7 @@ public class CreateInducedFailureTest extends TracerTestBase {
   final Address targetAddress = Address.fromHexString("797add7e55");
 
   final BytecodeCompiler simpleSelfDestruct =
-      BytecodeCompiler.newProgram().op(ORIGIN).op(SELFDESTRUCT);
+      BytecodeCompiler.newProgram(testInfo).op(ORIGIN).op(SELFDESTRUCT);
 
   /**
    * Account that can only do one thing: do a <b>SELFDESTRUCT</b> sending the funds to the
@@ -93,7 +93,7 @@ public class CreateInducedFailureTest extends TracerTestBase {
           .build();
 
   final BytecodeCompiler simpleCreate =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .push(0) // empty init code
           .push(0)
           .push(1) // value
@@ -113,7 +113,7 @@ public class CreateInducedFailureTest extends TracerTestBase {
 
   /** Does a <b>DELEGATECALL</b> to an address extracted from the call data. */
   final BytecodeCompiler delegateCaller =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .push(0) // rac
           .push(0) // rao
           .push(0) // cds
@@ -125,7 +125,7 @@ public class CreateInducedFailureTest extends TracerTestBase {
 
   /** Initialization code that deploys {@link #delegateCaller}. */
   final BytecodeCompiler initCode =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .push(delegateCaller.compile())
           .push(8 * (32 - delegateCaller.compile().size()))
           .op(SHL)
@@ -158,7 +158,7 @@ public class CreateInducedFailureTest extends TracerTestBase {
    * is of no use.
    */
   final BytecodeCompiler entryPointByteCode =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .op(CALLDATASIZE) // + 1
           .op(ISZERO) // [CALLDATASIZE == 0] // + 1
           .push(emptyCallDataExecutionPathProgramCounter) // + 2
@@ -266,11 +266,11 @@ public class CreateInducedFailureTest extends TracerTestBase {
   @Test
   void complexFailureConditionTest() {
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(accounts)
         .transactions(transactions)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 }

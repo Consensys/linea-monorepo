@@ -39,7 +39,7 @@ class ShfRtTracerTest extends TracerTestBase {
   @MethodSource("provideShiftOperators")
   void testFailingBlockchainBlock(final int opCodeValue) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(Bytes32.rightPad(Bytes.fromHexString("0x08")))
                 .push(Bytes32.fromHexString("0x01"))
                 .immediate(opCodeValue)
@@ -62,7 +62,7 @@ class ShfRtTracerTest extends TracerTestBase {
         "value: " + payload[0].toShortHexString() + ", shift by: " + payload[1].toShortHexString());
 
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(payload[1])
                 .push(payload[0])
                 .op(OpCode.SAR)
@@ -73,7 +73,7 @@ class ShfRtTracerTest extends TracerTestBase {
   @Test
   void testTmp() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .immediate(Bytes32.fromHexStringLenient("0x54fda4f3c1452c8c58df4fb1e9d6de"))
                 .immediate(Bytes32.fromHexStringLenient("0xb5"))
                 .op(OpCode.SAR)

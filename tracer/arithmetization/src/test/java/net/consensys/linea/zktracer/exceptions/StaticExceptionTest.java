@@ -40,7 +40,7 @@ public class StaticExceptionTest extends TracerTestBase {
   @ParameterizedTest
   @ValueSource(ints = {0, 1})
   void staticExceptionDueToCallWithNonZeroValueTest(int value) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -50,7 +50,7 @@ public class StaticExceptionTest extends TracerTestBase {
         .op(GAS)
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram();
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
     calleeProgram
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -82,7 +82,7 @@ public class StaticExceptionTest extends TracerTestBase {
 
   @Test
   void staticExceptionDueToSStoreTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -92,7 +92,7 @@ public class StaticExceptionTest extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram();
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
     calleeProgram.push(0).push(0).op(OpCode.SSTORE);
 
     final ToyAccount calleeAccount =
@@ -114,7 +114,7 @@ public class StaticExceptionTest extends TracerTestBase {
 
   @Test
   void staticExceptionDueToSelfDestructTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -124,7 +124,7 @@ public class StaticExceptionTest extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram();
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
     calleeProgram.push(0).op(OpCode.SELFDESTRUCT);
 
     final ToyAccount calleeAccount =
@@ -147,7 +147,7 @@ public class StaticExceptionTest extends TracerTestBase {
   @ParameterizedTest
   @ValueSource(ints = {0, 1, 2, 3, 4})
   void staticExceptionDueToLogTest(int numberOfTopics) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -157,7 +157,7 @@ public class StaticExceptionTest extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram();
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
     for (int i = 0; i < numberOfTopics; i++) {
       calleeProgram.push(0);
     }
@@ -183,7 +183,7 @@ public class StaticExceptionTest extends TracerTestBase {
   @ParameterizedTest
   @ValueSource(strings = {"CREATE", "CREATE2"})
   void staticExceptionDueToCreateTest(String opCodeName) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program
         .push(0) // return at capacity
         .push(0) // return at offset
@@ -193,7 +193,7 @@ public class StaticExceptionTest extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram();
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
     if (opCodeName.equals("CREATE2")) {
       calleeProgram.push(0);
     }

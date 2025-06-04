@@ -165,7 +165,7 @@ class ExampleMultiBlockTest extends TracerTestBase {
             .build();
 
     MultiBlockExecutionEnvironment.MultiBlockExecutionEnvironmentBuilder builder =
-        MultiBlockExecutionEnvironment.builder();
+        MultiBlockExecutionEnvironment.builder(testInfo);
     builder
         .accounts(
             List.of(
@@ -199,7 +199,7 @@ class ExampleMultiBlockTest extends TracerTestBase {
             .nonce(6)
             .address(Address.fromHexString("0x111111"))
             .code(
-                BytecodeCompiler.newProgram()
+                BytecodeCompiler.newProgram(testInfo)
                     .push(32, 0xbeef)
                     .push(32, 0xdead)
                     .op(OpCode.ADD)
@@ -209,7 +209,7 @@ class ExampleMultiBlockTest extends TracerTestBase {
     Transaction tx =
         ToyTransaction.builder().sender(senderAccount).to(receiverAccount).keyPair(keyPair).build();
 
-    MultiBlockExecutionEnvironment.builder()
+    MultiBlockExecutionEnvironment.builder(testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .addBlock(List.of(tx))
         .build()
@@ -306,7 +306,7 @@ class ExampleMultiBlockTest extends TracerTestBase {
           }
         };
 
-    MultiBlockExecutionEnvironment.builder()
+    MultiBlockExecutionEnvironment.builder(testInfo)
         .accounts(List.of(senderAccount, frameworkEntrypointAccount, snippetAccount))
         .addBlock(List.of(tx))
         .addBlock(List.of(tx2))

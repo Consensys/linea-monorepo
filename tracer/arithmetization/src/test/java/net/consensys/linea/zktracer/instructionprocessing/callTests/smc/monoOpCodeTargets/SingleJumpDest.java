@@ -36,7 +36,7 @@ public class SingleJumpDest extends TracerTestBase {
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WONT_REVERT</b> scenario. */
   @Test
   void zeroValueTransferToJumpDestContract() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendCall(
         program, CALL, 10, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 0, 0, 0, 0, 0);
@@ -47,7 +47,7 @@ public class SingleJumpDest extends TracerTestBase {
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WONT_REVERT</b> scenario. */
   @Test
   void nonZeroValueTransferToJumpDestContract() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendCall(
         program, CALL, 10, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 1, 0, 0, 0, 0);
@@ -58,7 +58,7 @@ public class SingleJumpDest extends TracerTestBase {
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WILL_REVERT</b> scenario. */
   @Test
   void nonZeroValueTransferToJumpDestContractRevertingTransaction() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendCall(
         program, CALL, 10, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 1, 0, 0, 0, 0);
@@ -75,7 +75,7 @@ public class SingleJumpDest extends TracerTestBase {
   /** This test should trigger the <b>scenario/CALL_TO_SMC_FAILURE_WONT_REVERT</b> scenario. */
   @Test
   void zeroValueTransferToJumpDestContractOogx() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 0, 0, 0, 0, 0);
 
@@ -85,7 +85,7 @@ public class SingleJumpDest extends TracerTestBase {
   /** This test should trigger the <b>scenario/CALL_TO_SMC_FAILURE_WONT_REVERT</b> scenario. */
   @Test
   void nonZeroValueTransferToJumpDestContractOogx() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 1, 0, 0, 0, 0);
 
@@ -95,7 +95,7 @@ public class SingleJumpDest extends TracerTestBase {
   /** This test should trigger the <b>scenario/CALL_TO_SMC_FAILURE_WILL_REVERT</b> scenario. */
   @Test
   void nonZeroValueTransferToJumpDestContractOogxAndRevertingTransaction() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleJumpDest.getAddress(), 1, 0, 0, 0, 0);
 

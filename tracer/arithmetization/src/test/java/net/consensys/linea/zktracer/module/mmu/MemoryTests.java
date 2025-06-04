@@ -32,7 +32,7 @@ class MemoryTests extends TracerTestBase {
   @Test
   void successionOverlappingMstore() {
     BytecodeRunner.of(
-            newProgram()
+            newProgram(testInfo)
                 .push(Bytes.repeat((byte) 1, 32))
                 .push(0)
                 .op(OpCode.MSTORE)
@@ -50,22 +50,25 @@ class MemoryTests extends TracerTestBase {
 
   @Test
   void fastMload() {
-    BytecodeRunner.of(newProgram().push(34).push(0).op(OpCode.MLOAD).compile()).run(testInfo);
+    BytecodeRunner.of(newProgram(testInfo).push(34).push(0).op(OpCode.MLOAD).compile())
+        .run(testInfo);
   }
 
   @Test
   void alignedMstore8() {
-    BytecodeRunner.of(newProgram().push(12).push(0).op(OpCode.MSTORE8).compile()).run(testInfo);
+    BytecodeRunner.of(newProgram(testInfo).push(12).push(0).op(OpCode.MSTORE8).compile())
+        .run(testInfo);
   }
 
   @Test
   void nonAlignedMstore8() {
-    BytecodeRunner.of(newProgram().push(66872).push(35).op(OpCode.MSTORE8).compile()).run(testInfo);
+    BytecodeRunner.of(newProgram(testInfo).push(66872).push(35).op(OpCode.MSTORE8).compile())
+        .run(testInfo);
   }
 
   @Test
   void mstoreAndReturn() {
-    BytecodeCompiler program = newProgram();
+    BytecodeCompiler program = newProgram(testInfo);
     program
         .push("deadbeef11111111deadbeef22222222deadbeef00000000deadbeefcccccccc")
         .push(0x20)
@@ -78,7 +81,7 @@ class MemoryTests extends TracerTestBase {
 
   @Test
   void mstoreAndRevert() {
-    BytecodeCompiler program = newProgram();
+    BytecodeCompiler program = newProgram(testInfo);
     program
         .push("deadbeef11111111deadbeef22222222deadbeef00000000deadbeefcccccccc")
         .push(0x20)
@@ -91,7 +94,7 @@ class MemoryTests extends TracerTestBase {
 
   @Test
   void returnAfterLog2() {
-    BytecodeCompiler program = newProgram();
+    BytecodeCompiler program = newProgram(testInfo);
     program
         .push(0x01)
         .push(0x11)
@@ -121,7 +124,7 @@ class MemoryTests extends TracerTestBase {
 
   @Test
   void revertAfterLog2() {
-    BytecodeCompiler program = newProgram();
+    BytecodeCompiler program = newProgram(testInfo);
     program
         .push(0x01)
         .push(0x11)
@@ -151,7 +154,7 @@ class MemoryTests extends TracerTestBase {
 
   @Test
   void checkMSizeAfterMemoryExpansion() {
-    BytecodeCompiler program = newProgram();
+    BytecodeCompiler program = newProgram(testInfo);
     program
         .push(0xFF)
         .push(0)

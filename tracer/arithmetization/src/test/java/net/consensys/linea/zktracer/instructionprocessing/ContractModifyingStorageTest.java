@@ -93,9 +93,12 @@ public class ContractModifyingStorageTest extends TracerTestBase {
     checkArgument(tx.isContractCreation());
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironment =
-        ToyExecutionEnvironmentV2.builder().accounts(List.of(userAccount)).transaction(tx).build();
+        ToyExecutionEnvironmentV2.builder(testInfo)
+            .accounts(List.of(userAccount))
+            .transaction(tx)
+            .build();
 
-    toyExecutionEnvironment.run(testInfo);
+    toyExecutionEnvironment.run();
   }
 
   @Test
@@ -124,11 +127,14 @@ public class ContractModifyingStorageTest extends TracerTestBase {
             .build();
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironment =
-        ToyExecutionEnvironmentV2.builder().accounts(List.of(userAccount)).transaction(tx).build();
+        ToyExecutionEnvironmentV2.builder(testInfo)
+            .accounts(List.of(userAccount))
+            .transaction(tx)
+            .build();
 
     // TODO: add transaction to invoke function
 
-    toyExecutionEnvironment.run(testInfo);
+    toyExecutionEnvironment.run();
   }
 
   private final Random rnd = new Random(666);
@@ -199,11 +205,11 @@ public class ContractModifyingStorageTest extends TracerTestBase {
             .value(Wei.fromEth(3))
             .build());
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(account1, account2, account3, account4, account5))
         .transactions(txList)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   // Temporary support function

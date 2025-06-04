@@ -134,12 +134,12 @@ public class ExampleSolidityTest extends TracerTestBase {
           }
         };
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, frameworkEntrypointAccount, snippetAccount))
         .transaction(tx)
         .transactionProcessingResultValidator(resultValidator)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -183,12 +183,12 @@ public class ExampleSolidityTest extends TracerTestBase {
           assertEquals(response.singleInt, BigInteger.valueOf(123456));
         };
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, contractAccount))
         .transaction(tx)
         .transactionProcessingResultValidator(resultValidator)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -223,11 +223,11 @@ public class ExampleSolidityTest extends TracerTestBase {
             .keyPair(senderkeyPair)
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, contractAccount))
         .transaction(tx)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -302,11 +302,11 @@ public class ExampleSolidityTest extends TracerTestBase {
             .gasLimit(500000L)
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, yulAccount, frameworkEntrypointAccount))
         .transaction(tx)
         .transactionProcessingResultValidator(resultValidator)
         .build()
-        .run(testInfo);
+        .run();
   }
 }

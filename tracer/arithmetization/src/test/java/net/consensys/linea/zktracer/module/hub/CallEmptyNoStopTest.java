@@ -53,7 +53,7 @@ public class CallEmptyNoStopTest extends TracerTestBase {
             .nonce(6)
             .address(Address.fromHexString("0x111111"))
             .code(
-                BytecodeCompiler.newProgram()
+                BytecodeCompiler.newProgram(testInfo)
                     .push(0) // retSize
                     .push(0) // retOffset
                     .push(0) // argsSize
@@ -76,7 +76,7 @@ public class CallEmptyNoStopTest extends TracerTestBase {
     Transaction tx =
         ToyTransaction.builder().sender(senderAccount).to(receiverAccount).keyPair(keyPair).build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, receiverAccount, emptyCodeAccount))
         .transaction(tx)
         .zkTracerValidator(
@@ -86,6 +86,6 @@ public class CallEmptyNoStopTest extends TracerTestBase {
                   .isEqualTo(11);
             })
         .build()
-        .run(testInfo);
+        .run();
   }
 }

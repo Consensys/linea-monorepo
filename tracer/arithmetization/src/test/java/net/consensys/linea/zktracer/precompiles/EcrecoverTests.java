@@ -31,7 +31,7 @@ public class EcrecoverTests extends TracerTestBase {
   @Test
   void basicEcrecoverTest() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(0)
             .push(0)
             .push(0)
@@ -52,7 +52,7 @@ public class EcrecoverTests extends TracerTestBase {
   @Test
   void insufficientGasEcrecoverTest() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(0)
             .push(0)
             .push(0)

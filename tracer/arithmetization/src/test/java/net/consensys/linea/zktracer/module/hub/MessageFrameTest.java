@@ -37,7 +37,7 @@ public class MessageFrameTest extends TracerTestBase {
     // The pc is not updated as expected
     // We do not execute the init code of the created smart contract
     // TODO: fix this!
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     program
         .push("63deadbeef000000000000000000000000000000000000000000000000000000")
@@ -57,7 +57,7 @@ public class MessageFrameTest extends TracerTestBase {
   void testCall() {
     // Interestingly for CALL the pc is updated as expected
     // We execute the bytecode of the called smart contract
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     program.push(0).push(0).push(0).push(0).push(0x01).push("ca11ee").push(0xffff).op(OpCode.CALL);
 

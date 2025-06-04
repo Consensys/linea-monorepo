@@ -56,7 +56,7 @@ public class CreatesTest extends TracerTestBase {
     BytecodeCompiler program = simpleProgramEmptyStorage(opCode);
     Bytes pgCompile = program.compile();
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(pgCompile);
-    long gasCostTx = bytecodeRunner.runOnlyForGasCost();
+    long gasCostTx = bytecodeRunner.runOnlyForGasCost(testInfo);
 
     /*
     for CREATE/CREATE2, Static Exception happens before deployment, so we test OOGX before deployment
@@ -89,7 +89,7 @@ public class CreatesTest extends TracerTestBase {
 
     for (boolean roob : triggerRoob) {
       // We prepare a program with an MXPX for the opcode
-      BytecodeCompiler pg = BytecodeCompiler.newProgram();
+      BytecodeCompiler pg = BytecodeCompiler.newProgram(testInfo);
       new MxpTestUtils().triggerNonTrivialButMxpxOrRoobForOpCode(pg, roob, opCode);
 
       // We prepare a program to static call the code account

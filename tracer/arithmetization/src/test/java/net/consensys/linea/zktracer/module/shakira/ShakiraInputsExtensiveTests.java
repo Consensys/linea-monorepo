@@ -65,7 +65,7 @@ public class ShakiraInputsExtensiveTests extends TracerTestBase {
   void shakiraInputTesting(final int size, final int offset, final OpCode instruction) {
     final BytecodeRunner bytecodeRunner =
         BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .op(CALLDATASIZE)
                 .push(0)
                 .push(0)
@@ -96,7 +96,7 @@ public class ShakiraInputsExtensiveTests extends TracerTestBase {
     switch (instruction) {
       case CALL, CALLCODE:
         {
-          return BytecodeCompiler.newProgram()
+          return BytecodeCompiler.newProgram(testInfo)
               .push(SEED.nextInt(WORD_SIZE))
               .push(0)
               .push(size)
@@ -109,7 +109,7 @@ public class ShakiraInputsExtensiveTests extends TracerTestBase {
         }
       case STATICCALL, DELEGATECALL:
         {
-          return BytecodeCompiler.newProgram()
+          return BytecodeCompiler.newProgram(testInfo)
               .push(SEED.nextInt(WORD_SIZE))
               .push(0)
               .push(size)
@@ -121,11 +121,11 @@ public class ShakiraInputsExtensiveTests extends TracerTestBase {
         }
       case SHA3:
         {
-          return BytecodeCompiler.newProgram().push(size).push(offset).op(SHA3).compile();
+          return BytecodeCompiler.newProgram(testInfo).push(size).push(offset).op(SHA3).compile();
         }
       case RETURN:
         {
-          return BytecodeCompiler.newProgram()
+          return BytecodeCompiler.newProgram(testInfo)
               .push(
                   rightPadTo(
                       Bytes.concatenate(
@@ -161,7 +161,7 @@ public class ShakiraInputsExtensiveTests extends TracerTestBase {
         }
       case CREATE2:
         {
-          return BytecodeCompiler.newProgram()
+          return BytecodeCompiler.newProgram(testInfo)
               .push(Bytes32.random(SEED))
               .push(size)
               .push(offset)

@@ -15,7 +15,6 @@
 
 package net.consensys.linea.zktracer.module.rlptxn;
 
-import static net.consensys.linea.testing.ToyExecutionEnvironmentV2.UNIT_TEST_CHAIN;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
@@ -85,7 +84,7 @@ public class RlptxnTests extends TracerTestBase {
         ToyAccount.builder()
             .address(Address.wrap(Bytes.random(Address.SIZE, SEED)))
             .code(
-                BytecodeCompiler.newProgram()
+                BytecodeCompiler.newProgram(testInfo)
                     .op(CALLDATASIZE)
                     .push(0)
                     .push(0)
@@ -99,7 +98,7 @@ public class RlptxnTests extends TracerTestBase {
             .balance(Wei.ONE)
             .build();
 
-    final Transaction transaction =
+    var txBuilder =
         ToyTransaction.builder()
             .sender(senderAccount)
             .gasLimit(1000000L)
@@ -108,16 +107,16 @@ public class RlptxnTests extends TracerTestBase {
             .value(Wei.of(value))
             .to(isDeployment ? null : recipientAccount)
             .payload(payload)
-            .accessList(type == FRONTIER ? null : accessList)
-            .chainId(chainLess ? null : UNIT_TEST_CHAIN.id)
-            .build();
+            .accessList(type == FRONTIER ? null : accessList);
 
-    ToyExecutionEnvironmentV2.builder()
+    final Transaction transaction = chainLess ? txBuilder.chainId(null).build() : txBuilder.build();
+
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, recipientAccount))
         .transaction(transaction)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   private Stream<Arguments> rlpInputs() {

@@ -14,9 +14,11 @@
  */
 package net.consensys.linea.zktracer.instructionprocessing.utilities;
 
+import static net.consensys.linea.reporting.TracerTestBase.testInfo;
 import static net.consensys.linea.zktracer.instructionprocessing.utilities.Calls.*;
 import static net.consensys.linea.zktracer.opcode.OpCode.*;
 
+import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import org.hyperledger.besu.datatypes.Address;
@@ -29,9 +31,9 @@ public class MultiOpCodeSmcs {
    *
    * @return
    */
-  public static BytecodeCompiler allContextOpCodes() {
+  public static BytecodeCompiler allContextOpCodes(TestInfoWithChainConfig testInfo) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program
         .op(ADDRESS)
         .op(CALLDATASIZE)
@@ -50,6 +52,6 @@ public class MultiOpCodeSmcs {
           .balance(Wei.fromEth(9))
           .nonce(13)
           .address(Address.fromHexString("c0de"))
-          .code(allContextOpCodes().compile())
+          .code(allContextOpCodes(testInfo).compile())
           .build();
 }

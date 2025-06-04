@@ -129,13 +129,14 @@ public class TrmTracerTest extends TracerTestBase {
   }
 
   void nonCall(Bytes bytes) {
-    BytecodeRunner.of(BytecodeCompiler.newProgram().push(bytes).op(OpCode.EXTCODEHASH).compile())
+    BytecodeRunner.of(
+            BytecodeCompiler.newProgram(testInfo).push(bytes).op(OpCode.EXTCODEHASH).compile())
         .run(testInfo);
   }
 
   @Test
   void testTrimToUncoverATinyAddressAndQueryItsBalanceCodeHashAndCodeSize() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     List<OpCode> opCodeList = List.of(OpCode.BALANCE, OpCode.EXTCODESIZE, OpCode.EXTCODEHASH);
 
@@ -160,7 +161,7 @@ public class TrmTracerTest extends TracerTestBase {
 
   void sevenArgCall(long rawAddr) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(Bytes.fromHexString("0xff")) // rds
                 .push(Bytes.fromHexString("0x80")) // rdo
                 .push(Bytes.fromHexString("0x44")) // cds
@@ -175,7 +176,7 @@ public class TrmTracerTest extends TracerTestBase {
 
   void sampleDelegateCall(long rawAddr) {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(Bytes.fromHexString("0xff")) // rds
                 .push(Bytes.fromHexString("0x80")) // rdo
                 .push(Bytes.fromHexString("0x44")) // cds

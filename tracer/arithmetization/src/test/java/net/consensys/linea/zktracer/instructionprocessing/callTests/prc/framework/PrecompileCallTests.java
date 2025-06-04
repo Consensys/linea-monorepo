@@ -38,7 +38,7 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters>
   public void messageCallTransactionTest(T callParameter) {
 
     BytecodeCompiler rootCode =
-        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation();
+        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
     if (callParameter.willRevert()) revertWith(rootCode, 0, 5 * WORD_SIZE);
 
     runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, testInfo);
@@ -54,7 +54,7 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters>
   public void deploymentTransactionTest(T callParameter) {
 
     BytecodeCompiler txInitCode =
-        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation();
+        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
     if (callParameter.willRevert()) revertWith(txInitCode, 0, 0);
 
     runDeploymentTransactionWithProvidedCodeAsInitCode(txInitCode, testInfo);
@@ -69,7 +69,7 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters>
   @MethodSource("parameterGeneration")
   public void messageCallFromRootTest(T callParameter) {
     BytecodeCompiler chadPrcEnjoyerCode =
-        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation();
+        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
     runMessageCallToAccountEndowedWithProvidedCode(
         chadPrcEnjoyerCode, callParameter.willRevert(), testInfo);
   }
@@ -88,7 +88,7 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters>
   @MethodSource("parameterGeneration")
   public void happyPathDuringCreate(T callParameter) {
     BytecodeCompiler foreignCode =
-        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation();
+        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
     runForeignByteCodeAsInitCode(foreignCode, callParameter.willRevert(), testInfo);
   }
 
@@ -101,7 +101,7 @@ public abstract class PrecompileCallTests<T extends PrecompileCallParameters>
   @MethodSource("parameterGeneration")
   public void happyPathAfterCreate(T callParameter) {
     BytecodeCompiler chadPrcEnjoyerCode =
-        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation();
+        callParameter.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
     runCreateDeployingForeignCodeAndCallIntoIt(
         chadPrcEnjoyerCode, callParameter.willRevert(), testInfo);
   }

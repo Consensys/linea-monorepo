@@ -50,7 +50,7 @@ public class JumpiTest extends TracerTestBase {
   void jumpiScenarioTest(String description, String jumpiCondition, String pcNew) {
     checkArgument(pcNew.length() <= 64, "pcNew must be at most 32 bytes long");
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(jumpiCondition)
             .push(pcNew)
             .op(OpCode.JUMP)

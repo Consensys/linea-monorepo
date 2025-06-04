@@ -40,7 +40,7 @@ public class StackUnderflowExceptionTest extends TracerTestBase {
   @MethodSource("stackUnderflowExceptionSource")
   void stackUnderflowExceptionTest(
       OpCode opCode, int nPushes, boolean triggersStackUnderflowExceptions) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     for (int i = 0; i < nPushes; i++) {
       program.push(0);
     }

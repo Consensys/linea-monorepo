@@ -46,7 +46,7 @@ public class CallArgumentsMaybeRedundant extends TracerTestBase {
 
   @Test
   void zeroReturnAtCapacityTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program
         .push(0) // return at capacity
         .push("ff".repeat(32)) // return at offset
@@ -56,7 +56,7 @@ public class CallArgumentsMaybeRedundant extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram();
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
     calleeProgram.op(OpCode.RETURNDATASIZE).op(OpCode.CALLDATASIZE);
     // .push(0x51) // size
     // .push(0x0f) // offset
@@ -77,7 +77,7 @@ public class CallArgumentsMaybeRedundant extends TracerTestBase {
 
   @Test
   void zeroCallDataSizeTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program
         .push(0xff) // r@c
         .push(0x7f) // r@o
@@ -89,7 +89,7 @@ public class CallArgumentsMaybeRedundant extends TracerTestBase {
         .op(OpCode.RETURNDATASIZE)
         .op(OpCode.CALLDATASIZE);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram();
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
     calleeProgram
         .op(OpCode.RETURNDATASIZE)
         .op(OpCode.CALLDATASIZE)
@@ -111,7 +111,7 @@ public class CallArgumentsMaybeRedundant extends TracerTestBase {
 
   @Test
   void zeroCallDataSizeAndReturnAtCapacityTest() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program
         .push(0) // return at capacity
         .push("ff".repeat(32)) // return at offset
@@ -121,7 +121,7 @@ public class CallArgumentsMaybeRedundant extends TracerTestBase {
         .push(1000) // gas
         .op(OpCode.STATICCALL);
 
-    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram();
+    BytecodeCompiler calleeProgram = BytecodeCompiler.newProgram(testInfo);
     calleeProgram.push(0).push("ff".repeat(32)).op(OpCode.RETURN);
 
     final ToyAccount calleeAccount =
