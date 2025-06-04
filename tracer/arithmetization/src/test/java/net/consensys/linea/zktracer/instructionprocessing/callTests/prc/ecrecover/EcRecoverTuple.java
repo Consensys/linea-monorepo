@@ -18,6 +18,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.ecadd.MemoryContents.MAX_WORD;
 
+import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
 import org.apache.tuweni.bytes.Bytes;
 import org.apache.tuweni.bytes.Bytes32;
@@ -39,7 +40,8 @@ public record EcRecoverTuple(String h, String v, String r, String s) {
    * @param changeFinalByteOfS
    * @return
    */
-  public BytecodeCompiler memoryContents(boolean changeFinalByteOfS) {
+  public BytecodeCompiler memoryContents(
+      boolean changeFinalByteOfS, TestInfoWithChainConfig testInfo) {
     Bytes hBytes = Bytes32.leftPad(Bytes.fromHexString(h));
     Bytes vBytes = Bytes32.leftPad(Bytes.fromHexString(v));
     Bytes rBytes = Bytes32.leftPad(Bytes.fromHexString(r));
@@ -54,7 +56,7 @@ public record EcRecoverTuple(String h, String v, String r, String s) {
 
     checkState(pointData.size() == 5 * WORD_SIZE);
 
-    BytecodeCompiler memoryContents = BytecodeCompiler.newProgram();
+    BytecodeCompiler memoryContents = BytecodeCompiler.newProgram(testInfo);
     memoryContents.immediate(pointData);
 
     return memoryContents;

@@ -34,7 +34,7 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
   @Test
   void extcodexxxForPrecompileBeforeAndAfterTransfer() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(1)
             .op(DUP1)
             .op(EXTCODEHASH) // will return 0
@@ -62,7 +62,7 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
   @Test
   void extcodexxxBeforeAndAfterTransfer() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(69)
             .op(DUP1)
             .op(EXTCODEHASH) // will return 0
@@ -94,7 +94,7 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
   @Test
   void extcodexxxBeforeDuringAndAfterTrivialDeployment() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push("6ff1019c622e4641f86f4bb7232b7901b8d20db6")
             .op(DUP1)
             .op(EXTCODEHASH) // will return 0
@@ -131,7 +131,7 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
   @Test
   void extcodexxxBeforeDuringAndAfterDeploymentDeployingEmtpyByteCode() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push("6ff1019c622e4641f86f4bb7232b7901b8d20db6")
             .op(DUP1)
             .op(EXTCODEHASH) // will return 0
@@ -182,7 +182,7 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
   @Test
   void extcodexxxBeforeDuringAndAfterDeploymentDeployingSingleZeroByte() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push("6ff1019c622e4641f86f4bb7232b7901b8d20db6")
             .op(EXTCODEHASH) // will return 0
             .op(POP)
@@ -208,7 +208,7 @@ public class ExtCodeHashAndAccountExistenceTests extends TracerTestBase {
   @Test
   void extcodexxxOfOneself() {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .op(ADDRESS)
             .op(DUP1)
             .op(EXTCODEHASH) // will return the hash of this bytecode:

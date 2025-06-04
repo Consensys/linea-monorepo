@@ -115,7 +115,7 @@ public class LowGasStipendPrecompileCallTests extends TracerTestBase {
       ValueCase valueCase,
       GasCase gasCase,
       boolean modexpCostGT200OrBlake2fRoundsGT0) {
-    final BytecodeCompiler program = BytecodeCompiler.newProgram();
+    final BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     // In order to actually trigger the insufficient we need to:
     // - Set a specific callDataSize for BLAKE2F and EC_PAIRING

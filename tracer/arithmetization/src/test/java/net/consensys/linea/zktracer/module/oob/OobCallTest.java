@@ -201,14 +201,14 @@ public class OobCallTest extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(List.of(userAccount, contractCallerAccount, contractCalleeAccount))
             .transaction(tx)
             .transactionProcessingResultValidator(
                 TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .build();
 
-    toyExecutionEnvironmentV2.run(testInfo);
+    toyExecutionEnvironmentV2.run();
 
     final Hub hub = toyExecutionEnvironmentV2.getHub();
 
@@ -254,14 +254,14 @@ public class OobCallTest extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(List.of(userAccount, contractCallerAccount))
             .transaction(tx)
             .transactionProcessingResultValidator(
                 TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .build();
 
-    toyExecutionEnvironmentV2.run(testInfo);
+    toyExecutionEnvironmentV2.run();
 
     final Hub hub = toyExecutionEnvironmentV2.getHub();
 

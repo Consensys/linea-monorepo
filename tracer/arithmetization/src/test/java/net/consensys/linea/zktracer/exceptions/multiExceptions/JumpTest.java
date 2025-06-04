@@ -52,7 +52,7 @@ public class JumpTest extends TracerTestBase {
   @ValueSource(ints = {5, 6})
   void jumpAndOogExceptionsJump(int jumpCounter) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(jumpCounter) // pc: 0 - 5 i/o 4, Trigger Jump Exception
             .op(OpCode.JUMP) // pc: 2
             .op(OpCode.INVALID) // pc: 3
@@ -81,7 +81,7 @@ public class JumpTest extends TracerTestBase {
   @ValueSource(ints = {6, 9})
   void jumpAndOogExceptionsJumpi(int jumpCounter) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(1) // pc = 0, 1
             .push(jumpCounter) // pc = 2, 3, i/o 7, Trigger Jump Exception
             .op(OpCode.JUMPI) // pc = 4

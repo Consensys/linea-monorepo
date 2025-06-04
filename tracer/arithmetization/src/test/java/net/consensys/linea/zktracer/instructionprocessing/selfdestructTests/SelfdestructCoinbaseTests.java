@@ -52,7 +52,7 @@ public class SelfdestructCoinbaseTests extends TracerTestBase {
   static final ToyAccount CHECKING_COINBASE =
       ToyAccount.builder()
           .code(
-              BytecodeCompiler.newProgram()
+              BytecodeCompiler.newProgram(testInfo)
                   .op(OpCode.COINBASE)
                   .op(OpCode.BALANCE)
                   .op(OpCode.POP)
@@ -88,7 +88,8 @@ public class SelfdestructCoinbaseTests extends TracerTestBase {
         basicSelfDestructor(
             HEIR_IS_EOA,
             Optional.of(
-                (coinBaseDeployed && rootIsDeployment) ? DEFAULT_COINBASE_ADDRESS : depAddress));
+                (coinBaseDeployed && rootIsDeployment) ? DEFAULT_COINBASE_ADDRESS : depAddress),
+            testInfo);
     if (revertingTransaction) {
       setRevert(selfDestructorCoinbaseAccount);
     }
@@ -99,7 +100,7 @@ public class SelfdestructCoinbaseTests extends TracerTestBase {
             .nonce(1)
             .address(Address.fromHexString("0x1122334455667788990011223344556677889900"))
             .code(
-                BytecodeCompiler.newProgram()
+                BytecodeCompiler.newProgram(testInfo)
                     .push(0)
                     .push(0)
                     .push(0)
@@ -141,13 +142,13 @@ public class SelfdestructCoinbaseTests extends TracerTestBase {
       deployedAccounts.add(selfDestructorCoinbaseAccount);
     }
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(deployedAccounts)
         .transactions(List.of(selfdestruction, checkingCoinbase))
         .zkTracerValidator(zkTracer -> {})
         .coinbase(depAddress)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   private static Stream<Arguments> selfDestructCoinbaseInputs() {

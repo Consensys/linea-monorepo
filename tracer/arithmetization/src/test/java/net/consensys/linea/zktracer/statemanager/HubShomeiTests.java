@@ -52,11 +52,11 @@ public class HubShomeiTests extends TracerTestBase {
   private static final Address DEFAULT =
       Address.fromHexString("0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef");
 
-  private static final Bytes SSLOAD1 =
-      newProgram().push(key1).op(OpCode.SLOAD).op(OpCode.POP).compile();
+  private final Bytes SSLOAD1 =
+      newProgram(testInfo).push(key1).op(OpCode.SLOAD).op(OpCode.POP).compile();
 
-  private static final Bytes SSTORE1 =
-      newProgram().push(value).push(key1).op(OpCode.SSTORE).compile();
+  private final Bytes SSTORE1 =
+      newProgram(testInfo).push(value).push(key1).op(OpCode.SSTORE).compile();
 
   /**
    * In this test we have two transactions. In the first one we prewarm a storage key, we SSTORE or
@@ -110,16 +110,16 @@ public class HubShomeiTests extends TracerTestBase {
             .gasLimit(1000000L)
             .gasPrice(Wei.of(10L))
             .accessList(List.of(accessListEntry))
-            .payload(newProgram().push(1).push(1).op(OpCode.ADD).compile())
+            .payload(newProgram(testInfo).push(1).push(1).op(OpCode.ADD).compile())
             .build();
 
     final ToyExecutionEnvironmentV2 executionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(List.of(senderAccount, recipientAccount))
             .transactions(List.of(tx1, tx2))
             .build();
 
-    executionEnvironmentV2.run(testInfo);
+    executionEnvironmentV2.run();
 
     final ZkTracer tracer = executionEnvironmentV2.getZkTracer();
     final Set<Address> addressSeen = tracer.getAddressesSeenByHubForRelativeBlock(1);
@@ -171,11 +171,11 @@ public class HubShomeiTests extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 executionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(List.of(senderAccount, recipientAccount))
             .transaction(tx)
             .build();
-    executionEnvironmentV2.run(testInfo);
+    executionEnvironmentV2.run();
 
     final ZkTracer tracer = executionEnvironmentV2.getZkTracer();
     final Set<Address> addressSeen = tracer.getAddressesSeenByHubForRelativeBlock(1);

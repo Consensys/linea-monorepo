@@ -50,12 +50,12 @@ public class CallDataTests extends TracerTestBase {
   void nonAlignedCallDataInCallTest() {
 
     Transaction transaction = transactionCallingCallDataCodeAccount();
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(accounts)
         .transaction(transaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   // @Test
@@ -66,7 +66,7 @@ public class CallDataTests extends TracerTestBase {
       Bytes.fromHexString("abcdef01234567890000deadbeef0000aa0f517e002024aa9876543210fedcba");
 
   Bytes callDataByteCode =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .push(13) // size
           .push(29) // sourceOffset
           .push(17) // targetOffset
@@ -83,7 +83,7 @@ public class CallDataTests extends TracerTestBase {
           .compile();
 
   final Bytes callerCode =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .push(callData32)
           .push(2)
           .op(OpCode.MSTORE)

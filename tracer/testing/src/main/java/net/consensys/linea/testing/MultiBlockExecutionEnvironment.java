@@ -15,6 +15,8 @@
 
 package net.consensys.linea.testing;
 
+import static net.consensys.linea.zktracer.ChainConfig.MAINNET_TESTCONFIG;
+import static net.consensys.linea.zktracer.Fork.LONDON;
 import static net.consensys.linea.zktracer.Trace.LINEA_BLOCK_GAS_LIMIT;
 
 import java.math.BigInteger;
@@ -27,7 +29,7 @@ import lombok.Builder;
 import lombok.Singular;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.blockcapture.snapshots.*;
-import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
+import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.module.hub.Hub;
@@ -42,10 +44,9 @@ public class MultiBlockExecutionEnvironment {
   private final List<BlockSnapshot> blocks;
 
   public static final BigInteger CHAIN_ID = BigInteger.valueOf(1337);
-  private final ZkTracer tracer =
-      new ZkTracer(
-          ChainConfig.LONDON_LINEA_CHAIN(
-              LineaL1L2BridgeSharedConfiguration.TEST_DEFAULT, CHAIN_ID));
+  private final ZkTracer tracer;
+
+  @Builder.Default public final ChainConfig testsChain = MAINNET_TESTCONFIG(LONDON);
 
   /**
    * A transaction validator of each transaction; by default, it asserts that the transaction was
@@ -54,6 +55,13 @@ public class MultiBlockExecutionEnvironment {
   @Builder.Default
   private final TransactionProcessingResultValidator transactionProcessingResultValidator =
       TransactionProcessingResultValidator.DEFAULT_VALIDATOR;
+
+  public static MultiBlockExecutionEnvironment.MultiBlockExecutionEnvironmentBuilder builder(
+      TestInfoWithChainConfig testInfo) {
+    return new MultiBlockExecutionEnvironmentBuilder()
+        .tracer(new ZkTracer(testInfo.chainConfig))
+        .testsChain(testInfo.chainConfig);
+  }
 
   public static class MultiBlockExecutionEnvironmentBuilder {
 
@@ -85,7 +93,7 @@ public class MultiBlockExecutionEnvironment {
         .useCoinbaseAddressFromBlockHeader(true)
         .transactionProcessingResultValidator(this.transactionProcessingResultValidator)
         .build()
-        .replay(ToyExecutionEnvironmentV2.UNIT_TEST_CHAIN, this.buildConflationSnapshot());
+        .replay(testsChain, this.buildConflationSnapshot());
   }
 
   public Hub getHub() {

@@ -17,17 +17,18 @@ package net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framewo
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.CodeExecutionMethods.memoryContentsHolder1;
 import static net.consensys.linea.zktracer.instructionprocessing.callTests.prc.CodeExecutionMethods.memoryContentsHolder2;
 
+import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
 
 public interface PrecompileCallMemoryContents {
 
   void switchVariant();
 
-  BytecodeCompiler memoryContents();
+  BytecodeCompiler memoryContents(TestInfoWithChainConfig testInfo);
 
-  default void setCodeOfHolderAccounts() {
-    memoryContentsHolder1.code(this.memoryContents().compile());
+  default void setCodeOfHolderAccounts(TestInfoWithChainConfig testInfo) {
+    memoryContentsHolder1.code(this.memoryContents(testInfo).compile());
     this.switchVariant();
-    memoryContentsHolder2.code(this.memoryContents().compile());
+    memoryContentsHolder2.code(this.memoryContents(testInfo).compile());
   }
 }

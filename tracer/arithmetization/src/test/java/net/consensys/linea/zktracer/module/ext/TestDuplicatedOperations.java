@@ -31,7 +31,7 @@ public class TestDuplicatedOperations extends TracerTestBase {
   @Test
   void testDuplicate() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(
                     Bytes.fromHexString(
                         "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"))

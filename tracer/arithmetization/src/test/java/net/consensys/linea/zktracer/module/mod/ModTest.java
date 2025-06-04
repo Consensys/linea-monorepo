@@ -29,7 +29,7 @@ public class ModTest extends TracerTestBase {
   @Test
   void testSignedSmod() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(UInt256.MAX_VALUE)
                 .push(UInt256.MAX_VALUE)
                 .op(OpCode.SMOD)

@@ -52,7 +52,8 @@ public class Tests extends PrecompileCallTests<CallParameters> {
             ReturnAtParameter.FULL,
             true);
 
-    BytecodeCompiler rootCode = params.customPrecompileCallsSeparatedByReturnDataWipingOperation();
+    BytecodeCompiler rootCode =
+        params.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
     runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, testInfo);
   }
 }

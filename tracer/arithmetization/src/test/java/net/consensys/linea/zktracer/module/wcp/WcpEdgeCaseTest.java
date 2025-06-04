@@ -29,7 +29,7 @@ public class WcpEdgeCaseTest extends TracerTestBase {
   @Test
   void testZeroAndHugeArgs() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(Bytes.repeat((byte) 0xff, 32))
                 .push(Bytes.EMPTY)
                 .op(OpCode.SLT)
@@ -40,7 +40,7 @@ public class WcpEdgeCaseTest extends TracerTestBase {
   @Test
   void testHugeAndZeroArgs() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(Bytes.EMPTY)
                 .push(Bytes.repeat((byte) 0xff, 32))
                 .op(OpCode.SLT)
@@ -51,7 +51,7 @@ public class WcpEdgeCaseTest extends TracerTestBase {
   @Test
   void failingOnShadowNodeBlock916394() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(Bytes.EMPTY)
                 .push(
                     Bytes.concatenate(
@@ -67,7 +67,7 @@ public class WcpEdgeCaseTest extends TracerTestBase {
   @Test
   void failingOnShadowNodeBlockWhatever() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(Bytes.EMPTY)
                 .push(
                     Bytes.fromHexString(

@@ -59,7 +59,7 @@ public class EcRecoverTest extends TracerTestBase {
       boolean expectedInternalChecksPassed,
       boolean expectedSuccessBit) {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             // First place the parameters in memory
             .push(h)
             .push(0)
@@ -233,7 +233,7 @@ public class EcRecoverTest extends TracerTestBase {
   @Test
   void testEcRecoverInternalChecksFailSingleCase() {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             // First place the parameters in memory
             .push("1111111111111111111111111111111111111111111111111111111111111111") // h
             .push(0)

@@ -39,7 +39,7 @@ public class RipTests extends TracerTestBase {
   @MethodSource("sizes")
   void basicRipTest(int size) {
     final Bytes bytecode =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(Bytes.fromHexString("0x0badb077")) // value, some random data to hash
             .push(5) // offset
             .op(OpCode.MSTORE)

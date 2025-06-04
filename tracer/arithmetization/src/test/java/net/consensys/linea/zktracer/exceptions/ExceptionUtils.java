@@ -68,7 +68,7 @@ public class ExceptionUtils extends TracerTestBase {
   }
 
   public static BytecodeCompiler getProgramStaticCallToCodeAddress(int gas) {
-    return BytecodeCompiler.newProgram()
+    return BytecodeCompiler.newProgram(testInfo)
         .push(0) // byte size of return data
         .push(0) // retOffset
         .push(0) // byte size calldata
@@ -79,7 +79,7 @@ public class ExceptionUtils extends TracerTestBase {
   }
 
   public static BytecodeCompiler getProgramStaticCallToCodeAccount() {
-    return BytecodeCompiler.newProgram()
+    return BytecodeCompiler.newProgram(testInfo)
         .push(0) // byte size of return data
         .push(0) // retOffset
         .push(0) // byte size calldata
@@ -120,7 +120,7 @@ public class ExceptionUtils extends TracerTestBase {
     Bytes initCodePart2 =
         Bytes.fromHexString("0xFF60005260206000F30000000000000000000000000000000000000000000000");
 
-    return BytecodeCompiler.newProgram()
+    return BytecodeCompiler.newProgram(testInfo)
         .push(initCodePart1) // value
         .push(0) // offset
         .op(OpCode.MSTORE)
@@ -133,7 +133,7 @@ public class ExceptionUtils extends TracerTestBase {
     BytecodeCompiler program =
         (opCode == OpCode.CREATE || opCode == OpCode.CREATE2)
             ? getPgPushInitCodeToMem()
-            : BytecodeCompiler.newProgram();
+            : BytecodeCompiler.newProgram(testInfo);
     switch (opCode) {
       case LOG0 -> program
           .push(32) // size
@@ -208,7 +208,7 @@ public class ExceptionUtils extends TracerTestBase {
     checkArgument(startByte >= 0);
     checkArgument(startByte < 256);
 
-    BytecodeCompiler initProgram = BytecodeCompiler.newProgram();
+    BytecodeCompiler initProgram = BytecodeCompiler.newProgram(testInfo);
     initProgram
         .push(Integer.toHexString(startByte))
         .push(0)
@@ -220,7 +220,7 @@ public class ExceptionUtils extends TracerTestBase {
     final String initProgramAsString = initProgram.compile().toString().substring(2);
     final int initProgramByteSize = initProgram.compile().size();
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     program
         .push(initProgramAsString + "00".repeat(32 - initProgramByteSize))

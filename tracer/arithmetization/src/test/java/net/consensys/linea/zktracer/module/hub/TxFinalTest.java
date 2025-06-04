@@ -48,11 +48,11 @@ public class TxFinalTest extends TracerTestBase {
       ToyAccount.builder()
           .balance(Wei.fromEth(1))
           .address(Address.fromHexString("0xdead000000000000000000000000000beef"))
-          .code(BytecodeCompiler.newProgram().push(12).push(35).op(OpCode.SGT).compile())
+          .code(BytecodeCompiler.newProgram(testInfo).push(12).push(35).op(OpCode.SGT).compile())
           .build();
 
   private static final Bytes initCode =
-      BytecodeCompiler.newProgram().push(12).push(13).push(24).op(OpCode.ADDMOD).compile();
+      BytecodeCompiler.newProgram(testInfo).push(12).push(13).push(24).op(OpCode.ADDMOD).compile();
 
   final Address depAddress =
       Address.extract(getCreateRawAddress(senderAddress, senderAccount.getNonce()));
@@ -70,13 +70,13 @@ public class TxFinalTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .coinbase(senderAddress)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -90,13 +90,13 @@ public class TxFinalTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount, receiverAccount))
         .transaction(tx)
         .coinbase(receiverAccount.getAddress())
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   // TODO: add smcCallTripleCollision() {}, not possible before EIP-7702
@@ -114,13 +114,13 @@ public class TxFinalTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .coinbase(senderAddress)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
 
   @Test
@@ -134,13 +134,13 @@ public class TxFinalTest extends TracerTestBase {
             .value(Wei.of(1000))
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(senderAccount))
         .transaction(tx)
         .coinbase(depAddress)
         .zkTracerValidator(zkTracer -> {})
         .build()
-        .run(testInfo);
+        .run();
   }
   // good luck for finding the right nonce ;) deploymentTripleCollision() {}
 }

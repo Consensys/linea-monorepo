@@ -38,7 +38,7 @@ public class UtilitiesTest extends TracerTestBase {
             // Transfers generate 3 logs, the 1s are for reverted operations
             List.of(2, 2, 3, 2, 2));
 
-    MultiBlockExecutionEnvironment.builder()
+    MultiBlockExecutionEnvironment.builder(testInfo)
         .accounts(
             List.of(
                 tc.initialAccounts[0],
@@ -110,7 +110,7 @@ public class UtilitiesTest extends TracerTestBase {
     this.tc.initializeTestContext();
     TransactionProcessingResultValidator resultValidator =
         new StateManagerTestValidator(tc.frameworkEntryPointAccount, List.of(2));
-    MultiBlockExecutionEnvironment.builder()
+    MultiBlockExecutionEnvironment.builder(testInfo)
         .accounts(
             List.of(
                 tc.initialAccounts[0],

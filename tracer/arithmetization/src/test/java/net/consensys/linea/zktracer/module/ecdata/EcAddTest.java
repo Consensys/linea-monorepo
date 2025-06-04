@@ -41,7 +41,7 @@ public class EcAddTest extends TracerTestBase {
   @MethodSource("ecAddSource")
   void testEcAdd(String pX, String pY, String qX, String qY) {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             // First place the parameters in memory
             .push(pX) // pX
             .push(0)
@@ -84,7 +84,7 @@ public class EcAddTest extends TracerTestBase {
   @Test
   void testEcAddSingleCase() {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             // First place the parameters in memory
             .push("070375d4eec4f22aa3ad39cb40ccd73d2dbab6de316e75f81dc2948a996795d5") // pX
             .push(0)
@@ -116,7 +116,7 @@ public class EcAddTest extends TracerTestBase {
   @Test
   void testEcAddWithPointAtInfinityAsResult() {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             // First place the parameters in memory
             .push(1) // pX
             .push(0)

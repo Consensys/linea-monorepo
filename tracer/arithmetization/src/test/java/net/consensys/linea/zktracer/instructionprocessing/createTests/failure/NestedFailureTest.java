@@ -56,7 +56,7 @@ public class NestedFailureTest extends TracerTestBase {
     final String errorString = "0e7707";
     final int errorStringLengthInBytes = errorString.length() / 2;
 
-    BytecodeCompiler initCode = BytecodeCompiler.newProgram();
+    BytecodeCompiler initCode = BytecodeCompiler.newProgram(testInfo);
     callCaller(initCode, callOpCode, 0xffffff, 1, 0xa, 0xb, 0xc, 0xd);
     final int sizeUpToCall = initCode.compile().size();
     initCode
@@ -91,7 +91,7 @@ public class NestedFailureTest extends TracerTestBase {
             .balance(Wei.of(0xffffff))
             .build();
 
-    BytecodeCompiler entryPoint = BytecodeCompiler.newProgram();
+    BytecodeCompiler entryPoint = BytecodeCompiler.newProgram(testInfo);
     fullCodeCopyOf(entryPoint, accountContainingInitCode); // loading init code into memory
     entryPoint
         .push(salt02) // salt
@@ -117,10 +117,10 @@ public class NestedFailureTest extends TracerTestBase {
             .gasLimit(0xffffffL)
             .build();
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(List.of(userAccount, entryPointAccount, accountContainingInitCode))
         .transaction(transaction)
         .build()
-        .run(testInfo);
+        .run();
   }
 }

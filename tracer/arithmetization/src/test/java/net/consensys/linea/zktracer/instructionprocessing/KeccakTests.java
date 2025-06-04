@@ -27,7 +27,7 @@ public class KeccakTests extends TracerTestBase {
   @Test
   void singleEmptyKeccak() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(0) // size
                 .push(0) // offset
                 .op(OpCode.SHA3)
@@ -40,7 +40,7 @@ public class KeccakTests extends TracerTestBase {
   @Test
   void singleWordKeccakNonAligned() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
                 .push(1)
                 .op(OpCode.MSTORE)
@@ -56,7 +56,7 @@ public class KeccakTests extends TracerTestBase {
   @Test
   void singleWordKeccakAligned() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
                 .push(0)
                 .op(OpCode.MSTORE)
@@ -72,7 +72,7 @@ public class KeccakTests extends TracerTestBase {
   @Test
   void singleByteKeccak() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push("ee")
                 .push(1)
                 .op(OpCode.MSTORE8)
@@ -87,7 +87,7 @@ public class KeccakTests extends TracerTestBase {
   @Test
   void testSeveralKeccaks() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(0)
                 .push(0)
                 .op(OpCode.SHA3)

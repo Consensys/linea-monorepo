@@ -209,12 +209,12 @@ public class InitCodeTests extends TracerTestBase {
             List.of(0L, 0L, 0L, 0L, 0L, 0L, 2L, 0L, 0L));
 
     final ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(List.of(userAccount, customCreate2Account))
             .transactions(transactions)
             .transactionProcessingResultValidator(create2Validator)
             .build();
-    toyExecutionEnvironmentV2.run(testInfo);
+    toyExecutionEnvironmentV2.run();
 
     // Final check on the deployment number of ContractC
     // At start, deploymentNumber = 0

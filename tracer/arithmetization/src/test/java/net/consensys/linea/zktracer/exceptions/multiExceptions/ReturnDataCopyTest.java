@@ -50,7 +50,7 @@ public class ReturnDataCopyTest extends TracerTestBase {
     BytecodeCompiler programWithoutRdcx = getProgramRDCFromStaticCallToCodeAccount(!RDCX, !MXPX);
     BytecodeRunner bytecodeRunnerWithoutRdcx = BytecodeRunner.of(programWithoutRdcx.compile());
     long gasCostWithoutRdcx =
-        bytecodeRunnerWithoutRdcx.runOnlyForGasCost(List.of(codeProviderAccount));
+        bytecodeRunnerWithoutRdcx.runOnlyForGasCost(List.of(codeProviderAccount), testInfo);
 
     // We compute the final gas cost with RDCX and OOGX trigger
     // We trigger RDCX by adding 1 to RDS

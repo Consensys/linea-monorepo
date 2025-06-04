@@ -18,6 +18,7 @@ import static com.google.common.base.Preconditions.checkState;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE_MO;
 
+import net.consensys.linea.reporting.TestInfoWithChainConfig;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.zktracer.instructionprocessing.callTests.prc.framework.PrecompileCallMemoryContents;
 import org.apache.tuweni.bytes.Bytes;
@@ -82,7 +83,7 @@ public enum MemoryContents implements PrecompileCallMemoryContents {
    * some account whose 'byte code' is to be <b>EXTCODECOPY</b>'ed to memory and used as input to a
    * call to <b>ECADD</b>.
    */
-  public BytecodeCompiler memoryContents() {
+  public BytecodeCompiler memoryContents(TestInfoWithChainConfig testInfo) {
 
     // Note that 4 = 2 * 2. We need 4 * 32 hex characters for the data representing a point.
     String pointData =
@@ -105,7 +106,7 @@ public enum MemoryContents implements PrecompileCallMemoryContents {
 
     String memoryContentsString = pointData + MAX_WORD;
 
-    BytecodeCompiler memoryContents = BytecodeCompiler.newProgram();
+    BytecodeCompiler memoryContents = BytecodeCompiler.newProgram(testInfo);
     memoryContents.immediate(Bytes.fromHexString(memoryContentsString));
 
     return memoryContents;

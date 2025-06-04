@@ -45,7 +45,7 @@ public class Balance extends TracerTestBase {
   void rootLevelInsufficientBalanceCreateOpcodeTest(
       CreateType createType, SizeParameter sizeParameter, OffsetParameter offsetParameter) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     if (sizeParameter == s_MSIZE) {
       program.push(513).push(0).op(SHA3); // purely to expand memory to 0 < 512 + 32 bytes
@@ -74,7 +74,7 @@ public class Balance extends TracerTestBase {
       OffsetParameter offsetParameter,
       SizeParameter sizeParameter,
       boolean reverts) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     genericCreate(
         program,
         createType,
@@ -99,7 +99,7 @@ public class Balance extends TracerTestBase {
     final SizeParameter sizeParameter = SizeParameter.s_ZERO;
     final boolean reverts = true;
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     genericCreate(
         program,
         createType,
@@ -126,7 +126,7 @@ public class Balance extends TracerTestBase {
     SizeParameter sizeParameter = SizeParameter.s_ZERO;
     boolean reverts = true;
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     genericCreate(
         program,
         createType,
@@ -175,7 +175,7 @@ public class Balance extends TracerTestBase {
       OffsetParameter offsetParameter,
       SizeParameter sizeParameter,
       boolean reverts) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     genericCreate(
         program, createType, ValueParameter.v_ONE, offsetParameter, sizeParameter, salt01);
     genericCreate(

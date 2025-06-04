@@ -55,7 +55,7 @@ public class BalanceAbortTests extends TracerTestBase {
       value = OpCode.class,
       names = {"CALL", "CALLCODE"})
   void insufficientBalanceAbortWarmsUpTarget(OpCode callOpCode) {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     appendInsufficientBalanceCall(
         program, callOpCode, 1000, Address.fromHexString(eoaAddress), 4, 3, 2, 1);
     program
@@ -82,7 +82,7 @@ public class BalanceAbortTests extends TracerTestBase {
       names = {"CALL", "CALLCODE"})
   void insufficientBalanceAbortWillRevert(OpCode callOpCode) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     appendInsufficientBalanceCall(
         program, callOpCode, 1000, Address.fromHexString(eoaAddress), 0, 0, 0, 0);
     program.push(6).push(7).op(REVERT);

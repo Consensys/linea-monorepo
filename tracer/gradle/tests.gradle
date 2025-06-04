@@ -148,6 +148,9 @@ tasks.test.configure {
   systemProperty("besu.traces.dir", System.getProperty("besu.traces.dir"))
   systemProperty("besu.plugins.dir", System.getProperty("besu.plugins.dir"))
 
+  def fork = System.getenv().getOrDefault("ZKEVM_FORK", "LONDON").toString()
+  System.setProperty("unit.replay.tests.fork", fork)
+  systemProperty("unit.replay.tests.fork", fork)
 
   systemProperty("junit.jupiter.execution.parallel.enabled", true)
   systemProperty("junit.jupiter.execution.parallel.mode.default", "concurrent")
@@ -221,6 +224,11 @@ tasks.register("fastReplayTests", Test) {
     systemProperty("junit.jupiter.execution.parallel.config.fixed.parallelism",
       System.getenv().getOrDefault("REPLAY_TESTS_PARALLELISM", "1").toInteger())
   }
+
+  def fork = System.getenv().getOrDefault("ZKEVM_FORK", "LONDON").toString()
+  System.setProperty("unit.replay.tests.fork", fork)
+  systemProperty("unit.replay.tests.fork", fork)
+
   useJUnitPlatform {
     includeTags("replay")
     excludeTags("nightly")

@@ -59,7 +59,8 @@ public class Tests extends PrecompileCallTests<CallParameters> {
             RelativeRangePosition.OVERLAP,
             true);
 
-    BytecodeCompiler rootCode = params.customPrecompileCallsSeparatedByReturnDataWipingOperation();
+    BytecodeCompiler rootCode =
+        params.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
     runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, testInfo);
   }
 
@@ -82,7 +83,8 @@ public class Tests extends PrecompileCallTests<CallParameters> {
             RelativeRangePosition.OVERLAP,
             true);
 
-    BytecodeCompiler rootCode = params.customPrecompileCallsSeparatedByReturnDataWipingOperation();
+    BytecodeCompiler rootCode =
+        params.customPrecompileCallsSeparatedByReturnDataWipingOperation(testInfo);
     runMessageCallTransactionWithProvidedCodeAsRootCode(rootCode, testInfo);
   }
 }

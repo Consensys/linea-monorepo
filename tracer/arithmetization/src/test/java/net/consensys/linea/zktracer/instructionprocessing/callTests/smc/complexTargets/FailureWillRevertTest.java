@@ -41,7 +41,7 @@ public class FailureWillRevertTest extends TracerTestBase {
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
   public void singleSelfCallFailureWillRevertTest(OpCode callOpCode) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     sloadFrom(program, 0x00);
     addX(program, 0x01);
     duplicateTop(program);
@@ -65,7 +65,7 @@ public class FailureWillRevertTest extends TracerTestBase {
   @Test
   public void banalAdditionTest() {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     sloadFrom(program, 0x00); // puts 0 on stack
     addX(program, 0x01);
     sstoreAt(program, 0x00);
@@ -85,7 +85,7 @@ public class FailureWillRevertTest extends TracerTestBase {
   @Test
   public void banalSwapTest() {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program.push(1).push(2).op(SWAP1).push(3).op(SWAP1);
 
     BytecodeRunner.of(program).run(testInfo);
@@ -98,7 +98,7 @@ public class FailureWillRevertTest extends TracerTestBase {
       names = {"CALL", "CALLCODE", "DELEGATECALL", "STATICCALL"})
   public void thirdSelfCallBreaksTriggeringFailureWillRevertTest(OpCode callOpCode) {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     sloadFrom(program, 0x00);
     addX(program, 0x01);
     duplicateTop(program);

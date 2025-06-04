@@ -34,7 +34,7 @@ public class singleStop extends TracerTestBase {
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WONT_REVERT</b> scenario. */
   @Test
   void zeroValueTransferToContractThatStops() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleStop.getAddress(), 0, 0, 0, 0, 0);
 
@@ -44,7 +44,7 @@ public class singleStop extends TracerTestBase {
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WONT_REVERT</b> scenario. */
   @Test
   void nonZeroValueTransferToContractThatStops() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleStop.getAddress(), 1, 0, 0, 0, 0);
 
@@ -54,7 +54,7 @@ public class singleStop extends TracerTestBase {
   /** This test should trigger the <b>scenario/CALL_TO_SMC_SUCCESS_WILL_REVERT</b> scenario. */
   @Test
   void nonZeroValueTransferToContractThatStopsRevertingTransaction() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleStop.getAddress(), 1, 0, 0, 0, 0);
 

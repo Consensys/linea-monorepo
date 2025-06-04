@@ -45,14 +45,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class EmptyDeploymentsInTheRootTest extends TracerTestBase {
 
   final Bytes initCodeEmptyDeployment =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .push(0) // size
           .push(0x0c) // offset
           .op(OpCode.RETURN)
           .compile();
 
   final Bytes initCodeNonemptyDeployment =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .op(OpCode.TIMESTAMP) // value, initially was DIFFICULTY
           .push(0) // offset
           .op(OpCode.MSTORE)
@@ -62,14 +62,14 @@ public class EmptyDeploymentsInTheRootTest extends TracerTestBase {
           .compile();
 
   final Bytes initCodeEmptyRevert =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .push(0) // size
           .push(0x0f) // offset
           .op(OpCode.REVERT)
           .compile();
 
   final Bytes initCodeNonemptyRevert =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .op(OpCode.COINBASE) // value
           .push(0) // offset
           .op(OpCode.MSTORE)
@@ -79,12 +79,12 @@ public class EmptyDeploymentsInTheRootTest extends TracerTestBase {
           .compile();
 
   final Bytes initCodeImmediateStackUnderflowException =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .op(OpCode.BLOCKHASH) // immediate SUX
           .compile();
 
   final Bytes initCodeImmediateInvalidException =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .op(OpCode.INVALID) // immediate INVALID
           .compile();
 
@@ -254,12 +254,12 @@ public class EmptyDeploymentsInTheRootTest extends TracerTestBase {
   }
 
   private void runTransaction(Transaction transaction) {
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(accounts)
         .transaction(transaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   /**
@@ -267,7 +267,7 @@ public class EmptyDeploymentsInTheRootTest extends TracerTestBase {
    * @return
    */
   private Bytes deployerOf(Bytes initCode) {
-    return BytecodeCompiler.newProgram()
+    return BytecodeCompiler.newProgram(testInfo)
         .push(initCode)
         .push(0) // offset
         .op(OpCode.MSTORE)

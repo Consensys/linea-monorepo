@@ -49,7 +49,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class CodeCopyingInitializationCodeTest extends TracerTestBase {
 
   final Bytes initCodeSimple =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .op(OpCode.CODESIZE)
           .push(0)
           .push(0)
@@ -57,7 +57,7 @@ public class CodeCopyingInitializationCodeTest extends TracerTestBase {
           .compile();
 
   final Bytes initCodeWithMload =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .op(OpCode.CODESIZE)
           .push(0)
           .push(0)
@@ -67,7 +67,7 @@ public class CodeCopyingInitializationCodeTest extends TracerTestBase {
           .compile();
 
   final Bytes initCodeDeploysItself =
-      BytecodeCompiler.newProgram()
+      BytecodeCompiler.newProgram(testInfo)
           .op(OpCode.CODESIZE)
           .push(0)
           .push(0)
@@ -180,16 +180,16 @@ public class CodeCopyingInitializationCodeTest extends TracerTestBase {
   }
 
   private void runTransaction(Transaction transaction) {
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .accounts(accounts)
         .transaction(transaction)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   private Bytes deployerOf(Bytes initCode) {
-    return BytecodeCompiler.newProgram()
+    return BytecodeCompiler.newProgram(testInfo)
         .push(initCode)
         .push(0) // offset
         .op(OpCode.MSTORE)

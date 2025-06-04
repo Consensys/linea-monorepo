@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
+import net.consensys.linea.reporting.TracerTestBase;
 import net.consensys.linea.testing.BytecodeCompiler;
 import net.consensys.linea.testing.ToyAccount;
 import net.consensys.linea.testing.ToyExecutionEnvironmentV2;
@@ -45,7 +46,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-public class ZkCounterTest {
+public class ZkCounterTest extends TracerTestBase {
 
   @Test
   void twoSuccessfullL2l1Logs() {
@@ -62,7 +63,7 @@ public class ZkCounterTest {
             .balance(Wei.fromEth(1))
             .address(TEST_DEFAULT.contract())
             .code(
-                BytecodeCompiler.newProgram()
+                BytecodeCompiler.newProgram(testInfo)
                     // LOG1 with right topic, and no data
                     .push(TEST_DEFAULT.topic()) // topic
                     .push(0) //  size
@@ -92,7 +93,7 @@ public class ZkCounterTest {
             .build();
 
     final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(List.of(senderAccount, l2l1LogSMC))
             .transaction(tx)
             .zkTracerValidator(zkTracer -> {})
@@ -132,7 +133,7 @@ public class ZkCounterTest {
             .balance(Wei.fromEth(1))
             .address(Address.wrap(Bytes.repeat((byte) 1, Address.SIZE)))
             .code(
-                BytecodeCompiler.newProgram()
+                BytecodeCompiler.newProgram(testInfo)
                     // LOG1 with right topic, and no data
                     .push(TEST_DEFAULT.topic()) // topic
                     .push(0) //  size
@@ -146,7 +147,7 @@ public class ZkCounterTest {
             .balance(Wei.fromEth(1))
             .address(Address.wrap(Bytes.repeat((byte) 2, Address.SIZE)))
             .code(
-                BytecodeCompiler.newProgram()
+                BytecodeCompiler.newProgram(testInfo)
                     // LOG1 with right topic, and no data
                     .push(TEST_DEFAULT.topic()) // topic
                     .push(0) //  size
@@ -164,7 +165,7 @@ public class ZkCounterTest {
             .balance(Wei.fromEth(1))
             .address(TEST_DEFAULT.contract())
             .code(
-                BytecodeCompiler.newProgram()
+                BytecodeCompiler.newProgram(testInfo)
                     // LOG2 with right topic, not at the right place
                     .push(TEST_DEFAULT.topic()) // topic 2
                     .push(Bytes.of(1)) // topic 1
@@ -188,7 +189,7 @@ public class ZkCounterTest {
             .build();
 
     final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(List.of(senderAccount, l2l1LogSMC, LOG_ACCOUNT_AND_REVERT, LOG_ACCOUNT))
             .transaction(tx)
             .zkTracerValidator(zkTracer -> {})
@@ -226,7 +227,7 @@ public class ZkCounterTest {
             .balance(Wei.fromEth(1))
             .address(Address.wrap(Bytes.repeat((byte) 1, Address.SIZE)))
             .code(
-                BytecodeCompiler.newProgram()
+                BytecodeCompiler.newProgram(testInfo)
                     // populate memory with some data
                     .push(56) // value
                     .push(3) //  offset
@@ -253,7 +254,7 @@ public class ZkCounterTest {
             .build();
 
     final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(List.of(senderAccount, callPRC))
             .transaction(tx)
             .zkTracerValidator(zkTracer -> {})
@@ -309,7 +310,7 @@ public class ZkCounterTest {
             .balance(Wei.fromEth(1))
             .address(Address.wrap(Bytes.repeat((byte) 1, Address.SIZE)))
             .code(
-                BytecodeCompiler.newProgram()
+                BytecodeCompiler.newProgram(testInfo)
                     // populate memory with BBS
                     .push(base ? 513 : 4) // value
                     .push(BBS_MIN_OFFSET) //  offset
@@ -344,7 +345,7 @@ public class ZkCounterTest {
             .build();
 
     final ToyExecutionEnvironmentV2 toyWorld =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(List.of(senderAccount, callPRC))
             .transaction(tx)
             .zkTracerValidator(zkTracer -> {})

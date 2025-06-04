@@ -63,7 +63,7 @@ public class CallTest extends TracerTestBase {
     // execution, even if no code is executed
     // call stipend - 1
     int cornerCase = 2299;
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     if (targetAddressExists && isWarm) {
       // Note: this is a possible way to warm the address
@@ -94,7 +94,7 @@ public class CallTest extends TracerTestBase {
               .nonce(10)
               .address(Address.fromHexString("ca11ee"))
               .build();
-      gasCost = bytecodeRunner.runOnlyForGasCost(List.of(calleeAccount));
+      gasCost = bytecodeRunner.runOnlyForGasCost(List.of(calleeAccount), testInfo);
       // We calculate gas cost to trigger OOGX
       // We retrieve the gas cost of the transaction as it's the gas used for the static call, so
       // intrinsic gas cost already accounted
@@ -104,7 +104,7 @@ public class CallTest extends TracerTestBase {
       bytecodeRunnerStaticCall = BytecodeRunner.of(pgStaticCallToCode.compile());
       bytecodeRunnerStaticCall.run(List.of(calleeAccount, CallProviderAccount), testInfo);
     } else {
-      gasCost = bytecodeRunner.runOnlyForGasCost();
+      gasCost = bytecodeRunner.runOnlyForGasCost(testInfo);
       // We calculate gas cost to trigger OOGX
       // We retrieve the gas cost of the transaction as it's the gas used for the static call, so
       // intrinsic gas cost already accounted
@@ -135,7 +135,7 @@ public class CallTest extends TracerTestBase {
 
     for (boolean roob : triggerRoob) {
       // We prepare a program with an MXPX for the opcode
-      BytecodeCompiler pg = BytecodeCompiler.newProgram();
+      BytecodeCompiler pg = BytecodeCompiler.newProgram(testInfo);
       new MxpTestUtils().triggerNonTrivialButMxpxOrRoobForOpCode(pg, roob, OpCode.CALL);
 
       // We prepare a program to static call the code account

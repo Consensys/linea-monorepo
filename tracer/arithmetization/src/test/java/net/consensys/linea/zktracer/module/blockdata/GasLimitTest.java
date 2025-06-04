@@ -42,7 +42,7 @@ public class GasLimitTest extends TracerTestBase {
   @Disabled("This test is disabled as we now enforce fixed block gas limit")
   @Test
   void legalGasLimitVariationsTest() {
-    Bytes p = BytecodeCompiler.newProgram().push(1).compile();
+    Bytes p = BytecodeCompiler.newProgram(testInfo).push(1).compile();
 
     long gasLimit = GAS_LIMIT_MINIMUM.longValueExact();
     multiBlocksTest(List.of(p, p), List.of(gasLimit, nextGasLimit(gasLimit, IN_RANGE_SAME)));
@@ -73,7 +73,7 @@ public class GasLimitTest extends TracerTestBase {
   @ParameterizedTest
   @MethodSource("blockDataVariableGasLimitTestSource")
   void variableGasLimitTest(long gasLimit, NextGasLimitScenario nextGasLimitScenario) {
-    Bytes program = BytecodeCompiler.newProgram().op(OpCode.STOP).compile();
+    Bytes program = BytecodeCompiler.newProgram(testInfo).op(OpCode.STOP).compile();
 
     multiBlocksTest(
         List.of(program, program), List.of(gasLimit, nextGasLimit(gasLimit, nextGasLimitScenario)));

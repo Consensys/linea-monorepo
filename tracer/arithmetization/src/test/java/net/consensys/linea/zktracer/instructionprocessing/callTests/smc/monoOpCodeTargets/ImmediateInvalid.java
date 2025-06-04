@@ -31,7 +31,7 @@ public class ImmediateInvalid extends TracerTestBase {
 
   @Test
   void zeroValueTransferToInvalid() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 0, 0, 0, 0, 0);
 
@@ -40,7 +40,7 @@ public class ImmediateInvalid extends TracerTestBase {
 
   @Test
   void nonZeroValueTransferToInvalidContract() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 1, 0, 0, 0, 0);
 
@@ -49,7 +49,7 @@ public class ImmediateInvalid extends TracerTestBase {
 
   @Test
   void nonZeroValueTransferToInvalidContractRevertingTransaction() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     appendCall(program, CALL, 0, accountWhoseByteCodeIsASingleInvalid.getAddress(), 1, 0, 0, 0, 0);
 

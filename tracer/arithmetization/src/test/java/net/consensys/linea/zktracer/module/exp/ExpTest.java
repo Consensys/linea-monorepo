@@ -60,7 +60,8 @@ public class ExpTest extends TracerTestBase {
 
   @Test
   void testExpLogSingleCase() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram().push(2).push(10).op(OpCode.EXP);
+    BytecodeCompiler program =
+        BytecodeCompiler.newProgram(testInfo).push(2).push(10).op(OpCode.EXP);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(testInfo);
   }
@@ -68,7 +69,7 @@ public class ExpTest extends TracerTestBase {
   @Test
   void testModexpLogSingleCase() {
     BytecodeCompiler program =
-        BytecodeCompiler.newProgram()
+        BytecodeCompiler.newProgram(testInfo)
             .push(1) // bbs
             .push(0)
             .op(OpCode.MSTORE)
@@ -104,7 +105,8 @@ public class ExpTest extends TracerTestBase {
       })
   void testExpLogFFBlockCase(int k) {
     Bytes exponent = Bytes.fromHexString(ffBlock(k));
-    BytecodeCompiler program = BytecodeCompiler.newProgram().push(exponent).push(10).op(OpCode.EXP);
+    BytecodeCompiler program =
+        BytecodeCompiler.newProgram(testInfo).push(exponent).push(10).op(OpCode.EXP);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(testInfo);
   }
@@ -117,7 +119,8 @@ public class ExpTest extends TracerTestBase {
       })
   void testExpLogFFAtCase(int k) {
     Bytes exponent = Bytes.fromHexString(ffAt(k));
-    BytecodeCompiler program = BytecodeCompiler.newProgram().push(exponent).push(10).op(OpCode.EXP);
+    BytecodeCompiler program =
+        BytecodeCompiler.newProgram(testInfo).push(exponent).push(10).op(OpCode.EXP);
     BytecodeRunner bytecodeRunner = BytecodeRunner.of(program.compile());
     bytecodeRunner.run(testInfo);
   }
@@ -215,7 +218,7 @@ public class ExpTest extends TracerTestBase {
     final int mbs = 0;
     final int minimalValidCds = cdsCutoff + 96 + bbs;
 
-    return BytecodeCompiler.newProgram()
+    return BytecodeCompiler.newProgram(testInfo)
         .push(bbs) // bbs
         .push(0)
         .op(OpCode.MSTORE)

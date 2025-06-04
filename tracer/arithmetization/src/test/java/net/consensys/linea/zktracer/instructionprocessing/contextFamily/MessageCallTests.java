@@ -56,12 +56,12 @@ public class MessageCallTests extends TracerTestBase {
     accounts.add(allContextOpCodesSmc);
     accounts.add(recipientAccount);
 
-    ToyExecutionEnvironmentV2.builder()
+    ToyExecutionEnvironmentV2.builder(testInfo)
         .transaction(buildTransaction(recipientAccount))
         .accounts(accounts)
         .transactionProcessingResultValidator(TransactionProcessingResultValidator.EMPTY_VALIDATOR)
         .build()
-        .run(testInfo);
+        .run();
   }
 
   /**
@@ -72,7 +72,7 @@ public class MessageCallTests extends TracerTestBase {
    */
   private ToyAccount buildRecipient(OpCode callOpCode) {
 
-    BytecodeCompiler recipientCode = BytecodeCompiler.newProgram();
+    BytecodeCompiler recipientCode = BytecodeCompiler.newProgram(testInfo);
     recipientCode.op(CALLDATASIZE);
     recipientCode.op(RETURNDATASIZE);
     recipientCode.op(CALLER);

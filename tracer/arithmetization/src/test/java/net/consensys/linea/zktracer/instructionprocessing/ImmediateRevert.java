@@ -27,13 +27,13 @@ public class ImmediateRevert extends TracerTestBase {
 
   @Test
   void testImmediatePop() {
-    BytecodeRunner.of(BytecodeCompiler.newProgram().op(OpCode.POP).compile()).run(testInfo);
+    BytecodeRunner.of(BytecodeCompiler.newProgram(testInfo).op(OpCode.POP).compile()).run(testInfo);
   }
 
   @Test
   void testPopWithinCreate() {
     BytecodeRunner.of(
-            BytecodeCompiler.newProgram()
+            BytecodeCompiler.newProgram(testInfo)
                 .push(0x50) // POP
                 .push(0)
                 .op(OpCode.MSTORE8)

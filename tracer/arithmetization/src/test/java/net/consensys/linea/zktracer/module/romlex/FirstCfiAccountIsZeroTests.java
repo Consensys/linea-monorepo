@@ -49,7 +49,7 @@ public class FirstCfiAccountIsZeroTests extends TracerTestBase {
 
     // we don't care about the bytecode, we just need a contract with address 0
     final Bytes bytecode =
-        BytecodeCompiler.newProgram().push(256).push(255).op(OpCode.SAR).compile();
+        BytecodeCompiler.newProgram(testInfo).push(256).push(255).op(OpCode.SAR).compile();
 
     final ToyAccount recipientAccount =
         ToyAccount.builder()
@@ -69,13 +69,13 @@ public class FirstCfiAccountIsZeroTests extends TracerTestBase {
             .build();
 
     final ToyExecutionEnvironmentV2 test =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(List.of(senderAccount, recipientAccount))
             .transaction(tx)
             .zkTracerValidator(zkTracer -> {})
             .build();
 
-    test.run(testInfo);
+    test.run();
 
     checkArgument(test.getHub().romLex().lineCount() == 1);
   }

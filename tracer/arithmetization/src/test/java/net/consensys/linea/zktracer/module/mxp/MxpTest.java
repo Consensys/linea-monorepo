@@ -93,7 +93,7 @@ public class MxpTest extends TracerTestBase {
   @Test
   void testMxpRandom() {
     // Testing a random program
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     final int INSTRUCTION_COUNT = 4096;
     for (int i = 0; i < INSTRUCTION_COUNT; i++) {
       boolean isHalting = i == INSTRUCTION_COUNT - 1;
@@ -106,7 +106,7 @@ public class MxpTest extends TracerTestBase {
   @Test
   void testMxpRandomTriggerMxpx() {
     // Testing a random program
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     final int INSTRUCTION_COUNT = 256;
     for (int i = 0; i < INSTRUCTION_COUNT; i++) {
       boolean isHalting = i == INSTRUCTION_COUNT - 1;
@@ -120,7 +120,7 @@ public class MxpTest extends TracerTestBase {
   @Test
   void testRandomMxpInstructionsFollowedByTriggeringRoob() {
     // Testing a random program
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     final int INSTRUCTION_COUNT = 256;
     for (int i = 0; i < INSTRUCTION_COUNT; i++) {
       boolean isHalting = i == INSTRUCTION_COUNT - 1;
@@ -132,7 +132,7 @@ public class MxpTest extends TracerTestBase {
 
   @Test
   void testSingleLog3TriggersRoob() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program
         .push("30000003333333333333000000000000" + "00000000000000000000000000000003") // topic 3
         .push("20000000000000000000222222222222" + "20000000000000000000000000000002") // topic 2
@@ -145,7 +145,7 @@ public class MxpTest extends TracerTestBase {
 
   @Test
   void testSingleUnexceptionalLog3() {
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program
         .push("30000003333333333333000000000000" + "00000000000000000000000000000003") // topic 3
         .push("20000000000000000000222222222222" + "20000000000000000000000000000002") // topic 2
@@ -160,7 +160,7 @@ public class MxpTest extends TracerTestBase {
   void testMxpxOrRoob() {
     final int REPETITIONS = 5;
     for (int i = 0; i < REPETITIONS; i++) {
-      BytecodeCompiler program = BytecodeCompiler.newProgram();
+      BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
       boolean isHalting = util.nextRandomInt(2) == 0;
       boolean triggerRoob = util.nextRandomInt(2) == 0;
       triggerNonTrivialButMxpxOrRoob(program, isHalting, triggerRoob);
@@ -174,7 +174,7 @@ public class MxpTest extends TracerTestBase {
     // Testing a random program that contains creates with meaning random arguments
     Bytes INIT = getRandomINITForCreate(); // This is the value given as an argument to CREATE
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     int instructionCount = 256;
     for (int i = 0; i < instructionCount; i++) {
       boolean isHalting = i == instructionCount - 1;
@@ -284,20 +284,20 @@ public class MxpTest extends TracerTestBase {
             contractAccountMO2);
 
     ToyExecutionEnvironmentV2 toyExecutionEnvironmentV2 =
-        ToyExecutionEnvironmentV2.builder()
+        ToyExecutionEnvironmentV2.builder(testInfo)
             .accounts(accounts)
             .transaction(tx)
             .transactionProcessingResultValidator(
                 TransactionProcessingResultValidator.EMPTY_VALIDATOR)
             .build();
 
-    toyExecutionEnvironmentV2.run(testInfo);
+    toyExecutionEnvironmentV2.run();
   }
 
   // Support methods
   private Bytes getRandomINITForCreate() {
     final int INSTRUCTION_COUNT_INIT = 256;
-    BytecodeCompiler INIT = BytecodeCompiler.newProgram();
+    BytecodeCompiler INIT = BytecodeCompiler.newProgram(testInfo);
     for (int i = 0; i < INSTRUCTION_COUNT_INIT; i++) {
       boolean isHalting = i == INSTRUCTION_COUNT_INIT - 1;
       triggerNonTrivialOrNoop(INIT, isHalting);

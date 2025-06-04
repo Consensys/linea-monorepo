@@ -54,11 +54,11 @@ public class ExceptionAtContextReEntry extends TracerTestBase {
   @Test
   public void firstInstructionAfterResumingFromUnsuccessfulMessageCallIsExceptional() {
 
-    BytecodeCompiler initCode = BytecodeCompiler.newProgram();
+    BytecodeCompiler initCode = BytecodeCompiler.newProgram(testInfo);
     initCode.push(ADD.byteValue()).push(0).op(MSTORE8).push(1).push(0).op(RETURN);
     // this init code deploys the byte code "0x01" (when given sufficient gas)
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     // we do a deployment of a smart contract whose bytecode is "0x01"
     Bytes initCodeBytes = initCode.compile();
@@ -105,7 +105,7 @@ public class ExceptionAtContextReEntry extends TracerTestBase {
   @Test
   public void firstInstructionAfterResumingFromSuccessfulMessageCallIsExceptional() {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
 
     // message call to a simple smart contract
     program
@@ -135,7 +135,7 @@ public class ExceptionAtContextReEntry extends TracerTestBase {
   @Test
   public void firstInstructionAfterResumingFromSuccessfulContractCreationIsExceptional() {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program.push(0).push(0).push(0).op(CREATE);
 
     // the previous operation leaves the stack in the following state
@@ -157,7 +157,7 @@ public class ExceptionAtContextReEntry extends TracerTestBase {
   @Test
   public void firstInstructionAfterResumingFromUnsuccessfulContractCreationIsExceptional() {
 
-    BytecodeCompiler program = BytecodeCompiler.newProgram();
+    BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
     program.push(ADD.byteValue()).push(0).op(MSTORE8);
     // memory = [01 00 00 ... [
 
