@@ -1,10 +1,12 @@
 package linea.coordinator.config.v2
 
 import linea.coordinator.config.v2.toml.DefaultsToml
+import linea.coordinator.config.v2.toml.RequestRetriesToml
 import linea.coordinator.config.v2.toml.parseConfig
 import linea.kotlin.toURL
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import kotlin.time.Duration.Companion.seconds
 
 class DefaultsParsingTest {
   companion object {
@@ -12,11 +14,29 @@ class DefaultsParsingTest {
     [defaults]
     l1-endpoint = "http://l1-el-node:8545"
     l2-endpoint = "http://sequencer:8545"
+    [defaults.l1-endpoint-request-retries]
+    backoff-delay = "PT2S"
+    failures-warning-threshold = 2
+    timeout = "PT20S"
+    [defaults.l2-endpoint-request-retries]
+    backoff-delay = "PT3S"
+    failures-warning-threshold = 3
+    timeout = "PT30S"
     """.trimIndent()
 
     val config = DefaultsToml(
       l1Endpoint = "http://l1-el-node:8545".toURL(),
       l2Endpoint = "http://sequencer:8545".toURL(),
+      l1EndpointRequestRetries = RequestRetriesToml(
+        backoffDelay = 2.seconds,
+        failuresWarningThreshold = 2u,
+        timeout = 20.seconds,
+      ),
+      l2EndpointRequestRetries = RequestRetriesToml(
+        backoffDelay = 3.seconds,
+        failuresWarningThreshold = 3u,
+        timeout = 30.seconds,
+      ),
     )
 
     val tomlMinimal = """
@@ -25,6 +45,14 @@ class DefaultsParsingTest {
     val configMinimal = DefaultsToml(
       l1Endpoint = null,
       l2Endpoint = null,
+      l1EndpointRequestRetries = RequestRetriesToml.endlessRetry(
+        backoffDelay = 1.seconds,
+        failuresWarningThreshold = 3u,
+      ),
+      l2EndpointRequestRetries = RequestRetriesToml.endlessRetry(
+        backoffDelay = 1.seconds,
+        failuresWarningThreshold = 3u,
+      ),
     )
   }
   internal data class WrapperConfig(val defaults: DefaultsToml = DefaultsToml())

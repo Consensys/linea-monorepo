@@ -60,7 +60,7 @@ data class ConflationToml(
   }
 
   fun reified(
-    l2DefaultEndpoint: URL? = null,
+    defaults: DefaultsToml,
     tracesCountersLimitsV2: TracesCountersV2,
   ): ConflationConfig {
     return ConflationConfig(
@@ -73,15 +73,14 @@ data class ConflationToml(
       conflationDeadlineLastBlockConfirmationDelay = this.conflationDeadlineLastBlockConfirmationDelay,
       consistentNumberOfBlocksOnL1ToWait = this.consistentNumberOfBlocksOnL1ToWait,
       l2FetchBlocksLimit = this.l2FetchBlocksLimit ?: UInt.MAX_VALUE,
-      l2Endpoint = this.l2BlockCreationEndpoint ?: l2DefaultEndpoint ?: throw IllegalArgumentException(
-        "l2 endpoint config missing",
-      ),
-      l2GetLogsEndpoint = this.l2LogsEndpoint ?: l2DefaultEndpoint ?: throw IllegalArgumentException(
-        "l2 endpoint config missing",
-      ),
+      l2Endpoint = this.l2BlockCreationEndpoint ?: defaults.l2Endpoint
+        ?: throw AssertionError("l2Endpoint config missing"),
+      l2RequestRetries = defaults.l2EndpointRequestRetries.asDomain,
+      l2GetLogsEndpoint = this.l2LogsEndpoint ?: defaults.l2Endpoint
+        ?: throw AssertionError("please set l2GetLogsEndpoint or l2Endpoint config"),
       blobCompression = this.blobCompression.reified(),
       proofAggregation = this.proofAggregation.reified(),
-      tracesCountersLimitsV2 = tracesCountersLimitsV2,
+      tracesLimitsV2 = tracesCountersLimitsV2,
     )
   }
 }

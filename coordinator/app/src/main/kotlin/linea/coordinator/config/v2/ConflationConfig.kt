@@ -1,6 +1,7 @@
 package linea.coordinator.config.v2
 
 import linea.blob.BlobCompressorVersion
+import linea.domain.RetryConfig
 import net.consensys.linea.traces.TracesCountersV2
 import java.net.URL
 import kotlin.time.Duration
@@ -18,10 +19,14 @@ data class ConflationConfig(
   val consistentNumberOfBlocksOnL1ToWait: UInt = 32u, // 1 epoch
   val l2FetchBlocksLimit: UInt = UInt.MAX_VALUE,
   val l2Endpoint: URL,
+  val l2RequestRetries: RetryConfig = RetryConfig.endlessRetry(
+    backoffDelay = 1.seconds,
+    failuresWarningThreshold = 3u,
+  ),
   val l2GetLogsEndpoint: URL,
   val blobCompression: BlobCompression = BlobCompression(),
   val proofAggregation: ProofAggregation = ProofAggregation(),
-  val tracesCountersLimitsV2: TracesCountersV2,
+  val tracesLimitsV2: TracesCountersV2,
 ) : FeatureToggle {
   data class BlobCompression(
     val blobSizeLimit: UInt = 102400u,

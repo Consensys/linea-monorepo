@@ -141,7 +141,8 @@ data class L1SubmissionConfigToml(
       ),
       blob = L1SubmissionConfig.BlobSubmissionConfig(
         disabled = this.blob.disabled,
-        endpoint = this.blob.l1Endpoint ?: l1DefaultEndpoint ?: throw AssertionError("l1Endpoint config missing"),
+        l1Endpoint = this.blob.l1Endpoint ?: l1DefaultEndpoint
+          ?: throw AssertionError("l1Endpoint config missing"),
         submissionDelay = this.blob.submissionDelay,
         submissionTickInterval = this.blob.submissionTickInterval,
         maxSubmissionTransactionsPerTick = this.blob.maxSubmissionTransactionsPerTick,
@@ -152,7 +153,7 @@ data class L1SubmissionConfigToml(
       ),
       aggregation = L1SubmissionConfig.AggregationSubmissionConfig(
         disabled = this.aggregation.disabled,
-        endpoint = this.aggregation.l1Endpoint ?: l1DefaultEndpoint
+        l1Endpoint = this.aggregation.l1Endpoint ?: l1DefaultEndpoint
           ?: throw AssertionError("l1Endpoint config missing"),
         submissionDelay = this.aggregation.submissionDelay,
         submissionTickInterval = this.aggregation.submissionTickInterval,

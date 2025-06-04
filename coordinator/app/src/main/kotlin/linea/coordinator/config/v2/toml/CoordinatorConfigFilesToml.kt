@@ -7,10 +7,19 @@ import net.consensys.linea.ethereum.gaspricing.dynamiccap.TimeOfDayMultipliers
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.TracingModuleV2
 import java.net.URL
+import kotlin.time.Duration.Companion.seconds
 
 data class DefaultsToml(
   val l1Endpoint: URL? = null,
   val l2Endpoint: URL? = null,
+  val l1EndpointRequestRetries: RequestRetriesToml = RequestRetriesToml.endlessRetry(
+    backoffDelay = 1.seconds,
+    failuresWarningThreshold = 3u,
+  ),
+  val l2EndpointRequestRetries: RequestRetriesToml = RequestRetriesToml.endlessRetry(
+    backoffDelay = 1.seconds,
+    failuresWarningThreshold = 3u,
+  ),
 )
 
 data class ApiConfigToml(
@@ -57,7 +66,7 @@ data class CoordinatorConfigToml(
     return CoordinatorConfig(
       protocol = configs.protocol.reified(),
       conflation = configs.conflation.reified(
-        l2DefaultEndpoint = configs.defaults.l2Endpoint,
+        defaults = configs.defaults,
         tracesCountersLimitsV2 = TracesCountersV2(tracesLimitsV2.tracesLimits),
       ),
       proversConfig = this.configs.prover.reified(),
@@ -65,8 +74,7 @@ data class CoordinatorConfigToml(
       stateManager = this.configs.stateManager.reified(),
       type2StateProofProvider = this.configs.type2StateProofProvider.reified(),
       l1FinalizationMonitor = this.configs.l1FinalizationMonitor.reified(
-        l1DefaultEndpoint = this.configs.defaults.l1Endpoint,
-        l2DefaultEndpoint = this.configs.defaults.l2Endpoint,
+        defaults = this.configs.defaults,
       ),
       l1Submission = this.configs.l1Submission.reified(
         l1DefaultEndpoint = this.configs.defaults.l1Endpoint,

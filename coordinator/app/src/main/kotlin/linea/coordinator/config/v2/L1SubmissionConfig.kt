@@ -60,7 +60,7 @@ data class L1SubmissionConfig(
 
   data class BlobSubmissionConfig(
     override val disabled: Boolean,
-    val endpoint: URL,
+    val l1Endpoint: URL,
     val submissionDelay: Duration,
     val submissionTickInterval: Duration,
     val maxSubmissionTransactionsPerTick: UInt,
@@ -72,7 +72,7 @@ data class L1SubmissionConfig(
 
   data class AggregationSubmissionConfig(
     override val disabled: Boolean,
-    val endpoint: URL,
+    val l1Endpoint: URL,
     val submissionDelay: Duration,
     val submissionTickInterval: Duration,
     val maxSubmissionsPerTick: UInt,
