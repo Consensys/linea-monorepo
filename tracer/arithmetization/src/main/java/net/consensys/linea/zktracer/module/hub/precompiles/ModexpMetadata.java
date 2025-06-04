@@ -17,8 +17,11 @@ package net.consensys.linea.zktracer.module.hub.precompiles;
 
 import static net.consensys.linea.zktracer.Trace.WORD_SIZE;
 import static net.consensys.linea.zktracer.module.Util.rightPaddedSlice;
+import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.MODEXP_COMPONENT_BYTE_SIZE;
 import static net.consensys.linea.zktracer.types.Conversions.safeLongToInt;
 import static net.consensys.linea.zktracer.types.Utils.rightPadTo;
+
+import java.math.BigInteger;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -35,6 +38,8 @@ public class ModexpMetadata {
   public static final int EBS_MIN_OFFSET = 0x20;
   public static final int MBS_MIN_OFFSET = 0x40;
   public static final int BASE_MIN_OFFSET = 0x60;
+  public static BigInteger MODEXP_MAX_PROVABLE_INPUT_SIZE =
+      BigInteger.valueOf(MODEXP_COMPONENT_BYTE_SIZE);
 
   private final MemoryRange callDataRange;
   @Setter private Bytes rawResult;
@@ -167,5 +172,11 @@ public class ModexpMetadata {
             callDataRange.getRawData(),
             safeLongToInt(callDataRange.offset()) + BASE_MIN_OFFSET + bbsInt(),
             WORD_SIZE));
+  }
+
+  public boolean unprovableModexp() {
+    return bbs().toUnsignedBigInteger().compareTo(MODEXP_MAX_PROVABLE_INPUT_SIZE) > 0
+        || mbs().toUnsignedBigInteger().compareTo(MODEXP_MAX_PROVABLE_INPUT_SIZE) > 0
+        || ebs().toUnsignedBigInteger().compareTo(MODEXP_MAX_PROVABLE_INPUT_SIZE) > 0;
   }
 }

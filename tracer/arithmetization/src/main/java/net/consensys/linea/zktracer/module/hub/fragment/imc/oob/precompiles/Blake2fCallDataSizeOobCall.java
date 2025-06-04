@@ -51,10 +51,9 @@ public class Blake2fCallDataSizeOobCall extends OobCall {
   @Override
   public void setInputData(MessageFrame frame, Hub hub) {
     final OpCode opCode = getOpCode(frame);
-    final int cdsIndex = opCode.callHasValueArgument() ? 4 : 3;
-    final int returnAtCapacityIndex = opCode.callHasValueArgument() ? 6 : 5;
-    final EWord cds = EWord.of(frame.getStackItem(cdsIndex));
-    final EWord returnAtCapacity = EWord.of(frame.getStackItem(returnAtCapacityIndex));
+    final EWord cds = EWord.of(frame.getStackItem(opCode.callCdsStackIndex()));
+    final EWord returnAtCapacity =
+        EWord.of(frame.getStackItem(opCode.callReturnAtCapacityStackIndex()));
     setCds(cds);
     setReturnAtCapacity(returnAtCapacity);
   }

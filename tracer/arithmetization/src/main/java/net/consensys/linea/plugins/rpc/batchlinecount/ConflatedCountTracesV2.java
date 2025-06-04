@@ -27,11 +27,9 @@ import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
 import net.consensys.linea.plugins.rpc.RequestLimiter;
 import net.consensys.linea.plugins.rpc.Validator;
 import net.consensys.linea.plugins.rpc.tracegeneration.TraceRequestParams;
-import net.consensys.linea.zktracer.Fork;
-import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.json.JsonConverter;
 import org.hyperledger.besu.plugin.ServiceManager;
-import org.hyperledger.besu.plugin.services.BlockchainService;
 import org.hyperledger.besu.plugin.services.TraceService;
 import org.hyperledger.besu.plugin.services.rpc.PluginRpcRequest;
 
@@ -49,7 +47,6 @@ public class ConflatedCountTracesV2 {
   private final ServiceManager besuContext;
   private final LineaL1L2BridgeSharedConfiguration l1L2BridgeSharedConfiguration;
   private TraceService traceService;
-  private Fork fork;
 
   public String getNamespace() {
     return "linea";
@@ -70,7 +67,7 @@ public class ConflatedCountTracesV2 {
   }
 
   private ConflatedLineCounts countConflation(PluginRpcRequest request) {
-    Stopwatch sw = Stopwatch.createStarted();
+    final Stopwatch sw = Stopwatch.createStarted();
 
     this.traceService =
         Optional.ofNullable(traceService).orElse(BesuServiceProvider.getTraceService(besuContext));
@@ -79,29 +76,23 @@ public class ConflatedCountTracesV2 {
 
     Validator.validatePluginRpcRequestParams(rawParams);
 
-    TraceRequestParams params =
+    final TraceRequestParams params =
         CONVERTER.fromJson(CONVERTER.toJson(rawParams[0]), TraceRequestParams.class);
 
     params.validate();
 
     final long fromBlock = params.startBlockNumber();
     final long toBlock = params.endBlockNumber();
-    final ZkTracer tracer =
-        new ZkTracer(
-            fork,
-            l1L2BridgeSharedConfiguration,
-            BesuServiceProvider.getBesuService(besuContext, BlockchainService.class)
-                .getChainId()
-                .orElseThrow());
+    final ZkCounter counter = new ZkCounter(l1L2BridgeSharedConfiguration);
 
     traceService.trace(
         fromBlock,
         toBlock,
-        worldStateBeforeTracing -> tracer.traceStartConflation(toBlock - fromBlock + 1),
-        tracer::traceEndConflation,
-        tracer);
+        worldStateBeforeTracing -> counter.traceStartConflation(toBlock - fromBlock + 1),
+        counter::traceEndConflation,
+        counter);
 
-    Map<String, Integer> counts = tracer.getModulesLineCount();
+    final Map<String, Integer> counts = counter.getModulesLineCount();
     log.info(
         "[TRACING] counting lines for conflated blocks {}-{} computed in {}",
         fromBlock,

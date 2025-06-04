@@ -17,7 +17,9 @@ package net.consensys.linea.zktracer.types;
 
 import static org.hyperledger.besu.evm.internal.Words.clampedToLong;
 
+import net.consensys.linea.zktracer.opcode.OpCode;
 import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.evm.frame.MessageFrame;
 
 /**
  * A MemorySpan describes a contiguous region in an account memory.
@@ -48,6 +50,13 @@ public record Range(long offset, long size) {
    */
   public static Range fromOffsetAndSize(Bytes offset, Bytes size) {
     return size.isZero() ? Range.empty() : new Range(clampedToLong(offset), clampedToLong(size));
+  }
+
+  public static Range callDataRange(MessageFrame frame) {
+    final OpCode opCode = OpCode.of(frame.getCurrentOperation().getOpcode());
+    final Bytes offset = frame.getStackItem(opCode.callCdoStackIndex());
+    final Bytes size = frame.getStackItem(opCode.callCdsStackIndex());
+    return fromOffsetAndSize(offset, size);
   }
 
   public boolean isEmpty() {

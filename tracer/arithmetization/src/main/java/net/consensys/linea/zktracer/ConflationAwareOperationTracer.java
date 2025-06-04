@@ -59,11 +59,11 @@ public interface ConflationAwareOperationTracer extends BlockAwareOperationTrace
    * @return A operation tracer which calls the relevant methods on each of the tracers it is
    *     multiplexing.
    */
-  public static ConflationAwareOperationTracer sequence(ConflationAwareOperationTracer... tracers) {
+  static ConflationAwareOperationTracer sequence(ConflationAwareOperationTracer... tracers) {
     return new SequencingOperationTracer(tracers);
   }
 
-  static class SequencingOperationTracer implements ConflationAwareOperationTracer {
+  class SequencingOperationTracer implements ConflationAwareOperationTracer {
     private final List<ConflationAwareOperationTracer> tracers;
 
     public SequencingOperationTracer(ConflationAwareOperationTracer... tracers) {

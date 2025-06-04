@@ -175,7 +175,7 @@ public class L2L1LogsTests extends TracerTestBase {
 
     final L2L1Logs l2l1Logs = toyWorld.getHub().l2L1Logs();
 
-    // We made two LOGs, one with 1 topic, and one with 4 topics and data
+    // We made a reverted LOG
     assertEquals(0, l2l1Logs.lineCount());
   }
 }

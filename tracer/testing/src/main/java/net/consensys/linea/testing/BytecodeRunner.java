@@ -145,7 +145,7 @@ public final class BytecodeRunner {
     }
     final Transaction tx = txBuilder.build();
 
-    List<ToyAccount> accounts = new ArrayList<>();
+    final List<ToyAccount> accounts = new ArrayList<>();
     accounts.add(senderAccount);
     accounts.add(receiverAccount);
     accounts.addAll(additionalAccounts);

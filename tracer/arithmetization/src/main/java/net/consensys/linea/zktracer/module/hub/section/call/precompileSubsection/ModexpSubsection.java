@@ -16,7 +16,6 @@
 package net.consensys.linea.zktracer.module.hub.section.call.precompileSubsection;
 
 import static com.google.common.base.Preconditions.*;
-import static net.consensys.linea.zktracer.module.blake2fmodexpdata.BlakeModexpDataOperation.MODEXP_COMPONENT_BYTE_SIZE;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forModexpExtractBase;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forModexpExtractBbs;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.mmu.MmuCall.forModexpExtractEbs;
@@ -30,8 +29,6 @@ import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompil
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase.OOB_INST_MODEXP_EBS;
 import static net.consensys.linea.zktracer.module.hub.fragment.imc.oob.precompiles.modexp.ModexpXbsCase.OOB_INST_MODEXP_MBS;
 import static net.consensys.linea.zktracer.module.hub.fragment.scenario.PrecompileScenarioFragment.PrecompileScenario.PRC_FAILURE_KNOWN_TO_RAM;
-
-import java.math.BigInteger;
 
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.hub.fragment.imc.ImcFragment;
@@ -59,21 +56,7 @@ public class ModexpSubsection extends PrecompileSubsection {
     super(hub, callSection);
 
     modexpMetaData = new ModexpMetadata(getCallDataRange());
-    if (modexpMetaData
-                .bbs()
-                .toUnsignedBigInteger()
-                .compareTo(BigInteger.valueOf(MODEXP_COMPONENT_BYTE_SIZE))
-            > 0
-        || modexpMetaData
-                .mbs()
-                .toUnsignedBigInteger()
-                .compareTo(BigInteger.valueOf(MODEXP_COMPONENT_BYTE_SIZE))
-            > 0
-        || modexpMetaData
-                .ebs()
-                .toUnsignedBigInteger()
-                .compareTo(BigInteger.valueOf(MODEXP_COMPONENT_BYTE_SIZE))
-            > 0) {
+    if (modexpMetaData.unprovableModexp()) {
       hub.modexpEffectiveCall().updateTally(Integer.MAX_VALUE);
       hub.defers().unscheduleForContextReEntry(this, hub.currentFrame());
       transactionWillBePopped = true;
