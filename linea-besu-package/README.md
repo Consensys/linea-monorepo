@@ -73,12 +73,12 @@ bin/besu --profile=advanced-mainnet --plugin-linea-l1-rpc-endpoint=YOUR_L1_RPC_E
 
 ### Note: 
 
-To build with specific platform with specific image tag, do the following:
+To build with specific platform (e.g. linux/amd64) and image tag (e.g. xxx), do the following:
 ```
 make clean && PLATFORM=linux/amd64 TAG=xxx make build
 ```
 
-To run the e2e test locally with the built `linea-besu-package` image, do the following:
+To run the e2e test locally with the locally-built `linea-besu-package` image (e.g. tagged as xxx), do the following:
 ```
 TAG=xxx make run-e2e-test
 ```
