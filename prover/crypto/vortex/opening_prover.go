@@ -52,7 +52,7 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 	// Compute the linear combination
 	linComb := make([]fext.Element, params.NbColumns)
 
-	parallel.ExecuteChunky(len(linComb), func(start, stop int) {
+	parallel.Execute(params.NbColumns, func(start, stop int) {
 		subTask := make([]smartvectors.SmartVector, 0, len(committedSV))
 		for i := range committedSV {
 			subTask = append(subTask, committedSV[i].SubVector(start, stop))
