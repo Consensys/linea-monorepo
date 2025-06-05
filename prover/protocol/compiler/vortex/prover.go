@@ -185,6 +185,10 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 		committedMatricesNoSIS = []vortex.EncodedMatrix{}
 		treesSIS               = []*smt.Tree{}
 		treesNoSIS             = []*smt.Tree{}
+		// We need them to assign the opened sis and non sis columns
+		// to be used in the self-recursion compiler
+		sisProof               = vortex.OpeningProof{}
+		nonSisProof            = vortex.OpeningProof{}
 	)
 
 	// Append the precomputed committedMatrices and trees to the SIS or no SIS matrices
@@ -242,28 +246,26 @@ func (ctx *Ctx) OpenSelectedColumns(pr *wizard.ProverRuntime) {
 
 	packedMProofs := ctx.packMerkleProofs(proof.MerkleProofs)
 	pr.AssignColumn(ctx.Items.MerkleProofs.GetColID(), packedMProofs)
-	// Assign the SIS and non SIS selected columns
-	if ctx.IsSelfrecursed {
-		var (
-			sisProof    = vortex.OpeningProof{}
-			nonSisProof = vortex.OpeningProof{}
-		)
-		// Handle SIS round
-		if len(committedMatricesSIS) > 0 {
-			sisProof.Complete(entryList, committedMatricesSIS, treesSIS)
-			sisSelectedCols := sisProof.Columns
-			// Assign the opened columns
-			ctx.assignOpenedColumns(pr, entryList, sisSelectedCols, SelfRecursionSIS)
-		}
-		// Handle non SIS round
-		if len(committedMatricesNoSIS) > 0 {
-			nonSisProof.Complete(entryList, committedMatricesNoSIS, treesNoSIS)
-			nonSisSelectedCols := nonSisProof.Columns
-			ctx.assignOpenedColumns(pr, entryList, nonSisSelectedCols, SelfRecursionMiMCOnly)
-			// Store the selected columns for the non sis round
-			//  in the prover state
-			ctx.storeSelectedColumnsForNonSisRounds(pr, nonSisSelectedCols)
-		}
+	// Assign the SIS and non SIS selected columns.
+	// They are not used in the Vortex compilers,
+	// but are used in the self-recursion compilers.
+	// But we need to assign them anyway as the self-recursion
+	// compiler always run after running the Vortex compiler
+	// Handle SIS round
+	if len(committedMatricesSIS) > 0 {
+		sisProof.Complete(entryList, committedMatricesSIS, treesSIS)
+		sisSelectedCols := sisProof.Columns
+		// Assign the opened columns
+		ctx.assignOpenedColumns(pr, entryList, sisSelectedCols, SelfRecursionSIS)
+	}
+	// Handle non SIS round
+	if len(committedMatricesNoSIS) > 0 {
+		nonSisProof.Complete(entryList, committedMatricesNoSIS, treesNoSIS)
+		nonSisSelectedCols := nonSisProof.Columns
+		ctx.assignOpenedColumns(pr, entryList, nonSisSelectedCols, SelfRecursionMiMCOnly)
+		// Store the selected columns for the non sis round
+		//  in the prover state
+		ctx.storeSelectedColumnsForNonSisRounds(pr, nonSisSelectedCols)
 	}
 }
 

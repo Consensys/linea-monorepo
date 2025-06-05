@@ -289,13 +289,13 @@ func NewRecursionCtx(comp *wizard.CompiledIOP, vortexCtx *vortex.Ctx, prefix str
 	}
 	comp.Columns.SetStatus(ctx.Columns.Ualpha.GetColID(), column.Committed)
 
-	// And for the `WholePreimage`, we mark it as `Ignored` and make the
+	// And for the `WholePreimageSis`, we mark it as `Ignored` and make the
 	// same assumption that theirs status is `Proof`
 	for _, opened := range ctx.Columns.WholePreimagesSis {
 		// Assume that the rounds commitments have a `Proof` status
 		if comp.Columns.Status(opened.GetColID()) != column.Proof {
 			utils.Panic(
-				"Assumed the Dh %v to be %v but status is %v (recursion context is %v)",
+				"Assumed the SIS preimages %v to be %v but status is %v (recursion context is %v)",
 				opened.GetColID(),
 				column.Proof.String(),
 				comp.Columns.Status(opened.GetColID()),
