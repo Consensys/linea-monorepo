@@ -57,7 +57,7 @@ func NewPermutation(id ifaces.QueryID, a, b [][]ifaces.Column) Permutation {
 	}
 
 	if totalRow[0] != totalRow[1] {
-		utils.Panic("a (numRows: %v, colId: %v) and b (numRows: %v, colId: %v) must have the same total number of rows", totalRow[0], a[0][0].GetColID(), totalRow[1], b[0][0].GetColID())
+		utils.Panic("a (numRows: %v, colId: %v) and b (numRows: %v, colId: %v) must have the same total number of rows, query id: %v", totalRow[0], a[0][0].GetColID(), totalRow[1], b[0][0].GetColID(), id)
 	}
 
 	return Permutation{A: a, B: b, ID: id}
