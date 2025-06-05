@@ -15,12 +15,10 @@ describe("Shomei Linea get proof test suite", () => {
       const shomeiImageTag = await getDockerImageTag("shomei-frontend", "consensys/linea-shomei");
       logger.info(`shomeiImageTag=${shomeiImageTag}`);
 
-      const currentL2BlockNumber = await awaitUntil(
+      let targetL2BlockNumber = await awaitUntil(
         async () => {
           try {
-            return await lineaRollupV6.currentL2BlockNumber({
-              blockTag: "finalized",
-            });
+            return await lineaRollupV6.currentL2BlockNumber({ blockTag: "finalized" });
           } catch (err) {
             if (!(err as Error).message.includes("could not decode result data")) {
               throw err;
@@ -30,27 +28,51 @@ describe("Shomei Linea get proof test suite", () => {
         },
         (currentL2BlockNumber: bigint) => currentL2BlockNumber > 1n,
         2000,
-        180000,
+        100000,
       );
 
-      expect(currentL2BlockNumber).toBeGreaterThan(1n);
+      expect(targetL2BlockNumber).toBeGreaterThan(1n);
 
-      logger.info(`currentL2BlockNumber=${currentL2BlockNumber}`);
-
+      const finalizedL2BlockNumbers = [targetL2BlockNumber!];
       const provingAddress = "0xfe3b557e8fb62b89f4916b721be55ceb828dbd73"; // from genesis file
       const getProofResponse = await awaitUntil(
-        async () =>
-          lineaShomeiFrontenedClient.lineaGetProof(provingAddress, [], "0x" + currentL2BlockNumber!.toString(16)),
+        async () => {
+          let getProofResponse;
+          // Need to put all the latest currentL2BlockNumber in a list and traverse to get the proof
+          // from one of them as we don't know on which finalized L2 block number the shomei frontend
+          // was being notified
+          for (const finalizedL2BlockNumber of finalizedL2BlockNumbers) {
+            getProofResponse = await lineaShomeiFrontenedClient.lineaGetProof(
+              provingAddress,
+              [],
+              "0x" + finalizedL2BlockNumber.toString(16),
+            );
+            if (getProofResponse?.result) {
+              targetL2BlockNumber = finalizedL2BlockNumber;
+              break;
+            }
+          }
+          if (!getProofResponse?.result) {
+            const latestFinalizedL2BlockNumber = await lineaRollupV6.currentL2BlockNumber({ blockTag: "finalized" });
+            if (!finalizedL2BlockNumbers.includes(latestFinalizedL2BlockNumber)) {
+              finalizedL2BlockNumbers.push(latestFinalizedL2BlockNumber);
+            }
+          }
+          logger.info(`finalizedL2BlockNumbers=${JSON.stringify(finalizedL2BlockNumbers.map((it) => Number(it)))}`);
+          return getProofResponse;
+        },
         (getProofResponse) => getProofResponse?.result,
         2000,
-        180000,
+        100000,
       );
+
+      logger.info(`targetL2BlockNumber=${targetL2BlockNumber}`);
 
       const {
         result: { zkEndStateRootHash },
       } = await lineaShomeiClient.rollupGetZkEVMStateMerkleProofV0(
-        Number(currentL2BlockNumber),
-        Number(currentL2BlockNumber),
+        Number(targetL2BlockNumber),
+        Number(targetL2BlockNumber),
         shomeiImageTag,
       );
 
@@ -70,8 +92,8 @@ describe("Shomei Linea get proof test suite", () => {
       const modifiedStateRootHash =
         zkEndStateRootHash.slice(0, -1) + ((parseInt(zkEndStateRootHash.slice(-1), 16) + 1) % 16).toString(16);
 
-      logger.info(`originalStateRootHash=${zkEndStateRootHash}`);
-      logger.info(`modifiedStateRootHash=${modifiedStateRootHash}`);
+      logger.debug(`originalStateRootHash=${zkEndStateRootHash}`);
+      logger.debug(`modifiedStateRootHash=${modifiedStateRootHash}`);
 
       const isInvalid = !(await l2SparseMerkleProofContract.verifyProof(
         getProofResponse.result.accountProof.proof.proofRelatedNodes,
@@ -81,6 +103,6 @@ describe("Shomei Linea get proof test suite", () => {
 
       expect(isInvalid).toBeTruthy();
     },
-    180_000,
+    100_000,
   );
 });
