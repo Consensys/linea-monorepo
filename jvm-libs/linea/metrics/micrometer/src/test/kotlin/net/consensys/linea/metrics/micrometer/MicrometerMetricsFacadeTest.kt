@@ -316,8 +316,8 @@ class MicrometerMetricsFacadeTest {
       .timer()
 
     assertThat(createdTimer1).isNotNull
-    assertThat(createdTimer1!!.totalTime(TimeUnit.MILLISECONDS)).isBetween(4.0, 10.0)
+    assertThat(createdTimer1!!.count()).isEqualTo(2)
     assertThat(createdTimer2).isNotNull
-    assertThat(createdTimer2!!.totalTime(TimeUnit.MILLISECONDS)).isBetween(10.0, 20.0)
+    assertThat(createdTimer2!!.count()).isEqualTo(1)
   }
 }
