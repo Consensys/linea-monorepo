@@ -50,8 +50,8 @@ const (
 	GC_HANDLES_SIZE int = 4000
 )
 
-// quotientCtx collects all the internal fields needed to compute the quotient
-type quotientCtx struct {
+// QuotientCtx collects all the internal fields needed to compute the quotient
+type QuotientCtx struct {
 
 	// DomainSize is the domain over which the global constraints are computed
 	DomainSize int
@@ -93,16 +93,16 @@ type quotientCtx struct {
 	MaxNbExprNode int
 }
 
-// createQuotientCtx constructs a [quotientCtx] from a list of ratios and aggreated
+// createQuotientCtx constructs a [QuotientCtx] from a list of ratios and aggreated
 // expressions. The function organizes the handles but does not declare anything
 // in the current wizard.CompiledIOP.
-func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressions []*symbolic.Expression) quotientCtx {
+func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressions []*symbolic.Expression) QuotientCtx {
 
 	var (
 		allInvolvedHandlesIndex = map[ifaces.ColID]int{}
 		allInvolvedRootsSet     = collection.NewSet[ifaces.ColID]()
 		_, _, domainSize        = wizardutils.AsExpr(aggregateExpressions[0])
-		ctx                     = quotientCtx{
+		ctx                     = QuotientCtx{
 			DomainSize:                domainSize,
 			Ratios:                    ratios,
 			AggregateExpressions:      aggregateExpressions,
@@ -126,7 +126,7 @@ func createQuotientCtx(comp *wizard.CompiledIOP, ratios []int, aggregateExpressi
 		ctx.MaxNbExprNode = max(ctx.MaxNbExprNode, board.CountNodes())
 
 		// This loop scans the metadata looking for columns with the goal of
-		// populating the collections composing quotientCtx.
+		// populating the collections composing QuotientCtx.
 		for _, metadata := range board.ListVariableMetadata() {
 
 			// Scan in column metadata only
@@ -192,7 +192,7 @@ func generateQuotientShares(comp *wizard.CompiledIOP, ratios []int, domainSize i
 
 // Run implements the [wizard.ProverAction] interface and embeds the logic to
 // compute the quotient shares.
-func (ctx *quotientCtx) Run(run *wizard.ProverRuntime) {
+func (ctx *QuotientCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
 		// Tracks the time spent on garbage collection

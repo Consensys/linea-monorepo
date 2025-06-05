@@ -14,30 +14,30 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
 
-func (ctx stitchingContext) constraints() {
+func (ctx StitchingContext) constraints() {
 	ctx.LocalOpening()
 	ctx.LocalGlobalConstraints()
 }
 
-func (ctx stitchingContext) LocalOpening() {
+func (ctx StitchingContext) LocalOpening() {
 
 	// Ignore the LocalOpening queries over the subColumns.
-	for _, qName := range ctx.comp.QueriesParams.AllUnignoredKeys() {
+	for _, qName := range ctx.Comp.QueriesParams.AllUnignoredKeys() {
 		// Filters out only the LocalOpening
-		q, ok := ctx.comp.QueriesParams.Data(qName).(query.LocalOpening)
+		q, ok := ctx.Comp.QueriesParams.Data(qName).(query.LocalOpening)
 		if !ok {
 			utils.Panic("got an uncompilable query %v", qName)
 		}
 
-		round := ctx.comp.QueriesParams.Round(q.ID)
+		round := ctx.Comp.QueriesParams.Round(q.ID)
 
 		if q.Pol.Size() < ctx.MinSize {
 			//sanity-check: column should be public
-			verifiercol.AssertIsPublicCol(ctx.comp, q.Pol)
+			verifiercol.AssertIsPublicCol(ctx.Comp, q.Pol)
 			// Ask the verifier to directly check the query
-			insertVerifier(ctx.comp, q, round)
+			insertVerifier(ctx.Comp, q, round)
 			// mark the query as ignored
-			ctx.comp.QueriesParams.MarkAsIgnored(q.ID)
+			ctx.Comp.QueriesParams.MarkAsIgnored(q.ID)
 
 			// And skip the rest of the compilation : we are done
 			continue
@@ -52,28 +52,28 @@ func (ctx stitchingContext) LocalOpening() {
 			utils.Panic("unsupported, received a localOpening over the verifier column %v", m.GetColID())
 		}
 		// mark the query as ignored
-		ctx.comp.QueriesParams.MarkAsIgnored(qName)
+		ctx.Comp.QueriesParams.MarkAsIgnored(qName)
 
 		// get the stitching column associated with the sub column q.Poly.
 		stitchingCol := getStitchingCol(ctx, q.Pol)
 
-		newQ := ctx.comp.InsertLocalOpening(round, queryNameStitcher(q.ID), stitchingCol)
+		newQ := ctx.Comp.InsertLocalOpening(round, queryNameStitcher(q.ID), stitchingCol)
 
 		// Registers the prover's step responsible for assigning the new query
-		ctx.comp.RegisterProverAction(round, &assignLocalPointProverAction{
-			qID:  q.ID,
-			newQ: newQ.ID,
+		ctx.Comp.RegisterProverAction(round, &AssignLocalPointProverAction{
+			QID:  q.ID,
+			NewQ: newQ.ID,
 		})
 	}
 
 }
 
-func (ctx stitchingContext) LocalGlobalConstraints() {
-	for _, qName := range ctx.comp.QueriesNoParams.AllUnignoredKeys() {
+func (ctx StitchingContext) LocalGlobalConstraints() {
+	for _, qName := range ctx.Comp.QueriesNoParams.AllUnignoredKeys() {
 
-		q := ctx.comp.QueriesNoParams.Data(qName)
+		q := ctx.Comp.QueriesNoParams.Data(qName)
 		// round of definition of the query to compile
-		round := ctx.comp.QueriesNoParams.Round(qName)
+		round := ctx.Comp.QueriesNoParams.Round(qName)
 
 		var board symbolic.ExpressionBoard
 
@@ -87,12 +87,12 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 				metadatas := board.ListVariableMetadata()
 				for _, metadata := range metadatas {
 					if h, ok := metadata.(ifaces.Column); ok {
-						verifiercol.AssertIsPublicCol(ctx.comp, h)
+						verifiercol.AssertIsPublicCol(ctx.Comp, h)
 					}
 				}
-				insertVerifier(ctx.comp, q, round)
+				insertVerifier(ctx.Comp, q, round)
 				// mark the query as ignored
-				ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
+				ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
 				continue
 			}
 			// detect if the expression is eligible;
@@ -102,10 +102,10 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 			}
 
 			// if the associated expression is eligible to the stitching, mark the query, over the sub columns, as ignored.
-			ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
+			ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// adjust the query over the stitching columns
-			ctx.comp.InsertLocal(round, queryNameStitcher(qName), ctx.adjustExpression(q.Expression, q.DomainSize, false))
+			ctx.Comp.InsertLocal(round, queryNameStitcher(qName), ctx.adjustExpression(q.Expression, q.DomainSize, false))
 
 		case query.GlobalConstraint:
 			board = q.Board()
@@ -117,12 +117,12 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 				metadatas := board.ListVariableMetadata()
 				for _, metadata := range metadatas {
 					if h, ok := metadata.(ifaces.Column); ok {
-						verifiercol.AssertIsPublicCol(ctx.comp, h)
+						verifiercol.AssertIsPublicCol(ctx.Comp, h)
 					}
 				}
-				insertVerifier(ctx.comp, q, round)
+				insertVerifier(ctx.Comp, q, round)
 				// mark the query as ignored
-				ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
+				ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
 				continue
 			}
 			// detect if the expression is over the eligible columns.
@@ -131,10 +131,10 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 			}
 
 			// if the associated expression is eligible to the stitching, mark the query, over the sub columns, as ignored.
-			ctx.comp.QueriesNoParams.MarkAsIgnored(qName)
+			ctx.Comp.QueriesNoParams.MarkAsIgnored(qName)
 
 			// adjust the query over the stitching columns
-			ctx.comp.InsertGlobal(round, queryNameStitcher(qName),
+			ctx.Comp.InsertGlobal(round, queryNameStitcher(qName),
 				ctx.adjustExpression(q.Expression, q.DomainSize, true),
 				q.NoBoundCancel)
 
@@ -149,7 +149,7 @@ func (ctx stitchingContext) LocalGlobalConstraints() {
 // more detailed, such stitching column agrees with the the sub column up to a subsampling with offset zero.
 // the col should only be either verifiercol or eligible col.
 // option is always empty, and used only for the recursive calls over the shifted columns.
-func getStitchingCol(ctx stitchingContext, col ifaces.Column, option ...int) ifaces.Column {
+func getStitchingCol(ctx StitchingContext, col ifaces.Column, option ...int) ifaces.Column {
 	var (
 		stitchingCol ifaces.Column
 		newOffset    int
@@ -173,7 +173,7 @@ func getStitchingCol(ctx stitchingContext, col ifaces.Column, option ...int) ifa
 	case column.Natural:
 		// find the stitching column
 		subColInfo := ctx.Stitchings[round].BySubCol[col.GetColID()]
-		stitchingCol = ctx.comp.Columns.GetHandle(subColInfo.NameBigCol)
+		stitchingCol = ctx.Comp.Columns.GetHandle(subColInfo.NameBigCol)
 		scaling := stitchingCol.Size() / col.Size()
 		if len(option) != 0 {
 			newOffset = scaling * option[0]
@@ -203,7 +203,7 @@ func queryNameStitcher(oldQ ifaces.QueryID) ifaces.QueryID {
 // for the verfiercol instead of stitching, they are expanded to reach the proper size.
 // This is due to the fact that the verifiercols are not tracked by the compiler and can not be stitched
 // via [scanAndClassifyEligibleColumns].
-func (ctx *stitchingContext) adjustExpression(
+func (ctx *StitchingContext) adjustExpression(
 	expr *symbolic.Expression, domainSize int,
 	isGlobalConstraint bool,
 ) (
@@ -240,16 +240,16 @@ func (ctx *stitchingContext) adjustExpression(
 	return newExpr
 }
 
-type queryVerifierAction struct {
-	q ifaces.Query
+type QueryVerifierAction struct {
+	Q ifaces.Query
 }
 
-func (a *queryVerifierAction) Run(vr wizard.Runtime) error {
-	return a.q.Check(vr)
+func (a *QueryVerifierAction) Run(vr wizard.Runtime) error {
+	return a.Q.Check(vr)
 }
 
-func (a *queryVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
-	a.q.CheckGnark(api, wvc)
+func (a *QueryVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+	a.Q.CheckGnark(api, wvc)
 }
 
 func insertVerifier(
@@ -258,7 +258,7 @@ func insertVerifier(
 	round int,
 ) {
 	// Register the VerifierAction instead of using a closure
-	comp.RegisterVerifierAction(round, &queryVerifierAction{
-		q: q,
+	comp.RegisterVerifierAction(round, &QueryVerifierAction{
+		Q: q,
 	})
 }

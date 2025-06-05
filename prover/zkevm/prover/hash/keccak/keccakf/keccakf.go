@@ -58,10 +58,10 @@ type Module struct {
 	// Maximal number of Keccakf permutation that the module can handle
 	MaxNumKeccakf int
 
-	// The state of the keccakf before starting a new round.
-	// Note : unlike the original keccakf where the initial state is zero,
-	// the initial state here is the first block of the message.
-	state [5][5]ifaces.Column
+	// The State of the keccakf before starting a new round.
+	// Note : unlike the original keccakf where the initial State is zero,
+	// the initial State here is the first block of the message.
+	State [5][5]ifaces.Column
 
 	// Columns representing the messages blocks hashed with keccak. More
 	// Given our implementation it is more efficient to do the
@@ -79,16 +79,16 @@ type Module struct {
 
 	// It is 1 over the effective part of the module
 	// (indicating the rows of the module occupied by the witness).
-	isActive ifaces.Column
+	IsActive ifaces.Column
 
 	// Submodules used to declare the successive steps of the keccak round
 	// permutation function.
 	IO        InputOutput
-	theta     theta
-	rho       rho
-	piChiIota piChiIota
+	Theta     theta
+	Rho       rho
+	PiChiIota piChiIota
 	// Collection of the lookup tables
-	lookups lookUpTables
+	Lookups lookUpTables
 }
 
 // Calls the Keccak module
@@ -102,14 +102,14 @@ func NewModule(
 	mod.declareColumns(comp, round, maxNumKeccakf)
 
 	// Initializes the lookup columns
-	mod.lookups = newLookUpTables(comp, maxNumKeccakf)
+	mod.Lookups = newLookUpTables(comp, maxNumKeccakf)
 
 	// Then initializes the submodules : declare the columns and all the
 	// constraints per submodule.
 	mod.IO.newInput(comp, maxNumKeccakf, mod)
-	mod.theta = newTheta(comp, round, maxNumKeccakf, mod.state, mod.lookups)
-	mod.rho = newRho(comp, round, maxNumKeccakf, mod.theta.aThetaSlicedBaseB)
-	mod.piChiIota = newPiChiIota(comp, round, maxNumKeccakf, mod)
+	mod.Theta = newTheta(comp, round, maxNumKeccakf, mod.State, mod.Lookups)
+	mod.Rho = newRho(comp, round, maxNumKeccakf, mod.Theta.AThetaSlicedBaseB)
+	mod.PiChiIota = newPiChiIota(comp, round, maxNumKeccakf, mod)
 	mod.IO.newOutput(comp, maxNumKeccakf, mod)
 
 	return mod
@@ -130,15 +130,15 @@ func (mod *Module) Assign(
 		utils.Panic("Too many keccakf %v > %v", numKeccakf, mod.MaxNumKeccakf)
 	}
 
-	lu := mod.lookups
+	lu := mod.Lookups
 	lu.DontUsePrevAIota.Assign(run)
 	mod.assignStateAndBlocks(run, traces, numKeccakf)
 	mod.IO.assignBlockFlags(run, traces)
-	mod.theta.assign(run, mod.state, lu, numKeccakf)
-	mod.rho.assign(run, mod.theta.aThetaSlicedBaseB, numKeccakf)
-	mod.piChiIota.assign(run, numKeccakf, lu, mod.rho.aRho,
+	mod.Theta.assign(run, mod.State, lu, numKeccakf)
+	mod.Rho.assign(run, mod.Theta.AThetaSlicedBaseB, numKeccakf)
+	mod.PiChiIota.assign(run, numKeccakf, lu, mod.Rho.ARho,
 		mod.Blocks, mod.IO.IsBlockBaseB)
-	mod.IO.assignHashOutPut(run, mod.isActive)
+	mod.IO.assignHashOutPut(run, mod.IsActive)
 
 }
 
@@ -148,11 +148,11 @@ func (mod *Module) assignStateAndBlocks(
 	traces keccak.PermTraces,
 	numKeccakF int,
 ) {
-	colSize := mod.state[0][0].Size()
+	colSize := mod.State[0][0].Size()
 	unpaddedSize := numKeccakF * keccak.NumRound
 
 	run.AssignColumn(
-		mod.isActive.GetColID(),
+		mod.IsActive.GetColID(),
 		smartvectors.RightZeroPadded(
 			vector.Repeat(field.One(), unpaddedSize),
 			colSize,
@@ -245,7 +245,7 @@ func (mod *Module) assignStateAndBlocks(
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
 			run.AssignColumn(
-				mod.state[x][y].GetColID(),
+				mod.State[x][y].GetColID(),
 				smartvectors.RightZeroPadded(inputsVal[x][y], colSize),
 			)
 		}
@@ -258,12 +258,12 @@ func (mod *Module) declareColumns(comp *wizard.CompiledIOP, round, maxNumKeccakF
 	size := numRows(maxNumKeccakF)
 
 	// Initialize the column isActive
-	mod.isActive = comp.InsertCommit(round, deriveName("IS_ACTIVE"), size)
+	mod.IsActive = comp.InsertCommit(round, deriveName("IS_ACTIVE"), size)
 
 	// Initializes the state columns
 	for x := 0; x < 5; x++ {
 		for y := 0; y < 5; y++ {
-			mod.state[x][y] = comp.InsertCommit(
+			mod.State[x][y] = comp.InsertCommit(
 				round,
 				deriveName("A_INPUT", x, y),
 				size,

@@ -134,7 +134,7 @@ func (builder *externalRangeChecker) Compiler() frontend.Compiler {
 
 // addRangeCheckConstraints adds the wizard constraints implementing the range-checks
 // requested by the gnark circuit.
-func (ctx *CompilationCtx) addRangeCheckConstraint() {
+func (ctx *compilationCtx) addRangeCheckConstraint() {
 
 	var (
 		round                            = ctx.Columns.L[0].Round()
@@ -159,7 +159,7 @@ func (ctx *CompilationCtx) addRangeCheckConstraint() {
 	}
 
 	ctx.RangeCheckOption.RangeChecked = make([]ifaces.Column, len(ctx.Columns.L))
-	ctx.RangeCheckOption.limbDecomposition = make([]wizard.ProverAction, len(ctx.Columns.L))
+	ctx.RangeCheckOption.LimbDecomposition = make([]wizard.ProverAction, len(ctx.Columns.L))
 
 	for i := range ctx.Columns.L {
 
@@ -199,7 +199,7 @@ func (ctx *CompilationCtx) addRangeCheckConstraint() {
 			rcO,
 		)
 
-		_, ctx.RangeCheckOption.limbDecomposition[i] = byte32cmp.Decompose(
+		_, ctx.RangeCheckOption.LimbDecomposition[i] = byte32cmp.Decompose(
 			ctx.comp,
 			rangeChecked,
 			ctx.RangeCheckOption.NbLimbs,
@@ -208,15 +208,15 @@ func (ctx *CompilationCtx) addRangeCheckConstraint() {
 	}
 }
 
-func (ctx *CompilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
+func (ctx *GenericPlonkProverAction) assignRangeChecked(run *wizard.ProverRuntime) {
 
 	var (
 		rcL      = ctx.RangeCheckOption.RcL
 		rcR      = ctx.RangeCheckOption.RcR
 		rcO      = ctx.RangeCheckOption.RcO
-		rcLValue = ctx.comp.Precomputed.MustGet(rcL.GetColID()).IntoRegVecSaveAlloc()
-		rcRValue = ctx.comp.Precomputed.MustGet(rcR.GetColID()).IntoRegVecSaveAlloc()
-		rcOValue = ctx.comp.Precomputed.MustGet(rcO.GetColID()).IntoRegVecSaveAlloc()
+		rcLValue = run.Spec.Precomputed.MustGet(rcL.GetColID()).IntoRegVecSaveAlloc()
+		rcRValue = run.Spec.Precomputed.MustGet(rcR.GetColID()).IntoRegVecSaveAlloc()
+		rcOValue = run.Spec.Precomputed.MustGet(rcO.GetColID()).IntoRegVecSaveAlloc()
 	)
 
 	parallel.Execute(len(ctx.RangeCheckOption.RangeChecked), func(start, stop int) {
@@ -258,7 +258,7 @@ func (ctx *CompilationCtx) assignRangeChecked(run *wizard.ProverRuntime) {
 				)
 			}
 
-			ctx.RangeCheckOption.limbDecomposition[i].Run(run)
+			ctx.RangeCheckOption.LimbDecomposition[i].Run(run)
 		}
 	})
 }

@@ -39,8 +39,8 @@ func NewRollingSelector(comp *wizard.CompiledIOP, name string, sizeHash, sizeMsg
 // DefineRollingSelector specifies the constraints of the RollingSelector with respect to the ExtractedData fetched from the arithmetization
 func DefineRollingSelector(comp *wizard.CompiledIOP, sel *RollingSelector, name string, fetchedHash, fetchedMsg ExtractedData) {
 	// fetchedHash.filterFetched is an isActiveHash pattern filter, and is constrained as such in DefineExtractedData
-	isActiveHash := fetchedHash.filterFetched
-	isActiveMsg := fetchedMsg.filterFetched
+	isActiveHash := fetchedHash.FilterFetched
+	isActiveMsg := fetchedMsg.FilterFetched
 
 	// set the RollingSelector columns as public in order to get accessors
 	var allCols = []ifaces.Column{
@@ -96,10 +96,10 @@ func AssignRollingSelector(run *wizard.ProverRuntime, selector *RollingSelector,
 	sizeHash := fetchedHash.Hi.Size()
 	sizeMsg := fetchedMsg.Hi.Size()
 
-	exists := run.GetColumnAt(fetchedHash.filterFetched.GetColID(), 0)
+	exists := run.GetColumnAt(fetchedHash.FilterFetched.GetColID(), 0)
 	var lastHi, lastLo, lastMsg field.Element
 	for i := 0; i < sizeHash; i++ {
-		isActive := run.GetColumnAt(fetchedHash.filterFetched.GetColID(), i)
+		isActive := run.GetColumnAt(fetchedHash.FilterFetched.GetColID(), i)
 		if isActive.IsOne() {
 			lastHi = run.GetColumnAt(fetchedHash.Hi.GetColID(), i)
 			lastLo = run.GetColumnAt(fetchedHash.Lo.GetColID(), i)

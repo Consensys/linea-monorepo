@@ -1,6 +1,8 @@
 package distributed
 
 import (
+	"fmt"
+
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
@@ -215,6 +217,9 @@ func (mf moduleFilter) FilterCompiledIOP(comp *wizard.CompiledIOP) FilteredModul
 
 		case query.GlobalConstraint:
 			resolvedModule := ModuleOfExpr(mf.Disc, q.Expression)
+			if resolvedModule == NoModuleFound {
+				fmt.Printf("[moduleFilter.FilterCompiledIOP] q.Expression = %v\n", q.Name())
+			}
 			resolvedModule.MustBeResolved()
 			if resolvedModule != mf.Module {
 				continue

@@ -39,7 +39,7 @@ func makeTestCaseCleaningModule(uc generic.HashingUsecase) (
 	}
 	prover = func(run *wizard.ProverRuntime) {
 		var (
-			imported = cleaning.Inputs.imported
+			imported = cleaning.Inputs.Imported
 		)
 		// assign the importation columns
 		assignImportationColumns(run, &imported, numHash, blockSize, size)

@@ -14,6 +14,7 @@ import (
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
+	"github.com/google/uuid"
 )
 
 // LogDerivativeSumInput stores the input to the query
@@ -33,6 +34,7 @@ type LogDerivativeSum struct {
 	Round  int
 	Inputs map[int]*LogDerivativeSumInput
 	ID     ifaces.QueryID
+	uuid   uuid.UUID `serde:"omit"`
 }
 
 // the result of the global Sum
@@ -94,8 +96,8 @@ func NewLogDerivativeSum(round int, inp map[int]*LogDerivativeSumInput, id iface
 		Round:  round,
 		Inputs: inp,
 		ID:     id,
+		uuid:   uuid.New(),
 	}
-
 }
 
 // Name implements the [ifaces.Query] interface
@@ -394,4 +396,8 @@ func computeLogDerivativeSumPair(run ifaces.Runtime, num, den *sym.Expression, s
 	}
 
 	return res, nil
+}
+
+func (q LogDerivativeSum) UUID() uuid.UUID {
+	return q.uuid
 }

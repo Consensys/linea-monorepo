@@ -24,7 +24,7 @@ import (
 // and their respective LocalOpening for the tables compiled at round N-1.
 //
 // All these actions are performed in parallel.
-type proverTaskAtRound struct {
+type ProverTaskAtRound struct {
 
 	// MAssignmentTasks lists all the tasks consisting of assigning the column
 	// M related to table that are scheduled in the current interaction round.
@@ -39,7 +39,7 @@ type proverTaskAtRound struct {
 // a goroutine for each tasks and wait for all of them to finish. The approach
 // for parallelization can be justified if the number of go-routines stays low
 // (e.g. less than 1000s).
-func (p proverTaskAtRound) Run(run *wizard.ProverRuntime) {
+func (p ProverTaskAtRound) Run(run *wizard.ProverRuntime) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(p.numTasks())
@@ -106,18 +106,18 @@ func (p proverTaskAtRound) Run(run *wizard.ProverRuntime) {
 }
 
 // pushMAssignment appends an [mAssignmentTask] to the list of tasks
-func (p *proverTaskAtRound) pushMAssignment(m MAssignmentTask) {
+func (p *ProverTaskAtRound) pushMAssignment(m MAssignmentTask) {
 	p.MAssignmentTasks = append(p.MAssignmentTasks, m)
 }
 
 // pushZAssignment appends an [sigmaAssignmentTask] to the list of tasks
-func (p *proverTaskAtRound) pushZAssignment(s ZAssignmentTask) {
+func (p *ProverTaskAtRound) pushZAssignment(s ZAssignmentTask) {
 	p.ZAssignmentTasks = append(p.ZAssignmentTasks, s)
 }
 
 // numTasks returns the total number of tasks that are scheduled in the
 // [proverTaskAtRound].
-func (p *proverTaskAtRound) numTasks() int {
+func (p *ProverTaskAtRound) numTasks() int {
 	return len(p.MAssignmentTasks) + len(p.ZAssignmentTasks)
 }
 

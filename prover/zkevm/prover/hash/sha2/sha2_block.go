@@ -112,18 +112,18 @@ type sha2BlockModule struct {
 	HashHi, HashLo ifaces.Column
 
 	HashHiIsZero, HashLoIsZero ifaces.Column
-	proverActions              []wizard.ProverAction
+	ProverActions              []wizard.ProverAction
 
 	// GnarkCircuitConnector is the result of the Plonk alignement module. It
 	// handles all the Plonk logic responsible for verifying the correctness of
 	// each instance of the Sha2 compression function.
 	GnarkCircuitConnector *plonk.Alignment
 
-	// hasCircuit indicates whether the circuit has been set in the current module.
+	// HasCircuit indicates whether the circuit has been set in the current module.
 	// In production, it will always be set to true but for testing it is more
 	// convenient to invoke the circuit in all the tests as this is a very a CPU
 	// greedy part.
-	hasCircuit bool
+	HasCircuit bool
 }
 
 // newSha2BlockModule generates all the constraints necessary to ensure that the
@@ -335,7 +335,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 
 	res.HashHiIsZero, ctxHi = dedicated.IsZero(comp, res.HashHi)
 	res.HashLoIsZero, ctxLo = dedicated.IsZero(comp, res.HashLo)
-	res.proverActions = append(res.proverActions, ctxHi, ctxLo)
+	res.ProverActions = append(res.ProverActions, ctxHi, ctxLo)
 
 	comp.InsertGlobal(0,
 		ifaces.QueryIDf("%v_HASH_CANT_BE_BOTH_ZERO", inp.Name),
@@ -350,7 +350,7 @@ func newSha2BlockModule(comp *wizard.CompiledIOP, inp *sha2BlocksInputs) *sha2Bl
 
 func (sbh *sha2BlockModule) WithCircuit(comp *wizard.CompiledIOP, options ...query.PlonkOption) *sha2BlockModule {
 
-	sbh.hasCircuit = true
+	sbh.HasCircuit = true
 
 	sbh.GnarkCircuitConnector = plonk.DefineAlignment(
 		comp,

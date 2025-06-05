@@ -8,6 +8,7 @@ import (
 	vCom "github.com/consensys/linea-monorepo/prover/crypto/vortex"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
+	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -30,7 +31,8 @@ type AssignVortexOpenedCols struct {
 // the public-inputs of the plonk-in-wizard circuits.
 type ConsistencyCheck struct {
 	Ctx       *Recursion
-	isSkipped bool
+	isSkipped bool `serde:"omit"`
+	PIs       []ifaces.Column
 }
 
 // ExtractWitness extracts a [Witness] from a prover runtime toward being conglomerated.
@@ -90,13 +92,14 @@ func (pa AssignVortexOpenedCols) Run(run *wizard.ProverRuntime) {
 	for _, ctx := range pa.Ctxs.PcsCtx {
 		// Since all the context of the pcs is translated, this does not
 		// need to run over a translated prover runtime.
-		ctx.OpenSelectedColumns(run)
+		pa := vortex.OpenSelectedColumnsProverAction{Ctx: ctx}
+		pa.Run(run)
 	}
 }
 
 func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 
-	pis := cc.Ctx.PlonkCtx.Columns.PI
+	pis := cc.PIs
 
 	for i := range pis {
 
@@ -151,7 +154,7 @@ func (cc *ConsistencyCheck) Run(run wizard.Runtime) error {
 
 func (cc *ConsistencyCheck) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
-	pis := cc.Ctx.PlonkCtx.Columns.PI
+	pis := cc.PIs
 
 	for i := range pis {
 

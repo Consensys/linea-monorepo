@@ -39,16 +39,25 @@ func initCBORDecMode() {
 	cborDecMode, err = cbor.DecOptions{
 		MaxArrayElements: 134217728,
 		MaxMapPairs:      134217728,
+		MaxNestedLevels:  256,
 	}.DecMode()
 	if err != nil {
 		panic(fmt.Errorf("failed to create CBOR DecMode: %w", err))
 	}
 }
 
-// serializeAnyWithCborPkg serializes an interface{} object into CBOR using a pooled buffer.
+func SerializeAnyWithCborPkg(x any) (cbor.RawMessage, error) {
+	return encodeWithCBOR(x)
+}
+
+func DeserializeAnyWithCborPkg(data json.RawMessage, x any) error {
+	return decodeWithCBOR(data, x)
+}
+
+// encodeWithCBOR serializes an interface{} object into CBOR using a pooled buffer.
 // It will return an error on failure and is meant to be used on data and types that controlled
 // by the current package.
-func serializeAnyWithCborPkg(x any) (json.RawMessage, error) {
+func encodeWithCBOR(x any) (cbor.RawMessage, error) {
 	encInitOnce.Do(initCBOREncMode)
 
 	buf := bufferPool.Get().(*bytes.Buffer)
@@ -65,8 +74,8 @@ func serializeAnyWithCborPkg(x any) (json.RawMessage, error) {
 	return out, nil
 }
 
-// deserializeAnyWithCborPkg deserializes CBOR data into an object using a pooled reader.
-func deserializeAnyWithCborPkg(data json.RawMessage, x any) error {
+// decodeWithCBOR deserializes CBOR data into an object using a pooled reader.
+func decodeWithCBOR(data json.RawMessage, x any) error {
 	decInitOnce.Do(initCBORDecMode)
 
 	r := readerPool.Get().(*bytes.Reader)

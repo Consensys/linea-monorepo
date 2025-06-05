@@ -28,7 +28,7 @@ type EcAdd struct {
 	*EcDataAddSource
 	AlignedGnarkData *plonk.Alignment
 
-	size int
+	Size int
 	*Limits
 }
 
@@ -59,12 +59,15 @@ func newEcAdd(comp *wizard.CompiledIOP, limits *Limits, src *EcDataAddSource, pl
 		Circuit:            NewECAddCircuit(limits),
 		NbCircuitInstances: limits.NbCircuitInstances,
 		PlonkOptions:       plonkOptions,
-		InputFiller:        nil, // not necessary: 0 * (0,0) = (0,0) with complete arithmetic
+		// This resolves to the statement (0, 0) + (0, 0) = (0, 0), which is
+		// correct as (0, 0) encodes the point at infinity.
+		InputFillerKey: "",
 	}
+
 	res := &EcAdd{
 		EcDataAddSource:  src,
 		AlignedGnarkData: plonk.DefineAlignment(comp, toAlign),
-		size:             size,
+		Size:             size,
 	}
 
 	return res

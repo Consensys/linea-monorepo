@@ -43,7 +43,7 @@ func rhoTestingModule(
 		for x := 0; x < 5; x++ {
 			for y := 0; y < 5; y++ {
 				for k := 0; k < numSlice; k++ {
-					mod.theta.aThetaSlicedBaseB[x][y][k] = comp.InsertCommit(
+					mod.Theta.AThetaSlicedBaseB[x][y][k] = comp.InsertCommit(
 						round,
 						deriveName("A_THETA_BASE2_SLICED", x, y, k),
 						numRows(maxNumKeccakf),
@@ -52,7 +52,7 @@ func rhoTestingModule(
 			}
 		}
 
-		mod.rho = newRho(comp, round, maxNumKeccakf, mod.theta.aThetaSlicedBaseB)
+		mod.Rho = newRho(comp, round, maxNumKeccakf, mod.Theta.AThetaSlicedBaseB)
 	}
 
 	prover := func(
@@ -120,7 +120,7 @@ func rhoTestingModule(
 				for y := 0; y < 5; y++ {
 					for k := 0; k < numSlice; k++ {
 						run.AssignColumn(
-							mod.theta.aThetaSlicedBaseB[x][y][k].GetColID(),
+							mod.Theta.AThetaSlicedBaseB[x][y][k].GetColID(),
 							smartvectors.RightZeroPadded(
 								aTheta[x][y][k],
 								numRows(maxNumKeccakf),
@@ -131,7 +131,7 @@ func rhoTestingModule(
 			}
 
 			// Then assigns all the columns of the rho module
-			mod.rho.assign(run, mod.theta.aThetaSlicedBaseB, numKeccakf)
+			mod.Rho.assign(run, mod.Theta.AThetaSlicedBaseB, numKeccakf)
 		}
 	}
 
@@ -185,7 +185,7 @@ func TestRho(t *testing.T) {
 				for y := 0; y < 5; y++ {
 					// Recompose the slice into a complete base 2 representation
 					// of aTheta[x][y] in base 2
-					recomposed := mod.rho.aRho[x][y].GetColAssignmentAt(
+					recomposed := mod.Rho.ARho[x][y].GetColAssignmentAt(
 						run,
 						permId*keccak.NumRound,
 					)

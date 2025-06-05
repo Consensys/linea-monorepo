@@ -15,19 +15,19 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
 
-// quotientAccumulation is a [wizard.ProverAction] that accumulates the
+// QuotientAccumulation is a [wizard.ProverAction] that accumulates the
 // quotient polynomial and assigns it.
-type quotientAccumulation struct {
+type QuotientAccumulation struct {
 	*MultipointToSinglepointCompilation
 }
 
-// randomPointEvaluation is a [wizard.ProverAction] that evaluates the
+// RandomPointEvaluation is a [wizard.ProverAction] that evaluates the
 // polynomial at a random point.
-type randomPointEvaluation struct {
+type RandomPointEvaluation struct {
 	*MultipointToSinglepointCompilation
 }
 
-func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
+func (qa QuotientAccumulation) Run(run *wizard.ProverRuntime) {
 
 	var (
 		rho = run.GetRandomCoinField(qa.LinCombCoeffRho.Name)
@@ -209,7 +209,7 @@ func (qa quotientAccumulation) Run(run *wizard.ProverRuntime) {
 	run.AssignColumn(qa.Quotient.GetColID(), smartvectors.NewRegular(quotient))
 }
 
-func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
+func (re RandomPointEvaluation) Run(run *wizard.ProverRuntime) {
 
 	var (
 		r        = run.GetRandomCoinField(re.EvaluationPoint.Name)
@@ -232,7 +232,7 @@ func (re randomPointEvaluation) Run(run *wizard.ProverRuntime) {
 // computeZetas returns the values of zeta_i = lambda^i / (X - xi)
 // for each query. And returns an evaluation vector for each query for all powers
 // of omega.
-func (qa quotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]field.Element {
+func (qa QuotientAccumulation) computeZetas(run *wizard.ProverRuntime) [][]field.Element {
 
 	var (
 		// powersOfOmega is the list of the powers of omega starting from 0.

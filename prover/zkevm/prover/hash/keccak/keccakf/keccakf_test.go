@@ -56,8 +56,8 @@ func keccakfTestingModule(
 			for x := 0; x < 5; x++ {
 				for y := 0; y < 5; y++ {
 					z := mod.
-						piChiIota.
-						aIotaBaseB[x][y].
+						PiChiIota.
+						AIotaBaseB[x][y].
 						GetColAssignmentAt(run, pos)
 					extractedState[x][y] = BaseXToU64(z, &BaseBFr, 1)
 				}

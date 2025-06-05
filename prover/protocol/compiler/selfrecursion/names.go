@@ -123,26 +123,26 @@ func (ctx *SelfRecursionCtx) merkleProofVerificationName() string {
 
 // Name of the collapsed key
 func (ctx *SelfRecursionCtx) aCollapsedName() string {
-	name := fmt.Sprintf("SELFRECURSION_ACOLLAPSE_%v", ctx.comp.SelfRecursionCount)
+	name := fmt.Sprintf("SELFRECURSION_ACOLLAPSE_%v", ctx.Comp.SelfRecursionCount)
 	return maybePrefix(ctx, name)
 }
 
 // Name of the collapsed key
 func (ctx *SelfRecursionCtx) rootHasGlue() ifaces.QueryID {
-	name := ifaces.QueryIDf("SELFRECURSION_ROOT_HASH_GLUE_%v", ctx.comp.SelfRecursionCount)
+	name := ifaces.QueryIDf("SELFRECURSION_ROOT_HASH_GLUE_%v", ctx.Comp.SelfRecursionCount)
 	return maybePrefix(ctx, name)
 }
 
 // Positions glue
 func (ctx *SelfRecursionCtx) positionGlue() ifaces.QueryID {
-	name := ifaces.QueryIDf("SELFRECURSION_POSITION_GLUE_%v", ctx.comp.SelfRecursionCount)
+	name := ifaces.QueryIDf("SELFRECURSION_POSITION_GLUE_%v", ctx.Comp.SelfRecursionCount)
 	return maybePrefix(ctx, name)
 }
 
 // linearHashVerificatioName returns the name passed to the wizard helper building the
 // linear hash verifier.
 func (ctx *SelfRecursionCtx) linearHashVerificationName() string {
-	name := fmt.Sprintf("SELFRECURSION_LINEAR_HASH_VERIFICATION_%v", ctx.comp.SelfRecursionCount)
+	name := fmt.Sprintf("SELFRECURSION_LINEAR_HASH_VERIFICATION_%v", ctx.Comp.SelfRecursionCount)
 	return maybePrefix(ctx, name)
 }
 
