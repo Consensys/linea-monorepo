@@ -28,6 +28,7 @@ jobs:
           CORSET_FLAGS: disable
           GOCORSET_FLAGS: -v --ansi-escapes=false --report --mir
           NIGHTLY_TESTS_PARALLELISM: 2
+          ZKEVM_FORK: LONDON
 
       - name: Upload test report
         if: ${{ always() }}
