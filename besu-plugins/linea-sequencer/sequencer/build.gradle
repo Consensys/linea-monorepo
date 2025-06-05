@@ -71,3 +71,7 @@ dependencies {
 }
 
 apply from: lineaSequencerProject.file("gradle/dist.gradle")
+
+test {
+  useJUnitPlatform()
+}
