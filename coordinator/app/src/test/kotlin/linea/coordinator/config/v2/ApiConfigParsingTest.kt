@@ -16,9 +16,7 @@ class ApiConfigParsingTest {
       observabilityPort = 9546u,
     )
 
-    val tomlMinimal = """
-
-    """.trimIndent()
+    val tomlMinimal = ""
 
     val configMinimal = ApiConfigToml(
       observabilityPort = 9545u,

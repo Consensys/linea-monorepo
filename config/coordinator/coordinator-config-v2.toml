@@ -239,7 +239,7 @@ disabled = false
 l1-highest-block-tag="LATEST"
 l2-highest-block-tag="LATEST" # optional, default to LATEST it shall not be necessary as Linea has instant finality
 anchoring-tick-interval = "PT10S" # "polling-interval="PT10S"
-messages-anchoring-chuck-size = 100 # limit of L1toL2 Messages to anchor in a single L2 transaction
+messages-anchoring-chunk-size = 100 # limit of L1toL2 Messages to anchor in a single L2 transaction
 
 [message-anchoring.l1-request-retries]
 [message-anchoring.l2-request-retries]

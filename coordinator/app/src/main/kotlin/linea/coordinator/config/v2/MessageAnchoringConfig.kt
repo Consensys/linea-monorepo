@@ -30,7 +30,7 @@ data class MessageAnchoringConfig(
 ) : FeatureToggle {
   init {
     require(messageQueueCapacity >= 1u) {
-      "messageQueueCapacity=$messageQueueCapacity be equal or greater than 1"
+      "messageQueueCapacity=$messageQueueCapacity must be equal or greater than 1"
     }
     require(maxMessagesToAnchorPerL2Transaction >= 1u) {
       "maxMessagesToAnchorPerL2Transaction=$maxMessagesToAnchorPerL2Transaction be equal or greater than 1"
