@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 // StackedColumn is a dedicated wizard computing a column by stacking other
@@ -15,8 +16,9 @@ import (
 type StackedColumn struct {
 	// Column is the built column
 	Column column.Natural
-	// Source is the list of columns to stack. Assumedly they are a power of
-	// two number.
+	// Source is the list of columns to stack.
+	// If the number of columns is not a power of two,
+	// we pad with const zero valued column to the next power of two.
 	Source []ifaces.Column
 }
 
@@ -24,20 +26,26 @@ type StackedColumn struct {
 func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column) StackedColumn {
 
 	var (
-		s     = make([]smartvectors.SmartVector, len(srcs))
+		// s is the identity permutation to be computed
+		s     = make([]smartvectors.SmartVector, 0, len(srcs))
+		// count is the total number of elements in the stacked column
 		count = 0
 		name  = fmt.Sprintf("STACKED_COLUMN_%v", len(comp.Columns.AllKeys()))
 		round = 0
 	)
 
-	for i := range s {
+	for i := range srcs {
 		round = max(round, srcs[i].Round())
 		p := make([]field.Element, srcs[i].Size())
 		for j := range p {
 			p[j].SetInt64(int64(count))
 			count++
 		}
-		s[i] = smartvectors.NewRegular(p)
+		s = append(s, smartvectors.NewRegular(p))
+	}
+
+	if !utils.IsPowerOfTwo(count) {
+		count = utils.NextPowerOfTwo(count)
 	}
 
 	col := comp.InsertCommit(round, ifaces.ColID(name), count)
@@ -65,5 +73,5 @@ func (s StackedColumn) Run(run *wizard.ProverRuntime) {
 		res = append(res, a...)
 	}
 
-	run.AssignColumn(s.Column.ID, smartvectors.NewRegular(res))
+	run.AssignColumn(s.Column.ID, smartvectors.RightZeroPadded(res, s.Column.Size()))
 }

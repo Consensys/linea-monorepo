@@ -207,15 +207,25 @@ type Ctx struct {
 	RoundStatus           []roundStatus
 
 	CommittedRowsCount int
-	NumCols            int
-	MaxCommittedRound  int
-	VortexParams       *vortex.Params
-	SisParams          *ringsis.Params
+	// Committed rows count for the SIS rounds only
+	CommittedRowsCountSIS   int
+	NumCols                 int
+	MaxCommittedRound       int
+	MaxCommittedRoundSIS    int
+	MaxCommittedRoundNonSIS int
+	VortexParams            *vortex.Params
+	SisParams               *ringsis.Params
 	// Optional parameter
 	NumOpenedCol int
 
 	// By rounds commitments
+	// Todo: To remove it completely after the change for
+	// optional sis hasing is complete for self recursion
 	CommitmentsByRounds collection.VecVec[ifaces.ColID]
+	// SIS round commitments
+	CommitmentsByRoundsSIS collection.VecVec[ifaces.ColID]
+	// Non SIS round commitments
+	CommitmentsByRoundsNonSIS collection.VecVec[ifaces.ColID]
 
 	// RunStateNamePrefix is used to prefix some of the names of components of the
 	// compilation context. Mainly state objects.
@@ -245,7 +255,11 @@ type Ctx struct {
 		Q coin.Info
 		// Opened columns
 		OpenedColumns []ifaces.Column
-		// MerkleProof (only used with the MerkleProof version)
+		// Opened SIS columns
+		OpenedSISColumns []ifaces.Column
+		// Opened non-SIS columns
+		OpenedNonSISColumns []ifaces.Column
+		// MerkleProofs
 		// We represents all the Merkle proof as specfied here:
 		MerkleProofs ifaces.Column
 		// The Merkle roots are represented by a size 1 column
@@ -301,19 +315,19 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 				Tree              *smt.Tree
 				DhWithMerkle      []field.Element
 			}
-			Alpha         coin.Info
-			Ualpha        ifaces.Column
-			Q             coin.Info
-			OpenedColumns []ifaces.Column
-			MerkleProofs  ifaces.Column
-			MerkleRoots   []ifaces.Column
+			Alpha               coin.Info
+			Ualpha              ifaces.Column
+			Q                   coin.Info
+			OpenedColumns       []ifaces.Column
+			OpenedSISColumns    []ifaces.Column
+			OpenedNonSISColumns []ifaces.Column
+			MerkleProofs        ifaces.Column
+			MerkleRoots         []ifaces.Column
 		}{},
-		// rowsCount : initialized to zero, set a posteriori
-		// when compiling the instance.
-		// numcol : set a posteriori during the compilation
-		// vortex params : the vortex params are set a posteriori
-		// during the compilation
-		CommitmentsByRounds: collection.NewVecVec[ifaces.ColID](),
+		// Declare the by rounds/sis rounds/non-sis rounds commitments
+		CommitmentsByRounds:       collection.NewVecVec[ifaces.ColID](),
+		CommitmentsByRoundsSIS:    collection.NewVecVec[ifaces.ColID](),
+		CommitmentsByRoundsNonSIS: collection.NewVecVec[ifaces.ColID](),
 	}
 
 	for _, pol := range ctx.Query.Pols {
@@ -327,7 +341,7 @@ func newCtx(comp *wizard.CompiledIOP, univQ query.UnivariateEval, blowUpFactor i
 	// Preallocate all the merkle roots for all rounds
 	ctx.Items.MerkleRoots = make([]ifaces.Column, comp.NumRounds())
 
-	// Declare the IsSISApplied slice
+	// Declare the RoundStatus slice
 	ctx.RoundStatus = make([]roundStatus, 0, comp.NumRounds())
 
 	return ctx
@@ -447,8 +461,14 @@ func (ctx *Ctx) compileRoundWithVortex(round int, coms_ []ifaces.ColID) {
 
 	if onlyMiMCApplied {
 		ctx.RoundStatus = append(ctx.RoundStatus, IsOnlyMiMCApplied)
+		ctx.CommitmentsByRoundsNonSIS.AppendToInner(round, coms...)
+		ctx.MaxCommittedRoundNonSIS = utils.Max(ctx.MaxCommittedRoundNonSIS, round)
 	} else {
 		ctx.RoundStatus = append(ctx.RoundStatus, IsSISApplied)
+		ctx.CommitmentsByRoundsSIS.AppendToInner(round, coms...)
+		// Increase the number of rows
+		ctx.CommittedRowsCountSIS += len(coms)
+		ctx.MaxCommittedRoundSIS = utils.Max(ctx.MaxCommittedRoundSIS, round)
 	}
 
 	ctx.CommitmentsByRounds.AppendToInner(round, coms...)
@@ -605,6 +625,8 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 
 	// and registers the opened columns
 	numRows := utils.NextPowerOfTwo(ctx.CommittedRowsCount)
+	numRowsSIS := utils.NextPowerOfTwo(ctx.CommittedRowsCountSIS)
+	numRowsNonSIS := utils.NextPowerOfTwo(ctx.CommittedRowsCount - ctx.CommittedRowsCountSIS)
 	for col := 0; col < ctx.NbColsToOpen(); col++ {
 		openedCol := ctx.comp.InsertProof(
 			lastRound+2,
@@ -612,6 +634,22 @@ func (ctx *Ctx) registerOpeningProof(lastRound int) {
 			numRows,
 		)
 		ctx.Items.OpenedColumns = append(ctx.Items.OpenedColumns, openedCol)
+		if numRowsSIS != 0 {
+			openedColSIS := ctx.comp.InsertProof(
+				lastRound+2,
+				ctx.SelectedColSISName(col),
+				numRowsSIS,
+			)
+			ctx.Items.OpenedSISColumns = append(ctx.Items.OpenedSISColumns, openedColSIS)
+		}
+		if numRowsNonSIS != 0 {
+			openedColNonSIS := ctx.comp.InsertProof(
+				lastRound+2,
+				ctx.SelectedColNonSISName(col),
+				numRowsNonSIS,
+			)
+			ctx.Items.OpenedNonSISColumns = append(ctx.Items.OpenedNonSISColumns, openedColNonSIS)
+		}
 	}
 
 	// In case of the Merkle-proof mode, we also registers the
@@ -659,7 +697,6 @@ func (ctx *Ctx) IsNonEmptyPrecomputed() bool {
 // the ApplySISHashThreshold.
 func (ctx *Ctx) IsSISAppliedToPrecomputed() bool {
 	if ctx.Items.Precomputeds.PrecomputedColums == nil {
-		logrus.Infof("There are no precomputed columns to commit to")
 		return false
 	}
 	return len(ctx.Items.Precomputeds.PrecomputedColums) > ctx.ApplySISHashThreshold
@@ -766,7 +803,7 @@ func (ctx *Ctx) processStatusPrecomputed() {
 	ctx.Items.Precomputeds.PrecomputedColums = precomputedCols
 
 	log := logrus.
-		WithField("where", "processStatusPrecomputed").
+		WithField("where isSISAppliedForCommitment", !onlyMiMCApplied).
 		WithField("nbPrecomputedRows", nbUnskippedPrecomputedCols).
 		WithField("nbShadowRows", numShadowRows)
 
@@ -777,7 +814,6 @@ func (ctx *Ctx) processStatusPrecomputed() {
 			Warnf("Found unconstrained columns. Skipping them and mark them as ignored")
 		return
 	}
-
 	log.Info("processed the precomputed columns")
 }
 
@@ -792,6 +828,44 @@ func (ctx *Ctx) NumCommittedRounds() int {
 	for i := 0; i <= ctx.MaxCommittedRound; i++ {
 		if ctx.RoundStatus[i] == IsEmpty {
 			// We skip the empty rounds
+			continue
+		}
+		res++
+	}
+
+	return res
+}
+
+// Returns the number of rounds committed with SIS hashing. Must be called after the
+// method compileRound has been executed. Otherwise, it will output zero.
+func (ctx *Ctx) NumCommittedRoundsSis() int {
+	res := 0
+
+	// MaxCommittedRounds is unset if the function is called before
+	// the compileRound method. Careful, the stopping condition is
+	// an LE and not a strict LT condition.
+	for i := 0; i <= ctx.MaxCommittedRound; i++ {
+		if ctx.RoundStatus[i] != IsSISApplied {
+			// We skip the no SIS and the empty rounds
+			continue
+		}
+		res++
+	}
+
+	return res
+}
+
+// Returns the number of rounds committed without SIS hashing. Must be called after the
+// method compileRound has been executed. Otherwise, it will output zero.
+func (ctx *Ctx) NumCommittedRoundsNoSis() int {
+	res := 0
+
+	// MaxCommittedRounds is unset if the function is called before
+	// the compileRound method. Careful, the stopping condition is
+	// an LE and not a strict LT condition.
+	for i := 0; i <= ctx.MaxCommittedRound; i++ {
+		if ctx.RoundStatus[i] != IsOnlyMiMCApplied {
+			// We skip the SIS and the empty rounds
 			continue
 		}
 		res++
@@ -854,6 +928,9 @@ func (ctx *Ctx) commitPrecomputeds() {
 
 	// Committing to the precomputed columns with SIS or without SIS.
 	if ctx.IsSISAppliedToPrecomputed() {
+		// We increase the number of committed rows for SIS rounds
+		// in this case
+		ctx.CommittedRowsCountSIS += numPrecomputeds
 		logrus.Infof("committing to precomputed columns with SIS")
 		committedMatrix, tree, colHashes = ctx.VortexParams.CommitMerkleWithSIS(pols)
 	} else {
@@ -869,6 +946,32 @@ func (ctx *Ctx) commitPrecomputeds() {
 	root.SetBytes(tree.Root[:])
 	ctx.Items.Precomputeds.MerkleRoot = ctx.comp.RegisterVerifyingKey(ctx.PrecomputedMerkleRootName(), smartvectors.NewConstant(root, 1))
 
+}
+
+// GetPrecomputedSelectedCol returns the selected column
+// of the precomputed columns stored as matrix
+func (ctx *Ctx) GetPrecomputedSelectedCol(index int) []field.Element {
+	if ctx.Items.Precomputeds.CommittedMatrix == nil {
+		utils.Panic("precomputed matrix is nil")
+	}
+
+	col := make([]field.Element, len(ctx.Items.Precomputeds.PrecomputedColums))
+
+	for i := 0; i < len(ctx.Items.Precomputeds.PrecomputedColums); i++ {
+		col[i] = ctx.Items.Precomputeds.CommittedMatrix[i].Get(index)
+	}
+	return col
+}
+
+// GetNumPolsForNonSisRounds returns an integer
+// giving the number of polynomials for the given
+// non SIS round
+func (ctx *Ctx) GetNumPolsForNonSisRounds(round int) int {
+	// Sanity check
+	if ctx.RoundStatus[round] != IsOnlyMiMCApplied {
+		utils.Panic("Expected a non SIS round!")
+	}
+	return ctx.CommitmentsByRounds.LenOf(round)
 }
 
 // startingRound returns the first round of definition for the Vortex
