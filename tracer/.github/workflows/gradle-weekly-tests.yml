@@ -27,6 +27,7 @@ jobs:
         env:
           WEEKLY_TESTS_PARALLELISM: 32
           GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --hir
+          ZKEVM_FORK: LONDON
 
       - name: Upload test report
         if: always()
@@ -76,6 +77,7 @@ jobs:
           JAVA_OPTS: -Dorg.gradle.daemon=false
           WEEKLY_TESTS_PARALLELISM: 24
           GOCORSET_FLAGS: -v -b1024 --ansi-escapes=false --report --hir
+          ZKEVM_FORK: LONDON
 
       - name: Upload prc calls test report
         if: always()
