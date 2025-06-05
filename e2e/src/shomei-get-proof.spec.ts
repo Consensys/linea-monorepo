@@ -30,7 +30,7 @@ describe("Shomei Linea get proof test suite", () => {
         },
         (currentL2BlockNumber: bigint) => currentL2BlockNumber > 1n,
         2000,
-        180000,
+        150000,
       );
 
       expect(currentL2BlockNumber).toBeGreaterThan(1n);
@@ -43,7 +43,7 @@ describe("Shomei Linea get proof test suite", () => {
           lineaShomeiFrontenedClient.lineaGetProof(provingAddress, [], "0x" + currentL2BlockNumber!.toString(16)),
         (getProofResponse) => getProofResponse?.result,
         2000,
-        120000,
+        150000,
       );
 
       const {
@@ -80,6 +80,6 @@ describe("Shomei Linea get proof test suite", () => {
 
       expect(isInvalid).toBeTruthy();
     },
-    180_000,
+    150_000,
   );
 });
