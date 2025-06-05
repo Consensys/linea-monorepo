@@ -51,10 +51,13 @@ func EmptyLeaf() types.Bytes32 {
 // hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
 // taking H as the HashFunc of the config.
 func hashLR(config *Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
+
 	hasher := config.HashFunc()
 	nodeL.WriteTo(hasher)
 	nodeR.WriteTo(hasher)
+
 	d := types.AsBytes32(hasher.Sum(nil))
+
 	return d
 }
 
@@ -65,8 +68,10 @@ func NewEmptyTree(conf *Config) *Tree {
 	prevNode := EmptyLeaf()
 
 	for i := range emptyNodes {
+
 		newNode := hashLR(conf, prevNode, prevNode)
 		emptyNodes[i] = newNode
+
 		prevNode = newNode
 	}
 
@@ -277,6 +282,7 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tr
 
 	// Builds an empty tree and passes the leaves
 	tree := NewEmptyTree(config)
+
 	tree.OccupiedLeaves = leaves
 
 	// Builds the tree bottom-up
@@ -289,6 +295,7 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tr
 				nextLevel[k] = hashLR(config, currLevels[2*k], currLevels[2*k+1])
 			}
 		})
+
 		tree.OccupiedNodes[i] = nextLevel
 		currLevels = nextLevel
 	}

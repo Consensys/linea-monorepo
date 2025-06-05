@@ -3,6 +3,7 @@ package vortex
 import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -48,20 +49,26 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 	if len(committedSV) == 0 {
 		utils.Panic("attempted to open an empty witness")
 	}
+	for i := 0; i < len(committedSV); i++ {
+		committedSV[i] = smartvectors_mixed.LiftToExt(committedSV[i])
+	} //TODO@yao: remove this once we have a mixed version of LinearCombinationExt
 
 	// Compute the linear combination
 	linComb := make([]fext.Element, params.NbColumns)
+	parallel.ExecuteChunky(len(linComb), func(start, stop int) {
 
-	parallel.Execute(params.NbColumns, func(start, stop int) {
-		// 	subTask := make([]smartvectors.SmartVector, 0, len(committedSV))
-		// 	for i := range committedSV {
-		// 		subTask = append(subTask, committedSV[i].SubVector(start, stop))
-		// 	}
-		// 	// Collect the result in the larger slice at the end
+		subTask := make([]smartvectors.SmartVector, 0, len(committedSV))
+		for i := range committedSV {
+			subTask = append(subTask, committedSV[i].SubVector(start, stop))
+		}
+		// Collect the result in the larger slice at the end
 
-		// 	subResult := smartvectors.LinearCombinationExt(subTask, randomCoin)
-		// 	subResult.WriteInSliceExt(linComb[start:stop])
+		subResult := smartvectors.LinearCombinationExt(subTask, randomCoin)
+
+		subResult.WriteInSliceExt(linComb[start:stop])
+
 	})
+
 	smartvectors.LinearCombinationExt(committedSV, randomCoin)
 
 	linCombSV := smartvectorsext.NewRegularExt(linComb)

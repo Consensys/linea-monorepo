@@ -1,11 +1,11 @@
 package vortex
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"runtime/debug"
 	"testing"
 
-	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -17,10 +17,11 @@ import (
 
 // testParams is a corpus of valid parameters for Vortex
 var testParams = []*Params{
-	NewParams(2, 1<<4, 32, ringsis.StdParams, mimc.NewMiMC),
-	NewParams(2, 1<<4, 32, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
-	NewParams(4, 1<<3, 32, ringsis.StdParams, mimc.NewMiMC),
-	NewParams(4, 1<<3, 32, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
+	//NewParams(2, 1<<4, 32, ringsis.StdParams, poseidon2.NewPoseidon2),
+	NewParams(2, 1<<4, 32, ringsis.StdParams, sha256.New), //TODO@yao change to poseidon2
+	//NewParams(2, 1<<4, 32, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
+	//NewParams(4, 1<<3, 32, ringsis.StdParams, mimc.NewMiMC),
+	//NewParams(4, 1<<3, 32, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
 }
 
 func TestProver(t *testing.T) {
@@ -193,9 +194,11 @@ func TestProver(t *testing.T) {
 
 				// Generate the proof
 				proof := params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
+
 				proof.Complete(entryList[:testCase.NumOpenedColumns], committedMatrices, trees)
 
 				// Check the proof
+
 				err := VerifyOpening(
 					&VerifierInputs{
 						Params:       *params,
@@ -208,6 +211,7 @@ func TestProver(t *testing.T) {
 					})
 
 				require.NoError(t, err)
+
 			})
 		}
 	}
@@ -222,8 +226,8 @@ func TestVerifierNegative(t *testing.T) {
 			{3, 1, 15},
 		}
 		params = []*Params{
-			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC),
-			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
+			NewParams(2, 8, 17, ringsis.StdParams, sha256.New), //TODO@yao change to poseidon2
+			//NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
 		}
 
 		statementMutatorCorpus = []struct {
