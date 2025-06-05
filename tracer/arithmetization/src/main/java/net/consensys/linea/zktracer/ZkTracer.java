@@ -49,7 +49,7 @@ import org.hyperledger.besu.plugin.data.BlockHeader;
 import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 
 @Slf4j
-public class ZkTracer implements ConflationAwareOperationTracer {
+public class ZkTracer implements LineCountingTracer {
 
   /** Construct trace object. */
   private final Trace trace;
@@ -305,10 +305,12 @@ public class ZkTracer implements ConflationAwareOperationTracer {
   }
 
   /** When called, erase all tracing related to the bundle of all transactions since the last. */
+  @Override
   public void popTransactionBundle() {
     hub.popTransactionBundle();
   }
 
+  @Override
   public void commitTransactionBundle() {
     hub.commitTransactionBundle();
   }
@@ -320,6 +322,7 @@ public class ZkTracer implements ConflationAwareOperationTracer {
    *
    * @return
    */
+  @Override
   public Map<String, Integer> getModulesLineCount() {
     maybeThrowTracingExceptions();
     final HashMap<String, Integer> modulesLineCount = new HashMap<>();
@@ -329,6 +332,11 @@ public class ZkTracer implements ConflationAwareOperationTracer {
     }
     //
     return modulesLineCount;
+  }
+
+  @Override
+  public List<Module> getModulesToCount() {
+    return hub.getModulesToCount();
   }
 
   public Set<Address> getAddressesSeenByHubForRelativeBlock(final int relativeBlockNumber) {

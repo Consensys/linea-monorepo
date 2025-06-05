@@ -38,7 +38,7 @@ import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
-public class ZkCounter implements ConflationAwareOperationTracer {
+public class ZkCounter implements LineCountingTracer {
   public static final String MODEXP = "MODEXP";
   public static final String RIP = "RIP";
   public static final String BLAKE = "BLAKE";
@@ -117,24 +117,32 @@ public class ZkCounter implements ConflationAwareOperationTracer {
   }
 
   /** When called, erase all tracing related to the bundle of all transactions since the last. */
+  @Override
   public void popTransactionBundle() {
     for (Module m : moduleToCount) {
       m.popTransactionBundle();
     }
   }
 
+  @Override
   public void commitTransactionBundle() {
     for (Module m : moduleToCount) {
       m.commitTransactionBundle();
     }
   }
 
+  @Override
   public Map<String, Integer> getModulesLineCount() {
-    final HashMap<String, Integer> modulesLineCount = new HashMap<>();
+    final HashMap<String, Integer> modulesLineCount = HashMap.newHashMap(moduleToCount.size());
 
     for (Module m : moduleToCount) {
       modulesLineCount.put(m.moduleKey(), m.lineCount());
     }
     return modulesLineCount;
+  }
+
+  @Override
+  public List<Module> getModulesToCount() {
+    return moduleToCount;
   }
 }
