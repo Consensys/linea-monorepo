@@ -15,6 +15,7 @@
  */
 package maru.app
 
+import maru.config.ValidatorElNode
 import maru.consensus.ForkSpec
 import maru.consensus.NewBlockHandler
 import maru.consensus.ProtocolFactory
@@ -37,7 +38,7 @@ class QbftFollowerFactory(
   val p2PNetwork: P2PNetwork,
   val beaconChain: BeaconChain,
   val newBlockHandler: NewBlockHandler<*>,
-  val validatorElNodeConfig: maru.config.ValidatorElNode,
+  val validatorElNodeConfig: ValidatorElNode,
   val beaconChainInitialization: BeaconChainInitialization,
 ) : ProtocolFactory {
   override fun create(forkSpec: ForkSpec): Protocol {

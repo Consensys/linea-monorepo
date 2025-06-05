@@ -15,7 +15,21 @@
  */
 package maru.config
 
+import com.sksamuel.hoplite.ConfigFailure
+import com.sksamuel.hoplite.ConfigResult
+import com.sksamuel.hoplite.DecoderContext
+import com.sksamuel.hoplite.Node
+import com.sksamuel.hoplite.decoder.DataClassDecoder
+import com.sksamuel.hoplite.decoder.Decoder
+import com.sksamuel.hoplite.fp.invalid
+import com.sksamuel.hoplite.valueOrNull
 import java.net.URL
+import kotlin.reflect.KType
+import kotlin.reflect.full.createType
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
+import maru.extensions.fromHexToByteArray
 
 data class PayloadValidatorDto(
   val engineApiEndpoint: ApiEndpointDto,
@@ -33,6 +47,50 @@ data class ApiEndpointDto(
   val jwtSecretPath: String? = null,
 ) {
   fun domainFriendly(): ApiEndpointConfig = ApiEndpointConfig(endpoint = endpoint, jwtSecretPath = jwtSecretPath)
+}
+
+object QbftOptionsDecoder : Decoder<QbftOptions> {
+  // This should be private, but Hoplite won't accept a private data class
+  data class QbftOptionsDtoToml(
+    val minBlockBuildTime: Duration = 500.milliseconds,
+    val messageQueueLimit: Int = 1000,
+    val roundExpiry: Duration = 1.seconds,
+    val duplicateMessageLimit: Int = 100,
+    val futureMessageMaxDistance: Long = 10L,
+    val futureMessagesLimit: Long = 1000L,
+  ) {
+    fun toDomain(feeRecipient: ByteArray): QbftOptions =
+      QbftOptions(
+        minBlockBuildTime = minBlockBuildTime,
+        messageQueueLimit = messageQueueLimit,
+        roundExpiry = roundExpiry,
+        duplicateMessageLimit = duplicateMessageLimit,
+        futureMessageMaxDistance = futureMessageMaxDistance,
+        futureMessagesLimit = futureMessagesLimit,
+        feeRecipient = feeRecipient,
+      )
+  }
+
+  override fun decode(
+    node: Node,
+    type: KType,
+    context: DecoderContext,
+  ): ConfigResult<QbftOptions> {
+    val tomlFriendlyPart = DataClassDecoder().safeDecode(node, QbftOptionsDtoToml::class.createType(), context)
+    val tomlFriendlyPartTyped = tomlFriendlyPart as ConfigResult<QbftOptionsDtoToml>
+    val feeRecipient =
+      try {
+        node.getString("feerecipient").fromHexToByteArray()
+      } catch (throwable: Throwable) {
+        return ConfigFailure.ResolverException("Unable to convert feeRecipient to byteArray!", throwable).invalid()
+      }
+
+    return tomlFriendlyPartTyped.map { it.toDomain(feeRecipient) }
+  }
+
+  private fun Node.getString(key: String): String = this[key].valueOrNull()!!
+
+  override fun supports(type: KType): Boolean = type.classifier == QbftOptions::class
 }
 
 data class MaruConfigDtoToml(

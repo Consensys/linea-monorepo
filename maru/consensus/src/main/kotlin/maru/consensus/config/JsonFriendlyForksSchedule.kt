@@ -40,7 +40,7 @@ import maru.consensus.qbft.QbftConsensusConfig
 import maru.core.Validator
 import maru.extensions.fromHexToByteArray
 
-class ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
+object ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
   override fun decode(
     node: Node,
     type: KType,
@@ -78,7 +78,6 @@ class ForkConfigDecoder : Decoder<JsonFriendlyForksSchedule> {
       "delegated" -> ElDelegatedConsensus.ElDelegatedConfig.valid()
       "qbft" ->
         QbftConsensusConfig(
-          feeRecipient = obj.getString("feerecipient").fromHexToByteArray(),
           validatorSet =
             (obj["validatorset"] as ArrayNode)
               .elements

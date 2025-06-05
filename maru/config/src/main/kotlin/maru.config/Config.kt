@@ -74,7 +74,43 @@ data class QbftOptions(
   val duplicateMessageLimit: Int = 100,
   val futureMessageMaxDistance: Long = 10L,
   val futureMessagesLimit: Long = 1000L,
-)
+  val feeRecipient: ByteArray,
+) {
+  init {
+    require(feeRecipient.size == 20) {
+      "feeRecipient address must be 20 bytes long, " +
+        "but it's ${feeRecipient.size} bytes long!"
+    }
+  }
+
+  override fun equals(other: Any?): Boolean {
+    if (this === other) return true
+    if (javaClass != other?.javaClass) return false
+
+    other as QbftOptions
+
+    if (messageQueueLimit != other.messageQueueLimit) return false
+    if (duplicateMessageLimit != other.duplicateMessageLimit) return false
+    if (futureMessageMaxDistance != other.futureMessageMaxDistance) return false
+    if (futureMessagesLimit != other.futureMessagesLimit) return false
+    if (minBlockBuildTime != other.minBlockBuildTime) return false
+    if (roundExpiry != other.roundExpiry) return false
+    if (!feeRecipient.contentEquals(other.feeRecipient)) return false
+
+    return true
+  }
+
+  override fun hashCode(): Int {
+    var result = messageQueueLimit
+    result = 31 * result + duplicateMessageLimit
+    result = 31 * result + futureMessageMaxDistance.hashCode()
+    result = 31 * result + futureMessagesLimit.hashCode()
+    result = 31 * result + minBlockBuildTime.hashCode()
+    result = 31 * result + roundExpiry.hashCode()
+    result = 31 * result + feeRecipient.contentHashCode()
+    return result
+  }
+}
 
 data class MaruConfig(
   val persistence: Persistence,
