@@ -112,7 +112,11 @@ func PositiveMod[T ~int](a, n T) T {
 // Join joins a set of slices by appending them into a new array. It can also
 // be used to flatten a double array.
 func Join[T any](ts ...[]T) []T {
-	res := []T{}
+	var totalSize int
+	for i := 0; i < len(ts); i++ {
+		totalSize += len(ts[i])
+	}
+	res := make([]T, 0, totalSize)
 	for _, t := range ts {
 		res = append(res, t...)
 	}
