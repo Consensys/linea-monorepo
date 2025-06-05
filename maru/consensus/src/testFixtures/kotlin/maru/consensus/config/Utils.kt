@@ -24,7 +24,7 @@ object Utils {
   fun parseBeaconChainConfig(json: String): JsonFriendlyForksSchedule =
     ConfigLoaderBuilder
       .default()
-      .addDecoder(ForkConfigDecoder())
+      .addDecoder(ForkConfigDecoder)
       .withExplicitSealedTypes()
       .addSource(JsonPropertySource(json))
       .build()

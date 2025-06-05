@@ -36,6 +36,7 @@ import maru.consensus.ForksSchedule
 import maru.consensus.config.Utils
 import maru.crypto.Crypto
 import maru.extensions.encodeHex
+import maru.extensions.fromHexToByteArray
 import maru.p2p.NoOpP2PNetwork
 import maru.p2p.P2PNetwork
 
@@ -62,13 +63,17 @@ class MaruFactory {
           "type": "qbft",
           "blockTimeSeconds": 1,
           "validatorSet": ["$validatorAddress"],
-          "feeRecipient": "$validatorAddress",
           "elFork": "Prague"
         }
       }
     }
 
     """.trimIndent()
+  private val validatorQbftOptions =
+    QbftOptions(
+      feeRecipient = validatorAddress.fromHexToByteArray(),
+      minBlockBuildTime = 200.milliseconds,
+    )
 
   private val beaconGenesisConfig: ForksSchedule =
     run {
@@ -135,7 +140,7 @@ class MaruFactory {
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
-        qbftOptions = QbftOptions(minBlockBuildTime = 200.milliseconds),
+        qbftOptions = validatorQbftOptions,
       )
     writeValidatorPrivateKey(config)
     return buildApp(config, p2pNetwork = p2pNetwork)
@@ -156,7 +161,7 @@ class MaruFactory {
         dataDir = dataDir,
         p2pConfig = p2pConfig,
         followers = FollowersConfig(emptyMap()),
-        qbftOptions = QbftOptions(),
+        qbftOptions = validatorQbftOptions,
       )
     writeValidatorPrivateKey(config)
     return buildApp(config = config, p2pNetwork = p2pNetwork)
@@ -210,7 +215,7 @@ class MaruFactory {
         ethereumJsonRpcUrl = ethereumJsonRpcUrl,
         engineApiRpc = engineApiRpc,
         dataDir = dataDir,
-        qbftOptions = QbftOptions(),
+        qbftOptions = validatorQbftOptions,
       )
     writeValidatorPrivateKey(config)
     val genesisContent =

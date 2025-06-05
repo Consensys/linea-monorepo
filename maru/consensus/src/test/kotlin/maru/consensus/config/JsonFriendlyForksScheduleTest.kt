@@ -22,7 +22,6 @@ import maru.consensus.delegated.ElDelegatedConsensus
 import maru.consensus.qbft.QbftConsensusConfig
 import maru.core.Validator
 import maru.extensions.fromHexToByteArray
-import org.apache.tuweni.bytes.Bytes
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -41,7 +40,6 @@ class JsonFriendlyForksScheduleTest {
           "type": "qbft",
           "validatorSet": ["0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0"],
           "blockTimeSeconds": 6,
-          "feeRecipient": "0x0000000000000000000000000000000000000000",
           "elFork": "Prague"
         }
       }
@@ -69,7 +67,6 @@ class JsonFriendlyForksScheduleTest {
             blockTimeSeconds = 6,
             configuration =
               QbftConsensusConfig(
-                feeRecipient = Bytes.fromHexString("0x0000000000000000000000000000000000000000").toArray(),
                 validatorSet = setOf(Validator("0x1b9abeec3215d8ade8a33607f2cf0f4f60e5f0d0".fromHexToByteArray())),
                 elFork = ElFork.Prague,
               ),
@@ -87,7 +84,6 @@ class JsonFriendlyForksScheduleTest {
         "config": {
           "4": {
             "type": "qbft",
-            "feeRecipient": "0x0000000000000000000000000000000000000000",
             "elFork": "Prague"
           }
         }

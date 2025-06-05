@@ -2,6 +2,7 @@
 data-path="/tmp/maru-db"
 
 [qbft-options]
+fee-recipient="0x0000000000000000000000000000000000000000"
 
 [p2p-config]
 port = 3322

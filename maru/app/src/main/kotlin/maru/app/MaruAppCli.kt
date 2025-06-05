@@ -22,6 +22,7 @@ import com.sksamuel.hoplite.addFileSource
 import java.io.File
 import java.util.concurrent.Callable
 import maru.config.MaruConfigDtoToml
+import maru.config.QbftOptionsDecoder
 import maru.consensus.config.ForkConfigDecoder
 import maru.consensus.config.JsonFriendlyForksSchedule
 import org.apache.logging.log4j.LogManager
@@ -47,9 +48,9 @@ class MaruAppCli : Callable<Int> {
     inline fun <reified T : Any> loadConfig(configFiles: List<File>): ConfigResult<T> {
       val confBuilder: ConfigLoaderBuilder =
         ConfigLoaderBuilder.Companion
-          .empty()
-          .addDecoder(ForkConfigDecoder())
-          .addDefaults()
+          .default()
+          .addDecoder(QbftOptionsDecoder)
+          .addDecoder(ForkConfigDecoder)
           .withExplicitSealedTypes()
       for (configFile in configFiles.reversed()) {
         // files must be added in reverse order for overriding
