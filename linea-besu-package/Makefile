@@ -20,9 +20,17 @@ build:
 
 run-e2e-test:
 	echo "EXPECTED_TRACES_API_VERSION=${LINEA_TRACER_PLUGIN_VERSION}"
-	sed -i '' 's/^\(expected-traces-api-version-v2=\).*/\1"${LINEA_TRACER_PLUGIN_VERSION}"/' ../config/coordinator/coordinator-docker.config.toml
-	sed -i '' 's/^\(expected-traces-api-version-v2=\).*/\1"${LINEA_TRACER_PLUGIN_VERSION}"/' ../config/coordinator/coordinator-docker-traces-v2-override.config.toml
+	if [ "$(shell uname)" = "Linux" ]; then \
+		sed -i'' 's/^\(expected-traces-api-version-v2=\).*/\1"${LINEA_TRACER_PLUGIN_VERSION}"/' ../config/coordinator/coordinator-docker.config.toml; \
+		sed -i'' 's/^\(expected-traces-api-version-v2=\).*/\1"${LINEA_TRACER_PLUGIN_VERSION}"/' ../config/coordinator/coordinator-docker-traces-v2-override.config.toml; \
+	elif [ "$(shell uname)" = "Darwin" ]; then \
+		sed -i '' 's/^\(expected-traces-api-version-v2=\).*/\1"${LINEA_TRACER_PLUGIN_VERSION}"/' ../config/coordinator/coordinator-docker.config.toml; \
+		sed -i '' 's/^\(expected-traces-api-version-v2=\).*/\1"${LINEA_TRACER_PLUGIN_VERSION}"/' ../config/coordinator/coordinator-docker-traces-v2-override.config.toml; \
+	fi
 	cd .. && BESU_PACKAGE_TAG=$(TAG) make start-env-with-tracing-v2-ci && pnpm run -F e2e test:e2e:local
+
+run-e2e-test-cleanup:
+	cd .. && make clean-environment
 
 clean:
 	rm -fr tmp || true
