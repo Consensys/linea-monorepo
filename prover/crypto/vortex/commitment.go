@@ -44,7 +44,6 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 	})
 
 	timeTree := profiling.TimeIt(func() {
-
 		// Hash the SIS digests to obtain the leaves of the Merkle tree.
 		leaves := p.computeLeavesWithSis(colHashes)
 
@@ -147,16 +146,12 @@ func (p *Params) computeLeavesWithSis(colHashes []field.Element) (leaves []types
 	leaves = make([]types.Bytes32, numChunks)
 
 	parallel.Execute(numChunks, func(start, stop int) {
-
 		hasher := p.LeafHashFunc()
-
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 			hasher.Reset()
-
 			for i := 0; i < chunkSize; i++ {
 				fbytes := colHashes[startChunk+i].Bytes()
-
 				hasher.Write(fbytes[:])
 			}
 
@@ -165,6 +160,7 @@ func (p *Params) computeLeavesWithSis(colHashes []field.Element) (leaves []types
 			copy(leaves[chunkID][:], hasher.Sum(nil))
 		}
 	})
+
 	return leaves
 }
 

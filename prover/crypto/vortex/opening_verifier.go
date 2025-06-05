@@ -106,7 +106,7 @@ func VerifyOpening(v *VerifierInputs) error {
 	if err := v.checkColumnInclusion(); err != nil {
 		return err
 	}
-
+	//TODO@yao: TestProver can pass when checkColumnInclusion is hidden, but TestVerifierNegative can partially pass even when it is not hidden.
 	return nil
 }
 
@@ -129,14 +129,14 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 
 		// Check the linear combination is consistent with the opened column
 
-		y := poly.EvalOnExtField(fullCol, v.RandomCoin) // Proximity check: compute sum col_i[j] alpha^j
+		y := poly.EvalOnExtField(fullCol, v.RandomCoin)
 
 		if selectedColID > linearCombination.Len() {
 			return fmt.Errorf("entry overflows the size of the linear combination")
 		}
 
 		if y != linearCombination.GetExt(selectedColID) {
-			other := linearCombination.Get(selectedColID)
+			other := linearCombination.GetExt(selectedColID)
 			return fmt.Errorf("the linear combination is inconsistent %v : %v", y.String(), other.String())
 		}
 	}
