@@ -4,6 +4,10 @@ This guide explains how to customize core rollup, messaging, and bridging functi
 
 **Note:** It is recommended that any overrides or modifications from the original audited code should be independently audited for conflicting behavior.
 
+## 🧩 Customizing Contract Versions
+
+To modify the ABI version returned, the `CONTRACT_VERSION()` must be overriden with your specific string value. The default is the base version.
+
 ## 🧱 Customizing Linea Rollup Behavior
 
 To modify the behavior of the rollup mechanism itself (e.g. blob submission for finalization), you can override virtual functions in `LineaRollup.sol`.

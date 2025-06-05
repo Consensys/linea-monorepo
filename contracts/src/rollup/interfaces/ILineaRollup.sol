@@ -9,7 +9,7 @@ import { IPermissionsManager } from "../../security/access/interfaces/IPermissio
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-interface ILineaRollupBase {
+interface ILineaRollup {
   /**
    * @notice Initialization data structure for the LineaRollup contract.
    * @param initialStateRootHash The initial state root hash at initialization used for proof verification.
@@ -282,6 +282,12 @@ interface ILineaRollupBase {
    * @dev Thrown when the fallback operator tries to renounce their operator role.
    */
   error OnlyNonFallbackOperator();
+
+  /**
+   * @notice Returns the ABI version and not the reinitialize version.
+   * @return contractVersion The contract ABI version.
+   */
+  function CONTRACT_VERSION() external returns (string memory contractVersion);
 
   /**
    * @notice Adds or updates the verifier contract address for a proof type.

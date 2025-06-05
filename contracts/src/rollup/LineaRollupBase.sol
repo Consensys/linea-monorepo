@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { L1MessageService } from "../messaging/l1/L1MessageService.sol";
 import { ZkEvmV2 } from "./ZkEvmV2.sol";
-import { ILineaRollupBase } from "./interfaces/ILineaRollupBase.sol";
+import { ILineaRollup } from "./interfaces/ILineaRollup.sol";
 import { PermissionsManager } from "../security/access/PermissionsManager.sol";
 
 import { EfficientLeftRightKeccak } from "../libraries/EfficientLeftRightKeccak.sol";
@@ -18,12 +18,9 @@ abstract contract LineaRollupBase is
   ZkEvmV2,
   L1MessageService,
   PermissionsManager,
-  ILineaRollupBase
+  ILineaRollup
 {
   using EfficientLeftRightKeccak for *;
-
-  /// @notice This is the ABI version and not the reinitialize version.
-  string public constant CONTRACT_VERSION = "7.0";
 
   /// @notice The role required to set/add  proof verifiers by type.
   bytes32 public constant VERIFIER_SETTER_ROLE = keccak256("VERIFIER_SETTER_ROLE");
@@ -52,6 +49,9 @@ abstract contract LineaRollupBase is
 
   /// @dev In practice, when used, this is expected to be a close approximation to 6 months, and is intentional.
   uint256 internal constant SIX_MONTHS_IN_SECONDS = (365 / 2) * 24 * 60 * 60;
+
+  /// @notice This is the ABI version and not the reinitialize version.
+  string private constant _CONTRACT_VERSION = "7.0";
 
   /// @dev DEPRECATED in favor of the single blobShnarfExists mapping.
   mapping(bytes32 dataHash => bytes32 finalStateRootHash) private dataFinalStateRootHashes_DEPRECATED;
@@ -153,6 +153,14 @@ abstract contract LineaRollupBase is
     }
 
     super.renounceRole(_role, _account);
+  }
+
+  /**
+   * @notice Returns the ABI version and not the reinitialize version.
+   * @return contractVersion The contract ABI version.
+   */
+  function CONTRACT_VERSION() external virtual returns (string memory contractVersion) {
+    contractVersion = _CONTRACT_VERSION;
   }
 
   /**
@@ -586,7 +594,7 @@ abstract contract LineaRollupBase is
       revert BytesLengthNotMultipleOf32();
     }
 
-    bytes4 errorSelector = ILineaRollupBase.FirstByteIsNotZero.selector;
+    bytes4 errorSelector = ILineaRollup.FirstByteIsNotZero.selector;
     assembly {
       for {
         let i := _data.length

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity ^0.8.30;
 
-import { L2MessageService } from "../../../messaging/l2/L2MessageService.sol";
+import { L2MessageServiceBase } from "../../../messaging/l2/L2MessageServiceBase.sol";
 
 /// @custom:oz-upgrades-unsafe-allow missing-initializer
-contract InheritingL2MessageService is L2MessageService {
+contract InheritingL2MessageService is L2MessageServiceBase {
   error DirectETHSendingDisallowed();
   error FeeSendingDisallowed();
   error OnlyAllowedSendersToRemoteReceiver();
@@ -46,7 +46,7 @@ contract InheritingL2MessageService is L2MessageService {
     RoleAddress[] calldata _roleAddresses,
     PauseTypeRole[] calldata _pauseTypeRoles,
     PauseTypeRole[] calldata _unpauseTypeRoles
-  ) external virtual override initializer {
+  ) external initializer {
     __L2MessageService_init(
       _rateLimitPeriod,
       _rateLimitAmount,

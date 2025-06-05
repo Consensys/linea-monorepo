@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.30;
+pragma solidity 0.8.30;
 
-import { TokenBridge } from "../../../bridging/token/TokenBridge.sol";
+import { TokenBridgeBase } from "../../../bridging/token/TokenBridgeBase.sol";
 
-contract InheritingL1TokenBridge is TokenBridge {
+contract InheritingL1TokenBridge is TokenBridgeBase {
   enum BridingStatus {
     REQUESTED,
     READY,
@@ -17,8 +17,6 @@ contract InheritingL1TokenBridge is TokenBridge {
     InitializationData calldata _initializationData
   )
     external
-    virtual
-    override
     nonZeroAddress(_initializationData.messageService)
     nonZeroAddress(_initializationData.tokenBeacon)
     nonZeroChainId(_initializationData.sourceChainId)

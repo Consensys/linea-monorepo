@@ -227,6 +227,12 @@ interface ITokenBridge {
   error SourceChainSameAsTargetChain();
 
   /**
+   * @notice Returns the ABI version and not the reinitialize version.
+   * @return contractVersion The contract ABI version.
+   */
+  function CONTRACT_VERSION() external returns (string memory contractVersion);
+
+  /**
    * @notice Similar to `bridgeToken` function but allows to pass additional
    *   permit data to do the ERC-20 approval in a single transaction.
    * @param _token The address of the token to be bridged.
