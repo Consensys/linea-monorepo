@@ -813,7 +813,8 @@ class L1DependentApp(
         ),
       )
       val executionProverClient: ExecutionProverClientV2 = proverClientFactory.executionProverClient(
-        tracesVersion = configs.traces.expectedTracesApiVersion,
+        // we cannot use configs.traces.expectedTracesApiVersion because it breaks prover expected version pattern
+        tracesVersion = "v2.1.0",
         stateManagerVersion = configs.stateManager.version,
       )
 
