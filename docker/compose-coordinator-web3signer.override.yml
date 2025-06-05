@@ -1,9 +1,0 @@
-include:
-  - compose-tracing-v2.yml
-
-services:
-  coordinator:
-    environment:
-      config__override__l1-submission__blob__signer__type: "web3signer"
-      config__override__l1-submission__aggregation__signer__type: "web3signer"
-      config__override__message-anchoring__signer__type: "web3signer"
