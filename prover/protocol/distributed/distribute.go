@@ -260,6 +260,7 @@ func DistributeWizard(comp *wizard.CompiledIOP, disc ModuleDiscoverer) *Distribu
 
 // CompileModules applies the compilation steps to each modules identically.
 func (dist *DistributedWizard) CompileSegments() *DistributedWizard {
+	logrus.Infoln("Compiling distributed wizard default module")
 	dist.CompiledDefault = CompileSegment(dist.DefaultModule)
 
 	logrus.Infof("Number of GL modules to compile:%d\n", len(dist.GLs))

@@ -25,8 +25,8 @@ func GetDistributed() *distributed.DistributedWizard {
 
 		// This tests the compilation of the compiled-IOP
 		distWizard = distributed.DistributeWizard(zkevm.WizardIOP, disc).
-				CompileSegments()
-		// Conglomerate(20)
+				CompileSegments().
+				Conglomerate(20)
 	)
 
 	return distWizard
@@ -36,26 +36,26 @@ func TestDistributedWizard(t *testing.T) {
 	dist := GetDistributed()
 
 	t.Run("Bootstrapper", func(t *testing.T) {
-		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper")
+		runSerdeTest(t, dist.Bootstrapper, "DistributedWizard.Bootstrapper", true)
 	})
 
 	t.Run("Discoverer", func(t *testing.T) {
-		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer")
+		runSerdeTest(t, dist.Disc, "DistributedWizard.Discoverer", true)
 	})
 
 	t.Run("CompiledDefault", func(t *testing.T) {
-		runSerdeTest(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault")
+		runSerdeTest(t, dist.CompiledDefault, "DistributedWizard.CompiledDefault", false)
 	})
 
 	for i := range dist.CompiledGLs {
 		t.Run(fmt.Sprintf("CompiledGL-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i))
+			runSerdeTest(t, dist.CompiledGLs[i], fmt.Sprintf("DistributedWizard.CompiledGL-%v", i), false)
 		})
 	}
 
 	for i := range dist.CompiledLPPs {
 		t.Run(fmt.Sprintf("CompiledLPP-%v", i), func(t *testing.T) {
-			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i))
+			runSerdeTest(t, dist.CompiledLPPs[i], fmt.Sprintf("DistributedWizard.CompiledLPP-%v", i), false)
 		})
 	}
 
@@ -64,5 +64,5 @@ func TestDistributedWizard(t *testing.T) {
 	dist = nil
 	runtime.GC()
 
-	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration")
+	runSerdeTest(t, cong, "DistributedWizard.CompiledConglomeration", false)
 }

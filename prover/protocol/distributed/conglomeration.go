@@ -42,7 +42,8 @@ type ConglomeratorCompilation struct {
 
 	// ModuleProofs lists the wizard whose proof are supported by the current
 	// instance of the conglomerator.
-	ModuleGLIops, ModuleLPPIops []*wizard.CompiledIOP
+	ModuleGLIops  []*wizard.CompiledIOP `serde:"omit"`
+	ModuleLPPIops []*wizard.CompiledIOP `serde:"omit"`
 
 	// DefaultIops is the wizard IOP used for filling
 	DefaultIops *RecursedSegmentCompilation

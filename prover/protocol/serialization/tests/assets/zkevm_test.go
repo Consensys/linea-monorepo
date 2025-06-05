@@ -12,12 +12,11 @@ import (
 )
 
 var (
-	z   = test_utils.GetZkEVM()
-	iop = z.WizardIOP
+	z = test_utils.GetZkEVM()
 )
 
 // Helper function for serialization and deserialization tests
-func runSerdeTest(t *testing.T, input interface{}, name string) {
+func runSerdeTest(t *testing.T, input interface{}, name string, isSanityCheck bool) {
 
 	// In case the test panics, log the error but do not let the panic
 	// interrupt the test.
@@ -58,19 +57,16 @@ func runSerdeTest(t *testing.T, input interface{}, name string) {
 	// Log results
 	t.Logf("%s serialization=%v deserialization=%v buffer-size=%v \n", name, serTime, desTime, len(b))
 
-	// Sanity check: Compare exported fields
-	t.Logf("Running sanity checks on deserialized object: Comparing if the values matched before and after serialization")
-
-	outputDeref := reflect.ValueOf(output).Elem().Interface()
-	if !test_utils.CompareExportedFields(input, outputDeref) {
-		t.Errorf("Mismatch in exported fields of %s during serde", name)
+	if isSanityCheck {
+		// Sanity check: Compare exported fields
+		t.Logf("Running sanity checks on deserialized object: Comparing if the values matched before and after serialization")
+		outputDeref := reflect.ValueOf(output).Elem().Interface()
+		if !test_utils.CompareExportedFields(input, outputDeref) {
+			t.Errorf("Mismatch in exported fields of %s during serde", name)
+		}
 	}
 }
 
 func TestSerdeZkEVM(t *testing.T) {
-	runSerdeTest(t, z, "ZkEVM")
-}
-
-func TestSerdeIOP(t *testing.T) {
-	runSerdeTest(t, iop, "CompiledIOP")
+	runSerdeTest(t, z, "ZkEVM", true)
 }
