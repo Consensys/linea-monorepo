@@ -19,10 +19,8 @@ contract-deployment-block-number = 3
 
 [conflation]
 disabled = false
-
 blocks-limit = 2
 new-blocks-polling-interval="PT1S"
-conflation-calculator-version = "1.0.0"
 conflation-deadline = "PT6S" # =3*l2_block_time
 conflation-deadline-check-interval = "PT3S"
 conflation-deadline-last-block-confirmation-delay = "PT2S" # recommended: at least 2 * blockInterval
@@ -42,14 +40,14 @@ failures-warning-threshold = 3
 blob-compressor-version="V1_2"
 blob-size-limit = 102400 # 100KB
 handler-polling-interval = "PT1S"
-# default batches limit is  aggregation-proofs-limit -1
+# default batches limit is aggregation-proofs-limit -1
 # batches-limit must be less than or equal to aggregation-proofs-limit-1
 batches-limit = 1
 
 [conflation.proof-aggregation]
-aggregation-proofs-limit = 3
-aggregation-deadline = "PT1M"
-aggregation-coordinator-polling-interval = "PT2S"
+proofs-limit = 3
+deadline = "PT1M"
+coordinator-polling-interval = "PT2S"
 deadline-check-interval = "PT8S"
 target-end-blocks = []
 
