@@ -77,8 +77,9 @@ class JsonRpcMessageProcessor(
         category = metricsCategory,
         name = "processing.whole",
         description = "Processing of JSON-RPC message: Deserialization + Business Logic + Serialization",
-        tagKey = "method",
-        tagValueExtractorOnError = { "METHOD_PROCESSING_ERROR" },
+        tags = emptyList(),
+        dynamicTagKey = "method",
+        dynamicTagValueExtractorOnError = { "METHOD_PROCESSING_ERROR" },
       ) {
         it.first!!
       }
@@ -196,8 +197,9 @@ class JsonRpcMessageProcessor(
       category = metricsCategory,
       name = "serialization.request",
       description = "json-rpc method parsing",
-      tagKey = "method",
-      tagValueExtractorOnError = { "METHOD_PARSE_ERROR" },
+      tags = emptyList(),
+      dynamicTagKey = "method",
+      dynamicTagValueExtractorOnError = { "METHOD_PARSE_ERROR" },
     ) {
         parsingResult: Result<Pair<JsonRpcRequest, JsonObject>, JsonRpcErrorResponse> ->
       parsingResult.map { it.first.method }.recover { "METHOD_PARSE_ERROR" }.value

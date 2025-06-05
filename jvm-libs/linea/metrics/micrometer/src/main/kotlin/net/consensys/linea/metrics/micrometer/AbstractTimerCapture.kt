@@ -11,33 +11,8 @@ import net.consensys.linea.metrics.TimerCapture
  * captures TODO: In order to improve performance, TimerCapture instances can be cached into a
  * thread safe Map just like it's made in MeterRegistry class
  */
-abstract class AbstractTimerCapture<T> : TimerCapture<T> {
-  protected val meterRegistry: MeterRegistry
-  protected var timerBuilder: Timer.Builder
-  protected var clock = Clock.SYSTEM
-
-  constructor(meterRegistry: MeterRegistry, name: String) {
-    this.meterRegistry = meterRegistry
-    timerBuilder = Timer.builder(name)
-  }
-
-  constructor(meterRegistry: MeterRegistry, timerBuilder: Timer.Builder) {
-    this.meterRegistry = meterRegistry
-    this.timerBuilder = timerBuilder
-  }
-
-  open fun setDescription(description: String): AbstractTimerCapture<T> {
-    timerBuilder.description(description)
-    return this
-  }
-
-  open fun setTag(tagKey: String, tagValue: String): AbstractTimerCapture<T> {
-    timerBuilder.tag(tagKey, tagValue)
-    return this
-  }
-
-  open fun setClock(clock: Clock): AbstractTimerCapture<T> {
-    this.clock = clock
-    return this
-  }
-}
+abstract class AbstractTimerCapture<T>(
+  protected val meterRegistry: MeterRegistry,
+  protected val timerBuilder: Timer.Builder,
+  protected val clock: Clock,
+) : TimerCapture<T>

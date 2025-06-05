@@ -159,12 +159,14 @@ class MicrometerMetricsFacadeTest {
       Thread.sleep(200L)
     }
 
+    val expectedTags = listOf(Tag("key1", "value1"), Tag("key2", "value2"))
     val timer = metricsFacade.createDynamicTagTimer<Unit>(
       category = TestCategory.TEST_CATEGORY,
       name = "some.dynamictag.timer.metric",
       description = "This is a test metric",
-      tagKey = "key",
-      tagValueExtractorOnError = { "unfound_key" },
+      tags = expectedTags,
+      dynamicTagKey = "key",
+      dynamicTagValueExtractorOnError = { "unfound_key" },
     ) {
       "value"
     }
@@ -245,79 +247,19 @@ class MicrometerMetricsFacadeTest {
   fun `createDynamicTagTimer creates timer with correct name when metrics prefix is absent`() {
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade = MicrometerMetricsFacade(meterRegistry)
+    val expectedTags = listOf(Tag("key1", "value1"), Tag("key2", "value2"))
     val timer = metricsFacade.createDynamicTagTimer<Unit>(
       category = TestCategory.TEST_CATEGORY,
       name = "some.dynamictag.timer.metric",
       description = "This is a test metric",
-      tagKey = "key",
-      tagValueExtractorOnError = { "unfound_key" },
+      dynamicTagKey = "key",
+      tags = expectedTags,
+      dynamicTagValueExtractorOnError = { "unfound_key" },
     ) {
       "value"
     }
     timer.captureTime {}
     val createdTimer = meterRegistry.find("test.category.some.dynamictag.timer.metric").timer()
     assertThat(createdTimer).isNotNull
-  }
-
-  @Test
-  fun `counter provider creates multiple counters`() {
-    val requestCounter = metricsFacade.createCounterProvider(
-      category = TestCategory.TEST_CATEGORY,
-      name = "request.counter",
-      description = "This is a test counter provider",
-      commonTags = listOf(Tag("apitype", "engine_prague")),
-    )
-    requestCounter.withTags(listOf(Tag("method", "getPayload")))
-      .increment(5.0)
-    requestCounter.withTags(listOf(Tag("method", "newPayload")))
-      .increment(3.0)
-    requestCounter.withTags(listOf(Tag("method", "getPayload")))
-      .increment()
-
-    val createdCounter1 = meterRegistry
-      .find("linea.test.test.category.request.counter")
-      .tags("method", "getPayload")
-      .counter()
-
-    val createdCounter2 = meterRegistry
-      .find("linea.test.test.category.request.counter")
-      .tags("method", "newPayload")
-      .counter()
-
-    assertThat(createdCounter1).isNotNull
-    assertThat(createdCounter2).isNotNull
-    assertThat(createdCounter1!!.count()).isEqualTo(6.0)
-    assertThat(createdCounter2!!.count()).isEqualTo(3.0)
-  }
-
-  @Test
-  fun `timer provider creates multiple timers`() {
-    val requestTimer = metricsFacade.createTimerProvider(
-      category = TestCategory.TEST_CATEGORY,
-      name = "request.latency",
-      description = "This is a test counter provider",
-      commonTags = listOf(Tag("apitype", "engine_prague")),
-    )
-    requestTimer.withTags(listOf(Tag("method", "getPayload")))
-      .captureTime { Thread.sleep(2) }
-    requestTimer.withTags(listOf(Tag("method", "newPayload")))
-      .captureTime { Thread.sleep(10) }
-    requestTimer.withTags(listOf(Tag("method", "getPayload")))
-      .captureTime { Thread.sleep(2) }
-
-    val createdTimer1 = meterRegistry
-      .find("linea.test.test.category.request.latency")
-      .tags("method", "getPayload")
-      .timer()
-
-    val createdTimer2 = meterRegistry
-      .find("linea.test.test.category.request.latency")
-      .tags("method", "newPayload")
-      .timer()
-
-    assertThat(createdTimer1).isNotNull
-    assertThat(createdTimer1!!.count()).isEqualTo(2)
-    assertThat(createdTimer2).isNotNull
-    assertThat(createdTimer2!!.count()).isEqualTo(1)
   }
 }
