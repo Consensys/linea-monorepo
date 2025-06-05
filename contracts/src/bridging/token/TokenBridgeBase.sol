@@ -26,7 +26,7 @@ import { EfficientLeftRightKeccak } from "../../libraries/EfficientLeftRightKecc
  * @author ConsenSys Software Inc.
  * @custom:security-contact security-report@linea.build
  */
-contract TokenBridgeBase is
+abstract contract TokenBridgeBase is
   ITokenBridge,
   ReentrancyGuardUpgradeable,
   AccessControlUpgradeable,
