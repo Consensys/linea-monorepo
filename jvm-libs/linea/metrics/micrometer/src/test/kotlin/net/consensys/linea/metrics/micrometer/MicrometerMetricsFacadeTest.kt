@@ -261,16 +261,18 @@ class MicrometerMetricsFacadeTest {
 
   @Test
   fun `counter provider creates multiple counters`() {
-    val counterProvider = metricsFacade.createCounterProvider(
+    val requestCounter = metricsFacade.createCounterProvider(
       category = TestCategory.TEST_CATEGORY,
       name = "request.counter",
       description = "This is a test counter provider",
       commonTags = listOf(Tag("apitype", "engine_prague")),
     )
-    val counter1 = counterProvider.withTags(listOf(Tag("method", "getPayload")))
-    val counter2 = counterProvider.withTags(listOf(Tag("method", "newPayload")))
-    counter1.increment(5.0)
-    counter2.increment(3.0)
+    requestCounter.withTags(listOf(Tag("method", "getPayload")))
+      .increment(5.0)
+    requestCounter.withTags(listOf(Tag("method", "newPayload")))
+      .increment(3.0)
+    requestCounter.withTags(listOf(Tag("method", "getPayload")))
+      .increment()
 
     val createdCounter1 = meterRegistry
       .find("linea.test.test.category.request.counter")
@@ -284,23 +286,24 @@ class MicrometerMetricsFacadeTest {
 
     assertThat(createdCounter1).isNotNull
     assertThat(createdCounter2).isNotNull
-    assertThat(createdCounter1!!.count()).isEqualTo(5.0)
+    assertThat(createdCounter1!!.count()).isEqualTo(6.0)
     assertThat(createdCounter2!!.count()).isEqualTo(3.0)
   }
 
   @Test
-  fun `timer provider creates multiple counters`() {
-    val timerProvider = metricsFacade.createTimerProvider(
+  fun `timer provider creates multiple timers`() {
+    val requestTimer = metricsFacade.createTimerProvider(
       category = TestCategory.TEST_CATEGORY,
       name = "request.latency",
       description = "This is a test counter provider",
       commonTags = listOf(Tag("apitype", "engine_prague")),
     )
-    val timer1 = timerProvider.withTags(listOf(Tag("method", "getPayload")))
-    val timer2 = timerProvider.withTags(listOf(Tag("method", "newPayload")))
-
-    timer1.captureTime { Thread.sleep(2) }
-    timer2.captureTime { Thread.sleep(10) }
+    requestTimer.withTags(listOf(Tag("method", "getPayload")))
+      .captureTime { Thread.sleep(2) }
+    requestTimer.withTags(listOf(Tag("method", "newPayload")))
+      .captureTime { Thread.sleep(10) }
+    requestTimer.withTags(listOf(Tag("method", "getPayload")))
+      .captureTime { Thread.sleep(2) }
 
     val createdTimer1 = meterRegistry
       .find("linea.test.test.category.request.latency")
@@ -313,7 +316,7 @@ class MicrometerMetricsFacadeTest {
       .timer()
 
     assertThat(createdTimer1).isNotNull
-    assertThat(createdTimer1!!.totalTime(TimeUnit.MILLISECONDS)).isBetween(2.0, 10.0)
+    assertThat(createdTimer1!!.totalTime(TimeUnit.MILLISECONDS)).isBetween(4.0, 10.0)
     assertThat(createdTimer2).isNotNull
     assertThat(createdTimer2!!.totalTime(TimeUnit.MILLISECONDS)).isBetween(10.0, 20.0)
   }

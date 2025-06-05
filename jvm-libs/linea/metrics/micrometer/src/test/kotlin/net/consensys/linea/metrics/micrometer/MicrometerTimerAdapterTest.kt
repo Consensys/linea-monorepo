@@ -56,9 +56,9 @@ class MicrometerTimerAdapterTest {
 
     val result1 = apiTimerProvider.withTags(tags = listOf(Tag("method", "eth_blockNumber"))).captureTime {
       Thread.sleep(10)
-      "101"
+      101
     }
-    Assertions.assertThat(result1).isEqualTo("101")
+    Assertions.assertThat(result1).isEqualTo(101)
 
     val result2 = apiTimerProvider.withTags(tags = listOf(Tag("method", "eth_status"))).captureTime {
       Thread.sleep(10)
@@ -91,9 +91,9 @@ class MicrometerTimerAdapterTest {
       )
 
     val result1 = apiTimerProvider.withTags(tags = listOf(Tag("method", "eth_blockNumber"))).captureTime {
-      "101"
+      101
     }
-    Assertions.assertThat(result1).isEqualTo("101")
+    Assertions.assertThat(result1).isEqualTo(101)
 
     val exception = assertThrows<IllegalStateException> {
       apiTimerProvider.withTags(tags = listOf(Tag("method", "eth_status"))).captureTime {
@@ -127,8 +127,8 @@ class MicrometerTimerAdapterTest {
       )
 
     val result1 = apiTimerProvider.withTags(listOf(Tag("method", "eth_blockNumber")))
-      .captureTime(SafeFuture.completedFuture("101"))
-    Assertions.assertThat(result1.get()).isEqualTo("101")
+      .captureTime(SafeFuture.completedFuture(101))
+    Assertions.assertThat(result1.get()).isEqualTo(101)
 
     val result2 = apiTimerProvider.withTags(listOf(Tag("method", "eth_status")))
       .captureTime(SafeFuture.failedFuture<String>(IllegalStateException("sync_error")))
