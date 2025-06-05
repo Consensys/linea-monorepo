@@ -12,28 +12,8 @@ import java.util.concurrent.CompletableFuture
  * captures TODO: In order to improve performance, Timer instances can be cached into a thread safe
  * Map
  */
-class SimpleTimerCapture<T> : AbstractTimerCapture<T> {
-  constructor(meterRegistry: MeterRegistry, name: String) : super(meterRegistry, name)
-  constructor(
-    meterRegistry: MeterRegistry,
-    timerBuilder: Timer.Builder,
-  ) : super(meterRegistry, timerBuilder)
-
-  override fun setDescription(description: String): SimpleTimerCapture<T> {
-    super.setDescription(description)
-    return this
-  }
-
-  override fun setTag(tagKey: String, tagValue: String): SimpleTimerCapture<T> {
-    super.setTag(tagKey, tagValue)
-    return this
-  }
-
-  override fun setClock(clock: Clock): SimpleTimerCapture<T> {
-    super.setClock(clock)
-    return this
-  }
-
+class SimpleTimerCapture<T>(meterRegistry: MeterRegistry, timerBuilder: Timer.Builder, clock: Clock = Clock.SYSTEM) :
+  AbstractTimerCapture<T>(meterRegistry, timerBuilder, clock) {
   override fun captureTime(f: CompletableFuture<T>): CompletableFuture<T> {
     val timer = timerBuilder.register(meterRegistry)
     val timerSample = Timer.start(clock)

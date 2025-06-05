@@ -1,8 +1,8 @@
-package net.consensys.linea.metrics.micrometer
-
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.MockClock
+import io.micrometer.core.instrument.Timer
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import net.consensys.linea.metrics.micrometer.SimpleTimerCapture
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -12,10 +12,12 @@ class SimpleTimerCaptureTest {
   @Test
   fun itExtractsValue_callback() {
     val meterRegistry: MeterRegistry = SimpleMeterRegistry()
+    val timerBuilder = Timer.builder("request.counter")
+      .description("API request counter")
+      .tag("method", "eth_blockNumber")
+
     val result =
-      SimpleTimerCapture<String>(meterRegistry, "request.counter")
-        .setDescription("API request counter")
-        .setTag("method", "eth_blockNumber")
+      SimpleTimerCapture<String>(meterRegistry, timerBuilder)
         .captureTime {
           Thread.sleep(10)
           "measured_callback_result"
@@ -34,13 +36,14 @@ class SimpleTimerCaptureTest {
 
   @Test
   fun itExtractsValue_FutureSuccess() {
-    val meterRegistry: MeterRegistry = SimpleMeterRegistry()
     val testClock = MockClock()
+    val meterRegistry: MeterRegistry = SimpleMeterRegistry()
+    val timerBuilder = Timer.builder("request.counter")
+      .description("API request counter")
+      .tag("method", "eth_blockNumber")
+
     val result =
-      SimpleTimerCapture<String>(meterRegistry, "request.counter")
-        .setDescription("API request counter")
-        .setTag("method", "eth_blockNumber")
-        .setClock(testClock)
+      SimpleTimerCapture<String>(meterRegistry = meterRegistry, timerBuilder = timerBuilder, clock = testClock)
         .captureTime(SafeFuture.completedFuture("measured_callback_result"))
 
     Assertions.assertThat(result.get()).isEqualTo("measured_callback_result")
@@ -57,14 +60,15 @@ class SimpleTimerCaptureTest {
   fun itExtractsValue_FutureFailure() {
     val meterRegistry: MeterRegistry = SimpleMeterRegistry()
     val testClock = MockClock()
+    val timerBuilder = Timer.builder("request.counter")
+      .description("API request counter")
+      .tag("method", "eth_blockNumber_failure")
+
     val result =
-      SimpleTimerCapture<String>(meterRegistry, "request.counter")
-        .setDescription("API request counter")
-        .setTag("method", "eth_blockNumber_failure")
-        .setClock(testClock)
+      SimpleTimerCapture<String>(meterRegistry = meterRegistry, timerBuilder = timerBuilder, clock = testClock)
         .captureTime(SafeFuture.failedFuture(Exception("measured_callback_error")))
 
-    result.finish { error -> Assertions.assertThat(error.message).isEqualTo("measured_callback_error") }
+    result.finish { error -> Assertions.assertThat(error?.message).isEqualTo("measured_callback_error") }
 
     val createdMeter = meterRegistry["request.counter"].timer()
     Assertions.assertThat(createdMeter.count()).isEqualTo(1)

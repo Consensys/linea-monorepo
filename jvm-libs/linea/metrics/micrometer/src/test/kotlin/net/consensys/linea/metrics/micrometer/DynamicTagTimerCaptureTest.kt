@@ -2,8 +2,8 @@ package net.consensys.linea.metrics.micrometer
 
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.MockClock
+import io.micrometer.core.instrument.Timer
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
-import io.vertx.core.Future
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -15,13 +15,17 @@ internal class DynamicTagTimerCaptureTest {
   fun itExtractsValueAndDoesntAlterResult_callback() {
     val meterRegistry: MeterRegistry = SimpleMeterRegistry()
     val testClock = MockClock()
+    val timerBuilder = Timer.builder("request.counter")
+    timerBuilder.description("API request counter")
     val result =
-      DynamicTagTimerCapture<String>(meterRegistry, "request.counter")
-        .setTagValueExtractor { "eth_blockNumber" }
-        .setTagValueExtractorOnError { "eth_blockNumber_failure" }
-        .setDescription("API request counter")
-        .setTagKey("method")
-        .setClock(testClock)
+      DynamicTagTimerCaptureBuilder<String>(
+        meterRegistry = meterRegistry,
+        wrappedTimerBuilder = timerBuilder,
+        clock = testClock,
+      ).setDynamicTagValueExtractor { "eth_blockNumber" }
+        .setDynamicTagValueExtractorOnError { "eth_blockNumber_failure" }
+        .setDynamicTagKey("method")
+        .build()
         .captureTime {
           testClock.add(Duration.ofSeconds(1))
           "measured_callback_result"
@@ -39,42 +43,20 @@ internal class DynamicTagTimerCaptureTest {
   }
 
   @Test
-  fun itExtractsValue_FutureSuccess() {
-    val meterRegistry: MeterRegistry = SimpleMeterRegistry()
-    val testClock = MockClock()
-    val future: SafeFuture<String> = SafeFuture()
-    val result =
-      DynamicTagTimerCapture<String>(meterRegistry, "request.counter")
-        .setTagValueExtractor { "eth_blockNumber" }
-        .setTagValueExtractorOnError { "eth_blockNumber_failure" }
-        .setDescription("API request counter")
-        .setTagKey("method")
-        .setClock(testClock)
-        .captureTime(Future.succeededFuture("measured_callback_result"))
-    future.complete("measured_callback_result")
-
-    assertThat(result.toCompletionStage().toCompletableFuture().get())
-      .isEqualTo("measured_callback_result")
-
-    val createdMeter = meterRegistry["request.counter"].timer()
-    assertThat(createdMeter.count()).isEqualTo(1)
-    assertThat(createdMeter.id.description).isEqualTo("API request counter")
-    assertThat(createdMeter.id.tags.size).isEqualTo(1)
-    assertThat(createdMeter.id.tags[0].key).isEqualTo("method")
-    assertThat(createdMeter.id.tags[0].value).isEqualTo("eth_blockNumber")
-  }
-
-  @Test
   fun itExtractsValue_FutureFailure() {
     val meterRegistry: MeterRegistry = SimpleMeterRegistry()
     val testClock = MockClock()
+    val timerBuilder = Timer.builder("request.counter")
+      .description("API request counter")
     val result =
-      DynamicTagTimerCapture<String>(meterRegistry, "request.counter")
-        .setTagValueExtractor { "eth_blockNumber" }
-        .setTagValueExtractorOnError { "eth_blockNumber_failure" }
-        .setDescription("API request counter")
-        .setTagKey("method")
-        .setClock(testClock)
+      DynamicTagTimerCaptureBuilder<String>(
+        meterRegistry = meterRegistry,
+        wrappedTimerBuilder = timerBuilder,
+        clock = testClock,
+      ).setDynamicTagValueExtractor { "eth_blockNumber" }
+        .setDynamicTagValueExtractorOnError { "eth_blockNumber_failure" }
+        .setDynamicTagKey("method")
+        .build()
         .captureTime(SafeFuture.failedFuture(Exception("measured_callback_error")))
 
     result.finish { error -> assertThat(error.message).isEqualTo("measured_callback_error") }

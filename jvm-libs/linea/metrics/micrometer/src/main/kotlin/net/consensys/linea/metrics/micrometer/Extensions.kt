@@ -18,10 +18,10 @@ fun String.requireValidMicrometerName() {
   }
 }
 
-fun Tag.toMicrometerTags(): MicrometerTag {
+fun Tag.toMicrometerTag(): MicrometerTag {
   return MicrometerTag.of(this.key, this.value)
 }
 
-fun List<Tag>.toMicrometerTags(): Iterable<MicrometerTag> {
-  return this.map { MicrometerTag.of(it.key, it.value) }
+fun List<Tag>.toMicrometerTag(): Iterable<MicrometerTag> {
+  return this.map { it.toMicrometerTag() }
 }

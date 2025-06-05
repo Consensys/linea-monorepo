@@ -4,13 +4,11 @@ import io.micrometer.core.instrument.DistributionSummary
 import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import net.consensys.linea.metrics.Counter
-import net.consensys.linea.metrics.CounterProvider
 import net.consensys.linea.metrics.Histogram
 import net.consensys.linea.metrics.MetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.TimerCapture
-import net.consensys.linea.metrics.TimerProvider
 import java.util.function.Function
 import java.util.function.Supplier
 import io.micrometer.core.instrument.Counter as MicrometerCounter
@@ -38,7 +36,7 @@ class MicrometerMetricsFacade(
     allMetricsCommonTags.forEach { it.requireValidMicrometerName() }
   }
 
-  private val allMetricsCommonMicrometerTags = allMetricsCommonTags.toMicrometerTags()
+  private val allMetricsCommonMicrometerTags = allMetricsCommonTags.toMicrometerTag()
 
   private fun metricHandle(category: MetricsCategory, metricName: String): String {
     val prefixName = if (metricsPrefix == null) "" else "$metricsPrefix."
@@ -58,7 +56,7 @@ class MicrometerMetricsFacade(
     val builder = Gauge.builder(metricHandle(category, name), measurementSupplier)
       .description(description)
       .tags(allMetricsCommonMicrometerTags)
-      .tags(tags.toMicrometerTags())
+      .tags(tags.toMicrometerTag())
     builder.register(registry)
   }
 
@@ -74,7 +72,7 @@ class MicrometerMetricsFacade(
     val builder = MicrometerCounter.builder(metricHandle(category, name))
       .description(description)
       .tags(allMetricsCommonMicrometerTags)
-      .tags(tags.toMicrometerTags())
+      .tags(tags.toMicrometerTag())
     return MicrometerCounterAdapter(builder.register(registry))
   }
 
@@ -94,7 +92,7 @@ class MicrometerMetricsFacade(
       .description(description)
       .baseUnit(baseUnit)
       .tags(allMetricsCommonMicrometerTags)
-      .tags(tags.toMicrometerTags())
+      .tags(tags.toMicrometerTag())
     if (isRatio) {
       distributionSummaryBuilder.scale(100.0)
       distributionSummaryBuilder.maximumExpectedValue(100.0)
@@ -113,7 +111,7 @@ class MicrometerMetricsFacade(
     val builder = MicrometerTimer.builder(metricHandle(category, name))
       .description(description)
       .tags(allMetricsCommonMicrometerTags)
-      .tags(tags.toMicrometerTags())
+      .tags(tags.toMicrometerTag())
 
     return SimpleTimerCapture(registry, builder)
   }
@@ -122,53 +120,26 @@ class MicrometerMetricsFacade(
     category: MetricsCategory,
     name: String,
     description: String,
-    tagKey: String,
-    tagValueExtractorOnError: Function<Throwable, String>,
-    tagValueExtractor: Function<T, String>,
+    tags: List<Tag>,
+    dynamicTagKey: String,
+    dynamicTagValueExtractorOnError: Function<Throwable, String>,
+    dynamicTagValueExtractor: Function<T, String>,
   ): TimerCapture<T> {
     category.toValidMicrometerName().requireValidMicrometerName()
     name.requireValidMicrometerName()
-    tagKey.requireValidMicrometerName()
-    val dynamicTagTimerCapture = DynamicTagTimerCapture<T>(registry, metricHandle(category, name))
-      .setDescription(description)
-      .setTagKey(tagKey)
-      .setTagValueExtractor(tagValueExtractor)
-      .setTagValueExtractorOnError(tagValueExtractorOnError)
-    allMetricsCommonTags.forEach { dynamicTagTimerCapture.setTag(it.key, it.value) }
+    dynamicTagKey.requireValidMicrometerName()
+    val builder = MicrometerTimer.builder(metricHandle(category, name))
+      .description(description)
+      .tags(allMetricsCommonMicrometerTags)
+      .tags(tags.toMicrometerTag())
+    val dynamicTagTimerCapture = DynamicTagTimerCaptureBuilder<T>(
+      meterRegistry = registry,
+      wrappedTimerBuilder = builder,
+    )
+      .setDynamicTagKey(dynamicTagKey)
+      .setDynamicTagValueExtractor(dynamicTagValueExtractor)
+      .setDynamicTagValueExtractorOnError(dynamicTagValueExtractorOnError)
+      .build()
     return dynamicTagTimerCapture
-  }
-
-  override fun createCounterProvider(
-    category: MetricsCategory,
-    name: String,
-    description: String,
-    commonTags: List<Tag>,
-  ): CounterProvider {
-    category.toValidMicrometerName().requireValidMicrometerName()
-    name.requireValidMicrometerName()
-    commonTags.forEach { it.requireValidMicrometerName() }
-    return CounterProviderImpl(
-      meterRegistry = registry,
-      name = metricHandle(category, name),
-      description = description,
-      commonTags = commonTags + this.allMetricsCommonTags,
-    )
-  }
-
-  override fun createTimerProvider(
-    category: MetricsCategory,
-    name: String,
-    description: String,
-    commonTags: List<Tag>,
-  ): TimerProvider {
-    category.toValidMicrometerName().requireValidMicrometerName()
-    name.requireValidMicrometerName()
-    commonTags.forEach { it.requireValidMicrometerName() }
-    return TimerProviderImpl(
-      meterRegistry = registry,
-      name = metricHandle(category, name),
-      description = description,
-      commonTags = commonTags + this.allMetricsCommonTags,
-    )
   }
 }

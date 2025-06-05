@@ -1,6 +1,5 @@
 package net.consensys.linea.metrics
 
-import io.vertx.core.Future
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
@@ -19,29 +18,8 @@ interface Counter {
   fun increment()
 }
 
-interface CounterProvider {
-  fun withTags(tags: List<Tag>): Counter
-}
-
 interface Histogram {
   fun record(data: Double)
-}
-
-interface TimerProvider {
-  fun withTags(tags: List<Tag>): Timer
-}
-
-interface Timer {
-  fun <T> captureTime(f: CompletableFuture<T>): CompletableFuture<T>
-  fun <T> captureTime(action: Callable<T>): T
-  fun <T> captureTime(f: SafeFuture<T>): SafeFuture<T> {
-    captureTime(f.toCompletableFuture())
-    return f
-  }
-  fun <T> captureTime(f: Future<T>): Future<T> {
-    captureTime(f.toCompletionStage().toCompletableFuture())
-    return f
-  }
 }
 
 interface TimerCapture<T> {
@@ -49,10 +27,6 @@ interface TimerCapture<T> {
   fun captureTime(action: Callable<T>): T
   fun captureTime(f: SafeFuture<T>): SafeFuture<T> {
     captureTime(f.toCompletableFuture())
-    return f
-  }
-  fun captureTime(f: Future<T>): Future<T> {
-    captureTime(f.toCompletionStage().toCompletableFuture())
     return f
   }
 }
@@ -93,24 +67,11 @@ interface MetricsFacade {
     category: MetricsCategory,
     name: String,
     description: String,
-    tagKey: String,
-    tagValueExtractorOnError: Function<Throwable, String>,
-    tagValueExtractor: Function<T, String>,
+    tags: List<Tag>,
+    dynamicTagKey: String,
+    dynamicTagValueExtractorOnError: Function<Throwable, String>,
+    dynamicTagValueExtractor: Function<T, String>,
   ): TimerCapture<T>
-
-  fun createCounterProvider(
-    category: MetricsCategory,
-    name: String,
-    description: String,
-    commonTags: List<Tag> = emptyList(),
-  ): CounterProvider
-
-  fun createTimerProvider(
-    category: MetricsCategory,
-    name: String,
-    description: String,
-    commonTags: List<Tag> = emptyList(),
-  ): TimerProvider
 }
 
 class FakeHistogram : Histogram {
