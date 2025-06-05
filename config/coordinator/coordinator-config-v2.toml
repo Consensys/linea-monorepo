@@ -139,17 +139,16 @@ failures-warning-threshold = 2
 disabled = false
 endpoints = ["http://shomei-frontend:8888/"]
 l1-query-block-tag="LATEST"
-l1-polling-interval="PT12S"
+l1-polling-interval="PT1S"
 
 [type2-state-proof-provider.request-retries]
-max-retries = 3
 backoff-delay = "PT1S"
 failures-warning-threshold = 2
 
 
 [l1-finalization-monitor]
 polling-interval = "PT1S"
-l1-query-block-tag="FINALIZED"
+l1-query-block-tag="LATEST"
 
 [l1-submission] # submission
 disabled = true
@@ -237,7 +236,7 @@ public-key = "ba5734d8f7091719471e7f7ed6b9df170dc70cc661ca05e688601ad984f068b0d6
 
 [message-anchoring]
 disabled = false
-l1-highest-block-tag="FINALIZED"
+l1-highest-block-tag="LATEST"
 l2-highest-block-tag="LATEST" # optional, default to LATEST it shall not be necessary as Linea has instant finality
 anchoring-tick-interval = "PT10S" # "polling-interval="PT10S"
 messages-anchoring-chuck-size = 100 # limit of L1toL2 Messages to anchor in a single L2 transaction
