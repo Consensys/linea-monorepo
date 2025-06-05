@@ -280,7 +280,7 @@ class L1SubmissionConfigParsingTest {
           submissionDelay = 0.seconds,
           submissionTickInterval = 12.seconds,
           maxSubmissionTransactionsPerTick = 2u,
-          targetBlobsPerTransaction = 8u,
+          targetBlobsPerTransaction = 7u,
           dbMaxBlobsToReturn = 100u,
           gas = L1SubmissionConfigToml.GasConfigToml(
             gasLimit = 10_000_000u,

@@ -107,8 +107,8 @@ data class L1SubmissionConfigToml(
     val submissionTickInterval: Duration = 12.seconds,
     val maxSubmissionTransactionsPerTick: UInt = 2u,
     // eip-7691 on Prague fork allows up to 9 blobs per transaction.
-    // however, Geth nodes fail with "transaction too large" error. only 8 blobs are accepted
-    val targetBlobsPerTransaction: UInt = 8u,
+    // however, Geth nodes fail with "transaction too large" error. only 7 blobs are accepted
+    val targetBlobsPerTransaction: UInt = 7u,
     val dbMaxBlobsToReturn: UInt = 100u,
     val gas: GasConfigToml,
     val signer: SignerConfigToml,

@@ -1,7 +1,7 @@
 package linea.coordinator.config.v2
 
 import com.sksamuel.hoplite.Masked
-import linea.coordinator.config.v2.toml.DataBaseToml
+import linea.coordinator.config.v2.toml.DatabaseToml
 import linea.coordinator.config.v2.toml.RequestRetriesToml
 import linea.coordinator.config.v2.toml.parseConfig
 import org.assertj.core.api.Assertions.assertThat
@@ -28,7 +28,7 @@ class DataBaseConfigParsingTest {
       failures-warning-threshold = 2
     """.trimIndent()
 
-    val config = DataBaseToml(
+    val config = DatabaseToml(
       hostname = "localhost",
       username = "someuser",
       password = Masked("somepassword"),
@@ -52,7 +52,7 @@ class DataBaseConfigParsingTest {
       password = "somepassword"
     """.trimIndent()
 
-    val configMinimal = DataBaseToml(
+    val configMinimal = DatabaseToml(
       hostname = "localhost",
       username = "someuser",
       password = Masked("somepassword"),
@@ -71,7 +71,7 @@ class DataBaseConfigParsingTest {
   }
 
   data class WrapperConfig(
-    val database: DataBaseToml,
+    val database: DatabaseToml,
   )
 
   @Test

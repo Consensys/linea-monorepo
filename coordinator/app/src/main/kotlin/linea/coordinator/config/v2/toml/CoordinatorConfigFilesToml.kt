@@ -42,7 +42,7 @@ data class CoordinatorConfigFileToml(
   val l1Submission: L1SubmissionConfigToml,
   val messageAnchoring: MessageAnchoringConfigToml,
   val l2NetworkGasPricing: L2NetworkGasPricingConfigToml,
-  val database: DataBaseToml,
+  val database: DatabaseToml,
   val api: ApiConfigToml = ApiConfigToml(),
 )
 

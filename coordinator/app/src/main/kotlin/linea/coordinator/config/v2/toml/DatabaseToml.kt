@@ -5,7 +5,7 @@ import linea.coordinator.config.v2.DatabaseConfig
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
-data class DataBaseToml(
+data class DatabaseToml(
   val hostname: String,
   val port: UInt = 5432u,
   val username: String,
