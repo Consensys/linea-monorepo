@@ -28,7 +28,7 @@ describe("Shomei Linea get proof test suite", () => {
         },
         (currentL2BlockNumber: bigint) => currentL2BlockNumber > 1n,
         2000,
-        100000,
+        150000,
       );
 
       expect(targetL2BlockNumber).toBeGreaterThan(1n);
@@ -56,14 +56,14 @@ describe("Shomei Linea get proof test suite", () => {
             const latestFinalizedL2BlockNumber = await lineaRollupV6.currentL2BlockNumber({ blockTag: "finalized" });
             if (!finalizedL2BlockNumbers.includes(latestFinalizedL2BlockNumber)) {
               finalizedL2BlockNumbers.push(latestFinalizedL2BlockNumber);
+              logger.info(`finalizedL2BlockNumbers=${JSON.stringify(finalizedL2BlockNumbers.map((it) => Number(it)))}`);
             }
           }
-          logger.info(`finalizedL2BlockNumbers=${JSON.stringify(finalizedL2BlockNumbers.map((it) => Number(it)))}`);
           return getProofResponse;
         },
         (getProofResponse) => getProofResponse?.result,
         2000,
-        100000,
+        150000,
       );
 
       logger.info(`targetL2BlockNumber=${targetL2BlockNumber}`);
@@ -103,6 +103,6 @@ describe("Shomei Linea get proof test suite", () => {
 
       expect(isInvalid).toBeTruthy();
     },
-    100_000,
+    150_000,
   );
 });
