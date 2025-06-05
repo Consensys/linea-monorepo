@@ -14,7 +14,6 @@ class LocalStackConfigsParsingTest {
       coordinatorConfigFiles = listOf(
         Path.of("../../config/coordinator/coordinator-config-v2.toml"),
         Path.of("../../config/coordinator/coordinator-config-v2-override-local-dev.toml"),
-        Path.of("../../config/coordinator/coordinator-config-v2-override-web3signer.toml"),
       ),
       tracesLimitsFileV2 = Path.of("../../config/common/traces-limits-v2.toml"),
       gasPriceCapTimeOfDayMultipliersFile = Path.of("../../config/common/gas-price-cap-time-of-day-multipliers.toml"),

@@ -214,8 +214,8 @@ submission-tick-interval = "PT1S"
 max-submissions-per-tick = 10
 [l1-submission.aggregation.gas]
 gas-limit = 10_000_000
-max-fee-per-gas-cap = 100_000_000_000
-max-priority-fee-per-gas-cap = 10_000_000_001
+max-fee-per-gas-cap = 200_000_000_000
+max-priority-fee-per-gas-cap = 40_000_000_000
 
 [l1-submission.aggregation.gas.fallback]
 # Note: prefixed with "fallback-", used when dynamic gas price is disabled or DB is not populated yet
