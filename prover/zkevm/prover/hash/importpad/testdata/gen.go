@@ -7,12 +7,16 @@ import (
 	"github.com/consensys/linea-monorepo/prover/backend/files"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/consensys/linea-monorepo/prover/zkevm/prover/common"
 )
+
+const bitsPerLimb = 16
+const bytesPerLimb = bitsPerLimb / 8
 
 func main() {
 
 	var (
-		limbs     = make([]field.Element, 32)
+		limbs     = make([][]field.Element, common.NbLimbU128)
 		nBytes    = make([]field.Element, 32)
 		toHash    = make([]field.Element, 32)
 		index     = make([]field.Element, 32)
@@ -22,6 +26,10 @@ func main() {
 		toHashInt = []int{1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0}
 		oF        = files.MustOverwrite("./testdata/input.csv")
 	)
+
+	for i := range limbs {
+		limbs[i] = make([]field.Element, 32)
+	}
 
 	for i := range hashNum {
 
@@ -39,19 +47,32 @@ func main() {
 		hashNum[i] = field.NewElement(uint64(hashNums[i]))
 		numBytesInt, numBytesF := randNBytes(rng)
 		nBytes[i] = numBytesF
-		limbs[i] = randLimbs(rng, numBytesInt)
+
+		limbValues := randLimbs(rng, numBytesInt)
+		for j := range limbs {
+			limbs[j][i] = limbValues[j]
+		}
 	}
 
-	fmt.Fprint(oF, "TO_HASH,HASH_NUM,INDEX,NBYTES,LIMBS\n")
+	header := "TO_HASH,HASH_NUM,INDEX,NBYTES"
+	for i := 0; i < common.NbLimbU128; i++ {
+		header += fmt.Sprintf(",LIMB_%d", i)
+	}
+	fmt.Fprintln(oF, header)
 
 	for i := range hashNums {
-		fmt.Fprintf(oF, "%v,%v,%v,%v,0x%v\n",
+		row := fmt.Sprintf("%v,%v,%v,%v",
 			toHash[i].String(),
 			hashNum[i].String(),
 			index[i].String(),
 			nBytes[i].String(),
-			limbs[i].Text(16),
 		)
+
+		for j := 0; j < common.NbLimbU128; j++ {
+			row += fmt.Sprintf(",0x%v", formatFieldAsNBitHex(limbs[j][i], 16))
+		}
+
+		fmt.Fprintln(oF, row)
 	}
 
 	oF.Close()
@@ -61,20 +82,54 @@ func randNBytes(rng *rand.Rand) (int, field.Element) {
 
 	// nBytesInt must be in 1..=16
 	var (
-		nBytesInt = rng.Int31n(16) + 1
+		nBytesInt = rng.Int32N(16) + 1
 		nBytesF   = field.NewElement(uint64(nBytesInt))
 	)
 
 	return int(nBytesInt), nBytesF
 }
 
-func randLimbs(rng *rand.Rand, nBytes int) field.Element {
+func randLimbs(rng *rand.Rand, nBytes int) []field.Element {
+	result := make([]field.Element, common.NbLimbU128)
 
-	var (
-		resBytes = make([]byte, 16)
-		_, _     = utils.ReadPseudoRand(rng, resBytes[:nBytes])
-		res      = new(field.Element).SetBytes(resBytes)
-	)
+	resBytes := make([]byte, 16)
+	_, _ = utils.ReadPseudoRand(rng, resBytes[:nBytes])
 
-	return *res
+	for i := 0; i < common.NbLimbU128; i++ {
+		if i*bytesPerLimb >= nBytes {
+			result[i] = field.Zero()
+			continue
+		}
+
+		bytesToUse := bytesPerLimb
+		if (i+1)*bytesPerLimb > nBytes {
+			bytesToUse = nBytes - i*bytesPerLimb
+		}
+
+		limbBytes := make([]byte, 16)
+
+		copy(limbBytes, resBytes[i*bytesPerLimb:i*bytesPerLimb+bytesToUse])
+
+		if bytesToUse >= 2 {
+			limbBytes[1] &= 0xFF
+		}
+
+		result[i] = *new(field.Element).SetBytes(limbBytes)
+	}
+
+	return result
+}
+
+func formatFieldAsNBitHex(n field.Element, nbBits uint) string {
+	hexStr := n.Text(16)
+
+	for len(hexStr) < int(nbBits/4) {
+		hexStr = "0" + hexStr
+	}
+
+	if len(hexStr) > 8 {
+		hexStr = hexStr[:int(nbBits/4)]
+	}
+
+	return hexStr
 }

@@ -21,7 +21,7 @@ type testCase struct {
 func TestScanByteStream(t *testing.T) {
 	testCases := []testCase{
 		{
-			name: "Single limbs column (16 bytes per row)",
+			name: "Single limbs column (16 bytes per column)",
 			streams: [][]byte{
 				mustDecodeHex("0x067845465329789679797Ffed67658"),
 				mustDecodeHex("0xab477997edff98089860"),
