@@ -53,15 +53,16 @@ func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, 
 	linComb := make([]fext.Element, params.NbColumns)
 
 	parallel.Execute(params.NbColumns, func(start, stop int) {
-		subTask := make([]smartvectors.SmartVector, 0, len(committedSV))
-		for i := range committedSV {
-			subTask = append(subTask, committedSV[i].SubVector(start, stop))
-		}
-		// Collect the result in the larger slice at the end
+		// 	subTask := make([]smartvectors.SmartVector, 0, len(committedSV))
+		// 	for i := range committedSV {
+		// 		subTask = append(subTask, committedSV[i].SubVector(start, stop))
+		// 	}
+		// 	// Collect the result in the larger slice at the end
 
-		subResult := smartvectors.LinearCombinationExt(subTask, randomCoin)
-		subResult.WriteInSliceExt(linComb[start:stop])
+		// 	subResult := smartvectors.LinearCombinationExt(subTask, randomCoin)
+		// 	subResult.WriteInSliceExt(linComb[start:stop])
 	})
+	smartvectors.LinearCombinationExt(committedSV, randomCoin)
 
 	linCombSV := smartvectorsext.NewRegularExt(linComb)
 
