@@ -2,9 +2,9 @@ package linea.coordinator.config.v2
 
 import linea.coordinator.config.v2.toml.ConflationToml
 import linea.coordinator.config.v2.toml.parseConfig
+import linea.kotlin.toURL
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import java.net.URI
 import kotlin.time.Duration.Companion.seconds
 
 class ConflationParsingTest {
@@ -17,8 +17,8 @@ class ConflationParsingTest {
       conflation-deadline-check-interval = "PT3S"
       conflation-deadline-last-block-confirmation-delay = "PT2S" # recommended: at least 2 * blockInterval
       l2-fetch-blocks-limit = 4_000
-      l2-block-creation-endpoint = "http://sequencer:8545"
-      l2-logs-endpoint = "http://sequencer:8545"
+      l2-endpoint = "http://l2-node-1:8545"
+      l2-logs-endpoint = "http://l2-node-2:8545"
       consistent-number-of-blocks-on-l1-to-wait = 1
 
       [conflation.blob-compression]
@@ -42,8 +42,8 @@ class ConflationParsingTest {
       conflationDeadlineCheckInterval = 3.seconds,
       conflationDeadlineLastBlockConfirmationDelay = 2.seconds,
       l2FetchBlocksLimit = 4000u,
-      l2BlockCreationEndpoint = URI.create("http://sequencer:8545").toURL(),
-      l2LogsEndpoint = URI.create("http://sequencer:8545").toURL(),
+      l2Endpoint = "http://l2-node-1:8545".toURL(),
+      l2LogsEndpoint = "http://l2-node-2:8545".toURL(),
       consistentNumberOfBlocksOnL1ToWait = 1u,
       blobCompression = ConflationToml.BlobCompressionToml(
         blobSizeLimit = 102_400U,
@@ -67,7 +67,7 @@ class ConflationParsingTest {
       blocksLimit = null,
       conflationDeadline = null,
       l2FetchBlocksLimit = null,
-      l2BlockCreationEndpoint = null,
+      l2Endpoint = null,
       l2LogsEndpoint = null,
       consistentNumberOfBlocksOnL1ToWait = 32u,
       blobCompression = ConflationToml.BlobCompressionToml(

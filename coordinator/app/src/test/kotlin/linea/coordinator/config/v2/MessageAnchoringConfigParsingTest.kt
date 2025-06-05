@@ -18,12 +18,13 @@ class MessageAnchoringConfigParsingTest {
     val toml = """
     [message-anchoring]
     disabled = false
+    anchoring-tick-interval = "PT13S"
+    message-queue-capacity = 12_300
+    max-messages-to-anchor-per-l2-transaction = 86
     l1-endpoint = "http://l1-el-node:8545"
     l2-endpoint = "http://sequencer:8545"
     l1-highest-block-tag="FINALIZED"
     l2-highest-block-tag="LATEST" # optional, default to LATEST it shall not be necessary as Linea has instant finality
-    anchoring-tick-interval = "PT10S" # "polling-interval="PT10S"
-    messages-anchoring-chuck-size = 100 # limit of L1toL2 Messages to anchor in a single L2 transaction
 
     [message-anchoring.l1-request-retries]
     max-retries = 4
@@ -38,10 +39,10 @@ class MessageAnchoringConfigParsingTest {
     failures-warning-threshold = 3
 
     [message-anchoring.l1-event-scraping]
-    polling-interval = "PT1S" #message-events-polling-interval
-    polling-timeout = "PT5S" #max-event-scraping-time
-    message-limit-pertick = 100
-    block-range-limit = 500
+    polling-interval = "PT1S"
+    polling-timeout = "PT50S"
+    eth-logs-search-success-backoff-delay = "PT0.1S"
+    eth-logs-search-block-chunk-size = 123
 
     [message-anchoring.gas]
     max-fee-per-gas-cap = 100000000000
@@ -70,7 +71,15 @@ class MessageAnchoringConfigParsingTest {
         l2Endpoint = "http://sequencer:8545".toURL(),
         l1HighestBlockTag = BlockParameter.Tag.FINALIZED,
         l2HighestBlockTag = BlockParameter.Tag.LATEST,
-        anchoringTickInterval = 10.seconds,
+        anchoringTickInterval = 13.seconds,
+        messageQueueCapacity = 12_300u,
+        maxMessagesToAnchorPerL2Transaction = 86u,
+        l1EventScraping = MessageAnchoringConfigToml.L1EventScrapping(
+          pollingInterval = 1.seconds,
+          pollingTimeout = 50.seconds,
+          ethLogsSearchSuccessBackoffDelay = 100.milliseconds,
+          ethLogsSearchBlockChunkSize = 123u,
+        ),
         l1RequestRetries = RequestRetriesToml(
           maxRetries = 4u,
           backoffDelay = 1.seconds,
@@ -117,11 +126,19 @@ class MessageAnchoringConfigParsingTest {
     val configMinimal =
       MessageAnchoringConfigToml(
         disabled = false,
-        l1Endpoint = null,
-        l2Endpoint = null,
+        anchoringTickInterval = 10.seconds,
+        messageQueueCapacity = 10_000u,
+        maxMessagesToAnchorPerL2Transaction = 100u,
         l1HighestBlockTag = BlockParameter.Tag.FINALIZED,
         l2HighestBlockTag = BlockParameter.Tag.LATEST,
-        anchoringTickInterval = 10.seconds,
+        l1Endpoint = null,
+        l2Endpoint = null,
+        l1EventScraping = MessageAnchoringConfigToml.L1EventScrapping(
+          pollingInterval = 6.seconds,
+          pollingTimeout = 5.seconds,
+          ethLogsSearchSuccessBackoffDelay = 1.milliseconds,
+          ethLogsSearchBlockChunkSize = 1000u,
+        ),
         l1RequestRetries = RequestRetriesToml(
           maxRetries = null,
           backoffDelay = 1.seconds,

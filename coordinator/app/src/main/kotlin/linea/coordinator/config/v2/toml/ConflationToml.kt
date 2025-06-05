@@ -17,7 +17,8 @@ data class ConflationToml(
   val consistentNumberOfBlocksOnL1ToWait: UInt = 32u, // 1 epoch
   val newBlocksPollingInterval: Duration = 1.seconds,
   val l2FetchBlocksLimit: UInt? = null,
-  val l2BlockCreationEndpoint: URL? = null,
+  val l2Endpoint: URL? = null,
+  val l2RequestRetries: RequestRetriesToml? = null,
   val l2LogsEndpoint: URL? = null,
   val blobCompression: BlobCompressionToml = BlobCompressionToml(),
   val proofAggregation: ProofAggregationToml = ProofAggregationToml(),
@@ -73,10 +74,14 @@ data class ConflationToml(
       conflationDeadlineLastBlockConfirmationDelay = this.conflationDeadlineLastBlockConfirmationDelay,
       consistentNumberOfBlocksOnL1ToWait = this.consistentNumberOfBlocksOnL1ToWait,
       l2FetchBlocksLimit = this.l2FetchBlocksLimit ?: UInt.MAX_VALUE,
-      l2Endpoint = this.l2BlockCreationEndpoint ?: defaults.l2Endpoint
+      l2Endpoint = this.l2Endpoint
+        ?: defaults.l2Endpoint
         ?: throw AssertionError("l2Endpoint config missing"),
-      l2RequestRetries = defaults.l2EndpointRequestRetries.asDomain,
-      l2GetLogsEndpoint = this.l2LogsEndpoint ?: defaults.l2Endpoint
+      l2RequestRetries = this.l2RequestRetries?.asDomain
+        ?: defaults.l2RequestRetries.asDomain,
+      l2GetLogsEndpoint = this.l2LogsEndpoint
+        ?: this.l2Endpoint
+        ?: defaults.l2Endpoint
         ?: throw AssertionError("please set l2GetLogsEndpoint or l2Endpoint config"),
       blobCompression = this.blobCompression.reified(),
       proofAggregation = this.proofAggregation.reified(),

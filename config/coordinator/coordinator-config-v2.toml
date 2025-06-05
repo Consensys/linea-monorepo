@@ -31,7 +31,10 @@ force-stop-conflation-at-block-inclusive=100_000_000
 # Queries SMC for last finalised block, and keeps polling until this number of blocks observe the same state.
 # If state is updated meanwhile, it resets counter and restarts the polling.
 consistent-number-of-blocks-on-l1-to-wait = 1
-[conflation.l2-endpoint-request-retries]
+l2-endpoint = "http://sequencer:8545"
+l2-logs-endpoint = "http://sequencer:8545"
+
+[conflation.l2-request-retries]
 backoff-delay = "PT1S"
 failures-warning-threshold = 3
 
@@ -53,10 +56,6 @@ target-end-blocks = []
 
 [prover]
 version = "v3.0.0"
-fs-inprogess-request-writing-suffix = ".inprogress_coordinator_writing"
-fs-inprogess-proving-suffix-pattern = "\\.inprogress\\.prover.*"
-fs-polling-interval = "PT1S"
-fs-polling-timeout = "PT10M"
 [prover.execution]
 fs-requests-directory = "/data/prover/v3/execution/requests"
 fs-responses-directory = "/data/prover/v3/execution/responses"
@@ -83,36 +82,17 @@ fs-responses-directory = "/data/prover/v3/aggregation/responses"
 expected-traces-api-version = "beta-v2.1-rc16.2"
 [traces.counters]
 endpoints = ["http://traces-node:8545/"]
-request-limit-per-endpoint = 20
+request-limit-per-endpoint = 1
 [traces.counters.request-retries]
 backoff-delay = "PT1S"
 failures-warning-threshold = 10
 
 [traces.conflation]
 endpoints = ["http://traces-node:8545/"]
-request-limit-per-endpoint = 2
+request-limit-per-endpoint = 1
 [traces.conflation.request-retries]
 backoff-delay = "PT1S"
 failures-warning-threshold = 10
-
-#[traces.new]
-##switch-block-number-inclusive=1000
-#expected-traces-api-version = "2.2.0"
-#[traces.new.counters]
-#endpoints = ["http://traces-api-v2:8080/"]
-#request-limit-per-endpoint = 20
-#[traces.new.counters.request-retries]
-#max-retries = 4
-#backoff-delay = "PT1S"
-#failures-warning-threshold = 2
-#
-#[traces.new.conflation]
-#endpoints = ["http://traces-api:8080/"]
-#request-limit-per-endpoint = 2
-#[traces.new.conflation.request-retries]
-#max-retries = 4
-#backoff-delay = "PT1S"
-#failures-warning-threshold = 2
 
 [state-manager]
 version = "2.3.0"
@@ -122,16 +102,6 @@ request-limit-per-endpoint = 3
 max-retries = 5
 backoff-delay = "PT2S"
 failures-warning-threshold = 2
-
-#[state-manager.new]
-#switch-block-number-inclusive=1000
-#version = "2.2.0"
-#endpoints = ["http://shomei:8888/"]
-#request-limit-per-endpoint = 3
-#[state-manager.new.request-retries]
-#max-retries = 5
-#backoff-delay = "PT2S"
-#failures-warning-threshold = 2
 
 [type2-state-proof-provider]
 disabled = false
@@ -143,12 +113,11 @@ l1-polling-interval="PT1S"
 backoff-delay = "PT1S"
 failures-warning-threshold = 2
 
-
 [l1-finalization-monitor]
-polling-interval = "PT1S"
+l1-polling-interval = "PT1S"
 l1-query-block-tag="LATEST"
 
-[l1-submission] # submission
+[l1-submission]
 disabled = true
 [l1-submission.dynamic-gas-price-cap]
 disabled = false
@@ -205,7 +174,7 @@ public-key = "9d9031e97dd78ff8c15aa86939de9b1e791066a0224e331bc962a2099a7b1f0464
 
 [l1-submission.aggregation]
 disabled = false
-endpoint = "http://l1-el-node:8545"
+l1-endpoint = "http://l1-el-node:8545"
 submission-delay = "PT1S"
 submission-tick-interval = "PT1S"
 max-submissions-per-tick = 10
@@ -236,17 +205,11 @@ public-key = "ba5734d8f7091719471e7f7ed6b9df170dc70cc661ca05e688601ad984f068b0d6
 disabled = false
 l1-highest-block-tag="LATEST"
 l2-highest-block-tag="LATEST" # optional, default to LATEST it shall not be necessary as Linea has instant finality
-anchoring-tick-interval = "PT10S" # "polling-interval="PT10S"
-messages-anchoring-chunk-size = 100 # limit of L1toL2 Messages to anchor in a single L2 transaction
-
-[message-anchoring.l1-request-retries]
-[message-anchoring.l2-request-retries]
+anchoring-tick-interval = "PT2S"
 
 [message-anchoring.l1-event-scraping]
-polling-interval = "PT1S" #message-events-polling-interval
-polling-timeout = "PT5S" #max-event-scraping-time
-message-limit-pertick = 100
-block-range-limit = 500
+polling-interval = "PT1S"
+polling-timeout = "PT5S"
 
 [message-anchoring.gas]
 max-fee-per-gas-cap = 100000000000
@@ -288,7 +251,6 @@ gas-price-upper-bound = 10000000000 # 10 GWEI
 gas-price-lower-bound = 90000000 # 0.09 GWEI
 compressed-tx-size = 125
 expected-gas = 21000
-cost-multiplier = 1.0
 
 [l2-network-gas-pricing.dynamic-gas-pricing]
 # Propagated to Sequencer and Besude through extraDataPricerService and besu
@@ -306,9 +268,9 @@ port=5432
 username = "postgres"
 password = "postgres"
 schema = "linea_coordinator"
-read_pool_size = 10
-read_pipelining_limit = 10
-transactional_pool_size = 10
+read-pool-size = 10
+read-pipelining-limit = 10
+transactional-pool-size = 10
 [database.persistence-retries]
 max-retries = 3
 backoff-delay = "PT1S"

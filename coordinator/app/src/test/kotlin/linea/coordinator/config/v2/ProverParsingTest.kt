@@ -12,8 +12,8 @@ class ProverParsingTest {
     val toml = """
       [prover]
       version = "v2.0.0"
-      fs-inprogess-request-writing-suffix = ".inprogress_coordinator_writing"
-      fs-inprogess-proving-suffix-pattern = "\\.inprogress\\.prover.*"
+      fs-inprogress-request-writing-suffix = ".coordinator_writing_request"
+      fs-inprogress-proving-suffix-pattern = "\\.inprogress\\.prover_is_proving.*"
       fs-polling-interval = "PT1S"
       fs-polling-timeout = "PT10M"
       [prover.execution]
@@ -41,8 +41,8 @@ class ProverParsingTest {
     """.trimIndent()
     val config = ProverToml(
       version = "v2.0.0",
-      fsInprogressRequestWritingSuffix = ".inprogress_coordinator_writing",
-      fsInprogressProvingSuffixPattern = "\\.inprogress\\.prover.*",
+      fsInprogressRequestWritingSuffix = ".coordinator_writing_request",
+      fsInprogressProvingSuffixPattern = "\\.inprogress\\.prover_is_proving.*",
       fsPollingInterval = 1.seconds,
       fsPollingTimeout = 10.minutes,
       execution = ProverToml.ProverDirectoriesToml(
@@ -90,6 +90,8 @@ class ProverParsingTest {
     """.trimIndent()
     val configMinimal = ProverToml(
       version = "v2.0.0",
+      fsInprogressRequestWritingSuffix = ".inprogress_coordinator_writing",
+      fsInprogressProvingSuffixPattern = "\\.inprogress\\.prover.*",
       execution = ProverToml.ProverDirectoriesToml(
         fsRequestsDirectory = "/data/prover/v2/execution/requests",
         fsResponsesDirectory = "/data/prover/v2/execution/responses",
@@ -102,6 +104,8 @@ class ProverParsingTest {
         fsRequestsDirectory = "/data/prover/v2/aggregation/requests",
         fsResponsesDirectory = "/data/prover/v2/aggregation/responses",
       ),
+      switchBlockNumberInclusive = null,
+      new = null,
     )
   }
 

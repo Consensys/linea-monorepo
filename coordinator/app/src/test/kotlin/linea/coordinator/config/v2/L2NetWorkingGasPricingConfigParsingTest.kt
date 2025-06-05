@@ -16,10 +16,6 @@ class L2NetWorkingGasPricingConfigParsingTest {
     price-update-interval = "PT12S"
     fee-history-block-count = 50
     fee-history-reward-percentile = 15
-    ## Used un both extraDataPricerService and minMineableFeesCalculator,
-    # extraDataPricerService just uses minMineableFeesCalculator as delegate to get legacy fees
-    gas-price-upper-bound = 10000000000 # 10 GWEI
-    gas-price-lower-bound = 90000000 # 0.09 GWEI
     gas-price-fixed-cost = 3000000
     l1-endpoint="http://l1-el-node:8545/"
     extra-data-update-endpoint = "http://sequencer:8545/"
@@ -34,7 +30,6 @@ class L2NetWorkingGasPricingConfigParsingTest {
     gas-price-lower-bound = 90000000 # 0.09 GWEI
     compressed-tx-size = 125
     expected-gas = 21000
-    cost-multiplier = 1.0
 
     [l2-network-gas-pricing.dynamic-gas-pricing]
     l1-blob-gas = 131072 # 2^17
@@ -75,8 +70,6 @@ class L2NetWorkingGasPricingConfigParsingTest {
 
     val tomlMinimal = """
     [l2-network-gas-pricing]
-    gas-price-upper-bound = 10000000000 # 10 GWEI
-    gas-price-lower-bound = 90000000 # 0.09 GWEI
     gas-price-fixed-cost = 3000000
     extra-data-update-endpoint = "http://sequencer:8545/"
 
@@ -85,7 +78,6 @@ class L2NetWorkingGasPricingConfigParsingTest {
     gas-price-lower-bound = 90000000 # 0.09 GWEI
     compressed-tx-size = 125
     expected-gas = 21000
-    cost-multiplier = 1.0
 
     [l2-network-gas-pricing.dynamic-gas-pricing]
     l1-blob-gas = 131072 # 2^17

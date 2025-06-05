@@ -9,13 +9,16 @@ import kotlin.time.Duration.Companion.seconds
 
 data class MessageAnchoringConfigToml(
   var disabled: Boolean = false,
+  val anchoringTickInterval: Duration = 10.seconds,
+  val messageQueueCapacity: UInt = 10_000u,
+  val maxMessagesToAnchorPerL2Transaction: UInt = 100u,
   val l1Endpoint: URL? = null, // shall default to L1 endpoint
   val l1HighestBlockTag: BlockParameter = BlockParameter.Tag.FINALIZED,
   val l1RequestRetries: RequestRetriesToml = RequestRetriesToml.endlessRetry(
     backoffDelay = 1.seconds,
     failuresWarningThreshold = 3u,
   ),
-  val l1EventScrapping: L1EventScrapping = L1EventScrapping(),
+  val l1EventScraping: L1EventScrapping = L1EventScrapping(),
   val l2Endpoint: URL? = null,
   val l2HighestBlockTag: BlockParameter = BlockParameter.Tag.LATEST,
   val l2RequestRetries: RequestRetriesToml = RequestRetriesToml(
@@ -24,17 +27,14 @@ data class MessageAnchoringConfigToml(
     timeout = 8.seconds,
     failuresWarningThreshold = 3u,
   ),
-  val anchoringTickInterval: Duration = 10.seconds,
-  val messageQueueCapacity: Int = 10_000,
-  val maxMessagesToAnchorPerL2Transaction: Int = 100,
   val signer: SignerConfigToml,
   val gas: GasConfig = GasConfig(),
 ) {
   init {
-    require(messageQueueCapacity >= 1) {
+    require(messageQueueCapacity >= 1u) {
       "messageQueueCapacity=$messageQueueCapacity be equal or greater than 1"
     }
-    require(maxMessagesToAnchorPerL2Transaction >= 1) {
+    require(maxMessagesToAnchorPerL2Transaction >= 1u) {
       "maxMessagesToAnchorPerL2Transaction=$maxMessagesToAnchorPerL2Transaction be equal or greater than 1"
     }
 
@@ -44,7 +44,7 @@ data class MessageAnchoringConfigToml(
   }
 
   data class L1EventScrapping(
-    val pollingInterval: Duration = 2.seconds,
+    val pollingInterval: Duration = 6.seconds,
     val pollingTimeout: Duration = 5.seconds,
     val ethLogsSearchSuccessBackoffDelay: Duration = 1.milliseconds,
     val ethLogsSearchBlockChunkSize: UInt = 1000u,
@@ -86,10 +86,10 @@ data class MessageAnchoringConfigToml(
       l1RequestRetries = l1RequestRetries.asDomain,
       l2RequestRetries = l2RequestRetries.asDomain,
       l1EventScrapping = MessageAnchoringConfig.L1EventScrapping(
-        pollingInterval = l1EventScrapping.pollingInterval,
-        pollingTimeout = l1EventScrapping.pollingTimeout,
-        ethLogsSearchSuccessBackoffDelay = l1EventScrapping.ethLogsSearchSuccessBackoffDelay,
-        ethLogsSearchBlockChunkSize = l1EventScrapping.ethLogsSearchBlockChunkSize,
+        pollingInterval = l1EventScraping.pollingInterval,
+        pollingTimeout = l1EventScraping.pollingTimeout,
+        ethLogsSearchSuccessBackoffDelay = l1EventScraping.ethLogsSearchSuccessBackoffDelay,
+        ethLogsSearchBlockChunkSize = l1EventScraping.ethLogsSearchBlockChunkSize,
       ),
       anchoringTickInterval = anchoringTickInterval,
       messageQueueCapacity = messageQueueCapacity.toUInt(),

@@ -18,6 +18,7 @@ class LocalStackConfigsParsingTest {
       tracesLimitsFileV2 = Path.of("../../config/common/traces-limits-v2.toml"),
       gasPriceCapTimeOfDayMultipliersFile = Path.of("../../config/common/gas-price-cap-time-of-day-multipliers.toml"),
       smartContractErrorsFile = Path.of("../../config/common/smart-contract-errors.toml"),
+      enforceStrict = true,
     ).also { configs ->
       // just small assertion to ensure that the configs are loaded and overridden correctly
       assertThat(configs.database.host).isEqualTo("127.0.0.1")

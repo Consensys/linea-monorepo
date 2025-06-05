@@ -1,34 +1,10 @@
 package linea.coordinator.config.v2.toml
 
-import linea.coordinator.config.v2.ApiConfig
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.web3j.SmartContractErrors
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.TimeOfDayMultipliers
 import net.consensys.linea.traces.TracesCountersV2
 import net.consensys.linea.traces.TracingModuleV2
-import java.net.URL
-import kotlin.time.Duration.Companion.seconds
-
-data class DefaultsToml(
-  val l1Endpoint: URL? = null,
-  val l2Endpoint: URL? = null,
-  val l1EndpointRequestRetries: RequestRetriesToml = RequestRetriesToml.endlessRetry(
-    backoffDelay = 1.seconds,
-    failuresWarningThreshold = 3u,
-  ),
-  val l2EndpointRequestRetries: RequestRetriesToml = RequestRetriesToml.endlessRetry(
-    backoffDelay = 1.seconds,
-    failuresWarningThreshold = 3u,
-  ),
-)
-
-data class ApiConfigToml(
-  val observabilityPort: UInt = 9545u,
-) {
-  fun reified(): ApiConfig {
-    return ApiConfig(observabilityPort)
-  }
-}
 
 data class CoordinatorConfigFileToml(
   val defaults: DefaultsToml = DefaultsToml(),

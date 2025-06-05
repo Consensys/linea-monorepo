@@ -5,8 +5,11 @@ import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.get
 import com.github.michaelbull.result.getOrElse
+import com.github.michaelbull.result.recoverIf
 import com.sksamuel.hoplite.ConfigLoaderBuilder
+import com.sksamuel.hoplite.ConfigResult
 import com.sksamuel.hoplite.ExperimentalHoplite
+import com.sksamuel.hoplite.fp.Validated
 import com.sksamuel.hoplite.toml.TomlPropertySource
 import linea.coordinator.config.v2.CoordinatorConfig
 import linea.coordinator.config.v2.toml.decoders.BlockParameterDecoder
@@ -15,11 +18,12 @@ import linea.coordinator.config.v2.toml.decoders.BlockParameterTagDecoder
 import linea.coordinator.config.v2.toml.decoders.TomlByteArrayHexDecoder
 import linea.coordinator.config.v2.toml.decoders.TomlKotlinDurationDecoder
 import linea.coordinator.config.v2.toml.decoders.TomlSignerTypeDecoder
+import org.apache.logging.log4j.Level
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import java.nio.file.Path
 
-fun ConfigLoaderBuilder.addCoordinatorTomlDecoders(): ConfigLoaderBuilder {
+fun ConfigLoaderBuilder.addCoordinatorTomlDecoders(strict: Boolean): ConfigLoaderBuilder {
   return this
     .addDecoder(BlockParameterTagDecoder())
     .addDecoder(BlockParameterNumberDecoder())
@@ -27,14 +31,15 @@ fun ConfigLoaderBuilder.addCoordinatorTomlDecoders(): ConfigLoaderBuilder {
     .addDecoder(TomlByteArrayHexDecoder())
     .addDecoder(TomlKotlinDurationDecoder())
     .addDecoder(TomlSignerTypeDecoder())
+    .apply { if (strict) this.strict() }
 }
 
 @OptIn(ExperimentalHoplite::class)
-inline fun <reified T : Any> parseConfig(toml: String): T {
+inline fun <reified T : Any> parseConfig(toml: String, strict: Boolean = true): T {
   return ConfigLoaderBuilder
     .default()
     .withExplicitSealedTypes()
-    .addCoordinatorTomlDecoders()
+    .addCoordinatorTomlDecoders(strict)
     .addSource(TomlPropertySource(toml))
     .build()
     .loadConfigOrThrow<T>()
@@ -43,43 +48,45 @@ inline fun <reified T : Any> parseConfig(toml: String): T {
 @OptIn(ExperimentalHoplite::class)
 inline fun <reified T : Any> loadConfigsOrError(
   configFiles: List<Path>,
+  strict: Boolean,
 ): Result<T, String> {
-  val confBuilder: ConfigLoaderBuilder = ConfigLoaderBuilder
+  val confLoader = ConfigLoaderBuilder
     .empty()
     .addDefaults()
     .withExplicitSealedTypes()
-    .addCoordinatorTomlDecoders()
-
-  return confBuilder
+    .addCoordinatorTomlDecoders(strict)
     .build()
+
+  return confLoader
     .loadConfig<T>(configFiles.reversed().map { it.toAbsolutePath().toString() })
-    .let { config ->
-      if (config.isInvalid()) {
-        Err(config.getInvalidUnsafe().description())
-      } else {
-        Ok(config.getUnsafe())
+    .let { configResult: ConfigResult<T> ->
+      when (configResult) {
+        is Validated.Valid -> Ok(configResult.value)
+        is Validated.Invalid -> Err(configResult.getInvalidUnsafe().description())
       }
     }
 }
 
 fun logErrorIfPresent(
-  configName: String,
-  configFiles: List<Path>,
   configLoadingResult: Result<Any?, String>,
   logger: Logger,
+  logLevel: Level = Level.ERROR,
 ) {
   if (configLoadingResult is Err) {
-    logger.error("Failed to load $configName from files=$configFiles with error=${configLoadingResult.error}")
+    logger.log(logLevel, configLoadingResult.error)
   }
 }
 
 inline fun <reified T : Any> loadConfigsAndLogErrors(
   configFiles: List<Path>,
-  configName: String,
   logger: Logger = LogManager.getLogger("linea.coordinator.config"),
+  strict: Boolean,
 ): Result<T, String> {
-  return loadConfigsOrError<T>(configFiles)
-    .also { logErrorIfPresent(configName, configFiles, it, logger) }
+  return loadConfigsOrError<T>(configFiles, strict = strict)
+    .also {
+      val logLevel = if (strict) Level.WARN else Level.ERROR
+      logErrorIfPresent(it, logger, logLevel)
+    }
 }
 
 fun loadConfigsOrError(
@@ -88,21 +95,22 @@ fun loadConfigsOrError(
   gasPriceCapTimeOfDayMultipliersFile: Path,
   smartContractErrorsFile: Path,
   logger: Logger = LogManager.getLogger("linea.coordinator.config"),
+  strict: Boolean = false,
 ): Result<CoordinatorConfigToml, String> {
   val coordinatorBaseConfigs =
-    loadConfigsAndLogErrors<CoordinatorConfigFileToml>(coordinatorConfigFiles, "coordinator", logger)
+    loadConfigsAndLogErrors<CoordinatorConfigFileToml>(coordinatorConfigFiles, logger, strict)
   val tracesLimitsV2Configs =
-    loadConfigsAndLogErrors<TracesLimitsConfigFileToml>(listOf(tracesLimitsFileV2), "traces limits v2", logger)
+    loadConfigsAndLogErrors<TracesLimitsConfigFileToml>(listOf(tracesLimitsFileV2), logger, strict)
   val gasPriceCapTimeOfDayMultipliersConfig =
     loadConfigsAndLogErrors<GasPriceCapTimeOfDayMultipliersConfigFileToml>(
       listOf(gasPriceCapTimeOfDayMultipliersFile),
-      "l1 submission gas prices caps",
       logger,
+      strict,
     )
   val smartContractErrorsConfig = loadConfigsAndLogErrors<SmartContractErrorCodesConfigFileToml>(
     listOf(smartContractErrorsFile),
-    "smart contract errors",
     logger,
+    strict,
   )
   val configError = listOf(
     coordinatorBaseConfigs,
@@ -132,16 +140,30 @@ fun loadConfigs(
   gasPriceCapTimeOfDayMultipliersFile: Path,
   smartContractErrorsFile: Path,
   logger: Logger = LogManager.getLogger("linea.coordinator.config"),
+  enforceStrict: Boolean = false,
 ): CoordinatorConfig {
-  loadConfigsOrError(
+  return loadConfigsOrError(
     coordinatorConfigFiles,
     tracesLimitsFileV2,
     gasPriceCapTimeOfDayMultipliersFile,
     smartContractErrorsFile,
     logger,
-  ).let {
-    return it
-      .getOrElse { throw RuntimeException("Invalid configurations: $it") }
-      .reified()
-  }
+    strict = true,
+  )
+    .recoverIf({ !enforceStrict }, {
+      loadConfigsOrError(
+        coordinatorConfigFiles,
+        tracesLimitsFileV2,
+        gasPriceCapTimeOfDayMultipliersFile,
+        smartContractErrorsFile,
+        logger,
+        strict = false,
+      ).getOrElse {
+        throw RuntimeException("Invalid configurations: $it")
+      }
+    })
+    .getOrElse {
+      throw RuntimeException("Invalid configurations: $it")
+    }
+    .reified()
 }

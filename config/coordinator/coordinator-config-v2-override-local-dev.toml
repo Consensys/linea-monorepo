@@ -39,14 +39,9 @@ disabled = false
 l1-highest-block-tag="LATEST"
 l2-highest-block-tag="LATEST"
 anchoring-tick-interval = "PT1S"
-messages-anchoring-chuck-size = 100
 
 [message-anchoring.l1-event-scraping]
 polling-interval = "PT1S"
-polling-timeout = "PT5S"
-message-limit-pertick = 100
-block-range-limit = 500
-
 
 [message-anchoring.signer]
 type = "Web3j"
