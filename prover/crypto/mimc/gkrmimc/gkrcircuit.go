@@ -70,12 +70,17 @@ func createGateNames() {
 // which contains the "normal" and the "gnark" version of the GKR gates forming
 // the MiMC GKR circuit.
 func registerGates() error {
+	const (
+		ROUND_GATE_NB_INPUTS = 2  // initial state and current state
+		FINAL_GATE_NB_INPUTS = 3  // initial state, block and current state
+		GATE_DEGREE          = 17 // MiMC S-box degree for BLS12-377
+	)
 	for i := 4; i < numGates-1; i++ {
 		if err := gkrgates.Register(
 			RoundGate(mimc.Constants[i-prefetchSize]),
-			2,
+			ROUND_GATE_NB_INPUTS,
 			gkrgates.WithName(gateNames[i]),
-			gkrgates.WithUnverifiedDegree(17),
+			gkrgates.WithUnverifiedDegree(GATE_DEGREE),
 			gkrgates.WithCurves(ecc.BLS12_377),
 		); err != nil {
 			return fmt.Errorf("failed to register gate %s: %v", gateNames[i], err)
@@ -84,9 +89,9 @@ func registerGates() error {
 
 	if err := gkrgates.Register(
 		FinalRoundGate(mimc.Constants[len(mimc.Constants)-1]),
-		3,
+		FINAL_GATE_NB_INPUTS,
 		gkrgates.WithName(gateNames[numGates-1]),
-		gkrgates.WithUnverifiedDegree(17),
+		gkrgates.WithUnverifiedDegree(GATE_DEGREE),
 		gkrgates.WithCurves(ecc.BLS12_377),
 	); err != nil {
 		return fmt.Errorf("failed to register gate %s: %v", gateNames[numGates-1], err)
