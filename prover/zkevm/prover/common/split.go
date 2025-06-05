@@ -1,21 +1,24 @@
 package common
 
+import "github.com/consensys/linea-monorepo/prover/maths/field"
+
 // LimbBytes is the size of one limb in bytes
 const LimbBytes = 2
 
-// SplitBytes splits the input slice into subarrays of the provided size.
-func SplitBytes(input []byte) [][]byte {
-	if len(input) == 0 {
-		return [][]byte{}
-	}
+// SplitElement splits the input field element into subarrays of the provided size.
+func SplitElement(element field.Element) []field.Element {
+	input := element.Bytes()
 
-	var result [][]byte
+	var result []field.Element
 	for i := 0; i < len(input); i += LimbBytes {
 		end := i + LimbBytes
 		if end > len(input) {
 			end = len(input)
 		}
-		result = append(result, input[i:end])
+
+		var limb field.Element
+		limb.SetBytes(input[i:end])
+		result = append(result, limb)
 	}
 	return result
 }

@@ -3,9 +3,11 @@ package accumulator
 import (
 	"fmt"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
+	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/byte32cmp"
 	"github.com/consensys/linea-monorepo/prover/protocol/dedicated/merkle"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
@@ -92,9 +94,10 @@ const (
 	ACCUMULATOR_LEAF_HASHES_NAME   ifaces.ColID = "ACCUMULATOR_LEAF_HASHES"
 	ACCUMULATOR_IS_EMPTY_LEAF_NAME ifaces.ColID = "ACCUMULATOR_IS_EMPTY_LEAF"
 	// Columns for NextFreeNode consistency check
-	ACCUMULATOR_NEXT_FREE_NODE_NAME ifaces.ColID = "ACCUMULATOR_NEXT_FREE_NODE"
-	ACCUMULATOR_INSERTION_PATH_NAME ifaces.ColID = "ACCUMULATOR_INSERTION_PATH"
-	ACCUMULATOR_IS_INSERT_ROW3_NAME ifaces.ColID = "ACCUMULATOR_IS_INSERT_ROW3"
+	ACCUMULATOR_NEXT_FREE_NODE_NAME       ifaces.ColID = "ACCUMULATOR_NEXT_FREE_NODE"
+	ACCUMULATOR_INSERTION_PATH_NAME       ifaces.ColID = "ACCUMULATOR_INSERTION_PATH"
+	ACCUMULATOR_IS_INSERT_ROW3_NAME       ifaces.ColID = "ACCUMULATOR_IS_INSERT_ROW3"
+	ACCUMULATOR_NEXT_FREE_NODE_SHIFT_NAME ifaces.ColID = "ACCUMULATOR_NEXT_FREE_NODE_SHIFT"
 	// Columns for hashing the top root
 	ACCUMULATOR_INTERM_TOP_ROOT_NAME ifaces.ColID = "ACCUMULATOR_INTERM_TOP_ROOT"
 	ACCUMULATOR_TOP_ROOT_NAME        ifaces.ColID = "ACCUMULATOR_TOP_ROOT"
@@ -102,10 +105,10 @@ const (
 
 // structure for leaf opening
 type LeafOpenings struct {
-	HKey [common.NbLimbU256]ifaces.Column // TODO (32 bytes)
-	HVal [common.NbLimbU256]ifaces.Column // TODO (32 bytes)
-	Prev ifaces.Column                    // TODO: (4 bytes?) - recheck
-	Next ifaces.Column                    // TODO: (4 bytes?) - recheck
+	HKey [common.NbLimbU256]ifaces.Column
+	HVal [common.NbLimbU256]ifaces.Column
+	Prev [common.NbLimbU64]ifaces.Column
+	Next [common.NbLimbU64]ifaces.Column
 }
 
 // Module module
@@ -117,13 +120,13 @@ type Module struct {
 		Leaves    [common.NbLimbU256]ifaces.Column
 		Roots     [common.NbLimbU256]ifaces.Column
 		Positions [common.NbLimbU64]ifaces.Column
-		Proofs    *merkle.FlatProof // TODO - recheck this
+		Proofs    *merkle.FlatProof // TODO (nazarevsky): split on limbs
 		// Column to verify reuse of Merkle proofs in INSERT, DELETE, and UPDATE operations
 		UseNextMerkleProof ifaces.Column
 		// Column denoting the active area of the accumulator module
 		IsActiveAccumulator ifaces.Column
-		// Column to check sequentiality of the accumulator module with Merkle module
-		AccumulatorCounter [common.NbLimbU64]ifaces.Column // TODO - 4 byte
+		// Columns to check sequentiality of the accumulator module with Merkle module
+		AccumulatorCounter [common.NbLimbU64]ifaces.Column
 		// Column to verify the two equalities of intermediateRoot1 and intermediateRoot3, and empty
 		// leafs for INSERT and DELETE operation and one equality of root in IsReadZero operation
 		IsFirst ifaces.Column
@@ -139,33 +142,37 @@ type Module struct {
 		IsReadNonZero ifaces.Column
 
 		// Columns for the sandwitch check
-		// Column storing the hash of the key of the trace
-		HKey [common.NbLimbU256]ifaces.Column // DONE_TODO (32 bytes)
-		// Column storing the hash of the key of the previous leaf
-		HKeyMinus [common.NbLimbU256]ifaces.Column // DONE_TODO (32 bytes)
-		// Column storing the hash of the key of the next leaf
-		HKeyPlus [common.NbLimbU256]ifaces.Column // DONE_TODO (32 bytes)
+		// Columns storing the hash of the key of the trace
+		HKey [common.NbLimbU256]ifaces.Column
+		// Columns storing the hash of the key of the previous leaf
+		HKeyMinus [common.NbLimbU256]ifaces.Column
+		// Columns storing the hash of the key of the next leaf
+		HKeyPlus [common.NbLimbU256]ifaces.Column
+		// HkeyHkeyMinusIsGreater contains boolean value indicating whether the HKey is greater than HKeyMinus
+		HkeyHkeyMinusIsGreater ifaces.Column
+		// HkeyPlusHkeyIsGreater contains boolean value indicating whether the HKeyPlus is greater than HKey
+		HkeyPlusHkeyIsGreater ifaces.Column
 
 		// Columns for the pointer check
-		// Column storing the index of the minus leaf
-		LeafMinusIndex ifaces.Column // TODO - 4 byte
-		// Column storing the index of the next leaf of the minus leaf
-		LeafMinusNext ifaces.Column // TODO - 4 byte
-		// Column storing the index of the plus leaf
-		LeafPlusIndex ifaces.Column // TODO - 4 byte
-		// Column storing the index of the previous leaf of the plus leaf
-		LeafPlusPrev ifaces.Column // TODO - 4 byte
-		// Column storing the index of the deleted leaf
-		LeafDeletedIndex ifaces.Column // TODO - 4 byte
-		// Column storing the index of the previous leaf of the deleted leaf
-		LeafDeletedPrev ifaces.Column // TODO - 4 byte
-		// Column storing the index of the next leaf of the deleted leaf
-		LeafDeletedNext ifaces.Column // TODO - 4 byte
+		// Columns storing the index of the minus leaf
+		LeafMinusIndex [common.NbLimbU64]ifaces.Column
+		// Columns storing the index of the next leaf of the minus leaf
+		LeafMinusNext [common.NbLimbU64]ifaces.Column
+		// Columns storing the index of the plus leaf
+		LeafPlusIndex [common.NbLimbU64]ifaces.Column
+		// Columns storing the index of the previous leaf of the plus leaf
+		LeafPlusPrev [common.NbLimbU64]ifaces.Column
+		// Columns storing the index of the deleted leaf
+		LeafDeletedIndex [common.NbLimbU64]ifaces.Column
+		// Columns storing the index of the previous leaf of the deleted leaf
+		LeafDeletedPrev [common.NbLimbU64]ifaces.Column
+		// Columns storing the index of the next leaf of the deleted leaf
+		LeafDeletedNext [common.NbLimbU64]ifaces.Column
 
 		// Columns for leaf hashing check
 		// LeafOpening contains four columns corresponding to HKey, HVal, Prev, and Next
-		LeafOpenings LeafOpenings // TODO - partial
-		// Interm contains the three intermediate states corresponding to the MiMC block computation
+		LeafOpenings LeafOpenings
+		// Interm contains the three intermediate states corresponding to the MiMC block computation divided into limbs
 		Interm [common.NbLimbU256][]ifaces.Column
 		// Zero contains the column with zero value, used in the MiMc query
 		Zero ifaces.Column
@@ -177,6 +184,9 @@ type Module struct {
 		// Columns to check NextFreeNode consistency
 		// NextFreeNode stores the nextFreeNode for each row of every operation
 		NextFreeNode [common.NbLimbU64]ifaces.Column
+		// NextFreeNodeIncremented stores a value that indicates how much NextFreeNode[i] is increased
+		// relative to the NextFreeNode[i-1]
+		NextFreeNodeIncremented [common.NbLimbU64]ifaces.Column
 		// InsertionPath stores the index of the newly inserted leaf by INSERT
 		InsertionPath [common.NbLimbU64]ifaces.Column
 		// IsInsertRow3 is one for row 3 of INSERT operation
@@ -191,6 +201,15 @@ type Module struct {
 
 	// MerkleProofVerification is the merkle tree verification wizard
 	MerkleProofVerification *merkle.FlatMerkleProofVerification
+	// AccumulatorCounterProver creates a new column which indicates the row-wise increment of AccumulatorCounter
+	// with corresponding constraints
+	AccumulatorCounterProver wizard.ProverAction
+	// HkeyHkeyMinusProver creates a new column which indicates whether the HKey is greater than HkeyMinus
+	HkeyHkeyMinusProver wizard.ProverAction
+	// HkeyPlusHkeyProver creates a new column which indicates whether the HkeyPlus is greater than Hkey
+	HkeyPlusHkeyProver wizard.ProverAction
+	// NextFreeNodeShiftProver checks that NextFreeNode is increased when new node is inserted.
+	NextFreeNodeShiftProver wizard.ProverAction
 }
 
 // NewModule generates and constraints the accumulator module. The accumulator
@@ -228,6 +247,15 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 		am.Cols.NextFreeNode[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_NEXT_FREE_NODE_NAME, i), am.NumRows())
 		am.Cols.InsertionPath[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_INSERTION_PATH_NAME, i), am.NumRows())
 		am.Cols.AccumulatorCounter[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_COUNTER_NAME, i), am.NumRows())
+
+		// columns for the pointer check
+		am.Cols.LeafMinusIndex[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_MINUS_INDEX_NAME, i), am.NumRows())
+		am.Cols.LeafMinusNext[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_MINUS_NEXT_NAME, i), am.NumRows())
+		am.Cols.LeafPlusIndex[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_PLUS_INDEX_NAME, i), am.NumRows())
+		am.Cols.LeafPlusPrev[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_PLUS_PREV_NAME, i), am.NumRows())
+		am.Cols.LeafDeletedIndex[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_DELETED_INDEX_NAME, i), am.NumRows())
+		am.Cols.LeafDeletedPrev[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_DELETED_PREV_NAME, i), am.NumRows())
+		am.Cols.LeafDeletedNext[i] = comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_DELETED_NEXT_NAME, i), am.NumRows())
 	}
 
 	am.Cols.Proofs = merkle.NewProof(comp, am.Round, ACCUMULATOR_PROOFS_NAME, am.MerkleTreeDepth, am.NumRows())
@@ -239,15 +267,6 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	am.Cols.IsUpdate = comp.InsertCommit(am.Round, ACCUMULATOR_IS_UPDATE_NAME, am.NumRows())
 	am.Cols.IsReadZero = comp.InsertCommit(am.Round, ACCUMULATOR_IS_READ_ZERO_NAME, am.NumRows())
 	am.Cols.IsReadNonZero = comp.InsertCommit(am.Round, ACCUMULATOR_IS_READ_NON_ZERO_NAME, am.NumRows())
-
-	// columns for the pointer check
-	am.Cols.LeafMinusIndex = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_MINUS_INDEX_NAME, am.NumRows())
-	am.Cols.LeafMinusNext = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_MINUS_NEXT_NAME, am.NumRows())
-	am.Cols.LeafPlusIndex = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_PLUS_INDEX_NAME, am.NumRows())
-	am.Cols.LeafPlusPrev = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_PLUS_PREV_NAME, am.NumRows())
-	am.Cols.LeafDeletedIndex = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_DELETED_INDEX_NAME, am.NumRows())
-	am.Cols.LeafDeletedPrev = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_DELETED_PREV_NAME, am.NumRows())
-	am.Cols.LeafDeletedNext = comp.InsertCommit(am.Round, ACCUMULATOR_LEAF_DELETED_NEXT_NAME, am.NumRows())
 
 	// Leaf hashing columns commitments
 	am.commitLeafHashingCols()
@@ -312,7 +331,6 @@ func (am *Module) define(comp *wizard.CompiledIOP, s Settings) {
 	//
 	// @alex: it would make sense to refactor the merkle package with an input
 	// struct so that the function signature is more readable.
-	// TODO (nazarevsky): fix this later?
 	am.MerkleProofVerification = merkle.CheckFlatMerkleProofs(
 		comp,
 		merkle.FlatProofVerificationInputs{
@@ -337,17 +355,13 @@ func (am *Module) commitLeafHashingCols() {
 	ACCUMULATOR_INTERM[0] = "ACCUMULATOR_INTERM_PREV"
 	ACCUMULATOR_INTERM[1] = "ACCUMULATOR_INTERM_NEXT"
 	ACCUMULATOR_INTERM[2] = "ACCUMULATOR_INTERM_HKEY"
-
-	panic(
-		"review the size of everything here; " +
-			"in particular [common.NbLimbU256] is incorrect -> it should be 8" +
-			"review the encoding size of all the parameters prev and next are over 2 columns now; HKey and HVal are over 8 columns now" +
-			"with that in mind, Interm should be of size 8x2",
-	)
-
 	am.Cols.Zero = verifiercol.NewConstantCol(field.Zero(), am.NumRows(), "merkle-tree-accumulator")
-	am.Cols.LeafOpenings.Prev = am.comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_PREV), am.NumRows())
-	am.Cols.LeafOpenings.Next = am.comp.InsertCommit(am.Round, ifaces.ColID(ACCUMULATOR_LEAF_OPENING_NEXT), am.NumRows())
+
+	for i := range am.Cols.LeafOpenings.Prev {
+		am.Cols.LeafOpenings.Prev[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_PREV, i), am.NumRows())
+		am.Cols.LeafOpenings.Next[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_NEXT, i), am.NumRows())
+	}
+
 	for i := 0; i < common.NbLimbU256; i++ {
 		am.Cols.Interm[i] = make([]ifaces.Column, 3)
 		am.Cols.LeafOpenings.HKey[i] = am.comp.InsertCommit(am.Round, ifaces.ColIDf("%s_%d", ACCUMULATOR_LEAF_OPENING_HKEY, i), am.NumRows())
@@ -446,6 +460,40 @@ func (am *Module) checkReadZero() {
 func (am *Module) checkConsistency() {
 	cols := am.Cols
 
+	shiftedAccumulatorCounter := make([]ifaces.Column, len(am.Cols.AccumulatorCounter))
+	for i := range shiftedAccumulatorCounter {
+		shiftedAccumulatorCounter[i] = column.Shift(am.Cols.AccumulatorCounter[i], 1)
+	}
+
+	offsetLimbs := []field.Element{field.Zero(), field.Zero(), field.Zero(), field.One()}
+	offsetCols := make([]ifaces.Column, len(am.Cols.AccumulatorCounter))
+	for i := range offsetCols {
+		offsetCols[i] = am.comp.InsertPrecomputed(
+			ifaces.ColIDf("%s_SHIFTED_OFFSET_%d", ACCUMULATOR_COUNTER_NAME, i),
+			smartvectors.NewConstant(offsetLimbs[i], am.NumRows()),
+		)
+	}
+
+	_, am.AccumulatorCounterProver = byte32cmp.NewMultiLimbAdd(am.comp, &byte32cmp.MultiLimbAddIn{
+		Name: string(ACCUMULATOR_COUNTER_NAME),
+		ALimbs: byte32cmp.LimbColumns{
+			Limbs:       am.Cols.AccumulatorCounter[:],
+			LimbBitSize: 16,
+			IsBigEndian: true,
+		},
+		BLimbs: byte32cmp.LimbColumns{
+			Limbs:       offsetCols[:],
+			LimbBitSize: 16,
+			IsBigEndian: true,
+		},
+		Mask: symbolic.NewVariable(column.Shift(am.Cols.IsActiveAccumulator, 1)),
+		Result: byte32cmp.LimbColumns{
+			Limbs:       shiftedAccumulatorCounter,
+			LimbBitSize: 16,
+			IsBigEndian: true,
+		},
+	}, true)
+
 	// Booleanity of IsUpdate
 	expr1 := symbolic.Sub(
 		symbolic.Mul(symbolic.Square(cols.IsUpdate), cols.IsActiveAccumulator),
@@ -463,20 +511,6 @@ func (am *Module) checkConsistency() {
 		symbolic.Mul(symbolic.Square(cols.UseNextMerkleProof), cols.IsActiveAccumulator),
 		cols.UseNextMerkleProof)
 	am.comp.InsertGlobal(am.Round, am.qname("USE_NEXT_MERKLE_PROOF_BOOLEAN"), expr3)
-
-	// Row-wise increment of AccumulatorCounter
-	// IsActiveAccumulator[i+1] * (AccumulatorCounter[i+1] - AccumulatorCounter[i] - 1)
-	for i := 0; i < len(cols.AccumulatorCounter); i++ {
-		// TODO (nazarevsky)
-		//expr4 := symbolic.Mul(column.Shift(cols.IsActiveAccumulator, 1),
-		//	symbolic.Sub(column.Shift(cols.AccumulatorCounter[i], 1),
-		//		cols.AccumulatorCounter[i], 1)))
-		//am.comp.InsertGlobal(am.Round, am.qname("COUNTER_INCREMENT_%d", i), expr4)
-		//
-
-		// Local constraint that AccumulatorCounter starts at zero
-		am.comp.InsertLocal(am.Round, am.qname("COUNTER_LOCAL_%d", i), symbolic.Sub(cols.AccumulatorCounter[i], 0))
-	}
 
 	// Booleanity of IsActiveAccumulator
 	expr5 := symbolic.Sub(
@@ -520,16 +554,50 @@ func (am *Module) checkEmptyLeaf() {
 	}
 }
 
+func (am *Module) compareMultiLimbs(colALimbs []ifaces.Column, colBLimbs []ifaces.Column) (ifaces.Column, wizard.ProverAction) {
+	isGreater, _, _, prover := byte32cmp.CmpMultiLimbs(
+		am.comp,
+		byte32cmp.LimbColumns{
+			Limbs:       colALimbs,
+			LimbBitSize: 16,
+			IsBigEndian: true,
+		},
+		byte32cmp.LimbColumns{
+			Limbs:       colBLimbs,
+			LimbBitSize: 16,
+			IsBigEndian: true,
+		},
+	)
+
+	return isGreater, prover
+}
+
 func (am *Module) checkSandwitch() {
 	cols := am.Cols
 	// We want sandwitch check only at row 1 of INSERT and READ-ZERO
-	//activeRow := symbolic.Add(symbolic.Mul(cols.IsFirst, cols.IsInsert), symbolic.Mul(cols.IsFirst, cols.IsReadZero))
+	activeRow := symbolic.Add(symbolic.Mul(cols.IsFirst, cols.IsInsert), symbolic.Mul(cols.IsFirst, cols.IsReadZero))
+
+	am.Cols.HkeyHkeyMinusIsGreater, am.HkeyHkeyMinusProver = am.compareMultiLimbs(am.Cols.HKey[:], am.Cols.HKeyMinus[:])
+	am.comp.InsertGlobal(
+		am.Round,
+		am.qname("CMP_HKEY_HKEY_MINUS"),
+		symbolic.Mul(
+			activeRow,
+			symbolic.Sub(1, am.Cols.HkeyHkeyMinusIsGreater),
+		),
+	)
+
+	am.Cols.HkeyPlusHkeyIsGreater, am.HkeyPlusHkeyProver = am.compareMultiLimbs(am.Cols.HKeyPlus[:], am.Cols.HKey[:])
+	am.comp.InsertGlobal(
+		am.Round,
+		am.qname("CMP_HKEY_PLUS_HKEY"),
+		symbolic.Mul(
+			activeRow,
+			symbolic.Sub(1, am.Cols.HkeyPlusHkeyIsGreater),
+		),
+	)
 
 	for i := 0; i < common.NbLimbU256; i++ {
-		// TODO (nazarevsky): Bytes32Cmp ensures that one col value is bigger than the other one. Not sure how to do it with limbs
-		//byte32cmp.Bytes32Cmp(am.comp, 16, 16, string(am.qname("CMP_HKEY_HKEY_MINUS_%d", i)), am.Cols.HKey[i], am.Cols.HKeyMinus[i], activeRow)
-		//byte32cmp.Bytes32Cmp(am.comp, 16, 16, string(am.qname("CMP_HKEY_PLUS_HKEY_%d", i)), am.Cols.HKeyPlus[i], am.Cols.HKey[i], activeRow)
-
 		// INSERT: The HKeyMinus in the leaf minus openings is the same as HKeyMinus column i.e.,
 		// IsActiveAccumulator[i] * IsInsert[i] * IsFirst[i] * (HKeyMinus[i] - LeafOpenings.Hkey[i])
 		expr1 := symbolic.Mul(cols.IsActiveAccumulator,
@@ -574,37 +642,39 @@ func (am *Module) checkSandwitch() {
 
 func (am *Module) checkPointer() {
 	cols := am.Cols
-	// Check #1 for INSERT: IsFirst[i] * IsInsert[i] * (LeafMinusNext[i] - LeafPlusIndex[i])
-	expr1 := symbolic.Mul(cols.IsFirst, cols.IsInsert, symbolic.Sub(cols.LeafMinusNext, cols.LeafPlusIndex))
-	am.comp.InsertGlobal(am.Round, am.qname("INSERT_POINTER_1"), expr1)
+	for i := range cols.LeafPlusIndex {
+		// Check #1 for INSERT: IsFirst[i] * IsInsert[i] * (LeafMinusNext[i] - LeafPlusIndex[i])
+		expr1 := symbolic.Mul(cols.IsFirst, cols.IsInsert, symbolic.Sub(cols.LeafMinusNext[i], cols.LeafPlusIndex[i]))
+		am.comp.InsertGlobal(am.Round, am.qname("INSERT_POINTER_1_%d", i), expr1)
 
-	// Check #2 for INSERT: IsFirst[i] * IsInsert[i] *(LeafPlusPrev[i] - LeafMinusIndex[i])
-	expr2 := symbolic.Mul(cols.IsFirst, cols.IsInsert, symbolic.Sub(cols.LeafPlusPrev, cols.LeafMinusIndex))
-	am.comp.InsertGlobal(am.Round, am.qname("INSERT_POINTER_2"), expr2)
+		// Check #2 for INSERT: IsFirst[i] * IsInsert[i] *(LeafPlusPrev[i] - LeafMinusIndex[i])
+		expr2 := symbolic.Mul(cols.IsFirst, cols.IsInsert, symbolic.Sub(cols.LeafPlusPrev[i], cols.LeafMinusIndex[i]))
+		am.comp.InsertGlobal(am.Round, am.qname("INSERT_POINTER_2_%d", i), expr2)
 
-	// Check #1 for DELETE: IsFirst[i] * IsDelete[i] * (LeafMinusNext[i] - LeafDeletedIndex[i])
-	expr3 := symbolic.Mul(cols.IsFirst, cols.IsDelete, symbolic.Sub(cols.LeafMinusNext, cols.LeafDeletedIndex))
-	am.comp.InsertGlobal(am.Round, am.qname("DELETE_POINTER_1"), expr3)
+		// Check #1 for DELETE: IsFirst[i] * IsDelete[i] * (LeafMinusNext[i] - LeafDeletedIndex[i])
+		expr3 := symbolic.Mul(cols.IsFirst, cols.IsDelete, symbolic.Sub(cols.LeafMinusNext[i], cols.LeafDeletedIndex[i]))
+		am.comp.InsertGlobal(am.Round, am.qname("DELETE_POINTER_1_%d", i), expr3)
 
-	// Check #2 for DELETE: IsFirst[i] * IsDelete[i] * (LeafDeletedPrev[i] - LeafMinusIndex[i])
-	expr4 := symbolic.Mul(cols.IsFirst, cols.IsDelete, symbolic.Sub(cols.LeafDeletedPrev, cols.LeafMinusIndex))
-	am.comp.InsertGlobal(am.Round, am.qname("DELETE_POINTER_2"), expr4)
+		// Check #2 for DELETE: IsFirst[i] * IsDelete[i] * (LeafDeletedPrev[i] - LeafMinusIndex[i])
+		expr4 := symbolic.Mul(cols.IsFirst, cols.IsDelete, symbolic.Sub(cols.LeafDeletedPrev[i], cols.LeafMinusIndex[i]))
+		am.comp.InsertGlobal(am.Round, am.qname("DELETE_POINTER_2_%d", i), expr4)
 
-	// Check #3 for DELETE: IsFirst[i] * IsDelete[i] * (LeafDeletedNext[i] - LeafPlusIndex[i])
-	expr5 := symbolic.Mul(cols.IsFirst, cols.IsDelete, symbolic.Sub(cols.LeafDeletedNext, cols.LeafPlusIndex))
-	am.comp.InsertGlobal(am.Round, am.qname("DELETE_POINTER_3"), expr5)
+		// Check #3 for DELETE: IsFirst[i] * IsDelete[i] * (LeafDeletedNext[i] - LeafPlusIndex[i])
+		expr5 := symbolic.Mul(cols.IsFirst, cols.IsDelete, symbolic.Sub(cols.LeafDeletedNext[i], cols.LeafPlusIndex[i]))
+		am.comp.InsertGlobal(am.Round, am.qname("DELETE_POINTER_3_%d", i), expr5)
 
-	// Check #4 for DELETE: IsFirst[i] * IsDelete[i] * (LeafPlusPrev[i] - LeafDeletedIndex[i])
-	expr6 := symbolic.Mul(cols.IsFirst, cols.IsDelete, symbolic.Sub(cols.LeafPlusPrev, cols.LeafDeletedIndex))
-	am.comp.InsertGlobal(am.Round, am.qname("DELETE_POINTER_4"), expr6)
+		// Check #4 for DELETE: IsFirst[i] * IsDelete[i] * (LeafPlusPrev[i] - LeafDeletedIndex[i])
+		expr6 := symbolic.Mul(cols.IsFirst, cols.IsDelete, symbolic.Sub(cols.LeafPlusPrev[i], cols.LeafDeletedIndex[i]))
+		am.comp.InsertGlobal(am.Round, am.qname("DELETE_POINTER_4_%d", i), expr6)
 
-	// Check #1 for READ-ZERO: IsFirst[i] * IsReadZero[i] * (LeafMinusNext[i] - LeafPlusIndex[i])
-	expr7 := symbolic.Mul(cols.IsFirst, cols.IsReadZero, symbolic.Sub(cols.LeafMinusNext, cols.LeafPlusIndex))
-	am.comp.InsertGlobal(am.Round, am.qname("READ_ZERO_POINTER_1"), expr7)
+		// Check #1 for READ-ZERO: IsFirst[i] * IsReadZero[i] * (LeafMinusNext[i] - LeafPlusIndex[i])
+		expr7 := symbolic.Mul(cols.IsFirst, cols.IsReadZero, symbolic.Sub(cols.LeafMinusNext[i], cols.LeafPlusIndex[i]))
+		am.comp.InsertGlobal(am.Round, am.qname("READ_ZERO_POINTER_1_%d", i), expr7)
 
-	// Check #2 for READ-ZERO: IsFirst[i] * IsReadZero[i] * (LeafPlusPrev[i] - LeafMinusIndex[i])
-	expr8 := symbolic.Mul(cols.IsFirst, cols.IsReadZero, symbolic.Sub(cols.LeafPlusPrev, cols.LeafMinusIndex))
-	am.comp.InsertGlobal(am.Round, am.qname("READ_ZERO_POINTER_2"), expr8)
+		// Check #2 for READ-ZERO: IsFirst[i] * IsReadZero[i] * (LeafPlusPrev[i] - LeafMinusIndex[i])
+		expr8 := symbolic.Mul(cols.IsFirst, cols.IsReadZero, symbolic.Sub(cols.LeafPlusPrev[i], cols.LeafMinusIndex[i]))
+		am.comp.InsertGlobal(am.Round, am.qname("READ_ZERO_POINTER_2_%d", i), expr8)
+	}
 }
 
 func (am *Module) checkLeafHashes() {
@@ -641,30 +711,79 @@ func (am *Module) checkLeafHashes() {
 
 func (am *Module) checkNextFreeNode() {
 	cols := am.Cols
+	/*
+		IsActive[i] * (1 - IsFirst[i]) * (
+		IsInsertRow3[i] * (NextFreeNode[i] - NextFreeNode[i-1] - 1)
+		+ (1- IsInsertRow3[i]) * (NextFreeNode[i] - NextFreeNode[i-1])
+		)
+	*/
 
-	for i := 0; i < len(cols.NextFreeNode); i++ {
-		// TODO (nazarevsky)
-		/*
-			IsActive[i] * (1 - IsFirst[i]) * (
-			IsInsertRow3[i] * (NextFreeNode[i] - NextFreeNode[i-1] - 1)
-			+ (1- IsInsertRow3[i]) * (NextFreeNode[i] - NextFreeNode[i-1])
-			)
-		*/
-		//expr1 := symbolic.Mul(cols.IsInsertRow3,
-		//	symbolic.Sub(cols.NextFreeNode[i], column.Shift(cols.NextFreeNode[i], -1), symbolic.NewConstant(1)))
-		//expr2 := symbolic.Mul(symbolic.Sub(symbolic.NewConstant(1), cols.IsInsertRow3),
-		//	symbolic.Sub(cols.NextFreeNode[i], column.Shift(cols.NextFreeNode[i], -1)))
-		//expr3 := symbolic.Mul(cols.IsActiveAccumulator,
-		//	symbolic.Sub(symbolic.NewConstant(1), cols.IsFirst),
-		//	symbolic.Add(expr1, expr2))
-		//am.comp.InsertGlobal(am.Round, am.qname("NEXT_FREE_NODE_CONSISTENCY_1_%d", i), expr3)
-		//
-		//// IsActive[i] * (1 - IsFirst[i]) * IsInsertRow3[i] * (NextFreeNode[i] - InsertionPath[i] - 1)
-		//expr4 := symbolic.Mul(cols.IsActiveAccumulator,
-		//	symbolic.Sub(symbolic.NewConstant(1), cols.IsFirst),
-		//	cols.IsInsertRow3,
-		//	symbolic.Sub(cols.NextFreeNode[i], cols.InsertionPath[i], symbolic.NewConstant(1)))
-		//am.comp.InsertGlobal(am.Round, am.qname("NEXT_FREE_NODE_CONSISTENCY_2_%d", i), expr4)
+	shiftedNextFreeNode := make([]ifaces.Column, len(am.Cols.NextFreeNode))
+	for i := range shiftedNextFreeNode {
+		shiftedNextFreeNode[i] = column.Shift(am.Cols.NextFreeNode[i], -1)
+	}
+
+	// 1. Calc NextFreeNode[i] - NextFreeNode[i-1]
+	nextFreeNodeIncremented, nextFreeNodeShiftProver := byte32cmp.NewMultiLimbAdd(am.comp, &byte32cmp.MultiLimbAddIn{
+		Name: string(ACCUMULATOR_NEXT_FREE_NODE_SHIFT_NAME),
+		ALimbs: byte32cmp.LimbColumns{
+			Limbs:       am.Cols.NextFreeNode[:],
+			LimbBitSize: 16,
+			IsBigEndian: true,
+		},
+		BLimbs: byte32cmp.LimbColumns{
+			Limbs:       shiftedNextFreeNode,
+			LimbBitSize: 16,
+			IsBigEndian: true,
+		},
+		Mask: symbolic.Mul(am.Cols.IsActiveAccumulator, symbolic.Sub(1, cols.IsFirst)),
+	}, false)
+
+	copy(am.Cols.NextFreeNodeIncremented[:], nextFreeNodeIncremented.Limbs)
+	am.NextFreeNodeShiftProver = nextFreeNodeShiftProver
+
+	// 2. Bound expression 1 with global constraint ensuring the result is 0, 0, 0, 1 applying mask IsActive[i] * (1 - IsFirst[i]) * IsInsertRow3[i]
+	// First 3 limbs (most significant) has to be 0
+	for i := 0; i < len(am.Cols.NextFreeNodeIncremented)-1; i++ {
+		am.comp.InsertGlobal(
+			am.Round,
+			am.qname("%v_RESULT_SUB_ONE_%d", ACCUMULATOR_NEXT_FREE_NODE_SHIFT_NAME, i),
+			symbolic.Mul(
+				am.Cols.IsActiveAccumulator,
+				symbolic.Sub(1, cols.IsFirst),
+				cols.IsInsertRow3,
+				am.Cols.NextFreeNodeIncremented[i],
+			),
+		)
+	}
+
+	// Last 1 limb (least significant) has to be 1
+	am.comp.InsertGlobal(
+		am.Round,
+		am.qname(
+			"%v_RESULT_SUB_ONE_%d",
+			ACCUMULATOR_NEXT_FREE_NODE_SHIFT_NAME,
+			len(am.Cols.NextFreeNodeIncremented)-1,
+		),
+		symbolic.Mul(am.Cols.IsActiveAccumulator,
+			symbolic.Sub(1, cols.IsFirst),
+			cols.IsInsertRow3,
+			symbolic.Sub(1, am.Cols.NextFreeNodeIncremented[3]),
+		),
+	)
+
+	// 3. Bound expression 1 with global constraint ensuring the result is 0, 0, 0, 0 applying mask IsActive[i] * (1 - IsFirst[i]) * (1- IsInsertRow3[i])
+	for i := 0; i < len(am.Cols.NextFreeNodeIncremented); i++ {
+		am.comp.InsertGlobal(
+			am.Round,
+			am.qname("%v_RESULT_%d", ACCUMULATOR_NEXT_FREE_NODE_SHIFT_NAME, i),
+			symbolic.Mul(
+				am.Cols.IsActiveAccumulator,
+				symbolic.Sub(1, cols.IsFirst),
+				symbolic.Sub(1, cols.IsInsertRow3),
+				am.Cols.NextFreeNodeIncremented[i],
+			),
+		)
 	}
 
 	// IsInsertRow3 is true if and only if it is row 3 for INSERT operation, i.e.,
@@ -677,7 +796,7 @@ func (am *Module) checkNextFreeNode() {
 }
 
 func (am *Module) checkTopRootHash() {
-	// TODO (nazarevsky): we need to join all columns into a single one so we can check MIMC correspondence
+	// TODO (nazarevsky)
 	//cols := am.Cols
 	//
 	//for i := 0; i < common.NbLimbU256; i++ {
@@ -706,6 +825,16 @@ func (am *Module) checkZeroInInactive() {
 		am.colZeroAtInactive(cols.NextFreeNode[i], fmt.Sprintf("NEXT_FREE_NODE_ZERO_IN_INACTIVE_%d", i))
 		am.colZeroAtInactive(cols.InsertionPath[i], fmt.Sprintf("INSERTION_PATH_ZERO_IN_INACTIVE_%d", i))
 		am.colZeroAtInactive(cols.AccumulatorCounter[i], fmt.Sprintf("ACCUMULATOR_COUNTER_ZERO_IN_INACTIVE_%d", i))
+
+		am.colZeroAtInactive(cols.LeafMinusIndex[i], fmt.Sprintf("LEAF_MINUS_INDEX_ZERO_IN_INACTIVE_%d", i))
+		am.colZeroAtInactive(cols.LeafMinusNext[i], fmt.Sprintf("LEAF_MINUS_NEXT_ZERO_IN_INACTIVE_%d", i))
+		am.colZeroAtInactive(cols.LeafPlusIndex[i], fmt.Sprintf("LEAF_PLUS_INDEX_ZERO_IN_INACTIVE_%d", i))
+		am.colZeroAtInactive(cols.LeafPlusPrev[i], fmt.Sprintf("LEAF_PLUS_PREV_ZERO_IN_INACTIVE_%d", i))
+		am.colZeroAtInactive(cols.LeafDeletedIndex[i], fmt.Sprintf("LEAF_DELETED_INDEX_ZERO_IN_INACTIVE_%d", i))
+		am.colZeroAtInactive(cols.LeafDeletedPrev[i], fmt.Sprintf("LEAF_DELETED_PREV_ZERO_IN_INACTIVE_%d", i))
+		am.colZeroAtInactive(cols.LeafDeletedNext[i], fmt.Sprintf("LEAF_DELETED_NEXT_ZERO_IN_INACTIVE_%d", i))
+		am.colZeroAtInactive(cols.LeafOpenings.Prev[i], fmt.Sprintf("LEAF_OPENING_PREV_ZERO_IN_INACTIVE_%d", i))
+		am.colZeroAtInactive(cols.LeafOpenings.Next[i], fmt.Sprintf("LEAF_OPENING_NEXT_ZERO_IN_INACTIVE_%d", i))
 	}
 	// Skipping proof as it has unequal column length with IsActive
 	// proof is unconstrained in this module, and the consistency check is done
@@ -717,15 +846,6 @@ func (am *Module) checkZeroInInactive() {
 	am.colZeroAtInactive(cols.IsUpdate, "IS_UPDATE_ZERO_IN_INACTIVE")
 	am.colZeroAtInactive(cols.IsReadZero, "IS_READ_ZERO_ZERO_IN_INACTIVE")
 	am.colZeroAtInactive(cols.IsReadNonZero, "IS_READ_NON_ZERO_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.LeafMinusIndex, "LEAF_MINUS_INDEX_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.LeafMinusNext, "LEAF_MINUS_NEXT_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.LeafPlusIndex, "LEAF_PLUS_INDEX_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.LeafPlusPrev, "LEAF_PLUS_PREV_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.LeafDeletedIndex, "LEAF_DELETED_INDEX_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.LeafDeletedPrev, "LEAF_DELETED_PREV_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.LeafDeletedNext, "LEAF_DELETED_NEXT_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.LeafOpenings.Prev, "LEAF_OPENING_PREV_ZERO_IN_INACTIVE")
-	am.colZeroAtInactive(cols.LeafOpenings.Next, "LEAF_OPENING_NEXT_ZERO_IN_INACTIVE")
 	// Skipping Interm, Zero, and LeafHashes as two of them contain zero hashes and
 	// Zero is a verifier column. The padding area of Interm and LeafHashes
 	// are already constrained by the MiMC query
