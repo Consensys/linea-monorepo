@@ -56,6 +56,7 @@ func TestProver(t *testing.T) {
 	proof.Complete(entryList[:NumOpenedColumns], committedMatrices, trees)
 
 	// verify
+	// TODO@yao@thomas: add a test for the verifier
 }
 
 // func TestVerifierNegative(t *testing.T) {
