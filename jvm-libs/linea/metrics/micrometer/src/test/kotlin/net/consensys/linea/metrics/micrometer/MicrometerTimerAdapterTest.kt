@@ -16,7 +16,7 @@ import java.util.concurrent.TimeUnit
 class MicrometerTimerAdapterTest {
 
   @Test
-  fun `timer with no extra tags`() {
+  fun `create timer with no extra tags`() {
     val meterRegistry: MeterRegistry = SimpleMeterRegistry()
     val apiTimerProvider =
       TimerFactoryImpl(
@@ -44,7 +44,7 @@ class MicrometerTimerAdapterTest {
   }
 
   @Test
-  fun `timer with two different callbacks`() {
+  fun `timer with two callbacks with different return types should return same types`() {
     val meterRegistry: MeterRegistry = SimpleMeterRegistry()
     val apiTimerProvider =
       TimerFactoryImpl(
@@ -72,15 +72,19 @@ class MicrometerTimerAdapterTest {
       Assertions.assertThat(meter.id.name).isEqualTo("request.timer")
       Assertions.assertThat(meter.id.description).isEqualTo("API request timer")
       Assertions.assertThat(meter.id.tags.size).isEqualTo(2)
-      Assertions.assertThat(meter.id.tags.flatMap { tag -> listOf(tag.key, tag.value) }).contains("version", "v1.0")
+      Assertions.assertThat(meter.id.tags.map { it.key }).containsExactlyInAnyOrder("version", "method")
       Assertions.assertThat((meter as Timer).totalTime(TimeUnit.MILLISECONDS)).isBetween(10.0, 100.0)
     }
-    Assertions.assertThat(meterRegistry.meters.flatMap { it.id.tags }.flatMap { listOf(it.key, it.value) })
-      .contains("method", "eth_blockNumber", "method", "eth_status")
+    Assertions.assertThat(meterRegistry.find("request.timer").tags("method", "eth_blockNumber").timer())
+      .isNotNull
+    Assertions.assertThat(meterRegistry.find("request.timer").tags("method", "eth_status").timer())
+      .isNotNull
+    Assertions.assertThat(meterRegistry.meters.flatMap { it.id.tags }.map { it.value })
+      .contains("eth_blockNumber", "eth_status")
   }
 
   @Test
-  fun `timer with callback that throws`() {
+  fun `timer with callback that throws should measure time and also throw the exception`() {
     val meterRegistry: MeterRegistry = SimpleMeterRegistry()
     val apiTimerProvider =
       TimerFactoryImpl(
@@ -108,14 +112,18 @@ class MicrometerTimerAdapterTest {
       Assertions.assertThat(meter.id.name).isEqualTo("request.timer")
       Assertions.assertThat(meter.id.description).isEqualTo("API request timer")
       Assertions.assertThat(meter.id.tags.size).isEqualTo(2)
-      Assertions.assertThat(meter.id.tags.flatMap { tag -> listOf(tag.key, tag.value) }).contains("version", "v1.0")
+      Assertions.assertThat(meter.id.tags.map { it.key }).containsExactlyInAnyOrder("version", "method")
     }
-    Assertions.assertThat(meterRegistry.meters.flatMap { it.id.tags }.flatMap { listOf(it.key, it.value) })
-      .contains("method", "eth_blockNumber", "method", "eth_status")
+    Assertions.assertThat(meterRegistry.find("request.timer").tags("method", "eth_blockNumber").timer())
+      .isNotNull
+    Assertions.assertThat(meterRegistry.find("request.timer").tags("method", "eth_status").timer())
+      .isNotNull
+    Assertions.assertThat(meterRegistry.meters.flatMap { it.id.tags }.map { it.value })
+      .contains("eth_blockNumber", "eth_status")
   }
 
   @Test
-  fun `timer with future`() {
+  fun `timer with future should return the correct value and exception if thrown`() {
     val meterRegistry: MeterRegistry = SimpleMeterRegistry()
     val apiTimerProvider =
       TimerFactoryImpl(
@@ -142,9 +150,13 @@ class MicrometerTimerAdapterTest {
       Assertions.assertThat(meter.id.name).isEqualTo("request.timer")
       Assertions.assertThat(meter.id.description).isEqualTo("API request timer")
       Assertions.assertThat(meter.id.tags.size).isEqualTo(2)
-      Assertions.assertThat(meter.id.tags.flatMap { tag -> listOf(tag.key, tag.value) }).contains("version", "v1.0")
+      Assertions.assertThat(meter.id.tags.map { it.key }).containsExactlyInAnyOrder("version", "method")
     }
-    Assertions.assertThat(meterRegistry.meters.flatMap { it.id.tags }.flatMap { listOf(it.key, it.value) })
-      .contains("method", "eth_blockNumber", "method", "eth_status")
+    Assertions.assertThat(meterRegistry.find("request.timer").tags("method", "eth_blockNumber").timer())
+      .isNotNull
+    Assertions.assertThat(meterRegistry.find("request.timer").tags("method", "eth_status").timer())
+      .isNotNull
+    Assertions.assertThat(meterRegistry.meters.flatMap { it.id.tags }.map { it.value })
+      .contains("eth_blockNumber", "eth_status")
   }
 }
