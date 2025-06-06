@@ -57,7 +57,7 @@ func DeriveEvaluationPoint(
 			n := h.Size()
 			omegaN, err := fft.Generator(uint64(n))
 			if err != nil {
-				panic(err)
+				utils.Panic("failed to compute generator: %v", err)
 			}
 			omegaN.Exp(omegaN, big.NewInt(int64(inner.Offset)))
 			derivedX.Mul(&x, &omegaN)

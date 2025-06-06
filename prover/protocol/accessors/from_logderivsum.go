@@ -5,6 +5,8 @@ import (
 
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -20,6 +22,31 @@ type FromLogDerivSumAccessor struct {
 	// Q is the underlying query whose parameters are accessed by the current
 	// [ifaces.Accessor].
 	Q query.LogDerivativeSum
+}
+
+func (l *FromLogDerivSumAccessor) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromLogDerivSumAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromLogDerivSumAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromLogDerivSumAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromLogDerivSumAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewLogDerivSumAccessor creates an [ifaces.Accessor] returning the opening

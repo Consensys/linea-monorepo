@@ -3,10 +3,14 @@ package accessors
 import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 )
+
+var _ ifaces.Accessor = &FromHornerAccessorFinalValue{}
 
 // FromHornerAccessorFinalValue implements [ifaces.Accessor] and accesses the
 // final value of a [Horner] computation.
@@ -49,4 +53,29 @@ func (l *FromHornerAccessorFinalValue) AsVariable() *symbolic.Expression {
 // Round implements the [ifaces.Accessor] interface
 func (l *FromHornerAccessorFinalValue) Round() int {
 	return l.Q.Round
+}
+
+func (l *FromHornerAccessorFinalValue) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromHornerAccessorFinalValue) GetValExt(run ifaces.Runtime) fext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromHornerAccessorFinalValue) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromHornerAccessorFinalValue) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (l *FromHornerAccessorFinalValue) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
 }

@@ -40,11 +40,11 @@ func GnarkDeriveEvaluationPoint(
 		} else {
 			// If not, compute the shift on x and cache the result
 			n := h.Size()
-			w, err := fft.Generator(uint64(n))
+			generator, err := fft.Generator(uint64(n))
 			if err != nil {
-				panic(err)
+				utils.Panic("failed to compute generator: %v", err)
 			}
-			omegaN := frontend.Variable(w)
+			omegaN := frontend.Variable(generator)
 			omegaN = gnarkutil.Exp(api, omegaN, inner.Offset)
 			derivedX = api.Mul(x, omegaN)
 			cachedXs.InsertNew(newUpstream, derivedX)

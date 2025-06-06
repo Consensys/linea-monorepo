@@ -3,11 +3,12 @@ package variables
 import (
 	"math/big"
 
-	field "github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/fft"
 	"github.com/consensys/gnark/frontend"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
+	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
 /*
@@ -32,11 +33,13 @@ func (x X) String() string {
 func (x X) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) sv.SmartVector {
 	omega, err := fft.Generator(uint64(size))
 	if err != nil {
-		panic(err)
+		utils.Panic("failed to compute generator: %v", err)
+
 	}
 	omegaQNumCos, err := fft.Generator(uint64(size * cosetRatio))
 	if err != nil {
-		panic(err)
+		utils.Panic("failed to compute generator: %v", err)
+
 	}
 	omegaQNumCos.Exp(omegaQNumCos, big.NewInt(int64(cosetId)))
 
@@ -64,4 +67,8 @@ func (x X) GnarkEvalNoCoset(size int) []frontend.Variable {
 		res[i] = res_.Get(i)
 	}
 	return res
+}
+
+func (x X) IsBase() bool {
+	return true
 }

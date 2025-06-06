@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/mimc/gkrmimc"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"golang.org/x/crypto/blake2b"
 )
 
 // GnarkFiatShamir mirrors [State] in a gnark circuit. It provides analogous
@@ -164,6 +165,31 @@ func (fs *GnarkFiatShamir) RandomManyIntegers(num, upperBound int) []frontend.Va
 		fs.safeguardUpdate()
 	}
 
+}
+
+// RandomFieldFromSeed generates a new field element from the given seed
+// and a name. The 'fs' is left unchanged by the call (aside from the
+// underlying [frontend.API]).
+func (fs *GnarkFiatShamir) RandomFieldFromSeed(seed frontend.Variable, name string) frontend.Variable {
+
+	// The first step encodes the 'name' into a single field element. The
+	// field element is obtained by hashing and taking the modulo of the
+	// result to fit into a field element.
+	nameBytes := []byte(name)
+	hasher, _ := blake2b.New256(nil)
+	hasher.Write(nameBytes)
+	nameBytes = hasher.Sum(nil)
+	nameField := new(field.Element).SetBytes(nameBytes)
+
+	// The seed is then obtained by calling the compression function over
+	// the seed and the encoded name.
+	oldState := fs.State()
+	defer fs.SetState(oldState)
+
+	fs.SetState([]frontend.Variable{seed})
+	fs.hasher.Write(nameField)
+
+	return fs.hasher.Sum()
 }
 
 // safeguardUpdate updates the state as a safeguard by appending a field element

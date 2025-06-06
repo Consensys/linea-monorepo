@@ -61,9 +61,7 @@ func (t PeriodicSample) EvalAtOnDomain(pos int) field.Element {
 	if pos%t.T == t.Offset {
 		return field.One()
 	}
-	var zero field.Element
-	zero.SetZero()
-	return zero
+	return field.Zero()
 }
 
 // Evaluates the expression outside of the domain
@@ -80,7 +78,8 @@ func (t PeriodicSample) EvalAtOutOfDomain(size int, x field.Element) field.Eleme
 		var shift field.Element
 		omega, err := fft.Generator(uint64(n))
 		if err != nil {
-			panic(err)
+			utils.Panic("failed to compute generator: %v", err)
+
 		}
 		evalPoint.Mul(&evalPoint, shift.Exp(omega, big.NewInt(int64(-t.Offset))))
 	}
@@ -118,7 +117,8 @@ func (t PeriodicSample) GnarkEvalAtOutOfDomain(api frontend.API, size int, x fro
 	if t.Offset > 0 {
 		omega, err := fft.Generator(uint64(n))
 		if err != nil {
-			panic(err)
+			utils.Panic("failed to compute generator: %v", err)
+
 		}
 		x = api.Mul(x, gnarkutil.Exp(api, omega, -t.Offset))
 	}
@@ -187,7 +187,8 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	if cosetRatio > 0 {
 		omegaN, err := fft.Generator(uint64(n * cosetRatio))
 		if err != nil {
-			panic(err)
+			utils.Panic("failed to compute generator: %v", err)
+
 		}
 		omegaN.Exp(omegaN, big.NewInt(int64(cosetId)))
 		a.Mul(&a, &omegaN)
@@ -197,7 +198,8 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	if t.Offset > 0 {
 		omegalInv, err := fft.Generator(uint64(n))
 		if err != nil {
-			panic(err)
+			utils.Panic("failed to compute generator: %v", err)
+
 		}
 		omegalInv.Exp(omegalInv, big.NewInt(int64(-t.Offset)))
 		a.Mul(&a, &omegalInv)
@@ -209,7 +211,8 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	an.Exp(a, big.NewInt(int64(n)))
 	omegal, err := fft.Generator(uint64(t.T)) // It's the canonical t-root of unity
 	if err != nil {
-		panic(err)
+		utils.Panic("failed to compute generator: %v", err)
+
 	}
 
 	// Denominator
@@ -245,4 +248,9 @@ func (t PeriodicSample) EvalCoset(size, cosetId, cosetRatio int, shiftGen bool) 
 	}
 
 	return sv.NewRegular(res)
+}
+
+func (t PeriodicSample) IsBase() bool {
+
+	return true
 }

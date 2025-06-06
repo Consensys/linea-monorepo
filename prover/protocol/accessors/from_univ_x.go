@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/consensys/gnark/frontend"
-	"github.com/consensys/linea-monorepo/prover/maths/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
@@ -19,6 +21,31 @@ type FromUnivXAccessor struct {
 	Q query.UnivariateEval
 	// Round is the declaration round of Q
 	QRound int
+}
+
+func (u *FromUnivXAccessor) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u *FromUnivXAccessor) GetValBase(run ifaces.Runtime) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u *FromUnivXAccessor) GetValExt(run ifaces.Runtime) fext.Element {
+	params := run.GetParams(u.Q.QueryID).(query.UnivariateEvalParams)
+	return params.X
+}
+
+func (u *FromUnivXAccessor) GetFrontendVariableBase(api frontend.API, c ifaces.GnarkRuntime) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (u *FromUnivXAccessor) GetFrontendVariableExt(api frontend.API, c ifaces.GnarkRuntime) gnarkfext.Element {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewUnivariateX returns an [ifaces.Accessor] object symbolizing the evaluation
@@ -42,9 +69,9 @@ func (u *FromUnivXAccessor) String() string {
 }
 
 // GetVal implements [ifaces.Accessor]
-func (u *FromUnivXAccessor) GetVal(run ifaces.Runtime) fext.Element {
-	params := run.GetParams(u.Q.QueryID).(query.UnivariateEvalParams)
-	return params.X
+func (u *FromUnivXAccessor) GetVal(run ifaces.Runtime) field.Element {
+	//TODO implement me
+	panic("implement me")
 }
 
 // GetFrontendVariable implements [ifaces.Accessor]
