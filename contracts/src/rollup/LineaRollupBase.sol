@@ -322,7 +322,22 @@ abstract contract LineaRollupBase is
     CompressedCalldataSubmission calldata _submission,
     bytes32 _parentShnarf,
     bytes32 _expectedShnarf
-  ) external whenTypeAndGeneralNotPaused(PauseType.CALLDATA_SUBMISSION) onlyRole(OPERATOR_ROLE) {
+  ) external virtual whenTypeAndGeneralNotPaused(PauseType.CALLDATA_SUBMISSION) onlyRole(OPERATOR_ROLE) {
+    _submitDataAsCalldata(_submission, _parentShnarf, _expectedShnarf);
+  }
+
+  /**
+   * @notice Submit blobs using compressed data via calldata.
+   * @dev OPERATOR_ROLE is required to execute.
+   * @param _submission The supporting data for compressed data submission including compressed data.
+   * @param _parentShnarf The parent shnarf used in continuity checks as it includes the parentStateRootHash in its computation.
+   * @param _expectedShnarf The expected shnarf post computation of all the submission.
+   */
+  function _submitDataAsCalldata(
+    CompressedCalldataSubmission calldata _submission,
+    bytes32 _parentShnarf,
+    bytes32 _expectedShnarf
+  ) internal virtual {
     if (_submission.compressedData.length == 0) {
       revert EmptySubmissionData();
     }
