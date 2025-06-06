@@ -278,6 +278,7 @@ abstract contract TokenBridgeBase is
 
   /**
    * @notice Retrieves the escrow address (default address(this)).
+   * @dev _token is only used in overrides allowing different escrow per token.
    * @param _token The address of the token to be bridged.
    * @return escrowAddress The address of where the bridged local token will be kept.
    */
