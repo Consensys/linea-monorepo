@@ -3,7 +3,9 @@ package smt
 import (
 	"fmt"
 
+	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
@@ -11,10 +13,19 @@ import (
 
 // Config specifies the parameters of the tree (choice of hash function, depth).
 type Config struct {
+	// If set, the hash is poseidon2
+	UsePoseidon bool
 	// HashFunc is a function returning initialized hashers
 	HashFunc func() hashtypes.Hasher
 	// Depth is the depth of the tree
 	Depth int
+}
+
+type Option func(c *Config) error
+
+func WithPoseidon(c *Config) error {
+	c.UsePoseidon = true
+	return nil
 }
 
 // Tree represents a binary sparse Merkle-tree (SMT).
@@ -51,10 +62,22 @@ func EmptyLeaf() types.Bytes32 {
 // hashLR is used for hashing the leaf-right children. It returns H(nodeL, nodeR)
 // taking H as the HashFunc of the config.
 func hashLR(config *Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
-	hasher := config.HashFunc()
-	nodeL.WriteTo(hasher)
-	nodeR.WriteTo(hasher)
-	d := types.AsBytes32(hasher.Sum(nil))
+
+	var d types.Bytes32
+	if !config.UsePoseidon {
+		hasher := config.HashFunc()
+		nodeL.WriteTo(hasher)
+		nodeR.WriteTo(hasher)
+		d = types.AsBytes32(hasher.Sum(nil))
+	} else {
+		knodeL := types.Bytes32ToHash(nodeL)
+		knodeR := types.Bytes32ToHash(nodeR)
+		var toHash [16]field.Element
+		copy(toHash[:], knodeL[:])
+		copy(toHash[8:], knodeR[:])
+		h := vortex.HashPoseidon2(toHash[:])
+		d = types.HashToBytes32(h)
+	}
 	return d
 }
 
@@ -263,23 +286,26 @@ func (t *Tree) reserveLevel(level, newSize int) {
 // input leaves are powers of 2. The depth of the tree is deduced from the list.
 //
 // It panics if the number of leaves is a non-power of 2.
-func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tree {
+func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher, options ...Option) *Tree {
 
 	numLeaves := len(leaves)
 
-	// Sanity check : there should be a power of two number of leaves
+	// TODO handle panic
 	if !utils.IsPowerOfTwo(numLeaves) || numLeaves == 0 {
 		utils.Panic("expected power of two number of leaves, got %v", numLeaves)
 	}
 
 	depth := utils.Log2Ceil(numLeaves)
-	config := &Config{HashFunc: hashFunc, Depth: depth}
+	config := &Config{HashFunc: hashFunc, Depth: depth} // TODO no pointer
+	for _, opt := range options {
+		err := opt(config)
+		if err != nil {
+			panic(err) // TODO handle panic
+		}
+	}
 
-	// Builds an empty tree and passes the leaves
 	tree := NewEmptyTree(config)
 	tree.OccupiedLeaves = leaves
-
-	// Builds the tree bottom-up
 	currLevels := leaves
 
 	for i := 0; i < depth-1; i++ {

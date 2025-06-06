@@ -21,20 +21,19 @@ import (
 type EncodedMatrix []smartvectors.SmartVector
 
 type Config struct {
-	tranvsersalHashWithSis bool
-	hashLeavesWithPoseidon bool
-	hashMerkleWithPoseidon bool
+	sisColumnHasher      bool
+	poseidonMerkleHasher bool
 }
 
 type Option func(c *Config) error
 
 func WithSisColumnHasher(c *Config) error {
-	c.tranvsersalHashWithSis = true
+	c.sisColumnHasher = true
 	return nil
 }
 
-func WithPoseidonLeafHasher(c *Config) error {
-	c.hashLeavesWithPoseidon = true
+func WithPoseidonMerkleHasher(c *Config) error {
+	c.poseidonMerkleHasher = true
 	return nil
 }
 
@@ -43,6 +42,7 @@ func (p *Params) Commit(ps []smartvectors.SmartVector, options ...Option) (encod
 	if len(ps) > p.MaxNbRows {
 		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
 	}
+	nbColumns := p.NumEncodedCols()
 
 	var config Config
 	for _, opt := range options {
@@ -52,12 +52,44 @@ func (p *Params) Commit(ps []smartvectors.SmartVector, options ...Option) (encod
 		}
 	}
 
-	var leaves []types.Bytes32
-	if config.sis {
+	if config.sisColumnHasher {
 		colHashes = sisTransversalHash(p.Key, encodedMatrix)
-		leaves = p.computeLeavesWithSis(colHashes)
 	} else {
-		leaves = p.transversalHash(encodedMatrix)
+		colHashes = p.transversalHash(encodedMatrix)
+	}
+	// at this stage colHashes is a list of field.Element
+
+	leaves := make([]types.Bytes32, nbColumns)
+	sizeChunk := len(colHashes) / nbColumns
+
+	if config.poseidonMerkleHasher {
+		for i := 0; i < nbColumns; i++ {
+			h := vortex.HashPoseidon2(colHashes[i*sizeChunk : (i+1)*sizeChunk])
+			leaves[i] = types.HashToBytes32(h)
+		}
+		tree = smt.BuildComplete(
+			leaves,
+			func() hashtypes.Hasher {
+				return hashtypes.Hasher{Hash: p.MerkleHasher()}
+			},
+			smt.WithPoseidon,
+		)
+	} else {
+		merkleHasher := p.MerkleHasher()
+		for i := 0; i < nbColumns; i++ {
+			merkleHasher.Reset()
+			for j := 0; j < sizeChunk; j++ {
+				merkleHasher.Write(colHashes[i*sizeChunk+j].Marshal())
+			}
+			h := merkleHasher.Sum(nil)
+			copy(leaves[i][:], h)
+		}
+		tree = smt.BuildComplete(
+			leaves,
+			func() hashtypes.Hasher {
+				return hashtypes.Hasher{Hash: p.MerkleHasher()}
+			},
+		)
 	}
 
 	return nil, nil, nil
@@ -110,11 +142,11 @@ func (p *Params) computeLeavesPoseidon2(colHashes []field.Element) []types.Bytes
 }
 
 // Uses the no-sis hash function to hash the columns
-func (p *Params) transversalHash(v []smartvectors.SmartVector) []types.Bytes32 {
+func (p *Params) transversalHash(v []smartvectors.SmartVector) []field.Element {
 
 	nbRows := len(v)
 	nbCols := p.NumEncodedCols()
-	res := make([]types.Bytes32, nbCols)
+	res := make([]field.Element, 8*nbCols) // each entry stores 8 koalabear elmts
 	parallel.Execute(nbCols, func(start, stop int) {
 		hasher := p.ColumnHasher()
 		for col := start; col < stop; col++ {
@@ -124,8 +156,10 @@ func (p *Params) transversalHash(v []smartvectors.SmartVector) []types.Bytes32 {
 				curBytes := cur.Bytes()
 				hasher.Write(curBytes[:])
 			}
-			tmp := hasher.Sum(nil)
-			copy(res[col][:], tmp[:])
+			h := hasher.Sum(nil)
+			for j := 0; j < 8; j++ {
+				res[col*8+j].SetBytes(h[j*8 : (j+1)*8])
+			}
 		}
 	})
 
@@ -208,36 +242,37 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 // [field.Element.SetBytesCanonical]
 // We apply MiMC hashing on the columns to compute leaves.
 // Should be used when the number of rows to commit is less than the [ApplySISThreshold]
-func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
+// TODO why are colHashes
+// func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
 
-	if len(ps) > p.MaxNbRows {
-		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
-	}
+// 	if len(ps) > p.MaxNbRows {
+// 		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
+// 	}
 
-	timeEncoding := profiling.TimeIt(func() {
-		encodedMatrix = p.encodeRows(ps)
-	})
+// 	timeEncoding := profiling.TimeIt(func() {
+// 		encodedMatrix = p.encodeRows(ps)
+// 	})
 
-	timeTree := profiling.TimeIt(func() {
-		// colHashes stores the MiMC hashes
-		// of the columns.
-		leaves := p.transversalHash(encodedMatrix)
+// 	timeTree := profiling.TimeIt(func() {
+// 		// colHashes stores the MiMC hashes
+// 		// of the columns.
+// 		leaves := p.transversalHash(encodedMatrix)
 
-		tree = smt.BuildComplete(
-			leaves,
-			func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: p.MerkleHasher()}
-			},
-		)
-	})
+// 		tree = smt.BuildComplete(
+// 			leaves,
+// 			func() hashtypes.Hasher {
+// 				return hashtypes.Hasher{Hash: p.MerkleHasher()}
+// 			},
+// 		)
+// 	})
 
-	logrus.Infof(
-		"[vortex-commitment-without-sis] numCol=%v numRow=%v numColEncoded=%v timeEncoding=%v timeMerkleizing=%v",
-		p.NbColumns, len(ps), p.NumEncodedCols(), timeEncoding, timeTree,
-	)
+// 	logrus.Infof(
+// 		"[vortex-commitment-without-sis] numCol=%v numRow=%v numColEncoded=%v timeEncoding=%v timeMerkleizing=%v",
+// 		p.NbColumns, len(ps), p.NumEncodedCols(), timeEncoding, timeTree,
+// 	)
 
-	return encodedMatrix, tree, colHashes
-}
+// 	return encodedMatrix, tree, colHashes
+// }
 
 // encodeRows returns the encodes `ps` using Reed-Solomon. ps is interpreted as
 // a list of rows of the Vortex witness and encodedMatrix is obtained by
