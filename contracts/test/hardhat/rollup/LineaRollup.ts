@@ -264,6 +264,11 @@ describe("Linea Rollup contract", () => {
       expect(await lineaRollup.hasRole(VERIFIER_SETTER_ROLE, operator.address)).to.be.true;
     });
 
+    it("Should have the correct contract version", async () => {
+      ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
+      expect(await lineaRollup.CONTRACT_VERSION()).to.equal("7.0");
+    });
+
     it("Should revert if the initialize function is called a second time", async () => {
       ({ verifier, lineaRollup } = await loadFixture(deployLineaRollupFixture));
       const initializeCall = lineaRollup.initialize({

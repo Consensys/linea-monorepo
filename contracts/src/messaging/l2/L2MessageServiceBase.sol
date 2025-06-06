@@ -73,22 +73,6 @@ abstract contract L2MessageServiceBase is
   }
 
   /**
-   * @notice Sets permissions for a list of addresses and their roles as well as initialises the PauseManager pauseType:role mappings.
-   * @dev This function is a reinitializer and can only be called once per version. Should be called using an upgradeAndCall transaction to the ProxyAdmin.
-   * @param _roleAddresses The list of addresses and roles to assign permissions to.
-   * @param _pauseTypeRoleAssignments The list of pause types to associate with roles.
-   * @param _unpauseTypeRoleAssignments The list of unpause types to associate with roles.
-   */
-  function reinitializePauseTypesAndPermissions(
-    RoleAddress[] calldata _roleAddresses,
-    PauseTypeRole[] calldata _pauseTypeRoleAssignments,
-    PauseTypeRole[] calldata _unpauseTypeRoleAssignments
-  ) external reinitializer(2) {
-    __Permissions_init(_roleAddresses);
-    __PauseManager_init(_pauseTypeRoleAssignments, _unpauseTypeRoleAssignments);
-  }
-
-  /**
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
