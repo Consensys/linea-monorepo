@@ -16,16 +16,6 @@ fun <T> SafeFuture<T>.toVertxFuture(): Future<T> {
   return result.future()
 }
 
-fun <T> Future<T>.toCompletableFuture(): CompletableFuture<T> = this.toCompletionStage().toCompletableFuture()
+fun <T> Future<T>.toCompletableFuture(): CompletableFuture<T> = this.toSafeFuture().toCompletableFuture()
 
-fun <T> CompletableFuture<T>.toVertxFuture(): Future<T> {
-  val result = Promise.promise<T>()
-  this.whenComplete { value, error ->
-    if (error != null) {
-      result.fail(error)
-    } else {
-      result.complete(value)
-    }
-  }
-  return result.future()
-}
+fun <T> CompletableFuture<T>.toVertxFuture(): Future<T> = this.toSafeFuture().toVertxFuture()

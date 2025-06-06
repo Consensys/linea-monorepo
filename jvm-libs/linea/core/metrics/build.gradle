@@ -3,7 +3,3 @@ plugins {
 }
 
 description="Linea metrics facade"
-
-dependencies {
-  api "io.vertx:vertx-core"
-}
