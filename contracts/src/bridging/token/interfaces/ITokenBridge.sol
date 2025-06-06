@@ -230,7 +230,7 @@ interface ITokenBridge {
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
-  function CONTRACT_VERSION() external returns (string memory contractVersion);
+  function CONTRACT_VERSION() external view returns (string memory contractVersion);
 
   /**
    * @notice Similar to `bridgeToken` function but allows to pass additional
