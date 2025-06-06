@@ -20,14 +20,13 @@ import static net.consensys.linea.sequencer.modulelimit.ModuleLineCountValidator
 import static net.consensys.linea.zktracer.Fork.LONDON;
 import static org.hyperledger.besu.ethereum.api.jsonrpc.internal.results.Quantity.create;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.annotations.VisibleForTesting;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bl.TransactionProfitabilityCalculator;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
@@ -110,18 +109,19 @@ public class LineaEstimateGas {
   }
 
   public void init(
-    final LineaRpcConfiguration rpcConfiguration,
-    final LineaTransactionPoolValidatorConfiguration transactionValidatorConfiguration,
-    final LineaProfitabilityConfiguration profitabilityConf,
-    final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
-    final LineaTracerConfiguration tracerConfiguration) {
+      final LineaRpcConfiguration rpcConfiguration,
+      final LineaTransactionPoolValidatorConfiguration transactionValidatorConfiguration,
+      final LineaProfitabilityConfiguration profitabilityConf,
+      final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
+      final LineaTracerConfiguration tracerConfiguration) {
     this.rpcConfiguration = rpcConfiguration;
     this.txValidatorConf = transactionValidatorConfiguration;
     this.profitabilityConf = profitabilityConf;
     this.txProfitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
     this.tracerConfiguration = tracerConfiguration;
-    this.moduleLineCountValidator = new ModuleLineCountValidator(tracerConfiguration.moduleLimitsMap());
+    this.moduleLineCountValidator =
+        new ModuleLineCountValidator(tracerConfiguration.moduleLimitsMap());
   }
 
   public String getNamespace() {
@@ -241,7 +241,8 @@ public class LineaEstimateGas {
       final long logId) {
 
     final var pendingBlockHeader = transactionSimulationService.simulatePendingBlockHeader();
-    final var lineCountingTracer = createLineCountingTracer(pendingBlockHeader, blockchainService.getChainId().get());
+    final var lineCountingTracer =
+        createLineCountingTracer(pendingBlockHeader, blockchainService.getChainId().get());
 
     final var maybeSimulationResults =
         transactionSimulationService.simulate(
@@ -408,9 +409,10 @@ public class LineaEstimateGas {
 
   private LineCountingTracer createLineCountingTracer(
       final ProcessableBlockHeader pendingBlockHeader, final BigInteger chainId) {
-    final var lineCountingTracer = tracerConfiguration.isLimitless() ?
-      new ZkCounter(l1L2BridgeConfiguration)
-      : new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
+    final var lineCountingTracer =
+        tracerConfiguration.isLimitless()
+            ? new ZkCounter(l1L2BridgeConfiguration)
+            : new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
     lineCountingTracer.traceStartConflation(1L);
     lineCountingTracer.traceStartBlock(pendingBlockHeader, pendingBlockHeader.getCoinbase());
     return lineCountingTracer;

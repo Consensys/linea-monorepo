@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.stream.Stream;
-
 import linea.plugin.acc.test.tests.web3j.generated.EcAdd;
 import linea.plugin.acc.test.tests.web3j.generated.EcMul;
 import linea.plugin.acc.test.tests.web3j.generated.EcPairing;
@@ -144,8 +143,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
 
   private static Stream<Arguments> ecPairingLimitsTestSource() {
     Map<String, Integer> moduleLimits =
-        ModuleLineCountValidator.createLimitModules(
-            getResourcePath("/moduleLimits.toml"));
+        ModuleLineCountValidator.createLimitModules(getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS =
         moduleLimits.get("PRECOMPILE_ECPAIRING_FINAL_EXPONENTIATIONS");
     final int PRECOMPILE_ECPAIRING_MILLER_LOOPS =
@@ -297,8 +295,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   @Test
   public void ecAddLimitTest() throws Exception {
     Map<String, Integer> moduleLimits =
-        ModuleLineCountValidator.createLimitModules(
-            getResourcePath("/moduleLimits.toml"));
+        ModuleLineCountValidator.createLimitModules(getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_ECADD_EFFECTIVE_CALLS =
         moduleLimits.get("PRECOMPILE_ECADD_EFFECTIVE_CALLS");
 
@@ -390,8 +387,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   @Test
   public void ecMulLimitTest() throws Exception {
     Map<String, Integer> moduleLimits =
-        ModuleLineCountValidator.createLimitModules(
-            getResourcePath("/moduleLimits.toml"));
+        ModuleLineCountValidator.createLimitModules(getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_ECMUL_EFFECTIVE_CALLS =
         moduleLimits.get("PRECOMPILE_ECMUL_EFFECTIVE_CALLS");
 
@@ -479,8 +475,7 @@ public class EcDataLimitsTest extends LineaPluginTestBase {
   @Test
   public void ecRecoverLimitTest() throws Exception {
     Map<String, Integer> moduleLimits =
-        ModuleLineCountValidator.createLimitModules(
-            getResourcePath("/moduleLimits.toml"));
+        ModuleLineCountValidator.createLimitModules(getResourcePath("/moduleLimits.toml"));
     final int PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS =
         moduleLimits.get("PRECOMPILE_ECRECOVER_EFFECTIVE_CALLS");
 

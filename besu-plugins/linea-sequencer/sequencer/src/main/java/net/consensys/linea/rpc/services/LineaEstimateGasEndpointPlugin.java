@@ -15,7 +15,6 @@
 
 package net.consensys.linea.rpc.services;
 
-
 import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
@@ -65,7 +64,8 @@ public class LineaEstimateGasEndpointPlugin extends AbstractLineaRequiredPlugin 
         lineaRpcConfiguration(),
         transactionPoolValidatorConfiguration(),
         profitabilityConfiguration(),
-        l1L2BridgeSharedConfiguration(), tracerConfiguration());
+        l1L2BridgeSharedConfiguration(),
+        tracerConfiguration());
   }
 
   @Override

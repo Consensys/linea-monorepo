@@ -30,6 +30,8 @@ import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
+import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.MalformedURLException;
@@ -38,9 +40,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Optional;
-
-import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
-import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaNodeType;
@@ -124,7 +123,9 @@ public class SimulationValidatorTest {
     tracerConfiguration =
         LineaTracerConfiguration.builder()
             .moduleLimitsFilePath(lineLimitsConfPath.toString())
-          .moduleLimitsMap(new HashMap<>(ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
+            .moduleLimitsMap(
+                new HashMap<>(
+                    ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
             .isLimitless(false)
             .build();
     final var pendingBlockHeader = mock(BlockHeader.class);
@@ -158,8 +159,7 @@ public class SimulationValidatorTest {
   }
 
   private SimulationValidator createSimulationValidator(
-      final boolean enableForApi,
-      final boolean enableForP2p) {
+      final boolean enableForApi, final boolean enableForP2p) {
     return new SimulationValidator(
         blockchainService,
         transactionSimulationService,

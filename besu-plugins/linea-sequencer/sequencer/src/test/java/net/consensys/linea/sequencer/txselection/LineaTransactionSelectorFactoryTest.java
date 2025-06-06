@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
-
 import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.bundles.LineaLimitedBundlePool;
 import net.consensys.linea.bundles.TransactionBundle;
@@ -97,8 +96,10 @@ class LineaTransactionSelectorFactoryTest {
     lineaTracerConfiguration =
         LineaTracerConfiguration.builder()
             .moduleLimitsFilePath(lineLimitsConfPath.toString())
-          .moduleLimitsMap(new HashMap<>(ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
-          .isLimitless(false)
+            .moduleLimitsMap(
+                new HashMap<>(
+                    ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
+            .isLimitless(false)
             .build();
 
     mockBlockchainService = mock(BlockchainService.class);

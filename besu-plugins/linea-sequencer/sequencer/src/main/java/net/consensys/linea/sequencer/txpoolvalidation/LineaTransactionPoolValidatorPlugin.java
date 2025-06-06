@@ -17,6 +17,7 @@ package net.consensys.linea.sequencer.txpoolvalidation;
 
 import static net.consensys.linea.metrics.LineaMetricCategory.TX_POOL_PROFITABILITY;
 
+import com.google.auto.service.AutoService;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,8 +25,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import com.google.auto.service.AutoService;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.AbstractLineaRequiredPlugin;
 import net.consensys.linea.config.LineaRejectedTxReportingConfiguration;

@@ -20,6 +20,7 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectionResult.TX_MODULE_LINE_INVALID_COUNT;
 import static org.hyperledger.besu.plugin.data.TransactionSelectionResult.SELECTED;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.math.BigInteger;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -27,8 +28,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import com.google.common.annotations.VisibleForTesting;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
@@ -78,7 +77,8 @@ public class TraceLineLimitTransactionSelector
       final LineaTracerConfiguration tracerConfiguration) {
     super(
         stateManager,
-        tracerConfiguration.moduleLimitsMap().keySet().stream().collect(Collectors.toMap(Function.identity(), unused -> 0)),
+        tracerConfiguration.moduleLimitsMap().keySet().stream()
+            .collect(Collectors.toMap(Function.identity(), unused -> 0)),
         Map::copyOf);
 
     this.chainId = chainId;
@@ -86,7 +86,8 @@ public class TraceLineLimitTransactionSelector
     this.limitFilePath = tracerConfiguration.moduleLimitsFilePath();
     this.overLimitCacheSize = txSelectorConfiguration.overLinesLimitCacheSize();
 
-    lineCountingTracer = new LineCountingTracerWithLog(tracerConfiguration, l1L2BridgeConfiguration);
+    lineCountingTracer =
+        new LineCountingTracerWithLog(tracerConfiguration, l1L2BridgeConfiguration);
     for (Module m : lineCountingTracer.getModulesToCount()) {
       if (!tracerConfiguration.moduleLimitsMap().containsKey(m.moduleKey())) {
         throw new IllegalStateException(
@@ -225,9 +226,13 @@ public class TraceLineLimitTransactionSelector
   private class LineCountingTracerWithLog implements LineCountingTracer {
     private final LineCountingTracer delegate;
 
-    public LineCountingTracerWithLog(final LineaTracerConfiguration tracerConfiguration, final LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
-      this.delegate = tracerConfiguration.isLimitless() ? new ZkCounter(bridgeConfiguration)
-    : new ZkTracer(Fork.LONDON, bridgeConfiguration, chainId);
+    public LineCountingTracerWithLog(
+        final LineaTracerConfiguration tracerConfiguration,
+        final LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
+      this.delegate =
+          tracerConfiguration.isLimitless()
+              ? new ZkCounter(bridgeConfiguration)
+              : new ZkTracer(Fork.LONDON, bridgeConfiguration, chainId);
     }
 
     @Override

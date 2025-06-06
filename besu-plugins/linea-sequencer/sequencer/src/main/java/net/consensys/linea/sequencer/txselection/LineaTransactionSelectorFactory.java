@@ -17,7 +17,6 @@ package net.consensys.linea.sequencer.txselection;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
-
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.bundles.BundlePoolService;
 import net.consensys.linea.config.LineaProfitabilityConfiguration;

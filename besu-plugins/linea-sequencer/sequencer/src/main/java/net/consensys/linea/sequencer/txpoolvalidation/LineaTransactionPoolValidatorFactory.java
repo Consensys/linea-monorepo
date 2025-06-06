@@ -18,7 +18,6 @@ package net.consensys.linea.sequencer.txpoolvalidation;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
-
 import net.consensys.linea.config.LineaProfitabilityConfiguration;
 import net.consensys.linea.config.LineaTracerConfiguration;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;

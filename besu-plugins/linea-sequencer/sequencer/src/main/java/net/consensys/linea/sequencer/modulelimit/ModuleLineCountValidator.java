@@ -14,14 +14,13 @@
  */
 package net.consensys.linea.sequencer.modulelimit;
 
+import com.google.common.io.Resources;
 import java.io.File;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import com.google.common.io.Resources;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tuweni.toml.Toml;
 import org.apache.tuweni.toml.TomlParseResult;
@@ -124,8 +123,7 @@ public class ModuleLineCountValidator {
     INVALID_LINE_COUNT
   }
 
-  public static Map<String, Integer> createLimitModules(
-      String moduleLimitsFilePath) {
+  public static Map<String, Integer> createLimitModules(String moduleLimitsFilePath) {
     try {
       URL url = new File(moduleLimitsFilePath).toURI().toURL();
       final String tomlString = Resources.toString(url, StandardCharsets.UTF_8);
