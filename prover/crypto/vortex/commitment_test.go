@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/crypto/mimc"
 	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
@@ -64,7 +65,7 @@ func TestVerifierNegative(t *testing.T) {
 			{3, 1, 15},
 		}
 		params = []*Params{
-			NewParams(2, 8, 17, ringsis.StdParams, sha256.New), //TODO@yao change to poseidon2
+			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC), //TODO@yao change to poseidon2
 			//NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
 		}
 
@@ -128,115 +129,115 @@ func TestVerifierNegative(t *testing.T) {
 				},
 			},
 		}
-		/*
-			proofMutatorCorpus = []struct {
-				Explainer string
-				Func      func(v *VerifierInputs) bool
-			}{
-				{
-					Explainer: "Swap two first entryLists",
-					Func: func(v *VerifierInputs) bool {
-						v.EntryList[0], v.EntryList[1] = v.EntryList[1], v.EntryList[0]
-						return true
-					},
+
+		proofMutatorCorpus = []struct {
+			Explainer string
+			Func      func(v *VerifierInputs) bool
+		}{
+			{
+				Explainer: "Swap two first entryLists",
+				Func: func(v *VerifierInputs) bool {
+					v.EntryList[0], v.EntryList[1] = v.EntryList[1], v.EntryList[0]
+					return true
 				},
-				{
-					Explainer: "Cut the first entry",
-					Func: func(v *VerifierInputs) bool {
-						v.EntryList = v.EntryList[1:]
-						return true
-					},
+			},
+			{
+				Explainer: "Cut the first entry",
+				Func: func(v *VerifierInputs) bool {
+					v.EntryList = v.EntryList[1:]
+					return true
 				},
-				{
-					Explainer: "Cut the last entry",
-					Func: func(v *VerifierInputs) bool {
-						v.EntryList = v.EntryList[:len(v.EntryList)-1]
-						return true
-					},
+			},
+			{
+				Explainer: "Cut the last entry",
+				Func: func(v *VerifierInputs) bool {
+					v.EntryList = v.EntryList[:len(v.EntryList)-1]
+					return true
 				},
-				{
-					Explainer: "Add an extra entry",
-					Func: func(v *VerifierInputs) bool {
-						v.EntryList = append(v.EntryList, 0)
-						return true
-					},
+			},
+			{
+				Explainer: "Add an extra entry",
+				Func: func(v *VerifierInputs) bool {
+					v.EntryList = append(v.EntryList, 0)
+					return true
 				},
-				{
-					Explainer: "Swap two roots",
-					Func: func(v *VerifierInputs) bool {
-						if len(v.MerkleRoots) < 2 {
-							return false
-						}
-						v.MerkleRoots[0], v.MerkleRoots[1] = v.MerkleRoots[1], v.MerkleRoots[0]
-						return true
-					},
+			},
+			{
+				Explainer: "Swap two roots",
+				Func: func(v *VerifierInputs) bool {
+					if len(v.MerkleRoots) < 2 {
+						return false
+					}
+					v.MerkleRoots[0], v.MerkleRoots[1] = v.MerkleRoots[1], v.MerkleRoots[0]
+					return true
 				},
-				{
-					Explainer: "Remove the first root",
-					Func: func(v *VerifierInputs) bool {
-						if len(v.MerkleRoots) < 1 {
-							return false
-						}
-						v.MerkleRoots = v.MerkleRoots[1:]
-						return true
-					},
+			},
+			{
+				Explainer: "Remove the first root",
+				Func: func(v *VerifierInputs) bool {
+					if len(v.MerkleRoots) < 1 {
+						return false
+					}
+					v.MerkleRoots = v.MerkleRoots[1:]
+					return true
 				},
-				{
-					Explainer: "Add an extra root",
-					Func: func(v *VerifierInputs) bool {
-						if len(v.MerkleRoots) < 1 {
-							return false
-						}
-						v.MerkleRoots = append(v.MerkleRoots, v.MerkleRoots[0])
-						return true
-					},
+			},
+			{
+				Explainer: "Add an extra root",
+				Func: func(v *VerifierInputs) bool {
+					if len(v.MerkleRoots) < 1 {
+						return false
+					}
+					v.MerkleRoots = append(v.MerkleRoots, v.MerkleRoots[0])
+					return true
 				},
-				{
-					Explainer: "Swap two positions in the linear combination",
-					Func: func(v *VerifierInputs) bool {
-						lc := v.OpeningProof.LinearCombination.IntoRegVecSaveAllocExt()
-						lc[0], lc[1] = lc[1], lc[0]
-						lc_ := smartvectors.RegularExt(lc)
-						v.OpeningProof.LinearCombination = &lc_
-						return true
-					},
+			},
+			{
+				Explainer: "Swap two positions in the linear combination",
+				Func: func(v *VerifierInputs) bool {
+					lc := v.OpeningProof.LinearCombination.IntoRegVecSaveAllocExt()
+					lc[0], lc[1] = lc[1], lc[0]
+					lc_ := smartvectors.RegularExt(lc)
+					v.OpeningProof.LinearCombination = &lc_
+					return true
 				},
-				{
-					Explainer: "Overwrite a position in the linear combination",
-					Func: func(v *VerifierInputs) bool {
-						lc := v.OpeningProof.LinearCombination.IntoRegVecSaveAllocExt()
-						lc[0] = lc[1]
-						lc_ := smartvectors.RegularExt(lc)
-						v.OpeningProof.LinearCombination = &lc_
-						return true
-					},
+			},
+			{
+				Explainer: "Overwrite a position in the linear combination",
+				Func: func(v *VerifierInputs) bool {
+					lc := v.OpeningProof.LinearCombination.IntoRegVecSaveAllocExt()
+					lc[0] = lc[1]
+					lc_ := smartvectors.RegularExt(lc)
+					v.OpeningProof.LinearCombination = &lc_
+					return true
 				},
-				{
-					Explainer: "Swap two Merkle proofs",
-					Func: func(v *VerifierInputs) bool {
-						mps := v.OpeningProof.MerkleProofs
-						mps[0][0], mps[0][1] = mps[0][1], mps[0][0]
-						v.OpeningProof.MerkleProofs = mps
-						return true
-					},
+			},
+			{
+				Explainer: "Swap two Merkle proofs",
+				Func: func(v *VerifierInputs) bool {
+					mps := v.OpeningProof.MerkleProofs
+					mps[0][0], mps[0][1] = mps[0][1], mps[0][0]
+					v.OpeningProof.MerkleProofs = mps
+					return true
 				},
-				{
-					Explainer: "Set the first entry to a very large number",
-					Func: func(v *VerifierInputs) bool {
-						v.EntryList[0] = 10000
-						return true
-					},
+			},
+			{
+				Explainer: "Set the first entry to a very large number",
+				Func: func(v *VerifierInputs) bool {
+					v.EntryList[0] = 10000
+					return true
 				},
-				{
-					Explainer: "Mess with a Merkle proof path",
-					Func: func(v *VerifierInputs) bool {
-						mps := v.OpeningProof.MerkleProofs
-						mps[0][0].Path = 5
-						return true
-					},
+			},
+			{
+				Explainer: "Mess with a Merkle proof path",
+				Func: func(v *VerifierInputs) bool {
+					mps := v.OpeningProof.MerkleProofs
+					mps[0][0].Path = 5
+					return true
 				},
-			}
-		*/
+			},
+		}
+
 		generateVerifierInputs = func(
 			params *Params,
 			numPolyPerCommitment []int,
@@ -321,33 +322,33 @@ func TestVerifierNegative(t *testing.T) {
 			}
 		}
 	}
-	/*
-		for iParams := range params {
-			for iNumPoly := range numPolysPerCommitmentCorpus {
-				for iMut := range proofMutatorCorpus {
-					t.Run(
-						fmt.Sprintf("proof-mutation-%v-%v_%v", iParams, iNumPoly, iMut),
-						func(t *testing.T) {
 
-							// It's important to regenerate the entry every time as
-							// they will be mutated every time.
-							v := generateVerifierInputs(
-								params[iParams],
-								numPolysPerCommitmentCorpus[iNumPoly],
-							)
+	for iParams := range params {
+		for iNumPoly := range numPolysPerCommitmentCorpus {
+			for iMut := range proofMutatorCorpus {
+				t.Run(
+					fmt.Sprintf("proof-mutation-%v-%v_%v", iParams, iNumPoly, iMut),
+					func(t *testing.T) {
 
-							ok := proofMutatorCorpus[iMut].Func(v)
-							if !ok {
-								return
-							}
+						// It's important to regenerate the entry every time as
+						// they will be mutated every time.
+						v := generateVerifierInputs(
+							params[iParams],
+							numPolysPerCommitmentCorpus[iNumPoly],
+						)
 
-							// Check the proof
-							err := VerifyOpening(v)
-							require.Error(t, err)
-						},
-					)
-				}
+						ok := proofMutatorCorpus[iMut].Func(v)
+						if !ok {
+							return
+						}
+
+						// Check the proof
+						err := VerifyOpening(v)
+						require.Error(t, err)
+					},
+				)
 			}
 		}
-	*/
+	}
+
 }
