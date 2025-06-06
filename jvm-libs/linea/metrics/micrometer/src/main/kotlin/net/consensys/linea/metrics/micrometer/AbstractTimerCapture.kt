@@ -3,10 +3,7 @@ package net.consensys.linea.metrics.micrometer
 import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
-import io.vertx.core.Future
-import tech.pegasys.teku.infrastructure.async.SafeFuture
-import java.util.concurrent.Callable
-import java.util.concurrent.CompletableFuture
+import net.consensys.linea.metrics.TimerCapture
 
 /**
  * An abstract class which contains everything is needed to make pretty much any Timer capture.
@@ -14,7 +11,7 @@ import java.util.concurrent.CompletableFuture
  * captures TODO: In order to improve performance, TimerCapture instances can be cached into a
  * thread safe Map just like it's made in MeterRegistry class
  */
-abstract class AbstractTimerCapture<T> {
+abstract class AbstractTimerCapture<T> : TimerCapture<T> {
   protected val meterRegistry: MeterRegistry
   protected var timerBuilder: Timer.Builder
   protected var clock = Clock.SYSTEM
@@ -42,16 +39,5 @@ abstract class AbstractTimerCapture<T> {
   open fun setClock(clock: Clock): AbstractTimerCapture<T> {
     this.clock = clock
     return this
-  }
-
-  abstract fun captureTime(action: Callable<T>): T
-  abstract fun captureTime(f: CompletableFuture<T>): CompletableFuture<T>
-  open fun captureTime(f: SafeFuture<T>): SafeFuture<T> {
-    captureTime(f.toCompletableFuture())
-    return f
-  }
-  open fun captureTime(f: Future<T>): Future<T> {
-    captureTime(f.toCompletionStage().toCompletableFuture())
-    return f
   }
 }

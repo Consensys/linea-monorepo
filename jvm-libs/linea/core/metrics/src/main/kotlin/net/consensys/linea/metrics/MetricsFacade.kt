@@ -21,6 +21,19 @@ interface Histogram {
   fun record(data: Double)
 }
 
+interface CounterFactory {
+  fun create(tags: List<Tag> = emptyList()): Counter
+}
+
+interface TimerFactory {
+  fun create(tags: List<Tag> = emptyList()): Timer
+}
+
+interface Timer {
+  fun <T> captureTime(f: CompletableFuture<T>): CompletableFuture<T>
+  fun <T> captureTime(action: Callable<T>): T
+}
+
 interface TimerCapture<T> {
   fun captureTime(f: CompletableFuture<T>): CompletableFuture<T>
   fun captureTime(action: Callable<T>): T
@@ -40,7 +53,7 @@ interface MetricsFacade {
     name: String,
     description: String,
     tags: List<Tag> = emptyList(),
-  ): Counter
+  ): Counter = createCounterFactory(category, name, description, tags).create()
 
   fun createHistogram(
     category: MetricsCategory,
@@ -51,12 +64,12 @@ interface MetricsFacade {
     baseUnit: String? = null,
   ): Histogram
 
-  fun <T> createSimpleTimer(
+  fun createTimer(
     category: MetricsCategory,
     name: String,
     description: String,
     tags: List<Tag> = emptyList(),
-  ): TimerCapture<T>
+  ): Timer
 
   fun <T> createDynamicTagTimer(
     category: MetricsCategory,
@@ -66,6 +79,20 @@ interface MetricsFacade {
     tagValueExtractorOnError: Function<Throwable, String>,
     tagValueExtractor: Function<T, String>,
   ): TimerCapture<T>
+
+  fun createCounterFactory(
+    category: MetricsCategory,
+    name: String,
+    description: String,
+    commonTags: List<Tag> = emptyList(),
+  ): CounterFactory
+
+  fun createTimerFactory(
+    category: MetricsCategory,
+    name: String,
+    description: String,
+    commonTags: List<Tag> = emptyList(),
+  ): TimerFactory
 }
 
 class FakeHistogram : Histogram {

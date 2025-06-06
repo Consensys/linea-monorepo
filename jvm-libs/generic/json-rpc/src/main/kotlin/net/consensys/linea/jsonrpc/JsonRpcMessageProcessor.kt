@@ -179,7 +179,7 @@ class JsonRpcMessageProcessor(
           if (responses.size == 1) {
             responses.first()
           } else {
-            metricsFacade.createSimpleTimer<String>(
+            metricsFacade.createTimer(
               category = metricsCategory,
               name = "serialization.response.bulk",
               description = "Time of bulk json response serialization",
@@ -205,7 +205,7 @@ class JsonRpcMessageProcessor(
   }
 
   private fun encodeAndMeasureResponse(requestContext: RequestContext): String {
-    val timerCapture = metricsFacade.createSimpleTimer<String>(
+    val timerCapture = metricsFacade.createTimer(
       category = metricsCategory,
       name = "serialization.response",
       description = "Time of json response serialization",
@@ -226,7 +226,7 @@ class JsonRpcMessageProcessor(
     jsonRpcRequest: JsonRpcRequest,
     requestJson: JsonObject,
   ): Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>> {
-    return metricsFacade.createSimpleTimer<Future<Result<JsonRpcSuccessResponse, JsonRpcErrorResponse>>>(
+    return metricsFacade.createTimer(
       category = metricsCategory,
       name = "processing.logic",
       description = "Processing of a particular JRPC method's logic without SerDes",

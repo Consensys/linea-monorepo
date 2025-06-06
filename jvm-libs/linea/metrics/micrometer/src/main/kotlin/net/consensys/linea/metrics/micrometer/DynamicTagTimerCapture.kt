@@ -3,7 +3,6 @@ package net.consensys.linea.metrics.micrometer
 import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.Timer
-import net.consensys.linea.metrics.TimerCapture
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
@@ -15,7 +14,7 @@ import java.util.function.Function
  * nanosecond-level measurements. Related issue:
  * https://github.com/micrometer-metrics/micrometer/issues/535
  */
-class DynamicTagTimerCapture<T> : AbstractTimerCapture<T>, TimerCapture<T> {
+class DynamicTagTimerCapture<T> : AbstractTimerCapture<T> {
   private var extractor: Function<T, String>? = null
   private var extractorOnError: Function<Throwable, String>? = null
   private var tagKey: String? = null
