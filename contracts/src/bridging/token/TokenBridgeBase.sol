@@ -178,7 +178,7 @@ abstract contract TokenBridgeBase is
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
-  function CONTRACT_VERSION() external virtual returns (string memory contractVersion) {
+  function CONTRACT_VERSION() external virtual view returns (string memory contractVersion) {
     contractVersion = _CONTRACT_VERSION;
   }
 
