@@ -125,7 +125,7 @@ func (p *Params) transversalHash(v []smartvectors.SmartVector) []field.Element {
 		}
 	})
 
-	return nil
+	return res
 }
 
 // encodeRows returns the encodes `ps` using Reed-Solomon. ps is interpreted as

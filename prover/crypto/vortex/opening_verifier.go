@@ -99,9 +99,9 @@ func VerifyOpening(v *VerifierInputs) error {
 	// 	return err
 	// }
 
-	// if err := v.checkStatement(); err != nil {
-	// 	return err
-	// }
+	if err := v.checkStatement(); err != nil {
+		return err
+	}
 
 	if err := v.checkColumnInclusion(); err != nil {
 		return err
