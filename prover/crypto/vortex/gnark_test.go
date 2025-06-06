@@ -343,7 +343,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	}
 
 	// Generate the proof
-	proof = params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
+	proof = params.Open(utils.Join(polyLists...), randomCoin)
 	proof.Complete(entryList, committedMatrices, trees)
 
 	// Check the proof

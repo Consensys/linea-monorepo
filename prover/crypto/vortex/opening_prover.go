@@ -32,7 +32,7 @@ type OpeningProof struct {
 	MerkleProofs [][]smt.Proof
 }
 
-// InitOpeningWithLC initiates the construction of a Vortex proof by returning the
+// Open initiates the construction of a Vortex proof by returning the
 // encoding of the linear combinations of the committed row-vectors contained
 // in committedSV by the successive powers of randomCoin.
 //
@@ -43,7 +43,7 @@ type OpeningProof struct {
 // list of the committed matrices. This contrasts with the API of the other
 // functions and is motivated by the fact that this is simpler to construct in
 // our settings.
-func (params *Params) InitOpeningWithLC(committedSV []smartvectors.SmartVector, randomCoin fext.Element) *OpeningProof {
+func (params *Params) Open(committedSV []smartvectors.SmartVector, randomCoin fext.Element) *OpeningProof {
 	proof := OpeningProof{}
 
 	if len(committedSV) == 0 {

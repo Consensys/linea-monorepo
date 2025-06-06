@@ -3,6 +3,7 @@ package smartvectors
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
+	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
@@ -92,9 +93,18 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 	var anyReg, anyCon bool
 	xPow := fext.One()
 
-	accumulateReg := func(acc, v []fext.Element, x fext.Element) {
+	accumulateRegExt := func(acc, v []fext.Element, x fext.Element) {
 		for i := 0; i < length; i++ {
 			tmpF.Mul(&v[i], &x)
+			acc[i].Add(&acc[i], &tmpF)
+		}
+	}
+
+	accumulateReg := func(acc []fext.Element, v []field.Element, x fext.Element) {
+		var vExt fext.Element
+		for i := 0; i < length; i++ {
+			vExt.B0.A0.Set(&v[i])
+			tmpF.Mul(&vExt, &x)
 			acc[i].Add(&acc[i], &tmpF)
 		}
 	}
@@ -114,19 +124,23 @@ func LinearCombinationExt(vecs []SmartVector, x fext.Element, p ...mempool.MemPo
 			anyCon = true
 			tmpF.Mul(&casted.val, &xPow)
 			resCon.Add(&resCon, &tmpF)
-		case *RegularExt:
+		case *Regular:
 			anyReg = true
 			v := *casted
 			accumulateReg(resReg, v, xPow)
+		case *RegularExt:
+			anyReg = true
+			v := *casted
+			accumulateRegExt(resReg, v, xPow)
 		case *PooledExt: // e.g. from product
 			anyReg = true
 			v := casted.RegularExt
-			accumulateReg(resReg, v, xPow)
+			accumulateRegExt(resReg, v, xPow)
 		case *PaddedCircularWindowExt:
 			// treat it as a regular, reusing the buffer
 			anyReg = true
 			casted.WriteInSliceExt(tmpVec)
-			accumulateReg(resReg, tmpVec, xPow)
+			accumulateRegExt(resReg, tmpVec, xPow)
 		}
 
 		xPow.Mul(&x, &xPow)

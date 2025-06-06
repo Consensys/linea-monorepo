@@ -24,13 +24,57 @@ var testParams = []*Params{
 	//NewParams(4, 1<<3, 32, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
 }
 
+func TestLlocal(t *testing.T) {
+
+	params := NewParams(2, 1<<4, 32, ringsis.StdParams, sha256.New)
+	x := fext.RandomElement()
+	randomCoin := fext.RandomElement()
+	entryList := []int{1, 7, 5, 6, 4, 5, 1, 2}
+	NbPolysPerCommitment := []int{2}
+	nbCommitments := len(NbPolysPerCommitment)
+	polySize := params.NbColumns
+	NumOpenedColumns := 4
+
+	// create polynomials
+	polyLists := make([][]smartvectors.SmartVector, nbCommitments)
+	yLists := make([][]fext.Element, nbCommitments)
+	for i := range polyLists {
+		polys := make([]smartvectors.SmartVector, NbPolysPerCommitment[i])
+		ys := make([]fext.Element, NbPolysPerCommitment[i])
+		for j := range polys {
+			polys[j] = smartvectors.Rand(polySize)
+			ys[j] = smartvectors.EvaluateLagrangeOnFext(polys[j], x)
+		}
+		polyLists[i] = polys
+		yLists[i] = ys
+	}
+	for i := 0; i < len(yLists); i++ {
+		for j := 0; j < len(yLists[i]); j++ {
+			fmt.Printf("%s, ", yLists[i][j].String())
+			fmt.Println("")
+		}
+		fmt.Println("-")
+	}
+
+	// commit
+	roots := make([]types.Bytes32, nbCommitments)
+	trees := make([]*smt.Tree, nbCommitments)
+	committedMatrices := make([]EncodedMatrix, nbCommitments)
+	for i := range trees {
+		committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
+		roots[i] = trees[i].Root
+	}
+
+	// open
+	proof := params.Open(utils.Join(polyLists...), randomCoin)
+	proof.Complete(entryList[:NumOpenedColumns], committedMatrices, trees)
+}
+
 func TestProver(t *testing.T) {
 
-	var (
-		x          = fext.RandomElement()
-		randomCoin = fext.RandomElement()
-		entryList  = []int{1, 7, 5, 6, 4, 5, 1, 2}
-	)
+	x := fext.RandomElement()
+	randomCoin := fext.RandomElement()
+	entryList := []int{1, 7, 5, 6, 4, 5, 1, 2}
 
 	// the testCases are applied over all those of [testParams]
 	testCases := []struct {
@@ -193,7 +237,7 @@ func TestProver(t *testing.T) {
 				}
 
 				// Generate the proof
-				proof := params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
+				proof := params.Open(utils.Join(polyLists...), randomCoin)
 				proof.Complete(entryList[:testCase.NumOpenedColumns], committedMatrices, trees)
 
 				// Check the proof
@@ -437,7 +481,7 @@ func TestVerifierNegative(t *testing.T) {
 				roots[i] = trees[i].Root
 			}
 			// Generate the proof
-			proof := params.InitOpeningWithLC(utils.Join(polyLists...), randomCoin)
+			proof := params.Open(utils.Join(polyLists...), randomCoin)
 			proof.Complete(entryList, committedMatrices, trees)
 			return &VerifierInputs{
 				Params:       *params,
