@@ -16,6 +16,40 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestEvaluateLagrange(t *testing.T) {
+
+	var x fext.Element
+	x.SetRandom()
+	size := 64
+	poly := make([]field.Element, size)
+	for i := 0; i < size; i++ {
+		poly[i].SetRandom()
+	}
+
+	d := fft.NewDomain(64)
+	polyLagrange := make([]field.Element, size)
+	copy(polyLagrange, poly)
+	d.FFT(polyLagrange, fft.DIF)
+	fft.BitReverse(polyLagrange)
+
+	var evalCan fext.Element
+	var tmp fext.Element
+	for i := size - 1; i >= 0; i-- {
+		fext.FromBase(&tmp, &poly[i])
+		evalCan.Mul(&evalCan, &x)
+		evalCan.Add(&evalCan, &tmp)
+	}
+
+	var evalLag fext.Element
+	polyLagrangeSv := NewRegular(polyLagrange)
+	evalLag = EvaluateLagrangeOnFext(polyLagrangeSv, x)
+
+	if !evalLag.Equal(&evalCan) {
+		t.Fatal("error")
+	}
+
+}
+
 func TestRuffini(t *testing.T) {
 
 	testCases := []struct {
