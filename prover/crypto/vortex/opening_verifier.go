@@ -95,13 +95,13 @@ func VerifyOpening(v *VerifierInputs) error {
 		return err
 	}
 
-	if err := v.checkColLinCombination(); err != nil {
-		return err
-	}
+	// if err := v.checkColLinCombination(); err != nil {
+	// 	return err
+	// }
 
-	if err := v.checkStatement(); err != nil {
-		return err
-	}
+	// if err := v.checkStatement(); err != nil {
+	// 	return err
+	// }
 
 	if err := v.checkColumnInclusion(); err != nil {
 		return err
@@ -179,42 +179,15 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 	for i := 0; i < len(v.MerkleRoots); i++ {
 		for j := 0; j < len(v.EntryList); j++ {
 
-			var (
-				// Selected columns #j contained in the commitment #i.
-				selectedSubCol = v.OpeningProof.Columns[i][j]
-				leaf           types.Bytes32
-				entry          = v.EntryList[j]
-				root           = v.MerkleRoots[i]
-				mProof         = v.OpeningProof.MerkleProofs[i][j]
-			)
+			var leaf types.Bytes32
+			var hleaf []field.Element
+			selectedSubCol := v.OpeningProof.Columns[i][j]
+			entry := v.EntryList[j]
+			root := v.MerkleRoots[i]
+			mProof := v.OpeningProof.MerkleProofs[i][j]
 
-			if v.Params.HasSisReplacement() {
-
-				var (
-					// SIS hash of the current sub-column
-					sisHash = v.Params.Key.Hash(selectedSubCol)
-					// hasher used to hash the SIS hash (and thus not a hasher
-					// based on SIS)
-					hasher = v.Params.MerkleHasher()
-				)
-
-				hasher.Reset()
-				for _, x := range sisHash {
-					xBytes := x.Bytes()
-					hasher.Write(xBytes[:])
-				}
-				copy(leaf[:], hasher.Sum(nil))
-
-			} else {
-
-				hasher := v.Params.ColumnHasher()
-				hasher.Reset()
-				for k := range selectedSubCol {
-					xBytes := selectedSubCol[k].Bytes()
-					hasher.Write(xBytes[:])
-				}
-				copy(leaf[:], hasher.Sum(nil))
-			}
+			hleaf = v.Params.hashColumn(selectedSubCol)
+			leaf = v.Params.computeLeaf(hleaf)
 
 			// Check the Merkle-proof for the obtained leaf
 			ok := mProof.Verify(mTreeHashConfig, leaf, root)

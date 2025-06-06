@@ -1,9 +1,7 @@
 package vortex
 
 import (
-	"github.com/consensys/gnark-crypto/field/koalabear"
 	"github.com/consensys/gnark-crypto/field/koalabear/vortex"
-	"github.com/consensys/linea-monorepo/prover/crypto/ringsis"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/hashtypes"
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
@@ -11,9 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
-	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 	"github.com/consensys/linea-monorepo/prover/utils/types"
-	"github.com/sirupsen/logrus"
 )
 
 // EncodedMatrix represents the witness of a Vortex matrix commitment, it is
@@ -29,15 +25,15 @@ func (p *Params) Commit(ps []smartvectors.SmartVector) (encodedMatrix EncodedMat
 	encodedMatrix = p.encodeRows(ps)
 	nbColumns := p.NumEncodedCols()
 
-	if p.ColumnHasher == nil { // by default, we use sis
-		colHashes = sisTransversalHash(p.Key, encodedMatrix)
-	} else {
-		colHashes = p.transversalHash(encodedMatrix)
-	}
+	colHashes = p.transversalHash(encodedMatrix)
+
 	// at this stage colHashes is a list of field.Element
 
 	leaves := make([]types.Bytes32, nbColumns)
 	sizeChunk := len(colHashes) / nbColumns
+	for i := 0; i < nbColumns; i++ {
+		leaves[i] = p.computeLeaf(colHashes[i*sizeChunk : (i+1)*sizeChunk])
+	}
 
 	if p.MerkleHasher == nil { // by default, we use poseidon2
 		for i := 0; i < nbColumns; i++ {
@@ -67,184 +63,70 @@ func (p *Params) Commit(ps []smartvectors.SmartVector) (encodedMatrix EncodedMat
 	return encodedMatrix, tree, colHashes
 }
 
-func (p *Params) computeLeaves(colHashes []field.Element) []types.Bytes32 {
+func (p *Params) computeLeaf(leaf []field.Element) types.Bytes32 {
 
-	nbElmts := p.NumEncodedCols()
-	// TODO handle panic
-	if len(colHashes)%nbElmts != 0 {
-		panic("error computeLeavesPoseidon2")
-	}
-	sizeChunk := len(colHashes) / nbElmts
-	res := make([]types.Bytes32, nbElmts)
-	parallel.Execute(nbElmts, func(start, end int) {
-		h := p.ColumnHasher()
-		for i := start; i < end; i++ {
-			h.Reset()
-			s := i * sizeChunk
-			for j := 0; j < sizeChunk; j++ {
-				h.Write(colHashes[s].Marshal())
-				s++
-			}
-			tmp := h.Sum(nil)
-			copy(res[i][:], tmp)
+	var res types.Bytes32
+	if p.MerkleHasher == nil { // by default, we use poseidon2
+		h := vortex.HashPoseidon2(leaf)
+		res = types.HashToBytes32(h)
+
+	} else {
+		merkleHasher := p.MerkleHasher()
+
+		merkleHasher.Reset()
+		for j := 0; j < len(leaf); j++ {
+			merkleHasher.Write(leaf[j].Marshal())
 		}
-	})
-
+		h := merkleHasher.Sum(nil)
+		copy(res[:], h)
+	}
 	return res
 }
 
-func (p *Params) computeLeavesPoseidon2(colHashes []field.Element) []types.Bytes32 {
-
-	nbElmts := p.NumEncodedCols()
-
-	// TODO handle panic
-	if len(colHashes)%nbElmts != 0 {
-		panic("error computeLeavesPoseidon2")
-	}
-	res := make([]types.Bytes32, nbElmts)
-	sizeChunk := len(colHashes) / nbElmts
-	parallel.Execute(nbElmts, func(start, end int) {
-		for i := start; i < end; i++ {
-			h := vortex.HashPoseidon2(colHashes[i*sizeChunk : (i+1)*sizeChunk])
-			res[i] = types.HashToBytes32(h)
+func (p *Params) hashColumn(column []field.Element) []field.Element {
+	var res []field.Element
+	if p.ColumnHasher != nil {
+		hasher := p.ColumnHasher()
+		res = make([]field.Element, 8)
+		hasher.Reset()
+		for k := 0; k < len(column); k++ {
+			hasher.Write(column[k].Marshal())
 		}
-	})
-
+		h := hasher.Sum(nil)
+		for j := 0; j < 8; j++ {
+			res[j].SetBytes(h[j*8 : (j+1)*8])
+		}
+	} else {
+		res = p.Key.Hash(column)
+	}
 	return res
 }
 
-// Uses the no-sis hash function to hash the columns
 func (p *Params) transversalHash(v []smartvectors.SmartVector) []field.Element {
 
+	var res []field.Element
+	nbColumns := v[0].Len()
 	nbRows := len(v)
-	nbCols := p.NumEncodedCols()
-	res := make([]field.Element, 8*nbCols) // each entry stores 8 koalabear elmts
-	parallel.Execute(nbCols, func(start, stop int) {
-		hasher := p.ColumnHasher()
-		for col := start; col < stop; col++ {
-			hasher.Reset()
-			for row := 0; row < nbRows; row++ {
-				cur := v[row].Get(col)
-				curBytes := cur.Bytes()
-				hasher.Write(curBytes[:])
-			}
-			h := hasher.Sum(nil)
-			for j := 0; j < 8; j++ {
-				res[col*8+j].SetBytes(h[j*8 : (j+1)*8])
-			}
-		}
-	})
-
-	return res
-}
-
-func sisTransversalHash(key ringsis.Key, m EncodedMatrix) []field.Element {
-
-	nbRows := len(m)
-	nbCols := m[0].Len()
-	buffer := make([]koalabear.Element, nbRows)
-	sisOutputSize := key.OutputSize()
-	res := make([]field.Element, sisOutputSize*nbCols)
-	parallel.Execute(nbCols, func(start, end int) {
+	var sizeChunk int
+	if p.ColumnHasher == nil {
+		sizeChunk = p.Key.OutputSize()
+	} else {
+		sizeChunk = 8
+	}
+	res = make([]field.Element, sizeChunk*nbColumns)
+	parallel.Execute(nbColumns, func(start, end int) {
+		ithCol := make([]field.Element, nbRows)
 		for i := start; i < end; i++ {
 			for j := 0; j < nbRows; j++ {
-				buffer[j] = m[j].Get(i)
+				ithCol[j] = v[j].Get(i)
 			}
-			hashCol := key.Hash(buffer)
-			copy(res[i*sisOutputSize:(i+1)*sisOutputSize], hashCol)
+			curHash := p.hashColumn(ithCol)
+			copy(res[i*sizeChunk:(i+1)*sizeChunk], curHash)
 		}
 	})
 
-	return res
+	return nil
 }
-
-// Commit to a sequence of columns and Merkle hash on top of that. Returns the
-// tree and an array containing the concatenated columns hashes. The final
-// short commitment can be obtained from the returned tree as:
-//
-//	tree.Root()
-//
-// And can be safely converted to a field Element via
-// [field.Element.SetBytesCanonical]
-// We apply SIS+MiMC hashing on the columns to compute leaves
-// Should be used when the number of rows to commit is more than the [ApplySISThreshold]
-func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
-
-	if len(ps) > p.MaxNbRows {
-		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
-	}
-
-	timeEncoding := profiling.TimeIt(func() {
-		encodedMatrix = p.encodeRows(ps)
-	})
-	timeSisHashing := profiling.TimeIt(func() {
-		// colHashes stores concatenation of SIS+MiMC hashes of the columns
-		// if isSISAppliedForRound is true, otherwise it stores the MiMC hashes
-		// of the columns.
-		colHashes = p.Key.TransversalHash(encodedMatrix)
-	})
-
-	timeTree := profiling.TimeIt(func() {
-		// Hash the SIS digests to obtain the leaves of the Merkle tree.
-		leaves := p.computeLeavesWithSis(colHashes)
-
-		tree = smt.BuildComplete(
-			leaves,
-			func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: p.MerkleHasher()}
-			},
-		)
-	})
-
-	logrus.Infof(
-		"[vortex-commitment-with-sis] numCol=%v numRow=%v numColEncoded=%v timeEncoding=%v timeSisHashing=%v timeMerkleizing=%v",
-		p.NbColumns, len(ps), p.NumEncodedCols(), timeEncoding, timeSisHashing, timeTree,
-	)
-
-	return encodedMatrix, tree, colHashes
-}
-
-// Commit to a sequence of columns and Merkle hash on top of that. Returns the
-// tree and an array containing the concatenated columns hashes. The final
-// short commitment can be obtained from the returned tree as:
-//
-//	tree.Root()
-//
-// And can be safely converted to a field Element via
-// [field.Element.SetBytesCanonical]
-// We apply MiMC hashing on the columns to compute leaves.
-// Should be used when the number of rows to commit is less than the [ApplySISThreshold]
-// TODO why are colHashes
-// func (p *Params) CommitMerkleWithoutSIS(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
-
-// 	if len(ps) > p.MaxNbRows {
-// 		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
-// 	}
-
-// 	timeEncoding := profiling.TimeIt(func() {
-// 		encodedMatrix = p.encodeRows(ps)
-// 	})
-
-// 	timeTree := profiling.TimeIt(func() {
-// 		// colHashes stores the MiMC hashes
-// 		// of the columns.
-// 		leaves := p.transversalHash(encodedMatrix)
-
-// 		tree = smt.BuildComplete(
-// 			leaves,
-// 			func() hashtypes.Hasher {
-// 				return hashtypes.Hasher{Hash: p.MerkleHasher()}
-// 			},
-// 		)
-// 	})
-
-// 	logrus.Infof(
-// 		"[vortex-commitment-without-sis] numCol=%v numRow=%v numColEncoded=%v timeEncoding=%v timeMerkleizing=%v",
-// 		p.NbColumns, len(ps), p.NumEncodedCols(), timeEncoding, timeTree,
-// 	)
-
-// 	return encodedMatrix, tree, colHashes
-// }
 
 // encodeRows returns the encodes `ps` using Reed-Solomon. ps is interpreted as
 // a list of rows of the Vortex witness and encodedMatrix is obtained by
@@ -274,34 +156,4 @@ func (params *Params) encodeRows(ps []smartvectors.SmartVector) (encodedMatrix E
 	})
 
 	return encodedMatrix
-}
-
-// computeLeavesWithSis is used to hash the individual SIS hashes stored in colHashes.
-// The function is reserved for the case where no NoSisHasher is provided to
-// parameters of Vortex.
-func (p *Params) computeLeavesWithSis(colHashes []field.Element) (leaves []types.Bytes32) {
-
-	// Case with SIS, the columns hashes all fit on several field.element
-	// in that case, we need to hash them further. before merkleizing them.
-	chunkSize := p.Key.OutputSize()
-	numChunks := p.NumEncodedCols()
-	leaves = make([]types.Bytes32, numChunks)
-
-	parallel.Execute(numChunks, func(start, stop int) {
-		hasher := p.ColumnHasher()
-		for chunkID := start; chunkID < stop; chunkID++ {
-			startChunk := chunkID * chunkSize
-			hasher.Reset()
-			for i := 0; i < chunkSize; i++ {
-				fbytes := colHashes[startChunk+i].Bytes()
-				hasher.Write(fbytes[:])
-			}
-
-			// Manually copies the hasher's digest into the leaves to
-			// skip a verbose type conversion.
-			copy(leaves[chunkID][:], hasher.Sum(nil))
-		}
-	})
-
-	return leaves
 }

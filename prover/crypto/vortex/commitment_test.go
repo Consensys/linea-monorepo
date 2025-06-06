@@ -21,7 +21,6 @@ func TestProver(t *testing.T) {
 	NbPolysPerCommitment := []int{20, 32, 32, 32}
 	nbCommitments := len(NbPolysPerCommitment)
 	polySize := params.NbColumns
-	NumOpenedColumns := 4
 
 	// create polynomials, and the yis
 	polyLists := make([][]smartvectors.SmartVector, nbCommitments)
@@ -48,7 +47,7 @@ func TestProver(t *testing.T) {
 
 	// open
 	proof := params.Open(utils.Join(polyLists...), randomCoin)
-	proof.Complete(entryList[:NumOpenedColumns], committedMatrices, trees)
+	proof.Complete(entryList, committedMatrices, trees)
 
 	// verify
 	vi := VerifierInputs{
@@ -58,6 +57,10 @@ func TestProver(t *testing.T) {
 		Ys:           yLists,
 		OpeningProof: *proof,
 		EntryList:    entryList,
+	}
+	err := VerifyOpening(&vi)
+	if err != nil {
+		t.Fatal(err)
 	}
 
 }

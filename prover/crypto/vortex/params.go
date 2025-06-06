@@ -105,8 +105,3 @@ func (p *Params) RemoveSis(h func() hash.Hash) *Params {
 	p.Key = ringsis.Key{} // and remove the key
 	return p
 }
-
-// HasSisReplacement returns true if the parameters are set to not use SIS
-func (p *Params) HasSisReplacement() bool {
-	return p.ColumnHasher != nil
-}
