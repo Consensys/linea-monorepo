@@ -14,7 +14,7 @@ import (
 
 func TestProver(t *testing.T) {
 
-	params := NewParams(2, 1<<4, 32, ringsis.StdParams, sha256.New)
+	params := NewParams(2, 1<<4, 32, ringsis.StdParams, sha256.New, nil)
 	x := fext.RandomElement()
 	randomCoin := fext.RandomElement()
 	entryList := []int{1, 7, 5, 6, 4, 5, 1, 2}
@@ -23,7 +23,7 @@ func TestProver(t *testing.T) {
 	polySize := params.NbColumns
 	NumOpenedColumns := 4
 
-	// create polynomials
+	// create polynomials, and the yis
 	polyLists := make([][]smartvectors.SmartVector, nbCommitments)
 	yLists := make([][]fext.Element, nbCommitments)
 	for i := range polyLists {
@@ -42,7 +42,7 @@ func TestProver(t *testing.T) {
 	trees := make([]*smt.Tree, nbCommitments)
 	committedMatrices := make([]EncodedMatrix, nbCommitments)
 	for i := range trees {
-		committedMatrices[i], trees[i], _ = params.Commit(polyLists[i], WithSisColumnHasher)
+		committedMatrices[i], trees[i], _ = params.Commit(polyLists[i])
 		roots[i] = trees[i].Root
 	}
 
@@ -51,6 +51,15 @@ func TestProver(t *testing.T) {
 	proof.Complete(entryList[:NumOpenedColumns], committedMatrices, trees)
 
 	// verify
+	// vi := VerifierInputs{
+	// 	Params:       *params,
+	// 	MerkleRoots:  roots,
+	// 	X:            x,
+	// 	Ys:           yLists,
+	// 	OpeningProof: *proof,
+	// 	EntryList:    entryList,
+	// }
+
 }
 
 // func TestVerifierNegative(t *testing.T) {

@@ -13,19 +13,10 @@ import (
 
 // Config specifies the parameters of the tree (choice of hash function, depth).
 type Config struct {
-	// If set, the hash is poseidon2
-	UsePoseidon bool
-	// HashFunc is a function returning initialized hashers
+	// HashFunc is a function returning initialized hashers. If nil, use poseidon2 by default.
 	HashFunc func() hashtypes.Hasher
 	// Depth is the depth of the tree
 	Depth int
-}
-
-type Option func(c *Config) error
-
-func WithPoseidon(c *Config) error {
-	c.UsePoseidon = true
-	return nil
 }
 
 // Tree represents a binary sparse Merkle-tree (SMT).
@@ -64,7 +55,7 @@ func EmptyLeaf() types.Bytes32 {
 func hashLR(config *Config, nodeL, nodeR types.Bytes32) types.Bytes32 {
 
 	var d types.Bytes32
-	if !config.UsePoseidon {
+	if config.HashFunc != nil {
 		hasher := config.HashFunc()
 		nodeL.WriteTo(hasher)
 		nodeR.WriteTo(hasher)
@@ -286,7 +277,7 @@ func (t *Tree) reserveLevel(level, newSize int) {
 // input leaves are powers of 2. The depth of the tree is deduced from the list.
 //
 // It panics if the number of leaves is a non-power of 2.
-func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher, options ...Option) *Tree {
+func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher) *Tree {
 
 	numLeaves := len(leaves)
 
@@ -297,12 +288,6 @@ func BuildComplete(leaves []types.Bytes32, hashFunc func() hashtypes.Hasher, opt
 
 	depth := utils.Log2Ceil(numLeaves)
 	config := &Config{HashFunc: hashFunc, Depth: depth} // TODO no pointer
-	for _, opt := range options {
-		err := opt(config)
-		if err != nil {
-			panic(err) // TODO handle panic
-		}
-	}
 
 	tree := NewEmptyTree(config)
 	tree.OccupiedLeaves = leaves

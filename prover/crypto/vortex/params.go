@@ -33,12 +33,9 @@ type Params struct {
 	// polynomial p is appended whose size if not 0 mod MaxNbRows, it is padded
 	// as p' so that len(p')=0 mod MaxNbRows.
 	MaxNbRows int
-	// HashFunc is an optional function that returns a `hash.Hash` it is used
-	// when vortex is used in "Merkle-tree" mode. In this case, the hash
-	// function is mandatory.
+	// MerkleHasher Hash used to build the Merkle tree. By default poseidon2 is used.
 	MerkleHasher func() hash.Hash
-	// ColumnHasher is an optional hash function that is used in place of the
-	// SIS. If it is set,
+	// ColumnHasher hash used to hash the columns. By default is used.
 	ColumnHasher func() hash.Hash
 }
 
@@ -56,6 +53,7 @@ func NewParams(
 	maxNbRows int,
 	sisParams ringsis.Params,
 	merkleHashFunc func() hash.Hash,
+	columnHashFunc func() hash.Hash,
 ) *Params {
 
 	if !utils.IsPowerOfTwo(nbColumns) {
@@ -79,12 +77,12 @@ func NewParams(
 			fft.NewDomain(uint64(nbColumns)),
 			fft.NewDomain(uint64(blowUpFactor * nbColumns)),
 		},
-		NbColumns:      nbColumns,
-		MaxNbRows:      maxNbRows,
-		BlowUpFactor:   blowUpFactor,
-		Key:            ringsis.GenerateKey(sisParams, maxNbRows),
+		NbColumns:    nbColumns,
+		MaxNbRows:    maxNbRows,
+		BlowUpFactor: blowUpFactor,
+		Key:          ringsis.GenerateKey(sisParams, maxNbRows),
 		MerkleHasher: merkleHashFunc,
-		ColumnHasher:   merkleHashFunc, //TODO@yao: check if this is correct, we simply use the Merkle hash function as the leaf hash function now
+		ColumnHasher: columnHashFunc, //TODO@yao: check if this is correct, we simply use the Merkle hash function as the leaf hash function now
 	}
 
 	return res

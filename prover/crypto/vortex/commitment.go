@@ -20,24 +20,7 @@ import (
 // represented as an array of rows.
 type EncodedMatrix []smartvectors.SmartVector
 
-type Config struct {
-	sisColumnHasher      bool
-	poseidonMerkleHasher bool
-}
-
-type Option func(c *Config) error
-
-func WithSisColumnHasher(c *Config) error {
-	c.sisColumnHasher = true
-	return nil
-}
-
-func WithPoseidonMerkleHasher(c *Config) error {
-	c.poseidonMerkleHasher = true
-	return nil
-}
-
-func (p *Params) Commit(ps []smartvectors.SmartVector, options ...Option) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
+func (p *Params) Commit(ps []smartvectors.SmartVector) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
 
 	if len(ps) > p.MaxNbRows {
 		utils.
@@ -46,15 +29,7 @@ func (p *Params) Commit(ps []smartvectors.SmartVector, options ...Option) (encod
 	encodedMatrix = p.encodeRows(ps)
 	nbColumns := p.NumEncodedCols()
 
-	var config Config
-	for _, opt := range options {
-		err := opt(&config)
-		if err != nil {
-			panic(err) // TODO eww
-		}
-	}
-
-	if config.sisColumnHasher {
+	if p.ColumnHasher == nil { // by default, we use sis
 		colHashes = sisTransversalHash(p.Key, encodedMatrix)
 	} else {
 		colHashes = p.transversalHash(encodedMatrix)
@@ -64,18 +39,12 @@ func (p *Params) Commit(ps []smartvectors.SmartVector, options ...Option) (encod
 	leaves := make([]types.Bytes32, nbColumns)
 	sizeChunk := len(colHashes) / nbColumns
 
-	if config.poseidonMerkleHasher {
+	if p.MerkleHasher == nil { // by default, we use poseidon2
 		for i := 0; i < nbColumns; i++ {
 			h := vortex.HashPoseidon2(colHashes[i*sizeChunk : (i+1)*sizeChunk])
 			leaves[i] = types.HashToBytes32(h)
 		}
-		tree = smt.BuildComplete(
-			leaves,
-			func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: p.MerkleHasher()}
-			},
-			smt.WithPoseidon,
-		)
+
 	} else {
 		merkleHasher := p.MerkleHasher()
 		for i := 0; i < nbColumns; i++ {
@@ -86,13 +55,14 @@ func (p *Params) Commit(ps []smartvectors.SmartVector, options ...Option) (encod
 			h := merkleHasher.Sum(nil)
 			copy(leaves[i][:], h)
 		}
-		tree = smt.BuildComplete(
-			leaves,
-			func() hashtypes.Hasher {
-				return hashtypes.Hasher{Hash: p.MerkleHasher()}
-			},
-		)
 	}
+
+	tree = smt.BuildComplete(
+		leaves,
+		func() hashtypes.Hasher {
+			return hashtypes.Hasher{Hash: p.MerkleHasher()}
+		},
+	)
 
 	return encodedMatrix, tree, colHashes
 }

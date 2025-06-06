@@ -188,7 +188,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 				mProof         = v.OpeningProof.MerkleProofs[i][j]
 			)
 
-			if !v.Params.HasSisReplacement() {
+			if v.Params.HasSisReplacement() {
 
 				var (
 					// SIS hash of the current sub-column

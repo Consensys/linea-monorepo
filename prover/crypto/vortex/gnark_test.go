@@ -316,7 +316,7 @@ func getProofVortexNCommitmentsWithMerkleNoSis(t *testing.T, nCommitments, nPoly
 	randomCoin = fext.RandomElement()
 	entryList = []int{1, 5, 19, 645}
 
-	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, mimc.NewMiMC)
+	params := NewParams(blowUpFactor, polySize, nPolys*nCommitments, ringsis.StdParams, mimc.NewMiMC, nil)
 	params.RemoveSis(mimc.NewMiMC)
 
 	polyLists := make([][]smartvectors.SmartVector, nCommitments)
