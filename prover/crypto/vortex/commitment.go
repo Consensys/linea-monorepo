@@ -28,7 +28,7 @@ type Config struct {
 
 type Option func(c *Config) error
 
-func WithSisTransversalHasher(c *Config) error {
+func WithSisColumnHasher(c *Config) error {
 	c.tranvsersalHashWithSis = true
 	return nil
 }
@@ -73,7 +73,7 @@ func (p *Params) computeLeaves(colHashes []field.Element) []types.Bytes32 {
 	sizeChunk := len(colHashes) / nbElmts
 	res := make([]types.Bytes32, nbElmts)
 	parallel.Execute(nbElmts, func(start, end int) {
-		h := p.TransversalHasher()
+		h := p.ColumnHasher()
 		for i := start; i < end; i++ {
 			h.Reset()
 			s := i * sizeChunk
@@ -116,7 +116,7 @@ func (p *Params) transversalHash(v []smartvectors.SmartVector) []types.Bytes32 {
 	nbCols := p.NumEncodedCols()
 	res := make([]types.Bytes32, nbCols)
 	parallel.Execute(nbCols, func(start, stop int) {
-		hasher := p.TransversalHasher()
+		hasher := p.ColumnHasher()
 		for col := start; col < stop; col++ {
 			hasher.Reset()
 			for row := 0; row < nbRows; row++ {
@@ -281,7 +281,7 @@ func (p *Params) computeLeavesWithSis(colHashes []field.Element) (leaves []types
 	leaves = make([]types.Bytes32, numChunks)
 
 	parallel.Execute(numChunks, func(start, stop int) {
-		hasher := p.TransversalHasher()
+		hasher := p.ColumnHasher()
 		for chunkID := start; chunkID < stop; chunkID++ {
 			startChunk := chunkID * chunkSize
 			hasher.Reset()

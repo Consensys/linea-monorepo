@@ -207,7 +207,7 @@ func (v *VerifierInputs) checkColumnInclusion() error {
 
 			} else {
 
-				hasher := v.Params.TransversalHasher()
+				hasher := v.Params.ColumnHasher()
 				hasher.Reset()
 				for k := range selectedSubCol {
 					xBytes := selectedSubCol[k].Bytes()
