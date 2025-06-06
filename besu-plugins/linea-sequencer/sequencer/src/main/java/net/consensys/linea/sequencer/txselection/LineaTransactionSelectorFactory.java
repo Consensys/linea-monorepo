@@ -15,7 +15,6 @@
 
 package net.consensys.linea.sequencer.txselection;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +49,6 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
   private final LineaTracerConfiguration tracerConfiguration;
   private final Optional<HistogramMetrics> maybeProfitabilityMetrics;
   private final BundlePoolService bundlePoolService;
-  private final Map<String, Integer> limitsMap;
   private final AtomicReference<LineaTransactionSelector> currSelector = new AtomicReference<>();
 
   public LineaTransactionSelectorFactory(
@@ -59,7 +57,6 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
       final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
       final LineaProfitabilityConfiguration profitabilityConfiguration,
       final LineaTracerConfiguration tracerConfiguration,
-      final Map<String, Integer> limitsMap,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics,
       final BundlePoolService bundlePoolService) {
@@ -68,7 +65,6 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
     this.profitabilityConfiguration = profitabilityConfiguration;
     this.tracerConfiguration = tracerConfiguration;
-    this.limitsMap = limitsMap;
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
     this.maybeProfitabilityMetrics = maybeProfitabilityMetrics;
     this.bundlePoolService = bundlePoolService;
@@ -85,7 +81,6 @@ public class LineaTransactionSelectorFactory implements PluginTransactionSelecto
             profitabilityConfiguration,
             tracerConfiguration,
             bundlePoolService,
-            limitsMap,
             rejectedTxJsonRpcManager,
             maybeProfitabilityMetrics);
     currSelector.set(selector);

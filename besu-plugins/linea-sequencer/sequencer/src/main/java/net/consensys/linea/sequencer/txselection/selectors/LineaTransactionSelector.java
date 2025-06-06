@@ -20,7 +20,6 @@ import static net.consensys.linea.sequencer.txselection.LineaTransactionSelectio
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +32,7 @@ import net.consensys.linea.jsonrpc.JsonRpcManager;
 import net.consensys.linea.jsonrpc.JsonRpcRequestBuilder;
 import net.consensys.linea.metrics.HistogramMetrics;
 import net.consensys.linea.plugins.config.LineaL1L2BridgeSharedConfiguration;
-import net.consensys.linea.zktracer.ZkTracer;
+import net.consensys.linea.zktracer.LineCountingTracer;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.BlockchainService;
@@ -58,7 +57,6 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final LineaProfitabilityConfiguration profitabilityConfiguration,
       final LineaTracerConfiguration tracerConfiguration,
       final BundlePoolService bundlePoolService,
-      final Map<String, Integer> limitsMap,
       final Optional<JsonRpcManager> rejectedTxJsonRpcManager,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics) {
     this.rejectedTxJsonRpcManager = rejectedTxJsonRpcManager;
@@ -78,7 +76,6 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
             profitabilityConfiguration,
             tracerConfiguration,
             bundlePoolService,
-            limitsMap,
             maybeProfitabilityMetrics);
   }
 
@@ -103,14 +100,12 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
       final LineaProfitabilityConfiguration profitabilityConfiguration,
       final LineaTracerConfiguration tracerConfiguration,
       final BundlePoolService bundlePoolService,
-      final Map<String, Integer> limitsMap,
       final Optional<HistogramMetrics> maybeProfitabilityMetrics) {
 
     traceLineLimitTransactionSelector =
         new TraceLineLimitTransactionSelector(
             selectorsStateManager,
             blockchainService.getChainId().get(),
-            limitsMap,
             txSelectorConfiguration,
             l1L2BridgeConfiguration,
             tracerConfiguration);
@@ -235,7 +230,7 @@ public class LineaTransactionSelector implements PluginTransactionSelector {
    * @return the operation tracer
    */
   @Override
-  public ZkTracer getOperationTracer() {
+  public LineCountingTracer getOperationTracer() {
     return traceLineLimitTransactionSelector.getOperationTracer();
   }
 }
