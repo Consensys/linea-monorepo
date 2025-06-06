@@ -36,10 +36,10 @@ type Params struct {
 	// HashFunc is an optional function that returns a `hash.Hash` it is used
 	// when vortex is used in "Merkle-tree" mode. In this case, the hash
 	// function is mandatory.
-	MerkleHashFunc func() hash.Hash
-	// LeafHashFunc is an optional hash function that is used in place of the
+	MerkleHasher func() hash.Hash
+	// TransversalHasher is an optional hash function that is used in place of the
 	// SIS. If it is set,
-	LeafHashFunc func() hash.Hash
+	TransversalHasher func() hash.Hash
 }
 
 // NewParams creates and returns a [Params]:
@@ -83,8 +83,8 @@ func NewParams(
 		MaxNbRows:      maxNbRows,
 		BlowUpFactor:   blowUpFactor,
 		Key:            ringsis.GenerateKey(sisParams, maxNbRows),
-		MerkleHashFunc: merkleHashFunc,
-		LeafHashFunc:   merkleHashFunc, //TODO@yao: check if this is correct, we simply use the Merkle hash function as the leaf hash function now
+		MerkleHasher: merkleHashFunc,
+		TransversalHasher:   merkleHashFunc, //TODO@yao: check if this is correct, we simply use the Merkle hash function as the leaf hash function now
 	}
 
 	return res
@@ -103,12 +103,12 @@ func (p *Params) RemoveSis(h func() hash.Hash) *Params {
 		utils.Panic("provided a nil, no-SIS hash function")
 	}
 
-	p.LeafHashFunc = h
+	p.TransversalHasher = h
 	p.Key = ringsis.Key{} // and remove the key
 	return p
 }
 
 // HasSisReplacement returns true if the parameters are set to not use SIS
 func (p *Params) HasSisReplacement() bool {
-	return p.LeafHashFunc != nil
+	return p.TransversalHasher != nil
 }
