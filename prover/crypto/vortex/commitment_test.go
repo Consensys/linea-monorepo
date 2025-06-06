@@ -51,14 +51,14 @@ func TestProver(t *testing.T) {
 	proof.Complete(entryList[:NumOpenedColumns], committedMatrices, trees)
 
 	// verify
-	// vi := VerifierInputs{
-	// 	Params:       *params,
-	// 	MerkleRoots:  roots,
-	// 	X:            x,
-	// 	Ys:           yLists,
-	// 	OpeningProof: *proof,
-	// 	EntryList:    entryList,
-	// }
+	vi := VerifierInputs{
+		Params:       *params,
+		MerkleRoots:  roots,
+		X:            x,
+		Ys:           yLists,
+		OpeningProof: *proof,
+		EntryList:    entryList,
+	}
 
 }
 

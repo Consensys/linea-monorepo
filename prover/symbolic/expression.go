@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/collection"
 )
@@ -52,6 +53,7 @@ type Expression struct {
 	// Operator stores information relative to operation that the current
 	// Expression performs on its inputs.
 	Operator Operator
+	IsBase   bool
 }
 
 // Operator specifies an elementary operation a node of an [Expression] performs
@@ -60,6 +62,10 @@ type Operator interface {
 	// Evaluate returns an evaluation of the operator from a list of assignments:
 	// one for each operand (children) of the expression.
 	Evaluate([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector
+	// EvaluateExt returns an evaluation of the operator from a list of assignments:
+	// one for each operand (children) of the expression.
+	EvaluateExt([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector
+	EvaluateMixed([]sv.SmartVector, ...mempool.MemPool) sv.SmartVector
 	// Validate performs a sanity-check of the expression the Operator belongs
 	// to.
 	Validate(e *Expression) error
@@ -67,6 +73,7 @@ type Operator interface {
 	Degree([]int) int
 	// GnarkEval returns an evaluation of the operator in a gnark circuit.
 	GnarkEval(frontend.API, []frontend.Variable) frontend.Variable
+	GnarkEvalExt(frontend.API, []gnarkfext.Element) gnarkfext.Element
 }
 
 // Board pins down the expression into an ExpressionBoard. This converts the
@@ -84,7 +91,7 @@ func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
 
 	/*
 		Check if the expression is a duplicate of another expression bearing
-		the same ESHash and
+		the same GenericFieldElem and
 	*/
 	if _, ok := b.ESHashesToPos[f.ESHash]; ok {
 		return anchoredExpression{Board: b, ESHash: f.ESHash}
@@ -152,17 +159,58 @@ func (f *Expression) anchor(b *ExpressionBoard) anchoredExpression {
 // Validate operates a list of sanity-checks over the current expression to
 // assess its well-formedness. It returns an error if the check fails.
 func (e *Expression) Validate() error {
+	if e.IsBase {
+		return e.ValidateBase()
+	} else {
+		return e.ValidateExt()
+	}
+}
+
+func (e *Expression) ValidateExt() error {
 
 	eshashes := make([]sv.SmartVector, len(e.Children))
 	for i := range e.Children {
-		eshashes[i] = sv.NewConstant(e.Children[i].ESHash, 1)
+		eshashes[i] = sv.NewConstantExt(e.Children[i].ESHash.GetExt(), 1)
 	}
 
 	if len(e.Children) > 0 {
 		// The cast back to sv.Constant is not functionally important but is an
 		// easy sanity check.
-		expectedESH := e.Operator.Evaluate(eshashes).(*sv.Constant).Get(0)
-		if expectedESH != e.ESHash {
+		expectedESH := e.Operator.EvaluateExt(eshashes).(*sv.ConstantExt).GetExt(0)
+		if !e.ESHash.IsEqualExt(&expectedESH) {
+			return fmt.Errorf("esh mismatch %v %v", expectedESH.String(), e.ESHash.String())
+		}
+	}
+
+	// Operator specific validation
+	if err := e.Operator.Validate(e); err != nil {
+		return err
+	}
+
+	// Validate the children recursively
+	for i := range e.Children {
+		if err := e.Children[i].Validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (e *Expression) ValidateBase() error {
+
+	eshashes := make([]sv.SmartVector, len(e.Children))
+	for i := range e.Children {
+		baseESHash, _ := e.Children[i].ESHash.GetBase()
+		eshashes[i] = sv.NewConstant(baseESHash, 1)
+	}
+
+	if len(e.Children) > 0 {
+		// The cast back to sv.Constant is not functionally important but is an
+		// easy sanity check.
+		expectedESH, _ := e.Operator.Evaluate(eshashes).(*sv.Constant).GetBase(0)
+		expressionBaseESHash, _ := e.ESHash.GetBase()
+		if expectedESH != expressionBaseESHash {
 			return fmt.Errorf("esh mismatch %v %v", expectedESH.String(), e.ESHash.String())
 		}
 	}
@@ -201,7 +249,7 @@ func (e *Expression) Replay(translationMap collection.Mapping[string, *Expressio
 	case Variable:
 		res := translationMap.MustGet(op.Metadata.String())
 		return res
-	// LinComb
+	// LinCombExt
 	case LinComb:
 		children := make([]*Expression, len(e.Children))
 		for i, c := range e.Children {
@@ -209,7 +257,7 @@ func (e *Expression) Replay(translationMap collection.Mapping[string, *Expressio
 		}
 		res := NewLinComb(children, op.Coeffs)
 		return res
-	// Product
+	// ProductExt
 	case Product:
 		children := make([]*Expression, len(e.Children))
 		for i, c := range e.Children {
@@ -217,7 +265,7 @@ func (e *Expression) Replay(translationMap collection.Mapping[string, *Expressio
 		}
 		res := NewProduct(children, op.Exponents)
 		return res
-	// PolyEval
+	// PolyEvalExt
 	case PolyEval:
 		children := make([]*Expression, len(e.Children))
 		for i, c := range e.Children {
@@ -243,7 +291,7 @@ func (e *Expression) ReconstructBottomUp(
 	// applies the mutator and returns.
 	case Constant, Variable:
 		return constructor(e, []*Expression{})
-	// LinComb or Product or PolyEval. This is an intermediate expression.
+	// LinCombExt or ProductExt or PolyEvalExt. This is an intermediate expression.
 	case LinComb, Product, PolyEval:
 		children := make([]*Expression, len(e.Children))
 		var wg sync.WaitGroup
@@ -278,7 +326,7 @@ func (e *Expression) ReconstructBottomUpSingleThreaded(
 			panic(x)
 		}
 		return x
-	// LinComb or Product or PolyEval. This is an intermediate expression.
+	// LinCombExt or ProductExt or PolyEvalExt. This is an intermediate expression.
 	case LinComb, Product, PolyEval:
 		children := make([]*Expression, len(e.Children))
 		for i, c := range e.Children {
@@ -307,13 +355,13 @@ func (e *Expression) SameWithNewChildren(newChildren []*Expression) *Expression 
 	// Constant
 	case Constant, Variable:
 		return e
-	// LinComb
+	// LinCombExt
 	case LinComb:
 		return NewLinComb(newChildren, op.Coeffs)
-	// Product
+	// ProductExt
 	case Product:
 		return NewProduct(newChildren, op.Exponents)
-	// PolyEval
+	// PolyEvalExt
 	case PolyEval:
 		return NewPolyEval(newChildren[0], newChildren[1:])
 	default:
@@ -329,4 +377,17 @@ func (e *Expression) MarshalJSONString() string {
 		utils.Panic("failed to marshal expression: %v", jsErr)
 	}
 	return string(js)
+}
+
+// computeIsBaseFromChildren determines if an expression is a base expression
+// based on its children.
+func computeIsBaseFromChildren(children []*Expression) bool {
+	for _, child := range children {
+		if !child.IsBase {
+			// at least one child is not a base expression, therefore the expression is itself not a base expression
+			return false
+		}
+	}
+	// all children are base expressions, therefore the expression is itself a base expression
+	return true
 }

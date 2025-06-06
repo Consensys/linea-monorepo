@@ -3,6 +3,9 @@ package verifiercol
 import (
 	"strings"
 
+	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
+
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
@@ -24,6 +27,41 @@ type FromAccessors struct {
 	Size_     int
 	// Round_ caches the round value of the column.
 	Round_ int
+}
+
+func (f FromAccessors) IsBase() bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f FromAccessors) GetColAssignmentAtBase(run ifaces.Runtime, pos int) (field.Element, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f FromAccessors) GetColAssignmentAtExt(run ifaces.Runtime, pos int) fext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f FromAccessors) GetColAssignmentGnarkBase(run ifaces.GnarkRuntime) ([]frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f FromAccessors) GetColAssignmentGnarkExt(run ifaces.GnarkRuntime) []gnarkfext.Element {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f FromAccessors) GetColAssignmentGnarkAtBase(run ifaces.GnarkRuntime, pos int) (frontend.Variable, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (f FromAccessors) GetColAssignmentGnarkAtExt(run ifaces.GnarkRuntime, pos int) gnarkfext.Element {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewFromAccessors instantiates a [FromAccessors] column from a list of

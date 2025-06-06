@@ -22,7 +22,7 @@ type UnivariateEval struct {
 
 // Parameters for an univariate evaluation
 type UnivariateEvalParams struct {
-	X  fext.Element
+	X  fext.Element // TODO@yao check if we should use field.Element here
 	Ys []fext.Element
 }
 

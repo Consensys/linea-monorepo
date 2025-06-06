@@ -1,6 +1,7 @@
 package fext
 
 import (
+	"fmt"
 	"math/rand/v2"
 
 	"github.com/consensys/gnark-crypto/field/koalabear/extensions"
@@ -41,4 +42,36 @@ func PseudoRand(rng *rand.Rand) Element {
 	result.B1.A1 = field.PseudoRand(rng)
 
 	return *result
+}
+
+/*
+IsBase checks if the field extensionElement is a base element.
+An Element is considered a base element if all coordinates are 0 except for the first one.
+*/
+func IsBase(z *Element) bool {
+	if z.B0.A1[0] == 0 && z.B1.A0[0] == 0 && z.B1.A1[0] == 0 {
+		return true
+	} else {
+		return false
+	}
+
+}
+
+func GetBase(z *Element) (field.Element, error) {
+	if IsBase(z) {
+		return z.B0.A0, nil
+	} else {
+		return field.Zero(), fmt.Errorf("requested a base element but the field extension is not a wrapped field element")
+	}
+}
+func AddByBase(z *Element, first *Element, second *field.Element) *Element {
+	z.B0.A0.Add(&first.B0.A0, second)
+	return z
+}
+func DivByBase(z *Element, first *Element, second *field.Element) *Element {
+	z.B0.A0.Div(&first.B0.A0, second)
+	z.B0.A1.Div(&first.B0.A1, second)
+	z.B1.A0.Div(&first.B1.A0, second)
+	z.B1.A1.Div(&first.B1.A1, second)
+	return z
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/mempool"
 	sv "github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/maths/field/gnarkfext"
 	"github.com/consensys/linea-monorepo/prover/utils"
 	"github.com/consensys/linea-monorepo/prover/utils/parallel"
 )
@@ -296,6 +297,67 @@ func (b *ExpressionBoard) GnarkEval(api frontend.API, inputs []frontend.Variable
 				Run the evaluation
 			*/
 			res := node.Operator.GnarkEval(api, nodeInputs)
+
+			/*
+				Registers the result in the intermediate results
+			*/
+			intermediateRes[level][pos] = res
+		}
+	}
+
+	// Deep-copy the result from the last level (which assumedly contains only one node)
+	if len(intermediateRes[len(intermediateRes)-1]) > 1 {
+		panic("multiple heads")
+	}
+	return intermediateRes[len(b.Nodes)-1][0]
+
+}
+
+/*
+GnarkEvalExt evaluates the expression in a gnark circuit
+*/
+func (b *ExpressionBoard) GnarkEvalExt(api frontend.API, inputs []gnarkfext.Element) gnarkfext.Element {
+
+	/*
+		First, build a buffer to store the intermediate results
+	*/
+	intermediateRes := make([][]gnarkfext.Element, len(b.Nodes))
+	for level := range b.Nodes {
+		intermediateRes[level] = make([]gnarkfext.Element, len(b.Nodes[level]))
+	}
+
+	/*
+		Then, store the initial values in the level entries of the vector
+	*/
+	inputCursor := 0
+
+	for i := range b.Nodes[0] {
+		switch op := b.Nodes[0][i].Operator.(type) {
+		case Constant:
+			intermediateRes[0][i] = gnarkfext.ExtToVariable(op.Val.GetExt())
+		case Variable:
+			intermediateRes[0][i] = inputs[inputCursor]
+			inputCursor++
+		}
+	}
+
+	/*
+		Then computes the levels one by one
+	*/
+	for level := 1; level < len(b.Nodes); level++ {
+		for pos, node := range b.Nodes[level] {
+			/*
+				Collect the inputs of the current node from the intermediateRes
+			*/
+			nodeInputs := make([]gnarkfext.Element, len(node.Children))
+			for i, childID := range node.Children {
+				nodeInputs[i] = intermediateRes[childID.level()][childID.posInLevel()]
+			}
+
+			/*
+				Run the evaluation
+			*/
+			res := node.Operator.GnarkEvalExt(api, nodeInputs)
 
 			/*
 				Registers the result in the intermediate results
