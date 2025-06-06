@@ -2,7 +2,7 @@ package net.consensys.linea.metrics.micrometer
 
 import io.micrometer.core.instrument.MeterRegistry
 import net.consensys.linea.metrics.Counter
-import net.consensys.linea.metrics.CounterProvider
+import net.consensys.linea.metrics.CounterFactory
 import net.consensys.linea.metrics.Tag
 import io.micrometer.core.instrument.Counter as MicrometerCounter
 
@@ -16,12 +16,12 @@ class MicrometerCounterAdapter(private val adaptee: MicrometerCounter) : Counter
   }
 }
 
-class CounterProviderImpl(
+class CounterFactoryImpl(
   meterRegistry: MeterRegistry,
   name: String,
   description: String,
   commonTags: List<Tag>,
-) : CounterProvider {
+) : CounterFactory {
 
   init {
     commonTags.forEach { it.requireValidMicrometerName() }
@@ -32,7 +32,7 @@ class CounterProviderImpl(
     .tags(commonTags.toMicrometerTags())
     .withRegistry(meterRegistry)
 
-  override fun withTags(tags: List<Tag>): Counter {
+  override fun create(tags: List<Tag>): Counter {
     tags.forEach { it.requireValidMicrometerName() }
     return MicrometerCounterAdapter(counterProvider.withTags(tags.toMicrometerTags()))
   }

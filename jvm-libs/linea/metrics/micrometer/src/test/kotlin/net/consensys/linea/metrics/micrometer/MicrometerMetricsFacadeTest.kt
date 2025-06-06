@@ -130,7 +130,7 @@ class MicrometerMetricsFacadeTest {
     }
 
     val expectedTags = listOf(Tag("key1", "value1"), Tag("key2", "value2"))
-    val timer = metricsFacade.createSimpleTimer<Unit>(
+    val timer = metricsFacade.createTimer(
       category = TestCategory.TEST_CATEGORY,
       name = "some.timer.metric",
       description = "This is a test metric",
@@ -230,7 +230,7 @@ class MicrometerMetricsFacadeTest {
   fun `createSimpleTimer creates timer with correct name when metrics prefix is absent`() {
     val meterRegistry = SimpleMeterRegistry()
     val metricsFacade = MicrometerMetricsFacade(meterRegistry)
-    val timer = metricsFacade.createSimpleTimer<Unit>(
+    val timer = metricsFacade.createTimer(
       category = TestCategory.TEST_CATEGORY,
       name = "some.timer.metric",
       description = "This is a test metric",
@@ -261,17 +261,17 @@ class MicrometerMetricsFacadeTest {
 
   @Test
   fun `counter provider creates multiple counters`() {
-    val requestCounter = metricsFacade.createCounterProvider(
+    val requestCounter = metricsFacade.createCounterFactory(
       category = TestCategory.TEST_CATEGORY,
       name = "request.counter",
       description = "This is a test counter provider",
       commonTags = listOf(Tag("apitype", "engine_prague")),
     )
-    requestCounter.withTags(listOf(Tag("method", "getPayload")))
+    requestCounter.create(listOf(Tag("method", "getPayload")))
       .increment(5.0)
-    requestCounter.withTags(listOf(Tag("method", "newPayload")))
+    requestCounter.create(listOf(Tag("method", "newPayload")))
       .increment(3.0)
-    requestCounter.withTags(listOf(Tag("method", "getPayload")))
+    requestCounter.create(listOf(Tag("method", "getPayload")))
       .increment()
 
     val createdCounter1 = meterRegistry
@@ -292,17 +292,17 @@ class MicrometerMetricsFacadeTest {
 
   @Test
   fun `timer provider creates multiple timers`() {
-    val requestTimer = metricsFacade.createTimerProvider(
+    val requestTimer = metricsFacade.createTimerFactory(
       category = TestCategory.TEST_CATEGORY,
       name = "request.latency",
       description = "This is a test counter provider",
       commonTags = listOf(Tag("apitype", "engine_prague")),
     )
-    requestTimer.withTags(listOf(Tag("method", "getPayload")))
+    requestTimer.create(listOf(Tag("method", "getPayload")))
       .captureTime { Thread.sleep(2) }
-    requestTimer.withTags(listOf(Tag("method", "newPayload")))
+    requestTimer.create(listOf(Tag("method", "newPayload")))
       .captureTime { Thread.sleep(10) }
-    requestTimer.withTags(listOf(Tag("method", "getPayload")))
+    requestTimer.create(listOf(Tag("method", "getPayload")))
       .captureTime { Thread.sleep(2) }
 
     val createdTimer1 = meterRegistry

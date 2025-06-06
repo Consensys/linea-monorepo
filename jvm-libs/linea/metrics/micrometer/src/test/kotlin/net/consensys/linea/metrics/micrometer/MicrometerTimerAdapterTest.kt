@@ -19,13 +19,13 @@ class MicrometerTimerAdapterTest {
   fun `timer with no extra tags`() {
     val meterRegistry: MeterRegistry = SimpleMeterRegistry()
     val apiTimerProvider =
-      TimerProviderImpl(
+      TimerFactoryImpl(
         meterRegistry = meterRegistry,
         name = "request.timer",
         description = "API request timer",
         commonTags = listOf(Tag("version", "v1.0")),
       )
-    val result = apiTimerProvider.withTags(tags = emptyList())
+    val result = apiTimerProvider.create(tags = emptyList())
       .captureTime {
         Thread.sleep(10)
         "result"
@@ -47,20 +47,20 @@ class MicrometerTimerAdapterTest {
   fun `timer with two different callbacks`() {
     val meterRegistry: MeterRegistry = SimpleMeterRegistry()
     val apiTimerProvider =
-      TimerProviderImpl(
+      TimerFactoryImpl(
         meterRegistry = meterRegistry,
         name = "request.timer",
         description = "API request timer",
         commonTags = listOf(Tag("version", "v1.0")),
       )
 
-    val result1 = apiTimerProvider.withTags(tags = listOf(Tag("method", "eth_blockNumber"))).captureTime {
+    val result1 = apiTimerProvider.create(tags = listOf(Tag("method", "eth_blockNumber"))).captureTime {
       Thread.sleep(10)
       101
     }
     Assertions.assertThat(result1).isEqualTo(101)
 
-    val result2 = apiTimerProvider.withTags(tags = listOf(Tag("method", "eth_status"))).captureTime {
+    val result2 = apiTimerProvider.create(tags = listOf(Tag("method", "eth_status"))).captureTime {
       Thread.sleep(10)
       "synced"
     }
@@ -83,20 +83,20 @@ class MicrometerTimerAdapterTest {
   fun `timer with callback that throws`() {
     val meterRegistry: MeterRegistry = SimpleMeterRegistry()
     val apiTimerProvider =
-      TimerProviderImpl(
+      TimerFactoryImpl(
         meterRegistry = meterRegistry,
         name = "request.timer",
         description = "API request timer",
         commonTags = listOf(Tag("version", "v1.0")),
       )
 
-    val result1 = apiTimerProvider.withTags(tags = listOf(Tag("method", "eth_blockNumber"))).captureTime {
+    val result1 = apiTimerProvider.create(tags = listOf(Tag("method", "eth_blockNumber"))).captureTime {
       101
     }
     Assertions.assertThat(result1).isEqualTo(101)
 
     val exception = assertThrows<IllegalStateException> {
-      apiTimerProvider.withTags(tags = listOf(Tag("method", "eth_status"))).captureTime {
+      apiTimerProvider.create(tags = listOf(Tag("method", "eth_status"))).captureTime {
         throw IllegalStateException("sync_error")
       }
     }
@@ -118,7 +118,7 @@ class MicrometerTimerAdapterTest {
   fun `timer with future`() {
     val meterRegistry: MeterRegistry = SimpleMeterRegistry()
     val apiTimerProvider =
-      TimerProviderImpl(
+      TimerFactoryImpl(
         meterRegistry = meterRegistry,
         name = "request.timer",
         description = "API request timer",
@@ -126,11 +126,11 @@ class MicrometerTimerAdapterTest {
         clock = MockClock(),
       )
 
-    val result1 = apiTimerProvider.withTags(listOf(Tag("method", "eth_blockNumber")))
+    val result1 = apiTimerProvider.create(listOf(Tag("method", "eth_blockNumber")))
       .captureTime(SafeFuture.completedFuture(101))
     Assertions.assertThat(result1.get()).isEqualTo(101)
 
-    val result2 = apiTimerProvider.withTags(listOf(Tag("method", "eth_status")))
+    val result2 = apiTimerProvider.create(listOf(Tag("method", "eth_status")))
       .captureTime(SafeFuture.failedFuture<String>(IllegalStateException("sync_error")))
     val exception = assertThrows<ExecutionException> { result2.get() }
     Assertions.assertThat(exception.cause).isInstanceOf(IllegalStateException::class.java)

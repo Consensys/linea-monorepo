@@ -4,6 +4,10 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.MockClock
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import io.vertx.core.Future
+import net.consensys.linea.async.get
+import net.consensys.linea.async.toCompletableFuture
+import net.consensys.linea.async.toSafeFuture
+import net.consensys.linea.async.toVertxFuture
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import tech.pegasys.teku.infrastructure.async.SafeFuture
@@ -50,11 +54,11 @@ internal class DynamicTagTimerCaptureTest {
         .setDescription("API request counter")
         .setTagKey("method")
         .setClock(testClock)
-        .captureTime(Future.succeededFuture("measured_callback_result"))
+        .captureTime(Future.succeededFuture("measured_callback_result").toCompletableFuture())
+        .toVertxFuture()
     future.complete("measured_callback_result")
 
-    assertThat(result.toCompletionStage().toCompletableFuture().get())
-      .isEqualTo("measured_callback_result")
+    assertThat(result.get()).isEqualTo("measured_callback_result")
 
     val createdMeter = meterRegistry["request.counter"].timer()
     assertThat(createdMeter.count()).isEqualTo(1)
@@ -76,6 +80,7 @@ internal class DynamicTagTimerCaptureTest {
         .setTagKey("method")
         .setClock(testClock)
         .captureTime(SafeFuture.failedFuture(Exception("measured_callback_error")))
+        .toSafeFuture()
 
     result.finish { error -> assertThat(error.message).isEqualTo("measured_callback_error") }
 

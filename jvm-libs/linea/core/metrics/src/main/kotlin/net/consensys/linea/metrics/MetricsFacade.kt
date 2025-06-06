@@ -1,7 +1,5 @@
 package net.consensys.linea.metrics
 
-import io.vertx.core.Future
-import tech.pegasys.teku.infrastructure.async.SafeFuture
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
 import java.util.function.Function
@@ -19,42 +17,26 @@ interface Counter {
   fun increment()
 }
 
-interface CounterProvider {
-  fun withTags(tags: List<Tag>): Counter
-}
-
 interface Histogram {
   fun record(data: Double)
 }
 
-interface TimerProvider {
-  fun withTags(tags: List<Tag>): Timer
+interface CounterFactory {
+  fun create(tags: List<Tag> = emptyList()): Counter
+}
+
+interface TimerFactory {
+  fun create(tags: List<Tag> = emptyList()): Timer
 }
 
 interface Timer {
   fun <T> captureTime(f: CompletableFuture<T>): CompletableFuture<T>
   fun <T> captureTime(action: Callable<T>): T
-  fun <T> captureTime(f: SafeFuture<T>): SafeFuture<T> {
-    captureTime(f.toCompletableFuture())
-    return f
-  }
-  fun <T> captureTime(f: Future<T>): Future<T> {
-    captureTime(f.toCompletionStage().toCompletableFuture())
-    return f
-  }
 }
 
 interface TimerCapture<T> {
   fun captureTime(f: CompletableFuture<T>): CompletableFuture<T>
   fun captureTime(action: Callable<T>): T
-  fun captureTime(f: SafeFuture<T>): SafeFuture<T> {
-    captureTime(f.toCompletableFuture())
-    return f
-  }
-  fun captureTime(f: Future<T>): Future<T> {
-    captureTime(f.toCompletionStage().toCompletableFuture())
-    return f
-  }
 }
 
 interface MetricsFacade {
@@ -71,7 +53,7 @@ interface MetricsFacade {
     name: String,
     description: String,
     tags: List<Tag> = emptyList(),
-  ): Counter
+  ): Counter = createCounterFactory(category, name, description, tags).create()
 
   fun createHistogram(
     category: MetricsCategory,
@@ -82,12 +64,12 @@ interface MetricsFacade {
     baseUnit: String? = null,
   ): Histogram
 
-  fun <T> createSimpleTimer(
+  fun createTimer(
     category: MetricsCategory,
     name: String,
     description: String,
     tags: List<Tag> = emptyList(),
-  ): TimerCapture<T>
+  ): Timer
 
   fun <T> createDynamicTagTimer(
     category: MetricsCategory,
@@ -98,19 +80,19 @@ interface MetricsFacade {
     tagValueExtractor: Function<T, String>,
   ): TimerCapture<T>
 
-  fun createCounterProvider(
+  fun createCounterFactory(
     category: MetricsCategory,
     name: String,
     description: String,
     commonTags: List<Tag> = emptyList(),
-  ): CounterProvider
+  ): CounterFactory
 
-  fun createTimerProvider(
+  fun createTimerFactory(
     category: MetricsCategory,
     name: String,
     description: String,
     commonTags: List<Tag> = emptyList(),
-  ): TimerProvider
+  ): TimerFactory
 }
 
 class FakeHistogram : Histogram {

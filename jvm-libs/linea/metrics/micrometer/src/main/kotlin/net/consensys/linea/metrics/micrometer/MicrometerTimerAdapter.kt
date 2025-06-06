@@ -4,7 +4,7 @@ import io.micrometer.core.instrument.Clock
 import io.micrometer.core.instrument.MeterRegistry
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.Timer
-import net.consensys.linea.metrics.TimerProvider
+import net.consensys.linea.metrics.TimerFactory
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
 import io.micrometer.core.instrument.Timer as MicrometerTimer
@@ -28,13 +28,13 @@ class TimerAdapter(val adaptee: MicrometerTimer, val clock: Clock) : Timer {
   }
 }
 
-class TimerProviderImpl(
+class TimerFactoryImpl(
   private val meterRegistry: MeterRegistry,
   private val name: String,
   private val description: String,
   private val commonTags: List<Tag>,
   private val clock: Clock = Clock.SYSTEM,
-) : TimerProvider {
+) : TimerFactory {
 
   private val timerProvider = io.micrometer.core.instrument.Timer.builder(name)
     .description(description)
@@ -50,7 +50,7 @@ class TimerProviderImpl(
     return timerProvider.withTags(*tags.flatMap { listOf(it.key, it.value) }.toTypedArray())
   }
 
-  override fun withTags(tags: List<Tag>): Timer {
+  override fun create(tags: List<Tag>): Timer {
     return TimerAdapter(getTimer(tags), clock)
   }
 }
