@@ -19,6 +19,7 @@ import java.math.BigInteger;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -33,11 +34,19 @@ import net.consensys.linea.zktracer.LineCountingTracer;
 import net.consensys.linea.zktracer.ZkCounter;
 import net.consensys.linea.zktracer.ZkTracer;
 import net.consensys.linea.zktracer.container.module.Module;
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.datatypes.Address;
 import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.Transaction;
+import org.hyperledger.besu.datatypes.Wei;
+import org.hyperledger.besu.evm.frame.ExceptionalHaltReason;
+import org.hyperledger.besu.evm.frame.MessageFrame;
+import org.hyperledger.besu.evm.log.Log;
+import org.hyperledger.besu.evm.operation.Operation;
 import org.hyperledger.besu.evm.worldstate.WorldView;
 import org.hyperledger.besu.plugin.data.BlockBody;
 import org.hyperledger.besu.plugin.data.BlockHeader;
+import org.hyperledger.besu.plugin.data.ProcessableBlockHeader;
 import org.hyperledger.besu.plugin.data.TransactionProcessingResult;
 import org.hyperledger.besu.plugin.data.TransactionSelectionResult;
 import org.hyperledger.besu.plugin.services.txselection.AbstractStatefulPluginTransactionSelector;
@@ -59,7 +68,6 @@ public class TraceLineLimitTransactionSelector
   private final LineaTracerConfiguration tracerConfiguration;
   private final LineCountingTracer lineCountingTracer;
   private final BigInteger chainId;
-  private final String limitFilePath;
   private final int overLimitCacheSize;
   private final ModuleLineCountValidator moduleLineCountValidator;
 
@@ -76,14 +84,14 @@ public class TraceLineLimitTransactionSelector
 
     this.chainId = chainId;
     this.tracerConfiguration = tracerConfiguration;
-    this.limitFilePath = tracerConfiguration.moduleLimitsFilePath();
     this.overLimitCacheSize = txSelectorConfiguration.overLinesLimitCacheSize();
 
     lineCountingTracer = new LineCountingTracerWithLog(tracerConfiguration, l1L2BridgeConfiguration);
     for (Module m : lineCountingTracer.getModulesToCount()) {
       if (!tracerConfiguration.moduleLimitsMap().containsKey(m.moduleKey())) {
         throw new IllegalStateException(
-            "Limit for module %s not defined in %s".formatted(m.moduleKey(), this.limitFilePath));
+            "Limit for module %s not defined in %s"
+                .formatted(m.moduleKey(), tracerConfiguration.moduleLimitsFilePath()));
       }
     }
     lineCountingTracer.traceStartConflation(1L);
@@ -268,6 +276,91 @@ public class TraceLineLimitTransactionSelector
     @Override
     public void traceEndConflation(final WorldView worldView) {
       delegate.traceEndConflation(worldView);
+    }
+
+    @Override
+    public void traceStartBlock(
+        final BlockHeader blockHeader, final BlockBody blockBody, final Address miningBeneficiary) {
+      delegate.traceStartBlock(blockHeader, blockBody, miningBeneficiary);
+    }
+
+    @Override
+    public void traceStartBlock(
+        final ProcessableBlockHeader processableBlockHeader, final Address miningBeneficiary) {
+      delegate.traceStartBlock(processableBlockHeader, miningBeneficiary);
+    }
+
+    @Override
+    public boolean isExtendedTracing() {
+      return delegate.isExtendedTracing();
+    }
+
+    @Override
+    public void tracePreExecution(final MessageFrame frame) {
+      delegate.tracePreExecution(frame);
+    }
+
+    @Override
+    public void tracePostExecution(
+        final MessageFrame frame, final Operation.OperationResult operationResult) {
+      delegate.tracePostExecution(frame, operationResult);
+    }
+
+    @Override
+    public void tracePrecompileCall(
+        final MessageFrame frame, final long gasRequirement, final Bytes output) {
+      delegate.tracePrecompileCall(frame, gasRequirement, output);
+    }
+
+    @Override
+    public void traceAccountCreationResult(
+        final MessageFrame frame, final Optional<ExceptionalHaltReason> haltReason) {
+      delegate.traceAccountCreationResult(frame, haltReason);
+    }
+
+    @Override
+    public void tracePrepareTransaction(final WorldView worldView, final Transaction transaction) {
+      delegate.tracePrepareTransaction(worldView, transaction);
+    }
+
+    @Override
+    public void traceStartTransaction(final WorldView worldView, final Transaction transaction) {
+      delegate.traceStartTransaction(worldView, transaction);
+    }
+
+    @Override
+    public void traceBeforeRewardTransaction(
+        final WorldView worldView, final Transaction tx, final Wei miningReward) {
+      delegate.traceBeforeRewardTransaction(worldView, tx, miningReward);
+    }
+
+    @Override
+    public void traceEndTransaction(
+        final WorldView worldView,
+        final Transaction tx,
+        final boolean status,
+        final Bytes output,
+        final List<Log> logs,
+        final long gasUsed,
+        final Set<Address> selfDestructs,
+        final long timeNs) {
+      delegate.traceEndTransaction(
+          worldView, tx, status, output, logs, gasUsed, selfDestructs, timeNs);
+    }
+
+    @Override
+    public void traceContextEnter(final MessageFrame frame) {
+      delegate.traceContextEnter(frame);
+    }
+
+    @Override
+    public void traceContextReEnter(final MessageFrame frame) {
+      delegate.traceContextReEnter(frame);
+    }
+
+    @Override
+    public void traceContextExit(final MessageFrame frame) {
+      delegate.traceContextExit(frame);
     }
   }
 }
