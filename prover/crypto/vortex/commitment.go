@@ -40,8 +40,10 @@ func WithPoseidonMerkleHasher(c *Config) error {
 func (p *Params) Commit(ps []smartvectors.SmartVector, options ...Option) (encodedMatrix EncodedMatrix, tree *smt.Tree, colHashes []field.Element) {
 
 	if len(ps) > p.MaxNbRows {
-		utils.Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
+		utils.
+			Panic("too many rows: %v, capacity is %v\n", len(ps), p.MaxNbRows)
 	}
+	encodedMatrix = p.encodeRows(ps)
 	nbColumns := p.NumEncodedCols()
 
 	var config Config
@@ -92,7 +94,7 @@ func (p *Params) Commit(ps []smartvectors.SmartVector, options ...Option) (encod
 		)
 	}
 
-	return nil, nil, nil
+	return encodedMatrix, tree, colHashes
 }
 
 func (p *Params) computeLeaves(colHashes []field.Element) []types.Bytes32 {

@@ -42,11 +42,6 @@ func TestProver(t *testing.T) {
 	trees := make([]*smt.Tree, nbCommitments)
 	committedMatrices := make([]EncodedMatrix, nbCommitments)
 	for i := range trees {
-		// if !params.HasSisReplacement() {
-		// 	committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
-		// } else {
-		// 	committedMatrices[i], trees[i], _ = params.CommitMerkleWithoutSIS(polyLists[i])
-		// }
 		committedMatrices[i], trees[i], _ = params.Commit(polyLists[i], WithSisColumnHasher)
 		roots[i] = trees[i].Root
 	}
