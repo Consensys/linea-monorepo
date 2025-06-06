@@ -37,6 +37,8 @@ import net.consensys.linea.config.LineaTransactionSelectorCliOptions;
 import net.consensys.linea.config.LineaTransactionSelectorConfiguration;
 import net.consensys.linea.plugins.AbstractLineaSharedOptionsPlugin;
 import net.consensys.linea.plugins.LineaOptionsPluginConfiguration;
+import net.consensys.linea.sequencer.liveness.LivenessPluginCliOptions;
+import net.consensys.linea.sequencer.liveness.LivenessPluginConfiguration;
 import net.consensys.linea.utils.Compressor;
 import org.hyperledger.besu.plugin.ServiceManager;
 import org.hyperledger.besu.plugin.services.BesuConfiguration;
@@ -101,6 +103,8 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
         LineaRejectedTxReportingCliOptions.create().asPluginConfig());
     configMap.put(
         LineaBundleCliOptions.CONFIG_KEY, LineaBundleCliOptions.create().asPluginConfig());
+    configMap.put(
+      LivenessPluginCliOptions.CONFIG_KEY, LivenessPluginCliOptions.create().asPluginConfig());
     return configMap;
   }
 
@@ -137,6 +141,11 @@ public abstract class AbstractLineaSharedPrivateOptionsPlugin
   public LineaBundleConfiguration bundleConfiguration() {
     return (LineaBundleConfiguration)
         getConfigurationByKey(LineaBundleCliOptions.CONFIG_KEY).optionsConfig();
+  }
+
+  public LivenessPluginConfiguration livenessPluginConfiguration() {
+    return (LivenessPluginConfiguration)
+      getConfigurationByKey(LivenessPluginCliOptions.CONFIG_KEY).optionsConfig();
   }
 
   @Override
