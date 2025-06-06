@@ -45,7 +45,11 @@ func TestProver(t *testing.T) {
 	trees := make([]*smt.Tree, nbCommitments)
 	committedMatrices := make([]EncodedMatrix, nbCommitments)
 	for i := range trees {
-		committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
+		if !params.HasSisReplacement() {
+			committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
+		} else {
+			committedMatrices[i], trees[i], _ = params.CommitMerkleWithoutSIS(polyLists[i])
+		}
 		roots[i] = trees[i].Root
 	}
 
@@ -275,7 +279,11 @@ func TestVerifierNegative(t *testing.T) {
 			// Commits to it
 			committedMatrices := make([]EncodedMatrix, nbCommitments)
 			for i := range trees {
-				committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
+				if !params.HasSisReplacement() {
+					committedMatrices[i], trees[i], _ = params.CommitMerkleWithSIS(polyLists[i])
+				} else {
+					committedMatrices[i], trees[i], _ = params.CommitMerkleWithoutSIS(polyLists[i])
+				}
 				roots[i] = trees[i].Root
 			}
 			// Generate the proof
