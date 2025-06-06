@@ -27,7 +27,7 @@ contract InheritingL1TokenBridge is TokenBridgeBase {
     __TokenBridge_init(_initializationData);
   }
 
-  function _getEscrowAddress(address _token) internal virtual view override returns (address escrowAddress) {
+  function _getEscrowAddress(address _token) internal view virtual override returns (address escrowAddress) {
     // Overriden to allow the movement of specific assets to custom escrow services.
 
     escrowAddress = escrowAddresses[_token];

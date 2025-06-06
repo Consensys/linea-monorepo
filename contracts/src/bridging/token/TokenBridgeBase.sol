@@ -178,7 +178,7 @@ abstract contract TokenBridgeBase is
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
-  function CONTRACT_VERSION() external virtual view returns (string memory contractVersion) {
+  function CONTRACT_VERSION() external view virtual returns (string memory contractVersion) {
     contractVersion = _CONTRACT_VERSION;
   }
 
@@ -282,7 +282,7 @@ abstract contract TokenBridgeBase is
    * @param _token The address of the token to be bridged.
    * @return escrowAddress The address of where the bridged local token will be kept.
    */
-  function _getEscrowAddress(address _token) internal virtual view returns (address escrowAddress) {
+  function _getEscrowAddress(address _token) internal view virtual returns (address escrowAddress) {
     escrowAddress = address(this);
   }
 
