@@ -11,7 +11,7 @@ interface IL2MessageServiceV1 {
    * @notice Returns the ABI version and not the reinitialize version.
    * @return contractVersion The contract ABI version.
    */
-  function CONTRACT_VERSION() external returns (string memory contractVersion);
+  function CONTRACT_VERSION() external view returns (string memory contractVersion);
 
   /**
    * @notice The Fee Manager sets a minimum fee to address DOS protection.
