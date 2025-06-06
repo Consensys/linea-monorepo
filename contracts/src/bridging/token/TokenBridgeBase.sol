@@ -282,7 +282,7 @@ abstract contract TokenBridgeBase is
    * @param _token The address of the token to be bridged.
    * @return escrowAddress The address of where the bridged local token will be kept.
    */
-  function _getEscrowAddress(address _token) internal virtual returns (address escrowAddress) {
+  function _getEscrowAddress(address _token) internal virtual view returns (address escrowAddress) {
     escrowAddress = address(this);
   }
 
