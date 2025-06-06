@@ -106,7 +106,6 @@ func VerifyOpening(v *VerifierInputs) error {
 	if err := v.checkColumnInclusion(); err != nil {
 		return err
 	}
-	//TODO@yao: TestProver can pass when checkColumnInclusion is hidden, but TestVerifierNegative can partially pass even when it is not hidden.
 	return nil
 }
 
