@@ -260,9 +260,10 @@ class L1DependentApp(
       FeeHistoriesRepositoryImpl.Config(
         rewardPercentiles = configs.l1Submission!!.dynamicGasPriceCap.feeHistoryFetcher
           .rewardPercentiles.map { it.toDouble() },
-        // FIXME: there is not equivalent in the new config. Validate with Jones/Julien
-        minBaseFeePerBlobGasToCache = null,
-        fixedAverageRewardToCache = null,
+        minBaseFeePerBlobGasToCache = configs.l1Submission.dynamicGasPriceCap
+          .gasPriceCapCalculation.historicBaseFeePerBlobGasLowerBound,
+        fixedAverageRewardToCache = configs.l1Submission.dynamicGasPriceCap
+          .gasPriceCapCalculation.historicAvgRewardConstant,
       ),
       FeeHistoriesPostgresDao(
         sqlClient,

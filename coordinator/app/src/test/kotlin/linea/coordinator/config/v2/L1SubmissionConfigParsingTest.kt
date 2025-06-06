@@ -28,6 +28,8 @@ class L1SubmissionConfigParsingTest {
     base-fee-per-gas-percentile-window-leeway = "PT10M"
     base-fee-per-gas-percentile = 10
     gas-price-caps-check-coefficient = 0.9
+    historic-base-fee-per-blob-gas-lower-bound=100000011 # 0.1 GWEI
+    historic-avg-reward-constant=100000012 # 0.1 GWEI
     [l1-submission.dynamic-gas-price-cap.fee-history-fetcher]
     l1-endpoint = "http://l1-node:8545"
     fetch-interval = "PT1S"
@@ -115,6 +117,8 @@ class L1SubmissionConfigParsingTest {
             baseFeePerGasPercentileWindowLeeway = 10.minutes,
             baseFeePerGasPercentile = 10u,
             gasPriceCapsCheckCoefficient = 0.9,
+            historicBaseFeePerBlobGasLowerBound = 100000011UL,
+            historicAvgRewardConstant = 100000012UL,
           ),
           feeHistoryFetcher = L1SubmissionConfigToml.DynamicGasPriceCapToml.FeeHistoryFetcherConfig(
             l1Endpoint = "http://l1-node:8545".toURL(),
@@ -208,6 +212,8 @@ class L1SubmissionConfigParsingTest {
     base-fee-per-gas-percentile-window-leeway = "PT10M"
     base-fee-per-gas-percentile = 10
     gas-price-caps-check-coefficient = 0.9
+    historic-base-fee-per-blob-gas-lower-bound=100000011 # 0.1 GWEI
+    historic-avg-reward-constant=100000012 # 0.1 GWEI
     [l1-submission.dynamic-gas-price-cap.gas-price-cap-calculation]
 
     [l1-submission.fallback-gas-price]
@@ -261,6 +267,8 @@ class L1SubmissionConfigParsingTest {
             baseFeePerGasPercentileWindowLeeway = 10.minutes,
             baseFeePerGasPercentile = 10u,
             gasPriceCapsCheckCoefficient = 0.9,
+            historicBaseFeePerBlobGasLowerBound = 100000011UL,
+            historicAvgRewardConstant = 100000012UL,
           ),
           feeHistoryFetcher = L1SubmissionConfigToml.DynamicGasPriceCapToml.FeeHistoryFetcherConfig(
             fetchInterval = 3.seconds,

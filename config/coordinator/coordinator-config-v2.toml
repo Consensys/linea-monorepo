@@ -129,6 +129,12 @@ base-fee-per-gas-percentile-window = "P7D"
 base-fee-per-gas-percentile-window-leeway = "PT10M"
 base-fee-per-gas-percentile = 10
 gas-price-caps-check-coefficient = 0.9
+# The lower bound of the "historic base fee per blob gas" used in
+# the L1 dynamic gas price cap equation
+historic-base-fee-per-blob-gas-lower-bound=100000000 # 0.1 GWEI
+# An optional config to replace the "historic average reward" used in
+# the L1 dynamic gas price cap equation
+historic-avg-reward-constant=100000000 # 0.1 GWEI
 [l1-submission.dynamic-gas-price-cap.fee-history-fetcher]
 fetch-interval = "PT1S"
 max-block-count = 1000

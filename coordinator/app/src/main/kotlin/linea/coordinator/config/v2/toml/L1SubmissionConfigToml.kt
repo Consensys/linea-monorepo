@@ -4,6 +4,7 @@ import linea.coordinator.config.v2.L1SubmissionConfig
 import linea.coordinator.config.v2.L1SubmissionConfig.DynamicGasPriceCapConfig.GasPriceCapCalculationConfig
 import net.consensys.linea.ethereum.gaspricing.dynamiccap.TimeOfDayMultipliers
 import java.net.URL
+import kotlin.ULong
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.seconds
@@ -29,6 +30,8 @@ data class L1SubmissionConfigToml(
       val baseFeePerGasPercentileWindowLeeway: Duration,
       val baseFeePerGasPercentile: UInt,
       val gasPriceCapsCheckCoefficient: Double,
+      val historicBaseFeePerBlobGasLowerBound: ULong,
+      val historicAvgRewardConstant: ULong,
     ) {
       fun reified(
         timeOfTheDayMultipliers: TimeOfDayMultipliers,
@@ -41,6 +44,8 @@ data class L1SubmissionConfigToml(
           baseFeePerGasPercentileWindowLeeway = this.baseFeePerGasPercentileWindowLeeway,
           baseFeePerGasPercentile = this.baseFeePerGasPercentile,
           gasPriceCapsCheckCoefficient = this.gasPriceCapsCheckCoefficient,
+          historicBaseFeePerBlobGasLowerBound = this.historicBaseFeePerBlobGasLowerBound,
+          historicAvgRewardConstant = this.historicAvgRewardConstant,
           timeOfTheDayMultipliers = timeOfTheDayMultipliers,
         )
       }
@@ -58,7 +63,8 @@ data class L1SubmissionConfigToml(
         defaultL1Endpoint: URL?,
       ): L1SubmissionConfig.DynamicGasPriceCapConfig.FeeHistoryFetcherConfig {
         return L1SubmissionConfig.DynamicGasPriceCapConfig.FeeHistoryFetcherConfig(
-          l1Endpoint = this.l1Endpoint ?: defaultL1Endpoint ?: throw AssertionError("l1Endpoint config missing"),
+          l1Endpoint = this.l1Endpoint ?: defaultL1Endpoint
+            ?: throw AssertionError("l1Endpoint config missing"),
           fetchInterval = this.fetchInterval,
           maxBlockCount = this.maxBlockCount,
           rewardPercentiles = this.rewardPercentiles,

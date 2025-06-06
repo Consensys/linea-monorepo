@@ -27,6 +27,8 @@ data class L1SubmissionConfig(
       val baseFeePerGasPercentileWindowLeeway: Duration,
       val baseFeePerGasPercentile: UInt,
       val gasPriceCapsCheckCoefficient: Double,
+      val historicBaseFeePerBlobGasLowerBound: ULong,
+      val historicAvgRewardConstant: ULong,
       val timeOfTheDayMultipliers: Map<String, Double>,
     )
 
