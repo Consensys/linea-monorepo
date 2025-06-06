@@ -66,7 +66,7 @@ func TestVerifierNegative(t *testing.T) {
 		}
 		params = []*Params{
 			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC), //TODO@yao change to poseidon2
-			//NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
+			NewParams(2, 8, 17, ringsis.StdParams, mimc.NewMiMC).RemoveSis(mimc.NewMiMC),
 		}
 
 		statementMutatorCorpus = []struct {

@@ -40,12 +40,19 @@ func (p *Params) CommitMerkleWithSIS(ps []smartvectors.SmartVector) (encodedMatr
 		// colHashes stores concatenation of SIS+MiMC hashes of the columns
 		// if isSISAppliedForRound is true, otherwise it stores the MiMC hashes
 		// of the columns.
-		colHashes = p.Key.TransversalHash(encodedMatrix)
+		if !p.HasSisReplacement() {
+			colHashes = p.Key.TransversalHash(encodedMatrix)
+		}
 	})
 
 	timeTree := profiling.TimeIt(func() {
 		// Hash the SIS digests to obtain the leaves of the Merkle tree.
-		leaves := p.computeLeavesWithSis(colHashes)
+		var leaves []types.Bytes32
+		if !p.HasSisReplacement() {
+			leaves = p.computeLeavesWithSis(colHashes)
+		} else {
+			leaves = p.transversalHashWithoutSIS(encodedMatrix)
+		}
 
 		tree = smt.BuildComplete(
 			leaves,
