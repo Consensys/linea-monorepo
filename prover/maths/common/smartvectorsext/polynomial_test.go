@@ -46,6 +46,8 @@ func TestEvaluateLagrange(t *testing.T) {
 	polyLagrangeSv := smartvectors.NewRegular(polyLagrange)
 	evalLag = EvaluateLagrange(polyLagrangeSv, x)
 
+	fmt.Println(evalLag.String())
+	fmt.Println(evalCan.String())
 	if !evalLag.Equal(&evalCan) {
 		t.Fatal("error")
 	}
