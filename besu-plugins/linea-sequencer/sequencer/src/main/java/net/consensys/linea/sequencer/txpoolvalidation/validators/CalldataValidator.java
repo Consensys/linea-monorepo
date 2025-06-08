@@ -9,7 +9,6 @@
 package net.consensys.linea.sequencer.txpoolvalidation.validators;
 
 import java.util.Optional;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.consensys.linea.config.LineaTransactionPoolValidatorConfiguration;

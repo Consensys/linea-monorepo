@@ -10,7 +10,6 @@
 package net.consensys.linea.config;
 
 import java.net.URL;
-
 import lombok.Builder;
 import net.consensys.linea.plugins.LineaOptionsConfiguration;
 
