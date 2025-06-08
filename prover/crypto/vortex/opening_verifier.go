@@ -95,9 +95,9 @@ func VerifyOpening(v *VerifierInputs) error {
 		return err
 	}
 
-	// if err := v.checkColLinCombination(); err != nil {
-	// 	return err
-	// }
+	if err := v.checkColLinCombination(); err != nil {
+		return err
+	}
 
 	if err := v.checkStatement(); err != nil {
 		return err
@@ -148,14 +148,13 @@ func (v *VerifierInputs) checkColLinCombination() (err error) {
 func (v *VerifierInputs) checkStatement() (err error) {
 
 	smartvectors_mixed.IsBase(v.OpeningProof.LinearCombination)
-	// Check the consistency of Ys and proof.Linear combination
-	var (
-		Yjoined     = utils.Join(v.Ys...)
-		alphaY      = smartvectorsext.EvaluateLagrange(v.OpeningProof.LinearCombination, v.X)
-		alphaYProme = polyext.Eval(Yjoined, v.RandomCoin)
-	)
 
-	if alphaY != alphaYProme {
+	// Check the consistency of Ys and proof.Linear combination
+	Yjoined := utils.Join(v.Ys...)
+	alphaY := smartvectorsext.EvaluateLagrange(v.OpeningProof.LinearCombination, v.X)
+	alphaYPrime := polyext.Eval(Yjoined, v.RandomCoin)
+
+	if alphaY != alphaYPrime {
 		return fmt.Errorf("RowLincomb and Y are inconsistent")
 	}
 

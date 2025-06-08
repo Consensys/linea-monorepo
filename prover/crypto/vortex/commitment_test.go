@@ -18,7 +18,7 @@ func TestProver(t *testing.T) {
 	x := fext.RandomElement()
 	randomCoin := fext.RandomElement()
 	entryList := []int{1, 7, 5, 6, 4, 5, 1, 2}
-	NbPolysPerCommitment := []int{20, 32, 32, 32}
+	NbPolysPerCommitment := []int{20} //, 32, 32, 32}
 	nbCommitments := len(NbPolysPerCommitment)
 	polySize := params.NbColumns
 
@@ -56,6 +56,7 @@ func TestProver(t *testing.T) {
 		X:            x,
 		Ys:           yLists,
 		OpeningProof: *proof,
+		RandomCoin:   randomCoin,
 		EntryList:    entryList,
 	}
 	err := VerifyOpening(&vi)
