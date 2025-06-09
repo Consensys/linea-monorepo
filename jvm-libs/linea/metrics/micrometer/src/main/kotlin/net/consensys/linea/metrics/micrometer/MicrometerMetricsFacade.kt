@@ -5,14 +5,13 @@ import io.micrometer.core.instrument.Gauge
 import io.micrometer.core.instrument.MeterRegistry
 import net.consensys.linea.metrics.Counter
 import net.consensys.linea.metrics.CounterFactory
+import net.consensys.linea.metrics.DynamicTagTimer
 import net.consensys.linea.metrics.Histogram
 import net.consensys.linea.metrics.MetricsCategory
 import net.consensys.linea.metrics.MetricsFacade
 import net.consensys.linea.metrics.Tag
 import net.consensys.linea.metrics.Timer
-import net.consensys.linea.metrics.TimerCapture
 import net.consensys.linea.metrics.TimerFactory
-import java.util.function.Function
 import java.util.function.Supplier
 
 class MicrometerMetricsFacade(
@@ -103,20 +102,21 @@ class MicrometerMetricsFacade(
     category: MetricsCategory,
     name: String,
     description: String,
-    tagKey: String,
-    tagValueExtractorOnError: Function<Throwable, String>,
-    tagValueExtractor: Function<T, String>,
-  ): TimerCapture<T> {
+    tagValueExtractorOnError: (Throwable) -> List<Tag>,
+    tagValueExtractor: (T) -> List<Tag>,
+    commonTags: List<Tag>,
+  ): DynamicTagTimer<T> {
     category.toValidMicrometerName().requireValidMicrometerName()
     name.requireValidMicrometerName()
-    tagKey.requireValidMicrometerName()
-    val dynamicTagTimerCapture = DynamicTagTimerCapture<T>(registry, metricHandle(category, name))
-      .setDescription(description)
-      .setTagKey(tagKey)
-      .setTagValueExtractor(tagValueExtractor)
-      .setTagValueExtractorOnError(tagValueExtractorOnError)
-    allMetricsCommonTags.forEach { dynamicTagTimerCapture.setTag(it.key, it.value) }
-    return dynamicTagTimerCapture
+    commonTags.forEach { it.requireValidMicrometerName() }
+    return DynamicTagTimerImpl<T>(
+      meterRegistry = registry,
+      name = metricHandle(category, name),
+      description = description,
+      commonTags = commonTags + this.allMetricsCommonTags,
+      extractor = tagValueExtractor,
+      extractorOnError = tagValueExtractorOnError,
+    )
   }
 
   override fun createCounterFactory(

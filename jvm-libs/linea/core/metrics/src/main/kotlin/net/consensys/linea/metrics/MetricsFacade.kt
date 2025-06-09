@@ -2,7 +2,6 @@ package net.consensys.linea.metrics
 
 import java.util.concurrent.Callable
 import java.util.concurrent.CompletableFuture
-import java.util.function.Function
 import java.util.function.Supplier
 
 data class Tag(val key: String, val value: String)
@@ -34,7 +33,7 @@ interface Timer {
   fun <T> captureTime(action: Callable<T>): T
 }
 
-interface TimerCapture<T> {
+interface DynamicTagTimer<T> {
   fun captureTime(f: CompletableFuture<T>): CompletableFuture<T>
   fun captureTime(action: Callable<T>): T
 }
@@ -75,10 +74,10 @@ interface MetricsFacade {
     category: MetricsCategory,
     name: String,
     description: String,
-    tagKey: String,
-    tagValueExtractorOnError: Function<Throwable, String>,
-    tagValueExtractor: Function<T, String>,
-  ): TimerCapture<T>
+    tagValueExtractorOnError: (Throwable) -> List<Tag>,
+    tagValueExtractor: (T) -> List<Tag>,
+    commonTags: List<Tag> = emptyList(),
+  ): DynamicTagTimer<T>
 
   fun createCounterFactory(
     category: MetricsCategory,

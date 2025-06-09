@@ -36,7 +36,7 @@ class TimerFactoryImpl(
   private val clock: Clock = Clock.SYSTEM,
 ) : TimerFactory {
 
-  private val timerProvider = io.micrometer.core.instrument.Timer.builder(name)
+  private val timerProvider = MicrometerTimer.builder(name)
     .description(description)
     .tags(*commonTags.flatMap { listOf(it.key, it.value) }.toTypedArray())
     .withRegistry(meterRegistry)

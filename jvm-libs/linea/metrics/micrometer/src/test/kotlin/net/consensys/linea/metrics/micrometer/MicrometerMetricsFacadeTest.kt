@@ -163,11 +163,9 @@ class MicrometerMetricsFacadeTest {
       category = TestCategory.TEST_CATEGORY,
       name = "some.dynamictag.timer.metric",
       description = "This is a test metric",
-      tagKey = "key",
-      tagValueExtractorOnError = { "unfound_key" },
-    ) {
-      "value"
-    }
+      tagValueExtractorOnError = { listOf(Tag(key = "key", value = "unfound_key")) },
+      tagValueExtractor = { listOf(Tag(key = "key", value = "value")) },
+    )
 
     timer.captureTime(::mockTimer)
     val createdTimer = meterRegistry.find("linea.test.test.category.some.dynamictag.timer.metric").timer()
@@ -249,11 +247,9 @@ class MicrometerMetricsFacadeTest {
       category = TestCategory.TEST_CATEGORY,
       name = "some.dynamictag.timer.metric",
       description = "This is a test metric",
-      tagKey = "key",
-      tagValueExtractorOnError = { "unfound_key" },
-    ) {
-      "value"
-    }
+      tagValueExtractorOnError = { listOf(Tag("key", "unfound_key")) },
+      tagValueExtractor = { listOf(Tag("key", "value")) },
+    )
     timer.captureTime {}
     val createdTimer = meterRegistry.find("test.category.some.dynamictag.timer.metric").timer()
     assertThat(createdTimer).isNotNull
