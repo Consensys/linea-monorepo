@@ -26,7 +26,7 @@ wiremock = "3.13.0"
 logcaptor = "2.11.0"
 
 # Runtime
-arithmetization="beta-v2.1-rc16.2"
+arithmetization="beta-v3.1-rc2"
 besu = "25.5.0-linea3"
 blobCompressor = "1.2.2"
 blobShnarfCalculator = "1.2.0"
@@ -41,7 +41,7 @@ kotlinxDatetime = "0.6.2"
 ktlint = "0.50.0"
 lineaKotlin = "0.1.0"
 log4j = "2.24.1"
-micrometer = "1.12.13"
+micrometer = "1.8.4"
 netty = "4.1.92.Final"
 picoli = "4.7.6"
 slf4j="1.7.36"
@@ -51,4 +51,5 @@ vertx = "4.5.14"
 web3j = "4.12.2"
 
 # Other
+googleJavaFormat = "1.27.0"
 dependencyLicenseReport = "2.9"
