@@ -440,7 +440,8 @@ class L1DependentApp(
       log = logger,
     )
 
-    val batchesLimit = configs.conflation.blobCompression.batchesLimit ?: (configs.conflation.proofAggregation.proofsLimit - 1U)
+    val batchesLimit = configs.conflation.blobCompression.batchesLimit
+      ?: (configs.conflation.proofAggregation.proofsLimit - 1U)
     GlobalBlobAwareConflationCalculator(
       conflationCalculator = globalCalculator,
       blobCalculator = compressedBlobCalculator,
