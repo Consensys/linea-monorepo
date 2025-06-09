@@ -29,10 +29,10 @@ class TimerAdapter(val adaptee: MicrometerTimer, val clock: Clock) : Timer {
 }
 
 class TimerFactoryImpl(
-  private val meterRegistry: MeterRegistry,
-  private val name: String,
-  private val description: String,
-  private val commonTags: List<Tag>,
+  meterRegistry: MeterRegistry,
+  name: String,
+  description: String,
+  commonTags: List<Tag>,
   private val clock: Clock = Clock.SYSTEM,
 ) : TimerFactory {
 
@@ -45,7 +45,7 @@ class TimerFactoryImpl(
     commonTags.forEach { it.requireValidMicrometerName() }
   }
 
-  fun getTimer(tags: List<Tag>): io.micrometer.core.instrument.Timer {
+  fun getTimer(tags: List<Tag>): MicrometerTimer {
     tags.forEach { it.requireValidMicrometerName() }
     return timerProvider.withTags(*tags.flatMap { listOf(it.key, it.value) }.toTypedArray())
   }

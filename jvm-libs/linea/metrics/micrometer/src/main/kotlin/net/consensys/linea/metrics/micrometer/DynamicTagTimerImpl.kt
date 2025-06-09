@@ -18,9 +18,9 @@ import io.micrometer.core.instrument.Timer as MicrometerTimer
  */
 class DynamicTagTimerImpl<T> (
   private val meterRegistry: MeterRegistry,
-  private val name: String,
-  private val description: String,
-  private val commonTags: List<Tag>,
+  name: String,
+  description: String,
+  commonTags: List<Tag>,
   private val clock: Clock = Clock.SYSTEM,
   private val extractor: (T) -> List<Tag>,
   private val extractorOnError: (Throwable) -> List<Tag>,
