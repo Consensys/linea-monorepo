@@ -13,34 +13,40 @@ import tech.pegasys.teku.infrastructure.async.SafeFuture
 class Web3jEthApiClientWithRetries(
   val vertx: Vertx,
   val ethApiClient: EthApiClient,
-  val requestRetryConfig: RetryConfig
+  val requestRetryConfig: RetryConfig,
 ) : EthApiClient {
 
   private fun <T> retry(
-    fn: () -> SafeFuture<T>
+    fn: () -> SafeFuture<T>,
   ): SafeFuture<T> {
     return AsyncRetryer.retry(
       vertx = vertx,
       backoffDelay = requestRetryConfig.backoffDelay,
       timeout = requestRetryConfig.timeout,
       maxRetries = requestRetryConfig.maxRetries?.toInt(),
-      action = fn
+      action = fn,
     )
   }
 
-  override fun getBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
-    return retry { ethApiClient.getBlockByNumber(blockParameter) }
+  override fun getChainId(): SafeFuture<ULong> {
+    return retry { ethApiClient.getChainId() }
   }
 
-  override fun getBlockByNumberWithoutTransactionsData(blockParameter: BlockParameter): SafeFuture<BlockWithTxHashes?> {
-    return retry { ethApiClient.getBlockByNumberWithoutTransactionsData(blockParameter) }
+  override fun findBlockByNumber(blockParameter: BlockParameter): SafeFuture<Block?> {
+    return retry { ethApiClient.findBlockByNumber(blockParameter) }
+  }
+
+  override fun findBlockByNumberWithoutTransactionsData(
+    blockParameter: BlockParameter,
+  ): SafeFuture<BlockWithTxHashes?> {
+    return retry { ethApiClient.findBlockByNumberWithoutTransactionsData(blockParameter) }
   }
 
   override fun getLogs(
     fromBlock: BlockParameter,
     toBlock: BlockParameter,
     address: String,
-    topics: List<String?>
+    topics: List<String?>,
   ): SafeFuture<List<EthLog>> {
     return retry { ethApiClient.getLogs(fromBlock, toBlock, address, topics) }
   }

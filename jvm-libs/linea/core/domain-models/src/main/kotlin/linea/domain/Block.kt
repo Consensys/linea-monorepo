@@ -25,7 +25,7 @@ data class BlockData<TxData>(
   val nonce: ULong,
   val baseFeePerGas: ULong? = null, // Optional field for EIP-1559 blocks
   val transactions: List<TxData> = emptyList(), // List of transaction hashes
-  val ommers: List<ByteArray> = emptyList() // List of uncle block hashes
+  val ommers: List<ByteArray> = emptyList(), // List of uncle block hashes
 ) {
   companion object {
     // companion object  to allow static extension functions
@@ -41,7 +41,6 @@ data class BlockData<TxData>(
 
   private val isTransactionHashOnly: Boolean
     get() = transactions.isNotEmpty() && transactions.first() is ByteArray
-  val numberAndHash = BlockNumberAndHash(this.number, this.hash)
   val headerSummary = BlockHeaderSummary(this.number, this.hash, Instant.fromEpochSeconds(this.timestamp.toLong()))
 
   override fun equals(other: Any?): Boolean {
@@ -68,17 +67,16 @@ data class BlockData<TxData>(
     if (nonce != other.nonce) return false
     if (baseFeePerGas != other.baseFeePerGas) return false
     if (!transactions.zip(other.transactions).all { (thisTx, otherTx) ->
-      when {
-        thisTx is ByteArray && otherTx is ByteArray -> thisTx.contentEquals(otherTx)
-        thisTx is Transaction && otherTx is Transaction -> thisTx == otherTx
-        else -> false
+        when {
+          thisTx is ByteArray && otherTx is ByteArray -> thisTx.contentEquals(otherTx)
+          thisTx is Transaction && otherTx is Transaction -> thisTx == otherTx
+          else -> false
+        }
       }
-    }
     ) {
       return false
     }
     if (ommers != other.ommers) return false
-    if (numberAndHash != other.numberAndHash) return false
     if (headerSummary != other.headerSummary) return false
 
     return true
@@ -110,7 +108,6 @@ data class BlockData<TxData>(
       }
     }
     result = 31 * result + ommers.hashCode()
-    result = 31 * result + numberAndHash.hashCode()
     result = 31 * result + headerSummary.hashCode()
     return result
   }
@@ -147,7 +144,7 @@ data class BlockData<TxData>(
 data class BlockHeaderSummary(
   val number: ULong,
   val hash: ByteArray,
-  val timestamp: Instant
+  val timestamp: Instant,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true

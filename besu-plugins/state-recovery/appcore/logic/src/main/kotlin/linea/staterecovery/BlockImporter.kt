@@ -10,7 +10,7 @@ import kotlin.time.Duration.Companion.seconds
 
 data class ImportResult(
   val blockNumber: ULong,
-  val zkStateRootHash: ByteArray
+  val zkStateRootHash: ByteArray,
 ) {
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
@@ -39,28 +39,30 @@ class BlockImporterAndStateVerifierV1(
   private val vertx: Vertx,
   private val elClient: ExecutionLayerClient,
   private val stateManagerClient: StateManagerClientV1,
-  private val stateManagerImportTimeoutPerBlock: Duration
+  private val stateManagerImportTimeoutPerBlock: Duration,
 ) : BlockImporterAndStateVerifier {
   override fun importBlocks(blocks: List<BlockFromL1RecoveredData>): SafeFuture<ImportResult> {
+    val sortedBlocks = blocks.sortedBy { it.header.blockNumber }
+    val lastBlockNumber = sortedBlocks.last().header.blockNumber
     return elClient
-      .lineaEngineImportBlocksFromBlob(blocks)
+      .lineaEngineImportBlocksFromBlob(sortedBlocks)
       .thenCompose {
         getBlockStateRootHash(
-          blockNumber = blocks.last().header.blockNumber,
-          timeout = stateManagerImportTimeoutPerBlock.times(blocks.size)
+          blockNumber = lastBlockNumber,
+          timeout = stateManagerImportTimeoutPerBlock.times(blocks.size),
         )
       }
       .thenApply { stateRootHash ->
         ImportResult(
-          blockNumber = blocks.last().header.blockNumber,
-          zkStateRootHash = stateRootHash
+          blockNumber = lastBlockNumber,
+          zkStateRootHash = stateRootHash,
         )
       }
   }
 
   private fun getBlockStateRootHash(
     blockNumber: ULong,
-    timeout: Duration
+    timeout: Duration,
   ): SafeFuture<ByteArray> {
     return AsyncRetryer
       .retry(
@@ -68,7 +70,7 @@ class BlockImporterAndStateVerifierV1(
         backoffDelay = 1.seconds,
         timeout = timeout,
         stopRetriesPredicate = { headBlockNumber -> headBlockNumber >= blockNumber },
-        action = { stateManagerClient.rollupGetHeadBlockNumber() }
+        action = { stateManagerClient.rollupGetHeadBlockNumber() },
       )
       .thenCompose {
         stateManagerClient.rollupGetStateMerkleProof(BlockInterval(blockNumber, blockNumber))

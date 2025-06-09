@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity ^0.8.19;
+pragma solidity 0.8.30;
 
 import { IPauseManager } from "../../../security/pausing/interfaces/IPauseManager.sol";
 import { IPermissionsManager } from "../../../security/access/interfaces/IPermissionsManager.sol";
@@ -155,11 +155,6 @@ interface ITokenBridge {
    * @dev Thrown when attempting to bridge a reserved token.
    */
   error ReservedToken(address token);
-
-  /**
-   * @dev Thrown when the remote token bridge is already set.
-   */
-  error RemoteTokenBridgeAlreadySet(address remoteTokenBridge);
 
   /**
    * @dev Thrown when attempting to reserve an already bridged token.

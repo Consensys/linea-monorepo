@@ -2,7 +2,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import CloseIcon from "@/assets/icons/close.svg";
 import styles from "./modal.module.scss";
-import { useEffect, useState, type JSX } from "react";
+import { JSX, useEffect, useState } from "react";
 import clsx from "clsx";
 
 type Props = {

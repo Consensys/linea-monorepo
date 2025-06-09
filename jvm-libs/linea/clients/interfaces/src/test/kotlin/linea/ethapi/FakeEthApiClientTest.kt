@@ -22,26 +22,26 @@ class FakeEthApiClientTest {
     transactionIndex = 0UL,
     logIndex = 0UL,
     blockHash = "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdef".decodeHex(),
-    removed = false
+    removed = false,
   )
   private val initialLogs = listOf(
     templateLog.copy(
       blockNumber = 100UL,
-      topics = listOf(testTopic1.decodeHex(), testTopic2.decodeHex())
+      topics = listOf(testTopic1.decodeHex(), testTopic2.decodeHex()),
     ),
     templateLog.copy(
       blockNumber = 200UL,
-      topics = listOf(testTopic1.decodeHex())
+      topics = listOf(testTopic1.decodeHex()),
     ),
     templateLog.copy(
       blockNumber = 250UL,
-      topics = listOf(testTopic2.decodeHex())
+      topics = listOf(testTopic2.decodeHex()),
     ),
     templateLog.copy(
       blockNumber = 300UL,
       address = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb01".decodeHex(),
-      topics = listOf(testTopic2.decodeHex())
-    )
+      topics = listOf(testTopic2.decodeHex()),
+    ),
   )
 
   @BeforeEach
@@ -55,7 +55,7 @@ class FakeEthApiClientTest {
       fromBlock = 0UL.toBlockParameter(),
       toBlock = 300UL.toBlockParameter(),
       address = testAddress,
-      emptyList()
+      emptyList(),
     ).get()
 
     assertThat(logs).isEqualTo(initialLogs.take(3))
@@ -67,7 +67,7 @@ class FakeEthApiClientTest {
       fromBlock = 0UL.toBlockParameter(),
       toBlock = 200UL.toBlockParameter(),
       address = testAddress,
-      emptyList()
+      emptyList(),
     ).get()
 
     assertThat(logs).isEqualTo(initialLogs.take(2))
@@ -79,7 +79,7 @@ class FakeEthApiClientTest {
       fromBlock = 0UL.toBlockParameter(),
       toBlock = 300UL.toBlockParameter(),
       address = testAddress,
-      listOf(testTopic1)
+      listOf(testTopic1),
     ).get()
       .also { logs ->
         assertThat(logs).isEqualTo(initialLogs.take(2))
@@ -89,7 +89,7 @@ class FakeEthApiClientTest {
       fromBlock = 0UL.toBlockParameter(),
       toBlock = 300UL.toBlockParameter(),
       address = testAddress,
-      listOf(null, testTopic2)
+      listOf(null, testTopic2),
     ).get()
       .also { logs ->
         assertThat(logs).isEqualTo(listOf(initialLogs[0]))
@@ -102,7 +102,7 @@ class FakeEthApiClientTest {
       fromBlock = 0UL.toBlockParameter(),
       toBlock = 300UL.toBlockParameter(),
       address = testAddress,
-      listOf("0x3333333333333333333333333333333333333333333333333333333333333333")
+      listOf("0x3333333333333333333333333333333333333333333333333333333333333333"),
     ).get()
 
     assertThat(logs).isEmpty()
@@ -114,7 +114,7 @@ class FakeEthApiClientTest {
       fromBlock = 0UL.toBlockParameter(),
       toBlock = 300UL.toBlockParameter(),
       address = testAddress,
-      listOf(null)
+      listOf(null),
     ).get()
 
     assertThat(logs).isEqualTo(initialLogs.take(3))
@@ -128,18 +128,18 @@ class FakeEthApiClientTest {
         BlockParameter.Tag.FINALIZED to 100UL,
         BlockParameter.Tag.SAFE to 110UL,
         BlockParameter.Tag.LATEST to 120UL,
-        BlockParameter.Tag.PENDING to 121UL
-      )
+        BlockParameter.Tag.PENDING to 121UL,
+      ),
     ).also { client ->
       client.setFinalizedBlockTag(500UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get()?.number).isEqualTo(500UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get()?.number).isEqualTo(500UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get()?.number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get().number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get().number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get().number).isEqualTo(500UL)
 
       client.setFinalizedBlockTag(20UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get()?.number).isEqualTo(500UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get()?.number).isEqualTo(500UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get()?.number).isEqualTo(20UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get().number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get().number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get().number).isEqualTo(20UL)
     }
   }
 
@@ -151,19 +151,19 @@ class FakeEthApiClientTest {
         BlockParameter.Tag.FINALIZED to 100UL,
         BlockParameter.Tag.SAFE to 110UL,
         BlockParameter.Tag.LATEST to 120UL,
-        BlockParameter.Tag.PENDING to 121UL
-      )
+        BlockParameter.Tag.PENDING to 121UL,
+      ),
     ).also { client ->
       client.setSafeBlockTag(500UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get()?.number).isEqualTo(500UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get()?.number).isEqualTo(500UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get()?.number).isEqualTo(100UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get().number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get().number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get().number).isEqualTo(100UL)
 
       // set SAFE back, should not affect FINALIZED ONLY
       client.setSafeBlockTag(20UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get()?.number).isEqualTo(500UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get()?.number).isEqualTo(20UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get()?.number).isEqualTo(20UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get().number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get().number).isEqualTo(20UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get().number).isEqualTo(20UL)
     }
   }
 
@@ -175,19 +175,19 @@ class FakeEthApiClientTest {
         BlockParameter.Tag.FINALIZED to 100UL,
         BlockParameter.Tag.SAFE to 110UL,
         BlockParameter.Tag.LATEST to 120UL,
-        BlockParameter.Tag.PENDING to 121UL
-      )
+        BlockParameter.Tag.PENDING to 121UL,
+      ),
     ).also { client ->
       client.setLatestBlockTag(500UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get()?.number).isEqualTo(500UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get()?.number).isEqualTo(110UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get()?.number).isEqualTo(100UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get().number).isEqualTo(500UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get().number).isEqualTo(110UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get().number).isEqualTo(100UL)
 
       // set Latest back, should not affect SAFE and FINALIZED
       client.setLatestBlockTag(20UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get()?.number).isEqualTo(20UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get()?.number).isEqualTo(20UL)
-      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get()?.number).isEqualTo(20UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.LATEST).get().number).isEqualTo(20UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.SAFE).get().number).isEqualTo(20UL)
+      assertThat(client.getBlockByNumber(BlockParameter.Tag.FINALIZED).get().number).isEqualTo(20UL)
     }
   }
 }

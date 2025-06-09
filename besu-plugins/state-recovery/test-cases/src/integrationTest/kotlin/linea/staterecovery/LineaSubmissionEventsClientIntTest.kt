@@ -31,26 +31,23 @@ import kotlin.time.toJavaDuration
 @ExtendWith(VertxExtension::class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class LineaSubmissionEventsClientIntTest {
-  private val testDataDir = "testdata/coordinator/prover/v2/"
+  private val testDataDir = "testdata/coordinator/prover/v3/submissionAndFinalization/"
   private lateinit var rollupDeploymentResult: LineaRollupDeploymentResult
 
-  // 1-block-per-blob test data has 3 aggregations: 1..7, 8..14, 15..21.
-  // We will upgrade the contract in the middle of 2nd aggregation: 12
-  // shall submit blob 12, stop submission, upgrade the contract and resume with blob 13
-  // val lastSubmittedBlobs = blobs.filter { it.startBlockNumber == 7UL }
+  // 1-block-per-blob test data has 2 aggregations: 1..10, 11..20 with 1 more than the max blob submission
   private lateinit var aggregationsAndBlobs: List<AggregationAndBlobs>
   private lateinit var submissionEventsFetcher: LineaRollupSubmissionEventsClient
 
   private fun setupTest(
-    vertx: Vertx
+    vertx: Vertx,
   ) {
     configureLoggers(
       rootLevel = Level.INFO,
-      "net.consensys.linea.contract.Web3JContractAsyncHelper" to Level.WARN,
+      "net.consensys.linea.contract.Web3JContractAsyncHelper" to Level.WARN, // silence noisy gasPrice Caps logs
       "test.clients.l1.executionlayer" to Level.INFO,
       "test.clients.l1.web3j-default" to Level.INFO,
       "test.clients.l1.linea-contract" to Level.INFO,
-      "test.clients.l1.events-fetcher" to Level.DEBUG
+      "test.clients.l1.events-fetcher" to Level.DEBUG,
     )
 
     val rollupDeploymentFuture = ContractsManager.get()
@@ -60,13 +57,13 @@ class LineaSubmissionEventsClientIntTest {
       blobsResponsesDir = "$testDataDir/compression/responses",
       aggregationsResponsesDir = "$testDataDir/aggregation/responses",
       numberOfAggregations = 7,
-      extraBlobsWithoutAggregation = 3
+      extraBlobsWithoutAggregation = 3,
     )
     // wait smc deployment finishes
     rollupDeploymentResult = rollupDeploymentFuture.get()
     submissionEventsFetcher = createSubmissionEventsClient(
       vertx = vertx,
-      contractAddress = rollupDeploymentResult.contractAddress
+      contractAddress = rollupDeploymentResult.contractAddress,
     )
 
     submitBlobsAndAggregationsAndWaitExecution(
@@ -74,24 +71,24 @@ class LineaSubmissionEventsClientIntTest {
       contractClientForAggregationSubmission = connectToLineaRollupContract(
         contractAddress = rollupDeploymentResult.contractAddress,
         transactionManager = rollupDeploymentResult.rollupOperators[1].txManager,
-        smartContractErrors = lineaRollupContractErrors
+        smartContractErrors = lineaRollupContractErrors,
       ),
       aggregationsAndBlobs = aggregationsAndBlobs,
-      blobChunksMaxSize = 6,
+      blobChunksMaxSize = 9,
       l1Web3jClient = Web3jClientManager.l1Client,
-      waitTimeout = 4.minutes
+      waitTimeout = 4.minutes,
     )
   }
 
   private fun createSubmissionEventsClient(
     vertx: Vertx,
-    contractAddress: String
+    contractAddress: String,
   ): LineaRollupSubmissionEventsClient {
     val log = LogManager.getLogger("test.clients.l1.events-fetcher")
     val eventsFetcherWeb3jClient = Web3jClientManager.buildL1Client(
       log = log,
       requestResponseLogLevel = Level.DEBUG,
-      failuresLogLevel = Level.WARN
+      failuresLogLevel = Level.WARN,
     )
     return LineaSubmissionEventsClientImpl(
       logsSearcher = EthLogsSearcherImpl(
@@ -99,16 +96,16 @@ class LineaSubmissionEventsClientIntTest {
         ethApiClient = createEthApiClient(
           web3jClient = eventsFetcherWeb3jClient,
           requestRetryConfig = RetryConfig.noRetries,
-          vertx = null
+          vertx = null,
         ),
         config = EthLogsSearcherImpl.Config(
-          loopSuccessBackoffDelay = 1.milliseconds
+          loopSuccessBackoffDelay = 1.milliseconds,
         ),
-        log = log
+        log = log,
       ),
       smartContractAddress = contractAddress,
       l1LatestSearchBlock = BlockParameter.Tag.LATEST,
-      logsBlockChunkSize = 100
+      logsBlockChunkSize = 100,
     )
   }
 
@@ -128,8 +125,8 @@ class LineaSubmissionEventsClientIntTest {
           submissionEventsFetcher
             .findFinalizationAndDataSubmissionV3Events(
               fromL1BlockNumber = BlockParameter.Tag.EARLIEST,
-              finalizationStartBlockNumber = expectedFinalizationEvent.startBlockNumber
-            )
+              finalizationStartBlockNumber = expectedFinalizationEvent.startBlockNumber,
+            ),
         )
           .succeedsWithin(1.minutes.toJavaDuration())
           .extracting { submissionEvents ->
@@ -149,8 +146,8 @@ class LineaSubmissionEventsClientIntTest {
       submissionEventsFetcher
         .findFinalizationAndDataSubmissionV3Events(
           fromL1BlockNumber = BlockParameter.Tag.EARLIEST,
-          finalizationStartBlockNumber = invalidStartBlockNumber
-        ).get()
+          finalizationStartBlockNumber = invalidStartBlockNumber,
+        ).get(),
     )
       .isNull()
   }
@@ -162,7 +159,7 @@ class LineaSubmissionEventsClientIntTest {
     submissionEventsFetcher
       .findFinalizationAndDataSubmissionV3EventsContainingL2BlockNumber(
         fromL1BlockNumber = BlockParameter.Tag.EARLIEST,
-        l2BlockNumber = invalidStartBlockNumber
+        l2BlockNumber = invalidStartBlockNumber,
       ).get()
       .also { result ->
         assertThat(result).isNotNull
@@ -172,18 +169,18 @@ class LineaSubmissionEventsClientIntTest {
   }
 
   private fun getExpectedSubmissionEventsFromRecords(
-    aggregationsAndBlobs: List<AggregationAndBlobs>
+    aggregationsAndBlobs: List<AggregationAndBlobs>,
   ): List<Pair<DataFinalizedV3, List<DataSubmittedV3>>> {
     return aggregationsAndBlobs
       .filter { it.aggregation != null }
       .map { (aggregation, aggBlobs) ->
         val expectedDataSubmittedEvents: List<DataSubmittedV3> = aggBlobs
-          .chunked(6)
+          .chunked(9)
           .map { blobsChunk ->
             DataSubmittedV3(
               parentShnarf = blobsChunk.first().blobCompressionProof!!.prevShnarf,
               shnarf = blobsChunk.last().expectedShnarf,
-              finalStateRootHash = blobsChunk.last().blobCompressionProof!!.finalStateRootHash
+              finalStateRootHash = blobsChunk.last().blobCompressionProof!!.finalStateRootHash,
             )
           }
 
@@ -193,7 +190,7 @@ class LineaSubmissionEventsClientIntTest {
           endBlockNumber = aggregation.endBlockNumber,
           shnarf = aggBlobs.last().expectedShnarf,
           parentStateRootHash = aggBlobs.first().blobCompressionProof!!.parentStateRootHash,
-          finalStateRootHash = aggBlobs.last().blobCompressionProof!!.finalStateRootHash
+          finalStateRootHash = aggBlobs.last().blobCompressionProof!!.finalStateRootHash,
         ) to expectedDataSubmittedEvents
       }
   }

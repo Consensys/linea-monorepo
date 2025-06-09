@@ -2,7 +2,7 @@
 SHELL := /usr/bin/env bash
 CORSET_ROOT := $(shell pwd)/../go-corset
 
-VERSION := $(shell git rev-parse --short HEAD)
+VERSION := $(shell git rev-parse --short=7 HEAD)
 
 LINUX_AMD64_FLAGS := CGO_ENABLED=1 CC="x86_64-linux-musl-gcc" CXX="x86_64-linux-musl-g++" GOOS="linux" GOARCH="amd64"
 DARWIN_ARM64_FLAGS := CGO_ENABLED=1 GOOS="linux" GOARCH="arm64"
@@ -61,7 +61,7 @@ copy-prover-assets:
 	aws s3 sync --exclude "*prover/dev*" --exclude "*05b9ef1*" --exclude "*05b9ef1*" --exclude "*96e3a19*" --exclude "*a9e4681*" prover-assets s3://zk-uat-prover/prover-assets/ --profile=zk-uat-s3-access
 
 download-srs:
-	aws s3 sync s3://gnark-ignition/with_lines/ ./prover-assets/kzgsrs --exclude "*" --include "*.memdump"
+	aws s3 sync s3://prover-assets/kzgsrs/ ./prover-assets/kzgsrs --exclude "*" --include "*.memdump"
 
 ###
 ### Controller

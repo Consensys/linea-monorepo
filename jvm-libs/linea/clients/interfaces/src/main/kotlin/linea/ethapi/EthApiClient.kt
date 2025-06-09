@@ -6,11 +6,29 @@ import linea.domain.BlockWithTxHashes
 import tech.pegasys.teku.infrastructure.async.SafeFuture
 
 interface EthApiClient : EthLogsClient {
-  fun getBlockByNumber(
-    blockParameter: BlockParameter
+  fun getChainId(): SafeFuture<ULong>
+
+  fun findBlockByNumber(
+    blockParameter: BlockParameter,
   ): SafeFuture<Block?>
 
-  fun getBlockByNumberWithoutTransactionsData(
-    blockParameter: BlockParameter
+  fun getBlockByNumber(
+    blockParameter: BlockParameter,
+  ): SafeFuture<Block> {
+    return findBlockByNumber(blockParameter).thenApply { block ->
+      block ?: throw IllegalArgumentException("block=$blockParameter not found!")
+    }
+  }
+
+  fun findBlockByNumberWithoutTransactionsData(
+    blockParameter: BlockParameter,
   ): SafeFuture<BlockWithTxHashes?>
+
+  fun getBlockByNumberWithoutTransactionsData(
+    blockParameter: BlockParameter,
+  ): SafeFuture<BlockWithTxHashes> {
+    return findBlockByNumberWithoutTransactionsData(blockParameter).thenApply { block ->
+      block ?: throw IllegalArgumentException("block=$blockParameter not found!")
+    }
+  }
 }

@@ -1,6 +1,7 @@
 package linea.contrat.events
 
 import linea.contract.events.L1RollingHashUpdatedEvent
+import linea.contract.events.L2RollingHashUpdatedEvent
 import linea.contract.events.MessageSentEvent
 import linea.domain.EthLog
 import linea.domain.EthLogEvent
@@ -14,14 +15,14 @@ fun createMessageSentEthLogV1(
   blockNumber: ULong = 100UL,
   logIndex: ULong = 0UL,
   transactionIndex: ULong = 0UL,
-  contractAddress: String,
-  from: String,
-  to: String,
+  contractAddress: String = Random.nextBytes(20).encodeHex(prefix = true),
+  from: String = Random.nextBytes(20).encodeHex(prefix = true),
+  to: String = Random.nextBytes(20).encodeHex(prefix = true),
   fee: ULong = 1_000UL,
   value: ULong = 2_000UL,
   messageNumber: ULong = 10_000UL,
   calldata: ByteArray = "deadbeef".decodeHex(),
-  messageHash: ByteArray
+  messageHash: ByteArray = Random.nextBytes(32),
 ): EthLog {
   return EthLog(
     removed = false,
@@ -39,11 +40,11 @@ fun createMessageSentEthLogV1(
         calldata.encodeHex(prefix = false) // calldata
       ).decodeHex(),
     topics = listOf(
-      "0xe856c2b8bd4eb0027ce32eeaf595c21b0b6b4644b326e5b7bd80a1cf8db72e6c".decodeHex(),
+      MessageSentEvent.topic.decodeHex(),
       from.decodeHex().padLeft(32), // from
       to.decodeHex().padLeft(32), // to
-      messageHash // messageHash
-    )
+      messageHash, // messageHash
+    ),
   )
 }
 
@@ -56,7 +57,7 @@ fun createL1RollingHashUpdatedEthLogV1(
   rollingHash: ByteArray = Random.nextBytes(32),
   messageHash: ByteArray = Random.nextBytes(32),
   transactionHash: ByteArray = Random.nextBytes(32),
-  blockHash: ByteArray = Random.nextBytes(32)
+  blockHash: ByteArray = Random.nextBytes(32),
 ): EthLog {
   return EthLog(
     removed = false,
@@ -68,17 +69,17 @@ fun createL1RollingHashUpdatedEthLogV1(
     address = contractAddress.decodeHex(),
     data = "0x".decodeHex(),
     topics = listOf(
-      "0xea3b023b4c8680d4b4824f0143132c95476359a2bb70a81d6c5a36f6918f6339".decodeHex(), // topic is static
+      L1RollingHashUpdatedEvent.topic.decodeHex(), // topic is static
       messageNumber.toHexStringUInt256().decodeHex(),
       rollingHash,
-      messageHash
-    )
+      messageHash,
+    ),
   )
 }
 
 data class L1MessageSentV1EthLogs(
   val messageSent: EthLogEvent<MessageSentEvent>,
-  val l1RollingHashUpdated: EthLogEvent<L1RollingHashUpdatedEvent>
+  val l1RollingHashUpdated: EthLogEvent<L1RollingHashUpdatedEvent>,
 )
 
 fun createL1MessageSentV1Logs(
@@ -93,7 +94,7 @@ fun createL1MessageSentV1Logs(
   messageNumber: ULong = 10_000UL,
   calldata: ByteArray = "deadbeef".decodeHex(),
   messageHash: ByteArray,
-  rollingHash: ByteArray
+  rollingHash: ByteArray,
 ): L1MessageSentV1EthLogs {
   val l1RollingHashUpdated = createL1RollingHashUpdatedEthLogV1(
     blockNumber = blockNumber,
@@ -102,7 +103,7 @@ fun createL1MessageSentV1Logs(
     contractAddress = contractAddress,
     messageNumber = messageNumber,
     rollingHash = rollingHash,
-    messageHash = messageHash
+    messageHash = messageHash,
   )
   val messageSent = createMessageSentEthLogV1(
     blockNumber = blockNumber,
@@ -115,12 +116,12 @@ fun createL1MessageSentV1Logs(
     value = value,
     messageNumber = messageNumber,
     calldata = calldata,
-    messageHash = messageHash
+    messageHash = messageHash,
   )
 
   return L1MessageSentV1EthLogs(
     messageSent = MessageSentEvent.fromEthLog(messageSent),
-    l1RollingHashUpdated = L1RollingHashUpdatedEvent.fromEthLog(l1RollingHashUpdated)
+    l1RollingHashUpdated = L1RollingHashUpdatedEvent.fromEthLog(l1RollingHashUpdated),
   )
 }
 
@@ -128,11 +129,11 @@ fun createL2RollingHashUpdatedEthLogV1(
   blockNumber: ULong,
   logIndex: ULong = 0UL,
   transactionIndex: ULong = 0UL,
-  contractAddress: String,
+  contractAddress: String = Random.nextBytes(20).encodeHex(prefix = true),
   messageNumber: ULong = 10_000UL,
   rollingHash: ByteArray = Random.nextBytes(32),
   transactionHash: ByteArray = Random.nextBytes(32),
-  blockHash: ByteArray = Random.nextBytes(32)
+  blockHash: ByteArray = Random.nextBytes(32),
 ): EthLog {
   return EthLog(
     removed = false,
@@ -144,9 +145,9 @@ fun createL2RollingHashUpdatedEthLogV1(
     address = contractAddress.decodeHex(),
     data = "0x".decodeHex(),
     topics = listOf(
-      "0x99b65a4301b38c09fb6a5f27052d73e8372bbe8f6779d678bfe8a41b66cce7ac".decodeHex(), // topic is static
+      L2RollingHashUpdatedEvent.topic.decodeHex(), // topic is static
       messageNumber.toHexStringUInt256().decodeHex(),
-      rollingHash
-    )
+      rollingHash,
+    ),
   )
 }

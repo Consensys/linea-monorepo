@@ -3,10 +3,10 @@ package linea.staterecovery
 import io.vertx.core.Vertx
 import kotlinx.datetime.Instant
 import linea.blob.BlobCompressor
+import linea.blob.BlobCompressorVersion
 import linea.blob.GoBackedBlobCompressor
 import linea.kotlin.encodeHex
 import linea.rlp.RLP
-import net.consensys.linea.blob.BlobCompressorVersion
 import net.consensys.linea.blob.BlobDecompressorVersion
 import net.consensys.linea.blob.GoNativeBlobDecompressorFactory
 import net.consensys.linea.nativecompressor.CompressorTestData
@@ -29,7 +29,7 @@ class BlobDecompressorAndDeserializerV1Test {
   private val blockStaticFields = BlockHeaderStaticFields(
     coinbase = Address.ZERO.toArray(),
     gasLimit = 30_000_000UL,
-    difficulty = 0UL
+    difficulty = 0UL,
   )
   private lateinit var decompressorToDomain: BlobDecompressorAndDeserializer
   private lateinit var vertx: Vertx
@@ -38,10 +38,10 @@ class BlobDecompressorAndDeserializerV1Test {
   fun setUp() {
     vertx = Vertx.vertx()
     compressor = GoBackedBlobCompressor.getInstance(
-      compressorVersion = BlobCompressorVersion.V1_0_1,
-      dataLimit = 124u * 1024u
+      compressorVersion = BlobCompressorVersion.V1_2,
+      dataLimit = 124 * 1024,
     )
-    val decompressor = GoNativeBlobDecompressorFactory.getInstance(BlobDecompressorVersion.V1_1_0)
+    val decompressor = GoNativeBlobDecompressorFactory.getInstance(BlobDecompressorVersion.V1_2_0)
     decompressorToDomain = BlobDecompressorToDomainV1(decompressor, blockStaticFields, vertx)
   }
 
@@ -57,7 +57,7 @@ class BlobDecompressorAndDeserializerV1Test {
   }
 
   private fun assertBlockCompressionAndDecompression(
-    blocksRLP: List<ByteArray>
+    blocksRLP: List<ByteArray>,
   ) {
     val blocks = blocksRLP.map(RLP::decodeBlockWithMainnetFunctions)
     val startingBlockNumber = blocks[0].header.number.toULong()
@@ -66,7 +66,7 @@ class BlobDecompressorAndDeserializerV1Test {
 
     val recoveredBlocks = decompressorToDomain.decompress(
       startBlockNumber = startingBlockNumber,
-      blobs = blobs
+      blobs = blobs,
     ).get()
     assertThat(recoveredBlocks[0].header.blockNumber).isEqualTo(startingBlockNumber)
 
@@ -77,7 +77,7 @@ class BlobDecompressorAndDeserializerV1Test {
 
   private fun assertBlockData(
     uncompressed: BlockFromL1RecoveredData,
-    original: Block
+    original: Block,
   ) {
     try {
       assertThat(uncompressed.header.blockNumber).isEqualTo(original.header.number.toULong())
@@ -94,14 +94,14 @@ class BlobDecompressorAndDeserializerV1Test {
         "uncompressed block does not match expected original: blockNumber: ${e.message} " +
           "\n original    =$original " +
           "\n uncompressed=$uncompressed ",
-        e
+        e,
       )
     }
   }
 
   private fun assertTransactionData(
     uncompressed: TransactionFromL1RecoveredData,
-    original: Transaction
+    original: Transaction,
   ) {
     assertThat(uncompressed.type).isEqualTo(original.type.serializedType.toUByte())
     assertThat(uncompressed.from).isEqualTo(original.sender.toArray())
