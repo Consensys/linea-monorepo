@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@bigmi/react": "0.3.1",
-    "@consensys/linea-sdk": "0.3.0",
+    "@consensys/linea-sdk": "workspace:*",
     "@dynamic-labs/ethereum": "4.19.7",
     "@dynamic-labs/sdk-react-core": "4.19.7",
     "@dynamic-labs/solana": "4.19.7",
@@ -44,14 +44,14 @@
     "date-fns": "4.1.0",
     "loglevel": "1.9.2",
     "motion": "12.10.1",
-    "next": "15.2.4",
+    "next": "15.3.3",
     "pino-pretty": "13.0.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "sharp": "0.33.5",
     "viem": "2.31.0",
     "wagmi": "2.15.6",
-    "zod": "3.24.2",
+    "zod": "3.25.56",
     "zustand": "4.5.4"
   },
   "devDependencies": {

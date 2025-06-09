@@ -1,5 +1,5 @@
 import { isAddress } from "viem";
-import * as z from "@zod/mini";
+import { z } from "zod/v4-mini";
 
 const chainConfigSchema = z.object({
   iconPath: z.string(),
@@ -42,6 +42,7 @@ export const configSchema = z.object({
   lifiApiKey: z.string().check(z.minLength(1)),
   lifiIntegrator: z.string().check(z.minLength(1)),
   onRamperApiKey: z.string().check(z.minLength(1)),
+  layerswapApiKey: z.string().check(z.minLength(1)),
   tokenListUrls: z.object({
     mainnet: z.string().check(z.trim(), z.url()),
     sepolia: z.string().check(z.trim(), z.url()),

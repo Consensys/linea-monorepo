@@ -1,8 +1,9 @@
+import type { NextConfig } from "next";
+
 const isProd = process.env.NEXT_PUBLIC_ENVIRONMENT === "production";
 const basePath = isProd ? "/hub/bridge" : "";
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
   basePath,
@@ -39,7 +40,8 @@ const nextConfig = {
 
     config.externals = [...(config.externals || []), "pino-pretty", "lokijs", "encoding"];
 
-    const fileLoaderRule = config.module.rules.find((rule) => rule.test?.test?.(".svg"));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const fileLoaderRule = config.module.rules.find((rule: any) => rule.test?.test?.(".svg"));
 
     config.module.rules.push(
       {
