@@ -3,6 +3,7 @@ package selfrecursion
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
+	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
@@ -16,10 +17,9 @@ func (ctx *SelfRecursionCtx) RootHashGlue() {
 	// Get the list of the root hashes (without the non-appended ones)
 	// Insert precomputed roots
 	var (
-		rootHashSis  =  []ifaces.Column{}
-		rootHashNonsis = []ifaces.Column{}
+		rootHashSis     = []ifaces.Column{}
+		rootHashNonsis  = []ifaces.Column{}
 		rootHashesClean = []ifaces.Column{}
-
 	)
 	if ctx.VortexCtx.IsNonEmptyPrecomputed() {
 		precompRoots := ctx.Columns.precompRoot

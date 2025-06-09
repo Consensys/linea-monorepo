@@ -116,7 +116,7 @@ func (ctx *SelfRecursionCtx) LinearHashAndMerkle() {
 // and return the mimcHashColumnSize
 // and the preimage column sizes per non sis round
 func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
-	numRoundNonSis int, roundQ int) (int, []int) {
+	numRoundNonSis int, round int) (int, []int) {
 	// Compute the concatenated hashes and preimages sizes
 	var (
 		mimcHashColumnSize      = utils.NextPowerOfTwo(ctx.VortexCtx.NbColsToOpen())
@@ -131,14 +131,14 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 
 		ctx.MIMCMetaData.NonSisLeaves = append(ctx.MIMCMetaData.NonSisLeaves,
 			ctx.comp.InsertCommit(
-				roundQ,
+				round,
 				ctx.concatenatedPrecomputedHashes(),
 				mimcHashColumnSize,
 			))
 
 		ctx.MIMCMetaData.ConcatenatedHashPreimages = append(ctx.MIMCMetaData.ConcatenatedHashPreimages,
 			ctx.comp.InsertCommit(
-				roundQ,
+				round,
 				ctx.concatenatedPrecomputedPreimages(),
 				precompPreimageSize,
 			))
@@ -156,13 +156,13 @@ func (ctx *SelfRecursionCtx) registerMiMCMetaDataForNonSisRounds(
 			ctx.MIMCMetaData.NonSisLeaves = append(
 				ctx.MIMCMetaData.NonSisLeaves,
 				ctx.comp.InsertCommit(
-					roundQ,
+					round,
 					ctx.nonSisLeaves(i),
 					mimcHashColumnSize,
 				))
 
 			ctx.MIMCMetaData.ConcatenatedHashPreimages = append(ctx.MIMCMetaData.ConcatenatedHashPreimages, ctx.comp.InsertCommit(
-				roundQ,
+				round,
 				ctx.concatenatedMIMCPreimages(i),
 				roundPreimageSize,
 			))
@@ -181,7 +181,10 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 	// and the Merkle leaves
 	// cleanLeaves = (nonSisLeaves || sisLeaves) is checked to be identical to
 	// the Merkle leaves.
-	cleanLeaves := ctx.MIMCMetaData.NonSisLeaves
+	var cleanLeaves []ifaces.Column
+	if len(ctx.MIMCMetaData.NonSisLeaves) > 0 {
+		cleanLeaves = append(cleanLeaves, ctx.MIMCMetaData.NonSisLeaves...)
+	}
 	if ctx.VortexCtx.NumCommittedRoundsSis() > 0 || ctx.VortexCtx.IsSISAppliedToPrecomputed() {
 		cleanLeaves = append(cleanLeaves, ctx.Columns.SisRoundLeaves)
 	}
@@ -207,7 +210,7 @@ func (ctx *SelfRecursionCtx) leafConsistency(round int) {
 	ctx.comp.InsertFixedPermutation(
 		round,
 		ctx.leafConsistencyName(),
-		[]ifaces.ColAssignment{s_smart},
+		[]smartvectors.SmartVector{s_smart},
 		[]ifaces.Column{stackedCleanLeaves.Column},
 		[]ifaces.Column{ctx.Columns.MerkleProofsLeaves},
 	)

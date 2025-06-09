@@ -480,7 +480,7 @@ func testCaseGenerator() []testCase {
 }
 
 
-func TestSelfRecursionWhole(t *testing.T) {
+func TestSelfRecursionOpsSisSingleLayered(t *testing.T) {
 	// Mute the logs
 	// logrus.SetLevel(logrus.FatalLevel)
 	testCases := testCaseGenerator()

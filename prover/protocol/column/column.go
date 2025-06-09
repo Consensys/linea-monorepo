@@ -328,9 +328,9 @@ func IsPublicExpression(expr *symbolic.Expression) bool {
 		}
 	}
 
-	// if numNonPublic > 0 && numPublic > 0 {
-	// 	utils.Panic("the expression is mixed: %v", statusMap)
-	// }
+	if numNonPublic > 0 && numPublic > 0 {
+		utils.Panic("the expression is mixed: %v", statusMap)
+	}
 
 	return numPublic > 0
 }

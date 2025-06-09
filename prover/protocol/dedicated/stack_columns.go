@@ -30,7 +30,7 @@ func StackColumn(comp *wizard.CompiledIOP, srcs []ifaces.Column) StackedColumn {
 		s     = make([]smartvectors.SmartVector, 0, len(srcs))
 		// count is the total number of elements in the stacked column
 		count = 0
-		name  = fmt.Sprintf("STACKED_COLUMN_%v", len(comp.Columns.AllKeys()))
+		name  = fmt.Sprintf("STACKED_COLUMN_%v_%v", len(comp.Columns.AllKeys()), comp.SelfRecursionCount)
 		round = 0
 	)
 
