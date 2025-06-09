@@ -79,14 +79,16 @@ public class TraceLineLimitTransactionSelector
       final LineaTracerConfiguration tracerConfiguration) {
     super(
         stateManager,
-        tracerConfiguration.moduleLimitsMap().keySet().stream().collect(Collectors.toMap(Function.identity(), unused -> 0)),
+        tracerConfiguration.moduleLimitsMap().keySet().stream()
+            .collect(Collectors.toMap(Function.identity(), unused -> 0)),
         Map::copyOf);
 
     this.chainId = chainId;
     this.tracerConfiguration = tracerConfiguration;
     this.overLimitCacheSize = txSelectorConfiguration.overLinesLimitCacheSize();
 
-    lineCountingTracer = new LineCountingTracerWithLog(tracerConfiguration, l1L2BridgeConfiguration);
+    lineCountingTracer =
+        new LineCountingTracerWithLog(tracerConfiguration, l1L2BridgeConfiguration);
     for (Module m : lineCountingTracer.getModulesToCount()) {
       if (!tracerConfiguration.moduleLimitsMap().containsKey(m.moduleKey())) {
         throw new IllegalStateException(
@@ -226,9 +228,13 @@ public class TraceLineLimitTransactionSelector
   private class LineCountingTracerWithLog implements LineCountingTracer {
     private final LineCountingTracer delegate;
 
-    public LineCountingTracerWithLog(final LineaTracerConfiguration tracerConfiguration, final LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
-      this.delegate = tracerConfiguration.isLimitless() ? new ZkCounter(bridgeConfiguration)
-    : new ZkTracer(Fork.LONDON, bridgeConfiguration, chainId);
+    public LineCountingTracerWithLog(
+        final LineaTracerConfiguration tracerConfiguration,
+        final LineaL1L2BridgeSharedConfiguration bridgeConfiguration) {
+      this.delegate =
+          tracerConfiguration.isLimitless()
+              ? new ZkCounter(bridgeConfiguration)
+              : new ZkTracer(Fork.LONDON, bridgeConfiguration, chainId);
     }
 
     @Override

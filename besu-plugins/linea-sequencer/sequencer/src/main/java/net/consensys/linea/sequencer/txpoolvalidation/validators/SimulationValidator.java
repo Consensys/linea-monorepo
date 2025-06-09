@@ -83,7 +83,8 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
           new ModuleLineCountValidator(tracerConfiguration.moduleLimitsMap());
       final var pendingBlockHeader = transactionSimulationService.simulatePendingBlockHeader();
 
-      final var lineCountingTracer = createLineCountingTracer(pendingBlockHeader, blockchainService.getChainId().get());
+      final var lineCountingTracer =
+          createLineCountingTracer(pendingBlockHeader, blockchainService.getChainId().get());
       final var maybeSimulationResults =
           transactionSimulationService.simulate(
               transaction, Optional.empty(), pendingBlockHeader, lineCountingTracer, false, true);
@@ -157,9 +158,10 @@ public class SimulationValidator implements PluginTransactionPoolValidator {
 
   private LineCountingTracer createLineCountingTracer(
       final ProcessableBlockHeader pendingBlockHeader, BigInteger chainId) {
-    var lineCountingTracer = tracerConfiguration.isLimitless() ?
-    new ZkCounter(l1L2BridgeConfiguration)
-      : new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
+    var lineCountingTracer =
+        tracerConfiguration.isLimitless()
+            ? new ZkCounter(l1L2BridgeConfiguration)
+            : new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
     lineCountingTracer.traceStartConflation(1L);
     lineCountingTracer.traceStartBlock(pendingBlockHeader, pendingBlockHeader.getCoinbase());
     return lineCountingTracer;

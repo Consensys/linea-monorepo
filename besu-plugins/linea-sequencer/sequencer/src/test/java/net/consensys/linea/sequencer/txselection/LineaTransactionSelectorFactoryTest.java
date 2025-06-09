@@ -90,8 +90,10 @@ class LineaTransactionSelectorFactoryTest {
     lineaTracerConfiguration =
         LineaTracerConfiguration.builder()
             .moduleLimitsFilePath(lineLimitsConfPath.toString())
-          .moduleLimitsMap(new HashMap<>(ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
-          .isLimitless(false)
+            .moduleLimitsMap(
+                new HashMap<>(
+                    ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
+            .isLimitless(false)
             .build();
 
     mockBlockchainService = mock(BlockchainService.class);

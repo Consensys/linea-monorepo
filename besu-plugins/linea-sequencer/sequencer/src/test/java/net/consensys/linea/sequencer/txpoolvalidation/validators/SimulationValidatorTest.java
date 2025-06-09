@@ -117,7 +117,9 @@ public class SimulationValidatorTest {
     tracerConfiguration =
         LineaTracerConfiguration.builder()
             .moduleLimitsFilePath(lineLimitsConfPath.toString())
-          .moduleLimitsMap(new HashMap<>(ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
+            .moduleLimitsMap(
+                new HashMap<>(
+                    ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
             .isLimitless(false)
             .build();
     final var pendingBlockHeader = mock(BlockHeader.class);
@@ -151,8 +153,7 @@ public class SimulationValidatorTest {
   }
 
   private SimulationValidator createSimulationValidator(
-      final boolean enableForApi,
-      final boolean enableForP2p) {
+      final boolean enableForApi, final boolean enableForP2p) {
     return new SimulationValidator(
         blockchainService,
         transactionSimulationService,

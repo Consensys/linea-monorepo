@@ -117,8 +117,7 @@ public class ModuleLineCountValidator {
     INVALID_LINE_COUNT
   }
 
-  public static Map<String, Integer> createLimitModules(
-      String moduleLimitsFilePath) {
+  public static Map<String, Integer> createLimitModules(String moduleLimitsFilePath) {
     try {
       URL url = new File(moduleLimitsFilePath).toURI().toURL();
       final String tomlString = Resources.toString(url, StandardCharsets.UTF_8);

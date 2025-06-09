@@ -28,12 +28,13 @@ public class LineaTracerCliOptions implements LineaCliOptions {
       description =
           "Path to the toml file containing the module limits (default: ${DEFAULT-VALUE})")
   private String moduleLimitFilePath = DEFAULT_MODULE_LIMIT_FILE_PATH;
+
   @CommandLine.Option(
-    names = {LIMITLESS_ENABLED},
-    hidden = true,
-    paramLabel = "<BOOLEAN>",
-    description =
-      "If the sequencer needs to use or not the limitless prover (default: ${DEFAULT-VALUE})")
+      names = {LIMITLESS_ENABLED},
+      hidden = true,
+      paramLabel = "<BOOLEAN>",
+      description =
+          "If the sequencer needs to use or not the limitless prover (default: ${DEFAULT-VALUE})")
   private boolean limitlessEnabled = DEFAULT_LIMITLESS_ENABLED;
 
   private LineaTracerCliOptions() {}
@@ -68,17 +69,17 @@ public class LineaTracerCliOptions implements LineaCliOptions {
   @Override
   public LineaTracerConfiguration toDomainObject() {
     return LineaTracerConfiguration.builder()
-      .moduleLimitsFilePath(moduleLimitFilePath)
-      .moduleLimitsMap(ModuleLineCountValidator.createLimitModules(moduleLimitFilePath))
-      .isLimitless(limitlessEnabled)
-      .build();
+        .moduleLimitsFilePath(moduleLimitFilePath)
+        .moduleLimitsMap(ModuleLineCountValidator.createLimitModules(moduleLimitFilePath))
+        .isLimitless(limitlessEnabled)
+        .build();
   }
 
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
         .add(MODULE_LIMIT_FILE_PATH, moduleLimitFilePath)
-      .add(LIMITLESS_ENABLED, limitlessEnabled)
+        .add(LIMITLESS_ENABLED, limitlessEnabled)
         .toString();
   }
 }

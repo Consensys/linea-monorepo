@@ -103,18 +103,19 @@ public class LineaEstimateGas {
   }
 
   public void init(
-    final LineaRpcConfiguration rpcConfiguration,
-    final LineaTransactionPoolValidatorConfiguration transactionValidatorConfiguration,
-    final LineaProfitabilityConfiguration profitabilityConf,
-    final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
-    final LineaTracerConfiguration tracerConfiguration) {
+      final LineaRpcConfiguration rpcConfiguration,
+      final LineaTransactionPoolValidatorConfiguration transactionValidatorConfiguration,
+      final LineaProfitabilityConfiguration profitabilityConf,
+      final LineaL1L2BridgeSharedConfiguration l1L2BridgeConfiguration,
+      final LineaTracerConfiguration tracerConfiguration) {
     this.rpcConfiguration = rpcConfiguration;
     this.txValidatorConf = transactionValidatorConfiguration;
     this.profitabilityConf = profitabilityConf;
     this.txProfitabilityCalculator = new TransactionProfitabilityCalculator(profitabilityConf);
     this.l1L2BridgeConfiguration = l1L2BridgeConfiguration;
     this.tracerConfiguration = tracerConfiguration;
-    this.moduleLineCountValidator = new ModuleLineCountValidator(tracerConfiguration.moduleLimitsMap());
+    this.moduleLineCountValidator =
+        new ModuleLineCountValidator(tracerConfiguration.moduleLimitsMap());
   }
 
   public String getNamespace() {
@@ -234,7 +235,8 @@ public class LineaEstimateGas {
       final long logId) {
 
     final var pendingBlockHeader = transactionSimulationService.simulatePendingBlockHeader();
-    final var lineCountingTracer = createLineCountingTracer(pendingBlockHeader, blockchainService.getChainId().get());
+    final var lineCountingTracer =
+        createLineCountingTracer(pendingBlockHeader, blockchainService.getChainId().get());
 
     final var maybeSimulationResults =
         transactionSimulationService.simulate(
@@ -401,9 +403,10 @@ public class LineaEstimateGas {
 
   private LineCountingTracer createLineCountingTracer(
       final ProcessableBlockHeader pendingBlockHeader, final BigInteger chainId) {
-    final var lineCountingTracer = tracerConfiguration.isLimitless() ?
-      new ZkCounter(l1L2BridgeConfiguration)
-      : new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
+    final var lineCountingTracer =
+        tracerConfiguration.isLimitless()
+            ? new ZkCounter(l1L2BridgeConfiguration)
+            : new ZkTracer(LONDON, l1L2BridgeConfiguration, chainId);
     lineCountingTracer.traceStartConflation(1L);
     lineCountingTracer.traceStartBlock(pendingBlockHeader, pendingBlockHeader.getCoinbase());
     return lineCountingTracer;

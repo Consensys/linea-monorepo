@@ -64,7 +64,9 @@ public class TraceLineLimitTransactionSelectorTest {
     tracerConfiguration =
         LineaTracerConfiguration.builder()
             .moduleLimitsFilePath(lineLimitsConfPath.toString())
-          .moduleLimitsMap(new HashMap<>(ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
+            .moduleLimitsMap(
+                new HashMap<>(
+                    ModuleLineCountValidator.createLimitModules(lineLimitsConfPath.toString())))
             .build();
   }
 
@@ -72,9 +74,7 @@ public class TraceLineLimitTransactionSelectorTest {
     selectorsStateManager = new SelectorsStateManager();
     final var selector =
         new TestableTraceLineLimitTransactionSelector(
-            selectorsStateManager,
-          tracerConfiguration,
-            OVER_LINE_COUNT_LIMIT_CACHE_SIZE);
+            selectorsStateManager, tracerConfiguration, OVER_LINE_COUNT_LIMIT_CACHE_SIZE);
     selectorsStateManager.blockSelectionStarted();
     return selector;
   }
