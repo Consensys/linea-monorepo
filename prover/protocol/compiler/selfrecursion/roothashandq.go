@@ -3,7 +3,6 @@ package selfrecursion
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
-	"github.com/consensys/linea-monorepo/prover/protocol/column"
 	"github.com/consensys/linea-monorepo/prover/protocol/column/verifiercol"
 	"github.com/consensys/linea-monorepo/prover/protocol/compiler/vortex"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
