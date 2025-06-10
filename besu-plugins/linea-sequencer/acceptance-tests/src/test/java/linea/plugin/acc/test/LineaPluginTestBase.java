@@ -12,6 +12,7 @@ package linea.plugin.acc.test;
 import static net.consensys.linea.metrics.LineaMetricCategory.PRICING_CONF;
 import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_PROFITABILITY;
 import static net.consensys.linea.metrics.LineaMetricCategory.TX_POOL_PROFITABILITY;
+import static net.consensys.linea.metrics.LineaMetricCategory.SEQUENCER_LIVENESS;
 import static org.assertj.core.api.Assertions.*;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -153,7 +154,7 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
                     .enabled(true)
                     .port(0)
                     .metricCategories(
-                        Set.of(PRICING_CONF, SEQUENCER_PROFITABILITY, TX_POOL_PROFITABILITY))
+                        Set.of(PRICING_CONF, SEQUENCER_PROFITABILITY, TX_POOL_PROFITABILITY, SEQUENCER_LIVENESS))
                     .build())
             .requestedPlugins(
                 List.of(
@@ -163,7 +164,8 @@ public abstract class LineaPluginTestBase extends AcceptanceTestBase {
                     "LineaTransactionPoolValidatorPlugin",
                     "LineaTransactionSelectorPlugin",
                     "LineaBundleEndpointsPlugin",
-                    "ForwardBundlesPlugin"));
+                    "ForwardBundlesPlugin",
+                    "LivenessPlugin"));
 
     return besu.create(nodeConfBuilder.build());
   }
