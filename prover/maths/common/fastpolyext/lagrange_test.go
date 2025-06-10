@@ -1,8 +1,10 @@
 package fastpolyext
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/vectorext"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -17,6 +19,21 @@ func randomPoly(size int) []fext.Element {
 		res[i].SetRandom()
 	}
 	return res
+}
+
+func TestEvaluateLagrangeGeneric(t *testing.T) {
+
+	size := 16
+	p := randomPoly(size)
+	var x fext.Element
+	x.SetRandom()
+
+	v := EvaluateLagrange(p, x)
+	_v, _ := fastpoly.EvalLagrangeExtField(p, x)
+
+	fmt.Printf("%s\n", v.String())
+	fmt.Printf("%s\n", _v.String())
+
 }
 
 func TestEvaluateLagrange(t *testing.T) {

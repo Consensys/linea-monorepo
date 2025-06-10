@@ -12,6 +12,78 @@ import (
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 )
 
+func EvalLagrangeBaseField(poly []field.Element, x field.Element) (field.Element, error) {
+	n := len(poly)
+	g, _ := fft.Generator(uint64(n))
+	var gInv field.Element
+	gInv.Inverse(&g)
+	var c field.Element
+	c.SetUint64(uint64(n))
+	denominators := computeDenominators(n, x, gInv, c)
+	denominators = field.BatchInvertGeneric(denominators)
+	return computeEval(denominators, poly, x)
+}
+
+func EvalLagrangeExtField(poly []fext.Element, x fext.Element) (fext.Element, error) {
+	n := len(poly)
+	g, _ := fft.Generator(uint64(n))
+	var gInv fext.Element
+	fext.FromBase(&gInv, &g)
+	gInv.Inverse(&gInv)
+	var c fext.Element
+	c.B0.A0.SetUint64(uint64(n))
+	denominators := computeDenominators(n, x, gInv, c)
+	denominators = field.BatchInvertGeneric(denominators)
+	return computeEval(denominators, poly, x)
+}
+
+func computeEval[T any, fieldPointer field.FieldPointer[T]](denominators []T, poly []T, x T) (T, error) {
+
+	var res, tmp T
+	var _res fieldPointer = &res
+	var _tmp fieldPointer = &tmp
+	for i := range denominators {
+		_tmp.Mul(&denominators[i], &poly[i])
+		_res.Add(&res, &tmp)
+	}
+
+	n := len(poly)
+	var one T
+	var _one fieldPointer = &one
+	_one.SetOne()
+	_tmp.Exp(x, big.NewInt(int64(n)))
+	_tmp.Sub(_tmp, _one)
+	_res.Mul(&res, &tmp)
+
+	return res, nil
+
+}
+
+func computeDenominators[T any, fieldPointer field.FieldPointer[T]](n int, x T, card T, genInv T) []T {
+
+	denominators := make([]T, n)
+	var one T
+	var _one fieldPointer = &one
+	_one.SetOne()
+
+	var _genInv fieldPointer = &genInv
+
+	denominators[0] = x
+	var tmp fieldPointer
+	for i := 1; i < n; i++ {
+		tmp = &denominators[i]
+		tmp.Mul(&denominators[i-1], _genInv)
+	}
+
+	for i := 0; i < n; i++ {
+		tmp = &denominators[i]
+		tmp.Sub(&denominators[i], _one)
+		tmp.Mul(tmp, &card)
+	}
+
+	return denominators
+}
+
 // EvaluateLagrangeOnFext computes ∑_i L_i(x), i.e. evaluates p interpreted as a polynomial in Lagrange form, and x lives in the extension
 func EvaluateLagrangeOnFext(poly []field.Element, x fext.Element, oncoset ...bool) fext.Element {
 

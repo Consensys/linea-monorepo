@@ -2,6 +2,7 @@ package smartvectors
 
 import (
 	"github.com/consensys/linea-monorepo/prover/maths/common/fastpoly"
+	"github.com/consensys/linea-monorepo/prover/maths/common/fastpolyext"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
@@ -86,6 +87,19 @@ func RuffiniQuoRem(p SmartVector, q field.Element) (quo SmartVector, rem field.E
 	quo = NewRegular(quo_[1:])
 
 	return quo, rem
+}
+
+// Evaluate a polynomial in Lagrange basis
+func EvaluateLagrangeFullFext(v SmartVector, x fext.Element, oncoset ...bool) fext.Element {
+	switch con := v.(type) {
+	case *ConstantExt:
+		return con.val
+	}
+
+	// Maybe there is an optim for windowed here
+	res := make([]fext.Element, v.Len())
+	v.WriteInSliceExt(res)
+	return fastpolyext.EvaluateLagrange(res, x, oncoset...)
 }
 
 // EvaluateLagrange a polynomial in Lagrange basis at an field point

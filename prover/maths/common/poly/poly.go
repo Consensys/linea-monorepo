@@ -7,6 +7,16 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
+func EvalGeneric[T any, fieldPointer field.FieldPointer[T]](pol []T, x T) T {
+	var _res fieldPointer
+	_res = &pol[len(pol)-1]
+	for i := len(pol) - 2; i >= 0; i-- {
+		_res.Mul(_res, &x)
+		_res.Add(_res, &pol[i])
+	}
+	return *_res
+}
+
 // Eval returns ∑_i pol[i]xⁱ
 func Eval(pol []field.Element, x field.Element) field.Element {
 	var res field.Element

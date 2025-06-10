@@ -8,8 +8,8 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/state-management/smt"
 	"github.com/consensys/linea-monorepo/prover/maths/common/poly"
 	"github.com/consensys/linea-monorepo/prover/maths/common/polyext"
+	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors"
 	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectors_mixed"
-	"github.com/consensys/linea-monorepo/prover/maths/common/smartvectorsext"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/maths/field/fext"
 	"github.com/consensys/linea-monorepo/prover/utils"
@@ -151,7 +151,7 @@ func (v *VerifierInputs) checkStatement() (err error) {
 
 	// Check the consistency of Ys and proof.Linear combination
 	Yjoined := utils.Join(v.Ys...)
-	alphaY := smartvectorsext.EvaluateLagrange(v.OpeningProof.LinearCombination, v.X)
+	alphaY := smartvectors.EvaluateLagrangeFullFext(v.OpeningProof.LinearCombination, v.X)
 	alphaYPrime := polyext.Eval(Yjoined, v.RandomCoin)
 
 	if alphaY != alphaYPrime {
