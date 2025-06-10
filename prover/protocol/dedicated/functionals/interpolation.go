@@ -22,35 +22,35 @@ const (
 	INTERPOLATION_GLOBAL        string = "INTERPOLATION_GLOBAL"
 )
 
-type interpolationProverAction struct {
-	name string
-	a    ifaces.Accessor
-	p    ifaces.Column
-	n    int
+type InterpolationProverAction struct {
+	Name string
+	A    ifaces.Accessor
+	P    ifaces.Column
+	N    int
 }
 
-func (a *interpolationProverAction) Run(assi *wizard.ProverRuntime) {
-	aVal := a.a.GetVal(assi)
+func (a *InterpolationProverAction) Run(assi *wizard.ProverRuntime) {
+	aVal := a.A.GetVal(assi)
 	one := field.One()
-	p := a.p.GetColAssignment(assi)
+	p := a.P.GetColAssignment(assi)
 
-	omegaInv := fft.GetOmega(a.n)
+	omegaInv := fft.GetOmega(a.N)
 	omegaInv.Inverse(&omegaInv)
 
-	witi := make([]field.Element, a.n)
+	witi := make([]field.Element, a.N)
 	witi[0] = aVal
 
 	aRootOfUnityFlag := false
-	for i := 1; i < a.n; i++ {
+	for i := 1; i < a.N; i++ {
 		witi[i].Mul(&witi[i-1], &omegaInv)
 		witi[i-1].Sub(&witi[i-1], &one)
 		if witi[i-1].IsZero() {
 			aRootOfUnityFlag = true
 		}
 	}
-	witi[a.n-1].Sub(&witi[a.n-1], &one)
+	witi[a.N-1].Sub(&witi[a.N-1], &one)
 
-	if witi[a.n-1].IsZero() || aRootOfUnityFlag {
+	if witi[a.N-1].IsZero() || aRootOfUnityFlag {
 		utils.Panic("detected that a is a root of unity")
 	}
 
@@ -64,8 +64,8 @@ func (a *interpolationProverAction) Run(assi *wizard.ProverRuntime) {
 		}
 	}
 
-	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.name, INTERPOLATION_POLY), smartvectors.NewRegular(witi))
-	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.name, INTERPOLATION_OPEN_END), witi[a.n-1])
+	assi.AssignColumn(ifaces.ColIDf("%v_%v", a.Name, INTERPOLATION_POLY), smartvectors.NewRegular(witi))
+	assi.AssignLocalPoint(ifaces.QueryIDf("%v_%v", a.Name, INTERPOLATION_OPEN_END), witi[a.N-1])
 }
 
 // See the explainer here : https://hackmd.io/S78bJUa0Tk-T256iduE22g#Evaluate-in-Lagrange-form
@@ -144,11 +144,11 @@ func Interpolation(comp *wizard.CompiledIOP, name string, a ifaces.Accessor, p i
 		column.Shift(i, -1),
 	)
 
-	comp.RegisterProverAction(maxRound, &interpolationProverAction{
-		name: name,
-		a:    a,
-		p:    p,
-		n:    length,
+	comp.RegisterProverAction(maxRound, &InterpolationProverAction{
+		Name: name,
+		A:    a,
+		P:    p,
+		N:    length,
 	})
 
 	// Since the symbolic package does not support inversion, we have to compute

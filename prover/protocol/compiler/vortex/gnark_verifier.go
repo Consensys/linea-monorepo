@@ -15,7 +15,11 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-func (ctx *Ctx) GnarkVerify(api frontend.API, vr wizard.GnarkRuntime) {
+func (a *ExplicitPolynomialEval) RunGnark(api frontend.API, c wizard.GnarkRuntime) {
+	a.gnarkExplicitPublicEvaluation(api, c) // Adjust based on context; see note below
+}
+
+func (ctx *VortexVerifierAction) RunGnark(api frontend.API, vr wizard.GnarkRuntime) {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -221,7 +225,7 @@ func (ctx *Ctx) gnarkExplicitPublicEvaluation(api frontend.API, vr wizard.GnarkR
 		// status so we need a hierarchical check to make sure we can access
 		// its status.
 		if _, isVerifierCol := pol.(verifiercol.VerifierCol); !isVerifierCol {
-			status := ctx.comp.Columns.Status(pol.GetColID())
+			status := ctx.Comp.Columns.Status(pol.GetColID())
 			if !status.IsPublic() {
 				// then, its not concerned by direct evaluation because the
 				// evaluation is implicitly checked by the invokation of the

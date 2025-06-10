@@ -297,13 +297,13 @@ func (t *InclusionTestcase) Define(comp *wizard.CompiledIOP) {
 
 	for i := range s {
 		qName := ifaces.QueryID("Inclusion_" + t.Name + "_" + strconv.Itoa(i))
-		t.Q = query.Inclusion{
-			ID:              qName,
-			Included:        s[i],
-			IncludedFilter:  sFilter[i],
-			Including:       table,
-			IncludingFilter: tableFilter,
-		}
+		t.Q = query.NewInclusion(
+			qName,
+			s[i],
+			table,
+			sFilter[i],
+			tableFilter,
+		)
 		comp.QueriesNoParams.AddToRound(0, qName, t.Q)
 	}
 }

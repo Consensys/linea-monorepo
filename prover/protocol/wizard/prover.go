@@ -209,7 +209,7 @@ func RunProverUntilRound(c *CompiledIOP, highLevelProver MainProverStep, round i
 
 	// Execute the high-level prover as a ProverAction
 	if runtime.HighLevelProver != nil {
-		runtime.exec("high-level-prover", mainProverStepWrapper{step: highLevelProver})
+		runtime.exec("high-level-prover", proverStepWrapper{step: highLevelProver})
 	}
 
 	// Run sub-prover steps for the initial round
@@ -304,7 +304,7 @@ func (c *CompiledIOP) createProver() ProverRuntime {
 	}
 
 	// Pass the precomputed polynomials
-	for key, val := range c.Precomputed.InnerMap() {
+	for key, val := range c.Precomputed.GetInnerMap() {
 		runtime.Columns.InsertNew(key, val)
 	}
 
@@ -674,7 +674,7 @@ func (run *ProverRuntime) goNextRound() {
 // [CompiledIOP] object for the current round.
 func (run *ProverRuntime) runProverSteps() {
 	// Run all the assigners
-	subProverSteps := run.Spec.subProvers.MustGet(run.currRound)
+	subProverSteps := run.Spec.SubProvers.MustGet(run.currRound)
 	for idx, step := range subProverSteps {
 
 		// Profile individual prover steps

@@ -20,7 +20,7 @@ func makeTestCaseBaseConversionOutput() (
 	prover wizard.MainProverStep,
 ) {
 	maxNumBlocks := 4
-	b := &hashBaseConversion{}
+	b := &HashBaseConversion{}
 	define = func(build *wizard.Builder) {
 		var (
 			comp      = build.CompiledIOP
@@ -62,12 +62,12 @@ func TestBaseConversionOutput(t *testing.T) {
 	assert.NoErrorf(t, wizard.Verify(comp, proof), "invalid proof")
 }
 
-func (b *hashBaseConversion) assignInputs(run *wizard.ProverRuntime) {
+func (b *HashBaseConversion) assignInputs(run *wizard.ProverRuntime) {
 
 	var (
 		sliceHiB = make([]*common.VectorBuilder, numLimbsOutput)
 		sliceLoB = make([]*common.VectorBuilder, numLimbsOutput)
-		size     = b.size
+		size     = b.Size
 	)
 
 	for j := range sliceHiB {

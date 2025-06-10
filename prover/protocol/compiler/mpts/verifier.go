@@ -12,14 +12,14 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// verifierAction implements [wizard.VerifierAction]. It is tasked with
+// VerifierAction implements [wizard.VerifierAction]. It is tasked with
 //   - (1) checking that the X value of the univariate query is correct.
 //   - (2) checking that q(r) = sum_{i,k \in claim} [\lambda^i \rho^k (Pk(r) - y_{ik})] / (r - xi).
-type verifierAction struct {
+type VerifierAction struct {
 	*MultipointToSinglepointCompilation
 }
 
-func (va verifierAction) Run(run wizard.Runtime) error {
+func (va VerifierAction) Run(run wizard.Runtime) error {
 
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)
@@ -92,7 +92,7 @@ func (va verifierAction) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (va verifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (va VerifierAction) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 
 	var (
 		queryParams = run.GetUnivariateParams(va.NewQuery.QueryID)

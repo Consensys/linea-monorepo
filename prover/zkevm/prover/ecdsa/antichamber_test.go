@@ -68,11 +68,11 @@ func TestAntichamber(t *testing.T) {
 			ac = newAntichamber(
 				b.CompiledIOP,
 				&antichamberInput{
-					ecSource:     ecSrc,
-					txSource:     txSrc,
-					rlpTxn:       rlpTxn,
-					plonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
-					settings:     limits,
+					EcSource:     ecSrc,
+					TxSource:     txSrc,
+					RlpTxn:       rlpTxn,
+					PlonkOptions: []query.PlonkOption{query.PlonkRangeCheckOption(16, 6, true)},
+					Settings:     limits,
 				},
 			)
 		},

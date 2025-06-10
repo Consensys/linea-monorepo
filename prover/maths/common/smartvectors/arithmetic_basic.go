@@ -87,7 +87,7 @@ func PolyEval(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result
 	if hasOnlyConst {
 		v := make([]field.Element, len(vecs))
 		for i := 0; i < len(vecs); i++ {
-			v[i] = vecs[i].(*Constant).val
+			v[i] = vecs[i].(*Constant).Value
 		}
 
 		y := poly.EvalUnivariate(v, x)
@@ -133,7 +133,7 @@ func PolyEval(vecs []SmartVector, x field.Element, p ...mempool.MemPool) (result
 		switch casted := v.(type) {
 		case *Constant:
 			anyCon = true
-			tmpF.Mul(&casted.val, &xPow)
+			tmpF.Mul(&casted.Value, &xPow)
 			resCon.Add(&resCon, &tmpF)
 		case *Regular:
 			anyReg = true
@@ -180,16 +180,16 @@ func BatchInvert(x SmartVector) SmartVector {
 
 	switch v := x.(type) {
 	case *Constant:
-		res := &Constant{length: v.length}
-		res.val.Inverse(&v.val)
+		res := &Constant{Length: v.Length}
+		res.Value.Inverse(&v.Value)
 		return res
 	case *PaddedCircularWindow:
 		res := &PaddedCircularWindow{
-			totLen: v.totLen,
-			offset: v.offset,
-			window: field.BatchInvert(v.window),
+			TotLen_: v.TotLen_,
+			Offset_: v.Offset_,
+			Window_: field.BatchInvert(v.Window_),
 		}
-		res.paddingVal.Inverse(&v.paddingVal)
+		res.PaddingVal_.Inverse(&v.PaddingVal_)
 		return res
 	case *Rotated:
 		return NewRotated(
@@ -211,26 +211,26 @@ func IsZero(x SmartVector) SmartVector {
 	switch v := x.(type) {
 
 	case *Constant:
-		res := &Constant{length: v.length}
-		if v.val == field.Zero() {
-			res.val = field.One()
+		res := &Constant{Length: v.Length}
+		if v.Value == field.Zero() {
+			res.Value = field.One()
 		}
 		return res
 
 	case *PaddedCircularWindow:
 		res := &PaddedCircularWindow{
-			totLen: v.totLen,
-			offset: v.offset,
-			window: make([]field.Element, len(v.window)),
+			TotLen_: v.TotLen_,
+			Offset_: v.Offset_,
+			Window_: make([]field.Element, len(v.Window_)),
 		}
 
-		if v.paddingVal == field.Zero() {
-			res.paddingVal = field.One()
+		if v.PaddingVal_ == field.Zero() {
+			res.PaddingVal_ = field.One()
 		}
 
-		for i := range res.window {
-			if v.window[i] == field.Zero() {
-				res.window[i] = field.One()
+		for i := range res.Window_ {
+			if v.Window_[i] == field.Zero() {
+				res.Window_[i] = field.One()
 			}
 		}
 		return res
@@ -282,17 +282,17 @@ func Sum(a SmartVector) (res field.Element) {
 
 	case *PaddedCircularWindow:
 		res := field.Zero()
-		for i := range v.window {
-			res.Add(&res, &v.window[i])
+		for i := range v.Window_ {
+			res.Add(&res, &v.Window_[i])
 		}
-		constTerm := field.NewElement(uint64(v.totLen - len(v.window)))
-		constTerm.Mul(&constTerm, &v.paddingVal)
+		constTerm := field.NewElement(uint64(v.TotLen_ - len(v.Window_)))
+		constTerm.Mul(&constTerm, &v.PaddingVal_)
 		res.Add(&res, &constTerm)
 		return res
 
 	case *Constant:
-		res := field.NewElement(uint64(v.length))
-		res.Mul(&res, &v.val)
+		res := field.NewElement(uint64(v.Length))
+		res.Mul(&res, &v.Value)
 		return res
 
 	case *Rotated:

@@ -8,6 +8,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/crypto/fiatshamir"
 	"github.com/consensys/linea-monorepo/prover/maths/field"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/google/uuid"
 )
 
 // Wrapper type for naming the coins
@@ -44,8 +45,15 @@ func (n *Name) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Metadata around the random coin
+// Metadata around the random coin. The struct is made non-constructible to
+// ensure that it is built from the [NewInfo] constructor. The reason is that
+// the structure contains an internal UUID used for the serialization process
+// and we want to be sure that all instances have their own UUID.
 type Info struct {
+	info
+}
+
+type info struct {
 	Type Type `json:"type"`
 	// Set if applicable (for instance, IntegerVec)
 	Size int `json:"size"`
@@ -55,6 +63,9 @@ type Info struct {
 	Name Name `json:"name"`
 	// Round at which the coin was declared
 	Round int `json:"round"`
+	// uuid is a pointer to the compiler IOP. This is used as part of the
+	// serialization process
+	uuid uuid.UUID
 }
 
 // Type of random coin
@@ -123,7 +134,7 @@ number of integers and size[1] contains the upperBound.
 */
 func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 
-	infos := Info{Name: name, Type: type_, Round: round}
+	infos := Info{info{Name: name, Type: type_, Round: round, uuid: uuid.New()}}
 
 	switch type_ {
 	case IntegerVec:
@@ -145,4 +156,8 @@ func NewInfo(name Name, type_ Type, round int, size ...int) Info {
 	}
 
 	return infos
+}
+
+func (info Info) UUID() uuid.UUID {
+	return info.uuid
 }

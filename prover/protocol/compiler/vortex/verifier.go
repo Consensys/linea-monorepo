@@ -13,7 +13,23 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/types"
 )
 
-func (ctx *Ctx) Verify(vr wizard.Runtime) error {
+// ExplicitPolynomialEval is a [wizard.VerifierAction] that evaluates the
+// public polynomial.
+type ExplicitPolynomialEval struct {
+	*Ctx
+}
+
+// VortexVerifierAction is a [wizard.VerifierAction] that runs the verifier of
+// the Vortex protocol.
+type VortexVerifierAction struct {
+	*Ctx
+}
+
+func (a *ExplicitPolynomialEval) Run(run wizard.Runtime) error {
+	return a.explicitPublicEvaluation(run) // Adjust based on context; see note below
+}
+
+func (ctx *VortexVerifierAction) Run(run wizard.Runtime) error {
 
 	// The skip verification flag may be on, if the current vortex
 	// context get self-recursed. In this case, the verifier does
@@ -38,8 +54,8 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 
 	// Append the precomputed roots and the corresponding flag
 	if ctx.IsNonEmptyPrecomputed() {
-		precompRootSv := vr.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
-		precompRootF := precompRootSv.Get(0)                                        // root as a field element
+		precompRootSv := run.GetColumn(ctx.Items.Precomputeds.MerkleRoot.GetColID()) // len 1 smart vector
+		precompRootF := precompRootSv.Get(0)                                         // root as a field element
 
 		if ctx.IsSISAppliedToPrecomputed() {
 			sisRoots = append(sisRoots, types.Bytes32(precompRootF.Bytes()))
@@ -52,8 +68,8 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	// Collect all the roots: rounds by rounds
 	// and append them to the sis or no sis roots
 	for round := 0; round <= ctx.MaxCommittedRound; round++ {
-		rootSv := vr.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
-		rootF := rootSv.Get(0)                                          // root as a field element
+		rootSv := run.GetColumn(ctx.Items.MerkleRoots[round].GetColID()) // len 1 smart vector
+		rootF := rootSv.Get(0)                                           // root as a field element
 		// Append the isSISApplied flag
 		if ctx.RoundStatus[round] == IsOnlyMiMCApplied {
 			noSisRoots = append(noSisRoots, types.Bytes32(rootF.Bytes()))
@@ -68,26 +84,26 @@ func (ctx *Ctx) Verify(vr wizard.Runtime) error {
 	isSISReplacedByMiMC := append(flagForNoSISRounds, flagForSISRounds...)
 
 	proof := &vortex.OpeningProof{}
-	randomCoin := vr.GetRandomCoinField(ctx.LinCombRandCoinName())
+	randomCoin := run.GetRandomCoinField(ctx.LinCombRandCoinName())
 
 	// Collect the linear combination
-	proof.LinearCombination = vr.GetColumn(ctx.LinCombName())
+	proof.LinearCombination = run.GetColumn(ctx.LinCombName())
 
 	// Collect the random entry List and the random coin
-	entryList := vr.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
+	entryList := run.GetRandomCoinIntegerVec(ctx.RandColSelectionName())
 
 	// Collect the opened columns and split them "by-commitment-rounds"
-	proof.Columns = ctx.RecoverSelectedColumns(vr, entryList)
-	x := vr.GetUnivariateParams(ctx.Query.QueryID).X
+	proof.Columns = ctx.RecoverSelectedColumns(run, entryList)
+	x := run.GetUnivariateParams(ctx.Query.QueryID).X
 
-	packedMProofs := vr.GetColumn(ctx.MerkleProofName())
+	packedMProofs := run.GetColumn(ctx.MerkleProofName())
 	proof.MerkleProofs = ctx.unpackMerkleProofs(packedMProofs, entryList)
 
 	return vortex.VerifyOpening(&vortex.VerifierInputs{
 		Params:              *ctx.VortexParams,
 		MerkleRoots:         roots,
 		X:                   x,
-		Ys:                  ctx.getYs(vr),
+		Ys:                  ctx.getYs(run),
 		OpeningProof:        *proof,
 		RandomCoin:          randomCoin,
 		EntryList:           entryList,
@@ -102,11 +118,11 @@ func (ctx *Ctx) getNbCommittedRows(round int) int {
 }
 
 // returns the Ys as a vector
-func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
+func (ctx *Ctx) getYs(run wizard.Runtime) (ys [][]field.Element) {
 
 	var (
 		query   = ctx.Query
-		params  = vr.GetUnivariateParams(ctx.Query.QueryID)
+		params  = run.GetUnivariateParams(ctx.Query.QueryID)
 		ysNoSIS = [][]field.Element{}
 		ysSIS   = [][]field.Element{}
 	)
@@ -173,7 +189,7 @@ func (ctx *Ctx) getYs(vr wizard.Runtime) (ys [][]field.Element) {
 
 // Returns the opened columns from the messages. The returned columns are
 // split "by-commitment-round".
-func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][]field.Element {
+func (ctx *Ctx) RecoverSelectedColumns(run wizard.Runtime, entryList []int) [][][]field.Element {
 	// We assign as below:
 	// openedSubColumns = (openedSubColumnsNoSIS, openedSubColumnsSIS)
 	var (
@@ -184,7 +200,7 @@ func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][
 	// Bear in mind that the prover messages are zero-padded
 	fullSelectedCols := make([][]field.Element, len(entryList))
 	for j := range entryList {
-		fullSelectedCol := vr.GetColumn(ctx.SelectedColName(j))
+		fullSelectedCol := run.GetColumn(ctx.SelectedColName(j))
 		fullSelectedCols[j] = smartvectors.IntoRegVec(fullSelectedCol)
 	}
 
@@ -239,9 +255,9 @@ func (ctx *Ctx) RecoverSelectedColumns(vr wizard.Runtime, entryList []int) [][][
 }
 
 // Evaluates explicitly the public polynomials (proof, vk, public inputs)
-func (ctx *Ctx) explicitPublicEvaluation(vr wizard.Runtime) error {
+func (ctx *Ctx) explicitPublicEvaluation(run wizard.Runtime) error {
 
-	params := vr.GetUnivariateParams(ctx.Query.QueryID)
+	params := run.GetUnivariateParams(ctx.Query.QueryID)
 
 	for i, pol := range ctx.Query.Pols {
 
@@ -249,14 +265,14 @@ func (ctx *Ctx) explicitPublicEvaluation(vr wizard.Runtime) error {
 		// directly concerned by direct verification but we can
 		// access its witness or status so we need a specific check.
 		if _, ok := pol.(verifiercol.VerifierCol); !ok {
-			status := ctx.comp.Columns.Status(pol.GetColID())
+			status := ctx.Comp.Columns.Status(pol.GetColID())
 			if !status.IsPublic() {
 				// then, its not concerned by direct evaluation
 				continue
 			}
 		}
 
-		val := pol.GetColAssignment(vr)
+		val := pol.GetColAssignment(run)
 
 		y := smartvectors.Interpolate(val, params.X)
 		if y != params.Ys[i] {
@@ -267,13 +283,13 @@ func (ctx *Ctx) explicitPublicEvaluation(vr wizard.Runtime) error {
 	return nil
 }
 
-type shadowRowProverAction struct {
-	name ifaces.ColID
-	size int
+type ShadowRowProverAction struct {
+	Name ifaces.ColID
+	Size int
 }
 
-func (a *shadowRowProverAction) Run(run *wizard.ProverRuntime) {
-	run.AssignColumn(a.name, smartvectors.NewConstant(field.Zero(), a.size))
+func (a *ShadowRowProverAction) Run(run *wizard.ProverRuntime) {
+	run.AssignColumn(a.Name, smartvectors.NewConstant(field.Zero(), a.Size))
 }
 
 // A shadow row is a row filled with zeroes that we **may** add at the end of
@@ -284,9 +300,9 @@ func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces
 	name := ifaces.ColIDf("VORTEX_%v_SHADOW_ROUND_%v_ID_%v", comp.SelfRecursionCount, round, id)
 	col := comp.InsertCommit(round, name, size)
 
-	comp.RegisterProverAction(round, &shadowRowProverAction{
-		name: name,
-		size: size,
+	comp.RegisterProverAction(round, &ShadowRowProverAction{
+		Name: name,
+		Size: size,
 	})
 
 	return col

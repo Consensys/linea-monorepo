@@ -174,7 +174,7 @@ type FinalProductCheck struct {
 	// query ID
 	GrandProductID ifaces.QueryID
 	// skip the verifer action
-	skipped bool
+	skipped bool `serde:"omit"`
 	// ToExplicitlyEvaluate list all the terms that are publicly
 	// evaluated by the verifier.
 	ToExplicitlyEvaluate []*symbolic.Expression

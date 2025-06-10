@@ -10,6 +10,7 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
+	"github.com/google/uuid"
 )
 
 // The GrandProduct query is obtained by processing all the permuation queries specific to a target module.
@@ -28,6 +29,7 @@ type GrandProduct struct {
 	ID    ifaces.QueryID
 	// The list of the inputs of the query, grouped by sizes
 	Inputs map[int]*GrandProductInput
+	uuid   uuid.UUID `serde:"omit"`
 }
 
 type GrandProductParams struct {
@@ -82,6 +84,7 @@ func NewGrandProduct(round int, inp map[int]*GrandProductInput, id ifaces.QueryI
 		Round:  round,
 		Inputs: inp,
 		ID:     id,
+		uuid:   uuid.New(),
 	}
 }
 
@@ -201,4 +204,8 @@ func (g GrandProduct) Check(run ifaces.Runtime) error {
 
 func (g GrandProduct) CheckGnark(api frontend.API, run ifaces.GnarkRuntime) {
 	utils.Panic("Unimplemented")
+}
+
+func (g GrandProduct) UUID() uuid.UUID {
+	return g.uuid
 }

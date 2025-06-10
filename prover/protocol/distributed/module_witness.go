@@ -78,7 +78,7 @@ func SegmentRuntime(runtime *wizard.ProverRuntime, distributedWizard *Distribute
 func SegmentModuleGL(runtime *wizard.ProverRuntime, moduleGL *ModuleGL) (witnessesGL []*ModuleWitnessGL) {
 
 	var (
-		fmi                  = moduleGL.definitionInput
+		fmi                  = moduleGL.DefinitionInput
 		cols                 = runtime.Spec.Columns.AllKeys()
 		nbSegmentModule      = NbSegmentOfModule(runtime, fmi.Disc, []ModuleName{fmi.ModuleName})
 		receivedValuesGlobal = make([]field.Element, len(moduleGL.ReceivedValuesGlobalAccs))
@@ -120,7 +120,7 @@ func SegmentModuleGL(runtime *wizard.ProverRuntime, moduleGL *ModuleGL) (witness
 func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witnessesLPP []*ModuleWitnessLPP) {
 
 	var (
-		fmis          = moduleLPP.definitionInputs
+		fmis          = moduleLPP.DefinitionInputs
 		cols          = runtime.Spec.Columns.AllKeys()
 		_, _, hArgs   = getQueryArgs(fmis)
 		n0            = make([]int, len(hArgs))
@@ -129,7 +129,7 @@ func SegmentModuleLPP(runtime *wizard.ProverRuntime, moduleLPP *ModuleLPP) (witn
 		columnsLPPSet = make(map[ifaces.ColID]struct{})
 	)
 
-	for _, fmi := range moduleLPP.definitionInputs {
+	for _, fmi := range moduleLPP.DefinitionInputs {
 		moduleNames = append(moduleNames, fmi.ModuleName)
 		moduleNameSet[fmi.ModuleName] = struct{}{}
 		for col := range fmi.ColumnsLPPSet {

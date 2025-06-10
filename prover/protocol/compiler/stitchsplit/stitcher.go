@@ -11,9 +11,9 @@ import (
 	"github.com/consensys/linea-monorepo/prover/utils/profiling"
 )
 
-type stitchingContext struct {
+type StitchingContext struct {
 	// The compiled IOP
-	comp *wizard.CompiledIOP
+	Comp *wizard.CompiledIOP
 	// All columns under the minSize are ignored.
 	// No stitching goes beyond MaxSize.
 	MinSize, MaxSize int
@@ -23,15 +23,15 @@ type stitchingContext struct {
 	Stitchings []SummerizedAlliances
 }
 
-type StichSubColumnsProverAction struct {
-	stitchings []SummerizedAlliances
+type StitchSubColumnsProverAction struct {
+	Stitchings []SummerizedAlliances
 }
 
-func (a *StichSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
-	for round := range a.stitchings {
+func (a *StitchSubColumnsProverAction) Run(run *wizard.ProverRuntime) {
+	for round := range a.Stitchings {
 		// This loop is not in deterministic order but this does not matter
 		// as this is purely for cleaning up.
-		for subCol := range a.stitchings[round].BySubCol {
+		for subCol := range a.Stitchings[round].BySubCol {
 			run.Columns.TryDel(subCol)
 		}
 	}
@@ -48,17 +48,17 @@ func Stitcher(minSize, maxSize int) func(comp *wizard.CompiledIOP) {
 		ctx.constraints()
 
 		// it assigns the stitching columns and delete the assignment of the sub columns.
-		comp.RegisterProverAction(comp.NumRounds()-1, &StichSubColumnsProverAction{
-			stitchings: ctx.Stitchings,
+		comp.RegisterProverAction(comp.NumRounds()-1, &StitchSubColumnsProverAction{
+			Stitchings: ctx.Stitchings,
 		})
 	}
 }
 
 // it commits to the stitchings of the eligible sub columns.
-func newStitcher(comp *wizard.CompiledIOP, minSize, maxSize int) stitchingContext {
+func newStitcher(comp *wizard.CompiledIOP, minSize, maxSize int) StitchingContext {
 	numRounds := comp.NumRounds()
-	res := stitchingContext{
-		comp:    comp,
+	res := StitchingContext{
+		Comp:    comp,
 		MinSize: minSize,
 		MaxSize: maxSize,
 		// initialize the stitichings
@@ -69,35 +69,35 @@ func newStitcher(comp *wizard.CompiledIOP, minSize, maxSize int) stitchingContex
 	return res
 }
 
-type stitchColumnsProverAction struct {
-	ctx   *stitchingContext
-	round int
+type StitchColumnsProverAction struct {
+	Ctx   *StitchingContext
+	Round int
 }
 
-func (a *stitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
+func (a *StitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	stopTimer := profiling.LogTimer("stitching compiler")
 	defer stopTimer()
 	var maxSizeGroup int
 
 	// The sorting is necessary to ensure that the iteration below
 	// happens in deterministic order over the [ByBigCol] map.
-	idBigCols := utils.SortedKeysOf(a.ctx.Stitchings[a.round].ByBigCol, func(a, b ifaces.ColID) bool {
+	idBigCols := utils.SortedKeysOf(a.Ctx.Stitchings[a.Round].ByBigCol, func(a, b ifaces.ColID) bool {
 		return a < b
 	})
 
 	for _, idBigCol := range idBigCols {
 
-		subColumns := a.ctx.Stitchings[a.round].ByBigCol[idBigCol]
-		maxSizeGroup = a.ctx.MaxSize / subColumns[0].Size()
+		subColumns := a.Ctx.Stitchings[a.Round].ByBigCol[idBigCol]
+		maxSizeGroup = a.Ctx.MaxSize / subColumns[0].Size()
 
 		// Sanity-check
-		sizeBigCol := a.ctx.comp.Columns.GetHandle(idBigCol).Size()
-		if sizeBigCol != a.ctx.MaxSize {
-			utils.Panic("Unexpected size %v != %v", sizeBigCol, a.ctx.MaxSize)
+		sizeBigCol := a.Ctx.Comp.Columns.GetHandle(idBigCol).Size()
+		if sizeBigCol != a.Ctx.MaxSize {
+			utils.Panic("Unexpected size %v != %v", sizeBigCol, a.Ctx.MaxSize)
 		}
 
 		// If the column is precomputed, it is already assigned
-		if a.ctx.comp.Precomputed.Exists(idBigCol) {
+		if a.Ctx.Comp.Precomputed.Exists(idBigCol) {
 			continue
 		}
 
@@ -117,16 +117,18 @@ func (a *stitchColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	}
 }
 
-// ScanStitchCommit scans compiler trace and classifies the sub columns eligible to the stitching.
-// It then stitches the sub columns, commits to them and update stitchingContext.
-// It also forces the compiler to set the status of the sub columns to 'ignored'.
-// since the sub columns are technically replaced with their stitching.
-func (ctx *stitchingContext) ScanStitchCommit() {
-	for round := 0; round < ctx.comp.NumRounds(); round++ {
+// ScanStitchCommit scans compiler trace and classifies the sub columns eligible
+// to the stitching. It then stitches the sub columns, commits to them and
+// update stitchingContext. It also forces the compiler to set the status of the
+// sub columns to 'ignored'. since the sub columns are technically replaced with
+// their stitching.
+func (ctx *StitchingContext) ScanStitchCommit() {
+	for round := 0; round < ctx.Comp.NumRounds(); round++ {
 
-		// scan the compiler trace to find the eligible columns for stitching. The
-		// sorting is critical to ensure that the stitching happens in deterministic
-		// order and that the columns are created in the same order.
+		// scan the compiler trace to find the eligible columns for stitching.
+		// The sorting is critical to ensure that the stitching happens in
+		// deterministic order and that the columns are created in the same
+		// order.
 		columnsBySize := scanAndClassifyEligibleColumns(*ctx, round)
 		sizes := utils.SortedKeysOf(columnsBySize, func(a, b int) bool {
 			return a < b
@@ -141,9 +143,10 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 			)
 
 			// collect the the columns with valid status; Precomputed, committed
-			// verifierDefined is valid but is not present in the compiler trace we handle it directly during the constraints.
+			// verifierDefined is valid but is not present in the compiler trace
+			// we handle it directly during the constraints.
 			for _, col := range cols {
-				status := ctx.comp.Columns.Status(col.GetColID())
+				status := ctx.Comp.Columns.Status(col.GetColID())
 				switch status {
 				case column.Precomputed:
 					precomputedCols = append(precomputedCols, col)
@@ -151,13 +154,14 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 					committedCols = append(committedCols, col)
 
 				default:
-					// note that status of verifercol/ veriferDefined is not available via compiler trace.
+					// note that status of verifercol/ veriferDefined is not
+					// available via compiler trace.
 					utils.Panic("found the column %v with the invalid status %v for stitching", col.GetColID(), status.String())
 				}
 
 				// Mark it as ignored, so that it is no longer considered as
 				// queryable (since we are replacing it with its stitching).
-				ctx.comp.Columns.MarkAsIgnored(col.GetColID())
+				ctx.Comp.Columns.MarkAsIgnored(col.GetColID())
 			}
 
 			if len(precomputedCols) != 0 {
@@ -195,21 +199,21 @@ func (ctx *stitchingContext) ScanStitchCommit() {
 		}
 
 		// @Azam Precomputed ones are double assigned by this?
-		ctx.comp.RegisterProverAction(round, &stitchColumnsProverAction{
-			ctx:   ctx,
-			round: round,
+		ctx.Comp.RegisterProverAction(round, &StitchColumnsProverAction{
+			Ctx:   ctx,
+			Round: round,
 		})
 	}
 }
 
 // It scan the compiler trace for a given round and classifies the columns eligible to the stitching, by their size.
-func scanAndClassifyEligibleColumns(ctx stitchingContext, round int) map[int][]ifaces.Column {
+func scanAndClassifyEligibleColumns(ctx StitchingContext, round int) map[int][]ifaces.Column {
 	columnsBySize := map[int][]ifaces.Column{}
 
-	for _, colName := range ctx.comp.Columns.AllKeysAt(round) {
+	for _, colName := range ctx.Comp.Columns.AllKeysAt(round) {
 
-		status := ctx.comp.Columns.Status(colName)
-		col := ctx.comp.Columns.GetHandle(colName)
+		status := ctx.Comp.Columns.Status(colName)
+		col := ctx.Comp.Columns.GetHandle(colName)
 
 		// 1. we expect no constraint over a mix of eligible columns and proof, thus ignore Proof columns
 		// 2. we expect no verifingKey column to fall withing the stitching interval (ctx.MinSize, ctx.MaxSize)
@@ -233,6 +237,7 @@ func scanAndClassifyEligibleColumns(ctx stitchingContext, round int) map[int][]i
 			ctx.makeColumnPublic(col, status)
 			continue
 		}
+
 		// Initialization clause of `sizes`
 		if _, ok := columnsBySize[col.Size()]; !ok {
 			columnsBySize[col.Size()] = []ifaces.Column{}
@@ -273,7 +278,7 @@ func groupedName(group []ifaces.Column) ifaces.ColID {
 }
 
 // for a group of sub columns it creates their stitching.
-func (ctx *stitchingContext) stitchGroup(s Alliance) {
+func (ctx *StitchingContext) stitchGroup(s Alliance) {
 	var (
 		group        = s.SubCols
 		stitchingCol ifaces.Column
@@ -288,7 +293,7 @@ func (ctx *stitchingContext) stitchGroup(s Alliance) {
 		// get the assignment of the subColumns and interleave them
 		witnesses := make([]smartvectors.SmartVector, actualSize)
 		for i := range witnesses {
-			witnesses[i] = ctx.comp.Precomputed.MustGet(group[i].GetColID())
+			witnesses[i] = ctx.Comp.Precomputed.MustGet(group[i].GetColID())
 		}
 		assignement := smartvectors.
 			AllocateRegular(maxSizeGroup * witnesses[0].Len()).(*smartvectors.Regular)
@@ -308,11 +313,11 @@ func (ctx *stitchingContext) stitchGroup(s Alliance) {
 			utils.Panic("creating a column bigger than it should: maxsize=%v totalsize=%v sizes=%v sizes2=%v inputs=%v", ctx.MaxSize, assignement.Len(), sizes, sizes2, group)
 		}
 
-		stitchingCol = ctx.comp.InsertPrecomputed(
+		stitchingCol = ctx.Comp.InsertPrecomputed(
 			groupedName(group),
 			assignement)
 	case column.Committed:
-		stitchingCol = ctx.comp.InsertCommit(
+		stitchingCol = ctx.Comp.InsertCommit(
 			s.Round,
 			groupedName(s.SubCols),
 			ctx.MaxSize,
@@ -336,14 +341,14 @@ func isColEligibleStitching(stitchings MultiSummary, col ifaces.Column) bool {
 
 // It makes the given colum public.
 // If the colum is Precomputed it becomes the VerifierKey, otherwise it becomes Proof.
-func (ctx stitchingContext) makeColumnPublic(col ifaces.Column, status column.Status) {
+func (ctx StitchingContext) makeColumnPublic(col ifaces.Column, status column.Status) {
 	switch status {
 	case column.Precomputed:
 		// send it to the verifier directly as part of the verifying key
-		ctx.comp.Columns.SetStatus(col.GetColID(), column.VerifyingKey)
+		ctx.Comp.Columns.SetStatus(col.GetColID(), column.VerifyingKey)
 	case column.Committed:
 		// send it to the verifier directly as part of the proof
-		ctx.comp.Columns.SetStatus(col.GetColID(), column.Proof)
+		ctx.Comp.Columns.SetStatus(col.GetColID(), column.Proof)
 	default:
 		utils.Panic("Unknown status : %v", status.String())
 	}

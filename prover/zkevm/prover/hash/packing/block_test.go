@@ -41,15 +41,15 @@ func makeTestCaseBlockModule(uc generic.HashingUsecase) (
 		isFirstLaneOfHash = comp.InsertCommit(0, "IsFirstLaneOfHash", size)
 
 		inp := blockInput{
-			lanes: laneRepacking{
+			Lanes: laneRepacking{
 				IsLaneActive:         isActive,
 				Size:                 size,
 				IsFirstLaneOfNewHash: isFirstLaneOfHash,
 				Inputs: &laneRepackingInputs{
-					pckInp: PackingInput{Name: "TEST"},
+					PckInp: PackingInput{Name: "TEST"},
 				},
 			},
-			param: uc,
+			Param: uc,
 		}
 
 		// constraints

@@ -15,7 +15,7 @@ import (
 // HashingCtx is the wizard context responsible for hashing a table row-wise.
 // It implements the [wizard.ProverAction] interface and is used to assign the
 // InputColumns field.
-type hashingCtx struct {
+type HashingCtx struct {
 	// InputCols is the list of columns forming a table for which the current
 	// context is computing the rows.
 	InputCols []ifaces.Column
@@ -30,7 +30,7 @@ type hashingCtx struct {
 func HashOf(comp *wizard.CompiledIOP, inputCols []ifaces.Column) (ifaces.Column, wizard.ProverAction) {
 
 	var (
-		ctx = &hashingCtx{
+		ctx = &HashingCtx{
 			InputCols:          inputCols,
 			IntermediateHashes: make([]ifaces.Column, len(inputCols)),
 		}
@@ -61,7 +61,7 @@ func HashOf(comp *wizard.CompiledIOP, inputCols []ifaces.Column) (ifaces.Column,
 }
 
 // Run implements the [wizard.ProverAction] interface
-func (ctx *hashingCtx) Run(run *wizard.ProverRuntime) {
+func (ctx *HashingCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
 		numRow = ctx.InputCols[0].Size()

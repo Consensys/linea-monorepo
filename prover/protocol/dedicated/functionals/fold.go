@@ -14,43 +14,43 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type foldProverAction struct {
-	h           ifaces.Column
-	x           ifaces.Accessor
-	foldedName  ifaces.ColID
-	innerDegree int
-	foldedSize  int
+type FoldProverAction struct {
+	H           ifaces.Column
+	X           ifaces.Accessor
+	FoldedName  ifaces.ColID
+	InnerDegree int
+	FoldedSize  int
 }
 
-func (a *foldProverAction) Run(assi *wizard.ProverRuntime) {
-	h := a.h.GetColAssignment(assi)
-	x := a.x.GetVal(assi)
+func (a *FoldProverAction) Run(assi *wizard.ProverRuntime) {
+	h := a.H.GetColAssignment(assi)
+	x := a.X.GetVal(assi)
 
-	foldedVal := make([]field.Element, a.foldedSize)
+	foldedVal := make([]field.Element, a.FoldedSize)
 	for i := range foldedVal {
-		subH := h.SubVector(i*a.innerDegree, (i+1)*a.innerDegree)
+		subH := h.SubVector(i*a.InnerDegree, (i+1)*a.InnerDegree)
 		foldedVal[i] = smartvectors.EvalCoeff(subH, x)
 	}
 
-	assi.AssignColumn(a.foldedName, smartvectors.NewRegular(foldedVal))
+	assi.AssignColumn(a.FoldedName, smartvectors.NewRegular(foldedVal))
 }
 
-type foldVerifierAction struct {
-	foldedEvalAcc ifaces.Accessor
-	hEvalAcc      ifaces.Accessor
-	foldedName    ifaces.ColID
+type FoldVerifierAction struct {
+	FoldedEvalAcc ifaces.Accessor
+	HEvalAcc      ifaces.Accessor
+	FoldedName    ifaces.ColID
 }
 
-func (a *foldVerifierAction) Run(run wizard.Runtime) error {
-	if a.foldedEvalAcc.GetVal(run) != a.hEvalAcc.GetVal(run) {
-		return fmt.Errorf("verifier of folding failed %v", a.foldedName)
+func (a *FoldVerifierAction) Run(run wizard.Runtime) error {
+	if a.FoldedEvalAcc.GetVal(run) != a.HEvalAcc.GetVal(run) {
+		return fmt.Errorf("verifier of folding failed %v", a.FoldedName)
 	}
 	return nil
 }
 
-func (a *foldVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
-	c := a.foldedEvalAcc.GetFrontendVariable(api, wvc)
-	c_ := a.hEvalAcc.GetFrontendVariable(api, wvc)
+func (a *FoldVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+	c := a.FoldedEvalAcc.GetFrontendVariable(api, wvc)
+	c_ := a.HEvalAcc.GetFrontendVariable(api, wvc)
 	api.AssertIsEqual(c, c_)
 }
 
@@ -66,12 +66,12 @@ func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDeg
 		logrus.Debugf("Unsafe, the coin is before the commitment : %v", foldedName)
 	}
 
-	comp.RegisterProverAction(round, &foldProverAction{
-		h:           h,
-		x:           x,
-		foldedName:  foldedName,
-		innerDegree: innerDegree,
-		foldedSize:  foldedSize,
+	comp.RegisterProverAction(round, &FoldProverAction{
+		H:           h,
+		X:           x,
+		FoldedName:  foldedName,
+		InnerDegree: innerDegree,
+		FoldedSize:  foldedSize,
 	})
 
 	outerCoinName := coin.Namef("OUTER_COIN_%v", folded.GetColID())
@@ -84,10 +84,10 @@ func Fold(comp *wizard.CompiledIOP, h ifaces.Column, x ifaces.Accessor, innerDeg
 	verRound := utils.Max(outerCoinAcc.Round(), foldedEvalAcc.Round())
 
 	// Check that the two evaluations yield the same result
-	comp.RegisterVerifierAction(verRound, &foldVerifierAction{
-		foldedEvalAcc: foldedEvalAcc,
-		hEvalAcc:      hEvalAcc,
-		foldedName:    foldedName,
+	comp.RegisterVerifierAction(verRound, &FoldVerifierAction{
+		FoldedEvalAcc: foldedEvalAcc,
+		HEvalAcc:      hEvalAcc,
+		FoldedName:    foldedName,
 	})
 
 	return folded

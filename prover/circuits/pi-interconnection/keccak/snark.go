@@ -329,7 +329,9 @@ func NewWizardVerifierSubCircuit(maxNbKeccakF int, compilationOpts ...func(iop *
 			Title:   "prover-interconnection/keccak-strict-hasher",
 			Version: "beta-v1",
 		},
-		serialization.SerializeCompiledIOP,
+		func(wiop *wizard.CompiledIOP) ([]byte, error) {
+			return serialization.Serialize(wiop)
+		},
 	)
 	return &c
 }

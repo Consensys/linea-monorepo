@@ -8,33 +8,39 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/coin"
 	"github.com/consensys/linea-monorepo/prover/protocol/ifaces"
 	"github.com/consensys/linea-monorepo/prover/protocol/query"
+	"github.com/consensys/linea-monorepo/prover/protocol/serialization"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 	"github.com/consensys/linea-monorepo/prover/protocol/wizardutils"
 	sym "github.com/consensys/linea-monorepo/prover/symbolic"
 	"github.com/consensys/linea-monorepo/prover/utils"
 )
 
-// projectionContext is a compilation artefact generated during the execution of
+func init() {
+	serialization.RegisterImplementation(CheckHornerQuery{})
+	serialization.RegisterImplementation(AssignHornerQuery{})
+}
+
+// ProjectionContext is a compilation artefact generated during the execution of
 // the [InsertProjection] and which is used to instantiate the Horner query.
-type projectionContext struct {
+type ProjectionContext struct {
 	// Query is the Horner query generated during the compilation of the projection
 	// queries.
 	Query query.Horner
 }
 
-// assignHornerQuery is a [wizard.ProverAction] that assigns the Horner query from
+// AssignHornerQuery is a [wizard.ProverAction] that assigns the Horner query from
 // the [projectionContext] to the [wizard.ProverRuntime]. The final value is zero
 // and the N0 values are zero. The function additionally sanity-checks the values
 // of the Horner query.
-type assignHornerQuery struct {
-	projectionContext
+type AssignHornerQuery struct {
+	ProjectionContext
 }
 
-// checkHornerQuery result is a [wizard.VerifierAction] that can be used to check
+// CheckHornerQuery result is a [wizard.VerifierAction] that can be used to check
 // the value of a Horner query.
-type checkHornerQuery struct {
-	projectionContext
-	skipped bool
+type CheckHornerQuery struct {
+	ProjectionContext
+	skipped bool `serde:"omit"`
 }
 
 // ProjectionToHorner is a compilation step that compiles [query.Projection] queries
@@ -43,7 +49,7 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 
 	round := 0
 	parts := []query.HornerPart{}
-	ctx := projectionContext{}
+	ctx := ProjectionContext{}
 
 	for _, qName := range comp.QueriesNoParams.AllUnignoredKeys() {
 
@@ -121,11 +127,11 @@ func ProjectionToHorner(comp *wizard.CompiledIOP) {
 	}
 
 	ctx.Query = comp.InsertHornerQuery(round, ifaces.QueryIDf("PROJECTION_TO_HORNER_%v", comp.SelfRecursionCount), parts)
-	comp.RegisterProverAction(round, assignHornerQuery{ctx})
-	comp.RegisterVerifierAction(round, &checkHornerQuery{projectionContext: ctx})
+	comp.RegisterProverAction(round, AssignHornerQuery{ctx})
+	comp.RegisterVerifierAction(round, &CheckHornerQuery{ProjectionContext: ctx})
 }
 
-func (a assignHornerQuery) Run(run *wizard.ProverRuntime) {
+func (a AssignHornerQuery) Run(run *wizard.ProverRuntime) {
 
 	params := query.HornerParams{}
 
@@ -144,7 +150,7 @@ func (a assignHornerQuery) Run(run *wizard.ProverRuntime) {
 	run.AssignHornerParams(a.Query.ID, params)
 }
 
-func (c *checkHornerQuery) Run(run wizard.Runtime) error {
+func (c *CheckHornerQuery) Run(run wizard.Runtime) error {
 
 	params := run.GetHornerParams(c.Query.ID)
 
@@ -161,7 +167,7 @@ func (c *checkHornerQuery) Run(run wizard.Runtime) error {
 	return nil
 }
 
-func (c *checkHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
+func (c *CheckHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	params := run.GetHornerParams(c.Query.ID)
 	api.AssertIsEqual(params.FinalResult, 0)
 
@@ -170,10 +176,10 @@ func (c *checkHornerQuery) RunGnark(api frontend.API, run wizard.GnarkRuntime) {
 	}
 }
 
-func (c *checkHornerQuery) Skip() {
+func (c *CheckHornerQuery) Skip() {
 	c.skipped = true
 }
 
-func (c *checkHornerQuery) IsSkipped() bool {
+func (c *CheckHornerQuery) IsSkipped() bool {
 	return c.skipped
 }

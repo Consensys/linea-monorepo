@@ -85,7 +85,6 @@ func IsExprEligible(
 		hasAtLeastOneEligible = false
 		allAreEligible        = true
 		allAreVeriferCol      = true
-		rootCols              = []ifaces.Column{}
 		statusMap             = map[ifaces.ColID]string{}
 	)
 
@@ -94,22 +93,21 @@ func IsExprEligible(
 		// reminder: [verifiercol.VerifierCol] , [column.Natural] and [column.Shifted]
 		// all implement [ifaces.Column]
 		case ifaces.Column: // it is a Committed, Precomputed or verifierCol
-			rootCols = append(rootCols, m)
-			natural := column.RootParents(m)
+			rootColumn := column.RootParents(m)
 
-			switch nat := natural.(type) {
+			switch nat := rootColumn.(type) {
 			case column.Natural: // then it is not a verifiercol
-				statusMap[natural.GetColID()] = nat.Status().String()
+				statusMap[rootColumn.GetColID()] = nat.Status().String()
 				allAreVeriferCol = false
 				b := isColEligible(stitchings, m)
 
 				hasAtLeastOneEligible = hasAtLeastOneEligible || b
 				allAreEligible = allAreEligible && b
 				if m.Size() == 0 {
-					panic("found no columns in the expression")
+					panic("found a column with a size of 0")
 				}
 			case verifiercol.VerifierCol:
-				statusMap[natural.GetColID()] = column.VerifierDefined.String()
+				statusMap[rootColumn.GetColID()] = column.VerifierDefined.String()
 			}
 		}
 	}
@@ -120,6 +118,7 @@ func IsExprEligible(
 		// 3. we expect no VerifiyingKey withing the stitching range.
 		utils.Panic("the expression is not valid, it is mixed with invalid columns of status Proof/Ignored/verifierKey, %v", statusMap)
 	}
+
 	if allAreVeriferCol {
 		// 4. we expect no expression involving only and only the verifierCols.
 		// We expect that this case wont happen.

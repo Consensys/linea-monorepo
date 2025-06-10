@@ -497,12 +497,12 @@ func TestExhaustive(t *testing.T) {
 						}
 
 						for frag := range tabCase.StratIncluding {
-							b.RegisterProverAction(0, &assignColumnsProverAction{
+							b.RegisterProverAction(0, &AssignColumnsProverAction{
 								strat: tabCase.StratIncluding[frag],
 								cols:  table[frag],
 							})
 							if condTable != nil && tabCase.StratCondIncluding[frag] != nil {
-								b.RegisterProverAction(0, &assignColumnsProverAction{
+								b.RegisterProverAction(0, &AssignColumnsProverAction{
 									strat: tabCase.StratCondIncluding[frag],
 									cols:  []ifaces.Column{condTable[frag]},
 								})
@@ -528,12 +528,12 @@ func TestExhaustive(t *testing.T) {
 								)
 							}
 
-							b.RegisterProverAction(0, &assignColumnsProverAction{
+							b.RegisterProverAction(0, &AssignColumnsProverAction{
 								strat: tabCase.StratIncluded[incID],
 								cols:  included,
 							})
 							if tabCase.StratCondIncluded != nil && tabCase.StratCondIncluded[incID] != nil {
-								b.RegisterProverAction(0, &assignColumnsProverAction{
+								b.RegisterProverAction(0, &AssignColumnsProverAction{
 									strat: tabCase.StratCondIncluded[incID],
 									cols:  []ifaces.Column{condInc},
 								})
@@ -573,12 +573,12 @@ func TestExhaustive(t *testing.T) {
 }
 
 // Define a new struct to implement the ProverAction interface
-type assignColumnsProverAction struct {
+type AssignColumnsProverAction struct {
 	strat assignmentStrat
 	cols  []ifaces.Column
 }
 
 // Implement the Run method for the ProverAction interface
-func (a *assignColumnsProverAction) Run(run *wizard.ProverRuntime) {
+func (a *AssignColumnsProverAction) Run(run *wizard.ProverRuntime) {
 	a.strat(run, a.cols...)
 }

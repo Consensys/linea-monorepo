@@ -147,30 +147,30 @@ func Decompose(comp *wizard.CompiledIOP, col any, numLimbs int, bitPerLimbs int,
 		IsBigEndian: false,
 	}
 
-	return res, &decompositionCtx{
-		original:   boarded,
-		decomposed: res,
+	return res, &DecompositionCtx{
+		Original:   boarded,
+		Decomposed: res,
 	}
 
 }
 
-// decompositionCtx implements the [wizard.ProverAction] interface and is
+// DecompositionCtx implements the [wizard.ProverAction] interface and is
 // responsible for assigning the limbs of the column. It should be called
 // before trying to use the values of the limbs and after the original column
 // has been assigned.
-type decompositionCtx struct {
-	original   sym.ExpressionBoard
-	decomposed LimbColumns
+type DecompositionCtx struct {
+	Original   sym.ExpressionBoard
+	Decomposed LimbColumns
 }
 
 // Run implements the [wizard.ProverAction] interface
-func (d *decompositionCtx) Run(run *wizard.ProverRuntime) {
+func (d *DecompositionCtx) Run(run *wizard.ProverRuntime) {
 
 	var (
-		numLimbs     = len(d.decomposed.Limbs)
-		bitPerLimbs  = d.decomposed.LimbBitSize
+		numLimbs     = len(d.Decomposed.Limbs)
+		bitPerLimbs  = d.Decomposed.LimbBitSize
 		totalNumBits = numLimbs * bitPerLimbs
-		original     = column.EvalExprColumn(run, d.original)
+		original     = column.EvalExprColumn(run, d.Original)
 		limbsWitness = make([][]field.Element, numLimbs)
 		size         = original.Len()
 	)
@@ -210,6 +210,6 @@ func (d *decompositionCtx) Run(run *wizard.ProverRuntime) {
 
 	// Then assigns the limbs
 	for i := range limbsWitness {
-		run.AssignColumn(d.decomposed.Limbs[i].GetColID(), smartvectors.FromCompactWithShape(original, limbsWitness[i]))
+		run.AssignColumn(d.Decomposed.Limbs[i].GetColID(), smartvectors.FromCompactWithShape(original, limbsWitness[i]))
 	}
 }

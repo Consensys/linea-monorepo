@@ -110,11 +110,11 @@ func (sbh *sha2BlockModule) Run(run *wizard.ProverRuntime) {
 	sbh.CanBeBlockOfInstance.Assign(run)
 	sbh.CanBeEndOfInstance.Assign(run)
 
-	for i := range sbh.proverActions {
-		sbh.proverActions[i].Run(run)
+	for i := range sbh.ProverActions {
+		sbh.ProverActions[i].Run(run)
 	}
 
-	if sbh.hasCircuit {
+	if sbh.HasCircuit {
 		// this is guarded by a once, so it is safe to call multiple times
 		registerGnarkHint()
 		sbh.GnarkCircuitConnector.Assign(run)

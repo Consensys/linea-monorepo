@@ -7,15 +7,15 @@ import (
 	"github.com/consensys/linea-monorepo/prover/protocol/wizard"
 )
 
-// shadowRowProverAction is a prover action that assigns a shadow column
+// ShadowRowProverAction is a prover action that assigns a shadow column
 // to zero
-type shadowRowProverAction struct {
-	name ifaces.ColID
-	size int
+type ShadowRowProverAction struct {
+	Name ifaces.ColID
+	Size int
 }
 
-func (a *shadowRowProverAction) Run(run *wizard.ProverRuntime) {
-	run.AssignColumn(a.name, smartvectors.NewConstant(field.Zero(), a.size))
+func (a *ShadowRowProverAction) Run(run *wizard.ProverRuntime) {
+	run.AssignColumn(a.Name, smartvectors.NewConstant(field.Zero(), a.Size))
 }
 
 // A shadow row is a row filled with zeroes that we **may** add at the end of
@@ -26,9 +26,9 @@ func autoAssignedShadowRow(comp *wizard.CompiledIOP, size, round, id int) ifaces
 	name := ifaces.ColIDf("MPTS_%v_SHADOW_ROUND_%v_ID_%v", comp.SelfRecursionCount, round, id)
 	col := comp.InsertCommit(round, name, size)
 
-	comp.RegisterProverAction(round, &shadowRowProverAction{
-		name: name,
-		size: size,
+	comp.RegisterProverAction(round, &ShadowRowProverAction{
+		Name: name,
+		Size: size,
 	})
 
 	return col

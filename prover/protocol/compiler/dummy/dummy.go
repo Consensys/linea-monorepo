@@ -86,36 +86,36 @@ func Compile(comp *wizard.CompiledIOP) {
 		One step to be run at the end, by verifying every constraint
 		"a la mano"
 	*/
-	comp.RegisterVerifierAction(numRounds-1, &dummyVerifierAction{
-		comp:                     comp,
-		queriesParamsToCompile:   queriesParamsToCompile,
-		queriesNoParamsToCompile: queriesNoParamsToCompile,
+	comp.RegisterVerifierAction(numRounds-1, &DummyVerifierAction{
+		Comp:                     comp,
+		QueriesParamsToCompile:   queriesParamsToCompile,
+		QueriesNoParamsToCompile: queriesNoParamsToCompile,
 	})
 
 	logrus.Debugf("NB: The gnark circuit does not check the verifier of the dummy reduction\n")
 }
 
-// dummyVerifierAction is the action to verify queries in the dummy compiler.
+// DummyVerifierAction is the action to verify queries in the dummy compiler.
 // It implements the [wizard.VerifierAction] interface.
-type dummyVerifierAction struct {
-	comp                     *wizard.CompiledIOP
-	queriesParamsToCompile   []ifaces.QueryID
-	queriesNoParamsToCompile []ifaces.QueryID
+type DummyVerifierAction struct {
+	Comp                     *wizard.CompiledIOP
+	QueriesParamsToCompile   []ifaces.QueryID
+	QueriesNoParamsToCompile []ifaces.QueryID
 }
 
 // Run executes the verifier action, checking all queries in parallel.
-func (a *dummyVerifierAction) Run(run wizard.Runtime) error {
+func (a *DummyVerifierAction) Run(run wizard.Runtime) error {
 	var finalErr error
 	lock := sync.Mutex{}
 
 	/*
 		Test all the query with parameters
 	*/
-	parallel.Execute(len(a.queriesParamsToCompile), func(start, stop int) {
+	parallel.Execute(len(a.QueriesParamsToCompile), func(start, stop int) {
 		for i := start; i < stop; i++ {
-			name := a.queriesParamsToCompile[i]
+			name := a.QueriesParamsToCompile[i]
 			lock.Lock()
-			q := a.comp.QueriesParams.Data(name)
+			q := a.Comp.QueriesParams.Data(name)
 			lock.Unlock()
 			if err := q.Check(run); err != nil {
 				lock.Lock()
@@ -131,11 +131,11 @@ func (a *dummyVerifierAction) Run(run wizard.Runtime) error {
 	/*
 		Test the queries without parameters
 	*/
-	parallel.Execute(len(a.queriesNoParamsToCompile), func(start, stop int) {
+	parallel.Execute(len(a.QueriesNoParamsToCompile), func(start, stop int) {
 		for i := start; i < stop; i++ {
-			name := a.queriesNoParamsToCompile[i]
+			name := a.QueriesNoParamsToCompile[i]
 			lock.Lock()
-			q := a.comp.QueriesNoParams.Data(name)
+			q := a.Comp.QueriesNoParams.Data(name)
 			lock.Unlock()
 			if err := q.Check(run); err != nil {
 				lock.Lock()
@@ -155,6 +155,6 @@ func (a *dummyVerifierAction) Run(run wizard.Runtime) error {
 
 // RunGnark executes the verifier action in a Gnark circuit.
 // In this dummy implementation, no constraints are enforced.
-func (a *dummyVerifierAction) RunGnark(api frontend.API, gnarkRun wizard.GnarkRuntime) {
+func (a *DummyVerifierAction) RunGnark(api frontend.API, gnarkRun wizard.GnarkRuntime) {
 	// No constraints are enforced in the dummy reduction, as per the original empty function
 }

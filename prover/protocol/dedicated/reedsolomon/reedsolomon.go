@@ -20,36 +20,36 @@ const (
 	REED_SOLOMON_BETA        string = "REED_SOLOMON_BETA"
 )
 
-type reedSolomonProverAction struct {
-	h       ifaces.Column
-	coeff   ifaces.Column
-	codeDim int
+type ReedSolomonProverAction struct {
+	H       ifaces.Column
+	Coeff   ifaces.Column
+	CodeDim int
 }
 
-func (a *reedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
-	witness := a.h.GetColAssignment(assi)
-	coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0, nil).SubVector(0, a.codeDim)
-	assi.AssignColumn(a.coeff.GetColID(), coeffs)
+func (a *ReedSolomonProverAction) Run(assi *wizard.ProverRuntime) {
+	witness := a.H.GetColAssignment(assi)
+	coeffs := smartvectors.FFTInverse(witness, fft.DIF, true, 0, 0, nil).SubVector(0, a.CodeDim)
+	assi.AssignColumn(a.Coeff.GetColID(), coeffs)
 }
 
-type reedSolomonVerifierAction struct {
-	coeffCheck ifaces.Accessor
-	evalCheck  ifaces.Accessor
-	hColID     ifaces.ColID
+type ReedSolomonVerifierAction struct {
+	CoeffCheck ifaces.Accessor
+	EvalCheck  ifaces.Accessor
+	HColID     ifaces.ColID
 }
 
-func (a *reedSolomonVerifierAction) Run(run wizard.Runtime) error {
-	y := a.coeffCheck.GetVal(run)
-	y_ := a.evalCheck.GetVal(run)
+func (a *ReedSolomonVerifierAction) Run(run wizard.Runtime) error {
+	y := a.CoeffCheck.GetVal(run)
+	y_ := a.EvalCheck.GetVal(run)
 	if y != y_ {
-		return fmt.Errorf("reed-solomon check failed - %v is not a codeword", a.hColID)
+		return fmt.Errorf("reed-solomon check failed - %v is not a codeword", a.HColID)
 	}
 	return nil
 }
 
-func (a *reedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
-	y := a.coeffCheck.GetFrontendVariable(api, wvc)
-	y_ := a.evalCheck.GetFrontendVariable(api, wvc)
+func (a *ReedSolomonVerifierAction) RunGnark(api frontend.API, wvc wizard.GnarkRuntime) {
+	y := a.CoeffCheck.GetFrontendVariable(api, wvc)
+	y_ := a.EvalCheck.GetFrontendVariable(api, wvc)
 	api.AssertIsEqual(y, y_)
 }
 
@@ -72,10 +72,10 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 
 	// Inserts the prover before calling the sub-wizard so that it is executed
 	// before the sub-prover's wizards.
-	comp.RegisterProverAction(round, &reedSolomonProverAction{
-		h:       h,
-		coeff:   coeff,
-		codeDim: codeDim,
+	comp.RegisterProverAction(round, &ReedSolomonProverAction{
+		H:       h,
+		Coeff:   coeff,
+		CodeDim: codeDim,
 	})
 
 	coeffCheck := functionals.CoeffEval(
@@ -92,10 +92,10 @@ func CheckReedSolomon(comp *wizard.CompiledIOP, rate int, h ifaces.Column) {
 		h,
 	)
 
-	comp.RegisterVerifierAction(round+1, &reedSolomonVerifierAction{
-		coeffCheck: coeffCheck,
-		evalCheck:  evalCheck,
-		hColID:     h.GetColID(),
+	comp.RegisterVerifierAction(round+1, &ReedSolomonVerifierAction{
+		CoeffCheck: coeffCheck,
+		EvalCheck:  evalCheck,
+		HColID:     h.GetColID(),
 	})
 
 }
