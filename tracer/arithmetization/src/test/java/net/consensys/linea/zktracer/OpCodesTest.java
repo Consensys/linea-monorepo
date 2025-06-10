@@ -15,6 +15,8 @@
 
 package net.consensys.linea.zktracer;
 
+import static net.consensys.linea.zktracer.Fork.LONDON;
+import static net.consensys.linea.zktracer.opcode.OpCodes.loadOpcodes;
 import static net.consensys.linea.zktracer.opcode.OpCodes.opCodeDataList;
 
 import net.consensys.linea.UnitTestWatcher;
@@ -39,6 +41,7 @@ public class OpCodesTest extends TracerTestBase {
 
   private Bytes getAllOpCodesProgram() {
     BytecodeCompiler program = BytecodeCompiler.newProgram(testInfo);
+    loadOpcodes(LONDON);
     for (OpCodeData opCodeData : opCodeDataList) {
       if (opCodeData != null) {
         if (opCodeData.instructionFamily() != InstructionFamily.HALT

@@ -19,12 +19,15 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static net.consensys.linea.zktracer.Trace.*;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_BF;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_CB;
-import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_DEPTH;
-import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_DF;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_GL;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_ID;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_NB;
 import static net.consensys.linea.zktracer.Trace.Blockdata.nROWS_TS;
+import static net.consensys.linea.zktracer.TraceCancun.Blockdata.nROWS_BL;
+import static net.consensys.linea.zktracer.TraceLondon.Blockdata.nROWS_DF;
+import static net.consensys.linea.zktracer.TraceParis.Blockdata.nROWS_PV;
+import static net.consensys.linea.zktracer.opcode.OpCode.*;
+import static net.consensys.linea.zktracer.types.Conversions.bigIntegerToBytes;
 import static net.consensys.linea.zktracer.types.Conversions.booleanToBytes;
 
 import java.math.BigInteger;
@@ -59,7 +62,7 @@ public abstract class BlockdataOperation extends ModuleOperation {
   private static final EWord POWER_256_6 = EWord.of(BigInteger.ONE.shiftLeft(6 * 8));
 
   private final boolean firstBlockInConflation;
-  private final int ctMax;
+  private final int nbRows;
   private final OpCode opCode;
   private final long firstBlockNumber;
   private final int relTxMax;
@@ -90,7 +93,7 @@ public abstract class BlockdataOperation extends ModuleOperation {
     this.gasLimitMinimum = EWord.of(chain.gasLimitMinimum);
     this.gasLimitMaximum = EWord.of(chain.gasLimitMaximum);
     this.chainId = EWord.of(chain.id);
-    this.ctMax = ctMax(opCode);
+    this.nbRows = nbRows(opCode);
     this.firstBlockNumber = firstBlockNumber;
     this.relTxMax = relTxMax;
     this.relBlock = (int) (blockHeader.getNumber() - firstBlockNumber + 1);
@@ -100,12 +103,12 @@ public abstract class BlockdataOperation extends ModuleOperation {
     this.opCode = opCode;
 
     // Init non-counter constant columns arrays of size ctMax
-    this.wcpFlag = new boolean[ctMax];
-    this.eucFlag = new boolean[ctMax];
-    this.exoInst = new UnsignedByte[ctMax];
-    this.arg1 = new EWord[ctMax];
-    this.arg2 = new EWord[ctMax];
-    this.res = new Bytes[ctMax];
+    this.wcpFlag = new boolean[nbRows];
+    this.eucFlag = new boolean[nbRows];
+    this.exoInst = new UnsignedByte[nbRows];
+    this.arg1 = new EWord[nbRows];
+    this.arg2 = new EWord[nbRows];
+    this.res = new Bytes[nbRows];
     Arrays.fill(exoInst, UnsignedByte.ZERO);
     Arrays.fill(arg1, EWord.ZERO);
     Arrays.fill(arg2, EWord.ZERO);
@@ -113,27 +116,15 @@ public abstract class BlockdataOperation extends ModuleOperation {
 
     // Handle opcodes
     switch (opCode) {
-      case OpCode.COINBASE -> {
-        handleCoinbase();
-      }
-      case OpCode.TIMESTAMP -> {
-        handleTimestamp();
-      }
-      case OpCode.NUMBER -> {
-        handleNumber();
-      }
-      case OpCode.DIFFICULTY -> {
-        handleDifficultyOrPrevrandao();
-      }
-      case OpCode.GASLIMIT -> {
-        handleGasLimit();
-      }
-      case OpCode.CHAINID -> {
-        handleChainId();
-      }
-      case OpCode.BASEFEE -> {
-        handleBaseFee();
-      }
+      case COINBASE -> handleCoinbase();
+      case TIMESTAMP -> handleTimestamp();
+      case NUMBER -> handleNumber();
+      case DIFFICULTY -> handleDifficulty(); // London only
+      case PREVRANDAO -> handlePrevRandao(); // Paris and after
+      case GASLIMIT -> handleGasLimit();
+      case CHAINID -> handleChainId();
+      case BASEFEE -> handleBaseFee();
+      case BLOBBASEFEE -> handleBlobBaseFee(); // Cancun and after
     }
   }
 
@@ -166,7 +157,11 @@ public abstract class BlockdataOperation extends ModuleOperation {
     }
   }
 
-  protected abstract void handleDifficultyOrPrevrandao();
+  protected abstract void handleDifficulty();
+
+  protected abstract void handlePrevRandao();
+
+  protected abstract void handleBlobBaseFee();
 
   private void handleGasLimit() {
     data = EWord.of(blockHeader.getGasLimit());
@@ -206,31 +201,35 @@ public abstract class BlockdataOperation extends ModuleOperation {
 
   @Override
   protected int computeLineCount() {
-    return ctMax;
+    return nbRows;
   }
 
   public void trace(Trace.Blockdata trace) {
-    for (short ct = 0; ct < ctMax; ct++) {
+    for (short ct = 0; ct < nbRows; ct++) {
       trace
           .iomf(true)
-          .ctMax(ctMax - 1)
+          .ctMax(nbRows - 1)
           .ct(ct)
-          .isCoinbase(opCode == OpCode.COINBASE)
-          .isTimestamp(opCode == OpCode.TIMESTAMP)
-          .isNumber(opCode == OpCode.NUMBER)
-          .isDifficulty(opCode == OpCode.DIFFICULTY)
-          .isGaslimit(opCode == OpCode.GASLIMIT)
-          .isChainid(opCode == OpCode.CHAINID)
-          .isBasefee(opCode == OpCode.BASEFEE)
-          .inst(UnsignedByte.of(opCode.byteValue()))
+          .isCoinbase(opCode == COINBASE)
+          .isTimestamp(opCode == TIMESTAMP)
+          .isNumber(opCode == NUMBER);
+      traceIsDifficulty(trace, opCode);
+      traceIsPrevRandao(trace, opCode);
+      trace
+          .isGaslimit(opCode == GASLIMIT)
+          .isChainid(opCode == CHAINID)
+          .isBasefee(opCode == BASEFEE);
+      traceIsBlobBaseFee(trace, opCode);
+      trace
+          .inst(opCode.unsignedByteValue()) // not fork dependant
           .coinbaseHi(hub.coinbaseAddressOfRelativeBlock(relBlock).slice(0, 4).toLong())
           .coinbaseLo(hub.coinbaseAddressOfRelativeBlock(relBlock).slice(4, LLARGE))
           .blockGasLimit(Bytes.ofUnsignedLong(blockHeader.getGasLimit()))
-          .basefee(
-              Bytes.ofUnsignedLong(blockHeader.getBaseFee().get().getAsBigInteger().longValue()))
+          .basefee(bigIntegerToBytes(blockHeader.getBaseFee().get().getAsBigInteger()))
           .firstBlockNumber(firstBlockNumber)
-          .relBlock((short) relBlock)
-          .relTxNumMax((short) relTxMax)
+          .relBlock((short) relBlock);
+      traceRelTxNumMax(trace, (short) relTxMax);
+      trace
           .dataHi(data.hi())
           .dataLo(data.lo())
           .arg1Hi(arg1[ct].hi())
@@ -241,10 +240,17 @@ public abstract class BlockdataOperation extends ModuleOperation {
           .exoInst(exoInst[ct])
           .wcpFlag(wcpFlag[ct])
           .eucFlag(eucFlag[ct]);
-
       trace.validateRow();
     }
   }
+
+  protected abstract void traceIsDifficulty(Trace.Blockdata trace, OpCode opCode);
+
+  protected abstract void traceIsPrevRandao(Trace.Blockdata trace, OpCode opCode);
+
+  protected abstract void traceIsBlobBaseFee(Trace.Blockdata trace, OpCode opCode);
+
+  protected abstract void traceRelTxNumMax(Trace.Blockdata trace, short relTxMax);
 
   // Module call macros
   private boolean wcpCallTo(int w, EWord arg1, EWord arg2, int inst) {
@@ -306,32 +312,18 @@ public abstract class BlockdataOperation extends ModuleOperation {
     return res[w];
   }
 
-  private int ctMax(OpCode opCode) {
-    switch (opCode) {
-      case OpCode.COINBASE -> {
-        return nROWS_CB;
-      }
-      case OpCode.TIMESTAMP -> {
-        return nROWS_TS;
-      }
-      case OpCode.NUMBER -> {
-        return nROWS_NB;
-      }
-      case OpCode.DIFFICULTY -> {
-        return nROWS_DF;
-      }
-      case OpCode.GASLIMIT -> {
-        return nROWS_GL;
-      }
-      case OpCode.CHAINID -> {
-        return nROWS_ID;
-      }
-      case OpCode.BASEFEE -> {
-        return nROWS_BF;
-      }
-      default -> {
-        return nROWS_DEPTH;
-      }
-    }
+  private int nbRows(OpCode opCode) {
+    return switch (opCode) {
+      case COINBASE -> nROWS_CB;
+      case TIMESTAMP -> nROWS_TS;
+      case NUMBER -> nROWS_NB;
+      case DIFFICULTY -> nROWS_DF; // London only
+      case PREVRANDAO -> nROWS_PV; // Paris and after
+      case GASLIMIT -> nROWS_GL;
+      case CHAINID -> nROWS_ID;
+      case BASEFEE -> nROWS_BF;
+      case BLOBBASEFEE -> nROWS_BL; // Cancun and after
+      default -> throw new IllegalArgumentException("Not a valid opcode for lockData: " + opCode);
+    };
   }
 }

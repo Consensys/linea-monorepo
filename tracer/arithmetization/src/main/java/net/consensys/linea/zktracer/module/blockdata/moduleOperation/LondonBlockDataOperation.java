@@ -15,7 +15,10 @@
 
 package net.consensys.linea.zktracer.module.blockdata.moduleOperation;
 
+import static net.consensys.linea.zktracer.opcode.OpCode.DIFFICULTY;
+
 import net.consensys.linea.zktracer.ChainConfig;
+import net.consensys.linea.zktracer.Trace;
 import net.consensys.linea.zktracer.module.euc.Euc;
 import net.consensys.linea.zktracer.module.hub.Hub;
 import net.consensys.linea.zktracer.module.wcp.Wcp;
@@ -38,10 +41,40 @@ public class LondonBlockDataOperation extends BlockdataOperation {
   }
 
   @Override
-  protected void handleDifficultyOrPrevrandao() {
+  protected void handleDifficulty() {
     data = EWord.of(blockHeader().getDifficulty().getAsBigInteger());
 
     // row i
     wcpCallToGEQ(0, data(), EWord.ZERO);
+  }
+
+  @Override
+  protected void handlePrevRandao() {
+    throw new IllegalStateException("OpCode not in London fork. Only in Paris and after.");
+  }
+
+  @Override
+  protected void handleBlobBaseFee() {
+    throw new IllegalStateException("OpCode not in London fork. Only in Cancun and after.");
+  }
+
+  @Override
+  protected void traceIsDifficulty(Trace.Blockdata trace, OpCode opCode) {
+    trace.isDifficulty(opCode == DIFFICULTY);
+  }
+
+  @Override
+  protected void traceIsPrevRandao(Trace.Blockdata trace, OpCode opCode) {
+    // OpCode not in London fork. Only in Paris and after.
+  }
+
+  @Override
+  protected void traceIsBlobBaseFee(Trace.Blockdata trace, OpCode opCode) {
+    // OpCode not in London fork. Only in Cancun and after.
+  }
+
+  @Override
+  protected void traceRelTxNumMax(Trace.Blockdata trace, short relTxMax) {
+    trace.relTxNumMax(relTxMax);
   }
 }

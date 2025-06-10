@@ -15,7 +15,7 @@
 
 package net.consensys.linea.zktracer.module.blockdata.moduleOperation;
 
-import static net.consensys.linea.zktracer.opcode.OpCode.PREVRANDAO;
+import static net.consensys.linea.zktracer.opcode.OpCode.BLOBBASEFEE;
 
 import net.consensys.linea.zktracer.ChainConfig;
 import net.consensys.linea.zktracer.Trace;
@@ -26,8 +26,11 @@ import net.consensys.linea.zktracer.opcode.OpCode;
 import net.consensys.linea.zktracer.types.EWord;
 import org.hyperledger.besu.plugin.data.BlockHeader;
 
-public class ParisBlockDataOperation extends LondonBlockDataOperation {
-  public ParisBlockDataOperation(
+public class CancunBlockDataOperation extends ParisBlockDataOperation {
+  private final Hub
+      hub; // TODO: will have to be removed when we get the blobbasefee from the block header
+
+  public CancunBlockDataOperation(
       Hub hub,
       BlockHeader blockHeader,
       BlockHeader prevBlockHeader,
@@ -38,28 +41,27 @@ public class ParisBlockDataOperation extends LondonBlockDataOperation {
       OpCode opCode,
       long firstBlockNumber) {
     super(hub, blockHeader, prevBlockHeader, relTxMax, wcp, euc, chain, opCode, firstBlockNumber);
+    this.hub = hub;
   }
 
   @Override
-  protected void handleDifficulty() {
-    throw new IllegalStateException("OpCode in London fork only, not in Paris and after.");
-  }
-
-  @Override
-  protected void handlePrevRandao() {
-    data = EWord.of(blockHeader().getPrevRandao().get());
+  protected void handleBlobBaseFee() {
+    data = EWord.of(hub.currentFrame().frame().getBlobGasPrice()); // TODO: this is ugly.
+    // the BLOBBASEFEE is accessible from the besu frame, not the
+    // blockheader. I've raised the point to Besu team to have it in
+    // block header. Plus it'll fail when we'll deal with empty block. Wait & see.
 
     // row i
     wcpCallToGEQ(0, data(), EWord.ZERO);
   }
 
   @Override
-  protected void traceIsDifficulty(Trace.Blockdata trace, OpCode opCode) {
-    // OpCode in London fork only, not in Paris and after.
+  protected void traceIsBlobBaseFee(Trace.Blockdata trace, OpCode opCode) {
+    trace.isBlobbasefee(opCode == BLOBBASEFEE);
   }
 
   @Override
-  protected void traceIsPrevRandao(Trace.Blockdata trace, OpCode opCode) {
-    trace.isPrevrandao(opCode == PREVRANDAO);
+  protected void traceRelTxNumMax(Trace.Blockdata trace, short relTxMax) {
+    // Column not in Cancun fork. Only before Cancun.
   }
 }

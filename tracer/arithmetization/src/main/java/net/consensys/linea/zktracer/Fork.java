@@ -45,9 +45,6 @@ public enum Fork {
   }
 
   public static boolean isPostShanghai(Fork fork) {
-    return switch (fork) {
-      case LONDON, PARIS -> false;
-      case SHANGHAI, CANCUN, PRAGUE -> true;
-    };
+    return fork.compareTo(SHANGHAI) >= 0;
   }
 }
